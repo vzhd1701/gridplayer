@@ -81,7 +81,8 @@ jobs:
         run: |
           bash scripts/pyinstaller/build_mac.sh
           bash scripts/macos/build_dmg.sh
-          rm -rf dist/*.app
+          # Remove directory produced by pyinstaller
+          bash -c 'find dist -maxdepth 1 -mindepth 1 -type d -exec rm -r {} \;'
 
       - name: Save release binaries for macos x64
         uses: actions/upload-artifact@v2
