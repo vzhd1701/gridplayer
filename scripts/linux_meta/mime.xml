@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<mime-info xmlns="http://www.freedesktop.org/standards/shared-mime-info">
+  <mime-type type="application/x-gridplayer-playlist">
+    <comment>{APP_NAME} playlist file</comment>
+    <acronym>GPLS</acronym>
+    <expanded-acronym>{APP_NAME} Playlist</expanded-acronym>
+    <sub-class-of type="text/plain"/>
+    <glob pattern="*.gpls"/>
+    <magic priority="50">
+      <match type="string" value="#GRIDPLAYER" offset="0"/>
+    </magic>
+    <icon name="{APP_ID}.gpls"/>
+  </mime-type>
+</mime-info>

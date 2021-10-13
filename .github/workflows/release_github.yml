@@ -1,0 +1,198 @@
+name: release_github
+
+on:
+  workflow_dispatch:
+    inputs:
+      release:
+        description: 'Release after build'
+        required: true
+        default: 'no'
+  push:
+    tags:
+      - "v[0-9]+.[0-9]+.[0-9]+"
+
+env:
+  BUILD_PYTHON_VERSION: 3.8
+  BUILD_POETRY_VERSION: 1.1.5
+
+jobs:
+  build_python:
+    runs-on: ubuntu-latest
+    env:
+      POETRY_VIRTUALENVS_CREATE: false
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+
+      - name: Set up Python ${{ env.BUILD_PYTHON_VERSION }}
+        uses: actions/setup-python@v2
+        with:
+          python-version: ${{ env.BUILD_PYTHON_VERSION }}
+
+      - name: Set up Poetry ${{ env.BUILD_POETRY_VERSION }}
+        uses: abatilo/actions-poetry@v2.0.0
+        with:
+          poetry-version: ${{ env.BUILD_POETRY_VERSION }}
+
+      - name: Export requirements
+        run: poetry export -f requirements.txt --output requirements.txt
+
+      - name: Build project for distribution
+        run: poetry build
+
+      - name: Save release python requirements
+        uses: actions/upload-artifact@v2
+        with:
+          name: release_dist_reqs
+          path: requirements.txt
+
+      - name: Save release python packages
+        uses: actions/upload-artifact@v2
+        with:
+          name: release_dist_python
+          path: dist
+
+  build_mac:
+    needs: build_python
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Load release python requirements
+        uses: actions/download-artifact@v2
+        with:
+          name: release_dist_reqs
+          path: build
+
+      - uses: actions/setup-python@v2
+        with:
+          python-version: ${{ env.BUILD_PYTHON_VERSION }}
+
+      - uses: actions/setup-node@v2
+        with:
+          node-version: 14
+
+      - name: Install requirements
+        run: |
+          brew install gnu-sed graphicsmagick imagemagick
+          npm install --global create-dmg
+
+      - name: Build
+        run: |
+          bash scripts/pyinstaller/build_mac.sh
+          bash scripts/macos/build_dmg.sh
+          rm -rf dist/*.app
+
+      - name: Save release binaries for macos x64
+        uses: actions/upload-artifact@v2
+        with:
+          name: release_dist_bin_macos_x64
+          path: dist
+
+  build_win:
+    needs: build_python
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Load release python requirements
+        uses: actions/download-artifact@v2
+        with:
+          name: release_dist_reqs
+          path: build
+
+      - uses: actions/setup-python@v2
+        with:
+          python-version: ${{ env.BUILD_PYTHON_VERSION }}
+
+      - name: Install requirements
+        uses: crazy-max/ghaction-chocolatey@v1
+        with:
+          args: install wget zip
+
+      - name: Build
+        run: |
+          bash scripts/pyinstaller/build_win.sh
+          bash scripts/windows/build_packages.sh
+          # Remove directory produced by pyinstaller
+          bash -c 'find dist -maxdepth 1 -mindepth 1 -type d -exec rm -r {} \;'
+
+      - name: Save release binaries for windows x64
+        uses: actions/upload-artifact@v2
+        with:
+          name: release_dist_bin_windows_x64
+          path: dist
+
+  build_appimage:
+    needs: build_python
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Load release python packages
+        uses: actions/download-artifact@v2
+        with:
+          name: release_dist_python
+          path: dist
+
+      - uses: actions/setup-python@v2
+        with:
+          python-version: ${{ env.BUILD_PYTHON_VERSION }}
+
+      - name: Install requirements
+        run: |
+          wget -q -nc -O /usr/local/bin/appimagetool https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage
+          chmod +x /usr/local/bin/appimagetool
+          sudo apt-get install -y desktop-file-utils appstream-util
+
+      - name: Build
+        run: |
+          bash scripts/linux_meta/build.sh
+          bash scripts/appimage/build.sh
+
+      - name: Save release binaries for linux x64
+        uses: actions/upload-artifact@v2
+        with:
+          name: release_dist_bin_linux_x64
+          path: dist
+
+  release:
+    if: github.event_name == 'push' || github.event.inputs.release == 'yes'
+    needs: [build_win, build_mac, build_appimage]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Extract release changelog
+        run: bash scripts/_helpers/extract_changelog.sh CHANGELOG.md > release_changelog
+
+      - name: Load release python packages
+        uses: actions/download-artifact@v2
+        with:
+          name: release_dist_python
+          path: dist
+
+      - name: Load release binaries for linux x64
+        uses: actions/download-artifact@v2
+        with:
+          name: release_dist_bin_linux_x64
+          path: dist
+
+      - name: Load release binaries for windows x64
+        uses: actions/download-artifact@v2
+        with:
+          name: release_dist_bin_windows_x64
+          path: dist
+
+      - name: Load release binaries for macos x64
+        uses: actions/download-artifact@v2
+        with:
+          name: release_dist_bin_macos_x64
+          path: dist
+
+      - name: Create Release
+        uses: ncipollo/release-action@v1
+        with:
+          bodyFile: release_changelog
+          artifacts: "dist/*"
+          token: ${{ secrets.GITHUB_TOKEN }}
+          draft: false

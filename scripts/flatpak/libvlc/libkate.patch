@@ -1,0 +1,103 @@
+diff --git a/Makefile.in b/Makefile.in
+index 50ce6f3..c12a423 100644
+--- a/Makefile.in
++++ b/Makefile.in
+@@ -260,7 +260,6 @@ INT64_T = @INT64_T@
+ LD = @LD@
+ LDFLAGS = @LDFLAGS@
+ LEX = @LEX@
+-LEXLIB = @LEXLIB@
+ LEX_OUTPUT_ROOT = @LEX_OUTPUT_ROOT@
+ LIBKATE_SHARED_VERSION = @LIBKATE_SHARED_VERSION@
+ LIBOBJS = @LIBOBJS@
+diff --git a/configure.ac b/configure.ac
+index 58ff478..a319fdd 100644
+--- a/configure.ac
++++ b/configure.ac
+@@ -7,7 +7,7 @@ AC_PREREQ(2.53)
+ 
+ AC_CANONICAL_TARGET
+ 
+-AM_INIT_AUTOMAKE([-Wall -Werror foreign subdir-objects])
++AM_INIT_AUTOMAKE([-Wall foreign subdir-objects])
+ AC_CONFIG_HEADERS([include/config.h])
+ 
+ ifdef([AM_SILENT_RULES],[AM_SILENT_RULES])
+@@ -117,6 +117,7 @@ else
+ fi
+ AM_CONDITIONAL(HAVE_OGG_MERGE,test "x${OGG_MERGE}" != "x")
+ 
++m4_define_default([_AM_PYTHON_INTERPRETER_LIST],[python2])
+ AM_PATH_PYTHON(, HAVE_PYTHON=yes, HAVE_PYTHON=no)
+ AM_CONDITIONAL(HAVE_PYTHON,test "${HAVE_PYTHON}" = "yes")
+ 
+diff --git a/doc/Makefile.in b/doc/Makefile.in
+index 6ecfa32..d3bae00 100644
+--- a/doc/Makefile.in
++++ b/doc/Makefile.in
+@@ -125,7 +125,6 @@ INT64_T = @INT64_T@
+ LD = @LD@
+ LDFLAGS = @LDFLAGS@
+ LEX = @LEX@
+-LEXLIB = @LEXLIB@
+ LEX_OUTPUT_ROOT = @LEX_OUTPUT_ROOT@
+ LIBKATE_SHARED_VERSION = @LIBKATE_SHARED_VERSION@
+ LIBOBJS = @LIBOBJS@
+diff --git a/tests/Makefile.in b/tests/Makefile.in
+index 2fe27a1..52eabdd 100644
+--- a/tests/Makefile.in
++++ b/tests/Makefile.in
+@@ -156,7 +156,6 @@ INT64_T = @INT64_T@
+ LD = @LD@
+ LDFLAGS = @LDFLAGS@
+ LEX = @LEX@
+-LEXLIB = @LEXLIB@
+ LEX_OUTPUT_ROOT = @LEX_OUTPUT_ROOT@
+ LIBKATE_SHARED_VERSION = @LIBKATE_SHARED_VERSION@
+ LIBOBJS = @LIBOBJS@
+diff --git a/tools/KateDJ/Makefile.in b/tools/KateDJ/Makefile.in
+index ce31a00..2ed33bc 100644
+--- a/tools/KateDJ/Makefile.in
++++ b/tools/KateDJ/Makefile.in
+@@ -99,7 +99,6 @@ INT64_T = @INT64_T@
+ LD = @LD@
+ LDFLAGS = @LDFLAGS@
+ LEX = @LEX@
+-LEXLIB = @LEXLIB@
+ LEX_OUTPUT_ROOT = @LEX_OUTPUT_ROOT@
+ LIBKATE_SHARED_VERSION = @LIBKATE_SHARED_VERSION@
+ LIBOBJS = @LIBOBJS@
+diff --git a/tools/Makefile.am b/tools/Makefile.am
+index 2be12a3..48076a1 100644
+--- a/tools/Makefile.am
++++ b/tools/Makefile.am
+@@ -20,7 +20,7 @@ kateenc_SOURCES+=kpng.c
+ endif
+ katedec_SOURCES=katedec.c kkate.c ksrt.c klrc.c kutil.c kfuzz.c kstream.c kread.c kstrings.c
+ katalyzer_SOURCES=katalyzer.c kutil.c kstream.c kread.c kstrings.c kstats.c
+-kateenc_LDADD=../lib/liboggkate.la ../lib/libkate.la @OGG_LIBS@ @PNG_LIBS@ @LEXLIB@
++kateenc_LDADD=../lib/liboggkate.la ../lib/libkate.la @OGG_LIBS@ @PNG_LIBS@
+ katedec_LDADD=../lib/liboggkate.la ../lib/libkate.la @OGG_LIBS@
+ katalyzer_LDADD=../lib/liboggkate.la ../lib/libkate.la @OGG_LIBS@
+ kateenc_CFLAGS=@CWARNFLAGS_LIGHT@ @CFLAGS_FORTIFY_SOURCE@ @CFLAGS_DEBUG@ @OGG_CFLAGS@ @PNG_CFLAGS@
+diff --git a/tools/Makefile.in b/tools/Makefile.in
+index 23ca949..1c52ad1 100644
+--- a/tools/Makefile.in
++++ b/tools/Makefile.in
+@@ -223,7 +223,6 @@ INT64_T = @INT64_T@
+ LD = @LD@
+ LDFLAGS = @LDFLAGS@
+ LEX = @LEX@
+-LEXLIB = @LEXLIB@
+ LEX_OUTPUT_ROOT = @LEX_OUTPUT_ROOT@
+ LIBKATE_SHARED_VERSION = @LIBKATE_SHARED_VERSION@
+ LIBOBJS = @LIBOBJS@
+@@ -351,7 +350,7 @@ noinst_HEADERS = \
+ @HAVE_OGG_TRUE@	$(am__append_1)
+ @HAVE_OGG_TRUE@katedec_SOURCES = katedec.c kkate.c ksrt.c klrc.c kutil.c kfuzz.c kstream.c kread.c kstrings.c
+ @HAVE_OGG_TRUE@katalyzer_SOURCES = katalyzer.c kutil.c kstream.c kread.c kstrings.c kstats.c
+-@HAVE_OGG_TRUE@kateenc_LDADD = ../lib/liboggkate.la ../lib/libkate.la @OGG_LIBS@ @PNG_LIBS@ @LEXLIB@
++@HAVE_OGG_TRUE@kateenc_LDADD = ../lib/liboggkate.la ../lib/libkate.la @OGG_LIBS@ @PNG_LIBS@
+ @HAVE_OGG_TRUE@katedec_LDADD = ../lib/liboggkate.la ../lib/libkate.la @OGG_LIBS@
+ @HAVE_OGG_TRUE@katalyzer_LDADD = ../lib/liboggkate.la ../lib/libkate.la @OGG_LIBS@
+ @HAVE_OGG_TRUE@kateenc_CFLAGS = @CWARNFLAGS_LIGHT@ @CFLAGS_FORTIFY_SOURCE@ @CFLAGS_DEBUG@ @OGG_CFLAGS@ @PNG_CFLAGS@

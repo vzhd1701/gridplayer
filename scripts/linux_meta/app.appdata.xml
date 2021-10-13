@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>{APP_ID}</id>
+  <launchable type="desktop-id">{APP_ID}.desktop</launchable>
+  <content_rating type="oars-1.0" />
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>GPL-3.0+</project_license>
+  <developer_name>{APP_AUTHOR}</developer_name>
+  <name>{APP_DISP_NAME}</name>
+  <update_contact>{APP_AUTHOR_CONTACT}</update_contact>
+  <summary>Play videos side-by-side</summary>
+  <description>
+    <p>
+      Simple VLC-based media player that can play multiple videos at the same time. 
+      You can play as many videos as you like, the only limit is your hardware. It 
+      supports all video formats that VLC supports (which is all of them). You can 
+      save your playlist retaining information about the position, sound volume, 
+      loops, aspect ratio, etc.
+    </p>
+    <p>Built using Python, Qt and VLC.</p>
+    <p>Features:</p>
+    <ul>
+      <li>Cross-platform (Linux, Mac, and Windows)</li>
+      <li>Support for any video format (VLC)</li>
+      <li>Hardware &amp; software video decoding</li>
+      <li>Control video aspect, playback speed, zoom</li>
+      <li>Set loop fragments with frame percision</li>
+      <li>Configurable grid layout</li>
+      <li>Easy swap videos with drag-n-drop</li>
+      <li>Playlist retains settings for each video</li>
+    </ul>
+  </description>
+  <screenshots>
+    <screenshot type="default">
+      <image>https://raw.githubusercontent.com/vzhd1701/gridplayer/master/resources/public/screenshot-001.png</image>
+      <caption>Main window with 4 videos playing</caption>
+    </screenshot>
+    <screenshot>
+      <image>https://raw.githubusercontent.com/vzhd1701/gridplayer/master/resources/public/screenshot-002.png</image>
+      <caption>Context menu</caption>
+    </screenshot>
+    <screenshot>
+      <image>https://raw.githubusercontent.com/vzhd1701/gridplayer/master/resources/public/screenshot-003.png</image>
+      <caption>Settings window</caption>
+    </screenshot>
+  </screenshots>
+  <url type="homepage">{APP_URL}</url>
+  <url type="bugtracker">{APP_BUGTRACKER_URL}</url>
+  <releases>
+    <release date="{APP_VERSION_DATE}" version="{APP_VERSION}"/>
+  </releases>
+</component>

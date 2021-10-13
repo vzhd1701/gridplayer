@@ -1,0 +1,13 @@
+- name: {APP_MODULE}
+  buildsystem: simple
+  build-commands:
+  - python3 setup.py install --prefix=${FLATPAK_DEST} --root=/
+
+  - install -Dm 644 meta/{APP_ID}.desktop     ${FLATPAK_DEST}/share/applications/{APP_ID}.desktop
+  - install -Dm 644 meta/{APP_ID}.appdata.xml ${FLATPAK_DEST}/share/metainfo/{APP_ID}.appdata.xml
+  - install -Dm 644 meta/{APP_ID}.xml         ${FLATPAK_DEST}/share/mime/packages/{APP_ID}.xml
+  - (cd meta/icons && find * -type f -exec install -Dm 644 "{}" "${FLATPAK_DEST}/share/icons/{}" \;)
+  sources:
+  - type: git
+    url: {GIT_URL}
+    commit: {GIT_COMMIT}

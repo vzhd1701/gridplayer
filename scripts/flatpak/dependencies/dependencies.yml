@@ -1,0 +1,15 @@
+name: python-deps
+buildsystem: simple
+build-commands:
+- pip3 install --no-index --find-links="file://${PWD}" --prefix=${FLATPAK_DEST}
+  pydantic python-vlc typing-extensions
+sources:
+- type: file
+  url: https://files.pythonhosted.org/packages/ff/74/54e030641601112309f6d2af620774e9080f99c7a15742fc6a0b170c4076/pydantic-1.8.2-py3-none-any.whl
+  sha256: fec866a0b59f372b7e776f2d7308511784dace622e0992a0b59ea3ccee0ae833
+- type: file
+  url: https://files.pythonhosted.org/packages/e3/8e/1d0f30c4f8741f09014f961d49c55b1590d546e2199a54f396d288e978dd/python_vlc-3.0.11115-py3-none-any.whl
+  sha256: 508bc5b4b4fd72b4e23c926795bdcd38c7c1c08a4dd6b8cc87b0abd1d7118aa1
+- type: file
+  url: https://files.pythonhosted.org/packages/2e/35/6c4fff5ab443b57116cb1aad46421fb719bed2825664e8fe77d66d99bcbc/typing_extensions-3.10.0.0-py3-none-any.whl
+  sha256: 779383f6086d90c99ae41cf0ff39aac8a7937a9283ce0a414e5dd782f4c94a84

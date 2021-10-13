@@ -1,0 +1,91 @@
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.poetry]
+name = "gridplayer"
+version = "0.1.0"
+description = "Play multiple videos side-by-side"
+authors = ["vzhd1701 <vzhd1701@gmail.com>"]
+license = "GPL-3.0-or-later"
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: End Users/Desktop",
+    "Natural Language :: English",
+    "Environment :: X11 Applications :: Qt",
+    "Operating System :: MacOS",
+    "Operating System :: Microsoft",
+    "Operating System :: Unix",
+    "Topic :: Multimedia :: Video :: Display",
+]
+
+[tool.poetry.scripts]
+gridplayer = "gridplayer.__main__:main"
+
+[tool.poetry.dependencies]
+python = "^3.8"
+PyQt5 = "^5.15.4"
+pydantic = "^1.8.2"
+python-vlc = "3.0.11115"
+pyobjc-core = { version = "*", platform = "darwin" }
+pyobjc-framework-Cocoa = { version = "*", platform = "darwin" }
+
+[tool.poetry.dev-dependencies]
+isort = "^5.8.0"
+flakehell = "^0.9.0"
+wemake-python-styleguide = "^0.15.2"
+black = "^21.5b1"
+
+[tool.flakehell]
+base = "https://raw.githubusercontent.com/wemake-services/wemake-python-styleguide/master/styles/flakehell.toml"
+extended_default_ignore=[]
+max_line_length = 88
+exclude = [
+    "gridplayer/*_ui.py",
+    "gridplayer/resources_bin.py",
+    "tests/*.py",
+    "gridplayer/resources/*",
+]
+
+[tool.flakehell.plugins]
+# Maybe disable
+# WPS211 too many arguments
+# WPS214 too many methods
+# WPS602 forbids @staticmethod
+# E800 Found commented out code
+# WPS306 forces to use class ClassName(object) <- purely for consistency
+
+# Disabled [personal preference]
+# WPS111 short names
+# WPS305 forbids f-strings
+# WPS326 implicit line concat
+# Docstings, don't have any
+# WPS226 String constant overuse
+
+# Exceptions [false positives & formatting]
+# WPS323 Found `%` string formatting
+# C812 trailing comma <- handled by black
+# E203 whitespace before : <- handled by black
+# W503 Line break occurred before a binary operator
+
+# E800 TEMPORARILY DISABLE COMMENTED CODE
+#flake8-eradicate = ["+*", "-E800"]
+
+pycodestyle = ["+*", "-E203", "-W503"]
+flake8-commas = ["+*", "-C812"]
+flake8-quotes = ["+*", "-Q000"]
+flake8-rst-docstrings = ["-*"]
+flake8-docstrings = ["-*"]
+flake8-darglint = ["-*"]
+wemake-python-styleguide = ["+*", "-WPS111", "-WPS323", "-WPS326", "-WPS305", "-WPS226"]
+
+#[tool.flakehell.exceptions."evernote_backup/version.py"]
+## I like it this way
+#wemake-python-styleguide = ["-WPS410"]
+
+[tool.black]
+line-length = 88
+
+[tool.isort]
+profile = "black"
+skip_gitignore = true

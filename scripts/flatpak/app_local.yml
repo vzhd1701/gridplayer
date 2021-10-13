@@ -1,0 +1,18 @@
+- name: {APP_MODULE}
+  buildsystem: simple
+  build-commands:
+  - pip3 install --no-index --find-links="file://${PWD}" --prefix=${FLATPAK_DEST} --no-deps {APP_MODULE}
+  sources:
+  - type: file
+    path: {WHL_FILE}
+    sha256: {WHL_FILE_SHA256}
+- name: {APP_MODULE}-meta
+  buildsystem: simple
+  build-commands:
+  - install -Dm 644 {APP_ID}.desktop     ${FLATPAK_DEST}/share/applications/{APP_ID}.desktop
+  - install -Dm 644 {APP_ID}.appdata.xml ${FLATPAK_DEST}/share/metainfo/{APP_ID}.appdata.xml
+  - install -Dm 644 {APP_ID}.xml         ${FLATPAK_DEST}/share/mime/packages/{APP_ID}.xml
+  - (cd icons && find * -type f -exec install -Dm 644 "{}" "${FLATPAK_DEST}/share/icons/{}" \;)
+  sources:
+  - type: dir
+    path: ./meta

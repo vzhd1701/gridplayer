@@ -1,0 +1,174 @@
+name: {APP_MODULE}
+version: {APP_VERSION}
+summary: Play multiple videos side-by-side
+description: |
+  Simple VLC-based media player that can play multiple videos at the same
+  time. You can play as many videos as you like, the only limit is your
+  hardware. It supports all video formats that VLC supports (which is all
+  of them).
+architectures:
+    - amd64
+
+base: core20
+grade: stable
+confinement: strict
+#compression: lzo
+
+contact: {APP_AUTHOR_CONTACT}
+issues: {APP_BUGTRACKER_URL}
+source-code: {APP_URL}
+website: {APP_URL}
+license: GPL-3.0-or-later
+
+plugs:
+    gtk-3-themes:
+        default-provider: gtk-common-themes
+        interface: content
+        target: $SNAP/data-dir/themes
+    icon-themes:
+        default-provider: gtk-common-themes
+        interface: content
+        target: $SNAP/data-dir/icons
+    sound-themes:
+        default-provider: gtk-common-themes
+        interface: content
+        target: $SNAP/data-dir/sounds
+
+parts:
+  desktop-qt5:
+    source: https://github.com/ubuntu/snapcraft-desktop-helpers.git
+    source-subdir: qt
+    plugin: make
+    make-parameters: ["FLAVOR=qt5"]
+    build-packages:
+      - build-essential
+      - qtbase5-dev
+      - dpkg-dev
+    stage-packages:
+      - libxkbcommon0
+      - ttf-ubuntu-font-family
+      - dmz-cursor-theme
+      - light-themes
+      - adwaita-icon-theme
+      - gnome-themes-standard
+      - shared-mime-info
+      - libqt5gui5
+      - libgdk-pixbuf2.0-0
+      - libqt5svg5 # for loading icon themes which are svg
+      - try: [appmenu-qt5] # not available on core18
+      - locales-all
+      - xdg-user-dirs
+      - fcitx-frontend-qt5
+      # Additional
+      - libgtk2.0-0
+      - qt5-gtk-platformtheme
+      - libcanberra-gtk3-module
+    prime:
+      - -usr/lib/x86_64-linux-gnu/libQt5*  # provided by pyqt5
+      - -usr/lib/x86_64-linux-gnu/qt5
+      - -usr/lib/x86_64-linux-gnu/qt-default
+      #- -usr/share/icons
+      #- -usr/share/themes
+      #- -usr/share/sounds
+
+  # python multiprocessing fix
+  snapcraft-preload:
+    source: https://github.com/diddledan/snapcraft-preload.git
+    source-branch: semaphore-support
+    #source: https://github.com/sergiusens/snapcraft-preload.git
+    plugin: cmake
+    cmake-parameters:
+      - -DCMAKE_INSTALL_PREFIX=/
+    build-packages:
+      - on amd64:
+        - gcc-multilib
+        - g++-multilib
+    stage-packages:
+      - lib32stdc++6
+
+  gridplayer:
+    plugin: python
+    after: [desktop-qt5, snapcraft-preload]
+    build-environment:
+      - PIP_NO_BINARY: "pydantic"
+    python-packages:
+      - ${SNAPCRAFT_PROJECT_DIR}/{WHL_FILE}
+    stage-packages:
+      - libvlc5
+      - libvlccore9
+      - vlc-plugin-base
+      - vlc-plugin-video-output
+      # video drivers
+      - va-driver-all
+      - i965-va-driver
+      - vdpau-driver-all
+      - mesa-vdpau-drivers
+      - libvdpau-va-gl1
+      - mesa-vulkan-drivers
+      - mesa-utils
+      - libglu1-mesa
+      - freeglut3
+      # additional deps
+      - libwayland-cursor0
+      - libxcomposite1
+      - libglib2.0-0
+    prime:
+      - -share
+      - -include
+      - -usr/share/icons
+      - -usr/include
+      - -bin/pylupdate5
+      - -bin/pyrcc5
+      - -bin/pyuic5
+      - -bin/pip*
+      - -bin/easy*
+      - -bin/activate*
+      - -bin/Activate*
+
+    override-build: |
+      snapcraftctl build
+
+      ${SNAPCRAFT_PROJECT_DIR}/blacklist_clean.sh "${SNAPCRAFT_PART_INSTALL}/lib/python3.8/site-packages" ${SNAPCRAFT_PROJECT_DIR}/blacklist_pyqt.txt
+
+      install -Dm 644 ${SNAPCRAFT_PROJECT_DIR}/meta/{APP_ID}.desktop     ${SNAPCRAFT_PART_INSTALL}/usr/share/applications/{APP_ID}.desktop
+      install -Dm 644 ${SNAPCRAFT_PROJECT_DIR}/meta/{APP_ID}.appdata.xml ${SNAPCRAFT_PART_INSTALL}/usr/share/metainfo/{APP_ID}.appdata.xml
+      # Snaps don't support registration of new MIMEs yet?
+      # https://forum.snapcraft.io/t/allow-snaps-to-register-new-mime-types/6467/9
+      install -Dm 644 ${SNAPCRAFT_PROJECT_DIR}/meta/{APP_ID}.xml         ${SNAPCRAFT_PART_INSTALL}/usr/share/mime/packages/{APP_ID}.xml
+
+      # Useless, since snap employs custom names for icons
+      #(cd ${SNAPCRAFT_PROJECT_DIR}/meta/icons && find * -type f -exec install -Dm 644 "{}" "${SNAPCRAFT_PART_INSTALL}/usr/share/icons/{}" \;)
+
+      # Copy icons to meta and rename icons as snap.* according to
+      # https://forum.snapcraft.io/t/proposal-support-the-icon-theme-spec-for-desktop-icons/10676
+      # https://github.com/snapcore/snapd/pull/6767
+      sed -i 's|^Icon=.*|Icon=snap.{APP_MODULE}.{APP_ID}|' ${SNAPCRAFT_PART_INSTALL}/usr/share/applications/{APP_ID}.desktop
+      (cd ${SNAPCRAFT_PROJECT_DIR}/meta/icons && find * -type f -exec install -Dm 644 "{}" "${SNAPCRAFT_PART_INSTALL}/meta/gui/icons/{}" \;)
+      for f in $(find "${SNAPCRAFT_PART_INSTALL}/meta/gui/icons" -type f); do mv $f ${f%/*}/snap.{APP_MODULE}.${f##*/}; done
+
+apps:
+  gridplayer:
+    environment:
+      LD_LIBRARY_PATH: "$SNAP/lib/python3.8/site-packages/PyQt5/Qt5/lib:$SNAP/usr/lib/x86_64-linux-gnu/vlc:$SNAP/usr/lib/x86_64-linux-gnu/gtk-3.0/modules"
+      DISABLE_WAYLAND: 1
+      NO_AT_BRIDGE: 1 # disable dbind-WARNING warning
+      QT_QPA_PLATFORMTHEME: gtk3 # don't use portal
+    desktop: usr/share/applications/{APP_ID}.desktop
+    command: bin/gridplayer
+    command-chain:
+      - bin/desktop-launch
+      - bin/snapcraft-preload
+    common-id: {APP_ID}
+    plugs:
+      - desktop
+      - desktop-legacy
+      - wayland
+      - unity7
+      - opengl
+      - audio-playback
+      - screen-inhibit-control
+      - gsettings
+      - home
+      - removable-media
+      - mount-observe
+      - network

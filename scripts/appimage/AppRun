@@ -1,0 +1,20 @@
+#!/bin/sh
+
+HERE="$(dirname "$(readlink -f "${0}")")"
+
+EXEC=$(sed -n 's/^Exec=\([^[:space:]]*\).*$/\1/p' "${HERE}"/*.desktop)
+
+export PATH="${HERE}"/usr/bin/:"${HERE}"/usr/sbin/:"${HERE}"/bin/:"${HERE}"/sbin/:"${PATH}"
+export LD_LIBRARY_PATH="${HERE}"/usr/lib/:"${HERE}"/usr/lib/i386-linux-gnu/:"${HERE}"/usr/lib/x86_64-linux-gnu/:"${HERE}"/usr/lib32/:"${HERE}"/usr/lib64/:"${HERE}"/lib/:"${HERE}"/lib/i386-linux-gnu/:"${HERE}"/lib/x86_64-linux-gnu/:"${HERE}"/lib32/:"${HERE}"/lib64/:"${LD_LIBRARY_PATH}"
+export XDG_DATA_DIRS="${HERE}"/usr/share/:"${XDG_DATA_DIRS}"
+export GSETTINGS_SCHEMA_DIR="${HERE}"/usr/share/glib-2.0/schemas/:"${GSETTINGS_SCHEMA_DIR}"
+
+export PYTHONHOME="${HERE}"/usr
+export PYTHONPATH="${HERE}"/usr/lib/python3.8/site-packages
+
+export QT_PLUGIN_PATH="${HERE}"/usr/lib/python3.8/site-packages/PyQt5/Qt5/plugins/
+export QT_QPA_PLATFORM=xcb
+
+export LD_LIBRARY_PATH="${HERE}"/usr/lib/x86_64-linux-gnu/vlc:"${LD_LIBRARY_PATH}"
+
+exec ${EXEC} "$@"

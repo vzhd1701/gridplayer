@@ -1,0 +1,83 @@
+name: release_snap
+
+on:
+  workflow_dispatch:
+    inputs:
+      release:
+        description: 'Release after build'
+        required: true
+        default: 'no'
+  push:
+    tags:
+      - "v[0-9]+.[0-9]+.[0-9]+"
+
+env:
+  BUILD_PYTHON_VERSION: 3.8
+  BUILD_POETRY_VERSION: 1.1.5
+
+jobs:
+  build_python:
+    runs-on: ubuntu-latest
+    env:
+      POETRY_VIRTUALENVS_CREATE: false
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+
+      - name: Set up Python ${{ env.BUILD_PYTHON_VERSION }}
+        uses: actions/setup-python@v2
+        with:
+          python-version: ${{ env.BUILD_PYTHON_VERSION }}
+
+      - name: Set up Poetry ${{ env.BUILD_POETRY_VERSION }}
+        uses: abatilo/actions-poetry@v2.0.0
+        with:
+          poetry-version: ${{ env.BUILD_POETRY_VERSION }}
+
+      - name: Build project for distribution
+        run: poetry build
+
+      - name: Save release python packages
+        uses: actions/upload-artifact@v2
+        with:
+          name: release_dist_python
+          path: dist
+
+  build_snap:
+    needs: build_python
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Load release python packages
+        uses: actions/download-artifact@v2
+        with:
+          name: release_dist_python
+          path: dist
+
+      - name: Install requirements
+        run: |
+          sudo apt-get install -y desktop-file-utils appstream-util
+
+      - name: Prepare
+        run: |
+          bash scripts/linux_meta/build.sh
+          bash scripts/snap/build.sh --no-build
+
+      - uses: snapcore/action-build@v1
+        id: build
+        with:
+          path: build/snap
+
+      - name: Save snapped app
+        uses: actions/upload-artifact@v2
+        with:
+          name: snap_result
+          path: ${{ steps.build.outputs.snap }}
+
+      - uses: snapcore/action-publish@v1
+        if: github.event_name == 'push' || github.event.inputs.release == 'yes'
+        with:
+          store_login: ${{ secrets.STORE_LOGIN }}
+          snap: ${{ steps.build.outputs.snap }}
+          release: edge

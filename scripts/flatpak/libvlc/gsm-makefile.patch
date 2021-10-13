@@ -1,0 +1,12 @@
+diff --git a/Makefile b/Makefile
+index f7455de..620f773 100644
+--- a/Makefile
++++ b/Makefile
+@@ -389,6 +389,7 @@ $(GSM_INSTALL_MAN)/gsm_print.3:	$(MAN)/gsm_print.3
+ 
+ $(GSM_INSTALL_INC)/gsm.h:	$(INC)/gsm.h
+ 		-rm $(RMFLAGS) $@
++		mkdir $(GSM_INSTALL_INC)
+ 		cp $? $@
+ 		chmod 444 $@
+ 

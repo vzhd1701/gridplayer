@@ -1,0 +1,77 @@
+app: {APP_NAME}
+
+version: {APP_VERSION}
+
+updateinformation: gh-releases-zsync|vzhd1701|gridplayer|latest|GridPlayer-*x86_64.AppImage.zsync
+
+ingredients:
+  dist: focal
+  sources:
+    - deb http://archive.ubuntu.com/ubuntu/ focal main restricted universe multiverse
+    #- deb https://mirror.alwyzon.net/ubuntu/ focal main restricted universe multiverse
+  packages:
+    - python3
+    - python3-distutils
+    - python3-pkg-resources
+
+    # VLC
+    - libvlc5
+    - libvlccore9
+    - vlc-plugin-base
+    - vlc-plugin-video-output
+
+    # Dependencies to get proper gui
+    - qt5-gtk-platformtheme
+  script:
+    - cp ../VERSION ./
+
+script:
+  # Set python 3.8 env
+  - export PYTHONHOME="$(pwd)/usr"
+  - export PYTHONPATH="$(pwd)/usr/lib/python3.8/site-packages:$(pwd)/usr/lib/python3.8"
+  - export PATH="$(pwd)/usr/bin:$PATH"
+  # Set python 3.8 as default
+  - ln -fs python3.8 $(pwd)/usr/bin/python3
+  # Install pip
+  - curl https://bootstrap.pypa.io/get-pip.py -o get-pip.py
+  - python3.8 get-pip.py
+  - rm get-pip.py
+  # Install main package
+  - python3.8 -m pip install --upgrade --isolated --no-input --ignore-installed --prefix=$(pwd)/usr --no-binary="pydantic" ../../*.whl
+
+  # Cleaning bin
+  - find usr/bin -type f,l -not \( -name 'python*' -or -name '{APP_MODULE}' \) -delete
+  - sed -i '1s/.*python.*$/#!\/usr\/bin\/env python3/' usr/bin/{APP_MODULE}
+  # Cleaning PyQt
+  - ../../blacklist_clean.sh "./usr/lib/python3.8/site-packages" ../../blacklist_pyqt.txt
+  # Cleaning system
+  - rm -rf ./usr/sbin
+  - rm -rf ./usr/share/applications
+  - rm -rf ./usr/share/icons
+  - rm -rf ./usr/share/pixmaps
+  - rm -rf ./usr/share/doc*
+  - rm -rf ./usr/share/man
+  - rm -rf ./usr/share/info
+  - rm -rf ./usr/share/python-wheels
+  - rm -rf ./usr/share/vlc
+  - rm -rf ./usr/lib/python3
+  - rm -rf ./usr/lib/python3.8/site-packages/pkg_resources
+  - rm -rf ./usr/lib/python3.8/site-packages/*distutils*
+  - rm -rf ./usr/lib/python3.8/site-packages/wheel*
+  - rm -rf ./usr/lib/python3.8/site-packages/setuptools*
+  - rm -rf ./usr/lib/python3.8/site-packages/pip*
+  - rm -rf ./usr/lib/x86_64-linux-gnu/libQt5*
+  - rm -rf ./usr/lib/x86_64-linux-gnu/qt5
+  - rm -rf ./usr/lib/x86_64-linux-gnu/qt-default
+
+  # Meta
+  - install -Dm 644 ../../meta/{APP_ID}.desktop     usr/share/applications/{APP_ID}.desktop
+  - install -Dm 644 ../../meta/{APP_ID}.appdata.xml usr/share/metainfo/{APP_ID}.appdata.xml
+  - install -Dm 644 ../../meta/{APP_ID}.xml         usr/share/mime/packages/{APP_ID}.xml
+  - cp -R ../../meta/icons usr/share
+
+  # AppImage stuff
+  - cp -R ../../AppRun .
+  - chmod +x AppRun
+  - cp usr/share/icons/hicolor/256x256/apps/{APP_ID}.png .
+  - cp usr/share/applications/{APP_ID}.desktop .

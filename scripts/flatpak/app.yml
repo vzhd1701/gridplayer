@@ -1,0 +1,40 @@
+app-id: "{APP_ID}"
+runtime: org.kde.Platform
+runtime-version: '5.15'
+sdk: org.kde.Sdk
+command: "{APP_MODULE}"
+finish-args:
+# OpenGL
+- "--device=dri"
+# GUI
+- "--share=ipc"
+- "--socket=x11"
+# Sound
+- "--socket=pulseaudio"
+# Files & network shares
+- "--filesystem=host"
+- "--filesystem=xdg-run/gvfs"
+# Screen inhibit
+- "--talk-name=org.freedesktop.ScreenSaver"
+# Can't use Wayland
+- "--env=QT_QPA_PLATFORM=xcb"
+# Disable annoying warnings
+# Qt: Session managment error: Could not open network socket
+# https://stackoverflow.com/questions/986964/qt-session-management-error
+- "--env=SESSION_MANAGER="
+
+cleanup:
+- "/bin/pylupdate5"
+- "/bin/pyrcc5"
+- "/bin/pyuic5"
+- "/include"
+- "/lib/debug"
+- "/lib/*.a"
+- "/lib/*.la"
+- "/lib/pkgconfig"
+- "/share/man"
+
+modules:
+- libvlc.yml
+- pyqt.yml
+- dependencies.yml
