@@ -5,9 +5,13 @@ build-backend = "poetry.core.masonry.api"
 [tool.poetry]
 name = "gridplayer"
 version = "0.1.0"
-description = "Play multiple videos side-by-side"
+description = "Play videos side-by-side"
 authors = ["vzhd1701 <vzhd1701@gmail.com>"]
+readme = "README.md"
+include = ["CHANGELOG.md"]
 license = "GPL-3.0-or-later"
+repository = "https://github.com/vzhd1701/gridplayer"
+keywords = ["video", "player", "vlc", "pyqt", "Qt5", "multimedia"]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: End Users/Desktop",
