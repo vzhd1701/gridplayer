@@ -23,6 +23,9 @@ classifiers = [
     "Topic :: Multimedia :: Video :: Display",
 ]
 
+[tool.poetry.urls]
+"Changelog" = "https://github.com/vzhd1701/gridplayer/blob/master/CHANGELOG.md"
+
 [tool.poetry.scripts]
 gridplayer = "gridplayer.__main__:main"
 
