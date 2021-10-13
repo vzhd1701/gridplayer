@@ -2,6 +2,11 @@
 
 set -e
 
+if [ "$1" == "--generate" ]; then
+    [ -z "$2" ] && exit 1
+    GENERATE_FOR_COMMIT="$2"
+fi
+
 SCRIPT_DIR="$( cd "$( dirname $0 )" && pwd )"
 
 . "scripts/init_app_vars.sh"
@@ -23,6 +28,8 @@ update_flatpak_git() {
 
     pushd "$BUILD_DIR_FLATPAK_SRC"
 
+    rm -f CHANGELOG.md README.md pyproject.toml
+
     git config user.email "$GIT_EMAIL"
     git config user.name "$GIT_USER"
 
@@ -37,6 +44,16 @@ update_flatpak_git() {
     popd
 
     echo "Latest commit: $RETURN_VAL"
+}
+
+update_flathub_git_local() {
+    FLATPAK_GIT_COMMIT="$1"
+
+    BUILD_DIR_FLATHUB="$BUILD_DIR/flatpak_git/hub"
+    rm -rf "$BUILD_DIR_FLATHUB"
+    mkdir -p "$BUILD_DIR_FLATHUB"
+
+    generate_flathub_git "$FLATPAK_GIT_COMMIT" "$BUILD_DIR_FLATHUB"
 }
 
 update_flathub_git() {
@@ -54,16 +71,7 @@ update_flathub_git() {
         ! -path "*/shared-modules*" \
         -exec rm -rf "{}" \;
 
-    cp "$SCRIPT_DIR"/dependencies/*.yml "$BUILD_DIR_FLATHUB"
-    cp "$SCRIPT_DIR"/libvlc/* "$BUILD_DIR_FLATHUB"
-
-    cat "$SCRIPT_DIR/app.yml" "$SCRIPT_DIR/app_git.yml" > "$BUILD_DIR_FLATHUB/$APP_ID.yml"
-    replace_app_vars "$BUILD_DIR_FLATHUB/$APP_ID.yml"
-
-    FLATHUB_GIT_REPO_URL="https://github.com/${FLATHUB_GIT_REPO}.git"
-
-    sed -i "s#{GIT_URL}#$FLATHUB_GIT_REPO_URL#g" "$BUILD_DIR_FLATHUB/$APP_ID.yml"
-    sed -i "s#{GIT_COMMIT}#$FLATPAK_GIT_COMMIT#g" "$BUILD_DIR_FLATHUB/$APP_ID.yml"
+    generate_flathub_git "$FLATPAK_GIT_COMMIT" "$BUILD_DIR_FLATHUB"
 
     pushd "$BUILD_DIR_FLATHUB"
 
@@ -82,6 +90,27 @@ update_flathub_git() {
 
     popd
 }
+
+generate_flathub_git() {
+    FLATPAK_GIT_COMMIT="$1"
+    BUILD_DIR_FLATHUB="$2"
+
+    cp "$SCRIPT_DIR"/dependencies/*.yml "$BUILD_DIR_FLATHUB"
+    cp "$SCRIPT_DIR"/libvlc/* "$BUILD_DIR_FLATHUB"
+
+    cat "$SCRIPT_DIR/app.yml" "$SCRIPT_DIR/app_git.yml" > "$BUILD_DIR_FLATHUB/$APP_ID.yml"
+    replace_app_vars "$BUILD_DIR_FLATHUB/$APP_ID.yml"
+
+    FLATPAK_GIT_REPO_URL="https://github.com/${FLATPAK_GIT_REPO}.git"
+
+    sed -i "s#{GIT_URL}#$FLATPAK_GIT_REPO_URL#g" "$BUILD_DIR_FLATHUB/$APP_ID.yml"
+    sed -i "s#{GIT_COMMIT}#$FLATPAK_GIT_COMMIT#g" "$BUILD_DIR_FLATHUB/$APP_ID.yml"
+}
+
+if [ -n "$GENERATE_FOR_COMMIT" ]; then
+    update_flathub_git_local "$GENERATE_FOR_COMMIT"
+    exit 0
+fi
 
 update_flatpak_git
 FLATPAK_GIT_COMMIT=$RETURN_VAL
