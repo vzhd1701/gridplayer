@@ -1,7 +1,7 @@
 ![GridPlayer](https://raw.githubusercontent.com/vzhd1701/gridplayer/master/resources/public/logo.png)
 
 ### Build status
-![GitHub release (latest by date)](https://img.shields.io/github/v/release/vzhd1701/gridplayer)
+[![GitHub release (latest by date)](https://img.shields.io/github/v/release/vzhd1701/gridplayer)](https://github.com/vzhd1701/gridplayer/releases/latest)
 [![PyPI version](https://img.shields.io/pypi/v/gridplayer?label=version)](https://pypi.python.org/pypi/gridplayer)
 
 [![release_github](https://github.com/vzhd1701/gridplayer/actions/workflows/release_github.yml/badge.svg)](https://github.com/vzhd1701/gridplayer/actions/workflows/release_github.yml)
