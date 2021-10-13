@@ -38,11 +38,11 @@ information about the position, sound volume,  loops, aspect ratio, etc.
 ### Windows
 
 [![Download Windows Installer](https://raw.githubusercontent.com/vzhd1701/gridplayer/master/resources/public/dl_windows_installer.png)](https://github.com/vzhd1701/gridplayer/releases/download/v0.1.0/GridPlayer-0.1.0-win64-install.exe)
-[![Download Windows Portable](https://raw.githubusercontent.com/vzhd1701/gridplayer/master/resources/public/dl_windows_portable.png)](https://github.com/greatreduck/groodpooler/releases/download/v0.1.0/GridPlayer-0.1.0-win64-portable.zip)
+[![Download Windows Portable](https://raw.githubusercontent.com/vzhd1701/gridplayer/master/resources/public/dl_windows_portable.png)](https://github.com/vzhd1701/gridplayer/releases/download/v0.1.0/GridPlayer-0.1.0-win64-portable.zip)
 
 ### Linux
 
-[![Download AppImage](https://raw.githubusercontent.com/vzhd1701/gridplayer/master/resources/public/dl_appimage.png)](https://github.com/greatreduck/groodpooler/releases/download/v0.1.0/GridPlayer-0.1.0-x86_64.AppImage)
+[![Download AppImage](https://raw.githubusercontent.com/vzhd1701/gridplayer/master/resources/public/dl_appimage.png)](https://github.com/vzhd1701/gridplayer/releases/download/v0.1.0/GridPlayer-0.1.0-x86_64.AppImage)
 
 You may need to set execute permissions on AppImage file in order to run it:
 
@@ -52,7 +52,7 @@ $ chmod +x GridPlayer-0.1.0-x86_64.AppImage
 
 ### MacOS
 
-[![Download DMG](https://raw.githubusercontent.com/vzhd1701/gridplayer/master/resources/public/dl_dmg.png)](https://github.com/greatreduck/groodpooler/releases/download/v0.1.0/GridPlayer.0.1.0.dmg)
+[![Download DMG](https://raw.githubusercontent.com/vzhd1701/gridplayer/master/resources/public/dl_dmg.png)](https://github.com/vzhd1701/gridplayer/releases/download/v0.1.0/GridPlayer.0.1.0.dmg)
 
 **DMG image is not signed.** You will have to add an exception to run this app.
 
