@@ -66,8 +66,12 @@ $ chmod +x GridPlayer-0.1.0-x86_64.AppImage
 $ pip install -U gridplayer
 ```
 
+**Python 3.8 or later required.**
+
 This type of installation will also require a `vlc` package present in your system.
 Please refer to [VLC official page](https://www.videolan.org/vlc/) for instructions on how to install it.
+
+Some distros (e.g. Ubuntu) might also require `libxcb-xinerama0` package.
 
 ## Attributions
 
