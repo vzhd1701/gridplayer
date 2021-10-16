@@ -85,6 +85,36 @@ $ poetry run gridplayer
 
 The same notes about the Python version and external packages from **PIP** installation apply here.
 
+## Known issues
+
+#### Snap: [X screen](https://raw.githubusercontent.com/vzhd1701/gridplayer/master/resources/public/screenshot-x.png) when opening a file from the mounted disk
+
+You need to allow GridPlayer snap to access removable storage devices via Snap Store or by running:
+
+```shell
+$ sudo snap connect gridplayer:removable-media
+```
+
+#### Snap: mounted drives are not visible in file selection dialog
+
+You will also see following error if you run GridPlayer from terminal:
+
+```shell
+GLib-GIO-WARNING **: Error creating IO channel for /proc/self/mountinfo: Permission denied (g-file-error-quark, 2)
+```
+
+To fix this, you need to allow GridPlayer snap to access system mount information and disk quotas via Snap Store or by running:
+
+```shell
+$ sudo snap connect gridplayer:mount-observe
+```
+
+#### KDE: black screen issue when using hardware decoder
+
+Switch on "Opaque overlay (fix black screen)" checkbox in settings.
+
+Overlay might be a bit glitchy in KDE with hardware decoder.
+
 ## Attributions
 
 This software was build using
