@@ -42,8 +42,13 @@ information about the position, sound volume,  loops, aspect ratio, etc.
 
 ### Linux
 
-[![Download AppImage](https://raw.githubusercontent.com/vzhd1701/gridplayer/master/resources/public/dl_appimage.png)](https://github.com/vzhd1701/gridplayer/releases/download/v0.1.0/GridPlayer-0.1.0-x86_64.AppImage)
+[![Get it from the Flathub](https://raw.githubusercontent.com/vzhd1701/gridplayer/master/resources/public/dl_flathub.png)](https://flathub.org/apps/details/com.vzhd1701.gridplayer)
 [![Get it from the Snap Store](https://raw.githubusercontent.com/vzhd1701/gridplayer/master/resources/public/dl_snap.png)](https://snapcraft.io/gridplayer)
+[![Download AppImage](https://raw.githubusercontent.com/vzhd1701/gridplayer/master/resources/public/dl_appimage.png)](https://github.com/vzhd1701/gridplayer/releases/download/v0.1.0/GridPlayer-0.1.0-x86_64.AppImage)
+
+**For better system integration install via Flathub.**
+
+#### Note on AppImage
 
 You may need to set execute permissions on AppImage file in order to run it:
 
