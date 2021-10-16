@@ -790,7 +790,9 @@ class Player(QtWidgets.QWidget):
         if self.saved_playlist is not None:
             save_path = self.saved_playlist["path"]
         else:
-            save_path = os.path.join(QtCore.QDir.currentPath(), "Untitled.gpls")
+            save_path = os.path.join(QtCore.QDir.homePath(), "Untitled.gpls")
+
+        logger.debug(f"Proposed playlist save path: {save_path}")
 
         with ModalWindow(self):
             file_path = QtWidgets.QFileDialog.getSaveFileName(
@@ -800,8 +802,21 @@ class Player(QtWidgets.QWidget):
         if file_path[0]:
             file_path = os.path.abspath(file_path[0])
 
-            # if not file_path.endswith(".gpls"):
-            #     file_path += ".gpls"
+            # filename placeholder is not available if file doesn't exist
+            # problematic for new playlists, need to prevent accidental overwrite
+            # occurs in Flatpak, maybe in other sandboxes that use portal
+            if not file_path.endswith(".gpls"):
+                file_path += ".gpls"
+
+                if os.path.isfile(file_path):
+                    file = os.path.basename(file_path)
+                    with ModalWindow(self):
+                        ret = QCustomMessageBox.question(
+                            self, "Playlist", f"Do you want to overwrite {file}?"
+                        )
+
+                    if ret != QMessageBox.Yes:
+                        return
 
             save_playlist(file_path, playlist)
 
