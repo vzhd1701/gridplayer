@@ -56,11 +56,11 @@ jobs:
 
       - name: Release
         env:
-          GIT_USER: action
-          GIT_EMAIL: action@github.com
+          GIT_USER: vzhd1701
+          GIT_EMAIL: vzhd1701@gmail.com
           GIT_TOKEN: ${{ secrets.GIT_TOKEN }}
           FLATPAK_GIT_REPO: vzhd1701/gridplayer-flatpak
-          # FLATHUB_GIT_REPO:
+          FLATHUB_GIT_REPO: flathub/com.vzhd1701.gridplayer
         run: |
           bash scripts/linux_meta/build.sh
           bash scripts/flatpak/build_git.sh

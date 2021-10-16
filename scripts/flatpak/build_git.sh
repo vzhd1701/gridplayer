@@ -20,7 +20,7 @@ update_flatpak_git() {
 
     # Clean out repo
     find "$BUILD_DIR_FLATPAK_SRC" -mindepth 1 -maxdepth 1 -type f,d \
-        ! -path '*/.git*' \
+        ! -path '*/.git' \
         -exec rm -rf "{}" \;
 
     tar xf "$DIST_DIR"/*.tar.gz --strip-components=1 --directory="$BUILD_DIR_FLATPAK_SRC"
@@ -30,14 +30,20 @@ update_flatpak_git() {
 
     rm -f CHANGELOG.md README.md pyproject.toml
 
-    git config user.email "$GIT_EMAIL"
-    git config user.name "$GIT_USER"
+    #git config user.name "$GIT_USER"
+    #git config user.email "$GIT_EMAIL"
+
+    #git config user.name "action"
+    #git config user.email "action@github.com"
+
+    git config user.name "github-actions[bot]"
+    git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
     git add .
 
     if [ $(git status --porcelain | wc -l) -gt 0 ]; then
         git commit -m "chore: release ${APP_VERSION}"
-        git push
+        git push origin master
     fi
 
     RETURN_VAL=$(git rev-parse HEAD)
@@ -59,24 +65,34 @@ update_flathub_git_local() {
 update_flathub_git() {
     FLATPAK_GIT_COMMIT="$1"
 
+    BRANCH_NAME="release-${APP_VERSION}"
+
+    if git ls-remote --exit-code --heads "https://github.com/${FLATHUB_GIT_REPO}.git" "$BRANCH_NAME"; then
+        echo "$BRANCH_NAME branch already exists!"
+        return 1
+    fi
+
     BUILD_DIR_FLATHUB="$BUILD_DIR/flatpak_git/hub"
     rm -rf "$BUILD_DIR_FLATHUB"
     mkdir -p "$BUILD_DIR_FLATHUB"
 
     git clone --recursive "https://${GIT_TOKEN}@github.com/${FLATHUB_GIT_REPO}.git" "$BUILD_DIR_FLATHUB"
 
+    pushd "$BUILD_DIR_FLATHUB"
+
+    git checkout -b "$BRANCH_NAME"
+
     # Clean out repo
-    find "$BUILD_DIR_FLATHUB" -mindepth 1 -maxdepth 1 -type f,d \
-        ! -path '*/.git*' \
-        ! -path "*/shared-modules*" \
+    find . -mindepth 1 -maxdepth 1 -type f,d \
+        ! -path '*/.git' \
+        ! -path '*/.gitmodules' \
+        ! -path "*/shared-modules" \
         -exec rm -rf "{}" \;
 
     generate_flathub_git "$FLATPAK_GIT_COMMIT" "$BUILD_DIR_FLATHUB"
 
-    pushd "$BUILD_DIR_FLATHUB"
-
-    git config user.email "$GIT_EMAIL"
     git config user.name "$GIT_USER"
+    git config user.email "$GIT_EMAIL"
 
     git submodule add https://github.com/flathub/shared-modules || true
     (cd "$BUILD_DIR_FLATHUB/shared-modules" && git checkout -q 83be76b6f07d5c5d6cac2d93e09ffc9c1ade07d0)
@@ -85,7 +101,7 @@ update_flathub_git() {
 
     if [ $(git status --porcelain | wc -l) -gt 0 ]; then
         git commit -m "chore: release ${APP_VERSION}"
-        git push
+        git push origin "$BRANCH_NAME"
     fi
 
     popd
