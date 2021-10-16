@@ -2,4 +2,9 @@
 
 CHANGELOG=$1
 
-sed "1,/### \[/d;/### \[/Q" "$CHANGELOG"
+sed "0,/### \[/d;/### \[/Q" "$CHANGELOG"
+
+FULL_LOG_URL=$(sed -n 's/### \[.*\](\(.*\)) (.*/\1/p' "$CHANGELOG" | head -1)
+if [ -n "$FULL_LOG_URL" ]; then
+    echo "**Full Changelog**: $FULL_LOG_URL"
+fi

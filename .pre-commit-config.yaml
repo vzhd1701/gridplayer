@@ -18,12 +18,7 @@ repos:
         args: ['--fix=lf']
     -   id: check-toml
     -   id: check-yaml
-    #-   id: no-commit-to-branch
-
--   repo: https://github.com/executablebooks/mdformat
-    rev: 0.7.7
-    hooks:
-    -   id: mdformat
+    -   id: no-commit-to-branch
 
 -   repo: local
     hooks:
@@ -40,3 +35,10 @@ repos:
         language: system
         entry: poetry run black
         types: [python]
+
+    -   id: mdformat
+        name: mdformat
+        stages: [commit]
+        language: system
+        entry: poetry run mdformat
+        types: [markdown]

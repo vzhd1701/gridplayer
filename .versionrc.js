@@ -48,5 +48,8 @@ module.exports = {
   header: "",
   sign: true,
   packageFiles: packageFiles,
-  bumpFiles: bumpFiles
+  bumpFiles: bumpFiles,
+  scripts: {
+    postchangelog: "poetry run mdformat CHANGELOG.md"
+  }
 }
