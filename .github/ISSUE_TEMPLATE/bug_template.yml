@@ -1,0 +1,44 @@
+name: Bug Report
+description: Report a bug in GridPlayer
+title: "[Bug]: "
+labels: "bug"
+body:
+- type: input
+  attributes:
+    label: GridPlayer version
+    description: What version of GridPlayer are you using? If unsure, open About dialog [F1].
+  validations:
+    required: true
+- type: dropdown
+  attributes:
+    label: What OS are you using?
+    options:
+      - Windows
+      - Linux
+      - MacOS
+  validations:
+    required: true
+- type: input
+  attributes:
+    label: OS Version / Linux distribution
+    description: What OS version or Linux distribution version are you using?
+    placeholder: "e.g. Windows 10, Ubuntu 20.04"
+  validations:
+    required: true
+- type: dropdown
+  attributes:
+    label: What distribution channel are you using? [LINUX ONLY]
+    options:
+      - Flathub
+      - Snap Store
+      - AppImage
+- type: textarea
+  attributes:
+    label: Bug description
+    description: A clear description of the bug and how to reproduce it.
+  validations:
+    required: true
+- type: textarea
+  attributes:
+    label: Log excerpt
+    description: If possible, please attach log file excerpt with log level set to debug. You can find it in setting dialog.
