@@ -6,8 +6,8 @@ from enum import Enum
 
 from PyQt5.QtCore import QSettings, QStandardPaths
 
-from gridplayer.utils.log_config import DISABLED
 from gridplayer.params_static import GridMode, VideoAspect, VideoDriver
+from gridplayer.utils.log_config import DISABLED
 
 default_settings = {
     "player/video_driver": VideoDriver.VLC_HW,

@@ -17,13 +17,12 @@
 #
 # Thanks to the GNOME icon developers for the original version of this script
 
-import os
-import sys
-import shutil
-import xml.sax
-import subprocess
 import argparse
-
+import os
+import shutil
+import subprocess
+import sys
+import xml.sax
 
 OPTIPNG = "optipng"
 MAINDIR = "png"

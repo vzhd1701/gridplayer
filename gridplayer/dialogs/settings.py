@@ -7,12 +7,12 @@ from PyQt5.QtCore import QUrl
 from PyQt5.QtGui import QDesktopServices, QIcon
 from PyQt5.QtWidgets import QCheckBox, QComboBox, QDialog, QSpinBox
 
-from gridplayer import params_vlc, params_env
+from gridplayer import params_env, params_vlc
 from gridplayer.dialogs.messagebox import QCustomMessageBox
-from gridplayer.utils import log_config
+from gridplayer.dialogs.settings_ui import Ui_SettingsDialog
 from gridplayer.params_static import GridMode, VideoAspect, VideoDriver
 from gridplayer.settings import get_app_data_dir, settings
-from gridplayer.dialogs.settings_ui import Ui_SettingsDialog
+from gridplayer.utils import log_config
 
 logger = logging.getLogger(__name__)
 

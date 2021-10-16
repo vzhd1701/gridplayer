@@ -1,5 +1,4 @@
 import objc
-
 from Foundation import NSBundle, NSWorkspace
 
 from gridplayer.version import __app_id__

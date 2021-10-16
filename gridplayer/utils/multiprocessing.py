@@ -17,8 +17,8 @@ from threading import Thread, get_ident
 from PyQt5 import QtCore
 from PyQt5.QtCore import QObject
 
-from gridplayer.utils import log_config
 from gridplayer.settings import settings
+from gridplayer.utils import log_config
 from gridplayer.utils.log import log_environment
 from gridplayer.utils.log_config import child_process_config
 

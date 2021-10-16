@@ -4,16 +4,16 @@ import platform
 import time
 
 from PyQt5 import QtCore, QtGui, QtWidgets
-from PyQt5.QtCore import QEvent, QPoint, Qt, QRect
+from PyQt5.QtCore import QEvent, QPoint, QRect, Qt
 from PyQt5.QtGui import (
     QBrush,
     QCursor,
     QInputEvent,
     QPainterPath,
-    QPen,
-    QResizeEvent,
     QPalette,
+    QPen,
     QRegion,
+    QResizeEvent,
 )
 from PyQt5.QtWidgets import (
     QApplication,
@@ -295,10 +295,16 @@ class OverlayExitButton(OverlayWidget):
         )
 
         painter.drawLine(
-            rect.x() + 5, rect.y() + 5, rect.x() + line_len, rect.y() + line_len,
+            rect.x() + 5,
+            rect.y() + 5,
+            rect.x() + line_len,
+            rect.y() + line_len,
         )
         painter.drawLine(
-            rect.x() + line_len, rect.y() + 5, rect.x() + 5, rect.y() + line_len,
+            rect.x() + line_len,
+            rect.y() + 5,
+            rect.x() + 5,
+            rect.y() + line_len,
         )
 
 

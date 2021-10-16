@@ -23,7 +23,7 @@ ArchitecturesInstallIn64BitMode=x64
 SourceDir={APP_SRC}
 ChangesAssociations=yes
 
-[Tasks] 
+[Tasks]
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"
 
 [Files]

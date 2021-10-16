@@ -66,7 +66,13 @@ class AboutDialog(QDialog, Ui_AboutDialog):
                 "GPL 2.0, GPL 3.0, and LGPL 3.0",
                 "https://www.qt.io/",
             ),
-            ("VLC", None, "VideoLAN", "GPL 2.0 or later", "https://www.videolan.org/",),
+            (
+                "VLC",
+                None,
+                "VideoLAN",
+                "GPL 2.0 or later",
+                "https://www.videolan.org/",
+            ),
         ]
 
         attributions_python = [

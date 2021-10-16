@@ -258,23 +258,44 @@ class PlayerMenu:
             "Play / Pause",
             (
                 {"name": "Step", "icon": ICONS["basic/084-forward"]},
-                ("Next frame", "Previous frame",),
+                (
+                    "Next frame",
+                    "Previous frame",
+                ),
             ),
             (
                 {"name": "Loop", "icon": ICONS["basic/153-refresh"]},
-                ("Random Loop", "---", "Set Loop Start", "Set Loop End", "Loop Reset",),
+                (
+                    "Random Loop",
+                    "---",
+                    "Set Loop Start",
+                    "Set Loop End",
+                    "Loop Reset",
+                ),
             ),
             (
                 {"name": "Speed", "icon": ICONS["custom/026-speed"]},
-                ("Faster", "Slower", "Normal",),
+                (
+                    "Faster",
+                    "Slower",
+                    "Normal",
+                ),
             ),
             (
                 {"name": "Zoom", "icon": ICONS["basic/163-search"]},
-                ("Zoom In", "Zoom Out", "Zoom Reset",),
+                (
+                    "Zoom In",
+                    "Zoom Out",
+                    "Zoom Reset",
+                ),
             ),
             (
                 {"name": "Aspect", "icon": ICONS["custom/006-aspect"]},
-                ("Aspect Fit", "Aspect Stretch", "Aspect None",),
+                (
+                    "Aspect Fit",
+                    "Aspect Stretch",
+                    "Aspect None",
+                ),
             ),
         ]
 
@@ -290,11 +311,23 @@ class PlayerMenu:
             "Play / Pause [ALL]",
             (
                 {"name": "Jump (to) [ALL]", "icon": ICONS["custom/010-jump"]},
-                ("Random", "---", "+1%", "+5%", "+10%", "-1%", "-5%", "-10%",),
+                (
+                    "Random",
+                    "---",
+                    "+1%",
+                    "+5%",
+                    "+10%",
+                    "-1%",
+                    "-5%",
+                    "-10%",
+                ),
             ),
             (
                 {"name": "Grid", "icon": ICONS["basic/099-squares"]},
-                ("Rows First", "Columns First",),
+                (
+                    "Rows First",
+                    "Columns First",
+                ),
             ),
         )
 

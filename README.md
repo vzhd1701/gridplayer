@@ -5,15 +5,15 @@
 
 ## Screenshots
 
-[![Screenshot 1](https://raw.githubusercontent.com/vzhd1701/gridplayer/master/resources/public/screenshot-001-thumb.png)](https://raw.githubusercontent.com/vzhd1701/gridplayer/master/resources/public/screenshot-001.png) 
-[![Screenshot 2](https://raw.githubusercontent.com/vzhd1701/gridplayer/master/resources/public/screenshot-002-thumb.png)](https://raw.githubusercontent.com/vzhd1701/gridplayer/master/resources/public/screenshot-002.png) 
-[![Screenshot 3](https://raw.githubusercontent.com/vzhd1701/gridplayer/master/resources/public/screenshot-003-thumb.png)](https://raw.githubusercontent.com/vzhd1701/gridplayer/master/resources/public/screenshot-003.png) 
+[![Screenshot 1](https://raw.githubusercontent.com/vzhd1701/gridplayer/master/resources/public/screenshot-001-thumb.png)](https://raw.githubusercontent.com/vzhd1701/gridplayer/master/resources/public/screenshot-001.png)
+[![Screenshot 2](https://raw.githubusercontent.com/vzhd1701/gridplayer/master/resources/public/screenshot-002-thumb.png)](https://raw.githubusercontent.com/vzhd1701/gridplayer/master/resources/public/screenshot-002.png)
+[![Screenshot 3](https://raw.githubusercontent.com/vzhd1701/gridplayer/master/resources/public/screenshot-003-thumb.png)](https://raw.githubusercontent.com/vzhd1701/gridplayer/master/resources/public/screenshot-003.png)
 
 ## About
 
-Simple VLC-based media player that can play multiple videos at the same time. You can 
-play as many videos as you like, the only limit is your hardware. It supports all video 
-formats that VLC supports (which is all of them). You can save your playlist retaining 
+Simple VLC-based media player that can play multiple videos at the same time. You can
+play as many videos as you like, the only limit is your hardware. It supports all video
+formats that VLC supports (which is all of them). You can save your playlist retaining
 information about the position, sound volume,  loops, aspect ratio, etc.
 
 ## Features
@@ -97,13 +97,14 @@ This software was build using
   - Licensed under *GPL 2.0 or later*
 
 ### Python packages
+
 - **PyQt** by [Riverbank Computing](https://riverbankcomputing.com/)
   - Licensed under *Riverbank Commercial License and GPL v3*
 - **python-vlc** by [Olivier Aubert](https://github.com/oaubert/python-vlc)
   - Licensed under *GPL 2.0 and LGPL 2.1*
 - **pydantic** by [Samuel Colvin](https://github.com/samuelcolvin/pydantic)
   - Licensed under *MIT License*
-    
+
 ### Graphics
 
 - **Hack Font** by [Source Foundry](http://sourcefoundry.org/hack/)

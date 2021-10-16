@@ -5,7 +5,7 @@ import time
 
 from PyQt5 import QtCore, QtWidgets
 from PyQt5.QtCore import QSize, Qt
-from PyQt5.QtGui import QIcon, QInputEvent, QPalette, QCursor
+from PyQt5.QtGui import QCursor, QIcon, QInputEvent, QPalette
 from PyQt5.QtWidgets import QGraphicsOpacityEffect, QLabel, QStackedLayout
 
 from gridplayer.params import VideoParams

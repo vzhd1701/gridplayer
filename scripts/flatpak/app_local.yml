@@ -6,7 +6,7 @@
   - type: file
     path: {WHL_FILE}
     sha256: {WHL_FILE_SHA256}
-- name: {APP_MODULE}-meta
+- name: meta
   buildsystem: simple
   build-commands:
   - install -Dm 644 {APP_ID}.desktop     ${FLATPAK_DEST}/share/applications/{APP_ID}.desktop

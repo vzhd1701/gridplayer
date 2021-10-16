@@ -42,13 +42,8 @@ if SYSTEM == "Windows":
 
 
 elif SYSTEM == "Linux":
-    from PyQt5.QtDBus import (
-        QDBusConnection,
-        QDBusInterface,
-        QDBusArgument,
-    )
-
     from PyQt5.QtCore import QMetaType
+    from PyQt5.QtDBus import QDBusArgument, QDBusConnection, QDBusInterface
 
     _dbus_cookie = None
 

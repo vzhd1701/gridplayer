@@ -1,0 +1,42 @@
+# See https://pre-commit.com/ for usage and config
+# pre-commit install
+# need commit-msg hook for commitzen
+# pre-commit install --hook-type commit-msg
+
+repos:
+-   repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v3.4.0
+    hooks:
+    -   id: check-vcs-permalinks
+    -   id: end-of-file-fixer
+        exclude_types: [svg]
+    -   id: trailing-whitespace
+        exclude: \.(patch)$
+        args: [--markdown-linebreak-ext=md]
+    -   id: mixed-line-ending
+        exclude_types: [svg]
+        args: ['--fix=lf']
+    -   id: check-toml
+    -   id: check-yaml
+    #-   id: no-commit-to-branch
+
+-   repo: https://github.com/executablebooks/mdformat
+    rev: 0.7.7
+    hooks:
+    -   id: mdformat
+
+-   repo: local
+    hooks:
+    -   id: isort
+        name: isort
+        stages: [commit]
+        language: system
+        entry: poetry run isort
+        types: [python]
+
+    -   id: black
+        name: black
+        stages: [commit]
+        language: system
+        entry: poetry run black
+        types: [python]

@@ -6,20 +6,20 @@ import traceback
 from multiprocessing import active_children, freeze_support
 
 from PyQt5 import QtCore
-from PyQt5.QtCore import Qt, QEvent, pyqtSignal
+from PyQt5.QtCore import QEvent, Qt, pyqtSignal
 from PyQt5.QtGui import QFont
 from PyQt5.QtWidgets import QApplication, QStyleFactory
 
-from gridplayer.utils import log_config
 from gridplayer.dialogs.exception import ExceptionDialog
-from gridplayer.utils.log_config import QtLogHandler
 from gridplayer.resources import ICONS, init_resources
+from gridplayer.utils import log_config
 from gridplayer.utils.log import log_environment
+from gridplayer.utils.log_config import QtLogHandler
 from gridplayer.version import (
     __app_id__,
     __app_name__,
-    __display_name__,
     __author_name__,
+    __display_name__,
     __version__,
 )
 
@@ -157,10 +157,7 @@ def main():
 
     # MacOS has OpenFile events
     if platform.system() != "Darwin":
-        from gridplayer.utils.single_instance import (
-            Listener,
-            delegate_if_not_primary,
-        )
+        from gridplayer.utils.single_instance import Listener, delegate_if_not_primary
 
         if settings.get("player/one_instance") and delegate_if_not_primary(sys.argv):
             sys.exit(0)

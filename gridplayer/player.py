@@ -8,9 +8,9 @@ from PyQt5.QtCore import QEvent, QMimeData, QSize, Qt
 from PyQt5.QtGui import QDrag, QFont, QInputEvent
 from PyQt5.QtWidgets import QApplication, QFileDialog, QLabel, QMessageBox
 
-from gridplayer.dialogs.messagebox import QCustomMessageBox
-from gridplayer.utils import keepawake, log_config
 from gridplayer.dialogs.about import AboutDialog
+from gridplayer.dialogs.messagebox import QCustomMessageBox
+from gridplayer.dialogs.settings import SettingsDialog
 from gridplayer.params import PlaylistParams
 from gridplayer.params_static import (
     SUPPORTED_VIDEO_EXT,
@@ -19,12 +19,12 @@ from gridplayer.params_static import (
     WindowState,
 )
 from gridplayer.player_menu import PlayerMenu
-from gridplayer.playlist import read_playlist, save_playlist, dumps_playlist
+from gridplayer.playlist import dumps_playlist, read_playlist, save_playlist
 from gridplayer.settings import settings
-from gridplayer.dialogs.settings import SettingsDialog
-from gridplayer.video_frame_vlc_base import ProcessManagerVLC
+from gridplayer.utils import keepawake, log_config
 from gridplayer.video_block import VideoBlock
 from gridplayer.video_frame_dummy import VideoFrameDummy
+from gridplayer.video_frame_vlc_base import ProcessManagerVLC
 
 logger = logging.getLogger(__name__)
 
