@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>435</width>
-    <height>385</height>
+    <height>409</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -200,7 +200,7 @@
       </layout>
      </item>
      <item>
-      <layout class="QVBoxLayout" name="lay_right_column" stretch="0,0,0,0,0,0,0,0,0">
+      <layout class="QVBoxLayout" name="lay_right_column" stretch="0,0,0,0,0,0,0,0,0,0,0">
        <item>
         <widget class="QGroupBox" name="playerVideoDriverBox">
          <property name="title">
@@ -228,7 +228,7 @@
         </widget>
        </item>
        <item>
-        <widget class="QLabel" name="section_misc">
+        <widget class="QLabel" name="section_timeouts">
          <property name="font">
           <font>
            <weight>75</weight>
@@ -236,17 +236,17 @@
           </font>
          </property>
          <property name="text">
-          <string>Misc</string>
+          <string>Timeouts</string>
          </property>
         </widget>
        </item>
        <item>
-        <layout class="QHBoxLayout" name="lay_miscOverlayTimeout" stretch="0,1">
+        <layout class="QHBoxLayout" name="lay_timeoutOverlay" stretch="0,1">
          <item>
-          <widget class="QSpinBox" name="miscOverlayTimeout"/>
+          <widget class="QSpinBox" name="timeoutOverlay"/>
          </item>
          <item>
-          <widget class="QLabel" name="miscOverlayTimeoutLabel">
+          <widget class="QLabel" name="timeoutOverlayLabel">
            <property name="text">
             <string>Video overlay timeout (sec)</string>
            </property>
@@ -255,19 +255,19 @@
         </layout>
        </item>
        <item>
-        <widget class="QCheckBox" name="miscMouseHide">
+        <widget class="QCheckBox" name="timeoutMouseHideFlag">
          <property name="text">
           <string>Hide mouse after timeout</string>
          </property>
         </widget>
        </item>
        <item>
-        <layout class="QHBoxLayout" name="lay_miscMouseHideTimeout" stretch="0,1">
+        <layout class="QHBoxLayout" name="lay_timeoutMouseHide" stretch="0,1">
          <item>
-          <widget class="QSpinBox" name="miscMouseHideTimeout"/>
+          <widget class="QSpinBox" name="timeoutMouseHide"/>
          </item>
          <item>
-          <widget class="QLabel" name="miscMouseHideTimeoutLabel">
+          <widget class="QLabel" name="timeoutMouseHideLabel">
            <property name="text">
             <string>Mouse hide timeout (sec)</string>
            </property>
@@ -315,6 +315,26 @@
           <widget class="QComboBox" name="logLevelVLC"/>
          </item>
         </layout>
+       </item>
+       <item>
+        <widget class="QLabel" name="section_misc">
+         <property name="font">
+          <font>
+           <weight>75</weight>
+           <bold>true</bold>
+          </font>
+         </property>
+         <property name="text">
+          <string>Misc</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QCheckBox" name="miscOpaqueHWOverlay">
+         <property name="text">
+          <string>Opaque overlay (fix black screen)</string>
+         </property>
+        </widget>
        </item>
        <item>
         <spacer name="verticalSpacer_2">

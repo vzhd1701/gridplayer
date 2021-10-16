@@ -737,7 +737,11 @@ class Player(QtWidgets.QWidget):
                 self.is_screensaver_off = False
 
     def is_reload_needed(self, previous_settings):
-        checks = ("player/video_driver", "player/video_driver_players")
+        checks = (
+            "player/video_driver",
+            "player/video_driver_players",
+            "internal/opaque_hw_overlay",
+        )
 
         changes = {k: previous_settings[k] != settings.get(k) for k in checks}
 
@@ -750,6 +754,9 @@ class Player(QtWidgets.QWidget):
         )
 
         if changes["player/video_driver_players"] and is_current_engine_multiproc:
+            return True
+
+        if changes["internal/opaque_hw_overlay"]:
             return True
 
         return False

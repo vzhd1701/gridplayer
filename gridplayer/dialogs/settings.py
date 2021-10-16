@@ -9,7 +9,7 @@ from PyQt5.QtWidgets import QCheckBox, QComboBox, QDialog, QSpinBox
 
 from gridplayer import params_env, params_vlc
 from gridplayer.dialogs.messagebox import QCustomMessageBox
-from gridplayer.dialogs.settings_ui import Ui_SettingsDialog
+from gridplayer.dialogs.settings_dialog_ui import Ui_SettingsDialog
 from gridplayer.params_static import GridMode, VideoAspect, VideoDriver
 from gridplayer.settings import get_app_data_dir, settings
 from gridplayer.utils import log_config
@@ -44,11 +44,12 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
             "video_defaults/random_loop": self.videoRandomLoop,
             "video_defaults/muted": self.videoMuted,
             "video_defaults/paused": self.videoPaused,
-            "misc/overlay_timeout": self.miscOverlayTimeout,
-            "misc/mouse_hide": self.miscMouseHide,
-            "misc/mouse_hide_timeout": self.miscMouseHideTimeout,
+            "misc/overlay_timeout": self.timeoutOverlay,
+            "misc/mouse_hide": self.timeoutMouseHideFlag,
+            "misc/mouse_hide_timeout": self.timeoutMouseHide,
             "logging/log_level": self.logLevel,
             "logging/log_level_vlc": self.logLevelVLC,
+            "internal/opaque_hw_overlay": self.miscOpaqueHWOverlay,
         }
 
         self.video_drivers_multiprocess = {
@@ -63,17 +64,17 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
         self.fill_logLevelVLC()
 
         self.playerVideoDriver.currentIndexChanged.connect(self.driver_selected)
-        self.miscMouseHide.stateChanged.connect(self.miscMouseHideTimeout.setEnabled)
+        self.timeoutMouseHideFlag.stateChanged.connect(self.timeoutMouseHide.setEnabled)
         self.logFileOpen.clicked.connect(self.open_logfile)
 
         self.load_settings()
 
         self.driver_selected(self.playerVideoDriver.currentIndex())
-        self.miscMouseHideTimeout.setEnabled(self.miscMouseHide.isChecked())
+        self.timeoutMouseHide.setEnabled(self.timeoutMouseHideFlag.isChecked())
 
         self.playerVideoDriverPlayers.setRange(1, 64)
-        self.miscOverlayTimeout.setRange(1, 60)
-        self.miscMouseHideTimeout.setRange(1, 60)
+        self.timeoutOverlay.setRange(1, 60)
+        self.timeoutMouseHide.setRange(1, 60)
 
         for btn in self.buttonBox.buttons():
             btn.setIcon(QIcon())
@@ -98,6 +99,10 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
             self.playerVideoDriverBox.setStyleSheet(
                 "QGroupBox:title{padding: 0 4px 0 3px;margin-left:-5px;}"
             )
+
+        if platform.system() != "Linux":
+            self.section_misc.hide()
+            self.miscOpaqueHWOverlay.hide()
 
     def open_logfile(self):
         log_path = os.path.join(get_app_data_dir(), "gridplayer.log")
