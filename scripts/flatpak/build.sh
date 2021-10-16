@@ -17,8 +17,8 @@ cp -R "$BUILD_DIR/meta" "$BUILD_DIR_FLATPAK"
 cp "$SCRIPT_DIR"/dependencies/*.yml "$BUILD_DIR_FLATPAK"
 cp "$SCRIPT_DIR"/libvlc/* "$BUILD_DIR_FLATPAK"
 
-cat "$SCRIPT_DIR/app.yml" "$SCRIPT_DIR/app_local.yml" > "$BUILD_DIR_FLATHUB/$APP_ID.yml"
-replace_app_vars "$BUILD_DIR_FLATHUB/$APP_ID.yml"
+cat "$SCRIPT_DIR/app.yml" "$SCRIPT_DIR/app_local.yml" > "$BUILD_DIR_FLATPAK/$APP_ID.yml"
+replace_app_vars "$BUILD_DIR_FLATPAK/$APP_ID.yml"
 
 WHL_FILE=$(cd "$BUILD_DIR_FLATPAK" && ls *.whl)
 WHL_FILE_SHA256=$(sha256sum "$BUILD_DIR_FLATPAK/$WHL_FILE" | cut -d ' ' -f 1)
