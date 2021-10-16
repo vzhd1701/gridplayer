@@ -72,6 +72,19 @@ Please refer to [VLC official page](https://www.videolan.org/vlc/) for instructi
 
 Some distros (e.g. Ubuntu) might also require `libxcb-xinerama0` package.
 
+### From source
+
+This project uses [poetry](https://python-poetry.org/) for dependency management and packaging. You will have to install it first. See [poetry official documentation](https://python-poetry.org/docs/) for instructions.
+
+```shell
+$ git clone https://github.com/vzhd1701/gridplayer.git
+$ cd gridplayer/
+$ poetry install --no-dev
+$ poetry run gridplayer
+```
+
+The same notes about the Python version and external packages from **PIP** installation apply here.
+
 ## Attributions
 
 This software was build using
