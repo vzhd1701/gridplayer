@@ -180,7 +180,13 @@ def main():
     except FileNotFoundError:
         from gridplayer.dialogs.messagebox import QCustomMessageBox
 
-        QCustomMessageBox.critical(None, "Error", "VLC player is not installed!")
+        QCustomMessageBox.critical(
+            None,
+            "Error",
+            "<p>VLC player is required to run this app!</p><p>Please visit"
+            ' <a href="https://www.videolan.org/vlc/">VLC official site</a>'
+            " for instructions on how to install it.</p>",
+        )
         sys.exit(1)
 
     from gridplayer.player import Player
