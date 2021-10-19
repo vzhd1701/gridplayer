@@ -135,16 +135,9 @@ class InstanceProcessVLCSW(InstanceProcessVLC):
         player_lock["is_busy"].value = 0
 
     def get_player_lock(self, player_id):
-        try:
-            return next(
-                l
-                for l in self._memory_locks
-                if l["player_id"].value == player_id.encode()
-            )
-        except StopIteration:
-            print("Requested", player_id)
-            print([l["player_id"].value for l in self._memory_locks])
-            raise
+        return next(
+            l for l in self._memory_locks if l["player_id"].value == player_id.encode()
+        )
 
     def get_player_shared_memory(self, player_id):
         player_lock = self.get_player_lock(player_id)
