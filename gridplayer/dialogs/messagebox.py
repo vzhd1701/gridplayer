@@ -2,15 +2,8 @@ from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import QMessageBox
 
-from gridplayer.resources import ICONS
-
 
 class QCustomMessageBox(QMessageBox):
-    _icons = {
-        QMessageBox.Question: ICONS["custom/030-question"],
-        QMessageBox.Critical: ICONS["basic/031-cancel"],
-    }
-
     def __init__(
         self,
         icon,
@@ -25,7 +18,12 @@ class QCustomMessageBox(QMessageBox):
         for btn in self.buttons():
             btn.setIcon(QIcon())
 
-        self.setIconPixmap(self._icons[icon].pixmap(64, 64))
+        icons = {
+            QMessageBox.Question: QIcon.fromTheme("question"),
+            QMessageBox.Critical: QIcon.fromTheme("close"),
+        }
+
+        self.setIconPixmap(icons[icon].pixmap(64, 64))
 
     @classmethod
     def critical(

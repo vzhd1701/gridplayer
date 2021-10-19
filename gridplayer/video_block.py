@@ -9,7 +9,6 @@ from PyQt5.QtGui import QCursor, QIcon, QInputEvent, QPalette
 from PyQt5.QtWidgets import QGraphicsOpacityEffect, QLabel, QStackedLayout
 
 from gridplayer.params import VideoParams
-from gridplayer.resources import ICONS
 from gridplayer.settings import settings
 from gridplayer.video_overlay import OverlayBlock, OverlayBlockFloating
 
@@ -59,13 +58,13 @@ class StatusLabel(QLabel):
 
         self.setAlignment(Qt.AlignCenter)
 
-        self._set_pic(ICONS["basic/042-sand clock"])
+        self._set_pic(QIcon.fromTheme("processing"))
 
     def resizeEvent(self, event):
         self._set_pic_to_half_size(event.size())
 
     def set_error(self):
-        self._set_pic(ICONS["basic/031-cancel"])
+        self._set_pic(QIcon.fromTheme("close"))
 
     def _set_pic(self, pic_path):
         self.pic = QIcon(pic_path).pixmap(QSize(512, 512))

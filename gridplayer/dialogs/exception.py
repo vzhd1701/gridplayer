@@ -2,7 +2,6 @@ from PyQt5.QtCore import QSize
 from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import QApplication, QDialog
 
-from gridplayer.resources import ICONS
 from gridplayer.dialogs.exception_dialog_ui import Ui_ExceptionDialog
 from gridplayer.version import __app_bugtracker_url__
 
@@ -15,7 +14,7 @@ class ExceptionDialog(QDialog, Ui_ExceptionDialog):
 
         self.setupUi(self)
 
-        self.pic = QIcon(ICONS["basic/031-cancel"]).pixmap(QSize(64, 64))
+        self.pic = QIcon.fromTheme("close").pixmap(QSize(64, 64))
         self.errorIcon.setPixmap(self.pic)
 
         self.exceptionBox.setText(exc_txt)

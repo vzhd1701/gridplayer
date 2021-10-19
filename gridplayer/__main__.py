@@ -7,12 +7,13 @@ from multiprocessing import active_children, freeze_support
 
 from PyQt5 import QtCore
 from PyQt5.QtCore import QEvent, Qt, pyqtSignal
-from PyQt5.QtGui import QFont
+from PyQt5.QtGui import QFont, QIcon
 from PyQt5.QtWidgets import QApplication, QStyleFactory
 
 from gridplayer.dialogs.exception import ExceptionDialog
-from gridplayer.resources import ICONS, init_resources
+from gridplayer.resources import init_resources
 from gridplayer.utils import log_config
+from gridplayer.utils.darkmode import is_dark_mode
 from gridplayer.utils.log import log_environment
 from gridplayer.utils.log_config import QtLogHandler
 from gridplayer.version import (
@@ -122,15 +123,20 @@ def init_app():
     app.setAttribute(Qt.AA_DisableWindowContextHelpButton)
     app.styleHints().setShowShortcutsInContextMenus(True)
 
+    if is_dark_mode():
+        QIcon.setThemeName("dark")
+    else:
+        QIcon.setThemeName("light")
+
     if platform.system() == "Darwin":
-        app.setWindowIcon(ICONS["main/sys/macos"])
+        app.setWindowIcon(QIcon(":/icons/main_ico_mac.icns"))
     elif platform.system() == "Windows":
-        app.setWindowIcon(ICONS["main/sys/windows"])
+        app.setWindowIcon(QIcon(":/icons/main_ico_win.ico"))
     else:
         if app.desktop().devicePixelRatio() == 1:
-            app.setWindowIcon(ICONS["main/png/48x48"])
+            app.setWindowIcon(QIcon(":/icons/main_ico_48.png"))
         else:
-            app.setWindowIcon(ICONS["main/svg/normal"])
+            app.setWindowIcon(QIcon(":/icons/main_ico_svg.svg"))
 
     font_size = app.font().pointSize() if platform.system() == "Darwin" else 9
     app.setFont(QFont("Hack", font_size, QFont.Normal))

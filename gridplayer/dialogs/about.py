@@ -3,10 +3,10 @@ import sys
 from pydantic.version import VERSION as PYDANTIC_VERSION
 from PyQt5.Qt import PYQT_VERSION_STR
 from PyQt5.QtCore import QT_VERSION_STR
+from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import QDialog
 
 from gridplayer import params_vlc
-from gridplayer.resources import ICONS
 from gridplayer.dialogs.about_dialog_ui import Ui_AboutDialog
 from gridplayer.version import (
     __app_bugtracker_url__,
@@ -40,7 +40,7 @@ class AboutDialog(QDialog, Ui_AboutDialog):
 
         self.setupUi(self)
 
-        self.logo.setPixmap(ICONS["main/svg/big"].pixmap(self.logo.size()))
+        self.logo.setPixmap(QIcon(":/icons/main_ico_big.svg").pixmap(self.logo.size()))
 
         self.name.setText(__display_name__)
         self.version.setText(f"version {__version__}")

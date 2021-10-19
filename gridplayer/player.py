@@ -5,7 +5,7 @@ import os
 
 from PyQt5 import QtCore, QtWidgets
 from PyQt5.QtCore import QEvent, QMimeData, QSize, Qt
-from PyQt5.QtGui import QDrag, QFont, QInputEvent
+from PyQt5.QtGui import QDrag, QFont, QIcon, QInputEvent
 from PyQt5.QtWidgets import QApplication, QFileDialog, QLabel, QMessageBox
 
 from gridplayer.dialogs.about import AboutDialog
@@ -22,6 +22,7 @@ from gridplayer.player_menu import PlayerMenu
 from gridplayer.playlist import dumps_playlist, read_playlist, save_playlist
 from gridplayer.settings import settings
 from gridplayer.utils import keepawake, log_config
+from gridplayer.utils.darkmode import is_dark_mode
 from gridplayer.video_block import VideoBlock
 from gridplayer.video_frame_dummy import VideoFrameDummy
 from gridplayer.video_frame_vlc_base import ProcessManagerVLC
@@ -195,6 +196,13 @@ class Player(QtWidgets.QWidget):
             self.mouse_reset()
 
             self.cmd_active("show_overlay")
+
+        # detect theme switches
+        if event.type() == QEvent.PaletteChange:
+            if is_dark_mode():
+                QIcon.setThemeName("dark")
+            else:
+                QIcon.setThemeName("light")
 
         return super().event(event)
 

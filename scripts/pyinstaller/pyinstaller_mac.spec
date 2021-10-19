@@ -552,8 +552,6 @@ mime_plist = {
     "LSApplicationCategoryType": "public.app-category.video",
     # App can use GPU
     "NSSupportsAutomaticGraphicsSwitching": True,
-    # Disable dark theme
-    "NSRequiresAquaSystemAppearance": True,
     "NSPrincipalClass": "NSApplication",
 }
 
