@@ -12,16 +12,13 @@ PYINSTALLER_VERSION="4.5.1"
 
 mkdir -p "$BUILD_DIR"
 
-if [ ! -d "$BUILD_DIR/venv" ]; then
-    python -m venv "$BUILD_DIR/venv"
-    . "$BUILD_DIR/venv/Scripts/activate"
-    python -m pip install --upgrade pip
+init_venv "$BUILD_DIR/venv-pyinstaller"
 
-    pip install --no-binary pydantic -r "$BUILD_DIR/requirements.txt"
-    pip install pyinstaller=="$PYINSTALLER_VERSION"
-else
-    . "$BUILD_DIR/venv/Scripts/activate"
-fi
+# Reduce size by installing src version of pydantic
+export PIP_NO_BINARY="pydantic"
+
+pip install -r "$BUILD_DIR/requirements.txt"
+pip install pyinstaller=="$PYINSTALLER_VERSION"
 
 # Copy icons to build dir
 cp "$RESOURCES_DIR/icons/main/sys/windows.ico" "$BUILD_DIR/main.ico"

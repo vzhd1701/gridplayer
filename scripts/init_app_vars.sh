@@ -33,6 +33,30 @@ copy_with_app_vars() {
     replace_app_vars "$DEST_FILE"
 }
 
+init_venv() {
+    VENV_DIR="$1"
+
+    if [ ! -d "$VENV_DIR" ]; then
+        python -m venv "$VENV_DIR"
+
+        activate_venv "$VENV_DIR"
+
+        python -m pip install --upgrade pip
+    else
+        activate_venv "$VENV_DIR"
+    fi
+}
+
+activate_venv() {
+    VENV_DIR="$1"
+
+    if [ -f "$VENV_DIR/Scripts/activate" ]; then
+        . "$VENV_DIR/Scripts/activate"
+    else
+        . "$VENV_DIR/bin/activate"
+    fi
+}
+
 #ROOT_DIR="$(realpath $(dirname $( cd "$( dirname $0 )" && pwd ))/..)"
 export ROOT_DIR="$(realpath $(pwd))"
 
