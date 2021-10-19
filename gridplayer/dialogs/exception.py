@@ -2,8 +2,8 @@ from PyQt5.QtCore import QSize
 from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import QApplication, QDialog
 
-from gridplayer.dialogs.exception_ui import Ui_ExceptionDialog
 from gridplayer.resources import ICONS
+from gridplayer.dialogs.exception_dialog_ui import Ui_ExceptionDialog
 from gridplayer.version import __app_bugtracker_url__
 
 

@@ -6,8 +6,8 @@ from PyQt5.QtCore import QT_VERSION_STR
 from PyQt5.QtWidgets import QDialog
 
 from gridplayer import params_vlc
-from gridplayer.dialogs.about_ui import Ui_AboutDialog
 from gridplayer.resources import ICONS
+from gridplayer.dialogs.about_dialog_ui import Ui_AboutDialog
 from gridplayer.version import (
     __app_bugtracker_url__,
     __app_license_url__,
