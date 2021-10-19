@@ -1,0 +1,53 @@
+file,fonts/Hack-Bold.ttf,fonts/Hack-Bold.ttf
+file,fonts/Hack-BoldItalic.ttf,fonts/Hack-BoldItalic.ttf
+file,fonts/Hack-Italic.ttf,fonts/Hack-Italic.ttf
+file,fonts/Hack-Regular.ttf,fonts/Hack-Regular.ttf
+icon,icons/main/png/48x48.png,main_ico_48
+icon,icons/main/svg/big.svg,main_ico_big
+icon,icons/main/svg/normal.svg,main_ico_svg
+icon,icons/main/sys/macos.icns,main_ico_mac
+icon,icons/main/sys/windows.ico,main_ico_win
+icon-symbolic,icons/basic/003-add.svg,add-files
+icon-symbolic,icons/basic/031-cancel.svg,close
+icon-symbolic,icons/basic/042-sand clock.svg,processing
+icon-symbolic,icons/basic/067-down arrow.svg,save-playlist
+icon-symbolic,icons/basic/083-backward.svg,previous-frame
+icon-symbolic,icons/basic/084-forward.svg,next-frame
+icon-symbolic,icons/basic/093-folder.svg,open-playlist
+icon-symbolic,icons/basic/099-squares.svg,grid
+icon-symbolic,icons/basic/136-log out.svg,quit
+icon-symbolic,icons/basic/145-play.svg,play
+icon-symbolic,icons/basic/153-refresh.svg,loop
+icon-symbolic,icons/basic/155-ribbon.svg,about
+icon-symbolic,icons/basic/157-right.svg,next-video
+icon-symbolic,icons/basic/163-search.svg,zoom
+icon-symbolic,icons/basic/166-gear.svg,settings
+icon-symbolic,icons/basic/234-zoom.svg,zoom-reset
+icon-symbolic,icons/basic/235-zoom in.svg,zoom-in
+icon-symbolic,icons/basic/236-zoom out.svg,zoom-out
+icon-symbolic,icons/custom/001-minimize window.svg,minimize
+icon-symbolic,icons/custom/002-close all.svg,close-playlist
+icon-symbolic,icons/custom/003-aspect fit.svg,aspect-fit
+icon-symbolic,icons/custom/004-aspect stretch.svg,aspect-stretch
+icon-symbolic,icons/custom/005-aspect none.svg,aspect-none
+icon-symbolic,icons/custom/006-aspect.svg,aspect
+icon-symbolic,icons/custom/007-rows first.svg,grid-rows-first
+icon-symbolic,icons/custom/008-columns first.svg,grid-columns-first
+icon-symbolic,icons/custom/009-play all.svg,play-all
+icon-symbolic,icons/custom/010-jump.svg,jump-to
+icon-symbolic,icons/custom/011-random.svg,loop-random
+icon-symbolic,icons/custom/012-loop reset.svg,loop-reset
+icon-symbolic,icons/custom/013-loop start.svg,loop-start
+icon-symbolic,icons/custom/014-loop end.svg,loop-end
+icon-symbolic,icons/custom/015-fullscreen.svg,fullscreen
+icon-symbolic,icons/custom/020-plus-1.svg,seek-plus-1
+icon-symbolic,icons/custom/021-plus-5.svg,seek-plus-5
+icon-symbolic,icons/custom/022-plus-10.svg,seek-plus-10
+icon-symbolic,icons/custom/023-minus-1.svg,seek-minus-1
+icon-symbolic,icons/custom/024-minus-5.svg,seek-minus-5
+icon-symbolic,icons/custom/025-minus-10.svg,seek-minus-10
+icon-symbolic,icons/custom/026-speed.svg,speed
+icon-symbolic,icons/custom/027-speed faster.svg,speed-faster
+icon-symbolic,icons/custom/028-speed slower.svg,speed-slower
+icon-symbolic,icons/custom/029-speed reset.svg,speed-reset
+icon-symbolic,icons/custom/030-question.svg,question
