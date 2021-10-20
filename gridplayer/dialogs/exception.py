@@ -14,14 +14,18 @@ class ExceptionDialog(QDialog, Ui_ExceptionDialog):
 
         self.setupUi(self)
 
-        self.pic = QIcon.fromTheme("close").pixmap(QSize(64, 64))
+        icon_size = 64
+
+        self.pic = QIcon.fromTheme("close").pixmap(QSize(icon_size, icon_size))
         self.errorIcon.setPixmap(self.pic)
 
         self.exceptionBox.setText(exc_txt)
 
-        info = self.errorLabel.text()
-        info = info.replace("{APP_BUGTRACKER_URL}", __app_bugtracker_url__)
-        self.errorLabel.setText(info)
+        exception_info = self.errorLabel.text()
+        exception_info = exception_info.replace(
+            "{APP_BUGTRACKER_URL}", __app_bugtracker_url__
+        )
+        self.errorLabel.setText(exception_info)
 
         self.copyButton.clicked.connect(self.copy_text)
 

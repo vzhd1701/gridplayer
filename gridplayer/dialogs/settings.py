@@ -1,20 +1,25 @@
+import contextlib
 import logging
 import os
 import platform
-import subprocess
+import subprocess  # noqa: S404
 
 from PyQt5.QtCore import QUrl
 from PyQt5.QtGui import QDesktopServices, QIcon
 from PyQt5.QtWidgets import QCheckBox, QComboBox, QDialog, QSpinBox
 
-from gridplayer import params_env, params_vlc
+from gridplayer import params_env, params_vlc, utils
 from gridplayer.dialogs.messagebox import QCustomMessageBox
 from gridplayer.dialogs.settings_dialog_ui import Ui_SettingsDialog
 from gridplayer.params_static import GridMode, VideoAspect, VideoDriver
 from gridplayer.settings import get_app_data_dir, settings
-from gridplayer.utils import log_config
 
 logger = logging.getLogger(__name__)
+
+VIDEO_DRIVERS_MULTIPROCESS = (
+    VideoDriver.VLC_SW,
+    VideoDriver.VLC_HW,
+)
 
 
 def _fill_combo_box(combo_box, values_dict):
@@ -22,12 +27,17 @@ def _fill_combo_box(combo_box, values_dict):
         combo_box.addItem(i_name, i_id)
 
 
+def _set_combo_box(combo_box, data_value):
+    idx = combo_box.findData(data_value)
+    combo_box.setCurrentIndex(idx)
+
+
 class SettingsDialog(QDialog, Ui_SettingsDialog):
     def __init__(self, parent):
         super().__init__(parent)
 
         self.setupUi(self)
-        self.customize_ui()
+        self.ui_customize()
 
         self.settings_map = {
             "player/video_driver": self.playerVideoDriver,
@@ -52,34 +62,18 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
             "internal/opaque_hw_overlay": self.miscOpaqueHWOverlay,
         }
 
-        self.video_drivers_multiprocess = {
-            VideoDriver.VLC_SW,
-            VideoDriver.VLC_HW,
-        }
+        self.ui_fill()
 
-        self.fill_playerVideoDriver()
-        self.fill_playlistGridMode()
-        self.fill_videoAspect()
-        self.fill_logLevel()
-        self.fill_logLevelVLC()
-
-        self.playerVideoDriver.currentIndexChanged.connect(self.driver_selected)
-        self.timeoutMouseHideFlag.stateChanged.connect(self.timeoutMouseHide.setEnabled)
-        self.logFileOpen.clicked.connect(self.open_logfile)
+        self.ui_connect()
 
         self.load_settings()
 
-        self.driver_selected(self.playerVideoDriver.currentIndex())
-        self.timeoutMouseHide.setEnabled(self.timeoutMouseHideFlag.isChecked())
+        self.ui_customize_dynamic()
 
-        self.playerVideoDriverPlayers.setRange(1, 64)
-        self.timeoutOverlay.setRange(1, 60)
-        self.timeoutMouseHide.setRange(1, 60)
-
+    def ui_customize(self):  # noqa: WPS213
         for btn in self.buttonBox.buttons():
             btn.setIcon(QIcon())
 
-    def customize_ui(self):
         font = self.playerVideoDriverBox.font()
         font.setBold(True)
         self.playerVideoDriverBox.setFont(font)
@@ -87,14 +81,12 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
         # Restore the font of each children to regular.
         font.setBold(False)
         for child in self.playerVideoDriverBox.children():
-            try:
+            with contextlib.suppress(AttributeError):
                 child.setFont(font)
-            except AttributeError:
-                pass
 
         if platform.system() == "Darwin":
             self.lay_body.setContentsMargins(4, 0, 0, 0)
-            self.horizontalLayout.setContentsMargins(0, 0, 15, 0)
+            self.horizontalLayout.setContentsMargins(0, 0, 15, 0)  # noqa: WPS432
             self.lay_playerVideoDriverPlayers.setContentsMargins(3, 0, 2, 0)
             self.playerVideoDriverBox.setStyleSheet(
                 "QGroupBox:title{padding: 0 4px 0 3px;margin-left:-5px;}"
@@ -103,6 +95,26 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
         if platform.system() != "Linux":
             self.section_misc.hide()
             self.miscOpaqueHWOverlay.hide()
+
+    def ui_fill(self):
+        self.fill_playerVideoDriver()
+        self.fill_playlistGridMode()
+        self.fill_videoAspect()
+        self.fill_logLevel()
+        self.fill_logLevelVLC()
+
+    def ui_customize_dynamic(self):
+        self.driver_selected(self.playerVideoDriver.currentIndex())
+        self.timeoutMouseHide.setEnabled(self.timeoutMouseHideFlag.isChecked())
+
+        self.playerVideoDriverPlayers.setRange(1, 64)  # noqa: WPS432
+        self.timeoutOverlay.setRange(1, 60)
+        self.timeoutMouseHide.setRange(1, 60)
+
+    def ui_connect(self):
+        self.playerVideoDriver.currentIndexChanged.connect(self.driver_selected)
+        self.timeoutMouseHideFlag.stateChanged.connect(self.timeoutMouseHide.setEnabled)
+        self.logFileOpen.clicked.connect(self.open_logfile)
 
     def open_logfile(self):
         log_path = os.path.join(get_app_data_dir(), "gridplayer.log")
@@ -114,13 +126,13 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
 
         if params_env.IS_SNAP:
             # https://forum.snapcraft.io/t/xdg-open-or-gvfs-open-qdesktopservices-openurl-file-somelocation-file-txt-wont-open-the-file/16824
-            subprocess.call(["xdg-open", log_path])
+            subprocess.call(["xdg-open", log_path])  # noqa: S603, S607
         else:
             QDesktopServices.openUrl(QUrl.fromLocalFile(log_path))
 
     def fill_logLevelVLC(self):
         log_levels = {
-            log_config.DISABLED: "None",
+            utils.log_config.DISABLED: "None",
             logging.ERROR: "Error",
             logging.WARNING: "Warning",
             logging.INFO: "Info",
@@ -131,7 +143,7 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
 
     def fill_logLevel(self):
         log_levels = {
-            log_config.DISABLED: "None",
+            utils.log_config.DISABLED: "None",
             logging.CRITICAL: "Critical",
             logging.ERROR: "Error",
             logging.WARNING: "Warning",
@@ -176,41 +188,45 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
     def driver_selected(self, idx):
         driver_id = self.playerVideoDriver.itemData(idx)
 
-        if driver_id in self.video_drivers_multiprocess:
+        if driver_id in VIDEO_DRIVERS_MULTIPROCESS:
             self.playerVideoDriverPlayers.setDisabled(False)
         else:
             self.playerVideoDriverPlayers.setDisabled(True)
 
     def load_settings(self):
+        elements_value_set_fun = {
+            QCheckBox: lambda e, v: e.setChecked(v),
+            QSpinBox: lambda e, v: e.setValue(v),
+            QComboBox: _set_combo_box,
+        }
+
         for setting, element in self.settings_map.items():
             setting_value = settings.get(setting)
 
-            if isinstance(element, QCheckBox):
-                element.setChecked(setting_value)
-            elif isinstance(element, QSpinBox):
-                element.setValue(setting_value)
-            elif isinstance(element, QComboBox):
-                idx = element.findData(setting_value)
-                element.setCurrentIndex(idx)
-            else:
-                raise ValueError(f"No element encoder for {setting}")
+            try:
+                set_function = elements_value_set_fun[type(element)]
+            except KeyError:
+                raise ValueError(f"No element decoder for {setting}")
+
+            set_function(element, setting_value)
 
     def save_settings(self):
+        elements_value_read_attr = {
+            QCheckBox: "isChecked",
+            QSpinBox: "value",
+            QComboBox: "currentData",
+        }
+
         for setting, element in self.settings_map.items():
             if not element.isEnabled():
                 continue
 
-            new_value = None
-
-            if isinstance(element, QCheckBox):
-                new_value = element.isChecked()
-            if isinstance(element, QSpinBox):
-                new_value = element.value()
-            if isinstance(element, QComboBox):
-                new_value = element.currentData()
-
-            if new_value is None:
+            try:
+                value_attr = elements_value_read_attr[type(element)]
+            except KeyError:
                 raise ValueError(f"No element decoder for {setting}")
+
+            new_value = getattr(element, value_attr)()
 
             settings.set(setting, new_value)
 

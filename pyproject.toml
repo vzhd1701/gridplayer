@@ -101,6 +101,16 @@ wemake-python-styleguide = ["+*", "-WPS111", "-WPS214", "-WPS323", "-WPS326", "-
 # WPS440 Protected modules
 wemake-python-styleguide = ["+*", "-WPS110", "-WPS339", "-WPS433", "-WPS440"]
 
+[tool.flakehell.exceptions."gridplayer/dialogs/messagebox.py"]
+# Overriding Qt class
+# WPS211 too many arguments
+# WPS404 complex defaults
+wemake-python-styleguide = ["+*", "-WPS211", "-WPS404"]
+
+[tool.flakehell.exceptions."gridplayer/dialogs/settings.py"]
+# WPS201 too many imports
+wemake-python-styleguide = ["+*", "-WPS201"]
+
 [tool.black]
 line-length = 88
 

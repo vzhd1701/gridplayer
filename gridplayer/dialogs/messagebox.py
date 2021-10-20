@@ -23,7 +23,9 @@ class QCustomMessageBox(QMessageBox):
             QMessageBox.Critical: QIcon.fromTheme("close"),
         }
 
-        self.setIconPixmap(icons[icon].pixmap(64, 64))
+        icon_size = 64
+
+        self.setIconPixmap(icons[icon].pixmap(icon_size, icon_size))
 
     @classmethod
     def critical(

@@ -1,4 +1,5 @@
 import sys
+from typing import NamedTuple
 
 from pydantic.version import VERSION as PYDANTIC_VERSION
 from PyQt5.Qt import PYQT_VERSION_STR
@@ -17,19 +18,24 @@ from gridplayer.version import (
 )
 
 
+class Attribution(NamedTuple):
+    title: str
+    version: str
+    author: str
+    license: str
+    url: str
+
+
 def generate_attributions(attributions):
     attributions_txt = []
-    for name, version, author, license, url in attributions:
-        title = name
-        if version:
-            title += f" {version}"
+    for a in attributions:
+        version = f" {a.version}" if a.version else ""
 
-        line = f'<p><b>{title}</b> by <a href="{url}">{author}</a>'
-
-        if license:
-            line += f"<br><i>Licensed under {license}</i></p>"
-
-        attributions_txt.append(line)
+        attributions_txt.append(
+            f"<p><b>{a.title}{version}</b>"
+            f' by <a href="{a.url}">{a.author}</a><br>'
+            f"<i>Licensed under {a.license}</i></p>"
+        )
 
     return "\n".join(attributions_txt)
 
@@ -45,28 +51,28 @@ class AboutDialog(QDialog, Ui_AboutDialog):
         self.name.setText(__display_name__)
         self.version.setText(f"version {__version__}")
 
-        info = self.info.text()
-        info = info.replace("{APP_URL}", __app_url__)
-        info = info.replace("{APP_BUGTRACKER_URL}", __app_bugtracker_url__)
-        info = info.replace("{APP_LICENSE_URL}", __app_license_url__)
-        self.info.setText(info)
+        about_info = self.info.text()
+        about_info = about_info.replace("{APP_URL}", __app_url__)
+        about_info = about_info.replace("{APP_BUGTRACKER_URL}", __app_bugtracker_url__)
+        about_info = about_info.replace("{APP_LICENSE_URL}", __app_license_url__)
+        self.info.setText(about_info)
 
-        attributions = [
-            (
+        attributions_general = [
+            Attribution(
                 "Python",
                 sys.version.split(" ")[0],
                 "Python Software Foundation",
                 "Python Software Foundation License",
                 "https://www.python.org/",
             ),
-            (
+            Attribution(
                 "Qt",
                 QT_VERSION_STR,
                 "Qt Project",
                 "GPL 2.0, GPL 3.0, and LGPL 3.0",
                 "https://www.qt.io/",
             ),
-            (
+            Attribution(
                 "VLC",
                 None,
                 "VideoLAN",
@@ -76,21 +82,21 @@ class AboutDialog(QDialog, Ui_AboutDialog):
         ]
 
         attributions_python = [
-            (
+            Attribution(
                 "PyQt",
                 PYQT_VERSION_STR,
                 "Riverbank Computing",
                 "Riverbank Commercial License and GPL v3",
                 "https://riverbankcomputing.com/",
             ),
-            (
+            Attribution(
                 "python-vlc",
                 params_vlc.VLC_PYTHON_VERSION,
                 "Olivier Aubert",
                 "GPL 2.0 and LGPL 2.1",
                 "https://github.com/oaubert/python-vlc",
             ),
-            (
+            Attribution(
                 "pydantic",
                 PYDANTIC_VERSION,
                 "Samuel Colvin",
@@ -100,21 +106,21 @@ class AboutDialog(QDialog, Ui_AboutDialog):
         ]
 
         attributions_gui = [
-            (
+            Attribution(
                 "Hack Font",
                 "3.003",
                 "Source Foundry",
                 "MIT License",
                 "http://sourcefoundry.org/hack/",
             ),
-            (
+            Attribution(
                 "Basic Icons",
                 None,
                 "Icongeek26",
                 "Flaticon License",
                 "https://www.flaticon.com/authors/icongeek26",
             ),
-            (
+            Attribution(
                 "Suru Icons",
                 None,
                 "Sam Hewitt",
@@ -123,15 +129,13 @@ class AboutDialog(QDialog, Ui_AboutDialog):
             ),
         ]
 
-        attributions_txt = generate_attributions(attributions)
-        attributions_python_txt = "<h3>Python packages</h3>" + generate_attributions(
-            attributions_python
-        )
-        attributions_gui_txt = "<h3>Graphics</h3>" + generate_attributions(
-            attributions_gui
-        )
+        attributions_txt = [
+            "<style>p, h3 {text-align: center;}</style>",
+            generate_attributions(attributions_general),
+            "<h3>Python packages</h3>",
+            generate_attributions(attributions_python),
+            "<h3>Graphics</h3>",
+            generate_attributions(attributions_gui),
+        ]
 
-        meta = "<style>p, h3 {text-align: center;}</style>"
-        self.attributionsBox.setText(
-            meta + attributions_txt + attributions_python_txt + attributions_gui_txt
-        )
+        self.attributionsBox.setText("\n".join(attributions_txt))
