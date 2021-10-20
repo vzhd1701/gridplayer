@@ -17,8 +17,8 @@ def is_the_only_instance():
 # https://github.com/munki/munki/blob/main/code/client/munkilib/powermgr.py
 # needs pyobjc-core, pyobjc-framework-Cocoa
 
-# See http://michaellynn.github.io/2015/08/08/learn-you-a-better-pyobjc-bridgesupport-signature/
-# for a primer on the bridging techniques used here
+# http://michaellynn.github.io/2015/08/08/learn-you-a-better-pyobjc-bridgesupport-signature/
+# see for a primer on the bridging techniques used here
 
 # https://developer.apple.com/documentation/iokit/iopowersources.h?language=objc
 IOKit = NSBundle.bundleWithIdentifier_("com.apple.framework.IOKit")
@@ -32,7 +32,7 @@ functions = [
     ("IOPSGetProvidingPowerSourceType", b"@@"),
 ]
 
-objc.loadBundleFunctions(IOKit, globals(), functions)
+objc.loadBundleFunctions(IOKit, globals(), functions)  # noqa: WPS421
 
 
 def assertNoIdleSleep(reason=None):
@@ -42,11 +42,9 @@ def assertNoIdleSleep(reason=None):
 
     if not reason:
         reason = "Some reason"
-    # pylint: disable=undefined-variable
-    errcode, assertID = IOPMAssertionCreateWithName(
+    errcode, assertID = IOPMAssertionCreateWithName(  # noqa: F821
         kIOPMAssertionTypeNoIdleSleep, kIOPMAssertionLevelOn, reason, None
     )
-    # pylint: enable=undefined-variable
     if errcode:
         return None
     return assertID
@@ -55,5 +53,4 @@ def assertNoIdleSleep(reason=None):
 def removeNoIdleSleepAssertion(assertion_id):
     """Uses IOKit functions to remove a "no idle sleep" assertion."""
     if assertion_id:
-        # pylint: disable=undefined-variable
-        IOPMAssertionRelease(assertion_id)
+        IOPMAssertionRelease(assertion_id)  # noqa: F821

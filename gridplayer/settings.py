@@ -84,5 +84,9 @@ class Settings(object):
     def sync(self):
         self.settings.sync()
 
+    @property
+    def filename(self):
+        return self.settings.fileName()
+
 
 settings = Settings()

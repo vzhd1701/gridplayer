@@ -59,13 +59,14 @@ exclude = [
 [tool.flakehell.plugins]
 # Maybe disable
 # WPS211 too many arguments
-# WPS214 too many methods
 # WPS602 forbids @staticmethod
 # E800 Found commented out code
 # WPS306 forces to use class ClassName(object) <- purely for consistency
 
 # Disabled [personal preference]
 # WPS111 short names
+# !! WPS214 too many methods
+#   enable later and refactor
 # WPS305 forbids f-strings
 # WPS326 implicit line concat
 # Docstings, don't have any
@@ -86,11 +87,19 @@ flake8-quotes = ["+*", "-Q000"]
 flake8-rst-docstrings = ["-*"]
 flake8-docstrings = ["-*"]
 flake8-darglint = ["-*"]
-wemake-python-styleguide = ["+*", "-WPS111", "-WPS323", "-WPS326", "-WPS305", "-WPS226"]
+wemake-python-styleguide = ["+*", "-WPS111", "-WPS214", "-WPS323", "-WPS326", "-WPS305", "-WPS226"]
 
 #[tool.flakehell.exceptions."evernote_backup/version.py"]
 ## I like it this way
 #wemake-python-styleguide = ["-WPS410"]
+
+[tool.flakehell.exceptions."gridplayer/utils/"]
+# Crossplatform functions
+# WPS110 Wrong names
+# WPS339 0x0000 values
+# WPS433 Nested imports
+# WPS440 Protected modules
+wemake-python-styleguide = ["+*", "-WPS110", "-WPS339", "-WPS433", "-WPS440"]
 
 [tool.black]
 line-length = 88

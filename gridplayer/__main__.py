@@ -14,7 +14,6 @@ from gridplayer.dialogs.exception import ExceptionDialog
 from gridplayer.resources import init_resources
 from gridplayer.utils import log_config
 from gridplayer.utils.darkmode import is_dark_mode
-from gridplayer.utils.log import log_environment
 from gridplayer.utils.log_config import QtLogHandler
 from gridplayer.version import (
     __app_id__,
@@ -171,6 +170,8 @@ def main():
     log = logging.getLogger("MAIN")
 
     log.info(f"{__display_name__} v.{__version__} starting")
+
+    from gridplayer.utils.log import log_environment
 
     log_environment()
 

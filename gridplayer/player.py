@@ -143,7 +143,6 @@ class Player(QtWidgets.QWidget):
         self.is_single_mode = False
         self.pre_single_mode_states = {}
         self.saved_playlist = None
-        self.is_screensaver_off = False
 
         self.setMouseTracking(True)
         self.setAcceptDrops(True)
@@ -159,6 +158,8 @@ class Player(QtWidgets.QWidget):
         self.mouse_timer.timeout.connect(self.check_mouse_state)
         if settings.get("misc/mouse_hide"):
             self.mouse_timer.start(1000 * settings.get("misc/mouse_hide_timeout"))
+
+        self.keepawake = keepawake.KeepAwake()
 
         self.videogrid = QtWidgets.QGridLayout(self)
         self.videogrid.setSpacing(0)
@@ -565,13 +566,10 @@ class Player(QtWidgets.QWidget):
         is_something_playing = next(playing_videos, False)
 
         if is_something_playing:
-            if not self.is_screensaver_off:
-                keepawake.keepawake_on()
-
-                self.is_screensaver_off = True
-        elif self.is_screensaver_off:
-            keepawake.keepawake_off()
-            self.is_screensaver_off = False
+            if not self.keepawake.is_screensaver_off:
+                self.keepawake.screensaver_off()
+        elif self.keepawake.is_screensaver_off:
+            self.keepawake.screensaver_on()
 
     def seek_shift_all(self, percent):
         self.seek_shift.emit(percent)
@@ -666,9 +664,8 @@ class Player(QtWidgets.QWidget):
         self.remove_video_blocks(*list(self.video_blocks.values()))
         self.reload_video_grid()
 
-        if self.is_screensaver_off:
-            keepawake.keepawake_off()
-            self.is_screensaver_off = False
+        if self.keepawake.is_screensaver_off:
+            self.keepawake.screensaver_on()
 
         if self.process_manager is not None:
             self.process_manager.cleanup()
@@ -740,9 +737,8 @@ class Player(QtWidgets.QWidget):
         if changes["player/inhibit_screensaver"]:
             if settings.get("player/inhibit_screensaver"):
                 self.screensaver_check()
-            elif self.is_screensaver_off:
-                keepawake.keepawake_off()
-                self.is_screensaver_off = False
+            elif self.keepawake.is_screensaver_off:
+                self.keepawake.screensaver_on()
 
     def is_reload_needed(self, previous_settings):
         checks = (

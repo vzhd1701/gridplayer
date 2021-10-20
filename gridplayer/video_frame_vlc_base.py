@@ -12,11 +12,8 @@ import vlc
 from PyQt5 import QtCore
 from PyQt5.QtCore import QObject
 
-from gridplayer.utils.multiprocessing import (
-    CommandLoopThreaded,
-    InstanceProcess,
-    ProcessManager,
-)
+from gridplayer.utils.command_loop import CommandLoopThreaded
+from gridplayer.utils.process_manager import InstanceProcess, ProcessManager
 
 # Prepare `vsnprintf` function
 if platform.system() == "Windows":
@@ -462,6 +459,6 @@ class ProcessManagerVLC(ProcessManager):
         log_level = settings.get("logging/log_level")
         log_level_vlc = settings.get("logging/log_level_vlc")
 
-        return self.instance_class(
-            self.limit, self._self_pipe, self.log_queue, log_level, log_level_vlc
+        return self._instance_class(
+            self._limit, self._self_pipe, self._log_queue, log_level, log_level_vlc
         )

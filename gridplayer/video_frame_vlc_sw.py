@@ -12,7 +12,7 @@ from PyQt5.QtGui import QBrush, QImage, QPainter, QPixmap
 from PyQt5.QtWidgets import QFrame, QGraphicsPixmapItem, QStackedLayout
 
 from gridplayer.params_static import VideoAspect
-from gridplayer.utils.multiprocessing import SafeSharedMemory, releasing
+from gridplayer.utils.safe_shared_memory import SafeSharedMemory, releasing
 from gridplayer.video_frame_vlc_base import (
     InstanceProcessVLC,
     VlcPlayerThreaded,
@@ -57,8 +57,8 @@ class ImageDecoder:
     def get_libvlc_lock_callback(self):
         @vlc.CallbackDecorators.VideoLockCb
         def _cb(opaque, planes):
-            self._shared_memory.acquire()
-            planes[0] = self._shared_memory.get_ptr()
+            self._shared_memory.lock.acquire()
+            planes[0] = self._shared_memory.ptr
 
         return _cb
 
@@ -72,7 +72,7 @@ class ImageDecoder:
                 # Callback is firing while on pause,
                 # so check if the frame content actually changed
                 if self.is_paused:
-                    new_frame_head = bytes(self._shared_memory.get_memory_buf()[:1024])
+                    new_frame_head = bytes(self._shared_memory.memory.buf[:1024])
                     if new_frame_head == self._prev_frame_head:
                         return
                     else:
@@ -87,10 +87,9 @@ class ImageDecoder:
 
         # make sure that memory lock released in case it was locked mid-callback
         with contextlib.suppress(ValueError):
-            self._shared_memory.release()
+            self._shared_memory.lock.release()
 
         self._shared_memory.close()
-        self._shared_memory.unlink()
 
 
 class InstanceProcessVLCSW(InstanceProcessVLC):
@@ -253,7 +252,7 @@ class VideoDriverVLCSW(VLCVideoDriverThreaded):
         try:
             with self._shared_memory:
                 px = QImage(
-                    self._shared_memory.get_memory_buf(),
+                    self._shared_memory.memory.buf,
                     self._width,
                     self._height,
                     QImage.Format_RGB32,

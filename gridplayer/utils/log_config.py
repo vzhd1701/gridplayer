@@ -1,33 +1,22 @@
 import logging
-import logging.config
-import logging.handlers
-import multiprocessing
 import sys
-import time
-from random import random
+from logging.config import dictConfig
+from logging.handlers import QueueHandler, QueueListener
 
 from PyQt5 import QtCore
 
 DISABLED = logging.CRITICAL + 1
 
 
-class QueueListenerRoot(logging.handlers.QueueListener):
+class QueueListenerRoot(QueueListener):
     def __init__(self, queue):
         super().__init__(queue, *logging.root.handlers, respect_handler_level=True)
 
     def handle(self, record):
-        record = self.prepare(record)
-
         if record.levelno < logging.root.level:
             return
 
-        for handler in self.handlers:
-            if not self.respect_handler_level:
-                process = True
-            else:
-                process = record.levelno >= handler.level
-            if process:
-                handler.handle(record)
+        super().handle(record)
 
 
 class StreamToLogger(object):
@@ -45,10 +34,10 @@ class StreamToLogger(object):
             self.logger.log(self.log_level, line.rstrip())
 
     def flush(self):
-        pass
+        """Not used"""
 
 
-class QtLogHandler:
+class QtLogHandler(object):
     log_level_map = {
         QtCore.QtDebugMsg: logging.DEBUG,
         QtCore.QtInfoMsg: logging.INFO,
@@ -81,7 +70,8 @@ def config_log(log_path, log_level):
         "formatters": {
             # Modify log message format here or replace with your custom formatter class
             "my_formatter": {
-                "format": "%(asctime)s (%(process)d) | %(name)s | %(levelname)s | %(message)s"
+                "format": "%(asctime)s (%(process)d) | %(name)s |"
+                " %(levelname)s | %(message)s"
             }
         },
         "handlers": {
@@ -90,7 +80,7 @@ def config_log(log_path, log_level):
                 "class": "logging.StreamHandler",
                 "level": "DEBUG",
                 "formatter": "my_formatter",
-                "stream": sys.__stderr__,
+                "stream": sys.__stderr__,  # noqa: WPS609
             },
             "file": {
                 # Sends all log messages to a file
@@ -109,7 +99,7 @@ def config_log(log_path, log_level):
         },
     }
 
-    logging.config.dictConfig(config)
+    dictConfig(config)
 
 
 def set_root_level(log_level):
@@ -125,11 +115,7 @@ def override_stdout():
 
 
 def child_process_config(queue, log_level):
-    # for h in logging.root.handlers[:]:
-    #     logging.root.removeHandler(h)
-    #     h.close()
-
-    h = logging.handlers.QueueHandler(queue)
+    h = QueueHandler(queue)
     root = logging.getLogger()
     root.addHandler(h)
     root.setLevel(log_level)

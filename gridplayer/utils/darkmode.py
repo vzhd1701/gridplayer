@@ -7,17 +7,6 @@ SYSTEM = platform.system()
 
 logger = logging.getLogger(__name__)
 
-# Doesn't work by itself, need to implement dark mode in app
-# if SYSTEM == "Windows":
-#     from PyQt5.QtCore import QSettings
-#     def is_dark_mode():
-#         settings = QSettings(
-#             "HKEY_CURRENT_USER\\Software\\Microsoft\\Windows\\CurrentVersion"
-#             "\\Themes\\Personalize",
-#             QSettings.NativeFormat,
-#         )
-#         return settings.value("AppsUseLightTheme", 1) == 0
-
 if SYSTEM == "Darwin":
     from Foundation import NSUserDefaults as NSUD
 
@@ -29,4 +18,6 @@ if SYSTEM == "Darwin":
 else:
 
     def is_dark_mode():
-        return QPalette().color(QPalette.Window).lightness() < 128
+        brightness_threshold = 128
+
+        return QPalette().color(QPalette.Window).lightness() < brightness_threshold
