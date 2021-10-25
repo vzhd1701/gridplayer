@@ -1,15 +1,16 @@
 import logging
 import os
-import platform
-import sys
 from enum import Enum
 
-from PyQt5.QtCore import QSettings, QStandardPaths
+from PyQt5.QtCore import QSettings
 
 from gridplayer.params_static import GridMode, VideoAspect, VideoDriver
+from gridplayer.utils.app_dir import get_app_data_dir
 from gridplayer.utils.log_config import DISABLED
 
-default_settings = {
+SETTINGS = None
+
+_default_settings = {
     "player/video_driver": VideoDriver.VLC_HW,
     "player/video_driver_players": 4,
     "player/pause_background_videos": True,
@@ -33,43 +34,24 @@ default_settings = {
 }
 
 
-def is_portable():
-    if platform.system() != "Windows":
-        return False
-
-    portable_data_dir = os.path.join(os.path.dirname(sys.executable), "portable_data")
-
-    return os.path.isdir(portable_data_dir)
-
-
-def get_app_data_dir():
-    if is_portable():
-        return os.path.join(os.path.dirname(sys.executable), "portable_data")
-
-    app_dir = QStandardPaths.writableLocation(QStandardPaths.AppDataLocation)
-
-    if not os.path.isdir(app_dir):
-        os.makedirs(app_dir)
-
-    return app_dir
-
-
-class Settings(object):
+class _Settings(object):
     def __init__(self):
         settings_path = os.path.join(get_app_data_dir(), "settings.ini")
 
         self.settings = QSettings(settings_path, QSettings.IniFormat)
 
+        logging.getLogger("Settings").debug(f"Settings path: {settings_path}")
+
     def get(self, setting):
-        setting_type = type(default_settings[setting])
+        setting_type = type(_default_settings[setting])
 
         if issubclass(setting_type, Enum):
-            setting_value = self.settings.value(setting, default_settings[setting])
+            setting_value = self.settings.value(setting, _default_settings[setting])
             if isinstance(setting_value, str):
                 return setting_type(setting_value)
 
         return self.settings.value(
-            setting, default_settings[setting], type=setting_type
+            setting, _default_settings[setting], type=setting_type
         )
 
     def set(self, setting_name, setting_value):
@@ -79,7 +61,7 @@ class Settings(object):
         self.settings.setValue(setting_name, setting_value)
 
     def get_all(self):
-        return {k: self.get(k) for k in default_settings}
+        return {k: self.get(k) for k in _default_settings}
 
     def sync(self):
         self.settings.sync()
@@ -89,4 +71,10 @@ class Settings(object):
         return self.settings.fileName()
 
 
-settings = Settings()
+def Settings():
+    global SETTINGS  # noqa: WPS420
+
+    if not SETTINGS:
+        SETTINGS = _Settings()  # noqa: WPS442
+
+    return SETTINGS

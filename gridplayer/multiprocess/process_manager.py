@@ -8,8 +8,8 @@ from threading import Condition
 
 from PyQt5.QtCore import QObject, pyqtSignal
 
-from gridplayer.settings import settings
-from gridplayer.utils.command_loop import CommandLoop, CommandLoopThreaded
+from gridplayer.multiprocess.command_loop import CommandLoop, CommandLoopThreaded
+from gridplayer.settings import Settings
 from gridplayer.utils.log_config import QueueListenerRoot, child_process_config
 
 
@@ -29,19 +29,19 @@ class ProcessManager(CommandLoopThreaded, QObject):
     crash = pyqtSignal(str)
 
     def __init__(self, instance_class):
-        QObject.__init__(self)  # noqa: WPS609
-        CommandLoopThreaded.__init__(self, crash_func=self.crash_all)  # noqa: WPS609
+        QObject.__init__(self)
+        CommandLoopThreaded.__init__(self, crash_func=self.crash_all)
 
         self.instances = {}
 
         self._instances_killed = Condition()
 
-        self._limit = settings.get("player/video_driver_players")
+        self._limit = Settings().get("player/video_driver_players")
         self._instance_class = instance_class
 
         # Prevent opening multiple resource trackers
         if os.name != "nt":
-            from multiprocessing.resource_tracker import ensure_running
+            from multiprocessing.resource_tracker import ensure_running  # noqa: WPS433
 
             ensure_running()
 
@@ -72,7 +72,7 @@ class ProcessManager(CommandLoopThreaded, QObject):
         return instance
 
     def create_instance(self):
-        log_level = settings.get("logging/log_level")
+        log_level = Settings().get("logging/log_level")
 
         return self._instance_class(
             self._limit, self._self_pipe, self._log_queue, log_level
@@ -136,8 +136,8 @@ class ProcessManager(CommandLoopThreaded, QObject):
 
 class InstanceProcess(Process, CommandLoop):
     def __init__(self, players_per_instance, pm_callback_pipe, pm_log_queue, log_level):
-        Process.__init__(self)  # noqa: WPS609
-        CommandLoop.__init__(self)  # noqa: WPS609
+        Process.__init__(self)
+        CommandLoop.__init__(self)
 
         self.id = secrets.token_hex(8)
 
@@ -183,14 +183,12 @@ class InstanceProcess(Process, CommandLoop):
         if self._log_queue is not None:
             child_process_config(self._log_queue, self._log_level)
 
-        logger = logging.getLogger("InstanceProcess")
-
-        logger.debug("Starting process...")
-
         try:
             self.process_body()
         except Exception:
             traceback_txt = traceback.format_exc()
+
+            logger = logging.getLogger("InstanceProcess")
             logger.critical(traceback_txt)
 
             self.crash(traceback_txt)
@@ -198,12 +196,16 @@ class InstanceProcess(Process, CommandLoop):
             if self._log_queue is not None:
                 self._log_queue.close()
 
-        logger.debug("Terminating process...")
-
     # process
     def process_body(self):
+        logger = logging.getLogger("InstanceProcess")
+
+        logger.debug("Starting process...")
+
         self.init_instance()
         self.cmd_loop_run()
+
+        logger.debug("Terminating process...")
 
     # process
     def crash(self, traceback_txt):

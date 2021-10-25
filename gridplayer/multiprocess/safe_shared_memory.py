@@ -61,10 +61,10 @@ class SafeSharedMemory(object):
         return self._ptr
 
     def __enter__(self):
-        return self.lock.__enter__()  # noqa: WPS609
+        return self.lock.__enter__()
 
     def __exit__(self, *args):
-        return self.lock.__exit__(*args)  # noqa: WPS609
+        return self.lock.__exit__(*args)
 
     def close(self):
         if self._memory is None:

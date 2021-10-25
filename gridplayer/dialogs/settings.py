@@ -2,17 +2,18 @@ import contextlib
 import logging
 import os
 import platform
-import subprocess  # noqa: S404
+import subprocess
 
 from PyQt5.QtCore import QUrl
 from PyQt5.QtGui import QDesktopServices, QIcon
 from PyQt5.QtWidgets import QCheckBox, QComboBox, QDialog, QSpinBox
 
-from gridplayer import params_env, params_vlc, utils
+from gridplayer import params_env, utils
 from gridplayer.dialogs.messagebox import QCustomMessageBox
 from gridplayer.dialogs.settings_dialog_ui import Ui_SettingsDialog
 from gridplayer.params_static import GridMode, VideoAspect, VideoDriver
-from gridplayer.settings import get_app_data_dir, settings
+from gridplayer.settings import Settings
+from gridplayer.utils.app_dir import get_app_data_dir
 
 logger = logging.getLogger(__name__)
 
@@ -174,8 +175,8 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
         video_drivers_disabled = []
 
         video_drivers = {
-            VideoDriver.VLC_HW: f"Hardware <VLC {params_vlc.VLC_VERSION}>",
-            VideoDriver.VLC_SW: f"Software <VLC {params_vlc.VLC_VERSION}>",
+            VideoDriver.VLC_HW: f"Hardware <VLC {params_env.VLC_VERSION}>",
+            VideoDriver.VLC_SW: f"Software <VLC {params_env.VLC_VERSION}>",
             VideoDriver.DUMMY: "Dummy",
         }
 
@@ -201,7 +202,7 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
         }
 
         for setting, element in self.settings_map.items():
-            setting_value = settings.get(setting)
+            setting_value = Settings().get(setting)
 
             try:
                 set_function = elements_value_set_fun[type(element)]
@@ -228,7 +229,7 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
 
             new_value = getattr(element, value_attr)()
 
-            settings.set(setting, new_value)
+            Settings().set(setting, new_value)
 
     def accept(self):
         self.save_settings()

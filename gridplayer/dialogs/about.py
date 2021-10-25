@@ -7,7 +7,7 @@ from PyQt5.QtCore import QT_VERSION_STR
 from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import QDialog
 
-from gridplayer import params_vlc
+from gridplayer import params_env
 from gridplayer.dialogs.about_dialog_ui import Ui_AboutDialog
 from gridplayer.version import (
     __app_bugtracker_url__,
@@ -91,7 +91,7 @@ class AboutDialog(QDialog, Ui_AboutDialog):
             ),
             Attribution(
                 "python-vlc",
-                params_vlc.VLC_PYTHON_VERSION,
+                params_env.VLC_PYTHON_VERSION,
                 "Olivier Aubert",
                 "GPL 2.0 and LGPL 2.1",
                 "https://github.com/oaubert/python-vlc",

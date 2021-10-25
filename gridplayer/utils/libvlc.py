@@ -1,17 +1,14 @@
 import ctypes
-import importlib.util
 import logging
 import os
 import platform
 import re
 import sys
+from importlib.util import find_spec
 
 from gridplayer import params_env
 
 logger = logging.getLogger(__name__)
-
-VLC_PYTHON_VERSION = None
-VLC_VERSION = None
 
 if platform.system() == "Windows":
     EMBED_VLC_PATH = os.path.join(os.path.dirname(sys.executable), "libVLC")
@@ -20,7 +17,6 @@ elif platform.system() == "Darwin":
     EMBED_VLC_PATH_ROOT = os.path.join(os.path.dirname(sys.executable), "libVLC")
 
     EMBED_VLC_PATH = os.path.join(EMBED_VLC_PATH_ROOT, "plugins")
-    # EMBED_VLC_LIB_PATH = os.path.join(EMBED_VLC_PATH_ROOT, "lib", "libvlc.dylib")
     EMBED_VLC_LIB_PATH = os.path.join(EMBED_VLC_PATH_ROOT, "lib", "libvlc.5.dylib")
 elif params_env.IS_SNAP:
     EMBED_VLC_PATH_ROOT = os.path.join(
@@ -46,33 +42,33 @@ def pre_import_embed_vlc():
         return
 
     if platform.system() == "Darwin" and "PYTHON_VLC_LIB_PATH" in os.environ:
-        # vlc_core = os.path.join(EMBED_VLC_PATH_ROOT, "lib", "libvlccore.dylib")
         vlc_core = os.path.join(EMBED_VLC_PATH_ROOT, "lib", "libvlccore.9.dylib")
         ctypes.CDLL(vlc_core)
 
 
+def get_python_vlc_version_pyinstaller():
+    version_file = os.path.join(sys._MEIPASS, "python-vlc.version")  # noqa: WPS437
+
+    with open(version_file, "r", encoding="utf-8") as f:
+        version_txt = f.read()
+
+    return version_txt.strip()
+
+
 def get_python_vlc_version():
-    if params_env.IS_PYINSTALLER:
-        version_file = os.path.join(sys._MEIPASS, "python-vlc.version")
+    vlc_lib_path = find_spec("vlc").origin
 
-        with open(version_file, "r", encoding="utf-8") as f:
-            version_txt = f.read()
+    with open(vlc_lib_path, "r", encoding="utf-8") as f:
+        vlc_src = f.read()
 
-        return version_txt.strip()
-    else:
-        vlc_lib_path = importlib.util.find_spec("vlc").origin
-
-        with open(vlc_lib_path, "r", encoding="utf-8") as f:
-            vlc_src = f.read()
-
-        return re.search(r'__version__ = "([^"]*)', vlc_src).group(1)
+    return re.search('__version__ = "([^"]*)', vlc_src).group(1)
 
 
 def get_vlc_version():
     pre_import_embed_vlc()
 
     try:
-        import vlc
+        import vlc  # noqa: WPS433
     except (FileNotFoundError, NotImplementedError):
         return None
 
@@ -87,9 +83,6 @@ def get_vlc_version():
 
 
 def init_vlc():
-    global VLC_PYTHON_VERSION
-    global VLC_VERSION
-
     if EMBED_VLC_PATH:
         logger.debug(f"EMBED_VLC_PATH: {EMBED_VLC_PATH}")
         logger.debug(f"EMBED_VLC_LIB_PATH: {EMBED_VLC_LIB_PATH}")
@@ -102,11 +95,17 @@ def init_vlc():
     else:
         logger.info("No embedded vlc path, will try to find system VLC...")
 
-    VLC_PYTHON_VERSION = get_python_vlc_version()
-    VLC_VERSION = get_vlc_version()
+    if params_env.IS_PYINSTALLER:
+        vlc_python_version = get_python_vlc_version_pyinstaller()
+    else:
+        vlc_python_version = get_python_vlc_version()
 
-    logger.debug(f"python-vlc {VLC_PYTHON_VERSION}")
-    logger.debug(f"VLC {VLC_VERSION}")
+    vlc_version = get_vlc_version()
 
-    if VLC_VERSION is None:
+    logger.debug(f"python-vlc {vlc_python_version}")
+    logger.debug(f"VLC {vlc_version}")
+
+    if vlc_version is None:
         raise FileNotFoundError
+
+    return vlc_version, vlc_python_version

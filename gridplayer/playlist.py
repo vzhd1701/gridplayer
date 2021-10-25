@@ -1,99 +1,145 @@
 import logging
 import os
+from typing import List, Optional
 
-from gridplayer.params import PlaylistParams, VideoParams
-from gridplayer.settings import settings
+from pydantic import BaseModel, Field
+
+from gridplayer.params_static import GridMode, WindowState
+from gridplayer.settings import Settings
+from gridplayer.video import Video
 
 logger = logging.getLogger(__name__)
 
 
-def parse_playlist(playlist_txt):
-    playlist_in = [l.strip() for l in playlist_txt.splitlines() if l.strip()]
+class Playlist(BaseModel):
+    grid_mode: GridMode = Field(
+        default_factory=lambda: Settings().get("playlist/grid_mode")
+    )
+    window_state: Optional[WindowState]
+    videos: Optional[List[Video]]
 
-    playlist = {
-        "params": None,
-        "videos": [],
-    }
+    @classmethod
+    def read(cls, filename):
+        with open(filename, "r", encoding="utf-8") as f:
+            playlist_txt = f.read()
 
-    params_vids = {}
+        return cls.parse(playlist_txt)
 
-    if playlist_in[0] == "#GRIDPLAYER":
-        config_lines = (line for line in playlist_in if line.startswith("#"))
+    @classmethod
+    def parse(cls, playlist_txt):
+        playlist_in = [pl.strip() for pl in playlist_txt.splitlines() if pl.strip()]
 
-        for config in config_lines:
-            if config.startswith("#P:"):
-                playlist["params"] = PlaylistParams.parse_raw(config[3:])
-            if config.startswith("#V"):
-                video_idx, video_params = config[2:].split(":", maxsplit=1)
-                params_vids[int(video_idx)] = VideoParams.parse_raw(video_params)
+        if playlist_in[0] != "#GRIDPLAYER":
+            raise ValueError("Playlist format is not valid")
 
-    video_lines = (line for line in playlist_in if not line.startswith("#") and line)
+        playlist = cls._parse_params(playlist_in)
+        playlist.videos = cls._parse_videos(playlist_in)
 
-    for video_idx, video_path in enumerate(video_lines):
+        return playlist
+
+    def save(self, filename):
+        playlist_txt = self.dumps()
+
+        with open(filename, "w", encoding="utf-8") as f:
+            f.write(playlist_txt)
+
+    def dumps(self):
+        playlist_config = []
+        playlist_vids = []
+
+        playlist_config.append("#GRIDPLAYER")
+
+        playlist_config.append(
+            "#P:{0}".format(
+                self.json(exclude_none=True, exclude=_excluded_fields_playlist())
+            )
+        )
+
+        for idx, video in enumerate(self.videos):
+            playlist_config.append(
+                "#V{0}:{1}".format(
+                    idx,
+                    video.json(exclude_none=True, exclude=_excluded_fields_video()),
+                )
+            )
+            playlist_vids.append(video.file_path)
+
+        return "\n".join(playlist_config + playlist_vids + [""])
+
+    @classmethod
+    def _parse_params(cls, playlist_in):
+        playlist_params = (
+            cls.parse_raw(c[3:]) for c in playlist_in if c.startswith("#P:")
+        )
+        return next(playlist_params, cls())
+
+    @classmethod
+    def _parse_videos(cls, playlist_in):
+        videos = []
+        video_params = _parse_video_params(playlist_in)
+
+        for idx, path in enumerate(_parse_video_paths(playlist_in)):
+            video = video_params.get(idx, Video())
+            video.file_path = path
+
+            videos.append(video)
+
+        return videos
+
+
+def _parse_video_params(playlist_in):
+    video_param_lines = (c for c in playlist_in if c.startswith("#V"))
+
+    video_params = {}
+    for vp in video_param_lines:
+        v_idx, v_params = vp[2:].split(":", maxsplit=1)
+
+        video_params[v_idx] = Video.parse_raw(v_params)
+
+    return video_params
+
+
+def _parse_video_paths(playlist_in):
+    video_paths = []
+
+    video_lines = (line for line in playlist_in if line and not line.startswith("#"))
+
+    for video_path in video_lines:
         video_path = os.path.normpath(video_path)
 
         if not (os.path.isfile(video_path) and os.access(video_path, os.R_OK)):
             logger.warning(f"{video_path} file is not accessible!")
             continue
 
-        video_params = params_vids.get(video_idx)
+        video_paths.append(video_path)
 
-        playlist["videos"].append({"path": video_path, "params": video_params})
-
-    return playlist
+    return video_paths
 
 
-def dumps_playlist(playlist):
-    playlist_config = []
-    playlist_vids = []
+def _excluded_fields_playlist():
+    excluded_fields_playlist = {"videos"}
 
-    excluded_fields_playlist = set()
-    excluded_fields_video = set()
+    exclude_list = [
+        ("playlist/save_window", "window_state"),
+    ]
 
-    if not settings.get("playlist/save_window"):
-        excluded_fields_playlist.add("window_state")
+    for setting, field in exclude_list:
+        if not Settings().get(setting):
+            excluded_fields_playlist.add(field)
 
-    if not settings.get("playlist/save_position"):
-        excluded_fields_video.add("current_position")
-
-    if not settings.get("playlist/save_state"):
-        excluded_fields_video.add("is_paused")
-
-    playlist_config.append("#GRIDPLAYER")
-
-    if playlist["params"]:
-        playlist_config.append(
-            "#P:{0}".format(
-                playlist["params"].json(
-                    exclude_none=True, exclude=excluded_fields_playlist
-                )
-            )
-        )
-
-    for idx, vid in enumerate(playlist["videos"]):
-        if vid["params"]:
-            playlist_config.append(
-                "#V{0}:{1}".format(
-                    idx,
-                    vid["params"].json(
-                        exclude_none=True, exclude=excluded_fields_video
-                    ),
-                )
-            )
-        playlist_vids.append(vid["path"])
-
-    return "\n".join(playlist_config + playlist_vids + [""])
+    return excluded_fields_playlist
 
 
-def read_playlist(filename):
-    with open(filename, "r", encoding="utf-8") as f:
-        playlist = f.read()
+def _excluded_fields_video():
+    excluded_fields_video = {"file_path"}
 
-    return parse_playlist(playlist)
+    exclude_list = [
+        ("playlist/save_position", "current_position"),
+        ("playlist/save_state", "is_paused"),
+    ]
 
+    for setting, field in exclude_list:
+        if not Settings().get(setting):
+            excluded_fields_video.add(field)
 
-def save_playlist(filename, playlist):
-    playlist_txt = dumps_playlist(playlist)
-
-    with open(filename, "w", encoding="utf-8") as f:
-        f.write(playlist_txt)
+    return excluded_fields_video

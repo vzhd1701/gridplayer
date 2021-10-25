@@ -23,6 +23,26 @@ else:
         "AF_UNIX",
     )
 
+if platform.system() == "Darwin":
+    from Foundation import NSWorkspace
+
+    from gridplayer.version import __app_id__
+
+    def is_the_only_instance():
+        instances_count = sum(
+            app.bundleIdentifier() == __app_id__
+            for app in NSWorkspace.sharedWorkspace().runningApplications()
+        )
+
+        return instances_count == 1
+
+
+else:
+
+    def is_the_only_instance():
+        """Dummy"""
+
+
 logger = logging.getLogger(__name__)
 
 
@@ -118,7 +138,7 @@ def _is_socket_working():
     return False
 
 
-def delegate_if_not_primary(argv):
+def is_delegated_to_primary(argv):
     input_files = filter(os.path.isfile, argv[1:])
 
     file_paths = [os.path.abspath(f) for f in input_files]

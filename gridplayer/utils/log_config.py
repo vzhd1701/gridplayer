@@ -80,7 +80,7 @@ def config_log(log_path, log_level):
                 "class": "logging.StreamHandler",
                 "level": "DEBUG",
                 "formatter": "my_formatter",
-                "stream": sys.__stderr__,  # noqa: WPS609
+                "stream": sys.__stderr__,
             },
             "file": {
                 # Sends all log messages to a file
@@ -116,6 +116,7 @@ def override_stdout():
 
 def child_process_config(queue, log_level):
     h = QueueHandler(queue)
+
     root = logging.getLogger()
     root.addHandler(h)
     root.setLevel(log_level)

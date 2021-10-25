@@ -9,12 +9,13 @@ from PyQt5 import Qt
 from PyQt5.QtWidgets import QStyleFactory
 
 from gridplayer import params_env
-from gridplayer.settings import settings
+from gridplayer.version import __display_name__, __version__
 
 
 def log_environment():
-
     log = logging.getLogger("MAIN")
+
+    log.info(f"{__display_name__} v.{__version__} starting")
 
     if log.getEffectiveLevel() != logging.DEBUG:
         return
@@ -40,7 +41,6 @@ def log_environment():
         f"sys.executable: {sys.executable}",
         f"os.getcwd: {os.getcwd()}",
         f"QT Styles: {QStyleFactory.keys()}",
-        f"Settings path: {settings.filename}",
         "========",
         f"ENV\n {pretty_environment}",
         "========",

@@ -52,9 +52,13 @@ max_line_length = 88
 exclude = [
     "gridplayer/*_ui.py",
     "gridplayer/resources_bin.py",
+    "gridplayer/player/__init__.py",
+    "gridplayer/player/mixins/__init__.py",
     "tests/*.py",
     "gridplayer/resources/*",
 ]
+# Pydantic config nested class
+nested_classes_whitelist=["Config"]
 
 [tool.flakehell.plugins]
 # Maybe disable
@@ -65,33 +69,44 @@ exclude = [
 
 # Disabled [personal preference]
 # WPS111 short names
-# !! WPS214 too many methods
-#   enable later and refactor
+# WPS425 boolean non-keyword
+#   Qt setAttribute functions
 # WPS305 forbids f-strings
 # WPS326 implicit line concat
 # Docstings, don't have any
 # WPS226 String constant overuse
+# WPS609 direct call to __init__
+
+# !! Enable later and refactor
+# WPS211 too many arguments
+# WPS214 too many methods
+# WPS432 Magic numbers
 
 # Exceptions [false positives & formatting]
 # WPS323 Found `%` string formatting
+# WPS317 incorrect multi-line parameters <- black formatting
 # C812 trailing comma <- handled by black
 # E203 whitespace before : <- handled by black
 # W503 Line break occurred before a binary operator
+
+# Bandit
+# S404 subprocess module
 
 # E800 TEMPORARILY DISABLE COMMENTED CODE
 #flake8-eradicate = ["+*", "-E800"]
 
 pycodestyle = ["+*", "-E203", "-W503"]
+flake8-bandit = ["+*", "-S404"]
 flake8-commas = ["+*", "-C812"]
 flake8-quotes = ["+*", "-Q000"]
 flake8-rst-docstrings = ["-*"]
 flake8-docstrings = ["-*"]
 flake8-darglint = ["-*"]
-wemake-python-styleguide = ["+*", "-WPS111", "-WPS214", "-WPS323", "-WPS326", "-WPS305", "-WPS226"]
+wemake-python-styleguide = ["+*", "-WPS111", "-WPS211", "-WPS214", "-WPS317", "-WPS323", "-WPS326", "-WPS305", "-WPS226", "-WPS432", "-WPS425", "-WPS609"]
 
-#[tool.flakehell.exceptions."evernote_backup/version.py"]
-## I like it this way
-#wemake-python-styleguide = ["-WPS410"]
+[tool.flakehell.exceptions."gridplayer/version.py"]
+# I like it this way
+wemake-python-styleguide = ["-WPS410"]
 
 [tool.flakehell.exceptions."gridplayer/utils/"]
 # Crossplatform functions
@@ -100,6 +115,17 @@ wemake-python-styleguide = ["+*", "-WPS111", "-WPS214", "-WPS323", "-WPS326", "-
 # WPS433 Nested imports
 # WPS440 Protected modules
 wemake-python-styleguide = ["+*", "-WPS110", "-WPS339", "-WPS433", "-WPS440"]
+
+[tool.flakehell.exceptions."gridplayer/widgets/video_overlay_icons.py"]
+# Manually drawn icons, need to do something about them later
+# WPS204 overused expression
+# WPS213 too many expressions
+# WPS221 Jones Complexity
+wemake-python-styleguide = ["+*", "-WPS204", "-WPS213", "-WPS221"]
+
+[tool.flakehell.exceptions."gridplayer/widgets/video_frame_vlc_*w.py"]
+# WPS615 unpythonic setter
+wemake-python-styleguide = ["+*", "-WPS615"]
 
 [tool.flakehell.exceptions."gridplayer/dialogs/messagebox.py"]
 # Overriding Qt class
@@ -110,6 +136,16 @@ wemake-python-styleguide = ["+*", "-WPS211", "-WPS404"]
 [tool.flakehell.exceptions."gridplayer/dialogs/settings.py"]
 # WPS201 too many imports
 wemake-python-styleguide = ["+*", "-WPS201"]
+
+[tool.flakehell.exceptions."gridplayer/params_static.py"]
+# WPS115 upper-case constant in a class
+# Flag enums
+wemake-python-styleguide = ["+*", "-WPS115"]
+
+
+[tool.flakehell.exceptions."gridplayer/__main__.py"]
+# WPS433 nested imports
+wemake-python-styleguide = ["+*", "-WPS433"]
 
 [tool.black]
 line-length = 88

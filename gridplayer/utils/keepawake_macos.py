@@ -1,17 +1,5 @@
 import objc
-from Foundation import NSBundle, NSWorkspace
-
-from gridplayer.version import __app_id__
-
-
-def is_the_only_instance():
-    instances_count = sum(
-        app.bundleIdentifier() == __app_id__
-        for app in NSWorkspace.sharedWorkspace().runningApplications()
-    )
-
-    return instances_count == 1
-
+from Foundation import NSBundle
 
 # stolen from
 # https://github.com/munki/munki/blob/main/code/client/munkilib/powermgr.py

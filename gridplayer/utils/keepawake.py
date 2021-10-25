@@ -143,7 +143,10 @@ elif SYSTEM == "Linux":
 
 
 elif SYSTEM == "Darwin":
-    from gridplayer.utils.macos import assertNoIdleSleep, removeNoIdleSleepAssertion
+    from gridplayer.utils.keepawake_macos import (
+        assertNoIdleSleep,
+        removeNoIdleSleepAssertion,
+    )
 
     class KeepAwake(object):
         def __init__(self):
