@@ -1,4 +1,5 @@
 import logging
+from functools import partial
 
 from PyQt5.QtWidgets import QWidget
 
@@ -61,13 +62,17 @@ class VideoDriverManager(object):
                 )
                 self._process_manager.crash.connect(self.crash)
 
-            return self._video_drivers[video_driver_cfg](self._process_manager)
+            return partial(
+                self._video_drivers[video_driver_cfg],
+                process_manager=self._process_manager,
+            )
 
-        return self._video_drivers[video_driver_cfg]()
+        return self._video_drivers[video_driver_cfg]
 
     def cleanup(self):
         if self._process_manager:
             self._process_manager.cleanup()
+            self._process_manager = None
 
     def set_log_level_vlc(self, log_level):
         if self._process_manager:

@@ -94,7 +94,7 @@ class VideoBlock(QWidget):  # noqa: WPS230
         super().__init__(parent)
 
         # Internal
-        self.video_driver = video_driver
+        self.video_driver = video_driver(parent=self)
         self.id = secrets.token_hex(8)
 
         # Static Params
