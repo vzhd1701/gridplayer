@@ -191,7 +191,7 @@ class PlayerMenuMixin(object):
             "Random": {
                 "key": "R",
                 "func": lambda: self.seek_random.emit(),
-                "icon": "custom/011-random",
+                "icon": "loop-random",
             },
             "Open Playlist": {
                 "key": "Ctrl+O",
