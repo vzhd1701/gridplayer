@@ -1,7 +1,9 @@
 import logging
 from functools import partial
 
-from PyQt5.QtWidgets import QWidget
+from PyQt5.QtCore import QEvent, QObject, Qt, QTimer, pyqtSignal
+from PyQt5.QtGui import QInputEvent
+from PyQt5.QtWidgets import QApplication, QWidget
 
 from gridplayer.exceptions import PlayerException
 from gridplayer.params_static import VideoDriver
@@ -11,7 +13,6 @@ from gridplayer.player.mixins import (  # noqa: WPS235
     PlayerGridMixin,
     PlayerMenuMixin,
     PlayerMinorMixin,
-    PlayerMouseHiderMixin,
     PlayerPlaylistMixin,
     PlayerSettingsMixin,
     PlayerSingleModeMixin,
@@ -19,6 +20,7 @@ from gridplayer.player.mixins import (  # noqa: WPS235
 )
 from gridplayer.settings import Settings
 from gridplayer.utils.keepawake import KeepAwake
+from gridplayer.utils.misc import is_modal_open, qt_connect
 from gridplayer.widgets.video_frame_dummy import VideoFrameDummy
 from gridplayer.widgets.video_frame_vlc_base import ProcessManagerVLC
 from gridplayer.widgets.video_frame_vlc_hw import InstanceProcessVLCHW, VideoFrameVLCHW
@@ -82,6 +84,10 @@ class VideoDriverManager(object):
     def crash(self, traceback_txt):
         raise PlayerException(traceback_txt)
 
+    def set_video_count(self, video_count):
+        if video_count == 0:
+            self.cleanup()
+
 
 class ScreensaverManager(object):
     def __init__(self):
@@ -100,6 +106,55 @@ class ScreensaverManager(object):
             self.keepawake.screensaver_on()
 
 
+class PlayerMouseHideManager(QObject):
+    mouse_hidden = pyqtSignal()
+    mouse_shown = pyqtSignal()
+
+    move_events = {
+        QEvent.ShortcutOverride,
+        QEvent.NonClientAreaMouseMove,
+    }
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
+        self.is_no_videos = True
+
+        self.mouse_timer = QTimer()
+        self.mouse_timer.timeout.connect(self.hide_cursor)
+        if Settings().get("misc/mouse_hide"):
+            self.mouse_timer.start(1000 * Settings().get("misc/mouse_hide_timeout"))
+
+    def eventFilter(self, event_object, event) -> bool:
+        if isinstance(event, QInputEvent) or event.type() in self.move_events:
+            self.show_cursor()
+
+        return False
+
+    def hide_cursor(self):
+        self.mouse_timer.stop()
+
+        if self.is_no_videos or is_modal_open():
+            return
+
+        if QApplication.overrideCursor() != Qt.BlankCursor:
+            QApplication.setOverrideCursor(Qt.BlankCursor)
+
+            self.mouse_hidden.emit()
+
+    def show_cursor(self):
+        if QApplication.overrideCursor() == Qt.BlankCursor:
+            QApplication.restoreOverrideCursor()
+
+            self.mouse_shown.emit()
+
+        if Settings().get("misc/mouse_hide"):
+            self.mouse_timer.start(1000 * Settings().get("misc/mouse_hide_timeout"))
+
+    def set_video_count(self, video_count):
+        self.is_no_videos = video_count == 0
+
+
 class Player(  # noqa: WPS215
     PlayerMenuMixin,
     PlayerCommandsMixin,
@@ -107,7 +162,6 @@ class Player(  # noqa: WPS215
     # Utilities
     PlayerDragNDropMixin,
     PlayerSingleModeMixin,
-    PlayerMouseHiderMixin,
     # Base
     PlayerPlaylistMixin,
     PlayerGridMixin,
@@ -123,11 +177,21 @@ class Player(  # noqa: WPS215
 
         self.setMouseTracking(True)
 
-        self.driver_manager = VideoDriverManager()
+        self.driver_mgr = VideoDriverManager()
+        self.video_count_change.connect(self.driver_mgr.set_video_count)
 
-        self.screensaver_manager = ScreensaverManager()
+        self.screensaver_mgr = ScreensaverManager()
         self.playings_videos_count_change.connect(
-            self.screensaver_manager.screensaver_check
+            self.screensaver_mgr.screensaver_check
+        )
+
+        self.mouse_hide_mgr = PlayerMouseHideManager()
+        self.installEventFilter(self.mouse_hide_mgr)
+        qt_connect(
+            (self.video_count_change, self.mouse_hide_mgr.set_video_count),
+            (self.mouse_hide_mgr.mouse_hidden, self.update_active_reset),
+            (self.mouse_hide_mgr.mouse_hidden, lambda: self.hide_overlay.emit()),
+            (self.mouse_hide_mgr.mouse_shown, self.update_active_under_mouse),
         )
 
         self.reload_video_grid()

@@ -9,7 +9,6 @@ from gridplayer.dialogs.messagebox import QCustomMessageBox
 from gridplayer.params_static import WindowState
 from gridplayer.playlist import Playlist
 from gridplayer.utils.files import filter_valid_files
-from gridplayer.utils.misc import ModalWindow
 from gridplayer.video import Video
 
 logger = logging.getLogger(__name__)
@@ -57,10 +56,9 @@ class PlayerPlaylistMixin(object):
 
         logger.debug(f"Proposed playlist save path: {save_path}")
 
-        with ModalWindow(self):
-            file_path = QFileDialog.getSaveFileName(
-                self, "Where to save playlist", save_path, "*.gpls"
-            )
+        file_path = QFileDialog.getSaveFileName(
+            self, "Where to save playlist", save_path, "*.gpls"
+        )
 
         if not file_path[0]:
             return
@@ -172,10 +170,9 @@ class PlayerPlaylistMixin(object):
             self.raise_()
             self.activateWindow()
 
-            with ModalWindow(self):
-                ret = QCustomMessageBox.question(
-                    self, "Playlist", "Do you want to save the playlist?"
-                )
+            ret = QCustomMessageBox.question(
+                self, "Playlist", "Do you want to save the playlist?"
+            )
 
             if ret == QMessageBox.Yes:
                 self.cmd_save_playlist()
@@ -184,10 +181,9 @@ class PlayerPlaylistMixin(object):
         if os.path.isfile(file_path):
             file_name = os.path.basename(file_path)
 
-            with ModalWindow(self):
-                ret = QCustomMessageBox.question(
-                    self, "Playlist", f"Do you want to overwrite {file_name}?"
-                )
+            ret = QCustomMessageBox.question(
+                self, "Playlist", f"Do you want to overwrite {file_name}?"
+            )
 
             if ret != QMessageBox.No:
                 return True

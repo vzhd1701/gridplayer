@@ -35,7 +35,7 @@ def run_app():
     player.show()
 
     app.open_files.connect(player.process_arguments)
-    player.video_count_change.connect(app.video_count_change)
+    player.video_count_change.connect(app.set_video_count)
 
     # MacOS has OpenFile events
     if platform.system() != "Darwin":

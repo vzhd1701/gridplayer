@@ -2,7 +2,6 @@ from PyQt5.QtCore import QEvent
 
 from gridplayer.dialogs.messagebox import QCustomMessageBox
 from gridplayer.settings import Settings
-from gridplayer.utils.misc import ModalWindow
 
 
 class PlayerMinorMixin(object):
@@ -18,5 +17,4 @@ class PlayerMinorMixin(object):
         return self.mapFromGlobal(self.cursor().pos())
 
     def error(self, message):
-        with ModalWindow(self):
-            QCustomMessageBox.critical(self, "Error", message)
+        QCustomMessageBox.critical(self, "Error", message)

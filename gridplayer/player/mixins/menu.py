@@ -3,7 +3,6 @@ from PyQt5.QtGui import QIcon, QKeySequence
 from PyQt5.QtWidgets import QAction, QMenu, QProxyStyle, QStyle
 
 from gridplayer.params_static import GridMode, VideoAspect
-from gridplayer.utils.misc import ModalWindow
 
 MENU_STYLE = """
 QMenu::item { height:24px; padding: 2px; margin: 0 5px;}
@@ -36,8 +35,7 @@ class PlayerMenuMixin(object):
         self.actions = self._make_actions()
 
     def contextMenuEvent(self, event):
-        with ModalWindow(self):
-            self.make_menu().exec_(event.globalPos())
+        self.make_menu().exec_(event.globalPos())
 
         super().contextMenuEvent(event)
 

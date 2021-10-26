@@ -1,3 +1,6 @@
+from PyQt5.QtWidgets import QApplication
+
+
 def dict_swap_items(d, id1, id2):
     new_dict = {}
     for k, v in d.items():
@@ -10,17 +13,10 @@ def dict_swap_items(d, id1, id2):
     return new_dict
 
 
-class ModalWindow(object):
-    def __init__(self, parent):
-        self.parent = parent
+def is_modal_open():
+    return bool(QApplication.activeModalWidget() or QApplication.activePopupWidget())
 
-    def __enter__(self):
-        self.parent.is_modal_open = True
 
-        self.parent.mouse_timer.stop()
-        self.parent.mouse_reset()
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        self.parent.is_modal_open = False
-
-        self.parent.mouse_reset()
+def qt_connect(*connections):
+    for c_sig, c_slot in connections:
+        c_sig.connect(c_slot)

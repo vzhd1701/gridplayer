@@ -2,21 +2,19 @@ from gridplayer.dialogs.settings import SettingsDialog
 from gridplayer.params_static import VideoDriver
 from gridplayer.settings import Settings
 from gridplayer.utils import log_config
-from gridplayer.utils.misc import ModalWindow
 
 
 class PlayerSettingsMixin(object):
     def cmd_settings(self):
-        with ModalWindow(self):
-            previous_settings = Settings().get_all()
+        previous_settings = Settings().get_all()
 
-            settings_dialog = SettingsDialog(self)
-            settings_dialog.exec_()
+        settings_dialog = SettingsDialog(self)
+        settings_dialog.exec_()
 
-            self._apply_settings(previous_settings)
+        self._apply_settings(previous_settings)
 
-            if self._is_reload_needed(previous_settings):
-                self.reload_playlist()
+        if self._is_reload_needed(previous_settings):
+            self.reload_playlist()
 
     def _apply_settings(self, previous_settings):
         checks = (
@@ -40,11 +38,11 @@ class PlayerSettingsMixin(object):
         self.is_paused_change()
 
     def _apply_logging_log_level_vlc(self):
-        self.driver_manager.set_log_level_vlc(Settings().get("logging/log_level_vlc"))
+        self.driver_mgr.set_log_level_vlc(Settings().get("logging/log_level_vlc"))
 
     def _apply_logging_log_level(self):
         log_config.set_root_level(Settings().get("logging/log_level"))
-        self.driver_manager.set_log_level(Settings().get("logging/log_level"))
+        self.driver_mgr.set_log_level(Settings().get("logging/log_level"))
 
     def _is_reload_needed(self, previous_settings):
         checks = (

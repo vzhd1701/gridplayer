@@ -35,7 +35,7 @@ class MainApp(QApplication):
 
         return super().event(event)
 
-    def video_count_change(self, count):
+    def set_video_count(self, count):
         self._is_empty = count == 0
 
     def _handle_macos_fileopen(self, event):

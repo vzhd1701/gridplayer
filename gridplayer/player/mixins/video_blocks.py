@@ -1,5 +1,6 @@
 from PyQt5.QtCore import QEvent, pyqtSignal
 
+from gridplayer.utils.misc import is_modal_open, qt_connect
 from gridplayer.widgets.video_block import VideoBlock
 
 
@@ -47,7 +48,7 @@ class PlayerVideoBlocksMixin(object):
         return bool(self.video_blocks)
 
     def update_active_block(self, pos):
-        if self.is_modal_open:
+        if is_modal_open():
             return
 
         old_active_block = self.active_video_block
@@ -63,24 +64,27 @@ class PlayerVideoBlocksMixin(object):
         if old_active_block is not None and self.active_video_block != old_active_block:
             old_active_block.is_active = False
 
+    def update_active_under_mouse(self):
+        self.update_active_block(self.get_current_cursor_pos())
+
+    def update_active_reset(self):
+        self.update_active_block(None)
+
     def add_new_video_block(self, video):
         vb = VideoBlock(
-            video_driver=self.driver_manager.driver,
+            video_driver=self.driver_mgr.driver,
             parent=self,
         )
         vb.installEventFilter(self)
 
-        con_list = [
+        qt_connect(
             (vb.exit_request, self.close_video_block),
-            (vb.is_paused_change, self.is_paused_change),
+            (vb.is_paused_change, self.playing_count_change),
             (self.set_pause, vb.set_pause),
             (self.seek_shift, vb.seek_shift_percent),
             (self.seek_random, vb.seek_random),
             (self.hide_overlay, vb.hide_overlay),
-        ]
-
-        for c_sig, c_slot in con_list:
-            c_sig.connect(c_slot)
+        )
 
         vb.set_video(video)
 
@@ -139,11 +143,9 @@ class PlayerVideoBlocksMixin(object):
         self.remove_video_blocks(*list(self.video_blocks.values()))
         self.reload_video_grid()
 
-        self.is_paused_change()
+        self.playing_count_change()
 
-        self.driver_manager.cleanup()
-
-    def is_paused_change(self):
+    def playing_count_change(self):
         playing_videos_count = sum(
             True for v in self.video_blocks.values() if not v.video_params.is_paused
         )
