@@ -89,7 +89,7 @@ class PlayerPlaylistMixin(object):
             self.playlist = Playlist()
 
         for f_path in files:
-            self.add_new_video_block(f_path)
+            self.add_new_video_block(Video(file_path=f_path))
 
         self.reload_video_grid()
 

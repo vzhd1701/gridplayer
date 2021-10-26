@@ -1,5 +1,4 @@
 from gridplayer.player.mixins.commands import PlayerCommandsMixin
-from gridplayer.player.mixins.drag_n_drop import PlayerDragNDropMixin
 from gridplayer.player.mixins.grid import PlayerGridMixin
 from gridplayer.player.mixins.menu import PlayerMenuMixin
 from gridplayer.player.mixins.minor import PlayerMinorMixin

@@ -10,7 +10,10 @@ def dict_swap_items(d, id1, id2):
             new_dict[id1] = d[id1]
         elif k not in {id1, id2}:
             new_dict[k] = v
-    return new_dict
+
+    d.clear()
+    d.update(new_dict)
+    # return new_dict
 
 
 def is_modal_open():

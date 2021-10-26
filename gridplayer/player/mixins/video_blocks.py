@@ -1,7 +1,12 @@
+import logging
+
 from PyQt5.QtCore import QEvent, pyqtSignal
 
-from gridplayer.utils.misc import is_modal_open, qt_connect
+from gridplayer.utils.misc import dict_swap_items, is_modal_open, qt_connect
+from gridplayer.video import Video
 from gridplayer.widgets.video_block import VideoBlock
+
+logger = logging.getLogger(__name__)
 
 
 class PlayerVideoBlocksMixin(object):
@@ -19,56 +24,24 @@ class PlayerVideoBlocksMixin(object):
         self.video_blocks = {}
         self.active_video_block = None
 
-    def mouseMoveEvent(self, event):
-        self.update_active_block(event.pos())
-
-        super().mouseMoveEvent(event)
-
-    def mousePressEvent(self, event):
-        self.update_active_block(event.pos())
-
-        super().mousePressEvent(event)
-
-    def leaveEvent(self, event):
-        self.update_active_block(None)
-
-        super().leaveEvent(event)
+    def set_active_block(self, active_block):
+        self.active_video_block = active_block
 
     def event(self, event) -> bool:
-        if event.type() == QEvent.NonClientAreaMouseMove:
-            self.update_active_block(None)
-
         if event.type() in {QEvent.ShortcutOverride, QEvent.NonClientAreaMouseMove}:
             self.cmd_active("show_overlay")
 
         return super().event(event)
 
+    def cmd_active(self, command, *args):
+        if self.active_video_block is None:
+            return
+
+        getattr(self.active_video_block, command)(*args)
+
     @property
     def is_videos(self):
         return bool(self.video_blocks)
-
-    def update_active_block(self, pos):
-        if is_modal_open():
-            return
-
-        old_active_block = self.active_video_block
-
-        if pos is None:
-            self.active_video_block = None
-        else:
-            self.active_video_block = self.get_hover_video_block()
-
-            if self.active_video_block is not None:
-                self.active_video_block.is_active = True
-
-        if old_active_block is not None and self.active_video_block != old_active_block:
-            old_active_block.is_active = False
-
-    def update_active_under_mouse(self):
-        self.update_active_block(self.get_current_cursor_pos())
-
-    def update_active_reset(self):
-        self.update_active_block(None)
 
     def add_new_video_block(self, video):
         vb = VideoBlock(
@@ -105,21 +78,6 @@ class PlayerVideoBlocksMixin(object):
             vb.deleteLater()
 
         self.video_count_change.emit(len(self.video_blocks))
-
-    def get_hover_video_block(self):
-        visible_blocks_under_cursor = (
-            v
-            for v in self.video_blocks.values()
-            if v.isVisible() and v.is_under_cursor()
-        )
-
-        return next(visible_blocks_under_cursor, None)
-
-    def cmd_active(self, command, *args):
-        if self.active_video_block is None:
-            return
-
-        getattr(self.active_video_block, command)(*args)
 
     def is_active_param_set_to(self, param_name, param_value):
         if self.active_video_block is None:

@@ -6,6 +6,9 @@ from PyQt5.QtCore import QDir, QDirIterator, QEvent, Qt, pyqtSignal
 from PyQt5.QtGui import QFont, QFontDatabase, QIcon
 from PyQt5.QtWidgets import QApplication, QStyleFactory
 
+if platform.system() == "Windows":
+    from PyQt5.QtWinExtras import QtWin
+
 from gridplayer.settings import Settings
 from gridplayer.utils.darkmode import is_dark_mode
 from gridplayer.utils.single_instance import is_the_only_instance
@@ -29,9 +32,6 @@ class MainApp(QApplication):
     def event(self, event):
         if platform.system() == "Darwin":
             self._handle_macos_fileopen(event)
-
-        if event.type() == QEvent.PaletteChange:
-            _switch_icon_theme()
 
         return super().event(event)
 
@@ -63,8 +63,6 @@ class MainApp(QApplication):
 
 def setup_app_env():
     if platform.system() == "Windows":
-        from PyQt5.QtWinExtras import QtWin  # noqa: WPS433
-
         QtWin.setCurrentProcessExplicitAppUserModelID(__app_id__)
 
     QApplication.setApplicationName(__app_name__)
@@ -78,6 +76,8 @@ def setup_app_env():
 
 def init_app():
     app = MainApp(sys.argv)
+
+    app.paletteChanged.connect(lambda x: _switch_icon_theme())
 
     _init_resources()
 
