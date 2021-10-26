@@ -6,6 +6,7 @@ from PyQt5.QtCore import QSize, Qt, QTimer, pyqtSignal
 from PyQt5.QtGui import QCursor, QIcon, QInputEvent
 from PyQt5.QtWidgets import QGraphicsOpacityEffect, QLabel, QStackedLayout, QWidget
 
+from gridplayer.exceptions import PlayerException
 from gridplayer.settings import Settings
 from gridplayer.widgets.video_overlay import OverlayBlock, OverlayBlockFloating
 
@@ -123,7 +124,7 @@ class VideoBlock(QWidget):  # noqa: WPS230
             (self.video_driver.video_ready, self.load_video_finish),
             (self.video_driver.time_changed, self.time_changed),
             (self.video_driver.error, self.error),
-            (self.video_driver.crash, self.parent().driver_manager.crash),
+            (self.video_driver.crash, self.crash),
             (self.load_video, self.video_driver.load_video),
         ]
 
@@ -176,6 +177,9 @@ class VideoBlock(QWidget):  # noqa: WPS230
         self.layout_main.addWidget(self.status_label)
         self.layout_main.addWidget(self.video_driver)
         self.layout_main.addWidget(self.overlay)
+
+    def crash(self, traceback_txt):
+        raise PlayerException(traceback_txt)
 
     def cleanup(self):
         if self.is_error:

@@ -3,6 +3,7 @@ from functools import partial
 
 from PyQt5.QtWidgets import QWidget
 
+from gridplayer.exceptions import PlayerException
 from gridplayer.params_static import VideoDriver
 from gridplayer.player.mixins import (  # noqa: WPS235
     PlayerCommandsMixin,
@@ -24,10 +25,6 @@ from gridplayer.widgets.video_frame_vlc_hw import InstanceProcessVLCHW, VideoFra
 from gridplayer.widgets.video_frame_vlc_sw import InstanceProcessVLCSW, VideoFrameVLCSW
 
 logger = logging.getLogger(__name__)
-
-
-class PlayerException(Exception):
-    """Global exception from child process"""
 
 
 class VideoDriverManager(object):
