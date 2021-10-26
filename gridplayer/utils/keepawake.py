@@ -24,6 +24,9 @@ if SYSTEM == "Windows":  # noqa: C901
             self.is_screensaver_off = False
 
         def screensaver_off(self):
+            if self.is_screensaver_off:
+                return
+
             logger.debug("Inhibiting screensaver")
 
             flags = ES_CONTINUOUS | ES_SYSTEM_REQUIRED | ES_DISPLAY_REQUIRED
@@ -37,6 +40,9 @@ if SYSTEM == "Windows":  # noqa: C901
             self.is_screensaver_off = True
 
         def screensaver_on(self):
+            if not self.is_screensaver_off:
+                return
+
             logger.debug("UnInhibiting screensaver")
 
             SetThreadExecutionState(ES_CONTINUOUS)
@@ -80,6 +86,9 @@ elif SYSTEM == "Linux":
                 logger.warning("DBus failed to connected")
 
         def screensaver_off(self):
+            if self.is_screensaver_off:
+                return
+
             logger.debug("Inhibiting screensaver")
 
             if self._screensaver_if is None:
@@ -94,6 +103,9 @@ elif SYSTEM == "Linux":
             self.is_screensaver_off = True
 
         def screensaver_on(self):
+            if not self.is_screensaver_off:
+                return
+
             logger.debug("UnInhibiting screensaver")
 
             if self._screensaver_if is None:
@@ -155,6 +167,9 @@ elif SYSTEM == "Darwin":
             self._assertion_id = None
 
         def screensaver_off(self):
+            if self.is_screensaver_off:
+                return
+
             logger.debug("Inhibiting screensaver")
 
             self._assertion_id = assertNoIdleSleep("Playing media")
@@ -162,7 +177,14 @@ elif SYSTEM == "Darwin":
             self.is_screensaver_off = True
 
         def screensaver_on(self):
+            if not self.is_screensaver_off:
+                return
+
             logger.debug("UnInhibiting screensaver")
+
+            if self._assertion_id is None:
+                logger.warning("Assertion ID is empty")
+                return
 
             removeNoIdleSleepAssertion(self._assertion_id)
 
@@ -176,11 +198,17 @@ else:
             self.is_screensaver_off = False
 
         def keepawake_on(self):
+            if self.is_screensaver_off:
+                return
+
             logger.debug("Inhibiting screensaver not supported")
 
             self.is_screensaver_off = True
 
         def keepawake_off(self):
+            if not self.is_screensaver_off:
+                return
+
             logger.debug("UnInhibiting screensaver not supported")
 
             self.is_screensaver_off = False

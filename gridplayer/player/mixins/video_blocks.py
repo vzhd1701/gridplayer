@@ -5,6 +5,7 @@ from gridplayer.widgets.video_block import VideoBlock
 
 class PlayerVideoBlocksMixin(object):
     video_count_change = pyqtSignal(int)
+    playings_videos_count_change = pyqtSignal(int)
 
     hide_overlay = pyqtSignal()
     set_pause = pyqtSignal(int)
@@ -71,8 +72,7 @@ class PlayerVideoBlocksMixin(object):
 
         con_list = [
             (vb.exit_request, self.close_video_block),
-            # Refactor into mixin
-            (vb.is_paused_change, lambda x: self.screensaver_check()),
+            (vb.is_paused_change, self.is_paused_change),
             (self.set_pause, vb.set_pause),
             (self.seek_shift, vb.seek_shift_percent),
             (self.seek_random, vb.seek_random),
@@ -139,8 +139,12 @@ class PlayerVideoBlocksMixin(object):
         self.remove_video_blocks(*list(self.video_blocks.values()))
         self.reload_video_grid()
 
-        # Refactor into mixin
-        if self.keepawake.is_screensaver_off:
-            self.keepawake.screensaver_on()
+        self.is_paused_change()
 
         self.driver_manager.cleanup()
+
+    def is_paused_change(self):
+        playing_videos_count = sum(
+            True for v in self.video_blocks.values() if not v.video_params.is_paused
+        )
+        self.playings_videos_count_change.emit(playing_videos_count)

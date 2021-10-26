@@ -12,12 +12,12 @@ from gridplayer.player.mixins import (  # noqa: WPS235
     PlayerMinorMixin,
     PlayerMouseHiderMixin,
     PlayerPlaylistMixin,
-    PlayerScreensaverMixin,
     PlayerSettingsMixin,
     PlayerSingleModeMixin,
     PlayerVideoBlocksMixin,
 )
 from gridplayer.settings import Settings
+from gridplayer.utils.keepawake import KeepAwake
 from gridplayer.widgets.video_frame_dummy import VideoFrameDummy
 from gridplayer.widgets.video_frame_vlc_base import ProcessManagerVLC
 from gridplayer.widgets.video_frame_vlc_hw import InstanceProcessVLCHW, VideoFrameVLCHW
@@ -86,12 +86,28 @@ class VideoDriverManager(object):
         raise PlayerException(traceback_txt)
 
 
+class ScreensaverManager(object):
+    def __init__(self):
+        self.keepawake = KeepAwake()
+
+    def screensaver_check(self, playing_videos_count):
+        if not Settings().get("player/inhibit_screensaver"):
+            self.keepawake.screensaver_on()
+            return
+
+        is_something_playing = playing_videos_count > 0
+
+        if is_something_playing:
+            self.keepawake.screensaver_off()
+        else:
+            self.keepawake.screensaver_on()
+
+
 class Player(  # noqa: WPS215
     PlayerMenuMixin,
     PlayerCommandsMixin,
     PlayerSettingsMixin,
     # Utilities
-    PlayerScreensaverMixin,
     PlayerDragNDropMixin,
     PlayerSingleModeMixin,
     PlayerMouseHiderMixin,
@@ -111,5 +127,10 @@ class Player(  # noqa: WPS215
         self.setMouseTracking(True)
 
         self.driver_manager = VideoDriverManager()
+
+        self.screensaver_manager = ScreensaverManager()
+        self.playings_videos_count_change.connect(
+            self.screensaver_manager.screensaver_check
+        )
 
         self.reload_video_grid()

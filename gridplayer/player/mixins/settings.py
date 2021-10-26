@@ -37,10 +37,7 @@ class PlayerSettingsMixin(object):
             self._apply_player_inhibit_screensaver()
 
     def _apply_player_inhibit_screensaver(self):
-        if Settings().get("player/inhibit_screensaver"):
-            self.screensaver_check()
-        elif self.keepawake.is_screensaver_off:
-            self.keepawake.screensaver_on()
+        self.is_paused_change()
 
     def _apply_logging_log_level_vlc(self):
         self.driver_manager.set_log_level_vlc(Settings().get("logging/log_level_vlc"))
