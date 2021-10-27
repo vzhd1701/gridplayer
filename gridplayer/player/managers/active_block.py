@@ -66,4 +66,4 @@ class ActiveBlockManager(QObject):
         return next(visible_blocks_under_cursor, None)
 
     def _get_current_cursor_pos(self):
-        return self.parent().mapFromGlobal(self.parent().cursor().pos())
+        return self.parent().get_current_cursor_pos()

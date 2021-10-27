@@ -4,6 +4,7 @@ from PyQt5.QtWidgets import QWidget
 
 from gridplayer.player.managers.active_block import ActiveBlockManager
 from gridplayer.player.managers.drag_n_drop import PlayerDragNDropManager
+from gridplayer.player.managers.managers import ManagersManager
 from gridplayer.player.managers.mouse_hide import PlayerMouseHideManager
 from gridplayer.player.managers.screensaver import ScreensaverManager
 from gridplayer.player.managers.single_mode import PlayerSingleModeManager
@@ -17,7 +18,6 @@ from gridplayer.player.mixins import (
     PlayerSettingsMixin,
     PlayerVideoBlocksMixin,
 )
-from gridplayer.utils.misc import qt_connect
 
 logger = logging.getLogger(__name__)
 
@@ -43,64 +43,50 @@ class Player(  # noqa: WPS215
 
         self._init_managers()
 
-        # self.reload_video_grid()
-
-    def showEvent(self, event):
         self.reload_video_grid()
 
     def _init_managers(self):
-        self.driver_mgr = VideoDriverManager()
-        self.video_count_change.connect(self.driver_mgr.set_video_count)
-
-        self.screensaver_mgr = ScreensaverManager()
-        self.playings_videos_count_change.connect(
-            self.screensaver_mgr.screensaver_check
-        )
-
-        self.active_video_mgr = ActiveBlockManager(
-            video_blocks=self.video_blocks, parent=self
-        )
-
-        self.mouse_hide_mgr = PlayerMouseHideManager(parent=self)
-        qt_connect(
-            (self.video_count_change, self.mouse_hide_mgr.set_video_count),
-            (
-                self.mouse_hide_mgr.mouse_hidden,
-                self.active_video_mgr.update_active_reset,
+        self.managers = ManagersManager(
+            parent=self,
+            driver=VideoDriverManager(),
+            screensaver=ScreensaverManager(),
+            active_video=ActiveBlockManager(
+                video_blocks=self.video_blocks, parent=self
             ),
-            (self.mouse_hide_mgr.mouse_hidden, self.hide_overlay),
-            (
-                self.mouse_hide_mgr.mouse_shown,
-                self.active_video_mgr.update_active_under_mouse,
+            mouse_hide=PlayerMouseHideManager(parent=self),
+            drag_n_drop=PlayerDragNDropManager(
+                video_blocks=self.video_blocks, parent=self
+            ),
+            single_mode=PlayerSingleModeManager(
+                video_blocks=self.video_blocks, parent=self
             ),
         )
 
-        self.drag_n_drop_mgr = PlayerDragNDropManager(
-            video_blocks=self.video_blocks, parent=self
-        )
-        qt_connect(
-            (
-                self.active_video_mgr.active_block_change,
-                self.drag_n_drop_mgr.set_active_block,
-            ),
-            (self.drag_n_drop_mgr.videos_swapped, self.reload_video_grid),
-            (self.drag_n_drop_mgr.dropped_videos, self.add_videos),
-            (self.drag_n_drop_mgr.dropped_playlist, self.load_playlist_file),
-        )
+        self.managers.connections = {
+            "driver": [("s.video_count_change", "set_video_count")],
+            "screensaver": [("s.playings_videos_count_change", "screensaver_check")],
+            "mouse_hide": [
+                ("s.video_count_change", "set_video_count"),
+                ("mouse_hidden", "active_video.update_active_reset"),
+                ("mouse_hidden", "s.hide_overlay"),
+                ("mouse_shown", "active_video.update_active_under_mouse"),
+            ],
+            "drag_n_drop": [
+                ("active_video.active_block_change", "set_active_block"),
+                ("videos_swapped", "s.reload_video_grid"),
+                ("dropped_videos", "s.add_videos"),
+                ("dropped_playlist", "s.load_playlist_file"),
+            ],
+            "single_mode": [
+                ("active_video.active_block_change", "set_active_block"),
+                ("mode_changed", "s.adapt_grid"),
+                ("s.video_count_change", "set_video_count"),
+            ],
+        }
 
-        self.single_mode_mgr = PlayerSingleModeManager(
-            video_blocks=self.video_blocks, parent=self
-        )
-        qt_connect(
-            (
-                self.active_video_mgr.active_block_change,
-                self.single_mode_mgr.set_active_block,
-            ),
-            (self.single_mode_mgr.mode_changed, self.adapt_grid),
-            (self.video_count_change, self.single_mode_mgr.set_video_count),
-        )
-
-        self.installEventFilter(self.mouse_hide_mgr)
-        self.installEventFilter(self.drag_n_drop_mgr)
-        self.installEventFilter(self.active_video_mgr)
-        self.installEventFilter(self.single_mode_mgr)
+        self.managers.event_filters = [
+            "mouse_hide",
+            "drag_n_drop",
+            "active_video",
+            "single_mode",
+        ]

@@ -45,7 +45,7 @@ class PlayerVideoBlocksMixin(object):
 
     def add_new_video_block(self, video):
         vb = VideoBlock(
-            video_driver=self.driver_mgr.driver,
+            video_driver=self.managers.driver.driver,
             parent=self,
         )
         vb.installEventFilter(self)
