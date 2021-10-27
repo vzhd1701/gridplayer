@@ -2,11 +2,12 @@ from PyQt5.QtCore import QEvent, QObject, Qt, QTimer, pyqtSignal
 from PyQt5.QtGui import QInputEvent
 from PyQt5.QtWidgets import QApplication
 
+from gridplayer.player.managers.base import ManagerBase
 from gridplayer.settings import Settings
 from gridplayer.utils.misc import is_modal_open
 
 
-class PlayerMouseHideManager(QObject):
+class PlayerMouseHideManager(ManagerBase):
     mouse_hidden = pyqtSignal()
     mouse_shown = pyqtSignal()
 
@@ -14,6 +15,11 @@ class PlayerMouseHideManager(QObject):
         QEvent.ShortcutOverride,
         QEvent.NonClientAreaMouseMove,
         QEvent.NonClientAreaMouseButtonPress,
+        QEvent.ContextMenu,
+        QEvent.HoverMove,
+        QEvent.KeyPress,
+        QEvent.MouseMove,
+        QEvent.Wheel,
     }
 
     def __init__(self, **kwargs):
@@ -26,13 +32,10 @@ class PlayerMouseHideManager(QObject):
         if Settings().get("misc/mouse_hide"):
             self.mouse_timer.start(1000 * Settings().get("misc/mouse_hide_timeout"))
 
+        for event in self.move_events:
+            self._event_map[event] = lambda e: self.show_cursor()
+
         QApplication.instance().focusObjectChanged.connect(self._focus_change)
-
-    def eventFilter(self, event_object, event) -> bool:
-        if isinstance(event, QInputEvent) or event.type() in self.move_events:
-            self.show_cursor()
-
-        return False
 
     def hide_cursor(self):
         self.mouse_timer.stop()

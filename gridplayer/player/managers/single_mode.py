@@ -1,16 +1,14 @@
 from PyQt5.QtCore import QEvent, QObject, Qt, pyqtSignal
 
+from gridplayer.player.managers.base import ManagerBase
 from gridplayer.settings import Settings
 
 
-class PlayerSingleModeManager(QObject):
+class PlayerSingleModeManager(ManagerBase):
     mode_changed = pyqtSignal()
 
-    def __init__(self, video_blocks, **kwargs):
+    def __init__(self, **kwargs):
         super().__init__(**kwargs)
-
-        self._video_blocks = video_blocks
-        self._active_block = None
 
         self._is_single_mode = False
         self._pre_sm_states = {}
@@ -18,13 +16,6 @@ class PlayerSingleModeManager(QObject):
         self._event_map = {
             QEvent.MouseButtonDblClick: self.mouseDoubleClickEvent,
         }
-
-    def eventFilter(self, event_object, event) -> bool:
-        event_function = self._event_map.get(event.type())
-        if event_function is not None:
-            return event_function(event) is True
-
-        return False
 
     def mouseDoubleClickEvent(self, event):
         if event.button() == Qt.LeftButton:
@@ -39,7 +30,7 @@ class PlayerSingleModeManager(QObject):
         self.single_mode_off()
 
     def toggle_single_video(self):
-        if len(self._video_blocks) <= 1:
+        if len(self._context["video_blocks"]) <= 1:
             return
 
         if self._is_single_mode:
@@ -53,7 +44,9 @@ class PlayerSingleModeManager(QObject):
 
         is_pause_background_videos = Settings().get("player/pause_background_videos")
 
-        current_sv = next(v for v in self._video_blocks.values() if v.isVisible())
+        current_sv = next(
+            v for v in self._context["video_blocks"].values() if v.isVisible()
+        )
 
         next_sv = self._next_single_video_after(current_sv)
 
@@ -73,8 +66,8 @@ class PlayerSingleModeManager(QObject):
 
         is_pause_background_videos = Settings().get("player/pause_background_videos")
 
-        for vb in self._video_blocks.values():
-            if vb == self._active_block:
+        for vb in self._context["video_blocks"].values():
+            if vb == self._context["active_block"]:
                 continue
 
             if is_pause_background_videos:
@@ -88,8 +81,8 @@ class PlayerSingleModeManager(QObject):
     def single_mode_off(self):
         self._is_single_mode = False
 
-        for vb in self._video_blocks.values():
-            if vb == self._active_block:
+        for vb in self._context["video_blocks"].values():
+            if vb == self._context["active_block"]:
                 continue
 
             pre_sm_state = self._pre_sm_states.pop(vb.id, None)
@@ -101,8 +94,8 @@ class PlayerSingleModeManager(QObject):
         self.mode_changed.emit()
 
     def _next_single_video_after(self, current_sv):
-        next_sv_idx = list(self._video_blocks).index(current_sv.id) + 1
-        if next_sv_idx > len(self._video_blocks) - 1:
+        next_sv_idx = list(self._context["video_blocks"]).index(current_sv.id) + 1
+        if next_sv_idx > len(self._context["video_blocks"]) - 1:
             next_sv_idx = 0
 
-        return list(self._video_blocks.values())[next_sv_idx]
+        return list(self._context["video_blocks"].values())[next_sv_idx]

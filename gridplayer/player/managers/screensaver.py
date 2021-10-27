@@ -1,9 +1,12 @@
+from gridplayer.player.managers.base import ManagerBase
 from gridplayer.settings import Settings
 from gridplayer.utils.keepawake import KeepAwake
 
 
-class ScreensaverManager(object):
-    def __init__(self):
+class ScreensaverManager(ManagerBase):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
         self.keepawake = KeepAwake()
 
     def screensaver_check(self, playing_videos_count):

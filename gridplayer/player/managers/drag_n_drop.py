@@ -1,26 +1,25 @@
 import logging
 
-from PyQt5.QtCore import QEvent, QMimeData, QObject, Qt, pyqtSignal
+from PyQt5.QtCore import QEvent, QMimeData, Qt, pyqtSignal
 from PyQt5.QtGui import QDrag
 from PyQt5.QtWidgets import QApplication
 
+from gridplayer.player.managers.base import ManagerBase
 from gridplayer.utils.files import drag_get_files, drag_get_video_id, drag_has_video_id
 from gridplayer.utils.misc import dict_swap_items
 
 logger = logging.getLogger(__name__)
 
 
-class PlayerDragNDropManager(QObject):
+class PlayerDragNDropManager(ManagerBase):
     dropped_playlist = pyqtSignal(str)
     dropped_videos = pyqtSignal(list)
 
     videos_swapped = pyqtSignal()
 
-    def __init__(self, video_blocks, **kwargs):
+    def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
-        self._video_blocks = video_blocks
-        self._active_block = None
         self._drag_start_position = None
 
         self._event_map = {
@@ -29,13 +28,6 @@ class PlayerDragNDropManager(QObject):
             QEvent.DragEnter: self.dragEnterEvent,
             QEvent.Drop: self.dropEvent,
         }
-
-    def eventFilter(self, event_object, event) -> bool:
-        event_function = self._event_map.get(event.type())
-        if event_function is not None:
-            return event_function(event) is True
-
-        return False
 
     def mouseMoveEvent(self, event):
         if self._is_drag_started(event):
@@ -73,7 +65,7 @@ class PlayerDragNDropManager(QObject):
 
         # Swap videos
         elif drag_has_video_id(drop_data):
-            dst_video = self._active_block
+            dst_video = self._context["active_block"]
             if dst_video is None:
                 logger.debug("No video under cursor, discarding drop")
                 return
@@ -87,9 +79,6 @@ class PlayerDragNDropManager(QObject):
 
             return True
 
-    def set_active_block(self, active_block):
-        self._active_block = active_block
-
     def _is_drag_started(self, event):
         if not event.buttons() & Qt.LeftButton:
             return False
@@ -101,14 +90,15 @@ class PlayerDragNDropManager(QObject):
         if drag_distance < QApplication.startDragDistance():
             return False
 
-        return self._active_block is not None
+        return self._context["active_block"] is not None
 
     def _get_drag_video(self):
         drag = QDrag(self)
 
         mimeData = QMimeData()
         mimeData.setData(
-            "application/x-gridplayer-video-id", self._active_block.id.encode()
+            "application/x-gridplayer-video-id",
+            self._context["active_block"].id.encode(),
         )
         drag.setMimeData(mimeData)
 
@@ -123,10 +113,10 @@ class PlayerDragNDropManager(QObject):
             logger.debug("No video swap needed")
             return
 
-        if src_id not in self._video_blocks:
+        if src_id not in self._context["video_blocks"]:
             logger.debug(f"Cannot swap {src_id}, id not found")
             return
 
-        dict_swap_items(self._video_blocks, dst_id, src_id)
+        dict_swap_items(self._context["video_blocks"], dst_id, src_id)
 
         self.videos_swapped.emit()

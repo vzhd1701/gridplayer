@@ -2,6 +2,7 @@ from functools import partial
 
 from gridplayer.exceptions import PlayerException
 from gridplayer.params_static import VideoDriver
+from gridplayer.player.managers.base import ManagerBase
 from gridplayer.settings import Settings
 from gridplayer.widgets.video_frame_dummy import VideoFrameDummy
 from gridplayer.widgets.video_frame_vlc_base import ProcessManagerVLC
@@ -9,7 +10,7 @@ from gridplayer.widgets.video_frame_vlc_hw import InstanceProcessVLCHW, VideoFra
 from gridplayer.widgets.video_frame_vlc_sw import InstanceProcessVLCSW, VideoFrameVLCSW
 
 
-class VideoDriverManager(object):
+class VideoDriverManager(ManagerBase):
     _video_drivers = {
         VideoDriver.DUMMY: VideoFrameDummy,
         VideoDriver.VLC_SW: VideoFrameVLCSW,
@@ -26,7 +27,9 @@ class VideoDriverManager(object):
         VideoDriver.VLC_HW,
     }
 
-    def __init__(self):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
         self._process_manager = None
 
     @property

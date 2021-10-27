@@ -1,12 +1,20 @@
 class ManagersManager(object):
-    def __init__(self, parent, **kwargs):
+    def __init__(self, parent, commands, **kwargs):
         self._parent = parent
+
+        self._context = {
+            "commands": commands,
+            "video_blocks": parent.video_blocks,
+        }
 
         self._connections = None
         self._event_filters = None
 
-        for k, v in kwargs.items():
-            setattr(self, k, v)
+        for manager_name, manager_cls in kwargs.items():
+            manager = manager_cls(context=self._context, parent=self._parent)
+
+            setattr(self, manager_name, manager)
+            self._register_commands(manager_name, manager)
 
     @property
     def connections(self):
@@ -34,6 +42,14 @@ class ManagersManager(object):
         for ef in event_filters:
             self._parent.installEventFilter(getattr(self, ef))
 
+    @property
+    def commands(self):
+        return self._context["commands"]
+
+    @commands.setter
+    def commands(self, commands):
+        self._register_commands("_root", commands)
+
     def _get_manager_function(self, manager, signature):
         if "." in signature:
             manager, function = signature.split(".")
@@ -43,3 +59,16 @@ class ManagersManager(object):
         manager = self._parent if manager == "s" else getattr(self, manager)
 
         return getattr(manager, function)
+
+    def _register_commands(self, manager_name, manager):
+        if not hasattr(manager, "commands"):
+            return
+
+        command_collisions = set(self._context["commands"]) & set(manager.commands)
+
+        if command_collisions:
+            raise ValueError(
+                f"{manager_name} has conflicting commands: {command_collisions}"
+            )
+
+        self._context["commands"].update(manager.commands)
