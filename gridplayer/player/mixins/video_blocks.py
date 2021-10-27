@@ -88,13 +88,10 @@ class PlayerVideoBlocksMixin(object):
         return active_video_param == param_value
 
     def close_video_block(self, _id):
-        if self.is_single_mode:
-            self.toggle_single_video()
-
         self.remove_video_blocks(self.video_blocks[_id])
         self.reload_video_grid()
 
-        self.update_active_block(self.get_current_cursor_pos())
+        # self.update_active_block(self.get_current_cursor_pos())
         self.cmd_active("show_overlay")
 
     def close_all(self):

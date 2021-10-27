@@ -34,9 +34,22 @@ class PlayerGridMixin(object):
         self.info_label.setFont(font)
 
     @property
+    def visible_count(self):
+        # Visible (already present) or not explicitly hidden
+        # to exclude hidden (e.g. during single mode)
+        # and include new blocks that are not yet visible
+        return sum(
+            w.isVisible() or not w.testAttribute(Qt.WA_WState_ExplicitShowHide)
+            for w in self.video_blocks.values()
+        )
+
+    @property
     def grid_dimensions(self):
-        grid_y = math.ceil(math.sqrt(len(self.video_blocks)))
-        grid_x = math.ceil(len(self.video_blocks) / grid_y)
+        if self.visible_count <= 1:
+            return GridDimensions(1, 1)
+
+        grid_y = math.ceil(math.sqrt(self.visible_count))
+        grid_x = math.ceil(self.visible_count / grid_y)
 
         if self.playlist.grid_mode == GridMode.AUTO_COLS:
             cols, rows = grid_x, grid_y
@@ -45,19 +58,11 @@ class PlayerGridMixin(object):
 
         return GridDimensions(cols, rows)
 
-    def reset_grid_stretch(self):
-        for c in range(self.videogrid.columnCount()):
-            self.videogrid.setColumnStretch(c, 0)
+    def adapt_grid(self):
+        self._reset_grid_stretch()
 
-        for r in range(self.videogrid.rowCount()):
-            self.videogrid.setRowStretch(r, 0)
-
-    def adjust_grid_stretch(self):
-        for c in range(self.grid_dimensions.cols):
-            self.videogrid.setColumnStretch(c, 1)
-
-        for r in range(self.grid_dimensions.rows):
-            self.videogrid.setRowStretch(r, 1)
+        if self.visible_count > 1:
+            self._adjust_grid_stretch()
 
     def reload_video_grid(self):
         self._reset_video_grid()
@@ -69,9 +74,23 @@ class PlayerGridMixin(object):
 
         self._populate_grid()
 
-        self.adjust_grid_stretch()
+        self.adapt_grid()
 
         self.layout().activate()
+
+    def _reset_grid_stretch(self):
+        for c in range(self.videogrid.columnCount()):
+            self.videogrid.setColumnStretch(c, 0)
+
+        for r in range(self.videogrid.rowCount()):
+            self.videogrid.setRowStretch(r, 0)
+
+    def _adjust_grid_stretch(self):
+        for c in range(self.grid_dimensions.cols):
+            self.videogrid.setColumnStretch(c, 1)
+
+        for r in range(self.grid_dimensions.rows):
+            self.videogrid.setRowStretch(r, 1)
 
     def _reset_video_grid(self):
         self.info_label.hide()
@@ -81,11 +100,11 @@ class PlayerGridMixin(object):
         for vb in self.video_blocks.values():
             self.videogrid.removeWidget(vb)
 
-        self.reset_grid_stretch()
-
         if not self.is_videos:
             self.videogrid.addWidget(self.info_label, 0, 0)
             self.info_label.show()
+
+            self.adapt_grid()
 
     def _adjust_window(self):
         width = self.grid_dimensions.cols * self._minimum_video_size.width()

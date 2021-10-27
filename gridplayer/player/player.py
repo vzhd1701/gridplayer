@@ -6,15 +6,15 @@ from gridplayer.player.managers.active_block import ActiveBlockManager
 from gridplayer.player.managers.drag_n_drop import PlayerDragNDropManager
 from gridplayer.player.managers.mouse_hide import PlayerMouseHideManager
 from gridplayer.player.managers.screensaver import ScreensaverManager
+from gridplayer.player.managers.single_mode import PlayerSingleModeManager
 from gridplayer.player.managers.video_driver import VideoDriverManager
-from gridplayer.player.mixins import (  # noqa: WPS235
+from gridplayer.player.mixins import (
     PlayerCommandsMixin,
     PlayerGridMixin,
     PlayerMenuMixin,
     PlayerMinorMixin,
     PlayerPlaylistMixin,
     PlayerSettingsMixin,
-    PlayerSingleModeMixin,
     PlayerVideoBlocksMixin,
 )
 from gridplayer.utils.misc import qt_connect
@@ -26,8 +26,6 @@ class Player(  # noqa: WPS215
     PlayerMenuMixin,
     PlayerCommandsMixin,
     PlayerSettingsMixin,
-    # Utilities
-    PlayerSingleModeMixin,
     # Base
     PlayerPlaylistMixin,
     PlayerGridMixin,
@@ -45,6 +43,9 @@ class Player(  # noqa: WPS215
 
         self._init_managers()
 
+        # self.reload_video_grid()
+
+    def showEvent(self, event):
         self.reload_video_grid()
 
     def _init_managers(self):
@@ -74,7 +75,9 @@ class Player(  # noqa: WPS215
             ),
         )
 
-        self.drag_n_drop_mgr = PlayerDragNDropManager(video_blocks=self.video_blocks)
+        self.drag_n_drop_mgr = PlayerDragNDropManager(
+            video_blocks=self.video_blocks, parent=self
+        )
         qt_connect(
             (
                 self.active_video_mgr.active_block_change,
@@ -85,6 +88,19 @@ class Player(  # noqa: WPS215
             (self.drag_n_drop_mgr.dropped_playlist, self.load_playlist_file),
         )
 
+        self.single_mode_mgr = PlayerSingleModeManager(
+            video_blocks=self.video_blocks, parent=self
+        )
+        qt_connect(
+            (
+                self.active_video_mgr.active_block_change,
+                self.single_mode_mgr.set_active_block,
+            ),
+            (self.single_mode_mgr.mode_changed, self.adapt_grid),
+            (self.video_count_change, self.single_mode_mgr.set_video_count),
+        )
+
         self.installEventFilter(self.mouse_hide_mgr)
         self.installEventFilter(self.drag_n_drop_mgr)
         self.installEventFilter(self.active_video_mgr)
+        self.installEventFilter(self.single_mode_mgr)

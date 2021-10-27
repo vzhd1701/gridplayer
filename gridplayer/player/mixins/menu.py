@@ -248,11 +248,11 @@ class PlayerMenuMixin(object):
                 "func": self.cmd_about,
                 "icon": "about",
             },
-            "Next Video": {
-                "key": Qt.Key_Tab,
-                "func": self.next_single_video,
-                "icon": "next-video",
-            },
+            # "Next Video": {
+            #     "key": Qt.Key_Tab,
+            #     "func": self.next_single_video,
+            #     "icon": "next-video",
+            # },
         }
 
         actions = {}
@@ -351,8 +351,8 @@ class PlayerMenuMixin(object):
 
             sections_added.append(menu_video)
 
-            if self.is_single_mode:
-                sections_added.append(sections["video_single"])
+            # if self.is_single_mode:
+            #     sections_added.append(sections["video_single"])
 
         if self.video_blocks:
             sections_added.append(sections["video_all"])

@@ -16,7 +16,8 @@ class ActiveBlockManager(QObject):
         self._event_map = {
             QEvent.MouseMove: lambda x: self.update_active_under_mouse(),
             QEvent.MouseButtonPress: lambda x: self.update_active_under_mouse(),
-            QEvent.Leave: lambda x: self.update_active_reset(),
+            QEvent.NonClientAreaMouseMove: lambda x: self.update_active_reset(),
+            QEvent.NonClientAreaMouseButtonPress: lambda x: self.update_active_reset(),
             QEvent.Drop: lambda x: self.update_active_under_mouse(),
             QEvent.DragMove: lambda x: self.update_active_under_mouse(),
         }
@@ -24,15 +25,9 @@ class ActiveBlockManager(QObject):
     def eventFilter(self, event_object, event) -> bool:
         event_function = self._event_map.get(event.type())
         if event_function is not None:
-            event_function(event)
+            return event_function(event) is True
 
         return False
-
-    def event(self, event) -> bool:
-        if event.type() == QEvent.NonClientAreaMouseMove:
-            self.update_active_reset()
-
-        return super().event(event)
 
     def update_active_under_mouse(self):
         self._update_active_block(self._get_current_cursor_pos())
