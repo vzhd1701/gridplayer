@@ -59,4 +59,5 @@ class ActiveBlockManager(ManagerBase):
         return next(visible_blocks_under_cursor, None)
 
     def _get_current_cursor_pos(self):
-        return self.parent().get_current_cursor_pos()
+        parent = self.parent()
+        return parent.mapFromGlobal(parent.cursor().pos())

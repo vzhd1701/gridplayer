@@ -38,6 +38,30 @@ class PlayerVideoBlocksMixin(object):
 
         return super().event(event)
 
+    def pause_all(self):
+        self.set_pause.emit(True)
+
+    def cmd_play_pause_all(self):
+        unpaused_vbs = (
+            v for v in self.video_blocks.values() if not v.video_params.is_paused
+        )
+
+        if next(unpaused_vbs, None) is not None:
+            self.set_pause.emit(True)
+        else:
+            self.set_pause.emit(False)
+
+    def cmd_seek_shift_all(self, percent):
+        self.seek_shift.emit(percent)
+
+    def cmd_step_forward(self):
+        self.pause_all()
+        self.step_frame.emit(-1)
+
+    def cmd_step_backward(self):
+        self.pause_all()
+        self.step_frame.emit(1)
+
     def cmd_active(self, command, *args):
         if self.active_video_block is None:
             return

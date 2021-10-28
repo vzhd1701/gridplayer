@@ -94,7 +94,10 @@ class PlayerMenuManager(ManagerBase):
         }
 
     def contextMenuEvent(self, event):
+        event.accept()
         self.make_menu().exec_(event.globalPos())
+
+        return True
 
     def make_menu(self):
         menu = QMenu(self.parent())

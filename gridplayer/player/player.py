@@ -6,8 +6,11 @@ from PyQt5.QtWidgets import QWidget
 
 from gridplayer.player.managers.actions import PlayerActionsManager
 from gridplayer.player.managers.active_block import ActiveBlockManager
+from gridplayer.player.managers.add_videos import AddVideosManager
+from gridplayer.player.managers.dialogs import DialogsManager
 from gridplayer.player.managers.drag_n_drop import PlayerDragNDropManager
 from gridplayer.player.managers.instance_listener import InstanceListenerManager
+from gridplayer.player.managers.log import LogManager
 from gridplayer.player.managers.macos_fileopen import MacOSFileOpenManager
 from gridplayer.player.managers.managers import ManagersManager
 from gridplayer.player.managers.menu import PlayerMenuManager
@@ -18,22 +21,14 @@ from gridplayer.player.managers.settings import PlayerSettingsManager
 from gridplayer.player.managers.single_mode import PlayerSingleModeManager
 from gridplayer.player.managers.video_driver import VideoDriverManager
 from gridplayer.player.managers.window_state import WindowStateManager
-from gridplayer.player.mixins import (
-    PlayerCommandsMixin,
-    PlayerGridMixin,
-    PlayerMinorMixin,
-    PlayerVideoBlocksMixin,
-)
+from gridplayer.player.mixins import PlayerGridMixin, PlayerVideoBlocksMixin
 
 logger = logging.getLogger(__name__)
 
 
-class Player(  # noqa: WPS215
-    PlayerCommandsMixin,
-    # Base
+class Player(
     PlayerGridMixin,
     PlayerVideoBlocksMixin,
-    PlayerMinorMixin,
     QWidget,
 ):
     arguments_received = pyqtSignal(list)
@@ -52,12 +47,10 @@ class Player(  # noqa: WPS215
     def _init_managers(self):
         commands = {
             "active": self.cmd_active,
-            "add_videos": self.cmd_add_videos,
             "set_grid_mode": self.cmd_set_grid_mode,
             "play_pause_all": self.cmd_play_pause_all,
             "loop_random": lambda: self.seek_random.emit(),
             "seek_shift_all": self.cmd_seek_shift_all,
-            "about": self.cmd_about,
             "is_active_param_set_to": self.is_active_param_set_to,
             "is_grid_mode_set_to": lambda m: self.grid_mode == m,
             "is_videos": lambda: self.is_videos,
@@ -73,6 +66,9 @@ class Player(  # noqa: WPS215
             "mouse_hide": PlayerMouseHideManager,
             "drag_n_drop": PlayerDragNDropManager,
             "single_mode": PlayerSingleModeManager,
+            "log": LogManager,
+            "add_videos": AddVideosManager,
+            "dialogs": DialogsManager,
             "settings": PlayerSettingsManager,
             "actions": PlayerActionsManager,
             "menu": PlayerMenuManager,
@@ -109,7 +105,7 @@ class Player(  # noqa: WPS215
             "settings": [
                 ("reload", "s.reload_videos"),
                 ("set_screensaver", "screensaver.screensaver_check"),
-                ("set_log_level", "s.set_log_level"),
+                ("set_log_level", "log.set_log_level"),
                 ("set_log_level", "driver.set_log_level"),
                 ("set_log_level_vlc", "driver.set_log_level_vlc"),
             ],
@@ -121,10 +117,12 @@ class Player(  # noqa: WPS215
                 ("window_state_loaded", "window_state.restore_window_state"),
                 ("grid_mode_loaded", "s.cmd_set_grid_mode"),
                 ("videos_loaded", "s.add_videos"),
-                ("error", "s.error"),
+                ("alert", "window_state.activate_window"),
+                ("error", "dialogs.error"),
             ],
             "fileopen": [("file_open", "s.add_videos")],
             "instance_listener": [("open_files", "s.add_videos")],
+            "add_videos": [("videos_added", "s.add_videos")],
         }
 
         managers.event_filters = [

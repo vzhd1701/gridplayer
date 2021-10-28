@@ -61,6 +61,13 @@ class PlayerGridMixin(object):
 
         return GridDimensions(cols, rows)
 
+    def cmd_set_grid_mode(self, mode):
+        if self.grid_mode == mode:
+            return
+
+        self.grid_mode = mode
+        self.reload_video_grid()
+
     def adapt_grid(self):
         self._reset_grid_stretch()
 

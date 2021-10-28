@@ -7,6 +7,7 @@ from PyQt5.QtWidgets import QApplication
 from gridplayer.player.managers.base import ManagerBase
 from gridplayer.utils.files import drag_get_files, drag_get_video_id, drag_has_video_id
 from gridplayer.utils.misc import dict_swap_items
+from gridplayer.video import Video
 
 logger = logging.getLogger(__name__)
 
@@ -57,7 +58,8 @@ class PlayerDragNDropManager(ManagerBase):
             if drop_files[0].endswith("gpls"):
                 self.dropped_playlist.emit(drop_files[0])
             else:
-                self.dropped_videos.emit(drop_files)
+                videos = [Video(file_path=f) for f in drop_files]
+                self.dropped_videos.emit(videos)
 
             event.acceptProposedAction()
 

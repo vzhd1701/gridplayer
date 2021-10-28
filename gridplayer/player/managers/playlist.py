@@ -21,6 +21,7 @@ class PlayerPlaylistManager(ManagerBase):
     grid_mode_loaded = pyqtSignal(GridMode)
     videos_loaded = pyqtSignal(list)
 
+    alert = pyqtSignal()
     error = pyqtSignal(str)
 
     def __init__(self, **kwargs):
@@ -151,8 +152,7 @@ class PlayerPlaylistManager(ManagerBase):
             is_playlist_changed = True
 
         if is_playlist_changed:
-            self.raise_()
-            self.activateWindow()
+            self.alert.emit()
 
             ret = QCustomMessageBox.question(
                 self.parent(), "Playlist", "Do you want to save the playlist?"
