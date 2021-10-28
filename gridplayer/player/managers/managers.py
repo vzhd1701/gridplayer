@@ -1,16 +1,19 @@
 class ManagersManager(object):
-    def __init__(self, parent, commands, **kwargs):
+    def __init__(self, parent, commands, managers):
         self._parent = parent
+
+        self.global_event_filters = []
 
         self._context = {
             "commands": commands,
             "video_blocks": parent.video_blocks,
+            "grid_mode": parent.grid_mode,
         }
 
         self._connections = None
         self._event_filters = None
 
-        for manager_name, manager_cls in kwargs.items():
+        for manager_name, manager_cls in managers.items():
             manager = manager_cls(context=self._context, parent=self._parent)
 
             setattr(self, manager_name, manager)
@@ -49,6 +52,12 @@ class ManagersManager(object):
     @commands.setter
     def commands(self, commands):
         self._register_commands("_root", commands)
+
+    def global_event_filter(self, event_object, event):
+        return any(
+            getattr(self, ef).eventFilter(event_object, event)
+            for ef in self.global_event_filters
+        )
 
     def _get_manager_function(self, manager, signature):
         if "." in signature:

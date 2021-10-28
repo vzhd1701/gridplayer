@@ -1,5 +1,8 @@
-from PyQt5.QtCore import QEvent, Qt, pyqtSignal
+import base64
 
+from PyQt5.QtCore import QEvent, Qt, pyqtSignal, pyqtSlot
+
+from gridplayer.params_static import WindowState
 from gridplayer.player.managers.base import ManagerBase
 from gridplayer.settings import Settings
 
@@ -21,6 +24,7 @@ class WindowStateManager(ManagerBase):
             "close": self.parent().close,
             "fullscreen": self.cmd_fullscreen,
             "is_fullscreen": self.parent().isFullScreen,
+            "state_window": self.state_window,
         }
 
     def changeEvent(self, event):
@@ -44,3 +48,36 @@ class WindowStateManager(ManagerBase):
             )
 
             self.parent().showFullScreen()
+
+    def restore_to_minimum(self):
+        if not self.parent().isMaximized() and not self.parent().isFullScreen():
+            self.parent().resize(self.parent().minimumSize())
+
+    def activate_window(self):
+        self.parent().raise_()
+        self.parent().activateWindow()
+
+    def state_window(self):
+        is_maximized = (
+            self.parent().isMaximized() or self._context["is_maximized_pre_fullscreen"]
+        )
+
+        return WindowState(
+            is_maximized=is_maximized,
+            is_fullscreen=self.parent().isFullScreen(),
+            geometry=base64.b64encode(bytes(self.parent().saveGeometry())).decode(),
+        )
+
+    @pyqtSlot(WindowState)
+    def restore_window_state(self, window_state):
+        geometry = base64.b64decode(window_state.geometry.encode())
+
+        self.parent().restoreGeometry(geometry)
+
+        if window_state.is_fullscreen:
+            if window_state.is_maximized:
+                self._context["is_maximized_pre_fullscreen"] = True
+                self.parent().showFullScreen()
+
+        elif window_state.is_maximized:
+            self.parent().showMaximized()

@@ -6,6 +6,7 @@ from PyQt5.QtGui import QFont
 from PyQt5.QtWidgets import QGridLayout, QLabel
 
 from gridplayer.params_static import GridMode
+from gridplayer.settings import Settings
 
 
 class GridDimensions(NamedTuple):
@@ -21,6 +22,8 @@ class PlayerGridMixin(object):
 
         self._minimum_video_size = QSize(100, 90)
         self._minimum_size = self._default_minimum_size
+
+        self.grid_mode = Settings().get("playlist/grid_mode")
 
         self.setMinimumSize(self._minimum_size)
 
@@ -51,7 +54,7 @@ class PlayerGridMixin(object):
         grid_y = math.ceil(math.sqrt(self.visible_count))
         grid_x = math.ceil(self.visible_count / grid_y)
 
-        if self.playlist.grid_mode == GridMode.AUTO_COLS:
+        if self.grid_mode == GridMode.AUTO_COLS:
             cols, rows = grid_x, grid_y
         else:
             cols, rows = grid_y, grid_x

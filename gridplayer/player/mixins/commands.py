@@ -3,6 +3,7 @@ from PyQt5.QtWidgets import QFileDialog
 
 from gridplayer.dialogs.about import AboutDialog
 from gridplayer.params_static import SUPPORTED_VIDEO_EXT
+from gridplayer.video import Video
 
 
 class PlayerCommandsMixin(object):
@@ -31,14 +32,13 @@ class PlayerCommandsMixin(object):
         self.step_frame.emit(1)
 
     def cmd_about(self):
-        about_dialog = AboutDialog(self)
-        about_dialog.exec_()
+        AboutDialog(self).exec_()
 
     def cmd_set_grid_mode(self, mode):
-        if self.playlist.grid_mode == mode:
+        if self.grid_mode == mode:
             return
 
-        self.playlist.grid_mode = mode
+        self.grid_mode = mode
         self.reload_video_grid()
 
     def cmd_add_videos(self):
@@ -50,4 +50,4 @@ class PlayerCommandsMixin(object):
 
         if dialog.exec():
             files = dialog.selectedFiles()
-            self.add_videos(files)
+            self.add_videos(Video(file_path=f) for f in files)

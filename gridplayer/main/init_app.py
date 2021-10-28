@@ -1,17 +1,14 @@
 import platform
-import subprocess
 import sys
 
-from PyQt5.QtCore import QDir, QDirIterator, QEvent, Qt, pyqtSignal
+from PyQt5.QtCore import QDir, QDirIterator, Qt
 from PyQt5.QtGui import QFont, QFontDatabase, QIcon
 from PyQt5.QtWidgets import QApplication, QStyleFactory
 
 if platform.system() == "Windows":
     from PyQt5.QtWinExtras import QtWin
 
-from gridplayer.settings import Settings
 from gridplayer.utils.darkmode import is_dark_mode
-from gridplayer.utils.single_instance import is_the_only_instance
 from gridplayer.version import (
     __app_id__,
     __app_name__,
@@ -19,46 +16,6 @@ from gridplayer.version import (
     __display_name__,
     __version__,
 )
-
-
-class MainApp(QApplication):
-    open_files = pyqtSignal(list)
-
-    def __init__(self, argv):
-        super().__init__(argv)
-
-        self._is_empty = True
-
-    def event(self, event):
-        if platform.system() == "Darwin":
-            self._handle_macos_fileopen(event)
-
-        return super().event(event)
-
-    def set_video_count(self, count):
-        self._is_empty = count == 0
-
-    def _handle_macos_fileopen(self, event):
-        # MacOS support
-        if event.type() != QEvent.FileOpen or not event.file():
-            return
-
-        Settings().sync()
-
-        is_only_empty = is_the_only_instance() and self._is_empty
-
-        if Settings().get("player/one_instance") or is_only_empty:
-            self.open_files.emit([event.file()])
-        else:
-            subprocess.run(  # noqa: S603, S607
-                [
-                    "open",
-                    "-n",
-                    f"/Applications/{__app_name__}.app",
-                    "--args",
-                    event.file(),
-                ]
-            )
 
 
 def setup_app_env():
@@ -75,7 +32,7 @@ def setup_app_env():
 
 
 def init_app():
-    app = MainApp(sys.argv)
+    app = QApplication(sys.argv)
 
     app.paletteChanged.connect(lambda x: _switch_icon_theme())
 

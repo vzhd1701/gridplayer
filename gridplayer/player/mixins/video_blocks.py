@@ -13,6 +13,11 @@ class PlayerVideoBlocksMixin(object):
     video_count_change = pyqtSignal(int)
     playings_videos_count_change = pyqtSignal(int)
 
+    about_to_close_video = pyqtSignal()
+    closed_video = pyqtSignal()
+    about_to_close_all = pyqtSignal()
+    closed_all = pyqtSignal()
+
     hide_overlay = pyqtSignal()
     set_pause = pyqtSignal(int)
     seek_shift = pyqtSignal(int)
@@ -43,7 +48,21 @@ class PlayerVideoBlocksMixin(object):
     def is_videos(self):
         return bool(self.video_blocks)
 
-    def add_new_video_block(self, video):
+    def reload_videos(self):
+        videos = (vb.video for vb in self.video_blocks)
+
+        self.close_all()
+
+        self.add_videos(videos)
+
+    def add_videos(self, videos):
+        for v in videos:
+            self._add_video_block(v)
+
+        self.reload_video_grid()
+        self.video_count_change.emit(len(self.video_blocks))
+
+    def _add_video_block(self, video):
         vb = VideoBlock(
             video_driver=self.managers.driver.driver,
             parent=self,
@@ -67,17 +86,20 @@ class PlayerVideoBlocksMixin(object):
 
     def remove_video_blocks(self, *videoblocks):
         for vb in videoblocks:
-            self.videogrid.takeAt(self.videogrid.indexOf(vb))
+            self._remove_video_block(vb)
 
-            if vb is self.active_video_block:
-                self.active_video_block = None
-
-            vb.cleanup()
-            self.video_blocks.pop(vb.id)
-
-            vb.deleteLater()
-
+        self.reload_video_grid()
         self.video_count_change.emit(len(self.video_blocks))
+
+    def _remove_video_block(self, vb):
+        self.videogrid.takeAt(self.videogrid.indexOf(vb))
+
+        if vb is self.active_video_block:
+            self.active_video_block = None
+
+        vb.cleanup()
+        self.video_blocks.pop(vb.id)
+        # vb.deleteLater()
 
     def is_active_param_set_to(self, param_name, param_value):
         if self.active_video_block is None:
@@ -89,16 +111,12 @@ class PlayerVideoBlocksMixin(object):
 
     def close_video_block(self, _id):
         self.remove_video_blocks(self.video_blocks[_id])
-        self.reload_video_grid()
 
         # self.update_active_block(self.get_current_cursor_pos())
         self.cmd_active("show_overlay")
 
     def close_all(self):
         self.remove_video_blocks(*list(self.video_blocks.values()))
-        self.reload_video_grid()
-
-        self.playing_count_change()
 
     def playing_count_change(self):
         playing_videos_count = sum(

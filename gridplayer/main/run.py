@@ -1,10 +1,8 @@
-import platform
 import sys
 
 from gridplayer import params_env
 from gridplayer.dialogs.messagebox import QCustomMessageBox
 from gridplayer.main.init_app import init_app
-from gridplayer.main.init_utils import init_instance_listener
 from gridplayer.utils.libvlc import init_vlc
 
 
@@ -34,13 +32,7 @@ def run_app():
     player = Player()
     player.show()
 
-    app.open_files.connect(player.process_arguments)
-    player.video_count_change.connect(app.set_video_count)
-
-    # MacOS has OpenFile events
-    if platform.system() != "Darwin":
-        listener = init_instance_listener()
-        listener.open_files.connect(player.process_arguments)
+    app.installEventFilter(player)
 
     if sys.argv[1:]:
         player.process_arguments(sys.argv[1:])
