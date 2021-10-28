@@ -9,6 +9,7 @@ from gridplayer.player.managers.managers import ManagersManager
 from gridplayer.player.managers.menu import PlayerMenuManager
 from gridplayer.player.managers.mouse_hide import PlayerMouseHideManager
 from gridplayer.player.managers.screensaver import ScreensaverManager
+from gridplayer.player.managers.settings import PlayerSettingsManager
 from gridplayer.player.managers.single_mode import PlayerSingleModeManager
 from gridplayer.player.managers.video_driver import VideoDriverManager
 from gridplayer.player.mixins import (
@@ -16,7 +17,6 @@ from gridplayer.player.mixins import (
     PlayerGridMixin,
     PlayerMinorMixin,
     PlayerPlaylistMixin,
-    PlayerSettingsMixin,
     PlayerVideoBlocksMixin,
 )
 
@@ -25,7 +25,6 @@ logger = logging.getLogger(__name__)
 
 class Player(  # noqa: WPS215
     PlayerCommandsMixin,
-    PlayerSettingsMixin,
     # Base
     PlayerPlaylistMixin,
     PlayerGridMixin,
@@ -59,7 +58,6 @@ class Player(  # noqa: WPS215
             "close_playlist": self.cmd_close_playlist,
             "save_playlist": self.cmd_save_playlist,
             "seek_shift_all": self.cmd_seek_shift_all,
-            "settings": self.cmd_settings,
             "about": self.cmd_about,
             "is_active_param_set_to": self.is_active_param_set_to,
             "is_grid_mode_set_to": lambda m: self.playlist.grid_mode == m,
@@ -76,6 +74,7 @@ class Player(  # noqa: WPS215
             mouse_hide=PlayerMouseHideManager,
             drag_n_drop=PlayerDragNDropManager,
             single_mode=PlayerSingleModeManager,
+            settings=PlayerSettingsManager,
             actions=PlayerActionsManager,
             menu=PlayerMenuManager,
         )
@@ -99,6 +98,13 @@ class Player(  # noqa: WPS215
                 ("s.video_count_change", "set_video_count"),
             ],
             "active_video": [("active_block_change", "s.set_active_block")],
+            "settings": [
+                ("reload", "s.reload_playlist"),
+                ("set_screensaver", "screensaver.screensaver_check"),
+                ("set_log_level", "s.set_log_level"),
+                ("set_log_level", "driver.set_log_level"),
+                ("set_log_level_vlc", "driver.set_log_level_vlc"),
+            ],
         }
 
         self.managers.event_filters = [
