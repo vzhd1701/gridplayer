@@ -12,6 +12,7 @@ from gridplayer.player.managers.screensaver import ScreensaverManager
 from gridplayer.player.managers.settings import PlayerSettingsManager
 from gridplayer.player.managers.single_mode import PlayerSingleModeManager
 from gridplayer.player.managers.video_driver import VideoDriverManager
+from gridplayer.player.managers.window_state import WindowStateManager
 from gridplayer.player.mixins import (
     PlayerCommandsMixin,
     PlayerGridMixin,
@@ -35,8 +36,6 @@ class Player(  # noqa: WPS215
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
-        self.is_maximized_pre_fullscreen = False
-
         self.setMouseTracking(True)
         self.setAcceptDrops(True)
 
@@ -46,12 +45,9 @@ class Player(  # noqa: WPS215
 
     def _init_managers(self):
         commands = {
-            "minimize": self.showMinimized,
-            "close": self.close,
             "active": self.cmd_active,
             "add_videos": self.cmd_add_videos,
             "set_grid_mode": self.cmd_set_grid_mode,
-            "fullscreen": self.cmd_fullscreen,
             "play_pause_all": self.cmd_play_pause_all,
             "loop_random": lambda: self.seek_random.emit(),
             "open_playlist": self.cmd_open_playlist,
@@ -61,7 +57,6 @@ class Player(  # noqa: WPS215
             "about": self.cmd_about,
             "is_active_param_set_to": self.is_active_param_set_to,
             "is_grid_mode_set_to": lambda m: self.playlist.grid_mode == m,
-            "is_fullscreen": self.isFullScreen,
             "is_videos": lambda: self.is_videos,
         }
 
@@ -69,6 +64,7 @@ class Player(  # noqa: WPS215
             parent=self,
             commands=commands,
             driver=VideoDriverManager,
+            window_state=WindowStateManager,
             screensaver=ScreensaverManager,
             active_video=ActiveBlockManager,
             mouse_hide=PlayerMouseHideManager,
@@ -81,6 +77,7 @@ class Player(  # noqa: WPS215
 
         self.managers.connections = {
             "driver": [("s.video_count_change", "set_video_count")],
+            "window_state": [("pause_on_minimize", "s.pause_all")],
             "screensaver": [("s.playings_videos_count_change", "screensaver_check")],
             "mouse_hide": [
                 ("s.video_count_change", "set_video_count"),
@@ -108,6 +105,7 @@ class Player(  # noqa: WPS215
         }
 
         self.managers.event_filters = [
+            "window_state",
             "mouse_hide",
             "drag_n_drop",
             "active_video",

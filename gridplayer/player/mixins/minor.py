@@ -6,14 +6,6 @@ from gridplayer.utils import log_config
 
 
 class PlayerMinorMixin(object):
-    def changeEvent(self, event):
-        if event.type() == QEvent.WindowStateChange:
-            pause_when_minimized = self.isMinimized() and Settings().get(
-                "player/pause_minimized"
-            )
-            if pause_when_minimized:
-                self.pause_all()
-
     def get_current_cursor_pos(self):
         return self.mapFromGlobal(self.cursor().pos())
 

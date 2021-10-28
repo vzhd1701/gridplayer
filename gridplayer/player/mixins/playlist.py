@@ -198,10 +198,16 @@ class PlayerPlaylistMixin(object):
 
     def _get_window_state(self):
         return WindowState(
-            is_maximized=self.isMaximized() or self.is_maximized_pre_fullscreen,
+            is_maximized=self.isMaximized(),
             is_fullscreen=self.isFullScreen(),
             geometry=base64.b64encode(bytes(self.saveGeometry())).decode(),
         )
+
+        # return WindowState(
+        #     is_maximized=self.isMaximized() or self.is_maximized_pre_fullscreen,
+        #     is_fullscreen=self.isFullScreen(),
+        #     geometry=base64.b64encode(bytes(self.saveGeometry())).decode(),
+        # )
 
     def _restore_window_state(self):
         geometry = base64.b64decode(self.playlist.window_state.geometry.encode())
@@ -209,7 +215,7 @@ class PlayerPlaylistMixin(object):
 
         if self.playlist.window_state.is_fullscreen:
             if self.playlist.window_state.is_maximized:
-                self.is_maximized_pre_fullscreen = True
+                # self.is_maximized_pre_fullscreen = True
                 self.showFullScreen()
 
         elif self.playlist.window_state.is_maximized:

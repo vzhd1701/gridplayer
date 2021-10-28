@@ -22,9 +22,6 @@ class PlayerCommandsMixin(object):
     def cmd_seek_shift_all(self, percent):
         self.seek_shift.emit(percent)
 
-    def cmd_minimize(self):
-        self.showMinimized()
-
     def cmd_step_forward(self):
         self.pause_all()
         self.step_frame.emit(-1)
@@ -32,19 +29,6 @@ class PlayerCommandsMixin(object):
     def cmd_step_backward(self):
         self.pause_all()
         self.step_frame.emit(1)
-
-    def cmd_fullscreen(self):
-        if self.isFullScreen():
-            if self.is_maximized_pre_fullscreen:
-                self.showMaximized()
-            else:
-                self.showNormal()
-
-            self.is_maximized_pre_fullscreen = False
-        else:
-            self.is_maximized_pre_fullscreen = self.windowState() == Qt.WindowMaximized
-
-            self.showFullScreen()
 
     def cmd_about(self):
         about_dialog = AboutDialog(self)
