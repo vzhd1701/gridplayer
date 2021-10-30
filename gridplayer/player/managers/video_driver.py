@@ -33,7 +33,10 @@ class VideoDriverManager(ManagerBase):
         self._process_manager = None
 
     @property
-    def driver(self):
+    def commands(self):
+        return {"state_video_driver": self.state_video_driver}
+
+    def state_video_driver(self):
         video_driver_cfg = Settings().get("player/video_driver")
         is_multiprocess = video_driver_cfg in self._multiprocess_drivers
 

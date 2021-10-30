@@ -203,7 +203,7 @@ COMMANDS = {
 }
 
 
-class PlayerActionsManager(ManagerBase):
+class ActionsManager(ManagerBase):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 

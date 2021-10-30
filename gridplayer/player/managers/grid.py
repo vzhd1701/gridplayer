@@ -15,7 +15,7 @@ class GridDimensions(NamedTuple):
     rows: int
 
 
-class PlayerGridManager(ManagerBase):
+class GridManager(ManagerBase):
     minimum_size_changed = pyqtSignal(QSize)
 
     def __init__(self, **kwargs):

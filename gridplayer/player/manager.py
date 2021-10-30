@@ -1,27 +1,17 @@
-class ManagersManager(object):
-    def __init__(self, parent, commands, managers):
-        self._parent = parent
+from PyQt5.QtCore import QObject
+
+
+class ManagersManager(QObject):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
 
         self.global_event_filters = []
 
-        self._context = {
-            "commands": commands,
-            "video_blocks": parent.video_blocks,
-        }
+        self._context = {"commands": {}}
 
         self._managers = {}
-
         self._connections = None
         self._event_filters = None
-
-        for manager_name, manager_cls in managers.items():
-            manager = manager_cls(context=self._context, parent=self._parent)
-
-            self._managers[manager_name] = manager
-            self._register_commands(manager_name, manager)
-
-    def __getattr__(self, item):
-        return self._managers[item]
 
     def init(self):
         for m in self._managers.values():
@@ -30,6 +20,24 @@ class ManagersManager(object):
                 continue
 
             m_init()
+
+    def eventFilter(self, event_object, event):
+        return any(
+            self._managers[ef].eventFilter(event_object, event)
+            for ef in self.global_event_filters
+        )
+
+    @property
+    def managers(self):
+        return self._managers
+
+    @managers.setter
+    def managers(self, managers):
+        for manager_name, manager_cls in managers.items():
+            manager = manager_cls(context=self._context, parent=self)
+
+            self._managers[manager_name] = manager
+            self._register_commands(manager_name, manager)
 
     @property
     def connections(self):
@@ -55,7 +63,7 @@ class ManagersManager(object):
         self._event_filters = event_filters
 
         for ef in event_filters:
-            self._parent.installEventFilter(getattr(self, ef))
+            self.installEventFilter(self._managers[ef])
 
     @property
     def commands(self):
@@ -65,19 +73,13 @@ class ManagersManager(object):
     def commands(self, commands):
         self._register_commands("_root", commands)
 
-    def global_event_filter(self, event_object, event):
-        return any(
-            getattr(self, ef).eventFilter(event_object, event)
-            for ef in self.global_event_filters
-        )
-
     def _get_manager_function(self, manager, signature):
         if "." in signature:
             manager, function = signature.split(".")
         else:
             function = signature
 
-        manager = self._parent if manager == "s" else getattr(self, manager)
+        manager = self if manager == "s" else self._managers[manager]
 
         return getattr(manager, function)
 

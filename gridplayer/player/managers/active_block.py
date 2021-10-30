@@ -22,6 +22,29 @@ class ActiveBlockManager(ManagerBase):
             QEvent.DragMove: lambda x: self.update_active_under_mouse(),
         }
 
+    @property
+    def commands(self):
+        return {
+            "active": self.cmd_active,
+            "is_active_param_set_to": self.is_active_param_set_to,
+        }
+
+    def cmd_active(self, command, *args):
+        if self._context["active_block"] is None:
+            return
+
+        getattr(self._context["active_block"], command)(*args)
+
+    def is_active_param_set_to(self, param_name, param_value):
+        if self._context["active_block"] is None:
+            return False
+
+        active_video_param = getattr(
+            self._context["active_block"].video_params, param_name
+        )
+
+        return active_video_param == param_value
+
     def update_active_under_mouse(self):
         self._update_active_block(self._get_current_cursor_pos())
 

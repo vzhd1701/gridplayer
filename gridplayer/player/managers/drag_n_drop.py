@@ -12,7 +12,7 @@ from gridplayer.video import Video
 logger = logging.getLogger(__name__)
 
 
-class PlayerDragNDropManager(ManagerBase):
+class DragNDropManager(ManagerBase):
     dropped_playlist = pyqtSignal(str)
     dropped_videos = pyqtSignal(list)
 

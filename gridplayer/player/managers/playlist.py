@@ -14,7 +14,7 @@ from gridplayer.video import Video
 logger = logging.getLogger(__name__)
 
 
-class PlayerPlaylistManager(ManagerBase):
+class PlaylistManager(ManagerBase):
     playlist_closed = pyqtSignal()
     playlist_loaded = pyqtSignal()
     window_state_loaded = pyqtSignal(WindowState)

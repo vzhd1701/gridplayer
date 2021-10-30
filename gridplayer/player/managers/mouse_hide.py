@@ -7,7 +7,7 @@ from gridplayer.settings import Settings
 from gridplayer.utils.misc import is_modal_open
 
 
-class PlayerMouseHideManager(ManagerBase):
+class MouseHideManager(ManagerBase):
     mouse_hidden = pyqtSignal()
     mouse_shown = pyqtSignal()
 

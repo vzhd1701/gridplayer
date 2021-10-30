@@ -85,7 +85,7 @@ def _join_menu_sections(menu_sections):
     return menu
 
 
-class PlayerMenuManager(ManagerBase):
+class MenuManager(ManagerBase):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 

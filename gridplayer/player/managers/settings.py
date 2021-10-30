@@ -5,7 +5,7 @@ from gridplayer.player.managers.base import ManagerBase
 from gridplayer.settings import Settings
 
 
-class PlayerSettingsManager(ManagerBase):
+class SettingsManager(ManagerBase):
     reload = pyqtSignal()
     set_screensaver = pyqtSignal(int)
     set_log_level = pyqtSignal(int)

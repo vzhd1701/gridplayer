@@ -1,1 +1,0 @@
-from gridplayer.player.mixins.video_blocks import PlayerVideoBlocksMixin

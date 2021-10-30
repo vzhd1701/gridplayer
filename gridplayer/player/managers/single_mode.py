@@ -4,7 +4,7 @@ from gridplayer.player.managers.base import ManagerBase
 from gridplayer.settings import Settings
 
 
-class PlayerSingleModeManager(ManagerBase):
+class SingleModeManager(ManagerBase):
     mode_changed = pyqtSignal()
 
     def __init__(self, **kwargs):
