@@ -20,6 +20,7 @@ class MouseHideManager(ManagerBase):
         QEvent.KeyPress,
         QEvent.MouseMove,
         QEvent.Wheel,
+        QEvent.MouseButtonPress,
     }
 
     def __init__(self, **kwargs):

@@ -32,6 +32,13 @@ PROPAGATED_EVENTS = (
     QEvent.MouseButtonDblClick,
     QEvent.Wheel,
     QEvent.ContextMenu,
+    QEvent.DragEnter,
+)
+
+PROPAGATED_EVENTS_FILTERED = (
+    QEvent.DragMove,
+    QEvent.DragLeave,
+    QEvent.Drop,
 )
 
 
@@ -251,11 +258,12 @@ class OverlayBlockFloating(OverlayBlock):
         # Allow window to move beyond screen edge
         self.setAttribute(Qt.WA_X11NetWmWindowTypeDesktop)
 
+        # Don't allow overlay to receive focus
         self.setAttribute(Qt.WA_X11DoNotAcceptFocus)
-        # Drag and drop doesn't get through floating overlay on X11
+
+        # Drag and drop doesn't get through floating overlay
         # need to redirect drag events to Player window
-        if os.name != "nt":
-            self.setAcceptDrops(True)
+        self.setAcceptDrops(True)
 
         self.setWindowFlags(
             Qt.Tool | Qt.FramelessWindowHint | Qt.WindowDoesNotAcceptFocus
@@ -317,15 +325,13 @@ class OverlayBlockFloating(OverlayBlock):
         so have to do it manually to emulate regular child widget behaviour.
 
         https://stackoverflow.com/a/3184510/13100286
-        https://forum.qt.io/post/352629"""
+        https://forum.qt.io/post/352629
+
+        Also drag events create recursion, so they are filtered separately"""
 
         if event.type() in PROPAGATED_EVENTS:
             QApplication.sendEvent(self.parent(), event)
+        elif event.type() in PROPAGATED_EVENTS_FILTERED:
+            self.parent().window().filter_event(event)
 
         return super().event(event)
-
-    def dragEnterEvent(self, event):
-        self.parent().window().dragEnterEvent(event)
-
-    def dropEvent(self, event):
-        self.parent().window().dropEvent(event)

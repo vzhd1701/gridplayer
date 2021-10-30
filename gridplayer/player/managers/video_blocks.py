@@ -65,7 +65,7 @@ class VideoBlocksManager(ManagerBase):
         self.set_pause.emit(True)
 
     def reload_videos(self):
-        videos = [vb.video for vb in self._context["video_blocks"]]
+        videos = [vb.video_params for vb in self._context["video_blocks"]]
 
         self.close_all()
 

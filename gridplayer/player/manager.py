@@ -22,6 +22,9 @@ class ManagersManager(QObject):
             m_init()
 
     def eventFilter(self, event_object, event):
+        if event_object is not self:
+            return False
+
         return any(
             self._managers[ef].eventFilter(event_object, event)
             for ef in self.global_event_filters
@@ -72,6 +75,11 @@ class ManagersManager(QObject):
     @commands.setter
     def commands(self, commands):
         self._register_commands("_root", commands)
+
+    def filter_event(self, event):
+        return any(
+            self._managers[ef].eventFilter(self, event) for ef in self._event_filters
+        )
 
     def _get_manager_function(self, manager, signature):
         if "." in signature:
