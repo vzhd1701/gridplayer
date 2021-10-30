@@ -73,7 +73,7 @@ class PlayerVideoBlocksMixin(object):
         return bool(self.video_blocks)
 
     def reload_videos(self):
-        videos = (vb.video for vb in self.video_blocks)
+        videos = [vb.video for vb in self.video_blocks.values()]
 
         self.close_all()
 
@@ -83,7 +83,6 @@ class PlayerVideoBlocksMixin(object):
         for v in videos:
             self._add_video_block(v)
 
-        self.reload_video_grid()
         self.video_count_change.emit(len(self.video_blocks))
 
     def _add_video_block(self, video):
@@ -91,7 +90,7 @@ class PlayerVideoBlocksMixin(object):
             video_driver=self.managers.driver.driver,
             parent=self,
         )
-        vb.installEventFilter(self)
+        # vb.installEventFilter(self)
 
         qt_connect(
             (vb.exit_request, self.close_video_block),
@@ -106,17 +105,14 @@ class PlayerVideoBlocksMixin(object):
 
         self.video_blocks[vb.id] = vb
 
-        self.video_count_change.emit(len(self.video_blocks))
-
     def remove_video_blocks(self, *videoblocks):
         for vb in videoblocks:
             self._remove_video_block(vb)
 
-        self.reload_video_grid()
         self.video_count_change.emit(len(self.video_blocks))
 
     def _remove_video_block(self, vb):
-        self.videogrid.takeAt(self.videogrid.indexOf(vb))
+        # self.videogrid.takeAt(self.videogrid.indexOf(vb))
 
         if vb is self.active_video_block:
             self.active_video_block = None

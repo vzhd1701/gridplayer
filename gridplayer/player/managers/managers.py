@@ -7,8 +7,9 @@ class ManagersManager(object):
         self._context = {
             "commands": commands,
             "video_blocks": parent.video_blocks,
-            "grid_mode": parent.grid_mode,
         }
+
+        self._managers = {}
 
         self._connections = None
         self._event_filters = None
@@ -16,8 +17,19 @@ class ManagersManager(object):
         for manager_name, manager_cls in managers.items():
             manager = manager_cls(context=self._context, parent=self._parent)
 
-            setattr(self, manager_name, manager)
+            self._managers[manager_name] = manager
             self._register_commands(manager_name, manager)
+
+    def __getattr__(self, item):
+        return self._managers[item]
+
+    def init(self):
+        for m in self._managers.values():
+            m_init = getattr(m, "init", None)
+            if m_init is None:
+                continue
+
+            m_init()
 
     @property
     def connections(self):

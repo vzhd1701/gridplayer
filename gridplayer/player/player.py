@@ -9,6 +9,7 @@ from gridplayer.player.managers.active_block import ActiveBlockManager
 from gridplayer.player.managers.add_videos import AddVideosManager
 from gridplayer.player.managers.dialogs import DialogsManager
 from gridplayer.player.managers.drag_n_drop import PlayerDragNDropManager
+from gridplayer.player.managers.grid import PlayerGridManager
 from gridplayer.player.managers.instance_listener import InstanceListenerManager
 from gridplayer.player.managers.log import LogManager
 from gridplayer.player.managers.macos_fileopen import MacOSFileOpenManager
@@ -21,13 +22,12 @@ from gridplayer.player.managers.settings import PlayerSettingsManager
 from gridplayer.player.managers.single_mode import PlayerSingleModeManager
 from gridplayer.player.managers.video_driver import VideoDriverManager
 from gridplayer.player.managers.window_state import WindowStateManager
-from gridplayer.player.mixins import PlayerGridMixin, PlayerVideoBlocksMixin
+from gridplayer.player.mixins import PlayerVideoBlocksMixin
 
 logger = logging.getLogger(__name__)
 
 
 class Player(
-    PlayerGridMixin,
     PlayerVideoBlocksMixin,
     QWidget,
 ):
@@ -42,17 +42,13 @@ class Player(
         self.managers = self._init_managers()
         self.eventFilter = self.managers.global_event_filter
 
-        self.reload_video_grid()
-
     def _init_managers(self):
         commands = {
             "active": self.cmd_active,
-            "set_grid_mode": self.cmd_set_grid_mode,
             "play_pause_all": self.cmd_play_pause_all,
             "loop_random": lambda: self.seek_random.emit(),
             "seek_shift_all": self.cmd_seek_shift_all,
             "is_active_param_set_to": self.is_active_param_set_to,
-            "is_grid_mode_set_to": lambda m: self.grid_mode == m,
             "is_videos": lambda: self.is_videos,
         }
 
@@ -60,6 +56,7 @@ class Player(
             "fileopen": MacOSFileOpenManager,
             "driver": VideoDriverManager,
             "window_state": WindowStateManager,
+            "grid": PlayerGridManager,
             "playlist": PlayerPlaylistManager,
             "screensaver": ScreensaverManager,
             "active_video": ActiveBlockManager,
@@ -85,6 +82,10 @@ class Player(
         managers.connections = {
             "driver": [("s.video_count_change", "set_video_count")],
             "window_state": [("pause_on_minimize", "s.pause_all")],
+            "grid": [
+                ("minimum_size_changed", "window_state.set_minimum_size"),
+                ("s.video_count_change", "grid.reload_video_grid"),
+            ],
             "screensaver": [("s.playings_videos_count_change", "screensaver_check")],
             "mouse_hide": [
                 ("s.video_count_change", "set_video_count"),
@@ -93,12 +94,12 @@ class Player(
                 ("mouse_shown", "active_video.update_active_under_mouse"),
             ],
             "drag_n_drop": [
-                ("videos_swapped", "s.reload_video_grid"),
+                ("videos_swapped", "grid.reload_video_grid"),
                 ("dropped_videos", "s.add_videos"),
                 ("dropped_playlist", "playlist.load_playlist_file"),
             ],
             "single_mode": [
-                ("mode_changed", "s.adapt_grid"),
+                ("mode_changed", "grid.adapt_grid"),
                 ("s.video_count_change", "set_video_count"),
             ],
             "active_video": [("active_block_change", "s.set_active_block")],
@@ -115,7 +116,7 @@ class Player(
                 ("playlist_closed", "window_state.restore_to_minimum"),
                 ("playlist_loaded", "window_state.activate_window"),
                 ("window_state_loaded", "window_state.restore_window_state"),
-                ("grid_mode_loaded", "s.cmd_set_grid_mode"),
+                ("grid_mode_loaded", "grid.cmd_set_grid_mode"),
                 ("videos_loaded", "s.add_videos"),
                 ("alert", "window_state.activate_window"),
                 ("error", "dialogs.error"),
@@ -136,6 +137,8 @@ class Player(
         ]
 
         managers.global_event_filters = ["fileopen"]
+
+        managers.init()
 
         return managers
 

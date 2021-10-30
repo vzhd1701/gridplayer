@@ -1,11 +1,12 @@
 import math
 from typing import NamedTuple
 
-from PyQt5.QtCore import QSize, Qt
+from PyQt5.QtCore import QSize, Qt, pyqtSignal
 from PyQt5.QtGui import QFont
 from PyQt5.QtWidgets import QGridLayout, QLabel
 
 from gridplayer.params_static import GridMode
+from gridplayer.player.managers.base import ManagerBase
 from gridplayer.settings import Settings
 
 
@@ -14,27 +15,39 @@ class GridDimensions(NamedTuple):
     rows: int
 
 
-class PlayerGridMixin(object):
+class PlayerGridManager(ManagerBase):
+    minimum_size_changed = pyqtSignal(QSize)
+
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
-        self._default_minimum_size = QSize(640, 360)
+        self._context["grid_mode"] = Settings().get("playlist/grid_mode")
 
+        self._default_minimum_size = QSize(640, 360)
         self._minimum_video_size = QSize(100, 90)
         self._minimum_size = self._default_minimum_size
 
-        self.grid_mode = Settings().get("playlist/grid_mode")
+        self._grid = QGridLayout(self.parent())
+        self._grid.setSpacing(0)
+        self._grid.setContentsMargins(0, 0, 0, 0)
 
-        self.setMinimumSize(self._minimum_size)
-
-        self.videogrid = QGridLayout(self)
-        self.videogrid.setSpacing(0)
-        self.videogrid.setContentsMargins(0, 0, 0, 0)
-
-        self.info_label = QLabel("Drag and drop video files here")
-        self.info_label.setAlignment(Qt.AlignCenter)
+        self._info_label = QLabel(
+            "Drag and drop video files here", parent=self.parent()
+        )
+        self._info_label.setAlignment(Qt.AlignCenter)
         font = QFont("Hack", 16, QFont.Bold)
-        self.info_label.setFont(font)
+        self._info_label.setFont(font)
+
+    def init(self):
+        self.minimum_size_changed.emit(self._minimum_size)
+        self.reload_video_grid()
+
+    @property
+    def commands(self):
+        return {
+            "set_grid_mode": self.cmd_set_grid_mode,
+            "is_grid_mode_set_to": lambda m: self._context["grid_mode"] == m,
+        }
 
     @property
     def visible_count(self):
@@ -43,7 +56,7 @@ class PlayerGridMixin(object):
         # and include new blocks that are not yet visible
         return sum(
             w.isVisible() or not w.testAttribute(Qt.WA_WState_ExplicitShowHide)
-            for w in self.video_blocks.values()
+            for w in self._context["video_blocks"].values()
         )
 
     @property
@@ -54,7 +67,7 @@ class PlayerGridMixin(object):
         grid_y = math.ceil(math.sqrt(self.visible_count))
         grid_x = math.ceil(self.visible_count / grid_y)
 
-        if self.grid_mode == GridMode.AUTO_COLS:
+        if self._context["grid_mode"] == GridMode.AUTO_COLS:
             cols, rows = grid_x, grid_y
         else:
             cols, rows = grid_y, grid_x
@@ -62,10 +75,10 @@ class PlayerGridMixin(object):
         return GridDimensions(cols, rows)
 
     def cmd_set_grid_mode(self, mode):
-        if self.grid_mode == mode:
+        if self._context["grid_mode"] == mode:
             return
 
-        self.grid_mode = mode
+        self._context["grid_mode"] = mode
         self.reload_video_grid()
 
     def adapt_grid(self):
@@ -77,7 +90,7 @@ class PlayerGridMixin(object):
     def reload_video_grid(self):
         self._reset_video_grid()
 
-        if not self.is_videos:
+        if not self._context["video_blocks"]:
             return
 
         self._adjust_window()
@@ -86,33 +99,33 @@ class PlayerGridMixin(object):
 
         self.adapt_grid()
 
-        self.layout().activate()
+        self.parent().layout().activate()
 
     def _reset_grid_stretch(self):
-        for c in range(self.videogrid.columnCount()):
-            self.videogrid.setColumnStretch(c, 0)
+        for c in range(self._grid.columnCount()):
+            self._grid.setColumnStretch(c, 0)
 
-        for r in range(self.videogrid.rowCount()):
-            self.videogrid.setRowStretch(r, 0)
+        for r in range(self._grid.rowCount()):
+            self._grid.setRowStretch(r, 0)
 
     def _adjust_grid_stretch(self):
         for c in range(self.grid_dimensions.cols):
-            self.videogrid.setColumnStretch(c, 1)
+            self._grid.setColumnStretch(c, 1)
 
         for r in range(self.grid_dimensions.rows):
-            self.videogrid.setRowStretch(r, 1)
+            self._grid.setRowStretch(r, 1)
 
     def _reset_video_grid(self):
-        self.info_label.hide()
+        self._info_label.hide()
 
-        self.videogrid.removeWidget(self.info_label)
+        self._grid.removeWidget(self._info_label)
 
-        for vb in self.video_blocks.values():
-            self.videogrid.removeWidget(vb)
+        for vb in self._context["video_blocks"].values():
+            self._grid.removeWidget(vb)
 
-        if not self.is_videos:
-            self.videogrid.addWidget(self.info_label, 0, 0)
-            self.info_label.show()
+        if not self._context["video_blocks"]:
+            self._grid.addWidget(self._info_label, 0, 0)
+            self._info_label.show()
 
             self.adapt_grid()
 
@@ -124,7 +137,7 @@ class PlayerGridMixin(object):
         height = max(height, self._default_minimum_size.height())
 
         self._minimum_size = QSize(width, height)
-        self.setMinimumSize(self._minimum_size)
+        self.minimum_size_changed.emit(self._minimum_size)
 
     def _populate_grid(self):
         grid = (
@@ -133,12 +146,12 @@ class PlayerGridMixin(object):
             for col in range(self.grid_dimensions.cols)
         )
 
-        for vb in self.video_blocks.values():
+        for vb in self._context["video_blocks"].values():
             col, row = next(grid)
 
             vb.setMinimumSize(self._minimum_vb_size())
 
-            self.videogrid.addWidget(vb, row, col, 1, 1)
+            self._grid.addWidget(vb, row, col, 1, 1)
 
     def _minimum_vb_size(self):
         return QSize(

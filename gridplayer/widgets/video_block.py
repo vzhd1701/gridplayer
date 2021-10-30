@@ -41,8 +41,8 @@ class QStackedLayoutFloating(QStackedLayout):
 
 
 class StatusLabel(QLabel):
-    def __init__(self, parent=None):
-        super().__init__(parent)
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
 
         self.setAutoFillBackground(True)
 
@@ -91,8 +91,8 @@ class VideoBlock(QWidget):  # noqa: WPS230
     is_muted_change = pyqtSignal(bool)
     info_change = pyqtSignal(str)
 
-    def __init__(self, video_driver, parent=None):
-        super().__init__(parent)
+    def __init__(self, video_driver, **kwargs):
+        super().__init__(**kwargs)
 
         # Internal
         self.video_driver = video_driver(parent=self)
@@ -105,7 +105,7 @@ class VideoBlock(QWidget):  # noqa: WPS230
         self.is_active = False
         self.is_error = False
 
-        self.overlay_hide_timer = QTimer()
+        self.overlay_hide_timer = QTimer(self)
         self.overlay_hide_timer.setSingleShot(True)
         self.overlay_hide_timer.timeout.connect(self.hide_overlay)
 
@@ -170,7 +170,7 @@ class VideoBlock(QWidget):  # noqa: WPS230
         self.layout_main.setContentsMargins(0, 0, 0, 0)
         self.layout_main.setStackingMode(QStackedLayout.StackAll)
 
-        self.status_label = StatusLabel(self)
+        self.status_label = StatusLabel(parent=self)
         self.status_label.setWindowFlags(Qt.WindowTransparentForInput)
         self.status_label.setAttribute(Qt.WA_TransparentForMouseEvents)
 

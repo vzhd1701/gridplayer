@@ -236,6 +236,14 @@ class OverlayBlockFloating(OverlayBlock):
 
         self.parent().window().installEventFilter(self)
 
+    def ensure_black_text(self):
+        """Some window managers make text look gray when window is out of focus"""
+
+        pal = self.palette()
+        col = pal.color(QPalette.Active, QPalette.ButtonText)
+        pal.setColor(QPalette.Inactive, QPalette.Text, col)
+        self.setPalette(pal)
+
     def init_flags(self):
         self.setAttribute(Qt.WA_NoSystemBackground)
         self.setAttribute(Qt.WA_TranslucentBackground)
@@ -261,14 +269,6 @@ class OverlayBlockFloating(OverlayBlock):
 
         self.floating_progress.is_opaque = True
         self.is_opaque = True
-
-    def ensure_black_text(self):
-        """Some window managers make text look gray when window is out of focus"""
-
-        pal = self.palette()
-        col = pal.color(QPalette.Active, QPalette.ButtonText)
-        pal.setColor(QPalette.Inactive, QPalette.Text, col)
-        self.setPalette(pal)
 
     def setGeometry(self, rect):
         new_pos = self.parent().mapToGlobal(QPoint())
