@@ -44,9 +44,7 @@ class SingleModeManager(ManagerBase):
 
         is_pause_background_videos = Settings().get("player/pause_background_videos")
 
-        current_sv = next(
-            v for v in self._context["video_blocks"].values() if v.isVisible()
-        )
+        current_sv = next(v for v in self._context["video_blocks"] if v.isVisible())
 
         next_sv = self._next_single_video_after(current_sv)
 
@@ -66,7 +64,7 @@ class SingleModeManager(ManagerBase):
 
         is_pause_background_videos = Settings().get("player/pause_background_videos")
 
-        for vb in self._context["video_blocks"].values():
+        for vb in self._context["video_blocks"]:
             if vb == self._context["active_block"]:
                 continue
 
@@ -81,7 +79,7 @@ class SingleModeManager(ManagerBase):
     def single_mode_off(self):
         self._is_single_mode = False
 
-        for vb in self._context["video_blocks"].values():
+        for vb in self._context["video_blocks"]:
             if vb == self._context["active_block"]:
                 continue
 
@@ -94,8 +92,8 @@ class SingleModeManager(ManagerBase):
         self.mode_changed.emit()
 
     def _next_single_video_after(self, current_sv):
-        next_sv_idx = list(self._context["video_blocks"]).index(current_sv.id) + 1
+        next_sv_idx = self._context["video_blocks"].index(current_sv) + 1
         if next_sv_idx > len(self._context["video_blocks"]) - 1:
             next_sv_idx = 0
 
-        return list(self._context["video_blocks"].values())[next_sv_idx]
+        return self._context["video_blocks"][next_sv_idx]

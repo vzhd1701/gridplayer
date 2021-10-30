@@ -1,19 +1,9 @@
 from PyQt5.QtWidgets import QApplication
 
 
-def dict_swap_items(d, id1, id2):
-    new_dict = {}
-    for k, v in d.items():
-        if k == id1:
-            new_dict[id2] = d[id2]
-        elif k == id2:
-            new_dict[id1] = d[id1]
-        elif k not in {id1, id2}:
-            new_dict[k] = v
-
-    d.clear()
-    d.update(new_dict)
-    # return new_dict
+def swap_list_items(_list, item1, item2):
+    idx_1, idx_2 = _list.index(item1), _list.index(item2)
+    _list[idx_2], _list[idx_1] = _list[idx_1], _list[idx_2]
 
 
 def is_modal_open():

@@ -6,7 +6,7 @@ from PyQt5.QtWidgets import QApplication
 
 from gridplayer.player.managers.base import ManagerBase
 from gridplayer.utils.files import drag_get_files, drag_get_video_id, drag_has_video_id
-from gridplayer.utils.misc import dict_swap_items
+from gridplayer.utils.misc import swap_list_items
 from gridplayer.video import Video
 
 logger = logging.getLogger(__name__)
@@ -72,10 +72,10 @@ class DragNDropManager(ManagerBase):
                 logger.debug("No video under cursor, discarding drop")
                 return
 
-            src_video_id = drag_get_video_id(drop_data)
-            dst_video_id = dst_video.id
+            src_video = self._get_video_block_by_id(drag_get_video_id(drop_data))
+            dst_video = dst_video
 
-            self._swap_videos(src_video_id, dst_video_id)
+            self._swap_videos(src_video, dst_video)
 
             event.acceptProposedAction()
 
@@ -108,17 +108,16 @@ class DragNDropManager(ManagerBase):
 
         return drag
 
-    def _swap_videos(self, src_id, dst_id):
-        logger.debug(f"Swapping {src_id} with {dst_id}")
+    def _get_video_block_by_id(self, _id):
+        return next(v for v in self._context["video_blocks"] if v.id == _id)
 
-        if src_id == dst_id:
+    def _swap_videos(self, src, dst):
+        logger.debug(f"Swapping {src.id} with {dst.id}")
+
+        if src == dst:
             logger.debug("No video swap needed")
             return
 
-        if src_id not in self._context["video_blocks"]:
-            logger.debug(f"Cannot swap {src_id}, id not found")
-            return
-
-        dict_swap_items(self._context["video_blocks"], dst_id, src_id)
+        swap_list_items(self._context["video_blocks"], dst, src)
 
         self.videos_swapped.emit()

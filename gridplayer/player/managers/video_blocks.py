@@ -21,7 +21,7 @@ class VideoBlocksManager(ManagerBase):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
-        self._context["video_blocks"] = {}
+        self._context["video_blocks"] = []
 
     # def event(self, event) -> bool:
     #     if event.type() in {QEvent.ShortcutOverride}:
@@ -42,9 +42,7 @@ class VideoBlocksManager(ManagerBase):
 
     def cmd_play_pause_all(self):
         unpaused_vbs = (
-            v
-            for v in self._context["video_blocks"].values()
-            if not v.video_params.is_paused
+            v for v in self._context["video_blocks"] if not v.video_params.is_paused
         )
 
         if next(unpaused_vbs, None) is not None:
@@ -67,7 +65,7 @@ class VideoBlocksManager(ManagerBase):
         self.set_pause.emit(True)
 
     def reload_videos(self):
-        videos = [vb.video for vb in self._context["video_blocks"].values()]
+        videos = [vb.video for vb in self._context["video_blocks"]]
 
         self.close_all()
 
@@ -99,7 +97,7 @@ class VideoBlocksManager(ManagerBase):
 
         vb.set_video(video)
 
-        self._context["video_blocks"][vb.id] = vb
+        self._context["video_blocks"].append(vb)
 
     def remove_video_blocks(self, *videoblocks):
         for vb in videoblocks:
@@ -114,22 +112,21 @@ class VideoBlocksManager(ManagerBase):
         #     self.active_video_block = None
 
         vb.cleanup()
-        self._context["video_blocks"].pop(vb.id)
+        self._context["video_blocks"].remove(vb)
         # vb.deleteLater()
 
     def close_video_block(self, _id):
-        self.remove_video_blocks(self._context["video_blocks"][_id])
+        closing_block = next(v for v in self._context["video_blocks"] if v.id == _id)
+        self.remove_video_blocks(closing_block)
 
         # self.update_active_block(self.get_current_cursor_pos())
         # self.cmd_active("show_overlay")
 
     def close_all(self):
-        self.remove_video_blocks(*list(self._context["video_blocks"].values()))
+        self.remove_video_blocks(*self._context["video_blocks"])
 
     def playing_count_change(self):
         playing_videos_count = sum(
-            True
-            for v in self._context["video_blocks"].values()
-            if not v.video_params.is_paused
+            True for v in self._context["video_blocks"] if not v.video_params.is_paused
         )
         self.playings_videos_count_change.emit(playing_videos_count)

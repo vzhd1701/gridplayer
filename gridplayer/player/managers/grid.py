@@ -56,7 +56,7 @@ class GridManager(ManagerBase):
         # and include new blocks that are not yet visible
         return sum(
             w.isVisible() or not w.testAttribute(Qt.WA_WState_ExplicitShowHide)
-            for w in self._context["video_blocks"].values()
+            for w in self._context["video_blocks"]
         )
 
     @property
@@ -120,7 +120,7 @@ class GridManager(ManagerBase):
 
         self._grid.removeWidget(self._info_label)
 
-        for vb in self._context["video_blocks"].values():
+        for vb in self._context["video_blocks"]:
             self._grid.removeWidget(vb)
 
         if not self._context["video_blocks"]:
@@ -146,7 +146,7 @@ class GridManager(ManagerBase):
             for col in range(self.grid_dimensions.cols)
         )
 
-        for vb in self._context["video_blocks"].values():
+        for vb in self._context["video_blocks"]:
             col, row = next(grid)
 
             vb.setMinimumSize(self._minimum_vb_size())

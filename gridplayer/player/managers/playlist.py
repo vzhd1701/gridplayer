@@ -178,5 +178,5 @@ class PlaylistManager(ManagerBase):
         return Playlist(
             grid_mode=self._context["grid_mode"],
             window_state=self._context["commands"]["state_window"](),
-            videos=[v.video_params for v in self._context["video_blocks"].values()],
+            videos=[v.video_params for v in self._context["video_blocks"]],
         )

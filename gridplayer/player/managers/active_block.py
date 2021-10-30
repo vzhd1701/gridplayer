@@ -75,7 +75,7 @@ class ActiveBlockManager(ManagerBase):
     def _get_hover_video_block(self):
         visible_blocks_under_cursor = (
             v
-            for v in self._context["video_blocks"].values()
+            for v in self._context["video_blocks"]
             if v.isVisible() and v.is_under_cursor()
         )
 
