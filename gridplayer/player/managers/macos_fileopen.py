@@ -9,7 +9,7 @@ from gridplayer.version import __app_name__
 
 
 class MacOSFileOpenManager(ManagerBase):
-    file_open = pyqtSignal(list)
+    file_opened = pyqtSignal(list)
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -28,7 +28,7 @@ class MacOSFileOpenManager(ManagerBase):
         is_only_empty = is_the_only_instance() and is_empty
 
         if Settings().get("player/one_instance") or is_only_empty:
-            self.file_open.emit([file])
+            self.file_opened.emit([file])
         else:
             subprocess.run(  # noqa: S603, S607
                 [

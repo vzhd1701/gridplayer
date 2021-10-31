@@ -37,14 +37,13 @@ class Player(QWidget, ManagersManager):
         self.setAcceptDrops(True)
 
         managers_cls = {
-            "fileopen": MacOSFileOpenManager,
             "video_driver": VideoDriverManager,
             "window_state": WindowStateManager,
             "video_blocks": VideoBlocksManager,
             "grid": GridManager,
             "playlist": PlaylistManager,
             "screensaver": ScreensaverManager,
-            "active_video": ActiveBlockManager,
+            "active_block": ActiveBlockManager,
             "mouse_hide": MouseHideManager,
             "drag_n_drop": DragNDropManager,
             "single_mode": SingleModeManager,
@@ -56,36 +55,33 @@ class Player(QWidget, ManagersManager):
             "menu": MenuManager,
         }
 
-        # MacOS has OpenFile events
-        if platform.system() != "Darwin":
-            managers_cls["instance_listener"] = InstanceListenerManager
-
-        self.managers = managers_cls
-
-        self.connections = {
-            "video_driver": [("video_blocks.video_count_change", "set_video_count")],
+        connections = {
+            "video_driver": [("video_blocks.video_count_changed", "set_video_count")],
             "window_state": [("pause_on_minimize", "video_blocks.pause_all")],
             "grid": [
                 ("minimum_size_changed", "window_state.set_minimum_size"),
-                ("video_blocks.video_count_change", "grid.reload_video_grid"),
+                ("video_blocks.video_count_changed", "reload_video_grid"),
             ],
             "screensaver": [
-                ("video_blocks.playings_videos_count_change", "screensaver_check")
+                ("video_blocks.playings_videos_count_changed", "screensaver_check")
             ],
             "mouse_hide": [
-                ("video_blocks.video_count_change", "set_video_count"),
-                ("mouse_hidden", "active_video.update_active_reset"),
+                ("video_blocks.video_count_changed", "show_cursor"),
+                ("mouse_hidden", "active_block.update_active_reset"),
                 ("mouse_hidden", "video_blocks.hide_overlay"),
-                ("mouse_shown", "active_video.update_active_under_mouse"),
+                ("mouse_shown", "active_block.update_active_under_mouse"),
+            ],
+            "active_block": [
+                ("video_blocks.video_count_changed", "update_active_under_mouse")
             ],
             "drag_n_drop": [
                 ("videos_swapped", "grid.reload_video_grid"),
-                ("dropped_videos", "video_blocks.add_videos"),
-                ("dropped_playlist", "playlist.load_playlist_file"),
+                ("videos_dropped", "video_blocks.add_videos"),
+                ("playlist_dropped", "playlist.load_playlist_file"),
             ],
             "single_mode": [
                 ("mode_changed", "grid.adapt_grid"),
-                ("video_blocks.video_count_change", "set_video_count"),
+                ("video_blocks.video_count_changed", "set_video_count"),
             ],
             "settings": [
                 ("reload", "video_blocks.reload_videos"),
@@ -105,22 +101,38 @@ class Player(QWidget, ManagersManager):
                 ("alert", "window_state.activate_window"),
                 ("error", "dialogs.error"),
             ],
-            "fileopen": [("file_open", "video_blocks.add_videos")],
-            "instance_listener": [("open_files", "video_blocks.add_videos")],
             "add_videos": [("videos_added", "video_blocks.add_videos")],
         }
+
+        global_event_filters = []
+
+        if platform.system() == "Darwin":
+            managers_cls["macos_fileopen"] = MacOSFileOpenManager
+            connections["macos_fileopen"] = [
+                ("file_opened", "playlist.process_arguments")
+            ]
+            global_event_filters.append("macos_fileopen")
+        else:
+            managers_cls["instance_listener"] = InstanceListenerManager
+            connections["instance_listener"] = [
+                ("files_opened", "playlist.process_arguments")
+            ]
+
+        self.managers = managers_cls
+
+        self.connections = connections
 
         self.event_filters = [
             "window_state",
             "mouse_hide",
             "drag_n_drop",
-            "active_video",
+            "active_block",
             "single_mode",
             "playlist",
             "menu",
         ]
 
-        self.global_event_filters = ["fileopen"]
+        self.global_event_filters = global_event_filters
 
         self.init()
 

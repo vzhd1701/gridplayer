@@ -13,8 +13,8 @@ logger = logging.getLogger(__name__)
 
 
 class DragNDropManager(ManagerBase):
-    dropped_playlist = pyqtSignal(str)
-    dropped_videos = pyqtSignal(list)
+    playlist_dropped = pyqtSignal(str)
+    videos_dropped = pyqtSignal(list)
 
     videos_swapped = pyqtSignal()
 
@@ -56,10 +56,10 @@ class DragNDropManager(ManagerBase):
         # Add new video
         if drop_files:
             if drop_files[0].endswith("gpls"):
-                self.dropped_playlist.emit(drop_files[0])
+                self.playlist_dropped.emit(drop_files[0])
             else:
                 videos = [Video(file_path=f) for f in drop_files]
-                self.dropped_videos.emit(videos)
+                self.videos_dropped.emit(videos)
 
             event.acceptProposedAction()
 

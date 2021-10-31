@@ -10,8 +10,8 @@ logger = logging.getLogger(__name__)
 
 
 class VideoBlocksManager(ManagerBase):
-    video_count_change = pyqtSignal(int)
-    playings_videos_count_change = pyqtSignal(int)
+    video_count_changed = pyqtSignal(int)
+    playings_videos_count_changed = pyqtSignal(int)
 
     hide_overlay = pyqtSignal()
     set_pause = pyqtSignal(int)
@@ -75,7 +75,7 @@ class VideoBlocksManager(ManagerBase):
         for v in videos:
             self._add_video_block(v)
 
-        self.video_count_change.emit(len(self._context["video_blocks"]))
+        self.video_count_changed.emit(len(self._context["video_blocks"]))
 
     def _add_video_block(self, video):
         driver = self._context["commands"]["state_video_driver"]()
@@ -103,24 +103,16 @@ class VideoBlocksManager(ManagerBase):
         for vb in videoblocks:
             self._remove_video_block(vb)
 
-        self.video_count_change.emit(len(self._context["video_blocks"]))
+        self.video_count_changed.emit(len(self._context["video_blocks"]))
 
     def _remove_video_block(self, vb):
-        # self.videogrid.takeAt(self.videogrid.indexOf(vb))
-
-        # if vb is self.active_video_block:
-        #     self.active_video_block = None
-
         vb.cleanup()
         self._context["video_blocks"].remove(vb)
-        # vb.deleteLater()
+        vb.deleteLater()
 
     def close_video_block(self, _id):
         closing_block = next(v for v in self._context["video_blocks"] if v.id == _id)
         self.remove_video_blocks(closing_block)
-
-        # self.update_active_block(self.get_current_cursor_pos())
-        # self.cmd_active("show_overlay")
 
     def close_all(self):
         self.remove_video_blocks(*self._context["video_blocks"])
@@ -129,4 +121,4 @@ class VideoBlocksManager(ManagerBase):
         playing_videos_count = sum(
             True for v in self._context["video_blocks"] if not v.video_params.is_paused
         )
-        self.playings_videos_count_change.emit(playing_videos_count)
+        self.playings_videos_count_changed.emit(playing_videos_count)

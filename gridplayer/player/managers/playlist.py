@@ -139,8 +139,6 @@ class PlaylistManager(ManagerBase):
         self.playlist_loaded.emit()
 
     def check_playlist_save(self):
-        # if not self.is_videos:
-        #     return
         if not self._context["video_blocks"]:
             return
 
