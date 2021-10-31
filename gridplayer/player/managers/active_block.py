@@ -16,6 +16,7 @@ class ActiveBlockManager(ManagerBase):
         self._event_map = {
             QEvent.MouseMove: lambda x: self.update_active_under_mouse(),
             QEvent.MouseButtonPress: lambda x: self.update_active_under_mouse(),
+            QEvent.MouseButtonRelease: lambda x: self.update_active_under_mouse(),
             QEvent.NonClientAreaMouseMove: lambda x: self.update_active_reset(),
             QEvent.NonClientAreaMouseButtonPress: lambda x: self.update_active_reset(),
             QEvent.Drop: lambda x: self.update_active_under_mouse(),
@@ -47,6 +48,7 @@ class ActiveBlockManager(ManagerBase):
 
     def update_active_under_mouse(self):
         self._update_active_block(self._get_current_cursor_pos())
+        self.cmd_active("show_overlay")
 
     def update_active_reset(self):
         self._update_active_block(None)

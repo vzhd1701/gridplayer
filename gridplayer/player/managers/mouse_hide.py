@@ -21,12 +21,11 @@ class MouseHideManager(ManagerBase):
         QEvent.MouseMove,
         QEvent.Wheel,
         QEvent.MouseButtonPress,
+        QEvent.MouseButtonRelease,
     }
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-
-        self.is_no_videos = True
 
         self.mouse_timer = QTimer(self)
         self.mouse_timer.timeout.connect(self.hide_cursor)
@@ -41,7 +40,7 @@ class MouseHideManager(ManagerBase):
     def hide_cursor(self):
         self.mouse_timer.stop()
 
-        if self.is_no_videos or is_modal_open():
+        if not self._context["video_blocks"] or is_modal_open():
             return
 
         if QApplication.overrideCursor() != Qt.BlankCursor:
@@ -58,9 +57,11 @@ class MouseHideManager(ManagerBase):
         if Settings().get("misc/mouse_hide"):
             self.mouse_timer.start(1000 * Settings().get("misc/mouse_hide_timeout"))
 
-    def set_video_count(self, video_count):
-        self.is_no_videos = video_count == 0
-
     def _focus_change(self, focusWindow):
-        if focusWindow and focusWindow.isModal():
+        try:
+            is_modal = focusWindow.isModal()
+        except AttributeError:
+            return
+
+        if is_modal:
             self.show_cursor()
