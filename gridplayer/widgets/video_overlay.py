@@ -11,6 +11,7 @@ from PyQt5.QtWidgets import (
 )
 
 from gridplayer.settings import Settings
+from gridplayer.utils.misc import qt_connect
 from gridplayer.utils.time_txt import get_time_txt
 from gridplayer.widgets.video_overlay_buttons import (
     OverlayExitButton,
@@ -71,19 +72,15 @@ class OverlayBlock(QWidget):  # noqa: WPS230
         self.floating_progress.hide()
 
     def ui_connect(self):  # noqa: WPS213
-        self.progress_bar.mouse_over.connect(self.floating_progress.on_mouse_over)
-        self.progress_bar.mouse_left.connect(self.floating_progress.on_mouse_left)
-
-        self.exit_button.clicked.connect(self.exit)
-        self.play_pause_button.clicked.connect(self.play_pause)
-        self.progress_bar.emit_new_position.connect(self.emit_position)
-        self.volume_button.clicked.connect(self.mute_unmute)
-        self.volume_bar.emit_new_position.connect(self.emit_volume_position)
-
-        self.play_pause_button.installEventFilter(self)
-        self.progress_bar.installEventFilter(self)
-        self.volume_button.installEventFilter(self)
-        self.volume_bar.installEventFilter(self)
+        qt_connect(
+            (self.progress_bar.mouse_over, self.floating_progress.on_mouse_over),
+            (self.progress_bar.mouse_left, self.floating_progress.on_mouse_left),
+            (self.exit_button.clicked, self.exit),
+            (self.play_pause_button.clicked, self.play_pause),
+            (self.progress_bar.emit_new_position, self.emit_position),
+            (self.volume_button.clicked, self.mute_unmute),
+            (self.volume_bar.emit_new_position, self.emit_volume_position),
+        )
 
     def ui_setup(self):  # noqa: WPS213
         QVBoxLayout(self)
@@ -150,14 +147,6 @@ class OverlayBlock(QWidget):  # noqa: WPS230
         elements["label_progress"] = is_wide
 
         self.label_progress.setVisible(elements["label_progress"])
-
-    def eventFilter(self, event_object, event) -> bool:
-        """Show cursor on any mouse event for children"""
-
-        if isinstance(event, QInputEvent):
-            return self.parent().eventFilter(event_object, event)
-
-        return False
 
     @pyqtSlot(int, int)
     def set_position(self, position, length):
@@ -310,7 +299,7 @@ class OverlayBlockFloating(OverlayBlock):
             self.move(new_pos)
 
     def eventFilter(self, event_object, event) -> bool:
-        """Show cursor on any mouse event for children"""
+        """Track parent window move events and follow it"""
 
         if event_object == self.parent().window():
             if event.type() == QEvent.Move:

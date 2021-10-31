@@ -134,10 +134,9 @@ class VideoBlock(QWidget):  # noqa: WPS230
     def ui_overlay(self):
         if self.video_driver.is_opengl:
             self.overlay = OverlayBlockFloating(self)
+            self.overlay.installEventFilter(self)
         else:
             self.overlay = OverlayBlock(self)
-
-        self.overlay.installEventFilter(self)
 
         con_list = [
             (self.overlay.set_vid_pos, self.seek_percent),
@@ -225,31 +224,11 @@ class VideoBlock(QWidget):  # noqa: WPS230
 
         event.ignore()
 
-    def mouseMoveEvent(self, event):
-        self.show_overlay()
-
-        event.ignore()
-
     def mouseReleaseEvent(self, event) -> None:
-        self.show_overlay()
-
         if event.button() == Qt.LeftButton:
             self.play_pause()
 
-        event.accept()
-
-    def mousePressEvent(self, event):
-        self.show_overlay()
-
-        return super().mousePressEvent(event)
-
-    def eventFilter(self, QObject, QEvent) -> bool:
-        """Show cursor on any mouse event for children"""
-
-        if isinstance(QEvent, QInputEvent):
-            return self.parent().eventFilter(QObject, QEvent)
-
-        return False
+        event.ignore()
 
     def hideEvent(self, event):
         self.hide_overlay()

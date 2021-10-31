@@ -224,7 +224,12 @@ class OverlayProgressBar(OverlayWidget):
         event.ignore()
 
     def mouseReleaseEvent(self, event):
-        event.accept()
+        """Consume mouse release to avoid pausing from parent event"""
+
+        if event.button() == Qt.LeftButton:
+            event.accept()
+        else:
+            event.ignore()
 
     def mousePressEvent(self, event):
         if event.button() == Qt.LeftButton:
@@ -232,9 +237,7 @@ class OverlayProgressBar(OverlayWidget):
             new_position = self.progress_select_x / self.width()
             self.emit_new_position.emit(new_position)
 
-            event.accept()
-        else:
-            event.ignore()
+        event.ignore()
 
     def paintEvent(self, event):
         painter = QPainter(self)
