@@ -30,13 +30,11 @@ class VideoDriverManager(ManagerBase):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
+        self._ctx.video_driver = self.video_driver
+
         self._process_manager = None
 
-    @property
-    def commands(self):
-        return {"state_video_driver": self.state_video_driver}
-
-    def state_video_driver(self):
+    def video_driver(self):
         video_driver_cfg = Settings().get("player/video_driver")
         is_multiprocess = video_driver_cfg in self._multiprocess_drivers
 

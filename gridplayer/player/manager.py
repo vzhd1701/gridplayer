@@ -1,13 +1,61 @@
 from PyQt5.QtCore import QObject
 
 
+class Commands(object):
+    def __init__(self):
+        self._commands = {}
+
+    def __setattr__(self, command_name, command_func):
+        if command_name == "_commands":
+            super().__setattr__(command_name, command_func)
+        self._commands[command_name] = command_func
+
+    def __getattr__(self, command_name):
+        return self._commands[command_name]
+
+    def __iter__(self):
+        return iter(self._commands)
+
+    def update(self, commands):
+        self._commands.update(commands)
+
+    def resolve(self, command):
+        if isinstance(command, tuple):
+            command_name = command[0]
+            command_args = command[1:]
+
+            command_func = self._commands[command_name]
+
+            return lambda: command_func(*command_args)
+
+        command_name = command
+
+        return self._commands[command_name]
+
+
+class Context(object):
+    def __init__(self):
+        self._context = {}
+
+    def __setattr__(self, var_name, var_value):
+        if var_name == "_context":
+            super().__setattr__(var_name, var_value)
+        self._context[var_name] = var_value
+
+    def __getattr__(self, var_name):
+        if callable(self._context[var_name]):
+            return self._context[var_name]()
+        return self._context[var_name]
+
+
 class ManagersManager(QObject):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
         self.global_event_filters = []
 
-        self._context = {"commands": {}}
+        self._context = Context()
+        self._context.commands = Commands()
 
         self._managers = {}
         self._connections = None
@@ -70,7 +118,7 @@ class ManagersManager(QObject):
 
     @property
     def commands(self):
-        return self._context["commands"]
+        return self._context.commands
 
     @commands.setter
     def commands(self, commands):
@@ -93,7 +141,7 @@ class ManagersManager(QObject):
 
     def _register_commands(self, manager_name, manager):
         try:
-            command_collisions = set(self._context["commands"]) & set(manager.commands)
+            command_collisions = set(self._context.commands) & set(manager.commands)
         except AttributeError:
             return
 
@@ -102,4 +150,4 @@ class ManagersManager(QObject):
                 f"{manager_name} has conflicting commands: {command_collisions}"
             )
 
-        self._context["commands"].update(manager.commands)
+        self._context.commands.update(manager.commands)

@@ -10,11 +10,13 @@ class SingleModeManager(ManagerBase):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
-        self._context["is_single_mode"] = False
+        self._ctx.is_single_mode = False
 
         self._pre_sm_states = {}
 
-        self._event_map = {
+    @property
+    def event_map(self):
+        return {
             QEvent.MouseButtonDblClick: self.mouseDoubleClickEvent,
         }
 
@@ -32,21 +34,21 @@ class SingleModeManager(ManagerBase):
         self.single_mode_off()
 
     def toggle_single_video(self):
-        if len(self._context["video_blocks"]) <= 1:
+        if len(self._ctx.video_blocks) <= 1:
             return
 
-        if self._context["is_single_mode"]:
+        if self._ctx.is_single_mode:
             self.single_mode_off()
         else:
             self.single_mode_on()
 
     def next_single_video(self):
-        if not self._context["is_single_mode"]:
+        if not self._ctx.is_single_mode:
             return
 
         is_pause_background_videos = Settings().get("player/pause_background_videos")
 
-        current_sv = next(v for v in self._context["video_blocks"] if v.isVisible())
+        current_sv = next(v for v in self._ctx.video_blocks if v.isVisible())
 
         next_sv = self._next_single_video_after(current_sv)
 
@@ -62,12 +64,12 @@ class SingleModeManager(ManagerBase):
         next_sv.show()
 
     def single_mode_on(self):
-        self._context["is_single_mode"] = True
+        self._ctx.is_single_mode = True
 
         is_pause_background_videos = Settings().get("player/pause_background_videos")
 
-        for vb in self._context["video_blocks"]:
-            if vb == self._context["active_block"]:
+        for vb in self._ctx.video_blocks:
+            if vb == self._ctx.active_block:
                 continue
 
             if is_pause_background_videos:
@@ -79,10 +81,10 @@ class SingleModeManager(ManagerBase):
         self.mode_changed.emit()
 
     def single_mode_off(self):
-        self._context["is_single_mode"] = False
+        self._ctx.is_single_mode = False
 
-        for vb in self._context["video_blocks"]:
-            if vb == self._context["active_block"]:
+        for vb in self._ctx.video_blocks:
+            if vb == self._ctx.active_block:
                 continue
 
             pre_sm_state = self._pre_sm_states.pop(vb.id, None)
@@ -94,8 +96,8 @@ class SingleModeManager(ManagerBase):
         self.mode_changed.emit()
 
     def _next_single_video_after(self, current_sv):
-        next_sv_idx = self._context["video_blocks"].index(current_sv) + 1
-        if next_sv_idx > len(self._context["video_blocks"]) - 1:
+        next_sv_idx = self._ctx.video_blocks.index(current_sv) + 1
+        if next_sv_idx > len(self._ctx.video_blocks) - 1:
             next_sv_idx = 0
 
-        return self._context["video_blocks"][next_sv_idx]
+        return self._ctx.video_blocks[next_sv_idx]

@@ -13,9 +13,12 @@ class WindowStateManager(ManagerBase):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
-        self._context["is_maximized_pre_fullscreen"] = False
+        self._ctx.is_maximized_pre_fullscreen = False
+        self._ctx.window_state = self.window_state
 
-        self._event_map = {QEvent.WindowStateChange: self.changeEvent}
+    @property
+    def event_map(self):
+        return {QEvent.WindowStateChange: self.changeEvent}
 
     @property
     def commands(self):
@@ -24,7 +27,6 @@ class WindowStateManager(ManagerBase):
             "close": self.parent().close,
             "fullscreen": self.cmd_fullscreen,
             "is_fullscreen": self.parent().isFullScreen,
-            "state_window": self.state_window,
         }
 
     def changeEvent(self, event):
@@ -36,14 +38,14 @@ class WindowStateManager(ManagerBase):
 
     def cmd_fullscreen(self):
         if self.parent().isFullScreen():
-            if self._context["is_maximized_pre_fullscreen"]:
+            if self._ctx.is_maximized_pre_fullscreen:
                 self.parent().showMaximized()
             else:
                 self.parent().showNormal()
 
-            self._context["is_maximized_pre_fullscreen"] = False
+            self._ctx.is_maximized_pre_fullscreen = False
         else:
-            self._context["is_maximized_pre_fullscreen"] = (
+            self._ctx.is_maximized_pre_fullscreen = (
                 self.parent().windowState() == Qt.WindowMaximized
             )
 
@@ -60,9 +62,9 @@ class WindowStateManager(ManagerBase):
         self.parent().raise_()
         self.parent().activateWindow()
 
-    def state_window(self):
+    def window_state(self):
         is_maximized = (
-            self.parent().isMaximized() or self._context["is_maximized_pre_fullscreen"]
+            self.parent().isMaximized() or self._ctx.is_maximized_pre_fullscreen
         )
 
         return WindowState(
@@ -79,7 +81,7 @@ class WindowStateManager(ManagerBase):
 
         if window_state.is_fullscreen:
             if window_state.is_maximized:
-                self._context["is_maximized_pre_fullscreen"] = True
+                self._ctx.is_maximized_pre_fullscreen = True
                 self.parent().showFullScreen()
 
         elif window_state.is_maximized:

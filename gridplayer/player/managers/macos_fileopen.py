@@ -11,10 +11,9 @@ from gridplayer.version import __app_name__
 class MacOSFileOpenManager(ManagerBase):
     file_opened = pyqtSignal(list)
 
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-
-        self._event_map = {QEvent.FileOpen: self.handle_macos_fileopen}
+    @property
+    def event_map(self):
+        return {QEvent.FileOpen: self.handle_macos_fileopen}
 
     def handle_macos_fileopen(self, event):
         input_file = event.file()
@@ -24,7 +23,7 @@ class MacOSFileOpenManager(ManagerBase):
 
         Settings().sync()
 
-        is_empty = bool(self._context["video_blocks"])
+        is_empty = bool(self._ctx.video_blocks)
         is_only_empty = is_the_only_instance() and is_empty
 
         if Settings().get("player/one_instance") or is_only_empty:

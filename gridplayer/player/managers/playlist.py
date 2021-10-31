@@ -29,7 +29,9 @@ class PlaylistManager(ManagerBase):
 
         self._saved_playlist = None
 
-        self._event_map = {QEvent.Close: lambda e: self.cmd_close_playlist()}
+    @property
+    def event_map(self):
+        return {QEvent.Close: self.cmd_close_playlist}
 
     @property
     def commands(self):
@@ -140,7 +142,7 @@ class PlaylistManager(ManagerBase):
         self.playlist_loaded.emit()
 
     def check_playlist_save(self):
-        if not self._context["video_blocks"]:
+        if not self._ctx.video_blocks:
             return
 
         if self._saved_playlist is not None:
@@ -175,7 +177,7 @@ class PlaylistManager(ManagerBase):
 
     def _make_playlist(self):
         return Playlist(
-            grid_mode=self._context["grid_mode"],
-            window_state=self._context["commands"]["state_window"](),
-            videos=self._context["video_blocks"].videos,
+            grid_mode=self._ctx.grid_mode,
+            window_state=self._ctx.window_state,
+            videos=self._ctx.video_blocks.videos,
         )

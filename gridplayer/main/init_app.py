@@ -34,7 +34,7 @@ def setup_app_env():
 def init_app():
     app = QApplication(sys.argv)
 
-    app.paletteChanged.connect(lambda x: _switch_icon_theme())
+    app.paletteChanged.connect(_switch_icon_theme)
 
     _init_resources()
 

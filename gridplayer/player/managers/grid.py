@@ -21,7 +21,7 @@ class GridManager(ManagerBase):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
-        self._context["grid_mode"] = Settings().get("playlist/grid_mode")
+        self._ctx.grid_mode = Settings().get("playlist/grid_mode")
 
         self._default_minimum_size = QSize(640, 360)
         self._minimum_video_size = QSize(100, 90)
@@ -46,7 +46,7 @@ class GridManager(ManagerBase):
     def commands(self):
         return {
             "set_grid_mode": self.cmd_set_grid_mode,
-            "is_grid_mode_set_to": lambda m: self._context["grid_mode"] == m,
+            "is_grid_mode_set_to": lambda m: self._ctx.grid_mode == m,
         }
 
     @property
@@ -56,7 +56,7 @@ class GridManager(ManagerBase):
         # and include new blocks that are not yet visible
         return sum(
             w.isVisible() or not w.testAttribute(Qt.WA_WState_ExplicitShowHide)
-            for w in self._context["video_blocks"]
+            for w in self._ctx.video_blocks
         )
 
     @property
@@ -67,7 +67,7 @@ class GridManager(ManagerBase):
         grid_y = math.ceil(math.sqrt(self.visible_count))
         grid_x = math.ceil(self.visible_count / grid_y)
 
-        if self._context["grid_mode"] == GridMode.AUTO_COLS:
+        if self._ctx.grid_mode == GridMode.AUTO_COLS:
             cols, rows = grid_x, grid_y
         else:
             cols, rows = grid_y, grid_x
@@ -75,10 +75,10 @@ class GridManager(ManagerBase):
         return GridDimensions(cols, rows)
 
     def cmd_set_grid_mode(self, mode):
-        if self._context["grid_mode"] == mode:
+        if self._ctx.grid_mode == mode:
             return
 
-        self._context["grid_mode"] = mode
+        self._ctx.grid_mode = mode
         self.reload_video_grid()
 
     def adapt_grid(self):
@@ -90,7 +90,7 @@ class GridManager(ManagerBase):
     def reload_video_grid(self):
         self._reset_video_grid()
 
-        if not self._context["video_blocks"]:
+        if not self._ctx.video_blocks:
             return
 
         self._adjust_window()
@@ -122,7 +122,7 @@ class GridManager(ManagerBase):
         for _ in range(self._grid.count()):
             self._grid.takeAt(0)
 
-        if not self._context["video_blocks"]:
+        if not self._ctx.video_blocks:
             self._grid.addWidget(self._info_label, 0, 0)
             self._info_label.show()
 
@@ -145,7 +145,7 @@ class GridManager(ManagerBase):
             for col in range(self.grid_dimensions.cols)
         )
 
-        for vb in self._context["video_blocks"]:
+        for vb in self._ctx.video_blocks:
             col, row = next(grid)
 
             vb.setMinimumSize(self._minimum_vb_size())

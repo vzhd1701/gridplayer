@@ -22,7 +22,9 @@ class DragNDropManager(ManagerBase):
 
         self._drag_start_position = None
 
-        self._event_map = {
+    @property
+    def event_map(self):
+        return {
             QEvent.MouseMove: self.mouseMoveEvent,
             QEvent.MouseButtonPress: self.mousePressEvent,
             QEvent.DragEnter: self.dragEnterEvent,
@@ -67,14 +69,12 @@ class DragNDropManager(ManagerBase):
 
         # Swap videos
         elif drag_has_video_id(drop_data):
-            dst_video = self._context["active_block"]
+            dst_video = self._ctx.active_block
             if dst_video is None:
                 logger.debug("No video under cursor, discarding drop")
                 return False
 
-            src_video = self._context["video_blocks"].by_id(
-                drag_get_video_id(drop_data)
-            )
+            src_video = self._ctx.video_blocks.by_id(drag_get_video_id(drop_data))
 
             self._swap_videos(src_video, dst_video)
 
@@ -86,9 +86,7 @@ class DragNDropManager(ManagerBase):
         drop_data = event.mimeData()
 
         if drag_has_video_id(drop_data):
-            src_video = self._context["video_blocks"].by_id(
-                drag_get_video_id(drop_data)
-            )
+            src_video = self._ctx.video_blocks.by_id(drag_get_video_id(drop_data))
             src_video.show_overlay()
 
     def _is_drag_started(self, event):
@@ -102,7 +100,7 @@ class DragNDropManager(ManagerBase):
         if drag_distance < QApplication.startDragDistance():
             return False
 
-        return self._context["active_block"] is not None
+        return self._ctx.active_block is not None
 
     def _get_drag_video(self):
         drag = QDrag(self)
@@ -110,7 +108,7 @@ class DragNDropManager(ManagerBase):
         mimeData = QMimeData()
         mimeData.setData(
             "application/x-gridplayer-video-id",
-            self._context["active_block"].id.encode(),
+            self._ctx.active_block.id.encode(),
         )
         drag.setMimeData(mimeData)
 
@@ -125,6 +123,6 @@ class DragNDropManager(ManagerBase):
             logger.debug("No video swap needed")
             return
 
-        self._context["video_blocks"].swap(dst, src)
+        self._ctx.video_blocks.swap(dst, src)
 
         self.videos_swapped.emit()

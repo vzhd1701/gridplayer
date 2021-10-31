@@ -211,7 +211,7 @@ class ActionsManager(ManagerBase):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
-        self._context["actions"] = self._make_actions()
+        self._ctx.actions = self._make_actions()
 
     def _make_actions(self):
         actions = {}
@@ -224,25 +224,12 @@ class ActionsManager(ManagerBase):
 
         return actions
 
-    def _action_function(self, action_command):
-        if isinstance(action_command, tuple):
-            action_name = action_command[0]
-            action_args = action_command[1:]
-
-            action_func = self._context["commands"][action_name]
-
-            return lambda: action_func(*action_args)
-
-        action_name = action_command
-
-        return self._context["commands"][action_name]
-
     def _make_action(self, cmd, cmd_name):
         action = QAction(cmd_name, self.parent())
 
         action.setShortcut(QKeySequence(cmd["key"]))
 
-        action.triggered.connect(self._action_function(cmd["func"]))
+        action.triggered.connect(self._ctx.commands.resolve(cmd["func"]))
 
         icon = cmd.get("icon")
         if icon is not None:
@@ -251,11 +238,11 @@ class ActionsManager(ManagerBase):
         is_checked_test = cmd.get("check")
         action.setCheckable(is_checked_test is not None)
         if is_checked_test is not None:
-            action.is_checked_test = self._action_function(is_checked_test)
+            action.is_checked_test = self._ctx.commands.resolve(is_checked_test)
 
         is_enabled_test = cmd.get("enabled_if")
         action.is_switchable = is_enabled_test is not None
         if is_enabled_test is not None:
-            action.is_enabled_test = self._action_function(is_enabled_test)
+            action.is_enabled_test = self._ctx.commands.resolve(is_enabled_test)
 
         return action

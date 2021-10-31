@@ -31,15 +31,16 @@ class MouseHideManager(ManagerBase):
         if Settings().get("misc/mouse_hide"):
             self.mouse_timer.start(1000 * Settings().get("misc/mouse_hide_timeout"))
 
-        for event in self.move_events:
-            self._event_map[event] = self.show_cursor
-
         QApplication.instance().focusObjectChanged.connect(self._focus_change)
+
+    @property
+    def event_map(self):
+        return {e: self.show_cursor for e in self.move_events}
 
     def hide_cursor(self):
         self.mouse_timer.stop()
 
-        if not self._context["video_blocks"] or is_modal_open():
+        if not self._ctx.video_blocks or is_modal_open():
             return
 
         if QApplication.overrideCursor() != Qt.BlankCursor:

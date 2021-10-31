@@ -64,7 +64,7 @@ class VideoBlocksManager(ManagerBase):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
-        self._context["video_blocks"] = VideoBlocks()
+        self._ctx.video_blocks = VideoBlocks()
 
     @property
     def commands(self):
@@ -74,11 +74,11 @@ class VideoBlocksManager(ManagerBase):
             "seek_shift_all": self.cmd_seek_shift_all,
             "step_forward": self.cmd_step_forward,
             "step_backward": self.cmd_step_backward,
-            "is_videos": lambda: bool(self._context["video_blocks"]),
+            "is_videos": lambda: bool(self._ctx.video_blocks),
         }
 
     def cmd_play_pause_all(self):
-        unpaused_vbs = self._context["video_blocks"].unpaused
+        unpaused_vbs = self._ctx.video_blocks.unpaused
 
         if next(unpaused_vbs, None) is not None:
             self.set_pause.emit(True)
@@ -100,7 +100,7 @@ class VideoBlocksManager(ManagerBase):
         self.set_pause.emit(True)
 
     def reload_videos(self):
-        videos = self._context["video_blocks"].videos
+        videos = self._ctx.video_blocks.videos
 
         self.close_all()
 
@@ -110,30 +110,28 @@ class VideoBlocksManager(ManagerBase):
         for v in videos:
             self._add_video_block(v)
 
-        self.video_count_changed.emit(len(self._context["video_blocks"]))
+        self.video_count_changed.emit(len(self._ctx.video_blocks))
 
     def remove_video_blocks(self, *videoblocks):
         for vb in videoblocks:
             self._remove_video_block(vb)
 
-        self.video_count_changed.emit(len(self._context["video_blocks"]))
+        self.video_count_changed.emit(len(self._ctx.video_blocks))
 
     def close_video_block(self, _id):
-        closing_block = self._context["video_blocks"].by_id(_id)
+        closing_block = self._ctx.video_blocks.by_id(_id)
         self.remove_video_blocks(closing_block)
 
     def close_all(self):
-        self.remove_video_blocks(*self._context["video_blocks"])
+        self.remove_video_blocks(*self._ctx.video_blocks)
 
     def playing_count_change(self):
-        playing_videos_count = len(self._context["video_blocks"].unpaused)
+        playing_videos_count = len(self._ctx.video_blocks.unpaused)
         self.playings_videos_count_changed.emit(playing_videos_count)
 
     def _add_video_block(self, video):
-        driver = self._context["commands"]["state_video_driver"]()
-
         vb = VideoBlock(
-            video_driver=driver,
+            video_driver=self._ctx.video_driver,
             parent=self.parent(),
         )
 
@@ -148,9 +146,9 @@ class VideoBlocksManager(ManagerBase):
 
         vb.set_video(video)
 
-        self._context["video_blocks"].append(vb)
+        self._ctx.video_blocks.append(vb)
 
     def _remove_video_block(self, vb):
         vb.cleanup()
-        self._context["video_blocks"].remove(vb)
+        self._ctx.video_blocks.remove(vb)
         vb.deleteLater()

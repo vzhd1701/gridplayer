@@ -92,10 +92,9 @@ def _join_menu_sections(menu_sections):
 
 
 class MenuManager(ManagerBase):
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-
-        self._event_map = {
+    @property
+    def event_map(self):
+        return {
             QEvent.ContextMenu: self.contextMenuEvent,
         }
 
@@ -119,18 +118,18 @@ class MenuManager(ManagerBase):
     def _menu_sections(self):
         sections_added = []
 
-        if self._context["active_block"] is not None:
-            if self._context["active_block"].video_driver.is_video_initialized:
+        if self._ctx.active_block is not None:
+            if self._ctx.active_block.video_driver.is_video_initialized:
                 menu_video = SECTIONS["video_active"] + SECTIONS["video_block"]
             else:
                 menu_video = SECTIONS["video_block"]
 
             sections_added.append(menu_video)
 
-            if self._context["is_single_mode"]:
+            if self._ctx.is_single_mode:
                 sections_added.append(SECTIONS["video_single"])
 
-        if self._context["video_blocks"]:
+        if self._ctx.video_blocks:
             sections_added.append(SECTIONS["video_all"])
 
         sections_added.append(SECTIONS["player"])
@@ -164,7 +163,7 @@ class MenuManager(ManagerBase):
         self._add_menu_items(sub_menu, sub_items)
 
     def _add_action(self, menu_item, menu):
-        action = self._context["actions"][menu_item]
+        action = self._ctx.actions[menu_item]
 
         if action.isCheckable():
             action.setChecked(action.is_checked_test())
