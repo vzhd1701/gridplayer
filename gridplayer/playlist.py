@@ -94,7 +94,7 @@ def _parse_video_params(playlist_in):
     for vp in video_param_lines:
         v_idx, v_params = vp[2:].split(":", maxsplit=1)
 
-        video_params[v_idx] = Video.parse_raw(v_params)
+        video_params[int(v_idx)] = Video.parse_raw(v_params)
 
     return video_params
 

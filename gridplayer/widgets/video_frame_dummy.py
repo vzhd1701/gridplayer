@@ -13,8 +13,8 @@ class VideoFrameDummy(QWidget):
 
     is_opengl = False
 
-    def __init__(self, master=None):
-        super().__init__(master)
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
 
         self.is_video_initialized = False
 
@@ -24,7 +24,7 @@ class VideoFrameDummy(QWidget):
         self._ms_per_frame = 100
         self._is_video_meta_ready = False
 
-        self._fake_player_timer = QTimer()
+        self._fake_player_timer = QTimer(self)
         self._fake_player_timer.timeout.connect(self.fake_player_forward)
 
         self._fake_player_time = 0
