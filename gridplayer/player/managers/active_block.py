@@ -14,13 +14,13 @@ class ActiveBlockManager(ManagerBase):
         self._context["active_block"] = None
 
         self._event_map = {
-            QEvent.MouseMove: lambda x: self.update_active_under_mouse(),
-            QEvent.MouseButtonPress: lambda x: self.update_active_under_mouse(),
-            QEvent.MouseButtonRelease: lambda x: self.update_active_under_mouse(),
-            QEvent.NonClientAreaMouseMove: lambda x: self.update_active_reset(),
-            QEvent.NonClientAreaMouseButtonPress: lambda x: self.update_active_reset(),
-            QEvent.Drop: lambda x: self.update_active_under_mouse(),
-            QEvent.DragMove: lambda x: self.update_active_under_mouse(),
+            QEvent.MouseMove: self.update_active_under_mouse,
+            QEvent.MouseButtonPress: self.update_active_under_mouse,
+            QEvent.MouseButtonRelease: self.update_active_under_mouse,
+            QEvent.NonClientAreaMouseMove: self.update_active_reset,
+            QEvent.NonClientAreaMouseButtonPress: self.update_active_reset,
+            QEvent.Drop: self.update_active_under_mouse,
+            QEvent.DragMove: self.update_active_under_mouse,
         }
 
     @property

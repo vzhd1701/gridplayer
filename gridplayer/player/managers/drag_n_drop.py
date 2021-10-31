@@ -6,7 +6,6 @@ from PyQt5.QtWidgets import QApplication
 
 from gridplayer.player.managers.base import ManagerBase
 from gridplayer.utils.files import drag_get_files, drag_get_video_id, drag_has_video_id
-from gridplayer.utils.misc import swap_list_items
 from gridplayer.video import Video
 
 logger = logging.getLogger(__name__)
@@ -71,10 +70,11 @@ class DragNDropManager(ManagerBase):
             dst_video = self._context["active_block"]
             if dst_video is None:
                 logger.debug("No video under cursor, discarding drop")
-                return
+                return False
 
-            src_video = self._get_video_block_by_id(drag_get_video_id(drop_data))
-            dst_video = dst_video
+            src_video = self._context["video_blocks"].by_id(
+                drag_get_video_id(drop_data)
+            )
 
             self._swap_videos(src_video, dst_video)
 
@@ -86,7 +86,9 @@ class DragNDropManager(ManagerBase):
         drop_data = event.mimeData()
 
         if drag_has_video_id(drop_data):
-            src_video = self._get_video_block_by_id(drag_get_video_id(drop_data))
+            src_video = self._context["video_blocks"].by_id(
+                drag_get_video_id(drop_data)
+            )
             src_video.show_overlay()
 
     def _is_drag_started(self, event):
@@ -116,9 +118,6 @@ class DragNDropManager(ManagerBase):
 
         return drag
 
-    def _get_video_block_by_id(self, _id):
-        return next(v for v in self._context["video_blocks"] if v.id == _id)
-
     def _swap_videos(self, src, dst):
         logger.debug(f"Swapping {src.id} with {dst.id}")
 
@@ -126,6 +125,6 @@ class DragNDropManager(ManagerBase):
             logger.debug("No video swap needed")
             return
 
-        swap_list_items(self._context["video_blocks"], dst, src)
+        self._context["video_blocks"].swap(dst, src)
 
         self.videos_swapped.emit()

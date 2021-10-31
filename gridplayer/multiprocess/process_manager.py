@@ -137,7 +137,12 @@ class ProcessManager(CommandLoopThreaded, QObject):
 
 class InstanceProcess(CommandLoop):
     def __init__(
-        self, players_per_instance, pm_callback_pipe, pm_log_queue, log_level, **kwargs
+        self,
+        players_per_instance,
+        pm_callback_pipe,
+        pm_log_queue,
+        log_level,
+        **kwargs,
     ):
         super().__init__(**kwargs)
 

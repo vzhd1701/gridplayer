@@ -6,7 +6,7 @@ from PyQt5.QtGui import QFont, QFontDatabase, QIcon
 from PyQt5.QtWidgets import QApplication, QStyleFactory
 
 if platform.system() == "Windows":
-    from PyQt5.QtWinExtras import QtWin
+    from PyQt5.QtWinExtras import QtWin  # noqa: WPS433
 
 from gridplayer.utils.darkmode import is_dark_mode
 from gridplayer.version import (

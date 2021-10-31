@@ -1,3 +1,5 @@
+from types import MappingProxyType
+
 from PyQt5.QtCore import QEvent
 from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import QMenu, QProxyStyle, QStyle
@@ -11,62 +13,66 @@ QMenu::item:checked { background-color: #7b888f; }
 QMenu::separator { height: 2px; margin: 0; }
 """
 
-SUBMENUS = {
-    "Step": {"icon": "next-frame"},
-    "Loop": {"icon": "loop"},
-    "Speed": {"icon": "speed"},
-    "Zoom": {"icon": "zoom"},
-    "Aspect": {"icon": "aspect"},
-    "Jump (to) [ALL]": {"icon": "jump-to"},
-    "Grid": {"icon": "grid"},
-}
+SUBMENUS = MappingProxyType(
+    {
+        "Step": {"icon": "next-frame"},
+        "Loop": {"icon": "loop"},
+        "Speed": {"icon": "speed"},
+        "Zoom": {"icon": "zoom"},
+        "Aspect": {"icon": "aspect"},
+        "Jump (to) [ALL]": {"icon": "jump-to"},
+        "Grid": {"icon": "grid"},
+    }
+)
 
-SECTIONS = {
-    "video_active": [
-        "Play / Pause",
-        ("Step", "Next frame", "Previous frame"),
-        (
-            "Loop",
-            "Random Loop",
+SECTIONS = MappingProxyType(
+    {
+        "video_active": [
+            "Play / Pause",
+            ("Step", "Next frame", "Previous frame"),
+            (
+                "Loop",
+                "Random Loop",
+                "---",
+                "Set Loop Start",
+                "Set Loop End",
+                "Loop Reset",
+            ),
+            ("Speed", "Faster", "Slower", "Normal"),
+            ("Zoom", "Zoom In", "Zoom Out", "Zoom Reset"),
+            ("Aspect", "Aspect Fit", "Aspect Stretch", "Aspect None"),
+        ],
+        "video_block": ["Close"],
+        "video_single": ["Next Video"],
+        "video_all": [
+            "Play / Pause [ALL]",
+            (
+                "Jump (to) [ALL]",
+                "Random",
+                "---",
+                "+1%",
+                "+5%",
+                "+10%",
+                "-1%",
+                "-5%",
+                "-10%",
+            ),
+            ("Grid", "Rows First", "Columns First"),
+        ],
+        "player": ["Fullscreen", "Minimize"],
+        "program": [
+            "Add Files",
+            "Open Playlist",
+            "Save Playlist",
+            "Close Playlist",
             "---",
-            "Set Loop Start",
-            "Set Loop End",
-            "Loop Reset",
-        ),
-        ("Speed", "Faster", "Slower", "Normal"),
-        ("Zoom", "Zoom In", "Zoom Out", "Zoom Reset"),
-        ("Aspect", "Aspect Fit", "Aspect Stretch", "Aspect None"),
-    ],
-    "video_block": ["Close"],
-    "video_single": ["Next Video"],
-    "video_all": [
-        "Play / Pause [ALL]",
-        (
-            "Jump (to) [ALL]",
-            "Random",
+            "Settings",
+            "About",
             "---",
-            "+1%",
-            "+5%",
-            "+10%",
-            "-1%",
-            "-5%",
-            "-10%",
-        ),
-        ("Grid", "Rows First", "Columns First"),
-    ],
-    "player": ["Fullscreen", "Minimize"],
-    "program": [
-        "Add Files",
-        "Open Playlist",
-        "Save Playlist",
-        "Close Playlist",
-        "---",
-        "Settings",
-        "About",
-        "---",
-        "Quit",
-    ],
-}
+            "Quit",
+        ],
+    }
+)
 
 
 class BigMenuIcons(QProxyStyle):
@@ -101,7 +107,6 @@ class MenuManager(ManagerBase):
 
     def make_menu(self):
         menu = QMenu(self.parent())
-        # menu.installEventFilter(self)
         menu.setStyle(BigMenuIcons())
         menu.setStyleSheet(MENU_STYLE)
 
@@ -122,8 +127,8 @@ class MenuManager(ManagerBase):
 
             sections_added.append(menu_video)
 
-            # if self.is_single_mode:
-            #     sections_added.append(sections["video_single"])
+            if self._context["is_single_mode"]:
+                sections_added.append(SECTIONS["video_single"])
 
         if self._context["video_blocks"]:
             sections_added.append(SECTIONS["video_all"])

@@ -92,10 +92,10 @@ class ManagersManager(QObject):
         return getattr(manager, function)
 
     def _register_commands(self, manager_name, manager):
-        if not hasattr(manager, "commands"):
+        try:
+            command_collisions = set(self._context["commands"]) & set(manager.commands)
+        except AttributeError:
             return
-
-        command_collisions = set(self._context["commands"]) & set(manager.commands)
 
         if command_collisions:
             raise ValueError(

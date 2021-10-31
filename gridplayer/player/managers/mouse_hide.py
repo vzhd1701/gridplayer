@@ -1,5 +1,4 @@
-from PyQt5.QtCore import QEvent, QObject, Qt, QTimer, pyqtSignal
-from PyQt5.QtGui import QInputEvent
+from PyQt5.QtCore import QEvent, Qt, QTimer, pyqtSignal
 from PyQt5.QtWidgets import QApplication
 
 from gridplayer.player.managers.base import ManagerBase
@@ -33,7 +32,7 @@ class MouseHideManager(ManagerBase):
             self.mouse_timer.start(1000 * Settings().get("misc/mouse_hide_timeout"))
 
         for event in self.move_events:
-            self._event_map[event] = lambda e: self.show_cursor()
+            self._event_map[event] = self.show_cursor
 
         QApplication.instance().focusObjectChanged.connect(self._focus_change)
 

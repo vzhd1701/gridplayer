@@ -1,12 +1,55 @@
 import logging
 
-from PyQt5.QtCore import QEvent, pyqtSignal
+from PyQt5.QtCore import pyqtSignal
 
 from gridplayer.player.managers.base import ManagerBase
 from gridplayer.utils.misc import qt_connect
 from gridplayer.widgets.video_block import VideoBlock
 
 logger = logging.getLogger(__name__)
+
+
+class VideoBlocks(object):
+    def __init__(self):
+        self._blocks = []
+
+    def __iter__(self):
+        return iter(self._blocks)
+
+    def __len__(self):
+        return len(self._blocks)
+
+    def __getitem__(self, idx):
+        return self._blocks[idx]
+
+    def append(self, block):
+        self._blocks.append(block)
+
+    def remove(self, block):
+        self._blocks.remove(block)
+
+    def index(self, block):
+        return self._blocks.index(block)
+
+    @property
+    def unpaused(self):
+        return [v for v in self._blocks if not v.video_params.is_paused]
+
+    @property
+    def videos(self):
+        return [v.video_params for v in self._blocks]
+
+    def by_id(self, _id):
+        return next((v for v in self._blocks if v.id == _id), None)
+
+    def swap(self, block1, block2):
+        idx1 = self._blocks.index(block1)
+        idx2 = self._blocks.index(block2)
+
+        old1, old2 = self._blocks[idx1], self._blocks[idx2]
+
+        self._blocks[idx2] = old1
+        self._blocks[idx1] = old2
 
 
 class VideoBlocksManager(ManagerBase):
@@ -21,13 +64,7 @@ class VideoBlocksManager(ManagerBase):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
-        self._context["video_blocks"] = []
-
-    # def event(self, event) -> bool:
-    #     if event.type() in {QEvent.ShortcutOverride}:
-    #         self.cmd_active("show_overlay")
-    #
-    #     return super().event(event)
+        self._context["video_blocks"] = VideoBlocks()
 
     @property
     def commands(self):
@@ -41,9 +78,7 @@ class VideoBlocksManager(ManagerBase):
         }
 
     def cmd_play_pause_all(self):
-        unpaused_vbs = (
-            v for v in self._context["video_blocks"] if not v.video_params.is_paused
-        )
+        unpaused_vbs = self._context["video_blocks"].unpaused
 
         if next(unpaused_vbs, None) is not None:
             self.set_pause.emit(True)
@@ -65,7 +100,7 @@ class VideoBlocksManager(ManagerBase):
         self.set_pause.emit(True)
 
     def reload_videos(self):
-        videos = [vb.video_params for vb in self._context["video_blocks"]]
+        videos = self._context["video_blocks"].videos
 
         self.close_all()
 
@@ -77,6 +112,23 @@ class VideoBlocksManager(ManagerBase):
 
         self.video_count_changed.emit(len(self._context["video_blocks"]))
 
+    def remove_video_blocks(self, *videoblocks):
+        for vb in videoblocks:
+            self._remove_video_block(vb)
+
+        self.video_count_changed.emit(len(self._context["video_blocks"]))
+
+    def close_video_block(self, _id):
+        closing_block = self._context["video_blocks"].by_id(_id)
+        self.remove_video_blocks(closing_block)
+
+    def close_all(self):
+        self.remove_video_blocks(*self._context["video_blocks"])
+
+    def playing_count_change(self):
+        playing_videos_count = len(self._context["video_blocks"].unpaused)
+        self.playings_videos_count_changed.emit(playing_videos_count)
+
     def _add_video_block(self, video):
         driver = self._context["commands"]["state_video_driver"]()
 
@@ -84,7 +136,6 @@ class VideoBlocksManager(ManagerBase):
             video_driver=driver,
             parent=self.parent(),
         )
-        # vb.installEventFilter(self)
 
         qt_connect(
             (vb.exit_request, self.close_video_block),
@@ -99,26 +150,7 @@ class VideoBlocksManager(ManagerBase):
 
         self._context["video_blocks"].append(vb)
 
-    def remove_video_blocks(self, *videoblocks):
-        for vb in videoblocks:
-            self._remove_video_block(vb)
-
-        self.video_count_changed.emit(len(self._context["video_blocks"]))
-
     def _remove_video_block(self, vb):
         vb.cleanup()
         self._context["video_blocks"].remove(vb)
         vb.deleteLater()
-
-    def close_video_block(self, _id):
-        closing_block = next(v for v in self._context["video_blocks"] if v.id == _id)
-        self.remove_video_blocks(closing_block)
-
-    def close_all(self):
-        self.remove_video_blocks(*self._context["video_blocks"])
-
-    def playing_count_change(self):
-        playing_videos_count = sum(
-            True for v in self._context["video_blocks"] if not v.video_params.is_paused
-        )
-        self.playings_videos_count_changed.emit(playing_videos_count)

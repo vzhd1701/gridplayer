@@ -304,6 +304,8 @@ class OverlayBlockFloating(OverlayBlock):
                 QApplication.sendEvent(self, event)
             if event.type() == QEvent.LayoutRequest:
                 self.move_to_parent()
+        if event_object == self.parent() and event.type() == QEvent.Hide:
+            self.hide()
 
         return super().eventFilter(event_object, event)
 

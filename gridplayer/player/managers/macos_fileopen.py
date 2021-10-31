@@ -17,9 +17,9 @@ class MacOSFileOpenManager(ManagerBase):
         self._event_map = {QEvent.FileOpen: self.handle_macos_fileopen}
 
     def handle_macos_fileopen(self, event):
-        file = event.file()
+        input_file = event.file()
 
-        if not file:
+        if not input_file:
             return
 
         Settings().sync()
@@ -28,7 +28,7 @@ class MacOSFileOpenManager(ManagerBase):
         is_only_empty = is_the_only_instance() and is_empty
 
         if Settings().get("player/one_instance") or is_only_empty:
-            self.file_opened.emit([file])
+            self.file_opened.emit([input_file])
         else:
             subprocess.run(  # noqa: S603, S607
                 [
@@ -36,6 +36,6 @@ class MacOSFileOpenManager(ManagerBase):
                     "-n",
                     f"/Applications/{__app_name__}.app",
                     "--args",
-                    file,
+                    input_file,
                 ]
             )

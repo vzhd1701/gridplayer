@@ -95,7 +95,8 @@ class PlaylistManager(ManagerBase):
         files = filter_valid_files(argv)
 
         if not files:
-            return self.error.emit("No supported files!")
+            self.error.emit("No supported files!")
+            return
 
         if files[0].endswith("gpls"):
             self.load_playlist_file(files[0])
@@ -176,5 +177,5 @@ class PlaylistManager(ManagerBase):
         return Playlist(
             grid_mode=self._context["grid_mode"],
             window_state=self._context["commands"]["state_window"](),
-            videos=[v.video_params for v in self._context["video_blocks"]],
+            videos=self._context["video_blocks"].videos,
         )

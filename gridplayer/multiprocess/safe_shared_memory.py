@@ -61,10 +61,10 @@ class SafeSharedMemory(object):
         return self._ptr
 
     def __enter__(self):
-        return self.lock.__enter__()
+        return self.lock.acquire()
 
     def __exit__(self, *args):
-        return self.lock.__exit__(*args)
+        return self.lock.release()
 
     def close(self):
         if self._memory is None:

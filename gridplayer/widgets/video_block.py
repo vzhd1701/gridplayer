@@ -132,7 +132,7 @@ class VideoBlock(QWidget):  # noqa: WPS230
     def ui_overlay(self):
         if self.video_driver.is_opengl:
             self.overlay = OverlayBlockFloating(self)
-            self.overlay.installEventFilter(self)
+            self.installEventFilter(self.overlay)
         else:
             self.overlay = OverlayBlock(self)
 

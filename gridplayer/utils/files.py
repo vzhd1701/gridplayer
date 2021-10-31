@@ -40,7 +40,7 @@ def filter_valid_files(files):
     files = _filter_accesible_files(files)
 
     if not files:
-        return
+        return []
 
     if len(files) == 1 and _filter_extensions(files, "gpls"):
         return files

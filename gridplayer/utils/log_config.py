@@ -80,7 +80,7 @@ def config_log(log_path, log_level):
                 "class": "logging.StreamHandler",
                 "level": "DEBUG",
                 "formatter": "my_formatter",
-                "stream": sys.__stderr__,
+                "stream": sys.__stderr__,  # noqa: WPS609
             },
             "file": {
                 # Sends all log messages to a file

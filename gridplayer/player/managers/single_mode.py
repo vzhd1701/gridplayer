@@ -1,4 +1,4 @@
-from PyQt5.QtCore import QEvent, QObject, Qt, pyqtSignal
+from PyQt5.QtCore import QEvent, Qt, pyqtSignal
 
 from gridplayer.player.managers.base import ManagerBase
 from gridplayer.settings import Settings
@@ -10,19 +10,21 @@ class SingleModeManager(ManagerBase):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
-        self._is_single_mode = False
+        self._context["is_single_mode"] = False
+
         self._pre_sm_states = {}
 
         self._event_map = {
             QEvent.MouseButtonDblClick: self.mouseDoubleClickEvent,
         }
 
+    @property
+    def commands(self):
+        return {"next_single_video": self.next_single_video}
+
     def mouseDoubleClickEvent(self, event):
         if event.button() == Qt.LeftButton:
             self.toggle_single_video()
-
-    def set_active_block(self, active_block):
-        self._active_block = active_block
 
     def set_video_count(self, video_count):
         """Exit single mode when number of videos change"""
@@ -33,13 +35,13 @@ class SingleModeManager(ManagerBase):
         if len(self._context["video_blocks"]) <= 1:
             return
 
-        if self._is_single_mode:
+        if self._context["is_single_mode"]:
             self.single_mode_off()
         else:
             self.single_mode_on()
 
     def next_single_video(self):
-        if not self._is_single_mode:
+        if not self._context["is_single_mode"]:
             return
 
         is_pause_background_videos = Settings().get("player/pause_background_videos")
@@ -60,7 +62,7 @@ class SingleModeManager(ManagerBase):
         next_sv.show()
 
     def single_mode_on(self):
-        self._is_single_mode = True
+        self._context["is_single_mode"] = True
 
         is_pause_background_videos = Settings().get("player/pause_background_videos")
 
@@ -77,7 +79,7 @@ class SingleModeManager(ManagerBase):
         self.mode_changed.emit()
 
     def single_mode_off(self):
-        self._is_single_mode = False
+        self._context["is_single_mode"] = False
 
         for vb in self._context["video_blocks"]:
             if vb == self._context["active_block"]:
