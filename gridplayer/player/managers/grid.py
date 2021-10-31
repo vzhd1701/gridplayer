@@ -118,10 +118,9 @@ class GridManager(ManagerBase):
     def _reset_video_grid(self):
         self._info_label.hide()
 
-        self._grid.removeWidget(self._info_label)
-
-        for vb in self._context["video_blocks"]:
-            self._grid.removeWidget(vb)
+        # Clean out the grid
+        for _ in range(self._grid.count()):
+            self._grid.takeAt(0)
 
         if not self._context["video_blocks"]:
             self._grid.addWidget(self._info_label, 0, 0)
