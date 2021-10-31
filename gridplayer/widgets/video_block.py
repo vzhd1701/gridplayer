@@ -3,7 +3,7 @@ import random
 import secrets
 
 from PyQt5.QtCore import QSize, Qt, QTimer, pyqtSignal
-from PyQt5.QtGui import QCursor, QIcon, QInputEvent
+from PyQt5.QtGui import QCursor, QIcon
 from PyQt5.QtWidgets import QGraphicsOpacityEffect, QLabel, QStackedLayout, QWidget
 
 from gridplayer.exceptions import PlayerException

@@ -7,8 +7,8 @@ from gridplayer.version import __app_bugtracker_url__
 
 
 class ExceptionDialog(QDialog, Ui_ExceptionDialog):
-    def __init__(self, exc_txt, parent=None):
-        super().__init__(parent)
+    def __init__(self, exc_txt, **kwargs):
+        super().__init__(**kwargs)
 
         self.exc_txt = exc_txt
 

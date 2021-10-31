@@ -1,7 +1,5 @@
-import os
-
 from PyQt5.QtCore import QEvent, QPoint, QRect, Qt, QTimer, pyqtSignal, pyqtSlot
-from PyQt5.QtGui import QInputEvent, QPalette, QRegion
+from PyQt5.QtGui import QPalette, QRegion
 from PyQt5.QtWidgets import (
     QApplication,
     QGraphicsOpacityEffect,
@@ -129,7 +127,7 @@ class OverlayBlock(QWidget):  # noqa: WPS230
         self.bottom_bar.addWidget(self.progress_bar, 1)
         self.bottom_bar.addWidget(self.volume_button)
 
-        self.floating_progress = OverlayShortLabelFloating(self)
+        self.floating_progress = OverlayShortLabelFloating(parent=self)
 
     def resizeEvent(self, event):
         elements = {

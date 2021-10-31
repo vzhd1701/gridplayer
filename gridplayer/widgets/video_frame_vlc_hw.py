@@ -19,33 +19,20 @@ from gridplayer.widgets.video_frame_vlc_base import (
 
 
 class InstanceProcessVLCHW(InstanceProcessVLC):
-    def __init__(
-        self,
-        players_per_instance,
-        pm_callback_pipe,
-        pm_log_queue,
-        log_level,
-        log_level_vlc,
-    ):
-        super().__init__(
-            players_per_instance,
-            pm_callback_pipe,
-            pm_log_queue,
-            log_level,
-            log_level_vlc,
-        )
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
 
         self.init_semaphore = Semaphore()
 
     def new_player(self, player_id, init_data, pipe):
         player = PlayerProcessSingleVLCHW(
-            player_id,
-            self._vlc_instance,
-            self.release_player,
-            init_data,
-            self.init_semaphore,
-            self.crash,
-            pipe,
+            player_id=player_id,
+            release_callback=self.release_player,
+            init_data=init_data,
+            init_semaphore=self.init_semaphore,
+            vlc_instance=self._vlc_instance,
+            crash_func=self.crash,
+            pipe=pipe,
         )
         self._players[player.id] = player
 
@@ -54,14 +41,12 @@ class PlayerProcessSingleVLCHW(VlcPlayerThreaded):
     def __init__(
         self,
         player_id,
-        vlc_instance,
         release_callback,
         init_data,
         init_semaphore,
-        crash_func,
-        pipe,
+        **kwargs,
     ):
-        VlcPlayerThreaded.__init__(self, vlc_instance, crash_func, pipe)
+        super().__init__(**kwargs)
 
         self.id = player_id
         self.release_callback = release_callback
@@ -140,8 +125,8 @@ class PlayerProcessSingleVLCHW(VlcPlayerThreaded):
 
 
 class VideoDriverVLCHW(VLCVideoDriverThreaded):
-    def __init__(self, win_id, process_manager, parent=None):
-        VLCVideoDriverThreaded.__init__(self, parent=parent)
+    def __init__(self, win_id, process_manager, **kwargs):
+        super().__init__(**kwargs)
 
         process_manager.init_player({"win_id": win_id}, self.cmd_child_pipe())
 
@@ -172,7 +157,9 @@ class VideoFrameVLCHW(QWidget):
         self.layout().addWidget(self.video_surface)
 
         self.video_driver = VideoDriverVLCHW(
-            int(self.video_surface.winId()), process_manager, self
+            win_id=int(self.video_surface.winId()),
+            process_manager=process_manager,
+            parent=self,
         )
         qt_connect(
             (self.video_driver.time_changed, self.time_change_emit),

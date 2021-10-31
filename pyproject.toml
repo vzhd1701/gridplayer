@@ -75,7 +75,6 @@ nested_classes_whitelist=["Config"]
 # WPS326 implicit line concat
 # Docstings, don't have any
 # WPS226 String constant overuse
-# WPS609 direct call to __init__
 
 # !! Enable later and refactor
 # WPS211 too many arguments
@@ -102,7 +101,7 @@ flake8-quotes = ["+*", "-Q000"]
 flake8-rst-docstrings = ["-*"]
 flake8-docstrings = ["-*"]
 flake8-darglint = ["-*"]
-wemake-python-styleguide = ["+*", "-WPS111", "-WPS211", "-WPS214", "-WPS317", "-WPS323", "-WPS326", "-WPS305", "-WPS226", "-WPS432", "-WPS425", "-WPS609"]
+wemake-python-styleguide = ["+*", "-WPS111", "-WPS211", "-WPS214", "-WPS317", "-WPS323", "-WPS326", "-WPS305", "-WPS226", "-WPS432", "-WPS425"]
 
 [tool.flakehell.exceptions."gridplayer/version.py"]
 # I like it this way

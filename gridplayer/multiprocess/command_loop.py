@@ -5,7 +5,9 @@ from threading import Thread, get_ident
 
 
 class CommandLoop(object):
-    def __init__(self, pipe=None):
+    def __init__(self, pipe=None, **kwargs):
+        super().__init__(**kwargs)
+
         cmd_pipe, self_pipe = Pipe() if pipe is None else pipe
         self._pipe = cmd_pipe
         self._self_pipe = self_pipe
@@ -44,8 +46,8 @@ class CommandLoop(object):
 
 
 class CommandLoopThreaded(CommandLoop):
-    def __init__(self, crash_func, pipe=None):
-        super().__init__(pipe)
+    def __init__(self, crash_func=None, **kwargs):
+        super().__init__(**kwargs)
 
         self._thread = None
         self._thread_init_func = None

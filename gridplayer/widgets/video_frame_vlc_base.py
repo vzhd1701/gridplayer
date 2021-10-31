@@ -33,7 +33,9 @@ vsnprintf.argtypes = (
 
 
 class VlcPlayerBase(object):
-    def __init__(self, vlc_instance):
+    def __init__(self, vlc_instance, **kwargs):
+        super().__init__(**kwargs)
+
         self.instance = vlc_instance
 
         self.is_video_initialized = False
@@ -268,10 +270,6 @@ class VlcPlayerBase(object):
 
 
 class VlcPlayerThreaded(CommandLoopThreaded, VlcPlayerBase):
-    def __init__(self, vlc_instance, crash_func, pipe):
-        CommandLoopThreaded.__init__(self, crash_func=crash_func, pipe=pipe)
-        VlcPlayerBase.__init__(self, vlc_instance)
-
     def start(self):
         self.cmd_loop_start_thread(self.init_player)
 
@@ -297,9 +295,10 @@ class VLCVideoDriverThreaded(CommandLoopThreaded, QObject):
     error = pyqtSignal()
     crash = pyqtSignal(str)
 
-    def __init__(self, parent=None):
-        QObject.__init__(self, parent=parent)
-        CommandLoopThreaded.__init__(self, crash_func=self.crash_thread)
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
+        self.crash_func = self.crash_thread
 
         self.length = 0
         self.fps = None
@@ -358,17 +357,8 @@ class InstanceProcessVLC(InstanceProcess):
         vlc.LogLevel.WARNING: logging.WARNING,
     }
 
-    def __init__(
-        self,
-        players_per_instance,
-        pm_callback_pipe,
-        pm_log_queue,
-        log_level,
-        vlc_log_level,
-    ):
-        super().__init__(
-            players_per_instance, pm_callback_pipe, pm_log_queue, log_level
-        )
+    def __init__(self, vlc_log_level, **kwargs):
+        super().__init__(**kwargs)
 
         self._vlc_instance = None
         self._vlc_options = []
@@ -466,5 +456,9 @@ class ProcessManagerVLC(ProcessManager):
         log_level_vlc = Settings().get("logging/log_level_vlc")
 
         return self._instance_class(
-            self._limit, self._self_pipe, self._log_queue, log_level, log_level_vlc
+            players_per_instance=self._limit,
+            pm_callback_pipe=self._self_pipe,
+            pm_log_queue=self._log_queue,
+            log_level=log_level,
+            vlc_log_level=log_level_vlc,
         )

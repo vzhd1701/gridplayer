@@ -106,26 +106,13 @@ class ImageDecoder(object):
 
 
 class InstanceProcessVLCSW(InstanceProcessVLC):
-    def __init__(
-        self,
-        players_per_instance,
-        pm_callback_pipe,
-        pm_log_queue,
-        log_level,
-        log_level_vlc,
-    ):
-        super().__init__(
-            players_per_instance,
-            pm_callback_pipe,
-            pm_log_queue,
-            log_level,
-            log_level_vlc,
-        )
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
 
         # shared data multiprocess
         self._memory_locks = [
             {"lock": Lock(), "is_busy": Value("i", 0), "player_id": Array("c", 16)}
-            for _ in range(players_per_instance)
+            for _ in range(self.players_per_instance)
         ]
 
         self._vlc_options = ["--vout=vdummy"]
@@ -161,21 +148,19 @@ class InstanceProcessVLCSW(InstanceProcessVLC):
         init_data["shared_memory"] = self.get_player_shared_memory(player_id)
 
         player = PlayerProcessSingleVLCSW(
-            player_id,
-            self._vlc_instance,
-            self.release_player,
-            init_data,
-            self.crash,
-            pipe,
+            player_id=player_id,
+            release_callback=self.release_player,
+            init_data=init_data,
+            vlc_instance=self._vlc_instance,
+            crash_func=self.crash,
+            pipe=pipe,
         )
         self._players[player_id] = player
 
 
 class PlayerProcessSingleVLCSW(VlcPlayerThreaded):
-    def __init__(
-        self, player_id, vlc_instance, release_callback, init_data, crash_func, pipe
-    ):
-        VlcPlayerThreaded.__init__(self, vlc_instance, crash_func, pipe)
+    def __init__(self, player_id, release_callback, init_data, **kwargs):
+        super().__init__(**kwargs)
 
         self.id = player_id
         self.release_callback = release_callback
@@ -229,8 +214,8 @@ class VideoDriverVLCSW(VLCVideoDriverThreaded):
     set_dummy_frame_sig = pyqtSignal()
     image_ready_sig = pyqtSignal()
 
-    def __init__(self, image_dest, process_manager, parent=None):
-        VLCVideoDriverThreaded.__init__(self, parent=parent)
+    def __init__(self, image_dest, process_manager, **kwargs):
+        super().__init__(**kwargs)
 
         self._width = None
         self._height = None
@@ -320,7 +305,9 @@ class VideoFrameVLCSW(QWidget):
 
         self.setup_ui()
 
-        self.video_driver = VideoDriverVLCSW(self._videoitem, process_manager, self)
+        self.video_driver = VideoDriverVLCSW(
+            image_dest=self._videoitem, process_manager=process_manager, parent=self
+        )
         qt_connect(
             (self.video_driver.time_changed, self.time_change_emit),
             (self.video_driver.load_finished, self.load_video_finish),

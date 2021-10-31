@@ -28,9 +28,10 @@ class PlayerInstance(object):
 class ProcessManager(CommandLoopThreaded, QObject):
     crash = pyqtSignal(str)
 
-    def __init__(self, instance_class):
-        QObject.__init__(self)
-        CommandLoopThreaded.__init__(self, crash_func=self.crash_all)
+    def __init__(self, instance_class, **kwargs):
+        super().__init__(**kwargs)
+
+        self.crash_func = self.crash_all
 
         self.instances = {}
 
@@ -67,7 +68,7 @@ class ProcessManager(CommandLoopThreaded, QObject):
             self.instances[instance.id] = instance
 
             self._logger.debug(f"Launching process {instance.id}")
-            instance.start()
+            instance.process.start()
 
         return instance
 
@@ -85,8 +86,8 @@ class ProcessManager(CommandLoopThreaded, QObject):
         return PlayerInstance(instance, player_id)
 
     def cleanup_instance(self, inst_id):
-        self.instances[inst_id].join()
-        self.instances[inst_id].close()
+        self.instances[inst_id].process.join()
+        self.instances[inst_id].process.close()
 
         self.instances.pop(inst_id)
 
@@ -105,7 +106,9 @@ class ProcessManager(CommandLoopThreaded, QObject):
         with self._instances_killed:
             self._instances_killed.wait_for(lambda: not self.instances, timeout=3)
 
-        self._force_terminate_children()
+        if active_children():
+            self._logger.warning("Force terminating child processes...")
+            self._force_terminate_children()
 
         self._logger.debug("Terminating command loop...")
         self.cmd_loop_terminate()
@@ -128,18 +131,23 @@ class ProcessManager(CommandLoopThreaded, QObject):
         return next(available_instances, None)
 
     def _force_terminate_children(self):
-        if active_children():
-            self._logger.warning("Force terminating child processes...")
-            for p in active_children():
-                p.terminate()
+        for p in active_children():
+            p.terminate()
 
 
-class InstanceProcess(Process, CommandLoop):
-    def __init__(self, players_per_instance, pm_callback_pipe, pm_log_queue, log_level):
-        Process.__init__(self)
-        CommandLoop.__init__(self)
+class InstanceProcess(CommandLoop):
+    def __init__(
+        self, players_per_instance, pm_callback_pipe, pm_log_queue, log_level, **kwargs
+    ):
+        super().__init__(**kwargs)
 
         self.id = secrets.token_hex(8)
+
+        self.process = Process(
+            target=self.run,
+            daemon=True,
+            name="{0}_{1}".format(self.__class__.__name__, self.id),
+        )
 
         self.players_per_instance = players_per_instance
         self.pm_callback_pipe = pm_callback_pipe

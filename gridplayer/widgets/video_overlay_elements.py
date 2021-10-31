@@ -10,8 +10,8 @@ from gridplayer.utils.time_txt import get_time_txt_short
 class OverlayWidget(QWidget):
     padding = 10
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
 
         font_height = 13
 
@@ -19,8 +19,8 @@ class OverlayWidget(QWidget):
 
 
 class OverlayLabel(OverlayWidget):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
 
         self._label = ""
 
@@ -59,8 +59,8 @@ class OverlayLabel(OverlayWidget):
 
 
 class OverlayShortLabel(OverlayWidget):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
 
         self._text = ""
         self._is_visuals_updated = False
@@ -106,8 +106,8 @@ class OverlayShortLabel(OverlayWidget):
 
 
 class OverlayShortLabelFloating(OverlayShortLabel):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
 
         self.length = None
 
@@ -193,8 +193,8 @@ class OverlayProgressBar(OverlayWidget):
     mouse_over = pyqtSignal(QPoint, float)
     mouse_left = pyqtSignal()
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
 
         self.setMinimumWidth(self.minimumHeight())
         self.setMouseTracking(True)
@@ -311,8 +311,8 @@ class OverlayProgressBar(OverlayWidget):
 class OverlayVolumeBar(OverlayWidget):
     emit_new_position = pyqtSignal(float)
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
 
         self.setMinimumWidth(self.minimumHeight())
         self.setMaximumHeight(self.minimumHeight() * 4)
