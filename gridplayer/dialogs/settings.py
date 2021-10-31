@@ -14,6 +14,7 @@ from gridplayer.dialogs.settings_dialog_ui import Ui_SettingsDialog
 from gridplayer.params_static import GridMode, VideoAspect, VideoDriver
 from gridplayer.settings import Settings
 from gridplayer.utils.app_dir import get_app_data_dir
+from gridplayer.utils.misc import qt_connect
 
 logger = logging.getLogger(__name__)
 
@@ -113,9 +114,11 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
         self.timeoutMouseHide.setRange(1, 60)
 
     def ui_connect(self):
-        self.playerVideoDriver.currentIndexChanged.connect(self.driver_selected)
-        self.timeoutMouseHideFlag.stateChanged.connect(self.timeoutMouseHide.setEnabled)
-        self.logFileOpen.clicked.connect(self.open_logfile)
+        qt_connect(
+            (self.playerVideoDriver.currentIndexChanged, self.driver_selected),
+            (self.timeoutMouseHideFlag.stateChanged, self.timeoutMouseHide.setEnabled),
+            (self.logFileOpen.clicked, self.open_logfile),
+        )
 
     def open_logfile(self):
         log_path = os.path.join(get_app_data_dir(), "gridplayer.log")

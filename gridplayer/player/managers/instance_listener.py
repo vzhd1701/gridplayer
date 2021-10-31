@@ -1,6 +1,7 @@
 from PyQt5.QtCore import pyqtSignal
 
 from gridplayer.player.managers.base import ManagerBase
+from gridplayer.utils.misc import qt_connect
 from gridplayer.utils.single_instance import Listener
 
 
@@ -13,5 +14,7 @@ class InstanceListenerManager(ManagerBase):
         self._instance_listener = Listener()
         self._instance_listener.start()
 
-        self._instance_listener.open_files.connect(self.files_opened)
-        self.destroyed.connect(self._instance_listener.cleanup)
+        qt_connect(
+            (self._instance_listener.open_files, self.files_opened),
+            (self.destroyed, self._instance_listener.cleanup),
+        )

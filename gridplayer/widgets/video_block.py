@@ -8,6 +8,7 @@ from PyQt5.QtWidgets import QGraphicsOpacityEffect, QLabel, QStackedLayout, QWid
 
 from gridplayer.exceptions import PlayerException
 from gridplayer.settings import Settings
+from gridplayer.utils.misc import qt_connect
 from gridplayer.widgets.video_overlay import OverlayBlock, OverlayBlockFloating
 
 
@@ -120,16 +121,13 @@ class VideoBlock(QWidget):  # noqa: WPS230
         self.overlay.hide()
 
     def ui_video_driver(self):
-        con_list = [
+        qt_connect(
             (self.video_driver.video_ready, self.load_video_finish),
             (self.video_driver.time_changed, self.time_changed),
             (self.video_driver.error, self.error),
             (self.video_driver.crash, self.crash),
             (self.load_video, self.video_driver.load_video),
-        ]
-
-        for c_sig, c_slot in con_list:
-            c_sig.connect(c_slot)
+        )
 
     def ui_overlay(self):
         if self.video_driver.is_opengl:
@@ -138,7 +136,7 @@ class VideoBlock(QWidget):  # noqa: WPS230
         else:
             self.overlay = OverlayBlock(self)
 
-        con_list = [
+        qt_connect(
             (self.overlay.set_vid_pos, self.seek_percent),
             (self.overlay.set_volume, self.set_volume),
             (self.overlay.exit_clicked, self.exit),
@@ -152,10 +150,7 @@ class VideoBlock(QWidget):  # noqa: WPS230
             (self.is_paused_change, self.overlay.set_is_paused),
             (self.is_muted_change, self.overlay.set_is_muted),
             (self.info_change, self.overlay.set_info_label),
-        ]
-
-        for c_sig, c_slot in con_list:
-            c_sig.connect(c_slot)
+        )
 
     def ui_setup(self):
         self.setMouseTracking(True)

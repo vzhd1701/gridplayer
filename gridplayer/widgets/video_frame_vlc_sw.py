@@ -16,6 +16,7 @@ from PyQt5.QtWidgets import (
 from gridplayer.multiprocess.safe_shared_memory import SafeSharedMemory, releasing
 from gridplayer.params_static import VideoAspect
 from gridplayer.utils.libvlc import pre_import_embed_vlc
+from gridplayer.utils.misc import qt_connect
 from gridplayer.widgets.video_frame_vlc_base import (
     InstanceProcessVLC,
     VlcPlayerThreaded,
@@ -239,8 +240,10 @@ class VideoDriverVLCSW(VLCVideoDriverThreaded):
 
         self._pix = None
 
-        self.set_dummy_frame_sig.connect(self.set_dummy_frame)
-        self.image_ready_sig.connect(self.image_ready)
+        qt_connect(
+            (self.set_dummy_frame_sig, self.set_dummy_frame),
+            (self.image_ready_sig, self.image_ready),
+        )
 
         self.player = process_manager.init_player({}, self.cmd_child_pipe())
 
@@ -318,10 +321,12 @@ class VideoFrameVLCSW(QWidget):
         self.setup_ui()
 
         self.video_driver = VideoDriverVLCSW(self._videoitem, process_manager, self)
-        self.video_driver.time_changed.connect(self.time_change_emit)
-        self.video_driver.load_finished.connect(self.load_video_finish)
-        self.video_driver.error.connect(self.error_state)
-        self.video_driver.crash.connect(self.crash_driver)
+        qt_connect(
+            (self.video_driver.time_changed, self.time_change_emit),
+            (self.video_driver.load_finished, self.load_video_finish),
+            (self.video_driver.error, self.error_state),
+            (self.video_driver.crash, self.crash_driver),
+        )
 
     def setup_ui(self):  # noqa: WPS213
         QStackedLayout(self)

@@ -5,6 +5,8 @@ from PyQt5.QtCore import QMargins, Qt, pyqtSignal
 from PyQt5.QtGui import QColor, QPalette
 from PyQt5.QtWidgets import QStackedLayout, QWidget
 
+from gridplayer.utils.misc import qt_connect
+
 if platform.system() == "Darwin":
     from PyQt5.QtWidgets import QMacCocoaViewContainer  # noqa: WPS433
 
@@ -172,10 +174,12 @@ class VideoFrameVLCHW(QWidget):
         self.video_driver = VideoDriverVLCHW(
             int(self.video_surface.winId()), process_manager, self
         )
-        self.video_driver.time_changed.connect(self.time_change_emit)
-        self.video_driver.load_finished.connect(self.load_video_finish)
-        self.video_driver.error.connect(self.error_state)
-        self.video_driver.crash.connect(self.crash_driver)
+        qt_connect(
+            (self.video_driver.time_changed, self.time_change_emit),
+            (self.video_driver.load_finished, self.load_video_finish),
+            (self.video_driver.error, self.error_state),
+            (self.video_driver.crash, self.crash_driver),
+        )
 
     def ui_setup(self):
         self.setWindowFlags(Qt.WindowTransparentForInput)
