@@ -28,6 +28,7 @@ class DragNDropManager(ManagerBase):
             QEvent.MouseButtonPress: self.mousePressEvent,
             QEvent.DragEnter: self.dragEnterEvent,
             QEvent.Drop: self.dropEvent,
+            QEvent.DragMove: self.dragMoveEvent,
         }
 
     def mouseMoveEvent(self, event):
@@ -80,6 +81,13 @@ class DragNDropManager(ManagerBase):
             event.acceptProposedAction()
 
             return True
+
+    def dragMoveEvent(self, event):
+        drop_data = event.mimeData()
+
+        if drag_has_video_id(drop_data):
+            src_video = self._get_video_block_by_id(drag_get_video_id(drop_data))
+            src_video.show_overlay()
 
     def _is_drag_started(self, event):
         if not event.buttons() & Qt.LeftButton:
