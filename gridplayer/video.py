@@ -5,6 +5,11 @@ from pydantic import BaseModel, Field, confloat
 from gridplayer.params_static import VideoAspect, WindowState
 from gridplayer.settings import Settings
 
+MIN_SCALE = 1
+MAX_SCALE = 3
+MIN_RATE = 0.2
+MAX_RATE = 12
+
 
 class Video(BaseModel):
     file_path: typing.Optional[str]
@@ -22,8 +27,8 @@ class Video(BaseModel):
         default_factory=lambda: Settings().get("video_defaults/paused")
     )
 
-    scale: confloat(ge=1, le=3) = 1.0
-    rate: confloat(ge=0.2, le=12) = 1.0
+    scale: confloat(ge=MIN_SCALE, le=MAX_SCALE) = 1.0
+    rate: confloat(ge=MIN_RATE, le=MAX_RATE) = 1.0
     volume: float = 1.0
     current_position: int = 0
 

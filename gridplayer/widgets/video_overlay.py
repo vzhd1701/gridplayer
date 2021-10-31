@@ -130,21 +130,10 @@ class OverlayBlock(QWidget):  # noqa: WPS230
         self.floating_progress = OverlayShortLabelFloating(parent=self)
 
     def resizeEvent(self, event):
-        elements = {
-            "label_progress": True,
-            "label_text": True,
-            "exit_button": True,
-            "volume_bar": True,
-            "play_pause_button": True,
-            "progress_bar": True,
-            "volume_button": True,
-        }
+        too_narrow_to_fit = 250
+        is_wide = event.size().width() > too_narrow_to_fit
 
-        is_wide = event.size().width() > 250
-
-        elements["label_progress"] = is_wide
-
-        self.label_progress.setVisible(elements["label_progress"])
+        self.label_progress.setVisible(is_wide)
 
     @pyqtSlot(int, int)
     def set_position(self, position, length):
@@ -173,7 +162,7 @@ class OverlayBlock(QWidget):  # noqa: WPS230
     def set_info_label(self, info_text):
         self.label_info.text = info_text
         self.label_info.show()
-        self.label_info_hide_timer.start(2000)
+        self.label_info_hide_timer.start(1000 * 2)
 
     @pyqtSlot(bool)
     def set_is_paused(self, is_paused):

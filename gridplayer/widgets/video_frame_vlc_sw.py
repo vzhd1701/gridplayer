@@ -14,7 +14,7 @@ from PyQt5.QtWidgets import (
 )
 
 from gridplayer.multiprocess.safe_shared_memory import SafeSharedMemory, releasing
-from gridplayer.params_static import VideoAspect
+from gridplayer.params_static import PLAYER_ID_LENGTH, VideoAspect
 from gridplayer.utils.libvlc import pre_import_embed_vlc
 from gridplayer.utils.misc import qt_connect
 from gridplayer.widgets.video_frame_vlc_base import (
@@ -111,7 +111,11 @@ class InstanceProcessVLCSW(InstanceProcessVLC):
 
         # shared data multiprocess
         self._memory_locks = [
-            {"lock": Lock(), "is_busy": Value("i", 0), "player_id": Array("c", 16)}
+            {
+                "lock": Lock(),
+                "is_busy": Value("i", 0),
+                "player_id": Array("c", PLAYER_ID_LENGTH * 2),
+            }
             for _ in range(self.players_per_instance)
         ]
 
@@ -369,7 +373,8 @@ class VideoFrameVLCSW(QWidget):
 
     def adjust_view(self):
         self._gv.fitInView(self._videoitem, self._aspect)
-        self._gv.scale(self._scale + 0.05, self._scale + 0.05)
+        black_border_cut = 0.05
+        self._gv.scale(self._scale + black_border_cut, self._scale + black_border_cut)
 
     def time_change_emit(self, new_time):
         self.time_changed.emit(new_time)

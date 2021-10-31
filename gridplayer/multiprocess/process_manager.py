@@ -1,16 +1,14 @@
 import logging
 import os
-import secrets
-import traceback
-from multiprocessing import Queue, Value, active_children, get_start_method
-from multiprocessing.context import Process
+from multiprocessing import Queue, active_children, get_start_method
 from threading import Condition
 
 from PyQt5.QtCore import QObject, pyqtSignal
 
-from gridplayer.multiprocess.command_loop import CommandLoop, CommandLoopThreaded
+from gridplayer.multiprocess.command_loop import CommandLoopThreaded
 from gridplayer.settings import Settings
-from gridplayer.utils.log_config import QueueListenerRoot, child_process_config
+from gridplayer.utils.log_config import QueueListenerRoot
+from gridplayer.utils.misc import force_terminate_children
 
 
 class PlayerInstance(object):
@@ -73,11 +71,16 @@ class ProcessManager(CommandLoopThreaded, QObject):
         return instance
 
     def create_instance(self):
-        log_level = Settings().get("logging/log_level")
 
-        return self._instance_class(
-            self._limit, self._self_pipe, self._log_queue, log_level
+        instance = self._instance_class(
+            players_per_instance=self._limit, pm_callback_pipe=self._self_pipe
         )
+
+        if self._log_queue:
+            log_level = Settings().get("logging/log_level")
+            instance.setup_log_queue(self._log_queue, log_level)
+
+        return instance
 
     def init_player(self, init_data, pipe):
         instance = self.get_instance()
@@ -96,7 +99,7 @@ class ProcessManager(CommandLoopThreaded, QObject):
                 self._instances_killed.notify()
 
     def crash_all(self, traceback_txt):
-        self._force_terminate_children()
+        force_terminate_children()
 
         self.crash.emit(traceback_txt)
 
@@ -108,7 +111,7 @@ class ProcessManager(CommandLoopThreaded, QObject):
 
         if active_children():
             self._logger.warning("Force terminating child processes...")
-            self._force_terminate_children()
+            force_terminate_children()
 
         self._logger.debug("Terminating command loop...")
         self.cmd_loop_terminate()
@@ -129,146 +132,3 @@ class ProcessManager(CommandLoopThreaded, QObject):
         )
 
         return next(available_instances, None)
-
-    def _force_terminate_children(self):
-        for p in active_children():
-            p.terminate()
-
-
-class InstanceProcess(CommandLoop):
-    def __init__(
-        self,
-        players_per_instance,
-        pm_callback_pipe,
-        pm_log_queue,
-        log_level,
-        **kwargs,
-    ):
-        super().__init__(**kwargs)
-
-        self.id = secrets.token_hex(8)
-
-        self.process = Process(
-            target=self.run,
-            daemon=True,
-            name="{0}_{1}".format(self.__class__.__name__, self.id),
-        )
-
-        self.players_per_instance = players_per_instance
-        self.pm_callback_pipe = pm_callback_pipe
-
-        # shared data outside
-        self._players_shared_data = {}
-
-        # shared data multiprocess
-        self.player_count = Value("i", 0)
-        self.is_dead = Value("i", 0)
-
-        self._log_queue = pm_log_queue
-        self._log_level = log_level
-
-        # process variables
-        self._players = {}
-
-    # outside
-    def request_new_player(self, init_data, pipe):
-        with self.player_count.get_lock():
-            self.player_count.value += 1
-
-        player_id = secrets.token_hex(8)
-
-        self.init_player_shared_data(player_id)
-
-        self.cmd_send_self("new_player", player_id, init_data, pipe)
-
-        return player_id
-
-    # outside
-    def get_player_shared_data(self, player_id):
-        return self._players_shared_data[player_id]
-
-    # outside
-    def cleanup_player_shared_data(self, player_id):
-        self._players_shared_data.pop(player_id, None)
-
-    # process
-    def run(self):
-        if self._log_queue is not None:
-            child_process_config(self._log_queue, self._log_level)
-
-        try:
-            self.process_body()
-        except Exception:
-            traceback_txt = traceback.format_exc()
-
-            logger = logging.getLogger("InstanceProcess")
-            logger.critical(traceback_txt)
-
-            self.crash(traceback_txt)
-        finally:
-            if self._log_queue is not None:
-                self._log_queue.close()
-
-    # process
-    def process_body(self):
-        logger = logging.getLogger("InstanceProcess")
-
-        logger.debug("Starting process...")
-
-        self.init_instance()
-        self.cmd_loop_run()
-
-        logger.debug("Terminating process...")
-
-    # process
-    def crash(self, traceback_txt):
-        self.pm_callback_pipe.send(("crash_all", (traceback_txt,)))
-
-    # outside
-    def request_set_log_level(self, log_level):
-        self.cmd_send_self("set_log_level", log_level)
-
-    # process
-    def set_log_level(self, log_level):  # noqa: WPS615
-        logging.root.setLevel(log_level)
-
-    # process
-    def cleanup(self):
-        self.cleanup_instance()
-        self.cmd_loop_terminate()
-
-        self.pm_callback_pipe.send(("cleanup_instance", (self.id,)))
-
-    # process
-    def release_player(self, player_id):
-        self._players[player_id].cleanup_final()
-
-        with self.player_count.get_lock():
-            self.player_count.value -= 1
-
-            self.release_player_shared_data(player_id)
-
-            if self.player_count.value == 0:
-                with self.is_dead.get_lock():
-                    self.is_dead.value = 1
-                self.cleanup()
-
-    # process
-    def init_instance(self):
-        """Instance initialization"""
-
-    # process
-    def cleanup_instance(self):
-        """Instance cleanup"""
-
-    # process
-    def new_player(self, player_id, init_data, pipe):
-        """Request new player"""
-
-    # process
-    def init_player_shared_data(self, player_id):
-        """Initialize shared data for player instance"""
-
-    # process
-    def release_player_shared_data(self, player_id):
-        """Release shared data for player instance"""

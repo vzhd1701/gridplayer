@@ -5,7 +5,12 @@ from PyQt5.QtCore import QSize, Qt, pyqtSignal
 from PyQt5.QtGui import QFont
 from PyQt5.QtWidgets import QGridLayout, QLabel
 
-from gridplayer.params_static import GridMode
+from gridplayer.params_static import (
+    PLAYER_INFO_TEXT_SIZE,
+    PLAYER_INITIAL_SIZE,
+    PLAYER_MIN_VIDEO_SIZE,
+    GridMode,
+)
 from gridplayer.player.managers.base import ManagerBase
 from gridplayer.settings import Settings
 
@@ -23,8 +28,8 @@ class GridManager(ManagerBase):
 
         self._ctx.grid_mode = Settings().get("playlist/grid_mode")
 
-        self._default_minimum_size = QSize(640, 360)
-        self._minimum_video_size = QSize(100, 90)
+        self._default_minimum_size = QSize(*PLAYER_INITIAL_SIZE)
+        self._minimum_video_size = QSize(*PLAYER_MIN_VIDEO_SIZE)
         self._minimum_size = self._default_minimum_size
 
         self._grid = QGridLayout(self.parent())
@@ -35,7 +40,7 @@ class GridManager(ManagerBase):
             "Drag and drop video files here", parent=self.parent()
         )
         self._info_label.setAlignment(Qt.AlignCenter)
-        font = QFont("Hack", 16, QFont.Bold)
+        font = QFont("Hack", PLAYER_INFO_TEXT_SIZE, QFont.Bold)
         self._info_label.setFont(font)
 
     def init(self):

@@ -61,28 +61,19 @@ exclude = [
 nested_classes_whitelist=["Config"]
 
 [tool.flakehell.plugins]
-# Maybe disable
-# WPS211 too many arguments
-# WPS602 forbids @staticmethod
-# E800 Found commented out code
-# WPS306 forces to use class ClassName(object) <- purely for consistency
-
 # Disabled [personal preference]
 # WPS111 short names
-# WPS425 boolean non-keyword
-#   Qt setAttribute functions
+# WPS226 String constant overuse
 # WPS305 forbids f-strings
 # WPS326 implicit line concat
+# WPS425 boolean non-keyword
+#   Qt setAttribute functions
 # Docstings, don't have any
-# WPS226 String constant overuse
 
 # !! Enable later and refactor
-# WPS211 too many arguments
 # WPS214 too many methods
-# WPS432 Magic numbers
 
 # Exceptions [false positives & formatting]
-# WPS323 Found `%` string formatting
 # WPS317 incorrect multi-line parameters <- black formatting
 # C812 trailing comma <- handled by black
 # E203 whitespace before : <- handled by black
@@ -101,7 +92,7 @@ flake8-quotes = ["+*", "-Q000"]
 flake8-rst-docstrings = ["-*"]
 flake8-docstrings = ["-*"]
 flake8-darglint = ["-*"]
-wemake-python-styleguide = ["+*", "-WPS111", "-WPS211", "-WPS214", "-WPS317", "-WPS323", "-WPS326", "-WPS305", "-WPS226", "-WPS432", "-WPS425"]
+wemake-python-styleguide = ["+*", "-WPS111", "-WPS214", "-WPS226", "-WPS305", "-WPS317", "-WPS326", "-WPS425"]
 
 [tool.flakehell.exceptions."gridplayer/version.py"]
 # I like it this way

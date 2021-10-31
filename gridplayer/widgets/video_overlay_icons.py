@@ -7,7 +7,9 @@ from PyQt5.QtGui import QBrush, QPainter, QPainterPath, QPen
 def draw_volume_on(rect, painter, color):
     draw_volume_off(rect, painter, color)
 
-    painter.fillRect(rect.x() + 5 + 6 + 3, rect.y() + 6, 4, rect.height() - 12, color)
+    painter.fillRect(
+        rect.x() + 5 + 6 + 3, rect.y() + 6, 4, rect.height() - 12, color  # noqa: WPS432
+    )
 
 
 def draw_volume_off(rect, painter, color):

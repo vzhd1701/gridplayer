@@ -23,6 +23,8 @@ VIDEO_DRIVERS_MULTIPROCESS = (
     VideoDriver.VLC_HW,
 )
 
+MAX_VLC_PROCESSES = 64
+
 
 def _fill_combo_box(combo_box, values_dict):
     for i_id, i_name in values_dict.items():
@@ -109,7 +111,7 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
         self.driver_selected(self.playerVideoDriver.currentIndex())
         self.timeoutMouseHide.setEnabled(self.timeoutMouseHideFlag.isChecked())
 
-        self.playerVideoDriverPlayers.setRange(1, 64)  # noqa: WPS432
+        self.playerVideoDriverPlayers.setRange(1, MAX_VLC_PROCESSES)
         self.timeoutOverlay.setRange(1, 60)
         self.timeoutMouseHide.setRange(1, 60)
 

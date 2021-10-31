@@ -25,16 +25,17 @@ class InstanceProcessVLCHW(InstanceProcessVLC):
         self.init_semaphore = Semaphore()
 
     def new_player(self, player_id, init_data, pipe):
+        init_data["init_semaphore"] = self.init_semaphore
+
         player = PlayerProcessSingleVLCHW(
             player_id=player_id,
             release_callback=self.release_player,
             init_data=init_data,
-            init_semaphore=self.init_semaphore,
             vlc_instance=self._vlc_instance,
             crash_func=self.crash,
             pipe=pipe,
         )
-        self._players[player.id] = player
+        self._players[player_id] = player
 
 
 class PlayerProcessSingleVLCHW(VlcPlayerThreaded):
@@ -43,7 +44,6 @@ class PlayerProcessSingleVLCHW(VlcPlayerThreaded):
         player_id,
         release_callback,
         init_data,
-        init_semaphore,
         **kwargs,
     ):
         super().__init__(**kwargs)
@@ -52,7 +52,7 @@ class PlayerProcessSingleVLCHW(VlcPlayerThreaded):
         self.release_callback = release_callback
 
         self.win_id = init_data["win_id"]
-        self.init_semaphore = init_semaphore
+        self.init_semaphore = init_data["init_semaphore"]
 
         self.start()
 

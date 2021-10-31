@@ -1,6 +1,12 @@
 from enum import Enum, auto
 from typing import NamedTuple
 
+PLAYER_ID_LENGTH = 8
+
+PLAYER_INITIAL_SIZE = (640, 360)
+PLAYER_MIN_VIDEO_SIZE = (100, 90)
+PLAYER_INFO_TEXT_SIZE = 16
+
 
 class AutoName(Enum):
     def _generate_next_value_(name, start, count, last_values):  # noqa: WPS120

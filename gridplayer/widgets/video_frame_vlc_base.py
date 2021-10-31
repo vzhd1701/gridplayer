@@ -7,7 +7,8 @@ from PyQt5.QtCore import QObject, pyqtSignal
 
 from gridplayer import params_env
 from gridplayer.multiprocess.command_loop import CommandLoopThreaded
-from gridplayer.multiprocess.process_manager import InstanceProcess, ProcessManager
+from gridplayer.multiprocess.instance_process import InstanceProcess
+from gridplayer.multiprocess.process_manager import ProcessManager
 from gridplayer.settings import Settings
 from gridplayer.utils.libvlc import pre_import_embed_vlc
 
@@ -30,6 +31,8 @@ vsnprintf.argtypes = (
     ctypes.c_char_p,
     ctypes.c_void_p,
 )
+
+ONE_MOMENT = 0.01
 
 
 class VlcPlayerBase(object):
@@ -76,7 +79,7 @@ class VlcPlayerBase(object):
         self._media_player.stop()
 
         while self._media_player.get_state() != vlc.State.Stopped:
-            time.sleep(0.01)
+            time.sleep(ONE_MOMENT)
 
         self._media_player.release()
 
@@ -186,17 +189,17 @@ class VlcPlayerBase(object):
 
         self._media_player.set_pause(1)
         while self._media_player.get_state() != vlc.State.Paused:
-            time.sleep(0.01)
+            time.sleep(ONE_MOMENT)
 
         self._is_waiting_for_buffer = True
 
         self._media_player.set_time(0)
         while self._media_player.get_time() != 0:
-            time.sleep(0.01)
+            time.sleep(ONE_MOMENT)
 
         # waiting for buffering to display paused frame
         while self._is_waiting_for_buffer:
-            time.sleep(0.01)
+            time.sleep(ONE_MOMENT)
 
         self.is_video_initialized = True
 
@@ -230,11 +233,11 @@ class VlcPlayerBase(object):
 
         self._is_waiting_for_buffer = True
         while self._is_waiting_for_buffer:
-            time.sleep(0.01)
+            time.sleep(ONE_MOMENT)
         self._media_player.set_time(seek_ms)
         self._is_waiting_for_buffer = True
         while self._is_waiting_for_buffer:
-            time.sleep(0.01)
+            time.sleep(ONE_MOMENT)
 
     def set_playback_rate(self, rate):
         self._media_player.set_rate(rate)
@@ -452,13 +455,16 @@ class ProcessManagerVLC(ProcessManager):
             a.request_set_log_level_vlc(log_level)
 
     def create_instance(self):
-        log_level = Settings().get("logging/log_level")
         log_level_vlc = Settings().get("logging/log_level_vlc")
 
-        return self._instance_class(
+        instance = self._instance_class(
             players_per_instance=self._limit,
             pm_callback_pipe=self._self_pipe,
-            pm_log_queue=self._log_queue,
-            log_level=log_level,
             vlc_log_level=log_level_vlc,
         )
+
+        if self._log_queue:
+            log_level = Settings().get("logging/log_level")
+            instance.setup_log_queue(self._log_queue, log_level)
+
+        return instance

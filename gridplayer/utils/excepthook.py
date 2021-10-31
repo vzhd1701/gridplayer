@@ -1,11 +1,11 @@
 import logging
 import os
 import traceback
-from multiprocessing.process import active_children
 
 from PyQt5.QtWidgets import QApplication
 
 from gridplayer.dialogs.exception import ExceptionDialog
+from gridplayer.utils.misc import force_terminate_children
 
 
 def excepthook(exc_type, exc_value, exc_tb):
@@ -26,7 +26,6 @@ def excepthook(exc_type, exc_value, exc_tb):
     exc_dialog = ExceptionDialog(exception_txt)
     exc_dialog.exec_()
 
-    for p in active_children():
-        p.kill()
+    force_terminate_children()
 
     os._exit(0)  # noqa: WPS437

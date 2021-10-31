@@ -70,7 +70,7 @@ def config_log(log_path, log_level):
         "formatters": {
             # Modify log message format here or replace with your custom formatter class
             "my_formatter": {
-                "format": "%(asctime)s (%(process)d) | %(name)s |"
+                "format": "%(asctime)s (%(process)d) | %(name)s |"  # noqa: WPS323
                 " %(levelname)s | %(message)s"
             }
         },

@@ -7,8 +7,10 @@ from PyQt5.QtGui import QCursor, QIcon
 from PyQt5.QtWidgets import QGraphicsOpacityEffect, QLabel, QStackedLayout, QWidget
 
 from gridplayer.exceptions import PlayerException
+from gridplayer.params_static import PLAYER_ID_LENGTH
 from gridplayer.settings import Settings
 from gridplayer.utils.misc import qt_connect
+from gridplayer.video import MAX_RATE, MAX_SCALE, MIN_RATE, MIN_SCALE
 from gridplayer.widgets.video_overlay import OverlayBlock, OverlayBlockFloating
 
 
@@ -51,7 +53,8 @@ class StatusLabel(QLabel):
         # workaround - make overlay loading screen 99% opaque
         # so it will appear visually solid while video block is invisible
         effect = QGraphicsOpacityEffect(self)
-        effect.setOpacity(0.99)
+        almost_opaque = 0.99
+        effect.setOpacity(almost_opaque)
         self.setGraphicsEffect(effect)
 
         self.setAlignment(Qt.AlignCenter)
@@ -65,13 +68,16 @@ class StatusLabel(QLabel):
         self._set_pic(QIcon.fromTheme("close"))
 
     def _set_pic(self, pic_path):
-        self.pic = QIcon(pic_path).pixmap(QSize(512, 512))
+        reasonably_big = 512
+        self.pic = QIcon(pic_path).pixmap(QSize(reasonably_big, reasonably_big))
 
         self._set_pic_to_half_size(self.size())
 
     def _set_pic_to_half_size(self, size):
-        width = int(size.width() * 0.75)
-        height = int(size.height() * 0.75)
+        half_size_multiplier = 0.75
+
+        width = int(size.width() * half_size_multiplier)
+        height = int(size.height() * half_size_multiplier)
 
         self.setPixmap(
             self.pic.scaled(width, height, Qt.KeepAspectRatio, Qt.SmoothTransformation)
@@ -97,7 +103,7 @@ class VideoBlock(QWidget):  # noqa: WPS230
 
         # Internal
         self.video_driver = video_driver(parent=self)
-        self.id = secrets.token_hex(8)
+        self.id = secrets.token_hex(PLAYER_ID_LENGTH)
 
         # Static Params
         self.video_params = None
@@ -258,7 +264,8 @@ class VideoBlock(QWidget):  # noqa: WPS230
     def loop_end(self):
         if self.video_params.loop_end is None:
             # Loop end 250 ms before actual end for seamless loop
-            return self.video_driver.length - 250
+            before_end_gap = 250
+            return self.video_driver.length - before_end_gap
         return self.video_params.loop_end
 
     @only_initialized
@@ -429,8 +436,8 @@ class VideoBlock(QWidget):  # noqa: WPS230
         self.video_params.scale += 0.1
         self.video_params.scale = round(self.video_params.scale, 1)
 
-        if self.video_params.scale > 3:
-            self.video_params.scale = 3.0
+        if self.video_params.scale > MAX_SCALE:
+            self.video_params.scale = MAX_SCALE
             self.info_change.emit("Zoom: {0}".format(self.video_params.scale))
             return
 
@@ -442,8 +449,8 @@ class VideoBlock(QWidget):  # noqa: WPS230
         self.video_params.scale -= 0.1
         self.video_params.scale = round(self.video_params.scale, 1)
 
-        if self.video_params.scale < 1:
-            self.video_params.scale = 1.0
+        if self.video_params.scale < MIN_SCALE:
+            self.video_params.scale = MIN_SCALE
             self.info_change.emit("Zoom: {0}".format(self.video_params.scale))
             return
 
@@ -462,8 +469,8 @@ class VideoBlock(QWidget):  # noqa: WPS230
         self.video_params.rate += 0.1
         self.video_params.rate = round(self.video_params.rate, 1)
 
-        if self.video_params.rate > 12.0:  # noqa: WPS459
-            self.video_params.rate = 12.0
+        if self.video_params.rate > MAX_RATE:
+            self.video_params.rate = MAX_RATE
             self.info_change.emit("Speed: {0}".format(self.video_params.rate))
             return
 
@@ -475,8 +482,8 @@ class VideoBlock(QWidget):  # noqa: WPS230
         self.video_params.rate -= 0.1
         self.video_params.rate = round(self.video_params.rate, 1)
 
-        if self.video_params.rate < 0.2:  # noqa: WPS459
-            self.video_params.rate = 0.2
+        if self.video_params.rate < MIN_RATE:
+            self.video_params.rate = MIN_RATE
             self.info_change.emit("Speed: {0}".format(self.video_params.rate))
             return
 
