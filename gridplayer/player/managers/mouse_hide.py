@@ -43,7 +43,7 @@ class MouseHideManager(ManagerBase):
         if not self._ctx.video_blocks or is_modal_open():
             return
 
-        if QApplication.overrideCursor() != Qt.BlankCursor:
+        if QApplication.overrideCursor() is None:
             QApplication.setOverrideCursor(Qt.BlankCursor)
 
             self.mouse_hidden.emit()
