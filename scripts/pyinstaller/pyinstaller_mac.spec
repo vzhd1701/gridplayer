@@ -553,6 +553,7 @@ mime_plist = {
     # App can use GPU
     "NSSupportsAutomaticGraphicsSwitching": True,
     "NSPrincipalClass": "NSApplication",
+    "NSRequiresAquaSystemAppearance": False,
 }
 
 app = BUNDLE(coll,
