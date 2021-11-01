@@ -31,7 +31,7 @@ class MouseHideManager(ManagerBase):
         if Settings().get("misc/mouse_hide"):
             self.mouse_timer.start(1000 * Settings().get("misc/mouse_hide_timeout"))
 
-        QApplication.instance().focusObjectChanged.connect(self._focus_change)
+        QApplication.instance().focusObjectChanged.connect(self.show_cursor)
 
     @property
     def event_map(self):
@@ -56,12 +56,3 @@ class MouseHideManager(ManagerBase):
 
         if Settings().get("misc/mouse_hide"):
             self.mouse_timer.start(1000 * Settings().get("misc/mouse_hide_timeout"))
-
-    def _focus_change(self, focusWindow):
-        try:
-            is_modal = focusWindow.isModal()
-        except AttributeError:
-            return
-
-        if is_modal:
-            self.show_cursor()

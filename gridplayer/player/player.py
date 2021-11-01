@@ -36,7 +36,7 @@ class Player(QWidget, ManagersManager):
         self.setMouseTracking(True)
         self.setAcceptDrops(True)
 
-        managers_cls = {
+        self.managers = {
             "video_driver": VideoDriverManager,
             "window_state": WindowStateManager,
             "video_blocks": VideoBlocksManager,
@@ -55,7 +55,7 @@ class Player(QWidget, ManagersManager):
             "menu": MenuManager,
         }
 
-        connections = {
+        self.connections = {
             "video_driver": [("video_blocks.video_count_changed", "set_video_count")],
             "window_state": [("pause_on_minimize", "video_blocks.pause_all")],
             "grid": [
@@ -77,6 +77,7 @@ class Player(QWidget, ManagersManager):
             "drag_n_drop": [
                 ("videos_swapped", "grid.reload_video_grid"),
                 ("videos_dropped", "video_blocks.add_videos"),
+                ("videos_dropped", "window_state.activate_window"),
                 ("playlist_dropped", "playlist.load_playlist_file"),
             ],
             "single_mode": [
@@ -101,26 +102,23 @@ class Player(QWidget, ManagersManager):
                 ("alert", "window_state.activate_window"),
                 ("error", "dialogs.error"),
             ],
-            "add_videos": [("videos_added", "video_blocks.add_videos")],
+            "add_videos": [
+                ("videos_added", "video_blocks.add_videos"),
+                ("videos_added", "window_state.activate_window"),
+            ],
         }
 
-        global_event_filters = []
-
         if platform.system() == "Darwin":
-            managers_cls["macos_fileopen"] = MacOSFileOpenManager
-            connections["macos_fileopen"] = [
+            self.managers["macos_fileopen"] = MacOSFileOpenManager
+            self.connections["macos_fileopen"] = [
                 ("file_opened", "playlist.process_arguments")
             ]
-            global_event_filters.append("macos_fileopen")
+            self.global_event_filters.append("macos_fileopen")
         else:
-            managers_cls["instance_listener"] = InstanceListenerManager
-            connections["instance_listener"] = [
+            self.managers["instance_listener"] = InstanceListenerManager
+            self.connections["instance_listener"] = [
                 ("files_opened", "playlist.process_arguments")
             ]
-
-        self.managers = managers_cls
-
-        self.connections = connections
 
         self.event_filters = [
             "window_state",
@@ -131,8 +129,6 @@ class Player(QWidget, ManagersManager):
             "playlist",
             "menu",
         ]
-
-        self.global_event_filters = global_event_filters
 
         self.init()
 
