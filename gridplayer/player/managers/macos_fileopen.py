@@ -23,7 +23,7 @@ class MacOSFileOpenManager(ManagerBase):
 
         Settings().sync()
 
-        is_empty = bool(self._ctx.video_blocks)
+        is_empty = not self._ctx.video_blocks
         is_only_empty = is_the_only_instance() and is_empty
 
         if Settings().get("player/one_instance") or is_only_empty:

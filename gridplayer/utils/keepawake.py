@@ -80,11 +80,6 @@ elif SYSTEM == "Linux":
             except ValueError:
                 self._screensaver_if = None
 
-            if not self._bus.isConnected():
-                self._bus = None
-
-                logger.warning("DBus failed to connected")
-
         def screensaver_off(self):
             if self.is_screensaver_off:
                 return

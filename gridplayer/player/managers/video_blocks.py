@@ -78,9 +78,9 @@ class VideoBlocksManager(ManagerBase):
         }
 
     def cmd_play_pause_all(self):
-        unpaused_vbs = self._ctx.video_blocks.unpaused
+        is_at_least_one_unpaused = bool(self._ctx.video_blocks.unpaused)
 
-        if next(unpaused_vbs, None) is not None:
+        if is_at_least_one_unpaused:
             self.set_pause.emit(True)
         else:
             self.set_pause.emit(False)

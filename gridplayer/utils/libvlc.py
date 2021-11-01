@@ -69,7 +69,7 @@ def get_vlc_version():
 
     try:
         import vlc  # noqa: WPS433
-    except (FileNotFoundError, NotImplementedError):
+    except (OSError, NotImplementedError):
         return None
 
     logger.debug(f"VLC lib: {vlc.dll}")

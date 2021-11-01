@@ -17,7 +17,7 @@ elif params_env.IS_FLATPAK:
         f"/gridplayer/gridplayer-fileopen.socket",
         "AF_UNIX",
     )
-else:
+elif os.getenv("XDG_RUNTIME_DIR"):
     S_NAME, S_TYPE = (
         f"{os.environ['XDG_RUNTIME_DIR']}/gridplayer/gridplayer-fileopen.socket",
         "AF_UNIX",
