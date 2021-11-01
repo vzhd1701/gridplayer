@@ -239,6 +239,12 @@ class OverlayProgressBar(OverlayWidget):
 
         event.ignore()
 
+    def mouseDoubleClickEvent(self, event):
+        """Consume to avoid parent event"""
+        self.mousePressEvent(event)
+
+        event.accept()
+
     def paintEvent(self, event):
         painter = QPainter(self)
 
@@ -347,6 +353,12 @@ class OverlayVolumeBar(OverlayWidget):
             event.accept()
         else:
             event.ignore()
+
+    def mouseDoubleClickEvent(self, event):
+        """Consume to avoid parent event"""
+        self.mousePressEvent(event)
+
+        event.accept()
 
     def paintEvent(self, event):
         painter = QPainter(self)

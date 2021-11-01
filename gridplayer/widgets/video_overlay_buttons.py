@@ -62,7 +62,7 @@ class OverlayButton(OverlayWidget):
         event.ignore()
 
     def mouseReleaseEvent(self, event):
-        """Consume mouse release to avoid pausing from parent event"""
+        """Consume to avoid parent event"""
 
         if event.button() == Qt.LeftButton:
             event.accept()
@@ -74,6 +74,12 @@ class OverlayButton(OverlayWidget):
             self.clicked.emit()
 
         event.ignore()
+
+    def mouseDoubleClickEvent(self, event):
+        """Consume to avoid parent event"""
+        self.mousePressEvent(event)
+
+        event.accept()
 
     @property
     def is_off(self):
