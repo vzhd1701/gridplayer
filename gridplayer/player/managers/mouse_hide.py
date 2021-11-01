@@ -54,5 +54,5 @@ class MouseHideManager(ManagerBase):
 
             self.mouse_shown.emit()
 
-        if Settings().get("misc/mouse_hide"):
+        if self.parent().isVisible() and Settings().get("misc/mouse_hide"):
             self.mouse_timer.start(1000 * Settings().get("misc/mouse_hide_timeout"))

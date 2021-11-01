@@ -43,7 +43,6 @@ excludes = [
     "PyQt5.QtTextToSpeech",
     "PyQt5.QtWebChannel",
     "PyQt5.QtWebSockets",
-    "PyQt5.QtWinExtras",
     "PyQt5.QtXml",
     "PyQt5.QtXmlPatterns",
     "PyQt5.QtMultimedia",
