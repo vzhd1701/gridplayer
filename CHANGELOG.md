@@ -1,3 +1,14 @@
+### [0.1.2](https://github.com/vzhd1701/gridplayer/compare/v0.1.1...v0.1.2) (2021-11-01)
+
+### Bug Fixes
+
+- fix random loop context menu icon ([347bbde](https://github.com/vzhd1701/gridplayer/commit/347bbde7e47dc4dbe7915f17f9a591a87c86f754))
+- prevent cursor from hiding while dragging ([b08f360](https://github.com/vzhd1701/gridplayer/commit/b08f3607f6d186ed7b9c8f1b5eab69f82862ee48))
+- prevent double click on overlay buttons ([b8d59f8](https://github.com/vzhd1701/gridplayer/commit/b8d59f8a59a1f94b20038d504ae8815bb797f314))
+- show source video overlay when dragging ([c33e7e0](https://github.com/vzhd1701/gridplayer/commit/c33e7e0305f448f1ea57d96aed0537227fbe1f8e))
+- fix adding files from context menu
+- prevent window from going background on drag-n-drop
+
 ### [0.1.1](https://github.com/vzhd1701/gridplayer/compare/v0.1.0...v0.1.1) (2021-10-19)
 
 ### Bug Fixes
