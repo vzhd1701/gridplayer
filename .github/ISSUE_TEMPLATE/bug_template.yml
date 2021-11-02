@@ -42,3 +42,4 @@ body:
   attributes:
     label: Log excerpt
     description: If possible, please attach log file excerpt with log level set to debug. You can find it in setting dialog.
+    render: shell
