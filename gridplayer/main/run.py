@@ -15,7 +15,7 @@ def run_app():
         QCustomMessageBox.critical(
             None,
             "Error",
-            "<p>VLC player is required to run this app!</p><p>Please visit"
+            "<p>VLC player is required!</p><p>Please visit"
             ' <a href="https://www.videolan.org/vlc/">VLC official site</a>'
             " for instructions on how to install it.</p>",
         )
