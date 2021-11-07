@@ -1,5 +1,6 @@
 import logging
 import os
+import platform
 from enum import Enum
 
 from PyQt5.QtCore import QSettings
@@ -32,6 +33,9 @@ _default_settings = {
     "logging/log_level_vlc": DISABLED,
     "internal/opaque_hw_overlay": False,
 }
+
+if platform.system() == "Darwin":
+    _default_settings["player/video_driver"] = VideoDriver.VLC_HW_SP
 
 
 class _Settings(object):

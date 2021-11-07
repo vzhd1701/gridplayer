@@ -179,11 +179,18 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
     def fill_playerVideoDriver(self):
         video_drivers_disabled = []
 
-        video_drivers = {
-            VideoDriver.VLC_HW: f"Hardware <VLC {params_env.VLC_VERSION}>",
-            VideoDriver.VLC_SW: f"Software <VLC {params_env.VLC_VERSION}>",
-            VideoDriver.DUMMY: "Dummy",
-        }
+        if platform.system() == "Darwin":
+            video_drivers = {
+                VideoDriver.VLC_HW_SP: f"Hardware SP <VLC {params_env.VLC_VERSION}>",
+                VideoDriver.VLC_SW: f"Software <VLC {params_env.VLC_VERSION}>",
+                VideoDriver.DUMMY: "Dummy",
+            }
+        else:
+            video_drivers = {
+                VideoDriver.VLC_HW: f"Hardware <VLC {params_env.VLC_VERSION}>",
+                VideoDriver.VLC_SW: f"Software <VLC {params_env.VLC_VERSION}>",
+                VideoDriver.DUMMY: "Dummy",
+            }
 
         _fill_combo_box(self.playerVideoDriver, video_drivers)
 

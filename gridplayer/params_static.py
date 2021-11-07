@@ -32,6 +32,7 @@ class VideoAspect(AutoName):
 class VideoDriver(AutoName):
     VLC_SW = auto()
     VLC_HW = auto()
+    VLC_HW_SP = auto()
     DUMMY = auto()
 
 

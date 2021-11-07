@@ -83,6 +83,8 @@ class OverlayBlock(QWidget):  # noqa: WPS230
     def ui_setup(self):  # noqa: WPS213
         QVBoxLayout(self)
 
+        self.layout().setContentsMargins(10, 10, 10, 10)
+
         self.top_bar = QVBoxLayout()
         self.middle = QHBoxLayout()
         self.bottom_bar = QHBoxLayout()
@@ -242,7 +244,10 @@ class OverlayBlockFloating(OverlayBlock):
         self.setAcceptDrops(True)
 
         self.setWindowFlags(
-            Qt.Tool | Qt.FramelessWindowHint | Qt.WindowDoesNotAcceptFocus
+            Qt.Tool
+            | Qt.FramelessWindowHint
+            | Qt.WindowDoesNotAcceptFocus
+            | Qt.NoDropShadowWindowHint
         )
 
     def make_opaque(self):

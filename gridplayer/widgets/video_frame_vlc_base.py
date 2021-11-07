@@ -353,6 +353,31 @@ class VLCVideoDriverThreaded(CommandLoopThreaded, QObject):
 
 
 class InstanceProcessVLC(InstanceProcess):
+    def __init__(self, vlc_log_level, **kwargs):
+        super().__init__(**kwargs)
+
+        self._vlc = InstanceVLC(vlc_log_level)
+
+    @property
+    def _vlc_instance(self):
+        return self._vlc._vlc_instance
+
+    def init_instance(self):
+        self._vlc.init_instance()
+
+    def cleanup_instance(self):
+        self._vlc.cleanup_instance()
+
+    # outside
+    def request_set_log_level_vlc(self, log_level):
+        self.cmd_send_self("set_log_level_vlc", log_level)
+
+    # process
+    def set_log_level_vlc(self, log_level):
+        self._vlc.set_log_level_vlc(log_level)
+
+
+class InstanceVLC(object):
     log_level_map = {
         vlc.LogLevel.DEBUG: logging.DEBUG,
         vlc.LogLevel.ERROR: logging.ERROR,
@@ -425,10 +450,6 @@ class InstanceProcessVLC(InstanceProcess):
             self._logger.log(log_level, log_msg)
 
         return _cb
-
-    # outside
-    def request_set_log_level_vlc(self, log_level):
-        self.cmd_send_self("set_log_level_vlc", log_level)
 
     # process
     def set_log_level_vlc(self, log_level):
