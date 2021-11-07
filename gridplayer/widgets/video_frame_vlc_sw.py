@@ -79,7 +79,7 @@ class ImageDecoder(object):
 
                 # Callback is firing while on pause,
                 # so check if the frame content actually changed
-                if self.is_paused and self._is_frame_changed():
+                if self.is_paused and not self._is_frame_changed():
                     return
 
                 self._frame_ready_cb()
