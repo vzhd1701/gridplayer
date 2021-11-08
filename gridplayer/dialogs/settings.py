@@ -172,6 +172,8 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
         grid_modes = {
             GridMode.AUTO_ROWS: "Auto Rows First",
             GridMode.AUTO_COLS: "Auto Columns First",
+            GridMode.AUTO_ROWS_FIT: "Auto Rows First (Fit)",
+            GridMode.AUTO_COLS_FIT: "Auto Columns First (Fit)",
         }
 
         _fill_combo_box(self.playlistGridMode, grid_modes)

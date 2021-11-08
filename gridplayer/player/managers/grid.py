@@ -3,7 +3,7 @@ from typing import NamedTuple
 
 from PyQt5.QtCore import QSize, Qt, pyqtSignal
 from PyQt5.QtGui import QFont
-from PyQt5.QtWidgets import QGridLayout, QLabel
+from PyQt5.QtWidgets import QGridLayout, QHBoxLayout, QLabel
 
 from gridplayer.params_static import (
     PLAYER_INFO_TEXT_SIZE,
@@ -18,6 +18,21 @@ from gridplayer.settings import Settings
 class GridDimensions(NamedTuple):
     cols: int
     rows: int
+
+    @property
+    def max_size(self):
+        return self.cols * self.rows
+
+
+def _clear_layout(layout):
+    for _ in range(layout.count()):
+        l_item = layout.takeAt(0)
+
+        sublay = l_item.layout()
+
+        if sublay is not None:
+            _clear_layout(sublay)
+            sublay.deleteLater()
 
 
 class GridManager(ManagerBase):
@@ -72,7 +87,7 @@ class GridManager(ManagerBase):
         grid_y = math.ceil(math.sqrt(self.visible_count))
         grid_x = math.ceil(self.visible_count / grid_y)
 
-        if self._ctx.grid_mode == GridMode.AUTO_COLS:
+        if self._ctx.grid_mode in (GridMode.AUTO_COLS, GridMode.AUTO_COLS_FIT):
             cols, rows = grid_x, grid_y
         else:
             cols, rows = grid_y, grid_x
@@ -99,6 +114,7 @@ class GridManager(ManagerBase):
             return
 
         self._adjust_window()
+        self._adjust_cells()
 
         self._populate_grid()
 
@@ -123,9 +139,7 @@ class GridManager(ManagerBase):
     def _reset_video_grid(self):
         self._info_label.hide()
 
-        # Clean out the grid
-        for _ in range(self._grid.count()):
-            self._grid.takeAt(0)
+        _clear_layout(self._grid)
 
         if not self._ctx.video_blocks:
             self._grid.addWidget(self._info_label, 0, 0)
@@ -143,19 +157,43 @@ class GridManager(ManagerBase):
         self._minimum_size = QSize(width, height)
         self.minimum_size_changed.emit(self._minimum_size)
 
+    def _adjust_cells(self):
+        for vb in self._ctx.video_blocks:
+            vb.setMinimumSize(self._minimum_vb_size())
+
     def _populate_grid(self):
+        odd_cells = self.grid_dimensions.max_size - len(self._ctx.video_blocks)
+
+        is_fit_mode = self._ctx.grid_mode in (
+            GridMode.AUTO_COLS_FIT,
+            GridMode.AUTO_ROWS_FIT,
+        )
+
+        if odd_cells == 0 or not is_fit_mode:
+            self._fill_grid(self._ctx.video_blocks)
+        else:
+            straight_cells = self.grid_dimensions.cols * (self.grid_dimensions.rows - 1)
+
+            self._fill_grid(self._ctx.video_blocks[:straight_cells])
+            self._fill_last_row(self._ctx.video_blocks[straight_cells:])
+
+    def _fill_grid(self, widgets):
         grid = (
             (col, row)
             for row in range(self.grid_dimensions.rows)
             for col in range(self.grid_dimensions.cols)
         )
 
-        for vb in self._ctx.video_blocks:
-            col, row = next(grid)
+        for (col, row), w in zip(grid, widgets):
+            self._grid.addWidget(w, row, col, 1, 1)
 
-            vb.setMinimumSize(self._minimum_vb_size())
+    def _fill_last_row(self, widgets):
+        last_row = QHBoxLayout()
 
-            self._grid.addWidget(vb, row, col, 1, 1)
+        for w in widgets:
+            last_row.addWidget(w, 1)
+
+        self._grid.addLayout(last_row, self.grid_dimensions.rows - 1, 0, 1, -1)
 
     def _minimum_vb_size(self):
         return QSize(

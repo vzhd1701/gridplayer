@@ -59,6 +59,18 @@ COMMANDS = MappingProxyType(
             "func": ("set_grid_mode", GridMode.AUTO_COLS),
             "check": ("is_grid_mode_set_to", GridMode.AUTO_COLS),
         },
+        "Rows First (Fit)": {
+            "key": "Alt+3",
+            "icon": "grid-rows-first",
+            "func": ("set_grid_mode", GridMode.AUTO_ROWS_FIT),
+            "check": ("is_grid_mode_set_to", GridMode.AUTO_ROWS_FIT),
+        },
+        "Columns First (Fit)": {
+            "key": "Alt+4",
+            "icon": "grid-columns-first",
+            "func": ("set_grid_mode", GridMode.AUTO_COLS_FIT),
+            "check": ("is_grid_mode_set_to", GridMode.AUTO_COLS_FIT),
+        },
         "Zoom In": {
             "key": "+",
             "icon": "zoom-in",

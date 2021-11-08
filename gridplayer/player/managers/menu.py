@@ -64,7 +64,13 @@ SECTIONS = MappingProxyType(
                 "-15s",
                 "-30s",
             ),
-            ("Grid", "Rows First", "Columns First"),
+            (
+                "Grid",
+                "Rows First",
+                "Columns First",
+                "Rows First (Fit)",
+                "Columns First (Fit)",
+            ),
         ],
         "player": ["Fullscreen", "Minimize"],
         "program": [
