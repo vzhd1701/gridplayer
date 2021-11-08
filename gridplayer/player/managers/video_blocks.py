@@ -59,6 +59,7 @@ class VideoBlocksManager(ManagerBase):
     hide_overlay = pyqtSignal()
     set_pause = pyqtSignal(int)
     seek_shift = pyqtSignal(int)
+    seek_shift_ms = pyqtSignal(int)
     seek_random = pyqtSignal()
 
     def __init__(self, **kwargs):
@@ -72,6 +73,7 @@ class VideoBlocksManager(ManagerBase):
             "play_pause_all": self.cmd_play_pause_all,
             "loop_random": lambda: self.seek_random.emit(),
             "seek_shift_all": self.cmd_seek_shift_all,
+            "seek_shift_ms_all": self.cmd_seek_shift_ms_all,
             "step_forward": self.cmd_step_forward,
             "step_backward": self.cmd_step_backward,
             "is_videos": lambda: bool(self._ctx.video_blocks),
@@ -87,6 +89,9 @@ class VideoBlocksManager(ManagerBase):
 
     def cmd_seek_shift_all(self, percent):
         self.seek_shift.emit(percent)
+
+    def cmd_seek_shift_ms_all(self, seek_ms):
+        self.seek_shift_ms.emit(seek_ms)
 
     def cmd_step_forward(self):
         self.pause_all()
@@ -140,6 +145,7 @@ class VideoBlocksManager(ManagerBase):
             (vb.is_paused_change, self.playing_count_change),
             (self.set_pause, vb.set_pause),
             (self.seek_shift, vb.seek_shift_percent),
+            (self.seek_shift_ms, vb.seek_shift),
             (self.seek_random, vb.seek_random),
             (self.hide_overlay, vb.hide_overlay),
         )

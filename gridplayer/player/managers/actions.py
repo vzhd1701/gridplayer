@@ -169,7 +169,7 @@ COMMANDS = MappingProxyType(
             "func": ("seek_shift_all", 5),
         },
         "+10%": {
-            "key": Qt.CTRL + Qt.Key_Right,
+            "key": Qt.ALT + Qt.Key_Right,
             "icon": "seek-plus-10",
             "func": ("seek_shift_all", 10),
         },
@@ -184,9 +184,39 @@ COMMANDS = MappingProxyType(
             "func": ("seek_shift_all", -5),
         },
         "-10%": {
-            "key": Qt.CTRL + Qt.Key_Left,
+            "key": Qt.ALT + Qt.Key_Left,
             "icon": "seek-minus-10",
             "func": ("seek_shift_all", -10),
+        },
+        "+5s": {
+            "key": Qt.CTRL + Qt.Key_Right,
+            "icon": "seek-plus-1",
+            "func": ("seek_shift_ms_all", 5000),
+        },
+        "+15s": {
+            "key": Qt.CTRL + Qt.SHIFT + Qt.Key_Right,
+            "icon": "seek-plus-5",
+            "func": ("seek_shift_ms_all", 15000),
+        },
+        "+30s": {
+            "key": Qt.CTRL + Qt.ALT + Qt.Key_Right,
+            "icon": "seek-plus-10",
+            "func": ("seek_shift_ms_all", 30000),
+        },
+        "-5s": {
+            "key": Qt.CTRL + Qt.Key_Left,
+            "icon": "seek-minus-1",
+            "func": ("seek_shift_ms_all", -5000),
+        },
+        "-15s": {
+            "key": Qt.CTRL + Qt.SHIFT + Qt.Key_Left,
+            "icon": "seek-minus-5",
+            "func": ("seek_shift_ms_all", -15000),
+        },
+        "-30s": {
+            "key": Qt.CTRL + Qt.ALT + Qt.Key_Left,
+            "icon": "seek-minus-10",
+            "func": ("seek_shift_ms_all", -30000),
         },
         "Settings": {
             "key": "F5",
