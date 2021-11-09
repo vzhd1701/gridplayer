@@ -1,3 +1,15 @@
+### [0.1.3](https://github.com/vzhd1701/gridplayer/compare/v0.1.2...v0.1.3) (2021-11-09)
+
+### Features
+
+- add fit grid modes ([c19b22d](https://github.com/vzhd1701/gridplayer/commit/c19b22d725ed0137e5cdcb6bd3aa187392f9584a))
+- add grid size adjustment ([1dd4d61](https://github.com/vzhd1701/gridplayer/commit/1dd4d6116880c0ae12b14dbfa0d8a198493e125f))
+
+### Bug Fixes
+
+- add missing jump seek actions ([caac5f5](https://github.com/vzhd1701/gridplayer/commit/caac5f5f6d924ecf6de530d90827ed4e641afb46))
+- fix hardware decoding in MacOS ([899ca3b](https://github.com/vzhd1701/gridplayer/commit/899ca3b97aafa93a72dd3c8c5fa7c7b696e3ebdf))
+
 ### [0.1.2](https://github.com/vzhd1701/gridplayer/compare/v0.1.1...v0.1.2) (2021-11-01)
 
 ### Bug Fixes
