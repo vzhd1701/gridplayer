@@ -87,7 +87,7 @@ The same notes about the Python version and external packages from **PIP** insta
 
 ## Known issues
 
-#### Snap: [X screen](https://raw.githubusercontent.com/vzhd1701/gridplayer/master/resources/public/screenshot-x.png) when opening a file from the mounted disk
+#### Linux (Snap): [X screen](https://raw.githubusercontent.com/vzhd1701/gridplayer/master/resources/public/screenshot-x.png) when opening a file from the mounted disk
 
 You need to allow GridPlayer snap to access removable storage devices via Snap Store or by running:
 
@@ -95,7 +95,7 @@ You need to allow GridPlayer snap to access removable storage devices via Snap S
 $ sudo snap connect gridplayer:removable-media
 ```
 
-#### Snap: mounted drives are not visible in file selection dialog
+#### Linux (Snap): mounted drives are not visible in file selection dialog
 
 You will also see following error if you run GridPlayer from terminal:
 
@@ -109,11 +109,19 @@ To fix this, you need to allow GridPlayer snap to access system mount informatio
 $ sudo snap connect gridplayer:mount-observe
 ```
 
-#### KDE: black screen issue when using hardware decoder
+#### Linux (KDE): black screen issue when using hardware decoder
 
 Switch on "Opaque overlay (fix black screen)" checkbox in settings.
 
 Overlay might be a bit glitchy in KDE with hardware decoder.
+
+#### MacOS: "GridPlayer" is damaged and can't be opened
+
+To fix this, you need to execute the following command using terminal:
+
+```shell
+$ sudo xattr -rd com.apple.quarantine /Applications/GridPlayer.app
+```
 
 ## Attributions
 
