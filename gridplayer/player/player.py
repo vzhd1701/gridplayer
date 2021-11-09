@@ -97,7 +97,7 @@ class Player(QWidget, ManagersManager):
                 ("playlist_closed", "window_state.restore_to_minimum"),
                 ("playlist_loaded", "window_state.activate_window"),
                 ("window_state_loaded", "window_state.restore_window_state"),
-                ("grid_mode_loaded", "grid.cmd_set_grid_mode"),
+                ("grid_state_loaded", "grid.set_grid_state"),
                 ("videos_loaded", "video_blocks.add_videos"),
                 ("alert", "window_state.activate_window"),
                 ("error", "dialogs.error"),

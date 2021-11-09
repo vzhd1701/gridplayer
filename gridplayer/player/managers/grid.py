@@ -3,8 +3,10 @@ from typing import NamedTuple
 
 from PyQt5.QtCore import QSize, Qt, pyqtSignal
 from PyQt5.QtGui import QFont
-from PyQt5.QtWidgets import QGridLayout, QHBoxLayout, QLabel
+from PyQt5.QtWidgets import QGridLayout, QHBoxLayout, QLabel, QVBoxLayout
 
+from gridplayer.dialogs.input_dialog import QCustomSpinboxInput
+from gridplayer.params import GridState
 from gridplayer.params_static import (
     PLAYER_INFO_TEXT_SIZE,
     PLAYER_INITIAL_SIZE,
@@ -41,7 +43,11 @@ class GridManager(ManagerBase):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
-        self._ctx.grid_mode = Settings().get("playlist/grid_mode")
+        self._ctx.grid_state = self.grid_state
+
+        self._grid_mode = Settings().get("playlist/grid_mode")
+        self._is_grid_fit = Settings().get("playlist/grid_fit")
+        self._grid_size = Settings().get("playlist/grid_size")
 
         self._default_minimum_size = QSize(*PLAYER_INITIAL_SIZE)
         self._minimum_video_size = QSize(*PLAYER_MIN_VIDEO_SIZE)
@@ -66,7 +72,11 @@ class GridManager(ManagerBase):
     def commands(self):
         return {
             "set_grid_mode": self.cmd_set_grid_mode,
-            "is_grid_mode_set_to": lambda m: self._ctx.grid_mode == m,
+            "is_grid_mode_set_to": lambda m: self._grid_mode == m,
+            "ask_grid_size": self.cmd_ask_grid_size,
+            "get_grid_size": self.cmd_get_grid_size,
+            "switch_is_grid_fit": self.cmd_switch_is_grid_fit,
+            "is_grid_fit": lambda: self._is_grid_fit,
         }
 
     @property
@@ -84,21 +94,60 @@ class GridManager(ManagerBase):
         if self.visible_count <= 1:
             return GridDimensions(1, 1)
 
-        grid_y = math.ceil(math.sqrt(self.visible_count))
-        grid_x = math.ceil(self.visible_count / grid_y)
-
-        if self._ctx.grid_mode in (GridMode.AUTO_COLS, GridMode.AUTO_COLS_FIT):
-            cols, rows = grid_x, grid_y
+        if self._grid_size == 0:
+            grid_size = math.ceil(math.sqrt(self.visible_count))
         else:
-            cols, rows = grid_y, grid_x
+            grid_size = self._grid_size
+
+        grid_slices = math.ceil(self.visible_count / grid_size)
+
+        if self._grid_mode == GridMode.AUTO_COLS:
+            cols, rows = grid_slices, grid_size
+        else:
+            cols, rows = grid_size, grid_slices
 
         return GridDimensions(cols, rows)
 
+    def grid_state(self):
+        return GridState(
+            mode=self._grid_mode,
+            is_fit=self._is_grid_fit,
+            size=self._grid_size,
+        )
+
+    def set_grid_state(self, state: GridState) -> None:
+        self._grid_mode = state.mode
+        self._is_grid_fit = state.is_fit
+        self._grid_size = state.size
+
+        self.reload_video_grid()
+
     def cmd_set_grid_mode(self, mode):
-        if self._ctx.grid_mode == mode:
+        if self._grid_mode == mode:
             return
 
-        self._ctx.grid_mode = mode
+        self._grid_mode = mode
+        self.reload_video_grid()
+
+    def cmd_ask_grid_size(self):
+        size = QCustomSpinboxInput.get_int(
+            self.parent(), "Set grid size", "Auto", self._grid_size, 0, 1000
+        )
+
+        if self._grid_size == size:
+            return
+
+        self._grid_size = size
+        self.reload_video_grid()
+
+    def cmd_get_grid_size(self):
+        if self._grid_size == 0:
+            return "Auto"
+
+        return str(self._grid_size)
+
+    def cmd_switch_is_grid_fit(self):
+        self._is_grid_fit = not self._is_grid_fit
         self.reload_video_grid()
 
     def adapt_grid(self):
@@ -164,25 +213,37 @@ class GridManager(ManagerBase):
     def _populate_grid(self):
         odd_cells = self.grid_dimensions.max_size - len(self._ctx.video_blocks)
 
-        is_fit_mode = self._ctx.grid_mode in (
-            GridMode.AUTO_COLS_FIT,
-            GridMode.AUTO_ROWS_FIT,
-        )
-
-        if odd_cells == 0 or not is_fit_mode:
+        if odd_cells == 0 or not self._is_grid_fit:
             self._fill_grid(self._ctx.video_blocks)
         else:
-            straight_cells = self.grid_dimensions.cols * (self.grid_dimensions.rows - 1)
+            if self._grid_mode == GridMode.AUTO_COLS:
+                straight_cells = self.grid_dimensions.rows * (
+                    self.grid_dimensions.cols - 1
+                )
 
-            self._fill_grid(self._ctx.video_blocks[:straight_cells])
-            self._fill_last_row(self._ctx.video_blocks[straight_cells:])
+                self._fill_grid(self._ctx.video_blocks[:straight_cells])
+                self._fill_last_col(self._ctx.video_blocks[straight_cells:])
+            else:
+                straight_cells = self.grid_dimensions.cols * (
+                    self.grid_dimensions.rows - 1
+                )
+
+                self._fill_grid(self._ctx.video_blocks[:straight_cells])
+                self._fill_last_row(self._ctx.video_blocks[straight_cells:])
 
     def _fill_grid(self, widgets):
-        grid = (
-            (col, row)
-            for row in range(self.grid_dimensions.rows)
-            for col in range(self.grid_dimensions.cols)
-        )
+        if self._grid_mode == GridMode.AUTO_COLS:
+            grid = (
+                (col, row)
+                for col in range(self.grid_dimensions.cols)
+                for row in range(self.grid_dimensions.rows)
+            )
+        else:
+            grid = (
+                (col, row)
+                for row in range(self.grid_dimensions.rows)
+                for col in range(self.grid_dimensions.cols)
+            )
 
         for (col, row), w in zip(grid, widgets):
             self._grid.addWidget(w, row, col, 1, 1)
@@ -193,7 +254,19 @@ class GridManager(ManagerBase):
         for w in widgets:
             last_row.addWidget(w, 1)
 
-        self._grid.addLayout(last_row, self.grid_dimensions.rows - 1, 0, 1, -1)
+        last_row_num = self.grid_dimensions.rows - 1
+
+        self._grid.addLayout(last_row, last_row_num, 0, 1, -1)
+
+    def _fill_last_col(self, widgets):
+        last_row = QVBoxLayout()
+
+        for w in widgets:
+            last_row.addWidget(w, 1)
+
+        last_col_num = self.grid_dimensions.cols - 1
+
+        self._grid.addLayout(last_row, 0, last_col_num, -1, 1)
 
     def _minimum_vb_size(self):
         return QSize(

@@ -21,8 +21,6 @@ class AutoName(Enum):
 class GridMode(AutoName):
     AUTO_ROWS = auto()
     AUTO_COLS = auto()
-    AUTO_ROWS_FIT = auto()
-    AUTO_COLS_FIT = auto()
 
 
 class VideoAspect(AutoName):

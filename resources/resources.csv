@@ -51,3 +51,5 @@ icon-symbolic,icons/custom/027-speed faster.svg,speed-faster
 icon-symbolic,icons/custom/028-speed slower.svg,speed-slower
 icon-symbolic,icons/custom/029-speed reset.svg,speed-reset
 icon-symbolic,icons/custom/030-question.svg,question
+icon-symbolic,icons/custom/031-grid fit.svg,grid-fit
+icon-symbolic,icons/custom/032-grid size.svg,grid-size

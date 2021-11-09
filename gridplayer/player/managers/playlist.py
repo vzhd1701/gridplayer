@@ -5,7 +5,8 @@ from PyQt5.QtCore import QDir, QEvent, pyqtSignal
 from PyQt5.QtWidgets import QFileDialog, QMessageBox
 
 from gridplayer.dialogs.messagebox import QCustomMessageBox
-from gridplayer.params_static import GridMode, WindowState
+from gridplayer.params import GridState
+from gridplayer.params_static import WindowState
 from gridplayer.player.managers.base import ManagerBase
 from gridplayer.playlist import Playlist
 from gridplayer.utils.files import filter_valid_files
@@ -18,7 +19,7 @@ class PlaylistManager(ManagerBase):
     playlist_closed = pyqtSignal()
     playlist_loaded = pyqtSignal()
     window_state_loaded = pyqtSignal(WindowState)
-    grid_mode_loaded = pyqtSignal(GridMode)
+    grid_state_loaded = pyqtSignal(GridState)
     videos_loaded = pyqtSignal(list)
 
     alert = pyqtSignal()
@@ -113,7 +114,8 @@ class PlaylistManager(ManagerBase):
     def load_playlist_file(self, filename):
         try:
             playlist = Playlist.read(filename)
-        except ValueError:
+        except ValueError as e:
+            logger.error(f"Playlist parse error: {e}")
             return self.error.emit(f"Invalid playlist format!\n\n{filename}")
         except FileNotFoundError:
             return self.error.emit(f"File not found!\n\n{filename}")
@@ -133,8 +135,8 @@ class PlaylistManager(ManagerBase):
 
         self.videos_loaded.emit(playlist.videos)
 
-        if playlist.grid_mode is not None:
-            self.grid_mode_loaded.emit(playlist.grid_mode)
+        if playlist.grid_state is not None:
+            self.grid_state_loaded.emit(playlist.grid_state)
 
         if playlist.window_state is not None:
             self.window_state_loaded.emit(playlist.window_state)
@@ -177,7 +179,7 @@ class PlaylistManager(ManagerBase):
 
     def _make_playlist(self):
         return Playlist(
-            grid_mode=self._ctx.grid_mode,
+            grid_state=self._ctx.grid_state,
             window_state=self._ctx.window_state,
             videos=self._ctx.video_blocks.videos,
         )

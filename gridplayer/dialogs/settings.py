@@ -50,7 +50,9 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
             "player/pause_minimized": self.playerPauseWhenMinimized,
             "player/inhibit_screensaver": self.playerInhibitScreensaver,
             "player/one_instance": self.playerOneInstance,
-            "playlist/grid_mode": self.playlistGridMode,
+            "playlist/grid_mode": self.gridMode,
+            "playlist/grid_fit": self.gridFit,
+            "playlist/grid_size": self.gridSize,
             "playlist/save_position": self.playlistSavePosition,
             "playlist/save_state": self.playlistSaveState,
             "playlist/save_window": self.playlistSaveWindow,
@@ -102,7 +104,7 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
 
     def ui_fill(self):
         self.fill_playerVideoDriver()
-        self.fill_playlistGridMode()
+        self.fill_gridMode()
         self.fill_videoAspect()
         self.fill_logLevel()
         self.fill_logLevelVLC()
@@ -114,6 +116,9 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
         self.playerVideoDriverPlayers.setRange(1, MAX_VLC_PROCESSES)
         self.timeoutOverlay.setRange(1, 60)
         self.timeoutMouseHide.setRange(1, 60)
+
+        self.gridSize.setRange(0, 1000)
+        self.gridSize.setSpecialValueText("Auto")
 
     def ui_connect(self):
         qt_connect(
@@ -168,19 +173,15 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
 
         _fill_combo_box(self.videoAspect, aspect_ratios)
 
-    def fill_playlistGridMode(self):
+    def fill_gridMode(self):
         grid_modes = {
-            GridMode.AUTO_ROWS: "Auto Rows First",
-            GridMode.AUTO_COLS: "Auto Columns First",
-            GridMode.AUTO_ROWS_FIT: "Auto Rows First (Fit)",
-            GridMode.AUTO_COLS_FIT: "Auto Columns First (Fit)",
+            GridMode.AUTO_ROWS: "Rows First",
+            GridMode.AUTO_COLS: "Columns First",
         }
 
-        _fill_combo_box(self.playlistGridMode, grid_modes)
+        _fill_combo_box(self.gridMode, grid_modes)
 
     def fill_playerVideoDriver(self):
-        video_drivers_disabled = []
-
         if platform.system() == "Darwin":
             video_drivers = {
                 VideoDriver.VLC_HW_SP: f"Hardware SP <VLC {params_env.VLC_VERSION}>",
@@ -195,10 +196,6 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
             }
 
         _fill_combo_box(self.playerVideoDriver, video_drivers)
-
-        for vd in video_drivers_disabled:
-            idx = self.playerVideoDriver.findData(vd)
-            self.playerVideoDriver.model().item(idx).setEnabled(False)
 
     def driver_selected(self, idx):
         driver_id = self.playerVideoDriver.itemData(idx)

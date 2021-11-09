@@ -2,9 +2,10 @@ import logging
 import os
 from typing import List, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
-from gridplayer.params_static import GridMode, WindowState
+from gridplayer.params import GridState
+from gridplayer.params_static import WindowState
 from gridplayer.settings import Settings
 from gridplayer.video import Video
 
@@ -12,9 +13,7 @@ logger = logging.getLogger(__name__)
 
 
 class Playlist(BaseModel):
-    grid_mode: GridMode = Field(
-        default_factory=lambda: Settings().get("playlist/grid_mode")
-    )
+    grid_state: GridState = GridState()
     window_state: Optional[WindowState]
     videos: Optional[List[Video]]
 

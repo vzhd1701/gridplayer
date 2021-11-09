@@ -1,9 +1,9 @@
 import typing
 
-from pydantic import BaseModel, Field, confloat
+from pydantic import BaseModel, confloat
 
 from gridplayer.params_static import VideoAspect, WindowState
-from gridplayer.settings import Settings
+from gridplayer.settings import default_field
 
 MIN_SCALE = 1
 MAX_SCALE = 3
@@ -14,18 +14,10 @@ MAX_RATE = 12
 class Video(BaseModel):
     file_path: typing.Optional[str]
 
-    aspect_mode: VideoAspect = Field(
-        default_factory=lambda: Settings().get("video_defaults/aspect")
-    )
-    is_start_random: bool = Field(
-        default_factory=lambda: Settings().get("video_defaults/random_loop")
-    )
-    is_muted: bool = Field(
-        default_factory=lambda: Settings().get("video_defaults/muted")
-    )
-    is_paused: bool = Field(
-        default_factory=lambda: Settings().get("video_defaults/paused")
-    )
+    aspect_mode: VideoAspect = default_field("video_defaults/aspect")
+    is_start_random: bool = default_field("video_defaults/random_loop")
+    is_muted: bool = default_field("video_defaults/muted")
+    is_paused: bool = default_field("video_defaults/paused")
 
     scale: confloat(ge=MIN_SCALE, le=MAX_SCALE) = 1.0
     rate: confloat(ge=MIN_RATE, le=MAX_RATE) = 1.0

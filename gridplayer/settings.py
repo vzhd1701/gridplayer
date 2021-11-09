@@ -3,6 +3,7 @@ import os
 import platform
 from enum import Enum
 
+from pydantic import Field
 from PyQt5.QtCore import QSettings
 
 from gridplayer.params_static import GridMode, VideoAspect, VideoDriver
@@ -19,6 +20,8 @@ _default_settings = {
     "player/inhibit_screensaver": True,
     "player/one_instance": True,
     "playlist/grid_mode": GridMode.AUTO_ROWS,
+    "playlist/grid_fit": True,
+    "playlist/grid_size": 0,
     "playlist/save_position": False,
     "playlist/save_state": False,
     "playlist/save_window": False,
@@ -82,3 +85,7 @@ def Settings():
         SETTINGS = _Settings()  # noqa: WPS442
 
     return SETTINGS
+
+
+def default_field(setting_name):
+    return Field(default_factory=lambda: Settings().get(setting_name))

@@ -59,17 +59,17 @@ COMMANDS = MappingProxyType(
             "func": ("set_grid_mode", GridMode.AUTO_COLS),
             "check": ("is_grid_mode_set_to", GridMode.AUTO_COLS),
         },
-        "Rows First (Fit)": {
-            "key": "Alt+3",
-            "icon": "grid-rows-first",
-            "func": ("set_grid_mode", GridMode.AUTO_ROWS_FIT),
-            "check": ("is_grid_mode_set_to", GridMode.AUTO_ROWS_FIT),
+        "Fit Cells": {
+            "key": "Alt+F",
+            "icon": "grid-fit",
+            "func": "switch_is_grid_fit",
+            "check": "is_grid_fit",
         },
-        "Columns First (Fit)": {
-            "key": "Alt+4",
-            "icon": "grid-columns-first",
-            "func": ("set_grid_mode", GridMode.AUTO_COLS_FIT),
-            "check": ("is_grid_mode_set_to", GridMode.AUTO_COLS_FIT),
+        "Size: %v": {
+            "key": "Alt+N",
+            "icon": "grid-size",
+            "func": "ask_grid_size",
+            "value": "get_grid_size",
         },
         "Zoom In": {
             "key": "+",
@@ -286,5 +286,11 @@ class ActionsManager(ManagerBase):
         action.is_switchable = is_enabled_test is not None
         if is_enabled_test is not None:
             action.is_enabled_test = self._ctx.commands.resolve(is_enabled_test)
+
+        value_getter = cmd.get("value")
+        action.is_dynamic = value_getter is not None
+        if value_getter is not None:
+            action.value_template = cmd_name
+            action.value_getter = self._ctx.commands.resolve(value_getter)
 
         return action
