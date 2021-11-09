@@ -2,15 +2,10 @@ import platform
 from multiprocessing import Semaphore
 
 from PyQt5.QtCore import QMargins, Qt, pyqtSignal
-from PyQt5.QtGui import QColor, QPalette
 from PyQt5.QtWidgets import QStackedLayout, QWidget
 
-from gridplayer.utils.misc import qt_connect
-
-if platform.system() == "Darwin":
-    from PyQt5.QtWidgets import QMacCocoaViewContainer  # noqa: WPS433
-
 from gridplayer.params_static import VideoAspect
+from gridplayer.utils.misc import qt_connect
 from gridplayer.widgets.video_frame_vlc_base import (
     InstanceProcessVLC,
     VlcPlayerThreaded,
@@ -31,7 +26,7 @@ class InstanceProcessVLCHW(InstanceProcessVLC):
             player_id=player_id,
             release_callback=self.release_player,
             init_data=init_data,
-            vlc_instance=self._vlc_instance,
+            vlc_instance=self.vlc_instance,
             crash_func=self.crash,
             pipe=pipe,
         )

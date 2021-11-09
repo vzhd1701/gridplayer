@@ -43,6 +43,21 @@ class PlayerProcessSingleVLCHWSP(QObject, VlcPlayerBase):
         elif platform.system() == "Darwin":  # for MacOS
             self._media_player.set_nsobject(self.win_id)
 
+    def notify_error(self):
+        self.error.emit()
+
+    def notify_time_change(self, new_time):
+        self.time_changed.emit(new_time)
+
+    def notify_load_video_finish(self, video_params):
+        self.self_load_video_finish.emit(video_params)
+
+    def loopback_load_video_player(self):
+        self.loop_load_video_player.emit()
+
+    def loopback_load_video_finish(self):
+        self.loop_load_video_finish.emit()
+
     def adjust_view(self, size, aspect, scale):
         if not self.is_video_initialized:
             return
@@ -82,21 +97,6 @@ class PlayerProcessSingleVLCHWSP(QObject, VlcPlayerBase):
 
         return scaling[aspect]["aspect"], scaling[aspect]["crop"]
 
-    def notify_error(self):
-        self.error.emit()
-
-    def notify_time_change(self, new_time):
-        self.time_changed.emit(new_time)
-
-    def notify_load_video_finish(self, video_params):
-        self.self_load_video_finish.emit(video_params)
-
-    def loopback_load_video_player(self):
-        self.loop_load_video_player.emit()
-
-    def loopback_load_video_finish(self):
-        self.loop_load_video_finish.emit()
-
 
 class VideoDriverVLCHWSP(QObject):
     time_changed = pyqtSignal(int)
@@ -114,7 +114,7 @@ class VideoDriverVLCHWSP(QObject):
 
         self.player = PlayerProcessSingleVLCHWSP(
             win_id=win_id,
-            vlc_instance=self.instance._vlc_instance,
+            vlc_instance=self.instance.vlc_instance,
         )
 
         self.player.init_player()
@@ -298,7 +298,7 @@ class VideoFrameVLCHWSP(QWidget):
 
         self.adjust_view()
 
-    def set_scale(self, scale):
+    def set_scale(self, scale):  # noqa: WPS615
         self._scale = scale
 
         self.adjust_view()

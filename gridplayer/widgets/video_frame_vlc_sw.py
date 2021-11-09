@@ -155,7 +155,7 @@ class InstanceProcessVLCSW(InstanceProcessVLC):
             player_id=player_id,
             release_callback=self.release_player,
             init_data=init_data,
-            vlc_instance=self._vlc_instance,
+            vlc_instance=self.vlc_instance,
             crash_func=self.crash,
             pipe=pipe,
         )
