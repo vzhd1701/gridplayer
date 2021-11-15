@@ -119,7 +119,7 @@ class InstanceProcessVLCSW(InstanceProcessVLC):
             for _ in range(self.players_per_instance)
         ]
 
-        self._vlc_options = ["--vout=vdummy"]
+        self._vlc.vlc_options = ["--vout=vdummy"]
 
     def init_player_shared_data(self, player_id):
         available_locks = (ml for ml in self._memory_locks if ml["is_busy"].value == 0)
@@ -171,6 +171,9 @@ class PlayerProcessSingleVLCSW(VlcPlayerThreaded):
 
         self.shared_memory = init_data["shared_memory"]
         self.decoder = None
+
+        self._loaded_path = None
+        # Disable hardware decoding
         self._media_options.append("avcodec-hw=none")
 
         self.start()
@@ -193,15 +196,25 @@ class PlayerProcessSingleVLCSW(VlcPlayerThreaded):
     def cleanup_final(self):
         self.cmd_loop_terminate()
 
+    def load_video(self, file_path):
+        self._loaded_path = file_path
+
+        super().load_video(file_path)
+
     def load_video_player(self):
-        width, height = self.video_dimensions
-
-        self.decoder.set_frame(width, height)
-        self.decoder.attach_media_player(self._media_player)
-
-        self.cmd_send("init_frame", width, height)
+        if self._is_meta_loaded:
+            self._init_video_decoder()
 
         super().load_video_player()
+
+    def load_video_finish(self):
+        if not self._is_meta_loaded:
+            # Since we need metadata to allocate video buffer, restart is required
+            self._extract_meta_play()
+            self._restart_playback()
+            return
+
+        super().load_video_finish()
 
     def play(self):
         self.decoder.is_paused = False
@@ -212,6 +225,23 @@ class PlayerProcessSingleVLCSW(VlcPlayerThreaded):
         self.decoder.is_paused = is_paused
 
         super().set_pause(is_paused)
+
+    def _init_video_decoder(self):
+        width, height = self.video_dimensions
+
+        self.decoder.set_frame(width, height)
+        self.decoder.attach_media_player(self._media_player)
+
+        self.cmd_send("init_frame", width, height)
+
+    def _restart_playback(self):
+        self._log.debug("Restarting playback...")
+
+        super().cleanup()
+        super().init_player()
+
+        self._is_first_start_finished = False
+        self.cmd_send("load_video", self._loaded_path)
 
 
 class VideoDriverVLCSW(VLCVideoDriverThreaded):

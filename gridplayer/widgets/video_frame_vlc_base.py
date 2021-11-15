@@ -49,6 +49,7 @@ class VlcPlayerBase(object):
 
         self._is_first_start_finished = False
         self._is_waiting_for_buffer = False
+        self._is_meta_loaded = False
 
         self._media_player = None
         self._media = None
@@ -108,24 +109,7 @@ class VlcPlayerBase(object):
             self._log.error(f"Media parse failed! Status changed to {status_txt}.")
             return self.notify_error()
 
-        video_track = self._get_video_track()
-
-        if video_track is None:
-            self._log.error("Video track is missing!")
-            return self.notify_error()
-
-        self.length = self._media.get_duration()
-        self.video_dimensions = (video_track.width, video_track.height)
-        self.fps = video_track.frame_rate_num / video_track.frame_rate_den
-
-        self._log.debug("Video parsed")
-        self._log.debug("========")
-        self._log.debug(
-            f"Dimensions: {self.video_dimensions[0]}x{self.video_dimensions[1]}"
-        )
-        self._log.debug(f"Length: {self.length}")
-        self._log.debug(f"FPS: {self.fps}")
-        self._log.debug("========")
+        self._extract_meta_parse()
 
         self.loopback_load_video_player()
 
@@ -168,7 +152,6 @@ class VlcPlayerBase(object):
             vlc.EventType.MediaParsedChanged, self.cb_parse_changed
         )
 
-        # Disable hardware decoding
         self._media.add_options(*self._media_options)
 
         self._media.parse_with_options(vlc.MediaParseFlag.local, -1)
@@ -184,6 +167,9 @@ class VlcPlayerBase(object):
 
     def load_video_finish(self):
         """Step 3. Make sure video buffered and properly seekable"""
+
+        if not self._is_meta_loaded:
+            self._extract_meta_play()
 
         self._log.debug("Load finished")
 
@@ -249,27 +235,55 @@ class VlcPlayerBase(object):
         self._media_player.audio_set_volume(volume)
 
     def _get_video_track(self):
+        media_tracks = self._media.tracks_get()
+
+        if not media_tracks:
+            return None
+
         video_tracks = (
-            t.u.video.contents
-            for t in self._media.tracks_get()
-            if t.type == vlc.TrackType.video
+            t.u.video.contents for t in media_tracks if t.type == vlc.TrackType.video
         )
 
         video_track = next(video_tracks, None)
 
         vital_params = (
             video_track,
-            video_track.frame_rate_num,
-            video_track.frame_rate_den,
             video_track.width,
             video_track.height,
-            self._media.get_duration(),
         )
 
         if not all(vital_params):
             return None
 
         return video_track
+
+    def _extract_meta_parse(self):
+        video_track = self._get_video_track()
+
+        if video_track is None:
+            self._log.warning("Video track data is missing, cannot parse metadata.")
+            return
+
+        self._log.debug("Parsing metadata...")
+
+        self.length = self._media.get_duration()
+        self.video_dimensions = (video_track.width, video_track.height)
+
+        if video_track.frame_rate_num and video_track.frame_rate_den:
+            self.fps = video_track.frame_rate_num / video_track.frame_rate_den
+        else:
+            self.fps = 25
+
+        self._is_meta_loaded = True
+
+    def _extract_meta_play(self):
+        self._log.debug("Extracting metadata...")
+
+        self.length = self._media.get_duration()
+        self.video_dimensions = self._media_player.video_get_size()
+        self.fps = self._media_player.get_fps() or 25
+
+        self._is_meta_loaded = True
 
 
 class VlcPlayerThreaded(CommandLoopThreaded, VlcPlayerBase):
@@ -389,8 +403,8 @@ class InstanceVLC(object):
         super().__init__(**kwargs)
 
         self.vlc_instance = None
+        self.vlc_options = []
 
-        self._vlc_options = []
         self._vlc_log_level = vlc_log_level
 
         self._logger = None
@@ -405,7 +419,7 @@ class InstanceVLC(object):
             "--quiet",
             "--no-disable-screensaver",
             "--no-sub-autodetect-file",
-            *self._vlc_options,
+            *self.vlc_options,
         ]
 
         # https://forum.videolan.org/viewtopic.php?t=147229
