@@ -1,3 +1,9 @@
+### [0.1.4](https://github.com/vzhd1701/gridplayer/compare/v0.1.3...v0.1.4) (2021-11-15)
+
+### Bug Fixes
+
+- fix error when opening some formats (ts, wmv) ([4c8b19c](https://github.com/vzhd1701/gridplayer/commit/4c8b19cba10050fb775a8c82b69099894905560a))
+
 ### [0.1.3](https://github.com/vzhd1701/gridplayer/compare/v0.1.2...v0.1.3) (2021-11-09)
 
 ### Features
