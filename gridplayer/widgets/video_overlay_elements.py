@@ -1,7 +1,7 @@
 import math
 
 from PyQt5.QtCore import QPoint, Qt, pyqtSignal
-from PyQt5.QtGui import QFontMetrics, QPainter, QPainterPath, QRegion
+from PyQt5.QtGui import QFontMetrics, QGuiApplication, QPainter, QPainterPath, QRegion
 from PyQt5.QtWidgets import QSizePolicy, QWidget
 
 from gridplayer.utils.time_txt import get_time_txt_short
@@ -188,7 +188,7 @@ class OverlayShortLabelFloating(OverlayShortLabel):
 
 
 class OverlayProgressBar(OverlayWidget):
-    emit_new_position = pyqtSignal(float)
+    position_changed = pyqtSignal(float)
 
     mouse_over = pyqtSignal(QPoint, float)
     mouse_left = pyqtSignal()
@@ -212,16 +212,20 @@ class OverlayProgressBar(OverlayWidget):
         event.ignore()
 
     def mouseMoveEvent(self, event):
-        self.progress_select_x = event.pos().x()
+        self.progress_select_x = self._get_x_within_bounds(event.pos().x())
+
         self.update()
 
-        top_edge = self.mapToParent(event.pos())
-        top_edge.setY(self.pos().y())
-
+        top_edge = self.mapToParent(QPoint(self.progress_select_x, 0))
         mouse_position = self.progress_select_x / self.width()
+
         self.mouse_over.emit(top_edge, mouse_position)
 
-        event.ignore()
+        if QGuiApplication.mouseButtons() == Qt.LeftButton:
+            self._update_position(self.progress_select_x)
+            event.accept()
+        else:
+            event.ignore()
 
     def mouseReleaseEvent(self, event):
         """Consume mouse release to avoid pausing from parent event"""
@@ -233,9 +237,7 @@ class OverlayProgressBar(OverlayWidget):
 
     def mousePressEvent(self, event):
         if event.button() == Qt.LeftButton:
-            self.progress_select_x = event.pos().x()
-            new_position = self.progress_select_x / self.width()
-            self.emit_new_position.emit(new_position)
+            self._update_position(event.pos().x())
 
         event.ignore()
 
@@ -313,9 +315,21 @@ class OverlayProgressBar(OverlayWidget):
         self._loop_end = loop_end
         self.update()
 
+    def _update_position(self, x):
+        self.progress_select_x = x
+        new_position = self.progress_select_x / self.width()
+        self.position_changed.emit(new_position)
+
+    def _get_x_within_bounds(self, x):
+        if x < 0:
+            return 0
+        elif x > self.width():
+            return self.width()
+        return x
+
 
 class OverlayVolumeBar(OverlayWidget):
-    emit_new_position = pyqtSignal(float)
+    position_changed = pyqtSignal(float)
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -336,20 +350,22 @@ class OverlayVolumeBar(OverlayWidget):
         event.ignore()
 
     def mouseMoveEvent(self, event):
-        self.progress_select_y = event.pos().y()
+        self.progress_select_y = self._get_y_within_bounds(event.pos().y())
+
         self.update()
 
-        event.ignore()
+        if QGuiApplication.mouseButtons() == Qt.LeftButton:
+            self._update_position(self.progress_select_y)
+            event.accept()
+        else:
+            event.ignore()
 
     def mouseReleaseEvent(self, event):
         event.accept()
 
     def mousePressEvent(self, event):
         if event.button() == Qt.LeftButton:
-            self.progress_select_y = event.pos().y()
-            new_position = 1.0 - (self.progress_select_y / self.height())
-            self.emit_new_position.emit(new_position)
-
+            self._update_position(event.pos().y())
             event.accept()
         else:
             event.ignore()
@@ -395,3 +411,15 @@ class OverlayVolumeBar(OverlayWidget):
     def position(self, position):
         self._position = position
         self.update()
+
+    def _update_position(self, y):
+        self.progress_select_y = y
+        new_position = 1.0 - (self.progress_select_y / self.height())
+        self.position_changed.emit(new_position)
+
+    def _get_y_within_bounds(self, y):
+        if y < 0:
+            return 0
+        elif y > self.height():
+            return self.height()
+        return y

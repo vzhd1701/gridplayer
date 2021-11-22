@@ -120,9 +120,10 @@ class Player(QWidget, ManagersManager):
                 ("files_opened", "playlist.process_arguments")
             ]
 
+        self.global_event_filters.append("mouse_hide")
+
         self.event_filters = [
             "window_state",
-            "mouse_hide",
             "drag_n_drop",
             "active_block",
             "single_mode",

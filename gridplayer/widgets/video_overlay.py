@@ -75,9 +75,9 @@ class OverlayBlock(QWidget):  # noqa: WPS230
             (self.progress_bar.mouse_left, self.floating_progress.on_mouse_left),
             (self.exit_button.clicked, self.exit),
             (self.play_pause_button.clicked, self.play_pause),
-            (self.progress_bar.emit_new_position, self.emit_position),
+            (self.progress_bar.position_changed, self.emit_position),
             (self.volume_button.clicked, self.mute_unmute),
-            (self.volume_bar.emit_new_position, self.emit_volume_position),
+            (self.volume_bar.position_changed, self.emit_volume_position),
         )
 
     def ui_setup(self):  # noqa: WPS213
