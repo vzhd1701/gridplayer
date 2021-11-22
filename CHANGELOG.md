@@ -1,3 +1,14 @@
+### [0.1.5](https://github.com/vzhd1701/gridplayer/compare/v0.1.4...v0.1.5) (2021-11-22)
+
+### Features
+
+- add option to synchronize seek ([b85c554](https://github.com/vzhd1701/gridplayer/commit/b85c554b6086e127e71df390bf59ef9c62225a1d))
+- allow seek while dragging cursor ([a3a7024](https://github.com/vzhd1701/gridplayer/commit/a3a7024834a9a152e178099cd53183ec485bd854))
+
+### Bug Fixes
+
+- add missing library to avoid startup error (windows) ([0193ee8](https://github.com/vzhd1701/gridplayer/commit/0193ee870102dbf909b2bd6dc9127d5a260c9c15))
+
 ### [0.1.4](https://github.com/vzhd1701/gridplayer/compare/v0.1.3...v0.1.4) (2021-11-15)
 
 ### Bug Fixes
