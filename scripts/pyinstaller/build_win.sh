@@ -53,6 +53,7 @@ mv "$LIB_DIR/$APP_NAME.exe.manifest" "$BASE_DIR"
 # Copy base libs so that subprocess could still access them
 cp "$LIB_DIR/base_library.zip" "$BASE_DIR"
 cp "$LIB_DIR"/python3*.dll "$BASE_DIR"
+cp "$LIB_DIR"/VCRUNTIME*.dll "$BASE_DIR"
 
 mv "$LIB_DIR" "$BASE_DIR"
 
