@@ -32,7 +32,7 @@ def generate_attributions(attributions):
         version = f" {a.version}" if a.version else ""
 
         attributions_txt.append(
-            f"<p><b>{a.title}{version}</b>"
+            f"<p><b>{a.title}{version}</b>"  # noqa: WPS221
             f' by <a href="{a.url}">{a.author}</a><br>'
             f"<i>Licensed under {a.license}</i></p>"
         )

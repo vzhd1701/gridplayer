@@ -80,5 +80,5 @@ def _init_resources():
     fonts = QDirIterator(":/fonts", ("*.ttf",), QDir.Files)
 
     while fonts.hasNext():
-        font = fonts.next()
+        font = fonts.next()  # noqa: B305
         QFontDatabase.addApplicationFont(font)

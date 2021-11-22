@@ -67,7 +67,7 @@ class VideoBlocksManager(ManagerBase):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
-        self._ctx._is_seek_synced = Settings().get("playlist/seek_synced")
+        self._ctx.is_seek_synced = Settings().get("playlist/seek_synced")
 
         self._ctx.video_blocks = VideoBlocks()
 

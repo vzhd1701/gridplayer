@@ -33,6 +33,7 @@ vsnprintf.argtypes = (
 )
 
 ONE_MOMENT = 0.01
+DEFAULT_FPS = 25
 
 
 class VlcPlayerBase(object):
@@ -272,7 +273,7 @@ class VlcPlayerBase(object):
         if video_track.frame_rate_num and video_track.frame_rate_den:
             self.fps = video_track.frame_rate_num / video_track.frame_rate_den
         else:
-            self.fps = 25
+            self.fps = DEFAULT_FPS
 
         self._is_meta_loaded = True
 
@@ -281,7 +282,7 @@ class VlcPlayerBase(object):
 
         self.length = self._media.get_duration()
         self.video_dimensions = self._media_player.video_get_size()
-        self.fps = self._media_player.get_fps() or 25
+        self.fps = self._media_player.get_fps() or DEFAULT_FPS
 
         self._is_meta_loaded = True
 
