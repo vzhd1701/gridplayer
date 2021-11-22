@@ -6,7 +6,7 @@ from pydantic import BaseModel
 
 from gridplayer.params import GridState
 from gridplayer.params_static import WindowState
-from gridplayer.settings import Settings
+from gridplayer.settings import Settings, default_field
 from gridplayer.video import Video
 
 logger = logging.getLogger(__name__)
@@ -16,6 +16,7 @@ class Playlist(BaseModel):
     grid_state: GridState = GridState()
     window_state: Optional[WindowState]
     videos: Optional[List[Video]]
+    is_seek_synced: bool = default_field("playlist/seek_synced")
 
     @classmethod
     def read(cls, filename):

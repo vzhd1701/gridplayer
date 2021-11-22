@@ -20,6 +20,7 @@ class PlaylistManager(ManagerBase):
     playlist_loaded = pyqtSignal()
     window_state_loaded = pyqtSignal(WindowState)
     grid_state_loaded = pyqtSignal(GridState)
+    is_seek_synced_loaded = pyqtSignal(bool)
     videos_loaded = pyqtSignal(list)
 
     alert = pyqtSignal()
@@ -141,6 +142,8 @@ class PlaylistManager(ManagerBase):
         if playlist.window_state is not None:
             self.window_state_loaded.emit(playlist.window_state)
 
+        self.is_seek_synced_loaded.emit(playlist.is_seek_synced)
+
         self.playlist_loaded.emit()
 
     def check_playlist_save(self):
@@ -182,4 +185,5 @@ class PlaylistManager(ManagerBase):
             grid_state=self._ctx.grid_state,
             window_state=self._ctx.window_state,
             videos=self._ctx.video_blocks.videos,
+            is_seek_synced=self._ctx.is_seek_synced,
         )

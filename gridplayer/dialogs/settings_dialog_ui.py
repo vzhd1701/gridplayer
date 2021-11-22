@@ -4,7 +4,7 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 class Ui_SettingsDialog(object):
     def setupUi(self, SettingsDialog):
         SettingsDialog.setObjectName("SettingsDialog")
-        SettingsDialog.resize(440, 409)
+        SettingsDialog.resize(440, 481)
         self.lay_main = QtWidgets.QVBoxLayout(SettingsDialog)
         self.lay_main.setSizeConstraint(QtWidgets.QLayout.SetFixedSize)
         self.lay_main.setObjectName("lay_main")
@@ -47,6 +47,9 @@ class Ui_SettingsDialog(object):
         self.playlistSaveState = QtWidgets.QCheckBox(SettingsDialog)
         self.playlistSaveState.setObjectName("playlistSaveState")
         self.lay_left_column.addWidget(self.playlistSaveState)
+        self.playlistSeekSync = QtWidgets.QCheckBox(SettingsDialog)
+        self.playlistSeekSync.setObjectName("playlistSeekSync")
+        self.lay_left_column.addWidget(self.playlistSeekSync)
         self.section_grid = QtWidgets.QLabel(SettingsDialog)
         font = QtGui.QFont()
         font.setBold(True)
@@ -254,6 +257,9 @@ class Ui_SettingsDialog(object):
         )
         self.playlistSaveState.setText(
             _translate("SettingsDialog", "Save videos playing / paused status")
+        )
+        self.playlistSeekSync.setText(
+            _translate("SettingsDialog", "Seek in sync by default")
         )
         self.section_grid.setText(
             _translate("SettingsDialog", "Default Grid Parameters")

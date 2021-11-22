@@ -56,6 +56,7 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
             "playlist/save_position": self.playlistSavePosition,
             "playlist/save_state": self.playlistSaveState,
             "playlist/save_window": self.playlistSaveWindow,
+            "playlist/seek_synced": self.playlistSeekSync,
             "video_defaults/aspect": self.videoAspect,
             "video_defaults/random_loop": self.videoRandomLoop,
             "video_defaults/muted": self.videoMuted,

@@ -88,6 +88,7 @@ class VideoBlock(QWidget):  # noqa: WPS230
     load_video = pyqtSignal(str)
 
     exit_request = pyqtSignal(str)
+    percent_changed = pyqtSignal(float)
 
     time_change = pyqtSignal(int, int)
     volume_change = pyqtSignal(float)
@@ -144,6 +145,7 @@ class VideoBlock(QWidget):  # noqa: WPS230
 
         qt_connect(
             (self.overlay.set_vid_pos, self.seek_percent),
+            (self.overlay.set_vid_pos, self.percent_changed),
             (self.overlay.set_volume, self.set_volume),
             (self.overlay.exit_clicked, self.exit),
             (self.overlay.play_pause_clicked, self.play_pause),
@@ -222,6 +224,8 @@ class VideoBlock(QWidget):  # noqa: WPS230
             self.seek_shift_percent(shift_percent)
         else:
             self.seek_shift_percent(-shift_percent)
+
+        self.percent_changed.emit(self.position)
 
         event.ignore()
 

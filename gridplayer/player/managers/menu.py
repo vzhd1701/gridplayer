@@ -48,6 +48,8 @@ SECTIONS = MappingProxyType(
             "Play / Pause [ALL]",
             (
                 "Jump (to) [ALL]",
+                "Seek Sync",
+                "---",
                 "Random",
                 "---",
                 "+1%",

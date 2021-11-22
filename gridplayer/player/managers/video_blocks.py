@@ -3,6 +3,7 @@ import logging
 from PyQt5.QtCore import pyqtSignal
 
 from gridplayer.player.managers.base import ManagerBase
+from gridplayer.settings import Settings
 from gridplayer.utils.misc import qt_connect
 from gridplayer.widgets.video_block import VideoBlock
 
@@ -61,9 +62,12 @@ class VideoBlocksManager(ManagerBase):
     seek_shift = pyqtSignal(int)
     seek_shift_ms = pyqtSignal(int)
     seek_random = pyqtSignal()
+    seek_percent = pyqtSignal(float)
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
+
+        self._ctx._is_seek_synced = Settings().get("playlist/seek_synced")
 
         self._ctx.video_blocks = VideoBlocks()
 
@@ -77,6 +81,8 @@ class VideoBlocksManager(ManagerBase):
             "step_forward": self.cmd_step_forward,
             "step_backward": self.cmd_step_backward,
             "is_videos": lambda: bool(self._ctx.video_blocks),
+            "is_seek_synced": lambda: self._ctx.is_seek_synced,
+            "switch_seek_synced": self.switch_seek_synced,
         }
 
     def cmd_play_pause_all(self):
@@ -100,6 +106,16 @@ class VideoBlocksManager(ManagerBase):
     def cmd_step_backward(self):
         self.pause_all()
         self.step_frame.emit(1)
+
+    def seek_sync(self, percent):
+        if self._ctx.is_seek_synced:
+            self.seek_percent.emit(percent)
+
+    def switch_seek_synced(self):
+        self._ctx.is_seek_synced = not self._ctx.is_seek_synced
+
+    def set_seek_synced(self, is_seek_synced):
+        self._ctx.is_seek_synced = is_seek_synced
 
     def pause_all(self):
         self.set_pause.emit(True)
@@ -143,10 +159,12 @@ class VideoBlocksManager(ManagerBase):
         qt_connect(
             (vb.exit_request, self.close_video_block),
             (vb.is_paused_change, self.playing_count_change),
+            (vb.percent_changed, self.seek_sync),
             (self.set_pause, vb.set_pause),
             (self.seek_shift, vb.seek_shift_percent),
             (self.seek_shift_ms, vb.seek_shift),
             (self.seek_random, vb.seek_random),
+            (self.seek_percent, vb.seek_percent),
             (self.hide_overlay, vb.hide_overlay),
         )
 

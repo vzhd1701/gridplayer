@@ -170,6 +170,12 @@ COMMANDS = MappingProxyType(
             "func": "close_playlist",
             "enabled_if": "is_videos",
         },
+        "Seek Sync": {
+            "key": "Shift+S",
+            "icon": "seek-sync",
+            "func": "switch_seek_synced",
+            "check": "is_seek_synced",
+        },
         "+1%": {
             "key": Qt.Key_Right,
             "icon": "seek-plus-1",

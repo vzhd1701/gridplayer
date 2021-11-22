@@ -25,6 +25,7 @@ _default_settings = {
     "playlist/save_position": False,
     "playlist/save_state": False,
     "playlist/save_window": False,
+    "playlist/seek_synced": False,
     "video_defaults/aspect": VideoAspect.FIT,
     "video_defaults/random_loop": False,
     "video_defaults/muted": True,

@@ -98,6 +98,7 @@ class Player(QWidget, ManagersManager):
                 ("playlist_loaded", "window_state.activate_window"),
                 ("window_state_loaded", "window_state.restore_window_state"),
                 ("grid_state_loaded", "grid.set_grid_state"),
+                ("is_seek_synced_loaded", "video_blocks.set_seek_synced"),
                 ("videos_loaded", "video_blocks.add_videos"),
                 ("alert", "window_state.activate_window"),
                 ("error", "dialogs.error"),
