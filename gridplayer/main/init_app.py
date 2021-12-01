@@ -2,7 +2,7 @@ import platform
 import sys
 
 from PyQt5.QtCore import QDir, QDirIterator, Qt
-from PyQt5.QtGui import QFont, QFontDatabase, QIcon
+from PyQt5.QtGui import QFont, QFontDatabase, QGuiApplication, QIcon
 from PyQt5.QtWidgets import QApplication, QStyleFactory
 
 if platform.system() == "Windows":
@@ -29,6 +29,10 @@ def setup_app_env():
 
     QApplication.setAttribute(Qt.AA_EnableHighDpiScaling)
     QApplication.setAttribute(Qt.AA_UseHighDpiPixmaps)
+
+    QGuiApplication.setHighDpiScaleFactorRoundingPolicy(
+        Qt.HighDpiScaleFactorRoundingPolicy.PassThrough
+    )
 
 
 def init_app():
@@ -59,11 +63,10 @@ def _init_icon(app):
         app.setWindowIcon(QIcon(":/icons/main_ico_mac.icns"))
     elif platform.system() == "Windows":
         app.setWindowIcon(QIcon(":/icons/main_ico_win.ico"))
+    elif app.desktop().devicePixelRatio() == 1:
+        app.setWindowIcon(QIcon(":/icons/main_ico_48.png"))
     else:
-        if app.desktop().devicePixelRatio() == 1:
-            app.setWindowIcon(QIcon(":/icons/main_ico_48.png"))
-        else:
-            app.setWindowIcon(QIcon(":/icons/main_ico_svg.svg"))
+        app.setWindowIcon(QIcon(":/icons/main_ico_svg.svg"))
 
 
 def _switch_icon_theme():
