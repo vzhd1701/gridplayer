@@ -1,3 +1,9 @@
+### [0.1.6](https://github.com/vzhd1701/gridplayer/compare/v0.1.5...v0.1.6) (2021-12-01)
+
+### Bug Fixes
+
+- fix UI scaling with high DPI ([ddbf005](https://github.com/vzhd1701/gridplayer/commit/ddbf005447971b631e8fc5aebceb982a2ee5fd3c))
+
 ### [0.1.5](https://github.com/vzhd1701/gridplayer/compare/v0.1.4...v0.1.5) (2021-11-22)
 
 ### Features
