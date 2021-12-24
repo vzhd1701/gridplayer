@@ -62,6 +62,7 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
             "video_defaults/random_loop": self.videoRandomLoop,
             "video_defaults/muted": self.videoMuted,
             "video_defaults/paused": self.videoPaused,
+            "misc/overlay_hide": self.timeoutOverlayFlag,
             "misc/overlay_timeout": self.timeoutOverlay,
             "misc/mouse_hide": self.timeoutMouseHideFlag,
             "misc/mouse_hide_timeout": self.timeoutMouseHide,
@@ -115,6 +116,7 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
     def ui_customize_dynamic(self):
         self.driver_selected(self.playerVideoDriver.currentIndex())
         self.timeoutMouseHide.setEnabled(self.timeoutMouseHideFlag.isChecked())
+        self.timeoutOverlay.setEnabled(self.timeoutOverlayFlag.isChecked())
 
         self.playerVideoDriverPlayers.setRange(1, MAX_VLC_PROCESSES)
         self.timeoutOverlay.setRange(1, 60)
@@ -127,6 +129,7 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
         qt_connect(
             (self.playerVideoDriver.currentIndexChanged, self.driver_selected),
             (self.timeoutMouseHideFlag.stateChanged, self.timeoutMouseHide.setEnabled),
+            (self.timeoutOverlayFlag.stateChanged, self.timeoutOverlay.setEnabled),
             (self.logFileOpen.clicked, self.open_logfile),
         )
 

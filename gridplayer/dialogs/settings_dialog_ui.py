@@ -4,7 +4,7 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 class Ui_SettingsDialog(object):
     def setupUi(self, SettingsDialog):
         SettingsDialog.setObjectName("SettingsDialog")
-        SettingsDialog.resize(440, 505)
+        SettingsDialog.resize(442, 541)
         self.lay_main = QtWidgets.QVBoxLayout(SettingsDialog)
         self.lay_main.setSizeConstraint(QtWidgets.QLayout.SetFixedSize)
         self.lay_main.setObjectName("lay_main")
@@ -172,6 +172,9 @@ class Ui_SettingsDialog(object):
         self.section_timeouts.setFont(font)
         self.section_timeouts.setObjectName("section_timeouts")
         self.lay_section_timeouts.addWidget(self.section_timeouts)
+        self.timeoutOverlayFlag = QtWidgets.QCheckBox(SettingsDialog)
+        self.timeoutOverlayFlag.setObjectName("timeoutOverlayFlag")
+        self.lay_section_timeouts.addWidget(self.timeoutOverlayFlag)
         self.lay_timeoutOverlay = QtWidgets.QHBoxLayout()
         self.lay_timeoutOverlay.setObjectName("lay_timeoutOverlay")
         self.timeoutOverlay = QtWidgets.QSpinBox(SettingsDialog)
@@ -317,6 +320,9 @@ class Ui_SettingsDialog(object):
             _translate("SettingsDialog", "Videos per process")
         )
         self.section_timeouts.setText(_translate("SettingsDialog", "Timeouts"))
+        self.timeoutOverlayFlag.setText(
+            _translate("SettingsDialog", "Hide overlay after timeout")
+        )
         self.timeoutOverlayLabel.setText(
             _translate("SettingsDialog", "Video overlay timeout (sec)")
         )

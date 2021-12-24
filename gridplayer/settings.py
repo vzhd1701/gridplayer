@@ -31,6 +31,7 @@ _default_settings = {
     "video_defaults/random_loop": False,
     "video_defaults/muted": True,
     "video_defaults/paused": False,
+    "misc/overlay_hide": True,
     "misc/overlay_timeout": 1,
     "misc/mouse_hide": True,
     "misc/mouse_hide_timeout": 3,

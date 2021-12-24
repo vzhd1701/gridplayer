@@ -212,6 +212,10 @@ class VideoBlock(QWidget):  # noqa: WPS230
     def hideEvent(self, event):
         self.hide_overlay()
 
+    def showEvent(self, event):
+        if self.is_video_initialized and not Settings().get("misc/overlay_hide"):
+            self.show_overlay()
+
     def is_under_cursor(self):
         return self.rect().contains(self.mapFromGlobal(QCursor.pos()))
 
@@ -255,13 +259,15 @@ class VideoBlock(QWidget):  # noqa: WPS230
 
     def show_overlay(self):
         self.overlay.show()
-        self.overlay_hide_timer.start(1000 * Settings().get("misc/overlay_timeout"))
+        if Settings().get("misc/overlay_hide"):
+            self.overlay_hide_timer.start(1000 * Settings().get("misc/overlay_timeout"))
 
     def hide_overlay(self):
+        if not Settings().get("misc/overlay_hide"):
+            return
+
         if self.is_active:
-            self.overlay_hide_timer.start(
-                1000 * Settings().get("misc/overlay_timeout"),
-            )
+            self.overlay_hide_timer.start(1000 * Settings().get("misc/overlay_timeout"))
             return
 
         self.overlay.hide()
@@ -329,6 +335,7 @@ class VideoBlock(QWidget):  # noqa: WPS230
         self.set_pause(self.video_params.is_paused)
 
         self.status_label.hide()
+        self.show_overlay()
 
     def set_aspect(self, aspect):
         self.video_params.aspect_mode = aspect

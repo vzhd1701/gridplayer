@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>440</width>
-    <height>505</height>
+    <width>442</width>
+    <height>541</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -323,6 +323,13 @@
            </property>
            <property name="text">
             <string>Timeouts</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QCheckBox" name="timeoutOverlayFlag">
+           <property name="text">
+            <string>Hide overlay after timeout</string>
            </property>
           </widget>
          </item>
