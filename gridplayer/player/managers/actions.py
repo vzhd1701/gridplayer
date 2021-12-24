@@ -4,7 +4,7 @@ from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QIcon, QKeySequence
 from PyQt5.QtWidgets import QAction
 
-from gridplayer.params_static import GridMode, VideoAspect
+from gridplayer.params_static import GridMode, VideoAspect, VideoRepeat
 from gridplayer.player.managers.base import ManagerBase
 
 COMMANDS = MappingProxyType(
@@ -127,6 +127,16 @@ COMMANDS = MappingProxyType(
             "icon": "play-all",
             "func": "play_pause_all",
         },
+        "Play Previous File": {
+            "key": Qt.Key_PageUp,
+            "icon": "previous-video-file",
+            "func": ("active", "previous_video"),
+        },
+        "Play Next File": {
+            "key": Qt.Key_PageDown,
+            "icon": "next-video-file",
+            "func": ("active", "next_video"),
+        },
         "Random Loop": {
             "key": "Ctrl+R",
             "icon": "loop-random",
@@ -147,6 +157,29 @@ COMMANDS = MappingProxyType(
             "key": "/",
             "icon": "loop-reset",
             "func": ("active", "reset_loop"),
+        },
+        "Repeat Single File": {
+            "icon": "loop-single",
+            "func": ("active", "set_repeat_mode", VideoRepeat.SINGLE_FILE),
+            "check": (
+                "is_active_param_set_to",
+                "repeat_mode",
+                VideoRepeat.SINGLE_FILE,
+            ),
+        },
+        "Repeat Directory": {
+            "icon": "loop-dir",
+            "func": ("active", "set_repeat_mode", VideoRepeat.DIR),
+            "check": ("is_active_param_set_to", "repeat_mode", VideoRepeat.DIR),
+        },
+        "Repeat Directory (Shuffle)": {
+            "icon": "loop-dir-shuffle",
+            "func": ("active", "set_repeat_mode", VideoRepeat.DIR_SHUFFLE),
+            "check": (
+                "is_active_param_set_to",
+                "repeat_mode",
+                VideoRepeat.DIR_SHUFFLE,
+            ),
         },
         "Random": {
             "key": "R",
@@ -275,7 +308,8 @@ class ActionsManager(ManagerBase):
     def _make_action(self, cmd, cmd_name):
         action = QAction(cmd_name, self.parent())
 
-        action.setShortcut(QKeySequence(cmd["key"]))
+        if cmd.get("key"):
+            action.setShortcut(QKeySequence(cmd["key"]))
 
         action.triggered.connect(self._ctx.commands.resolve(cmd["func"]))
 

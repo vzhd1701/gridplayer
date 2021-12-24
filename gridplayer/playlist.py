@@ -1,5 +1,6 @@
 import logging
 import os
+from pathlib import Path
 from typing import List, Optional
 
 from pydantic import BaseModel
@@ -62,7 +63,7 @@ class Playlist(BaseModel):
                     video.json(exclude_none=True, exclude=_excluded_fields_video()),
                 )
             )
-            playlist_vids.append(video.file_path)
+            playlist_vids.append(str(video.file_path))
 
         return "\n".join(playlist_config + playlist_vids + [""])
 
@@ -105,9 +106,9 @@ def _parse_video_paths(playlist_in):
     video_lines = (line for line in playlist_in if line and not line.startswith("#"))
 
     for video_path in video_lines:
-        video_path = os.path.normpath(video_path)
+        video_path = Path(video_path)
 
-        if not (os.path.isfile(video_path) and os.access(video_path, os.R_OK)):
+        if not (video_path.is_file() and os.access(video_path, os.R_OK)):
             logger.warning(f"{video_path} file is not accessible!")
             continue
 

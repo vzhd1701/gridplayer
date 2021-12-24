@@ -29,6 +29,12 @@ class VideoAspect(AutoName):
     NONE = auto()
 
 
+class VideoRepeat(AutoName):
+    SINGLE_FILE = auto()
+    DIR = auto()
+    DIR_SHUFFLE = auto()
+
+
 class VideoDriver(AutoName):
     VLC_SW = auto()
     VLC_HW = auto()

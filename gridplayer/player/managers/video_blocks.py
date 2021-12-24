@@ -75,7 +75,7 @@ class VideoBlocksManager(ManagerBase):
     def commands(self):
         return {
             "play_pause_all": self.cmd_play_pause_all,
-            "loop_random": lambda: self.seek_random.emit(),
+            "loop_random": self.seek_random.emit,
             "seek_shift_all": self.cmd_seek_shift_all,
             "seek_shift_ms_all": self.cmd_seek_shift_ms_all,
             "step_forward": self.cmd_step_forward,

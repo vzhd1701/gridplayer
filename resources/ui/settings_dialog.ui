@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>440</width>
-    <height>481</height>
+    <height>505</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -22,208 +22,251 @@
      <item>
       <layout class="QVBoxLayout" name="lay_left_column">
        <item>
-        <widget class="QLabel" name="section_player">
-         <property name="font">
-          <font>
-           <weight>75</weight>
-           <bold>true</bold>
-          </font>
-         </property>
-         <property name="text">
-          <string>Player</string>
-         </property>
-        </widget>
-       </item>
-       <item>
-        <widget class="QCheckBox" name="playerPauseBackgroundVideos">
-         <property name="text">
-          <string>Pause background videos on single mode</string>
-         </property>
-        </widget>
-       </item>
-       <item>
-        <widget class="QCheckBox" name="playerPauseWhenMinimized">
-         <property name="text">
-          <string>Pause videos when minimized</string>
-         </property>
-        </widget>
-       </item>
-       <item>
-        <widget class="QCheckBox" name="playerInhibitScreensaver">
-         <property name="text">
-          <string>Disable screensaver while playing</string>
-         </property>
-        </widget>
-       </item>
-       <item>
-        <widget class="QCheckBox" name="playerOneInstance">
-         <property name="text">
-          <string>Allow only one instance</string>
-         </property>
-        </widget>
-       </item>
-       <item>
-        <widget class="QLabel" name="section_playlist">
-         <property name="font">
-          <font>
-           <weight>75</weight>
-           <bold>true</bold>
-          </font>
-         </property>
-         <property name="text">
-          <string>Playlist</string>
-         </property>
-        </widget>
-       </item>
-       <item>
-        <widget class="QCheckBox" name="playlistSaveWindow">
-         <property name="text">
-          <string>Save window position and size</string>
-         </property>
-        </widget>
-       </item>
-       <item>
-        <widget class="QCheckBox" name="playlistSavePosition">
-         <property name="text">
-          <string>Save videos position</string>
-         </property>
-        </widget>
-       </item>
-       <item>
-        <widget class="QCheckBox" name="playlistSaveState">
-         <property name="text">
-          <string>Save videos playing / paused status</string>
-         </property>
-        </widget>
-       </item>
-       <item>
-        <widget class="QCheckBox" name="playlistSeekSync">
-         <property name="text">
-          <string>Seek in sync by default</string>
-         </property>
-        </widget>
-       </item>
-       <item>
-        <widget class="QLabel" name="section_grid">
-         <property name="font">
-          <font>
-           <weight>75</weight>
-           <bold>true</bold>
-          </font>
-         </property>
-         <property name="text">
-          <string>Default Grid Parameters</string>
-         </property>
-        </widget>
-       </item>
-       <item>
-        <layout class="QHBoxLayout" name="lay_gridMode" stretch="0,0,0">
+        <layout class="QVBoxLayout" name="lay_section_player">
          <item>
-          <widget class="QLabel" name="gridModeLabel">
+          <widget class="QLabel" name="section_player">
+           <property name="font">
+            <font>
+             <weight>75</weight>
+             <bold>true</bold>
+            </font>
+           </property>
            <property name="text">
-            <string>Grid mode</string>
+            <string>Player</string>
            </property>
           </widget>
          </item>
          <item>
-          <widget class="QComboBox" name="gridMode"/>
-         </item>
-         <item>
-          <spacer name="horizontalSpacer_2">
-           <property name="orientation">
-            <enum>Qt::Horizontal</enum>
-           </property>
-           <property name="sizeHint" stdset="0">
-            <size>
-             <width>40</width>
-             <height>20</height>
-            </size>
-           </property>
-          </spacer>
-         </item>
-        </layout>
-       </item>
-       <item>
-        <layout class="QHBoxLayout" name="lay_gridSize" stretch="0,1">
-         <item>
-          <widget class="QSpinBox" name="gridSize"/>
-         </item>
-         <item>
-          <widget class="QLabel" name="gridSizeLabel">
+          <widget class="QCheckBox" name="playerPauseBackgroundVideos">
            <property name="text">
-            <string>Grid size</string>
+            <string>Pause background videos on single mode</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QCheckBox" name="playerPauseWhenMinimized">
+           <property name="text">
+            <string>Pause videos when minimized</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QCheckBox" name="playerInhibitScreensaver">
+           <property name="text">
+            <string>Disable screensaver while playing</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QCheckBox" name="playerOneInstance">
+           <property name="text">
+            <string>Allow only one instance</string>
            </property>
           </widget>
          </item>
         </layout>
        </item>
        <item>
-        <widget class="QCheckBox" name="gridFit">
-         <property name="text">
-          <string>Fit grid cells</string>
-         </property>
-        </widget>
-       </item>
-       <item>
-        <widget class="QLabel" name="section_video_defaults">
-         <property name="font">
-          <font>
-           <weight>75</weight>
-           <bold>true</bold>
-          </font>
-         </property>
-         <property name="text">
-          <string>Default Video Parameters</string>
-         </property>
-        </widget>
-       </item>
-       <item>
-        <layout class="QHBoxLayout" name="lay_aspect">
+        <layout class="QVBoxLayout" name="lay_section_playlist">
          <item>
-          <widget class="QLabel" name="videoAspectLabel">
+          <widget class="QLabel" name="section_playlist">
+           <property name="font">
+            <font>
+             <weight>75</weight>
+             <bold>true</bold>
+            </font>
+           </property>
            <property name="text">
-            <string>Aspect mode</string>
+            <string>Playlist</string>
            </property>
           </widget>
          </item>
          <item>
-          <widget class="QComboBox" name="videoAspect"/>
+          <widget class="QCheckBox" name="playlistSaveWindow">
+           <property name="text">
+            <string>Save window position and size</string>
+           </property>
+          </widget>
          </item>
          <item>
-          <spacer name="horizontalSpacer">
-           <property name="orientation">
-            <enum>Qt::Horizontal</enum>
+          <widget class="QCheckBox" name="playlistSavePosition">
+           <property name="text">
+            <string>Save videos position</string>
            </property>
-           <property name="sizeHint" stdset="0">
-            <size>
-             <width>40</width>
-             <height>20</height>
-            </size>
+          </widget>
+         </item>
+         <item>
+          <widget class="QCheckBox" name="playlistSaveState">
+           <property name="text">
+            <string>Save videos playing / paused status</string>
            </property>
-          </spacer>
+          </widget>
+         </item>
+         <item>
+          <widget class="QCheckBox" name="playlistSeekSync">
+           <property name="text">
+            <string>Seek in sync by default</string>
+           </property>
+          </widget>
          </item>
         </layout>
        </item>
        <item>
-        <widget class="QCheckBox" name="videoRandomLoop">
-         <property name="text">
-          <string>Start at random position</string>
-         </property>
-        </widget>
+        <layout class="QVBoxLayout" name="lay_section_grid">
+         <item>
+          <widget class="QLabel" name="section_grid">
+           <property name="font">
+            <font>
+             <weight>75</weight>
+             <bold>true</bold>
+            </font>
+           </property>
+           <property name="text">
+            <string>Default Grid Parameters</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <layout class="QHBoxLayout" name="lay_gridMode" stretch="0,0,0">
+           <item>
+            <widget class="QLabel" name="gridModeLabel">
+             <property name="text">
+              <string>Grid mode</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QComboBox" name="gridMode"/>
+           </item>
+           <item>
+            <spacer name="horizontalSpacer_2">
+             <property name="orientation">
+              <enum>Qt::Horizontal</enum>
+             </property>
+             <property name="sizeHint" stdset="0">
+              <size>
+               <width>40</width>
+               <height>20</height>
+              </size>
+             </property>
+            </spacer>
+           </item>
+          </layout>
+         </item>
+         <item>
+          <layout class="QHBoxLayout" name="lay_gridSize" stretch="0,0">
+           <item>
+            <widget class="QSpinBox" name="gridSize"/>
+           </item>
+           <item>
+            <widget class="QLabel" name="gridSizeLabel">
+             <property name="text">
+              <string>Grid size</string>
+             </property>
+            </widget>
+           </item>
+          </layout>
+         </item>
+         <item>
+          <widget class="QCheckBox" name="gridFit">
+           <property name="text">
+            <string>Fit grid cells</string>
+           </property>
+          </widget>
+         </item>
+        </layout>
        </item>
        <item>
-        <widget class="QCheckBox" name="videoPaused">
-         <property name="text">
-          <string>Paused</string>
-         </property>
-        </widget>
-       </item>
-       <item>
-        <widget class="QCheckBox" name="videoMuted">
-         <property name="text">
-          <string>Muted</string>
-         </property>
-        </widget>
+        <layout class="QVBoxLayout" name="lay_section_video_defaults">
+         <item>
+          <widget class="QLabel" name="section_video_defaults">
+           <property name="font">
+            <font>
+             <weight>75</weight>
+             <bold>true</bold>
+            </font>
+           </property>
+           <property name="text">
+            <string>Default Video Parameters</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <layout class="QHBoxLayout" name="lay_aspect">
+           <item>
+            <widget class="QLabel" name="videoAspectLabel">
+             <property name="text">
+              <string>Aspect mode</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QComboBox" name="videoAspect"/>
+           </item>
+           <item>
+            <spacer name="horizontalSpacer">
+             <property name="orientation">
+              <enum>Qt::Horizontal</enum>
+             </property>
+             <property name="sizeHint" stdset="0">
+              <size>
+               <width>40</width>
+               <height>20</height>
+              </size>
+             </property>
+            </spacer>
+           </item>
+          </layout>
+         </item>
+         <item>
+          <layout class="QHBoxLayout" name="lay_repeat">
+           <item>
+            <widget class="QLabel" name="repeatModeLabel">
+             <property name="text">
+              <string>Repeat mode</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QComboBox" name="repeatMode"/>
+           </item>
+           <item>
+            <spacer name="horizontalSpacer_3">
+             <property name="orientation">
+              <enum>Qt::Horizontal</enum>
+             </property>
+             <property name="sizeHint" stdset="0">
+              <size>
+               <width>40</width>
+               <height>20</height>
+              </size>
+             </property>
+            </spacer>
+           </item>
+          </layout>
+         </item>
+         <item>
+          <widget class="QCheckBox" name="videoRandomLoop">
+           <property name="text">
+            <string>Start at random position</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QCheckBox" name="videoPaused">
+           <property name="text">
+            <string>Paused</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QCheckBox" name="videoMuted">
+           <property name="text">
+            <string>Muted</string>
+           </property>
+          </widget>
+         </item>
+        </layout>
        </item>
        <item>
         <spacer name="verticalSpacer">
@@ -241,7 +284,7 @@
       </layout>
      </item>
      <item>
-      <layout class="QVBoxLayout" name="lay_right_column" stretch="0,0,0,0,0,0,0,0,0,0,0">
+      <layout class="QVBoxLayout" name="lay_right_column" stretch="0,0,0,0,0,0,0">
        <item>
         <widget class="QGroupBox" name="playerVideoDriverBox">
          <property name="title">
@@ -269,91 +312,99 @@
         </widget>
        </item>
        <item>
-        <widget class="QLabel" name="section_timeouts">
-         <property name="font">
-          <font>
-           <weight>75</weight>
-           <bold>true</bold>
-          </font>
-         </property>
-         <property name="text">
-          <string>Timeouts</string>
-         </property>
-        </widget>
-       </item>
-       <item>
-        <layout class="QHBoxLayout" name="lay_timeoutOverlay" stretch="0,1">
+        <layout class="QVBoxLayout" name="lay_section_timeouts">
          <item>
-          <widget class="QSpinBox" name="timeoutOverlay"/>
-         </item>
-         <item>
-          <widget class="QLabel" name="timeoutOverlayLabel">
+          <widget class="QLabel" name="section_timeouts">
+           <property name="font">
+            <font>
+             <weight>75</weight>
+             <bold>true</bold>
+            </font>
+           </property>
            <property name="text">
-            <string>Video overlay timeout (sec)</string>
+            <string>Timeouts</string>
            </property>
           </widget>
+         </item>
+         <item>
+          <layout class="QHBoxLayout" name="lay_timeoutOverlay" stretch="0,1">
+           <item>
+            <widget class="QSpinBox" name="timeoutOverlay"/>
+           </item>
+           <item>
+            <widget class="QLabel" name="timeoutOverlayLabel">
+             <property name="text">
+              <string>Video overlay timeout (sec)</string>
+             </property>
+            </widget>
+           </item>
+          </layout>
+         </item>
+         <item>
+          <widget class="QCheckBox" name="timeoutMouseHideFlag">
+           <property name="text">
+            <string>Hide mouse after timeout</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <layout class="QHBoxLayout" name="lay_timeoutMouseHide" stretch="0,1">
+           <item>
+            <widget class="QSpinBox" name="timeoutMouseHide"/>
+           </item>
+           <item>
+            <widget class="QLabel" name="timeoutMouseHideLabel">
+             <property name="text">
+              <string>Mouse hide timeout (sec)</string>
+             </property>
+            </widget>
+           </item>
+          </layout>
          </item>
         </layout>
        </item>
        <item>
-        <widget class="QCheckBox" name="timeoutMouseHideFlag">
-         <property name="text">
-          <string>Hide mouse after timeout</string>
-         </property>
-        </widget>
-       </item>
-       <item>
-        <layout class="QHBoxLayout" name="lay_timeoutMouseHide" stretch="0,1">
+        <layout class="QVBoxLayout" name="lay_section_logging">
          <item>
-          <widget class="QSpinBox" name="timeoutMouseHide"/>
-         </item>
-         <item>
-          <widget class="QLabel" name="timeoutMouseHideLabel">
-           <property name="text">
-            <string>Mouse hide timeout (sec)</string>
+          <widget class="QLabel" name="section_logging">
+           <property name="font">
+            <font>
+             <weight>75</weight>
+             <bold>true</bold>
+            </font>
            </property>
-          </widget>
-         </item>
-        </layout>
-       </item>
-       <item>
-        <widget class="QLabel" name="section_logging">
-         <property name="font">
-          <font>
-           <weight>75</weight>
-           <bold>true</bold>
-          </font>
-         </property>
-         <property name="text">
-          <string>Logging</string>
-         </property>
-        </widget>
-       </item>
-       <item>
-        <layout class="QHBoxLayout" name="lay_logLevel">
-         <item>
-          <widget class="QLabel" name="logLevelLabel">
            <property name="text">
-            <string>Log level</string>
+            <string>Logging</string>
            </property>
           </widget>
          </item>
          <item>
-          <widget class="QComboBox" name="logLevel"/>
+          <layout class="QHBoxLayout" name="lay_logLevel">
+           <item>
+            <widget class="QLabel" name="logLevelLabel">
+             <property name="text">
+              <string>Log level</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QComboBox" name="logLevel"/>
+           </item>
+          </layout>
          </item>
-        </layout>
-       </item>
-       <item>
-        <layout class="QHBoxLayout" name="lay_logLevelVLC">
          <item>
-          <widget class="QLabel" name="logLevelVLCLabel">
-           <property name="text">
-            <string>Log level (VLC)</string>
-           </property>
-          </widget>
-         </item>
-         <item>
-          <widget class="QComboBox" name="logLevelVLC"/>
+          <layout class="QHBoxLayout" name="lay_logLevelVLC">
+           <item>
+            <widget class="QLabel" name="logLevelVLCLabel">
+             <property name="text">
+              <string>Log level (VLC)</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QComboBox" name="logLevelVLC"/>
+           </item>
+          </layout>
          </item>
         </layout>
        </item>
@@ -376,6 +427,9 @@
           <string>Opaque overlay (fix black screen)</string>
          </property>
         </widget>
+       </item>
+       <item>
+        <layout class="QVBoxLayout" name="lay_section_misc"/>
        </item>
        <item>
         <spacer name="verticalSpacer_2">

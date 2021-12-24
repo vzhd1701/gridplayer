@@ -11,7 +11,7 @@ from PyQt5.QtWidgets import QCheckBox, QComboBox, QDialog, QSpinBox
 from gridplayer import params_env, utils
 from gridplayer.dialogs.messagebox import QCustomMessageBox
 from gridplayer.dialogs.settings_dialog_ui import Ui_SettingsDialog
-from gridplayer.params_static import GridMode, VideoAspect, VideoDriver
+from gridplayer.params_static import GridMode, VideoAspect, VideoDriver, VideoRepeat
 from gridplayer.settings import Settings
 from gridplayer.utils.app_dir import get_app_data_dir
 from gridplayer.utils.misc import qt_connect
@@ -58,6 +58,7 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
             "playlist/save_window": self.playlistSaveWindow,
             "playlist/seek_synced": self.playlistSeekSync,
             "video_defaults/aspect": self.videoAspect,
+            "video_defaults/repeat": self.repeatMode,
             "video_defaults/random_loop": self.videoRandomLoop,
             "video_defaults/muted": self.videoMuted,
             "video_defaults/paused": self.videoPaused,
@@ -107,6 +108,7 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
         self.fill_playerVideoDriver()
         self.fill_gridMode()
         self.fill_videoAspect()
+        self.fill_repeatMode()
         self.fill_logLevel()
         self.fill_logLevelVLC()
 
@@ -173,6 +175,15 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
         }
 
         _fill_combo_box(self.videoAspect, aspect_ratios)
+
+    def fill_repeatMode(self):
+        repeat_modes = {
+            VideoRepeat.SINGLE_FILE: "Single File",
+            VideoRepeat.DIR: "Directory",
+            VideoRepeat.DIR_SHUFFLE: "Directory (Shuffle)",
+        }
+
+        _fill_combo_box(self.repeatMode, repeat_modes)
 
     def fill_gridMode(self):
         grid_modes = {

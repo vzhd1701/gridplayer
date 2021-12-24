@@ -6,7 +6,7 @@ from enum import Enum
 from pydantic import Field
 from PyQt5.QtCore import QSettings
 
-from gridplayer.params_static import GridMode, VideoAspect, VideoDriver
+from gridplayer.params_static import GridMode, VideoAspect, VideoDriver, VideoRepeat
 from gridplayer.utils.app_dir import get_app_data_dir
 from gridplayer.utils.log_config import DISABLED
 
@@ -27,6 +27,7 @@ _default_settings = {
     "playlist/save_window": False,
     "playlist/seek_synced": False,
     "video_defaults/aspect": VideoAspect.FIT,
+    "video_defaults/repeat": VideoRepeat.SINGLE_FILE,
     "video_defaults/random_loop": False,
     "video_defaults/muted": True,
     "video_defaults/paused": False,

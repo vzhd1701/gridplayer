@@ -11,8 +11,6 @@ icon-symbolic,icons/basic/003-add.svg,add-files
 icon-symbolic,icons/basic/031-cancel.svg,close
 icon-symbolic,icons/basic/042-sand clock.svg,processing
 icon-symbolic,icons/basic/067-down arrow.svg,save-playlist
-icon-symbolic,icons/basic/083-backward.svg,previous-frame
-icon-symbolic,icons/basic/084-forward.svg,next-frame
 icon-symbolic,icons/basic/093-folder.svg,open-playlist
 icon-symbolic,icons/basic/099-squares.svg,grid
 icon-symbolic,icons/basic/136-log out.svg,quit
@@ -25,6 +23,8 @@ icon-symbolic,icons/basic/166-gear.svg,settings
 icon-symbolic,icons/basic/234-zoom.svg,zoom-reset
 icon-symbolic,icons/basic/235-zoom in.svg,zoom-in
 icon-symbolic,icons/basic/236-zoom out.svg,zoom-out
+icon-symbolic,icons/basic/083-backward.svg,previous-video-file
+icon-symbolic,icons/basic/084-forward.svg,next-video-file
 icon-symbolic,icons/custom/001-minimize window.svg,minimize
 icon-symbolic,icons/custom/002-close all.svg,close-playlist
 icon-symbolic,icons/custom/003-aspect fit.svg,aspect-fit
@@ -54,3 +54,8 @@ icon-symbolic,icons/custom/030-question.svg,question
 icon-symbolic,icons/custom/031-grid fit.svg,grid-fit
 icon-symbolic,icons/custom/032-grid size.svg,grid-size
 icon-symbolic,icons/custom/033-seek sync.svg,seek-sync
+icon-symbolic,icons/custom/034-previous frame.svg,previous-frame
+icon-symbolic,icons/custom/035-next frame.svg,next-frame
+icon-symbolic,icons/custom/036-loop single.svg,loop-single
+icon-symbolic,icons/custom/037-loop dir.svg,loop-dir
+icon-symbolic,icons/custom/038-loop dir shuffle.svg,loop-dir-shuffle

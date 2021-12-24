@@ -78,12 +78,11 @@ class VlcPlayerBase(object):
         )
 
     def cleanup(self):
-        self._media_player.stop()
+        if self._media_player is not None:
+            self.stop()
 
-        while self._media_player.get_state() != vlc.State.Stopped:
-            time.sleep(ONE_MOMENT)
-
-        self._media_player.release()
+            self._media_player.release()
+            self._media_player = None
 
     def notify_error(self):
         """Emit signal when error"""
@@ -140,7 +139,6 @@ class VlcPlayerBase(object):
 
     def load_video(self, file_path):
         """Step 1. Load & parse video file"""
-
         self._log.info(f"Loading {file_path}")
 
         self._media = self.instance.media_new_path(file_path)
@@ -197,6 +195,9 @@ class VlcPlayerBase(object):
         }
 
         self.notify_load_video_finish(video_params)
+
+    def stop(self):
+        self._media_player.stop()
 
     def play(self):
         self._media_player.play()

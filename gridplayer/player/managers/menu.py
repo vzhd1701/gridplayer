@@ -29,6 +29,10 @@ SECTIONS = MappingProxyType(
     {
         "video_active": [
             "Play / Pause",
+            "---",
+            "Play Previous File",
+            "Play Next File",
+            "---",
             ("Step", "Next frame", "Previous frame"),
             (
                 "Loop",
@@ -37,6 +41,10 @@ SECTIONS = MappingProxyType(
                 "Set Loop Start",
                 "Set Loop End",
                 "Loop Reset",
+                "---",
+                "Repeat Single File",
+                "Repeat Directory",
+                "Repeat Directory (Shuffle)",
             ),
             ("Speed", "Faster", "Slower", "Normal"),
             ("Zoom", "Zoom In", "Zoom Out", "Zoom Reset"),

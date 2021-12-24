@@ -36,6 +36,9 @@ class ActiveBlockManager(ManagerBase):
         if self._ctx.active_block is None:
             return
 
+        if not self._ctx.active_block.is_video_initialized:
+            return
+
         getattr(self._ctx.active_block, command)(*args)
 
     def is_active_param_set_to(self, param_name, param_value):

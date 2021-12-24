@@ -1,8 +1,9 @@
 import typing
+from pathlib import Path
 
 from pydantic import BaseModel, confloat
 
-from gridplayer.params_static import VideoAspect, WindowState
+from gridplayer.params_static import VideoAspect, VideoRepeat, WindowState
 from gridplayer.settings import default_field
 
 MIN_SCALE = 1
@@ -12,9 +13,10 @@ MAX_RATE = 12
 
 
 class Video(BaseModel):
-    file_path: typing.Optional[str]
+    file_path: typing.Optional[Path]
 
     aspect_mode: VideoAspect = default_field("video_defaults/aspect")
+    repeat_mode: VideoRepeat = default_field("video_defaults/repeat")
     is_start_random: bool = default_field("video_defaults/random_loop")
     is_muted: bool = default_field("video_defaults/muted")
     is_paused: bool = default_field("video_defaults/paused")
@@ -30,5 +32,6 @@ class Video(BaseModel):
     class Config(object):
         json_encoders = {
             VideoAspect: lambda v: v.value,
+            VideoRepeat: lambda v: v.value,
             WindowState: lambda v: (v.x, v.y, v.height, v.width),
         }

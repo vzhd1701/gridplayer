@@ -237,8 +237,7 @@ class PlayerProcessSingleVLCSW(VlcPlayerThreaded):
     def _restart_playback(self):
         self._log.debug("Restarting playback...")
 
-        super().cleanup()
-        super().init_player()
+        self.stop()
 
         self._is_first_start_finished = False
         self.cmd_send("load_video", self._loaded_path)
@@ -307,10 +306,8 @@ class VideoDriverVLCSW(VLCVideoDriverThreaded):
 
     def cleanup(self):
         if self._shared_memory is not None:
-            shared_memory = self._shared_memory
+            self._shared_memory.close()
             self._shared_memory = None
-
-            shared_memory.close()
 
         super().cleanup()
 
