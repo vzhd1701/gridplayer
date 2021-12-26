@@ -1,28 +1,28 @@
-import os
 import platform
 import sys
+from pathlib import Path
 
 from PyQt5.QtCore import QStandardPaths
 
 PORTABLE_APP_DIR = "portable_data"
 
 
-def is_portable():
+def is_portable() -> bool:
     if platform.system() != "Windows":
         return False
 
-    portable_data_dir = os.path.join(os.path.dirname(sys.executable), PORTABLE_APP_DIR)
+    portable_data_dir = Path(sys.executable).parent / PORTABLE_APP_DIR
 
-    return os.path.isdir(portable_data_dir)
+    return portable_data_dir.is_dir()
 
 
-def get_app_data_dir():
+def get_app_data_dir() -> Path:
     if is_portable():
-        return os.path.join(os.path.dirname(sys.executable), PORTABLE_APP_DIR)
+        return Path(sys.executable).parent / PORTABLE_APP_DIR
 
-    app_dir = QStandardPaths.writableLocation(QStandardPaths.AppDataLocation)
+    app_dir = Path(QStandardPaths.writableLocation(QStandardPaths.AppDataLocation))
 
-    if not os.path.isdir(app_dir):
-        os.makedirs(app_dir)
+    if not app_dir.is_dir():
+        app_dir.mkdir(parents=True)
 
     return app_dir

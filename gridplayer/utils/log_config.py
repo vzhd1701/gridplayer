@@ -2,6 +2,7 @@ import logging
 import sys
 from logging.config import dictConfig
 from logging.handlers import QueueHandler, QueueListener
+from pathlib import Path
 
 from PyQt5 import QtCore
 
@@ -64,7 +65,7 @@ class QtLogHandler(object):
         self._logger.log(log_level, message.strip())
 
 
-def config_log(log_path, log_level):
+def config_log(log_path: Path, log_level: int):
     config = {
         "version": 1,
         "formatters": {
@@ -87,7 +88,7 @@ def config_log(log_path, log_level):
                 "class": "logging.FileHandler",
                 "level": "DEBUG",
                 "formatter": "my_formatter",
-                "filename": log_path,
+                "filename": str(log_path),
                 "encoding": "utf8",
             },
         },

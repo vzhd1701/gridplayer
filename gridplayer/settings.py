@@ -1,5 +1,4 @@
 import logging
-import os
 import platform
 from enum import Enum
 
@@ -46,9 +45,9 @@ if platform.system() == "Darwin":
 
 class _Settings(object):
     def __init__(self):
-        settings_path = os.path.join(get_app_data_dir(), "settings.ini")
+        settings_path = get_app_data_dir() / "settings.ini"
 
-        self.settings = QSettings(settings_path, QSettings.IniFormat)
+        self.settings = QSettings(str(settings_path), QSettings.IniFormat)
 
         logging.getLogger("Settings").debug(f"Settings path: {settings_path}")
 

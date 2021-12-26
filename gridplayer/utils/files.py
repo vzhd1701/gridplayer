@@ -1,5 +1,7 @@
 import logging
 import os
+from pathlib import Path
+from typing import List, Set
 
 from PyQt5.QtCore import QMimeData
 
@@ -16,11 +18,11 @@ def drag_get_video_id(dnd_data: QMimeData):
     return bytes(dnd_data.data("application/x-gridplayer-video-id")).decode()
 
 
-def drag_get_files(dnd_data):
+def drag_get_files(dnd_data: QMimeData) -> List[Path]:
     return filter_valid_files(_exctract_local_files(dnd_data))
 
 
-def _exctract_local_files(dnd_data):
+def _exctract_local_files(dnd_data: QMimeData) -> List[Path]:
     files = []
 
     if not dnd_data.hasUrls():
@@ -31,21 +33,21 @@ def _exctract_local_files(dnd_data):
             logger.warning(f"{url} is not a local file!")
             continue
 
-        files.append(url.toLocalFile())
+        files.append(Path(url.toLocalFile()))
 
     return files
 
 
-def filter_valid_files(files):
+def filter_valid_files(files: List[Path]):
     files = _filter_accesible_files(files)
 
     if not files:
         return []
 
-    if len(files) == 1 and _filter_extensions(files, "gpls"):
+    if len(files) == 1 and _filter_extensions(files, {"gpls"}):
         return files
 
-    if _filter_extensions(files, "gpls"):
+    if _filter_extensions(files, {"gpls"}):
         logger.warning("Only single playlist file can be opened at a time!")
         return []
 
@@ -57,29 +59,18 @@ def filter_valid_files(files):
     return video_files
 
 
-def _filter_accesible_files(files):
+def _filter_accesible_files(files: List[Path]) -> List[Path]:
     filtered = []
 
     for f in files:
-        filepath = os.path.normpath(f)
-
-        if not (os.path.isfile(filepath) and os.access(filepath, os.R_OK)):
-            logger.warning(f"{filepath} file is not accessible!")
+        if not (f.is_file() and os.access(f, os.R_OK)):
+            logger.warning(f"{f} file is not accessible!")
             continue
 
-        filtered.append(filepath)
+        filtered.append(f)
 
     return filtered
 
 
-def _filter_extensions(files, extensions):
-    filtered = []
-
-    for f in files:
-        _, ext = os.path.splitext(f)
-        ext = ext[1:]
-
-        if ext in extensions:
-            filtered.append(f)
-
-    return filtered
+def _filter_extensions(files: List[Path], extensions: Set[str]):
+    return [f for f in files if f.suffix[1:] in extensions]

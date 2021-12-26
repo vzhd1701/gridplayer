@@ -1,6 +1,5 @@
 import contextlib
 import logging
-import os
 import platform
 import subprocess
 
@@ -134,18 +133,18 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
         )
 
     def open_logfile(self):
-        log_path = os.path.join(get_app_data_dir(), "gridplayer.log")
+        log_path = get_app_data_dir() / "gridplayer.log"
 
         logger.debug(f"Opening log file {log_path}")
 
-        if not os.path.isfile(log_path):
+        if not log_path.is_file():
             return QCustomMessageBox.critical(self, "Error", "Log file does not exist!")
 
         if params_env.IS_SNAP:
             # https://forum.snapcraft.io/t/xdg-open-or-gvfs-open-qdesktopservices-openurl-file-somelocation-file-txt-wont-open-the-file/16824
             subprocess.call(["xdg-open", log_path])  # noqa: S603, S607
         else:
-            QDesktopServices.openUrl(QUrl.fromLocalFile(log_path))
+            QDesktopServices.openUrl(QUrl.fromLocalFile(str(log_path)))
 
     def fill_logLevelVLC(self):
         log_levels = {
