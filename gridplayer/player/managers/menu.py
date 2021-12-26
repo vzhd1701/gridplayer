@@ -49,6 +49,7 @@ SECTIONS = MappingProxyType(
             ("Speed", "Faster", "Slower", "Normal"),
             ("Zoom", "Zoom In", "Zoom Out", "Zoom Reset"),
             ("Aspect", "Aspect Fit", "Aspect Stretch", "Aspect None"),
+            "Rename",
         ],
         "video_block": ["Close"],
         "video_single": ["Next Video"],

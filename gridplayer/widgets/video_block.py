@@ -1,13 +1,14 @@
-import os
 import random
 import secrets
 from pathlib import Path
 from typing import Optional
 
+from pydantic.color import Color
 from PyQt5.QtCore import Qt, QTimer, pyqtSignal
 from PyQt5.QtGui import QCursor
 from PyQt5.QtWidgets import QStackedLayout, QWidget
 
+from gridplayer.dialogs.rename_dialog import QVideoRenameDialog
 from gridplayer.exceptions import PlayerException
 from gridplayer.params_static import PLAYER_ID_LENGTH, VideoRepeat
 from gridplayer.settings import Settings
@@ -46,6 +47,7 @@ class VideoBlock(QWidget):  # noqa: WPS230
     time_change = pyqtSignal(int, int)
     volume_change = pyqtSignal(float)
     label_change = pyqtSignal(str)
+    color_change = pyqtSignal(str)
     loop_start_change = pyqtSignal(float)
     loop_end_change = pyqtSignal(float)
     is_paused_change = pyqtSignal(bool)
@@ -120,6 +122,7 @@ class VideoBlock(QWidget):  # noqa: WPS230
             (self.time_change, overlay.set_position),
             (self.volume_change, overlay.set_volume_position),
             (self.label_change, overlay.set_label),
+            (self.color_change, overlay.set_color),
             (self.loop_start_change, overlay.set_loop_start),
             (self.loop_end_change, overlay.set_loop_end),
             (self.is_paused_change, overlay.set_is_paused),
@@ -311,7 +314,8 @@ class VideoBlock(QWidget):  # noqa: WPS230
         self.load_video.emit(self.video_params.file_path)
 
     def load_video_finish(self):  # noqa: WPS213
-        self.label_change.emit(os.path.basename(self.video_params.file_path))
+        self.label_change.emit(self.video_params.title)
+        self.color_change.emit(self.video_params.color.as_hex())
 
         self.video_driver.set_aspect_ratio(self.video_params.aspect_mode)
         self.video_driver.set_scale(self.video_params.scale)
@@ -559,3 +563,18 @@ class VideoBlock(QWidget):  # noqa: WPS230
         self.video_params.is_paused = False
 
         self.set_video(self.video_params)
+
+    def rename(self):
+        new_name, new_color = QVideoRenameDialog.get_edits(
+            self.parent(),
+            "Rename video",
+            self.video_params.file_path.name,
+            self.video_params.title,
+            self.video_params.color.as_rgb_tuple(),
+        )
+
+        self.video_params.title = new_name
+        self.video_params.color = Color(new_color)
+
+        self.label_change.emit(self.video_params.title)
+        self.color_change.emit(self.video_params.color.as_hex())

@@ -1,5 +1,5 @@
 import logging
-import os
+from pathlib import Path
 
 from PyQt5.QtCore import QDir, QEvent, pyqtSignal
 from PyQt5.QtWidgets import QFileDialog, QMessageBox
@@ -66,24 +66,24 @@ class PlaylistManager(ManagerBase):
         if self._saved_playlist is not None:
             save_path = self._saved_playlist["path"]
         else:
-            save_path = os.path.join(QDir.homePath(), "Untitled.gpls")
+            save_path = Path(QDir.homePath()) / "Untitled.gpls"
 
         logger.debug(f"Proposed playlist save path: {save_path}")
 
-        file_path = QFileDialog.getSaveFileName(
-            self.parent(), "Where to save playlist", save_path, "*.gpls"
+        file_path, _ = QFileDialog.getSaveFileName(
+            self.parent(), "Where to save playlist", str(save_path), "*.gpls"
         )
 
-        if not file_path[0]:
+        if not file_path:
             return
 
-        file_path = os.path.abspath(file_path[0])
+        file_path = Path(file_path)
 
         # filename placeholder is not available if file doesn't exist
         # problematic for new playlists, need to prevent accidental overwrite
         # occurs in Flatpak, maybe in other sandboxes that use portal
-        if not file_path.endswith(".gpls"):
-            file_path = f"{file_path}.gpls"
+        if file_path.suffix != ".gpls":
+            file_path = file_path.with_suffix(".gpls")
 
             if self._is_overwrite_denied(file_path):
                 return
@@ -96,42 +96,44 @@ class PlaylistManager(ManagerBase):
         }
 
     def process_arguments(self, argv):
-        files = filter_valid_files(argv)
+        files = filter_valid_files(list(map(Path, argv)))
 
         if not files:
             self.error.emit("No supported files!")
             return
 
-        if files[0].endswith("gpls"):
+        if files[0].suffix == ".gpls":
             self.load_playlist_file(files[0])
             return
 
-        playlist = Playlist(videos=[Video(file_path=f) for f in files])
+        videos = [Video(file_path=f, title=f.name) for f in files]
+
+        playlist = Playlist(videos=videos)
 
         self.load_playlist(playlist)
 
         self._saved_playlist = None
 
-    def load_playlist_file(self, filename):
+    def load_playlist_file(self, playlist_file: Path):
         try:
-            playlist = Playlist.read(filename)
+            playlist = Playlist.read(playlist_file)
         except ValueError as e:
             logger.error(f"Playlist parse error: {e}")
-            return self.error.emit(f"Invalid playlist format!\n\n{filename}")
+            return self.error.emit(f"Invalid playlist format!\n\n{playlist_file}")
         except FileNotFoundError:
-            return self.error.emit(f"File not found!\n\n{filename}")
+            return self.error.emit(f"File not found!\n\n{playlist_file}")
 
         if not playlist.videos:
-            return self.error.emit(f"Empty or invalid playlist!\n\n{filename}")
+            return self.error.emit(f"Empty or invalid playlist!\n\n{playlist_file}")
 
         self.load_playlist(playlist)
 
         self._saved_playlist = {
-            "path": filename,
+            "path": playlist_file,
             "state": hash(self._make_playlist().dumps()),
         }
 
-    def load_playlist(self, playlist):
+    def load_playlist(self, playlist: Playlist):
         self.cmd_close_playlist()
 
         self.videos_loaded.emit(playlist.videos)
@@ -167,12 +169,10 @@ class PlaylistManager(ManagerBase):
             if ret == QMessageBox.Yes:
                 self.cmd_save_playlist()
 
-    def _is_overwrite_denied(self, file_path):
-        if os.path.isfile(file_path):
-            file_name = os.path.basename(file_path)
-
+    def _is_overwrite_denied(self, file_path: Path):
+        if file_path.is_file():
             ret = QCustomMessageBox.question(
-                self.parent(), "Playlist", f"Do you want to overwrite {file_name}?"
+                self.parent(), "Playlist", f"Do you want to overwrite {file_path.name}?"
             )
 
             if ret != QMessageBox.No:

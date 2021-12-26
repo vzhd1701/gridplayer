@@ -1,4 +1,5 @@
 import logging
+from pathlib import Path
 
 from PyQt5.QtCore import QEvent, QMimeData, Qt, pyqtSignal
 from PyQt5.QtGui import QDrag
@@ -12,7 +13,7 @@ logger = logging.getLogger(__name__)
 
 
 class DragNDropManager(ManagerBase):
-    playlist_dropped = pyqtSignal(str)
+    playlist_dropped = pyqtSignal(Path)
     videos_dropped = pyqtSignal(list)
 
     videos_swapped = pyqtSignal()
@@ -57,10 +58,10 @@ class DragNDropManager(ManagerBase):
 
         # Add new video
         if drop_files:
-            if drop_files[0].endswith("gpls"):
+            if drop_files[0].suffix == ".gpls":
                 self.playlist_dropped.emit(drop_files[0])
             else:
-                videos = [Video(file_path=f) for f in drop_files]
+                videos = [Video(file_path=f, title=f.name) for f in drop_files]
                 self.videos_dropped.emit(videos)
 
             event.acceptProposedAction()

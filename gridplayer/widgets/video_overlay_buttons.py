@@ -15,8 +15,8 @@ from gridplayer.widgets.video_overlay_icons import (
 class OverlayButton(OverlayWidget):
     clicked = pyqtSignal()
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
 
         self.setMouseTracking(True)
 
@@ -35,11 +35,11 @@ class OverlayButton(OverlayWidget):
         painter = QPainter(self)
 
         if self.underMouse():
-            color_bg = Qt.gray
-            color_fg = Qt.white
+            color_bg = self.color_contrast_mid
+            color_fg = self.color
         else:
-            color_bg = Qt.white
-            color_fg = Qt.gray
+            color_bg = self.color
+            color_fg = self.color_contrast_mid
 
         painter.fillRect(self.rect(), color_bg)
 
@@ -92,23 +92,23 @@ class OverlayButton(OverlayWidget):
 
 
 class OverlayExitButton(OverlayButton):
-    def __init__(self):
-        super().__init__()
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
 
         self.icon = draw_cross
 
 
 class OverlayPlayPauseButton(OverlayButton):
-    def __init__(self):
-        super().__init__()
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
 
         self.icon = draw_play
         self.icon_off = draw_pause
 
 
 class OverlayVolumeButton(OverlayButton):
-    def __init__(self):
-        super().__init__()
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
 
         self.icon = draw_volume_on
         self.icon_off = draw_volume_off

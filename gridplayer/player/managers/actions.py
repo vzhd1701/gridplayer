@@ -24,6 +24,11 @@ COMMANDS = MappingProxyType(
             "icon": "close",
             "func": ("active", "exit"),
         },
+        "Rename": {
+            "key": "Ctrl+Shift+R",
+            "icon": "rename",
+            "func": ("active", "rename"),
+        },
         "Add Files": {
             "key": "Ctrl+A",
             "icon": "add-files",

@@ -38,7 +38,7 @@ class Playlist(BaseModel):
 
         return playlist
 
-    def save(self, filename):
+    def save(self, filename: Path):
         playlist_txt = self.dumps()
 
         with open(filename, "w", encoding="utf-8") as f:
@@ -82,6 +82,9 @@ class Playlist(BaseModel):
         for idx, path in enumerate(_parse_video_paths(playlist_in)):
             video = video_params.get(idx, Video())
             video.file_path = path
+
+            if not video.title:
+                video.title = video.file_path.name
 
             videos.append(video)
 

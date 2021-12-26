@@ -1,7 +1,14 @@
 import math
 
 from PyQt5.QtCore import QPoint, Qt, pyqtSignal
-from PyQt5.QtGui import QFontMetrics, QGuiApplication, QPainter, QPainterPath, QRegion
+from PyQt5.QtGui import (
+    QColor,
+    QFontMetrics,
+    QGuiApplication,
+    QPainter,
+    QPainterPath,
+    QRegion,
+)
 from PyQt5.QtWidgets import QSizePolicy, QWidget
 
 from gridplayer.utils.time_txt import get_time_txt_short
@@ -14,8 +21,33 @@ class OverlayWidget(QWidget):
         super().__init__(**kwargs)
 
         font_height = 13
+        self._color = QColor(Qt.white)
 
         self.setMinimumHeight(font_height + self.padding)
+
+    @property
+    def color(self):
+        return self._color
+
+    @property
+    def color_contrast(self):
+        lightness = 0 if self.color.lightness() > 127 else 255  # noqa: WPS432
+
+        return QColor.fromHsl(self.color.hue(), self.color.saturation(), lightness)
+
+    @property
+    def color_contrast_mid(self):
+        if self.color.lightness() > 127:  # noqa: WPS432
+            lightness = self.color.lightness() - 100
+        else:
+            lightness = self.color.lightness() + 100
+
+        return QColor.fromHsl(self.color.hue(), self.color.saturation(), lightness)
+
+    @color.setter
+    def color(self, color):
+        self._color = QColor(color)
+        self.update()
 
 
 class OverlayLabel(OverlayWidget):
@@ -31,8 +63,8 @@ class OverlayLabel(OverlayWidget):
 
         label = self.printable_label(event.rect().width(), painter.font())
 
-        painter.fillRect(self.rect(), Qt.white)
-        painter.setPen(Qt.black)
+        painter.fillRect(self.rect(), self.color)
+        painter.setPen(self.color_contrast)
         painter.drawText(self.rect(), Qt.AlignCenter, label)
 
     def printable_label(self, width, font):
@@ -73,8 +105,8 @@ class OverlayShortLabel(OverlayWidget):
         if not self._is_visuals_updated:
             self.update_visuals()
 
-        painter.fillRect(self.rect(), Qt.white)
-        painter.setPen(Qt.black)
+        painter.fillRect(self.rect(), self.color)
+        painter.setPen(self.color_contrast)
         painter.drawText(self.rect(), Qt.AlignCenter, self.text)
 
     def update_visuals(self):
@@ -141,8 +173,8 @@ class OverlayShortLabelFloating(OverlayShortLabel):
         text_box = self.rect().translated(0, 0)
         text_box.setHeight(text_box.height() - 10)
 
-        painter.fillRect(text_box, Qt.white)
-        painter.setPen(Qt.black)
+        painter.fillRect(text_box, self.color)
+        painter.setPen(self.color_contrast)
         painter.drawText(text_box, Qt.AlignCenter, self.text)
 
         if self.is_opaque:
@@ -167,7 +199,7 @@ class OverlayShortLabelFloating(OverlayShortLabel):
         path.lineTo(middle_x - 5, rect.height() - 10)
 
         painter.setPen(Qt.NoPen)
-        painter.fillPath(path, Qt.white)
+        painter.fillPath(path, self.color)
 
         if self.is_opaque:
             painter.setClipPath(path)
@@ -187,7 +219,21 @@ class OverlayShortLabelFloating(OverlayShortLabel):
         self._is_visuals_updated = True
 
 
-class OverlayProgressBar(OverlayWidget):
+class OverlayBar(OverlayWidget):
+    @property
+    def color_progress(self):
+        is_color_reddish = (
+            0 <= self.color.hue() <= 50  # noqa: WPS432
+            or 310 <= self.color.hue() <= 360  # noqa: WPS221, WPS432
+        )
+
+        if is_color_reddish:
+            return QColor(Qt.green)
+
+        return QColor(Qt.red)
+
+
+class OverlayProgressBar(OverlayBar):
     position_changed = pyqtSignal(float)
 
     mouse_over = pyqtSignal(QPoint, float)
@@ -250,7 +296,7 @@ class OverlayProgressBar(OverlayWidget):
     def paintEvent(self, event):
         painter = QPainter(self)
 
-        painter.fillRect(self.rect(), Qt.white)
+        painter.fillRect(self.rect(), self.color)
 
         progress_rect = self.rect().translated(0, 0)
 
@@ -258,7 +304,7 @@ class OverlayProgressBar(OverlayWidget):
 
         progress_rect.setWidth(cur_fill)
 
-        painter.fillRect(progress_rect, Qt.red)
+        painter.fillRect(progress_rect, self.color_progress)
 
         if self.progress_select_x is not None and self.underMouse():
             self.draw_progress_bar_select(painter, self.rect(), progress_rect)
@@ -276,7 +322,7 @@ class OverlayProgressBar(OverlayWidget):
         if progress_rect_sel.right() <= progress_rect.right():
             painter.fillRect(progress_rect_sel, Qt.blue)
         else:
-            painter.fillRect(progress_rect_sel, Qt.gray)
+            painter.fillRect(progress_rect_sel, self.color_contrast_mid)
             painter.fillRect(progress_rect, Qt.blue)
 
     def draw_loop_mark(self, painter, rect, loop_mark_percent):
@@ -328,7 +374,7 @@ class OverlayProgressBar(OverlayWidget):
         return x
 
 
-class OverlayVolumeBar(OverlayWidget):
+class OverlayVolumeBar(OverlayBar):
     position_changed = pyqtSignal(float)
 
     def __init__(self, **kwargs):
@@ -379,7 +425,7 @@ class OverlayVolumeBar(OverlayWidget):
     def paintEvent(self, event):
         painter = QPainter(self)
 
-        painter.fillRect(self.rect(), Qt.white)
+        painter.fillRect(self.rect(), self.color)
 
         progress_rect = self.rect().translated(0, 0)
 
@@ -388,7 +434,7 @@ class OverlayVolumeBar(OverlayWidget):
         progress_rect.setY(self.rect().height() - cur_fill)
         progress_rect.setHeight(cur_fill)
 
-        painter.fillRect(progress_rect, Qt.red)
+        painter.fillRect(progress_rect, self.color_progress)
 
         if self.progress_select_y is not None and self.underMouse():
             self.draw_progress_bar_select(painter, self.rect(), progress_rect)
@@ -400,7 +446,7 @@ class OverlayVolumeBar(OverlayWidget):
         if progress_rect_sel.top() >= progress_rect.top():
             painter.fillRect(progress_rect_sel, Qt.blue)
         else:
-            painter.fillRect(progress_rect_sel, Qt.gray)
+            painter.fillRect(progress_rect_sel, self.color_contrast_mid)
             painter.fillRect(progress_rect, Qt.blue)
 
     @property

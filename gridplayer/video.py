@@ -2,6 +2,7 @@ import typing
 from pathlib import Path
 
 from pydantic import BaseModel, confloat
+from pydantic.color import Color
 
 from gridplayer.params_static import VideoAspect, VideoRepeat, WindowState
 from gridplayer.settings import default_field
@@ -14,6 +15,9 @@ MAX_RATE = 12
 
 class Video(BaseModel):
     file_path: typing.Optional[Path]
+
+    title: typing.Optional[str]
+    color: Color = Color("white")
 
     aspect_mode: VideoAspect = default_field("video_defaults/aspect")
     repeat_mode: VideoRepeat = default_field("video_defaults/repeat")

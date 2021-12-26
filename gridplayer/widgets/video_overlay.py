@@ -22,6 +22,7 @@ from gridplayer.widgets.video_overlay_elements import (
     OverlayShortLabel,
     OverlayShortLabelFloating,
     OverlayVolumeBar,
+    OverlayWidget,
 )
 
 PROPAGATED_EVENTS = (
@@ -93,14 +94,14 @@ class OverlayBlock(QWidget):  # noqa: WPS230
         self.layout().addLayout(self.middle, 1)
         self.layout().addLayout(self.bottom_bar)
 
-        self.label_text = OverlayLabel()
-        self.exit_button = OverlayExitButton()
+        self.label_text = OverlayLabel(parent=self)
+        self.exit_button = OverlayExitButton(parent=self)
 
         self.title_bar = QHBoxLayout()
         self.title_bar.addWidget(self.label_text, 1)
         self.title_bar.addWidget(self.exit_button)
 
-        self.label_info = OverlayShortLabel()
+        self.label_info = OverlayShortLabel(parent=self)
 
         self.info_bar = QHBoxLayout()
         self.info_bar.addWidget(self.label_info)
@@ -114,15 +115,15 @@ class OverlayBlock(QWidget):  # noqa: WPS230
         self.middle.addStretch()
         self.middle.addLayout(self.right_bar)
 
-        self.volume_bar = OverlayVolumeBar()
+        self.volume_bar = OverlayVolumeBar(parent=self)
 
         self.right_bar.addStretch()
         self.right_bar.addWidget(self.volume_bar, 1)
 
-        self.play_pause_button = OverlayPlayPauseButton()
-        self.label_progress = OverlayShortLabel()
-        self.progress_bar = OverlayProgressBar()
-        self.volume_button = OverlayVolumeButton()
+        self.play_pause_button = OverlayPlayPauseButton(parent=self)
+        self.label_progress = OverlayShortLabel(parent=self)
+        self.progress_bar = OverlayProgressBar(parent=self)
+        self.volume_button = OverlayVolumeButton(parent=self)
 
         self.bottom_bar.addWidget(self.play_pause_button)
         self.bottom_bar.addWidget(self.label_progress)
@@ -159,6 +160,12 @@ class OverlayBlock(QWidget):  # noqa: WPS230
     @pyqtSlot(str)
     def set_label(self, label):
         self.label_text.label = label
+
+    @pyqtSlot(str)
+    def set_color(self, color):
+        for widget in self.children():
+            if isinstance(widget, OverlayWidget):
+                widget.color = color
 
     @pyqtSlot(str)
     def set_info_label(self, info_text):

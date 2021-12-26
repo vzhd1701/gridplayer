@@ -1,3 +1,5 @@
+from pathlib import Path
+
 from PyQt5.QtCore import pyqtSignal
 from PyQt5.QtWidgets import QFileDialog
 
@@ -23,7 +25,8 @@ class AddVideosManager(ManagerBase):
 
         if dialog.exec():
             videos = [
-                Video(file_path=f) for f in filter_valid_files(dialog.selectedFiles())
+                Video(file_path=f, title=f.name)
+                for f in filter_valid_files(list(map(Path, dialog.selectedFiles())))
             ]
 
             self.videos_added.emit(videos)
