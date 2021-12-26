@@ -23,7 +23,7 @@
    </size>
   </property>
   <property name="windowTitle">
-   <string>Settings</string>
+   <string>About</string>
   </property>
   <layout class="QVBoxLayout" name="lay_main">
    <property name="spacing">
