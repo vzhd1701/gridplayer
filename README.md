@@ -2,6 +2,7 @@
 
 [![PyPI version](https://img.shields.io/pypi/v/gridplayer)](https://pypi.python.org/pypi/gridplayer)
 [![Github All Releases](https://img.shields.io/github/downloads/vzhd1701/gridplayer/total.svg)](https://github.com/vzhd1701/gridplayer/releases/latest)
+[![Crowdin](https://badges.crowdin.net/gridplayer/localized.svg)](https://crowdin.com/project/gridplayer)
 
 ## Screenshots
 
@@ -27,6 +28,13 @@ information about the position, sound volume,  loops, aspect ratio, etc.
 - Configurable grid layout
 - Easy swap videos with drag-n-drop
 - Playlist retains settings for each video
+
+## Translation
+
+GridPlayer now supports internationalization! Anyone with a handful of free time and
+desire to support this project is [welcome to contribute](https://crowdin.com/project/gridplayer).
+No coding skills or special software required, all dialogs are well documented and
+there are not many strings to translate. Every contributor will be given proper credit.
 
 ## Installation
 
@@ -123,6 +131,10 @@ To fix this, you need to execute the following command using terminal:
 ```shell
 $ sudo xattr -rd com.apple.quarantine /Applications/GridPlayer.app
 ```
+
+## Geting help
+
+If you have a question about the program or have difficulty using it, you are welcome to [the discussions page](https://github.com/vzhd1701/gridplayer/discussions). You can also mail me directly, I'm always happy to help.
 
 ## Attributions
 
