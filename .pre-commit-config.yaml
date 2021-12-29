@@ -35,6 +35,7 @@ repos:
         language: system
         entry: poetry run black
         types: [python]
+        exclude: resources_bin.py
 
     -   id: mdformat
         name: mdformat

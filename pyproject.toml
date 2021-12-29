@@ -142,6 +142,7 @@ wemake-python-styleguide = ["+*", "-WPS433"]
 
 [tool.black]
 line-length = 88
+exclude = '(.*\/resources_bin\.py)'
 
 [tool.isort]
 profile = "black"
