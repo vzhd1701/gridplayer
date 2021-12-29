@@ -35,14 +35,17 @@ class Ui_AboutDialog(object):
         font.setBold(True)
         font.setWeight(75)
         self.name.setFont(font)
+        self.name.setText("App Name")
         self.name.setAlignment(QtCore.Qt.AlignCenter)
         self.name.setObjectName("name")
         self.lay_main.addWidget(self.name)
         self.version = QtWidgets.QLabel(AboutDialog)
+        self.version.setText("version X.X.X")
         self.version.setAlignment(QtCore.Qt.AlignCenter)
         self.version.setObjectName("version")
         self.lay_main.addWidget(self.version)
         self.info = QtWidgets.QLabel(AboutDialog)
+        self.info.setText("about info")
         self.info.setTextFormat(QtCore.Qt.RichText)
         self.info.setAlignment(QtCore.Qt.AlignCenter)
         self.info.setOpenExternalLinks(True)
@@ -65,14 +68,6 @@ class Ui_AboutDialog(object):
     def retranslateUi(self, AboutDialog):
         _translate = QtCore.QCoreApplication.translate
         AboutDialog.setWindowTitle(_translate("AboutDialog", "About"))
-        self.name.setText(_translate("AboutDialog", "{APP_NAME}"))
-        self.version.setText(_translate("AboutDialog", "version X.X.X"))
-        self.info.setText(
-            _translate(
-                "AboutDialog",
-                '<html><head/><body><p>This software is licensed under <a href="{APP_LICENSE_URL}"><span style=" text-decoration: underline; color:#0000ff;">GNU GPL</span></a> version 3. </p><p>Source code is available on <a href="{APP_URL}"><span style=" text-decoration: underline; color:#0000ff;">GitHub</span></a>.<br/>Please send any suggestions and bug reports <a href="{APP_BUGTRACKER_URL}"><span style=" text-decoration: underline; color:#0000ff;">here</span></a>.</p></body></html>',
-            )
-        )
         self.attributionsTitle.setText(
             _translate("AboutDialog", "This software was built using:")
         )

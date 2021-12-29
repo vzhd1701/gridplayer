@@ -1,9 +1,11 @@
 import platform
 import sys
 
-from PyQt5.QtCore import QDir, QDirIterator, Qt
+from PyQt5.QtCore import QDir, QDirIterator, QLibraryInfo, QLocale, Qt, QTranslator
 from PyQt5.QtGui import QFont, QFontDatabase, QGuiApplication, QIcon
 from PyQt5.QtWidgets import QApplication, QStyleFactory
+
+from gridplayer.settings import Settings
 
 if platform.system() == "Windows":
     from PyQt5.QtWinExtras import QtWin  # noqa: WPS433
@@ -55,6 +57,8 @@ def init_app():
     font_size = app.font().pointSize() if platform.system() == "Darwin" else 9
     app.setFont(QFont("Hack", font_size, QFont.Normal))
 
+    _init_translator(app)
+
     return app
 
 
@@ -85,3 +89,19 @@ def _init_resources():
     while fonts.hasNext():
         font = fonts.next()  # noqa: B305
         QFontDatabase.addApplicationFont(font)
+
+
+def _init_translator(app):
+    lang = Settings().get("player/language")
+    if lang == "en_US":
+        return
+
+    qt_translations_path = QLibraryInfo.location(QLibraryInfo.TranslationsPath)
+
+    translator_qt = QTranslator(app)
+    if translator_qt.load(QLocale(lang), "qtbase_", "", qt_translations_path):
+        app.installTranslator(translator_qt)
+
+    translator = QTranslator(app)
+    if translator.load(lang, ":/translations/"):
+        app.installTranslator(translator)

@@ -63,7 +63,6 @@ PyQt5/Qt5/plugins/platforms/libqwebgl.so
 PyQt5/Qt5/plugins/platforms/libqvnc.so
 PyQt5/Qt5/plugins/platforms/libqeglfs.so
 PyQt5/Qt5/qml
-PyQt5/Qt5/translations
 PyQt5/uic
 PyQt5/pylupdate*
 PyQt5/pyrcc*

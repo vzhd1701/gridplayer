@@ -25,7 +25,7 @@
      <item>
       <widget class="QLabel" name="errorLabel">
        <property name="text">
-        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;Program terminated due to unhandled exception!&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Please consider sending a bug report to the &lt;a href=&quot;{APP_BUGTRACKER_URL}&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#0000ff;&quot;&gt;bug tracker&lt;/span&gt;&lt;/a&gt;.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+        <string notr="true">exception info</string>
        </property>
        <property name="textFormat">
         <enum>Qt::RichText</enum>

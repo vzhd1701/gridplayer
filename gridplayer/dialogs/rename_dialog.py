@@ -54,7 +54,7 @@ class QColorCircle(QtWidgets.QRadioButton):
         if self.is_custom:
             init_color = self.color or Qt.white
             new_color = QtWidgets.QColorDialog.getColor(
-                init_color, self, "Select color"
+                init_color, self, self.tr("Select color")
             )
             if new_color.isValid():
                 self.color = new_color
@@ -120,7 +120,7 @@ class QVideoRenameDialog(QtWidgets.QDialog):
 
         self.title = QtWidgets.QLineEdit(self)
 
-        self.title_reset_button = QtWidgets.QPushButton("Reset", self)
+        self.title_reset_button = QtWidgets.QPushButton(self.tr("Reset"), self)
         self.title_reset_button.clicked.connect(self.reset_title)
 
         self.palette = QColorPalette(parent=self)

@@ -3,6 +3,7 @@ from PyQt5.QtCore import pyqtSlot
 from gridplayer.dialogs.about import AboutDialog
 from gridplayer.dialogs.messagebox import QCustomMessageBox
 from gridplayer.player.managers.base import ManagerBase
+from gridplayer.utils.misc import tr
 
 
 class DialogsManager(ManagerBase):
@@ -12,4 +13,4 @@ class DialogsManager(ManagerBase):
 
     @pyqtSlot(str)
     def error(self, message):
-        QCustomMessageBox.critical(self.parent(), "Error", message)
+        QCustomMessageBox.critical(self.parent(), tr("Error"), message)

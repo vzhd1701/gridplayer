@@ -10,6 +10,7 @@ from gridplayer.params_static import WindowState
 from gridplayer.player.managers.base import ManagerBase
 from gridplayer.playlist import Playlist
 from gridplayer.utils.files import filter_valid_files
+from gridplayer.utils.misc import tr
 from gridplayer.video import Video
 
 logger = logging.getLogger(__name__)
@@ -47,7 +48,7 @@ class PlaylistManager(ManagerBase):
         dialog = QFileDialog(self.parent())
         dialog.setFileMode(QFileDialog.ExistingFile)
 
-        dialog.setNameFilter("GridPlayer Playlists (*.gpls)")
+        dialog.setNameFilter("{0} (*.gpls)".format(tr("GridPlayer Playlists")))
 
         if dialog.exec():
             files = dialog.selectedFiles()
@@ -71,7 +72,7 @@ class PlaylistManager(ManagerBase):
         logger.debug(f"Proposed playlist save path: {save_path}")
 
         file_path, _ = QFileDialog.getSaveFileName(
-            self.parent(), "Where to save playlist", str(save_path), "*.gpls"
+            self.parent(), tr("Where to save playlist"), str(save_path), "*.gpls"
         )
 
         if not file_path:
@@ -99,7 +100,7 @@ class PlaylistManager(ManagerBase):
         files = filter_valid_files(list(map(Path, argv)))
 
         if not files:
-            self.error.emit("No supported files!")
+            self.error.emit(tr("No supported files!"))
             return
 
         if files[0].suffix == ".gpls":
@@ -119,12 +120,19 @@ class PlaylistManager(ManagerBase):
             playlist = Playlist.read(playlist_file)
         except ValueError as e:
             logger.error(f"Playlist parse error: {e}")
-            return self.error.emit(f"Invalid playlist format!\n\n{playlist_file}")
+            self.error.emit(
+                "{0}\n\n{1}".format(tr("Invalid playlist format!"), playlist_file)
+            )
+            return
         except FileNotFoundError:
-            return self.error.emit(f"File not found!\n\n{playlist_file}")
+            self.error.emit("{0}\n\n{1}".format(tr("File not found!"), playlist_file))
+            return
 
         if not playlist.videos:
-            return self.error.emit(f"Empty or invalid playlist!\n\n{playlist_file}")
+            self.error.emit(
+                "{0}\n\n{1}".format(tr("Empty or invalid playlist!"), playlist_file)
+            )
+            return
 
         self.load_playlist(playlist)
 
@@ -163,7 +171,7 @@ class PlaylistManager(ManagerBase):
             self.alert.emit()
 
             ret = QCustomMessageBox.question(
-                self.parent(), "Playlist", "Do you want to save the playlist?"
+                self.parent(), tr("Playlist"), tr("Do you want to save the playlist?")
             )
 
             if ret == QMessageBox.Yes:
@@ -171,9 +179,11 @@ class PlaylistManager(ManagerBase):
 
     def _is_overwrite_denied(self, file_path: Path):
         if file_path.is_file():
-            ret = QCustomMessageBox.question(
-                self.parent(), "Playlist", f"Do you want to overwrite {file_path.name}?"
+            q_message = tr("Do you want to overwrite {FILE_NAME}?").replace(
+                "{FILE_NAME}", file_path.name
             )
+
+            ret = QCustomMessageBox.question(self.parent(), tr("Playlist"), q_message)
 
             if ret != QMessageBox.No:
                 return True

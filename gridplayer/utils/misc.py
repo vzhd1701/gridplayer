@@ -1,5 +1,6 @@
 from multiprocessing.process import active_children
 
+from PyQt5.QtCore import QCoreApplication
 from PyQt5.QtWidgets import QApplication
 
 
@@ -15,3 +16,11 @@ def qt_connect(*connections):
 def force_terminate_children():
     for p in active_children():
         p.terminate()
+
+
+def tr(text):
+    return QCoreApplication.translate("@default", text)
+
+
+def translate(context, text):
+    return QCoreApplication.translate(context, text)

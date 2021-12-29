@@ -14,6 +14,7 @@ class Ui_ExceptionDialog(object):
         self.errorIcon.setObjectName("errorIcon")
         self.horizontalLayout.addWidget(self.errorIcon)
         self.errorLabel = QtWidgets.QLabel(ExceptionDialog)
+        self.errorLabel.setText("exception info")
         self.errorLabel.setTextFormat(QtCore.Qt.RichText)
         self.errorLabel.setOpenExternalLinks(True)
         self.errorLabel.setObjectName("errorLabel")
@@ -45,11 +46,5 @@ class Ui_ExceptionDialog(object):
         _translate = QtCore.QCoreApplication.translate
         ExceptionDialog.setWindowTitle(
             _translate("ExceptionDialog", "Unhandled Exception")
-        )
-        self.errorLabel.setText(
-            _translate(
-                "ExceptionDialog",
-                '<html><head/><body><p><span style=" font-weight:600;">Program terminated due to unhandled exception!</span></p><p>Please consider sending a bug report to the <a href="{APP_BUGTRACKER_URL}"><span style=" text-decoration: underline; color:#0000ff;">bug tracker</span></a>.</p></body></html>',
-            )
         )
         self.copyButton.setText(_translate("ExceptionDialog", "Copy to Clipboard"))

@@ -1,0 +1,8 @@
+"preserve_hierarchy": false
+
+files: [
+ {
+  "source" : "/resources/translations/en_US.ts",
+  "translation" : "/resources/translations/%locale_with_underscore%.%file_extension%",
+ }
+]

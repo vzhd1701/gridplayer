@@ -1,8 +1,10 @@
 from PyQt5.QtCore import pyqtSignal
 
+from gridplayer.dialogs.messagebox import QCustomMessageBox
 from gridplayer.dialogs.settings import SettingsDialog
 from gridplayer.player.managers.base import ManagerBase
 from gridplayer.settings import Settings
+from gridplayer.utils.misc import tr
 
 
 class SettingsManager(ManagerBase):
@@ -21,6 +23,13 @@ class SettingsManager(ManagerBase):
         SettingsDialog(self.parent()).exec_()
 
         self._apply_settings(previous_settings)
+
+        if self._is_restart_needed(previous_settings):
+            QCustomMessageBox.information(
+                self.parent(),
+                tr("Settings"),
+                tr("Restart is required for the new settings to take effect."),
+            )
 
         if self._is_reload_needed(previous_settings):
             self.reload.emit()
@@ -42,6 +51,13 @@ class SettingsManager(ManagerBase):
             "player/video_driver",
             "player/video_driver_players",
             "internal/opaque_hw_overlay",
+        }
+
+        return self._setting_changes(previous_settings, checks)
+
+    def _is_restart_needed(self, previous_settings):
+        checks = {
+            "player/language",
         }
 
         return self._setting_changes(previous_settings, checks)

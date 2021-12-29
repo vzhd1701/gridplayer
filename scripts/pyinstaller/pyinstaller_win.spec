@@ -81,9 +81,7 @@ del_bins = [
     r"PyQt5\Qt\plugins\playlistformats\qtmultimedia_m3u",
 ]
 
-del_data = [
-    r"PyQt5\Qt5\translations",
-]
+del_data = []
 
 add_data = [
     (os.path.join(BUILD_DIR, "python-vlc.version"), '.')

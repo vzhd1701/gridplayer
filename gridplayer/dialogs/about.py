@@ -26,20 +26,6 @@ class Attribution(NamedTuple):
     url: str
 
 
-def generate_attributions(attributions):
-    attributions_txt = []
-    for a in attributions:
-        version = f" {a.version}" if a.version else ""
-
-        attributions_txt.append(
-            f"<p><b>{a.title}{version}</b>"  # noqa: WPS221
-            f' by <a href="{a.url}">{a.author}</a><br>'
-            f"<i>Licensed under {a.license}</i></p>"
-        )
-
-    return "\n".join(attributions_txt)
-
-
 class AboutDialog(QDialog, Ui_AboutDialog):
     def __init__(self, parent):
         super().__init__(parent)
@@ -49,12 +35,28 @@ class AboutDialog(QDialog, Ui_AboutDialog):
         self.logo.setPixmap(QIcon(":/icons/main_ico_big.svg").pixmap(self.logo.size()))
 
         self.name.setText(__display_name__)
-        self.version.setText(f"version {__version__}")
+        self.version.setText(
+            self.tr("version {APP_VERSION}").replace("{APP_VERSION}", __version__)
+        )
 
-        about_info = self.info.text()
+        about_info = [
+            self.tr(
+                "<p>This software is licensed under "
+                '<a href="{APP_LICENSE_URL}">GNU GPL</a> version 3.</p>'
+            ),
+            self.tr(
+                '<p>Source code is available on <a href="{APP_URL}">GitHub</a>.<br/>'
+            ),
+            self.tr(
+                "Please send any suggestions and bug reports "
+                '<a href="{APP_BUGTRACKER_URL}">here</a>.</p>'
+            ),
+        ]
+        about_info = "".join(about_info)
         about_info = about_info.replace("{APP_URL}", __app_url__)
         about_info = about_info.replace("{APP_BUGTRACKER_URL}", __app_bugtracker_url__)
         about_info = about_info.replace("{APP_LICENSE_URL}", __app_license_url__)
+
         self.info.setText(about_info)
 
         attributions_general = [
@@ -131,11 +133,30 @@ class AboutDialog(QDialog, Ui_AboutDialog):
 
         attributions_txt = [
             "<style>p, h3 {text-align: center;}</style>",
-            generate_attributions(attributions_general),
-            "<h3>Python packages</h3>",
-            generate_attributions(attributions_python),
-            "<h3>Graphics</h3>",
-            generate_attributions(attributions_gui),
+            self.generate_attributions(attributions_general),
+            "<h3>{0}</h3>".format(self.tr("Python packages")),
+            self.generate_attributions(attributions_python),
+            "<h3>{0}</h3>".format(self.tr("Graphics")),
+            self.generate_attributions(attributions_gui),
         ]
 
         self.attributionsBox.setText("\n".join(attributions_txt))
+
+    def generate_attributions(self, attributions):
+        attributions_txt = []
+        for a in attributions:
+            app_title = "{0} {1}".format(a.title, a.version or "").strip()
+            app_url = f'<a href="{a.url}">{a.author}</a>'
+
+            attribution_txt = self.tr(
+                "<p><b>{APP_TITLE}</b> by {APP_URL}<br>"
+                "<i>Licensed under {APP_LICENSE}</i></p>"
+            )
+
+            attribution_txt = attribution_txt.replace("{APP_TITLE}", app_title)
+            attribution_txt = attribution_txt.replace("{APP_URL}", app_url)
+            attribution_txt = attribution_txt.replace("{APP_LICENSE}", a.license)
+
+            attributions_txt.append(attribution_txt)
+
+        return "\n".join(attributions_txt)

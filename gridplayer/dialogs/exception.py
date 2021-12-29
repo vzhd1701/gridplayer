@@ -21,8 +21,14 @@ class ExceptionDialog(QDialog, Ui_ExceptionDialog):
 
         self.exceptionBox.setText(exc_txt)
 
-        exception_info = self.errorLabel.text()
-        exception_info = exception_info.replace(
+        exception_info = [
+            self.tr("<p><b>Program terminated due to unhandled exception!</b></p>"),
+            self.tr(
+                "<p>Please consider sending a bug report to the"
+                ' <a href="{APP_BUGTRACKER_URL}">bug tracker</a>.</p>'
+            ),
+        ]
+        exception_info = "".join(exception_info).replace(
             "{APP_BUGTRACKER_URL}", __app_bugtracker_url__
         )
         self.errorLabel.setText(exception_info)

@@ -3,13 +3,27 @@ import platform
 from enum import Enum
 
 from pydantic import Field
-from PyQt5.QtCore import QSettings
+from PyQt5.QtCore import QLocale, QSettings
 
-from gridplayer.params_static import GridMode, VideoAspect, VideoDriver, VideoRepeat
+from gridplayer.params_static import (
+    SUPPORTED_LANGUAGES,
+    GridMode,
+    VideoAspect,
+    VideoDriver,
+    VideoRepeat,
+)
 from gridplayer.utils.app_dir import get_app_data_dir
 from gridplayer.utils.log_config import DISABLED
 
 SETTINGS = None
+
+
+def default_language():
+    lang = QLocale().system().name()
+    if lang in SUPPORTED_LANGUAGES:
+        return lang
+    return "en_US"
+
 
 _default_settings = {
     "player/video_driver": VideoDriver.VLC_HW,
@@ -18,6 +32,7 @@ _default_settings = {
     "player/pause_minimized": True,
     "player/inhibit_screensaver": True,
     "player/one_instance": True,
+    "player/language": default_language(),
     "playlist/grid_mode": GridMode.AUTO_ROWS,
     "playlist/grid_fit": True,
     "playlist/grid_size": 0,

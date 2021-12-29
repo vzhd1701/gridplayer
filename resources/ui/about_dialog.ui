@@ -103,7 +103,7 @@
       </font>
      </property>
      <property name="text">
-      <string>{APP_NAME}</string>
+      <string notr="true">App Name</string>
      </property>
      <property name="alignment">
       <set>Qt::AlignCenter</set>
@@ -113,7 +113,7 @@
    <item>
     <widget class="QLabel" name="version">
      <property name="text">
-      <string>version X.X.X</string>
+      <string notr="true">version X.X.X</string>
      </property>
      <property name="alignment">
       <set>Qt::AlignCenter</set>
@@ -123,7 +123,7 @@
    <item>
     <widget class="QLabel" name="info">
      <property name="text">
-      <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;This software is licensed under &lt;a href=&quot;{APP_LICENSE_URL}&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#0000ff;&quot;&gt;GNU GPL&lt;/span&gt;&lt;/a&gt; version 3. &lt;/p&gt;&lt;p&gt;Source code is available on &lt;a href=&quot;{APP_URL}&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#0000ff;&quot;&gt;GitHub&lt;/span&gt;&lt;/a&gt;.&lt;br/&gt;Please send any suggestions and bug reports &lt;a href=&quot;{APP_BUGTRACKER_URL}&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#0000ff;&quot;&gt;here&lt;/span&gt;&lt;/a&gt;.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+      <string notr="true">about info</string>
      </property>
      <property name="textFormat">
       <enum>Qt::RichText</enum>

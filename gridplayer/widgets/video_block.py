@@ -567,7 +567,7 @@ class VideoBlock(QWidget):  # noqa: WPS230
     def rename(self):
         new_name, new_color = QVideoRenameDialog.get_edits(
             self.parent(),
-            "Rename video",
+            self.tr("Rename video"),
             self.video_params.file_path.name,
             self.video_params.title,
             self.video_params.color.as_rgb_tuple(),

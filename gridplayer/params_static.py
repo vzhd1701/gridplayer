@@ -48,6 +48,12 @@ class WindowState(NamedTuple):
     geometry: str
 
 
+SUPPORTED_LANGUAGES = (
+    "en_US",
+    "ru_RU",
+)
+
+
 SUPPORTED_VIDEO_EXT = frozenset(
     (
         "3g2",

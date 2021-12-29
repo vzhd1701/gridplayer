@@ -9,7 +9,7 @@ class QCustomSpinboxInput(QDialog):
 
         self.spinbox = QSpinBox(self)
         self.spinbox.setRange(0, 1000)
-        self.spinbox.setSpecialValueText("Auto")
+        self.spinbox.setSpecialValueText(self.tr("Auto"))
 
         self.buttons = QDialogButtonBox(
             QDialogButtonBox.Ok | QDialogButtonBox.Cancel, Qt.Horizontal, self

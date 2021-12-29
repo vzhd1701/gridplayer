@@ -5,6 +5,7 @@ from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import QMenu, QProxyStyle, QStyle
 
 from gridplayer.player.managers.base import ManagerBase
+from gridplayer.utils.misc import translate
 
 MENU_STYLE = """
 QMenu::item { height:24px; padding: 2px; margin: 0 5px;}
@@ -15,13 +16,16 @@ QMenu::separator { height: 2px; margin: 0; }
 
 SUBMENUS = MappingProxyType(
     {
-        "Step": {"icon": "next-frame"},
-        "Loop": {"icon": "loop"},
-        "Speed": {"icon": "speed"},
-        "Zoom": {"icon": "zoom"},
-        "Aspect": {"icon": "aspect"},
-        "Jump (to) [ALL]": {"icon": "jump-to"},
-        "Grid": {"icon": "grid"},
+        "Step": {"title": translate("Actions", "Step"), "icon": "next-frame"},
+        "Loop": {"title": translate("Actions", "Loop"), "icon": "loop"},
+        "Speed": {"title": translate("Actions", "Speed"), "icon": "speed"},
+        "Zoom": {"title": translate("Actions", "Zoom"), "icon": "zoom"},
+        "Aspect": {"title": translate("Actions", "Aspect"), "icon": "aspect"},
+        "Jump (to) [ALL]": {
+            "title": translate("Actions", "Jump (to) [ALL]"),
+            "icon": "jump-to",
+        },
+        "Grid": {"title": translate("Actions", "Grid"), "icon": "grid"},
     }
 )
 
@@ -33,7 +37,11 @@ SECTIONS = MappingProxyType(
             "Play Previous File",
             "Play Next File",
             "---",
-            ("Step", "Next frame", "Previous frame"),
+            (
+                "Step",
+                "Next frame",
+                "Previous frame",
+            ),
             (
                 "Loop",
                 "Random Loop",
@@ -46,9 +54,24 @@ SECTIONS = MappingProxyType(
                 "Repeat Directory",
                 "Repeat Directory (Shuffle)",
             ),
-            ("Speed", "Faster", "Slower", "Normal"),
-            ("Zoom", "Zoom In", "Zoom Out", "Zoom Reset"),
-            ("Aspect", "Aspect Fit", "Aspect Stretch", "Aspect None"),
+            (
+                "Speed",
+                "Faster",
+                "Slower",
+                "Normal",
+            ),
+            (
+                "Zoom",
+                "Zoom In",
+                "Zoom Out",
+                "Zoom Reset",
+            ),
+            (
+                "Aspect",
+                "Aspect Fit",
+                "Aspect Stretch",
+                "Aspect None",
+            ),
             "Rename",
         ],
         "video_block": ["Close"],
@@ -172,16 +195,13 @@ class MenuManager(ManagerBase):
                 self._add_action(m_item, menu)
 
     def _add_submenu(self, submenu, menu):
-        sub_name = submenu[0]
+        sub = SUBMENUS[submenu[0]]
         sub_items = submenu[1:]
-        sub = SUBMENUS[sub_name]
 
-        sub_icon = sub.get("icon")
-
-        if sub_icon is not None:
-            sub_menu = menu.addMenu(QIcon.fromTheme(sub_icon), sub_name)
+        if sub.get("icon"):
+            sub_menu = menu.addMenu(QIcon.fromTheme(sub["icon"]), sub["title"])
         else:
-            sub_menu = menu.addMenu(sub_name)
+            sub_menu = menu.addMenu(sub["title"])
 
         sub_menu.setStyle(BigMenuIcons())
 

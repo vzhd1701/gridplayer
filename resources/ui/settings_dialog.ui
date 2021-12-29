@@ -91,7 +91,7 @@
          <item>
           <widget class="QCheckBox" name="playlistSavePosition">
            <property name="text">
-            <string>Save videos position</string>
+            <string>Save videos playback position</string>
            </property>
           </widget>
          </item>
@@ -105,7 +105,7 @@
          <item>
           <widget class="QCheckBox" name="playlistSeekSync">
            <property name="text">
-            <string>Seek in sync by default</string>
+            <string>Synchronize seek by default</string>
            </property>
           </widget>
          </item>
@@ -154,7 +154,7 @@
           </layout>
          </item>
          <item>
-          <layout class="QHBoxLayout" name="lay_gridSize" stretch="0,0">
+          <layout class="QHBoxLayout" name="lay_gridSize" stretch="0,0,0">
            <item>
             <widget class="QSpinBox" name="gridSize"/>
            </item>
@@ -164,6 +164,19 @@
               <string>Grid size</string>
              </property>
             </widget>
+           </item>
+           <item>
+            <spacer name="horizontalSpacer_4">
+             <property name="orientation">
+              <enum>Qt::Horizontal</enum>
+             </property>
+             <property name="sizeHint" stdset="0">
+              <size>
+               <width>40</width>
+               <height>20</height>
+              </size>
+             </property>
+            </spacer>
            </item>
           </layout>
          </item>
@@ -284,7 +297,19 @@
       </layout>
      </item>
      <item>
-      <layout class="QVBoxLayout" name="lay_right_column" stretch="0,0,0,0,0,0,0">
+      <layout class="QVBoxLayout" name="lay_right_column" stretch="0,0,0,0,0,0,0,0">
+       <item>
+        <widget class="QGroupBox" name="languageBox">
+         <property name="title">
+          <string>Language</string>
+         </property>
+         <layout class="QVBoxLayout" name="verticalLayout">
+          <item>
+           <widget class="QComboBox" name="language"/>
+          </item>
+         </layout>
+        </widget>
+       </item>
        <item>
         <widget class="QGroupBox" name="playerVideoDriverBox">
          <property name="title">

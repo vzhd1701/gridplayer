@@ -4,6 +4,7 @@ from gridplayer import params_env
 from gridplayer.dialogs.messagebox import QCustomMessageBox
 from gridplayer.main.init_app import init_app
 from gridplayer.utils.libvlc import init_vlc
+from gridplayer.utils.misc import tr
 
 
 def run_app():
@@ -14,10 +15,12 @@ def run_app():
     except FileNotFoundError:
         QCustomMessageBox.critical(
             None,
-            "Error",
-            "<p>VLC player is required!</p><p>Please visit"
-            ' <a href="https://www.videolan.org/vlc/">VLC official site</a>'
-            " for instructions on how to install it.</p>",
+            tr("Error"),
+            tr(
+                "<p>VLC player is required!</p><p>Please visit"
+                ' <a href="https://www.videolan.org/vlc/">VLC official site</a>'
+                " for instructions on how to install it.</p>",
+            ),
         )
         return 1
 
