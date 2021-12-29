@@ -1,7 +1,7 @@
 ![GridPlayer](https://raw.githubusercontent.com/vzhd1701/gridplayer/master/resources/public/logo.png)
 
-[![GitHub release (latest by date)](https://img.shields.io/github/v/release/vzhd1701/gridplayer)](https://github.com/vzhd1701/gridplayer/releases/latest)
 [![PyPI version](https://img.shields.io/pypi/v/gridplayer)](https://pypi.python.org/pypi/gridplayer)
+[![Github All Releases](https://img.shields.io/github/downloads/vzhd1701/gridplayer/total.svg)](https://github.com/vzhd1701/gridplayer/releases/latest)
 
 ## Screenshots
 
