@@ -1,3 +1,17 @@
+## [0.2.0](https://github.com/vzhd1701/gridplayer/compare/v0.1.6...v0.2.0) (2021-12-29)
+
+### Features
+
+- add internationalization support ([2c436e6](https://github.com/vzhd1701/gridplayer/commit/2c436e60c66101405204520c164f0a9f460d110e))
+- add option to disable overlay timeout ([4d0782a](https://github.com/vzhd1701/gridplayer/commit/4d0782aa1ee46c20068bc9022ac2cee6e8c9a966))
+- add option to loop through videos in directory ([cd78f48](https://github.com/vzhd1701/gridplayer/commit/cd78f48ff0466226951a5e4449e66f4cbad84d8e))
+- add option to rename videos and set custom color ([a2cba33](https://github.com/vzhd1701/gridplayer/commit/a2cba335c7cc45995b4d5f204cff1b1b5d8b36f7))
+- add Russian translation ([e1d81c3](https://github.com/vzhd1701/gridplayer/commit/e1d81c33bdd29fcd3b045dc01f0deef707f738ce))
+
+### Bug Fixes
+
+- set proper name for about dialog ([c9bbda5](https://github.com/vzhd1701/gridplayer/commit/c9bbda5ca2088352c67444c4442953e8c411d4a9))
+
 ### [0.1.6](https://github.com/vzhd1701/gridplayer/compare/v0.1.5...v0.1.6) (2021-12-01)
 
 ### Bug Fixes
