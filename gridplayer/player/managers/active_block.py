@@ -30,6 +30,8 @@ class ActiveBlockManager(ManagerBase):
         return {
             "active": self.cmd_active,
             "is_active_param_set_to": self.is_active_param_set_to,
+            "next_active": self.next_active,
+            "previous_active": self.previous_active,
         }
 
     def cmd_active(self, command, *args):
@@ -50,26 +52,48 @@ class ActiveBlockManager(ManagerBase):
         return active_video_param == param_value
 
     def update_active_under_mouse(self):
-        self._update_active_block(self._get_current_cursor_pos())
-        self.cmd_active("show_overlay")
-
-    def update_active_reset(self):
-        self._update_active_block(None)
-
-    def _update_active_block(self, pos):
         if is_modal_open():
             return
 
-        old_active_block = self._ctx.active_block
+        self._update_active_block(self._get_hover_video_block())
+        self.cmd_active("show_overlay")
 
-        if pos is None:
-            self._ctx.active_block = None
+    def update_active_reset(self):
+        if is_modal_open():
+            return
 
+        self._update_active_block(None)
+
+    def next_active(self):
+        if self._ctx.active_block is None:
+            next_active = self._ctx.video_blocks[0]
         else:
-            self._ctx.active_block = self._get_hover_video_block()
+            next_block_index = (
+                self._ctx.video_blocks.index(self._ctx.active_block) + 1
+            ) % len(self._ctx.video_blocks)
+            next_active = self._ctx.video_blocks[next_block_index]
 
-            if self._ctx.active_block is not None:
-                self._ctx.active_block.is_active = True
+        self._update_active_block(next_active)
+        self.cmd_active("show_overlay")
+
+    def previous_active(self):
+        if self._ctx.active_block is None:
+            next_active = self._ctx.video_blocks[-1]
+        else:
+            next_block_index = (
+                self._ctx.video_blocks.index(self._ctx.active_block) - 1
+            ) % len(self._ctx.video_blocks)
+            next_active = self._ctx.video_blocks[next_block_index]
+
+        self._update_active_block(next_active)
+        self.cmd_active("show_overlay")
+
+    def _update_active_block(self, new_active_block):
+        old_active_block = self._ctx.active_block
+        self._ctx.active_block = new_active_block
+
+        if self._ctx.active_block is not None:
+            self._ctx.active_block.is_active = True
 
         if self._ctx.active_block != old_active_block:
             if old_active_block is not None:

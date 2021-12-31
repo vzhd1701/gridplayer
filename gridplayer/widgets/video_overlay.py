@@ -1,5 +1,5 @@
 from PyQt5.QtCore import QEvent, QPoint, QRect, Qt, QTimer, pyqtSignal, pyqtSlot
-from PyQt5.QtGui import QPalette, QRegion
+from PyQt5.QtGui import QGuiApplication, QPalette, QRegion
 from PyQt5.QtWidgets import (
     QApplication,
     QGraphicsOpacityEffect,
@@ -8,6 +8,7 @@ from PyQt5.QtWidgets import (
     QWidget,
 )
 
+from gridplayer.params_static import OVERLAY_ACTIVITY_EVENT
 from gridplayer.settings import Settings
 from gridplayer.utils.misc import qt_connect
 from gridplayer.utils.time_txt import get_time_txt
@@ -131,6 +132,10 @@ class OverlayBlock(QWidget):  # noqa: WPS230
         self.bottom_bar.addWidget(self.volume_button)
 
         self.floating_progress = OverlayShortLabelFloating(parent=self)
+
+    def customEvent(self, event):
+        if event.type() == OVERLAY_ACTIVITY_EVENT:
+            QGuiApplication.sendEvent(self.parent(), QEvent(2000))
 
     def resizeEvent(self, event):
         too_narrow_to_fit = 250

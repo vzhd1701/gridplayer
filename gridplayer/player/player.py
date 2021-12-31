@@ -1,7 +1,7 @@
 import logging
 import platform
 
-from PyQt5.QtCore import pyqtSignal
+from PyQt5.QtCore import QEvent, pyqtSignal
 from PyQt5.QtWidgets import QWidget
 
 from gridplayer.player.manager import ManagersManager
@@ -67,9 +67,6 @@ class Player(QWidget, ManagersManager):
             ],
             "mouse_hide": [
                 ("video_blocks.video_count_changed", "show_cursor"),
-                ("mouse_hidden", "active_block.update_active_reset"),
-                ("mouse_hidden", "video_blocks.hide_overlay"),
-                ("mouse_shown", "active_block.update_active_under_mouse"),
             ],
             "active_block": [
                 ("video_blocks.video_count_changed", "update_active_under_mouse")

@@ -338,9 +338,19 @@ COMMANDS = MappingProxyType(
         },
         "Next Video": {
             "title": translate("Actions", "Next Video"),
-            "key": Qt.Key_Tab,
+            "key": "N",
             "icon": "next-video",
             "func": "next_single_video",
+        },
+        "Next Active": {
+            "title": "Next Active",
+            "key": Qt.Key_Tab,
+            "func": "next_active",
+        },
+        "Previous Active": {
+            "title": "Previous Active",
+            "key": Qt.SHIFT + Qt.Key_Tab,
+            "func": "previous_active",
         },
     }
 )

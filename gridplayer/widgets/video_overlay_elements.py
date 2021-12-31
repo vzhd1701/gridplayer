@@ -1,16 +1,18 @@
 import math
 
-from PyQt5.QtCore import QPoint, Qt, pyqtSignal
+from PyQt5.QtCore import QEvent, QPoint, Qt, pyqtSignal
 from PyQt5.QtGui import (
     QColor,
     QFontMetrics,
     QGuiApplication,
+    QMouseEvent,
     QPainter,
     QPainterPath,
     QRegion,
 )
 from PyQt5.QtWidgets import QSizePolicy, QWidget
 
+from gridplayer.params_static import OVERLAY_ACTIVITY_EVENT
 from gridplayer.utils.time_txt import get_time_txt_short
 
 
@@ -270,6 +272,9 @@ class OverlayProgressBar(OverlayBar):
         if QGuiApplication.mouseButtons() == Qt.LeftButton:
             self._update_position(self.progress_select_x)
             event.accept()
+
+            # Send activity event to keep overlay visible
+            QGuiApplication.sendEvent(self.parent(), QEvent(OVERLAY_ACTIVITY_EVENT))
         else:
             event.ignore()
 
@@ -403,6 +408,9 @@ class OverlayVolumeBar(OverlayBar):
         if QGuiApplication.mouseButtons() == Qt.LeftButton:
             self._update_position(self.progress_select_y)
             event.accept()
+
+            # Send activity event to keep overlay visible
+            QGuiApplication.sendEvent(self.parent(), QEvent(OVERLAY_ACTIVITY_EVENT))
         else:
             event.ignore()
 

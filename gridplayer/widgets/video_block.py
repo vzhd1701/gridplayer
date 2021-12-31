@@ -4,13 +4,17 @@ from pathlib import Path
 from typing import Optional
 
 from pydantic.color import Color
-from PyQt5.QtCore import Qt, QTimer, pyqtSignal
+from PyQt5.QtCore import QEvent, Qt, QTimer, pyqtSignal
 from PyQt5.QtGui import QCursor
 from PyQt5.QtWidgets import QStackedLayout, QWidget
 
 from gridplayer.dialogs.rename_dialog import QVideoRenameDialog
 from gridplayer.exceptions import PlayerException
-from gridplayer.params_static import PLAYER_ID_LENGTH, VideoRepeat
+from gridplayer.params_static import (
+    OVERLAY_ACTIVITY_EVENT,
+    PLAYER_ID_LENGTH,
+    VideoRepeat,
+)
 from gridplayer.settings import Settings
 from gridplayer.utils.misc import qt_connect
 from gridplayer.utils.next_file import next_video_file
@@ -219,6 +223,10 @@ class VideoBlock(QWidget):  # noqa: WPS230
         if self.is_video_initialized and not Settings().get("misc/overlay_hide"):
             self.show_overlay()
 
+    def customEvent(self, event):
+        if event.type() == OVERLAY_ACTIVITY_EVENT:
+            self.show_overlay()
+
     def is_under_cursor(self):
         return self.rect().contains(self.mapFromGlobal(QCursor.pos()))
 
@@ -267,10 +275,6 @@ class VideoBlock(QWidget):  # noqa: WPS230
 
     def hide_overlay(self):
         if not Settings().get("misc/overlay_hide"):
-            return
-
-        if self.is_active:
-            self.overlay_hide_timer.start(1000 * Settings().get("misc/overlay_timeout"))
             return
 
         self.overlay.hide()
