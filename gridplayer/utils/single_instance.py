@@ -108,7 +108,7 @@ class Listener(QObject):
         if input_data == "ping":
             logger.debug("Received ping from another instance")
 
-        if isinstance(input_data, list):
+        if isinstance(input_data, list) and input_data:
             self.open_files.emit(input_data)
 
 

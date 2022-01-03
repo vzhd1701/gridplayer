@@ -97,6 +97,9 @@ class PlaylistManager(ManagerBase):
         }
 
     def process_arguments(self, argv):
+        if not argv:
+            return
+
         files = filter_valid_files(list(map(Path, argv)))
 
         if not files:
