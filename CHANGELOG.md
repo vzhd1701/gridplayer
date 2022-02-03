@@ -1,3 +1,11 @@
+### [0.2.1](https://github.com/vzhd1701/gridplayer/compare/v0.2.0...v0.2.1) (2022-02-03)
+
+### Bug Fixes
+
+- allow to switch focus using keyboard ([f441f88](https://github.com/vzhd1701/gridplayer/commit/f441f88569db3548c0bd5f1825f4622b6de8ace0))
+- handle files with uppercase extension ([74e8648](https://github.com/vzhd1701/gridplayer/commit/74e8648b68ecc8ad2b20846570d7ac49897211f5))
+- prevent error when opening second instance without arguments ([3c33209](https://github.com/vzhd1701/gridplayer/commit/3c33209dd427a0de8cb55cb05075341ea3c81759)), closes [#23](https://github.com/vzhd1701/gridplayer/issues/23)
+
 ## [0.2.0](https://github.com/vzhd1701/gridplayer/compare/v0.1.6...v0.2.0) (2021-12-29)
 
 ### Features

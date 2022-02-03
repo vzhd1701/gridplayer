@@ -40,14 +40,14 @@ there are not many strings to translate. Every contributor will be given proper 
 
 ### Windows
 
-[![Download Windows Installer](https://raw.githubusercontent.com/vzhd1701/gridplayer/master/resources/public/dl_windows_installer.png)](https://github.com/vzhd1701/gridplayer/releases/download/v0.2.0/GridPlayer-0.2.0-win64-install.exe)
-[![Download Windows Portable](https://raw.githubusercontent.com/vzhd1701/gridplayer/master/resources/public/dl_windows_portable.png)](https://github.com/vzhd1701/gridplayer/releases/download/v0.2.0/GridPlayer-0.2.0-win64-portable.zip)
+[![Download Windows Installer](https://raw.githubusercontent.com/vzhd1701/gridplayer/master/resources/public/dl_windows_installer.png)](https://github.com/vzhd1701/gridplayer/releases/download/v0.2.1/GridPlayer-0.2.1-win64-install.exe)
+[![Download Windows Portable](https://raw.githubusercontent.com/vzhd1701/gridplayer/master/resources/public/dl_windows_portable.png)](https://github.com/vzhd1701/gridplayer/releases/download/v0.2.1/GridPlayer-0.2.1-win64-portable.zip)
 
 ### Linux
 
 [![Get it from the Flathub](https://raw.githubusercontent.com/vzhd1701/gridplayer/master/resources/public/dl_flathub.png)](https://flathub.org/apps/details/com.vzhd1701.gridplayer)
 [![Get it from the Snap Store](https://raw.githubusercontent.com/vzhd1701/gridplayer/master/resources/public/dl_snap.png)](https://snapcraft.io/gridplayer)
-[![Download AppImage](https://raw.githubusercontent.com/vzhd1701/gridplayer/master/resources/public/dl_appimage.png)](https://github.com/vzhd1701/gridplayer/releases/download/v0.2.0/GridPlayer-0.2.0-x86_64.AppImage)
+[![Download AppImage](https://raw.githubusercontent.com/vzhd1701/gridplayer/master/resources/public/dl_appimage.png)](https://github.com/vzhd1701/gridplayer/releases/download/v0.2.1/GridPlayer-0.2.1-x86_64.AppImage)
 
 **For better system integration install via Flathub.**
 
@@ -56,12 +56,12 @@ there are not many strings to translate. Every contributor will be given proper 
 You may need to set execute permissions on AppImage file in order to run it:
 
 ```shell
-$ chmod +x GridPlayer-0.2.0-x86_64.AppImage
+$ chmod +x GridPlayer-0.2.1-x86_64.AppImage
 ```
 
 ### MacOS
 
-[![Download DMG](https://raw.githubusercontent.com/vzhd1701/gridplayer/master/resources/public/dl_dmg.png)](https://github.com/vzhd1701/gridplayer/releases/download/v0.2.0/GridPlayer.0.2.0.dmg)
+[![Download DMG](https://raw.githubusercontent.com/vzhd1701/gridplayer/master/resources/public/dl_dmg.png)](https://github.com/vzhd1701/gridplayer/releases/download/v0.2.1/GridPlayer.0.2.1.dmg)
 
 **DMG image is not signed.** You will have to add an exception to run this app.
 
