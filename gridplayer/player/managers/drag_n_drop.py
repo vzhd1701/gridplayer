@@ -58,7 +58,7 @@ class DragNDropManager(ManagerBase):
 
         # Add new video
         if drop_files:
-            if drop_files[0].suffix == ".gpls":
+            if drop_files[0].suffix.lower() == ".gpls":
                 self.playlist_dropped.emit(drop_files[0])
             else:
                 videos = [Video(file_path=f, title=f.name) for f in drop_files]

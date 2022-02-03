@@ -28,5 +28,5 @@ def _file_siblings(file: Path):
     return sorted(
         f
         for f in file.parent.iterdir()
-        if f.is_file() and f.suffix[1:] in SUPPORTED_VIDEO_EXT
+        if f.is_file() and f.suffix[1:].lower() in SUPPORTED_VIDEO_EXT
     )

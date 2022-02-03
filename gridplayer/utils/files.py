@@ -73,4 +73,4 @@ def _filter_accesible_files(files: List[Path]) -> List[Path]:
 
 
 def _filter_extensions(files: List[Path], extensions: Set[str]):
-    return [f for f in files if f.suffix[1:] in extensions]
+    return [f for f in files if f.suffix[1:].lower() in extensions]

@@ -83,7 +83,7 @@ class PlaylistManager(ManagerBase):
         # filename placeholder is not available if file doesn't exist
         # problematic for new playlists, need to prevent accidental overwrite
         # occurs in Flatpak, maybe in other sandboxes that use portal
-        if file_path.suffix != ".gpls":
+        if file_path.suffix.lower() != ".gpls":
             file_path = file_path.with_suffix(".gpls")
 
             if self._is_overwrite_denied(file_path):
@@ -106,7 +106,7 @@ class PlaylistManager(ManagerBase):
             self.error.emit(tr("No supported files!"))
             return
 
-        if files[0].suffix == ".gpls":
+        if files[0].suffix.lower() == ".gpls":
             self.load_playlist_file(files[0])
             return
 
