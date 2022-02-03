@@ -134,6 +134,8 @@ $ sudo xattr -rd com.apple.quarantine /Applications/GridPlayer.app
 
 ## Geting help
 
+If you found a bug or have a feature request, please [open a new issue](https://github.com/vzhd1701/gridplayer/issues/new/choose).
+
 If you have a question about the program or have difficulty using it, you are welcome to [the discussions page](https://github.com/vzhd1701/gridplayer/discussions). You can also mail me directly, I'm always happy to help.
 
 ## Attributions
