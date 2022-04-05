@@ -9,6 +9,7 @@ from gridplayer.params import GridState
 from gridplayer.params_static import WindowState
 from gridplayer.player.managers.base import ManagerBase
 from gridplayer.playlist import Playlist
+from gridplayer.settings import Settings
 from gridplayer.utils.files import filter_valid_files
 from gridplayer.utils.misc import tr
 from gridplayer.video import Video
@@ -160,6 +161,9 @@ class PlaylistManager(ManagerBase):
         self.playlist_loaded.emit()
 
     def check_playlist_save(self):
+        if not Settings().get("playlist/track_changes"):
+            return
+
         if not self._ctx.video_blocks:
             return
 

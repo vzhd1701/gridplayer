@@ -40,6 +40,7 @@ _default_settings = {
     "playlist/save_state": False,
     "playlist/save_window": False,
     "playlist/seek_synced": False,
+    "playlist/track_changes": True,
     "video_defaults/aspect": VideoAspect.FIT,
     "video_defaults/repeat": VideoRepeat.SINGLE_FILE,
     "video_defaults/random_loop": False,

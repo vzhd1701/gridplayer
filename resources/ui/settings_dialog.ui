@@ -109,6 +109,13 @@
            </property>
           </widget>
          </item>
+         <item>
+          <widget class="QCheckBox" name="playlistTrackChanges">
+           <property name="text">
+            <string>Warn about unsaved changes</string>
+           </property>
+          </widget>
+         </item>
         </layout>
        </item>
        <item>

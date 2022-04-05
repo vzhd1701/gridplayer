@@ -55,6 +55,9 @@ class Ui_SettingsDialog(object):
         self.playlistSeekSync = QtWidgets.QCheckBox(SettingsDialog)
         self.playlistSeekSync.setObjectName("playlistSeekSync")
         self.lay_section_playlist.addWidget(self.playlistSeekSync)
+        self.playlistTrackChanges = QtWidgets.QCheckBox(SettingsDialog)
+        self.playlistTrackChanges.setObjectName("playlistTrackChanges")
+        self.lay_section_playlist.addWidget(self.playlistTrackChanges)
         self.lay_left_column.addLayout(self.lay_section_playlist)
         self.lay_section_grid = QtWidgets.QVBoxLayout()
         self.lay_section_grid.setObjectName("lay_section_grid")
@@ -308,6 +311,9 @@ class Ui_SettingsDialog(object):
         )
         self.playlistSeekSync.setText(
             _translate("SettingsDialog", "Synchronize seek by default")
+        )
+        self.playlistTrackChanges.setText(
+            _translate("SettingsDialog", "Warn about unsaved changes")
         )
         self.section_grid.setText(
             _translate("SettingsDialog", "Default Grid Parameters")
