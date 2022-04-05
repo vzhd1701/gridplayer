@@ -43,6 +43,7 @@ class WindowStateManager(ManagerBase):
         elif event.oldState() & Qt.WindowMinimized:
             for v in self.pre_minimize_unpaused:
                 v.set_pause(False)
+            self.pre_minimize_unpaused = []
 
     def cmd_fullscreen(self):
         if self.parent().isFullScreen():
