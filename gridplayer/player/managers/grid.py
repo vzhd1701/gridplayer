@@ -271,6 +271,6 @@ class GridManager(ManagerBase):
 
     def _minimum_vb_size(self):
         return QSize(
-            self._minimum_size.width() / self.grid_dimensions.cols,
-            self._minimum_size.height() / self.grid_dimensions.rows,
+            self._minimum_size.width() // self.grid_dimensions.cols,
+            self._minimum_size.height() // self.grid_dimensions.rows,
         )
