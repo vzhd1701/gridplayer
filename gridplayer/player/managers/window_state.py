@@ -16,6 +16,8 @@ class WindowStateManager(ManagerBase):
         self._ctx.is_maximized_pre_fullscreen = False
         self._ctx.window_state = self.window_state
 
+        self.pre_minimize_unpaused = []
+
     @property
     def event_map(self):
         return {QEvent.WindowStateChange: self.changeEvent}
@@ -30,11 +32,17 @@ class WindowStateManager(ManagerBase):
         }
 
     def changeEvent(self, event):
-        pause_when_minimized = self.parent().isMinimized() and Settings().get(
-            "player/pause_minimized"
-        )
-        if pause_when_minimized:
+        if not Settings().get("player/pause_minimized"):
+            return
+
+        # Minimize
+        if self.parent().isMinimized():
+            self.pre_minimize_unpaused = self._ctx.video_blocks.unpaused
             self.pause_on_minimize.emit()
+        # Restore
+        elif event.oldState() & Qt.WindowMinimized:
+            for v in self.pre_minimize_unpaused:
+                v.set_pause(False)
 
     def cmd_fullscreen(self):
         if self.parent().isFullScreen():
