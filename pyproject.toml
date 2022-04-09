@@ -4,7 +4,7 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.poetry]
 name = "gridplayer"
-version = "0.2.1"
+version = "0.2.2"
 description = "Play videos side-by-side"
 authors = ["vzhd1701 <vzhd1701@gmail.com>"]
 readme = "README.md"

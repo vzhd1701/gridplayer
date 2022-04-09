@@ -1,3 +1,15 @@
+### [0.2.2](https://github.com/vzhd1701/gridplayer/compare/v0.2.1...v0.2.2) (2022-04-09)
+
+### Features
+
+- add Hungarian translation ([5cd6892](https://github.com/vzhd1701/gridplayer/commit/5cd68929ce72954738005f044a77b956298c71cc))
+- add option to control warning about unsaved playlist changes ([380ad92](https://github.com/vzhd1701/gridplayer/commit/380ad9219254edc588d939eadd2a6f1d041ab0a0))
+
+### Bug Fixes
+
+- avoid crash on some setups ([2334439](https://github.com/vzhd1701/gridplayer/commit/233443916c5727a8f287bf18e8ca47dcd8a2f6bf)), closes [#40](https://github.com/vzhd1701/gridplayer/issues/40)
+- unpause videos when window is restored ([8c82293](https://github.com/vzhd1701/gridplayer/commit/8c82293c8e3b77dc65f4124cfd8e85979046f1a9))
+
 ### [0.2.1](https://github.com/vzhd1701/gridplayer/compare/v0.2.0...v0.2.1) (2022-02-03)
 
 ### Bug Fixes
