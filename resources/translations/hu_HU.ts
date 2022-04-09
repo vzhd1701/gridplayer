@@ -1,92 +1,92 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!DOCTYPE TS>
-<TS version="2.0" language="ru" sourcelanguage="en">
+<TS version="2.0" language="hu" sourcelanguage="en">
   <context>
     <name>@default</name>
     <message>
       <location filename="../../gridplayer/player/managers/dialogs.py" line="16"/>
       <source>Error</source>
-      <translation>Ошибка</translation>
+      <translation>Hiba</translation>
     </message>
     <message>
       <location filename="../../gridplayer/main/run.py" line="16"/>
       <source>&lt;p&gt;VLC player is required!&lt;/p&gt;&lt;p&gt;Please visit &lt;a href=&quot;https://www.videolan.org/vlc/&quot;&gt;VLC official site&lt;/a&gt; for instructions on how to install it.&lt;/p&gt;</source>
-      <translation>&lt;p&gt;Требуется VLC плеер!&lt;/p&gt;&lt;p&gt;Пожалуйста, посетите &lt;a href=&quot;https://www.videolan.org/vlc/&quot;&gt;официальный сайт VLC&lt;/a&gt; для получения инструкций о том, как его установить.&lt;/p&gt;</translation>
+      <translation>&lt;p&gt;VLC lejátszó szükéges!&lt;/p&gt;&lt;p&gt;Látogass el a &lt;a href=&quot;https://www.videolan.org/vlc/&quot;&gt;VLC hivatalos weboldalára&lt;/a&gt; a VLC letöltéséhez.&lt;/p&gt;</translation>
     </message>
     <message>
       <location filename="../../gridplayer/player/managers/add_videos.py" line="25"/>
       <source>Videos</source>
-      <translation>Видео</translation>
+      <translation>Videók</translation>
     </message>
     <message>
       <location filename="../../gridplayer/player/managers/grid.py" line="61"/>
       <source>Drag and drop video files here</source>
-      <translation>Перетащите видео файлы сюда</translation>
+      <translation>Húzd be ide a videó fájlokat</translation>
     </message>
     <message>
       <location filename="../../gridplayer/player/managers/grid.py" line="134"/>
       <source>Set grid size</source>
-      <translation>Задать размер сетки</translation>
+      <translation>Oszlopok száma</translation>
     </message>
     <message>
       <location filename="../../gridplayer/player/managers/grid.py" line="146"/>
       <source>Auto</source>
-      <translation>Авто</translation>
+      <translation>Automatikus</translation>
     </message>
     <message>
       <location filename="../../gridplayer/player/managers/playlist.py" line="52"/>
       <source>GridPlayer Playlists</source>
-      <translation>Плейлисты GridPlayer</translation>
+      <translation>GridPlayer Lejátszási Listák</translation>
     </message>
     <message>
       <location filename="../../gridplayer/player/managers/playlist.py" line="75"/>
       <source>Where to save playlist</source>
-      <translation>Где сохранить плейлист</translation>
+      <translation>Lejátszási lista mentési helye</translation>
     </message>
     <message>
       <location filename="../../gridplayer/player/managers/playlist.py" line="107"/>
       <source>No supported files!</source>
-      <translation>Нет поддерживаемых файлов!</translation>
+      <translation>Nem támogatott fájlok!</translation>
     </message>
     <message>
       <location filename="../../gridplayer/player/managers/playlist.py" line="127"/>
       <source>Invalid playlist format!</source>
-      <translation>Неверный формат плейлиста!</translation>
+      <translation>Hibás a lejátszási lista formátuma!</translation>
     </message>
     <message>
       <location filename="../../gridplayer/player/managers/playlist.py" line="132"/>
       <source>File not found!</source>
-      <translation>Файл не найден!</translation>
+      <translation>Nem található a fájl!</translation>
     </message>
     <message>
       <location filename="../../gridplayer/player/managers/playlist.py" line="193"/>
       <source>Playlist</source>
-      <translation>Плейлист</translation>
+      <translation>Lejátszási lista</translation>
     </message>
     <message>
       <location filename="../../gridplayer/player/managers/playlist.py" line="180"/>
       <source>Do you want to save the playlist?</source>
-      <translation>Вы хотите сохранить плейлист?</translation>
+      <translation>Menteni szeretnéd a lejátszási listát?</translation>
     </message>
     <message>
       <location filename="../../gridplayer/player/managers/playlist.py" line="189"/>
       <source>Do you want to overwrite {FILE_NAME}?</source>
-      <translation>Вы хотите перезаписать {FILE_NAME}?</translation>
+      <translation>Felül szeretnéd írni a {FILE_NAME} nevű fájlt?</translation>
     </message>
     <message>
       <location filename="../../gridplayer/player/managers/settings.py" line="28"/>
       <source>Settings</source>
-      <translation>Настройки</translation>
+      <translation>Beállítások</translation>
     </message>
     <message>
       <location filename="../../gridplayer/player/managers/settings.py" line="28"/>
       <source>Restart is required for the new settings to take effect.</source>
-      <translation>Для применения новых настроек требуется перезапуск.</translation>
+      <translation>Az új beállítások csak a program újraindítása után fognak érvénybe lépni.</translation>
     </message>
     <message>
       <location filename="../../gridplayer/player/managers/playlist.py" line="136"/>
       <source>Empty or invalid playlist!</source>
-      <translation>Пустой или неверный плейлист!</translation>
+      <translation>Üres vagy hibás lejátszási lista!</translation>
     </message>
   </context>
   <context>
@@ -94,57 +94,57 @@
     <message>
       <location filename="../../gridplayer/dialogs/about.py" line="44"/>
       <source>version {APP_VERSION}</source>
-      <translation>версия {APP_VERSION}</translation>
+      <translation>Verzió: {APP_VERSION}</translation>
     </message>
     <message>
       <location filename="../../gridplayer/dialogs/about.py" line="49"/>
       <source>&lt;p&gt;This software is licensed under &lt;a href=&quot;{APP_LICENSE_URL}&quot;&gt;GNU GPL&lt;/a&gt; version 3.&lt;/p&gt;</source>
-      <translation>&lt;p&gt;Это программное обеспечение лицензировано под &lt;a href=&quot;{APP_LICENSE_URL}&quot;&gt;GNU GPL&lt;/a&gt; версии 3.&lt;/p&gt;</translation>
+      <translation>&lt;p&gt;A szoftver a következő licenc alá tartozik: &lt;a href=&quot;{APP_LICENSE_URL}&quot;&gt;GNU GPL&lt;/a&gt; version 3.&lt;/p&gt;</translation>
     </message>
     <message>
       <location filename="../../gridplayer/dialogs/about.py" line="53"/>
       <source>&lt;p&gt;Source code is available on &lt;a href=&quot;{APP_URL}&quot;&gt;GitHub&lt;/a&gt;.&lt;br/&gt;</source>
-      <translation>&lt;p&gt;Исходный код доступен на &lt;a href=&quot;{APP_URL}&quot;&gt;GitHub&lt;/a&gt;.&lt;br/&gt;</translation>
+      <translation>&lt;p&gt;A forráskód itt elérhető &lt;a href=&quot;{APP_URL}&quot;&gt;GitHub-on&lt;/a&gt;.&lt;br/&gt;</translation>
     </message>
     <message>
       <location filename="../../gridplayer/dialogs/about.py" line="56"/>
       <source>Please send any suggestions and bug reports &lt;a href=&quot;{APP_BUGTRACKER_URL}&quot;&gt;here&lt;/a&gt;.&lt;/p&gt;</source>
-      <translation>Присылайте любые предложения и сообщения об ошибках &lt;a href=&quot;{APP_BUGTRACKER_URL}&quot;&gt;сюда&lt;/a&gt;.&lt;/p&gt;</translation>
+      <translation>A javaslatokat és a bug-okat &lt;a href=&quot;{APP_BUGTRACKER_URL}&quot;&gt;ide&lt;/a&gt;lehet küldeni.&lt;/p&gt;</translation>
     </message>
     <message>
       <location filename="../../gridplayer/dialogs/about.py" line="151"/>
       <source>Python packages</source>
-      <translation>Python пакеты</translation>
+      <translation>Python csomagok</translation>
     </message>
     <message>
       <location filename="../../gridplayer/dialogs/about.py" line="153"/>
       <source>Graphics</source>
-      <translation>Графика</translation>
+      <translation>Kinézet</translation>
     </message>
     <message>
       <location filename="../../gridplayer/dialogs/about.py" line="167"/>
       <source>&lt;p&gt;&lt;b&gt;{APP_TITLE}&lt;/b&gt; by {APP_URL}&lt;br&gt;&lt;i&gt;Licensed under {APP_LICENSE}&lt;/i&gt;&lt;/p&gt;</source>
-      <translation>&lt;p&gt;&lt;b&gt;{APP_TITLE}&lt;/b&gt; {APP_URL}&lt;br&gt;&lt;i&gt;Распространяется под лицензией&lt;br&gt;{APP_LICENSE}&lt;/i&gt;&lt;/p&gt;</translation>
+      <translation>&lt;p&gt;&lt;b&gt;{APP_TITLE}&lt;/b&gt; készítője {APP_URL}&lt;br&gt;&lt;i&gt;Licenc: {APP_LICENSE}&lt;/i&gt;&lt;/p&gt;</translation>
     </message>
     <message>
       <location filename="../../gridplayer/dialogs/about_dialog_ui.py" line="70"/>
       <source>About</source>
-      <translation>О программе</translation>
+      <translation>Névjegy</translation>
     </message>
     <message>
       <location filename="../../gridplayer/dialogs/about_dialog_ui.py" line="71"/>
       <source>This software was built using:</source>
-      <translation>Это программное обеспечение существует благодаря:</translation>
+      <translation>A szoftver ezeket használja:</translation>
     </message>
     <message>
       <location filename="../../gridplayer/dialogs/about.py" line="155"/>
       <source>Translations</source>
-      <translation>Переводы</translation>
+      <translation>Fordítások</translation>
     </message>
     <message>
       <location filename="../../gridplayer/dialogs/about.py" line="187"/>
       <source>&lt;p&gt;&lt;b&gt;{LANGUAGE}&lt;/b&gt; by {AUTHOR_URL}&lt;/p&gt;</source>
-      <translation>&lt;p&gt;&lt;b&gt;{LANGUAGE}&lt;/b&gt; {AUTHOR_URL}&lt;/p&gt;</translation>
+      <translation>&lt;p&gt;&lt;b&gt;{LANGUAGE}&lt;/b&gt; készítője {AUTHOR_URL}&lt;/p&gt;</translation>
     </message>
   </context>
   <context>
@@ -152,267 +152,267 @@
     <message>
       <location filename="../../gridplayer/player/managers/actions.py" line="11"/>
       <source>Minimize</source>
-      <translation>Свернуть</translation>
+      <translation>Kicsinyítés</translation>
     </message>
     <message>
       <location filename="../../gridplayer/player/managers/actions.py" line="11"/>
       <source>Quit</source>
-      <translation>Выход</translation>
+      <translation>Kilépés</translation>
     </message>
     <message>
       <location filename="../../gridplayer/player/managers/actions.py" line="11"/>
       <source>Close</source>
-      <translation>Закрыть</translation>
+      <translation>Bezárás</translation>
     </message>
     <message>
       <location filename="../../gridplayer/player/managers/actions.py" line="11"/>
       <source>Rename</source>
-      <translation>Переименовать</translation>
+      <translation>Átnevezés</translation>
     </message>
     <message>
       <location filename="../../gridplayer/player/managers/actions.py" line="11"/>
       <source>Add Files</source>
-      <translation>Добавить файлы</translation>
+      <translation>Fájlok hozzáadása</translation>
     </message>
     <message>
       <location filename="../../gridplayer/player/managers/actions.py" line="11"/>
       <source>Aspect Fit</source>
-      <translation>Подогнать</translation>
+      <translation>Kitöltés</translation>
     </message>
     <message>
       <location filename="../../gridplayer/player/managers/actions.py" line="11"/>
       <source>Aspect Stretch</source>
-      <translation>Растянуть</translation>
+      <translation>Nyújtás</translation>
     </message>
     <message>
       <location filename="../../gridplayer/player/managers/actions.py" line="11"/>
       <source>Aspect None</source>
-      <translation>Как есть</translation>
+      <translation>Illesztés</translation>
     </message>
     <message>
       <location filename="../../gridplayer/player/managers/actions.py" line="11"/>
       <source>Rows First</source>
-      <translation>Сперва строки</translation>
+      <translation>Oszlopok először</translation>
     </message>
     <message>
       <location filename="../../gridplayer/player/managers/actions.py" line="11"/>
       <source>Columns First</source>
-      <translation>Сперва столбцы</translation>
+      <translation>Sorok először</translation>
     </message>
     <message>
       <location filename="../../gridplayer/player/managers/actions.py" line="11"/>
       <source>Fit Cells</source>
-      <translation>Подогнать ячейки</translation>
+      <translation>Autómatikus elrendezés</translation>
     </message>
     <message>
       <location filename="../../gridplayer/player/managers/actions.py" line="11"/>
       <source>Size: %v</source>
-      <translation>Размер: %v</translation>
+      <translation>Méret: %v</translation>
     </message>
     <message>
       <location filename="../../gridplayer/player/managers/actions.py" line="11"/>
       <source>Zoom In</source>
-      <translation>Приблизить</translation>
+      <translation>Nagyítás</translation>
     </message>
     <message>
       <location filename="../../gridplayer/player/managers/actions.py" line="11"/>
       <source>Zoom Out</source>
-      <translation>Отдалить</translation>
+      <translation>Kicsinyítés</translation>
     </message>
     <message>
       <location filename="../../gridplayer/player/managers/actions.py" line="11"/>
       <source>Zoom Reset</source>
-      <translation>Сброс</translation>
+      <translation>Nagyítás visszaállítása</translation>
     </message>
     <message>
       <location filename="../../gridplayer/player/managers/actions.py" line="11"/>
       <source>Faster</source>
-      <translation>Быстрее</translation>
+      <translation>Gyorsítás</translation>
     </message>
     <message>
       <location filename="../../gridplayer/player/managers/actions.py" line="11"/>
       <source>Slower</source>
-      <translation>Медленнее</translation>
+      <translation>Lassítás</translation>
     </message>
     <message>
       <location filename="../../gridplayer/player/managers/actions.py" line="11"/>
       <source>Normal</source>
-      <translation>Нормально</translation>
+      <translation>Normál</translation>
     </message>
     <message>
       <location filename="../../gridplayer/player/managers/actions.py" line="11"/>
       <source>Next frame</source>
-      <translation>Следующий кадр</translation>
+      <translation>Következő képkocka</translation>
     </message>
     <message>
       <location filename="../../gridplayer/player/managers/actions.py" line="11"/>
       <source>Previous frame</source>
-      <translation>Предыдущий кадр</translation>
+      <translation>Előző képkocka</translation>
     </message>
     <message>
       <location filename="../../gridplayer/player/managers/actions.py" line="11"/>
       <source>Fullscreen</source>
-      <translation>Полный экран</translation>
+      <translation>Teljesképernyő</translation>
     </message>
     <message>
       <location filename="../../gridplayer/player/managers/actions.py" line="11"/>
       <source>Play / Pause</source>
-      <translation>Играть / Пауза</translation>
+      <translation>Lejátszás / Szünet</translation>
     </message>
     <message>
       <location filename="../../gridplayer/player/managers/actions.py" line="11"/>
       <source>Play / Pause [ALL]</source>
-      <translation>Играть / Пауза [ВСЕ]</translation>
+      <translation>Lejátszás / Szünet [ALL]</translation>
     </message>
     <message>
       <location filename="../../gridplayer/player/managers/actions.py" line="11"/>
       <source>Play Previous File</source>
-      <translation>Предыдущий файл</translation>
+      <translation>Előző fájl lejátszása</translation>
     </message>
     <message>
       <location filename="../../gridplayer/player/managers/actions.py" line="11"/>
       <source>Play Next File</source>
-      <translation>Следующий файл</translation>
+      <translation>Következő fájl lejátszása</translation>
     </message>
     <message>
       <location filename="../../gridplayer/player/managers/actions.py" line="11"/>
       <source>Random Loop</source>
-      <translation>Случайный цикл</translation>
+      <translation>Véletlenszerű ismétlés</translation>
     </message>
     <message>
       <location filename="../../gridplayer/player/managers/actions.py" line="11"/>
       <source>Set Loop Start</source>
-      <translation>Начало цикла</translation>
+      <translation>Ismétlés kezdete</translation>
     </message>
     <message>
       <location filename="../../gridplayer/player/managers/actions.py" line="11"/>
       <source>Set Loop End</source>
-      <translation>Конец цикла</translation>
+      <translation>Ismétlés vége</translation>
     </message>
     <message>
       <location filename="../../gridplayer/player/managers/actions.py" line="11"/>
       <source>Loop Reset</source>
-      <translation>Сброс цикла</translation>
+      <translation>Ismétlés alaphelyzetbe állítása</translation>
     </message>
     <message>
       <location filename="../../gridplayer/player/managers/actions.py" line="11"/>
       <source>Repeat Single File</source>
-      <translation>Повторять один файл</translation>
+      <translation>Fájl folyamatos ismétlése</translation>
     </message>
     <message>
       <location filename="../../gridplayer/player/managers/actions.py" line="11"/>
       <source>Repeat Directory</source>
-      <translation>Повторять папку</translation>
+      <translation>Mappában lévő fájlok ismétlése</translation>
     </message>
     <message>
       <location filename="../../gridplayer/player/managers/actions.py" line="11"/>
       <source>Repeat Directory (Shuffle)</source>
-      <translation>Повторять папку (вперемешку)</translation>
+      <translation>Mappa (véletlenszerűen)</translation>
     </message>
     <message>
       <location filename="../../gridplayer/player/managers/actions.py" line="11"/>
       <source>Random</source>
-      <translation>Случайно</translation>
+      <translation>Véletlenszerű</translation>
     </message>
     <message>
       <location filename="../../gridplayer/player/managers/actions.py" line="11"/>
       <source>Open Playlist</source>
-      <translation>Открыть плейлист</translation>
+      <translation>Lejátszási lista megnyitása</translation>
     </message>
     <message>
       <location filename="../../gridplayer/player/managers/actions.py" line="11"/>
       <source>Save Playlist</source>
-      <translation>Сохранить плейлист</translation>
+      <translation>Lejátszási lista mentése</translation>
     </message>
     <message>
       <location filename="../../gridplayer/player/managers/actions.py" line="11"/>
       <source>Close Playlist</source>
-      <translation>Закрыть плейлист</translation>
+      <translation>Lejátszási lista bezárása</translation>
     </message>
     <message>
       <location filename="../../gridplayer/player/managers/actions.py" line="11"/>
       <source>Seek Sync</source>
-      <translation>Синхронный поиск</translation>
+      <translation>Videók szinkronizálása</translation>
     </message>
     <message>
       <location filename="../../gridplayer/player/managers/actions.py" line="11"/>
       <source>+5s</source>
-      <translation>+5 сек</translation>
+      <translation>+5 mp</translation>
     </message>
     <message>
       <location filename="../../gridplayer/player/managers/actions.py" line="11"/>
       <source>+15s</source>
-      <translation>+15 сек</translation>
+      <translation>+15 mp</translation>
     </message>
     <message>
       <location filename="../../gridplayer/player/managers/actions.py" line="11"/>
       <source>+30s</source>
-      <translation>+30 сек</translation>
+      <translation>+30 mp</translation>
     </message>
     <message>
       <location filename="../../gridplayer/player/managers/actions.py" line="11"/>
       <source>-5s</source>
-      <translation>-5 сек</translation>
+      <translation>-5 mp</translation>
     </message>
     <message>
       <location filename="../../gridplayer/player/managers/actions.py" line="11"/>
       <source>-15s</source>
-      <translation>-15 сек</translation>
+      <translation>-15 mp</translation>
     </message>
     <message>
       <location filename="../../gridplayer/player/managers/actions.py" line="11"/>
       <source>-30s</source>
-      <translation>-30 сек</translation>
+      <translation>-30 mp</translation>
     </message>
     <message>
       <location filename="../../gridplayer/player/managers/actions.py" line="11"/>
       <source>Settings</source>
-      <translation>Настройки</translation>
+      <translation>Beállítások</translation>
     </message>
     <message>
       <location filename="../../gridplayer/player/managers/actions.py" line="11"/>
       <source>About</source>
-      <translation>О программе</translation>
+      <translation>Névjegy</translation>
     </message>
     <message>
       <location filename="../../gridplayer/player/managers/actions.py" line="11"/>
       <source>Next Video</source>
-      <translation>Следующее видео</translation>
+      <translation>Következő videó</translation>
     </message>
     <message>
       <location filename="../../gridplayer/player/managers/menu.py" line="17"/>
       <source>Step</source>
-      <translation>Шаг</translation>
+      <translation>Lépés</translation>
     </message>
     <message>
       <location filename="../../gridplayer/player/managers/menu.py" line="17"/>
       <source>Loop</source>
-      <translation>Цикл</translation>
+      <translation>Ismétlés</translation>
     </message>
     <message>
       <location filename="../../gridplayer/player/managers/menu.py" line="17"/>
       <source>Speed</source>
-      <translation>Скорость</translation>
+      <translation>Sebesség</translation>
     </message>
     <message>
       <location filename="../../gridplayer/player/managers/menu.py" line="17"/>
       <source>Zoom</source>
-      <translation>Масштаб</translation>
+      <translation>Nagyítás</translation>
     </message>
     <message>
       <location filename="../../gridplayer/player/managers/menu.py" line="17"/>
       <source>Aspect</source>
-      <translation>Аспект</translation>
+      <translation>Nézet</translation>
     </message>
     <message>
       <location filename="../../gridplayer/player/managers/menu.py" line="17"/>
       <source>Jump (to) [ALL]</source>
-      <translation>Прыжок [ВСЕ]</translation>
+      <translation>[ALL] -hoz ugrás</translation>
     </message>
     <message>
       <location filename="../../gridplayer/player/managers/menu.py" line="17"/>
       <source>Grid</source>
-      <translation>Сетка</translation>
+      <translation>Rács</translation>
     </message>
   </context>
   <context>
@@ -420,32 +420,32 @@
     <message>
       <location filename="../../gridplayer/dialogs/settings.py" line="182"/>
       <source>None</source>
-      <translation>Отключен</translation>
+      <translation>Semmi</translation>
     </message>
     <message>
       <location filename="../../gridplayer/dialogs/settings.py" line="184"/>
       <source>Error</source>
-      <translation>Ошибки</translation>
+      <translation>Hiba</translation>
     </message>
     <message>
       <location filename="../../gridplayer/dialogs/settings.py" line="185"/>
       <source>Warning</source>
-      <translation>Предупреждения</translation>
+      <translation>Figyelmeztetés</translation>
     </message>
     <message>
       <location filename="../../gridplayer/dialogs/settings.py" line="186"/>
       <source>Info</source>
-      <translation>Информация</translation>
+      <translation>Információ</translation>
     </message>
     <message>
       <location filename="../../gridplayer/dialogs/settings.py" line="187"/>
       <source>Debug</source>
-      <translation>Отладка</translation>
+      <translation>Debug</translation>
     </message>
     <message>
       <location filename="../../gridplayer/dialogs/settings.py" line="183"/>
       <source>Critical</source>
-      <translation>Критические</translation>
+      <translation>Kritikus</translation>
     </message>
   </context>
   <context>
@@ -453,22 +453,22 @@
     <message>
       <location filename="../../gridplayer/dialogs/exception.py" line="25"/>
       <source>&lt;p&gt;&lt;b&gt;Program terminated due to unhandled exception!&lt;/b&gt;&lt;/p&gt;</source>
-      <translation>&lt;p&gt;&lt;b&gt;Программа прекращена из-за непредвиденной ошибки!&lt;/b&gt;&lt;/p&gt;</translation>
+      <translation>&lt;p&gt;&lt;b&gt;A program egy nem kezelt kivétel miatt leállt!&lt;/b&gt;&lt;/p&gt;</translation>
     </message>
     <message>
       <location filename="../../gridplayer/dialogs/exception.py" line="26"/>
       <source>&lt;p&gt;Please consider sending a bug report to the &lt;a href=&quot;{APP_BUGTRACKER_URL}&quot;&gt;bug tracker&lt;/a&gt;.&lt;/p&gt;</source>
-      <translation>&lt;p&gt;Пожалуйста, отправьте сообщение об ошибке в &lt;a href=&quot;{APP_BUGTRACKER_URL}&quot;&gt;баг-трекер&lt;/a&gt;.&lt;/p&gt;</translation>
+      <translation>&lt;p&gt;Kérlek küldd el a hibajelentést &lt;a href=&quot;{APP_BUGTRACKER_URL}&quot;&gt;ide&lt;/a&gt;.&lt;/p&gt;</translation>
     </message>
     <message>
       <location filename="../../gridplayer/dialogs/exception_dialog_ui.py" line="47"/>
       <source>Unhandled Exception</source>
-      <translation>Непредвиденная ошибка</translation>
+      <translation>Nem kezelt kivétel</translation>
     </message>
     <message>
       <location filename="../../gridplayer/dialogs/exception_dialog_ui.py" line="50"/>
       <source>Copy to Clipboard</source>
-      <translation>Скопировать в буфер</translation>
+      <translation>Másolás a vágólapra</translation>
     </message>
   </context>
   <context>
@@ -476,7 +476,7 @@
     <message>
       <location filename="../../gridplayer/dialogs/rename_dialog.py" line="56"/>
       <source>Select color</source>
-      <translation>Выбор цвета</translation>
+      <translation>Szín választása</translation>
     </message>
   </context>
   <context>
@@ -484,7 +484,7 @@
     <message>
       <location filename="../../gridplayer/dialogs/input_dialog.py" line="12"/>
       <source>Auto</source>
-      <translation>Авто</translation>
+      <translation>Automatikus</translation>
     </message>
   </context>
   <context>
@@ -492,7 +492,7 @@
     <message>
       <location filename="../../gridplayer/dialogs/rename_dialog.py" line="123"/>
       <source>Reset</source>
-      <translation>Сброс</translation>
+      <translation>Visszaállítás</translation>
     </message>
   </context>
   <context>
@@ -500,257 +500,257 @@
     <message>
       <location filename="../../gridplayer/dialogs/settings.py" line="143"/>
       <source>Auto</source>
-      <translation>Авто</translation>
+      <translation>Automatikus</translation>
     </message>
     <message>
       <location filename="../../gridplayer/dialogs/settings.py" line="159"/>
       <source>Error</source>
-      <translation>Ошибка</translation>
+      <translation>Hiba</translation>
     </message>
     <message>
       <location filename="../../gridplayer/dialogs/settings.py" line="159"/>
       <source>Log file does not exist!</source>
-      <translation>Файл журнала не найден!</translation>
+      <translation>Naplófájl nem létezik!</translation>
     </message>
     <message>
       <location filename="../../gridplayer/dialogs/settings.py" line="196"/>
       <source>None</source>
-      <translation>Как есть</translation>
+      <translation>Semmi</translation>
     </message>
     <message>
       <location filename="../../gridplayer/dialogs/settings.py" line="194"/>
       <source>Fit</source>
-      <translation>Подогнать</translation>
+      <translation>Illesztés</translation>
     </message>
     <message>
       <location filename="../../gridplayer/dialogs/settings.py" line="195"/>
       <source>Stretch</source>
-      <translation>Растянуть</translation>
+      <translation>Nyújtás</translation>
     </message>
     <message>
       <location filename="../../gridplayer/dialogs/settings.py" line="203"/>
       <source>Single File</source>
-      <translation>Один файл</translation>
+      <translation>Egyetlen fájl</translation>
     </message>
     <message>
       <location filename="../../gridplayer/dialogs/settings.py" line="204"/>
       <source>Directory</source>
-      <translation>Папка</translation>
+      <translation>Mappa</translation>
     </message>
     <message>
       <location filename="../../gridplayer/dialogs/settings.py" line="205"/>
       <source>Directory (Shuffle)</source>
-      <translation>Папка (вперемешку)</translation>
+      <translation>Mappa (véletlenszerűen)</translation>
     </message>
     <message>
       <location filename="../../gridplayer/dialogs/settings.py" line="212"/>
       <source>Rows First</source>
-      <translation>Сперва строки</translation>
+      <translation>Oszlopok először</translation>
     </message>
     <message>
       <location filename="../../gridplayer/dialogs/settings.py" line="213"/>
       <source>Columns First</source>
-      <translation>Сперва столбцы</translation>
+      <translation>Sorok először</translation>
     </message>
     <message>
       <location filename="../../gridplayer/dialogs/settings.py" line="221"/>
       <source>Hardware SP</source>
-      <translation>Аппаратный SP</translation>
+      <translation>Hardware SP</translation>
     </message>
     <message>
       <location filename="../../gridplayer/dialogs/settings.py" line="234"/>
       <source>Software</source>
-      <translation>Программный</translation>
+      <translation>Szoftver</translation>
     </message>
     <message>
       <location filename="../../gridplayer/dialogs/settings.py" line="237"/>
       <source>Dummy</source>
-      <translation>Заглушка</translation>
+      <translation>Dummy</translation>
     </message>
     <message>
       <location filename="../../gridplayer/dialogs/settings.py" line="231"/>
       <source>Hardware</source>
-      <translation>Аппаратный</translation>
+      <translation>Hardver</translation>
     </message>
     <message>
       <location filename="../../gridplayer/dialogs/settings_dialog_ui.py" line="288"/>
       <source>Settings</source>
-      <translation>Настройки</translation>
+      <translation>Beállítások</translation>
     </message>
     <message>
       <location filename="../../gridplayer/dialogs/settings_dialog_ui.py" line="289"/>
       <source>Player</source>
-      <translation>Плеер</translation>
+      <translation>Lejátszó</translation>
     </message>
     <message>
       <location filename="../../gridplayer/dialogs/settings_dialog_ui.py" line="290"/>
       <source>Pause background videos on single mode</source>
-      <translation>Приостановить другие видео в одиночном режиме</translation>
+      <translation>Háttérben menő videók szüneteltetése "Egyetlen fájl" módban</translation>
     </message>
     <message>
       <location filename="../../gridplayer/dialogs/settings_dialog_ui.py" line="293"/>
       <source>Pause videos when minimized</source>
-      <translation>Приостановить видео при свертывании</translation>
+      <translation>Videók megállítása, amikor kicsinyítve vannak</translation>
     </message>
     <message>
       <location filename="../../gridplayer/dialogs/settings_dialog_ui.py" line="296"/>
       <source>Disable screensaver while playing</source>
-      <translation>Отключить заставку при воспроизведении</translation>
+      <translation>Képernyővédő kikapcsolása lejátszás közben</translation>
     </message>
     <message>
       <location filename="../../gridplayer/dialogs/settings_dialog_ui.py" line="299"/>
       <source>Allow only one instance</source>
-      <translation>Разрешить только один экземпляр</translation>
+      <translation>Egyetlen példány engedélyezése</translation>
     </message>
     <message>
       <location filename="../../gridplayer/dialogs/settings_dialog_ui.py" line="302"/>
       <source>Playlist</source>
-      <translation>Плейлист</translation>
+      <translation>Lejátszási lista</translation>
     </message>
     <message>
       <location filename="../../gridplayer/dialogs/settings_dialog_ui.py" line="303"/>
       <source>Save window position and size</source>
-      <translation>Сохранять позицию и размер окна</translation>
+      <translation>Ablak pozíciójának és méretének mentése</translation>
     </message>
     <message>
       <location filename="../../gridplayer/dialogs/settings_dialog_ui.py" line="309"/>
       <source>Save videos playing / paused status</source>
-      <translation>Сохранить статус воспроизведения</translation>
+      <translation>Videók lejátszás / szünet státuszának mentése</translation>
     </message>
     <message>
       <location filename="../../gridplayer/dialogs/settings_dialog_ui.py" line="318"/>
       <source>Default Grid Parameters</source>
-      <translation>Настройки сетки по умолчанию</translation>
+      <translation>Alapértelmezett rács beállítások</translation>
     </message>
     <message>
       <location filename="../../gridplayer/dialogs/settings_dialog_ui.py" line="321"/>
       <source>Grid mode</source>
-      <translation>Режим сетки</translation>
+      <translation>Rács mód</translation>
     </message>
     <message>
       <location filename="../../gridplayer/dialogs/settings_dialog_ui.py" line="322"/>
       <source>Grid size</source>
-      <translation>Размер сетки</translation>
+      <translation>Rácsméret</translation>
     </message>
     <message>
       <location filename="../../gridplayer/dialogs/settings_dialog_ui.py" line="323"/>
       <source>Fit grid cells</source>
-      <translation>Подгонять ячейки</translation>
+      <translation>Rácsok automatikus méretezése</translation>
     </message>
     <message>
       <location filename="../../gridplayer/dialogs/settings_dialog_ui.py" line="324"/>
       <source>Default Video Parameters</source>
-      <translation>Настройки видео по умолчанию</translation>
+      <translation>Alapértelmezett videó bállítások</translation>
     </message>
     <message>
       <location filename="../../gridplayer/dialogs/settings_dialog_ui.py" line="327"/>
       <source>Aspect mode</source>
-      <translation>Аспект</translation>
+      <translation>Illesztési mód</translation>
     </message>
     <message>
       <location filename="../../gridplayer/dialogs/settings_dialog_ui.py" line="328"/>
       <source>Repeat mode</source>
-      <translation>Повтор</translation>
+      <translation>Ismétlés típusa</translation>
     </message>
     <message>
       <location filename="../../gridplayer/dialogs/settings_dialog_ui.py" line="329"/>
       <source>Start at random position</source>
-      <translation>Начать со случайного места</translation>
+      <translation>Véletlenszerű helyről induljon a videó lejátszás</translation>
     </message>
     <message>
       <location filename="../../gridplayer/dialogs/settings_dialog_ui.py" line="332"/>
       <source>Paused</source>
-      <translation>На паузе</translation>
+      <translation>Megállítva</translation>
     </message>
     <message>
       <location filename="../../gridplayer/dialogs/settings_dialog_ui.py" line="333"/>
       <source>Muted</source>
-      <translation>Без звука</translation>
+      <translation>Némítva</translation>
     </message>
     <message>
       <location filename="../../gridplayer/dialogs/settings_dialog_ui.py" line="335"/>
       <source>Video Decoder</source>
-      <translation>Декодер видео</translation>
+      <translation>Videó Decoder</translation>
     </message>
     <message>
       <location filename="../../gridplayer/dialogs/settings_dialog_ui.py" line="338"/>
       <source>Videos per process</source>
-      <translation>Видео на процесс</translation>
+      <translation>Videó / folyamat</translation>
     </message>
     <message>
       <location filename="../../gridplayer/dialogs/settings_dialog_ui.py" line="341"/>
       <source>Timeouts</source>
-      <translation>Таймауты</translation>
+      <translation>Időtúllépés</translation>
     </message>
     <message>
       <location filename="../../gridplayer/dialogs/settings_dialog_ui.py" line="342"/>
       <source>Hide overlay after timeout</source>
-      <translation>Скрыть информацию после таймаута</translation>
+      <translation>Funkciógombok elrejtése adott idő után</translation>
     </message>
     <message>
       <location filename="../../gridplayer/dialogs/settings_dialog_ui.py" line="345"/>
       <source>Video overlay timeout (sec)</source>
-      <translation>Таймаут информации (сек)</translation>
+      <translation>Funkciógombok elrejtésének ideje (mp)</translation>
     </message>
     <message>
       <location filename="../../gridplayer/dialogs/settings_dialog_ui.py" line="348"/>
       <source>Hide mouse after timeout</source>
-      <translation>Скрыть мышь после таймаута</translation>
+      <translation>Egér elrejtése adott idő után</translation>
     </message>
     <message>
       <location filename="../../gridplayer/dialogs/settings_dialog_ui.py" line="351"/>
       <source>Mouse hide timeout (sec)</source>
-      <translation>Таймаут скрытия мыши (сек)</translation>
+      <translation>Egér elrejtésének ideje (mp)</translation>
     </message>
     <message>
       <location filename="../../gridplayer/dialogs/settings_dialog_ui.py" line="354"/>
       <source>Logging</source>
-      <translation>Журнал</translation>
+      <translation>Naplózás</translation>
     </message>
     <message>
       <location filename="../../gridplayer/dialogs/settings_dialog_ui.py" line="355"/>
       <source>Log level</source>
-      <translation>Уровень</translation>
+      <translation>Naplózás szintje</translation>
     </message>
     <message>
       <location filename="../../gridplayer/dialogs/settings_dialog_ui.py" line="356"/>
       <source>Log level (VLC)</source>
-      <translation>Уровень (VLC)</translation>
+      <translation>Naplózás szintje (VLC)</translation>
     </message>
     <message>
       <location filename="../../gridplayer/dialogs/settings_dialog_ui.py" line="357"/>
       <source>Misc</source>
-      <translation>Разное</translation>
+      <translation>Egyebek</translation>
     </message>
     <message>
       <location filename="../../gridplayer/dialogs/settings_dialog_ui.py" line="358"/>
       <source>Opaque overlay (fix black screen)</source>
-      <translation>Непрозрачный оверлей (если чёрный экран)</translation>
+      <translation>Átlátszó háttér (fekete képernyő javítása)</translation>
     </message>
     <message>
       <location filename="../../gridplayer/dialogs/settings_dialog_ui.py" line="361"/>
       <source>Open log file</source>
-      <translation>Открыть журнал</translation>
+      <translation>Naplófájl megnyitása</translation>
     </message>
     <message>
       <location filename="../../gridplayer/dialogs/settings_dialog_ui.py" line="306"/>
       <source>Save videos playback position</source>
-      <translation>Сохранять позицию воспроизведения</translation>
+      <translation>Mentse el hogy hol tartott a videó</translation>
     </message>
     <message>
       <location filename="../../gridplayer/dialogs/settings_dialog_ui.py" line="312"/>
       <source>Synchronize seek by default</source>
-      <translation>Синхронизировать поиск по умолчанию</translation>
+      <translation>Videók szinkronizálása alapértelmezetten</translation>
     </message>
     <message>
       <location filename="../../gridplayer/dialogs/settings_dialog_ui.py" line="334"/>
       <source>Language</source>
-      <translation>Язык</translation>
+      <translation>Nyelv</translation>
     </message>
     <message>
       <location filename="../../gridplayer/dialogs/settings_dialog_ui.py" line="315"/>
       <source>Warn about unsaved changes</source>
-      <translation>Предупреждать о несохраненных изменениях</translation>
+      <translation>Figyelmeztet a nem mentett változásokról</translation>
     </message>
   </context>
   <context>
@@ -758,7 +758,7 @@
     <message>
       <location filename="../../gridplayer/widgets/video_block.py" line="572"/>
       <source>Rename video</source>
-      <translation>Переименовать видео</translation>
+      <translation>Videó átnevezése</translation>
     </message>
   </context>
 </TS>

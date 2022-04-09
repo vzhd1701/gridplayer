@@ -52,6 +52,7 @@ class WindowState(NamedTuple):
 
 SUPPORTED_LANGUAGES = (
     "en_US",
+    "hu_HU",
     "ru_RU",
 )
 

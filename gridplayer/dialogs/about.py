@@ -1,5 +1,5 @@
 import sys
-from typing import NamedTuple
+from typing import List, NamedTuple
 
 from pydantic.version import VERSION as PYDANTIC_VERSION
 from PyQt5.Qt import PYQT_VERSION_STR
@@ -24,6 +24,12 @@ class Attribution(NamedTuple):
     author: str
     license: str
     url: str
+
+
+class AttributionTranslation(NamedTuple):
+    language: str
+    author: str
+    author_url: str
 
 
 class AboutDialog(QDialog, Ui_AboutDialog):
@@ -131,6 +137,14 @@ class AboutDialog(QDialog, Ui_AboutDialog):
             ),
         ]
 
+        attributions_translation = [
+            AttributionTranslation(
+                "Hungarian",
+                "samu112",
+                "https://crowdin.com/profile/samu112",
+            ),
+        ]
+
         attributions_txt = [
             "<style>p, h3 {text-align: center;}</style>",
             self.generate_attributions(attributions_general),
@@ -138,11 +152,13 @@ class AboutDialog(QDialog, Ui_AboutDialog):
             self.generate_attributions(attributions_python),
             "<h3>{0}</h3>".format(self.tr("Graphics")),
             self.generate_attributions(attributions_gui),
+            "<h3>{0}</h3>".format(self.tr("Translations")),
+            self.generate_attributions_translations(attributions_translation),
         ]
 
         self.attributionsBox.setText("\n".join(attributions_txt))
 
-    def generate_attributions(self, attributions):
+    def generate_attributions(self, attributions: List[Attribution]):
         attributions_txt = []
         for a in attributions:
             app_title = "{0} {1}".format(a.title, a.version or "").strip()
@@ -156,6 +172,22 @@ class AboutDialog(QDialog, Ui_AboutDialog):
             attribution_txt = attribution_txt.replace("{APP_TITLE}", app_title)
             attribution_txt = attribution_txt.replace("{APP_URL}", app_url)
             attribution_txt = attribution_txt.replace("{APP_LICENSE}", a.license)
+
+            attributions_txt.append(attribution_txt)
+
+        return "\n".join(attributions_txt)
+
+    def generate_attributions_translations(
+        self, attributions: List[AttributionTranslation]
+    ):
+        attributions_txt = []
+        for a in attributions:
+            author_url = f'<a href="{a.author_url}">{a.author}</a>'
+
+            attribution_txt = self.tr("<p><b>{LANGUAGE}</b> by {AUTHOR_URL}</p>")
+
+            attribution_txt = attribution_txt.replace("{LANGUAGE}", a.language)
+            attribution_txt = attribution_txt.replace("{AUTHOR_URL}", author_url)
 
             attributions_txt.append(attribution_txt)
 
