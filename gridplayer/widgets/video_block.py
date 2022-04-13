@@ -17,7 +17,7 @@ from gridplayer.params_static import (
 )
 from gridplayer.settings import Settings
 from gridplayer.utils.misc import qt_connect
-from gridplayer.utils.next_file import next_video_file
+from gridplayer.utils.next_file import next_video_file, previous_video_file
 from gridplayer.video import MAX_RATE, MAX_SCALE, MIN_RATE, MIN_SCALE, Video
 from gridplayer.widgets.video_block_status import StatusLabel
 from gridplayer.widgets.video_overlay import OverlayBlock, OverlayBlockFloating
@@ -535,7 +535,7 @@ class VideoBlock(QWidget):  # noqa: WPS230
         # Stop new commands
         self.video_driver.is_video_initialized = False
 
-        self.switch_video(next_video_file(self.video_params.file_path, is_before=True))
+        self.switch_video(previous_video_file(self.video_params.file_path))
 
     def next_video(self):
         # Stop new commands
@@ -549,7 +549,7 @@ class VideoBlock(QWidget):  # noqa: WPS230
 
         self.switch_video(next_video_file(self.video_params.file_path, is_shuffle=True))
 
-    def switch_video(self, new_video):
+    def switch_video(self, new_video: Path):
         # If single file in the dir and was removed, highly unlikely but still
         if new_video is None:
             self.cleanup()
@@ -564,6 +564,7 @@ class VideoBlock(QWidget):  # noqa: WPS230
         self.reset_loop()
         self.video_params.current_position = 0
         self.video_params.file_path = new_video
+        self.video_params.title = new_video.name
         self.video_params.is_paused = False
 
         self.set_video(self.video_params)
