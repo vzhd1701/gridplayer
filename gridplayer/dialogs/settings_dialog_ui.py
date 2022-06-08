@@ -4,7 +4,7 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 class Ui_SettingsDialog(object):
     def setupUi(self, SettingsDialog):
         SettingsDialog.setObjectName("SettingsDialog")
-        SettingsDialog.resize(442, 541)
+        SettingsDialog.resize(442, 565)
         self.lay_main = QtWidgets.QVBoxLayout(SettingsDialog)
         self.lay_main.setSizeConstraint(QtWidgets.QLayout.SetFixedSize)
         self.lay_main.setObjectName("lay_main")
@@ -107,6 +107,19 @@ class Ui_SettingsDialog(object):
         self.section_video_defaults.setFont(font)
         self.section_video_defaults.setObjectName("section_video_defaults")
         self.lay_section_video_defaults.addWidget(self.section_video_defaults)
+        self.lay_stream_quality = QtWidgets.QHBoxLayout()
+        self.lay_stream_quality.setObjectName("lay_stream_quality")
+        self.streamQualityLabel = QtWidgets.QLabel(SettingsDialog)
+        self.streamQualityLabel.setObjectName("streamQualityLabel")
+        self.lay_stream_quality.addWidget(self.streamQualityLabel)
+        self.streamQuality = QtWidgets.QComboBox(SettingsDialog)
+        self.streamQuality.setObjectName("streamQuality")
+        self.lay_stream_quality.addWidget(self.streamQuality)
+        spacerItem2 = QtWidgets.QSpacerItem(
+            40, 20, QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Minimum
+        )
+        self.lay_stream_quality.addItem(spacerItem2)
+        self.lay_section_video_defaults.addLayout(self.lay_stream_quality)
         self.lay_aspect = QtWidgets.QHBoxLayout()
         self.lay_aspect.setObjectName("lay_aspect")
         self.videoAspectLabel = QtWidgets.QLabel(SettingsDialog)
@@ -115,10 +128,10 @@ class Ui_SettingsDialog(object):
         self.videoAspect = QtWidgets.QComboBox(SettingsDialog)
         self.videoAspect.setObjectName("videoAspect")
         self.lay_aspect.addWidget(self.videoAspect)
-        spacerItem2 = QtWidgets.QSpacerItem(
+        spacerItem3 = QtWidgets.QSpacerItem(
             40, 20, QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Minimum
         )
-        self.lay_aspect.addItem(spacerItem2)
+        self.lay_aspect.addItem(spacerItem3)
         self.lay_section_video_defaults.addLayout(self.lay_aspect)
         self.lay_repeat = QtWidgets.QHBoxLayout()
         self.lay_repeat.setObjectName("lay_repeat")
@@ -128,10 +141,10 @@ class Ui_SettingsDialog(object):
         self.repeatMode = QtWidgets.QComboBox(SettingsDialog)
         self.repeatMode.setObjectName("repeatMode")
         self.lay_repeat.addWidget(self.repeatMode)
-        spacerItem3 = QtWidgets.QSpacerItem(
+        spacerItem4 = QtWidgets.QSpacerItem(
             40, 20, QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Minimum
         )
-        self.lay_repeat.addItem(spacerItem3)
+        self.lay_repeat.addItem(spacerItem4)
         self.lay_section_video_defaults.addLayout(self.lay_repeat)
         self.videoRandomLoop = QtWidgets.QCheckBox(SettingsDialog)
         self.videoRandomLoop.setObjectName("videoRandomLoop")
@@ -143,10 +156,10 @@ class Ui_SettingsDialog(object):
         self.videoMuted.setObjectName("videoMuted")
         self.lay_section_video_defaults.addWidget(self.videoMuted)
         self.lay_left_column.addLayout(self.lay_section_video_defaults)
-        spacerItem4 = QtWidgets.QSpacerItem(
+        spacerItem5 = QtWidgets.QSpacerItem(
             0, 0, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Expanding
         )
-        self.lay_left_column.addItem(spacerItem4)
+        self.lay_left_column.addItem(spacerItem5)
         self.lay_body.addLayout(self.lay_left_column)
         self.lay_right_column = QtWidgets.QVBoxLayout()
         self.lay_right_column.setObjectName("lay_right_column")
@@ -255,10 +268,10 @@ class Ui_SettingsDialog(object):
         self.lay_section_misc = QtWidgets.QVBoxLayout()
         self.lay_section_misc.setObjectName("lay_section_misc")
         self.lay_right_column.addLayout(self.lay_section_misc)
-        spacerItem5 = QtWidgets.QSpacerItem(
+        spacerItem6 = QtWidgets.QSpacerItem(
             0, 0, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Expanding
         )
-        self.lay_right_column.addItem(spacerItem5)
+        self.lay_right_column.addItem(spacerItem6)
         self.lay_body.addLayout(self.lay_right_column)
         self.lay_body.setStretch(0, 1)
         self.lay_main.addLayout(self.lay_body)
@@ -324,6 +337,7 @@ class Ui_SettingsDialog(object):
         self.section_video_defaults.setText(
             _translate("SettingsDialog", "Default Video Parameters")
         )
+        self.streamQualityLabel.setText(_translate("SettingsDialog", "Stream quality"))
         self.videoAspectLabel.setText(_translate("SettingsDialog", "Aspect mode"))
         self.repeatModeLabel.setText(_translate("SettingsDialog", "Repeat mode"))
         self.videoRandomLoop.setText(

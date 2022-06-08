@@ -46,6 +46,7 @@ PROPAGATED_EVENTS_FILTERED = (
 class OverlayBlock(QWidget):  # noqa: WPS230
     set_vid_pos = pyqtSignal(float)
     set_volume = pyqtSignal(float)
+
     exit_clicked = pyqtSignal()
     play_pause_clicked = pyqtSignal()
     mute_unmute_clicked = pyqtSignal()
@@ -70,6 +71,10 @@ class OverlayBlock(QWidget):  # noqa: WPS230
 
         self.label_info.hide()
         self.floating_progress.hide()
+
+        self.label_progress.hide()
+        self.progress_bar.hide()
+        self.progress_bar_placeholder.show()
 
     def ui_connect(self):  # noqa: WPS213
         qt_connect(
@@ -124,24 +129,26 @@ class OverlayBlock(QWidget):  # noqa: WPS230
         self.play_pause_button = OverlayPlayPauseButton(parent=self)
         self.label_progress = OverlayShortLabel(parent=self)
         self.progress_bar = OverlayProgressBar(parent=self)
+        self.progress_bar_placeholder = QWidget(parent=self)
         self.volume_button = OverlayVolumeButton(parent=self)
 
         self.bottom_bar.addWidget(self.play_pause_button)
         self.bottom_bar.addWidget(self.label_progress)
         self.bottom_bar.addWidget(self.progress_bar, 1)
+        self.bottom_bar.addWidget(self.progress_bar_placeholder, 1)
         self.bottom_bar.addWidget(self.volume_button)
 
         self.floating_progress = OverlayShortLabelFloating(parent=self)
 
     def customEvent(self, event):
         if event.type() == OVERLAY_ACTIVITY_EVENT:
-            QGuiApplication.sendEvent(self.parent(), QEvent(2000))
+            QGuiApplication.sendEvent(self.parent(), QEvent(OVERLAY_ACTIVITY_EVENT))
 
     def resizeEvent(self, event):
         too_narrow_to_fit = 250
         is_wide = event.size().width() > too_narrow_to_fit
 
-        self.label_progress.setVisible(is_wide)
+        self.label_progress.setVisible(is_wide or not self.progress_bar.isEnabled())
 
     @pyqtSlot(int, int)
     def set_position(self, position, length):
@@ -150,9 +157,25 @@ class OverlayBlock(QWidget):  # noqa: WPS230
         position_txt = get_time_txt(position // 1000, length // 1000)
         length_txt = get_time_txt(length // 1000)
 
-        self.floating_progress.length = length
-        self.label_progress.text = f"{position_txt} / {length_txt}"
-        self.progress_bar.position = position_percent
+        if length == -1:
+            self.floating_progress.hide()
+
+            self.progress_bar.setEnabled(False)
+            self.progress_bar.hide()
+
+            self.progress_bar_placeholder.show()
+
+            self.label_progress.text = f"{position_txt}"
+            self.label_progress.show()
+        else:
+            self.progress_bar.setEnabled(True)
+            self.progress_bar.show()
+
+            self.progress_bar_placeholder.hide()
+
+            self.floating_progress.length = length
+            self.label_progress.text = f"{position_txt} / {length_txt}"
+            self.progress_bar.position = position_percent
 
     @pyqtSlot(float)
     def set_loop_start(self, position):

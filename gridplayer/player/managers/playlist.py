@@ -10,9 +10,9 @@ from gridplayer.params_static import WindowState
 from gridplayer.player.managers.base import ManagerBase
 from gridplayer.playlist import Playlist
 from gridplayer.settings import Settings
-from gridplayer.utils.files import filter_valid_files
+from gridplayer.utils.files import get_playlist_path
 from gridplayer.utils.misc import tr
-from gridplayer.video import Video
+from gridplayer.video import filter_video_uris
 
 logger = logging.getLogger(__name__)
 
@@ -101,17 +101,17 @@ class PlaylistManager(ManagerBase):
         if not argv:
             return
 
-        files = filter_valid_files(list(map(Path, argv)))
+        playlist = get_playlist_path(argv)
 
-        if not files:
-            self.error.emit(tr("No supported files!"))
+        if playlist:
+            self.load_playlist_file(playlist)
             return
 
-        if files[0].suffix.lower() == ".gpls":
-            self.load_playlist_file(files[0])
-            return
+        videos = filter_video_uris(argv)
 
-        videos = [Video(file_path=f, title=f.name) for f in files]
+        if not videos:
+            self.error.emit(tr("No supported files or URLs!"))
+            return
 
         playlist = Playlist(videos=videos)
 

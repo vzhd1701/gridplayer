@@ -65,95 +65,94 @@ class AboutDialog(QDialog, Ui_AboutDialog):
 
         self.info.setText(about_info)
 
-        attributions_general = [
-            Attribution(
-                "Python",
-                sys.version.split(" ")[0],
-                "Python Software Foundation",
-                "Python Software Foundation License",
-                "https://www.python.org/",
-            ),
-            Attribution(
-                "Qt",
-                QT_VERSION_STR,
-                "Qt Project",
-                "GPL 2.0, GPL 3.0, and LGPL 3.0",
-                "https://www.qt.io/",
-            ),
-            Attribution(
-                "VLC",
-                None,
-                "VideoLAN",
-                "GPL 2.0 or later",
-                "https://www.videolan.org/",
-            ),
-        ]
-
-        attributions_python = [
-            Attribution(
-                "PyQt",
-                PYQT_VERSION_STR,
-                "Riverbank Computing",
-                "Riverbank Commercial License and GPL v3",
-                "https://riverbankcomputing.com/",
-            ),
-            Attribution(
-                "python-vlc",
-                params_env.VLC_PYTHON_VERSION,
-                "Olivier Aubert",
-                "GPL 2.0 and LGPL 2.1",
-                "https://github.com/oaubert/python-vlc",
-            ),
-            Attribution(
-                "pydantic",
-                PYDANTIC_VERSION,
-                "Samuel Colvin",
-                "MIT License",
-                "https://github.com/samuelcolvin/pydantic",
-            ),
-        ]
-
-        attributions_gui = [
-            Attribution(
-                "Hack Font",
-                "3.003",
-                "Source Foundry",
-                "MIT License",
-                "http://sourcefoundry.org/hack/",
-            ),
-            Attribution(
-                "Basic Icons",
-                None,
-                "Icongeek26",
-                "Flaticon License",
-                "https://www.flaticon.com/authors/icongeek26",
-            ),
-            Attribution(
-                "Suru Icons",
-                None,
-                "Sam Hewitt",
-                "Creative Commons Attribution-Share Alike 4.0",
-                "https://snwh.org/",
-            ),
-        ]
-
-        attributions_translation = [
-            AttributionTranslation(
-                "Hungarian",
-                "samu112",
-                "https://crowdin.com/profile/samu112",
-            ),
-        ]
+        attributions = {
+            "general": [
+                Attribution(
+                    "Python",
+                    sys.version.split(" ")[0],
+                    "Python Software Foundation",
+                    "Python Software Foundation License",
+                    "https://www.python.org/",
+                ),
+                Attribution(
+                    "Qt",
+                    QT_VERSION_STR,
+                    "Qt Project",
+                    "GPL 2.0, GPL 3.0, and LGPL 3.0",
+                    "https://www.qt.io/",
+                ),
+                Attribution(
+                    "VLC",
+                    None,
+                    "VideoLAN",
+                    "GPL 2.0 or later",
+                    "https://www.videolan.org/",
+                ),
+            ],
+            "python": [
+                Attribution(
+                    "PyQt",
+                    PYQT_VERSION_STR,
+                    "Riverbank Computing",
+                    "Riverbank Commercial License and GPL v3",
+                    "https://riverbankcomputing.com/",
+                ),
+                Attribution(
+                    "python-vlc",
+                    params_env.VLC_PYTHON_VERSION,
+                    "Olivier Aubert",
+                    "GPL 2.0 and LGPL 2.1",
+                    "https://github.com/oaubert/python-vlc",
+                ),
+                Attribution(
+                    "pydantic",
+                    PYDANTIC_VERSION,
+                    "Samuel Colvin",
+                    "MIT License",
+                    "https://github.com/samuelcolvin/pydantic",
+                ),
+            ],
+            "gui": [
+                Attribution(
+                    "Hack Font",
+                    "3.003",
+                    "Source Foundry",
+                    "MIT License",
+                    "http://sourcefoundry.org/hack/",
+                ),
+                Attribution(
+                    "Basic Icons",
+                    None,
+                    "Icongeek26",
+                    "Flaticon License",
+                    "https://www.flaticon.com/authors/icongeek26",
+                ),
+                Attribution(
+                    "Suru Icons",
+                    None,
+                    "Sam Hewitt",
+                    "Creative Commons Attribution-Share Alike 4.0",
+                    "https://snwh.org/",
+                ),
+            ],
+            "translation": [
+                AttributionTranslation(
+                    "Hungarian",
+                    "samu112",
+                    "https://crowdin.com/profile/samu112",
+                ),
+            ],
+        }
 
         attributions_txt = [
             "<style>p, h3 {text-align: center;}</style>",
-            self.generate_attributions(attributions_general),
+            self.generate_attributions(attributions["general"]),
             "<h3>{0}</h3>".format(self.tr("Python packages")),
-            self.generate_attributions(attributions_python),
+            self.generate_attributions(attributions["python"]),
             "<h3>{0}</h3>".format(self.tr("Graphics")),
-            self.generate_attributions(attributions_gui),
+            self.generate_attributions(attributions["gui"]),
             "<h3>{0}</h3>".format(self.tr("Translations")),
-            self.generate_attributions_translations(attributions_translation),
+            self.generate_attributions_translations(attributions["translation"]),
         ]
 
         self.attributionsBox.setText("\n".join(attributions_txt))

@@ -1,6 +1,7 @@
 import logging
 import secrets
 import traceback
+from abc import ABC, abstractmethod
 from multiprocessing import Value
 from multiprocessing.context import Process
 
@@ -9,7 +10,7 @@ from gridplayer.params_static import PLAYER_ID_LENGTH
 from gridplayer.utils.log_config import child_process_config
 
 
-class InstanceProcess(CommandLoop):
+class InstanceProcess(CommandLoop, ABC):
     def __init__(self, players_per_instance, pm_callback_pipe, **kwargs):
         super().__init__(**kwargs)
 
@@ -126,21 +127,26 @@ class InstanceProcess(CommandLoop):
                 self.cleanup()
 
     # process
+    @abstractmethod
     def init_instance(self):
         """Instance initialization"""
 
     # process
+    @abstractmethod
     def cleanup_instance(self):
         """Instance cleanup"""
 
     # process
+    @abstractmethod
     def new_player(self, player_id, init_data, pipe):
         """Request new player"""
 
     # process
+    @abstractmethod
     def init_player_shared_data(self, player_id):
         """Initialize shared data for player instance"""
 
     # process
+    @abstractmethod
     def release_player_shared_data(self, player_id):
         """Release shared data for player instance"""

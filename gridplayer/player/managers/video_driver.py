@@ -5,8 +5,8 @@ from gridplayer.exceptions import PlayerException
 from gridplayer.params_static import VideoDriver
 from gridplayer.player.managers.base import ManagerBase
 from gridplayer.settings import Settings
+from gridplayer.vlc_player.instance import ProcessManagerVLC
 from gridplayer.widgets.video_frame_dummy import VideoFrameDummy
-from gridplayer.widgets.video_frame_vlc_base import ProcessManagerVLC
 from gridplayer.widgets.video_frame_vlc_hw import InstanceProcessVLCHW, VideoFrameVLCHW
 from gridplayer.widgets.video_frame_vlc_hw_sp import VideoFrameVLCHWSP
 from gridplayer.widgets.video_frame_vlc_sw import InstanceProcessVLCSW, VideoFrameVLCSW
@@ -70,7 +70,7 @@ class VideoDriverManager(ManagerBase):
             self._process_manager.set_log_level_vlc(log_level)
         elif Settings().get("player/video_driver") == VideoDriver.VLC_HW_SP:
             for vb in self._ctx.video_blocks:
-                vb.video_driver.video_driver.set_log_level_vlc(log_level)
+                vb.video_driver.set_log_level_vlc(log_level)
 
     def set_log_level(self, log_level):
         if self._process_manager:

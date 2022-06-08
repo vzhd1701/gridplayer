@@ -36,6 +36,8 @@ pydantic = "^1.8.2"
 python-vlc = "3.0.11115"
 pyobjc-core = { version = "*", platform = "darwin" }
 pyobjc-framework-Cocoa = { version = "*", platform = "darwin" }
+streamlink = "^4.0.1"
+yt-dlp = "^2022.5.18"
 
 [tool.poetry.dev-dependencies]
 isort = "^5.8.0"
@@ -44,6 +46,7 @@ wemake-python-styleguide = "^0.15.2"
 black = "^21.5b1"
 mdformat = "0.7.7"
 pre-commit = "^2.15.0"
+pytest = "^7.1.2"
 
 [tool.flakehell]
 base = "https://raw.githubusercontent.com/wemake-services/wemake-python-styleguide/master/styles/flakehell.toml"
@@ -66,7 +69,10 @@ nested_classes_whitelist=["Config"]
 # WPS226 String constant overuse
 # WPS305 forbids f-strings
 # WPS326 implicit line concat
+# WPS336 explicit string concat
 # WPS425 boolean non-keyword
+# WPS428 ... <- nop statements, used in abstract classes
+# WPS601 shadowed class attribute, doesn't work for dataclasses
 #   Qt setAttribute functions
 # Docstings, don't have any
 
@@ -92,7 +98,7 @@ flake8-quotes = ["+*", "-Q000"]
 flake8-rst-docstrings = ["-*"]
 flake8-docstrings = ["-*"]
 flake8-darglint = ["-*"]
-wemake-python-styleguide = ["+*", "-WPS111", "-WPS214", "-WPS226", "-WPS305", "-WPS317", "-WPS326", "-WPS425"]
+wemake-python-styleguide = ["+*", "-WPS111", "-WPS214", "-WPS226", "-WPS305", "-WPS317", "-WPS326", "-WPS336", "-WPS425", "-WPS428", "-WPS601"]
 
 [tool.flakehell.exceptions."gridplayer/version.py"]
 # I like it this way

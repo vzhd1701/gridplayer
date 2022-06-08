@@ -26,6 +26,7 @@ icon-symbolic,icons/basic/236-zoom out.svg,zoom-out
 icon-symbolic,icons/basic/083-backward.svg,previous-video-file
 icon-symbolic,icons/basic/084-forward.svg,next-video-file
 icon-symbolic,icons/basic/069-pen.svg,rename
+icon-symbolic,icons/basic/152-recycle.svg,reload
 icon-symbolic,icons/custom/001-minimize window.svg,minimize
 icon-symbolic,icons/custom/002-close all.svg,close-playlist
 icon-symbolic,icons/custom/003-aspect fit.svg,aspect-fit
@@ -61,5 +62,9 @@ icon-symbolic,icons/custom/036-loop single.svg,loop-single
 icon-symbolic,icons/custom/037-loop dir.svg,loop-dir
 icon-symbolic,icons/custom/038-loop dir shuffle.svg,loop-dir-shuffle
 icon-symbolic,icons/custom/039-information.svg,information
+icon-symbolic,icons/custom/040-stream quality.svg,stream-quality
+icon-symbolic,icons/custom/041-audio only.svg,audio-only
+icon-symbolic,icons/custom/042-error.svg,error
+icon-symbolic,icons/custom/043-network error.svg,network-error
 translation,translations/ru_RU.ts,ru_RU
 translation,translations/hu_HU.ts,hu_HU

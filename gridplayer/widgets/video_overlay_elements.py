@@ -5,7 +5,6 @@ from PyQt5.QtGui import (
     QColor,
     QFontMetrics,
     QGuiApplication,
-    QMouseEvent,
     QPainter,
     QPainterPath,
     QRegion,
@@ -13,7 +12,7 @@ from PyQt5.QtGui import (
 from PyQt5.QtWidgets import QSizePolicy, QWidget
 
 from gridplayer.params_static import OVERLAY_ACTIVITY_EVENT
-from gridplayer.utils.time_txt import get_time_txt_short
+from gridplayer.utils.time_txt import get_time_txt
 
 
 class OverlayWidget(QWidget):
@@ -153,8 +152,8 @@ class OverlayShortLabelFloating(OverlayShortLabel):
         if self.length is None:
             return
 
-        new_time = (self.length * progress_pos) // 1000
-        self.text = get_time_txt_short(new_time)
+        new_time = int((self.length * progress_pos) // 1000)
+        self.text = get_time_txt(new_time, strip=True)
 
         x_middle = round(self.rect().width() / 2)
 

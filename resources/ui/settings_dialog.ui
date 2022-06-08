@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>442</width>
-    <height>541</height>
+    <height>565</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -210,6 +210,33 @@
             <string>Default Video Parameters</string>
            </property>
           </widget>
+         </item>
+         <item>
+          <layout class="QHBoxLayout" name="lay_stream_quality">
+           <item>
+            <widget class="QLabel" name="streamQualityLabel">
+             <property name="text">
+              <string>Stream quality</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QComboBox" name="streamQuality"/>
+           </item>
+           <item>
+            <spacer name="horizontalSpacer_5">
+             <property name="orientation">
+              <enum>Qt::Horizontal</enum>
+             </property>
+             <property name="sizeHint" stdset="0">
+              <size>
+               <width>40</width>
+               <height>20</height>
+              </size>
+             </property>
+            </spacer>
+           </item>
+          </layout>
          </item>
          <item>
           <layout class="QHBoxLayout" name="lay_aspect">

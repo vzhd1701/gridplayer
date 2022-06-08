@@ -1,9 +1,9 @@
+import json
 import logging
-import os
 from pathlib import Path
 from typing import List, Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError
 
 from gridplayer.params import GridState
 from gridplayer.params_static import WindowState
@@ -63,7 +63,7 @@ class Playlist(BaseModel):
                     video.json(exclude_none=True, exclude=_excluded_fields_video()),
                 )
             )
-            playlist_vids.append(str(video.file_path))
+            playlist_vids.append(str(video.uri))
 
         return "\n".join(playlist_config + playlist_vids + [""])
 
@@ -79,14 +79,16 @@ class Playlist(BaseModel):
         videos = []
         video_params = _parse_video_params(playlist_in)
 
-        for idx, path in enumerate(_parse_video_paths(playlist_in)):
-            video = video_params.get(idx, Video())
-            video.file_path = path
+        for idx, uri in enumerate(_parse_video_paths(playlist_in)):
+            video_args = video_params.get(idx, {})
 
-            if not video.title:
-                video.title = video.file_path.name
+            video_args["uri"] = uri
 
-            videos.append(video)
+            try:
+                videos.append(Video(**video_args))
+            except ValidationError as e:
+                logger.error(f"Failed to add video '{uri}'")
+                logger.debug(e)
 
         return videos
 
@@ -98,26 +100,13 @@ def _parse_video_params(playlist_in):
     for vp in video_param_lines:
         v_idx, v_params = vp[2:].split(":", maxsplit=1)
 
-        video_params[int(v_idx)] = Video.parse_raw(v_params)
+        video_params[int(v_idx)] = json.loads(v_params)
 
     return video_params
 
 
-def _parse_video_paths(playlist_in):
-    video_paths = []
-
-    video_lines = (line for line in playlist_in if line and not line.startswith("#"))
-
-    for video_path in video_lines:
-        video_path = Path(video_path)
-
-        if not (video_path.is_file() and os.access(video_path, os.R_OK)):
-            logger.warning(f"{video_path} file is not accessible!")
-            continue
-
-        video_paths.append(video_path)
-
-    return video_paths
+def _parse_video_paths(playlist_in) -> List[str]:
+    return [line for line in playlist_in if line and not line.startswith("#")]
 
 
 def _excluded_fields_playlist():
@@ -135,7 +124,7 @@ def _excluded_fields_playlist():
 
 
 def _excluded_fields_video():
-    excluded_fields_video = {"file_path"}
+    excluded_fields_video = {"uri"}
 
     exclude_list = [
         ("playlist/save_position", "current_position"),

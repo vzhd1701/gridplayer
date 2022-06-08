@@ -4,7 +4,7 @@ from PyQt5.QtWidgets import QGraphicsOpacityEffect, QLabel
 
 
 class StatusLabel(QLabel):
-    def __init__(self, **kwargs):
+    def __init__(self, icon="processing", **kwargs):
         super().__init__(**kwargs)
 
         self.setAutoFillBackground(True)
@@ -19,13 +19,13 @@ class StatusLabel(QLabel):
 
         self.setAlignment(Qt.AlignCenter)
 
-        self._set_pic(QIcon.fromTheme("processing"))
+        self.set_icon(icon)
 
     def resizeEvent(self, event):
         self._set_pic_to_half_size(event.size())
 
-    def set_error(self):
-        self._set_pic(QIcon.fromTheme("close"))
+    def set_icon(self, icon):
+        self._set_pic(QIcon.fromTheme(icon))
 
     def _set_pic(self, pic_path):
         reasonably_big = 512

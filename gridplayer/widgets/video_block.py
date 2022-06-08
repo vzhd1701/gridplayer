@@ -1,10 +1,12 @@
+import logging
 import random
+import re
 import secrets
 from pathlib import Path
-from typing import Optional
+from typing import Dict, Optional, Tuple
 
 from pydantic.color import Color
-from PyQt5.QtCore import QEvent, Qt, QTimer, pyqtSignal
+from PyQt5.QtCore import Qt, QTimer, pyqtSignal
 from PyQt5.QtGui import QCursor
 from PyQt5.QtWidgets import QStackedLayout, QWidget
 
@@ -18,9 +20,15 @@ from gridplayer.params_static import (
 from gridplayer.settings import Settings
 from gridplayer.utils.misc import qt_connect
 from gridplayer.utils.next_file import next_video_file, previous_video_file
-from gridplayer.video import MAX_RATE, MAX_SCALE, MIN_RATE, MIN_SCALE, Video
+from gridplayer.utils.url_resolve.static import ResolvedVideo
+from gridplayer.utils.url_resolve.url_resolve import VideoURLResolver
+from gridplayer.video import MAX_RATE, MAX_SCALE, MIN_RATE, MIN_SCALE, Video, VideoURL
+from gridplayer.vlc_player.static import MediaInput
 from gridplayer.widgets.video_block_status import StatusLabel
+from gridplayer.widgets.video_frame_vlc_base import VideoFrameVLC
 from gridplayer.widgets.video_overlay import OverlayBlock, OverlayBlockFloating
+
+logger = logging.getLogger(__name__)
 
 
 class QStackedLayoutFloating(QStackedLayout):
@@ -42,8 +50,63 @@ class QStackedLayoutFloating(QStackedLayout):
                     widget.setGeometry(rect)
 
 
+class Streams(object):
+    def __init__(self, streams: Optional[Dict[str, str]] = None):
+        if streams:
+            self.streams = streams
+        else:
+            self.streams = {}
+
+    def __len__(self):
+        return len(self.streams)
+
+    def __iter__(self):
+        return iter(self.streams)
+
+    def __reversed__(self):
+        return reversed(self.streams)
+
+    @property
+    def best(self) -> Tuple[str, str]:
+        return list(self.streams.items())[-1]
+
+    @property
+    def worst(self) -> Tuple[str, str]:
+        return list(self.streams.items())[0]
+
+    def by_quality(self, quality: str) -> Tuple[str, str]:
+        if quality == "best":
+            return self.best
+
+        if quality == "worst":
+            return self.worst
+
+        if self.streams.get(quality):
+            return quality, self.streams[quality]
+
+        return self._guess_quality(quality)
+
+    def _guess_quality(self, quality):
+        quality_lines = re.search(r"^(\d+)", quality)
+        if not quality_lines:
+            return self.best
+
+        quality_lines = int(quality_lines.group(1))
+        for quality_code, stream_url in reversed(self.streams.items()):
+            stream_lines = re.search(r"^(\d+)", quality_code)
+            if not stream_lines:
+                continue
+
+            stream_lines = int(stream_lines.group(1))
+
+            if stream_lines <= quality_lines:
+                return quality_code, stream_url
+
+        return self.best
+
+
 class VideoBlock(QWidget):  # noqa: WPS230
-    load_video = pyqtSignal(Path)
+    load_video = pyqtSignal(MediaInput)
 
     exit_request = pyqtSignal(str)
     percent_changed = pyqtSignal(float)
@@ -68,15 +131,23 @@ class VideoBlock(QWidget):  # noqa: WPS230
         # Static Params
         self.video_params: Optional[Video] = None
 
-        # Dynamic Params
-        self.is_active = False
+        # Runtime Params
         self.is_error = False
+        self.is_active = False
 
+        self._title = None
+        self.default_title = None
+        self.is_live = False
+        self.streams = Streams()
+
+        # Components
         self.overlay_hide_timer = QTimer(self)
         self.overlay_hide_timer.setSingleShot(True)
         self.overlay_hide_timer.timeout.connect(self.hide_overlay)
 
+        self.url_resolver = self.init_url_resolver()
         self.video_driver = self.init_video_driver()
+
         self.overlay = self.init_overlay()
 
         self.ui_setup()
@@ -85,13 +156,15 @@ class VideoBlock(QWidget):  # noqa: WPS230
         self.overlay.raise_()
         self.overlay.hide()
 
-    def init_video_driver(self):
+    def init_video_driver(self) -> VideoFrameVLC:
         video_driver = self.video_driver_cls(parent=self)
 
         qt_connect(
             (video_driver.video_ready, self.load_video_finish),
             (video_driver.time_changed, self.time_changed),
-            (video_driver.error, self.error),
+            (video_driver.end_reached, self.end_reached),
+            (video_driver.playback_status_changed, self.playback_status_changed),
+            (video_driver.error, self.video_driver_error),
             (video_driver.crash, self.crash),
             (self.load_video, video_driver.load_video),
         )
@@ -101,13 +174,40 @@ class VideoBlock(QWidget):  # noqa: WPS230
     def reset_video_driver(self):
         self.video_driver.video_ready.disconnect()
         self.video_driver.time_changed.disconnect()
+        self.video_driver.end_reached.disconnect()
         self.video_driver.error.disconnect()
         self.video_driver.crash.disconnect()
         self.load_video.disconnect()
 
+        old_driver = self.video_driver
+
         self.layout_main.takeAt(1).widget()
         self.video_driver = self.init_video_driver()
         self.layout_main.insertWidget(1, self.video_driver)
+
+        old_driver.cleanup()
+
+    def init_url_resolver(self):
+        url_resolver = VideoURLResolver(parent=self)
+        url_resolver.error.connect(self.network_error)
+        url_resolver.url_resolved.connect(self.set_video_url)
+
+        return url_resolver
+
+    def reset_url_resolver(self):
+        self.url_resolver.error.disconnect()
+        self.url_resolver.url_resolved.disconnect()
+
+        self.url_resolver.cleanup()
+
+        self.url_resolver = self.init_url_resolver()
+
+    def reset(self):
+        self.is_error = False
+        self.set_status("processing")
+
+        self.reset_video_driver()
+        self.reset_url_resolver()
 
     def init_overlay(self):
         if self.video_driver.is_opengl:
@@ -160,35 +260,58 @@ class VideoBlock(QWidget):  # noqa: WPS230
         raise PlayerException(traceback_txt)
 
     def cleanup(self):
-        if self.is_error:
-            self.status_label.hide()
-            return
-
-        self.video_driver.is_video_initialized = False
-        self.overlay.hide()
-        self.video_driver.hide()
-
-        self.status_label.show()
-        self.repaint()
-
+        self.url_resolver.cleanup()
         self.video_driver.cleanup()
 
-    def error(self):
-        self.video_driver.is_video_initialized = False
-        self.is_error = True
+        if self.is_error:
+            return
 
+        self.set_status("processing")
+
+    def video_driver_error(self):
+        if isinstance(self.video_params.uri, VideoURL):
+            return self.network_error()
+
+        return self.error()
+
+    def error(self):
+        self.is_error = True
+        self.set_status("error")
+        self.cleanup()
+
+    def network_error(self):
+        self.is_error = True
+        self.set_status("network-error")
+        self.cleanup()
+
+    def set_status(self, status):
         self.overlay.hide()
         self.video_driver.hide()
 
-        self.status_label.set_error()
+        self.status_label.set_icon(status)
         self.status_label.show()
         self.repaint()
 
+    def reload(self):
+        self.is_live = False
+        self.is_error = False
+        self.streams = Streams()
+        self._title = None
+        self.default_title = None
+
+        self.reset()
+
+        video_params = self.video_params
+        self.video_params = None
+
+        self.set_video(video_params)
+
     def exit(self):
+        logger.debug(f"Closing video block {self.id}")
         self.exit_request.emit(self.id)
 
     def wheelEvent(self, event):
-        if not self.is_video_initialized:
+        if not self.is_video_initialized or self.is_live:
             event.ignore()
             return
 
@@ -207,7 +330,7 @@ class VideoBlock(QWidget):  # noqa: WPS230
         event.ignore()
 
     def mouseReleaseEvent(self, event) -> None:
-        if not self.is_video_initialized:
+        if not self.is_video_initialized or self.is_live:
             event.ignore()
             return
 
@@ -231,6 +354,10 @@ class VideoBlock(QWidget):  # noqa: WPS230
         return self.rect().contains(self.mapFromGlobal(QCursor.pos()))
 
     @property
+    def size_tuple(self) -> Tuple[int, int]:
+        return self.size().width(), self.size().height()
+
+    @property
     def is_video_initialized(self):
         if self.video_driver is None:
             return False
@@ -238,12 +365,22 @@ class VideoBlock(QWidget):  # noqa: WPS230
         return self.video_driver.is_video_initialized
 
     @property
+    def title(self):
+        return self._title
+
+    @title.setter
+    def title(self, title):
+        self._title = title
+        self.label_change.emit(self._title)
+
+    @property
     def time(self):
         return self.video_params.current_position
 
     @time.setter
     def time(self, time):
-        self.video_params.current_position = time
+        if not self.is_live:
+            self.video_params.current_position = time
 
         self.time_change.emit(time, self.video_driver.length)
 
@@ -258,14 +395,16 @@ class VideoBlock(QWidget):  # noqa: WPS230
     def loop_start(self):
         if self.video_params.loop_start is None:
             return 0
+
         return self.video_params.loop_start
 
     @property
     def loop_end(self):
         if self.video_params.loop_end is None:
-            # Loop end 250 ms before actual end for seamless loop
-            before_end_gap = 250
+            # Loop end 1000 ms before actual end for seamless loop
+            before_end_gap = 1000
             return self.video_driver.length - before_end_gap
+
         return self.video_params.loop_end
 
     def show_overlay(self):
@@ -280,10 +419,10 @@ class VideoBlock(QWidget):  # noqa: WPS230
         self.overlay.hide()
 
     def time_changed(self, new_time):
-        if not self.is_video_initialized:
-            return
-
         self.time = new_time
+
+        if self.is_live:
+            return
 
         # 100ms headspace for slow callbacks
         if self.time < self.loop_start - 100:
@@ -291,6 +430,17 @@ class VideoBlock(QWidget):  # noqa: WPS230
 
         elif self.time > self.loop_end:
             self.loop_end_action()
+
+    def playback_status_changed(self, is_paused):
+        self.video_params.is_paused = is_paused
+        self.is_paused_change.emit(self.video_params.is_paused)
+
+    def end_reached(self):
+        if self.is_live:
+            return
+
+        self.loop_end_action()
+        self.video_driver.set_pause(False)
 
     def loop_end_action(self):
         is_single_file = self.video_params.repeat_mode == VideoRepeat.SINGLE_FILE
@@ -312,35 +462,79 @@ class VideoBlock(QWidget):  # noqa: WPS230
 
         # Shut down current video
         if not is_first_video:
-            self.cleanup()
-            self.reset_video_driver()
+            self.reset()
 
-        self.load_video.emit(self.video_params.file_path)
-
-    def load_video_finish(self):  # noqa: WPS213
-        self.label_change.emit(self.video_params.title)
-        self.color_change.emit(self.video_params.color.as_hex())
-
-        self.video_driver.set_aspect_ratio(self.video_params.aspect_mode)
-        self.video_driver.set_scale(self.video_params.scale)
-        self.video_driver.set_playback_rate(self.video_params.rate)
-
-        if self.video_params.loop_start:
-            self.set_loop_start_time(self.video_params.loop_start)
-
-        if self.video_params.loop_end:
-            self.set_loop_end_time(self.video_params.loop_end)
-
-        is_video_start = self.video_params.current_position == 0
-
-        if self.video_params.is_start_random and is_video_start:
-            self.seek_random()
+        if self.video_params.is_http_url:
+            self.url_resolver.resolve(self.video_params.uri)
         else:
-            self.seek(self.video_params.current_position)
+            self.load_video.emit(
+                MediaInput(
+                    uri=str(self.video_params.uri),
+                    is_live=False,
+                    size=self.size_tuple,
+                    video=self.video_params,
+                )
+            )
+
+    def set_video_url(self, video: ResolvedVideo):
+        self.default_title = video.title
+
+        if self.video_params.title is None:
+            self.title = video.title
+
+        self.streams = Streams(video.urls)
+        self.is_live = video.is_live
+
+        self.load_stream_quality(self.video_params.stream_quality)
+
+    def switch_stream_quality(self, quality: str):
+        if quality == self.video_params.stream_quality:
+            return
+
+        self.reset()
+
+        self.load_stream_quality(quality)
+
+    def load_stream_quality(self, quality: str):
+        quality, url = self.streams.by_quality(quality)
+
+        self.video_params.stream_quality = quality
+
+        self.load_video.emit(
+            MediaInput(
+                uri=url,
+                is_live=self.is_live,
+                size=self.size_tuple,
+                video=self.video_params,
+            )
+        )
+
+    def load_video_finish(self):
+        # final verdict belongs to VLC
+        self.is_live = self.video_driver.is_live
+
+        if self.default_title is None:
+            self.default_title = self.video_params.uri_name
+
+        if self.title is None:
+            if self.video_params.title is None:
+                self.title = self.default_title
+            else:
+                self.title = self.video_params.title
+
+        self.color_change.emit(self.video_params.color.as_hex())
 
         self.set_volume(self.video_params.volume)
         self.set_muted(self.video_params.is_muted)
-        self.set_pause(self.video_params.is_paused)
+
+        if not self.is_live:
+            if self.video_params.loop_start:
+                self.set_loop_start_time(self.video_params.loop_start)
+
+            if self.video_params.loop_end:
+                self.set_loop_end_time(self.video_params.loop_end)
+
+            self.video_driver.set_playback_rate(self.video_params.rate)
 
         self.status_label.hide()
         self.show_overlay()
@@ -351,12 +545,21 @@ class VideoBlock(QWidget):  # noqa: WPS230
         self.video_driver.set_aspect_ratio(self.video_params.aspect_mode)
 
     def toggle_loop_random(self):
+        if self.is_live:
+            return
+
         self.video_params.is_start_random = not self.video_params.is_start_random
 
     def set_loop_start(self):
+        if self.is_live:
+            return
+
         self.set_loop_start_time(self.time)
 
     def set_loop_start_time(self, new_time):
+        if self.is_live:
+            return
+
         if new_time == self.video_params.loop_end:
             return
 
@@ -365,9 +568,15 @@ class VideoBlock(QWidget):  # noqa: WPS230
         self.loop_start_change.emit(new_time / self.video_driver.length)
 
     def set_loop_end(self):
+        if self.is_live:
+            return
+
         self.set_loop_end_time(self.time)
 
     def set_loop_end_time(self, new_time):
+        if self.is_live:
+            return
+
         if new_time == self.video_params.loop_start:
             return
 
@@ -376,6 +585,9 @@ class VideoBlock(QWidget):  # noqa: WPS230
         self.loop_end_change.emit(new_time / self.video_driver.length)
 
     def reset_loop(self):
+        if self.is_live:
+            return
+
         self.video_params.loop_start = None
         self.video_params.loop_end = None
 
@@ -383,14 +595,23 @@ class VideoBlock(QWidget):  # noqa: WPS230
         self.loop_end_change.emit(100.0)
 
     def set_repeat_mode(self, repeat_mode: VideoRepeat):
+        if self.is_live:
+            return
+
         self.video_params.repeat_mode = repeat_mode
 
     def seek_shift_percent(self, shift_percent):
+        if self.is_live:
+            return
+
         seek_ms = int(shift_percent / 100 * self.video_driver.length)
 
         self.seek_shift(seek_ms)
 
     def seek_shift(self, seek_ms):
+        if self.is_live:
+            return
+
         seek_stretch = self.loop_end - self.loop_start
 
         if seek_ms > 0 and self.time + seek_ms > self.loop_end:
@@ -415,16 +636,27 @@ class VideoBlock(QWidget):  # noqa: WPS230
         self.seek(new_time)
 
     def seek_random(self):
+        if self.is_live:
+            return
+
         random_ms = random.randint(self.loop_start, self.loop_end)  # noqa: S311
 
         self.seek(random_ms)
 
     def seek_percent(self, percent):
+        if self.is_live:
+            return
+
         seek_ms = int(percent * self.video_driver.length)
 
         self.seek(seek_ms)
 
     def seek(self, seek_ms):
+        if self.is_live:
+            return
+
+        logger.debug(f"Seeking to {seek_ms}ms")
+
         if seek_ms < self.loop_start or seek_ms > self.loop_end:
             seek_ms = self.loop_start
 
@@ -432,8 +664,12 @@ class VideoBlock(QWidget):  # noqa: WPS230
         self.time = seek_ms
 
     def step_frame(self, frames):
+        if self.is_live:
+            return
+
         if not self.video_params.is_paused:
             self.set_pause(True)
+            return
 
         ms_per_frame = self.video_driver.get_ms_per_frame()
 
@@ -470,6 +706,9 @@ class VideoBlock(QWidget):  # noqa: WPS230
         self.info_change.emit("Zoom: {0}".format(self.video_params.scale))
 
     def rate_increase(self):
+        if self.is_live:
+            return
+
         self.video_params.rate += 0.1
         self.video_params.rate = round(self.video_params.rate, 1)
 
@@ -482,6 +721,9 @@ class VideoBlock(QWidget):  # noqa: WPS230
         self.info_change.emit("Speed: {0}".format(self.video_params.rate))
 
     def rate_decrease(self):
+        if self.is_live:
+            return
+
         self.video_params.rate -= 0.1
         self.video_params.rate = round(self.video_params.rate, 1)
 
@@ -494,20 +736,19 @@ class VideoBlock(QWidget):  # noqa: WPS230
         self.info_change.emit("Speed: {0}".format(self.video_params.rate))
 
     def rate_reset(self):
+        if self.is_live:
+            return
+
         self.video_params.rate = 1.0
 
         self.video_driver.set_playback_rate(self.video_params.rate)
         self.info_change.emit("Speed: {0}".format(self.video_params.rate))
 
     def set_pause(self, paused):
-        self.video_params.is_paused = paused
+        if self.video_params.is_paused == paused:
+            return
 
-        if self.video_params.is_paused:
-            self.video_driver.set_pause(self.video_params.is_paused)
-        else:
-            self.video_driver.play()
-
-        self.is_paused_change.emit(self.video_params.is_paused)
+        self.video_driver.set_pause(paused)
 
     def mute_unmute(self):
         self.set_muted(not self.video_params.is_muted)
@@ -522,9 +763,7 @@ class VideoBlock(QWidget):  # noqa: WPS230
     def set_volume(self, percent):
         self.video_params.volume = round(percent, 2)
 
-        volume = int(self.video_params.volume * 100)
-
-        self.video_driver.audio_set_volume(volume)
+        self.video_driver.audio_set_volume(self.video_params.volume)
 
         self.volume_change.emit(percent)
 
@@ -532,54 +771,56 @@ class VideoBlock(QWidget):  # noqa: WPS230
         self.set_pause(not self.video_params.is_paused)
 
     def previous_video(self):
-        # Stop new commands
-        self.video_driver.is_video_initialized = False
-
-        self.switch_video(previous_video_file(self.video_params.file_path))
+        self.switch_video(previous_video_file(self.video_params.uri))
 
     def next_video(self):
-        # Stop new commands
-        self.video_driver.is_video_initialized = False
-
-        self.switch_video(next_video_file(self.video_params.file_path))
+        self.switch_video(next_video_file(self.video_params.uri))
 
     def shuffle_video(self):
-        # Stop new commands
-        self.video_driver.is_video_initialized = False
-
-        self.switch_video(next_video_file(self.video_params.file_path, is_shuffle=True))
+        self.switch_video(next_video_file(self.video_params.uri, is_shuffle=True))
 
     def switch_video(self, new_video: Path):
+        if self.is_live:
+            return
+
         # If single file in the dir and was removed, highly unlikely but still
         if new_video is None:
-            self.cleanup()
             self.error()
             return
 
-        if new_video == self.video_params.file_path:
-            self.video_driver.is_video_initialized = True
+        if new_video == self.video_params.uri:
             self.seek(self.loop_start)
             return
 
         self.reset_loop()
         self.video_params.current_position = 0
-        self.video_params.file_path = new_video
-        self.video_params.title = new_video.name
+        self.video_params.uri = new_video
         self.video_params.is_paused = False
+        self._title = None
+        self.default_title = None
 
         self.set_video(self.video_params)
 
     def rename(self):
-        new_name, new_color = QVideoRenameDialog.get_edits(
-            self.parent(),
-            self.tr("Rename video"),
-            self.video_params.file_path.name,
-            self.video_params.title,
-            self.video_params.color.as_rgb_tuple(),
+        new_data = QVideoRenameDialog.get_edits(
+            parent=self.parent(),
+            title=self.tr("Rename video"),
+            orig_title=self.default_title,
+            cur_title=self.title,
+            cur_color=self.video_params.color.as_rgb_tuple(),
         )
 
-        self.video_params.title = new_name
+        if new_data is None:
+            return
+
+        new_name, new_color = new_data
+
         self.video_params.color = Color(new_color)
 
-        self.label_change.emit(self.video_params.title)
+        if new_name == self.default_title:
+            self.video_params.title = None
+        else:
+            self.video_params.title = new_name
+
+        self.title = new_name
         self.color_change.emit(self.video_params.color.as_hex())

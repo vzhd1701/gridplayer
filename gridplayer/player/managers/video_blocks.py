@@ -1,10 +1,12 @@
 import logging
+from typing import List
 
 from PyQt5.QtCore import pyqtSignal
 
 from gridplayer.player.managers.base import ManagerBase
 from gridplayer.settings import Settings
 from gridplayer.utils.misc import qt_connect
+from gridplayer.video import Video
 from gridplayer.widgets.video_block import VideoBlock
 
 logger = logging.getLogger(__name__)
@@ -37,7 +39,7 @@ class VideoBlocks(object):
         return [v for v in self._blocks if not v.video_params.is_paused]
 
     @property
-    def videos(self):
+    def videos(self) -> List[Video]:
         return [v.video_params for v in self._blocks]
 
     def by_id(self, _id):

@@ -6,8 +6,13 @@ from PyQt5.QtGui import QDrag
 from PyQt5.QtWidgets import QApplication
 
 from gridplayer.player.managers.base import ManagerBase
-from gridplayer.utils.files import drag_get_files, drag_get_video_id, drag_has_video_id
-from gridplayer.video import Video
+from gridplayer.utils.files import (
+    drag_get_uris,
+    drag_get_video_id,
+    drag_has_video_id,
+    get_playlist_path,
+)
+from gridplayer.video import filter_video_uris
 
 logger = logging.getLogger(__name__)
 
@@ -46,7 +51,7 @@ class DragNDropManager(ManagerBase):
     def dragEnterEvent(self, event):
         drag_data = event.mimeData()
 
-        if not drag_get_files(drag_data) and not drag_has_video_id(drag_data):
+        if not drag_get_uris(drag_data) and not drag_has_video_id(drag_data):
             return
 
         event.setDropAction(Qt.MoveAction)
@@ -54,34 +59,15 @@ class DragNDropManager(ManagerBase):
 
     def dropEvent(self, event):
         drop_data = event.mimeData()
-        drop_files = drag_get_files(drop_data)
+        drop_files = drag_get_uris(drop_data)
 
         # Add new video
         if drop_files:
-            if drop_files[0].suffix.lower() == ".gpls":
-                self.playlist_dropped.emit(drop_files[0])
-            else:
-                videos = [Video(file_path=f, title=f.name) for f in drop_files]
-                self.videos_dropped.emit(videos)
-
-            event.acceptProposedAction()
-
-            return True
+            return self._drop_files(event, drop_files)
 
         # Swap videos
         elif drag_has_video_id(drop_data):
-            dst_video = self._ctx.active_block
-            if dst_video is None:
-                logger.debug("No video under cursor, discarding drop")
-                return False
-
-            src_video = self._ctx.video_blocks.by_id(drag_get_video_id(drop_data))
-
-            self._swap_videos(src_video, dst_video)
-
-            event.acceptProposedAction()
-
-            return True
+            return self._drop_video_block(event, drop_data)
 
     def dragMoveEvent(self, event):
         drop_data = event.mimeData()
@@ -89,6 +75,33 @@ class DragNDropManager(ManagerBase):
         if drag_has_video_id(drop_data):
             src_video = self._ctx.video_blocks.by_id(drag_get_video_id(drop_data))
             src_video.show_overlay()
+
+    def _drop_files(self, event, drop_files):
+        playlist = get_playlist_path(drop_files)
+
+        if playlist:
+            self.playlist_dropped.emit(playlist)
+        else:
+            videos = filter_video_uris(drop_files)
+            self.videos_dropped.emit(videos)
+
+        event.acceptProposedAction()
+
+        return True
+
+    def _drop_video_block(self, event, drop_data):
+        dst_video = self._ctx.active_block
+        if dst_video is None:
+            logger.debug("No video under cursor, discarding drop")
+            return False
+
+        src_video = self._ctx.video_blocks.by_id(drag_get_video_id(drop_data))
+
+        self._swap_videos(src_video, dst_video)
+
+        event.acceptProposedAction()
+
+        return True
 
     def _is_drag_started(self, event):
         if not event.buttons() & Qt.LeftButton:

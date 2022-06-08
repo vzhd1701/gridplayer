@@ -1,7 +1,7 @@
 import logging
 import platform
 
-from PyQt5.QtCore import QEvent, pyqtSignal
+from PyQt5.QtCore import pyqtSignal
 from PyQt5.QtWidgets import QWidget
 
 from gridplayer.player.manager import ManagersManager
@@ -103,6 +103,7 @@ class Player(QWidget, ManagersManager):
             "add_videos": [
                 ("videos_added", "video_blocks.add_videos"),
                 ("videos_added", "window_state.activate_window"),
+                ("error", "dialogs.error"),
             ],
         }
 

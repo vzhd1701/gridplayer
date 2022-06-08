@@ -32,6 +32,7 @@ class ProcessManager(CommandLoopThreaded, QObject):
         self.crash_func = self.crash_all
 
         self.instances = {}
+        self.dying_instances = set()
 
         self._instances_killed = Condition()
 
@@ -71,7 +72,6 @@ class ProcessManager(CommandLoopThreaded, QObject):
         return instance
 
     def create_instance(self):
-
         instance = self._instance_class(
             players_per_instance=self._limit, pm_callback_pipe=self._self_pipe
         )
@@ -89,13 +89,17 @@ class ProcessManager(CommandLoopThreaded, QObject):
         return PlayerInstance(instance, player_id)
 
     def cleanup_instance(self, inst_id):
-        self.instances[inst_id].process.join()
-        self.instances[inst_id].process.close()
+        instance = self.instances.pop(inst_id)
 
-        self.instances.pop(inst_id)
+        self.dying_instances.add(inst_id)
+
+        instance.process.join()
+        instance.process.close()
+
+        self.dying_instances.remove(inst_id)
 
         with self._instances_killed:
-            if not self.instances:
+            if not self.instances and not self.dying_instances:
                 self._instances_killed.notify()
 
     def crash_all(self, traceback_txt):

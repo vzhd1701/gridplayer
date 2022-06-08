@@ -1,508 +1,277 @@
-import ctypes
 import logging
-import platform
-import time
+from abc import ABC, abstractmethod
+from pathlib import Path
+from typing import Optional
 
-from PyQt5.QtCore import QObject, pyqtSignal
+from PyQt5.QtCore import QSize, Qt, pyqtSignal
+from PyQt5.QtGui import QPixmap
+from PyQt5.QtWidgets import QLabel, QStackedLayout, QWidget
 
-from gridplayer import params_env
-from gridplayer.multiprocess.command_loop import CommandLoopThreaded
-from gridplayer.multiprocess.instance_process import InstanceProcess
-from gridplayer.multiprocess.process_manager import ProcessManager
-from gridplayer.settings import Settings
-from gridplayer.utils.libvlc import pre_import_embed_vlc
-
-# Need to set env variables before importing vlc
-pre_import_embed_vlc()
-import vlc  # noqa: E402
-
-# Prepare `vsnprintf` function
-if platform.system() == "Windows":
-    # Note: must use same version of libc as libvlc
-    vsnprintf = ctypes.cdll.msvcrt.vsnprintf
-else:
-    libc = ctypes.cdll.LoadLibrary(ctypes.util.find_library("c"))
-    vsnprintf = libc.vsnprintf
-
-vsnprintf.restype = ctypes.c_int
-vsnprintf.argtypes = (
-    ctypes.c_char_p,
-    ctypes.c_size_t,
-    ctypes.c_char_p,
-    ctypes.c_void_p,
-)
-
-ONE_MOMENT = 0.01
-DEFAULT_FPS = 25
+from gridplayer.params_static import QT_ASPECT_MAP, VideoAspect
+from gridplayer.utils.misc import QABC, qt_connect
+from gridplayer.vlc_player.static import MediaInput, MediaTrack
+from gridplayer.vlc_player.video_driver_base import VLCVideoDriver
+from gridplayer.widgets.video_block_status import StatusLabel
 
 
-class VlcPlayerBase(object):
-    def __init__(self, vlc_instance, **kwargs):
+class PauseSnapshot(QLabel):
+    def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
-        self.instance = vlc_instance
+        self.setAlignment(Qt.AlignCenter)
+        self.setStyleSheet("background-color:black;")
 
-        self.is_video_initialized = False
+        self._snapshot_pixmap = None
 
-        self.length = None
-        self.video_dimensions = None
-        self.fps = None
+    def set_snapshot_file(self, snapshot_file: str):
+        self._snapshot_pixmap = QPixmap(snapshot_file)
 
-        self._is_first_start_finished = False
-        self._is_waiting_for_buffer = False
-        self._is_meta_loaded = False
-
-        self._media_player = None
-        self._media = None
-        self._media_options = []
-
-        self._log = logging.getLogger(self.__class__.__name__)
-
-    def init_player(self):
-        self._media_player = self.instance.media_player_new()
-
-        self._media_player.audio_set_mute(True)
-        self._media_player.video_set_mouse_input(False)
-        self._media_player.video_set_key_input(False)
-
-        self._media_player.event_manager().event_attach(
-            vlc.EventType.MediaPlayerTimeChanged, self.cb_time_changed
-        )
-
-        self._media_player.event_manager().event_attach(
-            vlc.EventType.MediaPlayerBuffering, self.cb_buffering
-        )
-
-        self._media_player.event_manager().event_attach(
-            vlc.EventType.MediaPlayerEncounteredError, self.cb_error
-        )
-
-    def cleanup(self):
-        if self._media_player is not None:
-            self.stop()
-
-            self._media_player.release()
-            self._media_player = None
-
-    def notify_error(self):
-        """Emit signal when error"""
-
-    def notify_time_change(self, new_time):
-        """Emit new video time"""
-
-    def notify_load_video_finish(self, video_params):
-        """Emit signal when video is fully loaded"""
-
-    def loopback_load_video_player(self):
-        """Emit signal to self when video is ready to be loaded into player"""
-
-    def loopback_load_video_finish(self):
-        """Emit signal to self when video is loaded into player"""
-
-    def cb_error(self, event):
-        self._log.error("MediaPlayer encountered an error!")
-        self.notify_error()
-
-    def cb_parse_changed(self, event):
-        if event.u.new_status != vlc.MediaParsedStatus.done:
-            status_txt = str(vlc.MediaParsedStatus(event.u.new_status))
-            self._log.error(f"Media parse failed! Status changed to {status_txt}.")
-            return self.notify_error()
-
-        self._extract_meta_parse()
-
-        self.loopback_load_video_player()
-
-    def cb_time_changed(self, event):
-        # Doesn't work anymore since python-vlc-3.0.12117
-        new_time = event.u.new_time
-
-        if not self._is_first_start_finished:
-            if new_time == 0:
-                return
-
-            self._is_first_start_finished = True
-
-            self.loopback_load_video_finish()
-
-        if not self.is_video_initialized:
+    def adjust_view(self, size: QSize, aspect, scale: float):
+        if self._snapshot_pixmap is None:
             return
 
-        self.notify_time_change(new_time)
-
-    def cb_buffering(self, event):
-        if not self._is_waiting_for_buffer:
-            return
-
-        if int(event.u.new_cache) == 100:
-            self._is_waiting_for_buffer = False
-
-    def load_video(self, file_path):
-        """Step 1. Load & parse video file"""
-        self._log.info(f"Loading {file_path}")
-
-        self._media = self.instance.media_new_path(file_path)
-
-        if self._media is None:
-            self._log.error(f"Failed to load file {file_path}!")
-            return self.notify_error()
-
-        self._media.event_manager().event_attach(
-            vlc.EventType.MediaParsedChanged, self.cb_parse_changed
+        scaled_size = QSize(
+            int(size.width() * scale),
+            int(size.height() * scale),
         )
 
-        self._media.add_options(*self._media_options)
-
-        self._media.parse_with_options(vlc.MediaParseFlag.local, -1)
-
-    def load_video_player(self):
-        """Step 2. Start video player with parsed file"""
-
-        self._log.debug("Setting parsed media to player")
-
-        self._media_player.set_media(self._media)
-
-        self._media_player.play()
-
-    def load_video_finish(self):
-        """Step 3. Make sure video buffered and properly seekable"""
-
-        if not self._is_meta_loaded:
-            self._extract_meta_play()
-
-        self._log.debug("Load finished")
-
-        self._media_player.set_pause(1)
-        while self._media_player.get_state() != vlc.State.Paused:
-            time.sleep(ONE_MOMENT)
-
-        self._is_waiting_for_buffer = True
-
-        self._media_player.set_time(0)
-        while self._media_player.get_time() != 0:
-            time.sleep(ONE_MOMENT)
-
-        # waiting for buffering to display paused frame
-        while self._is_waiting_for_buffer:
-            time.sleep(ONE_MOMENT)
-
-        self.is_video_initialized = True
-
-        video_params = {
-            "length": self.length,
-            "fps": self.fps,
-            "video_dimensions": self.video_dimensions,
-        }
-
-        self.notify_load_video_finish(video_params)
-
-    def stop(self):
-        self._media_player.stop()
-
-    def play(self):
-        self._media_player.play()
-
-    def set_pause(self, is_paused):
-        self._media_player.set_pause(is_paused)
-
-    def set_time(self, seek_ms):
-        is_initial_set_time = (
-            self._media_player.get_state() == vlc.State.Paused
-            and self._media_player.get_time() == 0
+        self.setPixmap(
+            self._snapshot_pixmap.scaled(
+                scaled_size, QT_ASPECT_MAP[aspect], Qt.SmoothTransformation
+            )
         )
 
-        if is_initial_set_time:
-            self.set_time_ensure(seek_ms)
-        else:
-            self._media_player.set_time(seek_ms)
-
-    def set_time_ensure(self, seek_ms):
-        self._media_player.set_time(seek_ms + 1)
-
-        self._is_waiting_for_buffer = True
-        while self._is_waiting_for_buffer:
-            time.sleep(ONE_MOMENT)
-        self._media_player.set_time(seek_ms)
-        self._is_waiting_for_buffer = True
-        while self._is_waiting_for_buffer:
-            time.sleep(ONE_MOMENT)
-
-    def set_playback_rate(self, rate):
-        self._media_player.set_rate(rate)
-
-    def audio_set_mute(self, is_muted):
-        self._media_player.audio_set_mute(is_muted)
-
-    def audio_set_volume(self, volume):
-        self._media_player.audio_set_volume(volume)
-
-    def _get_video_track(self):
-        media_tracks = self._media.tracks_get()
-
-        if not media_tracks:
-            return None
-
-        video_tracks = (
-            t.u.video.contents for t in media_tracks if t.type == vlc.TrackType.video
-        )
-
-        video_track = next(video_tracks, None)
-
-        vital_params = (
-            video_track,
-            video_track.width,
-            video_track.height,
-        )
-
-        if not all(vital_params):
-            return None
-
-        return video_track
-
-    def _extract_meta_parse(self):
-        video_track = self._get_video_track()
-
-        if video_track is None:
-            self._log.warning("Video track data is missing, cannot parse metadata.")
-            return
-
-        self._log.debug("Parsing metadata...")
-
-        self.length = self._media.get_duration()
-        self.video_dimensions = (video_track.width, video_track.height)
-
-        if video_track.frame_rate_num and video_track.frame_rate_den:
-            self.fps = video_track.frame_rate_num / video_track.frame_rate_den
-        else:
-            self.fps = DEFAULT_FPS
-
-        self._is_meta_loaded = True
-
-    def _extract_meta_play(self):
-        self._log.debug("Extracting metadata...")
-
-        self.length = self._media.get_duration()
-        self.video_dimensions = self._media_player.video_get_size()
-        self.fps = self._media_player.get_fps() or DEFAULT_FPS
-
-        self._is_meta_loaded = True
+    def reset(self):
+        self._snapshot_pixmap = None
 
 
-class VlcPlayerThreaded(CommandLoopThreaded, VlcPlayerBase):
-    def start(self):
-        self.cmd_loop_start_thread(self.init_player)
-
-    def notify_error(self):
-        self.cmd_send("error_state")
-
-    def notify_time_change(self, new_time):
-        self.cmd_send("time_change_emit", new_time)
-
-    def notify_load_video_finish(self, video_params):
-        self.cmd_send("load_video_finish", video_params)
-
-    def loopback_load_video_player(self):
-        self.cmd_send_self("load_video_player")
-
-    def loopback_load_video_finish(self):
-        self.cmd_send_self("load_video_finish")
-
-
-class VLCVideoDriverThreaded(CommandLoopThreaded, QObject):
+class VideoFrameVLC(QWidget, metaclass=QABC):
     time_changed = pyqtSignal(int)
-    load_finished = pyqtSignal()
+    playback_status_changed = pyqtSignal(bool)
+    end_reached = pyqtSignal()
+
+    video_ready = pyqtSignal()
+    video_ready_to_display = pyqtSignal()
+
     error = pyqtSignal()
     crash = pyqtSignal(str)
+
+    is_opengl: Optional[bool] = None
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
-        self.crash_func = self.crash_thread
+        self._log = logging.getLogger(self.__class__.__name__)
 
-        self.length = 0
-        self.fps = None
+        self._aspect = VideoAspect.FIT
+        self._scale = 1
 
-        self.cmd_loop_start_thread()
+        self._is_status_change_in_progress = False
+        self._is_cleanup_requested = False
 
-    def crash_thread(self, traceback_txt):
-        self.crash.emit(traceback_txt)
+        self.media_track: Optional[MediaTrack] = None
 
-    def cleanup(self):
-        self.cmd_send("cleanup")
-        self.cmd_loop_terminate()
+        self.ui_setup()
 
-    def time_change_emit(self, new_time):
-        self.time_changed.emit(new_time)
+        self.audio_only_placeholder = StatusLabel(parent=self, icon="audio-only")
+        self.pause_snapshot = PauseSnapshot(parent=self)
 
-    def load_video(self, file_path):
-        self.cmd_send("load_video", file_path)
+        self.ui_helper_widgets()
 
-    def load_video_finish(self, video_params):
-        self.length = video_params["length"]
-        self.fps = video_params["fps"]
+        self.video_surface = self.ui_video_surface()
 
-        self.load_finished.emit()
+        self.layout().addWidget(self.video_surface)
+        self.layout().addWidget(self.pause_snapshot)
+        self.layout().addWidget(self.audio_only_placeholder)
 
-    def play(self):
-        self.cmd_send("play")
+        self.video_driver: VLCVideoDriver = self.driver_setup()
 
-    def set_pause(self, is_paused):
-        self.cmd_send("set_pause", is_paused)
-
-    def set_time(self, seek_ms):
-        self.cmd_send("set_time", seek_ms)
-
-    def set_playback_rate(self, rate):
-        self.cmd_send("set_playback_rate", rate)
-
-    def get_ms_per_frame(self):
-        return int(1000 // self.fps)
-
-    def audio_set_mute(self, is_muted):
-        self.cmd_send("audio_set_mute", is_muted)
-
-    def audio_set_volume(self, volume):
-        self.cmd_send("audio_set_volume", volume)
-
-    def error_state(self):
-        self.error.emit()
-
-
-class InstanceProcessVLC(InstanceProcess):
-    def __init__(self, vlc_log_level, **kwargs):
-        super().__init__(**kwargs)
-
-        self._vlc = InstanceVLC(vlc_log_level)
+        self.driver_connect()
 
     @property
-    def vlc_instance(self):
-        return self._vlc.vlc_instance
+    def length(self) -> int:
+        return self.media_track.length
 
-    def init_instance(self):
-        self._vlc.init_instance()
+    @property
+    def is_live(self) -> bool:
+        return self.media_track.is_live
 
-    def cleanup_instance(self):
-        self._vlc.cleanup_instance()
+    @property
+    def is_live_video(self) -> bool:
+        return not self.media_track.is_audio_only and self.media_track.is_live
 
-    # outside
-    def request_set_log_level_vlc(self, log_level):
-        self.cmd_send_self("set_log_level_vlc", log_level)
+    @property
+    def is_video_initialized(self) -> bool:
+        return self.media_track is not None
 
-    # process
-    def set_log_level_vlc(self, log_level):
-        self._vlc.set_log_level_vlc(log_level)
+    @abstractmethod
+    def driver_setup(self) -> VLCVideoDriver:
+        ...
 
+    @abstractmethod
+    def ui_video_surface(self) -> QWidget:
+        ...
 
-class InstanceVLC(object):
-    log_level_map = {
-        vlc.LogLevel.DEBUG: logging.DEBUG,
-        vlc.LogLevel.ERROR: logging.ERROR,
-        vlc.LogLevel.NOTICE: logging.INFO,
-        vlc.LogLevel.WARNING: logging.WARNING,
-    }
-
-    def __init__(self, vlc_log_level, **kwargs):
-        super().__init__(**kwargs)
-
-        self.vlc_instance = None
-        self.vlc_options = []
-
-        self._vlc_log_level = vlc_log_level
-
-        self._logger = None
-        self._logger_cb = None
-        self._logger_buf = None
-        self._logger_buf_len = 1024
-
-    # process
-    def init_instance(self):
-        options = [
-            "--input-repeat=65535",
-            "--quiet",
-            "--no-disable-screensaver",
-            "--no-sub-autodetect-file",
-            *self.vlc_options,
-        ]
-
-        # https://forum.videolan.org/viewtopic.php?t=147229
-        if platform.system() == "Windows":
-            options.append("--aout=directsound")
-
-        if params_env.IS_APPIMAGE:
-            options.append("--aout=pulse")
-
-        self.vlc_instance = vlc.Instance(options)
-
-        if self.vlc_instance is None:
-            raise RuntimeError("VLC failed to initialize")
-
-        self.init_logger()
-
-    # process
-    def cleanup_instance(self):
-        self.vlc_instance.release()
-
-    # process
-    def init_logger(self):
-        self._logger = logging.getLogger("VLC")
-        self._logger_cb = self.libvlc_log_callback()
-        self._logger_buf = ctypes.create_string_buffer(self._logger_buf_len)
-
-        self.vlc_instance.log_set(self._logger_cb, None)
-
-    # process
-    def libvlc_log_callback(self):
-        @vlc.CallbackDecorators.LogCb
-        def _cb(ptr_data, level, ctx, fmt, args):  # noqa: WPS430
-            log_level = self.log_level_map[vlc.LogLevel(level)]
-
-            if log_level < self._vlc_log_level:
-                return
-
-            log_head, log_msg = self._format_log_msg(args, ctx, fmt)
-
-            if self._logger.level == logging.DEBUG:
-                self._logger.log(log_level, log_head)
-
-            self._logger.log(log_level, log_msg)
-
-        return _cb
-
-    # process
-    def set_log_level_vlc(self, log_level):
-        self._vlc_log_level = log_level
-
-    def _format_log_msg(self, args, ctx, fmt):  # noqa: WPS210
-        m_name, m_file, m_line = vlc.libvlc_log_get_context(ctx)
-
-        # Format given fmt/args pair
-        str_len = vsnprintf(self._logger_buf, self._logger_buf_len, fmt, args)
-        log_txt = self._logger_buf.raw[:str_len].decode()
-
-        log_head = f"{m_file.decode()}:{m_line}"
-        log_msg = f"{m_name.decode()}: {log_txt}"
-
-        return log_head, log_msg
-
-
-class ProcessManagerVLC(ProcessManager):
-    def set_log_level_vlc(self, log_level):
-        active_instances = (i for i in self.instances.values() if not i.is_dead.value)
-
-        for a in active_instances:
-            a.request_set_log_level_vlc(log_level)
-
-    def create_instance(self):
-        log_level_vlc = Settings().get("logging/log_level_vlc")
-
-        instance = self._instance_class(
-            players_per_instance=self._limit,
-            pm_callback_pipe=self._self_pipe,
-            vlc_log_level=log_level_vlc,
+    def driver_connect(self) -> None:
+        qt_connect(
+            (
+                self.video_driver.playback_status_changed,
+                self.playback_status_changed_emit,
+            ),
+            (self.video_driver.end_reached, self.end_reached_emit),
+            (self.video_driver.time_changed, self.time_changed_emit),
+            (self.video_driver.load_finished, self.load_video_finish),
+            (self.video_driver.load_display, self.load_video_display),
+            (self.video_driver.snapshot_taken, self.snapshot_taken),
+            (self.video_driver.error, self.error_emit),
+            (self.video_driver.crash, self.crash_emit),
         )
 
-        if self._log_queue:
-            log_level = Settings().get("logging/log_level")
-            instance.setup_log_queue(self._log_queue, log_level)
+    def ui_setup(self) -> None:
+        self.setWindowFlags(Qt.WindowTransparentForInput)
+        self.setAttribute(Qt.WA_TransparentForMouseEvents)
 
-        return instance
+        self.setMouseTracking(True)
+
+        QStackedLayout(self)
+        self.layout().setSpacing(0)
+        self.layout().setContentsMargins(0, 0, 0, 0)
+        self.layout().setStackingMode(QStackedLayout.StackAll)
+
+    def ui_helper_widgets(self) -> None:
+        self.audio_only_placeholder.setMouseTracking(True)
+        self.audio_only_placeholder.setWindowFlags(Qt.WindowTransparentForInput)
+        self.audio_only_placeholder.setAttribute(Qt.WA_TransparentForMouseEvents)
+        self.audio_only_placeholder.hide()
+
+        self.pause_snapshot.setMouseTracking(True)
+        self.pause_snapshot.setWindowFlags(Qt.WindowTransparentForInput)
+        self.pause_snapshot.setAttribute(Qt.WA_TransparentForMouseEvents)
+        self.pause_snapshot.hide()
+
+    def crash_emit(self, exception_txt) -> None:
+        self.crash.emit(exception_txt)
+
+    def error_emit(self) -> None:
+        self.cleanup()
+
+        self.error.emit()
+
+    def cleanup(self) -> Optional[bool]:
+        if self._is_cleanup_requested:
+            return True
+
+        self._is_cleanup_requested = True
+
+        self.media_track = None
+
+        self.video_driver.cleanup()
+
+    def adjust_view(self) -> Optional[bool]:
+        if not self.is_video_initialized:
+            return False
+
+        if self.media_track.is_audio_only:
+            return True
+
+        if self.is_live:
+            self.pause_snapshot.adjust_view(self.size(), self._aspect, self._scale)
+
+    def resizeEvent(self, event) -> None:
+        self.adjust_view()
+
+    def playback_status_changed_emit(self, is_paused) -> None:
+        if self.is_live_video and not is_paused:
+            self.pause_snapshot.hide()
+            self.pause_snapshot.reset()
+
+        self._is_status_change_in_progress = False
+
+        self.playback_status_changed.emit(is_paused)
+
+    def end_reached_emit(self) -> None:
+        self.end_reached.emit()
+
+    def time_changed_emit(self, new_time) -> None:
+        self.time_changed.emit(new_time)
+
+    def load_video(self, media_input: MediaInput) -> None:
+        self.video_driver.load_video(media_input)
+
+    def load_video_finish(self, media_track: MediaTrack) -> None:
+        self.media_track = media_track
+
+        if self.media_track.is_audio_only:
+            self.video_surface.hide()
+            self.audio_only_placeholder.show()
+
+        self.video_ready.emit()
+
+    # delete this one
+    def load_video_display(self) -> None:
+        self.video_ready_to_display.emit()
+
+    def play(self) -> None:
+        if self._is_status_change_in_progress:
+            return
+
+        self._is_status_change_in_progress = True
+
+        self.video_driver.play()
+
+    def set_pause(self, is_paused) -> None:
+        if self._is_status_change_in_progress:
+            return
+
+        self._is_status_change_in_progress = True
+
+        if self.is_live_video and is_paused:
+            self.take_snapshot()
+        else:
+            self.video_driver.set_pause(is_paused)
+
+    def take_snapshot(self) -> None:
+        self.video_driver.snapshot()
+
+    def snapshot_taken(self, snapshot_file) -> None:
+        self.pause_snapshot.set_snapshot_file(snapshot_file)
+        self.pause_snapshot.adjust_view(self.size(), self._aspect, self._scale)
+        self.pause_snapshot.show()
+
+        Path(snapshot_file).unlink()
+        Path(snapshot_file).parent.rmdir()
+
+        if self._is_status_change_in_progress:
+            self.video_driver.set_pause(True)
+
+    def set_time(self, seek_ms) -> None:
+        self.video_driver.set_time(seek_ms)
+
+    def set_playback_rate(self, rate) -> None:
+        self.video_driver.set_playback_rate(rate)
+
+    def get_ms_per_frame(self) -> int:
+        return int(1000 // self.media_track.fps)
+
+    def audio_set_mute(self, is_muted) -> None:
+        self.video_driver.audio_set_mute(is_muted)
+
+    def audio_set_volume(self, volume) -> None:
+        self.video_driver.audio_set_volume(volume)
+
+    def set_aspect_ratio(self, aspect: VideoAspect) -> None:
+        self._aspect = aspect
+
+        self.adjust_view()
+
+    def set_scale(self, scale) -> None:  # noqa: WPS615
+        self._scale = scale
+
+        self.adjust_view()
+
+
+class VideoFrameVLCProcess(VideoFrameVLC, ABC):
+    def __init__(self, process_manager, **kwargs):
+        self.process_manager = process_manager
+
+        super().__init__(**kwargs)

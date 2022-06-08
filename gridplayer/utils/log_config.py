@@ -37,6 +37,9 @@ class StreamToLogger(object):
     def flush(self):
         """Not used"""
 
+    def isatty(self):
+        return False
+
 
 class QtLogHandler(object):
     log_level_map = {

@@ -1,31 +1,18 @@
 import contextlib
-import logging
 from multiprocessing import Array, Lock, Value
 
 from PyQt5.QtCore import Qt, pyqtSignal
 from PyQt5.QtGui import QBrush, QImage, QPainter, QPixmap
-from PyQt5.QtWidgets import (
-    QFrame,
-    QGraphicsPixmapItem,
-    QGraphicsScene,
-    QGraphicsView,
-    QStackedLayout,
-    QWidget,
-)
+from PyQt5.QtWidgets import QFrame, QGraphicsPixmapItem, QGraphicsScene, QGraphicsView
 
 from gridplayer.multiprocess.safe_shared_memory import SafeSharedMemory, releasing
-from gridplayer.params_static import PLAYER_ID_LENGTH, VideoAspect
-from gridplayer.utils.libvlc import pre_import_embed_vlc
+from gridplayer.params_static import PLAYER_ID_LENGTH, QT_ASPECT_MAP
 from gridplayer.utils.misc import qt_connect
-from gridplayer.widgets.video_frame_vlc_base import (
-    InstanceProcessVLC,
-    VlcPlayerThreaded,
-    VLCVideoDriverThreaded,
-)
-
-# Need to set env variables before importing vlc
-pre_import_embed_vlc()
-import vlc  # noqa: E402
+from gridplayer.vlc_player.instance import InstanceProcessVLC
+from gridplayer.vlc_player.libvlc import vlc
+from gridplayer.vlc_player.player_base_threaded import VlcPlayerThreaded
+from gridplayer.vlc_player.video_driver_base_threaded import VLCVideoDriverThreaded
+from gridplayer.widgets.video_frame_vlc_base import VideoFrameVLCProcess
 
 
 class ImageDecoder(object):
@@ -172,7 +159,8 @@ class PlayerProcessSingleVLCSW(VlcPlayerThreaded):
         self.shared_memory = init_data["shared_memory"]
         self.decoder = None
 
-        self._loaded_path = None
+        self._is_decoder_initialized = False
+
         # Disable hardware decoding
         self._media_options.append("avcodec-hw=none")
 
@@ -196,25 +184,19 @@ class PlayerProcessSingleVLCSW(VlcPlayerThreaded):
     def cleanup_final(self):
         self.cmd_loop_terminate()
 
-    def load_video(self, file_path):
-        self._loaded_path = file_path
-
-        super().load_video(file_path)
-
-    def load_video_player(self):
-        if self._is_meta_loaded:
+    def load_video_st2_set_parsed_media(self):
+        if self.media_track:
             self._init_video_decoder()
 
-        super().load_video_player()
+        super().load_video_st2_set_parsed_media()
 
-    def load_video_finish(self):
-        if not self._is_meta_loaded:
+    def load_video_st4_loaded(self):
+        if not self._is_decoder_initialized:
             # Since we need metadata to allocate video buffer, restart is required
-            self._extract_meta_play()
             self._restart_playback()
             return
 
-        super().load_video_finish()
+        super().load_video_st4_loaded()
 
     def play(self):
         self.decoder.is_paused = False
@@ -227,7 +209,9 @@ class PlayerProcessSingleVLCSW(VlcPlayerThreaded):
         super().set_pause(is_paused)
 
     def _init_video_decoder(self):
-        width, height = self.video_dimensions
+        self._is_decoder_initialized = True
+
+        width, height = self.media_track.video_dimensions
 
         self.decoder.set_frame(width, height)
         self.decoder.attach_media_player(self._media_player)
@@ -239,8 +223,7 @@ class PlayerProcessSingleVLCSW(VlcPlayerThreaded):
 
         self.stop()
 
-        self._is_first_start_finished = False
-        self.cmd_send("load_video", self._loaded_path)
+        self.cmd_send("load_video", self.media_input)
 
 
 class VideoDriverVLCSW(VLCVideoDriverThreaded):
@@ -264,8 +247,6 @@ class VideoDriverVLCSW(VLCVideoDriverThreaded):
         )
 
         self.player = process_manager.init_player({}, self.cmd_child_pipe())
-
-        self.log = logging.getLogger("VideoDriverVLCSW")
 
     def init_frame(self, width, height):
         self._shared_memory = self.player.get_player_shared_data()
@@ -294,7 +275,7 @@ class VideoDriverVLCSW(VLCVideoDriverThreaded):
                 )
         except AttributeError:
             # Very rare race condition
-            self.log.warning("Shared memory is cleared already")
+            self._log.warning("Shared memory is cleared already")
             return
 
         self._pix = QPixmap.fromImage(px)
@@ -314,143 +295,60 @@ class VideoDriverVLCSW(VLCVideoDriverThreaded):
         self.player.cleanup()
 
 
-class VideoFrameVLCSW(QWidget):
-    time_changed = pyqtSignal(int)
-    video_ready = pyqtSignal()
-    error = pyqtSignal()
-    crash = pyqtSignal(str)
-
+class VideoFrameVLCSW(VideoFrameVLCProcess):
     is_opengl = False
 
-    def __init__(self, process_manager, parent=None):
-        super().__init__(parent)
-
-        self._aspect = Qt.KeepAspectRatio
-        self._scale = 1.0
-
-        self.is_video_initialized = False
-
-        self.setWindowFlags(Qt.WindowTransparentForInput)
-        self.setAttribute(Qt.WA_TransparentForMouseEvents)
-        self.setMouseTracking(True)
-
-        self.setup_ui()
-
-        self.video_driver = VideoDriverVLCSW(
-            image_dest=self._videoitem, process_manager=process_manager, parent=self
-        )
-        qt_connect(
-            (self.video_driver.time_changed, self.time_change_emit),
-            (self.video_driver.load_finished, self.load_video_finish),
-            (self.video_driver.error, self.error_state),
-            (self.video_driver.crash, self.crash_driver),
+    def driver_setup(self) -> VideoDriverVLCSW:
+        return VideoDriverVLCSW(
+            image_dest=self._videoitem,
+            process_manager=self.process_manager,
+            parent=self,
         )
 
-    def setup_ui(self):  # noqa: WPS213
-        QStackedLayout(self)
-        self.layout().setSpacing(0)
-        self.layout().setContentsMargins(0, 0, 0, 0)
-
-        # =========
-
-        self._scene = QGraphicsScene(self)
+    def ui_video_surface(self):  # noqa: WPS213
         self._videoitem = QGraphicsPixmapItem()
         self._videoitem.setTransformationMode(Qt.SmoothTransformation)
         self._videoitem.setShapeMode(QGraphicsPixmapItem.BoundingRectShape)
+
+        self._scene = QGraphicsScene(self)
         self._scene.addItem(self._videoitem)
 
-        self._gv = QGraphicsView(self._scene, self)
-        self._gv.setBackgroundBrush(QBrush(Qt.black))
-        self._gv.setWindowFlags(Qt.WindowTransparentForInput)
-        self._gv.setAttribute(Qt.WA_TransparentForMouseEvents)
-        self._gv.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-        self._gv.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-        self._gv.setFrameStyle(QFrame.NoFrame)
-        self._gv.setLineWidth(0)
-        self._gv.setRenderHints(
+        video_surface = QGraphicsView(self._scene, self)
+        video_surface.setBackgroundBrush(QBrush(Qt.black))
+        video_surface.setWindowFlags(Qt.WindowTransparentForInput)
+        video_surface.setAttribute(Qt.WA_TransparentForMouseEvents)
+        video_surface.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        video_surface.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        video_surface.setFrameStyle(QFrame.NoFrame)
+        video_surface.setLineWidth(0)
+        video_surface.setRenderHints(
             QPainter.Antialiasing
             | QPainter.SmoothPixmapTransform
             | QPainter.TextAntialiasing
             | QPainter.HighQualityAntialiasing
         )
 
-        # =========
-
-        self.layout().addWidget(self._gv)
-
-    def resizeEvent(self, event):
-        self.adjust_view()
-
-    def showEvent(self, event):
-        self.adjust_view()
-
-    def crash_driver(self, exception_txt):
-        self.crash.emit(exception_txt)
-
-    def error_state(self):
-        self.cleanup()
-
-        self.error.emit()
+        return video_surface
 
     def cleanup(self):
+        if super().cleanup():
+            return
+
         # need to remove it before cleanup to avoid occasional segmentation fault
         self._scene.removeItem(self._videoitem)
 
-        self.video_driver.cleanup()
+    def take_snapshot(self) -> None:
+        # no need to take snapshot, last frame stays in QGraphicsView on stop
+        self.video_driver.set_pause(True)
 
     def adjust_view(self):
-        self._gv.fitInView(self._videoitem, self._aspect)
+        if super().adjust_view():
+            return
+
+        aspect = QT_ASPECT_MAP[self._aspect]
+
+        self.video_surface.fitInView(self._videoitem, aspect)
         black_border_cut = 0.05
-        self._gv.scale(self._scale + black_border_cut, self._scale + black_border_cut)
-
-    def time_change_emit(self, new_time):
-        self.time_changed.emit(new_time)
-
-    def load_video(self, file_path):
-        self.video_driver.load_video(file_path)
-
-    def load_video_finish(self):
-        self.is_video_initialized = True
-
-        self.video_ready.emit()
-
-    def play(self):
-        self.video_driver.play()
-
-    def set_pause(self, is_paused):
-        self.video_driver.set_pause(is_paused)
-
-    def set_time(self, seek_ms):
-        self.video_driver.set_time(seek_ms)
-
-    def set_playback_rate(self, rate):
-        self.video_driver.set_playback_rate(rate)
-
-    def get_ms_per_frame(self):
-        return self.video_driver.get_ms_per_frame()
-
-    def audio_set_mute(self, is_muted):
-        self.video_driver.audio_set_mute(is_muted)
-
-    def audio_set_volume(self, volume):
-        self.video_driver.audio_set_volume(volume)
-
-    def set_aspect_ratio(self, aspect: VideoAspect):
-        aspect_map = {
-            VideoAspect.FIT: Qt.KeepAspectRatioByExpanding,
-            VideoAspect.STRETCH: Qt.IgnoreAspectRatio,
-            VideoAspect.NONE: Qt.KeepAspectRatio,
-        }
-
-        self._aspect = aspect_map[aspect]
-
-        self.adjust_view()
-
-    def set_scale(self, scale):
-        self._scale = scale
-
-        self.adjust_view()
-
-    @property
-    def length(self):
-        return self.video_driver.length
+        self.video_surface.scale(
+            self._scale + black_border_cut, self._scale + black_border_cut
+        )

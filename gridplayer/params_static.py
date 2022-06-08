@@ -1,6 +1,9 @@
 import platform
 from enum import Enum, auto
+from types import MappingProxyType
 from typing import NamedTuple
+
+from PyQt5.QtCore import Qt
 
 PLAYER_ID_LENGTH = 8
 
@@ -121,4 +124,18 @@ SUPPORTED_VIDEO_EXT = frozenset(
         "wtv",
         "xesc",
     )
+)
+
+VLC_USER_AGENT_NAME = "Mozilla"
+VLC_USER_AGENT = (
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+    " (KHTML, like Gecko) Chrome/99.0.7113.93 Safari/537.36"
+)
+
+QT_ASPECT_MAP = MappingProxyType(
+    {
+        VideoAspect.FIT: Qt.KeepAspectRatioByExpanding,
+        VideoAspect.STRETCH: Qt.IgnoreAspectRatio,
+        VideoAspect.NONE: Qt.KeepAspectRatio,
+    }
 )

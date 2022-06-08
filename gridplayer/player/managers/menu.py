@@ -4,6 +4,7 @@ from PyQt5.QtCore import QEvent
 from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import QMenu, QProxyStyle, QStyle
 
+from gridplayer.player.managers.actions import QDynamicAction
 from gridplayer.player.managers.base import ManagerBase
 from gridplayer.utils.misc import translate
 
@@ -74,7 +75,7 @@ SECTIONS = MappingProxyType(
             ),
             "Rename",
         ],
-        "video_block": ["Close"],
+        "video_block": ["Stream Quality", "Reload", "Close"],
         "video_single": ["Next Video"],
         "video_all": [
             "Play / Pause [ALL]",
@@ -110,6 +111,7 @@ SECTIONS = MappingProxyType(
         "player": ["Fullscreen", "Minimize"],
         "program": [
             "Add Files",
+            "Add URL(s)",
             "Open Playlist",
             "Save Playlist",
             "Close Playlist",
@@ -128,15 +130,6 @@ class BigMenuIcons(QProxyStyle):
         if metric == QStyle.PM_SmallIconSize:
             return 24
         return super().pixelMetric(metric, option, widget)
-
-
-def _join_menu_sections(menu_sections):
-    menu = []
-    for m_block in menu_sections:
-        menu.extend(m_block)
-        if m_block != menu_sections[-1]:
-            menu.append("---")
-    return menu
 
 
 class MenuManager(ManagerBase):
@@ -186,13 +179,18 @@ class MenuManager(ManagerBase):
         return _join_menu_sections(sections_added)
 
     def _add_menu_items(self, menu, menu_items):
-        for m_item in menu_items:
+        for m_idx, m_item in enumerate(menu_items):
             if isinstance(m_item, tuple):
                 self._add_submenu(m_item, menu)
+
+                if not menu.actions()[-1].menu().actions():
+                    menu.removeAction(menu.actions()[-1])
             elif m_item == "---":
-                menu.addSeparator()
+                is_last_element = m_idx == len(menu_items) - 1
+                _add_separator(menu, is_last_element)
             else:
-                self._add_action(m_item, menu)
+                action = self._ctx.actions[m_item]
+                _add_action(action, menu)
 
     def _add_submenu(self, submenu, menu):
         sub = SUBMENUS[submenu[0]]
@@ -207,14 +205,30 @@ class MenuManager(ManagerBase):
 
         self._add_menu_items(sub_menu, sub_items)
 
-    def _add_action(self, menu_item, menu):
-        action = self._ctx.actions[menu_item]
 
-        if action.isCheckable():
-            action.setChecked(action.is_checked_test())
-        if action.is_switchable:
-            action.setEnabled(action.is_enabled_test())
-        if action.is_dynamic:
-            action.setText(action.value_template.replace("%v", action.value_getter()))
+def _join_menu_sections(menu_sections):
+    menu = []
+    for m_block in menu_sections:
+        menu.extend(m_block)
+        if m_block != menu_sections[-1]:
+            menu.append("---")
+    return menu
 
-        menu.addAction(action)
+
+def _add_separator(menu, is_last_element):
+    is_empty_menu = not menu.actions()
+    is_trailing = not is_empty_menu and menu.actions()[-1].isSeparator()
+
+    if any([is_empty_menu, is_trailing, is_last_element]):
+        return
+
+    menu.addSeparator()
+
+
+def _add_action(action: QDynamicAction, menu: QMenu):
+    if action.is_skipped:
+        return
+
+    action.adapt()
+
+    menu.addAction(action)

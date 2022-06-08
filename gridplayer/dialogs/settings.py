@@ -81,6 +81,7 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
             "video_defaults/random_loop": self.videoRandomLoop,
             "video_defaults/muted": self.videoMuted,
             "video_defaults/paused": self.videoPaused,
+            "video_defaults/stream_quality": self.streamQuality,
             "misc/overlay_hide": self.timeoutOverlayFlag,
             "misc/overlay_timeout": self.timeoutOverlay,
             "misc/mouse_hide": self.timeoutMouseHideFlag,
@@ -129,6 +130,7 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
         self.fill_logLevel()
         self.fill_logLevelVLC()
         self.fill_language()
+        self.fill_streamQuality()
 
     def ui_customize_dynamic(self):
         self.driver_selected(self.playerVideoDriver.currentIndex())
@@ -231,6 +233,9 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
                 VideoDriver.VLC_HW: "{0} <VLC {1}>".format(
                     self.tr("Hardware"), params_env.VLC_VERSION
                 ),
+                VideoDriver.VLC_HW_SP: "{0} <VLC {1}>".format(
+                    self.tr("Hardware SP"), params_env.VLC_VERSION
+                ),
                 VideoDriver.VLC_SW: "{0} <VLC {1}>".format(
                     self.tr("Software"), params_env.VLC_VERSION
                 ),
@@ -252,6 +257,32 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
         sorted_languages = dict(sorted(languages.items(), key=lambda x: x[1]))
 
         _fill_combo_box(self.language, sorted_languages)
+
+    def fill_streamQuality(self):
+        quality_codes = {
+            "best": self.tr("Best"),
+            "worst": self.tr("Worst"),
+        }
+
+        standard_quality_codes = [
+            "2160p",
+            "2160p60",
+            "1440p",
+            "1440p60",
+            "1080p",
+            "1080p60",
+            "720p60",
+            "720p",
+            "480p",
+            "360p",
+            "240p",
+            "144p",
+        ]
+
+        for code in standard_quality_codes:
+            quality_codes[code] = code
+
+        _fill_combo_box(self.streamQuality, quality_codes)
 
     def driver_selected(self, idx):
         driver_id = self.playerVideoDriver.itemData(idx)

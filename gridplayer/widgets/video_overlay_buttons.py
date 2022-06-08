@@ -1,7 +1,10 @@
+from abc import abstractmethod
+
 from PyQt5.QtCore import Qt, pyqtSignal
 from PyQt5.QtGui import QCursor, QPainter
 from PyQt5.QtWidgets import qApp
 
+from gridplayer.utils.misc import QABC
 from gridplayer.widgets.video_overlay_elements import OverlayWidget
 from gridplayer.widgets.video_overlay_icons import (
     draw_cross,
@@ -12,7 +15,7 @@ from gridplayer.widgets.video_overlay_icons import (
 )
 
 
-class OverlayButton(OverlayWidget):
+class OverlayButton(OverlayWidget, metaclass=QABC):
     clicked = pyqtSignal()
 
     def __init__(self, **kwargs):
@@ -25,11 +28,13 @@ class OverlayButton(OverlayWidget):
 
         self._is_off = False
 
-    def icon(self):
-        raise NotImplementedError
+    @abstractmethod
+    def icon(self, rect, painter, color):
+        ...
 
-    def icon_off(self):
-        raise NotImplementedError
+    @abstractmethod
+    def icon_off(self, rect, painter, color):
+        ...
 
     def paintEvent(self, event):
         painter = QPainter(self)
@@ -92,23 +97,24 @@ class OverlayButton(OverlayWidget):
 
 
 class OverlayExitButton(OverlayButton):
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
+    def icon(self, rect, painter, color):
+        return draw_cross(rect, painter, color)
 
-        self.icon = draw_cross
+    def icon_off(self, rect, painter, color):
+        ...
 
 
 class OverlayPlayPauseButton(OverlayButton):
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
+    def icon(self, rect, painter, color):
+        return draw_play(rect, painter, color)
 
-        self.icon = draw_play
-        self.icon_off = draw_pause
+    def icon_off(self, rect, painter, color):
+        return draw_pause(rect, painter, color)
 
 
 class OverlayVolumeButton(OverlayButton):
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
+    def icon(self, rect, painter, color):
+        return draw_volume_on(rect, painter, color)
 
-        self.icon = draw_volume_on
-        self.icon_off = draw_volume_off
+    def icon_off(self, rect, painter, color):
+        return draw_volume_off(rect, painter, color)
