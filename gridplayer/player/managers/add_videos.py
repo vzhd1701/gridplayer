@@ -2,7 +2,11 @@ from PyQt5.QtCore import pyqtSignal
 from PyQt5.QtWidgets import QFileDialog
 
 from gridplayer.dialogs.add_urls import QAddURLsDialog
-from gridplayer.params_static import SUPPORTED_VIDEO_EXT
+from gridplayer.params_static import (
+    SUPPORTED_AUDIO_EXT,
+    SUPPORTED_MEDIA_EXT,
+    SUPPORTED_VIDEO_EXT,
+)
 from gridplayer.player.managers.base import ManagerBase
 from gridplayer.utils.misc import tr
 from gridplayer.utils.url_resolve.url_resolve import plugin_list_urls
@@ -22,8 +26,7 @@ class AddVideosManager(ManagerBase):
         dialog = QFileDialog(self.parent())
         dialog.setFileMode(QFileDialog.ExistingFiles)
 
-        supported_exts = " ".join((f"*.{e}" for e in sorted(SUPPORTED_VIDEO_EXT)))
-        dialog.setNameFilter("{0} ({1})".format(tr("Videos"), supported_exts))
+        dialog.setNameFilters(_get_name_filters())
 
         if dialog.exec():
             videos = filter_video_uris(dialog.selectedFiles())
@@ -45,3 +48,20 @@ class AddVideosManager(ManagerBase):
 
         if valid_urls:
             self.videos_added.emit(valid_urls)
+
+
+def _get_name_filters():
+    ext_types = [
+        {"name": tr("Media"), "extensions": SUPPORTED_MEDIA_EXT},
+        {"name": tr("Video"), "extensions": SUPPORTED_VIDEO_EXT},
+        {"name": tr("Audio"), "extensions": SUPPORTED_AUDIO_EXT},
+    ]
+
+    name_filers = []
+
+    for ext_type in ext_types:
+        ext_with_asterisk = (f"*.{e}" for e in sorted(ext_type["extensions"]))
+        ext_list = " ".join(ext_with_asterisk)
+        name_filers.append("{0} ({1})".format(ext_type["name"], ext_list))
+
+    return name_filers

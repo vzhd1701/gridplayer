@@ -2,7 +2,7 @@ import random
 from pathlib import Path
 from typing import Optional
 
-from gridplayer.params_static import SUPPORTED_VIDEO_EXT
+from gridplayer.params_static import SUPPORTED_MEDIA_EXT
 
 
 def next_video_file(file: Path, is_shuffle=False) -> Optional[Path]:
@@ -40,5 +40,5 @@ def _file_siblings(file: Path):
     return sorted(
         f
         for f in file.parent.iterdir()
-        if f.is_file() and f.suffix[1:].lower() in SUPPORTED_VIDEO_EXT
+        if f.is_file() and f.suffix[1:].lower() in SUPPORTED_MEDIA_EXT
     )

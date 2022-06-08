@@ -12,7 +12,7 @@ from pydantic import (  # noqa: WPS450
 from pydantic.color import Color
 
 from gridplayer.params_static import (
-    SUPPORTED_VIDEO_EXT,
+    SUPPORTED_MEDIA_EXT,
     VideoAspect,
     VideoRepeat,
     WindowState,
@@ -48,7 +48,7 @@ class AbsoluteFilePath(FilePath):
         if not path.is_absolute():
             raise PathNotAbsoluteError(path=path)
 
-        if path.suffix[1:].lower() not in SUPPORTED_VIDEO_EXT:
+        if path.suffix[1:].lower() not in SUPPORTED_MEDIA_EXT:
             raise PathExtensionNotSupportedError(path=path)
 
         return path
