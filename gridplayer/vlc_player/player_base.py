@@ -150,6 +150,8 @@ class VlcPlayerBase(ABC):
         self.notify_time_changed(new_time)
 
     def cleanup(self):
+        self.is_video_initialized = False
+
         self._event_waiter.abort()
 
         if self._media_player is not None:
@@ -355,6 +357,9 @@ class VlcPlayerBase(ABC):
         self._media_player.audio_set_volume(volume)
 
     def adjust_view(self, size, aspect, scale):
+        if self._media_player is None:
+            return
+
         if self.media_track is None:
             # video not loaded yet, video frame resized on init
             if self.media_input:
