@@ -106,7 +106,7 @@ class ActiveBlockManager(ManagerBase):
                 {
                     "title": quality,
                     "func": ("active", "switch_stream_quality", quality),
-                    "check": ("is_active_param_set_to", "stream_quality", quality),
+                    "check_if": ("is_active_param_set_to", "stream_quality", quality),
                     "show_if": "is_active_multistream",
                 }
                 for quality in reversed(self._ctx.active_block.streams)
