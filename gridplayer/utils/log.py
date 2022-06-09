@@ -39,6 +39,7 @@ def log_environment():
         f"is_appimage: {params_env.IS_APPIMAGE}",
         f"sys.argv: {sys.argv}",
         f"sys.executable: {sys.executable}",
+        f"sys.path: {sys.path}",
         f"os.getcwd: {os.getcwd()}",
         f"QT Styles: {QStyleFactory.keys()}",
         "========",
