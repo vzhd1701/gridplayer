@@ -1,7 +1,5 @@
 import logging
-import os
 import platform
-import sys
 
 from PyQt5.QtCore import QLibraryInfo, QLocale, QTranslator
 
@@ -18,8 +16,8 @@ def init_translator(app):
     logger.debug(f"Loading translation for {lang}")
 
     if params_env.IS_PYINSTALLER and platform.system() == "Windows":
-        qt_translations_path = os.path.join(
-            sys._MEIPASS, "PyQt5", "Qt5", "translations"  # noqa: WPS437
+        qt_translations_path = str(
+            params_env.PYINSTALLER_LIB_ROOT / "PyQt5" / "Qt5" / "translations"
         )
     else:
         qt_translations_path = QLibraryInfo.location(QLibraryInfo.TranslationsPath)
