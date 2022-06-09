@@ -1,7 +1,7 @@
 import contextlib
 import logging
 import traceback
-from typing import Dict, Optional
+from typing import Optional
 
 from PyQt5.QtCore import QObject, QThread, pyqtSignal
 from streamlink import PluginError
@@ -79,13 +79,6 @@ def resolve_url(url: VideoURL) -> Optional[ResolvedVideo]:
             return resolver(url)
 
     return _resolve_generic(url)
-
-
-def plugin_list_urls() -> Dict[str, str]:
-    return {
-        "streamlink": "https://streamlink.github.io/plugins.html",
-        "yt-dlp": "https://github.com/yt-dlp/yt-dlp/blob/master/supportedsites.md",
-    }
 
 
 def _resolve_generic(url: VideoURL) -> Optional[ResolvedVideo]:

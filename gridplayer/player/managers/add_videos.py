@@ -9,7 +9,7 @@ from gridplayer.params_static import (
 )
 from gridplayer.player.managers.base import ManagerBase
 from gridplayer.utils.misc import tr
-from gridplayer.utils.url_resolve.url_resolve import plugin_list_urls
+from gridplayer.utils.url_resolve.static import PLUGIN_URLS
 from gridplayer.video import VideoURL, filter_video_uris
 
 
@@ -38,7 +38,7 @@ class AddVideosManager(ManagerBase):
             parent=self.parent(),
             title=tr("Add URL(s)"),
             supported_schemas=VideoURL.allowed_schemes,
-            supported_urls=plugin_list_urls(),
+            supported_urls=PLUGIN_URLS,
         )
 
         valid_urls = filter_video_uris(urls)
