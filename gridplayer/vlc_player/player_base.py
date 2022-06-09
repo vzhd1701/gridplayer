@@ -155,10 +155,12 @@ class VlcPlayerBase(ABC):
         self._event_waiter.abort()
 
         if self._media_player is not None:
-            self.stop()
+            self._log.debug("Releasing player")
 
-            self._media_player.release()
+            media_player = self._media_player
             self._media_player = None
+
+            media_player.release()
 
     def error(self, message):
         self._log.error(message)

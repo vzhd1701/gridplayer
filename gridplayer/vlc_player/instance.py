@@ -111,10 +111,10 @@ class InstanceVLC(object):
 
         self.vlc_instance = vlc.Instance(options)
 
-        self.vlc_instance.set_user_agent(VLC_USER_AGENT_NAME, VLC_USER_AGENT)
-
         if self.vlc_instance is None:
             raise RuntimeError("VLC failed to initialize")
+
+        self.vlc_instance.set_user_agent(VLC_USER_AGENT_NAME, VLC_USER_AGENT)
 
         self.init_logger()
 
