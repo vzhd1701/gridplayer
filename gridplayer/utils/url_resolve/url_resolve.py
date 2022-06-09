@@ -75,6 +75,7 @@ def resolve_url(url: VideoURL) -> Optional[ResolvedVideo]:
     ]
 
     for resolver in url_resolvers:
+        logger.debug(f"Trying to resolve URL with {resolver.__name__}")
         with contextlib.suppress(NoResolverPlugin):
             return resolver(url)
 

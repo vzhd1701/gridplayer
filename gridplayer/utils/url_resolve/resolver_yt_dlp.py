@@ -43,18 +43,24 @@ def resolve_youtube_dl(url: VideoURL) -> Optional[ResolvedVideo]:
 
 
 def _get_streams(video_info):
+    http_streams = [
+        fmt for fmt in video_info["formats"] if fmt.get("url", "").startswith("http")
+    ]
+
     streams = [
         fmt
-        for fmt in video_info["formats"]
+        for fmt in http_streams
         if fmt.get("vcodec") != "none" and fmt.get("acodec") != "none"
     ]
 
     # getting all streams if no combined stream is available
     if not streams:
-        streams = video_info["formats"]
+        streams = http_streams
 
     if not streams:
-        raise BadURLException("No streams found")
+        raise BadURLException("yt-dlp - no streams found")
+
+    logger.debug("yt-dlp - {0} stream(s) found".format(len(streams)))
 
     return streams
 

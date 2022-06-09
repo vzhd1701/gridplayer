@@ -1,18 +1,17 @@
+import logging
 from typing import Optional
 
 from streamlink import NoPluginError, PluginError, Streamlink
 from streamlink.stream import HLSStream
 
-from gridplayer.utils.url_resolve.static import (
-    BadURLException,
-    NoResolverPlugin,
-    ResolvedVideo,
-)
+from gridplayer.utils.url_resolve.static import NoResolverPlugin, ResolvedVideo
 from gridplayer.utils.url_resolve.stream_detect import (
     is_hls_live_stream,
     is_http_live_stream,
 )
 from gridplayer.video import VideoURL
+
+logger = logging.getLogger(__name__)
 
 
 class StreamlinkResolver(object):
@@ -40,18 +39,22 @@ class StreamlinkResolver(object):
     @property
     def is_live(self):
         if isinstance(self._streams["best"], HLSStream):
-            return is_hls_live_stream(self._streams["best"].url)
+            return is_hls_live_stream(self._streams["best"].url, self.session)
 
-        return is_http_live_stream(self._streams["best"].url)
+        return is_http_live_stream(self._streams["best"].url, self.session)
 
     def _get_streams(self):
         try:
             streams = self.plugin.streams(stream_types=["hls", "http"])
         except PluginError:
-            raise BadURLException("Plugin error")
+            logger.debug("Streamlink - plugin error")
+            raise NoResolverPlugin
 
         if not streams:
-            raise BadURLException("No streams found")
+            logger.debug("Streamlink - no streams found")
+            raise NoResolverPlugin
+
+        logger.debug("Streamlink - {0} stream(s) found".format(len(streams)))
 
         return streams
 
