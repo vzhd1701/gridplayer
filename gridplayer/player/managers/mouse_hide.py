@@ -3,7 +3,7 @@ from PyQt5.QtWidgets import QApplication
 
 from gridplayer.player.managers.base import ManagerBase
 from gridplayer.settings import Settings
-from gridplayer.utils.misc import is_modal_open
+from gridplayer.utils.qt import is_modal_open
 
 
 class MouseHideManager(ManagerBase):

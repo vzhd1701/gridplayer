@@ -2,7 +2,7 @@ import random
 from dataclasses import dataclass
 from typing import Optional, Tuple
 
-from gridplayer.video import Video
+from gridplayer.models.video import Video
 
 
 @dataclass

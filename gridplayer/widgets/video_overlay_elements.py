@@ -11,7 +11,7 @@ from PyQt5.QtGui import (
 )
 from PyQt5.QtWidgets import QSizePolicy, QWidget
 
-from gridplayer.params_static import OVERLAY_ACTIVITY_EVENT
+from gridplayer.params.static import OVERLAY_ACTIVITY_EVENT
 from gridplayer.utils.time_txt import get_time_txt
 
 

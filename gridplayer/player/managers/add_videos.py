@@ -2,15 +2,15 @@ from PyQt5.QtCore import pyqtSignal
 from PyQt5.QtWidgets import QFileDialog
 
 from gridplayer.dialogs.add_urls import QAddURLsDialog
-from gridplayer.params_static import (
+from gridplayer.models.video import VideoURL, filter_video_uris
+from gridplayer.params.extensions import (
     SUPPORTED_AUDIO_EXT,
     SUPPORTED_MEDIA_EXT,
     SUPPORTED_VIDEO_EXT,
 )
 from gridplayer.player.managers.base import ManagerBase
-from gridplayer.utils.misc import tr
+from gridplayer.utils.qt import tr
 from gridplayer.utils.url_resolve.static import PLUGIN_URLS
-from gridplayer.video import VideoURL, filter_video_uris
 
 
 class AddVideosManager(ManagerBase):

@@ -7,11 +7,11 @@ from threading import Thread
 
 from PyQt5.QtCore import QObject, pyqtSignal
 
-from gridplayer import params_env
+from gridplayer.params import env
 
 if platform.system() == "Windows":
     S_NAME, S_TYPE = r"\\.\pipe\gridplayer-fileopen", "AF_PIPE"
-elif params_env.IS_FLATPAK:
+elif env.IS_FLATPAK:
     S_NAME, S_TYPE = (
         f"{os.environ['XDG_RUNTIME_DIR']}/app/{os.environ['FLATPAK_ID']}"
         f"/gridplayer/gridplayer-fileopen.socket",

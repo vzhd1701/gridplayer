@@ -6,7 +6,7 @@ from PyQt5.QtWidgets import QMenu, QProxyStyle, QStyle
 
 from gridplayer.player.managers.actions import QDynamicAction
 from gridplayer.player.managers.base import ManagerBase
-from gridplayer.utils.misc import translate
+from gridplayer.utils.qt import translate
 
 MENU_STYLE = """
 QMenu::item { height:24px; padding: 2px; margin: 0 5px;}

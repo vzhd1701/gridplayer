@@ -5,6 +5,7 @@ from PyQt5.QtCore import QEvent, QMimeData, Qt, pyqtSignal
 from PyQt5.QtGui import QDrag
 from PyQt5.QtWidgets import QApplication
 
+from gridplayer.models.video import filter_video_uris
 from gridplayer.player.managers.base import ManagerBase
 from gridplayer.utils.files import (
     drag_get_uris,
@@ -12,7 +13,6 @@ from gridplayer.utils.files import (
     drag_has_video_id,
     get_playlist_path,
 )
-from gridplayer.video import filter_video_uris
 
 logger = logging.getLogger(__name__)
 

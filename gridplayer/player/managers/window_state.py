@@ -2,7 +2,7 @@ import base64
 
 from PyQt5.QtCore import QEvent, Qt, pyqtSignal, pyqtSlot
 
-from gridplayer.params_static import WindowState
+from gridplayer.params.static import WindowState
 from gridplayer.player.managers.base import ManagerBase
 from gridplayer.settings import Settings
 

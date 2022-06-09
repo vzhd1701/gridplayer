@@ -4,7 +4,7 @@ from PyQt5.QtCore import Qt, pyqtSignal
 from PyQt5.QtGui import QCursor, QPainter
 from PyQt5.QtWidgets import qApp
 
-from gridplayer.utils.misc import QABC
+from gridplayer.utils.qt import QABC
 from gridplayer.widgets.video_overlay_elements import OverlayWidget
 from gridplayer.widgets.video_overlay_icons import (
     draw_cross,

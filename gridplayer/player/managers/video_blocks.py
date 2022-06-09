@@ -3,10 +3,10 @@ from typing import List
 
 from PyQt5.QtCore import pyqtSignal
 
+from gridplayer.models.video import Video
 from gridplayer.player.managers.base import ManagerBase
 from gridplayer.settings import Settings
-from gridplayer.utils.misc import qt_connect
-from gridplayer.video import Video
+from gridplayer.utils.qt import qt_connect
 from gridplayer.widgets.video_block import VideoBlock
 
 logger = logging.getLogger(__name__)

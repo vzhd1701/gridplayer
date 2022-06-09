@@ -1,6 +1,6 @@
 from typing import Tuple
 
-from gridplayer.params_static import VideoAspect
+from gridplayer.params.static import VideoAspect
 
 
 def calc_resize_scale(

@@ -5,7 +5,7 @@ from enum import Enum
 from pydantic import Field
 from PyQt5.QtCore import QLocale, QSettings
 
-from gridplayer.params_static import (
+from gridplayer.params.static import (
     SUPPORTED_LANGUAGES,
     GridMode,
     VideoAspect,

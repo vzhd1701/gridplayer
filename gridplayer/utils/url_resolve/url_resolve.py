@@ -6,6 +6,7 @@ from typing import Optional
 from PyQt5.QtCore import QObject, QThread, pyqtSignal
 from streamlink import PluginError
 
+from gridplayer.models.video import VideoURL
 from gridplayer.utils.url_resolve.resolver_streamlink import resolve_streamlink
 from gridplayer.utils.url_resolve.resolver_yt_dlp import resolve_youtube_dl
 from gridplayer.utils.url_resolve.static import (
@@ -15,7 +16,6 @@ from gridplayer.utils.url_resolve.static import (
     ResolvedVideo,
 )
 from gridplayer.utils.url_resolve.stream_detect import is_http_live_stream
-from gridplayer.video import VideoURL
 
 logger = logging.getLogger(__name__)
 

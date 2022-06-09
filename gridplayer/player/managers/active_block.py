@@ -4,7 +4,7 @@ from pathlib import Path
 from PyQt5.QtCore import QEvent, pyqtSignal
 
 from gridplayer.player.managers.base import ManagerBase
-from gridplayer.utils.misc import is_modal_open
+from gridplayer.utils.qt import is_modal_open
 from gridplayer.widgets.video_block import VideoBlock
 
 

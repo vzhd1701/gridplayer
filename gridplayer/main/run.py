@@ -1,10 +1,10 @@
 import sys
 
-from gridplayer import params_env
 from gridplayer.dialogs.messagebox import QCustomMessageBox
 from gridplayer.main.init_app import init_app
+from gridplayer.params import env
 from gridplayer.utils.libvlc import init_vlc
-from gridplayer.utils.misc import tr
+from gridplayer.utils.qt import tr
 
 
 def run_app():
@@ -24,8 +24,8 @@ def run_app():
         )
         return 1
 
-    params_env.VLC_VERSION = vlc_version
-    params_env.VLC_PYTHON_VERSION = vlc_python_version
+    env.VLC_VERSION = vlc_version
+    env.VLC_PYTHON_VERSION = vlc_python_version
 
     # Need to postpone import parts that depend on vlc
     # because python-vlc loads VLC DLL on import

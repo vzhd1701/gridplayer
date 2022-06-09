@@ -2,10 +2,9 @@ import ctypes
 import logging
 import platform
 
-from gridplayer import params_env
 from gridplayer.multiprocess.instance_process import InstanceProcess
 from gridplayer.multiprocess.process_manager import ProcessManager
-from gridplayer.params_static import VLC_USER_AGENT, VLC_USER_AGENT_NAME
+from gridplayer.params import env
 from gridplayer.settings import Settings
 from gridplayer.vlc_player.libvlc import vlc
 
@@ -23,6 +22,12 @@ vsnprintf.argtypes = (
     ctypes.c_size_t,
     ctypes.c_char_p,
     ctypes.c_void_p,
+)
+
+VLC_USER_AGENT_NAME = "Mozilla"
+VLC_USER_AGENT = (
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+    " (KHTML, like Gecko) Chrome/99.0.7113.93 Safari/537.36"
 )
 
 
@@ -106,7 +111,7 @@ class InstanceVLC(object):
         if platform.system() == "Windows":
             options.append("--aout=directsound")
 
-        if params_env.IS_APPIMAGE:
+        if env.IS_APPIMAGE:
             options.append("--aout=pulse")
 
         self.vlc_instance = vlc.Instance(options)

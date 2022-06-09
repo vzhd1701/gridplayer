@@ -7,8 +7,8 @@ from PyQt5.QtCore import QSize, Qt, pyqtSignal
 from PyQt5.QtGui import QPixmap
 from PyQt5.QtWidgets import QLabel, QStackedLayout, QWidget
 
-from gridplayer.params_static import QT_ASPECT_MAP, VideoAspect
-from gridplayer.utils.misc import QABC, qt_connect
+from gridplayer.params.static import VideoAspect
+from gridplayer.utils.qt import QABC, QT_ASPECT_MAP, qt_connect
 from gridplayer.vlc_player.static import MediaInput, MediaTrack
 from gridplayer.vlc_player.video_driver_base import VLCVideoDriver
 from gridplayer.widgets.video_block_status import StatusLabel

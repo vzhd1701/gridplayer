@@ -3,7 +3,7 @@ from abc import abstractmethod
 
 from PyQt5.QtCore import QObject, pyqtSignal
 
-from gridplayer.utils.misc import QABC
+from gridplayer.utils.qt import QABC
 from gridplayer.vlc_player.static import MediaInput, MediaTrack
 
 

@@ -12,17 +12,24 @@ from PyQt5.QtWidgets import QStackedLayout, QWidget
 
 from gridplayer.dialogs.rename_dialog import QVideoRenameDialog
 from gridplayer.exceptions import PlayerException
-from gridplayer.params_static import (
+from gridplayer.models.video import (
+    MAX_RATE,
+    MAX_SCALE,
+    MIN_RATE,
+    MIN_SCALE,
+    Video,
+    VideoURL,
+)
+from gridplayer.params.static import (
     OVERLAY_ACTIVITY_EVENT,
     PLAYER_ID_LENGTH,
     VideoRepeat,
 )
 from gridplayer.settings import Settings
-from gridplayer.utils.misc import qt_connect
 from gridplayer.utils.next_file import next_video_file, previous_video_file
+from gridplayer.utils.qt import qt_connect
 from gridplayer.utils.url_resolve.static import ResolvedVideo
 from gridplayer.utils.url_resolve.url_resolve import VideoURLResolver
-from gridplayer.video import MAX_RATE, MAX_SCALE, MIN_RATE, MIN_SCALE, Video, VideoURL
 from gridplayer.vlc_player.static import MediaInput
 from gridplayer.widgets.video_block_status import StatusLabel
 from gridplayer.widgets.video_frame_vlc_base import VideoFrameVLC

@@ -11,12 +11,8 @@ from pydantic import (  # noqa: WPS450
 )
 from pydantic.color import Color
 
-from gridplayer.params_static import (
-    SUPPORTED_MEDIA_EXT,
-    VideoAspect,
-    VideoRepeat,
-    WindowState,
-)
+from gridplayer.params.extensions import SUPPORTED_MEDIA_EXT
+from gridplayer.params.static import VideoAspect, VideoRepeat, WindowState
 from gridplayer.settings import default_field
 
 MIN_SCALE = 1

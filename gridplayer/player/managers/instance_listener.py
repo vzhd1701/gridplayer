@@ -1,7 +1,7 @@
 from PyQt5.QtCore import pyqtSignal
 
 from gridplayer.player.managers.base import ManagerBase
-from gridplayer.utils.misc import qt_connect
+from gridplayer.utils.qt import qt_connect
 from gridplayer.utils.single_instance import Listener
 
 

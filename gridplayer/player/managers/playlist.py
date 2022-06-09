@@ -5,14 +5,14 @@ from PyQt5.QtCore import QDir, QEvent, pyqtSignal
 from PyQt5.QtWidgets import QFileDialog, QMessageBox
 
 from gridplayer.dialogs.messagebox import QCustomMessageBox
-from gridplayer.params import GridState
-from gridplayer.params_static import WindowState
+from gridplayer.models.grid_state import GridState
+from gridplayer.models.playlist import Playlist
+from gridplayer.models.video import filter_video_uris
+from gridplayer.params.static import WindowState
 from gridplayer.player.managers.base import ManagerBase
-from gridplayer.playlist import Playlist
 from gridplayer.settings import Settings
 from gridplayer.utils.files import get_playlist_path
-from gridplayer.utils.misc import tr
-from gridplayer.video import filter_video_uris
+from gridplayer.utils.qt import tr
 
 logger = logging.getLogger(__name__)
 

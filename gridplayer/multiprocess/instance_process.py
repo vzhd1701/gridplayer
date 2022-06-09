@@ -6,7 +6,7 @@ from multiprocessing import Value
 from multiprocessing.context import Process
 
 from gridplayer.multiprocess.command_loop import CommandLoop
-from gridplayer.params_static import PLAYER_ID_LENGTH
+from gridplayer.params.static import PLAYER_ID_LENGTH
 from gridplayer.utils.log_config import child_process_config
 
 

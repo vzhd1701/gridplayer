@@ -6,8 +6,8 @@ from PyQt5.QtGui import QBrush, QImage, QPainter, QPixmap
 from PyQt5.QtWidgets import QFrame, QGraphicsPixmapItem, QGraphicsScene, QGraphicsView
 
 from gridplayer.multiprocess.safe_shared_memory import SafeSharedMemory, releasing
-from gridplayer.params_static import PLAYER_ID_LENGTH, QT_ASPECT_MAP
-from gridplayer.utils.misc import qt_connect
+from gridplayer.params.static import PLAYER_ID_LENGTH
+from gridplayer.utils.qt import QT_ASPECT_MAP, qt_connect
 from gridplayer.vlc_player.instance import InstanceProcessVLC
 from gridplayer.vlc_player.libvlc import vlc
 from gridplayer.vlc_player.player_base_threaded import VlcPlayerThreaded

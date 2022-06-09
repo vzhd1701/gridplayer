@@ -4,7 +4,7 @@ from gridplayer.dialogs.messagebox import QCustomMessageBox
 from gridplayer.dialogs.settings import SettingsDialog
 from gridplayer.player.managers.base import ManagerBase
 from gridplayer.settings import Settings
-from gridplayer.utils.misc import tr
+from gridplayer.utils.qt import tr
 
 
 class SettingsManager(ManagerBase):

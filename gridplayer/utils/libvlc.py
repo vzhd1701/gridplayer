@@ -6,7 +6,7 @@ import re
 import sys
 from importlib.util import find_spec
 
-from gridplayer import params_env
+from gridplayer.params import env
 
 logger = logging.getLogger(__name__)
 
@@ -18,14 +18,14 @@ elif platform.system() == "Darwin":
 
     EMBED_VLC_PATH = os.path.join(EMBED_VLC_PATH_ROOT, "plugins")
     EMBED_VLC_LIB_PATH = os.path.join(EMBED_VLC_PATH_ROOT, "lib", "libvlc.5.dylib")
-elif params_env.IS_SNAP:
+elif env.IS_SNAP:
     EMBED_VLC_PATH_ROOT = os.path.join(
         os.environ["SNAP"], "usr", "lib", "x86_64-linux-gnu"
     )
 
     EMBED_VLC_PATH = os.path.join(EMBED_VLC_PATH_ROOT, "vlc")
     EMBED_VLC_LIB_PATH = os.path.join(EMBED_VLC_PATH_ROOT, "libvlc.so.5")
-elif params_env.IS_APPIMAGE:
+elif env.IS_APPIMAGE:
     EMBED_VLC_PATH_ROOT = os.path.join(
         os.environ["APPDIR"], "usr", "lib", "x86_64-linux-gnu"
     )
@@ -95,7 +95,7 @@ def init_vlc():
     else:
         logger.info("No embedded vlc path, will try to find system VLC...")
 
-    if params_env.IS_PYINSTALLER:
+    if env.IS_PYINSTALLER:
         vlc_python_version = get_python_vlc_version_pyinstaller()
     else:
         vlc_python_version = get_python_vlc_version()

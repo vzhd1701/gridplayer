@@ -1,6 +1,6 @@
 from pydantic import BaseModel
 
-from gridplayer.params_static import GridMode
+from gridplayer.params.static import GridMode
 from gridplayer.settings import default_field
 
 

@@ -3,7 +3,7 @@ from PyQt5.QtCore import pyqtSlot
 from gridplayer.dialogs.about import AboutDialog
 from gridplayer.dialogs.messagebox import QCustomMessageBox
 from gridplayer.player.managers.base import ManagerBase
-from gridplayer.utils.misc import tr
+from gridplayer.utils.qt import tr
 
 
 class DialogsManager(ManagerBase):

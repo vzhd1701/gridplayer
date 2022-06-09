@@ -2,7 +2,7 @@ import random
 from pathlib import Path
 from typing import Optional
 
-from gridplayer.params_static import SUPPORTED_MEDIA_EXT
+from gridplayer.params.extensions import SUPPORTED_MEDIA_EXT
 
 
 def next_video_file(file: Path, is_shuffle=False) -> Optional[Path]:

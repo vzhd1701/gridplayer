@@ -6,8 +6,8 @@ from PyQt5.QtGui import QFont
 from PyQt5.QtWidgets import QGridLayout, QHBoxLayout, QLabel, QVBoxLayout
 
 from gridplayer.dialogs.input_dialog import QCustomSpinboxInput
-from gridplayer.params import GridState
-from gridplayer.params_static import (
+from gridplayer.models.grid_state import GridState
+from gridplayer.params.static import (
     PLAYER_INFO_TEXT_SIZE,
     PLAYER_INITIAL_SIZE,
     PLAYER_MIN_VIDEO_SIZE,
@@ -15,7 +15,7 @@ from gridplayer.params_static import (
 )
 from gridplayer.player.managers.base import ManagerBase
 from gridplayer.settings import Settings
-from gridplayer.utils.misc import tr
+from gridplayer.utils.qt import tr
 
 
 class GridDimensions(NamedTuple):

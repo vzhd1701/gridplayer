@@ -4,12 +4,12 @@ from typing import Optional
 from streamlink import NoPluginError, PluginError, Streamlink
 from streamlink.stream import HLSStream
 
+from gridplayer.models.video import VideoURL
 from gridplayer.utils.url_resolve.static import NoResolverPlugin, ResolvedVideo
 from gridplayer.utils.url_resolve.stream_detect import (
     is_hls_live_stream,
     is_http_live_stream,
 )
-from gridplayer.video import VideoURL
 
 logger = logging.getLogger(__name__)
 

@@ -5,9 +5,9 @@ from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QIcon, QKeySequence
 from PyQt5.QtWidgets import QAction, QMenu
 
-from gridplayer.params_static import GridMode, VideoAspect, VideoRepeat
+from gridplayer.params.static import GridMode, VideoAspect, VideoRepeat
 from gridplayer.player.managers.base import ManagerBase
-from gridplayer.utils.misc import translate
+from gridplayer.utils.qt import translate
 
 COMMANDS = MappingProxyType(
     {

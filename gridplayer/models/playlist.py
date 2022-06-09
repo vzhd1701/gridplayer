@@ -5,10 +5,10 @@ from typing import List, Optional
 
 from pydantic import BaseModel, ValidationError
 
-from gridplayer.params import GridState
-from gridplayer.params_static import WindowState
+from gridplayer.models.grid_state import GridState
+from gridplayer.models.video import Video
+from gridplayer.params.static import WindowState
 from gridplayer.settings import Settings, default_field
-from gridplayer.video import Video
 
 logger = logging.getLogger(__name__)
 

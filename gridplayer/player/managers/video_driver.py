@@ -2,7 +2,7 @@ import platform
 from functools import partial
 
 from gridplayer.exceptions import PlayerException
-from gridplayer.params_static import VideoDriver
+from gridplayer.params.static import VideoDriver
 from gridplayer.player.managers.base import ManagerBase
 from gridplayer.settings import Settings
 from gridplayer.vlc_player.instance import ProcessManagerVLC

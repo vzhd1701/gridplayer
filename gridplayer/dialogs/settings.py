@@ -7,10 +7,10 @@ from PyQt5.QtCore import QLocale, QUrl
 from PyQt5.QtGui import QDesktopServices, QIcon
 from PyQt5.QtWidgets import QCheckBox, QComboBox, QDialog, QSpinBox
 
-from gridplayer import params_env, utils
 from gridplayer.dialogs.messagebox import QCustomMessageBox
 from gridplayer.dialogs.settings_dialog_ui import Ui_SettingsDialog
-from gridplayer.params_static import (
+from gridplayer.params import env
+from gridplayer.params.static import (
     SUPPORTED_LANGUAGES,
     GridMode,
     VideoAspect,
@@ -18,8 +18,9 @@ from gridplayer.params_static import (
     VideoRepeat,
 )
 from gridplayer.settings import Settings
+from gridplayer.utils import log_config
 from gridplayer.utils.app_dir import get_app_data_dir
-from gridplayer.utils.misc import qt_connect, translate
+from gridplayer.utils.qt import qt_connect, translate
 
 logger = logging.getLogger(__name__)
 
@@ -162,7 +163,7 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
                 self, self.tr("Error"), self.tr("Log file does not exist!")
             )
 
-        if params_env.IS_SNAP:
+        if env.IS_SNAP:
             # https://forum.snapcraft.io/t/xdg-open-or-gvfs-open-qdesktopservices-openurl-file-somelocation-file-txt-wont-open-the-file/16824
             subprocess.call(["xdg-open", log_path])  # noqa: S603, S607
         else:
@@ -170,7 +171,7 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
 
     def fill_logLevelVLC(self):
         log_levels = {
-            utils.log_config.DISABLED: translate("ErrorLevel", "None"),
+            log_config.DISABLED: translate("ErrorLevel", "None"),
             logging.ERROR: translate("ErrorLevel", "Error"),
             logging.WARNING: translate("ErrorLevel", "Warning"),
             logging.INFO: translate("ErrorLevel", "Info"),
@@ -181,7 +182,7 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
 
     def fill_logLevel(self):
         log_levels = {
-            utils.log_config.DISABLED: translate("ErrorLevel", "None"),
+            log_config.DISABLED: translate("ErrorLevel", "None"),
             logging.CRITICAL: translate("ErrorLevel", "Critical"),
             logging.ERROR: translate("ErrorLevel", "Error"),
             logging.WARNING: translate("ErrorLevel", "Warning"),
@@ -221,23 +222,23 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
         if platform.system() == "Darwin":
             video_drivers = {
                 VideoDriver.VLC_HW_SP: "{0} <VLC {1}>".format(
-                    self.tr("Hardware SP"), params_env.VLC_VERSION
+                    self.tr("Hardware SP"), env.VLC_VERSION
                 ),
                 VideoDriver.VLC_SW: "{0} <VLC {1}>".format(
-                    self.tr("Software"), params_env.VLC_VERSION
+                    self.tr("Software"), env.VLC_VERSION
                 ),
                 VideoDriver.DUMMY: self.tr("Dummy"),
             }
         else:
             video_drivers = {
                 VideoDriver.VLC_HW: "{0} <VLC {1}>".format(
-                    self.tr("Hardware"), params_env.VLC_VERSION
+                    self.tr("Hardware"), env.VLC_VERSION
                 ),
                 VideoDriver.VLC_HW_SP: "{0} <VLC {1}>".format(
-                    self.tr("Hardware SP"), params_env.VLC_VERSION
+                    self.tr("Hardware SP"), env.VLC_VERSION
                 ),
                 VideoDriver.VLC_SW: "{0} <VLC {1}>".format(
-                    self.tr("Software"), params_env.VLC_VERSION
+                    self.tr("Software"), env.VLC_VERSION
                 ),
                 VideoDriver.DUMMY: self.tr("Dummy"),
             }

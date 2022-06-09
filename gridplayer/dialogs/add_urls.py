@@ -13,7 +13,7 @@ from PyQt5.QtWidgets import (
     QVBoxLayout,
 )
 
-from gridplayer.utils.misc import tr
+from gridplayer.utils.qt import tr
 
 DIALOG_WIDTH = 500
 MULTILINE_HEIGHT = 300

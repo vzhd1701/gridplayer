@@ -4,7 +4,7 @@ from PyQt5.QtCore import QMargins, QObject, Qt, pyqtSignal
 from PyQt5.QtWidgets import QWidget
 
 from gridplayer.settings import Settings
-from gridplayer.utils.misc import QABC, qt_connect
+from gridplayer.utils.qt import QABC, qt_connect
 from gridplayer.widgets.video_frame_vlc_base import VideoFrameVLC
 
 if platform.system() == "Darwin":

@@ -6,13 +6,13 @@ from typing import Optional
 from yt_dlp import DownloadError, YoutubeDL
 from yt_dlp.utils import UnsupportedError
 
+from gridplayer.models.video import VideoURL
 from gridplayer.utils.url_resolve.static import (
     BadURLException,
     NoResolverPlugin,
     ResolvedVideo,
 )
 from gridplayer.utils.url_resolve.stream_detect import is_http_live_stream
-from gridplayer.video import VideoURL
 
 logger = logging.getLogger(__name__)
 

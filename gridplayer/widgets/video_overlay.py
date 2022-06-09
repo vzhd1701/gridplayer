@@ -8,9 +8,9 @@ from PyQt5.QtWidgets import (
     QWidget,
 )
 
-from gridplayer.params_static import OVERLAY_ACTIVITY_EVENT
+from gridplayer.params.static import OVERLAY_ACTIVITY_EVENT
 from gridplayer.settings import Settings
-from gridplayer.utils.misc import qt_connect
+from gridplayer.utils.qt import qt_connect
 from gridplayer.utils.time_txt import get_time_txt
 from gridplayer.widgets.video_overlay_buttons import (
     OverlayExitButton,

@@ -3,7 +3,7 @@ import platform
 
 from PyQt5.QtCore import QLibraryInfo, QLocale, QTranslator
 
-from gridplayer import params_env
+from gridplayer.params import env
 from gridplayer.settings import Settings
 
 
@@ -15,9 +15,9 @@ def init_translator(app):
     logger = logging.getLogger("INIT")
     logger.debug(f"Loading translation for {lang}")
 
-    if params_env.IS_PYINSTALLER and platform.system() == "Windows":
+    if env.IS_PYINSTALLER and platform.system() == "Windows":
         qt_translations_path = str(
-            params_env.PYINSTALLER_LIB_ROOT / "PyQt5" / "Qt5" / "translations"
+            env.PYINSTALLER_LIB_ROOT / "PyQt5" / "Qt5" / "translations"
         )
     else:
         qt_translations_path = QLibraryInfo.location(QLibraryInfo.TranslationsPath)
