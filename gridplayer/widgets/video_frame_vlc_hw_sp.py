@@ -182,7 +182,7 @@ class VideoFrameVLCHWSP(VideoFrameVLC):
         self.video_surface.resize(new_size)
         self.video_surface.move(-2, -2)
 
-    def load_video_finish(self):
+    def load_video_finish(self, media_track: MediaTrack):
         if platform.system() == "Darwin":
             # Need an explicit resize for adjustment to work on MacOS
             size = self.size()
@@ -190,7 +190,7 @@ class VideoFrameVLCHWSP(VideoFrameVLC):
             size.setHeight(size.height() + 1)
             self.resize(size)
 
-        super().load_video_finish()
+        super().load_video_finish(media_track)
 
     def set_log_level_vlc(self, log_level):
         self.video_driver.set_log_level_vlc(log_level)
