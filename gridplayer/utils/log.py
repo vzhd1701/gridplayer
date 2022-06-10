@@ -27,6 +27,7 @@ def log_environment():
         "========",
         f"OS: {platform.platform()}",
         f"OS Ver: {platform.version()}",
+        f"OS Release: {platform.release()}",
         f"Python: {platform.python_version()}",
         f"Qt: {Qt.qVersion()}",
         f"MP Start method: {multiprocessing.get_start_method()}",
