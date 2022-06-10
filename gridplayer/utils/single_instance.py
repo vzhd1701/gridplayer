@@ -4,6 +4,7 @@ import platform
 import stat
 from multiprocessing import connection
 from threading import Thread
+from typing import Optional
 
 from PyQt5.QtCore import QObject, pyqtSignal
 
@@ -43,17 +44,19 @@ else:
         """Dummy"""
 
 
-logger = logging.getLogger(__name__)
+LISTENER: Optional[connection.Listener] = None
 
 
-def _init_listener():
+def _init_listener() -> Optional[connection.Listener]:
     try:
         return connection.Listener(S_NAME, S_TYPE)
     except OSError:
-        logger.warning(
+        logging.getLogger(__name__).debug(
             "Couldn't start single instance listener,"
             " probably other process is using it"
         )
+
+    return None
 
 
 class Listener(QObject):
@@ -62,28 +65,29 @@ class Listener(QObject):
     def __init__(self):
         super().__init__()
 
+        self._log = logging.getLogger(self.__class__.__name__)
+
         self._thread = None
 
     def start(self):
-        self._thread = Thread(target=self._listen, daemon=True)
+        if LISTENER is None:
+            self._log.warning("Couldn't start single instance listener")
+            return
+
+        self._thread = Thread(target=self._listen, args=(LISTENER,), daemon=True)
         self._thread.start()
 
     def cleanup(self):
-        if not self._thread.is_alive():
+        if self._thread is None or not self._thread.is_alive():
             return
 
-        logger.debug("Terminating instance socket")
+        self._log.debug("Terminating instance socket")
 
         _send_data(None)
         self._thread.join()
 
-    def _listen(self):
-        if platform.system() != "Windows" and _is_socket_working():
-            return
-
-        listener = _init_listener()
-
-        logger.debug(f"Instance socket listening at {S_NAME}")
+    def _listen(self, listener):
+        self._log.debug(f"Instance socket listening at {S_NAME}")
 
         self._listening_loop(listener)
 
@@ -106,19 +110,25 @@ class Listener(QObject):
 
     def _handle_input_data(self, input_data):
         if input_data == "ping":
-            logger.debug("Received ping from another instance")
+            self._log.debug("Received ping from another instance")
 
         if isinstance(input_data, list) and input_data:
             self.open_files.emit(input_data)
 
 
 def _send_data(output_data):
+    logging.getLogger(__name__).debug(
+        f"Sending data to running instance: {output_data}"
+    )
+
     client = connection.Client(S_NAME, S_TYPE)
 
     client.send(output_data)
 
 
 def _is_socket_working():
+    log = logging.getLogger(__name__)
+
     os.makedirs(os.path.dirname(S_NAME), exist_ok=True)
 
     if os.path.exists(S_NAME):
@@ -132,19 +142,29 @@ def _is_socket_working():
             os.unlink(S_NAME)
             return False
 
-        logger.info("Socket already exists and responding")
+        log.info("Socket already exists and responding")
         return True
 
     return False
 
 
-def is_delegated_to_primary(argv):
-    input_files = filter(os.path.isfile, argv[1:])
+def is_other_instance_running():
+    global LISTENER  # noqa: WPS420
 
-    file_paths = [os.path.abspath(f) for f in input_files]
+    if platform.system() != "Windows" and _is_socket_working():
+        return True
+
+    LISTENER = _init_listener()  # noqa: WPS442
+
+    return LISTENER is None
+
+
+def is_delegated_to_primary(argv):
+    if not is_other_instance_running():
+        return False
 
     try:
-        _send_data(file_paths)
+        _send_data(argv[1:])
     except (FileNotFoundError, ConnectionRefusedError):
         return False
 

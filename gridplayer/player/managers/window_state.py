@@ -9,6 +9,7 @@ from gridplayer.settings import Settings
 
 class WindowStateManager(ManagerBase):
     pause_on_minimize = pyqtSignal()
+    closing = pyqtSignal()
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -20,7 +21,10 @@ class WindowStateManager(ManagerBase):
 
     @property
     def event_map(self):
-        return {QEvent.WindowStateChange: self.changeEvent}
+        return {
+            QEvent.WindowStateChange: self.changeEvent,
+            QEvent.Close: self.closeEvent,
+        }
 
     @property
     def commands(self):
@@ -44,6 +48,10 @@ class WindowStateManager(ManagerBase):
             for v in self.pre_minimize_unpaused:
                 v.set_pause(False)
             self.pre_minimize_unpaused = []
+
+    def closeEvent(self, event):
+        self.closing.emit()
+        event.accept()
 
     def cmd_fullscreen(self):
         if self.parent().isFullScreen():

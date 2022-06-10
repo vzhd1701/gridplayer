@@ -16,5 +16,7 @@ class InstanceListenerManager(ManagerBase):
 
         qt_connect(
             (self._instance_listener.open_files, self.files_opened),
-            (self.destroyed, self._instance_listener.cleanup),
         )
+
+    def cleanup(self):
+        self._instance_listener.cleanup()

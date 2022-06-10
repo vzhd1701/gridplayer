@@ -116,7 +116,8 @@ class Player(QWidget, ManagersManager):
         else:
             self.managers["instance_listener"] = InstanceListenerManager
             self.connections["instance_listener"] = [
-                ("files_opened", "playlist.process_arguments")
+                ("files_opened", "playlist.process_arguments"),
+                ("window_state.closing", "cleanup"),
             ]
 
         self.global_event_filters.append("mouse_hide")
