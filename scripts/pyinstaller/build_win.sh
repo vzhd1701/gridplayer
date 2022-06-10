@@ -8,7 +8,7 @@ SCRIPT_DIR="$( cd "$( dirname $0 )" && pwd )"
 . "$SCRIPT_DIR/build_functions.sh"
 
 VLC_URL="https://get.videolan.org/vlc/3.0.16/win64/vlc-3.0.16-win64.zip"
-PYINSTALLER_VERSION="4.5.1"
+PYINSTALLER_VERSION="5.1"
 
 mkdir -p "$BUILD_DIR"
 
@@ -48,12 +48,17 @@ mv $BASE_DIR/* "$LIB_DIR" &> /dev/bull
 
 # Move main exe back into base dir
 mv "$LIB_DIR/$APP_NAME.exe" "$BASE_DIR"
-mv "$LIB_DIR/$APP_NAME.exe.manifest" "$BASE_DIR"
 
 # Copy base libs so that subprocess could still access them
 cp "$LIB_DIR/base_library.zip" "$BASE_DIR"
 cp "$LIB_DIR"/python3*.dll "$BASE_DIR"
 cp "$LIB_DIR"/VCRUNTIME*.dll "$BASE_DIR"
+
+mv "$LIB_DIR"/Crypto "$BASE_DIR"
+mv "$LIB_DIR"/Cryptodome "$BASE_DIR"
+mv "$LIB_DIR"/lxml "$BASE_DIR"
+mv "$LIB_DIR"/streamlink "$BASE_DIR"
+mv "$LIB_DIR"/pycountry "$BASE_DIR"
 
 mv "$LIB_DIR" "$BASE_DIR"
 
@@ -67,18 +72,20 @@ if [ ! -d "$VLC_EMBED_SRC" ]; then
 
     mkdir -p "$VLC_EMBED_SRC/plugins"
 
-    mkdir "$VLC_EMBED_SRC/plugins/access"
     mkdir "$VLC_EMBED_SRC/plugins/audio_filter"
     mkdir "$VLC_EMBED_SRC/plugins/audio_output"
 
-    cp "$BUILD_DIR"/vlc-*/plugins/access/libfilesystem_plugin.dll "$VLC_EMBED_SRC/plugins/access"
     cp "$BUILD_DIR"/vlc-*/plugins/audio_filter/libscaletempo_*.dll "$VLC_EMBED_SRC/plugins/audio_filter"
     cp "$BUILD_DIR"/vlc-*/plugins/audio_output/libdirectsound_plugin.dll "$VLC_EMBED_SRC/plugins/audio_output"
 
+    cp -a "$BUILD_DIR"/vlc-*/plugins/access "$VLC_EMBED_SRC/plugins"
     cp -a "$BUILD_DIR"/vlc-*/plugins/codec "$VLC_EMBED_SRC/plugins"
     cp -a "$BUILD_DIR"/vlc-*/plugins/demux "$VLC_EMBED_SRC/plugins"
+    cp -a "$BUILD_DIR"/vlc-*/plugins/misc "$VLC_EMBED_SRC/plugins"
     cp -a "$BUILD_DIR"/vlc-*/plugins/video_chroma "$VLC_EMBED_SRC/plugins"
     cp -a "$BUILD_DIR"/vlc-*/plugins/video_output "$VLC_EMBED_SRC/plugins"
+    "$BUILD_DIR"/vlc-*/vlc-cache-gen.exe "$VLC_EMBED_SRC/plugins"
+
     cp -a "$BUILD_DIR"/vlc-*/libvlc.dll "$VLC_EMBED_SRC"
     cp -a "$BUILD_DIR"/vlc-*/libvlccore.dll "$VLC_EMBED_SRC"
 fi

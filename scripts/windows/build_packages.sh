@@ -16,14 +16,11 @@ echo "Building installer"
 cp "$SCRIPT_DIR/installer.iss" "$BUILD_DIR/installer.iss"
 
 APP_SRC=$(cygpath -w "$DIST_DIR/$APP_NAME" | escapeSubst)
-APP_EXT_DESC="$DISP_NAME Playlist"
-APP_EXT="gpls"
 
 replace_app_vars "$BUILD_DIR/installer.iss"
 
 sed -i "s#{APP_SRC}#$APP_SRC#g" "$BUILD_DIR/installer.iss"
-sed -i "s#{APP_EXT}#$APP_EXT#g" "$BUILD_DIR/installer.iss"
-sed -i "s#{APP_EXT_DESC}#$APP_EXT_DESC#g" "$BUILD_DIR/installer.iss"
+PYTHONPATH="$ROOT_DIR" python "$SCRIPT_DIR/generate_file_associations.py" "{APP_FILE_ASSOCIATIONS}" "$BUILD_DIR/installer.iss"
 
 "$ISCC" //O"dist" //F"$APP_NAME-$APP_VERSION-win64-install" "$BUILD_DIR/installer.iss"
 

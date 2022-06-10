@@ -2,6 +2,8 @@
 
 import os
 
+from PyInstaller.utils.hooks import collect_submodules, collect_data_files
+
 def strip_list(src_list, items_to_strip):
     for x in src_list.copy():
         for r in items_to_strip:
@@ -16,11 +18,10 @@ APP_NAME = "{APP_NAME}"
 SRC_DIR = os.path.abspath("./{APP_MODULE}")
 BUILD_DIR = os.path.abspath("./build")
 
+hiddenimports = collect_submodules('streamlink.plugins')
+
 excludes = [
-    "asyncio",
-    "ssl",
-    "pyexpat",
-    "unicodedata",
+    "altgraph",
     "PyQt5.QtBluetooth",
     "PyQt5.QtDBus",
     "PyQt5.QtDesigner",
@@ -52,13 +53,9 @@ excludes = [
 
 del_bins = [
     "d3dcompiler",
-    "libcrypto",
-    "libeay32",
     "libEGL",
     "libGLES",
-    "libssl",
     "opengl32sw",
-    "ssleay32",
     "Qt5DBus",
     "Qt5Qml",
     "Qt5Quick",
@@ -84,15 +81,17 @@ del_bins = [
 del_data = []
 
 add_data = [
-    (os.path.join(BUILD_DIR, "python-vlc.version"), '.')
+    (os.path.join(BUILD_DIR, "python-vlc.version"), '.'),
+    (os.path.join(BUILD_DIR, "mime.ico"), '.'),
 ]
+add_data += collect_data_files('streamlink.plugins', include_py_files=True)
 
 block_cipher = None
 
 a = Analysis([os.path.join(SRC_DIR, "__main__.py")],
              binaries=[],
              datas=add_data,
-             hiddenimports=[],
+             hiddenimports=hiddenimports,
              hookspath=[],
              hooksconfig={},
              runtime_hooks=[os.path.join(BUILD_DIR, "hook_lib.py")],
@@ -125,7 +124,7 @@ exe = EXE(pyz,
           codesign_identity=None,
           entitlements_file=None ,
           version=os.path.join(BUILD_DIR, "version_info.py"),
-          icon=[os.path.join(BUILD_DIR, "main.ico"), os.path.join(BUILD_DIR, "mime.ico")],
+          icon=os.path.join(BUILD_DIR, "main.ico"),
           manifest=os.path.join(workpath, '{0}.exe.manifest'.format(specnm)))
 
 coll = COLLECT(exe,

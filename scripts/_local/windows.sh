@@ -14,6 +14,10 @@ poetry export --without-hashes -o "$BUILD_DIR/requirements.txt"
 
 bash "$SCRIPTS_DIR/pyinstaller/build_win.sh"
 
+if [ "$1" == "build" ]; then
+    exit 0
+fi
+
 bash "$SCRIPTS_DIR/windows/build_packages.sh"
 
 # Remove directory produced by pyinstaller

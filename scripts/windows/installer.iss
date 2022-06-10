@@ -38,9 +38,6 @@ Name: "{autodesktop}\{APP_DISP_NAME}"; Filename: "{app}\{APP_NAME}.exe"; Tasks: 
 Filename: "{app}\{APP_NAME}.exe"; Flags: nowait postinstall skipifsilent 64bit; Description: "{cm:LaunchProgram,{APP_NAME}}"
 
 [Registry]
-Root: HKA; Subkey: "Software\Classes\.{APP_EXT}\OpenWithProgids"; ValueType: string; ValueName: "{APP_NAME}.{APP_EXT}"; ValueData: ""; Flags: uninsdeletevalue
-Root: HKA; Subkey: "Software\Classes\{APP_NAME}.{APP_EXT}"; ValueType: string; ValueName: ""; ValueData: "{APP_EXT_DESC}"; Flags: uninsdeletekey
-Root: HKA; Subkey: "Software\Classes\{APP_NAME}.{APP_EXT}\DefaultIcon"; ValueType: string; ValueName: ""; ValueData: "{app}\{APP_NAME}.exe,1"
-Root: HKA; Subkey: "Software\Classes\{APP_NAME}.{APP_EXT}\shell\open\command"; ValueType: string; ValueName: ""; ValueData: """{app}\{APP_NAME}.exe"" ""%1"""
+{APP_FILE_ASSOCIATIONS}
 Root: HKCR; SubKey: "Local Settings\Software\Microsoft\Windows\Shell\MuiCache"; ValueType: string; ValueName: "{app}\{APP_NAME}.exe.FriendlyAppName"; ValueData: "{APP_DISP_NAME}"; Flags: uninsdeletevalue
 Root: HKCR; SubKey: "Local Settings\Software\Microsoft\Windows\Shell\MuiCache"; ValueType: string; ValueName: "{app}\{APP_NAME}.exe.ApplicationCompany"; ValueData: "{APP_AUTHOR}"; Flags: uninsdeletevalue
