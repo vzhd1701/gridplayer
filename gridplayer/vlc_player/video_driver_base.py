@@ -12,7 +12,6 @@ class VLCVideoDriver(QObject, metaclass=QABC):
     playback_status_changed = pyqtSignal(int)
     end_reached = pyqtSignal()
     load_finished = pyqtSignal(MediaTrack)
-    load_display = pyqtSignal()
     snapshot_taken = pyqtSignal(str)
 
     error = pyqtSignal()
@@ -42,9 +41,6 @@ class VLCVideoDriver(QObject, metaclass=QABC):
 
     def load_video_done(self, media_track: MediaTrack):
         self.load_finished.emit(media_track)
-
-    def load_video_display(self):
-        self.load_display.emit()
 
     @abstractmethod
     def snapshot(self):

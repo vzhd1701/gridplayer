@@ -20,13 +20,11 @@ class PlayerProcessSingleVLCHWSP(QObject, VlcPlayerBase, metaclass=QABC):
     playback_status_changed = pyqtSignal(bool)
     end_reached = pyqtSignal()
     time_changed = pyqtSignal(int)
-    load_finished = pyqtSignal()
     error = pyqtSignal()
     crash = pyqtSignal(str)
     snapshot_taken = pyqtSignal(str)
 
     load_video_done = pyqtSignal(MediaTrack)
-    load_video_display = pyqtSignal()
 
     loop_load_video_st2_set_parsed_media = pyqtSignal()
     loop_load_video_st3_extract_media_track = pyqtSignal()
@@ -77,9 +75,6 @@ class PlayerProcessSingleVLCHWSP(QObject, VlcPlayerBase, metaclass=QABC):
     def notify_load_video_done(self, media_track):
         self.load_video_done.emit(media_track)
 
-    def notify_load_video_display(self):
-        self.load_video_display.emit()
-
     def notify_snapshot_taken(self, snapshot_path):
         self.snapshot_taken.emit(snapshot_path)
 
@@ -111,12 +106,10 @@ class VideoDriverVLCHWSP(VLCVideoDriver):
 
         qt_connect(
             (self.player.load_video_done, self.load_video_done),
-            (self.player.load_video_display, self.load_video_display),
             (self.player.snapshot_taken, self.snapshot_taken_emit),
             (self.player.playback_status_changed, self.playback_status_changed_emit),
             (self.player.end_reached, self.end_reached_emit),
             (self.player.time_changed, self.time_changed),
-            (self.player.load_finished, self.load_finished),
             (self.player.error, self.error),
             (self.player.crash, self.crash),
         )

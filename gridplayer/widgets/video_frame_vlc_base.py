@@ -51,7 +51,6 @@ class VideoFrameVLC(QWidget, metaclass=QABC):
     end_reached = pyqtSignal()
 
     video_ready = pyqtSignal()
-    video_ready_to_display = pyqtSignal()
 
     error = pyqtSignal()
     crash = pyqtSignal(str)
@@ -121,7 +120,6 @@ class VideoFrameVLC(QWidget, metaclass=QABC):
             (self.video_driver.end_reached, self.end_reached_emit),
             (self.video_driver.time_changed, self.time_changed_emit),
             (self.video_driver.load_finished, self.load_video_finish),
-            (self.video_driver.load_display, self.load_video_display),
             (self.video_driver.snapshot_taken, self.snapshot_taken),
             (self.video_driver.error, self.error_emit),
             (self.video_driver.crash, self.crash_emit),
@@ -206,10 +204,6 @@ class VideoFrameVLC(QWidget, metaclass=QABC):
             self.audio_only_placeholder.show()
 
         self.video_ready.emit()
-
-    # delete this one
-    def load_video_display(self) -> None:
-        self.video_ready_to_display.emit()
 
     def play(self) -> None:
         if self._is_status_change_in_progress:

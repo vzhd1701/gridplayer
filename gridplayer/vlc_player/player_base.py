@@ -187,10 +187,6 @@ class VlcPlayerBase(ABC):
         ...
 
     @abstractmethod
-    def notify_load_video_display(self):
-        ...
-
-    @abstractmethod
     def notify_snapshot_taken(self, snapshot_path):
         ...
 
