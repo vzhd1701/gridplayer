@@ -92,7 +92,6 @@ class Player(QWidget, ManagersManager):
                 ("s.arguments_received", "process_arguments"),
                 ("playlist_closed", "video_blocks.close_all"),
                 ("playlist_closed", "window_state.restore_to_minimum"),
-                ("playlist_loaded", "window_state.activate_window"),
                 ("window_state_loaded", "window_state.restore_window_state"),
                 ("grid_state_loaded", "grid.set_grid_state"),
                 ("is_seek_synced_loaded", "video_blocks.set_seek_synced"),

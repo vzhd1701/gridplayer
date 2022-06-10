@@ -113,11 +113,9 @@ class PlaylistManager(ManagerBase):
             self.error.emit(tr("No supported files or URLs!"))
             return
 
-        playlist = Playlist(videos=videos)
+        self.videos_loaded.emit(videos)
 
-        self.load_playlist(playlist)
-
-        self._saved_playlist = None
+        self.alert.emit()
 
     def load_playlist_file(self, playlist_file: Path):
         try:
@@ -158,7 +156,7 @@ class PlaylistManager(ManagerBase):
 
         self.is_seek_synced_loaded.emit(playlist.is_seek_synced)
 
-        self.playlist_loaded.emit()
+        self.alert.emit()
 
     def check_playlist_save(self):
         if not Settings().get("playlist/track_changes"):
