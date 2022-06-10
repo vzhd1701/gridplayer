@@ -1,6 +1,9 @@
 import ctypes
 import logging
 import platform
+from pathlib import Path
+
+import certifi
 
 from gridplayer.multiprocess.instance_process import InstanceProcess
 from gridplayer.multiprocess.process_manager import ProcessManager
@@ -85,6 +88,8 @@ class InstanceVLC(object):
 
     # process
     def init_instance(self):
+        self._logger = logging.getLogger("VLC")
+
         options = [
             # this option is good for making video loop forever,
             # but glitchy files will retry 65535 times before giving up
@@ -111,6 +116,15 @@ class InstanceVLC(object):
         if platform.system() == "Windows":
             options.append("--aout=directsound")
 
+            # Root CAs are outdated on Windows 7
+            if platform.release() == "7":
+                cert_dir = str(Path(certifi.where()).parent)
+
+                self._logger.debug(f"Using certifi root CA dir: {cert_dir}")
+
+                options.append("--no-gnutls-system-trust")
+                options.append(f"--gnutls-dir-trust={cert_dir}")
+
         if env.IS_APPIMAGE:
             options.append("--aout=pulse")
 
@@ -129,7 +143,6 @@ class InstanceVLC(object):
 
     # process
     def init_logger(self):
-        self._logger = logging.getLogger("VLC")
         self._logger_cb = self.libvlc_log_callback()
         self._logger_buf = ctypes.create_string_buffer(self._logger_buf_len)
 
