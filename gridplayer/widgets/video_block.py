@@ -3,7 +3,7 @@ import random
 import re
 import secrets
 from pathlib import Path
-from typing import Dict, Optional, Tuple
+from typing import Dict, Optional, Set, Tuple
 
 from pydantic.color import Color
 from PyQt5.QtCore import Qt, QTimer, pyqtSignal
@@ -256,6 +256,7 @@ class VideoBlock(QWidget):  # noqa: WPS230
         self.layout_main.setStackingMode(QStackedLayout.StackAll)
 
         self.status_label = StatusLabel(parent=self)
+        self.status_label.setMouseTracking(True)
         self.status_label.setWindowFlags(Qt.WindowTransparentForInput)
         self.status_label.setAttribute(Qt.WA_TransparentForMouseEvents)
 
@@ -266,14 +267,22 @@ class VideoBlock(QWidget):  # noqa: WPS230
     def crash(self, traceback_txt):
         raise PlayerException(traceback_txt)
 
-    def cleanup(self):
-        self.url_resolver.cleanup()
-        self.video_driver.cleanup()
-
-        if self.is_error:
+    def close_select(self, close_ids: Set[str]):
+        if self.id not in close_ids:
             return
 
-        self.set_status("processing")
+        self.cleanup()
+
+        self.close()
+
+    def cleanup(self):
+        logger.debug(f"Cleaning up resolver {self.id}")
+        self.url_resolver.cleanup()
+
+        logger.debug(f"Cleaning up driver {self.id}")
+        self.video_driver.cleanup()
+
+        logger.debug(f"Cleaning up done {self.id}")
 
     def video_driver_error(self):
         if isinstance(self.video_params.uri, VideoURL):

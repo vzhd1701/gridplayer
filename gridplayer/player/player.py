@@ -56,7 +56,6 @@ class Player(QWidget, ManagersManager):
         }
 
         self.connections = {
-            "video_driver": [("video_blocks.video_count_changed", "set_video_count")],
             "window_state": [("pause_on_minimize", "video_blocks.pause_all")],
             "grid": [
                 ("minimum_size_changed", "window_state.set_minimum_size"),
@@ -80,6 +79,9 @@ class Player(QWidget, ManagersManager):
             "single_mode": [
                 ("mode_changed", "grid.adapt_grid"),
                 ("video_blocks.video_count_changed", "set_video_count"),
+            ],
+            "video_blocks": [
+                ("reload_all_closed", "video_driver.cleanup"),
             ],
             "settings": [
                 ("reload", "video_blocks.reload_videos"),

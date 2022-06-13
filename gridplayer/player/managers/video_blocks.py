@@ -1,7 +1,7 @@
 import logging
 from typing import List
 
-from PyQt5.QtCore import pyqtSignal
+from PyQt5.QtCore import Qt, pyqtSignal
 
 from gridplayer.models.video import Video
 from gridplayer.player.managers.base import ManagerBase
@@ -59,6 +59,8 @@ class VideoBlocksManager(ManagerBase):
     video_count_changed = pyqtSignal(int)
     playings_videos_count_changed = pyqtSignal(int)
 
+    reload_all_closed = pyqtSignal()
+
     hide_overlay = pyqtSignal()
     set_pause = pyqtSignal(int)
     seek_shift = pyqtSignal(int)
@@ -66,12 +68,17 @@ class VideoBlocksManager(ManagerBase):
     seek_random = pyqtSignal()
     seek_percent = pyqtSignal(float)
 
+    close = pyqtSignal(set)
+
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
         self._ctx.is_seek_synced = Settings().get("playlist/seek_synced")
 
         self._ctx.video_blocks = VideoBlocks()
+
+        self._live_video_blocks = 0
+        self._videos_to_reload = []
 
     @property
     def commands(self):
@@ -123,11 +130,21 @@ class VideoBlocksManager(ManagerBase):
         self.set_pause.emit(True)
 
     def reload_videos(self):
-        videos = self._ctx.video_blocks.videos
+        self._videos_to_reload = self._ctx.video_blocks.videos
+
+        logger.debug("Reload: closing all")
 
         self.close_all()
 
-        self.add_videos(videos)
+    def reload_videos_finish(self):
+        logger.debug("Reload: terminating driver")
+
+        self.reload_all_closed.emit()
+
+        logger.debug("Reload: adding videos back")
+
+        self.add_videos(self._videos_to_reload)
+        self._videos_to_reload = []
 
     def add_videos(self, videos):
         for v in videos:
@@ -136,8 +153,10 @@ class VideoBlocksManager(ManagerBase):
         self.video_count_changed.emit(len(self._ctx.video_blocks))
 
     def remove_video_blocks(self, *videoblocks):
+        self.close.emit({vb.id for vb in videoblocks})
+
         for vb in videoblocks:
-            self._remove_video_block(vb)
+            self._ctx.video_blocks.remove(vb)
 
         self.video_count_changed.emit(len(self._ctx.video_blocks))
 
@@ -153,28 +172,38 @@ class VideoBlocksManager(ManagerBase):
         self.playings_videos_count_changed.emit(playing_videos_count)
 
     def _add_video_block(self, video):
+        self._live_video_blocks += 1
+
         vb = VideoBlock(
             video_driver=self._ctx.video_driver,
             parent=self.parent(),
         )
 
+        vb.setAttribute(Qt.WA_DeleteOnClose)
+
         qt_connect(
             (vb.exit_request, self.close_video_block),
             (vb.is_paused_change, self.playing_count_change),
             (vb.percent_changed, self.seek_sync),
+            (vb.destroyed, self._video_block_destroyed),
             (self.set_pause, vb.set_pause),
             (self.seek_shift, vb.seek_shift_percent),
             (self.seek_shift_ms, vb.seek_shift),
             (self.seek_random, vb.seek_random),
             (self.seek_percent, vb.seek_percent),
             (self.hide_overlay, vb.hide_overlay),
+            (self.close, vb.close_select),
         )
 
         vb.set_video(video)
 
         self._ctx.video_blocks.append(vb)
 
-    def _remove_video_block(self, vb):
-        vb.cleanup()
-        self._ctx.video_blocks.remove(vb)
-        vb.deleteLater()
+    def _video_block_destroyed(self, _):
+        self._live_video_blocks -= 1
+
+        if self._live_video_blocks == 0:
+            logger.debug("No more live video blocks")
+
+            if self._videos_to_reload:
+                self.reload_videos_finish()

@@ -78,7 +78,3 @@ class VideoDriverManager(ManagerBase):
 
     def crash(self, traceback_txt):
         raise PlayerException(traceback_txt)
-
-    def set_video_count(self, video_count):
-        if video_count == 0:
-            self.cleanup()
