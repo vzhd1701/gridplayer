@@ -1,6 +1,7 @@
 import itertools
 import logging
 import re
+import traceback
 from typing import Optional
 
 from yt_dlp import DownloadError, YoutubeDL
@@ -24,7 +25,8 @@ def resolve_youtube_dl(url: VideoURL) -> Optional[ResolvedVideo]:
         except DownloadError as e:
             if e.exc_info[0] is UnsupportedError:
                 raise NoResolverPlugin
-            raise
+            logger.debug(f"yt-dlp error:\n{traceback.format_exc()}")
+            raise NoResolverPlugin
 
     streams = _get_streams(video_info)
 
@@ -44,7 +46,9 @@ def resolve_youtube_dl(url: VideoURL) -> Optional[ResolvedVideo]:
 
 def _get_streams(video_info):
     http_streams = [
-        fmt for fmt in video_info["formats"] if fmt.get("url", "").startswith("http")
+        fmt
+        for fmt in video_info.get("formats", [])
+        if fmt.get("url", "").startswith("http")
     ]
 
     streams = [
