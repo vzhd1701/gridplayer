@@ -205,6 +205,8 @@ class VideoFrameVLC(QWidget, metaclass=QABC):
         if self.media_track.is_audio_only:
             self.video_surface.hide()
             self.audio_only_placeholder.show()
+        else:
+            self.adjust_view()
 
         self.video_ready.emit()
 
