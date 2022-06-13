@@ -92,6 +92,7 @@ class VideoBlocksManager(ManagerBase):
             "is_videos": lambda: bool(self._ctx.video_blocks),
             "is_seek_synced": lambda: self._ctx.is_seek_synced,
             "switch_seek_synced": self.switch_seek_synced,
+            "reload_all": self.reload_videos,
         }
 
     def cmd_play_pause_all(self):

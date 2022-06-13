@@ -384,6 +384,11 @@ COMMANDS = MappingProxyType(
             "show_if": "is_active_multistream",
             "menu_generator": "menu_generator_stream_quality",
         },
+        "Reload All": {
+            "title": "Reload All",
+            "key": "Shift+F5",
+            "func": "reload_all",
+        },
     }
 )
 
