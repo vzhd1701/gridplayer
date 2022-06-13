@@ -58,7 +58,7 @@ class VideoURLResolver(QObject):
         self.thread.start()
 
     def cleanup(self):
-        self.thread.terminate()
+        self.thread.quit()
         self.thread.wait()
 
     def resolve(self, url):
