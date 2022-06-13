@@ -287,8 +287,9 @@ class VideoDriverVLCSW(VLCVideoDriverThreaded):
 
     def cleanup(self):
         if self._shared_memory is not None:
-            self._shared_memory.close()
-            self._shared_memory = None
+            with self._shared_memory:
+                self._shared_memory.close()
+                self._shared_memory = None
 
         super().cleanup()
 

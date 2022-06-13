@@ -71,9 +71,17 @@ class SafeSharedMemory(object):
             return
 
         # https://stackoverflow.com/questions/53339931/properly-discarding-ctypes-pointers-to-mmap-memory-in-python
-        self._ptr = None
-        gc.collect()
+        if self._ptr is not None:
+            self._ptr = None
+            gc.collect()
 
+        self._close_memory()
+
+        if self._is_allocator:
+            self._memory.unlink()
+            self._memory = None
+
+    def _close_memory(self):
         for _ in range(10):
             try:
                 self._memory.close()
@@ -87,7 +95,3 @@ class SafeSharedMemory(object):
                 time.sleep(0.1)
                 continue
             break
-
-        if self._is_allocator:
-            self._memory.unlink()
-            self._memory = None
