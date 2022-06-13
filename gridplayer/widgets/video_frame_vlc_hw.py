@@ -6,6 +6,7 @@ from PyQt5.QtWidgets import QWidget
 
 from gridplayer.vlc_player.instance import InstanceProcessVLC
 from gridplayer.vlc_player.player_base_threaded import VlcPlayerThreaded
+from gridplayer.vlc_player.static import MediaTrack
 from gridplayer.vlc_player.video_driver_base_threaded import VLCVideoDriverThreaded
 from gridplayer.widgets.video_frame_vlc_base import VideoFrameVLCProcess
 
@@ -49,8 +50,10 @@ class PlayerProcessSingleVLCHW(VlcPlayerThreaded):
         self.start()
 
     def init_player(self):
+        # video loading is not thread safe on linux
         if platform.system() == "Linux":
             self.init_semaphore.acquire()
+            self._log.debug("Semaphore acquired")
 
         super().init_player()
 
@@ -61,13 +64,16 @@ class PlayerProcessSingleVLCHW(VlcPlayerThreaded):
         elif platform.system() == "Darwin":  # for MacOS
             self._media_player.set_nsobject(self.win_id)
 
-    def load_video_st3_loaded(self):
-        self.init_semaphore.release()
+    def notify_load_video_done(self, media_track: MediaTrack):
+        if platform.system() == "Linux":
+            self.init_semaphore.release()
+            self._log.debug("Semaphore released")
 
-        super().load_video_st3_loaded()
+        super().notify_load_video_done(media_track)
 
     def cleanup(self):
-        self.init_semaphore.release()
+        if platform.system() == "Linux":
+            self.init_semaphore.release()
 
         super().cleanup()
 
