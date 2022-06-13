@@ -110,19 +110,9 @@ def set_root_level(log_level):
     logging.root.setLevel(log_level)
 
 
-def override_stdout():
-    stdout_logger = logging.getLogger("STDOUT")
-    sys.stdout = StreamToLogger(stdout_logger, logging.INFO)
-
-    stderr_logger = logging.getLogger("STDERR")
-    sys.stderr = StreamToLogger(stderr_logger, logging.ERROR)
-
-
 def child_process_config(queue, log_level):
     h = QueueHandler(queue)
 
     root = logging.getLogger()
     root.addHandler(h)
     root.setLevel(log_level)
-
-    override_stdout()
