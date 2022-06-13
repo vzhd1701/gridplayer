@@ -130,6 +130,9 @@ class PlayerProcessSingleVLCSW(VlcPlayerThreaded):
 
         super().set_pause(is_paused)
 
+    def adjust_view(self, size, aspect, scale):
+        """Done by the widget"""
+
     def _init_video_decoder(self):
         self._is_decoder_initialized = True
 
@@ -254,11 +257,19 @@ class VideoFrameVLCSW(VideoFrameVLCProcess):
         return video_surface
 
     def cleanup(self):
-        if super().cleanup():
-            return
+        if self._is_cleanup_requested:
+            return True
 
-        # need to remove it before cleanup to avoid occasional segmentation fault
+        self._is_cleanup_requested = True
+
+        self.media_track = None
+
+        # need to delete these manually to avoid occasional segmentation fault
+        # for some reason it won't crash if fitInView is not called (on Windows)
+        # !must! come before video_driver.cleanup()
         self._scene.removeItem(self._videoitem)
+
+        self.video_driver.cleanup()
 
     def take_snapshot(self) -> None:
         # no need to take snapshot, last frame stays in QGraphicsView on stop
