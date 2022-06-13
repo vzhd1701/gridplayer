@@ -1,8 +1,10 @@
 import platform
+from threading import Event
 
-from PyQt5.QtCore import QMargins, QObject, Qt, pyqtSignal
+from PyQt5.QtCore import QMargins, Qt, QThread, pyqtSignal, pyqtSlot
 from PyQt5.QtWidgets import QWidget
 
+from gridplayer.params.static import VideoAspect
 from gridplayer.settings import Settings
 from gridplayer.utils.qt import QABC, qt_connect
 from gridplayer.widgets.video_frame_vlc_base import VideoFrameVLC
@@ -16,12 +18,11 @@ from gridplayer.vlc_player.static import MediaInput, MediaTrack
 from gridplayer.vlc_player.video_driver_base import VLCVideoDriver
 
 
-class PlayerProcessSingleVLCHWSP(QObject, VlcPlayerBase, metaclass=QABC):
+class PlayerProcessSingleVLCHWSP(QThread, VlcPlayerBase, metaclass=QABC):
     playback_status_changed = pyqtSignal(bool)
     end_reached = pyqtSignal()
     time_changed = pyqtSignal(int)
-    error = pyqtSignal()
-    crash = pyqtSignal(str)
+    error_signal = pyqtSignal()
     snapshot_taken = pyqtSignal(str)
 
     load_video_done = pyqtSignal(MediaTrack)
@@ -31,7 +32,12 @@ class PlayerProcessSingleVLCHWSP(QObject, VlcPlayerBase, metaclass=QABC):
     loop_load_video_st4_loaded = pyqtSignal()
 
     def __init__(self, win_id, **kwargs):
-        super().__init__(**kwargs)
+        super().__init__(vlc_instance=None, **kwargs)
+
+        self._instance = None
+
+        self._cleanup_event = Event()
+        self._instance_ready_event = Event()
 
         self.win_id = win_id
 
@@ -50,6 +56,28 @@ class PlayerProcessSingleVLCHWSP(QObject, VlcPlayerBase, metaclass=QABC):
             ),
         )
 
+    def run(self):
+        self._instance = InstanceVLC(0)
+
+        self._instance.set_log_level_vlc(Settings().get("logging/log_level_vlc"))
+        self._instance.init_instance()
+
+        self.instance = self._instance.vlc_instance
+
+        self.init_player()
+
+        self._log.debug("Player initialized")
+
+        self._instance_ready_event.set()
+
+        self._cleanup_event.wait()
+
+        self._log.debug("VLC instance terminating")
+
+        self._instance.cleanup_instance()
+
+        self._log.debug("Terminating player thread")
+
     def init_player(self):
         super().init_player()
 
@@ -60,8 +88,15 @@ class PlayerProcessSingleVLCHWSP(QObject, VlcPlayerBase, metaclass=QABC):
         elif platform.system() == "Darwin":  # for MacOS
             self._media_player.set_nsobject(self.win_id)
 
+    @pyqtSlot()
+    def cleanup(self):
+        self._log.debug("cmd_cleanup called")
+        super().cleanup()
+
+        self._cleanup_event.set()
+
     def notify_error(self):
-        self.error.emit()
+        self.error_signal.emit()
 
     def notify_time_changed(self, new_time):
         self.time_changed.emit(new_time)
@@ -87,22 +122,32 @@ class PlayerProcessSingleVLCHWSP(QObject, VlcPlayerBase, metaclass=QABC):
     def loopback_load_video_st4_loaded(self):
         self.loop_load_video_st4_loaded.emit()
 
+    def set_log_level_vlc(self, log_level):
+        self._instance.set_log_level_vlc(log_level)
+
+    def wait_for_init(self):
+        self._instance_ready_event.wait()
+
 
 class VideoDriverVLCHWSP(VLCVideoDriver):
+    cmd_load_video = pyqtSignal(MediaInput)
+    cmd_snapshot = pyqtSignal()
+    cmd_play = pyqtSignal()
+    cmd_set_pause = pyqtSignal(bool)
+    cmd_set_time = pyqtSignal(int)
+    cmd_set_playback_rate = pyqtSignal(float)
+    cmd_audio_set_mute = pyqtSignal(bool)
+    cmd_audio_set_volume = pyqtSignal(float)
+    cmd_adjust_view = pyqtSignal(tuple, VideoAspect, float)
+    cmd_set_log_level_vlc = pyqtSignal(int)
+
+    cmd_init_player = pyqtSignal()
+    cmd_cleanup = pyqtSignal()
+
     def __init__(self, win_id, **kwargs):
         super().__init__(**kwargs)
 
-        self.instance = InstanceVLC(0)
-
-        self.instance.set_log_level_vlc(Settings().get("logging/log_level_vlc"))
-        self.instance.init_instance()
-
-        self.player = PlayerProcessSingleVLCHWSP(
-            win_id=win_id,
-            vlc_instance=self.instance.vlc_instance,
-        )
-
-        self.player.init_player()
+        self.player = PlayerProcessSingleVLCHWSP(win_id=win_id)
 
         qt_connect(
             (self.player.load_video_done, self.load_video_done),
@@ -110,43 +155,56 @@ class VideoDriverVLCHWSP(VLCVideoDriver):
             (self.player.playback_status_changed, self.playback_status_changed_emit),
             (self.player.end_reached, self.end_reached_emit),
             (self.player.time_changed, self.time_changed),
-            (self.player.error, self.error),
-            (self.player.crash, self.crash),
+            (self.player.error_signal, self.error),
+            (self.cmd_load_video, self.player.load_video),
+            (self.cmd_snapshot, self.player.snapshot),
+            (self.cmd_play, self.player.play),
+            (self.cmd_set_pause, self.player.set_pause),
+            (self.cmd_set_time, self.player.set_time),
+            (self.cmd_set_playback_rate, self.player.set_playback_rate),
+            (self.cmd_audio_set_mute, self.player.audio_set_mute),
+            (self.cmd_audio_set_volume, self.player.audio_set_volume),
+            (self.cmd_adjust_view, self.player.adjust_view),
+            (self.cmd_set_log_level_vlc, self.player.set_log_level_vlc),
+            (self.cmd_cleanup, self.player.cleanup),
         )
 
+        self.player.start()
+        self.player.wait_for_init()
+
     def cleanup(self):
-        self.player.cleanup()
-        self.instance.cleanup_instance()
+        self.cmd_cleanup.emit()
+        self.player.wait()
 
     def load_video(self, media_input: MediaInput):
-        self.player.load_video(media_input)
+        self.cmd_load_video.emit(media_input)
 
     def snapshot(self):
-        self.player.snapshot()
+        self.cmd_snapshot.emit()
 
     def play(self):
-        self.player.play()
+        self.cmd_play.emit()
 
     def set_pause(self, is_paused):
-        self.player.set_pause(is_paused)
+        self.cmd_set_pause.emit(is_paused)
 
     def set_time(self, seek_ms):
-        self.player.set_time(seek_ms)
+        self.cmd_set_time.emit(seek_ms)
 
     def set_playback_rate(self, rate):
-        self.player.set_playback_rate(rate)
+        self.cmd_set_playback_rate.emit(rate)
 
     def audio_set_mute(self, is_muted):
-        self.player.audio_set_mute(is_muted)
+        self.cmd_audio_set_mute.emit(is_muted)
 
     def audio_set_volume(self, volume):
-        self.player.audio_set_volume(volume)
+        self.cmd_audio_set_volume.emit(volume)
 
     def adjust_view(self, size, aspect, scale):
-        self.player.adjust_view(size, aspect, scale)
+        self.cmd_adjust_view.emit(size, aspect, scale)
 
     def set_log_level_vlc(self, log_level):
-        self.instance.set_log_level_vlc(log_level)
+        self.cmd_set_log_level_vlc.emit(log_level)
 
 
 class VideoFrameVLCHWSP(VideoFrameVLC):
