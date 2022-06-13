@@ -8,7 +8,7 @@ from PyQt5.QtCore import QObject, pyqtSignal
 from gridplayer.multiprocess.command_loop import CommandLoopThreaded
 from gridplayer.settings import Settings
 from gridplayer.utils.log_config import QueueListenerRoot
-from gridplayer.utils.misc import force_terminate_children
+from gridplayer.utils.misc import force_terminate_children, force_terminate_children_all
 
 
 class PlayerInstance(object):
@@ -103,7 +103,7 @@ class ProcessManager(CommandLoopThreaded, QObject):
                 self._instances_killed.notify()
 
     def crash_all(self, traceback_txt):
-        force_terminate_children()
+        force_terminate_children_all()
 
         self.crash.emit(traceback_txt)
 

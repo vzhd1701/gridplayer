@@ -1,7 +1,7 @@
 import logging
 from pathlib import Path
 
-from PyQt5.QtCore import QDir, QEvent, pyqtSignal
+from PyQt5.QtCore import QDir, pyqtSignal
 from PyQt5.QtWidgets import QFileDialog, QMessageBox
 
 from gridplayer.dialogs.messagebox import QCustomMessageBox
@@ -32,10 +32,6 @@ class PlaylistManager(ManagerBase):
         super().__init__(**kwargs)
 
         self._saved_playlist = None
-
-    @property
-    def event_map(self):
-        return {QEvent.Close: self.cmd_close_playlist}
 
     @property
     def commands(self):

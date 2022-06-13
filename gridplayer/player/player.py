@@ -56,7 +56,10 @@ class Player(QWidget, ManagersManager):
         }
 
         self.connections = {
-            "window_state": [("pause_on_minimize", "video_blocks.pause_all")],
+            "window_state": [
+                ("pause_on_minimize", "video_blocks.pause_all"),
+                ("closing", "playlist.check_playlist_save"),
+            ],
             "grid": [
                 ("minimum_size_changed", "window_state.set_minimum_size"),
                 ("video_blocks.video_count_changed", "reload_video_grid"),
@@ -128,7 +131,6 @@ class Player(QWidget, ManagersManager):
             "drag_n_drop",
             "active_block",
             "single_mode",
-            "playlist",
             "menu",
         ]
 

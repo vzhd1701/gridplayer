@@ -1,11 +1,10 @@
 import logging
-import os
 import traceback
 
 from PyQt5.QtWidgets import QApplication
 
 from gridplayer.dialogs.exception import ExceptionDialog
-from gridplayer.utils.misc import force_terminate_children
+from gridplayer.utils.misc import force_terminate
 
 
 def excepthook(exc_type, exc_value, exc_tb):
@@ -17,7 +16,7 @@ def excepthook(exc_type, exc_value, exc_tb):
 
     # Terminate if Qt is not up
     if QApplication.instance() is None:
-        os._exit(1)  # noqa: WPS437
+        force_terminate(1)
 
     for w in QApplication.topLevelWidgets():
         w.hide()
@@ -26,6 +25,4 @@ def excepthook(exc_type, exc_value, exc_tb):
     exc_dialog = ExceptionDialog(exception_txt)
     exc_dialog.exec_()
 
-    force_terminate_children()
-
-    os._exit(0)  # noqa: WPS437
+    force_terminate()

@@ -5,6 +5,7 @@ from PyQt5.QtCore import QEvent, Qt, pyqtSignal, pyqtSlot
 from gridplayer.params.static import WindowState
 from gridplayer.player.managers.base import ManagerBase
 from gridplayer.settings import Settings
+from gridplayer.utils.misc import force_terminate
 
 
 class WindowStateManager(ManagerBase):
@@ -51,7 +52,10 @@ class WindowStateManager(ManagerBase):
 
     def closeEvent(self, event):
         self.closing.emit()
-        event.accept()
+
+        self.parent().hide()
+
+        force_terminate()
 
     def cmd_fullscreen(self):
         if self.parent().isFullScreen():
