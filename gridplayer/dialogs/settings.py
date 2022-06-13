@@ -59,7 +59,6 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
         super().__init__(parent)
 
         self.setupUi(self)
-        self.ui_customize()
 
         self.settings_map = {
             "player/video_driver": self.playerVideoDriver,
@@ -92,6 +91,7 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
             "internal/opaque_hw_overlay": self.miscOpaqueHWOverlay,
         }
 
+        self.ui_customize()
         self.ui_fill()
 
         self.ui_connect()
@@ -118,6 +118,14 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
             self.languageBox.setStyleSheet(
                 "QGroupBox:title{padding: 0 4px 0 3px;margin-left:-5px;}"
             )
+
+            self.lay_boxes.setSpacing(25)  # noqa: WPS432
+
+            combo_boxes = (
+                e for e in self.settings_map.values() if isinstance(e, QComboBox)
+            )
+            for cb in combo_boxes:
+                cb.setMaximumHeight(22)  # noqa: WPS432
 
         if platform.system() != "Linux":
             self.section_misc.hide()

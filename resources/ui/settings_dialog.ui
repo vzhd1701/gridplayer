@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>442</width>
-    <height>565</height>
+    <height>593</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -153,7 +153,7 @@
              <property name="sizeHint" stdset="0">
               <size>
                <width>40</width>
-               <height>20</height>
+               <height>0</height>
               </size>
              </property>
             </spacer>
@@ -180,7 +180,7 @@
              <property name="sizeHint" stdset="0">
               <size>
                <width>40</width>
-               <height>20</height>
+               <height>0</height>
               </size>
              </property>
             </spacer>
@@ -231,7 +231,7 @@
              <property name="sizeHint" stdset="0">
               <size>
                <width>40</width>
-               <height>20</height>
+               <height>0</height>
               </size>
              </property>
             </spacer>
@@ -258,7 +258,7 @@
              <property name="sizeHint" stdset="0">
               <size>
                <width>40</width>
-               <height>20</height>
+               <height>0</height>
               </size>
              </property>
             </spacer>
@@ -285,7 +285,7 @@
              <property name="sizeHint" stdset="0">
               <size>
                <width>40</width>
-               <height>20</height>
+               <height>0</height>
               </size>
              </property>
             </spacer>
@@ -331,44 +331,48 @@
       </layout>
      </item>
      <item>
-      <layout class="QVBoxLayout" name="lay_right_column" stretch="0,0,0,0,0,0,0,0">
+      <layout class="QVBoxLayout" name="lay_right_column" stretch="0,0,0,0,0,0,0">
        <item>
-        <widget class="QGroupBox" name="languageBox">
-         <property name="title">
-          <string>Language</string>
-         </property>
-         <layout class="QVBoxLayout" name="verticalLayout">
-          <item>
-           <widget class="QComboBox" name="language"/>
-          </item>
-         </layout>
-        </widget>
-       </item>
-       <item>
-        <widget class="QGroupBox" name="playerVideoDriverBox">
-         <property name="title">
-          <string>Video Decoder</string>
-         </property>
-         <layout class="QVBoxLayout" name="lay_playerVideoDriverBox">
-          <item>
-           <widget class="QComboBox" name="playerVideoDriver"/>
-          </item>
-          <item>
-           <layout class="QHBoxLayout" name="lay_playerVideoDriverPlayers" stretch="1,0">
+        <layout class="QVBoxLayout" name="lay_boxes">
+         <item>
+          <widget class="QGroupBox" name="languageBox">
+           <property name="title">
+            <string>Language</string>
+           </property>
+           <layout class="QVBoxLayout" name="verticalLayout">
             <item>
-             <widget class="QLabel" name="playerVideoDriverPlayersLabel">
-              <property name="text">
-               <string>Videos per process</string>
-              </property>
-             </widget>
-            </item>
-            <item>
-             <widget class="QSpinBox" name="playerVideoDriverPlayers"/>
+             <widget class="QComboBox" name="language"/>
             </item>
            </layout>
-          </item>
-         </layout>
-        </widget>
+          </widget>
+         </item>
+         <item>
+          <widget class="QGroupBox" name="playerVideoDriverBox">
+           <property name="title">
+            <string>Video Decoder</string>
+           </property>
+           <layout class="QVBoxLayout" name="lay_playerVideoDriverBox">
+            <item>
+             <widget class="QComboBox" name="playerVideoDriver"/>
+            </item>
+            <item>
+             <layout class="QHBoxLayout" name="lay_playerVideoDriverPlayers" stretch="1,0">
+              <item>
+               <widget class="QLabel" name="playerVideoDriverPlayersLabel">
+                <property name="text">
+                 <string>Videos per process</string>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <widget class="QSpinBox" name="playerVideoDriverPlayers"/>
+              </item>
+             </layout>
+            </item>
+           </layout>
+          </widget>
+         </item>
+        </layout>
        </item>
        <item>
         <layout class="QVBoxLayout" name="lay_section_timeouts">

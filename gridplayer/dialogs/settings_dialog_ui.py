@@ -4,7 +4,7 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 class Ui_SettingsDialog(object):
     def setupUi(self, SettingsDialog):
         SettingsDialog.setObjectName("SettingsDialog")
-        SettingsDialog.resize(442, 565)
+        SettingsDialog.resize(442, 593)
         self.lay_main = QtWidgets.QVBoxLayout(SettingsDialog)
         self.lay_main.setSizeConstraint(QtWidgets.QLayout.SetFixedSize)
         self.lay_main.setObjectName("lay_main")
@@ -77,7 +77,7 @@ class Ui_SettingsDialog(object):
         self.gridMode.setObjectName("gridMode")
         self.lay_gridMode.addWidget(self.gridMode)
         spacerItem = QtWidgets.QSpacerItem(
-            40, 20, QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Minimum
+            40, 0, QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Minimum
         )
         self.lay_gridMode.addItem(spacerItem)
         self.lay_section_grid.addLayout(self.lay_gridMode)
@@ -90,7 +90,7 @@ class Ui_SettingsDialog(object):
         self.gridSizeLabel.setObjectName("gridSizeLabel")
         self.lay_gridSize.addWidget(self.gridSizeLabel)
         spacerItem1 = QtWidgets.QSpacerItem(
-            40, 20, QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Minimum
+            40, 0, QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Minimum
         )
         self.lay_gridSize.addItem(spacerItem1)
         self.lay_section_grid.addLayout(self.lay_gridSize)
@@ -116,7 +116,7 @@ class Ui_SettingsDialog(object):
         self.streamQuality.setObjectName("streamQuality")
         self.lay_stream_quality.addWidget(self.streamQuality)
         spacerItem2 = QtWidgets.QSpacerItem(
-            40, 20, QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Minimum
+            40, 0, QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Minimum
         )
         self.lay_stream_quality.addItem(spacerItem2)
         self.lay_section_video_defaults.addLayout(self.lay_stream_quality)
@@ -129,7 +129,7 @@ class Ui_SettingsDialog(object):
         self.videoAspect.setObjectName("videoAspect")
         self.lay_aspect.addWidget(self.videoAspect)
         spacerItem3 = QtWidgets.QSpacerItem(
-            40, 20, QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Minimum
+            40, 0, QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Minimum
         )
         self.lay_aspect.addItem(spacerItem3)
         self.lay_section_video_defaults.addLayout(self.lay_aspect)
@@ -142,7 +142,7 @@ class Ui_SettingsDialog(object):
         self.repeatMode.setObjectName("repeatMode")
         self.lay_repeat.addWidget(self.repeatMode)
         spacerItem4 = QtWidgets.QSpacerItem(
-            40, 20, QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Minimum
+            40, 0, QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Minimum
         )
         self.lay_repeat.addItem(spacerItem4)
         self.lay_section_video_defaults.addLayout(self.lay_repeat)
@@ -163,6 +163,8 @@ class Ui_SettingsDialog(object):
         self.lay_body.addLayout(self.lay_left_column)
         self.lay_right_column = QtWidgets.QVBoxLayout()
         self.lay_right_column.setObjectName("lay_right_column")
+        self.lay_boxes = QtWidgets.QVBoxLayout()
+        self.lay_boxes.setObjectName("lay_boxes")
         self.languageBox = QtWidgets.QGroupBox(SettingsDialog)
         self.languageBox.setObjectName("languageBox")
         self.verticalLayout = QtWidgets.QVBoxLayout(self.languageBox)
@@ -170,7 +172,7 @@ class Ui_SettingsDialog(object):
         self.language = QtWidgets.QComboBox(self.languageBox)
         self.language.setObjectName("language")
         self.verticalLayout.addWidget(self.language)
-        self.lay_right_column.addWidget(self.languageBox)
+        self.lay_boxes.addWidget(self.languageBox)
         self.playerVideoDriverBox = QtWidgets.QGroupBox(SettingsDialog)
         self.playerVideoDriverBox.setObjectName("playerVideoDriverBox")
         self.lay_playerVideoDriverBox = QtWidgets.QVBoxLayout(self.playerVideoDriverBox)
@@ -190,7 +192,8 @@ class Ui_SettingsDialog(object):
         self.lay_playerVideoDriverPlayers.addWidget(self.playerVideoDriverPlayers)
         self.lay_playerVideoDriverPlayers.setStretch(0, 1)
         self.lay_playerVideoDriverBox.addLayout(self.lay_playerVideoDriverPlayers)
-        self.lay_right_column.addWidget(self.playerVideoDriverBox)
+        self.lay_boxes.addWidget(self.playerVideoDriverBox)
+        self.lay_right_column.addLayout(self.lay_boxes)
         self.lay_section_timeouts = QtWidgets.QVBoxLayout()
         self.lay_section_timeouts.setObjectName("lay_section_timeouts")
         self.section_timeouts = QtWidgets.QLabel(SettingsDialog)
