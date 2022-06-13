@@ -179,6 +179,9 @@ class VideoFrameVLC(QWidget, metaclass=QABC):
         self.adjust_view()
 
     def playback_status_changed_emit(self, is_paused) -> None:
+        if not self.is_video_initialized:
+            return
+
         if self.is_live_video and not is_paused:
             self.pause_snapshot.hide()
             self.pause_snapshot.reset()
@@ -214,6 +217,9 @@ class VideoFrameVLC(QWidget, metaclass=QABC):
         self.video_driver.play()
 
     def set_pause(self, is_paused) -> None:
+        if not self.is_video_initialized:
+            return
+
         if self._is_status_change_in_progress:
             return
 

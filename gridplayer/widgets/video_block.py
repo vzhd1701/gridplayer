@@ -395,6 +395,9 @@ class VideoBlock(QWidget):  # noqa: WPS230
 
     @time.setter
     def time(self, time):
+        if not self.is_video_initialized:
+            return
+
         if not self.is_live:
             self.video_params.current_position = time
 
@@ -435,6 +438,9 @@ class VideoBlock(QWidget):  # noqa: WPS230
         self.overlay.hide()
 
     def time_changed(self, new_time):
+        if not self.is_video_initialized:
+            return
+
         self.time = new_time
 
         if self.is_live:
