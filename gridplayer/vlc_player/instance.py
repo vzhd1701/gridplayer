@@ -1,6 +1,7 @@
 import ctypes
 import logging
 import platform
+import warnings
 from pathlib import Path
 
 import certifi
@@ -89,6 +90,8 @@ class InstanceVLC(object):
     # process
     def init_instance(self):
         self._logger = logging.getLogger("VLC")
+
+        warnings.filterwarnings("ignore", category=DeprecationWarning)
 
         options = [
             # this option is good for making video loop forever,
