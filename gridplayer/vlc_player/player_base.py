@@ -162,6 +162,8 @@ class VlcPlayerBase(ABC):
 
             media_player.release()
 
+            self._log.debug("Player released")
+
     def error(self, message):
         self._log.error(message)
         self.notify_error()
