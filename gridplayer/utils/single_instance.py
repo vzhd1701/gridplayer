@@ -14,8 +14,7 @@ if platform.system() == "Windows":
     S_NAME, S_TYPE = r"\\.\pipe\gridplayer-fileopen", "AF_PIPE"
 elif env.IS_FLATPAK:
     S_NAME, S_TYPE = (
-        f"{os.environ['XDG_RUNTIME_DIR']}/app/{os.environ['FLATPAK_ID']}"
-        f"/gridplayer/gridplayer-fileopen.socket",
+        str(env.FLATPAK_RUNTIME_DIR / "gridplayer-fileopen.socket"),
         "AF_UNIX",
     )
 elif os.getenv("XDG_RUNTIME_DIR"):

@@ -4,6 +4,7 @@ from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Optional
 
+from gridplayer.params import env
 from gridplayer.utils.aspect_calc import calc_crop, calc_resize_scale
 from gridplayer.utils.misc import is_url
 from gridplayer.vlc_player.libvlc import vlc
@@ -298,7 +299,9 @@ class VlcPlayerBase(ABC):
         self.notify_time_changed(self.media_input.initial_time)
 
     def snapshot(self):
-        file_path = Path(tempfile.mkdtemp()) / "snapshot.png"
+        tmp_root = env.FLATPAK_RUNTIME_DIR if env.IS_FLATPAK else None
+
+        file_path = Path(tempfile.mkdtemp(dir=tmp_root)) / "snapshot.png"
 
         self._log.debug(f"Taking snapshot to {file_path}")
 
