@@ -5,8 +5,8 @@ from pydantic import (  # noqa: WPS450
     AnyUrl,
     BaseModel,
     FilePath,
+    PydanticValueError,
     ValidationError,
-    _PathValueError,
     confloat,
 )
 from pydantic.color import Color
@@ -26,12 +26,12 @@ class VideoURL(AnyUrl):
     max_length = 2083
 
 
-class PathNotAbsoluteError(_PathValueError):
+class PathNotAbsoluteError(PydanticValueError):
     code = "path.not_absolute"
     msg_template = 'path "{path}" is not absolute'
 
 
-class PathExtensionNotSupportedError(_PathValueError):
+class PathExtensionNotSupportedError(PydanticValueError):
     code = "path.ext_not_supported"
     msg_template = 'path extension "{path}" is not supported'
 
