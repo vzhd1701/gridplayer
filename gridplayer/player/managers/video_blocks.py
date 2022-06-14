@@ -132,7 +132,10 @@ class VideoBlocksManager(ManagerBase):
 
         self._log.debug("Reload: closing all")
 
-        self.close_all()
+        if self._live_video_blocks == 0:
+            self.reload_all_closed.emit()
+        else:
+            self.close_all()
 
     def reload_videos_finish(self):
         self._log.debug("Reload: terminating driver")
