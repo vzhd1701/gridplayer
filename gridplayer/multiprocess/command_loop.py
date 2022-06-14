@@ -69,8 +69,7 @@ class CommandLoopThreaded(CommandLoop):
                 self._thread.name, traceback_txt
             )
 
-            logger = logging.getLogger(self.__class__.__name__)
-            logger.critical(exception_txt)
+            logging.getLogger(self.__class__.__name__).critical(exception_txt)
 
             if self.crash_func is not None:
                 self.crash_func(exception_txt)

@@ -51,7 +51,7 @@ class QtLogHandler(object):
     }
 
     def __init__(self):
-        self._logger = logging.getLogger("QT")
+        self._log = logging.getLogger("QT")
 
     def handle(self, mode, context, message):
         log_level = self.log_level_map[mode]
@@ -63,9 +63,9 @@ class QtLogHandler(object):
                 f" file: {context.file}"
             )
 
-            self._logger.log(log_level, log_msg_head)
+            self._log.log(log_level, log_msg_head)
 
-        self._logger.log(log_level, message.strip())
+        self._log.log(log_level, message.strip())
 
 
 def config_log(log_path: Path, log_level: int):

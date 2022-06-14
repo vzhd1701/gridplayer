@@ -35,8 +35,6 @@ from gridplayer.widgets.video_block_status import StatusLabel
 from gridplayer.widgets.video_frame_vlc_base import VideoFrameVLC
 from gridplayer.widgets.video_overlay import OverlayBlock, OverlayBlockFloating
 
-logger = logging.getLogger(__name__)
-
 
 class QStackedLayoutFloating(QStackedLayout):
     """overridden setGeometry for children is not honored due to type casting inside Qt,
@@ -130,6 +128,8 @@ class VideoBlock(QWidget):  # noqa: WPS230
 
     def __init__(self, video_driver, **kwargs):
         super().__init__(**kwargs)
+
+        self._log = logging.getLogger(self.__class__.__name__)
 
         # Internal
         self.video_driver_cls = video_driver
@@ -276,13 +276,13 @@ class VideoBlock(QWidget):  # noqa: WPS230
         self.close()
 
     def cleanup(self):
-        logger.debug(f"Cleaning up resolver {self.id}")
+        self._log.debug(f"Cleaning up resolver {self.id}")
         self.url_resolver.cleanup()
 
-        logger.debug(f"Cleaning up driver {self.id}")
+        self._log.debug(f"Cleaning up driver {self.id}")
         self.video_driver.cleanup()
 
-        logger.debug(f"Cleaning up done {self.id}")
+        self._log.debug(f"Cleaning up done {self.id}")
 
     def video_driver_error(self):
         if isinstance(self.video_params.uri, VideoURL):
@@ -323,7 +323,7 @@ class VideoBlock(QWidget):  # noqa: WPS230
         self.set_video(video_params)
 
     def exit(self):
-        logger.debug(f"Closing video block {self.id}")
+        self._log.debug(f"Closing video block {self.id}")
         self.exit_request.emit(self.id)
 
     def wheelEvent(self, event):
@@ -677,7 +677,7 @@ class VideoBlock(QWidget):  # noqa: WPS230
         if self.is_live:
             return
 
-        logger.debug(f"Seeking to {seek_ms}ms")
+        self._log.debug(f"Seeking to {seek_ms}ms")
 
         if seek_ms < self.loop_start or seek_ms > self.loop_end:
             seek_ms = self.loop_start

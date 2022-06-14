@@ -11,8 +11,7 @@ def excepthook(exc_type, exc_value, exc_tb):
     # Log into file
     exception_txt = "".join(traceback.format_exception(exc_type, exc_value, exc_tb))
 
-    logger = logging.getLogger("UNHANDLED")
-    logger.critical(exception_txt)
+    logging.getLogger("UNHANDLED").critical(exception_txt)
 
     # Terminate if Qt is not up
     if QApplication.instance() is None:

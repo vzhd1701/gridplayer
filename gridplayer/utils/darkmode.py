@@ -1,11 +1,9 @@
-import logging
 import platform
 
 from PyQt5.QtGui import QPalette
 
 SYSTEM = platform.system()
 
-logger = logging.getLogger(__name__)
 
 if SYSTEM == "Darwin":
     from Foundation import NSUserDefaults as NSUD

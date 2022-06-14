@@ -22,8 +22,6 @@ from gridplayer.utils import log_config
 from gridplayer.utils.app_dir import get_app_data_dir
 from gridplayer.utils.qt import qt_connect, translate
 
-logger = logging.getLogger(__name__)
-
 VIDEO_DRIVERS_MULTIPROCESS = (
     VideoDriver.VLC_SW,
     VideoDriver.VLC_HW,
@@ -57,6 +55,8 @@ def _set_groupbox_header_bold(groupbox):
 class SettingsDialog(QDialog, Ui_SettingsDialog):
     def __init__(self, parent):
         super().__init__(parent)
+
+        self._log = logging.getLogger(self.__class__.__name__)
 
         self.setupUi(self)
 
@@ -164,7 +164,7 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
     def open_logfile(self):
         log_path = get_app_data_dir() / "gridplayer.log"
 
-        logger.debug(f"Opening log file {log_path}")
+        self._log.debug(f"Opening log file {log_path}")
 
         if not log_path.is_file():
             return QCustomMessageBox.critical(

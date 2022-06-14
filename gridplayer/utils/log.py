@@ -13,7 +13,7 @@ from gridplayer.version import __display_name__, __version__
 
 
 def log_environment():
-    log = logging.getLogger("MAIN")
+    log = logging.getLogger("ENV")
 
     log.info(f"{__display_name__} v.{__version__} starting")
 

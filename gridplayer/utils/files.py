@@ -1,12 +1,9 @@
-import logging
 from pathlib import Path
 from typing import List, Optional, Union
 
 from PyQt5.QtCore import QMimeData
 
 from gridplayer.utils.misc import is_url
-
-logger = logging.getLogger(__name__)
 
 
 def drag_has_video_id(dnd_data: QMimeData):

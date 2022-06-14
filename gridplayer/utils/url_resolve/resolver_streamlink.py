@@ -11,11 +11,11 @@ from gridplayer.utils.url_resolve.stream_detect import (
     is_http_live_stream,
 )
 
-logger = logging.getLogger(__name__)
-
 
 class StreamlinkResolver(object):
     def __init__(self, url):
+        self._log = logging.getLogger(self.__class__.__name__)
+
         self.url = url
 
         self.session = Streamlink()
@@ -47,14 +47,14 @@ class StreamlinkResolver(object):
         try:
             streams = self.plugin.streams(stream_types=["hls", "http"])
         except PluginError:
-            logger.debug("Streamlink - plugin error")
+            self._log.debug("Streamlink - plugin error")
             raise NoResolverPlugin
 
         if not streams:
-            logger.debug("Streamlink - no streams found")
+            self._log.debug("Streamlink - no streams found")
             raise NoResolverPlugin
 
-        logger.debug("Streamlink - {0} stream(s) found".format(len(streams)))
+        self._log.debug("Streamlink - {0} stream(s) found".format(len(streams)))
 
         return streams
 

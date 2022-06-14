@@ -1,4 +1,3 @@
-import logging
 import platform
 
 from PyQt5.QtCore import pyqtSignal
@@ -23,8 +22,6 @@ from gridplayer.player.managers.single_mode import SingleModeManager
 from gridplayer.player.managers.video_blocks import VideoBlocksManager
 from gridplayer.player.managers.video_driver import VideoDriverManager
 from gridplayer.player.managers.window_state import WindowStateManager
-
-logger = logging.getLogger(__name__)
 
 
 class Player(QWidget, ManagersManager):

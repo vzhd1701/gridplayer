@@ -1,4 +1,5 @@
 import inspect
+import logging
 
 from PyQt5.QtCore import QObject
 
@@ -6,6 +7,8 @@ from PyQt5.QtCore import QObject
 class ManagerBase(QObject):
     def __init__(self, context, **kwargs):
         super().__init__(**kwargs)
+
+        self._log = logging.getLogger(self.__class__.__name__)
 
         self._ctx = context
 

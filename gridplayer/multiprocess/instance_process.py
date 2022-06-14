@@ -74,8 +74,7 @@ class InstanceProcess(CommandLoop, ABC):
         except Exception:
             traceback_txt = traceback.format_exc()
 
-            logger = logging.getLogger("InstanceProcess")
-            logger.critical(traceback_txt)
+            logging.getLogger("InstanceProcess").critical(traceback_txt)
 
             self.crash(traceback_txt)
         finally:

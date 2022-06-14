@@ -31,7 +31,7 @@ class SafeSharedMemory(object):
         self._is_allocator = False
         self._is_cleaned = False
 
-        self.logger = logging.getLogger("SafeSharedMemory")
+        self._log = logging.getLogger(self.__class__.__name__)
 
     @property
     def memory(self):
@@ -91,7 +91,7 @@ class SafeSharedMemory(object):
                 # or gc is slow
                 # https://github.com/python/cpython/blob/main/Modules/mmapmodule.c
                 # cannot close exported pointers exist
-                self.logger.warning(f"{e}, retrying...")
+                self._log.warning(f"{e}, retrying...")
                 time.sleep(0.1)
                 continue
             break

@@ -57,7 +57,7 @@ class ProcessManager(CommandLoopThreaded, QObject):
             self._log_listener = QueueListenerRoot(self._log_queue)
             self._log_listener.start()
 
-        self._logger = logging.getLogger("ProcessManager")
+        self._log = logging.getLogger(self.__class__.__name__)
 
     def get_instance(self):
         instance = self._get_available_instance()
@@ -66,7 +66,7 @@ class ProcessManager(CommandLoopThreaded, QObject):
             instance = self.create_instance()
             self.instances[instance.id] = instance
 
-            self._logger.debug(f"Launching process {instance.id}")
+            self._log.debug(f"Launching process {instance.id}")
             instance.process.start()
 
         return instance
@@ -108,20 +108,20 @@ class ProcessManager(CommandLoopThreaded, QObject):
         self.crash.emit(traceback_txt)
 
     def cleanup(self):
-        self._logger.debug("Waiting for processes to shut down...")
+        self._log.debug("Waiting for processes to shut down...")
 
         with self._instances_killed:
-            self._instances_killed.wait_for(lambda: not self.instances, timeout=3)
+            self._instances_killed.wait_for(lambda: not self.instances, timeout=5)
 
         if active_children():
-            self._logger.warning("Force terminating child processes...")
+            self._log.warning("Force terminating child processes...")
             force_terminate_children()
 
-        self._logger.debug("Terminating command loop...")
+        self._log.debug("Terminating command loop...")
         self.cmd_loop_terminate()
 
         if self._log_listener is not None:
-            self._logger.debug("Terminating log listener...")
+            self._log.debug("Terminating log listener...")
             self._log_listener.stop()
 
     def set_log_level(self, log_level):

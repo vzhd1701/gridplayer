@@ -1,4 +1,3 @@
-import logging
 from pathlib import Path
 
 from PyQt5.QtCore import QDir, pyqtSignal
@@ -13,8 +12,6 @@ from gridplayer.player.managers.base import ManagerBase
 from gridplayer.settings import Settings
 from gridplayer.utils.files import get_playlist_path
 from gridplayer.utils.qt import tr
-
-logger = logging.getLogger(__name__)
 
 
 class PlaylistManager(ManagerBase):
@@ -66,7 +63,7 @@ class PlaylistManager(ManagerBase):
         else:
             save_path = Path(QDir.homePath()) / "Untitled.gpls"
 
-        logger.debug(f"Proposed playlist save path: {save_path}")
+        self._log.debug(f"Proposed playlist save path: {save_path}")
 
         file_path, _ = QFileDialog.getSaveFileName(
             self.parent(), tr("Where to save playlist"), str(save_path), "*.gpls"
@@ -117,7 +114,7 @@ class PlaylistManager(ManagerBase):
         try:
             playlist = Playlist.read(playlist_file)
         except ValueError as e:
-            logger.error(f"Playlist parse error: {e}")
+            self._log.error(f"Playlist parse error: {e}")
             self.error.emit(
                 "{0}\n\n{1}".format(tr("Invalid playlist format!"), playlist_file)
             )

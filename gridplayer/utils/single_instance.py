@@ -127,8 +127,6 @@ def _send_data(output_data):
 
 
 def _is_socket_working():
-    log = logging.getLogger(__name__)
-
     os.makedirs(os.path.dirname(S_NAME), exist_ok=True)
 
     if os.path.exists(S_NAME):
@@ -142,7 +140,7 @@ def _is_socket_working():
             os.unlink(S_NAME)
             return False
 
-        log.info("Socket already exists and responding")
+        logging.getLogger(__name__).debug("Socket already exists and responding")
         return True
 
     return False

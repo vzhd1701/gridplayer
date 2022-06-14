@@ -14,8 +14,6 @@ from gridplayer.utils.files import (
     get_playlist_path,
 )
 
-logger = logging.getLogger(__name__)
-
 
 class DragNDropManager(ManagerBase):
     playlist_dropped = pyqtSignal(Path)
@@ -92,7 +90,7 @@ class DragNDropManager(ManagerBase):
     def _drop_video_block(self, event, drop_data):
         dst_video = self._ctx.active_block
         if dst_video is None:
-            logger.debug("No video under cursor, discarding drop")
+            self._log.debug("No video under cursor, discarding drop")
             return False
 
         src_video = self._ctx.video_blocks.by_id(drag_get_video_id(drop_data))
@@ -131,10 +129,10 @@ class DragNDropManager(ManagerBase):
         return drag
 
     def _swap_videos(self, src, dst):
-        logger.debug(f"Swapping {src.id} with {dst.id}")
+        self._log.debug(f"Swapping {src.id} with {dst.id}")
 
         if src == dst:
-            logger.debug("No video swap needed")
+            self._log.debug("No video swap needed")
             return
 
         self._ctx.video_blocks.swap(dst, src)

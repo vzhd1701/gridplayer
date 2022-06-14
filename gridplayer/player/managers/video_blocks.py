@@ -1,4 +1,3 @@
-import logging
 from typing import List
 
 from PyQt5.QtCore import Qt, pyqtSignal
@@ -8,8 +7,6 @@ from gridplayer.player.managers.base import ManagerBase
 from gridplayer.settings import Settings
 from gridplayer.utils.qt import qt_connect
 from gridplayer.widgets.video_block import VideoBlock
-
-logger = logging.getLogger(__name__)
 
 
 class VideoBlocks(object):
@@ -133,16 +130,16 @@ class VideoBlocksManager(ManagerBase):
     def reload_videos(self):
         self._videos_to_reload = self._ctx.video_blocks.videos
 
-        logger.debug("Reload: closing all")
+        self._log.debug("Reload: closing all")
 
         self.close_all()
 
     def reload_videos_finish(self):
-        logger.debug("Reload: terminating driver")
+        self._log.debug("Reload: terminating driver")
 
         self.reload_all_closed.emit()
 
-        logger.debug("Reload: adding videos back")
+        self._log.debug("Reload: adding videos back")
 
         self.add_videos(self._videos_to_reload)
         self._videos_to_reload = []
@@ -204,7 +201,7 @@ class VideoBlocksManager(ManagerBase):
         self._live_video_blocks -= 1
 
         if self._live_video_blocks == 0:
-            logger.debug("No more live video blocks")
+            self._log.debug("No more live video blocks")
 
             if self._videos_to_reload:
                 self.reload_videos_finish()
