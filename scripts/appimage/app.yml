@@ -19,6 +19,7 @@ ingredients:
     - libvlccore9
     - vlc-plugin-base
     - vlc-plugin-video-output
+    - libvlc-bin
 
     # Dependencies to get proper gui
     - qt5-gtk-platformtheme
@@ -26,6 +27,10 @@ ingredients:
     - cp ../VERSION ./
 
 script:
+  # Generate VLC plugin cache
+  - export LD_LIBRARY_PATH="$(pwd)/usr/lib/x86_64-linux-gnu/vlc/:$(pwd)/usr/lib/x86_64-linux-gnu/:$(pwd)/usr/lib/:$(pwd)/lib/x86_64-linux-gnu/:$LD_LIBRARY_PATH"
+  - ./usr/lib/x86_64-linux-gnu/vlc/vlc-cache-gen usr/lib/x86_64-linux-gnu/vlc/plugins
+
   # Set python 3.8 env
   - export PYTHONHOME="$(pwd)/usr"
   - export PYTHONPATH="$(pwd)/usr/lib/python3.8/site-packages:$(pwd)/usr/lib/python3.8"
