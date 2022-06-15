@@ -5,10 +5,9 @@ set -e
 SCRIPT_DIR="$( cd "$( dirname $0 )" && pwd )"
 
 . "scripts/init_app_vars.sh"
-. "$SCRIPT_DIR/build_functions.sh"
 
 VLC_URL="https://get.videolan.org/vlc/3.0.16/macosx/vlc-3.0.16-intel64.dmg"
-PYINSTALLER_VERSION="4.5.1"
+PYINSTALLER_VERSION="5.1"
 
 mkdir -p "$BUILD_DIR"
 
@@ -24,7 +23,7 @@ pip install pyinstaller=="$PYINSTALLER_VERSION"
 cp "$RESOURCES_DIR/icons/main/sys/macos.icns" "$BUILD_DIR/main.icns"
 cp "$RESOURCES_DIR/icons/playlist/sys/macos.icns" "$BUILD_DIR/mime.icns"
 
-get_python_vlc_version > "$BUILD_DIR/python-vlc.version"
+cp "$SCRIPT_DIR/mime_vlc.plist" "$BUILD_DIR/mime_vlc.plist"
 
 copy_with_app_vars "$SCRIPT_DIR/pyinstaller_mac.spec" "$BUILD_DIR/$APP_NAME.spec"
 

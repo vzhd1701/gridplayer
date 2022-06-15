@@ -2,7 +2,7 @@
 
 import os
 
-from PyInstaller.utils.hooks import collect_submodules, collect_data_files
+from PyInstaller.utils.hooks import collect_submodules, collect_data_files, copy_metadata
 
 def strip_list(src_list, items_to_strip):
     for x in src_list.copy():
@@ -81,10 +81,10 @@ del_bins = [
 del_data = []
 
 add_data = [
-    (os.path.join(BUILD_DIR, "python-vlc.version"), '.'),
-    (os.path.join(BUILD_DIR, "mime.ico"), '.'),
+    (os.path.join(BUILD_DIR, "mime.ico"), '.')
 ]
 add_data += collect_data_files('streamlink.plugins', include_py_files=True)
+add_data += copy_metadata('python-vlc')
 
 block_cipher = None
 

@@ -5,7 +5,6 @@ set -e
 SCRIPT_DIR="$( cd "$( dirname $0 )" && pwd )"
 
 . "scripts/init_app_vars.sh"
-. "$SCRIPT_DIR/build_functions.sh"
 
 VLC_URL="https://get.videolan.org/vlc/3.0.16/win64/vlc-3.0.16-win64.zip"
 PYINSTALLER_VERSION="5.1"
@@ -23,8 +22,6 @@ pip install pyinstaller=="$PYINSTALLER_VERSION"
 # Copy icons to build dir
 cp "$RESOURCES_DIR/icons/main/sys/windows.ico" "$BUILD_DIR/main.ico"
 cp "$RESOURCES_DIR/icons/playlist/sys/windows.ico" "$BUILD_DIR/mime.ico"
-
-get_python_vlc_version > "$BUILD_DIR/python-vlc.version"
 
 # Make version_info
 copy_with_app_vars "$SCRIPT_DIR/version_info.py" "$BUILD_DIR"

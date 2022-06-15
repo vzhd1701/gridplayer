@@ -6,6 +6,10 @@ if ! command -v realpath &> /dev/null; then
     }
 fi
 
+if [[ "$OSTYPE" == "darwin"* ]]; then
+  function sed() { command gsed "$@"; }
+fi
+
 replace_app_vars() {
     TARGET_FILE="$1"
 
