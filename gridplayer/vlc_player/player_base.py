@@ -9,11 +9,18 @@ from gridplayer.utils.aspect_calc import calc_crop, calc_resize_scale
 from gridplayer.utils.misc import is_url
 from gridplayer.vlc_player.libvlc import vlc
 from gridplayer.vlc_player.player_event_manager import EventManager
-from gridplayer.vlc_player.player_event_waiter import EventWaiter
+from gridplayer.vlc_player.player_event_waiter import (
+    EventWaiter,
+    async_timer,
+    async_wait,
+)
 from gridplayer.vlc_player.static import MediaInput, MediaTrack, NotPausedError
 
 DEFAULT_FPS = 25
 INIT_TIMEOUT = 30
+
+MEDIA_EXTRACT_RETRY_TIME = 0.1
+MEDIA_EXTRACT_TIMEOUT = int(INIT_TIMEOUT / MEDIA_EXTRACT_RETRY_TIME)
 
 
 class VlcPlayerBase(ABC):
@@ -24,8 +31,12 @@ class VlcPlayerBase(ABC):
 
         self.is_video_initialized = False
 
-        self._media_track_extract_attempted = False
+        self._media_track_extract_attempts = 0
+
         self._is_paused = False
+
+        self._timer_unpause_failsafe = None
+        self._timer_extract_media_track = None
 
         self.media_input: Optional[MediaInput] = None
         self.media_track: Optional[MediaTrack] = None
@@ -54,6 +65,7 @@ class VlcPlayerBase(ABC):
         self._event_waiter.subscribe(self._event_manager)
 
         callbacks = {
+            "playing": self.cb_playing,
             "paused": self.cb_paused,
             "stopped": self.cb_stopped,
             "end_reached": self.cb_end_reached,
@@ -64,6 +76,23 @@ class VlcPlayerBase(ABC):
 
         for event_name, callback in callbacks.items():
             self._event_manager.subscribe(event_name, callback)
+
+    def cb_playing(self, event):
+        self._log.debug("Media playing")
+
+        if not self.is_video_initialized:
+            return
+
+        # some formats have unreliable time_change (rtp)
+        # this creates a failsafe to avoid video being paused while playing
+        if self.media_track.is_live:
+            self._timer_unpause_failsafe = async_timer(5, self.unpause)
+            self._event_waiter.async_wait_for(
+                event="buffering",
+                on_completed=self._timer_unpause_failsafe.start,
+                on_timeout=self.notify_error,
+                timeout=INIT_TIMEOUT,
+            )
 
     def cb_paused(self, event):
         self._log.debug("Media paused")
@@ -106,11 +135,11 @@ class VlcPlayerBase(ABC):
         self.notify_playback_status_changed(True)
 
     def cb_end_reached(self, event):
+        self._log.debug("Media end reached")
+
         if not self.is_video_initialized:
             self.error("Video stopped before initialization")
             return
-
-        self._log.debug("Media end reached")
 
     def cb_error(self, event):
         self._log.error("MediaPlayer encountered an error")
@@ -145,13 +174,29 @@ class VlcPlayerBase(ABC):
             return
 
         if self._is_paused:
-            self._is_paused = False
-            self.notify_playback_status_changed(False)
+            self.unpause()
 
         self.notify_time_changed(new_time)
 
+    def unpause(self):
+        if not self._is_paused:
+            return
+
+        if self._timer_unpause_failsafe is not None:
+            self._timer_unpause_failsafe.cancel()
+            self._timer_unpause_failsafe = None
+
+        self._is_paused = False
+        self.notify_playback_status_changed(False)
+
     def cleanup(self):
         self.is_video_initialized = False
+
+        if self._timer_extract_media_track is not None:
+            self._timer_extract_media_track.cancel()
+
+        if self._timer_unpause_failsafe is not None:
+            self._timer_unpause_failsafe.cancel()
 
         self._event_waiter.abort()
 
@@ -209,6 +254,7 @@ class VlcPlayerBase(ABC):
         """Step 1. Load & parse video file"""
 
         self.media_input = media_input
+        self._media_track_extract_attempts = 0
 
         self._log.info("Loading {0}".format(self.media_input.uri))
 
@@ -260,25 +306,25 @@ class VlcPlayerBase(ABC):
 
         self._init_media_track()
 
-        if not self.media_track and self._media_track_extract_attempted:
-            self.error("Failed to extract media track")
-            return
-
         if not self.media_track:
             # video not loaded yet, happens with live streams
             # waiting for decoder to catch first frame
             # usually time begins to tick after that
 
-            self._media_track_extract_attempted = True
+            # this can take a while
+            self._media_track_extract_attempts += 1
+            if self._media_track_extract_attempts == MEDIA_EXTRACT_TIMEOUT:
+                self.error("Timed out to extract media track")
+                return
 
-            self._log.debug("No media track yet, waiting for first frame")
+            self._log.debug("No media track yet, waiting...")
 
-            self._event_waiter.async_wait_for(
-                event="time_changed",
-                on_completed=self.loopback_load_video_st3_extract_media_track,
-                on_timeout=self.notify_error,
-                timeout=INIT_TIMEOUT,
+            # could async_wait_for "time_changed", but some formats are unreliable (rtp)
+            self._timer_extract_media_track = async_wait(
+                MEDIA_EXTRACT_RETRY_TIME,
+                self.loopback_load_video_st3_extract_media_track,
             )
+
             return
 
         self.loopback_load_video_st4_loaded()

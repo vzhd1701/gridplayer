@@ -13,6 +13,7 @@ class EventManager(object):
         "paused": vlc.EventType.MediaPlayerPaused,
         "snapshot_taken": vlc.EventType.MediaPlayerSnapshotTaken,
         "stopped": vlc.EventType.MediaPlayerStopped,
+        "playing": vlc.EventType.MediaPlayerPlaying,
         "time_changed": vlc.EventType.MediaPlayerTimeChanged,
         "vout": vlc.EventType.MediaPlayerVout,
     }

@@ -136,3 +136,13 @@ class EventWaiter(object):
             self._log.debug("Time started")
 
             self._events["time_changed"].set()
+
+
+def async_timer(time, callback):
+    return threading.Timer(time, callback)
+
+
+def async_wait(time, callback):
+    timer = threading.Timer(time, callback)
+    timer.start()
+    return timer
