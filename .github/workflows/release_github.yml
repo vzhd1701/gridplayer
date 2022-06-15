@@ -13,7 +13,7 @@ on:
 
 env:
   BUILD_PYTHON_VERSION: 3.8
-  BUILD_POETRY_VERSION: 1.1.5
+  BUILD_POETRY_VERSION: 1.1.13
 
 jobs:
   build_python:
@@ -126,7 +126,7 @@ jobs:
 
   build_appimage:
     needs: build_python
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
     steps:
       - uses: actions/checkout@v2
 
