@@ -3,44 +3,70 @@ import logging
 import os
 import platform
 import sys
+from contextlib import contextmanager
 from importlib.metadata import version as lib_version
 from pathlib import Path
-from typing import Tuple, Union
+from typing import Optional, Tuple, Union
 
 from gridplayer.params import env
 
 
-def pre_import_embed_vlc():
+@contextmanager
+def importing_embed_vlc():
     if "vlc" in sys.modules:
+        yield
         return
 
-    if env.IS_PYINSTALLER and platform.system() == "Darwin":
+    if env.IS_PYINSTALLER and env.IS_MACOS:
         lib_path = os.environ.get("PYTHON_VLC_LIB_PATH")
 
         if not lib_path:
             raise RuntimeError("PYTHON_VLC_LIB_PATH not set")
 
-        # test this on MacOS
-        # vlc_core = Path(lib_path).parent / "libvlccore.9.dylib"
-        vlc_core = Path(lib_path).parent / "libvlccore.dylib"
-        ctypes.CDLL(str(vlc_core))
+        vlc_core = str(Path(lib_path).parent / "libvlccore.dylib")
+        ctypes.CDLL(vlc_core)
+
+    yield
+
+    _fix_plugins_path()
+
+
+def _fix_plugins_path():
+    vlc_module = sys.modules["vlc"]
+
+    if vlc_module.plugin_path is not None:
+        if Path(vlc_module.plugin_path).name == "plugins":
+            return
+
+    vlc_lib_root = Path(vlc_module.dll._name).parent  # noqa: WPS437
+
+    plugin_path_map = {
+        "Darwin": str(vlc_lib_root.parent / "plugins"),
+        "Windows": str(vlc_lib_root / "plugins"),
+        "Linux": str(vlc_lib_root / "vlc" / "plugins"),
+    }
+
+    try:
+        vlc_module.plugin_path = plugin_path_map[platform.system()]
+    except KeyError:
+        raise RuntimeError("Unsupported platform")
 
 
 def init_vlc():
     log = logging.getLogger(__name__)
 
-    vlc_path, vlc_lib_path = _get_embed_vlc_paths()
+    vlc_plugins_path, vlc_lib_path = _get_embed_vlc_paths()
 
-    if vlc_path and vlc_lib_path:
+    if vlc_plugins_path and vlc_lib_path:
         log.debug("Setting paths for embedded VLC")
 
-        log.debug(f"PYTHON_VLC_MODULE_PATH: {vlc_path}")
+        log.debug(f"PYTHON_VLC_MODULE_PATH: {vlc_plugins_path}")
         log.debug(f"PYTHON_VLC_LIB_PATH: {vlc_lib_path}")
 
-        if not vlc_lib_path.is_file() or not vlc_path.is_dir():
+        if not vlc_lib_path.is_file() or not vlc_plugins_path.is_dir():
             log.info("Embedded vlc lib not found, will try to find system VLC...")
         else:
-            os.environ["PYTHON_VLC_MODULE_PATH"] = str(vlc_path)
+            os.environ["PYTHON_VLC_MODULE_PATH"] = str(vlc_plugins_path)
             os.environ["PYTHON_VLC_LIB_PATH"] = str(vlc_lib_path)
     else:
         log.info("No embedded vlc path, will try to find system VLC...")
@@ -58,47 +84,49 @@ def init_vlc():
 
 
 def _get_embed_vlc_paths() -> Union[Tuple[Path, Path], Tuple[None, None]]:
-    if env.IS_PYINSTALLER and platform.system() == "Windows":
-        vlc_path = Path(sys.executable).parent / "libVLC"
-        vlc_lib_path = vlc_path / "libvlc.dll"
+    vlc_root = _get_embed_vlc_root()
 
-    elif env.IS_PYINSTALLER and platform.system() == "Darwin":
-        root_path = Path(sys.executable).parent / "libVLC"
+    if vlc_root is None:
+        return None, None
 
-        vlc_path = root_path / "plugins"
-        # vlc_lib_path = root_path / "lib" / "libvlc.5.dylib"
-        vlc_lib_path = root_path / "lib" / "libvlc.dylib"
+    if env.IS_WINDOWS:
+        vlc_plugins_path = vlc_root / "plugins"
+        vlc_lib_path = vlc_root / "libvlc.dll"
 
-    elif env.IS_SNAP:
-        root_path = Path(os.environ["SNAP"]) / "usr" / "lib" / "x86_64-linux-gnu"
+    elif env.IS_MACOS:
+        vlc_plugins_path = vlc_root / "plugins"
+        vlc_lib_path = vlc_root / "lib" / "libvlc.dylib"
 
-        vlc_path = root_path / "vlc"
-        vlc_lib_path = root_path / "libvlc.so.5"
-
-    elif env.IS_APPIMAGE:
-        root_path = Path(os.environ["APPDIR"]) / "usr" / "lib" / "x86_64-linux-gnu"
-
-        vlc_path = root_path / "vlc"
-        vlc_lib_path = root_path / "libvlc.so.5"
-
-    elif env.IS_FLATPAK:
-        root_path = Path("/app") / "lib"
-
-        vlc_path = root_path / "vlc"
-        vlc_lib_path = root_path / "libvlc.so.5"
+    elif env.IS_LINUX:
+        vlc_plugins_path = vlc_root / "vlc" / "plugins"
+        vlc_lib_path = vlc_root / "libvlc.so.5"
 
     else:
-        vlc_path = None
-        vlc_lib_path = None
+        return None, None
 
-    return vlc_path, vlc_lib_path
+    return vlc_plugins_path, vlc_lib_path
+
+
+def _get_embed_vlc_root() -> Optional[Path]:
+    if env.IS_PYINSTALLER:
+        return Path(sys.executable).parent / "libVLC"
+
+    if env.IS_SNAP:
+        return Path(os.environ["SNAP"]) / "usr" / "lib" / "x86_64-linux-gnu"
+
+    if env.IS_APPIMAGE:
+        return Path(os.environ["APPDIR"]) / "usr" / "lib" / "x86_64-linux-gnu"
+
+    if env.IS_FLATPAK:
+        return Path("/app") / "lib"
+
+    return None
 
 
 def _get_vlc_version():
-    pre_import_embed_vlc()
-
     try:
-        import vlc  # noqa: WPS433
+        with importing_embed_vlc():
+            import vlc  # noqa: WPS433
     except (OSError, NotImplementedError):
         return None
 
