@@ -1,4 +1,3 @@
-import logging
 from pathlib import Path
 
 from PyQt5.QtCore import QEvent, QMimeData, Qt, pyqtSignal

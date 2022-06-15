@@ -1,4 +1,5 @@
 import contextlib
+import logging
 
 from gridplayer.multiprocess.safe_shared_memory import releasing
 from gridplayer.vlc_player.libvlc import vlc
@@ -7,6 +8,8 @@ from gridplayer.vlc_player.libvlc import vlc
 class ImageDecoder(object):
     def __init__(self, shared_memory, frame_ready_cb=None):
         super().__init__()
+
+        self._log = logging.getLogger(self.__class__.__name__)
 
         self.is_paused = True
 
@@ -25,6 +28,8 @@ class ImageDecoder(object):
         self._prev_frame_head = None
 
     def set_frame(self, width, height):
+        self._log.debug(f"Allocating shared memory for {width}x{height} frame")
+
         self._width = width
         self._height = height
 
@@ -63,6 +68,8 @@ class ImageDecoder(object):
         return _cb
 
     def stop(self):
+        self._log.debug("Stopping image decoder")
+
         self._stopped = True
 
         # make sure that memory lock released in case it was locked mid-callback
