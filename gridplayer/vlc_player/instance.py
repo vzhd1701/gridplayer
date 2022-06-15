@@ -215,6 +215,9 @@ class ProcessManagerVLC(ProcessManager):
 
 
 def _is_plugin_cache_exists():
+    if vlc.plugin_path is None:
+        return False
+
     plugin_cache_path = Path(vlc.plugin_path) / "plugins.dat"
 
     return plugin_cache_path.is_file()
