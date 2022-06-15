@@ -107,7 +107,7 @@ class PlayerProcessSingleVLCSW(VlcPlayerThreaded):
         self.cmd_loop_terminate()
 
     def load_video_st2_set_parsed_media(self):
-        if self.media_track:
+        if not self._is_decoder_initialized and self.media_track:
             self._init_video_decoder()
 
         super().load_video_st2_set_parsed_media()
