@@ -1,13 +1,11 @@
 import logging
-import platform
 
+from gridplayer.params import env
 from gridplayer.version import __app_name__
-
-SYSTEM = platform.system()
 
 logger = logging.getLogger(__name__)
 
-if SYSTEM == "Windows":  # noqa: C901
+if env.IS_WINDOWS:  # noqa: C901
     import ctypes
 
     SetThreadExecutionState = ctypes.windll.kernel32.SetThreadExecutionState
@@ -55,7 +53,7 @@ if SYSTEM == "Windows":  # noqa: C901
             self.is_screensaver_off = False
 
 
-elif SYSTEM == "Linux":
+elif env.IS_LINUX:
     from PyQt5.QtCore import QMetaType
     from PyQt5.QtDBus import QDBusArgument, QDBusConnection, QDBusInterface
 
@@ -149,7 +147,7 @@ elif SYSTEM == "Linux":
             raise ValueError
 
 
-elif SYSTEM == "Darwin":
+elif env.IS_MACOS:
     from gridplayer.utils.keepawake_macos import (
         assertNoIdleSleep,
         removeNoIdleSleepAssertion,

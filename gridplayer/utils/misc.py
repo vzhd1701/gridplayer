@@ -1,8 +1,9 @@
 import os
-import platform
 import re
 import signal
 from multiprocessing.process import active_children
+
+from gridplayer.params import env
 
 
 def force_terminate_resource_tracker():
@@ -25,7 +26,7 @@ def force_terminate_children_all():
 
 
 def force_terminate(exit_code: int = 0):
-    if platform.system() == "Linux":
+    if env.IS_LINUX:
         force_terminate_children_all()
 
     os._exit(exit_code)  # noqa: WPS437

@@ -1,4 +1,3 @@
-import platform
 import sys
 
 from PyQt5.QtCore import Qt
@@ -8,6 +7,7 @@ from PyQt5.QtWidgets import QApplication, QStyleFactory
 from gridplayer.main.init_icons import init_icon, switch_icon_theme
 from gridplayer.main.init_resources import init_resources
 from gridplayer.main.init_translator import init_translator
+from gridplayer.params import env
 
 
 def init_app():
@@ -17,7 +17,7 @@ def init_app():
 
     init_resources()
 
-    if platform.system() == "Linux":
+    if env.IS_LINUX:
         app.setStyle(QStyleFactory.create("Fusion"))
 
     app.setAttribute(Qt.AA_DisableWindowContextHelpButton)
@@ -27,7 +27,7 @@ def init_app():
 
     init_icon(app)
 
-    font_size = app.font().pointSize() if platform.system() == "Darwin" else 9
+    font_size = app.font().pointSize() if env.IS_MACOS else 9
     app.setFont(QFont("Hack", font_size, QFont.Normal))
 
     init_translator(app)

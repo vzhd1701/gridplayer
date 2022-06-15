@@ -1,8 +1,7 @@
-import platform
-
 from PyQt5.QtCore import pyqtSignal
 from PyQt5.QtWidgets import QWidget
 
+from gridplayer.params import env
 from gridplayer.player.manager import ManagersManager
 from gridplayer.player.managers.actions import ActionsManager
 from gridplayer.player.managers.active_block import ActiveBlockManager
@@ -108,7 +107,7 @@ class Player(QWidget, ManagersManager):
             ],
         }
 
-        if platform.system() == "Darwin":
+        if env.IS_MACOS:
             self.managers["macos_fileopen"] = MacOSFileOpenManager
             self.connections["macos_fileopen"] = [
                 ("file_opened", "playlist.process_arguments")

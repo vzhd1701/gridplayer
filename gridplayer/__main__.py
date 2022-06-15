@@ -1,10 +1,10 @@
-import platform
 import sys
 from multiprocessing import freeze_support
 
 from gridplayer.main.init_app_env import init_app_env
 from gridplayer.main.init_log import init_log
 from gridplayer.main.run import run_app
+from gridplayer.params import env
 from gridplayer.settings import Settings
 from gridplayer.utils.excepthook import excepthook
 from gridplayer.utils.log import log_environment
@@ -21,7 +21,7 @@ def main():
     sys.excepthook = excepthook
 
     # MacOS has OpenFile events
-    if platform.system() != "Darwin":
+    if not env.IS_MACOS:
         exit_if_delegated()
 
     log_environment()

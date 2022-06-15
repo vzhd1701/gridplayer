@@ -1,15 +1,15 @@
-import platform
 from threading import Event
 
 from PyQt5.QtCore import QMargins, Qt, QThread, pyqtSignal, pyqtSlot
 from PyQt5.QtWidgets import QWidget
 
+from gridplayer.params import env
 from gridplayer.params.static import VideoAspect
 from gridplayer.settings import Settings
 from gridplayer.utils.qt import QABC, qt_connect
 from gridplayer.widgets.video_frame_vlc_base import VideoFrameVLC
 
-if platform.system() == "Darwin":
+if env.IS_MACOS:
     from PyQt5.QtWidgets import QMacCocoaViewContainer  # noqa: WPS433
 
 from gridplayer.vlc_player.instance import InstanceVLC
@@ -81,11 +81,11 @@ class PlayerProcessSingleVLCHWSP(QThread, VlcPlayerBase, metaclass=QABC):
     def init_player(self):
         super().init_player()
 
-        if platform.system() == "Linux":  # for Linux using the X Server
+        if env.IS_LINUX:
             self._media_player.set_xwindow(self.win_id)
-        elif platform.system() == "Windows":  # for Windows
+        elif env.IS_WINDOWS:
             self._media_player.set_hwnd(self.win_id)
-        elif platform.system() == "Darwin":  # for MacOS
+        elif env.IS_MACOS:
             self._media_player.set_nsobject(self.win_id)
 
     @pyqtSlot()
@@ -217,7 +217,7 @@ class VideoFrameVLCHWSP(VideoFrameVLC):
         )
 
     def ui_video_surface(self):
-        if platform.system() == "Darwin":
+        if env.IS_MACOS:
             video_surface = QMacCocoaViewContainer(0, self)
         else:
             video_surface = QWidget(self)
@@ -241,7 +241,7 @@ class VideoFrameVLCHWSP(VideoFrameVLC):
         self.video_surface.move(-2, -2)
 
     def load_video_finish(self, media_track: MediaTrack):
-        if platform.system() == "Darwin":
+        if env.IS_MACOS:
             # Need an explicit resize for adjustment to work on MacOS
             size = self.size()
             size.setWidth(size.width() + 1)

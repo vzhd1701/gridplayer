@@ -1,14 +1,15 @@
-import platform
 import sys
 from pathlib import Path
 
 from PyQt5.QtCore import QStandardPaths
 
+from gridplayer.params import env
+
 PORTABLE_APP_DIR = "portable_data"
 
 
 def is_portable() -> bool:
-    if platform.system() != "Windows":
+    if not (env.IS_WINDOWS and env.IS_PYINSTALLER):
         return False
 
     portable_data_dir = Path(sys.executable).parent / PORTABLE_APP_DIR

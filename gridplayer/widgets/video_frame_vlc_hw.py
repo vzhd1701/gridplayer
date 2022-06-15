@@ -1,9 +1,9 @@
-import platform
 from multiprocessing import Semaphore
 
 from PyQt5.QtCore import QMargins, Qt
 from PyQt5.QtWidgets import QWidget
 
+from gridplayer.params import env
 from gridplayer.vlc_player.instance import InstanceProcessVLC
 from gridplayer.vlc_player.player_base_threaded import VlcPlayerThreaded
 from gridplayer.vlc_player.static import MediaTrack
@@ -51,28 +51,28 @@ class PlayerProcessSingleVLCHW(VlcPlayerThreaded):
 
     def init_player(self):
         # video loading is not thread safe on linux
-        if platform.system() == "Linux":
+        if env.IS_LINUX:
             self.init_semaphore.acquire()
             self._log.debug("Semaphore acquired")
 
         super().init_player()
 
-        if platform.system() == "Linux":  # for Linux using the X Server
+        if env.IS_LINUX:
             self._media_player.set_xwindow(self.win_id)
-        elif platform.system() == "Windows":  # for Windows
+        elif env.IS_WINDOWS:
             self._media_player.set_hwnd(self.win_id)
-        elif platform.system() == "Darwin":  # for MacOS
+        elif env.IS_MACOS:
             self._media_player.set_nsobject(self.win_id)
 
     def notify_load_video_done(self, media_track: MediaTrack):
-        if platform.system() == "Linux":
+        if env.IS_LINUX:
             self.init_semaphore.release()
             self._log.debug("Semaphore released")
 
         super().notify_load_video_done(media_track)
 
     def cleanup(self):
-        if platform.system() == "Linux":
+        if env.IS_LINUX:
             self.init_semaphore.release()
 
         super().cleanup()
@@ -104,7 +104,7 @@ class VideoFrameVLCHW(VideoFrameVLCProcess):
         )
 
     def ui_video_surface(self):
-        if platform.system() == "Darwin":
+        if env.IS_MACOS:
             # Drawing using window id from another process is not possible on MacOS
             # https://stackoverflow.com/questions/583202/mac-os-x-can-one-process-render-to-another-processs-window
             raise NotImplementedError()

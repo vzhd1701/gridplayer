@@ -1,6 +1,5 @@
 import contextlib
 import logging
-import platform
 import subprocess
 
 from PyQt5.QtCore import QLocale, QUrl
@@ -107,7 +106,7 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
         _set_groupbox_header_bold(self.playerVideoDriverBox)
         _set_groupbox_header_bold(self.languageBox)
 
-        if platform.system() == "Darwin":
+        if env.IS_MACOS:
             self.lay_body.setContentsMargins(4, 0, 0, 0)
             self.horizontalLayout.setContentsMargins(0, 0, 15, 0)  # noqa: WPS432
             self.languageBox.setContentsMargins(0, 0, 15, 0)  # noqa: WPS432
@@ -127,7 +126,7 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
             for cb in combo_boxes:
                 cb.setMaximumHeight(22)  # noqa: WPS432
 
-        if platform.system() != "Linux":
+        if not env.IS_LINUX:
             self.section_misc.hide()
             self.miscOpaqueHWOverlay.hide()
 
@@ -227,7 +226,7 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
         _fill_combo_box(self.gridMode, grid_modes)
 
     def fill_playerVideoDriver(self):
-        if platform.system() == "Darwin":
+        if env.IS_MACOS:
             video_drivers = {
                 VideoDriver.VLC_HW_SP: "{0} <VLC {1}>".format(
                     self.tr("Hardware SP"), env.VLC_VERSION

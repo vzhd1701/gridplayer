@@ -1,10 +1,10 @@
 import logging
-import platform
 from enum import Enum
 
 from pydantic import Field
 from PyQt5.QtCore import QLocale, QSettings
 
+from gridplayer.params import env
 from gridplayer.params.static import (
     SUPPORTED_LANGUAGES,
     GridMode,
@@ -56,7 +56,7 @@ _default_settings = {
     "internal/opaque_hw_overlay": False,
 }
 
-if platform.system() == "Darwin":
+if env.IS_MACOS:
     _default_settings["player/video_driver"] = VideoDriver.VLC_HW_SP
 
 

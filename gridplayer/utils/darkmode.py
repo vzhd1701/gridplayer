@@ -1,11 +1,8 @@
-import platform
-
 from PyQt5.QtGui import QPalette
 
-SYSTEM = platform.system()
+from gridplayer.params import env
 
-
-if SYSTEM == "Darwin":
+if env.IS_MACOS:
     from Foundation import NSUserDefaults as NSUD
 
     def is_dark_mode():

@@ -1,7 +1,7 @@
-import platform
 from functools import partial
 
 from gridplayer.exceptions import PlayerException
+from gridplayer.params import env
 from gridplayer.params.static import VideoDriver
 from gridplayer.player.managers.base import ManagerBase
 from gridplayer.settings import Settings
@@ -40,7 +40,7 @@ class VideoDriverManager(ManagerBase):
     def video_driver(self):
         video_driver = Settings().get("player/video_driver")
 
-        if video_driver == VideoDriver.VLC_HW and platform.system() == "Darwin":
+        if video_driver == VideoDriver.VLC_HW and env.IS_MACOS:
             video_driver = VideoDriver.VLC_HW_SP
             Settings().set("player/video_driver", video_driver)
 

@@ -1,6 +1,5 @@
 import logging
 import os
-import platform
 import stat
 from multiprocessing import connection
 from threading import Thread
@@ -10,7 +9,7 @@ from PyQt5.QtCore import QObject, pyqtSignal
 
 from gridplayer.params import env
 
-if platform.system() == "Windows":
+if env.IS_WINDOWS:
     S_NAME, S_TYPE = r"\\.\pipe\gridplayer-fileopen", "AF_PIPE"
 elif env.IS_FLATPAK:
     S_NAME, S_TYPE = (
@@ -23,7 +22,7 @@ elif os.getenv("XDG_RUNTIME_DIR"):
         "AF_UNIX",
     )
 
-if platform.system() == "Darwin":
+if env.IS_MACOS:
     from Foundation import NSWorkspace
 
     from gridplayer.version import __app_id__
@@ -148,7 +147,7 @@ def _is_socket_working():
 def is_other_instance_running():
     global LISTENER  # noqa: WPS420
 
-    if platform.system() != "Windows" and _is_socket_working():
+    if env.IS_LINUX and _is_socket_working():
         return True
 
     LISTENER = _init_listener()  # noqa: WPS442
