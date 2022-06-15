@@ -12,12 +12,7 @@ architectures:
 base: core20
 grade: stable
 confinement: strict
-#compression: lzo
 
-#contact: {APP_AUTHOR_CONTACT}
-#issues: {APP_BUGTRACKER_URL}
-#source-code: {APP_URL}
-#website: {APP_URL}
 license: GPL-3.0-or-later
 
 plugs:
@@ -67,15 +62,11 @@ parts:
       - -usr/lib/x86_64-linux-gnu/libQt5*  # provided by pyqt5
       - -usr/lib/x86_64-linux-gnu/qt5
       - -usr/lib/x86_64-linux-gnu/qt-default
-      #- -usr/share/icons
-      #- -usr/share/themes
-      #- -usr/share/sounds
 
   # python multiprocessing fix
   snapcraft-preload:
     source: https://github.com/diddledan/snapcraft-preload.git
     source-branch: semaphore-support
-    #source: https://github.com/sergiusens/snapcraft-preload.git
     plugin: cmake
     cmake-parameters:
       - -DCMAKE_INSTALL_PREFIX=/
@@ -98,6 +89,7 @@ parts:
       - libvlccore9
       - vlc-plugin-base
       - vlc-plugin-video-output
+      - libvlc-bin
       # video drivers
       - va-driver-all
       - i965-va-driver
@@ -128,6 +120,22 @@ parts:
     override-build: |
       snapcraftctl build
 
+      # Emulate runtime env to make sure all plugin dependencies are reachable
+      LIBS="/var/lib/snapd/lib/gl:"
+      LIBS+="/var/lib/snapd/lib/gl32:"
+      LIBS+="${SNAPCRAFT_PART_INSTALL}/usr/lib/${SNAPCRAFT_ARCH_TRIPLET}/vlc:"
+      LIBS+="${SNAPCRAFT_PART_INSTALL}/lib:"
+      LIBS+="${SNAPCRAFT_PART_INSTALL}/usr/lib:"
+      LIBS+="${SNAPCRAFT_PART_INSTALL}/lib/${SNAPCRAFT_ARCH_TRIPLET}:"
+      LIBS+="${SNAPCRAFT_PART_INSTALL}/usr/lib/${SNAPCRAFT_ARCH_TRIPLET}:"
+      LIBS+="${SNAPCRAFT_PART_INSTALL}/usr/lib/${SNAPCRAFT_ARCH_TRIPLET}/dri:"
+      LIBS+="${SNAPCRAFT_PART_INSTALL}/usr/lib/${SNAPCRAFT_ARCH_TRIPLET}/pulseaudio"
+
+      # Generate VLC plugin cache
+      VLC_CACHE_GEN="${SNAPCRAFT_PART_INSTALL}/usr/lib/${SNAPCRAFT_ARCH_TRIPLET}/vlc/vlc-cache-gen"
+      LD_LIBRARY_PATH="$LIBS" "$VLC_CACHE_GEN" "${SNAPCRAFT_PART_INSTALL}/usr/lib/${SNAPCRAFT_ARCH_TRIPLET}/vlc/plugins"
+
+      # Remove unneeded qt parts
       ${SNAPCRAFT_PROJECT_DIR}/blacklist_clean.sh "${SNAPCRAFT_PART_INSTALL}/lib/python3.8/site-packages" ${SNAPCRAFT_PROJECT_DIR}/blacklist_pyqt.txt
 
       install -Dm 644 ${SNAPCRAFT_PROJECT_DIR}/meta/{APP_ID}.desktop     ${SNAPCRAFT_PART_INSTALL}/usr/share/applications/{APP_ID}.desktop
