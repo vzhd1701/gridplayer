@@ -13,7 +13,7 @@ from gridplayer.settings import Settings
 from gridplayer.vlc_player.libvlc import vlc
 
 # Prepare `vsnprintf` function
-if platform.system() == "Windows":
+if env.IS_WINDOWS:
     # Note: must use same version of libc as libvlc
     vsnprintf = ctypes.cdll.msvcrt.vsnprintf
 else:
@@ -105,18 +105,23 @@ class InstanceVLC(object):
             "--no-disable-screensaver",
             "--no-sub-autodetect-file",
             "--no-lua",
-            "--no-plugins-scan",
             "--no-osd",
             "--no-snapshot-preview",
             "--no-spu",
             "--no-interact",
             "--no-stats",
+            "--no-keyboard-events",
+            "--no-mouse-events",
             # "--http-reconnect",
             *self.vlc_options,
         ]
 
+        if _is_plugin_cache_exists():
+            self._logger.debug("Using plugin cache")
+            options.append("--no-plugins-scan")
+
         # https://forum.videolan.org/viewtopic.php?t=147229
-        if platform.system() == "Windows":
+        if env.IS_WINDOWS:
             options.append("--aout=directsound")
 
             # Root CAs are outdated on Windows 7
@@ -207,3 +212,9 @@ class ProcessManagerVLC(ProcessManager):
             instance.setup_log_queue(self._log_queue, log_level)
 
         return instance
+
+
+def _is_plugin_cache_exists():
+    plugin_cache_path = Path(vlc.plugin_path) / "plugins.dat"
+
+    return plugin_cache_path.is_file()
