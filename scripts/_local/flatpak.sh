@@ -7,7 +7,7 @@ SCRIPT_DIR="$( cd "$( dirname $0 )" && pwd )"
 . "scripts/init_app_vars.sh"
 
 if [ "$1" == "run" ]; then
-    flatpak run ${APP_ID}
+    flatpak run ${APP_ID} "${@:2}"
     exit 0
 elif [ "$1" == "del" ]; then
     flatpak uninstall -y ${APP_ID}
@@ -18,8 +18,8 @@ if ! command -v flatpak; then
     sudo apt install flatpak
     flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
 
-    flatpak install flathub org.kde.Platform//5.15
-    flatpak install flathub org.kde.Sdk//5.15
+    flatpak install flathub org.kde.Platform//5.15-21.08
+    flatpak install flathub org.kde.Sdk//5.15-21.08
 fi
 
 poetry build -f wheel

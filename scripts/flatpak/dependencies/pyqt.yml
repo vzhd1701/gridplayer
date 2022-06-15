@@ -1,16 +1,16 @@
 name: PyQt5
 cleanup:
 - "/include"
-- "/lib/python3.8/site-packages/*.pyi"
-- "/lib/python3.8/site-packages/PyQt5/uic"
+- "/lib/python3.9/site-packages/*.pyi"
+- "/lib/python3.9/site-packages/PyQt5/uic"
 config-opts:
 - "--disable-static"
 - "--enable-x11"
 buildsystem: simple
 build-commands:
 - python3 configure.py --confirm-license --no-docstrings --assume-shared --no-sip-files
-  --no-qml-plugin --no-tools --no-qsci-api -d ${FLATPAK_DEST}/lib/python3.8/site-packages
-  --sip=${FLATPAK_DEST}/bin/sip --sip-incdir=${FLATPAK_DEST}/include --stubsdir=${FLATPAK_DEST}/lib/python3.8/site-packages
+  --no-qml-plugin --no-tools --no-qsci-api -d ${FLATPAK_DEST}/lib/python3.9/site-packages
+  --sip=${FLATPAK_DEST}/bin/sip --sip-incdir=${FLATPAK_DEST}/include --stubsdir=${FLATPAK_DEST}/lib/python3.9/site-packages
   --disable=QtSensors --disable=QtWebEngine --disable=QtQuick --disable=QtQml --disable=QtTest
   --disable=QtWebChannel --disable=QtWebEngineCore --disable=QWebEngineWidgets --disable=QtQuickWidgets
   --disable=QtSql --disable=QtXmlPatterns --disable=QtMultimedia --disable=QtMultimediaWidgets
@@ -29,11 +29,11 @@ modules:
 - name: sip
   cleanup:
   - "/bin/sip*"
-  - "/lib/python3.8/site-packages/sip*"
+  - "/lib/python3.9/site-packages/sip*"
   buildsystem: simple
   build-commands:
-  - python3 configure.py --sip-module PyQt5.sip -b ${FLATPAK_DEST}/bin -d ${FLATPAK_DEST}/lib/python3.8/site-packages
-    -e ${FLATPAK_DEST}/include -v ${FLATPAK_DEST}/share/sip --stubsdir=${FLATPAK_DEST}/lib/python3.8/site-packages
+  - python3 configure.py --sip-module PyQt5.sip -b ${FLATPAK_DEST}/bin -d ${FLATPAK_DEST}/lib/python3.9/site-packages
+    -e ${FLATPAK_DEST}/include -v ${FLATPAK_DEST}/share/sip --stubsdir=${FLATPAK_DEST}/lib/python3.9/site-packages
   - make
   - make install
   sources:

@@ -17,6 +17,11 @@ cp -R "$BUILD_DIR/meta" "$BUILD_DIR_FLATPAK"
 cp "$SCRIPT_DIR"/dependencies/*.yml "$BUILD_DIR_FLATPAK"
 cp "$SCRIPT_DIR"/libvlc/* "$BUILD_DIR_FLATPAK"
 
+if [ ! -f "$BUILD_DIR/flatpak_python_deps/dependencies.yml" ]; then
+    "$SCRIPT_DIR/generate_dependencies.sh"
+fi
+cp "$BUILD_DIR/flatpak_python_deps/dependencies.yml" "$BUILD_DIR_FLATPAK/dependencies.yml"
+
 cat "$SCRIPT_DIR/app.yml" "$SCRIPT_DIR/app_local.yml" > "$BUILD_DIR_FLATPAK/$APP_ID.yml"
 replace_app_vars "$BUILD_DIR_FLATPAK/$APP_ID.yml"
 
@@ -27,7 +32,7 @@ sed -i "s#{WHL_FILE_SHA256}#$WHL_FILE_SHA256#g" "$BUILD_DIR_FLATPAK/$APP_ID.yml"
 
 if [ ! -d "$BUILD_DIR_FLATPAK/shared-modules" ]; then
     git clone -n https://github.com/flathub/shared-modules "$BUILD_DIR_FLATPAK/shared-modules"
-    (cd "$BUILD_DIR_FLATPAK/shared-modules" && git checkout -q 83be76b6f07d5c5d6cac2d93e09ffc9c1ade07d0)
+    (cd "$BUILD_DIR_FLATPAK/shared-modules" && git checkout -q 068f80b296f73d7d6eb2aee4fa01f9907d34daa8)
 fi
 
 # Prevent strange freezing

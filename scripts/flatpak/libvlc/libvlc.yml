@@ -4,7 +4,6 @@ config-opts:
 - BUILDCC=/usr/bin/gcc -std=gnu99
 # Disable all input plugins
 - "--disable-archive"
-- "--disable-live555"
 - "--disable-dc1394"
 - "--disable-dv1394"
 - "--disable-linsys"
@@ -24,7 +23,6 @@ config-opts:
 - "--disable-screen"
 - "--disable-vnc"
 - "--disable-freerdp"
-- "--disable-realrtsp"
 - "--disable-asdcp"
 # Codecs
 - "--disable-a52"
@@ -47,19 +45,19 @@ config-opts:
 - "--disable-upnp"
 - "--disable-microdns"
 # Misc
-- "--disable-libgcrypt"
 - "--disable-secret"
 - "--disable-kwallet"
 - "--disable-vlc"
 # Optim
 - "--disable-lua"
-- "--disable-sout"
 - "--disable-vlm"
 - "--disable-debug"
 - "--disable-update-check"
 - "--disable-maintainer-mode"
 - "--disable-dependency-tracking"
 - "--enable-dbus"
+# needed for snapshots
+#- "--disable-sout"
 
 cleanup:
 - "/bin"
@@ -72,276 +70,303 @@ post-install:
 - ${FLATPAK_DEST}/lib/vlc/vlc-cache-gen ${FLATPAK_DEST}/lib/vlc/plugins
 sources:
 - type: archive
-  url: https://get.videolan.org/vlc/3.0.16/vlc-3.0.16.tar.xz
-  sha256: ffae35fc64f625c175571d2346bc5f6207be99762517f15423e74f18399410f6
+  url: http://download.videolan.org/videolan/vlc/3.0.17.4/vlc-3.0.17.4.tar.xz
+  sha256: 8c5a62d88a4fb45c1b095cf10befef217dfa87aedcec5184b9e7d590b6dd4133
 
 modules:
 - shared-modules/intltool/intltool-0.51.json
 - shared-modules/glu/glu-9.json
 - name: zvbi
   cleanup:
-  - "/bin"
-  - "/sbin"
-  - "/share"
+    - /bin
+    - /sbin
+    - /share
   rm-configure: true
   sources:
-  - type: archive
-    url: http://http.debian.net/debian/pool/main/z/zvbi/zvbi_0.2.35.orig.tar.bz2
-    sha256: fc883c34111a487c4a783f91b1b2bb5610d8d8e58dcba80c7ab31e67e4765318
-  - type: script
-    commands:
-    - autoreconf -fiv
-    dest-filename: autogen.sh
+    - type: archive
+      url: https://deb.debian.org/debian/pool/main/z/zvbi/zvbi_0.2.35.orig.tar.bz2
+      sha256: fc883c34111a487c4a783f91b1b2bb5610d8d8e58dcba80c7ab31e67e4765318
+    - type: script
+      commands:
+        - autoreconf -fiv
+      dest-filename: autogen.sh
 - name: libcddb
   cleanup:
-  - "/bin"
+    - /bin
   rm-configure: true
   sources:
-  - type: archive
-    url: http://distcache.freebsd.org/ports-distfiles/libcddb-1.3.2.tar.bz2
-    sha256: 35ce0ee1741ea38def304ddfe84a958901413aa829698357f0bee5bb8f0a223b
-  - type: script
-    commands:
-    - autoreconf -fiv
-    dest-filename: autogen.sh
+    - type: archive
+      url: https://pkg.freebsd.org/ports-distfiles/libcddb-1.3.2.tar.bz2
+      sha256: 35ce0ee1741ea38def304ddfe84a958901413aa829698357f0bee5bb8f0a223b
+    - type: script
+      commands:
+        - autoreconf -fiv
+      dest-filename: autogen.sh
 - name: libshout
   cleanup:
-  - "/share"
-  - "/lib/ckport"
+    - /share
+    - /lib/ckport
   rm-configure: true
   sources:
-  - type: archive
-    url: http://downloads.xiph.org/releases/libshout/libshout-2.4.1.tar.gz
-    sha256: f3acb8dec26f2dbf6df778888e0e429a4ce9378a9d461b02a7ccbf2991bbf24d
-  - type: patch
-    path: libshout-openssl11.patch
-  - type: script
-    commands:
-    - autoreconf -fiv
-    dest-filename: autogen.sh
+    - type: archive
+      url: https://downloads.xiph.org/releases/libshout/libshout-2.4.1.tar.gz
+      sha256: f3acb8dec26f2dbf6df778888e0e429a4ce9378a9d461b02a7ccbf2991bbf24d
+    - type: patch
+      path: libshout-openssl11.patch
+    - type: script
+      commands:
+        - autoreconf -fiv
+      dest-filename: autogen.sh
 - name: taglib
   cleanup:
-  - "/bin"
+    - /bin
   buildsystem: cmake-ninja
   config-opts:
-  - "-DCMAKE_BUILD_TYPE=RelWithDebInfo"
-  - "-DBUILD_SHARED_LIBS=ON"
-  - "-DCMAKE_POSITION_INDEPENDENT_CODE=ON"
-  - "-DWITH_MP4=ON"
-  - "-DWITH_ASF=ON"
+    - -DCMAKE_BUILD_TYPE=RelWithDebInfo
+    - -DBUILD_SHARED_LIBS=ON
+    - -DCMAKE_POSITION_INDEPENDENT_CODE=ON
+    - -DWITH_MP4=ON
+    - -DWITH_ASF=ON
   sources:
-  - type: archive
-    url: http://taglib.org/releases/taglib-1.11.1.tar.gz
-    sha256: b6d1a5a610aae6ff39d93de5efd0fdc787aa9e9dc1e7026fa4c961b26563526b
-  - type: script
-    commands:
-    - autoreconf -fiv
-    dest-filename: autogen.sh
+    - type: archive
+      url: https://taglib.org/releases/taglib-1.12.tar.gz
+      sha256: 7fccd07669a523b07a15bd24c8da1bbb92206cb19e9366c3692af3d79253b703
+    - type: script
+      commands:
+        - autoreconf -fiv
+      dest-filename: autogen.sh
 - name: gsm
   cleanup:
-  - "/bin"
+    - /bin
   no-autogen: true
   build-options:
-    cflags: "-fPIC"
-    cxxflags: "-c -fPIC"
+    cflags: -fPIC
+    cxxflags: -c -fPIC
   make-install-args:
-  - "-j1"
-  - INSTALL_ROOT=/app
-  - GSM_INSTALL_INC=/app/include/gsm
-  - GSM_INSTALL_MAN=/app/share/man/man3
-  - TOAST_INSTALL_MAN=/app/share/man/man1
+    - -j1
+    - INSTALL_ROOT=/app
+    - GSM_INSTALL_INC=/app/include/gsm
+    - GSM_INSTALL_MAN=/app/share/man/man3
+    - TOAST_INSTALL_MAN=/app/share/man/man1
   sources:
-  - type: archive
-    url: http://www.quut.com/gsm/gsm-1.0.17.tar.gz
-    sha256: 855a57d1694941ddf3c73cb79b8d0b3891e9c9e7870b4981613b734e1ad07601
-  - type: patch
-    path: gsm.patch
-  - type: patch
-    path: gsm-makefile.patch
+    - type: archive
+      url: http://www.quut.com/gsm/gsm-1.0.17.tar.gz
+      sha256: 855a57d1694941ddf3c73cb79b8d0b3891e9c9e7870b4981613b734e1ad07601
+    - type: patch
+      path: gsm.patch
+    - type: patch
+      path: gsm-makefile.patch
 - name: libdvbpsi
   rm-configure: true
   sources:
-  - type: archive
-    url: https://download.videolan.org/pub/libdvbpsi/1.3.3/libdvbpsi-1.3.3.tar.bz2
-    sha256: 02b5998bcf289cdfbd8757bedd5987e681309b0a25b3ffe6cebae599f7a00112
-  - type: script
-    commands:
-    - autoreconf -fiv
-    dest-filename: autogen.sh
+    - type: archive
+      url: https://download.videolan.org/pub/libdvbpsi/1.3.3/libdvbpsi-1.3.3.tar.bz2
+      sha256: 02b5998bcf289cdfbd8757bedd5987e681309b0a25b3ffe6cebae599f7a00112
+    - type: script
+      commands:
+        - autoreconf -fiv
+      dest-filename: autogen.sh
 - name: libkate
   cleanup:
-  - "/bin"
-  - "/share"
+    - /bin
+    - /share
   rm-configure: true
   config-opts:
-  - "--disable-static"
-  - "--disable-doc"
+    - --disable-static
+    - --disable-doc
   sources:
-  - type: archive
-    url: https://storage.googleapis.com/google-code-archive-downloads/v2/code.google.com/libkate/libkate-0.4.1.tar.gz
-    sha256: c40e81d5866c3d4bf744e76ce0068d8f388f0e25f7e258ce0c8e76d7adc87b68
-  - type: patch
-    path: libkate.patch
-  - type: script
-    commands:
-    - autoreconf -fiv
-    dest-filename: autogen.sh
+    - type: archive
+      url: https://storage.googleapis.com/google-code-archive-downloads/v2/code.google.com/libkate/libkate-0.4.1.tar.gz
+      sha256: c40e81d5866c3d4bf744e76ce0068d8f388f0e25f7e258ce0c8e76d7adc87b68
+    - type: patch
+      path: libkate.patch
+    - type: script
+      commands:
+        - autoreconf -fiv
+      dest-filename: autogen.sh
 - name: libass
   config-opts:
-  - "--enable-harfbuzz"
-  - "--enable-fontconfig"
+    - --enable-harfbuzz
+    - --enable-fontconfig
   sources:
-  - type: archive
-    url: https://github.com/libass/libass/releases/download/0.15.0/libass-0.15.0.tar.xz
-    sha256: 9f09230c9a0aa68ef7aa6a9e2ab709ca957020f842e52c5b2e52b801a7d9e833
-  - type: script
-    commands:
-    - autoreconf -fiv
-    dest-filename: autogen.sh
+    - type: archive
+      url: https://github.com/libass/libass/releases/download/0.15.2/libass-0.15.2.tar.xz
+      sha256: 1be2df9c4485a57d78bb18c0a8ed157bc87a5a8dd48c661961c625cb112832fd
+    - type: script
+      commands:
+        - autoreconf -fiv
+      dest-filename: autogen.sh
 - name: libebml
   cleanup:
-  - "/lib/cmake"
+    - /lib/cmake
   builddir: true
   buildsystem: cmake-ninja
   config-opts:
-  - "-DCMAKE_BUILD_TYPE=RelWithDebInfo"
-  - "-DBUILD_SHARED_LIBS=ON"
-  - "-DCMAKE_POSITION_INDEPENDENT_CODE=ON"
+    - -DCMAKE_BUILD_TYPE=RelWithDebInfo
+    - -DBUILD_SHARED_LIBS=ON
+    - -DCMAKE_POSITION_INDEPENDENT_CODE=ON
   sources:
-  - type: archive
-    url: https://dl.matroska.org/downloads/libebml/libebml-1.4.2.tar.xz
-    sha256: 41c7237ce05828fb220f62086018b080af4db4bb142f31bec0022c925889b9f2
+    - type: archive
+      url: https://dl.matroska.org/downloads/libebml/libebml-1.4.2.tar.xz
+      sha256: 41c7237ce05828fb220f62086018b080af4db4bb142f31bec0022c925889b9f2
+    - type: patch
+      path: libebml-gcc11.patch
 - name: libmatroska
   cleanup:
-  - "/lib/cmake"
+    - /lib/cmake
   builddir: true
   buildsystem: cmake-ninja
   config-opts:
-  - "-DCMAKE_BUILD_TYPE=RelWithDebInfo"
-  - "-DBUILD_SHARED_LIBS=ON"
-  - "-DCMAKE_POSITION_INDEPENDENT_CODE=ON"
+    - -DCMAKE_BUILD_TYPE=RelWithDebInfo
+    - -DBUILD_SHARED_LIBS=ON
+    - -DCMAKE_POSITION_INDEPENDENT_CODE=ON
   sources:
-  - type: archive
-    url: https://dl.matroska.org/downloads/libmatroska/libmatroska-1.6.3.tar.xz
-    sha256: daf91a63f58dd157ca340c457871e66260cb9c3333fefb008b318befbb0e081a
+    - type: archive
+      url: https://dl.matroska.org/downloads/libmatroska/libmatroska-1.6.3.tar.xz
+      sha256: daf91a63f58dd157ca340c457871e66260cb9c3333fefb008b318befbb0e081a
 - name: libmodplug
   rm-configure: true
   sources:
-  - type: archive
-    url: http://http.debian.net/debian/pool/main/libm/libmodplug/libmodplug_0.8.9.0.orig.tar.gz
-    sha256: 457ca5a6c179656d66c01505c0d95fafaead4329b9dbaa0f997d00a3508ad9de
-  - type: script
-    commands:
-    - autoreconf -fiv
-    dest-filename: autogen.sh
+    - type: archive
+      url: https://deb.debian.org/debian/pool/main/libm/libmodplug/libmodplug_0.8.9.0.orig.tar.gz
+      sha256: 457ca5a6c179656d66c01505c0d95fafaead4329b9dbaa0f997d00a3508ad9de
+    - type: script
+      commands:
+        - autoreconf -fiv
+      dest-filename: autogen.sh
 - name: x264
   cleanup:
-  - "/bin"
+    - /bin
   config-opts:
-  - "--enable-pic"
-  - "--enable-shared"
+    - --enable-pic
+    - --enable-shared
   sources:
-  - type: git
-    url: https://code.videolan.org/videolan/x264.git
-    branch: d198931a63049db1f2c92d96c34904c69fde8117
+    - type: git
+      url: https://code.videolan.org/videolan/x264.git
+      commit: 5db6aa6cab1b146e07b60cc1736a01f21da01154
 - name: x265
   cleanup:
-  - "/bin"
+    - /bin
   builddir: true
   subdir: source
   buildsystem: cmake-ninja
   config-opts:
-  - "-DCMAKE_BUILD_TYPE=RelWithDebInfo"
-  - "-DBUILD_SHARED_LIBS=ON"
-  - "-DCMAKE_POSITION_INDEPENDENT_CODE=ON"
+    - -DCMAKE_BUILD_TYPE=RelWithDebInfo
+    - -DBUILD_SHARED_LIBS=ON
+    - -DCMAKE_POSITION_INDEPENDENT_CODE=ON
   sources:
-  - type: archive
-    url: https://ftp.osuosl.org/pub/blfs/conglomeration/x265/x265_3.4.tar.gz
-    sha256: c2047f23a6b729e5c70280d23223cb61b57bfe4ad4e8f1471eeee2a61d148672
+    - type: archive
+      url: https://bitbucket.org/multicoreware/x265_git/downloads/x265_3.5.tar.gz
+      sha256: e70a3335cacacbba0b3a20ec6fecd6783932288ebc8163ad74bcc9606477cae8
 - name: dav1d
   cleanup:
-  - "/bin"
+    - /bin
   buildsystem: meson
   sources:
-  - type: archive
-    url: https://get.videolan.org/dav1d/0.9.0/dav1d-0.9.0.tar.xz
-    sha256: cfae88e8067c9b2e5b96d95a7a00155c353376fe9b992a96b4336e0eab19f9f6
+    - type: archive
+      url: https://download.videolan.org/videolan/dav1d/0.9.2/dav1d-0.9.2.tar.xz
+      sha256: e3235ab6c43c0135b0db1d131e1923fad4c84db9d85683e30b91b33a52d61c71
 - name: ffmpeg
   cleanup:
-  - "/bin"
-  - "/share"
+    - /bin
+    - /share
   config-opts:
-  - "--enable-pic"
-  - "--enable-shared"
-  - "--disable-doc"
-  - "--disable-static"
-  - "--enable-gpl"
-  - "--enable-libx264"
-  - "--enable-libx265"
-  - "--enable-libvpx"
-  - "--enable-libmp3lame"
-  - "--enable-libvorbis"
-  - "--enable-libopus"
+    - --enable-pic
+    - --enable-shared
+    - --disable-doc
+    - --disable-static
+    - --enable-gpl
+    - --enable-libx264
+    - --enable-libx265
+    - --enable-libvpx
+    - --enable-libmp3lame
+    - --enable-libvorbis
+    - --enable-libopus
   sources:
-  - type: archive
-    url: http://ffmpeg.org/releases/ffmpeg-4.4.tar.xz
-    sha256: 06b10a183ce5371f915c6bb15b7b1fffbe046e8275099c96affc29e17645d909
+    - type: archive
+      url: https://ffmpeg.org/releases/ffmpeg-4.4.2.tar.xz
+      sha256: af419a7f88adbc56c758ab19b4c708afbcae15ef09606b82b855291f6a6faa93
+- name: libaacs
+  cleanup:
+    - /bin
+  config-opts:
+    - --with-pic
+    - --enable-shared
+    - --disable-static
+  sources:
+    - type: archive
+      url: https://download.videolan.org/videolan/libaacs/0.11.1/libaacs-0.11.1.tar.bz2
+      sha256: a88aa0ebe4c98a77f7aeffd92ab3ef64ac548c6b822e8248a8b926725bea0a39
 - name: fluidlite
   buildsystem: cmake-ninja
   config-opts:
-  - "-DCMAKE_BUILD_TYPE=RelWithDebInfo"
-  - "-DBUILD_SHARED_LIBS=ON"
-  - "-DCMAKE_POSITION_INDEPENDENT_CODE=ON"
+    - -DCMAKE_BUILD_TYPE=RelWithDebInfo
+    - -DBUILD_SHARED_LIBS=ON
+    - -DCMAKE_POSITION_INDEPENDENT_CODE=ON
   sources:
-  - type: git
-    url: https://github.com/divideconcept/FluidLite.git
-    branch: fdd05bad03cdb24d1f78b5fe3453842890c1b0e8
+    - type: git
+      url: https://github.com/divideconcept/FluidLite.git
+      commit: fdd05bad03cdb24d1f78b5fe3453842890c1b0e8
 - name: libplacebo
   cleanup:
-  - "/bin"
+    - /bin
   buildsystem: meson
-  sources:
-  - type: archive
-    url: https://github.com/haasn/libplacebo/archive/refs/tags/v3.120.3.tar.gz
-    sha256: aeea8edb38af8034fa592f7c028aa612823707087db32e11908ba8ce72a9f419
-- name: protobuf
-  cleanup:
-  - "/bin"
   config-opts:
-  - "--disable-static"
+    - -Dvulkan=false
   sources:
-  - type: archive
-    url: https://github.com/google/protobuf/archive/v3.5.1/protobuf-3.5.1.tar.gz
-    sha256: 826425182ee43990731217b917c5c3ea7190cfda141af4869e6d4ad9085a740f
-  - type: archive
-    url: https://github.com/google/googlemock/archive/release-1.7.0.tar.gz#/googlemock-1.7.0.tar.gz
-    sha256: 3f20b6acb37e5a98e8c4518165711e3e35d47deb6cdb5a4dd4566563b5efd232
-    dest: gmock
-  - type: archive
-    url: https://github.com/google/googletest/archive/release-1.7.0.tar.gz#/googletest-1.7.0.tar.gz
-    sha256: f73a6546fdf9fce9ff93a5015e0333a8af3062a152a9ad6bcb772c96687016cc
-    dest: gmock/gtest
+    - type: archive
+      url: https://github.com/haasn/libplacebo/archive/refs/tags/v0.2.1.tar.gz
+      sha256: d5d920a1745e4209287d32e8b96a85127b61b843304813980e11104cd9f15e82
 - name: spatialaudio
   builddir: true
   buildsystem: cmake-ninja
   config-opts:
-  - "-DCMAKE_BUILD_TYPE=RelWithDebInfo"
-  - "-DBUILD_SHARED_LIBS=ON"
-  - "-DCMAKE_POSITION_INDEPENDENT_CODE=ON"
+    - -DCMAKE_BUILD_TYPE=RelWithDebInfo
+    - -DBUILD_SHARED_LIBS=ON
+    - -DCMAKE_POSITION_INDEPENDENT_CODE=ON
   sources:
-  - type: archive
-    url: https://github.com/videolabs/libspatialaudio/releases/download/0.3.0/spatialaudio-0.3.0.tar.bz2
-    sha256: 284c1dbd8efd46c03be84ac7070bc87cae81b7125352b143a70be3e2b96988e3
+    - type: archive
+      url: https://github.com/videolabs/libspatialaudio/releases/download/0.3.0/spatialaudio-0.3.0.tar.bz2
+      sha256: 284c1dbd8efd46c03be84ac7070bc87cae81b7125352b143a70be3e2b96988e3
 - name: srt
   cleanup:
-  - "/bin"
+    - /bin
   builddir: true
   buildsystem: cmake-ninja
   config-opts:
-  - "-DCMAKE_BUILD_TYPE=RelWithDebInfo"
-  - "-DBUILD_SHARED_LIBS=ON"
-  - "-DCMAKE_POSITION_INDEPENDENT_CODE=ON"
+    - -DCMAKE_BUILD_TYPE=RelWithDebInfo
+    - -DBUILD_SHARED_LIBS=ON
+    - -DCMAKE_POSITION_INDEPENDENT_CODE=ON
   sources:
-  - type: archive
-    url: https://github.com/Haivision/srt/archive/v1.4.1.tar.gz
-    sha256: e80ca1cd0711b9c70882c12ec365cda1ba852e1ce8acd43161a21a04de0cbf14
+    - type: archive
+      url: https://github.com/Haivision/srt/archive/v1.4.4.tar.gz
+      sha256: 93f5f3715bd5bd522b8d65fc0d086ef2ad49db6a41ad2d7b35df2e8bd7094114
+- name: live555
+  buildsystem: simple
+  build-commands:
+    - CXXFLAGS=`sed "s/'/\"/g" /etc/flatpak-builder/defaults.json | jq -r .cxxflags`
+      ; sed -i -e "s|-O2|$CXXFLAGS|" config.linux-with-shared-libraries
+    - ./genMakefiles linux-with-shared-libraries
+    - LDFLAGS=`sed "s/'/\"/g" /etc/flatpak-builder/defaults.json | jq -r .ldflags`
+      ; make -j4 PREFIX=/app LIBDIR=/app/lib install
+    - chmod +x /app/lib/libliveMedia.so* /app/lib/libUsageEnvironment.so* /app/lib/libBasicUsageEnvironment.so*
+      /app/lib/libgroupsock.so*
+  cleanup:
+    - /bin
+  sources:
+    - type: archive
+      url: https://download.videolan.org/contrib/live555/live.2020.11.05.tar.gz
+      sha256: 89bdfba7fd215e16be2c9d46a797bf85c5f7f7c46b53dc8af2d1171a658da5b7
+    - type: patch
+      path: live555-add-pkgconfig-file.patch
+    - type: patch
+      path: live555-nosignal.patch
+- name: protobuf
+  cleanup:
+    - /bin
+  config-opts:
+    - DIST_LANG=cpp
+  sources:
+    - type: archive
+      url: https://github.com/protocolbuffers/protobuf/releases/download/v3.19.3/protobuf-all-3.19.3.tar.gz
+      sha256: 84cca73ed97abce159c381e682ba0237bc21952359b07d8d45dc7e6399edd923

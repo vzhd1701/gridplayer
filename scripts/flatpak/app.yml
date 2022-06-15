@@ -1,6 +1,6 @@
 app-id: "{APP_ID}"
 runtime: org.kde.Platform
-runtime-version: '5.15'
+runtime-version: "5.15-21.08"
 sdk: org.kde.Sdk
 command: "{APP_MODULE}"
 finish-args:
@@ -11,7 +11,8 @@ finish-args:
 - "--socket=x11"
 # Sound
 - "--socket=pulseaudio"
-# Files & network shares
+# Files & network
+- "--share=network"
 - "--filesystem=host"
 - "--filesystem=xdg-run/gvfs"
 # Screen inhibit
