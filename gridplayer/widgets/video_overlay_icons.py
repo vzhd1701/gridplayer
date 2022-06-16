@@ -8,11 +8,7 @@ def draw_volume_on(rect, painter, color_fg, color_bg):
     draw_volume_off(rect, painter, color_fg, color_bg)
 
     painter.fillRect(
-        rect.x() + 5 + 6 + 3,
-        rect.y() + 6,
-        4,
-        rect.height() - 12,
-        color_fg,  # noqa: WPS432
+        rect.x() + 5 + 6 + 3, rect.y() + 6, 4, rect.height() - 12, color_fg
     )
 
 

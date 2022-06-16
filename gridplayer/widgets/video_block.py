@@ -35,6 +35,8 @@ from gridplayer.widgets.video_block_status import StatusLabel
 from gridplayer.widgets.video_frame_vlc_base import VideoFrameVLC
 from gridplayer.widgets.video_overlay import OverlayBlock, OverlayBlockFloating
 
+IN_PROGRESS_THRESHOLD_MS = 500
+
 
 class QStackedLayoutFloating(QStackedLayout):
     """overridden setGeometry for children is not honored due to type casting inside Qt,
@@ -157,7 +159,7 @@ class VideoBlock(QWidget):  # noqa: WPS230
 
         self._in_progress_timer = QTimer(self)
         self._in_progress_timer.setSingleShot(True)
-        self._in_progress_timer.setInterval(500)
+        self._in_progress_timer.setInterval(IN_PROGRESS_THRESHOLD_MS)
         self._in_progress_timer.timeout.connect(self.is_in_progress_change)
 
         self.url_resolver = self.init_url_resolver()
@@ -316,7 +318,7 @@ class VideoBlock(QWidget):  # noqa: WPS230
         self.overlay.hide()
         self.video_driver.hide()
 
-        self.status_label.set_icon(status)
+        self.status_label.icon = status
         self.status_label.show()
         self.repaint()
 
