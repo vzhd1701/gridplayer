@@ -36,8 +36,8 @@ pydantic = "^1.8.2"
 python-vlc = "3.0.11115"
 pyobjc-core = { version = "*", platform = "darwin" }
 pyobjc-framework-Cocoa = { version = "*", platform = "darwin" }
-streamlink = "^4.0.1"
-yt-dlp = "^2022.5.18"
+streamlink = "4.1.0"
+yt-dlp = "2022.05.18"
 
 [tool.poetry.dev-dependencies]
 isort = "^5.8.0"
@@ -117,7 +117,8 @@ wemake-python-styleguide = ["+*", "-WPS110", "-WPS339", "-WPS433", "-WPS440"]
 # WPS204 overused expression
 # WPS213 too many expressions
 # WPS221 Jones Complexity
-wemake-python-styleguide = ["+*", "-WPS204", "-WPS213", "-WPS221"]
+# WPS432 magic numbers
+wemake-python-styleguide = ["+*", "-WPS204", "-WPS213", "-WPS221", "-WPS432"]
 
 [tool.flakehell.exceptions."gridplayer/widgets/video_frame_vlc_*w.py"]
 # WPS615 unpythonic setter
