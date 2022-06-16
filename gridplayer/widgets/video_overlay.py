@@ -201,6 +201,10 @@ class OverlayBlock(QWidget):  # noqa: WPS230
         self.label_info.show()
         self.label_info_hide_timer.start(1000 * 2)
 
+    @pyqtSlot()
+    def set_is_in_progress(self):
+        self.play_pause_button.is_in_progress = True
+
     @pyqtSlot(bool)
     def set_is_paused(self, is_paused):
         self.play_pause_button.is_off = not is_paused

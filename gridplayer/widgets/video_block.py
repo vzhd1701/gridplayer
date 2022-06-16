@@ -125,6 +125,7 @@ class VideoBlock(QWidget):  # noqa: WPS230
     is_paused_change = pyqtSignal(bool)
     is_muted_change = pyqtSignal(bool)
     info_change = pyqtSignal(str)
+    is_in_progress_change = pyqtSignal()
 
     def __init__(self, video_driver, **kwargs):
         super().__init__(**kwargs)
@@ -147,10 +148,17 @@ class VideoBlock(QWidget):  # noqa: WPS230
         self.is_live = False
         self.streams = Streams()
 
+        self._is_state_change_in_progress = False
+
         # Components
         self.overlay_hide_timer = QTimer(self)
         self.overlay_hide_timer.setSingleShot(True)
         self.overlay_hide_timer.timeout.connect(self.hide_overlay)
+
+        self._in_progress_timer = QTimer(self)
+        self._in_progress_timer.setSingleShot(True)
+        self._in_progress_timer.setInterval(500)
+        self._in_progress_timer.timeout.connect(self.is_in_progress_change)
 
         self.url_resolver = self.init_url_resolver()
         self.video_driver = self.init_video_driver()
@@ -237,6 +245,7 @@ class VideoBlock(QWidget):  # noqa: WPS230
             (self.loop_start_change, overlay.set_loop_start),
             (self.loop_end_change, overlay.set_loop_end),
             (self.is_paused_change, overlay.set_is_paused),
+            (self.is_in_progress_change, overlay.set_is_in_progress),
             (self.is_muted_change, overlay.set_is_muted),
             (self.info_change, overlay.set_info_label),
         )
@@ -276,6 +285,9 @@ class VideoBlock(QWidget):  # noqa: WPS230
         self.close()
 
     def cleanup(self):
+        self.overlay_hide_timer.stop()
+        self._in_progress_timer.stop()
+
         self._log.debug(f"Cleaning up resolver {self.id}")
         self.url_resolver.cleanup()
 
@@ -454,6 +466,9 @@ class VideoBlock(QWidget):  # noqa: WPS230
             self.loop_end_action()
 
     def playback_status_changed(self, is_paused):
+        self._is_state_change_in_progress = False
+        self._in_progress_timer.stop()
+
         self.video_params.is_paused = is_paused
         self.is_paused_change.emit(self.video_params.is_paused)
 
@@ -767,8 +782,14 @@ class VideoBlock(QWidget):  # noqa: WPS230
         self.info_change.emit("Speed: {0}".format(self.video_params.rate))
 
     def set_pause(self, paused):
+        if self._is_state_change_in_progress:
+            return
+
         if self.video_params.is_paused == paused:
             return
+
+        self._is_state_change_in_progress = True
+        self._in_progress_timer.start()
 
         self.video_driver.set_pause(paused)
 

@@ -1,7 +1,7 @@
-from abc import abstractmethod
+from abc import ABC, abstractmethod
 
 from PyQt5.QtCore import Qt, pyqtSignal
-from PyQt5.QtGui import QCursor, QPainter
+from PyQt5.QtGui import QColor, QCursor, QPainter
 from PyQt5.QtWidgets import qApp
 
 from gridplayer.utils.qt import QABC
@@ -10,6 +10,7 @@ from gridplayer.widgets.video_overlay_icons import (
     draw_cross,
     draw_pause,
     draw_play,
+    draw_spin_circle,
     draw_volume_off,
     draw_volume_on,
 )
@@ -29,11 +30,11 @@ class OverlayButton(OverlayWidget, metaclass=QABC):
         self._is_off = False
 
     @abstractmethod
-    def icon(self, rect, painter, color):
+    def icon(self, rect, painter, color_fg, color_bg):
         ...
 
     @abstractmethod
-    def icon_off(self, rect, painter, color):
+    def icon_off(self, rect, painter, color_fg, color_bg):
         ...
 
     def paintEvent(self, event):
@@ -48,10 +49,13 @@ class OverlayButton(OverlayWidget, metaclass=QABC):
 
         painter.fillRect(self.rect(), color_bg)
 
+        self.draw_icon(painter, color_fg, color_bg)
+
+    def draw_icon(self, painter: QPainter, color_fg: QColor, color_bg: QColor):
         if self._is_off:
-            self.icon_off(self.rect(), painter, color_fg)
+            self.icon_off(self.rect(), painter, color_fg, color_bg)
         else:
-            self.icon(self.rect(), painter, color_fg)
+            self.icon(self.rect(), painter, color_fg, color_bg)
 
     def underMouse(self):
         return qApp.widgetAt(QCursor.pos()) is self
@@ -96,25 +100,67 @@ class OverlayButton(OverlayWidget, metaclass=QABC):
         self.update()
 
 
-class OverlayExitButton(OverlayButton):
-    def icon(self, rect, painter, color):
-        return draw_cross(rect, painter, color)
+class OverlayButtonDynamic(OverlayButton, ABC):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
 
-    def icon_off(self, rect, painter, color):
+        self._is_in_progress = False
+        self._icon_spin = 0
+        self._timer_id = None
+
+    def timerEvent(self, event) -> None:
+        self._icon_spin = (self._icon_spin + 1) % 360  # noqa: WPS432
+        self.update()
+
+    def draw_icon(self, painter, color_fg, color_bg):
+        if self._is_in_progress:
+            draw_spin_circle(self.rect(), painter, color_fg, color_bg, self._icon_spin)
+        else:
+            super().draw_icon(painter, color_fg, color_bg)
+
+    @property
+    def is_in_progress(self):
+        return self._is_in_progress
+
+    @is_in_progress.setter
+    def is_in_progress(self, is_in_progress):
+        self._is_in_progress = is_in_progress
+
+        if is_in_progress:
+            if not self._timer_id:
+                self._timer_id = self.startTimer(2)
+        elif self._timer_id:
+            self.killTimer(self._timer_id)
+            self._timer_id = None
+
+        self.update()
+
+    @OverlayButton.is_off.setter
+    def is_off(self, is_off):
+        self.is_in_progress = False
+
+        OverlayButton.is_off.fset(self, is_off)
+
+
+class OverlayExitButton(OverlayButton):
+    def icon(self, rect, painter, color_fg, color_bg):
+        return draw_cross(rect, painter, color_fg, color_bg)
+
+    def icon_off(self, rect, painter, color_fg, color_bg):
         ...
 
 
-class OverlayPlayPauseButton(OverlayButton):
-    def icon(self, rect, painter, color):
-        return draw_play(rect, painter, color)
+class OverlayPlayPauseButton(OverlayButtonDynamic):
+    def icon(self, rect, painter, color_fg, color_bg):
+        return draw_play(rect, painter, color_fg, color_bg)
 
-    def icon_off(self, rect, painter, color):
-        return draw_pause(rect, painter, color)
+    def icon_off(self, rect, painter, color_fg, color_bg):
+        return draw_pause(rect, painter, color_fg, color_bg)
 
 
 class OverlayVolumeButton(OverlayButton):
-    def icon(self, rect, painter, color):
-        return draw_volume_on(rect, painter, color)
+    def icon(self, rect, painter, color_fg, color_bg):
+        return draw_volume_on(rect, painter, color_fg, color_bg)
 
-    def icon_off(self, rect, painter, color):
-        return draw_volume_off(rect, painter, color)
+    def icon_off(self, rect, painter, color_fg, color_bg):
+        return draw_volume_off(rect, painter, color_fg, color_bg)
