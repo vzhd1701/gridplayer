@@ -1,4 +1,12 @@
-from PyQt5.QtCore import QRectF, QSize, Qt
+from PyQt5.QtCore import (
+    QEasingCurve,
+    QPropertyAnimation,
+    QRectF,
+    QSequentialAnimationGroup,
+    QSize,
+    Qt,
+    pyqtProperty,
+)
 from PyQt5.QtGui import QColor, QIcon, QPainter
 from PyQt5.QtWidgets import (
     QGraphicsOpacityEffect,
@@ -6,40 +14,38 @@ from PyQt5.QtWidgets import (
     QLabel,
     QSizePolicy,
     QWidget,
-    qApp,
 )
 
 from gridplayer.utils.darkmode import is_dark_mode
 
 
-def bezier_blend(t):
-    return t * t * (3.0 - 2.0 * t)  # noqa: WPS432
-
-
 class JumpingBar(QWidget):
-    bar_grow_speed = 1.5
-    bar_wane_speed = 1
+    bar_grow_ms = 100
+    bar_wane_ms = 900
 
     bar_lowest_percent = 30
-    animation_fps = 100
 
-    def __init__(self, start_percent=100, is_growing=False, **kwargs):
+    def __init__(self, start_percent=100, **kwargs):
         super().__init__(**kwargs)
 
         self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-        self.animation_fps = min(
-            self.animation_fps, int(qApp.primaryScreen().refreshRate())
-        )
 
         self._color = QColor(Qt.white) if is_dark_mode() else QColor(Qt.black)
-        self._timer = None
 
-        self.bar_percent = min(max(start_percent, self.bar_lowest_percent), 100)
-        self.is_growing = is_growing
+        self._bar_percent = min(max(start_percent, self.bar_lowest_percent), 100)
 
-    @property
-    def bar_percent_smooth(self):
-        return bezier_blend(self.bar_percent / 100) * 100
+        self._animation = self._init_animation()
+
+        self._initial_time = self._calc_init_time(start_percent)
+
+    @pyqtProperty(int)
+    def bar_percent(self):
+        return self._bar_percent
+
+    @bar_percent.setter
+    def bar_percent(self, percent):  # noqa: WPS440
+        self._bar_percent = percent
+        self.update()
 
     @property
     def roundness(self):
@@ -54,7 +60,7 @@ class JumpingBar(QWidget):
 
         middle = self.rect().center()
 
-        bar_height = (self.rect().height() - 10) * (self.bar_percent_smooth / 100)
+        bar_height = (self.rect().height() - 10) * (self._bar_percent / 100)
 
         bar_rect = QRectF(
             0,
@@ -65,34 +71,45 @@ class JumpingBar(QWidget):
 
         painter.drawRoundedRect(bar_rect, self.roundness, self.roundness)
 
-    def timerEvent(self, event):
-        if self.is_growing:
-            self.bar_percent += self.bar_grow_speed
-
-            if self.bar_percent >= 100:
-                self.bar_percent = 100
-                self.is_growing = False
-        else:
-            self.bar_percent -= self.bar_wane_speed
-
-            if self.bar_percent <= self.bar_lowest_percent:
-                self.bar_percent = self.bar_lowest_percent
-                self.is_growing = True
-
-        self.update()
-
     def showEvent(self, event) -> None:
-        # start animation
+        self._animation.start()
 
-        if self._timer is None:
-            self._timer = self.startTimer(1000 // self.animation_fps)
+        if self._initial_time:
+            self._animation.setCurrentTime(self._initial_time)
+            self._initial_time = None
 
     def hideEvent(self, event) -> None:
-        # stop animation
+        self._animation.stop()
 
-        if self._timer is not None:
-            self.killTimer(self._timer)
-            self._timer = None
+    def _init_animation(self):  # noqa: WPS213
+        animation_up = QPropertyAnimation(self, b"bar_percent")
+        animation_up.setDuration(self.bar_grow_ms)
+        animation_up.setStartValue(self.bar_lowest_percent)
+        animation_up.setEndValue(100)
+        animation_up.setEasingCurve(QEasingCurve.BezierSpline)
+
+        animation_down = QPropertyAnimation(self, b"bar_percent")
+        animation_down.setDuration(self.bar_wane_ms)
+        animation_down.setStartValue(100)
+        animation_down.setEndValue(self.bar_lowest_percent)
+        animation_down.setEasingCurve(QEasingCurve.BezierSpline)
+
+        anim_group = QSequentialAnimationGroup(self)
+        anim_group.addAnimation(animation_up)
+        anim_group.addAnimation(animation_down)
+        anim_group.setLoopCount(-1)
+
+        return anim_group
+
+    def _calc_init_time(self, start_percent):
+        total_time = self._animation.duration()
+
+        if start_percent == 100:
+            return total_time
+
+        return (
+            (100 - self._bar_percent) / (100 - self.bar_lowest_percent)
+        ) * total_time
 
 
 class LoadingBars(QWidget):

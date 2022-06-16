@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 
-from PyQt5.QtCore import Qt, pyqtSignal
+from PyQt5.QtCore import QPropertyAnimation, Qt, pyqtProperty, pyqtSignal
 from PyQt5.QtGui import QColor, QCursor, QPainter
 from PyQt5.QtWidgets import qApp
 
@@ -106,10 +106,20 @@ class OverlayButtonDynamic(OverlayButton, ABC):
 
         self._is_in_progress = False
         self._icon_spin = 0
-        self._timer_id = None
 
-    def timerEvent(self, event) -> None:
-        self._icon_spin = (self._icon_spin + 1) % 360  # noqa: WPS432
+        self.animation = QPropertyAnimation(self, b"icon_spin")
+        self.animation.setDuration(500)  # noqa: WPS432
+        self.animation.setStartValue(0)
+        self.animation.setEndValue(360)  # noqa: WPS432
+        self.animation.setLoopCount(-1)
+
+    @pyqtProperty(int)
+    def icon_spin(self):
+        return self._icon_spin
+
+    @icon_spin.setter
+    def icon_spin(self, icon_spin):  # noqa: WPS440
+        self._icon_spin = icon_spin
         self.update()
 
     def draw_icon(self, painter, color_fg, color_bg):
@@ -127,13 +137,9 @@ class OverlayButtonDynamic(OverlayButton, ABC):
         self._is_in_progress = is_in_progress
 
         if is_in_progress:
-            if not self._timer_id:
-                self._timer_id = self.startTimer(2)
-        elif self._timer_id:
-            self.killTimer(self._timer_id)
-            self._timer_id = None
-
-        self.update()
+            self.animation.start()
+        else:
+            self.animation.stop()
 
     @OverlayButton.is_off.setter
     def is_off(self, is_off):
