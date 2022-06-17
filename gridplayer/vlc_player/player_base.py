@@ -23,6 +23,15 @@ MEDIA_EXTRACT_RETRY_TIME = 0.1
 MEDIA_EXTRACT_TIMEOUT = int(INIT_TIMEOUT / MEDIA_EXTRACT_RETRY_TIME)
 
 
+def only_initialized_player(func):
+    def wrapper(*args, **kwargs):
+        self = args[0]  # noqa: WPS117
+        if self._media_player is not None:
+            return func(*args, **kwargs)
+
+    return wrapper
+
+
 class VlcPlayerBase(ABC):
     def __init__(self, vlc_instance, **kwargs):
         super().__init__(**kwargs)
@@ -344,6 +353,7 @@ class VlcPlayerBase(ABC):
         self.notify_playback_status_changed(self._is_paused)
         self.notify_time_changed(self.media_input.initial_time)
 
+    @only_initialized_player
     def snapshot(self):
         tmp_root = env.FLATPAK_RUNTIME_DIR if env.IS_FLATPAK else None
 
@@ -356,20 +366,25 @@ class VlcPlayerBase(ABC):
                 res = self._media_player.video_take_snapshot(0, str(file_path), 0, 0)
         except TimeoutError:
             file_path.parent.rmdir()
-            return self.error(f"Timed out to take snapshot to {file_path}")
+            self.error(f"Timed out to take snapshot to {file_path}")
+            return
 
         if res != 0:
             file_path.parent.rmdir()
-            return self.error(f"Failed to take snapshot to {file_path}")
+            self.error(f"Failed to take snapshot to {file_path}")
+            return
 
         self.notify_snapshot_taken(str(file_path))
 
+    @only_initialized_player
     def stop(self):
         self._media_player.stop()
 
+    @only_initialized_player
     def play(self):
         self._media_player.play()
 
+    @only_initialized_player
     def set_pause(self, is_paused):
         self._log.debug(f"Set pause {is_paused}")
 
@@ -382,6 +397,7 @@ class VlcPlayerBase(ABC):
 
         self._media_player.set_pause(is_paused)
 
+    @only_initialized_player
     def set_time(self, seek_ms):
         if self.media_input.is_live:
             return
@@ -391,24 +407,25 @@ class VlcPlayerBase(ABC):
 
         self._media_player.set_time(seek_ms)
 
+    @only_initialized_player
     def set_playback_rate(self, rate):
         if self.media_input.is_live:
             return
 
         self._media_player.set_rate(rate)
 
+    @only_initialized_player
     def audio_set_mute(self, is_muted):
         self._media_player.audio_set_mute(is_muted)
 
+    @only_initialized_player
     def audio_set_volume(self, volume_percent: float):
         volume = int(volume_percent * 100)
 
         self._media_player.audio_set_volume(volume)
 
+    @only_initialized_player
     def adjust_view(self, size, aspect, scale):
-        if self._media_player is None:
-            return
-
         if self.media_track is None:
             # video not loaded yet, video frame resized on init
             if self.media_input:
