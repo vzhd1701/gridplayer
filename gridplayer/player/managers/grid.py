@@ -1,3 +1,4 @@
+import contextlib
 import math
 from typing import NamedTuple
 
@@ -109,6 +110,12 @@ class GridManager(ManagerBase):
 
         return GridDimensions(cols, rows)
 
+    @contextlib.contextmanager
+    def slow_ui_operation(self):
+        self.parent().setUpdatesEnabled(False)
+        yield
+        self.parent().setUpdatesEnabled(True)
+
     def grid_state(self):
         return GridState(
             mode=self._grid_mode,
@@ -158,19 +165,21 @@ class GridManager(ManagerBase):
             self._adjust_grid_stretch()
 
     def reload_video_grid(self):
-        self._reset_video_grid()
+        with self.slow_ui_operation():
+            self._reset_video_grid()
 
-        if not self._ctx.video_blocks:
-            return
+            if not self._ctx.video_blocks:
+                self._grid.activate()
+                return
 
-        self._adjust_window()
-        self._adjust_cells()
+            self._adjust_window()
+            self._adjust_cells()
 
-        self._populate_grid()
+            self._populate_grid()
 
-        self.adapt_grid()
+            self.adapt_grid()
 
-        self.parent().layout().activate()
+            self._grid.activate()
 
     def _reset_grid_stretch(self):
         for c in range(self._grid.columnCount()):
