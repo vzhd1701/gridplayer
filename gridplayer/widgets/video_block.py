@@ -146,7 +146,7 @@ class VideoBlock(QWidget):  # noqa: WPS230
         self.is_active = False
 
         self._title = None
-        self.default_title = None
+        self._default_title = None
         self.is_live = False
         self.streams = Streams()
 
@@ -327,7 +327,7 @@ class VideoBlock(QWidget):  # noqa: WPS230
         self.is_error = False
         self.streams = Streams()
         self._title = None
-        self.default_title = None
+        self._default_title = None
 
         self.reset()
 
@@ -360,7 +360,7 @@ class VideoBlock(QWidget):  # noqa: WPS230
         event.ignore()
 
     def mouseReleaseEvent(self, event) -> None:
-        if not self.is_video_initialized or self.is_live:
+        if not self.is_video_initialized:
             event.ignore()
             return
 
@@ -516,7 +516,7 @@ class VideoBlock(QWidget):  # noqa: WPS230
             )
 
     def set_video_url(self, video: ResolvedVideo):
-        self.default_title = video.title
+        self._default_title = video.title
 
         if self.video_params.title is None:
             self.title = video.title
@@ -552,12 +552,12 @@ class VideoBlock(QWidget):  # noqa: WPS230
         # final verdict belongs to VLC
         self.is_live = self.video_driver.is_live
 
-        if self.default_title is None:
-            self.default_title = self.video_params.uri_name
+        if self._default_title is None:
+            self._default_title = self.video_params.uri_name
 
         if self.title is None:
             if self.video_params.title is None:
-                self.title = self.default_title
+                self.title = self._default_title
             else:
                 self.title = self.video_params.title
 
@@ -596,9 +596,6 @@ class VideoBlock(QWidget):  # noqa: WPS230
         self.set_loop_start_time(self.time)
 
     def set_loop_start_time(self, new_time):
-        if self.is_live:
-            return
-
         if new_time == self.video_params.loop_end:
             return
 
@@ -613,9 +610,6 @@ class VideoBlock(QWidget):  # noqa: WPS230
         self.set_loop_end_time(self.time)
 
     def set_loop_end_time(self, new_time):
-        if self.is_live:
-            return
-
         if new_time == self.video_params.loop_start:
             return
 
@@ -842,7 +836,7 @@ class VideoBlock(QWidget):  # noqa: WPS230
         self.video_params.uri = new_video
         self.video_params.is_paused = False
         self._title = None
-        self.default_title = None
+        self._default_title = None
 
         self.set_video(self.video_params)
 
@@ -850,7 +844,7 @@ class VideoBlock(QWidget):  # noqa: WPS230
         new_data = QVideoRenameDialog.get_edits(
             parent=self.parent(),
             title=self.tr("Rename video"),
-            orig_title=self.default_title,
+            orig_title=self._default_title,
             cur_title=self.title,
             cur_color=self.video_params.color.as_rgb_tuple(),
         )
@@ -862,7 +856,7 @@ class VideoBlock(QWidget):  # noqa: WPS230
 
         self.video_params.color = Color(new_color)
 
-        if new_name == self.default_title:
+        if new_name == self._default_title:
             self.video_params.title = None
         else:
             self.video_params.title = new_name
