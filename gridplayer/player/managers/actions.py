@@ -27,7 +27,7 @@ COMMANDS = MappingProxyType(
             "title": translate("Actions", "Close"),
             "key": "Ctrl+Q",
             "icon": "close",
-            "func": ("active", "exit"),
+            "func": ("active", "close"),
         },
         "Reload": {
             "title": translate("Actions", "Reload"),

@@ -3,7 +3,7 @@ import random
 import re
 import secrets
 from pathlib import Path
-from typing import Dict, Optional, Set, Tuple
+from typing import Dict, Optional, Tuple
 
 from pydantic.color import Color
 from PyQt5.QtCore import Qt, QTimer, pyqtSignal
@@ -115,7 +115,7 @@ class Streams(object):
 class VideoBlock(QWidget):  # noqa: WPS230
     load_video = pyqtSignal(MediaInput)
 
-    exit_request = pyqtSignal(str)
+    about_to_close = pyqtSignal(str)
     percent_changed = pyqtSignal(float)
 
     time_change = pyqtSignal(int, int)
@@ -237,7 +237,7 @@ class VideoBlock(QWidget):  # noqa: WPS230
             (overlay.set_vid_pos, self.seek_percent),
             (overlay.set_vid_pos, self.percent_changed),
             (overlay.set_volume, self.set_volume),
-            (overlay.exit_clicked, self.exit),
+            (overlay.exit_clicked, self.close),
             (overlay.play_pause_clicked, self.play_pause),
             (overlay.mute_unmute_clicked, self.mute_unmute),
             (self.time_change, overlay.set_position),
@@ -277,14 +277,6 @@ class VideoBlock(QWidget):  # noqa: WPS230
 
     def crash(self, traceback_txt):
         raise PlayerException(traceback_txt)
-
-    def close_select(self, close_ids: Set[str]):
-        if self.id not in close_ids:
-            return
-
-        self.cleanup()
-
-        self.close()
 
     def cleanup(self):
         self.overlay_hide_timer.stop()
@@ -336,9 +328,20 @@ class VideoBlock(QWidget):  # noqa: WPS230
 
         self.set_video(video_params)
 
-    def exit(self):
+    def close_silently(self):
+        self.close(notify=False)
+
+    def close(self, notify=True):
         self._log.debug(f"Closing video block {self.id}")
-        self.exit_request.emit(self.id)
+
+        if notify:
+            self.about_to_close.emit(self.id)
+
+        super().close()
+
+    def closeEvent(self, event) -> None:
+        self.cleanup()
+        event.accept()
 
     def wheelEvent(self, event):
         if not self.is_video_initialized or self.is_live:

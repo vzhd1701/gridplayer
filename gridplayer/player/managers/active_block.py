@@ -44,7 +44,7 @@ class ActiveBlockManager(ManagerBase):
         }
 
     def cmd_active(self, command, *args):
-        is_inactive_command = command in {"switch_stream_quality", "reload", "exit"}
+        is_inactive_command = command in {"switch_stream_quality", "reload", "close"}
 
         if not is_inactive_command and not self.is_active_initialized():
             return

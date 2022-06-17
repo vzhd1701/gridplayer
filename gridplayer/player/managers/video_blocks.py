@@ -28,6 +28,9 @@ class VideoBlocks(object):
     def remove(self, block):
         self._blocks.remove(block)
 
+    def clear(self):
+        self._blocks.clear()
+
     def index(self, block):
         return self._blocks.index(block)
 
@@ -65,7 +68,7 @@ class VideoBlocksManager(ManagerBase):
     seek_random = pyqtSignal()
     seek_percent = pyqtSignal(float)
 
-    close = pyqtSignal(set)
+    close_all_signal = pyqtSignal()
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -128,6 +131,10 @@ class VideoBlocksManager(ManagerBase):
         self.set_pause.emit(True)
 
     def reload_videos(self):
+        if self._videos_to_reload:
+            self._log.warning("Reload: operation in progress")
+            return
+
         self._videos_to_reload = self._ctx.video_blocks.videos
 
         self._log.debug("Reload: closing all")
@@ -153,20 +160,20 @@ class VideoBlocksManager(ManagerBase):
 
         self.video_count_changed.emit(len(self._ctx.video_blocks))
 
-    def remove_video_blocks(self, *videoblocks):
-        self.close.emit({vb.id for vb in videoblocks})
-
-        for vb in videoblocks:
-            self._ctx.video_blocks.remove(vb)
+    def close_single(self, _id):
+        closing_block = self._ctx.video_blocks.by_id(_id)
+        self._ctx.video_blocks.remove(closing_block)
 
         self.video_count_changed.emit(len(self._ctx.video_blocks))
 
-    def close_video_block(self, _id):
-        closing_block = self._ctx.video_blocks.by_id(_id)
-        self.remove_video_blocks(closing_block)
-
     def close_all(self):
-        self.remove_video_blocks(*self._ctx.video_blocks)
+        self.close_all_signal.emit()
+
+        self._log.debug("Clearing video blocks array")
+
+        self._ctx.video_blocks.clear()
+
+        self.video_count_changed.emit(len(self._ctx.video_blocks))
 
     def playing_count_change(self):
         playing_videos_count = len(self._ctx.video_blocks.unpaused)
@@ -183,7 +190,7 @@ class VideoBlocksManager(ManagerBase):
         vb.setAttribute(Qt.WA_DeleteOnClose)
 
         qt_connect(
-            (vb.exit_request, self.close_video_block),
+            (vb.about_to_close, self.close_single),
             (vb.is_paused_change, self.playing_count_change),
             (vb.percent_changed, self.seek_sync),
             (vb.destroyed, self._video_block_destroyed),
@@ -193,7 +200,7 @@ class VideoBlocksManager(ManagerBase):
             (self.seek_random, vb.seek_random),
             (self.seek_percent, vb.seek_percent),
             (self.hide_overlay, vb.hide_overlay),
-            (self.close, vb.close_select),
+            (self.close_all_signal, vb.close_silently),
         )
 
         vb.set_video(video)
