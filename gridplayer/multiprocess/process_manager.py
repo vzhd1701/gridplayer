@@ -1,7 +1,7 @@
 import logging
 import os
 from multiprocessing import Queue, active_children, get_start_method
-from threading import Condition
+from threading import Condition, Lock
 
 from PyQt5.QtCore import QObject, pyqtSignal
 
@@ -31,7 +31,9 @@ class ProcessManager(CommandLoopThreaded, QObject):
 
         self.crash_func = self.crash_all
 
+        self.instances_lock = Lock()
         self.instances = {}
+
         self.dying_instances = set()
 
         self._instances_killed = Condition()
@@ -59,12 +61,24 @@ class ProcessManager(CommandLoopThreaded, QObject):
 
         self._log = logging.getLogger(self.__class__.__name__)
 
+    @property
+    def active_instances(self):
+        active_instances = []
+        with self.instances_lock:
+            for instance in self.instances.values():
+                with instance.is_dead.get_lock():
+                    if not instance.is_dead.value:
+                        active_instances.append(instance)  # noqa: WPS220
+        return active_instances
+
     def get_instance(self):
         instance = self._get_available_instance()
 
         if instance is None:
             instance = self.create_instance()
-            self.instances[instance.id] = instance
+
+            with self.instances_lock:
+                self.instances[instance.id] = instance
 
             self._log.debug(f"Launching process {instance.id}")
             instance.process.start()
@@ -89,7 +103,8 @@ class ProcessManager(CommandLoopThreaded, QObject):
         return PlayerInstance(instance, player_id)
 
     def cleanup_instance(self, inst_id):
-        instance = self.instances.pop(inst_id)
+        with self.instances_lock:
+            instance = self.instances.pop(inst_id)
 
         self.dying_instances.add(inst_id)
 
@@ -125,14 +140,13 @@ class ProcessManager(CommandLoopThreaded, QObject):
             self._log_listener.stop()
 
     def set_log_level(self, log_level):
-        active_instances = (i for i in self.instances.values() if not i.is_dead.value)
-
-        for a in active_instances:
+        for a in self.active_instances:
             a.request_set_log_level(log_level)
 
     def _get_available_instance(self):
-        available_instances = (
-            i for i in self.instances.values() if i.player_count.value < self._limit
-        )
+        for instance in self.active_instances:
+            with instance.player_count.get_lock():
+                if instance.player_count.value < self._limit:
+                    return instance
 
-        return next(available_instances, None)
+        return None

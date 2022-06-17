@@ -193,9 +193,7 @@ class InstanceVLC(object):
 
 class ProcessManagerVLC(ProcessManager):
     def set_log_level_vlc(self, log_level):
-        active_instances = (i for i in self.instances.values() if not i.is_dead.value)
-
-        for a in active_instances:
+        for a in self.active_instances:
             a.request_set_log_level_vlc(log_level)
 
     def create_instance(self):
