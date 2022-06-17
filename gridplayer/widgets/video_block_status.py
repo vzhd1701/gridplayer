@@ -107,9 +107,9 @@ class JumpingBar(QWidget):
         if start_percent == 100:
             return total_time
 
-        return (
-            (100 - self._bar_percent) / (100 - self.bar_lowest_percent)
-        ) * total_time
+        return int(
+            ((100 - self._bar_percent) / (100 - self.bar_lowest_percent)) * total_time
+        )
 
 
 class LoadingBars(QWidget):
