@@ -107,11 +107,11 @@ class OverlayButtonDynamic(OverlayButton, ABC):
         self._is_in_progress = False
         self._icon_spin = 0
 
-        self.animation = QPropertyAnimation(self, b"icon_spin")
-        self.animation.setDuration(500)  # noqa: WPS432
-        self.animation.setStartValue(0)
-        self.animation.setEndValue(360)  # noqa: WPS432
-        self.animation.setLoopCount(-1)
+        self._animation = QPropertyAnimation(self, b"icon_spin")
+        self._animation.setDuration(500)  # noqa: WPS432
+        self._animation.setStartValue(0)
+        self._animation.setEndValue(360)  # noqa: WPS432
+        self._animation.setLoopCount(-1)
 
     @pyqtProperty(int)
     def icon_spin(self):
@@ -137,9 +137,11 @@ class OverlayButtonDynamic(OverlayButton, ABC):
         self._is_in_progress = is_in_progress
 
         if is_in_progress:
-            self.animation.start()
+            self._animation.start()
         else:
-            self.animation.stop()
+            self._animation.stop()
+
+        self.update()
 
     @OverlayButton.is_off.setter
     def is_off(self, is_off):
