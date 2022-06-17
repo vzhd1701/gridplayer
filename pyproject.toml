@@ -93,7 +93,7 @@ nested_classes_whitelist=["Config"]
 
 pycodestyle = ["+*", "-E203", "-W503"]
 flake8-bandit = ["+*", "-S404"]
-flake8-commas = ["+*", "-C812"]
+flake8-commas = ["+*", "-C812", "-C815"]
 flake8-quotes = ["+*", "-Q000"]
 flake8-rst-docstrings = ["-*"]
 flake8-docstrings = ["-*"]
