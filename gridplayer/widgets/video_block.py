@@ -376,7 +376,7 @@ class VideoBlock(QWidget):  # noqa: WPS230
         self.hide_overlay()
 
     def showEvent(self, event):
-        if self.is_video_initialized and not Settings().get("misc/overlay_hide"):
+        if not Settings().get("misc/overlay_hide"):
             self.show_overlay()
 
     def customEvent(self, event):
@@ -444,6 +444,9 @@ class VideoBlock(QWidget):  # noqa: WPS230
         return self.video_params.loop_end
 
     def show_overlay(self):
+        if not self.is_video_initialized:
+            return
+
         self.overlay.show()
         if Settings().get("misc/overlay_hide"):
             self.overlay_hide_timer.start(1000 * Settings().get("misc/overlay_timeout"))
