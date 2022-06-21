@@ -87,12 +87,8 @@ class InstanceVLC(object):
         self._logger_buf = None
         self._logger_buf_len = 1024
 
-    # process
-    def init_instance(self):
-        self._logger = logging.getLogger("VLC")
-
-        warnings.filterwarnings("ignore", category=DeprecationWarning)
-
+    @property
+    def init_options(self):
         options = [
             # this option is good for making video loop forever,
             # but glitchy files will retry 65535 times before giving up
@@ -119,8 +115,8 @@ class InstanceVLC(object):
         if _is_plugin_cache_exists():
             self._logger.debug("Using plugin cache")
             options.append("--no-plugins-scan")
-
         # https://forum.videolan.org/viewtopic.php?t=147229
+
         if env.IS_WINDOWS:
             options.append("--aout=directsound")
 
@@ -136,7 +132,15 @@ class InstanceVLC(object):
         if env.IS_APPIMAGE:
             options.append("--aout=pulse")
 
-        self.vlc_instance = vlc.Instance(options)
+        return options
+
+    # process
+    def init_instance(self):
+        self._logger = logging.getLogger("VLC")
+
+        warnings.filterwarnings("ignore", category=DeprecationWarning)
+
+        self.vlc_instance = vlc.Instance(self.init_options)
 
         if self.vlc_instance is None:
             raise RuntimeError("VLC failed to initialize")
