@@ -102,6 +102,11 @@ class Video(BaseModel):
         return isinstance(self.uri, VideoURL) and self.uri.scheme in {"http", "https"}
 
 
+class VideoBlockMime(BaseModel):
+    id: str
+    video: Video
+
+
 def filter_video_uris(uris: Iterable[str]) -> List[Video]:
     valid_urls = []
 

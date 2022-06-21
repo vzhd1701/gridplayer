@@ -3,15 +3,21 @@ from typing import List, Optional, Union
 
 from PyQt5.QtCore import QMimeData
 
+from gridplayer.models.video import VideoBlockMime
 from gridplayer.utils.misc import is_url
 
 
-def drag_has_video_id(dnd_data: QMimeData):
-    return dnd_data.hasFormat("application/x-gridplayer-video-id")
+def drag_has_video(dnd_data: QMimeData) -> bool:
+    return dnd_data.hasFormat("application/x-gridplayer-video")
 
 
-def drag_get_video_id(dnd_data: QMimeData):
-    return bytes(dnd_data.data("application/x-gridplayer-video-id")).decode()
+def drag_get_video(dnd_data: QMimeData) -> Optional[VideoBlockMime]:
+    if not drag_has_video(dnd_data):
+        return None
+
+    return VideoBlockMime.parse_raw(
+        bytes(dnd_data.data("application/x-gridplayer-video")).decode("utf-8")
+    )
 
 
 def drag_get_uris(dnd_data: QMimeData) -> List[str]:

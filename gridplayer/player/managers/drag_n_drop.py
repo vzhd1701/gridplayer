@@ -8,8 +8,8 @@ from gridplayer.models.video import filter_video_uris
 from gridplayer.player.managers.base import ManagerBase
 from gridplayer.utils.files import (
     drag_get_uris,
-    drag_get_video_id,
-    drag_has_video_id,
+    drag_get_video,
+    drag_has_video,
     get_playlist_path,
 )
 
@@ -48,7 +48,7 @@ class DragNDropManager(ManagerBase):
     def dragEnterEvent(self, event):
         drag_data = event.mimeData()
 
-        if not drag_get_uris(drag_data) and not drag_has_video_id(drag_data):
+        if not drag_get_uris(drag_data) and not drag_has_video(drag_data):
             return
 
         event.setDropAction(Qt.MoveAction)
@@ -57,21 +57,23 @@ class DragNDropManager(ManagerBase):
     def dropEvent(self, event):
         drop_data = event.mimeData()
         drop_files = drag_get_uris(drop_data)
+        drop_video = drag_get_video(drop_data)
 
         # Add new video
         if drop_files:
             return self._drop_files(event, drop_files)
 
-        # Swap videos
-        elif drag_has_video_id(drop_data):
-            return self._drop_video_block(event, drop_data)
+        # Swap videos or transfer from another instance
+        elif drop_video:
+            return self._drop_video_block(event, drop_video)
 
     def dragMoveEvent(self, event):
-        drop_data = event.mimeData()
+        drag_video = drag_get_video(event.mimeData())
 
-        if drag_has_video_id(drop_data):
-            src_video = self._ctx.video_blocks.by_id(drag_get_video_id(drop_data))
-            src_video.show_overlay()
+        if drag_video:
+            src_video = self._ctx.video_blocks.by_id(drag_video.id)
+            if src_video:
+                src_video.show_overlay()
 
     def _drop_files(self, event, drop_files):
         playlist = get_playlist_path(drop_files)
@@ -86,15 +88,22 @@ class DragNDropManager(ManagerBase):
 
         return True
 
-    def _drop_video_block(self, event, drop_data):
-        dst_video = self._ctx.active_block
-        if dst_video is None:
-            self._log.debug("No video under cursor, discarding drop")
-            return False
+    def _drop_video_block(self, event, dropped_video):
+        src_video = self._ctx.video_blocks.by_id(dropped_video.id)
 
-        src_video = self._ctx.video_blocks.by_id(drag_get_video_id(drop_data))
+        # Local video, swapping
+        if src_video:
+            dst_video = self._ctx.active_block
+            if dst_video is None:
+                self._log.debug("No video under cursor, discarding drop")
+                return False
 
-        self._swap_videos(src_video, dst_video)
+            self._swap_videos(src_video, dst_video)
+
+        # Video from other player instance, adding as new
+        else:
+            self._log.debug("Dropped video from another instance")
+            self.videos_dropped.emit([dropped_video.video])
 
         event.acceptProposedAction()
 
@@ -114,12 +123,17 @@ class DragNDropManager(ManagerBase):
         return self._ctx.active_block is not None
 
     def _get_drag_video(self):
+        if not self._ctx.active_block:
+            return None
+
+        drag_data = self._ctx.active_block.drag_data.json()
+
         drag = QDrag(self)
 
         mimeData = QMimeData()
         mimeData.setData(
-            "application/x-gridplayer-video-id",
-            self._ctx.active_block.id.encode(),
+            "application/x-gridplayer-video",
+            drag_data.encode("utf-8"),
         )
         drag.setMimeData(mimeData)
 

@@ -18,6 +18,7 @@ from gridplayer.models.video import (
     MIN_RATE,
     MIN_SCALE,
     Video,
+    VideoBlockMime,
     VideoURL,
 )
 from gridplayer.params.static import (
@@ -390,6 +391,10 @@ class VideoBlock(QWidget):  # noqa: WPS230
 
     def is_under_cursor(self):
         return self.rect().contains(self.mapFromGlobal(QCursor.pos()))
+
+    @property
+    def drag_data(self):
+        return VideoBlockMime(id=self.id, video=self.video_params)
 
     @property
     def size_tuple(self) -> Tuple[int, int]:
