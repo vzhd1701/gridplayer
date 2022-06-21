@@ -40,7 +40,7 @@ _default_settings = {
     "playlist/save_position": False,
     "playlist/save_state": False,
     "playlist/save_window": False,
-    "playlist/seek_sync_mode": SeekSyncMode.NONE,
+    "playlist/seek_sync_mode": SeekSyncMode.DISABLED,
     "playlist/track_changes": True,
     "video_defaults/aspect": VideoAspect.FIT,
     "video_defaults/repeat": VideoRepeat.SINGLE_FILE,

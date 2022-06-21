@@ -46,7 +46,7 @@ class VideoDriver(AutoName):
 
 
 class SeekSyncMode(AutoName):
-    NONE = auto()
+    DISABLED = auto()
     PERCENT = auto()
     TIMECODE = auto()
 

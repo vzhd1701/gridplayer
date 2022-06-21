@@ -277,20 +277,20 @@ COMMANDS = MappingProxyType(
             "func": "close_playlist",
             "enable_if": "is_videos",
         },
-        "Seek Sync (None)": {
-            "title": translate("Actions", "None"),
+        "Seek Sync (Disabled)": {
+            "title": translate("Actions", "Disabled"),
             "icon": "empty",
-            "func": ("set_seek_sync_mode", SeekSyncMode.NONE),
-            "check_if": ("is_seek_sync_mode_set_to", SeekSyncMode.NONE),
+            "func": ("set_seek_sync_mode", SeekSyncMode.DISABLED),
+            "check_if": ("is_seek_sync_mode_set_to", SeekSyncMode.DISABLED),
         },
         "Seek Sync (Percent)": {
-            "title": translate("Actions", "Percent"),
+            "title": translate("Actions", "Sync by percent"),
             "icon": "seek-sync-percent",
             "func": ("set_seek_sync_mode", SeekSyncMode.PERCENT),
             "check_if": ("is_seek_sync_mode_set_to", SeekSyncMode.PERCENT),
         },
         "Seek Sync (Timecode)": {
-            "title": translate("Actions", "Timecode"),
+            "title": translate("Actions", "Sync by timecode"),
             "icon": "seek-sync-time",
             "func": ("set_seek_sync_mode", SeekSyncMode.TIMECODE),
             "check_if": ("is_seek_sync_mode_set_to", SeekSyncMode.TIMECODE),

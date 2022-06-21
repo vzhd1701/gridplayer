@@ -296,7 +296,7 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
 
     def fill_playlistSeekSyncMode(self):
         seek_modes = {
-            SeekSyncMode.NONE: self.tr("None"),
+            SeekSyncMode.DISABLED: self.tr("Disabled"),
             SeekSyncMode.PERCENT: self.tr("Percent"),
             SeekSyncMode.TIMECODE: self.tr("Timecode"),
         }

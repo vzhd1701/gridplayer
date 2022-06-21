@@ -101,7 +101,7 @@ SECTIONS = MappingProxyType(
             ),
             (
                 "Seek Sync",
-                "Seek Sync (None)",
+                "Seek Sync (Disabled)",
                 "Seek Sync (Percent)",
                 "Seek Sync (Timecode)",
             ),
