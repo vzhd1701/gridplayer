@@ -251,6 +251,12 @@ COMMANDS = MappingProxyType(
             "icon": "loop-random",
             "func": "loop_random",
         },
+        "Timecode": {
+            "title": translate("Actions", "Timecode"),
+            "key": "T",
+            "icon": "seek-sync-time",
+            "func": "seek_timecode",
+        },
         "Open Playlist": {
             "title": translate("Actions", "Open Playlist"),
             "key": "Ctrl+O",

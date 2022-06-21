@@ -2,6 +2,7 @@ from typing import List
 
 from PyQt5.QtCore import Qt, pyqtSignal
 
+from gridplayer.dialogs.input_dialog import QCustomSpinboxTimeInput
 from gridplayer.models.video import Video
 from gridplayer.params.static import SeekSyncMode
 from gridplayer.player.managers.base import ManagerBase
@@ -87,7 +88,7 @@ class VideoBlocksManager(ManagerBase):
         return {
             "play_pause_all": self.cmd_play_pause_all,
             "loop_random": self.seek_random.emit,
-            "seek_timecode": self.seek_random.emit,
+            "seek_timecode": self.cmd_seek_timecode,
             "seek_shift_all": self.cmd_seek_shift_all,
             "seek_shift_ms_all": self.cmd_seek_shift_ms_all,
             "step_forward": self.cmd_step_forward,
@@ -119,6 +120,16 @@ class VideoBlocksManager(ManagerBase):
     def cmd_step_backward(self):
         self.pause_all()
         self.step_frame.emit(1)
+
+    def cmd_seek_timecode(self):
+        time_ms = QCustomSpinboxTimeInput.get_time_ms_int(
+            self.parent(), self.tr("Enter timecode")
+        )
+
+        if time_ms is None:
+            return
+
+        self.seek_timecode.emit(time_ms)
 
     def seek_sync_percent(self, percent):
         if self._ctx.seek_sync_mode == SeekSyncMode.PERCENT:
