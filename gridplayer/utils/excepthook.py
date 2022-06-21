@@ -8,6 +8,10 @@ from gridplayer.utils.misc import force_terminate
 
 
 def excepthook(exc_type, exc_value, exc_tb):
+    if exc_type is KeyboardInterrupt:
+        logging.info("KeyboardInterrupt")
+        force_terminate()
+
     # Log into file
     exception_txt = "".join(traceback.format_exception(exc_type, exc_value, exc_tb))
 
