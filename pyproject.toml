@@ -56,7 +56,6 @@ exclude = [
     "gridplayer/*_ui.py",
     "gridplayer/resources_bin.py",
     "gridplayer/player/__init__.py",
-    "gridplayer/player/mixins/__init__.py",
     "tests/*.py",
     "gridplayer/resources/*",
 ]
@@ -119,10 +118,6 @@ wemake-python-styleguide = ["+*", "-WPS110", "-WPS339", "-WPS433", "-WPS440"]
 # WPS221 Jones Complexity
 # WPS432 magic numbers
 wemake-python-styleguide = ["+*", "-WPS204", "-WPS213", "-WPS221", "-WPS432"]
-
-[tool.flakehell.exceptions."gridplayer/widgets/video_frame_vlc_*w.py"]
-# WPS615 unpythonic setter
-wemake-python-styleguide = ["+*", "-WPS615"]
 
 [tool.flakehell.exceptions."gridplayer/dialogs/messagebox.py"]
 # Overriding Qt class
