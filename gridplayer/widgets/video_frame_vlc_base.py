@@ -171,6 +171,9 @@ class VideoFrameVLC(QWidget, metaclass=QABC):
         self.video_driver.cleanup()
 
     def adjust_view(self) -> Optional[bool]:
+        if self._is_cleanup_requested:
+            return True
+
         if not self.is_video_initialized:
             return False
 
