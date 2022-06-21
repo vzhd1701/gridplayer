@@ -3,6 +3,7 @@ from typing import List
 from PyQt5.QtCore import Qt, pyqtSignal
 
 from gridplayer.models.video import Video
+from gridplayer.params.static import SeekSyncMode
 from gridplayer.player.managers.base import ManagerBase
 from gridplayer.settings import Settings
 from gridplayer.utils.qt import qt_connect
@@ -67,13 +68,14 @@ class VideoBlocksManager(ManagerBase):
     seek_shift_ms = pyqtSignal(int)
     seek_random = pyqtSignal()
     seek_percent = pyqtSignal(float)
+    seek_timecode = pyqtSignal(int)
 
     close_all_signal = pyqtSignal()
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
-        self._ctx.is_seek_synced = Settings().get("playlist/seek_synced")
+        self._ctx.seek_sync_mode = Settings().get("playlist/seek_sync_mode")
 
         self._ctx.video_blocks = VideoBlocks()
 
@@ -85,13 +87,14 @@ class VideoBlocksManager(ManagerBase):
         return {
             "play_pause_all": self.cmd_play_pause_all,
             "loop_random": self.seek_random.emit,
+            "seek_timecode": self.seek_random.emit,
             "seek_shift_all": self.cmd_seek_shift_all,
             "seek_shift_ms_all": self.cmd_seek_shift_ms_all,
             "step_forward": self.cmd_step_forward,
             "step_backward": self.cmd_step_backward,
             "is_videos": lambda: bool(self._ctx.video_blocks),
-            "is_seek_synced": lambda: self._ctx.is_seek_synced,
-            "switch_seek_synced": self.switch_seek_synced,
+            "is_seek_sync_mode_set_to": self.is_seek_sync_mode_set_to,
+            "set_seek_sync_mode": self.set_seek_sync_mode,
             "reload_all": self.reload_videos,
         }
 
@@ -117,15 +120,19 @@ class VideoBlocksManager(ManagerBase):
         self.pause_all()
         self.step_frame.emit(1)
 
-    def seek_sync(self, percent):
-        if self._ctx.is_seek_synced:
+    def seek_sync_percent(self, percent):
+        if self._ctx.seek_sync_mode == SeekSyncMode.PERCENT:
             self.seek_percent.emit(percent)
 
-    def switch_seek_synced(self):
-        self._ctx.is_seek_synced = not self._ctx.is_seek_synced
+    def seek_sync_timecode(self, timecode):
+        if self._ctx.seek_sync_mode == SeekSyncMode.TIMECODE:
+            self.seek_timecode.emit(timecode)
 
-    def set_seek_synced(self, is_seek_synced):
-        self._ctx.is_seek_synced = is_seek_synced
+    def is_seek_sync_mode_set_to(self, mode):
+        return self._ctx.seek_sync_mode == mode
+
+    def set_seek_sync_mode(self, mode):
+        self._ctx.seek_sync_mode = mode
 
     def pause_all(self):
         self.set_pause.emit(True)
@@ -192,13 +199,15 @@ class VideoBlocksManager(ManagerBase):
         qt_connect(
             (vb.about_to_close, self.close_single),
             (vb.is_paused_change, self.playing_count_change),
-            (vb.percent_changed, self.seek_sync),
+            (vb.seeked_percent, self.seek_sync_percent),
+            (vb.seeked_time, self.seek_sync_timecode),
             (vb.destroyed, self._video_block_destroyed),
             (self.set_pause, vb.set_pause),
             (self.seek_shift, vb.seek_shift_percent),
             (self.seek_shift_ms, vb.seek_shift),
             (self.seek_random, vb.seek_random),
             (self.seek_percent, vb.seek_percent),
+            (self.seek_timecode, vb.seek),
             (self.hide_overlay, vb.hide_overlay),
             (self.close_all_signal, vb.close_silently),
         )

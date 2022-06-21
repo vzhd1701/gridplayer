@@ -7,7 +7,7 @@ from gridplayer.dialogs.messagebox import QCustomMessageBox
 from gridplayer.models.grid_state import GridState
 from gridplayer.models.playlist import Playlist
 from gridplayer.models.video import filter_video_uris
-from gridplayer.params.static import WindowState
+from gridplayer.params.static import SeekSyncMode, WindowState
 from gridplayer.player.managers.base import ManagerBase
 from gridplayer.settings import Settings
 from gridplayer.utils.files import get_playlist_path
@@ -19,7 +19,7 @@ class PlaylistManager(ManagerBase):
     playlist_loaded = pyqtSignal()
     window_state_loaded = pyqtSignal(WindowState)
     grid_state_loaded = pyqtSignal(GridState)
-    is_seek_synced_loaded = pyqtSignal(bool)
+    seek_sync_mode_loaded = pyqtSignal(SeekSyncMode)
     videos_loaded = pyqtSignal(list)
 
     alert = pyqtSignal()
@@ -147,7 +147,7 @@ class PlaylistManager(ManagerBase):
         if playlist.window_state is not None:
             self.window_state_loaded.emit(playlist.window_state)
 
-        self.is_seek_synced_loaded.emit(playlist.is_seek_synced)
+        self.seek_sync_mode_loaded.emit(playlist.seek_sync_mode)
 
         self.alert.emit()
 
@@ -193,5 +193,5 @@ class PlaylistManager(ManagerBase):
             grid_state=self._ctx.grid_state,
             window_state=self._ctx.window_state,
             videos=self._ctx.video_blocks.videos,
-            is_seek_synced=self._ctx.is_seek_synced,
+            seek_sync_mode=self._ctx.seek_sync_mode,
         )

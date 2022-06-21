@@ -45,6 +45,12 @@ class VideoDriver(AutoName):
     DUMMY = auto()
 
 
+class SeekSyncMode(AutoName):
+    NONE = auto()
+    PERCENT = auto()
+    TIMECODE = auto()
+
+
 class WindowState(NamedTuple):
     is_maximized: bool
     is_fullscreen: bool

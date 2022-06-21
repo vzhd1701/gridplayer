@@ -8,6 +8,7 @@ from gridplayer.params import env
 from gridplayer.params.static import (
     SUPPORTED_LANGUAGES,
     GridMode,
+    SeekSyncMode,
     VideoAspect,
     VideoDriver,
     VideoRepeat,
@@ -39,7 +40,7 @@ _default_settings = {
     "playlist/save_position": False,
     "playlist/save_state": False,
     "playlist/save_window": False,
-    "playlist/seek_synced": False,
+    "playlist/seek_sync_mode": SeekSyncMode.NONE,
     "playlist/track_changes": True,
     "video_defaults/aspect": VideoAspect.FIT,
     "video_defaults/repeat": VideoRepeat.SINGLE_FILE,

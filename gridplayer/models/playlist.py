@@ -7,7 +7,7 @@ from pydantic import BaseModel, ValidationError
 
 from gridplayer.models.grid_state import GridState
 from gridplayer.models.video import Video
-from gridplayer.params.static import WindowState
+from gridplayer.params.static import SeekSyncMode, WindowState
 from gridplayer.settings import Settings, default_field
 
 logger = logging.getLogger(__name__)
@@ -17,7 +17,7 @@ class Playlist(BaseModel):
     grid_state: GridState = GridState()
     window_state: Optional[WindowState]
     videos: Optional[List[Video]]
-    is_seek_synced: bool = default_field("playlist/seek_synced")
+    seek_sync_mode: SeekSyncMode = default_field("playlist/seek_sync_mode")
 
     @classmethod
     def read(cls, filename):

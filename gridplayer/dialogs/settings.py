@@ -12,6 +12,7 @@ from gridplayer.params import env
 from gridplayer.params.static import (
     SUPPORTED_LANGUAGES,
     GridMode,
+    SeekSyncMode,
     VideoAspect,
     VideoDriver,
     VideoRepeat,
@@ -73,7 +74,7 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
             "playlist/save_position": self.playlistSavePosition,
             "playlist/save_state": self.playlistSaveState,
             "playlist/save_window": self.playlistSaveWindow,
-            "playlist/seek_synced": self.playlistSeekSync,
+            "playlist/seek_sync_mode": self.playlistSeekSyncMode,
             "playlist/track_changes": self.playlistTrackChanges,
             "video_defaults/aspect": self.videoAspect,
             "video_defaults/repeat": self.repeatMode,
@@ -139,6 +140,7 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
         self.fill_logLevelVLC()
         self.fill_language()
         self.fill_streamQuality()
+        self.fill_playlistSeekSyncMode()
 
     def ui_customize_dynamic(self):
         self.driver_selected(self.playerVideoDriver.currentIndex())
@@ -291,6 +293,15 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
             quality_codes[code] = code
 
         _fill_combo_box(self.streamQuality, quality_codes)
+
+    def fill_playlistSeekSyncMode(self):
+        seek_modes = {
+            SeekSyncMode.NONE: self.tr("None"),
+            SeekSyncMode.PERCENT: self.tr("Percent"),
+            SeekSyncMode.TIMECODE: self.tr("Timecode"),
+        }
+
+        _fill_combo_box(self.playlistSeekSyncMode, seek_modes)
 
     def driver_selected(self, idx):
         driver_id = self.playerVideoDriver.itemData(idx)

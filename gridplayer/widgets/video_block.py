@@ -117,7 +117,9 @@ class VideoBlock(QWidget):  # noqa: WPS230
     load_video = pyqtSignal(MediaInput)
 
     about_to_close = pyqtSignal(str)
-    percent_changed = pyqtSignal(float)
+
+    seeked_percent = pyqtSignal(float)
+    seeked_time = pyqtSignal(int)
 
     time_change = pyqtSignal(int, int)
     volume_change = pyqtSignal(float)
@@ -238,7 +240,7 @@ class VideoBlock(QWidget):  # noqa: WPS230
 
         qt_connect(
             (overlay.set_vid_pos, self.seek_percent),
-            (overlay.set_vid_pos, self.percent_changed),
+            (overlay.set_vid_pos, self.seeked_manually),
             (overlay.set_volume, self.set_volume),
             (overlay.exit_clicked, self.close),
             (overlay.play_pause_clicked, self.play_pause),
@@ -364,7 +366,7 @@ class VideoBlock(QWidget):  # noqa: WPS230
         else:
             self.seek_shift_percent(-shift_percent)
 
-        self.percent_changed.emit(self.position)
+        self.seeked_manually(self.position)
 
         event.ignore()
 
@@ -388,6 +390,10 @@ class VideoBlock(QWidget):  # noqa: WPS230
     def customEvent(self, event):
         if event.type() == OVERLAY_ACTIVITY_EVENT:
             self.show_overlay()
+
+    def seeked_manually(self, percent: float):
+        self.seeked_percent.emit(percent)
+        self.seeked_time.emit(int(self.video_driver.length * percent))
 
     def is_under_cursor(self):
         return self.rect().contains(self.mapFromGlobal(QCursor.pos()))

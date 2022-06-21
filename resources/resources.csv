@@ -66,5 +66,8 @@ icon-symbolic,icons/custom/040-stream quality.svg,stream-quality
 icon-symbolic,icons/custom/041-audio only.svg,audio-only
 icon-symbolic,icons/custom/042-error.svg,error
 icon-symbolic,icons/custom/043-network error.svg,network-error
+icon-symbolic,icons/custom/044-seek sync time.svg,seek-sync-time
+icon-symbolic,icons/custom/045-seek sync percent.svg,seek-sync-percent
+icon-symbolic,icons/custom/046-empty.svg,empty
 translation,translations/ru_RU.ts,ru_RU
 translation,translations/hu_HU.ts,hu_HU

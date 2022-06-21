@@ -5,7 +5,7 @@ from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QIcon, QKeySequence
 from PyQt5.QtWidgets import QAction, QMenu
 
-from gridplayer.params.static import GridMode, VideoAspect, VideoRepeat
+from gridplayer.params.static import GridMode, SeekSyncMode, VideoAspect, VideoRepeat
 from gridplayer.player.managers.base import ManagerBase
 from gridplayer.utils.qt import translate
 
@@ -271,12 +271,23 @@ COMMANDS = MappingProxyType(
             "func": "close_playlist",
             "enable_if": "is_videos",
         },
-        "Seek Sync": {
-            "title": translate("Actions", "Seek Sync"),
-            "key": "Shift+S",
-            "icon": "seek-sync",
-            "func": "switch_seek_synced",
-            "check_if": "is_seek_synced",
+        "Seek Sync (None)": {
+            "title": translate("Actions", "None"),
+            "icon": "empty",
+            "func": ("set_seek_sync_mode", SeekSyncMode.NONE),
+            "check_if": ("is_seek_sync_mode_set_to", SeekSyncMode.NONE),
+        },
+        "Seek Sync (Percent)": {
+            "title": translate("Actions", "Percent"),
+            "icon": "seek-sync-percent",
+            "func": ("set_seek_sync_mode", SeekSyncMode.PERCENT),
+            "check_if": ("is_seek_sync_mode_set_to", SeekSyncMode.PERCENT),
+        },
+        "Seek Sync (Timecode)": {
+            "title": translate("Actions", "Timecode"),
+            "icon": "seek-sync-time",
+            "func": ("set_seek_sync_mode", SeekSyncMode.TIMECODE),
+            "check_if": ("is_seek_sync_mode_set_to", SeekSyncMode.TIMECODE),
         },
         "+1%": {
             "title": "+1%",

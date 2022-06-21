@@ -27,6 +27,7 @@ SUBMENUS = MappingProxyType(
             "icon": "jump-to",
         },
         "Grid": {"title": translate("Actions", "Grid"), "icon": "grid"},
+        "Seek Sync": {"title": translate("Actions", "Seek Sync"), "icon": "seek-sync"},
     }
 )
 
@@ -81,8 +82,6 @@ SECTIONS = MappingProxyType(
             "Play / Pause [ALL]",
             (
                 "Jump (to) [ALL]",
-                "Seek Sync",
-                "---",
                 "Random",
                 "---",
                 "+1%",
@@ -98,6 +97,12 @@ SECTIONS = MappingProxyType(
                 "-5s",
                 "-15s",
                 "-30s",
+            ),
+            (
+                "Seek Sync",
+                "Seek Sync (None)",
+                "Seek Sync (Percent)",
+                "Seek Sync (Timecode)",
             ),
             (
                 "Grid",
