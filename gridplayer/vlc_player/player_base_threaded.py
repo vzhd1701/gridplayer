@@ -6,6 +6,9 @@ class VlcPlayerThreaded(CommandLoopThreaded, VlcPlayerBase):
     def start(self):
         self.cmd_loop_start_thread(self.init_player)
 
+    def notify_update_status(self, status, percent=0):
+        self.cmd_send("update_status_emit", status, percent)
+
     def notify_error(self):
         self.cmd_send("error_state")
 

@@ -11,7 +11,7 @@ from gridplayer.params.static import VideoAspect
 from gridplayer.utils.qt import QABC, QT_ASPECT_MAP, qt_connect
 from gridplayer.vlc_player.static import MediaInput, MediaTrack
 from gridplayer.vlc_player.video_driver_base import VLCVideoDriver
-from gridplayer.widgets.video_block_status import StatusLabel
+from gridplayer.widgets.video_status import VideoStatus
 
 
 class PauseSnapshot(QLabel):
@@ -54,6 +54,7 @@ class VideoFrameVLC(QWidget, metaclass=QABC):
 
     error = pyqtSignal()
     crash = pyqtSignal(str)
+    update_status = pyqtSignal(str, int)
 
     is_opengl: Optional[bool] = None
 
@@ -72,7 +73,7 @@ class VideoFrameVLC(QWidget, metaclass=QABC):
 
         self.ui_setup()
 
-        self.audio_only_placeholder = StatusLabel(parent=self, icon="audio-only")
+        self.audio_only_placeholder = VideoStatus(parent=self, icon="audio-only")
         self.pause_snapshot = PauseSnapshot(parent=self)
 
         self.ui_helper_widgets()
@@ -123,6 +124,7 @@ class VideoFrameVLC(QWidget, metaclass=QABC):
             (self.video_driver.snapshot_taken, self.snapshot_taken),
             (self.video_driver.error, self.error_emit),
             (self.video_driver.crash, self.crash_emit),
+            (self.video_driver.update_status, self.update_status_emit),
         )
 
     def ui_setup(self) -> None:
@@ -154,6 +156,9 @@ class VideoFrameVLC(QWidget, metaclass=QABC):
         self.cleanup()
 
         self.error.emit()
+
+    def update_status_emit(self, status: str, percent) -> None:
+        self.update_status.emit(status, percent)
 
     def cleanup(self) -> Optional[bool]:
         if self._is_cleanup_requested:

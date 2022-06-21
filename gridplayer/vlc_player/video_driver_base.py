@@ -16,6 +16,7 @@ class VLCVideoDriver(QObject, metaclass=QABC):
 
     error = pyqtSignal()
     crash = pyqtSignal(str)
+    update_status = pyqtSignal(str, int)
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -75,3 +76,6 @@ class VLCVideoDriver(QObject, metaclass=QABC):
 
     def error_state(self):
         self.error.emit()
+
+    def update_status_emit(self, status, percent):
+        self.update_status.emit(status, percent)

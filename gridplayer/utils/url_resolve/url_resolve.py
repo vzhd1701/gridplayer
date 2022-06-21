@@ -23,22 +23,44 @@ logger = logging.getLogger(__name__)
 class VideoURLResolverWorker(QObject):
     url_resolved = pyqtSignal(ResolvedVideo)
     error = pyqtSignal()
+    update_status = pyqtSignal(str)
 
     def resolve(self, url):
         try:
-            self.url_resolved.emit(resolve_url(url))
+            self.url_resolved.emit(self.resolve_url(url))
         except BadURLException as e:
+            self.update_status.emit("Failed to resolve URL")
             logger.error(e)
             self.error.emit()
         except Exception:
             # log traceback stack
+            self.update_status.emit("Failed to resolve URL [Exception]")
             logger.critical(traceback.format_exc())
             self.error.emit()
+
+    def resolve_url(self, url: VideoURL) -> Optional[ResolvedVideo]:
+        url_resolvers = {
+            "streamlink": resolve_streamlink,
+            "yt-dlp": resolve_youtube_dl,
+        }
+
+        if YOUTUBE_MATCH.match(url):
+            url_resolvers = {"yt-dlp": resolve_youtube_dl}
+
+        for resolver_name, resolver in url_resolvers.items():
+            self.update_status.emit(f"Resolving URL via {resolver_name}")
+
+            logger.debug(f"Trying to resolve URL with {resolver.__name__}")
+            with contextlib.suppress(NoResolverPlugin):
+                return resolver(url)
+
+        return _resolve_generic(url)
 
 
 class VideoURLResolver(QObject):
     url_resolved = pyqtSignal(ResolvedVideo)
     error = pyqtSignal()
+    update_status = pyqtSignal(str)
 
     _resolve_url = pyqtSignal(str)
 
@@ -52,6 +74,7 @@ class VideoURLResolver(QObject):
 
         self.worker.url_resolved.connect(self.url_resolved)
         self.worker.error.connect(self.error)
+        self.worker.update_status.connect(self.update_status)
 
         self._resolve_url.connect(self.worker.resolve)
 
@@ -63,23 +86,6 @@ class VideoURLResolver(QObject):
 
     def resolve(self, url):
         self._resolve_url.emit(url)
-
-
-def resolve_url(url: VideoURL) -> Optional[ResolvedVideo]:
-    if YOUTUBE_MATCH.match(url):
-        return resolve_youtube_dl(url)
-
-    url_resolvers = [
-        resolve_streamlink,
-        resolve_youtube_dl,
-    ]
-
-    for resolver in url_resolvers:
-        logger.debug(f"Trying to resolve URL with {resolver.__name__}")
-        with contextlib.suppress(NoResolverPlugin):
-            return resolver(url)
-
-    return _resolve_generic(url)
 
 
 def _resolve_generic(url: VideoURL) -> Optional[ResolvedVideo]:

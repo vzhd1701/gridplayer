@@ -81,10 +81,15 @@ class VlcPlayerBase(ABC):
             "encountered_error": self.cb_error,
             "time_changed": self.cb_time_changed,
             "media_parsed_changed": self.cb_parse_changed,
+            "buffering": self.cb_buffering,
         }
 
         for event_name, callback in callbacks.items():
             self._event_manager.subscribe(event_name, callback)
+
+    def cb_buffering(self, event):
+        buffered_percent = int(event.u.new_cache)
+        self.notify_update_status("Buffering", buffered_percent)
 
     def cb_playing(self, event):
         self._log.debug("Media playing")
@@ -99,7 +104,7 @@ class VlcPlayerBase(ABC):
             self._event_waiter.async_wait_for(
                 event="buffering",
                 on_completed=self._timer_unpause_failsafe.start,
-                on_timeout=self.notify_error,
+                on_timeout=lambda: self.error("Buffering timeout"),
                 timeout=INIT_TIMEOUT,
             )
 
@@ -151,8 +156,7 @@ class VlcPlayerBase(ABC):
             return
 
     def cb_error(self, event):
-        self._log.error("MediaPlayer encountered an error")
-        self.notify_error()
+        self.error("Player error")
 
     def cb_parse_changed(self, event):
         self._log.debug("Media parse changed")
@@ -221,7 +225,12 @@ class VlcPlayerBase(ABC):
 
     def error(self, message):
         self._log.error(message)
+        self.notify_update_status(message)
         self.notify_error()
+
+    @abstractmethod
+    def notify_update_status(self, status, percent=0):
+        ...
 
     @abstractmethod
     def notify_error(self):
@@ -288,9 +297,9 @@ class VlcPlayerBase(ABC):
 
         self._media.add_options(*self._media_options)
 
-        self._log.debug("Parsing media")
-
         self._media.parse_with_options(parse_flag, parse_timeout)
+
+        self.notify_update_status("Parsing media")
 
     def load_video_st2_set_parsed_media(self):
         """Step 2. Start video player with parsed file"""
@@ -302,7 +311,7 @@ class VlcPlayerBase(ABC):
         self._event_waiter.async_wait_for(
             event="buffering",
             on_completed=self.loopback_load_video_st3_extract_media_track,
-            on_timeout=self.notify_error,
+            on_timeout=lambda: self.error("Buffering timeout"),
             timeout=INIT_TIMEOUT,
         )
 
@@ -310,6 +319,9 @@ class VlcPlayerBase(ABC):
 
     def load_video_st3_extract_media_track(self):
         """Step 3. Extract media track"""
+
+        if self._media_track_extract_attempts == 0:
+            self.notify_update_status("Preparing video output")
 
         self._log.debug("Extracting media track")
 

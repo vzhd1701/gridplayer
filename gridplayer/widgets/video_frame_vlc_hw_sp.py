@@ -23,6 +23,7 @@ class PlayerProcessSingleVLCHWSP(QThread, VlcPlayerBase, metaclass=QABC):
     end_reached = pyqtSignal()
     time_changed = pyqtSignal(int)
     error_signal = pyqtSignal()
+    update_status_signal = pyqtSignal(str, int)
     snapshot_taken = pyqtSignal(str)
 
     load_video_done = pyqtSignal(MediaTrack)
@@ -95,6 +96,9 @@ class PlayerProcessSingleVLCHWSP(QThread, VlcPlayerBase, metaclass=QABC):
 
         self._cleanup_event.set()
 
+    def notify_update_status(self, status, percent=0):
+        self.update_status_signal.emit(status, percent)
+
     def notify_error(self):
         self.error_signal.emit()
 
@@ -156,6 +160,7 @@ class VideoDriverVLCHWSP(VLCVideoDriver):
             (self.player.end_reached, self.end_reached_emit),
             (self.player.time_changed, self.time_changed),
             (self.player.error_signal, self.error),
+            (self.player.update_status_signal, self.update_status),
             (self.cmd_load_video, self.player.load_video),
             (self.cmd_snapshot, self.player.snapshot),
             (self.cmd_play, self.player.play),

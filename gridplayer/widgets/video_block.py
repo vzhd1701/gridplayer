@@ -31,9 +31,9 @@ from gridplayer.utils.qt import qt_connect
 from gridplayer.utils.url_resolve.static import ResolvedVideo
 from gridplayer.utils.url_resolve.url_resolve import VideoURLResolver
 from gridplayer.vlc_player.static import MediaInput
-from gridplayer.widgets.video_block_status import StatusLabel
 from gridplayer.widgets.video_frame_vlc_base import VideoFrameVLC
 from gridplayer.widgets.video_overlay import OverlayBlock, OverlayBlockFloating
+from gridplayer.widgets.video_status import VideoStatus
 
 IN_PROGRESS_THRESHOLD_MS = 500
 
@@ -169,7 +169,7 @@ class VideoBlock(QWidget):  # noqa: WPS230
 
         self.ui_setup()
 
-        self.status_label.show()
+        self.video_status.show()
         self.overlay.raise_()
         self.overlay.hide()
 
@@ -183,6 +183,7 @@ class VideoBlock(QWidget):  # noqa: WPS230
             (video_driver.playback_status_changed, self.playback_status_changed),
             (video_driver.error, self.video_driver_error),
             (video_driver.crash, self.crash),
+            (video_driver.update_status, self.update_status),
             (self.load_video, video_driver.load_video),
         )
 
@@ -208,6 +209,7 @@ class VideoBlock(QWidget):  # noqa: WPS230
         url_resolver = VideoURLResolver(parent=self)
         url_resolver.error.connect(self.network_error)
         url_resolver.url_resolved.connect(self.set_video_url)
+        url_resolver.update_status.connect(self.update_status)
 
         return url_resolver
 
@@ -266,12 +268,11 @@ class VideoBlock(QWidget):  # noqa: WPS230
         self.layout_main.setContentsMargins(0, 0, 0, 0)
         self.layout_main.setStackingMode(QStackedLayout.StackAll)
 
-        self.status_label = StatusLabel(parent=self)
-        self.status_label.setMouseTracking(True)
-        self.status_label.setWindowFlags(Qt.WindowTransparentForInput)
-        self.status_label.setAttribute(Qt.WA_TransparentForMouseEvents)
+        self.video_status = VideoStatus(parent=self, status_text="Initializing")
+        self.video_status.setMouseTracking(True)
+        self.video_status.setWindowFlags(Qt.WindowTransparentForInput)
 
-        self.layout_main.addWidget(self.status_label)
+        self.layout_main.addWidget(self.video_status)
         self.layout_main.addWidget(self.video_driver)
         self.layout_main.addWidget(self.overlay)
 
@@ -310,9 +311,13 @@ class VideoBlock(QWidget):  # noqa: WPS230
         self.overlay.hide()
         self.video_driver.hide()
 
-        self.status_label.icon = status
-        self.status_label.show()
+        self.video_status.icon = status
+        self.video_status.show()
         self.repaint()
+
+    def update_status(self, info_text, percent=0):
+        self.video_status.status_text = info_text
+        self.video_status.percent = percent
 
     def reload(self):
         self.is_live = False
@@ -581,7 +586,7 @@ class VideoBlock(QWidget):  # noqa: WPS230
 
             self.video_driver.set_playback_rate(self.video_params.rate)
 
-        self.status_label.hide()
+        self.video_status.hide()
         self.show_overlay()
 
     def set_aspect(self, aspect):
