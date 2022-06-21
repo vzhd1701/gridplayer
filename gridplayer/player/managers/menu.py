@@ -1,6 +1,6 @@
 from types import MappingProxyType
 
-from PyQt5.QtCore import QEvent
+from PyQt5.QtCore import QEvent, Qt
 from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import QMenu, QProxyStyle, QStyle
 
@@ -9,10 +9,25 @@ from gridplayer.player.managers.base import ManagerBase
 from gridplayer.utils.qt import translate
 
 MENU_STYLE = """
-QMenu::item { height:24px; padding: 2px; margin: 0 5px;}
-QMenu::item:selected { background-color: #53aedf; }
-QMenu::item:checked { background-color: #7b888f; }
-QMenu::separator { height: 2px; margin: 0; }
+QMenu {
+    background-color: #eee;
+    color: #000;
+    border: 1px solid #aaa;
+    margin: 0;
+    menu-scrollable: 0;
+}
+QMenu::icon { margin-left: 5px;}
+QMenu::item {
+    height:24px;
+    margin: 0;
+    padding: 1px 5px 1px 5px;
+    background: transparent;
+    border: 0 solid transparent;
+}
+QMenu::separator { height: 1px; margin: 2px 3px; background: #aaa; }
+QMenu::item:selected { background-color: #bbb; }
+QMenu::item:checked { background-color: #888; }
+QMenu::item:checked:selected  { background-color: #bbb; }
 """
 
 SUBMENUS = MappingProxyType(
@@ -155,6 +170,9 @@ class MenuManager(ManagerBase):
         menu = QMenu(self.parent())
         menu.setStyle(BigMenuIcons())
         menu.setStyleSheet(MENU_STYLE)
+        menu.setWindowFlags(
+            menu.windowFlags() | Qt.FramelessWindowHint | Qt.NoDropShadowWindowHint
+        )
 
         menu_sections = self._menu_sections()
 
