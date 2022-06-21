@@ -75,7 +75,10 @@ class _Settings(object):
         if issubclass(setting_type, Enum):
             setting_value = self.settings.value(setting, _default_settings[setting])
             if isinstance(setting_value, str):
-                return setting_type(setting_value)
+                try:
+                    return setting_type(setting_value)
+                except ValueError:
+                    return _default_settings[setting]
 
         return self.settings.value(
             setting, _default_settings[setting], type=setting_type
