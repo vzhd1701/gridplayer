@@ -4,7 +4,7 @@ from PyQt5.QtCore import Qt, pyqtSignal
 
 from gridplayer.dialogs.input_dialog import QCustomSpinboxTimeInput
 from gridplayer.models.video import Video
-from gridplayer.params.static import SeekSyncMode, VideoAspect
+from gridplayer.params.static import SeekSyncMode, VideoAspect, VideoRepeat
 from gridplayer.player.managers.base import ManagerBase
 from gridplayer.settings import Settings
 from gridplayer.utils.qt import qt_connect
@@ -82,6 +82,12 @@ class VideoBlocksManager(ManagerBase):
     all_seek = pyqtSignal(int)
     all_next_frame = pyqtSignal()
     all_previous_frame = pyqtSignal()
+
+    all_toggle_loop_random = pyqtSignal()
+    all_set_loop_start = pyqtSignal()
+    all_set_loop_end = pyqtSignal()
+    all_reset_loop = pyqtSignal()
+    all_set_repeat_mode = pyqtSignal(VideoRepeat)
 
     all_rate_increase = pyqtSignal()
     all_rate_decrease = pyqtSignal()
@@ -239,6 +245,11 @@ class VideoBlocksManager(ManagerBase):
             (self.all_seek, vb.seek),
             (self.all_next_frame, vb.next_frame),
             (self.all_previous_frame, vb.previous_frame),
+            (self.all_toggle_loop_random, vb.toggle_loop_random),
+            (self.all_set_loop_start, vb.set_loop_start),
+            (self.all_set_loop_end, vb.set_loop_end),
+            (self.all_reset_loop, vb.reset_loop),
+            (self.all_set_repeat_mode, vb.set_repeat_mode),
             (self.all_rate_increase, vb.rate_increase),
             (self.all_rate_decrease, vb.rate_decrease),
             (self.all_rate_reset, vb.rate_reset),

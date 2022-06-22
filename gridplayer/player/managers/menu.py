@@ -121,6 +121,18 @@ SECTIONS = MappingProxyType(
                     "-30s [ALL]",
                 ),
                 (
+                    "Loop",
+                    "Random Loop [ALL]",
+                    "---",
+                    "Set Loop Start [ALL]",
+                    "Set Loop End [ALL]",
+                    "Loop Reset [ALL]",
+                    "---",
+                    "Repeat Single File [ALL]",
+                    "Repeat Directory [ALL]",
+                    "Repeat Directory (Shuffle) [ALL]",
+                ),
+                (
                     "Speed",
                     "Faster [ALL]",
                     "Slower [ALL]",
