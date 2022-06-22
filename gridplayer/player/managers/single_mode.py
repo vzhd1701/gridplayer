@@ -22,7 +22,11 @@ class SingleModeManager(ManagerBase):
 
     @property
     def commands(self):
-        return {"next_single_video": self.next_single_video}
+        return {
+            "next_single_video": self.next_single_video,
+            "previous_single_video": self.previous_single_video,
+            "is_single_mode": lambda: self._ctx.is_single_mode,
+        }
 
     def mouseDoubleClickEvent(self, event):
         if event.button() == Qt.LeftButton:
@@ -43,25 +47,10 @@ class SingleModeManager(ManagerBase):
             self.single_mode_on()
 
     def next_single_video(self):
-        if not self._ctx.is_single_mode:
-            return
+        self._switch_single_video(is_before=False)
 
-        is_pause_background_videos = Settings().get("player/pause_background_videos")
-
-        current_sv = next(v for v in self._ctx.video_blocks if v.isVisible())
-
-        next_sv = self._next_single_video_after(current_sv)
-
-        if is_pause_background_videos:
-            self._pre_sm_states[current_sv.id] = current_sv.video_params.is_paused
-            current_sv.set_pause(True)
-        current_sv.hide()
-
-        pre_sm_state = self._pre_sm_states.pop(next_sv.id, None)
-        if pre_sm_state is not None:
-            next_sv.set_pause(pre_sm_state)
-
-        next_sv.show()
+    def previous_single_video(self):
+        self._switch_single_video(is_before=True)
 
     def single_mode_on(self):
         self._ctx.is_single_mode = True
@@ -95,8 +84,33 @@ class SingleModeManager(ManagerBase):
 
         self.mode_changed.emit()
 
-    def _next_single_video_after(self, current_sv):
-        next_sv_idx = self._ctx.video_blocks.index(current_sv) + 1
+    def _switch_single_video(self, is_before):
+        if not self._ctx.is_single_mode:
+            return
+
+        is_pause_background_videos = Settings().get("player/pause_background_videos")
+
+        current_sv = next(v for v in self._ctx.video_blocks if v.isVisible())
+
+        next_sv = self._find_next_single_video(current_sv, is_before)
+
+        if is_pause_background_videos:
+            self._pre_sm_states[current_sv.id] = current_sv.video_params.is_paused
+            current_sv.set_pause(True)
+        current_sv.hide()
+
+        pre_sm_state = self._pre_sm_states.pop(next_sv.id, None)
+        if pre_sm_state is not None:
+            next_sv.set_pause(pre_sm_state)
+
+        next_sv.show()
+
+    def _find_next_single_video(self, current_sv, is_before):
+        if is_before:
+            next_sv_idx = self._ctx.video_blocks.index(current_sv) - 1
+        else:
+            next_sv_idx = self._ctx.video_blocks.index(current_sv) + 1
+
         if next_sv_idx > len(self._ctx.video_blocks) - 1:
             next_sv_idx = 0
 

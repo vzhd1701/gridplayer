@@ -4,7 +4,7 @@ from PyQt5.QtCore import Qt, pyqtSignal
 
 from gridplayer.dialogs.input_dialog import QCustomSpinboxTimeInput
 from gridplayer.models.video import Video
-from gridplayer.params.static import SeekSyncMode
+from gridplayer.params.static import SeekSyncMode, VideoAspect
 from gridplayer.player.managers.base import ManagerBase
 from gridplayer.settings import Settings
 from gridplayer.utils.qt import qt_connect
@@ -64,14 +64,30 @@ class VideoBlocksManager(ManagerBase):
     reload_all_closed = pyqtSignal()
 
     hide_overlay = pyqtSignal()
-    set_pause = pyqtSignal(int)
-    seek_shift = pyqtSignal(int)
-    seek_shift_ms = pyqtSignal(int)
-    seek_random = pyqtSignal()
-    seek_percent = pyqtSignal(float)
-    seek_timecode = pyqtSignal(int)
+    set_pause = pyqtSignal(bool)
 
     close_all_signal = pyqtSignal()
+
+    all_previous_video = pyqtSignal()
+    all_next_video = pyqtSignal()
+
+    all_seek_shift_percent = pyqtSignal(int)
+    all_seek_shift_ms = pyqtSignal(int)
+    all_seek_random = pyqtSignal()
+    all_seek_percent = pyqtSignal(float)
+    all_seek = pyqtSignal(int)
+    all_next_frame = pyqtSignal()
+    all_previous_frame = pyqtSignal()
+
+    all_rate_increase = pyqtSignal()
+    all_rate_decrease = pyqtSignal()
+    all_rate_reset = pyqtSignal()
+
+    all_scale_increase = pyqtSignal()
+    all_scale_decrease = pyqtSignal()
+    all_scale_reset = pyqtSignal()
+
+    all_set_aspect = pyqtSignal(VideoAspect)
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -86,40 +102,25 @@ class VideoBlocksManager(ManagerBase):
     @property
     def commands(self):
         return {
-            "play_pause_all": self.cmd_play_pause_all,
-            "loop_random": self.seek_random.emit,
-            "seek_timecode": self.cmd_seek_timecode,
-            "seek_shift_all": self.cmd_seek_shift_all,
-            "seek_shift_ms_all": self.cmd_seek_shift_ms_all,
-            "step_forward": self.cmd_step_forward,
-            "step_backward": self.cmd_step_backward,
+            "all": self.cmd_all,
+            "all_play_pause": self.cmd_all_play_pause,
+            "all_seek_timecode": self.cmd_seek_timecode,
             "is_videos": lambda: bool(self._ctx.video_blocks),
             "is_seek_sync_mode_set_to": self.is_seek_sync_mode_set_to,
             "set_seek_sync_mode": self.set_seek_sync_mode,
             "reload_all": self.reload_videos,
         }
 
-    def cmd_play_pause_all(self):
+    def cmd_all(self, command, *args):
+        getattr(self, f"all_{command}").emit(*args)
+
+    def cmd_all_play_pause(self):
         is_at_least_one_unpaused = bool(self._ctx.video_blocks.unpaused)
 
         if is_at_least_one_unpaused:
             self.set_pause.emit(True)
         else:
             self.set_pause.emit(False)
-
-    def cmd_seek_shift_all(self, percent):
-        self.seek_shift.emit(percent)
-
-    def cmd_seek_shift_ms_all(self, seek_ms):
-        self.seek_shift_ms.emit(seek_ms)
-
-    def cmd_step_forward(self):
-        self.pause_all()
-        self.step_frame.emit(-1)
-
-    def cmd_step_backward(self):
-        self.pause_all()
-        self.step_frame.emit(1)
 
     def cmd_seek_timecode(self):
         time_ms = QCustomSpinboxTimeInput.get_time_ms_int(
@@ -129,15 +130,15 @@ class VideoBlocksManager(ManagerBase):
         if time_ms is None:
             return
 
-        self.seek_timecode.emit(time_ms)
+        self.all_seek.emit(time_ms)
 
     def seek_sync_percent(self, percent):
         if self._ctx.seek_sync_mode == SeekSyncMode.PERCENT:
-            self.seek_percent.emit(percent)
+            self.all_seek_percent.emit(percent)
 
     def seek_sync_timecode(self, timecode):
         if self._ctx.seek_sync_mode == SeekSyncMode.TIMECODE:
-            self.seek_timecode.emit(timecode)
+            self.all_seek.emit(timecode)
 
     def is_seek_sync_mode_set_to(self, mode):
         return self._ctx.seek_sync_mode == mode
@@ -210,15 +211,27 @@ class VideoBlocksManager(ManagerBase):
         qt_connect(
             (vb.about_to_close, self.close_single),
             (vb.is_paused_change, self.playing_count_change),
-            (vb.seeked_percent, self.seek_sync_percent),
-            (vb.seeked_time, self.seek_sync_timecode),
+            (vb.sync_percent, self.seek_sync_percent),
+            (vb.sync_time, self.seek_sync_timecode),
+            (vb.sync_paused, self.set_pause),
             (vb.destroyed, self._video_block_destroyed),
             (self.set_pause, vb.set_pause),
-            (self.seek_shift, vb.seek_shift_percent),
-            (self.seek_shift_ms, vb.seek_shift),
-            (self.seek_random, vb.seek_random),
-            (self.seek_percent, vb.seek_percent),
-            (self.seek_timecode, vb.seek),
+            (self.all_seek_shift_percent, vb.seek_shift_percent),
+            (self.all_seek_shift_ms, vb.seek_shift_ms),
+            (self.all_seek_random, vb.seek_random),
+            (self.all_seek_percent, vb.seek_percent),
+            (self.all_seek, vb.seek),
+            (self.all_next_frame, vb.next_frame),
+            (self.all_previous_frame, vb.previous_frame),
+            (self.all_rate_increase, vb.rate_increase),
+            (self.all_rate_decrease, vb.rate_decrease),
+            (self.all_rate_reset, vb.rate_reset),
+            (self.all_scale_increase, vb.scale_increase),
+            (self.all_scale_decrease, vb.scale_decrease),
+            (self.all_scale_reset, vb.scale_reset),
+            (self.all_set_aspect, vb.set_aspect),
+            (self.all_previous_video, vb.previous_video),
+            (self.all_next_video, vb.next_video),
             (self.hide_overlay, vb.hide_overlay),
             (self.close_all_signal, vb.close_silently),
         )

@@ -1,46 +1,22 @@
 from types import MappingProxyType
 
-from PyQt5.QtCore import QEvent, Qt
+from PyQt5.QtCore import QEvent
 from PyQt5.QtGui import QIcon
-from PyQt5.QtWidgets import QMenu, QProxyStyle, QStyle
+from PyQt5.QtWidgets import QMenu
 
 from gridplayer.player.managers.actions import QDynamicAction
 from gridplayer.player.managers.base import ManagerBase
 from gridplayer.utils.qt import translate
-
-MENU_STYLE = """
-QMenu {
-    background-color: #eee;
-    color: #000;
-    border: 1px solid #aaa;
-    margin: 0;
-    menu-scrollable: 0;
-}
-QMenu::icon { margin-left: 5px;}
-QMenu::item {
-    height:24px;
-    margin: 0;
-    padding: 1px 5px 1px 5px;
-    background: transparent;
-    border: 0 solid transparent;
-}
-QMenu::separator { height: 1px; margin: 2px 3px; background: #aaa; }
-QMenu::item:selected { background-color: #bbb; }
-QMenu::item:checked { background-color: #888; }
-QMenu::item:checked:selected  { background-color: #bbb; }
-"""
+from gridplayer.widgets.custom_menu import BigMenuIcons, CustomMenu
 
 SUBMENUS = MappingProxyType(
     {
-        "Step": {"title": translate("Actions", "Step"), "icon": "next-frame"},
+        "Jump (to)": {"title": translate("Actions", "Jump (to)"), "icon": "jump-to"},
         "Loop": {"title": translate("Actions", "Loop"), "icon": "loop"},
         "Speed": {"title": translate("Actions", "Speed"), "icon": "speed"},
         "Zoom": {"title": translate("Actions", "Zoom"), "icon": "zoom"},
         "Aspect": {"title": translate("Actions", "Aspect"), "icon": "aspect"},
-        "Jump (to) [ALL]": {
-            "title": translate("Actions", "Jump (to) [ALL]"),
-            "icon": "jump-to",
-        },
+        "[ALL]": {"title": translate("Actions", "[ALL]"), "icon": "play-all"},
         "Grid": {"title": translate("Actions", "Grid"), "icon": "grid"},
         "Seek Sync": {"title": translate("Actions", "Seek Sync"), "icon": "seek-sync"},
     }
@@ -51,13 +27,33 @@ SECTIONS = MappingProxyType(
         "video_active": [
             "Play / Pause",
             "---",
+            "Previous Video",
+            "Next Video",
+            "---",
             "Play Previous File",
             "Play Next File",
             "---",
             (
-                "Step",
+                "Jump (to)",
+                "Timecode",
+                "Random",
+                "---",
                 "Next frame",
                 "Previous frame",
+                "---",
+                "+1%",
+                "+5%",
+                "+10%",
+                "-1%",
+                "-5%",
+                "-10%",
+                "---",
+                "+5s",
+                "+15s",
+                "+30s",
+                "-5s",
+                "-15s",
+                "-30s",
             ),
             (
                 "Loop",
@@ -89,30 +85,61 @@ SECTIONS = MappingProxyType(
                 "Aspect Stretch",
                 "Aspect None",
             ),
+            "Stream Quality",
             "Rename",
+            "Reload",
+            "Close",
         ],
-        "video_block": ["Stream Quality", "Reload", "Close"],
-        "video_single": ["Next Video"],
         "video_all": [
-            "Play / Pause [ALL]",
             (
-                "Jump (to) [ALL]",
-                "Timecode",
-                "Random",
+                "[ALL]",
+                "Play / Pause [ALL]",
                 "---",
-                "+1%",
-                "+5%",
-                "+10%",
-                "-1%",
-                "-5%",
-                "-10%",
+                "Play Previous File [ALL]",
+                "Play Next File [ALL]",
                 "---",
-                "+5s",
-                "+15s",
-                "+30s",
-                "-5s",
-                "-15s",
-                "-30s",
+                (
+                    "Jump (to)",
+                    "Timecode [ALL]",
+                    "Random [ALL]",
+                    "---",
+                    "Next frame [ALL]",
+                    "Previous frame [ALL]",
+                    "---",
+                    "+1% [ALL]",
+                    "+5% [ALL]",
+                    "+10% [ALL]",
+                    "-1% [ALL]",
+                    "-5% [ALL]",
+                    "-10% [ALL]",
+                    "---",
+                    "+5s [ALL]",
+                    "+15s [ALL]",
+                    "+30s [ALL]",
+                    "-5s [ALL]",
+                    "-15s [ALL]",
+                    "-30s [ALL]",
+                ),
+                (
+                    "Speed",
+                    "Faster [ALL]",
+                    "Slower [ALL]",
+                    "Normal [ALL]",
+                ),
+                (
+                    "Zoom",
+                    "Zoom In [ALL]",
+                    "Zoom Out [ALL]",
+                    "Zoom Reset [ALL]",
+                ),
+                (
+                    "Aspect",
+                    "Aspect Fit [ALL]",
+                    "Aspect Stretch [ALL]",
+                    "Aspect None [ALL]",
+                ),
+                "---",
+                "Reload [ALL]",
             ),
             (
                 "Seek Sync",
@@ -129,8 +156,10 @@ SECTIONS = MappingProxyType(
                 "Size: %v",
             ),
         ],
-        "player": ["Fullscreen", "Minimize"],
         "program": [
+            "Fullscreen",
+            "Minimize",
+            "---",
             "Add Files",
             "Add URL(s)",
             "Open Playlist",
@@ -144,13 +173,6 @@ SECTIONS = MappingProxyType(
         ],
     }
 )
-
-
-class BigMenuIcons(QProxyStyle):
-    def pixelMetric(self, metric, option, widget):
-        if metric == QStyle.PM_SmallIconSize:
-            return 24
-        return super().pixelMetric(metric, option, widget)
 
 
 class MenuManager(ManagerBase):
@@ -167,12 +189,7 @@ class MenuManager(ManagerBase):
         return True
 
     def make_menu(self):
-        menu = QMenu(self.parent())
-        menu.setStyle(BigMenuIcons())
-        menu.setStyleSheet(MENU_STYLE)
-        menu.setWindowFlags(
-            menu.windowFlags() | Qt.FramelessWindowHint | Qt.NoDropShadowWindowHint
-        )
+        menu = CustomMenu(parent=self.parent())
 
         menu_sections = self._menu_sections()
 
@@ -184,20 +201,11 @@ class MenuManager(ManagerBase):
         sections_added = []
 
         if self._ctx.active_block is not None:
-            if self._ctx.active_block.video_driver.is_video_initialized:
-                menu_video = SECTIONS["video_active"] + SECTIONS["video_block"]
-            else:
-                menu_video = SECTIONS["video_block"]
-
-            sections_added.append(menu_video)
-
-            if self._ctx.is_single_mode:
-                sections_added.append(SECTIONS["video_single"])
+            sections_added.append(SECTIONS["video_active"])
 
         if self._ctx.video_blocks:
             sections_added.append(SECTIONS["video_all"])
 
-        sections_added.append(SECTIONS["player"])
         sections_added.append(SECTIONS["program"])
 
         return _join_menu_sections(sections_added)

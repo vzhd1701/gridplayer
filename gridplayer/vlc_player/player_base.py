@@ -122,10 +122,6 @@ class VlcPlayerBase(ABC):
             self.error("Live stream ended")
             return
 
-        before_end = self.media_track.length - self._media_player.get_time()
-
-        self._log.debug(f"Before end: {before_end}")
-
         if self._media_player.get_time() > self.media_track.length - 1000:
             self._log.debug("Video ended, time to loop")
             self.notify_end_reached()
