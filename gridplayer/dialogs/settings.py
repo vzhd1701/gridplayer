@@ -71,6 +71,7 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
             "playlist/grid_mode": self.gridMode,
             "playlist/grid_fit": self.gridFit,
             "playlist/grid_size": self.gridSize,
+            "playlist/shuffle_on_load": self.gridShuffleOnLoad,
             "playlist/save_position": self.playlistSavePosition,
             "playlist/save_state": self.playlistSaveState,
             "playlist/save_window": self.playlistSaveWindow,

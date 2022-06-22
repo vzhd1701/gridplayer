@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>442</width>
-    <height>593</height>
+    <height>597</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -211,6 +211,13 @@
           <widget class="QCheckBox" name="gridFit">
            <property name="text">
             <string>Fit grid cells</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QCheckBox" name="gridShuffleOnLoad">
+           <property name="text">
+            <string>Shuffle on load</string>
            </property>
           </widget>
          </item>

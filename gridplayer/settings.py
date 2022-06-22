@@ -42,6 +42,7 @@ _default_settings = {
     "playlist/save_window": False,
     "playlist/seek_sync_mode": SeekSyncMode.DISABLED,
     "playlist/track_changes": True,
+    "playlist/shuffle_on_load": False,
     "video_defaults/aspect": VideoAspect.FIT,
     "video_defaults/repeat": VideoRepeat.SINGLE_FILE,
     "video_defaults/random_loop": False,

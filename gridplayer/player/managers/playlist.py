@@ -20,6 +20,7 @@ class PlaylistManager(ManagerBase):
     window_state_loaded = pyqtSignal(WindowState)
     grid_state_loaded = pyqtSignal(GridState)
     seek_sync_mode_loaded = pyqtSignal(SeekSyncMode)
+    shuffle_on_load_loaded = pyqtSignal(bool)
     videos_loaded = pyqtSignal(list)
 
     alert = pyqtSignal()
@@ -148,6 +149,7 @@ class PlaylistManager(ManagerBase):
             self.window_state_loaded.emit(playlist.window_state)
 
         self.seek_sync_mode_loaded.emit(playlist.seek_sync_mode)
+        self.shuffle_on_load_loaded.emit(playlist.shuffle_on_load)
 
         self.alert.emit()
 
@@ -189,9 +191,16 @@ class PlaylistManager(ManagerBase):
         return False
 
     def _make_playlist(self):
+        # if shuffle on load is ON, keep videos in the same order to maintain save state
+        if self._ctx.is_shuffle_on_load:
+            videos = sorted(self._ctx.video_blocks.videos, key=lambda v: str(v.uri))
+        else:
+            videos = self._ctx.video_blocks.videos
+
         return Playlist(
             grid_state=self._ctx.grid_state,
             window_state=self._ctx.window_state,
-            videos=self._ctx.video_blocks.videos,
+            videos=videos,
             seek_sync_mode=self._ctx.seek_sync_mode,
+            shuffle_on_load=self._ctx.is_shuffle_on_load,
         )

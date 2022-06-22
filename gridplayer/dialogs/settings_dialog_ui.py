@@ -4,7 +4,7 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 class Ui_SettingsDialog(object):
     def setupUi(self, SettingsDialog):
         SettingsDialog.setObjectName("SettingsDialog")
-        SettingsDialog.resize(442, 593)
+        SettingsDialog.resize(442, 597)
         self.lay_main = QtWidgets.QVBoxLayout(SettingsDialog)
         self.lay_main.setSizeConstraint(QtWidgets.QLayout.SetFixedSize)
         self.lay_main.setObjectName("lay_main")
@@ -107,6 +107,9 @@ class Ui_SettingsDialog(object):
         self.gridFit = QtWidgets.QCheckBox(SettingsDialog)
         self.gridFit.setObjectName("gridFit")
         self.lay_section_grid.addWidget(self.gridFit)
+        self.gridShuffleOnLoad = QtWidgets.QCheckBox(SettingsDialog)
+        self.gridShuffleOnLoad.setObjectName("gridShuffleOnLoad")
+        self.lay_section_grid.addWidget(self.gridShuffleOnLoad)
         self.lay_left_column.addLayout(self.lay_section_grid)
         self.lay_section_video_defaults = QtWidgets.QVBoxLayout()
         self.lay_section_video_defaults.setObjectName("lay_section_video_defaults")
@@ -347,6 +350,7 @@ class Ui_SettingsDialog(object):
         self.gridModeLabel.setText(_translate("SettingsDialog", "Grid mode"))
         self.gridSizeLabel.setText(_translate("SettingsDialog", "Grid size"))
         self.gridFit.setText(_translate("SettingsDialog", "Fit grid cells"))
+        self.gridShuffleOnLoad.setText(_translate("SettingsDialog", "Shuffle on load"))
         self.section_video_defaults.setText(
             _translate("SettingsDialog", "Default Video Parameters")
         )

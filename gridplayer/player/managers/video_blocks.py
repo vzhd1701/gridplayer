@@ -1,3 +1,4 @@
+import random
 from typing import List
 
 from PyQt5.QtCore import Qt, pyqtSignal
@@ -35,6 +36,9 @@ class VideoBlocks(object):
 
     def index(self, block):
         return self._blocks.index(block)
+
+    def shuffle(self):
+        random.shuffle(self._blocks)
 
     @property
     def unpaused(self):
@@ -103,6 +107,7 @@ class VideoBlocksManager(ManagerBase):
         super().__init__(**kwargs)
 
         self._ctx.seek_sync_mode = Settings().get("playlist/seek_sync_mode")
+        self._ctx.is_shuffle_on_load = Settings().get("playlist/shuffle_on_load")
 
         self._ctx.video_blocks = VideoBlocks()
 
@@ -122,6 +127,10 @@ class VideoBlocksManager(ManagerBase):
             "is_seek_sync_mode_set_to": self.is_seek_sync_mode_set_to,
             "set_seek_sync_mode": self.set_seek_sync_mode,
             "reload_all": self.reload_videos,
+            "shuffle_video_blocks": self.cmd_shuffle_video_blocks,
+            "is_shuffle_on_load": lambda: self._ctx.is_shuffle_on_load,
+            "set_shuffle_on_load": self.set_shuffle_on_load,
+            "toggle_shuffle_on_load": self.toggle_shuffle_on_load,
         }
 
     def cmd_all(self, command, *args):
@@ -144,6 +153,16 @@ class VideoBlocksManager(ManagerBase):
             return
 
         self.all_seek.emit(time_ms)
+
+    def cmd_shuffle_video_blocks(self):
+        self._ctx.video_blocks.shuffle()
+        self.video_count_changed.emit(len(self._ctx.video_blocks))
+
+    def set_shuffle_on_load(self, is_shuffle_on_load):
+        self._ctx.is_shuffle_on_load = is_shuffle_on_load
+
+    def toggle_shuffle_on_load(self):
+        self._ctx.is_shuffle_on_load = not self._ctx.is_shuffle_on_load
 
     def seek_sync_percent(self, percent):
         if self._ctx.seek_sync_mode == SeekSyncMode.PERCENT:
@@ -196,6 +215,10 @@ class VideoBlocksManager(ManagerBase):
         self._videos_to_reload = []
 
     def add_videos(self, videos):
+        if self._ctx.is_shuffle_on_load:
+            videos = list(videos)
+            random.shuffle(videos)
+
         for v in videos:
             self._add_video_block(v)
 

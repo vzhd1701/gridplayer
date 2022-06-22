@@ -18,6 +18,7 @@ class Playlist(BaseModel):
     window_state: Optional[WindowState]
     videos: Optional[List[Video]]
     seek_sync_mode: SeekSyncMode = default_field("playlist/seek_sync_mode")
+    shuffle_on_load: bool = default_field("playlist/shuffle_on_load")
 
     @classmethod
     def read(cls, filename):

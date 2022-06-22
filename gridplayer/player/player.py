@@ -96,6 +96,7 @@ class Player(QWidget, ManagersManager):
                 ("window_state_loaded", "window_state.restore_window_state"),
                 ("grid_state_loaded", "grid.set_grid_state"),
                 ("seek_sync_mode_loaded", "video_blocks.set_seek_sync_mode"),
+                ("shuffle_on_load_loaded", "video_blocks.set_shuffle_on_load"),
                 ("videos_loaded", "video_blocks.add_videos"),
                 ("alert", "window_state.activate_window"),
                 ("error", "dialogs.error"),

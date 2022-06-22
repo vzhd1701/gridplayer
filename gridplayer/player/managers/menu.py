@@ -161,6 +161,9 @@ SECTIONS = MappingProxyType(
             ),
             (
                 "Grid",
+                "Shuffle Grid",
+                "Shuffle Grid On Load",
+                "---",
                 "Rows First",
                 "Columns First",
                 "---",

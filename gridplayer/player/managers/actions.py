@@ -569,6 +569,18 @@ COMMANDS = MappingProxyType(
             "func": ("set_seek_sync_mode", SeekSyncMode.TIMECODE),
             "check_if": ("is_seek_sync_mode_set_to", SeekSyncMode.TIMECODE),
         },
+        "Shuffle Grid": {
+            "title": translate("Actions", "Shuffle"),
+            "key": "Alt+R",
+            "icon": "loop-random",
+            "func": "shuffle_video_blocks",
+        },
+        "Shuffle Grid On Load": {
+            "title": translate("Actions", "Shuffle On Load"),
+            "icon": "loop-random",
+            "func": "toggle_shuffle_on_load",
+            "check_if": "is_shuffle_on_load",
+        },
         "Rows First": {
             "title": translate("Actions", "Rows First"),
             "key": "Alt+1",
