@@ -23,6 +23,10 @@ SUBMENUS = MappingProxyType(
             "title": translate("Actions", "Sync Others"),
             "icon": "seek-sync",
         },
+        "Percent": {
+            "title": translate("Actions", "Percent"),
+            "icon": "seek-sync-percent",
+        },
     }
 )
 
@@ -39,6 +43,19 @@ SECTIONS = MappingProxyType(
             "---",
             (
                 "Jump (to)",
+                (
+                    "Percent",
+                    "0%",
+                    "10%",
+                    "20%",
+                    "30%",
+                    "40%",
+                    "50%",
+                    "60%",
+                    "70%",
+                    "80%",
+                    "90%",
+                ),
                 "Timecode",
                 "Random",
                 "---",
@@ -109,6 +126,19 @@ SECTIONS = MappingProxyType(
                 "---",
                 (
                     "Jump (to)",
+                    (
+                        "Percent",
+                        "0% [ALL]",
+                        "10% [ALL]",
+                        "20% [ALL]",
+                        "30% [ALL]",
+                        "40% [ALL]",
+                        "50% [ALL]",
+                        "60% [ALL]",
+                        "70% [ALL]",
+                        "80% [ALL]",
+                        "90% [ALL]",
+                    ),
                     "Timecode [ALL]",
                     "Random [ALL]",
                     "---",

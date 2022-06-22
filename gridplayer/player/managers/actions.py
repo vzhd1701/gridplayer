@@ -1,3 +1,4 @@
+from collections import Counter
 from types import MappingProxyType
 from typing import Dict
 
@@ -47,6 +48,76 @@ COMMANDS = MappingProxyType(
             "icon": "next-video-file",
             "func": ("active", "next_video"),
             "show_if": "is_active_local_file",
+        },
+        "0%": {
+            "title": "0%",
+            "key": "0",
+            "icon": "empty",
+            "func": ("active", "manual_seek", "seek_percent", 0),
+            "show_if": "is_active_seekable",
+        },
+        "10%": {
+            "title": "10%",
+            "key": "1",
+            "icon": "empty",
+            "func": ("active", "manual_seek", "seek_percent", 0.1),
+            "show_if": "is_active_seekable",
+        },
+        "20%": {
+            "title": "20%",
+            "key": "2",
+            "icon": "empty",
+            "func": ("active", "manual_seek", "seek_percent", 0.2),
+            "show_if": "is_active_seekable",
+        },
+        "30%": {
+            "title": "30%",
+            "key": "3",
+            "icon": "empty",
+            "func": ("active", "manual_seek", "seek_percent", 0.3),
+            "show_if": "is_active_seekable",
+        },
+        "40%": {
+            "title": "40%",
+            "key": "4",
+            "icon": "empty",
+            "func": ("active", "manual_seek", "seek_percent", 0.4),
+            "show_if": "is_active_seekable",
+        },
+        "50%": {
+            "title": "50%",
+            "key": "5",
+            "icon": "empty",
+            "func": ("active", "manual_seek", "seek_percent", 0.5),
+            "show_if": "is_active_seekable",
+        },
+        "60%": {
+            "title": "60%",
+            "key": "6",
+            "icon": "empty",
+            "func": ("active", "manual_seek", "seek_percent", 0.6),
+            "show_if": "is_active_seekable",
+        },
+        "70%": {
+            "title": "70%",
+            "key": "7",
+            "icon": "empty",
+            "func": ("active", "manual_seek", "seek_percent", 0.7),
+            "show_if": "is_active_seekable",
+        },
+        "80%": {
+            "title": "80%",
+            "key": "8",
+            "icon": "empty",
+            "func": ("active", "manual_seek", "seek_percent", 0.8),
+            "show_if": "is_active_seekable",
+        },
+        "90%": {
+            "title": "90%",
+            "key": "9",
+            "icon": "empty",
+            "func": ("active", "manual_seek", "seek_percent", 0.9),
+            "show_if": "is_active_seekable",
         },
         "Timecode": {
             "title": translate("Actions", "Timecode"),
@@ -339,6 +410,76 @@ COMMANDS = MappingProxyType(
             "func": ("all", "next_video"),
             "show_if": "is_any_videos_local_file",
         },
+        "0% [ALL]": {
+            "title": "0%",
+            "key": "Alt+0",
+            "icon": "empty",
+            "func": ("all", "seek_percent", 0),
+            "show_if": "is_any_videos_seekable",
+        },
+        "10% [ALL]": {
+            "title": "10%",
+            "key": "Alt+1",
+            "icon": "empty",
+            "func": ("all", "seek_percent", 0.1),
+            "show_if": "is_any_videos_seekable",
+        },
+        "20% [ALL]": {
+            "title": "20%",
+            "key": "Alt+2",
+            "icon": "empty",
+            "func": ("all", "seek_percent", 0.2),
+            "show_if": "is_any_videos_seekable",
+        },
+        "30% [ALL]": {
+            "title": "30%",
+            "key": "Alt+3",
+            "icon": "empty",
+            "func": ("all", "seek_percent", 0.3),
+            "show_if": "is_any_videos_seekable",
+        },
+        "40% [ALL]": {
+            "title": "40%",
+            "key": "Alt+4",
+            "icon": "empty",
+            "func": ("all", "seek_percent", 0.4),
+            "show_if": "is_any_videos_seekable",
+        },
+        "50% [ALL]": {
+            "title": "50%",
+            "key": "Alt+5",
+            "icon": "empty",
+            "func": ("all", "seek_percent", 0.5),
+            "show_if": "is_any_videos_seekable",
+        },
+        "60% [ALL]": {
+            "title": "60%",
+            "key": "Alt+6",
+            "icon": "empty",
+            "func": ("all", "seek_percent", 0.6),
+            "show_if": "is_any_videos_seekable",
+        },
+        "70% [ALL]": {
+            "title": "70%",
+            "key": "Alt+7",
+            "icon": "empty",
+            "func": ("all", "seek_percent", 0.7),
+            "show_if": "is_any_videos_seekable",
+        },
+        "80% [ALL]": {
+            "title": "80%",
+            "key": "Alt+8",
+            "icon": "empty",
+            "func": ("all", "seek_percent", 0.8),
+            "show_if": "is_any_videos_seekable",
+        },
+        "90% [ALL]": {
+            "title": "90%",
+            "key": "Alt+9",
+            "icon": "empty",
+            "func": ("all", "seek_percent", 0.9),
+            "show_if": "is_any_videos_seekable",
+        },
         "Timecode [ALL]": {
             "title": translate("Actions", "Timecode"),
             "key": "Shift+T",
@@ -595,28 +736,24 @@ COMMANDS = MappingProxyType(
         },
         "Rows First": {
             "title": translate("Actions", "Rows First"),
-            "key": "Alt+1",
             "icon": "grid-rows-first",
             "func": ("set_grid_mode", GridMode.AUTO_ROWS),
             "check_if": ("is_grid_mode_set_to", GridMode.AUTO_ROWS),
         },
         "Columns First": {
             "title": translate("Actions", "Columns First"),
-            "key": "Alt+2",
             "icon": "grid-columns-first",
             "func": ("set_grid_mode", GridMode.AUTO_COLS),
             "check_if": ("is_grid_mode_set_to", GridMode.AUTO_COLS),
         },
         "Fit Cells": {
             "title": translate("Actions", "Fit Cells"),
-            "key": "Alt+F",
             "icon": "grid-fit",
             "func": "switch_is_grid_fit",
             "check_if": "is_grid_fit",
         },
         "Size: %v": {
             "title": translate("Actions", "Size: %v"),
-            "key": "Alt+N",
             "icon": "grid-size",
             "func": "ask_grid_size",
             "value_getter": "get_grid_size",
@@ -755,6 +892,8 @@ class ActionsManager(ManagerBase):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
+        _raise_on_duplicate_shortcuts()
+
         self._ctx.actions = self._make_actions()
 
     def _make_actions(self) -> Dict[str, QDynamicAction]:
@@ -808,3 +947,14 @@ class ActionsManager(ManagerBase):
 
     def _generate_actions(self, templates):
         return [self._make_action(cmd) for cmd in templates]
+
+
+def _raise_on_duplicate_shortcuts():
+    shortcuts = [c["key"] for c in COMMANDS.values() if c.get("key")]
+
+    duplicate_shortcuts = [
+        key for key, count in Counter(shortcuts).items() if count > 1
+    ]
+
+    if duplicate_shortcuts:
+        raise RuntimeError(f"Duplicate shortcuts found: {duplicate_shortcuts}")
