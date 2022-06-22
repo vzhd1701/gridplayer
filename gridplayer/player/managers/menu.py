@@ -19,6 +19,10 @@ SUBMENUS = MappingProxyType(
         "[ALL]": {"title": translate("Actions", "[ALL]"), "icon": "play-all"},
         "Grid": {"title": translate("Actions", "Grid"), "icon": "grid"},
         "Seek Sync": {"title": translate("Actions", "Seek Sync"), "icon": "seek-sync"},
+        "Seek Others": {
+            "title": translate("Actions", "Sync Others"),
+            "icon": "seek-sync",
+        },
     }
 )
 
@@ -84,6 +88,11 @@ SECTIONS = MappingProxyType(
                 "Aspect Fit",
                 "Aspect Stretch",
                 "Aspect None",
+            ),
+            (
+                "Seek Others",
+                "Seek Others (Percent)",
+                "Seek Others (Timecode)",
             ),
             "Stream Quality",
             "Rename",

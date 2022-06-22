@@ -150,6 +150,8 @@ class VideoBlock(QWidget):  # noqa: WPS230
 
     about_to_close = pyqtSignal(str)
 
+    sync_percent_single = pyqtSignal(float)
+    sync_time_single = pyqtSignal(int)
     sync_percent = pyqtSignal(float)
     sync_time = pyqtSignal(int)
     sync_paused = pyqtSignal(bool)
@@ -422,6 +424,7 @@ class VideoBlock(QWidget):  # noqa: WPS230
             self.show_overlay()
 
     @only_initialized
+    @only_seekable
     def manual_seek(self, command, *args):
         getattr(self, command)(*args)
 
@@ -432,6 +435,17 @@ class VideoBlock(QWidget):  # noqa: WPS230
         self.sync_time.emit(int(self.video_driver.length * self.position))
 
     @only_initialized
+    @only_seekable
+    def sync_others_percent(self):
+        self.sync_percent_single.emit(self.position)
+
+    @only_initialized
+    @only_seekable
+    def sync_others_time(self):
+        self.sync_time_single.emit(int(self.video_driver.length * self.position))
+
+    @only_initialized
+    @only_seekable
     def seek_timecode(self):
         time_ms = QCustomSpinboxTimeInput.get_time_ms_int(
             self.parent(), self.tr("Enter timecode")

@@ -258,6 +258,8 @@ class VideoBlocksManager(ManagerBase):
             (vb.is_paused_change, self.playing_count_change),
             (vb.sync_percent, self.seek_sync_percent),
             (vb.sync_time, self.seek_sync_timecode),
+            (vb.sync_percent_single, self.all_seek_percent),
+            (vb.sync_time_single, self.all_seek),
             (vb.sync_paused, self.set_pause),
             (vb.destroyed, self._video_block_destroyed),
             (self.set_pause, vb.set_pause),
