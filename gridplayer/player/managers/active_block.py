@@ -85,13 +85,13 @@ class ActiveBlockManager(ManagerBase):
         if not self.is_active_initialized():
             return False
 
-        return not self._ctx.active_block.video_driver.is_live
+        return not self._ctx.active_block.is_live
 
     def is_active_live(self):
         if not self.is_active_initialized():
             return False
 
-        return self._ctx.active_block.video_driver.is_live
+        return self._ctx.active_block.is_live
 
     def is_active_local_file(self):
         if not self.is_active_initialized():

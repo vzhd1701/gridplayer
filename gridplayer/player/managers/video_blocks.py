@@ -41,6 +41,10 @@ class VideoBlocks(object):
         return [v for v in self._blocks if not v.video_params.is_paused]
 
     @property
+    def initialized(self):
+        return [v for v in self._blocks if v.is_video_initialized]
+
+    @property
     def videos(self) -> List[Video]:
         return [v.video_params for v in self._blocks]
 
@@ -106,6 +110,9 @@ class VideoBlocksManager(ManagerBase):
             "all_play_pause": self.cmd_all_play_pause,
             "all_seek_timecode": self.cmd_seek_timecode,
             "is_videos": lambda: bool(self._ctx.video_blocks),
+            "is_any_videos_initialized": self.is_any_videos_initialized,
+            "is_any_videos_seekable": self.is_any_videos_seekable,
+            "is_any_videos_local_file": self.is_any_videos_local_file,
             "is_seek_sync_mode_set_to": self.is_seek_sync_mode_set_to,
             "set_seek_sync_mode": self.set_seek_sync_mode,
             "reload_all": self.reload_videos,
@@ -145,6 +152,15 @@ class VideoBlocksManager(ManagerBase):
 
     def set_seek_sync_mode(self, mode):
         self._ctx.seek_sync_mode = mode
+
+    def is_any_videos_initialized(self):
+        return bool(self._ctx.video_blocks.initialized)
+
+    def is_any_videos_seekable(self):
+        return any(not vb.is_live for vb in self._ctx.video_blocks.initialized)
+
+    def is_any_videos_local_file(self):
+        return any(vb.is_local_file for vb in self._ctx.video_blocks.initialized)
 
     def pause_all(self):
         self.set_pause.emit(True)

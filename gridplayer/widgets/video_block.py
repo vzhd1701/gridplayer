@@ -462,7 +462,7 @@ class VideoBlock(QWidget):  # noqa: WPS230
 
     @property
     def is_local_file(self):
-        return not isinstance(self.video_params.uri, VideoURL)
+        return isinstance(self.video_params.uri, Path)
 
     @property
     def title(self):
