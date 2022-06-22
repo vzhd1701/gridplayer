@@ -77,6 +77,8 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
             "playlist/save_window": self.playlistSaveWindow,
             "playlist/seek_sync_mode": self.playlistSeekSyncMode,
             "playlist/track_changes": self.playlistTrackChanges,
+            "playlist/disable_click_pause": self.playlistDisableClickPause,
+            "playlist/disable_wheel_seek": self.playlistDisableWheelSeek,
             "video_defaults/aspect": self.videoAspect,
             "video_defaults/repeat": self.repeatMode,
             "video_defaults/random_loop": self.videoRandomLoop,

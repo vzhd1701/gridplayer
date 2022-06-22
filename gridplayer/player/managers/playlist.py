@@ -21,6 +21,8 @@ class PlaylistManager(ManagerBase):
     grid_state_loaded = pyqtSignal(GridState)
     seek_sync_mode_loaded = pyqtSignal(SeekSyncMode)
     shuffle_on_load_loaded = pyqtSignal(bool)
+    disable_click_pause_loaded = pyqtSignal(bool)
+    disable_wheel_seek_loaded = pyqtSignal(bool)
     videos_loaded = pyqtSignal(list)
 
     alert = pyqtSignal()
@@ -150,6 +152,8 @@ class PlaylistManager(ManagerBase):
 
         self.seek_sync_mode_loaded.emit(playlist.seek_sync_mode)
         self.shuffle_on_load_loaded.emit(playlist.shuffle_on_load)
+        self.disable_click_pause_loaded.emit(playlist.disable_click_pause)
+        self.disable_wheel_seek_loaded.emit(playlist.disable_wheel_seek)
 
         self.alert.emit()
 
@@ -203,4 +207,6 @@ class PlaylistManager(ManagerBase):
             videos=videos,
             seek_sync_mode=self._ctx.seek_sync_mode,
             shuffle_on_load=self._ctx.is_shuffle_on_load,
+            disable_click_pause=self._ctx.is_disable_click_pause,
+            disable_wheel_seek=self._ctx.is_disable_wheel_seek,
         )

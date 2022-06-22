@@ -758,6 +758,18 @@ COMMANDS = MappingProxyType(
             "func": "ask_grid_size",
             "value_getter": "get_grid_size",
         },
+        "Disable Click Pause": {
+            "title": translate("Actions", "Disable Click Pause"),
+            "icon": "empty",
+            "func": "toggle_disable_click_pause",
+            "check_if": "is_disable_click_pause",
+        },
+        "Disable Wheel Seek": {
+            "title": translate("Actions", "Disable Wheel Seek"),
+            "icon": "empty",
+            "func": "toggle_disable_wheel_seek",
+            "check_if": "is_disable_wheel_seek",
+        },
         # Program
         "Fullscreen": {
             "title": translate("Actions", "Fullscreen"),

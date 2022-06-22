@@ -4,7 +4,7 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 class Ui_SettingsDialog(object):
     def setupUi(self, SettingsDialog):
         SettingsDialog.setObjectName("SettingsDialog")
-        SettingsDialog.resize(442, 597)
+        SettingsDialog.resize(442, 621)
         self.lay_main = QtWidgets.QVBoxLayout(SettingsDialog)
         self.lay_main.setSizeConstraint(QtWidgets.QLayout.SetFixedSize)
         self.lay_main.setObjectName("lay_main")
@@ -55,6 +55,12 @@ class Ui_SettingsDialog(object):
         self.playlistTrackChanges = QtWidgets.QCheckBox(SettingsDialog)
         self.playlistTrackChanges.setObjectName("playlistTrackChanges")
         self.lay_section_playlist.addWidget(self.playlistTrackChanges)
+        self.playlistDisableClickPause = QtWidgets.QCheckBox(SettingsDialog)
+        self.playlistDisableClickPause.setObjectName("playlistDisableClickPause")
+        self.lay_section_playlist.addWidget(self.playlistDisableClickPause)
+        self.playlistDisableWheelSeek = QtWidgets.QCheckBox(SettingsDialog)
+        self.playlistDisableWheelSeek.setObjectName("playlistDisableWheelSeek")
+        self.lay_section_playlist.addWidget(self.playlistDisableWheelSeek)
         self.lay_seek_sync = QtWidgets.QHBoxLayout()
         self.lay_seek_sync.setObjectName("lay_seek_sync")
         self.playlistSeekSyncModeLabel = QtWidgets.QLabel(SettingsDialog)
@@ -340,6 +346,12 @@ class Ui_SettingsDialog(object):
         )
         self.playlistTrackChanges.setText(
             _translate("SettingsDialog", "Warn about unsaved changes")
+        )
+        self.playlistDisableClickPause.setText(
+            _translate("SettingsDialog", "Disable pause with left mouse click")
+        )
+        self.playlistDisableWheelSeek.setText(
+            _translate("SettingsDialog", "Disable seek with mouse wheel")
         )
         self.playlistSeekSyncModeLabel.setText(
             _translate("SettingsDialog", "Seek sync mode")

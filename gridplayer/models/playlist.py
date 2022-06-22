@@ -19,6 +19,8 @@ class Playlist(BaseModel):
     videos: Optional[List[Video]]
     seek_sync_mode: SeekSyncMode = default_field("playlist/seek_sync_mode")
     shuffle_on_load: bool = default_field("playlist/shuffle_on_load")
+    disable_click_pause: bool = Settings().get("playlist/disable_click_pause")
+    disable_wheel_seek: bool = Settings().get("playlist/disable_wheel_seek")
 
     @classmethod
     def read(cls, filename):

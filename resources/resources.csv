@@ -28,6 +28,7 @@ icon-symbolic,icons/basic/083-backward.svg,previous-video-file
 icon-symbolic,icons/basic/084-forward.svg,next-video-file
 icon-symbolic,icons/basic/069-pen.svg,rename
 icon-symbolic,icons/basic/152-recycle.svg,reload
+icon-symbolic,icons/basic/129-more.svg,playlist-settings
 icon-symbolic,icons/custom/001-minimize window.svg,minimize
 icon-symbolic,icons/custom/002-close all.svg,close-playlist
 icon-symbolic,icons/custom/003-aspect fit.svg,aspect-fit

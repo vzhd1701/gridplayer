@@ -167,7 +167,7 @@ class VideoBlock(QWidget):  # noqa: WPS230
     info_change = pyqtSignal(str)
     is_in_progress_change = pyqtSignal()
 
-    def __init__(self, video_driver, **kwargs):
+    def __init__(self, video_driver, context, **kwargs):
         super().__init__(**kwargs)
 
         self._log = logging.getLogger(self.__class__.__name__)
@@ -175,6 +175,7 @@ class VideoBlock(QWidget):  # noqa: WPS230
         # Internal
         self.video_driver_cls = video_driver
         self.id = secrets.token_hex(PLAYER_ID_LENGTH)
+        self._ctx = context
 
         # Static Params
         self.video_params: Optional[Video] = None
@@ -385,8 +386,10 @@ class VideoBlock(QWidget):  # noqa: WPS230
         self.cleanup()
         event.accept()
 
+    @only_initialized
+    @only_seekable
     def wheelEvent(self, event):
-        if not self.is_video_initialized or self.is_live:
+        if self._ctx.is_disable_wheel_seek:
             event.ignore()
             return
 
@@ -402,8 +405,9 @@ class VideoBlock(QWidget):  # noqa: WPS230
 
         event.ignore()
 
+    @only_initialized
     def mouseReleaseEvent(self, event) -> None:
-        if not self.is_video_initialized:
+        if self._ctx.is_disable_click_pause:
             event.ignore()
             return
 

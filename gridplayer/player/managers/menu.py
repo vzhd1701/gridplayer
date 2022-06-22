@@ -27,6 +27,10 @@ SUBMENUS = MappingProxyType(
             "title": translate("Actions", "Percent"),
             "icon": "seek-sync-percent",
         },
+        "Playlist Settings": {
+            "title": translate("Actions", "Playlist Settings"),
+            "icon": "playlist-settings",
+        },
     }
 )
 
@@ -208,6 +212,11 @@ SECTIONS = MappingProxyType(
                 "---",
                 "Fit Cells",
                 "Size: %v",
+            ),
+            (
+                "Playlist Settings",
+                "Disable Click Pause",
+                "Disable Wheel Seek",
             ),
         ],
         "program": [

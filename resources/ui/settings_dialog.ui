@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>442</width>
-    <height>597</height>
+    <height>621</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -106,6 +106,20 @@
           <widget class="QCheckBox" name="playlistTrackChanges">
            <property name="text">
             <string>Warn about unsaved changes</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QCheckBox" name="playlistDisableClickPause">
+           <property name="text">
+            <string>Disable pause with left mouse click</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QCheckBox" name="playlistDisableWheelSeek">
+           <property name="text">
+            <string>Disable seek with mouse wheel</string>
            </property>
           </widget>
          </item>

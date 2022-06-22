@@ -108,6 +108,10 @@ class VideoBlocksManager(ManagerBase):
 
         self._ctx.seek_sync_mode = Settings().get("playlist/seek_sync_mode")
         self._ctx.is_shuffle_on_load = Settings().get("playlist/shuffle_on_load")
+        self._ctx.is_disable_click_pause = Settings().get(
+            "playlist/disable_click_pause"
+        )
+        self._ctx.is_disable_wheel_seek = Settings().get("playlist/disable_wheel_seek")
 
         self._ctx.video_blocks = VideoBlocks()
 
@@ -131,6 +135,12 @@ class VideoBlocksManager(ManagerBase):
             "is_shuffle_on_load": lambda: self._ctx.is_shuffle_on_load,
             "set_shuffle_on_load": self.set_shuffle_on_load,
             "toggle_shuffle_on_load": self.toggle_shuffle_on_load,
+            "is_disable_click_pause": lambda: self._ctx.is_disable_click_pause,
+            "set_disable_click_pause": self.set_disable_click_pause,
+            "toggle_disable_click_pause": self.toggle_disable_click_pause,
+            "is_disable_wheel_seek": lambda: self._ctx.is_disable_wheel_seek,
+            "set_disable_wheel_seek": self.set_disable_wheel_seek,
+            "toggle_disable_wheel_seek": self.toggle_disable_wheel_seek,
         }
 
     def cmd_all(self, command, *args):
@@ -163,6 +173,18 @@ class VideoBlocksManager(ManagerBase):
 
     def toggle_shuffle_on_load(self):
         self._ctx.is_shuffle_on_load = not self._ctx.is_shuffle_on_load
+
+    def set_disable_click_pause(self, is_disable_click_pause):
+        self._ctx.is_disable_click_pause = is_disable_click_pause
+
+    def toggle_disable_click_pause(self):
+        self._ctx.is_disable_click_pause = not self._ctx.is_disable_click_pause
+
+    def set_disable_wheel_seek(self, is_disable_wheel_seek):
+        self._ctx.is_disable_wheel_seek = is_disable_wheel_seek
+
+    def toggle_disable_wheel_seek(self):
+        self._ctx.is_disable_wheel_seek = not self._ctx.is_disable_wheel_seek
 
     def seek_sync_percent(self, percent):
         if self._ctx.seek_sync_mode == SeekSyncMode.PERCENT:
@@ -248,6 +270,7 @@ class VideoBlocksManager(ManagerBase):
 
         vb = VideoBlock(
             video_driver=self._ctx.video_driver,
+            context=self._ctx,
             parent=self.parent(),
         )
 
