@@ -43,3 +43,4 @@ repos:
         language: system
         entry: poetry run mdformat
         types: [markdown]
+        exclude: CHANGELOG.md
