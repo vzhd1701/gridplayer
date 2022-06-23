@@ -1057,7 +1057,7 @@ typing_extensions = ">=3.6,<4.0"
 
 [[package]]
 name = "yt-dlp"
-version = "2022.5.18"
+version = "2022.6.22.1"
 description = "A youtube-dl fork with additional features and patches"
 category = "main"
 optional = false
@@ -1086,7 +1086,7 @@ testing = ["pytest (>=4.6)", "pytest-checkdocs (>=2.4)", "pytest-flake8", "pytes
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.8"
-content-hash = "cbc88bd231e053faa642489875d2705b191139f2775ea7febab0e4c74ac01217"
+content-hash = "481f9e5914be639285785cdb838cc05c087cb8ac41a2fe38866493a6dd42ef23"
 
 [metadata.files]
 astor = [
@@ -1881,8 +1881,8 @@ wemake-python-styleguide = [
     {file = "wemake_python_styleguide-0.15.3-py3-none-any.whl", hash = "sha256:a382f6c9ec87d56daa08a11e47cab019c99b384f1393b32564ebc74c6da80441"},
 ]
 yt-dlp = [
-    {file = "yt-dlp-2022.5.18.tar.gz", hash = "sha256:3a7b59d2fb4b39ce8ba8e0b9c5a37fe20e5624f46a2346b4ae66ab1320e35134"},
-    {file = "yt_dlp-2022.5.18-py2.py3-none-any.whl", hash = "sha256:deec1009442312c1e2ee5298966842194d0e950b433f0d4fc844ef464b9c32a7"},
+    {file = "yt-dlp-2022.6.22.1.tar.gz", hash = "sha256:ee401a9dcc7e9285b14f13229c3dcefdf387e597f4f4f773dab326aafe3b830c"},
+    {file = "yt_dlp-2022.6.22.1-py2.py3-none-any.whl", hash = "sha256:3f2899b9082b50c890ce10beda4493fbbc016f4d73b924dfc26be670e5cae9fa"},
 ]
 zipp = [
     {file = "zipp-3.6.0-py3-none-any.whl", hash = "sha256:9fe5ea21568a0a70e50f273397638d39b03353731e6cbbb3fd8502a33fec40bc"},
