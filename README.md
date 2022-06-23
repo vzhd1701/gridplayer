@@ -16,12 +16,13 @@
 Simple VLC-based media player that can play multiple videos at the same time. You can
 play as many videos as you like, the only limit is your hardware. It supports all video
 formats that VLC supports (which is all of them). You can save your playlist retaining
-information about the position, sound volume,  loops, aspect ratio, etc.
+information about the position, sound volume, loops, aspect ratio, etc.
 
 ## Features
 
 - Cross-platform (Linux, Mac, and Windows)
-- Support for any video format (VLC)
+- Support for any video and audio format (VLC)
+- Support for (almost) any streaming URLs ([streamlink](https://github.com/streamlink/streamlink) + [yt-dlp](https://github.com/yt-dlp/yt-dlp))
 - Hardware & software video decoding
 - Control video aspect, playback speed, zoom
 - Set loop fragments with frame percision
@@ -43,6 +44,8 @@ there are not many strings to translate. Every contributor will be given proper 
 [![Download Windows Installer](https://raw.githubusercontent.com/vzhd1701/gridplayer/master/resources/public/dl_windows_installer.png)](https://github.com/vzhd1701/gridplayer/releases/download/v0.2.2/GridPlayer-0.2.2-win64-install.exe)
 [![Download Windows Portable](https://raw.githubusercontent.com/vzhd1701/gridplayer/master/resources/public/dl_windows_portable.png)](https://github.com/vzhd1701/gridplayer/releases/download/v0.2.2/GridPlayer-0.2.2-win64-portable.zip)
 
+**Compatible with Windows 7, 8, 10, 11.**
+
 ### Linux
 
 [![Get it from the Flathub](https://raw.githubusercontent.com/vzhd1701/gridplayer/master/resources/public/dl_flathub.png)](https://flathub.org/apps/details/com.vzhd1701.gridplayer)
@@ -52,6 +55,8 @@ there are not many strings to translate. Every contributor will be given proper 
 **For better system integration install via Flathub.**
 
 #### Note on AppImage
+
+The AppImage was built using Ubuntu Focal Fossa libraries, so compatibility is Ubuntu 20+.
 
 You may need to set execute permissions on AppImage file in order to run it:
 
@@ -157,6 +162,10 @@ This software was build using
   - Licensed under *GPL 2.0 and LGPL 2.1*
 - **pydantic** by [Samuel Colvin](https://github.com/samuelcolvin/pydantic)
   - Licensed under *MIT License*
+- **streamlink** by [Christopher Rosell, Streamlink Team](https://github.com/streamlink/streamlink)
+  - Licensed under *BSD-2-Clause License*
+- **yt-dlp** by [Contributors](https://github.com/yt-dlp/yt-dlp)
+  - Licensed under *Unlicense License*
 
 ### Graphics
 

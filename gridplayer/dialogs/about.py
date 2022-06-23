@@ -1,11 +1,13 @@
 import sys
-from typing import List, NamedTuple
+from typing import List, NamedTuple, Optional
 
 from pydantic.version import VERSION as PYDANTIC_VERSION
 from PyQt5.Qt import PYQT_VERSION_STR
 from PyQt5.QtCore import QT_VERSION_STR
 from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import QDialog
+from streamlink import __version__ as STREAMLINK_VERSION
+from yt_dlp.version import __version__ as YT_DLP_VERSION
 
 from gridplayer.dialogs.about_dialog_ui import Ui_AboutDialog
 from gridplayer.params import env
@@ -17,10 +19,12 @@ from gridplayer.version import (
     __version__,
 )
 
+PYTHON_VERSION = sys.version.split(" ")[0]
+
 
 class Attribution(NamedTuple):
     title: str
-    version: str
+    version: Optional[str]
     author: str
     license: str
     url: str
@@ -66,10 +70,10 @@ class AboutDialog(QDialog, Ui_AboutDialog):
         self.info.setText(about_info)
 
         attributions = {
-            "general": [
+            "core": [
                 Attribution(
                     "Python",
-                    sys.version.split(" ")[0],
+                    PYTHON_VERSION,
                     "Python Software Foundation",
                     "Python Software Foundation License",
                     "https://www.python.org/",
@@ -83,7 +87,7 @@ class AboutDialog(QDialog, Ui_AboutDialog):
                 ),
                 Attribution(
                     "VLC",
-                    None,
+                    env.VLC_VERSION,
                     "VideoLAN",
                     "GPL 2.0 or later",
                     "https://www.videolan.org/",
@@ -110,6 +114,20 @@ class AboutDialog(QDialog, Ui_AboutDialog):
                     "Samuel Colvin",
                     "MIT License",
                     "https://github.com/samuelcolvin/pydantic",
+                ),
+                Attribution(
+                    "streamlink",
+                    STREAMLINK_VERSION,
+                    "Christopher Rosell, Streamlink Team",
+                    "BSD-2-Clause License",
+                    "https://github.com/streamlink/streamlink",
+                ),
+                Attribution(
+                    "yt-dlp",
+                    YT_DLP_VERSION,
+                    "Contributors",
+                    "Unlicense License",
+                    "https://github.com/yt-dlp/yt-dlp",
                 ),
             ],
             "gui": [
@@ -146,7 +164,8 @@ class AboutDialog(QDialog, Ui_AboutDialog):
 
         attributions_txt = [
             "<style>p, h3 {text-align: center;}</style>",
-            self.generate_attributions(attributions["general"]),
+            "<h3>{0}</h3>".format(self.tr("Core")),
+            self.generate_attributions(attributions["core"]),
             "<h3>{0}</h3>".format(self.tr("Python packages")),
             self.generate_attributions(attributions["python"]),
             "<h3>{0}</h3>".format(self.tr("Graphics")),
