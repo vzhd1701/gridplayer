@@ -1,5 +1,5 @@
 import random
-from typing import List
+from typing import List, Optional
 
 from PyQt5.QtCore import Qt, pyqtSignal
 
@@ -34,6 +34,18 @@ class VideoBlocks(object):
     def clear(self):
         self._blocks.clear()
 
+    def reorder_by_video_ids(self, order: List[str]):
+        if len(order) != len(self._blocks):
+            raise ValueError("Order list must be the same length as the blocks list")
+
+        new_blocks = []
+        for video_id in order:
+            block = self.by_video_id(video_id)
+            if block is None:
+                raise ValueError(f"Video with id {video_id} not found")
+            new_blocks.append(block)
+        self._blocks = new_blocks
+
     def index(self, block):
         return self._blocks.index(block)
 
@@ -49,11 +61,18 @@ class VideoBlocks(object):
         return [v for v in self._blocks if v.is_video_initialized]
 
     @property
+    def is_all_initialized(self):
+        return all(v.is_video_initialized for v in self._blocks)
+
+    @property
     def videos(self) -> List[Video]:
         return [v.video_params for v in self._blocks]
 
-    def by_id(self, _id):
+    def by_id(self, _id) -> Optional[VideoBlock]:
         return next((v for v in self._blocks if v.id == _id), None)
+
+    def by_video_id(self, _id) -> Optional[VideoBlock]:
+        return next((v for v in self._blocks if v.video_params.id == _id), None)
 
     def swap(self, block1, block2):
         idx1 = self._blocks.index(block1)
@@ -67,6 +86,7 @@ class VideoBlocks(object):
 
 class VideoBlocksManager(ManagerBase):
     video_count_changed = pyqtSignal(int)
+    video_order_changed = pyqtSignal()
     playings_videos_count_changed = pyqtSignal(int)
 
     reload_all_closed = pyqtSignal()
@@ -166,7 +186,7 @@ class VideoBlocksManager(ManagerBase):
 
     def cmd_shuffle_video_blocks(self):
         self._ctx.video_blocks.shuffle()
-        self.video_count_changed.emit(len(self._ctx.video_blocks))
+        self.video_order_changed.emit()
 
     def set_shuffle_on_load(self, is_shuffle_on_load):
         self._ctx.is_shuffle_on_load = is_shuffle_on_load

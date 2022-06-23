@@ -134,6 +134,11 @@ wemake-python-styleguide = ["+*", "-WPS201"]
 # Flag enums
 wemake-python-styleguide = ["+*", "-WPS115"]
 
+[tool.flakehell.exceptions."gridplayer/player/managers/actions.py"]
+# WPS204 overused expression
+# translate
+wemake-python-styleguide = ["+*", "-WPS204"]
+
 [tool.flakehell.exceptions."gridplayer/player/player.py"]
 # WPS201 too many imports
 wemake-python-styleguide = ["+*", "-WPS201"]

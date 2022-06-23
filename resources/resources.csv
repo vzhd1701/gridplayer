@@ -29,6 +29,7 @@ icon-symbolic,icons/basic/084-forward.svg,next-video-file
 icon-symbolic,icons/basic/069-pen.svg,rename
 icon-symbolic,icons/basic/152-recycle.svg,reload
 icon-symbolic,icons/basic/129-more.svg,playlist-settings
+icon-symbolic,icons/basic/111-layers.svg,snapshots
 icon-symbolic,icons/custom/001-minimize window.svg,minimize
 icon-symbolic,icons/custom/002-close all.svg,close-playlist
 icon-symbolic,icons/custom/003-aspect fit.svg,aspect-fit
@@ -71,5 +72,6 @@ icon-symbolic,icons/custom/043-network error.svg,network-error
 icon-symbolic,icons/custom/044-seek sync time.svg,seek-sync-time
 icon-symbolic,icons/custom/045-seek sync percent.svg,seek-sync-percent
 icon-symbolic,icons/custom/046-empty.svg,empty
+icon-symbolic,icons/custom/047-warning.svg,warning
 translation,translations/ru_RU.ts,ru_RU
 translation,translations/hu_HU.ts,hu_HU

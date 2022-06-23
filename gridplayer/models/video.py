@@ -1,9 +1,12 @@
 from pathlib import Path
 from typing import Iterable, List, Optional, Union
+from uuid import uuid4
 
 from pydantic import (  # noqa: WPS450
+    UUID4,
     AnyUrl,
     BaseModel,
+    Field,
     FilePath,
     PydanticValueError,
     ValidationError,
@@ -12,7 +15,7 @@ from pydantic import (  # noqa: WPS450
 from pydantic.color import Color
 
 from gridplayer.params.extensions import SUPPORTED_MEDIA_EXT
-from gridplayer.params.static import VideoAspect, VideoRepeat, WindowState
+from gridplayer.params.static import VideoAspect, VideoRepeat
 from gridplayer.settings import default_field
 
 MIN_SCALE = 1
@@ -54,6 +57,7 @@ VideoURI = Union[VideoURL, AbsoluteFilePath]
 
 
 class Video(BaseModel):
+    id: UUID4 = Field(default_factory=uuid4)
     uri: VideoURI
 
     # Presentation
@@ -78,13 +82,6 @@ class Video(BaseModel):
 
     # Streamable
     stream_quality: str = default_field("video_defaults/stream_quality")
-
-    class Config(object):
-        json_encoders = {
-            VideoAspect: lambda v: v.value,
-            VideoRepeat: lambda v: v.value,
-            WindowState: lambda v: (v.x, v.y, v.height, v.width),
-        }
 
     @property
     def uri_name(self) -> str:

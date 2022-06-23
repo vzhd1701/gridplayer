@@ -18,6 +18,7 @@ from gridplayer.player.managers.playlist import PlaylistManager
 from gridplayer.player.managers.screensaver import ScreensaverManager
 from gridplayer.player.managers.settings import SettingsManager
 from gridplayer.player.managers.single_mode import SingleModeManager
+from gridplayer.player.managers.snapshots import SnapshotsManager
 from gridplayer.player.managers.video_blocks import VideoBlocksManager
 from gridplayer.player.managers.video_driver import VideoDriverManager
 from gridplayer.player.managers.window_state import WindowStateManager
@@ -38,6 +39,7 @@ class Player(QWidget, ManagersManager):
             "video_blocks": VideoBlocksManager,
             "grid": GridManager,
             "playlist": PlaylistManager,
+            "snapshots": SnapshotsManager,
             "screensaver": ScreensaverManager,
             "active_block": ActiveBlockManager,
             "mouse_hide": MouseHideManager,
@@ -59,6 +61,7 @@ class Player(QWidget, ManagersManager):
             "grid": [
                 ("minimum_size_changed", "window_state.set_minimum_size"),
                 ("video_blocks.video_count_changed", "reload_video_grid"),
+                ("video_blocks.video_order_changed", "reload_video_grid"),
             ],
             "screensaver": [
                 ("video_blocks.playings_videos_count_changed", "screensaver_check")
@@ -95,6 +98,7 @@ class Player(QWidget, ManagersManager):
                 ("playlist_closed", "window_state.restore_to_minimum"),
                 ("window_state_loaded", "window_state.restore_window_state"),
                 ("grid_state_loaded", "grid.set_grid_state"),
+                ("snapshots_loaded", "snapshots.set_snapshots"),
                 ("seek_sync_mode_loaded", "video_blocks.set_seek_sync_mode"),
                 ("shuffle_on_load_loaded", "video_blocks.set_shuffle_on_load"),
                 ("disable_click_pause_loaded", "video_blocks.set_disable_click_pause"),
@@ -102,6 +106,11 @@ class Player(QWidget, ManagersManager):
                 ("videos_loaded", "video_blocks.add_videos"),
                 ("alert", "window_state.activate_window"),
                 ("error", "dialogs.error"),
+            ],
+            "snapshots": [
+                ("grid_state_loaded", "grid.set_grid_state"),
+                ("video_blocks.video_count_changed", "clear_snapshots"),
+                ("warning", "dialogs.warning"),
             ],
             "add_videos": [
                 ("videos_added", "video_blocks.add_videos"),

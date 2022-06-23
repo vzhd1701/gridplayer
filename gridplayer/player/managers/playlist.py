@@ -1,4 +1,5 @@
 from pathlib import Path
+from typing import Any, Tuple
 
 from PyQt5.QtCore import QDir, pyqtSignal
 from PyQt5.QtWidgets import QFileDialog, QMessageBox
@@ -19,6 +20,7 @@ class PlaylistManager(ManagerBase):
     playlist_loaded = pyqtSignal()
     window_state_loaded = pyqtSignal(WindowState)
     grid_state_loaded = pyqtSignal(GridState)
+    snapshots_loaded = pyqtSignal(dict)
     seek_sync_mode_loaded = pyqtSignal(SeekSyncMode)
     shuffle_on_load_loaded = pyqtSignal(bool)
     disable_click_pause_loaded = pyqtSignal(bool)
@@ -144,16 +146,18 @@ class PlaylistManager(ManagerBase):
 
         self.videos_loaded.emit(playlist.videos)
 
-        if playlist.grid_state is not None:
-            self.grid_state_loaded.emit(playlist.grid_state)
+        _emit_if_not_empty(
+            (self.grid_state_loaded, playlist.grid_state),
+            (self.window_state_loaded, playlist.window_state),
+            (self.snapshots_loaded, playlist.snapshots),
+        )
 
-        if playlist.window_state is not None:
-            self.window_state_loaded.emit(playlist.window_state)
-
-        self.seek_sync_mode_loaded.emit(playlist.seek_sync_mode)
-        self.shuffle_on_load_loaded.emit(playlist.shuffle_on_load)
-        self.disable_click_pause_loaded.emit(playlist.disable_click_pause)
-        self.disable_wheel_seek_loaded.emit(playlist.disable_wheel_seek)
+        _emit(
+            (self.seek_sync_mode_loaded, playlist.seek_sync_mode),
+            (self.shuffle_on_load_loaded, playlist.shuffle_on_load),
+            (self.disable_click_pause_loaded, playlist.disable_click_pause),
+            (self.disable_wheel_seek_loaded, playlist.disable_wheel_seek),
+        )
 
         self.alert.emit()
 
@@ -205,8 +209,20 @@ class PlaylistManager(ManagerBase):
             grid_state=self._ctx.grid_state,
             window_state=self._ctx.window_state,
             videos=videos,
+            snapshots=self._ctx.snapshots,
             seek_sync_mode=self._ctx.seek_sync_mode,
             shuffle_on_load=self._ctx.is_shuffle_on_load,
             disable_click_pause=self._ctx.is_disable_click_pause,
             disable_wheel_seek=self._ctx.is_disable_wheel_seek,
         )
+
+
+def _emit_if_not_empty(*properties: Tuple[pyqtSignal, Any]):
+    for signal, property_value in properties:
+        if property_value:
+            signal.emit(property_value)
+
+
+def _emit(*properties: Tuple[pyqtSignal, Any]):
+    for signal, property_value in properties:
+        signal.emit(property_value)

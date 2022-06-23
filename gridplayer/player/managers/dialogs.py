@@ -14,3 +14,7 @@ class DialogsManager(ManagerBase):
     @pyqtSlot(str)
     def error(self, message):
         QCustomMessageBox.critical(self.parent(), tr("Error"), message)
+
+    @pyqtSlot(str)
+    def warning(self, message):
+        QCustomMessageBox.warning(self.parent(), tr("Warning"), message)

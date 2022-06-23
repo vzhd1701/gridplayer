@@ -39,7 +39,7 @@ QMenu::icon { margin-left: 5px;}
 QMenu::item {
     height:{icon_size}px;
     margin: 0;
-    padding: 1px 5px 1px 5px;
+    padding: 1px 15px 1px 5px;
     background: transparent;
     border: 0 solid transparent;
 }

@@ -1,7 +1,7 @@
 import json
 import logging
 from pathlib import Path
-from typing import List, Optional
+from typing import Dict, List, Optional
 
 from pydantic import BaseModel, ValidationError
 
@@ -12,11 +12,19 @@ from gridplayer.settings import Settings, default_field
 
 logger = logging.getLogger(__name__)
 
+VideosList = List[Video]
+
+
+class Snapshot(BaseModel):
+    grid_state: GridState
+    videos: VideosList
+
 
 class Playlist(BaseModel):
     grid_state: GridState = GridState()
     window_state: Optional[WindowState]
-    videos: Optional[List[Video]]
+    videos: Optional[VideosList]
+    snapshots: Optional[Dict[int, Snapshot]]
     seek_sync_mode: SeekSyncMode = default_field("playlist/seek_sync_mode")
     shuffle_on_load: bool = default_field("playlist/shuffle_on_load")
     disable_click_pause: bool = Settings().get("playlist/disable_click_pause")

@@ -145,6 +145,16 @@ def only_local_file(func):
     return wrapper
 
 
+def only_streamable(func):
+    def wrapper(*args, **kwargs):
+        self = args[0]  # noqa: WPS117
+        if not self.streams:
+            return None
+        return func(*args, **kwargs)
+
+    return wrapper
+
+
 class VideoBlock(QWidget):  # noqa: WPS230
     load_video = pyqtSignal(MediaInput)
 
@@ -185,6 +195,7 @@ class VideoBlock(QWidget):  # noqa: WPS230
         self.is_active = False
 
         self._title = None
+        self._color = None
         self._default_title = None
         self.is_live = False
         self.streams = Streams()
@@ -492,6 +503,15 @@ class VideoBlock(QWidget):  # noqa: WPS230
         self.label_change.emit(self._title)
 
     @property
+    def color(self):
+        return self._color
+
+    @color.setter
+    def color(self, color):
+        self._color = color
+        self.color_change.emit(color)
+
+    @property
     def time(self):
         return self.video_params.current_position
 
@@ -579,6 +599,28 @@ class VideoBlock(QWidget):  # noqa: WPS230
         elif self.video_params.repeat_mode == VideoRepeat.DIR_SHUFFLE:
             self.shuffle_video()
 
+    def apply_snapshot(self, snapshot: Video):
+        if snapshot.uri != self.video_params.uri:
+            return
+
+        self.title = snapshot.title or self._default_title
+        self.color = snapshot.color.as_hex()
+
+        self.set_aspect(snapshot.aspect_mode)
+        self.set_muted(snapshot.is_muted)
+        self.set_pause(snapshot.is_paused)
+        self.set_scale(snapshot.scale, is_silent=True)
+        self.set_volume(snapshot.volume)
+
+        self.seek(snapshot.current_position)
+        self.set_loop_start_time(snapshot.loop_start)
+        self.set_loop_end_time(snapshot.loop_end)
+        self.set_rate(snapshot.rate, is_silent=True)
+
+        self.switch_stream_quality(snapshot.stream_quality)
+
+        self.video_params = snapshot.copy()
+
     def set_video(self, video_params: Video):
         is_first_video = self.video_params is None
 
@@ -611,6 +653,7 @@ class VideoBlock(QWidget):  # noqa: WPS230
 
         self.load_stream_quality(self.video_params.stream_quality)
 
+    @only_streamable
     def switch_stream_quality(self, quality: str):
         if quality == self.video_params.stream_quality:
             return
@@ -646,19 +689,14 @@ class VideoBlock(QWidget):  # noqa: WPS230
             else:
                 self.title = self.video_params.title
 
-        self.color_change.emit(self.video_params.color.as_hex())
+        self.color = self.video_params.color.as_hex()
 
         self.set_volume(self.video_params.volume)
         self.set_muted(self.video_params.is_muted)
 
-        if not self.is_live:
-            if self.video_params.loop_start:
-                self.set_loop_start_time(self.video_params.loop_start)
-
-            if self.video_params.loop_end:
-                self.set_loop_end_time(self.video_params.loop_end)
-
-            self.video_driver.set_playback_rate(self.video_params.rate)
+        self.set_loop_start_time(self.video_params.loop_start)
+        self.set_loop_end_time(self.video_params.loop_end)
+        self.set_rate(self.video_params.rate, is_silent=True)
 
         self.video_status.hide()
         self.show_overlay()
@@ -788,71 +826,60 @@ class VideoBlock(QWidget):  # noqa: WPS230
     @only_initialized
     def scale_increase(self):
         self.video_params.scale += 0.1
-        self.video_params.scale = round(self.video_params.scale, 1)
+        self.video_params.scale = min(round(self.video_params.scale, 1), MAX_SCALE)
 
-        if self.video_params.scale > MAX_SCALE:
-            self.video_params.scale = MAX_SCALE
-            self.info_change.emit("Zoom: {0}".format(self.video_params.scale))
-            return
-
-        self.video_driver.set_scale(self.video_params.scale)
-        self.info_change.emit("Zoom: {0}".format(self.video_params.scale))
+        self.set_scale(self.video_params.scale)
 
     @only_initialized
     def scale_decrease(self):
         self.video_params.scale -= 0.1
-        self.video_params.scale = round(self.video_params.scale, 1)
+        self.video_params.scale = max(round(self.video_params.scale, 1), MIN_SCALE)
 
-        if self.video_params.scale < MIN_SCALE:
-            self.video_params.scale = MIN_SCALE
-            self.info_change.emit("Zoom: {0}".format(self.video_params.scale))
-            return
-
-        self.video_driver.set_scale(self.video_params.scale)
-        self.info_change.emit("Zoom: {0}".format(self.video_params.scale))
+        self.set_scale(self.video_params.scale)
 
     @only_initialized
     def scale_reset(self):
-        self.video_params.scale = 1.0
+        self.set_scale(1.0)
 
-        self.video_driver.set_scale(self.video_params.scale)
-        self.info_change.emit("Zoom: {0}".format(self.video_params.scale))
+    @only_initialized
+    def set_scale(self, scale, is_silent=False):
+        self.video_params.scale = scale
+
+        self.video_driver.set_scale(scale)
+
+        if not is_silent:
+            self.info_change.emit("Zoom: {0}".format(scale))
 
     @only_initialized
     @only_seekable
     def rate_increase(self):
         self.video_params.rate += 0.1
-        self.video_params.rate = round(self.video_params.rate, 1)
+        self.video_params.rate = min(round(self.video_params.rate, 1), MAX_RATE)
 
-        if self.video_params.rate > MAX_RATE:
-            self.video_params.rate = MAX_RATE
-            self.info_change.emit("Speed: {0}".format(self.video_params.rate))
-            return
-
-        self.video_driver.set_playback_rate(self.video_params.rate)
-        self.info_change.emit("Speed: {0}".format(self.video_params.rate))
+        self.set_rate(self.video_params.rate)
 
     @only_initialized
     @only_seekable
     def rate_decrease(self):
         self.video_params.rate -= 0.1
-        self.video_params.rate = round(self.video_params.rate, 1)
+        self.video_params.rate = max(round(self.video_params.rate, 1), MIN_RATE)
 
-        if self.video_params.rate < MIN_RATE:
-            self.video_params.rate = MIN_RATE
-            self.info_change.emit("Speed: {0}".format(self.video_params.rate))
-            return
-
-        self.video_driver.set_playback_rate(self.video_params.rate)
-        self.info_change.emit("Speed: {0}".format(self.video_params.rate))
+        self.set_rate(self.video_params.rate)
 
     @only_initialized
     @only_seekable
     def rate_reset(self):
-        self.video_params.rate = 1.0
+        self.set_rate(1.0)
 
-        self.video_driver.set_playback_rate(self.video_params.rate)
-        self.info_change.emit("Speed: {0}".format(self.video_params.rate))
+    @only_initialized
+    @only_seekable
+    def set_rate(self, rate, is_silent=False):
+        self.video_params.rate = rate
+
+        self.video_driver.set_playback_rate(rate)
+
+        if not is_silent:
+            self.info_change.emit(f"Speed: {rate}")
 
     def set_pause(self, paused):
         if self._is_state_change_in_progress:
@@ -944,4 +971,4 @@ class VideoBlock(QWidget):  # noqa: WPS230
             self.video_params.title = new_name
 
         self.title = new_name
-        self.color_change.emit(self.video_params.color.as_hex())
+        self.color = self.video_params.color.as_hex()

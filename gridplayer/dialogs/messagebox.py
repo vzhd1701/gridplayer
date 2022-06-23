@@ -19,9 +19,10 @@ class QCustomMessageBox(QMessageBox):
             btn.setIcon(QIcon())
 
         icons = {
+            QMessageBox.Critical: QIcon.fromTheme("error"),
             QMessageBox.Information: QIcon.fromTheme("information"),
             QMessageBox.Question: QIcon.fromTheme("question"),
-            QMessageBox.Critical: QIcon.fromTheme("close"),
+            QMessageBox.Warning: QIcon.fromTheme("warning"),
         }
 
         icon_size = 64
