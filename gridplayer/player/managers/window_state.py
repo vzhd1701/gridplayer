@@ -51,6 +51,10 @@ class WindowStateManager(ManagerBase):
             self.pre_minimize_unpaused = []
 
     def closeEvent(self, event):
+        if not self._ctx.commands.close_playlist():
+            event.ignore()
+            return True
+
         self.closing.emit()
 
         self.parent().hide()

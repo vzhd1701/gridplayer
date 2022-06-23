@@ -63,6 +63,17 @@ class QCustomMessageBox(QMessageBox):
         return cls(QMessageBox.Question, title, text, buttons, parent).exec_()
 
     @classmethod
+    def cancellable_question(
+        cls,
+        parent,
+        title,
+        text,
+        buttons=QMessageBox.Yes | QMessageBox.No | QMessageBox.Cancel,
+        defaultButton=QMessageBox.NoButton,
+    ):
+        return cls(QMessageBox.Question, title, text, buttons, parent).exec_()
+
+    @classmethod
     def warning(
         cls,
         parent,

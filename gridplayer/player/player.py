@@ -56,7 +56,6 @@ class Player(QWidget, ManagersManager):
         self.connections = {
             "window_state": [
                 ("pause_on_minimize", "video_blocks.pause_all"),
-                ("closing", "playlist.check_playlist_save"),
             ],
             "grid": [
                 ("minimum_size_changed", "window_state.set_minimum_size"),

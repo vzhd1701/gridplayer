@@ -55,10 +55,13 @@ class PlaylistManager(ManagerBase):
             if files:
                 self.load_playlist_file(files[0])
 
-    def cmd_close_playlist(self):
-        self.check_playlist_save()
+    def cmd_close_playlist(self) -> bool:
+        if not self.check_playlist_save():
+            return False
 
         self.playlist_closed.emit()
+
+        return True
 
     def cmd_save_playlist(self):
         playlist = self._make_playlist()
@@ -161,29 +164,34 @@ class PlaylistManager(ManagerBase):
 
         self.alert.emit()
 
-    def check_playlist_save(self):
+    def check_playlist_save(self) -> bool:
         if not Settings().get("playlist/track_changes"):
-            return
+            return True
 
         if not self._ctx.video_blocks:
-            return
+            return True
 
-        if self._saved_playlist is not None:
-            playlist_state = hash(self._make_playlist().dumps())
-
-            is_playlist_changed = playlist_state != self._saved_playlist["state"]
-        else:
-            is_playlist_changed = True
-
-        if is_playlist_changed:
+        if self._is_playlist_changed():
             self.alert.emit()
 
-            ret = QCustomMessageBox.question(
+            ret = QCustomMessageBox.cancellable_question(
                 self.parent(), tr("Playlist"), tr("Do you want to save the playlist?")
             )
 
             if ret == QMessageBox.Yes:
                 self.cmd_save_playlist()
+
+            elif ret == QMessageBox.Cancel:
+                return False
+
+        return True
+
+    def _is_playlist_changed(self):
+        if self._saved_playlist is None:
+            return True
+
+        playlist_state = hash(self._make_playlist().dumps())
+        return playlist_state != self._saved_playlist["state"]
 
     def _is_overwrite_denied(self, file_path: Path):
         if file_path.is_file():
