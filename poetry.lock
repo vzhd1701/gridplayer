@@ -497,6 +497,17 @@ colors = ["colorama (>=0.4.3,<0.5.0)"]
 plugins = ["setuptools"]
 
 [[package]]
+name = "keepachangelog"
+version = "1.0.0"
+description = "Manipulate keep a changelog files."
+category = "dev"
+optional = false
+python-versions = ">=3.6"
+
+[package.extras]
+testing = ["requests", "starlette (>=0.13.0,<0.14.0)", "flask (>=1.0.0,<2.0.0)", "flask-restx (>=0.2.0,<0.3.0)", "pytest-cov (>=2.0.0,<3.0.0)"]
+
+[[package]]
 name = "lxml"
 version = "4.8.0"
 description = "Powerful and Pythonic XML processing library combining libxml2/libxslt with the ElementTree API."
@@ -1086,7 +1097,7 @@ testing = ["pytest (>=4.6)", "pytest-checkdocs (>=2.4)", "pytest-flake8", "pytes
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.8"
-content-hash = "481f9e5914be639285785cdb838cc05c087cb8ac41a2fe38866493a6dd42ef23"
+content-hash = "eaa2e8e65214f23918153f5a59fcc81b8b5a2a2f07134454589f5eab0e4b430a"
 
 [metadata.files]
 astor = [
@@ -1393,6 +1404,10 @@ isodate = [
 isort = [
     {file = "isort-5.9.3-py3-none-any.whl", hash = "sha256:e17d6e2b81095c9db0a03a8025a957f334d6ea30b26f9ec70805411e5c7c81f2"},
     {file = "isort-5.9.3.tar.gz", hash = "sha256:9c2ea1e62d871267b78307fe511c0838ba0da28698c5732d54e2790bf3ba9899"},
+]
+keepachangelog = [
+    {file = "keepachangelog-1.0.0-py3-none-any.whl", hash = "sha256:1b73548ce85518b73009ce71af79c617c663437268cb085071973440c0505158"},
+    {file = "keepachangelog-1.0.0.tar.gz", hash = "sha256:0d3331f6601aeccf73620319782f0e993b1147b1fcba0ee2a534e4eef4b252b4"},
 ]
 lxml = [
     {file = "lxml-4.8.0-cp27-cp27m-macosx_10_14_x86_64.whl", hash = "sha256:e1ab2fac607842ac36864e358c42feb0960ae62c34aa4caaf12ada0a1fb5d99b"},
