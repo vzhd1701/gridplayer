@@ -20,7 +20,6 @@ icon-symbolic,icons/basic/155-ribbon.svg,about
 icon-symbolic,icons/basic/157-right.svg,next-video
 icon-symbolic,icons/basic/113-left arrow.svg,previous-video
 icon-symbolic,icons/basic/163-search.svg,zoom
-icon-symbolic,icons/basic/166-gear.svg,settings
 icon-symbolic,icons/basic/234-zoom.svg,zoom-reset
 icon-symbolic,icons/basic/235-zoom in.svg,zoom-in
 icon-symbolic,icons/basic/236-zoom out.svg,zoom-out
@@ -73,5 +72,6 @@ icon-symbolic,icons/custom/044-seek sync time.svg,seek-sync-time
 icon-symbolic,icons/custom/045-seek sync percent.svg,seek-sync-percent
 icon-symbolic,icons/custom/046-empty.svg,empty
 icon-symbolic,icons/custom/047-warning.svg,warning
+icon-symbolic,icons/custom/048-settings.svg,settings
 translation,translations/ru_RU.ts,ru_RU
 translation,translations/hu_HU.ts,hu_HU
