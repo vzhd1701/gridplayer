@@ -21,7 +21,8 @@
     <p>Features:</p>
     <ul>
       <li>Cross-platform (Linux, Mac, and Windows)</li>
-      <li>Support for any video format (VLC)</li>
+      <li>Support for any video and audio format (VLC)</li>
+      <li>Support for (almost) any streaming URLs (streamlink + yt-dlp)</li>
       <li>Hardware &amp; software video decoding</li>
       <li>Control video aspect, playback speed, zoom</li>
       <li>Set loop fragments with frame percision</li>
