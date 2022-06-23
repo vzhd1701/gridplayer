@@ -26,6 +26,8 @@ let version_updater_readme = {...version_updater_regex};
 version_updater_readme.regex = /\d+\.\d+\.\d+/g;
 version_updater_readme.regex_repl = "$1";
 
+version_file = "gridplayer/version.py"
+
 let packageFiles = [
   {
     filename: "pyproject.toml",
@@ -35,7 +37,7 @@ let packageFiles = [
 
 let bumpFiles = packageFiles.concat([
   {
-    filename: "gridplayer/version.py",
+    filename: version_file,
     updater: version_updater_python,
   },
   {
@@ -46,10 +48,14 @@ let bumpFiles = packageFiles.concat([
 
 module.exports = {
   header: "",
+  commitAll: true,
   sign: true,
   packageFiles: packageFiles,
   bumpFiles: bumpFiles,
+  skip: {
+    changelog: true
+  },
   scripts: {
-    postchangelog: "poetry run mdformat CHANGELOG.md"
+    postbump: `poetry run python scripts/_helpers/kacl.py "${version_file}" CHANGELOG.md && git add CHANGELOG.md`
   }
 }
