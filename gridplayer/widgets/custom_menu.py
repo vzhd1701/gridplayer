@@ -19,9 +19,9 @@ COLORS_LIGHT = MappingProxyType(
 
 COLORS_DARK = MappingProxyType(
     {
-        "background": "#666",
+        "background": "#444",
         "background_selected": "#888",
-        "background_checked": "#333",
+        "background_checked": "#666",
         "text": "#eee",
         "border": "#888",
     }
