@@ -22,7 +22,7 @@ class PlayerProcessSingleVLCHWSP(QThread, VlcPlayerBase, metaclass=QABC):
     playback_status_changed = pyqtSignal(bool)
     end_reached = pyqtSignal()
     time_changed = pyqtSignal(int)
-    error_signal = pyqtSignal()
+    error_signal = pyqtSignal(str)
     update_status_signal = pyqtSignal(str, int)
     snapshot_taken = pyqtSignal(str)
 
@@ -99,8 +99,8 @@ class PlayerProcessSingleVLCHWSP(QThread, VlcPlayerBase, metaclass=QABC):
     def notify_update_status(self, status, percent=0):
         self.update_status_signal.emit(status, percent)
 
-    def notify_error(self):
-        self.error_signal.emit()
+    def notify_error(self, error):
+        self.error_signal.emit(error)
 
     def notify_time_changed(self, new_time):
         self.time_changed.emit(new_time)

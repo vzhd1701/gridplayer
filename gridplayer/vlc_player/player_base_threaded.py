@@ -9,8 +9,8 @@ class VlcPlayerThreaded(CommandLoopThreaded, VlcPlayerBase):
     def notify_update_status(self, status, percent=0):
         self.cmd_send("update_status_emit", status, percent)
 
-    def notify_error(self):
-        self.cmd_send("error_state")
+    def notify_error(self, error):
+        self.cmd_send("error_state", error)
 
     def notify_time_changed(self, new_time):
         self.cmd_send("time_changed_emit", new_time)

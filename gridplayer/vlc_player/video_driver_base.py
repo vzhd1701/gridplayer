@@ -14,7 +14,7 @@ class VLCVideoDriver(QObject, metaclass=QABC):
     load_finished = pyqtSignal(MediaTrack)
     snapshot_taken = pyqtSignal(str)
 
-    error = pyqtSignal()
+    error = pyqtSignal(str)
     crash = pyqtSignal(str)
     update_status = pyqtSignal(str, int)
 
@@ -74,8 +74,8 @@ class VLCVideoDriver(QObject, metaclass=QABC):
     def audio_set_volume(self, volume):
         ...
 
-    def error_state(self):
-        self.error.emit()
+    def error_state(self, error):
+        self.error.emit(error)
 
     def update_status_emit(self, status, percent):
         self.update_status.emit(status, percent)

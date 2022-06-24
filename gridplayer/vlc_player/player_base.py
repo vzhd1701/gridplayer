@@ -23,6 +23,14 @@ MEDIA_EXTRACT_RETRY_TIME = 0.1
 MEDIA_EXTRACT_TIMEOUT = int(INIT_TIMEOUT / MEDIA_EXTRACT_RETRY_TIME)
 
 
+def translate(context, text):
+    """
+    This is just a dummy to make strings discoverable via pylupdate,
+    actual translation takes place in Qt app
+    """
+    return text
+
+
 def only_initialized_player(func):
     def wrapper(*args, **kwargs):
         self = args[0]  # noqa: WPS117
@@ -89,7 +97,9 @@ class VlcPlayerBase(ABC):
 
     def cb_buffering(self, event):
         buffered_percent = int(event.u.new_cache)
-        self.notify_update_status("Buffering", buffered_percent)
+        self.notify_update_status(
+            translate("Video Status", "Buffering"), buffered_percent
+        )
 
     def cb_playing(self, event):
         self._log.debug("Media playing")
@@ -104,7 +114,9 @@ class VlcPlayerBase(ABC):
             self._event_waiter.async_wait_for(
                 event="buffering",
                 on_completed=self._timer_unpause_failsafe.start,
-                on_timeout=lambda: self.error("Buffering timeout"),
+                on_timeout=lambda: self.error(
+                    translate("Video Error", "Buffering timeout")
+                ),
                 timeout=INIT_TIMEOUT,
             )
 
@@ -115,11 +127,13 @@ class VlcPlayerBase(ABC):
             if self.media_input.is_live or self._get_duration() == 0:
                 # live video paused = something went wrong
                 # video with 0 duration = file is bad
-                self.error("Video stopped before initialization")
+                self.error(
+                    translate("Video Error", "Video stopped before initialization")
+                )
             return
 
         if self.media_input.is_live:
-            self.error("Live stream ended")
+            self.error(translate("Video Error", "Live stream ended"))
             return
 
         if self._media_player.get_time() > self.media_track.length - 1000:
@@ -138,7 +152,7 @@ class VlcPlayerBase(ABC):
 
         if not self.media_input.is_live:
             # only live videos can stop
-            self.error("Video stopped unexpectedly")
+            self.error(translate("Video Error", "Video stopped unexpectedly"))
             return
 
         self._is_paused = True
@@ -148,11 +162,11 @@ class VlcPlayerBase(ABC):
         self._log.debug("Media end reached")
 
         if not self.is_video_initialized:
-            self.error("Video stopped before initialization")
+            self.error(translate("Video Error", "Video stopped before initialization"))
             return
 
     def cb_error(self, event):
-        self.error("Player error")
+        self.error(translate("Video Error", "Player error"))
 
     def cb_parse_changed(self, event):
         self._log.debug("Media parse changed")
@@ -163,10 +177,11 @@ class VlcPlayerBase(ABC):
         elif event.u.new_status == vlc.MediaParsedStatus.done:
             self._init_media_track()
 
+        elif event.u.new_status == vlc.MediaParsedStatus.timeout:
+            return self.error(translate("Video Error", "Media parse timeout"))
+
         else:
-            # fail or timeout
-            status_txt = str(vlc.MediaParsedStatus(event.u.new_status))
-            return self.error(f"Media parse failed, status changed to {status_txt}")
+            return self.error(translate("Video Error", "Media parse failed"))
 
         self.loopback_load_video_st2_set_parsed_media()
 
@@ -221,15 +236,14 @@ class VlcPlayerBase(ABC):
 
     def error(self, message):
         self._log.error(message)
-        self.notify_update_status(message)
-        self.notify_error()
+        self.notify_error(message)
 
     @abstractmethod
     def notify_update_status(self, status, percent=0):
         ...
 
     @abstractmethod
-    def notify_error(self):
+    def notify_error(self, error):
         ...
 
     @abstractmethod
@@ -284,7 +298,7 @@ class VlcPlayerBase(ABC):
             self._media = self.instance.media_new_path(self.media_input.uri)
 
         if self._media is None:
-            return self.error("Failed to load uri {0}".format(self.media_input.uri))
+            return self.error(translate("Video Error", "Failed to load media"))
 
         self._event_manager.attach_to_media(self._media)
 
@@ -295,7 +309,7 @@ class VlcPlayerBase(ABC):
 
         self._media.parse_with_options(parse_flag, parse_timeout)
 
-        self.notify_update_status("Parsing media")
+        self.notify_update_status(translate("Video Status", "Parsing media"))
 
     def load_video_st2_set_parsed_media(self):
         """Step 2. Start video player with parsed file"""
@@ -307,7 +321,9 @@ class VlcPlayerBase(ABC):
         self._event_waiter.async_wait_for(
             event="buffering",
             on_completed=self.loopback_load_video_st3_extract_media_track,
-            on_timeout=lambda: self.error("Buffering timeout"),
+            on_timeout=lambda: self.error(
+                translate("Video Error", "Buffering timeout")
+            ),
             timeout=INIT_TIMEOUT,
         )
 
@@ -317,7 +333,9 @@ class VlcPlayerBase(ABC):
         """Step 3. Extract media track"""
 
         if self._media_track_extract_attempts == 0:
-            self.notify_update_status("Preparing video output")
+            self.notify_update_status(
+                translate("Video Status", "Preparing video output")
+            )
 
         self._log.debug("Extracting media track")
 
@@ -331,7 +349,7 @@ class VlcPlayerBase(ABC):
             # this can take a while
             self._media_track_extract_attempts += 1
             if self._media_track_extract_attempts == MEDIA_EXTRACT_TIMEOUT:
-                self.error("Timed out to extract media track")
+                self.error(translate("Video Error", "Timed out to extract media track"))
                 return
 
             self._log.debug("No media track yet, waiting...")
@@ -374,12 +392,12 @@ class VlcPlayerBase(ABC):
                 res = self._media_player.video_take_snapshot(0, str(file_path), 0, 0)
         except TimeoutError:
             file_path.parent.rmdir()
-            self.error(f"Timed out to take snapshot to {file_path}")
+            self.error(translate("Video Error", "Timed out to take snapshot"))
             return
 
         if res != 0:
             file_path.parent.rmdir()
-            self.error(f"Failed to take snapshot to {file_path}")
+            self.error(translate("Video Error", "Failed to take snapshot"))
             return
 
         self.notify_snapshot_taken(str(file_path))
@@ -456,10 +474,10 @@ class VlcPlayerBase(ABC):
         try:
             self._set_initial_state()
         except TimeoutError:
-            self.error("Timed out setting initial state")
+            self.error(translate("Video Error", "Timed out setting initial state"))
             return False
         except NotPausedError:
-            self.error("Video failed to initialize paused")
+            self.error(translate("Video Error", "Video failed to initialize paused"))
             return False
 
         return True

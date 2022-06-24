@@ -30,7 +30,7 @@ from gridplayer.params.static import (
 )
 from gridplayer.settings import Settings
 from gridplayer.utils.next_file import next_video_file, previous_video_file
-from gridplayer.utils.qt import qt_connect
+from gridplayer.utils.qt import qt_connect, translate
 from gridplayer.utils.url_resolve.static import ResolvedVideo
 from gridplayer.utils.url_resolve.url_resolve import VideoURLResolver
 from gridplayer.vlc_player.static import MediaInput
@@ -317,7 +317,9 @@ class VideoBlock(QWidget):  # noqa: WPS230
         self.layout_main.setContentsMargins(0, 0, 0, 0)
         self.layout_main.setStackingMode(QStackedLayout.StackAll)
 
-        self.video_status = VideoStatus(parent=self, status_text="Initializing")
+        self.video_status = VideoStatus(
+            parent=self, status_text=translate("Video Status", "Initializing")
+        )
         self.video_status.setMouseTracking(True)
         self.video_status.setWindowFlags(Qt.WindowTransparentForInput)
 
@@ -340,7 +342,9 @@ class VideoBlock(QWidget):  # noqa: WPS230
 
         self._log.debug(f"Cleaning up done {self.id}")
 
-    def video_driver_error(self):
+    def video_driver_error(self, error):
+        self.update_status(translate("Video Error", error))
+
         if isinstance(self.video_params.uri, VideoURL):
             return self.network_error()
 
@@ -365,7 +369,7 @@ class VideoBlock(QWidget):  # noqa: WPS230
         self.repaint()
 
     def update_status(self, info_text, percent=0):
-        self.video_status.status_text = info_text
+        self.video_status.status_text = translate("Video Status", info_text)
         self.video_status.percent = percent
 
     def reload(self):

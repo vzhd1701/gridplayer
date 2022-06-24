@@ -52,7 +52,7 @@ class VideoFrameVLC(QWidget, metaclass=QABC):
 
     video_ready = pyqtSignal()
 
-    error = pyqtSignal()
+    error = pyqtSignal(str)
     crash = pyqtSignal(str)
     update_status = pyqtSignal(str, int)
 
@@ -152,10 +152,10 @@ class VideoFrameVLC(QWidget, metaclass=QABC):
     def crash_emit(self, exception_txt) -> None:
         self.crash.emit(exception_txt)
 
-    def error_emit(self) -> None:
+    def error_emit(self, error: str) -> None:
         self.cleanup()
 
-        self.error.emit()
+        self.error.emit(error)
 
     def update_status_emit(self, status: str, percent) -> None:
         self.update_status.emit(status, percent)
