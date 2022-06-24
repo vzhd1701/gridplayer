@@ -183,10 +183,13 @@ class AboutDialog(QDialog, Ui_AboutDialog):
             app_url = f'<a href="{a.url}">{a.author}</a>'
 
             attribution_txt = self.tr(
-                "<p><b>{APP_TITLE}</b> by {APP_URL}<br>"
-                "<i>Licensed under {APP_LICENSE}</i></p>"
+                "<p><b>{APP_TITLE}</b><br>{APP_URL}<br>"
+                "<i>{LICENSED_UNDER}<br>{APP_LICENSE}</i></p>"
             )
 
+            attribution_txt = attribution_txt.replace(
+                "{LICENSED_UNDER}", self.tr("Licensed under")
+            )
             attribution_txt = attribution_txt.replace("{APP_TITLE}", app_title)
             attribution_txt = attribution_txt.replace("{APP_URL}", app_url)
             attribution_txt = attribution_txt.replace("{APP_LICENSE}", a.license)
