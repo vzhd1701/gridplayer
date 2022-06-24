@@ -32,23 +32,8 @@ jobs:
       - name: Build project for distribution
         run: poetry build
 
-      - name: Save release python packages
-        uses: actions/upload-artifact@v2
-        with:
-          name: release_dist_python
-          path: dist
-
-  build_flatpak:
-    needs: build_python
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v2
-
-      - name: Load release python packages
-        uses: actions/download-artifact@v2
-        with:
-          name: release_dist_python
-          path: dist
+      - name: Export requirements
+        run: poetry export --without-hashes -f requirements.txt --output dist/requirements.txt
 
       - name: Install requirements
         run: |

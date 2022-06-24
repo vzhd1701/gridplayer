@@ -23,7 +23,7 @@ process_requirements() {
 BUILD_DIR_PYTHON_DEPS="$BUILD_DIR/flatpak_python_deps"
 mkdir -p "$BUILD_DIR_PYTHON_DEPS"
 
-poetry export --without-hashes -o "$BUILD_DIR_PYTHON_DEPS/requirements.txt"
+cp "$DIST_DIR/requirements.txt" "$BUILD_DIR_PYTHON_DEPS/requirements.txt"
 process_requirements "$BUILD_DIR_PYTHON_DEPS/requirements.txt"
 
 cd "$BUILD_DIR_PYTHON_DEPS"
