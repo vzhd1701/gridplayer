@@ -1053,6 +1053,11 @@
         <source>Video failed to initialize paused</source>
         <translation type="unfinished"></translation>
     </message>
+    <message>
+        <location filename="utils/url_resolve/url_resolve.py" line="33"/>
+        <source>Failed to resolve URL</source>
+        <translation type="unfinished"></translation>
+    </message>
 </context>
 <context>
     <name>Video Status</name>
@@ -1074,6 +1079,11 @@
     <message>
         <location filename="widgets/video_block.py" line="283"/>
         <source>Initializing</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="utils/url_resolve/url_resolve.py" line="44"/>
+        <source>Resolving URL via {RESOLVER_NAME}</source>
         <translation type="unfinished"></translation>
     </message>
 </context>

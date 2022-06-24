@@ -7,6 +7,7 @@ from PyQt5.QtCore import QObject, QThread, pyqtSignal
 from streamlink import PluginError
 
 from gridplayer.models.video import VideoURL
+from gridplayer.utils.qt import translate
 from gridplayer.utils.url_resolve.resolver_streamlink import resolve_streamlink
 from gridplayer.utils.url_resolve.resolver_yt_dlp import resolve_youtube_dl
 from gridplayer.utils.url_resolve.static import (
@@ -29,12 +30,12 @@ class VideoURLResolverWorker(QObject):
         try:
             self.url_resolved.emit(self.resolve_url(url))
         except BadURLException as e:
-            self.update_status.emit("Failed to resolve URL")
+            self.update_status.emit(translate("Video Error", "Failed to resolve URL"))
             logger.error(e)
             self.error.emit()
         except Exception:
             # log traceback stack
-            self.update_status.emit("Failed to resolve URL [Exception]")
+            self.update_status.emit(translate("Video Error", "Failed to resolve URL"))
             logger.critical(traceback.format_exc())
             self.error.emit()
 
@@ -48,7 +49,8 @@ class VideoURLResolverWorker(QObject):
             url_resolvers = {"yt-dlp": resolve_youtube_dl}
 
         for resolver_name, resolver in url_resolvers.items():
-            self.update_status.emit(f"Resolving URL via {resolver_name}")
+            status_msg = translate("Video Status", "Resolving URL via {RESOLVER_NAME}")
+            self.update_status.emit(status_msg.format(RESOLVER_NAME=resolver_name))
 
             logger.debug(f"Trying to resolve URL with {resolver.__name__}")
             with contextlib.suppress(NoResolverPlugin):
