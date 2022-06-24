@@ -73,6 +73,12 @@ $ chmod +x GridPlayer-0.2.2-x86_64.AppImage
 - [How to open an app that hasn’t been notarized or is from an unidentified developer](https://support.apple.com/en-euro/HT202491)
 - [Open a Mac app from an unidentified developer](https://support.apple.com/guide/mac-help/open-a-mac-app-from-an-unidentified-developer-mh40616/mac)
 
+If you get "GridPlayer is damaged and can't be opened" error, run this command in the Terminal app:
+
+```shell
+$ sudo xattr -rd com.apple.quarantine /Applications/GridPlayer.app
+```
+
 ### PIP
 
 ```shell
@@ -99,9 +105,22 @@ $ poetry run gridplayer
 
 The same notes about the Python version and external packages from **PIP** installation apply here.
 
+## Video Decoder settings
+
+GridPlayer supports two video output modes:
+
+- Hardware (default) mode uses available GPU to render video. This mode offers high performance and is a recommended mode.
+- Software mode is entirely independent of GPU and only uses the CPU to render video. This mode may cause a high CPU load with high-resolution videos.
+
+Due to libvlc software library limitations, video decoding is split into parallel processes. You can control how many videos are handled by a single decoder process using the "Videos per process" setting. Setting this option too high may cause a high CPU load and application freeze. The optimal value is 4 videos per process.
+
+There is also "Hardware SP" mode. It handles video decoding within the same process in which GridPlayer runs. It is not recommended to use with many videos (>4-6) because it may cause high CPU load and application freeze.
+
+Due to OS inter-process restrictions, "Hardware SP" is the only available hardware mode in macOS.
+
 ## Known issues
 
-#### Linux (Snap): [X screen](https://raw.githubusercontent.com/vzhd1701/gridplayer/master/resources/public/screenshot-x.png) when opening a file from the mounted disk
+#### Linux (Snap): Error when opening a file from the mounted disk
 
 You need to allow GridPlayer snap to access removable storage devices via Snap Store or by running:
 
@@ -128,14 +147,6 @@ $ sudo snap connect gridplayer:mount-observe
 Switch on "Opaque overlay (fix black screen)" checkbox in settings.
 
 Overlay might be a bit glitchy in KDE with hardware decoder.
-
-#### MacOS: "GridPlayer" is damaged and can't be opened
-
-To fix this, you need to execute the following command using terminal:
-
-```shell
-$ sudo xattr -rd com.apple.quarantine /Applications/GridPlayer.app
-```
 
 ## Geting help
 
