@@ -162,6 +162,9 @@ jobs:
     needs: [build_win, build_mac, build_appimage]
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
       - name: Extract release notes
         id: extract-release-notes
         uses: ffurrer2/extract-release-notes@v1
