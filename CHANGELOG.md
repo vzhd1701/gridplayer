@@ -8,6 +8,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ### Added
 
+- Support for streaming URLs, which allows playing any URL that is supported by [streamlink](https://github.com/streamlink/streamlink) or [yt-dlp](https://github.com/yt-dlp/yt-dlp), plus mms, mmsh, rtp, rtsp and udp protocols ([9425343](https://github.com/vzhd1701/gridplayer/commit/9425343450bc282aecbc1456cbc03c81d3e7d80e))
+- Support for audio files ([8507bcb](https://github.com/vzhd1701/gridplayer/commit/8507bcb69ed4a1e708036f6ab896d92e770acc60))
+- Playlist state snapshots, which allow keeping multiple grid & video presets ([2b19e97](https://github.com/vzhd1701/gridplayer/commit/2b19e97bc9bfe0e22b507ec87d36a8b05f7ec9a0))
 - New command to sync other videos according to active video position or timecode ([90a0449](https://github.com/vzhd1701/gridplayer/commit/90a04498ef84d55ec373c5f827a4d86f8278a03e))
 - New command that allows jumping to video time percent ([9e2a377](https://github.com/vzhd1701/gridplayer/commit/9e2a3777ccab1ab3636ea1fcad0bd61f8a5ace51))
 - New command that allows jumping to video timecode ([59cc6cc](https://github.com/vzhd1701/gridplayer/commit/59cc6cc8cfb9cf12aafefcbcb14226fd865746b5))
@@ -16,12 +19,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Option to seek sync using timecode ([37b3e34](https://github.com/vzhd1701/gridplayer/commit/37b3e34b9792e5a5ea5f36942bd6e51512d2270e))
 - Option to cancel when closing unsaved playlist ([4254a7a](https://github.com/vzhd1701/gridplayer/commit/4254a7a272292bcefae9510b5f642a6128bc0f59))
 - Playlist settings to disable pausing videos with left mouse click & seeking using mouse wheel ([b3b9bde](https://github.com/vzhd1701/gridplayer/commit/b3b9bde5de3df485c211384a4b5318a0ded8d994))
-- Playlist state snapshots, which allow keeping multiple grid & video presets ([2b19e97](https://github.com/vzhd1701/gridplayer/commit/2b19e97bc9bfe0e22b507ec87d36a8b05f7ec9a0))
 - Info label that displays video loading status ([4c14188](https://github.com/vzhd1701/gridplayer/commit/4c141886fa3535b91bd546cce1418a73878bfdec))
 - Animation while video is loading ([d874bea](https://github.com/vzhd1701/gridplayer/commit/d874bea367a2130dcbd20b7952a5ddb628201a13))
 - Animation for status change on play/pause button, will appear mostly when pausing/unpausing live streams ([432f933](https://github.com/vzhd1701/gridplayer/commit/432f93392336c8d6ed0effc66e7a09718e583bf0))
-- Support for streaming URLs, which allows playing any URL that is supported by [streamlink](https://github.com/streamlink/streamlink) or [yt-dlp](https://github.com/yt-dlp/yt-dlp), plus mms, mmsh, rtp, rtsp and udp protocols ([9425343](https://github.com/vzhd1701/gridplayer/commit/9425343450bc282aecbc1456cbc03c81d3e7d80e))
-- Support for audio files ([8507bcb](https://github.com/vzhd1701/gridplayer/commit/8507bcb69ed4a1e708036f6ab896d92e770acc60))
 - Installer file associations and context menu option (Windows)
 
 ### Changed
@@ -39,7 +39,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 - Fix drag-n-drop between different player instances ([38c8235](https://github.com/vzhd1701/gridplayer/commit/38c82353f966c8abb32aa98be62a0d1714a2af1d)), closes [#49](https://github.com/vzhd1701/gridplayer/issues/49)
 - Fix crash on bad setting ([8ce0d4b](https://github.com/vzhd1701/gridplayer/commit/8ce0d4b5c539079cc6dbc7ee8ea76ecbb7098108))
-- Fix minor stability issues
+- Fix minor stability & performance issues
 
 ## [0.2.2] - 2022-04-09
 
