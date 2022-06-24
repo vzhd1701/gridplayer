@@ -60,10 +60,11 @@ class GridManager(ManagerBase):
         self._grid.setContentsMargins(0, 0, 0, 0)
 
         self._info_label = QLabel(
-            translate("Main Window", "Drag and drop video files here"),
+            translate("Main Window", "Drag and drop media files or URLs here"),
             parent=self.parent(),
         )
         self._info_label.setAlignment(Qt.AlignCenter)
+        self._info_label.setWordWrap(True)
         font = QFont("Hack", PLAYER_INFO_TEXT_SIZE, QFont.Bold)
         self._info_label.setFont(font)
 
