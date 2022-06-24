@@ -12,7 +12,7 @@ from gridplayer.params.static import SeekSyncMode, WindowState
 from gridplayer.player.managers.base import ManagerBase
 from gridplayer.settings import Settings
 from gridplayer.utils.files import get_playlist_path
-from gridplayer.utils.qt import tr
+from gridplayer.utils.qt import translate
 
 
 class PlaylistManager(ManagerBase):
@@ -47,7 +47,13 @@ class PlaylistManager(ManagerBase):
         dialog = QFileDialog(self.parent())
         dialog.setFileMode(QFileDialog.ExistingFile)
 
-        dialog.setNameFilter("{0} (*.gpls)".format(tr("GridPlayer Playlists")))
+        dialog.setNameFilter(
+            "{0} (*.gpls)".format(
+                translate(
+                    "Dialog - Playlist open", "GridPlayer Playlists", "File format"
+                )
+            )
+        )
 
         if dialog.exec():
             files = dialog.selectedFiles()
@@ -74,7 +80,10 @@ class PlaylistManager(ManagerBase):
         self._log.debug(f"Proposed playlist save path: {save_path}")
 
         file_path, _ = QFileDialog.getSaveFileName(
-            self.parent(), tr("Where to save playlist"), str(save_path), "*.gpls"
+            self.parent(),
+            translate("Dialog - Save playlist", "Where to save playlist", "Header"),
+            str(save_path),
+            "*.gpls",
         )
 
         if not file_path:
@@ -111,7 +120,7 @@ class PlaylistManager(ManagerBase):
         videos = filter_video_uris(argv)
 
         if not videos:
-            self.error.emit(tr("No supported files or URLs!"))
+            self.error.emit(translate("Error", "No supported files or URLs!"))
             return
 
         self.videos_loaded.emit(videos)
@@ -124,16 +133,24 @@ class PlaylistManager(ManagerBase):
         except ValueError as e:
             self._log.error(f"Playlist parse error: {e}")
             self.error.emit(
-                "{0}\n\n{1}".format(tr("Invalid playlist format!"), playlist_file)
+                "{0}\n\n{1}".format(
+                    translate("Error", "Invalid playlist format!"), playlist_file
+                )
             )
             return
         except FileNotFoundError:
-            self.error.emit("{0}\n\n{1}".format(tr("File not found!"), playlist_file))
+            self.error.emit(
+                "{0}\n\n{1}".format(
+                    translate("Error", "File not found!"), playlist_file
+                )
+            )
             return
 
         if not playlist.videos:
             self.error.emit(
-                "{0}\n\n{1}".format(tr("Empty or invalid playlist!"), playlist_file)
+                "{0}\n\n{1}".format(
+                    translate("Error", "Empty or invalid playlist!"), playlist_file
+                )
             )
             return
 
@@ -175,7 +192,11 @@ class PlaylistManager(ManagerBase):
             self.alert.emit()
 
             ret = QCustomMessageBox.cancellable_question(
-                self.parent(), tr("Playlist"), tr("Do you want to save the playlist?")
+                self.parent(),
+                translate("Dialog - Playlist close", "Playlist", "Header"),
+                translate(
+                    "Dialog - Playlist close", "Do you want to save the playlist?"
+                ),
             )
 
             if ret == QMessageBox.Yes:
@@ -195,11 +216,15 @@ class PlaylistManager(ManagerBase):
 
     def _is_overwrite_denied(self, file_path: Path):
         if file_path.is_file():
-            q_message = tr("Do you want to overwrite {FILE_NAME}?").replace(
-                "{FILE_NAME}", file_path.name
-            )
+            q_message = translate(
+                "Dialog - Playlist overwrite", "Do you want to overwrite {FILE_NAME}?"
+            ).replace("{FILE_NAME}", file_path.name)
 
-            ret = QCustomMessageBox.question(self.parent(), tr("Playlist"), q_message)
+            ret = QCustomMessageBox.question(
+                self.parent(),
+                translate("Dialog - Playlist overwrite", "Playlist", "Header"),
+                q_message,
+            )
 
             if ret != QMessageBox.No:
                 return True

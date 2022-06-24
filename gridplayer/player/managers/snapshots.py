@@ -5,6 +5,7 @@ from PyQt5.QtCore import pyqtSignal
 from gridplayer.models.grid_state import GridState
 from gridplayer.models.playlist import Snapshot
 from gridplayer.player.managers.base import ManagerBase
+from gridplayer.utils.qt import translate
 
 
 class SnapshotsManager(ManagerBase):
@@ -33,7 +34,9 @@ class SnapshotsManager(ManagerBase):
     def cmd_save_snapshot(self, _id):
         if not self._ctx.video_blocks.is_all_initialized:
             self.warning.emit(
-                self.tr("Cannot save snapshot unless all videos are initialized")
+                translate(
+                    "Warning", "Cannot save snapshot unless all videos are initialized"
+                )
             )
             return
 
@@ -51,7 +54,9 @@ class SnapshotsManager(ManagerBase):
 
         if not self._ctx.video_blocks.is_all_initialized:
             self.warning.emit(
-                self.tr("Cannot load snapshot unless all videos are initialized")
+                translate(
+                    "Warning", "Cannot load snapshot unless all videos are initialized"
+                )
             )
             return
 

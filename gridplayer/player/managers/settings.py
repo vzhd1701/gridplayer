@@ -4,7 +4,7 @@ from gridplayer.dialogs.messagebox import QCustomMessageBox
 from gridplayer.dialogs.settings import SettingsDialog
 from gridplayer.player.managers.base import ManagerBase
 from gridplayer.settings import Settings
-from gridplayer.utils.qt import tr
+from gridplayer.utils.qt import translate
 
 
 class SettingsManager(ManagerBase):
@@ -27,8 +27,11 @@ class SettingsManager(ManagerBase):
         if self._is_restart_needed(previous_settings):
             QCustomMessageBox.information(
                 self.parent(),
-                tr("Settings"),
-                tr("Restart is required for the new settings to take effect."),
+                translate("Dialog - Settings apply restart", "Settings", "Header"),
+                translate(
+                    "Dialog - Settings apply restart",
+                    "Restart is required for the new settings to take effect.",
+                ),
             )
 
         if self._is_reload_needed(previous_settings):

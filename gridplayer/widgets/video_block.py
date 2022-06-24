@@ -467,7 +467,8 @@ class VideoBlock(QWidget):  # noqa: WPS230
     @only_seekable
     def seek_timecode(self):
         time_ms = QCustomSpinboxTimeInput.get_time_ms_int(
-            self.parent(), self.tr("Enter timecode")
+            self.parent(),
+            translate("Dialog - Enter timecode", "Enter timecode", "Header"),
         )
 
         if time_ms is None:
@@ -956,7 +957,7 @@ class VideoBlock(QWidget):  # noqa: WPS230
     def rename(self):
         new_data = QVideoRenameDialog.get_edits(
             parent=self.parent(),
-            title=self.tr("Rename video"),
+            title=translate("Dialog - Rename video", "Rename video", "Header"),
             orig_title=self._default_title,
             cur_title=self.title,
             cur_color=self.video_params.color.as_rgb_tuple(),

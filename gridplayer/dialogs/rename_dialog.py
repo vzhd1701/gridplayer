@@ -4,6 +4,8 @@ from PyQt5 import QtWidgets
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QBrush, QColor, QIcon, QPainter, QPen
 
+from gridplayer.utils.qt import translate
+
 
 class QColorCircle(QtWidgets.QRadioButton):
     def __init__(self, color, is_custom=False, **kwargs):
@@ -56,7 +58,11 @@ class QColorCircle(QtWidgets.QRadioButton):
         if self.is_custom:
             init_color = self.color or Qt.white
             new_color = QtWidgets.QColorDialog.getColor(
-                init_color, self, self.tr("Select color")
+                init_color,
+                self,
+                translate(
+                    "Dialog - Rename video - Select color", "Select color", "Header"
+                ),
             )
             if new_color.isValid():
                 self.color = new_color
@@ -122,7 +128,9 @@ class QVideoRenameDialog(QtWidgets.QDialog):
 
         self.title = QtWidgets.QLineEdit(self)
 
-        self.title_reset_button = QtWidgets.QPushButton(self.tr("Reset"), self)
+        self.title_reset_button = QtWidgets.QPushButton(
+            translate("Dialog - Rename video", "Reset"), self
+        )
         self.title_reset_button.clicked.connect(self.reset_title)
 
         self.palette = QColorPalette(parent=self)

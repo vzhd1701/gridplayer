@@ -9,7 +9,7 @@ from gridplayer.params.extensions import (
     SUPPORTED_VIDEO_EXT,
 )
 from gridplayer.player.managers.base import ManagerBase
-from gridplayer.utils.qt import tr
+from gridplayer.utils.qt import translate
 from gridplayer.utils.url_resolve.static import PLUGIN_URLS
 
 
@@ -36,7 +36,7 @@ class AddVideosManager(ManagerBase):
     def cmd_add_urls(self):
         urls = QAddURLsDialog.get_urls(
             parent=self.parent(),
-            title=tr("Add URL(s)"),
+            title=translate("Dialog - Add URLs", "Add URL(s)", "Header"),
             supported_schemas=VideoURL.allowed_schemes,
             supported_urls=PLUGIN_URLS,
         )
@@ -44,7 +44,7 @@ class AddVideosManager(ManagerBase):
         valid_urls = filter_video_uris(urls)
 
         if urls and not valid_urls:
-            self.error.emit(tr("No valid URLs found!"))
+            self.error.emit(translate("Error", "No valid URLs found!"))
 
         if valid_urls:
             self.videos_added.emit(valid_urls)
@@ -52,9 +52,18 @@ class AddVideosManager(ManagerBase):
 
 def _get_name_filters():
     ext_types = [
-        {"name": tr("Media"), "extensions": SUPPORTED_MEDIA_EXT},
-        {"name": tr("Video"), "extensions": SUPPORTED_VIDEO_EXT},
-        {"name": tr("Audio"), "extensions": SUPPORTED_AUDIO_EXT},
+        {
+            "name": translate("Dialog - Add Files", "Media", "File formats"),
+            "extensions": SUPPORTED_MEDIA_EXT,
+        },
+        {
+            "name": translate("Dialog - Add Files", "Video", "File formats"),
+            "extensions": SUPPORTED_VIDEO_EXT,
+        },
+        {
+            "name": translate("Dialog - Add Files", "Audio", "File formats"),
+            "extensions": SUPPORTED_AUDIO_EXT,
+        },
     ]
 
     name_filers = []

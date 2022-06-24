@@ -172,7 +172,9 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
 
         if not log_path.is_file():
             return QCustomMessageBox.critical(
-                self, self.tr("Error"), self.tr("Log file does not exist!")
+                self,
+                translate("Dialog", "Error"),
+                translate("Error", "Log file does not exist!"),
             )
 
         if env.IS_SNAP:

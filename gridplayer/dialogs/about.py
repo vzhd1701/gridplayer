@@ -182,7 +182,7 @@ class AboutDialog(QDialog, Ui_AboutDialog):
             app_title = "{0} {1}".format(a.title, a.version or "").strip()
             app_url = f'<a href="{a.url}">{a.author}</a>'
 
-            attribution_txt = self.tr(
+            attribution_txt = (
                 "<p><b>{APP_TITLE}</b><br>{APP_URL}<br>"
                 "<i>{LICENSED_UNDER}<br>{APP_LICENSE}</i></p>"
             )

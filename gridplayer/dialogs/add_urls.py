@@ -13,7 +13,7 @@ from PyQt5.QtWidgets import (
     QVBoxLayout,
 )
 
-from gridplayer.utils.qt import tr
+from gridplayer.utils.qt import translate
 
 DIALOG_WIDTH = 500
 MULTILINE_HEIGHT = 300
@@ -142,7 +142,10 @@ class QAddURLsDialog(QDialog):
 
 def _init_info_txt(schemas, supported_urls):
     supported_info_template = "<br>".join(
-        (tr("Supported URL schemas: {SCHEMAS}"), tr("Supported sites: {SERVICES}"))
+        (
+            translate("Dialog - Add URLs", "Supported URL schemas: {SCHEMAS}"),
+            translate("Dialog - Add URLs", "Supported sites: {SERVICES}"),
+        )
     )
 
     tokens = {

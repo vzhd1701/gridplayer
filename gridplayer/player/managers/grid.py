@@ -16,7 +16,7 @@ from gridplayer.params.static import (
 )
 from gridplayer.player.managers.base import ManagerBase
 from gridplayer.settings import Settings
-from gridplayer.utils.qt import tr
+from gridplayer.utils.qt import translate
 
 
 class GridDimensions(NamedTuple):
@@ -60,7 +60,8 @@ class GridManager(ManagerBase):
         self._grid.setContentsMargins(0, 0, 0, 0)
 
         self._info_label = QLabel(
-            tr("Drag and drop video files here"), parent=self.parent()
+            translate("Main Window", "Drag and drop video files here"),
+            parent=self.parent(),
         )
         self._info_label.setAlignment(Qt.AlignCenter)
         font = QFont("Hack", PLAYER_INFO_TEXT_SIZE, QFont.Bold)
@@ -139,7 +140,12 @@ class GridManager(ManagerBase):
 
     def cmd_ask_grid_size(self):
         size = QCustomSpinboxInput.get_int(
-            self.parent(), tr("Set grid size"), tr("Auto"), self._grid_size, 0, 1000
+            self.parent(),
+            translate("Dialog - Set grid size", "Set grid size", "Header"),
+            translate("Grid Size", "Auto"),
+            self._grid_size,
+            0,
+            1000,
         )
 
         if self._grid_size == size:
@@ -150,7 +156,7 @@ class GridManager(ManagerBase):
 
     def cmd_get_grid_size(self):
         if self._grid_size == 0:
-            return tr("Auto")
+            return translate("Grid Size", "Auto")
 
         return str(self._grid_size)
 

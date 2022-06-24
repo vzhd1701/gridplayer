@@ -32,5 +32,5 @@ def tr(text):
     return QCoreApplication.translate("@default", text)
 
 
-def translate(context, text):
-    return QCoreApplication.translate(context, text)
+def translate(context, text, disambiguation=None):
+    return QCoreApplication.translate(context, text, disambiguation)

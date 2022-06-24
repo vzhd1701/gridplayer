@@ -8,7 +8,7 @@ from gridplayer.models.video import Video
 from gridplayer.params.static import SeekSyncMode, VideoAspect, VideoRepeat
 from gridplayer.player.managers.base import ManagerBase
 from gridplayer.settings import Settings
-from gridplayer.utils.qt import qt_connect
+from gridplayer.utils.qt import qt_connect, translate
 from gridplayer.widgets.video_block import VideoBlock
 
 
@@ -176,7 +176,8 @@ class VideoBlocksManager(ManagerBase):
 
     def cmd_seek_timecode(self):
         time_ms = QCustomSpinboxTimeInput.get_time_ms_int(
-            self.parent(), self.tr("Enter timecode")
+            self.parent(),
+            translate("Dialog - Enter timecode", "Enter timecode", "Header"),
         )
 
         if time_ms is None:
