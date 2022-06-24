@@ -114,9 +114,6 @@ generate_flathub_git() {
     cp "$SCRIPT_DIR"/dependencies/*.yml "$BUILD_DIR_FLATHUB"
     cp "$SCRIPT_DIR"/libvlc/* "$BUILD_DIR_FLATHUB"
 
-    if [ ! -f "$BUILD_DIR/flatpak_python_deps/dependencies.yml" ]; then
-        bash "$SCRIPT_DIR/generate_dependencies.sh"
-    fi
     cp "$BUILD_DIR/flatpak_python_deps/dependencies.yml" "$BUILD_DIR_FLATHUB/dependencies.yml"
 
     cat "$SCRIPT_DIR/app.yml" "$SCRIPT_DIR/app_git.yml" > "$BUILD_DIR_FLATHUB/$APP_ID.yml"

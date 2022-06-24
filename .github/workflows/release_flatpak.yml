@@ -63,4 +63,5 @@ jobs:
           FLATHUB_GIT_REPO: flathub/com.vzhd1701.gridplayer
         run: |
           bash scripts/linux_meta/build.sh
+          bash scripts/flatpak/generate_dependencies.sh
           bash scripts/flatpak/build_git.sh
