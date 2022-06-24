@@ -162,9 +162,9 @@ jobs:
     needs: [build_win, build_mac, build_appimage]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
-      - name: Extract release changelog
-        run: bash scripts/_helpers/extract_changelog.sh CHANGELOG.md > release_changelog
+      - name: Extract release notes
+        id: extract-release-notes
+        uses: ffurrer2/extract-release-notes@v1
 
       - name: Load release python packages
         uses: actions/download-artifact@v2
@@ -193,7 +193,7 @@ jobs:
       - name: Create Release
         uses: ncipollo/release-action@v1
         with:
-          bodyFile: release_changelog
+          body: ${{ steps.extract-release-notes.outputs.release_notes }}
           artifacts: "dist/*"
           token: ${{ secrets.GITHUB_TOKEN }}
           draft: true
