@@ -6,6 +6,41 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+### Added
+
+- New command to sync other videos according to active video position or timecode ([90a0449](https://github.com/vzhd1701/gridplayer/commit/90a04498ef84d55ec373c5f827a4d86f8278a03e))
+- New command that allows jumping to video time percent ([9e2a377](https://github.com/vzhd1701/gridplayer/commit/9e2a3777ccab1ab3636ea1fcad0bd61f8a5ace51))
+- New command that allows jumping to video timecode ([59cc6cc](https://github.com/vzhd1701/gridplayer/commit/59cc6cc8cfb9cf12aafefcbcb14226fd865746b5))
+- New command to shuffle video blocks ([2d040da](https://github.com/vzhd1701/gridplayer/commit/2d040da20c0fa35b72dfa34a8908211f2a402e87))
+- New command to reload videos (useful in case of network errors) ([8861b73](https://github.com/vzhd1701/gridplayer/commit/8861b73e806c21db3318a9730a00f116696c6734))
+- Option to seek sync using timecode ([37b3e34](https://github.com/vzhd1701/gridplayer/commit/37b3e34b9792e5a5ea5f36942bd6e51512d2270e))
+- Option to cancel when closing unsaved playlist ([4254a7a](https://github.com/vzhd1701/gridplayer/commit/4254a7a272292bcefae9510b5f642a6128bc0f59))
+- Playlist settings to disable pausing videos with left mouse click & seeking using mouse wheel ([b3b9bde](https://github.com/vzhd1701/gridplayer/commit/b3b9bde5de3df485c211384a4b5318a0ded8d994))
+- Playlist state snapshots, which allow keeping multiple grid & video presets ([2b19e97](https://github.com/vzhd1701/gridplayer/commit/2b19e97bc9bfe0e22b507ec87d36a8b05f7ec9a0))
+- Info label that displays video loading status ([4c14188](https://github.com/vzhd1701/gridplayer/commit/4c141886fa3535b91bd546cce1418a73878bfdec))
+- Animation while video is loading ([d874bea](https://github.com/vzhd1701/gridplayer/commit/d874bea367a2130dcbd20b7952a5ddb628201a13))
+- Animation for status change on play/pause button, will appear mostly when pausing/unpausing live streams ([432f933](https://github.com/vzhd1701/gridplayer/commit/432f93392336c8d6ed0effc66e7a09718e583bf0))
+- Support for streaming URLs, which allows playing any URL that is supported by [streamlink](https://github.com/streamlink/streamlink) or [yt-dlp](https://github.com/yt-dlp/yt-dlp), plus mms, mmsh, rtp, rtsp and udp protocols ([9425343](https://github.com/vzhd1701/gridplayer/commit/9425343450bc282aecbc1456cbc03c81d3e7d80e))
+- Support for audio files ([8507bcb](https://github.com/vzhd1701/gridplayer/commit/8507bcb69ed4a1e708036f6ab896d92e770acc60))
+- Installer file associations and context menu option (Windows)
+
+### Changed
+
+- Videos opened via file explorer or command line will be added to the current playlist ([857d959](https://github.com/vzhd1701/gridplayer/commit/857d959727abf9e41578618030481c6fd0f662a3))
+- All single video commands & options are now in sync with bulk commands ([26150bd](https://github.com/vzhd1701/gridplayer/commit/26150bd3d680beb1c3f8d345afed1887b71dadd0), [3ea89b5](https://github.com/vzhd1701/gridplayer/commit/3ea89b5fb1bd1560d4a4db600a686bed2f99212b), [56f7465](https://github.com/vzhd1701/gridplayer/commit/56f7465d6a770d45a3399fde8316ee2a30876135))
+- Single video command hotkeys are all mirrored with Shift+ equivalents for bulk commands
+- Improved context menu visual style ([9d3e489](https://github.com/vzhd1701/gridplayer/commit/9d3e48967c65c37a63f7d25e2afe3c05eac10832), [e764ce2](https://github.com/vzhd1701/gridplayer/commit/e764ce2ea18c2700150c1a429e95d85e1f58f578))
+- Improved settings window visual style (MacOS) ([aaf9d6b](https://github.com/vzhd1701/gridplayer/commit/aaf9d6b3fcfdf2ab4928eefb26007261b8046c15))
+- Improved video startup speed ([8311e7c](https://github.com/vzhd1701/gridplayer/commit/8311e7ce352039db9b81efd2553e662d16d81d64))
+- Imporved application shutdown speed ([18f48a5](https://github.com/vzhd1701/gridplayer/commit/18f48a5a7d8d53f13170347abad46d5bebc005a1), [6454fa2](https://github.com/vzhd1701/gridplayer/commit/6454fa290eea0e0ecaaee7983758d78d1c58d9c0))
+- Optimized some context menu icons ([4f9a908](https://github.com/vzhd1701/gridplayer/commit/4f9a9085f5c0646eaf6847fd72421de5fd30f0d0))
+
+### Fixed
+
+- Fix drag-n-drop between different player instances ([38c8235](https://github.com/vzhd1701/gridplayer/commit/38c82353f966c8abb32aa98be62a0d1714a2af1d)), closes [#49](https://github.com/vzhd1701/gridplayer/issues/49)
+- Fix crash on bad setting ([8ce0d4b](https://github.com/vzhd1701/gridplayer/commit/8ce0d4b5c539079cc6dbc7ee8ea76ecbb7098108))
+- Fix minor stability issues
+
 ## [0.2.2] - 2022-04-09
 
 ### Added
