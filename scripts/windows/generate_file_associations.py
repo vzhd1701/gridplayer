@@ -89,6 +89,12 @@ EXT_TEMPLATE = (
 MEDIA_CLIENT = (
     (
         "Root: HKA;"
+        r' Subkey: "Software\RegisteredApplications";'
+        ' ValueType: string; ValueName: "{APP_NAME}";'
+        r' ValueData: "Software\Clients\Media\{APP_NAME}"; Flags: uninsdeletevalue'
+    ),
+    (
+        "Root: HKA;"
         r' Subkey: "Software\Classes\Applications\{APP_NAME}.exe";'
         ' ValueType: string; ValueName: "";'
         ' ValueData: ""; Flags: uninsdeletekey'
