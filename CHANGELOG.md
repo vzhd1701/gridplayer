@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [0.3.0] - 2022-06-24
+
 ### Added
 
 - Support for streaming URLs, which allows playing any URL that is supported by [streamlink](https://github.com/streamlink/streamlink) or [yt-dlp](https://github.com/yt-dlp/yt-dlp), plus mms, mmsh, rtp, rtsp and udp protocols ([9425343](https://github.com/vzhd1701/gridplayer/commit/9425343450bc282aecbc1456cbc03c81d3e7d80e))
@@ -142,7 +144,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 - Initial release
 
-[Unreleased]: https://github.com/vzhd1701/gridplayer/compare/v0.2.2...HEAD
+[Unreleased]: https://github.com/vzhd1701/gridplayer/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/vzhd1701/gridplayer/compare/v0.2.2...v0.3.0
 [0.2.2]: https://github.com/vzhd1701/gridplayer/compare/v0.2.1...v0.2.2
 [0.2.1]: https://github.com/vzhd1701/gridplayer/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/vzhd1701/gridplayer/compare/v0.1.6...v0.2.0
