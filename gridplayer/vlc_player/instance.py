@@ -187,10 +187,10 @@ class InstanceVLC(object):
 
         # Format given fmt/args pair
         str_len = vsnprintf(self._logger_buf, self._logger_buf_len, fmt, args)
-        log_txt = self._logger_buf.raw[:str_len].decode()
+        log_txt = self._logger_buf.raw[:str_len].decode(errors="ignore")
 
-        log_head = f"{m_file.decode()}:{m_line}"
-        log_msg = f"{m_name.decode()}: {log_txt}"
+        log_head = f"{m_file.decode(errors='ignore')}:{m_line}"
+        log_msg = f"{m_name.decode(errors='ignore')}: {log_txt}"
 
         return log_head, log_msg
 
