@@ -28,8 +28,16 @@ echo "$APP_VERSION" > "$BUILD_DIR_APPIMAGE/VERSION"
 
 if [ ! -d "$BUILD_DIR_APPIMAGE/pkg2appimage" ]; then
     git clone -n https://github.com/AppImage/pkg2appimage "$BUILD_DIR_APPIMAGE/pkg2appimage"
-    (cd "$BUILD_DIR_APPIMAGE/pkg2appimage" && git checkout -q 57350cb52552f62a9dc1fa3aca32a502235713f0)
+    (cd "$BUILD_DIR_APPIMAGE/pkg2appimage" && git checkout -q f2df956789f36204213876c96500c8b05595e43b)
 fi
+
+# Needed for Arch & Fedora
+# https://github.com/TheAssassin/AppImageLauncher/issues/508
+# https://github.com/AppImage/pkg2appimage/blob/f2df956789f36204213876c96500c8b05595e43b/functions.sh#L284
+EXCDEBLIST_DIR="$BUILD_DIR_APPIMAGE/pkg2appimage/usr/share/pkg2appimage"
+mkdir -p "$EXCDEBLIST_DIR"
+cp "$BUILD_DIR_APPIMAGE/pkg2appimage/excludedeblist" "$EXCDEBLIST_DIR"
+sed -i 's/^libpango/# &/' "$EXCDEBLIST_DIR/excludedeblist"
 
 # Build
 
