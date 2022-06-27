@@ -18,6 +18,7 @@ from gridplayer.vlc_player.static import MediaInput, MediaTrack, NotPausedError
 
 DEFAULT_FPS = 25
 INIT_TIMEOUT = 30
+SNAPSHOT_TIMEOUT = 15
 
 MEDIA_EXTRACT_RETRY_TIME = 0.1
 MEDIA_EXTRACT_TIMEOUT = int(INIT_TIMEOUT / MEDIA_EXTRACT_RETRY_TIME)
@@ -388,7 +389,7 @@ class VlcPlayerBase(ABC):
         self._log.debug(f"Taking snapshot to {file_path}")
 
         try:
-            with self._event_waiter.waiting_for("snapshot_taken"):
+            with self._event_waiter.waiting_for("snapshot_taken", SNAPSHOT_TIMEOUT):
                 res = self._media_player.video_take_snapshot(0, str(file_path), 0, 0)
         except TimeoutError:
             file_path.parent.rmdir()
@@ -499,7 +500,7 @@ class VlcPlayerBase(ABC):
         # otherwise adjust_view won't work
         # if video is paused it happens on seek
         if not self.media_input.video.is_paused:
-            self._event_waiter.wait_for("vout")
+            self._event_waiter.wait_for("vout", INIT_TIMEOUT)
 
         self.adjust_view(
             size=self.media_input.size,
@@ -514,7 +515,7 @@ class VlcPlayerBase(ABC):
 
         if self.media_input.is_live and is_paused:
             self.snapshot()
-            with self._event_waiter.waiting_for("stopped"):
+            with self._event_waiter.waiting_for("stopped", INIT_TIMEOUT):
                 self.stop()
 
         self._is_paused = is_paused
@@ -524,11 +525,11 @@ class VlcPlayerBase(ABC):
             return
 
         if self._is_paused or seek_ms > 0:
-            with self._event_waiter.waiting_for("buffering"):
+            with self._event_waiter.waiting_for("buffering", INIT_TIMEOUT):
                 self._media_player.set_time(seek_ms)
 
             if not self.media_track.is_audio_only:
-                self._event_waiter.wait_for("vout")
+                self._event_waiter.wait_for("vout", INIT_TIMEOUT)
 
     def _get_media_track(self):
         media_tracks = self._media.tracks_get()
