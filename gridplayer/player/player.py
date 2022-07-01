@@ -19,6 +19,7 @@ from gridplayer.player.managers.screensaver import ScreensaverManager
 from gridplayer.player.managers.settings import SettingsManager
 from gridplayer.player.managers.single_mode import SingleModeManager
 from gridplayer.player.managers.snapshots import SnapshotsManager
+from gridplayer.player.managers.stream_proxy import StreamProxyManager
 from gridplayer.player.managers.video_blocks import VideoBlocksManager
 from gridplayer.player.managers.video_driver import VideoDriverManager
 from gridplayer.player.managers.window_state import WindowStateManager
@@ -46,6 +47,7 @@ class Player(QWidget, ManagersManager):
             "drag_n_drop": DragNDropManager,
             "single_mode": SingleModeManager,
             "log": LogManager,
+            "stream_proxy": StreamProxyManager,
             "add_videos": AddVideosManager,
             "dialogs": DialogsManager,
             "settings": SettingsManager,

@@ -1,53 +1,80 @@
-import logging
-from typing import Optional
+from functools import cached_property
 
 from streamlink import NoPluginError, PluginError, Streamlink
-from streamlink.stream import HLSStream
+from streamlink.plugin import Plugin
+from streamlink.stream import HLSStream, MuxedHLSStream
 
+from gridplayer.models.stream import HashableDict, Stream, Streams, StreamSessionOpts
 from gridplayer.models.video import VideoURL
-from gridplayer.utils.url_resolve.static import NoResolverPlugin, ResolvedVideo
+from gridplayer.utils.url_resolve.resolver_base import ResolverBase
+from gridplayer.utils.url_resolve.static import NoResolverPlugin
 from gridplayer.utils.url_resolve.stream_detect import (
     is_hls_live_stream,
     is_http_live_stream,
 )
 
 
-class StreamlinkResolver(object):
-    def __init__(self, url):
-        self._log = logging.getLogger(self.__class__.__name__)
+class StreamlinkResolver(ResolverBase):
+    @property
+    def title(self):
+        return self._plugin.get_title() or self.url
 
-        self.url = url
+    @cached_property
+    def is_live(self):
+        best_stream = list(self._raw_streams.values())[-1]
 
-        self.session = Streamlink()
+        if isinstance(best_stream, MuxedHLSStream):
+            return is_hls_live_stream(best_stream.substreams[0].url, self._session)
 
-        self.plugin = self._get_plugin(self.url)
+        elif isinstance(best_stream, HLSStream):
+            return is_hls_live_stream(best_stream.url, self._session)
 
-        self._streams = self._get_streams()
+        return is_http_live_stream(best_stream.url, self._session)
 
     @property
     def streams(self):
-        return {
-            res: stream.url
-            for res, stream in self._streams.items()
-            if res not in {"best", "worst"}
-        }
+        return Streams(
+            {
+                resolution: self._convert_stream(stream, self.is_live)
+                for resolution, stream in self._raw_streams.items()
+            }
+        )
 
-    @property
-    def title(self):
-        return self.plugin.get_title() or self.url
-
-    @property
-    def is_live(self):
-        if isinstance(self._streams["best"], HLSStream):
-            return is_hls_live_stream(self._streams["best"].url, self.session)
-
-        return is_http_live_stream(self._streams["best"].url, self.session)
-
-    def _get_streams(self):
+    @staticmethod
+    def is_able_to_handle(url: VideoURL):  # noqa: WPS602
         try:
-            streams = self.plugin.streams(stream_types=["hls", "http"])
-        except PluginError:
-            self._log.debug("Streamlink - plugin error")
+            return bool(Streamlink().resolve_url(url))
+        except NoPluginError:
+            return False
+
+    @cached_property
+    def _session(self) -> Streamlink:
+        return Streamlink()
+
+    @cached_property
+    def _plugin(self) -> Plugin:
+        try:
+            plugin_class, resolved_url = self._session.resolve_url(self.url)
+        except NoPluginError as e:
+            raise NoResolverPlugin from e
+
+        return plugin_class(resolved_url)
+
+    @property
+    def _stream_types(self):
+        # vimeo's muxed hls streams are a mess, half of them return 404
+        if self._plugin.module == "vimeo":
+            return ["hls", "http"]
+
+        return ["hls", "http", "hls-multi"]
+
+    @cached_property
+    def _raw_streams(self):
+        try:
+            streams = self._plugin.streams(stream_types=self._stream_types)
+        except PluginError as e:
+            self._log.warning(f"Streamlink - plugin error [{e}]")
+            self._log.debug("Traceback", exc_info=e)
             raise NoResolverPlugin
 
         if not streams:
@@ -56,23 +83,43 @@ class StreamlinkResolver(object):
 
         self._log.debug("Streamlink - {0} stream(s) found".format(len(streams)))
 
+        streams.pop("best", None)
+        streams.pop("worst", None)
+
         return streams
 
-    def _get_plugin(self, url):
-        try:
-            plugin_class, resolved_url = self.session.resolve_url(url)
-        except NoPluginError as e:
-            raise NoResolverPlugin from e
+    @property
+    def _service_id(self):
+        return "streamlink-{0}".format(self._plugin.module)
 
-        return plugin_class(resolved_url)
+    def _convert_stream(self, src_stream, is_live: bool):
+        if isinstance(src_stream, MuxedHLSStream):
+            audio_tracks = Streams(
+                {
+                    f"Audio {i}": self._convert_stream(s, False)
+                    for i, s in enumerate(src_stream.substreams[1:])
+                }
+            )
 
+            return Stream(
+                url=src_stream.substreams[0].url,
+                protocol="hls_proxy",
+                audio_tracks=audio_tracks,
+                session=StreamSessionOpts(
+                    service=self._service_id,
+                    session_headers=HashableDict(self._session.http.headers),
+                ),
+            )
 
-def resolve_streamlink(
-    url: VideoURL, is_live: Optional[bool] = None
-) -> Optional[ResolvedVideo]:
-    resolver = StreamlinkResolver(url)
+        protocol = src_stream.shortname()
+        if protocol == "hls" and not is_live:
+            protocol = "hls_proxy"
 
-    if is_live is None:
-        is_live = resolver.is_live
-
-    return ResolvedVideo(title=resolver.title, urls=resolver.streams, is_live=is_live)
+        return Stream(
+            url=src_stream.url,
+            protocol=protocol,
+            session=StreamSessionOpts(
+                service=self._service_id,
+                session_headers=HashableDict(self._session.http.headers),
+            ),
+        )

@@ -1,10 +1,9 @@
 import logging
 import random
-import re
 import secrets
 from functools import partial
 from pathlib import Path
-from typing import Dict, Optional, Tuple
+from typing import Optional, Tuple
 
 from pydantic.color import Color
 from PyQt5.QtCore import Qt, QTimer, pyqtSignal
@@ -14,6 +13,7 @@ from PyQt5.QtWidgets import QStackedLayout, QWidget
 from gridplayer.dialogs.input_dialog import QCustomSpinboxTimeInput
 from gridplayer.dialogs.rename_dialog import QVideoRenameDialog
 from gridplayer.exceptions import PlayerException
+from gridplayer.models.stream import Streams
 from gridplayer.models.video import (
     MAX_RATE,
     MAX_SCALE,
@@ -58,61 +58,6 @@ class QStackedLayoutFloating(QStackedLayout):
                 widget = self.itemAt(i).widget()
                 if widget:
                     widget.setGeometry(rect)
-
-
-class Streams(object):
-    def __init__(self, streams: Optional[Dict[str, str]] = None):
-        if streams:
-            self.streams = streams
-        else:
-            self.streams = {}
-
-    def __len__(self):
-        return len(self.streams)
-
-    def __iter__(self):
-        return iter(self.streams)
-
-    def __reversed__(self):
-        return reversed(self.streams)
-
-    @property
-    def best(self) -> Tuple[str, str]:
-        return list(self.streams.items())[-1]
-
-    @property
-    def worst(self) -> Tuple[str, str]:
-        return list(self.streams.items())[0]
-
-    def by_quality(self, quality: str) -> Tuple[str, str]:
-        if quality == "best":
-            return self.best
-
-        if quality == "worst":
-            return self.worst
-
-        if self.streams.get(quality):
-            return quality, self.streams[quality]
-
-        return self._guess_quality(quality)
-
-    def _guess_quality(self, quality):
-        quality_lines = re.search(r"^(\d+)", quality)
-        if not quality_lines:
-            return self.best
-
-        quality_lines = int(quality_lines.group(1))
-        for quality_code, stream_url in reversed(self.streams.items()):
-            stream_lines = re.search(r"^(\d+)", quality_code)
-            if not stream_lines:
-                continue
-
-            stream_lines = int(stream_lines.group(1))
-
-            if stream_lines <= quality_lines:
-                return quality_code, stream_url
-
-        return self.best
 
 
 def only_initialized(func):
@@ -334,13 +279,13 @@ class VideoBlock(QWidget):  # noqa: WPS230
         self.overlay_hide_timer.stop()
         self._in_progress_timer.stop()
 
-        self._log.debug(f"Cleaning up resolver {self.id}")
+        self._log.debug(f"{self.id}: cleaning up resolver")
         self.url_resolver.cleanup()
 
-        self._log.debug(f"Cleaning up driver {self.id}")
+        self._log.debug(f"{self.id}: cleaning up driver ")
         self.video_driver.cleanup()
 
-        self._log.debug(f"Cleaning up done {self.id}")
+        self._log.debug(f"{self.id}: cleaning up done")
 
     def video_driver_error(self, error):
         self.update_status(translate("Video Error", error))
@@ -653,7 +598,7 @@ class VideoBlock(QWidget):  # noqa: WPS230
         if self.video_params.title is None:
             self.title = video.title
 
-        self.streams = Streams(video.urls)
+        self.streams = video.streams
         self.is_live = video.is_live
 
         self.load_stream_quality(self.video_params.stream_quality)
@@ -668,9 +613,14 @@ class VideoBlock(QWidget):  # noqa: WPS230
         self.load_stream_quality(quality)
 
     def load_stream_quality(self, quality: str):
-        quality, url = self.streams.by_quality(quality)
+        quality, stream = self.streams.by_quality(quality)
 
         self.video_params.stream_quality = quality
+
+        if stream.protocol == "direct":
+            url = stream.url
+        else:
+            url = self._ctx.commands.add_stream(stream)
 
         self.load_video.emit(
             MediaInput(

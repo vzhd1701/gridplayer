@@ -1,24 +1,21 @@
 import contextlib
 import logging
-import traceback
 from typing import Optional
 
 from PyQt5.QtCore import QObject, QThread, pyqtSignal
-from streamlink import PluginError
+from yt_dlp.extractor import youtube as yt_extractor
 
 from gridplayer.models.video import VideoURL
 from gridplayer.utils.qt import translate
-from gridplayer.utils.url_resolve.resolver_streamlink import resolve_streamlink
-from gridplayer.utils.url_resolve.resolver_yt_dlp import resolve_youtube_dl
+from gridplayer.utils.url_resolve.resolver_base import GenericResolver
+from gridplayer.utils.url_resolve.resolver_streamlink import StreamlinkResolver
+from gridplayer.utils.url_resolve.resolver_yt_dlp import YoutubeDLResolver
 from gridplayer.utils.url_resolve.static import (
-    YOUTUBE_MATCH,
     BadURLException,
     NoResolverPlugin,
     ResolvedVideo,
+    StreamOfflineError,
 )
-from gridplayer.utils.url_resolve.stream_detect import is_http_live_stream
-
-logger = logging.getLogger(__name__)
 
 
 class VideoURLResolverWorker(QObject):
@@ -26,37 +23,40 @@ class VideoURLResolverWorker(QObject):
     error = pyqtSignal()
     update_status = pyqtSignal(str)
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._log = logging.getLogger(self.__class__.__name__)
+
     def resolve(self, url):
         try:
             self.url_resolved.emit(self.resolve_url(url))
+        except StreamOfflineError:
+            self._log.debug("Stream is offline")
+            self._error(translate("Video Error", "Stream is offline"))
         except BadURLException as e:
-            self.update_status.emit(translate("Video Error", "Failed to resolve URL"))
-            logger.error(e)
-            self.error.emit()
+            self._log.error(e)
+            self._error(translate("Video Error", "Failed to resolve URL"))
         except Exception:
-            # log traceback stack
-            self.update_status.emit(translate("Video Error", "Failed to resolve URL"))
-            logger.critical(traceback.format_exc())
-            self.error.emit()
+            self._log.exception("URL resolver exception")
+            self._error(translate("Video Error", "Failed to resolve URL"))
 
     def resolve_url(self, url: VideoURL) -> Optional[ResolvedVideo]:
-        url_resolvers = {
-            "streamlink": resolve_streamlink,
-            "yt-dlp": resolve_youtube_dl,
-        }
-
-        if YOUTUBE_MATCH.match(url):
-            url_resolvers = {"yt-dlp": resolve_youtube_dl}
+        self.update_status.emit(translate("Video Status", "Picking URL resolvers"))
+        url_resolvers = _pick_resolvers(url)
 
         for resolver_name, resolver in url_resolvers.items():
             status_msg = translate("Video Status", "Resolving URL via {RESOLVER_NAME}")
             self.update_status.emit(status_msg.format(RESOLVER_NAME=resolver_name))
 
-            logger.debug(f"Trying to resolve URL with {resolver.__name__}")
+            self._log.debug(f"Trying to resolve URL with {resolver.__name__}")
             with contextlib.suppress(NoResolverPlugin):
-                return resolver(url)
+                return resolver(url).resolve()
 
-        return _resolve_generic(url)
+        return None
+
+    def _error(self, message: str) -> None:
+        self.update_status.emit(message)
+        self.error.emit()
 
 
 class VideoURLResolver(QObject):
@@ -90,14 +90,29 @@ class VideoURLResolver(QObject):
         self._resolve_url.emit(url)
 
 
-def _resolve_generic(url: VideoURL) -> Optional[ResolvedVideo]:
-    try:
-        is_live = is_http_live_stream(url)
-    except PluginError:
-        raise BadURLException(f"Cannot open URL {url}")
+def _pick_resolvers(url):
+    url_resolvers = {
+        "streamlink": StreamlinkResolver,
+        "yt-dlp": YoutubeDLResolver,
+        "generic": GenericResolver,
+    }
 
-    return ResolvedVideo(
-        title=url,
-        urls={"generic": url},
-        is_live=is_live,
+    if _is_match_youtube(url):
+        return {"yt-dlp": YoutubeDLResolver}
+
+    for resolver_name, resolver in url_resolvers.copy().items():
+        if not resolver.is_able_to_handle(url):
+            url_resolvers.pop(resolver_name)
+
+    return url_resolvers
+
+
+def _is_match_youtube(url: VideoURL) -> bool:
+    yt_extractors = (
+        yt_extractor.YoutubeIE,
+        yt_extractor.YoutubeYtBeIE,
+        yt_extractor.YoutubeLivestreamEmbedIE,
+        yt_extractor.YoutubeClipIE,
     )
+
+    return any(ie.suitable(url) for ie in yt_extractors)

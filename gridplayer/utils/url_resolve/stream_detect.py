@@ -1,7 +1,7 @@
 import contextlib
 import itertools
 import re
-from typing import Optional
+from typing import Dict, Optional
 
 from streamlink import Streamlink
 from streamlink.stream import HTTPStream
@@ -9,9 +9,16 @@ from streamlink.stream import HTTPStream
 from gridplayer.utils.url_resolve.static import BadURLException
 
 
-def is_hls_live_stream(url: str, session: Optional[Streamlink] = None) -> bool:
+def is_hls_live_stream(
+    url: str,
+    session: Optional[Streamlink] = None,
+    session_headers: Optional[Dict[str, str]] = None,
+) -> bool:
     if session is None:
         session = Streamlink()
+
+        if session_headers:
+            session.http.headers.update(session_headers)
 
     http_stream = HTTPStream(session, url, buffered=False)
     with contextlib.closing(http_stream.open()) as stream:
@@ -32,11 +39,18 @@ def is_hls_live_stream(url: str, session: Optional[Streamlink] = None) -> bool:
     return bool(re.search(r"#EXT-X-MEDIA-SEQUENCE:[\d.]+$", playlist_header, re.M))
 
 
-def is_http_live_stream(url: str, session: Optional[Streamlink] = None) -> bool:
+def is_http_live_stream(
+    url: str,
+    session: Optional[Streamlink] = None,
+    session_headers: Optional[Dict[str, str]] = None,
+) -> bool:
     """if there is a content-length header, it not a stream"""
 
     if session is None:
         session = Streamlink()
+
+        if session_headers:
+            session.http.headers.update(session_headers)
 
     # not using HEAD because some servers will return bad code
     with session.http.request("GET", url, stream=True) as response:

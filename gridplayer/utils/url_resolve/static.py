@@ -1,7 +1,8 @@
 import re
 from dataclasses import dataclass
 from types import MappingProxyType
-from typing import Dict
+
+from gridplayer.models.stream import Streams
 
 YOUTUBE_MATCH = re.compile(r"^(?:https?://)?(?:www\.)?(?:youtube\.com|youtu\.be)")
 
@@ -21,8 +22,12 @@ class NoResolverPlugin(Exception):
     """Exception for no resolver plugin"""
 
 
+class StreamOfflineError(Exception):
+    """Exception for offline streams"""
+
+
 @dataclass
 class ResolvedVideo(object):
     title: str
-    urls: Dict[str, str]
     is_live: bool
+    streams: Streams
