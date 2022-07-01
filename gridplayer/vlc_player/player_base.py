@@ -17,7 +17,7 @@ from gridplayer.vlc_player.player_event_waiter import (
 from gridplayer.vlc_player.static import MediaInput, MediaTrack, NotPausedError
 
 DEFAULT_FPS = 25
-INIT_TIMEOUT = 30
+INIT_TIMEOUT = 120
 SNAPSHOT_TIMEOUT = 15
 
 MEDIA_EXTRACT_RETRY_TIME = 0.1
