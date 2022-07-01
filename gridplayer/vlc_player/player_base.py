@@ -42,6 +42,8 @@ def only_initialized_player(func):
 
 
 class VlcPlayerBase(ABC):
+    is_preparse_required = False
+
     def __init__(self, vlc_instance, **kwargs):
         super().__init__(**kwargs)
 
@@ -184,7 +186,7 @@ class VlcPlayerBase(ABC):
         else:
             return self.error(translate("Video Error", "Media parse failed"))
 
-        self.loopback_load_video_st2_set_parsed_media()
+        self.loopback_load_video_st2_set_media()
 
     def cb_time_changed(self, event):
         # Doesn't work anymore since python-vlc-3.0.12117
@@ -268,7 +270,7 @@ class VlcPlayerBase(ABC):
         ...
 
     @abstractmethod
-    def loopback_load_video_st2_set_parsed_media(self):
+    def loopback_load_video_st2_set_media(self):
         ...
 
     @abstractmethod
@@ -308,11 +310,14 @@ class VlcPlayerBase(ABC):
 
         self._media.add_options(*self._media_options)
 
-        self._media.parse_with_options(parse_flag, parse_timeout)
+        if self.is_preparse_required:
+            self._media.parse_with_options(parse_flag, parse_timeout)
 
-        self.notify_update_status(translate("Video Status", "Parsing media"))
+            self.notify_update_status(translate("Video Status", "Parsing media"))
+        else:
+            self.loopback_load_video_st2_set_media()
 
-    def load_video_st2_set_parsed_media(self):
+    def load_video_st2_set_media(self):
         """Step 2. Start video player with parsed file"""
 
         self._log.debug("Setting parsed media to player and waiting for buffering")

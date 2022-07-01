@@ -28,7 +28,7 @@ class PlayerProcessSingleVLCHWSP(QThread, VlcPlayerBase, metaclass=QABC):
 
     load_video_done = pyqtSignal(MediaTrack)
 
-    loop_load_video_st2_set_parsed_media = pyqtSignal()
+    loop_load_video_st2_set_media = pyqtSignal()
     loop_load_video_st3_extract_media_track = pyqtSignal()
     loop_load_video_st4_loaded = pyqtSignal()
 
@@ -44,8 +44,8 @@ class PlayerProcessSingleVLCHWSP(QThread, VlcPlayerBase, metaclass=QABC):
 
         qt_connect(
             (
-                self.loop_load_video_st2_set_parsed_media,
-                self.load_video_st2_set_parsed_media,
+                self.loop_load_video_st2_set_media,
+                self.load_video_st2_set_media,
             ),
             (
                 self.loop_load_video_st3_extract_media_track,
@@ -117,8 +117,8 @@ class PlayerProcessSingleVLCHWSP(QThread, VlcPlayerBase, metaclass=QABC):
     def notify_snapshot_taken(self, snapshot_path):
         self.snapshot_taken.emit(snapshot_path)
 
-    def loopback_load_video_st2_set_parsed_media(self):
-        self.loop_load_video_st2_set_parsed_media.emit()
+    def loopback_load_video_st2_set_media(self):
+        self.loop_load_video_st2_set_media.emit()
 
     def loopback_load_video_st3_extract_media_track(self):
         self.loop_load_video_st3_extract_media_track.emit()
