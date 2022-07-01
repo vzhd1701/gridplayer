@@ -127,7 +127,7 @@ class VlcPlayerBase(ABC):
         self._log.debug("Media paused")
 
         if not self.is_video_initialized:
-            if self.media_input.is_live or self._get_duration() == 0:
+            if self.media_input.is_live or self._get_duration() in {0, -1}:
                 # live video paused = something went wrong
                 # video with 0 duration = file is bad
                 self.error(
