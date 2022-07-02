@@ -152,6 +152,13 @@ class AboutDialog(QDialog, Ui_AboutDialog):
                     "Creative Commons Attribution-Share Alike 4.0",
                     "https://snwh.org/",
                 ),
+                Attribution(
+                    "Flag Icons",
+                    None,
+                    "Panayiotis Lipiridis",
+                    "MIT License",
+                    "https://github.com/lipis/flag-icons",
+                ),
             ],
             "translation": [
                 AttributionTranslation(

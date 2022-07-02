@@ -188,6 +188,8 @@ This software was build using
   - Licensed under *Creative Commons Attribution-Share Alike 4.0*
 - **Clean App Download Buttons** by [Tony Thomas](https://medialoot.com/item/clean-app-download-buttons/)
   - Licensed under *MediaLoot License*
+- **Flag Icons** by [Panayiotis Lipiridis](https://github.com/lipis/flag-icons)
+  - Licensed under *MIT License*
 
 ### Translations
 
