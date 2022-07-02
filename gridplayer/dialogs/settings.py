@@ -92,6 +92,9 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
             "misc/mouse_hide_timeout": self.timeoutMouseHide,
             "logging/log_level": self.logLevel,
             "logging/log_level_vlc": self.logLevelVLC,
+            "logging/log_limit": self.logLimit,
+            "logging/log_limit_size": self.logLimitSize,
+            "logging/log_limit_backups": self.logLimitBackups,
             "internal/opaque_hw_overlay": self.miscOpaqueHWOverlay,
         }
 
@@ -99,6 +102,7 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
         self.ui_fill()
 
         self.ui_connect()
+        self.ui_set_limits()
 
         self.load_settings()
 
@@ -145,17 +149,22 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
         self.fill_streamQuality()
         self.fill_playlistSeekSyncMode()
 
+    def ui_set_limits(self):
+        self.playerVideoDriverPlayers.setRange(1, MAX_VLC_PROCESSES)
+        self.timeoutOverlay.setRange(1, 60)
+        self.timeoutMouseHide.setRange(1, 60)
+        self.logLimitSize.setRange(1, 1024 * 1024)
+        self.logLimitBackups.setRange(1, 1000)
+
+        self.gridSize.setRange(0, 1000)
+        self.gridSize.setSpecialValueText(self.tr("Auto"))
+
     def ui_customize_dynamic(self):
         self.driver_selected(self.playerVideoDriver.currentIndex())
         self.timeoutMouseHide.setEnabled(self.timeoutMouseHideFlag.isChecked())
         self.timeoutOverlay.setEnabled(self.timeoutOverlayFlag.isChecked())
-
-        self.playerVideoDriverPlayers.setRange(1, MAX_VLC_PROCESSES)
-        self.timeoutOverlay.setRange(1, 60)
-        self.timeoutMouseHide.setRange(1, 60)
-
-        self.gridSize.setRange(0, 1000)
-        self.gridSize.setSpecialValueText(self.tr("Auto"))
+        self.logLimitSize.setEnabled(self.logLimit.isChecked())
+        self.logLimitBackups.setEnabled(self.logLimit.isChecked())
 
         self.switch_page(None)
 
@@ -167,6 +176,8 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
             (self.logFileOpen.clicked, self.open_logfile),
             (self.section_index.currentTextChanged, self.switch_page),
             (self.section_index.itemSelectionChanged, self.keep_index_selection),
+            (self.logLimit.stateChanged, self.logLimitSize.setEnabled),
+            (self.logLimit.stateChanged, self.logLimitBackups.setEnabled),
         )
 
     def keep_index_selection(self):

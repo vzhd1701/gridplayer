@@ -57,6 +57,9 @@ _default_settings = {
     "misc/mouse_hide_timeout": 5,
     "logging/log_level": logging.WARNING,
     "logging/log_level_vlc": DISABLED,
+    "logging/log_limit": False,
+    "logging/log_limit_size": 10,
+    "logging/log_limit_backups": 1,
     "internal/opaque_hw_overlay": False,
 }
 

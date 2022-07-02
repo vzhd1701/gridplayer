@@ -323,6 +323,48 @@ class Ui_SettingsDialog(object):
         self.lay_page_misc_logging = QtWidgets.QVBoxLayout(self.page_misc_logging)
         self.lay_page_misc_logging.setContentsMargins(0, 0, 0, 0)
         self.lay_page_misc_logging.setObjectName("lay_page_misc_logging")
+        self.logLimit = QtWidgets.QCheckBox(self.page_misc_logging)
+        self.logLimit.setObjectName("logLimit")
+        self.lay_page_misc_logging.addWidget(self.logLimit)
+        self.formLayout_6 = QtWidgets.QFormLayout()
+        self.formLayout_6.setFieldGrowthPolicy(
+            QtWidgets.QFormLayout.FieldsStayAtSizeHint
+        )
+        self.formLayout_6.setObjectName("formLayout_6")
+        self.logLimitSizeLabel = QtWidgets.QLabel(self.page_misc_logging)
+        self.logLimitSizeLabel.setObjectName("logLimitSizeLabel")
+        self.formLayout_6.setWidget(
+            0, QtWidgets.QFormLayout.LabelRole, self.logLimitSizeLabel
+        )
+        self.horizontalLayout_3 = QtWidgets.QHBoxLayout()
+        self.horizontalLayout_3.setObjectName("horizontalLayout_3")
+        self.logLimitSize = QtWidgets.QSpinBox(self.page_misc_logging)
+        self.logLimitSize.setObjectName("logLimitSize")
+        self.horizontalLayout_3.addWidget(self.logLimitSize)
+        self.label_5 = QtWidgets.QLabel(self.page_misc_logging)
+        self.label_5.setObjectName("label_5")
+        self.horizontalLayout_3.addWidget(self.label_5)
+        self.formLayout_6.setLayout(
+            0, QtWidgets.QFormLayout.FieldRole, self.horizontalLayout_3
+        )
+        self.logLimitBackupsLabel = QtWidgets.QLabel(self.page_misc_logging)
+        self.logLimitBackupsLabel.setObjectName("logLimitBackupsLabel")
+        self.formLayout_6.setWidget(
+            1, QtWidgets.QFormLayout.LabelRole, self.logLimitBackupsLabel
+        )
+        self.logLimitBackups = QtWidgets.QSpinBox(self.page_misc_logging)
+        self.logLimitBackups.setObjectName("logLimitBackups")
+        self.formLayout_6.setWidget(
+            1, QtWidgets.QFormLayout.FieldRole, self.logLimitBackups
+        )
+        self.lay_page_misc_logging.addLayout(self.formLayout_6)
+        self.label_6 = QtWidgets.QLabel(self.page_misc_logging)
+        font = QtGui.QFont()
+        font.setBold(True)
+        font.setWeight(75)
+        self.label_6.setFont(font)
+        self.label_6.setObjectName("label_6")
+        self.lay_page_misc_logging.addWidget(self.label_6)
         self.formLayout_5 = QtWidgets.QFormLayout()
         self.formLayout_5.setFieldGrowthPolicy(
             QtWidgets.QFormLayout.FieldsStayAtSizeHint
@@ -372,7 +414,7 @@ class Ui_SettingsDialog(object):
         self.lay_main.setStretch(0, 1)
 
         self.retranslateUi(SettingsDialog)
-        self.section_page.setCurrentIndex(1)
+        self.section_page.setCurrentIndex(5)
         self.buttonBox.accepted.connect(SettingsDialog.accept)
         self.buttonBox.rejected.connect(SettingsDialog.reject)
         QtCore.QMetaObject.connectSlotsByName(SettingsDialog)
@@ -472,6 +514,13 @@ class Ui_SettingsDialog(object):
         self.miscOpaqueHWOverlay.setText(
             _translate("SettingsDialog", "Opaque overlay (fix black screen)")
         )
+        self.logLimit.setText(_translate("SettingsDialog", "Limit log file size"))
+        self.logLimitSizeLabel.setText(_translate("SettingsDialog", "Log file size"))
+        self.label_5.setText(_translate("SettingsDialog", "MB"))
+        self.logLimitBackupsLabel.setText(
+            _translate("SettingsDialog", "Log files to keep")
+        )
+        self.label_6.setText(_translate("SettingsDialog", "Logging levels"))
         self.logLevelLabel.setText(_translate("SettingsDialog", "Log level"))
         self.logLevelVLCLabel.setText(_translate("SettingsDialog", "Log level (VLC)"))
         self.logFileOpen.setText(_translate("SettingsDialog", "Open log file"))

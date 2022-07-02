@@ -3,6 +3,7 @@ import sys
 from logging.config import dictConfig
 from logging.handlers import QueueHandler, QueueListener
 from pathlib import Path
+from typing import Optional
 
 from PyQt5 import QtCore
 
@@ -68,7 +69,12 @@ class QtLogHandler(object):
         self._log.log(log_level, message.strip())
 
 
-def config_log(log_path: Path, log_level: int):
+def config_log(
+    log_path: Path,
+    log_level: int,
+    max_log_size: Optional[int] = None,
+    max_log_backups: Optional[int] = None,
+):
     config = {
         "version": 1,
         "formatters": {
@@ -102,6 +108,11 @@ def config_log(log_path: Path, log_level: int):
             "handlers": ["console_stderr", "file"],
         },
     }
+
+    if max_log_size is not None and max_log_backups is not None:
+        config["handlers"]["file"]["class"] = "logging.handlers.RotatingFileHandler"
+        config["handlers"]["file"]["maxBytes"] = max_log_size
+        config["handlers"]["file"]["backupCount"] = max_log_backups
 
     dictConfig(config)
 
