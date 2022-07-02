@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="UTF-8"?>
+﻿<?xml version="1.0" encoding="UTF-8"?>
 <ui version="4.0">
  <class>SettingsDialog</class>
  <widget class="QDialog" name="SettingsDialog">
@@ -6,36 +6,146 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>442</width>
-    <height>621</height>
+    <width>732</width>
+    <height>451</height>
    </rect>
   </property>
   <property name="windowTitle">
    <string>Settings</string>
   </property>
-  <layout class="QVBoxLayout" name="lay_main">
+  <property name="sizeGripEnabled">
+   <bool>true</bool>
+  </property>
+  <property name="modal">
+   <bool>true</bool>
+  </property>
+  <layout class="QVBoxLayout" name="lay_main" stretch="1,0">
    <property name="sizeConstraint">
-    <enum>QLayout::SetFixedSize</enum>
+    <enum>QLayout::SetMinimumSize</enum>
    </property>
    <item>
-    <layout class="QHBoxLayout" name="lay_body" stretch="1,0">
+    <layout class="QHBoxLayout" name="lay_main_2">
+     <property name="spacing">
+      <number>12</number>
+     </property>
      <item>
-      <layout class="QVBoxLayout" name="lay_left_column">
+      <widget class="QListWidget" name="section_index">
+       <property name="minimumSize">
+        <size>
+         <width>200</width>
+         <height>400</height>
+        </size>
+       </property>
+       <property name="maximumSize">
+        <size>
+         <width>200</width>
+         <height>16777215</height>
+        </size>
+       </property>
+       <property name="font">
+        <font>
+         <pointsize>12</pointsize>
+        </font>
+       </property>
        <item>
+        <property name="text">
+         <string>General</string>
+        </property>
+        <property name="font">
+         <font>
+          <weight>75</weight>
+          <bold>true</bold>
+         </font>
+        </property>
+        <property name="flags">
+         <set>NoItemFlags</set>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>Player</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>Language</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>Defaults</string>
+        </property>
+        <property name="font">
+         <font>
+          <weight>75</weight>
+          <bold>true</bold>
+         </font>
+        </property>
+        <property name="flags">
+         <set>NoItemFlags</set>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>Playlist</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>Video</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>Miscellaneous</string>
+        </property>
+        <property name="font">
+         <font>
+          <weight>75</weight>
+          <bold>true</bold>
+         </font>
+        </property>
+        <property name="flags">
+         <set>NoItemFlags</set>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>Logging</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>Advanced</string>
+        </property>
+       </item>
+      </widget>
+     </item>
+     <item>
+      <widget class="QStackedWidget" name="section_page">
+       <property name="minimumSize">
+        <size>
+         <width>500</width>
+         <height>0</height>
+        </size>
+       </property>
+       <property name="currentIndex">
+        <number>1</number>
+       </property>
+       <widget class="QWidget" name="page_general_player">
         <layout class="QVBoxLayout" name="lay_section_player">
-         <item>
-          <widget class="QLabel" name="section_player">
-           <property name="font">
-            <font>
-             <weight>75</weight>
-             <bold>true</bold>
-            </font>
-           </property>
-           <property name="text">
-            <string>Player</string>
-           </property>
-          </widget>
-         </item>
+         <property name="leftMargin">
+          <number>0</number>
+         </property>
+         <property name="topMargin">
+          <number>0</number>
+         </property>
+         <property name="rightMargin">
+          <number>0</number>
+         </property>
+         <property name="bottomMargin">
+          <number>0</number>
+         </property>
          <item>
           <widget class="QCheckBox" name="playerPauseBackgroundVideos">
            <property name="text">
@@ -64,12 +174,8 @@
            </property>
           </widget>
          </item>
-        </layout>
-       </item>
-       <item>
-        <layout class="QVBoxLayout" name="lay_section_playlist">
          <item>
-          <widget class="QLabel" name="section_playlist">
+          <widget class="QLabel" name="section_timeouts">
            <property name="font">
             <font>
              <weight>75</weight>
@@ -77,10 +183,120 @@
             </font>
            </property>
            <property name="text">
-            <string>Playlist</string>
+            <string>Timeouts</string>
            </property>
           </widget>
          </item>
+         <item>
+          <layout class="QFormLayout" name="formLayout_3">
+           <property name="fieldGrowthPolicy">
+            <enum>QFormLayout::FieldsStayAtSizeHint</enum>
+           </property>
+           <item row="0" column="0">
+            <widget class="QCheckBox" name="timeoutOverlayFlag">
+             <property name="text">
+              <string>Hide overlay after timeout</string>
+             </property>
+            </widget>
+           </item>
+           <item row="0" column="1">
+            <layout class="QHBoxLayout" name="horizontalLayout_2">
+             <item>
+              <widget class="QSpinBox" name="timeoutOverlay"/>
+             </item>
+             <item>
+              <widget class="QLabel" name="label_3">
+               <property name="text">
+                <string>(sec)</string>
+               </property>
+              </widget>
+             </item>
+            </layout>
+           </item>
+           <item row="1" column="0">
+            <widget class="QCheckBox" name="timeoutMouseHideFlag">
+             <property name="text">
+              <string>Hide mouse after timeout</string>
+             </property>
+            </widget>
+           </item>
+           <item row="1" column="1">
+            <layout class="QHBoxLayout" name="horizontalLayout">
+             <item>
+              <widget class="QSpinBox" name="timeoutMouseHide"/>
+             </item>
+             <item>
+              <widget class="QLabel" name="label_2">
+               <property name="text">
+                <string>(sec)</string>
+               </property>
+              </widget>
+             </item>
+            </layout>
+           </item>
+          </layout>
+         </item>
+         <item>
+          <spacer name="verticalSpacer">
+           <property name="orientation">
+            <enum>Qt::Vertical</enum>
+           </property>
+           <property name="sizeHint" stdset="0">
+            <size>
+             <width>20</width>
+             <height>40</height>
+            </size>
+           </property>
+          </spacer>
+         </item>
+        </layout>
+       </widget>
+       <widget class="QWidget" name="page_general_language">
+        <layout class="QVBoxLayout" name="lay_page_general_language">
+         <property name="leftMargin">
+          <number>0</number>
+         </property>
+         <property name="topMargin">
+          <number>0</number>
+         </property>
+         <property name="rightMargin">
+          <number>0</number>
+         </property>
+         <property name="bottomMargin">
+          <number>0</number>
+         </property>
+         <item>
+          <widget class="LanguageList" name="listLanguages"/>
+         </item>
+         <item>
+          <widget class="QLabel" name="label_4">
+           <property name="text">
+            <string>&lt;p&gt;If you have a handful of free time and a desire to support this project, please &lt;a href=&quot;https://crowdin.com/project/gridplayer&quot;&gt;help with the translation&lt;/a&gt;. No coding skills or special software is required!&lt;/p&gt;</string>
+           </property>
+           <property name="wordWrap">
+            <bool>true</bool>
+           </property>
+           <property name="openExternalLinks">
+            <bool>true</bool>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </widget>
+       <widget class="QWidget" name="page_defaults_playlist">
+        <layout class="QVBoxLayout" name="lay_page_defaults_playlist">
+         <property name="leftMargin">
+          <number>0</number>
+         </property>
+         <property name="topMargin">
+          <number>0</number>
+         </property>
+         <property name="rightMargin">
+          <number>0</number>
+         </property>
+         <property name="bottomMargin">
+          <number>0</number>
+         </property>
          <item>
           <widget class="QCheckBox" name="playlistSaveWindow">
            <property name="text">
@@ -124,38 +340,24 @@
           </widget>
          </item>
          <item>
-          <layout class="QHBoxLayout" name="lay_seek_sync">
-           <item>
+          <layout class="QFormLayout" name="formLayout_2">
+           <property name="fieldGrowthPolicy">
+            <enum>QFormLayout::FieldsStayAtSizeHint</enum>
+           </property>
+           <item row="0" column="0">
             <widget class="QLabel" name="playlistSeekSyncModeLabel">
              <property name="text">
               <string>Seek sync mode</string>
              </property>
             </widget>
            </item>
-           <item>
+           <item row="0" column="1">
             <widget class="QComboBox" name="playlistSeekSyncMode"/>
-           </item>
-           <item>
-            <spacer name="horizontalSpacer_6">
-             <property name="orientation">
-              <enum>Qt::Horizontal</enum>
-             </property>
-             <property name="sizeHint" stdset="0">
-              <size>
-               <width>40</width>
-               <height>20</height>
-              </size>
-             </property>
-            </spacer>
            </item>
           </layout>
          </item>
-        </layout>
-       </item>
-       <item>
-        <layout class="QVBoxLayout" name="lay_section_grid">
          <item>
-          <widget class="QLabel" name="section_grid">
+          <widget class="QLabel" name="label">
            <property name="font">
             <font>
              <weight>75</weight>
@@ -163,61 +365,34 @@
             </font>
            </property>
            <property name="text">
-            <string>Default Grid Parameters</string>
+            <string>Grid</string>
            </property>
           </widget>
          </item>
          <item>
-          <layout class="QHBoxLayout" name="lay_gridMode" stretch="0,0,0">
-           <item>
+          <layout class="QFormLayout" name="formLayout">
+           <property name="fieldGrowthPolicy">
+            <enum>QFormLayout::FieldsStayAtSizeHint</enum>
+           </property>
+           <item row="0" column="0">
             <widget class="QLabel" name="gridModeLabel">
              <property name="text">
               <string>Grid mode</string>
              </property>
             </widget>
            </item>
-           <item>
+           <item row="0" column="1">
             <widget class="QComboBox" name="gridMode"/>
            </item>
-           <item>
-            <spacer name="horizontalSpacer_2">
-             <property name="orientation">
-              <enum>Qt::Horizontal</enum>
-             </property>
-             <property name="sizeHint" stdset="0">
-              <size>
-               <width>40</width>
-               <height>0</height>
-              </size>
-             </property>
-            </spacer>
-           </item>
-          </layout>
-         </item>
-         <item>
-          <layout class="QHBoxLayout" name="lay_gridSize" stretch="0,0,0">
-           <item>
-            <widget class="QSpinBox" name="gridSize"/>
-           </item>
-           <item>
+           <item row="1" column="0">
             <widget class="QLabel" name="gridSizeLabel">
              <property name="text">
               <string>Grid size</string>
              </property>
             </widget>
            </item>
-           <item>
-            <spacer name="horizontalSpacer_4">
-             <property name="orientation">
-              <enum>Qt::Horizontal</enum>
-             </property>
-             <property name="sizeHint" stdset="0">
-              <size>
-               <width>40</width>
-               <height>0</height>
-              </size>
-             </property>
-            </spacer>
+           <item row="1" column="1">
+            <widget class="QSpinBox" name="gridSize"/>
            </item>
           </layout>
          </item>
@@ -235,101 +410,69 @@
            </property>
           </widget>
          </item>
-        </layout>
-       </item>
-       <item>
-        <layout class="QVBoxLayout" name="lay_section_video_defaults">
          <item>
-          <widget class="QLabel" name="section_video_defaults">
-           <property name="font">
-            <font>
-             <weight>75</weight>
-             <bold>true</bold>
-            </font>
+          <spacer name="verticalSpacer_4">
+           <property name="orientation">
+            <enum>Qt::Vertical</enum>
            </property>
-           <property name="text">
-            <string>Default Video Parameters</string>
+           <property name="sizeHint" stdset="0">
+            <size>
+             <width>20</width>
+             <height>40</height>
+            </size>
            </property>
-          </widget>
+          </spacer>
          </item>
+        </layout>
+       </widget>
+       <widget class="QWidget" name="page_defaults_video">
+        <layout class="QVBoxLayout" name="lay_page_defaults_video">
+         <property name="leftMargin">
+          <number>0</number>
+         </property>
+         <property name="topMargin">
+          <number>0</number>
+         </property>
+         <property name="rightMargin">
+          <number>0</number>
+         </property>
+         <property name="bottomMargin">
+          <number>0</number>
+         </property>
          <item>
-          <layout class="QHBoxLayout" name="lay_stream_quality">
-           <item>
+          <layout class="QFormLayout" name="formLayout_4">
+           <property name="fieldGrowthPolicy">
+            <enum>QFormLayout::FieldsStayAtSizeHint</enum>
+           </property>
+           <item row="0" column="0">
             <widget class="QLabel" name="streamQualityLabel">
              <property name="text">
               <string>Stream quality</string>
              </property>
             </widget>
            </item>
-           <item>
+           <item row="0" column="1">
             <widget class="QComboBox" name="streamQuality"/>
            </item>
-           <item>
-            <spacer name="horizontalSpacer_5">
-             <property name="orientation">
-              <enum>Qt::Horizontal</enum>
-             </property>
-             <property name="sizeHint" stdset="0">
-              <size>
-               <width>40</width>
-               <height>0</height>
-              </size>
-             </property>
-            </spacer>
-           </item>
-          </layout>
-         </item>
-         <item>
-          <layout class="QHBoxLayout" name="lay_aspect">
-           <item>
+           <item row="1" column="0">
             <widget class="QLabel" name="videoAspectLabel">
              <property name="text">
               <string>Aspect mode</string>
              </property>
             </widget>
            </item>
-           <item>
+           <item row="1" column="1">
             <widget class="QComboBox" name="videoAspect"/>
            </item>
-           <item>
-            <spacer name="horizontalSpacer">
-             <property name="orientation">
-              <enum>Qt::Horizontal</enum>
-             </property>
-             <property name="sizeHint" stdset="0">
-              <size>
-               <width>40</width>
-               <height>0</height>
-              </size>
-             </property>
-            </spacer>
-           </item>
-          </layout>
-         </item>
-         <item>
-          <layout class="QHBoxLayout" name="lay_repeat">
-           <item>
+           <item row="2" column="0">
             <widget class="QLabel" name="repeatModeLabel">
              <property name="text">
               <string>Repeat mode</string>
              </property>
             </widget>
            </item>
-           <item>
+           <item row="2" column="1">
             <widget class="QComboBox" name="repeatMode"/>
-           </item>
-           <item>
-            <spacer name="horizontalSpacer_3">
-             <property name="orientation">
-              <enum>Qt::Horizontal</enum>
-             </property>
-             <property name="sizeHint" stdset="0">
-              <size>
-               <width>40</width>
-               <height>0</height>
-              </size>
-             </property>
-            </spacer>
            </item>
           </layout>
          </item>
@@ -354,41 +497,46 @@
            </property>
           </widget>
          </item>
-        </layout>
-       </item>
-       <item>
-        <spacer name="verticalSpacer">
-         <property name="orientation">
-          <enum>Qt::Vertical</enum>
-         </property>
-         <property name="sizeHint" stdset="0">
-          <size>
-           <width>0</width>
-           <height>0</height>
-          </size>
-         </property>
-        </spacer>
-       </item>
-      </layout>
-     </item>
-     <item>
-      <layout class="QVBoxLayout" name="lay_right_column" stretch="0,0,0,0,0,0,0">
-       <item>
-        <layout class="QVBoxLayout" name="lay_boxes">
          <item>
-          <widget class="QGroupBox" name="languageBox">
-           <property name="title">
-            <string>Language</string>
+          <spacer name="verticalSpacer_3">
+           <property name="orientation">
+            <enum>Qt::Vertical</enum>
            </property>
-           <layout class="QVBoxLayout" name="verticalLayout">
-            <item>
-             <widget class="QComboBox" name="language"/>
-            </item>
-           </layout>
-          </widget>
+           <property name="sizeHint" stdset="0">
+            <size>
+             <width>20</width>
+             <height>40</height>
+            </size>
+           </property>
+          </spacer>
+         </item>
+        </layout>
+       </widget>
+       <widget class="QWidget" name="page_misc_advanced">
+        <layout class="QVBoxLayout" name="lay_page_misc_advanced">
+         <property name="leftMargin">
+          <number>0</number>
+         </property>
+         <property name="topMargin">
+          <number>0</number>
+         </property>
+         <property name="rightMargin">
+          <number>0</number>
+         </property>
+         <property name="bottomMargin">
+          <number>0</number>
+         </property>
+         <item>
+          <layout class="QVBoxLayout" name="lay_boxes"/>
          </item>
          <item>
           <widget class="QGroupBox" name="playerVideoDriverBox">
+           <property name="maximumSize">
+            <size>
+             <width>250</width>
+             <height>16777215</height>
+            </size>
+           </property>
            <property name="title">
             <string>Video Decoder</string>
            </property>
@@ -413,12 +561,8 @@
            </layout>
           </widget>
          </item>
-        </layout>
-       </item>
-       <item>
-        <layout class="QVBoxLayout" name="lay_section_timeouts">
          <item>
-          <widget class="QLabel" name="section_timeouts">
+          <widget class="QLabel" name="section_misc">
            <property name="font">
             <font>
              <weight>75</weight>
@@ -426,141 +570,94 @@
             </font>
            </property>
            <property name="text">
-            <string>Timeouts</string>
+            <string>Experimental</string>
            </property>
           </widget>
          </item>
          <item>
-          <widget class="QCheckBox" name="timeoutOverlayFlag">
+          <widget class="QCheckBox" name="miscOpaqueHWOverlay">
            <property name="text">
-            <string>Hide overlay after timeout</string>
+            <string>Opaque overlay (fix black screen)</string>
            </property>
           </widget>
          </item>
          <item>
-          <layout class="QHBoxLayout" name="lay_timeoutOverlay" stretch="0,1">
-           <item>
-            <widget class="QSpinBox" name="timeoutOverlay"/>
-           </item>
-           <item>
-            <widget class="QLabel" name="timeoutOverlayLabel">
-             <property name="text">
-              <string>Video overlay timeout (sec)</string>
-             </property>
-            </widget>
-           </item>
-          </layout>
-         </item>
-         <item>
-          <widget class="QCheckBox" name="timeoutMouseHideFlag">
-           <property name="text">
-            <string>Hide mouse after timeout</string>
+          <spacer name="verticalSpacer_2">
+           <property name="orientation">
+            <enum>Qt::Vertical</enum>
            </property>
-          </widget>
-         </item>
-         <item>
-          <layout class="QHBoxLayout" name="lay_timeoutMouseHide" stretch="0,1">
-           <item>
-            <widget class="QSpinBox" name="timeoutMouseHide"/>
-           </item>
-           <item>
-            <widget class="QLabel" name="timeoutMouseHideLabel">
-             <property name="text">
-              <string>Mouse hide timeout (sec)</string>
-             </property>
-            </widget>
-           </item>
-          </layout>
+           <property name="sizeHint" stdset="0">
+            <size>
+             <width>0</width>
+             <height>0</height>
+            </size>
+           </property>
+          </spacer>
          </item>
         </layout>
-       </item>
-       <item>
-        <layout class="QVBoxLayout" name="lay_section_logging">
+       </widget>
+       <widget class="QWidget" name="page_misc_logging">
+        <layout class="QVBoxLayout" name="lay_page_misc_logging">
+         <property name="leftMargin">
+          <number>0</number>
+         </property>
+         <property name="topMargin">
+          <number>0</number>
+         </property>
+         <property name="rightMargin">
+          <number>0</number>
+         </property>
+         <property name="bottomMargin">
+          <number>0</number>
+         </property>
          <item>
-          <widget class="QLabel" name="section_logging">
-           <property name="font">
-            <font>
-             <weight>75</weight>
-             <bold>true</bold>
-            </font>
+          <layout class="QFormLayout" name="formLayout_5">
+           <property name="fieldGrowthPolicy">
+            <enum>QFormLayout::FieldsStayAtSizeHint</enum>
            </property>
-           <property name="text">
-            <string>Logging</string>
-           </property>
-          </widget>
-         </item>
-         <item>
-          <layout class="QHBoxLayout" name="lay_logLevel">
-           <item>
+           <item row="0" column="0">
             <widget class="QLabel" name="logLevelLabel">
              <property name="text">
               <string>Log level</string>
              </property>
             </widget>
            </item>
-           <item>
+           <item row="0" column="1">
             <widget class="QComboBox" name="logLevel"/>
            </item>
-          </layout>
-         </item>
-         <item>
-          <layout class="QHBoxLayout" name="lay_logLevelVLC">
-           <item>
+           <item row="1" column="0">
             <widget class="QLabel" name="logLevelVLCLabel">
              <property name="text">
               <string>Log level (VLC)</string>
              </property>
             </widget>
            </item>
-           <item>
+           <item row="1" column="1">
             <widget class="QComboBox" name="logLevelVLC"/>
            </item>
           </layout>
          </item>
+         <item>
+          <spacer name="verticalSpacer_2">
+           <property name="orientation">
+            <enum>Qt::Vertical</enum>
+           </property>
+           <property name="sizeHint" stdset="0">
+            <size>
+             <width>0</width>
+             <height>0</height>
+            </size>
+           </property>
+          </spacer>
+         </item>
         </layout>
-       </item>
-       <item>
-        <widget class="QLabel" name="section_misc">
-         <property name="font">
-          <font>
-           <weight>75</weight>
-           <bold>true</bold>
-          </font>
-         </property>
-         <property name="text">
-          <string>Misc</string>
-         </property>
-        </widget>
-       </item>
-       <item>
-        <widget class="QCheckBox" name="miscOpaqueHWOverlay">
-         <property name="text">
-          <string>Opaque overlay (fix black screen)</string>
-         </property>
-        </widget>
-       </item>
-       <item>
-        <layout class="QVBoxLayout" name="lay_section_misc"/>
-       </item>
-       <item>
-        <spacer name="verticalSpacer_2">
-         <property name="orientation">
-          <enum>Qt::Vertical</enum>
-         </property>
-         <property name="sizeHint" stdset="0">
-          <size>
-           <width>0</width>
-           <height>0</height>
-          </size>
-         </property>
-        </spacer>
-       </item>
-      </layout>
+       </widget>
+      </widget>
      </item>
     </layout>
    </item>
    <item>
-    <layout class="QHBoxLayout" name="horizontalLayout">
+    <layout class="QHBoxLayout" name="lay_buttons">
      <property name="spacing">
       <number>0</number>
      </property>
@@ -591,6 +688,13 @@
    </item>
   </layout>
  </widget>
+ <customwidgets>
+  <customwidget>
+   <class>LanguageList</class>
+   <extends>QListWidget</extends>
+   <header>gridplayer.widgets.language_list</header>
+  </customwidget>
+ </customwidgets>
  <resources/>
  <connections>
   <connection>

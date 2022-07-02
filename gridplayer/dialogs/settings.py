@@ -21,6 +21,7 @@ from gridplayer.settings import Settings
 from gridplayer.utils import log_config
 from gridplayer.utils.app_dir import get_app_data_dir
 from gridplayer.utils.qt import qt_connect, translate
+from gridplayer.widgets.language_list import LanguageList
 
 VIDEO_DRIVERS_MULTIPROCESS = (
     VideoDriver.VLC_SW,
@@ -67,7 +68,7 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
             "player/pause_minimized": self.playerPauseWhenMinimized,
             "player/inhibit_screensaver": self.playerInhibitScreensaver,
             "player/one_instance": self.playerOneInstance,
-            "player/language": self.language,
+            "player/language": self.listLanguages,
             "playlist/grid_mode": self.gridMode,
             "playlist/grid_fit": self.gridFit,
             "playlist/grid_size": self.gridSize,
@@ -108,7 +109,6 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
             btn.setIcon(QIcon())
 
         _set_groupbox_header_bold(self.playerVideoDriverBox)
-        _set_groupbox_header_bold(self.languageBox)
 
         if env.IS_MACOS:
             self.lay_body.setContentsMargins(4, 0, 0, 0)
@@ -157,13 +157,42 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
         self.gridSize.setRange(0, 1000)
         self.gridSize.setSpecialValueText(self.tr("Auto"))
 
+        self.switch_page(None)
+
     def ui_connect(self):
         qt_connect(
             (self.playerVideoDriver.currentIndexChanged, self.driver_selected),
             (self.timeoutMouseHideFlag.stateChanged, self.timeoutMouseHide.setEnabled),
             (self.timeoutOverlayFlag.stateChanged, self.timeoutOverlay.setEnabled),
             (self.logFileOpen.clicked, self.open_logfile),
+            (self.section_index.currentTextChanged, self.switch_page),
+            (self.section_index.itemSelectionChanged, self.keep_index_selection),
         )
+
+    def keep_index_selection(self):
+        if not self.section_index.selectedItems():
+            self.section_index.setCurrentItem(self.section_index.currentItem())
+
+    def switch_page(self, page_name):
+        pages_map = {
+            translate("SettingsDialog", "Player"): self.page_general_player,
+            translate("SettingsDialog", "Language"): self.page_general_language,
+            translate("SettingsDialog", "Playlist"): self.page_defaults_playlist,
+            translate("SettingsDialog", "Video"): self.page_defaults_video,
+            translate("SettingsDialog", "Logging"): self.page_misc_logging,
+            translate("SettingsDialog", "Advanced"): self.page_misc_advanced,
+        }
+
+        if page_name is None:
+            self.section_index.setCurrentRow(1)
+            return
+
+        page_widget = pages_map.get(page_name)
+
+        if not page_widget:
+            return
+
+        self.section_page.setCurrentWidget(page_widget)
 
     def open_logfile(self):
         log_path = get_app_data_dir() / "gridplayer.log"
@@ -261,17 +290,20 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
 
     def fill_language(self):
         languages = {
-            lang: "{0} ({1})".format(
-                QLocale.languageToString(QLocale(lang).language()),
-                QLocale.countryToString(QLocale(lang).country()),
-            )
-            if lang in {"zh_CN", "zh_TW"}
-            else QLocale.languageToString(QLocale(lang).language())
-            for lang in SUPPORTED_LANGUAGES
+            lang_id: {
+                "language": QLocale(lang_id).nativeLanguageName().title(),
+                "country": QLocale(lang_id).nativeCountryName().title(),
+                "icon": f":/icons/flag_{lang_id}.svg",
+                "author": lang["author"],
+            }
+            for lang_id, lang in SUPPORTED_LANGUAGES.items()
         }
-        sorted_languages = dict(sorted(languages.items(), key=lambda x: x[1]))
+        sorted_languages = dict(
+            sorted(languages.items(), key=lambda x: x[1]["language"])
+        )
 
-        _fill_combo_box(self.language, sorted_languages)
+        for lang_id, lang in sorted_languages.items():
+            self.listLanguages.add_language_row(lang_id, lang)
 
     def fill_streamQuality(self):
         quality_codes = {
@@ -321,6 +353,7 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
             QCheckBox: lambda e, v: e.setChecked(v),
             QSpinBox: lambda e, v: e.setValue(v),
             QComboBox: _set_combo_box,
+            LanguageList: lambda e, v: e.setValue(v),
         }
 
         for setting, element in self.settings_map.items():
@@ -338,6 +371,7 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
             QCheckBox: "isChecked",
             QSpinBox: "value",
             QComboBox: "currentData",
+            LanguageList: "value",
         }
 
         for setting, element in self.settings_map.items():

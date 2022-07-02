@@ -1,4 +1,5 @@
 from enum import Enum, auto
+from types import MappingProxyType
 from typing import NamedTuple
 
 from gridplayer.params import env
@@ -57,8 +58,10 @@ class WindowState(NamedTuple):
     geometry: str
 
 
-SUPPORTED_LANGUAGES = (
-    "en_US",
-    "hu_HU",
-    "ru_RU",
+SUPPORTED_LANGUAGES = MappingProxyType(
+    {
+        "en_US": {"author": None},
+        "ru_RU": {"author": None},
+        "hu_HU": {"author": "samu112"},
+    }
 )

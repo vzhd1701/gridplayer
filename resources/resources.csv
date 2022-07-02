@@ -7,6 +7,9 @@ icon,icons/main/svg/big.svg,main_ico_big
 icon,icons/main/svg/normal.svg,main_ico_svg
 icon,icons/main/sys/macos.icns,main_ico_mac
 icon,icons/main/sys/windows.ico,main_ico_win
+icon,icons/flags/en_US.svg,flag_en_US
+icon,icons/flags/hu_HU.svg,flag_hu_HU
+icon,icons/flags/ru_RU.svg,flag_ru_RU
 icon-symbolic,icons/basic/003-add.svg,add-files
 icon-symbolic,icons/basic/031-cancel.svg,close
 icon-symbolic,icons/basic/042-sand clock.svg,processing
@@ -73,5 +76,6 @@ icon-symbolic,icons/custom/045-seek sync percent.svg,seek-sync-percent
 icon-symbolic,icons/custom/046-empty.svg,empty
 icon-symbolic,icons/custom/047-warning.svg,warning
 icon-symbolic,icons/custom/048-settings.svg,settings
+icon-symbolic,icons/custom/049-checkmark.svg,checkmark
 translation,translations/ru_RU.ts,ru_RU
 translation,translations/hu_HU.ts,hu_HU
