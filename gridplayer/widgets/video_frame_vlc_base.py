@@ -205,6 +205,9 @@ class VideoFrameVLC(QWidget, metaclass=QABC):
         self.time_changed.emit(new_time)
 
     def load_video(self, media_input: MediaInput) -> None:
+        self._aspect = media_input.video.aspect_mode
+        self._scale = media_input.video.scale
+
         self.video_driver.load_video(media_input)
 
     def load_video_finish(self, media_track: MediaTrack) -> None:
