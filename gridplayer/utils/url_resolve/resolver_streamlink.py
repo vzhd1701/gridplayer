@@ -6,6 +6,7 @@ from streamlink.stream import HLSStream, MuxedHLSStream
 
 from gridplayer.models.stream import HashableDict, Stream, Streams, StreamSessionOpts
 from gridplayer.models.video import VideoURL
+from gridplayer.settings import Settings
 from gridplayer.utils.url_resolve.resolver_base import ResolverBase
 from gridplayer.utils.url_resolve.static import NoResolverPlugin
 from gridplayer.utils.url_resolve.stream_detect import (
@@ -112,7 +113,10 @@ class StreamlinkResolver(ResolverBase):
             )
 
         protocol = src_stream.shortname()
-        if protocol == "hls" and not is_live:
+
+        is_via_streamlink = Settings().get("streaming/hls_via_streamlink")
+
+        if protocol == "hls" and (not is_via_streamlink or not is_live):
             protocol = "hls_proxy"
 
         return Stream(

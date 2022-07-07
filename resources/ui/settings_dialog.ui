@@ -111,6 +111,11 @@
        </item>
        <item>
         <property name="text">
+         <string>Streaming</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
          <string>Logging</string>
         </property>
        </item>
@@ -130,7 +135,7 @@
         </size>
        </property>
        <property name="currentIndex">
-        <number>5</number>
+        <number>2</number>
        </property>
        <widget class="QWidget" name="page_general_player">
         <layout class="QVBoxLayout" name="lay_section_player">
@@ -192,14 +197,14 @@
            <property name="fieldGrowthPolicy">
             <enum>QFormLayout::FieldsStayAtSizeHint</enum>
            </property>
-           <item row="0" column="0">
+           <item row="1" column="0">
             <widget class="QCheckBox" name="timeoutOverlayFlag">
              <property name="text">
               <string>Hide overlay after timeout</string>
              </property>
             </widget>
            </item>
-           <item row="0" column="1">
+           <item row="1" column="1">
             <layout class="QHBoxLayout" name="horizontalLayout_2">
              <item>
               <widget class="QSpinBox" name="timeoutOverlay"/>
@@ -213,20 +218,41 @@
              </item>
             </layout>
            </item>
-           <item row="1" column="0">
+           <item row="2" column="0">
             <widget class="QCheckBox" name="timeoutMouseHideFlag">
              <property name="text">
               <string>Hide mouse after timeout</string>
              </property>
             </widget>
            </item>
-           <item row="1" column="1">
+           <item row="2" column="1">
             <layout class="QHBoxLayout" name="horizontalLayout">
              <item>
               <widget class="QSpinBox" name="timeoutMouseHide"/>
              </item>
              <item>
               <widget class="QLabel" name="label_2">
+               <property name="text">
+                <string>(sec)</string>
+               </property>
+              </widget>
+             </item>
+            </layout>
+           </item>
+           <item row="0" column="0">
+            <widget class="QLabel" name="timeoutVideoInitLabel">
+             <property name="text">
+              <string>Video initialization timeout</string>
+             </property>
+            </widget>
+           </item>
+           <item row="0" column="1">
+            <layout class="QHBoxLayout" name="horizontalLayout_4">
+             <item>
+              <widget class="QSpinBox" name="timeoutVideoInit"/>
+             </item>
+             <item>
+              <widget class="QLabel" name="label_7">
                <property name="text">
                 <string>(sec)</string>
                </property>
@@ -280,6 +306,110 @@
             <bool>true</bool>
            </property>
           </widget>
+         </item>
+        </layout>
+       </widget>
+       <widget class="QWidget" name="page_misc_streaming">
+        <layout class="QVBoxLayout" name="lay_page_general_streams">
+         <property name="leftMargin">
+          <number>0</number>
+         </property>
+         <property name="topMargin">
+          <number>0</number>
+         </property>
+         <property name="rightMargin">
+          <number>0</number>
+         </property>
+         <property name="bottomMargin">
+          <number>0</number>
+         </property>
+         <item>
+          <widget class="QCheckBox" name="streamingHLSVIAStreamlink">
+           <property name="text">
+            <string>Use Streamlink for HLS streams when possible</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <layout class="QFormLayout" name="formLayout_7">
+           <property name="fieldGrowthPolicy">
+            <enum>QFormLayout::FieldsStayAtSizeHint</enum>
+           </property>
+           <item row="0" column="0">
+            <widget class="QLabel" name="label_8">
+             <property name="text">
+              <string>Priority URL resolver</string>
+             </property>
+            </widget>
+           </item>
+           <item row="0" column="1">
+            <widget class="QComboBox" name="streamingResolverPriority"/>
+           </item>
+          </layout>
+         </item>
+         <item>
+          <widget class="QLabel" name="label_10">
+           <property name="font">
+            <font>
+             <weight>75</weight>
+             <bold>true</bold>
+            </font>
+           </property>
+           <property name="text">
+            <string>Resolver priority patterns</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <layout class="QVBoxLayout" name="verticalLayout" stretch="1,0,0">
+           <item>
+            <widget class="ResolverPatternsList" name="streamingResolverPriorityPatterns" native="true"/>
+           </item>
+           <item>
+            <layout class="QFormLayout" name="formLayout_8">
+             <property name="fieldGrowthPolicy">
+              <enum>QFormLayout::FieldsStayAtSizeHint</enum>
+             </property>
+             <item row="0" column="0">
+              <widget class="QLabel" name="label_11">
+               <property name="font">
+                <font>
+                 <weight>75</weight>
+                 <bold>true</bold>
+                </font>
+               </property>
+               <property name="text">
+                <string>Wildcard syntax</string>
+               </property>
+              </widget>
+             </item>
+             <item row="0" column="1">
+              <widget class="QPushButton" name="streamingWildcardHelpButton">
+               <property name="maximumSize">
+                <size>
+                 <width>24</width>
+                 <height>24</height>
+                </size>
+               </property>
+               <property name="text">
+                <string>?</string>
+               </property>
+              </widget>
+             </item>
+            </layout>
+           </item>
+           <item>
+            <widget class="QLabel" name="streamingWildcardHelp">
+             <property name="text">
+              <string>&lt;p&gt;&lt;b&gt;The asterisk&lt;/b&gt; * matches zero or more characters.&lt;br&gt;
+&lt;b&gt;The question mark&lt;/b&gt; ? matches exactly one character.&lt;/p&gt;
+&lt;p&gt;&lt;i&gt;For Host Wildcard only:&lt;/i&gt;&lt;br&gt;
+*.example.com will match both example.com and www.example.com&lt;br&gt;
+**.example.com will match subdomains &lt;b&gt;only&lt;/b&gt;&lt;/p&gt;</string>
+             </property>
+            </widget>
+           </item>
+          </layout>
          </item>
         </layout>
        </widget>
@@ -751,6 +881,12 @@
    <class>LanguageList</class>
    <extends>QListWidget</extends>
    <header>gridplayer.widgets.language_list</header>
+  </customwidget>
+  <customwidget>
+   <class>ResolverPatternsList</class>
+   <extends>QWidget</extends>
+   <header>gridplayer.widgets.resolver_patterns_list</header>
+   <container>1</container>
   </customwidget>
  </customwidgets>
  <resources/>

@@ -10,6 +10,7 @@ from yt_dlp.utils import UnsupportedError
 
 from gridplayer.models.stream import HashableDict, Stream, Streams, StreamSessionOpts
 from gridplayer.models.video import VideoURL
+from gridplayer.settings import Settings
 from gridplayer.utils.url_resolve.resolver_base import ResolverBase
 from gridplayer.utils.url_resolve.static import (
     BadURLException,
@@ -189,11 +190,16 @@ def _get_stream_url(stream, is_live) -> Tuple[str, str]:
     protocol = stream.get("protocol", "")
 
     if protocol in {"m3u8", "m3u8_native"}:
-        protocol = "hls" if is_live else "hls_proxy"
+        protocol = "hls"
     elif protocol in {"http", "https"}:
         protocol = "http"
     else:
         protocol = "direct"
+
+    is_via_streamlink = Settings().get("streaming/hls_via_streamlink")
+
+    if protocol == "hls" and (not is_via_streamlink or not is_live):
+        protocol = "hls_proxy"
 
     return stream["url"], protocol
 

@@ -1,14 +1,17 @@
 import logging
+from contextlib import suppress
 from enum import Enum
 
-from pydantic import Field
+from pydantic import BaseModel, Field
 from PyQt5.QtCore import QLocale, QSettings
 
+from gridplayer.models.resolver_patterns import ResolverPatterns
 from gridplayer.params import env
 from gridplayer.params.static import (
     SUPPORTED_LANGUAGES,
     GridMode,
     SeekSyncMode,
+    URLResolver,
     VideoAspect,
     VideoDriver,
     VideoRepeat,
@@ -61,6 +64,9 @@ _default_settings = {
     "logging/log_limit_size": 10,
     "logging/log_limit_backups": 1,
     "internal/opaque_hw_overlay": False,
+    "streaming/hls_via_streamlink": True,
+    "streaming/resolver_priority": URLResolver.STREAMLINK,
+    "streaming/resolver_priority_patterns": ResolverPatterns(__root__=[]),
 }
 
 if env.IS_MACOS:
@@ -79,12 +85,10 @@ class _Settings(object):
         setting_type = type(_default_settings[setting])
 
         if issubclass(setting_type, Enum):
-            setting_value = self.settings.value(setting, _default_settings[setting])
-            if isinstance(setting_value, str):
-                try:
-                    return setting_type(setting_value)
-                except ValueError:
-                    return _default_settings[setting]
+            return self._parse_enum(setting_type, setting)
+
+        if issubclass(setting_type, BaseModel):
+            return self._parse_pydantic(setting_type, setting)
 
         return self.settings.value(
             setting, _default_settings[setting], type=setting_type
@@ -93,6 +97,9 @@ class _Settings(object):
     def set(self, setting_name, setting_value):
         if isinstance(setting_value, Enum):
             setting_value = setting_value.value
+
+        if isinstance(setting_value, BaseModel):
+            setting_value = setting_value.json()
 
         self.settings.setValue(setting_name, setting_value)
 
@@ -105,6 +112,24 @@ class _Settings(object):
     @property
     def filename(self):
         return self.settings.fileName()
+
+    def _parse_enum(self, setting_type, setting):
+        setting_value = self.settings.value(setting)
+
+        if isinstance(setting_value, str):
+            with suppress(ValueError):
+                return setting_type(setting_value)
+
+        return _default_settings[setting]
+
+    def _parse_pydantic(self, setting_type, setting):
+        setting_value = self.settings.value(setting)
+
+        if isinstance(setting_value, str):
+            with suppress(ValueError):
+                return setting_type.parse_raw(setting_value)
+
+        return _default_settings[setting]
 
 
 def Settings():

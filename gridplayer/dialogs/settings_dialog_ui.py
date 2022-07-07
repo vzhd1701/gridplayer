@@ -53,6 +53,8 @@ class Ui_SettingsDialog(object):
         self.section_index.addItem(item)
         item = QtWidgets.QListWidgetItem()
         self.section_index.addItem(item)
+        item = QtWidgets.QListWidgetItem()
+        self.section_index.addItem(item)
         self.lay_main_2.addWidget(self.section_index)
         self.section_page = QtWidgets.QStackedWidget(SettingsDialog)
         self.section_page.setMinimumSize(QtCore.QSize(500, 0))
@@ -89,7 +91,7 @@ class Ui_SettingsDialog(object):
         self.timeoutOverlayFlag = QtWidgets.QCheckBox(self.page_general_player)
         self.timeoutOverlayFlag.setObjectName("timeoutOverlayFlag")
         self.formLayout_3.setWidget(
-            0, QtWidgets.QFormLayout.LabelRole, self.timeoutOverlayFlag
+            1, QtWidgets.QFormLayout.LabelRole, self.timeoutOverlayFlag
         )
         self.horizontalLayout_2 = QtWidgets.QHBoxLayout()
         self.horizontalLayout_2.setObjectName("horizontalLayout_2")
@@ -100,12 +102,12 @@ class Ui_SettingsDialog(object):
         self.label_3.setObjectName("label_3")
         self.horizontalLayout_2.addWidget(self.label_3)
         self.formLayout_3.setLayout(
-            0, QtWidgets.QFormLayout.FieldRole, self.horizontalLayout_2
+            1, QtWidgets.QFormLayout.FieldRole, self.horizontalLayout_2
         )
         self.timeoutMouseHideFlag = QtWidgets.QCheckBox(self.page_general_player)
         self.timeoutMouseHideFlag.setObjectName("timeoutMouseHideFlag")
         self.formLayout_3.setWidget(
-            1, QtWidgets.QFormLayout.LabelRole, self.timeoutMouseHideFlag
+            2, QtWidgets.QFormLayout.LabelRole, self.timeoutMouseHideFlag
         )
         self.horizontalLayout = QtWidgets.QHBoxLayout()
         self.horizontalLayout.setObjectName("horizontalLayout")
@@ -116,7 +118,23 @@ class Ui_SettingsDialog(object):
         self.label_2.setObjectName("label_2")
         self.horizontalLayout.addWidget(self.label_2)
         self.formLayout_3.setLayout(
-            1, QtWidgets.QFormLayout.FieldRole, self.horizontalLayout
+            2, QtWidgets.QFormLayout.FieldRole, self.horizontalLayout
+        )
+        self.timeoutVideoInitLabel = QtWidgets.QLabel(self.page_general_player)
+        self.timeoutVideoInitLabel.setObjectName("timeoutVideoInitLabel")
+        self.formLayout_3.setWidget(
+            0, QtWidgets.QFormLayout.LabelRole, self.timeoutVideoInitLabel
+        )
+        self.horizontalLayout_4 = QtWidgets.QHBoxLayout()
+        self.horizontalLayout_4.setObjectName("horizontalLayout_4")
+        self.timeoutVideoInit = QtWidgets.QSpinBox(self.page_general_player)
+        self.timeoutVideoInit.setObjectName("timeoutVideoInit")
+        self.horizontalLayout_4.addWidget(self.timeoutVideoInit)
+        self.label_7 = QtWidgets.QLabel(self.page_general_player)
+        self.label_7.setObjectName("label_7")
+        self.horizontalLayout_4.addWidget(self.label_7)
+        self.formLayout_3.setLayout(
+            0, QtWidgets.QFormLayout.FieldRole, self.horizontalLayout_4
         )
         self.lay_section_player.addLayout(self.formLayout_3)
         spacerItem = QtWidgets.QSpacerItem(
@@ -140,6 +158,71 @@ class Ui_SettingsDialog(object):
         self.label_4.setObjectName("label_4")
         self.lay_page_general_language.addWidget(self.label_4)
         self.section_page.addWidget(self.page_general_language)
+        self.page_misc_streaming = QtWidgets.QWidget()
+        self.page_misc_streaming.setObjectName("page_misc_streaming")
+        self.lay_page_general_streams = QtWidgets.QVBoxLayout(self.page_misc_streaming)
+        self.lay_page_general_streams.setContentsMargins(0, 0, 0, 0)
+        self.lay_page_general_streams.setObjectName("lay_page_general_streams")
+        self.streamingHLSVIAStreamlink = QtWidgets.QCheckBox(self.page_misc_streaming)
+        self.streamingHLSVIAStreamlink.setObjectName("streamingHLSVIAStreamlink")
+        self.lay_page_general_streams.addWidget(self.streamingHLSVIAStreamlink)
+        self.formLayout_7 = QtWidgets.QFormLayout()
+        self.formLayout_7.setFieldGrowthPolicy(
+            QtWidgets.QFormLayout.FieldsStayAtSizeHint
+        )
+        self.formLayout_7.setObjectName("formLayout_7")
+        self.label_8 = QtWidgets.QLabel(self.page_misc_streaming)
+        self.label_8.setObjectName("label_8")
+        self.formLayout_7.setWidget(0, QtWidgets.QFormLayout.LabelRole, self.label_8)
+        self.streamingResolverPriority = QtWidgets.QComboBox(self.page_misc_streaming)
+        self.streamingResolverPriority.setObjectName("streamingResolverPriority")
+        self.formLayout_7.setWidget(
+            0, QtWidgets.QFormLayout.FieldRole, self.streamingResolverPriority
+        )
+        self.lay_page_general_streams.addLayout(self.formLayout_7)
+        self.label_10 = QtWidgets.QLabel(self.page_misc_streaming)
+        font = QtGui.QFont()
+        font.setBold(True)
+        font.setWeight(75)
+        self.label_10.setFont(font)
+        self.label_10.setObjectName("label_10")
+        self.lay_page_general_streams.addWidget(self.label_10)
+        self.verticalLayout = QtWidgets.QVBoxLayout()
+        self.verticalLayout.setObjectName("verticalLayout")
+        self.streamingResolverPriorityPatterns = ResolverPatternsList(
+            self.page_misc_streaming
+        )
+        self.streamingResolverPriorityPatterns.setObjectName(
+            "streamingResolverPriorityPatterns"
+        )
+        self.verticalLayout.addWidget(self.streamingResolverPriorityPatterns)
+        self.formLayout_8 = QtWidgets.QFormLayout()
+        self.formLayout_8.setFieldGrowthPolicy(
+            QtWidgets.QFormLayout.FieldsStayAtSizeHint
+        )
+        self.formLayout_8.setObjectName("formLayout_8")
+        self.label_11 = QtWidgets.QLabel(self.page_misc_streaming)
+        font = QtGui.QFont()
+        font.setBold(True)
+        font.setWeight(75)
+        self.label_11.setFont(font)
+        self.label_11.setObjectName("label_11")
+        self.formLayout_8.setWidget(0, QtWidgets.QFormLayout.LabelRole, self.label_11)
+        self.streamingWildcardHelpButton = QtWidgets.QPushButton(
+            self.page_misc_streaming
+        )
+        self.streamingWildcardHelpButton.setMaximumSize(QtCore.QSize(24, 24))
+        self.streamingWildcardHelpButton.setObjectName("streamingWildcardHelpButton")
+        self.formLayout_8.setWidget(
+            0, QtWidgets.QFormLayout.FieldRole, self.streamingWildcardHelpButton
+        )
+        self.verticalLayout.addLayout(self.formLayout_8)
+        self.streamingWildcardHelp = QtWidgets.QLabel(self.page_misc_streaming)
+        self.streamingWildcardHelp.setObjectName("streamingWildcardHelp")
+        self.verticalLayout.addWidget(self.streamingWildcardHelp)
+        self.verticalLayout.setStretch(0, 1)
+        self.lay_page_general_streams.addLayout(self.verticalLayout)
+        self.section_page.addWidget(self.page_misc_streaming)
         self.page_defaults_playlist = QtWidgets.QWidget()
         self.page_defaults_playlist.setObjectName("page_defaults_playlist")
         self.lay_page_defaults_playlist = QtWidgets.QVBoxLayout(
@@ -414,7 +497,7 @@ class Ui_SettingsDialog(object):
         self.lay_main.setStretch(0, 1)
 
         self.retranslateUi(SettingsDialog)
-        self.section_page.setCurrentIndex(5)
+        self.section_page.setCurrentIndex(2)
         self.buttonBox.accepted.connect(SettingsDialog.accept)
         self.buttonBox.rejected.connect(SettingsDialog.reject)
         QtCore.QMetaObject.connectSlotsByName(SettingsDialog)
@@ -439,8 +522,10 @@ class Ui_SettingsDialog(object):
         item = self.section_index.item(6)
         item.setText(_translate("SettingsDialog", "Miscellaneous"))
         item = self.section_index.item(7)
-        item.setText(_translate("SettingsDialog", "Logging"))
+        item.setText(_translate("SettingsDialog", "Streaming"))
         item = self.section_index.item(8)
+        item.setText(_translate("SettingsDialog", "Logging"))
+        item = self.section_index.item(9)
         item.setText(_translate("SettingsDialog", "Advanced"))
         self.section_index.setSortingEnabled(__sortingEnabled)
         self.playerPauseBackgroundVideos.setText(
@@ -464,10 +549,33 @@ class Ui_SettingsDialog(object):
             _translate("SettingsDialog", "Hide mouse after timeout")
         )
         self.label_2.setText(_translate("SettingsDialog", "(sec)"))
+        self.timeoutVideoInitLabel.setText(
+            _translate("SettingsDialog", "Video initialization timeout")
+        )
+        self.label_7.setText(_translate("SettingsDialog", "(sec)"))
         self.label_4.setText(
             _translate(
                 "SettingsDialog",
                 '<p>If you have a handful of free time and a desire to support this project, please <a href="https://crowdin.com/project/gridplayer">help with the translation</a>. No coding skills or special software is required!</p>',
+            )
+        )
+        self.streamingHLSVIAStreamlink.setText(
+            _translate("SettingsDialog", "Use Streamlink for HLS streams when possible")
+        )
+        self.label_8.setText(_translate("SettingsDialog", "Priority URL resolver"))
+        self.label_10.setText(
+            _translate("SettingsDialog", "Resolver priority patterns")
+        )
+        self.label_11.setText(_translate("SettingsDialog", "Wildcard syntax"))
+        self.streamingWildcardHelpButton.setText(_translate("SettingsDialog", "?"))
+        self.streamingWildcardHelp.setText(
+            _translate(
+                "SettingsDialog",
+                "<p><b>The asterisk</b> * matches zero or more characters.<br>\n"
+                "<b>The question mark</b> ? matches exactly one character.</p>\n"
+                "<p><i>For Host Wildcard only:</i><br>\n"
+                "*.example.com will match both example.com and www.example.com<br>\n"
+                "**.example.com will match subdomains <b>only</b></p>",
             )
         )
         self.playlistSaveWindow.setText(
@@ -527,3 +635,4 @@ class Ui_SettingsDialog(object):
 
 
 from gridplayer.widgets.language_list import LanguageList
+from gridplayer.widgets.resolver_patterns_list import ResolverPatternsList

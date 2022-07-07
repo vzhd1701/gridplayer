@@ -52,6 +52,12 @@ class SeekSyncMode(AutoName):
     TIMECODE = auto()
 
 
+class URLResolver(AutoName):
+    STREAMLINK = auto()
+    YT_DLP = auto()
+    DIRECT = auto()
+
+
 class WindowState(NamedTuple):
     is_maximized: bool
     is_fullscreen: bool

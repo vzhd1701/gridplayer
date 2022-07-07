@@ -1,13 +1,17 @@
 import contextlib
 import logging
-from typing import Optional
+from types import MappingProxyType
+from typing import Dict, Optional, Type
 
 from PyQt5.QtCore import QObject, QThread, pyqtSignal
 from yt_dlp.extractor import youtube as yt_extractor
 
+from gridplayer.models.resolver_patterns import ResolverPatterns
 from gridplayer.models.video import VideoURL
+from gridplayer.params.static import URLResolver
+from gridplayer.settings import Settings
 from gridplayer.utils.qt import translate
-from gridplayer.utils.url_resolve.resolver_base import GenericResolver
+from gridplayer.utils.url_resolve.resolver_base import DirectResolver, ResolverBase
 from gridplayer.utils.url_resolve.resolver_streamlink import StreamlinkResolver
 from gridplayer.utils.url_resolve.resolver_yt_dlp import YoutubeDLResolver
 from gridplayer.utils.url_resolve.static import (
@@ -15,6 +19,21 @@ from gridplayer.utils.url_resolve.static import (
     NoResolverPlugin,
     ResolvedVideo,
     StreamOfflineError,
+)
+
+RESOLVER_NAMES = MappingProxyType(
+    {
+        URLResolver.STREAMLINK: "Streamlink",
+        URLResolver.YT_DLP: "yt-dlp",
+    }
+)
+
+RESOLVER_MAP = MappingProxyType(
+    {
+        URLResolver.STREAMLINK: StreamlinkResolver,
+        URLResolver.YT_DLP: YoutubeDLResolver,
+        URLResolver.DIRECT: DirectResolver,
+    }
 )
 
 
@@ -44,9 +63,8 @@ class VideoURLResolverWorker(QObject):
         self.update_status.emit(translate("Video Status", "Picking URL resolvers"))
         url_resolvers = _pick_resolvers(url)
 
-        for resolver_name, resolver in url_resolvers.items():
-            status_msg = translate("Video Status", "Resolving URL via {RESOLVER_NAME}")
-            self.update_status.emit(status_msg.format(RESOLVER_NAME=resolver_name))
+        for resolver_id, resolver in url_resolvers.items():
+            self.update_status.emit(_make_status_msg(resolver_id))
 
             self._log.debug(f"Trying to resolve URL with {resolver.__name__}")
             with contextlib.suppress(NoResolverPlugin):
@@ -90,21 +108,42 @@ class VideoURLResolver(QObject):
         self._resolve_url.emit(url)
 
 
-def _pick_resolvers(url):
-    url_resolvers = {
-        "streamlink": StreamlinkResolver,
-        "yt-dlp": YoutubeDLResolver,
-        "generic": GenericResolver,
-    }
+def _make_status_msg(resolver_id: URLResolver):
+    if resolver_id == URLResolver.DIRECT:
+        return translate("Video Status", "Playing URL directly")
 
+    return translate("Video Status", "Resolving URL via {RESOLVER_NAME}").format(
+        RESOLVER_NAME=RESOLVER_NAMES[resolver_id]
+    )
+
+
+def _pick_resolvers(url) -> Dict[URLResolver, Type[ResolverBase]]:
     if _is_match_youtube(url):
-        return {"yt-dlp": YoutubeDLResolver}
+        return {URLResolver.YT_DLP: YoutubeDLResolver}
 
-    for resolver_name, resolver in url_resolvers.copy().items():
+    url_resolvers = _get_resolvers(url)
+
+    for resolver_id, resolver in url_resolvers.copy().items():
         if not resolver.is_able_to_handle(url):
-            url_resolvers.pop(resolver_name)
+            url_resolvers.pop(resolver_id)
 
     return url_resolvers
+
+
+def _get_resolvers(  # noqa: WPS210
+    url: VideoURL,
+) -> Dict[URLResolver, Type[ResolverBase]]:
+    priority_resolver: URLResolver = Settings().get("streaming/resolver_priority")
+    patterns: ResolverPatterns = Settings().get("streaming/resolver_priority_patterns")
+
+    url_resolver = patterns.get_resolver(url) or priority_resolver
+
+    resolvers = {url_resolver: RESOLVER_MAP[url_resolver]}
+    for resolver_id, resolver in RESOLVER_MAP.items():
+        if resolver_id != url_resolver:
+            resolvers[resolver_id] = resolver
+
+    return resolvers
 
 
 def _is_match_youtube(url: VideoURL) -> bool:

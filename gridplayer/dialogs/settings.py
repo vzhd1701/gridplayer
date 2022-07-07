@@ -13,6 +13,7 @@ from gridplayer.params.static import (
     SUPPORTED_LANGUAGES,
     GridMode,
     SeekSyncMode,
+    URLResolver,
     VideoAspect,
     VideoDriver,
     VideoRepeat,
@@ -22,6 +23,7 @@ from gridplayer.utils import log_config
 from gridplayer.utils.app_dir import get_app_data_dir
 from gridplayer.utils.qt import qt_connect, translate
 from gridplayer.widgets.language_list import LanguageList
+from gridplayer.widgets.resolver_patterns_list import ResolverPatternsList
 
 VIDEO_DRIVERS_MULTIPROCESS = (
     VideoDriver.VLC_SW,
@@ -96,6 +98,9 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
             "logging/log_limit_size": self.logLimitSize,
             "logging/log_limit_backups": self.logLimitBackups,
             "internal/opaque_hw_overlay": self.miscOpaqueHWOverlay,
+            "streaming/hls_via_streamlink": self.streamingHLSVIAStreamlink,
+            "streaming/resolver_priority": self.streamingResolverPriority,
+            "streaming/resolver_priority_patterns": self.streamingResolverPriorityPatterns,  # noqa: E501
         }
 
         self.ui_customize()
@@ -138,7 +143,7 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
             self.section_misc.hide()
             self.miscOpaqueHWOverlay.hide()
 
-    def ui_fill(self):
+    def ui_fill(self):  # noqa: WPS213
         self.fill_playerVideoDriver()
         self.fill_gridMode()
         self.fill_videoAspect()
@@ -148,6 +153,7 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
         self.fill_language()
         self.fill_streamQuality()
         self.fill_playlistSeekSyncMode()
+        self.fill_streamingResolverPriority()
 
     def ui_set_limits(self):
         self.playerVideoDriverPlayers.setRange(1, MAX_VLC_PROCESSES)
@@ -165,6 +171,7 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
         self.timeoutOverlay.setEnabled(self.timeoutOverlayFlag.isChecked())
         self.logLimitSize.setEnabled(self.logLimit.isChecked())
         self.logLimitBackups.setEnabled(self.logLimit.isChecked())
+        self.streamingWildcardHelp.setVisible(False)
 
         self.switch_page(None)
 
@@ -178,6 +185,12 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
             (self.section_index.itemSelectionChanged, self.keep_index_selection),
             (self.logLimit.stateChanged, self.logLimitSize.setEnabled),
             (self.logLimit.stateChanged, self.logLimitBackups.setEnabled),
+            (self.streamingWildcardHelpButton.clicked, self.toggle_wildcard_help),
+        )
+
+    def toggle_wildcard_help(self):
+        self.streamingWildcardHelp.setVisible(
+            not self.streamingWildcardHelp.isVisible()
         )
 
     def keep_index_selection(self):
@@ -190,6 +203,7 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
             translate("SettingsDialog", "Language"): self.page_general_language,
             translate("SettingsDialog", "Playlist"): self.page_defaults_playlist,
             translate("SettingsDialog", "Video"): self.page_defaults_video,
+            translate("SettingsDialog", "Streaming"): self.page_misc_streaming,
             translate("SettingsDialog", "Logging"): self.page_misc_logging,
             translate("SettingsDialog", "Advanced"): self.page_misc_advanced,
         }
@@ -351,6 +365,15 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
 
         _fill_combo_box(self.playlistSeekSyncMode, seek_modes)
 
+    def fill_streamingResolverPriority(self):
+        resolvers = {
+            URLResolver.STREAMLINK: "Streamlink",
+            URLResolver.YT_DLP: "yt-dlp",
+            URLResolver.DIRECT: self.tr("Direct"),
+        }
+
+        _fill_combo_box(self.streamingResolverPriority, resolvers)
+
     def driver_selected(self, idx):
         driver_id = self.playerVideoDriver.itemData(idx)
 
@@ -365,6 +388,7 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
             QSpinBox: lambda e, v: e.setValue(v),
             QComboBox: _set_combo_box,
             LanguageList: lambda e, v: e.setValue(v),
+            ResolverPatternsList: lambda e, v: e.setDataRows(v),
         }
 
         for setting, element in self.settings_map.items():
@@ -383,6 +407,7 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
             QSpinBox: "value",
             QComboBox: "currentData",
             LanguageList: "value",
+            ResolverPatternsList: "rows_data",
         }
 
         for setting, element in self.settings_map.items():

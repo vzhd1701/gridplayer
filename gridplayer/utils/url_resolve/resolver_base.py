@@ -43,7 +43,7 @@ class ResolverBase(ABC):
         )
 
 
-class GenericResolver(ResolverBase):
+class DirectResolver(ResolverBase):
     @property
     def title(self) -> str:
         return self.url
