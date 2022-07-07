@@ -272,6 +272,9 @@ class OverlayBlockFloating(OverlayBlock):
         self.setAttribute(Qt.WA_NoSystemBackground)
         self.setAttribute(Qt.WA_TranslucentBackground)
 
+        # Prevent from shooting up on top of other windows on show()
+        self.setAttribute(Qt.WA_ShowWithoutActivating)
+
         # Allow window to move beyond screen edge
         self.setAttribute(Qt.WA_X11NetWmWindowTypeDesktop)
 
