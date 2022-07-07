@@ -66,6 +66,7 @@ nested_classes_whitelist=["Config"]
 [tool.flakehell.plugins]
 # Disabled [personal preference]
 # WPS111 short names
+# WPS115 upper-case constant in a class - flag enums
 # WPS226 String constant overuse
 # WPS305 forbids f-strings
 # WPS326 implicit line concat
@@ -100,7 +101,7 @@ flake8-quotes = ["+*", "-Q000"]
 flake8-rst-docstrings = ["-*"]
 flake8-docstrings = ["-*"]
 flake8-darglint = ["-*"]
-wemake-python-styleguide = ["+*", "-WPS111", "-WPS201", "-WPS214", "-WPS226", "-WPS305", "-WPS317", "-WPS326", "-WPS336", "-WPS425", "-WPS428", "-WPS437", "-WPS601"]
+wemake-python-styleguide = ["+*", "-WPS111", "-WPS115", "-WPS201", "-WPS214", "-WPS226", "-WPS305", "-WPS317", "-WPS326", "-WPS336", "-WPS425", "-WPS428", "-WPS437", "-WPS601"]
 
 [tool.flakehell.exceptions."gridplayer/version.py"]
 # I like it this way
@@ -128,23 +129,14 @@ wemake-python-styleguide = ["+*", "-WPS204", "-WPS213", "-WPS221", "-WPS432"]
 # WPS404 complex defaults
 wemake-python-styleguide = ["+*", "-WPS211", "-WPS404"]
 
-[tool.flakehell.exceptions."gridplayer/dialogs/settings.py"]
-# WPS201 too many imports
-wemake-python-styleguide = ["+*", "-WPS201"]
-
 [tool.flakehell.exceptions."gridplayer/params/static.py"]
-# WPS115 upper-case constant in a class
-# Flag enums
-wemake-python-styleguide = ["+*", "-WPS115"]
+# WPS202 too many modules
+wemake-python-styleguide = ["+*", "-WPS202"]
 
 [tool.flakehell.exceptions."gridplayer/player/managers/actions.py"]
 # WPS204 overused expression
 # translate
 wemake-python-styleguide = ["+*", "-WPS204"]
-
-[tool.flakehell.exceptions."gridplayer/player/player.py"]
-# WPS201 too many imports
-wemake-python-styleguide = ["+*", "-WPS201"]
 
 [tool.flakehell.exceptions."gridplayer/__main__.py"]
 # WPS433 nested imports
