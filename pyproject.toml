@@ -36,7 +36,7 @@ pydantic = "^1.8.2"
 python-vlc = "3.0.11115"
 pyobjc-core = { version = "*", platform = "darwin" }
 pyobjc-framework-Cocoa = { version = "*", platform = "darwin" }
-streamlink = "4.1.0"
+streamlink = "4.2.0"
 yt-dlp = "2022.6.22.1"
 
 [tool.poetry.dev-dependencies]
