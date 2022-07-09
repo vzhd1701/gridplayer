@@ -31,7 +31,7 @@ gridplayer = "gridplayer.__main__:main"
 
 [tool.poetry.dependencies]
 python = "^3.8"
-PyQt5 = "^5.15.4"
+PyQt5 = "5.15.7"
 pydantic = "^1.8.2"
 python-vlc = "3.0.11115"
 pyobjc-core = { version = "*", platform = "darwin" }
