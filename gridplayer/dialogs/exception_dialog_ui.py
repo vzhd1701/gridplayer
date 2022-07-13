@@ -39,7 +39,7 @@ class Ui_ExceptionDialog(object):
         self.lay_main.addLayout(self.lay_buttons)
 
         self.retranslateUi(ExceptionDialog)
-        self.buttonBox.rejected.connect(ExceptionDialog.reject)
+        self.buttonBox.rejected.connect(ExceptionDialog.reject)  # type: ignore
         QtCore.QMetaObject.connectSlotsByName(ExceptionDialog)
 
     def retranslateUi(self, ExceptionDialog):

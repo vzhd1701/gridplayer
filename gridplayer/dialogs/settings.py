@@ -3,7 +3,7 @@ import logging
 import subprocess
 
 from PyQt5.QtCore import QLocale, QUrl
-from PyQt5.QtGui import QDesktopServices, QIcon
+from PyQt5.QtGui import QDesktopServices, QIcon, QPalette
 from PyQt5.QtWidgets import QCheckBox, QComboBox, QDialog, QSpinBox
 
 from gridplayer.dialogs.messagebox import QCustomMessageBox
@@ -117,11 +117,23 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
         for btn in self.buttonBox.buttons():
             btn.setIcon(QIcon())
 
+        self.ui_customize_section_index()
+
         _set_groupbox_header_bold(self.playerVideoDriverBox)
 
         if not env.IS_LINUX:
             self.section_misc.hide()
             self.miscOpaqueHWOverlay.hide()
+
+    def ui_customize_section_index(self):
+        font = self.section_index.font()
+        font.setPixelSize(16)  # noqa: WPS432
+        self.section_index.setFont(font)
+
+        pal = self.section_index.palette()
+        col = pal.color(QPalette.Active, QPalette.Text)
+        pal.setColor(QPalette.Disabled, QPalette.Text, col)
+        self.section_index.setPalette(pal)
 
     def ui_fill(self):  # noqa: WPS213
         self.fill_playerVideoDriver()

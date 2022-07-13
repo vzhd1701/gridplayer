@@ -16,9 +16,6 @@ class Ui_SettingsDialog(object):
         self.section_index = QtWidgets.QListWidget(SettingsDialog)
         self.section_index.setMinimumSize(QtCore.QSize(200, 400))
         self.section_index.setMaximumSize(QtCore.QSize(200, 16777215))
-        font = QtGui.QFont()
-        font.setPointSize(12)
-        self.section_index.setFont(font)
         self.section_index.setObjectName("section_index")
         item = QtWidgets.QListWidgetItem()
         font = QtGui.QFont()
@@ -498,8 +495,8 @@ class Ui_SettingsDialog(object):
 
         self.retranslateUi(SettingsDialog)
         self.section_page.setCurrentIndex(2)
-        self.buttonBox.accepted.connect(SettingsDialog.accept)
-        self.buttonBox.rejected.connect(SettingsDialog.reject)
+        self.buttonBox.accepted.connect(SettingsDialog.accept)  # type: ignore
+        self.buttonBox.rejected.connect(SettingsDialog.reject)  # type: ignore
         QtCore.QMetaObject.connectSlotsByName(SettingsDialog)
 
     def retranslateUi(self, SettingsDialog):
