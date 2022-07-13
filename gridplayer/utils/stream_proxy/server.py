@@ -94,6 +94,10 @@ class ProxyRequestHandler(BaseHTTPRequestHandler):
 
         super().__init__(*args, **kwargs)
 
+    def log_message(self, format, *args):  # noqa: WPS125
+        message = "{0} - {1}".format(self.address_string(), format % args)
+        self._log.debug(message)
+
     def handle_one_request(self):
         try:
             super().handle_one_request()
