@@ -141,12 +141,12 @@ class GridManager(ManagerBase):
 
     def cmd_ask_grid_size(self):
         size = QCustomSpinboxInput.get_int(
-            self.parent(),
-            translate("Dialog - Set grid size", "Set grid size", "Header"),
-            translate("Grid Size", "Auto"),
-            self._grid_size,
-            0,
-            1000,
+            parent=self.parent(),
+            title=translate("Dialog - Set grid size", "Set grid size", "Header"),
+            special_text=translate("Grid Size", "Auto"),
+            initial_value=self._grid_size,
+            _min=0,
+            _max=1000,
         )
 
         if self._grid_size == size:

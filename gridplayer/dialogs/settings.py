@@ -158,7 +158,7 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
         self.timeoutVideoInit.setRange(1, 1000)
 
         self.gridSize.setRange(0, 1000)
-        self.gridSize.setSpecialValueText(self.tr("Auto"))
+        self.gridSize.setSpecialValueText(translate("Grid Size", "Auto"))
 
     def ui_customize_dynamic(self):
         self.driver_selected(self.playerVideoDriver.currentIndex())
