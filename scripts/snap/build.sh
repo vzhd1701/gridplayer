@@ -17,11 +17,14 @@ mkdir -p "$BUILD_DIR_SNAP"
 
 # Preparation
 
+rm -f "$BUILD_DIR_SNAP"/*.whl
 cp "$DIST_DIR"/*.whl "$BUILD_DIR_SNAP"
 cp -R "$BUILD_DIR/meta" "$BUILD_DIR_SNAP"
 
 cp "$SCRIPTS_DIR/_helpers/blacklist_clean.sh" "$BUILD_DIR_SNAP"
 cp "$SCRIPTS_DIR/_helpers/blacklist_pyqt.txt" "$BUILD_DIR_SNAP"
+cp "$SCRIPTS_DIR/_helpers/blacklist_vlc_linux.txt" "$BUILD_DIR_SNAP"
+cp "$SCRIPTS_DIR/_helpers/blacklist_snap.txt" "$BUILD_DIR_SNAP"
 chmod +x "$BUILD_DIR_SNAP/blacklist_clean.sh"
 
 mkdir -p "$BUILD_DIR_SNAP/snap"

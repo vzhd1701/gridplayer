@@ -7,7 +7,7 @@ description: |
   hardware. It supports all video formats that VLC supports (which is all
   of them).
 architectures:
-    - amd64
+  - amd64
 
 base: core20
 grade: stable
@@ -15,58 +15,17 @@ confinement: strict
 
 license: GPL-3.0-or-later
 
-plugs:
-    gtk-3-themes:
-        default-provider: gtk-common-themes
-        interface: content
-        target: $SNAP/data-dir/themes
-    icon-themes:
-        default-provider: gtk-common-themes
-        interface: content
-        target: $SNAP/data-dir/icons
-    sound-themes:
-        default-provider: gtk-common-themes
-        interface: content
-        target: $SNAP/data-dir/sounds
+package-repositories:
+  - type: apt
+    ppa: savoury1/ffmpeg4
+  - type: apt
+    ppa: savoury1/vlc3
 
 parts:
-  desktop-qt5:
-    source: https://github.com/ubuntu/snapcraft-desktop-helpers.git
-    source-subdir: qt
-    plugin: make
-    make-parameters: ["FLAVOR=qt5"]
-    build-packages:
-      - build-essential
-      - qtbase5-dev
-      - dpkg-dev
-    stage-packages:
-      - libxkbcommon0
-      - ttf-ubuntu-font-family
-      - dmz-cursor-theme
-      - light-themes
-      - adwaita-icon-theme
-      - gnome-themes-standard
-      - shared-mime-info
-      - libqt5gui5
-      - libgdk-pixbuf2.0-0
-      - libqt5svg5 # for loading icon themes which are svg
-      - try: [appmenu-qt5] # not available on core18
-      - locales-all
-      - xdg-user-dirs
-      - fcitx-frontend-qt5
-      # Additional
-      - libgtk2.0-0
-      - qt5-gtk-platformtheme
-      - libcanberra-gtk3-module
-    prime:
-      - -usr/lib/x86_64-linux-gnu/libQt5*  # provided by pyqt5
-      - -usr/lib/x86_64-linux-gnu/qt5
-      - -usr/lib/x86_64-linux-gnu/qt-default
-
   # python multiprocessing fix
   snapcraft-preload:
-    source: https://github.com/diddledan/snapcraft-preload.git
-    source-branch: semaphore-support
+    source: https://github.com/sergiusens/snapcraft-preload.git
+    source-commit: f1560b7a713f982546ea97629ff1557457faebb5
     plugin: cmake
     cmake-parameters:
       - -DCMAKE_INSTALL_PREFIX=/
@@ -77,36 +36,65 @@ parts:
     stage-packages:
       - lib32stdc++6
 
-  gridplayer:
-    plugin: python
-    after: [desktop-qt5, snapcraft-preload]
-    build-environment:
-      - PIP_NO_BINARY: "pydantic"
-    python-packages:
-      - ${SNAPCRAFT_PROJECT_DIR}/{WHL_FILE}
+  vlc:
+    plugin: nil
     stage-packages:
       - libvlc5
       - libvlccore9
       - vlc-plugin-base
       - vlc-plugin-video-output
       - libvlc-bin
-      # video drivers
-      - va-driver-all
-      - i965-va-driver
-      - vdpau-driver-all
-      - mesa-vdpau-drivers
-      - libvdpau-va-gl1
-      - mesa-vulkan-drivers
-      - mesa-utils
-      - libglu1-mesa
-      - freeglut3
-      # additional deps
-      - libwayland-cursor0
-      - libxcomposite1
-      - libglib2.0-0
     prime:
-      - -share
-      - -include
+      - -usr/include
+      - -usr/share/fonts
+      - -usr/share/icons
+      - -usr/share/doc
+      - -usr/share/X11
+      - -usr/share/mime
+    override-build: |
+      snapcraftctl build
+
+      KDE_SNAP="/snap/kde-frameworks-5-91-qt-5-15-3-core20/current"
+      LIB_DIR="${SNAPCRAFT_PART_INSTALL}/usr/lib/${SNAPCRAFT_ARCH_TRIPLET}"
+      VLC_LIB_DIR="${LIB_DIR}/vlc"
+
+      ${SNAPCRAFT_PROJECT_DIR}/blacklist_clean.sh "$LIB_DIR" ${SNAPCRAFT_PROJECT_DIR}/blacklist_snap.txt
+      rm -rf "${LIB_DIR}/dri"
+      rm -rf "${LIB_DIR}/gdk-pixbuf-2.0"
+
+      # Cleanup unused VLC modules
+      ${SNAPCRAFT_PROJECT_DIR}/blacklist_clean.sh "$VLC_LIB_DIR" ${SNAPCRAFT_PROJECT_DIR}/blacklist_vlc_linux.txt
+
+      # Emulate runtime env to make sure all plugin dependencies are reachable
+      LIBS="/var/lib/snapd/lib/gl:"
+      LIBS+="/var/lib/snapd/lib/gl32:"
+      LIBS+="/var/lib/snapd/void:"
+      LIBS+="${SNAPCRAFT_PART_INSTALL}/usr/lib/${SNAPCRAFT_ARCH_TRIPLET}/pulseaudio:"
+      LIBS+="${VLC_LIB_DIR}:"
+      LIBS+="${SNAPCRAFT_PART_INSTALL}/lib:"
+      LIBS+="${SNAPCRAFT_PART_INSTALL}/usr/lib:"
+      LIBS+="${SNAPCRAFT_PART_INSTALL}/lib/${SNAPCRAFT_ARCH_TRIPLET}:"
+      LIBS+="${SNAPCRAFT_PART_INSTALL}/usr/lib/${SNAPCRAFT_ARCH_TRIPLET}:"
+      LIBS+="${KDE_SNAP}/lib:"
+      LIBS+="${KDE_SNAP}/usr/lib:"
+      LIBS+="${KDE_SNAP}/lib/${SNAPCRAFT_ARCH_TRIPLET}:"
+      LIBS+="${KDE_SNAP}/usr/lib/${SNAPCRAFT_ARCH_TRIPLET}:"
+      LIBS+="${KDE_SNAP}/usr/lib/${SNAPCRAFT_ARCH_TRIPLET}/dri:"
+      LIBS+="${KDE_SNAP}/usr/lib/${SNAPCRAFT_ARCH_TRIPLET}/pulseaudio"
+
+      # Generate VLC plugin cache
+      LD_LIBRARY_PATH="$LIBS" "${VLC_LIB_DIR}/vlc-cache-gen" "${VLC_LIB_DIR}/plugins"
+
+  gridplayer:
+    plugin: python
+    after: [snapcraft-preload, vlc]
+    build-environment:
+      - PIP_NO_BINARY: "pydantic"
+    python-packages:
+      - ${SNAPCRAFT_PROJECT_DIR}/{WHL_FILE}
+    build-packages:
+      - wget
+    prime:
       - -usr/share/icons
       - -usr/include
       - -bin/pylupdate5
@@ -116,28 +104,46 @@ parts:
       - -bin/easy*
       - -bin/activate*
       - -bin/Activate*
-
+      - -bin/mid3cp
+      - -bin/mid3iconv
+      - -bin/mid3v2
+      - -bin/moggsplit
+      - -bin/mutagen-inspect
+      - -bin/mutagen-pony
+      - -bin/normalizer
+      - -bin/streamlink
+      - -bin/wsdump
+      - -bin/yt-dlp
     override-build: |
       snapcraftctl build
 
-      # Emulate runtime env to make sure all plugin dependencies are reachable
-      LIBS="/var/lib/snapd/lib/gl:"
-      LIBS+="/var/lib/snapd/lib/gl32:"
-      LIBS+="${SNAPCRAFT_PART_INSTALL}/usr/lib/${SNAPCRAFT_ARCH_TRIPLET}/vlc:"
-      LIBS+="${SNAPCRAFT_PART_INSTALL}/lib:"
-      LIBS+="${SNAPCRAFT_PART_INSTALL}/usr/lib:"
-      LIBS+="${SNAPCRAFT_PART_INSTALL}/lib/${SNAPCRAFT_ARCH_TRIPLET}:"
-      LIBS+="${SNAPCRAFT_PART_INSTALL}/usr/lib/${SNAPCRAFT_ARCH_TRIPLET}:"
-      LIBS+="${SNAPCRAFT_PART_INSTALL}/usr/lib/${SNAPCRAFT_ARCH_TRIPLET}/dri:"
-      LIBS+="${SNAPCRAFT_PART_INSTALL}/usr/lib/${SNAPCRAFT_ARCH_TRIPLET}/pulseaudio"
+      # Prevent strange mimetypes.py glitch on Manjaro by creating dummy mime.types files
+      install -D /dev/null "${SNAPCRAFT_PART_INSTALL}/etc/httpd/mime.types"
+      install -D /dev/null "${SNAPCRAFT_PART_INSTALL}/etc/httpd/conf/mime.types"
+      install -D /dev/null "${SNAPCRAFT_PART_INSTALL}/etc/apache/mime.types"
+      install -D /dev/null "${SNAPCRAFT_PART_INSTALL}/etc/apache2/mime.types"
+      install -D /dev/null "${SNAPCRAFT_PART_INSTALL}/usr/local/etc/httpd/conf/mime.types"
+      install -D /dev/null "${SNAPCRAFT_PART_INSTALL}/usr/local/lib/netscape/mime.types"
+      install -D /dev/null "${SNAPCRAFT_PART_INSTALL}/usr/local/etc/httpd/conf/mime.types"
+      install -D /dev/null "${SNAPCRAFT_PART_INSTALL}/usr/local/etc/mime.types"
 
-      # Generate VLC plugin cache
-      VLC_CACHE_GEN="${SNAPCRAFT_PART_INSTALL}/usr/lib/${SNAPCRAFT_ARCH_TRIPLET}/vlc/vlc-cache-gen"
-      LD_LIBRARY_PATH="$LIBS" "$VLC_CACHE_GEN" "${SNAPCRAFT_PART_INSTALL}/usr/lib/${SNAPCRAFT_ARCH_TRIPLET}/vlc/plugins"
+      # Replace static PyQt with dynamic to make it depend on libraries from kde-neon extension
+      wget https://origin.archive.neon.kde.org/user/pool/main/p/pyqt5/python3-pyqt5_5.15.4+dfsg-1+20.04+focal+release+build12_amd64.deb
+      wget https://origin.archive.neon.kde.org/user/pool/main/p/pyqt5/python3-pyqt5.qtx11extras_5.15.4+dfsg-1+20.04+focal+release+build12_amd64.deb
+      wget https://origin.archive.neon.kde.org/user/pool/main/p/pyqt5/python3-pyqt5.qtsvg_5.15.4+dfsg-1+20.04+focal+release+build12_amd64.deb
+      wget https://origin.archive.neon.kde.org/user/pool/main/p/pyqt5-sip/python3-pyqt5.sip_12.9.0-1+20.04+focal+release+build1_amd64.deb
+
+      SITE_PATH="${SNAPCRAFT_PART_INSTALL}/lib/python3.8/site-packages"
+
+      for file in *.deb; do dpkg-deb -x "$file" ./pyqt; done
+
+      rm -rf "${SITE_PATH}"/PyQt*
+      mv pyqt/usr/lib/python3/dist-packages/* "${SITE_PATH}"
 
       # Remove unneeded qt parts
-      ${SNAPCRAFT_PROJECT_DIR}/blacklist_clean.sh "${SNAPCRAFT_PART_INSTALL}/lib/python3.8/site-packages" ${SNAPCRAFT_PROJECT_DIR}/blacklist_pyqt.txt
+      ${SNAPCRAFT_PROJECT_DIR}/blacklist_clean.sh "${SITE_PATH}" ${SNAPCRAFT_PROJECT_DIR}/blacklist_pyqt.txt
 
+      # Install application meta
       install -Dm 644 ${SNAPCRAFT_PROJECT_DIR}/meta/{APP_ID}.desktop     ${SNAPCRAFT_PART_INSTALL}/usr/share/applications/{APP_ID}.desktop
       install -Dm 644 ${SNAPCRAFT_PROJECT_DIR}/meta/{APP_ID}.appdata.xml ${SNAPCRAFT_PART_INSTALL}/usr/share/metainfo/{APP_ID}.appdata.xml
       # Snaps don't support registration of new MIMEs yet?
@@ -156,23 +162,19 @@ parts:
 
 apps:
   gridplayer:
+    extensions:
+      - kde-neon
     environment:
-      LD_LIBRARY_PATH: "$SNAP/lib/python3.8/site-packages/PyQt5/Qt5/lib:$SNAP/usr/lib/x86_64-linux-gnu/vlc:$SNAP/usr/lib/x86_64-linux-gnu/gtk-3.0/modules"
+      LD_LIBRARY_PATH: "$SNAP/usr/lib/x86_64-linux-gnu/pulseaudio:$SNAP/usr/lib/x86_64-linux-gnu/vlc"
       DISABLE_WAYLAND: 1
       NO_AT_BRIDGE: 1 # disable dbind-WARNING warning
-      QT_QPA_PLATFORMTHEME: gtk3 # don't use portal
     desktop: usr/share/applications/{APP_ID}.desktop
     command: bin/gridplayer
     command-chain:
-      - bin/desktop-launch
       - bin/snapcraft-preload
     common-id: {APP_ID}
     plugs:
-      - desktop
-      - desktop-legacy
-      - wayland
       - unity7
-      - opengl
       - audio-playback
       - screen-inhibit-control
       - gsettings
