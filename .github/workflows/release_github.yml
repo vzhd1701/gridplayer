@@ -142,8 +142,6 @@ jobs:
 
       - name: Install requirements
         run: |
-          wget -q -nc -O /usr/local/bin/appimagetool https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage
-          chmod +x /usr/local/bin/appimagetool
           sudo apt-get install -y desktop-file-utils appstream-util
 
       - name: Build

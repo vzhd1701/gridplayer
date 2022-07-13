@@ -72,7 +72,7 @@ def _get_embed_vlc_root() -> Optional[Path]:
         return Path(os.environ["SNAP"]) / "usr" / "lib" / "x86_64-linux-gnu"
 
     if env.IS_APPIMAGE:
-        return Path(os.environ["APPDIR"]) / "usr" / "lib" / "x86_64-linux-gnu"
+        return Path(os.environ["APPDIR"]) / "usr" / "lib"
 
     if env.IS_FLATPAK:
         return Path("/app") / "lib"

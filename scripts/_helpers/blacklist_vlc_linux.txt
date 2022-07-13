@@ -1,0 +1,70 @@
+lua
+plugins/access_output
+plugins/control
+plugins/gui
+plugins/keystore
+plugins/logger
+plugins/lua
+plugins/meta_engine
+plugins/notify
+plugins/services_discovery
+plugins/spu
+plugins/stream_extractor
+plugins/stream_out
+plugins/text_renderer
+plugins/video_splitter
+plugins/visualization
+# remove input modules for devices, screen capture, vnc, smb, etc
+plugins/access/libaccess_alsa_plugin.so
+plugins/access/libaccess_jack_plugin.so
+plugins/access/libcdda_plugin.so
+plugins/access/libdc1394_plugin.so
+plugins/access/libdtv_plugin.so
+plugins/access/libdv1394_plugin.so
+plugins/access/libdvb_plugin.so
+plugins/access/libdvdnav_plugin.so
+plugins/access/libdvdread_plugin.so
+plugins/access/libftp_plugin.so
+plugins/access/liblibbluray_plugin.so
+plugins/access/liblinsys_hdsdi_plugin.so
+plugins/access/liblinsys_sdi_plugin.so
+plugins/access/libnfs_plugin.so
+plugins/access/libpulsesrc_plugin.so
+plugins/access/libsatip_plugin.so
+plugins/access/libsdp_plugin.so
+plugins/access/libsftp_plugin.so
+plugins/access/libsmb_plugin.so
+plugins/access/libv4l2_plugin.so
+plugins/access/libvnc_plugin.so
+plugins/access/libxcb_screen_plugin.so
+# keep only
+# libpulse_plugin.so
+plugins/audio_output/libadummy_plugin.so
+plugins/audio_output/libafile_plugin.so
+plugins/audio_output/libalsa_plugin.so
+plugins/audio_output/libamem_plugin.so
+plugins/audio_output/libjack_plugin.so
+plugins/audio_output/libsndio_plugin.so
+# keep only
+# libegl_x11_plugin.so
+# libgl_plugin.so
+# libglconv_vaapi_drm_plugin.so
+# libglconv_vaapi_x11_plugin.so
+# libglconv_vdpau_plugin.so
+# libglx_plugin.so
+# libvdummy_plugin.so
+# libvmem_plugin.so
+# libxcb_window_plugin.so
+plugins/video_output/libaa_plugin.so
+plugins/video_output/libcaca_plugin.so
+plugins/video_output/libegl_wl_plugin.so
+plugins/video_output/libfb_plugin.so
+plugins/video_output/libflaschen_plugin.so
+plugins/video_output/libglconv_vaapi_wl_plugin.so
+plugins/video_output/libwl_shell_plugin.so
+plugins/video_output/libwl_shm_plugin.so
+plugins/video_output/libxcb_x11_plugin.so
+plugins/video_output/libxcb_xv_plugin.so
+plugins/video_output/libxdg_shell_plugin.so
+plugins/video_output/libyuv_plugin.so
+# plugins/video_output/libgles2_plugin.so
