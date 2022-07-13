@@ -24,6 +24,12 @@ class PauseSnapshot(QLabel):
         self._snapshot_pixmap = None
 
     def set_snapshot_file(self, snapshot_file: str):
+        # failed snapshot
+        if not snapshot_file:
+            self._snapshot_pixmap = QPixmap(1, 1)
+            self._snapshot_pixmap.fill(Qt.black)
+            return
+
         self._snapshot_pixmap = QPixmap(snapshot_file)
 
     def adjust_view(self, size: QSize, aspect, scale: float):
@@ -246,13 +252,14 @@ class VideoFrameVLC(QWidget, metaclass=QABC):
     def take_snapshot(self) -> None:
         self.video_driver.snapshot()
 
-    def snapshot_taken(self, snapshot_file) -> None:
+    def snapshot_taken(self, snapshot_file: str) -> None:
         self.pause_snapshot.set_snapshot_file(snapshot_file)
         self.pause_snapshot.adjust_view(self.size(), self._aspect, self._scale)
         self.pause_snapshot.show()
 
-        Path(snapshot_file).unlink()
-        Path(snapshot_file).parent.rmdir()
+        if snapshot_file:
+            Path(snapshot_file).unlink()
+            Path(snapshot_file).parent.rmdir()
 
         if self._is_status_change_in_progress:
             self.video_driver.set_pause(True)

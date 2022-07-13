@@ -397,13 +397,14 @@ class VlcPlayerBase(ABC):
             with self._event_waiter.waiting_for("snapshot_taken", SNAPSHOT_TIMEOUT):
                 res = self._media_player.video_take_snapshot(0, str(file_path), 0, 0)
         except TimeoutError:
-            file_path.parent.rmdir()
-            self.error(translate("Video Error", "Timed out to take snapshot"))
-            return
+            self._log.error("Timed out to take snapshot")
+            res = -1
 
         if res != 0:
+            self._log.error("Failed to take snapshot")
+            file_path.unlink(missing_ok=True)
             file_path.parent.rmdir()
-            self.error(translate("Video Error", "Failed to take snapshot"))
+            self.notify_snapshot_taken("")
             return
 
         self.notify_snapshot_taken(str(file_path))
