@@ -66,6 +66,8 @@ PyQt5/Qt5/qml
 PyQt5/uic
 PyQt5/pylupdate*
 PyQt5/pyrcc*
+PyQt5/__pycache__/pylupdate*
+PyQt5/__pycache__/pyrcc*
 PyQt5/_QOpenGLFunctions*
 PyQt5/QtBluetooth*
 PyQt5/QtDesigner*
@@ -91,3 +93,9 @@ PyQt5/QtTextToSpeech*
 PyQt5/QtWebChannel*
 PyQt5/QtWebSockets*
 PyQt5/QtXml*
+PyQt5/Qt5/plugins/platforms/libqwayland-egl.so
+PyQt5/Qt5/plugins/platforms/libqwayland-generic.so
+PyQt5/Qt5/plugins/platforms/libqwayland-xcomposite-egl.so
+PyQt5/Qt5/plugins/platforms/libqwayland-xcomposite-glx.so
+PyQt5/Qt5/plugins/wayland-*
+PyQt5/Qt5/lib/libQt5WaylandClient.so.5
