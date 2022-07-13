@@ -119,26 +119,6 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
 
         _set_groupbox_header_bold(self.playerVideoDriverBox)
 
-        if env.IS_MACOS:
-            self.lay_body.setContentsMargins(4, 0, 0, 0)
-            self.horizontalLayout.setContentsMargins(0, 0, 15, 0)  # noqa: WPS432
-            self.languageBox.setContentsMargins(0, 0, 15, 0)  # noqa: WPS432
-            self.lay_playerVideoDriverPlayers.setContentsMargins(3, 0, 2, 0)
-            self.playerVideoDriverBox.setStyleSheet(
-                "QGroupBox:title{padding: 0 4px 0 3px;margin-left:-5px;}"
-            )
-            self.languageBox.setStyleSheet(
-                "QGroupBox:title{padding: 0 4px 0 3px;margin-left:-5px;}"
-            )
-
-            self.lay_boxes.setSpacing(25)  # noqa: WPS432
-
-            combo_boxes = (
-                e for e in self.settings_map.values() if isinstance(e, QComboBox)
-            )
-            for cb in combo_boxes:
-                cb.setMaximumHeight(22)  # noqa: WPS432
-
         if not env.IS_LINUX:
             self.section_misc.hide()
             self.miscOpaqueHWOverlay.hide()

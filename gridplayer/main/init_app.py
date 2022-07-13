@@ -17,8 +17,7 @@ def init_app():
 
     init_resources()
 
-    if env.IS_LINUX:
-        app.setStyle(QStyleFactory.create("Fusion"))
+    app.setStyle(QStyleFactory.create("Fusion"))
 
     app.setAttribute(Qt.AA_DisableWindowContextHelpButton)
     app.styleHints().setShowShortcutsInContextMenus(True)

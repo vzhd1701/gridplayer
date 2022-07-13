@@ -305,7 +305,6 @@ class ResolverPatternsList(QtWidgets.QWidget):
     def _create_button(self, text, callback, is_selection_needed=True):
         button = QtWidgets.QPushButton(text)
         button.setFixedSize(QSize(24, 24))
-        button.setStyleSheet("QPushButton{margin:-1px;}")
         button.clicked.connect(callback)
         if is_selection_needed:
             button.setEnabled(False)
