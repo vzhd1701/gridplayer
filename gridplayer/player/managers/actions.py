@@ -382,6 +382,13 @@ COMMANDS = MappingProxyType(
             "key": "F5",
             "func": ("active", "reload"),
         },
+        "Auto Reload: %v": {
+            "title": "{0}: %v".format(translate("Actions", "Auto Reload")),
+            "icon": "reload",
+            "func": ("active", "auto_reload_timer"),
+            "value_getter": ("active", "get_auto_reload_timer"),
+            "show_if": "is_active_live",
+        },
         "Close": {
             "title": translate("Actions", "Close"),
             "key": "Ctrl+F4",
@@ -702,6 +709,12 @@ COMMANDS = MappingProxyType(
             "icon": "reload",
             "key": "Shift+F5",
             "func": "reload_all",
+        },
+        "Auto Reload [ALL]": {
+            "title": translate("Actions", "Auto Reload"),
+            "icon": "reload",
+            "func": "all_set_auto_reload_timer",
+            "show_if": "is_any_videos_live",
         },
         # Playlist
         "Seek Sync (Disabled)": {

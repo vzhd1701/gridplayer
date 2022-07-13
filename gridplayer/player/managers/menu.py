@@ -121,6 +121,7 @@ SECTIONS = MappingProxyType(
             "Stream Quality",
             "Rename",
             "Reload",
+            "Auto Reload: %v",
             "Close",
         ],
         "video_all": [
@@ -198,6 +199,7 @@ SECTIONS = MappingProxyType(
                 ),
                 "---",
                 "Reload [ALL]",
+                "Auto Reload [ALL]",
             ),
             (
                 "Seek Sync",

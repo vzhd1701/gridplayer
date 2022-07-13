@@ -55,6 +55,7 @@ _default_settings = {
     "video_defaults/muted": True,
     "video_defaults/paused": False,
     "video_defaults/stream_quality": "best",
+    "video_defaults/auto_reload_timer": 0,
     "misc/overlay_hide": True,
     "misc/overlay_timeout": 3,
     "misc/mouse_hide": True,

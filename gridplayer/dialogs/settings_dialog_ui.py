@@ -311,34 +311,24 @@ class Ui_SettingsDialog(object):
             QtWidgets.QFormLayout.FieldsStayAtSizeHint
         )
         self.formLayout_4.setObjectName("formLayout_4")
-        self.streamQualityLabel = QtWidgets.QLabel(self.page_defaults_video)
-        self.streamQualityLabel.setObjectName("streamQualityLabel")
-        self.formLayout_4.setWidget(
-            0, QtWidgets.QFormLayout.LabelRole, self.streamQualityLabel
-        )
-        self.streamQuality = QtWidgets.QComboBox(self.page_defaults_video)
-        self.streamQuality.setObjectName("streamQuality")
-        self.formLayout_4.setWidget(
-            0, QtWidgets.QFormLayout.FieldRole, self.streamQuality
-        )
         self.videoAspectLabel = QtWidgets.QLabel(self.page_defaults_video)
         self.videoAspectLabel.setObjectName("videoAspectLabel")
         self.formLayout_4.setWidget(
-            1, QtWidgets.QFormLayout.LabelRole, self.videoAspectLabel
+            0, QtWidgets.QFormLayout.LabelRole, self.videoAspectLabel
         )
         self.videoAspect = QtWidgets.QComboBox(self.page_defaults_video)
         self.videoAspect.setObjectName("videoAspect")
         self.formLayout_4.setWidget(
-            1, QtWidgets.QFormLayout.FieldRole, self.videoAspect
+            0, QtWidgets.QFormLayout.FieldRole, self.videoAspect
         )
         self.repeatModeLabel = QtWidgets.QLabel(self.page_defaults_video)
         self.repeatModeLabel.setObjectName("repeatModeLabel")
         self.formLayout_4.setWidget(
-            2, QtWidgets.QFormLayout.LabelRole, self.repeatModeLabel
+            1, QtWidgets.QFormLayout.LabelRole, self.repeatModeLabel
         )
         self.repeatMode = QtWidgets.QComboBox(self.page_defaults_video)
         self.repeatMode.setObjectName("repeatMode")
-        self.formLayout_4.setWidget(2, QtWidgets.QFormLayout.FieldRole, self.repeatMode)
+        self.formLayout_4.setWidget(1, QtWidgets.QFormLayout.FieldRole, self.repeatMode)
         self.lay_page_defaults_video.addLayout(self.formLayout_4)
         self.videoRandomLoop = QtWidgets.QCheckBox(self.page_defaults_video)
         self.videoRandomLoop.setObjectName("videoRandomLoop")
@@ -349,6 +339,43 @@ class Ui_SettingsDialog(object):
         self.videoMuted = QtWidgets.QCheckBox(self.page_defaults_video)
         self.videoMuted.setObjectName("videoMuted")
         self.lay_page_defaults_video.addWidget(self.videoMuted)
+        self.label_12 = QtWidgets.QLabel(self.page_defaults_video)
+        font = QtGui.QFont()
+        font.setBold(True)
+        font.setWeight(75)
+        self.label_12.setFont(font)
+        self.label_12.setObjectName("label_12")
+        self.lay_page_defaults_video.addWidget(self.label_12)
+        self.formLayout_9 = QtWidgets.QFormLayout()
+        self.formLayout_9.setFieldGrowthPolicy(
+            QtWidgets.QFormLayout.FieldsStayAtSizeHint
+        )
+        self.formLayout_9.setObjectName("formLayout_9")
+        self.streamQualityLabel = QtWidgets.QLabel(self.page_defaults_video)
+        self.streamQualityLabel.setObjectName("streamQualityLabel")
+        self.formLayout_9.setWidget(
+            0, QtWidgets.QFormLayout.LabelRole, self.streamQualityLabel
+        )
+        self.streamQuality = QtWidgets.QComboBox(self.page_defaults_video)
+        self.streamQuality.setObjectName("streamQuality")
+        self.formLayout_9.setWidget(
+            0, QtWidgets.QFormLayout.FieldRole, self.streamQuality
+        )
+        self.label_13 = QtWidgets.QLabel(self.page_defaults_video)
+        self.label_13.setObjectName("label_13")
+        self.formLayout_9.setWidget(1, QtWidgets.QFormLayout.LabelRole, self.label_13)
+        self.horizontalLayout_5 = QtWidgets.QHBoxLayout()
+        self.horizontalLayout_5.setObjectName("horizontalLayout_5")
+        self.streamAutoReloadTimer = QtWidgets.QSpinBox(self.page_defaults_video)
+        self.streamAutoReloadTimer.setObjectName("streamAutoReloadTimer")
+        self.horizontalLayout_5.addWidget(self.streamAutoReloadTimer)
+        self.label_14 = QtWidgets.QLabel(self.page_defaults_video)
+        self.label_14.setObjectName("label_14")
+        self.horizontalLayout_5.addWidget(self.label_14)
+        self.formLayout_9.setLayout(
+            1, QtWidgets.QFormLayout.FieldRole, self.horizontalLayout_5
+        )
+        self.lay_page_defaults_video.addLayout(self.formLayout_9)
         spacerItem2 = QtWidgets.QSpacerItem(
             20, 40, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Expanding
         )
@@ -501,7 +528,7 @@ class Ui_SettingsDialog(object):
         self.lay_main.setStretch(0, 1)
 
         self.retranslateUi(SettingsDialog)
-        self.section_page.setCurrentIndex(5)
+        self.section_page.setCurrentIndex(4)
         self.buttonBox.accepted.connect(SettingsDialog.accept)  # type: ignore
         self.buttonBox.rejected.connect(SettingsDialog.reject)  # type: ignore
         QtCore.QMetaObject.connectSlotsByName(SettingsDialog)
@@ -608,7 +635,6 @@ class Ui_SettingsDialog(object):
         self.gridSizeLabel.setText(_translate("SettingsDialog", "Grid size"))
         self.gridFit.setText(_translate("SettingsDialog", "Fit grid cells"))
         self.gridShuffleOnLoad.setText(_translate("SettingsDialog", "Shuffle on load"))
-        self.streamQualityLabel.setText(_translate("SettingsDialog", "Stream quality"))
         self.videoAspectLabel.setText(_translate("SettingsDialog", "Aspect mode"))
         self.repeatModeLabel.setText(_translate("SettingsDialog", "Repeat mode"))
         self.videoRandomLoop.setText(
@@ -616,6 +642,10 @@ class Ui_SettingsDialog(object):
         )
         self.videoPaused.setText(_translate("SettingsDialog", "Paused"))
         self.videoMuted.setText(_translate("SettingsDialog", "Muted"))
+        self.label_12.setText(_translate("SettingsDialog", "Streaming Videos"))
+        self.streamQualityLabel.setText(_translate("SettingsDialog", "Stream quality"))
+        self.label_13.setText(_translate("SettingsDialog", "Auto reload time"))
+        self.label_14.setText(_translate("SettingsDialog", "(min)"))
         self.playerVideoDriverBox.setTitle(
             _translate("SettingsDialog", "Video Decoder")
         )

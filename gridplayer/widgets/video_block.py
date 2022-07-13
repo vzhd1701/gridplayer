@@ -10,7 +10,7 @@ from PyQt5.QtCore import Qt, QTimer, pyqtSignal
 from PyQt5.QtGui import QCursor
 from PyQt5.QtWidgets import QStackedLayout, QWidget
 
-from gridplayer.dialogs.input_dialog import QCustomSpinboxTimeInput
+from gridplayer.dialogs.input_dialog import QCustomSpinboxInput, QCustomSpinboxTimeInput
 from gridplayer.dialogs.rename_dialog import QVideoRenameDialog
 from gridplayer.exceptions import PlayerException
 from gridplayer.models.stream import Streams
@@ -74,6 +74,16 @@ def only_seekable(func):
     def wrapper(*args, **kwargs):
         self = args[0]  # noqa: WPS117
         if self.is_live:
+            return None
+        return func(*args, **kwargs)
+
+    return wrapper
+
+
+def only_live(func):
+    def wrapper(*args, **kwargs):
+        self = args[0]  # noqa: WPS117
+        if not self.is_live:
             return None
         return func(*args, **kwargs)
 
@@ -156,6 +166,9 @@ class VideoBlock(QWidget):  # noqa: WPS230
         self._in_progress_timer.setSingleShot(True)
         self._in_progress_timer.setInterval(IN_PROGRESS_THRESHOLD_MS)
         self._in_progress_timer.timeout.connect(self.is_in_progress_change)
+
+        self._reload_timer = QTimer(self)
+        self._reload_timer.timeout.connect(self.reload)
 
         self.url_resolver = self.init_url_resolver()
         self.video_driver = self.init_video_driver()
@@ -421,6 +434,48 @@ class VideoBlock(QWidget):  # noqa: WPS230
 
         self.manual_seek("seek", time_ms)
 
+    @only_initialized
+    @only_live
+    def auto_reload_timer(self):
+        time_min = QCustomSpinboxInput.get_int(
+            parent=self.parent(),
+            title=translate(
+                "Dialog - Set auto reload timer", "Set auto reload timer", "Header"
+            ),
+            special_text=translate("Auto Reload Timer", "Disabled"),
+            initial_value=self.video_params.auto_reload_timer_min,
+            _min=0,
+            _max=1000,
+        )
+
+        self.set_auto_reload_timer(time_min)
+
+    @only_initialized
+    @only_live
+    def set_auto_reload_timer(self, time_min):
+        self.video_params.auto_reload_timer_min = time_min
+
+        time_ms = time_min * 60 * 1000
+
+        if time_ms == 0:
+            self._reload_timer.stop()
+            self._reload_timer.setInterval(0)
+            return
+
+        self._reload_timer.setInterval(time_ms)
+        self._reload_timer.start()
+
+    @only_initialized
+    @only_live
+    def get_auto_reload_timer(self):
+        if self.video_params.auto_reload_timer_min == 0:
+            return translate("Auto Reload Timer", "Disabled")
+
+        return "{0} {1}".format(
+            self.video_params.auto_reload_timer_min,
+            translate("Auto Reload Timer", "minute(s)"),
+        )
+
     def is_under_cursor(self):
         return self.rect().contains(self.mapFromGlobal(QCursor.pos()))
 
@@ -568,6 +623,7 @@ class VideoBlock(QWidget):  # noqa: WPS230
         self.set_rate(snapshot.rate, is_silent=True)
 
         self.switch_stream_quality(snapshot.stream_quality)
+        self.set_auto_reload_timer(snapshot.auto_reload_timer_min)
 
         self.video_params = snapshot.copy()
 
@@ -652,6 +708,8 @@ class VideoBlock(QWidget):  # noqa: WPS230
         self.set_loop_start_time(self.video_params.loop_start)
         self.set_loop_end_time(self.video_params.loop_end)
         self.set_rate(self.video_params.rate, is_silent=True)
+
+        self.set_auto_reload_timer(self.video_params.auto_reload_timer_min)
 
         self.video_status.hide()
         self.show_overlay()

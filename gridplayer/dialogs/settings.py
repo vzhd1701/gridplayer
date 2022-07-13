@@ -89,6 +89,7 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
             "video_defaults/muted": self.videoMuted,
             "video_defaults/paused": self.videoPaused,
             "video_defaults/stream_quality": self.streamQuality,
+            "video_defaults/auto_reload_timer": self.streamAutoReloadTimer,
             "misc/overlay_hide": self.timeoutOverlayFlag,
             "misc/overlay_timeout": self.timeoutOverlay,
             "misc/mouse_hide": self.timeoutMouseHideFlag,
@@ -149,7 +150,7 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
         self.fill_playlistSeekSyncMode()
         self.fill_streamingResolverPriority()
 
-    def ui_set_limits(self):
+    def ui_set_limits(self):  # noqa: WPS213
         self.playerVideoDriverPlayers.setRange(1, MAX_VLC_PROCESSES)
         self.timeoutOverlay.setRange(1, 60)
         self.timeoutMouseHide.setRange(1, 60)
@@ -159,6 +160,11 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
 
         self.gridSize.setRange(0, 1000)
         self.gridSize.setSpecialValueText(translate("Grid Size", "Auto"))
+
+        self.streamAutoReloadTimer.setRange(0, 1000)
+        self.streamAutoReloadTimer.setSpecialValueText(
+            translate("Auto Reload Timer", "Disabled")
+        )
 
     def ui_customize_dynamic(self):
         self.driver_selected(self.playerVideoDriver.currentIndex())

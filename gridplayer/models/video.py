@@ -82,6 +82,7 @@ class Video(BaseModel):
 
     # Streamable
     stream_quality: str = default_field("video_defaults/stream_quality")
+    auto_reload_timer_min: int = default_field("video_defaults/auto_reload_timer")
 
     @property
     def uri_name(self) -> str:

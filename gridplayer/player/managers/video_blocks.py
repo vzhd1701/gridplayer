@@ -3,7 +3,7 @@ from typing import List, Optional
 
 from PyQt5.QtCore import Qt, pyqtSignal
 
-from gridplayer.dialogs.input_dialog import QCustomSpinboxTimeInput
+from gridplayer.dialogs.input_dialog import QCustomSpinboxInput, QCustomSpinboxTimeInput
 from gridplayer.models.video import Video
 from gridplayer.params.static import SeekSyncMode, VideoAspect, VideoRepeat
 from gridplayer.player.managers.base import ManagerBase
@@ -122,6 +122,7 @@ class VideoBlocksManager(ManagerBase):
     all_scale_reset = pyqtSignal()
 
     all_set_aspect = pyqtSignal(VideoAspect)
+    all_set_auto_reload_timer = pyqtSignal(int)
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -144,10 +145,12 @@ class VideoBlocksManager(ManagerBase):
             "all": self.cmd_all,
             "all_play_pause": self.cmd_all_play_pause,
             "all_seek_timecode": self.cmd_seek_timecode,
+            "all_set_auto_reload_timer": self.cmd_set_auto_reload_timer,
             "is_videos": lambda: bool(self._ctx.video_blocks),
             "is_any_videos_initialized": self.is_any_videos_initialized,
             "is_any_videos_seekable": self.is_any_videos_seekable,
             "is_any_videos_local_file": self.is_any_videos_local_file,
+            "is_any_videos_live": self.is_any_videos_live,
             "is_seek_sync_mode_set_to": self.is_seek_sync_mode_set_to,
             "set_seek_sync_mode": self.set_seek_sync_mode,
             "reload_all": self.reload_videos,
@@ -184,6 +187,19 @@ class VideoBlocksManager(ManagerBase):
             return
 
         self.all_seek.emit(time_ms)
+
+    def cmd_set_auto_reload_timer(self):
+        time_minutes = QCustomSpinboxInput.get_int(
+            parent=self.parent(),
+            title=translate(
+                "Dialog - Set auto reload timer", "Set auto reload timer", "Header"
+            ),
+            special_text=translate("Auto Reload Timer", "Disabled"),
+            _min=0,
+            _max=1000,
+        )
+
+        self.all_set_auto_reload_timer.emit(time_minutes)
 
     def cmd_shuffle_video_blocks(self):
         self._ctx.video_blocks.shuffle()
@@ -226,6 +242,9 @@ class VideoBlocksManager(ManagerBase):
 
     def is_any_videos_seekable(self):
         return any(not vb.is_live for vb in self._ctx.video_blocks.initialized)
+
+    def is_any_videos_live(self):
+        return any(vb.is_live for vb in self._ctx.video_blocks.initialized)
 
     def is_any_videos_local_file(self):
         return any(vb.is_local_file for vb in self._ctx.video_blocks.initialized)
@@ -326,6 +345,7 @@ class VideoBlocksManager(ManagerBase):
             (self.all_scale_decrease, vb.scale_decrease),
             (self.all_scale_reset, vb.scale_reset),
             (self.all_set_aspect, vb.set_aspect),
+            (self.all_set_auto_reload_timer, vb.set_auto_reload_timer),
             (self.all_previous_video, vb.previous_video),
             (self.all_next_video, vb.next_video),
             (self.hide_overlay, vb.hide_overlay),
