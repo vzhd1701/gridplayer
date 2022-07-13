@@ -32,6 +32,7 @@ def default_language():
 _default_settings = {
     "player/video_driver": VideoDriver.VLC_HW,
     "player/video_driver_players": 4,
+    "player/video_init_timeout": 120,
     "player/pause_background_videos": True,
     "player/pause_minimized": True,
     "player/inhibit_screensaver": True,

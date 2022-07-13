@@ -2,9 +2,11 @@ import logging
 import tempfile
 from abc import ABC, abstractmethod
 from pathlib import Path
+from time import time
 from typing import Optional
 
 from gridplayer.params import env
+from gridplayer.settings import Settings
 from gridplayer.utils.aspect_calc import calc_crop, calc_resize_scale
 from gridplayer.utils.misc import is_url
 from gridplayer.vlc_player.libvlc import vlc
@@ -17,11 +19,9 @@ from gridplayer.vlc_player.player_event_waiter import (
 from gridplayer.vlc_player.static import MediaInput, MediaTrack, NotPausedError
 
 DEFAULT_FPS = 25
-INIT_TIMEOUT = 120
 SNAPSHOT_TIMEOUT = 15
 
 MEDIA_EXTRACT_RETRY_TIME = 0.1
-MEDIA_EXTRACT_TIMEOUT = int(INIT_TIMEOUT / MEDIA_EXTRACT_RETRY_TIME)
 
 
 def translate(context, text):
@@ -51,9 +51,10 @@ class VlcPlayerBase(ABC):
 
         self.is_video_initialized = False
 
-        self._media_track_extract_attempts = 0
-
         self._is_paused = False
+
+        self._timeout_init_start = None
+        self._timeout_init = None
 
         self._timer_unpause_failsafe = None
         self._timer_extract_media_track = None
@@ -71,6 +72,13 @@ class VlcPlayerBase(ABC):
         self.init_event_manager()
 
         self._log = logging.getLogger(self.__class__.__name__)
+
+    @property
+    def init_time_left(self) -> int:
+        if not all([self._timeout_init, self._timeout_init_start]):
+            return 0
+
+        return max(int(self._timeout_init - (time() - self._timeout_init_start)), 0)
 
     def init_player(self):
         self._media_player = self.instance.media_player_new()
@@ -120,7 +128,7 @@ class VlcPlayerBase(ABC):
                 on_timeout=lambda: self.error(
                     translate("Video Error", "Buffering timeout")
                 ),
-                timeout=INIT_TIMEOUT,
+                timeout=self._timeout_init,
             )
 
     def cb_paused(self, event):
@@ -284,8 +292,10 @@ class VlcPlayerBase(ABC):
     def load_video(self, media_input: MediaInput):
         """Step 1. Load & parse video file"""
 
+        self._timeout_init = Settings().sync_get("player/video_init_timeout")
+        self._timeout_init_start = time()
+
         self.media_input = media_input
-        self._media_track_extract_attempts = 0
 
         self._log.info("Loading {0}".format(self.media_input.uri))
 
@@ -330,7 +340,7 @@ class VlcPlayerBase(ABC):
             on_timeout=lambda: self.error(
                 translate("Video Error", "Buffering timeout")
             ),
-            timeout=INIT_TIMEOUT,
+            timeout=self.init_time_left,
         )
 
         self._media_player.play()
@@ -338,10 +348,7 @@ class VlcPlayerBase(ABC):
     def load_video_st3_extract_media_track(self):
         """Step 3. Extract media track"""
 
-        if self._media_track_extract_attempts == 0:
-            self.notify_update_status(
-                translate("Video Status", "Preparing video output")
-            )
+        self.notify_update_status(translate("Video Status", "Preparing video output"))
 
         self._log.debug("Extracting media track")
 
@@ -353,8 +360,7 @@ class VlcPlayerBase(ABC):
             # usually time begins to tick after that
 
             # this can take a while
-            self._media_track_extract_attempts += 1
-            if self._media_track_extract_attempts == MEDIA_EXTRACT_TIMEOUT:
+            if self.init_time_left == 0:
                 self.error(translate("Video Error", "Timed out to extract media track"))
                 return
 
@@ -506,7 +512,7 @@ class VlcPlayerBase(ABC):
         # otherwise adjust_view won't work
         # if video is paused it happens on seek
         if not self.media_input.video.is_paused:
-            self._event_waiter.wait_for("vout", INIT_TIMEOUT)
+            self._event_waiter.wait_for("vout", self.init_time_left)
 
         self.adjust_view(
             size=self.media_input.size,
@@ -521,7 +527,7 @@ class VlcPlayerBase(ABC):
 
         if self.media_input.is_live and is_paused:
             self.snapshot()
-            with self._event_waiter.waiting_for("stopped", INIT_TIMEOUT):
+            with self._event_waiter.waiting_for("stopped", self.init_time_left):
                 self.stop()
 
         self._is_paused = is_paused
@@ -531,11 +537,11 @@ class VlcPlayerBase(ABC):
             return
 
         if self._is_paused or seek_ms > 0:
-            with self._event_waiter.waiting_for("buffering", INIT_TIMEOUT):
+            with self._event_waiter.waiting_for("buffering", self.init_time_left):
                 self._media_player.set_time(seek_ms)
 
             if not self.media_track.is_audio_only:
-                self._event_waiter.wait_for("vout", INIT_TIMEOUT)
+                self._event_waiter.wait_for("vout", self.init_time_left)
 
     def _get_media_track(self):
         media_tracks = self._media.tracks_get()

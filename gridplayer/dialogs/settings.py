@@ -66,6 +66,7 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
         self.settings_map = {
             "player/video_driver": self.playerVideoDriver,
             "player/video_driver_players": self.playerVideoDriverPlayers,
+            "player/video_init_timeout": self.timeoutVideoInit,
             "player/pause_background_videos": self.playerPauseBackgroundVideos,
             "player/pause_minimized": self.playerPauseWhenMinimized,
             "player/inhibit_screensaver": self.playerInhibitScreensaver,
@@ -153,6 +154,7 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
         self.timeoutMouseHide.setRange(1, 60)
         self.logLimitSize.setRange(1, 1024 * 1024)
         self.logLimitBackups.setRange(1, 1000)
+        self.timeoutVideoInit.setRange(1, 1000)
 
         self.gridSize.setRange(0, 1000)
         self.gridSize.setSpecialValueText(self.tr("Auto"))
