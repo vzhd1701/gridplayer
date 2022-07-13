@@ -59,6 +59,7 @@ _default_settings = {
     "misc/overlay_timeout": 3,
     "misc/mouse_hide": True,
     "misc/mouse_hide_timeout": 5,
+    "misc/vlc_options": "",
     "logging/log_level": logging.WARNING,
     "logging/log_level_vlc": DISABLED,
     "logging/log_limit": False,

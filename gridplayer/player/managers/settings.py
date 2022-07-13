@@ -54,6 +54,7 @@ class SettingsManager(ManagerBase):
             "player/video_driver",
             "player/video_driver_players",
             "internal/opaque_hw_overlay",
+            "misc/vlc_options",
         }
 
         return self._setting_changes(previous_settings, checks)

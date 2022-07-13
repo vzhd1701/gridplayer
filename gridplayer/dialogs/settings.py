@@ -4,7 +4,7 @@ import subprocess
 
 from PyQt5.QtCore import QLocale, QUrl
 from PyQt5.QtGui import QDesktopServices, QIcon, QPalette
-from PyQt5.QtWidgets import QCheckBox, QComboBox, QDialog, QSpinBox
+from PyQt5.QtWidgets import QCheckBox, QComboBox, QDialog, QLineEdit, QSpinBox
 
 from gridplayer.dialogs.messagebox import QCustomMessageBox
 from gridplayer.dialogs.settings_dialog_ui import Ui_SettingsDialog
@@ -93,6 +93,7 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
             "misc/overlay_timeout": self.timeoutOverlay,
             "misc/mouse_hide": self.timeoutMouseHideFlag,
             "misc/mouse_hide_timeout": self.timeoutMouseHide,
+            "misc/vlc_options": self.miscVLCOptions,
             "logging/log_level": self.logLevel,
             "logging/log_level_vlc": self.logLevelVLC,
             "logging/log_limit": self.logLimit,
@@ -380,6 +381,7 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
         elements_value_set_fun = {
             QCheckBox: lambda e, v: e.setChecked(v),
             QSpinBox: lambda e, v: e.setValue(v),
+            QLineEdit: lambda e, v: e.setText(v),
             QComboBox: _set_combo_box,
             LanguageList: lambda e, v: e.setValue(v),
             ResolverPatternsList: lambda e, v: e.setDataRows(v),
@@ -399,6 +401,7 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
         elements_value_read_attr = {
             QCheckBox: "isChecked",
             QSpinBox: "value",
+            QLineEdit: "text",
             QComboBox: "currentData",
             LanguageList: "value",
             ResolverPatternsList: "rows_data",

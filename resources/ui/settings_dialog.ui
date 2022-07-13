@@ -130,7 +130,7 @@
         </size>
        </property>
        <property name="currentIndex">
-        <number>2</number>
+        <number>5</number>
        </property>
        <widget class="QWidget" name="page_general_player">
         <layout class="QVBoxLayout" name="lay_section_player">
@@ -652,9 +652,6 @@
           <number>0</number>
          </property>
          <item>
-          <layout class="QVBoxLayout" name="lay_boxes"/>
-         </item>
-         <item>
           <widget class="QGroupBox" name="playerVideoDriverBox">
            <property name="maximumSize">
             <size>
@@ -685,6 +682,22 @@
             </item>
            </layout>
           </widget>
+         </item>
+         <item>
+          <widget class="QLabel" name="label_9">
+           <property name="font">
+            <font>
+             <weight>75</weight>
+             <bold>true</bold>
+            </font>
+           </property>
+           <property name="text">
+            <string>VLC Options [&lt;a href=&quot;https://wiki.videolan.org/VLC_command-line_help/&quot;&gt;reference&lt;/a&gt;]</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QLineEdit" name="miscVLCOptions"/>
          </item>
          <item>
           <widget class="QLabel" name="section_misc">

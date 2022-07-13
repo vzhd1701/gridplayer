@@ -359,9 +359,6 @@ class Ui_SettingsDialog(object):
         self.lay_page_misc_advanced = QtWidgets.QVBoxLayout(self.page_misc_advanced)
         self.lay_page_misc_advanced.setContentsMargins(0, 0, 0, 0)
         self.lay_page_misc_advanced.setObjectName("lay_page_misc_advanced")
-        self.lay_boxes = QtWidgets.QVBoxLayout()
-        self.lay_boxes.setObjectName("lay_boxes")
-        self.lay_page_misc_advanced.addLayout(self.lay_boxes)
         self.playerVideoDriverBox = QtWidgets.QGroupBox(self.page_misc_advanced)
         self.playerVideoDriverBox.setMaximumSize(QtCore.QSize(250, 16777215))
         self.playerVideoDriverBox.setObjectName("playerVideoDriverBox")
@@ -383,6 +380,16 @@ class Ui_SettingsDialog(object):
         self.lay_playerVideoDriverPlayers.setStretch(0, 1)
         self.lay_playerVideoDriverBox.addLayout(self.lay_playerVideoDriverPlayers)
         self.lay_page_misc_advanced.addWidget(self.playerVideoDriverBox)
+        self.label_9 = QtWidgets.QLabel(self.page_misc_advanced)
+        font = QtGui.QFont()
+        font.setBold(True)
+        font.setWeight(75)
+        self.label_9.setFont(font)
+        self.label_9.setObjectName("label_9")
+        self.lay_page_misc_advanced.addWidget(self.label_9)
+        self.miscVLCOptions = QtWidgets.QLineEdit(self.page_misc_advanced)
+        self.miscVLCOptions.setObjectName("miscVLCOptions")
+        self.lay_page_misc_advanced.addWidget(self.miscVLCOptions)
         self.section_misc = QtWidgets.QLabel(self.page_misc_advanced)
         font = QtGui.QFont()
         font.setBold(True)
@@ -494,7 +501,7 @@ class Ui_SettingsDialog(object):
         self.lay_main.setStretch(0, 1)
 
         self.retranslateUi(SettingsDialog)
-        self.section_page.setCurrentIndex(2)
+        self.section_page.setCurrentIndex(5)
         self.buttonBox.accepted.connect(SettingsDialog.accept)  # type: ignore
         self.buttonBox.rejected.connect(SettingsDialog.reject)  # type: ignore
         QtCore.QMetaObject.connectSlotsByName(SettingsDialog)
@@ -614,6 +621,12 @@ class Ui_SettingsDialog(object):
         )
         self.playerVideoDriverPlayersLabel.setText(
             _translate("SettingsDialog", "Videos per process")
+        )
+        self.label_9.setText(
+            _translate(
+                "SettingsDialog",
+                'VLC Options [<a href="https://wiki.videolan.org/VLC_command-line_help/">reference</a>]',
+            )
         )
         self.section_misc.setText(_translate("SettingsDialog", "Experimental"))
         self.miscOpaqueHWOverlay.setText(
