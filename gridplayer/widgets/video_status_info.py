@@ -95,7 +95,8 @@ class StatusInfo(QWidget):
         if self.percent > 0:
             painter.setBrush(QColor(Qt.gray).darker())
             percent = self.percent / 100
-            percent_rect = QRect(0, 0, self.width() * percent, self.height())
+            percent_width = int(self.width() * percent)
+            percent_rect = QRect(0, 0, percent_width, self.height())
             painter.drawRect(percent_rect)
 
     def _paint_text(self, painter):
