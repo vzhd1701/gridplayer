@@ -11,12 +11,14 @@ from PyQt5.QtWidgets import (
     QLineEdit,
     QTextEdit,
     QVBoxLayout,
+    qApp,
 )
 
 from gridplayer.utils.qt import translate
 
 DIALOG_WIDTH = 500
 MULTILINE_HEIGHT = 300
+CLIPBOARD_CHECK_TIMER_MS = 50
 
 
 class QAddURLsDialog(QDialog):
@@ -36,9 +38,15 @@ class QAddURLsDialog(QDialog):
         self._buttons = self._init_buttons()
 
         self._expand_button = self._buttons.addButton("+", QDialogButtonBox.ResetRole)
+        self._paste_button = self._buttons.addButton(
+            translate("Dialog - Add URLs", "Paste"), QDialogButtonBox.ResetRole
+        )
         self._expand_button.clicked.connect(self._switch_multiline)
+        self._paste_button.clicked.connect(self._paste)
 
         self._is_expanded = False
+
+        self.startTimer(CLIPBOARD_CHECK_TIMER_MS)
 
         self._ui_setup()
 
@@ -75,6 +83,10 @@ class QAddURLsDialog(QDialog):
 
         return []
 
+    def timerEvent(self, event) -> None:
+        is_clipboard_empty = qApp.clipboard().text().strip() == ""
+        self._paste_button.setEnabled(not is_clipboard_empty)
+
     def _init_info(self, schemas: Iterable[str], supported_urls: Dict[str, str]):
         supported_info = QLabel(self)
 
@@ -108,6 +120,7 @@ class QAddURLsDialog(QDialog):
         self._input_single.setMinimumWidth(DIALOG_WIDTH)
 
         self._input_multiline.setMinimumSize(DIALOG_WIDTH, MULTILINE_HEIGHT)
+        self._input_multiline.setLineWrapMode(QTextEdit.NoWrap)
         self._input_multiline.setAcceptRichText(False)
         self._input_multiline.hide()
 
@@ -138,6 +151,24 @@ class QAddURLsDialog(QDialog):
             self._expand_button.setText("-")
 
         self._is_expanded = not self._is_expanded
+
+    def _paste(self):
+        paste_text = qApp.clipboard().text().strip()
+
+        is_multiline_paste = paste_text.count("\n") > 0
+
+        switch_conditions = (
+            (is_multiline_paste and not self._is_expanded),
+            (not is_multiline_paste and self._is_expanded),
+        )
+
+        if any(switch_conditions):
+            self._switch_multiline()
+
+        if is_multiline_paste:
+            self._input_multiline.setText(paste_text)
+        else:
+            self._input_single.setText(paste_text)
 
 
 def _init_info_txt(schemas, supported_urls):
