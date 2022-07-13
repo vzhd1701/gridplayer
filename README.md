@@ -22,7 +22,7 @@ information about the position, sound volume, loops, aspect ratio, etc.
 
 - Cross-platform (Linux, Mac, and Windows)
 - Support for any video and audio format (VLC)
-- Support for (almost) any streaming URLs ([streamlink](https://github.com/streamlink/streamlink) + [yt-dlp](https://github.com/yt-dlp/yt-dlp))
+- Support for (almost) any streaming URLs ([streamlink](https://streamlink.github.io/plugins.html) + [yt-dlp](https://github.com/yt-dlp/yt-dlp/blob/master/supportedsites.md))
 - Hardware & software video decoding
 - Control video aspect, playback speed, zoom
 - Set loop fragments with frame percision
