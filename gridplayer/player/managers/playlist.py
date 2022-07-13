@@ -44,13 +44,16 @@ class PlaylistManager(ManagerBase):
         }
 
     def cmd_open_playlist(self):
-        dialog = QFileDialog(self.parent())
+        dialog = QFileDialog(
+            parent=self.parent(),
+            caption=translate("Dialog - Open Playlist", "Open Playlist", "Header"),
+        )
         dialog.setFileMode(QFileDialog.ExistingFile)
 
         dialog.setNameFilter(
             "{0} (*.gpls)".format(
                 translate(
-                    "Dialog - Playlist open", "GridPlayer Playlists", "File format"
+                    "Dialog - Open Playlist", "GridPlayer Playlists", "File format"
                 )
             )
         )
@@ -80,10 +83,10 @@ class PlaylistManager(ManagerBase):
         self._log.debug(f"Proposed playlist save path: {save_path}")
 
         file_path, _ = QFileDialog.getSaveFileName(
-            self.parent(),
-            translate("Dialog - Save playlist", "Where to save playlist", "Header"),
-            str(save_path),
-            "*.gpls",
+            parent=self.parent(),
+            caption=translate("Dialog - Save Playlist", "Save Playlist", "Header"),
+            directory=str(save_path),
+            filter="*.gpls",
         )
 
         if not file_path:

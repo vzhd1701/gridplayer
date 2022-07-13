@@ -23,7 +23,10 @@ class AddVideosManager(ManagerBase):
         return {"add_videos": self.cmd_add_videos, "add_urls": self.cmd_add_urls}
 
     def cmd_add_videos(self):
-        dialog = QFileDialog(self.parent())
+        dialog = QFileDialog(
+            parent=self.parent(),
+            caption=translate("Dialog - Add Files", "Add Files", "Header"),
+        )
         dialog.setFileMode(QFileDialog.ExistingFiles)
 
         dialog.setNameFilters(_get_name_filters())
