@@ -22,6 +22,9 @@ class ResolverPattern(BaseModel):
     resolver: URLResolver
 
     def is_match(self, url: str):
+        if self.pattern.strip() == "":
+            return False
+
         if self.pattern_type == ResolverPatternType.WILDCARD_HOST:
             return self._match_wildcard_host(url)
         elif self.pattern_type == ResolverPatternType.WILDCARD_URL:
