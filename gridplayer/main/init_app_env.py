@@ -12,16 +12,20 @@ from gridplayer.version import (
 )
 
 
+def init_app_env_id():
+    QApplication.setApplicationName(__app_name__)
+    QApplication.setApplicationDisplayName(__display_name__)
+    QApplication.setOrganizationName(__author_name__)
+    QApplication.setApplicationVersion(__version__)
+
+
 def init_app_env():
     if env.IS_WINDOWS:
         from PyQt5.QtWinExtras import QtWin  # noqa: WPS433
 
         QtWin.setCurrentProcessExplicitAppUserModelID(__app_id__)
 
-    QApplication.setApplicationName(__app_name__)
-    QApplication.setApplicationDisplayName(__display_name__)
-    QApplication.setOrganizationName(__author_name__)
-    QApplication.setApplicationVersion(__version__)
+    init_app_env_id()
 
     QApplication.setAttribute(Qt.AA_EnableHighDpiScaling)
     QApplication.setAttribute(Qt.AA_UseHighDpiPixmaps)

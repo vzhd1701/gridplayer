@@ -5,6 +5,7 @@ from abc import ABC, abstractmethod
 from multiprocessing import Value
 from multiprocessing.context import Process
 
+from gridplayer.main.init_app_env import init_app_env_id
 from gridplayer.multiprocess.command_loop import CommandLoop
 from gridplayer.params.static import PLAYER_ID_LENGTH
 from gridplayer.utils.log_config import child_process_config
@@ -66,6 +67,9 @@ class InstanceProcess(CommandLoop, ABC):
 
     # process
     def run(self):
+        # init app id to make settings available from subprocess
+        init_app_env_id()
+
         if self._log_queue is not None:
             child_process_config(self._log_queue, self._log_level)
 

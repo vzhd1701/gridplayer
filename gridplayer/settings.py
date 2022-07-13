@@ -109,6 +109,10 @@ class _Settings(object):
     def sync(self):
         self.settings.sync()
 
+    def sync_get(self, setting):
+        self.sync()
+        return self.get(setting)
+
     @property
     def filename(self):
         return self.settings.fileName()
