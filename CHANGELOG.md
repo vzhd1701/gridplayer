@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [0.4.0] - 2022-07-14
+
 ### Added
 
 - New setting to control URL resolver priority ([fc72744](https://github.com/vzhd1701/gridplayer/commit/fc7274428c1af496be30ab84dc2fc673691d7e40), [47150b6](https://github.com/vzhd1701/gridplayer/commit/47150b6b87114028c9aece370c2d03994e0db30a))
@@ -171,7 +173,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 - Initial release
 
-[Unreleased]: https://github.com/vzhd1701/gridplayer/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/vzhd1701/gridplayer/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/vzhd1701/gridplayer/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/vzhd1701/gridplayer/compare/v0.2.2...v0.3.0
 [0.2.2]: https://github.com/vzhd1701/gridplayer/compare/v0.2.1...v0.2.2
 [0.2.1]: https://github.com/vzhd1701/gridplayer/compare/v0.2.0...v0.2.1
