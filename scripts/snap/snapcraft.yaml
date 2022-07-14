@@ -128,14 +128,11 @@ parts:
       install -D /dev/null "${SNAPCRAFT_PART_INSTALL}/usr/local/etc/mime.types"
 
       # Replace static PyQt with dynamic to make it depend on libraries from kde-neon extension
-      wget https://origin.archive.neon.kde.org/user/pool/main/p/pyqt5/python3-pyqt5_5.15.4+dfsg-1+20.04+focal+release+build12_amd64.deb
-      wget https://origin.archive.neon.kde.org/user/pool/main/p/pyqt5/python3-pyqt5.qtx11extras_5.15.4+dfsg-1+20.04+focal+release+build12_amd64.deb
-      wget https://origin.archive.neon.kde.org/user/pool/main/p/pyqt5/python3-pyqt5.qtsvg_5.15.4+dfsg-1+20.04+focal+release+build12_amd64.deb
-      wget https://origin.archive.neon.kde.org/user/pool/main/p/pyqt5-sip/python3-pyqt5.sip_12.9.0-1+20.04+focal+release+build1_amd64.deb
-
-      SITE_PATH="${SNAPCRAFT_PART_INSTALL}/lib/python3.8/site-packages"
+      ${SNAPCRAFT_PROJECT_DIR}/apt_dl.sh python3-pyqt5 python3-pyqt5.qtx11extras python3-pyqt5.qtsvg python3-pyqt5.sip
 
       for file in *.deb; do dpkg-deb -x "$file" ./pyqt; done
+
+      SITE_PATH="${SNAPCRAFT_PART_INSTALL}/lib/python3.8/site-packages"
 
       rm -rf "${SITE_PATH}"/PyQt*
       mv pyqt/usr/lib/python3/dist-packages/* "${SITE_PATH}"
