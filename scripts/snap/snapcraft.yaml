@@ -54,9 +54,13 @@ parts:
     override-build: |
       snapcraftctl build
 
+      MAIN_SNAP="/snap/core20/current"
       KDE_SNAP="/snap/kde-frameworks-5-91-qt-5-15-3-core20/current"
       LIB_DIR="${SNAPCRAFT_PART_INSTALL}/usr/lib/${SNAPCRAFT_ARCH_TRIPLET}"
       VLC_LIB_DIR="${LIB_DIR}/vlc"
+
+      if [ ! -d "${KDE_SNAP}" ]; then echo "${KDE_SNAP} doesn't exist!"; exit 1; fi
+      if [ ! -d "${MAIN_SNAP}" ]; then echo "${MAIN_SNAP} doesn't exist!"; exit 1; fi
 
       ${SNAPCRAFT_PROJECT_DIR}/blacklist_clean.sh "$LIB_DIR" ${SNAPCRAFT_PROJECT_DIR}/blacklist_snap.txt
       rm -rf "${LIB_DIR}/dri"
@@ -80,7 +84,11 @@ parts:
       LIBS+="${KDE_SNAP}/usr/lib:"
       LIBS+="${KDE_SNAP}/lib:"
       LIBS+="${KDE_SNAP}/usr/lib/${SNAPCRAFT_ARCH_TRIPLET}/dri:"
-      LIBS+="${KDE_SNAP}/usr/lib/${SNAPCRAFT_ARCH_TRIPLET}/pulseaudio"
+      LIBS+="${KDE_SNAP}/usr/lib/${SNAPCRAFT_ARCH_TRIPLET}/pulseaudio:"
+      LIBS+="${MAIN_SNAP}/lib/${SNAPCRAFT_ARCH_TRIPLET}:"
+      LIBS+="${MAIN_SNAP}/usr/lib/${SNAPCRAFT_ARCH_TRIPLET}:"
+      LIBS+="${MAIN_SNAP}/usr/lib:"
+      LIBS+="${MAIN_SNAP}/lib:"
 
       # Generate VLC plugin cache
       LD_LIBRARY_PATH="$LIBS" "${VLC_LIB_DIR}/vlc-cache-gen" "${VLC_LIB_DIR}/plugins"
