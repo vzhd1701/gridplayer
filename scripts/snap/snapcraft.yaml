@@ -75,10 +75,10 @@ parts:
       LIBS+="${SNAPCRAFT_PART_INSTALL}/usr/lib:"
       LIBS+="${SNAPCRAFT_PART_INSTALL}/lib/${SNAPCRAFT_ARCH_TRIPLET}:"
       LIBS+="${SNAPCRAFT_PART_INSTALL}/usr/lib/${SNAPCRAFT_ARCH_TRIPLET}:"
-      LIBS+="${KDE_SNAP}/lib:"
-      LIBS+="${KDE_SNAP}/usr/lib:"
       LIBS+="${KDE_SNAP}/lib/${SNAPCRAFT_ARCH_TRIPLET}:"
       LIBS+="${KDE_SNAP}/usr/lib/${SNAPCRAFT_ARCH_TRIPLET}:"
+      LIBS+="${KDE_SNAP}/usr/lib:"
+      LIBS+="${KDE_SNAP}/lib:"
       LIBS+="${KDE_SNAP}/usr/lib/${SNAPCRAFT_ARCH_TRIPLET}/dri:"
       LIBS+="${KDE_SNAP}/usr/lib/${SNAPCRAFT_ARCH_TRIPLET}/pulseaudio"
 
