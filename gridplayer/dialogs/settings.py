@@ -71,6 +71,7 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
             "player/pause_minimized": self.playerPauseWhenMinimized,
             "player/inhibit_screensaver": self.playerInhibitScreensaver,
             "player/one_instance": self.playerOneInstance,
+            "player/show_overlay_border": self.playerShowOverlayBorder,
             "player/language": self.listLanguages,
             "playlist/grid_mode": self.gridMode,
             "playlist/grid_fit": self.gridFit,

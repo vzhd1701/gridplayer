@@ -131,6 +131,7 @@ class VideoBlock(QWidget):  # noqa: WPS230
     is_muted_change = pyqtSignal(bool)
     info_change = pyqtSignal(str)
     is_in_progress_change = pyqtSignal()
+    is_active_change = pyqtSignal(bool)
 
     def __init__(self, video_driver, context, **kwargs):
         super().__init__(**kwargs)
@@ -146,8 +147,8 @@ class VideoBlock(QWidget):  # noqa: WPS230
         self.video_params: Optional[Video] = None
 
         # Runtime Params
-        self.is_error = False
-        self.is_active = False
+        self._is_error = False
+        self._is_active = False
 
         self._title = None
         self._color = None
@@ -230,7 +231,7 @@ class VideoBlock(QWidget):  # noqa: WPS230
         self.url_resolver = self.init_url_resolver()
 
     def reset(self):
-        self.is_error = False
+        self._is_error = False
         self.set_status("processing")
 
         self.reset_video_driver()
@@ -259,6 +260,7 @@ class VideoBlock(QWidget):  # noqa: WPS230
             (self.is_in_progress_change, overlay.set_is_in_progress),
             (self.is_muted_change, overlay.set_is_muted),
             (self.info_change, overlay.set_info_label),
+            (self.is_active_change, overlay.set_is_active),
         )
 
         return overlay
@@ -309,12 +311,12 @@ class VideoBlock(QWidget):  # noqa: WPS230
         return self.error()
 
     def error(self):
-        self.is_error = True
+        self._is_error = True
         self.set_status("error")
         self.cleanup()
 
     def network_error(self):
-        self.is_error = True
+        self._is_error = True
         self.set_status("network-error")
         self.cleanup()
 
@@ -332,7 +334,7 @@ class VideoBlock(QWidget):  # noqa: WPS230
 
     def reload(self):
         self.is_live = False
-        self.is_error = False
+        self._is_error = False
         self.streams = Streams()
         self._title = None
         self._default_title = None
@@ -478,6 +480,19 @@ class VideoBlock(QWidget):  # noqa: WPS230
 
     def is_under_cursor(self):
         return self.rect().contains(self.mapFromGlobal(QCursor.pos()))
+
+    @property
+    def is_active(self):
+        return self._is_active
+
+    @is_active.setter
+    def is_active(self, is_active):
+        self._is_active = is_active
+
+        if is_active and not Settings().get("player/show_overlay_border"):
+            return
+
+        self.is_active_change.emit(is_active)
 
     @property
     def drag_data(self):

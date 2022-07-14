@@ -130,7 +130,7 @@
         </size>
        </property>
        <property name="currentIndex">
-        <number>4</number>
+        <number>0</number>
        </property>
        <widget class="QWidget" name="page_general_player">
         <layout class="QVBoxLayout" name="lay_section_player">
@@ -171,6 +171,13 @@
           <widget class="QCheckBox" name="playerOneInstance">
            <property name="text">
             <string>Allow only one instance</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QCheckBox" name="playerShowOverlayBorder">
+           <property name="text">
+            <string>Show overlay border for active video</string>
            </property>
           </widget>
          </item>

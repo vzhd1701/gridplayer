@@ -4,6 +4,7 @@ from PyQt5.QtWidgets import (
     QApplication,
     QGraphicsOpacityEffect,
     QHBoxLayout,
+    QStackedLayout,
     QVBoxLayout,
     QWidget,
 )
@@ -18,6 +19,7 @@ from gridplayer.widgets.video_overlay_buttons import (
     OverlayVolumeButton,
 )
 from gridplayer.widgets.video_overlay_elements import (
+    OverlayBorder,
     OverlayLabel,
     OverlayProgressBar,
     OverlayShortLabel,
@@ -88,17 +90,28 @@ class OverlayBlock(QWidget):  # noqa: WPS230
         )
 
     def ui_setup(self):  # noqa: WPS213
-        QVBoxLayout(self)
+        layout_main = QStackedLayout(self)
 
-        self.layout().setContentsMargins(10, 10, 10, 10)
+        layout_main.setContentsMargins(0, 0, 0, 0)
+        layout_main.setStackingMode(QStackedLayout.StackAll)
+
+        control_widget = QWidget(self)
+        self.border_widget = OverlayBorder(parent=self)
+        self.border_widget.hide()
+
+        layout_control = QVBoxLayout(control_widget)
+        layout_control.setContentsMargins(10, 10, 10, 10)
+
+        layout_main.addWidget(control_widget)
+        layout_main.addWidget(self.border_widget)
 
         self.top_bar = QVBoxLayout()
         self.middle = QHBoxLayout()
         self.bottom_bar = QHBoxLayout()
 
-        self.layout().addLayout(self.top_bar)
-        self.layout().addLayout(self.middle, 1)
-        self.layout().addLayout(self.bottom_bar)
+        layout_control.addLayout(self.top_bar)
+        layout_control.addLayout(self.middle, 1)
+        layout_control.addLayout(self.bottom_bar)
 
         self.label_text = OverlayLabel(parent=self)
         self.exit_button = OverlayExitButton(parent=self)
@@ -191,9 +204,8 @@ class OverlayBlock(QWidget):  # noqa: WPS230
 
     @pyqtSlot(str)
     def set_color(self, color):
-        for widget in self.children():
-            if isinstance(widget, OverlayWidget):
-                widget.color = color
+        for widget in self.findChildren(OverlayWidget):
+            widget.color = color
 
     @pyqtSlot(str)
     def set_info_label(self, info_text):
@@ -238,6 +250,10 @@ class OverlayBlock(QWidget):  # noqa: WPS230
     @pyqtSlot(float)
     def emit_volume_position(self, position):
         self.set_volume.emit(position)
+
+    @pyqtSlot(bool)
+    def set_is_active(self, is_active):
+        self.border_widget.setVisible(is_active)
 
     def _set_opacity(self, opacity):
         effect = QGraphicsOpacityEffect(self)

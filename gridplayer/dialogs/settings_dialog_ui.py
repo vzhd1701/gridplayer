@@ -73,6 +73,9 @@ class Ui_SettingsDialog(object):
         self.playerOneInstance = QtWidgets.QCheckBox(self.page_general_player)
         self.playerOneInstance.setObjectName("playerOneInstance")
         self.lay_section_player.addWidget(self.playerOneInstance)
+        self.playerShowOverlayBorder = QtWidgets.QCheckBox(self.page_general_player)
+        self.playerShowOverlayBorder.setObjectName("playerShowOverlayBorder")
+        self.lay_section_player.addWidget(self.playerShowOverlayBorder)
         self.section_timeouts = QtWidgets.QLabel(self.page_general_player)
         font = QtGui.QFont()
         font.setBold(True)
@@ -528,7 +531,7 @@ class Ui_SettingsDialog(object):
         self.lay_main.setStretch(0, 1)
 
         self.retranslateUi(SettingsDialog)
-        self.section_page.setCurrentIndex(4)
+        self.section_page.setCurrentIndex(0)
         self.buttonBox.accepted.connect(SettingsDialog.accept)  # type: ignore
         self.buttonBox.rejected.connect(SettingsDialog.reject)  # type: ignore
         QtCore.QMetaObject.connectSlotsByName(SettingsDialog)
@@ -570,6 +573,9 @@ class Ui_SettingsDialog(object):
         )
         self.playerOneInstance.setText(
             _translate("SettingsDialog", "Allow only one instance")
+        )
+        self.playerShowOverlayBorder.setText(
+            _translate("SettingsDialog", "Show overlay border for active video")
         )
         self.section_timeouts.setText(_translate("SettingsDialog", "Timeouts"))
         self.timeoutOverlayFlag.setText(

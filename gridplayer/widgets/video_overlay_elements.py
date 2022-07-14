@@ -7,6 +7,7 @@ from PyQt5.QtGui import (
     QGuiApplication,
     QPainter,
     QPainterPath,
+    QPen,
     QRegion,
 )
 from PyQt5.QtWidgets import QSizePolicy, QWidget
@@ -476,3 +477,15 @@ class OverlayVolumeBar(OverlayBar):
         elif y > self.height():
             return self.height()
         return y
+
+
+class OverlayBorder(OverlayWidget):
+    def paintEvent(self, event) -> None:
+        painter = QPainter(self)
+
+        pen = QPen(self.color)
+        pen.setWidth(10)
+
+        painter.setPen(pen)
+        painter.setBrush(Qt.NoBrush)
+        painter.drawRect(self.rect())

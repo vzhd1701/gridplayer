@@ -37,6 +37,7 @@ _default_settings = {
     "player/pause_minimized": True,
     "player/inhibit_screensaver": True,
     "player/one_instance": True,
+    "player/show_overlay_border": False,
     "player/language": default_language(),
     "playlist/grid_mode": GridMode.AUTO_ROWS,
     "playlist/grid_fit": True,
