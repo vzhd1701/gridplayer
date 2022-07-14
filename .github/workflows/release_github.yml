@@ -35,7 +35,7 @@ jobs:
           poetry-version: ${{ env.BUILD_POETRY_VERSION }}
 
       - name: Export requirements
-        run: poetry export -f requirements.txt --output requirements.txt
+        run: poetry export -f requirements.txt --without-hashes --output requirements.txt
 
       - name: Build project for distribution
         run: poetry build
