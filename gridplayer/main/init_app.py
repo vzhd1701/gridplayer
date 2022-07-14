@@ -26,7 +26,7 @@ def init_app():
 
     init_icon(app)
 
-    app.setFont(QFont("Hack", FONT_SIZE_MAIN, QFont.Normal))
+    app.setFont(QFont("Hack", FONT_SIZE_MAIN))
 
     init_translator(app)
 
