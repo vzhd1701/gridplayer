@@ -313,10 +313,18 @@ class ResolverPatternsList(QtWidgets.QWidget):
 
     def _create_pattern_type_combo(self):
         patterns = {
-            ResolverPatternType.WILDCARD_HOST: "Host Wildcard",
-            ResolverPatternType.WILDCARD_URL: "URL Wildcard",
-            ResolverPatternType.REGEX: "URL Regex",
-            ResolverPatternType.DISABLED: "Disabled",
+            ResolverPatternType.WILDCARD_HOST: translate(
+                "SettingsDialog - Resolver Pattern Type", "Host Wildcard"
+            ),
+            ResolverPatternType.WILDCARD_URL: translate(
+                "SettingsDialog - Resolver Pattern Type", "URL Wildcard"
+            ),
+            ResolverPatternType.REGEX: translate(
+                "SettingsDialog - Resolver Pattern Type", "URL Regex"
+            ),
+            ResolverPatternType.DISABLED: translate(
+                "SettingsDialog - Resolver Pattern Type", "Disabled"
+            ),
         }
 
         combo = QtWidgets.QComboBox(self)

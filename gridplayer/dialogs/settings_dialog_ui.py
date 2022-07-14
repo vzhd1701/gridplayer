@@ -212,6 +212,7 @@ class Ui_SettingsDialog(object):
             self.page_misc_streaming
         )
         self.streamingWildcardHelpButton.setMaximumSize(QtCore.QSize(24, 24))
+        self.streamingWildcardHelpButton.setText("?")
         self.streamingWildcardHelpButton.setObjectName("streamingWildcardHelpButton")
         self.formLayout_8.setWidget(
             0, QtWidgets.QFormLayout.FieldRole, self.streamingWildcardHelpButton
@@ -604,7 +605,6 @@ class Ui_SettingsDialog(object):
             _translate("SettingsDialog", "Resolver priority patterns")
         )
         self.label_11.setText(_translate("SettingsDialog", "Wildcard syntax"))
-        self.streamingWildcardHelpButton.setText(_translate("SettingsDialog", "?"))
         self.streamingWildcardHelp.setText(
             _translate(
                 "SettingsDialog",
