@@ -1,4 +1,5 @@
 from PyQt5.QtCore import QSize, Qt
+from PyQt5.QtGui import QPalette
 from PyQt5.QtSvg import QSvgWidget
 from PyQt5.QtWidgets import (
     QHBoxLayout,
@@ -69,6 +70,12 @@ class LanguageRowWidget(QWidget):
 class LanguageList(QListWidget):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+
+        bg_color = QPalette().color(QPalette.Base).name()
+
+        self.setStyleSheet(
+            f"QListWidget::item:selected {{background-color: {bg_color};}}"
+        )
 
         self.currentItemChanged.connect(self._set_language_checkmark)
 
