@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!DOCTYPE TS>
-<TS version="2.0" language="ru" sourcelanguage="en">
+<TS version="2.1" language="ru" sourcelanguage="en">
   <context>
     <name>AboutDialog</name>
     <message>
@@ -421,6 +421,24 @@
       <source>Snapshots</source>
       <translation>Состояния</translation>
     </message>
+    <message>
+      <location filename="player/managers/actions.py" line="14"/>
+      <source>Auto Reload</source>
+      <translation>Авто-перезагрузка</translation>
+    </message>
+  </context>
+  <context>
+    <name>Auto Reload Timer</name>
+    <message>
+      <location filename="widgets/video_block.py" line="422"/>
+      <source>Disabled</source>
+      <translation>Откл.</translation>
+    </message>
+    <message>
+      <location filename="widgets/video_block.py" line="424"/>
+      <source>minute(s)</source>
+      <translation>минут(ы)</translation>
+    </message>
   </context>
   <context>
     <name>Dialog</name>
@@ -455,16 +473,22 @@
       <comment>File formats</comment>
       <translation>Аудио</translation>
     </message>
+    <message>
+      <location filename="player/managers/add_videos.py" line="22"/>
+      <source>Add Files</source>
+      <comment>Header</comment>
+      <translation>Добавить файлы</translation>
+    </message>
   </context>
   <context>
     <name>Dialog - Add URLs</name>
     <message>
-      <location filename="dialogs/add_urls.py" line="108"/>
+      <location filename="dialogs/add_urls.py" line="133"/>
       <source>Supported URL schemas: {SCHEMAS}</source>
       <translation>Поддерживаемые ссылки: {SCHEMAS}</translation>
     </message>
     <message>
-      <location filename="dialogs/add_urls.py" line="108"/>
+      <location filename="dialogs/add_urls.py" line="133"/>
       <source>Supported sites: {SERVICES}</source>
       <translation>Поддерживаемые сайты: {SERVICES}</translation>
     </message>
@@ -474,14 +498,34 @@
       <comment>Header</comment>
       <translation>Добавить ссылки</translation>
     </message>
+    <message>
+      <location filename="dialogs/add_urls.py" line="27"/>
+      <source>Paste</source>
+      <translation>Вставить</translation>
+    </message>
   </context>
   <context>
     <name>Dialog - Enter timecode</name>
     <message>
-      <location filename="widgets/video_block.py" line="430"/>
+      <location filename="widgets/video_block.py" line="389"/>
       <source>Enter timecode</source>
       <comment>Header</comment>
       <translation>Введите таймкод</translation>
+    </message>
+  </context>
+  <context>
+    <name>Dialog - Open Playlist</name>
+    <message>
+      <location filename="player/managers/playlist.py" line="43"/>
+      <source>Open Playlist</source>
+      <comment>Header</comment>
+      <translation>Открыть плейлист</translation>
+    </message>
+    <message>
+      <location filename="player/managers/playlist.py" line="46"/>
+      <source>GridPlayer Playlists</source>
+      <comment>File format</comment>
+      <translation>Плейлисты GridPlayer</translation>
     </message>
   </context>
   <context>
@@ -496,15 +540,6 @@
       <location filename="player/managers/playlist.py" line="152"/>
       <source>Do you want to save the playlist?</source>
       <translation>Вы хотите сохранить плейлист?</translation>
-    </message>
-  </context>
-  <context>
-    <name>Dialog - Playlist open</name>
-    <message>
-      <location filename="player/managers/playlist.py" line="46"/>
-      <source>GridPlayer Playlists</source>
-      <comment>File format</comment>
-      <translation>Плейлисты GridPlayer</translation>
     </message>
   </context>
   <context>
@@ -529,7 +564,7 @@
       <translation>Сброс</translation>
     </message>
     <message>
-      <location filename="widgets/video_block.py" line="902"/>
+      <location filename="widgets/video_block.py" line="912"/>
       <source>Rename video</source>
       <comment>Header</comment>
       <translation>Переименовать видео</translation>
@@ -545,12 +580,21 @@
     </message>
   </context>
   <context>
-    <name>Dialog - Save playlist</name>
+    <name>Dialog - Save Playlist</name>
     <message>
       <location filename="player/managers/playlist.py" line="72"/>
-      <source>Where to save playlist</source>
+      <source>Save Playlist</source>
       <comment>Header</comment>
-      <translation>Где сохранить плейлист</translation>
+      <translation>Сохранить плейлист</translation>
+    </message>
+  </context>
+  <context>
+    <name>Dialog - Set auto reload timer</name>
+    <message>
+      <location filename="widgets/video_block.py" line="399"/>
+      <source>Set auto reload timer</source>
+      <comment>Header</comment>
+      <translation>Таймер авто-перезагрузки</translation>
     </message>
   </context>
   <context>
@@ -579,7 +623,7 @@
   <context>
     <name>Error</name>
     <message>
-      <location filename="dialogs/settings.py" line="121"/>
+      <location filename="dialogs/settings.py" line="155"/>
       <source>Log file does not exist!</source>
       <translation>Файл журнала не найден!</translation>
     </message>
@@ -617,32 +661,32 @@
   <context>
     <name>ErrorLevel</name>
     <message>
-      <location filename="dialogs/settings.py" line="135"/>
+      <location filename="dialogs/settings.py" line="169"/>
       <source>None</source>
       <translation>Отключен</translation>
     </message>
     <message>
-      <location filename="dialogs/settings.py" line="135"/>
+      <location filename="dialogs/settings.py" line="169"/>
       <source>Error</source>
       <translation>Ошибки</translation>
     </message>
     <message>
-      <location filename="dialogs/settings.py" line="135"/>
+      <location filename="dialogs/settings.py" line="169"/>
       <source>Warning</source>
       <translation>Предупреждения</translation>
     </message>
     <message>
-      <location filename="dialogs/settings.py" line="135"/>
+      <location filename="dialogs/settings.py" line="169"/>
       <source>Info</source>
       <translation>Информация</translation>
     </message>
     <message>
-      <location filename="dialogs/settings.py" line="135"/>
+      <location filename="dialogs/settings.py" line="169"/>
       <source>Debug</source>
       <translation>Отладка</translation>
     </message>
     <message>
-      <location filename="dialogs/settings.py" line="135"/>
+      <location filename="dialogs/settings.py" line="169"/>
       <source>Critical</source>
       <translation>Критические</translation>
     </message>
@@ -687,405 +731,553 @@
     </message>
   </context>
   <context>
-    <name>QCustomSpinboxInput</name>
-    <message>
-      <location filename="dialogs/input_dialog.py" line="14"/>
-      <source>Auto</source>
-      <translation>Авто</translation>
-    </message>
-  </context>
-  <context>
     <name>SettingsDialog</name>
     <message>
-      <location filename="dialogs/settings.py" line="110"/>
-      <source>Auto</source>
-      <translation>Авто</translation>
-    </message>
-    <message>
-      <location filename="dialogs/settings.py" line="140"/>
+      <location filename="dialogs/settings.py" line="174"/>
       <source>Fit</source>
       <translation>Подогнать</translation>
     </message>
     <message>
-      <location filename="dialogs/settings.py" line="140"/>
+      <location filename="dialogs/settings.py" line="174"/>
       <source>Stretch</source>
       <translation>Растянуть</translation>
     </message>
     <message>
-      <location filename="dialogs/settings.py" line="140"/>
+      <location filename="dialogs/settings.py" line="174"/>
       <source>None</source>
       <translation>Как есть</translation>
     </message>
     <message>
-      <location filename="dialogs/settings.py" line="145"/>
+      <location filename="dialogs/settings.py" line="179"/>
       <source>Single File</source>
       <translation>Один файл</translation>
     </message>
     <message>
-      <location filename="dialogs/settings.py" line="145"/>
+      <location filename="dialogs/settings.py" line="179"/>
       <source>Directory</source>
       <translation>Папка</translation>
     </message>
     <message>
-      <location filename="dialogs/settings.py" line="145"/>
+      <location filename="dialogs/settings.py" line="179"/>
       <source>Directory (Shuffle)</source>
       <translation>Папка (вперемешку)</translation>
     </message>
     <message>
-      <location filename="dialogs/settings.py" line="150"/>
+      <location filename="dialogs/settings.py" line="184"/>
       <source>Rows First</source>
       <translation>Сперва строки</translation>
     </message>
     <message>
-      <location filename="dialogs/settings.py" line="150"/>
+      <location filename="dialogs/settings.py" line="184"/>
       <source>Columns First</source>
       <translation>Сперва столбцы</translation>
     </message>
     <message>
-      <location filename="dialogs/settings.py" line="158"/>
+      <location filename="dialogs/settings.py" line="192"/>
       <source>Hardware SP</source>
       <translation>Аппаратный SP</translation>
     </message>
     <message>
-      <location filename="dialogs/settings.py" line="158"/>
+      <location filename="dialogs/settings.py" line="192"/>
       <source>Software</source>
       <translation>Программный</translation>
     </message>
     <message>
-      <location filename="dialogs/settings.py" line="158"/>
+      <location filename="dialogs/settings.py" line="192"/>
       <source>Dummy</source>
       <translation>Заглушка</translation>
     </message>
     <message>
-      <location filename="dialogs/settings.py" line="158"/>
+      <location filename="dialogs/settings.py" line="192"/>
       <source>Hardware</source>
       <translation>Аппаратный</translation>
     </message>
     <message>
-      <location filename="dialogs/settings.py" line="169"/>
+      <location filename="dialogs/settings.py" line="204"/>
       <source>Best</source>
       <translation>Лучшее</translation>
     </message>
     <message>
-      <location filename="dialogs/settings.py" line="169"/>
+      <location filename="dialogs/settings.py" line="204"/>
       <source>Worst</source>
       <translation>Худшее</translation>
     </message>
     <message>
-      <location filename="dialogs/settings.py" line="179"/>
+      <location filename="dialogs/settings.py" line="214"/>
       <source>Disabled</source>
       <translation>Отключено</translation>
     </message>
     <message>
-      <location filename="dialogs/settings.py" line="179"/>
+      <location filename="dialogs/settings.py" line="214"/>
       <source>Percent</source>
       <translation>Процент</translation>
     </message>
     <message>
-      <location filename="dialogs/settings.py" line="179"/>
+      <location filename="dialogs/settings.py" line="214"/>
       <source>Timecode</source>
       <translation>Таймкод</translation>
     </message>
     <message>
-      <location filename="dialogs/settings_dialog_ui.py" line="303"/>
+      <location filename="dialogs/settings_dialog_ui.py" line="450"/>
       <source>Settings</source>
       <translation>Настройки</translation>
     </message>
     <message>
-      <location filename="dialogs/settings_dialog_ui.py" line="304"/>
+      <location filename="dialogs/settings_dialog_ui.py" line="456"/>
       <source>Player</source>
       <translation>Плеер</translation>
     </message>
     <message>
-      <location filename="dialogs/settings_dialog_ui.py" line="305"/>
+      <location filename="dialogs/settings_dialog_ui.py" line="474"/>
       <source>Pause background videos on single mode</source>
       <translation>Приостановить другие видео в одиночном режиме</translation>
     </message>
     <message>
-      <location filename="dialogs/settings_dialog_ui.py" line="306"/>
+      <location filename="dialogs/settings_dialog_ui.py" line="475"/>
       <source>Pause videos when minimized</source>
       <translation>Приостановить видео при свертывании</translation>
     </message>
     <message>
-      <location filename="dialogs/settings_dialog_ui.py" line="307"/>
+      <location filename="dialogs/settings_dialog_ui.py" line="476"/>
       <source>Disable screensaver while playing</source>
       <translation>Отключить заставку при воспроизведении</translation>
     </message>
     <message>
-      <location filename="dialogs/settings_dialog_ui.py" line="308"/>
+      <location filename="dialogs/settings_dialog_ui.py" line="477"/>
       <source>Allow only one instance</source>
       <translation>Разрешить только один экземпляр</translation>
     </message>
     <message>
-      <location filename="dialogs/settings_dialog_ui.py" line="309"/>
+      <location filename="dialogs/settings_dialog_ui.py" line="462"/>
       <source>Playlist</source>
       <translation>Плейлист</translation>
     </message>
     <message>
-      <location filename="dialogs/settings_dialog_ui.py" line="310"/>
+      <location filename="dialogs/settings_dialog_ui.py" line="492"/>
       <source>Save window position and size</source>
       <translation>Сохранять позицию и размер окна</translation>
     </message>
     <message>
-      <location filename="dialogs/settings_dialog_ui.py" line="311"/>
+      <location filename="dialogs/settings_dialog_ui.py" line="493"/>
       <source>Save videos playback position</source>
       <translation>Сохранять позицию воспроизведения</translation>
     </message>
     <message>
-      <location filename="dialogs/settings_dialog_ui.py" line="312"/>
+      <location filename="dialogs/settings_dialog_ui.py" line="494"/>
       <source>Save videos playing / paused status</source>
       <translation>Сохранить статус воспроизведения</translation>
     </message>
     <message>
-      <location filename="dialogs/settings_dialog_ui.py" line="313"/>
+      <location filename="dialogs/settings_dialog_ui.py" line="495"/>
       <source>Warn about unsaved changes</source>
       <translation>Предупреждать о несохраненных изменениях</translation>
     </message>
     <message>
-      <location filename="dialogs/settings_dialog_ui.py" line="314"/>
+      <location filename="dialogs/settings_dialog_ui.py" line="496"/>
       <source>Disable pause with left mouse click</source>
       <translation>Откл. паузу левой кнопкой мыши</translation>
     </message>
     <message>
-      <location filename="dialogs/settings_dialog_ui.py" line="315"/>
+      <location filename="dialogs/settings_dialog_ui.py" line="497"/>
       <source>Disable seek with mouse wheel</source>
       <translation>Откл. поиск колесом мыши</translation>
     </message>
     <message>
-      <location filename="dialogs/settings_dialog_ui.py" line="316"/>
+      <location filename="dialogs/settings_dialog_ui.py" line="498"/>
       <source>Seek sync mode</source>
       <translation>Синхр. поиск</translation>
     </message>
     <message>
-      <location filename="dialogs/settings_dialog_ui.py" line="317"/>
-      <source>Default Grid Parameters</source>
-      <translation>Настройки сетки по умолчанию</translation>
-    </message>
-    <message>
-      <location filename="dialogs/settings_dialog_ui.py" line="318"/>
+      <location filename="dialogs/settings_dialog_ui.py" line="500"/>
       <source>Grid mode</source>
       <translation>Режим сетки</translation>
     </message>
     <message>
-      <location filename="dialogs/settings_dialog_ui.py" line="319"/>
+      <location filename="dialogs/settings_dialog_ui.py" line="501"/>
       <source>Grid size</source>
       <translation>Размер сетки</translation>
     </message>
     <message>
-      <location filename="dialogs/settings_dialog_ui.py" line="320"/>
+      <location filename="dialogs/settings_dialog_ui.py" line="502"/>
       <source>Fit grid cells</source>
       <translation>Подгонять ячейки</translation>
     </message>
     <message>
-      <location filename="dialogs/settings_dialog_ui.py" line="321"/>
+      <location filename="dialogs/settings_dialog_ui.py" line="503"/>
       <source>Shuffle on load</source>
       <translation>Перемешать при загрузке</translation>
     </message>
     <message>
-      <location filename="dialogs/settings_dialog_ui.py" line="322"/>
-      <source>Default Video Parameters</source>
-      <translation>Настройки видео по умолчанию</translation>
-    </message>
-    <message>
-      <location filename="dialogs/settings_dialog_ui.py" line="323"/>
+      <location filename="dialogs/settings_dialog_ui.py" line="510"/>
       <source>Stream quality</source>
       <translation>Качество потока</translation>
     </message>
     <message>
-      <location filename="dialogs/settings_dialog_ui.py" line="324"/>
+      <location filename="dialogs/settings_dialog_ui.py" line="504"/>
       <source>Aspect mode</source>
       <translation>Аспект</translation>
     </message>
     <message>
-      <location filename="dialogs/settings_dialog_ui.py" line="325"/>
+      <location filename="dialogs/settings_dialog_ui.py" line="505"/>
       <source>Repeat mode</source>
       <translation>Повтор</translation>
     </message>
     <message>
-      <location filename="dialogs/settings_dialog_ui.py" line="326"/>
+      <location filename="dialogs/settings_dialog_ui.py" line="506"/>
       <source>Start at random position</source>
       <translation>Начать со случайного места</translation>
     </message>
     <message>
-      <location filename="dialogs/settings_dialog_ui.py" line="327"/>
+      <location filename="dialogs/settings_dialog_ui.py" line="507"/>
       <source>Paused</source>
       <translation>На паузе</translation>
     </message>
     <message>
-      <location filename="dialogs/settings_dialog_ui.py" line="328"/>
+      <location filename="dialogs/settings_dialog_ui.py" line="508"/>
       <source>Muted</source>
       <translation>Без звука</translation>
     </message>
     <message>
-      <location filename="dialogs/settings_dialog_ui.py" line="329"/>
+      <location filename="dialogs/settings_dialog_ui.py" line="458"/>
       <source>Language</source>
       <translation>Язык</translation>
     </message>
     <message>
-      <location filename="dialogs/settings_dialog_ui.py" line="330"/>
+      <location filename="dialogs/settings_dialog_ui.py" line="513"/>
       <source>Video Decoder</source>
       <translation>Декодер видео</translation>
     </message>
     <message>
-      <location filename="dialogs/settings_dialog_ui.py" line="331"/>
+      <location filename="dialogs/settings_dialog_ui.py" line="514"/>
       <source>Videos per process</source>
       <translation>Видео на процесс</translation>
     </message>
     <message>
-      <location filename="dialogs/settings_dialog_ui.py" line="332"/>
+      <location filename="dialogs/settings_dialog_ui.py" line="479"/>
       <source>Timeouts</source>
       <translation>Таймауты</translation>
     </message>
     <message>
-      <location filename="dialogs/settings_dialog_ui.py" line="333"/>
+      <location filename="dialogs/settings_dialog_ui.py" line="480"/>
       <source>Hide overlay after timeout</source>
       <translation>Скрыть информацию после таймаута</translation>
     </message>
     <message>
-      <location filename="dialogs/settings_dialog_ui.py" line="334"/>
-      <source>Video overlay timeout (sec)</source>
-      <translation>Таймаут информации (сек)</translation>
-    </message>
-    <message>
-      <location filename="dialogs/settings_dialog_ui.py" line="335"/>
+      <location filename="dialogs/settings_dialog_ui.py" line="482"/>
       <source>Hide mouse after timeout</source>
       <translation>Скрыть мышь после таймаута</translation>
     </message>
     <message>
-      <location filename="dialogs/settings_dialog_ui.py" line="336"/>
-      <source>Mouse hide timeout (sec)</source>
-      <translation>Таймаут скрытия мыши (сек)</translation>
-    </message>
-    <message>
-      <location filename="dialogs/settings_dialog_ui.py" line="337"/>
+      <location filename="dialogs/settings_dialog_ui.py" line="470"/>
       <source>Logging</source>
       <translation>Журнал</translation>
     </message>
     <message>
-      <location filename="dialogs/settings_dialog_ui.py" line="338"/>
+      <location filename="dialogs/settings_dialog_ui.py" line="523"/>
       <source>Log level</source>
       <translation>Уровень</translation>
     </message>
     <message>
-      <location filename="dialogs/settings_dialog_ui.py" line="339"/>
+      <location filename="dialogs/settings_dialog_ui.py" line="524"/>
       <source>Log level (VLC)</source>
       <translation>Уровень (VLC)</translation>
     </message>
     <message>
-      <location filename="dialogs/settings_dialog_ui.py" line="340"/>
-      <source>Misc</source>
-      <translation>Разное</translation>
-    </message>
-    <message>
-      <location filename="dialogs/settings_dialog_ui.py" line="341"/>
+      <location filename="dialogs/settings_dialog_ui.py" line="517"/>
       <source>Opaque overlay (fix black screen)</source>
       <translation>Непрозрачный оверлей (если чёрный экран)</translation>
     </message>
     <message>
-      <location filename="dialogs/settings_dialog_ui.py" line="342"/>
+      <location filename="dialogs/settings_dialog_ui.py" line="525"/>
       <source>Open log file</source>
       <translation>Открыть журнал</translation>
+    </message>
+    <message>
+      <location filename="dialogs/settings_dialog_ui.py" line="464"/>
+      <source>Video</source>
+      <translation>Видео</translation>
+    </message>
+    <message>
+      <location filename="dialogs/settings_dialog_ui.py" line="468"/>
+      <source>Streaming</source>
+      <translation>Стриминг</translation>
+    </message>
+    <message>
+      <location filename="dialogs/settings_dialog_ui.py" line="472"/>
+      <source>Advanced</source>
+      <translation>Расширенные</translation>
+    </message>
+    <message>
+      <location filename="widgets/resolver_patterns_list.py" line="277"/>
+      <source>Direct</source>
+      <translation>Напрямую</translation>
+    </message>
+    <message>
+      <location filename="dialogs/settings_dialog_ui.py" line="454"/>
+      <source>General</source>
+      <translation>Основные</translation>
+    </message>
+    <message>
+      <location filename="dialogs/settings_dialog_ui.py" line="460"/>
+      <source>Defaults</source>
+      <translation>По умолчанию</translation>
+    </message>
+    <message>
+      <location filename="dialogs/settings_dialog_ui.py" line="466"/>
+      <source>Miscellaneous</source>
+      <translation>Разное</translation>
+    </message>
+    <message>
+      <location filename="dialogs/settings_dialog_ui.py" line="478"/>
+      <source>Show overlay border for active video</source>
+      <translation>Показывать рамку для активного видео</translation>
+    </message>
+    <message>
+      <location filename="dialogs/settings_dialog_ui.py" line="485"/>
+      <source>(sec)</source>
+      <translation>(сек)</translation>
+    </message>
+    <message>
+      <location filename="dialogs/settings_dialog_ui.py" line="484"/>
+      <source>Video initialization timeout</source>
+      <translation>Таймаут инициализации видео</translation>
+    </message>
+    <message>
+      <location filename="dialogs/settings_dialog_ui.py" line="486"/>
+      <source>&lt;p&gt;If you have a handful of free time and a desire to support this project, please &lt;a href=&quot;https://crowdin.com/project/gridplayer&quot;&gt;help with the translation&lt;/a&gt;. No coding skills or special software is required!&lt;/p&gt;</source>
+      <translation>&lt;p&gt;Если у вас есть немного свободного времени и желание поддержать этот проект, пожалуйста &lt;a href=&quot;https://crowdin.com/project/gridplayer&quot;&gt;помогите с переводом&lt;/a&gt;. Навыки программирования или специальное ПО не требуются!&lt;/p&gt;</translation>
+    </message>
+    <message>
+      <location filename="dialogs/settings_dialog_ui.py" line="487"/>
+      <source>Use Streamlink for HLS streams when possible</source>
+      <translation>Использовать Streamlink для HLS потоков, когда это возможно</translation>
+    </message>
+    <message>
+      <location filename="dialogs/settings_dialog_ui.py" line="488"/>
+      <source>Priority URL resolver</source>
+      <translation>Приоритетный плагин для ссылок</translation>
+    </message>
+    <message>
+      <location filename="dialogs/settings_dialog_ui.py" line="489"/>
+      <source>Resolver priority patterns</source>
+      <translation>Шаблоны приоритетов</translation>
+    </message>
+    <message>
+      <location filename="dialogs/settings_dialog_ui.py" line="490"/>
+      <source>Wildcard syntax</source>
+      <translation>Синтаксис шаблона "маска"</translation>
+    </message>
+    <message>
+      <location filename="dialogs/settings_dialog_ui.py" line="491"/>
+      <source>&lt;p&gt;&lt;b&gt;The asterisk&lt;/b&gt; * matches zero or more characters.&lt;br&gt;
+&lt;b&gt;The question mark&lt;/b&gt; ? matches exactly one character.&lt;/p&gt;
+&lt;p&gt;&lt;i&gt;For Host Wildcard only:&lt;/i&gt;&lt;br&gt;
+*.example.com will match both example.com and www.example.com&lt;br&gt;
+**.example.com will match subdomains &lt;b&gt;only&lt;/b&gt;&lt;/p&gt;</source>
+      <translation>&lt;p&gt;&lt;b&gt;Звездочка&lt;/b&gt; * значит 0 или более символов.&lt;br&gt;
+&lt;b&gt;Знак вопроса&lt;/b&gt; ? значит один символ.&lt;/p&gt;
+&lt;p&gt;&lt;i&gt;Только для маски по домену:&lt;/i&gt;&lt;br&gt;
+*.example.com значит example.com и www.example.com&lt;br&gt;
+**.example.com значит &lt;b&gt;только&lt;/b&gt; поддомены&lt;/p&gt;</translation>
+    </message>
+    <message>
+      <location filename="dialogs/settings_dialog_ui.py" line="499"/>
+      <source>Grid</source>
+      <translation>Сетка</translation>
+    </message>
+    <message>
+      <location filename="dialogs/settings_dialog_ui.py" line="509"/>
+      <source>Streaming Videos</source>
+      <translation>Потоковые видео</translation>
+    </message>
+    <message>
+      <location filename="dialogs/settings_dialog_ui.py" line="511"/>
+      <source>Auto reload time</source>
+      <translation>Таймер авто-перезагрузки</translation>
+    </message>
+    <message>
+      <location filename="dialogs/settings_dialog_ui.py" line="512"/>
+      <source>(min)</source>
+      <translation>(мин)</translation>
+    </message>
+    <message>
+      <location filename="dialogs/settings_dialog_ui.py" line="515"/>
+      <source>VLC Options [&lt;a href=&quot;https://wiki.videolan.org/VLC_command-line_help/&quot;&gt;reference&lt;/a&gt;]</source>
+      <translation>Параметры VLC [&lt;a href=&quot;https://wiki.videolan.org/VLC_command-line_help/&quot;&gt;справка&lt;/a&gt;]</translation>
+    </message>
+    <message>
+      <location filename="dialogs/settings_dialog_ui.py" line="516"/>
+      <source>Experimental</source>
+      <translation>Экспериментальные</translation>
+    </message>
+    <message>
+      <location filename="dialogs/settings_dialog_ui.py" line="518"/>
+      <source>Limit log file size</source>
+      <translation>Ограничить размер журнала</translation>
+    </message>
+    <message>
+      <location filename="dialogs/settings_dialog_ui.py" line="519"/>
+      <source>Log file size</source>
+      <translation>Размер файла журнала</translation>
+    </message>
+    <message>
+      <location filename="dialogs/settings_dialog_ui.py" line="520"/>
+      <source>MB</source>
+      <translation>MБ</translation>
+    </message>
+    <message>
+      <location filename="dialogs/settings_dialog_ui.py" line="521"/>
+      <source>Log files to keep</source>
+      <translation>Лимит кол-ва файлов</translation>
+    </message>
+    <message>
+      <location filename="dialogs/settings_dialog_ui.py" line="522"/>
+      <source>Logging levels</source>
+      <translation>Уровни журнала</translation>
+    </message>
+    <message>
+      <location filename="widgets/resolver_patterns_list.py" line="186"/>
+      <source>Pattern</source>
+      <translation>Шаблон</translation>
+    </message>
+    <message>
+      <location filename="widgets/resolver_patterns_list.py" line="186"/>
+      <source>Pattern Type</source>
+      <translation>Тип шаблона</translation>
+    </message>
+    <message>
+      <location filename="widgets/resolver_patterns_list.py" line="186"/>
+      <source>Resolver</source>
+      <translation>Плагин</translation>
+    </message>
+  </context>
+  <context>
+    <name>SettingsDialog - Resolver Pattern Type</name>
+    <message>
+      <location filename="widgets/resolver_patterns_list.py" line="268"/>
+      <source>Host Wildcard</source>
+      <translation>Маска по домену</translation>
+    </message>
+    <message>
+      <location filename="widgets/resolver_patterns_list.py" line="268"/>
+      <source>URL Wildcard</source>
+      <translation>Маска по URL</translation>
+    </message>
+    <message>
+      <location filename="widgets/resolver_patterns_list.py" line="268"/>
+      <source>URL Regex</source>
+      <translation>Рег. выраж. по URL</translation>
+    </message>
+    <message>
+      <location filename="widgets/resolver_patterns_list.py" line="268"/>
+      <source>Disabled</source>
+      <translation>Отключен</translation>
     </message>
   </context>
   <context>
     <name>Video Error</name>
     <message>
-      <location filename="vlc_player/player_base.py" line="297"/>
+      <location filename="vlc_player/player_base.py" line="313"/>
       <source>Buffering timeout</source>
       <translation>Таймаут буферизации</translation>
     </message>
     <message>
-      <location filename="vlc_player/player_base.py" line="141"/>
+      <location filename="vlc_player/player_base.py" line="152"/>
       <source>Video stopped before initialization</source>
       <translation>Видео остановлено до инициализации</translation>
     </message>
     <message>
-      <location filename="vlc_player/player_base.py" line="112"/>
+      <location filename="vlc_player/player_base.py" line="123"/>
       <source>Live stream ended</source>
       <translation>Поток завершен</translation>
     </message>
     <message>
-      <location filename="vlc_player/player_base.py" line="131"/>
+      <location filename="vlc_player/player_base.py" line="142"/>
       <source>Video stopped unexpectedly</source>
       <translation>Видео неожиданно прервано</translation>
     </message>
     <message>
-      <location filename="vlc_player/player_base.py" line="145"/>
+      <location filename="vlc_player/player_base.py" line="156"/>
       <source>Player error</source>
       <translation>Ошибка плеера</translation>
     </message>
     <message>
-      <location filename="vlc_player/player_base.py" line="157"/>
+      <location filename="vlc_player/player_base.py" line="168"/>
       <source>Media parse timeout</source>
       <translation>Таймаут анализа медиа</translation>
     </message>
     <message>
-      <location filename="vlc_player/player_base.py" line="160"/>
+      <location filename="vlc_player/player_base.py" line="171"/>
       <source>Media parse failed</source>
       <translation>Ошибка анализа медиа</translation>
     </message>
     <message>
-      <location filename="vlc_player/player_base.py" line="277"/>
+      <location filename="vlc_player/player_base.py" line="290"/>
       <source>Failed to load media</source>
       <translation>Ошибка загрузки</translation>
     </message>
     <message>
-      <location filename="vlc_player/player_base.py" line="319"/>
+      <location filename="vlc_player/player_base.py" line="333"/>
       <source>Timed out to extract media track</source>
       <translation>Таймаут извлечения медиа треков</translation>
     </message>
     <message>
-      <location filename="vlc_player/player_base.py" line="359"/>
-      <source>Timed out to take snapshot</source>
-      <translation>Таймаут создания снимка</translation>
-    </message>
-    <message>
-      <location filename="vlc_player/player_base.py" line="364"/>
-      <source>Failed to take snapshot</source>
-      <translation>Не удалось создать снимок</translation>
-    </message>
-    <message>
-      <location filename="vlc_player/player_base.py" line="437"/>
+      <location filename="vlc_player/player_base.py" line="452"/>
       <source>Timed out setting initial state</source>
       <translation>Таймаут инициализации</translation>
     </message>
     <message>
-      <location filename="vlc_player/player_base.py" line="440"/>
+      <location filename="vlc_player/player_base.py" line="455"/>
       <source>Video failed to initialize paused</source>
       <translation>Ну удалось инициализировать в режиме паузы</translation>
     </message>
     <message>
-      <location filename="utils/url_resolve/url_resolve.py" line="33"/>
+      <location filename="utils/url_resolve/url_resolve.py" line="44"/>
       <source>Failed to resolve URL</source>
       <translation>Не удалось открыть ссылку</translation>
+    </message>
+    <message>
+      <location filename="utils/url_resolve/url_resolve.py" line="38"/>
+      <source>Stream is offline</source>
+      <translation>Трансляция оффлайн</translation>
     </message>
   </context>
   <context>
     <name>Video Status</name>
     <message>
-      <location filename="vlc_player/player_base.py" line="87"/>
+      <location filename="vlc_player/player_base.py" line="98"/>
       <source>Buffering</source>
       <translation>Буферизация</translation>
     </message>
     <message>
-      <location filename="vlc_player/player_base.py" line="288"/>
+      <location filename="vlc_player/player_base.py" line="302"/>
       <source>Parsing media</source>
       <translation>Анализ медиа</translation>
     </message>
     <message>
-      <location filename="vlc_player/player_base.py" line="305"/>
+      <location filename="vlc_player/player_base.py" line="320"/>
       <source>Preparing video output</source>
       <translation>Подготовка видео</translation>
     </message>
     <message>
-      <location filename="widgets/video_block.py" line="283"/>
+      <location filename="widgets/video_block.py" line="242"/>
       <source>Initializing</source>
       <translation>Подготовка</translation>
     </message>
     <message>
-      <location filename="utils/url_resolve/url_resolve.py" line="44"/>
+      <location filename="utils/url_resolve/url_resolve.py" line="99"/>
       <source>Resolving URL via {RESOLVER_NAME}</source>
       <translation>Обработка ссылки - {RESOLVER_NAME}</translation>
+    </message>
+    <message>
+      <location filename="utils/url_resolve/url_resolve.py" line="47"/>
+      <source>Picking URL resolvers</source>
+      <translation>Подбор плагина</translation>
+    </message>
+    <message>
+      <location filename="utils/url_resolve/url_resolve.py" line="97"/>
+      <source>Playing URL directly</source>
+      <translation>Запуск URL напрямую</translation>
     </message>
   </context>
   <context>

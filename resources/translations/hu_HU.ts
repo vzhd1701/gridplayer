@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!DOCTYPE TS>
-<TS version="2.0" language="hu" sourcelanguage="en">
+<TS version="2.1" language="hu" sourcelanguage="en">
   <context>
     <name>AboutDialog</name>
     <message>
@@ -421,6 +421,24 @@
       <source>Snapshots</source>
       <translation type="unfinished"/>
     </message>
+    <message>
+      <location filename="player/managers/actions.py" line="14"/>
+      <source>Auto Reload</source>
+      <translation type="unfinished"/>
+    </message>
+  </context>
+  <context>
+    <name>Auto Reload Timer</name>
+    <message>
+      <location filename="widgets/video_block.py" line="422"/>
+      <source>Disabled</source>
+      <translation type="unfinished"/>
+    </message>
+    <message>
+      <location filename="widgets/video_block.py" line="424"/>
+      <source>minute(s)</source>
+      <translation type="unfinished"/>
+    </message>
   </context>
   <context>
     <name>Dialog</name>
@@ -455,16 +473,22 @@
       <comment>File formats</comment>
       <translation type="unfinished"/>
     </message>
+    <message>
+      <location filename="player/managers/add_videos.py" line="22"/>
+      <source>Add Files</source>
+      <comment>Header</comment>
+      <translation type="unfinished"/>
+    </message>
   </context>
   <context>
     <name>Dialog - Add URLs</name>
     <message>
-      <location filename="dialogs/add_urls.py" line="108"/>
+      <location filename="dialogs/add_urls.py" line="133"/>
       <source>Supported URL schemas: {SCHEMAS}</source>
       <translation type="unfinished"/>
     </message>
     <message>
-      <location filename="dialogs/add_urls.py" line="108"/>
+      <location filename="dialogs/add_urls.py" line="133"/>
       <source>Supported sites: {SERVICES}</source>
       <translation type="unfinished"/>
     </message>
@@ -474,14 +498,34 @@
       <comment>Header</comment>
       <translation type="unfinished"/>
     </message>
+    <message>
+      <location filename="dialogs/add_urls.py" line="27"/>
+      <source>Paste</source>
+      <translation type="unfinished"/>
+    </message>
   </context>
   <context>
     <name>Dialog - Enter timecode</name>
     <message>
-      <location filename="widgets/video_block.py" line="430"/>
+      <location filename="widgets/video_block.py" line="389"/>
       <source>Enter timecode</source>
       <comment>Header</comment>
       <translation type="unfinished"/>
+    </message>
+  </context>
+  <context>
+    <name>Dialog - Open Playlist</name>
+    <message>
+      <location filename="player/managers/playlist.py" line="43"/>
+      <source>Open Playlist</source>
+      <comment>Header</comment>
+      <translation>Lejátszási lista megnyitása</translation>
+    </message>
+    <message>
+      <location filename="player/managers/playlist.py" line="46"/>
+      <source>GridPlayer Playlists</source>
+      <comment>File format</comment>
+      <translation>GridPlayer Lejátszási Listák</translation>
     </message>
   </context>
   <context>
@@ -496,15 +540,6 @@
       <location filename="player/managers/playlist.py" line="152"/>
       <source>Do you want to save the playlist?</source>
       <translation>Menteni szeretnéd a lejátszási listát?</translation>
-    </message>
-  </context>
-  <context>
-    <name>Dialog - Playlist open</name>
-    <message>
-      <location filename="player/managers/playlist.py" line="46"/>
-      <source>GridPlayer Playlists</source>
-      <comment>File format</comment>
-      <translation>GridPlayer Lejátszási Listák</translation>
     </message>
   </context>
   <context>
@@ -529,7 +564,7 @@
       <translation>Visszaállítás</translation>
     </message>
     <message>
-      <location filename="widgets/video_block.py" line="902"/>
+      <location filename="widgets/video_block.py" line="912"/>
       <source>Rename video</source>
       <comment>Header</comment>
       <translation>Videó átnevezése</translation>
@@ -545,12 +580,21 @@
     </message>
   </context>
   <context>
-    <name>Dialog - Save playlist</name>
+    <name>Dialog - Save Playlist</name>
     <message>
       <location filename="player/managers/playlist.py" line="72"/>
-      <source>Where to save playlist</source>
+      <source>Save Playlist</source>
       <comment>Header</comment>
-      <translation>Lejátszási lista mentési helye</translation>
+      <translation>Lejátszási lista mentése</translation>
+    </message>
+  </context>
+  <context>
+    <name>Dialog - Set auto reload timer</name>
+    <message>
+      <location filename="widgets/video_block.py" line="399"/>
+      <source>Set auto reload timer</source>
+      <comment>Header</comment>
+      <translation type="unfinished"/>
     </message>
   </context>
   <context>
@@ -579,7 +623,7 @@
   <context>
     <name>Error</name>
     <message>
-      <location filename="dialogs/settings.py" line="121"/>
+      <location filename="dialogs/settings.py" line="155"/>
       <source>Log file does not exist!</source>
       <translation>Naplófájl nem létezik!</translation>
     </message>
@@ -611,38 +655,38 @@
     <message>
       <location filename="player/managers/playlist.py" line="124"/>
       <source>Empty or invalid playlist!</source>
-      <translation type="unfinished"/>
+      <translation>Üres vagy hibás lejátszási lista!</translation>
     </message>
   </context>
   <context>
     <name>ErrorLevel</name>
     <message>
-      <location filename="dialogs/settings.py" line="135"/>
+      <location filename="dialogs/settings.py" line="169"/>
       <source>None</source>
       <translation>Semmi</translation>
     </message>
     <message>
-      <location filename="dialogs/settings.py" line="135"/>
+      <location filename="dialogs/settings.py" line="169"/>
       <source>Error</source>
       <translation>Hiba</translation>
     </message>
     <message>
-      <location filename="dialogs/settings.py" line="135"/>
+      <location filename="dialogs/settings.py" line="169"/>
       <source>Warning</source>
       <translation>Figyelmeztetés</translation>
     </message>
     <message>
-      <location filename="dialogs/settings.py" line="135"/>
+      <location filename="dialogs/settings.py" line="169"/>
       <source>Info</source>
       <translation>Információ</translation>
     </message>
     <message>
-      <location filename="dialogs/settings.py" line="135"/>
+      <location filename="dialogs/settings.py" line="169"/>
       <source>Debug</source>
       <translation>Debug</translation>
     </message>
     <message>
-      <location filename="dialogs/settings.py" line="135"/>
+      <location filename="dialogs/settings.py" line="169"/>
       <source>Critical</source>
       <translation>Kritikus</translation>
     </message>
@@ -675,7 +719,7 @@
     <message>
       <location filename="player/managers/grid.py" line="131"/>
       <source>Auto</source>
-      <translation type="unfinished"/>
+      <translation>Automatikus</translation>
     </message>
   </context>
   <context>
@@ -687,394 +731,548 @@
     </message>
   </context>
   <context>
-    <name>QCustomSpinboxInput</name>
-    <message>
-      <location filename="dialogs/input_dialog.py" line="14"/>
-      <source>Auto</source>
-      <translation>Automatikus</translation>
-    </message>
-  </context>
-  <context>
     <name>SettingsDialog</name>
     <message>
-      <location filename="dialogs/settings.py" line="110"/>
-      <source>Auto</source>
-      <translation>Automatikus</translation>
-    </message>
-    <message>
-      <location filename="dialogs/settings.py" line="140"/>
+      <location filename="dialogs/settings.py" line="174"/>
       <source>Fit</source>
       <translation>Illesztés</translation>
     </message>
     <message>
-      <location filename="dialogs/settings.py" line="140"/>
+      <location filename="dialogs/settings.py" line="174"/>
       <source>Stretch</source>
       <translation>Nyújtás</translation>
     </message>
     <message>
-      <location filename="dialogs/settings.py" line="140"/>
+      <location filename="dialogs/settings.py" line="174"/>
       <source>None</source>
       <translation>Semmi</translation>
     </message>
     <message>
-      <location filename="dialogs/settings.py" line="145"/>
+      <location filename="dialogs/settings.py" line="179"/>
       <source>Single File</source>
       <translation>Egyetlen fájl</translation>
     </message>
     <message>
-      <location filename="dialogs/settings.py" line="145"/>
+      <location filename="dialogs/settings.py" line="179"/>
       <source>Directory</source>
       <translation>Mappa</translation>
     </message>
     <message>
-      <location filename="dialogs/settings.py" line="145"/>
+      <location filename="dialogs/settings.py" line="179"/>
       <source>Directory (Shuffle)</source>
       <translation>Mappa (véletlenszerűen)</translation>
     </message>
     <message>
-      <location filename="dialogs/settings.py" line="150"/>
+      <location filename="dialogs/settings.py" line="184"/>
       <source>Rows First</source>
       <translation>Oszlopok először</translation>
     </message>
     <message>
-      <location filename="dialogs/settings.py" line="150"/>
+      <location filename="dialogs/settings.py" line="184"/>
       <source>Columns First</source>
       <translation>Sorok először</translation>
     </message>
     <message>
-      <location filename="dialogs/settings.py" line="158"/>
+      <location filename="dialogs/settings.py" line="192"/>
       <source>Hardware SP</source>
       <translation>Hardware SP</translation>
     </message>
     <message>
-      <location filename="dialogs/settings.py" line="158"/>
+      <location filename="dialogs/settings.py" line="192"/>
       <source>Software</source>
       <translation>Szoftver</translation>
     </message>
     <message>
-      <location filename="dialogs/settings.py" line="158"/>
+      <location filename="dialogs/settings.py" line="192"/>
       <source>Dummy</source>
       <translation>Dummy</translation>
     </message>
     <message>
-      <location filename="dialogs/settings.py" line="158"/>
+      <location filename="dialogs/settings.py" line="192"/>
       <source>Hardware</source>
       <translation>Hardver</translation>
     </message>
     <message>
-      <location filename="dialogs/settings.py" line="169"/>
+      <location filename="dialogs/settings.py" line="204"/>
       <source>Best</source>
       <translation type="unfinished"/>
     </message>
     <message>
-      <location filename="dialogs/settings.py" line="169"/>
+      <location filename="dialogs/settings.py" line="204"/>
       <source>Worst</source>
       <translation type="unfinished"/>
     </message>
     <message>
-      <location filename="dialogs/settings.py" line="179"/>
+      <location filename="dialogs/settings.py" line="214"/>
       <source>Disabled</source>
       <translation type="unfinished"/>
     </message>
     <message>
-      <location filename="dialogs/settings.py" line="179"/>
+      <location filename="dialogs/settings.py" line="214"/>
       <source>Percent</source>
       <translation type="unfinished"/>
     </message>
     <message>
-      <location filename="dialogs/settings.py" line="179"/>
+      <location filename="dialogs/settings.py" line="214"/>
       <source>Timecode</source>
       <translation type="unfinished"/>
     </message>
     <message>
-      <location filename="dialogs/settings_dialog_ui.py" line="303"/>
+      <location filename="dialogs/settings_dialog_ui.py" line="450"/>
       <source>Settings</source>
       <translation>Beállítások</translation>
     </message>
     <message>
-      <location filename="dialogs/settings_dialog_ui.py" line="304"/>
+      <location filename="dialogs/settings_dialog_ui.py" line="456"/>
       <source>Player</source>
       <translation>Lejátszó</translation>
     </message>
     <message>
-      <location filename="dialogs/settings_dialog_ui.py" line="305"/>
+      <location filename="dialogs/settings_dialog_ui.py" line="474"/>
       <source>Pause background videos on single mode</source>
       <translation>Háttérben menő videók szüneteltetése "Egyetlen fájl" módban</translation>
     </message>
     <message>
-      <location filename="dialogs/settings_dialog_ui.py" line="306"/>
+      <location filename="dialogs/settings_dialog_ui.py" line="475"/>
       <source>Pause videos when minimized</source>
       <translation>Videók megállítása, amikor kicsinyítve vannak</translation>
     </message>
     <message>
-      <location filename="dialogs/settings_dialog_ui.py" line="307"/>
+      <location filename="dialogs/settings_dialog_ui.py" line="476"/>
       <source>Disable screensaver while playing</source>
       <translation>Képernyővédő kikapcsolása lejátszás közben</translation>
     </message>
     <message>
-      <location filename="dialogs/settings_dialog_ui.py" line="308"/>
+      <location filename="dialogs/settings_dialog_ui.py" line="477"/>
       <source>Allow only one instance</source>
       <translation>Egyetlen példány engedélyezése</translation>
     </message>
     <message>
-      <location filename="dialogs/settings_dialog_ui.py" line="309"/>
+      <location filename="dialogs/settings_dialog_ui.py" line="462"/>
       <source>Playlist</source>
       <translation>Lejátszási lista</translation>
     </message>
     <message>
-      <location filename="dialogs/settings_dialog_ui.py" line="310"/>
+      <location filename="dialogs/settings_dialog_ui.py" line="492"/>
       <source>Save window position and size</source>
       <translation>Ablak pozíciójának és méretének mentése</translation>
     </message>
     <message>
-      <location filename="dialogs/settings_dialog_ui.py" line="311"/>
+      <location filename="dialogs/settings_dialog_ui.py" line="493"/>
       <source>Save videos playback position</source>
       <translation>Mentse el hogy hol tartott a videó</translation>
     </message>
     <message>
-      <location filename="dialogs/settings_dialog_ui.py" line="312"/>
+      <location filename="dialogs/settings_dialog_ui.py" line="494"/>
       <source>Save videos playing / paused status</source>
       <translation>Videók lejátszás / szünet státuszának mentése</translation>
     </message>
     <message>
-      <location filename="dialogs/settings_dialog_ui.py" line="313"/>
+      <location filename="dialogs/settings_dialog_ui.py" line="495"/>
       <source>Warn about unsaved changes</source>
       <translation>Figyelmeztet a nem mentett változásokról</translation>
     </message>
     <message>
-      <location filename="dialogs/settings_dialog_ui.py" line="314"/>
+      <location filename="dialogs/settings_dialog_ui.py" line="496"/>
       <source>Disable pause with left mouse click</source>
       <translation type="unfinished"/>
     </message>
     <message>
-      <location filename="dialogs/settings_dialog_ui.py" line="315"/>
+      <location filename="dialogs/settings_dialog_ui.py" line="497"/>
       <source>Disable seek with mouse wheel</source>
       <translation type="unfinished"/>
     </message>
     <message>
-      <location filename="dialogs/settings_dialog_ui.py" line="316"/>
+      <location filename="dialogs/settings_dialog_ui.py" line="498"/>
       <source>Seek sync mode</source>
       <translation type="unfinished"/>
     </message>
     <message>
-      <location filename="dialogs/settings_dialog_ui.py" line="317"/>
-      <source>Default Grid Parameters</source>
-      <translation>Alapértelmezett rács beállítások</translation>
-    </message>
-    <message>
-      <location filename="dialogs/settings_dialog_ui.py" line="318"/>
+      <location filename="dialogs/settings_dialog_ui.py" line="500"/>
       <source>Grid mode</source>
       <translation>Rács mód</translation>
     </message>
     <message>
-      <location filename="dialogs/settings_dialog_ui.py" line="319"/>
+      <location filename="dialogs/settings_dialog_ui.py" line="501"/>
       <source>Grid size</source>
       <translation>Rácsméret</translation>
     </message>
     <message>
-      <location filename="dialogs/settings_dialog_ui.py" line="320"/>
+      <location filename="dialogs/settings_dialog_ui.py" line="502"/>
       <source>Fit grid cells</source>
       <translation>Rácsok automatikus méretezése</translation>
     </message>
     <message>
-      <location filename="dialogs/settings_dialog_ui.py" line="321"/>
+      <location filename="dialogs/settings_dialog_ui.py" line="503"/>
       <source>Shuffle on load</source>
       <translation type="unfinished"/>
     </message>
     <message>
-      <location filename="dialogs/settings_dialog_ui.py" line="322"/>
-      <source>Default Video Parameters</source>
-      <translation>Alapértelmezett videó bállítások</translation>
-    </message>
-    <message>
-      <location filename="dialogs/settings_dialog_ui.py" line="323"/>
+      <location filename="dialogs/settings_dialog_ui.py" line="510"/>
       <source>Stream quality</source>
       <translation type="unfinished"/>
     </message>
     <message>
-      <location filename="dialogs/settings_dialog_ui.py" line="324"/>
+      <location filename="dialogs/settings_dialog_ui.py" line="504"/>
       <source>Aspect mode</source>
       <translation>Illesztési mód</translation>
     </message>
     <message>
-      <location filename="dialogs/settings_dialog_ui.py" line="325"/>
+      <location filename="dialogs/settings_dialog_ui.py" line="505"/>
       <source>Repeat mode</source>
       <translation>Ismétlés típusa</translation>
     </message>
     <message>
-      <location filename="dialogs/settings_dialog_ui.py" line="326"/>
+      <location filename="dialogs/settings_dialog_ui.py" line="506"/>
       <source>Start at random position</source>
       <translation>Véletlenszerű helyről induljon a videó lejátszás</translation>
     </message>
     <message>
-      <location filename="dialogs/settings_dialog_ui.py" line="327"/>
+      <location filename="dialogs/settings_dialog_ui.py" line="507"/>
       <source>Paused</source>
       <translation>Megállítva</translation>
     </message>
     <message>
-      <location filename="dialogs/settings_dialog_ui.py" line="328"/>
+      <location filename="dialogs/settings_dialog_ui.py" line="508"/>
       <source>Muted</source>
       <translation>Némítva</translation>
     </message>
     <message>
-      <location filename="dialogs/settings_dialog_ui.py" line="329"/>
+      <location filename="dialogs/settings_dialog_ui.py" line="458"/>
       <source>Language</source>
       <translation>Nyelv</translation>
     </message>
     <message>
-      <location filename="dialogs/settings_dialog_ui.py" line="330"/>
+      <location filename="dialogs/settings_dialog_ui.py" line="513"/>
       <source>Video Decoder</source>
       <translation>Videó Decoder</translation>
     </message>
     <message>
-      <location filename="dialogs/settings_dialog_ui.py" line="331"/>
+      <location filename="dialogs/settings_dialog_ui.py" line="514"/>
       <source>Videos per process</source>
       <translation>Videó / folyamat</translation>
     </message>
     <message>
-      <location filename="dialogs/settings_dialog_ui.py" line="332"/>
+      <location filename="dialogs/settings_dialog_ui.py" line="479"/>
       <source>Timeouts</source>
       <translation>Időtúllépés</translation>
     </message>
     <message>
-      <location filename="dialogs/settings_dialog_ui.py" line="333"/>
+      <location filename="dialogs/settings_dialog_ui.py" line="480"/>
       <source>Hide overlay after timeout</source>
       <translation>Funkciógombok elrejtése adott idő után</translation>
     </message>
     <message>
-      <location filename="dialogs/settings_dialog_ui.py" line="334"/>
-      <source>Video overlay timeout (sec)</source>
-      <translation>Funkciógombok elrejtésének ideje (mp)</translation>
-    </message>
-    <message>
-      <location filename="dialogs/settings_dialog_ui.py" line="335"/>
+      <location filename="dialogs/settings_dialog_ui.py" line="482"/>
       <source>Hide mouse after timeout</source>
       <translation>Egér elrejtése adott idő után</translation>
     </message>
     <message>
-      <location filename="dialogs/settings_dialog_ui.py" line="336"/>
-      <source>Mouse hide timeout (sec)</source>
-      <translation>Egér elrejtésének ideje (mp)</translation>
-    </message>
-    <message>
-      <location filename="dialogs/settings_dialog_ui.py" line="337"/>
+      <location filename="dialogs/settings_dialog_ui.py" line="470"/>
       <source>Logging</source>
       <translation>Naplózás</translation>
     </message>
     <message>
-      <location filename="dialogs/settings_dialog_ui.py" line="338"/>
+      <location filename="dialogs/settings_dialog_ui.py" line="523"/>
       <source>Log level</source>
       <translation>Naplózás szintje</translation>
     </message>
     <message>
-      <location filename="dialogs/settings_dialog_ui.py" line="339"/>
+      <location filename="dialogs/settings_dialog_ui.py" line="524"/>
       <source>Log level (VLC)</source>
       <translation>Naplózás szintje (VLC)</translation>
     </message>
     <message>
-      <location filename="dialogs/settings_dialog_ui.py" line="340"/>
-      <source>Misc</source>
-      <translation>Egyebek</translation>
-    </message>
-    <message>
-      <location filename="dialogs/settings_dialog_ui.py" line="341"/>
+      <location filename="dialogs/settings_dialog_ui.py" line="517"/>
       <source>Opaque overlay (fix black screen)</source>
       <translation>Átlátszó háttér (fekete képernyő javítása)</translation>
     </message>
     <message>
-      <location filename="dialogs/settings_dialog_ui.py" line="342"/>
+      <location filename="dialogs/settings_dialog_ui.py" line="525"/>
       <source>Open log file</source>
       <translation>Naplófájl megnyitása</translation>
+    </message>
+    <message>
+      <location filename="dialogs/settings_dialog_ui.py" line="464"/>
+      <source>Video</source>
+      <translation type="unfinished"/>
+    </message>
+    <message>
+      <location filename="dialogs/settings_dialog_ui.py" line="468"/>
+      <source>Streaming</source>
+      <translation type="unfinished"/>
+    </message>
+    <message>
+      <location filename="dialogs/settings_dialog_ui.py" line="472"/>
+      <source>Advanced</source>
+      <translation type="unfinished"/>
+    </message>
+    <message>
+      <location filename="widgets/resolver_patterns_list.py" line="277"/>
+      <source>Direct</source>
+      <translation type="unfinished"/>
+    </message>
+    <message>
+      <location filename="dialogs/settings_dialog_ui.py" line="454"/>
+      <source>General</source>
+      <translation type="unfinished"/>
+    </message>
+    <message>
+      <location filename="dialogs/settings_dialog_ui.py" line="460"/>
+      <source>Defaults</source>
+      <translation type="unfinished"/>
+    </message>
+    <message>
+      <location filename="dialogs/settings_dialog_ui.py" line="466"/>
+      <source>Miscellaneous</source>
+      <translation type="unfinished"/>
+    </message>
+    <message>
+      <location filename="dialogs/settings_dialog_ui.py" line="478"/>
+      <source>Show overlay border for active video</source>
+      <translation type="unfinished"/>
+    </message>
+    <message>
+      <location filename="dialogs/settings_dialog_ui.py" line="485"/>
+      <source>(sec)</source>
+      <translation type="unfinished"/>
+    </message>
+    <message>
+      <location filename="dialogs/settings_dialog_ui.py" line="484"/>
+      <source>Video initialization timeout</source>
+      <translation type="unfinished"/>
+    </message>
+    <message>
+      <location filename="dialogs/settings_dialog_ui.py" line="486"/>
+      <source>&lt;p&gt;If you have a handful of free time and a desire to support this project, please &lt;a href=&quot;https://crowdin.com/project/gridplayer&quot;&gt;help with the translation&lt;/a&gt;. No coding skills or special software is required!&lt;/p&gt;</source>
+      <translation type="unfinished"/>
+    </message>
+    <message>
+      <location filename="dialogs/settings_dialog_ui.py" line="487"/>
+      <source>Use Streamlink for HLS streams when possible</source>
+      <translation type="unfinished"/>
+    </message>
+    <message>
+      <location filename="dialogs/settings_dialog_ui.py" line="488"/>
+      <source>Priority URL resolver</source>
+      <translation type="unfinished"/>
+    </message>
+    <message>
+      <location filename="dialogs/settings_dialog_ui.py" line="489"/>
+      <source>Resolver priority patterns</source>
+      <translation type="unfinished"/>
+    </message>
+    <message>
+      <location filename="dialogs/settings_dialog_ui.py" line="490"/>
+      <source>Wildcard syntax</source>
+      <translation type="unfinished"/>
+    </message>
+    <message>
+      <location filename="dialogs/settings_dialog_ui.py" line="491"/>
+      <source>&lt;p&gt;&lt;b&gt;The asterisk&lt;/b&gt; * matches zero or more characters.&lt;br&gt;
+&lt;b&gt;The question mark&lt;/b&gt; ? matches exactly one character.&lt;/p&gt;
+&lt;p&gt;&lt;i&gt;For Host Wildcard only:&lt;/i&gt;&lt;br&gt;
+*.example.com will match both example.com and www.example.com&lt;br&gt;
+**.example.com will match subdomains &lt;b&gt;only&lt;/b&gt;&lt;/p&gt;</source>
+      <translation type="unfinished"/>
+    </message>
+    <message>
+      <location filename="dialogs/settings_dialog_ui.py" line="499"/>
+      <source>Grid</source>
+      <translation>Rács</translation>
+    </message>
+    <message>
+      <location filename="dialogs/settings_dialog_ui.py" line="509"/>
+      <source>Streaming Videos</source>
+      <translation type="unfinished"/>
+    </message>
+    <message>
+      <location filename="dialogs/settings_dialog_ui.py" line="511"/>
+      <source>Auto reload time</source>
+      <translation type="unfinished"/>
+    </message>
+    <message>
+      <location filename="dialogs/settings_dialog_ui.py" line="512"/>
+      <source>(min)</source>
+      <translation type="unfinished"/>
+    </message>
+    <message>
+      <location filename="dialogs/settings_dialog_ui.py" line="515"/>
+      <source>VLC Options [&lt;a href=&quot;https://wiki.videolan.org/VLC_command-line_help/&quot;&gt;reference&lt;/a&gt;]</source>
+      <translation type="unfinished"/>
+    </message>
+    <message>
+      <location filename="dialogs/settings_dialog_ui.py" line="516"/>
+      <source>Experimental</source>
+      <translation type="unfinished"/>
+    </message>
+    <message>
+      <location filename="dialogs/settings_dialog_ui.py" line="518"/>
+      <source>Limit log file size</source>
+      <translation type="unfinished"/>
+    </message>
+    <message>
+      <location filename="dialogs/settings_dialog_ui.py" line="519"/>
+      <source>Log file size</source>
+      <translation type="unfinished"/>
+    </message>
+    <message>
+      <location filename="dialogs/settings_dialog_ui.py" line="520"/>
+      <source>MB</source>
+      <translation type="unfinished"/>
+    </message>
+    <message>
+      <location filename="dialogs/settings_dialog_ui.py" line="521"/>
+      <source>Log files to keep</source>
+      <translation type="unfinished"/>
+    </message>
+    <message>
+      <location filename="dialogs/settings_dialog_ui.py" line="522"/>
+      <source>Logging levels</source>
+      <translation type="unfinished"/>
+    </message>
+    <message>
+      <location filename="widgets/resolver_patterns_list.py" line="186"/>
+      <source>Pattern</source>
+      <translation type="unfinished"/>
+    </message>
+    <message>
+      <location filename="widgets/resolver_patterns_list.py" line="186"/>
+      <source>Pattern Type</source>
+      <translation type="unfinished"/>
+    </message>
+    <message>
+      <location filename="widgets/resolver_patterns_list.py" line="186"/>
+      <source>Resolver</source>
+      <translation type="unfinished"/>
+    </message>
+  </context>
+  <context>
+    <name>SettingsDialog - Resolver Pattern Type</name>
+    <message>
+      <location filename="widgets/resolver_patterns_list.py" line="268"/>
+      <source>Host Wildcard</source>
+      <translation type="unfinished"/>
+    </message>
+    <message>
+      <location filename="widgets/resolver_patterns_list.py" line="268"/>
+      <source>URL Wildcard</source>
+      <translation type="unfinished"/>
+    </message>
+    <message>
+      <location filename="widgets/resolver_patterns_list.py" line="268"/>
+      <source>URL Regex</source>
+      <translation type="unfinished"/>
+    </message>
+    <message>
+      <location filename="widgets/resolver_patterns_list.py" line="268"/>
+      <source>Disabled</source>
+      <translation type="unfinished"/>
     </message>
   </context>
   <context>
     <name>Video Error</name>
     <message>
-      <location filename="vlc_player/player_base.py" line="297"/>
+      <location filename="vlc_player/player_base.py" line="313"/>
       <source>Buffering timeout</source>
       <translation type="unfinished"/>
     </message>
     <message>
-      <location filename="vlc_player/player_base.py" line="141"/>
+      <location filename="vlc_player/player_base.py" line="152"/>
       <source>Video stopped before initialization</source>
       <translation type="unfinished"/>
     </message>
     <message>
-      <location filename="vlc_player/player_base.py" line="112"/>
+      <location filename="vlc_player/player_base.py" line="123"/>
       <source>Live stream ended</source>
       <translation type="unfinished"/>
     </message>
     <message>
-      <location filename="vlc_player/player_base.py" line="131"/>
+      <location filename="vlc_player/player_base.py" line="142"/>
       <source>Video stopped unexpectedly</source>
       <translation type="unfinished"/>
     </message>
     <message>
-      <location filename="vlc_player/player_base.py" line="145"/>
+      <location filename="vlc_player/player_base.py" line="156"/>
       <source>Player error</source>
       <translation type="unfinished"/>
     </message>
     <message>
-      <location filename="vlc_player/player_base.py" line="157"/>
+      <location filename="vlc_player/player_base.py" line="168"/>
       <source>Media parse timeout</source>
       <translation type="unfinished"/>
     </message>
     <message>
-      <location filename="vlc_player/player_base.py" line="160"/>
+      <location filename="vlc_player/player_base.py" line="171"/>
       <source>Media parse failed</source>
       <translation type="unfinished"/>
     </message>
     <message>
-      <location filename="vlc_player/player_base.py" line="277"/>
+      <location filename="vlc_player/player_base.py" line="290"/>
       <source>Failed to load media</source>
       <translation type="unfinished"/>
     </message>
     <message>
-      <location filename="vlc_player/player_base.py" line="319"/>
+      <location filename="vlc_player/player_base.py" line="333"/>
       <source>Timed out to extract media track</source>
       <translation type="unfinished"/>
     </message>
     <message>
-      <location filename="vlc_player/player_base.py" line="359"/>
-      <source>Timed out to take snapshot</source>
-      <translation type="unfinished"/>
-    </message>
-    <message>
-      <location filename="vlc_player/player_base.py" line="364"/>
-      <source>Failed to take snapshot</source>
-      <translation type="unfinished"/>
-    </message>
-    <message>
-      <location filename="vlc_player/player_base.py" line="437"/>
+      <location filename="vlc_player/player_base.py" line="452"/>
       <source>Timed out setting initial state</source>
       <translation type="unfinished"/>
     </message>
     <message>
-      <location filename="vlc_player/player_base.py" line="440"/>
+      <location filename="vlc_player/player_base.py" line="455"/>
       <source>Video failed to initialize paused</source>
+      <translation type="unfinished"/>
+    </message>
+    <message>
+      <location filename="utils/url_resolve/url_resolve.py" line="44"/>
+      <source>Failed to resolve URL</source>
+      <translation type="unfinished"/>
+    </message>
+    <message>
+      <location filename="utils/url_resolve/url_resolve.py" line="38"/>
+      <source>Stream is offline</source>
       <translation type="unfinished"/>
     </message>
   </context>
   <context>
     <name>Video Status</name>
     <message>
-      <location filename="vlc_player/player_base.py" line="87"/>
+      <location filename="vlc_player/player_base.py" line="98"/>
       <source>Buffering</source>
       <translation type="unfinished"/>
     </message>
     <message>
-      <location filename="vlc_player/player_base.py" line="288"/>
+      <location filename="vlc_player/player_base.py" line="302"/>
       <source>Parsing media</source>
       <translation type="unfinished"/>
     </message>
     <message>
-      <location filename="vlc_player/player_base.py" line="305"/>
+      <location filename="vlc_player/player_base.py" line="320"/>
       <source>Preparing video output</source>
       <translation type="unfinished"/>
     </message>
     <message>
-      <location filename="widgets/video_block.py" line="283"/>
+      <location filename="widgets/video_block.py" line="242"/>
       <source>Initializing</source>
+      <translation type="unfinished"/>
+    </message>
+    <message>
+      <location filename="utils/url_resolve/url_resolve.py" line="99"/>
+      <source>Resolving URL via {RESOLVER_NAME}</source>
+      <translation type="unfinished"/>
+    </message>
+    <message>
+      <location filename="utils/url_resolve/url_resolve.py" line="47"/>
+      <source>Picking URL resolvers</source>
+      <translation type="unfinished"/>
+    </message>
+    <message>
+      <location filename="utils/url_resolve/url_resolve.py" line="97"/>
+      <source>Playing URL directly</source>
       <translation type="unfinished"/>
     </message>
   </context>
