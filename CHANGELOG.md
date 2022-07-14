@@ -6,6 +6,33 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+### Added
+
+- New setting to control URL resolver priority ([fc72744](https://github.com/vzhd1701/gridplayer/commit/fc7274428c1af496be30ab84dc2fc673691d7e40), [47150b6](https://github.com/vzhd1701/gridplayer/commit/47150b6b87114028c9aece370c2d03994e0db30a))
+- New setting to show overlay border for active video ([60d513d](https://github.com/vzhd1701/gridplayer/commit/60d513dff01192152547281b2bbb20ec72c92259))
+- New setting to control video init timeout ([7346792](https://github.com/vzhd1701/gridplayer/commit/7346792a97287098a0a4bfa6e64ebbda83d320c4))
+- New setting to limit log file size ([71c4fdc](https://github.com/vzhd1701/gridplayer/commit/71c4fdc991e95538161ba9b41f3195a08bbc15e9))
+- New setting to set custom VLC options ([8ee6424](https://github.com/vzhd1701/gridplayer/commit/8ee6424efc7774d9bc6d80e15e89043d72b005fe))
+- New option to set auto reload timer for live videos ([305e890](https://github.com/vzhd1701/gridplayer/commit/305e89044f84eb1d3af91eabaeb74f2f77adf846))
+- Added paste button to add urls dialog ([0ebcfa4](https://github.com/vzhd1701/gridplayer/commit/0ebcfa4d72c6f0292e294bcf165c58b965b14176))
+
+### Changed
+
+- Overhauled settings dialog ([6fc329e](https://github.com/vzhd1701/gridplayer/commit/6fc329ef1154de6959ba5974979b662e6d02bf45), [704dd98](https://github.com/vzhd1701/gridplayer/commit/704dd98cf4a686237a842153ea0f3f88a1859f5a), [3d82901](https://github.com/vzhd1701/gridplayer/commit/3d829016add15f1c3e35dd4078bc14f8e0a4ad03))
+- Visual style is now same for every OS ([d24832a](https://github.com/vzhd1701/gridplayer/commit/d24832a4c1b9dd0436685241c088ef44dceec455), [54a4772](https://github.com/vzhd1701/gridplayer/commit/54a4772c0a3be48c3bb3b3da7e89c457b7860ccc))
+
+### Fixed
+
+- Improved streaming URLs playback ([021e61a](https://github.com/vzhd1701/gridplayer/commit/021e61a6a0fe23b3fe3b70d272d83e9d48165ae2), [8c33a6f](https://github.com/vzhd1701/gridplayer/commit/8c33a6f339ca5ad9e2406c20848cd13084e809c2))
+- Improved video init timeouts ([7492565](https://github.com/vzhd1701/gridplayer/commit/749256584b57519d80bd5705f855d587e06d4e8d), [c174be5](https://github.com/vzhd1701/gridplayer/commit/c174be5b933fafa363a7358b99a8f25467272be5))
+- Improved video init speed ([8408551](https://github.com/vzhd1701/gridplayer/commit/84085514e96659cf57b267bea3f2bfa5b429b12a))
+- Avoid crash on bulk seek (seconds) ([ef72d6a](https://github.com/vzhd1701/gridplayer/commit/ef72d6a5a487eeabdc9c0a625f434d748f5087b5)), closes [#59](https://github.com/vzhd1701/gridplayer/issues/59)
+- Set video aspect & scale on video load ([d80bec3](https://github.com/vzhd1701/gridplayer/commit/d80bec3703aebc00b039647926f0baeb72527ce3))
+- Prevent overlay from showing above other windows (Linux) ([98caea7](https://github.com/vzhd1701/gridplayer/commit/98caea76126ecdfd9704ae72639a8d895e369f84))
+- Show black screen instead of error if pause snapshot fail (livestreams) ([9ba942d](https://github.com/vzhd1701/gridplayer/commit/9ba942d81c110f9f27a12f1f5621f00f72ae5556))
+- Avoid exception on malformed VLC log message ([5f0c23d](https://github.com/vzhd1701/gridplayer/commit/5f0c23dbe9eb9c197d1b089fda732c72508cb9b6))
+- Added missing header title for file dialogs ([c950928](https://github.com/vzhd1701/gridplayer/commit/c95092868846b3388eec7efb28f71f52d3d913cf))
+
 ## [0.3.0] - 2022-06-24
 
 ### Added
