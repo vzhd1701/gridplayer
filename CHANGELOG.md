@@ -6,6 +6,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+### Fixed
+
+- Add fix setting for overlay appearing on top of other windows with some window managers (Linux) ([748e79d](https://github.com/vzhd1701/gridplayer/commit/748e79dfef9b2c4adddb353b0444ae14a41b7786))
+- Fix transparency mask for opaque overlay (Linux) ([542a6fb](https://github.com/vzhd1701/gridplayer/commit/542a6fbc6fca9d57afcd8cbc03acfbd6f73f9999))
+
 ## [0.4.0] - 2022-07-14
 
 ### Added
