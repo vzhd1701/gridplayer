@@ -480,6 +480,11 @@ class OverlayVolumeBar(OverlayBar):
 
 
 class OverlayBorder(OverlayWidget):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
+        self.setAttribute(Qt.WA_TransparentForMouseEvents)
+
     def paintEvent(self, event) -> None:
         painter = QPainter(self)
 

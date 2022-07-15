@@ -95,14 +95,16 @@ class OverlayBlock(QWidget):  # noqa: WPS230
         layout_main.setContentsMargins(0, 0, 0, 0)
         layout_main.setStackingMode(QStackedLayout.StackAll)
 
-        control_widget = QWidget(self)
+        self.control_widget = QWidget(self)
+        self.control_widget.setMouseTracking(True)
+
         self.border_widget = OverlayBorder(parent=self)
         self.border_widget.hide()
 
-        layout_control = QVBoxLayout(control_widget)
+        layout_control = QVBoxLayout(self.control_widget)
         layout_control.setContentsMargins(10, 10, 10, 10)
 
-        layout_main.addWidget(control_widget)
+        layout_main.addWidget(self.control_widget)
         layout_main.addWidget(self.border_widget)
 
         self.top_bar = QVBoxLayout()
@@ -334,13 +336,25 @@ class OverlayBlockFloating(OverlayBlock):
         self.move_to_parent()
 
         if self.is_opaque:
-            mask = self.childrenRegion()
             # 0 coord to keep children from sliding off
-            mask = mask.united(QRegion(QRect(0, 0, 1, 1)))
+            mask = QRegion(QRect(0, 0, 1, 1))
+
+            if self.border_widget.isVisible():
+                frame_width = 5
+                frame = QRegion(self.rect())
+                frame -= QRegion(
+                    QRect(
+                        frame_width,
+                        frame_width,
+                        self.width() - frame_width * 2,
+                        self.height() - frame_width * 2,
+                    )
+                )
+                mask = mask.united(frame)
+
+            mask = mask.united(self.control_widget.childrenRegion())
 
             self.setMask(mask)
-
-        event.ignore()
 
     def move_to_parent(self):
         new_pos = self.parent().mapToGlobal(QPoint())
