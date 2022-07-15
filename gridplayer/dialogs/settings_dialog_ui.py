@@ -431,6 +431,9 @@ class Ui_SettingsDialog(object):
         self.miscOpaqueHWOverlay = QtWidgets.QCheckBox(self.page_misc_advanced)
         self.miscOpaqueHWOverlay.setObjectName("miscOpaqueHWOverlay")
         self.lay_page_misc_advanced.addWidget(self.miscOpaqueHWOverlay)
+        self.miscFakeOverlayInvisibility = QtWidgets.QCheckBox(self.page_misc_advanced)
+        self.miscFakeOverlayInvisibility.setObjectName("miscFakeOverlayInvisibility")
+        self.lay_page_misc_advanced.addWidget(self.miscFakeOverlayInvisibility)
         spacerItem3 = QtWidgets.QSpacerItem(
             0, 0, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Expanding
         )
@@ -667,6 +670,12 @@ class Ui_SettingsDialog(object):
         self.section_misc.setText(_translate("SettingsDialog", "Experimental"))
         self.miscOpaqueHWOverlay.setText(
             _translate("SettingsDialog", "Opaque overlay (fix black screen)")
+        )
+        self.miscFakeOverlayInvisibility.setText(
+            _translate(
+                "SettingsDialog",
+                "Fake overlay invisibility (fix overlay on top of other windows)",
+            )
         )
         self.logLimit.setText(_translate("SettingsDialog", "Limit log file size"))
         self.logLimitSizeLabel.setText(_translate("SettingsDialog", "Log file size"))

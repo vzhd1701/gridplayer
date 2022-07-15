@@ -768,6 +768,13 @@
           </widget>
          </item>
          <item>
+          <widget class="QCheckBox" name="miscFakeOverlayInvisibility">
+           <property name="text">
+            <string>Fake overlay invisibility (fix overlay on top of other windows)</string>
+           </property>
+          </widget>
+         </item>
+         <item>
           <spacer name="verticalSpacer_2">
            <property name="orientation">
             <enum>Qt::Vertical</enum>

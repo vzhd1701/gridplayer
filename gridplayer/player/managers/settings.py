@@ -54,6 +54,7 @@ class SettingsManager(ManagerBase):
             "player/video_driver",
             "player/video_driver_players",
             "internal/opaque_hw_overlay",
+            "internal/fake_overlay_invisibility",
             "misc/vlc_options",
         }
 

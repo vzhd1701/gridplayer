@@ -35,7 +35,11 @@ from gridplayer.utils.url_resolve.static import ResolvedVideo
 from gridplayer.utils.url_resolve.url_resolve import VideoURLResolver
 from gridplayer.vlc_player.static import MediaInput
 from gridplayer.widgets.video_frame_vlc_base import VideoFrameVLC
-from gridplayer.widgets.video_overlay import OverlayBlock, OverlayBlockFloating
+from gridplayer.widgets.video_overlay import (
+    OverlayBlock,
+    OverlayBlockFloating,
+    OverlayFakeInvisible,
+)
 from gridplayer.widgets.video_status import VideoStatus
 
 IN_PROGRESS_THRESHOLD_MS = 500
@@ -239,7 +243,10 @@ class VideoBlock(QWidget):  # noqa: WPS230
 
     def init_overlay(self):
         if self.video_driver.is_opengl:
-            overlay = OverlayBlockFloating(self)
+            if Settings().get("internal/fake_overlay_invisibility"):
+                overlay = OverlayFakeInvisible(self)
+            else:
+                overlay = OverlayBlockFloating(self)
             self.installEventFilter(overlay)
         else:
             overlay = OverlayBlock(self)

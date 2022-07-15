@@ -102,6 +102,7 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
             "logging/log_limit_size": self.logLimitSize,
             "logging/log_limit_backups": self.logLimitBackups,
             "internal/opaque_hw_overlay": self.miscOpaqueHWOverlay,
+            "internal/fake_overlay_invisibility": self.miscFakeOverlayInvisibility,
             "streaming/hls_via_streamlink": self.streamingHLSVIAStreamlink,
             "streaming/resolver_priority": self.streamingResolverPriority,
             "streaming/resolver_priority_patterns": self.streamingResolverPriorityPatterns,  # noqa: E501
@@ -128,6 +129,7 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
         if not env.IS_LINUX:
             self.section_misc.hide()
             self.miscOpaqueHWOverlay.hide()
+            self.miscFakeOverlayInvisibility.hide()
 
     def ui_customize_section_index(self):
         font = self.section_index.font()

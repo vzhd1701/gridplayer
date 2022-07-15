@@ -390,3 +390,37 @@ class OverlayBlockFloating(OverlayBlock):
             self.parent().window().filter_event(event)
 
         return super().event(event)
+
+
+class OverlayFakeInvisible(OverlayBlockFloating):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+
+        self._is_visible = False
+
+    def show(self):
+        if not self.isVisible():
+            super().show()
+
+        self._is_visible = True
+
+        self.setAttribute(Qt.WA_TransparentForMouseEvents, False)
+        self.update()
+
+    def hide(self):
+        self._is_visible = False
+
+        self.setAttribute(Qt.WA_TransparentForMouseEvents)
+        self.update()
+
+    def paintEvent(self, event):
+        if not self._is_visible and self.windowOpacity() != 0:
+            self.setMask(QRegion(0, 0, 1, 1))
+            self.setWindowOpacity(0)
+            return
+
+        if self.windowOpacity() == 0:
+            self.clearMask()
+            self.setWindowOpacity(1)
+
+        super().paintEvent(event)
