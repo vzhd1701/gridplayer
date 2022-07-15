@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [0.4.1] - 2022-07-15
+
 ### Fixed
 
 - Add fix setting for overlay appearing on top of other windows with some window managers (Linux) ([748e79d](https://github.com/vzhd1701/gridplayer/commit/748e79dfef9b2c4adddb353b0444ae14a41b7786))
@@ -178,7 +180,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 - Initial release
 
-[Unreleased]: https://github.com/vzhd1701/gridplayer/compare/v0.4.0...HEAD
+[Unreleased]: https://github.com/vzhd1701/gridplayer/compare/v0.4.1...HEAD
+[0.4.1]: https://github.com/vzhd1701/gridplayer/compare/v0.4.0...v0.4.1
 [0.4.0]: https://github.com/vzhd1701/gridplayer/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/vzhd1701/gridplayer/compare/v0.2.2...v0.3.0
 [0.2.2]: https://github.com/vzhd1701/gridplayer/compare/v0.2.1...v0.2.2
