@@ -28,7 +28,15 @@ process_requirements "$BUILD_DIR_PYTHON_DEPS/requirements.txt"
 
 cd "$BUILD_DIR_PYTHON_DEPS"
 
-python3 -m venv venv
+if md5sum -c "build.md5"; then
+    echo "Skipping dependencies build, requirements didn't change"
+    exit 0
+fi
+
+if [ ! -d "venv" ]; then
+    python3 -m venv venv
+fi
+
 . venv/bin/activate
 
 pip install PyYAML requirements-parser
@@ -39,3 +47,5 @@ rm -f dependencies.*
 
 python flatpak-pip-generator --requirements-file="$BUILD_DIR_PYTHON_DEPS/requirements.txt" --yaml --output dependencies
 mv dependencies.yaml dependencies.yml
+
+md5sum "requirements.txt" > "build.md5"

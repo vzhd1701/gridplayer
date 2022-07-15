@@ -8,17 +8,20 @@ config-opts:
 - "--enable-x11"
 buildsystem: simple
 build-commands:
-- python3 configure.py --confirm-license --no-docstrings --assume-shared --no-sip-files
-  --no-qml-plugin --no-tools --no-qsci-api -d ${FLATPAK_DEST}/lib/python3.9/site-packages
-  --sip=${FLATPAK_DEST}/bin/sip --sip-incdir=${FLATPAK_DEST}/include --stubsdir=${FLATPAK_DEST}/lib/python3.9/site-packages
-  --disable=QtSensors --disable=QtWebEngine --disable=QtQuick --disable=QtQml --disable=QtTest
-  --disable=QtWebChannel --disable=QtWebEngineCore --disable=QWebEngineWidgets --disable=QtQuickWidgets
-  --disable=QtSql --disable=QtXmlPatterns --disable=QtMultimedia --disable=QtMultimediaWidgets
-  --disable=QtLocation --disable=QtDesigner --disable=QtOpenGL --disable=QtBluetooth
-  --disable=QtWebKit --disable=QtWebKitWidgets --disable=QtNfc --disable=QtPositioning
-  --disable=QtHelp --disable=QtNetwork --disable=QtPrintSupport --disable=QtXml
-  --disable=QtSerialPort --disable=QtWebSockets --disable=QtRemoteObjects --disable=QtTextToSpeech
-  --disable=_QOpenGLFunctions_2_0 --disable=_QOpenGLFunctions_2_1 --disable=_QOpenGLFunctions_4_1_Core
+- python3 configure.py
+  --confirm-license
+  --assume-shared
+  --no-docstrings --no-sip-files --no-qml-plugin --no-tools --no-qsci-api --no-designer-plugin
+  -d ${FLATPAK_DEST}/lib/python3.9/site-packages
+  --sip=${FLATPAK_DEST}/bin/sip
+  --sip-incdir=${FLATPAK_DEST}/include
+  --stubsdir=${FLATPAK_DEST}/lib/python3.9/site-packages
+  --enable=QtCore
+  --enable=QtGui
+  --enable=QtSvg
+  --enable=QtWidgets
+  --enable=QtDBus
+  --enable=QtX11Extras
 - make -j $(nproc)
 - make install
 sources:

@@ -1,6 +1,9 @@
 - name: {APP_MODULE}
   buildsystem: simple
   build-commands:
+  # Remove PyQt5 dependency to avoid pkg_resources version conflict error
+  - sed -i '/^Requires-Dist: PyQt5/d' PKG-INFO
+  - sed -i "s/'PyQt5==.*',//" setup.py
   - python3 setup.py install --prefix=${FLATPAK_DEST} --root=/
 
   - install -Dm 644 meta/{APP_ID}.desktop     ${FLATPAK_DEST}/share/applications/{APP_ID}.desktop

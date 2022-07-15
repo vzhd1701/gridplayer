@@ -1,11 +1,14 @@
 - name: {APP_MODULE}
   buildsystem: simple
   build-commands:
-  - pip3 install --no-index --find-links="file://${PWD}" --prefix=${FLATPAK_DEST} --no-deps {APP_MODULE}
+  # Remove PyQt5 dependency to avoid pkg_resources version conflict error
+  - sed -i '/^Requires-Dist: PyQt5/d' PKG-INFO
+  - sed -i "s/'PyQt5==.*',//" setup.py
+  - python3 setup.py install --prefix=${FLATPAK_DEST} --root=/
   sources:
-  - type: file
-    path: {WHL_FILE}
-    sha256: {WHL_FILE_SHA256}
+  - type: archive
+    path: {TAR_FILE}
+    sha256: {TAR_FILE_SHA256}
 - name: meta
   buildsystem: simple
   build-commands:

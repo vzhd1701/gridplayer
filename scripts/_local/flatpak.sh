@@ -22,8 +22,10 @@ if ! command -v flatpak; then
     flatpak install flathub org.kde.Sdk//5.15-21.08
 fi
 
-poetry build -f wheel
+poetry build -f sdist
+poetry export --without-hashes -f requirements.txt --output "$DIST_DIR/requirements.txt"
 
 bash "$SCRIPTS_DIR/linux_meta/build.sh"
+bash "$SCRIPTS_DIR/flatpak/generate_dependencies.sh"
 
 bash "$SCRIPTS_DIR/flatpak/build.sh" "$@"
