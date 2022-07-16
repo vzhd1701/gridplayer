@@ -36,7 +36,7 @@ fi
 if [ ! -f "linuxdeploy-x86_64.AppImage" ]; then
     echo "==> Fetching linuxdeploy"
 
-    curl -L -s -O "https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage"
+    curl -L -s -O "https://github.com/vzhd1701/linuxdeploy-frozen/releases/download/649fc02/linuxdeploy-x86_64.AppImage"
     chmod +x linuxdeploy-x86_64.AppImage
 fi
 
