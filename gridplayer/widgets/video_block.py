@@ -183,7 +183,6 @@ class VideoBlock(QWidget):  # noqa: WPS230
         self.ui_setup()
 
         self.video_status.show()
-        self.overlay.raise_()
         self.overlay.hide()
 
     def init_video_driver(self) -> VideoFrameVLC:
@@ -386,6 +385,12 @@ class VideoBlock(QWidget):  # noqa: WPS230
             self.manual_seek("seek_shift_percent", -shift_percent)
 
         event.ignore()
+
+    def mousePressEvent(self, event) -> None:
+        if Settings().get("internal/fake_overlay_invisibility"):
+            self.window().raise_()
+
+        super().mousePressEvent(event)
 
     @only_initialized
     def mouseReleaseEvent(self, event) -> None:

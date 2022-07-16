@@ -339,20 +339,15 @@ class OverlayBlockFloating(OverlayBlock):
             # 0 coord to keep children from sliding off
             mask = QRegion(QRect(0, 0, 1, 1))
 
-            if self.border_widget.isVisible():
-                frame_width = 5
-                frame = QRegion(self.rect())
-                frame -= QRegion(
-                    QRect(
-                        frame_width,
-                        frame_width,
-                        self.width() - frame_width * 2,
-                        self.height() - frame_width * 2,
-                    )
-                )
-                mask = mask.united(frame)
+            for child in self.findChildren(OverlayWidget):
+                if child.isVisible():
+                    if child.mask():
+                        mask += child.mask().translated(child.pos())
+                    else:
+                        mask += QRegion(child.geometry())
 
-            mask = mask.united(self.control_widget.childrenRegion())
+            if not self.border_widget.isVisible():
+                mask -= QRegion(QRect(0, 0, 1, 1))
 
             self.setMask(mask)
 
@@ -400,7 +395,7 @@ class OverlayFakeInvisible(OverlayBlockFloating):
 
     def show(self):
         if not self.isVisible():
-            super().show()
+            self.setVisible(True)
 
         self._is_visible = True
 
@@ -408,13 +403,26 @@ class OverlayFakeInvisible(OverlayBlockFloating):
         self.update()
 
     def hide(self):
+        if not self.isVisible():
+            self.setVisible(True)
+
         self._is_visible = False
 
         self.setAttribute(Qt.WA_TransparentForMouseEvents)
         self.update()
 
+    def move_beyond_screen(self):
+        self.move(QPoint(-self.width(), -self.height()))
+
+    def move_to_parent(self):
+        if not self._is_visible:
+            return self.move_beyond_screen()
+
+        super().move_to_parent()
+
     def paintEvent(self, event):
         if not self._is_visible and self.windowOpacity() != 0:
+            self.move_beyond_screen()
             self.setMask(QRegion(0, 0, 1, 1))
             self.setWindowOpacity(0)
             return

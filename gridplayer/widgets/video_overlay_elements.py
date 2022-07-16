@@ -1,13 +1,13 @@
 import math
 
-from PyQt5.QtCore import QEvent, QPoint, Qt, pyqtSignal
+from PyQt5.QtCore import QEvent, QPoint, QRect, Qt, pyqtSignal
 from PyQt5.QtGui import (
+    QBrush,
     QColor,
     QFontMetrics,
     QGuiApplication,
     QPainter,
     QPainterPath,
-    QPen,
     QRegion,
 )
 from PyQt5.QtWidgets import QSizePolicy, QWidget
@@ -31,6 +31,11 @@ class OverlayWidget(QWidget):
     def color(self):
         return self._color
 
+    @color.setter
+    def color(self, color):
+        self._color = QColor(color)
+        self.update()
+
     @property
     def color_contrast(self):
         lightness = 0 if self.color.lightness() > 127 else 255  # noqa: WPS432
@@ -45,11 +50,6 @@ class OverlayWidget(QWidget):
             lightness = self.color.lightness() + 100
 
         return QColor.fromHsl(self.color.hue(), self.color.saturation(), lightness)
-
-    @color.setter
-    def color(self, color):
-        self._color = QColor(color)
-        self.update()
 
 
 class OverlayLabel(OverlayWidget):
@@ -480,17 +480,29 @@ class OverlayVolumeBar(OverlayBar):
 
 
 class OverlayBorder(OverlayWidget):
+    border_width = 5
+
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
         self.setAttribute(Qt.WA_TransparentForMouseEvents)
 
+    def resizeEvent(self, event) -> None:
+        border = QRegion(self.rect())
+        border -= QRegion(
+            QRect(
+                self.border_width,
+                self.border_width,
+                self.width() - self.border_width * 2,
+                self.height() - self.border_width * 2,
+            )
+        )
+
+        self.setMask(border)
+
     def paintEvent(self, event) -> None:
         painter = QPainter(self)
 
-        pen = QPen(self.color)
-        pen.setWidth(10)
-
-        painter.setPen(pen)
-        painter.setBrush(Qt.NoBrush)
+        painter.setPen(Qt.NoPen)
+        painter.setBrush(QBrush(self.color))
         painter.drawRect(self.rect())
