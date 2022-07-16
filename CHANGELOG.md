@@ -6,6 +6,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+### Fixed
+
+- Prevent timeout when loading HLS streams directly ([f5b8164](https://github.com/vzhd1701/gridplayer/commit/f5b8164111aa11bfb9188cde059694e71ed10a05))
+- Improve overlay workarounds for Linux ([70963b5](https://github.com/vzhd1701/gridplayer/commit/70963b5ee71bd08d7b5bb9284e5629de0af3262b))
+
 ## [0.4.1] - 2022-07-15
 
 ### Fixed
