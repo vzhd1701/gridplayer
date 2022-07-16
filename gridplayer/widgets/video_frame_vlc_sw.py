@@ -73,6 +73,7 @@ class InstanceProcessVLCSW(InstanceProcessVLC):
 
 class PlayerProcessSingleVLCSW(VlcPlayerThreaded):
     is_preparse_required = True
+    is_video_size_required = True
 
     def __init__(self, player_id, release_callback, init_data, **kwargs):
         super().__init__(**kwargs)

@@ -12,6 +12,9 @@ def calc_resize_scale(
     scr_x, scr_y = size
     vid_x, vid_y = video_dimensions
 
+    if vid_x == 0 or vid_y == 0:
+        return 0
+
     if scale > 1:
         if aspect == VideoAspect.FIT:
             resize_scale = max(scr_x / vid_x, scr_y / vid_y) * scale

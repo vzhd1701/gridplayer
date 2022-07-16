@@ -43,6 +43,7 @@ def only_initialized_player(func):
 
 class VlcPlayerBase(ABC):
     is_preparse_required = False
+    is_video_size_required = False
 
     def __init__(self, vlc_instance, **kwargs):
         super().__init__(**kwargs)
@@ -463,6 +464,15 @@ class VlcPlayerBase(ABC):
 
         self._media_player.audio_set_volume(volume)
 
+    @property
+    def video_dimensions(self):
+        if self._media_player is None:
+            if self.media_track:
+                return self.media_track.video_dimensions
+            return 0, 0
+
+        return self._media_player.video_get_size()
+
     @only_initialized_player
     def adjust_view(self, size, aspect, scale):
         if self.media_track is None:
@@ -471,13 +481,9 @@ class VlcPlayerBase(ABC):
                 self.media_input.size = size
             return
 
-        crop_aspect, crop_geometry = calc_crop(
-            self.media_track.video_dimensions, size, aspect
-        )
+        crop_aspect, crop_geometry = calc_crop(self.video_dimensions, size, aspect)
 
-        resize_scale = calc_resize_scale(
-            self.media_track.video_dimensions, size, aspect, scale
-        )
+        resize_scale = calc_resize_scale(self.video_dimensions, size, aspect, scale)
 
         self._media_player.video_set_aspect_ratio("{0}:{1}".format(*crop_aspect))
         self._media_player.video_set_crop_geometry("{0}:{1}".format(*crop_geometry))
@@ -566,8 +572,9 @@ class VlcPlayerBase(ABC):
             )
 
         if not all([video_track.width, video_track.height]):
-            self._log.debug("Video track is not initialized yet")
-            return None
+            self._log.debug("Video size is not initialized yet")
+            if self.is_video_size_required:
+                return None
 
         if all([video_track.frame_rate_num, video_track.frame_rate_den]):
             fps = video_track.frame_rate_num / video_track.frame_rate_den
