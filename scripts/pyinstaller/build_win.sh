@@ -69,16 +69,18 @@ if [ ! -d "$VLC_EMBED_SRC" ]; then
 
     mkdir -p "$VLC_EMBED_SRC/plugins"
 
-    mkdir "$VLC_EMBED_SRC/plugins/audio_filter"
     mkdir "$VLC_EMBED_SRC/plugins/audio_output"
 
-    cp "$BUILD_DIR"/vlc-*/plugins/audio_filter/libscaletempo_*.dll "$VLC_EMBED_SRC/plugins/audio_filter"
     cp "$BUILD_DIR"/vlc-*/plugins/audio_output/libdirectsound_plugin.dll "$VLC_EMBED_SRC/plugins/audio_output"
 
     cp -a "$BUILD_DIR"/vlc-*/plugins/access "$VLC_EMBED_SRC/plugins"
+    cp -a "$BUILD_DIR"/vlc-*/plugins/audio_filter "$VLC_EMBED_SRC/plugins"
+    cp -a "$BUILD_DIR"/vlc-*/plugins/audio_mixer "$VLC_EMBED_SRC/plugins"
     cp -a "$BUILD_DIR"/vlc-*/plugins/codec "$VLC_EMBED_SRC/plugins"
     cp -a "$BUILD_DIR"/vlc-*/plugins/demux "$VLC_EMBED_SRC/plugins"
     cp -a "$BUILD_DIR"/vlc-*/plugins/misc "$VLC_EMBED_SRC/plugins"
+    cp -a "$BUILD_DIR"/vlc-*/plugins/packetizer "$VLC_EMBED_SRC/plugins"
+    cp -a "$BUILD_DIR"/vlc-*/plugins/stream_filter "$VLC_EMBED_SRC/plugins"
     cp -a "$BUILD_DIR"/vlc-*/plugins/video_chroma "$VLC_EMBED_SRC/plugins"
     cp -a "$BUILD_DIR"/vlc-*/plugins/video_output "$VLC_EMBED_SRC/plugins"
     "$BUILD_DIR"/vlc-*/vlc-cache-gen.exe "$VLC_EMBED_SRC/plugins"
