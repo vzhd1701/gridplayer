@@ -195,7 +195,8 @@ class VlcPlayerBase(ABC):
         else:
             return self.error(translate("Video Error", "Media parse failed"))
 
-        self.loopback_load_video_st2_set_media()
+        if self.is_preparse_required:
+            self.loopback_load_video_st2_set_media()
 
     def cb_time_changed(self, event):
         # Doesn't work anymore since python-vlc-3.0.12117
