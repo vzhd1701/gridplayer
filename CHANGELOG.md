@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+### Fixed
+
+- Update yt-dlp to 2022.07.18 ([b206753](https://github.com/vzhd1701/gridplayer/commit/b206753))
+- Prevent video double initialization ([0e7824d](https://github.com/vzhd1701/gridplayer/commit/0e7824d))
+- Add missing VLC plugins (Windows) ([c9ff21e](https://github.com/vzhd1701/gridplayer/commit/c9ff21e))
+
 ## [0.4.2] - 2022-07-16
 
 ### Fixed
