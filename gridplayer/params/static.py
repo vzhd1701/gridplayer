@@ -1,5 +1,4 @@
 from enum import Enum, auto
-from types import MappingProxyType
 from typing import NamedTuple
 
 from gridplayer.params import env
@@ -60,12 +59,3 @@ class WindowState(NamedTuple):
     is_maximized: bool
     is_fullscreen: bool
     geometry: str
-
-
-SUPPORTED_LANGUAGES = MappingProxyType(
-    {
-        "en_US": {"author": None},
-        "ru_RU": {"author": None},
-        "hu_HU": {"author": "samu112"},
-    }
-)

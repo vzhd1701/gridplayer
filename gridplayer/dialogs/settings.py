@@ -2,15 +2,15 @@ import contextlib
 import logging
 import subprocess
 
-from PyQt5.QtCore import QLocale, QUrl
+from PyQt5.QtCore import QUrl
 from PyQt5.QtGui import QDesktopServices, QIcon, QPalette
 from PyQt5.QtWidgets import QCheckBox, QComboBox, QDialog, QLineEdit, QSpinBox
 
 from gridplayer.dialogs.messagebox import QCustomMessageBox
 from gridplayer.dialogs.settings_dialog_ui import Ui_SettingsDialog
 from gridplayer.params import env
+from gridplayer.params.languages import LANGUAGES
 from gridplayer.params.static import (
-    SUPPORTED_LANGUAGES,
     GridMode,
     SeekSyncMode,
     URLResolver,
@@ -318,21 +318,8 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
         _fill_combo_box(self.playerVideoDriver, video_drivers)
 
     def fill_language(self):
-        languages = {
-            lang_id: {
-                "language": QLocale(lang_id).nativeLanguageName().title(),
-                "country": QLocale(lang_id).nativeCountryName().title(),
-                "icon": f":/icons/flag_{lang_id}.svg",
-                "author": lang["author"],
-            }
-            for lang_id, lang in SUPPORTED_LANGUAGES.items()
-        }
-        sorted_languages = dict(
-            sorted(languages.items(), key=lambda x: x[1]["language"])
-        )
-
-        for lang_id, lang in sorted_languages.items():
-            self.listLanguages.add_language_row(lang_id, lang)
+        for language in LANGUAGES:
+            self.listLanguages.add_language_row(language)
 
     def fill_streamQuality(self):
         quality_codes = {

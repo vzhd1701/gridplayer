@@ -3,12 +3,12 @@ from contextlib import suppress
 from enum import Enum
 
 from pydantic import BaseModel, Field
-from PyQt5.QtCore import QLocale, QSettings
+from PyQt5.QtCore import QSettings
 
 from gridplayer.models.resolver_patterns import ResolverPatterns
 from gridplayer.params import env
+from gridplayer.params.languages import get_system_language
 from gridplayer.params.static import (
-    SUPPORTED_LANGUAGES,
     GridMode,
     SeekSyncMode,
     URLResolver,
@@ -22,13 +22,6 @@ from gridplayer.utils.log_config import DISABLED
 SETTINGS = None
 
 
-def default_language():
-    lang = QLocale().system().name()
-    if lang in SUPPORTED_LANGUAGES:
-        return lang
-    return "en_US"
-
-
 _default_settings = {
     "player/video_driver": VideoDriver.VLC_HW,
     "player/video_driver_players": 4,
@@ -38,7 +31,7 @@ _default_settings = {
     "player/inhibit_screensaver": True,
     "player/one_instance": True,
     "player/show_overlay_border": False,
-    "player/language": default_language(),
+    "player/language": get_system_language(),
     "playlist/grid_mode": GridMode.AUTO_ROWS,
     "playlist/grid_fit": True,
     "playlist/grid_size": 0,

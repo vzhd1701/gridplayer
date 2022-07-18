@@ -10,6 +10,7 @@ from PyQt5.QtWidgets import (
     QWidget,
 )
 
+from gridplayer.params.languages import Language
 from gridplayer.widgets.video_status import StatusIcon
 
 
@@ -63,6 +64,7 @@ class LanguageRowWidget(QWidget):
         font = text_label.font()
         font.setPixelSize(self.font_size)
         text_label.setFont(font)
+        text_label.setOpenExternalLinks(True)
 
         return text_label
 
@@ -79,26 +81,34 @@ class LanguageList(QListWidget):
 
         self.currentItemChanged.connect(self._set_language_checkmark)
 
-    def add_language_row(self, lang_id, lang):
-        if lang["author"]:
+    def add_language_row(self, language: Language):
+        if language.completion == 100:
+            completion_txt = ""
+        else:
+            completion_txt = f" [{language.completion} %]"
+
+        if language.authors:
             item_title = (
-                "<p style='margin-bottom: 5px;'><b>{language}</b> ({country})</p>"
+                "<p style='margin-bottom: 5px;'>"
+                "<b>{language}</b> ({country}){completion_txt}</p>"
                 "<p style='margin: 0;'>Author: {author}</p>".format(
-                    language=lang["language"],
-                    country=lang["country"],
-                    author=lang["author"],
+                    language=language.title_native,
+                    country=language.country_native,
+                    completion_txt=completion_txt,
+                    author=", ".join(language.author_links),
                 )
             )
         else:
-            item_title = "<p><b>{language}</b> ({country})</p>".format(
-                language=lang["language"],
-                country=lang["country"],
+            item_title = "<p><b>{language}</b> ({country}){completion_txt}</p>".format(
+                language=language.title_native,
+                country=language.country_native,
+                completion_txt=completion_txt,
             )
 
-        row_item_w = LanguageRowWidget(item_title, lang["icon"])
+        row_item_w = LanguageRowWidget(item_title, language.icon_path)
 
         row_item = QListWidgetItem(self)
-        row_item.setData(Qt.UserRole, lang_id)
+        row_item.setData(Qt.UserRole, language.code)
         row_item.setSizeHint(row_item_w.sizeHint())
         self.setItemWidget(row_item, row_item_w)
 

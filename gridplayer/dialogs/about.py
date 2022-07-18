@@ -11,6 +11,7 @@ from yt_dlp.version import __version__ as YT_DLP_VERSION
 
 from gridplayer.dialogs.about_dialog_ui import Ui_AboutDialog
 from gridplayer.params import env
+from gridplayer.params.languages import LANGUAGES
 from gridplayer.version import (
     __app_bugtracker_url__,
     __app_license_url__,
@@ -28,12 +29,6 @@ class Attribution(NamedTuple):
     author: str
     license: str
     url: str
-
-
-class AttributionTranslation(NamedTuple):
-    language: str
-    author: str
-    author_url: str
 
 
 class AboutDialog(QDialog, Ui_AboutDialog):
@@ -160,13 +155,6 @@ class AboutDialog(QDialog, Ui_AboutDialog):
                     "https://github.com/lipis/flag-icons",
                 ),
             ],
-            "translation": [
-                AttributionTranslation(
-                    "Hungarian",
-                    "samu112",
-                    "https://crowdin.com/profile/samu112",
-                ),
-            ],
         }
 
         attributions_txt = [
@@ -178,7 +166,7 @@ class AboutDialog(QDialog, Ui_AboutDialog):
             "<h3>{0}</h3>".format(self.tr("Graphics")),
             self.generate_attributions(attributions["gui"]),
             "<h3>{0}</h3>".format(self.tr("Translations")),
-            self.generate_attributions_translations(attributions["translation"]),
+            self.generate_attributions_translations(),
         ]
 
         self.attributionsBox.setText("\n".join(attributions_txt))
@@ -190,7 +178,7 @@ class AboutDialog(QDialog, Ui_AboutDialog):
             app_url = f'<a href="{a.url}">{a.author}</a>'
 
             attribution_txt = (
-                "<p><b>{APP_TITLE}</b><br>{APP_URL}<br>"
+                '<p style="line-height: 130%"><b>{APP_TITLE}</b><br>{APP_URL}<br>'
                 "<i>{LICENSED_UNDER}<br>{APP_LICENSE}</i></p>"
             )
 
@@ -205,18 +193,21 @@ class AboutDialog(QDialog, Ui_AboutDialog):
 
         return "\n".join(attributions_txt)
 
-    def generate_attributions_translations(
-        self, attributions: List[AttributionTranslation]
-    ):
+    def generate_attributions_translations(self):
         attributions_txt = []
-        for a in attributions:
-            author_url = f'<a href="{a.author_url}">{a.author}</a>'
 
-            attribution_txt = self.tr("<p><b>{LANGUAGE}</b> by {AUTHOR_URL}</p>")
+        for language in LANGUAGES:
+            if not language.authors:
+                continue
 
-            attribution_txt = attribution_txt.replace("{LANGUAGE}", a.language)
-            attribution_txt = attribution_txt.replace("{AUTHOR_URL}", author_url)
-
+            attribution_txt = (
+                '<p style="line-height: 130%">'
+                "<b>{language}<br>({country})</b><br>{authors}</p>".format(
+                    language=language.title_native,
+                    country=language.country_native,
+                    authors="<br/>".join(language.author_links),
+                )
+            )
             attributions_txt.append(attribution_txt)
 
         return "\n".join(attributions_txt)
