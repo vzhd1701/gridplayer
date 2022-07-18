@@ -165,33 +165,19 @@ int main(int argc, char *argv[]) {
     size_t length;
     const char *format;
 
-    /* https://docs.python.org/2/using/cmdline.html#envvar-PYTHONHOME */
-    SET_NEW_ENV(new_pythonhome, appdir_s, "PYTHONHOME=%s/usr/", appdir);
-
     old_env = getenv("PATH") ?: "";
-    SET_NEW_ENV(new_path, appdir_s*5 + strlen(old_env), "PATH=%s/usr/bin/:%s/usr/sbin/:%s/usr/games/:%s/bin/:%s/sbin/:%s", appdir, appdir, appdir, appdir, appdir, old_env);
+    SET_NEW_ENV(new_path, appdir_s + strlen(old_env), "PATH=%s/usr/bin/:%s", appdir, old_env);
 
     old_env = getenv("LD_LIBRARY_PATH") ?: "";
-    SET_NEW_ENV(new_ld_library_path, appdir_s*10 + strlen(old_env), "LD_LIBRARY_PATH=%s/usr/lib/:%s/usr/lib/i386-linux-gnu/:%s/usr/lib/x86_64-linux-gnu/:%s/usr/lib32/:%s/usr/lib64/:%s/lib/:%s/lib/i386-linux-gnu/:%s/lib/x86_64-linux-gnu/:%s/lib32/:%s/lib64/:%s", appdir, appdir, appdir, appdir, appdir, appdir, appdir, appdir, appdir, appdir, old_env);
-
-    old_env = getenv("PYTHONPATH") ?: "";
-    SET_NEW_ENV(new_pythonpath, appdir_s + strlen(old_env), "PYTHONPATH=%s/usr/share/pyshared/:%s", appdir, old_env);
+    SET_NEW_ENV(new_ld_library_path, appdir_s*2 + strlen(old_env), "LD_LIBRARY_PATH=%s/usr/lib/:%s/usr/lib/vlc:%s", appdir, appdir, old_env);
 
     old_env = getenv("XDG_DATA_DIRS") ?: "/usr/local/share/:/usr/share/";
     SET_NEW_ENV(new_xdg_data_dirs, appdir_s + strlen(old_env), "XDG_DATA_DIRS=%s/usr/share/:%s", appdir, old_env);
 
-    old_env = getenv("PERLLIB") ?: "";
-    SET_NEW_ENV(new_perllib, appdir_s*2 + strlen(old_env), "PERLLIB=%s/usr/share/perl5/:%s/usr/lib/perl5/:%s", appdir, appdir, old_env);
+    SET_NEW_ENV(new_qt_plugin_path, appdir_s, "QT_PLUGIN_PATH=%s/opt/python3.9/lib/python3.9/site-packages/PyQt5/Qt5/plugins/", appdir);
+    putenv("QT_QPA_PLATFORM=xcb");
 
-    /* http://askubuntu.com/questions/251712/how-can-i-install-a-gsettings-schema-without-root-privileges */
-    old_env = getenv("GSETTINGS_SCHEMA_DIR") ?: "";
-    SET_NEW_ENV(new_gsettings_schema_dir, appdir_s + strlen(old_env), "GSETTINGS_SCHEMA_DIR=%s/usr/share/glib-2.0/schemas/:%s", appdir, old_env);
-
-    old_env = getenv("QT_PLUGIN_PATH") ?: "";
-    SET_NEW_ENV(new_qt_plugin_path, appdir_s*10 + strlen(old_env), "QT_PLUGIN_PATH=%s/usr/lib/qt4/plugins/:%s/usr/lib/i386-linux-gnu/qt4/plugins/:%s/usr/lib/x86_64-linux-gnu/qt4/plugins/:%s/usr/lib32/qt4/plugins/:%s/usr/lib64/qt4/plugins/:%s/usr/lib/qt5/plugins/:%s/usr/lib/i386-linux-gnu/qt5/plugins/:%s/usr/lib/x86_64-linux-gnu/qt5/plugins/:%s/usr/lib32/qt5/plugins/:%s/usr/lib64/qt5/plugins/:%s", appdir, appdir, appdir, appdir, appdir, appdir, appdir, appdir, appdir, appdir, old_env);
-
-    SET_NEW_ENV(new_gspath, appdir_s + strlen(old_env), "GST_PLUGIN_SYSTEM_PATH=%s/usr/lib/gstreamer:%s", appdir, old_env);
-    SET_NEW_ENV(new_gspath1, appdir_s + strlen(old_env), "GST_PLUGIN_SYSTEM_PATH_1_0=%s/usr/lib/gstreamer-1.0:%s", appdir, old_env);
+    SET_NEW_ENV(ssl_cert_file_path, appdir_s, "SSL_CERT_FILE=%s/opt/_internal/certs.pem", appdir);
 
     /* Otherwise may get errors because Python cannot write __pycache__ bytecode cache */
     putenv("PYTHONDONTWRITEBYTECODE=1");
@@ -207,13 +193,10 @@ int main(int argc, char *argv[]) {
     free(line);
     free(desktop_file);
     free(usr_in_appdir);
-    free(new_pythonhome);
     free(new_path);
     free(new_ld_library_path);
-    free(new_pythonpath);
     free(new_xdg_data_dirs);
-    free(new_perllib);
-    free(new_gsettings_schema_dir);
     free(new_qt_plugin_path);
+    free(ssl_cert_file_path);
     return 0;
 }
