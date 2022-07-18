@@ -11,6 +11,7 @@ if [ "$1" == "run" ]; then
     exit 0
 fi
 
+rm -f "$DIST_DIR"/*.whl
 poetry build -f wheel
 
 bash "$SCRIPTS_DIR/linux_meta/build.sh"

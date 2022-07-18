@@ -11,7 +11,9 @@ mkdir -p "$BUILD_DIR_APPIMAGE"
 
 # ======
 
+rm -f "$BUILD_DIR_APPIMAGE"/*.whl
 cp "$DIST_DIR"/*.whl "$BUILD_DIR_APPIMAGE"
+
 cp -R "$BUILD_DIR/meta" "$BUILD_DIR_APPIMAGE"
 
 cp "$SCRIPTS_DIR/_helpers/blacklist_clean.sh" "$BUILD_DIR_APPIMAGE"
@@ -98,8 +100,8 @@ install -Dm 644 $BUILD_DIR/meta/${APP_ID}.xml         ./AppDir/usr/share/mime/pa
 cp -R $BUILD_DIR/meta/icons ./AppDir/usr/share
 
 # AppImage entry point
-cp "$SCRIPT_DIR/AppRun" ./AppDir/AppRun
-chmod +x ./AppDir/AppRun
+gcc -fPIC -o ./AppDir/AppRun "$SCRIPT_DIR/AppRun.c"
+strip ./AppDir/AppRun
 
 echo "==> Setting up binary dependencies"
 
@@ -124,6 +126,14 @@ cp -a /usr/lib64/vlc "$LIB_DIR"
 rm "$LIB_DIR/vlc/plugins/plugins.dat"
 /usr/lib64/vlc/vlc-cache-gen "$LIB_DIR/vlc/plugins"
 
+echo "==> Fixing permissions"
+
+chmod 755 -R ./AppDir
+find ./AppDir -type f -exec chmod 644 {} \;
+chmod a+x ./AppDir/opt/python${PYTHON_VERSION}/bin/*
+chmod a+x ./AppDir/usr/bin/*
+chmod a+x ./AppDir/AppRun
+
 echo "==> Generating AppImage"
 
 # fuse doesn't work inside docker
@@ -139,6 +149,7 @@ export VERSION="$APP_VERSION"
     -l /lib64/libxcb-image.so.0 \
     -l /lib64/libxcb-keysyms.so.1 \
     -l /lib64/libxkbcommon-x11.so.0 \
+    -l /lib64/libxcb-xinerama.so.0 \
     --appdir AppDir \
     --output appimage
 
