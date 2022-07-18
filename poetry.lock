@@ -1068,7 +1068,7 @@ typing_extensions = ">=3.6,<4.0"
 
 [[package]]
 name = "yt-dlp"
-version = "2022.6.29"
+version = "2022.7.18"
 description = "A youtube-dl fork with additional features and patches"
 category = "main"
 optional = false
@@ -1097,7 +1097,7 @@ testing = ["pytest (>=4.6)", "pytest-checkdocs (>=2.4)", "pytest-flake8", "pytes
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.8"
-content-hash = "0ed99277e2c77c3303ad44d4554dbf2ed4911dc3ad97852ec883dd5f0e78f066"
+content-hash = "1ae80e9c88eef45e36e606385aa9424e8859ef9619c8816f05a48cc1cf2a475c"
 
 [metadata.files]
 astor = [
