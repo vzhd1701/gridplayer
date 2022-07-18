@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [0.4.3] - 2022-07-18
+
 ### Fixed
 
 - Update yt-dlp to 2022.07.18 ([b206753](https://github.com/vzhd1701/gridplayer/commit/b206753))
@@ -193,7 +195,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 - Initial release
 
-[Unreleased]: https://github.com/vzhd1701/gridplayer/compare/v0.4.2...HEAD
+[Unreleased]: https://github.com/vzhd1701/gridplayer/compare/v0.4.3...HEAD
+[0.4.3]: https://github.com/vzhd1701/gridplayer/compare/v0.4.2...v0.4.3
 [0.4.2]: https://github.com/vzhd1701/gridplayer/compare/v0.4.1...v0.4.2
 [0.4.1]: https://github.com/vzhd1701/gridplayer/compare/v0.4.0...v0.4.1
 [0.4.0]: https://github.com/vzhd1701/gridplayer/compare/v0.3.0...v0.4.0
