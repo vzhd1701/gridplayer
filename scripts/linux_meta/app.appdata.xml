@@ -23,7 +23,7 @@
       <li>Cross-platform (Linux, Mac, and Windows)</li>
       <li>Support for any video and audio format (VLC)</li>
       <li>Support for (almost) any streaming URLs (streamlink + yt-dlp)</li>
-      <li>Hardware &amp; software video decoding</li>
+      <li>Hardware and software video decoding</li>
       <li>Control video aspect, playback speed, zoom</li>
       <li>Set loop fragments with frame percision</li>
       <li>Configurable grid layout</li>
@@ -33,19 +33,19 @@
   </description>
   <screenshots>
     <screenshot type="default">
-      <image>https://raw.githubusercontent.com/vzhd1701/gridplayer/master/resources/public/screenshot-001.png</image>
+      <image>{APP_CDN_URL_ROOT}/resources/public/screenshot-001.png</image>
       <caption>Main window with 4 videos playing</caption>
     </screenshot>
     <screenshot>
-      <image>https://raw.githubusercontent.com/vzhd1701/gridplayer/master/resources/public/screenshot-002.png</image>
+      <image>{APP_CDN_URL_ROOT}/resources/public/screenshot-002.png</image>
       <caption>Context menu</caption>
     </screenshot>
     <screenshot>
-      <image>https://raw.githubusercontent.com/vzhd1701/gridplayer/master/resources/public/screenshot-003.png</image>
+      <image>{APP_CDN_URL_ROOT}/resources/public/screenshot-003.png</image>
       <caption>Settings window</caption>
     </screenshot>
     <screenshot>
-      <image>https://raw.githubusercontent.com/vzhd1701/gridplayer/master/resources/public/screenshot-004.png</image>
+      <image>{APP_CDN_URL_ROOT}/resources/public/screenshot-004.png</image>
       <caption>Vertical videos</caption>
     </screenshot>
   </screenshots>

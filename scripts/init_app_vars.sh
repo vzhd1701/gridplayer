@@ -1,5 +1,10 @@
 #!/bin/bash
 
+die() {
+    printf '%s\n' "$*" >&2
+    exit 1
+}
+
 if ! command -v realpath &> /dev/null; then
     realpath() {
         [[ $1 = /* ]] && echo "$1" || echo "$PWD/${1#./}"
@@ -15,12 +20,15 @@ replace_app_vars() {
 
     [ ! -f "$TARGET_FILE" ] && return
 
-    VARS=(APP_MODULE APP_DISP_NAME APP_NAME APP_ID APP_VERSION APP_VERSION_DATE APP_AUTHOR APP_AUTHOR_CONTACT APP_URL APP_BUGTRACKER_URL)
+    VARS=$(env | cut -d '=' -f1 | grep "^APP_")
 
-    for var in "${VARS[@]}"; do
+    while IFS= read -r var; do
         eval replace='$'$var
+
+        [ -z "$replace" ] && die "$var variable is empty!"
+
         sed -i "s#{$var}#$replace#g" "$TARGET_FILE"
-    done
+    done <<< "$VARS"
 }
 
 copy_with_app_vars() {
@@ -61,7 +69,6 @@ activate_venv() {
     fi
 }
 
-#ROOT_DIR="$(realpath $(dirname $( cd "$( dirname $0 )" && pwd ))/..)"
 export ROOT_DIR="$(realpath $(pwd))"
 
 export RESOURCES_DIR="$ROOT_DIR/resources"
@@ -71,6 +78,7 @@ export SCRIPTS_DIR="$ROOT_DIR/scripts"
 
 export APP_MODULE="gridplayer"
 export APP_BASE_DIR=$(realpath "./$APP_MODULE")
+export APP_REPO_SLUG="vzhd1701/gridplayer"
 
 export APP_DISP_NAME=$(sed -n 's/__display_name__ = "\([^"]*\).*/\1/p' "$APP_BASE_DIR/version.py")
 export APP_NAME=$(sed -n 's/__app_name__ = "\([^"]*\).*/\1/p' "$APP_BASE_DIR/version.py")
@@ -81,3 +89,5 @@ export APP_AUTHOR=$(sed -n 's/__author_name__ = "\([^"]*\).*/\1/p' "$APP_BASE_DI
 export APP_AUTHOR_CONTACT=$(sed -n 's/__author_contact__ = "\([^"]*\).*/\1/p' "$APP_BASE_DIR/version.py")
 export APP_URL=$(sed -n 's/__app_url__ = "\([^"]*\).*/\1/p' "$APP_BASE_DIR/version.py")
 export APP_BUGTRACKER_URL=$(sed -n 's/__app_bugtracker_url__ = "\([^"]*\).*/\1/p' "$APP_BASE_DIR/version.py")
+
+export APP_CDN_URL_ROOT="https://cdn.jsdelivr.net/gh/${APP_REPO_SLUG}@v${APP_VERSION}"
