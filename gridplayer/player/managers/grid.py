@@ -65,6 +65,7 @@ class GridManager(ManagerBase):
         )
         self._info_label.setAlignment(Qt.AlignCenter)
         self._info_label.setWordWrap(True)
+        self._info_label.setMargin(20)  # noqa:  WPS432
         font = QFont("Hack", FONT_SIZE_BIG_INFO, QFont.Bold)
         self._info_label.setFont(font)
 
