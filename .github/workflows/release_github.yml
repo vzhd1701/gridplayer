@@ -191,6 +191,10 @@ jobs:
           name: release_dist_bin_macos_x64
           path: dist
 
+      - name: Generate checksums
+        run: |
+          (cd dist && shasum -a 256 * > checksums.sha256)
+
       - name: Create Release
         if: github.event_name == 'push'
         uses: ncipollo/release-action@v1
