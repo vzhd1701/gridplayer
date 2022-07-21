@@ -29,9 +29,7 @@ def force_terminate_children_all():
 
 
 def force_terminate(exit_code: int = 0):
-    if not env.IS_WINDOWS:
-        force_terminate_children_all()
-
+    force_terminate_children_all()
     os._exit(exit_code)  # noqa: WPS437
 
 
