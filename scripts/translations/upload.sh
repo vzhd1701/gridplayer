@@ -6,4 +6,4 @@ SCRIPT_DIR="$( cd "$( dirname $0 )" && pwd )"
 
 . "scripts/init_app_vars.sh"
 
-crowdin.bat upload sources -c "$SCRIPT_DIR/crowdin.yml" --identity ".local/crowdin.yml"
+crowdin upload sources -c "$SCRIPT_DIR/crowdin.yml" --identity ".local/crowdin.yml"
