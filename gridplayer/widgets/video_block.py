@@ -292,6 +292,9 @@ class VideoBlock(QWidget):  # noqa: WPS230
         self.layout_main.addWidget(self.video_driver)
         self.layout_main.addWidget(self.overlay)
 
+        if type(self.overlay) == OverlayBlock:  # noqa: WPS516
+            self.overlay.raise_()
+
     def crash(self, traceback_txt):
         raise PlayerException(traceback_txt)
 
