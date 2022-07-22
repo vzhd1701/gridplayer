@@ -73,6 +73,9 @@ class Ui_SettingsDialog(object):
         self.playerOneInstance = QtWidgets.QCheckBox(self.page_general_player)
         self.playerOneInstance.setObjectName("playerOneInstance")
         self.lay_section_player.addWidget(self.playerOneInstance)
+        self.playerStayOnTop = QtWidgets.QCheckBox(self.page_general_player)
+        self.playerStayOnTop.setObjectName("playerStayOnTop")
+        self.lay_section_player.addWidget(self.playerStayOnTop)
         self.playerShowOverlayBorder = QtWidgets.QCheckBox(self.page_general_player)
         self.playerShowOverlayBorder.setObjectName("playerShowOverlayBorder")
         self.lay_section_player.addWidget(self.playerShowOverlayBorder)
@@ -578,6 +581,7 @@ class Ui_SettingsDialog(object):
         self.playerOneInstance.setText(
             _translate("SettingsDialog", "Allow only one instance")
         )
+        self.playerStayOnTop.setText(_translate("SettingsDialog", "Stay on top"))
         self.playerShowOverlayBorder.setText(
             _translate("SettingsDialog", "Show overlay border for active video")
         )

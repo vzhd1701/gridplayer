@@ -66,6 +66,7 @@ class SettingsManager(ManagerBase):
             "logging/log_limit",
             "logging/log_limit_size",
             "logging/log_limit_backups",
+            "player/stay_on_top",
         }
 
         return self._setting_changes(previous_settings, checks)

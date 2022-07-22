@@ -2,6 +2,7 @@ import base64
 
 from PyQt5.QtCore import QEvent, Qt, pyqtSignal, pyqtSlot
 
+from gridplayer.params import env
 from gridplayer.params.static import WindowState
 from gridplayer.player.managers.base import ManagerBase
 from gridplayer.settings import Settings
@@ -19,6 +20,11 @@ class WindowStateManager(ManagerBase):
         self._ctx.window_state = self.window_state
 
         self.pre_minimize_unpaused = []
+
+    def init(self):
+        # Linux has window manager for this, the flag doesn't work there anyway
+        if not env.IS_LINUX and Settings().get("player/stay_on_top"):
+            self.parent().setWindowFlag(Qt.WindowStaysOnTopHint)
 
     @property
     def event_map(self):

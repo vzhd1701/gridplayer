@@ -71,6 +71,7 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
             "player/pause_minimized": self.playerPauseWhenMinimized,
             "player/inhibit_screensaver": self.playerInhibitScreensaver,
             "player/one_instance": self.playerOneInstance,
+            "player/stay_on_top": self.playerStayOnTop,
             "player/show_overlay_border": self.playerShowOverlayBorder,
             "player/language": self.listLanguages,
             "playlist/grid_mode": self.gridMode,
@@ -125,6 +126,9 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
         self.ui_customize_section_index()
 
         _set_groupbox_header_bold(self.playerVideoDriverBox)
+
+        if env.IS_LINUX:
+            self.playerStayOnTop.hide()
 
         if not env.IS_LINUX:
             self.section_misc.hide()

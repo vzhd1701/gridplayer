@@ -175,6 +175,13 @@
           </widget>
          </item>
          <item>
+          <widget class="QCheckBox" name="playerStayOnTop">
+           <property name="text">
+            <string>Stay on top</string>
+           </property>
+          </widget>
+         </item>
+         <item>
           <widget class="QCheckBox" name="playerShowOverlayBorder">
            <property name="text">
             <string>Show overlay border for active video</string>
