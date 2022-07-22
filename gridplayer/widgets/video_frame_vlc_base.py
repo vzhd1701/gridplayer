@@ -54,7 +54,6 @@ class PauseSnapshot(QLabel):
 class VideoFrameVLC(QWidget, metaclass=QABC):
     time_changed = pyqtSignal(int)
     playback_status_changed = pyqtSignal(bool)
-    end_reached = pyqtSignal()
 
     video_ready = pyqtSignal()
 
@@ -124,7 +123,6 @@ class VideoFrameVLC(QWidget, metaclass=QABC):
                 self.video_driver.playback_status_changed,
                 self.playback_status_changed_emit,
             ),
-            (self.video_driver.end_reached, self.end_reached_emit),
             (self.video_driver.time_changed, self.time_changed_emit),
             (self.video_driver.load_finished, self.load_video_finish),
             (self.video_driver.snapshot_taken, self.snapshot_taken),
@@ -203,9 +201,6 @@ class VideoFrameVLC(QWidget, metaclass=QABC):
         self._is_status_change_in_progress = False
 
         self.playback_status_changed.emit(is_paused)
-
-    def end_reached_emit(self) -> None:
-        self.end_reached.emit()
 
     def time_changed_emit(self, new_time) -> None:
         self.time_changed.emit(new_time)

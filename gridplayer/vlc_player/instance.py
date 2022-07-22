@@ -92,13 +92,6 @@ class InstanceVLC(object):
     @property
     def init_options(self):
         options = [
-            # this option is good for making video loop forever,
-            # but glitchy files will retry 65535 times before giving up
-            # --input-repeat=65535
-            # these two only work with playlists
-            # --repeat
-            # --loop
-            "--play-and-pause",
             "--quiet",
             "--no-disable-screensaver",
             "--no-sub-autodetect-file",
@@ -110,7 +103,6 @@ class InstanceVLC(object):
             "--no-stats",
             "--no-keyboard-events",
             "--no-mouse-events",
-            # "--http-reconnect",
             *self.vlc_options,
             *_iter_settings_options(),
         ]

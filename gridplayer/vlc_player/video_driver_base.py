@@ -10,7 +10,6 @@ from gridplayer.vlc_player.static import MediaInput, MediaTrack
 class VLCVideoDriver(QObject, metaclass=QABC):
     time_changed = pyqtSignal(int)
     playback_status_changed = pyqtSignal(int)
-    end_reached = pyqtSignal()
     load_finished = pyqtSignal(MediaTrack)
     snapshot_taken = pyqtSignal(str)
 
@@ -32,9 +31,6 @@ class VLCVideoDriver(QObject, metaclass=QABC):
 
     def playback_status_changed_emit(self, status):
         self.playback_status_changed.emit(status)
-
-    def end_reached_emit(self):
-        self.end_reached.emit()
 
     @abstractmethod
     def load_video(self, media_input: MediaInput):

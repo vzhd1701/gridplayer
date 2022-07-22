@@ -18,9 +18,6 @@ class VlcPlayerThreaded(CommandLoopThreaded, VlcPlayerBase):
     def notify_playback_status_changed(self, is_paused):
         self.cmd_send("playback_status_changed_emit", is_paused)
 
-    def notify_end_reached(self):
-        self.cmd_send("end_reached_emit")
-
     def notify_load_video_done(self, media_track):
         self.cmd_send("load_video_done", media_track)
 

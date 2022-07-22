@@ -26,6 +26,7 @@ from gridplayer.models.video import (
 from gridplayer.params.static import (
     OVERLAY_ACTIVITY_EVENT,
     PLAYER_ID_LENGTH,
+    VIDEO_END_LOOP_MARGIN_MS,
     VideoRepeat,
 )
 from gridplayer.settings import Settings
@@ -191,7 +192,6 @@ class VideoBlock(QWidget):  # noqa: WPS230
         qt_connect(
             (video_driver.video_ready, self.load_video_finish),
             (video_driver.time_changed, self.time_changed),
-            (video_driver.end_reached, self.end_reached),
             (video_driver.playback_status_changed, self.playback_status_changed),
             (video_driver.error, self.video_driver_error),
             (video_driver.crash, self.crash),
@@ -204,7 +204,6 @@ class VideoBlock(QWidget):  # noqa: WPS230
     def reset_video_driver(self):
         self.video_driver.video_ready.disconnect()
         self.video_driver.time_changed.disconnect()
-        self.video_driver.end_reached.disconnect()
         self.video_driver.error.disconnect()
         self.video_driver.crash.disconnect()
         self.load_video.disconnect()
@@ -572,9 +571,8 @@ class VideoBlock(QWidget):  # noqa: WPS230
     @property
     def loop_end(self):
         if self.video_params.loop_end is None:
-            # Loop end 1000 ms before actual end for seamless loop
-            before_end_gap = 1000
-            return self.video_driver.length - before_end_gap
+            # Loop end margin before actual end for seamless loop
+            return self.video_driver.length - VIDEO_END_LOOP_MARGIN_MS
 
         return self.video_params.loop_end
 
@@ -610,13 +608,6 @@ class VideoBlock(QWidget):  # noqa: WPS230
 
         self.video_params.is_paused = is_paused
         self.is_paused_change.emit(self.video_params.is_paused)
-
-    def end_reached(self):
-        if self.is_live:
-            return
-
-        self.loop_end_action()
-        self.video_driver.set_pause(False)
 
     def loop_end_action(self):
         is_single_file = self.video_params.repeat_mode == VideoRepeat.SINGLE_FILE

@@ -6,6 +6,7 @@ from time import time
 from typing import Optional
 
 from gridplayer.params import env
+from gridplayer.params.static import VIDEO_END_LOOP_MARGIN_MS
 from gridplayer.settings import Settings
 from gridplayer.utils.aspect_calc import calc_crop, calc_resize_scale
 from gridplayer.utils.misc import is_url
@@ -63,6 +64,7 @@ class VlcPlayerBase(ABC):
         self.media_input: Optional[MediaInput] = None
         self.media_track: Optional[MediaTrack] = None
 
+        self._playlist_player = None
         self._media_player = None
         self._media = None
         self._media_options = []
@@ -82,7 +84,10 @@ class VlcPlayerBase(ABC):
         return max(int(self._timeout_init - (time() - self._timeout_init_start)), 0)
 
     def init_player(self):
-        self._media_player = self.instance.media_player_new()
+        self._playlist_player = self.instance.media_list_player_new()
+        self._playlist_player.set_playback_mode(vlc.PlaybackMode.repeat)
+
+        self._media_player = self._playlist_player.get_media_player()
 
         self._media_player.audio_set_mute(True)
         self._media_player.video_set_mouse_input(False)
@@ -146,11 +151,6 @@ class VlcPlayerBase(ABC):
 
         if self.media_input.is_live:
             self.error(translate("Video Error", "Live stream ended"))
-            return
-
-        if self._media_player.get_time() > self.media_track.length - 1000:
-            self._log.debug("Video ended, time to loop")
-            self.notify_end_reached()
             return
 
         self._is_paused = True
@@ -237,6 +237,16 @@ class VlcPlayerBase(ABC):
 
         self._event_waiter.abort()
 
+        if self._playlist_player is not None:
+            self._log.debug("Releasing playlist player")
+
+            playlist_player = self._playlist_player
+            self._playlist_player = None
+
+            playlist_player.release()
+
+            self._log.debug("Playlist player released")
+
         if self._media_player is not None:
             self._log.debug("Releasing player")
 
@@ -265,10 +275,6 @@ class VlcPlayerBase(ABC):
 
     @abstractmethod
     def notify_playback_status_changed(self, new_status):
-        ...
-
-    @abstractmethod
-    def notify_end_reached(self):
         ...
 
     @abstractmethod
@@ -334,7 +340,10 @@ class VlcPlayerBase(ABC):
 
         self._log.debug("Setting parsed media to player and waiting for buffering")
 
-        self._media_player.set_media(self._media)
+        playlist = self.instance.media_list_new()
+        playlist.add_media(self._media)
+
+        self._playlist_player.set_media_list(playlist)
 
         self._event_waiter.async_wait_for(
             event="buffering",
@@ -345,7 +354,7 @@ class VlcPlayerBase(ABC):
             timeout=self.init_time_left,
         )
 
-        self._media_player.play()
+        self._playlist_player.play_item_at_index(0)
 
     def load_video_st3_extract_media_track(self):
         """Step 3. Extract media track"""
@@ -443,7 +452,7 @@ class VlcPlayerBase(ABC):
         if self.media_input.is_live:
             return
 
-        if seek_ms > self.media_track.length - 1000:
+        if seek_ms > self.media_track.length - VIDEO_END_LOOP_MARGIN_MS:
             return
 
         self._media_player.set_time(seek_ms)

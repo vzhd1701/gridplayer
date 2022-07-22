@@ -13,6 +13,8 @@ OVERLAY_ACTIVITY_EVENT = 2000
 FONT_SIZE_MAIN = 12 if env.IS_MACOS else 9  # noqa: WPS432
 FONT_SIZE_BIG_INFO = 22 if env.IS_MACOS else 16  # noqa: WPS432
 
+VIDEO_END_LOOP_MARGIN_MS = 500
+
 
 class AutoName(Enum):
     def _generate_next_value_(name, start, count, last_values):  # noqa: WPS120

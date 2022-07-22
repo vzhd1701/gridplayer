@@ -20,7 +20,6 @@ from gridplayer.vlc_player.video_driver_base import VLCVideoDriver
 
 class PlayerProcessSingleVLCHWSP(QThread, VlcPlayerBase, metaclass=QABC):
     playback_status_changed = pyqtSignal(bool)
-    end_reached = pyqtSignal()
     time_changed = pyqtSignal(int)
     error_signal = pyqtSignal(str)
     update_status_signal = pyqtSignal(str, int)
@@ -108,9 +107,6 @@ class PlayerProcessSingleVLCHWSP(QThread, VlcPlayerBase, metaclass=QABC):
     def notify_playback_status_changed(self, is_paused):
         self.playback_status_changed.emit(is_paused)
 
-    def notify_end_reached(self):
-        self.end_reached.emit()
-
     def notify_load_video_done(self, media_track):
         self.load_video_done.emit(media_track)
 
@@ -157,7 +153,6 @@ class VideoDriverVLCHWSP(VLCVideoDriver):
             (self.player.load_video_done, self.load_video_done),
             (self.player.snapshot_taken, self.snapshot_taken_emit),
             (self.player.playback_status_changed, self.playback_status_changed_emit),
-            (self.player.end_reached, self.end_reached_emit),
             (self.player.time_changed, self.time_changed),
             (self.player.error_signal, self.error),
             (self.player.update_status_signal, self.update_status),
