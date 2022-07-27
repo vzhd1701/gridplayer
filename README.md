@@ -10,6 +10,7 @@
 [![Screenshot 2](https://raw.githubusercontent.com/vzhd1701/gridplayer/master/resources/public/screenshot-002-thumb.png)](https://raw.githubusercontent.com/vzhd1701/gridplayer/master/resources/public/screenshot-002.png)
 [![Screenshot 3](https://raw.githubusercontent.com/vzhd1701/gridplayer/master/resources/public/screenshot-003-thumb.png)](https://raw.githubusercontent.com/vzhd1701/gridplayer/master/resources/public/screenshot-003.png)
 [![Screenshot 4](https://raw.githubusercontent.com/vzhd1701/gridplayer/master/resources/public/screenshot-004-thumb.png)](https://raw.githubusercontent.com/vzhd1701/gridplayer/master/resources/public/screenshot-004.png)
+[![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2Fvzhd1701%2Fgridplayer.svg?type=shield)](https://app.fossa.com/projects/git%2Bgithub.com%2Fvzhd1701%2Fgridplayer?ref=badge_shield)
 
 ## About
 
@@ -164,6 +165,9 @@ This software was build using
   - Licensed under *GPL 2.0, GPL 3.0, and LGPL 3.0*
 - **VLC** by [VideoLAN](https://www.videolan.org/)
   - Licensed under *GPL 2.0 or later*
+
+
+[![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2Fvzhd1701%2Fgridplayer.svg?type=large)](https://app.fossa.com/projects/git%2Bgithub.com%2Fvzhd1701%2Fgridplayer?ref=badge_large)
 
 ### Python packages
 
