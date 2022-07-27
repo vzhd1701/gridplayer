@@ -333,8 +333,6 @@ class OverlayBlockFloating(OverlayBlock):
         event.accept()
 
     def paintEvent(self, event):
-        self.move_to_parent()
-
         if self.is_opaque:
             # 0 coord to keep children from sliding off
             mask = QRegion(QRect(0, 0, 1, 1))
