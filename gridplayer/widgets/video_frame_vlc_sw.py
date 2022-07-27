@@ -110,7 +110,7 @@ class PlayerProcessSingleVLCSW(VlcPlayerThreaded):
         self.cmd_loop_terminate()
 
     def load_video_st2_set_media(self):
-        if not self._is_decoder_initialized and self.media_track:
+        if not self._is_decoder_initialized and self.media:
             self._init_video_decoder()
 
         super().load_video_st2_set_media()
@@ -120,6 +120,13 @@ class PlayerProcessSingleVLCSW(VlcPlayerThreaded):
             # Since we need metadata to allocate video buffer, restart is required
             self._restart_playback()
             return
+        else:
+            self._tracks_manager.set_video_track_id(
+                self.media_input.video.video_track_id
+            )
+            self._tracks_manager.set_audio_track_id(
+                self.media_input.video.audio_track_id
+            )
 
         super().load_video_st4_loaded()
 
@@ -139,7 +146,7 @@ class PlayerProcessSingleVLCSW(VlcPlayerThreaded):
     def _init_video_decoder(self):
         self._is_decoder_initialized = True
 
-        width, height = self.media_track.video_dimensions
+        width, height = self.video_dimensions
 
         self.decoder.set_frame(width, height)
         self.decoder.attach_media_player(self._media_player)

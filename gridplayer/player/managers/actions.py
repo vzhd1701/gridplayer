@@ -369,6 +369,16 @@ COMMANDS = MappingProxyType(
             "show_if": "is_active_multistream",
             "menu_generator": "menu_generator_stream_quality",
         },
+        "Video Track": {
+            "title": translate("Actions", "Video Track"),
+            "show_if": "is_active_initialized",
+            "menu_generator": "menu_generator_video_track",
+        },
+        "Audio Track": {
+            "title": translate("Actions", "Audio Track"),
+            "show_if": "is_active_initialized",
+            "menu_generator": "menu_generator_audio_track",
+        },
         "Rename": {
             "title": translate("Actions", "Rename"),
             "key": "F4",
@@ -1036,8 +1046,12 @@ class QDynamicAction(QAction):
         self.menu_generator = None
 
     @property
-    def is_skipped(self):
-        return self.show_if and not self.show_if()
+    def is_skipped(self) -> bool:
+        if self.show_if and not self.show_if():
+            return True
+
+        # skip empty submenus
+        return bool(self.menu_generator and not self.menu_generator())
 
     @property
     def is_enabled(self):

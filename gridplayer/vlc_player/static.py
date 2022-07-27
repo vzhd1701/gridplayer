@@ -1,20 +1,115 @@
 import random
 from dataclasses import dataclass
-from typing import Optional, Tuple
+from typing import Dict, Optional, Tuple
 
 from gridplayer.models.video import Video
+
+DISABLED_TRACK = -1
+NO_TRACK = frozenset((None, DISABLED_TRACK))
 
 
 @dataclass
 class MediaTrack(object):
-    is_audio_only: bool
-    length: int
-    video_dimensions: Tuple[int, int]
-    fps: int
+    codec: str
+    bitrate: int
+    language: Optional[str]
+    description: Optional[str]
 
     @property
-    def is_live(self):
+    def codec_info(self):
+        info = [self.codec]
+
+        if self.bitrate:
+            info += ["{0} kbps".format(self.bitrate // 1024)]
+
+        return ", ".join(info)
+
+    @property
+    def info(self):
+        info = [self.codec_info]
+
+        if self.language and self.description:
+            info += [f"{self.language} ({self.description})"]
+        else:
+            if self.language:
+                info += [f"{self.language}"]
+
+            if self.description:
+                info += [f"{self.description}"]
+
+        return ", ".join(info)
+
+
+@dataclass
+class VideoTrack(MediaTrack):
+    video_dimensions: Tuple[int, int]
+    fps: Optional[float]
+
+    @property
+    def codec_info(self):
+        info = [self.codec]
+
+        if all(self.video_dimensions):
+            info += ["{0}x{1}".format(*self.video_dimensions)]
+
+        info += [f"{self.fps} FPS"]
+
+        if self.bitrate:
+            info += ["{0} kbps".format(self.bitrate // 1024)]
+
+        return ", ".join(info)
+
+
+@dataclass
+class AudioTrack(MediaTrack):
+    channels: int
+    rate: int
+
+    @property
+    def codec_info(self):
+        info = [self.codec]
+
+        if self.channels:
+            info += [f"{self.channels} ch"]
+
+        if self.rate:
+            info += ["{0} kHz".format(self.rate // 1000)]
+
+        if self.bitrate:
+            info += ["{0} kbps".format(self.bitrate // 1024)]
+
+        return ", ".join(info)
+
+
+@dataclass
+class Media(object):
+    length: int
+
+    video_tracks: Dict[int, VideoTrack]
+    audio_tracks: Dict[int, AudioTrack]
+
+    cur_audio_track_id: Optional[int] = None
+    cur_video_track_id: Optional[int] = None
+
+    @property
+    def is_live(self) -> bool:
         return self.length == -1
+
+    @property
+    def is_audio_only(self) -> bool:
+        return not self.video_tracks or self.cur_video_track_id == DISABLED_TRACK
+
+    @property
+    def cur_video_track(self):
+        if self.cur_video_track_id in NO_TRACK:
+            return None
+        return self.video_tracks[self.cur_video_track_id]
+
+    @property
+    def cur_audio_track(self):
+        if self.cur_audio_track_id in NO_TRACK:
+            return None
+        return self.audio_tracks[self.cur_audio_track_id]
 
 
 @dataclass

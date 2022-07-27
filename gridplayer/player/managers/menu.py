@@ -34,6 +34,7 @@ SUBMENUS = MappingProxyType(
         "Snapshots": {"title": translate("Actions", "Snapshots"), "icon": "snapshots"},
         "Save Snapshot": {"title": translate("Actions", "Save Snapshot")},
         "Delete Snapshot": {"title": translate("Actions", "Delete Snapshot")},
+        "Tracks": {"title": translate("Actions", "Tracks"), "icon": "track"},
     }
 )
 
@@ -119,6 +120,11 @@ SECTIONS = MappingProxyType(
                 "Seek Others (Timecode)",
             ),
             "Stream Quality",
+            (
+                "Tracks",
+                "Video Track",
+                "Audio Track",
+            ),
             "Rename",
             "Reload",
             "Auto Reload: %v",

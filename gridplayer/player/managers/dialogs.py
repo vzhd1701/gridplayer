@@ -9,7 +9,10 @@ from gridplayer.utils.qt import translate
 class DialogsManager(ManagerBase):
     @property
     def commands(self):
-        return {"about": lambda: AboutDialog(self.parent()).exec_()}
+        return {
+            "about": lambda: AboutDialog(self.parent()).exec_(),
+            "warning": self.warning,
+        }
 
     @pyqtSlot(str)
     def error(self, message):

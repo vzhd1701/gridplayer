@@ -34,7 +34,7 @@ from gridplayer.utils.next_file import next_video_file, previous_video_file
 from gridplayer.utils.qt import qt_connect, translate
 from gridplayer.utils.url_resolve.static import ResolvedVideo
 from gridplayer.utils.url_resolve.url_resolve import VideoURLResolver
-from gridplayer.vlc_player.static import MediaInput
+from gridplayer.vlc_player.static import DISABLED_TRACK, NO_TRACK, MediaInput
 from gridplayer.widgets.video_frame_vlc_base import VideoFrameVLC
 from gridplayer.widgets.video_overlay import (
     OverlayBlock,
@@ -528,6 +528,36 @@ class VideoBlock(QWidget):  # noqa: WPS230
         return isinstance(self.video_params.uri, Path)
 
     @property
+    def video_tracks(self):
+        return self.video_driver.video_tracks
+
+    @property
+    def audio_tracks(self):
+        return self.video_driver.audio_tracks
+
+    @only_initialized
+    def set_audio_track(self, track_id):
+        if track_id == DISABLED_TRACK and self.video_params.video_track_id in NO_TRACK:
+            self._ctx.commands.warning(
+                translate("Warning", "Cannot disable both video & audio tracks")
+            )
+            return
+
+        self.video_params.audio_track_id = track_id
+        self.video_driver.set_audio_track(track_id)
+
+    @only_initialized
+    def set_video_track(self, track_id):
+        if track_id == DISABLED_TRACK and self.video_params.audio_track_id in NO_TRACK:
+            self._ctx.commands.warning(
+                translate("Warning", "Cannot disable both video & audio tracks")
+            )
+            return
+
+        self.video_params.video_track_id = track_id
+        self.video_driver.set_video_track(track_id)
+
+    @property
     def title(self):
         return self._title
 
@@ -632,6 +662,9 @@ class VideoBlock(QWidget):  # noqa: WPS230
         self.title = snapshot.title or self._default_title
         self.color = snapshot.color.as_hex()
 
+        self.set_video_track(snapshot.video_track_id)
+        self.set_audio_track(snapshot.audio_track_id)
+
         self.set_aspect(snapshot.aspect_mode)
         self.set_muted(snapshot.is_muted)
         self.set_pause(snapshot.is_paused)
@@ -732,8 +765,17 @@ class VideoBlock(QWidget):  # noqa: WPS230
 
         self.set_auto_reload_timer(self.video_params.auto_reload_timer_min)
 
+        self.video_params.video_track_id = self.video_driver.cur_video_track_id
+        self.video_params.audio_track_id = self.video_driver.cur_audio_track_id
+
         self.video_status.hide()
         self.show_overlay()
+
+        # Must do this after video is shown to ensure proper initial state (VLC lag)
+        if self.video_params.is_paused:
+            self.seek(self.video_params.current_position)
+
+        self.video_driver.adjust_view()
 
     def set_aspect(self, aspect):
         self.video_params.aspect_mode = aspect

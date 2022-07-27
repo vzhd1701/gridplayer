@@ -6,7 +6,7 @@ from PyQt5.QtWidgets import QWidget
 from gridplayer.params import env
 from gridplayer.vlc_player.instance import InstanceProcessVLC
 from gridplayer.vlc_player.player_base_threaded import VlcPlayerThreaded
-from gridplayer.vlc_player.static import MediaTrack
+from gridplayer.vlc_player.static import Media
 from gridplayer.vlc_player.video_driver_base_threaded import VLCVideoDriverThreaded
 from gridplayer.widgets.video_frame_vlc_base import VideoFrameVLCProcess
 
@@ -64,7 +64,7 @@ class PlayerProcessSingleVLCHW(VlcPlayerThreaded):
         elif env.IS_MACOS:
             self._media_player.set_nsobject(self.win_id)
 
-    def notify_load_video_done(self, media_track: MediaTrack):
+    def notify_load_video_done(self, media_track: Media):
         if env.IS_LINUX:
             self.init_semaphore.release()
             self._log.debug("Semaphore released")

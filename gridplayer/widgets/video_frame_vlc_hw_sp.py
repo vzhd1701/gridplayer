@@ -14,7 +14,7 @@ if env.IS_MACOS:
 
 from gridplayer.vlc_player.instance import InstanceVLC
 from gridplayer.vlc_player.player_base import VlcPlayerBase
-from gridplayer.vlc_player.static import MediaInput, MediaTrack
+from gridplayer.vlc_player.static import Media, MediaInput
 from gridplayer.vlc_player.video_driver_base import VLCVideoDriver
 
 
@@ -25,7 +25,7 @@ class PlayerProcessSingleVLCHWSP(QThread, VlcPlayerBase, metaclass=QABC):
     update_status_signal = pyqtSignal(str, int)
     snapshot_taken = pyqtSignal(str)
 
-    load_video_done = pyqtSignal(MediaTrack)
+    load_video_done = pyqtSignal(Media)
 
     loop_load_video_st2_set_media = pyqtSignal()
     loop_load_video_st3_extract_media_track = pyqtSignal()
@@ -138,6 +138,8 @@ class VideoDriverVLCHWSP(VLCVideoDriver):
     cmd_set_playback_rate = pyqtSignal(float)
     cmd_audio_set_mute = pyqtSignal(bool)
     cmd_audio_set_volume = pyqtSignal(float)
+    cmd_set_video_track = pyqtSignal(int)
+    cmd_set_audio_track = pyqtSignal(int)
     cmd_adjust_view = pyqtSignal(tuple, VideoAspect, float)
     cmd_set_log_level_vlc = pyqtSignal(int)
 
@@ -164,6 +166,8 @@ class VideoDriverVLCHWSP(VLCVideoDriver):
             (self.cmd_set_playback_rate, self.player.set_playback_rate),
             (self.cmd_audio_set_mute, self.player.audio_set_mute),
             (self.cmd_audio_set_volume, self.player.audio_set_volume),
+            (self.cmd_set_video_track, self.player.set_video_track),
+            (self.cmd_set_audio_track, self.player.set_audio_track),
             (self.cmd_adjust_view, self.player.adjust_view),
             (self.cmd_set_log_level_vlc, self.player.set_log_level_vlc),
             (self.cmd_cleanup, self.player.cleanup),
@@ -199,6 +203,12 @@ class VideoDriverVLCHWSP(VLCVideoDriver):
 
     def audio_set_volume(self, volume):
         self.cmd_audio_set_volume.emit(volume)
+
+    def set_video_track(self, track_id):
+        self.cmd_set_video_track.emit(track_id)
+
+    def set_audio_track(self, track_id):
+        self.cmd_set_audio_track.emit(track_id)
 
     def adjust_view(self, size, aspect, scale):
         self.cmd_adjust_view.emit(size, aspect, scale)
@@ -240,7 +250,7 @@ class VideoFrameVLCHWSP(VideoFrameVLC):
         self.video_surface.resize(new_size)
         self.video_surface.move(-2, -2)
 
-    def load_video_finish(self, media_track: MediaTrack):
+    def load_video_finish(self, media_track: Media):
         if env.IS_MACOS:
             # Need an explicit resize for adjustment to work on MacOS
             size = self.size()

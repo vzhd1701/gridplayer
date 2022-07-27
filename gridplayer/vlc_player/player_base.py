@@ -17,9 +17,9 @@ from gridplayer.vlc_player.player_event_waiter import (
     async_timer,
     async_wait,
 )
-from gridplayer.vlc_player.static import MediaInput, MediaTrack, NotPausedError
+from gridplayer.vlc_player.player_tracks_manager import TracksManager
+from gridplayer.vlc_player.static import Media, MediaInput, NotPausedError
 
-DEFAULT_FPS = 25
 SNAPSHOT_TIMEOUT = 15
 
 MEDIA_EXTRACT_RETRY_TIME = 0.1
@@ -62,12 +62,13 @@ class VlcPlayerBase(ABC):
         self._timer_extract_media_track = None
 
         self.media_input: Optional[MediaInput] = None
-        self.media_track: Optional[MediaTrack] = None
+        self.media: Optional[Media] = None
 
         self._playlist_player = None
         self._media_player = None
-        self._media = None
+        self._media_input_vlc = None
         self._media_options = []
+        self._tracks_manager: Optional[TracksManager] = None
 
         self._event_manager = EventManager()
         self._event_waiter = EventWaiter()
@@ -126,7 +127,7 @@ class VlcPlayerBase(ABC):
 
         # some formats have unreliable time_change (rtp)
         # this creates a failsafe to avoid video being paused while playing
-        if self.media_track.is_live:
+        if self.media.is_live:
             self._timer_unpause_failsafe = async_timer(5, self.unpause)
             self._event_waiter.async_wait_for(
                 event="buffering",
@@ -187,7 +188,7 @@ class VlcPlayerBase(ABC):
             self._log.debug("Media parsing skipped")
 
         elif event.u.new_status == vlc.MediaParsedStatus.done:
-            self._init_media_track()
+            self._init_media_tracks()
 
         elif event.u.new_status == vlc.MediaParsedStatus.timeout:
             return self.error(translate("Video Error", "Media parse timeout"))
@@ -278,7 +279,7 @@ class VlcPlayerBase(ABC):
         ...
 
     @abstractmethod
-    def notify_load_video_done(self, media_track: MediaTrack):
+    def notify_load_video_done(self, media_track: Media):
         ...
 
     @abstractmethod
@@ -311,25 +312,25 @@ class VlcPlayerBase(ABC):
             self._log.debug("Loading URL")
             parse_flag = vlc.MediaParseFlag.network
             parse_timeout = 60 * 1000
-            self._media = self.instance.media_new(self.media_input.uri)
+            self._media_input_vlc = self.instance.media_new(self.media_input.uri)
         else:
             self._log.debug("Loading local file")
             parse_flag = vlc.MediaParseFlag.local
             parse_timeout = -1
-            self._media = self.instance.media_new_path(self.media_input.uri)
+            self._media_input_vlc = self.instance.media_new_path(self.media_input.uri)
 
-        if self._media is None:
+        if self._media_input_vlc is None:
             return self.error(translate("Video Error", "Failed to load media"))
 
-        self._event_manager.attach_to_media(self._media)
+        self._event_manager.attach_to_media(self._media_input_vlc)
 
         if not self.media_input.is_live and self.media_input.video.is_paused:
             self._media_options.append(":start-paused")
 
-        self._media.add_options(*self._media_options)
+        self._media_input_vlc.add_options(*self._media_options)
 
         if self.is_preparse_required:
-            self._media.parse_with_options(parse_flag, parse_timeout)
+            self._media_input_vlc.parse_with_options(parse_flag, parse_timeout)
 
             self.notify_update_status(translate("Video Status", "Parsing media"))
         else:
@@ -341,7 +342,7 @@ class VlcPlayerBase(ABC):
         self._log.debug("Setting parsed media to player and waiting for buffering")
 
         playlist = self.instance.media_list_new()
-        playlist.add_media(self._media)
+        playlist.add_media(self._media_input_vlc)
 
         self._playlist_player.set_media_list(playlist)
 
@@ -363,9 +364,9 @@ class VlcPlayerBase(ABC):
 
         self._log.debug("Extracting media track")
 
-        self._init_media_track()
+        self._init_media_tracks()
 
-        if not self.media_track:
+        if not self.media:
             # video not loaded yet, happens with live streams
             # waiting for decoder to catch first frame
             # usually time begins to tick after that
@@ -397,7 +398,7 @@ class VlcPlayerBase(ABC):
 
         self.is_video_initialized = True
 
-        self.notify_load_video_done(self.media_track)
+        self.notify_load_video_done(self.media)
 
         self.notify_playback_status_changed(self._is_paused)
         self.notify_time_changed(self.media_input.initial_time)
@@ -452,7 +453,7 @@ class VlcPlayerBase(ABC):
         if self.media_input.is_live:
             return
 
-        if seek_ms > self.media_track.length - VIDEO_END_LOOP_MARGIN_MS:
+        if seek_ms > self.media.length - VIDEO_END_LOOP_MARGIN_MS:
             return
 
         self._media_player.set_time(seek_ms)
@@ -474,18 +475,24 @@ class VlcPlayerBase(ABC):
 
         self._media_player.audio_set_volume(volume)
 
+    @only_initialized_player
+    def set_audio_track(self, track_id):
+        self._tracks_manager.set_audio_track_id(track_id)
+
+    @only_initialized_player
+    def set_video_track(self, track_id):
+        self._tracks_manager.set_video_track_id(track_id)
+
     @property
     def video_dimensions(self):
-        if self._media_player is None:
-            if self.media_track:
-                return self.media_track.video_dimensions
+        if self._media_player is None or self.media is None:
             return 0, 0
 
         return self._media_player.video_get_size()
 
     @only_initialized_player
     def adjust_view(self, size, aspect, scale):
-        if self.media_track is None:
+        if self.media is None:
             # video not loaded yet, video frame resized on init
             if self.media_input:
                 self.media_input.size = size
@@ -521,7 +528,7 @@ class VlcPlayerBase(ABC):
         self._set_time_initial(self.media_input.initial_time)
 
     def _adjust_view_initial(self):
-        if self.media_track.is_audio_only:
+        if self.media.is_audio_only:
             return
 
         # wait for video output init
@@ -556,65 +563,53 @@ class VlcPlayerBase(ABC):
             with self._event_waiter.waiting_for("buffering", self.init_time_left):
                 self._media_player.set_time(seek_ms)
 
-            if not self.media_track.is_audio_only:
+            if not self.media.is_audio_only:
                 self._event_waiter.wait_for("vout", self.init_time_left)
 
-    def _get_media_track(self):
-        media_tracks = self._media.tracks_get()
+    def _init_media_tracks(self):
+        if self.media is not None:
+            return
+
+        self.media = self._get_loaded_media()
+
+        if self.media is None:
+            return
+
+        if self.media.length == -1 and not self.media_input.is_live:
+            self._log.debug("Media length is not known, probably live stream")
+            self.media_input.is_live = True
+
+        self.media_input.length = self.media.length
+
+    def _get_loaded_media(self):
+        media_tracks = self._media_input_vlc.tracks_get()
 
         if not media_tracks:
             self._log.debug("No media tracks found")
             return None
 
-        video_tracks = (
-            t.u.video.contents for t in media_tracks if t.type == vlc.TrackType.video
+        self._tracks_manager = TracksManager(
+            media_player=self._media_player, media_tracks=list(media_tracks)
         )
 
-        video_track = next(video_tracks, None)
-
-        if video_track is None:
-            self._log.debug("No video track found, audio only")
-            return MediaTrack(
-                is_audio_only=True,
-                length=self._get_duration(),
-                video_dimensions=(0, 0),
-                fps=DEFAULT_FPS,
-            )
-
-        if not all([video_track.width, video_track.height]):
+        if not self._tracks_manager.is_video_size_initialized:
             self._log.debug("Video size is not initialized yet")
             if self.is_video_size_required:
                 return None
 
-        if all([video_track.frame_rate_num, video_track.frame_rate_den]):
-            fps = video_track.frame_rate_num / video_track.frame_rate_den
-        else:
-            fps = DEFAULT_FPS
+        self._tracks_manager.set_video_track_id(self.media_input.video.video_track_id)
+        self._tracks_manager.set_audio_track_id(self.media_input.video.audio_track_id)
 
-        return MediaTrack(
-            is_audio_only=False,
+        return Media(
             length=self._get_duration(),
-            video_dimensions=(video_track.width, video_track.height),
-            fps=fps,
+            video_tracks=self._tracks_manager.video_tracks,
+            audio_tracks=self._tracks_manager.audio_tracks,
+            cur_video_track_id=self._tracks_manager.current_video_track_id,
+            cur_audio_track_id=self._tracks_manager.current_audio_track_id,
         )
-
-    def _init_media_track(self):
-        if self.media_track is not None:
-            return
-
-        self.media_track = self._get_media_track()
-
-        if self.media_track is None:
-            return
-
-        if self.media_track.length == -1 and not self.media_input.is_live:
-            self._log.debug("Media length is not known, probably live stream")
-            self.media_input.is_live = True
-
-        self.media_input.length = self.media_track.length
 
     def _get_duration(self):
         if self.media_input.is_live:
             return -1
 
-        return self._media.get_duration() or -1
+        return self._media_input_vlc.get_duration() or -1

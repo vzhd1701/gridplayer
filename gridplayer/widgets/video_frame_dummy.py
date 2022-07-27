@@ -4,7 +4,7 @@ from PyQt5.QtCore import QTimer
 from PyQt5.QtGui import QColor, QPainter
 from PyQt5.QtWidgets import QWidget
 
-from gridplayer.vlc_player.static import MediaInput, MediaTrack
+from gridplayer.vlc_player.static import AudioTrack, Media, MediaInput, VideoTrack
 from gridplayer.vlc_player.video_driver_base import VLCVideoDriver
 from gridplayer.widgets.video_frame_vlc_base import VideoFrameVLC
 
@@ -40,6 +40,12 @@ class VideoDriverDummy(VLCVideoDriver):
     def audio_set_volume(self, volume):
         ...
 
+    def set_audio_track(self, track_id):
+        ...
+
+    def set_video_track(self, track_id):
+        ...
+
 
 class VideoFrameDummy(VideoFrameVLC):
     is_opengl = False
@@ -49,11 +55,21 @@ class VideoFrameDummy(VideoFrameVLC):
 
         self._color = QColor(random.choice(QColor.colorNames()))  # noqa: S311
 
-        self._fake_media_track = MediaTrack(
-            is_audio_only=False,
+        self._fake_media_track = Media(
             length=FAKE_VIDEO_LENGTH,
-            video_dimensions=(100, 100),
-            fps=FAKE_VIDEO_FPS,
+            video_tracks={
+                0: VideoTrack(
+                    video_dimensions=(640, 480),
+                    fps=FAKE_VIDEO_FPS,
+                    codec="Dummy",
+                    bitrate=0,
+                    description=None,
+                    language=None,
+                )
+            },
+            audio_tracks={},
+            cur_video_track_id=0,
+            cur_audio_track_id=None,
         )
 
         self._fake_player_time = 0
