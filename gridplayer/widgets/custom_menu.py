@@ -13,6 +13,7 @@ COLORS_LIGHT = MappingProxyType(
         "background_selected": "#aaa",
         "background_checked": "#888",
         "text": "#000",
+        "text_disabled": "#888",
         "border": "#aaa",
     }
 )
@@ -23,6 +24,7 @@ COLORS_DARK = MappingProxyType(
         "background_selected": "#888",
         "background_checked": "#666",
         "text": "#eee",
+        "text_disabled": "#888",
         "border": "#888",
     }
 )
@@ -47,6 +49,7 @@ QMenu::separator { height: 1px; margin: 2px 3px; background: {border}; }
 QMenu::item:selected { background-color: {background_selected}; }
 QMenu::item:checked { background-color: {background_checked}; }
 QMenu::item:checked:selected  { background-color: {background_selected}; }
+QMenu::item:disabled { color: {text_disabled}; }
 """
 
 
