@@ -65,6 +65,7 @@ nested_classes_whitelist=["Config"]
 
 [tool.flakehell.plugins]
 # Disabled [personal preference]
+# WPS110 wrong names
 # WPS111 short names
 # WPS115 upper-case constant in a class - flag enums
 # WPS226 String constant overuse
@@ -101,7 +102,7 @@ flake8-quotes = ["+*", "-Q000"]
 flake8-rst-docstrings = ["-*"]
 flake8-docstrings = ["-*"]
 flake8-darglint = ["-*"]
-wemake-python-styleguide = ["+*", "-WPS111", "-WPS115", "-WPS201", "-WPS214", "-WPS226", "-WPS305", "-WPS317", "-WPS326", "-WPS336", "-WPS425", "-WPS428", "-WPS437", "-WPS601"]
+wemake-python-styleguide = ["+*", "-WPS110", "-WPS111", "-WPS115", "-WPS201", "-WPS214", "-WPS226", "-WPS305", "-WPS317", "-WPS326", "-WPS336", "-WPS425", "-WPS428", "-WPS437", "-WPS601"]
 
 [tool.flakehell.exceptions."gridplayer/version.py"]
 # I like it this way
