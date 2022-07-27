@@ -120,13 +120,9 @@ class PlayerProcessSingleVLCSW(VlcPlayerThreaded):
             # Since we need metadata to allocate video buffer, restart is required
             self._restart_playback()
             return
-        else:
-            self._tracks_manager.set_video_track_id(
-                self.media_input.video.video_track_id
-            )
-            self._tracks_manager.set_audio_track_id(
-                self.media_input.video.audio_track_id
-            )
+
+        self._tracks_manager.set_video_track_id(self.media_input.video.video_track_id)
+        self._tracks_manager.set_audio_track_id(self.media_input.video.audio_track_id)
 
         super().load_video_st4_loaded()
 
