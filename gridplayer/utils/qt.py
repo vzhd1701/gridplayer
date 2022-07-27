@@ -13,6 +13,7 @@ QT_ASPECT_MAP = MappingProxyType(
         VideoAspect.NONE: Qt.KeepAspectRatio,
     }
 )
+QT_LOG_IGNORED = ("requestActivate() called for",)
 
 
 class QABC(type(QObject), ABCMeta):  # noqa: WPS606
@@ -34,3 +35,11 @@ def tr(text):
 
 def translate(context, text, disambiguation=None):
     return QCoreApplication.translate(context, text, disambiguation)
+
+
+def is_qt_log_ignored(message):
+    for ignored in QT_LOG_IGNORED:
+        if ignored in message:
+            return True
+
+    return False

@@ -7,6 +7,8 @@ from typing import Optional
 
 from PyQt5 import QtCore
 
+from gridplayer.utils.qt import is_qt_log_ignored
+
 DISABLED = logging.CRITICAL + 1
 
 
@@ -55,6 +57,9 @@ class QtLogHandler(object):
         self._log = logging.getLogger("QT")
 
     def handle(self, mode, context, message):
+        if is_qt_log_ignored(message):
+            return
+
         log_level = self.log_level_map[mode]
 
         if context.file is not None:
