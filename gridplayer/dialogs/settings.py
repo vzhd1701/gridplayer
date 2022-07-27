@@ -11,6 +11,7 @@ from gridplayer.dialogs.settings_dialog_ui import Ui_SettingsDialog
 from gridplayer.params import env
 from gridplayer.params.languages import LANGUAGES
 from gridplayer.params.static import (
+    AudioChannelMode,
     GridMode,
     SeekSyncMode,
     URLResolver,
@@ -87,6 +88,7 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
             "playlist/disable_wheel_seek": self.playlistDisableWheelSeek,
             "video_defaults/aspect": self.videoAspect,
             "video_defaults/repeat": self.repeatMode,
+            "video_defaults/audio_mode": self.videoAudioMode,
             "video_defaults/random_loop": self.videoRandomLoop,
             "video_defaults/muted": self.videoMuted,
             "video_defaults/paused": self.videoPaused,
@@ -156,6 +158,7 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
         self.fill_streamQuality()
         self.fill_playlistSeekSyncMode()
         self.fill_streamingResolverPriority()
+        self.fill_videoAudioMode()
 
     def ui_set_limits(self):  # noqa: WPS213
         self.playerVideoDriverPlayers.setRange(1, MAX_VLC_PROCESSES)
@@ -368,6 +371,20 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
         }
 
         _fill_combo_box(self.streamingResolverPriority, resolvers)
+
+    def fill_videoAudioMode(self):
+        modes = {
+            AudioChannelMode.UNSET: translate("Audio Mode", "Original"),
+            AudioChannelMode.STEREO: translate("Audio Mode", "Stereo"),
+            AudioChannelMode.RSTEREO: translate("Audio Mode", "Reverse Stereo"),
+            AudioChannelMode.LEFT: translate("Audio Mode", "Left"),
+            AudioChannelMode.RIGHT: translate("Audio Mode", "Right"),
+            AudioChannelMode.DOLBYS: translate("Audio Mode", "Dolby Surround"),
+            AudioChannelMode.HEADPHONES: translate("Audio Mode", "Headphones"),
+            AudioChannelMode.MONO: translate("Audio Mode", "Mono"),
+        }
+
+        _fill_combo_box(self.videoAudioMode, modes)
 
     def driver_selected(self, idx):
         driver_id = self.playerVideoDriver.itemData(idx)

@@ -9,6 +9,7 @@ from gridplayer.models.resolver_patterns import ResolverPatterns
 from gridplayer.params import env
 from gridplayer.params.languages import get_system_language
 from gridplayer.params.static import (
+    AudioChannelMode,
     GridMode,
     SeekSyncMode,
     URLResolver,
@@ -46,6 +47,7 @@ _default_settings = {
     "playlist/disable_wheel_seek": False,
     "video_defaults/aspect": VideoAspect.FIT,
     "video_defaults/repeat": VideoRepeat.SINGLE_FILE,
+    "video_defaults/audio_mode": AudioChannelMode.UNSET,
     "video_defaults/random_loop": False,
     "video_defaults/muted": True,
     "video_defaults/paused": False,

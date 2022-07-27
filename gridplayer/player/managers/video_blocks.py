@@ -5,7 +5,12 @@ from PyQt5.QtCore import Qt, pyqtSignal
 
 from gridplayer.dialogs.input_dialog import QCustomSpinboxInput, QCustomSpinboxTimeInput
 from gridplayer.models.video import Video
-from gridplayer.params.static import SeekSyncMode, VideoAspect, VideoRepeat
+from gridplayer.params.static import (
+    AudioChannelMode,
+    SeekSyncMode,
+    VideoAspect,
+    VideoRepeat,
+)
 from gridplayer.player.managers.base import ManagerBase
 from gridplayer.settings import Settings
 from gridplayer.utils.qt import qt_connect, translate
@@ -123,6 +128,7 @@ class VideoBlocksManager(ManagerBase):
 
     all_set_aspect = pyqtSignal(VideoAspect)
     all_set_auto_reload_timer = pyqtSignal(int)
+    all_set_audio_channel_mode = pyqtSignal(AudioChannelMode)
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -151,6 +157,7 @@ class VideoBlocksManager(ManagerBase):
             "is_any_videos_seekable": self.is_any_videos_seekable,
             "is_any_videos_local_file": self.is_any_videos_local_file,
             "is_any_videos_live": self.is_any_videos_live,
+            "is_any_videos_have_audio": self.is_any_videos_have_audio,
             "is_seek_sync_mode_set_to": self.is_seek_sync_mode_set_to,
             "set_seek_sync_mode": self.set_seek_sync_mode,
             "reload_all": self.reload_videos,
@@ -245,6 +252,9 @@ class VideoBlocksManager(ManagerBase):
 
     def is_any_videos_live(self):
         return any(vb.is_live for vb in self._ctx.video_blocks.initialized)
+
+    def is_any_videos_have_audio(self):
+        return any(vb.audio_tracks for vb in self._ctx.video_blocks.initialized)
 
     def is_any_videos_local_file(self):
         return any(vb.is_local_file for vb in self._ctx.video_blocks.initialized)
@@ -346,6 +356,7 @@ class VideoBlocksManager(ManagerBase):
             (self.all_scale_reset, vb.scale_reset),
             (self.all_set_aspect, vb.set_aspect),
             (self.all_set_auto_reload_timer, vb.set_auto_reload_timer),
+            (self.all_set_audio_channel_mode, vb.set_audio_channel_mode),
             (self.all_previous_video, vb.previous_video),
             (self.all_next_video, vb.next_video),
             (self.hide_overlay, vb.hide_overlay),

@@ -336,6 +336,14 @@ class Ui_SettingsDialog(object):
         self.repeatMode = QtWidgets.QComboBox(self.page_defaults_video)
         self.repeatMode.setObjectName("repeatMode")
         self.formLayout_4.setWidget(1, QtWidgets.QFormLayout.FieldRole, self.repeatMode)
+        self.label_15 = QtWidgets.QLabel(self.page_defaults_video)
+        self.label_15.setObjectName("label_15")
+        self.formLayout_4.setWidget(2, QtWidgets.QFormLayout.LabelRole, self.label_15)
+        self.videoAudioMode = QtWidgets.QComboBox(self.page_defaults_video)
+        self.videoAudioMode.setObjectName("videoAudioMode")
+        self.formLayout_4.setWidget(
+            2, QtWidgets.QFormLayout.FieldRole, self.videoAudioMode
+        )
         self.lay_page_defaults_video.addLayout(self.formLayout_4)
         self.videoRandomLoop = QtWidgets.QCheckBox(self.page_defaults_video)
         self.videoRandomLoop.setObjectName("videoRandomLoop")
@@ -650,6 +658,7 @@ class Ui_SettingsDialog(object):
         self.gridShuffleOnLoad.setText(_translate("SettingsDialog", "Shuffle on load"))
         self.videoAspectLabel.setText(_translate("SettingsDialog", "Aspect mode"))
         self.repeatModeLabel.setText(_translate("SettingsDialog", "Repeat mode"))
+        self.label_15.setText(_translate("SettingsDialog", "Audio mode"))
         self.videoRandomLoop.setText(
             _translate("SettingsDialog", "Start at random position")
         )

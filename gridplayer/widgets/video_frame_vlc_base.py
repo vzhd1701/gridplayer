@@ -326,6 +326,9 @@ class VideoFrameVLC(QWidget, metaclass=QABC):
 
         self.adjust_view()
 
+    def set_audio_channel_mode(self, mode):
+        self.video_driver.set_audio_channel_mode(mode)
+
 
 class VideoFrameVLCProcess(VideoFrameVLC, ABC):
     def __init__(self, process_manager, **kwargs):

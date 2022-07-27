@@ -15,7 +15,7 @@ from pydantic import (  # noqa: WPS450
 from pydantic.color import Color
 
 from gridplayer.params.extensions import SUPPORTED_MEDIA_EXT
-from gridplayer.params.static import VideoAspect, VideoRepeat
+from gridplayer.params.static import AudioChannelMode, VideoAspect, VideoRepeat
 from gridplayer.settings import default_field
 
 MIN_SCALE = 1
@@ -87,6 +87,8 @@ class Video(BaseModel):
     # Tracks
     audio_track_id: Optional[int]
     video_track_id: Optional[int]
+
+    audio_channel_mode: AudioChannelMode = default_field("video_defaults/audio_mode")
 
     @property
     def uri_name(self) -> str:

@@ -78,6 +78,10 @@ class VLCVideoDriver(QObject, metaclass=QABC):
     def set_video_track(self, track_id):
         ...
 
+    @abstractmethod
+    def set_audio_channel_mode(self, mode):
+        ...
+
     def error_state(self, error):
         self.error.emit(error)
 

@@ -6,7 +6,13 @@ from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QIcon, QKeySequence
 from PyQt5.QtWidgets import QAction
 
-from gridplayer.params.static import GridMode, SeekSyncMode, VideoAspect, VideoRepeat
+from gridplayer.params.static import (
+    AudioChannelMode,
+    GridMode,
+    SeekSyncMode,
+    VideoAspect,
+    VideoRepeat,
+)
 from gridplayer.player.managers.base import ManagerBase
 from gridplayer.utils.qt import translate
 from gridplayer.widgets.custom_menu import CustomMenu
@@ -379,6 +385,94 @@ COMMANDS = MappingProxyType(
             "show_if": "is_active_initialized",
             "menu_generator": "menu_generator_audio_track",
         },
+        "Audio Mode - Original": {
+            "title": translate("Audio Mode", "Original"),
+            "icon": "empty",
+            "show_if": "is_active_has_audio",
+            "func": ("active", "set_audio_channel_mode", AudioChannelMode.UNSET),
+            "check_if": (
+                "is_active_param_set_to",
+                "audio_channel_mode",
+                AudioChannelMode.UNSET,
+            ),
+        },
+        "Audio Mode - Stereo": {
+            "title": translate("Audio Mode", "Stereo"),
+            "icon": "empty",
+            "show_if": "is_active_has_audio",
+            "func": ("active", "set_audio_channel_mode", AudioChannelMode.STEREO),
+            "check_if": (
+                "is_active_param_set_to",
+                "audio_channel_mode",
+                AudioChannelMode.STEREO,
+            ),
+        },
+        "Audio Mode - Reverse Stereo": {
+            "title": translate("Audio Mode", "Reverse Stereo"),
+            "icon": "empty",
+            "show_if": "is_active_has_audio",
+            "func": ("active", "set_audio_channel_mode", AudioChannelMode.RSTEREO),
+            "check_if": (
+                "is_active_param_set_to",
+                "audio_channel_mode",
+                AudioChannelMode.RSTEREO,
+            ),
+        },
+        "Audio Mode - Left": {
+            "title": translate("Audio Mode", "Left"),
+            "icon": "empty",
+            "show_if": "is_active_has_audio",
+            "func": ("active", "set_audio_channel_mode", AudioChannelMode.LEFT),
+            "check_if": (
+                "is_active_param_set_to",
+                "audio_channel_mode",
+                AudioChannelMode.LEFT,
+            ),
+        },
+        "Audio Mode - Right": {
+            "title": translate("Audio Mode", "Right"),
+            "icon": "empty",
+            "show_if": "is_active_has_audio",
+            "func": ("active", "set_audio_channel_mode", AudioChannelMode.RIGHT),
+            "check_if": (
+                "is_active_param_set_to",
+                "audio_channel_mode",
+                AudioChannelMode.RIGHT,
+            ),
+        },
+        "Audio Mode - Dolby Surround": {
+            "title": translate("Audio Mode", "Dolby Surround"),
+            "icon": "empty",
+            "show_if": "is_active_has_audio",
+            "func": ("active", "set_audio_channel_mode", AudioChannelMode.DOLBYS),
+            "check_if": (
+                "is_active_param_set_to",
+                "audio_channel_mode",
+                AudioChannelMode.DOLBYS,
+            ),
+        },
+        "Audio Mode - Headphones": {
+            "title": translate("Audio Mode", "Headphones"),
+            "icon": "empty",
+            "show_if": "is_active_has_audio",
+            "func": ("active", "set_audio_channel_mode", AudioChannelMode.HEADPHONES),
+            "check_if": (
+                "is_active_param_set_to",
+                "audio_channel_mode",
+                AudioChannelMode.HEADPHONES,
+            ),
+        },
+        "Audio Mode - Mono": {
+            "title": translate("Audio Mode", "Mono"),
+            "icon": "empty",
+            "show_if": "is_active_has_audio",
+            "func": ("active", "set_audio_channel_mode", AudioChannelMode.MONO),
+            "check_if": (
+                "is_active_param_set_to",
+                "audio_channel_mode",
+                AudioChannelMode.MONO,
+            ),
+        },
         "Rename": {
             "title": translate("Actions", "Rename"),
             "key": "F4",
@@ -713,6 +807,54 @@ COMMANDS = MappingProxyType(
             "icon": "aspect-none",
             "func": ("all", "set_aspect", VideoAspect.NONE),
             "show_if": "is_any_videos_initialized",
+        },
+        "Audio Mode - Original [ALL]": {
+            "title": translate("Audio Mode", "Original"),
+            "icon": "empty",
+            "show_if": "is_any_videos_have_audio",
+            "func": ("all", "set_audio_channel_mode", AudioChannelMode.UNSET),
+        },
+        "Audio Mode - Stereo [ALL]": {
+            "title": translate("Audio Mode", "Stereo"),
+            "icon": "empty",
+            "show_if": "is_any_videos_have_audio",
+            "func": ("all", "set_audio_channel_mode", AudioChannelMode.STEREO),
+        },
+        "Audio Mode - Reverse Stereo [ALL]": {
+            "title": translate("Audio Mode", "Reverse Stereo"),
+            "icon": "empty",
+            "show_if": "is_any_videos_have_audio",
+            "func": ("all", "set_audio_channel_mode", AudioChannelMode.RSTEREO),
+        },
+        "Audio Mode - Left [ALL]": {
+            "title": translate("Audio Mode", "Left"),
+            "icon": "empty",
+            "show_if": "is_any_videos_have_audio",
+            "func": ("all", "set_audio_channel_mode", AudioChannelMode.LEFT),
+        },
+        "Audio Mode - Right [ALL]": {
+            "title": translate("Audio Mode", "Right"),
+            "icon": "empty",
+            "show_if": "is_any_videos_have_audio",
+            "func": ("all", "set_audio_channel_mode", AudioChannelMode.RIGHT),
+        },
+        "Audio Mode - Dolby Surround [ALL]": {
+            "title": translate("Audio Mode", "Dolby Surround"),
+            "icon": "empty",
+            "show_if": "is_any_videos_have_audio",
+            "func": ("all", "set_audio_channel_mode", AudioChannelMode.DOLBYS),
+        },
+        "Audio Mode - Headphones [ALL]": {
+            "title": translate("Audio Mode", "Headphones"),
+            "icon": "empty",
+            "show_if": "is_any_videos_have_audio",
+            "func": ("all", "set_audio_channel_mode", AudioChannelMode.HEADPHONES),
+        },
+        "Audio Mode - Mono [ALL]": {
+            "title": translate("Audio Mode", "Mono"),
+            "icon": "empty",
+            "show_if": "is_any_videos_have_audio",
+            "func": ("all", "set_audio_channel_mode", AudioChannelMode.MONO),
         },
         "Reload [ALL]": {
             "title": translate("Actions", "Reload"),

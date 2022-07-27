@@ -35,6 +35,10 @@ SUBMENUS = MappingProxyType(
         "Save Snapshot": {"title": translate("Actions", "Save Snapshot")},
         "Delete Snapshot": {"title": translate("Actions", "Delete Snapshot")},
         "Tracks": {"title": translate("Actions", "Tracks"), "icon": "track"},
+        "Audio Mode": {
+            "title": translate("Actions", "Audio Mode"),
+            "icon": "audio-mode",
+        },
     }
 )
 
@@ -125,6 +129,17 @@ SECTIONS = MappingProxyType(
                 "Video Track",
                 "Audio Track",
             ),
+            (
+                "Audio Mode",
+                "Audio Mode - Original",
+                "Audio Mode - Stereo",
+                "Audio Mode - Reverse Stereo",
+                "Audio Mode - Left",
+                "Audio Mode - Right",
+                "Audio Mode - Dolby Surround",
+                "Audio Mode - Headphones",
+                "Audio Mode - Mono",
+            ),
             "Rename",
             "Reload",
             "Auto Reload: %v",
@@ -202,6 +217,17 @@ SECTIONS = MappingProxyType(
                     "Aspect Fit [ALL]",
                     "Aspect Stretch [ALL]",
                     "Aspect None [ALL]",
+                ),
+                (
+                    "Audio Mode",
+                    "Audio Mode - Original [ALL]",
+                    "Audio Mode - Stereo [ALL]",
+                    "Audio Mode - Reverse Stereo [ALL]",
+                    "Audio Mode - Left [ALL]",
+                    "Audio Mode - Right [ALL]",
+                    "Audio Mode - Dolby Surround [ALL]",
+                    "Audio Mode - Headphones [ALL]",
+                    "Audio Mode - Mono [ALL]",
                 ),
                 "---",
                 "Reload [ALL]",

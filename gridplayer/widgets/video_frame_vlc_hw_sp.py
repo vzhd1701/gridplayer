@@ -4,7 +4,7 @@ from PyQt5.QtCore import QMargins, Qt, QThread, pyqtSignal, pyqtSlot
 from PyQt5.QtWidgets import QWidget
 
 from gridplayer.params import env
-from gridplayer.params.static import VideoAspect
+from gridplayer.params.static import AudioChannelMode, VideoAspect
 from gridplayer.settings import Settings
 from gridplayer.utils.qt import QABC, qt_connect
 from gridplayer.widgets.video_frame_vlc_base import VideoFrameVLC
@@ -140,6 +140,7 @@ class VideoDriverVLCHWSP(VLCVideoDriver):
     cmd_audio_set_volume = pyqtSignal(float)
     cmd_set_video_track = pyqtSignal(int)
     cmd_set_audio_track = pyqtSignal(int)
+    cmd_set_audio_channel_mode = pyqtSignal(AudioChannelMode)
     cmd_adjust_view = pyqtSignal(tuple, VideoAspect, float)
     cmd_set_log_level_vlc = pyqtSignal(int)
 
@@ -168,6 +169,7 @@ class VideoDriverVLCHWSP(VLCVideoDriver):
             (self.cmd_audio_set_volume, self.player.audio_set_volume),
             (self.cmd_set_video_track, self.player.set_video_track),
             (self.cmd_set_audio_track, self.player.set_audio_track),
+            (self.cmd_set_audio_channel_mode, self.player.set_audio_channel_mode),
             (self.cmd_adjust_view, self.player.adjust_view),
             (self.cmd_set_log_level_vlc, self.player.set_log_level_vlc),
             (self.cmd_cleanup, self.player.cleanup),
@@ -209,6 +211,9 @@ class VideoDriverVLCHWSP(VLCVideoDriver):
 
     def set_audio_track(self, track_id):
         self.cmd_set_audio_track.emit(track_id)
+
+    def set_audio_channel_mode(self, mode):
+        self.cmd_set_audio_channel_mode(mode)
 
     def adjust_view(self, size, aspect, scale):
         self.cmd_adjust_view.emit(size, aspect, scale)

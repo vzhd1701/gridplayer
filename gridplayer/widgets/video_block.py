@@ -557,6 +557,14 @@ class VideoBlock(QWidget):  # noqa: WPS230
         self.video_params.video_track_id = track_id
         self.video_driver.set_video_track(track_id)
 
+    @only_initialized
+    def set_audio_channel_mode(self, mode):
+        if not self.audio_tracks:
+            return
+
+        self.video_params.audio_channel_mode = mode
+        self.video_driver.set_audio_channel_mode(mode)
+
     @property
     def title(self):
         return self._title
@@ -665,6 +673,8 @@ class VideoBlock(QWidget):  # noqa: WPS230
         self.set_video_track(snapshot.video_track_id)
         self.set_audio_track(snapshot.audio_track_id)
 
+        self.set_audio_channel_mode(snapshot.audio_channel_mode)
+
         self.set_aspect(snapshot.aspect_mode)
         self.set_muted(snapshot.is_muted)
         self.set_pause(snapshot.is_paused)
@@ -755,6 +765,8 @@ class VideoBlock(QWidget):  # noqa: WPS230
                 self.title = self.video_params.title
 
         self.color = self.video_params.color.as_hex()
+
+        self.set_audio_channel_mode(self.video_params.audio_channel_mode)
 
         self.set_volume(self.video_params.volume)
         self.set_muted(self.video_params.is_muted)

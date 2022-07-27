@@ -4,7 +4,7 @@ from PyQt5.QtCore import QTimer
 from PyQt5.QtGui import QColor, QPainter
 from PyQt5.QtWidgets import QWidget
 
-from gridplayer.vlc_player.static import AudioTrack, Media, MediaInput, VideoTrack
+from gridplayer.vlc_player.static import Media, MediaInput, VideoTrack
 from gridplayer.vlc_player.video_driver_base import VLCVideoDriver
 from gridplayer.widgets.video_frame_vlc_base import VideoFrameVLC
 
@@ -44,6 +44,9 @@ class VideoDriverDummy(VLCVideoDriver):
         ...
 
     def set_video_track(self, track_id):
+        ...
+
+    def set_audio_channel_mode(self, mode):
         ...
 
 

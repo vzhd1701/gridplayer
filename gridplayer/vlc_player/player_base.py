@@ -3,10 +3,11 @@ import tempfile
 from abc import ABC, abstractmethod
 from pathlib import Path
 from time import time
+from types import MappingProxyType
 from typing import Optional
 
 from gridplayer.params import env
-from gridplayer.params.static import VIDEO_END_LOOP_MARGIN_MS
+from gridplayer.params.static import VIDEO_END_LOOP_MARGIN_MS, AudioChannelMode
 from gridplayer.settings import Settings
 from gridplayer.utils.aspect_calc import calc_crop, calc_resize_scale
 from gridplayer.utils.misc import is_url
@@ -23,6 +24,20 @@ from gridplayer.vlc_player.static import Media, MediaInput, NotPausedError
 SNAPSHOT_TIMEOUT = 15
 
 MEDIA_EXTRACT_RETRY_TIME = 0.1
+
+# https://github.com/videolan/vlc/blob/c650ce1a4e352cc04192229a8878b8b6c312527d/include/vlc_aout.h#L92
+AUDIO_CHANNEL_MODE_MAP = MappingProxyType(
+    {
+        AudioChannelMode.UNSET: 0,
+        AudioChannelMode.STEREO: 1,
+        AudioChannelMode.RSTEREO: 2,
+        AudioChannelMode.LEFT: 3,
+        AudioChannelMode.RIGHT: 4,
+        AudioChannelMode.DOLBYS: 5,
+        AudioChannelMode.HEADPHONES: 6,
+        AudioChannelMode.MONO: 7,
+    }
+)
 
 
 def translate(context, text):
@@ -482,6 +497,10 @@ class VlcPlayerBase(ABC):
     @only_initialized_player
     def set_video_track(self, track_id):
         self._tracks_manager.set_video_track_id(track_id)
+
+    @only_initialized_player
+    def set_audio_channel_mode(self, mode: AudioChannelMode):
+        self._media_player.audio_set_channel(AUDIO_CHANNEL_MODE_MAP[mode])
 
     @property
     def video_dimensions(self):

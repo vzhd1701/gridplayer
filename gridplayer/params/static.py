@@ -57,6 +57,17 @@ class URLResolver(AutoName):
     DIRECT = auto()
 
 
+class AudioChannelMode(AutoName):
+    UNSET = auto()
+    STEREO = auto()
+    RSTEREO = auto()
+    LEFT = auto()
+    RIGHT = auto()
+    DOLBYS = auto()
+    HEADPHONES = auto()
+    MONO = auto()
+
+
 class WindowState(NamedTuple):
     is_maximized: bool
     is_fullscreen: bool

@@ -603,6 +603,16 @@
            <item row="1" column="1">
             <widget class="QComboBox" name="repeatMode"/>
            </item>
+           <item row="2" column="0">
+            <widget class="QLabel" name="label_15">
+             <property name="text">
+              <string>Audio mode</string>
+             </property>
+            </widget>
+           </item>
+           <item row="2" column="1">
+            <widget class="QComboBox" name="videoAudioMode"/>
+           </item>
           </layout>
          </item>
          <item>
