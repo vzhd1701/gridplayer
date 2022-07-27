@@ -39,6 +39,7 @@ SUBMENUS = MappingProxyType(
             "title": translate("Actions", "Audio Mode"),
             "icon": "audio-mode",
         },
+        "Add": {"title": translate("Actions", "Add"), "icon": "add"},
     }
 )
 
@@ -299,8 +300,12 @@ SECTIONS = MappingProxyType(
             "Fullscreen",
             "Minimize",
             "---",
-            "Add Files",
-            "Add URL(s)",
+            (
+                "Add",
+                "Add - Files",
+                "Add - URL(s)",
+                "Add - Clipboard",
+            ),
             "Open Playlist",
             "Save Playlist",
             "Close Playlist",

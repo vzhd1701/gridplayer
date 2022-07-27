@@ -7,12 +7,12 @@ from gridplayer.models.video import VideoBlockMime
 from gridplayer.utils.misc import is_url
 
 
-def drag_has_video(dnd_data: QMimeData) -> bool:
+def mime_has_video(dnd_data: QMimeData) -> bool:
     return dnd_data.hasFormat("application/x-gridplayer-video")
 
 
-def drag_get_video(dnd_data: QMimeData) -> Optional[VideoBlockMime]:
-    if not drag_has_video(dnd_data):
+def extract_mime_video(dnd_data: QMimeData) -> Optional[VideoBlockMime]:
+    if not mime_has_video(dnd_data):
         return None
 
     return VideoBlockMime.parse_raw(
@@ -20,11 +20,7 @@ def drag_get_video(dnd_data: QMimeData) -> Optional[VideoBlockMime]:
     )
 
 
-def drag_get_uris(dnd_data: QMimeData) -> List[str]:
-    return _extract_uris(dnd_data)
-
-
-def _extract_uris(dnd_data: QMimeData) -> List[str]:
+def extract_mime_uris(dnd_data: QMimeData) -> List[str]:
     uris = []
 
     if dnd_data.hasUrls():

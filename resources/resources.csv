@@ -10,7 +10,8 @@ icon,icons/main/sys/windows.ico,main_ico_win
 icon,icons/flags/en_US.svg,flag_en_US
 icon,icons/flags/hu_HU.svg,flag_hu_HU
 icon,icons/flags/ru_RU.svg,flag_ru_RU
-icon-symbolic,icons/basic/003-add.svg,add-files
+icon-symbolic,icons/basic/003-add.svg,add
+icon-symbolic,icons/basic/138-pages.svg,add-clipboard
 icon-symbolic,icons/basic/031-cancel.svg,close
 icon-symbolic,icons/basic/042-sand clock.svg,processing
 icon-symbolic,icons/basic/067-down arrow.svg,save-playlist
@@ -79,5 +80,7 @@ icon-symbolic,icons/custom/047-warning.svg,warning
 icon-symbolic,icons/custom/048-settings.svg,settings
 icon-symbolic,icons/custom/049-checkmark.svg,checkmark
 icon-symbolic,icons/custom/050-track.svg,track
+icon-symbolic,icons/custom/051-add url.svg,add-url
+icon-symbolic,icons/custom/052-media file.svg,add-files
 translation,translations/ru_RU.ts,ru_RU
 translation,translations/hu_HU.ts,hu_HU

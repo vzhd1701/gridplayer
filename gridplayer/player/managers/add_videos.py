@@ -1,5 +1,5 @@
 from PyQt5.QtCore import pyqtSignal
-from PyQt5.QtWidgets import QFileDialog
+from PyQt5.QtWidgets import QFileDialog, qApp
 
 from gridplayer.dialogs.add_urls import QAddURLsDialog
 from gridplayer.models.video import VideoURL, filter_video_uris
@@ -9,6 +9,7 @@ from gridplayer.params.extensions import (
     SUPPORTED_VIDEO_EXT,
 )
 from gridplayer.player.managers.base import ManagerBase
+from gridplayer.utils.files import extract_mime_uris
 from gridplayer.utils.qt import translate
 from gridplayer.utils.url_resolve.static import PLUGIN_URLS
 
@@ -20,7 +21,12 @@ class AddVideosManager(ManagerBase):
 
     @property
     def commands(self):
-        return {"add_videos": self.cmd_add_videos, "add_urls": self.cmd_add_urls}
+        return {
+            "add_videos": self.cmd_add_videos,
+            "add_urls": self.cmd_add_urls,
+            "add_from_clipboard": self.cmd_add_from_clipboard,
+            "is_clipboard_full": self.is_clipboard_full,
+        }
 
     def cmd_add_videos(self):
         dialog = QFileDialog(
@@ -51,6 +57,23 @@ class AddVideosManager(ManagerBase):
 
         if valid_urls:
             self.videos_added.emit(valid_urls)
+
+    def cmd_add_from_clipboard(self):
+        if not self.is_clipboard_full():
+            return
+
+        clipboard_links = extract_mime_uris(qApp.clipboard().mimeData())
+
+        videos = filter_video_uris(clipboard_links)
+
+        if not videos:
+            self.error.emit(translate("Error", "No valid URLs or files found!"))
+            return
+
+        self.videos_added.emit(videos)
+
+    def is_clipboard_full(self):
+        return bool(extract_mime_uris(qApp.clipboard().mimeData()))
 
 
 def _get_name_filters():

@@ -1109,17 +1109,24 @@ COMMANDS = MappingProxyType(
             "icon": "minimize",
             "func": "minimize",
         },
-        "Add Files": {
+        "Add - Files": {
             "title": translate("Actions", "Add Files"),
             "key": "Ctrl+A",
             "icon": "add-files",
             "func": "add_videos",
         },
-        "Add URL(s)": {
+        "Add - URL(s)": {
             "title": translate("Actions", "Add URL(s)"),
             "key": "Ctrl+U",
-            "icon": "add-files",
+            "icon": "add-url",
             "func": "add_urls",
+        },
+        "Add - Clipboard": {
+            "title": translate("Actions", "From Clipboard"),
+            "key": "Ctrl+V",
+            "icon": "add-clipboard",
+            "func": "add_from_clipboard",
+            "enable_if": "is_clipboard_full",
         },
         "Open Playlist": {
             "title": translate("Actions", "Open Playlist"),

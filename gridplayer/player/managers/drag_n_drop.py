@@ -7,10 +7,10 @@ from PyQt5.QtWidgets import QApplication
 from gridplayer.models.video import filter_video_uris
 from gridplayer.player.managers.base import ManagerBase
 from gridplayer.utils.files import (
-    drag_get_uris,
-    drag_get_video,
-    drag_has_video,
+    extract_mime_uris,
+    extract_mime_video,
     get_playlist_path,
+    mime_has_video,
 )
 
 
@@ -48,7 +48,7 @@ class DragNDropManager(ManagerBase):
     def dragEnterEvent(self, event):
         drag_data = event.mimeData()
 
-        if not drag_get_uris(drag_data) and not drag_has_video(drag_data):
+        if not extract_mime_uris(drag_data) and not mime_has_video(drag_data):
             return
 
         event.setDropAction(Qt.MoveAction)
@@ -56,8 +56,8 @@ class DragNDropManager(ManagerBase):
 
     def dropEvent(self, event):
         drop_data = event.mimeData()
-        drop_files = drag_get_uris(drop_data)
-        drop_video = drag_get_video(drop_data)
+        drop_files = extract_mime_uris(drop_data)
+        drop_video = extract_mime_video(drop_data)
 
         # Add new video
         if drop_files:
@@ -68,7 +68,7 @@ class DragNDropManager(ManagerBase):
             return self._drop_video_block(event, drop_video)
 
     def dragMoveEvent(self, event):
-        drag_video = drag_get_video(event.mimeData())
+        drag_video = extract_mime_video(event.mimeData())
 
         if drag_video:
             src_video = self._ctx.video_blocks.by_id(drag_video.id)
