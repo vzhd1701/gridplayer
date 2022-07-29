@@ -52,7 +52,8 @@ class VideoTrack(MediaTrack):
         if all(self.video_dimensions):
             info += ["{0}x{1}".format(*self.video_dimensions)]
 
-        info += [f"{self.fps} FPS"]
+        if self.fps:
+            info += [f"{self.fps} FPS"]
 
         if self.bitrate:
             info += ["{0} kbps".format(self.bitrate // 1024)]
