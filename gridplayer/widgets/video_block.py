@@ -707,6 +707,7 @@ class VideoBlock(QWidget):  # noqa: WPS230
                 MediaInput(
                     uri=str(self.video_params.uri),
                     is_live=False,
+                    is_audio_only=False,
                     size=self.size_tuple,
                     video=self.video_params,
                 )
@@ -746,6 +747,7 @@ class VideoBlock(QWidget):  # noqa: WPS230
             MediaInput(
                 uri=url,
                 is_live=self.is_live,
+                is_audio_only=stream.is_audio_only,
                 size=self.size_tuple,
                 video=self.video_params,
             )

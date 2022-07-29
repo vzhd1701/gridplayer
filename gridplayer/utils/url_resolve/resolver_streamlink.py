@@ -34,12 +34,19 @@ class StreamlinkResolver(ResolverBase):
 
     @property
     def streams(self):
-        return Streams(
-            {
-                resolution: self._convert_stream(stream, self.is_live)
-                for resolution, stream in self._raw_streams.items()
-            }
-        )
+        video_streams = {
+            resolution: self._convert_stream(src_stream=stream, is_live=self.is_live)
+            for resolution, stream in self._raw_streams_with_video.items()
+        }
+
+        audio_only_streams = {
+            resolution: self._convert_stream(
+                src_stream=stream, is_live=self.is_live, is_audio_only=True
+            )
+            for resolution, stream in self._raw_streams_audio_only.items()
+        }
+
+        return Streams({**video_streams, **audio_only_streams})
 
     @staticmethod
     def is_able_to_handle(url: VideoURL):  # noqa: WPS602
@@ -89,15 +96,56 @@ class StreamlinkResolver(ResolverBase):
 
         return streams
 
+    @cached_property
+    def _raw_streams_with_video(self):
+        return {
+            resolution: stream
+            for resolution, stream in self._raw_streams.items()
+            if "audio" not in resolution
+        }
+
+    @cached_property
+    def _raw_streams_audio_only(self):
+        audio_streams = {
+            resolution: stream
+            for resolution, stream in self._raw_streams.items()
+            if "audio" in resolution
+        }
+
+        audio_streams.update(self._raw_streams_audio_only_muxed)
+
+        return audio_streams
+
+    @cached_property
+    def _raw_streams_audio_only_muxed(self):  # noqa: WPS210
+        muxed_streams = [
+            stream
+            for stream in self._raw_streams.values()
+            if isinstance(stream, MuxedHLSStream)
+        ]
+
+        # ensure that we are extracting unique audio streams
+        audio_streams_filter = {}
+        for m_stream in muxed_streams:
+            for audio_track in m_stream.substreams[1:]:
+                audio_streams_filter[audio_track.url] = audio_track
+
+        return {
+            f"Audio Only {stream_idx}": stream
+            for stream_idx, stream in enumerate(audio_streams_filter.values())
+        }
+
     @property
     def _service_id(self):
         return "streamlink-{0}".format(self._plugin.module)
 
-    def _convert_stream(self, src_stream, is_live: bool):
+    def _convert_stream(self, src_stream, is_live: bool, is_audio_only: bool = False):
         if isinstance(src_stream, MuxedHLSStream):
             audio_tracks = Streams(
                 {
-                    f"Audio {i}": self._convert_stream(s, False)
+                    f"Audio {i}": self._convert_stream(
+                        src_stream=s, is_live=False, is_audio_only=True
+                    )
                     for i, s in enumerate(src_stream.substreams[1:])
                 }
             )
@@ -122,6 +170,7 @@ class StreamlinkResolver(ResolverBase):
         return Stream(
             url=src_stream.url,
             protocol=protocol,
+            is_audio_only=is_audio_only,
             session=StreamSessionOpts(
                 service=self._service_id,
                 session_headers=HashableDict(self._session.http.headers),

@@ -342,6 +342,9 @@ class VlcPlayerBase(ABC):
         if not self.media_input.is_live and self.media_input.video.is_paused:
             self._media_options.append(":start-paused")
 
+        if self.media_input.is_audio_only:
+            self._media_options.append(":no-video")
+
         self._media_input_vlc.add_options(*self._media_options)
 
         if self.is_preparse_required:
@@ -608,7 +611,9 @@ class VlcPlayerBase(ABC):
             return None
 
         self._tracks_manager = TracksManager(
-            media_player=self._media_player, media_tracks=list(media_tracks)
+            media_player=self._media_player,
+            media_tracks=list(media_tracks),
+            is_audio_only=self.media_input.is_audio_only,
         )
 
         if not self._tracks_manager.is_video_size_initialized:

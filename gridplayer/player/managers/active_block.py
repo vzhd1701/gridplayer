@@ -1,4 +1,3 @@
-import itertools
 from pathlib import Path
 
 from PyQt5.QtCore import QEvent, pyqtSignal
@@ -116,20 +115,27 @@ class ActiveBlockManager(ManagerBase):
 
     def menu_generator_stream_quality(self):
         if self.is_no_active_block:
-            return {}
+            return []
 
-        return list(
-            itertools.chain(
-                {
-                    "title": quality,
-                    "icon": "empty",
-                    "func": ("active", "switch_stream_quality", quality),
-                    "check_if": ("is_active_param_set_to", "stream_quality", quality),
-                    "show_if": "is_active_multistream",
-                }
-                for quality in reversed(self._ctx.active_block.streams)
-            )
-        )
+        video_streams = self._ctx.active_block.streams.video_streams
+        audio_only_streams = self._ctx.active_block.streams.audio_only_streams
+
+        streams = [
+            _stream_menu_item(quality)
+            for quality, stream in reversed(list(video_streams.items()))
+        ]
+
+        audio_only_streams = [
+            _stream_menu_item(quality)
+            for quality, stream in reversed(list(audio_only_streams.items()))
+        ]
+
+        if audio_only_streams:
+            if streams:
+                streams += ["---"]
+            streams += audio_only_streams
+
+        return streams
 
     def menu_generator_video_track(self):
         if self.is_no_active_block or not self._ctx.active_block.video_tracks:
@@ -245,3 +251,13 @@ class ActiveBlockManager(ManagerBase):
     def _get_current_cursor_pos(self):
         parent = self.parent()
         return parent.mapFromGlobal(parent.cursor().pos())
+
+
+def _stream_menu_item(quality: str):
+    return {
+        "title": quality,
+        "icon": "empty",
+        "func": ("active", "switch_stream_quality", quality),
+        "check_if": ("is_active_param_set_to", "stream_quality", quality),
+        "show_if": "is_active_multistream",
+    }

@@ -116,6 +116,7 @@ class Media(object):
 class MediaInput(object):
     uri: str
     is_live: bool
+    is_audio_only: bool
     size: Tuple[int, int]
     video: Video
 

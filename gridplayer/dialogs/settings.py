@@ -337,6 +337,8 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
         quality_codes = {
             "best": self.tr("Best"),
             "worst": self.tr("Worst"),
+            "best_audio_only": self.tr("Best (Audio Only)"),
+            "worst_audio_only": self.tr("Worst (Audio Only)"),
         }
 
         standard_quality_codes = [

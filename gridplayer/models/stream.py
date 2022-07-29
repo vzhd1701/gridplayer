@@ -18,6 +18,7 @@ class StreamSessionOpts(object):
 class Stream(object):
     url: str
     protocol: str
+    is_audio_only: bool = False
     session: Optional[StreamSessionOpts] = None
     audio_tracks: Optional["Streams"] = None
 
@@ -51,19 +52,51 @@ class Streams(object):
         return self.streams.items()
 
     @property
+    def video_streams(self) -> Dict[str, Stream]:
+        return {k: v for k, v in self.streams.items() if not v.is_audio_only}
+
+    @property
+    def audio_only_streams(self) -> Dict[str, Stream]:
+        return {k: v for k, v in self.streams.items() if v.is_audio_only}
+
+    @property
+    def best_audio_only(self) -> Optional[Tuple[str, Stream]]:
+        if not self.audio_only_streams:
+            return None
+
+        return list(self.audio_only_streams.items())[-1]
+
+    @property
+    def worst_audio_only(self) -> Optional[Tuple[str, Stream]]:
+        if not self.audio_only_streams:
+            return None
+
+        return list(self.audio_only_streams.items())[0]
+
+    @property
     def best(self) -> Tuple[str, Stream]:
-        return list(self.streams.items())[-1]
+        if self.video_streams:
+            return list(self.video_streams.items())[-1]
+
+        return self.best_audio_only
 
     @property
     def worst(self) -> Tuple[str, Stream]:
-        return list(self.streams.items())[0]
+        if self.video_streams:
+            return list(self.video_streams.items())[0]
+
+        return self.worst_audio_only
 
     def by_quality(self, quality: str) -> Tuple[str, Stream]:
-        if quality == "best":
-            return self.best
+        standard_quality_map = {
+            "best": self.best,
+            "worst": self.worst,
+            "best_audio_only": self.best_audio_only,
+            "worst_audio_only": self.worst_audio_only,
+        }
 
-        if quality == "worst":
-            return self.worst
+        if standard_quality_map.get(quality):
+            return standard_quality_map[quality]
 
         if self.streams.get(quality):
             return quality, self.streams[quality]

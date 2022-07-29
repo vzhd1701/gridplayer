@@ -7,14 +7,18 @@ from gridplayer.vlc_player.static import NO_TRACK, AudioTrack, VideoTrack
 
 
 class TracksManager(object):
-    def __init__(self, media_player, media_tracks):
+    def __init__(self, media_player, media_tracks, is_audio_only):
         self._media_player = media_player
         self._media_tracks = media_tracks
+        self._is_audio_only = is_audio_only
 
         self._log = logging.getLogger(self.__class__.__name__)
 
     @property
     def video_tracks(self) -> Dict[int, VideoTrack]:
+        if self._is_audio_only:
+            return {}
+
         return {
             t.id: _convert_video_track(t)
             for t in self._media_tracks
