@@ -35,7 +35,7 @@ QMenu {
     color: {text};
     border: 1px solid {border};
     margin: 0;
-    menu-scrollable: 0;
+    menu-scrollable: 1;
 }
 QMenu::icon { margin-left: 5px;}
 QMenu::item {
