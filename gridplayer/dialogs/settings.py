@@ -75,6 +75,8 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
             "player/stay_on_top": self.playerStayOnTop,
             "player/show_overlay_border": self.playerShowOverlayBorder,
             "player/language": self.listLanguages,
+            "player/recent_list_enabled": self.playerRecentList,
+            "player/recent_list_max_size": self.playerRecentListSize,
             "playlist/grid_mode": self.gridMode,
             "playlist/grid_fit": self.gridFit,
             "playlist/grid_size": self.gridSize,
@@ -167,6 +169,7 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
         self.logLimitSize.setRange(1, 1024 * 1024)
         self.logLimitBackups.setRange(1, 1000)
         self.timeoutVideoInit.setRange(1, 1000)
+        self.playerRecentListSize.setRange(1, 100)
 
         self.gridSize.setRange(0, 1000)
         self.gridSize.setSpecialValueText(translate("Grid Size", "Auto"))
@@ -183,6 +186,7 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
         self.logLimitSize.setEnabled(self.logLimit.isChecked())
         self.logLimitBackups.setEnabled(self.logLimit.isChecked())
         self.streamingWildcardHelp.setVisible(False)
+        self.playerRecentListSize.setEnabled(self.playerRecentList.isChecked())
 
         self.switch_page(None)
 
@@ -197,6 +201,7 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
             (self.logLimit.stateChanged, self.logLimitSize.setEnabled),
             (self.logLimit.stateChanged, self.logLimitBackups.setEnabled),
             (self.streamingWildcardHelpButton.clicked, self.toggle_wildcard_help),
+            (self.playerRecentList.stateChanged, self.playerRecentListSize.setEnabled),
         )
 
     def toggle_wildcard_help(self):

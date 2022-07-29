@@ -15,6 +15,7 @@ from gridplayer.player.managers.macos_fileopen import MacOSFileOpenManager
 from gridplayer.player.managers.menu import MenuManager
 from gridplayer.player.managers.mouse_hide import MouseHideManager
 from gridplayer.player.managers.playlist import PlaylistManager
+from gridplayer.player.managers.recent_list import RecentListManager
 from gridplayer.player.managers.screensaver import ScreensaverManager
 from gridplayer.player.managers.settings import SettingsManager
 from gridplayer.player.managers.single_mode import SingleModeManager
@@ -49,6 +50,7 @@ class Player(QWidget, ManagersManager):
             "log": LogManager,
             "stream_proxy": StreamProxyManager,
             "add_videos": AddVideosManager,
+            "recent_list": RecentListManager,
             "dialogs": DialogsManager,
             "settings": SettingsManager,
             "actions": ActionsManager,
@@ -77,6 +79,7 @@ class Player(QWidget, ManagersManager):
                 ("videos_swapped", "grid.reload_video_grid"),
                 ("videos_dropped", "video_blocks.add_videos"),
                 ("videos_dropped", "window_state.activate_window"),
+                ("videos_dropped", "recent_list.add_recent_videos"),
                 ("playlist_dropped", "playlist.load_playlist_file"),
             ],
             "single_mode": [
@@ -92,9 +95,11 @@ class Player(QWidget, ManagersManager):
                 ("set_log_level", "log.set_log_level"),
                 ("set_log_level", "video_driver.set_log_level"),
                 ("set_log_level_vlc", "video_driver.set_log_level_vlc"),
+                ("set_recent_list_enabled", "recent_list.set_recent_list_state"),
             ],
             "playlist": [
                 ("s.arguments_received", "process_arguments"),
+                ("playlist_file_loaded", "recent_list.add_recent_playlist"),
                 ("playlist_closed", "video_blocks.close_all"),
                 ("playlist_closed", "window_state.restore_to_minimum"),
                 ("window_state_loaded", "window_state.restore_window_state"),
@@ -116,7 +121,13 @@ class Player(QWidget, ManagersManager):
             "add_videos": [
                 ("videos_added", "video_blocks.add_videos"),
                 ("videos_added", "window_state.activate_window"),
+                ("videos_added", "recent_list.add_recent_videos"),
                 ("error", "dialogs.error"),
+            ],
+            "recent_list": [
+                ("videos_added", "video_blocks.add_videos"),
+                ("videos_added", "window_state.activate_window"),
+                ("playlist_opened", "playlist.load_playlist_file"),
             ],
         }
 

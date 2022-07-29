@@ -9,7 +9,7 @@ from yt_dlp import DownloadError, YoutubeDL
 from yt_dlp.utils import UnsupportedError
 
 from gridplayer.models.stream import HashableDict, Stream, Streams, StreamSessionOpts
-from gridplayer.models.video import VideoURL
+from gridplayer.models.video_uri import VideoURL
 from gridplayer.settings import Settings
 from gridplayer.utils.url_resolve.resolver_base import ResolverBase
 from gridplayer.utils.url_resolve.static import (

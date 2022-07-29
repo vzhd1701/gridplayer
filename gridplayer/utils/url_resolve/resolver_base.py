@@ -4,7 +4,7 @@ from abc import ABC, abstractmethod
 from streamlink import PluginError
 
 from gridplayer.models.stream import Stream, Streams
-from gridplayer.models.video import VideoURL
+from gridplayer.models.video_uri import VideoURL
 from gridplayer.utils.url_resolve.static import BadURLException, ResolvedVideo
 from gridplayer.utils.url_resolve.stream_detect import is_http_live_stream
 

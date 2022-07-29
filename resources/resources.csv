@@ -82,5 +82,6 @@ icon-symbolic,icons/custom/049-checkmark.svg,checkmark
 icon-symbolic,icons/custom/050-track.svg,track
 icon-symbolic,icons/custom/051-add url.svg,add-url
 icon-symbolic,icons/custom/052-media file.svg,add-files
+icon-symbolic,icons/custom/053-recent list.svg,add-recent
 translation,translations/ru_RU.ts,ru_RU
 translation,translations/hu_HU.ts,hu_HU

@@ -1,20 +1,10 @@
-from pathlib import Path
-from typing import Iterable, List, Optional, Union
+from typing import Iterable, List, Optional
 from uuid import uuid4
 
-from pydantic import (  # noqa: WPS450
-    UUID4,
-    AnyUrl,
-    BaseModel,
-    Field,
-    FilePath,
-    PydanticValueError,
-    ValidationError,
-    confloat,
-)
+from pydantic import UUID4, BaseModel, Field, ValidationError, confloat  # noqa: WPS450
 from pydantic.color import Color
 
-from gridplayer.params.extensions import SUPPORTED_MEDIA_EXT
+from gridplayer.models.video_uri import AbsoluteFilePath, VideoURI, VideoURL
 from gridplayer.params.static import AudioChannelMode, VideoAspect, VideoRepeat
 from gridplayer.settings import default_field
 
@@ -22,38 +12,6 @@ MIN_SCALE = 1
 MAX_SCALE = 3
 MIN_RATE = 0.2
 MAX_RATE = 12
-
-
-class VideoURL(AnyUrl):
-    allowed_schemes = {"http", "https", "rtp", "rtsp", "udp", "mms", "mmsh"}
-    max_length = 2083
-
-
-class PathNotAbsoluteError(PydanticValueError):
-    code = "path.not_absolute"
-    msg_template = 'path "{path}" is not absolute'
-
-
-class PathExtensionNotSupportedError(PydanticValueError):
-    code = "path.ext_not_supported"
-    msg_template = 'path extension "{path}" is not supported'
-
-
-class AbsoluteFilePath(FilePath):
-    @classmethod
-    def validate(cls, path: Path) -> Path:
-        super().validate(path)
-
-        if not path.is_absolute():
-            raise PathNotAbsoluteError(path=path)
-
-        if path.suffix[1:].lower() not in SUPPORTED_MEDIA_EXT:
-            raise PathExtensionNotSupportedError(path=path)
-
-        return path
-
-
-VideoURI = Union[VideoURL, AbsoluteFilePath]
 
 
 class Video(BaseModel):

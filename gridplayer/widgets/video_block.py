@@ -21,8 +21,8 @@ from gridplayer.models.video import (
     MIN_SCALE,
     Video,
     VideoBlockMime,
-    VideoURL,
 )
+from gridplayer.models.video_uri import VideoURL
 from gridplayer.params.static import (
     OVERLAY_ACTIVITY_EVENT,
     PLAYER_ID_LENGTH,

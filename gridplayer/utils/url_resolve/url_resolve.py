@@ -7,7 +7,7 @@ from PyQt5.QtCore import QObject, QThread, pyqtSignal
 from yt_dlp.extractor import youtube as yt_extractor
 
 from gridplayer.models.resolver_patterns import ResolverPatterns
-from gridplayer.models.video import VideoURL
+from gridplayer.models.video_uri import VideoURL
 from gridplayer.params.static import URLResolver
 from gridplayer.settings import Settings
 from gridplayer.utils.qt import translate

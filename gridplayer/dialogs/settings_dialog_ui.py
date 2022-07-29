@@ -79,6 +79,28 @@ class Ui_SettingsDialog(object):
         self.playerShowOverlayBorder = QtWidgets.QCheckBox(self.page_general_player)
         self.playerShowOverlayBorder.setObjectName("playerShowOverlayBorder")
         self.lay_section_player.addWidget(self.playerShowOverlayBorder)
+        self.formLayout_10 = QtWidgets.QFormLayout()
+        self.formLayout_10.setFieldGrowthPolicy(
+            QtWidgets.QFormLayout.FieldsStayAtSizeHint
+        )
+        self.formLayout_10.setObjectName("formLayout_10")
+        self.playerRecentList = QtWidgets.QCheckBox(self.page_general_player)
+        self.playerRecentList.setObjectName("playerRecentList")
+        self.formLayout_10.setWidget(
+            0, QtWidgets.QFormLayout.LabelRole, self.playerRecentList
+        )
+        self.horizontalLayout_6 = QtWidgets.QHBoxLayout()
+        self.horizontalLayout_6.setObjectName("horizontalLayout_6")
+        self.playerRecentListSize = QtWidgets.QSpinBox(self.page_general_player)
+        self.playerRecentListSize.setObjectName("playerRecentListSize")
+        self.horizontalLayout_6.addWidget(self.playerRecentListSize)
+        self.label_16 = QtWidgets.QLabel(self.page_general_player)
+        self.label_16.setObjectName("label_16")
+        self.horizontalLayout_6.addWidget(self.label_16)
+        self.formLayout_10.setLayout(
+            0, QtWidgets.QFormLayout.FieldRole, self.horizontalLayout_6
+        )
+        self.lay_section_player.addLayout(self.formLayout_10)
         self.section_timeouts = QtWidgets.QLabel(self.page_general_player)
         font = QtGui.QFont()
         font.setBold(True)
@@ -593,6 +615,10 @@ class Ui_SettingsDialog(object):
         self.playerShowOverlayBorder.setText(
             _translate("SettingsDialog", "Show overlay border for active video")
         )
+        self.playerRecentList.setText(
+            _translate("SettingsDialog", "Enable recent list, maximum size")
+        )
+        self.label_16.setText(_translate("SettingsDialog", "(items)"))
         self.section_timeouts.setText(_translate("SettingsDialog", "Timeouts"))
         self.timeoutOverlayFlag.setText(
             _translate("SettingsDialog", "Hide overlay after timeout")

@@ -1128,11 +1128,25 @@ COMMANDS = MappingProxyType(
             "func": "add_from_clipboard",
             "enable_if": "is_clipboard_full",
         },
+        "Add - Recent Videos": {
+            "title": translate("Actions", "Recent"),
+            "icon": "add-recent",
+            "menu_generator": "menu_generator_recent_videos",
+            "enable_if": "is_any_recent_videos",
+            "show_if": "is_recent_list_enabled",
+        },
         "Open Playlist": {
             "title": translate("Actions", "Open Playlist"),
             "key": "Ctrl+O",
             "icon": "open-playlist",
             "func": "open_playlist",
+        },
+        "Open Playlist (Recent)": {
+            "title": translate("Actions", "Open Playlist (Recent)"),
+            "icon": "add-recent",
+            "menu_generator": "menu_generator_recent_playlists",
+            "enable_if": "is_any_recent_playlists",
+            "show_if": "is_recent_list_enabled",
         },
         "Save Playlist": {
             "title": translate("Actions", "Save Playlist"),
@@ -1199,6 +1213,9 @@ class QDynamicAction(QAction):
         if self.show_if and not self.show_if():
             return True
 
+        if self.enable_if and self.menu_generator:
+            return False
+
         # skip empty submenus
         return bool(self.menu_generator and not self.menu_generator())
 
@@ -1214,7 +1231,7 @@ class QDynamicAction(QAction):
         if self.value_getter is not None:
             self.setText(self.value_template.replace("%v", self.value_getter()))
 
-        if self.menu_generator is not None:
+        if self.is_enabled and self.menu_generator:
             self._generate_submenu()
 
         elif self.check_if is not None:
@@ -1227,6 +1244,10 @@ class QDynamicAction(QAction):
         generated_menu = CustomMenu()
 
         for a in actions:
+            if a == "---":
+                generated_menu.addSeparator()
+                continue
+
             if a.is_skipped:
                 continue
 
@@ -1258,6 +1279,9 @@ class ActionsManager(ManagerBase):
         return actions
 
     def _make_action(self, cmd):
+        if cmd == "---":
+            return cmd
+
         action = QDynamicAction(text=cmd["title"], parent=self.parent())
 
         if cmd.get("icon"):

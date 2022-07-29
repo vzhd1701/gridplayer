@@ -5,7 +5,7 @@ from streamlink.plugin import Plugin
 from streamlink.stream import HLSStream, MuxedHLSStream
 
 from gridplayer.models.stream import HashableDict, Stream, Streams, StreamSessionOpts
-from gridplayer.models.video import VideoURL
+from gridplayer.models.video_uri import VideoURL
 from gridplayer.settings import Settings
 from gridplayer.utils.url_resolve.resolver_base import ResolverBase
 from gridplayer.utils.url_resolve.static import NoResolverPlugin

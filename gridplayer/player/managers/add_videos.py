@@ -2,7 +2,8 @@ from PyQt5.QtCore import pyqtSignal
 from PyQt5.QtWidgets import QFileDialog, qApp
 
 from gridplayer.dialogs.add_urls import QAddURLsDialog
-from gridplayer.models.video import VideoURL, filter_video_uris
+from gridplayer.models.video import filter_video_uris
+from gridplayer.models.video_uri import VideoURL
 from gridplayer.params.extensions import (
     SUPPORTED_AUDIO_EXT,
     SUPPORTED_MEDIA_EXT,

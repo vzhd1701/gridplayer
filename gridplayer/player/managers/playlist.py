@@ -17,7 +17,7 @@ from gridplayer.utils.qt import translate
 
 class PlaylistManager(ManagerBase):
     playlist_closed = pyqtSignal()
-    playlist_loaded = pyqtSignal()
+    playlist_file_loaded = pyqtSignal(Path)
     window_state_loaded = pyqtSignal(WindowState)
     grid_state_loaded = pyqtSignal(GridState)
     snapshots_loaded = pyqtSignal(dict)
@@ -157,15 +157,19 @@ class PlaylistManager(ManagerBase):
             )
             return
 
-        self.load_playlist(playlist)
+        if not self.load_playlist(playlist):
+            return
 
         self._saved_playlist = {
             "path": playlist_file,
             "state": hash(self._make_playlist().dumps()),
         }
 
+        self.playlist_file_loaded.emit(playlist_file)
+
     def load_playlist(self, playlist: Playlist):
-        self.cmd_close_playlist()
+        if not self.cmd_close_playlist():
+            return False
 
         self.videos_loaded.emit(playlist.videos)
 
@@ -183,6 +187,8 @@ class PlaylistManager(ManagerBase):
         )
 
         self.alert.emit()
+
+        return True
 
     def check_playlist_save(self) -> bool:
         if not Settings().get("playlist/track_changes"):
