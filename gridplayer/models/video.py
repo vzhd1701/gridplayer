@@ -8,8 +8,8 @@ from gridplayer.models.video_uri import AbsoluteFilePath, VideoURI, VideoURL
 from gridplayer.params.static import AudioChannelMode, VideoAspect, VideoRepeat
 from gridplayer.settings import default_field
 
-MIN_SCALE = 1
-MAX_SCALE = 3
+MIN_SCALE = 1.0
+MAX_SCALE = 3.0
 MIN_RATE = 0.2
 MAX_RATE = 12
 
