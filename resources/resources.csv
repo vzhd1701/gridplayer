@@ -34,6 +34,7 @@ icon-symbolic,icons/basic/152-recycle.svg,reload
 icon-symbolic,icons/basic/129-more.svg,playlist-settings
 icon-symbolic,icons/basic/111-layers.svg,snapshots
 icon-symbolic,icons/basic/227-low volume.svg,audio
+icon-symbolic,icons/basic/225-mute.svg,volume-mute
 icon-symbolic,icons/custom/001-minimize window.svg,minimize
 icon-symbolic,icons/custom/002-close all.svg,close-playlist
 icon-symbolic,icons/custom/003-aspect fit.svg,aspect-fit
@@ -86,5 +87,8 @@ icon-symbolic,icons/custom/053-recent list.svg,add-recent
 icon-symbolic,icons/custom/054-video.svg,video
 icon-symbolic,icons/custom/055-stereo mode.svg,stereo-mode
 icon-symbolic,icons/custom/056-playback.svg,playback
+icon-symbolic,icons/custom/057-volume increase.svg,volume-increase
+icon-symbolic,icons/custom/058-volume decrease.svg,volume-decrease
+icon-symbolic,icons/custom/059-volume unmute.svg,volume-unmute
 translation,translations/ru_RU.ts,ru_RU
 translation,translations/hu_HU.ts,hu_HU

@@ -986,6 +986,7 @@ class VideoBlock(QWidget):  # noqa: WPS230
     def mute_unmute(self):
         self.set_muted(not self.video_params.is_muted)
 
+    @only_initialized
     def set_muted(self, muted):
         self.video_params.is_muted = muted
 
@@ -993,12 +994,31 @@ class VideoBlock(QWidget):  # noqa: WPS230
 
         self.is_muted_change.emit(self.video_params.is_muted)
 
+    @only_initialized
     def set_volume(self, percent):
         self.video_params.volume = round(percent, 2)
 
         self.video_driver.audio_set_volume(self.video_params.volume)
 
         self.volume_change.emit(percent)
+
+    @only_initialized
+    def volume_increase(self):
+        self.set_muted(False)
+
+        self.video_params.volume += 0.05  # noqa: WPS432
+        self.video_params.volume = min(round(self.video_params.volume, 2), 1.0)
+
+        self.set_volume(self.video_params.volume)
+
+    @only_initialized
+    def volume_decrease(self):
+        self.set_muted(False)
+
+        self.video_params.volume -= 0.05  # noqa: WPS432
+        self.video_params.volume = max(round(self.video_params.volume, 2), 0)
+
+        self.set_volume(self.video_params.volume)
 
     def play_pause(self):
         self.set_pause(not self.video_params.is_paused)

@@ -1,5 +1,7 @@
 from PyQt5.QtCore import QObject
 
+from gridplayer.utils.command_helpers import AND, OR
+
 
 class Commands(object):
     def __init__(self):
@@ -20,6 +22,12 @@ class Commands(object):
         self._commands.update(commands)
 
     def resolve(self, command):
+        if isinstance(command, AND):
+            return lambda: all(self.resolve(c)() for c in command.args)
+
+        if isinstance(command, OR):
+            return lambda: any(self.resolve(c)() for c in command.args)
+
         if isinstance(command, tuple):
             command_name = command[0]
             command_args = command[1:]

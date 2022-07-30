@@ -9,6 +9,7 @@ from gridplayer.params.static import (
     VideoAspect,
     VideoRepeat,
 )
+from gridplayer.utils.command_helpers import AND
 from gridplayer.utils.qt import translate
 
 ACTIONS = MappingProxyType(
@@ -469,6 +470,34 @@ ACTIONS = MappingProxyType(
                 AudioChannelMode.MONO,
             ),
         },
+        "Audio Volume - Increase": {
+            "title": translate("Audio Volume", "Increase Volume"),
+            "icon": "volume-increase",
+            "show_if": "is_active_has_audio",
+            "func": ("active", "volume_increase"),
+        },
+        "Audio Volume - Decrease": {
+            "title": translate("Audio Volume", "Decrease Volume"),
+            "icon": "volume-decrease",
+            "show_if": "is_active_has_audio",
+            "func": ("active", "volume_decrease"),
+        },
+        "Audio Volume - Mute": {
+            "title": translate("Audio Volume", "Mute"),
+            "icon": "volume-mute",
+            "show_if": AND(
+                "is_active_has_audio", ("is_active_param_set_to", "is_muted", False)
+            ),
+            "func": ("active", "set_muted", True),
+        },
+        "Audio Volume - Unmute": {
+            "title": translate("Audio Volume", "Unmute"),
+            "icon": "volume-unmute",
+            "show_if": AND(
+                "is_active_has_audio", ("is_active_param_set_to", "is_muted", True)
+            ),
+            "func": ("active", "set_muted", False),
+        },
         "Rename": {
             "title": translate("Actions", "Rename"),
             "key": "F4",
@@ -851,6 +880,30 @@ ACTIONS = MappingProxyType(
             "icon": "empty",
             "show_if": "is_any_videos_have_audio",
             "func": ("all", "set_audio_channel_mode", AudioChannelMode.MONO),
+        },
+        "Audio Volume - Increase [ALL]": {
+            "title": translate("Audio Volume", "Increase Volume"),
+            "icon": "volume-increase",
+            "show_if": "is_any_videos_have_audio",
+            "func": ("all", "volume_increase"),
+        },
+        "Audio Volume - Decrease [ALL]": {
+            "title": translate("Audio Volume", "Decrease Volume"),
+            "icon": "volume-decrease",
+            "show_if": "is_any_videos_have_audio",
+            "func": ("all", "volume_decrease"),
+        },
+        "Audio Volume - Mute [ALL]": {
+            "title": translate("Audio Volume", "Mute"),
+            "icon": "volume-mute",
+            "show_if": "is_any_videos_have_audio",
+            "func": ("all", "set_muted", True),
+        },
+        "Audio Volume - Unmute [ALL]": {
+            "title": translate("Audio Volume", "Unmute"),
+            "icon": "volume-unmute",
+            "show_if": "is_any_videos_have_audio",
+            "func": ("all", "set_muted", False),
         },
         "Reload [ALL]": {
             "title": translate("Actions", "Reload"),

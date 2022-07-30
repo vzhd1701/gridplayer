@@ -130,6 +130,10 @@ class VideoBlocksManager(ManagerBase):
     all_set_auto_reload_timer = pyqtSignal(int)
     all_set_audio_channel_mode = pyqtSignal(AudioChannelMode)
 
+    all_volume_increase = pyqtSignal()
+    all_volume_decrease = pyqtSignal()
+    all_set_muted = pyqtSignal(bool)
+
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
@@ -357,6 +361,9 @@ class VideoBlocksManager(ManagerBase):
             (self.all_set_aspect, vb.set_aspect),
             (self.all_set_auto_reload_timer, vb.set_auto_reload_timer),
             (self.all_set_audio_channel_mode, vb.set_audio_channel_mode),
+            (self.all_volume_increase, vb.volume_increase),
+            (self.all_volume_decrease, vb.volume_decrease),
+            (self.all_set_muted, vb.set_muted),
             (self.all_previous_video, vb.previous_video),
             (self.all_next_video, vb.next_video),
             (self.hide_overlay, vb.hide_overlay),
