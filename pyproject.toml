@@ -75,6 +75,7 @@ nested_classes_whitelist=["Config"]
 # WPS336 explicit string concat
 # WPS425 boolean non-keyword
 # WPS428 ... <- nop statements, used in abstract classes
+# WPS604 ... <- nop statements, used in abstract classes
 # WPS437 protected attribute usage
 # WPS601 shadowed class attribute, doesn't work for dataclasses
 #   Qt setAttribute functions
@@ -103,7 +104,7 @@ flake8-quotes = ["+*", "-Q000"]
 flake8-rst-docstrings = ["-*"]
 flake8-docstrings = ["-*"]
 flake8-darglint = ["-*"]
-wemake-python-styleguide = ["+*", "-WPS110", "-WPS111", "-WPS115", "-WPS201", "-WPS214", "-WPS226", "-WPS237", "-WPS305", "-WPS317", "-WPS326", "-WPS336", "-WPS425", "-WPS428", "-WPS437", "-WPS601"]
+wemake-python-styleguide = ["+*", "-WPS110", "-WPS111", "-WPS115", "-WPS201", "-WPS214", "-WPS226", "-WPS237", "-WPS305", "-WPS317", "-WPS326", "-WPS336", "-WPS425", "-WPS428", "-WPS437", "-WPS601", "-WPS604"]
 
 [tool.flakehell.exceptions."gridplayer/version.py"]
 # I like it this way
