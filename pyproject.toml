@@ -139,7 +139,7 @@ wemake-python-styleguide = ["+*", "-WPS202"]
 # WPS432 magic numbers - completion %
 wemake-python-styleguide = ["+*", "-WPS432"]
 
-[tool.flakehell.exceptions."gridplayer/player/managers/actions.py"]
+[tool.flakehell.exceptions."gridplayer/params/actions.py"]
 # WPS204 overused expression
 # translate
 wemake-python-styleguide = ["+*", "-WPS204"]
