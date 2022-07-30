@@ -371,11 +371,13 @@ ACTIONS = MappingProxyType(
         },
         "Video Track": {
             "title": translate("Actions", "Video Track"),
+            "icon": "track",
             "show_if": "is_active_initialized",
             "menu_generator": "menu_generator_video_track",
         },
         "Audio Track": {
             "title": translate("Actions", "Audio Track"),
+            "icon": "track",
             "show_if": "is_active_initialized",
             "menu_generator": "menu_generator_audio_track",
         },
