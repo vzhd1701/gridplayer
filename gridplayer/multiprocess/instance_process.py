@@ -75,6 +75,8 @@ class InstanceProcess(CommandLoop, ABC):
 
         try:
             self.process_body()
+        except KeyboardInterrupt:
+            logging.getLogger("InstanceProcess").debug("KeyboardInterrupt in process")
         except Exception:
             traceback_txt = traceback.format_exc()
 
