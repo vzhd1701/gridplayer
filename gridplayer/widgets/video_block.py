@@ -147,6 +147,7 @@ class VideoBlock(QWidget):  # noqa: WPS230
     info_change = pyqtSignal(str)
     is_in_progress_change = pyqtSignal()
     is_active_change = pyqtSignal(bool)
+    is_audio_present_change = pyqtSignal(bool)
 
     def __init__(self, video_driver, context, **kwargs):
         super().__init__(**kwargs)
@@ -276,6 +277,7 @@ class VideoBlock(QWidget):  # noqa: WPS230
             (self.is_muted_change, overlay.set_is_muted),
             (self.info_change, overlay.set_info_label),
             (self.is_active_change, overlay.set_is_active),
+            (self.is_audio_present_change, overlay.set_volume_button_visible),
         )
 
         return overlay
@@ -791,6 +793,8 @@ class VideoBlock(QWidget):  # noqa: WPS230
 
         self.video_params.video_track_id = self.video_driver.cur_video_track_id
         self.video_params.audio_track_id = self.video_driver.cur_audio_track_id
+
+        self.is_audio_present_change.emit(bool(self.audio_tracks))
 
         self.video_status.hide()
         self.show_overlay()
