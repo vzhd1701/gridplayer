@@ -9,7 +9,7 @@ from gridplayer.params.static import (
     VideoAspect,
     VideoRepeat,
 )
-from gridplayer.utils.command_helpers import AND
+from gridplayer.utils.command_helpers import AND, NOT
 from gridplayer.utils.qt import translate
 
 ACTIONS = MappingProxyType(
@@ -21,6 +21,18 @@ ACTIONS = MappingProxyType(
             "icon": "play",
             "func": ("active", "play_pause"),
             "show_if": "is_active_initialized",
+        },
+        "Single Mode ON": {
+            "title": translate("Actions", "Enter Single Mode"),
+            "icon": "single-mode-on",
+            "func": "toggle_single_video",
+            "show_if": AND("is_more_than_one_video", NOT("is_single_mode")),
+        },
+        "Single Mode OFF": {
+            "title": translate("Actions", "Leave Single Mode"),
+            "icon": "single-mode-off",
+            "func": "toggle_single_video",
+            "show_if": "is_single_mode",
         },
         "Previous Video": {
             "title": translate("Actions", "Previous Video"),

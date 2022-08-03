@@ -1,6 +1,6 @@
 from PyQt5.QtCore import QObject
 
-from gridplayer.utils.command_helpers import AND, OR
+from gridplayer.utils.command_helpers import AND, NOT, OR
 
 
 class Commands(object):
@@ -22,6 +22,9 @@ class Commands(object):
         self._commands.update(commands)
 
     def resolve(self, command):
+        if isinstance(command, NOT):
+            return lambda: not self.resolve(command.arg)()
+
         if isinstance(command, AND):
             return lambda: all(self.resolve(c)() for c in command.args)
 

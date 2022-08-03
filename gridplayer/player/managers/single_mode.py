@@ -25,7 +25,9 @@ class SingleModeManager(ManagerBase):
         return {
             "next_single_video": self.next_single_video,
             "previous_single_video": self.previous_single_video,
+            "toggle_single_video": self.toggle_single_video,
             "is_single_mode": lambda: self._ctx.is_single_mode,
+            "is_more_than_one_video": lambda: len(self._ctx.video_blocks) > 1,
         }
 
     def mouseDoubleClickEvent(self, event):

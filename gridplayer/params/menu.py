@@ -44,6 +44,8 @@ SECTIONS = MappingProxyType(
         "video_active": [
             "Play / Pause",
             "---",
+            "Single Mode ON",
+            "Single Mode OFF",
             "Previous Video",
             "Next Video",
             "---",
