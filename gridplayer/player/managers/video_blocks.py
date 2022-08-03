@@ -162,6 +162,7 @@ class VideoBlocksManager(ManagerBase):
             "is_any_videos_local_file": self.is_any_videos_local_file,
             "is_any_videos_live": self.is_any_videos_live,
             "is_any_videos_have_audio": self.is_any_videos_have_audio,
+            "is_any_videos_have_video": self.is_any_videos_have_video,
             "is_seek_sync_mode_set_to": self.is_seek_sync_mode_set_to,
             "set_seek_sync_mode": self.set_seek_sync_mode,
             "reload_all": self.reload_videos,
@@ -259,6 +260,9 @@ class VideoBlocksManager(ManagerBase):
 
     def is_any_videos_have_audio(self):
         return any(vb.audio_tracks for vb in self._ctx.video_blocks.initialized)
+
+    def is_any_videos_have_video(self):
+        return any(vb.video_tracks for vb in self._ctx.video_blocks.initialized)
 
     def is_any_videos_local_file(self):
         return any(vb.is_local_file for vb in self._ctx.video_blocks.initialized)

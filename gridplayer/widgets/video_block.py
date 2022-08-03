@@ -85,6 +85,16 @@ def only_seekable(func):
     return wrapper
 
 
+def only_with_video_tacks(func):
+    def wrapper(*args, **kwargs):
+        self = args[0]  # noqa: WPS117
+        if not self.video_tracks:
+            return None
+        return func(*args, **kwargs)
+
+    return wrapper
+
+
 def only_live(func):
     def wrapper(*args, **kwargs):
         self = args[0]  # noqa: WPS117
@@ -421,7 +431,7 @@ class VideoBlock(QWidget):  # noqa: WPS230
     def manual_seek(self, command, *args):
         getattr(self, command)(*args)
 
-        if command in {"next_frame", "previous_frame"}:
+        if command in {"next_frame", "previous_frame"} and self.video_tracks:
             self.sync_paused.emit(True)
 
         self.sync_percent.emit(self.position)
@@ -791,6 +801,7 @@ class VideoBlock(QWidget):  # noqa: WPS230
 
         self.video_driver.adjust_view()
 
+    @only_with_video_tacks
     def set_aspect(self, aspect):
         self.video_params.aspect_mode = aspect
 
@@ -892,18 +903,21 @@ class VideoBlock(QWidget):  # noqa: WPS230
         self.video_driver.set_time(seek_ms)
         self.time = seek_ms
 
-    @only_initialized
+    @only_with_video_tacks
     @only_seekable
+    @only_initialized
     def next_frame(self):
         self.step_frame(1)
 
-    @only_initialized
+    @only_with_video_tacks
     @only_seekable
+    @only_initialized
     def previous_frame(self):
         self.step_frame(-1)
 
-    @only_initialized
+    @only_with_video_tacks
     @only_seekable
+    @only_initialized
     def step_frame(self, frames):
         if not self.video_params.is_paused:
             self.set_pause(True)
@@ -913,6 +927,7 @@ class VideoBlock(QWidget):  # noqa: WPS230
 
         self.seek_shift_ms(ms_per_frame * frames)
 
+    @only_with_video_tacks
     @only_initialized
     def scale_increase(self):
         self.video_params.scale += 0.1
@@ -920,6 +935,7 @@ class VideoBlock(QWidget):  # noqa: WPS230
 
         self.set_scale(self.video_params.scale)
 
+    @only_with_video_tacks
     @only_initialized
     def scale_decrease(self):
         self.video_params.scale -= 0.1
@@ -927,10 +943,12 @@ class VideoBlock(QWidget):  # noqa: WPS230
 
         self.set_scale(self.video_params.scale)
 
+    @only_with_video_tacks
     @only_initialized
     def scale_reset(self):
         self.set_scale(1.0)
 
+    @only_with_video_tacks
     @only_initialized
     def set_scale(self, scale, is_silent=False):
         self.video_params.scale = scale

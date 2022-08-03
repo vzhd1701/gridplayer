@@ -39,6 +39,7 @@ class ActiveBlockManager(ManagerBase):
             "is_active_multistream": self.is_active_multistream,
             "is_active_local_file": self.is_active_local_file,
             "is_active_has_audio": self.is_active_has_audio,
+            "is_active_has_video": self.is_active_has_video,
             "menu_generator_stream_quality": self.menu_generator_stream_quality,
             "menu_generator_video_track": self.menu_generator_video_track,
             "menu_generator_audio_track": self.menu_generator_audio_track,
@@ -106,6 +107,12 @@ class ActiveBlockManager(ManagerBase):
             return False
 
         return bool(self._ctx.active_block.audio_tracks)
+
+    def is_active_has_video(self):
+        if not self.is_active_initialized():
+            return False
+
+        return bool(self._ctx.active_block.video_tracks)
 
     def is_active_multistream(self):
         if self.is_no_active_block:
