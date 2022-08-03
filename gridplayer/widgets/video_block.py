@@ -819,33 +819,40 @@ class VideoBlock(QWidget):  # noqa: WPS230
     def set_loop_start(self):
         self.set_loop_start_time(self.time)
 
+    @only_seekable
     def set_loop_start_time(self, new_time):
-        if new_time == self.video_params.loop_end:
-            return
+        if None not in {self.video_params.loop_end, new_time}:
+            if new_time >= self.video_params.loop_end:
+                return
 
         self.video_params.loop_start = new_time
 
-        self.loop_start_change.emit(new_time / self.video_driver.length)
+        if new_time is None:
+            self.loop_start_change.emit(0)
+        else:
+            self.loop_start_change.emit(new_time / self.video_driver.length)
 
     @only_seekable
     def set_loop_end(self):
         self.set_loop_end_time(self.time)
 
+    @only_seekable
     def set_loop_end_time(self, new_time):
-        if new_time == self.video_params.loop_start:
-            return
+        if None not in {self.video_params.loop_start, new_time}:
+            if new_time <= self.video_params.loop_start:
+                return
 
         self.video_params.loop_end = new_time
 
-        self.loop_end_change.emit(new_time / self.video_driver.length)
+        if new_time is None:
+            self.loop_end_change.emit(100.0)
+        else:
+            self.loop_end_change.emit(new_time / self.video_driver.length)
 
     @only_seekable
     def reset_loop(self):
-        self.video_params.loop_start = None
-        self.video_params.loop_end = None
-
-        self.loop_start_change.emit(0)
-        self.loop_end_change.emit(100.0)
+        self.set_loop_start_time(None)
+        self.set_loop_end_time(None)
 
     @only_seekable
     def set_repeat_mode(self, repeat_mode: VideoRepeat):
