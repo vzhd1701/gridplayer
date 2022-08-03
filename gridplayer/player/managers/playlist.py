@@ -62,7 +62,7 @@ class PlaylistManager(ManagerBase):
             files = dialog.selectedFiles()
 
             if files:
-                self.load_playlist_file(files[0])
+                self.load_playlist_file(Path(files[0]))
 
     def cmd_close_playlist(self) -> bool:
         if not self.check_playlist_save():
