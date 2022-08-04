@@ -9,7 +9,7 @@ SUBMENUS = MappingProxyType(
         "Speed": {"title": translate("Actions", "Speed"), "icon": "speed"},
         "Zoom": {"title": translate("Actions", "Zoom"), "icon": "zoom"},
         "Aspect": {"title": translate("Actions", "Aspect"), "icon": "aspect"},
-        "[ALL]": {"title": translate("Actions", "[ALL]"), "icon": "play-all"},
+        "[ALL]": {"title": translate("Actions", "[ALL]"), "icon": "all"},
         "Grid": {"title": translate("Actions", "Grid"), "icon": "grid"},
         "Seek Sync": {"title": translate("Actions", "Seek Sync"), "icon": "seek-sync"},
         "Seek Others": {
@@ -44,8 +44,7 @@ SECTIONS = MappingProxyType(
         "video_active": [
             "Play / Pause",
             "---",
-            "Single Mode ON",
-            "Single Mode OFF",
+            "Single Mode ON / OFF",
             "Previous Video",
             "Next Video",
             "---",
@@ -66,8 +65,7 @@ SECTIONS = MappingProxyType(
                 "---",
                 "Audio Volume - Increase",
                 "Audio Volume - Decrease",
-                "Audio Volume - Mute",
-                "Audio Volume - Unmute",
+                "Audio Volume - Mute / Unmute",
             ),
             (
                 "Video",
@@ -159,6 +157,8 @@ SECTIONS = MappingProxyType(
             (
                 "[ALL]",
                 "Play / Pause [ALL]",
+                "Play [ALL]",
+                "Pause [ALL]",
                 "---",
                 (
                     "Audio",

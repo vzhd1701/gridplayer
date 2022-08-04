@@ -16,23 +16,22 @@ ACTIONS = MappingProxyType(
     {
         # Single Video
         "Play / Pause": {
-            "title": translate("Actions", "Play / Pause"),
+            "title": (translate("Actions", "Play"), translate("Actions", "Pause")),
             "key": Qt.CTRL + Qt.Key_Space,
-            "icon": "play",
+            "icon": ("play", "pause"),
+            "toggle": ("is_active_param_set_to", "is_paused", False),
             "func": ("active", "play_pause"),
             "show_if": "is_active_initialized",
         },
-        "Single Mode ON": {
-            "title": translate("Actions", "Enter Single Mode"),
-            "icon": "single-mode-on",
+        "Single Mode ON / OFF": {
+            "title": (
+                translate("Actions", "Enter Single Mode"),
+                translate("Actions", "Leave Single Mode"),
+            ),
+            "icon": ("single-mode-on", "single-mode-off"),
+            "toggle": "is_single_mode",
+            "show_if": "is_more_than_one_video",
             "func": "toggle_single_video",
-            "show_if": AND("is_more_than_one_video", NOT("is_single_mode")),
-        },
-        "Single Mode OFF": {
-            "title": translate("Actions", "Leave Single Mode"),
-            "icon": "single-mode-off",
-            "func": "toggle_single_video",
-            "show_if": "is_single_mode",
         },
         "Previous Video": {
             "title": translate("Actions", "Previous Video"),
@@ -494,21 +493,15 @@ ACTIONS = MappingProxyType(
             "show_if": "is_active_has_audio",
             "func": ("active", "volume_decrease"),
         },
-        "Audio Volume - Mute": {
-            "title": translate("Audio Volume", "Mute"),
-            "icon": "volume-mute",
-            "show_if": AND(
-                "is_active_has_audio", ("is_active_param_set_to", "is_muted", False)
+        "Audio Volume - Mute / Unmute": {
+            "title": (
+                translate("Audio Volume", "Mute"),
+                translate("Audio Volume", "Unmute"),
             ),
-            "func": ("active", "set_muted", True),
-        },
-        "Audio Volume - Unmute": {
-            "title": translate("Audio Volume", "Unmute"),
-            "icon": "volume-unmute",
-            "show_if": AND(
-                "is_active_has_audio", ("is_active_param_set_to", "is_muted", True)
-            ),
-            "func": ("active", "set_muted", False),
+            "icon": ("volume-mute", "volume-unmute"),
+            "toggle": ("is_active_param_set_to", "is_muted", True),
+            "show_if": "is_active_has_audio",
+            "func": ("active", "mute_unmute"),
         },
         "Rename": {
             "title": translate("Actions", "Rename"),
@@ -540,8 +533,20 @@ ACTIONS = MappingProxyType(
         "Play / Pause [ALL]": {
             "title": translate("Actions", "Play / Pause"),
             "key": "Space",
-            "icon": "play",
+            "icon": "play-pause",
             "func": "all_play_pause",
+            "show_if": "is_any_videos_initialized",
+        },
+        "Play [ALL]": {
+            "title": translate("Actions", "Play"),
+            "icon": "play",
+            "func": "all_play",
+            "show_if": "is_any_videos_initialized",
+        },
+        "Pause [ALL]": {
+            "title": translate("Actions", "Pause"),
+            "icon": "pause",
+            "func": "all_pause",
             "show_if": "is_any_videos_initialized",
         },
         "Play Previous File [ALL]": {

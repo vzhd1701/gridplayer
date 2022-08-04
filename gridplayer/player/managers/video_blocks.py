@@ -154,6 +154,8 @@ class VideoBlocksManager(ManagerBase):
         return {
             "all": self.cmd_all,
             "all_play_pause": self.cmd_all_play_pause,
+            "all_play": self.cmd_all_play,
+            "all_pause": self.cmd_all_pause,
             "all_seek_timecode": self.cmd_seek_timecode,
             "all_set_auto_reload_timer": self.cmd_set_auto_reload_timer,
             "is_videos": lambda: bool(self._ctx.video_blocks),
@@ -188,6 +190,12 @@ class VideoBlocksManager(ManagerBase):
             self.set_pause.emit(True)
         else:
             self.set_pause.emit(False)
+
+    def cmd_all_play(self):
+        self.set_pause.emit(False)
+
+    def cmd_all_pause(self):
+        self.set_pause.emit(True)
 
     def cmd_seek_timecode(self):
         time_ms = QCustomSpinboxTimeInput.get_time_ms_int(
@@ -266,9 +274,6 @@ class VideoBlocksManager(ManagerBase):
 
     def is_any_videos_local_file(self):
         return any(vb.is_local_file for vb in self._ctx.video_blocks.initialized)
-
-    def pause_all(self):
-        self.set_pause.emit(True)
 
     def reload_videos(self):
         if self._videos_to_reload:

@@ -10,15 +10,17 @@ from gridplayer.widgets.custom_menu import CustomMenu
 
 
 class QDynamicAction(QAction):
-    def __init__(self, **kwargs):
+    def __init__(self, title, icon_id, **kwargs):
         super().__init__(**kwargs)
 
-        self.value_template = kwargs.get("text", "")
+        self._title = title
+        self._icon_id = icon_id
 
         self.enable_if = None
         self.check_if = None
         self.show_if = None
         self.value_getter = None
+        self.toggle = None
 
         self.menu_generator = None
 
@@ -39,11 +41,36 @@ class QDynamicAction(QAction):
             return self.enable_if()
         return True
 
+    @property
+    def title(self):
+        if self.toggle and isinstance(self._title, tuple):
+            return self._title[self.toggle()]
+
+        if isinstance(self._title, tuple):
+            raise ValueError("Title is tuple with no toggle function")
+
+        return self._title
+
+    @property
+    def icon_id(self):
+        if self.toggle and isinstance(self._icon_id, tuple):
+            return self._icon_id[self.toggle()]
+
+        if isinstance(self._icon_id, tuple):
+            raise ValueError("Icon ID is tuple with no toggle function")
+
+        return self._icon_id
+
     def adapt(self):
         self.setEnabled(self.is_enabled)
 
-        if self.value_getter is not None:
-            self.setText(self.value_template.replace("%v", self.value_getter()))
+        if self.icon_id:
+            self.setIcon(QIcon.fromTheme(self.icon_id))
+
+        if self.value_getter is None:
+            self.setText(self.title)
+        else:
+            self.setText(self.title.replace("%v", self.value_getter()))
 
         if self.is_enabled and self.menu_generator:
             self._generate_submenu()
@@ -96,10 +123,9 @@ class ActionsManager(ManagerBase):
         if cmd == "---":
             return cmd
 
-        action = QDynamicAction(text=cmd["title"], parent=self.parent())
-
-        if cmd.get("icon"):
-            action.setIcon(QIcon.fromTheme(cmd["icon"]))
+        action = QDynamicAction(
+            title=cmd["title"], icon_id=cmd.get("icon"), parent=self.parent()
+        )
 
         # menus can't have shortcuts
         if cmd.get("menu_generator"):
@@ -120,6 +146,7 @@ class ActionsManager(ManagerBase):
             "enable_if",
             "show_if",
             "value_getter",
+            "toggle",
         ]
 
         for dynamic_func_name in dynamic_functions:

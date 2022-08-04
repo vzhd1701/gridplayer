@@ -19,6 +19,7 @@ icon-symbolic,icons/basic/093-folder.svg,open-playlist
 icon-symbolic,icons/basic/099-squares.svg,grid
 icon-symbolic,icons/basic/136-log out.svg,quit
 icon-symbolic,icons/basic/145-play.svg,play
+icon-symbolic,icons/basic/140-pause.svg,pause
 icon-symbolic,icons/basic/153-refresh.svg,loop
 icon-symbolic,icons/basic/155-ribbon.svg,about
 icon-symbolic,icons/basic/157-right.svg,next-video
@@ -92,5 +93,6 @@ icon-symbolic,icons/custom/058-volume decrease.svg,volume-decrease
 icon-symbolic,icons/custom/059-volume unmute.svg,volume-unmute
 icon-symbolic,icons/custom/060-single mode on.svg,single-mode-on
 icon-symbolic,icons/custom/061-single mode off.svg,single-mode-off
+icon-symbolic,icons/custom/062-play pause.svg,play-pause
 translation,translations/ru_RU.ts,ru_RU
 translation,translations/hu_HU.ts,hu_HU
