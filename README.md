@@ -142,11 +142,11 @@ To fix this, you need to allow GridPlayer snap to access system mount informatio
 $ sudo snap connect gridplayer:mount-observe
 ```
 
-#### Linux (KDE): black screen issue when using hardware decoder
+#### Linux: black screen issue when using hardware decoder
 
 Switch on "Opaque overlay (fix black screen)" checkbox in settings.
 
-Overlay might be a bit glitchy in KDE with hardware decoder.
+Depending on the window manager, the overlay might be a bit glitchy with the hardware decoder. Enabling compositor might help.
 
 ## Geting help
 
