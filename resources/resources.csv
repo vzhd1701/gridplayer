@@ -43,7 +43,7 @@ icon-symbolic,icons/custom/005-aspect none.svg,aspect-none
 icon-symbolic,icons/custom/006-aspect.svg,aspect
 icon-symbolic,icons/custom/007-rows first.svg,grid-rows-first
 icon-symbolic,icons/custom/008-columns first.svg,grid-columns-first
-icon-symbolic,icons/custom/009-play all.svg,play-all
+icon-symbolic,icons/custom/009-all.svg,all
 icon-symbolic,icons/custom/010-jump.svg,jump-to
 icon-symbolic,icons/custom/011-random.svg,loop-random
 icon-symbolic,icons/custom/012-loop reset.svg,loop-reset
