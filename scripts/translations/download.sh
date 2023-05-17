@@ -8,7 +8,7 @@ SCRIPT_DIR="$( cd "$( dirname $0 )" && pwd )"
 
 list_proofread() {
     # output: LANG PERCENT
-    crowdin status proofreading --no-progress --no-colors -c "$SCRIPT_DIR/crowdin.yml" --identity ".local/crowdin.yml" | grep "%" | grep -v " 0%" | tr -d "\-:%" | awk '{$1=$1};1'
+    crowdin status proofreading --no-progress --no-colors -c "$SCRIPT_DIR/crowdin.yml" --identity ".local/crowdin.yml" | grep "%" | grep -v " 0%" | sed -E "s/[[:space:]]*- (.+): [[:digit:]]+%/\1/"
 }
 
 if [ "$1" == "list" ]; then
