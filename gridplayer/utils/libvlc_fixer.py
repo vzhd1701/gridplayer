@@ -59,6 +59,9 @@ def _fix_plugins_path():
 def _get_libvlc_root_path() -> Optional[Path]:
     vlc_module = sys.modules["vlc"]
 
+    if vlc_module.dll is None or vlc_module.dll._name is None:
+        return None
+
     vlc_lib_root = Path(vlc_module.dll._name)  # noqa: WPS437
 
     if vlc_lib_root.is_absolute():
