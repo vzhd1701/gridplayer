@@ -9,17 +9,11 @@ description: |
 architectures:
   - amd64
 
-base: core20
+base: core22
 grade: stable
 confinement: strict
 
 license: GPL-3.0-or-later
-
-package-repositories:
-  - type: apt
-    ppa: savoury1/ffmpeg4
-  - type: apt
-    ppa: savoury1/vlc3
 
 parts:
   # python multiprocessing fix
@@ -54,8 +48,8 @@ parts:
     override-build: |
       snapcraftctl build
 
-      MAIN_SNAP="/snap/core20/current"
-      KDE_SNAP="/snap/kde-frameworks-5-91-qt-5-15-3-core20/current"
+      MAIN_SNAP="/snap/core22/current"
+      KDE_SNAP="/snap/kde-frameworks-5-102-qt-5-15-8-core22/current"
       LIB_DIR="${SNAPCRAFT_PART_INSTALL}/usr/lib/${SNAPCRAFT_ARCH_TRIPLET}"
       VLC_LIB_DIR="${LIB_DIR}/vlc"
 
@@ -70,30 +64,31 @@ parts:
       ${SNAPCRAFT_PROJECT_DIR}/blacklist_clean.sh "$VLC_LIB_DIR" ${SNAPCRAFT_PROJECT_DIR}/blacklist_vlc_linux.txt
 
       # Emulate runtime env to make sure all plugin dependencies are reachable
-      LIBS="/var/lib/snapd/lib/gl:"
-      LIBS+="/var/lib/snapd/lib/gl32:"
-      LIBS+="/var/lib/snapd/void:"
-      LIBS+="${SNAPCRAFT_PART_INSTALL}/usr/lib/${SNAPCRAFT_ARCH_TRIPLET}/pulseaudio:"
-      LIBS+="${VLC_LIB_DIR}:"
-      LIBS+="${SNAPCRAFT_PART_INSTALL}/lib:"
-      LIBS+="${SNAPCRAFT_PART_INSTALL}/usr/lib:"
-      LIBS+="${SNAPCRAFT_PART_INSTALL}/lib/${SNAPCRAFT_ARCH_TRIPLET}:"
-      LIBS+="${SNAPCRAFT_PART_INSTALL}/usr/lib/${SNAPCRAFT_ARCH_TRIPLET}:"
-      LIBS+="${KDE_SNAP}/lib/${SNAPCRAFT_ARCH_TRIPLET}:"
-      LIBS+="${KDE_SNAP}/usr/lib/${SNAPCRAFT_ARCH_TRIPLET}:"
-      LIBS+="${KDE_SNAP}/usr/lib:"
-      LIBS+="${KDE_SNAP}/lib:"
-      LIBS+="${KDE_SNAP}/usr/lib/${SNAPCRAFT_ARCH_TRIPLET}/dri:"
-      LIBS+="${KDE_SNAP}/usr/lib/${SNAPCRAFT_ARCH_TRIPLET}/pulseaudio:"
-      LIBS+="${MAIN_SNAP}/lib/${SNAPCRAFT_ARCH_TRIPLET}:"
-      LIBS+="${MAIN_SNAP}/usr/lib/${SNAPCRAFT_ARCH_TRIPLET}:"
-      LIBS+="${MAIN_SNAP}/usr/lib:"
-      LIBS+="${MAIN_SNAP}/lib:"
+      #LIBS="/var/lib/snapd/lib/gl:"
+      #LIBS+="/var/lib/snapd/lib/gl32:"
+      #LIBS+="/var/lib/snapd/void:"
+      #LIBS+="${SNAPCRAFT_PART_INSTALL}/usr/lib/${SNAPCRAFT_ARCH_TRIPLET}/pulseaudio:"
+      #LIBS+="${VLC_LIB_DIR}:"
+      #LIBS+="${SNAPCRAFT_PART_INSTALL}/lib:"
+      #LIBS+="${SNAPCRAFT_PART_INSTALL}/usr/lib:"
+      #LIBS+="${SNAPCRAFT_PART_INSTALL}/lib/${SNAPCRAFT_ARCH_TRIPLET}:"
+      #LIBS+="${SNAPCRAFT_PART_INSTALL}/usr/lib/${SNAPCRAFT_ARCH_TRIPLET}:"
+      #LIBS+="${KDE_SNAP}/lib/${SNAPCRAFT_ARCH_TRIPLET}:"
+      #LIBS+="${KDE_SNAP}/usr/lib/${SNAPCRAFT_ARCH_TRIPLET}:"
+      #LIBS+="${KDE_SNAP}/usr/lib:"
+      #LIBS+="${KDE_SNAP}/lib:"
+      #LIBS+="${KDE_SNAP}/usr/lib/${SNAPCRAFT_ARCH_TRIPLET}/dri:"
+      #LIBS+="${KDE_SNAP}/usr/lib/${SNAPCRAFT_ARCH_TRIPLET}/pulseaudio:"
+      #LIBS+="${MAIN_SNAP}/lib/${SNAPCRAFT_ARCH_TRIPLET}:"
+      #LIBS+="${MAIN_SNAP}/usr/lib/${SNAPCRAFT_ARCH_TRIPLET}:"
+      #LIBS+="${MAIN_SNAP}/usr/lib:"
+      #LIBS+="${MAIN_SNAP}/lib:"
 
       # Generate VLC plugin cache
-      LD_LIBRARY_PATH="$LIBS" "${VLC_LIB_DIR}/vlc-cache-gen" "${VLC_LIB_DIR}/plugins"
+      #LD_LIBRARY_PATH="$LIBS" "${VLC_LIB_DIR}/vlc-cache-gen" "${VLC_LIB_DIR}/plugins"
 
   gridplayer:
+    source: .
     plugin: python
     after: [snapcraft-preload, vlc]
     build-environment:
@@ -140,7 +135,7 @@ parts:
 
       for file in *.deb; do dpkg-deb -x "$file" ./pyqt; done
 
-      SITE_PATH="${SNAPCRAFT_PART_INSTALL}/lib/python3.8/site-packages"
+      SITE_PATH="${SNAPCRAFT_PART_INSTALL}/lib/python3.10/site-packages"
 
       rm -rf "${SITE_PATH}"/PyQt*
       mv pyqt/usr/lib/python3/dist-packages/* "${SITE_PATH}"

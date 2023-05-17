@@ -2,7 +2,7 @@
 
 set -e
 
-REPO="https://origin.archive.neon.kde.org/release focal main"
+REPO="https://origin.archive.neon.kde.org/release jammy main"
 REPO_KEY_URL="https://keyserver.ubuntu.com/pks/lookup?op=get&search=0x444DABCF3667D0283F894EDDE6D4736255751E5D"
 
 generate_apt_conf() {
