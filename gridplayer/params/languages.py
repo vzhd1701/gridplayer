@@ -95,6 +95,11 @@ LANGUAGES = (
         ],
     ),
     Language(
+        code="ko_KR",
+        completion=100,
+        authors=[LanguageAuthor("VenusGirl", "https://venusgirls.tistory.com/")],
+    ),
+    Language(
         code="ru_RU",
         completion=100,
         authors=[],
