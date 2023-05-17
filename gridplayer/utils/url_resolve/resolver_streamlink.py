@@ -62,11 +62,11 @@ class StreamlinkResolver(ResolverBase):
     @cached_property
     def _plugin(self) -> Plugin:
         try:
-            plugin_class, resolved_url = self._session.resolve_url(self.url)
+            _, plugin_class, resolved_url = self._session.resolve_url(self.url)
         except NoPluginError as e:
             raise NoResolverPlugin from e
 
-        return plugin_class(resolved_url)
+        return plugin_class(self._session, resolved_url)
 
     @property
     def _stream_types(self):
