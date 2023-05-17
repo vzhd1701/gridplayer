@@ -8,6 +8,7 @@ icon,icons/main/svg/normal.svg,main_ico_svg
 icon,icons/main/sys/macos.icns,main_ico_mac
 icon,icons/main/sys/windows.ico,main_ico_win
 icon,icons/flags/en_US.svg,flag_en_US
+icon,icons/flags/ar_SA.svg,flag_ar_SA
 icon,icons/flags/hu_HU.svg,flag_hu_HU
 icon,icons/flags/ru_RU.svg,flag_ru_RU
 icon-symbolic,icons/basic/003-add.svg,add
@@ -94,5 +95,6 @@ icon-symbolic,icons/custom/059-volume unmute.svg,volume-unmute
 icon-symbolic,icons/custom/060-single mode on.svg,single-mode-on
 icon-symbolic,icons/custom/061-single mode off.svg,single-mode-off
 icon-symbolic,icons/custom/062-play pause.svg,play-pause
-translation,translations/ru_RU.ts,ru_RU
+translation,translations/ar_SA.ts,ar_SA
 translation,translations/hu_HU.ts,hu_HU
+translation,translations/ru_RU.ts,ru_RU

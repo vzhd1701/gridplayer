@@ -35,7 +35,9 @@ information about the position, sound volume, loops, aspect ratio, etc.
 GridPlayer now supports internationalization! Anyone with a handful of free time and
 desire to support this project is [welcome to contribute](https://crowdin.com/project/gridplayer).
 No coding skills or special software required, all dialogs are well documented and
-there are not many strings to translate. Every contributor will be given proper credit.
+there are not many strings to translate.
+
+Huge thanks to [every contributor](https://github.com/vzhd1701/gridplayer#translations)!
 
 ## Installation
 
@@ -191,9 +193,15 @@ This software was build using
 - **Flag Icons** by [Panayiotis Lipiridis](https://github.com/lipis/flag-icons)
   - Licensed under *MIT License*
 
-### Translations
+## Translations
 
-- **Hungarian** by [samu112](https://crowdin.com/profile/samu112)
+### Arabic
+
+- [azoaz6001](https://crowdin.com/profile/azoaz6001)
+
+### Hungarian
+
+- [samu112](https://crowdin.com/profile/samu112)
 
 ## License
 

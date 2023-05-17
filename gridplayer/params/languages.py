@@ -47,11 +47,20 @@ def get_system_language() -> str:
 
 LANGUAGES = (
     Language(code="en_US", completion=100, authors=[]),
-    Language(code="ru_RU", completion=100, authors=[]),
+    Language(
+        code="ar_SA",
+        completion=100,
+        authors=[LanguageAuthor("azoaz6001", "https://crowdin.com/profile/azoaz6001")],
+    ),
     Language(
         code="hu_HU",
         completion=52,
         authors=[LanguageAuthor("samu112", "https://crowdin.com/profile/samu112")],
+    ),
+    Language(
+        code="ru_RU",
+        completion=100,
+        authors=[],
     ),
 )
 
