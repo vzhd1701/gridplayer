@@ -68,6 +68,13 @@ LANGUAGES = (
         ],
     ),
     Language(
+        code="fr_FR",
+        completion=100,
+        authors=[
+            LanguageAuthor("Sylvain LOUIS", "https://crowdin.com/profile/louis_sylvain")
+        ],
+    ),
+    Language(
         code="hu_HU",
         completion=52,
         authors=[LanguageAuthor("samu112", "https://crowdin.com/profile/samu112")],

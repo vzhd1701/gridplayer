@@ -208,6 +208,10 @@ This software was build using
 - [Sergio Varela](https://crowdin.com/profile/ingrownmink4)
 - [asolis2020](https://crowdin.com/profile/asolis2020)
 
+### French
+
+- [Sylvain LOUIS](https://crowdin.com/profile/louis_sylvain)
+
 ### Hungarian
 
 - [samu112](https://crowdin.com/profile/samu112)
