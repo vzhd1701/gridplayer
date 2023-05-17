@@ -80,6 +80,14 @@ LANGUAGES = (
         authors=[LanguageAuthor("samu112", "https://crowdin.com/profile/samu112")],
     ),
     Language(
+        code="it_IT",
+        completion=100,
+        authors=[
+            LanguageAuthor("Davide V.", "https://crowdin.com/profile/davidev1"),
+            LanguageAuthor("SolarCTP", "https://crowdin.com/profile/solarctp"),
+        ],
+    ),
+    Language(
         code="ru_RU",
         completion=100,
         authors=[],
