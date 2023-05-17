@@ -117,6 +117,13 @@ LANGUAGES = (
         ],
     ),
     Language(
+        code="pt_BR",
+        completion=100,
+        authors=[
+            LanguageAuthor("GBS ~ TECH", "https://crowdin.com/profile/gabriel-bs1")
+        ],
+    ),
+    Language(
         code="ru_RU",
         completion=100,
         authors=[],

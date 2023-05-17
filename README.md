@@ -238,6 +238,10 @@ This software was build using
 - [rafal132](https://crowdin.com/profile/fifi132)
 - [Sebastian Jasiński](https://crowdin.com/profile/princenorris)
 
+### Portuguese, Brazilian
+
+- [GBS ~ TECH](https://crowdin.com/profile/gabriel-bs1)
+
 ## License
 
 This software is licensed under the terms of the GNU General Public License version 3 (GPLv3). Full text of the license is available in the [LICENSE](https://github.com/vzhd1701/gridplayer/blob/master/LICENSE) file and [online](https://www.gnu.org/licenses/gpl-3.0.html).
