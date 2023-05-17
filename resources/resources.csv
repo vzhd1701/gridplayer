@@ -14,6 +14,7 @@ icon,icons/flags/es_ES.svg,flag_es_ES
 icon,icons/flags/fr_FR.svg,flag_fr_FR
 icon,icons/flags/hu_HU.svg,flag_hu_HU
 icon,icons/flags/it_IT.svg,flag_it_IT
+icon,icons/flags/ja_JP.svg,flag_ja_JP
 icon,icons/flags/ru_RU.svg,flag_ru_RU
 icon-symbolic,icons/basic/003-add.svg,add
 icon-symbolic,icons/basic/138-pages.svg,add-clipboard
@@ -105,4 +106,5 @@ translation,translations/es_ES.ts,es_ES
 translation,translations/fr_FR.ts,fr_FR
 translation,translations/hu_HU.ts,hu_HU
 translation,translations/it_IT.ts,it_IT
+translation,translations/ja_JP.ts,ja_JP
 translation,translations/ru_RU.ts,ru_RU

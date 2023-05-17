@@ -88,6 +88,13 @@ LANGUAGES = (
         ],
     ),
     Language(
+        code="ja_JP",
+        completion=100,
+        authors=[
+            LanguageAuthor("七篠孝志", "https://crowdin.com/profile/japanese.john.doe.774")
+        ],
+    ),
+    Language(
         code="ru_RU",
         completion=100,
         authors=[],

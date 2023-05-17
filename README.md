@@ -221,6 +221,10 @@ This software was build using
 - [Davide V.](https://crowdin.com/profile/davidev1)
 - [SolarCTP](https://crowdin.com/profile/solarctp)
 
+### Japanese
+
+- [七篠孝志](https://crowdin.com/profile/japanese.john.doe.774)
+
 ## License
 
 This software is licensed under the terms of the GNU General Public License version 3 (GPLv3). Full text of the license is available in the [LICENSE](https://github.com/vzhd1701/gridplayer/blob/master/LICENSE) file and [online](https://www.gnu.org/licenses/gpl-3.0.html).
