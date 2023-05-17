@@ -107,6 +107,16 @@ LANGUAGES = (
         ],
     ),
     Language(
+        code="pl_PL",
+        completion=100,
+        authors=[
+            LanguageAuthor("rafal132", "https://crowdin.com/profile/fifi132"),
+            LanguageAuthor(
+                "Sebastian Jasiński", "https://crowdin.com/profile/princenorris"
+            ),
+        ],
+    ),
+    Language(
         code="ru_RU",
         completion=100,
         authors=[],
