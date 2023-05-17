@@ -1,7 +1,7 @@
 from types import MappingProxyType
 
 from PyQt5.QtCore import Qt
-from PyQt5.QtWidgets import QMenu, QProxyStyle, QStyle
+from PyQt5.QtWidgets import QMenu, QProxyStyle, QStyle, qApp
 
 from gridplayer.utils.darkmode import is_dark_mode
 
@@ -57,7 +57,7 @@ class CustomMenu(QMenu):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
-        self.setStyle(BigMenuIcons())
+        self.setStyle(BigMenuIcons(qApp.style()))
         self.setStyleSheet(_get_theme_style())
 
         self.setWindowFlags(

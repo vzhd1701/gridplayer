@@ -46,7 +46,7 @@ class TableWidgetDragRows(QtWidgets.QTableWidget):
         self.itemSelectionChanged.connect(self._on_selection_changed)
 
     def ui_init(self):  # noqa: WPS213
-        self.setStyle(RowDropIndicatorStyle())
+        self.setStyle(RowDropIndicatorStyle("Fusion"))
 
         self.setDragEnabled(True)
         self.setAcceptDrops(True)

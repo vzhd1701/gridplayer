@@ -66,7 +66,7 @@ class MenuManager(ManagerBase):
         else:
             sub_menu = menu.addMenu(sub["title"])
 
-        sub_menu.setStyle(BigMenuIcons())
+        sub_menu.setStyle(BigMenuIcons("Fusion"))
 
         self._add_menu_items(sub_menu, sub_items)
 
