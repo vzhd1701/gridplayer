@@ -20,6 +20,7 @@ icon,icons/flags/nl_NL.svg,flag_nl_NL
 icon,icons/flags/pl_PL.svg,flag_pl_PL
 icon,icons/flags/pt_BR.svg,flag_pt_BR
 icon,icons/flags/ru_RU.svg,flag_ru_RU
+icon,icons/flags/zh_CN.svg,flag_zh_CN
 icon-symbolic,icons/basic/003-add.svg,add
 icon-symbolic,icons/basic/138-pages.svg,add-clipboard
 icon-symbolic,icons/basic/031-cancel.svg,close
@@ -116,3 +117,4 @@ translation,translations/nl_NL.ts,nl_NL
 translation,translations/pl_PL.ts,pl_PL
 translation,translations/pt_BR.ts,pt_BR
 translation,translations/ru_RU.ts,ru_RU
+translation,translations/zh_CN.ts,zh_CN

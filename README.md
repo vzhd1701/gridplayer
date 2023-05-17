@@ -242,6 +242,13 @@ This software was build using
 
 - [GBS ~ TECH](https://crowdin.com/profile/gabriel-bs1)
 
+### Chinese Simplified
+
+- [Yagang Wang](https://crowdin.com/profile/wyg945)
+- [1017346](https://crowdin.com/profile/1017346)
+- [焦新营](https://crowdin.com/profile/j149697726)
+- [loser7788](https://crowdin.com/profile/loser7788)
+
 ## License
 
 This software is licensed under the terms of the GNU General Public License version 3 (GPLv3). Full text of the license is available in the [LICENSE](https://github.com/vzhd1701/gridplayer/blob/master/LICENSE) file and [online](https://www.gnu.org/licenses/gpl-3.0.html).

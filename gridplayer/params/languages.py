@@ -128,6 +128,16 @@ LANGUAGES = (
         completion=100,
         authors=[],
     ),
+    Language(
+        code="zh_CN",
+        completion=100,
+        authors=[
+            LanguageAuthor("Yagang Wang", "https://crowdin.com/profile/wyg945"),
+            LanguageAuthor("1017346", "https://crowdin.com/profile/1017346"),
+            LanguageAuthor("焦新营", "https://crowdin.com/profile/j149697726"),
+            LanguageAuthor("loser7788", "https://crowdin.com/profile/loser7788"),
+        ],
+    ),
 )
 
 LANGUAGES = tuple(sorted(LANGUAGES, key=lambda lng: lng.code))
