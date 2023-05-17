@@ -132,7 +132,7 @@ class ActionsManager(ManagerBase):
             action.menu_generator = self._resolve_menu_generator(cmd["menu_generator"])
         else:
             if cmd.get("key"):
-                action.setShortcut(QKeySequence(cmd["key"]))
+                action.setShortcut(QKeySequence(cmd["key"], QKeySequence.PortableText))
 
             action.triggered.connect(self._ctx.commands.resolve(cmd["func"]))
 

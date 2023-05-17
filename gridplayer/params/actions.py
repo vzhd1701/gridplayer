@@ -1,7 +1,5 @@
 from types import MappingProxyType
 
-from PyQt5.QtCore import Qt
-
 from gridplayer.params.static import (
     AudioChannelMode,
     GridMode,
@@ -9,7 +7,7 @@ from gridplayer.params.static import (
     VideoAspect,
     VideoRepeat,
 )
-from gridplayer.utils.command_helpers import AND, NOT
+from gridplayer.utils.command_helpers import AND
 from gridplayer.utils.qt import translate
 
 ACTIONS = MappingProxyType(
@@ -17,7 +15,7 @@ ACTIONS = MappingProxyType(
         # Single Video
         "Play / Pause": {
             "title": (translate("Actions", "Play"), translate("Actions", "Pause")),
-            "key": Qt.CTRL + Qt.Key_Space,
+            "key": "Ctrl+Space",
             "icon": ("play", "pause"),
             "toggle": ("is_active_param_set_to", "is_paused", False),
             "func": ("active", "play_pause"),
@@ -49,14 +47,14 @@ ACTIONS = MappingProxyType(
         },
         "Play Previous File": {
             "title": translate("Actions", "Play Previous File"),
-            "key": Qt.Key_PageUp,
+            "key": "PgUp",
             "icon": "previous-video-file",
             "func": ("active", "previous_video"),
             "show_if": "is_active_local_file",
         },
         "Play Next File": {
             "title": translate("Actions", "Play Next File"),
-            "key": Qt.Key_PageDown,
+            "key": "PgDown",
             "icon": "next-video-file",
             "func": ("active", "next_video"),
             "show_if": "is_active_local_file",
@@ -551,14 +549,14 @@ ACTIONS = MappingProxyType(
         },
         "Play Previous File [ALL]": {
             "title": translate("Actions", "Play Previous File"),
-            "key": Qt.SHIFT + Qt.Key_PageUp,
+            "key": "Shift+PgUp",
             "icon": "previous-video-file",
             "func": ("all", "previous_video"),
             "show_if": "is_any_videos_local_file",
         },
         "Play Next File [ALL]": {
             "title": translate("Actions", "Play Next File"),
-            "key": Qt.SHIFT + Qt.Key_PageDown,
+            "key": "Shift+PgDown",
             "icon": "next-video-file",
             "func": ("all", "next_video"),
             "show_if": "is_any_videos_local_file",
@@ -1171,7 +1169,7 @@ ACTIONS = MappingProxyType(
         },
         "Minimize": {
             "title": translate("Actions", "Minimize"),
-            "key": Qt.Key_Escape,
+            "key": "Esc",
             "icon": "minimize",
             "func": "minimize",
         },
@@ -1249,12 +1247,12 @@ ACTIONS = MappingProxyType(
         # Invisible
         "Next Active": {
             "title": "Next Active",
-            "key": Qt.Key_Tab,
+            "key": "Tab",
             "func": "next_active",
         },
         "Previous Active": {
             "title": "Previous Active",
-            "key": Qt.SHIFT + Qt.Key_Tab,
+            "key": "Shift+Tab",
             "func": "previous_active",
         },
     }
