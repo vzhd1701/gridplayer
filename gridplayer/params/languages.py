@@ -100,6 +100,13 @@ LANGUAGES = (
         authors=[LanguageAuthor("VenusGirl", "https://venusgirls.tistory.com/")],
     ),
     Language(
+        code="nl_NL",
+        completion=100,
+        authors=[
+            LanguageAuthor("Heimen Stoffels", "https://crowdin.com/profile/vistaus")
+        ],
+    ),
+    Language(
         code="ru_RU",
         completion=100,
         authors=[],
