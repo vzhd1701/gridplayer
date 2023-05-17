@@ -8,7 +8,7 @@ on:
 
 env:
   BUILD_PYTHON_VERSION: 3.8
-  BUILD_POETRY_VERSION: 1.1.13
+  BUILD_POETRY_VERSION: 1.4
 
 jobs:
   build_python:
@@ -17,10 +17,10 @@ jobs:
       POETRY_VIRTUALENVS_CREATE: false
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
       - name: Set up Python ${{ env.BUILD_PYTHON_VERSION }}
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v4
         with:
           python-version: ${{ env.BUILD_PYTHON_VERSION }}
 
