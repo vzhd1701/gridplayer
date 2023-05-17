@@ -68,7 +68,7 @@ jobs:
         with:
           python-version: ${{ env.BUILD_PYTHON_VERSION }}
 
-      - uses: actions/setup-node@v2
+      - uses: actions/setup-node@v3
         with:
           node-version: 14
 
@@ -107,7 +107,7 @@ jobs:
           python-version: ${{ env.BUILD_PYTHON_VERSION }}
 
       - name: Install requirements
-        uses: crazy-max/ghaction-chocolatey@v1
+        uses: crazy-max/ghaction-chocolatey@v2
         with:
           args: install wget zip
 
