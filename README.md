@@ -203,6 +203,11 @@ This software was build using
 
 - [DominikPott](https://crowdin.com/profile/dominikpott)
 
+### Spanish
+
+- [Sergio Varela](https://crowdin.com/profile/ingrownmink4)
+- [asolis2020](https://crowdin.com/profile/asolis2020)
+
 ### Hungarian
 
 - [samu112](https://crowdin.com/profile/samu112)

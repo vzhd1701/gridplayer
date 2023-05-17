@@ -60,6 +60,14 @@ LANGUAGES = (
         ],
     ),
     Language(
+        code="es_ES",
+        completion=100,
+        authors=[
+            LanguageAuthor("Sergio Varela", "https://crowdin.com/profile/ingrownmink4"),
+            LanguageAuthor("asolis2020", "https://crowdin.com/profile/asolis2020"),
+        ],
+    ),
+    Language(
         code="hu_HU",
         completion=52,
         authors=[LanguageAuthor("samu112", "https://crowdin.com/profile/samu112")],
