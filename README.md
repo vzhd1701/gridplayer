@@ -199,6 +199,10 @@ This software was build using
 
 - [azoaz6001](https://crowdin.com/profile/azoaz6001)
 
+### German
+
+- [DominikPott](https://crowdin.com/profile/dominikpott)
+
 ### Hungarian
 
 - [samu112](https://crowdin.com/profile/samu112)

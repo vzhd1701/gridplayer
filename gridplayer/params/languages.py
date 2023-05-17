@@ -53,6 +53,13 @@ LANGUAGES = (
         authors=[LanguageAuthor("azoaz6001", "https://crowdin.com/profile/azoaz6001")],
     ),
     Language(
+        code="de_DE",
+        completion=100,
+        authors=[
+            LanguageAuthor("DominikPott", "https://crowdin.com/profile/dominikpott")
+        ],
+    ),
+    Language(
         code="hu_HU",
         completion=52,
         authors=[LanguageAuthor("samu112", "https://crowdin.com/profile/samu112")],
