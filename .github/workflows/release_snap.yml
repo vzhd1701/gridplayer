@@ -77,7 +77,8 @@ jobs:
 
       - uses: snapcore/action-publish@v1
         if: github.event_name == 'push' || github.event.inputs.release == 'yes'
+        env:
+          SNAPCRAFT_STORE_CREDENTIALS: ${{ secrets.STORE_LOGIN }}
         with:
-          store_login: ${{ secrets.STORE_LOGIN }}
           snap: ${{ steps.build.outputs.snap }}
           release: edge
