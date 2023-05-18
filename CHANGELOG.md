@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [0.5.0] - 2023-05-18
+
 ### Added
 
 - Arabic translation ([7cf8b06](https://github.com/vzhd1701/gridplayer/commit/7cf8b06a240c576c30d5cc4bb2f7f29f5fa1ef02))
@@ -239,7 +241,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 - Initial release
 
-[Unreleased]: https://github.com/vzhd1701/gridplayer/compare/v0.4.3...HEAD
+[Unreleased]: https://github.com/vzhd1701/gridplayer/compare/v0.5.0...HEAD
+[0.5.0]: https://github.com/vzhd1701/gridplayer/compare/v0.4.3...v0.5.0
 [0.4.3]: https://github.com/vzhd1701/gridplayer/compare/v0.4.2...v0.4.3
 [0.4.2]: https://github.com/vzhd1701/gridplayer/compare/v0.4.1...v0.4.2
 [0.4.1]: https://github.com/vzhd1701/gridplayer/compare/v0.4.0...v0.4.1
