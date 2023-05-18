@@ -29,7 +29,6 @@ cleanup:
 - "/bin/pyrcc5"
 - "/bin/pyuic5"
 - "/include"
-- "/lib/debug"
 - "/lib/*.a"
 - "/lib/*.la"
 - "/lib/pkgconfig"
