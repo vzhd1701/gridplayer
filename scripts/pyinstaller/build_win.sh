@@ -26,8 +26,6 @@ cp "$RESOURCES_DIR/icons/playlist/sys/windows.ico" "$BUILD_DIR/mime.ico"
 # Make version_info
 copy_with_app_vars "$SCRIPT_DIR/version_info.py" "$BUILD_DIR"
 
-cp "$SCRIPT_DIR/hook_lib.py" "$BUILD_DIR"
-
 copy_with_app_vars "$SCRIPT_DIR/pyinstaller_win.spec" "$BUILD_DIR/$APP_NAME.spec"
 
 pyinstaller --ascii --clean --noconfirm "$BUILD_DIR/$APP_NAME.spec"
