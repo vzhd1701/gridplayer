@@ -6,6 +6,50 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+### Added
+
+- Arabic translation ([7cf8b06](https://github.com/vzhd1701/gridplayer/commit/7cf8b06a240c576c30d5cc4bb2f7f29f5fa1ef02))
+- Chinese Simplified translation ([681c403](https://github.com/vzhd1701/gridplayer/commit/681c403235eaad95d3b5c43b6a141f171caabb80))
+- Dutch translation ([d27d47a](https://github.com/vzhd1701/gridplayer/commit/d27d47a45aaabfa1c79183609cae775406923b67))
+- French translation ([aa5d48a](https://github.com/vzhd1701/gridplayer/commit/aa5d48af693af359d1673ad86b4293b9d79de387))
+- German translation ([11f9136](https://github.com/vzhd1701/gridplayer/commit/11f913651c97a4451aa1b1cc6500102483f116eb))
+- Italian translation ([b16b0b3](https://github.com/vzhd1701/gridplayer/commit/b16b0b34f28d1669cc3b47806c5a8fbd64ed739e))
+- Japanese translation ([79876de](https://github.com/vzhd1701/gridplayer/commit/79876defe67bd3d7c4cf8114c41cfd4218293b59))
+- Korean translation ([61423ea](https://github.com/vzhd1701/gridplayer/commit/61423ea46584352bf9216e049712979ba7afaa60))
+- Polish translation ([06d2fc3](https://github.com/vzhd1701/gridplayer/commit/06d2fc353ba0b70043da10875394ef89d79dda21))
+- Portuguese, Brazilian translation ([b16d352](https://github.com/vzhd1701/gridplayer/commit/b16d3525f937c4fca5a515d8eb1b4a18af117f3e))
+- Spanish translation ([3b76290](https://github.com/vzhd1701/gridplayer/commit/3b762903401be985d8e6ef7c7d07638687002918))
+- Option to paste files/links from clipboard ([f300c22](https://github.com/vzhd1701/gridplayer/commit/f300c228f0f992537c5faeeac164137f7376d702))
+- Option to select audio mode (stereo, mono, etc) ([ef9be61](https://github.com/vzhd1701/gridplayer/commit/ef9be61c0eed96820334c7677c3509d4fe6bad0b))
+- Option to select audio only stream when available ([b77e409](https://github.com/vzhd1701/gridplayer/commit/b77e4093244da2d8a2124292ae8d3f9504fb1e3b))
+- Option to select audio/video track ([009917f](https://github.com/vzhd1701/gridplayer/commit/009917f4fe3e00b453f68dc926cdac317383a13c))
+- Stay on top setting ([1227bab](https://github.com/vzhd1701/gridplayer/commit/1227bab6369adf8e9a83069d508bee6ae7000cb7))
+- Recent list support for videos/playlists ([48acba1](https://github.com/vzhd1701/gridplayer/commit/48acba1db0ac5fb73eee528106682b5756daf9f3))
+- Single mode switch in context menu ([faf8d5f](https://github.com/vzhd1701/gridplayer/commit/faf8d5f22e5741ce9fd97c222ec786c91ab3a1d0))
+- Volume controls in context menu ([f749821](https://github.com/vzhd1701/gridplayer/commit/f7498218b5a64bdfe4ad64bf60d78fce8ca2b7bc))
+
+### Fixed
+
+- Update yt-dlp and Streamlink ([635aaf5](https://github.com/vzhd1701/gridplayer/commit/635aaf5a26e43a061c08108cd42dbe14bf756e02))
+- Terminate child processes on app exit (Windows) ([5045337](https://github.com/vzhd1701/gridplayer/commit/50453373d425df0f5b903af7f11a8b4100827c6e))
+- Reorganize context menu ([3070fd5](https://github.com/vzhd1701/gridplayer/commit/3070fd53b9e16cf5ec0e70b92aad9b08b2934c8c))
+- Avoid moving overlay during paintEvent to prevent app crash ([10b141b](https://github.com/vzhd1701/gridplayer/commit/10b141b0f75277eaa53b35c637fc3af2e3465772))
+- Avoid rare exception on app close ([1968173](https://github.com/vzhd1701/gridplayer/commit/19681731e50544a84be46721a3f431a25cb76dc9))
+- Avoid wide text cramming on main screen ([f4b63be](https://github.com/vzhd1701/gridplayer/commit/f4b63befc8488c1fd1845cceb257f3f0e068b5a9))
+- Disable video controls if no video track ([c439ce2](https://github.com/vzhd1701/gridplayer/commit/c439ce2529b4b4282a0ed25aa95ccd5fdcbf1f82))
+- Crash on missing VLC ([d76b089](https://github.com/vzhd1701/gridplayer/commit/d76b08944003322d7abe70181f8e5d090a4488d9)), closes [#112](https://github.com/vzhd1701/gridplayer/issues/112)
+- Crash when loop start/end unset in playlist ([c2b7b34](https://github.com/vzhd1701/gridplayer/commit/c2b7b340dcfcd52ac34a3d2d10b8f77b19c18663))
+- Crash when opening a playlist ([d1bb3ae](https://github.com/vzhd1701/gridplayer/commit/d1bb3ae95056710bc5a327bb544171e1e80c5533))
+- Icon glitches ([cab0eed](https://github.com/vzhd1701/gridplayer/commit/cab0eed6b3ed9fa488538b3207b3127dcce0ec6f))
+- Hide FPS from track description if it's empty ([ca3dd61](https://github.com/vzhd1701/gridplayer/commit/ca3dd6150c9618e9f42abe4566b125dd7ac1af32))
+- Hide volume button if no audio tracks ([f4ce4cd](https://github.com/vzhd1701/gridplayer/commit/f4ce4cd20d885f318d4cc5fcdcbfc3e711654823))
+- Kill process silently on KeyboardInterrupt ([92ccfd7](https://github.com/vzhd1701/gridplayer/commit/92ccfd712ecbbb714d9193f2624841945dcb4ad6))
+- Loop videos via VLC playlist to avoid abrupt video stop ([7247d57](https://github.com/vzhd1701/gridplayer/commit/7247d5738b43b26bf3ebd4960d8d47d2d6bbc284))
+- Make context menu scrollable if it exceeds screen size ([fa0f741](https://github.com/vzhd1701/gridplayer/commit/fa0f7414bf208ca75c33a9f4c631646b0cbc5b64))
+- Prevent missing overlay in SW mode ([28378f7](https://github.com/vzhd1701/gridplayer/commit/28378f7f668436e4b05cf5d453e8bc3dd5abf0d4))
+- Update icon for [ALL] ([c80c759](https://github.com/vzhd1701/gridplayer/commit/c80c759bc60052b408c30d2ebff661f208a4ec63))
+- Use different font color for disabled context menu entries ([1ca5863](https://github.com/vzhd1701/gridplayer/commit/1ca58638604af1b7bb904bc4ba08506a03023699))
+
 ## [0.4.3] - 2022-07-18
 
 ### Fixed
