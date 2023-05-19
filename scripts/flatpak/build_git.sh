@@ -28,8 +28,6 @@ update_flatpak_git() {
 
     pushd "$BUILD_DIR_FLATPAK_SRC"
 
-    rm -f CHANGELOG.md README.md pyproject.toml
-
     #git config user.name "$GIT_USER"
     #git config user.email "$GIT_EMAIL"
 
@@ -95,7 +93,7 @@ update_flathub_git() {
     git config user.email "$GIT_EMAIL"
 
     git submodule add https://github.com/flathub/shared-modules || true
-    (cd "$BUILD_DIR_FLATHUB/shared-modules" && git checkout -q 068f80b296f73d7d6eb2aee4fa01f9907d34daa8)
+    (cd "$BUILD_DIR_FLATHUB/shared-modules" && git checkout -q 50314360ded6fa3b9f0b602513b1164b7a6636ed)
 
     git add .
 

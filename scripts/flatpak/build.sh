@@ -32,7 +32,7 @@ sed -i "s#{TAR_FILE_SHA256}#$TAR_FILE_SHA256#g" "$BUILD_DIR_FLATPAK/$APP_ID.yml"
 
 if [ ! -d "$BUILD_DIR_FLATPAK/shared-modules" ]; then
     git clone -n https://github.com/flathub/shared-modules "$BUILD_DIR_FLATPAK/shared-modules"
-    (cd "$BUILD_DIR_FLATPAK/shared-modules" && git checkout -q 068f80b296f73d7d6eb2aee4fa01f9907d34daa8)
+    (cd "$BUILD_DIR_FLATPAK/shared-modules" && git checkout -q 50314360ded6fa3b9f0b602513b1164b7a6636ed)
 fi
 
 # Prevent strange freezing
@@ -43,7 +43,7 @@ flatpak permission-reset ${APP_ID}
 cd "$BUILD_DIR_FLATPAK"
 
 if [ "$1" == "install" ]; then
-    flatpak-builder -v \
+    flatpak run org.flatpak.Builder -v \
         --user --install \
         --ccache \
         --force-clean \
@@ -52,7 +52,7 @@ if [ "$1" == "install" ]; then
     exit 0
 fi
 
-flatpak-builder -v \
+flatpak run org.flatpak.Builder -v \
     --ccache \
     --force-clean \
     --repo=repo \

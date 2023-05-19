@@ -1,10 +1,16 @@
+- name: poetry-core
+  buildsystem: simple
+  build-commands:
+    - pip3 install --verbose --exists-action=i --no-index --find-links="file://${PWD}"
+      --prefix=${FLATPAK_DEST} "poetry-core==1.6.0" --no-build-isolation
+  sources:
+    - type: file
+      url: https://files.pythonhosted.org/packages/a6/6d/7d86771d647b033876cbaeb84678a0c2d538e1e1bfcf54bb6595b656a7cb/poetry_core-1.6.0-py3-none-any.whl
+      sha256: ff96620579f02ec30ee9f789fa5dfdcddd9ab4ac848394f6f8f2f4e88306b534
 - name: {APP_MODULE}
   buildsystem: simple
   build-commands:
-  # Remove PyQt5 dependency to avoid pkg_resources version conflict error
-  - sed -i '/^Requires-Dist: PyQt5/d' PKG-INFO
-  - sed -i "s/'PyQt5==.*',//" setup.py
-  - python3 setup.py install --prefix=${FLATPAK_DEST} --root=/
+  - pip3 install --no-index --no-deps --no-build-isolation --prefix=${FLATPAK_DEST} --root=/ .
   sources:
   - type: archive
     path: {TAR_FILE}
