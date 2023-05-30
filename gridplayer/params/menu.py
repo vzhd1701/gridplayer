@@ -9,6 +9,7 @@ SUBMENUS = MappingProxyType(
         "Speed": {"title": translate("Actions", "Speed"), "icon": "speed"},
         "Zoom": {"title": translate("Actions", "Zoom"), "icon": "zoom"},
         "Aspect": {"title": translate("Actions", "Aspect"), "icon": "aspect"},
+        "Transform": {"title": translate("Actions", "Transform"), "icon": "rotate"},
         "[ALL]": {"title": translate("Actions", "[ALL]"), "icon": "all"},
         "Grid": {"title": translate("Actions", "Grid"), "icon": "grid"},
         "Seek Sync": {"title": translate("Actions", "Seek Sync"), "icon": "seek-sync"},
@@ -81,6 +82,17 @@ SECTIONS = MappingProxyType(
                     "Aspect Fit",
                     "Aspect Stretch",
                     "Aspect None",
+                ),
+                (
+                    "Transform",
+                    "Rotate 90",
+                    "Rotate 180",
+                    "Rotate 270",
+                    "Horizontal flip",
+                    "Vertical flip",
+                    "Tranpose",
+                    "Anti-tranpose",
+                    "Transform reset"
                 ),
             ),
             (

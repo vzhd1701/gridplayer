@@ -65,7 +65,7 @@ class VideoFrameVLC(QWidget, metaclass=QABC):
 
     is_opengl: Optional[bool] = None
 
-    def __init__(self, **kwargs):
+    def __init__(self, options_vlc=[], **kwargs):
         super().__init__(**kwargs)
 
         self._log = logging.getLogger(self.__class__.__name__)
@@ -91,7 +91,8 @@ class VideoFrameVLC(QWidget, metaclass=QABC):
         self.layout().addWidget(self.pause_snapshot)
         self.layout().addWidget(self.audio_only_placeholder)
 
-        self.video_driver: VLCVideoDriver = self.driver_setup()
+        self.options_vlc = options_vlc
+        self.video_driver: VLCVideoDriver = self.driver_setup(vlc_options=self.options_vlc)
 
         self.driver_connect()
 

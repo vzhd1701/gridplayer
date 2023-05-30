@@ -15,6 +15,16 @@ FONT_SIZE_BIG_INFO = 22 if env.IS_MACOS else 16  # noqa: WPS432
 
 VIDEO_END_LOOP_MARGIN_MS = 500
 
+class TransformType(Enum):
+    ROTATE_90       = "transform{type='90'}"
+    ROTATE_180      = "transform{type='180'}"
+    ROTATE_270      = "transform{type='270'}"
+    HFLIP           = "transform{type='hflip'}"
+    VFLIP           = "transform{type='vflip'}"
+    TRANPOSE        = "transform{type='tranpose'}"
+    ANTITRANPOSE    = "transform{type='antitranspose'}"
+    RESET           = ""
+
 
 class AutoName(Enum):
     def _generate_next_value_(name, start, count, last_values):  # noqa: WPS120

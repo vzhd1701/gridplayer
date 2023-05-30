@@ -28,7 +28,8 @@ class InstanceProcessVLCSW(InstanceProcessVLC):
             for _ in range(self.players_per_instance)
         ]
 
-        self._vlc.vlc_options = ["--vout=vdummy"]
+        # self._vlc.vlc_options = ["--vout=vdummy"]
+        self._vlc.vlc_options.append("--vout=vdummy")
 
     def init_player_shared_data(self, player_id):
         available_locks = (ml for ml in self._memory_locks if ml["is_busy"].value == 0)

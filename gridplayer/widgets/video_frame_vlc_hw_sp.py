@@ -57,7 +57,7 @@ class PlayerProcessSingleVLCHWSP(QThread, VlcPlayerBase, metaclass=QABC):
         )
 
     def run(self):
-        self._instance = InstanceVLC(0)
+        self._instance = InstanceVLC(0, [])
 
         self._instance.set_log_level_vlc(Settings().get("logging/log_level_vlc"))
         self._instance.init_instance()

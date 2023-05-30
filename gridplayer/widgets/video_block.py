@@ -27,6 +27,7 @@ from gridplayer.params.static import (
     OVERLAY_ACTIVITY_EVENT,
     PLAYER_ID_LENGTH,
     VIDEO_END_LOOP_MARGIN_MS,
+    TransformType,
     VideoRepeat,
 )
 from gridplayer.settings import Settings
@@ -149,13 +150,14 @@ class VideoBlock(QWidget):  # noqa: WPS230
     is_active_change = pyqtSignal(bool)
     is_audio_present_change = pyqtSignal(bool)
 
-    def __init__(self, video_driver, context, **kwargs):
+    def __init__(self, video_driver, context, options_vlc=[], **kwargs):
         super().__init__(**kwargs)
 
         self._log = logging.getLogger(self.__class__.__name__)
 
         # Internal
         self.video_driver_cls = video_driver
+        self.vlc_options = options_vlc
         self.id = secrets.token_hex(PLAYER_ID_LENGTH)
         self._ctx = context
 
@@ -198,7 +200,7 @@ class VideoBlock(QWidget):  # noqa: WPS230
         self.overlay.hide()
 
     def init_video_driver(self) -> VideoFrameVLC:
-        video_driver = self.video_driver_cls(parent=self)
+        video_driver = self.video_driver_cls(options_vlc=self.vlc_options, parent=self)
 
         qt_connect(
             (video_driver.video_ready, self.load_video_finish),
@@ -212,7 +214,7 @@ class VideoBlock(QWidget):  # noqa: WPS230
 
         return video_driver
 
-    def reset_video_driver(self):
+    def reset_video_driver(self, vlc_options=[]):
         self.video_driver.video_ready.disconnect()
         self.video_driver.time_changed.disconnect()
         self.video_driver.error.disconnect()
@@ -365,6 +367,19 @@ class VideoBlock(QWidget):  # noqa: WPS230
         self.video_params = None
 
         self.set_video(video_params)
+
+    def transform(self, tf_type: TransformType):
+        # remove previous
+        for ix, opt in enumerate(self.vlc_options):
+            if "video-filter" in opt:
+                del self.vlc_options[ix]
+                break
+        # apply new
+        if tf_type != TransformType.RESET:
+            params_str = f"--video-filter={tf_type.value}"
+            self.vlc_options.append(params_str)
+        self._log.debug(f"self.vlc_options: {self.vlc_options}")
+        self.reload()
 
     def close_silently(self):
         self.close(notify=False)
