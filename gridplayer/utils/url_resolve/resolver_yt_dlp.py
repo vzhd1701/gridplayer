@@ -81,6 +81,10 @@ class YoutubeDLResolver(ResolverBase):
 
     @cached_property
     def _raw_streams(self):
+        if self._video_info.get("direct") == True:
+            self._log.debug("yt-dlp reports direct link, passing it to DirectResolver")
+            raise NoResolverPlugin
+
         http_streams = [
             fmt
             for fmt in self._video_info.get("formats", [])
