@@ -1,3 +1,4 @@
+from pathlib import Path
 from typing import Iterable, List, Optional
 from uuid import uuid4
 
@@ -76,8 +77,17 @@ def filter_video_uris(uris: Iterable[str]) -> List[Video]:
         try:
             video = Video(uri=uri)
         except ValidationError:
-            continue
+            try:
+                video = _convert_relative_path(uri)
+            except ValidationError:
+                continue
 
         valid_urls.append(video)
 
     return valid_urls
+
+
+def _convert_relative_path(uri: str) -> Video:
+    uri_relative = Path.cwd() / uri
+
+    return Video(uri=uri_relative)
