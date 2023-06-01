@@ -745,8 +745,8 @@ class VideoBlock(QWidget):  # noqa: WPS230
 
         self.load_stream_quality(quality)
 
-    def load_stream_quality(self, quality: str):
-        quality, stream = self.streams.by_quality(quality)
+    def load_stream_quality(self, wanted_quality: str):
+        quality, stream = self.streams.by_quality(wanted_quality)
 
         self.video_params.stream_quality = quality
 

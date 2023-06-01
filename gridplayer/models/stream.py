@@ -109,7 +109,7 @@ class Streams(object):
             return self.best
 
         quality_lines = int(quality_lines.group(1))
-        for quality_code, stream_url in reversed(self.streams.items()):
+        for quality_code, stream_url in reversed(self.video_streams.items()):
             stream_lines = re.search(r"^(\d+)", quality_code)
             if not stream_lines:
                 continue
