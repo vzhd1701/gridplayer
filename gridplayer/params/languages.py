@@ -136,6 +136,7 @@ LANGUAGES = (
             LanguageAuthor("1017346", "https://crowdin.com/profile/1017346"),
             LanguageAuthor("焦新营", "https://crowdin.com/profile/j149697726"),
             LanguageAuthor("loser7788", "https://crowdin.com/profile/loser7788"),
+            LanguageAuthor("李凡", "https://crowdin.com/profile/lif86060"),
         ],
     ),
 )

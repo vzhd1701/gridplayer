@@ -248,6 +248,7 @@ This software was build using
 - [1017346](https://crowdin.com/profile/1017346)
 - [焦新营](https://crowdin.com/profile/j149697726)
 - [loser7788](https://crowdin.com/profile/loser7788)
+- [李凡](https://crowdin.com/profile/lif86060)
 
 ## License
 
