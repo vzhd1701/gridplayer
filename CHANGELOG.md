@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [0.5.1] - 2023-06-05
+
 ### Added
 
 * Option to transform video (rotate, mirror, transpose) ([236b989](https://github.com/vzhd1701/gridplayer/commit/236b9895b9fc9b5ba7b9ccda503271466a108103))
@@ -253,7 +255,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 - Initial release
 
-[Unreleased]: https://github.com/vzhd1701/gridplayer/compare/v0.5.0...HEAD
+[Unreleased]: https://github.com/vzhd1701/gridplayer/compare/v0.5.1...HEAD
+[0.5.1]: https://github.com/vzhd1701/gridplayer/compare/v0.5.0...v0.5.1
 [0.5.0]: https://github.com/vzhd1701/gridplayer/compare/v0.4.3...v0.5.0
 [0.4.3]: https://github.com/vzhd1701/gridplayer/compare/v0.4.2...v0.4.3
 [0.4.2]: https://github.com/vzhd1701/gridplayer/compare/v0.4.1...v0.4.2
