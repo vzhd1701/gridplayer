@@ -511,6 +511,51 @@
         <source>Clear List</source>
         <translation type="unfinished"></translation>
     </message>
+    <message>
+        <location filename="params/actions.py" line="7"/>
+        <source>Rotate 90</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="params/actions.py" line="7"/>
+        <source>Rotate 180</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="params/actions.py" line="7"/>
+        <source>Rotate 270</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="params/actions.py" line="7"/>
+        <source>Flip Horizontally</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="params/actions.py" line="7"/>
+        <source>Flip Vertically</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="params/actions.py" line="7"/>
+        <source>Transpose</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="params/actions.py" line="7"/>
+        <source>Anti-transpose</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="params/actions.py" line="7"/>
+        <source>No Transform</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="params/menu.py" line="5"/>
+        <source>Transform</source>
+        <translation type="unfinished"></translation>
+    </message>
 </context>
 <context>
     <name>Audio Mode</name>
@@ -581,12 +626,12 @@
 <context>
     <name>Auto Reload Timer</name>
     <message>
-        <location filename="widgets/video_block.py" line="444"/>
+        <location filename="widgets/video_block.py" line="448"/>
         <source>Disabled</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="widgets/video_block.py" line="446"/>
+        <location filename="widgets/video_block.py" line="450"/>
         <source>minute(s)</source>
         <translation type="unfinished"></translation>
     </message>
@@ -658,7 +703,7 @@
 <context>
     <name>Dialog - Enter timecode</name>
     <message>
-        <location filename="widgets/video_block.py" line="411"/>
+        <location filename="widgets/video_block.py" line="415"/>
         <source>Enter timecode</source>
         <comment>Header</comment>
         <translation type="unfinished"></translation>
@@ -715,7 +760,7 @@
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="widgets/video_block.py" line="1013"/>
+        <location filename="widgets/video_block.py" line="1024"/>
         <source>Rename video</source>
         <comment>Header</comment>
         <translation type="unfinished"></translation>
@@ -742,7 +787,7 @@
 <context>
     <name>Dialog - Set auto reload timer</name>
     <message>
-        <location filename="widgets/video_block.py" line="421"/>
+        <location filename="widgets/video_block.py" line="425"/>
         <source>Set auto reload timer</source>
         <comment>Header</comment>
         <translation type="unfinished"></translation>
@@ -774,7 +819,7 @@
 <context>
     <name>Error</name>
     <message>
-        <location filename="dialogs/settings.py" line="163"/>
+        <location filename="dialogs/settings.py" line="164"/>
         <source>Log file does not exist!</source>
         <translation type="unfinished"></translation>
     </message>
@@ -817,32 +862,32 @@
 <context>
     <name>ErrorLevel</name>
     <message>
-        <location filename="dialogs/settings.py" line="177"/>
+        <location filename="dialogs/settings.py" line="178"/>
         <source>None</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="dialogs/settings.py" line="177"/>
+        <location filename="dialogs/settings.py" line="178"/>
         <source>Error</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="dialogs/settings.py" line="177"/>
+        <location filename="dialogs/settings.py" line="178"/>
         <source>Warning</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="dialogs/settings.py" line="177"/>
+        <location filename="dialogs/settings.py" line="178"/>
         <source>Info</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="dialogs/settings.py" line="177"/>
+        <location filename="dialogs/settings.py" line="178"/>
         <source>Debug</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="dialogs/settings.py" line="177"/>
+        <location filename="dialogs/settings.py" line="178"/>
         <source>Critical</source>
         <translation type="unfinished"></translation>
     </message>
@@ -889,277 +934,277 @@
 <context>
     <name>SettingsDialog</name>
     <message>
-        <location filename="dialogs/settings.py" line="182"/>
+        <location filename="dialogs/settings.py" line="183"/>
         <source>Fit</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="dialogs/settings.py" line="182"/>
+        <location filename="dialogs/settings.py" line="183"/>
         <source>Stretch</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="dialogs/settings.py" line="182"/>
+        <location filename="dialogs/settings.py" line="183"/>
         <source>None</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="dialogs/settings.py" line="187"/>
+        <location filename="dialogs/settings.py" line="193"/>
         <source>Single File</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="dialogs/settings.py" line="187"/>
+        <location filename="dialogs/settings.py" line="193"/>
         <source>Directory</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="dialogs/settings.py" line="187"/>
+        <location filename="dialogs/settings.py" line="193"/>
         <source>Directory (Shuffle)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="dialogs/settings.py" line="192"/>
+        <location filename="dialogs/settings.py" line="198"/>
         <source>Rows First</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="dialogs/settings.py" line="192"/>
+        <location filename="dialogs/settings.py" line="198"/>
         <source>Columns First</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="dialogs/settings.py" line="200"/>
+        <location filename="dialogs/settings.py" line="206"/>
         <source>Hardware SP</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="dialogs/settings.py" line="200"/>
+        <location filename="dialogs/settings.py" line="206"/>
         <source>Software</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="dialogs/settings.py" line="200"/>
+        <location filename="dialogs/settings.py" line="206"/>
         <source>Dummy</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="dialogs/settings.py" line="200"/>
+        <location filename="dialogs/settings.py" line="206"/>
         <source>Hardware</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="dialogs/settings.py" line="209"/>
+        <location filename="dialogs/settings.py" line="215"/>
         <source>Best</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="dialogs/settings.py" line="209"/>
+        <location filename="dialogs/settings.py" line="215"/>
         <source>Worst</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="dialogs/settings.py" line="219"/>
+        <location filename="dialogs/settings.py" line="225"/>
         <source>Disabled</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="dialogs/settings.py" line="219"/>
+        <location filename="dialogs/settings.py" line="225"/>
         <source>Percent</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="dialogs/settings.py" line="219"/>
+        <location filename="dialogs/settings.py" line="225"/>
         <source>Timecode</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="dialogs/settings_dialog_ui.py" line="478"/>
+        <location filename="dialogs/settings_dialog_ui.py" line="484"/>
         <source>Settings</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="dialogs/settings_dialog_ui.py" line="484"/>
+        <location filename="dialogs/settings_dialog_ui.py" line="490"/>
         <source>Player</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="dialogs/settings_dialog_ui.py" line="502"/>
+        <location filename="dialogs/settings_dialog_ui.py" line="508"/>
         <source>Pause background videos on single mode</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="dialogs/settings_dialog_ui.py" line="503"/>
+        <location filename="dialogs/settings_dialog_ui.py" line="509"/>
         <source>Pause videos when minimized</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="dialogs/settings_dialog_ui.py" line="504"/>
+        <location filename="dialogs/settings_dialog_ui.py" line="510"/>
         <source>Disable screensaver while playing</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="dialogs/settings_dialog_ui.py" line="505"/>
+        <location filename="dialogs/settings_dialog_ui.py" line="511"/>
         <source>Allow only one instance</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="dialogs/settings_dialog_ui.py" line="490"/>
+        <location filename="dialogs/settings_dialog_ui.py" line="496"/>
         <source>Playlist</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="dialogs/settings_dialog_ui.py" line="523"/>
+        <location filename="dialogs/settings_dialog_ui.py" line="529"/>
         <source>Save window position and size</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="dialogs/settings_dialog_ui.py" line="524"/>
+        <location filename="dialogs/settings_dialog_ui.py" line="530"/>
         <source>Save videos playback position</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="dialogs/settings_dialog_ui.py" line="525"/>
+        <location filename="dialogs/settings_dialog_ui.py" line="531"/>
         <source>Save videos playing / paused status</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="dialogs/settings_dialog_ui.py" line="526"/>
+        <location filename="dialogs/settings_dialog_ui.py" line="532"/>
         <source>Warn about unsaved changes</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="dialogs/settings_dialog_ui.py" line="527"/>
+        <location filename="dialogs/settings_dialog_ui.py" line="533"/>
         <source>Disable pause with left mouse click</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="dialogs/settings_dialog_ui.py" line="528"/>
+        <location filename="dialogs/settings_dialog_ui.py" line="534"/>
         <source>Disable seek with mouse wheel</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="dialogs/settings_dialog_ui.py" line="529"/>
+        <location filename="dialogs/settings_dialog_ui.py" line="535"/>
         <source>Seek sync mode</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="dialogs/settings_dialog_ui.py" line="531"/>
+        <location filename="dialogs/settings_dialog_ui.py" line="537"/>
         <source>Grid mode</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="dialogs/settings_dialog_ui.py" line="532"/>
+        <location filename="dialogs/settings_dialog_ui.py" line="538"/>
         <source>Grid size</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="dialogs/settings_dialog_ui.py" line="533"/>
+        <location filename="dialogs/settings_dialog_ui.py" line="539"/>
         <source>Fit grid cells</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="dialogs/settings_dialog_ui.py" line="534"/>
+        <location filename="dialogs/settings_dialog_ui.py" line="540"/>
         <source>Shuffle on load</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="dialogs/settings_dialog_ui.py" line="542"/>
+        <location filename="dialogs/settings_dialog_ui.py" line="549"/>
         <source>Stream quality</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="dialogs/settings_dialog_ui.py" line="535"/>
+        <location filename="dialogs/settings_dialog_ui.py" line="541"/>
         <source>Aspect mode</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="dialogs/settings_dialog_ui.py" line="536"/>
+        <location filename="dialogs/settings_dialog_ui.py" line="542"/>
         <source>Repeat mode</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="dialogs/settings_dialog_ui.py" line="538"/>
+        <location filename="dialogs/settings_dialog_ui.py" line="545"/>
         <source>Start at random position</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="dialogs/settings_dialog_ui.py" line="539"/>
+        <location filename="dialogs/settings_dialog_ui.py" line="546"/>
         <source>Paused</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="dialogs/settings_dialog_ui.py" line="540"/>
+        <location filename="dialogs/settings_dialog_ui.py" line="547"/>
         <source>Muted</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="dialogs/settings_dialog_ui.py" line="486"/>
+        <location filename="dialogs/settings_dialog_ui.py" line="492"/>
         <source>Language</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="dialogs/settings_dialog_ui.py" line="545"/>
+        <location filename="dialogs/settings_dialog_ui.py" line="552"/>
         <source>Video Decoder</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="dialogs/settings_dialog_ui.py" line="546"/>
+        <location filename="dialogs/settings_dialog_ui.py" line="553"/>
         <source>Videos per process</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="dialogs/settings_dialog_ui.py" line="510"/>
+        <location filename="dialogs/settings_dialog_ui.py" line="516"/>
         <source>Timeouts</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="dialogs/settings_dialog_ui.py" line="511"/>
+        <location filename="dialogs/settings_dialog_ui.py" line="517"/>
         <source>Hide overlay after timeout</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="dialogs/settings_dialog_ui.py" line="513"/>
+        <location filename="dialogs/settings_dialog_ui.py" line="519"/>
         <source>Hide mouse after timeout</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="dialogs/settings_dialog_ui.py" line="498"/>
+        <location filename="dialogs/settings_dialog_ui.py" line="504"/>
         <source>Logging</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="dialogs/settings_dialog_ui.py" line="556"/>
+        <location filename="dialogs/settings_dialog_ui.py" line="563"/>
         <source>Log level</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="dialogs/settings_dialog_ui.py" line="557"/>
+        <location filename="dialogs/settings_dialog_ui.py" line="564"/>
         <source>Log level (VLC)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="dialogs/settings_dialog_ui.py" line="549"/>
+        <location filename="dialogs/settings_dialog_ui.py" line="556"/>
         <source>Opaque overlay (fix black screen)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="dialogs/settings_dialog_ui.py" line="558"/>
+        <location filename="dialogs/settings_dialog_ui.py" line="565"/>
         <source>Open log file</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="dialogs/settings_dialog_ui.py" line="492"/>
+        <location filename="dialogs/settings_dialog_ui.py" line="498"/>
         <source>Video</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="dialogs/settings_dialog_ui.py" line="496"/>
+        <location filename="dialogs/settings_dialog_ui.py" line="502"/>
         <source>Streaming</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="dialogs/settings_dialog_ui.py" line="500"/>
+        <location filename="dialogs/settings_dialog_ui.py" line="506"/>
         <source>Advanced</source>
         <translation type="unfinished"></translation>
     </message>
@@ -1169,62 +1214,62 @@
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="dialogs/settings_dialog_ui.py" line="482"/>
+        <location filename="dialogs/settings_dialog_ui.py" line="488"/>
         <source>General</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="dialogs/settings_dialog_ui.py" line="488"/>
+        <location filename="dialogs/settings_dialog_ui.py" line="494"/>
         <source>Defaults</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="dialogs/settings_dialog_ui.py" line="494"/>
+        <location filename="dialogs/settings_dialog_ui.py" line="500"/>
         <source>Miscellaneous</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="dialogs/settings_dialog_ui.py" line="507"/>
+        <location filename="dialogs/settings_dialog_ui.py" line="513"/>
         <source>Show overlay border for active video</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="dialogs/settings_dialog_ui.py" line="516"/>
+        <location filename="dialogs/settings_dialog_ui.py" line="522"/>
         <source>(sec)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="dialogs/settings_dialog_ui.py" line="515"/>
+        <location filename="dialogs/settings_dialog_ui.py" line="521"/>
         <source>Video initialization timeout</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="dialogs/settings_dialog_ui.py" line="517"/>
+        <location filename="dialogs/settings_dialog_ui.py" line="523"/>
         <source>&lt;p&gt;If you have a handful of free time and a desire to support this project, please &lt;a href=&quot;https://crowdin.com/project/gridplayer&quot;&gt;help with the translation&lt;/a&gt;. No coding skills or special software is required!&lt;/p&gt;</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="dialogs/settings_dialog_ui.py" line="518"/>
+        <location filename="dialogs/settings_dialog_ui.py" line="524"/>
         <source>Use Streamlink for HLS streams when possible</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="dialogs/settings_dialog_ui.py" line="519"/>
+        <location filename="dialogs/settings_dialog_ui.py" line="525"/>
         <source>Priority URL resolver</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="dialogs/settings_dialog_ui.py" line="520"/>
+        <location filename="dialogs/settings_dialog_ui.py" line="526"/>
         <source>Resolver priority patterns</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="dialogs/settings_dialog_ui.py" line="521"/>
+        <location filename="dialogs/settings_dialog_ui.py" line="527"/>
         <source>Wildcard syntax</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="dialogs/settings_dialog_ui.py" line="522"/>
+        <location filename="dialogs/settings_dialog_ui.py" line="528"/>
         <source>&lt;p&gt;&lt;b&gt;The asterisk&lt;/b&gt; * matches zero or more characters.&lt;br&gt;
 &lt;b&gt;The question mark&lt;/b&gt; ? matches exactly one character.&lt;/p&gt;
 &lt;p&gt;&lt;i&gt;For Host Wildcard only:&lt;/i&gt;&lt;br&gt;
@@ -1233,57 +1278,57 @@
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="dialogs/settings_dialog_ui.py" line="530"/>
+        <location filename="dialogs/settings_dialog_ui.py" line="536"/>
         <source>Grid</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="dialogs/settings_dialog_ui.py" line="541"/>
+        <location filename="dialogs/settings_dialog_ui.py" line="548"/>
         <source>Streaming Videos</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="dialogs/settings_dialog_ui.py" line="543"/>
+        <location filename="dialogs/settings_dialog_ui.py" line="550"/>
         <source>Auto reload time</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="dialogs/settings_dialog_ui.py" line="544"/>
+        <location filename="dialogs/settings_dialog_ui.py" line="551"/>
         <source>(min)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="dialogs/settings_dialog_ui.py" line="547"/>
+        <location filename="dialogs/settings_dialog_ui.py" line="554"/>
         <source>VLC Options [&lt;a href=&quot;https://wiki.videolan.org/VLC_command-line_help/&quot;&gt;reference&lt;/a&gt;]</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="dialogs/settings_dialog_ui.py" line="548"/>
+        <location filename="dialogs/settings_dialog_ui.py" line="555"/>
         <source>Experimental</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="dialogs/settings_dialog_ui.py" line="551"/>
+        <location filename="dialogs/settings_dialog_ui.py" line="558"/>
         <source>Limit log file size</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="dialogs/settings_dialog_ui.py" line="552"/>
+        <location filename="dialogs/settings_dialog_ui.py" line="559"/>
         <source>Log file size</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="dialogs/settings_dialog_ui.py" line="553"/>
+        <location filename="dialogs/settings_dialog_ui.py" line="560"/>
         <source>MB</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="dialogs/settings_dialog_ui.py" line="554"/>
+        <location filename="dialogs/settings_dialog_ui.py" line="561"/>
         <source>Log files to keep</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="dialogs/settings_dialog_ui.py" line="555"/>
+        <location filename="dialogs/settings_dialog_ui.py" line="562"/>
         <source>Logging levels</source>
         <translation type="unfinished"></translation>
     </message>
@@ -1303,38 +1348,83 @@
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="dialogs/settings.py" line="209"/>
+        <location filename="dialogs/settings.py" line="215"/>
         <source>Best (Audio Only)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="dialogs/settings.py" line="209"/>
+        <location filename="dialogs/settings.py" line="215"/>
         <source>Worst (Audio Only)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="dialogs/settings_dialog_ui.py" line="506"/>
+        <location filename="dialogs/settings_dialog_ui.py" line="512"/>
         <source>Stay on top</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="dialogs/settings_dialog_ui.py" line="508"/>
+        <location filename="dialogs/settings_dialog_ui.py" line="514"/>
         <source>Enable recent list, maximum size</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="dialogs/settings_dialog_ui.py" line="509"/>
+        <location filename="dialogs/settings_dialog_ui.py" line="515"/>
         <source>(items)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="dialogs/settings_dialog_ui.py" line="537"/>
+        <location filename="dialogs/settings_dialog_ui.py" line="543"/>
         <source>Audio mode</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="dialogs/settings_dialog_ui.py" line="550"/>
+        <location filename="dialogs/settings_dialog_ui.py" line="557"/>
         <source>Fake overlay invisibility (fix overlay on top of other windows)</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="dialogs/settings.py" line="188"/>
+        <source>Rotate 90</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="dialogs/settings.py" line="188"/>
+        <source>Rotate 180</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="dialogs/settings.py" line="188"/>
+        <source>Rotate 270</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="dialogs/settings.py" line="188"/>
+        <source>Flip Horizontally</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="dialogs/settings.py" line="188"/>
+        <source>Flip Vertically</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="dialogs/settings.py" line="188"/>
+        <source>Transpose</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="dialogs/settings.py" line="188"/>
+        <source>Anti-transpose</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="dialogs/settings.py" line="188"/>
+        <source>No Transform</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="dialogs/settings_dialog_ui.py" line="544"/>
+        <source>Transform</source>
         <translation type="unfinished"></translation>
     </message>
 </context>
@@ -1447,7 +1537,7 @@
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="widgets/video_block.py" line="255"/>
+        <location filename="widgets/video_block.py" line="259"/>
         <source>Initializing</source>
         <translation type="unfinished"></translation>
     </message>
@@ -1480,7 +1570,7 @@
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="widgets/video_block.py" line="503"/>
+        <location filename="widgets/video_block.py" line="507"/>
         <source>Cannot disable both video &amp; audio tracks</source>
         <translation type="unfinished"></translation>
     </message>
