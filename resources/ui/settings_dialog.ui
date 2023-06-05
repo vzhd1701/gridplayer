@@ -621,25 +621,35 @@
            <item row="0" column="1">
             <widget class="QComboBox" name="videoAspect"/>
            </item>
-           <item row="1" column="0">
+           <item row="2" column="0">
             <widget class="QLabel" name="repeatModeLabel">
              <property name="text">
               <string>Repeat mode</string>
              </property>
             </widget>
            </item>
-           <item row="1" column="1">
+           <item row="2" column="1">
             <widget class="QComboBox" name="repeatMode"/>
            </item>
-           <item row="2" column="0">
+           <item row="3" column="0">
             <widget class="QLabel" name="label_15">
              <property name="text">
               <string>Audio mode</string>
              </property>
             </widget>
            </item>
-           <item row="2" column="1">
+           <item row="3" column="1">
             <widget class="QComboBox" name="videoAudioMode"/>
+           </item>
+           <item row="1" column="0">
+            <widget class="QLabel" name="videoTransformLabel">
+             <property name="text">
+              <string>Transform</string>
+             </property>
+            </widget>
+           </item>
+           <item row="1" column="1">
+            <widget class="QComboBox" name="videoTransform"/>
            </item>
           </layout>
          </item>
