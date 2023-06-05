@@ -72,10 +72,7 @@ class ProcessManager(CommandLoopThreaded, QObject):
         return active_instances
 
     def get_instance(self, options):
-        if options:
-            instance = None
-        else:
-            instance = self._get_available_instance()
+        instance = self._get_available_instance(options)
 
         if instance is None:
             instance = self.create_instance(options=options)
@@ -90,7 +87,9 @@ class ProcessManager(CommandLoopThreaded, QObject):
 
     def create_instance(self, options):
         instance = self._instance_class(
-            players_per_instance=self._limit, pm_callback_pipe=self._self_pipe
+            players_per_instance=self._limit,
+            pm_callback_pipe=self._self_pipe,
+            options=options,
         )
 
         if self._log_queue:
@@ -146,10 +145,13 @@ class ProcessManager(CommandLoopThreaded, QObject):
         for a in self.active_instances:
             a.request_set_log_level(log_level)
 
-    def _get_available_instance(self):
+    def _get_available_instance(self, options):
         for instance in self.active_instances:
             with instance.player_count.get_lock():
-                if instance.player_count.value < self._limit:
+                if (
+                    instance.options == options
+                    and instance.player_count.value < self._limit
+                ):
                     return instance
 
         return None

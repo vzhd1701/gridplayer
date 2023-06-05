@@ -38,10 +38,10 @@ VLC_USER_AGENT = (
 
 
 class InstanceProcessVLC(InstanceProcess):
-    def __init__(self, vlc_log_level, vlc_options, **kwargs):
+    def __init__(self, vlc_log_level, **kwargs):
         super().__init__(**kwargs)
 
-        self._vlc = InstanceVLC(vlc_log_level, vlc_options)
+        self._vlc = InstanceVLC(vlc_log_level, kwargs["options"])
 
     @property
     def vlc_instance(self):
@@ -80,7 +80,7 @@ class InstanceVLC(object):
         super().__init__(**kwargs)
 
         self.vlc_instance = None
-        self.vlc_options = vlc_options
+        self.vlc_options = vlc_options.copy()
 
         self._vlc_log_level = vlc_log_level
 
@@ -203,8 +203,8 @@ class ProcessManagerVLC(ProcessManager):
         instance = self._instance_class(
             players_per_instance=self._limit,
             pm_callback_pipe=self._self_pipe,
+            options=options,
             vlc_log_level=log_level_vlc,
-            vlc_options=options,
         )
 
         if self._log_queue:

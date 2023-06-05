@@ -12,10 +12,11 @@ from gridplayer.utils.log_config import child_process_config
 
 
 class InstanceProcess(CommandLoop, ABC):
-    def __init__(self, players_per_instance, pm_callback_pipe, **kwargs):
+    def __init__(self, players_per_instance, pm_callback_pipe, options, **kwargs):
         super().__init__(**kwargs)
 
         self.id = secrets.token_hex(PLAYER_ID_LENGTH)
+        self.options = options
 
         self.process = Process(
             target=self.run,
