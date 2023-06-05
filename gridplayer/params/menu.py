@@ -205,6 +205,17 @@ SECTIONS = MappingProxyType(
                         "Aspect Stretch [ALL]",
                         "Aspect None [ALL]",
                     ),
+                    (
+                        "Transform",
+                        "Rotate 90 [ALL]",
+                        "Rotate 180 [ALL]",
+                        "Rotate 270 [ALL]",
+                        "Flip Horizontally [ALL]",
+                        "Flip Vertically [ALL]",
+                        "Transpose [ALL]",
+                        "Anti-transpose [ALL]",
+                        "No Transform [ALL]",
+                    ),
                 ),
                 (
                     "Playback",
