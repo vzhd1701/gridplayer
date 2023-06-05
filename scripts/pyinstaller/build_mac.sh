@@ -6,8 +6,8 @@ SCRIPT_DIR="$( cd "$( dirname $0 )" && pwd )"
 
 . "scripts/init_app_vars.sh"
 
-VLC_URL="https://get.videolan.org/vlc/3.0.16/macosx/vlc-3.0.16-intel64.dmg"
-PYINSTALLER_VERSION="5.1"
+VLC_URL="https://get.videolan.org/vlc/3.0.18/macosx/vlc-3.0.18-intel64.dmg"
+PYINSTALLER_VERSION="5.11.0"
 
 mkdir -p "$BUILD_DIR"
 
