@@ -197,14 +197,14 @@ class ProcessManagerVLC(ProcessManager):
         for a in self.active_instances:
             a.request_set_log_level_vlc(log_level)
 
-    def create_instance(self, options=[]):
+    def create_instance(self, options):
         log_level_vlc = Settings().get("logging/log_level_vlc")
 
         instance = self._instance_class(
             players_per_instance=self._limit,
             pm_callback_pipe=self._self_pipe,
             vlc_log_level=log_level_vlc,
-            vlc_options=options
+            vlc_options=options,
         )
 
         if self._log_queue:

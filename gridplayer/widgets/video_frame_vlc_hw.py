@@ -87,7 +87,9 @@ class VideoDriverVLCHW(VLCVideoDriverThreaded):
     def __init__(self, win_id, process_manager, vlc_options, **kwargs):
         super().__init__(**kwargs)
 
-        process_manager.init_player({"win_id": win_id}, self.cmd_child_pipe(), vlc_options)
+        process_manager.init_player(
+            {"win_id": win_id}, self.cmd_child_pipe(), vlc_options
+        )
 
     def adjust_view(self, size, aspect, scale):
         self.cmd_send("adjust_view", size, aspect, scale)

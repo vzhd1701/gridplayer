@@ -27,10 +27,12 @@ from gridplayer.params.static import (
     OVERLAY_ACTIVITY_EVENT,
     PLAYER_ID_LENGTH,
     VIDEO_END_LOOP_MARGIN_MS,
-    TransformType,
+    VideoAspect,
     VideoRepeat,
+    VideoTransform,
 )
 from gridplayer.settings import Settings
+from gridplayer.utils.libvlc_options_parser import get_vlc_options
 from gridplayer.utils.next_file import next_video_file, previous_video_file
 from gridplayer.utils.qt import qt_connect, translate
 from gridplayer.utils.url_resolve.static import ResolvedVideo
@@ -150,14 +152,13 @@ class VideoBlock(QWidget):  # noqa: WPS230
     is_active_change = pyqtSignal(bool)
     is_audio_present_change = pyqtSignal(bool)
 
-    def __init__(self, video_driver, context, options_vlc=[], **kwargs):
+    def __init__(self, video_driver, context, **kwargs):
         super().__init__(**kwargs)
 
         self._log = logging.getLogger(self.__class__.__name__)
 
         # Internal
         self.video_driver_cls = video_driver
-        self.vlc_options = options_vlc
         self.id = secrets.token_hex(PLAYER_ID_LENGTH)
         self._ctx = context
 
@@ -200,7 +201,10 @@ class VideoBlock(QWidget):  # noqa: WPS230
         self.overlay.hide()
 
     def init_video_driver(self) -> VideoFrameVLC:
-        video_driver = self.video_driver_cls(options_vlc=self.vlc_options, parent=self)
+        vlc_options = get_vlc_options(self.video_params)
+        self._log.debug(f"vlc_options: {vlc_options}")
+
+        video_driver = self.video_driver_cls(vlc_options=vlc_options, parent=self)
 
         qt_connect(
             (video_driver.video_ready, self.load_video_finish),
@@ -214,7 +218,7 @@ class VideoBlock(QWidget):  # noqa: WPS230
 
         return video_driver
 
-    def reset_video_driver(self, vlc_options=[]):
+    def reset_video_driver(self):
         self.video_driver.video_ready.disconnect()
         self.video_driver.time_changed.disconnect()
         self.video_driver.error.disconnect()
@@ -367,19 +371,6 @@ class VideoBlock(QWidget):  # noqa: WPS230
         self.video_params = None
 
         self.set_video(video_params)
-
-    def transform(self, tf_type: TransformType):
-        # remove previous
-        for ix, opt in enumerate(self.vlc_options):
-            if "video-filter" in opt:
-                del self.vlc_options[ix]
-                break
-        # apply new
-        if tf_type != TransformType.RESET:
-            params_str = f"--video-filter={tf_type.value}"
-            self.vlc_options.append(params_str)
-        self._log.debug(f"self.vlc_options: {self.vlc_options}")
-        self.reload()
 
     def close_silently(self):
         self.close(notify=False)
@@ -720,11 +711,14 @@ class VideoBlock(QWidget):  # noqa: WPS230
 
     def set_video(self, video_params: Video):
         is_first_video = self.video_params is None
+        is_options_changed = get_vlc_options(self.video_params) != get_vlc_options(
+            video_params
+        )
 
         self.video_params = video_params
 
         # Shut down current video
-        if not is_first_video:
+        if not is_first_video or is_options_changed:
             self.reset()
 
         if self.video_params.is_http_url:
@@ -821,10 +815,16 @@ class VideoBlock(QWidget):  # noqa: WPS230
         self.video_driver.adjust_view()
 
     @only_with_video_tacks
-    def set_aspect(self, aspect):
+    def set_aspect(self, aspect: VideoAspect):
         self.video_params.aspect_mode = aspect
 
         self.video_driver.set_aspect_ratio(self.video_params.aspect_mode)
+
+    @only_with_video_tacks
+    def set_transform(self, transform: VideoTransform):
+        self.video_params.transform = transform
+
+        self.reload()
 
     @only_seekable
     def toggle_loop_random(self):

@@ -88,11 +88,11 @@ SECTIONS = MappingProxyType(
                     "Rotate 90",
                     "Rotate 180",
                     "Rotate 270",
-                    "Horizontal flip",
-                    "Vertical flip",
-                    "Tranpose",
-                    "Anti-tranpose",
-                    "Transform reset"
+                    "Flip Horizontally",
+                    "Flip Vertically",
+                    "Transpose",
+                    "Anti-transpose",
+                    "No Transform",
                 ),
             ),
             (

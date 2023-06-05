@@ -31,7 +31,7 @@ class PlayerProcessSingleVLCHWSP(QThread, VlcPlayerBase, metaclass=QABC):
     loop_load_video_st3_extract_media_track = pyqtSignal()
     loop_load_video_st4_loaded = pyqtSignal()
 
-    def __init__(self, win_id, **kwargs):
+    def __init__(self, win_id, vlc_options, **kwargs):
         super().__init__(vlc_instance=None, **kwargs)
 
         self._instance = None
@@ -40,6 +40,7 @@ class PlayerProcessSingleVLCHWSP(QThread, VlcPlayerBase, metaclass=QABC):
         self._instance_ready_event = Event()
 
         self.win_id = win_id
+        self.vlc_options = vlc_options
 
         qt_connect(
             (
@@ -57,7 +58,7 @@ class PlayerProcessSingleVLCHWSP(QThread, VlcPlayerBase, metaclass=QABC):
         )
 
     def run(self):
-        self._instance = InstanceVLC(0, [])
+        self._instance = InstanceVLC(0, self.vlc_options)
 
         self._instance.set_log_level_vlc(Settings().get("logging/log_level_vlc"))
         self._instance.init_instance()
@@ -147,10 +148,10 @@ class VideoDriverVLCHWSP(VLCVideoDriver):
     cmd_init_player = pyqtSignal()
     cmd_cleanup = pyqtSignal()
 
-    def __init__(self, win_id, **kwargs):
+    def __init__(self, win_id, vlc_options, **kwargs):
         super().__init__(**kwargs)
 
-        self.player = PlayerProcessSingleVLCHWSP(win_id=win_id)
+        self.player = PlayerProcessSingleVLCHWSP(win_id=win_id, vlc_options=vlc_options)
 
         qt_connect(
             (self.player.load_video_done, self.load_video_done),
@@ -225,9 +226,10 @@ class VideoDriverVLCHWSP(VLCVideoDriver):
 class VideoFrameVLCHWSP(VideoFrameVLC):
     is_opengl = True
 
-    def driver_setup(self) -> VideoDriverVLCHWSP:
+    def driver_setup(self, vlc_options) -> VideoDriverVLCHWSP:
         return VideoDriverVLCHWSP(
             win_id=int(self.video_surface.winId()),
+            vlc_options=vlc_options,
             parent=self,
         )
 

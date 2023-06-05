@@ -71,7 +71,7 @@ class ProcessManager(CommandLoopThreaded, QObject):
                         active_instances.append(instance)  # noqa: WPS220
         return active_instances
 
-    def get_instance(self, options=[]):
+    def get_instance(self, options):
         if options:
             instance = None
         else:
@@ -88,7 +88,7 @@ class ProcessManager(CommandLoopThreaded, QObject):
 
         return instance
 
-    def create_instance(self, options=[]):
+    def create_instance(self, options):
         instance = self._instance_class(
             players_per_instance=self._limit, pm_callback_pipe=self._self_pipe
         )
@@ -99,7 +99,7 @@ class ProcessManager(CommandLoopThreaded, QObject):
 
         return instance
 
-    def init_player(self, init_data, pipe, options=[]):
+    def init_player(self, init_data, pipe, options):
         instance = self.get_instance(options)
         player_id = instance.request_new_player(init_data, pipe)
 

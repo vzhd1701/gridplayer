@@ -162,7 +162,7 @@ class VideoDriverVLCSW(VLCVideoDriverThreaded):
     set_dummy_frame_sig = pyqtSignal()
     image_ready_sig = pyqtSignal()
 
-    def __init__(self, image_dest, process_manager, **kwargs):
+    def __init__(self, image_dest, process_manager, vlc_options, **kwargs):
         super().__init__(**kwargs)
 
         self._width = None
@@ -178,7 +178,9 @@ class VideoDriverVLCSW(VLCVideoDriverThreaded):
             (self.image_ready_sig, self.image_ready),
         )
 
-        self.player = process_manager.init_player({}, self.cmd_child_pipe())
+        self.player = process_manager.init_player(
+            {}, self.cmd_child_pipe(), vlc_options
+        )
 
     def init_frame(self, width, height):
         self._shared_memory = self.player.get_player_shared_data()
@@ -231,10 +233,11 @@ class VideoDriverVLCSW(VLCVideoDriverThreaded):
 class VideoFrameVLCSW(VideoFrameVLCProcess):
     is_opengl = False
 
-    def driver_setup(self) -> VideoDriverVLCSW:
+    def driver_setup(self, vlc_options) -> VideoDriverVLCSW:
         return VideoDriverVLCSW(
             image_dest=self._videoitem,
             process_manager=self.process_manager,
+            vlc_options=vlc_options,
             parent=self,
         )
 

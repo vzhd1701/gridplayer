@@ -6,7 +6,7 @@ from gridplayer.params.static import (
     SeekSyncMode,
     VideoAspect,
     VideoRepeat,
-    TransformType,
+    VideoTransform,
 )
 from gridplayer.utils.command_helpers import AND
 from gridplayer.utils.qt import translate
@@ -364,50 +364,90 @@ ACTIONS = MappingProxyType(
         },
         "Rotate 90": {
             "title": translate("Actions", "Rotate 90"),
-            "icon": "rotate",
-            "func": ("active", "transform", TransformType.ROTATE_90),
+            "icon": "empty",
+            "func": ("active", "set_transform", VideoTransform.ROTATE_90),
+            "check_if": (
+                "is_active_param_set_to",
+                "transform",
+                VideoTransform.ROTATE_90,
+            ),
             "show_if": "is_active_has_video",
         },
         "Rotate 180": {
             "title": translate("Actions", "Rotate 180"),
-            "icon": "rotate",
-            "func": ("active", "transform", TransformType.ROTATE_180),
+            "icon": "empty",
+            "func": ("active", "set_transform", VideoTransform.ROTATE_180),
+            "check_if": (
+                "is_active_param_set_to",
+                "transform",
+                VideoTransform.ROTATE_180,
+            ),
             "show_if": "is_active_has_video",
         },
         "Rotate 270": {
             "title": translate("Actions", "Rotate 270"),
-            "icon": "rotate",
-            "func": ("active", "transform", TransformType.ROTATE_270),
+            "icon": "empty",
+            "func": ("active", "set_transform", VideoTransform.ROTATE_270),
+            "check_if": (
+                "is_active_param_set_to",
+                "transform",
+                VideoTransform.ROTATE_270,
+            ),
             "show_if": "is_active_has_video",
         },
-        "Horizontal flip": {
-            "title": translate("Actions", "Horizontal flip"),
-            "icon": "rotate",
-            "func": ("active", "transform", TransformType.HFLIP),
+        "Flip Horizontally": {
+            "title": translate("Actions", "Flip Horizontally"),
+            "icon": "empty",
+            "func": ("active", "set_transform", VideoTransform.HFLIP),
+            "check_if": (
+                "is_active_param_set_to",
+                "transform",
+                VideoTransform.HFLIP,
+            ),
             "show_if": "is_active_has_video",
         },
-        "Vertical flip": {
-            "title": translate("Actions", "Vertical flip"),
-            "icon": "rotate",
-            "func": ("active", "transform", TransformType.VFLIP),
+        "Flip Vertically": {
+            "title": translate("Actions", "Flip Vertically"),
+            "icon": "empty",
+            "func": ("active", "set_transform", VideoTransform.VFLIP),
+            "check_if": (
+                "is_active_param_set_to",
+                "transform",
+                VideoTransform.VFLIP,
+            ),
             "show_if": "is_active_has_video",
         },
-        "Tranpose": {
-            "title": translate("Actions", "Tranpose"),
-            "icon": "rotate",
-            "func": ("active", "transform", TransformType.TRANPOSE),
+        "Transpose": {
+            "title": translate("Actions", "Transpose"),
+            "icon": "empty",
+            "func": ("active", "set_transform", VideoTransform.TRANSPOSE),
+            "check_if": (
+                "is_active_param_set_to",
+                "transform",
+                VideoTransform.TRANSPOSE,
+            ),
             "show_if": "is_active_has_video",
         },
-        "Anti-tranpose": {
-            "title": translate("Actions", "Anti-tranpose"),
-            "icon": "rotate",
-            "func": ("active", "transform", TransformType.ANTITRANPOSE),
+        "Anti-transpose": {
+            "title": translate("Actions", "Anti-transpose"),
+            "icon": "empty",
+            "func": ("active", "set_transform", VideoTransform.ANTITRANSPOSE),
+            "check_if": (
+                "is_active_param_set_to",
+                "transform",
+                VideoTransform.ANTITRANSPOSE,
+            ),
             "show_if": "is_active_has_video",
         },
-        "Transform reset": {
-            "title": translate("Actions", "Transform reset"),
-            "icon": "rotate-reset",
-            "func": ("active", "transform", TransformType.RESET),
+        "No Transform": {
+            "title": translate("Actions", "No Transform"),
+            "icon": "empty",
+            "func": ("active", "set_transform", VideoTransform.NONE),
+            "check_if": (
+                "is_active_param_set_to",
+                "transform",
+                VideoTransform.NONE,
+            ),
             "show_if": "is_active_has_video",
         },
         "Seek Others (Percent)": {
