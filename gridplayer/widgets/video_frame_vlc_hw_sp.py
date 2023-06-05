@@ -213,7 +213,7 @@ class VideoDriverVLCHWSP(VLCVideoDriver):
         self.cmd_set_audio_track.emit(track_id)
 
     def set_audio_channel_mode(self, mode):
-        self.cmd_set_audio_channel_mode(mode)
+        self.cmd_set_audio_channel_mode.emit(mode)
 
     def adjust_view(self, size, aspect, scale):
         self.cmd_adjust_view.emit(size, aspect, scale)
