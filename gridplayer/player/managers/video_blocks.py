@@ -10,6 +10,7 @@ from gridplayer.params.static import (
     SeekSyncMode,
     VideoAspect,
     VideoRepeat,
+    VideoTransform,
 )
 from gridplayer.player.managers.base import ManagerBase
 from gridplayer.settings import Settings
@@ -127,6 +128,7 @@ class VideoBlocksManager(ManagerBase):
     all_scale_reset = pyqtSignal()
 
     all_set_aspect = pyqtSignal(VideoAspect)
+    all_set_transform = pyqtSignal(VideoTransform)
     all_set_auto_reload_timer = pyqtSignal(int)
     all_set_audio_channel_mode = pyqtSignal(AudioChannelMode)
 
@@ -368,6 +370,7 @@ class VideoBlocksManager(ManagerBase):
             (self.all_scale_decrease, vb.scale_decrease),
             (self.all_scale_reset, vb.scale_reset),
             (self.all_set_aspect, vb.set_aspect),
+            (self.all_set_transform, vb.set_transform),
             (self.all_set_auto_reload_timer, vb.set_auto_reload_timer),
             (self.all_set_audio_channel_mode, vb.set_audio_channel_mode),
             (self.all_volume_increase, vb.volume_increase),

@@ -84,10 +84,12 @@ class PlayerProcessSingleVLCHW(VlcPlayerThreaded):
 
 
 class VideoDriverVLCHW(VLCVideoDriverThreaded):
-    def __init__(self, win_id, process_manager, **kwargs):
+    def __init__(self, win_id, process_manager, vlc_options, **kwargs):
         super().__init__(**kwargs)
 
-        process_manager.init_player({"win_id": win_id}, self.cmd_child_pipe())
+        process_manager.init_player(
+            {"win_id": win_id}, self.cmd_child_pipe(), vlc_options
+        )
 
     def adjust_view(self, size, aspect, scale):
         self.cmd_send("adjust_view", size, aspect, scale)
@@ -96,10 +98,11 @@ class VideoDriverVLCHW(VLCVideoDriverThreaded):
 class VideoFrameVLCHW(VideoFrameVLCProcess):
     is_opengl = True
 
-    def driver_setup(self):
+    def driver_setup(self, vlc_options):
         return VideoDriverVLCHW(
             win_id=int(self.video_surface.winId()),
             process_manager=self.process_manager,
+            vlc_options=vlc_options,
             parent=self,
         )
 

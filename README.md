@@ -46,6 +46,12 @@ Huge thanks to [every contributor](https://github.com/vzhd1701/gridplayer#transl
 [![Download Windows Installer](https://raw.githubusercontent.com/vzhd1701/gridplayer/master/resources/public/dl_windows_installer.png)](https://github.com/vzhd1701/gridplayer/releases/download/v0.5.0/GridPlayer-0.5.0-win64-install.exe)
 [![Download Windows Portable](https://raw.githubusercontent.com/vzhd1701/gridplayer/master/resources/public/dl_windows_portable.png)](https://github.com/vzhd1701/gridplayer/releases/download/v0.5.0/GridPlayer-0.5.0-win64-portable.zip)
 
+Via [scoop](https://scoop.sh/):
+
+```shell
+$ scoop install gridplayer
+```
+
 **Compatible with Windows 7, 8, 10, 11.**
 
 ### Linux

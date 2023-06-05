@@ -18,6 +18,7 @@ from gridplayer.params.static import (
     VideoAspect,
     VideoDriver,
     VideoRepeat,
+    VideoTransform,
 )
 from gridplayer.settings import Settings
 from gridplayer.utils import log_config
@@ -89,6 +90,7 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
             "playlist/disable_click_pause": self.playlistDisableClickPause,
             "playlist/disable_wheel_seek": self.playlistDisableWheelSeek,
             "video_defaults/aspect": self.videoAspect,
+            "video_defaults/transform": self.videoTransform,
             "video_defaults/repeat": self.repeatMode,
             "video_defaults/audio_mode": self.videoAudioMode,
             "video_defaults/random_loop": self.videoRandomLoop,
@@ -153,6 +155,7 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
         self.fill_playerVideoDriver()
         self.fill_gridMode()
         self.fill_videoAspect()
+        self.fill_videoTransform()
         self.fill_repeatMode()
         self.fill_logLevel()
         self.fill_logLevelVLC()
@@ -284,6 +287,20 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
         }
 
         _fill_combo_box(self.videoAspect, aspect_ratios)
+
+    def fill_videoTransform(self):
+        transform_options = {
+            VideoTransform.ROTATE_90: self.tr("Rotate 90"),
+            VideoTransform.ROTATE_180: self.tr("Rotate 180"),
+            VideoTransform.ROTATE_270: self.tr("Rotate 270"),
+            VideoTransform.HFLIP: self.tr("Flip Horizontally"),
+            VideoTransform.VFLIP: self.tr("Flip Vertically"),
+            VideoTransform.TRANSPOSE: self.tr("Transpose"),
+            VideoTransform.ANTITRANSPOSE: self.tr("Anti-transpose"),
+            VideoTransform.NONE: self.tr("No Transform"),
+        }
+
+        _fill_combo_box(self.videoTransform, transform_options)
 
     def fill_repeatMode(self):
         repeat_modes = {

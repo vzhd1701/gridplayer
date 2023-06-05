@@ -38,10 +38,10 @@ VLC_USER_AGENT = (
 
 
 class InstanceProcessVLC(InstanceProcess):
-    def __init__(self, vlc_log_level, **kwargs):
+    def __init__(self, vlc_log_level, vlc_options, **kwargs):
         super().__init__(**kwargs)
 
-        self._vlc = InstanceVLC(vlc_log_level)
+        self._vlc = InstanceVLC(vlc_log_level, vlc_options)
 
     @property
     def vlc_instance(self):
@@ -76,11 +76,11 @@ class InstanceVLC(object):
         vlc.LogLevel.WARNING: logging.WARNING,
     }
 
-    def __init__(self, vlc_log_level, **kwargs):
+    def __init__(self, vlc_log_level, vlc_options, **kwargs):
         super().__init__(**kwargs)
 
         self.vlc_instance = None
-        self.vlc_options = []
+        self.vlc_options = vlc_options
 
         self._vlc_log_level = vlc_log_level
 
@@ -197,13 +197,14 @@ class ProcessManagerVLC(ProcessManager):
         for a in self.active_instances:
             a.request_set_log_level_vlc(log_level)
 
-    def create_instance(self):
+    def create_instance(self, options):
         log_level_vlc = Settings().get("logging/log_level_vlc")
 
         instance = self._instance_class(
             players_per_instance=self._limit,
             pm_callback_pipe=self._self_pipe,
             vlc_log_level=log_level_vlc,
+            vlc_options=options,
         )
 
         if self._log_queue:
