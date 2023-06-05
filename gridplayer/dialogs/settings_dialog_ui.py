@@ -353,18 +353,28 @@ class Ui_SettingsDialog(object):
         self.repeatModeLabel = QtWidgets.QLabel(self.page_defaults_video)
         self.repeatModeLabel.setObjectName("repeatModeLabel")
         self.formLayout_4.setWidget(
-            1, QtWidgets.QFormLayout.LabelRole, self.repeatModeLabel
+            2, QtWidgets.QFormLayout.LabelRole, self.repeatModeLabel
         )
         self.repeatMode = QtWidgets.QComboBox(self.page_defaults_video)
         self.repeatMode.setObjectName("repeatMode")
-        self.formLayout_4.setWidget(1, QtWidgets.QFormLayout.FieldRole, self.repeatMode)
+        self.formLayout_4.setWidget(2, QtWidgets.QFormLayout.FieldRole, self.repeatMode)
         self.label_15 = QtWidgets.QLabel(self.page_defaults_video)
         self.label_15.setObjectName("label_15")
-        self.formLayout_4.setWidget(2, QtWidgets.QFormLayout.LabelRole, self.label_15)
+        self.formLayout_4.setWidget(3, QtWidgets.QFormLayout.LabelRole, self.label_15)
         self.videoAudioMode = QtWidgets.QComboBox(self.page_defaults_video)
         self.videoAudioMode.setObjectName("videoAudioMode")
         self.formLayout_4.setWidget(
-            2, QtWidgets.QFormLayout.FieldRole, self.videoAudioMode
+            3, QtWidgets.QFormLayout.FieldRole, self.videoAudioMode
+        )
+        self.videoTransformLabel = QtWidgets.QLabel(self.page_defaults_video)
+        self.videoTransformLabel.setObjectName("videoTransformLabel")
+        self.formLayout_4.setWidget(
+            1, QtWidgets.QFormLayout.LabelRole, self.videoTransformLabel
+        )
+        self.videoTransform = QtWidgets.QComboBox(self.page_defaults_video)
+        self.videoTransform.setObjectName("videoTransform")
+        self.formLayout_4.setWidget(
+            1, QtWidgets.QFormLayout.FieldRole, self.videoTransform
         )
         self.lay_page_defaults_video.addLayout(self.formLayout_4)
         self.videoRandomLoop = QtWidgets.QCheckBox(self.page_defaults_video)
@@ -685,6 +695,7 @@ class Ui_SettingsDialog(object):
         self.videoAspectLabel.setText(_translate("SettingsDialog", "Aspect mode"))
         self.repeatModeLabel.setText(_translate("SettingsDialog", "Repeat mode"))
         self.label_15.setText(_translate("SettingsDialog", "Audio mode"))
+        self.videoTransformLabel.setText(_translate("SettingsDialog", "Transform"))
         self.videoRandomLoop.setText(
             _translate("SettingsDialog", "Start at random position")
         )

@@ -5,7 +5,12 @@ from pydantic import UUID4, BaseModel, Field, ValidationError, confloat  # noqa:
 from pydantic.color import Color
 
 from gridplayer.models.video_uri import AbsoluteFilePath, VideoURI, VideoURL
-from gridplayer.params.static import AudioChannelMode, VideoAspect, VideoRepeat
+from gridplayer.params.static import (
+    AudioChannelMode,
+    VideoAspect,
+    VideoRepeat,
+    VideoTransform,
+)
 from gridplayer.settings import default_field
 
 MIN_SCALE = 1.0
@@ -37,6 +42,7 @@ class Video(BaseModel):
     is_paused: bool = default_field("video_defaults/paused")
     scale: confloat(ge=MIN_SCALE, le=MAX_SCALE) = 1.0
     volume: float = 1.0
+    transform: VideoTransform = default_field("video_defaults/transform")
 
     # Streamable
     stream_quality: str = default_field("video_defaults/stream_quality")

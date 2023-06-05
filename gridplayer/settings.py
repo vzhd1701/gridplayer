@@ -22,6 +22,7 @@ from gridplayer.params.static import (
     VideoAspect,
     VideoDriver,
     VideoRepeat,
+    VideoTransform,
 )
 from gridplayer.utils.app_dir import get_app_data_dir
 from gridplayer.utils.log_config import DISABLED
@@ -54,6 +55,7 @@ _default_settings = {
     "playlist/disable_click_pause": False,
     "playlist/disable_wheel_seek": False,
     "video_defaults/aspect": VideoAspect.FIT,
+    "video_defaults/transform": VideoTransform.NONE,
     "video_defaults/repeat": VideoRepeat.SINGLE_FILE,
     "video_defaults/audio_mode": AudioChannelMode.UNSET,
     "video_defaults/random_loop": False,

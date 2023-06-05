@@ -6,6 +6,7 @@ from gridplayer.params.static import (
     SeekSyncMode,
     VideoAspect,
     VideoRepeat,
+    VideoTransform,
 )
 from gridplayer.utils.command_helpers import AND
 from gridplayer.utils.qt import translate
@@ -359,6 +360,94 @@ ACTIONS = MappingProxyType(
             "icon": "aspect-none",
             "func": ("active", "set_aspect", VideoAspect.NONE),
             "check_if": ("is_active_param_set_to", "aspect_mode", VideoAspect.NONE),
+            "show_if": "is_active_has_video",
+        },
+        "Rotate 90": {
+            "title": translate("Actions", "Rotate 90"),
+            "icon": "empty",
+            "func": ("active", "set_transform", VideoTransform.ROTATE_90),
+            "check_if": (
+                "is_active_param_set_to",
+                "transform",
+                VideoTransform.ROTATE_90,
+            ),
+            "show_if": "is_active_has_video",
+        },
+        "Rotate 180": {
+            "title": translate("Actions", "Rotate 180"),
+            "icon": "empty",
+            "func": ("active", "set_transform", VideoTransform.ROTATE_180),
+            "check_if": (
+                "is_active_param_set_to",
+                "transform",
+                VideoTransform.ROTATE_180,
+            ),
+            "show_if": "is_active_has_video",
+        },
+        "Rotate 270": {
+            "title": translate("Actions", "Rotate 270"),
+            "icon": "empty",
+            "func": ("active", "set_transform", VideoTransform.ROTATE_270),
+            "check_if": (
+                "is_active_param_set_to",
+                "transform",
+                VideoTransform.ROTATE_270,
+            ),
+            "show_if": "is_active_has_video",
+        },
+        "Flip Horizontally": {
+            "title": translate("Actions", "Flip Horizontally"),
+            "icon": "empty",
+            "func": ("active", "set_transform", VideoTransform.HFLIP),
+            "check_if": (
+                "is_active_param_set_to",
+                "transform",
+                VideoTransform.HFLIP,
+            ),
+            "show_if": "is_active_has_video",
+        },
+        "Flip Vertically": {
+            "title": translate("Actions", "Flip Vertically"),
+            "icon": "empty",
+            "func": ("active", "set_transform", VideoTransform.VFLIP),
+            "check_if": (
+                "is_active_param_set_to",
+                "transform",
+                VideoTransform.VFLIP,
+            ),
+            "show_if": "is_active_has_video",
+        },
+        "Transpose": {
+            "title": translate("Actions", "Transpose"),
+            "icon": "empty",
+            "func": ("active", "set_transform", VideoTransform.TRANSPOSE),
+            "check_if": (
+                "is_active_param_set_to",
+                "transform",
+                VideoTransform.TRANSPOSE,
+            ),
+            "show_if": "is_active_has_video",
+        },
+        "Anti-transpose": {
+            "title": translate("Actions", "Anti-transpose"),
+            "icon": "empty",
+            "func": ("active", "set_transform", VideoTransform.ANTITRANSPOSE),
+            "check_if": (
+                "is_active_param_set_to",
+                "transform",
+                VideoTransform.ANTITRANSPOSE,
+            ),
+            "show_if": "is_active_has_video",
+        },
+        "No Transform": {
+            "title": translate("Actions", "No Transform"),
+            "icon": "empty",
+            "func": ("active", "set_transform", VideoTransform.NONE),
+            "check_if": (
+                "is_active_param_set_to",
+                "transform",
+                VideoTransform.NONE,
+            ),
             "show_if": "is_active_has_video",
         },
         "Seek Others (Percent)": {
@@ -846,6 +935,54 @@ ACTIONS = MappingProxyType(
             "title": translate("Actions", "Aspect None"),
             "icon": "aspect-none",
             "func": ("all", "set_aspect", VideoAspect.NONE),
+            "show_if": "is_any_videos_have_video",
+        },
+        "Rotate 90 [ALL]": {
+            "title": translate("Actions", "Rotate 90"),
+            "icon": "empty",
+            "func": ("all", "set_transform", VideoTransform.ROTATE_90),
+            "show_if": "is_any_videos_have_video",
+        },
+        "Rotate 180 [ALL]": {
+            "title": translate("Actions", "Rotate 180"),
+            "icon": "empty",
+            "func": ("all", "set_transform", VideoTransform.ROTATE_180),
+            "show_if": "is_any_videos_have_video",
+        },
+        "Rotate 270 [ALL]": {
+            "title": translate("Actions", "Rotate 270"),
+            "icon": "empty",
+            "func": ("all", "set_transform", VideoTransform.ROTATE_270),
+            "show_if": "is_any_videos_have_video",
+        },
+        "Flip Horizontally [ALL]": {
+            "title": translate("Actions", "Flip Horizontally"),
+            "icon": "empty",
+            "func": ("all", "set_transform", VideoTransform.HFLIP),
+            "show_if": "is_any_videos_have_video",
+        },
+        "Flip Vertically [ALL]": {
+            "title": translate("Actions", "Flip Vertically"),
+            "icon": "empty",
+            "func": ("all", "set_transform", VideoTransform.VFLIP),
+            "show_if": "is_any_videos_have_video",
+        },
+        "Transpose [ALL]": {
+            "title": translate("Actions", "Transpose"),
+            "icon": "empty",
+            "func": ("all", "set_transform", VideoTransform.TRANSPOSE),
+            "show_if": "is_any_videos_have_video",
+        },
+        "Anti-transpose [ALL]": {
+            "title": translate("Actions", "Anti-transpose"),
+            "icon": "empty",
+            "func": ("all", "set_transform", VideoTransform.ANTITRANSPOSE),
+            "show_if": "is_any_videos_have_video",
+        },
+        "No Transform [ALL]": {
+            "title": translate("Actions", "No Transform"),
+            "icon": "empty",
+            "func": ("all", "set_transform", VideoTransform.NONE),
             "show_if": "is_any_videos_have_video",
         },
         "Audio Mode - Original [ALL]": {

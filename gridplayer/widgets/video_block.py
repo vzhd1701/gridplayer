@@ -27,9 +27,12 @@ from gridplayer.params.static import (
     OVERLAY_ACTIVITY_EVENT,
     PLAYER_ID_LENGTH,
     VIDEO_END_LOOP_MARGIN_MS,
+    VideoAspect,
     VideoRepeat,
+    VideoTransform,
 )
 from gridplayer.settings import Settings
+from gridplayer.utils.libvlc_options_parser import get_vlc_options
 from gridplayer.utils.next_file import next_video_file, previous_video_file
 from gridplayer.utils.qt import qt_connect, translate
 from gridplayer.utils.url_resolve.static import ResolvedVideo
@@ -198,7 +201,10 @@ class VideoBlock(QWidget):  # noqa: WPS230
         self.overlay.hide()
 
     def init_video_driver(self) -> VideoFrameVLC:
-        video_driver = self.video_driver_cls(parent=self)
+        vlc_options = get_vlc_options(self.video_params)
+        self._log.debug(f"vlc_options: {vlc_options}")
+
+        video_driver = self.video_driver_cls(vlc_options=vlc_options, parent=self)
 
         qt_connect(
             (video_driver.video_ready, self.load_video_finish),
@@ -705,11 +711,14 @@ class VideoBlock(QWidget):  # noqa: WPS230
 
     def set_video(self, video_params: Video):
         is_first_video = self.video_params is None
+        is_options_changed = get_vlc_options(self.video_params) != get_vlc_options(
+            video_params
+        )
 
         self.video_params = video_params
 
         # Shut down current video
-        if not is_first_video:
+        if not is_first_video or is_options_changed:
             self.reset()
 
         if self.video_params.is_http_url:
@@ -806,10 +815,16 @@ class VideoBlock(QWidget):  # noqa: WPS230
         self.video_driver.adjust_view()
 
     @only_with_video_tacks
-    def set_aspect(self, aspect):
+    def set_aspect(self, aspect: VideoAspect):
         self.video_params.aspect_mode = aspect
 
         self.video_driver.set_aspect_ratio(self.video_params.aspect_mode)
+
+    @only_with_video_tacks
+    def set_transform(self, transform: VideoTransform):
+        self.video_params.transform = transform
+
+        self.reload()
 
     @only_seekable
     def toggle_loop_random(self):

@@ -85,7 +85,7 @@ class VideoFrameDummy(VideoFrameVLC):
         painter = QPainter(self)
         painter.fillRect(event.rect(), self._color)
 
-    def driver_setup(self) -> VLCVideoDriver:
+    def driver_setup(self, vlc_options) -> VLCVideoDriver:
         return VideoDriverDummy(parent=self)
 
     def ui_video_surface(self):

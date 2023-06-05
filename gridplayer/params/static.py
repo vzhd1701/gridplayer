@@ -32,6 +32,17 @@ class VideoAspect(AutoName):
     NONE = auto()
 
 
+class VideoTransform(AutoName):
+    ROTATE_90 = auto()
+    ROTATE_180 = auto()
+    ROTATE_270 = auto()
+    HFLIP = auto()
+    VFLIP = auto()
+    TRANSPOSE = auto()
+    ANTITRANSPOSE = auto()
+    NONE = auto()
+
+
 class VideoRepeat(AutoName):
     SINGLE_FILE = auto()
     DIR = auto()
