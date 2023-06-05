@@ -6,6 +6,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+### Added
+
+* Option to transform video (rotate, mirror, transpose) ([236b989](https://github.com/vzhd1701/gridplayer/commit/236b9895b9fc9b5ba7b9ccda503271466a108103))
+
+### Fixed
+
+* Update translations ([042e3b7](https://github.com/vzhd1701/gridplayer/commit/042e3b7b8716ffd1a0c6b851c089af49700a38fc))
+* Prevent video freeze on MacOS ([fe37336](https://github.com/vzhd1701/gridplayer/commit/fe3733606e78e30c1245e7126cda842cc847d94f))
+* Access URL directly if yt-dlp reports a direct link ([6aa0a13](https://github.com/vzhd1701/gridplayer/commit/6aa0a1397db68311cf3295e53ddc83d4a996b4d6))
+* Add support for relative paths ([884b687](https://github.com/vzhd1701/gridplayer/commit/884b687d4b0a85bcef6eb63bae6865c4e24d7dd8))
+* Filter video streams only if preferred quality is configured ([f9a98bf](https://github.com/vzhd1701/gridplayer/commit/f9a98bf9f712a2d80a12c6d03c5aef84127002dc))
+
 ## [0.5.0] - 2023-05-18
 
 ### Added
