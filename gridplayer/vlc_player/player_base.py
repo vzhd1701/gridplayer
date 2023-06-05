@@ -556,7 +556,8 @@ class VlcPlayerBase(ABC):
         # wait for video output init
         # otherwise adjust_view won't work
         # if video is paused it happens on seek
-        if not self.media_input.video.is_paused:
+        # doesn't work on MacOS for some reason
+        if not env.IS_MACOS and not self.media_input.video.is_paused:
             self._event_waiter.wait_for("vout", self.init_time_left)
 
         self.adjust_view(
@@ -582,11 +583,15 @@ class VlcPlayerBase(ABC):
             return
 
         if self._is_paused or seek_ms > 0:
-            with self._event_waiter.waiting_for("buffering", self.init_time_left):
+            # Event waiting hangs on init in MacOS
+            if env.IS_MACOS:
                 self._media_player.set_time(seek_ms)
+            else:
+                with self._event_waiter.waiting_for("buffering", self.init_time_left):
+                    self._media_player.set_time(seek_ms)
 
-            if not self.media.is_audio_only:
-                self._event_waiter.wait_for("vout", self.init_time_left)
+                if not self.media.is_audio_only:
+                    self._event_waiter.wait_for("vout", self.init_time_left)
 
     def _init_media_tracks(self):
         if self.media is not None:
