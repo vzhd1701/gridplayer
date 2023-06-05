@@ -27,3 +27,5 @@ for CUR_LANG in ${LANUAGES[@]}; do
     echo "Downloading language '$CUR_LANG'"
     crowdin download -c "$SCRIPT_DIR/crowdin.yml" --identity ".local/crowdin.yml" --skip-untranslated-strings --export-only-approved --language="$CUR_LANG"
 done
+
+"$SCRIPT_DIR/strip_locations.sh"
