@@ -105,8 +105,7 @@ icon-symbolic,icons/custom/059-volume unmute.svg,volume-unmute
 icon-symbolic,icons/custom/060-single mode on.svg,single-mode-on
 icon-symbolic,icons/custom/061-single mode off.svg,single-mode-off
 icon-symbolic,icons/custom/062-play pause.svg,play-pause
-icon-symbolic,icons/custom/063-rotate-canvas-right-svgrepo-com.svg,rotate
-icon-symbolic,icons/custom/064-reset-svgrepo-com.svg,rotate-reset
+icon-symbolic,icons/custom/063-rotate.svg,rotate
 translation,translations/ar_SA.ts,ar_SA
 translation,translations/de_DE.ts,de_DE
 translation,translations/es_ES.ts,es_ES
