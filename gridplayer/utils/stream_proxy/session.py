@@ -40,7 +40,7 @@ class StreamSession(object):
             )
         elif protocol == "hls":
             self._log.debug("Stream is hls, using HLSProxyLive")
-            return HLSProxyLive(session_=self._session, url=url, force_restart=True)
+            return HLSProxyLive(session=self._session, url=url, force_restart=True)
 
         raise RuntimeError(f"Cannot handle protocol {protocol}")
 

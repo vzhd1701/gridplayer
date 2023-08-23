@@ -92,9 +92,8 @@ class HLSProxy(HTTPStreamProxy):
             hls_playlist.segments[i] = segment._replace(uri=segment_url)
 
             if segment.map:
-                segment.map = segment.map._replace(
-                    uri=self._proxify_url(segment.map.uri)
-                )
+                s_map = segment.map._replace(uri=self._proxify_url(segment.map.uri))
+                hls_playlist.segments[i] = hls_playlist.segments[i]._replace(map=s_map)
 
         return m3u8_to_str(hls_playlist)
 
