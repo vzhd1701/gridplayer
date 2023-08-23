@@ -217,17 +217,38 @@ def _get_stream_url(stream, is_live) -> Tuple[str, str]:
 
 def _get_fmt_name(stream, unknown_counter, is_muxed=False):
     fmt_name = stream.get("format_note") or stream.get("format_id")
+    codec_info = _get_codec_info(stream)
 
     if not re.match(r"^\d+p", fmt_name):
         if stream.get("height"):
-            if stream.get("format_id"):
+            if codec_info:
+                fmt_name = "{0}p [{1}]".format(stream["height"], codec_info)
+            elif stream.get("format_id"):
                 fmt_name = "{0}p [{1}]".format(stream["height"], stream["format_id"])
             else:
                 fmt_name = "{0}p".format(stream["height"])
         else:
             fmt_name = stream.get("format", "Unknown {0}".format(next(unknown_counter)))
 
+            if codec_info:
+                fmt_name = f"{fmt_name} [{codec_info}]"
+
     if stream.get("acodec") == "none" and not is_muxed:
         fmt_name += " (video only)"
 
     return fmt_name
+
+
+def _get_codec_info(stream):
+    codec = ""
+
+    if stream.get("vcodec") not in {None, "none"}:
+        codec = stream.get("vcodec").split(".")[0]
+    elif stream.get("acodec") not in {None, "none"}:
+        codec = stream.get("acodec").split(".")[0]
+
+    if stream.get("tbr") not in {None, 0}:
+        tbr = int(stream.get("tbr"))
+        codec += f" {tbr}kbps"
+
+    return codec.strip()
