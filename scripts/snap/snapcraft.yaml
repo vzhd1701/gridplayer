@@ -46,41 +46,42 @@ parts:
       - -usr/share/X11
       - -usr/share/mime
     override-build: |
-      snapcraftctl build
+      craftctl default
 
-      MAIN_SNAP="/snap/core22/current"
-      KDE_SNAP="/snap/kde-frameworks-5-102-qt-5-15-8-core22/current"
-      LIB_DIR="${SNAPCRAFT_PART_INSTALL}/usr/lib/${SNAPCRAFT_ARCH_TRIPLET}"
+      LIB_DIR="${CRAFT_PART_INSTALL}/usr/lib/${CRAFT_ARCH_TRIPLET}"
       VLC_LIB_DIR="${LIB_DIR}/vlc"
 
-      if [ ! -d "${KDE_SNAP}" ]; then echo "${KDE_SNAP} doesn't exist!"; exit 1; fi
-      if [ ! -d "${MAIN_SNAP}" ]; then echo "${MAIN_SNAP} doesn't exist!"; exit 1; fi
-
-      ${SNAPCRAFT_PROJECT_DIR}/blacklist_clean.sh "$LIB_DIR" ${SNAPCRAFT_PROJECT_DIR}/blacklist_snap.txt
+      ${CRAFT_PROJECT_DIR}/blacklist_clean.sh "$LIB_DIR" ${CRAFT_PROJECT_DIR}/blacklist_snap.txt
       rm -rf "${LIB_DIR}/dri"
       rm -rf "${LIB_DIR}/gdk-pixbuf-2.0"
 
       # Cleanup unused VLC modules
-      ${SNAPCRAFT_PROJECT_DIR}/blacklist_clean.sh "$VLC_LIB_DIR" ${SNAPCRAFT_PROJECT_DIR}/blacklist_vlc_linux.txt
+      ${CRAFT_PROJECT_DIR}/blacklist_clean.sh "$VLC_LIB_DIR" ${CRAFT_PROJECT_DIR}/blacklist_vlc_linux.txt
+
+      #MAIN_SNAP="/snap/core22/current"
+      #KDE_SNAP="/snap/kde-frameworks-5-102-qt-5-15-8-core22/current"
+
+      #if [ ! -d "${KDE_SNAP}" ]; then echo "${KDE_SNAP} doesn't exist!"; exit 1; fi
+      #if [ ! -d "${MAIN_SNAP}" ]; then echo "${MAIN_SNAP} doesn't exist!"; exit 1; fi
 
       # Emulate runtime env to make sure all plugin dependencies are reachable
       #LIBS="/var/lib/snapd/lib/gl:"
       #LIBS+="/var/lib/snapd/lib/gl32:"
       #LIBS+="/var/lib/snapd/void:"
-      #LIBS+="${SNAPCRAFT_PART_INSTALL}/usr/lib/${SNAPCRAFT_ARCH_TRIPLET}/pulseaudio:"
+      #LIBS+="${CRAFT_PART_INSTALL}/usr/lib/${CRAFT_ARCH_TRIPLET}/pulseaudio:"
       #LIBS+="${VLC_LIB_DIR}:"
-      #LIBS+="${SNAPCRAFT_PART_INSTALL}/lib:"
-      #LIBS+="${SNAPCRAFT_PART_INSTALL}/usr/lib:"
-      #LIBS+="${SNAPCRAFT_PART_INSTALL}/lib/${SNAPCRAFT_ARCH_TRIPLET}:"
-      #LIBS+="${SNAPCRAFT_PART_INSTALL}/usr/lib/${SNAPCRAFT_ARCH_TRIPLET}:"
-      #LIBS+="${KDE_SNAP}/lib/${SNAPCRAFT_ARCH_TRIPLET}:"
-      #LIBS+="${KDE_SNAP}/usr/lib/${SNAPCRAFT_ARCH_TRIPLET}:"
+      #LIBS+="${CRAFT_PART_INSTALL}/lib:"
+      #LIBS+="${CRAFT_PART_INSTALL}/usr/lib:"
+      #LIBS+="${CRAFT_PART_INSTALL}/lib/${CRAFT_ARCH_TRIPLET}:"
+      #LIBS+="${CRAFT_PART_INSTALL}/usr/lib/${CRAFT_ARCH_TRIPLET}:"
+      #LIBS+="${KDE_SNAP}/lib/${CRAFT_ARCH_TRIPLET}:"
+      #LIBS+="${KDE_SNAP}/usr/lib/${CRAFT_ARCH_TRIPLET}:"
       #LIBS+="${KDE_SNAP}/usr/lib:"
       #LIBS+="${KDE_SNAP}/lib:"
-      #LIBS+="${KDE_SNAP}/usr/lib/${SNAPCRAFT_ARCH_TRIPLET}/dri:"
-      #LIBS+="${KDE_SNAP}/usr/lib/${SNAPCRAFT_ARCH_TRIPLET}/pulseaudio:"
-      #LIBS+="${MAIN_SNAP}/lib/${SNAPCRAFT_ARCH_TRIPLET}:"
-      #LIBS+="${MAIN_SNAP}/usr/lib/${SNAPCRAFT_ARCH_TRIPLET}:"
+      #LIBS+="${KDE_SNAP}/usr/lib/${CRAFT_ARCH_TRIPLET}/dri:"
+      #LIBS+="${KDE_SNAP}/usr/lib/${CRAFT_ARCH_TRIPLET}/pulseaudio:"
+      #LIBS+="${MAIN_SNAP}/lib/${CRAFT_ARCH_TRIPLET}:"
+      #LIBS+="${MAIN_SNAP}/usr/lib/${CRAFT_ARCH_TRIPLET}:"
       #LIBS+="${MAIN_SNAP}/usr/lib:"
       #LIBS+="${MAIN_SNAP}/lib:"
 
@@ -94,7 +95,7 @@ parts:
     build-environment:
       - PIP_NO_BINARY: "pydantic"
     python-packages:
-      - ${SNAPCRAFT_PROJECT_DIR}/{WHL_FILE}
+      - ${CRAFT_PROJECT_DIR}/{WHL_FILE}
     build-packages:
       - wget
     prime:
@@ -118,47 +119,47 @@ parts:
       - -bin/wsdump
       - -bin/yt-dlp
     override-build: |
-      snapcraftctl build
+      craftctl default
 
       # Prevent strange mimetypes.py glitch on Manjaro by creating dummy mime.types files
-      install -D /dev/null "${SNAPCRAFT_PART_INSTALL}/etc/httpd/mime.types"
-      install -D /dev/null "${SNAPCRAFT_PART_INSTALL}/etc/httpd/conf/mime.types"
-      install -D /dev/null "${SNAPCRAFT_PART_INSTALL}/etc/apache/mime.types"
-      install -D /dev/null "${SNAPCRAFT_PART_INSTALL}/etc/apache2/mime.types"
-      install -D /dev/null "${SNAPCRAFT_PART_INSTALL}/usr/local/etc/httpd/conf/mime.types"
-      install -D /dev/null "${SNAPCRAFT_PART_INSTALL}/usr/local/lib/netscape/mime.types"
-      install -D /dev/null "${SNAPCRAFT_PART_INSTALL}/usr/local/etc/httpd/conf/mime.types"
-      install -D /dev/null "${SNAPCRAFT_PART_INSTALL}/usr/local/etc/mime.types"
+      install -D /dev/null "${CRAFT_PART_INSTALL}/etc/httpd/mime.types"
+      install -D /dev/null "${CRAFT_PART_INSTALL}/etc/httpd/conf/mime.types"
+      install -D /dev/null "${CRAFT_PART_INSTALL}/etc/apache/mime.types"
+      install -D /dev/null "${CRAFT_PART_INSTALL}/etc/apache2/mime.types"
+      install -D /dev/null "${CRAFT_PART_INSTALL}/usr/local/etc/httpd/conf/mime.types"
+      install -D /dev/null "${CRAFT_PART_INSTALL}/usr/local/lib/netscape/mime.types"
+      install -D /dev/null "${CRAFT_PART_INSTALL}/usr/local/etc/httpd/conf/mime.types"
+      install -D /dev/null "${CRAFT_PART_INSTALL}/usr/local/etc/mime.types"
 
       # Replace static PyQt with dynamic to make it depend on libraries from kde-neon extension
-      ${SNAPCRAFT_PROJECT_DIR}/apt_dl.sh python3-pyqt5 python3-pyqt5.qtx11extras python3-pyqt5.qtsvg python3-pyqt5.sip
+      ${CRAFT_PROJECT_DIR}/apt_dl.sh python3-pyqt5 python3-pyqt5.qtx11extras python3-pyqt5.qtsvg python3-pyqt5.sip
 
       for file in *.deb; do dpkg-deb -x "$file" ./pyqt; done
 
-      SITE_PATH="${SNAPCRAFT_PART_INSTALL}/lib/python3.10/site-packages"
+      SITE_PATH="${CRAFT_PART_INSTALL}/lib/python3.10/site-packages"
 
       rm -rf "${SITE_PATH}"/PyQt*
       mv pyqt/usr/lib/python3/dist-packages/* "${SITE_PATH}"
 
       # Remove unneeded qt parts
-      ${SNAPCRAFT_PROJECT_DIR}/blacklist_clean.sh "${SITE_PATH}" ${SNAPCRAFT_PROJECT_DIR}/blacklist_pyqt.txt
+      ${CRAFT_PROJECT_DIR}/blacklist_clean.sh "${SITE_PATH}" ${CRAFT_PROJECT_DIR}/blacklist_pyqt.txt
 
       # Install application meta
-      install -Dm 644 ${SNAPCRAFT_PROJECT_DIR}/meta/{APP_ID}.desktop     ${SNAPCRAFT_PART_INSTALL}/usr/share/applications/{APP_ID}.desktop
-      install -Dm 644 ${SNAPCRAFT_PROJECT_DIR}/meta/{APP_ID}.appdata.xml ${SNAPCRAFT_PART_INSTALL}/usr/share/metainfo/{APP_ID}.appdata.xml
+      install -Dm 644 ${CRAFT_PROJECT_DIR}/meta/{APP_ID}.desktop     ${CRAFT_PART_INSTALL}/usr/share/applications/{APP_ID}.desktop
+      install -Dm 644 ${CRAFT_PROJECT_DIR}/meta/{APP_ID}.appdata.xml ${CRAFT_PART_INSTALL}/usr/share/metainfo/{APP_ID}.appdata.xml
       # Snaps don't support registration of new MIMEs yet?
       # https://forum.snapcraft.io/t/allow-snaps-to-register-new-mime-types/6467/9
-      install -Dm 644 ${SNAPCRAFT_PROJECT_DIR}/meta/{APP_ID}.xml         ${SNAPCRAFT_PART_INSTALL}/usr/share/mime/packages/{APP_ID}.xml
+      install -Dm 644 ${CRAFT_PROJECT_DIR}/meta/{APP_ID}.xml         ${CRAFT_PART_INSTALL}/usr/share/mime/packages/{APP_ID}.xml
 
       # Useless, since snap employs custom names for icons
-      #(cd ${SNAPCRAFT_PROJECT_DIR}/meta/icons && find * -type f -exec install -Dm 644 "{}" "${SNAPCRAFT_PART_INSTALL}/usr/share/icons/{}" \;)
+      #(cd ${CRAFT_PROJECT_DIR}/meta/icons && find * -type f -exec install -Dm 644 "{}" "${CRAFT_PART_INSTALL}/usr/share/icons/{}" \;)
 
       # Copy icons to meta and rename icons as snap.* according to
       # https://forum.snapcraft.io/t/proposal-support-the-icon-theme-spec-for-desktop-icons/10676
       # https://github.com/snapcore/snapd/pull/6767
-      sed -i 's|^Icon=.*|Icon=snap.{APP_MODULE}.{APP_ID}|' ${SNAPCRAFT_PART_INSTALL}/usr/share/applications/{APP_ID}.desktop
-      (cd ${SNAPCRAFT_PROJECT_DIR}/meta/icons && find * -type f -exec install -Dm 644 "{}" "${SNAPCRAFT_PART_INSTALL}/meta/gui/icons/{}" \;)
-      for f in $(find "${SNAPCRAFT_PART_INSTALL}/meta/gui/icons" -type f); do mv $f ${f%/*}/snap.{APP_MODULE}.${f##*/}; done
+      sed -i 's|^Icon=.*|Icon=snap.{APP_MODULE}.{APP_ID}|' ${CRAFT_PART_INSTALL}/usr/share/applications/{APP_ID}.desktop
+      (cd ${CRAFT_PROJECT_DIR}/meta/icons && find * -type f -exec install -Dm 644 "{}" "${CRAFT_PART_INSTALL}/meta/gui/icons/{}" \;)
+      for f in $(find "${CRAFT_PART_INSTALL}/meta/gui/icons" -type f); do mv $f ${f%/*}/snap.{APP_MODULE}.${f##*/}; done
 
 apps:
   gridplayer:
