@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [0.5.2] - 2023-08-23
+
 ### Fixed
 
 * Update yt-dlp and Streamlink ([442f71f](https://github.com/vzhd1701/gridplayer/commit/442f71fe3dcf6254b9bfb7a750752dcaff7733fd))
@@ -264,7 +266,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 - Initial release
 
-[Unreleased]: https://github.com/vzhd1701/gridplayer/compare/v0.5.1...HEAD
+[Unreleased]: https://github.com/vzhd1701/gridplayer/compare/v0.5.2...HEAD
+[0.5.2]: https://github.com/vzhd1701/gridplayer/compare/v0.5.1...v0.5.2
 [0.5.1]: https://github.com/vzhd1701/gridplayer/compare/v0.5.0...v0.5.1
 [0.5.0]: https://github.com/vzhd1701/gridplayer/compare/v0.4.3...v0.5.0
 [0.4.3]: https://github.com/vzhd1701/gridplayer/compare/v0.4.2...v0.4.3
