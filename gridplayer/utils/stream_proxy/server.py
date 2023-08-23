@@ -164,15 +164,21 @@ class ProxyRequestHandler(BaseHTTPRequestHandler):
     ):
         self.send_response(response.status_code, response.reason)
 
-        for h_key, h_value in response.headers.items():
+        for h_key, h_value in _filter_response_headers(dict(response.headers)).items():
             self.send_header(h_key, h_value)
 
         self.end_headers()
 
         chunks = chunks or [response.content]
 
-        for chunk in chunks:
-            self.wfile.write(chunk)
+        if response.headers.get("transfer-encoding") == "chunked":
+            for chunk in chunks:
+                self.wfile.write(b"%X\r\n%s\r\n" % (len(chunk), chunk))
+            self.wfile.write(b"0\r\n\r\n")
+        else:
+            for chunk in chunks:
+                self.wfile.write(chunk)
+
         self.wfile.flush()
 
 
@@ -188,6 +194,19 @@ def _filter_request_headers(headers: Dict[str, str]):
         "accept-encoding",
         "accept-language",
         "user-agent",
+    }
+
+    return {
+        k: v
+        for k, v in headers.items()
+        if k.lower() not in filtered_headers  # noqa: WPS221
+    }
+
+
+def _filter_response_headers(headers: Dict[str, str]):
+    filtered_headers = {
+        "server",
+        "date",
     }
 
     return {
