@@ -8,10 +8,11 @@ LIVESTREAM_EDGE = 16
 def m3u8_to_str(hls_playlist: M3U8):
     res = ["#EXTM3U"]
     res += [f"#EXT-X-VERSION:{hls_playlist.version}"]
-    res += [f"#EXT-X-TARGETDURATION:{hls_playlist.target_duration}"]
     if hls_playlist.playlist_type:
         res += [f"#EXT-X-PLAYLIST-TYPE:{hls_playlist.playlist_type}"]
-    res += [f"#EXT-X-MEDIA-SEQUENCE:{hls_playlist.media_sequence}"]
+    if hls_playlist.media_sequence:
+        res += [f"#EXT-X-MEDIA-SEQUENCE:{hls_playlist.media_sequence}"]
+    res += [f"#EXT-X-TARGETDURATION:{hls_playlist.targetduration}"]
 
     # grab only the edge if it's a livestream
     if hls_playlist.media_sequence:
@@ -19,7 +20,14 @@ def m3u8_to_str(hls_playlist: M3U8):
     else:
         segments = hls_playlist.segments
 
-    res += sum([_segment_to_str(s) for s in segments], [])
+    s_map = None
+    for s in segments:
+        if s.map is not None and s.map != s_map:
+            s_map = s.map
+
+            res += _segment_to_str(s, add_map=True)
+        else:
+            res += _segment_to_str(s)
 
     if hls_playlist.is_endlist:
         res += ["#EXT-X-ENDLIST"]
@@ -27,7 +35,7 @@ def m3u8_to_str(hls_playlist: M3U8):
     return "\n".join(res)
 
 
-def _segment_to_str(segment: Segment) -> List[str]:
+def _segment_to_str(segment: Segment, add_map=False) -> List[str]:
     res = []
 
     if segment.date:
@@ -38,7 +46,7 @@ def _segment_to_str(segment: Segment) -> List[str]:
         res += ["#EXT-X-DISCONTINUITY"]
     if segment.byterange:
         res += ["#EXT-X-BYTERANGE:{0}".format(_byterange_to_str(segment.byterange))]
-    if segment.map:
+    if segment.map and add_map:
         res += [
             '#EXT-X-MAP:URI="{0}"{1}'.format(
                 segment.map.uri,
