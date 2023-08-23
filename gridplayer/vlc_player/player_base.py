@@ -72,6 +72,7 @@ class VlcPlayerBase(ABC):
 
         self._timeout_init_start = None
         self._timeout_init = None
+        self._get_time_retries = 0
 
         self._timer_unpause_failsafe = None
         self._timer_extract_media_track = None
@@ -318,6 +319,7 @@ class VlcPlayerBase(ABC):
 
         self._timeout_init = Settings().sync_get("player/video_init_timeout")
         self._timeout_init_start = time()
+        self._get_time_retries = 0
 
         self.media_input = media_input
 
@@ -626,11 +628,24 @@ class VlcPlayerBase(ABC):
             if self.is_video_size_required:
                 return None
 
+        length = self._get_duration()
+
+        if not self.media_input.is_live and length == -1:
+            if self._get_time_retries < 10:
+                self._get_time_retries += 1
+                self._log.debug(
+                    f"Video time not initialized yet,"
+                    f" attempt {self._get_time_retries}..."
+                )
+                return None
+
+            self._log.debug(f"Failed to initialize video time, probably live")
+
         self._tracks_manager.set_video_track_id(self.media_input.video.video_track_id)
         self._tracks_manager.set_audio_track_id(self.media_input.video.audio_track_id)
 
         return Media(
-            length=self._get_duration(),
+            length=length,
             video_tracks=self._tracks_manager.video_tracks,
             audio_tracks=self._tracks_manager.audio_tracks,
             cur_video_track_id=self._tracks_manager.current_video_track_id,
