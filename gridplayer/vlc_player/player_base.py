@@ -11,6 +11,7 @@ from gridplayer.params.static import (
     VIDEO_END_LOOP_MARGIN_MS,
     AudioChannelMode,
     VideoCrop,
+    VideoTransform,
 )
 from gridplayer.settings import Settings
 from gridplayer.utils.aspect_calc import calc_crop, calc_resize_scale
@@ -516,7 +517,19 @@ class VlcPlayerBase(ABC):
         if self._media_player is None or self.media is None:
             return 0, 0
 
-        return self._media_player.video_get_size()
+        video_size = self._media_player.video_get_size()
+
+        rotation_transforms = {
+            VideoTransform.ROTATE_90,
+            VideoTransform.ROTATE_270,
+            VideoTransform.TRANSPOSE,
+            VideoTransform.ANTITRANSPOSE,
+        }
+
+        if self.media_input.video.transform in rotation_transforms:
+            return tuple(reversed(video_size))
+
+        return video_size
 
     @only_initialized_player
     def adjust_view(self, size, aspect, scale, crop):
