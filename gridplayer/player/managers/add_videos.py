@@ -91,6 +91,10 @@ def _get_name_filters():
             "name": translate("Dialog - Add Files", "Audio", "File formats"),
             "extensions": SUPPORTED_AUDIO_EXT,
         },
+        {
+            "name": translate("Dialog - Add Files", "All", "File formats"),
+            "extensions": {"*"},
+        },
     ]
 
     name_filers = []

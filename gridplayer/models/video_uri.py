@@ -29,9 +29,6 @@ class AbsoluteFilePath(FilePath):
         if not path.is_absolute():
             raise PathNotAbsoluteError(path=path)
 
-        if path.suffix[1:].lower() not in SUPPORTED_MEDIA_EXT:
-            raise PathExtensionNotSupportedError(path=path)
-
         return path
 
 
