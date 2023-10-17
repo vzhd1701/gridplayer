@@ -15,7 +15,7 @@ from gridplayer.params.static import (
 from gridplayer.settings import default_field
 
 MIN_SCALE = 1.0
-MAX_SCALE = 3.0
+MAX_SCALE = 10.0
 MIN_RATE = 0.2
 MAX_RATE = 12
 
