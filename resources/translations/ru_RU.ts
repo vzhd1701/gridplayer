@@ -446,6 +446,46 @@
       <source>Transform</source>
       <translation>Трансформация</translation>
     </message>
+    <message>
+      <source>Crop Left +</source>
+      <translation>Обрезка слева +</translation>
+    </message>
+    <message>
+      <source>Crop Left -</source>
+      <translation>Обрезка слева -</translation>
+    </message>
+    <message>
+      <source>Crop Top +</source>
+      <translation>Обрезка сверху +</translation>
+    </message>
+    <message>
+      <source>Crop Top -</source>
+      <translation>Обрезка сверху -</translation>
+    </message>
+    <message>
+      <source>Crop Right +</source>
+      <translation>Обрезка справа +</translation>
+    </message>
+    <message>
+      <source>Crop Right -</source>
+      <translation>Обрезка справа -</translation>
+    </message>
+    <message>
+      <source>Crop Bottom +</source>
+      <translation>Обрезка снизу +</translation>
+    </message>
+    <message>
+      <source>Crop Bottom -</source>
+      <translation>Обрезка снизу -</translation>
+    </message>
+    <message>
+      <source>Crop Reset</source>
+      <translation>Сброс</translation>
+    </message>
+    <message>
+      <source>Crop</source>
+      <translation>Обрезка</translation>
+    </message>
   </context>
   <context>
     <name>Audio Mode</name>
@@ -544,6 +584,11 @@
       <source>Add Files</source>
       <comment>Header</comment>
       <translation>Добавить файлы</translation>
+    </message>
+    <message>
+      <source>All</source>
+      <comment>File formats</comment>
+      <translation>Все</translation>
     </message>
   </context>
   <context>

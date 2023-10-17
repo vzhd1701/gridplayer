@@ -412,38 +412,78 @@
     </message>
     <message>
       <source>Rotate 90</source>
-      <translation type="unfinished"/>
+      <translation>Ruota 90°</translation>
     </message>
     <message>
       <source>Rotate 180</source>
-      <translation type="unfinished"/>
+      <translation>Ruota 180°</translation>
     </message>
     <message>
       <source>Rotate 270</source>
-      <translation type="unfinished"/>
+      <translation>Ruota 270°</translation>
     </message>
     <message>
       <source>Flip Horizontally</source>
-      <translation type="unfinished"/>
+      <translation>Capovolgi orizzontalmente</translation>
     </message>
     <message>
       <source>Flip Vertically</source>
-      <translation type="unfinished"/>
+      <translation>Capovolgi verticalmente</translation>
     </message>
     <message>
       <source>Transpose</source>
-      <translation type="unfinished"/>
+      <translation>Trasposizione</translation>
     </message>
     <message>
       <source>Anti-transpose</source>
-      <translation type="unfinished"/>
+      <translation>Nessuna Trasposizione</translation>
     </message>
     <message>
       <source>No Transform</source>
-      <translation type="unfinished"/>
+      <translation>Nessuna Trasformazione</translation>
     </message>
     <message>
       <source>Transform</source>
+      <translation>Trasformazione</translation>
+    </message>
+    <message>
+      <source>Crop Left +</source>
+      <translation type="unfinished"/>
+    </message>
+    <message>
+      <source>Crop Left -</source>
+      <translation type="unfinished"/>
+    </message>
+    <message>
+      <source>Crop Top +</source>
+      <translation type="unfinished"/>
+    </message>
+    <message>
+      <source>Crop Top -</source>
+      <translation type="unfinished"/>
+    </message>
+    <message>
+      <source>Crop Right +</source>
+      <translation type="unfinished"/>
+    </message>
+    <message>
+      <source>Crop Right -</source>
+      <translation type="unfinished"/>
+    </message>
+    <message>
+      <source>Crop Bottom +</source>
+      <translation type="unfinished"/>
+    </message>
+    <message>
+      <source>Crop Bottom -</source>
+      <translation type="unfinished"/>
+    </message>
+    <message>
+      <source>Crop Reset</source>
+      <translation type="unfinished"/>
+    </message>
+    <message>
+      <source>Crop</source>
       <translation type="unfinished"/>
     </message>
   </context>
@@ -544,6 +584,11 @@
       <source>Add Files</source>
       <comment>Header</comment>
       <translation>Aggiungi file</translation>
+    </message>
+    <message>
+      <source>All</source>
+      <comment>File formats</comment>
+      <translation type="unfinished"/>
     </message>
   </context>
   <context>
@@ -1130,39 +1175,39 @@
     </message>
     <message>
       <source>Rotate 90</source>
-      <translation type="unfinished"/>
+      <translation>Ruota 90°</translation>
     </message>
     <message>
       <source>Rotate 180</source>
-      <translation type="unfinished"/>
+      <translation>Ruota 180°</translation>
     </message>
     <message>
       <source>Rotate 270</source>
-      <translation type="unfinished"/>
+      <translation>Ruota 270°</translation>
     </message>
     <message>
       <source>Flip Horizontally</source>
-      <translation type="unfinished"/>
+      <translation>Capovolgi orizzontalmente</translation>
     </message>
     <message>
       <source>Flip Vertically</source>
-      <translation type="unfinished"/>
+      <translation>Capovolgi verticalmente</translation>
     </message>
     <message>
       <source>Transpose</source>
-      <translation type="unfinished"/>
+      <translation>Trasposizione</translation>
     </message>
     <message>
       <source>Anti-transpose</source>
-      <translation type="unfinished"/>
+      <translation>Nessuna Trasposizione</translation>
     </message>
     <message>
       <source>No Transform</source>
-      <translation type="unfinished"/>
+      <translation>Nessuna Trasformazione</translation>
     </message>
     <message>
       <source>Transform</source>
-      <translation type="unfinished"/>
+      <translation>Trasformazione</translation>
     </message>
   </context>
   <context>

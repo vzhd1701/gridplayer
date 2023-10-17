@@ -556,6 +556,56 @@
         <source>Transform</source>
         <translation type="unfinished"></translation>
     </message>
+    <message>
+        <location filename="params/actions.py" line="7"/>
+        <source>Crop Left +</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="params/actions.py" line="7"/>
+        <source>Crop Left -</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="params/actions.py" line="7"/>
+        <source>Crop Top +</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="params/actions.py" line="7"/>
+        <source>Crop Top -</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="params/actions.py" line="7"/>
+        <source>Crop Right +</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="params/actions.py" line="7"/>
+        <source>Crop Right -</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="params/actions.py" line="7"/>
+        <source>Crop Bottom +</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="params/actions.py" line="7"/>
+        <source>Crop Bottom -</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="params/actions.py" line="7"/>
+        <source>Crop Reset</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="params/menu.py" line="5"/>
+        <source>Crop</source>
+        <translation type="unfinished"></translation>
+    </message>
 </context>
 <context>
     <name>Audio Mode</name>
@@ -675,6 +725,12 @@
         <comment>Header</comment>
         <translation type="unfinished"></translation>
     </message>
+    <message>
+        <location filename="player/managers/add_videos.py" line="64"/>
+        <source>All</source>
+        <comment>File formats</comment>
+        <translation type="unfinished"></translation>
+    </message>
 </context>
 <context>
     <name>Dialog - Add URLs</name>
@@ -760,7 +816,7 @@
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="widgets/video_block.py" line="1024"/>
+        <location filename="widgets/video_block.py" line="1050"/>
         <source>Rename video</source>
         <comment>Header</comment>
         <translation type="unfinished"></translation>
@@ -1454,57 +1510,57 @@
 <context>
     <name>Video Error</name>
     <message>
-        <location filename="vlc_player/player_base.py" line="332"/>
+        <location filename="vlc_player/player_base.py" line="334"/>
         <source>Buffering timeout</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="vlc_player/player_base.py" line="158"/>
+        <location filename="vlc_player/player_base.py" line="159"/>
         <source>Video stopped before initialization</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="vlc_player/player_base.py" line="134"/>
+        <location filename="vlc_player/player_base.py" line="135"/>
         <source>Live stream ended</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="vlc_player/player_base.py" line="148"/>
+        <location filename="vlc_player/player_base.py" line="149"/>
         <source>Video stopped unexpectedly</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="vlc_player/player_base.py" line="162"/>
+        <location filename="vlc_player/player_base.py" line="163"/>
         <source>Player error</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="vlc_player/player_base.py" line="174"/>
+        <location filename="vlc_player/player_base.py" line="175"/>
         <source>Media parse timeout</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="vlc_player/player_base.py" line="177"/>
+        <location filename="vlc_player/player_base.py" line="178"/>
         <source>Media parse failed</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="vlc_player/player_base.py" line="303"/>
+        <location filename="vlc_player/player_base.py" line="305"/>
         <source>Failed to load media</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="vlc_player/player_base.py" line="352"/>
+        <location filename="vlc_player/player_base.py" line="354"/>
         <source>Timed out to extract media track</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="vlc_player/player_base.py" line="490"/>
+        <location filename="vlc_player/player_base.py" line="507"/>
         <source>Timed out setting initial state</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="vlc_player/player_base.py" line="493"/>
+        <location filename="vlc_player/player_base.py" line="510"/>
         <source>Video failed to initialize paused</source>
         <translation type="unfinished"></translation>
     </message>
@@ -1522,17 +1578,17 @@
 <context>
     <name>Video Status</name>
     <message>
-        <location filename="vlc_player/player_base.py" line="109"/>
+        <location filename="vlc_player/player_base.py" line="110"/>
         <source>Buffering</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="vlc_player/player_base.py" line="318"/>
+        <location filename="vlc_player/player_base.py" line="320"/>
         <source>Parsing media</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="vlc_player/player_base.py" line="339"/>
+        <location filename="vlc_player/player_base.py" line="341"/>
         <source>Preparing video output</source>
         <translation type="unfinished"></translation>
     </message>

@@ -412,38 +412,78 @@
     </message>
     <message>
       <source>Rotate 90</source>
-      <translation type="unfinished"/>
+      <translation>90 ° 회전</translation>
     </message>
     <message>
       <source>Rotate 180</source>
-      <translation type="unfinished"/>
+      <translation>180 ° 회전</translation>
     </message>
     <message>
       <source>Rotate 270</source>
-      <translation type="unfinished"/>
+      <translation>270 ° 회전</translation>
     </message>
     <message>
       <source>Flip Horizontally</source>
-      <translation type="unfinished"/>
+      <translation>수평 뒤집기</translation>
     </message>
     <message>
       <source>Flip Vertically</source>
-      <translation type="unfinished"/>
+      <translation>수직 뒤집기</translation>
     </message>
     <message>
       <source>Transpose</source>
-      <translation type="unfinished"/>
+      <translation>뒤바꿈</translation>
     </message>
     <message>
       <source>Anti-transpose</source>
-      <translation type="unfinished"/>
+      <translation>뒤바꿈 방지</translation>
     </message>
     <message>
       <source>No Transform</source>
-      <translation type="unfinished"/>
+      <translation>변환 안 함</translation>
     </message>
     <message>
       <source>Transform</source>
+      <translation>변환</translation>
+    </message>
+    <message>
+      <source>Crop Left +</source>
+      <translation type="unfinished"/>
+    </message>
+    <message>
+      <source>Crop Left -</source>
+      <translation type="unfinished"/>
+    </message>
+    <message>
+      <source>Crop Top +</source>
+      <translation type="unfinished"/>
+    </message>
+    <message>
+      <source>Crop Top -</source>
+      <translation type="unfinished"/>
+    </message>
+    <message>
+      <source>Crop Right +</source>
+      <translation type="unfinished"/>
+    </message>
+    <message>
+      <source>Crop Right -</source>
+      <translation type="unfinished"/>
+    </message>
+    <message>
+      <source>Crop Bottom +</source>
+      <translation type="unfinished"/>
+    </message>
+    <message>
+      <source>Crop Bottom -</source>
+      <translation type="unfinished"/>
+    </message>
+    <message>
+      <source>Crop Reset</source>
+      <translation type="unfinished"/>
+    </message>
+    <message>
+      <source>Crop</source>
       <translation type="unfinished"/>
     </message>
   </context>
@@ -544,6 +584,11 @@
       <source>Add Files</source>
       <comment>Header</comment>
       <translation>파일 추가</translation>
+    </message>
+    <message>
+      <source>All</source>
+      <comment>File formats</comment>
+      <translation type="unfinished"/>
     </message>
   </context>
   <context>
@@ -1130,39 +1175,39 @@
     </message>
     <message>
       <source>Rotate 90</source>
-      <translation type="unfinished"/>
+      <translation>90 ° 회전</translation>
     </message>
     <message>
       <source>Rotate 180</source>
-      <translation type="unfinished"/>
+      <translation>180 ° 회전</translation>
     </message>
     <message>
       <source>Rotate 270</source>
-      <translation type="unfinished"/>
+      <translation>270 ° 회전</translation>
     </message>
     <message>
       <source>Flip Horizontally</source>
-      <translation type="unfinished"/>
+      <translation>수평 뒤집기</translation>
     </message>
     <message>
       <source>Flip Vertically</source>
-      <translation type="unfinished"/>
+      <translation>수직 뒤집기</translation>
     </message>
     <message>
       <source>Transpose</source>
-      <translation type="unfinished"/>
+      <translation>뒤바꿈</translation>
     </message>
     <message>
       <source>Anti-transpose</source>
-      <translation type="unfinished"/>
+      <translation>뒤바꿈 방지</translation>
     </message>
     <message>
       <source>No Transform</source>
-      <translation type="unfinished"/>
+      <translation>변환 안 함</translation>
     </message>
     <message>
       <source>Transform</source>
-      <translation type="unfinished"/>
+      <translation>변환</translation>
     </message>
   </context>
   <context>

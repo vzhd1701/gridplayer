@@ -446,6 +446,46 @@
       <source>Transform</source>
       <translation type="unfinished"/>
     </message>
+    <message>
+      <source>Crop Left +</source>
+      <translation type="unfinished"/>
+    </message>
+    <message>
+      <source>Crop Left -</source>
+      <translation type="unfinished"/>
+    </message>
+    <message>
+      <source>Crop Top +</source>
+      <translation type="unfinished"/>
+    </message>
+    <message>
+      <source>Crop Top -</source>
+      <translation type="unfinished"/>
+    </message>
+    <message>
+      <source>Crop Right +</source>
+      <translation type="unfinished"/>
+    </message>
+    <message>
+      <source>Crop Right -</source>
+      <translation type="unfinished"/>
+    </message>
+    <message>
+      <source>Crop Bottom +</source>
+      <translation type="unfinished"/>
+    </message>
+    <message>
+      <source>Crop Bottom -</source>
+      <translation type="unfinished"/>
+    </message>
+    <message>
+      <source>Crop Reset</source>
+      <translation type="unfinished"/>
+    </message>
+    <message>
+      <source>Crop</source>
+      <translation type="unfinished"/>
+    </message>
   </context>
   <context>
     <name>Audio Mode</name>
@@ -544,6 +584,11 @@
       <source>Add Files</source>
       <comment>Header</comment>
       <translation>ファイルを追加</translation>
+    </message>
+    <message>
+      <source>All</source>
+      <comment>File formats</comment>
+      <translation type="unfinished"/>
     </message>
   </context>
   <context>
