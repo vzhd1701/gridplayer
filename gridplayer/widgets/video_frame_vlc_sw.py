@@ -5,7 +5,7 @@ from PyQt5.QtGui import QBrush, QImage, QPainter, QPixmap
 from PyQt5.QtWidgets import QFrame, QGraphicsPixmapItem, QGraphicsScene, QGraphicsView
 
 from gridplayer.multiprocess.safe_shared_memory import SafeSharedMemory
-from gridplayer.params.static import PLAYER_ID_LENGTH
+from gridplayer.params.static import PLAYER_ID_LENGTH, VideoCrop
 from gridplayer.utils.qt import QT_ASPECT_MAP, qt_connect
 from gridplayer.vlc_player.image_decoder import ImageDecoder
 from gridplayer.vlc_player.instance import InstanceProcessVLC
@@ -136,7 +136,7 @@ class PlayerProcessSingleVLCSW(VlcPlayerThreaded):
 
         super().set_pause(is_paused)
 
-    def adjust_view(self, size, aspect, scale):
+    def adjust_view(self, size, aspect, scale, crop):
         """Done by the widget"""
 
     def _init_video_decoder(self):
@@ -290,7 +290,22 @@ class VideoFrameVLCSW(VideoFrameVLCProcess):
 
         aspect = QT_ASPECT_MAP[self._aspect]
 
-        self.video_surface.fitInView(self._videoitem, aspect)
+        if self._crop != VideoCrop(0, 0, 0, 0):
+            cropped = (
+                self._videoitem.shape()
+                .boundingRect()
+                .adjusted(
+                    -self._crop.Left,
+                    self._crop.Top,
+                    self._crop.Right,
+                    -self._crop.Bottom,
+                )
+            )
+
+            self.video_surface.setSceneRect(cropped)
+            self.video_surface.fitInView(cropped, aspect)
+        else:
+            self.video_surface.fitInView(self._videoitem, aspect)
         black_border_cut = 0.05
         self.video_surface.scale(
             self._scale + black_border_cut, self._scale + black_border_cut

@@ -28,6 +28,7 @@ from gridplayer.params.static import (
     PLAYER_ID_LENGTH,
     VIDEO_END_LOOP_MARGIN_MS,
     VideoAspect,
+    VideoCrop,
     VideoRepeat,
     VideoTransform,
 )
@@ -697,6 +698,7 @@ class VideoBlock(QWidget):  # noqa: WPS230
         self.set_muted(snapshot.is_muted)
         self.set_pause(snapshot.is_paused)
         self.set_scale(snapshot.scale, is_silent=True)
+        self.set_crop(snapshot.crop, is_silent=True)
         self.set_volume(snapshot.volume)
 
         self.seek(snapshot.current_position)
@@ -983,6 +985,43 @@ class VideoBlock(QWidget):  # noqa: WPS230
 
         if not is_silent:
             self.info_change.emit("Zoom: {0}".format(scale))
+
+    @only_with_video_tacks
+    @only_initialized
+    def crop(self, left, top, right, bottom, is_silent=False):
+        crop = VideoCrop(
+            self.video_params.crop.Left + left,
+            self.video_params.crop.Top + top,
+            self.video_params.crop.Right + right,
+            self.video_params.crop.Bottom + bottom,
+        )
+
+        self.set_crop(crop, is_silent)
+
+    @only_with_video_tacks
+    @only_initialized
+    def crop_reset(self, is_silent=False):
+        self.set_crop(VideoCrop(0, 0, 0, 0), is_silent)
+
+    @only_with_video_tacks
+    @only_initialized
+    def set_crop(self, crop: VideoCrop, is_silent=False):
+        crop = VideoCrop(
+            max(crop.Left, 0),
+            max(crop.Top, 0),
+            max(crop.Right, 0),
+            max(crop.Bottom, 0),
+        )
+
+        if self.video_params.crop != crop:
+            self.video_params.aspect_mode = VideoAspect.NONE
+            self.video_params.crop = crop
+            self.video_driver.set_crop(self.video_params.crop)
+
+        if not is_silent:
+            self.info_change.emit(
+                "Crop: L{0} T{1} R{2} B{3}".format(*self.video_params.crop)
+            )
 
     @only_initialized
     @only_seekable

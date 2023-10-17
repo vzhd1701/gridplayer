@@ -127,6 +127,9 @@ class VideoBlocksManager(ManagerBase):
     all_scale_decrease = pyqtSignal()
     all_scale_reset = pyqtSignal()
 
+    all_crop = pyqtSignal(int, int, int, int)
+    all_crop_reset = pyqtSignal()
+
     all_set_aspect = pyqtSignal(VideoAspect)
     all_set_transform = pyqtSignal(VideoTransform)
     all_set_auto_reload_timer = pyqtSignal(int)
@@ -369,6 +372,8 @@ class VideoBlocksManager(ManagerBase):
             (self.all_scale_increase, vb.scale_increase),
             (self.all_scale_decrease, vb.scale_decrease),
             (self.all_scale_reset, vb.scale_reset),
+            (self.all_crop, vb.crop),
+            (self.all_crop_reset, vb.crop_reset),
             (self.all_set_aspect, vb.set_aspect),
             (self.all_set_transform, vb.set_transform),
             (self.all_set_auto_reload_timer, vb.set_auto_reload_timer),

@@ -91,8 +91,8 @@ class VideoDriverVLCHW(VLCVideoDriverThreaded):
             {"win_id": win_id}, self.cmd_child_pipe(), vlc_options
         )
 
-    def adjust_view(self, size, aspect, scale):
-        self.cmd_send("adjust_view", size, aspect, scale)
+    def adjust_view(self, size, aspect, scale, crop):
+        self.cmd_send("adjust_view", size, aspect, scale, crop)
 
 
 class VideoFrameVLCHW(VideoFrameVLCProcess):
@@ -124,7 +124,7 @@ class VideoFrameVLCHW(VideoFrameVLCProcess):
             return
 
         size = (self.size().width(), self.size().height())
-        self.video_driver.adjust_view(size, self._aspect, self._scale)
+        self.video_driver.adjust_view(size, self._aspect, self._scale, self._crop)
 
         # Remove VLC crop black border
         new_size = self.size().grownBy(QMargins(2, 2, 2, 2))

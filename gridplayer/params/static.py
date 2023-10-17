@@ -32,6 +32,13 @@ class VideoAspect(AutoName):
     NONE = auto()
 
 
+class VideoCrop(NamedTuple):
+    Left: int
+    Top: int
+    Right: int
+    Bottom: int
+
+
 class VideoTransform(AutoName):
     ROTATE_90 = auto()
     ROTATE_180 = auto()

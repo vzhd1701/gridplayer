@@ -106,6 +106,7 @@ icon-symbolic,icons/custom/060-single mode on.svg,single-mode-on
 icon-symbolic,icons/custom/061-single mode off.svg,single-mode-off
 icon-symbolic,icons/custom/062-play pause.svg,play-pause
 icon-symbolic,icons/custom/063-rotate.svg,rotate
+icon-symbolic,icons/custom/064-crop.svg,crop
 translation,translations/ar_SA.ts,ar_SA
 translation,translations/de_DE.ts,de_DE
 translation,translations/es_ES.ts,es_ES

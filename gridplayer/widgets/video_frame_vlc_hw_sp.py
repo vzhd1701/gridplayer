@@ -4,7 +4,7 @@ from PyQt5.QtCore import QMargins, Qt, QThread, pyqtSignal, pyqtSlot
 from PyQt5.QtWidgets import QWidget
 
 from gridplayer.params import env
-from gridplayer.params.static import AudioChannelMode, VideoAspect
+from gridplayer.params.static import AudioChannelMode, VideoAspect, VideoCrop
 from gridplayer.settings import Settings
 from gridplayer.utils.qt import QABC, qt_connect
 from gridplayer.widgets.video_frame_vlc_base import VideoFrameVLC
@@ -142,7 +142,7 @@ class VideoDriverVLCHWSP(VLCVideoDriver):
     cmd_set_video_track = pyqtSignal(int)
     cmd_set_audio_track = pyqtSignal(int)
     cmd_set_audio_channel_mode = pyqtSignal(AudioChannelMode)
-    cmd_adjust_view = pyqtSignal(tuple, VideoAspect, float)
+    cmd_adjust_view = pyqtSignal(tuple, VideoAspect, float, VideoCrop)
     cmd_set_log_level_vlc = pyqtSignal(int)
 
     cmd_init_player = pyqtSignal()
@@ -216,8 +216,8 @@ class VideoDriverVLCHWSP(VLCVideoDriver):
     def set_audio_channel_mode(self, mode):
         self.cmd_set_audio_channel_mode.emit(mode)
 
-    def adjust_view(self, size, aspect, scale):
-        self.cmd_adjust_view.emit(size, aspect, scale)
+    def adjust_view(self, size, aspect, scale, crop):
+        self.cmd_adjust_view.emit(size, aspect, scale, crop)
 
     def set_log_level_vlc(self, log_level):
         self.cmd_set_log_level_vlc.emit(log_level)
@@ -250,7 +250,7 @@ class VideoFrameVLCHWSP(VideoFrameVLC):
             return
 
         size = (self.size().width(), self.size().height())
-        self.video_driver.adjust_view(size, self._aspect, self._scale)
+        self.video_driver.adjust_view(size, self._aspect, self._scale, self._crop)
 
         # Remove VLC crop black border
         new_size = self.size().grownBy(QMargins(2, 2, 2, 2))

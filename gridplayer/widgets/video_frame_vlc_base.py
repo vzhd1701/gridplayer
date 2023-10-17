@@ -7,7 +7,7 @@ from PyQt5.QtCore import QSize, Qt, pyqtSignal
 from PyQt5.QtGui import QPixmap
 from PyQt5.QtWidgets import QLabel, QStackedLayout, QWidget
 
-from gridplayer.params.static import VideoAspect
+from gridplayer.params.static import VideoAspect, VideoCrop
 from gridplayer.utils.qt import QABC, QT_ASPECT_MAP, qt_connect
 from gridplayer.vlc_player.static import Media, MediaInput
 from gridplayer.vlc_player.video_driver_base import VLCVideoDriver
@@ -23,7 +23,7 @@ class PauseSnapshot(QLabel):
         self.setAlignment(Qt.AlignCenter)
         self.setStyleSheet("background-color:black;")
 
-        self._snapshot_pixmap = None
+        self._snapshot_pixmap: Optional[QPixmap] = None
 
     def set_snapshot_file(self, snapshot_file: str):
         # failed snapshot
@@ -72,6 +72,7 @@ class VideoFrameVLC(QWidget, metaclass=QABC):
 
         self._aspect = VideoAspect.FIT
         self._scale = 1
+        self._crop = VideoCrop(0, 0, 0, 0)
 
         self._is_status_change_in_progress = False
         self._is_cleanup_requested = False
@@ -226,6 +227,10 @@ class VideoFrameVLC(QWidget, metaclass=QABC):
     def load_video(self, media_input: MediaInput) -> None:
         self._aspect = media_input.video.aspect_mode
         self._scale = media_input.video.scale
+        self._crop = media_input.video.crop
+
+        if self._crop != VideoCrop(0, 0, 0, 0):
+            self._aspect = VideoAspect.NONE
 
         self.video_driver.load_video(media_input)
 
@@ -304,6 +309,12 @@ class VideoFrameVLC(QWidget, metaclass=QABC):
 
     def set_scale(self, scale) -> None:  # noqa: WPS615
         self._scale = scale
+
+        self.adjust_view()
+
+    def set_crop(self, crop) -> None:  # noqa: WPS615
+        self._aspect = VideoAspect.NONE
+        self._crop = crop
 
         self.adjust_view()
 
