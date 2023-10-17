@@ -6,6 +6,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+### Added
+
+* Option to crop video ([8b1fba3](https://github.com/vzhd1701/gridplayer/commit/8b1fba3658fc9af7cac3c6604342a71165a6e455))
+
+### Fixed
+
+* Update yt-dlp and Streamlink ([c5790f2](https://github.com/vzhd1701/gridplayer/commit/c5790f231173b965369d8afc1a205e884323e2cd))
+* Update translations ([48ff112](https://github.com/vzhd1701/gridplayer/commit/48ff1125236f1c0ac76620fb4c32c1bc97d8f235))
+* Prevent video distortion when rotation is enabled ([d0dc5be](https://github.com/vzhd1701/gridplayer/commit/d0dc5bee1ea7c54cabc9985a4f3e3b7ccda0868f))
+* Add h265 and hevc to video extensions ([6cbc01f](https://github.com/vzhd1701/gridplayer/commit/6cbc01ffdfd3ded6acd7cfebcf942c1f0031a0bd))
+* Allow opening any files ([c775315](https://github.com/vzhd1701/gridplayer/commit/c775315df5bcb3ed4e635cd8465a9272a1020a1d)), closes [#170](https://github.com/vzhd1701/gridplayer/issues/170)
+* Increase maximum zoom scale to 10 (max for VLC) ([3a346fb](https://github.com/vzhd1701/gridplayer/commit/3a346fbc51f727816293d4cc6b6ddafccad808af))
+
 ## [0.5.2] - 2023-08-23
 
 ### Fixed
