@@ -81,6 +81,8 @@ SUPPORTED_VIDEO_EXT = frozenset(
         "flv",
         "gvi",
         "gxf",
+        "h265",
+        "hevc",
         "iso",
         "m1v",
         "m2v",
