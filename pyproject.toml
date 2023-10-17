@@ -32,12 +32,13 @@ gridplayer = "gridplayer.__main__:main"
 [tool.poetry.dependencies]
 python = "^3.8.1"
 PyQt5 = "5.15.7"
+PyQt5-Qt5 = "5.15.2"
 pydantic = "^1.8.2"
 python-vlc = "3.0.11115"
 pyobjc-core = { version = "*", platform = "darwin" }
 pyobjc-framework-Cocoa = { version = "*", platform = "darwin" }
-streamlink = "6.1.0"
-yt-dlp = "2023.7.6"
+streamlink = "6.2.1"
+yt-dlp = "2023.10.13"
 
 [tool.poetry.group.dev.dependencies]
 isort = "^5.8.0"
