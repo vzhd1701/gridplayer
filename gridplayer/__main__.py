@@ -1,3 +1,7 @@
+import warnings
+
+warnings.filterwarnings("ignore", category=DeprecationWarning)
+
 import sys
 from multiprocessing import freeze_support
 
