@@ -1,50 +1,78 @@
 name: PyQt5
 cleanup:
+- "/bin"
 - "/include"
-- "/lib/python3.9/site-packages/*.pyi"
-- "/lib/python3.9/site-packages/PyQt5/uic"
+- "/lib/python3.10/site-packages/*.pyi"
+- "/lib/python3.10/site-packages/PyQt5/uic"
+- "/lib/python3.10/site-packages/PyQt5/bindings"
 config-opts:
 - "--disable-static"
 - "--enable-x11"
 buildsystem: simple
 build-commands:
-- python3 configure.py --confirm-license --no-docstrings --assume-shared --no-sip-files
-  --no-qml-plugin --no-tools --no-qsci-api -d ${FLATPAK_DEST}/lib/python3.9/site-packages
-  --sip=${FLATPAK_DEST}/bin/sip --sip-incdir=${FLATPAK_DEST}/include --stubsdir=${FLATPAK_DEST}/lib/python3.9/site-packages
-  --disable=QtSensors --disable=QtWebEngine --disable=QtQuick --disable=QtQml --disable=QtTest
-  --disable=QtWebChannel --disable=QtWebEngineCore --disable=QWebEngineWidgets --disable=QtQuickWidgets
-  --disable=QtSql --disable=QtXmlPatterns --disable=QtMultimedia --disable=QtMultimediaWidgets
-  --disable=QtLocation --disable=QtDesigner --disable=QtOpenGL --disable=QtBluetooth
-  --disable=QtWebKit --disable=QtWebKitWidgets --disable=QtNfc --disable=QtPositioning
-  --disable=QtHelp --disable=QtNetwork --disable=QtPrintSupport --disable=QtXml
-  --disable=QtSerialPort --disable=QtWebSockets --disable=QtRemoteObjects --disable=QtTextToSpeech
-  --disable=_QOpenGLFunctions_2_0 --disable=_QOpenGLFunctions_2_1 --disable=_QOpenGLFunctions_4_1_Core
-- make -j $(nproc)
-- make install
+- sip-install
+  --target-dir ${FLATPAK_DEST}/lib/python3.10/site-packages
+  --scripts-dir ${FLATPAK_DEST}/bin
+  --build-dir ./build
+  --jobs ${FLATPAK_BUILDER_N_JOBS}
+  --confirm-license
+  --verbose
+  --no-docstrings
+  --no-qml-plugin
+  --no-designer-plugin
+  --no-tools
+  --enable=Qt
+  --enable=QtCore
+  --enable=QtDBus
+  --enable=QtGui
+  --enable=QtWidgets
+  --enable=QtX11Extras
+  --enable=QtSvg
 sources:
 - type: archive
-  url: https://files.pythonhosted.org/packages/8e/a4/d5e4bf99dd50134c88b95e926d7b81aad2473b47fde5e3e4eac2c69a8942/PyQt5-5.15.4.tar.gz
-  sha256: 2a69597e0dd11caabe75fae133feca66387819fc9bc050f547e5551bce97e5be
+  url: https://files.pythonhosted.org/packages/4d/5d/b8b6e26956ec113ad3f566e02abd12ac3a56b103fcc7e0735e27ee4a1df3/PyQt5-5.15.10.tar.gz
+  sha256: d46b7804b1b10a4ff91753f8113e5b5580d2b4462f3226288e2d84497334898a
 modules:
-- name: sip
+- name: python3-flit_core
   cleanup:
-  - "/bin/sip*"
-  - "/lib/python3.9/site-packages/sip*"
+  - "*"
   buildsystem: simple
   build-commands:
-  - python3 configure.py --sip-module PyQt5.sip -b ${FLATPAK_DEST}/bin -d ${FLATPAK_DEST}/lib/python3.9/site-packages
-    -e ${FLATPAK_DEST}/include -v ${FLATPAK_DEST}/share/sip --stubsdir=${FLATPAK_DEST}/lib/python3.9/site-packages
-  - make
-  - make install
+  - pip3 install --verbose --exists-action=i --no-index --find-links="file://${PWD}"
+    --prefix=${FLATPAK_DEST} "flit_core" --no-build-isolation
   sources:
-  - type: archive
-    url: https://www.riverbankcomputing.com/static/Downloads/sip/4.19.25/sip-4.19.25.tar.gz
-    sha256: b39d93e937647807bac23579edbff25fe46d16213f708370072574ab1f1b4211
+  - type: file
+    url: https://files.pythonhosted.org/packages/c4/e6/c1ac50fe3eebb38a155155711e6e864e254ce4b6e17fe2429b4c4d5b9e80/flit_core-3.9.0.tar.gz
+    sha256: 72ad266176c4a3fcfab5f2930d76896059851240570ce9a98733b658cb786eba
+- name: PyQt_builder
+  cleanup:
+  - "*"
+  buildsystem: simple
+  build-commands:
+  - pip3 install --verbose --exists-action=i --no-index --find-links="file://${PWD}"
+    --prefix=${FLATPAK_DEST} "PyQt-builder" --no-build-isolation
+  sources:
+  - type: file
+    url: https://files.pythonhosted.org/packages/fb/2b/9b9c33ffed44ee921d0967086d653047286054117d584f1b1a7c22ceaf7b/packaging-23.2.tar.gz
+    sha256: 048fb0e9405036518eaaf48a55953c750c11e1a1b68e0dd1a9d62ed0c092cfc5
+  - type: file
+    url: https://files.pythonhosted.org/packages/21/e9/5ee4d76d3f4c566b090924e36da067748db948a5faeff4142d149a4d5a15/PyQt-builder-1.15.3.tar.gz
+    sha256: 5b33e99edcb77d4a63a38605f4457a04cff4e254c771ed529ebc9589906ccdb1
+  - type: file
+    url: https://files.pythonhosted.org/packages/e5/69/882ee5c9d017149285cab114ebeab373308ef0f874fcdac9beb90e0ac4da/ply-3.11.tar.gz
+    sha256: 00c7c1aaa88358b9c765b6d3000c6eec0ba42abca5351b095321aef446081da3
+  - type: file
+    url: https://files.pythonhosted.org/packages/c0/3f/d7af728f075fb08564c5949a9c95e44352e23dee646869fa104a3b2060a3/tomli-2.0.1.tar.gz
+    sha256: de526c12914f0c550d15924c62d72abc48d6fe7364aa87328337a31007fe8a4f
+  - type: file
+    url: https://files.pythonhosted.org/packages/a6/4e/c34eee70109e9a8110672f074fc18b5022bf4b9b4c92641245c73ae0b21a/sip-6.7.12.tar.gz
+    sha256: 08e66f742592eb818ac8fda4173e2ed64c9f2d40b70bee11db1c499127d98450
 - name: PyQt5_sip
   buildsystem: simple
   build-commands:
-  - python3 setup.py install --root=${FLATPAK_DEST} --prefix=""
+  - pip3 install --verbose --exists-action=i --no-index --find-links="file://${PWD}"
+    --prefix=${FLATPAK_DEST} "PyQt5-sip" --no-build-isolation
   sources:
-  - type: archive
-    url: https://files.pythonhosted.org/packages/b1/40/dd8f081f04a12912b65417979bf2097def0af0f20c89083ada3670562ac5/PyQt5_sip-12.9.0.tar.gz
-    sha256: d3e4489d7c2b0ece9d203ae66e573939f7f60d4d29e089c9f11daa17cfeaae32
+  - type: file
+    url: https://files.pythonhosted.org/packages/ee/81/fce2a475aa56c1f49707d9306b930695b6ff078c2242c9f2fd72a3214e1f/PyQt5_sip-12.13.0.tar.gz
+    sha256: 7f321daf84b9c9dbca61b80e1ef37bdaffc0e93312edae2cd7da25b953971d91

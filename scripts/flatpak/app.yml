@@ -1,6 +1,6 @@
 app-id: "{APP_ID}"
 runtime: org.kde.Platform
-runtime-version: "5.15-21.08"
+runtime-version: "5.15-22.08"
 sdk: org.kde.Sdk
 command: "{APP_MODULE}"
 finish-args:
@@ -25,12 +25,10 @@ finish-args:
 - "--env=SESSION_MANAGER="
 
 cleanup:
-- "/bin/pylupdate5"
-- "/bin/pyrcc5"
-- "/bin/pyuic5"
 - "/include"
 - "/lib/*.a"
 - "/lib/*.la"
+- "/lib/debug"
 - "/lib/pkgconfig"
 - "/share/man"
 

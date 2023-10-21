@@ -18,8 +18,8 @@ if ! command -v flatpak; then
     sudo apt install flatpak
     flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
 
-    flatpak install flathub org.kde.Platform//5.15-21.08
-    flatpak install flathub org.kde.Sdk//5.15-21.08
+    flatpak install flathub org.kde.Platform//5.15-22.08
+    flatpak install flathub org.kde.Sdk//5.15-22.08
 fi
 
 poetry build -f sdist
