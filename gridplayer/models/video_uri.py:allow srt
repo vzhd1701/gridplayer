@@ -7,7 +7,7 @@ from gridplayer.params.extensions import SUPPORTED_MEDIA_EXT
 
 
 class VideoURL(AnyUrl):
-    allowed_schemes = {"http", "https", "rtp", "rtsp", "rtmp", "udp", "mms", "mmsh"}
+    allowed_schemes = {"http", "https", "rtp", "rtsp", "rtmp", "udp", "mms", "mmsh","srt"}
     max_length = 2083
 
 
