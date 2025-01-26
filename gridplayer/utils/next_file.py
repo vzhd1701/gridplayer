@@ -40,5 +40,5 @@ def _file_siblings(file: Path):
     return sorted(
         f
         for f in file.parent.rglob("*") 
-        if f.is_file() and f.suffix[1:].lower() in supported_media_ext
+        if f.is_file() and f.suffix[1:].lower() in SUPPORTED_MEDIA_EXT
     )
