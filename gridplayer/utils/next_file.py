@@ -30,8 +30,8 @@ def previous_video_file(file: Path) -> Optional[Path]:
     except ValueError:
         return None
 
-    if next_id >= len(siblings):
-        next_id = 0
+    if next_id < 0:
+        next_id = len(siblings) - 1
 
     return siblings[next_id]
 
@@ -39,6 +39,6 @@ def previous_video_file(file: Path) -> Optional[Path]:
 def _file_siblings(file: Path):
     return sorted(
         f
-        for f in file.parent.iterdir()
-        if f.is_file() and f.suffix[1:].lower() in SUPPORTED_MEDIA_EXT
+        for f in file.parent.rglob("*") 
+        if f.is_file() and f.suffix[1:].lower() in supported_media_ext
     )
