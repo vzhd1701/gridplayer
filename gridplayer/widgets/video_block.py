@@ -34,7 +34,7 @@ from gridplayer.params.static import (
 )
 from gridplayer.settings import Settings
 from gridplayer.utils.libvlc_options_parser import get_vlc_options
-from gridplayer.utils.next_file import next_video_file, previous_video_file
+from gridplayer.utils.next_file import VideoNavigator, get_file_siblings
 from gridplayer.utils.qt import qt_connect, translate
 from gridplayer.utils.url_resolve.static import ResolvedVideo
 from gridplayer.utils.url_resolve.url_resolve import VideoURLResolver
@@ -713,9 +713,13 @@ class VideoBlock(QWidget):  # noqa: WPS230
 
     def set_video(self, video_params: Video):
         is_first_video = self.video_params is None
-        is_options_changed = get_vlc_options(self.video_params) != get_vlc_options(
-            video_params
-        )
+        is_options_changed = get_vlc_options(self.video_params) != get_vlc_options(video_params)
+    
+    # If it's the first video, initialize the directory and sibling list
+        if is_first_video:
+            self.original_dir = video_params.uri.parent  # Use the parent directory of the first video
+            self.siblings = get_file_siblings(self.original_dir)  # Compute sibling list for navigation
+            self.navigator = VideoNavigator(video_params.uri, is_shuffle=True)  # Initialize navigator with sibling list
 
         self.video_params = video_params
 
@@ -1109,17 +1113,20 @@ class VideoBlock(QWidget):  # noqa: WPS230
     @only_initialized
     @only_local_file
     def previous_video(self):
-        self.switch_video(previous_video_file(self.video_params.uri))
-
+        new_video = self.navigator.previous_video_file()
+        self.switch_video(new_video)
+        
     @only_initialized
     @only_local_file
     def next_video(self):
-        self.switch_video(next_video_file(self.video_params.uri))
+        new_video = self.navigator.next_video_file() 
+        self.switch_video(new_video)
 
     @only_initialized
     @only_local_file
     def shuffle_video(self):
-        self.switch_video(next_video_file(self.video_params.uri, is_shuffle=True))
+        new_video = self.navigator.next_video_file() 
+        self.switch_video(new_video, is_shuffle=True)
 
     @only_initialized
     @only_local_file
