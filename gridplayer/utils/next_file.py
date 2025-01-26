@@ -5,8 +5,11 @@ from typing import Optional
 from gridplayer.params.extensions import SUPPORTED_MEDIA_EXT
 
 
-def next_video_file(file: Path, is_shuffle=False) -> Optional[Path]:
-    siblings = _file_siblings(file)
+def next_video_file(file: Path, original_dir: Path = None, is_shuffle=False) -> Optional[Path]:
+    if original_dir is None:
+        original_dir = file.parent
+
+    siblings = _file_siblings(original_dir)
 
     if is_shuffle:
         random.shuffle(siblings)
@@ -22,23 +25,26 @@ def next_video_file(file: Path, is_shuffle=False) -> Optional[Path]:
     return siblings[next_id]
 
 
-def previous_video_file(file: Path) -> Optional[Path]:
-    siblings = _file_siblings(file)
+def previous_video_file(file: Path, original_dir: Path = None) -> Optional[Path]:
+    if original_dir is None:
+        original_dir = file.parent
+
+    siblings = _file_siblings(original_dir)
 
     try:
-        next_id = siblings.index(file) - 1
+        prev_id = siblings.index(file) - 1
     except ValueError:
         return None
 
-    if next_id < 0:
-        next_id = len(siblings) - 1
+    if prev_id < 0:
+        prev_id = len(siblings) - 1
 
-    return siblings[next_id]
+    return siblings[prev_id]
 
 
-def _file_siblings(file: Path):
+def _file_siblings(directory: Path):
     return sorted(
         f
-        for f in file.parent.rglob("*") 
+        for f in directory.rglob("*")
         if f.is_file() and f.suffix[1:].lower() in SUPPORTED_MEDIA_EXT
     )
