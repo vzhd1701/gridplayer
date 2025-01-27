@@ -677,10 +677,8 @@ class VideoBlock(QWidget):  # noqa: WPS230
                 self.seek_random()
             else:
                 self.seek(self.loop_start)
-        elif self.video_params.repeat_mode == VideoRepeat.DIR:
+        if not self.video_params.repeat_mode == VideoRepeat.SINGLE_FILE:
             self.next_video()
-        elif self.video_params.repeat_mode == VideoRepeat.DIR_SHUFFLE:
-            self.shuffle_video()
 
     def apply_snapshot(self, snapshot: Video):
         if snapshot.uri != self.video_params.uri:
@@ -714,9 +712,12 @@ class VideoBlock(QWidget):  # noqa: WPS230
     def set_video(self, video_params: Video):
         is_first_video = self.video_params is None
         is_options_changed = get_vlc_options(self.video_params) != get_vlc_options(video_params)
-    
-    # If it's the first video, initialize the directory and sibling list
-        if is_first_video:
+
+        last_repeat_mode = getattr(self, 'last_repeat_mode', None)  
+        is_repeat_mode_changed = last_repeat_mode != video_params.repeat_mode 
+     
+     
+        if is_first_video or is_repeat_mode_changed:
             self.original_dir = video_params.uri.parent  # Use the parent directory of the first video
             self.siblings = get_file_siblings(self.original_dir)  # Compute sibling list for navigation
             if video_params.repeat_mode == VideoRepeat.DIR_SHUFFLE:
@@ -728,7 +729,7 @@ class VideoBlock(QWidget):  # noqa: WPS230
             elif video_params.repeat_mode == VideoRepeat.DIR:
                 self.navigator = VideoNavigator(video_params.uri, is_shuffle = False, is_recursive = False)     
 
-            
+        self.last_repeat_mode = video_params.repeat_mode    
         self.video_params = video_params
 
         # Shut down current video
@@ -1129,12 +1130,6 @@ class VideoBlock(QWidget):  # noqa: WPS230
     def next_video(self):
         new_video = self.navigator.next_video_file() 
         self.switch_video(new_video)
-
-    @only_initialized
-    @only_local_file
-    def shuffle_video(self):
-        new_video = self.navigator.next_video_file() 
-        self.switch_video(new_video, is_shuffle=True)
 
     @only_initialized
     @only_local_file
