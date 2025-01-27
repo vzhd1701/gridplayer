@@ -1,15 +1,19 @@
-import contextlib
 import logging
-import subprocess
+from contextlib import suppress
+from enum import Enum
+from pathlib import Path
 
-from PyQt5.QtCore import QUrl
-from PyQt5.QtGui import QDesktopServices, QIcon, QPalette
-from PyQt5.QtWidgets import QCheckBox, QComboBox, QDialog, QLineEdit, QSpinBox
+from pydantic import BaseModel, Field
+from PyQt5.QtCore import QSettings
 
-from gridplayer.dialogs.messagebox import QCustomMessageBox
-from gridplayer.dialogs.settings_dialog_ui import Ui_SettingsDialog
+from gridplayer.models.recent_list import (
+    RecentList,
+    RecentListPlaylists,
+    RecentListVideos,
+)
+from gridplayer.models.resolver_patterns import ResolverPatterns
 from gridplayer.params import env
-from gridplayer.params.languages import LANGUAGES
+from gridplayer.params.languages import get_system_language
 from gridplayer.params.static import (
     AudioChannelMode,
     GridMode,
@@ -20,450 +24,186 @@ from gridplayer.params.static import (
     VideoRepeat,
     VideoTransform,
 )
-from gridplayer.settings import Settings
-from gridplayer.utils import log_config
 from gridplayer.utils.app_dir import get_app_data_dir
-from gridplayer.utils.qt import qt_connect, translate
-from gridplayer.widgets.language_list import LanguageList
-from gridplayer.widgets.resolver_patterns_list import ResolverPatternsList
+from gridplayer.utils.log_config import DISABLED
 
-VIDEO_DRIVERS_MULTIPROCESS = (
-    VideoDriver.VLC_SW,
-    VideoDriver.VLC_HW,
-)
-
-MAX_VLC_PROCESSES = 64
+SETTINGS = None
 
 
-def _fill_combo_box(combo_box, values_dict):
-    for i_id, i_name in values_dict.items():
-        combo_box.addItem(i_name, i_id)
+_default_settings = {
+    "player/video_driver": VideoDriver.VLC_HW,
+    "player/video_driver_players": 4,
+    "player/video_init_timeout": 120,
+    "player/pause_background_videos": True,
+    "player/pause_minimized": True,
+    "player/inhibit_screensaver": True,
+    "player/one_instance": True,
+    "player/stay_on_top": False,
+    "player/show_overlay_border": False,
+    "player/language": get_system_language(),
+    "player/recent_list_enabled": True,
+    "player/recent_list_max_size": 10,
+    "playlist/grid_mode": GridMode.AUTO_ROWS,
+    "playlist/grid_fit": True,
+    "playlist/grid_size": 0,
+    "playlist/save_position": False,
+    "playlist/save_state": False,
+    "playlist/save_window": False,
+    "playlist/seek_sync_mode": SeekSyncMode.DISABLED,
+    "playlist/track_changes": True,
+    "playlist/shuffle_on_load": False,
+    "playlist/disable_click_pause": False,
+    "playlist/disable_wheel_seek": False,
+    "video_defaults/aspect": VideoAspect.FIT,
+    "video_defaults/transform": VideoTransform.NONE,
+    "video_defaults/repeat": VideoRepeat.SINGLE_FILE,
+    "video_defaults/audio_mode": AudioChannelMode.UNSET,
+    "video_defaults/random_loop": False,
+    "video_defaults/muted": True,
+    "video_defaults/paused": False,
+    "video_defaults/stream_quality": "best",
+    "video_defaults/auto_reload_timer": 0,
+    "misc/overlay_hide": True,
+    "misc/overlay_timeout": 3,
+    "misc/mouse_hide": True,
+    "misc/mouse_hide_timeout": 5,
+    "misc/vlc_options": "",
+    "logging/log_level": logging.WARNING,
+    "logging/log_level_vlc": DISABLED,
+    "logging/log_limit": False,
+    "logging/log_limit_size": 10,
+    "logging/log_limit_backups": 1,
+    "internal/opaque_hw_overlay": False,
+    "internal/fake_overlay_invisibility": False,
+    "streaming/hls_via_streamlink": True,
+    "streaming/resolver_priority": URLResolver.STREAMLINK,
+    "streaming/resolver_priority_patterns": ResolverPatterns(__root__=[]),
+    "recent_list_videos": RecentListVideos(),
+    "recent_list_playlists": RecentListPlaylists(),
+}
+
+if env.IS_MACOS:
+    _default_settings["player/video_driver"] = VideoDriver.VLC_HW_SP
 
 
-def _set_combo_box(combo_box, data_value):
-    idx = combo_box.findData(data_value)
-    combo_box.setCurrentIndex(idx)
+class _Settings(object):
+    def __init__(self):
+        settings_path = get_app_data_dir() / "settings.ini"
 
+        self.settings = QSettings(str(settings_path), QSettings.IniFormat)
 
-def _set_groupbox_header_bold(groupbox):
-    font = groupbox.font()
-    font.setBold(True)
-    groupbox.setFont(font)
+        logging.getLogger("Settings").debug(f"Settings path: {settings_path}")
 
-    # Restore the font of each children to regular.
-    font.setBold(False)
-    for child in groupbox.children():
-        with contextlib.suppress(AttributeError):
-            child.setFont(font)
+    def get(self, setting):
+        setting_type = type(_default_settings[setting])
 
+        if issubclass(setting_type, Enum):
+            return self._parse_enum(setting_type, setting)
 
-class SettingsDialog(QDialog, Ui_SettingsDialog):
-    def __init__(self, parent):
-        super().__init__(parent)
+        if issubclass(setting_type, BaseModel):
+            return self._parse_pydantic(setting_type, setting)
 
-        self._log = logging.getLogger(self.__class__.__name__)
+        if issubclass(setting_type, RecentList):
+            return self._parse_list(setting_type, setting)
 
-        self.setupUi(self)
-
-        self.settings_map = {
-            "player/video_driver": self.playerVideoDriver,
-            "player/video_driver_players": self.playerVideoDriverPlayers,
-            "player/video_init_timeout": self.timeoutVideoInit,
-            "player/pause_background_videos": self.playerPauseBackgroundVideos,
-            "player/pause_minimized": self.playerPauseWhenMinimized,
-            "player/inhibit_screensaver": self.playerInhibitScreensaver,
-            "player/one_instance": self.playerOneInstance,
-            "player/stay_on_top": self.playerStayOnTop,
-            "player/show_overlay_border": self.playerShowOverlayBorder,
-            "player/language": self.listLanguages,
-            "player/recent_list_enabled": self.playerRecentList,
-            "player/recent_list_max_size": self.playerRecentListSize,
-            "playlist/grid_mode": self.gridMode,
-            "playlist/grid_fit": self.gridFit,
-            "playlist/grid_size": self.gridSize,
-            "playlist/shuffle_on_load": self.gridShuffleOnLoad,
-            "playlist/save_position": self.playlistSavePosition,
-            "playlist/save_state": self.playlistSaveState,
-            "playlist/save_window": self.playlistSaveWindow,
-            "playlist/seek_sync_mode": self.playlistSeekSyncMode,
-            "playlist/track_changes": self.playlistTrackChanges,
-            "playlist/disable_click_pause": self.playlistDisableClickPause,
-            "playlist/disable_wheel_seek": self.playlistDisableWheelSeek,
-            "video_defaults/aspect": self.videoAspect,
-            "video_defaults/transform": self.videoTransform,
-            "video_defaults/repeat": self.repeatMode,
-            "video_defaults/audio_mode": self.videoAudioMode,
-            "video_defaults/random_loop": self.videoRandomLoop,
-            "video_defaults/muted": self.videoMuted,
-            "video_defaults/paused": self.videoPaused,
-            "video_defaults/stream_quality": self.streamQuality,
-            "video_defaults/auto_reload_timer": self.streamAutoReloadTimer,
-            "misc/overlay_hide": self.timeoutOverlayFlag,
-            "misc/overlay_timeout": self.timeoutOverlay,
-            "misc/mouse_hide": self.timeoutMouseHideFlag,
-            "misc/mouse_hide_timeout": self.timeoutMouseHide,
-            "misc/vlc_options": self.miscVLCOptions,
-            "logging/log_level": self.logLevel,
-            "logging/log_level_vlc": self.logLevelVLC,
-            "logging/log_limit": self.logLimit,
-            "logging/log_limit_size": self.logLimitSize,
-            "logging/log_limit_backups": self.logLimitBackups,
-            "internal/opaque_hw_overlay": self.miscOpaqueHWOverlay,
-            "internal/fake_overlay_invisibility": self.miscFakeOverlayInvisibility,
-            "streaming/hls_via_streamlink": self.streamingHLSVIAStreamlink,
-            "streaming/resolver_priority": self.streamingResolverPriority,
-            "streaming/resolver_priority_patterns": self.streamingResolverPriorityPatterns,  # noqa: E501
-        }
-
-        self.ui_customize()
-        self.ui_fill()
-
-        self.ui_connect()
-        self.ui_set_limits()
-
-        self.load_settings()
-
-        self.ui_customize_dynamic()
-
-    def ui_customize(self):  # noqa: WPS213
-        for btn in self.buttonBox.buttons():
-            btn.setIcon(QIcon())
-
-        self.ui_customize_section_index()
-
-        _set_groupbox_header_bold(self.playerVideoDriverBox)
-
-        if env.IS_LINUX:
-            self.playerStayOnTop.hide()
-
-        if not env.IS_LINUX:
-            self.section_misc.hide()
-            self.miscOpaqueHWOverlay.hide()
-            self.miscFakeOverlayInvisibility.hide()
-
-    def ui_customize_section_index(self):
-        font = self.section_index.font()
-        font.setPixelSize(16)  # noqa: WPS432
-        self.section_index.setFont(font)
-
-        pal = self.section_index.palette()
-        col = pal.color(QPalette.Active, QPalette.Text)
-        pal.setColor(QPalette.Disabled, QPalette.Text, col)
-        self.section_index.setPalette(pal)
-
-    def ui_fill(self):  # noqa: WPS213
-        self.fill_playerVideoDriver()
-        self.fill_gridMode()
-        self.fill_videoAspect()
-        self.fill_videoTransform()
-        self.fill_repeatMode()
-        self.fill_logLevel()
-        self.fill_logLevelVLC()
-        self.fill_language()
-        self.fill_streamQuality()
-        self.fill_playlistSeekSyncMode()
-        self.fill_streamingResolverPriority()
-        self.fill_videoAudioMode()
-
-    def ui_set_limits(self):  # noqa: WPS213
-        self.playerVideoDriverPlayers.setRange(1, MAX_VLC_PROCESSES)
-        self.timeoutOverlay.setRange(1, 60)
-        self.timeoutMouseHide.setRange(1, 60)
-        self.logLimitSize.setRange(1, 1024 * 1024)
-        self.logLimitBackups.setRange(1, 1000)
-        self.timeoutVideoInit.setRange(1, 1000)
-        self.playerRecentListSize.setRange(1, 100)
-
-        self.gridSize.setRange(0, 1000)
-        self.gridSize.setSpecialValueText(translate("Grid Size", "Auto"))
-
-        self.streamAutoReloadTimer.setRange(0, 1000)
-        self.streamAutoReloadTimer.setSpecialValueText(
-            translate("Auto Reload Timer", "Disabled")
+        return self.settings.value(
+            setting, _default_settings[setting], type=setting_type
         )
 
-    def ui_customize_dynamic(self):
-        self.driver_selected(self.playerVideoDriver.currentIndex())
-        self.timeoutMouseHide.setEnabled(self.timeoutMouseHideFlag.isChecked())
-        self.timeoutOverlay.setEnabled(self.timeoutOverlayFlag.isChecked())
-        self.logLimitSize.setEnabled(self.logLimit.isChecked())
-        self.logLimitBackups.setEnabled(self.logLimit.isChecked())
-        self.streamingWildcardHelp.setVisible(False)
-        self.playerRecentListSize.setEnabled(self.playerRecentList.isChecked())
+    def set(self, setting_name, setting_value):
+        setting_type = type(_default_settings[setting_name])
 
-        self.switch_page(None)
-
-    def ui_connect(self):
-        qt_connect(
-            (self.playerVideoDriver.currentIndexChanged, self.driver_selected),
-            (self.timeoutMouseHideFlag.stateChanged, self.timeoutMouseHide.setEnabled),
-            (self.timeoutOverlayFlag.stateChanged, self.timeoutOverlay.setEnabled),
-            (self.logFileOpen.clicked, self.open_logfile),
-            (self.section_index.currentTextChanged, self.switch_page),
-            (self.section_index.itemSelectionChanged, self.keep_index_selection),
-            (self.logLimit.stateChanged, self.logLimitSize.setEnabled),
-            (self.logLimit.stateChanged, self.logLimitBackups.setEnabled),
-            (self.streamingWildcardHelpButton.clicked, self.toggle_wildcard_help),
-            (self.playerRecentList.stateChanged, self.playerRecentListSize.setEnabled),
-        )
-
-    def toggle_wildcard_help(self):
-        self.streamingWildcardHelp.setVisible(
-            not self.streamingWildcardHelp.isVisible()
-        )
-
-    def keep_index_selection(self):
-        if not self.section_index.selectedItems():
-            self.section_index.setCurrentItem(self.section_index.currentItem())
-
-    def switch_page(self, page_name):
-        pages_map = {
-            translate("SettingsDialog", "Player"): self.page_general_player,
-            translate("SettingsDialog", "Language"): self.page_general_language,
-            translate("SettingsDialog", "Playlist"): self.page_defaults_playlist,
-            translate("SettingsDialog", "Video"): self.page_defaults_video,
-            translate("SettingsDialog", "Streaming"): self.page_misc_streaming,
-            translate("SettingsDialog", "Logging"): self.page_misc_logging,
-            translate("SettingsDialog", "Advanced"): self.page_misc_advanced,
-        }
-
-        if page_name is None:
-            self.section_index.setCurrentRow(1)
-            return
-
-        page_widget = pages_map.get(page_name)
-
-        if not page_widget:
-            return
-
-        self.section_page.setCurrentWidget(page_widget)
-
-    def open_logfile(self):
-        log_path = get_app_data_dir() / "gridplayer.log"
-
-        self._log.debug(f"Opening log file {log_path}")
-
-        if not log_path.is_file():
-            return QCustomMessageBox.critical(
-                self,
-                translate("Dialog", "Error"),
-                translate("Error", "Log file does not exist!"),
+        if setting_type != type(setting_value):  # noqa: WPS516
+            raise ValueError(
+                f"Setting {setting_name} is of type {setting_type}"
+                f" but value is of type {type(setting_value)}"
             )
 
-        if env.IS_SNAP:
-            # https://forum.snapcraft.io/t/xdg-open-or-gvfs-open-qdesktopservices-openurl-file-somelocation-file-txt-wont-open-the-file/16824
-            subprocess.call(["xdg-open", log_path])  # noqa: S603, S607
-        else:
-            QDesktopServices.openUrl(QUrl.fromLocalFile(str(log_path)))
+        if issubclass(setting_type, RecentList):
+            self._save_list(setting_name, setting_value)
+            return
 
-    def fill_logLevelVLC(self):
-        log_levels = {
-            log_config.DISABLED: translate("ErrorLevel", "None"),
-            logging.ERROR: translate("ErrorLevel", "Error"),
-            logging.WARNING: translate("ErrorLevel", "Warning"),
-            logging.INFO: translate("ErrorLevel", "Info"),
-            logging.DEBUG: translate("ErrorLevel", "Debug"),
-        }
+        setting_value = self._get_storage_value(setting_value)
 
-        _fill_combo_box(self.logLevelVLC, log_levels)
+        self.settings.setValue(setting_name, setting_value)
 
-    def fill_logLevel(self):
-        log_levels = {
-            log_config.DISABLED: translate("ErrorLevel", "None"),
-            logging.CRITICAL: translate("ErrorLevel", "Critical"),
-            logging.ERROR: translate("ErrorLevel", "Error"),
-            logging.WARNING: translate("ErrorLevel", "Warning"),
-            logging.INFO: translate("ErrorLevel", "Info"),
-            logging.DEBUG: translate("ErrorLevel", "Debug"),
-        }
+    def reset(self, setting_name):
+        self.set(setting_name, _default_settings[setting_name])
 
-        _fill_combo_box(self.logLevel, log_levels)
+    def get_all(self):
+        return {k: self.get(k) for k in _default_settings}
 
-    def fill_videoAspect(self):
-        aspect_ratios = {
-            VideoAspect.FIT: self.tr("Fit"),
-            VideoAspect.STRETCH: self.tr("Stretch"),
-            VideoAspect.NONE: self.tr("None"),
-        }
+    def sync(self):
+        self.settings.sync()
 
-        _fill_combo_box(self.videoAspect, aspect_ratios)
+    def sync_get(self, setting):
+        self.sync()
+        return self.get(setting)
 
-    def fill_videoTransform(self):
-        transform_options = {
-            VideoTransform.ROTATE_90: self.tr("Rotate 90"),
-            VideoTransform.ROTATE_180: self.tr("Rotate 180"),
-            VideoTransform.ROTATE_270: self.tr("Rotate 270"),
-            VideoTransform.HFLIP: self.tr("Flip Horizontally"),
-            VideoTransform.VFLIP: self.tr("Flip Vertically"),
-            VideoTransform.TRANSPOSE: self.tr("Transpose"),
-            VideoTransform.ANTITRANSPOSE: self.tr("Anti-transpose"),
-            VideoTransform.NONE: self.tr("No Transform"),
-        }
+    @property
+    def filename(self):
+        return self.settings.fileName()
 
-        _fill_combo_box(self.videoTransform, transform_options)
+    def _parse_enum(self, setting_type, setting):
+        setting_value = self.settings.value(setting)
 
-    def fill_repeatMode(self):
-        repeat_modes = {
-            VideoRepeat.SINGLE_FILE: self.tr("Single File"),
-            VideoRepeat.DIR: self.tr("Directory"),
-            VideoRepeat.DIR_SHUFFLE: self.tr("Directory (Shuffle)"),
-            VideoRepeat.REC_DIR: self.tr("Recursive Directory"),
-            VideoRepeat.REC_DIR_SHUFFLE: self.tr("Recursive Directory (Shuffle)"),            
-        }
+        if isinstance(setting_value, str):
+            with suppress(ValueError):
+                return setting_type(setting_value)
 
-        _fill_combo_box(self.repeatMode, repeat_modes)
+        return _default_settings[setting]
 
-    def fill_gridMode(self):
-        grid_modes = {
-            GridMode.AUTO_ROWS: self.tr("Rows First"),
-            GridMode.AUTO_COLS: self.tr("Columns First"),
-        }
+    def _parse_pydantic(self, setting_type, setting):
+        setting_value = self.settings.value(setting)
 
-        _fill_combo_box(self.gridMode, grid_modes)
+        if isinstance(setting_value, str):
+            with suppress(ValueError):
+                return setting_type.parse_raw(setting_value)
 
-    def fill_playerVideoDriver(self):
-        if env.IS_MACOS:
-            video_drivers = {
-                VideoDriver.VLC_HW_SP: "{0} <VLC {1}>".format(
-                    self.tr("Hardware SP"), env.VLC_VERSION
-                ),
-                VideoDriver.VLC_SW: "{0} <VLC {1}>".format(
-                    self.tr("Software"), env.VLC_VERSION
-                ),
-                VideoDriver.DUMMY: self.tr("Dummy"),
-            }
-        else:
-            video_drivers = {
-                VideoDriver.VLC_HW: "{0} <VLC {1}>".format(
-                    self.tr("Hardware"), env.VLC_VERSION
-                ),
-                VideoDriver.VLC_HW_SP: "{0} <VLC {1}>".format(
-                    self.tr("Hardware SP"), env.VLC_VERSION
-                ),
-                VideoDriver.VLC_SW: "{0} <VLC {1}>".format(
-                    self.tr("Software"), env.VLC_VERSION
-                ),
-                VideoDriver.DUMMY: self.tr("Dummy"),
-            }
+        return _default_settings[setting]
 
-        _fill_combo_box(self.playerVideoDriver, video_drivers)
+    def _parse_list(self, setting_type, setting):
+        res_list = []
 
-    def fill_language(self):
-        for language in LANGUAGES:
-            self.listLanguages.add_language_row(language)
+        self.settings.beginGroup(setting)
+        for key in self.settings.childKeys():
+            res_list.append(self.settings.value(key))
+        self.settings.endGroup()
 
-    def fill_streamQuality(self):
-        quality_codes = {
-            "best": self.tr("Best"),
-            "worst": self.tr("Worst"),
-            "best_audio_only": self.tr("Best (Audio Only)"),
-            "worst_audio_only": self.tr("Worst (Audio Only)"),
-        }
+        return setting_type(res_list)
 
-        standard_quality_codes = [
-            "2160p",
-            "2160p60",
-            "1440p",
-            "1440p60",
-            "1080p",
-            "1080p60",
-            "720p60",
-            "720p",
-            "480p",
-            "360p",
-            "240p",
-            "144p",
-        ]
+    def _save_list(self, setting_name, setting_value):
+        self.settings.remove(setting_name)
 
-        for code in standard_quality_codes:
-            quality_codes[code] = code
+        if not setting_value:
+            return
 
-        _fill_combo_box(self.streamQuality, quality_codes)
+        self.settings.beginGroup(setting_name)
+        for i, item in enumerate(setting_value):
+            self.settings.setValue(str(i), self._get_storage_value(item))
+        self.settings.endGroup()
 
-    def fill_playlistSeekSyncMode(self):
-        seek_modes = {
-            SeekSyncMode.DISABLED: self.tr("Disabled"),
-            SeekSyncMode.PERCENT: self.tr("Percent"),
-            SeekSyncMode.TIMECODE: self.tr("Timecode"),
-        }
+    def _get_storage_value(self, setting_value):
+        if isinstance(setting_value, Enum):
+            return setting_value.value
 
-        _fill_combo_box(self.playlistSeekSyncMode, seek_modes)
+        if isinstance(setting_value, BaseModel):
+            return setting_value.json()
 
-    def fill_streamingResolverPriority(self):
-        resolvers = {
-            URLResolver.STREAMLINK: "Streamlink",
-            URLResolver.YT_DLP: "yt-dlp",
-            URLResolver.DIRECT: self.tr("Direct"),
-        }
+        if isinstance(setting_value, (Path, str)):
+            return str(setting_value)
 
-        _fill_combo_box(self.streamingResolverPriority, resolvers)
+        return setting_value
 
-    def fill_videoAudioMode(self):
-        modes = {
-            AudioChannelMode.UNSET: translate("Audio Mode", "Original"),
-            AudioChannelMode.STEREO: translate("Audio Mode", "Stereo"),
-            AudioChannelMode.RSTEREO: translate("Audio Mode", "Reverse Stereo"),
-            AudioChannelMode.LEFT: translate("Audio Mode", "Left"),
-            AudioChannelMode.RIGHT: translate("Audio Mode", "Right"),
-            AudioChannelMode.DOLBYS: translate("Audio Mode", "Dolby Surround"),
-            AudioChannelMode.HEADPHONES: translate("Audio Mode", "Headphones"),
-            AudioChannelMode.MONO: translate("Audio Mode", "Mono"),
-        }
 
-        _fill_combo_box(self.videoAudioMode, modes)
+def Settings():
+    global SETTINGS  # noqa: WPS420
 
-    def driver_selected(self, idx):
-        driver_id = self.playerVideoDriver.itemData(idx)
+    if not SETTINGS:
+        SETTINGS = _Settings()  # noqa: WPS442
 
-        if driver_id in VIDEO_DRIVERS_MULTIPROCESS:
-            self.playerVideoDriverPlayers.setDisabled(False)
-        else:
-            self.playerVideoDriverPlayers.setDisabled(True)
+    return SETTINGS
 
-    def load_settings(self):
-        elements_value_set_fun = {
-            QCheckBox: lambda e, v: e.setChecked(v),
-            QSpinBox: lambda e, v: e.setValue(v),
-            QLineEdit: lambda e, v: e.setText(v),
-            QComboBox: _set_combo_box,
-            LanguageList: lambda e, v: e.setValue(v),
-            ResolverPatternsList: lambda e, v: e.setDataRows(v),
-        }
 
-        for setting, element in self.settings_map.items():
-            setting_value = Settings().get(setting)
-
-            try:
-                set_function = elements_value_set_fun[type(element)]
-            except KeyError:
-                raise ValueError(f"No element decoder for {setting}")
-
-            set_function(element, setting_value)
-
-    def save_settings(self):
-        elements_value_read_attr = {
-            QCheckBox: "isChecked",
-            QSpinBox: "value",
-            QLineEdit: "text",
-            QComboBox: "currentData",
-            LanguageList: "value",
-            ResolverPatternsList: "rows_data",
-        }
-
-        for setting, element in self.settings_map.items():
-            if not element.isEnabled():
-                continue
-
-            try:
-                value_attr = elements_value_read_attr[type(element)]
-            except KeyError:
-                raise ValueError(f"No element decoder for {setting}")
-
-            new_value = getattr(element, value_attr)()
-
-            Settings().set(setting, new_value)
-
-    def accept(self):
-        self.save_settings()
-
-        super().accept()
+def default_field(setting_name):
+    return Field(default_factory=lambda: Settings().get(setting_name))
