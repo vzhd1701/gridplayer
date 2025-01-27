@@ -719,8 +719,16 @@ class VideoBlock(QWidget):  # noqa: WPS230
         if is_first_video:
             self.original_dir = video_params.uri.parent  # Use the parent directory of the first video
             self.siblings = get_file_siblings(self.original_dir)  # Compute sibling list for navigation
-            self.navigator = VideoNavigator(video_params.uri, is_shuffle=True)  # Initialize navigator with sibling list
+            if video_params.repeat_mode == VideoRepeat.DIR_SHUFFLE:
+                self.navigator = VideoNavigator(video_params.uri, is_shuffle = True, is_recursive = False) 
+            elif video_params.repeat_mode == VideoRepeat.REC_DIR_SHUFFLE:
+                self.navigator = VideoNavigator(video_params.uri, is_shuffle = True, is_recursive = True)
+            elif video_params.repeat_mode == VideoRepeat.REC_DIR:
+                self.navigator = VideoNavigator(video_params.uri, is_shuffle = False, is_recursive = True)            
+            elif video_params.repeat_mode == VideoRepeat.DIR:
+                self.navigator = VideoNavigator(video_params.uri, is_shuffle = False, is_recursive = False)     
 
+            
         self.video_params = video_params
 
         # Shut down current video

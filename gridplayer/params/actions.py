@@ -288,14 +288,32 @@ ACTIONS = MappingProxyType(
             "check_if": ("is_active_param_set_to", "repeat_mode", VideoRepeat.DIR),
             "show_if": "is_active_local_file",
         },
-        "Repeat Directory (Shuffle)": {
-            "title": translate("Actions", "Repeat Directory (Shuffle)"),
+        "Repeat Directory and Subdirectories": {
+            "title": translate("Actions", "Repeat Directory and Subdirectories"),
+            "icon": "loop-dir",
+            "func": ("active", "set_repeat_mode", VideoRepeat.REC_DIR),
+            "check_if": ("is_active_param_set_to", "repeat_mode", VideoRepeat.REC_DIR),
+            "show_if": "is_active_local_file",
+        },        
+        "Repeat Directory (Shuffled)": {
+            "title": translate("Actions", "Repeat Directory (Shuffled)"),
             "icon": "loop-dir-shuffle",
             "func": ("active", "set_repeat_mode", VideoRepeat.DIR_SHUFFLE),
             "check_if": (
                 "is_active_param_set_to",
                 "repeat_mode",
                 VideoRepeat.DIR_SHUFFLE,
+            ),
+            "show_if": "is_active_local_file",
+        },
+        "Repeat Directory and Subdirectories(Shuffled)": {
+            "title": translate("Actions", "Repeat Directory and Subdirectories(Shuffled)"),
+            "icon": "loop-dir-shuffle",
+            "func": ("active", "set_repeat_mode", VideoRepeat.REC_DIR_SHUFFLE),
+            "check_if": (
+                "is_active_param_set_to",
+                "repeat_mode",
+                VideoRepeat.REC_DIR_SHUFFLE,
             ),
             "show_if": "is_active_local_file",
         },
