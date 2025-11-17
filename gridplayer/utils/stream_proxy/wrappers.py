@@ -14,8 +14,7 @@ from streamlink.stream import (
     StreamIOIterWrapper,
     StreamIOThreadWrapper,
 )
-from streamlink.stream.hls_playlist import M3U8
-from streamlink.stream.hls_playlist import load as load_hls_playlist
+from streamlink.stream.hls import M3U8, parse_m3u8
 
 from gridplayer.models.stream import Stream, StreamSessionOpts
 from gridplayer.utils.stream_proxy.m3u8 import m3u8_to_str
@@ -79,7 +78,7 @@ class HLSProxy(HTTPStreamProxy):
         )
 
         base_url = os.path.dirname(self.args["url"]) + "/"
-        hls_playlist = load_hls_playlist(self._res.text, base_url)
+        hls_playlist = parse_m3u8(self._res.text, base_url)
 
         hls_playlist_txt = self._proxify_hls_playlist(hls_playlist)
 

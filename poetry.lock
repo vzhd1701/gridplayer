@@ -19,6 +19,7 @@ description = "Classes Without Boilerplate"
 optional = false
 python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, !=3.4.*"
 groups = ["main", "dev"]
+markers = "python_version < \"3.13\""
 files = [
     {file = "attrs-21.4.0-py2.py3-none-any.whl", hash = "sha256:2d27e3784d7a565d36ab851fe94887c5eccd6a463168875832a1be79c82828b4"},
     {file = "attrs-21.4.0.tar.gz", hash = "sha256:626ba8234211db98e869df76230a137c4c40a12d72445c45d5f5b716f076e2fd"},
@@ -29,6 +30,19 @@ dev = ["cloudpickle ; platform_python_implementation == \"CPython\"", "coverage[
 docs = ["furo", "sphinx", "sphinx-notfound-page", "zope.interface"]
 tests = ["cloudpickle ; platform_python_implementation == \"CPython\"", "coverage[toml] (>=5.0.2)", "hypothesis", "mypy", "pympler", "pytest (>=4.3.0)", "pytest-mypy-plugins", "six", "zope.interface"]
 tests-no-zope = ["cloudpickle ; platform_python_implementation == \"CPython\"", "coverage[toml] (>=5.0.2)", "hypothesis", "mypy", "pympler", "pytest (>=4.3.0)", "pytest-mypy-plugins", "six"]
+
+[[package]]
+name = "attrs"
+version = "25.4.0"
+description = "Classes Without Boilerplate"
+optional = false
+python-versions = ">=3.9"
+groups = ["main", "dev"]
+markers = "python_version >= \"3.13\""
+files = [
+    {file = "attrs-25.4.0-py3-none-any.whl", hash = "sha256:adcf7e2a1fb3b36ac48d97835bb6d8ade15b8dcce26aba8bf1d14847b57a3373"},
+    {file = "attrs-25.4.0.tar.gz", hash = "sha256:16d5969b87f0859ef33a48b35d55ac1be6e42ae49d5e853b597db70c35c57e11"},
+]
 
 [[package]]
 name = "bandit"
@@ -910,6 +924,7 @@ description = "Python port of markdown-it. Markdown parsing, done right!"
 optional = false
 python-versions = "~=3.6"
 groups = ["dev"]
+markers = "python_version < \"3.13\""
 files = [
     {file = "markdown-it-py-1.1.0.tar.gz", hash = "sha256:36be6bb3ad987bfdb839f5ba78ddf094552ca38ccbd784ae4f74a4e1419fc6e3"},
     {file = "markdown_it_py-1.1.0-py3-none-any.whl", hash = "sha256:98080fc0bc34c4f2bcf0846a096a9429acbd9d5d8e67ed34026c03c61c464389"},
@@ -927,6 +942,31 @@ rtd = ["myst-nb (==0.13.0a1)", "pyyaml", "sphinx (>=2,<4)", "sphinx-book-theme",
 testing = ["coverage", "psutil", "pytest (>=3.6,<4)", "pytest-benchmark (>=3.2,<4.0)", "pytest-cov", "pytest-regressions"]
 
 [[package]]
+name = "markdown-it-py"
+version = "4.0.0"
+description = "Python port of markdown-it. Markdown parsing, done right!"
+optional = false
+python-versions = ">=3.10"
+groups = ["dev"]
+markers = "python_version >= \"3.13\""
+files = [
+    {file = "markdown_it_py-4.0.0-py3-none-any.whl", hash = "sha256:87327c59b172c5011896038353a81343b6754500a08cd7a4973bb48c6d578147"},
+    {file = "markdown_it_py-4.0.0.tar.gz", hash = "sha256:cb0a2b4aa34f932c007117b194e945bd74e0ec24133ceb5bac59009cda1cb9f3"},
+]
+
+[package.dependencies]
+mdurl = ">=0.1,<1.0"
+
+[package.extras]
+benchmarking = ["psutil", "pytest", "pytest-benchmark"]
+compare = ["commonmark (>=0.9,<1.0)", "markdown (>=3.4,<4.0)", "markdown-it-pyrs", "mistletoe (>=1.0,<2.0)", "mistune (>=3.0,<4.0)", "panflute (>=2.3,<3.0)"]
+linkify = ["linkify-it-py (>=1,<3)"]
+plugins = ["mdit-py-plugins (>=0.5.0)"]
+profiling = ["gprof2dot"]
+rtd = ["ipykernel", "jupyter_sphinx", "mdit-py-plugins (>=0.5.0)", "myst-parser", "pyyaml", "sphinx", "sphinx-book-theme (>=1.0,<2.0)", "sphinx-copybutton", "sphinx-design"]
+testing = ["coverage", "pytest", "pytest-cov", "pytest-regressions", "requests"]
+
+[[package]]
 name = "mccabe"
 version = "0.7.0"
 description = "McCabe checker, plugin for flake8"
@@ -940,18 +980,32 @@ files = [
 
 [[package]]
 name = "mdformat"
-version = "0.7.7"
+version = "1.0.0"
 description = "CommonMark compliant Markdown formatter"
 optional = false
-python-versions = ">=3.6.1,<4.0.0"
+python-versions = ">=3.10"
 groups = ["dev"]
 files = [
-    {file = "mdformat-0.7.7-py3-none-any.whl", hash = "sha256:8aa0cc72b06a56b0eac086061ec584d7e6fc36c9ba0cf6f5d31bc6ff4cdac397"},
-    {file = "mdformat-0.7.7.tar.gz", hash = "sha256:08e6723c60b657b833d7ba7547c8a926567a39ecd47fd1316793ac9ca84b9730"},
+    {file = "mdformat-1.0.0-py3-none-any.whl", hash = "sha256:bca015d65a1d063a02e885a91daee303057bc7829c2cd37b2075a50dbb65944b"},
+    {file = "mdformat-1.0.0.tar.gz", hash = "sha256:4954045fcae797c29f86d4ad879e43bb151fa55dbaf74ac6eaeacf1d45bb3928"},
 ]
 
 [package.dependencies]
-markdown-it-py = ">=1.0.0b2,<2.0.0"
+markdown-it-py = ">=1,<5"
+tomli = {version = ">=1.1.0", markers = "python_version < \"3.11\""}
+
+[[package]]
+name = "mdurl"
+version = "0.1.2"
+description = "Markdown URL utilities"
+optional = false
+python-versions = ">=3.7"
+groups = ["dev"]
+markers = "python_version >= \"3.13\""
+files = [
+    {file = "mdurl-0.1.2-py3-none-any.whl", hash = "sha256:84008a41e51615a49fc9966191ff91509e3c40b939176e643fd50a5c2196b8f8"},
+    {file = "mdurl-0.1.2.tar.gz", hash = "sha256:bb413d29f5eea38f31dd4754dd7377d4465116fb207585f97bf925588687c1ba"},
+]
 
 [[package]]
 name = "mypy-extensions"
@@ -1637,31 +1691,37 @@ pbr = ">=2.0.0,<2.1.0 || >2.1.0"
 
 [[package]]
 name = "streamlink"
-version = "6.2.1"
+version = "8.0.0"
 description = "Streamlink is a command-line utility that extracts streams from various services and pipes them into a video player of choice."
 optional = false
-python-versions = ">=3.8"
+python-versions = ">=3.10"
 groups = ["main"]
 files = [
-    {file = "streamlink-6.2.1-py3-none-any.whl", hash = "sha256:392fe23b4fc7267ec53ddcf4e32ca654d5cfe44e12e5f5733e3eaa0e314d80bc"},
-    {file = "streamlink-6.2.1-py3-none-win32.whl", hash = "sha256:d7c34bb67103dc59edfe63619624737573af1169ed7c4e18c4c89674f5243f1d"},
-    {file = "streamlink-6.2.1-py3-none-win_amd64.whl", hash = "sha256:7fa59eca97225ff13cf19a8a0a1617b16c342fda6a3359e98d93322dceb76347"},
-    {file = "streamlink-6.2.1.tar.gz", hash = "sha256:eb826692f6bb2f4a1a8a4d547024d0954ae270bdaeb3e3b908473aa55b209d12"},
+    {file = "streamlink-8.0.0-py3-none-any.whl", hash = "sha256:3db75822c921bf3cec857df9191342d49dad9e656a474e70ffa532575e19e05b"},
+    {file = "streamlink-8.0.0-py3-none-win32.whl", hash = "sha256:08d37d4b1d4d787c028148e3e3557b19bb81f4066cc9c8e0977628d6016e0834"},
+    {file = "streamlink-8.0.0-py3-none-win_amd64.whl", hash = "sha256:4cb47fb185917826bff91b883e2fc7891c73f0cd224729d31c7b674bd4ece045"},
+    {file = "streamlink-8.0.0.tar.gz", hash = "sha256:fb6252b87cb1d4d14dfc5bf1f4add1001e87016b150b7495e22e97aeae264655"},
 ]
 
 [package.dependencies]
 certifi = "*"
+exceptiongroup = {version = "*", markers = "python_version < \"3.11\""}
 isodate = "*"
-lxml = ">=4.6.4,<6"
+lxml = ">=4.6.4,<7"
 pycountry = "*"
 pycryptodome = ">=3.4.3,<4"
 PySocks = ">=1.5.6,<1.5.7 || >1.5.7"
-requests = ">=2.26.0,<3"
-trio = ">=0.22.0,<1"
+requests = ">=2.30.0,<3"
+trio = [
+    {version = ">=0.25.0,<1", markers = "python_version >= \"3.13\""},
+    {version = ">=0.22.0,<1", markers = "python_version < \"3.13\""},
+]
 trio-websocket = ">=0.9.0,<1"
-typing-extensions = ">=4.0.0"
-urllib3 = ">=1.26.0,<3"
+urllib3 = ">=2.0.0,<3"
 websocket-client = ">=1.2.1,<2"
+
+[package.extras]
+decompress = ["urllib3[brotli,zstd] (>=2.0.0,<3) ; python_version < \"3.14\"", "urllib3[brotli] (>=2.0.0,<3) ; python_version >= \"3.14\""]
 
 [[package]]
 name = "toml"
@@ -1695,6 +1755,7 @@ description = "A friendly Python library for async concurrency and I/O"
 optional = false
 python-versions = ">=3.7"
 groups = ["main"]
+markers = "python_version < \"3.13\""
 files = [
     {file = "trio-0.22.2-py3-none-any.whl", hash = "sha256:f43da357620e5872b3d940a2e3589aa251fd3f881b65a608d742e00809b1ec38"},
     {file = "trio-0.22.2.tar.gz", hash = "sha256:3887cf18c8bcc894433420305468388dac76932e9668afa1c49aa3806b6accb3"},
@@ -1707,6 +1768,27 @@ exceptiongroup = {version = ">=1.0.0rc9", markers = "python_version < \"3.11\""}
 idna = "*"
 outcome = "*"
 sniffio = "*"
+sortedcontainers = "*"
+
+[[package]]
+name = "trio"
+version = "0.32.0"
+description = "A friendly Python library for async concurrency and I/O"
+optional = false
+python-versions = ">=3.10"
+groups = ["main"]
+markers = "python_version >= \"3.13\""
+files = [
+    {file = "trio-0.32.0-py3-none-any.whl", hash = "sha256:4ab65984ef8370b79a76659ec87aa3a30c5c7c83ff250b4de88c29a8ab6123c5"},
+    {file = "trio-0.32.0.tar.gz", hash = "sha256:150f29ec923bcd51231e1d4c71c7006e65247d68759dd1c19af4ea815a25806b"},
+]
+
+[package.dependencies]
+attrs = ">=23.2.0"
+cffi = {version = ">=1.14", markers = "os_name == \"nt\" and implementation_name != \"pypy\""}
+idna = "*"
+outcome = "*"
+sniffio = ">=1.3.0"
 sortedcontainers = "*"
 
 [[package]]
@@ -1868,4 +1950,4 @@ test = ["pytest (>=8.1,<9.0)", "pytest-rerunfailures (>=14.0,<15.0)"]
 [metadata]
 lock-version = "2.1"
 python-versions = "^3.10"
-content-hash = "93fa07746c8575b1352148c87a5865b365772ac31201f12fba4dea8b03df8e4f"
+content-hash = "e564e75dc724bf5fd1707290d4eed4ff24c615b15260ad2e3e20c963608dfa7c"
