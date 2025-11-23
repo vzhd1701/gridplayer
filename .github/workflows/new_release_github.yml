@@ -12,8 +12,8 @@ on:
       - "v[0-9]+.[0-9]+.[0-9]+"
 
 env:
-  BUILD_PYTHON_VERSION: 3.10
-  BUILD_POETRY_VERSION: 2.2.1
+  BUILD_PYTHON_VERSION: "3.10"
+  BUILD_POETRY_VERSION: "2.2.1"
 
 jobs:
   build_python:
