@@ -34,6 +34,9 @@ jobs:
         with:
           poetry-version: ${{ env.BUILD_POETRY_VERSION }}
 
+      - name: Install Poetry plugin
+        run: poetry self add poetry-plugin-export
+
       - name: Export requirements
         run: poetry export -f requirements.txt --without-hashes --output requirements.txt
 
