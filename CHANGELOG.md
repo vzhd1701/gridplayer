@@ -6,6 +6,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+### Added
+
+* Allow rtmp protocol ([#165](https://github.com/vzhd1701/gridplayer/issues/165)) ([939dd5a](https://github.com/vzhd1701/gridplayer/commit/939dd5a5235e8a852aa1b0e51b00538923a5bbbe))
+
+### Fixed
+
+* Update streamlink, yt-dlp and minimum python version ([#271](https://github.com/vzhd1701/gridplayer/issues/271)) ([763745c](https://github.com/vzhd1701/gridplayer/commit/763745c987beb0e333e3521a362f0f00bf1af6d9))
+
 ## [0.5.3] - 2023-10-17
 
 ### Added
