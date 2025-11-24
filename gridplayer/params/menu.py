@@ -164,7 +164,9 @@ SECTIONS = MappingProxyType(
                     "---",
                     "Repeat Single File",
                     "Repeat Directory",
+                    "Repeat Directory Recursively",
                     "Repeat Directory (Shuffle)",
+                    "Repeat Directory Recursively (Shuffle)",
                 ),
                 (
                     "Speed",
@@ -294,7 +296,9 @@ SECTIONS = MappingProxyType(
                         "---",
                         "Repeat Single File [ALL]",
                         "Repeat Directory [ALL]",
+                        "Repeat Directory Recursively [ALL]",
                         "Repeat Directory (Shuffle) [ALL]",
+                        "Repeat Directory Recursively (Shuffle) [ALL]",
                     ),
                     (
                         "Speed",

@@ -307,6 +307,8 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
             VideoRepeat.SINGLE_FILE: self.tr("Single File"),
             VideoRepeat.DIR: self.tr("Directory"),
             VideoRepeat.DIR_SHUFFLE: self.tr("Directory (Shuffle)"),
+            VideoRepeat.REC_DIR: self.tr("Recursive Directory"),
+            VideoRepeat.REC_DIR_SHUFFLE: self.tr("Recursive Directory (Shuffle)"),            
         }
 
         _fill_combo_box(self.repeatMode, repeat_modes)

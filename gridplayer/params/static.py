@@ -54,6 +54,8 @@ class VideoRepeat(AutoName):
     SINGLE_FILE = auto()
     DIR = auto()
     DIR_SHUFFLE = auto()
+    REC_DIR = auto()
+    REC_DIR_SHUFFLE = auto()
 
 
 class VideoDriver(AutoName):
