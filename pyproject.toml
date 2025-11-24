@@ -30,22 +30,22 @@ classifiers = [
 gridplayer = "gridplayer.__main__:main"
 
 [tool.poetry.dependencies]
-python = "^3.8.1"
+python = "^3.10"
 PyQt5 = "5.15.7"
 PyQt5-Qt5 = "5.15.2"
 pydantic = "^1.8.2"
 python-vlc = "3.0.11115"
 pyobjc-core = { version = "*", platform = "darwin" }
 pyobjc-framework-Cocoa = { version = "*", platform = "darwin" }
-streamlink = "6.2.1"
-yt-dlp = "2023.10.13"
+streamlink = "8.0.0"
+yt-dlp = "2025.11.12"
 
 [tool.poetry.group.dev.dependencies]
 isort = "^5.8.0"
 flakehell = "^0.9.0"
 wemake-python-styleguide = "^0.18.0"
 black = "^23.3.0"
-mdformat = "0.7.7"
+mdformat = "1.0.0"
 pre-commit = "^2.15.0"
 pytest = "^7.1.2"
 keepachangelog = "^1.0.0"

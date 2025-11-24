@@ -1,6 +1,6 @@
 from typing import List
 
-from streamlink.stream.hls_playlist import M3U8, ByteRange, Segment
+from streamlink.stream.hls import M3U8, ByteRange, HLSSegment
 
 LIVESTREAM_EDGE = 16
 
@@ -35,7 +35,7 @@ def m3u8_to_str(hls_playlist: M3U8):
     return "\n".join(res)
 
 
-def _segment_to_str(segment: Segment, add_map=False) -> List[str]:
+def _segment_to_str(segment: HLSSegment, add_map=False) -> List[str]:
     res = []
 
     if segment.date:

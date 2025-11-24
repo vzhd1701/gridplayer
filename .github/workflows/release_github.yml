@@ -12,8 +12,8 @@ on:
       - "v[0-9]+.[0-9]+.[0-9]+"
 
 env:
-  BUILD_PYTHON_VERSION: 3.8
-  BUILD_POETRY_VERSION: 1.4
+  BUILD_PYTHON_VERSION: "3.10"
+  BUILD_POETRY_VERSION: "2.2.1"
 
 jobs:
   build_python:
@@ -34,6 +34,9 @@ jobs:
         with:
           poetry-version: ${{ env.BUILD_POETRY_VERSION }}
 
+      - name: Install Poetry plugin
+        run: poetry self add poetry-plugin-export
+
       - name: Export requirements
         run: poetry export -f requirements.txt --without-hashes --output requirements.txt
 
@@ -41,13 +44,13 @@ jobs:
         run: poetry build
 
       - name: Save release python requirements
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: release_dist_reqs
           path: requirements.txt
 
       - name: Save release python packages
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: release_dist_python
           path: dist
@@ -85,7 +88,7 @@ jobs:
           bash -c 'find dist -maxdepth 1 -mindepth 1 -type d -exec rm -r {} \;'
 
       - name: Save release binaries for macos x64
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: release_dist_bin_macos_x64
           path: dist
@@ -119,7 +122,7 @@ jobs:
           bash -c 'find dist -maxdepth 1 -mindepth 1 -type d -exec rm -r {} \;'
 
       - name: Save release binaries for windows x64
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: release_dist_bin_windows_x64
           path: dist
@@ -150,7 +153,7 @@ jobs:
           bash scripts/appimage/build.sh
 
       - name: Save release binaries for linux x64
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: release_dist_bin_linux_x64
           path: dist
