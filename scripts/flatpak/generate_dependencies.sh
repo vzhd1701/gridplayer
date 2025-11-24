@@ -41,7 +41,7 @@ fi
 
 pip install PyYAML requirements-parser
 
-wget -nc -q https://github.com/flatpak/flatpak-builder-tools/raw/master/pip/flatpak-pip-generator
+wget -nc -q -O flatpak-pip-generator https://github.com/flatpak/flatpak-builder-tools/raw/master/pip/flatpak-pip-generator.py
 
 # Noting useful is stored in /share by python modules
 sed -i "s#module\['cleanup'\] = \['/bin', '/share/man/man1'\]#module\['cleanup'\] = \['/bin', '/share'\]#g" flatpak-pip-generator
