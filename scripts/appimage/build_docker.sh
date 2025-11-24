@@ -23,8 +23,8 @@ chmod +x "$BUILD_DIR_APPIMAGE/blacklist_clean.sh"
 
 # ======
 
-PYTHON_VERSION="3.9"
-BASE_IMAGE_NAME="manylinux2014_x86_64"
+PYTHON_VERSION="3.10"
+BASE_IMAGE_NAME="manylinux_2_28_x86_64"
 
 cd "$BUILD_DIR_APPIMAGE"
 
@@ -110,7 +110,7 @@ yum install -y libxkbcommon-x11 xcb-util xcb-util-image xcb-util-keysyms xcb-uti
 
 # VLC
 if ! which vlc; then
-    yum install -y https://download1.rpmfusion.org/free/el/rpmfusion-free-release-7.noarch.rpm
+    yum install -y https://mirrors.rpmfusion.org/free/el/rpmfusion-free-release-8.noarch.rpm
     yum install -y vlc
 fi
 
