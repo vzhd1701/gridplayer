@@ -93,14 +93,14 @@ $ sudo xattr -rd com.apple.quarantine /Applications/GridPlayer.app
 $ pip install -U gridplayer
 ```
 
-**Python 3.8 or later required.**
+**Python 3.8 or later required.** (_note: 3.12 and possibly a few previous versions do not work_)
 
 This type of installation will also require a `vlc` package present in your system.
 Please refer to [VLC official page](https://www.videolan.org/vlc/) for instructions on how to install it.
 
 Some distros (e.g. Ubuntu) might also require `libxcb-xinerama0` package.
 
-### From source
+## Developing
 
 This project uses [poetry](https://python-poetry.org/) for dependency management and packaging. You will have to install it first. See [poetry official documentation](https://python-poetry.org/docs/) for instructions.
 
@@ -112,6 +112,30 @@ $ poetry run gridplayer
 ```
 
 The same notes about the Python version and external packages from **PIP** installation apply here.
+
+## Building
+
+Following example is for _Windows_, adjust the process for your OS.
+
+```sh
+bash scripts/_local/windows.sh
+```
+
+then
+
+```sh
+bash scripts/pyinstaller/build_win.sh
+```
+
+You will need to install [Inno Setup 6](https://jrsoftware.org/isdl.php)
+
+finally
+
+```sh
+bash scripts/windows/build_packages.sh
+```
+
+If you have trouble, please open an [Issue](https://github.com/vzhd1701/gridplayer/issues)
 
 ## Video Decoder settings
 
