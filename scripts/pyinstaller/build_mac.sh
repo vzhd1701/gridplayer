@@ -7,7 +7,7 @@ SCRIPT_DIR="$( cd "$( dirname $0 )" && pwd )"
 . "scripts/init_app_vars.sh"
 
 VLC_URL="https://get.videolan.org/vlc/3.0.18/macosx/vlc-3.0.18-intel64.dmg"
-PYINSTALLER_VERSION="5.11.0"
+PYINSTALLER_VERSION="6.16.0"
 
 mkdir -p "$BUILD_DIR"
 
@@ -27,7 +27,7 @@ cp "$SCRIPT_DIR/mime_vlc.plist" "$BUILD_DIR/mime_vlc.plist"
 
 copy_with_app_vars "$SCRIPT_DIR/pyinstaller_mac.spec" "$BUILD_DIR/$APP_NAME.spec"
 
-pyinstaller --ascii --clean --noconfirm "$BUILD_DIR/$APP_NAME.spec"
+pyinstaller --clean --noconfirm "$BUILD_DIR/$APP_NAME.spec"
 
 # Post-build
 # =============
