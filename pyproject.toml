@@ -1,16 +1,16 @@
 [build-system]
-requires = ["poetry-core>=1.0.0"]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
 build-backend = "poetry.core.masonry.api"
 
-[tool.poetry]
+[project]
 name = "gridplayer"
 version = "0.5.3"
 description = "Play videos side-by-side"
-authors = ["vzhd1701 <vzhd1701@gmail.com>"]
+authors = [
+  { name = "vzhd1701", email = "vzhd1701@gmail.com" }
+]
 readme = "README.md"
-include = ["CHANGELOG.md"]
 license = "GPL-3.0-or-later"
-repository = "https://github.com/vzhd1701/gridplayer"
 keywords = ["video", "player", "vlc", "pyqt", "Qt5", "multimedia"]
 classifiers = [
     "Development Status :: 4 - Beta",
@@ -22,33 +22,39 @@ classifiers = [
     "Operating System :: Unix",
     "Topic :: Multimedia :: Video :: Display",
 ]
+requires-python = ">=3.10"
+dependencies = [
+    "PyQt5==5.15.7",
+    "PyQt5-Qt5==5.15.2",
+    "pydantic>=1.8.2",
+    "python-vlc==3.0.11115",
+    "streamlink==8.0.0",
+    "yt-dlp==2025.11.12",
+    "pyobjc-core ; sys_platform == 'darwin'",
+    "pyobjc-framework-Cocoa ; sys_platform == 'darwin'",
+]
 
-[tool.poetry.urls]
-"Changelog" = "https://github.com/vzhd1701/gridplayer/blob/master/CHANGELOG.md"
+[project.urls]
+repository = "https://github.com/vzhd1701/gridplayer"
+changelog = "https://github.com/vzhd1701/gridplayer/blob/master/CHANGELOG.md"
 
-[tool.poetry.scripts]
+[project.scripts]
 gridplayer = "gridplayer.__main__:main"
 
-[tool.poetry.dependencies]
-python = "^3.10"
-PyQt5 = "5.15.7"
-PyQt5-Qt5 = "5.15.2"
-pydantic = "^1.8.2"
-python-vlc = "3.0.11115"
-pyobjc-core = { version = "*", platform = "darwin" }
-pyobjc-framework-Cocoa = { version = "*", platform = "darwin" }
-streamlink = "8.0.0"
-yt-dlp = "2025.11.12"
+[dependency-groups]
+dev = [
+    #"flakehell>=0.9.0",
+    #"wemake-python-styleguide>=0.18.0",
+    "isort>=5.8.0",
+    "black>=23.3.0",
+    "mdformat==1.0.0",
+    "pre-commit>=2.15.0",
+    "pytest>=7.1.2",
+    "keepachangelog>=1.0.0",
+]
 
-[tool.poetry.group.dev.dependencies]
-isort = "^5.8.0"
-flakehell = "^0.9.0"
-wemake-python-styleguide = "^0.18.0"
-black = "^23.3.0"
-mdformat = "1.0.0"
-pre-commit = "^2.15.0"
-pytest = "^7.1.2"
-keepachangelog = "^1.0.0"
+[tool.poetry.group.dev]
+optional = true
 
 [tool.flakehell]
 base = "https://raw.githubusercontent.com/wemake-services/wemake-python-styleguide/master/styles/flakehell.toml"
