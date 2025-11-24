@@ -1,6 +1,7 @@
 #!/bin/bash
 
 set -e
+set -x
 
 if [ "$1" == "--generate" ]; then
     [ -z "$2" ] && exit 1
