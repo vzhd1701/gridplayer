@@ -87,15 +87,15 @@ If you get "GridPlayer is damaged and can't be opened" error, run this command i
 $ sudo xattr -rd com.apple.quarantine /Applications/GridPlayer.app
 ```
 
-### PIP
+### [PIPX](https://github.com/pypa/pipx)
 
 ```shell
-$ pip install -U gridplayer
+$ pipx install gridplayer
 ```
 
-**Python 3.8 or later required.**
+**Python 3.10 or later required.**
 
-This type of installation will also require a `vlc` package present in your system.
+This type of installation will also require VLC installed (Windows & Mac) or a `vlc` package (Linux) present in your system.
 Please refer to [VLC official page](https://www.videolan.org/vlc/) for instructions on how to install it.
 
 Some distros (e.g. Ubuntu) might also require `libxcb-xinerama0` package.
@@ -107,11 +107,11 @@ This project uses [poetry](https://python-poetry.org/) for dependency management
 ```shell
 $ git clone https://github.com/vzhd1701/gridplayer.git
 $ cd gridplayer/
-$ poetry install --no-dev
+$ poetry install
 $ poetry run gridplayer
 ```
 
-The same notes about the Python version and external packages from **PIP** installation apply here.
+The same notes about the Python version and external packages from **PIPX** installation apply here.
 
 ## Video Decoder settings
 
