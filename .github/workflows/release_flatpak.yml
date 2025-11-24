@@ -7,8 +7,8 @@ on:
       - "v[0-9]+.[0-9]+.[0-9]+"
 
 env:
-  BUILD_PYTHON_VERSION: 3.8
-  BUILD_POETRY_VERSION: 1.4
+  BUILD_PYTHON_VERSION: "3.10"
+  BUILD_POETRY_VERSION: "2.2.1"
 
 jobs:
   build_python:
@@ -17,17 +17,18 @@ jobs:
       POETRY_VIRTUALENVS_CREATE: false
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v6
 
       - name: Set up Python ${{ env.BUILD_PYTHON_VERSION }}
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v6
         with:
           python-version: ${{ env.BUILD_PYTHON_VERSION }}
 
       - name: Set up Poetry ${{ env.BUILD_POETRY_VERSION }}
-        uses: abatilo/actions-poetry@v2.0.0
+        uses: abatilo/actions-poetry@v4
         with:
           poetry-version: ${{ env.BUILD_POETRY_VERSION }}
+          poetry-plugins: "poetry-plugin-export"
 
       - name: Build project for distribution
         run: poetry build

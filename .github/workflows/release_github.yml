@@ -22,20 +22,18 @@ jobs:
       POETRY_VIRTUALENVS_CREATE: false
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v6
 
       - name: Set up Python ${{ env.BUILD_PYTHON_VERSION }}
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v6
         with:
           python-version: ${{ env.BUILD_PYTHON_VERSION }}
 
       - name: Set up Poetry ${{ env.BUILD_POETRY_VERSION }}
-        uses: abatilo/actions-poetry@v2.0.0
+        uses: abatilo/actions-poetry@v4
         with:
           poetry-version: ${{ env.BUILD_POETRY_VERSION }}
-
-      - name: Install Poetry plugin
-        run: poetry self add poetry-plugin-export
+          poetry-plugins: "poetry-plugin-export"
 
       - name: Export requirements
         run: poetry export -f requirements.txt --without-hashes --output requirements.txt
@@ -59,21 +57,21 @@ jobs:
     needs: build_python
     runs-on: macos-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v6
 
       - name: Load release python requirements
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: release_dist_reqs
           path: build
 
-      - uses: actions/setup-python@v4
+      - uses: actions/setup-python@v6
         with:
           python-version: ${{ env.BUILD_PYTHON_VERSION }}
 
-      - uses: actions/setup-node@v3
+      - uses: actions/setup-node@v6
         with:
-          node-version: 14
+          node-version: 20
 
       - name: Install requirements
         run: |
@@ -97,20 +95,20 @@ jobs:
     needs: build_python
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v6
 
       - name: Load release python requirements
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: release_dist_reqs
           path: build
 
-      - uses: actions/setup-python@v4
+      - uses: actions/setup-python@v6
         with:
           python-version: ${{ env.BUILD_PYTHON_VERSION }}
 
       - name: Install requirements
-        uses: crazy-max/ghaction-chocolatey@v2
+        uses: crazy-max/ghaction-chocolatey@v3
         with:
           args: install wget zip
 
@@ -131,15 +129,15 @@ jobs:
     needs: build_python
     runs-on: ubuntu-20.04
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v6
 
       - name: Load release python packages
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: release_dist_python
           path: dist
 
-      - uses: actions/setup-python@v4
+      - uses: actions/setup-python@v6
         with:
           python-version: ${{ env.BUILD_PYTHON_VERSION }}
 
@@ -164,32 +162,32 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v6
 
       - name: Extract release notes
         id: extract-release-notes
         uses: ffurrer2/extract-release-notes@v1
 
       - name: Load release python packages
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: release_dist_python
           path: dist
 
       - name: Load release binaries for linux x64
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: release_dist_bin_linux_x64
           path: dist
 
       - name: Load release binaries for windows x64
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: release_dist_bin_windows_x64
           path: dist
 
       - name: Load release binaries for macos x64
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: release_dist_bin_macos_x64
           path: dist
