@@ -4,7 +4,7 @@ build-backend = "poetry.core.masonry.api"
 
 [project]
 name = "gridplayer"
-version = "0.5.3"
+version = "0.5.4"
 description = "Play videos side-by-side"
 authors = [
   { name = "vzhd1701", email = "vzhd1701@gmail.com" }
