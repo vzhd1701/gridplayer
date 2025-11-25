@@ -125,6 +125,44 @@ jobs:
           name: release_dist_bin_windows_x64
           path: dist
 
+  build_win32:
+    needs: build_python
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Load release python requirements
+        uses: actions/download-artifact@v4
+        with:
+          name: release_dist_reqs
+          path: build
+
+      - name: Setup Python 32-bit
+        uses: actions/setup-python@v6
+        with:
+          python-version: ${{ env.BUILD_PYTHON_VERSION }}
+          architecture: x86
+
+      - name: Install requirements
+        uses: crazy-max/ghaction-chocolatey@v3
+        with:
+          args: install wget zip
+
+      - name: Build
+        env:
+          BUILD_ARCH: win32
+        run: |
+          bash scripts/pyinstaller/build_win.sh
+          bash scripts/windows/build_packages.sh
+          # Remove directory produced by pyinstaller
+          bash -c 'find dist -maxdepth 1 -mindepth 1 -type d -exec rm -r {} \;'
+
+      - name: Save release binaries for windows x86
+        uses: actions/upload-artifact@v4
+        with:
+          name: release_dist_bin_windows_x86
+          path: dist
+
   build_appimage:
     needs: build_python
     runs-on: ubuntu-latest

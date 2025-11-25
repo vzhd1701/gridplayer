@@ -6,7 +6,12 @@ SCRIPT_DIR="$( cd "$( dirname $0 )" && pwd )"
 
 . "scripts/init_app_vars.sh"
 
-VLC_URL="https://get.videolan.org/vlc/3.0.21/win64/vlc-3.0.21-win64.zip"
+# Get machine architecture
+if [ -z "$BUILD_ARCH" ]; then
+    BUILD_ARCH=$(python -c "import platform; print('win32' if platform.architecture()[0] == '32bit' else 'win64')")
+fi
+
+VLC_URL="https://get.videolan.org/vlc/3.0.21/$BUILD_ARCH/vlc-3.0.21-$BUILD_ARCH.zip"
 PYINSTALLER_VERSION="6.16.0"
 
 mkdir -p "$BUILD_DIR"
