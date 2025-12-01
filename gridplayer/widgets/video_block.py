@@ -34,7 +34,7 @@ from gridplayer.params.static import (
 )
 from gridplayer.settings import Settings
 from gridplayer.utils.libvlc_options_parser import get_vlc_options
-from gridplayer.utils.next_file import next_video_file, previous_video_file
+from gridplayer.utils.next_file import VideoNavigator, get_file_siblings
 from gridplayer.utils.qt import qt_connect, translate
 from gridplayer.utils.url_resolve.static import ResolvedVideo
 from gridplayer.utils.url_resolve.url_resolve import VideoURLResolver
@@ -677,10 +677,8 @@ class VideoBlock(QWidget):  # noqa: WPS230
                 self.seek_random()
             else:
                 self.seek(self.loop_start)
-        elif self.video_params.repeat_mode == VideoRepeat.DIR:
+        if not self.video_params.repeat_mode == VideoRepeat.SINGLE_FILE:
             self.next_video()
-        elif self.video_params.repeat_mode == VideoRepeat.DIR_SHUFFLE:
-            self.shuffle_video()
 
     def apply_snapshot(self, snapshot: Video):
         if snapshot.uri != self.video_params.uri:
@@ -713,10 +711,25 @@ class VideoBlock(QWidget):  # noqa: WPS230
 
     def set_video(self, video_params: Video):
         is_first_video = self.video_params is None
-        is_options_changed = get_vlc_options(self.video_params) != get_vlc_options(
-            video_params
-        )
+        is_options_changed = get_vlc_options(self.video_params) != get_vlc_options(video_params)
 
+        last_repeat_mode = getattr(self, 'last_repeat_mode', None)  
+        is_repeat_mode_changed = last_repeat_mode != video_params.repeat_mode 
+     
+     
+        if is_first_video or is_repeat_mode_changed:
+            self.original_dir = video_params.uri.parent  # Use the parent directory of the first video
+            self.siblings = get_file_siblings(self.original_dir)  # Compute sibling list for navigation
+            if video_params.repeat_mode == VideoRepeat.DIR_SHUFFLE:
+                self.navigator = VideoNavigator(video_params.uri, is_shuffle = True, is_recursive = False) 
+            elif video_params.repeat_mode == VideoRepeat.REC_DIR_SHUFFLE:
+                self.navigator = VideoNavigator(video_params.uri, is_shuffle = True, is_recursive = True)
+            elif video_params.repeat_mode == VideoRepeat.REC_DIR:
+                self.navigator = VideoNavigator(video_params.uri, is_shuffle = False, is_recursive = True)            
+            elif video_params.repeat_mode == VideoRepeat.DIR:
+                self.navigator = VideoNavigator(video_params.uri, is_shuffle = False, is_recursive = False)     
+
+        self.last_repeat_mode = video_params.repeat_mode    
         self.video_params = video_params
 
         # Shut down current video
@@ -1109,17 +1122,14 @@ class VideoBlock(QWidget):  # noqa: WPS230
     @only_initialized
     @only_local_file
     def previous_video(self):
-        self.switch_video(previous_video_file(self.video_params.uri))
-
+        new_video = self.navigator.previous_video_file()
+        self.switch_video(new_video)
+        
     @only_initialized
     @only_local_file
     def next_video(self):
-        self.switch_video(next_video_file(self.video_params.uri))
-
-    @only_initialized
-    @only_local_file
-    def shuffle_video(self):
-        self.switch_video(next_video_file(self.video_params.uri, is_shuffle=True))
+        new_video = self.navigator.next_video_file() 
+        self.switch_video(new_video)
 
     @only_initialized
     @only_local_file
