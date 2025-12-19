@@ -22,16 +22,16 @@ classifiers = [
     "Operating System :: Unix",
     "Topic :: Multimedia :: Video :: Display",
 ]
-requires-python = ">=3.10"
+requires-python = "==3.10.19"
 dependencies = [
     "PyQt5==5.15.11",
     "PyQt5-Qt5==5.15.2 ; sys_platform == 'win32'",
     "PyQt5-Qt5==5.15.2 ; sys_platform == 'linux'",
     "PyQt5-Qt5==5.15.18 ; sys_platform == 'darwin'",
-    "pydantic>=1.8.2",
+    "pydantic==1.10.13",
     "python-vlc==3.0.11115",
     "streamlink==8.0.0",
-    "yt-dlp==2025.11.12",
+    "yt-dlp[default]==2025.11.12",
     "pyobjc-core ; sys_platform == 'darwin'",
     "pyobjc-framework-Cocoa ; sys_platform == 'darwin'",
 ]
@@ -54,6 +54,14 @@ dev = [
     "pytest>=7.1.2",
     "keepachangelog>=1.0.0",
 ]
+
+[tool.poetry.group.dev.dependencies]
+isort = ">=5.8.0"
+black = ">=23.3.0"
+mdformat = "==1.0.0"
+pre-commit = ">=2.15.0"
+pytest = ">=7.1.2"
+keepachangelog = ">=1.0.0"
 
 [tool.poetry.group.dev]
 optional = true
