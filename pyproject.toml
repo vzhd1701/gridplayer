@@ -22,7 +22,7 @@ classifiers = [
     "Operating System :: Unix",
     "Topic :: Multimedia :: Video :: Display",
 ]
-requires-python = "==3.10.19"
+requires-python = ">=3.10,<3.11"
 dependencies = [
     "PyQt5==5.15.11",
     "PyQt5-Qt5==5.15.2 ; sys_platform == 'win32'",
