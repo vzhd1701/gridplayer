@@ -6,6 +6,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+### Added
+
+* Steps to setup dev environment
+
+### Fixed
+
+* Build on Linux
+
 ## [0.5.4] - 2025-11-24
 
 ### Added
