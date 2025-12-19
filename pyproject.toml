@@ -43,18 +43,6 @@ changelog = "https://github.com/vzhd1701/gridplayer/blob/master/CHANGELOG.md"
 [project.scripts]
 gridplayer = "gridplayer.__main__:main"
 
-[dependency-groups]
-dev = [
-    #"flakehell>=0.9.0",
-    #"wemake-python-styleguide>=0.18.0",
-    "isort>=5.8.0",
-    "black>=23.3.0",
-    "mdformat==1.0.0",
-    "pre-commit>=2.15.0",
-    "pytest>=7.1.2",
-    "keepachangelog>=1.0.0",
-]
-
 [tool.poetry.group.dev.dependencies]
 isort = ">=5.8.0"
 black = ">=23.3.0"
