@@ -53,9 +53,17 @@ jobs:
           name: release_dist_python
           path: dist
 
-  build_mac_x64:
+  build_mac:
     needs: build_python
-    runs-on: macos-15-intel
+    strategy:
+      matrix:
+        include:
+          - arch: x64
+            runner: macos-15-intel
+          - arch: arm64
+            runner: macos-15
+    runs-on: ${{ matrix.runner }}
+
     steps:
       - uses: actions/checkout@v6
 
@@ -85,48 +93,10 @@ jobs:
           # Remove directory produced by pyinstaller
           bash -c 'find dist -maxdepth 1 -mindepth 1 -type d -exec rm -r {} \;'
 
-      - name: Save release binaries for macos x64
+      - name: Save release binaries for macos ${{ matrix.arch }}
         uses: actions/upload-artifact@v4
         with:
-          name: release_dist_bin_macos_x64
-          path: dist
-
-  build_mac_arm64:
-    needs: build_python
-    runs-on: macos-15
-    steps:
-      - uses: actions/checkout@v6
-
-      - name: Load release python requirements
-        uses: actions/download-artifact@v4
-        with:
-          name: release_dist_reqs
-          path: build
-
-      - uses: actions/setup-python@v6
-        with:
-          python-version: ${{ env.BUILD_PYTHON_VERSION }}
-
-      - uses: actions/setup-node@v6
-        with:
-          node-version: 20
-
-      - name: Install requirements
-        run: |
-          brew install gnu-sed graphicsmagick imagemagick
-          npm install --global create-dmg
-
-      - name: Build
-        run: |
-          bash scripts/pyinstaller/build_mac.sh
-          bash scripts/macos/build_dmg.sh
-          # Remove directory produced by pyinstaller
-          bash -c 'find dist -maxdepth 1 -mindepth 1 -type d -exec rm -r {} \;'
-
-      - name: Save release binaries for macos arm64
-        uses: actions/upload-artifact@v4
-        with:
-          name: release_dist_bin_macos_arm64
+          name: release_dist_bin_macos_${{ matrix.arch }}
           path: dist
 
   build_win:
@@ -196,7 +166,7 @@ jobs:
 
   release:
     if: github.event_name == 'push' || github.event.inputs.tag != ''
-    needs: [build_win, build_mac_x64, build_mac_arm64, build_appimage]
+    needs: [build_win, build_mac, build_appimage]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
