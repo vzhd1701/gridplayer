@@ -23,7 +23,6 @@ SRC_DIR = os.path.abspath("./{APP_MODULE}")
 BUILD_DIR = os.path.abspath("./build")
 
 hiddenimports = collect_submodules('streamlink.plugins')
-hiddenimports += ["backports"]
 
 excludes = [
     "PyQt5.QtBluetooth",
