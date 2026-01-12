@@ -1,5 +1,4 @@
 import random
-from typing import List, Optional
 
 from PyQt5.QtCore import Qt, pyqtSignal
 
@@ -18,7 +17,7 @@ from gridplayer.utils.qt import qt_connect, translate
 from gridplayer.widgets.video_block import VideoBlock
 
 
-class VideoBlocks(object):
+class VideoBlocks:
     def __init__(self):
         self._blocks = []
 
@@ -40,7 +39,7 @@ class VideoBlocks(object):
     def clear(self):
         self._blocks.clear()
 
-    def reorder_by_video_ids(self, order: List[str]):
+    def reorder_by_video_ids(self, order: list[str]):
         if len(order) != len(self._blocks):
             raise ValueError("Order list must be the same length as the blocks list")
 
@@ -71,13 +70,13 @@ class VideoBlocks(object):
         return all(v.is_video_initialized for v in self._blocks)
 
     @property
-    def videos(self) -> List[Video]:
+    def videos(self) -> list[Video]:
         return [v.video_params for v in self._blocks]
 
-    def by_id(self, _id) -> Optional[VideoBlock]:
+    def by_id(self, _id) -> VideoBlock | None:
         return next((v for v in self._blocks if v.id == _id), None)
 
-    def by_video_id(self, _id) -> Optional[VideoBlock]:
+    def by_video_id(self, _id) -> VideoBlock | None:
         return next((v for v in self._blocks if v.video_params.id == _id), None)
 
     def swap(self, block1, block2):

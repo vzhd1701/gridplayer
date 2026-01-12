@@ -1,12 +1,10 @@
 import logging
-from typing import Dict, Optional
 
-import vlc
-
+from gridplayer.vlc_player import vlc
 from gridplayer.vlc_player.static import NO_TRACK, AudioTrack, VideoTrack
 
 
-class TracksManager(object):
+class TracksManager:
     def __init__(self, media_player, media_tracks, is_audio_only):
         self._media_player = media_player
         self._media_tracks = media_tracks
@@ -15,7 +13,7 @@ class TracksManager(object):
         self._log = logging.getLogger(self.__class__.__name__)
 
     @property
-    def video_tracks(self) -> Dict[int, VideoTrack]:
+    def video_tracks(self) -> dict[int, VideoTrack]:
         if self._is_audio_only:
             return {}
 
@@ -26,11 +24,11 @@ class TracksManager(object):
         }
 
     @property
-    def current_video_track_id(self) -> Optional[int]:
+    def current_video_track_id(self) -> int | None:
         return self.tracks_map.get(self._media_player.video_get_track())
 
     @property
-    def audio_tracks(self) -> Dict[int, AudioTrack]:
+    def audio_tracks(self) -> dict[int, AudioTrack]:
         return {
             t.id: _convert_audio_track(t)
             for t in self._media_tracks
@@ -38,34 +36,24 @@ class TracksManager(object):
         }
 
     @property
-    def current_audio_track_id(self) -> Optional[int]:
+    def current_audio_track_id(self) -> int | None:
         return self.tracks_map.get(self._media_player.audio_get_track())
 
     @property
-    def tracks_map(self) -> Dict[int, int]:
+    def tracks_map(self) -> dict[int, int]:
         tracks_map = {}
 
         video_track_real_ids = [
             t_id for t_id, _ in self._media_player.video_get_track_description()[1:]
         ]
 
-        tracks_map.update(
-            {
-                real_id: t_id
-                for real_id, t_id in zip(video_track_real_ids, self.video_tracks)
-            }
-        )
+        tracks_map.update(dict(zip(video_track_real_ids, self.video_tracks)))
 
         audio_track_real_ids = [
             t_id for t_id, _ in self._media_player.audio_get_track_description()[1:]
         ]
 
-        tracks_map.update(
-            {
-                real_id: t_id
-                for real_id, t_id in zip(audio_track_real_ids, self.audio_tracks)
-            }
-        )
+        tracks_map.update(dict(zip(audio_track_real_ids, self.audio_tracks)))
 
         return tracks_map
 
@@ -99,7 +87,7 @@ class TracksManager(object):
         self._log.debug(f"Set video track {track_id} [{real_track_id}]")
         self._media_player.video_set_track(real_track_id)
 
-    def _get_real_track_id(self, track_id) -> Optional[int]:
+    def _get_real_track_id(self, track_id) -> int | None:
         if track_id == -1:
             return -1
 
@@ -114,7 +102,7 @@ class TracksManager(object):
 
 
 def _convert_video_track(video_track):
-    vt_content = video_track.video.contents
+    vt_content = video_track.u.video.contents
 
     if all([vt_content.frame_rate_num, vt_content.frame_rate_den]):
         fps = round(vt_content.frame_rate_num / vt_content.frame_rate_den, 3)
@@ -136,7 +124,7 @@ def _convert_video_track(video_track):
 
 
 def _convert_audio_track(audio_track):
-    at_content = audio_track.audio.contents
+    at_content = audio_track.u.audio.contents
 
     return AudioTrack(
         channels=at_content.channels,

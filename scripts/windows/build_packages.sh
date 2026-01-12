@@ -2,6 +2,8 @@
 
 set -e
 
+# choco install zip innosetup
+
 SCRIPT_DIR="$( cd "$( dirname $0 )" && pwd )"
 
 source "scripts/init_app_vars.sh"

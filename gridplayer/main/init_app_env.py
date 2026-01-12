@@ -21,7 +21,7 @@ def init_app_env_id():
 
 def init_app_env():
     if env.IS_WINDOWS:
-        from PyQt5.QtWinExtras import QtWin  # noqa: WPS433
+        from PyQt5.QtWinExtras import QtWin
 
         QtWin.setCurrentProcessExplicitAppUserModelID(__app_id__)
 

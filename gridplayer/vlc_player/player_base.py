@@ -4,7 +4,6 @@ from abc import ABC, abstractmethod
 from pathlib import Path
 from time import time
 from types import MappingProxyType
-from typing import Optional
 
 from gridplayer.params import env
 from gridplayer.params.static import (
@@ -55,7 +54,7 @@ def translate(context, text):
 
 def only_initialized_player(func):
     def wrapper(*args, **kwargs):
-        self = args[0]  # noqa: WPS117
+        self = args[0]
         if self._media_player is not None:
             return func(*args, **kwargs)
 
@@ -82,14 +81,14 @@ class VlcPlayerBase(ABC):
         self._timer_unpause_failsafe = None
         self._timer_extract_media_track = None
 
-        self.media_input: Optional[MediaInput] = None
-        self.media: Optional[Media] = None
+        self.media_input: MediaInput | None = None
+        self.media: Media | None = None
 
         self._playlist_player = None
         self._media_player = None
         self._media_input_vlc = None
         self._media_options = []
-        self._tracks_manager: Optional[TracksManager] = None
+        self._tracks_manager: TracksManager | None = None
 
         self._event_manager = EventManager()
         self._event_waiter = EventWaiter()
@@ -221,7 +220,6 @@ class VlcPlayerBase(ABC):
             self.loopback_load_video_st2_set_media()
 
     def cb_time_changed(self, event):
-        # Doesn't work anymore since python-vlc-3.0.12117
         new_time = int(event.u.new_time)
 
         if new_time == 0:
@@ -284,40 +282,31 @@ class VlcPlayerBase(ABC):
         self.notify_error(message)
 
     @abstractmethod
-    def notify_update_status(self, status, percent=0):
-        ...
+    def notify_update_status(self, status, percent=0): ...
 
     @abstractmethod
-    def notify_error(self, error):
-        ...
+    def notify_error(self, error): ...
 
     @abstractmethod
-    def notify_time_changed(self, new_time):
-        ...
+    def notify_time_changed(self, new_time): ...
 
     @abstractmethod
-    def notify_playback_status_changed(self, new_status):
-        ...
+    def notify_playback_status_changed(self, new_status): ...
 
     @abstractmethod
-    def notify_load_video_done(self, media_track: Media):
-        ...
+    def notify_load_video_done(self, media_track: Media): ...
 
     @abstractmethod
-    def notify_snapshot_taken(self, snapshot_path):
-        ...
+    def notify_snapshot_taken(self, snapshot_path): ...
 
     @abstractmethod
-    def loopback_load_video_st2_set_media(self):
-        ...
+    def loopback_load_video_st2_set_media(self): ...
 
     @abstractmethod
-    def loopback_load_video_st3_extract_media_track(self):
-        ...
+    def loopback_load_video_st3_extract_media_track(self): ...
 
     @abstractmethod
-    def loopback_load_video_st4_loaded(self):
-        ...
+    def loopback_load_video_st4_loaded(self): ...
 
     def load_video(self, media_input: MediaInput):
         """Step 1. Load & parse video file"""
@@ -328,7 +317,7 @@ class VlcPlayerBase(ABC):
 
         self.media_input = media_input
 
-        self._log.info("Loading {0}".format(self.media_input.uri))
+        self._log.info(f"Loading {self.media_input.uri}")
 
         if is_url(self.media_input.uri):
             self._log.debug("Loading URL")
@@ -542,9 +531,9 @@ class VlcPlayerBase(ABC):
         crop_aspect, crop_geometry = calc_crop(self.video_dimensions, size, aspect)
 
         if crop == VideoCrop(0, 0, 0, 0):
-            crop_geometry_fmt = "{0}:{1}".format(*crop_geometry)
+            crop_geometry_fmt = "{}:{}".format(*crop_geometry)
         else:
-            crop_geometry_fmt = "+{0}+{1}+{2}+{3}".format(*crop)
+            crop_geometry_fmt = "+{}+{}+{}+{}".format(*crop)
 
         self._log.debug(
             f"size: {size}"
@@ -558,7 +547,7 @@ class VlcPlayerBase(ABC):
 
         resize_scale = calc_resize_scale(self.video_dimensions, size, aspect, scale)
 
-        self._media_player.video_set_aspect_ratio("{0}:{1}".format(*crop_aspect))
+        self._media_player.video_set_aspect_ratio("{}:{}".format(*crop_aspect))
         # https://github.com/videolan/vlc/blob/e9eceaed4d838dbd84638bfb2e4bdd08294163b1/src/video_output/display.c#L887
         self._media_player.video_set_crop_geometry(crop_geometry_fmt)
         self._media_player.video_set_scale(resize_scale)
@@ -673,7 +662,7 @@ class VlcPlayerBase(ABC):
                 )
                 return None
 
-            self._log.debug(f"Failed to initialize video time, probably live")
+            self._log.debug("Failed to initialize video time, probably live")
 
         self._tracks_manager.set_video_track_id(self.media_input.video.video_track_id)
         self._tracks_manager.set_audio_track_id(self.media_input.video.audio_track_id)

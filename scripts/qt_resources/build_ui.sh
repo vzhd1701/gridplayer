@@ -23,4 +23,4 @@ done
 sed -i 's/^#.*$//g' "$APP_BASE_DIR/dialogs"/*_ui.py
 
 dos2unix "$APP_BASE_DIR/dialogs"/*_ui.py
-poetry run black "$APP_BASE_DIR/dialogs"/*_ui.py
+poetry run ruff format "$APP_BASE_DIR/dialogs"/*_ui.py

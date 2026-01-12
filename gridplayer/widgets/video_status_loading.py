@@ -67,7 +67,7 @@ class JumpingBar(QWidget):
         return self._bar_percent
 
     @bar_percent.setter
-    def bar_percent(self, percent):  # noqa: WPS440
+    def bar_percent(self, percent):
         self._bar_percent = percent
         self.update()
 
@@ -103,7 +103,7 @@ class JumpingBar(QWidget):
         self._initial_time = self._animation.currentTime()
         self._animation.stop()
 
-    def _init_animation(self):  # noqa: WPS213
+    def _init_animation(self):
         animation_up = QPropertyAnimation(self, b"bar_percent")
         animation_up.setDuration(self.bar_grow_ms)
         animation_up.setStartValue(self.bar_lowest_percent)

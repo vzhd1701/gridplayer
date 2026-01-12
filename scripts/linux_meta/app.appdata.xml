@@ -51,6 +51,7 @@
   </screenshots>
   <url type="homepage">{APP_URL}</url>
   <url type="bugtracker">{APP_BUGTRACKER_URL}</url>
+  <url type="vcs-browser">{APP_URL}</url>
   <releases>
     <release date="{APP_VERSION_DATE}" version="{APP_VERSION}"/>
   </releases>

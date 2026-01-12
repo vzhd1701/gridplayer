@@ -110,7 +110,7 @@ class VideoFrameVLCHW(VideoFrameVLCProcess):
         if env.IS_MACOS:
             # Drawing using window id from another process is not possible on MacOS
             # https://stackoverflow.com/questions/583202/mac-os-x-can-one-process-render-to-another-processs-window
-            raise NotImplementedError()
+            raise NotImplementedError
 
         video_surface = QWidget(self)
         video_surface.setMouseTracking(True)

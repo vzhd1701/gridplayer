@@ -11,13 +11,13 @@ env:
   BUILD_POETRY_VERSION: "2.2.1"
 
 jobs:
-  build_python:
+  build_flatpak:
     runs-on: ubuntu-latest
     env:
       POETRY_VIRTUALENVS_CREATE: false
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v6
+      - uses: actions/checkout@v6
+      - uses: extractions/setup-just@v3
 
       - name: Set up Python ${{ env.BUILD_PYTHON_VERSION }}
         uses: actions/setup-python@v6
@@ -29,12 +29,6 @@ jobs:
         with:
           poetry-version: ${{ env.BUILD_POETRY_VERSION }}
           poetry-plugins: "poetry-plugin-export"
-
-      - name: Build project for distribution
-        run: poetry build
-
-      - name: Export requirements
-        run: poetry export --without-hashes -f requirements.txt --output dist/requirements.txt
 
       - name: Install requirements
         run: |
@@ -48,6 +42,4 @@ jobs:
           FLATPAK_GIT_REPO: vzhd1701/gridplayer-flatpak
           FLATHUB_GIT_REPO: flathub/com.vzhd1701.gridplayer
         run: |
-          bash scripts/linux_meta/build.sh
-          bash scripts/flatpak/generate_dependencies.sh
-          bash scripts/flatpak/build_git.sh
+          just build-linux-flatpak-git

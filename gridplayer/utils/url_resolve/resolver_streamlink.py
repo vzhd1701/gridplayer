@@ -5,7 +5,6 @@ from streamlink.plugin import Plugin
 from streamlink.stream import HLSStream, MuxedHLSStream
 
 from gridplayer.models.stream import HashableDict, Stream, Streams, StreamSessionOpts
-from gridplayer.models.video_uri import VideoURL
 from gridplayer.settings import Settings
 from gridplayer.utils.url_resolve.resolver_base import ResolverBase
 from gridplayer.utils.url_resolve.static import NoResolverPlugin
@@ -49,7 +48,7 @@ class StreamlinkResolver(ResolverBase):
         return Streams({**video_streams, **audio_only_streams})
 
     @staticmethod
-    def is_able_to_handle(url: VideoURL):  # noqa: WPS602
+    def is_able_to_handle(url: str):
         try:
             return bool(Streamlink().resolve_url(url))
         except NoPluginError:
@@ -89,7 +88,7 @@ class StreamlinkResolver(ResolverBase):
             self._log.debug("Streamlink - no streams found")
             raise NoResolverPlugin
 
-        self._log.debug("Streamlink - {0} stream(s) found".format(len(streams)))
+        self._log.debug(f"Streamlink - {len(streams)} stream(s) found")
 
         streams.pop("best", None)
         streams.pop("worst", None)
@@ -117,7 +116,7 @@ class StreamlinkResolver(ResolverBase):
         return audio_streams
 
     @cached_property
-    def _raw_streams_audio_only_muxed(self):  # noqa: WPS210
+    def _raw_streams_audio_only_muxed(self):
         muxed_streams = [
             stream
             for stream in self._raw_streams.values()
@@ -137,7 +136,7 @@ class StreamlinkResolver(ResolverBase):
 
     @property
     def _service_id(self):
-        return "streamlink-{0}".format(self._plugin.module)
+        return f"streamlink-{self._plugin.module}"
 
     def _convert_stream(self, src_stream, is_live: bool, is_audio_only: bool = False):
         if isinstance(src_stream, MuxedHLSStream):

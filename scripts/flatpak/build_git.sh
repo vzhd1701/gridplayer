@@ -94,7 +94,7 @@ update_flathub_git() {
     git config user.email "$GIT_EMAIL"
 
     git submodule add https://github.com/flathub/shared-modules || true
-    (cd "$BUILD_DIR_FLATHUB/shared-modules" && git checkout -q 50314360ded6fa3b9f0b602513b1164b7a6636ed)
+    (cd "$BUILD_DIR_FLATHUB/shared-modules" && git checkout -q 0529b121864669aa14fac1c67b5684a4bc6542b8)
 
     git add .
 
@@ -110,9 +110,11 @@ generate_flathub_git() {
     FLATPAK_GIT_COMMIT="$1"
     BUILD_DIR_FLATHUB="$2"
 
-    cp "$SCRIPT_DIR"/dependencies/*.yml "$BUILD_DIR_FLATHUB"
     cp "$SCRIPT_DIR"/libvlc/* "$BUILD_DIR_FLATHUB"
 
+    if [ ! -f "$BUILD_DIR/flatpak_python_deps/dependencies.yml" ]; then
+        "$SCRIPT_DIR/generate_dependencies.sh"
+    fi
     cp "$BUILD_DIR/flatpak_python_deps/dependencies.yml" "$BUILD_DIR_FLATHUB/dependencies.yml"
 
     cat "$SCRIPT_DIR/app.yml" "$SCRIPT_DIR/app_git.yml" > "$BUILD_DIR_FLATHUB/$APP_ID.yml"

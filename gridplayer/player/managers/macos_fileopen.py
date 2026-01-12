@@ -29,7 +29,7 @@ class MacOSFileOpenManager(ManagerBase):
         if Settings().get("player/one_instance") or is_only_empty:
             self.file_opened.emit([input_file])
         else:
-            subprocess.run(  # noqa: S603, S607
+            subprocess.run(
                 [
                     "open",
                     "-n",

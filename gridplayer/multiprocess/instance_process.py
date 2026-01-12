@@ -21,7 +21,7 @@ class InstanceProcess(CommandLoop, ABC):
         self.process = Process(
             target=self.run,
             daemon=True,
-            name="{0}_{1}".format(self.__class__.__name__, self.id),
+            name=f"{self.__class__.__name__}_{self.id}",
         )
 
         self.players_per_instance = players_per_instance
@@ -108,7 +108,7 @@ class InstanceProcess(CommandLoop, ABC):
         self.cmd_send_self("set_log_level", log_level)
 
     # process
-    def set_log_level(self, log_level):  # noqa: WPS615
+    def set_log_level(self, log_level):
         logging.root.setLevel(log_level)
 
     # process

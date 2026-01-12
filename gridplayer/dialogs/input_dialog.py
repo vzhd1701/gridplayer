@@ -1,5 +1,3 @@
-from typing import Optional
-
 from PyQt5.QtCore import Qt, QTime
 from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import (
@@ -34,7 +32,7 @@ class QCustomSpinboxInput(QDialog):
         main_layout.addWidget(self.buttons)
 
     @classmethod
-    def get_int(  # noqa: WPS211
+    def get_int(
         cls,
         parent,
         title,
@@ -81,7 +79,7 @@ class QCustomSpinboxTimeInput(QDialog):
         main_layout.addWidget(self.buttons)
 
     @classmethod
-    def get_time_ms_int(cls, parent, title) -> Optional[int]:
+    def get_time_ms_int(cls, parent, title) -> int | None:
         dialog = cls(parent=parent)
         dialog.setWindowTitle(title)
 

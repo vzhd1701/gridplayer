@@ -45,7 +45,7 @@ PROPAGATED_EVENTS_FILTERED = (
 )
 
 
-class OverlayBlock(QWidget):  # noqa: WPS230
+class OverlayBlock(QWidget):
     set_vid_pos = pyqtSignal(float)
     set_volume = pyqtSignal(float)
 
@@ -78,7 +78,7 @@ class OverlayBlock(QWidget):  # noqa: WPS230
         self.progress_bar.hide()
         self.progress_bar_placeholder.show()
 
-    def ui_connect(self):  # noqa: WPS213
+    def ui_connect(self):
         qt_connect(
             (self.progress_bar.mouse_over, self.floating_progress.on_mouse_over),
             (self.progress_bar.mouse_left, self.floating_progress.on_mouse_left),
@@ -89,7 +89,7 @@ class OverlayBlock(QWidget):  # noqa: WPS230
             (self.volume_bar.position_changed, self.emit_volume_position),
         )
 
-    def ui_setup(self):  # noqa: WPS213
+    def ui_setup(self):
         layout_main = QStackedLayout(self)
 
         layout_main.setContentsMargins(0, 0, 0, 0)

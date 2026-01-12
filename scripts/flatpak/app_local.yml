@@ -4,11 +4,11 @@
   buildsystem: simple
   build-commands:
     - pip3 install --verbose --exists-action=i --no-index --find-links="file://${PWD}"
-      --prefix=${FLATPAK_DEST} "poetry-core==1.6.0" --no-build-isolation
+      --prefix=${FLATPAK_DEST} "poetry-core==2.2.1" --no-build-isolation
   sources:
     - type: file
-      url: https://files.pythonhosted.org/packages/a6/6d/7d86771d647b033876cbaeb84678a0c2d538e1e1bfcf54bb6595b656a7cb/poetry_core-1.6.0-py3-none-any.whl
-      sha256: ff96620579f02ec30ee9f789fa5dfdcddd9ab4ac848394f6f8f2f4e88306b534
+      url: https://files.pythonhosted.org/packages/c7/d8/bb2f602f5e012e177e1c8560125f9770945d36622595990cf1cb794477c2/poetry_core-2.2.1-py3-none-any.whl
+      sha256: bdfce710edc10bfcf9ab35041605c480829be4ab23f5bc01202cfe5db8f125ab
 - name: {APP_MODULE}
   buildsystem: simple
   build-commands:

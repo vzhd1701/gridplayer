@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Any, Tuple
+from typing import Any
 
 from PyQt5.QtCore import QDir, pyqtSignal
 from PyQt5.QtWidgets import QFileDialog, QMessageBox
@@ -51,7 +51,7 @@ class PlaylistManager(ManagerBase):
         dialog.setFileMode(QFileDialog.ExistingFile)
 
         dialog.setNameFilter(
-            "{0} (*.gpls)".format(
+            "{} (*.gpls)".format(
                 translate(
                     "Dialog - Open Playlist", "GridPlayer Playlists", "File format"
                 )
@@ -136,22 +136,20 @@ class PlaylistManager(ManagerBase):
         except ValueError as e:
             self._log.error(f"Playlist parse error: {e}")
             self.error.emit(
-                "{0}\n\n{1}".format(
+                "{}\n\n{}".format(
                     translate("Error", "Invalid playlist format!"), playlist_file
                 )
             )
             return
         except FileNotFoundError:
             self.error.emit(
-                "{0}\n\n{1}".format(
-                    translate("Error", "File not found!"), playlist_file
-                )
+                "{}\n\n{}".format(translate("Error", "File not found!"), playlist_file)
             )
             return
 
         if not playlist.videos:
             self.error.emit(
-                "{0}\n\n{1}".format(
+                "{}\n\n{}".format(
                     translate("Error", "Empty or invalid playlist!"), playlist_file
                 )
             )
@@ -259,12 +257,12 @@ class PlaylistManager(ManagerBase):
         )
 
 
-def _emit_if_not_empty(*properties: Tuple[pyqtSignal, Any]):
+def _emit_if_not_empty(*properties: tuple[pyqtSignal, Any]):
     for signal, property_value in properties:
         if property_value:
             signal.emit(property_value)
 
 
-def _emit(*properties: Tuple[pyqtSignal, Any]):
+def _emit(*properties: tuple[pyqtSignal, Any]):
     for signal, property_value in properties:
         signal.emit(property_value)

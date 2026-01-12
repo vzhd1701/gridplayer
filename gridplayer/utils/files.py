@@ -1,5 +1,4 @@
 from pathlib import Path
-from typing import List, Optional, Union
 
 from PyQt5.QtCore import QMimeData
 
@@ -11,16 +10,16 @@ def mime_has_video(dnd_data: QMimeData) -> bool:
     return dnd_data.hasFormat("application/x-gridplayer-video")
 
 
-def extract_mime_video(dnd_data: QMimeData) -> Optional[VideoBlockMime]:
+def extract_mime_video(dnd_data: QMimeData) -> VideoBlockMime | None:
     if not mime_has_video(dnd_data):
         return None
 
-    return VideoBlockMime.parse_raw(
+    return VideoBlockMime.model_validate_json(
         bytes(dnd_data.data("application/x-gridplayer-video")).decode("utf-8")
     )
 
 
-def extract_mime_uris(dnd_data: QMimeData) -> List[str]:
+def extract_mime_uris(dnd_data: QMimeData) -> list[str]:
     uris = []
 
     if dnd_data.hasUrls():
@@ -37,11 +36,11 @@ def extract_mime_uris(dnd_data: QMimeData) -> List[str]:
     return _filter_uris(uris)
 
 
-def _filter_uris(uris: List[str]) -> List[str]:
+def _filter_uris(uris: list[str]) -> list[str]:
     return [u for u in uris if is_url(u) or Path(u).is_file()]
 
 
-def get_playlist_path(uris: List[Union[str, Path]]) -> Optional[Path]:
+def get_playlist_path(uris: list[str | Path]) -> Path | None:
     for uri in uris:
         uri_path = Path(uri)
         if uri_path.suffix.lower() == ".gpls" and uri_path.is_file():

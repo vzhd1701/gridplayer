@@ -2,8 +2,8 @@ import logging
 import os
 import stat
 from multiprocessing import connection
+from pathlib import Path
 from threading import Thread
-from typing import Optional
 
 from PyQt5.QtCore import QObject, pyqtSignal
 
@@ -42,10 +42,10 @@ else:
         """Dummy"""
 
 
-LISTENER: Optional[connection.Listener] = None
+LISTENER: connection.Listener | None = None
 
 
-def _init_listener() -> Optional[connection.Listener]:
+def _init_listener() -> connection.Listener | None:
     try:
         return connection.Listener(S_NAME, S_TYPE)
     except OSError:
@@ -125,17 +125,18 @@ def _send_data(output_data):
 
 
 def _is_socket_working():
-    os.makedirs(os.path.dirname(S_NAME), exist_ok=True)
+    s_path = Path(S_NAME)
+    s_path.parent.mkdir(parents=True, exist_ok=True)
 
-    if os.path.exists(S_NAME):
-        if not stat.S_ISSOCK(os.stat(S_NAME).st_mode):
-            os.unlink(S_NAME)
+    if s_path.exists():
+        if not stat.S_ISSOCK(s_path.stat().st_mode):
+            s_path.unlink()
             return False
 
         try:
             _send_data("ping")
         except ConnectionRefusedError:
-            os.unlink(S_NAME)
+            s_path.unlink()
             return False
 
         logging.getLogger(__name__).debug("Socket already exists and responding")
@@ -145,12 +146,12 @@ def _is_socket_working():
 
 
 def is_other_instance_running():
-    global LISTENER  # noqa: WPS420
+    global LISTENER
 
     if env.IS_LINUX and _is_socket_working():
         return True
 
-    LISTENER = _init_listener()  # noqa: WPS442
+    LISTENER = _init_listener()
 
     return LISTENER is None
 

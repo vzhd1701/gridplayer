@@ -1,7 +1,10 @@
 from PyQt5 import QtCore, QtGui, QtWidgets
 
+from gridplayer.widgets.language_list import LanguageList
+from gridplayer.widgets.resolver_patterns_list import ResolverPatternsList
 
-class Ui_SettingsDialog(object):
+
+class Ui_SettingsDialog:
     def setupUi(self, SettingsDialog):
         SettingsDialog.setObjectName("SettingsDialog")
         SettingsDialog.resize(732, 451)
@@ -737,7 +740,3 @@ class Ui_SettingsDialog(object):
         self.logLevelLabel.setText(_translate("SettingsDialog", "Log level"))
         self.logLevelVLCLabel.setText(_translate("SettingsDialog", "Log level (VLC)"))
         self.logFileOpen.setText(_translate("SettingsDialog", "Open log file"))
-
-
-from gridplayer.widgets.language_list import LanguageList
-from gridplayer.widgets.resolver_patterns_list import ResolverPatternsList

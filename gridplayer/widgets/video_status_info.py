@@ -159,7 +159,7 @@ class StatusInfo(QWidget):
             self.padding_lr, self.padding_tb, -self.padding_lr, -self.padding_tb
         )
 
-    def _is_text_fits_minimum(self) -> bool:  # noqa: WPS210
+    def _is_text_fits_minimum(self) -> bool:
         text_box_max = self._text_box_for_size(
             self.geometry().width(), self.maximumHeight()
         )
@@ -197,7 +197,7 @@ class StatusInfo(QWidget):
         )
 
 
-class TextMultiliner(object):
+class TextMultiliner:
     def __init__(self, text, font):
         self.font_metrics = QFontMetrics(font)
         self.line_spacing = self.font_metrics.lineSpacing()

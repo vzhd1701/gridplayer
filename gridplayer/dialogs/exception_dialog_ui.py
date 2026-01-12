@@ -1,7 +1,7 @@
-from PyQt5 import QtCore, QtGui, QtWidgets
+from PyQt5 import QtCore, QtWidgets
 
 
-class Ui_ExceptionDialog(object):
+class Ui_ExceptionDialog:
     def setupUi(self, ExceptionDialog):
         ExceptionDialog.setObjectName("ExceptionDialog")
         ExceptionDialog.resize(518, 297)

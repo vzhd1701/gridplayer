@@ -77,7 +77,7 @@ _default_settings = {
     "internal/fake_overlay_invisibility": False,
     "streaming/hls_via_streamlink": True,
     "streaming/resolver_priority": URLResolver.STREAMLINK,
-    "streaming/resolver_priority_patterns": ResolverPatterns(__root__=[]),
+    "streaming/resolver_priority_patterns": ResolverPatterns([]),
     "recent_list_videos": RecentListVideos(),
     "recent_list_playlists": RecentListPlaylists(),
 }
@@ -86,7 +86,7 @@ if env.IS_MACOS:
     _default_settings["player/video_driver"] = VideoDriver.VLC_HW_SP
 
 
-class _Settings(object):
+class _Settings:
     def __init__(self):
         settings_path = get_app_data_dir() / "settings.ini"
 
@@ -113,7 +113,7 @@ class _Settings(object):
     def set(self, setting_name, setting_value):
         setting_type = type(_default_settings[setting_name])
 
-        if setting_type != type(setting_value):  # noqa: WPS516
+        if setting_type is not type(setting_value):
             raise ValueError(
                 f"Setting {setting_name} is of type {setting_type}"
                 f" but value is of type {type(setting_value)}"
@@ -166,8 +166,7 @@ class _Settings(object):
         res_list = []
 
         self.settings.beginGroup(setting)
-        for key in self.settings.childKeys():
-            res_list.append(self.settings.value(key))
+        res_list.extend(self.settings.value(key) for key in self.settings.childKeys())
         self.settings.endGroup()
 
         return setting_type(res_list)
@@ -188,19 +187,19 @@ class _Settings(object):
             return setting_value.value
 
         if isinstance(setting_value, BaseModel):
-            return setting_value.json()
+            return setting_value.model_dump_json()
 
         if isinstance(setting_value, (Path, str)):
             return str(setting_value)
 
-        return setting_value
+        return str(setting_value)
 
 
 def Settings():
-    global SETTINGS  # noqa: WPS420
+    global SETTINGS
 
     if not SETTINGS:
-        SETTINGS = _Settings()  # noqa: WPS442
+        SETTINGS = _Settings()
 
     return SETTINGS
 

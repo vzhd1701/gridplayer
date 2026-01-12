@@ -3,8 +3,8 @@ import logging
 import platform
 import shlex
 import warnings
+from collections.abc import Iterator
 from pathlib import Path
-from typing import Iterator
 
 import certifi
 
@@ -53,11 +53,9 @@ class InstanceProcessVLC(InstanceProcess):
     def cleanup_instance(self):
         self._vlc.cleanup_instance()
 
-    def init_player_shared_data(self, player_id):
-        ...
+    def init_player_shared_data(self, player_id): ...
 
-    def release_player_shared_data(self, player_id):
-        ...
+    def release_player_shared_data(self, player_id): ...
 
     # outside
     def request_set_log_level_vlc(self, log_level):
@@ -68,7 +66,7 @@ class InstanceProcessVLC(InstanceProcess):
         self._vlc.set_log_level_vlc(log_level)
 
 
-class InstanceVLC(object):
+class InstanceVLC:
     log_level_map = {
         vlc.LogLevel.DEBUG: logging.DEBUG,
         vlc.LogLevel.ERROR: logging.ERROR,
@@ -160,7 +158,7 @@ class InstanceVLC(object):
     # process
     def libvlc_log_callback(self):
         @vlc.CallbackDecorators.LogCb
-        def _cb(ptr_data, level, ctx, fmt, args):  # noqa: WPS430
+        def _cb(ptr_data, level, ctx, fmt, args):
             log_level = self.log_level_map[vlc.LogLevel(level)]
 
             if log_level < self._vlc_log_level:
@@ -179,7 +177,7 @@ class InstanceVLC(object):
     def set_log_level_vlc(self, log_level):
         self._vlc_log_level = log_level
 
-    def _format_log_msg(self, args, ctx, fmt):  # noqa: WPS210
+    def _format_log_msg(self, args, ctx, fmt):
         m_name, m_file, m_line = vlc.libvlc_log_get_context(ctx)
 
         # Format given fmt/args pair
@@ -223,7 +221,7 @@ def _is_plugin_cache_exists() -> bool:
     return plugin_cache_path.is_file()
 
 
-def _iter_settings_options() -> Iterator[str]:  # noqa: WPS231
+def _iter_settings_options() -> Iterator[str]:
     options = shlex.split(Settings().sync_get("misc/vlc_options"))
 
     for opt_idx, opt in enumerate(options):

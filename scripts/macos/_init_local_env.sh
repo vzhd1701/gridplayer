@@ -1,8 +1,6 @@
 #!/bin/bash
 
-set -e
-
-SCRIPT_DIR="$( cd "$( dirname $0 )" && pwd )"
+# Run this once before building MacOS package on local machine
 
 check() {
     which $1 >/dev/null
@@ -22,13 +20,3 @@ brew install gnu-sed wget node graphicsmagick imagemagick
 check create-dmg || npm install --global create-dmg
 
 pip3 install urllib3 virtualenv
-
-. "scripts/init_app_vars.sh"
-
-mkdir -p "$BUILD_DIR"
-
-poetry export --without-hashes -o "$BUILD_DIR/requirements.txt"
-
-bash "$SCRIPTS_DIR/pyinstaller/build_mac.sh"
-
-bash "$SCRIPTS_DIR/macos/build_dmg.sh"

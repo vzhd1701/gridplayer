@@ -31,7 +31,7 @@ def run_app():
     # Need to postpone import parts that depend on vlc
     # because python-vlc loads VLC DLL on import
     # and we need to set environment vars before that
-    from gridplayer.player import Player  # noqa: WPS433
+    from gridplayer.player import Player
 
     player = Player()
     player.show()

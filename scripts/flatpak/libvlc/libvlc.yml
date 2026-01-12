@@ -70,8 +70,8 @@ post-install:
 - ${FLATPAK_DEST}/lib/vlc/vlc-cache-gen ${FLATPAK_DEST}/lib/vlc/plugins
 sources:
 - type: archive
-  url: http://download.videolan.org/videolan/vlc/3.0.17.4/vlc-3.0.17.4.tar.xz
-  sha256: 8c5a62d88a4fb45c1b095cf10befef217dfa87aedcec5184b9e7d590b6dd4133
+  url: https://download.videolan.org/videolan/vlc/3.0.21/vlc-3.0.21.tar.xz
+  sha256: 24dbbe1d7dfaeea0994d5def0bbde200177347136dbfe573f5b6a4cee25afbb0
 
 modules:
 - shared-modules/intltool/intltool-0.51.json
@@ -90,18 +90,6 @@ modules:
       commands:
         - autoreconf -fiv
       dest-filename: autogen.sh
-- name: libcddb
-  cleanup:
-    - /bin
-  rm-configure: true
-  sources:
-    - type: archive
-      url: https://pkg.freebsd.org/ports-distfiles/libcddb-1.3.2.tar.bz2
-      sha256: 35ce0ee1741ea38def304ddfe84a958901413aa829698357f0bee5bb8f0a223b
-    - type: script
-      commands:
-        - autoreconf -fiv
-      dest-filename: autogen.sh
 - name: libshout
   cleanup:
     - /share
@@ -109,10 +97,8 @@ modules:
   rm-configure: true
   sources:
     - type: archive
-      url: https://downloads.xiph.org/releases/libshout/libshout-2.4.1.tar.gz
-      sha256: f3acb8dec26f2dbf6df778888e0e429a4ce9378a9d461b02a7ccbf2991bbf24d
-    - type: patch
-      path: libshout-openssl11.patch
+      url: https://downloads.xiph.org/releases/libshout/libshout-2.4.6.tar.gz
+      sha256: 39cbd4f0efdfddc9755d88217e47f8f2d7108fa767f9d58a2ba26a16d8f7c910
     - type: script
       commands:
         - autoreconf -fiv
@@ -129,33 +115,12 @@ modules:
     - -DWITH_ASF=ON
   sources:
     - type: archive
-      url: https://taglib.org/releases/taglib-1.12.tar.gz
-      sha256: 7fccd07669a523b07a15bd24c8da1bbb92206cb19e9366c3692af3d79253b703
+      url: https://taglib.org/releases/taglib-1.13.1.tar.gz
+      sha256: c8da2b10f1bfec2cd7dbfcd33f4a2338db0765d851a50583d410bacf055cfd0b
     - type: script
       commands:
         - autoreconf -fiv
       dest-filename: autogen.sh
-- name: gsm
-  cleanup:
-    - /bin
-  no-autogen: true
-  build-options:
-    cflags: -fPIC
-    cxxflags: -c -fPIC
-  make-install-args:
-    - -j1
-    - INSTALL_ROOT=/app
-    - GSM_INSTALL_INC=/app/include/gsm
-    - GSM_INSTALL_MAN=/app/share/man/man3
-    - TOAST_INSTALL_MAN=/app/share/man/man1
-  sources:
-    - type: archive
-      url: http://www.quut.com/gsm/gsm-1.0.17.tar.gz
-      sha256: 855a57d1694941ddf3c73cb79b8d0b3891e9c9e7870b4981613b734e1ad07601
-    - type: patch
-      path: gsm.patch
-    - type: patch
-      path: gsm-makefile.patch
 - name: libdvbpsi
   rm-configure: true
   sources:
@@ -190,8 +155,8 @@ modules:
     - --enable-fontconfig
   sources:
     - type: archive
-      url: https://github.com/libass/libass/releases/download/0.15.2/libass-0.15.2.tar.xz
-      sha256: 1be2df9c4485a57d78bb18c0a8ed157bc87a5a8dd48c661961c625cb112832fd
+      url: https://github.com/libass/libass/releases/download/0.17.3/libass-0.17.3.tar.xz
+      sha256: eae425da50f0015c21f7b3a9c7262a910f0218af469e22e2931462fed3c50959
     - type: script
       commands:
         - autoreconf -fiv
@@ -207,10 +172,8 @@ modules:
     - -DCMAKE_POSITION_INDEPENDENT_CODE=ON
   sources:
     - type: archive
-      url: https://dl.matroska.org/downloads/libebml/libebml-1.4.2.tar.xz
-      sha256: 41c7237ce05828fb220f62086018b080af4db4bb142f31bec0022c925889b9f2
-    - type: patch
-      path: libebml-gcc11.patch
+      url: https://dl.matroska.org/downloads/libebml/libebml-1.4.5.tar.xz
+      sha256: 4971640b0592da29c2d426f303e137a9b0b3d07e1b81d069c1e56a2f49ab221b
 - name: libmatroska
   cleanup:
     - /lib/cmake
@@ -222,8 +185,8 @@ modules:
     - -DCMAKE_POSITION_INDEPENDENT_CODE=ON
   sources:
     - type: archive
-      url: https://dl.matroska.org/downloads/libmatroska/libmatroska-1.6.3.tar.xz
-      sha256: daf91a63f58dd157ca340c457871e66260cb9c3333fefb008b318befbb0e081a
+      url: https://dl.matroska.org/downloads/libmatroska/libmatroska-1.7.1.tar.xz
+      sha256: 572a3033b8d93d48a6a858e514abce4b2f7a946fe1f02cbfeca39bfd703018b3
 - name: libmodplug
   rm-configure: true
   sources:
@@ -243,7 +206,7 @@ modules:
   sources:
     - type: git
       url: https://code.videolan.org/videolan/x264.git
-      commit: 5db6aa6cab1b146e07b60cc1736a01f21da01154
+      commit: a8b68ebfaa68621b5ac8907610d3335971839d52
 - name: x265
   cleanup:
     - /bin
@@ -256,16 +219,16 @@ modules:
     - -DCMAKE_POSITION_INDEPENDENT_CODE=ON
   sources:
     - type: archive
-      url: https://bitbucket.org/multicoreware/x265_git/downloads/x265_3.5.tar.gz
-      sha256: e70a3335cacacbba0b3a20ec6fecd6783932288ebc8163ad74bcc9606477cae8
+      url: https://bitbucket.org/multicoreware/x265_git/downloads/x265_4.1.tar.gz
+      sha256: a31699c6a89806b74b0151e5e6a7df65de4b49050482fe5ebf8a4379d7af8f29
 - name: dav1d
   cleanup:
     - /bin
   buildsystem: meson
   sources:
     - type: archive
-      url: https://download.videolan.org/videolan/dav1d/0.9.2/dav1d-0.9.2.tar.xz
-      sha256: e3235ab6c43c0135b0db1d131e1923fad4c84db9d85683e30b91b33a52d61c71
+      url: https://download.videolan.org/videolan/dav1d/1.5.0/dav1d-1.5.0.tar.xz
+      sha256: 14bd6f5157808ed9aedcafbe50df689d304fd4810ac20be6eec1ab037436afd6
 - name: ffmpeg
   cleanup:
     - /bin
@@ -284,8 +247,17 @@ modules:
     - --enable-libopus
   sources:
     - type: archive
-      url: https://ffmpeg.org/releases/ffmpeg-4.4.2.tar.xz
-      sha256: af419a7f88adbc56c758ab19b4c708afbcae15ef09606b82b855291f6a6faa93
+      url: https://ffmpeg.org/releases/ffmpeg-4.4.6.tar.xz
+      sha256: 2290461f467c08ab801731ed412d8e724a5511d6c33173654bd9c1d2e25d0617
+- name: libgcrypt
+  config-opts:
+    - --disable-static
+    - --disable-doc
+  sources:
+    - type: git
+      url: https://dev.gnupg.org/source/libgcrypt.git
+      tag: libgcrypt-1.10.3
+      commit: aa1610866f8e42bdc272584f0a717f32ee050a22
 - name: libaacs
   cleanup:
     - /bin
@@ -306,7 +278,7 @@ modules:
   sources:
     - type: git
       url: https://github.com/divideconcept/FluidLite.git
-      commit: fdd05bad03cdb24d1f78b5fe3453842890c1b0e8
+      commit: d59d2328818f913b7d1a6a59aed695c47a8ce388
 - name: libplacebo
   cleanup:
     - /bin
@@ -339,8 +311,8 @@ modules:
     - -DCMAKE_POSITION_INDEPENDENT_CODE=ON
   sources:
     - type: archive
-      url: https://github.com/Haivision/srt/archive/v1.4.4.tar.gz
-      sha256: 93f5f3715bd5bd522b8d65fc0d086ef2ad49db6a41ad2d7b35df2e8bd7094114
+      url: https://github.com/Haivision/srt/archive/v1.5.3.tar.gz
+      sha256: befaeb16f628c46387b898df02bc6fba84868e86a6f6d8294755375b9932d777
 - name: live555
   buildsystem: simple
   build-commands:
@@ -368,5 +340,5 @@ modules:
     - DIST_LANG=cpp
   sources:
     - type: archive
-      url: https://github.com/protocolbuffers/protobuf/releases/download/v3.19.3/protobuf-all-3.19.3.tar.gz
-      sha256: 84cca73ed97abce159c381e682ba0237bc21952359b07d8d45dc7e6399edd923
+      url: https://github.com/protocolbuffers/protobuf/releases/download/v21.12/protobuf-cpp-3.21.12.tar.gz
+      sha256: 4eab9b524aa5913c6fffb20b2a8abf5ef7f95a80bc0701f3a6dbb4c607f73460

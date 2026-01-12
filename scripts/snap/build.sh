@@ -40,7 +40,7 @@ sed -i "s#{WHL_FILE}#$WHL_FILE#g" "$BUILD_DIR_SNAP/snap/snapcraft.yaml"
 
 # Build
 
-(cd "$BUILD_DIR_SNAP" && snapcraft "$@")
+(cd "$BUILD_DIR_SNAP" && snapcraft pack "$@")
 
 # Result
 

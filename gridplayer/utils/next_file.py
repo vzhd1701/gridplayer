@@ -1,11 +1,10 @@
 import random
 from pathlib import Path
-from typing import Optional
 
 from gridplayer.params.extensions import SUPPORTED_MEDIA_EXT
 
 
-def next_video_file(file: Path, is_shuffle=False) -> Optional[Path]:
+def next_video_file(file: Path, is_shuffle=False) -> Path | None:
     siblings = _file_siblings(file)
 
     if is_shuffle:
@@ -22,7 +21,7 @@ def next_video_file(file: Path, is_shuffle=False) -> Optional[Path]:
     return siblings[next_id]
 
 
-def previous_video_file(file: Path) -> Optional[Path]:
+def previous_video_file(file: Path) -> Path | None:
     siblings = _file_siblings(file)
 
     try:

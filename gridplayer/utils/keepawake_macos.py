@@ -20,7 +20,7 @@ functions = [
     ("IOPSGetProvidingPowerSourceType", b"@@"),
 ]
 
-objc.loadBundleFunctions(IOKit, globals(), functions)  # noqa: WPS421
+objc.loadBundleFunctions(IOKit, globals(), functions)
 
 
 def assertNoIdleSleep(reason=None):

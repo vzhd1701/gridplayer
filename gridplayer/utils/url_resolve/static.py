@@ -27,7 +27,7 @@ class StreamOfflineError(Exception):
 
 
 @dataclass
-class ResolvedVideo(object):
+class ResolvedVideo:
     title: str
     is_live: bool
     streams: Streams

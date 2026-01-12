@@ -1,6 +1,5 @@
 import random
 from dataclasses import dataclass
-from typing import Dict, Optional, Tuple
 
 from gridplayer.models.video import Video
 
@@ -9,18 +8,18 @@ NO_TRACK = frozenset((None, DISABLED_TRACK))
 
 
 @dataclass
-class MediaTrack(object):
+class MediaTrack:
     codec: str
     bitrate: int
-    language: Optional[str]
-    description: Optional[str]
+    language: str | None
+    description: str | None
 
     @property
     def codec_info(self):
         info = [self.codec]
 
         if self.bitrate:
-            info += ["{0} kbps".format(self.bitrate // 1024)]
+            info += [f"{self.bitrate // 1024} kbps"]
 
         return ", ".join(info)
 
@@ -42,21 +41,21 @@ class MediaTrack(object):
 
 @dataclass
 class VideoTrack(MediaTrack):
-    video_dimensions: Tuple[int, int]
-    fps: Optional[float]
+    video_dimensions: tuple[int, int]
+    fps: float | None
 
     @property
     def codec_info(self):
         info = [self.codec]
 
         if all(self.video_dimensions):
-            info += ["{0}x{1}".format(*self.video_dimensions)]
+            info += ["{}x{}".format(*self.video_dimensions)]
 
         if self.fps:
             info += [f"{self.fps} FPS"]
 
         if self.bitrate:
-            info += ["{0} kbps".format(self.bitrate // 1024)]
+            info += [f"{self.bitrate // 1024} kbps"]
 
         return ", ".join(info)
 
@@ -74,23 +73,23 @@ class AudioTrack(MediaTrack):
             info += [f"{self.channels} ch"]
 
         if self.rate:
-            info += ["{0} kHz".format(self.rate // 1000)]
+            info += [f"{self.rate // 1000} kHz"]
 
         if self.bitrate:
-            info += ["{0} kbps".format(self.bitrate // 1024)]
+            info += [f"{self.bitrate // 1024} kbps"]
 
         return ", ".join(info)
 
 
 @dataclass
-class Media(object):
+class Media:
     length: int
 
-    video_tracks: Dict[int, VideoTrack]
-    audio_tracks: Dict[int, AudioTrack]
+    video_tracks: dict[int, VideoTrack]
+    audio_tracks: dict[int, AudioTrack]
 
-    cur_audio_track_id: Optional[int] = None
-    cur_video_track_id: Optional[int] = None
+    cur_audio_track_id: int | None = None
+    cur_video_track_id: int | None = None
 
     @property
     def is_live(self) -> bool:
@@ -114,15 +113,15 @@ class Media(object):
 
 
 @dataclass
-class MediaInput(object):
+class MediaInput:
     uri: str
     is_live: bool
     is_audio_only: bool
-    size: Tuple[int, int]
+    size: tuple[int, int]
     video: Video
 
-    length: Optional[int] = None
-    _initial_seek_ms: Optional[int] = None
+    length: int | None = None
+    _initial_seek_ms: int | None = None
 
     @property
     def initial_time(self) -> int:
@@ -147,7 +146,7 @@ class MediaInput(object):
         loop_start = self.video.loop_start or 0
         loop_end = self.video.loop_end or self.length
 
-        return random.randint(loop_start, loop_end)  # noqa: S311
+        return random.randint(loop_start, loop_end)
 
 
 class NotPausedError(Exception):

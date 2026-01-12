@@ -12,9 +12,7 @@ IS_SNAP = IS_LINUX and "SNAP" in os.environ
 IS_APPIMAGE = IS_LINUX and "APPIMAGE" in os.environ
 IS_FLATPAK = IS_LINUX and "FLATPAK_ID" in os.environ
 
-PYINSTALLER_LIB_ROOT = (
-    Path(sys._MEIPASS) if IS_PYINSTALLER else Path.cwd()  # noqa: WPS437
-)
+PYINSTALLER_LIB_ROOT = Path(sys._MEIPASS) if IS_PYINSTALLER else Path.cwd()
 
 
 VLC_VERSION = None

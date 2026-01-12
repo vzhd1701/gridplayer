@@ -1,5 +1,5 @@
+from collections.abc import Iterable
 from itertools import starmap
-from typing import Dict, Iterable
 
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QIcon
@@ -25,7 +25,7 @@ class QAddURLsDialog(QDialog):
     def __init__(
         self,
         supported_schemas: Iterable[str],
-        supported_urls: Dict[str, str],
+        supported_urls: dict[str, str],
         **kwargs,
     ):
         super().__init__(**kwargs)
@@ -68,7 +68,7 @@ class QAddURLsDialog(QDialog):
         parent,
         title: str,
         supported_schemas: Iterable[str],
-        supported_urls: Dict[str, str],
+        supported_urls: dict[str, str],
     ):
         dialog = cls(
             parent=parent,
@@ -87,7 +87,7 @@ class QAddURLsDialog(QDialog):
         is_clipboard_empty = qApp.clipboard().text().strip() == ""
         self._paste_button.setEnabled(not is_clipboard_empty)
 
-    def _init_info(self, schemas: Iterable[str], supported_urls: Dict[str, str]):
+    def _init_info(self, schemas: Iterable[str], supported_urls: dict[str, str]):
         supported_info = QLabel(self)
 
         info_txt = _init_info_txt(schemas, supported_urls)
@@ -190,6 +190,6 @@ def _init_info_txt(schemas, supported_urls):
     return supported_info_template
 
 
-def _convert_urls(urls: Dict[str, str]) -> Iterable[str]:
+def _convert_urls(urls: dict[str, str]) -> Iterable[str]:
     url_template = "<a href='{1}'>{0}</a>"
     return starmap(url_template.format, urls.items())

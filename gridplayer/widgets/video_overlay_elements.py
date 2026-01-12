@@ -38,13 +38,13 @@ class OverlayWidget(QWidget):
 
     @property
     def color_contrast(self):
-        lightness = 0 if self.color.lightness() > 127 else 255  # noqa: WPS432
+        lightness = 0 if self.color.lightness() > 127 else 255
 
         return QColor.fromHsl(self.color.hue(), self.color.saturation(), lightness)
 
     @property
     def color_contrast_mid(self):
-        if self.color.lightness() > 127:  # noqa: WPS432
+        if self.color.lightness() > 127:
             lightness = self.color.lightness() - 100
         else:
             lightness = self.color.lightness() + 100
@@ -224,10 +224,7 @@ class OverlayShortLabelFloating(OverlayShortLabel):
 class OverlayBar(OverlayWidget):
     @property
     def color_progress(self):
-        is_color_reddish = (
-            0 <= self.color.hue() <= 50  # noqa: WPS432
-            or 310 <= self.color.hue() <= 360  # noqa: WPS221, WPS432
-        )
+        is_color_reddish = 0 <= self.color.hue() <= 50 or 310 <= self.color.hue() <= 360
 
         if is_color_reddish:
             return QColor(Qt.green)

@@ -4,7 +4,7 @@ from multiprocessing import Pipe, connection
 from threading import Thread, get_ident
 
 
-class CommandLoop(object):
+class CommandLoop:
     def __init__(self, pipe=None, **kwargs):
         super().__init__(**kwargs)
 
@@ -65,9 +65,7 @@ class CommandLoopThreaded(CommandLoop):
             self.cmd_loop_thread_body()
         except Exception:
             traceback_txt = traceback.format_exc()
-            exception_txt = "Exception in thread\n{0}\n{1}".format(
-                self._thread.name, traceback_txt
-            )
+            exception_txt = f"Exception in thread\n{self._thread.name}\n{traceback_txt}"
 
             logging.getLogger(self.__class__.__name__).critical(exception_txt)
 

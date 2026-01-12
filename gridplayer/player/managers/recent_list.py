@@ -1,5 +1,4 @@
 from pathlib import Path
-from typing import List, Union
 
 from PyQt5.QtCore import pyqtSignal
 
@@ -74,7 +73,7 @@ class RecentListManager(ManagerBase):
     def is_any_recent_videos(self) -> bool:
         return bool(Settings().get("recent_list_videos"))
 
-    def add_recent_videos(self, videos: List[Video]) -> None:
+    def add_recent_videos(self, videos: list[Video]) -> None:
         if not self.is_recent_list_enabled():
             return
 
@@ -131,7 +130,7 @@ class RecentListManager(ManagerBase):
         Settings().set("recent_list_playlists", recent_playlists)
 
 
-def elide_uri(uri: Union[VideoURI, Path], max_length: int = 100) -> str:
+def elide_uri(uri: VideoURI, max_length: int = 100) -> str:
     if len(str(uri)) <= max_length:
         return str(uri)
 

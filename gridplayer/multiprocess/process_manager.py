@@ -11,7 +11,7 @@ from gridplayer.utils.log_config import QueueListenerRoot
 from gridplayer.utils.misc import force_terminate_children, force_terminate_children_all
 
 
-class PlayerInstance(object):
+class PlayerInstance:
     def __init__(self, instance, player_id):
         self._instance = instance
         self._player_id = player_id
@@ -43,7 +43,7 @@ class ProcessManager(CommandLoopThreaded, QObject):
 
         # Prevent opening multiple resource trackers
         if os.name != "nt":
-            from multiprocessing.resource_tracker import ensure_running  # noqa: WPS433
+            from multiprocessing.resource_tracker import ensure_running
 
             ensure_running()
 
@@ -68,7 +68,7 @@ class ProcessManager(CommandLoopThreaded, QObject):
             for instance in self.instances.values():
                 with instance.is_dead.get_lock():
                     if not instance.is_dead.value:
-                        active_instances.append(instance)  # noqa: WPS220
+                        active_instances.append(instance)
         return active_instances
 
     def get_instance(self, options):

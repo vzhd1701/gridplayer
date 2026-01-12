@@ -30,12 +30,10 @@ class OverlayButton(OverlayWidget, metaclass=QABC):
         self._is_off = False
 
     @abstractmethod
-    def icon(self, rect, painter, color_fg, color_bg):
-        ...
+    def icon(self, rect, painter, color_fg, color_bg): ...
 
     @abstractmethod
-    def icon_off(self, rect, painter, color_fg, color_bg):
-        ...
+    def icon_off(self, rect, painter, color_fg, color_bg): ...
 
     def paintEvent(self, event):
         painter = QPainter(self)
@@ -108,9 +106,9 @@ class OverlayButtonDynamic(OverlayButton, ABC):
         self._icon_spin = 0
 
         self._animation = QPropertyAnimation(self, b"icon_spin")
-        self._animation.setDuration(500)  # noqa: WPS432
+        self._animation.setDuration(500)
         self._animation.setStartValue(0)
-        self._animation.setEndValue(360)  # noqa: WPS432
+        self._animation.setEndValue(360)
         self._animation.setLoopCount(-1)
 
     @pyqtProperty(int)
@@ -118,7 +116,7 @@ class OverlayButtonDynamic(OverlayButton, ABC):
         return self._icon_spin
 
     @icon_spin.setter
-    def icon_spin(self, icon_spin):  # noqa: WPS440
+    def icon_spin(self, icon_spin):
         self._icon_spin = icon_spin
         self.update()
 
@@ -154,8 +152,7 @@ class OverlayExitButton(OverlayButton):
     def icon(self, rect, painter, color_fg, color_bg):
         return draw_cross(rect, painter, color_fg, color_bg)
 
-    def icon_off(self, rect, painter, color_fg, color_bg):
-        ...
+    def icon_off(self, rect, painter, color_fg, color_bg): ...
 
 
 class OverlayPlayPauseButton(OverlayButtonDynamic):

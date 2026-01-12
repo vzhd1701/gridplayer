@@ -3,9 +3,8 @@ import random
 import secrets
 from functools import partial
 from pathlib import Path
-from typing import Optional, Tuple
 
-from pydantic.color import Color
+from pydantic_extra_types.color import Color
 from PyQt5.QtCore import Qt, QTimer, pyqtSignal
 from PyQt5.QtGui import QCursor
 from PyQt5.QtWidgets import QStackedLayout, QWidget
@@ -22,7 +21,6 @@ from gridplayer.models.video import (
     Video,
     VideoBlockMime,
 )
-from gridplayer.models.video_uri import VideoURL
 from gridplayer.params.static import (
     OVERLAY_ACTIVITY_EVENT,
     PLAYER_ID_LENGTH,
@@ -71,7 +69,7 @@ class QStackedLayoutFloating(QStackedLayout):
 
 def only_initialized(func):
     def wrapper(*args, **kwargs):
-        self = args[0]  # noqa: WPS117
+        self = args[0]
         if not self.is_video_initialized:
             return None
         return func(*args, **kwargs)
@@ -81,7 +79,7 @@ def only_initialized(func):
 
 def only_seekable(func):
     def wrapper(*args, **kwargs):
-        self = args[0]  # noqa: WPS117
+        self = args[0]
         if self.is_live:
             return None
         return func(*args, **kwargs)
@@ -91,7 +89,7 @@ def only_seekable(func):
 
 def only_with_video_tacks(func):
     def wrapper(*args, **kwargs):
-        self = args[0]  # noqa: WPS117
+        self = args[0]
         if not self.video_tracks:
             return None
         return func(*args, **kwargs)
@@ -101,7 +99,7 @@ def only_with_video_tacks(func):
 
 def only_live(func):
     def wrapper(*args, **kwargs):
-        self = args[0]  # noqa: WPS117
+        self = args[0]
         if not self.is_live:
             return None
         return func(*args, **kwargs)
@@ -111,7 +109,7 @@ def only_live(func):
 
 def only_local_file(func):
     def wrapper(*args, **kwargs):
-        self = args[0]  # noqa: WPS117
+        self = args[0]
         if not self.is_local_file:
             return None
         return func(*args, **kwargs)
@@ -121,7 +119,7 @@ def only_local_file(func):
 
 def only_streamable(func):
     def wrapper(*args, **kwargs):
-        self = args[0]  # noqa: WPS117
+        self = args[0]
         if not self.streams:
             return None
         return func(*args, **kwargs)
@@ -129,7 +127,7 @@ def only_streamable(func):
     return wrapper
 
 
-class VideoBlock(QWidget):  # noqa: WPS230
+class VideoBlock(QWidget):
     load_video = pyqtSignal(MediaInput)
 
     about_to_close = pyqtSignal(str)
@@ -164,7 +162,7 @@ class VideoBlock(QWidget):  # noqa: WPS230
         self._ctx = context
 
         # Static Params
-        self.video_params: Optional[Video] = None
+        self.video_params: Video | None = None
 
         # Runtime Params
         self._is_error = False
@@ -311,7 +309,7 @@ class VideoBlock(QWidget):  # noqa: WPS230
         self.layout_main.addWidget(self.video_driver)
         self.layout_main.addWidget(self.overlay)
 
-        if type(self.overlay) == OverlayBlock:  # noqa: WPS516
+        if type(self.overlay) is OverlayBlock:
             self.overlay.raise_()
 
     def crash(self, traceback_txt):
@@ -332,7 +330,7 @@ class VideoBlock(QWidget):  # noqa: WPS230
     def video_driver_error(self, error):
         self.update_status(translate("Video Error", error))
 
-        if isinstance(self.video_params.uri, VideoURL):
+        if not self.video_params.is_local_file:
             return self.network_error()
 
         return self.error()
@@ -506,7 +504,7 @@ class VideoBlock(QWidget):  # noqa: WPS230
         if self.video_params.auto_reload_timer_min == 0:
             return translate("Auto Reload Timer", "Disabled")
 
-        return "{0} {1}".format(
+        return "{} {}".format(
             self.video_params.auto_reload_timer_min,
             translate("Auto Reload Timer", "minute(s)"),
         )
@@ -532,7 +530,7 @@ class VideoBlock(QWidget):  # noqa: WPS230
         return VideoBlockMime(id=self.id, video=self.video_params)
 
     @property
-    def size_tuple(self) -> Tuple[int, int]:
+    def size_tuple(self) -> tuple[int, int]:
         return self.size().width(), self.size().height()
 
     @property
@@ -709,7 +707,7 @@ class VideoBlock(QWidget):  # noqa: WPS230
         self.switch_stream_quality(snapshot.stream_quality)
         self.set_auto_reload_timer(snapshot.auto_reload_timer_min)
 
-        self.video_params = snapshot.copy()
+        self.video_params = snapshot.model_copy()
 
     def set_video(self, video_params: Video):
         is_first_video = self.video_params is None
@@ -911,7 +909,7 @@ class VideoBlock(QWidget):  # noqa: WPS230
     @only_initialized
     @only_seekable
     def seek_random(self):
-        random_ms = random.randint(self.loop_start, self.loop_end)  # noqa: S311
+        random_ms = random.randint(self.loop_start, self.loop_end)
 
         self.seek(random_ms)
 
@@ -984,7 +982,7 @@ class VideoBlock(QWidget):  # noqa: WPS230
         self.video_driver.set_scale(scale)
 
         if not is_silent:
-            self.info_change.emit("Zoom: {0}".format(scale))
+            self.info_change.emit(f"Zoom: {scale}")
 
     @only_with_video_tacks
     @only_initialized
@@ -1020,7 +1018,7 @@ class VideoBlock(QWidget):  # noqa: WPS230
 
         if not is_silent:
             self.info_change.emit(
-                "Crop: L{0} T{1} R{2} B{3}".format(*self.video_params.crop)
+                "Crop: L{} T{} R{} B{}".format(*self.video_params.crop)
             )
 
     @only_initialized
@@ -1089,7 +1087,7 @@ class VideoBlock(QWidget):  # noqa: WPS230
     def volume_increase(self):
         self.set_muted(False)
 
-        self.video_params.volume += 0.05  # noqa: WPS432
+        self.video_params.volume += 0.05
         self.video_params.volume = min(round(self.video_params.volume, 2), 1.0)
 
         self.set_volume(self.video_params.volume)
@@ -1098,7 +1096,7 @@ class VideoBlock(QWidget):  # noqa: WPS230
     def volume_decrease(self):
         self.set_muted(False)
 
-        self.video_params.volume -= 0.05  # noqa: WPS432
+        self.video_params.volume -= 0.05
         self.video_params.volume = max(round(self.video_params.volume, 2), 0)
 
         self.set_volume(self.video_params.volume)

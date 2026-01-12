@@ -1,5 +1,3 @@
-from typing import Dict
-
 from PyQt5.QtCore import pyqtSignal
 
 from gridplayer.models.grid_state import GridState
@@ -15,7 +13,7 @@ class SnapshotsManager(ManagerBase):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
-        self._snapshots: Dict[int, Snapshot] = {}
+        self._snapshots: dict[int, Snapshot] = {}
 
         self._ctx.snapshots = self.snapshots
 
@@ -81,7 +79,7 @@ class SnapshotsManager(ManagerBase):
     def is_snapshot_exists(self, _id):
         return _id in self._snapshots
 
-    def set_snapshots(self, snapshots):  # noqa: WPS615
+    def set_snapshots(self, snapshots):
         self._snapshots = snapshots
 
     def clear_snapshots(self):

@@ -49,7 +49,7 @@ class VideoStatus(QWidget):
         layout = QVBoxLayout(self)
         layout.setAlignment(Qt.AlignCenter)
         layout.setContentsMargins(0, 0, 0, 0)
-        layout.setSpacing(20)  # noqa: WPS432
+        layout.setSpacing(20)
 
     def resizeEvent(self, event):
         # maintain 10% margin
@@ -57,11 +57,10 @@ class VideoStatus(QWidget):
         if self.status_text:
             if self.can_fit_info:
                 status_info_min_height = min(
-                    int(self.height() * 0.1), 40  # noqa: WPS432
+                    int(self.height() * 0.1),
+                    40,
                 )
-                status_info_max_height = int(
-                    status_info_min_height * 1.5  # noqa: WPS432
-                )
+                status_info_max_height = int(status_info_min_height * 1.5)
 
                 self.status_info.setMinimumHeight(status_info_min_height)
                 self.status_info.setMaximumHeight(status_info_max_height)
@@ -77,7 +76,7 @@ class VideoStatus(QWidget):
 
     @property
     def can_fit_info(self):
-        return self.height() >= 150  # noqa: WPS432
+        return self.height() >= 150
 
     @property
     def icon(self):

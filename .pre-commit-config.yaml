@@ -22,20 +22,13 @@ repos:
 
 -   repo: local
     hooks:
-    -   id: isort
-        name: isort
+    -   id: ruff
+        name: ruff
         stages: [pre-commit]
         language: system
-        entry: poetry run isort
+        entry: poetry run ruff format
         types: [python]
-
-    -   id: black
-        name: black
-        stages: [pre-commit]
-        language: system
-        entry: poetry run black
-        types: [python]
-        exclude: resources_bin.py
+        pass_filenames: false
 
     -   id: mdformat
         name: mdformat

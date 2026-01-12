@@ -1,5 +1,3 @@
-from typing import List
-
 from streamlink.stream.hls import M3U8, ByteRange, HLSSegment
 
 LIVESTREAM_EDGE = 16
@@ -35,7 +33,7 @@ def m3u8_to_str(hls_playlist: M3U8):
     return "\n".join(res)
 
 
-def _segment_to_str(segment: HLSSegment, add_map=False) -> List[str]:
+def _segment_to_str(segment: HLSSegment, add_map=False) -> list[str]:
     res = []
 
     if segment.date:
@@ -45,21 +43,19 @@ def _segment_to_str(segment: HLSSegment, add_map=False) -> List[str]:
     if segment.discontinuity:
         res += ["#EXT-X-DISCONTINUITY"]
     if segment.byterange:
-        res += ["#EXT-X-BYTERANGE:{0}".format(_byterange_to_str(segment.byterange))]
+        res += [f"#EXT-X-BYTERANGE:{_byterange_to_str(segment.byterange)}"]
     if segment.map and add_map:
         res += [
-            '#EXT-X-MAP:URI="{0}"{1}'.format(
+            '#EXT-X-MAP:URI="{}"{}'.format(
                 segment.map.uri,
-                ',BYTERANGE="{0}"'.format(_byterange_to_str(segment.map.byterange))
+                f',BYTERANGE="{_byterange_to_str(segment.map.byterange)}"'
                 if segment.map.byterange
                 else "",
             )
         ]
 
     res += [
-        "#EXTINF:{0},{1}".format(
-            segment.duration, segment.title if segment.title else ""
-        )
+        "#EXTINF:{},{}".format(segment.duration, segment.title if segment.title else "")
     ]
 
     res += [segment.uri]

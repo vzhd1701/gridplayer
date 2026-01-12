@@ -3,7 +3,7 @@ from PyQt5.QtWidgets import QFileDialog, qApp
 
 from gridplayer.dialogs.add_urls import QAddURLsDialog
 from gridplayer.models.video import filter_video_uris
-from gridplayer.models.video_uri import VideoURL
+from gridplayer.models.video_uri import URL_ALLOWED_SCHEMES
 from gridplayer.params.extensions import (
     SUPPORTED_AUDIO_EXT,
     SUPPORTED_MEDIA_EXT,
@@ -47,7 +47,7 @@ class AddVideosManager(ManagerBase):
         urls = QAddURLsDialog.get_urls(
             parent=self.parent(),
             title=translate("Dialog - Add URLs", "Add URL(s)", "Header"),
-            supported_schemas=VideoURL.allowed_schemes,
+            supported_schemas=URL_ALLOWED_SCHEMES,
             supported_urls=PLUGIN_URLS,
         )
 
@@ -102,6 +102,6 @@ def _get_name_filters():
     for ext_type in ext_types:
         ext_with_asterisk = (f"*.{e}" for e in sorted(ext_type["extensions"]))
         ext_list = " ".join(ext_with_asterisk)
-        name_filers.append("{0} ({1})".format(ext_type["name"], ext_list))
+        name_filers.append(f"{ext_type['name']} ({ext_list})")
 
     return name_filers

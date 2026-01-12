@@ -15,7 +15,7 @@ from gridplayer.widgets.video_status import StatusIcon
 
 
 class LanguageRowWidget(QWidget):
-    flag_size = QSize(48, 36)  # noqa: WPS432
+    flag_size = QSize(48, 36)
     font_size = 14
     spacing = 12
 
@@ -99,11 +99,7 @@ class LanguageList(QListWidget):
                 )
             )
         else:
-            item_title = "<p><b>{language}</b> ({country}){completion_txt}</p>".format(
-                language=language.title_native,
-                country=language.country_native,
-                completion_txt=completion_txt,
-            )
+            item_title = f"<p><b>{language.title_native}</b> ({language.country_native}){completion_txt}</p>"
 
         row_item_w = LanguageRowWidget(item_title, language.icon_path)
 
@@ -120,7 +116,7 @@ class LanguageList(QListWidget):
                 self.scrollToItem(cur_item)
                 break
 
-    def value(self):  # noqa: WPS110
+    def value(self):
         selected_item = self.currentItem()
         if selected_item:
             return selected_item.data(Qt.UserRole)

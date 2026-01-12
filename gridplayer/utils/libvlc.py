@@ -1,9 +1,7 @@
 import logging
 import os
 import sys
-from importlib.metadata import version as lib_version
 from pathlib import Path
-from typing import Optional, Tuple, Union
 
 from gridplayer.params import env
 from gridplayer.utils.libvlc_fixer import importing_embed_vlc
@@ -28,8 +26,7 @@ def init_vlc():
     else:
         log.info("No embedded vlc path, will try to find system VLC...")
 
-    vlc_python_version = lib_version("python-vlc")
-    vlc_version = _get_vlc_version()
+    vlc_version, vlc_python_version = _get_vlc_version()
 
     log.debug(f"python-vlc {vlc_python_version}")
     log.debug(f"VLC {vlc_version}")
@@ -40,7 +37,7 @@ def init_vlc():
     return vlc_version, vlc_python_version
 
 
-def _get_embed_vlc_paths() -> Union[Tuple[Path, Path], Tuple[None, None]]:
+def _get_embed_vlc_paths() -> tuple[Path, Path] | tuple[None, None]:
     vlc_root = _get_embed_vlc_root()
 
     if vlc_root is None:
@@ -64,7 +61,7 @@ def _get_embed_vlc_paths() -> Union[Tuple[Path, Path], Tuple[None, None]]:
     return vlc_plugins_path, vlc_lib_path
 
 
-def _get_embed_vlc_root() -> Optional[Path]:
+def _get_embed_vlc_root() -> Path | None:
     if env.IS_PYINSTALLER:
         return Path(sys.executable).parent / "libVLC"
 
@@ -83,7 +80,7 @@ def _get_embed_vlc_root() -> Optional[Path]:
 def _get_vlc_version():
     try:
         with importing_embed_vlc():
-            import vlc  # noqa: WPS433
+            from gridplayer.vlc_player import vlc
     except (OSError, NotImplementedError):
         return None
 
@@ -96,4 +93,4 @@ def _get_vlc_version():
     except NameError:
         return None
 
-    return vlc_version.decode().split(" ")[0]
+    return vlc_version.decode().split(" ")[0], vlc.__version__

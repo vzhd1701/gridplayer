@@ -1,4 +1,4 @@
-from typing import List, NamedTuple
+from typing import NamedTuple
 
 from PyQt5.QtCore import QLocale
 
@@ -11,7 +11,7 @@ class LanguageAuthor(NamedTuple):
 class Language(NamedTuple):
     code: str
     completion: int
-    authors: List[LanguageAuthor]
+    authors: list[LanguageAuthor]
 
     @property
     def author_names(self):
@@ -19,7 +19,7 @@ class Language(NamedTuple):
 
     @property
     def author_links(self):
-        return ['<a href="{0}">{1}</a>'.format(a.url, a.name) for a in self.authors]
+        return [f'<a href="{a.url}">{a.name}</a>' for a in self.authors]
 
     @property
     def title_native(self) -> str:
@@ -91,7 +91,9 @@ LANGUAGES = (
         code="ja_JP",
         completion=100,
         authors=[
-            LanguageAuthor("七篠孝志", "https://crowdin.com/profile/japanese.john.doe.774")
+            LanguageAuthor(
+                "七篠孝志", "https://crowdin.com/profile/japanese.john.doe.774"
+            )
         ],
     ),
     Language(

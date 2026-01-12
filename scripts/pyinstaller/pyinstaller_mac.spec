@@ -91,7 +91,6 @@ add_data = [
     (os.path.join(BUILD_DIR, "mime.icns"), '.')
 ]
 add_data += collect_data_files('streamlink.plugins', include_py_files=True)
-add_data += copy_metadata('python-vlc')
 
 block_cipher = None
 

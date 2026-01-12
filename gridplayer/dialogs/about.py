@@ -1,5 +1,5 @@
 import sys
-from typing import List, NamedTuple, Optional
+from typing import NamedTuple
 
 from pydantic.version import VERSION as PYDANTIC_VERSION
 from PyQt5.Qt import PYQT_VERSION_STR
@@ -25,7 +25,7 @@ PYTHON_VERSION = sys.version.split(" ")[0]
 
 class Attribution(NamedTuple):
     title: str
-    version: Optional[str]
+    version: str | None
     author: str
     license: str
     url: str
@@ -159,22 +159,22 @@ class AboutDialog(QDialog, Ui_AboutDialog):
 
         attributions_txt = [
             "<style>p, h3 {text-align: center;}</style>",
-            "<h3>{0}</h3>".format(self.tr("Core")),
+            f"<h3>{self.tr('Core')}</h3>",
             self.generate_attributions(attributions["core"]),
-            "<h3>{0}</h3>".format(self.tr("Python packages")),
+            f"<h3>{self.tr('Python packages')}</h3>",
             self.generate_attributions(attributions["python"]),
-            "<h3>{0}</h3>".format(self.tr("Graphics")),
+            f"<h3>{self.tr('Graphics')}</h3>",
             self.generate_attributions(attributions["gui"]),
-            "<h3>{0}</h3>".format(self.tr("Translations")),
+            f"<h3>{self.tr('Translations')}</h3>",
             self.generate_attributions_translations(),
         ]
 
         self.attributionsBox.setText("\n".join(attributions_txt))
 
-    def generate_attributions(self, attributions: List[Attribution]):
+    def generate_attributions(self, attributions: list[Attribution]):
         attributions_txt = []
         for a in attributions:
-            app_title = "{0} {1}".format(a.title, a.version or "").strip()
+            app_title = f"{a.title} {a.version or ''}".strip()
             app_url = f'<a href="{a.url}">{a.author}</a>'
 
             attribution_txt = (

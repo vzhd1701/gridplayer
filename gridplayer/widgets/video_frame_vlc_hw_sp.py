@@ -10,7 +10,7 @@ from gridplayer.utils.qt import QABC, qt_connect
 from gridplayer.widgets.video_frame_vlc_base import VideoFrameVLC
 
 if env.IS_MACOS:
-    from PyQt5.QtWidgets import QMacCocoaViewContainer  # noqa: WPS433
+    from PyQt5.QtWidgets import QMacCocoaViewContainer
 
 from gridplayer.vlc_player.instance import InstanceVLC
 from gridplayer.vlc_player.player_base import VlcPlayerBase

@@ -4,10 +4,10 @@ from PyQt5.QtGui import QFontDatabase
 
 def init_resources():
     # noinspection PyUnresolvedReferences
-    from gridplayer import resources_bin  # noqa:F401,WPS433
+    from gridplayer import resources_bin  # noqa: F401
 
     fonts = QDirIterator(":/fonts", ("*.ttf",), QDir.Files)
 
     while fonts.hasNext():
-        font = fonts.next()  # noqa: B305
+        font = fonts.next()
         QFontDatabase.addApplicationFont(font)

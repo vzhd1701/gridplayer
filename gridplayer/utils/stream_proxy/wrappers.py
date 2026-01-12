@@ -1,10 +1,9 @@
 import dataclasses
 import logging
-import os
 from functools import partial
 from io import IOBase
 from itertools import chain
-from typing import Dict
+from pathlib import Path
 
 from requests import Response
 from streamlink import StreamError
@@ -23,11 +22,11 @@ CHUNK_SIZE = 8192
 
 
 class HTTPStreamProxy(HTTPStream):
-    def __init__(  # noqa: WPS211
+    def __init__(
         self,
         server,
         session_opts: StreamSessionOpts,
-        session_,  # noqa: WPS120
+        session_,
         url: str,
         buffered: bool = True,
         **args,
@@ -45,7 +44,7 @@ class HTTPStreamProxy(HTTPStream):
     def response(self) -> Response:
         return self._res
 
-    def set_request_headers(self, headers: Dict[str, str]):
+    def set_request_headers(self, headers: dict[str, str]):
         self.args["headers"] = headers
 
     def open(self):
@@ -77,7 +76,7 @@ class HLSProxy(HTTPStreamProxy):
             **reqargs,
         )
 
-        base_url = os.path.dirname(self.args["url"]) + "/"
+        base_url = f"{Path(self.args['url']).parent}/"
         hls_playlist = parse_m3u8(self._res.text, base_url)
 
         hls_playlist_txt = self._proxify_hls_playlist(hls_playlist)
@@ -123,11 +122,10 @@ class HLSProxyLive(HLSStream):
 
         return res
 
-    def set_request_headers(self, headers: Dict[str, str]):
-        ...
+    def set_request_headers(self, headers: dict[str, str]): ...
 
 
-class HLSMuxedStream(object):
+class HLSMuxedStream:
     def __init__(self, server, stream: Stream):
         self.server = server
         self.stream = stream
@@ -151,8 +149,7 @@ class HLSMuxedStream(object):
 
         return res
 
-    def set_request_headers(self, headers: Dict[str, str]):
-        ...
+    def set_request_headers(self, headers: dict[str, str]): ...
 
     def _generate_hls_playlist(self) -> str:
         res = ["#EXTM3U"]
@@ -163,10 +160,7 @@ class HLSMuxedStream(object):
 
         res += [
             '#EXT-X-MEDIA:TYPE=AUDIO,GROUP-ID="audio",'
-            'NAME="{name}",DEFAULT=YES,URI="{track_url}"'.format(
-                name=name,
-                track_url=self.server.add_stream(audio_track),
-            )
+            f'NAME="{name}",DEFAULT=YES,URI="{self.server.add_stream(audio_track)}"'
         ]
 
         solo_stream = dataclasses.replace(self.stream, audio_tracks=None)
@@ -177,8 +171,8 @@ class HLSMuxedStream(object):
         return "\n".join(res)
 
 
-class StreamReader(object):
-    def __init__(self, stream: HTTPStreamProxy, request_headers: Dict[str, str]):
+class StreamReader:
+    def __init__(self, stream: HTTPStreamProxy, request_headers: dict[str, str]):
         self._log = logging.getLogger(self.__class__.__name__)
 
         self._stream_fd = None

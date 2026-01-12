@@ -1,19 +1,17 @@
+from collections.abc import Iterable
 from pathlib import Path
-from typing import Generic, Iterable, List, Optional, TypeVar, Union
+from typing import Generic, TypeVar
 
-from pydantic import parse_obj_as
-
-from gridplayer.models.video_uri import VideoURI
+from gridplayer.models.video_uri import VideoURI, parse_uri
 
 T = TypeVar("T")
 
-IN_URI = Union[str, VideoURI]
-IN_PATH = Union[str, Path]
+IN_PATH = str | Path
 
 
 class RecentList(Generic[T]):
     def __init__(self):
-        self._list: List[T] = []
+        self._list: list[T] = []
 
     def __bool__(self) -> bool:
         return bool(self._list)
@@ -24,7 +22,7 @@ class RecentList(Generic[T]):
     def __len__(self):
         return len(self._list)
 
-    def add(self, items: List[T]) -> None:
+    def add(self, items: list[T]) -> None:
         for item in reversed(items):
             if item in self._list:
                 self._list.remove(item)
@@ -36,27 +34,21 @@ class RecentList(Generic[T]):
 
 
 class RecentListVideos(RecentList[VideoURI]):
-    def __init__(self, uris: Optional[List[IN_URI]] = None):
+    def __init__(self, uris: list[VideoURI] | None = None):
         super().__init__()
 
-        if uris is None:
+        if not uris:
             return
 
         for uri in uris:
-            if isinstance(uri, str):
-                try:
-                    uri = parse_obj_as(VideoURI, uri)
-                except ValueError:
-                    continue
-
-            self._list.append(uri)
+            self._list.append(parse_uri(str(uri)))
 
 
 class RecentListPlaylists(RecentList[Path]):
-    def __init__(self, paths: Optional[List[IN_PATH]] = None):
+    def __init__(self, paths: list[IN_PATH] | None = None):
         super().__init__()
 
-        if paths is None:
+        if not paths:
             return
 
         for path in paths:

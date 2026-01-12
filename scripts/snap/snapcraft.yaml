@@ -9,6 +9,13 @@ description: |
 architectures:
   - amd64
 
+title: {APP_NAME}
+contact: {APP_AUTHOR_CONTACT}
+donation: {APP_URL}
+issues: {APP_BUGTRACKER_URL}
+source-code: {APP_URL}
+website: {APP_URL}
+
 base: core22
 grade: stable
 confinement: strict
@@ -92,8 +99,8 @@ parts:
     source: .
     plugin: python
     after: [snapcraft-preload, vlc]
-    build-environment:
-      - PIP_NO_BINARY: "pydantic"
+    stage-packages:
+    - libxcb-shape0
     python-packages:
       - ${CRAFT_PROJECT_DIR}/{WHL_FILE}
     build-packages:
@@ -166,7 +173,7 @@ apps:
     extensions:
       - kde-neon
     environment:
-      LD_LIBRARY_PATH: "$SNAP/usr/lib/x86_64-linux-gnu/pulseaudio:$SNAP/usr/lib/x86_64-linux-gnu/vlc"
+      LD_LIBRARY_PATH: "$SNAP/usr/lib/x86_64-linux-gnu/pulseaudio:$SNAP/usr/lib/x86_64-linux-gnu/vlc:$SNAP/usr/lib/x86_64-linux-gnu"
       DISABLE_WAYLAND: 1
       NO_AT_BRIDGE: 1 # disable dbind-WARNING warning
     desktop: usr/share/applications/{APP_ID}.desktop

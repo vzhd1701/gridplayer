@@ -667,7 +667,7 @@ ACTIONS = MappingProxyType(
             "func": ("active", "reload"),
         },
         "Auto Reload: %v": {
-            "title": "{0}: %v".format(translate("Actions", "Auto Reload")),
+            "title": "{}: %v".format(translate("Actions", "Auto Reload")),
             "icon": "reload",
             "func": ("active", "auto_reload_timer"),
             "value_getter": ("active", "get_auto_reload_timer"),

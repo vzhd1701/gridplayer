@@ -16,13 +16,13 @@ env:
   BUILD_POETRY_VERSION: "2.2.1"
 
 jobs:
-  build_python:
+  build_snap:
     runs-on: ubuntu-latest
     env:
       POETRY_VIRTUALENVS_CREATE: false
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v6
+      - uses: actions/checkout@v6
+      - uses: extractions/setup-just@v3
 
       - name: Set up Python ${{ env.BUILD_PYTHON_VERSION }}
         uses: actions/setup-python@v6
@@ -34,35 +34,13 @@ jobs:
         with:
           poetry-version: ${{ env.BUILD_POETRY_VERSION }}
 
-      - name: Build project for distribution
-        run: poetry build
-
-      - name: Save release python packages
-        uses: actions/upload-artifact@v4
-        with:
-          name: release_dist_python
-          path: dist
-
-  build_snap:
-    needs: build_python
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v6
-
-      - name: Load release python packages
-        uses: actions/download-artifact@v4
-        with:
-          name: release_dist_python
-          path: dist
-
       - name: Install requirements
         run: |
           sudo apt-get install -y desktop-file-utils appstream-util
 
       - name: Prepare
         run: |
-          bash scripts/linux_meta/build.sh
-          bash scripts/snap/build.sh --no-build
+          just build-linux-snap-no-build
 
       - uses: snapcore/action-build@v1
         id: build

@@ -1,5 +1,4 @@
 from collections import Counter
-from typing import Dict
 
 from PyQt5.QtGui import QIcon, QKeySequence
 from PyQt5.QtWidgets import QAction
@@ -47,7 +46,7 @@ class QDynamicAction(QAction):
             return self._title[self.toggle()]
 
         if isinstance(self._title, tuple):
-            raise ValueError("Title is tuple with no toggle function")
+            raise TypeError("Title is tuple with no toggle function")
 
         return self._title
 
@@ -57,7 +56,7 @@ class QDynamicAction(QAction):
             return self._icon_id[self.toggle()]
 
         if isinstance(self._icon_id, tuple):
-            raise ValueError("Icon ID is tuple with no toggle function")
+            raise TypeError("Icon ID is tuple with no toggle function")
 
         return self._icon_id
 
@@ -106,8 +105,8 @@ class ActionsManager(ManagerBase):
 
         self._ctx.actions = self._make_actions()
 
-    def _make_actions(self) -> Dict[str, QDynamicAction]:
-        actions: Dict[str, QDynamicAction] = {}
+    def _make_actions(self) -> dict[str, QDynamicAction]:
+        actions: dict[str, QDynamicAction] = {}
 
         for cmd_name, cmd in ACTIONS.items():
             action = self._make_action(cmd)

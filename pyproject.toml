@@ -22,18 +22,18 @@ classifiers = [
     "Operating System :: Unix",
     "Topic :: Multimedia :: Video :: Display",
 ]
-requires-python = ">=3.10,<3.11"
+requires-python = ">=3.10"
 dependencies = [
     "PyQt5==5.15.11",
     "PyQt5-Qt5==5.15.2 ; sys_platform == 'win32'",
     "PyQt5-Qt5==5.15.2 ; sys_platform == 'linux'",
     "PyQt5-Qt5==5.15.18 ; sys_platform == 'darwin'",
-    "pydantic==1.10.13",
-    "python-vlc==3.0.11115",
-    "streamlink==8.0.0",
-    "yt-dlp[default]==2025.11.12",
+    "pydantic (>=2.12.5,<3.0.0)",
+    "streamlink (>=8.1.0,<9.0.0)",
+    "yt-dlp[default] (>=2025.12.8,<2026.0.0)",
     "pyobjc-core ; sys_platform == 'darwin'",
     "pyobjc-framework-Cocoa ; sys_platform == 'darwin'",
+    "pydantic-extra-types (>=2.10.6,<3.0.0)",
 ]
 
 [project.urls]
@@ -43,121 +43,75 @@ changelog = "https://github.com/vzhd1701/gridplayer/blob/master/CHANGELOG.md"
 [project.scripts]
 gridplayer = "gridplayer.__main__:main"
 
-[tool.poetry.group.dev.dependencies]
-isort = ">=5.8.0"
-black = ">=23.3.0"
-mdformat = "==1.0.0"
-pre-commit = ">=2.15.0"
-pytest = ">=7.1.2"
-keepachangelog = ">=1.0.0"
+[dependency-groups]
+dev = [
+    "mdformat==1.0.0",
+    "pre-commit>=2.15.0",
+    "pytest>=7.1.2",
+    "keepachangelog>=1.0.0",
+    "ruff (>=0.14.10,<0.15.0)",
+]
 
 [tool.poetry.group.dev]
 optional = true
 
-[tool.flakehell]
-base = "https://raw.githubusercontent.com/wemake-services/wemake-python-styleguide/master/styles/flakehell.toml"
-extended_default_ignore=[]
-max_line_length = 88
-exclude = [
-    "gridplayer/*_ui.py",
-    "gridplayer/resources_bin.py",
-    "gridplayer/player/__init__.py",
-    "tests/*.py",
-    "gridplayer/resources/*",
+[tool.ruff]
+extend-exclude = ["gridplayer/resources_bin.py", "gridplayer/vlc_player/vlc.py"]
+
+[tool.ruff.format]
+line-ending = "lf"
+
+[tool.ruff.lint]
+exclude = ["tests/*.py", "scripts/*"]
+select = [
+    # Complexity
+    #"PL",   # pylint
+    #"C90",  # maccabe
+
+    "B",    # flake8-bugbear
+    "C4",   # flake8-comprehensions
+    ##"COM",  # flake8-commas
+    ##"D",    # pydocstyle
+    "DTZ",  # flake8-datetimez
+    "E",    # pycodestyle
+    #"ERA",  # flake8-eradicate
+    "EXE",  # flake8-executable
+    "F",    # pyflakes
+    ##"FBT",  # flake8-boolean-trap
+    "FLY",  # pyflint
+    ##"FURB", # refurb
+    ##"G",    # flake8-logging-format
+    "I",    # isort
+    "ICN",  # flake8-import-conventions
+    "ISC",  # flake8-implicit-str-concat
+    "LOG",  # flake8-logging
+    ##"N",    # pep8-naming
+    "PERF", # perflint
+    "PIE",  # flake8-pie
+    "PT",   # flake8-pytest-style
+    "PTH",  # flake8-use-pathlib
+    "Q",    # flake8-quotes
+    ##"RET",  # flake8-return
+    "RSE",  # flake8-raise
+    "RUF",  # ruff
+    #"S",    # flake8-bandit
+    ##"SIM",  # flake8-simpify
+    ##"SLF",  # flake8-self
+    "SLOT", # flake8-slots
+    "T100", # flake8-debugger
+    "TID",  # flake8-tidy-imports
+    "TRY",  # tryceratops
+    "UP",   # pyupgrade
+    "W",    # pycodestyle
+    "YTT",  # flake8-2020
 ]
-# Pydantic config nested class
-nested_classes_whitelist=["Config"]
+ignore = [
+    "B904",     # raise from
+    "B905",     # `zip()` without an explicit `strict=` parameter
+    "E501",     # Line too long
+    "RUF012",   # Mutable class attributes should be annotated with `typing.ClassVar`
+    "TRY003",   # long exception messages
+]
 
-[tool.flakehell.plugins]
-# Disabled [personal preference]
-# WPS110 wrong names
-# WPS111 short names
-# WPS115 upper-case constant in a class - flag enums
-# WPS226 String constant overuse
-# WPS237 Complex f-strings
-# WPS305 forbids f-strings
-# WPS326 implicit line concat
-# WPS336 explicit string concat
-# WPS425 boolean non-keyword
-# WPS428 ... <- nop statements, used in abstract classes
-# WPS604 ... <- nop statements, used in abstract classes
-# WPS437 protected attribute usage
-# WPS601 shadowed class attribute, doesn't work for dataclasses
-#   Qt setAttribute functions
-# Docstings, don't have any
-
-# !! Enable later and refactor
-# WPS201 too many imports
-# WPS214 too many methods
-
-# Exceptions [false positives & formatting]
-# WPS317 incorrect multi-line parameters <- black formatting
-# C812 trailing comma <- handled by black
-# E203 whitespace before : <- handled by black
-# W503 Line break occurred before a binary operator
-
-# Bandit
-# S404 subprocess module
-
-# E800 TEMPORARILY DISABLE COMMENTED CODE
-#flake8-eradicate = ["+*", "-E800"]
-
-pycodestyle = ["+*", "-E203", "-W503"]
-flake8-bandit = ["+*", "-S404"]
-flake8-commas = ["+*", "-C812", "-C815"]
-flake8-quotes = ["+*", "-Q000"]
-flake8-rst-docstrings = ["-*"]
-flake8-docstrings = ["-*"]
-flake8-darglint = ["-*"]
-wemake-python-styleguide = ["+*", "-WPS110", "-WPS111", "-WPS115", "-WPS201", "-WPS214", "-WPS226", "-WPS237", "-WPS305", "-WPS317", "-WPS326", "-WPS336", "-WPS425", "-WPS428", "-WPS437", "-WPS601", "-WPS604"]
-
-[tool.flakehell.exceptions."gridplayer/version.py"]
-# I like it this way
-wemake-python-styleguide = ["-WPS410"]
-
-[tool.flakehell.exceptions."gridplayer/utils/"]
-# Crossplatform functions
-# WPS110 Wrong names
-# WPS339 0x0000 values
-# WPS433 Nested imports
-# WPS440 Protected modules
-wemake-python-styleguide = ["+*", "-WPS110", "-WPS339", "-WPS433", "-WPS440"]
-
-[tool.flakehell.exceptions."gridplayer/widgets/video_overlay_icons.py"]
-# Manually drawn icons, need to do something about them later
-# WPS204 overused expression
-# WPS213 too many expressions
-# WPS221 Jones Complexity
-# WPS432 magic numbers
-wemake-python-styleguide = ["+*", "-WPS204", "-WPS213", "-WPS221", "-WPS432"]
-
-[tool.flakehell.exceptions."gridplayer/dialogs/messagebox.py"]
-# Overriding Qt class
-# WPS211 too many arguments
-# WPS404 complex defaults
-wemake-python-styleguide = ["+*", "-WPS211", "-WPS404"]
-
-[tool.flakehell.exceptions."gridplayer/params/static.py"]
-# WPS202 too many modules
-wemake-python-styleguide = ["+*", "-WPS202"]
-
-[tool.flakehell.exceptions."gridplayer/params/languages.py"]
-# WPS432 magic numbers - completion %
-wemake-python-styleguide = ["+*", "-WPS432"]
-
-[tool.flakehell.exceptions."gridplayer/params/actions.py"]
-# WPS204 overused expression
-# translate
-wemake-python-styleguide = ["+*", "-WPS204"]
-
-[tool.flakehell.exceptions."gridplayer/__main__.py"]
-# WPS433 nested imports
-wemake-python-styleguide = ["+*", "-WPS433"]
-
-[tool.black]
-line-length = 88
-exclude = '(.*\/resources_bin\.py)'
-
-[tool.isort]
-profile = "black"
-skip_gitignore = true
+[tool.ruff.lint.extend-per-file-ignores]
+"__main__.py" = ["E402"]

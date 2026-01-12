@@ -5,7 +5,6 @@ import platform
 import sys
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Optional
 
 from gridplayer.params import env
 
@@ -31,7 +30,7 @@ def importing_embed_vlc():
 
 
 def _fix_plugins_path():
-    vlc_module = sys.modules["vlc"]
+    vlc_module = sys.modules["gridplayer.vlc_player.vlc"]
 
     if vlc_module.plugin_path is not None:
         if Path(vlc_module.plugin_path).name == "plugins":
@@ -56,13 +55,13 @@ def _fix_plugins_path():
         raise RuntimeError("Unsupported platform")
 
 
-def _get_libvlc_root_path() -> Optional[Path]:
-    vlc_module = sys.modules["vlc"]
+def _get_libvlc_root_path() -> Path | None:
+    vlc_module = sys.modules["gridplayer.vlc_player.vlc"]
 
     if vlc_module.dll is None or vlc_module.dll._name is None:
         return None
 
-    vlc_lib_root = Path(vlc_module.dll._name)  # noqa: WPS437
+    vlc_lib_root = Path(vlc_module.dll._name)
 
     if vlc_lib_root.is_absolute():
         return vlc_lib_root.parent
@@ -74,10 +73,10 @@ def _get_libvlc_root_path() -> Optional[Path]:
     return _get_libvlc_root_path_linux()
 
 
-def _get_libvlc_root_path_linux() -> Optional[Path]:
+def _get_libvlc_root_path_linux() -> Path | None:
     # https://github.com/videolan/vlc/blob/3.0.16/src/linux/dirs.c#L33
 
-    with open("/proc/self/maps") as f:
+    with Path("/proc/self/maps").open() as f:
         maps = {line.split(" ")[-1] for line in f.readlines()}
 
     maps_seek = (m for m in maps if "/libvlc.so" in m)

@@ -1,12 +1,11 @@
 import logging
 import threading
 from functools import partial
-from typing import Optional
 
 from gridplayer.vlc_player.player_event_manager import EventManager
 
 
-class EventWaiter(object):
+class EventWaiter:
     events = [
         "buffering",
         "paused",
@@ -45,7 +44,7 @@ class EventWaiter(object):
 
             event_manager.subscribe(event_name, callback)
 
-    def waiting_for(self, event: str, timeout: Optional[int] = None):
+    def waiting_for(self, event: str, timeout: int | None = None):
         """Context manager"""
 
         if event not in self.events:
@@ -56,7 +55,7 @@ class EventWaiter(object):
 
         return self
 
-    def wait_for(self, event: str, timeout: Optional[int] = None):
+    def wait_for(self, event: str, timeout: int | None = None):
         self._clear()
 
         self.waiting_for(event, timeout)

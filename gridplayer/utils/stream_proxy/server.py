@@ -1,9 +1,8 @@
 import logging
-import socket
+from collections.abc import Iterable
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from threading import Lock
-from typing import Dict, Iterable, Optional
 from urllib.parse import parse_qsl, urlencode, urlparse
 from uuid import uuid3, uuid4
 
@@ -22,10 +21,10 @@ class StreamProxyServer(ThreadingHTTPServer):
         self._log = logging.getLogger(self.__class__.__name__)
 
         self._sessions_lock = Lock()
-        self._sessions: Dict[str, StreamSession] = {}
+        self._sessions: dict[str, StreamSession] = {}
 
         self._muxed_streams_lock = Lock()
-        self._muxed_streams: Dict[str, Stream] = {}
+        self._muxed_streams: dict[str, Stream] = {}
 
         self._ns_uuid = uuid4()
 
@@ -65,7 +64,7 @@ class StreamProxyServer(ThreadingHTTPServer):
                 "session_id": session_id,
             }
 
-        return "{0}/?{1}".format(self.base_url, urlencode(params))
+        return f"{self.base_url}/?{urlencode(params)}"
 
     def get_session(self, session_id: str) -> StreamSession:
         with self._sessions_lock:
@@ -94,8 +93,8 @@ class ProxyRequestHandler(BaseHTTPRequestHandler):
 
         super().__init__(*args, **kwargs)
 
-    def log_message(self, format, *args):  # noqa: WPS125
-        message = "{0} - {1}".format(self.address_string(), format % args)
+    def log_message(self, format, *args):
+        message = f"{self.address_string()} - {format % args}"
         self._log.debug(message)
 
     def handle_one_request(self):
@@ -104,7 +103,7 @@ class ProxyRequestHandler(BaseHTTPRequestHandler):
         except (ConnectionResetError, ConnectionAbortedError):
             self.close_connection = True
 
-    def do_GET(self):  # noqa: WPS210
+    def do_GET(self):
         req = self
 
         request_headers = _filter_request_headers(dict(req.headers))
@@ -138,7 +137,7 @@ class ProxyRequestHandler(BaseHTTPRequestHandler):
 
         self._relay_stream(stream, request_headers)
 
-    def _relay_stream(self, stream: HTTPStreamProxy, request_headers: Dict[str, str]):
+    def _relay_stream(self, stream: HTTPStreamProxy, request_headers: dict[str, str]):
         try:
             with StreamReader(stream, request_headers) as (response, chunks):
                 self._safe_relay_response(response, chunks)
@@ -152,15 +151,15 @@ class ProxyRequestHandler(BaseHTTPRequestHandler):
                 self.send_error(HTTPStatus.INTERNAL_SERVER_ERROR)
 
     def _safe_relay_response(
-        self, response: Response, chunks: Optional[Iterable[bytes]] = None
+        self, response: Response, chunks: Iterable[bytes] | None = None
     ):
         try:
             self._relay_response(response, chunks)
-        except socket.error:
+        except OSError:
             self._log.debug("Connection closed by client")
 
     def _relay_response(
-        self, response: Response, chunks: Optional[Iterable[bytes]] = None
+        self, response: Response, chunks: Iterable[bytes] | None = None
     ):
         self.send_response(response.status_code, response.reason)
 
@@ -187,7 +186,7 @@ def _parse_request(path: str):
     return dict(parse_qsl(url.query))
 
 
-def _filter_request_headers(headers: Dict[str, str]):
+def _filter_request_headers(headers: dict[str, str]):
     filtered_headers = {
         "host",
         "accept",
@@ -196,21 +195,13 @@ def _filter_request_headers(headers: Dict[str, str]):
         "user-agent",
     }
 
-    return {
-        k: v
-        for k, v in headers.items()
-        if k.lower() not in filtered_headers  # noqa: WPS221
-    }
+    return {k: v for k, v in headers.items() if k.lower() not in filtered_headers}
 
 
-def _filter_response_headers(headers: Dict[str, str]):
+def _filter_response_headers(headers: dict[str, str]):
     filtered_headers = {
         "server",
         "date",
     }
 
-    return {
-        k: v
-        for k, v in headers.items()
-        if k.lower() not in filtered_headers  # noqa: WPS221
-    }
+    return {k: v for k, v in headers.items() if k.lower() not in filtered_headers}
