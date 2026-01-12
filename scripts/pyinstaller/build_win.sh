@@ -12,7 +12,7 @@ if [ -z "$BUILD_ARCH" ]; then
 fi
 
 VLC_URL="https://get.videolan.org/vlc/3.0.21/$BUILD_ARCH/vlc-3.0.21-$BUILD_ARCH.zip"
-PYINSTALLER_VERSION="6.16.0"
+PYINSTALLER_VERSION="6.17.0"
 
 mkdir -p "$BUILD_DIR"
 
