@@ -45,6 +45,20 @@ Build:
 just build-macos-package
 ```
 
+## Local build on Ubuntu
+
+Install dependencies:
+
+```bash
+sudo apt install appstream-util
+```
+
+Build:
+
+```bash
+just build-linux-appimage
+```
+
 ## Release
 
 1. State changes in `CHANGELOG.md` inside `## [Unreleased]` section. Use [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) format.
