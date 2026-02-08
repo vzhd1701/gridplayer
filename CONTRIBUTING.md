@@ -53,6 +53,14 @@ Install dependencies:
 sudo apt install appstream-util
 ```
 
+When new resources are added, the `resources_bin.py` needs to be updated
+
+```
+sudo apt install dos2unix
+sudo apt install qttools5-dev-tools		# for lrelease
+just generate-resources
+```
+
 Build:
 
 ```bash
