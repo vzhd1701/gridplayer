@@ -33,7 +33,9 @@ copy_with_app_vars "$SCRIPT_DIR/version_info.py" "$BUILD_DIR"
 
 copy_with_app_vars "$SCRIPT_DIR/pyinstaller_win.spec" "$BUILD_DIR/$APP_NAME.spec"
 
-pyinstaller --clean --noconfirm "$BUILD_DIR/$APP_NAME.spec"
+#pyinstaller --clean --noconfirm "$BUILD_DIR/$APP_NAME.spec"
+
+pyinstaller gridplayer.spec
 
 # Post-build
 # =============
