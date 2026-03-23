@@ -22,4 +22,4 @@ def parse_uri(uri: str):
 AbsoluteFilePath = Annotated[FilePath, AfterValidator(must_be_absolute)]
 
 
-VideoURI = str | AbsoluteFilePath
+VideoURI = str | Path
