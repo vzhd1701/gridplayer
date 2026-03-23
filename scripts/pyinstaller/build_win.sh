@@ -35,7 +35,9 @@ copy_with_app_vars "$SCRIPT_DIR/pyinstaller_win.spec" "$BUILD_DIR/$APP_NAME.spec
 
 #pyinstaller --clean --noconfirm "$BUILD_DIR/$APP_NAME.spec"
 
-pyinstaller gridplayer.spec
+pyinstaller gridplayer/__main__.py \
+    --onefile \
+    --collect-submodules=gridplayer.models
 
 # Post-build
 # =============
