@@ -33,14 +33,25 @@ copy_with_app_vars "$SCRIPT_DIR/version_info.py" "$BUILD_DIR"
 
 copy_with_app_vars "$SCRIPT_DIR/pyinstaller_win.spec" "$BUILD_DIR/$APP_NAME.spec"
 
-#pyinstaller --clean --noconfirm "$BUILD_DIR/$APP_NAME.spec"
+# ======================
+# PyInstaller Build
+# ======================
 
+# Clean previous builds to avoid conflicts
+rm -rf dist build *.spec
+
+# PyInstaller command (fixed)
 pyinstaller gridplayer/__main__.py \
     --onefile \
-    --collect-submodules=gridplayer.models
+    --name "$APP_NAME" \
+    --collect-submodules=gridplayer.models \
+    --collect-submodules=gridplayer.models.video \
+    --collect-submodules=gridplayer.models.video_uri \
+    --noconfirm
 
-# Post-build
-# =============
+# ======================
+# Post-build: Embedding VLC
+# ======================
 
 echo "Embedding VLC"
 
@@ -51,7 +62,6 @@ if [ ! -d "$VLC_EMBED_SRC" ]; then
     unzip -oq "$BUILD_DIR/vlc.zip" -d "$BUILD_DIR"
 
     mkdir -p "$VLC_EMBED_SRC/plugins"
-
     mkdir "$VLC_EMBED_SRC/plugins/audio_output"
 
     cp "$BUILD_DIR"/vlc-*/plugins/audio_output/libdirectsound_plugin.dll "$VLC_EMBED_SRC/plugins/audio_output"
