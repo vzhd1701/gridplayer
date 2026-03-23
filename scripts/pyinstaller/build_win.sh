@@ -47,7 +47,8 @@ pyinstaller gridplayer/__main__.py \
     --collect-submodules=gridplayer.models \
     --collect-submodules=gridplayer.models.video \
     --collect-submodules=gridplayer.models.video_uri \
-    --noconfirm
+    --noconfirm \
+    --windowed
 
 # ======================
 # Post-build: Embedding VLC
