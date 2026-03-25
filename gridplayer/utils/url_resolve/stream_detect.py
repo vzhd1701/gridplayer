@@ -3,7 +3,11 @@ import itertools
 import re
 
 from streamlink import Streamlink
-from streamlink.stream import HTTPStream
+
+try:
+    from streamlink.stream.http import HTTPStream
+except ImportError:
+    from streamlink.stream import HTTPStream
 
 from gridplayer.utils.url_resolve.static import BadURLException
 

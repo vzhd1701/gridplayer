@@ -7,13 +7,22 @@ from pathlib import Path
 
 from requests import Response
 from streamlink import StreamError
-from streamlink.stream import (
-    HLSStream,
-    HTTPStream,
-    StreamIOIterWrapper,
-    StreamIOThreadWrapper,
-)
 from streamlink.stream.hls import M3U8, parse_m3u8
+
+try:
+    from streamlink.stream.wrappers import StreamIOIterWrapper, StreamIOThreadWrapper
+except ImportError:
+    from streamlink.stream import StreamIOIterWrapper, StreamIOThreadWrapper
+
+try:
+    from streamlink.stream.hls import HLSStream
+except ImportError:
+    from streamlink.stream import HLSStream
+
+try:
+    from streamlink.stream.http import HTTPStream
+except ImportError:
+    from streamlink.stream import HTTPStream
 
 from gridplayer.models.stream import Stream, StreamSessionOpts
 from gridplayer.utils.stream_proxy.m3u8 import m3u8_to_str
