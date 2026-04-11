@@ -636,12 +636,14 @@ ACTIONS = MappingProxyType(
             "icon": "volume-increase",
             "show_if": "is_active_has_audio",
             "func": ("active", "volume_increase"),
+            "key": "Up",
         },
         "Audio Volume - Decrease": {
             "title": translate("Audio Volume", "Decrease Volume"),
             "icon": "volume-decrease",
             "show_if": "is_active_has_audio",
             "func": ("active", "volume_decrease"),
+            "key": "Down",
         },
         "Audio Volume - Mute / Unmute": {
             "title": (
@@ -652,6 +654,7 @@ ACTIONS = MappingProxyType(
             "toggle": ("is_active_param_set_to", "is_muted", True),
             "show_if": "is_active_has_audio",
             "func": ("active", "mute_unmute"),
+            "key": "M",
         },
         "Rename": {
             "title": translate("Actions", "Rename"),
@@ -1164,24 +1167,28 @@ ACTIONS = MappingProxyType(
             "icon": "volume-increase",
             "show_if": "is_any_videos_have_audio",
             "func": ("all", "volume_increase"),
+            "key": "Shift+Up",
         },
         "Audio Volume - Decrease [ALL]": {
             "title": translate("Audio Volume", "Decrease Volume"),
             "icon": "volume-decrease",
             "show_if": "is_any_videos_have_audio",
             "func": ("all", "volume_decrease"),
+            "key": "Shift+Down",
         },
         "Audio Volume - Mute [ALL]": {
             "title": translate("Audio Volume", "Mute"),
             "icon": "volume-mute",
             "show_if": "is_any_videos_have_audio",
             "func": ("all", "set_muted", True),
+            "key": "Shift+M",
         },
         "Audio Volume - Unmute [ALL]": {
             "title": translate("Audio Volume", "Unmute"),
             "icon": "volume-unmute",
             "show_if": "is_any_videos_have_audio",
             "func": ("all", "set_muted", False),
+            "key": "Shift+M",
         },
         "Reload [ALL]": {
             "title": translate("Actions", "Reload"),
