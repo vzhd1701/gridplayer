@@ -75,9 +75,9 @@ $ chmod +x GridPlayer-0.5.4-x86_64.AppImage
 
 ### MacOS
 
-[![Download DMG](https://raw.githubusercontent.com/vzhd1701/gridplayer/master/resources/public/dl_dmg.png)](https://github.com/vzhd1701/gridplayer/releases/download/v0.5.4/GridPlayer.0.5.4.dmg)
+[![Download DMG](https://raw.githubusercontent.com/vzhd1701/gridplayer/master/resources/public/dl_dmg.png)](https://github.com/vzhd1701/gridplayer/releases/download/v0.5.4/GridPlayer.0.5.4_arm64.dmg)
 
-**DMG image is not signed.** You will have to add an exception to run this app.
+**DMG image is not signed and targets Apple Silicon (`arm64`).** You will have to add an exception to run this app.
 
 - [How to open an app that hasn’t been notarized or is from an unidentified developer](https://support.apple.com/en-euro/HT202491)
 - [Open a Mac app from an unidentified developer](https://support.apple.com/guide/mac-help/open-a-mac-app-from-an-unidentified-developer-mh40616/mac)

@@ -43,6 +43,12 @@ build-macos-pyinstaller: build-requirements
 build-macos-package: build-macos-pyinstaller
     ./scripts/macos/build_dmg.sh
 
+build-macos-pyinstaller-arm64: build-requirements
+    BUILD_MACOS_ARCH=arm64 ./scripts/pyinstaller/build_mac.sh
+
+build-macos-package-arm64: build-macos-pyinstaller-arm64
+    BUILD_MACOS_ARCH=arm64 ./scripts/macos/build_dmg.sh
+
 clean-pyinstaller-dist:
     find dist -maxdepth 1 -mindepth 1 -type d -exec rm -r {} \;
 

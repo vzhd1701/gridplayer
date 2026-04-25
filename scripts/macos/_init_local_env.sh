@@ -1,22 +1,25 @@
 #!/bin/bash
 
-# Run this once before building MacOS package on local machine
+set -euo pipefail
+
+# Run this once before building the native Apple Silicon macOS package locally.
 
 check() {
-    which $1 >/dev/null
+    command -v "$1" >/dev/null 2>&1
 }
 
-# install poetry
-if ! check poetry; then
-    echo "Installing poetry"
-
-    ln -s /etc/ssl/* /Library/Frameworks/Python.framework/Versions/3.*/etc/openssl
-    curl -sSL https://install.python-poetry.org | python3 -
-    echo "export PATH=\"/Users/admin/Library/Python/3.8/bin:\$PATH\"" >> ~/.bash_profile
-    source ~/.bash_profile
+if ! check brew; then
+    printf '%s\n' "Homebrew is required to install macOS build dependencies." >&2
+    exit 1
 fi
 
-brew install gnu-sed wget node graphicsmagick imagemagick
-check create-dmg || npm install --global create-dmg
+brew install gnu-sed wget node graphicsmagick imagemagick just poetry
 
-pip3 install urllib3 virtualenv
+if ! check create-dmg; then
+    npm install --global create-dmg
+fi
+
+python3 -m pip install --upgrade pip
+
+printf '%s\n' "macOS build prerequisites installed."
+printf '%s\n' "Use a native Apple Silicon shell and run: just build-macos-package-arm64"

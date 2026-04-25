@@ -40,14 +40,17 @@ just build-win-package
 Install dependencies:
 
 ```bash
-.\scripts\macos\_init_local_env.sh
+./scripts/macos/_init_local_env.sh
 ```
 
-Build:
+Build the native Apple Silicon package:
 
 ```bash
-just build-macos-package
+just build-macos-package-arm64
 ```
+
+The default macOS build target is `arm64`. If you need an Intel build, run the same
+scripts from a native `x86_64` Python environment with `BUILD_MACOS_ARCH=x86_64`.
 
 ## Local build on Ubuntu
 

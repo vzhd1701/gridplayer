@@ -19,6 +19,7 @@ def strip_list(src_list, items_to_strip):
 APP_NAME = "{APP_NAME}"
 APP_ID = "{APP_ID}"
 APP_VERSION = "{APP_VERSION}"
+APP_TARGET_ARCH = "{APP_TARGET_ARCH}"
 SRC_DIR = os.path.abspath("./{APP_MODULE}")
 BUILD_DIR = os.path.abspath("./build")
 
@@ -126,7 +127,7 @@ exe = EXE(pyz,
           upx=False,
           console=False,
           disable_windowed_traceback=False,
-          target_arch=None,
+          target_arch=APP_TARGET_ARCH,
           codesign_identity=None,
           entitlements_file=None,
           icon=os.path.join(BUILD_DIR, "main.icns"))

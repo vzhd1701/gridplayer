@@ -12,8 +12,40 @@ if ! command -v realpath &> /dev/null; then
 fi
 
 if [[ "$OSTYPE" == "darwin"* ]]; then
-  function sed() { command gsed "$@"; }
+    command -v gsed >/dev/null 2>&1 || die "gsed is required on macOS. Run ./scripts/macos/_init_local_env.sh"
+
+    sed() {
+        command gsed "$@"
+    }
 fi
+
+normalize_macos_arch() {
+    case "$1" in
+        arm64)
+            printf '%s\n' "arm64"
+            ;;
+        x86_64|intel64)
+            printf '%s\n' "x86_64"
+            ;;
+        *)
+            die "Unsupported macOS architecture: $1"
+            ;;
+    esac
+}
+
+macos_arch_suffix() {
+    case "$1" in
+        arm64)
+            printf '%s\n' "arm64"
+            ;;
+        x86_64)
+            printf '%s\n' "intel64"
+            ;;
+        *)
+            die "Unsupported macOS architecture: $1"
+            ;;
+    esac
+}
 
 replace_app_vars() {
     TARGET_FILE="$1"
@@ -91,3 +123,8 @@ export APP_URL=$(sed -n 's/__app_url__ = "\([^"]*\).*/\1/p' "$APP_BASE_DIR/versi
 export APP_BUGTRACKER_URL=$(sed -n 's/__app_bugtracker_url__ = "\([^"]*\).*/\1/p' "$APP_BASE_DIR/version.py")
 
 export APP_CDN_URL_ROOT="https://cdn.jsdelivr.net/gh/${APP_REPO_SLUG}@v${APP_VERSION}"
+
+if [[ "$OSTYPE" == "darwin"* ]]; then
+    export APP_TARGET_ARCH=$(normalize_macos_arch "${BUILD_MACOS_ARCH:-arm64}")
+    export APP_TARGET_ARCH_SUFFIX=$(macos_arch_suffix "$APP_TARGET_ARCH")
+fi

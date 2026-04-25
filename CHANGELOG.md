@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+### Added
+
+* Native Apple Silicon (arm64) macOS build support, with arch-aware build scripts and a `BUILD_MACOS_ARCH` override for Intel (`x86_64`) builds
+
 ## [0.5.4] - 2025-11-24
 
 ### Added
