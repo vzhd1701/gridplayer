@@ -19,7 +19,12 @@ def importing_embed_vlc():
         lib_path = os.environ.get("PYTHON_VLC_LIB_PATH")
 
         if not lib_path:
-            raise RuntimeError("PYTHON_VLC_LIB_PATH not set")
+            raise RuntimeError(
+                "libVLC not found. GridPlayer could not locate a VLC library"
+                " (neither an embedded copy nor a system install)."
+                " Install VLC into /Applications, or set PYTHON_VLC_LIB_PATH"
+                " to the full path of libvlc.dylib."
+            )
 
         vlc_core = str(Path(lib_path).parent / "libvlccore.dylib")
         ctypes.CDLL(vlc_core)

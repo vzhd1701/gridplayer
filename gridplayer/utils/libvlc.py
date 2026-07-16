@@ -12,19 +12,17 @@ def init_vlc():
 
     vlc_plugins_path, vlc_lib_path = _get_embed_vlc_paths()
 
-    if vlc_plugins_path and vlc_lib_path:
+    if _is_usable_vlc(vlc_plugins_path, vlc_lib_path):
         log.debug("Setting paths for embedded VLC")
 
         log.debug(f"PYTHON_VLC_MODULE_PATH: {vlc_plugins_path}")
         log.debug(f"PYTHON_VLC_LIB_PATH: {vlc_lib_path}")
 
-        if not vlc_lib_path.is_file() or not vlc_plugins_path.is_dir():
-            log.info("Embedded vlc lib not found, will try to find system VLC...")
-        else:
-            os.environ["PYTHON_VLC_MODULE_PATH"] = str(vlc_plugins_path)
-            os.environ["PYTHON_VLC_LIB_PATH"] = str(vlc_lib_path)
+        os.environ["PYTHON_VLC_MODULE_PATH"] = str(vlc_plugins_path)
+        os.environ["PYTHON_VLC_LIB_PATH"] = str(vlc_lib_path)
     else:
-        log.info("No embedded vlc path, will try to find system VLC...")
+        log.info("Embedded vlc lib not found, will try to find system VLC...")
+        _set_system_vlc_paths(log)
 
     vlc_version, vlc_python_version = _get_vlc_version()
 
@@ -37,28 +35,77 @@ def init_vlc():
     return vlc_version, vlc_python_version
 
 
+def _is_usable_vlc(plugins_path: Path | None, lib_path: Path | None) -> bool:
+    if plugins_path is None or lib_path is None:
+        return False
+
+    return lib_path.is_file() and plugins_path.is_dir()
+
+
+def _set_system_vlc_paths(log) -> None:
+    """Point python-vlc at a system VLC install.
+
+    PyInstaller builds are expected to carry their own libVLC, but the macOS
+    bundle ships an empty libVLC directory. Without PYTHON_VLC_LIB_PATH set,
+    importing_embed_vlc() raises RuntimeError and the app dies on startup.
+    Falling back to a system install keeps it usable.
+    """
+    if os.environ.get("PYTHON_VLC_LIB_PATH"):
+        log.debug("PYTHON_VLC_LIB_PATH already set, leaving it alone")
+        return
+
+    plugins_path, lib_path = _get_system_vlc_paths()
+
+    if not _is_usable_vlc(plugins_path, lib_path):
+        log.info("No system VLC found")
+        return
+
+    log.info(f"Using system VLC: {lib_path}")
+
+    os.environ["PYTHON_VLC_MODULE_PATH"] = str(plugins_path)
+    os.environ["PYTHON_VLC_LIB_PATH"] = str(lib_path)
+
+
+def _get_system_vlc_paths() -> tuple[Path, Path] | tuple[None, None]:
+    for vlc_root in _get_system_vlc_roots():
+        plugins_path, lib_path = _vlc_paths_for_root(vlc_root)
+
+        if _is_usable_vlc(plugins_path, lib_path):
+            return plugins_path, lib_path
+
+    return None, None
+
+
+def _get_system_vlc_roots() -> list[Path]:
+    if env.IS_MACOS:
+        return [
+            Path("/Applications/VLC.app/Contents/MacOS"),
+            Path.home() / "Applications" / "VLC.app" / "Contents" / "MacOS",
+        ]
+
+    return []
+
+
+def _vlc_paths_for_root(vlc_root: Path) -> tuple[Path, Path] | tuple[None, None]:
+    if env.IS_WINDOWS:
+        return vlc_root / "plugins", vlc_root / "libvlc.dll"
+
+    if env.IS_MACOS:
+        return vlc_root / "plugins", vlc_root / "lib" / "libvlc.dylib"
+
+    if env.IS_LINUX:
+        return vlc_root / "vlc" / "plugins", vlc_root / "libvlc.so.5"
+
+    return None, None
+
+
 def _get_embed_vlc_paths() -> tuple[Path, Path] | tuple[None, None]:
     vlc_root = _get_embed_vlc_root()
 
     if vlc_root is None:
         return None, None
 
-    if env.IS_WINDOWS:
-        vlc_plugins_path = vlc_root / "plugins"
-        vlc_lib_path = vlc_root / "libvlc.dll"
-
-    elif env.IS_MACOS:
-        vlc_plugins_path = vlc_root / "plugins"
-        vlc_lib_path = vlc_root / "lib" / "libvlc.dylib"
-
-    elif env.IS_LINUX:
-        vlc_plugins_path = vlc_root / "vlc" / "plugins"
-        vlc_lib_path = vlc_root / "libvlc.so.5"
-
-    else:
-        return None, None
-
-    return vlc_plugins_path, vlc_lib_path
+    return _vlc_paths_for_root(vlc_root)
 
 
 def _get_embed_vlc_root() -> Path | None:
