@@ -209,6 +209,278 @@ This software was build using
 ## Translations
 
 <!-- CROWDIN-CONTRIBUTORS-START -->
+<table>
+  <tbody>
+    <tr>
+      <td align="center" valign="top">
+        <a href="https://crowdin.com/profile/VenusGirl"><img alt="logo" style="width: 64px" src="https://crowdin-static.cf-downloads.crowdin.com/avatar/14432528/medium/3284b34db4ef3cda16835c5a18c797d0.jpg" />
+          <br />
+          <sub><b>VenusGirl</b></sub></a>
+        <br />
+        <sub><b>886 words</b></sub>
+        <br /><sub><b><code title="Korean">ko</code></b></sub>
+      </td>
+      <td align="center" valign="top">
+        <a href="https://crowdin.com/profile/LOUIS_Sylvain"><img alt="logo" style="width: 64px" src="https://crowdin-static.cf-downloads.crowdin.com/avatar/14983555/medium/af7d7ab185011ffda0bd01b41fc05ccf.png" />
+          <br />
+          <sub><b>Sylvain LOUIS</b></sub>
+          <br />
+          <sub><b>(LOUIS_Sylvain)</b></sub></a>
+        <br />
+        <sub><b>886 words</b></sub>
+        <br /><sub><b><code title="French">fr</code></b></sub>
+      </td>
+      <td align="center" valign="top">
+        <a href="https://crowdin.com/profile/Gabriel-BS1"><img alt="logo" style="width: 64px" src="https://crowdin-static.cf-downloads.crowdin.com/avatar/15681015/medium/50b012437410a2a9c27236c0ce05b1b1.png" />
+          <br />
+          <sub><b>GBS ~ TECH</b></sub>
+          <br />
+          <sub><b>(Gabriel-BS1)</b></sub></a>
+        <br />
+        <sub><b>886 words</b></sub>
+        <br /><sub><b><code title="Portuguese, Brazilian">pt-BR</code></b></sub>
+      </td>
+      <td align="center" valign="top">
+        <a href="https://crowdin.com/profile/Granberg"><img alt="logo" style="width: 64px" src="https://crowdin-static.cf-downloads.crowdin.com/avatar/12416181/medium/2864d29be808543d56f9e210a06ad934.jpg" />
+          <br />
+          <sub><b>Göran</b></sub>
+          <br />
+          <sub><b>(Granberg)</b></sub></a>
+        <br />
+        <sub><b>875 words</b></sub>
+        <br /><sub><b><code title="Swedish">sv-SE</code></b></sub>
+      </td>
+      <td align="center" valign="top">
+        <a href="https://crowdin.com/profile/royhendum"><img alt="logo" style="width: 64px" src="https://crowdin-static.cf-downloads.crowdin.com/avatar/17390478/medium/ab5a65a9b43bbae930fe45baa1a5e51f.png" />
+          <br />
+          <sub><b>Roy Hendum</b></sub>
+          <br />
+          <sub><b>(royhendum)</b></sub></a>
+        <br />
+        <sub><b>875 words</b></sub>
+        <br /><sub><b><code title="Norwegian">no</code></b></sub>
+      </td>
+      <td align="center" valign="top">
+        <a href="https://crowdin.com/profile/zxas"><img alt="logo" style="width: 64px" src="https://crowdin-static.cf-downloads.crowdin.com/avatar/16338184/medium/90d1c13645360de47426fcd50d7630df.jpeg" />
+          <br />
+          <sub><b>z Z</b></sub>
+          <br />
+          <sub><b>(zxas)</b></sub></a>
+        <br />
+        <sub><b>851 words</b></sub>
+        <br /><sub><b><code title="Chinese Traditional">zh-TW</code></b></sub>
+      </td>
+      <td align="center" valign="top">
+        <a href="https://crowdin.com/profile/davidev1"><img alt="logo" style="width: 64px" src="https://crowdin-static.cf-downloads.crowdin.com/avatar/13229273/medium/03b55ef5010bbc801f432e51e4a50171.jpg" />
+          <br />
+          <sub><b>Davide V.</b></sub>
+          <br />
+          <sub><b>(davidev1)</b></sub></a>
+        <br />
+        <sub><b>752 words</b></sub>
+        <br /><sub><b><code title="Italian">it</code></b></sub>
+      </td>
+      <td align="center" valign="top">
+        <a href="https://crowdin.com/profile/Vistaus"><img alt="logo" style="width: 64px" src="https://crowdin-static.cf-downloads.crowdin.com/avatar/12732621/medium/bbca85454e90b7362cbbe57e5cd54489.jpeg" />
+          <br />
+          <sub><b>Heimen Stoffels</b></sub>
+          <br />
+          <sub><b>(Vistaus)</b></sub></a>
+        <br />
+        <sub><b>751 words</b></sub>
+        <br /><sub><b><code title="Dutch">nl</code></b></sub>
+      </td>
+    </tr>
+    <tr>
+      <td align="center" valign="top">
+        <a href="https://crowdin.com/profile/japanese.john.doe.774"><img alt="logo" style="width: 64px" src="https://crowdin-static.cf-downloads.crowdin.com/avatar/15405594/medium/1e457ad578b4390a744f8b1af85533fa.png" />
+          <br />
+          <sub><b>七篠孝志</b></sub>
+          <br />
+          <sub><b>(japanese.john.doe.774)</b></sub></a>
+        <br />
+        <sub><b>751 words</b></sub>
+        <br /><sub><b><code title="Japanese">ja</code></b></sub>
+      </td>
+      <td align="center" valign="top">
+        <a href="https://crowdin.com/profile/DominikPott"><img alt="logo" style="width: 64px" src="https://crowdin-static.cf-downloads.crowdin.com/avatar/15472688/medium/6e48ea2f0a8564252086d2d7775d2f21.png" />
+          <br />
+          <sub><b>DominikPott</b></sub></a>
+        <br />
+        <sub><b>751 words</b></sub>
+        <br /><sub><b><code title="German">de</code></b></sub>
+      </td>
+      <td align="center" valign="top">
+        <a href="https://crowdin.com/profile/Azoaz6001"><img alt="logo" style="width: 64px" src="https://crowdin-static.cf-downloads.crowdin.com/avatar/15591465/medium/ae7a5aafbc99dc9ac4ba3a8c5bf42dcb_default.png" />
+          <br />
+          <sub><b>Azoaz6001</b></sub></a>
+        <br />
+        <sub><b>751 words</b></sub>
+        <br /><sub><b><code title="Arabic">ar</code></b></sub>
+      </td>
+      <td align="center" valign="top">
+        <a href="https://crowdin.com/profile/wyg945"><img alt="logo" style="width: 64px" src="https://crowdin-static.cf-downloads.crowdin.com/avatar/15682575/medium/e3d1504b9b88be18745f758cb4f11d77.png" />
+          <br />
+          <sub><b>Yagang Wang</b></sub>
+          <br />
+          <sub><b>(wyg945)</b></sub></a>
+        <br />
+        <sub><b>751 words</b></sub>
+        <br /><sub><b><code title="Chinese Simplified">zh-CN</code></b></sub>
+      </td>
+      <td align="center" valign="top">
+        <a href="https://crowdin.com/profile/Golbinex"><img alt="logo" style="width: 64px" src="https://crowdin-static.cf-downloads.crowdin.com/avatar/17664878/medium/1b0e9f044a085950575bcf53e3581336.jpeg" />
+          <br />
+          <sub><b>Kryštof Baksa</b></sub>
+          <br />
+          <sub><b>(Golbinex)</b></sub></a>
+        <br />
+        <sub><b>674 words</b></sub>
+        <br /><sub><b><code title="Czech">cs</code></b></sub>
+      </td>
+      <td align="center" valign="top">
+        <a href="https://crowdin.com/profile/IngrownMink4"><img alt="logo" style="width: 64px" src="https://crowdin-static.cf-downloads.crowdin.com/avatar/14414288/medium/53f8a637c2fa88786f85808ebee55807.jpg" />
+          <br />
+          <sub><b>Sergio Varela</b></sub>
+          <br />
+          <sub><b>(IngrownMink4)</b></sub></a>
+        <br />
+        <sub><b>652 words</b></sub>
+        <br /><sub><b><code title="Spanish">es-ES</code></b></sub>
+      </td>
+      <td align="center" valign="top">
+        <a href="https://crowdin.com/profile/fifi132"><img alt="logo" style="width: 64px" src="https://crowdin-static.cf-downloads.crowdin.com/avatar/15774079/medium/0e0d2651e73807bbb9050e8fd3e44f18.png" />
+          <br />
+          <sub><b>rafal132</b></sub>
+          <br />
+          <sub><b>(fifi132)</b></sub></a>
+        <br />
+        <sub><b>598 words</b></sub>
+        <br /><sub><b><code title="Polish">pl</code></b></sub>
+      </td>
+      <td align="center" valign="top">
+        <a href="https://crowdin.com/profile/a2942"><img alt="logo" style="width: 64px" src="https://crowdin-static.cf-downloads.crowdin.com/avatar/16794451/medium/184acbf1f2f0e4adf1dc62822bd5acfd.jpg" />
+          <br />
+          <sub><b>a2942</b></sub></a>
+        <br />
+        <sub><b>496 words</b></sub>
+        <br /><sub><b><code title="Chinese Simplified">zh-CN</code></b></sub>
+      </td>
+    </tr>
+    <tr>
+      <td align="center" valign="top">
+        <a href="https://crowdin.com/profile/LiberiFatali"><img alt="logo" style="width: 64px" src="https://crowdin-static.cf-downloads.crowdin.com/avatar/15598851/medium/610ee0a4acb813a2832ac2c927e79cfb_default.png" />
+          <br />
+          <sub><b>LiberiFatali</b></sub></a>
+        <br />
+        <sub><b>456 words</b></sub>
+        <br /><sub><b><code title="Vietnamese">vi</code></b></sub>
+      </td>
+      <td align="center" valign="top">
+        <a href="https://crowdin.com/profile/samu112"><img alt="logo" style="width: 64px" src="https://crowdin-static.cf-downloads.crowdin.com/avatar/15157130/medium/e119d6e287f4e49464eac1ee32974bac_default.png" />
+          <br />
+          <sub><b>samu112</b></sub></a>
+        <br />
+        <sub><b>438 words</b></sub>
+        <br /><sub><b><code title="Hungarian">hu</code></b></sub>
+      </td>
+      <td align="center" valign="top">
+        <a href="https://crowdin.com/profile/asolis2020"><img alt="logo" style="width: 64px" src="https://crowdin-static.cf-downloads.crowdin.com/avatar/15661045/medium/6ba336a35aa362fa47b5adf11919141b_default.png" />
+          <br />
+          <sub><b>asolis2020</b></sub></a>
+        <br />
+        <sub><b>266 words</b></sub>
+        <br /><sub><b><code title="Spanish">es-ES</code></b></sub>
+      </td>
+      <td align="center" valign="top">
+        <a href="https://crowdin.com/profile/SolarCTP"><img alt="logo" style="width: 64px" src="https://crowdin-static.cf-downloads.crowdin.com/avatar/15384684/medium/f0197a7e2769ecc2788a18091a7afb0b.png" />
+          <br />
+          <sub><b>SolarCTP</b></sub></a>
+        <br />
+        <sub><b>164 words</b></sub>
+        <br /><sub><b><code title="Italian">it</code></b></sub>
+      </td>
+      <td align="center" valign="top">
+        <a href="https://crowdin.com/profile/PrinceNorris"><img alt="logo" style="width: 64px" src="https://crowdin-static.cf-downloads.crowdin.com/avatar/13962625/medium/907539fd79ca32a8a08d400a1aa043f7_default.png" />
+          <br />
+          <sub><b>Sebastian Jasiński</b></sub>
+          <br />
+          <sub><b>(PrinceNorris)</b></sub></a>
+        <br />
+        <sub><b>163 words</b></sub>
+        <br /><sub><b><code title="Polish">pl</code></b></sub>
+      </td>
+      <td align="center" valign="top">
+        <a href="https://crowdin.com/profile/reiss404"><img alt="logo" style="width: 64px" src="https://crowdin-static.cf-downloads.crowdin.com/avatar/17071680/medium/8b927c3a2c3389c590128dc1f89dbeab.jpeg" />
+          <br />
+          <sub><b>Manuel</b></sub>
+          <br />
+          <sub><b>(reiss404)</b></sub></a>
+        <br />
+        <sub><b>133 words</b></sub>
+        <br /><sub><b><code title="German">de</code></b></sub>
+      </td>
+      <td align="center" valign="top">
+        <a href="https://crowdin.com/profile/aportuguesecoder"><img alt="logo" style="width: 64px" src="https://crowdin-static.cf-downloads.crowdin.com/avatar/17032790/medium/7ae1612b2227266f02dd7c6af1bb0d67.jpeg" />
+          <br />
+          <sub><b>Armando Gomes</b></sub>
+          <br />
+          <sub><b>(aportuguesecoder)</b></sub></a>
+        <br />
+        <sub><b>121 words</b></sub>
+        <br /><sub><b><code title="Portuguese">pt-PT</code></b></sub>
+      </td>
+      <td align="center" valign="top">
+        <a href="https://crowdin.com/profile/Akronos"><img alt="logo" style="width: 64px" src="https://crowdin-static.cf-downloads.crowdin.com/avatar/16284890/medium/db02e5c7b29dce08b02cd94a93b0ef0e_default.png" />
+          <br />
+          <sub><b>Akronos</b></sub></a>
+        <br />
+        <sub><b>112 words</b></sub>
+        <br /><sub><b><code title="Czech">cs</code></b></sub>
+      </td>
+    </tr>
+    <tr>
+      <td align="center" valign="top">
+        <a href="https://crowdin.com/profile/WackyFox"><img alt="logo" style="width: 64px" src="https://crowdin-static.cf-downloads.crowdin.com/avatar/15807071/medium/21329dc32cf56b0743914d5ef724d1e3.jpeg" />
+          <br />
+          <sub><b>Владимир Ларин</b></sub>
+          <br />
+          <sub><b>(WackyFox)</b></sub></a>
+        <br />
+        <sub><b>108 words</b></sub>
+        <br /><sub><b><code title="Hebrew">he</code></b></sub>
+      </td>
+      <td align="center" valign="top">
+        <a href="https://crowdin.com/profile/emremsek525"><img alt="logo" style="width: 64px" src="https://crowdin-static.cf-downloads.crowdin.com/avatar/17429448/medium/6368780184be18352ebbb5500eaea989_default.png" />
+          <br />
+          <sub><b>emre mşek</b></sub>
+          <br />
+          <sub><b>(emremsek525)</b></sub></a>
+        <br />
+        <sub><b>89 words</b></sub>
+        <br /><sub><b><code title="Turkish">tr</code></b></sub>
+      </td>
+      <td align="center" valign="top">
+        <a href="https://crowdin.com/profile/1017346"><img alt="logo" style="width: 64px" src="https://crowdin-static.cf-downloads.crowdin.com/avatar/15791119/medium/b54f8bf8ec18eb8071dbbb7f2cf588b6_default.png" />
+          <br />
+          <sub><b>1017346</b></sub></a>
+        <br />
+        <sub><b>88 words</b></sub>
+        <br /><sub><b><code title="Chinese Simplified">zh-CN</code></b></sub>
+      </td>
+      <td align="center" valign="top">
+        <a href="https://crowdin.com/profile/lif86060"><img alt="logo" style="width: 64px" src="https://crowdin-static.cf-downloads.crowdin.com/avatar/15837937/medium/5137350abe19aa5a6ddfeee73e9fd0df.png" />
+          <br />
+          <sub><b>李凡</b></sub>
+          <br />
+          <sub><b>(lif86060)</b></sub></a>
+        <br />
+        <sub><b>87 words</b></sub>
+        <br /><sub><b><code title="Chinese Simplified">zh-CN</code></b></sub>
+      </td>
+    </tr>
+  </tbody>
+</table>
 <!-- CROWDIN-CONTRIBUTORS-END -->
 
 ## License
