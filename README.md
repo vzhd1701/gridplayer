@@ -270,6 +270,8 @@ This software was build using
         <sub><b>851 words</b></sub>
         <br /><sub><b><code title="Chinese Traditional">zh-TW</code></b></sub>
       </td>
+    </tr>
+    <tr>
       <td align="center" valign="top">
         <a href="https://crowdin.com/profile/davidev1"><img alt="logo" style="width: 64px" src="https://crowdin-static.cf-downloads.crowdin.com/avatar/13229273/medium/03b55ef5010bbc801f432e51e4a50171.jpg" />
           <br />
@@ -290,8 +292,6 @@ This software was build using
         <sub><b>751 words</b></sub>
         <br /><sub><b><code title="Dutch">nl</code></b></sub>
       </td>
-    </tr>
-    <tr>
       <td align="center" valign="top">
         <a href="https://crowdin.com/profile/japanese.john.doe.774"><img alt="logo" style="width: 64px" src="https://crowdin-static.cf-downloads.crowdin.com/avatar/15405594/medium/1e457ad578b4390a744f8b1af85533fa.png" />
           <br />
@@ -328,6 +328,8 @@ This software was build using
         <sub><b>751 words</b></sub>
         <br /><sub><b><code title="Chinese Simplified">zh-CN</code></b></sub>
       </td>
+    </tr>
+    <tr>
       <td align="center" valign="top">
         <a href="https://crowdin.com/profile/Golbinex"><img alt="logo" style="width: 64px" src="https://crowdin-static.cf-downloads.crowdin.com/avatar/17664878/medium/1b0e9f044a085950575bcf53e3581336.jpeg" />
           <br />
@@ -366,8 +368,6 @@ This software was build using
         <sub><b>496 words</b></sub>
         <br /><sub><b><code title="Chinese Simplified">zh-CN</code></b></sub>
       </td>
-    </tr>
-    <tr>
       <td align="center" valign="top">
         <a href="https://crowdin.com/profile/LiberiFatali"><img alt="logo" style="width: 64px" src="https://crowdin-static.cf-downloads.crowdin.com/avatar/15598851/medium/610ee0a4acb813a2832ac2c927e79cfb_default.png" />
           <br />
@@ -384,6 +384,8 @@ This software was build using
         <sub><b>438 words</b></sub>
         <br /><sub><b><code title="Hungarian">hu</code></b></sub>
       </td>
+    </tr>
+    <tr>
       <td align="center" valign="top">
         <a href="https://crowdin.com/profile/asolis2020"><img alt="logo" style="width: 64px" src="https://crowdin-static.cf-downloads.crowdin.com/avatar/15661045/medium/6ba336a35aa362fa47b5adf11919141b_default.png" />
           <br />
@@ -449,34 +451,6 @@ This software was build using
         <br />
         <sub><b>108 words</b></sub>
         <br /><sub><b><code title="Hebrew">he</code></b></sub>
-      </td>
-      <td align="center" valign="top">
-        <a href="https://crowdin.com/profile/emremsek525"><img alt="logo" style="width: 64px" src="https://crowdin-static.cf-downloads.crowdin.com/avatar/17429448/medium/6368780184be18352ebbb5500eaea989_default.png" />
-          <br />
-          <sub><b>emre mşek</b></sub>
-          <br />
-          <sub><b>(emremsek525)</b></sub></a>
-        <br />
-        <sub><b>89 words</b></sub>
-        <br /><sub><b><code title="Turkish">tr</code></b></sub>
-      </td>
-      <td align="center" valign="top">
-        <a href="https://crowdin.com/profile/1017346"><img alt="logo" style="width: 64px" src="https://crowdin-static.cf-downloads.crowdin.com/avatar/15791119/medium/b54f8bf8ec18eb8071dbbb7f2cf588b6_default.png" />
-          <br />
-          <sub><b>1017346</b></sub></a>
-        <br />
-        <sub><b>88 words</b></sub>
-        <br /><sub><b><code title="Chinese Simplified">zh-CN</code></b></sub>
-      </td>
-      <td align="center" valign="top">
-        <a href="https://crowdin.com/profile/lif86060"><img alt="logo" style="width: 64px" src="https://crowdin-static.cf-downloads.crowdin.com/avatar/15837937/medium/5137350abe19aa5a6ddfeee73e9fd0df.png" />
-          <br />
-          <sub><b>李凡</b></sub>
-          <br />
-          <sub><b>(lif86060)</b></sub></a>
-        <br />
-        <sub><b>87 words</b></sub>
-        <br /><sub><b><code title="Chinese Simplified">zh-CN</code></b></sub>
       </td>
     </tr>
   </tbody>
