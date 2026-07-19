@@ -131,6 +131,11 @@ LANGUAGES = (
         authors=[],
     ),
     Language(
+        code="vi_VN",
+        completion=100,
+        authors=[],
+    ),
+    Language(
         code="zh_CN",
         completion=100,
         authors=[

@@ -2,7 +2,7 @@ from functools import cached_property
 
 from streamlink import NoPluginError, PluginError, Streamlink
 from streamlink.plugin import Plugin
-from streamlink.stream import HLSStream, MuxedHLSStream
+from streamlink.stream.hls import HLSStream, MuxedHLSStream
 
 from gridplayer.models.stream import HashableDict, Stream, Streams, StreamSessionOpts
 from gridplayer.settings import Settings

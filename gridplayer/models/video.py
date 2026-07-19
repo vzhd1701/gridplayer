@@ -68,7 +68,7 @@ class Video(BaseModel):
 
     @property
     def is_local_file(self):
-        return isinstance(self.uri, AbsoluteFilePath)
+        return isinstance(self.uri, Path) and self.uri.is_absolute()
 
     @property
     def is_http_url(self):
