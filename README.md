@@ -208,60 +208,8 @@ This software was build using
 
 ## Translations
 
-### Arabic
-
-- [azoaz6001](https://crowdin.com/profile/azoaz6001)
-
-### German
-
-- [DominikPott](https://crowdin.com/profile/dominikpott)
-
-### Spanish
-
-- [Sergio Varela](https://crowdin.com/profile/ingrownmink4)
-- [asolis2020](https://crowdin.com/profile/asolis2020)
-
-### French
-
-- [Sylvain LOUIS](https://crowdin.com/profile/louis_sylvain)
-
-### Hungarian
-
-- [samu112](https://crowdin.com/profile/samu112)
-
-### Italian
-
-- [Davide V.](https://crowdin.com/profile/davidev1)
-- [SolarCTP](https://crowdin.com/profile/solarctp)
-
-### Japanese
-
-- [七篠孝志](https://crowdin.com/profile/japanese.john.doe.774)
-
-### Korean
-
-- [VenusGirl](https://venusgirls.tistory.com/)
-
-### Dutch
-
-- [Heimen Stoffels](https://crowdin.com/profile/vistaus)
-
-### Polish
-
-- [rafal132](https://crowdin.com/profile/fifi132)
-- [Sebastian Jasiński](https://crowdin.com/profile/princenorris)
-
-### Portuguese, Brazilian
-
-- [GBS ~ TECH](https://crowdin.com/profile/gabriel-bs1)
-
-### Chinese Simplified
-
-- [Yagang Wang](https://crowdin.com/profile/wyg945)
-- [1017346](https://crowdin.com/profile/1017346)
-- [焦新营](https://crowdin.com/profile/j149697726)
-- [loser7788](https://crowdin.com/profile/loser7788)
-- [李凡](https://crowdin.com/profile/lif86060)
+<!-- CROWDIN-CONTRIBUTORS-START -->
+<!-- CROWDIN-CONTRIBUTORS-END -->
 
 ## License
 
