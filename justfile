@@ -38,10 +38,10 @@ build-win-package: build-win-pyinstaller
     ./scripts/windows/build_packages.sh
 
 build-macos-pyinstaller: build-requirements
-    ./scripts/pyinstaller/build_mac.sh
+    BUILD_MACOS_ARCH=x86_64 ./scripts/pyinstaller/build_mac.sh
 
 build-macos-package: build-macos-pyinstaller
-    ./scripts/macos/build_dmg.sh
+    BUILD_MACOS_ARCH=x86_64 ./scripts/macos/build_dmg.sh
 
 build-macos-pyinstaller-arm64: build-requirements
     BUILD_MACOS_ARCH=arm64 ./scripts/pyinstaller/build_mac.sh
