@@ -26,7 +26,7 @@ parts:
   # python multiprocessing fix
   snapcraft-preload:
     source: https://github.com/sergiusens/snapcraft-preload.git
-    source-commit: f1560b7a713f982546ea97629ff1557457faebb5
+    source-commit: 497f6770e7ced7670ba5e2318811db021bd8b6f7
     plugin: cmake
     cmake-parameters:
       - -DCMAKE_INSTALL_PREFIX=/
@@ -55,7 +55,7 @@ parts:
     override-build: |
       craftctl default
 
-      LIB_DIR="${CRAFT_PART_INSTALL}/usr/lib/${CRAFT_ARCH_TRIPLET}"
+      LIB_DIR="${CRAFT_PART_INSTALL}/usr/lib/${CRAFT_ARCH_TRIPLET_BUILD_FOR}"
       VLC_LIB_DIR="${LIB_DIR}/vlc"
 
       ${CRAFT_PROJECT_DIR}/blacklist_clean.sh "$LIB_DIR" ${CRAFT_PROJECT_DIR}/blacklist_snap.txt
@@ -75,20 +75,20 @@ parts:
       #LIBS="/var/lib/snapd/lib/gl:"
       #LIBS+="/var/lib/snapd/lib/gl32:"
       #LIBS+="/var/lib/snapd/void:"
-      #LIBS+="${CRAFT_PART_INSTALL}/usr/lib/${CRAFT_ARCH_TRIPLET}/pulseaudio:"
+      #LIBS+="${CRAFT_PART_INSTALL}/usr/lib/${CRAFT_ARCH_TRIPLET_BUILD_FOR}/pulseaudio:"
       #LIBS+="${VLC_LIB_DIR}:"
       #LIBS+="${CRAFT_PART_INSTALL}/lib:"
       #LIBS+="${CRAFT_PART_INSTALL}/usr/lib:"
-      #LIBS+="${CRAFT_PART_INSTALL}/lib/${CRAFT_ARCH_TRIPLET}:"
-      #LIBS+="${CRAFT_PART_INSTALL}/usr/lib/${CRAFT_ARCH_TRIPLET}:"
-      #LIBS+="${KDE_SNAP}/lib/${CRAFT_ARCH_TRIPLET}:"
-      #LIBS+="${KDE_SNAP}/usr/lib/${CRAFT_ARCH_TRIPLET}:"
+      #LIBS+="${CRAFT_PART_INSTALL}/lib/${CRAFT_ARCH_TRIPLET_BUILD_FOR}:"
+      #LIBS+="${CRAFT_PART_INSTALL}/usr/lib/${CRAFT_ARCH_TRIPLET_BUILD_FOR}:"
+      #LIBS+="${KDE_SNAP}/lib/${CRAFT_ARCH_TRIPLET_BUILD_FOR}:"
+      #LIBS+="${KDE_SNAP}/usr/lib/${CRAFT_ARCH_TRIPLET_BUILD_FOR}:"
       #LIBS+="${KDE_SNAP}/usr/lib:"
       #LIBS+="${KDE_SNAP}/lib:"
-      #LIBS+="${KDE_SNAP}/usr/lib/${CRAFT_ARCH_TRIPLET}/dri:"
-      #LIBS+="${KDE_SNAP}/usr/lib/${CRAFT_ARCH_TRIPLET}/pulseaudio:"
-      #LIBS+="${MAIN_SNAP}/lib/${CRAFT_ARCH_TRIPLET}:"
-      #LIBS+="${MAIN_SNAP}/usr/lib/${CRAFT_ARCH_TRIPLET}:"
+      #LIBS+="${KDE_SNAP}/usr/lib/${CRAFT_ARCH_TRIPLET_BUILD_FOR}/dri:"
+      #LIBS+="${KDE_SNAP}/usr/lib/${CRAFT_ARCH_TRIPLET_BUILD_FOR}/pulseaudio:"
+      #LIBS+="${MAIN_SNAP}/lib/${CRAFT_ARCH_TRIPLET_BUILD_FOR}:"
+      #LIBS+="${MAIN_SNAP}/usr/lib/${CRAFT_ARCH_TRIPLET_BUILD_FOR}:"
       #LIBS+="${MAIN_SNAP}/usr/lib:"
       #LIBS+="${MAIN_SNAP}/lib:"
 
