@@ -112,9 +112,6 @@ generate_flathub_git() {
 
     cp "$SCRIPT_DIR"/libvlc/* "$BUILD_DIR_FLATHUB"
 
-    if [ ! -f "$BUILD_DIR/flatpak_python_deps/dependencies.yml" ]; then
-        "$SCRIPT_DIR/generate_dependencies.sh"
-    fi
     cp "$BUILD_DIR/flatpak_python_deps/dependencies.yml" "$BUILD_DIR_FLATHUB/dependencies.yml"
     cp "$BUILD_DIR/flatpak_python_deps/uv_build.yml" "$BUILD_DIR_FLATPAK/uv_build.yml"
 
@@ -126,6 +123,10 @@ generate_flathub_git() {
     sed -i "s#{GIT_URL}#$FLATPAK_GIT_REPO_URL#g" "$BUILD_DIR_FLATHUB/$APP_ID.yml"
     sed -i "s#{GIT_COMMIT}#$FLATPAK_GIT_COMMIT#g" "$BUILD_DIR_FLATHUB/$APP_ID.yml"
 }
+
+if [ ! -f "$BUILD_DIR/flatpak_python_deps/dependencies.yml" ]; then
+    "$SCRIPT_DIR/generate_dependencies.sh"
+fi
 
 if [ -n "$GENERATE_FOR_COMMIT" ]; then
     update_flathub_git_local "$GENERATE_FOR_COMMIT"
