@@ -75,3 +75,6 @@ changelog:
 
 changelog-all:
     conventional-changelog -u -a --stdout | sed -n '0,/\[0\.1\.0\]:/d; p'
+
+update-actions:
+    actions-up --style preserve -y
