@@ -113,7 +113,7 @@ generate_flathub_git() {
     cp "$SCRIPT_DIR"/libvlc/* "$BUILD_DIR_FLATHUB"
 
     cp "$BUILD_DIR/flatpak_python_deps/dependencies.yml" "$BUILD_DIR_FLATHUB/dependencies.yml"
-    cp "$BUILD_DIR/flatpak_python_deps/uv_build.yml" "$BUILD_DIR_FLATPAK/uv_build.yml"
+    cp "$BUILD_DIR/flatpak_python_deps/uv_build.yml" "$BUILD_DIR_FLATHUB/uv_build.yml"
 
     cat "$SCRIPT_DIR/app.yml" "$SCRIPT_DIR/app_git.yml" > "$BUILD_DIR_FLATHUB/$APP_ID.yml"
     replace_app_vars "$BUILD_DIR_FLATHUB/$APP_ID.yml"
