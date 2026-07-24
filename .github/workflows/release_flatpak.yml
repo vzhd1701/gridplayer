@@ -32,6 +32,7 @@ jobs:
       - name: Install requirements
         run: |
           sudo apt-get install -y desktop-file-utils appstream-util flatpak
+          flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
           sudo flatpak install --system -y flathub org.kde.Sdk//5.15-25.08
 
       - name: Release
