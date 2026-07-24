@@ -18,11 +18,11 @@ jobs:
   build_snap:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
-      - uses: extractions/setup-just@v3
+      - uses: actions/checkout@v7
+      - uses: extractions/setup-just@v4
 
       - name: Set up Python ${{ env.BUILD_PYTHON_VERSION }}
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@v7
         with:
           python-version: ${{ env.BUILD_PYTHON_VERSION }}
 
@@ -43,7 +43,7 @@ jobs:
           path: build/snap
 
       - name: Save snapped app
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: snap_result
           path: ${{ steps.build.outputs.snap }}

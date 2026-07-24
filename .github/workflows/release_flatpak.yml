@@ -13,11 +13,11 @@ jobs:
   build_flatpak:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
-      - uses: extractions/setup-just@v3
+      - uses: actions/checkout@v7
+      - uses: extractions/setup-just@v4
 
       - name: Set up Python ${{ env.BUILD_PYTHON_VERSION }}
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@v7
         with:
           python-version: ${{ env.BUILD_PYTHON_VERSION }}
 

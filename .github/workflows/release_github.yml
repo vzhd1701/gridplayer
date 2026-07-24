@@ -18,11 +18,11 @@ jobs:
   build_python:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
-      - uses: extractions/setup-just@v3
+      - uses: actions/checkout@v7
+      - uses: extractions/setup-just@v4
 
       - name: Set up Python ${{ env.BUILD_PYTHON_VERSION }}
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@v7
         with:
           python-version: ${{ env.BUILD_PYTHON_VERSION }}
 
@@ -36,13 +36,13 @@ jobs:
         run: just build
 
       - name: Save release python requirements
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: release_dist_reqs
           path: build/requirements.txt
 
       - name: Save release python packages
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: release_dist_python
           path: dist
@@ -59,20 +59,20 @@ jobs:
     runs-on: ${{ matrix.runner }}
 
     steps:
-      - uses: actions/checkout@v6
-      - uses: extractions/setup-just@v3
+      - uses: actions/checkout@v7
+      - uses: extractions/setup-just@v4
 
       - name: Load release python requirements
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: release_dist_reqs
           path: build
 
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@v7
         with:
           python-version: ${{ env.BUILD_PYTHON_VERSION }}
 
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@v7
         with:
           node-version: 20
 
@@ -87,7 +87,7 @@ jobs:
           just clean-pyinstaller-dist
 
       - name: Save release binaries for macos ${{ matrix.arch }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: release_dist_bin_macos_${{ matrix.arch }}
           path: dist
@@ -99,22 +99,22 @@ jobs:
         arch: [ x86, x64 ]
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v6
-      - uses: extractions/setup-just@v3
+      - uses: actions/checkout@v7
+      - uses: extractions/setup-just@v4
 
       - name: Load release python requirements
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: release_dist_reqs
           path: build
 
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@v7
         with:
           python-version: ${{ env.BUILD_PYTHON_VERSION }}
           architecture: ${{ matrix.arch }}
 
       - name: Install requirements
-        uses: crazy-max/ghaction-chocolatey@v3
+        uses: crazy-max/ghaction-chocolatey@v4
         with:
           args: install wget zip
 
@@ -126,7 +126,7 @@ jobs:
           just clean-pyinstaller-dist
 
       - name: Save release binaries for windows ${{ matrix.arch }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: release_dist_bin_windows_${{ matrix.arch }}
           path: dist
@@ -135,16 +135,16 @@ jobs:
     needs: build_python
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
-      - uses: extractions/setup-just@v3
+      - uses: actions/checkout@v7
+      - uses: extractions/setup-just@v4
 
       - name: Load release python packages
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: release_dist_python
           path: dist
 
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@v7
         with:
           python-version: ${{ env.BUILD_PYTHON_VERSION }}
 
@@ -157,7 +157,7 @@ jobs:
           just build-linux-appimage
 
       - name: Save release binaries for linux x64
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: release_dist_bin_linux_x64
           path: dist
@@ -168,44 +168,44 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Extract release notes
         id: extract-release-notes
-        uses: ffurrer2/extract-release-notes@v1
+        uses: ffurrer2/extract-release-notes@v3
 
       - name: Load release python packages
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: release_dist_python
           path: dist
 
       - name: Load release binaries for linux x64
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: release_dist_bin_linux_x64
           path: dist
 
       - name: Load release binaries for windows x86
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: release_dist_bin_windows_x86
           path: dist
 
       - name: Load release binaries for windows x64
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: release_dist_bin_windows_x64
           path: dist
 
       - name: Load release binaries for macos x64
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: release_dist_bin_macos_x64
           path: dist
 
       - name: Load release binaries for macos arm64
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: release_dist_bin_macos_arm64
           path: dist
