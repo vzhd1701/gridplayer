@@ -3,7 +3,7 @@ from typing import NamedTuple
 
 from pydantic.version import VERSION as PYDANTIC_VERSION
 from PyQt5.Qt import PYQT_VERSION_STR
-from PyQt5.QtCore import QT_VERSION_STR
+from PyQt5.QtCore import qVersion
 from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import QDialog
 from streamlink import __version__ as STREAMLINK_VERSION
@@ -21,6 +21,7 @@ from gridplayer.version import (
 )
 
 PYTHON_VERSION = sys.version.split(" ")[0]
+QT_VERSION = qVersion() or "Unknown"
 
 
 class Attribution(NamedTuple):
@@ -75,7 +76,7 @@ class AboutDialog(QDialog, Ui_AboutDialog):
                 ),
                 Attribution(
                     "Qt",
-                    QT_VERSION_STR,
+                    QT_VERSION,
                     "Qt Project",
                     "GPL 2.0, GPL 3.0, and LGPL 3.0",
                     "https://www.qt.io/",
