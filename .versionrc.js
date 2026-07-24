@@ -56,6 +56,6 @@ module.exports = {
     changelog: true
   },
   scripts: {
-    postbump: `uv run scripts/_helpers/kacl.py "${version_file}" CHANGELOG.md && git add CHANGELOG.md`
+    postbump: `uv lock && uv run scripts/_helpers/kacl.py "${version_file}" CHANGELOG.md && git add CHANGELOG.md uv.lock`
   }
 }
