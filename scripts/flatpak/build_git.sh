@@ -124,8 +124,24 @@ generate_flathub_git() {
     sed -i "s#{GIT_COMMIT}#$FLATPAK_GIT_COMMIT#g" "$BUILD_DIR_FLATHUB/$APP_ID.yml"
 }
 
+check_commit() {
+    local code
+    code=$(curl -s -o /dev/null -w "%{http_code}" "https://api.github.com/repos/${FLATPAK_GIT_REPO}/commits/$1")
+    [[ "$code" == "200" ]]
+}
+
 if [ ! -f "$BUILD_DIR/flatpak_python_deps/dependencies.yml" ]; then
     "$SCRIPT_DIR/generate_dependencies.sh"
+fi
+
+if [ -n "$RELEASE_FOR_COMMIT" ]; then
+    if ! check_commit "$RELEASE_FOR_COMMIT"; then
+        echo "Commit $RELEASE_FOR_COMMIT does not exist"
+        exit 1
+    fi
+
+    update_flathub_git "$RELEASE_FOR_COMMIT"
+    exit 0
 fi
 
 if [ -n "$GENERATE_FOR_COMMIT" ]; then

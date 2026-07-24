@@ -2,6 +2,11 @@ name: release_flatpak
 
 on:
   workflow_dispatch:
+    inputs:
+      custom_commit:
+        description: 'Custom commit (at gridplayer-flatpak) to release as'
+        required: false
+        type: string
   push:
     tags:
       - "v[0-9]+.[0-9]+.[0-9]+"
@@ -33,6 +38,7 @@ jobs:
           GIT_USER: vzhd1701
           GIT_EMAIL: vzhd1701@gmail.com
           GIT_TOKEN: ${{ secrets.GIT_TOKEN }}
+          RELEASE_FOR_COMMIT: ${{ github.event.inputs.custom_commit }}
           FLATPAK_GIT_REPO: vzhd1701/gridplayer-flatpak
           FLATHUB_GIT_REPO: flathub/com.vzhd1701.gridplayer
         run: |
