@@ -31,8 +31,7 @@ classifiers = [
 dependencies = [
     "PyQt5==5.15.11",
     "PyQt5-Qt5==5.15.2 ; sys_platform == 'win32'",
-    "PyQt5-Qt5==5.15.2 ; sys_platform == 'linux'",
-    "PyQt5-Qt5==5.15.18 ; sys_platform == 'darwin'",
+    "PyQt5-Qt5==5.15.19 ; sys_platform != 'win32'",
     "pydantic (>=2.12.5,<3.0.0)",
     "streamlink (>=8.4.0,<9.0.0)",
     "yt-dlp[default] (>=2026.07.04,<2027.0.0)",
