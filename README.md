@@ -209,6 +209,7 @@ This software was build using
 ## Translations
 
 <!-- CROWDIN-CONTRIBUTORS-START -->
+
 <table>
   <tbody>
     <tr>
