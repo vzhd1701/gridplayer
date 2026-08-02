@@ -167,6 +167,7 @@ class VideoBlock(QWidget):
         # Runtime Params
         self._is_error = False
         self._is_active = False
+        self._is_closing = False
 
         self._title = None
         self._color = None
@@ -375,6 +376,11 @@ class VideoBlock(QWidget):
         self.close(notify=False)
 
     def close(self, notify=True):
+        if self._is_closing:
+            return
+
+        self._is_closing = True
+
         self._log.debug(f"Closing video block {self.id}")
 
         if notify:
