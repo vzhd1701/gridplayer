@@ -51,10 +51,10 @@ gridplayer = "gridplayer.__main__:main"
 [dependency-groups]
 dev = [
     "keepachangelog==2.0.0",
-    "rumdl>=0.2.49",
-    "pre-commit>=2.15.0",
-    "pytest>=7.1.2",
-    "ruff (>=0.14.10,<0.15.0)",
+    "pre-commit",
+    "pytest",
+    "ruff",
+    "rumdl",
 ]
 
 [tool.uv.build-backend]

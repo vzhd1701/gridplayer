@@ -408,10 +408,10 @@ requires-dist = [
 [package.metadata.requires-dev]
 dev = [
     { name = "keepachangelog", specifier = "==2.0.0" },
-    { name = "pre-commit", specifier = ">=2.15.0" },
-    { name = "pytest", specifier = ">=7.1.2" },
-    { name = "ruff", specifier = ">=0.14.10,<0.15.0" },
-    { name = "rumdl", specifier = ">=0.2.49" },
+    { name = "pre-commit" },
+    { name = "pytest" },
+    { name = "ruff" },
+    { name = "rumdl" },
 ]
 
 [[package]]
