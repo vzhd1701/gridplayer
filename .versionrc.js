@@ -46,6 +46,19 @@ let bumpFiles = packageFiles.concat([
   }
 ])
 
+const postbumpCommands = [
+  "uv lock",
+  // Read the version that was just written to the file
+  `NEW_VERSION=$(uv run --frozen python -c 'from gridplayer.version import __version__; print(__version__)')`,
+  'uv run --frozen keepachangelog release "$NEW_VERSION"',
+  "uv run --frozen rumdl fmt CHANGELOG.md",
+  "dos2unix CHANGELOG.md",
+  "git add CHANGELOG.md uv.lock",
+].join(" && ");
+
+const postbumpScript = `bash -c ${JSON.stringify(postbumpCommands)}`;
+
+
 module.exports = {
   header: "",
   commitAll: true,
@@ -56,6 +69,6 @@ module.exports = {
     changelog: true
   },
   scripts: {
-    postbump: `uv lock && uv run scripts/_helpers/kacl.py "${version_file}" CHANGELOG.md && git add CHANGELOG.md uv.lock`
+    postbump: postbumpScript
   }
 }

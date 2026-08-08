@@ -407,7 +407,7 @@ requires-dist = [
 
 [package.metadata.requires-dev]
 dev = [
-    { name = "keepachangelog", specifier = ">=1.0.0" },
+    { name = "keepachangelog", specifier = "==2.0.0" },
     { name = "mdformat", specifier = "==1.0.0" },
     { name = "pre-commit", specifier = ">=2.15.0" },
     { name = "pytest", specifier = ">=7.1.2" },
