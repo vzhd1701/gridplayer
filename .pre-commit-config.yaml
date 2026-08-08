@@ -30,10 +30,9 @@ repos:
         types: [ python ]
         pass_filenames: false
 
-      - id: mdformat
-        name: mdformat
+      - id: rumdl
+        name: rumdl
         stages: [ pre-commit ]
         language: system
-        entry: uv run mdformat
+        entry: uv run --frozen rumdl fmt
         types: [ markdown ]
-        exclude: CHANGELOG.md

@@ -51,7 +51,7 @@ gridplayer = "gridplayer.__main__:main"
 [dependency-groups]
 dev = [
     "keepachangelog==2.0.0",
-    "mdformat==1.0.0",
+    "rumdl>=0.2.49",
     "pre-commit>=2.15.0",
     "pytest>=7.1.2",
     "ruff (>=0.14.10,<0.15.0)",
@@ -120,3 +120,13 @@ ignore = [
 
 [tool.ruff.lint.extend-per-file-ignores]
 "__main__.py" = ["E402"]
+
+[tool.ty.src]
+exclude = ["tests"]
+
+[tool.rumdl]
+disable = ["MD013"]
+exclude = ["LICENSE.md"]
+
+[tool.rumdl.per-file-ignores]
+"README.md" = ["MD033", "MD041"]

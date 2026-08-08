@@ -50,7 +50,7 @@ Huge thanks to [every contributor](https://github.com/vzhd1701/gridplayer#transl
 Via [scoop](https://scoop.sh/):
 
 ```shell
-$ scoop install gridplayer
+scoop install gridplayer
 ```
 
 **Compatible with Windows 7, 8, 10, 11.**
@@ -70,7 +70,7 @@ The AppImage was built using Ubuntu Focal Fossa libraries, so compatibility is U
 You may need to set execute permissions on AppImage file in order to run it:
 
 ```shell
-$ chmod +x GridPlayer-0.5.5-x86_64.AppImage
+chmod +x GridPlayer-0.5.5-x86_64.AppImage
 ```
 
 ### MacOS
@@ -85,13 +85,13 @@ $ chmod +x GridPlayer-0.5.5-x86_64.AppImage
 If you get "GridPlayer is damaged and can't be opened" error, run this command in the Terminal app:
 
 ```shell
-$ sudo xattr -rd com.apple.quarantine /Applications/GridPlayer.app
+sudo xattr -rd com.apple.quarantine /Applications/GridPlayer.app
 ```
 
 ### Install with [UV](https://docs.astral.sh/uv/)
 
 ```shell
-$ uv tool install gridplayer
+uv tool install gridplayer
 ```
 
 **Python 3.10 or later required.**
@@ -105,7 +105,7 @@ Some distros (e.g. Ubuntu) might also require `libxcb-xinerama0` package.
 ### From source
 
 ```shell
-$ uv tool install git+https://github.com/vzhd1701/gridplayer.git
+uv tool install git+https://github.com/vzhd1701/gridplayer.git
 ```
 
 The same notes about the Python version and external packages from above apply here.
@@ -130,15 +130,15 @@ Due to OS inter-process restrictions, "Hardware SP" is the only available hardwa
 
 ## Known issues
 
-#### Linux (Snap): Error when opening a file from the mounted disk
+### Linux (Snap): Error when opening a file from the mounted disk
 
 You need to allow GridPlayer snap to access removable storage devices via Snap Store or by running:
 
 ```shell
-$ sudo snap connect gridplayer:removable-media
+sudo snap connect gridplayer:removable-media
 ```
 
-#### Linux (Snap): mounted drives are not visible in file selection dialog
+### Linux (Snap): mounted drives are not visible in file selection dialog
 
 You will also see following error if you run GridPlayer from terminal:
 
@@ -150,10 +150,10 @@ To fix this, you need to allow GridPlayer snap to access system mount informatio
 running:
 
 ```shell
-$ sudo snap connect gridplayer:mount-observe
+sudo snap connect gridplayer:mount-observe
 ```
 
-#### Linux: black screen issue when using hardware decoder
+### Linux: black screen issue when using hardware decoder
 
 Switch on "Opaque overlay (fix black screen)" checkbox in settings.
 
