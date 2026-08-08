@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2015/06/nuspec.xsd">
+  <metadata>
+    <id>{CHOCO_ID}</id>
+    <version>{APP_VERSION}</version>
+    <projectUrl>{APP_URL}</projectUrl>
+    <projectSourceUrl>{APP_URL}</projectSourceUrl>
+    <packageSourceUrl>{APP_URL}/tree/v{APP_VERSION}/scripts/chocolatey</packageSourceUrl>
+    <licenseUrl>{APP_URL}/blob/master/LICENSE</licenseUrl>
+    <bugTrackerUrl>{APP_URL}/issues</bugTrackerUrl>
+    <releaseNotes>{APP_URL}/blob/master/CHANGELOG.md</releaseNotes>
+    <iconUrl>{APP_CDN_URL_ROOT}/resources/icons/main/png/128x128.png</iconUrl>
+    <owners>{APP_AUTHOR}</owners>
+    <authors>{APP_AUTHOR}</authors>
+    <title>{CHOCO_TITLE}</title>
+    <requireLicenseAcceptance>false</requireLicenseAcceptance>
+    <tags>gridplayer python player youtube streamlink twitch streaming qt video video-player livestream pyqt5 youtube-dl qt5 vlc libvlc pyqt player-video yt-dlp media multi-video</tags>
+    <summary>Play videos side-by-side</summary>
+    <description>Simple VLC-based media player that can play multiple videos at the same time. You can
+play as many videos as you like, the only limit is your hardware. It supports all video
+formats that VLC supports (which is all of them). You can save your playlist retaining
+information about the position, sound volume, loops, aspect ratio, etc.
+
+## Features
+
+- Cross-platform (Linux, Mac, and Windows)
+- Support for any video and audio format (VLC)
+- Support for (almost) any streaming URLs ([streamlink](https://streamlink.github.io/plugins.html) + [yt-dlp](https://github.com/yt-dlp/yt-dlp/blob/master/supportedsites.md))
+- Hardware and software video decoding
+- Control video aspect, playback speed, zoom
+- Set loop fragments with frame precision
+- Configurable grid layout
+- Easy swap videos with drag-n-drop
+- Playlist retains settings for each video
+
+## Screenshots
+
+[![Screenshot 1]({APP_CDN_URL_ROOT}/resources/public/screenshot-001-thumb.png)]({APP_CDN_URL_ROOT}/resources/public/screenshot-001.png)
+[![Screenshot 2]({APP_CDN_URL_ROOT}/resources/public/screenshot-002-thumb.png)]({APP_CDN_URL_ROOT}/resources/public/screenshot-002.png)
+[![Screenshot 3]({APP_CDN_URL_ROOT}/resources/public/screenshot-003-thumb.png)]({APP_CDN_URL_ROOT}/resources/public/screenshot-003.png)
+[![Screenshot 4]({APP_CDN_URL_ROOT}/resources/public/screenshot-004-thumb.png)]({APP_CDN_URL_ROOT}/resources/public/screenshot-004.png)
+{PACKAGE_PARAMETERS}</description>
+  {DEPENDENCIES}
+  </metadata>
+  <files>
+    <file src="tools\**" target="tools" />
+  </files>
+</package>
