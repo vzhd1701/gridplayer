@@ -71,10 +71,16 @@ translations-update-contributors:
     ./scripts/translations/update_contributors.sh
 
 changelog:
-    conventional-changelog -p conventionalcommits -u -a --stdout | sed -n '0,/\[0\.1\.0\]:/d; p'
+    conventional-changelog -p conventionalcommits -u -i /dev/null --stdout
 
 changelog-all:
-    conventional-changelog -u -a --stdout | sed -n '0,/\[0\.1\.0\]:/d; p'
+    conventional-changelog -u -i /dev/null --stdout
+
+release:
+    commit-and-tag-version
+
+release-dry:
+    commit-and-tag-version --dry-run
 
 update-actions:
     actions-up --style preserve -y
