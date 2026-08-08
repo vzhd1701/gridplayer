@@ -26,7 +26,7 @@ repos:
         name: ruff
         stages: [ pre-commit ]
         language: system
-        entry: uv run ruff format
+        entry: uv run --frozen ruff format
         types: [ python ]
         pass_filenames: false
 

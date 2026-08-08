@@ -6,8 +6,8 @@ SCRIPT_DIR="$( cd "$( dirname $0 )" && pwd )"
 
 . "scripts/init_app_vars.sh"
 
-BLACK=$(uv run ruff format)
-PYLUPDATE=$(uv run which pylupdate5)
+BLACK=$(uv run --frozen ruff format)
+PYLUPDATE=$(uv run --frozen which pylupdate5)
 DEST_TS_FILE="$RESOURCES_DIR/translations/en_US.ts"
 
 TEMPD=$(mktemp -d)
