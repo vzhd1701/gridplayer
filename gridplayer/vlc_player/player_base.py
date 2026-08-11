@@ -644,6 +644,7 @@ class VlcPlayerBase(ABC):
             media_player=self._media_player,
             media_tracks=list(media_tracks),
             is_audio_only=self.media_input.is_audio_only,
+            media_uri=self.media_input.uri,
         )
 
         if not self._tracks_manager.is_video_size_initialized:
