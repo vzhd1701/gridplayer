@@ -28,7 +28,6 @@ repos:
         language: system
         entry: uv run --frozen ruff format
         types: [ python ]
-        pass_filenames: false
 
       - id: rumdl
         name: rumdl
