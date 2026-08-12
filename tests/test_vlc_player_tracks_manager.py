@@ -249,7 +249,9 @@ class TestTracksManagerDoesNotCrashOnBadMetadata:
     def test_mixed_good_and_bad_tracks_all_convert(self):
         tracks = [
             make_video_track(track_id=0, language=b"eng", description=b"Good"),
-            make_video_track(track_id=1, language=INVALID_UTF8, description=b"Bad lang"),
+            make_video_track(
+                track_id=1, language=INVALID_UTF8, description=b"Bad lang"
+            ),
             make_audio_track(track_id=0, language=b"eng"),
             make_audio_track(track_id=1, language=INVALID_UTF8),
         ]

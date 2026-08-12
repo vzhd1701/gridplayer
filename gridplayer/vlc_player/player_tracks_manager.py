@@ -107,7 +107,9 @@ class TracksManager:
             return None
 
 
-def _decode_track_field(value, *, media_uri, track_type, track_id, field_name, default=None):
+def _decode_track_field(
+    value, *, media_uri, track_type, track_id, field_name, default=None
+):
     """Decode a libVLC track metadata field (ctypes ``c_char_p``) into text.
 
     libVLC hands this back as raw bytes copied straight out of the
