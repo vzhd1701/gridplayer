@@ -24,3 +24,4 @@ sed -i 's/^#.*$//g' "$APP_BASE_DIR/dialogs"/*_ui.py
 
 dos2unix "$APP_BASE_DIR/dialogs"/*_ui.py
 uv run --frozen ruff format "$APP_BASE_DIR/dialogs"/*_ui.py
+uv run --frozen ruff check --fix "$APP_BASE_DIR/dialogs"/*_ui.py
