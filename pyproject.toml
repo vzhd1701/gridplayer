@@ -121,6 +121,7 @@ ignore = [
 
 [tool.ruff.lint.extend-per-file-ignores]
 "__main__.py" = ["E402"]
+"*_ui.py" = ["E402"]
 
 [tool.ty.src]
 exclude = ["tests"]
