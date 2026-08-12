@@ -1,7 +1,7 @@
 from types import MappingProxyType
 
 from PyQt5.QtCore import Qt
-from PyQt5.QtWidgets import QMenu, QProxyStyle, QStyle, qApp
+from PyQt5.QtWidgets import QMenu, QProxyStyle, QStyle
 
 from gridplayer.utils.darkmode import is_dark_mode
 
@@ -57,7 +57,13 @@ class CustomMenu(QMenu):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
-        self.setStyle(BigMenuIcons(qApp.style()))
+        # Do not pass qApp.style() into QProxyStyle — that transfers ownership of the
+        # *application* style to the proxy. When the menu is destroyed, Qt deletes the
+        # app style and the process later dies with ACCESS_VIOLATION (0xC0000005).
+        # Default-constructed QProxyStyle uses the app style without taking ownership.
+        style = BigMenuIcons()
+        style.setParent(self)
+        self.setStyle(style)
         self.setStyleSheet(_get_theme_style())
 
         self.setWindowFlags(
