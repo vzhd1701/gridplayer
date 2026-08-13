@@ -23,7 +23,9 @@ from gridplayer.params.static import (
 from gridplayer.settings import Settings
 from gridplayer.utils import log_config
 from gridplayer.utils.app_dir import get_app_data_dir
+from gridplayer.utils.keymap import default_keymap, merge_keymap
 from gridplayer.utils.qt import qt_connect, translate
+from gridplayer.widgets.keymap_tree_view import KeymapEditor
 from gridplayer.widgets.language_list import LanguageList
 from gridplayer.widgets.resolver_patterns_list import ResolverPatternsList
 
@@ -76,6 +78,7 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
             "player/stay_on_top": self.playerStayOnTop,
             "player/show_overlay_border": self.playerShowOverlayBorder,
             "player/language": self.listLanguages,
+            "player/keymap": self.keymapEditor,
             "player/recent_list_enabled": self.playerRecentList,
             "player/recent_list_max_size": self.playerRecentListSize,
             "playlist/grid_mode": self.gridMode,
@@ -87,8 +90,8 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
             "playlist/save_window": self.playlistSaveWindow,
             "playlist/seek_sync_mode": self.playlistSeekSyncMode,
             "playlist/track_changes": self.playlistTrackChanges,
-            "playlist/disable_click_pause": self.playlistDisableClickPause,
-            "playlist/disable_wheel_seek": self.playlistDisableWheelSeek,
+            "playlist/disable_mouse_click_events": self.playlistDisableClickEvents,
+            "playlist/disable_mouse_wheel_events": self.playlistDisableWheelEvents,
             "video_defaults/aspect": self.videoAspect,
             "video_defaults/transform": self.videoTransform,
             "video_defaults/repeat": self.repeatMode,
@@ -219,6 +222,7 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
     def switch_page(self, page_name):
         pages_map = {
             translate("SettingsDialog", "Player"): self.page_general_player,
+            translate("SettingsDialog", "Shortcuts"): self.page_general_shortcuts,
             translate("SettingsDialog", "Language"): self.page_general_language,
             translate("SettingsDialog", "Playlist"): self.page_defaults_playlist,
             translate("SettingsDialog", "Video"): self.page_defaults_video,
@@ -415,6 +419,9 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
             QComboBox: _set_combo_box,
             LanguageList: lambda e, v: e.setValue(v),
             ResolverPatternsList: lambda e, v: e.setDataRows(v),
+            KeymapEditor: lambda e, v: e.set_bindings(
+                merge_keymap(default_keymap(), v)
+            ),
         }
 
         for setting, element in self.settings_map.items():
@@ -435,6 +442,7 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
             QComboBox: "currentData",
             LanguageList: "value",
             ResolverPatternsList: "rows_data",
+            KeymapEditor: "get_sparse_bindings",
         }
 
         for setting, element in self.settings_map.items():

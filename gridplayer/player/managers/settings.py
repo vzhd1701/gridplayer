@@ -13,6 +13,7 @@ class SettingsManager(ManagerBase):
     set_log_level = pyqtSignal(int)
     set_log_level_vlc = pyqtSignal(int)
     set_recent_list_enabled = pyqtSignal(bool)
+    keymap_changed = pyqtSignal(object)  # KeymapOverrides
 
     @property
     def commands(self):
@@ -44,6 +45,7 @@ class SettingsManager(ManagerBase):
             "logging/log_level_vlc": self.set_log_level_vlc,
             "player/inhibit_screensaver": self.set_screensaver,
             "player/recent_list_enabled": self.set_recent_list_enabled,
+            "player/keymap": self.keymap_changed,
         }
 
         changes = self._setting_changes(previous_settings, tuple(checks))

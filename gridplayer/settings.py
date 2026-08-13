@@ -25,6 +25,7 @@ from gridplayer.params.static import (
     VideoTransform,
 )
 from gridplayer.utils.app_dir import get_app_data_dir
+from gridplayer.utils.keymap import KeymapOverrides
 from gridplayer.utils.log_config import DISABLED
 
 SETTINGS = None
@@ -41,6 +42,7 @@ _default_settings = {
     "player/stay_on_top": False,
     "player/show_overlay_border": False,
     "player/language": get_system_language(),
+    "player/keymap": KeymapOverrides({}),
     "player/recent_list_enabled": True,
     "player/recent_list_max_size": 10,
     "playlist/grid_mode": GridMode.AUTO_ROWS,
@@ -52,8 +54,8 @@ _default_settings = {
     "playlist/seek_sync_mode": SeekSyncMode.DISABLED,
     "playlist/track_changes": True,
     "playlist/shuffle_on_load": False,
-    "playlist/disable_click_pause": False,
-    "playlist/disable_wheel_seek": False,
+    "playlist/disable_mouse_click_events": False,
+    "playlist/disable_mouse_wheel_events": False,
     "video_defaults/aspect": VideoAspect.FIT,
     "video_defaults/transform": VideoTransform.NONE,
     "video_defaults/repeat": VideoRepeat.SINGLE_FILE,
@@ -93,6 +95,20 @@ class _Settings:
         self.settings = QSettings(str(settings_path), QSettings.IniFormat)
 
         logging.getLogger("Settings").debug(f"Settings path: {settings_path}")
+
+        self._migrate_legacy_keys()
+
+    def _migrate_legacy_keys(self):
+        """Rename obsolete setting keys once; write only new names."""
+        renames = {
+            "playlist/disable_click_pause": "playlist/disable_mouse_click_events",
+            "playlist/disable_wheel_seek": "playlist/disable_mouse_wheel_events",
+        }
+        for old_key, new_key in renames.items():
+            if self.settings.contains(old_key) and not self.settings.contains(new_key):
+                self.settings.setValue(new_key, self.settings.value(old_key))
+            if self.settings.contains(old_key):
+                self.settings.remove(old_key)
 
     def get(self, setting):
         setting_type = type(_default_settings[setting])
@@ -157,7 +173,9 @@ class _Settings:
         setting_value = self.settings.value(setting)
 
         if isinstance(setting_value, str):
-            with suppress(ValueError):
+            with suppress(ValueError, TypeError):
+                if hasattr(setting_type, "model_validate_json"):
+                    return setting_type.model_validate_json(setting_value)
                 return setting_type.parse_raw(setting_value)
 
         return _default_settings[setting]

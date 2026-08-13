@@ -143,10 +143,12 @@ class VideoBlocksManager(ManagerBase):
 
         self._ctx.seek_sync_mode = Settings().get("playlist/seek_sync_mode")
         self._ctx.is_shuffle_on_load = Settings().get("playlist/shuffle_on_load")
-        self._ctx.is_disable_click_pause = Settings().get(
-            "playlist/disable_click_pause"
+        self._ctx.is_disable_mouse_click_events = Settings().get(
+            "playlist/disable_mouse_click_events"
         )
-        self._ctx.is_disable_wheel_seek = Settings().get("playlist/disable_wheel_seek")
+        self._ctx.is_disable_mouse_wheel_events = Settings().get(
+            "playlist/disable_mouse_wheel_events"
+        )
 
         self._ctx.video_blocks = VideoBlocks()
 
@@ -176,12 +178,16 @@ class VideoBlocksManager(ManagerBase):
             "is_shuffle_on_load": lambda: self._ctx.is_shuffle_on_load,
             "set_shuffle_on_load": self.set_shuffle_on_load,
             "toggle_shuffle_on_load": self.toggle_shuffle_on_load,
-            "is_disable_click_pause": lambda: self._ctx.is_disable_click_pause,
-            "set_disable_click_pause": self.set_disable_click_pause,
-            "toggle_disable_click_pause": self.toggle_disable_click_pause,
-            "is_disable_wheel_seek": lambda: self._ctx.is_disable_wheel_seek,
-            "set_disable_wheel_seek": self.set_disable_wheel_seek,
-            "toggle_disable_wheel_seek": self.toggle_disable_wheel_seek,
+            "is_disable_mouse_click_events": lambda: (
+                self._ctx.is_disable_mouse_click_events
+            ),
+            "set_disable_mouse_click_events": self.set_disable_mouse_click_events,
+            "toggle_disable_mouse_click_events": self.toggle_disable_mouse_click_events,
+            "is_disable_mouse_wheel_events": lambda: (
+                self._ctx.is_disable_mouse_wheel_events
+            ),
+            "set_disable_mouse_wheel_events": self.set_disable_mouse_wheel_events,
+            "toggle_disable_mouse_wheel_events": self.toggle_disable_mouse_wheel_events,
         }
 
     def cmd_all(self, command, *args):
@@ -235,17 +241,21 @@ class VideoBlocksManager(ManagerBase):
     def toggle_shuffle_on_load(self):
         self._ctx.is_shuffle_on_load = not self._ctx.is_shuffle_on_load
 
-    def set_disable_click_pause(self, is_disable_click_pause):
-        self._ctx.is_disable_click_pause = is_disable_click_pause
+    def set_disable_mouse_click_events(self, is_disabled):
+        self._ctx.is_disable_mouse_click_events = is_disabled
 
-    def toggle_disable_click_pause(self):
-        self._ctx.is_disable_click_pause = not self._ctx.is_disable_click_pause
+    def toggle_disable_mouse_click_events(self):
+        self._ctx.is_disable_mouse_click_events = (
+            not self._ctx.is_disable_mouse_click_events
+        )
 
-    def set_disable_wheel_seek(self, is_disable_wheel_seek):
-        self._ctx.is_disable_wheel_seek = is_disable_wheel_seek
+    def set_disable_mouse_wheel_events(self, is_disabled):
+        self._ctx.is_disable_mouse_wheel_events = is_disabled
 
-    def toggle_disable_wheel_seek(self):
-        self._ctx.is_disable_wheel_seek = not self._ctx.is_disable_wheel_seek
+    def toggle_disable_mouse_wheel_events(self):
+        self._ctx.is_disable_mouse_wheel_events = (
+            not self._ctx.is_disable_mouse_wheel_events
+        )
 
     def seek_sync_percent(self, percent):
         if self._ctx.seek_sync_mode == SeekSyncMode.PERCENT:

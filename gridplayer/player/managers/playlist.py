@@ -23,8 +23,8 @@ class PlaylistManager(ManagerBase):
     snapshots_loaded = pyqtSignal(dict)
     seek_sync_mode_loaded = pyqtSignal(SeekSyncMode)
     shuffle_on_load_loaded = pyqtSignal(bool)
-    disable_click_pause_loaded = pyqtSignal(bool)
-    disable_wheel_seek_loaded = pyqtSignal(bool)
+    disable_mouse_click_events_loaded = pyqtSignal(bool)
+    disable_mouse_wheel_events_loaded = pyqtSignal(bool)
     videos_loaded = pyqtSignal(list)
 
     alert = pyqtSignal()
@@ -180,8 +180,14 @@ class PlaylistManager(ManagerBase):
         _emit(
             (self.seek_sync_mode_loaded, playlist.seek_sync_mode),
             (self.shuffle_on_load_loaded, playlist.shuffle_on_load),
-            (self.disable_click_pause_loaded, playlist.disable_click_pause),
-            (self.disable_wheel_seek_loaded, playlist.disable_wheel_seek),
+            (
+                self.disable_mouse_click_events_loaded,
+                playlist.disable_mouse_click_events,
+            ),
+            (
+                self.disable_mouse_wheel_events_loaded,
+                playlist.disable_mouse_wheel_events,
+            ),
         )
 
         self.alert.emit()
@@ -252,8 +258,8 @@ class PlaylistManager(ManagerBase):
             snapshots=self._ctx.snapshots,
             seek_sync_mode=self._ctx.seek_sync_mode,
             shuffle_on_load=self._ctx.is_shuffle_on_load,
-            disable_click_pause=self._ctx.is_disable_click_pause,
-            disable_wheel_seek=self._ctx.is_disable_wheel_seek,
+            disable_mouse_click_events=self._ctx.is_disable_mouse_click_events,
+            disable_mouse_wheel_events=self._ctx.is_disable_mouse_wheel_events,
         )
 
 

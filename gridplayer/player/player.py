@@ -96,6 +96,7 @@ class Player(QWidget, ManagersManager):
                 ("set_log_level", "video_driver.set_log_level"),
                 ("set_log_level_vlc", "video_driver.set_log_level_vlc"),
                 ("set_recent_list_enabled", "recent_list.set_recent_list_state"),
+                ("keymap_changed", "actions.apply_bindings"),
             ],
             "playlist": [
                 ("s.arguments_received", "process_arguments"),
@@ -107,8 +108,14 @@ class Player(QWidget, ManagersManager):
                 ("snapshots_loaded", "snapshots.set_snapshots"),
                 ("seek_sync_mode_loaded", "video_blocks.set_seek_sync_mode"),
                 ("shuffle_on_load_loaded", "video_blocks.set_shuffle_on_load"),
-                ("disable_click_pause_loaded", "video_blocks.set_disable_click_pause"),
-                ("disable_wheel_seek_loaded", "video_blocks.set_disable_wheel_seek"),
+                (
+                    "disable_mouse_click_events_loaded",
+                    "video_blocks.set_disable_mouse_click_events",
+                ),
+                (
+                    "disable_mouse_wheel_events_loaded",
+                    "video_blocks.set_disable_mouse_wheel_events",
+                ),
                 ("videos_loaded", "video_blocks.add_videos"),
                 ("alert", "window_state.activate_window"),
                 ("error", "dialogs.error"),
@@ -151,8 +158,10 @@ class Player(QWidget, ManagersManager):
             "window_state",
             "drag_n_drop",
             "active_block",
-            "single_mode",
             "menu",
+            # After other filters: only consumes when a mouse chord matches.
+            # Receives events targeted at the Player (empty chrome), not VideoBlocks.
+            "actions",
         ]
 
         self.init()

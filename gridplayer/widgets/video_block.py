@@ -392,22 +392,16 @@ class VideoBlock(QWidget):
         self.cleanup()
         event.accept()
 
-    @only_initialized
-    @only_seekable
     def wheelEvent(self, event):
-        if self._ctx.is_disable_wheel_seek:
+        if self._ctx.is_disable_mouse_wheel_events:
             event.ignore()
             return
 
-        is_shift_forward = event.angleDelta().y() < 0
-        is_big_shift = event.modifiers() & Qt.ShiftModifier
-
-        shift_percent = 5 if is_big_shift else 1
-
-        if is_shift_forward:
-            self.manual_seek("seek_shift_percent", shift_percent)
-        else:
-            self.manual_seek("seek_shift_percent", -shift_percent)
+        if self._dispatch_mouse_action(event):
+            # Accept so the event does not bubble to Player and re-trigger
+            # the same mouse shortcut (e.g. open Settings twice).
+            event.accept()
+            return
 
         event.ignore()
 
@@ -417,16 +411,34 @@ class VideoBlock(QWidget):
 
         super().mousePressEvent(event)
 
-    @only_initialized
     def mouseReleaseEvent(self, event) -> None:
-        if self._ctx.is_disable_click_pause:
+        if self._ctx.is_disable_mouse_click_events:
             event.ignore()
             return
 
-        if event.button() == Qt.LeftButton:
-            self.play_pause()
+        if self._dispatch_mouse_action(event):
+            event.accept()
+            return
 
         event.ignore()
+
+    def mouseDoubleClickEvent(self, event) -> None:
+        if self._ctx.is_disable_mouse_click_events:
+            event.ignore()
+            return
+
+        if self._dispatch_mouse_action(event):
+            event.accept()
+            return
+
+        event.ignore()
+
+    def _dispatch_mouse_action(self, event) -> bool:
+        try:
+            actions_manager = self._ctx.actions_manager
+        except KeyError:
+            return False
+        return actions_manager.handle_mouse_event(event)
 
     def hideEvent(self, event):
         self.hide_overlay()

@@ -63,6 +63,11 @@
        </item>
        <item>
         <property name="text">
+         <string>Shortcuts</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
          <string>Language</string>
         </property>
        </item>
@@ -346,6 +351,25 @@
          </item>
         </layout>
        </widget>
+       <widget class="QWidget" name="page_general_shortcuts">
+        <layout class="QVBoxLayout" name="lay_page_general_shortcuts">
+         <property name="leftMargin">
+          <number>0</number>
+         </property>
+         <property name="topMargin">
+          <number>0</number>
+         </property>
+         <property name="rightMargin">
+          <number>0</number>
+         </property>
+         <property name="bottomMargin">
+          <number>0</number>
+         </property>
+         <item>
+          <widget class="KeymapEditor" name="keymapEditor"/>
+         </item>
+        </layout>
+       </widget>
        <widget class="QWidget" name="page_misc_streaming">
         <layout class="QVBoxLayout" name="lay_page_general_streams">
          <property name="leftMargin">
@@ -493,16 +517,16 @@
           </widget>
          </item>
          <item>
-          <widget class="QCheckBox" name="playlistDisableClickPause">
+          <widget class="QCheckBox" name="playlistDisableClickEvents">
            <property name="text">
-            <string>Disable pause with left mouse click</string>
+            <string>Disable mouse click events</string>
            </property>
           </widget>
          </item>
          <item>
-          <widget class="QCheckBox" name="playlistDisableWheelSeek">
+          <widget class="QCheckBox" name="playlistDisableWheelEvents">
            <property name="text">
-            <string>Disable seek with mouse wheel</string>
+            <string>Disable mouse wheel events</string>
            </property>
           </widget>
          </item>
@@ -1004,6 +1028,12 @@
    <class>ResolverPatternsList</class>
    <extends>QWidget</extends>
    <header>gridplayer.widgets.resolver_patterns_list</header>
+   <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>KeymapEditor</class>
+   <extends>QWidget</extends>
+   <header>gridplayer.widgets.keymap_tree_view</header>
    <container>1</container>
   </customwidget>
  </customwidgets>
