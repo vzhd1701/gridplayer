@@ -531,6 +531,13 @@
           </widget>
          </item>
          <item>
+          <widget class="QCheckBox" name="playlistDisableOverlay">
+           <property name="text">
+            <string>Disable overlay</string>
+           </property>
+          </widget>
+         </item>
+         <item>
           <layout class="QFormLayout" name="formLayout_2">
            <property name="fieldGrowthPolicy">
             <enum>QFormLayout::FieldsStayAtSizeHint</enum>

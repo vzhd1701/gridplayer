@@ -654,11 +654,19 @@ class VideoBlock(QWidget):
 
     @only_initialized
     def show_overlay(self):
+        if self._ctx.is_disable_overlay:
+            return
+
         self.overlay.show()
         if Settings().get("misc/overlay_hide"):
             self.overlay_hide_timer.start(1000 * Settings().get("misc/overlay_timeout"))
 
     def hide_overlay(self):
+        if self._ctx.is_disable_overlay:
+            self.overlay_hide_timer.stop()
+            self.overlay.hide()
+            return
+
         if not Settings().get("misc/overlay_hide"):
             return
 

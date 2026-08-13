@@ -1423,6 +1423,12 @@ ACTIONS = MappingProxyType(
             "func": "toggle_disable_mouse_wheel_events",
             "check_if": "is_disable_mouse_wheel_events",
         },
+        "Disable Overlay": {
+            "title": translate("Actions", "Disable Overlay"),
+            "icon": "empty",
+            "func": "toggle_disable_overlay",
+            "check_if": "is_disable_overlay",
+        },
         # Program
         "Fullscreen": {
             "title": translate("Actions", "Fullscreen"),

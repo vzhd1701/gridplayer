@@ -291,6 +291,9 @@ class Ui_SettingsDialog:
         )
         self.playlistDisableWheelEvents.setObjectName("playlistDisableWheelEvents")
         self.lay_page_defaults_playlist.addWidget(self.playlistDisableWheelEvents)
+        self.playlistDisableOverlay = QtWidgets.QCheckBox(self.page_defaults_playlist)
+        self.playlistDisableOverlay.setObjectName("playlistDisableOverlay")
+        self.lay_page_defaults_playlist.addWidget(self.playlistDisableOverlay)
         self.formLayout_2 = QtWidgets.QFormLayout()
         self.formLayout_2.setFieldGrowthPolicy(
             QtWidgets.QFormLayout.FieldsStayAtSizeHint
@@ -700,6 +703,9 @@ class Ui_SettingsDialog:
         )
         self.playlistDisableWheelEvents.setText(
             _translate("SettingsDialog", "Disable mouse wheel events")
+        )
+        self.playlistDisableOverlay.setText(
+            _translate("SettingsDialog", "Disable overlay")
         )
         self.playlistSeekSyncModeLabel.setText(
             _translate("SettingsDialog", "Seek sync mode")

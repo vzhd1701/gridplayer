@@ -34,6 +34,7 @@ class Playlist(BaseModel):
     disable_mouse_wheel_events: bool = Settings().get(
         "playlist/disable_mouse_wheel_events"
     )
+    disable_overlay: bool = default_field("playlist/disable_overlay")
 
     @model_validator(mode="before")
     @classmethod

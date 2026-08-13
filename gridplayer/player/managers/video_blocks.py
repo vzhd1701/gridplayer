@@ -149,6 +149,7 @@ class VideoBlocksManager(ManagerBase):
         self._ctx.is_disable_mouse_wheel_events = Settings().get(
             "playlist/disable_mouse_wheel_events"
         )
+        self._ctx.is_disable_overlay = Settings().get("playlist/disable_overlay")
 
         self._ctx.video_blocks = VideoBlocks()
 
@@ -188,6 +189,9 @@ class VideoBlocksManager(ManagerBase):
             ),
             "set_disable_mouse_wheel_events": self.set_disable_mouse_wheel_events,
             "toggle_disable_mouse_wheel_events": self.toggle_disable_mouse_wheel_events,
+            "is_disable_overlay": lambda: self._ctx.is_disable_overlay,
+            "set_disable_overlay": self.set_disable_overlay,
+            "toggle_disable_overlay": self.toggle_disable_overlay,
         }
 
     def cmd_all(self, command, *args):
@@ -256,6 +260,14 @@ class VideoBlocksManager(ManagerBase):
         self._ctx.is_disable_mouse_wheel_events = (
             not self._ctx.is_disable_mouse_wheel_events
         )
+
+    def set_disable_overlay(self, is_disabled):
+        self._ctx.is_disable_overlay = is_disabled
+        if is_disabled:
+            self.hide_overlay.emit()
+
+    def toggle_disable_overlay(self):
+        self.set_disable_overlay(not self._ctx.is_disable_overlay)
 
     def seek_sync_percent(self, percent):
         if self._ctx.seek_sync_mode == SeekSyncMode.PERCENT:

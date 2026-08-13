@@ -56,6 +56,7 @@ _default_settings = {
     "playlist/shuffle_on_load": False,
     "playlist/disable_mouse_click_events": False,
     "playlist/disable_mouse_wheel_events": False,
+    "playlist/disable_overlay": False,
     "video_defaults/aspect": VideoAspect.FIT,
     "video_defaults/transform": VideoTransform.NONE,
     "video_defaults/repeat": VideoRepeat.SINGLE_FILE,

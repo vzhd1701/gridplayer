@@ -25,6 +25,7 @@ class PlaylistManager(ManagerBase):
     shuffle_on_load_loaded = pyqtSignal(bool)
     disable_mouse_click_events_loaded = pyqtSignal(bool)
     disable_mouse_wheel_events_loaded = pyqtSignal(bool)
+    disable_overlay_loaded = pyqtSignal(bool)
     videos_loaded = pyqtSignal(list)
 
     alert = pyqtSignal()
@@ -188,6 +189,10 @@ class PlaylistManager(ManagerBase):
                 self.disable_mouse_wheel_events_loaded,
                 playlist.disable_mouse_wheel_events,
             ),
+            (
+                self.disable_overlay_loaded,
+                playlist.disable_overlay,
+            ),
         )
 
         self.alert.emit()
@@ -260,6 +265,7 @@ class PlaylistManager(ManagerBase):
             shuffle_on_load=self._ctx.is_shuffle_on_load,
             disable_mouse_click_events=self._ctx.is_disable_mouse_click_events,
             disable_mouse_wheel_events=self._ctx.is_disable_mouse_wheel_events,
+            disable_overlay=self._ctx.is_disable_overlay,
         )
 
 

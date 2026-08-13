@@ -92,6 +92,7 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
             "playlist/track_changes": self.playlistTrackChanges,
             "playlist/disable_mouse_click_events": self.playlistDisableClickEvents,
             "playlist/disable_mouse_wheel_events": self.playlistDisableWheelEvents,
+            "playlist/disable_overlay": self.playlistDisableOverlay,
             "video_defaults/aspect": self.videoAspect,
             "video_defaults/transform": self.videoTransform,
             "video_defaults/repeat": self.repeatMode,

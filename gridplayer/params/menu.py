@@ -367,6 +367,7 @@ SECTIONS = MappingProxyType(
                 "Playlist Settings",
                 "Disable Mouse Click Events",
                 "Disable Mouse Wheel Events",
+                "Disable Overlay",
             ),
         ],
         "program": [
