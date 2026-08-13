@@ -101,6 +101,11 @@ def combo_popup_stylesheet() -> str:
         f"border: 1px solid {colors['border']};"
         "outline: 0;"
         "}"
+        "QListWidget#section_index::item:disabled {"
+        f"color: {colors['text']};"
+        "background: transparent;"
+        "outline: 0;"
+        "}"
     )
 
 

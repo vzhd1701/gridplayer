@@ -3,7 +3,7 @@ import logging
 import subprocess
 
 from PyQt5.QtCore import QUrl
-from PyQt5.QtGui import QDesktopServices, QIcon, QPalette
+from PyQt5.QtGui import QDesktopServices, QIcon
 from PyQt5.QtWidgets import QCheckBox, QComboBox, QDialog, QLineEdit, QSpinBox
 
 from gridplayer.dialogs.messagebox import QCustomMessageBox
@@ -149,11 +149,6 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
         font = self.section_index.font()
         font.setPixelSize(16)
         self.section_index.setFont(font)
-
-        pal = self.section_index.palette()
-        col = pal.color(QPalette.Active, QPalette.Text)
-        pal.setColor(QPalette.Disabled, QPalette.Text, col)
-        self.section_index.setPalette(pal)
 
     def ui_fill(self):
         self.fill_playerVideoDriver()

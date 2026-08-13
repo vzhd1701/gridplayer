@@ -42,6 +42,7 @@ def test_combo_popup_stylesheet_uses_theme_base():
     assert colors["base"] in style
     assert colors["text"] in style
     assert "QComboBox QAbstractItemView" in style
+    assert "QListWidget#section_index::item:disabled" in style
 
 
 def test_apply_theme_sets_app_palette():
