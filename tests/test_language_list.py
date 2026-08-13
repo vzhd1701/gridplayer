@@ -11,7 +11,6 @@ from PyQt5.QtWidgets import QApplication
 from gridplayer.main.init_icons import switch_icon_theme
 from gridplayer.main.init_resources import init_resources
 from gridplayer.params.languages import Language, LanguageAuthor
-from gridplayer.utils.darkmode import is_dark_mode
 from gridplayer.widgets.language_list import (
     LanguageList,
     _author_credit_html,
@@ -61,11 +60,10 @@ def _short_authors() -> list[LanguageAuthor]:
     ]
 
 
-def test_selection_tint_is_readable_in_light_theme():
-    if is_dark_mode():
-        pytest.skip("light-theme contrast check")
-    tint = _selection_tint()
-    assert tint.lightness() >= 190
+def test_selection_tint_matches_theme_highlight():
+    from gridplayer.params.theme import current_colors
+
+    assert _selection_tint().name() == current_colors()["highlight"]
 
 
 def test_author_credit_fits_names_then_overflows():

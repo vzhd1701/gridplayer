@@ -3,7 +3,6 @@ from PyQt5.QtGui import QColor, QFont, QFontMetrics, QIcon, QPainter, QPalette, 
 from PyQt5.QtSvg import QSvgWidget
 from PyQt5.QtWidgets import (
     QAbstractItemView,
-    QApplication,
     QHBoxLayout,
     QLabel,
     QLayout,
@@ -16,26 +15,15 @@ from PyQt5.QtWidgets import (
 )
 
 from gridplayer.params.languages import Language
-from gridplayer.utils.darkmode import is_dark_mode
+from gridplayer.params.theme import current_colors, selection_fill
 from gridplayer.utils.qt import translate
 
 _MIN_TEXT_WIDTH = 80
 _LTR_ALIGN = Qt.AlignLeft | Qt.AlignAbsolute | Qt.AlignVCenter
-_SELECTION_LIGHTNESS_LIGHT = 200
-_SELECTION_LIGHTNESS_DARK = 70
 
 
 def _selection_tint() -> QColor:
-    """Pastel selected fill. Item-widget palettes report Base as black — do not use them."""
-    app = QApplication.instance()
-    pal = app.palette() if app is not None else QPalette()
-    highlight = pal.color(QPalette.Highlight)
-    hue = highlight.hue() if highlight.hue() >= 0 else 210
-    sat = min(max(highlight.saturation(), 30), 70)
-    lightness = (
-        _SELECTION_LIGHTNESS_DARK if is_dark_mode() else _SELECTION_LIGHTNESS_LIGHT
-    )
-    return QColor.fromHsl(hue, sat, lightness)
+    return selection_fill()
 
 
 def _colorized_theme_icon(name: str, size: QSize, color: QColor) -> QPixmap:
@@ -389,7 +377,7 @@ class LanguageList(QListWidget):
         super().changeEvent(event)
 
     def _apply_list_style(self) -> None:
-        bg_color = self.palette().color(QPalette.Base).name()
+        bg_color = current_colors()["base"]
         self.setStyleSheet(
             f"QListWidget::item:selected {{background-color: {bg_color};}}"
             f"QListWidget::item:hover {{background-color: {bg_color};}}"

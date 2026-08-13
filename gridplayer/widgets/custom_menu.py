@@ -1,33 +1,9 @@
-from types import MappingProxyType
-
 from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import QMenu, QProxyStyle, QStyle
 
-from gridplayer.utils.darkmode import is_dark_mode
+from gridplayer.params.theme import current_colors
 
 ICON_SIZE = 24
-
-COLORS_LIGHT = MappingProxyType(
-    {
-        "background": "#eee",
-        "background_selected": "#aaa",
-        "background_checked": "#888",
-        "text": "#000",
-        "text_disabled": "#888",
-        "border": "#aaa",
-    }
-)
-
-COLORS_DARK = MappingProxyType(
-    {
-        "background": "#444",
-        "background_selected": "#888",
-        "background_checked": "#666",
-        "text": "#eee",
-        "text_disabled": "#888",
-        "border": "#888",
-    }
-)
 
 MENU_STYLE = """
 QMenu {
@@ -79,7 +55,7 @@ class BigMenuIcons(QProxyStyle):
 
 
 def _get_theme_style():
-    colors = COLORS_DARK if is_dark_mode() else COLORS_LIGHT
+    colors = current_colors()
     style = MENU_STYLE
 
     for c_key, c_value in colors.items():

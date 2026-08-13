@@ -7,8 +7,6 @@ bindings.
 
 from __future__ import annotations
 
-from contextlib import contextmanager
-
 from PyQt5.QtCore import QModelIndex, QSortFilterProxyModel, Qt, pyqtSignal
 from PyQt5.QtGui import (
     QIcon,
@@ -142,17 +140,6 @@ def _path_label(path: list[str], action_title: str) -> str:
             action=action_title, path=location
         )
     return translate("Keymap", "«{action}»").format(action=action_title)
-
-
-@contextmanager
-def icon_theme_inversed():
-    cur_theme = QIcon.themeName()
-    contrast_theme = "dark" if cur_theme == "light" else "light"
-    QIcon.setThemeName(contrast_theme)
-    try:
-        yield
-    finally:
-        QIcon.setThemeName(cur_theme)
 
 
 # ---------------------------------------------------------------------------
@@ -319,7 +306,6 @@ class TreeItemDelegate(QStyledItemDelegate):
             view.openPersistentEditor(index)
 
         is_selected = bool(option.state & QStyle.State_Selected)
-        is_focused = bool(option.state & QStyle.State_HasFocus)
 
         edit_widget = view.indexWidget(index)
         if edit_widget and isinstance(edit_widget, HotkeysWidget):
@@ -331,10 +317,6 @@ class TreeItemDelegate(QStyledItemDelegate):
                 current = [lab.text() for lab in edit_widget._labels]
                 if current != list(shortcuts):
                     edit_widget.set_keys(shortcuts)
-
-        if is_selected and is_focused:
-            with icon_theme_inversed():
-                return super().paint(painter, option, index)
 
         return super().paint(painter, option, index)
 
