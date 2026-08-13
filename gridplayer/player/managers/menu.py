@@ -17,7 +17,11 @@ class MenuManager(ManagerBase):
 
     def contextMenuEvent(self, event):
         event.accept()
-        self.make_menu().exec_(event.globalPos())
+        menu = self.make_menu()
+        menu.exec_(event.globalPos())
+        # Parent is the player window; without this, each open leaks a QMenu
+        # and keeps shared QActions associated with dead menus.
+        menu.deleteLater()
 
         return True
 
