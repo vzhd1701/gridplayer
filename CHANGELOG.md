@@ -6,6 +6,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+### Added
+
+- Add shortcuts editor ([fa22fa7](https://github.com/vzhd1701/gridplayer/commit/fa22fa7d8767f580f701c7a5f0677b704330c5a7))
+
+### Fixed
+
+- Avoid crash for menu with custom style ([afac43f](https://github.com/vzhd1701/gridplayer/commit/afac43f9b9d92777588115647ea3e67b9652e013))
+- Avoid memory leaks on menus ([bbde797](https://github.com/vzhd1701/gridplayer/commit/bbde7977ede3694d68ec629f68fe9da494f692b4))
+- Handle invalid track metadata and duplicate closes ([#319](https://github.com/vzhd1701/gridplayer/issues/319)) ([b0ade83](https://github.com/vzhd1701/gridplayer/commit/b0ade837afaecb86b77fe4ced0f4c0a4935568bf))
+- Improve missing libvlc handling ([fd4539f](https://github.com/vzhd1701/gridplayer/commit/fd4539f80742fa0bf70c850cf3a41c39e4bc843c))
+
 ## [0.5.5] - 2026-07-24
 
 ### Added
