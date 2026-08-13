@@ -9,6 +9,7 @@ from gridplayer.main.init_resources import init_resources
 from gridplayer.main.init_translator import init_translator
 from gridplayer.params.static import FONT_SIZE_MAIN
 from gridplayer.params.theme import apply_theme
+from gridplayer.utils.darkmode import watch_system_theme
 
 
 def init_app():
@@ -23,6 +24,7 @@ def init_app():
 
     apply_theme(app)
     app.paletteChanged.connect(lambda: apply_theme(app))
+    watch_system_theme(lambda: apply_theme(app), app)
 
     init_icon(app)
 
