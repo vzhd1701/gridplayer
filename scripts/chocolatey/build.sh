@@ -103,7 +103,7 @@ build_one() {
         fi
 
         local ASSET_JSON PACKAGE_URL PACKAGE_SHA256
-        ASSET_JSON=$(curl -sS "$RELEASE_URL" | jq -c ".assets[] | select(.name|test(\"${PACKAGE_PATTERN}\"))")
+        ASSET_JSON=$(curl "${CURL_OPTS[@]}" "$RELEASE_URL" | jq -c ".assets[] | select(.name|test(\"${PACKAGE_PATTERN}\"))")
         PACKAGE_URL=$(echo "$ASSET_JSON" | jq -r ".browser_download_url")
         # GitHub API provides digest as "sha256:<hex>"; strip the prefix for Chocolatey
         PACKAGE_SHA256=$(echo "$ASSET_JSON" | jq -r ".digest | ltrimstr(\"sha256:\")")
@@ -141,6 +141,10 @@ build_one() {
 ensure_prerequisites
 
 RELEASE_URL="https://api.github.com/repos/${APP_REPO_SLUG}/releases/tags/v${APP_VERSION}"
+CURL_OPTS=(-sS)
+if [ -n "${GITHUB_TOKEN:-}" ]; then
+    CURL_OPTS+=(-H "Authorization: Bearer ${GITHUB_TOKEN}")
+fi
 
 BUILD_TYPE="${1:-}"
 
