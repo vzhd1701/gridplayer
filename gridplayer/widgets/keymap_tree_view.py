@@ -11,7 +11,6 @@ from contextlib import contextmanager
 
 from PyQt5.QtCore import QModelIndex, QSortFilterProxyModel, Qt, pyqtSignal
 from PyQt5.QtGui import (
-    QColor,
     QIcon,
     QStandardItem,
     QStandardItemModel,
