@@ -31,9 +31,6 @@ def init_vlc():
     log.debug(f"python-vlc {vlc_python_version}")
     log.debug(f"VLC {vlc_version}")
 
-    if vlc_version is None:
-        raise FileNotFoundError
-
     return vlc_version, vlc_python_version
 
 
@@ -78,19 +75,23 @@ def _get_embed_vlc_root() -> Path | None:
 
 
 def _get_vlc_version():
+    log = logging.getLogger(__name__)
+
     try:
         with importing_embed_vlc():
             from gridplayer.vlc_player import vlc
     except (OSError, NotImplementedError):
-        return None
+        log.exception("Failed to load VLC")
+        raise FileNotFoundError
 
-    logging.getLogger(__name__).debug("VLC initialized paths")
-    logging.getLogger(__name__).debug(f"VLC plugin_path: {vlc.plugin_path}")
-    logging.getLogger(__name__).debug(f"VLC dll: {vlc.dll}")
+    log.debug("VLC initialized paths")
+    log.debug(f"VLC plugin_path: {vlc.plugin_path}")
+    log.debug(f"VLC dll: {vlc.dll}")
 
     try:
         vlc_version = vlc.libvlc_get_version()
     except NameError:
-        return None
+        log.exception("Failed to get VLC version")
+        raise FileNotFoundError
 
     return vlc_version.decode().split(" ")[0], vlc.__version__
