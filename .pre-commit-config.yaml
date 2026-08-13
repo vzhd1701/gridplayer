@@ -35,3 +35,11 @@ repos:
         language: system
         entry: uv run --frozen rumdl fmt
         types: [ markdown ]
+
+      - id: ruff-check
+        name: ruff-check
+        stages: [ pre-commit ]
+        language: system
+        entry: uv run --frozen ruff check
+        types: [ python ]
+        pass_filenames: false
