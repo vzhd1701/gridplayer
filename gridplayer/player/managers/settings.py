@@ -14,6 +14,8 @@ class SettingsManager(ManagerBase):
     set_log_level_vlc = pyqtSignal(int)
     set_recent_list_enabled = pyqtSignal(bool)
     keymap_changed = pyqtSignal(object)  # KeymapOverrides
+    set_disable_mouse_click_events = pyqtSignal(bool)
+    set_disable_mouse_wheel_events = pyqtSignal(bool)
     set_disable_overlay = pyqtSignal(bool)
 
     @property
@@ -47,6 +49,8 @@ class SettingsManager(ManagerBase):
             "player/inhibit_screensaver": self.set_screensaver,
             "player/recent_list_enabled": self.set_recent_list_enabled,
             "player/keymap": self.keymap_changed,
+            "playlist/disable_mouse_click_events": self.set_disable_mouse_click_events,
+            "playlist/disable_mouse_wheel_events": self.set_disable_mouse_wheel_events,
             "playlist/disable_overlay": self.set_disable_overlay,
         }
 

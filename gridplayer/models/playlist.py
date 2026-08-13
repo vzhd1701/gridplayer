@@ -28,10 +28,10 @@ class Playlist(BaseModel):
     snapshots: dict[int, Snapshot] | None = None
     seek_sync_mode: SeekSyncMode = default_field("playlist/seek_sync_mode")
     shuffle_on_load: bool = default_field("playlist/shuffle_on_load")
-    disable_mouse_click_events: bool = Settings().get(
+    disable_mouse_click_events: bool = default_field(
         "playlist/disable_mouse_click_events"
     )
-    disable_mouse_wheel_events: bool = Settings().get(
+    disable_mouse_wheel_events: bool = default_field(
         "playlist/disable_mouse_wheel_events"
     )
     disable_overlay: bool = default_field("playlist/disable_overlay")

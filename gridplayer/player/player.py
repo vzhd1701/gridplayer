@@ -97,6 +97,14 @@ class Player(QWidget, ManagersManager):
                 ("set_log_level_vlc", "video_driver.set_log_level_vlc"),
                 ("set_recent_list_enabled", "recent_list.set_recent_list_state"),
                 ("keymap_changed", "actions.apply_bindings"),
+                (
+                    "set_disable_mouse_click_events",
+                    "video_blocks.set_disable_mouse_click_events",
+                ),
+                (
+                    "set_disable_mouse_wheel_events",
+                    "video_blocks.set_disable_mouse_wheel_events",
+                ),
                 ("set_disable_overlay", "video_blocks.set_disable_overlay"),
             ],
             "playlist": [
