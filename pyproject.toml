@@ -54,6 +54,8 @@ dev = [
     "keepachangelog==2.0.0",
     "pre-commit",
     "pytest",
+    "pytest-cov",
+    "pytest-mock",
     "ruff",
     "rumdl",
 ]
