@@ -665,7 +665,7 @@ class Ui_SettingsDialog:
         self.label_4.setText(
             _translate(
                 "SettingsDialog",
-                '<p>If you have a handful of free time and a desire to support this project, please <a href="https://crowdin.com/project/gridplayer">help with the translation</a>. No coding skills or special software is required!</p>',
+                '<p>If you have a handful of free time and a desire to support this project, please <a href="https://crowdin.com/project/gridplayer">help with the translation</a>. No coding skills or special software is required!</p><p><a href="https://github.com/vzhd1701/gridplayer#translations">Full list of translators</a></p>',
             )
         )
         self.streamingHLSVIAStreamlink.setText(

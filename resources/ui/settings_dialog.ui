@@ -339,7 +339,7 @@
          <item>
           <widget class="QLabel" name="label_4">
            <property name="text">
-            <string>&lt;p&gt;If you have a handful of free time and a desire to support this project, please &lt;a href=&quot;https://crowdin.com/project/gridplayer&quot;&gt;help with the translation&lt;/a&gt;. No coding skills or special software is required!&lt;/p&gt;</string>
+            <string>&lt;p&gt;If you have a handful of free time and a desire to support this project, please &lt;a href=&quot;https://crowdin.com/project/gridplayer&quot;&gt;help with the translation&lt;/a&gt;. No coding skills or special software is required!&lt;/p&gt;&lt;p&gt;&lt;a href=&quot;https://github.com/vzhd1701/gridplayer#translations&quot;&gt;Full list of translators&lt;/a&gt;&lt;/p&gt;</string>
            </property>
            <property name="wordWrap">
             <bool>true</bool>
