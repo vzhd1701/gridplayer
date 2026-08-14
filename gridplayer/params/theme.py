@@ -1,7 +1,7 @@
 from types import MappingProxyType
 
-from PyQt5.QtGui import QColor, QPalette
-from PyQt5.QtWidgets import QApplication
+from PyQt5.QtGui import QColor, QPalette, QTextCursor
+from PyQt5.QtWidgets import QApplication, QLabel, QTextEdit
 
 from gridplayer.main.init_icons import switch_icon_theme
 from gridplayer.params.static import ColorScheme
@@ -125,6 +125,64 @@ def on_system_theme_changed(app=None) -> None:
     apply_theme(app)
 
 
+def _recolor_document_anchors(document, color: QColor) -> None:
+    block = document.begin()
+    while block.isValid():
+        iterator = block.begin()
+        while not iterator.atEnd():
+            fragment = iterator.fragment()
+            fmt = fragment.charFormat()
+            if fmt.isAnchor():
+                fmt.setForeground(color)
+                cursor = QTextCursor(document)
+                cursor.setPosition(fragment.position())
+                cursor.setPosition(
+                    fragment.position() + fragment.length(),
+                    QTextCursor.KeepAnchor,
+                )
+                cursor.mergeCharFormat(fmt)
+            iterator += 1
+        block = block.next()
+
+
+_LINK_SRC_PROP = "gp_html_src"
+
+
+def _label_html_source(widget: QLabel) -> str | None:
+    stored = widget.property(_LINK_SRC_PROP)
+    if stored:
+        return stored
+
+    text = widget.text()
+    if "<a" not in text.lower():
+        return None
+    # QLabel.text() after setText() is Qt's exported document, not the source.
+    if "qrichtext" in text.lower() or text.lstrip().lower().startswith("<!doctype"):
+        return None
+
+    widget.setProperty(_LINK_SRC_PROP, text)
+    return text
+
+
+def _html_with_link_color(html: str, color: QColor) -> str:
+    return f"<style>a{{color:{color.name()}}}</style>{html}"
+
+
+def _refresh_html_links(app) -> None:
+    """HTML link color is baked into the document; palette Link is not enough."""
+    link = QColor(current_colors()["link"])
+    css = f"a {{ color: {link.name()}; }}"
+
+    for widget in app.allWidgets():
+        if isinstance(widget, QLabel):
+            source = _label_html_source(widget)
+            if source:
+                widget.setText(_html_with_link_color(source, link))
+        elif isinstance(widget, QTextEdit):
+            widget.document().setDefaultStyleSheet(css)
+            _recolor_document_anchors(widget.document(), link)
+
+
 def apply_theme(app=None) -> None:
     """Apply Fusion palette, combo popup colors, and symbolic icon theme."""
     global _applying_theme
@@ -140,5 +198,6 @@ def apply_theme(app=None) -> None:
         switch_icon_theme()
         app.setPalette(fusion_palette())
         app.setStyleSheet(combo_popup_stylesheet())
+        _refresh_html_links(app)
     finally:
         _applying_theme = False

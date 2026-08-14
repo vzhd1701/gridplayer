@@ -62,3 +62,43 @@ def test_apply_theme_sets_app_palette():
     apply_theme(app)
     assert app.palette().color(QPalette.Base).name() == current_colors()["base"]
     assert "QComboBox QAbstractItemView" in app.styleSheet()
+
+
+def test_apply_theme_recolors_html_links():
+    from PyQt5.QtWidgets import QLabel, QTextBrowser
+
+    from gridplayer.params.theme import apply_theme
+
+    app = QApplication.instance() or QApplication([])
+    label = QLabel('<a href="https://example.com">link</a>')
+    label.show()
+    browser = QTextBrowser()
+    browser.setHtml('<a href="https://example.com">link</a>')
+    browser.show()
+
+    apply_theme(app)
+    apply_theme(app)
+
+    assert current_colors()["link"] in browser.document().defaultStyleSheet()
+    assert current_colors()["link"] in label.text()
+    assert "qrichtext" not in label.text().lower()
+    assert "reference" not in label.text() or "<a href=" in label.text().lower()
+
+    vlc = QLabel(
+        'VLC Options [<a href="https://wiki.videolan.org/VLC_command-line_help/">'
+        "reference</a>]"
+    )
+    vlc.show()
+    apply_theme(app)
+    apply_theme(app)
+    source = vlc.property("gp_html_src")
+    assert source.count("<a href") == 1
+    assert "<style" not in source
+    assert "reference" in source
+
+    label.hide()
+    browser.hide()
+    vlc.hide()
+    label.deleteLater()
+    browser.deleteLater()
+    vlc.deleteLater()
