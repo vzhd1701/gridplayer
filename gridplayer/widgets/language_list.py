@@ -1,5 +1,5 @@
 from PyQt5.QtCore import QEvent, QSize, Qt
-from PyQt5.QtGui import QColor, QFont, QFontMetrics, QIcon, QPainter, QPalette, QPixmap
+from PyQt5.QtGui import QColor, QFont, QFontMetrics, QIcon, QPainter, QPixmap
 from PyQt5.QtSvg import QSvgWidget
 from PyQt5.QtWidgets import (
     QAbstractItemView,
@@ -214,7 +214,9 @@ class LanguageRowWidget(QWidget):
             self.icon_checkmark.clear()
             return
 
-        color = self.palette().color(QPalette.WindowText)
+        # Theme table, not widget palette — PaletteChange arrives before
+        # inherited WindowText updates, so the check would stay one theme behind.
+        color = QColor(current_colors()["text"])
         self.icon_checkmark.setPixmap(
             _colorized_theme_icon("checkmark", self.check_icon_size, color)
         )
