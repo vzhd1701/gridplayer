@@ -12,6 +12,7 @@ from gridplayer.params import env
 from gridplayer.params.languages import LANGUAGES
 from gridplayer.params.static import (
     AudioChannelMode,
+    ColorScheme,
     GridMode,
     SeekSyncMode,
     URLResolver,
@@ -77,6 +78,7 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
             "player/one_instance": self.playerOneInstance,
             "player/stay_on_top": self.playerStayOnTop,
             "player/show_overlay_border": self.playerShowOverlayBorder,
+            "player/color_scheme": self.playerColorScheme,
             "player/language": self.listLanguages,
             "player/keymap": self.keymapEditor,
             "player/recent_list_enabled": self.playerRecentList,
@@ -159,6 +161,7 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
         self.fill_logLevel()
         self.fill_logLevelVLC()
         self.fill_language()
+        self.fill_colorScheme()
         self.fill_streamQuality()
         self.fill_playlistSeekSyncMode()
         self.fill_streamingResolverPriority()
@@ -339,6 +342,15 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
     def fill_language(self):
         for language in LANGUAGES:
             self.listLanguages.add_language_row(language)
+
+    def fill_colorScheme(self):
+        schemes = {
+            ColorScheme.SYSTEM: self.tr("System"),
+            ColorScheme.LIGHT: self.tr("Light"),
+            ColorScheme.DARK: self.tr("Dark"),
+        }
+
+        _fill_combo_box(self.playerColorScheme, schemes)
 
     def fill_streamQuality(self):
         quality_codes = {

@@ -16,6 +16,7 @@ from gridplayer.params import env
 from gridplayer.params.languages import get_system_language
 from gridplayer.params.static import (
     AudioChannelMode,
+    ColorScheme,
     GridMode,
     SeekSyncMode,
     URLResolver,
@@ -42,6 +43,7 @@ _default_settings = {
     "player/stay_on_top": False,
     "player/show_overlay_border": False,
     "player/language": get_system_language(),
+    "player/color_scheme": ColorScheme.SYSTEM,
     "player/keymap": KeymapOverrides({}),
     "player/recent_list_enabled": True,
     "player/recent_list_max_size": 10,

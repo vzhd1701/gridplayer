@@ -3,6 +3,9 @@ from types import MappingProxyType
 from PyQt5.QtGui import QColor, QPalette
 from PyQt5.QtWidgets import QApplication
 
+from gridplayer.main.init_icons import switch_icon_theme
+from gridplayer.params.static import ColorScheme
+from gridplayer.settings import Settings
 from gridplayer.utils.darkmode import is_dark_mode
 
 THEME_LIGHT = MappingProxyType(
@@ -109,13 +112,24 @@ def combo_popup_stylesheet() -> str:
     )
 
 
+def on_system_theme_changed(app=None) -> None:
+    """Re-apply theme only when the user is following the OS."""
+    try:
+        scheme = Settings().get("player/color_scheme")
+    except RuntimeError:
+        return
+
+    if scheme != ColorScheme.SYSTEM:
+        return
+
+    apply_theme(app)
+
+
 def apply_theme(app=None) -> None:
     """Apply Fusion palette, combo popup colors, and symbolic icon theme."""
     global _applying_theme
     if _applying_theme:
         return
-
-    from gridplayer.main.init_icons import switch_icon_theme
 
     app = app or QApplication.instance()
     if app is None:

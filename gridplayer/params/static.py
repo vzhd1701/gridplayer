@@ -75,6 +75,12 @@ class URLResolver(AutoName):
     DIRECT = auto()
 
 
+class ColorScheme(AutoName):
+    SYSTEM = auto()
+    LIGHT = auto()
+    DARK = auto()
+
+
 class AudioChannelMode(AutoName):
     UNSET = auto()
     STEREO = auto()

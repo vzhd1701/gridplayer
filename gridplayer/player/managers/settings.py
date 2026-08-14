@@ -2,6 +2,7 @@ from PyQt5.QtCore import pyqtSignal
 
 from gridplayer.dialogs.messagebox import QCustomMessageBox
 from gridplayer.dialogs.settings import SettingsDialog
+from gridplayer.params.theme import apply_theme
 from gridplayer.player.managers.base import ManagerBase
 from gridplayer.settings import Settings
 from gridplayer.utils.qt import translate
@@ -59,6 +60,9 @@ class SettingsManager(ManagerBase):
         for c in changes:
             checks[c].emit(Settings().get(c))
 
+        if self._is_setting_changed(previous_settings, "player/color_scheme"):
+            apply_theme()
+
     def _is_reload_needed(self, previous_settings):
         checks = {
             "player/video_driver",
@@ -83,3 +87,6 @@ class SettingsManager(ManagerBase):
 
     def _setting_changes(self, previous_settings, checks):
         return {k for k in checks if previous_settings[k] != Settings().get(k)}
+
+    def _is_setting_changed(self, previous_settings, check):
+        return previous_settings[check] != Settings().get(check)

@@ -152,6 +152,23 @@
           <number>0</number>
          </property>
          <item>
+          <layout class="QFormLayout" name="formLayout_color_scheme">
+           <property name="fieldGrowthPolicy">
+            <enum>QFormLayout::FieldsStayAtSizeHint</enum>
+           </property>
+           <item row="0" column="0">
+            <widget class="QLabel" name="playerColorSchemeLabel">
+             <property name="text">
+              <string>Color scheme</string>
+             </property>
+            </widget>
+           </item>
+           <item row="0" column="1">
+            <widget class="QComboBox" name="playerColorScheme"/>
+           </item>
+          </layout>
+         </item>
+         <item>
           <widget class="QCheckBox" name="playerPauseBackgroundVideos">
            <property name="text">
             <string>Pause background videos on single mode</string>

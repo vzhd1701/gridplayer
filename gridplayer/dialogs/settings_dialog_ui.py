@@ -63,6 +63,22 @@ class Ui_SettingsDialog:
         self.lay_section_player = QtWidgets.QVBoxLayout(self.page_general_player)
         self.lay_section_player.setContentsMargins(0, 0, 0, 0)
         self.lay_section_player.setObjectName("lay_section_player")
+        self.formLayout_color_scheme = QtWidgets.QFormLayout()
+        self.formLayout_color_scheme.setFieldGrowthPolicy(
+            QtWidgets.QFormLayout.FieldsStayAtSizeHint
+        )
+        self.formLayout_color_scheme.setObjectName("formLayout_color_scheme")
+        self.playerColorSchemeLabel = QtWidgets.QLabel(self.page_general_player)
+        self.playerColorSchemeLabel.setObjectName("playerColorSchemeLabel")
+        self.formLayout_color_scheme.setWidget(
+            0, QtWidgets.QFormLayout.LabelRole, self.playerColorSchemeLabel
+        )
+        self.playerColorScheme = QtWidgets.QComboBox(self.page_general_player)
+        self.playerColorScheme.setObjectName("playerColorScheme")
+        self.formLayout_color_scheme.setWidget(
+            0, QtWidgets.QFormLayout.FieldRole, self.playerColorScheme
+        )
+        self.lay_section_player.addLayout(self.formLayout_color_scheme)
         self.playerPauseBackgroundVideos = QtWidgets.QCheckBox(self.page_general_player)
         self.playerPauseBackgroundVideos.setObjectName("playerPauseBackgroundVideos")
         self.lay_section_player.addWidget(self.playerPauseBackgroundVideos)
@@ -629,6 +645,9 @@ class Ui_SettingsDialog:
         item = self.section_index.item(10)
         item.setText(_translate("SettingsDialog", "Advanced"))
         self.section_index.setSortingEnabled(__sortingEnabled)
+        self.playerColorSchemeLabel.setText(
+            _translate("SettingsDialog", "Color scheme")
+        )
         self.playerPauseBackgroundVideos.setText(
             _translate("SettingsDialog", "Pause background videos on single mode")
         )

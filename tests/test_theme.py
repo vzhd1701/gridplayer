@@ -1,3 +1,4 @@
+import pytest
 from PyQt5.QtGui import QPalette
 from PyQt5.QtWidgets import QApplication
 
@@ -10,6 +11,15 @@ from gridplayer.params.theme import (
     selection_fill,
 )
 from gridplayer.utils.darkmode import is_dark_mode
+
+
+@pytest.fixture(scope="module", autouse=True)
+def _qapp():
+    import gridplayer.settings as settings_mod
+
+    app = QApplication.instance() or QApplication([])
+    settings_mod.SETTINGS = None
+    return app
 
 
 def test_current_colors_match_system_theme():
