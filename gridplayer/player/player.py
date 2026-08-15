@@ -112,7 +112,7 @@ class Player(QWidget, ManagersManager):
                 ("playlist_file_loaded", "recent_list.add_recent_playlist"),
                 ("playlist_closed", "video_blocks.close_all"),
                 ("playlist_closed", "window_state.restore_to_minimum"),
-                ("video_blocks.video_count_changed", "clear_saved_playlist_if_empty"),
+                ("video_blocks.video_count_changed", "on_video_count_changed"),
                 ("window_state_loaded", "window_state.restore_window_state"),
                 ("grid_state_loaded", "grid.set_grid_state"),
                 ("snapshots_loaded", "snapshots.set_snapshots"),

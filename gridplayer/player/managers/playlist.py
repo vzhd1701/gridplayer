@@ -1,7 +1,7 @@
 from pathlib import Path
 from typing import Any
 
-from PyQt5.QtCore import QDir, pyqtSignal
+from PyQt5.QtCore import QDir, QTimer, pyqtSignal
 from PyQt5.QtWidgets import QFileDialog, QMessageBox
 
 from gridplayer.dialogs.messagebox import QCustomMessageBox
@@ -13,6 +13,15 @@ from gridplayer.player.managers.base import ManagerBase
 from gridplayer.settings import Settings
 from gridplayer.utils.files import get_playlist_path
 from gridplayer.utils.qt import translate
+from gridplayer.version import __display_name__
+
+_TITLE_REFRESH_MS = 500
+
+
+def format_playlist_window_title(playlist_name: str | None) -> str:
+    if playlist_name is None:
+        return __display_name__
+    return f"{playlist_name}[*] - {__display_name__}"
 
 
 class PlaylistManager(ManagerBase):
@@ -35,6 +44,10 @@ class PlaylistManager(ManagerBase):
         super().__init__(**kwargs)
 
         self._saved_playlist = None
+
+        self._title_timer = QTimer(self)
+        self._title_timer.setInterval(_TITLE_REFRESH_MS)
+        self._title_timer.timeout.connect(self.update_window_title)
 
     @property
     def commands(self):
@@ -72,7 +85,7 @@ class PlaylistManager(ManagerBase):
             return False
 
         self.playlist_closed.emit()
-        self._saved_playlist = None
+        self._set_saved_playlist(None)
 
         return True
 
@@ -87,9 +100,27 @@ class PlaylistManager(ManagerBase):
     def cmd_save_playlist_as(self) -> bool:
         return self._save_playlist_via_dialog(self._make_playlist())
 
-    def clear_saved_playlist_if_empty(self, video_count: int) -> None:
+    def on_video_count_changed(self, video_count: int) -> None:
         if video_count == 0:
-            self._saved_playlist = None
+            self._set_saved_playlist(None)
+
+    def update_window_title(self) -> None:
+        window = self.parent()
+
+        if self._saved_playlist is None:
+            window.setWindowModified(False)
+            title = format_playlist_window_title(None)
+            if window.windowTitle() != title:
+                window.setWindowTitle(title)
+            return
+
+        title = format_playlist_window_title(self._saved_playlist["path"].stem)
+        is_dirty = self._is_playlist_changed()
+
+        window.setWindowModified(is_dirty)
+
+        if window.windowTitle() != title:
+            window.setWindowTitle(title)
 
     def process_arguments(self, argv):
         if not argv:
@@ -139,10 +170,12 @@ class PlaylistManager(ManagerBase):
         if not self.load_playlist(playlist):
             return
 
-        self._saved_playlist = {
-            "path": playlist_file,
-            "state": hash(self._make_playlist().dumps()),
-        }
+        self._set_saved_playlist(
+            {
+                "path": playlist_file,
+                "state": hash(self._make_playlist().dumps()),
+            }
+        )
 
         self.playlist_file_loaded.emit(playlist_file)
 
@@ -256,12 +289,24 @@ class PlaylistManager(ManagerBase):
             )
             return False
 
-        self._saved_playlist = {
-            "path": file_path,
-            "state": hash(playlist.dumps()),
-        }
+        self._set_saved_playlist(
+            {
+                "path": file_path,
+                "state": hash(playlist.dumps()),
+            }
+        )
 
         return True
+
+    def _set_saved_playlist(self, saved: dict | None) -> None:
+        self._saved_playlist = saved
+
+        if saved is None:
+            self._title_timer.stop()
+        elif not self._title_timer.isActive():
+            self._title_timer.start()
+
+        self.update_window_title()
 
     def _is_overwrite_denied(self, file_path: Path):
         if file_path.is_file():
