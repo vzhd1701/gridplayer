@@ -41,7 +41,9 @@ class PlaylistManager(ManagerBase):
         return {
             "open_playlist": self.cmd_open_playlist,
             "save_playlist": self.cmd_save_playlist,
+            "save_playlist_as": self.cmd_save_playlist_as,
             "close_playlist": self.cmd_close_playlist,
+            "is_playlist_changed": self._is_playlist_changed,
         }
 
     def cmd_open_playlist(self):
@@ -70,46 +72,24 @@ class PlaylistManager(ManagerBase):
             return False
 
         self.playlist_closed.emit()
+        self._saved_playlist = None
 
         return True
 
-    def cmd_save_playlist(self):
+    def cmd_save_playlist(self) -> bool:
         playlist = self._make_playlist()
 
         if self._saved_playlist is not None:
-            save_path = self._saved_playlist["path"]
-        else:
-            save_path = Path(QDir.homePath()) / "Untitled.gpls"
+            return self._write_playlist(playlist, self._saved_playlist["path"])
 
-        self._log.debug(f"Proposed playlist save path: {save_path}")
+        return self._save_playlist_via_dialog(playlist)
 
-        file_path, _ = QFileDialog.getSaveFileName(
-            parent=self.parent(),
-            caption=translate("Dialog - Save Playlist", "Save Playlist", "Header"),
-            directory=str(save_path),
-            filter="*.gpls",
-        )
+    def cmd_save_playlist_as(self) -> bool:
+        return self._save_playlist_via_dialog(self._make_playlist())
 
-        if not file_path:
-            return
-
-        file_path = Path(file_path)
-
-        # filename placeholder is not available if file doesn't exist
-        # problematic for new playlists, need to prevent accidental overwrite
-        # occurs in Flatpak, maybe in other sandboxes that use portal
-        if file_path.suffix.lower() != ".gpls":
-            file_path = file_path.with_suffix(".gpls")
-
-            if self._is_overwrite_denied(file_path):
-                return
-
-        playlist.save(file_path)
-
-        self._saved_playlist = {
-            "path": file_path,
-            "state": hash(playlist.dumps()),
-        }
+    def clear_saved_playlist_if_empty(self, video_count: int) -> None:
+        if video_count == 0:
+            self._saved_playlist = None
 
     def process_arguments(self, argv):
         if not argv:
@@ -218,7 +198,8 @@ class PlaylistManager(ManagerBase):
             )
 
             if ret == QMessageBox.Yes:
-                self.cmd_save_playlist()
+                if not self.cmd_save_playlist():
+                    return False
 
             elif ret == QMessageBox.Cancel:
                 return False
@@ -231,6 +212,56 @@ class PlaylistManager(ManagerBase):
 
         playlist_state = hash(self._make_playlist().dumps())
         return playlist_state != self._saved_playlist["state"]
+
+    def _save_playlist_via_dialog(self, playlist: Playlist) -> bool:
+        if self._saved_playlist is not None:
+            save_path = self._saved_playlist["path"]
+        else:
+            save_path = Path(QDir.homePath()) / "Untitled.gpls"
+
+        self._log.debug(f"Proposed playlist save path: {save_path}")
+
+        file_path, _ = QFileDialog.getSaveFileName(
+            parent=self.parent(),
+            caption=translate("Dialog - Save Playlist", "Save Playlist", "Header"),
+            directory=str(save_path),
+            filter="*.gpls",
+        )
+
+        if not file_path:
+            return False
+
+        file_path = Path(file_path)
+
+        # filename placeholder is not available if file doesn't exist
+        # problematic for new playlists, need to prevent accidental overwrite
+        # occurs in Flatpak, maybe in other sandboxes that use portal
+        if file_path.suffix.lower() != ".gpls":
+            file_path = file_path.with_suffix(".gpls")
+
+            if self._is_overwrite_denied(file_path):
+                return False
+
+        return self._write_playlist(playlist, file_path)
+
+    def _write_playlist(self, playlist: Playlist, file_path: Path) -> bool:
+        try:
+            playlist.save(file_path)
+        except OSError as e:
+            self._log.error(f"Playlist save error: {e}")
+            self.error.emit(
+                "{}\n\n{}".format(
+                    translate("Error", "Failed to save playlist!"), file_path
+                )
+            )
+            return False
+
+        self._saved_playlist = {
+            "path": file_path,
+            "state": hash(playlist.dumps()),
+        }
+
+        return True
 
     def _is_overwrite_denied(self, file_path: Path):
         if file_path.is_file():

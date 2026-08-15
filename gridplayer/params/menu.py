@@ -381,6 +381,7 @@ SECTIONS = MappingProxyType(
             "Open Playlist",
             "Open Playlist (Recent)",
             "Save Playlist",
+            "Save Playlist As",
             "Close Playlist",
             "---",
             "Settings",

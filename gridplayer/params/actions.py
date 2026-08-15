@@ -1487,6 +1487,13 @@ ACTIONS = MappingProxyType(
             "key": "Ctrl+S",
             "icon": "save-playlist",
             "func": "save_playlist",
+            "enable_if": AND("is_videos", "is_playlist_changed"),
+        },
+        "Save Playlist As": {
+            "title": translate("Actions", "Save Playlist As"),
+            "key": "Ctrl+Shift+S",
+            "icon": "save-playlist",
+            "func": "save_playlist_as",
             "enable_if": "is_videos",
         },
         "Close Playlist": {
