@@ -11,6 +11,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Add option to manually select app color scheme ([6a59985](https://github.com/vzhd1701/gridplayer/commit/6a59985855ae5471a3a6d1d75a89829003764bfd))
 - Add option to disable overlay ([2c7163f](https://github.com/vzhd1701/gridplayer/commit/2c7163f34231bb1180e57d296d00f7b7f6121030))
 - Add shortcuts editor ([fa22fa7](https://github.com/vzhd1701/gridplayer/commit/fa22fa7d8767f580f701c7a5f0677b704330c5a7))
+- Add "save playlist as" option ([7cb07dd](https://github.com/vzhd1701/gridplayer/commit/7cb07dd7a275d5d82996aacd5ad2dcc6c8be7647))
+- Show playlist name in the window title ([237ea43](https://github.com/vzhd1701/gridplayer/commit/237ea43e5a6d97ae171a9e258a31f7b58c6f8bd1))
 
 ### Fixed
 
@@ -21,6 +23,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Avoid memory leaks on menus ([bbde797](https://github.com/vzhd1701/gridplayer/commit/bbde7977ede3694d68ec629f68fe9da494f692b4))
 - Handle invalid track metadata and duplicate closes ([#319](https://github.com/vzhd1701/gridplayer/issues/319)) ([b0ade83](https://github.com/vzhd1701/gridplayer/commit/b0ade837afaecb86b77fe4ced0f4c0a4935568bf))
 - Improve missing libvlc handling ([fd4539f](https://github.com/vzhd1701/gridplayer/commit/fd4539f80742fa0bf70c850cf3a41c39e4bc843c))
+- Check if action is enabled on invoke to keep hotkeys always active ([5a18d0c](https://github.com/vzhd1701/gridplayer/commit/5a18d0c48a99bd82fa19fffcdeb12e789a696339))
+- Force xcb on linux becuase libVLC doesnt work with wayland ([f5f77c2](https://github.com/vzhd1701/gridplayer/commit/f5f77c27d69167f2b204603414d2d4cba1c9dfc9))
 
 ## [0.5.5] - 2026-07-24
 
