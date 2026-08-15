@@ -98,6 +98,4 @@ def _add_action(action: QDynamicAction, menu: QMenu):
     if action.is_skipped:
         return
 
-    action.adapt()
-
-    menu.addAction(action)
+    menu.addAction(action.to_menu_action(menu))

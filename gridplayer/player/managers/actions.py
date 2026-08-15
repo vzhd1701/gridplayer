@@ -1,4 +1,4 @@
-from PyQt5.QtCore import QEvent
+from PyQt5.QtCore import QEvent, Qt
 from PyQt5.QtGui import QIcon, QKeySequence
 from PyQt5.QtWidgets import QAction
 
@@ -70,8 +70,8 @@ class QDynamicAction(QAction):
         return self._icon_id
 
     def adapt(self):
-        self.setEnabled(self.is_enabled)
-
+        # Keep this QAction enabled so shortcuts still fire. enable_if is
+        # applied to a menu proxy (grayed out) and checked again on invoke.
         if self.icon_id:
             self.setIcon(QIcon.fromTheme(self.icon_id))
 
@@ -87,6 +87,30 @@ class QDynamicAction(QAction):
             self.setCheckable(True)
             self.setChecked(self.check_if())
 
+    def to_menu_action(self, parent) -> QAction:
+        """Menu-only stand-in: grayed out when enable_if is false."""
+        self.adapt()
+
+        proxy = QAction(self.icon(), self.text(), parent)
+        proxy.setShortcuts(self.shortcuts())
+        # Display the chord in the menu without registering a second window shortcut.
+        proxy.setShortcutContext(Qt.WidgetShortcut)
+        proxy.setShortcutVisibleInContextMenu(True)
+        proxy.setEnabled(self.is_enabled)
+
+        if self.isCheckable():
+            proxy.setCheckable(True)
+            proxy.setChecked(self.isChecked())
+
+        submenu = self.menu()
+        if submenu is not None:
+            self.setMenu(None)
+            proxy.setMenu(submenu)
+        else:
+            proxy.triggered.connect(self.trigger)
+
+        return proxy
+
     def _generate_submenu(self):
         actions = self.menu_generator()
 
@@ -100,8 +124,7 @@ class QDynamicAction(QAction):
             if a.is_skipped:
                 continue
 
-            a.adapt()
-            generated_menu.addAction(a)
+            generated_menu.addAction(a.to_menu_action(generated_menu))
 
         self.setMenu(generated_menu)
 
@@ -112,6 +135,7 @@ class ActionsManager(ManagerBase):
 
         self._mouse_index: dict[str, str] = {}
         self._bindings: dict[str, list[str]] = {}
+        self._invoking = False
 
         self._ctx.actions = self._make_actions()
         self._ctx.actions_manager = self
@@ -184,6 +208,7 @@ class ActionsManager(ManagerBase):
             if not sequences:
                 continue
 
+            action.setEnabled(True)
             action.setShortcuts(sequences)
             parent.addAction(action)
 
@@ -251,11 +276,24 @@ class ActionsManager(ManagerBase):
         if cmd.get("menu_generator"):
             action.menu_generator = self._resolve_menu_generator(cmd["menu_generator"])
         else:
-            action.triggered.connect(self._ctx.commands.resolve(cmd["func"]))
+            command = self._ctx.commands.resolve(cmd["func"])
+            action.triggered.connect(
+                lambda _checked=False, a=action, c=command: self._run_action(a, c)
+            )
 
         self._map_dynamic_functions(action, cmd)
 
         return action
+
+    def _run_action(self, action: QDynamicAction, command) -> None:
+        if self._invoking or not action.is_enabled:
+            return
+
+        self._invoking = True
+        try:
+            command()
+        finally:
+            self._invoking = False
 
     def _map_dynamic_functions(self, action, cmd):
         dynamic_functions = [
