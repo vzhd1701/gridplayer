@@ -842,6 +842,9 @@
              <bold>true</bold>
             </font>
            </property>
+           <property name="openExternalLinks">
+            <bool>true</bool>
+           </property>
            <property name="text">
             <string>VLC Options [&lt;a href=&quot;https://wiki.videolan.org/VLC_command-line_help/&quot;&gt;reference&lt;/a&gt;]</string>
            </property>

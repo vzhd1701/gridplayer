@@ -493,6 +493,7 @@ class Ui_SettingsDialog:
         font.setBold(True)
         font.setWeight(75)
         self.label_9.setFont(font)
+        self.label_9.setOpenExternalLinks(True)
         self.label_9.setObjectName("label_9")
         self.lay_page_misc_advanced.addWidget(self.label_9)
         self.miscVLCOptions = QtWidgets.QLineEdit(self.page_misc_advanced)
