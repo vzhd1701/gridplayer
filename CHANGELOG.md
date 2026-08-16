@@ -16,6 +16,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ### Fixed
 
+- Add compositor detection on linux to avoid black overlay ([e22e91c](https://github.com/vzhd1701/gridplayer/commit/e22e91cc8dd9fc2562483317d2368097c93dfe65))
+- Add newly saved playlist into recent list ([1682959](https://github.com/vzhd1701/gridplayer/commit/16829599d0b864e1659036ba49b62f95cdf2ca6d))
 - Improve system color theme sync on linux and windows ([e41cc36](https://github.com/vzhd1701/gridplayer/commit/e41cc361967d7f9cb405718d51bb68ba3801d5a3)), ([ab062b3](https://github.com/vzhd1701/gridplayer/commit/ab062b340ddd00352262b6402aa621472359faf4))
 - Unify app style and colors ([61d90b0](https://github.com/vzhd1701/gridplayer/commit/61d90b04df15e31d67ed4bb9b2de9269a420e375))
 - Improve language selection section in settings ([65bc49d](https://github.com/vzhd1701/gridplayer/commit/65bc49da7c32edc48552bd67976ac089877ca33b))
