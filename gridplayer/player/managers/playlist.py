@@ -27,6 +27,7 @@ def format_playlist_window_title(playlist_name: str | None) -> str:
 class PlaylistManager(ManagerBase):
     playlist_closed = pyqtSignal()
     playlist_file_loaded = pyqtSignal(Path)
+    playlist_saved = pyqtSignal(Path)
     window_state_loaded = pyqtSignal(WindowState)
     grid_state_loaded = pyqtSignal(GridState)
     snapshots_loaded = pyqtSignal(dict)
@@ -295,6 +296,8 @@ class PlaylistManager(ManagerBase):
                 "state": hash(playlist.dumps()),
             }
         )
+
+        self.playlist_saved.emit(file_path)
 
         return True
 
