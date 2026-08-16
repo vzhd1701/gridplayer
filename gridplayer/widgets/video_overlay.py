@@ -9,8 +9,9 @@ from PyQt5.QtWidgets import (
     QWidget,
 )
 
+from gridplayer.params import env
 from gridplayer.params.static import OVERLAY_ACTIVITY_EVENT
-from gridplayer.settings import Settings
+from gridplayer.utils.compositor_linux import should_make_overlay_opaque
 from gridplayer.utils.qt import qt_connect
 from gridplayer.utils.time_txt import get_time_txt
 from gridplayer.widgets.video_overlay_buttons import (
@@ -280,7 +281,7 @@ class OverlayBlockFloating(OverlayBlock):
 
         self.init_flags()
 
-        if Settings().get("internal/opaque_hw_overlay"):
+        if env.IS_LINUX and should_make_overlay_opaque():
             self.make_opaque()
         else:
             self.is_opaque = False
@@ -318,6 +319,10 @@ class OverlayBlockFloating(OverlayBlock):
             | Qt.WindowDoesNotAcceptFocus
             | Qt.NoDropShadowWindowHint
         )
+
+        # workaround to avoid some compositors (KWin) making overlay opaque
+        if env.IS_LINUX:
+            self.setWindowOpacity(0.999)
 
     def make_opaque(self):
         self.setAttribute(Qt.WA_NoSystemBackground, False)

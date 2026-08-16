@@ -155,7 +155,8 @@ sudo snap connect gridplayer:mount-observe
 
 ### Linux: black screen issue when using hardware decoder
 
-Switch on "Opaque overlay (fix black screen)" checkbox in settings.
+If no compositor is running, GridPlayer switches the overlay to opaque automatically. If the overlay is still a black
+screen, switch on "Opaque overlay (fix black screen)" checkbox in settings.
 
 Depending on the window manager, the overlay might be a bit glitchy with the hardware decoder. Enabling compositor might
 help.
