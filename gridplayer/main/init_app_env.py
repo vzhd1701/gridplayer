@@ -1,3 +1,5 @@
+import os
+
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QGuiApplication
 from PyQt5.QtWidgets import QApplication
@@ -20,6 +22,13 @@ def init_app_env_id():
 
 
 def init_app_env():
+    if env.IS_LINUX:
+        # Hardware video is drawn by VLC into an X11 window, not by Qt OpenGL.
+        # If the xcb plugin loads libGL here, forked decoder processes inherit
+        # a broken GLdispatch and abort on the second Hardware process:
+        #   DispatchCurrentUnref: Assertion `dispatch->currentThreads >= 0'
+        os.environ.setdefault("QT_XCB_GL_INTEGRATION", "none")
+
     if env.IS_WINDOWS:
         from PyQt5.QtWinExtras import QtWin
 
