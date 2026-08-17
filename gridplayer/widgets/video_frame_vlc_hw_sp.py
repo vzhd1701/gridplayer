@@ -31,6 +31,8 @@ class PlayerProcessSingleVLCHWSP(QThread, VlcPlayerBase, metaclass=QABC):
     loop_load_video_st3_extract_media_track = pyqtSignal()
     loop_load_video_st4_loaded = pyqtSignal()
 
+    _vout_reapply = pyqtSignal()
+
     def __init__(self, win_id, vlc_options, **kwargs):
         super().__init__(vlc_instance=None, **kwargs)
 
@@ -55,7 +57,21 @@ class PlayerProcessSingleVLCHWSP(QThread, VlcPlayerBase, metaclass=QABC):
                 self.loop_load_video_st4_loaded,
                 self.load_video_st4_loaded,
             ),
+            (
+                self._vout_reapply,
+                self._on_vout_reapply,
+            ),
         )
+
+    @pyqtSlot()
+    def _on_vout_reapply(self):
+        self._apply_media_input_view()
+
+    def _schedule_view_reapply(self):
+        # Emitted from libvlc's event thread; this player object's affinity is the
+        # main thread, so Qt delivers via QueuedConnection onto the main event
+        # loop — off the libvlc callback thread. Avoids re-entering libvlc.
+        self._vout_reapply.emit()
 
     def run(self):
         self._instance = InstanceVLC(0, self.vlc_options)
