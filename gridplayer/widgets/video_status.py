@@ -122,6 +122,10 @@ class StatusIcon(QWidget):
     def __init__(self, icon=None, **kwargs):
         super().__init__(**kwargs)
 
+        effect = QGraphicsOpacityEffect(self)
+        effect.setOpacity(0.5)
+        self.setGraphicsEffect(effect)
+
         self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
 
         self.icon = icon

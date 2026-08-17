@@ -25,8 +25,7 @@ class StatusInfo(QWidget):
         self.setMouseTracking(True)
 
         effect = QGraphicsOpacityEffect(self)
-        half_transparent = 0.5
-        effect.setOpacity(half_transparent)
+        effect.setOpacity(0.5)
         self.setGraphicsEffect(effect)
 
         if is_dark_mode():
