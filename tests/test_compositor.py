@@ -3,7 +3,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from gridplayer.utils import compositor
+from gridplayer.utils import compositor_linux as compositor
 
 
 @pytest.fixture(autouse=True)

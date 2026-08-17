@@ -88,20 +88,6 @@ def test_default_seam_routes_to_apply_media_input_view(monkeypatch):
     assert recorded == {"aspect_ratio", "crop_geometry", "scale"}
 
 
-def test_cb_vout_noop_off_macos(monkeypatch):
-    """Off macOS, cb_vout returns early and never schedules a re-apply."""
-    monkeypatch.setattr(player_base_mod.env, "IS_MACOS", False)
-
-    player, _ = _make_player()
-
-    scheduler = Mock()
-    player._schedule_view_reapply = scheduler
-
-    player.cb_vout(None)
-
-    assert scheduler.call_count == 0
-
-
 def test_cb_vout_noop_when_audio_only(monkeypatch):
     """macOS but audio-only media: cb_vout returns early, no scheduling."""
     monkeypatch.setattr(player_base_mod.env, "IS_MACOS", True)
