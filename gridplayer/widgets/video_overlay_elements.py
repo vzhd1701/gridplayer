@@ -10,7 +10,7 @@ from PyQt5.QtGui import (
     QPainterPath,
     QRegion,
 )
-from PyQt5.QtWidgets import QSizePolicy, QWidget
+from PyQt5.QtWidgets import QGraphicsOpacityEffect, QSizePolicy, QWidget
 
 from gridplayer.params.static import OVERLAY_ACTIVITY_EVENT
 from gridplayer.utils.time_txt import get_time_txt
@@ -25,7 +25,25 @@ class OverlayWidget(QWidget):
         font_height = 13
         self._color = QColor(Qt.white)
 
+        # These widgets paint their own pixels. A system/style fill would be
+        # opaque and shows up as a solid box under translucent compositing.
+        self.setAttribute(Qt.WA_NoSystemBackground)
+        self.setAutoFillBackground(False)
+
         self.setMinimumHeight(font_height + self.padding)
+
+    def set_overlay_opacity(self, opacity):
+        # Fade the finished widget, not each stroke. Painter opacity makes
+        # text/icons 50% on top of a 50% fill, which is much too dim.
+        # A per-widget effect keeps the original contrast (opaque draw, then
+        # one 0.5 pass) without a parent-level pixmap that recaches siblings.
+        if opacity >= 1:
+            self.setGraphicsEffect(None)
+        else:
+            effect = QGraphicsOpacityEffect(self)
+            effect.setOpacity(opacity)
+            self.setGraphicsEffect(effect)
+        self.update()
 
     @property
     def color(self):

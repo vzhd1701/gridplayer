@@ -2,7 +2,6 @@ from PyQt5.QtCore import QEvent, QPoint, QRect, Qt, QTimer, pyqtSignal, pyqtSlot
 from PyQt5.QtGui import QGuiApplication, QPalette, QRegion
 from PyQt5.QtWidgets import (
     QApplication,
-    QGraphicsOpacityEffect,
     QHBoxLayout,
     QStackedLayout,
     QVBoxLayout,
@@ -59,9 +58,9 @@ class OverlayBlock(QWidget):
 
         self.setMouseTracking(True)
 
-        self._set_opacity(0.5)
-
         self.ui_setup()
+
+        self._set_opacity(0.5)
 
         self.ui_customize_dynamic()
 
@@ -268,9 +267,14 @@ class OverlayBlock(QWidget):
         self.volume_button.setVisible(is_visible)
 
     def _set_opacity(self, opacity):
-        effect = QGraphicsOpacityEffect(self)
-        effect.setOpacity(opacity)
-        self.setGraphicsEffect(effect)
+        # Opacity lives on each OverlayWidget, not on this parent. A single
+        # QGraphicsOpacityEffect here cached the whole tree and left seams
+        # when the seek timer moved. Per-widget effects fade an already
+        # composited control (readable text/icons) without recaching siblings.
+        self.setGraphicsEffect(None)
+        self._overlay_opacity = opacity
+        for widget in self.findChildren(OverlayWidget):
+            widget.set_overlay_opacity(opacity)
 
 
 class OverlayBlockFloating(OverlayBlock):
@@ -330,6 +334,7 @@ class OverlayBlockFloating(OverlayBlock):
 
         self.setGraphicsEffect(None)
 
+        self._set_opacity(1.0)
         self.floating_progress.is_opaque = True
         self.is_opaque = True
 
