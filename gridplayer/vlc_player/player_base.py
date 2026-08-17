@@ -355,6 +355,11 @@ class VlcPlayerBase(ABC):
 
         self._log.debug("Setting parsed media to player and waiting for buffering")
 
+        # Can happen if spam reload
+        if not self._playlist_player:
+            self._log.debug("No playlist player, probably dying")
+            return
+
         playlist = self.instance.media_list_new()
         playlist.add_media(self._media_input_vlc)
 
