@@ -6,6 +6,7 @@ from PyQt5.QtCore import QSize, Qt, pyqtSignal
 from PyQt5.QtGui import QPixmap
 from PyQt5.QtWidgets import QLabel, QStackedLayout, QWidget
 
+from gridplayer.params import env
 from gridplayer.params.static import VideoAspect, VideoCrop
 from gridplayer.utils.qt import QABC, QT_ASPECT_MAP, qt_connect
 from gridplayer.vlc_player.static import Media, MediaInput
@@ -13,6 +14,45 @@ from gridplayer.vlc_player.video_driver_base import VLCVideoDriver
 from gridplayer.widgets.video_status import VideoStatus
 
 DEFAULT_FPS = 25.0
+
+# VLC's crop can leave a 2px black border around hardware output.
+VLC_CROP_BORDER_PX = 2
+
+
+def vlc_hw_crop_border_offset(frame_size: QSize, window_size: QSize) -> int:
+    """How far to shift the native vout to hide VLC's 2px crop border.
+
+    On Linux a window-filling surface at (-2, -2) sits outside the
+    top-level window and KWin draws a seam. Skip the shift only when
+    the frame already fills the window; interior grid tiles keep it.
+    """
+    if not env.IS_LINUX:
+        return VLC_CROP_BORDER_PX
+
+    fills_window = (
+        frame_size.width() >= window_size.width() - VLC_CROP_BORDER_PX
+        and frame_size.height() >= window_size.height() - VLC_CROP_BORDER_PX
+    )
+    return 0 if fills_window else VLC_CROP_BORDER_PX
+
+
+def apply_vlc_hw_surface_geometry(
+    frame: QWidget, surface: QWidget, offset: int
+) -> None:
+    if offset <= 0:
+        return
+
+    width = frame.width()
+    height = frame.height()
+    if width <= 0 or height <= 0:
+        return
+
+    surface.setGeometry(
+        -offset,
+        -offset,
+        width + 2 * offset,
+        height + 2 * offset,
+    )
 
 
 class PauseSnapshot(QLabel):
@@ -132,6 +172,12 @@ class VideoFrameVLC(QWidget, metaclass=QABC):
 
     @abstractmethod
     def ui_video_surface(self) -> QWidget: ...
+
+    def _apply_hw_crop_border_workaround(self) -> None:
+        win = self.window()
+        window_size = win.size() if win is not None else self.size()
+        offset = vlc_hw_crop_border_offset(self.size(), window_size)
+        apply_vlc_hw_surface_geometry(self, self.video_surface, offset)
 
     def driver_connect(self) -> None:
         qt_connect(

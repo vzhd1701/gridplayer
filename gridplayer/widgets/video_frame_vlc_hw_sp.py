@@ -1,6 +1,6 @@
 from threading import Event
 
-from PyQt5.QtCore import QMargins, Qt, QThread, pyqtSignal, pyqtSlot
+from PyQt5.QtCore import Qt, QThread, pyqtSignal, pyqtSlot
 from PyQt5.QtWidgets import QWidget
 
 from gridplayer.params import env
@@ -268,10 +268,7 @@ class VideoFrameVLCHWSP(VideoFrameVLC):
         size = (self.size().width(), self.size().height())
         self.video_driver.adjust_view(size, self._aspect, self._scale, self._crop)
 
-        # Remove VLC crop black border
-        new_size = self.size().grownBy(QMargins(2, 2, 2, 2))
-        self.video_surface.resize(new_size)
-        self.video_surface.move(-2, -2)
+        self._apply_hw_crop_border_workaround()
 
     def load_video_finish(self, media_track: Media):
         if env.IS_MACOS:
