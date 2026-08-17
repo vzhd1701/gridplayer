@@ -16,6 +16,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ### Fixed
 
+- Improve vlc frame offset detection to avoid glitches with KWin on linux ([03e812b](https://github.com/vzhd1701/gridplayer/commit/03e812b8bc5ac398917cebab1888cad657391470))
+- Make loading animation and video status icon transparent ([a52bd47](https://github.com/vzhd1701/gridplayer/commit/a52bd4781677ef8d2fe517990a0e65360fc03989))
+- Set overlay opacity on child widgets to avoid clipping glitches on linux ([7d2d5b3](https://github.com/vzhd1701/gridplayer/commit/7d2d5b341c54867082182e71f737f6f8efaf3ace))
+- Unset QT_XCB_GL_INTEGRATION on linux to avoid forked process crash ([839bf83](https://github.com/vzhd1701/gridplayer/commit/839bf83394d8d402c36e85b678072b3a5c9e26da))
+- Adjust video on vout to ensure correct aspect on video load in Mac and Linux ([878b817](https://github.com/vzhd1701/gridplayer/commit/878b817009bd4b47494996726e39bd2c6b765019))
+- Avoid crash on spam reload ([737fe79](https://github.com/vzhd1701/gridplayer/commit/737fe79619d6f929ede35205a89338a2e8385b12))
 - Add compositor detection on linux to avoid black overlay ([e22e91c](https://github.com/vzhd1701/gridplayer/commit/e22e91cc8dd9fc2562483317d2368097c93dfe65))
 - Add newly saved playlist into recent list ([1682959](https://github.com/vzhd1701/gridplayer/commit/16829599d0b864e1659036ba49b62f95cdf2ca6d))
 - Improve system color theme sync on linux and windows ([e41cc36](https://github.com/vzhd1701/gridplayer/commit/e41cc361967d7f9cb405718d51bb68ba3801d5a3)), ([ab062b3](https://github.com/vzhd1701/gridplayer/commit/ab062b340ddd00352262b6402aa621472359faf4))
