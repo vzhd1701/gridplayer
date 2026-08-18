@@ -112,9 +112,8 @@ class QDynamicAction(QAction):
         return proxy
 
     def _generate_submenu(self):
-        actions = self.menu_generator()
-
-        generated_menu = CustomMenu()
+        generated_menu = CustomMenu(parent=self.parent())
+        actions = self.menu_generator(generated_menu)
 
         for a in actions:
             if a == "---":
@@ -123,6 +122,9 @@ class QDynamicAction(QAction):
 
             if a.is_skipped:
                 continue
+
+            if a.parent() is not generated_menu:
+                a.setParent(generated_menu)
 
             generated_menu.addAction(a.to_menu_action(generated_menu))
 
@@ -264,12 +266,14 @@ class ActionsManager(ManagerBase):
 
         return actions
 
-    def _make_action(self, cmd):
+    def _make_action(self, cmd, parent=None):
         if cmd == "---":
             return cmd
 
         action = QDynamicAction(
-            title=cmd["title"], icon_id=cmd.get("icon"), parent=self.parent()
+            title=cmd["title"],
+            icon_id=cmd.get("icon"),
+            parent=parent if parent is not None else self.parent(),
         )
 
         # menus can't have shortcuts
@@ -311,7 +315,7 @@ class ActionsManager(ManagerBase):
 
     def _resolve_menu_generator(self, menu_generator):
         menu_generator_func = self._ctx.commands.resolve(menu_generator)
-        return lambda: self._generate_actions(menu_generator_func())
+        return lambda parent=None: self._generate_actions(menu_generator_func(), parent)
 
-    def _generate_actions(self, templates):
-        return [self._make_action(cmd) for cmd in templates]
+    def _generate_actions(self, templates, parent=None):
+        return [self._make_action(cmd, parent=parent) for cmd in templates]

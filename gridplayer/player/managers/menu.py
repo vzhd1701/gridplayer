@@ -5,7 +5,7 @@ from PyQt5.QtWidgets import QMenu
 from gridplayer.params.menu import SECTIONS, SUBMENUS
 from gridplayer.player.managers.actions import QDynamicAction
 from gridplayer.player.managers.base import ManagerBase
-from gridplayer.widgets.custom_menu import BigMenuIcons, CustomMenu
+from gridplayer.widgets.custom_menu import CustomMenu
 
 
 class MenuManager(ManagerBase):
@@ -65,12 +65,11 @@ class MenuManager(ManagerBase):
         sub = SUBMENUS[submenu[0]]
         sub_items = submenu[1:]
 
+        sub_menu = CustomMenu(parent=menu)
+        sub_menu.setTitle(sub["title"])
         if sub.get("icon"):
-            sub_menu = menu.addMenu(QIcon.fromTheme(sub["icon"]), sub["title"])
-        else:
-            sub_menu = menu.addMenu(sub["title"])
-
-        sub_menu.setStyle(BigMenuIcons("Fusion"))
+            sub_menu.setIcon(QIcon.fromTheme(sub["icon"]))
+        menu.addMenu(sub_menu)
 
         self._add_menu_items(sub_menu, sub_items)
 
