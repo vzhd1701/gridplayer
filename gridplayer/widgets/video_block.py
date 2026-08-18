@@ -834,10 +834,6 @@ class VideoBlock(QWidget):
         self.video_status.hide()
         self.show_overlay()
 
-        # Must do this after video is shown to ensure proper initial state (VLC lag)
-        if self.video_params.is_paused:
-            self.seek(self.video_params.current_position)
-
         self.video_driver.adjust_view()
 
     @only_with_video_tacks

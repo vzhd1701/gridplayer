@@ -357,9 +357,6 @@ class VlcPlayerBase(ABC):
 
         self._event_manager.attach_to_media(self._media_input_vlc)
 
-        if not self.media_input.is_live and self.media_input.video.is_paused:
-            self._media_options.append(":start-paused")
-
         if self.media_input.is_audio_only:
             self._media_options.append(":no-video")
 
@@ -597,11 +594,20 @@ class VlcPlayerBase(ABC):
     def _set_initial_state(self):
         self._log.debug("Ensuring initial state")
 
-        self._set_pause_initial(self.media_input.video.is_paused)
-
         self._adjust_view_initial()
 
+        # Play first (no :start-paused). That option shows frame 0 but
+        # leaves set_time-while-paused broken until the file has actually
+        # played. Seek while playing, then pause
+
         self._set_time_initial(self.media_input.initial_time)
+
+        self._set_pause_initial(self.media_input.video.is_paused)
+
+        # If paused seek again to ensure actual position
+        # in case time drifted while _set_pause_initial
+        if self.media_input.video.is_paused:
+            self._set_time_initial(self.media_input.initial_time)
 
     def _adjust_view_initial(self):
         if self.media.is_audio_only:
@@ -609,9 +615,8 @@ class VlcPlayerBase(ABC):
 
         # wait for video output init
         # otherwise adjust_view won't work
-        # if video is paused it happens on seek
         # doesn't work on MacOS for some reason — cb_vout re-applies there
-        if not env.IS_MACOS and not self.media_input.video.is_paused:
+        if not env.IS_MACOS:
             self._event_waiter.wait_for("vout", self.init_time_left)
 
         self._apply_media_input_view()
@@ -632,6 +637,10 @@ class VlcPlayerBase(ABC):
 
     def _set_pause_initial(self, is_paused):
         if not self.media_input.is_live and is_paused:
+            if self._media_player.get_state() != vlc.State.Paused:
+                with self._event_waiter.waiting_for("paused", self.init_time_left):
+                    self.set_pause(True)
+
             if self._media_player.get_state() != vlc.State.Paused:
                 raise NotPausedError
 
