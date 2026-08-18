@@ -16,6 +16,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ### Fixed
 
+- Reset playlist setting to defaults after closing playlist ([fd728f3](https://github.com/vzhd1701/gridplayer/commit/fd728f3f64c2cef240549458c51bdec30801ad62))
+- Use setWindowFilePath to update playlist name in window title ([703b6ea](https://github.com/vzhd1701/gridplayer/commit/703b6eab58d71f528c9a4e9e7d1d37dc59e74743))
+- Set proper parent to each submenu to avoid crashes on mac ([8ecffe9](https://github.com/vzhd1701/gridplayer/commit/8ecffe93a4d7b1f999e82d963cd99e335d0bc90b))
+- Ensure that video is seekable if loaded in paused state ([71615d9](https://github.com/vzhd1701/gridplayer/commit/71615d993d9bb7e71a432ef45fa558be234a9315))
 - Improve vlc frame offset detection to avoid glitches with KWin on linux ([03e812b](https://github.com/vzhd1701/gridplayer/commit/03e812b8bc5ac398917cebab1888cad657391470))
 - Make loading animation and video status icon transparent ([a52bd47](https://github.com/vzhd1701/gridplayer/commit/a52bd4781677ef8d2fe517990a0e65360fc03989))
 - Set overlay opacity on child widgets to avoid clipping glitches on linux ([7d2d5b3](https://github.com/vzhd1701/gridplayer/commit/7d2d5b341c54867082182e71f737f6f8efaf3ace))
