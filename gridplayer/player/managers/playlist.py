@@ -79,6 +79,7 @@ class PlaylistManager(ManagerBase):
             return False
 
         self.playlist_closed.emit()
+        self._reset_playlist_session()
         self._set_saved_playlist(None)
 
         return True
@@ -290,6 +291,23 @@ class PlaylistManager(ManagerBase):
         self.playlist_saved.emit(file_path)
 
         return True
+
+    def _reset_playlist_session(self) -> None:
+        defaults = Playlist()
+        _emit(
+            (self.seek_sync_mode_loaded, defaults.seek_sync_mode),
+            (self.shuffle_on_load_loaded, defaults.shuffle_on_load),
+            (
+                self.disable_mouse_click_events_loaded,
+                defaults.disable_mouse_click_events,
+            ),
+            (
+                self.disable_mouse_wheel_events_loaded,
+                defaults.disable_mouse_wheel_events,
+            ),
+            (self.disable_overlay_loaded, defaults.disable_overlay),
+            (self.grid_state_loaded, defaults.grid_state),
+        )
 
     def _set_saved_playlist(self, saved: dict | None) -> None:
         self._saved_playlist = saved
