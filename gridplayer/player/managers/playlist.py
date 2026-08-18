@@ -13,15 +13,8 @@ from gridplayer.player.managers.base import ManagerBase
 from gridplayer.settings import Settings
 from gridplayer.utils.files import get_playlist_path
 from gridplayer.utils.qt import translate
-from gridplayer.version import __display_name__
 
 _TITLE_REFRESH_MS = 500
-
-
-def format_playlist_window_title(playlist_name: str | None) -> str:
-    if playlist_name is None:
-        return __display_name__
-    return f"{playlist_name}[*] - {__display_name__}"
 
 
 class PlaylistManager(ManagerBase):
@@ -109,19 +102,16 @@ class PlaylistManager(ManagerBase):
         window = self.parent()
 
         if self._saved_playlist is None:
+            if window.windowFilePath():
+                window.setWindowFilePath("")
             window.setWindowModified(False)
-            title = format_playlist_window_title(None)
-            if window.windowTitle() != title:
-                window.setWindowTitle(title)
             return
 
-        title = format_playlist_window_title(self._saved_playlist["path"].stem)
-        is_dirty = self._is_playlist_changed()
+        file_path = str(self._saved_playlist["path"])
+        if window.windowFilePath() != file_path:
+            window.setWindowFilePath(file_path)
 
-        window.setWindowModified(is_dirty)
-
-        if window.windowTitle() != title:
-            window.setWindowTitle(title)
+        window.setWindowModified(self._is_playlist_changed())
 
     def process_arguments(self, argv):
         if not argv:
