@@ -3,7 +3,7 @@ import logging
 from pathlib import Path
 from typing import Any
 
-from pydantic import BaseModel, ValidationError, model_validator
+from pydantic import BaseModel, Field, ValidationError, model_validator
 
 from gridplayer.models.grid_state import GridState
 from gridplayer.models.video import Video
@@ -22,7 +22,7 @@ class Snapshot(BaseModel):
 
 
 class Playlist(BaseModel):
-    grid_state: GridState = GridState()
+    grid_state: GridState = Field(default_factory=GridState)
     window_state: WindowState | None = None
     videos: VideosList | None = None
     snapshots: dict[int, Snapshot] | None = None
