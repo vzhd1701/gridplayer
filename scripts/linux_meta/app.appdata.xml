@@ -2,10 +2,12 @@
 <component type="desktop-application">
   <id>{APP_ID}</id>
   <launchable type="desktop-id">{APP_ID}.desktop</launchable>
-  <content_rating type="oars-1.0" />
+  <content_rating type="oars-1.1" />
   <metadata_license>CC0-1.0</metadata_license>
   <project_license>GPL-3.0+</project_license>
-  <developer_name>{APP_AUTHOR}</developer_name>
+  <developer id="com.vzhd1701">
+    <name>{APP_AUTHOR}</name>
+  </developer>
   <name>{APP_DISP_NAME}</name>
   <update_contact>{APP_AUTHOR_CONTACT}</update_contact>
   <summary>Play videos side-by-side</summary>
@@ -17,7 +19,6 @@
       save your playlist retaining information about the position, sound volume,
       loops, aspect ratio, etc.
     </p>
-    <p>Built using Python, Qt and VLC.</p>
     <p>Features:</p>
     <ul>
       <li>Cross-platform (Linux, Mac, and Windows)</li>
@@ -25,7 +26,7 @@
       <li>Support for (almost) any streaming URLs (streamlink + yt-dlp)</li>
       <li>Hardware and software video decoding</li>
       <li>Control video aspect, playback speed, zoom</li>
-      <li>Set loop fragments with frame percision</li>
+      <li>Set loop fragments with frame precision</li>
       <li>Configurable grid layout</li>
       <li>Easy swap videos with drag-n-drop</li>
       <li>Playlist retains settings for each video</li>
@@ -52,6 +53,7 @@
   <url type="homepage">{APP_URL}</url>
   <url type="bugtracker">{APP_BUGTRACKER_URL}</url>
   <url type="vcs-browser">{APP_URL}</url>
+  <url type="translate">https://crowdin.com/project/gridplayer</url>
   <releases>
     <release date="{APP_VERSION_DATE}" version="{APP_VERSION}"/>
   </releases>
