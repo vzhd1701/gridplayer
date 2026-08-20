@@ -204,6 +204,13 @@
           </widget>
          </item>
          <item>
+          <widget class="QCheckBox" name="playerStartFullscreen">
+           <property name="text">
+            <string>Start in fullscreen mode</string>
+           </property>
+          </widget>
+         </item>
+         <item>
           <widget class="QCheckBox" name="playerShowOverlayBorder">
            <property name="text">
             <string>Show overlay border for active video</string>

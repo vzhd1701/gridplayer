@@ -94,6 +94,9 @@ class Ui_SettingsDialog:
         self.playerStayOnTop = QtWidgets.QCheckBox(self.page_general_player)
         self.playerStayOnTop.setObjectName("playerStayOnTop")
         self.lay_section_player.addWidget(self.playerStayOnTop)
+        self.playerStartFullscreen = QtWidgets.QCheckBox(self.page_general_player)
+        self.playerStartFullscreen.setObjectName("playerStartFullscreen")
+        self.lay_section_player.addWidget(self.playerStartFullscreen)
         self.playerShowOverlayBorder = QtWidgets.QCheckBox(self.page_general_player)
         self.playerShowOverlayBorder.setObjectName("playerShowOverlayBorder")
         self.lay_section_player.addWidget(self.playerShowOverlayBorder)
@@ -662,6 +665,9 @@ class Ui_SettingsDialog:
             _translate("SettingsDialog", "Allow only one instance")
         )
         self.playerStayOnTop.setText(_translate("SettingsDialog", "Stay on top"))
+        self.playerStartFullscreen.setText(
+            _translate("SettingsDialog", "Start in fullscreen mode")
+        )
         self.playerShowOverlayBorder.setText(
             _translate("SettingsDialog", "Show overlay border for active video")
         )
