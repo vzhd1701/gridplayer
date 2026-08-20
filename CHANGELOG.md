@@ -8,6 +8,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ### Added
 
+- Add option to start with maximized window ([74282df](https://github.com/vzhd1701/gridplayer/commit/74282df433867e45c7da95d10875979770933024))
+- Add option to start in fullscreen mode ([02cb6fd](https://github.com/vzhd1701/gridplayer/commit/02cb6fd04272f8356a0223b031737f4addc21c62))
 - Add option to manually select app color scheme ([6a59985](https://github.com/vzhd1701/gridplayer/commit/6a59985855ae5471a3a6d1d75a89829003764bfd))
 - Add option to disable overlay ([2c7163f](https://github.com/vzhd1701/gridplayer/commit/2c7163f34231bb1180e57d296d00f7b7f6121030))
 - Add shortcuts editor ([fa22fa7](https://github.com/vzhd1701/gridplayer/commit/fa22fa7d8767f580f701c7a5f0677b704330c5a7))
@@ -16,6 +18,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ### Fixed
 
+- Prevent switching to single mode without active video (double click on empty space) ([526210f](https://github.com/vzhd1701/gridplayer/commit/526210f21f2ab8c46e5a250a0ccd114341d6bcba))
+- Improve drag n drop on KDE ([a7b2def](https://github.com/vzhd1701/gridplayer/commit/a7b2def2448a9ad3ac6821c23bbb4ed120f0b72b))
 - Reset playlist setting to defaults after closing playlist ([fd728f3](https://github.com/vzhd1701/gridplayer/commit/fd728f3f64c2cef240549458c51bdec30801ad62))
 - Use setWindowFilePath to update playlist name in window title ([703b6ea](https://github.com/vzhd1701/gridplayer/commit/703b6eab58d71f528c9a4e9e7d1d37dc59e74743))
 - Set proper parent to each submenu to avoid crashes on mac ([8ecffe9](https://github.com/vzhd1701/gridplayer/commit/8ecffe93a4d7b1f999e82d963cd99e335d0bc90b))
