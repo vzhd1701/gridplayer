@@ -38,6 +38,8 @@ def run_app():
     player = Player()
     if Settings().get("player/start_fullscreen"):
         player.showFullScreen()
+    elif Settings().get("player/start_maximized"):
+        player.showMaximized()
     else:
         player.show()
 

@@ -41,6 +41,7 @@ _default_settings = {
     "player/inhibit_screensaver": True,
     "player/one_instance": True,
     "player/stay_on_top": False,
+    "player/start_maximized": False,
     "player/start_fullscreen": False,
     "player/show_overlay_border": False,
     "player/language": get_system_language(),

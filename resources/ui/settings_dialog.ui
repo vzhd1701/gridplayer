@@ -204,6 +204,13 @@
           </widget>
          </item>
          <item>
+          <widget class="QCheckBox" name="playerStartMaximized">
+           <property name="text">
+            <string>Start with maximized window</string>
+           </property>
+          </widget>
+         </item>
+         <item>
           <widget class="QCheckBox" name="playerStartFullscreen">
            <property name="text">
             <string>Start in fullscreen mode</string>

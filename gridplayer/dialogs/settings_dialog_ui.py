@@ -94,6 +94,9 @@ class Ui_SettingsDialog:
         self.playerStayOnTop = QtWidgets.QCheckBox(self.page_general_player)
         self.playerStayOnTop.setObjectName("playerStayOnTop")
         self.lay_section_player.addWidget(self.playerStayOnTop)
+        self.playerStartMaximized = QtWidgets.QCheckBox(self.page_general_player)
+        self.playerStartMaximized.setObjectName("playerStartMaximized")
+        self.lay_section_player.addWidget(self.playerStartMaximized)
         self.playerStartFullscreen = QtWidgets.QCheckBox(self.page_general_player)
         self.playerStartFullscreen.setObjectName("playerStartFullscreen")
         self.lay_section_player.addWidget(self.playerStartFullscreen)
@@ -665,6 +668,9 @@ class Ui_SettingsDialog:
             _translate("SettingsDialog", "Allow only one instance")
         )
         self.playerStayOnTop.setText(_translate("SettingsDialog", "Stay on top"))
+        self.playerStartMaximized.setText(
+            _translate("SettingsDialog", "Start with maximized window")
+        )
         self.playerStartFullscreen.setText(
             _translate("SettingsDialog", "Start in fullscreen mode")
         )

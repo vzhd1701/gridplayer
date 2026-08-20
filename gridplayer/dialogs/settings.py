@@ -77,6 +77,7 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
             "player/inhibit_screensaver": self.playerInhibitScreensaver,
             "player/one_instance": self.playerOneInstance,
             "player/stay_on_top": self.playerStayOnTop,
+            "player/start_maximized": self.playerStartMaximized,
             "player/start_fullscreen": self.playerStartFullscreen,
             "player/show_overlay_border": self.playerShowOverlayBorder,
             "player/color_scheme": self.playerColorScheme,
