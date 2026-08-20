@@ -1,11 +1,19 @@
-from collections import Counter
-from typing import Dict
-
+from PyQt5.QtCore import QEvent, Qt
 from PyQt5.QtGui import QIcon, QKeySequence
 from PyQt5.QtWidgets import QAction
 
 from gridplayer.params.actions import ACTIONS
 from gridplayer.player.managers.base import ManagerBase
+from gridplayer.settings import Settings
+from gridplayer.utils.keymap import (
+    KeymapOverrides,
+    MouseButtonSequence,
+    default_keymap,
+    find_duplicate_shortcuts,
+    merge_keymap,
+    qkeysequences_for_shortcut,
+    split_shortcuts,
+)
 from gridplayer.widgets.custom_menu import CustomMenu
 
 
@@ -47,7 +55,7 @@ class QDynamicAction(QAction):
             return self._title[self.toggle()]
 
         if isinstance(self._title, tuple):
-            raise ValueError("Title is tuple with no toggle function")
+            raise TypeError("Title is tuple with no toggle function")
 
         return self._title
 
@@ -57,13 +65,13 @@ class QDynamicAction(QAction):
             return self._icon_id[self.toggle()]
 
         if isinstance(self._icon_id, tuple):
-            raise ValueError("Icon ID is tuple with no toggle function")
+            raise TypeError("Icon ID is tuple with no toggle function")
 
         return self._icon_id
 
     def adapt(self):
-        self.setEnabled(self.is_enabled)
-
+        # Keep this QAction enabled so shortcuts still fire. enable_if is
+        # applied to a menu proxy (grayed out) and checked again on invoke.
         if self.icon_id:
             self.setIcon(QIcon.fromTheme(self.icon_id))
 
@@ -79,10 +87,33 @@ class QDynamicAction(QAction):
             self.setCheckable(True)
             self.setChecked(self.check_if())
 
-    def _generate_submenu(self):
-        actions = self.menu_generator()
+    def to_menu_action(self, parent) -> QAction:
+        """Menu-only stand-in: grayed out when enable_if is false."""
+        self.adapt()
 
-        generated_menu = CustomMenu()
+        proxy = QAction(self.icon(), self.text(), parent)
+        proxy.setShortcuts(self.shortcuts())
+        # Display the chord in the menu without registering a second window shortcut.
+        proxy.setShortcutContext(Qt.WidgetShortcut)
+        proxy.setShortcutVisibleInContextMenu(True)
+        proxy.setEnabled(self.is_enabled)
+
+        if self.isCheckable():
+            proxy.setCheckable(True)
+            proxy.setChecked(self.isChecked())
+
+        submenu = self.menu()
+        if submenu is not None:
+            self.setMenu(None)
+            proxy.setMenu(submenu)
+        else:
+            proxy.triggered.connect(self.trigger)
+
+        return proxy
+
+    def _generate_submenu(self):
+        generated_menu = CustomMenu(parent=self.parent())
+        actions = self.menu_generator(generated_menu)
 
         for a in actions:
             if a == "---":
@@ -92,8 +123,10 @@ class QDynamicAction(QAction):
             if a.is_skipped:
                 continue
 
-            a.adapt()
-            generated_menu.addAction(a)
+            if a.parent() is not generated_menu:
+                a.setParent(generated_menu)
+
+            generated_menu.addAction(a.to_menu_action(generated_menu))
 
         self.setMenu(generated_menu)
 
@@ -102,43 +135,173 @@ class ActionsManager(ManagerBase):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
-        _raise_on_duplicate_shortcuts()
+        self._mouse_index: dict[str, str] = {}
+        self._bindings: dict[str, list[str]] = {}
+        self._invoking = False
 
         self._ctx.actions = self._make_actions()
+        self._ctx.actions_manager = self
 
-    def _make_actions(self) -> Dict[str, QDynamicAction]:
-        actions: Dict[str, QDynamicAction] = {}
+        self.apply_bindings()
+
+    @property
+    def event_map(self):
+        """Mouse chords on the player window itself (empty grid / chrome).
+
+        Events on ``VideoBlock`` children are handled there instead — Qt only
+        delivers these filter events for the player widget, not its children,
+        so video-area binds are not double-fired.
+        """
+        return {
+            QEvent.MouseButtonRelease: self.handle_mouse_event,
+            QEvent.MouseButtonDblClick: self.handle_mouse_event,
+            QEvent.Wheel: self.handle_mouse_event,
+        }
+
+    def apply_bindings(self, overrides: KeymapOverrides | None = None):
+        """Apply effective keymap to QActions and rebuild mouse reverse index.
+
+        ``overrides`` is the sparse ``player/keymap`` setting (as emitted from
+        SettingsManager), or a dict of overrides. When omitted, reads Settings.
+        """
+        if overrides is None:
+            overrides = Settings().get("player/keymap")
+
+        bindings = merge_keymap(default_keymap(), overrides)
+
+        duplicates = find_duplicate_shortcuts(bindings)
+        if duplicates:
+            # Corrupt / hand-edited settings should not crash the player
+            self._log.error(
+                "Duplicate shortcuts in keymap, falling back to defaults: %s",
+                duplicates,
+            )
+            bindings = default_keymap()
+
+        self._bindings = {k: list(v) for k, v in bindings.items()}
+        self._mouse_index = {}
+
+        parent = self.parent()
+
+        # Phase 1: detach and clear every action so no stale chords remain
+        for action in self._ctx.actions.values():
+            if action in parent.actions():
+                parent.removeAction(action)
+            action.setShortcuts([])
+
+        # Phase 2: apply normalized keyboard / mouse bindings
+        for cmd_name, action in self._ctx.actions.items():
+            if action.menu_generator:
+                continue
+
+            shortcuts = self._bindings.get(cmd_name, [])
+            keyboard_keys, mouse_keys = split_shortcuts(shortcuts)
+
+            for mouse_key in mouse_keys:
+                self._mouse_index[mouse_key] = cmd_name
+
+            if not keyboard_keys:
+                continue
+
+            # Expand logical Enter → main Return + keypad Enter (both physical keys)
+            sequences: list[QKeySequence] = []
+            for key in keyboard_keys:
+                sequences.extend(qkeysequences_for_shortcut(key))
+            if not sequences:
+                continue
+
+            action.setEnabled(True)
+            action.setShortcuts(sequences)
+            parent.addAction(action)
+
+    def trigger(self, action_id: str) -> bool:
+        """Invoke an action the same way a menu/shortcut would."""
+        action = self._ctx.actions.get(action_id)
+        if action is None or action.menu_generator:
+            return False
+
+        if not action.is_enabled:
+            return False
+
+        action.trigger()
+        return True
+
+    def action_for_mouse_sequence(
+        self, sequence: str | MouseButtonSequence
+    ) -> str | None:
+        return self._mouse_index.get(str(sequence))
+
+    def handle_mouse_event(self, event) -> bool:
+        """Resolve mouse event via keymap and trigger. Returns True if handled."""
+
+        if self._ctx.commands.internal_dnd_handle_event(event):
+            return True
+
+        try:
+            seq = MouseButtonSequence.from_event(event)
+        except ValueError:
+            return False
+
+        if seq.is_click and getattr(self._ctx, "is_disable_mouse_click_events", False):
+            return False
+
+        if seq.is_wheel and getattr(self._ctx, "is_disable_mouse_wheel_events", False):
+            return False
+
+        action_id = self._mouse_index.get(seq.sequence)
+        if not action_id:
+            return False
+
+        return self.trigger(action_id)
+
+    def is_mouse_event_bound(self, event) -> bool:
+        try:
+            seq = MouseButtonSequence.from_event(event)
+        except ValueError:
+            return False
+        return seq.sequence in self._mouse_index
+
+    def _make_actions(self) -> dict[str, QDynamicAction]:
+        actions: dict[str, QDynamicAction] = {}
 
         for cmd_name, cmd in ACTIONS.items():
             action = self._make_action(cmd)
-
-            if action.shortcut():
-                self.parent().addAction(action)
-
             actions[cmd_name] = action
 
         return actions
 
-    def _make_action(self, cmd):
+    def _make_action(self, cmd, parent=None):
         if cmd == "---":
             return cmd
 
         action = QDynamicAction(
-            title=cmd["title"], icon_id=cmd.get("icon"), parent=self.parent()
+            title=cmd["title"],
+            icon_id=cmd.get("icon"),
+            parent=parent if parent is not None else self.parent(),
         )
 
         # menus can't have shortcuts
         if cmd.get("menu_generator"):
             action.menu_generator = self._resolve_menu_generator(cmd["menu_generator"])
         else:
-            if cmd.get("key"):
-                action.setShortcut(QKeySequence(cmd["key"], QKeySequence.PortableText))
-
-            action.triggered.connect(self._ctx.commands.resolve(cmd["func"]))
+            command = self._ctx.commands.resolve(cmd["func"])
+            action.triggered.connect(
+                lambda _checked=False, a=action, c=command: self._run_action(a, c)
+            )
 
         self._map_dynamic_functions(action, cmd)
 
         return action
+
+    def _run_action(self, action: QDynamicAction, command) -> None:
+        if self._invoking or not action.is_enabled:
+            return
+
+        self._invoking = True
+        try:
+            command()
+        finally:
+            self._invoking = False
 
     def _map_dynamic_functions(self, action, cmd):
         dynamic_functions = [
@@ -156,18 +319,7 @@ class ActionsManager(ManagerBase):
 
     def _resolve_menu_generator(self, menu_generator):
         menu_generator_func = self._ctx.commands.resolve(menu_generator)
-        return lambda: self._generate_actions(menu_generator_func())
+        return lambda parent=None: self._generate_actions(menu_generator_func(), parent)
 
-    def _generate_actions(self, templates):
-        return [self._make_action(cmd) for cmd in templates]
-
-
-def _raise_on_duplicate_shortcuts():
-    shortcuts = [c["key"] for c in ACTIONS.values() if c.get("key")]
-
-    duplicate_shortcuts = [
-        key for key, count in Counter(shortcuts).items() if count > 1
-    ]
-
-    if duplicate_shortcuts:
-        raise RuntimeError(f"Duplicate shortcuts found: {duplicate_shortcuts}")
+    def _generate_actions(self, templates, parent=None):
+        return [self._make_action(cmd, parent=parent) for cmd in templates]

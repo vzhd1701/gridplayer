@@ -1,7 +1,7 @@
 from PyQt5 import QtCore, QtGui, QtWidgets
 
 
-class Ui_SettingsDialog(object):
+class Ui_SettingsDialog:
     def setupUi(self, SettingsDialog):
         SettingsDialog.setObjectName("SettingsDialog")
         SettingsDialog.resize(732, 451)
@@ -23,6 +23,8 @@ class Ui_SettingsDialog(object):
         font.setWeight(75)
         item.setFont(font)
         item.setFlags(QtCore.Qt.NoItemFlags)
+        self.section_index.addItem(item)
+        item = QtWidgets.QListWidgetItem()
         self.section_index.addItem(item)
         item = QtWidgets.QListWidgetItem()
         self.section_index.addItem(item)
@@ -61,6 +63,22 @@ class Ui_SettingsDialog(object):
         self.lay_section_player = QtWidgets.QVBoxLayout(self.page_general_player)
         self.lay_section_player.setContentsMargins(0, 0, 0, 0)
         self.lay_section_player.setObjectName("lay_section_player")
+        self.formLayout_color_scheme = QtWidgets.QFormLayout()
+        self.formLayout_color_scheme.setFieldGrowthPolicy(
+            QtWidgets.QFormLayout.FieldsStayAtSizeHint
+        )
+        self.formLayout_color_scheme.setObjectName("formLayout_color_scheme")
+        self.playerColorSchemeLabel = QtWidgets.QLabel(self.page_general_player)
+        self.playerColorSchemeLabel.setObjectName("playerColorSchemeLabel")
+        self.formLayout_color_scheme.setWidget(
+            0, QtWidgets.QFormLayout.LabelRole, self.playerColorSchemeLabel
+        )
+        self.playerColorScheme = QtWidgets.QComboBox(self.page_general_player)
+        self.playerColorScheme.setObjectName("playerColorScheme")
+        self.formLayout_color_scheme.setWidget(
+            0, QtWidgets.QFormLayout.FieldRole, self.playerColorScheme
+        )
+        self.lay_section_player.addLayout(self.formLayout_color_scheme)
         self.playerPauseBackgroundVideos = QtWidgets.QCheckBox(self.page_general_player)
         self.playerPauseBackgroundVideos.setObjectName("playerPauseBackgroundVideos")
         self.lay_section_player.addWidget(self.playerPauseBackgroundVideos)
@@ -76,6 +94,12 @@ class Ui_SettingsDialog(object):
         self.playerStayOnTop = QtWidgets.QCheckBox(self.page_general_player)
         self.playerStayOnTop.setObjectName("playerStayOnTop")
         self.lay_section_player.addWidget(self.playerStayOnTop)
+        self.playerStartMaximized = QtWidgets.QCheckBox(self.page_general_player)
+        self.playerStartMaximized.setObjectName("playerStartMaximized")
+        self.lay_section_player.addWidget(self.playerStartMaximized)
+        self.playerStartFullscreen = QtWidgets.QCheckBox(self.page_general_player)
+        self.playerStartFullscreen.setObjectName("playerStartFullscreen")
+        self.lay_section_player.addWidget(self.playerStartFullscreen)
         self.playerShowOverlayBorder = QtWidgets.QCheckBox(self.page_general_player)
         self.playerShowOverlayBorder.setObjectName("playerShowOverlayBorder")
         self.lay_section_player.addWidget(self.playerShowOverlayBorder)
@@ -183,6 +207,17 @@ class Ui_SettingsDialog(object):
         self.label_4.setObjectName("label_4")
         self.lay_page_general_language.addWidget(self.label_4)
         self.section_page.addWidget(self.page_general_language)
+        self.page_general_shortcuts = QtWidgets.QWidget()
+        self.page_general_shortcuts.setObjectName("page_general_shortcuts")
+        self.lay_page_general_shortcuts = QtWidgets.QVBoxLayout(
+            self.page_general_shortcuts
+        )
+        self.lay_page_general_shortcuts.setContentsMargins(0, 0, 0, 0)
+        self.lay_page_general_shortcuts.setObjectName("lay_page_general_shortcuts")
+        self.keymapEditor = KeymapEditor(self.page_general_shortcuts)
+        self.keymapEditor.setObjectName("keymapEditor")
+        self.lay_page_general_shortcuts.addWidget(self.keymapEditor)
+        self.section_page.addWidget(self.page_general_shortcuts)
         self.page_misc_streaming = QtWidgets.QWidget()
         self.page_misc_streaming.setObjectName("page_misc_streaming")
         self.lay_page_general_streams = QtWidgets.QVBoxLayout(self.page_misc_streaming)
@@ -268,14 +303,19 @@ class Ui_SettingsDialog(object):
         self.playlistTrackChanges = QtWidgets.QCheckBox(self.page_defaults_playlist)
         self.playlistTrackChanges.setObjectName("playlistTrackChanges")
         self.lay_page_defaults_playlist.addWidget(self.playlistTrackChanges)
-        self.playlistDisableClickPause = QtWidgets.QCheckBox(
+        self.playlistDisableClickEvents = QtWidgets.QCheckBox(
             self.page_defaults_playlist
         )
-        self.playlistDisableClickPause.setObjectName("playlistDisableClickPause")
-        self.lay_page_defaults_playlist.addWidget(self.playlistDisableClickPause)
-        self.playlistDisableWheelSeek = QtWidgets.QCheckBox(self.page_defaults_playlist)
-        self.playlistDisableWheelSeek.setObjectName("playlistDisableWheelSeek")
-        self.lay_page_defaults_playlist.addWidget(self.playlistDisableWheelSeek)
+        self.playlistDisableClickEvents.setObjectName("playlistDisableClickEvents")
+        self.lay_page_defaults_playlist.addWidget(self.playlistDisableClickEvents)
+        self.playlistDisableWheelEvents = QtWidgets.QCheckBox(
+            self.page_defaults_playlist
+        )
+        self.playlistDisableWheelEvents.setObjectName("playlistDisableWheelEvents")
+        self.lay_page_defaults_playlist.addWidget(self.playlistDisableWheelEvents)
+        self.playlistDisableOverlay = QtWidgets.QCheckBox(self.page_defaults_playlist)
+        self.playlistDisableOverlay.setObjectName("playlistDisableOverlay")
+        self.lay_page_defaults_playlist.addWidget(self.playlistDisableOverlay)
         self.formLayout_2 = QtWidgets.QFormLayout()
         self.formLayout_2.setFieldGrowthPolicy(
             QtWidgets.QFormLayout.FieldsStayAtSizeHint
@@ -459,6 +499,7 @@ class Ui_SettingsDialog(object):
         font.setBold(True)
         font.setWeight(75)
         self.label_9.setFont(font)
+        self.label_9.setOpenExternalLinks(True)
         self.label_9.setObjectName("label_9")
         self.lay_page_misc_advanced.addWidget(self.label_9)
         self.miscVLCOptions = QtWidgets.QLineEdit(self.page_misc_advanced)
@@ -593,22 +634,27 @@ class Ui_SettingsDialog(object):
         item = self.section_index.item(1)
         item.setText(_translate("SettingsDialog", "Player"))
         item = self.section_index.item(2)
-        item.setText(_translate("SettingsDialog", "Language"))
+        item.setText(_translate("SettingsDialog", "Shortcuts"))
         item = self.section_index.item(3)
-        item.setText(_translate("SettingsDialog", "Defaults"))
+        item.setText(_translate("SettingsDialog", "Language"))
         item = self.section_index.item(4)
-        item.setText(_translate("SettingsDialog", "Playlist"))
+        item.setText(_translate("SettingsDialog", "Defaults"))
         item = self.section_index.item(5)
-        item.setText(_translate("SettingsDialog", "Video"))
+        item.setText(_translate("SettingsDialog", "Playlist"))
         item = self.section_index.item(6)
-        item.setText(_translate("SettingsDialog", "Miscellaneous"))
+        item.setText(_translate("SettingsDialog", "Video"))
         item = self.section_index.item(7)
-        item.setText(_translate("SettingsDialog", "Streaming"))
+        item.setText(_translate("SettingsDialog", "Miscellaneous"))
         item = self.section_index.item(8)
-        item.setText(_translate("SettingsDialog", "Logging"))
+        item.setText(_translate("SettingsDialog", "Streaming"))
         item = self.section_index.item(9)
+        item.setText(_translate("SettingsDialog", "Logging"))
+        item = self.section_index.item(10)
         item.setText(_translate("SettingsDialog", "Advanced"))
         self.section_index.setSortingEnabled(__sortingEnabled)
+        self.playerColorSchemeLabel.setText(
+            _translate("SettingsDialog", "Color scheme")
+        )
         self.playerPauseBackgroundVideos.setText(
             _translate("SettingsDialog", "Pause background videos on single mode")
         )
@@ -622,6 +668,12 @@ class Ui_SettingsDialog(object):
             _translate("SettingsDialog", "Allow only one instance")
         )
         self.playerStayOnTop.setText(_translate("SettingsDialog", "Stay on top"))
+        self.playerStartMaximized.setText(
+            _translate("SettingsDialog", "Start with maximized window")
+        )
+        self.playerStartFullscreen.setText(
+            _translate("SettingsDialog", "Start in fullscreen mode")
+        )
         self.playerShowOverlayBorder.setText(
             _translate("SettingsDialog", "Show overlay border for active video")
         )
@@ -645,7 +697,7 @@ class Ui_SettingsDialog(object):
         self.label_4.setText(
             _translate(
                 "SettingsDialog",
-                '<p>If you have a handful of free time and a desire to support this project, please <a href="https://crowdin.com/project/gridplayer">help with the translation</a>. No coding skills or special software is required!</p>',
+                '<p>If you have a handful of free time and a desire to support this project, please <a href="https://crowdin.com/project/gridplayer">help with the translation</a>. No coding skills or special software is required!</p><p><a href="https://github.com/vzhd1701/gridplayer#translations">Full list of translators</a></p>',
             )
         )
         self.streamingHLSVIAStreamlink.setText(
@@ -678,11 +730,14 @@ class Ui_SettingsDialog(object):
         self.playlistTrackChanges.setText(
             _translate("SettingsDialog", "Warn about unsaved changes")
         )
-        self.playlistDisableClickPause.setText(
-            _translate("SettingsDialog", "Disable pause with left mouse click")
+        self.playlistDisableClickEvents.setText(
+            _translate("SettingsDialog", "Disable mouse click events")
         )
-        self.playlistDisableWheelSeek.setText(
-            _translate("SettingsDialog", "Disable seek with mouse wheel")
+        self.playlistDisableWheelEvents.setText(
+            _translate("SettingsDialog", "Disable mouse wheel events")
+        )
+        self.playlistDisableOverlay.setText(
+            _translate("SettingsDialog", "Disable overlay")
         )
         self.playlistSeekSyncModeLabel.setText(
             _translate("SettingsDialog", "Seek sync mode")
@@ -739,5 +794,6 @@ class Ui_SettingsDialog(object):
         self.logFileOpen.setText(_translate("SettingsDialog", "Open log file"))
 
 
+from gridplayer.widgets.keymap_tree_view import KeymapEditor
 from gridplayer.widgets.language_list import LanguageList
 from gridplayer.widgets.resolver_patterns_list import ResolverPatternsList

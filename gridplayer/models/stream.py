@@ -1,30 +1,31 @@
 import re
+from collections.abc import Iterable
 from dataclasses import dataclass
-from typing import Dict, Iterable, Optional, Tuple
+from typing import Optional
 
 
-class HashableDict(dict):  # noqa: WPS600
+class HashableDict(dict):
     def __hash__(self):
         return hash(frozenset(self.items()))
 
 
 @dataclass(frozen=True)
-class StreamSessionOpts(object):
+class StreamSessionOpts:
     service: str
-    session_headers: Optional[HashableDict]
+    session_headers: HashableDict | None
 
 
 @dataclass(frozen=True)
-class Stream(object):
+class Stream:
     url: str
     protocol: str
     is_audio_only: bool = False
-    session: Optional[StreamSessionOpts] = None
+    session: StreamSessionOpts | None = None
     audio_tracks: Optional["Streams"] = None
 
 
-class Streams(object):
-    def __init__(self, streams: Optional[Dict[str, Stream]] = None):
+class Streams:
+    def __init__(self, streams: dict[str, Stream] | None = None):
         if streams:
             self.streams = HashableDict(streams)
         else:
@@ -36,7 +37,7 @@ class Streams(object):
     def __getitem__(self, key):
         return self.streams[key]
 
-    def __setitem__(self, key, value):  # noqa: WPS110
+    def __setitem__(self, key, value):
         self.streams[key] = value
 
     def __len__(self):
@@ -48,46 +49,46 @@ class Streams(object):
     def __reversed__(self):
         return reversed(self.streams)
 
-    def items(self) -> Iterable[Tuple[str, Stream]]:  # noqa: WPS110
+    def items(self) -> Iterable[tuple[str, Stream]]:
         return self.streams.items()
 
     @property
-    def video_streams(self) -> Dict[str, Stream]:
+    def video_streams(self) -> dict[str, Stream]:
         return {k: v for k, v in self.streams.items() if not v.is_audio_only}
 
     @property
-    def audio_only_streams(self) -> Dict[str, Stream]:
+    def audio_only_streams(self) -> dict[str, Stream]:
         return {k: v for k, v in self.streams.items() if v.is_audio_only}
 
     @property
-    def best_audio_only(self) -> Optional[Tuple[str, Stream]]:
+    def best_audio_only(self) -> tuple[str, Stream] | None:
         if not self.audio_only_streams:
             return None
 
         return list(self.audio_only_streams.items())[-1]
 
     @property
-    def worst_audio_only(self) -> Optional[Tuple[str, Stream]]:
+    def worst_audio_only(self) -> tuple[str, Stream] | None:
         if not self.audio_only_streams:
             return None
 
-        return list(self.audio_only_streams.items())[0]
+        return next(iter(self.audio_only_streams.items()))
 
     @property
-    def best(self) -> Tuple[str, Stream]:
+    def best(self) -> tuple[str, Stream]:
         if self.video_streams:
             return list(self.video_streams.items())[-1]
 
         return self.best_audio_only
 
     @property
-    def worst(self) -> Tuple[str, Stream]:
+    def worst(self) -> tuple[str, Stream]:
         if self.video_streams:
-            return list(self.video_streams.items())[0]
+            return next(iter(self.video_streams.items()))
 
         return self.worst_audio_only
 
-    def by_quality(self, quality: str) -> Tuple[str, Stream]:
+    def by_quality(self, quality: str) -> tuple[str, Stream]:
         standard_quality_map = {
             "best": self.best,
             "worst": self.worst,
@@ -103,7 +104,7 @@ class Streams(object):
 
         return self._guess_quality(quality)
 
-    def _guess_quality(self, quality: str) -> Tuple[str, Stream]:
+    def _guess_quality(self, quality: str) -> tuple[str, Stream]:
         quality_lines = re.search(r"^(\d+)", quality)
         if not quality_lines:
             return self.best

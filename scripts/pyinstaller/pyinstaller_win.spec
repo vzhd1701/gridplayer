@@ -80,7 +80,6 @@ add_data = [
     (os.path.join(BUILD_DIR, "mime.ico"), '.')
 ]
 add_data += collect_data_files('streamlink.plugins', include_py_files=True)
-add_data += copy_metadata('python-vlc')
 
 block_cipher = None
 
@@ -120,8 +119,7 @@ exe = EXE(pyz,
           codesign_identity=None,
           entitlements_file=None ,
           version=os.path.join(BUILD_DIR, "version_info.py"),
-          icon=os.path.join(BUILD_DIR, "main.ico"),
-          manifest=os.path.join(workpath, '{0}.exe.manifest'.format(specnm)))
+          icon=os.path.join(BUILD_DIR, "main.ico"))
 
 coll = COLLECT(exe,
                a.binaries,

@@ -2,15 +2,15 @@ from PyQt5.QtCore import QEvent, QPoint, QRect, Qt, QTimer, pyqtSignal, pyqtSlot
 from PyQt5.QtGui import QGuiApplication, QPalette, QRegion
 from PyQt5.QtWidgets import (
     QApplication,
-    QGraphicsOpacityEffect,
     QHBoxLayout,
     QStackedLayout,
     QVBoxLayout,
     QWidget,
 )
 
+from gridplayer.params import env
 from gridplayer.params.static import OVERLAY_ACTIVITY_EVENT
-from gridplayer.settings import Settings
+from gridplayer.utils.compositor_linux import should_make_overlay_opaque
 from gridplayer.utils.qt import qt_connect
 from gridplayer.utils.time_txt import get_time_txt
 from gridplayer.widgets.video_overlay_buttons import (
@@ -35,17 +35,17 @@ PROPAGATED_EVENTS = (
     QEvent.MouseButtonDblClick,
     QEvent.Wheel,
     QEvent.ContextMenu,
-    QEvent.DragEnter,
 )
 
 PROPAGATED_EVENTS_FILTERED = (
+    QEvent.DragEnter,
     QEvent.DragMove,
     QEvent.DragLeave,
     QEvent.Drop,
 )
 
 
-class OverlayBlock(QWidget):  # noqa: WPS230
+class OverlayBlock(QWidget):
     set_vid_pos = pyqtSignal(float)
     set_volume = pyqtSignal(float)
 
@@ -58,9 +58,9 @@ class OverlayBlock(QWidget):  # noqa: WPS230
 
         self.setMouseTracking(True)
 
-        self._set_opacity(0.5)
-
         self.ui_setup()
+
+        self._set_opacity(0.5)
 
         self.ui_customize_dynamic()
 
@@ -78,7 +78,7 @@ class OverlayBlock(QWidget):  # noqa: WPS230
         self.progress_bar.hide()
         self.progress_bar_placeholder.show()
 
-    def ui_connect(self):  # noqa: WPS213
+    def ui_connect(self):
         qt_connect(
             (self.progress_bar.mouse_over, self.floating_progress.on_mouse_over),
             (self.progress_bar.mouse_left, self.floating_progress.on_mouse_left),
@@ -89,7 +89,7 @@ class OverlayBlock(QWidget):  # noqa: WPS230
             (self.volume_bar.position_changed, self.emit_volume_position),
         )
 
-    def ui_setup(self):  # noqa: WPS213
+    def ui_setup(self):
         layout_main = QStackedLayout(self)
 
         layout_main.setContentsMargins(0, 0, 0, 0)
@@ -167,12 +167,11 @@ class OverlayBlock(QWidget):  # noqa: WPS230
 
     @pyqtSlot(int, int)
     def set_position(self, position, length):
-        position_percent = position / length
+        position = max(0, position)
 
-        position_txt = get_time_txt(position // 1000, length // 1000)
-        length_txt = get_time_txt(length // 1000)
+        if length <= 0:
+            position_txt = get_time_txt(position // 1000)
 
-        if length == -1:
             self.floating_progress.hide()
 
             self.progress_bar.setEnabled(False)
@@ -182,15 +181,21 @@ class OverlayBlock(QWidget):  # noqa: WPS230
 
             self.label_progress.text = f"{position_txt}"
             self.label_progress.show()
-        else:
-            self.progress_bar.setEnabled(True)
-            self.progress_bar.show()
 
-            self.progress_bar_placeholder.hide()
+            return
 
-            self.floating_progress.length = length
-            self.label_progress.text = f"{position_txt} / {length_txt}"
-            self.progress_bar.position = position_percent
+        position_percent = position / length
+        position_txt = get_time_txt(position // 1000, length // 1000)
+        length_txt = get_time_txt(length // 1000)
+
+        self.progress_bar.setEnabled(True)
+        self.progress_bar.show()
+
+        self.progress_bar_placeholder.hide()
+
+        self.floating_progress.length = length
+        self.label_progress.text = f"{position_txt} / {length_txt}"
+        self.progress_bar.position = position_percent
 
     @pyqtSlot(float)
     def set_loop_start(self, position):
@@ -262,9 +267,14 @@ class OverlayBlock(QWidget):  # noqa: WPS230
         self.volume_button.setVisible(is_visible)
 
     def _set_opacity(self, opacity):
-        effect = QGraphicsOpacityEffect(self)
-        effect.setOpacity(opacity)
-        self.setGraphicsEffect(effect)
+        # Opacity lives on each OverlayWidget, not on this parent. A single
+        # QGraphicsOpacityEffect here cached the whole tree and left seams
+        # when the seek timer moved. Per-widget effects fade an already
+        # composited control (readable text/icons) without recaching siblings.
+        self.setGraphicsEffect(None)
+        self._overlay_opacity = opacity
+        for widget in self.findChildren(OverlayWidget):
+            widget.set_overlay_opacity(opacity)
 
 
 class OverlayBlockFloating(OverlayBlock):
@@ -275,7 +285,7 @@ class OverlayBlockFloating(OverlayBlock):
 
         self.init_flags()
 
-        if Settings().get("internal/opaque_hw_overlay"):
+        if env.IS_LINUX and should_make_overlay_opaque():
             self.make_opaque()
         else:
             self.is_opaque = False
@@ -314,12 +324,17 @@ class OverlayBlockFloating(OverlayBlock):
             | Qt.NoDropShadowWindowHint
         )
 
+        # workaround to avoid some compositors (KWin) making overlay opaque
+        if env.IS_LINUX:
+            self.setWindowOpacity(0.999)
+
     def make_opaque(self):
         self.setAttribute(Qt.WA_NoSystemBackground, False)
         self.setAttribute(Qt.WA_TranslucentBackground, False)
 
         self.setGraphicsEffect(None)
 
+        self._set_opacity(1.0)
         self.floating_progress.is_opaque = True
         self.is_opaque = True
 
@@ -385,6 +400,7 @@ class OverlayBlockFloating(OverlayBlock):
             QApplication.sendEvent(self.parent(), event)
         elif event.type() in PROPAGATED_EVENTS_FILTERED:
             self.parent().window().filter_event(event)
+            return True
 
         return super().event(event)
 

@@ -3,7 +3,6 @@ import sys
 from logging.config import dictConfig
 from logging.handlers import QueueHandler, QueueListener
 from pathlib import Path
-from typing import Optional
 
 from PyQt5 import QtCore
 
@@ -23,7 +22,7 @@ class QueueListenerRoot(QueueListener):
         super().handle(record)
 
 
-class StreamToLogger(object):
+class StreamToLogger:
     """
     Fake file-like stream object that redirects writes to a logger instance.
     """
@@ -44,7 +43,7 @@ class StreamToLogger(object):
         return False
 
 
-class QtLogHandler(object):
+class QtLogHandler:
     log_level_map = {
         QtCore.QtDebugMsg: logging.DEBUG,
         QtCore.QtInfoMsg: logging.INFO,
@@ -77,15 +76,15 @@ class QtLogHandler(object):
 def config_log(
     log_path: Path,
     log_level: int,
-    max_log_size: Optional[int] = None,
-    max_log_backups: Optional[int] = None,
+    max_log_size: int | None = None,
+    max_log_backups: int | None = None,
 ):
     config = {
         "version": 1,
         "formatters": {
             # Modify log message format here or replace with your custom formatter class
             "my_formatter": {
-                "format": "%(asctime)s (%(process)d) | %(name)s |"  # noqa: WPS323
+                "format": "%(asctime)s (%(process)d) | %(name)s |"
                 " %(levelname)s | %(message)s"
             }
         },
@@ -95,7 +94,7 @@ def config_log(
                 "class": "logging.StreamHandler",
                 "level": "DEBUG",
                 "formatter": "my_formatter",
-                "stream": sys.__stderr__,  # noqa: WPS609
+                "stream": sys.__stderr__,
             },
             "file": {
                 # Sends all log messages to a file

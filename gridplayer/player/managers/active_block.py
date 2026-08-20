@@ -45,6 +45,8 @@ class ActiveBlockManager(ManagerBase):
             "menu_generator_audio_track": self.menu_generator_audio_track,
             "next_active": self.next_active,
             "previous_active": self.previous_active,
+            "update_active_under_mouse": self.update_active_under_mouse,
+            "get_video_block_under_mouse": self.get_video_block_under_mouse,
         }
 
     @property
@@ -202,7 +204,7 @@ class ActiveBlockManager(ManagerBase):
         if is_modal_open():
             return
 
-        self._update_active_block(self._get_hover_video_block())
+        self._update_active_block(self.get_video_block_under_mouse())
         self.cmd_active("show_overlay")
 
     def update_active_reset(self):
@@ -248,7 +250,7 @@ class ActiveBlockManager(ManagerBase):
 
             self.active_block_change.emit(self._ctx.active_block)
 
-    def _get_hover_video_block(self):
+    def get_video_block_under_mouse(self):
         visible_blocks_under_cursor = (
             v for v in self._ctx.video_blocks if v.isVisible() and v.is_under_cursor()
         )

@@ -12,65 +12,69 @@ on:
       - "v[0-9]+.[0-9]+.[0-9]+"
 
 env:
-  BUILD_PYTHON_VERSION: 3.8
-  BUILD_POETRY_VERSION: 1.4
+  BUILD_PYTHON_VERSION: "3.10"
 
 jobs:
   build_python:
     runs-on: ubuntu-latest
-    env:
-      POETRY_VIRTUALENVS_CREATE: false
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v3
+      - uses: actions/checkout@v7
+      - uses: extractions/setup-just@v4
 
       - name: Set up Python ${{ env.BUILD_PYTHON_VERSION }}
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v7
         with:
           python-version: ${{ env.BUILD_PYTHON_VERSION }}
 
-      - name: Set up Poetry ${{ env.BUILD_POETRY_VERSION }}
-        uses: abatilo/actions-poetry@v2.0.0
-        with:
-          poetry-version: ${{ env.BUILD_POETRY_VERSION }}
+      - name: Install the latest version of uv
+        uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
 
       - name: Export requirements
-        run: poetry export -f requirements.txt --without-hashes --output requirements.txt
+        run: just build-requirements
 
       - name: Build project for distribution
-        run: poetry build
+        run: just build
 
       - name: Save release python requirements
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v7
         with:
           name: release_dist_reqs
-          path: requirements.txt
+          path: build/requirements.txt
 
       - name: Save release python packages
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v7
         with:
           name: release_dist_python
           path: dist
 
   build_mac:
     needs: build_python
-    runs-on: macos-latest
+    strategy:
+      matrix:
+        include:
+          - arch: x64
+            runner: macos-15-intel
+          - arch: arm64
+            runner: macos-15
+    runs-on: ${{ matrix.runner }}
+
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v7
+      - uses: extractions/setup-just@v4
 
       - name: Load release python requirements
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v8
         with:
           name: release_dist_reqs
           path: build
 
-      - uses: actions/setup-python@v4
+      - uses: actions/setup-python@v7
         with:
           python-version: ${{ env.BUILD_PYTHON_VERSION }}
 
-      - uses: actions/setup-node@v3
+      - uses: actions/setup-node@v7
         with:
-          node-version: 14
+          node-version: 20
 
       - name: Install requirements
         run: |
@@ -79,64 +83,68 @@ jobs:
 
       - name: Build
         run: |
-          bash scripts/pyinstaller/build_mac.sh
-          bash scripts/macos/build_dmg.sh
-          # Remove directory produced by pyinstaller
-          bash -c 'find dist -maxdepth 1 -mindepth 1 -type d -exec rm -r {} \;'
+          just ${{ matrix.arch == 'arm64' && 'build-macos-package-arm64' || 'build-macos-package' }}
+          just clean-pyinstaller-dist
 
-      - name: Save release binaries for macos x64
-        uses: actions/upload-artifact@v3
+      - name: Save release binaries for macos ${{ matrix.arch }}
+        uses: actions/upload-artifact@v7
         with:
-          name: release_dist_bin_macos_x64
+          name: release_dist_bin_macos_${{ matrix.arch }}
           path: dist
 
   build_win:
     needs: build_python
+    strategy:
+      matrix:
+        arch: [ x86, x64 ]
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v7
+      - uses: extractions/setup-just@v4
 
       - name: Load release python requirements
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v8
         with:
           name: release_dist_reqs
           path: build
 
-      - uses: actions/setup-python@v4
+      - uses: actions/setup-python@v7
         with:
           python-version: ${{ env.BUILD_PYTHON_VERSION }}
+          architecture: ${{ matrix.arch }}
 
       - name: Install requirements
-        uses: crazy-max/ghaction-chocolatey@v2
+        uses: crazy-max/ghaction-chocolatey@v4
         with:
           args: install wget zip
 
       - name: Build
+        env:
+          BUILD_ARCH: ${{ matrix.arch == 'x86' && 'win32' || 'win64' }}
         run: |
-          bash scripts/pyinstaller/build_win.sh
-          bash scripts/windows/build_packages.sh
-          # Remove directory produced by pyinstaller
-          bash -c 'find dist -maxdepth 1 -mindepth 1 -type d -exec rm -r {} \;'
+          just build-win-package
+          just clean-pyinstaller-dist
 
-      - name: Save release binaries for windows x64
-        uses: actions/upload-artifact@v3
+      - name: Save release binaries for windows ${{ matrix.arch }}
+        uses: actions/upload-artifact@v7
         with:
-          name: release_dist_bin_windows_x64
+          name: release_dist_bin_windows_${{ matrix.arch }}
           path: dist
 
   build_appimage:
     needs: build_python
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v7
+      - uses: extractions/setup-just@v4
 
       - name: Load release python packages
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v8
         with:
           name: release_dist_python
           path: dist
 
-      - uses: actions/setup-python@v4
+      - uses: actions/setup-python@v7
         with:
           python-version: ${{ env.BUILD_PYTHON_VERSION }}
 
@@ -146,54 +154,61 @@ jobs:
 
       - name: Build
         run: |
-          bash scripts/linux_meta/build.sh
-          bash scripts/appimage/build.sh
+          just build-linux-appimage
 
       - name: Save release binaries for linux x64
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v7
         with:
           name: release_dist_bin_linux_x64
           path: dist
 
   release:
     if: github.event_name == 'push' || github.event.inputs.tag != ''
-    needs: [build_win, build_mac, build_appimage]
+    needs: [ build_win, build_mac, build_appimage ]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v7
 
       - name: Extract release notes
         id: extract-release-notes
-        uses: ffurrer2/extract-release-notes@v1
+        uses: ffurrer2/extract-release-notes@v3
 
       - name: Load release python packages
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v8
         with:
           name: release_dist_python
           path: dist
 
       - name: Load release binaries for linux x64
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v8
         with:
           name: release_dist_bin_linux_x64
           path: dist
 
+      - name: Load release binaries for windows x86
+        uses: actions/download-artifact@v8
+        with:
+          name: release_dist_bin_windows_x86
+          path: dist
+
       - name: Load release binaries for windows x64
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v8
         with:
           name: release_dist_bin_windows_x64
           path: dist
 
       - name: Load release binaries for macos x64
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v8
         with:
           name: release_dist_bin_macos_x64
           path: dist
 
-      - name: Generate checksums
-        run: |
-          (cd dist && shasum -a 256 * > checksums.sha256)
+      - name: Load release binaries for macos arm64
+        uses: actions/download-artifact@v8
+        with:
+          name: release_dist_bin_macos_arm64
+          path: dist
 
       - name: Create Release
         if: github.event_name == 'push'

@@ -9,6 +9,13 @@ description: |
 architectures:
   - amd64
 
+title: {APP_NAME}
+contact: {APP_AUTHOR_CONTACT}
+donation: {APP_URL}
+issues: {APP_BUGTRACKER_URL}
+source-code: {APP_URL}
+website: {APP_URL}
+
 base: core22
 grade: stable
 confinement: strict
@@ -19,7 +26,7 @@ parts:
   # python multiprocessing fix
   snapcraft-preload:
     source: https://github.com/sergiusens/snapcraft-preload.git
-    source-commit: f1560b7a713f982546ea97629ff1557457faebb5
+    source-commit: 497f6770e7ced7670ba5e2318811db021bd8b6f7
     plugin: cmake
     cmake-parameters:
       - -DCMAKE_INSTALL_PREFIX=/
@@ -48,7 +55,7 @@ parts:
     override-build: |
       craftctl default
 
-      LIB_DIR="${CRAFT_PART_INSTALL}/usr/lib/${CRAFT_ARCH_TRIPLET}"
+      LIB_DIR="${CRAFT_PART_INSTALL}/usr/lib/${CRAFT_ARCH_TRIPLET_BUILD_FOR}"
       VLC_LIB_DIR="${LIB_DIR}/vlc"
 
       ${CRAFT_PROJECT_DIR}/blacklist_clean.sh "$LIB_DIR" ${CRAFT_PROJECT_DIR}/blacklist_snap.txt
@@ -68,20 +75,20 @@ parts:
       #LIBS="/var/lib/snapd/lib/gl:"
       #LIBS+="/var/lib/snapd/lib/gl32:"
       #LIBS+="/var/lib/snapd/void:"
-      #LIBS+="${CRAFT_PART_INSTALL}/usr/lib/${CRAFT_ARCH_TRIPLET}/pulseaudio:"
+      #LIBS+="${CRAFT_PART_INSTALL}/usr/lib/${CRAFT_ARCH_TRIPLET_BUILD_FOR}/pulseaudio:"
       #LIBS+="${VLC_LIB_DIR}:"
       #LIBS+="${CRAFT_PART_INSTALL}/lib:"
       #LIBS+="${CRAFT_PART_INSTALL}/usr/lib:"
-      #LIBS+="${CRAFT_PART_INSTALL}/lib/${CRAFT_ARCH_TRIPLET}:"
-      #LIBS+="${CRAFT_PART_INSTALL}/usr/lib/${CRAFT_ARCH_TRIPLET}:"
-      #LIBS+="${KDE_SNAP}/lib/${CRAFT_ARCH_TRIPLET}:"
-      #LIBS+="${KDE_SNAP}/usr/lib/${CRAFT_ARCH_TRIPLET}:"
+      #LIBS+="${CRAFT_PART_INSTALL}/lib/${CRAFT_ARCH_TRIPLET_BUILD_FOR}:"
+      #LIBS+="${CRAFT_PART_INSTALL}/usr/lib/${CRAFT_ARCH_TRIPLET_BUILD_FOR}:"
+      #LIBS+="${KDE_SNAP}/lib/${CRAFT_ARCH_TRIPLET_BUILD_FOR}:"
+      #LIBS+="${KDE_SNAP}/usr/lib/${CRAFT_ARCH_TRIPLET_BUILD_FOR}:"
       #LIBS+="${KDE_SNAP}/usr/lib:"
       #LIBS+="${KDE_SNAP}/lib:"
-      #LIBS+="${KDE_SNAP}/usr/lib/${CRAFT_ARCH_TRIPLET}/dri:"
-      #LIBS+="${KDE_SNAP}/usr/lib/${CRAFT_ARCH_TRIPLET}/pulseaudio:"
-      #LIBS+="${MAIN_SNAP}/lib/${CRAFT_ARCH_TRIPLET}:"
-      #LIBS+="${MAIN_SNAP}/usr/lib/${CRAFT_ARCH_TRIPLET}:"
+      #LIBS+="${KDE_SNAP}/usr/lib/${CRAFT_ARCH_TRIPLET_BUILD_FOR}/dri:"
+      #LIBS+="${KDE_SNAP}/usr/lib/${CRAFT_ARCH_TRIPLET_BUILD_FOR}/pulseaudio:"
+      #LIBS+="${MAIN_SNAP}/lib/${CRAFT_ARCH_TRIPLET_BUILD_FOR}:"
+      #LIBS+="${MAIN_SNAP}/usr/lib/${CRAFT_ARCH_TRIPLET_BUILD_FOR}:"
       #LIBS+="${MAIN_SNAP}/usr/lib:"
       #LIBS+="${MAIN_SNAP}/lib:"
 
@@ -92,8 +99,8 @@ parts:
     source: .
     plugin: python
     after: [snapcraft-preload, vlc]
-    build-environment:
-      - PIP_NO_BINARY: "pydantic"
+    stage-packages:
+    - libxcb-shape0
     python-packages:
       - ${CRAFT_PROJECT_DIR}/{WHL_FILE}
     build-packages:
@@ -166,7 +173,7 @@ apps:
     extensions:
       - kde-neon
     environment:
-      LD_LIBRARY_PATH: "$SNAP/usr/lib/x86_64-linux-gnu/pulseaudio:$SNAP/usr/lib/x86_64-linux-gnu/vlc"
+      LD_LIBRARY_PATH: "$SNAP/usr/lib/x86_64-linux-gnu/pulseaudio:$SNAP/usr/lib/x86_64-linux-gnu/vlc:$SNAP/usr/lib/x86_64-linux-gnu"
       DISABLE_WAYLAND: 1
       NO_AT_BRIDGE: 1 # disable dbind-WARNING warning
     desktop: usr/share/applications/{APP_ID}.desktop

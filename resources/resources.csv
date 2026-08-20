@@ -7,9 +7,10 @@ icon,icons/main/svg/big.svg,main_ico_big
 icon,icons/main/svg/normal.svg,main_ico_svg
 icon,icons/main/sys/macos.icns,main_ico_mac
 icon,icons/main/sys/windows.ico,main_ico_win
-icon,icons/flags/en_US.svg,flag_en_US
 icon,icons/flags/ar_SA.svg,flag_ar_SA
+icon,icons/flags/cs_CZ.svg,flag_cs_CZ
 icon,icons/flags/de_DE.svg,flag_de_DE
+icon,icons/flags/en_US.svg,flag_en_US
 icon,icons/flags/es_ES.svg,flag_es_ES
 icon,icons/flags/fr_FR.svg,flag_fr_FR
 icon,icons/flags/hu_HU.svg,flag_hu_HU
@@ -17,10 +18,14 @@ icon,icons/flags/it_IT.svg,flag_it_IT
 icon,icons/flags/ja_JP.svg,flag_ja_JP
 icon,icons/flags/ko_KR.svg,flag_ko_KR
 icon,icons/flags/nl_NL.svg,flag_nl_NL
+icon,icons/flags/no_NO.svg,flag_no_NO
 icon,icons/flags/pl_PL.svg,flag_pl_PL
 icon,icons/flags/pt_BR.svg,flag_pt_BR
 icon,icons/flags/ru_RU.svg,flag_ru_RU
+icon,icons/flags/sv_SE.svg,flag_sv_SE
+icon,icons/flags/vi_VN.svg,flag_vi_VN
 icon,icons/flags/zh_CN.svg,flag_zh_CN
+icon,icons/flags/zh_TW.svg,flag_zh_TW
 icon-symbolic,icons/basic/003-add.svg,add
 icon-symbolic,icons/basic/138-pages.svg,add-clipboard
 icon-symbolic,icons/basic/031-cancel.svg,close
@@ -108,6 +113,7 @@ icon-symbolic,icons/custom/062-play pause.svg,play-pause
 icon-symbolic,icons/custom/063-rotate.svg,rotate
 icon-symbolic,icons/custom/064-crop.svg,crop
 translation,translations/ar_SA.ts,ar_SA
+translation,translations/cs_CZ.ts,cs_CZ
 translation,translations/de_DE.ts,de_DE
 translation,translations/es_ES.ts,es_ES
 translation,translations/fr_FR.ts,fr_FR
@@ -116,7 +122,11 @@ translation,translations/it_IT.ts,it_IT
 translation,translations/ja_JP.ts,ja_JP
 translation,translations/ko_KR.ts,ko_KR
 translation,translations/nl_NL.ts,nl_NL
+translation,translations/no_NO.ts,no_NO
 translation,translations/pl_PL.ts,pl_PL
 translation,translations/pt_BR.ts,pt_BR
 translation,translations/ru_RU.ts,ru_RU
+translation,translations/sv_SE.ts,sv_SE
+translation,translations/vi_VN.ts,vi_VN
 translation,translations/zh_CN.ts,zh_CN
+translation,translations/zh_TW.ts,zh_TW

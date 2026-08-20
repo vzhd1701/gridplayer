@@ -1,6 +1,6 @@
 from multiprocessing import Semaphore
 
-from PyQt5.QtCore import QMargins, Qt
+from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import QWidget
 
 from gridplayer.params import env
@@ -110,7 +110,7 @@ class VideoFrameVLCHW(VideoFrameVLCProcess):
         if env.IS_MACOS:
             # Drawing using window id from another process is not possible on MacOS
             # https://stackoverflow.com/questions/583202/mac-os-x-can-one-process-render-to-another-processs-window
-            raise NotImplementedError()
+            raise NotImplementedError
 
         video_surface = QWidget(self)
         video_surface.setMouseTracking(True)
@@ -126,7 +126,4 @@ class VideoFrameVLCHW(VideoFrameVLCProcess):
         size = (self.size().width(), self.size().height())
         self.video_driver.adjust_view(size, self._aspect, self._scale, self._crop)
 
-        # Remove VLC crop black border
-        new_size = self.size().grownBy(QMargins(2, 2, 2, 2))
-        self.video_surface.resize(new_size)
-        self.video_surface.move(-2, -2)
+        self._apply_hw_crop_border_workaround()

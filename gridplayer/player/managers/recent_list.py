@@ -1,5 +1,4 @@
 from pathlib import Path
-from typing import List, Union
 
 from PyQt5.QtCore import pyqtSignal
 
@@ -14,6 +13,8 @@ from gridplayer.utils.qt import translate
 class RecentListManager(ManagerBase):
     videos_added = pyqtSignal(list)
     playlist_opened = pyqtSignal(Path)
+
+    error = pyqtSignal(str)
 
     @property
     def commands(self):
@@ -62,7 +63,13 @@ class RecentListManager(ManagerBase):
 
         return menu
 
-    def cmd_add_video(self, uri) -> None:
+    def cmd_add_video(self, uri: VideoURI) -> None:
+        if isinstance(uri, Path) and not uri.exists():
+            self.error.emit(
+                "{}\n\n{}".format(translate("Error", "File not found!"), uri)
+            )
+            return
+
         videos = [Video(uri=uri)]
 
         self.add_recent_videos(videos)
@@ -74,7 +81,7 @@ class RecentListManager(ManagerBase):
     def is_any_recent_videos(self) -> bool:
         return bool(Settings().get("recent_list_videos"))
 
-    def add_recent_videos(self, videos: List[Video]) -> None:
+    def add_recent_videos(self, videos: list[Video]) -> None:
         if not self.is_recent_list_enabled():
             return
 
@@ -131,7 +138,7 @@ class RecentListManager(ManagerBase):
         Settings().set("recent_list_playlists", recent_playlists)
 
 
-def elide_uri(uri: Union[VideoURI, Path], max_length: int = 100) -> str:
+def elide_uri(uri: VideoURI, max_length: int = 100) -> str:
     if len(str(uri)) <= max_length:
         return str(uri)
 

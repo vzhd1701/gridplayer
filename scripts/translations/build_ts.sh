@@ -6,8 +6,8 @@ SCRIPT_DIR="$( cd "$( dirname $0 )" && pwd )"
 
 . "scripts/init_app_vars.sh"
 
-BLACK=$(poetry run which black)
-PYLUPDATE=$(poetry run which pylupdate5)
+BLACK=$(uv run --frozen ruff format)
+PYLUPDATE=$(uv run --frozen which pylupdate5)
 DEST_TS_FILE="$RESOURCES_DIR/translations/en_US.ts"
 
 TEMPD=$(mktemp -d)
@@ -20,7 +20,7 @@ APP_BASE_TMP="$TEMPD/$APP_MODULE"
 echo "Expanding source code lines"
 
 # Expanding all lines so it will be easier for PYLUPDATE to parse long translate(***)
-$BLACK -q -l 200000000000 -C --exclude "resources_bin.py" "$APP_BASE_TMP"
+$BLACK -q --line-length 200000000000 --config "format.skip-magic-trailing-comma = true" --exclude "resources_bin.py" "$APP_BASE_TMP"
 
 echo "Extracting translation lines"
 cp "$DEST_TS_FILE" "$APP_BASE_TMP/en_US.ts"

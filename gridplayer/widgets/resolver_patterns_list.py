@@ -1,5 +1,3 @@
-from typing import Optional
-
 from PyQt5 import QtWidgets
 from PyQt5.QtCore import QSize, Qt, pyqtSignal
 from PyQt5.QtGui import QDropEvent
@@ -45,7 +43,7 @@ class TableWidgetDragRows(QtWidgets.QTableWidget):
 
         self.itemSelectionChanged.connect(self._on_selection_changed)
 
-    def ui_init(self):  # noqa: WPS213
+    def ui_init(self):
         self.setStyle(RowDropIndicatorStyle("Fusion"))
 
         self.setDragEnabled(True)
@@ -243,7 +241,7 @@ class ResolverPatternsList(QtWidgets.QWidget):
 
     def rows_data(self) -> ResolverPatterns:
         return ResolverPatterns(
-            __root__=[
+            [
                 ResolverPattern(
                     pattern=self.table.item(row_idx, 0).text(),
                     pattern_type=self.table.cellWidget(row_idx, 1).currentData(),
@@ -257,7 +255,7 @@ class ResolverPatternsList(QtWidgets.QWidget):
         for row in data_rows:
             self.add_row(row)
 
-    def add_row(self, row_data: Optional[ResolverPattern] = None):
+    def add_row(self, row_data: ResolverPattern | None = None):
         if self.empty_row_idx is not None:
             self.table.set_current_row_idx(self.empty_row_idx)
             return

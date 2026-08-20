@@ -1,7 +1,7 @@
 from pathlib import Path
-from typing import Any, Tuple
+from typing import Any
 
-from PyQt5.QtCore import QDir, pyqtSignal
+from PyQt5.QtCore import QDir, QTimer, pyqtSignal
 from PyQt5.QtWidgets import QFileDialog, QMessageBox
 
 from gridplayer.dialogs.messagebox import QCustomMessageBox
@@ -14,17 +14,21 @@ from gridplayer.settings import Settings
 from gridplayer.utils.files import get_playlist_path
 from gridplayer.utils.qt import translate
 
+_TITLE_REFRESH_MS = 500
+
 
 class PlaylistManager(ManagerBase):
     playlist_closed = pyqtSignal()
     playlist_file_loaded = pyqtSignal(Path)
+    playlist_saved = pyqtSignal(Path)
     window_state_loaded = pyqtSignal(WindowState)
     grid_state_loaded = pyqtSignal(GridState)
     snapshots_loaded = pyqtSignal(dict)
     seek_sync_mode_loaded = pyqtSignal(SeekSyncMode)
     shuffle_on_load_loaded = pyqtSignal(bool)
-    disable_click_pause_loaded = pyqtSignal(bool)
-    disable_wheel_seek_loaded = pyqtSignal(bool)
+    disable_mouse_click_events_loaded = pyqtSignal(bool)
+    disable_mouse_wheel_events_loaded = pyqtSignal(bool)
+    disable_overlay_loaded = pyqtSignal(bool)
     videos_loaded = pyqtSignal(list)
 
     alert = pyqtSignal()
@@ -35,12 +39,18 @@ class PlaylistManager(ManagerBase):
 
         self._saved_playlist = None
 
+        self._title_timer = QTimer(self)
+        self._title_timer.setInterval(_TITLE_REFRESH_MS)
+        self._title_timer.timeout.connect(self.update_window_title)
+
     @property
     def commands(self):
         return {
             "open_playlist": self.cmd_open_playlist,
             "save_playlist": self.cmd_save_playlist,
+            "save_playlist_as": self.cmd_save_playlist_as,
             "close_playlist": self.cmd_close_playlist,
+            "is_playlist_changed": self._is_playlist_changed,
         }
 
     def cmd_open_playlist(self):
@@ -51,7 +61,7 @@ class PlaylistManager(ManagerBase):
         dialog.setFileMode(QFileDialog.ExistingFile)
 
         dialog.setNameFilter(
-            "{0} (*.gpls)".format(
+            "{} (*.gpls)".format(
                 translate(
                     "Dialog - Open Playlist", "GridPlayer Playlists", "File format"
                 )
@@ -69,46 +79,40 @@ class PlaylistManager(ManagerBase):
             return False
 
         self.playlist_closed.emit()
+        self._reset_playlist_session()
+        self._set_saved_playlist(None)
 
         return True
 
-    def cmd_save_playlist(self):
+    def cmd_save_playlist(self) -> bool:
         playlist = self._make_playlist()
 
         if self._saved_playlist is not None:
-            save_path = self._saved_playlist["path"]
-        else:
-            save_path = Path(QDir.homePath()) / "Untitled.gpls"
+            return self._write_playlist(playlist, self._saved_playlist["path"])
 
-        self._log.debug(f"Proposed playlist save path: {save_path}")
+        return self._save_playlist_via_dialog(playlist)
 
-        file_path, _ = QFileDialog.getSaveFileName(
-            parent=self.parent(),
-            caption=translate("Dialog - Save Playlist", "Save Playlist", "Header"),
-            directory=str(save_path),
-            filter="*.gpls",
-        )
+    def cmd_save_playlist_as(self) -> bool:
+        return self._save_playlist_via_dialog(self._make_playlist())
 
-        if not file_path:
+    def on_video_count_changed(self, video_count: int) -> None:
+        if video_count == 0:
+            self._set_saved_playlist(None)
+
+    def update_window_title(self) -> None:
+        window = self.parent()
+
+        if self._saved_playlist is None:
+            if window.windowFilePath():
+                window.setWindowFilePath("")
+            window.setWindowModified(False)
             return
 
-        file_path = Path(file_path)
+        file_path = str(self._saved_playlist["path"])
+        if window.windowFilePath() != file_path:
+            window.setWindowFilePath(file_path)
 
-        # filename placeholder is not available if file doesn't exist
-        # problematic for new playlists, need to prevent accidental overwrite
-        # occurs in Flatpak, maybe in other sandboxes that use portal
-        if file_path.suffix.lower() != ".gpls":
-            file_path = file_path.with_suffix(".gpls")
-
-            if self._is_overwrite_denied(file_path):
-                return
-
-        playlist.save(file_path)
-
-        self._saved_playlist = {
-            "path": file_path,
-            "state": hash(playlist.dumps()),
-        }
+        window.setWindowModified(self._is_playlist_changed())
 
     def process_arguments(self, argv):
         if not argv:
@@ -136,22 +140,20 @@ class PlaylistManager(ManagerBase):
         except ValueError as e:
             self._log.error(f"Playlist parse error: {e}")
             self.error.emit(
-                "{0}\n\n{1}".format(
+                "{}\n\n{}".format(
                     translate("Error", "Invalid playlist format!"), playlist_file
                 )
             )
             return
         except FileNotFoundError:
             self.error.emit(
-                "{0}\n\n{1}".format(
-                    translate("Error", "File not found!"), playlist_file
-                )
+                "{}\n\n{}".format(translate("Error", "File not found!"), playlist_file)
             )
             return
 
         if not playlist.videos:
             self.error.emit(
-                "{0}\n\n{1}".format(
+                "{}\n\n{}".format(
                     translate("Error", "Empty or invalid playlist!"), playlist_file
                 )
             )
@@ -160,10 +162,12 @@ class PlaylistManager(ManagerBase):
         if not self.load_playlist(playlist):
             return
 
-        self._saved_playlist = {
-            "path": playlist_file,
-            "state": hash(self._make_playlist().dumps()),
-        }
+        self._set_saved_playlist(
+            {
+                "path": playlist_file,
+                "state": hash(self._make_playlist().dumps()),
+            }
+        )
 
         self.playlist_file_loaded.emit(playlist_file)
 
@@ -182,8 +186,18 @@ class PlaylistManager(ManagerBase):
         _emit(
             (self.seek_sync_mode_loaded, playlist.seek_sync_mode),
             (self.shuffle_on_load_loaded, playlist.shuffle_on_load),
-            (self.disable_click_pause_loaded, playlist.disable_click_pause),
-            (self.disable_wheel_seek_loaded, playlist.disable_wheel_seek),
+            (
+                self.disable_mouse_click_events_loaded,
+                playlist.disable_mouse_click_events,
+            ),
+            (
+                self.disable_mouse_wheel_events_loaded,
+                playlist.disable_mouse_wheel_events,
+            ),
+            (
+                self.disable_overlay_loaded,
+                playlist.disable_overlay,
+            ),
         )
 
         self.alert.emit()
@@ -209,7 +223,8 @@ class PlaylistManager(ManagerBase):
             )
 
             if ret == QMessageBox.Yes:
-                self.cmd_save_playlist()
+                if not self.cmd_save_playlist():
+                    return False
 
             elif ret == QMessageBox.Cancel:
                 return False
@@ -222,6 +237,87 @@ class PlaylistManager(ManagerBase):
 
         playlist_state = hash(self._make_playlist().dumps())
         return playlist_state != self._saved_playlist["state"]
+
+    def _save_playlist_via_dialog(self, playlist: Playlist) -> bool:
+        if self._saved_playlist is not None:
+            save_path = self._saved_playlist["path"]
+        else:
+            save_path = Path(QDir.homePath()) / "Untitled.gpls"
+
+        self._log.debug(f"Proposed playlist save path: {save_path}")
+
+        file_path, _ = QFileDialog.getSaveFileName(
+            parent=self.parent(),
+            caption=translate("Dialog - Save Playlist", "Save Playlist", "Header"),
+            directory=str(save_path),
+            filter="*.gpls",
+        )
+
+        if not file_path:
+            return False
+
+        file_path = Path(file_path)
+
+        # filename placeholder is not available if file doesn't exist
+        # problematic for new playlists, need to prevent accidental overwrite
+        # occurs in Flatpak, maybe in other sandboxes that use portal
+        if file_path.suffix.lower() != ".gpls":
+            file_path = file_path.with_suffix(".gpls")
+
+            if self._is_overwrite_denied(file_path):
+                return False
+
+        return self._write_playlist(playlist, file_path)
+
+    def _write_playlist(self, playlist: Playlist, file_path: Path) -> bool:
+        try:
+            playlist.save(file_path)
+        except OSError as e:
+            self._log.error(f"Playlist save error: {e}")
+            self.error.emit(
+                "{}\n\n{}".format(
+                    translate("Error", "Failed to save playlist!"), file_path
+                )
+            )
+            return False
+
+        self._set_saved_playlist(
+            {
+                "path": file_path,
+                "state": hash(playlist.dumps()),
+            }
+        )
+
+        self.playlist_saved.emit(file_path)
+
+        return True
+
+    def _reset_playlist_session(self) -> None:
+        defaults = Playlist()
+        _emit(
+            (self.seek_sync_mode_loaded, defaults.seek_sync_mode),
+            (self.shuffle_on_load_loaded, defaults.shuffle_on_load),
+            (
+                self.disable_mouse_click_events_loaded,
+                defaults.disable_mouse_click_events,
+            ),
+            (
+                self.disable_mouse_wheel_events_loaded,
+                defaults.disable_mouse_wheel_events,
+            ),
+            (self.disable_overlay_loaded, defaults.disable_overlay),
+            (self.grid_state_loaded, defaults.grid_state),
+        )
+
+    def _set_saved_playlist(self, saved: dict | None) -> None:
+        self._saved_playlist = saved
+
+        if saved is None:
+            self._title_timer.stop()
+        elif not self._title_timer.isActive():
+            self._title_timer.start()
+
+        self.update_window_title()
 
     def _is_overwrite_denied(self, file_path: Path):
         if file_path.is_file():
@@ -254,17 +350,18 @@ class PlaylistManager(ManagerBase):
             snapshots=self._ctx.snapshots,
             seek_sync_mode=self._ctx.seek_sync_mode,
             shuffle_on_load=self._ctx.is_shuffle_on_load,
-            disable_click_pause=self._ctx.is_disable_click_pause,
-            disable_wheel_seek=self._ctx.is_disable_wheel_seek,
+            disable_mouse_click_events=self._ctx.is_disable_mouse_click_events,
+            disable_mouse_wheel_events=self._ctx.is_disable_mouse_wheel_events,
+            disable_overlay=self._ctx.is_disable_overlay,
         )
 
 
-def _emit_if_not_empty(*properties: Tuple[pyqtSignal, Any]):
+def _emit_if_not_empty(*properties: tuple[pyqtSignal, Any]):
     for signal, property_value in properties:
         if property_value:
             signal.emit(property_value)
 
 
-def _emit(*properties: Tuple[pyqtSignal, Any]):
+def _emit(*properties: tuple[pyqtSignal, Any]):
     for signal, property_value in properties:
         signal.emit(property_value)

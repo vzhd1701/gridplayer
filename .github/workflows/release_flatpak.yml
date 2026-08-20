@@ -2,51 +2,46 @@ name: release_flatpak
 
 on:
   workflow_dispatch:
+    inputs:
+      custom_commit:
+        description: 'Custom commit (at gridplayer-flatpak) to release as'
+        required: false
+        type: string
   push:
     tags:
       - "v[0-9]+.[0-9]+.[0-9]+"
 
 env:
-  BUILD_PYTHON_VERSION: 3.8
-  BUILD_POETRY_VERSION: 1.4
+  BUILD_PYTHON_VERSION: "3.10"
 
 jobs:
-  build_python:
+  build_flatpak:
     runs-on: ubuntu-latest
-    env:
-      POETRY_VIRTUALENVS_CREATE: false
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v3
+      - uses: actions/checkout@v7
+      - uses: extractions/setup-just@v4
 
       - name: Set up Python ${{ env.BUILD_PYTHON_VERSION }}
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v7
         with:
           python-version: ${{ env.BUILD_PYTHON_VERSION }}
 
-      - name: Set up Poetry ${{ env.BUILD_POETRY_VERSION }}
-        uses: abatilo/actions-poetry@v2.0.0
-        with:
-          poetry-version: ${{ env.BUILD_POETRY_VERSION }}
-
-      - name: Build project for distribution
-        run: poetry build
-
-      - name: Export requirements
-        run: poetry export --without-hashes -f requirements.txt --output dist/requirements.txt
+      - name: Install the latest version of uv
+        uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
 
       - name: Install requirements
         run: |
-          sudo apt-get install -y desktop-file-utils appstream-util
+          sudo apt-get install -y desktop-file-utils appstream-util flatpak
+          flatpak remote-add --user --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
+          flatpak install --user -y flathub org.kde.Sdk//5.15-25.08
 
       - name: Release
         env:
           GIT_USER: vzhd1701
           GIT_EMAIL: vzhd1701@gmail.com
           GIT_TOKEN: ${{ secrets.GIT_TOKEN }}
+          RELEASE_FOR_COMMIT: ${{ github.event.inputs.custom_commit }}
           FLATPAK_GIT_REPO: vzhd1701/gridplayer-flatpak
           FLATHUB_GIT_REPO: flathub/com.vzhd1701.gridplayer
         run: |
-          bash scripts/linux_meta/build.sh
-          bash scripts/flatpak/generate_dependencies.sh
-          bash scripts/flatpak/build_git.sh
+          just build-linux-flatpak-git

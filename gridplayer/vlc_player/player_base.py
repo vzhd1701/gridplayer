@@ -4,7 +4,6 @@ from abc import ABC, abstractmethod
 from pathlib import Path
 from time import time
 from types import MappingProxyType
-from typing import Optional
 
 from gridplayer.params import env
 from gridplayer.params.static import (
@@ -55,7 +54,7 @@ def translate(context, text):
 
 def only_initialized_player(func):
     def wrapper(*args, **kwargs):
-        self = args[0]  # noqa: WPS117
+        self = args[0]
         if self._media_player is not None:
             return func(*args, **kwargs)
 
@@ -82,14 +81,14 @@ class VlcPlayerBase(ABC):
         self._timer_unpause_failsafe = None
         self._timer_extract_media_track = None
 
-        self.media_input: Optional[MediaInput] = None
-        self.media: Optional[Media] = None
+        self.media_input: MediaInput | None = None
+        self.media: Media | None = None
 
         self._playlist_player = None
         self._media_player = None
         self._media_input_vlc = None
         self._media_options = []
-        self._tracks_manager: Optional[TracksManager] = None
+        self._tracks_manager: TracksManager | None = None
 
         self._event_manager = EventManager()
         self._event_waiter = EventWaiter()
@@ -129,6 +128,7 @@ class VlcPlayerBase(ABC):
             "time_changed": self.cb_time_changed,
             "media_parsed_changed": self.cb_parse_changed,
             "buffering": self.cb_buffering,
+            "vout": self.cb_vout,
         }
 
         for event_name, callback in callbacks.items():
@@ -139,6 +139,27 @@ class VlcPlayerBase(ABC):
         self.notify_update_status(
             translate("Video Status", "Buffering"), buffered_percent
         )
+
+    def cb_vout(self, event):
+        # macOS: _adjust_view_initial skips the synchronous vout wait, so
+        # its initial crop/aspect calls run before the video output exists and
+        # are dropped — the video renders uncropped until the next resize.
+        # Re-apply once the output is up. Setting the crop doesn't change
+        # the vout count, so this won't re-fire itself.
+        #
+        # Linux: synchronous vout wait doesn't help sometimes
+        # Windows: seems fine with sync wait, but re-apply here too just in case
+        #
+        # The re-apply is DEFERRED off the libvlc event thread via
+        # _schedule_view_reapply: cb_vout runs inside a libvlc event callback,
+        # so re-entering libvlc setters synchronously here risks a deadlock.
+
+        if self.media is None or self.media.is_audio_only or self.media_input is None:
+            return
+        self._log.debug(
+            f"Video output ready, re-applying view at {self.media_input.size}"
+        )
+        self._schedule_view_reapply()
 
     def cb_playing(self, event):
         self._log.debug("Media playing")
@@ -221,7 +242,6 @@ class VlcPlayerBase(ABC):
             self.loopback_load_video_st2_set_media()
 
     def cb_time_changed(self, event):
-        # Doesn't work anymore since python-vlc-3.0.12117
         new_time = int(event.u.new_time)
 
         if new_time == 0:
@@ -284,40 +304,31 @@ class VlcPlayerBase(ABC):
         self.notify_error(message)
 
     @abstractmethod
-    def notify_update_status(self, status, percent=0):
-        ...
+    def notify_update_status(self, status, percent=0): ...
 
     @abstractmethod
-    def notify_error(self, error):
-        ...
+    def notify_error(self, error): ...
 
     @abstractmethod
-    def notify_time_changed(self, new_time):
-        ...
+    def notify_time_changed(self, new_time): ...
 
     @abstractmethod
-    def notify_playback_status_changed(self, new_status):
-        ...
+    def notify_playback_status_changed(self, new_status): ...
 
     @abstractmethod
-    def notify_load_video_done(self, media_track: Media):
-        ...
+    def notify_load_video_done(self, media_track: Media): ...
 
     @abstractmethod
-    def notify_snapshot_taken(self, snapshot_path):
-        ...
+    def notify_snapshot_taken(self, snapshot_path): ...
 
     @abstractmethod
-    def loopback_load_video_st2_set_media(self):
-        ...
+    def loopback_load_video_st2_set_media(self): ...
 
     @abstractmethod
-    def loopback_load_video_st3_extract_media_track(self):
-        ...
+    def loopback_load_video_st3_extract_media_track(self): ...
 
     @abstractmethod
-    def loopback_load_video_st4_loaded(self):
-        ...
+    def loopback_load_video_st4_loaded(self): ...
 
     def load_video(self, media_input: MediaInput):
         """Step 1. Load & parse video file"""
@@ -328,7 +339,7 @@ class VlcPlayerBase(ABC):
 
         self.media_input = media_input
 
-        self._log.info("Loading {0}".format(self.media_input.uri))
+        self._log.info(f"Loading {self.media_input.uri}")
 
         if is_url(self.media_input.uri):
             self._log.debug("Loading URL")
@@ -346,9 +357,6 @@ class VlcPlayerBase(ABC):
 
         self._event_manager.attach_to_media(self._media_input_vlc)
 
-        if not self.media_input.is_live and self.media_input.video.is_paused:
-            self._media_options.append(":start-paused")
-
         if self.media_input.is_audio_only:
             self._media_options.append(":no-video")
 
@@ -363,6 +371,10 @@ class VlcPlayerBase(ABC):
 
     def load_video_st2_set_media(self):
         """Step 2. Start video player with parsed file"""
+
+        # Can happen if spam reload
+        if not self._playlist_player:
+            return
 
         self._log.debug("Setting parsed media to player and waiting for buffering")
 
@@ -533,18 +545,22 @@ class VlcPlayerBase(ABC):
 
     @only_initialized_player
     def adjust_view(self, size, aspect, scale, crop):
+        # Keep the pane size current on every call so the post-vout re-apply
+        # (cb_vout) and _adjust_view_initial use the real laid-out size, not a
+        # stale pre-layout value captured at load.
+        if self.media_input is not None:
+            self.media_input.size = size
+
         if self.media is None:
             # video not loaded yet, video frame resized on init
-            if self.media_input:
-                self.media_input.size = size
             return
 
         crop_aspect, crop_geometry = calc_crop(self.video_dimensions, size, aspect)
 
         if crop == VideoCrop(0, 0, 0, 0):
-            crop_geometry_fmt = "{0}:{1}".format(*crop_geometry)
+            crop_geometry_fmt = "{}:{}".format(*crop_geometry)
         else:
-            crop_geometry_fmt = "+{0}+{1}+{2}+{3}".format(*crop)
+            crop_geometry_fmt = "+{}+{}+{}+{}".format(*crop)
 
         self._log.debug(
             f"size: {size}"
@@ -558,7 +574,7 @@ class VlcPlayerBase(ABC):
 
         resize_scale = calc_resize_scale(self.video_dimensions, size, aspect, scale)
 
-        self._media_player.video_set_aspect_ratio("{0}:{1}".format(*crop_aspect))
+        self._media_player.video_set_aspect_ratio("{}:{}".format(*crop_aspect))
         # https://github.com/videolan/vlc/blob/e9eceaed4d838dbd84638bfb2e4bdd08294163b1/src/video_output/display.c#L887
         self._media_player.video_set_crop_geometry(crop_geometry_fmt)
         self._media_player.video_set_scale(resize_scale)
@@ -578,11 +594,20 @@ class VlcPlayerBase(ABC):
     def _set_initial_state(self):
         self._log.debug("Ensuring initial state")
 
-        self._set_pause_initial(self.media_input.video.is_paused)
-
         self._adjust_view_initial()
 
+        # Play first (no :start-paused). That option shows frame 0 but
+        # leaves set_time-while-paused broken until the file has actually
+        # played. Seek while playing, then pause
+
         self._set_time_initial(self.media_input.initial_time)
+
+        self._set_pause_initial(self.media_input.video.is_paused)
+
+        # If paused seek again to ensure actual position
+        # in case time drifted while _set_pause_initial
+        if self.media_input.video.is_paused:
+            self._set_time_initial(self.media_input.initial_time)
 
     def _adjust_view_initial(self):
         if self.media.is_audio_only:
@@ -590,11 +615,19 @@ class VlcPlayerBase(ABC):
 
         # wait for video output init
         # otherwise adjust_view won't work
-        # if video is paused it happens on seek
-        # doesn't work on MacOS for some reason
-        if not env.IS_MACOS and not self.media_input.video.is_paused:
+        # doesn't work on MacOS for some reason — cb_vout re-applies there
+        if not env.IS_MACOS:
             self._event_waiter.wait_for("vout", self.init_time_left)
 
+        self._apply_media_input_view()
+
+    def _schedule_view_reapply(self):
+        # Default: apply directly. Threaded subclasses override this to marshal
+        # the call off the libvlc event thread onto their event loop, since
+        # cb_vout runs inside a libvlc event callback and must not re-enter libvlc.
+        self._apply_media_input_view()
+
+    def _apply_media_input_view(self):
         self.adjust_view(
             size=self.media_input.size,
             aspect=self.media_input.video.aspect_mode,
@@ -604,6 +637,10 @@ class VlcPlayerBase(ABC):
 
     def _set_pause_initial(self, is_paused):
         if not self.media_input.is_live and is_paused:
+            if self._media_player.get_state() != vlc.State.Paused:
+                with self._event_waiter.waiting_for("paused", self.init_time_left):
+                    self.set_pause(True)
+
             if self._media_player.get_state() != vlc.State.Paused:
                 raise NotPausedError
 
@@ -655,6 +692,7 @@ class VlcPlayerBase(ABC):
             media_player=self._media_player,
             media_tracks=list(media_tracks),
             is_audio_only=self.media_input.is_audio_only,
+            media_uri=self.media_input.uri,
         )
 
         if not self._tracks_manager.is_video_size_initialized:
@@ -673,7 +711,7 @@ class VlcPlayerBase(ABC):
                 )
                 return None
 
-            self._log.debug(f"Failed to initialize video time, probably live")
+            self._log.debug("Failed to initialize video time, probably live")
 
         self._tracks_manager.set_video_track_id(self.media_input.video.video_track_id)
         self._tracks_manager.set_audio_track_id(self.media_input.video.audio_track_id)

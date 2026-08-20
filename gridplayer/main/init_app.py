@@ -4,16 +4,21 @@ from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QFont
 from PyQt5.QtWidgets import QApplication, QStyleFactory
 
-from gridplayer.main.init_icons import init_icon, switch_icon_theme
+from gridplayer.main.init_icons import init_icon
 from gridplayer.main.init_resources import init_resources
 from gridplayer.main.init_translator import init_translator
+from gridplayer.params import env
 from gridplayer.params.static import FONT_SIZE_MAIN
+from gridplayer.params.theme import apply_theme, on_system_theme_changed
+from gridplayer.utils.darkmode import watch_system_theme
 
 
 def init_app():
-    app = QApplication(sys.argv)
+    # Wayland doesnt work with libVLC, forcing xcb
+    if env.IS_LINUX:
+        sys.argv += ["-platform", "xcb"]
 
-    app.paletteChanged.connect(switch_icon_theme)
+    app = QApplication(sys.argv)
 
     init_resources()
 
@@ -22,7 +27,9 @@ def init_app():
     app.setAttribute(Qt.AA_DisableWindowContextHelpButton)
     app.styleHints().setShowShortcutsInContextMenus(True)
 
-    switch_icon_theme()
+    apply_theme(app)
+    app.paletteChanged.connect(lambda: on_system_theme_changed(app))
+    watch_system_theme(lambda: on_system_theme_changed(app), app)
 
     init_icon(app)
 

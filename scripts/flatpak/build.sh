@@ -1,6 +1,7 @@
 #!/bin/bash
 
 set -e
+set -x
 
 SCRIPT_DIR="$( cd "$( dirname $0 )" && pwd )"
 
@@ -9,18 +10,30 @@ SCRIPT_DIR="$( cd "$( dirname $0 )" && pwd )"
 BUILD_DIR_FLATPAK="$BUILD_DIR/flatpak"
 mkdir -p "$BUILD_DIR_FLATPAK"
 
+# System reqs
+
+if ! command -v flatpak; then
+    sudo apt install -y flatpak
+    flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
+fi
+
+flatpak install --system -y flathub org.kde.Platform//5.15-25.08
+flatpak install --system -y flathub org.kde.Sdk//5.15-25.08
+flatpak install --system -y flathub com.riverbankcomputing.PyQt.BaseApp//5.15-25.08
+flatpak install --system -y flathub org.flatpak.Builder
+
 # Preparation
 
 cp "$DIST_DIR"/*.tar.gz "$BUILD_DIR_FLATPAK"
 cp -R "$BUILD_DIR/meta" "$BUILD_DIR_FLATPAK"
 
-cp "$SCRIPT_DIR"/dependencies/*.yml "$BUILD_DIR_FLATPAK"
 cp "$SCRIPT_DIR"/libvlc/* "$BUILD_DIR_FLATPAK"
 
 if [ ! -f "$BUILD_DIR/flatpak_python_deps/dependencies.yml" ]; then
     "$SCRIPT_DIR/generate_dependencies.sh"
 fi
 cp "$BUILD_DIR/flatpak_python_deps/dependencies.yml" "$BUILD_DIR_FLATPAK/dependencies.yml"
+cp "$BUILD_DIR/flatpak_python_deps/uv_build.yml" "$BUILD_DIR_FLATPAK/uv_build.yml"
 
 cat "$SCRIPT_DIR/app.yml" "$SCRIPT_DIR/app_local.yml" > "$BUILD_DIR_FLATPAK/$APP_ID.yml"
 replace_app_vars "$BUILD_DIR_FLATPAK/$APP_ID.yml"
@@ -32,7 +45,7 @@ sed -i "s#{TAR_FILE_SHA256}#$TAR_FILE_SHA256#g" "$BUILD_DIR_FLATPAK/$APP_ID.yml"
 
 if [ ! -d "$BUILD_DIR_FLATPAK/shared-modules" ]; then
     git clone -n https://github.com/flathub/shared-modules "$BUILD_DIR_FLATPAK/shared-modules"
-    (cd "$BUILD_DIR_FLATPAK/shared-modules" && git checkout -q 50314360ded6fa3b9f0b602513b1164b7a6636ed)
+    (cd "$BUILD_DIR_FLATPAK/shared-modules" && git checkout -q b8236c7961e3dd447b1b9605375a54a12f9f24b6)
 fi
 
 # Prevent strange freezing

@@ -103,7 +103,6 @@ if __name__ == "__main__":
 
     if icons_symbolic:
         for theme in ("dark", "light"):
-
             dst_path = Path("icons") / theme / "index.theme"
 
             index = (

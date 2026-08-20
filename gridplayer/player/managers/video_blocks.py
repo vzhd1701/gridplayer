@@ -1,5 +1,4 @@
 import random
-from typing import List, Optional
 
 from PyQt5.QtCore import Qt, pyqtSignal
 
@@ -18,7 +17,7 @@ from gridplayer.utils.qt import qt_connect, translate
 from gridplayer.widgets.video_block import VideoBlock
 
 
-class VideoBlocks(object):
+class VideoBlocks:
     def __init__(self):
         self._blocks = []
 
@@ -40,7 +39,7 @@ class VideoBlocks(object):
     def clear(self):
         self._blocks.clear()
 
-    def reorder_by_video_ids(self, order: List[str]):
+    def reorder_by_video_ids(self, order: list[str]):
         if len(order) != len(self._blocks):
             raise ValueError("Order list must be the same length as the blocks list")
 
@@ -71,13 +70,13 @@ class VideoBlocks(object):
         return all(v.is_video_initialized for v in self._blocks)
 
     @property
-    def videos(self) -> List[Video]:
+    def videos(self) -> list[Video]:
         return [v.video_params for v in self._blocks]
 
-    def by_id(self, _id) -> Optional[VideoBlock]:
+    def by_id(self, _id) -> VideoBlock | None:
         return next((v for v in self._blocks if v.id == _id), None)
 
-    def by_video_id(self, _id) -> Optional[VideoBlock]:
+    def by_video_id(self, _id) -> VideoBlock | None:
         return next((v for v in self._blocks if v.video_params.id == _id), None)
 
     def swap(self, block1, block2):
@@ -144,10 +143,13 @@ class VideoBlocksManager(ManagerBase):
 
         self._ctx.seek_sync_mode = Settings().get("playlist/seek_sync_mode")
         self._ctx.is_shuffle_on_load = Settings().get("playlist/shuffle_on_load")
-        self._ctx.is_disable_click_pause = Settings().get(
-            "playlist/disable_click_pause"
+        self._ctx.is_disable_mouse_click_events = Settings().get(
+            "playlist/disable_mouse_click_events"
         )
-        self._ctx.is_disable_wheel_seek = Settings().get("playlist/disable_wheel_seek")
+        self._ctx.is_disable_mouse_wheel_events = Settings().get(
+            "playlist/disable_mouse_wheel_events"
+        )
+        self._ctx.is_disable_overlay = Settings().get("playlist/disable_overlay")
 
         self._ctx.video_blocks = VideoBlocks()
 
@@ -177,12 +179,19 @@ class VideoBlocksManager(ManagerBase):
             "is_shuffle_on_load": lambda: self._ctx.is_shuffle_on_load,
             "set_shuffle_on_load": self.set_shuffle_on_load,
             "toggle_shuffle_on_load": self.toggle_shuffle_on_load,
-            "is_disable_click_pause": lambda: self._ctx.is_disable_click_pause,
-            "set_disable_click_pause": self.set_disable_click_pause,
-            "toggle_disable_click_pause": self.toggle_disable_click_pause,
-            "is_disable_wheel_seek": lambda: self._ctx.is_disable_wheel_seek,
-            "set_disable_wheel_seek": self.set_disable_wheel_seek,
-            "toggle_disable_wheel_seek": self.toggle_disable_wheel_seek,
+            "is_disable_mouse_click_events": lambda: (
+                self._ctx.is_disable_mouse_click_events
+            ),
+            "set_disable_mouse_click_events": self.set_disable_mouse_click_events,
+            "toggle_disable_mouse_click_events": self.toggle_disable_mouse_click_events,
+            "is_disable_mouse_wheel_events": lambda: (
+                self._ctx.is_disable_mouse_wheel_events
+            ),
+            "set_disable_mouse_wheel_events": self.set_disable_mouse_wheel_events,
+            "toggle_disable_mouse_wheel_events": self.toggle_disable_mouse_wheel_events,
+            "is_disable_overlay": lambda: self._ctx.is_disable_overlay,
+            "set_disable_overlay": self.set_disable_overlay,
+            "toggle_disable_overlay": self.toggle_disable_overlay,
         }
 
     def cmd_all(self, command, *args):
@@ -236,17 +245,29 @@ class VideoBlocksManager(ManagerBase):
     def toggle_shuffle_on_load(self):
         self._ctx.is_shuffle_on_load = not self._ctx.is_shuffle_on_load
 
-    def set_disable_click_pause(self, is_disable_click_pause):
-        self._ctx.is_disable_click_pause = is_disable_click_pause
+    def set_disable_mouse_click_events(self, is_disabled):
+        self._ctx.is_disable_mouse_click_events = is_disabled
 
-    def toggle_disable_click_pause(self):
-        self._ctx.is_disable_click_pause = not self._ctx.is_disable_click_pause
+    def toggle_disable_mouse_click_events(self):
+        self._ctx.is_disable_mouse_click_events = (
+            not self._ctx.is_disable_mouse_click_events
+        )
 
-    def set_disable_wheel_seek(self, is_disable_wheel_seek):
-        self._ctx.is_disable_wheel_seek = is_disable_wheel_seek
+    def set_disable_mouse_wheel_events(self, is_disabled):
+        self._ctx.is_disable_mouse_wheel_events = is_disabled
 
-    def toggle_disable_wheel_seek(self):
-        self._ctx.is_disable_wheel_seek = not self._ctx.is_disable_wheel_seek
+    def toggle_disable_mouse_wheel_events(self):
+        self._ctx.is_disable_mouse_wheel_events = (
+            not self._ctx.is_disable_mouse_wheel_events
+        )
+
+    def set_disable_overlay(self, is_disabled):
+        self._ctx.is_disable_overlay = is_disabled
+        if is_disabled:
+            self.hide_overlay.emit()
+
+    def toggle_disable_overlay(self):
+        self.set_disable_overlay(not self._ctx.is_disable_overlay)
 
     def seek_sync_percent(self, percent):
         if self._ctx.seek_sync_mode == SeekSyncMode.PERCENT:

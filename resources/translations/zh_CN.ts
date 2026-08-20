@@ -448,43 +448,43 @@
     </message>
     <message>
       <source>Crop Left +</source>
-      <translation type="unfinished"/>
+      <translation>裁剪重置 +</translation>
     </message>
     <message>
       <source>Crop Left -</source>
-      <translation type="unfinished"/>
+      <translation>Crop Left -</translation>
     </message>
     <message>
       <source>Crop Top +</source>
-      <translation type="unfinished"/>
+      <translation>裁剪顶部 +</translation>
     </message>
     <message>
       <source>Crop Top -</source>
-      <translation type="unfinished"/>
+      <translation>裁剪顶部 -</translation>
     </message>
     <message>
       <source>Crop Right +</source>
-      <translation type="unfinished"/>
+      <translation>裁剪右侧 +</translation>
     </message>
     <message>
       <source>Crop Right -</source>
-      <translation type="unfinished"/>
+      <translation>裁剪右侧 -</translation>
     </message>
     <message>
       <source>Crop Bottom +</source>
-      <translation type="unfinished"/>
+      <translation>裁剪底部 +</translation>
     </message>
     <message>
       <source>Crop Bottom -</source>
-      <translation type="unfinished"/>
+      <translation>裁剪底部 -</translation>
     </message>
     <message>
       <source>Crop Reset</source>
-      <translation type="unfinished"/>
+      <translation>裁剪复位</translation>
     </message>
     <message>
       <source>Crop</source>
-      <translation type="unfinished"/>
+      <translation>裁剪视频</translation>
     </message>
   </context>
   <context>
@@ -588,7 +588,7 @@
     <message>
       <source>All</source>
       <comment>File formats</comment>
-      <translation type="unfinished"/>
+      <translation>所有文件</translation>
     </message>
   </context>
   <context>

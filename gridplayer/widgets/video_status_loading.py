@@ -7,7 +7,7 @@ from PyQt5.QtCore import (
     pyqtProperty,
 )
 from PyQt5.QtGui import QColor, QPainter
-from PyQt5.QtWidgets import QHBoxLayout, QSizePolicy, QWidget
+from PyQt5.QtWidgets import QGraphicsOpacityEffect, QHBoxLayout, QSizePolicy, QWidget
 
 from gridplayer.utils.darkmode import is_dark_mode
 
@@ -15,6 +15,10 @@ from gridplayer.utils.darkmode import is_dark_mode
 class LoadingBars(QWidget):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
+
+        effect = QGraphicsOpacityEffect(self)
+        effect.setOpacity(0.5)
+        self.setGraphicsEffect(effect)
 
         self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
 
@@ -67,7 +71,7 @@ class JumpingBar(QWidget):
         return self._bar_percent
 
     @bar_percent.setter
-    def bar_percent(self, percent):  # noqa: WPS440
+    def bar_percent(self, percent):
         self._bar_percent = percent
         self.update()
 
@@ -103,7 +107,7 @@ class JumpingBar(QWidget):
         self._initial_time = self._animation.currentTime()
         self._animation.stop()
 
-    def _init_animation(self):  # noqa: WPS213
+    def _init_animation(self):
         animation_up = QPropertyAnimation(self, b"bar_percent")
         animation_up.setDuration(self.bar_grow_ms)
         animation_up.setStartValue(self.bar_lowest_percent)

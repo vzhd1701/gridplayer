@@ -4,43 +4,42 @@
 # pre-commit install --hook-type commit-msg
 
 repos:
--   repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v3.4.0
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
     hooks:
-    -   id: check-vcs-permalinks
-    -   id: end-of-file-fixer
-        exclude_types: [svg]
-    -   id: trailing-whitespace
+      - id: check-vcs-permalinks
+      - id: end-of-file-fixer
+        exclude_types: [ svg ]
+      - id: trailing-whitespace
         exclude: \.(patch)$
-        args: [--markdown-linebreak-ext=md]
-    -   id: mixed-line-ending
-        exclude_types: [svg]
-        args: ['--fix=lf']
-    -   id: check-toml
-    -   id: check-yaml
-    -   id: no-commit-to-branch
+        args: [ --markdown-linebreak-ext=md ]
+      - id: mixed-line-ending
+        exclude_types: [ svg ]
+        args: [ '--fix=lf' ]
+      - id: check-toml
+      - id: check-yaml
+      - id: no-commit-to-branch
 
--   repo: local
+  - repo: local
     hooks:
-    -   id: isort
-        name: isort
-        stages: [commit]
+      - id: ruff
+        name: ruff
+        stages: [ pre-commit ]
         language: system
-        entry: poetry run isort
-        types: [python]
+        entry: uv run --frozen ruff format
+        types: [ python ]
 
-    -   id: black
-        name: black
-        stages: [commit]
+      - id: rumdl
+        name: rumdl
+        stages: [ pre-commit ]
         language: system
-        entry: poetry run black
-        types: [python]
-        exclude: resources_bin.py
+        entry: uv run --frozen rumdl fmt
+        types: [ markdown ]
 
-    -   id: mdformat
-        name: mdformat
-        stages: [commit]
+      - id: ruff-check
+        name: ruff-check
+        stages: [ pre-commit ]
         language: system
-        entry: poetry run mdformat
-        types: [markdown]
-        exclude: CHANGELOG.md
+        entry: uv run --frozen ruff check
+        types: [ python ]
+        pass_filenames: false

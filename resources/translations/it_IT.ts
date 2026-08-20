@@ -448,43 +448,43 @@
     </message>
     <message>
       <source>Crop Left +</source>
-      <translation type="unfinished"/>
+      <translation>Ritaglia a sinistra +</translation>
     </message>
     <message>
       <source>Crop Left -</source>
-      <translation type="unfinished"/>
+      <translation>Ritaglia a sinistra -</translation>
     </message>
     <message>
       <source>Crop Top +</source>
-      <translation type="unfinished"/>
+      <translation>Ritaglia in alto +</translation>
     </message>
     <message>
       <source>Crop Top -</source>
-      <translation type="unfinished"/>
+      <translation>Ritaglia in alto -</translation>
     </message>
     <message>
       <source>Crop Right +</source>
-      <translation type="unfinished"/>
+      <translation>Ritaglia a destra +</translation>
     </message>
     <message>
       <source>Crop Right -</source>
-      <translation type="unfinished"/>
+      <translation>Ritaglia a destra -</translation>
     </message>
     <message>
       <source>Crop Bottom +</source>
-      <translation type="unfinished"/>
+      <translation>Ritaglia in basso +</translation>
     </message>
     <message>
       <source>Crop Bottom -</source>
-      <translation type="unfinished"/>
+      <translation>Ritaglia in basso -</translation>
     </message>
     <message>
       <source>Crop Reset</source>
-      <translation type="unfinished"/>
+      <translation>Ripristina ritaglio</translation>
     </message>
     <message>
       <source>Crop</source>
-      <translation type="unfinished"/>
+      <translation>Ritaglia</translation>
     </message>
   </context>
   <context>
@@ -588,7 +588,7 @@
     <message>
       <source>All</source>
       <comment>File formats</comment>
-      <translation type="unfinished"/>
+      <translation>Tutto</translation>
     </message>
   </context>
   <context>

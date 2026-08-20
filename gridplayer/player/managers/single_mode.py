@@ -1,4 +1,4 @@
-from PyQt5.QtCore import QEvent, Qt, pyqtSignal
+from PyQt5.QtCore import pyqtSignal
 
 from gridplayer.player.managers.base import ManagerBase
 from gridplayer.settings import Settings
@@ -15,12 +15,6 @@ class SingleModeManager(ManagerBase):
         self._pre_sm_states = {}
 
     @property
-    def event_map(self):
-        return {
-            QEvent.MouseButtonDblClick: self.mouseDoubleClickEvent,
-        }
-
-    @property
     def commands(self):
         return {
             "next_single_video": self.next_single_video,
@@ -29,10 +23,6 @@ class SingleModeManager(ManagerBase):
             "is_single_mode": lambda: self._ctx.is_single_mode,
             "is_more_than_one_video": lambda: len(self._ctx.video_blocks) > 1,
         }
-
-    def mouseDoubleClickEvent(self, event):
-        if event.button() == Qt.LeftButton:
-            self.toggle_single_video()
 
     def set_video_count(self, video_count):
         """Exit single mode when number of videos change"""
@@ -55,6 +45,9 @@ class SingleModeManager(ManagerBase):
         self._switch_single_video(is_before=True)
 
     def single_mode_on(self):
+        if self._ctx.active_block is None:
+            return
+
         self._ctx.is_single_mode = True
 
         is_pause_background_videos = Settings().get("player/pause_background_videos")

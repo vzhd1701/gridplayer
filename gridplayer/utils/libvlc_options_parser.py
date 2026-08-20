@@ -1,5 +1,3 @@
-from typing import Optional
-
 from gridplayer.models.video import Video
 from gridplayer.params.static import VideoTransform
 
@@ -14,7 +12,7 @@ TransformMap = {
 }
 
 
-def get_vlc_options(video_params: Optional[Video]):
+def get_vlc_options(video_params: Video | None):
     vlc_options = []
 
     if video_params is None:

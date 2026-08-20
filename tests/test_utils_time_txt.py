@@ -6,6 +6,8 @@ from gridplayer.utils.time_txt import get_time_txt
 @pytest.mark.parametrize(
     "time_int,time_str",
     [
+        (-100000, "0:00"),
+        (-1, "0:00"),
         (0, "0:00"),
         (59, "0:59"),
         (60, "01:00"),

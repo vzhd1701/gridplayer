@@ -11,9 +11,9 @@ const version_updater_regex = {
   }
 }
 
-let version_updater_poetry = {...version_updater_regex};
-version_updater_poetry.regex = /^version = \"([^\"]+)\"$/m;
-version_updater_poetry.regex_repl = "version = \"$1\"";
+let version_updater_pyproject = {...version_updater_regex};
+version_updater_pyproject.regex = /^version = \"([^\"]+)\"$/m;
+version_updater_pyproject.regex_repl = "version = \"$1\"";
 
 // YYYY-MM-DD
 let today = new Date().toISOString().substring(0, 10);
@@ -31,7 +31,7 @@ version_file = "gridplayer/version.py"
 let packageFiles = [
   {
     filename: "pyproject.toml",
-    updater: version_updater_poetry,
+    updater: version_updater_pyproject,
   }
 ]
 
@@ -46,6 +46,19 @@ let bumpFiles = packageFiles.concat([
   }
 ])
 
+const postbumpCommands = [
+  "uv lock",
+  // Read the version that was just written to the file
+  `NEW_VERSION=$(uv run --frozen python -c 'from gridplayer.version import __version__; print(__version__)')`,
+  'uv run --frozen keepachangelog release "$NEW_VERSION"',
+  "uv run --frozen rumdl fmt CHANGELOG.md",
+  "dos2unix CHANGELOG.md",
+  "git add CHANGELOG.md uv.lock",
+].join(" && ");
+
+const postbumpScript = `bash -c ${JSON.stringify(postbumpCommands)}`;
+
+
 module.exports = {
   header: "",
   commitAll: true,
@@ -56,6 +69,6 @@ module.exports = {
     changelog: true
   },
   scripts: {
-    postbump: `poetry run python scripts/_helpers/kacl.py "${version_file}" CHANGELOG.md && git add CHANGELOG.md`
+    postbump: postbumpScript
   }
 }

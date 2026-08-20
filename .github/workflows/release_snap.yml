@@ -12,48 +12,22 @@ on:
       - "v[0-9]+.[0-9]+.[0-9]+"
 
 env:
-  BUILD_PYTHON_VERSION: 3.8
-  BUILD_POETRY_VERSION: 1.4
+  BUILD_PYTHON_VERSION: "3.10"
 
 jobs:
-  build_python:
+  build_snap:
     runs-on: ubuntu-latest
-    env:
-      POETRY_VIRTUALENVS_CREATE: false
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v3
+      - uses: actions/checkout@v7
+      - uses: extractions/setup-just@v4
 
       - name: Set up Python ${{ env.BUILD_PYTHON_VERSION }}
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v7
         with:
           python-version: ${{ env.BUILD_PYTHON_VERSION }}
 
-      - name: Set up Poetry ${{ env.BUILD_POETRY_VERSION }}
-        uses: abatilo/actions-poetry@v2.0.0
-        with:
-          poetry-version: ${{ env.BUILD_POETRY_VERSION }}
-
-      - name: Build project for distribution
-        run: poetry build
-
-      - name: Save release python packages
-        uses: actions/upload-artifact@v3
-        with:
-          name: release_dist_python
-          path: dist
-
-  build_snap:
-    needs: build_python
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-
-      - name: Load release python packages
-        uses: actions/download-artifact@v3
-        with:
-          name: release_dist_python
-          path: dist
+      - name: Install the latest version of uv
+        uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
 
       - name: Install requirements
         run: |
@@ -61,8 +35,7 @@ jobs:
 
       - name: Prepare
         run: |
-          bash scripts/linux_meta/build.sh
-          bash scripts/snap/build.sh --no-build
+          just build-linux-snap-no-build
 
       - uses: snapcore/action-build@v1
         id: build
@@ -70,7 +43,7 @@ jobs:
           path: build/snap
 
       - name: Save snapped app
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v7
         with:
           name: snap_result
           path: ${{ steps.build.outputs.snap }}

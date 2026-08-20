@@ -3,7 +3,7 @@ import logging
 import subprocess
 
 from PyQt5.QtCore import QUrl
-from PyQt5.QtGui import QDesktopServices, QIcon, QPalette
+from PyQt5.QtGui import QDesktopServices, QIcon
 from PyQt5.QtWidgets import QCheckBox, QComboBox, QDialog, QLineEdit, QSpinBox
 
 from gridplayer.dialogs.messagebox import QCustomMessageBox
@@ -12,6 +12,7 @@ from gridplayer.params import env
 from gridplayer.params.languages import LANGUAGES
 from gridplayer.params.static import (
     AudioChannelMode,
+    ColorScheme,
     GridMode,
     SeekSyncMode,
     URLResolver,
@@ -23,7 +24,9 @@ from gridplayer.params.static import (
 from gridplayer.settings import Settings
 from gridplayer.utils import log_config
 from gridplayer.utils.app_dir import get_app_data_dir
+from gridplayer.utils.keymap import default_keymap, merge_keymap
 from gridplayer.utils.qt import qt_connect, translate
+from gridplayer.widgets.keymap_tree_view import KeymapEditor
 from gridplayer.widgets.language_list import LanguageList
 from gridplayer.widgets.resolver_patterns_list import ResolverPatternsList
 
@@ -74,8 +77,12 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
             "player/inhibit_screensaver": self.playerInhibitScreensaver,
             "player/one_instance": self.playerOneInstance,
             "player/stay_on_top": self.playerStayOnTop,
+            "player/start_maximized": self.playerStartMaximized,
+            "player/start_fullscreen": self.playerStartFullscreen,
             "player/show_overlay_border": self.playerShowOverlayBorder,
+            "player/color_scheme": self.playerColorScheme,
             "player/language": self.listLanguages,
+            "player/keymap": self.keymapEditor,
             "player/recent_list_enabled": self.playerRecentList,
             "player/recent_list_max_size": self.playerRecentListSize,
             "playlist/grid_mode": self.gridMode,
@@ -87,8 +94,9 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
             "playlist/save_window": self.playlistSaveWindow,
             "playlist/seek_sync_mode": self.playlistSeekSyncMode,
             "playlist/track_changes": self.playlistTrackChanges,
-            "playlist/disable_click_pause": self.playlistDisableClickPause,
-            "playlist/disable_wheel_seek": self.playlistDisableWheelSeek,
+            "playlist/disable_mouse_click_events": self.playlistDisableClickEvents,
+            "playlist/disable_mouse_wheel_events": self.playlistDisableWheelEvents,
+            "playlist/disable_overlay": self.playlistDisableOverlay,
             "video_defaults/aspect": self.videoAspect,
             "video_defaults/transform": self.videoTransform,
             "video_defaults/repeat": self.repeatMode,
@@ -112,7 +120,7 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
             "internal/fake_overlay_invisibility": self.miscFakeOverlayInvisibility,
             "streaming/hls_via_streamlink": self.streamingHLSVIAStreamlink,
             "streaming/resolver_priority": self.streamingResolverPriority,
-            "streaming/resolver_priority_patterns": self.streamingResolverPriorityPatterns,  # noqa: E501
+            "streaming/resolver_priority_patterns": self.streamingResolverPriorityPatterns,
         }
 
         self.ui_customize()
@@ -125,7 +133,7 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
 
         self.ui_customize_dynamic()
 
-    def ui_customize(self):  # noqa: WPS213
+    def ui_customize(self):
         for btn in self.buttonBox.buttons():
             btn.setIcon(QIcon())
 
@@ -143,15 +151,10 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
 
     def ui_customize_section_index(self):
         font = self.section_index.font()
-        font.setPixelSize(16)  # noqa: WPS432
+        font.setPixelSize(16)
         self.section_index.setFont(font)
 
-        pal = self.section_index.palette()
-        col = pal.color(QPalette.Active, QPalette.Text)
-        pal.setColor(QPalette.Disabled, QPalette.Text, col)
-        self.section_index.setPalette(pal)
-
-    def ui_fill(self):  # noqa: WPS213
+    def ui_fill(self):
         self.fill_playerVideoDriver()
         self.fill_gridMode()
         self.fill_videoAspect()
@@ -160,12 +163,13 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
         self.fill_logLevel()
         self.fill_logLevelVLC()
         self.fill_language()
+        self.fill_colorScheme()
         self.fill_streamQuality()
         self.fill_playlistSeekSyncMode()
         self.fill_streamingResolverPriority()
         self.fill_videoAudioMode()
 
-    def ui_set_limits(self):  # noqa: WPS213
+    def ui_set_limits(self):
         self.playerVideoDriverPlayers.setRange(1, MAX_VLC_PROCESSES)
         self.timeoutOverlay.setRange(1, 60)
         self.timeoutMouseHide.setRange(1, 60)
@@ -219,6 +223,7 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
     def switch_page(self, page_name):
         pages_map = {
             translate("SettingsDialog", "Player"): self.page_general_player,
+            translate("SettingsDialog", "Shortcuts"): self.page_general_shortcuts,
             translate("SettingsDialog", "Language"): self.page_general_language,
             translate("SettingsDialog", "Playlist"): self.page_defaults_playlist,
             translate("SettingsDialog", "Video"): self.page_defaults_video,
@@ -252,7 +257,7 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
 
         if env.IS_SNAP:
             # https://forum.snapcraft.io/t/xdg-open-or-gvfs-open-qdesktopservices-openurl-file-somelocation-file-txt-wont-open-the-file/16824
-            subprocess.call(["xdg-open", log_path])  # noqa: S603, S607
+            subprocess.call(["xdg-open", log_path])
         else:
             QDesktopServices.openUrl(QUrl.fromLocalFile(str(log_path)))
 
@@ -322,25 +327,15 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
     def fill_playerVideoDriver(self):
         if env.IS_MACOS:
             video_drivers = {
-                VideoDriver.VLC_HW_SP: "{0} <VLC {1}>".format(
-                    self.tr("Hardware SP"), env.VLC_VERSION
-                ),
-                VideoDriver.VLC_SW: "{0} <VLC {1}>".format(
-                    self.tr("Software"), env.VLC_VERSION
-                ),
+                VideoDriver.VLC_HW_SP: f"{self.tr('Hardware SP')} <VLC {env.VLC_VERSION}>",
+                VideoDriver.VLC_SW: f"{self.tr('Software')} <VLC {env.VLC_VERSION}>",
                 VideoDriver.DUMMY: self.tr("Dummy"),
             }
         else:
             video_drivers = {
-                VideoDriver.VLC_HW: "{0} <VLC {1}>".format(
-                    self.tr("Hardware"), env.VLC_VERSION
-                ),
-                VideoDriver.VLC_HW_SP: "{0} <VLC {1}>".format(
-                    self.tr("Hardware SP"), env.VLC_VERSION
-                ),
-                VideoDriver.VLC_SW: "{0} <VLC {1}>".format(
-                    self.tr("Software"), env.VLC_VERSION
-                ),
+                VideoDriver.VLC_HW: f"{self.tr('Hardware')} <VLC {env.VLC_VERSION}>",
+                VideoDriver.VLC_HW_SP: f"{self.tr('Hardware SP')} <VLC {env.VLC_VERSION}>",
+                VideoDriver.VLC_SW: f"{self.tr('Software')} <VLC {env.VLC_VERSION}>",
                 VideoDriver.DUMMY: self.tr("Dummy"),
             }
 
@@ -349,6 +344,15 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
     def fill_language(self):
         for language in LANGUAGES:
             self.listLanguages.add_language_row(language)
+
+    def fill_colorScheme(self):
+        schemes = {
+            ColorScheme.SYSTEM: self.tr("System"),
+            ColorScheme.LIGHT: self.tr("Light"),
+            ColorScheme.DARK: self.tr("Dark"),
+        }
+
+        _fill_combo_box(self.playerColorScheme, schemes)
 
     def fill_streamQuality(self):
         quality_codes = {
@@ -373,8 +377,7 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
             "144p",
         ]
 
-        for code in standard_quality_codes:
-            quality_codes[code] = code
+        quality_codes.update({code: code for code in standard_quality_codes})
 
         _fill_combo_box(self.streamQuality, quality_codes)
 
@@ -426,6 +429,9 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
             QComboBox: _set_combo_box,
             LanguageList: lambda e, v: e.setValue(v),
             ResolverPatternsList: lambda e, v: e.setDataRows(v),
+            KeymapEditor: lambda e, v: e.set_bindings(
+                merge_keymap(default_keymap(), v)
+            ),
         }
 
         for setting, element in self.settings_map.items():
@@ -446,6 +452,7 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
             QComboBox: "currentData",
             LanguageList: "value",
             ResolverPatternsList: "rows_data",
+            KeymapEditor: "get_sparse_bindings",
         }
 
         for setting, element in self.settings_map.items():

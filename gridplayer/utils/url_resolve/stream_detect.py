@@ -1,18 +1,17 @@
 import contextlib
 import itertools
 import re
-from typing import Dict, Optional
 
 from streamlink import Streamlink
-from streamlink.stream import HTTPStream
+from streamlink.stream.http import HTTPStream
 
 from gridplayer.utils.url_resolve.static import BadURLException
 
 
 def is_hls_live_stream(
     url: str,
-    session: Optional[Streamlink] = None,
-    session_headers: Optional[Dict[str, str]] = None,
+    session: Streamlink | None = None,
+    session_headers: dict[str, str] | None = None,
 ) -> bool:
     if session is None:
         session = Streamlink()
@@ -41,8 +40,8 @@ def is_hls_live_stream(
 
 def is_http_live_stream(
     url: str,
-    session: Optional[Streamlink] = None,
-    session_headers: Optional[Dict[str, str]] = None,
+    session: Streamlink | None = None,
+    session_headers: dict[str, str] | None = None,
 ) -> bool:
     """if there is a content-length header, it not a stream"""
 

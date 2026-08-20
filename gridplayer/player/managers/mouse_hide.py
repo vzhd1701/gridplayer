@@ -35,7 +35,7 @@ class MouseHideManager(ManagerBase):
 
     @property
     def event_map(self):
-        return {e: self.show_cursor for e in self.move_events}
+        return dict.fromkeys(self.move_events, self.show_cursor)
 
     def hide_cursor(self):
         self.mouse_timer.stop()

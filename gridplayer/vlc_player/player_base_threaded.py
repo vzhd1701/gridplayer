@@ -24,6 +24,9 @@ class VlcPlayerThreaded(CommandLoopThreaded, VlcPlayerBase):
     def notify_snapshot_taken(self, snapshot_path):
         self.cmd_send("snapshot_taken_emit", snapshot_path)
 
+    def _schedule_view_reapply(self):
+        self.cmd_send_self("_apply_media_input_view")
+
     def loopback_load_video_st2_set_media(self):
         self.cmd_send_self("load_video_st2_set_media")
 

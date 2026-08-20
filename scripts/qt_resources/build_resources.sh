@@ -12,9 +12,9 @@ BUILD_DIR_QT_RESOURCES="$BUILD_DIR/qt_resources"
 
 rm -rf "$BUILD_DIR_QT_RESOURCES"
 
-poetry run python "$SCRIPT_DIR/build_resources.py" "$RESOURCES_DIR" "$BUILD_DIR_QT_RESOURCES"
+uv run --frozen "$SCRIPT_DIR/build_resources.py" "$RESOURCES_DIR" "$BUILD_DIR_QT_RESOURCES"
 
-PYRCC5=$(poetry run which pyrcc5)
+PYRCC5=$(uv run --frozen which pyrcc5)
 (cd "$BUILD_DIR_QT_RESOURCES" && $PYRCC5 resources.qrc -o "$APP_BASE_DIR/resources_bin.py")
 
 dos2unix "$APP_BASE_DIR/resources_bin.py"

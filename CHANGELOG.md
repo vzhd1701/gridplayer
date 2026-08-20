@@ -6,45 +6,109 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+### Added
+
+- Add option to start with maximized window ([74282df](https://github.com/vzhd1701/gridplayer/commit/74282df433867e45c7da95d10875979770933024))
+- Add option to start in fullscreen mode ([02cb6fd](https://github.com/vzhd1701/gridplayer/commit/02cb6fd04272f8356a0223b031737f4addc21c62))
+- Add option to manually select app color scheme ([6a59985](https://github.com/vzhd1701/gridplayer/commit/6a59985855ae5471a3a6d1d75a89829003764bfd))
+- Add option to disable overlay ([2c7163f](https://github.com/vzhd1701/gridplayer/commit/2c7163f34231bb1180e57d296d00f7b7f6121030))
+- Add shortcuts editor ([fa22fa7](https://github.com/vzhd1701/gridplayer/commit/fa22fa7d8767f580f701c7a5f0677b704330c5a7))
+- Add "save playlist as" option ([7cb07dd](https://github.com/vzhd1701/gridplayer/commit/7cb07dd7a275d5d82996aacd5ad2dcc6c8be7647))
+- Show playlist name in the window title ([237ea43](https://github.com/vzhd1701/gridplayer/commit/237ea43e5a6d97ae171a9e258a31f7b58c6f8bd1))
+
+### Fixed
+
+- Prevent switching to single mode without active video (double click on empty space) ([526210f](https://github.com/vzhd1701/gridplayer/commit/526210f21f2ab8c46e5a250a0ccd114341d6bcba))
+- Improve drag n drop on KDE ([a7b2def](https://github.com/vzhd1701/gridplayer/commit/a7b2def2448a9ad3ac6821c23bbb4ed120f0b72b))
+- Reset playlist setting to defaults after closing playlist ([fd728f3](https://github.com/vzhd1701/gridplayer/commit/fd728f3f64c2cef240549458c51bdec30801ad62))
+- Use setWindowFilePath to update playlist name in window title ([703b6ea](https://github.com/vzhd1701/gridplayer/commit/703b6eab58d71f528c9a4e9e7d1d37dc59e74743))
+- Set proper parent to each submenu to avoid crashes on mac ([8ecffe9](https://github.com/vzhd1701/gridplayer/commit/8ecffe93a4d7b1f999e82d963cd99e335d0bc90b))
+- Ensure that video is seekable if loaded in paused state ([71615d9](https://github.com/vzhd1701/gridplayer/commit/71615d993d9bb7e71a432ef45fa558be234a9315))
+- Improve vlc frame offset detection to avoid glitches with KWin on linux ([03e812b](https://github.com/vzhd1701/gridplayer/commit/03e812b8bc5ac398917cebab1888cad657391470))
+- Make loading animation and video status icon transparent ([a52bd47](https://github.com/vzhd1701/gridplayer/commit/a52bd4781677ef8d2fe517990a0e65360fc03989))
+- Set overlay opacity on child widgets to avoid clipping glitches on linux ([7d2d5b3](https://github.com/vzhd1701/gridplayer/commit/7d2d5b341c54867082182e71f737f6f8efaf3ace))
+- Unset QT_XCB_GL_INTEGRATION on linux to avoid forked process crash ([839bf83](https://github.com/vzhd1701/gridplayer/commit/839bf83394d8d402c36e85b678072b3a5c9e26da))
+- Adjust video on vout to ensure correct aspect on video load in Mac and Linux ([878b817](https://github.com/vzhd1701/gridplayer/commit/878b817009bd4b47494996726e39bd2c6b765019))
+- Avoid crash on spam reload ([737fe79](https://github.com/vzhd1701/gridplayer/commit/737fe79619d6f929ede35205a89338a2e8385b12))
+- Add compositor detection on linux to avoid black overlay ([e22e91c](https://github.com/vzhd1701/gridplayer/commit/e22e91cc8dd9fc2562483317d2368097c93dfe65))
+- Add newly saved playlist into recent list ([1682959](https://github.com/vzhd1701/gridplayer/commit/16829599d0b864e1659036ba49b62f95cdf2ca6d))
+- Improve system color theme sync on linux and windows ([e41cc36](https://github.com/vzhd1701/gridplayer/commit/e41cc361967d7f9cb405718d51bb68ba3801d5a3)), ([ab062b3](https://github.com/vzhd1701/gridplayer/commit/ab062b340ddd00352262b6402aa621472359faf4))
+- Unify app style and colors ([61d90b0](https://github.com/vzhd1701/gridplayer/commit/61d90b04df15e31d67ed4bb9b2de9269a420e375))
+- Improve language selection section in settings ([65bc49d](https://github.com/vzhd1701/gridplayer/commit/65bc49da7c32edc48552bd67976ac089877ca33b))
+- Avoid crash for menu with custom style ([afac43f](https://github.com/vzhd1701/gridplayer/commit/afac43f9b9d92777588115647ea3e67b9652e013))
+- Avoid memory leaks on menus ([bbde797](https://github.com/vzhd1701/gridplayer/commit/bbde7977ede3694d68ec629f68fe9da494f692b4))
+- Handle invalid track metadata and duplicate closes ([#319](https://github.com/vzhd1701/gridplayer/issues/319)) ([b0ade83](https://github.com/vzhd1701/gridplayer/commit/b0ade837afaecb86b77fe4ced0f4c0a4935568bf))
+- Improve missing libvlc handling ([fd4539f](https://github.com/vzhd1701/gridplayer/commit/fd4539f80742fa0bf70c850cf3a41c39e4bc843c))
+- Check if action is enabled on invoke to keep hotkeys always active ([5a18d0c](https://github.com/vzhd1701/gridplayer/commit/5a18d0c48a99bd82fa19fffcdeb12e789a696339))
+- Force xcb on linux becuase libVLC doesnt work with wayland ([f5f77c2](https://github.com/vzhd1701/gridplayer/commit/f5f77c27d69167f2b204603414d2d4cba1c9dfc9))
+
+## [0.5.5] - 2026-07-24
+
+### Added
+
+- Native Apple Silicon (arm64) macOS build support, with arch-aware build scripts and a `BUILD_MACOS_ARCH` override for Intel (`x86_64`) builds ([de4a54a](https://github.com/vzhd1701/gridplayer/commit/de4a54a))
+- Czech, Norwegian, Swedish, Taiwanese, Vietnamese translations ([fd35bf2](https://github.com/vzhd1701/gridplayer/commit/fd35bf2cac5e8f9a222635ad4c09bf043ad71bdf)), ([c52c5de](https://github.com/vzhd1701/gridplayer/commit/c52c5de8ca055f2b22bb108b4ef048a2861f86be)), ([0867eea](https://github.com/vzhd1701/gridplayer/commit/0867eea48a2cbbdb154fb9ca5fe1f1c79fd58767))
+
+### Fixed
+
+- Update translations ([c52c5de](https://github.com/vzhd1701/gridplayer/commit/c52c5de8ca055f2b22bb108b4ef048a2861f86be))
+- Update streamlink and yt-dlp ([8e172e5](https://github.com/vzhd1701/gridplayer/commit/8e172e5))
+- Avoid checkbox shrinking in language select dialog ([d510a80](https://github.com/vzhd1701/gridplayer/commit/d510a809ce76a3d3eff312c4ac01b3b3a7ec4566))
+- Force load app icon to avoid default icon on Windows 11 ([51d0d92](https://github.com/vzhd1701/gridplayer/commit/51d0d92cfe75efdc8a15d16874dd246fee658c57))
+- Restore URI parsing for playlists ([b02b31b](https://github.com/vzhd1701/gridplayer/commit/b02b31bd3be7e0fbaa278dee1d9740835f005635)), closes [#294](https://github.com/vzhd1701/gridplayer/issues/294) [#311](https://github.com/vzhd1701/gridplayer/issues/311)
+- Show error when picking missing local video from recent list ([de03e3b](https://github.com/vzhd1701/gridplayer/commit/de03e3b12969e625acdc35609cbea1c33583de54))
+- Improve file validation when importing from clipboard ([7ca8208](https://github.com/vzhd1701/gridplayer/commit/7ca820875c772e4d3c839c00369d635f8f4cac98)), closes [#296](https://github.com/vzhd1701/gridplayer/issues/296)
+- Safeguard playback position updates ([52c706d](https://github.com/vzhd1701/gridplayer/commit/52c706d3c106dc8ae2b50a36ba09a90a581c23c4)), closes [#309](https://github.com/vzhd1701/gridplayer/issues/309)
+
+## [0.5.4] - 2025-11-24
+
+### Added
+
+- Allow rtmp protocol ([#165](https://github.com/vzhd1701/gridplayer/issues/165)) ([939dd5a](https://github.com/vzhd1701/gridplayer/commit/939dd5a5235e8a852aa1b0e51b00538923a5bbbe))
+
+### Fixed
+
+- Update streamlink, yt-dlp and minimum python version ([#271](https://github.com/vzhd1701/gridplayer/issues/271)) ([763745c](https://github.com/vzhd1701/gridplayer/commit/763745c987beb0e333e3521a362f0f00bf1af6d9))
+
 ## [0.5.3] - 2023-10-17
 
 ### Added
 
-* Option to crop video ([8b1fba3](https://github.com/vzhd1701/gridplayer/commit/8b1fba3658fc9af7cac3c6604342a71165a6e455))
+- Option to crop video ([8b1fba3](https://github.com/vzhd1701/gridplayer/commit/8b1fba3658fc9af7cac3c6604342a71165a6e455))
 
 ### Fixed
 
-* Update yt-dlp and Streamlink ([c5790f2](https://github.com/vzhd1701/gridplayer/commit/c5790f231173b965369d8afc1a205e884323e2cd))
-* Update translations ([48ff112](https://github.com/vzhd1701/gridplayer/commit/48ff1125236f1c0ac76620fb4c32c1bc97d8f235))
-* Prevent video distortion when rotation is enabled ([d0dc5be](https://github.com/vzhd1701/gridplayer/commit/d0dc5bee1ea7c54cabc9985a4f3e3b7ccda0868f))
-* Add h265 and hevc to video extensions ([6cbc01f](https://github.com/vzhd1701/gridplayer/commit/6cbc01ffdfd3ded6acd7cfebcf942c1f0031a0bd))
-* Allow opening any files ([c775315](https://github.com/vzhd1701/gridplayer/commit/c775315df5bcb3ed4e635cd8465a9272a1020a1d)), closes [#170](https://github.com/vzhd1701/gridplayer/issues/170)
-* Increase maximum zoom scale to 10 (max for VLC) ([3a346fb](https://github.com/vzhd1701/gridplayer/commit/3a346fbc51f727816293d4cc6b6ddafccad808af))
+- Update yt-dlp and Streamlink ([c5790f2](https://github.com/vzhd1701/gridplayer/commit/c5790f231173b965369d8afc1a205e884323e2cd))
+- Update translations ([48ff112](https://github.com/vzhd1701/gridplayer/commit/48ff1125236f1c0ac76620fb4c32c1bc97d8f235))
+- Prevent video distortion when rotation is enabled ([d0dc5be](https://github.com/vzhd1701/gridplayer/commit/d0dc5bee1ea7c54cabc9985a4f3e3b7ccda0868f))
+- Add h265 and hevc to video extensions ([6cbc01f](https://github.com/vzhd1701/gridplayer/commit/6cbc01ffdfd3ded6acd7cfebcf942c1f0031a0bd))
+- Allow opening any files ([c775315](https://github.com/vzhd1701/gridplayer/commit/c775315df5bcb3ed4e635cd8465a9272a1020a1d)), closes [#170](https://github.com/vzhd1701/gridplayer/issues/170)
+- Increase maximum zoom scale to 10 (max for VLC) ([3a346fb](https://github.com/vzhd1701/gridplayer/commit/3a346fbc51f727816293d4cc6b6ddafccad808af))
 
 ## [0.5.2] - 2023-08-23
 
 ### Fixed
 
-* Update yt-dlp and Streamlink ([442f71f](https://github.com/vzhd1701/gridplayer/commit/442f71fe3dcf6254b9bfb7a750752dcaff7733fd))
-* Show stream bitrate and codec name if parsed by yt-dlp ([75f84cd](https://github.com/vzhd1701/gridplayer/commit/75f84cd6149690d804cb265262e3e5b4f35716a3))
-* Retry if HLS video time is not initialized ([66c6e48](https://github.com/vzhd1701/gridplayer/commit/66c6e48940a793e7647efb3fbf2cb95294b68b15))
-* Fix compatibility with new Streamlink API ([90c3adc](https://github.com/vzhd1701/gridplayer/commit/90c3adc1cfd083f7ad78237db1946828669fcef6))
-* Fix m3u8 format generated by HLS proxy ([b12e370](https://github.com/vzhd1701/gridplayer/commit/b12e37026ff7558da8e1a8a6dbd8d2d5265eeb3d))
-* Fix relay proxy chunked encoding ([57e5aef](https://github.com/vzhd1701/gridplayer/commit/57e5aef3efa2aaa13cca79d6a246e0daa0e2f639))
+- Update yt-dlp and Streamlink ([442f71f](https://github.com/vzhd1701/gridplayer/commit/442f71fe3dcf6254b9bfb7a750752dcaff7733fd))
+- Show stream bitrate and codec name if parsed by yt-dlp ([75f84cd](https://github.com/vzhd1701/gridplayer/commit/75f84cd6149690d804cb265262e3e5b4f35716a3))
+- Retry if HLS video time is not initialized ([66c6e48](https://github.com/vzhd1701/gridplayer/commit/66c6e48940a793e7647efb3fbf2cb95294b68b15))
+- Fix compatibility with new Streamlink API ([90c3adc](https://github.com/vzhd1701/gridplayer/commit/90c3adc1cfd083f7ad78237db1946828669fcef6))
+- Fix m3u8 format generated by HLS proxy ([b12e370](https://github.com/vzhd1701/gridplayer/commit/b12e37026ff7558da8e1a8a6dbd8d2d5265eeb3d))
+- Fix relay proxy chunked encoding ([57e5aef](https://github.com/vzhd1701/gridplayer/commit/57e5aef3efa2aaa13cca79d6a246e0daa0e2f639))
 
 ## [0.5.1] - 2023-06-05
 
 ### Added
 
-* Option to transform video (rotate, mirror, transpose) ([236b989](https://github.com/vzhd1701/gridplayer/commit/236b9895b9fc9b5ba7b9ccda503271466a108103))
+- Option to transform video (rotate, mirror, transpose) ([236b989](https://github.com/vzhd1701/gridplayer/commit/236b9895b9fc9b5ba7b9ccda503271466a108103))
 
 ### Fixed
 
-* Update translations ([042e3b7](https://github.com/vzhd1701/gridplayer/commit/042e3b7b8716ffd1a0c6b851c089af49700a38fc))
-* Prevent video freeze on MacOS ([fe37336](https://github.com/vzhd1701/gridplayer/commit/fe3733606e78e30c1245e7126cda842cc847d94f))
-* Access URL directly if yt-dlp reports a direct link ([6aa0a13](https://github.com/vzhd1701/gridplayer/commit/6aa0a1397db68311cf3295e53ddc83d4a996b4d6))
-* Add support for relative paths ([884b687](https://github.com/vzhd1701/gridplayer/commit/884b687d4b0a85bcef6eb63bae6865c4e24d7dd8))
-* Filter video streams only if preferred quality is configured ([f9a98bf](https://github.com/vzhd1701/gridplayer/commit/f9a98bf9f712a2d80a12c6d03c5aef84127002dc))
+- Update translations ([042e3b7](https://github.com/vzhd1701/gridplayer/commit/042e3b7b8716ffd1a0c6b851c089af49700a38fc))
+- Prevent video freeze on MacOS ([fe37336](https://github.com/vzhd1701/gridplayer/commit/fe3733606e78e30c1245e7126cda842cc847d94f))
+- Access URL directly if yt-dlp reports a direct link ([6aa0a13](https://github.com/vzhd1701/gridplayer/commit/6aa0a1397db68311cf3295e53ddc83d4a996b4d6))
+- Add support for relative paths ([884b687](https://github.com/vzhd1701/gridplayer/commit/884b687d4b0a85bcef6eb63bae6865c4e24d7dd8))
+- Filter video streams only if preferred quality is configured ([f9a98bf](https://github.com/vzhd1701/gridplayer/commit/f9a98bf9f712a2d80a12c6d03c5aef84127002dc))
 
 ## [0.5.0] - 2023-05-18
 
@@ -281,7 +345,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 - Initial release
 
-[Unreleased]: https://github.com/vzhd1701/gridplayer/compare/v0.5.3...HEAD
+[Unreleased]: https://github.com/vzhd1701/gridplayer/compare/v0.5.5...HEAD
+[0.5.5]: https://github.com/vzhd1701/gridplayer/compare/v0.5.4...v0.5.5
+[0.5.4]: https://github.com/vzhd1701/gridplayer/compare/v0.5.3...v0.5.4
 [0.5.3]: https://github.com/vzhd1701/gridplayer/compare/v0.5.2...v0.5.3
 [0.5.2]: https://github.com/vzhd1701/gridplayer/compare/v0.5.1...v0.5.2
 [0.5.1]: https://github.com/vzhd1701/gridplayer/compare/v0.5.0...v0.5.1

@@ -16,7 +16,7 @@ QT_ASPECT_MAP = MappingProxyType(
 QT_LOG_IGNORED = ("requestActivate() called for",)
 
 
-class QABC(type(QObject), ABCMeta):  # noqa: WPS606
+class QABC(type(QObject), ABCMeta):
     """Meta for abstract classes derived from QObject"""
 
 

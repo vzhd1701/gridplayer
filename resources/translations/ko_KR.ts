@@ -448,43 +448,43 @@
     </message>
     <message>
       <source>Crop Left +</source>
-      <translation type="unfinished"/>
+      <translation>자르기 왼쪽 +</translation>
     </message>
     <message>
       <source>Crop Left -</source>
-      <translation type="unfinished"/>
+      <translation>자르기 왼쪽 -</translation>
     </message>
     <message>
       <source>Crop Top +</source>
-      <translation type="unfinished"/>
+      <translation>자르기 상단 +</translation>
     </message>
     <message>
       <source>Crop Top -</source>
-      <translation type="unfinished"/>
+      <translation>자르기 상단 -</translation>
     </message>
     <message>
       <source>Crop Right +</source>
-      <translation type="unfinished"/>
+      <translation>자르기 오른쪽 +</translation>
     </message>
     <message>
       <source>Crop Right -</source>
-      <translation type="unfinished"/>
+      <translation>자르기 오른쪽 -</translation>
     </message>
     <message>
       <source>Crop Bottom +</source>
-      <translation type="unfinished"/>
+      <translation>자르기 상단 -</translation>
     </message>
     <message>
       <source>Crop Bottom -</source>
-      <translation type="unfinished"/>
+      <translation>자르기 하단 -</translation>
     </message>
     <message>
       <source>Crop Reset</source>
-      <translation type="unfinished"/>
+      <translation>자르기 재설정</translation>
     </message>
     <message>
       <source>Crop</source>
-      <translation type="unfinished"/>
+      <translation>자르기</translation>
     </message>
   </context>
   <context>
@@ -588,7 +588,7 @@
     <message>
       <source>All</source>
       <comment>File formats</comment>
-      <translation type="unfinished"/>
+      <translation>모두</translation>
     </message>
   </context>
   <context>

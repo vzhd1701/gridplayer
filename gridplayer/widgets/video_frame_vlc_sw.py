@@ -240,7 +240,7 @@ class VideoFrameVLCSW(VideoFrameVLCProcess):
             parent=self,
         )
 
-    def ui_video_surface(self):  # noqa: WPS213
+    def ui_video_surface(self):
         self._videoitem = QGraphicsPixmapItem()
         self._videoitem.setTransformationMode(Qt.SmoothTransformation)
         self._videoitem.setShapeMode(QGraphicsPixmapItem.BoundingRectShape)

@@ -1,18 +1,19 @@
 import json
 import logging
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Any
 
-from pydantic import BaseModel, ValidationError
+from pydantic import BaseModel, Field, ValidationError, model_validator
 
 from gridplayer.models.grid_state import GridState
 from gridplayer.models.video import Video
+from gridplayer.models.video_uri import parse_uri
 from gridplayer.params.static import SeekSyncMode, WindowState
 from gridplayer.settings import Settings, default_field
 
 logger = logging.getLogger(__name__)
 
-VideosList = List[Video]
+VideosList = list[Video]
 
 
 class Snapshot(BaseModel):
@@ -21,18 +22,41 @@ class Snapshot(BaseModel):
 
 
 class Playlist(BaseModel):
-    grid_state: GridState = GridState()
-    window_state: Optional[WindowState]
-    videos: Optional[VideosList]
-    snapshots: Optional[Dict[int, Snapshot]]
+    grid_state: GridState = Field(default_factory=GridState)
+    window_state: WindowState | None = None
+    videos: VideosList | None = None
+    snapshots: dict[int, Snapshot] | None = None
     seek_sync_mode: SeekSyncMode = default_field("playlist/seek_sync_mode")
     shuffle_on_load: bool = default_field("playlist/shuffle_on_load")
-    disable_click_pause: bool = Settings().get("playlist/disable_click_pause")
-    disable_wheel_seek: bool = Settings().get("playlist/disable_wheel_seek")
+    disable_mouse_click_events: bool = default_field(
+        "playlist/disable_mouse_click_events"
+    )
+    disable_mouse_wheel_events: bool = default_field(
+        "playlist/disable_mouse_wheel_events"
+    )
+    disable_overlay: bool = default_field("playlist/disable_overlay")
+
+    @model_validator(mode="before")
+    @classmethod
+    def _migrate_legacy_mouse_flags(cls, data: Any) -> Any:
+        if not isinstance(data, dict):
+            return data
+
+        if "disable_click_pause" in data and "disable_mouse_click_events" not in data:
+            data["disable_mouse_click_events"] = data.pop("disable_click_pause")
+        else:
+            data.pop("disable_click_pause", None)
+
+        if "disable_wheel_seek" in data and "disable_mouse_wheel_events" not in data:
+            data["disable_mouse_wheel_events"] = data.pop("disable_wheel_seek")
+        else:
+            data.pop("disable_wheel_seek", None)
+
+        return data
 
     @classmethod
     def read(cls, filename):
-        with open(filename, "r", encoding="utf-8") as f:
+        with Path(filename).open("r", encoding="utf-8") as f:
             playlist_txt = f.read()
 
         return cls.parse(playlist_txt)
@@ -52,7 +76,7 @@ class Playlist(BaseModel):
     def save(self, filename: Path):
         playlist_txt = self.dumps()
 
-        with open(filename, "w", encoding="utf-8") as f:
+        with Path(filename).open("w", encoding="utf-8") as f:
             f.write(playlist_txt)
 
     def dumps(self):
@@ -62,16 +86,20 @@ class Playlist(BaseModel):
         playlist_config.append("#GRIDPLAYER")
 
         playlist_config.append(
-            "#P:{0}".format(
-                self.json(exclude_none=True, exclude=_excluded_fields_playlist())
+            "#P:{}".format(
+                self.model_dump_json(
+                    exclude_none=True, exclude=_excluded_fields_playlist()
+                )
             )
         )
 
         for idx, video in enumerate(self.videos):
             playlist_config.append(
-                "#V{0}:{1}".format(
+                "#V{}:{}".format(
                     idx,
-                    video.json(exclude_none=True, exclude=_excluded_fields_video()),
+                    video.model_dump_json(
+                        exclude_none=True, exclude=_excluded_fields_video()
+                    ),
                 )
             )
             playlist_vids.append(str(video.uri))
@@ -81,7 +109,7 @@ class Playlist(BaseModel):
     @classmethod
     def _parse_params(cls, playlist_in):
         playlist_params = (
-            cls.parse_raw(c[3:]) for c in playlist_in if c.startswith("#P:")
+            cls.model_validate_json(c[3:]) for c in playlist_in if c.startswith("#P:")
         )
         return next(playlist_params, cls())
 
@@ -93,12 +121,12 @@ class Playlist(BaseModel):
         for idx, uri in enumerate(_parse_video_paths(playlist_in)):
             video_args = video_params.get(idx, {})
 
-            video_args["uri"] = uri
+            video_args["uri"] = parse_uri(uri)
 
             try:
                 videos.append(Video(**video_args))
             except ValidationError as e:
-                logger.error(f"Failed to add video '{uri}'")
+                logger.error(f"Failed to add video '{uri}'")  # noqa: TRY400
                 logger.debug(e)
 
         return videos
@@ -116,7 +144,7 @@ def _parse_video_params(playlist_in):
     return video_params
 
 
-def _parse_video_paths(playlist_in) -> List[str]:
+def _parse_video_paths(playlist_in) -> list[str]:
     return [line for line in playlist_in if line and not line.startswith("#")]
 
 

@@ -2,6 +2,7 @@ from PyQt5.QtCore import pyqtSignal
 
 from gridplayer.dialogs.messagebox import QCustomMessageBox
 from gridplayer.dialogs.settings import SettingsDialog
+from gridplayer.params.theme import apply_theme
 from gridplayer.player.managers.base import ManagerBase
 from gridplayer.settings import Settings
 from gridplayer.utils.qt import translate
@@ -13,6 +14,10 @@ class SettingsManager(ManagerBase):
     set_log_level = pyqtSignal(int)
     set_log_level_vlc = pyqtSignal(int)
     set_recent_list_enabled = pyqtSignal(bool)
+    keymap_changed = pyqtSignal(object)  # KeymapOverrides
+    set_disable_mouse_click_events = pyqtSignal(bool)
+    set_disable_mouse_wheel_events = pyqtSignal(bool)
+    set_disable_overlay = pyqtSignal(bool)
 
     @property
     def commands(self):
@@ -44,12 +49,19 @@ class SettingsManager(ManagerBase):
             "logging/log_level_vlc": self.set_log_level_vlc,
             "player/inhibit_screensaver": self.set_screensaver,
             "player/recent_list_enabled": self.set_recent_list_enabled,
+            "player/keymap": self.keymap_changed,
+            "playlist/disable_mouse_click_events": self.set_disable_mouse_click_events,
+            "playlist/disable_mouse_wheel_events": self.set_disable_mouse_wheel_events,
+            "playlist/disable_overlay": self.set_disable_overlay,
         }
 
         changes = self._setting_changes(previous_settings, tuple(checks))
 
         for c in changes:
             checks[c].emit(Settings().get(c))
+
+        if self._is_setting_changed(previous_settings, "player/color_scheme"):
+            apply_theme()
 
     def _is_reload_needed(self, previous_settings):
         checks = {
@@ -75,3 +87,6 @@ class SettingsManager(ManagerBase):
 
     def _setting_changes(self, previous_settings, checks):
         return {k for k in checks if previous_settings[k] != Settings().get(k)}
+
+    def _is_setting_changed(self, previous_settings, check):
+        return previous_settings[check] != Settings().get(check)

@@ -2,7 +2,7 @@
 
 set -e
 
-BASE_IMAGE_NAME="manylinux2014_x86_64"
+BASE_IMAGE_NAME="manylinux_2_28_x86_64"
 BASE_IMAGE_URL="quay.io/pypa/$BASE_IMAGE_NAME"
 NAME="appimage_build"
 

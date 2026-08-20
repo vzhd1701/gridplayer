@@ -63,6 +63,11 @@
        </item>
        <item>
         <property name="text">
+         <string>Shortcuts</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
          <string>Language</string>
         </property>
        </item>
@@ -147,6 +152,23 @@
           <number>0</number>
          </property>
          <item>
+          <layout class="QFormLayout" name="formLayout_color_scheme">
+           <property name="fieldGrowthPolicy">
+            <enum>QFormLayout::FieldsStayAtSizeHint</enum>
+           </property>
+           <item row="0" column="0">
+            <widget class="QLabel" name="playerColorSchemeLabel">
+             <property name="text">
+              <string>Color scheme</string>
+             </property>
+            </widget>
+           </item>
+           <item row="0" column="1">
+            <widget class="QComboBox" name="playerColorScheme"/>
+           </item>
+          </layout>
+         </item>
+         <item>
           <widget class="QCheckBox" name="playerPauseBackgroundVideos">
            <property name="text">
             <string>Pause background videos on single mode</string>
@@ -178,6 +200,20 @@
           <widget class="QCheckBox" name="playerStayOnTop">
            <property name="text">
             <string>Stay on top</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QCheckBox" name="playerStartMaximized">
+           <property name="text">
+            <string>Start with maximized window</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QCheckBox" name="playerStartFullscreen">
+           <property name="text">
+            <string>Start in fullscreen mode</string>
            </property>
           </widget>
          </item>
@@ -334,7 +370,7 @@
          <item>
           <widget class="QLabel" name="label_4">
            <property name="text">
-            <string>&lt;p&gt;If you have a handful of free time and a desire to support this project, please &lt;a href=&quot;https://crowdin.com/project/gridplayer&quot;&gt;help with the translation&lt;/a&gt;. No coding skills or special software is required!&lt;/p&gt;</string>
+            <string>&lt;p&gt;If you have a handful of free time and a desire to support this project, please &lt;a href=&quot;https://crowdin.com/project/gridplayer&quot;&gt;help with the translation&lt;/a&gt;. No coding skills or special software is required!&lt;/p&gt;&lt;p&gt;&lt;a href=&quot;https://github.com/vzhd1701/gridplayer#translations&quot;&gt;Full list of translators&lt;/a&gt;&lt;/p&gt;</string>
            </property>
            <property name="wordWrap">
             <bool>true</bool>
@@ -343,6 +379,25 @@
             <bool>true</bool>
            </property>
           </widget>
+         </item>
+        </layout>
+       </widget>
+       <widget class="QWidget" name="page_general_shortcuts">
+        <layout class="QVBoxLayout" name="lay_page_general_shortcuts">
+         <property name="leftMargin">
+          <number>0</number>
+         </property>
+         <property name="topMargin">
+          <number>0</number>
+         </property>
+         <property name="rightMargin">
+          <number>0</number>
+         </property>
+         <property name="bottomMargin">
+          <number>0</number>
+         </property>
+         <item>
+          <widget class="KeymapEditor" name="keymapEditor"/>
          </item>
         </layout>
        </widget>
@@ -493,16 +548,23 @@
           </widget>
          </item>
          <item>
-          <widget class="QCheckBox" name="playlistDisableClickPause">
+          <widget class="QCheckBox" name="playlistDisableClickEvents">
            <property name="text">
-            <string>Disable pause with left mouse click</string>
+            <string>Disable mouse click events</string>
            </property>
           </widget>
          </item>
          <item>
-          <widget class="QCheckBox" name="playlistDisableWheelSeek">
+          <widget class="QCheckBox" name="playlistDisableWheelEvents">
            <property name="text">
-            <string>Disable seek with mouse wheel</string>
+            <string>Disable mouse wheel events</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QCheckBox" name="playlistDisableOverlay">
+           <property name="text">
+            <string>Disable overlay</string>
            </property>
           </widget>
          </item>
@@ -794,6 +856,9 @@
              <bold>true</bold>
             </font>
            </property>
+           <property name="openExternalLinks">
+            <bool>true</bool>
+           </property>
            <property name="text">
             <string>VLC Options [&lt;a href=&quot;https://wiki.videolan.org/VLC_command-line_help/&quot;&gt;reference&lt;/a&gt;]</string>
            </property>
@@ -1004,6 +1069,12 @@
    <class>ResolverPatternsList</class>
    <extends>QWidget</extends>
    <header>gridplayer.widgets.resolver_patterns_list</header>
+   <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>KeymapEditor</class>
+   <extends>QWidget</extends>
+   <header>gridplayer.widgets.keymap_tree_view</header>
    <container>1</container>
   </customwidget>
  </customwidgets>

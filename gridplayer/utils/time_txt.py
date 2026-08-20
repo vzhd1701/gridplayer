@@ -1,13 +1,14 @@
 import time
-from typing import Optional
 
 HOUR_SECONDS = 3600
 DAY_SECONDS = HOUR_SECONDS * 24
 
 
 def get_time_txt(
-    seconds: int, max_seconds: Optional[int] = None, strip: bool = False
+    seconds: int, max_seconds: int | None = None, strip: bool = False
 ) -> str:
+    seconds = max(0, seconds)
+
     if max_seconds and max_seconds < seconds:
         max_seconds = None
 

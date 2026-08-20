@@ -1,11 +1,11 @@
 import logging
+from collections.abc import Callable
 from functools import partial
-from typing import Callable, Dict, List
 
 from gridplayer.vlc_player.libvlc import vlc
 
 
-class EventManager(object):
+class EventManager:
     player_events = {
         "buffering": vlc.EventType.MediaPlayerBuffering,
         "encountered_error": vlc.EventType.MediaPlayerEncounteredError,
@@ -25,7 +25,7 @@ class EventManager(object):
     def __init__(self):
         self._log = logging.getLogger(self.__class__.__name__)
 
-        self._subscriptions: Dict[str, List[Callable]] = {
+        self._subscriptions: dict[str, list[Callable]] = {
             event: [] for event in self.event_types
         }
 

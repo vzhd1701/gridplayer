@@ -1,11 +1,9 @@
-from typing import Tuple
-
 from gridplayer.params.static import VideoAspect
 
 
 def calc_resize_scale(
-    video_dimensions: Tuple[int, int],
-    size: Tuple[int, int],
+    video_dimensions: tuple[int, int],
+    size: tuple[int, int],
     aspect: VideoAspect,
     scale: float,
 ) -> float:
@@ -28,7 +26,7 @@ def calc_resize_scale(
 
 
 def calc_crop(
-    video_dimensions: Tuple[int, int], size: Tuple[int, int], aspect: VideoAspect
+    video_dimensions: tuple[int, int], size: tuple[int, int], aspect: VideoAspect
 ):
     scr_x, scr_y = size
     vid_x, vid_y = video_dimensions

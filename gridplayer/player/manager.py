@@ -3,7 +3,7 @@ from PyQt5.QtCore import QObject
 from gridplayer.utils.command_helpers import AND, NOT, OR
 
 
-class Commands(object):
+class Commands:
     def __init__(self):
         self._commands = {}
 
@@ -44,7 +44,7 @@ class Commands(object):
         return self._commands[command_name]
 
 
-class Context(object):
+class Context:
     def __init__(self):
         self._context = {}
 

@@ -1,0 +1,8 @@
+﻿<svg width="900" height="600" viewBox="0 0 120 80" xmlns="http://www.w3.org/2000/svg">
+<path fill="#fe0000" d="M0 0h120v80H0z"/>
+<path fill="#000094" d="M0 0h60v40H0z"/>
+<path id="a" d="M30 5l4 15-4 15-4-15zM15 20l15 4 15-4-15-4z" fill="#fff"/>
+<use transform="rotate(30,30,20)" href="#a"/>
+<use transform="rotate(60,30,20)" href="#a"/>
+<circle fill="#fff" stroke="#000094" cx="30" cy="20" r="8"/>
+</svg>

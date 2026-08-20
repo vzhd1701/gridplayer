@@ -1,10 +1,9 @@
 import re
 from enum import auto
 from fnmatch import fnmatch
-from typing import Iterable, List, Optional
 from urllib.parse import urlparse
 
-from pydantic import BaseModel
+from pydantic import BaseModel, RootModel
 
 from gridplayer.params.static import AutoName, URLResolver
 
@@ -54,14 +53,17 @@ class ResolverPattern(BaseModel):
         return re.match(self.pattern, url) is not None
 
 
-class ResolverPatterns(BaseModel):
-    __root__: List[ResolverPattern]
+class ResolverPatterns(RootModel):
+    root: list[ResolverPattern]
 
-    def __iter__(self) -> Iterable[ResolverPattern]:
-        return iter(self.__root__)
+    def __iter__(self):
+        return iter(self.root)
 
-    def get_resolver(self, url: str) -> Optional[URLResolver]:
-        for pattern in self.__root__:
+    def __getitem__(self, item):
+        return self.root[item]
+
+    def get_resolver(self, url: str) -> URLResolver | None:
+        for pattern in self.root:
             if pattern.is_match(url):
                 return pattern.resolver
 

@@ -16,11 +16,12 @@ do
 
     echo "Converting $ui_src -> $ui_dest..."
 
-    poetry run pyuic5 "$ui_src_file" -o "$APP_BASE_DIR/dialogs/$ui_dest"
+    uv run --frozen pyuic5 "$ui_src_file" -o "$APP_BASE_DIR/dialogs/$ui_dest"
 done
 
 # strip comments
 sed -i 's/^#.*$//g' "$APP_BASE_DIR/dialogs"/*_ui.py
 
 dos2unix "$APP_BASE_DIR/dialogs"/*_ui.py
-poetry run black "$APP_BASE_DIR/dialogs"/*_ui.py
+uv run --frozen ruff format "$APP_BASE_DIR/dialogs"/*_ui.py
+uv run --frozen ruff check --fix "$APP_BASE_DIR/dialogs"/*_ui.py

@@ -365,8 +365,9 @@ SECTIONS = MappingProxyType(
             ),
             (
                 "Playlist Settings",
-                "Disable Click Pause",
-                "Disable Wheel Seek",
+                "Disable Mouse Click Events",
+                "Disable Mouse Wheel Events",
+                "Disable Overlay",
             ),
         ],
         "program": [
@@ -380,6 +381,7 @@ SECTIONS = MappingProxyType(
             "Open Playlist",
             "Open Playlist (Recent)",
             "Save Playlist",
+            "Save Playlist As",
             "Close Playlist",
             "---",
             "Settings",

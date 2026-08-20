@@ -1,21 +1,15 @@
 import dataclasses
 import logging
-import os
 from functools import partial
 from io import IOBase
 from itertools import chain
-from typing import Dict
+from pathlib import Path
 
 from requests import Response
 from streamlink import StreamError
-from streamlink.stream import (
-    HLSStream,
-    HTTPStream,
-    StreamIOIterWrapper,
-    StreamIOThreadWrapper,
-)
-from streamlink.stream.hls_playlist import M3U8
-from streamlink.stream.hls_playlist import load as load_hls_playlist
+from streamlink.stream.hls import M3U8, HLSStream, parse_m3u8
+from streamlink.stream.http import HTTPStream
+from streamlink.stream.wrappers import StreamIOIterWrapper, StreamIOThreadWrapper
 
 from gridplayer.models.stream import Stream, StreamSessionOpts
 from gridplayer.utils.stream_proxy.m3u8 import m3u8_to_str
@@ -24,11 +18,11 @@ CHUNK_SIZE = 8192
 
 
 class HTTPStreamProxy(HTTPStream):
-    def __init__(  # noqa: WPS211
+    def __init__(
         self,
         server,
         session_opts: StreamSessionOpts,
-        session_,  # noqa: WPS120
+        session_,
         url: str,
         buffered: bool = True,
         **args,
@@ -46,7 +40,7 @@ class HTTPStreamProxy(HTTPStream):
     def response(self) -> Response:
         return self._res
 
-    def set_request_headers(self, headers: Dict[str, str]):
+    def set_request_headers(self, headers: dict[str, str]):
         self.args["headers"] = headers
 
     def open(self):
@@ -78,22 +72,20 @@ class HLSProxy(HTTPStreamProxy):
             **reqargs,
         )
 
-        base_url = os.path.dirname(self.args["url"]) + "/"
-        hls_playlist = load_hls_playlist(self._res.text, base_url)
+        base_url = f"{Path(self.args['url']).parent}/"
+        hls_playlist = parse_m3u8(self._res.text, base_url)
 
         hls_playlist_txt = self._proxify_hls_playlist(hls_playlist)
 
         self._set_hls_playlist_as_response(hls_playlist_txt)
 
     def _proxify_hls_playlist(self, hls_playlist: M3U8) -> str:
-        for i, segment in enumerate(hls_playlist.segments):
-            segment_url = self._proxify_url(segment.uri)
-
-            hls_playlist.segments[i] = segment._replace(uri=segment_url)
-
+        for segment in hls_playlist.segments:  # type: HLSSegment
+            segment.uri = self._proxify_url(segment.uri)
             if segment.map:
-                s_map = segment.map._replace(uri=self._proxify_url(segment.map.uri))
-                hls_playlist.segments[i] = hls_playlist.segments[i]._replace(map=s_map)
+                segment.map = segment.map._replace(
+                    uri=self._proxify_url(segment.map.uri)
+                )
 
         return m3u8_to_str(hls_playlist)
 
@@ -126,11 +118,10 @@ class HLSProxyLive(HLSStream):
 
         return res
 
-    def set_request_headers(self, headers: Dict[str, str]):
-        ...
+    def set_request_headers(self, headers: dict[str, str]): ...
 
 
-class HLSMuxedStream(object):
+class HLSMuxedStream:
     def __init__(self, server, stream: Stream):
         self.server = server
         self.stream = stream
@@ -154,8 +145,7 @@ class HLSMuxedStream(object):
 
         return res
 
-    def set_request_headers(self, headers: Dict[str, str]):
-        ...
+    def set_request_headers(self, headers: dict[str, str]): ...
 
     def _generate_hls_playlist(self) -> str:
         res = ["#EXTM3U"]
@@ -166,10 +156,7 @@ class HLSMuxedStream(object):
 
         res += [
             '#EXT-X-MEDIA:TYPE=AUDIO,GROUP-ID="audio",'
-            'NAME="{name}",DEFAULT=YES,URI="{track_url}"'.format(
-                name=name,
-                track_url=self.server.add_stream(audio_track),
-            )
+            f'NAME="{name}",DEFAULT=YES,URI="{self.server.add_stream(audio_track)}"'
         ]
 
         solo_stream = dataclasses.replace(self.stream, audio_tracks=None)
@@ -180,8 +167,8 @@ class HLSMuxedStream(object):
         return "\n".join(res)
 
 
-class StreamReader(object):
-    def __init__(self, stream: HTTPStreamProxy, request_headers: Dict[str, str]):
+class StreamReader:
+    def __init__(self, stream: HTTPStreamProxy, request_headers: dict[str, str]):
         self._log = logging.getLogger(self.__class__.__name__)
 
         self._stream_fd = None

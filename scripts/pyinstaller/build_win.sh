@@ -6,8 +6,13 @@ SCRIPT_DIR="$( cd "$( dirname $0 )" && pwd )"
 
 . "scripts/init_app_vars.sh"
 
-VLC_URL="https://get.videolan.org/vlc/3.0.17.4/win64/vlc-3.0.17.4-win64.zip"
-PYINSTALLER_VERSION="5.11.0"
+# Get machine architecture
+if [ -z "$BUILD_ARCH" ]; then
+    BUILD_ARCH=$(python -c "import platform; print('win32' if platform.architecture()[0] == '32bit' else 'win64')")
+fi
+
+VLC_URL="https://get.videolan.org/vlc/3.0.21/$BUILD_ARCH/vlc-3.0.21-$BUILD_ARCH.zip"
+PYINSTALLER_VERSION="6.17.0"
 
 mkdir -p "$BUILD_DIR"
 
@@ -28,7 +33,7 @@ copy_with_app_vars "$SCRIPT_DIR/version_info.py" "$BUILD_DIR"
 
 copy_with_app_vars "$SCRIPT_DIR/pyinstaller_win.spec" "$BUILD_DIR/$APP_NAME.spec"
 
-pyinstaller --ascii --clean --noconfirm "$BUILD_DIR/$APP_NAME.spec"
+pyinstaller --clean --noconfirm "$BUILD_DIR/$APP_NAME.spec"
 
 # Post-build
 # =============

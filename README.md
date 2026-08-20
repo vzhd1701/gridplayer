@@ -22,7 +22,8 @@ information about the position, sound volume, loops, aspect ratio, etc.
 
 - Cross-platform (Linux, Mac, and Windows)
 - Support for any video and audio format (VLC)
-- Support for (almost) any streaming URLs ([streamlink](https://streamlink.github.io/plugins.html) + [yt-dlp](https://github.com/yt-dlp/yt-dlp/blob/master/supportedsites.md))
+- Support for (almost) any streaming
+  URLs ([streamlink](https://streamlink.github.io/plugins.html) + [yt-dlp](https://github.com/yt-dlp/yt-dlp/blob/master/supportedsites.md))
 - Hardware & software video decoding
 - Control video aspect, playback speed, zoom
 - Set loop fragments with frame percision
@@ -43,13 +44,13 @@ Huge thanks to [every contributor](https://github.com/vzhd1701/gridplayer#transl
 
 ### Windows
 
-[![Download Windows Installer](https://raw.githubusercontent.com/vzhd1701/gridplayer/master/resources/public/dl_windows_installer.png)](https://github.com/vzhd1701/gridplayer/releases/download/v0.5.3/GridPlayer-0.5.3-win64-install.exe)
-[![Download Windows Portable](https://raw.githubusercontent.com/vzhd1701/gridplayer/master/resources/public/dl_windows_portable.png)](https://github.com/vzhd1701/gridplayer/releases/download/v0.5.3/GridPlayer-0.5.3-win64-portable.zip)
+[![Download Windows Installer](https://raw.githubusercontent.com/vzhd1701/gridplayer/master/resources/public/dl_windows_installer.png)](https://github.com/vzhd1701/gridplayer/releases/download/v0.5.5/GridPlayer-0.5.5-win64-install.exe)
+[![Download Windows Portable](https://raw.githubusercontent.com/vzhd1701/gridplayer/master/resources/public/dl_windows_portable.png)](https://github.com/vzhd1701/gridplayer/releases/download/v0.5.5/GridPlayer-0.5.5-win64-portable.zip)
 
 Via [scoop](https://scoop.sh/):
 
 ```shell
-$ scoop install gridplayer
+scoop install gridplayer
 ```
 
 **Compatible with Windows 7, 8, 10, 11.**
@@ -58,7 +59,7 @@ $ scoop install gridplayer
 
 [![Get it from the Flathub](https://raw.githubusercontent.com/vzhd1701/gridplayer/master/resources/public/dl_flathub.png)](https://flathub.org/apps/details/com.vzhd1701.gridplayer)
 [![Get it from the Snap Store](https://raw.githubusercontent.com/vzhd1701/gridplayer/master/resources/public/dl_snap.png)](https://snapcraft.io/gridplayer)
-[![Download AppImage](https://raw.githubusercontent.com/vzhd1701/gridplayer/master/resources/public/dl_appimage.png)](https://github.com/vzhd1701/gridplayer/releases/download/v0.5.3/GridPlayer-0.5.3-x86_64.AppImage)
+[![Download AppImage](https://raw.githubusercontent.com/vzhd1701/gridplayer/master/resources/public/dl_appimage.png)](https://github.com/vzhd1701/gridplayer/releases/download/v0.5.5/GridPlayer-0.5.5-x86_64.AppImage)
 
 **For better system integration install via Flathub.**
 
@@ -69,14 +70,14 @@ The AppImage was built using Ubuntu Focal Fossa libraries, so compatibility is U
 You may need to set execute permissions on AppImage file in order to run it:
 
 ```shell
-$ chmod +x GridPlayer-0.5.3-x86_64.AppImage
+chmod +x GridPlayer-0.5.5-x86_64.AppImage
 ```
 
 ### MacOS
 
-[![Download DMG](https://raw.githubusercontent.com/vzhd1701/gridplayer/master/resources/public/dl_dmg.png)](https://github.com/vzhd1701/gridplayer/releases/download/v0.5.3/GridPlayer.0.5.3.dmg)
+[![Download DMG](https://raw.githubusercontent.com/vzhd1701/gridplayer/master/resources/public/dl_dmg.png)](https://github.com/vzhd1701/gridplayer/releases/download/v0.5.5/GridPlayer.0.5.5_arm64.dmg)
 
-**DMG image is not signed.** You will have to add an exception to run this app.
+**DMG image is not signed and targets Apple Silicon (`arm64`).** You will have to add an exception to run this app.
 
 - [How to open an app that hasn’t been notarized or is from an unidentified developer](https://support.apple.com/en-euro/HT202491)
 - [Open a Mac app from an unidentified developer](https://support.apple.com/guide/mac-help/open-a-mac-app-from-an-unidentified-developer-mh40616/mac)
@@ -84,59 +85,60 @@ $ chmod +x GridPlayer-0.5.3-x86_64.AppImage
 If you get "GridPlayer is damaged and can't be opened" error, run this command in the Terminal app:
 
 ```shell
-$ sudo xattr -rd com.apple.quarantine /Applications/GridPlayer.app
+sudo xattr -rd com.apple.quarantine /Applications/GridPlayer.app
 ```
 
-### PIP
+### Install with [UV](https://docs.astral.sh/uv/)
 
 ```shell
-$ pip install -U gridplayer
+uv tool install gridplayer
 ```
 
-**Python 3.8 or later required.**
+**Python 3.10 or later required.**
 
-This type of installation will also require a `vlc` package present in your system.
+This type of installation will also require VLC installed (Windows & Mac) or a `vlc` package (Linux) present in your
+system.
 Please refer to [VLC official page](https://www.videolan.org/vlc/) for instructions on how to install it.
 
 Some distros (e.g. Ubuntu) might also require `libxcb-xinerama0` package.
 
 ### From source
 
-This project uses [poetry](https://python-poetry.org/) for dependency management and packaging. You will have to install it first. See [poetry official documentation](https://python-poetry.org/docs/) for instructions.
-
 ```shell
-$ git clone https://github.com/vzhd1701/gridplayer.git
-$ cd gridplayer/
-$ poetry install --no-dev
-$ poetry run gridplayer
+uv tool install git+https://github.com/vzhd1701/gridplayer.git
 ```
 
-The same notes about the Python version and external packages from **PIP** installation apply here.
+The same notes about the Python version and external packages from above apply here.
 
 ## Video Decoder settings
 
 GridPlayer supports two video output modes:
 
-- Hardware (default) mode uses available GPU to render video. This mode offers high performance and is a recommended mode.
-- Software mode is entirely independent of GPU and only uses the CPU to render video. This mode may cause a high CPU load with high-resolution videos.
+- Hardware (default) mode uses available GPU to render video. This mode offers high performance and is a recommended
+  mode.
+- Software mode is entirely independent of GPU and only uses the CPU to render video. This mode may cause a high CPU
+  load with high-resolution videos.
 
-Due to libvlc software library limitations, video decoding is split into parallel processes. You can control how many videos are handled by a single decoder process using the "Videos per process" setting. Setting this option too high may cause a high CPU load and application freeze. The optimal value is 4 videos per process.
+Due to libvlc software library limitations, video decoding is split into parallel processes. You can control how many
+videos are handled by a single decoder process using the "Videos per process" setting. Setting this option too high may
+cause a high CPU load and application freeze. The optimal value is 4 videos per process.
 
-There is also "Hardware SP" mode. It handles video decoding within the same process in which GridPlayer runs. It is not recommended to use with many videos (>4-6) because it may cause high CPU load and application freeze.
+There is also "Hardware SP" mode. It handles video decoding within the same process in which GridPlayer runs. It is not
+recommended to use with many videos (>4-6) because it may cause high CPU load and application freeze.
 
 Due to OS inter-process restrictions, "Hardware SP" is the only available hardware mode in macOS.
 
 ## Known issues
 
-#### Linux (Snap): Error when opening a file from the mounted disk
+### Linux (Snap): Error when opening a file from the mounted disk
 
 You need to allow GridPlayer snap to access removable storage devices via Snap Store or by running:
 
 ```shell
-$ sudo snap connect gridplayer:removable-media
+sudo snap connect gridplayer:removable-media
 ```
 
-#### Linux (Snap): mounted drives are not visible in file selection dialog
+### Linux (Snap): mounted drives are not visible in file selection dialog
 
 You will also see following error if you run GridPlayer from terminal:
 
@@ -144,23 +146,29 @@ You will also see following error if you run GridPlayer from terminal:
 GLib-GIO-WARNING **: Error creating IO channel for /proc/self/mountinfo: Permission denied (g-file-error-quark, 2)
 ```
 
-To fix this, you need to allow GridPlayer snap to access system mount information and disk quotas via Snap Store or by running:
+To fix this, you need to allow GridPlayer snap to access system mount information and disk quotas via Snap Store or by
+running:
 
 ```shell
-$ sudo snap connect gridplayer:mount-observe
+sudo snap connect gridplayer:mount-observe
 ```
 
-#### Linux: black screen issue when using hardware decoder
+### Linux: black screen issue when using hardware decoder
 
-Switch on "Opaque overlay (fix black screen)" checkbox in settings.
+If no compositor is running, GridPlayer switches the overlay to opaque automatically. If the overlay is still a black
+screen, switch on "Opaque overlay (fix black screen)" checkbox in settings.
 
-Depending on the window manager, the overlay might be a bit glitchy with the hardware decoder. Enabling compositor might help.
+Depending on the window manager, the overlay might be a bit glitchy with the hardware decoder. Enabling compositor might
+help.
 
 ## Geting help
 
-If you found a bug or have a feature request, please [open a new issue](https://github.com/vzhd1701/gridplayer/issues/new/choose).
+If you found a bug or have a feature request,
+please [open a new issue](https://github.com/vzhd1701/gridplayer/issues/new/choose).
 
-If you have a question about the program or have difficulty using it, you are welcome to [the discussions page](https://github.com/vzhd1701/gridplayer/discussions). You can also mail me directly, I'm always happy to help.
+If you have a question about the program or have difficulty using it, you are welcome
+to [the discussions page](https://github.com/vzhd1701/gridplayer/discussions). You can also mail me directly, I'm always
+happy to help.
 
 ## Attributions
 
@@ -201,61 +209,258 @@ This software was build using
 
 ## Translations
 
-### Arabic
+<!-- CROWDIN-CONTRIBUTORS-START -->
 
-- [azoaz6001](https://crowdin.com/profile/azoaz6001)
-
-### German
-
-- [DominikPott](https://crowdin.com/profile/dominikpott)
-
-### Spanish
-
-- [Sergio Varela](https://crowdin.com/profile/ingrownmink4)
-- [asolis2020](https://crowdin.com/profile/asolis2020)
-
-### French
-
-- [Sylvain LOUIS](https://crowdin.com/profile/louis_sylvain)
-
-### Hungarian
-
-- [samu112](https://crowdin.com/profile/samu112)
-
-### Italian
-
-- [Davide V.](https://crowdin.com/profile/davidev1)
-- [SolarCTP](https://crowdin.com/profile/solarctp)
-
-### Japanese
-
-- [七篠孝志](https://crowdin.com/profile/japanese.john.doe.774)
-
-### Korean
-
-- [VenusGirl](https://venusgirls.tistory.com/)
-
-### Dutch
-
-- [Heimen Stoffels](https://crowdin.com/profile/vistaus)
-
-### Polish
-
-- [rafal132](https://crowdin.com/profile/fifi132)
-- [Sebastian Jasiński](https://crowdin.com/profile/princenorris)
-
-### Portuguese, Brazilian
-
-- [GBS ~ TECH](https://crowdin.com/profile/gabriel-bs1)
-
-### Chinese Simplified
-
-- [Yagang Wang](https://crowdin.com/profile/wyg945)
-- [1017346](https://crowdin.com/profile/1017346)
-- [焦新营](https://crowdin.com/profile/j149697726)
-- [loser7788](https://crowdin.com/profile/loser7788)
-- [李凡](https://crowdin.com/profile/lif86060)
+<table>
+  <tbody>
+    <tr>
+      <td align="center" valign="top">
+        <a href="https://crowdin.com/profile/VenusGirl"><img alt="logo" style="width: 64px" src="https://crowdin-static.cf-downloads.crowdin.com/avatar/14432528/medium/3284b34db4ef3cda16835c5a18c797d0.jpg" />
+          <br />
+          <sub><b>VenusGirl</b></sub></a>
+        <br />
+        <sub><b>886 words</b></sub>
+        <br /><sub><b><code title="Korean">ko</code></b></sub>
+      </td>
+      <td align="center" valign="top">
+        <a href="https://crowdin.com/profile/LOUIS_Sylvain"><img alt="logo" style="width: 64px" src="https://crowdin-static.cf-downloads.crowdin.com/avatar/14983555/medium/af7d7ab185011ffda0bd01b41fc05ccf.png" />
+          <br />
+          <sub><b>Sylvain LOUIS</b></sub>
+          <br />
+          <sub><b>(LOUIS_Sylvain)</b></sub></a>
+        <br />
+        <sub><b>886 words</b></sub>
+        <br /><sub><b><code title="French">fr</code></b></sub>
+      </td>
+      <td align="center" valign="top">
+        <a href="https://crowdin.com/profile/Gabriel-BS1"><img alt="logo" style="width: 64px" src="https://crowdin-static.cf-downloads.crowdin.com/avatar/15681015/medium/50b012437410a2a9c27236c0ce05b1b1.png" />
+          <br />
+          <sub><b>GBS ~ TECH</b></sub>
+          <br />
+          <sub><b>(Gabriel-BS1)</b></sub></a>
+        <br />
+        <sub><b>886 words</b></sub>
+        <br /><sub><b><code title="Portuguese, Brazilian">pt-BR</code></b></sub>
+      </td>
+      <td align="center" valign="top">
+        <a href="https://crowdin.com/profile/Granberg"><img alt="logo" style="width: 64px" src="https://crowdin-static.cf-downloads.crowdin.com/avatar/12416181/medium/2864d29be808543d56f9e210a06ad934.jpg" />
+          <br />
+          <sub><b>Göran</b></sub>
+          <br />
+          <sub><b>(Granberg)</b></sub></a>
+        <br />
+        <sub><b>875 words</b></sub>
+        <br /><sub><b><code title="Swedish">sv-SE</code></b></sub>
+      </td>
+      <td align="center" valign="top">
+        <a href="https://crowdin.com/profile/royhendum"><img alt="logo" style="width: 64px" src="https://crowdin-static.cf-downloads.crowdin.com/avatar/17390478/medium/ab5a65a9b43bbae930fe45baa1a5e51f.png" />
+          <br />
+          <sub><b>Roy Hendum</b></sub>
+          <br />
+          <sub><b>(royhendum)</b></sub></a>
+        <br />
+        <sub><b>875 words</b></sub>
+        <br /><sub><b><code title="Norwegian">no</code></b></sub>
+      </td>
+      <td align="center" valign="top">
+        <a href="https://crowdin.com/profile/zxas"><img alt="logo" style="width: 64px" src="https://crowdin-static.cf-downloads.crowdin.com/avatar/16338184/medium/90d1c13645360de47426fcd50d7630df.jpeg" />
+          <br />
+          <sub><b>z Z</b></sub>
+          <br />
+          <sub><b>(zxas)</b></sub></a>
+        <br />
+        <sub><b>851 words</b></sub>
+        <br /><sub><b><code title="Chinese Traditional">zh-TW</code></b></sub>
+      </td>
+    </tr>
+    <tr>
+      <td align="center" valign="top">
+        <a href="https://crowdin.com/profile/davidev1"><img alt="logo" style="width: 64px" src="https://crowdin-static.cf-downloads.crowdin.com/avatar/13229273/medium/03b55ef5010bbc801f432e51e4a50171.jpg" />
+          <br />
+          <sub><b>Davide V.</b></sub>
+          <br />
+          <sub><b>(davidev1)</b></sub></a>
+        <br />
+        <sub><b>752 words</b></sub>
+        <br /><sub><b><code title="Italian">it</code></b></sub>
+      </td>
+      <td align="center" valign="top">
+        <a href="https://crowdin.com/profile/Vistaus"><img alt="logo" style="width: 64px" src="https://crowdin-static.cf-downloads.crowdin.com/avatar/12732621/medium/bbca85454e90b7362cbbe57e5cd54489.jpeg" />
+          <br />
+          <sub><b>Heimen Stoffels</b></sub>
+          <br />
+          <sub><b>(Vistaus)</b></sub></a>
+        <br />
+        <sub><b>751 words</b></sub>
+        <br /><sub><b><code title="Dutch">nl</code></b></sub>
+      </td>
+      <td align="center" valign="top">
+        <a href="https://crowdin.com/profile/japanese.john.doe.774"><img alt="logo" style="width: 64px" src="https://crowdin-static.cf-downloads.crowdin.com/avatar/15405594/medium/1e457ad578b4390a744f8b1af85533fa.png" />
+          <br />
+          <sub><b>七篠孝志</b></sub>
+          <br />
+          <sub><b>(japanese.john.doe.774)</b></sub></a>
+        <br />
+        <sub><b>751 words</b></sub>
+        <br /><sub><b><code title="Japanese">ja</code></b></sub>
+      </td>
+      <td align="center" valign="top">
+        <a href="https://crowdin.com/profile/DominikPott"><img alt="logo" style="width: 64px" src="https://crowdin-static.cf-downloads.crowdin.com/avatar/15472688/medium/6e48ea2f0a8564252086d2d7775d2f21.png" />
+          <br />
+          <sub><b>DominikPott</b></sub></a>
+        <br />
+        <sub><b>751 words</b></sub>
+        <br /><sub><b><code title="German">de</code></b></sub>
+      </td>
+      <td align="center" valign="top">
+        <a href="https://crowdin.com/profile/Azoaz6001"><img alt="logo" style="width: 64px" src="https://crowdin-static.cf-downloads.crowdin.com/avatar/15591465/medium/ae7a5aafbc99dc9ac4ba3a8c5bf42dcb_default.png" />
+          <br />
+          <sub><b>Azoaz6001</b></sub></a>
+        <br />
+        <sub><b>751 words</b></sub>
+        <br /><sub><b><code title="Arabic">ar</code></b></sub>
+      </td>
+      <td align="center" valign="top">
+        <a href="https://crowdin.com/profile/wyg945"><img alt="logo" style="width: 64px" src="https://crowdin-static.cf-downloads.crowdin.com/avatar/15682575/medium/e3d1504b9b88be18745f758cb4f11d77.png" />
+          <br />
+          <sub><b>Yagang Wang</b></sub>
+          <br />
+          <sub><b>(wyg945)</b></sub></a>
+        <br />
+        <sub><b>751 words</b></sub>
+        <br /><sub><b><code title="Chinese Simplified">zh-CN</code></b></sub>
+      </td>
+    </tr>
+    <tr>
+      <td align="center" valign="top">
+        <a href="https://crowdin.com/profile/Golbinex"><img alt="logo" style="width: 64px" src="https://crowdin-static.cf-downloads.crowdin.com/avatar/17664878/medium/1b0e9f044a085950575bcf53e3581336.jpeg" />
+          <br />
+          <sub><b>Kryštof Baksa</b></sub>
+          <br />
+          <sub><b>(Golbinex)</b></sub></a>
+        <br />
+        <sub><b>674 words</b></sub>
+        <br /><sub><b><code title="Czech">cs</code></b></sub>
+      </td>
+      <td align="center" valign="top">
+        <a href="https://crowdin.com/profile/IngrownMink4"><img alt="logo" style="width: 64px" src="https://crowdin-static.cf-downloads.crowdin.com/avatar/14414288/medium/53f8a637c2fa88786f85808ebee55807.jpg" />
+          <br />
+          <sub><b>Sergio Varela</b></sub>
+          <br />
+          <sub><b>(IngrownMink4)</b></sub></a>
+        <br />
+        <sub><b>652 words</b></sub>
+        <br /><sub><b><code title="Spanish">es-ES</code></b></sub>
+      </td>
+      <td align="center" valign="top">
+        <a href="https://crowdin.com/profile/fifi132"><img alt="logo" style="width: 64px" src="https://crowdin-static.cf-downloads.crowdin.com/avatar/15774079/medium/0e0d2651e73807bbb9050e8fd3e44f18.png" />
+          <br />
+          <sub><b>rafal132</b></sub>
+          <br />
+          <sub><b>(fifi132)</b></sub></a>
+        <br />
+        <sub><b>598 words</b></sub>
+        <br /><sub><b><code title="Polish">pl</code></b></sub>
+      </td>
+      <td align="center" valign="top">
+        <a href="https://crowdin.com/profile/a2942"><img alt="logo" style="width: 64px" src="https://crowdin-static.cf-downloads.crowdin.com/avatar/16794451/medium/184acbf1f2f0e4adf1dc62822bd5acfd.jpg" />
+          <br />
+          <sub><b>a2942</b></sub></a>
+        <br />
+        <sub><b>496 words</b></sub>
+        <br /><sub><b><code title="Chinese Simplified">zh-CN</code></b></sub>
+      </td>
+      <td align="center" valign="top">
+        <a href="https://crowdin.com/profile/LiberiFatali"><img alt="logo" style="width: 64px" src="https://crowdin-static.cf-downloads.crowdin.com/avatar/15598851/medium/610ee0a4acb813a2832ac2c927e79cfb_default.png" />
+          <br />
+          <sub><b>LiberiFatali</b></sub></a>
+        <br />
+        <sub><b>456 words</b></sub>
+        <br /><sub><b><code title="Vietnamese">vi</code></b></sub>
+      </td>
+      <td align="center" valign="top">
+        <a href="https://crowdin.com/profile/samu112"><img alt="logo" style="width: 64px" src="https://crowdin-static.cf-downloads.crowdin.com/avatar/15157130/medium/e119d6e287f4e49464eac1ee32974bac_default.png" />
+          <br />
+          <sub><b>samu112</b></sub></a>
+        <br />
+        <sub><b>438 words</b></sub>
+        <br /><sub><b><code title="Hungarian">hu</code></b></sub>
+      </td>
+    </tr>
+    <tr>
+      <td align="center" valign="top">
+        <a href="https://crowdin.com/profile/asolis2020"><img alt="logo" style="width: 64px" src="https://crowdin-static.cf-downloads.crowdin.com/avatar/15661045/medium/6ba336a35aa362fa47b5adf11919141b_default.png" />
+          <br />
+          <sub><b>asolis2020</b></sub></a>
+        <br />
+        <sub><b>266 words</b></sub>
+        <br /><sub><b><code title="Spanish">es-ES</code></b></sub>
+      </td>
+      <td align="center" valign="top">
+        <a href="https://crowdin.com/profile/SolarCTP"><img alt="logo" style="width: 64px" src="https://crowdin-static.cf-downloads.crowdin.com/avatar/15384684/medium/f0197a7e2769ecc2788a18091a7afb0b.png" />
+          <br />
+          <sub><b>SolarCTP</b></sub></a>
+        <br />
+        <sub><b>164 words</b></sub>
+        <br /><sub><b><code title="Italian">it</code></b></sub>
+      </td>
+      <td align="center" valign="top">
+        <a href="https://crowdin.com/profile/PrinceNorris"><img alt="logo" style="width: 64px" src="https://crowdin-static.cf-downloads.crowdin.com/avatar/13962625/medium/907539fd79ca32a8a08d400a1aa043f7_default.png" />
+          <br />
+          <sub><b>Sebastian Jasiński</b></sub>
+          <br />
+          <sub><b>(PrinceNorris)</b></sub></a>
+        <br />
+        <sub><b>163 words</b></sub>
+        <br /><sub><b><code title="Polish">pl</code></b></sub>
+      </td>
+      <td align="center" valign="top">
+        <a href="https://crowdin.com/profile/reiss404"><img alt="logo" style="width: 64px" src="https://crowdin-static.cf-downloads.crowdin.com/avatar/17071680/medium/8b927c3a2c3389c590128dc1f89dbeab.jpeg" />
+          <br />
+          <sub><b>Manuel</b></sub>
+          <br />
+          <sub><b>(reiss404)</b></sub></a>
+        <br />
+        <sub><b>133 words</b></sub>
+        <br /><sub><b><code title="German">de</code></b></sub>
+      </td>
+      <td align="center" valign="top">
+        <a href="https://crowdin.com/profile/aportuguesecoder"><img alt="logo" style="width: 64px" src="https://crowdin-static.cf-downloads.crowdin.com/avatar/17032790/medium/7ae1612b2227266f02dd7c6af1bb0d67.jpeg" />
+          <br />
+          <sub><b>Armando Gomes</b></sub>
+          <br />
+          <sub><b>(aportuguesecoder)</b></sub></a>
+        <br />
+        <sub><b>121 words</b></sub>
+        <br /><sub><b><code title="Portuguese">pt-PT</code></b></sub>
+      </td>
+      <td align="center" valign="top">
+        <a href="https://crowdin.com/profile/Akronos"><img alt="logo" style="width: 64px" src="https://crowdin-static.cf-downloads.crowdin.com/avatar/16284890/medium/db02e5c7b29dce08b02cd94a93b0ef0e_default.png" />
+          <br />
+          <sub><b>Akronos</b></sub></a>
+        <br />
+        <sub><b>112 words</b></sub>
+        <br /><sub><b><code title="Czech">cs</code></b></sub>
+      </td>
+    </tr>
+    <tr>
+      <td align="center" valign="top">
+        <a href="https://crowdin.com/profile/WackyFox"><img alt="logo" style="width: 64px" src="https://crowdin-static.cf-downloads.crowdin.com/avatar/15807071/medium/21329dc32cf56b0743914d5ef724d1e3.jpeg" />
+          <br />
+          <sub><b>Владимир Ларин</b></sub>
+          <br />
+          <sub><b>(WackyFox)</b></sub></a>
+        <br />
+        <sub><b>108 words</b></sub>
+        <br /><sub><b><code title="Hebrew">he</code></b></sub>
+      </td>
+    </tr>
+  </tbody>
+</table>
+<!-- CROWDIN-CONTRIBUTORS-END -->
 
 ## License
 
-This software is licensed under the terms of the GNU General Public License version 3 (GPLv3). Full text of the license is available in the [LICENSE](https://github.com/vzhd1701/gridplayer/blob/master/LICENSE) file and [online](https://www.gnu.org/licenses/gpl-3.0.html).
+This software is licensed under the terms of the GNU General Public License version 3 (GPLv3). Full text of the license
+is available in the [LICENSE](https://github.com/vzhd1701/gridplayer/blob/master/LICENSE) file
+and [online](https://www.gnu.org/licenses/gpl-3.0.html).

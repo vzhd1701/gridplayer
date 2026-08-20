@@ -1,35 +1,25 @@
 from pathlib import Path
-from typing import Union
+from typing import Annotated
 
-from pydantic import AnyUrl, FilePath, PydanticValueError
+from pydantic import AfterValidator, FilePath
 
-from gridplayer.params.extensions import SUPPORTED_MEDIA_EXT
-
-
-class VideoURL(AnyUrl):
-    allowed_schemes = {"http", "https", "rtp", "rtsp", "rtmp", "udp", "mms", "mmsh"}
-    max_length = 2083
+URL_ALLOWED_SCHEMES = {"http", "https", "rtp", "rtsp", "rtmp", "udp", "mms", "mmsh"}
+URL_MAX_LENGTH = 2083
 
 
-class PathNotAbsoluteError(PydanticValueError):
-    code = "path.not_absolute"
-    msg_template = 'path "{path}" is not absolute'
+def must_be_absolute(p: Path) -> Path:
+    if not p.is_absolute():
+        raise ValueError("path must be absolute")
+    return p
 
 
-class PathExtensionNotSupportedError(PydanticValueError):
-    code = "path.ext_not_supported"
-    msg_template = 'path extension "{path}" is not supported'
+def parse_uri(uri: str):
+    if "://" in uri:
+        return uri
+    return Path(uri).absolute()
 
 
-class AbsoluteFilePath(FilePath):
-    @classmethod
-    def validate(cls, path: Path) -> Path:
-        super().validate(path)
-
-        if not path.is_absolute():
-            raise PathNotAbsoluteError(path=path)
-
-        return path
+AbsoluteFilePath = Annotated[FilePath, AfterValidator(must_be_absolute)]
 
 
-VideoURI = Union[VideoURL, AbsoluteFilePath]
+VideoURI = str | AbsoluteFilePath

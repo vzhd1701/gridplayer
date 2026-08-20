@@ -5,7 +5,7 @@ from gridplayer.multiprocess.safe_shared_memory import releasing
 from gridplayer.vlc_player.libvlc import vlc
 
 
-class ImageDecoder(object):
+class ImageDecoder:
     def __init__(self, shared_memory, frame_ready_cb=None):
         super().__init__()
 
@@ -45,7 +45,7 @@ class ImageDecoder(object):
 
     def libvlc_lock_callback(self):
         @vlc.CallbackDecorators.VideoLockCb
-        def _cb(opaque, planes):  # noqa: WPS430
+        def _cb(opaque, planes):
             self._shared_memory.lock.acquire()
             planes[0] = self._shared_memory.ptr
 
@@ -53,7 +53,7 @@ class ImageDecoder(object):
 
     def libvlc_unlock_callback(self):
         @vlc.CallbackDecorators.VideoUnlockCb
-        def _cb(opaque, picta, planes):  # noqa: WPS430
+        def _cb(opaque, picta, planes):
             with releasing(self._shared_memory.lock):
                 if self._stopped:
                     return

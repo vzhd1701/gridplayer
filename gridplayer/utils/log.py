@@ -4,6 +4,7 @@ import os
 import platform
 import pprint
 import sys
+from pathlib import Path
 
 from PyQt5 import Qt
 from PyQt5.QtWidgets import QStyleFactory
@@ -32,14 +33,14 @@ def log_environment():
         f"Qt: {Qt.qVersion()}",
         f"MP Start method: {multiprocessing.get_start_method()}",
         f"is_pyinstaller_frozen: {env.IS_PYINSTALLER}",
-        f"_MEIPASS: {sys._MEIPASS}" if env.IS_PYINSTALLER else "",  # noqa: WPS437
+        f"_MEIPASS: {sys._MEIPASS}" if env.IS_PYINSTALLER else "",
         f"is_flatpak: {env.IS_FLATPAK}",
         f"is_snap: {env.IS_SNAP}",
         f"is_appimage: {env.IS_APPIMAGE}",
         f"sys.argv: {sys.argv}",
         f"sys.executable: {sys.executable}",
         f"sys.path: {sys.path}",
-        f"os.getcwd: {os.getcwd()}",
+        f"os.getcwd: {Path.cwd()}",
         f"QT Styles: {QStyleFactory.keys()}",
         "========",
         f"ENV\n {pretty_environment}",

@@ -340,205 +340,205 @@
     </message>
     <message>
       <source>Play</source>
-      <translation type="unfinished"/>
+      <translation>Reproduzir</translation>
     </message>
     <message>
       <source>Pause</source>
-      <translation type="unfinished"/>
+      <translation>Pausar</translation>
     </message>
     <message>
       <source>Enter Single Mode</source>
-      <translation type="unfinished"/>
+      <translation>Entrar em Modo Único</translation>
     </message>
     <message>
       <source>Leave Single Mode</source>
-      <translation type="unfinished"/>
+      <translation>Sair do Modo Único</translation>
     </message>
     <message>
       <source>Video Track</source>
-      <translation type="unfinished"/>
+      <translation>Faixa de vídeo</translation>
     </message>
     <message>
       <source>Audio Track</source>
-      <translation type="unfinished"/>
+      <translation>Faixa de áudio</translation>
     </message>
     <message>
       <source>From Clipboard</source>
-      <translation type="unfinished"/>
+      <translation>Da área de transferência</translation>
     </message>
     <message>
       <source>Recent</source>
-      <translation type="unfinished"/>
+      <translation>Recente</translation>
     </message>
     <message>
       <source>Recent Playlists</source>
-      <translation type="unfinished"/>
+      <translation>Playlists Recentes</translation>
     </message>
     <message>
       <source>Tracks</source>
-      <translation type="unfinished"/>
+      <translation>Faixas</translation>
     </message>
     <message>
       <source>Audio Mode</source>
-      <translation type="unfinished"/>
+      <translation>Modo de Áudio</translation>
     </message>
     <message>
       <source>Add</source>
-      <translation type="unfinished"/>
+      <translation>Adicionar</translation>
     </message>
     <message>
       <source>Playback</source>
-      <translation type="unfinished"/>
+      <translation>Reprodução</translation>
     </message>
     <message>
       <source>Audio</source>
-      <translation type="unfinished"/>
+      <translation>Áudio</translation>
     </message>
     <message>
       <source>Video</source>
-      <translation type="unfinished"/>
+      <translation>Vídeo</translation>
     </message>
     <message>
       <source>Disable Video</source>
-      <translation type="unfinished"/>
+      <translation>Desativar Vídeo</translation>
     </message>
     <message>
       <source>Disable Audio</source>
-      <translation type="unfinished"/>
+      <translation>Desabilitar Áudio</translation>
     </message>
     <message>
       <source>Clear List</source>
-      <translation type="unfinished"/>
+      <translation>Limpar lista</translation>
     </message>
     <message>
       <source>Rotate 90</source>
-      <translation type="unfinished"/>
+      <translation>Rotacionar 90 graus</translation>
     </message>
     <message>
       <source>Rotate 180</source>
-      <translation type="unfinished"/>
+      <translation>Rotacionar 180 graus</translation>
     </message>
     <message>
       <source>Rotate 270</source>
-      <translation type="unfinished"/>
+      <translation>Rotacionar 270 graus</translation>
     </message>
     <message>
       <source>Flip Horizontally</source>
-      <translation type="unfinished"/>
+      <translation>Virar horizontalmente</translation>
     </message>
     <message>
       <source>Flip Vertically</source>
-      <translation type="unfinished"/>
+      <translation>Virar Verticalmente</translation>
     </message>
     <message>
       <source>Transpose</source>
-      <translation type="unfinished"/>
+      <translation>Transpor</translation>
     </message>
     <message>
       <source>Anti-transpose</source>
-      <translation type="unfinished"/>
+      <translation>Anti-transposição</translation>
     </message>
     <message>
       <source>No Transform</source>
-      <translation type="unfinished"/>
+      <translation>Não transformar</translation>
     </message>
     <message>
       <source>Transform</source>
-      <translation type="unfinished"/>
+      <translation>Transformar</translation>
     </message>
     <message>
       <source>Crop Left +</source>
-      <translation type="unfinished"/>
+      <translation>Cortar à Esquerda +</translation>
     </message>
     <message>
       <source>Crop Left -</source>
-      <translation type="unfinished"/>
+      <translation>Cortar à Esquerda -</translation>
     </message>
     <message>
       <source>Crop Top +</source>
-      <translation type="unfinished"/>
+      <translation>Cortar Topo +</translation>
     </message>
     <message>
       <source>Crop Top -</source>
-      <translation type="unfinished"/>
+      <translation>Cortar Topo -</translation>
     </message>
     <message>
       <source>Crop Right +</source>
-      <translation type="unfinished"/>
+      <translation>Cortar à Direita +</translation>
     </message>
     <message>
       <source>Crop Right -</source>
-      <translation type="unfinished"/>
+      <translation>Cortar à Direita -</translation>
     </message>
     <message>
       <source>Crop Bottom +</source>
-      <translation type="unfinished"/>
+      <translation>Cortar abaixo +</translation>
     </message>
     <message>
       <source>Crop Bottom -</source>
-      <translation type="unfinished"/>
+      <translation>Cortar abaixo -</translation>
     </message>
     <message>
       <source>Crop Reset</source>
-      <translation type="unfinished"/>
+      <translation>Redefinir corte</translation>
     </message>
     <message>
       <source>Crop</source>
-      <translation type="unfinished"/>
+      <translation>Recortar</translation>
     </message>
   </context>
   <context>
     <name>Audio Mode</name>
     <message>
       <source>Original</source>
-      <translation type="unfinished"/>
+      <translation>Original</translation>
     </message>
     <message>
       <source>Stereo</source>
-      <translation type="unfinished"/>
+      <translation>Estéreo</translation>
     </message>
     <message>
       <source>Reverse Stereo</source>
-      <translation type="unfinished"/>
+      <translation>Estéreo invertido</translation>
     </message>
     <message>
       <source>Left</source>
-      <translation type="unfinished"/>
+      <translation>Esquerda</translation>
     </message>
     <message>
       <source>Right</source>
-      <translation type="unfinished"/>
+      <translation>Direita</translation>
     </message>
     <message>
       <source>Dolby Surround</source>
-      <translation type="unfinished"/>
+      <translation>Surround Dolby</translation>
     </message>
     <message>
       <source>Headphones</source>
-      <translation type="unfinished"/>
+      <translation>Fones de ouvido</translation>
     </message>
     <message>
       <source>Mono</source>
-      <translation type="unfinished"/>
+      <translation>Mono</translation>
     </message>
   </context>
   <context>
     <name>Audio Volume</name>
     <message>
       <source>Increase Volume</source>
-      <translation type="unfinished"/>
+      <translation>Aumentar volume</translation>
     </message>
     <message>
       <source>Decrease Volume</source>
-      <translation type="unfinished"/>
+      <translation>Diminuir volume</translation>
     </message>
     <message>
       <source>Mute</source>
-      <translation type="unfinished"/>
+      <translation>Mutar</translation>
     </message>
     <message>
       <source>Unmute</source>
-      <translation type="unfinished"/>
+      <translation>Desmutar</translation>
     </message>
   </context>
   <context>
@@ -588,7 +588,7 @@
     <message>
       <source>All</source>
       <comment>File formats</comment>
-      <translation type="unfinished"/>
+      <translation>Todos</translation>
     </message>
   </context>
   <context>
@@ -744,7 +744,7 @@
     </message>
     <message>
       <source>No valid URLs or files found!</source>
-      <translation type="unfinished"/>
+      <translation>Nenhum link ou arquivo válido encontrado!</translation>
     </message>
   </context>
   <context>
@@ -1147,67 +1147,67 @@
     </message>
     <message>
       <source>Best (Audio Only)</source>
-      <translation type="unfinished"/>
+      <translation>Melhor (Somente Áudio)</translation>
     </message>
     <message>
       <source>Worst (Audio Only)</source>
-      <translation type="unfinished"/>
+      <translation>Pior (Áudio)</translation>
     </message>
     <message>
       <source>Stay on top</source>
-      <translation type="unfinished"/>
+      <translation>Permanecer no topo</translation>
     </message>
     <message>
       <source>Enable recent list, maximum size</source>
-      <translation type="unfinished"/>
+      <translation>Habilitar lista recente, tamanho máximo</translation>
     </message>
     <message>
       <source>(items)</source>
-      <translation type="unfinished"/>
+      <translation>(items)</translation>
     </message>
     <message>
       <source>Audio mode</source>
-      <translation type="unfinished"/>
+      <translation>Modo de Áudio</translation>
     </message>
     <message>
       <source>Fake overlay invisibility (fix overlay on top of other windows)</source>
-      <translation type="unfinished"/>
+      <translation>Invisibilidade falsa da sobreposição (conserta a sobreposição em cima de outras janelas)</translation>
     </message>
     <message>
       <source>Rotate 90</source>
-      <translation type="unfinished"/>
+      <translation>Rotacionar 90 graus</translation>
     </message>
     <message>
       <source>Rotate 180</source>
-      <translation type="unfinished"/>
+      <translation>Rotacionar 180 graus</translation>
     </message>
     <message>
       <source>Rotate 270</source>
-      <translation type="unfinished"/>
+      <translation>Rotacionar 270 graus</translation>
     </message>
     <message>
       <source>Flip Horizontally</source>
-      <translation type="unfinished"/>
+      <translation>Virar horizontalmente</translation>
     </message>
     <message>
       <source>Flip Vertically</source>
-      <translation type="unfinished"/>
+      <translation>Virar Verticalmente</translation>
     </message>
     <message>
       <source>Transpose</source>
-      <translation type="unfinished"/>
+      <translation>Transpor</translation>
     </message>
     <message>
       <source>Anti-transpose</source>
-      <translation type="unfinished"/>
+      <translation>Anti-transposição</translation>
     </message>
     <message>
       <source>No Transform</source>
-      <translation type="unfinished"/>
+      <translation>Não transformar</translation>
     </message>
     <message>
       <source>Transform</source>
-      <translation type="unfinished"/>
+      <translation>Transformar</translation>
     </message>
   </context>
   <context>
@@ -1327,7 +1327,7 @@
     </message>
     <message>
       <source>Cannot disable both video &amp; audio tracks</source>
-      <translation type="unfinished"/>
+      <translation>Não é possível desativar as faixas de vídeo e áudio</translation>
     </message>
   </context>
 </TS>

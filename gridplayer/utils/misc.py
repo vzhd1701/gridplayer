@@ -13,10 +13,10 @@ def force_terminate_resource_tracker():
         return
 
     # kill resource_tracker first so it won't complain about leaked resources
-    from multiprocessing.resource_tracker import _resource_tracker  # noqa: WPS450
+    from multiprocessing.resource_tracker import _resource_tracker
 
-    if _resource_tracker._pid is not None:  # noqa: WPS437
-        os.kill(_resource_tracker._pid, signal.SIGKILL)  # noqa: WPS437
+    if _resource_tracker._pid is not None:
+        os.kill(_resource_tracker._pid, signal.SIGKILL)
 
 
 def force_terminate_children():
@@ -32,7 +32,7 @@ def force_terminate_children_all():
 def force_terminate(exit_code: int = 0):
     with suppress(ValueError):
         force_terminate_children_all()
-    os._exit(exit_code)  # noqa: WPS437
+    os._exit(exit_code)
 
 
 def is_url(s) -> bool:

@@ -448,43 +448,43 @@
     </message>
     <message>
       <source>Crop Left +</source>
-      <translation type="unfinished"/>
+      <translation>Recadrer à gauche +</translation>
     </message>
     <message>
       <source>Crop Left -</source>
-      <translation type="unfinished"/>
+      <translation>Recadrer à gauche -</translation>
     </message>
     <message>
       <source>Crop Top +</source>
-      <translation type="unfinished"/>
+      <translation>Recadrer le haut +</translation>
     </message>
     <message>
       <source>Crop Top -</source>
-      <translation type="unfinished"/>
+      <translation>Recadrer le haut -</translation>
     </message>
     <message>
       <source>Crop Right +</source>
-      <translation type="unfinished"/>
+      <translation>Recadrer à droite +</translation>
     </message>
     <message>
       <source>Crop Right -</source>
-      <translation type="unfinished"/>
+      <translation>Recadrer à droite -</translation>
     </message>
     <message>
       <source>Crop Bottom +</source>
-      <translation type="unfinished"/>
+      <translation>Recadrer en bas +</translation>
     </message>
     <message>
       <source>Crop Bottom -</source>
-      <translation type="unfinished"/>
+      <translation>Recadrer en bas -</translation>
     </message>
     <message>
       <source>Crop Reset</source>
-      <translation type="unfinished"/>
+      <translation>Réinitialiser le recadrage</translation>
     </message>
     <message>
       <source>Crop</source>
-      <translation type="unfinished"/>
+      <translation>Recadrer</translation>
     </message>
   </context>
   <context>
@@ -588,7 +588,7 @@
     <message>
       <source>All</source>
       <comment>File formats</comment>
-      <translation type="unfinished"/>
+      <translation>Tout</translation>
     </message>
   </context>
   <context>

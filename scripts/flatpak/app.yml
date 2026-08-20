@@ -1,7 +1,9 @@
 app-id: "{APP_ID}"
 runtime: org.kde.Platform
-runtime-version: "5.15-22.08"
+runtime-version: "5.15-25.08"
 sdk: org.kde.Sdk
+base: com.riverbankcomputing.PyQt.BaseApp
+base-version: "5.15-25.08"
 command: "{APP_MODULE}"
 finish-args:
 # OpenGL
@@ -24,15 +26,21 @@ finish-args:
 # https://stackoverflow.com/questions/986964/qt-session-management-error
 - "--env=SESSION_MANAGER="
 
+# Cleanup for com.riverbankcomputing.PyQt.BaseApp
+cleanup-commands:
+  - /app/cleanup-BaseApp.sh
+build-options:
+  env:
+    - BASEAPP_REMOVE_WEBENGINE=1
+
 cleanup:
 - "/include"
 - "/lib/*.a"
 - "/lib/*.la"
-- "/lib/debug"
 - "/lib/pkgconfig"
 - "/share/man"
 
 modules:
 - libvlc.yml
-- pyqt.yml
 - dependencies.yml
+- uv_build.yml

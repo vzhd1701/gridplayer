@@ -11,7 +11,7 @@ from gridplayer.utils.stream_proxy.wrappers import (
 )
 
 
-class StreamSession(object):
+class StreamSession:
     def __init__(self, stream_session: StreamSessionOpts, server):
         self._log = logging.getLogger(self.__class__.__name__)
 

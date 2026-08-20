@@ -3,9 +3,8 @@ import random
 import secrets
 from functools import partial
 from pathlib import Path
-from typing import Optional, Tuple
 
-from pydantic.color import Color
+from pydantic_extra_types.color import Color
 from PyQt5.QtCore import Qt, QTimer, pyqtSignal
 from PyQt5.QtGui import QCursor
 from PyQt5.QtWidgets import QStackedLayout, QWidget
@@ -22,7 +21,6 @@ from gridplayer.models.video import (
     Video,
     VideoBlockMime,
 )
-from gridplayer.models.video_uri import VideoURL
 from gridplayer.params.static import (
     OVERLAY_ACTIVITY_EVENT,
     PLAYER_ID_LENGTH,
@@ -71,7 +69,7 @@ class QStackedLayoutFloating(QStackedLayout):
 
 def only_initialized(func):
     def wrapper(*args, **kwargs):
-        self = args[0]  # noqa: WPS117
+        self = args[0]
         if not self.is_video_initialized:
             return None
         return func(*args, **kwargs)
@@ -81,7 +79,7 @@ def only_initialized(func):
 
 def only_seekable(func):
     def wrapper(*args, **kwargs):
-        self = args[0]  # noqa: WPS117
+        self = args[0]
         if self.is_live:
             return None
         return func(*args, **kwargs)
@@ -91,7 +89,7 @@ def only_seekable(func):
 
 def only_with_video_tacks(func):
     def wrapper(*args, **kwargs):
-        self = args[0]  # noqa: WPS117
+        self = args[0]
         if not self.video_tracks:
             return None
         return func(*args, **kwargs)
@@ -101,7 +99,7 @@ def only_with_video_tacks(func):
 
 def only_live(func):
     def wrapper(*args, **kwargs):
-        self = args[0]  # noqa: WPS117
+        self = args[0]
         if not self.is_live:
             return None
         return func(*args, **kwargs)
@@ -111,7 +109,7 @@ def only_live(func):
 
 def only_local_file(func):
     def wrapper(*args, **kwargs):
-        self = args[0]  # noqa: WPS117
+        self = args[0]
         if not self.is_local_file:
             return None
         return func(*args, **kwargs)
@@ -121,7 +119,7 @@ def only_local_file(func):
 
 def only_streamable(func):
     def wrapper(*args, **kwargs):
-        self = args[0]  # noqa: WPS117
+        self = args[0]
         if not self.streams:
             return None
         return func(*args, **kwargs)
@@ -129,7 +127,7 @@ def only_streamable(func):
     return wrapper
 
 
-class VideoBlock(QWidget):  # noqa: WPS230
+class VideoBlock(QWidget):
     load_video = pyqtSignal(MediaInput)
 
     about_to_close = pyqtSignal(str)
@@ -164,11 +162,12 @@ class VideoBlock(QWidget):  # noqa: WPS230
         self._ctx = context
 
         # Static Params
-        self.video_params: Optional[Video] = None
+        self.video_params: Video | None = None
 
         # Runtime Params
         self._is_error = False
         self._is_active = False
+        self._is_closing = False
 
         self._title = None
         self._color = None
@@ -311,7 +310,7 @@ class VideoBlock(QWidget):  # noqa: WPS230
         self.layout_main.addWidget(self.video_driver)
         self.layout_main.addWidget(self.overlay)
 
-        if type(self.overlay) == OverlayBlock:  # noqa: WPS516
+        if type(self.overlay) is OverlayBlock:
             self.overlay.raise_()
 
     def crash(self, traceback_txt):
@@ -332,7 +331,7 @@ class VideoBlock(QWidget):  # noqa: WPS230
     def video_driver_error(self, error):
         self.update_status(translate("Video Error", error))
 
-        if isinstance(self.video_params.uri, VideoURL):
+        if not self.video_params.is_local_file:
             return self.network_error()
 
         return self.error()
@@ -377,6 +376,11 @@ class VideoBlock(QWidget):  # noqa: WPS230
         self.close(notify=False)
 
     def close(self, notify=True):
+        if self._is_closing:
+            return
+
+        self._is_closing = True
+
         self._log.debug(f"Closing video block {self.id}")
 
         if notify:
@@ -388,22 +392,16 @@ class VideoBlock(QWidget):  # noqa: WPS230
         self.cleanup()
         event.accept()
 
-    @only_initialized
-    @only_seekable
     def wheelEvent(self, event):
-        if self._ctx.is_disable_wheel_seek:
+        if self._ctx.is_disable_mouse_wheel_events:
             event.ignore()
             return
 
-        is_shift_forward = event.angleDelta().y() < 0
-        is_big_shift = event.modifiers() & Qt.ShiftModifier
-
-        shift_percent = 5 if is_big_shift else 1
-
-        if is_shift_forward:
-            self.manual_seek("seek_shift_percent", shift_percent)
-        else:
-            self.manual_seek("seek_shift_percent", -shift_percent)
+        if self._dispatch_mouse_action(event):
+            # Accept so the event does not bubble to Player and re-trigger
+            # the same mouse shortcut (e.g. open Settings twice).
+            event.accept()
+            return
 
         event.ignore()
 
@@ -413,16 +411,34 @@ class VideoBlock(QWidget):  # noqa: WPS230
 
         super().mousePressEvent(event)
 
-    @only_initialized
     def mouseReleaseEvent(self, event) -> None:
-        if self._ctx.is_disable_click_pause:
+        if self._ctx.is_disable_mouse_click_events:
             event.ignore()
             return
 
-        if event.button() == Qt.LeftButton:
-            self.play_pause()
+        if self._dispatch_mouse_action(event):
+            event.accept()
+            return
 
         event.ignore()
+
+    def mouseDoubleClickEvent(self, event) -> None:
+        if self._ctx.is_disable_mouse_click_events:
+            event.ignore()
+            return
+
+        if self._dispatch_mouse_action(event):
+            event.accept()
+            return
+
+        event.ignore()
+
+    def _dispatch_mouse_action(self, event) -> bool:
+        try:
+            actions_manager = self._ctx.actions_manager
+        except KeyError:
+            return False
+        return actions_manager.handle_mouse_event(event)
 
     def hideEvent(self, event):
         self.hide_overlay()
@@ -506,7 +522,7 @@ class VideoBlock(QWidget):  # noqa: WPS230
         if self.video_params.auto_reload_timer_min == 0:
             return translate("Auto Reload Timer", "Disabled")
 
-        return "{0} {1}".format(
+        return "{} {}".format(
             self.video_params.auto_reload_timer_min,
             translate("Auto Reload Timer", "minute(s)"),
         )
@@ -532,7 +548,7 @@ class VideoBlock(QWidget):  # noqa: WPS230
         return VideoBlockMime(id=self.id, video=self.video_params)
 
     @property
-    def size_tuple(self) -> Tuple[int, int]:
+    def size_tuple(self) -> tuple[int, int]:
         return self.size().width(), self.size().height()
 
     @property
@@ -638,11 +654,19 @@ class VideoBlock(QWidget):  # noqa: WPS230
 
     @only_initialized
     def show_overlay(self):
+        if self._ctx.is_disable_overlay:
+            return
+
         self.overlay.show()
         if Settings().get("misc/overlay_hide"):
             self.overlay_hide_timer.start(1000 * Settings().get("misc/overlay_timeout"))
 
     def hide_overlay(self):
+        if self._ctx.is_disable_overlay:
+            self.overlay_hide_timer.stop()
+            self.overlay.hide()
+            return
+
         if not Settings().get("misc/overlay_hide"):
             return
 
@@ -709,7 +733,7 @@ class VideoBlock(QWidget):  # noqa: WPS230
         self.switch_stream_quality(snapshot.stream_quality)
         self.set_auto_reload_timer(snapshot.auto_reload_timer_min)
 
-        self.video_params = snapshot.copy()
+        self.video_params = snapshot.model_copy()
 
     def set_video(self, video_params: Video):
         is_first_video = self.video_params is None
@@ -810,10 +834,6 @@ class VideoBlock(QWidget):  # noqa: WPS230
         self.video_status.hide()
         self.show_overlay()
 
-        # Must do this after video is shown to ensure proper initial state (VLC lag)
-        if self.video_params.is_paused:
-            self.seek(self.video_params.current_position)
-
         self.video_driver.adjust_view()
 
     @only_with_video_tacks
@@ -911,7 +931,7 @@ class VideoBlock(QWidget):  # noqa: WPS230
     @only_initialized
     @only_seekable
     def seek_random(self):
-        random_ms = random.randint(self.loop_start, self.loop_end)  # noqa: S311
+        random_ms = random.randint(self.loop_start, self.loop_end)
 
         self.seek(random_ms)
 
@@ -984,7 +1004,7 @@ class VideoBlock(QWidget):  # noqa: WPS230
         self.video_driver.set_scale(scale)
 
         if not is_silent:
-            self.info_change.emit("Zoom: {0}".format(scale))
+            self.info_change.emit(f"Zoom: {scale}")
 
     @only_with_video_tacks
     @only_initialized
@@ -1020,7 +1040,7 @@ class VideoBlock(QWidget):  # noqa: WPS230
 
         if not is_silent:
             self.info_change.emit(
-                "Crop: L{0} T{1} R{2} B{3}".format(*self.video_params.crop)
+                "Crop: L{} T{} R{} B{}".format(*self.video_params.crop)
             )
 
     @only_initialized
@@ -1089,7 +1109,7 @@ class VideoBlock(QWidget):  # noqa: WPS230
     def volume_increase(self):
         self.set_muted(False)
 
-        self.video_params.volume += 0.05  # noqa: WPS432
+        self.video_params.volume += 0.05
         self.video_params.volume = min(round(self.video_params.volume, 2), 1.0)
 
         self.set_volume(self.video_params.volume)
@@ -1098,7 +1118,7 @@ class VideoBlock(QWidget):  # noqa: WPS230
     def volume_decrease(self):
         self.set_muted(False)
 
-        self.video_params.volume -= 0.05  # noqa: WPS432
+        self.video_params.volume -= 0.05
         self.video_params.volume = max(round(self.video_params.volume, 2), 0)
 
         self.set_volume(self.video_params.volume)

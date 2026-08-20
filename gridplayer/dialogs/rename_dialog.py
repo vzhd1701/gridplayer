@@ -1,5 +1,3 @@
-from typing import Tuple
-
 from PyQt5 import QtWidgets
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QBrush, QColor, QIcon, QPainter, QPen
@@ -36,7 +34,7 @@ class QColorCircle(QtWidgets.QRadioButton):
 
     def draw_circle(self, painter):
         # Draw color circle
-        if self.color in (Qt.white, None):  # noqa: WPS510
+        if self.color in (Qt.white, None):
             painter.setPen(QPen(QBrush(QColor(Qt.gray)), 2))
             circle_rect = self.rect().adjusted(5, 5, -5, -5)
         else:
@@ -169,13 +167,13 @@ class QVideoRenameDialog(QtWidgets.QDialog):
         self.title.setText(self.original_title)
 
     @classmethod
-    def get_edits(  # noqa: WPS211
+    def get_edits(
         cls,
         parent,
         title: str,
         orig_title: str,
         cur_title: str,
-        cur_color: Tuple[int, int, int],
+        cur_color: tuple[int, int, int],
     ):
         dialog = cls(parent=parent)
         dialog.setWindowTitle(title)
