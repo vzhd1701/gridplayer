@@ -97,7 +97,7 @@ class GridManager(ManagerBase):
     @property
     def grid_dimensions(self):
         if self.visible_count <= 1:
-            return GridDimensions(1, 1)
+            return GridDimensions(2, 2)
 
         if self._grid_size == 0:
             grid_size = math.ceil(math.sqrt(self.visible_count))
@@ -111,7 +111,7 @@ class GridManager(ManagerBase):
         else:
             cols, rows = grid_size, grid_slices
 
-        return GridDimensions(cols, rows)
+        return GridDimensions(2, 2)
 
     @contextlib.contextmanager
     def slow_ui_operation(self):

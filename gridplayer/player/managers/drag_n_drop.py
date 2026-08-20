@@ -19,6 +19,7 @@ from gridplayer.utils.qt import is_modal_open
 class DragNDropManager(ManagerBase):
     playlist_dropped = pyqtSignal(Path)
     videos_dropped = pyqtSignal(list)
+    close_this = pyqtSignal(str)
 
     videos_swapped = pyqtSignal()
 
@@ -185,6 +186,12 @@ class DragNDropManager(ManagerBase):
             videos = filter_video_uris(drop_files)
             self.videos_dropped.emit(videos)
 
+        if len(self._ctx.video_blocks) >= 4:
+            if (self._ctx.active_block):
+                self._swap_videos(self._ctx.active_block, self._ctx.video_blocks[-1], False)
+                self._ctx.active_block.close(True)
+                self.videos_swapped.emit()
+
         event.acceptProposedAction()
 
         return True
@@ -285,7 +292,7 @@ class DragNDropManager(ManagerBase):
         drag.setMimeData(mime_data)
         return drag
 
-    def _swap_videos(self, src, dst):
+    def _swap_videos(self, src, dst, emit=True):
         self._log.debug(f"Swapping {src.id} with {dst.id}")
 
         if src == dst:
@@ -294,4 +301,5 @@ class DragNDropManager(ManagerBase):
 
         self._ctx.video_blocks.swap(dst, src)
 
-        self.videos_swapped.emit()
+        if emit:
+            self.videos_swapped.emit()

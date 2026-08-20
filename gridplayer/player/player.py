@@ -76,6 +76,7 @@ class Player(QWidget, ManagersManager):
                 ("video_blocks.video_count_changed", "update_active_under_mouse")
             ],
             "drag_n_drop": [
+                ("close_this", "video_blocks.close_single"),
                 ("videos_swapped", "grid.reload_video_grid"),
                 ("videos_swapped", "active_block.update_active_under_mouse"),
                 ("videos_dropped", "video_blocks.add_videos"),
