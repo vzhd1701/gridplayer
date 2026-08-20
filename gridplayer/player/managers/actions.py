@@ -233,6 +233,10 @@ class ActionsManager(ManagerBase):
 
     def handle_mouse_event(self, event) -> bool:
         """Resolve mouse event via keymap and trigger. Returns True if handled."""
+
+        if self._ctx.commands.internal_dnd_handle_event(event):
+            return True
+
         try:
             seq = MouseButtonSequence.from_event(event)
         except ValueError:

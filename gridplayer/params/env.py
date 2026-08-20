@@ -7,10 +7,26 @@ IS_LINUX = platform.system() == "Linux"
 IS_MACOS = platform.system() == "Darwin"
 IS_WINDOWS = platform.system() == "Windows"
 
+
+def _is_kde() -> bool:
+    if not IS_LINUX:
+        return False
+
+    blob = ":".join(
+        (
+            os.environ.get("XDG_CURRENT_DESKTOP", ""),
+            os.environ.get("DESKTOP_SESSION", ""),
+            os.environ.get("XDG_SESSION_DESKTOP", ""),
+        )
+    ).lower()
+    return "kde" in blob or "plasma" in blob
+
+
 IS_PYINSTALLER = getattr(sys, "frozen", False)
 IS_SNAP = IS_LINUX and "SNAP" in os.environ
 IS_APPIMAGE = IS_LINUX and "APPIMAGE" in os.environ
 IS_FLATPAK = IS_LINUX and "FLATPAK_ID" in os.environ
+IS_KDE = _is_kde()
 
 PYINSTALLER_LIB_ROOT = Path(sys._MEIPASS) if IS_PYINSTALLER else Path.cwd()
 

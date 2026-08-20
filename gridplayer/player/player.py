@@ -77,6 +77,7 @@ class Player(QWidget, ManagersManager):
             ],
             "drag_n_drop": [
                 ("videos_swapped", "grid.reload_video_grid"),
+                ("videos_swapped", "active_block.update_active_under_mouse"),
                 ("videos_dropped", "video_blocks.add_videos"),
                 ("videos_dropped", "window_state.activate_window"),
                 ("videos_dropped", "recent_list.add_recent_videos"),
@@ -168,6 +169,9 @@ class Player(QWidget, ManagersManager):
             ]
 
         self.global_event_filters.append("mouse_hide")
+        # Needed mostly for re-implementing drag mechanics in KWin (KDE)
+        # to avoid glitchy cursor
+        self.global_event_filters.append("drag_n_drop")
 
         self.event_filters = [
             "window_state",

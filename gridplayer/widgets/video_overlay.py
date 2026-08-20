@@ -35,10 +35,10 @@ PROPAGATED_EVENTS = (
     QEvent.MouseButtonDblClick,
     QEvent.Wheel,
     QEvent.ContextMenu,
-    QEvent.DragEnter,
 )
 
 PROPAGATED_EVENTS_FILTERED = (
+    QEvent.DragEnter,
     QEvent.DragMove,
     QEvent.DragLeave,
     QEvent.Drop,
@@ -400,6 +400,7 @@ class OverlayBlockFloating(OverlayBlock):
             QApplication.sendEvent(self.parent(), event)
         elif event.type() in PROPAGATED_EVENTS_FILTERED:
             self.parent().window().filter_event(event)
+            return True
 
         return super().event(event)
 
