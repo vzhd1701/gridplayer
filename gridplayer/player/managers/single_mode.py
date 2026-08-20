@@ -45,6 +45,9 @@ class SingleModeManager(ManagerBase):
         self._switch_single_video(is_before=True)
 
     def single_mode_on(self):
+        if self._ctx.active_block is None:
+            return
+
         self._ctx.is_single_mode = True
 
         is_pause_background_videos = Settings().get("player/pause_background_videos")
