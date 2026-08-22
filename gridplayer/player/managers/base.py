@@ -19,8 +19,13 @@ class ManagerBase(QObject):
             return False
 
         if event_function is not None:
-            if not inspect.signature(event_function).parameters:
-                return event_function() is True
-            return event_function(event) is True
+            nparams = len(inspect.signature(event_function).parameters)
+            if nparams == 0:
+                result = event_function()
+            elif nparams == 1:
+                result = event_function(event)
+            else:
+                result = event_function(event, event_object)
+            return result is True
 
         return False

@@ -1,6 +1,7 @@
 from pathlib import Path
 
 from PyQt5.QtCore import QEvent, pyqtSignal
+from PyQt5.QtGui import QCursor
 
 from gridplayer.player.managers.base import ManagerBase
 from gridplayer.utils.qt import is_modal_open, translate
@@ -23,8 +24,9 @@ class ActiveBlockManager(ManagerBase):
             QEvent.MouseButtonRelease: self.update_active_under_mouse,
             QEvent.NonClientAreaMouseMove: self.update_active_reset,
             QEvent.NonClientAreaMouseButtonPress: self.update_active_reset,
-            QEvent.Drop: self.update_active_under_mouse,
-            QEvent.DragMove: self.update_active_under_mouse,
+            QEvent.DragEnter: self.update_active_from_drag,
+            QEvent.DragMove: self.update_active_from_drag,
+            QEvent.Drop: self.update_active_from_drag,
         }
 
     @property
@@ -207,6 +209,16 @@ class ActiveBlockManager(ManagerBase):
         self._update_active_block(self.get_video_block_under_mouse())
         self.cmd_active("show_overlay")
 
+    def update_active_from_drag(self, event, event_object):
+        # QCursor.pos() is stale during X11 DND from another process;
+        # QDragMoveEvent.pos() is filled from XdndPosition and is current.
+        if is_modal_open():
+            return
+
+        global_pos = event_object.mapToGlobal(event.pos())
+        self._update_active_block(self.get_video_block_at(global_pos))
+        self.cmd_active("show_overlay")
+
     def update_active_reset(self):
         if is_modal_open():
             return
@@ -251,15 +263,16 @@ class ActiveBlockManager(ManagerBase):
             self.active_block_change.emit(self._ctx.active_block)
 
     def get_video_block_under_mouse(self):
-        visible_blocks_under_cursor = (
-            v for v in self._ctx.video_blocks if v.isVisible() and v.is_under_cursor()
+        return self.get_video_block_at(QCursor.pos())
+
+    def get_video_block_at(self, global_pos):
+        visible_blocks_under_pos = (
+            v
+            for v in self._ctx.video_blocks
+            if v.isVisible() and v.rect().contains(v.mapFromGlobal(global_pos))
         )
 
-        return next(visible_blocks_under_cursor, None)
-
-    def _get_current_cursor_pos(self):
-        parent = self.parent()
-        return parent.mapFromGlobal(parent.cursor().pos())
+        return next(visible_blocks_under_pos, None)
 
 
 def _stream_menu_item(quality: str):

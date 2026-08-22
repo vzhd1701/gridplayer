@@ -399,7 +399,8 @@ class OverlayBlockFloating(OverlayBlock):
         if event.type() in PROPAGATED_EVENTS:
             QApplication.sendEvent(self.parent(), event)
         elif event.type() in PROPAGATED_EVENTS_FILTERED:
-            self.parent().window().filter_event(event)
+            # pos() is overlay-local; pass this widget so hit-testing can map it
+            self.parent().window().filter_event(event, source=self)
             return True
 
         return super().event(event)

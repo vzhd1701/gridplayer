@@ -79,9 +79,10 @@ class ManagersManager(QObject):
 
         self._init_managers()
 
-    def filter_event(self, event):
+    def filter_event(self, event, source=None):
+        event_object = source if source is not None else self
         return any(
-            self._managers_inst[ef].eventFilter(self, event)
+            self._managers_inst[ef].eventFilter(event_object, event)
             for ef in self.event_filters
         )
 
