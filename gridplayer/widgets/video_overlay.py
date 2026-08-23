@@ -11,6 +11,7 @@ from PyQt5.QtWidgets import (
 from gridplayer.params import env
 from gridplayer.params.static import OVERLAY_ACTIVITY_EVENT
 from gridplayer.utils.compositor_linux import should_make_overlay_opaque
+from gridplayer.utils.drop_zone import DropIndicator
 from gridplayer.utils.qt import qt_connect
 from gridplayer.utils.time_txt import get_time_txt
 from gridplayer.widgets.video_overlay_buttons import (
@@ -20,6 +21,7 @@ from gridplayer.widgets.video_overlay_buttons import (
 )
 from gridplayer.widgets.video_overlay_elements import (
     OverlayBorder,
+    OverlayDropIndicator,
     OverlayLabel,
     OverlayProgressBar,
     OverlayShortLabel,
@@ -59,6 +61,9 @@ class OverlayBlock(QWidget):
         self.setMouseTracking(True)
 
         self.ui_setup()
+
+        self._is_chrome_visible = True
+        self._is_active = False
 
         self._set_opacity(0.5)
 
@@ -104,8 +109,12 @@ class OverlayBlock(QWidget):
         layout_control = QVBoxLayout(self.control_widget)
         layout_control.setContentsMargins(10, 10, 10, 10)
 
+        self.drop_indicator = OverlayDropIndicator(parent=self)
+        self.drop_indicator.hide()
+
         layout_main.addWidget(self.control_widget)
         layout_main.addWidget(self.border_widget)
+        layout_main.addWidget(self.drop_indicator)
 
         self.top_bar = QVBoxLayout()
         self.middle = QHBoxLayout()
@@ -260,11 +269,27 @@ class OverlayBlock(QWidget):
 
     @pyqtSlot(bool)
     def set_is_active(self, is_active):
-        self.border_widget.setVisible(is_active)
+        self._is_active = is_active
+        self.border_widget.setVisible(is_active and self._is_chrome_visible)
+        self.update()
+
+    def set_is_chrome_visible(self, visible: bool):
+        self._is_chrome_visible = visible
+        self.control_widget.setVisible(visible)
+        if not visible:
+            self.floating_progress.hide()
+        self.border_widget.setVisible(visible and self._is_active)
+        self.update()
 
     @pyqtSlot(bool)
     def set_volume_button_visible(self, is_visible):
         self.volume_button.setVisible(is_visible)
+
+    def set_drop_indicator(self, indicator: DropIndicator):
+        self.drop_indicator.set_indicator(indicator)
+        if indicator != DropIndicator.NONE:
+            self.drop_indicator.raise_()
+        self.update()
 
     def _set_opacity(self, opacity):
         # Opacity lives on each OverlayWidget, not on this parent. A single
@@ -285,12 +310,30 @@ class OverlayBlockFloating(OverlayBlock):
 
         self.init_flags()
 
+        self.is_opaque = False
+
         if env.IS_LINUX and should_make_overlay_opaque():
             self.make_opaque()
-        else:
-            self.is_opaque = False
 
         self.parent().window().installEventFilter(self)
+
+    @pyqtSlot(str)
+    def set_color(self, color):
+        super().set_color(color)
+        self._sync_opaque_window_color()
+
+    @pyqtSlot(bool)
+    def set_is_active(self, is_active):
+        super().set_is_active(is_active)
+        self.refresh_opaque_mask()
+
+    def set_is_chrome_visible(self, visible: bool):
+        super().set_is_chrome_visible(visible)
+        self.refresh_opaque_mask()
+
+    def set_drop_indicator(self, indicator: DropIndicator):
+        super().set_drop_indicator(indicator)
+        self.refresh_opaque_mask()
 
     def ensure_black_text(self):
         """Some window managers make text look gray when window is out of focus"""
@@ -337,6 +380,7 @@ class OverlayBlockFloating(OverlayBlock):
         self._set_opacity(1.0)
         self.floating_progress.is_opaque = True
         self.is_opaque = True
+        self._sync_opaque_window_color()
 
     def setGeometry(self, rect):
         new_pos = self.parent().mapToGlobal(QPoint())
@@ -352,21 +396,57 @@ class OverlayBlockFloating(OverlayBlock):
         event.accept()
 
     def paintEvent(self, event):
-        if self.is_opaque:
-            # 0 coord to keep children from sliding off
-            mask = QRegion(QRect(0, 0, 1, 1))
+        if not self.is_opaque:
+            return
 
-            for child in self.findChildren(OverlayWidget):
-                if child.isVisible():
-                    if child.mask():
-                        mask += child.mask().translated(child.pos())
-                    else:
-                        mask += QRegion(child.geometry())
+        new_mask = self._opaque_mask()
+        # setMask during paint clips to the old shape, so any newly shown
+        # child (the border ring) would not be drawn this frame.
+        if new_mask != self.mask():
+            self.setMask(new_mask)
 
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        self.refresh_opaque_mask()
+
+    def refresh_opaque_mask(self):
+        if not self.is_opaque:
+            return
+
+        self.setMask(self._opaque_mask())
+
+    def _opaque_mask(self) -> QRegion:
+        dummy = QRegion(QRect(0, 0, 1, 1))
+        mask = QRegion(dummy)
+        has_shape = False
+
+        for child in self.findChildren(OverlayWidget):
+            if not child.isVisible():
+                continue
+            has_shape = True
+            child_mask = child.mask()
+            if not child_mask.isEmpty():
+                mask += child_mask.translated(child.pos())
+            else:
+                mask += QRegion(child.geometry())
+
+        if has_shape:
             if not self.border_widget.isVisible():
-                mask -= QRegion(QRect(0, 0, 1, 1))
+                mask -= dummy
+            return mask
 
-            self.setMask(mask)
+        # Empty mask is treated as unmasked on X11, so the opaque window
+        # would cover the whole video. Keep a 1px hole while mapped.
+        return dummy
+
+    def _sync_opaque_window_color(self):
+        if not self.is_opaque:
+            return
+
+        pal = self.palette()
+        pal.setColor(QPalette.Window, self.border_widget.color)
+        self.setPalette(pal)
+        self.setAutoFillBackground(True)
 
     def move_to_parent(self):
         new_pos = self.parent().mapToGlobal(QPoint())

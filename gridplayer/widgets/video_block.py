@@ -31,6 +31,7 @@ from gridplayer.params.static import (
     VideoTransform,
 )
 from gridplayer.settings import Settings
+from gridplayer.utils.drop_zone import DropIndicator
 from gridplayer.utils.libvlc_options_parser import get_vlc_options
 from gridplayer.utils.next_file import next_video_file, previous_video_file
 from gridplayer.utils.qt import qt_connect, translate
@@ -652,9 +653,34 @@ class VideoBlock(QWidget):
 
         return self.video_params.loop_end
 
+    def set_drop_indicator(self, indicator: DropIndicator):
+        self.overlay.set_drop_indicator(indicator)
+        if indicator != DropIndicator.NONE:
+            self.overlay.show()
+            self.overlay_hide_timer.stop()
+            return
+
+        # Translucent overlays stay mapped (X11 DND hide/show loops).
+        # Opaque HW overlays must not: empty mask = full opaque window.
+        if self._ctx.is_drag_ui and getattr(self.overlay, "is_opaque", False):
+            self.overlay.hide()
+
+    def set_drag_ui(self, is_drag_ui: bool):
+        self.overlay.set_is_chrome_visible(not is_drag_ui)
+        if is_drag_ui:
+            self.overlay_hide_timer.stop()
+            return
+
+        self.overlay.set_drop_indicator(DropIndicator.NONE)
+        if self._ctx.is_disable_overlay or Settings().get("misc/overlay_hide"):
+            self.overlay_hide_timer.stop()
+            self.overlay.hide()
+            return
+        self.show_overlay()
+
     @only_initialized
     def show_overlay(self):
-        if self._ctx.is_disable_overlay:
+        if self._ctx.is_drag_ui or self._ctx.is_disable_overlay:
             return
 
         self.overlay.show()
@@ -662,6 +688,9 @@ class VideoBlock(QWidget):
             self.overlay_hide_timer.start(1000 * Settings().get("misc/overlay_timeout"))
 
     def hide_overlay(self):
+        if self._ctx.is_drag_ui:
+            return
+
         if self._ctx.is_disable_overlay:
             self.overlay_hide_timer.stop()
             self.overlay.hide()

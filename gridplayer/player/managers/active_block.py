@@ -49,6 +49,7 @@ class ActiveBlockManager(ManagerBase):
             "previous_active": self.previous_active,
             "update_active_under_mouse": self.update_active_under_mouse,
             "get_video_block_under_mouse": self.get_video_block_under_mouse,
+            "get_video_block_at": self.get_video_block_at,
         }
 
     @property

@@ -1,6 +1,6 @@
 import math
 
-from PyQt5.QtCore import QEvent, QPoint, QRect, Qt, pyqtSignal
+from PyQt5.QtCore import QEvent, QPoint, QPointF, QRect, QRectF, Qt, pyqtSignal
 from PyQt5.QtGui import (
     QBrush,
     QColor,
@@ -8,11 +8,14 @@ from PyQt5.QtGui import (
     QGuiApplication,
     QPainter,
     QPainterPath,
+    QPen,
+    QPolygonF,
     QRegion,
 )
 from PyQt5.QtWidgets import QGraphicsOpacityEffect, QSizePolicy, QWidget
 
 from gridplayer.params.static import OVERLAY_ACTIVITY_EVENT
+from gridplayer.utils.drop_zone import DropIndicator
 from gridplayer.utils.time_txt import get_time_txt
 
 
@@ -502,22 +505,248 @@ class OverlayBorder(OverlayWidget):
 
         self.setAttribute(Qt.WA_TransparentForMouseEvents)
 
-    def resizeEvent(self, event) -> None:
-        border = QRegion(self.rect())
-        border -= QRegion(
-            QRect(
-                self.border_width,
-                self.border_width,
-                self.width() - self.border_width * 2,
-                self.height() - self.border_width * 2,
-            )
-        )
+    def showEvent(self, event) -> None:
+        self._apply_ring_mask()
+        super().showEvent(event)
 
-        self.setMask(border)
+    def resizeEvent(self, event) -> None:
+        self._apply_ring_mask()
 
     def paintEvent(self, event) -> None:
         painter = QPainter(self)
-
         painter.setPen(Qt.NoPen)
         painter.setBrush(QBrush(self.color))
+
+        if getattr(self.parent(), "is_opaque", False):
+            # Same idea as OverlayShortLabelFloating: clip the paint, then
+            # setMask so the opaque parent only maps this ring (not the
+            # full stacked-layout rect, which would cover the video).
+            painter.setClipPath(self._ring_path())
+            painter.drawRect(self.rect())
+            self._apply_ring_mask()
+            return
+
         painter.drawRect(self.rect())
+
+    def _apply_ring_mask(self):
+        self.setMask(self._ring_region())
+
+    def _ring_path(self) -> QPainterPath:
+        path = QPainterPath()
+        path.setFillRule(Qt.OddEvenFill)
+        path.addRect(QRectF(self.rect()))
+        inset = float(self.border_width)
+        path.addRect(
+            QRectF(
+                inset,
+                inset,
+                max(0.0, self.width() - inset * 2),
+                max(0.0, self.height() - inset * 2),
+            )
+        )
+        return path
+
+    def _ring_region(self) -> QRegion:
+        inset = self.border_width
+        return QRegion(self.rect()) - QRegion(
+            QRect(
+                inset,
+                inset,
+                max(0, self.width() - inset * 2),
+                max(0, self.height() - inset * 2),
+            )
+        )
+
+
+class OverlayDropIndicator(OverlayWidget):
+    """Full-block drag target glyph: arrows, swap, source asterisk, or dot."""
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
+        self.setAttribute(Qt.WA_TransparentForMouseEvents)
+        self.setMinimumSize(0, 0)
+
+        self._indicator = DropIndicator.NONE
+        self.hide()
+
+    def set_indicator(self, indicator: DropIndicator):
+        if self._indicator == indicator:
+            if indicator == DropIndicator.NONE:
+                self.hide()
+            return
+
+        self._indicator = indicator
+
+        if indicator == DropIndicator.NONE:
+            self.hide()
+            self.clearMask()
+            return
+
+        self._update_mask()
+        self.show()
+        self.update()
+
+    def resizeEvent(self, event) -> None:
+        self._update_mask()
+
+    def paintEvent(self, event) -> None:
+        if self._indicator == DropIndicator.NONE:
+            return
+
+        painter = QPainter(self)
+        painter.setPen(Qt.NoPen)
+
+        if self._is_parent_opaque():
+            # Fill the exact X11 mask pixels. drawEllipse() does not match
+            # QRegion.Ellipse 1:1, so leftover mask dots showed Window white.
+            disc_rect = self._glyph_mask_rect()
+            mask = QRegion(disc_rect, QRegion.Ellipse)
+            self.setMask(mask)
+            painter.setClipRegion(mask)
+            painter.fillRect(disc_rect, QColor(60, 60, 60))
+            painter.setRenderHint(QPainter.Antialiasing)
+            self._draw_glyph(painter, QRectF(disc_rect))
+            return
+
+        circle = self._glyph_rect()
+        painter.setRenderHint(QPainter.Antialiasing)
+        painter.setBrush(QBrush(QColor(0, 0, 0)))
+        painter.drawEllipse(circle)
+        self._draw_glyph(painter, circle)
+
+    def _draw_glyph(self, painter: QPainter, circle: QRectF):
+        painter.setBrush(QBrush(QColor(255, 255, 255)))
+        if self._indicator == DropIndicator.SWAP:
+            self._draw_swap(painter, circle)
+        elif self._indicator == DropIndicator.SOURCE:
+            self._draw_asterisk(painter, circle)
+        elif self._indicator == DropIndicator.DOT:
+            self._draw_dot(painter, circle)
+        else:
+            self._draw_arrow(painter, circle)
+
+    def _is_parent_opaque(self) -> bool:
+        return bool(getattr(self.parent(), "is_opaque", False))
+
+    def _glyph_rect(self) -> QRectF:
+        side = max(min(self.width(), self.height()) * 0.6, 24.0)
+        return QRectF(
+            (self.width() - side) / 2,
+            (self.height() - side) / 2,
+            side,
+            side,
+        )
+
+    def _glyph_mask_rect(self) -> QRect:
+        return self._glyph_rect().toAlignedRect()
+
+    def _update_mask(self):
+        if not self._is_parent_opaque() or self._indicator == DropIndicator.NONE:
+            self.clearMask()
+            return
+
+        self.setMask(QRegion(self._glyph_mask_rect(), QRegion.Ellipse))
+
+    def _arrow_tip_degrees(self) -> float:
+        return {
+            DropIndicator.ARROW_RIGHT: 0.0,
+            DropIndicator.ARROW_UP: 90.0,
+            DropIndicator.ARROW_LEFT: 180.0,
+            DropIndicator.ARROW_DOWN: 270.0,
+        }[self._indicator]
+
+    def _draw_dot(self, painter: QPainter, circle: QRectF):
+        cx, cy = circle.center().x(), circle.center().y()
+        radius = circle.width() / 2 * 0.22
+        painter.setPen(Qt.NoPen)
+        painter.drawEllipse(QPointF(cx, cy), radius, radius)
+
+    def _draw_asterisk(self, painter: QPainter, circle: QRectF):
+        cx, cy = circle.center().x(), circle.center().y()
+        radius = circle.width() / 2
+        length = radius * 0.52
+        stroke = max(2.0, radius * 0.145)
+        painter.setPen(QPen(QColor(255, 255, 255), stroke, Qt.SolidLine, Qt.RoundCap))
+        for deg in (90.0, 150.0, 210.0):
+            rad = math.radians(deg)
+            dx = math.cos(rad) * length
+            dy = -math.sin(rad) * length
+            painter.drawLine(QPointF(cx - dx, cy - dy), QPointF(cx + dx, cy + dy))
+
+    def _draw_arrow(self, painter: QPainter, circle: QRectF):
+        # Head plus a short shaft so it reads as an arrow, not a play icon.
+        cx, cy = circle.center().x(), circle.center().y()
+        scale = circle.width() / 2
+        rad = math.radians(self._arrow_tip_degrees())
+        ux, uy = math.cos(rad), -math.sin(rad)
+        vx, vy = -uy, ux
+
+        # (forward, side) in units of the badge radius; stays inside the disc.
+        local = (
+            (0.60, 0.00),
+            (-0.10, 0.50),
+            (-0.10, 0.16),
+            (-0.56, 0.16),
+            (-0.56, -0.16),
+            (-0.10, -0.16),
+            (-0.10, -0.50),
+        )
+        points = [
+            QPointF(
+                cx + (fwd * ux + side * vx) * scale, cy + (fwd * uy + side * vy) * scale
+            )
+            for fwd, side in local
+        ]
+        painter.drawPolygon(QPolygonF(points))
+
+    def _draw_swap(self, painter: QPainter, circle: QRectF):
+        cx, cy = circle.center().x(), circle.center().y()
+        radius = circle.width() / 2
+        arc_r = radius * 0.44
+        stroke = max(2.0, radius * 0.145)
+        color = QColor(255, 255, 255)
+
+        pen = QPen(color, stroke, Qt.SolidLine, Qt.FlatCap, Qt.RoundJoin)
+        painter.setPen(pen)
+        painter.setBrush(Qt.NoBrush)
+
+        arc_rect = QRectF(cx - arc_r, cy - arc_r, 2 * arc_r, 2 * arc_r)
+        span = 118
+        starts = (42, 222)
+        painter.drawArc(arc_rect, int(starts[0] * 16), span * 16)
+        painter.drawArc(arc_rect, int(starts[1] * 16), span * 16)
+
+        painter.setPen(Qt.NoPen)
+        painter.setBrush(QBrush(color))
+        self._draw_arc_arrow_head(painter, cx, cy, arc_r, starts[0] + span, stroke)
+        self._draw_arc_arrow_head(painter, cx, cy, arc_r, starts[1] + span, stroke)
+
+    def _draw_arc_arrow_head(
+        self,
+        painter: QPainter,
+        cx: float,
+        cy: float,
+        r: float,
+        angle_deg: float,
+        stroke: float,
+    ):
+        rad = math.radians(angle_deg)
+        tx, ty = -math.sin(rad), -math.cos(rad)
+        nx, ny = -ty, tx
+
+        px = cx + r * math.cos(rad)
+        py = cy - r * math.sin(rad)
+        tip = QPointF(px + tx * stroke * 1.55, py + ty * stroke * 1.55)
+        half = stroke * 1.35
+        back = stroke * 0.45
+        bx, by = px - tx * back, py - ty * back
+        painter.drawPolygon(
+            QPolygonF(
+                [
+                    tip,
+                    QPointF(bx + nx * half, by + ny * half),
+                    QPointF(bx - nx * half, by - ny * half),
+                ]
+            )
+        )
