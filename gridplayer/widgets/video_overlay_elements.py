@@ -623,6 +623,8 @@ class OverlayDropIndicator(OverlayWidget):
             self._draw_asterisk(painter, circle)
         elif self._indicator == DropIndicator.DOT:
             self._draw_dot(painter, circle)
+        elif self._indicator == DropIndicator.REPLACE:
+            self._draw_replace(painter, circle)
         else:
             self._draw_arrow(painter, circle)
 
@@ -661,6 +663,14 @@ class OverlayDropIndicator(OverlayWidget):
         radius = circle.width() / 2 * 0.22
         painter.setPen(Qt.NoPen)
         painter.drawEllipse(QPointF(cx, cy), radius, radius)
+
+    def _draw_replace(self, painter: QPainter, circle: QRectF):
+        cx, cy = circle.center().x(), circle.center().y()
+        arm = circle.width() / 2 * 0.38
+        stroke = max(2.0, circle.width() / 2 * 0.145)
+        painter.setPen(QPen(QColor(255, 255, 255), stroke, Qt.SolidLine, Qt.RoundCap))
+        painter.drawLine(QPointF(cx - arm, cy - arm), QPointF(cx + arm, cy + arm))
+        painter.drawLine(QPointF(cx + arm, cy - arm), QPointF(cx - arm, cy + arm))
 
     def _draw_asterisk(self, painter: QPainter, circle: QRectF):
         cx, cy = circle.center().x(), circle.center().y()

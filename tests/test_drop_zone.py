@@ -48,6 +48,14 @@ def test_indicator_for():
     assert indicator_for(DropZone.AFTER, False, cols) is DropIndicator.ARROW_DOWN
     assert indicator_for(DropZone.CENTER, True, rows) is DropIndicator.SWAP
     assert indicator_for(DropZone.CENTER, False, rows) is DropIndicator.DOT
+    assert (
+        indicator_for(DropZone.BEFORE, False, rows, is_replace=True)
+        is DropIndicator.REPLACE
+    )
+    assert (
+        indicator_for(DropZone.CENTER, True, rows, is_replace=True)
+        is DropIndicator.REPLACE
+    )
 
 
 def test_video_blocks_move_reorders_and_is_noop_on_self():

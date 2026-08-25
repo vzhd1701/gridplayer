@@ -17,6 +17,8 @@ from gridplayer.params.languages import get_system_language
 from gridplayer.params.static import (
     AudioChannelMode,
     ColorScheme,
+    DropAction,
+    DropModifier,
     GridMode,
     SeekSyncMode,
     URLResolver,
@@ -58,6 +60,9 @@ _default_settings = {
     "playlist/seek_sync_mode": SeekSyncMode.DISABLED,
     "playlist/track_changes": True,
     "playlist/shuffle_on_load": False,
+    "playlist/drop_action_internal": DropAction.INSERT,
+    "playlist/drop_action_external": DropAction.INSERT,
+    "playlist/drop_modifier": DropModifier.SHIFT,
     "playlist/disable_mouse_click_events": False,
     "playlist/disable_mouse_wheel_events": False,
     "playlist/disable_overlay": False,

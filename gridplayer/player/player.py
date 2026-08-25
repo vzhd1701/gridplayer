@@ -82,6 +82,8 @@ class Player(QWidget, ManagersManager):
                 ("videos_dropped", "window_state.activate_window"),
                 ("videos_dropped", "recent_list.add_recent_videos"),
                 ("playlist_dropped", "playlist.load_playlist_file"),
+                ("set_drag_ui", "video_blocks.cmd_set_drag_ui"),
+                ("set_drag_ui", "window_state.activate_window"),
             ],
             "single_mode": [
                 ("mode_changed", "grid.adapt_grid"),
@@ -169,8 +171,7 @@ class Player(QWidget, ManagersManager):
             ]
 
         self.global_event_filters.append("mouse_hide")
-        # Needed mostly for re-implementing drag mechanics in KWin (KDE)
-        # to avoid glitchy cursor
+        # Linux in-window drag is a fake drag (KWin cursor + GNOME modifiers).
         self.global_event_filters.append("drag_n_drop")
 
         self.event_filters = [

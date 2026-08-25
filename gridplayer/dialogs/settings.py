@@ -13,6 +13,8 @@ from gridplayer.params.languages import LANGUAGES
 from gridplayer.params.static import (
     AudioChannelMode,
     ColorScheme,
+    DropAction,
+    DropModifier,
     GridMode,
     SeekSyncMode,
     URLResolver,
@@ -89,6 +91,9 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
             "playlist/grid_fit": self.gridFit,
             "playlist/grid_size": self.gridSize,
             "playlist/shuffle_on_load": self.gridShuffleOnLoad,
+            "playlist/drop_action_internal": self.dropActionInternal,
+            "playlist/drop_action_external": self.dropActionExternal,
+            "playlist/drop_modifier": self.dropModifier,
             "playlist/save_position": self.playlistSavePosition,
             "playlist/save_state": self.playlistSaveState,
             "playlist/save_window": self.playlistSaveWindow,
@@ -157,6 +162,9 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
     def ui_fill(self):
         self.fill_playerVideoDriver()
         self.fill_gridMode()
+        self.fill_dropActionInternal()
+        self.fill_dropActionExternal()
+        self.fill_dropModifier()
         self.fill_videoAspect()
         self.fill_videoTransform()
         self.fill_repeatMode()
@@ -323,6 +331,48 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
         }
 
         _fill_combo_box(self.gridMode, grid_modes)
+
+    def fill_dropActionInternal(self):
+        actions = {
+            DropAction.INSERT: self.tr("Move / Swap"),
+            DropAction.REPLACE: self.tr("Replace"),
+        }
+        _fill_combo_box(self.dropActionInternal, actions)
+
+    def fill_dropActionExternal(self):
+        actions = {
+            DropAction.INSERT: self.tr("Add"),
+            DropAction.REPLACE: self.tr("Replace"),
+        }
+        _fill_combo_box(self.dropActionExternal, actions)
+
+    def fill_dropModifier(self):
+        # DropModifier.CTRL is Qt.ControlModifier: Ctrl on Win/Linux, Cmd on macOS.
+        # Qt.MetaModifier is the Mac Control key — do not use that label here.
+        if env.IS_MACOS:
+            modifiers = {
+                DropModifier.SHIFT: self.tr("Shift"),
+                DropModifier.CTRL: self.tr("Cmd"),
+                DropModifier.ALT: self.tr("Option"),
+                DropModifier.NONE: self.tr("Disabled"),
+            }
+        else:
+            modifiers = {
+                DropModifier.SHIFT: self.tr("Shift"),
+                DropModifier.CTRL: self.tr("Ctrl"),
+                DropModifier.ALT: self.tr("Alt"),
+                DropModifier.NONE: self.tr("Disabled"),
+            }
+        _fill_combo_box(self.dropModifier, modifiers)
+        if env.IS_LINUX:
+            # GNOME/Files only exposes Shift to this X11 window. Don't hide Ctrl/Alt:
+            # they work inside the player, and on KDE for file-manager drops too.
+            hint = self.tr(
+                "On GNOME, dropping files from the file manager only honors Shift. "
+                "Ctrl and Alt still work when dragging videos inside the player."
+            )
+            self.dropModifier.setToolTip(hint)
+            self.dropModifierLabel.setToolTip(hint)
 
     def fill_playerVideoDriver(self):
         if env.IS_MACOS:

@@ -234,7 +234,7 @@ class ActionsManager(ManagerBase):
     def handle_mouse_event(self, event) -> bool:
         """Resolve mouse event via keymap and trigger. Returns True if handled."""
 
-        if self._ctx.commands.kde_dnd_handle_event(event):
+        if self._ctx.commands.handle_fake_drag_click(event):
             return True
 
         try:

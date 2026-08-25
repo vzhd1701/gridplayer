@@ -205,7 +205,7 @@ class VideoBlocksManager(ManagerBase):
             "is_disable_overlay": lambda: self._ctx.is_disable_overlay,
             "set_disable_overlay": self.set_disable_overlay,
             "toggle_disable_overlay": self.toggle_disable_overlay,
-            "set_drag_ui": self.cmd_set_drag_ui,
+            "replace_with_block": self.replace_with_block,
         }
 
     def cmd_all(self, command, *args):
@@ -345,9 +345,38 @@ class VideoBlocksManager(ManagerBase):
         self.add_videos(self._videos_to_reload)
         self._videos_to_reload = []
 
-    def add_videos(self, videos, index=None):
+    def replace_with_block(self, dst, src):
+        if src is dst:
+            return
+
+        idx = self._ctx.video_blocks.index(dst)
+        dst.close_silently()
+        self._ctx.video_blocks.remove(dst)
+        self._ctx.video_blocks.move(src, idx)
+
+        self.video_count_changed.emit(len(self._ctx.video_blocks))
+
+    def add_videos(self, videos, index: int | None = None, is_replace=False):
+        videos = list(videos)
+
+        if index is not None and is_replace:
+            if not videos:
+                return
+
+            try:
+                replace_block = self._ctx.video_blocks[index]
+            except IndexError:
+                return
+
+            replace_block.set_video(videos[0])
+
+            videos = videos[1:]
+            if not videos:
+                return
+
+            index += 1
+
         if self._ctx.is_shuffle_on_load and index is None:
-            videos = list(videos)
             random.shuffle(videos)
 
         added = [self._add_video_block(v) for v in videos]

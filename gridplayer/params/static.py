@@ -26,6 +26,18 @@ class GridMode(AutoName):
     AUTO_COLS = auto()
 
 
+class DropAction(AutoName):
+    INSERT = auto()
+    REPLACE = auto()
+
+
+class DropModifier(AutoName):
+    SHIFT = auto()
+    CTRL = auto()
+    ALT = auto()
+    NONE = auto()
+
+
 class VideoAspect(AutoName):
     FIT = auto()
     STRETCH = auto()

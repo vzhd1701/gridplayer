@@ -1,0 +1,179 @@
+from types import SimpleNamespace
+
+import pytest
+from PyQt5.QtCore import QEvent, QPoint, Qt
+from PyQt5.QtGui import QKeyEvent, QMouseEvent
+from PyQt5.QtWidgets import QApplication, QWidget
+
+from gridplayer.params.static import DropAction, DropModifier
+from gridplayer.player.managers.drag_n_drop import DragNDropManager
+from gridplayer.utils.drag_n_drop import drop_is_replace
+
+
+@pytest.fixture(scope="module", autouse=True)
+def _qapp():
+    return QApplication.instance() or QApplication([])
+
+
+def _mouse_move():
+    return QMouseEvent(
+        QEvent.MouseMove,
+        QPoint(1, 1),
+        Qt.NoButton,
+        Qt.LeftButton,
+        Qt.NoModifier,
+    )
+
+
+def _key_press(key, modifiers=Qt.NoModifier):
+    return QKeyEvent(QEvent.KeyPress, key, modifiers)
+
+
+def test_drop_is_replace_insert_default_shift():
+    action = DropAction.INSERT
+    modifier = DropModifier.SHIFT
+    assert drop_is_replace(Qt.NoModifier, action, modifier) is False
+    assert drop_is_replace(Qt.ShiftModifier, action, modifier) is True
+    assert drop_is_replace(Qt.ControlModifier, action, modifier) is False
+    assert (
+        drop_is_replace(Qt.ShiftModifier | Qt.ControlModifier, action, modifier) is True
+    )
+
+
+def test_drop_is_replace_insert_ctrl_or_alt():
+    action = DropAction.INSERT
+    assert drop_is_replace(Qt.ControlModifier, action, DropModifier.CTRL) is True
+    assert drop_is_replace(Qt.ShiftModifier, action, DropModifier.CTRL) is False
+    assert drop_is_replace(Qt.AltModifier, action, DropModifier.ALT) is True
+    assert drop_is_replace(Qt.ShiftModifier, action, DropModifier.ALT) is False
+
+
+def test_drop_is_replace_replace_default_inverts_modifier():
+    action = DropAction.REPLACE
+    modifier = DropModifier.SHIFT
+    assert drop_is_replace(Qt.NoModifier, action, modifier) is True
+    assert drop_is_replace(Qt.ShiftModifier, action, modifier) is False
+
+
+def test_drop_is_replace_none_ignores_keys():
+    assert (
+        drop_is_replace(Qt.ShiftModifier, DropAction.INSERT, DropModifier.NONE) is False
+    )
+    assert drop_is_replace(Qt.NoModifier, DropAction.REPLACE, DropModifier.NONE) is True
+    assert (
+        drop_is_replace(Qt.ControlModifier, DropAction.REPLACE, DropModifier.NONE)
+        is True
+    )
+
+
+class _Ctx:
+    def __init__(self):
+        self.is_drag_ui = False
+        self.commands = SimpleNamespace(
+            get_video_block_at=lambda *_a, **_k: None,
+            update_active_under_mouse=lambda: None,
+            activate_window=lambda: None,
+        )
+
+
+def _make_manager():
+    parent = QWidget()
+    manager = DragNDropManager(context=_Ctx(), parent=parent)
+    return manager, parent
+
+
+def test_fake_drag_mouse_move_does_not_use_event_keyboard_modifiers(mocker):
+    """Qt5 QMouseEvent has modifiers(), not keyboardModifiers() — that used to crash."""
+    manager, _parent = _make_manager()
+    manager._is_fake_drag_active = True
+    manager._ctx.is_drag_ui = True
+    _patch_drop_settings(mocker)
+    mocker.patch.object(
+        QApplication, "queryKeyboardModifiers", return_value=Qt.ShiftModifier
+    )
+
+    assert manager.mouseMoveEvent(_mouse_move()) is True
+
+
+def test_fake_drag_key_press_shift_does_not_use_event_keyboard_modifiers(mocker):
+    manager, _parent = _make_manager()
+    manager._is_fake_drag_active = True
+    manager._ctx.is_drag_ui = True
+    _patch_drop_settings(mocker)
+    mocker.patch.object(
+        QApplication, "queryKeyboardModifiers", return_value=Qt.ShiftModifier
+    )
+
+    assert manager.keyPressEvent(_key_press(Qt.Key_Shift, Qt.ShiftModifier)) is True
+
+
+def _patch_drop_settings(
+    mocker,
+    internal=DropAction.INSERT,
+    external=DropAction.INSERT,
+    modifier=DropModifier.SHIFT,
+):
+    mocker.patch(
+        "gridplayer.player.managers.drag_n_drop.Settings"
+    ).return_value.get.side_effect = lambda key: {
+        "playlist/drop_action_internal": internal,
+        "playlist/drop_action_external": external,
+        "playlist/drop_modifier": modifier,
+    }[key]
+
+
+def test_is_replace_reads_os_keyboard_state(mocker):
+    manager, _parent = _make_manager()
+    _patch_drop_settings(mocker)
+    mocker.patch(
+        "gridplayer.player.managers.drag_n_drop.query_drop_modifiers",
+        return_value=Qt.NoModifier,
+    )
+    assert manager._is_replace(True) is False
+    mocker.patch(
+        "gridplayer.player.managers.drag_n_drop.query_drop_modifiers",
+        return_value=Qt.ShiftModifier,
+    )
+    assert manager._is_replace(True) is True
+
+
+def test_is_replace_uses_dnd_move_action_as_shift(mocker):
+    manager, _parent = _make_manager()
+    _patch_drop_settings(mocker)
+    mocker.patch.object(
+        QApplication, "queryKeyboardModifiers", return_value=Qt.NoModifier
+    )
+    event = SimpleNamespace(
+        keyboardModifiers=lambda: Qt.NoModifier,
+        proposedAction=lambda: Qt.MoveAction,
+        possibleActions=lambda: Qt.CopyAction | Qt.MoveAction,
+        mimeData=lambda: SimpleNamespace(
+            hasFormat=lambda fmt: fmt == "text/uri-list",
+            hasUrls=lambda: True,
+        ),
+    )
+    assert manager._is_replace(False, event) is True
+
+
+def test_is_replace_uses_event_modifiers_when_query_empty(mocker):
+    manager, _parent = _make_manager()
+    _patch_drop_settings(mocker)
+    mocker.patch.object(
+        QApplication, "queryKeyboardModifiers", return_value=Qt.NoModifier
+    )
+    event = SimpleNamespace(keyboardModifiers=lambda: Qt.ShiftModifier)
+    assert manager._is_replace(True, event) is True
+    assert manager._is_replace(True) is False
+
+
+def test_is_replace_internal_and_external_use_separate_defaults(mocker):
+    manager, _parent = _make_manager()
+    _patch_drop_settings(
+        mocker, internal=DropAction.REPLACE, external=DropAction.INSERT
+    )
+    mocker.patch(
+        "gridplayer.player.managers.drag_n_drop.query_drop_modifiers",
+        return_value=Qt.NoModifier,
+    )
+    assert manager._is_replace(True) is True
+    assert manager._is_replace(False) is False

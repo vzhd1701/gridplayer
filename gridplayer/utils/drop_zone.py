@@ -17,6 +17,7 @@ class DropIndicator(Enum):
     ARROW_DOWN = auto()
     SWAP = auto()
     DOT = auto()
+    REPLACE = auto()
     SOURCE = auto()
 
 
@@ -52,9 +53,12 @@ def indicator_for(
     zone: DropZone | None,
     is_internal: bool,
     grid_mode: GridMode,
+    is_replace: bool = False,
 ) -> DropIndicator:
     if zone is None:
         return DropIndicator.NONE
+    if is_replace:
+        return DropIndicator.REPLACE
     if zone == DropZone.CENTER:
         return DropIndicator.SWAP if is_internal else DropIndicator.DOT
     if zone == DropZone.BEFORE:

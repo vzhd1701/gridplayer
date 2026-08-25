@@ -47,6 +47,7 @@ class WindowStateManager(ManagerBase):
             "close": self.parent().close,
             "fullscreen": self.cmd_fullscreen,
             "is_fullscreen": self.parent().isFullScreen,
+            "activate_window": self.activate_window,
         }
 
     def changeEvent(self, event):
