@@ -1,4 +1,5 @@
 from multiprocessing import Semaphore
+from threading import Event
 
 from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import QWidget
@@ -9,6 +10,22 @@ from gridplayer.vlc_player.player_base_threaded import VlcPlayerThreaded
 from gridplayer.vlc_player.static import Media
 from gridplayer.vlc_player.video_driver_base_threaded import VLCVideoDriverThreaded
 from gridplayer.widgets.video_frame_vlc_base import VideoFrameVLCProcess
+
+# Keep the Qt-owned X window alive until VLC has stopped presenting into it.
+HW_PLAYER_RELEASE_TIMEOUT_S = 5
+
+
+def detach_hw_xwindow(media_player):
+    """Stop playback and drop the X drawable before the Qt window is destroyed.
+
+    libvlc can tolerate an invalid handle; GPU drivers (EGL/GLX/VA/VDPAU)
+    cannot. The window must stay valid until playback is stopped.
+    """
+    if media_player is None:
+        return
+
+    media_player.stop()
+    media_player.set_xwindow(0)
 
 
 class InstanceProcessVLCHW(InstanceProcessVLC):
@@ -72,12 +89,23 @@ class PlayerProcessSingleVLCHW(VlcPlayerThreaded):
         super().notify_load_video_done(media_track)
 
     def cleanup(self):
-        if env.IS_LINUX:
-            self.init_semaphore.release()
+        try:
+            if env.IS_LINUX:
+                self.init_semaphore.release()
+                detach_hw_xwindow(self._media_player)
 
-        super().cleanup()
-
-        self.release_callback(self.id)
+            super().cleanup()
+        finally:
+            # Event/Condition cannot be pickled over this pipe; notify the
+            # parent driver through the existing command channel instead.
+            try:
+                self.cmd_send("player_released")
+            except Exception:
+                self._log.warning(
+                    "Failed to notify parent that player was released",
+                    exc_info=True,
+                )
+            self.release_callback(self.id)
 
     def cleanup_final(self):
         self.cmd_loop_terminate()
@@ -87,9 +115,24 @@ class VideoDriverVLCHW(VLCVideoDriverThreaded):
     def __init__(self, win_id, process_manager, vlc_options, **kwargs):
         super().__init__(**kwargs)
 
+        self._released = Event()
+
         process_manager.init_player(
-            {"win_id": win_id}, self.cmd_child_pipe(), vlc_options
+            {"win_id": win_id},
+            self.cmd_child_pipe(),
+            vlc_options,
         )
+
+    def player_released(self):
+        self._released.set()
+
+    def cleanup(self):
+        self.cmd_send("cleanup")
+        if not self._released.wait(timeout=HW_PLAYER_RELEASE_TIMEOUT_S):
+            self._log.warning(
+                "Timed out waiting for VLC player to release the video window"
+            )
+        self.cmd_loop_terminate()
 
     def adjust_view(self, size, aspect, scale, crop):
         self.cmd_send("adjust_view", size, aspect, scale, crop)

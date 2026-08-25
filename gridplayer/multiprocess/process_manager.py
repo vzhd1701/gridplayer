@@ -63,15 +63,16 @@ class ProcessManager(CommandLoopThreaded, QObject):
 
     @property
     def active_instances(self):
-        active_instances = []
         with self.instances_lock:
-            for instance in self.instances.values():
-                with instance.is_dead.get_lock():
-                    if not instance.is_dead.value:
-                        active_instances.append(instance)
-        return active_instances
+            return [
+                instance
+                for instance in self.instances.values()
+                if self._is_instance_alive(instance)
+            ]
 
     def get_instance(self, options):
+        self._reap_dead_instances()
+
         instance = self._get_available_instance(options)
 
         if instance is None:
@@ -106,7 +107,10 @@ class ProcessManager(CommandLoopThreaded, QObject):
 
     def cleanup_instance(self, inst_id):
         with self.instances_lock:
-            instance = self.instances.pop(inst_id)
+            instance = self.instances.pop(inst_id, None)
+
+        if instance is None:
+            return
 
         self.dying_instances.add(inst_id)
 
@@ -155,3 +159,28 @@ class ProcessManager(CommandLoopThreaded, QObject):
                     return instance
 
         return None
+
+    def _is_instance_alive(self, instance) -> bool:
+        with instance.is_dead.get_lock():
+            if instance.is_dead.value:
+                return False
+
+        return instance.process.is_alive()
+
+    def _reap_dead_instances(self):
+        with self.instances_lock:
+            dead_ids = [
+                inst_id
+                for inst_id, inst in self.instances.items()
+                if not self._is_instance_alive(inst)
+            ]
+
+        for inst_id in dead_ids:
+            self._log.warning(f"Reaping dead decoder process {inst_id}")
+            try:
+                self.cleanup_instance(inst_id)
+            except Exception:
+                self._log.warning(
+                    f"Failed to reap decoder process {inst_id}",
+                    exc_info=True,
+                )
