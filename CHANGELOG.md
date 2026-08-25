@@ -8,6 +8,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ### Added
 
+- Replace video on drag-n-drop while holding modifier key (default: shift) ([b8affe3](https://github.com/vzhd1701/gridplayer/commit/b8affe37f2bb0feef9e196c079db0901010125d3))
+- Add visual drag-n-drop indicators with option to drop before/after ([98b674f](https://github.com/vzhd1701/gridplayer/commit/98b674fadb866688086232a652b9a468d097d4ad))
 - Add option to start with maximized window ([74282df](https://github.com/vzhd1701/gridplayer/commit/74282df433867e45c7da95d10875979770933024))
 - Add option to start in fullscreen mode ([02cb6fd](https://github.com/vzhd1701/gridplayer/commit/02cb6fd04272f8356a0223b031737f4addc21c62))
 - Add option to manually select app color scheme ([6a59985](https://github.com/vzhd1701/gridplayer/commit/6a59985855ae5471a3a6d1d75a89829003764bfd))
@@ -18,6 +20,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ### Fixed
 
+- Wait for vlc process cleanup on linux to avoid crashes ([04821b1](https://github.com/vzhd1701/gridplayer/commit/04821b1aff7cc761492f2f5ae4c2d74591d63e11))
 - Prevent switching to single mode without active video (double click on empty space) ([526210f](https://github.com/vzhd1701/gridplayer/commit/526210f21f2ab8c46e5a250a0ccd114341d6bcba))
 - Improve drag n drop on KDE ([a7b2def](https://github.com/vzhd1701/gridplayer/commit/a7b2def2448a9ad3ac6821c23bbb4ed120f0b72b))
 - Reset playlist setting to defaults after closing playlist ([fd728f3](https://github.com/vzhd1701/gridplayer/commit/fd728f3f64c2cef240549458c51bdec30801ad62))
