@@ -84,6 +84,7 @@ class Player(QWidget, ManagersManager):
                 ("playlist_dropped", "playlist.load_playlist_file"),
                 ("set_drag_ui", "video_blocks.cmd_set_drag_ui"),
                 ("set_drag_ui", "window_state.activate_window"),
+                ("set_drag_ui", "active_block.update_active_under_mouse"),
             ],
             "single_mode": [
                 ("mode_changed", "grid.adapt_grid"),

@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from PyQt5.QtCore import QEvent, QMimeData, Qt, pyqtSignal
+from PyQt5.QtCore import QEvent, QMimeData, Qt, QTimer, pyqtSignal
 from PyQt5.QtGui import QCursor, QDrag
 from PyQt5.QtWidgets import QApplication
 
@@ -45,6 +45,13 @@ class DragNDropManager(ManagerBase):
         self._drop_is_replace = False
         self._source_block = None
 
+        # Overlay Tool windows (and overlay ↔ player) emit DragLeave before
+        # the next target's DragEnter. End drag UI on the next tick so a
+        # cancel / leave-window still resets chrome and glyphs.
+        self._drag_leave_timer = QTimer(self)
+        self._drag_leave_timer.setSingleShot(True)
+        self._drag_leave_timer.timeout.connect(self._end_drag_ui_after_leave)
+
     @property
     def commands(self):
         return {
@@ -64,6 +71,7 @@ class DragNDropManager(ManagerBase):
             QEvent.DragEnter: self.dragEnterEvent,
             QEvent.Drop: self.dropEvent,
             QEvent.DragMove: self.dragMoveEvent,
+            QEvent.DragLeave: self.dragLeaveEvent,
         }
 
     # --- start drag (mouse) ---
@@ -250,6 +258,8 @@ class DragNDropManager(ManagerBase):
     # --- Qt DND ---
 
     def dragEnterEvent(self, event, event_object):
+        self._drag_leave_timer.stop()
+
         if not self._accept_drag(event):
             return False
 
@@ -259,6 +269,8 @@ class DragNDropManager(ManagerBase):
         return True
 
     def dragMoveEvent(self, event, event_object):
+        self._drag_leave_timer.stop()
+
         if not self._accept_drag(event):
             self._clear_hover()
             return
@@ -267,7 +279,19 @@ class DragNDropManager(ManagerBase):
         self._set_source(self._local_block_from_event(event))
         self._update_drop_target_from_event(event, event_object)
 
+    def dragLeaveEvent(self, event):
+        if (
+            self._is_fake_drag_active
+            or self._drop_is_internal
+            or not self._ctx.is_drag_ui
+        ):
+            return
+
+        self._drag_leave_timer.start(0)
+
     def dropEvent(self, event, event_object):
+        self._drag_leave_timer.stop()
+
         self._update_drop_target_from_event(event, event_object)
         dst = self._drop_block
         zone = self._drop_zone
@@ -379,18 +403,39 @@ class DragNDropManager(ManagerBase):
             Settings().get("playlist/drop_modifier"),
         )
 
+    def _end_drag_ui_after_leave(self):
+        if self._is_fake_drag_active:
+            return
+
+        # Overlay Tool windows are 0-alpha click-through except the glyph, so
+        # crossing the circle (or another overlay) is Leave then Enter. Do not
+        # tear down drag UI while the pointer is still over the player.
+        # Skip on Linux: QCursor.pos() is stale during X11 XDND.
+        if self._is_pointer_over_player():
+            return
+
+        self._end_drag_ui()
+
+    def _is_pointer_over_player(self):
+        if env.IS_LINUX:
+            return False
+
+        player = self.parent()
+        if player is None:
+            return False
+
+        return player.rect().contains(player.mapFromGlobal(QCursor.pos()))
+
     def _end_drag_ui(self):
-        self._source_block = None
-        self._drop_block = None
-        self._drop_zone = None
-        self._drop_is_internal = False
-        self._drop_is_replace = False
+        self._drag_leave_timer.stop()
+
+        self._clear_hover()
+        self._set_source(None)
 
         if not self._ctx.is_drag_ui:
             return
 
         self.set_drag_ui.emit(False)
-        self._ctx.commands.update_active_under_mouse()
 
     def _update_drop_target_from_event(self, event, event_object):
         # event.pos() + mapToGlobal: QCursor.pos() is stale during X11 XDND

@@ -177,3 +177,89 @@ def test_is_replace_internal_and_external_use_separate_defaults(mocker):
     )
     assert manager._is_replace(True) is True
     assert manager._is_replace(False) is False
+
+
+def _file_drag_event():
+    return SimpleNamespace(
+        mimeData=lambda: SimpleNamespace(
+            hasFormat=lambda fmt: fmt == "text/uri-list",
+            hasUrls=lambda: True,
+            urls=lambda: [
+                SimpleNamespace(
+                    isLocalFile=lambda: False,
+                    url=lambda: "http://example.com/video.mp4",
+                )
+            ],
+            hasText=lambda: False,
+            formats=lambda: ["text/uri-list"],
+        ),
+        acceptProposedAction=lambda: None,
+        pos=lambda: QPoint(1, 1),
+        keyboardModifiers=lambda: Qt.NoModifier,
+        proposedAction=lambda: Qt.CopyAction,
+        possibleActions=lambda: Qt.CopyAction,
+    )
+
+
+def test_drag_leave_ends_drag_ui_after_event_loop(mocker):
+    manager, _parent = _make_manager()
+    manager._ctx.is_drag_ui = True
+    mocker.patch.object(manager, "_is_pointer_over_player", return_value=False)
+    ended = []
+    manager.set_drag_ui.connect(ended.append)
+
+    manager.dragLeaveEvent(QEvent(QEvent.DragLeave))
+
+    assert ended == []
+    assert manager._drag_leave_timer.isActive()
+
+    QApplication.processEvents()
+
+    assert ended == [False]
+    assert not manager._drag_leave_timer.isActive()
+
+
+def test_drag_leave_while_over_player_keeps_drag_ui(mocker):
+    manager, _parent = _make_manager()
+    manager._ctx.is_drag_ui = True
+    mocker.patch.object(manager, "_is_pointer_over_player", return_value=True)
+    ended = []
+    manager.set_drag_ui.connect(ended.append)
+
+    manager.dragLeaveEvent(QEvent(QEvent.DragLeave))
+    QApplication.processEvents()
+
+    assert ended == []
+
+
+def test_drag_enter_after_leave_keeps_drag_ui(mocker):
+    manager, parent = _make_manager()
+    manager._ctx.is_drag_ui = True
+    _patch_drop_settings(mocker)
+    ended = []
+    manager.set_drag_ui.connect(ended.append)
+
+    manager.dragLeaveEvent(QEvent(QEvent.DragLeave))
+    assert manager._drag_leave_timer.isActive()
+
+    assert manager.dragEnterEvent(_file_drag_event(), parent) is True
+    assert not manager._drag_leave_timer.isActive()
+
+    QApplication.processEvents()
+
+    assert ended == []
+
+
+def test_fake_drag_leave_does_not_end_drag_ui(mocker):
+    manager, _parent = _make_manager()
+    manager._ctx.is_drag_ui = True
+    manager._is_fake_drag_active = True
+    mocker.patch.object(manager, "_is_pointer_over_player", return_value=False)
+    ended = []
+    manager.set_drag_ui.connect(ended.append)
+
+    manager.dragLeaveEvent(QEvent(QEvent.DragLeave))
+    QApplication.processEvents()
+
+    assert ended == []
+    assert not manager._drag_leave_timer.isActive()
