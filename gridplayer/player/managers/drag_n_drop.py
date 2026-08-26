@@ -121,7 +121,7 @@ class DragNDropManager(ManagerBase):
 
         # Native QDrag on xcb/XWayland freezes modifiers (pointer grab) and
         # GNOME does not forward keys to an unfocused X11 window.
-        if env.IS_LINUX:
+        if env.IS_LINUX and not Settings().get("internal/force_native_drag_events"):
             self._start_fake_drag()
             return True
 

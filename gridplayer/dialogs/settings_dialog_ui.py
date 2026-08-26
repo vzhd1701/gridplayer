@@ -571,6 +571,9 @@ class Ui_SettingsDialog:
         self.miscFakeOverlayInvisibility = QtWidgets.QCheckBox(self.page_misc_advanced)
         self.miscFakeOverlayInvisibility.setObjectName("miscFakeOverlayInvisibility")
         self.lay_page_misc_advanced.addWidget(self.miscFakeOverlayInvisibility)
+        self.miscForceNativeDragEvents = QtWidgets.QCheckBox(self.page_misc_advanced)
+        self.miscForceNativeDragEvents.setObjectName("miscForceNativeDragEvents")
+        self.lay_page_misc_advanced.addWidget(self.miscForceNativeDragEvents)
         spacerItem5 = QtWidgets.QSpacerItem(
             0, 0, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Expanding
         )
@@ -838,6 +841,12 @@ class Ui_SettingsDialog:
             _translate(
                 "SettingsDialog",
                 "Fake overlay invisibility (fix overlay on top of other windows)",
+            )
+        )
+        self.miscForceNativeDragEvents.setText(
+            _translate(
+                "SettingsDialog",
+                "Force native drag-n-drop for in-window drag",
             )
         )
         self.logLimit.setText(_translate("SettingsDialog", "Limit log file size"))

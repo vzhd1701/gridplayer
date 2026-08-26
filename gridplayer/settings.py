@@ -87,6 +87,7 @@ _default_settings = {
     "logging/log_limit_backups": 1,
     "internal/opaque_hw_overlay": False,
     "internal/fake_overlay_invisibility": False,
+    "internal/force_native_drag_events": False,
     "streaming/hls_via_streamlink": True,
     "streaming/resolver_priority": URLResolver.STREAMLINK,
     "streaming/resolver_priority_patterns": ResolverPatterns([]),

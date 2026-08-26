@@ -990,6 +990,13 @@
           </widget>
          </item>
          <item>
+          <widget class="QCheckBox" name="miscForceNativeDragEvents">
+           <property name="text">
+            <string>Force native drag-n-drop for in-window drag</string>
+           </property>
+          </widget>
+         </item>
+         <item>
           <spacer name="verticalSpacer_2">
            <property name="orientation">
             <enum>Qt::Vertical</enum>

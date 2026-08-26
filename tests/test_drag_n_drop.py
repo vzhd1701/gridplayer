@@ -82,6 +82,48 @@ def _make_manager():
     return manager, parent
 
 
+def test_linux_uses_fake_drag_by_default(mocker):
+    manager, _parent = _make_manager()
+    mocker.patch("gridplayer.player.managers.drag_n_drop.env.IS_LINUX", True)
+    mocker.patch(
+        "gridplayer.player.managers.drag_n_drop.is_modal_open", return_value=False
+    )
+    mocker.patch.object(manager, "_is_drag_started", return_value=True)
+    mocker.patch(
+        "gridplayer.player.managers.drag_n_drop.Settings"
+    ).return_value.get.return_value = False
+    start_fake = mocker.patch.object(manager, "_start_fake_drag")
+    make_qdrag = mocker.patch.object(manager, "_make_qdrag")
+
+    assert manager.mouseMoveEvent(_mouse_move()) is True
+    start_fake.assert_called_once()
+    make_qdrag.assert_not_called()
+
+
+def test_linux_force_native_drag_uses_qdrag(mocker):
+    manager, _parent = _make_manager()
+    manager._ctx.active_block = object()
+    mocker.patch("gridplayer.player.managers.drag_n_drop.env.IS_LINUX", True)
+    mocker.patch(
+        "gridplayer.player.managers.drag_n_drop.is_modal_open", return_value=False
+    )
+    mocker.patch.object(manager, "_is_drag_started", return_value=True)
+    mocker.patch(
+        "gridplayer.player.managers.drag_n_drop.Settings"
+    ).return_value.get.return_value = True
+    start_fake = mocker.patch.object(manager, "_start_fake_drag")
+    drag = mocker.Mock()
+    mocker.patch.object(manager, "_make_qdrag", return_value=drag)
+    mocker.patch.object(manager, "_ensure_drag_ui")
+    mocker.patch.object(manager, "_set_source")
+    mocker.patch.object(manager, "_end_drag_ui")
+
+    manager.mouseMoveEvent(_mouse_move())
+
+    start_fake.assert_not_called()
+    drag.exec.assert_called_once()
+
+
 def test_fake_drag_mouse_move_does_not_use_event_keyboard_modifiers(mocker):
     """Qt5 QMouseEvent has modifiers(), not keyboardModifiers() — that used to crash."""
     manager, _parent = _make_manager()

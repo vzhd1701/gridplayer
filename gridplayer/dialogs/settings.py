@@ -123,6 +123,7 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
             "logging/log_limit_backups": self.logLimitBackups,
             "internal/opaque_hw_overlay": self.miscOpaqueHWOverlay,
             "internal/fake_overlay_invisibility": self.miscFakeOverlayInvisibility,
+            "internal/force_native_drag_events": self.miscForceNativeDragEvents,
             "streaming/hls_via_streamlink": self.streamingHLSVIAStreamlink,
             "streaming/resolver_priority": self.streamingResolverPriority,
             "streaming/resolver_priority_patterns": self.streamingResolverPriorityPatterns,
@@ -153,6 +154,7 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
             self.section_misc.hide()
             self.miscOpaqueHWOverlay.hide()
             self.miscFakeOverlayInvisibility.hide()
+            self.miscForceNativeDragEvents.hide()
 
     def ui_customize_section_index(self):
         font = self.section_index.font()
