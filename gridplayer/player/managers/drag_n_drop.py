@@ -24,6 +24,12 @@ from gridplayer.utils.files import (
 )
 from gridplayer.utils.qt import is_modal_open
 
+# X11 XDND Enter is a later client message, not already queued. timer(0)
+# ends drag UI (and overlay input passthrough) before the player gets Enter.
+# KWin then drops onto a window Qt is no longer tracking — no XdndFinished,
+# Dolphin keeps the + cursor, and this process never accepts another drop.
+_DRAG_LEAVE_GRACE_MS = 250 if env.IS_LINUX else 0
+
 
 class DragNDropManager(ManagerBase):
     playlist_dropped = pyqtSignal(Path)
@@ -264,6 +270,7 @@ class DragNDropManager(ManagerBase):
             return False
 
         self._ensure_drag_ui()
+        self._keep_player_active()
         self._set_source(self._local_block_from_event(event))
         self._update_drop_target_from_event(event, event_object)
         return True
@@ -276,6 +283,7 @@ class DragNDropManager(ManagerBase):
             return
 
         self._ensure_drag_ui()
+        self._keep_player_active()
         self._set_source(self._local_block_from_event(event))
         self._update_drop_target_from_event(event, event_object)
 
@@ -287,7 +295,7 @@ class DragNDropManager(ManagerBase):
         ):
             return
 
-        self._drag_leave_timer.start(0)
+        self._drag_leave_timer.start(_DRAG_LEAVE_GRACE_MS)
 
     def dropEvent(self, event, event_object):
         self._drag_leave_timer.stop()
@@ -296,11 +304,9 @@ class DragNDropManager(ManagerBase):
         dst = self._drop_block
         zone = self._drop_zone
         is_replace = self._drop_is_replace
-        self._end_drag_ui()
 
-        drop_data = event.mimeData()
-        drop_files = extract_mime_uris(drop_data)
-        drop_video = extract_mime_video(drop_data)
+        drop_files = extract_mime_uris(event.mimeData())
+        drop_video = extract_mime_video(event.mimeData())
 
         insert_at = None
         if dst is not None:
@@ -309,15 +315,26 @@ class DragNDropManager(ManagerBase):
             elif zone is not None:
                 insert_at = insert_index(self._ctx.video_blocks.index(dst), zone)
 
+        # Always accept so Qt sends XdndFinished. Rejecting from a filter
+        # without that leaves Dolphin and QXcbDrag stuck until restart.
+        event.acceptProposedAction()
+        QTimer.singleShot(
+            0,
+            lambda: self._finish_drop(
+                drop_files, drop_video, dst, zone, insert_at, is_replace
+            ),
+        )
+        return True
+
+    def _finish_drop(self, drop_files, drop_video, dst, zone, insert_at, is_replace):
+        self._end_drag_ui()
+
         if drop_files:
             self._drop_files(drop_files, insert_at, is_replace)
-            event.acceptProposedAction()
-            return True
+            return
 
         if drop_video:
             self._drop_video_block(drop_video, dst, zone, insert_at, is_replace)
-            event.acceptProposedAction()
-            return True
 
     def _accept_drag(self, event):
         drag_data = event.mimeData()
@@ -391,6 +408,12 @@ class DragNDropManager(ManagerBase):
         if not self._ctx.is_drag_ui:
             self.set_drag_ui.emit(True)
 
+    def _keep_player_active(self):
+        # Overlay Tool windows are the XDND target in HW mode. KWin treats
+        # that as a focus change; GNOME keeps focus at the drag origin.
+        if env.IS_KDE:
+            self._ctx.commands.activate_window()
+
     def _is_replace(self, is_internal: bool, event=None) -> bool:
         action_key = (
             "playlist/drop_action_internal"
@@ -438,6 +461,9 @@ class DragNDropManager(ManagerBase):
         self.set_drag_ui.emit(False)
 
     def _update_drop_target_from_event(self, event, event_object):
+        if event_object is None:
+            return
+
         # event.pos() + mapToGlobal: QCursor.pos() is stale during X11 XDND
         self._update_drop_target(
             event_object.mapToGlobal(event.pos()),
