@@ -112,6 +112,7 @@ icon-symbolic,icons/custom/061-single mode off.svg,single-mode-off
 icon-symbolic,icons/custom/062-play pause.svg,play-pause
 icon-symbolic,icons/custom/063-rotate.svg,rotate
 icon-symbolic,icons/custom/064-crop.svg,crop
+icon-symbolic,icons/custom/065-grid-show-all.svg,grid-show-all
 translation,translations/ar_SA.ts,ar_SA
 translation,translations/cs_CZ.ts,cs_CZ
 translation,translations/de_DE.ts,de_DE
