@@ -134,6 +134,26 @@ def test_drop_center_on_empty():
     assert occ.id_at(0, 1) == "B"
 
 
+def test_drop_center_on_empty_fills_like_right():
+    occ = _occ(rows=2, cols=3, preallocate=True)
+    occ.pack_flow(["A"])
+    via_center = occ.copy()
+    via_right = occ.copy()
+    leftover_c = via_center.drop_on_center(0, 1, ["B", "C", "D"])
+    leftover_r, rejected = via_right.drop_on_edge(
+        0, 1, Direction.RIGHT, ["B", "C", "D"]
+    )
+    assert not rejected
+    assert leftover_c == leftover_r == []
+    assert [via_center.id_at(row, col) for row in range(2) for col in range(3)] == [
+        via_right.id_at(row, col) for row in range(2) for col in range(3)
+    ]
+    assert via_center.id_at(0, 0) == "A"
+    assert via_center.id_at(0, 1) == "B"
+    assert via_center.id_at(0, 2) == "C"
+    assert via_center.id_at(1, 0) == "D"
+
+
 def test_drop_center_swap():
     occ = _occ(rows=1, cols=2)
     occ.pack_flow(["A", "B"])

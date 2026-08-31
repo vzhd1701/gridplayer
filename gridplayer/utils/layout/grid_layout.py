@@ -373,7 +373,13 @@ class GridLayout:
             self.compact_edges()
             return video_ids[1:]
 
-        if (is_replace and existing) or existing is None:
+        if existing is None:
+            leftover, rejected = self.drop_on_edge(row, col, Direction.RIGHT, video_ids)
+            if rejected:
+                leftover = self.place_in_empties(video_ids)
+            return leftover
+
+        if is_replace and existing:
             self.occupy(row, col, video_ids[0])
             leftover = self.place_in_empties(video_ids[1:])
             self.compact_edges()
