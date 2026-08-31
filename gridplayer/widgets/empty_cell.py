@@ -1,20 +1,36 @@
 from PyQt5.QtCore import QEvent, QRectF, Qt
-from PyQt5.QtGui import QColor, QPainter, QPainterPath, QPen
+from PyQt5.QtGui import QColor, QFont, QPainter, QPainterPath, QPen, QTextOption
 from PyQt5.QtWidgets import QSizePolicy, QVBoxLayout, QWidget
 
+from gridplayer.params.static import FONT_SIZE_BIG_INFO
 from gridplayer.utils.drop_zone import DropIndicator
 from gridplayer.widgets.video_overlay_elements import OverlayDropIndicator
+
+_CHROME_ALPHA = 90
+_TEXT_ALPHA = 170
+
+
+def _dashed_frame(widget):
+    margin = max(6.0, min(widget.width(), widget.height()) / 12)
+    rect = QRectF(widget.rect()).adjusted(margin, margin, -margin, -margin)
+    stroke = max(2.0, margin / 4)
+    radius = max(6.0, min(rect.width(), rect.height()) * 0.12)
+    return rect, stroke, radius
 
 
 class EmptyCell(QWidget):
     is_empty_cell = True
 
-    def __init__(self, **kwargs):
+    def __init__(self, message=None, **kwargs):
         super().__init__(**kwargs)
+
+        self._message = message
 
         self.setAttribute(Qt.WA_StyledBackground, True)
         self.setAutoFillBackground(True)
         self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        if message:
+            self.setFont(QFont("Hack", FONT_SIZE_BIG_INFO, QFont.Bold))
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
@@ -35,16 +51,16 @@ class EmptyCell(QWidget):
         if event.type() == QEvent.PaletteChange:
             self._apply_indicator_colors()
 
-    def _chrome_color(self) -> QColor:
+    def _chrome_color(self, alpha=_CHROME_ALPHA) -> QColor:
         color = QColor(self.palette().color(self.foregroundRole()))
-        color.setAlpha(90)
+        color.setAlpha(alpha)
         return color
 
     def _chrome_color_on_cell(self) -> QColor:
         """Opaque color matching dashed chrome composited on this cell."""
         fg = self.palette().color(self.foregroundRole())
         bg = self.palette().color(self.backgroundRole())
-        t = 90 / 255
+        t = _CHROME_ALPHA / 255
         return QColor(
             round(fg.red() * t + bg.red() * (1 - t)),
             round(fg.green() * t + bg.green() * (1 - t)),
@@ -63,14 +79,9 @@ class EmptyCell(QWidget):
         painter = QPainter(self)
         painter.setRenderHint(QPainter.Antialiasing)
 
-        color = self._chrome_color()
+        rect, stroke, radius = _dashed_frame(self)
 
-        margin = max(6.0, min(self.width(), self.height()) / 12)
-        rect = QRectF(self.rect()).adjusted(margin, margin, -margin, -margin)
-        stroke = max(2.0, margin / 4)
-        radius = max(6.0, min(rect.width(), rect.height()) * 0.12)
-
-        pen = QPen(color)
+        pen = QPen(self._chrome_color())
         pen.setWidthF(stroke)
         pen.setStyle(Qt.DashLine)
         pen.setCapStyle(Qt.RoundCap)
@@ -82,6 +93,23 @@ class EmptyCell(QWidget):
         if self._drop_indicator.isVisible():
             return
 
+        if self._message:
+            self._paint_message(painter, rect, stroke)
+            return
+
+        self._paint_plus(painter, rect, stroke)
+
+    def _paint_message(self, painter, rect, stroke):
+        inset = stroke * 5
+        text_rect = rect.adjusted(inset, inset, -inset, -inset)
+        painter.setPen(self._chrome_color(_TEXT_ALPHA))
+        painter.setFont(self.font())
+        option = QTextOption()
+        option.setAlignment(Qt.AlignCenter)
+        option.setWrapMode(QTextOption.WordWrap)
+        painter.drawText(text_rect, self._message, option)
+
+    def _paint_plus(self, painter, rect, stroke):
         plus = max(8.0, min(rect.width(), rect.height()) / 4)
         bar = stroke
         cx, cy = rect.center().x(), rect.center().y()
@@ -97,4 +125,4 @@ class EmptyCell(QWidget):
         )
 
         painter.setPen(Qt.NoPen)
-        painter.fillPath(horizontal.united(vertical), color)
+        painter.fillPath(horizontal.united(vertical), self._chrome_color())

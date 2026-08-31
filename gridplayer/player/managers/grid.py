@@ -2,15 +2,13 @@ import contextlib
 import random
 from typing import NamedTuple
 
-from PyQt5.QtCore import QSize, Qt, pyqtSignal
-from PyQt5.QtGui import QFont
-from PyQt5.QtWidgets import QGridLayout, QHBoxLayout, QLabel, QMessageBox, QVBoxLayout
+from PyQt5.QtCore import QSize, pyqtSignal
+from PyQt5.QtWidgets import QGridLayout, QHBoxLayout, QMessageBox, QVBoxLayout
 
 from gridplayer.dialogs.input_dialog import QCustomSpinboxInput, QFixedGridSizeDialog
 from gridplayer.dialogs.messagebox import QCustomMessageBox
 from gridplayer.models.grid_state import GridState
 from gridplayer.params.static import (
-    FONT_SIZE_BIG_INFO,
     PLAYER_INITIAL_SIZE,
     PLAYER_MIN_VIDEO_SIZE,
     GridMode,
@@ -81,15 +79,10 @@ class GridManager(ManagerBase):
         self._grid.setSpacing(0)
         self._grid.setContentsMargins(0, 0, 0, 0)
 
-        self._info_label = QLabel(
-            translate("Main Window", "Drag and drop media files or URLs here"),
+        self._info_label = EmptyCell(
+            message=translate("Main Window", "Drag and drop media files or URLs here"),
             parent=self.parent(),
         )
-        self._info_label.setAlignment(Qt.AlignCenter)
-        self._info_label.setWordWrap(True)
-        self._info_label.setMargin(20)
-        font = QFont("Hack", FONT_SIZE_BIG_INFO, QFont.Bold)
-        self._info_label.setFont(font)
 
     def init(self):
         self.minimum_size_changed.emit(self._minimum_size)
@@ -180,7 +173,11 @@ class GridManager(ManagerBase):
         return row, col
 
     def get_cell_at(self, global_pos):
-        for widget in (*self._ctx.video_blocks, *self._empty_cells):
+        for widget in (
+            *self._ctx.video_blocks,
+            *self._empty_cells,
+            self._info_label,
+        ):
             if widget.isVisible() and widget.rect().contains(
                 widget.mapFromGlobal(global_pos)
             ):
