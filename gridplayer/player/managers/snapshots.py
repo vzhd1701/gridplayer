@@ -38,9 +38,12 @@ class SnapshotsManager(ManagerBase):
             )
             return
 
+        blocks = self._ctx.video_blocks.blocks_for_ids(
+            self._ctx.commands.layout_order()
+        )
         self._snapshots[_id] = Snapshot(
             grid_state=self._ctx.grid_state.copy(),
-            videos=[v.video_params.copy() for v in self._ctx.video_blocks],
+            videos=[v.video_params.copy() for v in blocks],
         )
 
     def cmd_delete_snapshot(self, _id):
@@ -70,9 +73,6 @@ class SnapshotsManager(ManagerBase):
             if cur_video is None:
                 raise RuntimeError(f"Snapshot video with id {vs.id} not found")
             cur_video.apply_snapshot(vs)
-
-        new_order = [v.id for v in snapshot.videos]
-        self._ctx.video_blocks.reorder_by_video_ids(new_order)
 
         self.grid_state_loaded.emit(snapshot.grid_state)
 

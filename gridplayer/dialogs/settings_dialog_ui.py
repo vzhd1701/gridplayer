@@ -4,7 +4,6 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 class Ui_SettingsDialog:
     def setupUi(self, SettingsDialog):
         SettingsDialog.setObjectName("SettingsDialog")
-        SettingsDialog.resize(732, 452)
         SettingsDialog.setSizeGripEnabled(True)
         SettingsDialog.setModal(True)
         self.lay_main = QtWidgets.QVBoxLayout(SettingsDialog)
@@ -310,6 +309,9 @@ class Ui_SettingsDialog:
         self.playlistDisableOverlay = QtWidgets.QCheckBox(self.page_defaults_playlist)
         self.playlistDisableOverlay.setObjectName("playlistDisableOverlay")
         self.lay_page_defaults_playlist.addWidget(self.playlistDisableOverlay)
+        self.gridShuffleOnLoad = QtWidgets.QCheckBox(self.page_defaults_playlist)
+        self.gridShuffleOnLoad.setObjectName("gridShuffleOnLoad")
+        self.lay_page_defaults_playlist.addWidget(self.gridShuffleOnLoad)
         self.formLayout_2 = QtWidgets.QFormLayout()
         self.formLayout_2.setFieldGrowthPolicy(
             QtWidgets.QFormLayout.FieldsStayAtSizeHint
@@ -331,7 +333,6 @@ class Ui_SettingsDialog:
         self.horizontalLayout_7.setSpacing(6)
         self.horizontalLayout_7.setObjectName("horizontalLayout_7")
         self.verticalLayout_2 = QtWidgets.QVBoxLayout()
-        self.verticalLayout_2.setContentsMargins(0, -1, -1, 0)
         self.verticalLayout_2.setObjectName("verticalLayout_2")
         self.label = QtWidgets.QLabel(self.page_defaults_playlist)
         font = QtGui.QFont()
@@ -345,26 +346,54 @@ class Ui_SettingsDialog:
         self.gridMode = QtWidgets.QComboBox(self.page_defaults_playlist)
         self.gridMode.setObjectName("gridMode")
         self.formLayout.setWidget(0, QtWidgets.QFormLayout.FieldRole, self.gridMode)
-        self.gridSizeLabel = QtWidgets.QLabel(self.page_defaults_playlist)
-        self.gridSizeLabel.setObjectName("gridSizeLabel")
-        self.formLayout.setWidget(
-            1, QtWidgets.QFormLayout.LabelRole, self.gridSizeLabel
-        )
-        self.gridSize = QtWidgets.QSpinBox(self.page_defaults_playlist)
-        self.gridSize.setObjectName("gridSize")
-        self.formLayout.setWidget(1, QtWidgets.QFormLayout.FieldRole, self.gridSize)
         self.gridModeLabel = QtWidgets.QLabel(self.page_defaults_playlist)
         self.gridModeLabel.setObjectName("gridModeLabel")
         self.formLayout.setWidget(
             0, QtWidgets.QFormLayout.LabelRole, self.gridModeLabel
         )
         self.verticalLayout_2.addLayout(self.formLayout)
+        self.formLayout_12 = QtWidgets.QFormLayout()
+        self.formLayout_12.setFieldGrowthPolicy(
+            QtWidgets.QFormLayout.FieldsStayAtSizeHint
+        )
+        self.formLayout_12.setObjectName("formLayout_12")
+        self.gridSizeLabel = QtWidgets.QLabel(self.page_defaults_playlist)
+        self.gridSizeLabel.setObjectName("gridSizeLabel")
+        self.formLayout_12.setWidget(
+            0, QtWidgets.QFormLayout.LabelRole, self.gridSizeLabel
+        )
+        self.gridSize = QtWidgets.QSpinBox(self.page_defaults_playlist)
+        self.gridSize.setObjectName("gridSize")
+        self.formLayout_12.setWidget(0, QtWidgets.QFormLayout.FieldRole, self.gridSize)
+        self.verticalLayout_2.addLayout(self.formLayout_12)
         self.gridFit = QtWidgets.QCheckBox(self.page_defaults_playlist)
         self.gridFit.setObjectName("gridFit")
         self.verticalLayout_2.addWidget(self.gridFit)
-        self.gridShuffleOnLoad = QtWidgets.QCheckBox(self.page_defaults_playlist)
-        self.gridShuffleOnLoad.setObjectName("gridShuffleOnLoad")
-        self.verticalLayout_2.addWidget(self.gridShuffleOnLoad)
+        self.formLayout_11 = QtWidgets.QFormLayout()
+        self.formLayout_11.setFieldGrowthPolicy(
+            QtWidgets.QFormLayout.FieldsStayAtSizeHint
+        )
+        self.formLayout_11.setObjectName("formLayout_11")
+        self.gridRowsLabel = QtWidgets.QLabel(self.page_defaults_playlist)
+        self.gridRowsLabel.setObjectName("gridRowsLabel")
+        self.formLayout_11.setWidget(
+            0, QtWidgets.QFormLayout.LabelRole, self.gridRowsLabel
+        )
+        self.gridRows = QtWidgets.QSpinBox(self.page_defaults_playlist)
+        self.gridRows.setObjectName("gridRows")
+        self.formLayout_11.setWidget(0, QtWidgets.QFormLayout.FieldRole, self.gridRows)
+        self.gridColsLabel = QtWidgets.QLabel(self.page_defaults_playlist)
+        self.gridColsLabel.setObjectName("gridColsLabel")
+        self.formLayout_11.setWidget(
+            1, QtWidgets.QFormLayout.LabelRole, self.gridColsLabel
+        )
+        self.gridCols = QtWidgets.QSpinBox(self.page_defaults_playlist)
+        self.gridCols.setObjectName("gridCols")
+        self.formLayout_11.setWidget(1, QtWidgets.QFormLayout.FieldRole, self.gridCols)
+        self.verticalLayout_2.addLayout(self.formLayout_11)
+        self.gridPreallocate = QtWidgets.QCheckBox(self.page_defaults_playlist)
+        self.gridPreallocate.setObjectName("gridPreallocate")
+        self.verticalLayout_2.addWidget(self.gridPreallocate)
         spacerItem1 = QtWidgets.QSpacerItem(
             20, 40, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Expanding
         )
@@ -794,14 +823,19 @@ class Ui_SettingsDialog:
         self.playlistDisableOverlay.setText(
             _translate("SettingsDialog", "Disable overlay")
         )
+        self.gridShuffleOnLoad.setText(_translate("SettingsDialog", "Shuffle on load"))
         self.playlistSeekSyncModeLabel.setText(
             _translate("SettingsDialog", "Seek sync mode")
         )
         self.label.setText(_translate("SettingsDialog", "Grid"))
-        self.gridSizeLabel.setText(_translate("SettingsDialog", "Grid size"))
         self.gridModeLabel.setText(_translate("SettingsDialog", "Grid mode"))
+        self.gridSizeLabel.setText(_translate("SettingsDialog", "Grid size"))
         self.gridFit.setText(_translate("SettingsDialog", "Fit grid cells"))
-        self.gridShuffleOnLoad.setText(_translate("SettingsDialog", "Shuffle on load"))
+        self.gridRowsLabel.setText(_translate("SettingsDialog", "Rows"))
+        self.gridColsLabel.setText(_translate("SettingsDialog", "Columns"))
+        self.gridPreallocate.setText(
+            _translate("SettingsDialog", "Show all cells even when empty")
+        )
         self.label1.setText(_translate("SettingsDialog", "Drag-n-Drop"))
         self.dropActionExternalLabel.setText(_translate("SettingsDialog", "File drop"))
         self.dropModifierLabel.setText(_translate("SettingsDialog", "Hold to switch"))
@@ -844,10 +878,7 @@ class Ui_SettingsDialog:
             )
         )
         self.miscForceNativeDragEvents.setText(
-            _translate(
-                "SettingsDialog",
-                "Force native drag-n-drop for in-window drag",
-            )
+            _translate("SettingsDialog", "Force native drag-n-drop for in-window drag")
         )
         self.logLimit.setText(_translate("SettingsDialog", "Limit log file size"))
         self.logLimitSizeLabel.setText(_translate("SettingsDialog", "Log file size"))

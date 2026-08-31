@@ -37,6 +37,8 @@ class PlaylistManager(ManagerBase):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
+        self._ctx.is_shuffle_on_load = Settings().get("playlist/shuffle_on_load")
+
         self._saved_playlist = None
 
         self._title_timer = QTimer(self)
@@ -51,7 +53,16 @@ class PlaylistManager(ManagerBase):
             "save_playlist_as": self.cmd_save_playlist_as,
             "close_playlist": self.cmd_close_playlist,
             "is_playlist_changed": self._is_playlist_changed,
+            "is_shuffle_on_load": lambda: self._ctx.is_shuffle_on_load,
+            "set_shuffle_on_load": self.set_shuffle_on_load,
+            "toggle_shuffle_on_load": self.toggle_shuffle_on_load,
         }
+
+    def set_shuffle_on_load(self, is_shuffle_on_load):
+        self._ctx.is_shuffle_on_load = is_shuffle_on_load
+
+    def toggle_shuffle_on_load(self):
+        self._ctx.is_shuffle_on_load = not self._ctx.is_shuffle_on_load
 
     def cmd_open_playlist(self):
         dialog = QFileDialog(
@@ -130,8 +141,7 @@ class PlaylistManager(ManagerBase):
             self.error.emit(translate("Error", "No supported files or URLs!"))
             return
 
-        self.videos_loaded.emit(videos)
-
+        self._ctx.commands.add_videos_to_layout(videos)
         self.alert.emit()
 
     def load_playlist_file(self, playlist_file: Path):
@@ -175,14 +185,6 @@ class PlaylistManager(ManagerBase):
         if not self.cmd_close_playlist():
             return False
 
-        self.videos_loaded.emit(playlist.videos)
-
-        _emit_if_not_empty(
-            (self.grid_state_loaded, playlist.grid_state),
-            (self.window_state_loaded, playlist.window_state),
-            (self.snapshots_loaded, playlist.snapshots),
-        )
-
         _emit(
             (self.seek_sync_mode_loaded, playlist.seek_sync_mode),
             (self.shuffle_on_load_loaded, playlist.shuffle_on_load),
@@ -199,6 +201,17 @@ class PlaylistManager(ManagerBase):
                 playlist.disable_overlay,
             ),
         )
+
+        self.grid_state_loaded.emit(playlist.grid_state)
+        self.videos_loaded.emit(list(playlist.videos or []))
+
+        _emit_if_not_empty(
+            (self.window_state_loaded, playlist.window_state),
+            (self.snapshots_loaded, playlist.snapshots),
+        )
+
+        if playlist.shuffle_on_load and playlist.videos:
+            self._ctx.commands.shuffle_layout()
 
         self.alert.emit()
 
@@ -337,14 +350,10 @@ class PlaylistManager(ManagerBase):
         return False
 
     def _make_playlist(self):
-        # if shuffle on load is ON, keep videos in the same order to maintain save state
-        if self._ctx.is_shuffle_on_load:
-            videos = sorted(self._ctx.video_blocks.videos, key=lambda v: str(v.uri))
-        else:
-            videos = self._ctx.video_blocks.videos
+        videos, grid_state = self._playlist_videos_and_grid_state()
 
         return Playlist(
-            grid_state=self._ctx.grid_state,
+            grid_state=grid_state,
             window_state=self._ctx.window_state,
             videos=videos,
             snapshots=self._ctx.snapshots,
@@ -354,6 +363,30 @@ class PlaylistManager(ManagerBase):
             disable_mouse_wheel_events=self._ctx.is_disable_mouse_wheel_events,
             disable_overlay=self._ctx.is_disable_overlay,
         )
+
+    def _playlist_videos_and_grid_state(self):
+        grid_state = self._ctx.grid_state
+        if self._ctx.is_shuffle_on_load:
+            videos = sorted(self._ctx.video_blocks.videos, key=lambda v: str(v.uri))
+            cells = grid_state.cells
+            if cells:
+                ids = iter(str(v.id) for v in videos)
+                cells = [
+                    c.model_copy(update={"video_id": next(ids)}) if c.video_id else c
+                    for c in cells
+                ]
+            grid_state = grid_state.model_copy(
+                update={"video_order": [], "cells": cells}
+            )
+            return videos, grid_state
+
+        videos = [
+            b.video_params
+            for b in self._ctx.video_blocks.blocks_for_ids(
+                self._ctx.commands.layout_order()
+            )
+        ]
+        return videos, grid_state
 
 
 def _emit_if_not_empty(*properties: tuple[pyqtSignal, Any]):

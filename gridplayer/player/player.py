@@ -63,8 +63,9 @@ class Player(QWidget, ManagersManager):
             ],
             "grid": [
                 ("minimum_size_changed", "window_state.set_minimum_size"),
+                ("warning", "dialogs.warning"),
                 ("video_blocks.video_count_changed", "reload_video_grid"),
-                ("video_blocks.video_order_changed", "reload_video_grid"),
+                ("layout_changed", "reload_video_grid"),
             ],
             "screensaver": [
                 ("video_blocks.playings_videos_count_changed", "screensaver_check")
@@ -73,21 +74,17 @@ class Player(QWidget, ManagersManager):
                 ("video_blocks.video_count_changed", "show_cursor"),
             ],
             "active_block": [
-                ("video_blocks.video_count_changed", "update_active_under_mouse")
+                ("video_blocks.video_count_changed", "update_active_under_mouse"),
+                ("grid.layout_changed", "update_active_under_mouse"),
             ],
             "drag_n_drop": [
-                ("videos_swapped", "grid.reload_video_grid"),
-                ("videos_swapped", "active_block.update_active_under_mouse"),
-                ("videos_dropped", "video_blocks.add_videos"),
-                ("videos_dropped", "window_state.activate_window"),
-                ("videos_dropped", "recent_list.add_recent_videos"),
                 ("playlist_dropped", "playlist.load_playlist_file"),
                 ("set_drag_ui", "video_blocks.cmd_set_drag_ui"),
                 ("set_drag_ui", "window_state.activate_window"),
                 ("set_drag_ui", "active_block.update_active_under_mouse"),
             ],
             "single_mode": [
-                ("mode_changed", "grid.adapt_grid"),
+                ("mode_changed", "grid.on_single_mode_changed"),
                 ("video_blocks.video_count_changed", "set_video_count"),
             ],
             "video_blocks": [
@@ -122,7 +119,7 @@ class Player(QWidget, ManagersManager):
                 ("grid_state_loaded", "grid.set_grid_state"),
                 ("snapshots_loaded", "snapshots.set_snapshots"),
                 ("seek_sync_mode_loaded", "video_blocks.set_seek_sync_mode"),
-                ("shuffle_on_load_loaded", "video_blocks.set_shuffle_on_load"),
+                ("shuffle_on_load_loaded", "playlist.set_shuffle_on_load"),
                 (
                     "disable_mouse_click_events_loaded",
                     "video_blocks.set_disable_mouse_click_events",
@@ -145,13 +142,13 @@ class Player(QWidget, ManagersManager):
                 ("warning", "dialogs.warning"),
             ],
             "add_videos": [
-                ("videos_added", "video_blocks.add_videos"),
+                ("videos_added", "grid.add_videos_to_layout"),
                 ("videos_added", "window_state.activate_window"),
                 ("videos_added", "recent_list.add_recent_videos"),
                 ("error", "dialogs.error"),
             ],
             "recent_list": [
-                ("videos_added", "video_blocks.add_videos"),
+                ("videos_added", "grid.add_videos_to_layout"),
                 ("videos_added", "window_state.activate_window"),
                 ("playlist_opened", "playlist.load_playlist_file"),
                 ("error", "dialogs.error"),

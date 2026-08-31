@@ -1,4 +1,4 @@
-import random
+import contextlib
 
 from PyQt5.QtCore import Qt, pyqtSignal
 
@@ -18,91 +18,78 @@ from gridplayer.widgets.video_block import VideoBlock
 
 
 class VideoBlocks:
+    """Widget registry. Layout order lives on FlowLayout / GridLayout."""
+
     def __init__(self):
-        self._blocks = []
+        self._by_instance: dict[str, VideoBlock] = {}
+        self._by_video_id: dict[str, VideoBlock] = {}
 
     def __iter__(self):
-        return iter(self._blocks)
+        return iter(self._by_instance.values())
 
     def __len__(self):
-        return len(self._blocks)
-
-    def __getitem__(self, idx):
-        return self._blocks[idx]
+        return len(self._by_instance)
 
     def append(self, block):
-        self._blocks.append(block)
+        self._by_instance[block.id] = block
+        if block.video_params is not None:
+            self._by_video_id[block.video_id] = block
 
     def remove(self, block):
-        self._blocks.remove(block)
+        self._by_instance.pop(block.id, None)
+        if block.video_params is not None:
+            vid = block.video_id
+            if self._by_video_id.get(vid) is block:
+                del self._by_video_id[vid]
 
     def clear(self):
-        self._blocks.clear()
+        self._by_instance.clear()
+        self._by_video_id.clear()
 
-    def reorder_by_video_ids(self, order: list[str]):
-        if len(order) != len(self._blocks):
-            raise ValueError("Order list must be the same length as the blocks list")
-
-        new_blocks = []
-        for video_id in order:
-            block = self.by_video_id(video_id)
-            if block is None:
-                raise ValueError(f"Video with id {video_id} not found")
-            new_blocks.append(block)
-        self._blocks = new_blocks
-
-    def index(self, block):
-        return self._blocks.index(block)
-
-    def shuffle(self):
-        random.shuffle(self._blocks)
+    def reindex(self, block):
+        """Refresh video_id key after set_video."""
+        stale = [vid for vid, vb in self._by_video_id.items() if vb is block]
+        for vid in stale:
+            del self._by_video_id[vid]
+        if block.video_params is not None:
+            self._by_video_id[block.video_id] = block
 
     @property
     def unpaused(self):
-        return [v for v in self._blocks if not v.video_params.is_paused]
+        return [v for v in self._by_instance.values() if not v.video_params.is_paused]
 
     @property
     def initialized(self):
-        return [v for v in self._blocks if v.is_video_initialized]
+        return [v for v in self._by_instance.values() if v.is_video_initialized]
 
     @property
     def is_all_initialized(self):
-        return all(v.is_video_initialized for v in self._blocks)
+        return all(v.is_video_initialized for v in self._by_instance.values())
 
     @property
     def videos(self) -> list[Video]:
-        return [v.video_params for v in self._blocks]
+        return [v.video_params for v in self._by_instance.values()]
+
+    @property
+    def video_ids(self) -> list[str]:
+        return [vb.video_id for vb in self]
 
     def by_id(self, _id) -> VideoBlock | None:
-        return next((v for v in self._blocks if v.id == _id), None)
+        return self._by_instance.get(_id)
 
     def by_video_id(self, _id) -> VideoBlock | None:
-        return next((v for v in self._blocks if v.video_params.id == _id), None)
+        return self._by_video_id.get(str(_id))
 
-    def swap(self, block1, block2):
-        idx1 = self._blocks.index(block1)
-        idx2 = self._blocks.index(block2)
-
-        old1, old2 = self._blocks[idx1], self._blocks[idx2]
-
-        self._blocks[idx2] = old1
-        self._blocks[idx1] = old2
-
-    def move(self, block, index: int):
-        old = self._blocks.index(block)
-        if index > old:
-            index -= 1
-        if index == old:
-            return
-
-        self._blocks.remove(block)
-        index = max(0, min(index, len(self._blocks)))
-        self._blocks.insert(index, block)
+    def blocks_for_ids(self, video_ids: list[str]) -> list[VideoBlock]:
+        return [
+            block
+            for video_id in video_ids
+            if (block := self.by_video_id(video_id)) is not None
+        ]
 
 
 class VideoBlocksManager(ManagerBase):
     video_count_changed = pyqtSignal(int)
-    video_order_changed = pyqtSignal()
     playings_videos_count_changed = pyqtSignal(int)
 
     reload_all_closed = pyqtSignal()
@@ -154,7 +141,6 @@ class VideoBlocksManager(ManagerBase):
         super().__init__(**kwargs)
 
         self._ctx.seek_sync_mode = Settings().get("playlist/seek_sync_mode")
-        self._ctx.is_shuffle_on_load = Settings().get("playlist/shuffle_on_load")
         self._ctx.is_disable_mouse_click_events = Settings().get(
             "playlist/disable_mouse_click_events"
         )
@@ -168,6 +154,7 @@ class VideoBlocksManager(ManagerBase):
 
         self._live_video_blocks = 0
         self._videos_to_reload = []
+        self._count_batch_depth = 0
 
     @property
     def commands(self):
@@ -188,10 +175,6 @@ class VideoBlocksManager(ManagerBase):
             "is_seek_sync_mode_set_to": self.is_seek_sync_mode_set_to,
             "set_seek_sync_mode": self.set_seek_sync_mode,
             "reload_all": self.reload_videos,
-            "shuffle_video_blocks": self.cmd_shuffle_video_blocks,
-            "is_shuffle_on_load": lambda: self._ctx.is_shuffle_on_load,
-            "set_shuffle_on_load": self.set_shuffle_on_load,
-            "toggle_shuffle_on_load": self.toggle_shuffle_on_load,
             "is_disable_mouse_click_events": lambda: (
                 self._ctx.is_disable_mouse_click_events
             ),
@@ -205,7 +188,9 @@ class VideoBlocksManager(ManagerBase):
             "is_disable_overlay": lambda: self._ctx.is_disable_overlay,
             "set_disable_overlay": self.set_disable_overlay,
             "toggle_disable_overlay": self.toggle_disable_overlay,
-            "replace_with_block": self.replace_with_block,
+            "add_video_blocks": self.add_videos,
+            "remove_video_blocks": self.remove_videos,
+            "video_count_batch": self.batch,
         }
 
     def cmd_all(self, command, *args):
@@ -248,16 +233,6 @@ class VideoBlocksManager(ManagerBase):
         )
 
         self.all_set_auto_reload_timer.emit(time_minutes)
-
-    def cmd_shuffle_video_blocks(self):
-        self._ctx.video_blocks.shuffle()
-        self.video_order_changed.emit()
-
-    def set_shuffle_on_load(self, is_shuffle_on_load):
-        self._ctx.is_shuffle_on_load = is_shuffle_on_load
-
-    def toggle_shuffle_on_load(self):
-        self._ctx.is_shuffle_on_load = not self._ctx.is_shuffle_on_load
 
     def set_disable_mouse_click_events(self, is_disabled):
         self._ctx.is_disable_mouse_click_events = is_disabled
@@ -345,53 +320,46 @@ class VideoBlocksManager(ManagerBase):
         self.add_videos(self._videos_to_reload)
         self._videos_to_reload = []
 
-    def replace_with_block(self, dst, src):
-        if src is dst:
-            return
+    @contextlib.contextmanager
+    def batch(self):
+        self._count_batch_depth += 1
+        try:
+            yield
+        finally:
+            self._count_batch_depth -= 1
+            if self._count_batch_depth == 0:
+                self._emit_video_count()
 
-        idx = self._ctx.video_blocks.index(dst)
-        dst.close_silently()
-        self._ctx.video_blocks.remove(dst)
-        self._ctx.video_blocks.move(src, idx)
+    def _in_count_batch(self):
+        return self._count_batch_depth > 0
 
+    def _emit_video_count(self):
         self.video_count_changed.emit(len(self._ctx.video_blocks))
 
-    def add_videos(self, videos, index: int | None = None, is_replace=False):
+    def add_videos(self, videos):
         videos = list(videos)
-
-        if index is not None and is_replace:
-            if not videos:
-                return
-
-            try:
-                replace_block = self._ctx.video_blocks[index]
-            except IndexError:
-                return
-
-            replace_block.set_video(videos[0])
-
-            videos = videos[1:]
-            if not videos:
-                return
-
-            index += 1
-
-        if self._ctx.is_shuffle_on_load and index is None:
-            random.shuffle(videos)
-
         added = [self._add_video_block(v) for v in videos]
+        if not self._in_count_batch():
+            self._emit_video_count()
+        return added
 
-        if index is not None:
-            for offset, block in enumerate(added):
-                self._ctx.video_blocks.move(block, index + offset)
-
-        self.video_count_changed.emit(len(self._ctx.video_blocks))
+    def remove_videos(self, video_ids):
+        leftover_set = set(video_ids)
+        if not leftover_set:
+            return
+        for vb in list(self._ctx.video_blocks):
+            if vb.video_id in leftover_set:
+                self._ctx.video_blocks.remove(vb)
+                vb.close_silently()
+        if not self._in_count_batch():
+            self._emit_video_count()
 
     def close_single(self, _id):
         closing_block = self._ctx.video_blocks.by_id(_id)
         self._ctx.video_blocks.remove(closing_block)
 
-        self.video_count_changed.emit(len(self._ctx.video_blocks))
+        if not self._in_count_batch():
+            self._emit_video_count()
 
     def close_all(self):
         self.close_all_signal.emit()
@@ -400,7 +368,8 @@ class VideoBlocksManager(ManagerBase):
 
         self._ctx.video_blocks.clear()
 
-        self.video_count_changed.emit(len(self._ctx.video_blocks))
+        if not self._in_count_batch():
+            self._emit_video_count()
 
     def playing_count_change(self):
         playing_videos_count = len(self._ctx.video_blocks.unpaused)

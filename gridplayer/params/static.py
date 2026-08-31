@@ -24,6 +24,7 @@ class AutoName(Enum):
 class GridMode(AutoName):
     AUTO_ROWS = auto()
     AUTO_COLS = auto()
+    FIXED = auto()
 
 
 class DropAction(AutoName):

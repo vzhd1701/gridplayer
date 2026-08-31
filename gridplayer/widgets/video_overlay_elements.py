@@ -568,7 +568,14 @@ class OverlayDropIndicator(OverlayWidget):
         self.setMinimumSize(0, 0)
 
         self._indicator = DropIndicator.NONE
+        self._circle_color = QColor(0, 0, 0)
+        self._glyph_color = QColor(255, 255, 255)
         self.hide()
+
+    def set_colors(self, circle: QColor, glyph: QColor) -> None:
+        self._circle_color = QColor(circle)
+        self._glyph_color = QColor(glyph)
+        self.update()
 
     def set_indicator(self, indicator: DropIndicator):
         if self._indicator == indicator:
@@ -611,12 +618,12 @@ class OverlayDropIndicator(OverlayWidget):
 
         circle = self._glyph_rect()
         painter.setRenderHint(QPainter.Antialiasing)
-        painter.setBrush(QBrush(QColor(0, 0, 0)))
+        painter.setBrush(QBrush(self._circle_color))
         painter.drawEllipse(circle)
         self._draw_glyph(painter, circle)
 
     def _draw_glyph(self, painter: QPainter, circle: QRectF):
-        painter.setBrush(QBrush(QColor(255, 255, 255)))
+        painter.setBrush(QBrush(self._glyph_color))
         if self._indicator == DropIndicator.SWAP:
             self._draw_swap(painter, circle)
         elif self._indicator == DropIndicator.SOURCE:
@@ -668,7 +675,7 @@ class OverlayDropIndicator(OverlayWidget):
         cx, cy = circle.center().x(), circle.center().y()
         arm = circle.width() / 2 * 0.38
         stroke = max(2.0, circle.width() / 2 * 0.145)
-        painter.setPen(QPen(QColor(255, 255, 255), stroke, Qt.SolidLine, Qt.RoundCap))
+        painter.setPen(QPen(self._glyph_color, stroke, Qt.SolidLine, Qt.RoundCap))
         painter.drawLine(QPointF(cx - arm, cy - arm), QPointF(cx + arm, cy + arm))
         painter.drawLine(QPointF(cx + arm, cy - arm), QPointF(cx - arm, cy + arm))
 
@@ -677,7 +684,7 @@ class OverlayDropIndicator(OverlayWidget):
         radius = circle.width() / 2
         length = radius * 0.52
         stroke = max(2.0, radius * 0.145)
-        painter.setPen(QPen(QColor(255, 255, 255), stroke, Qt.SolidLine, Qt.RoundCap))
+        painter.setPen(QPen(self._glyph_color, stroke, Qt.SolidLine, Qt.RoundCap))
         for deg in (90.0, 150.0, 210.0):
             rad = math.radians(deg)
             dx = math.cos(rad) * length
@@ -715,7 +722,7 @@ class OverlayDropIndicator(OverlayWidget):
         radius = circle.width() / 2
         arc_r = radius * 0.44
         stroke = max(2.0, radius * 0.145)
-        color = QColor(255, 255, 255)
+        color = self._glyph_color
 
         pen = QPen(color, stroke, Qt.SolidLine, Qt.FlatCap, Qt.RoundJoin)
         painter.setPen(pen)

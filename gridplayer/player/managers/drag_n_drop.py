@@ -13,7 +13,6 @@ from gridplayer.utils.drop_zone import (
     DropIndicator,
     DropZone,
     indicator_for,
-    insert_index,
     zone_at,
 )
 from gridplayer.utils.files import (
@@ -33,8 +32,6 @@ _DRAG_LEAVE_GRACE_MS = 250 if env.IS_LINUX else 0
 
 class DragNDropManager(ManagerBase):
     playlist_dropped = pyqtSignal(Path)
-    videos_dropped = pyqtSignal(list, object, bool)
-    videos_swapped = pyqtSignal()
     set_drag_ui = pyqtSignal(bool)
 
     def __init__(self, **kwargs):
@@ -196,15 +193,8 @@ class DragNDropManager(ManagerBase):
 
         self._cancel_fake_drag()
 
-        insert_at = None
-        if dst is not None:
-            if is_replace:
-                insert_at = self._ctx.video_blocks.index(dst)
-            elif zone is not None:
-                insert_at = insert_index(self._ctx.video_blocks.index(dst), zone)
-
         if src:
-            self._drop_video_block(src, dst, zone, insert_at, is_replace)
+            self._drop_video_block(src, dst, zone, is_replace)
 
         self._is_swallow_click_after_fake_drag = True
 
@@ -308,33 +298,24 @@ class DragNDropManager(ManagerBase):
         drop_files = extract_mime_uris(event.mimeData())
         drop_video = extract_mime_video(event.mimeData())
 
-        insert_at = None
-        if dst is not None:
-            if is_replace:
-                insert_at = self._ctx.video_blocks.index(dst)
-            elif zone is not None:
-                insert_at = insert_index(self._ctx.video_blocks.index(dst), zone)
-
         # Always accept so Qt sends XdndFinished. Rejecting from a filter
         # without that leaves Dolphin and QXcbDrag stuck until restart.
         event.acceptProposedAction()
         QTimer.singleShot(
             0,
-            lambda: self._finish_drop(
-                drop_files, drop_video, dst, zone, insert_at, is_replace
-            ),
+            lambda: self._finish_drop(drop_files, drop_video, dst, zone, is_replace),
         )
         return True
 
-    def _finish_drop(self, drop_files, drop_video, dst, zone, insert_at, is_replace):
+    def _finish_drop(self, drop_files, drop_video, dst, zone, is_replace):
         self._end_drag_ui()
 
         if drop_files:
-            self._drop_files(drop_files, insert_at, is_replace)
+            self._drop_files(drop_files, is_replace, dst=dst, zone=zone)
             return
 
         if drop_video:
-            self._drop_video_block(drop_video, dst, zone, insert_at, is_replace)
+            self._drop_video_block(drop_video, dst, zone, is_replace)
 
     def _accept_drag(self, event):
         drag_data = event.mimeData()
@@ -352,7 +333,13 @@ class DragNDropManager(ManagerBase):
 
     # --- apply drop ---
 
-    def _drop_files(self, drop_files, insert_at, is_replace):
+    def _drop_on_layout(self, videos, src_block, dst, zone, is_replace):
+        self._ctx.commands.layout_drop(videos, src_block, dst, zone, is_replace)
+        if videos:
+            self._ctx.commands.add_recent_videos(videos)
+        self._ctx.commands.activate_window()
+
+    def _drop_files(self, drop_files, is_replace, dst=None, zone=None):
         playlist = get_playlist_path(drop_files)
 
         if playlist:
@@ -360,47 +347,17 @@ class DragNDropManager(ManagerBase):
             return
 
         videos = filter_video_uris(drop_files)
-        self.videos_dropped.emit(videos, insert_at, is_replace)
+        self._drop_on_layout(videos, None, dst, zone, is_replace)
 
-    def _drop_video_block(self, dropped_video, dst, zone, insert_at, is_replace):
+    def _drop_video_block(self, dropped_video, dst, zone, is_replace):
         src_video = self._ctx.video_blocks.by_id(dropped_video.id)
 
         if src_video:
-            if dst is None:
-                self._log.debug("No video under cursor, discarding drop")
-                return
-
-            if is_replace:
-                self._ctx.commands.replace_with_block(dst, src_video)
-                return
-
-            if zone is None:
-                self._log.debug("No video under cursor, discarding drop")
-                return
-
-            if zone == DropZone.CENTER:
-                self._log.debug(f"Swapping {src_video.id} with {dst.id}")
-                self._swap_videos(src_video, dst)
-                return
-
-            self._log.debug(f"Moving {src_video.id} to index {insert_at} ({zone.name})")
-            self._move_video_to_idx(src_video, insert_at)
+            self._drop_on_layout([], src_video, dst, zone, is_replace)
             return
 
         self._log.debug("Dropped video from another instance")
-        self.videos_dropped.emit([dropped_video.video], insert_at, is_replace)
-
-    def _move_video_to_idx(self, src, index):
-        self._ctx.video_blocks.move(src, index)
-        self.videos_swapped.emit()
-
-    def _swap_videos(self, src, dst):
-        if src == dst:
-            self._log.debug("No video swap needed")
-            return
-
-        self._ctx.video_blocks.swap(dst, src)
-        self.videos_swapped.emit()
+        self._drop_on_layout([dropped_video.video], None, dst, zone, is_replace)
 
     # --- hover / source glyphs ---
 
@@ -461,7 +418,7 @@ class DragNDropManager(ManagerBase):
         self.set_drag_ui.emit(False)
 
     def _update_drop_target_from_event(self, event, event_object):
-        if event_object is None:
+        if not hasattr(event_object, "mapToGlobal"):
             return
 
         # event.pos() + mapToGlobal: QCursor.pos() is stale during X11 XDND
@@ -473,10 +430,20 @@ class DragNDropManager(ManagerBase):
 
     def _update_drop_target(self, global_pos, is_internal: bool, event=None):
         block, zone = self._hover_at(global_pos)
-        self._set_hover(block, zone, is_internal, self._is_replace(is_internal, event))
+
+        if getattr(block, "is_empty_cell", False):
+            is_replace = False
+        else:
+            is_replace = self._is_replace(is_internal, event)
+
+        # Only swap with empty cells on internal drag
+        if is_internal and getattr(block, "is_empty_cell", False):
+            zone = DropZone.CENTER
+
+        self._set_hover(block, zone, is_internal, is_replace)
 
     def _hover_at(self, global_pos):
-        block = self._ctx.commands.get_video_block_at(global_pos)
+        block = self._ctx.commands.get_cell_at(global_pos)
         if block is None:
             return None, None
 

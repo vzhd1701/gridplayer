@@ -1,5 +1,4 @@
 from gridplayer.params.static import GridMode
-from gridplayer.player.managers.video_blocks import VideoBlocks
 from gridplayer.utils.drop_zone import (
     DropIndicator,
     DropZone,
@@ -38,6 +37,32 @@ def test_insert_index():
     assert insert_index(2, DropZone.AFTER) == 3
 
 
+def test_zone_at_fixed_five_region():
+    w, h = 200, 200
+    assert zone_at(100, 100, w, h, GridMode.FIXED) == DropZone.CENTER
+    assert zone_at(10, 100, w, h, GridMode.FIXED) == DropZone.BEFORE
+    assert zone_at(190, 100, w, h, GridMode.FIXED) == DropZone.AFTER
+    assert zone_at(100, 10, w, h, GridMode.FIXED) == DropZone.ABOVE
+    assert zone_at(100, 190, w, h, GridMode.FIXED) == DropZone.BELOW
+
+
+def test_indicator_for_fixed_uses_cardinal_arrows():
+    assert (
+        indicator_for(DropZone.BEFORE, False, GridMode.FIXED)
+        is DropIndicator.ARROW_LEFT
+    )
+    assert (
+        indicator_for(DropZone.AFTER, False, GridMode.FIXED)
+        is DropIndicator.ARROW_RIGHT
+    )
+    assert (
+        indicator_for(DropZone.ABOVE, False, GridMode.FIXED) is DropIndicator.ARROW_UP
+    )
+    assert (
+        indicator_for(DropZone.BELOW, False, GridMode.FIXED) is DropIndicator.ARROW_DOWN
+    )
+
+
 def test_indicator_for():
     rows = GridMode.AUTO_ROWS
     cols = GridMode.AUTO_COLS
@@ -56,25 +81,3 @@ def test_indicator_for():
         indicator_for(DropZone.CENTER, True, rows, is_replace=True)
         is DropIndicator.REPLACE
     )
-
-
-def test_video_blocks_move_reorders_and_is_noop_on_self():
-    blocks = VideoBlocks()
-    a, b, c, d = "A", "B", "C", "D"
-    for item in (a, b, c, d):
-        blocks.append(item)
-
-    blocks.move(c, 0)
-    assert list(blocks) == [c, a, b, d]
-
-    blocks.move(c, 1)
-    assert list(blocks) == [c, a, b, d]
-
-    blocks.move(c, 4)
-    assert list(blocks) == [a, b, d, c]
-
-    blocks.move(c, 4)
-    assert list(blocks) == [a, b, d, c]
-
-    blocks.move(a, 2)
-    assert list(blocks) == [b, a, d, c]

@@ -216,6 +216,9 @@ class ActiveBlockManager(ManagerBase):
         if is_modal_open():
             return
 
+        if not hasattr(event_object, "mapToGlobal"):
+            return
+
         global_pos = event_object.mapToGlobal(event.pos())
         self._update_active_block(self.get_video_block_at(global_pos))
         self.cmd_active("show_overlay")
@@ -226,26 +229,31 @@ class ActiveBlockManager(ManagerBase):
 
         self._update_active_block(None)
 
+    def _ordered_blocks(self):
+        return self._ctx.video_blocks.blocks_for_ids(self._ctx.commands.layout_order())
+
     def next_active(self):
+        blocks = self._ordered_blocks()
+        if not blocks:
+            return
         if self.is_no_active_block:
-            next_active = self._ctx.video_blocks[0]
+            next_active = blocks[0]
         else:
-            next_block_index = (
-                self._ctx.video_blocks.index(self._ctx.active_block) + 1
-            ) % len(self._ctx.video_blocks)
-            next_active = self._ctx.video_blocks[next_block_index]
+            next_block_index = (blocks.index(self._ctx.active_block) + 1) % len(blocks)
+            next_active = blocks[next_block_index]
 
         self._update_active_block(next_active)
         self.cmd_active("show_overlay")
 
     def previous_active(self):
+        blocks = self._ordered_blocks()
+        if not blocks:
+            return
         if self.is_no_active_block:
-            next_active = self._ctx.video_blocks[-1]
+            next_active = blocks[-1]
         else:
-            next_block_index = (
-                self._ctx.video_blocks.index(self._ctx.active_block) - 1
-            ) % len(self._ctx.video_blocks)
-            next_active = self._ctx.video_blocks[next_block_index]
+            next_block_index = (blocks.index(self._ctx.active_block) - 1) % len(blocks)
+            next_active = blocks[next_block_index]
 
         self._update_active_block(next_active)
         self.cmd_active("show_overlay")

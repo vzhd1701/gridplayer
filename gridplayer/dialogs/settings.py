@@ -4,7 +4,13 @@ import subprocess
 
 from PyQt5.QtCore import QUrl
 from PyQt5.QtGui import QDesktopServices, QIcon
-from PyQt5.QtWidgets import QCheckBox, QComboBox, QDialog, QLineEdit, QSpinBox
+from PyQt5.QtWidgets import (
+    QCheckBox,
+    QComboBox,
+    QDialog,
+    QLineEdit,
+    QSpinBox,
+)
 
 from gridplayer.dialogs.messagebox import QCustomMessageBox
 from gridplayer.dialogs.settings_dialog_ui import Ui_SettingsDialog
@@ -90,6 +96,9 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
             "playlist/grid_mode": self.gridMode,
             "playlist/grid_fit": self.gridFit,
             "playlist/grid_size": self.gridSize,
+            "playlist/grid_rows": self.gridRows,
+            "playlist/grid_cols": self.gridCols,
+            "playlist/grid_preallocate": self.gridPreallocate,
             "playlist/shuffle_on_load": self.gridShuffleOnLoad,
             "playlist/drop_action_internal": self.dropActionInternal,
             "playlist/drop_action_external": self.dropActionExternal,
@@ -138,6 +147,17 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
         self.load_settings()
 
         self.ui_customize_dynamic()
+
+    def _on_grid_mode_changed(self):
+        is_fixed = self.gridMode.currentData() == GridMode.FIXED
+        self.gridSize.setVisible(not is_fixed)
+        self.gridSizeLabel.setVisible(not is_fixed)
+        self.gridFit.setVisible(not is_fixed)
+        self.gridRows.setVisible(is_fixed)
+        self.gridRowsLabel.setVisible(is_fixed)
+        self.gridCols.setVisible(is_fixed)
+        self.gridColsLabel.setVisible(is_fixed)
+        self.gridPreallocate.setVisible(is_fixed)
 
     def ui_customize(self):
         for btn in self.buttonBox.buttons():
@@ -190,6 +210,8 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
 
         self.gridSize.setRange(0, 1000)
         self.gridSize.setSpecialValueText(translate("Grid Size", "Auto"))
+        self.gridRows.setRange(1, 100)
+        self.gridCols.setRange(1, 100)
 
         self.streamAutoReloadTimer.setRange(0, 1000)
         self.streamAutoReloadTimer.setSpecialValueText(
@@ -204,6 +226,7 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
         self.logLimitBackups.setEnabled(self.logLimit.isChecked())
         self.streamingWildcardHelp.setVisible(False)
         self.playerRecentListSize.setEnabled(self.playerRecentList.isChecked())
+        self._on_grid_mode_changed()
 
         self.switch_page(None)
 
@@ -219,6 +242,7 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
             (self.logLimit.stateChanged, self.logLimitBackups.setEnabled),
             (self.streamingWildcardHelpButton.clicked, self.toggle_wildcard_help),
             (self.playerRecentList.stateChanged, self.playerRecentListSize.setEnabled),
+            (self.gridMode.currentIndexChanged, self._on_grid_mode_changed),
         )
 
     def toggle_wildcard_help(self):
@@ -328,8 +352,9 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
 
     def fill_gridMode(self):
         grid_modes = {
-            GridMode.AUTO_ROWS: self.tr("Rows First"),
-            GridMode.AUTO_COLS: self.tr("Columns First"),
+            GridMode.AUTO_ROWS: self.tr("Auto (Rows First)"),
+            GridMode.AUTO_COLS: self.tr("Auto (Columns First)"),
+            GridMode.FIXED: self.tr("Fixed Grid"),
         }
 
         _fill_combo_box(self.gridMode, grid_modes)

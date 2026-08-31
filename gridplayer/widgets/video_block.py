@@ -602,6 +602,10 @@ class VideoBlock(QWidget):
         self.video_driver.set_audio_channel_mode(mode)
 
     @property
+    def video_id(self) -> str:
+        return str(self.video_params.id)
+
+    @property
     def title(self):
         return self._title
 

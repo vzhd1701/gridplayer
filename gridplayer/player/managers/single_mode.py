@@ -22,21 +22,30 @@ class SingleModeManager(ManagerBase):
             "toggle_single_video": self.toggle_single_video,
             "is_single_mode": lambda: self._ctx.is_single_mode,
             "is_more_than_one_video": lambda: len(self._ctx.video_blocks) > 1,
+            "is_single_mode_available": self.is_single_mode_available,
         }
 
     def set_video_count(self, video_count):
         """Exit single mode when number of videos change"""
 
-        self.single_mode_off()
-
-    def toggle_single_video(self):
-        if len(self._ctx.video_blocks) <= 1:
-            return
-
         if self._ctx.is_single_mode:
             self.single_mode_off()
-        else:
-            self.single_mode_on()
+
+    def is_single_mode_available(self):
+        return (
+            len(self._ctx.video_blocks) >= 1
+            and self._ctx.commands.grid_cell_count() > 1
+        )
+
+    def toggle_single_video(self):
+        if self._ctx.is_single_mode:
+            self.single_mode_off()
+            return
+
+        if not self.is_single_mode_available():
+            return
+
+        self.single_mode_on()
 
     def next_single_video(self):
         self._switch_single_video(is_before=False)
@@ -89,6 +98,9 @@ class SingleModeManager(ManagerBase):
 
         next_sv = self._find_next_single_video(current_sv, is_before)
 
+        if next_sv is current_sv:
+            return
+
         if is_pause_background_videos:
             self._pre_sm_states[current_sv.id] = current_sv.video_params.is_paused
             current_sv.set_pause(True)
@@ -101,12 +113,12 @@ class SingleModeManager(ManagerBase):
         next_sv.show()
 
     def _find_next_single_video(self, current_sv, is_before):
+        blocks = self._ctx.video_blocks.blocks_for_ids(
+            self._ctx.commands.layout_order()
+        )
+        if not blocks:
+            return current_sv
+        idx = blocks.index(current_sv)
         if is_before:
-            next_sv_idx = self._ctx.video_blocks.index(current_sv) - 1
-        else:
-            next_sv_idx = self._ctx.video_blocks.index(current_sv) + 1
-
-        if next_sv_idx > len(self._ctx.video_blocks) - 1:
-            next_sv_idx = 0
-
-        return self._ctx.video_blocks[next_sv_idx]
+            return blocks[idx - 1]
+        return blocks[(idx + 1) % len(blocks)]

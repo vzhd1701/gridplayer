@@ -1,13 +1,23 @@
 from pathlib import Path
+from types import SimpleNamespace
+from uuid import uuid4
 
 import pytest
 from PyQt5.QtWidgets import QApplication, QWidget
 
 from gridplayer.models.grid_state import GridState
 from gridplayer.models.playlist import Playlist
-from gridplayer.params.static import GridMode, SeekSyncMode
+from gridplayer.models.video import Video
+from gridplayer.params.static import (
+    AudioChannelMode,
+    GridMode,
+    SeekSyncMode,
+    VideoAspect,
+    VideoRepeat,
+    VideoTransform,
+)
 from gridplayer.player.managers.playlist import PlaylistManager
-from gridplayer.settings import Settings
+from gridplayer.settings import Settings, _default_settings
 
 
 class _Playlist:
@@ -29,10 +39,62 @@ def _qapp():
     return QApplication.instance() or QApplication([])
 
 
-def _make_manager():
+@pytest.fixture(autouse=True)
+def _settings_get(mocker):
+    settings = Settings()
+    real_get = settings.get
+
+    def fake_get(key):
+        try:
+            return real_get(key)
+        except RuntimeError:
+            return _default_settings[key]
+
+    mocker.patch.object(settings, "get", side_effect=fake_get)
+
+
+def _make_manager(ctx=None):
     parent = QWidget()
-    manager = PlaylistManager(context=object(), parent=parent)
+    manager = PlaylistManager(
+        context=SimpleNamespace() if ctx is None else ctx,
+        parent=parent,
+    )
     return manager, parent
+
+
+def _video(name):
+    return Video(
+        id=uuid4(),
+        uri=f"http://example.com/{name}.mp4",
+        repeat_mode=VideoRepeat.SINGLE_FILE,
+        is_start_random=False,
+        aspect_mode=VideoAspect.FIT,
+        is_muted=True,
+        is_paused=False,
+        transform=VideoTransform.NONE,
+        stream_quality="best",
+        auto_reload_timer_min=0,
+        audio_channel_mode=AudioChannelMode.UNSET,
+    )
+
+
+def _playlist(videos, shuffle_on_load):
+    return Playlist(
+        videos=videos,
+        shuffle_on_load=shuffle_on_load,
+        seek_sync_mode=SeekSyncMode.DISABLED,
+        disable_mouse_click_events=False,
+        disable_mouse_wheel_events=False,
+        disable_overlay=False,
+        grid_state=GridState(
+            mode=GridMode.AUTO_ROWS,
+            is_fit=True,
+            size=0,
+            rows=1,
+            cols=1,
+            preallocate=False,
+        ),
+    )
 
 
 def test_write_playlist_emits_playlist_saved(mocker):
@@ -107,6 +169,9 @@ _CUSTOM_PLAYLIST_DEFAULTS = {
     "playlist/grid_mode": GridMode.AUTO_COLS,
     "playlist/grid_fit": False,
     "playlist/grid_size": 3,
+    "playlist/grid_rows": 3,
+    "playlist/grid_cols": 3,
+    "playlist/grid_preallocate": False,
 }
 
 
@@ -184,3 +249,56 @@ def test_load_playlist_applies_file_settings_after_reset(mocker):
         GridState(mode=GridMode.AUTO_COLS, is_fit=False, size=3),
         GridState(mode=GridMode.AUTO_ROWS, is_fit=True, size=0),
     ]
+
+
+def test_load_playlist_emits_videos_in_file_order(mocker):
+    commands = mocker.Mock()
+    manager, _parent = _make_manager(SimpleNamespace(commands=commands))
+    mocker.patch.object(manager, "check_playlist_save", return_value=True)
+    _patch_playlist_settings(mocker, _CUSTOM_PLAYLIST_DEFAULTS)
+
+    videos = [_video("a"), _video("b")]
+    loaded = []
+    manager.videos_loaded.connect(loaded.append)
+
+    playlist = _playlist(videos, shuffle_on_load=False)
+    assert manager.load_playlist(playlist) is True
+
+    assert loaded == [videos]
+    commands.shuffle_layout.assert_not_called()
+
+
+def test_load_playlist_shuffles_layout_when_flag_on(mocker):
+    commands = mocker.Mock()
+    manager, _parent = _make_manager(SimpleNamespace(commands=commands))
+    mocker.patch.object(manager, "check_playlist_save", return_value=True)
+    _patch_playlist_settings(mocker, _CUSTOM_PLAYLIST_DEFAULTS)
+
+    videos = [_video("a"), _video("b")]
+    loaded = []
+    manager.videos_loaded.connect(loaded.append)
+
+    playlist = _playlist(videos, shuffle_on_load=True)
+    assert manager.load_playlist(playlist) is True
+
+    assert loaded == [videos]
+    commands.shuffle_layout.assert_called_once_with()
+
+
+def test_process_arguments_adds_files_to_layout(mocker):
+    commands = mocker.Mock()
+    manager, _parent = _make_manager(SimpleNamespace(commands=commands))
+    videos = ["file-a"]
+    mocker.patch(
+        "gridplayer.player.managers.playlist.get_playlist_path",
+        return_value=None,
+    )
+    mocker.patch(
+        "gridplayer.player.managers.playlist.filter_video_uris",
+        return_value=videos,
+    )
+
+    manager.process_arguments(["a.mp4"])
+
+    commands.add_videos_to_layout.assert_called_once_with(videos)
+    commands.shuffle_layout.assert_not_called()

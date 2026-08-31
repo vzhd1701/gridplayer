@@ -320,9 +320,12 @@ SECTIONS = MappingProxyType(
                 "---",
                 "Rows First",
                 "Columns First",
+                "Fixed Grid",
                 "---",
-                "Fit Cells",
                 "Size: %v",
+                "Fit Cells",
+                "Grid Size: %v",
+                "Show All Cells",
             ),
             (
                 "Snapshots",

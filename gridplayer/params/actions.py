@@ -8,7 +8,7 @@ from gridplayer.params.static import (
     VideoRepeat,
     VideoTransform,
 )
-from gridplayer.utils.command_helpers import AND
+from gridplayer.utils.command_helpers import AND, NOT
 from gridplayer.utils.qt import translate
 
 ACTIONS = MappingProxyType(
@@ -30,7 +30,7 @@ ACTIONS = MappingProxyType(
             "keys": ["Double Click"],
             "icon": ("single-mode-on", "single-mode-off"),
             "toggle": "is_single_mode",
-            "show_if": "is_more_than_one_video",
+            "show_if": "is_single_mode_available",
             "func": "toggle_single_video",
         },
         "Previous Video": {
@@ -38,14 +38,14 @@ ACTIONS = MappingProxyType(
             "key": "B",
             "icon": "previous-video",
             "func": "previous_single_video",
-            "show_if": "is_single_mode",
+            "show_if": AND("is_single_mode", "is_more_than_one_video"),
         },
         "Next Video": {
             "title": translate("Actions", "Next Video"),
             "key": "N",
             "icon": "next-video",
             "func": "next_single_video",
-            "show_if": "is_single_mode",
+            "show_if": AND("is_single_mode", "is_more_than_one_video"),
         },
         "Play Previous File": {
             "title": translate("Actions", "Play Previous File"),
@@ -1219,7 +1219,7 @@ ACTIONS = MappingProxyType(
             "title": translate("Actions", "Shuffle"),
             "key": "Alt+R",
             "icon": "loop-random",
-            "func": "shuffle_video_blocks",
+            "func": "shuffle_layout",
         },
         "Shuffle Grid On Load": {
             "title": translate("Actions", "Shuffle On Load"),
@@ -1228,13 +1228,13 @@ ACTIONS = MappingProxyType(
             "check_if": "is_shuffle_on_load",
         },
         "Rows First": {
-            "title": translate("Actions", "Rows First"),
+            "title": translate("Actions", "Auto (Rows First)"),
             "icon": "grid-rows-first",
             "func": ("set_grid_mode", GridMode.AUTO_ROWS),
             "check_if": ("is_grid_mode_set_to", GridMode.AUTO_ROWS),
         },
         "Columns First": {
-            "title": translate("Actions", "Columns First"),
+            "title": translate("Actions", "Auto (Columns First)"),
             "icon": "grid-columns-first",
             "func": ("set_grid_mode", GridMode.AUTO_COLS),
             "check_if": ("is_grid_mode_set_to", GridMode.AUTO_COLS),
@@ -1244,12 +1244,34 @@ ACTIONS = MappingProxyType(
             "icon": "grid-fit",
             "func": "switch_is_grid_fit",
             "check_if": "is_grid_fit",
+            "show_if": NOT(("is_grid_mode_set_to", GridMode.FIXED)),
         },
         "Size: %v": {
             "title": translate("Actions", "Size: %v"),
             "icon": "grid-size",
             "func": "ask_grid_size",
             "value_getter": "get_grid_size",
+            "show_if": NOT(("is_grid_mode_set_to", GridMode.FIXED)),
+        },
+        "Fixed Grid": {
+            "title": translate("Actions", "Fixed Grid"),
+            "icon": "grid",
+            "func": ("set_grid_mode", GridMode.FIXED),
+            "check_if": ("is_grid_mode_set_to", GridMode.FIXED),
+        },
+        "Grid Size: %v": {
+            "title": translate("Actions", "Grid Size: %v"),
+            "icon": "grid-size",
+            "func": "ask_fixed_grid_size",
+            "value_getter": "get_fixed_grid_size",
+            "show_if": ("is_grid_mode_set_to", GridMode.FIXED),
+        },
+        "Show All Cells": {
+            "title": translate("Actions", "Show All Cells"),
+            "icon": "grid-show-all",
+            "func": "switch_grid_preallocate",
+            "check_if": "is_grid_preallocate",
+            "show_if": ("is_grid_mode_set_to", GridMode.FIXED),
         },
         "Save Snapshot (0)": {
             "title": translate("Actions", "Save Snapshot") + " (0)",

@@ -28,6 +28,7 @@ class RecentListManager(ManagerBase):
             "is_any_recent_playlists": self.is_any_recent_playlists,
             "menu_generator_recent_playlists": self.menu_generator_recent_playlists,
             "is_recent_list_enabled": self.is_recent_list_enabled,
+            "add_recent_videos": self.add_recent_videos,
         }
 
     def is_recent_list_enabled(self):
