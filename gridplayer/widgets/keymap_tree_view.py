@@ -67,13 +67,15 @@ DATA_HAS_MODIFIED_CHILD = Qt.UserRole + 18
 SECTION_TITLES = {
     "video_active": translate("Keymap", "Single video"),
     "video_all": translate("Keymap", "All videos"),
+    "playlist": translate("Keymap", "Playlist"),
     "program": translate("Keymap", "Program"),
 }
 
-# Same theme icons as menu "Video", "[ALL]", and action "Settings"
+# Same theme icons as menu "Video", "[ALL]", "Playlist Settings", and "Settings"
 SECTION_ICONS = {
     "video_active": "video",
     "video_all": "all",
+    "playlist": "playlist-settings",
     "program": "settings",
 }
 

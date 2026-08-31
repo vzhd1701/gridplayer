@@ -1220,6 +1220,7 @@ ACTIONS = MappingProxyType(
             "key": "Alt+R",
             "icon": "loop-random",
             "func": "shuffle_layout",
+            "show_if": "is_more_than_one_video",
         },
         "Shuffle Grid On Load": {
             "title": translate("Actions", "Shuffle On Load"),

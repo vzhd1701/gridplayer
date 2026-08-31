@@ -356,7 +356,7 @@ class GridManager(ManagerBase):
 
     def _leave_fixed(self):
         holes = self._grid_layout.empty_positions(preallocate=False)
-        if holes:
+        if holes and self._ctx.video_blocks:
             ret = QCustomMessageBox.question(
                 self.parent(),
                 translate("Dialog - Set grid size", "Set grid size", "Header"),

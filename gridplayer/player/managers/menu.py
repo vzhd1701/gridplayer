@@ -53,6 +53,7 @@ class MenuManager(ManagerBase):
         if self._ctx.video_blocks:
             sections_added.append(SECTIONS["video_all"])
 
+        sections_added.append(SECTIONS["playlist"])
         sections_added.append(SECTIONS["program"])
 
         return _join_menu_sections(sections_added)
