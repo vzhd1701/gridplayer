@@ -53,6 +53,7 @@ class PlaylistManager(ManagerBase):
             "save_playlist_as": self.cmd_save_playlist_as,
             "close_playlist": self.cmd_close_playlist,
             "is_playlist_changed": self._is_playlist_changed,
+            "is_playlist_saved": lambda: self._saved_playlist is not None,
             "is_shuffle_on_load": lambda: self._ctx.is_shuffle_on_load,
             "set_shuffle_on_load": self.set_shuffle_on_load,
             "toggle_shuffle_on_load": self.toggle_shuffle_on_load,
@@ -146,7 +147,8 @@ class PlaylistManager(ManagerBase):
 
     def load_playlist_file(self, playlist_file: Path):
         try:
-            playlist = Playlist.read(playlist_file)
+            playlist_txt = playlist_file.read_text(encoding="utf-8")
+            playlist = Playlist.parse(playlist_txt)
         except ValueError as e:
             self._log.error(f"Playlist parse error: {e}")
             self.error.emit(
@@ -161,7 +163,7 @@ class PlaylistManager(ManagerBase):
             )
             return
 
-        if not playlist.videos:
+        if not playlist.videos and not _has_playlist_params(playlist_txt):
             self.error.emit(
                 "{}\n\n{}".format(
                     translate("Error", "Empty or invalid playlist!"), playlist_file
@@ -221,7 +223,7 @@ class PlaylistManager(ManagerBase):
         if not Settings().get("playlist/track_changes"):
             return True
 
-        if not self._ctx.video_blocks:
+        if not self._ctx.video_blocks and self._saved_playlist is None:
             return True
 
         if self._is_playlist_changed():
@@ -387,6 +389,10 @@ class PlaylistManager(ManagerBase):
             )
         ]
         return videos, grid_state
+
+
+def _has_playlist_params(playlist_txt: str) -> bool:
+    return any(line.strip().startswith("#P:") for line in playlist_txt.splitlines())
 
 
 def _emit_if_not_empty(*properties: tuple[pyqtSignal, Any]):

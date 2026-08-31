@@ -3,7 +3,7 @@ from types import SimpleNamespace
 from uuid import uuid4
 
 import pytest
-from PyQt5.QtWidgets import QApplication, QWidget
+from PyQt5.QtWidgets import QApplication, QMessageBox, QWidget
 
 from gridplayer.models.grid_state import GridState
 from gridplayer.models.playlist import Playlist
@@ -302,3 +302,100 @@ def test_process_arguments_adds_files_to_layout(mocker):
 
     commands.add_videos_to_layout.assert_called_once_with(videos)
     commands.shuffle_layout.assert_not_called()
+
+
+def test_playlist_dumps_with_none_videos():
+    text = Playlist(videos=None).dumps()
+    parsed = Playlist.parse(text)
+    assert parsed.videos == []
+    assert text.startswith("#GRIDPLAYER\n#P:")
+
+
+def test_load_playlist_file_accepts_empty_template(tmp_path, mocker):
+    manager, _parent = _make_manager()
+    mocker.patch.object(manager, "load_playlist", return_value=True)
+    mocker.patch.object(manager, "_make_playlist", return_value=Playlist(videos=[]))
+
+    path = tmp_path / "template.gpls"
+    path.write_text(
+        Playlist(
+            videos=[],
+            grid_state=GridState(
+                mode=GridMode.FIXED,
+                is_fit=True,
+                size=0,
+                rows=3,
+                cols=4,
+                preallocate=True,
+            ),
+            seek_sync_mode=SeekSyncMode.PERCENT,
+        ).dumps(),
+        encoding="utf-8",
+    )
+
+    errors = []
+    loaded = []
+    manager.error.connect(errors.append)
+    manager.playlist_file_loaded.connect(loaded.append)
+
+    manager.load_playlist_file(path)
+
+    assert errors == []
+    assert loaded == [path]
+    loaded_playlist = manager.load_playlist.call_args[0][0]
+    assert loaded_playlist.videos == []
+    assert loaded_playlist.grid_state.mode == GridMode.FIXED
+    assert loaded_playlist.grid_state.cols == 4
+    assert loaded_playlist.grid_state.rows == 3
+    assert loaded_playlist.seek_sync_mode == SeekSyncMode.PERCENT
+    assert manager._saved_playlist["path"] == path
+
+
+def test_load_playlist_file_rejects_empty_file_without_params(tmp_path, mocker):
+    manager, _parent = _make_manager()
+    mocker.patch.object(manager, "load_playlist", return_value=True)
+
+    path = tmp_path / "empty.gpls"
+    path.write_text("#GRIDPLAYER\n", encoding="utf-8")
+
+    errors = []
+    loaded = []
+    manager.error.connect(errors.append)
+    manager.playlist_file_loaded.connect(loaded.append)
+
+    manager.load_playlist_file(path)
+
+    assert loaded == []
+    assert len(errors) == 1
+    assert "Empty or invalid playlist!" in errors[0]
+    manager.load_playlist.assert_not_called()
+
+
+def test_check_playlist_save_skips_unsaved_empty(mocker):
+    manager, _parent = _make_manager(SimpleNamespace(video_blocks=[]))
+    question = mocker.patch(
+        "gridplayer.player.managers.playlist.QCustomMessageBox.cancellable_question"
+    )
+
+    assert manager.check_playlist_save() is True
+    question.assert_not_called()
+
+
+def test_check_playlist_save_prompts_dirty_empty_template(mocker):
+    manager, _parent = _make_manager(SimpleNamespace(video_blocks=[]))
+    manager._saved_playlist = {"path": Path("template.gpls"), "state": 0}
+    mocker.patch.object(manager, "_is_playlist_changed", return_value=True)
+    question = mocker.patch(
+        "gridplayer.player.managers.playlist.QCustomMessageBox.cancellable_question",
+        return_value=QMessageBox.No,
+    )
+
+    assert manager.check_playlist_save() is True
+    question.assert_called_once()
+
+
+def test_is_playlist_saved_command():
+    manager, _parent = _make_manager()
+    assert manager.commands["is_playlist_saved"]() is False
+    manager._saved_playlist = {"path": Path("template.gpls"), "state": 0}
+    assert manager.commands["is_playlist_saved"]() is True

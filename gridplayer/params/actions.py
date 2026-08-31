@@ -8,7 +8,7 @@ from gridplayer.params.static import (
     VideoRepeat,
     VideoTransform,
 )
-from gridplayer.utils.command_helpers import AND, NOT
+from gridplayer.utils.command_helpers import AND, NOT, OR
 from gridplayer.utils.qt import translate
 
 ACTIONS = MappingProxyType(
@@ -1509,21 +1509,22 @@ ACTIONS = MappingProxyType(
             "key": "Ctrl+S",
             "icon": "save-playlist",
             "func": "save_playlist",
-            "enable_if": AND("is_videos", "is_playlist_changed"),
+            "enable_if": AND(
+                OR("is_videos", "is_playlist_saved"), "is_playlist_changed"
+            ),
         },
         "Save Playlist As": {
             "title": translate("Actions", "Save Playlist As"),
             "key": "Ctrl+Shift+S",
             "icon": "save-playlist",
             "func": "save_playlist_as",
-            "enable_if": "is_videos",
         },
         "Close Playlist": {
             "title": translate("Actions", "Close Playlist"),
             "key": "Ctrl+Shift+Q",
             "icon": "close-playlist",
             "func": "close_playlist",
-            "enable_if": "is_videos",
+            "enable_if": OR("is_videos", "is_playlist_saved"),
         },
         "Settings": {
             "title": translate("Actions", "Settings"),

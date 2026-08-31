@@ -93,7 +93,7 @@ class Playlist(BaseModel):
             )
         )
 
-        for idx, video in enumerate(self.videos):
+        for idx, video in enumerate(self.videos or []):
             playlist_config.append(
                 "#V{}:{}".format(
                     idx,
