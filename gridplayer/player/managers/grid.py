@@ -70,6 +70,7 @@ class GridManager(ManagerBase):
             is_fit=Settings().get("playlist/grid_fit"),
         )
         self._empty_cells = []
+        self._add_anchor = None
         self._reloading = False
 
         self._default_minimum_size = QSize(*PLAYER_INITIAL_SIZE)
@@ -114,6 +115,7 @@ class GridManager(ManagerBase):
             "layout_order": lambda: self._layout.order(),
             "shuffle_layout": self.cmd_shuffle_layout,
             "get_cell_at": self.get_cell_at,
+            "set_add_anchor": self.set_add_anchor,
             "grid_cell_count": lambda: self.grid_dimensions.max_size,
         }
 
@@ -185,13 +187,24 @@ class GridManager(ManagerBase):
                 return widget
         return None
 
+    def set_add_anchor(self, widget):
+        self._add_anchor = widget
+
     def add_videos_to_layout(self, videos):
         videos = list(videos)
         if self._ctx.is_shuffle_on_load:
             random.shuffle(videos)
+
+        anchor = self._add_anchor
+        self._add_anchor = None
+        if anchor is not None and getattr(anchor, "is_empty_cell", False):
+            self.cmd_layout_drop(videos, None, anchor, DropZone.CENTER, False)
+            return []
+
         videos = self._clip_videos(videos)
         if not videos:
             return []
+
         return self._ctx.commands.add_video_blocks(videos)
 
     def _clip_videos(self, videos, is_replace=False):

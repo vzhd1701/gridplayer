@@ -17,8 +17,18 @@ class MenuManager(ManagerBase):
 
     def contextMenuEvent(self, event):
         event.accept()
+
+        cell = self._ctx.commands.get_cell_at(event.globalPos())
+        if getattr(cell, "is_empty_cell", False):
+            self._ctx.commands.set_add_anchor(cell)
+        else:
+            self._ctx.commands.set_add_anchor(None)
+
         menu = self.make_menu()
         menu.exec_(event.globalPos())
+
+        self._ctx.commands.set_add_anchor(None)
+
         # Parent is the player window; without this, each open leaks a QMenu
         # and keeps shared QActions associated with dead menus.
         menu.deleteLater()
