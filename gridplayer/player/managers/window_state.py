@@ -18,6 +18,7 @@ class WindowStateManager(ManagerBase):
 
         self._ctx.is_maximized_pre_fullscreen = False
         self._ctx.window_state = self.window_state
+        self._ctx.is_pause_minimized = Settings().get("playlist/pause_minimized")
 
         self.pre_minimize_unpaused = []
 
@@ -48,10 +49,13 @@ class WindowStateManager(ManagerBase):
             "fullscreen": self.cmd_fullscreen,
             "is_fullscreen": self.parent().isFullScreen,
             "activate_window": self.activate_window,
+            "is_pause_minimized": lambda: self._ctx.is_pause_minimized,
+            "set_pause_minimized": self.set_pause_minimized,
+            "toggle_pause_minimized": self.toggle_pause_minimized,
         }
 
     def changeEvent(self, event):
-        if not Settings().get("player/pause_minimized"):
+        if not self._ctx.is_pause_minimized:
             return
 
         # Minimize
@@ -89,6 +93,12 @@ class WindowStateManager(ManagerBase):
             )
 
             self.parent().showFullScreen()
+
+    def set_pause_minimized(self, is_pause):
+        self._ctx.is_pause_minimized = is_pause
+
+    def toggle_pause_minimized(self):
+        self.set_pause_minimized(not self._ctx.is_pause_minimized)
 
     def set_minimum_size(self, size):
         self.parent().setMinimumSize(size)

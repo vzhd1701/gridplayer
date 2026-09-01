@@ -35,6 +35,11 @@ class Playlist(BaseModel):
         "playlist/disable_mouse_wheel_events"
     )
     disable_overlay: bool = default_field("playlist/disable_overlay")
+    pause_background_videos: bool = default_field("playlist/pause_background_videos")
+    pause_minimized: bool = default_field("playlist/pause_minimized")
+    show_overlay_border: bool = default_field("playlist/show_overlay_border")
+    overlay_hide_on_timeout: bool = default_field("playlist/overlay_hide_on_timeout")
+    overlay_timeout: int = default_field("playlist/overlay_timeout")
 
     @model_validator(mode="before")
     @classmethod

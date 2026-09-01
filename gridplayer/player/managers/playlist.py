@@ -29,6 +29,11 @@ class PlaylistManager(ManagerBase):
     disable_mouse_click_events_loaded = pyqtSignal(bool)
     disable_mouse_wheel_events_loaded = pyqtSignal(bool)
     disable_overlay_loaded = pyqtSignal(bool)
+    pause_background_videos_loaded = pyqtSignal(bool)
+    pause_minimized_loaded = pyqtSignal(bool)
+    show_overlay_border_loaded = pyqtSignal(bool)
+    overlay_hide_on_timeout_loaded = pyqtSignal(bool)
+    overlay_timeout_loaded = pyqtSignal(int)
     videos_loaded = pyqtSignal(list)
 
     alert = pyqtSignal()
@@ -202,6 +207,26 @@ class PlaylistManager(ManagerBase):
                 self.disable_overlay_loaded,
                 playlist.disable_overlay,
             ),
+            (
+                self.pause_background_videos_loaded,
+                playlist.pause_background_videos,
+            ),
+            (
+                self.pause_minimized_loaded,
+                playlist.pause_minimized,
+            ),
+            (
+                self.show_overlay_border_loaded,
+                playlist.show_overlay_border,
+            ),
+            (
+                self.overlay_hide_on_timeout_loaded,
+                playlist.overlay_hide_on_timeout,
+            ),
+            (
+                self.overlay_timeout_loaded,
+                playlist.overlay_timeout,
+            ),
         )
 
         self.grid_state_loaded.emit(playlist.grid_state)
@@ -321,6 +346,11 @@ class PlaylistManager(ManagerBase):
                 defaults.disable_mouse_wheel_events,
             ),
             (self.disable_overlay_loaded, defaults.disable_overlay),
+            (self.pause_background_videos_loaded, defaults.pause_background_videos),
+            (self.pause_minimized_loaded, defaults.pause_minimized),
+            (self.show_overlay_border_loaded, defaults.show_overlay_border),
+            (self.overlay_hide_on_timeout_loaded, defaults.overlay_hide_on_timeout),
+            (self.overlay_timeout_loaded, defaults.overlay_timeout),
             (self.grid_state_loaded, defaults.grid_state),
         )
 
@@ -364,6 +394,11 @@ class PlaylistManager(ManagerBase):
             disable_mouse_click_events=self._ctx.is_disable_mouse_click_events,
             disable_mouse_wheel_events=self._ctx.is_disable_mouse_wheel_events,
             disable_overlay=self._ctx.is_disable_overlay,
+            pause_background_videos=self._ctx.is_pause_background_videos,
+            pause_minimized=self._ctx.is_pause_minimized,
+            show_overlay_border=self._ctx.is_show_overlay_border,
+            overlay_hide_on_timeout=self._ctx.is_overlay_hide_on_timeout,
+            overlay_timeout=self._ctx.overlay_timeout,
         )
 
     def _playlist_videos_and_grid_state(self):

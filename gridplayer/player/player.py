@@ -107,6 +107,20 @@ class Player(QWidget, ManagersManager):
                     "video_blocks.set_disable_mouse_wheel_events",
                 ),
                 ("set_disable_overlay", "video_blocks.set_disable_overlay"),
+                (
+                    "set_pause_background_videos",
+                    "single_mode.set_pause_background_videos",
+                ),
+                ("set_pause_minimized", "window_state.set_pause_minimized"),
+                (
+                    "set_show_overlay_border",
+                    "video_blocks.set_show_overlay_border",
+                ),
+                (
+                    "set_overlay_hide_on_timeout",
+                    "video_blocks.set_overlay_hide_on_timeout",
+                ),
+                ("set_overlay_timeout", "video_blocks.set_overlay_timeout"),
             ],
             "playlist": [
                 ("s.arguments_received", "process_arguments"),
@@ -131,6 +145,26 @@ class Player(QWidget, ManagersManager):
                 (
                     "disable_overlay_loaded",
                     "video_blocks.set_disable_overlay",
+                ),
+                (
+                    "pause_background_videos_loaded",
+                    "single_mode.set_pause_background_videos",
+                ),
+                (
+                    "pause_minimized_loaded",
+                    "window_state.set_pause_minimized",
+                ),
+                (
+                    "show_overlay_border_loaded",
+                    "video_blocks.set_show_overlay_border",
+                ),
+                (
+                    "overlay_hide_on_timeout_loaded",
+                    "video_blocks.set_overlay_hide_on_timeout",
+                ),
+                (
+                    "overlay_timeout_loaded",
+                    "video_blocks.set_overlay_timeout",
                 ),
                 ("videos_loaded", "video_blocks.add_videos"),
                 ("alert", "window_state.activate_window"),

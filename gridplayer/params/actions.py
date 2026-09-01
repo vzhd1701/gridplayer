@@ -1452,6 +1452,30 @@ ACTIONS = MappingProxyType(
             "func": "toggle_disable_overlay",
             "check_if": "is_disable_overlay",
         },
+        "Pause Background Videos": {
+            "title": translate("Actions", "Pause background videos on single mode"),
+            "icon": "empty",
+            "func": "toggle_pause_background_videos",
+            "check_if": "is_pause_background_videos",
+        },
+        "Pause When Minimized": {
+            "title": translate("Actions", "Pause videos when minimized"),
+            "icon": "empty",
+            "func": "toggle_pause_minimized",
+            "check_if": "is_pause_minimized",
+        },
+        "Show Overlay Border": {
+            "title": translate("Actions", "Show overlay border for active video"),
+            "icon": "empty",
+            "func": "toggle_show_overlay_border",
+            "check_if": "is_show_overlay_border",
+        },
+        "Hide Overlay After Timeout": {
+            "title": translate("Actions", "Hide overlay after timeout"),
+            "icon": "empty",
+            "func": "toggle_overlay_hide_on_timeout",
+            "check_if": "is_overlay_hide_on_timeout",
+        },
         # Program
         "Fullscreen": {
             "title": translate("Actions", "Fullscreen"),

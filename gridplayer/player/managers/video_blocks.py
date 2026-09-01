@@ -95,6 +95,7 @@ class VideoBlocksManager(ManagerBase):
     reload_all_closed = pyqtSignal()
 
     hide_overlay = pyqtSignal()
+    show_overlay = pyqtSignal()
     set_drag_ui = pyqtSignal(bool)
     set_pause = pyqtSignal(bool)
 
@@ -148,6 +149,13 @@ class VideoBlocksManager(ManagerBase):
             "playlist/disable_mouse_wheel_events"
         )
         self._ctx.is_disable_overlay = Settings().get("playlist/disable_overlay")
+        self._ctx.is_show_overlay_border = Settings().get(
+            "playlist/show_overlay_border"
+        )
+        self._ctx.is_overlay_hide_on_timeout = Settings().get(
+            "playlist/overlay_hide_on_timeout"
+        )
+        self._ctx.overlay_timeout = Settings().get("playlist/overlay_timeout")
         self._ctx.is_drag_ui = False
 
         self._ctx.video_blocks = VideoBlocks()
@@ -188,6 +196,13 @@ class VideoBlocksManager(ManagerBase):
             "is_disable_overlay": lambda: self._ctx.is_disable_overlay,
             "set_disable_overlay": self.set_disable_overlay,
             "toggle_disable_overlay": self.toggle_disable_overlay,
+            "is_show_overlay_border": lambda: self._ctx.is_show_overlay_border,
+            "set_show_overlay_border": self.set_show_overlay_border,
+            "toggle_show_overlay_border": self.toggle_show_overlay_border,
+            "is_overlay_hide_on_timeout": lambda: self._ctx.is_overlay_hide_on_timeout,
+            "set_overlay_hide_on_timeout": self.set_overlay_hide_on_timeout,
+            "toggle_overlay_hide_on_timeout": self.toggle_overlay_hide_on_timeout,
+            "set_overlay_timeout": self.set_overlay_timeout,
             "add_video_blocks": self.add_videos,
             "remove_video_blocks": self.remove_videos,
             "video_count_batch": self.batch,
@@ -254,9 +269,37 @@ class VideoBlocksManager(ManagerBase):
         self._ctx.is_disable_overlay = is_disabled
         if is_disabled:
             self.hide_overlay.emit()
+            return
+
+        if not self._ctx.is_overlay_hide_on_timeout:
+            self.show_overlay.emit()
 
     def toggle_disable_overlay(self):
         self.set_disable_overlay(not self._ctx.is_disable_overlay)
+
+    def set_show_overlay_border(self, is_show):
+        self._ctx.is_show_overlay_border = is_show
+        for vb in self._ctx.video_blocks:
+            vb.refresh_overlay_border()
+
+    def toggle_show_overlay_border(self):
+        self.set_show_overlay_border(not self._ctx.is_show_overlay_border)
+
+    def set_overlay_hide_on_timeout(self, is_hide):
+        self._ctx.is_overlay_hide_on_timeout = is_hide
+        if is_hide:
+            self.hide_overlay.emit()
+            return
+        self.show_overlay.emit()
+
+    def toggle_overlay_hide_on_timeout(self):
+        self.set_overlay_hide_on_timeout(not self._ctx.is_overlay_hide_on_timeout)
+
+    def set_overlay_timeout(self, timeout):
+        self._ctx.overlay_timeout = timeout
+        if not self._ctx.is_overlay_hide_on_timeout:
+            return
+        self.show_overlay.emit()
 
     def cmd_set_drag_ui(self, is_drag_ui: bool):
         if self._ctx.is_drag_ui == is_drag_ui:
@@ -426,6 +469,7 @@ class VideoBlocksManager(ManagerBase):
             (self.all_previous_video, vb.previous_video),
             (self.all_next_video, vb.next_video),
             (self.hide_overlay, vb.hide_overlay),
+            (self.show_overlay, vb.show_overlay),
             (self.set_drag_ui, vb.set_drag_ui),
             (self.close_all_signal, vb.close_silently),
         )

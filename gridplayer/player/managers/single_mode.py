@@ -11,6 +11,9 @@ class SingleModeManager(ManagerBase):
         super().__init__(**kwargs)
 
         self._ctx.is_single_mode = False
+        self._ctx.is_pause_background_videos = Settings().get(
+            "playlist/pause_background_videos"
+        )
 
         self._pre_sm_states = {}
 
@@ -23,6 +26,9 @@ class SingleModeManager(ManagerBase):
             "is_single_mode": lambda: self._ctx.is_single_mode,
             "is_more_than_one_video": lambda: len(self._ctx.video_blocks) > 1,
             "is_single_mode_available": self.is_single_mode_available,
+            "is_pause_background_videos": lambda: self._ctx.is_pause_background_videos,
+            "set_pause_background_videos": self.set_pause_background_videos,
+            "toggle_pause_background_videos": self.toggle_pause_background_videos,
         }
 
     def set_video_count(self, video_count):
@@ -36,6 +42,35 @@ class SingleModeManager(ManagerBase):
             len(self._ctx.video_blocks) >= 1
             and self._ctx.commands.grid_cell_count() > 1
         )
+
+    def set_pause_background_videos(self, is_pause):
+        was_pause = self._ctx.is_pause_background_videos
+        self._ctx.is_pause_background_videos = is_pause
+        if not self._ctx.is_single_mode or was_pause == is_pause:
+            return
+
+        if is_pause:
+            self._pause_hidden_videos()
+        else:
+            self._restore_hidden_videos()
+
+    def toggle_pause_background_videos(self):
+        self.set_pause_background_videos(not self._ctx.is_pause_background_videos)
+
+    def _pause_hidden_videos(self):
+        for vb in self._ctx.video_blocks:
+            if vb == self._ctx.active_block:
+                continue
+            self._pre_sm_states[vb.id] = vb.video_params.is_paused
+            vb.set_pause(True)
+
+    def _restore_hidden_videos(self):
+        for vb in self._ctx.video_blocks:
+            if vb == self._ctx.active_block:
+                continue
+            pre_sm_state = self._pre_sm_states.pop(vb.id, None)
+            if pre_sm_state is not None:
+                vb.set_pause(pre_sm_state)
 
     def toggle_single_video(self):
         if self._ctx.is_single_mode:
@@ -59,13 +94,11 @@ class SingleModeManager(ManagerBase):
 
         self._ctx.is_single_mode = True
 
-        is_pause_background_videos = Settings().get("player/pause_background_videos")
-
         for vb in self._ctx.video_blocks:
             if vb == self._ctx.active_block:
                 continue
 
-            if is_pause_background_videos:
+            if self._ctx.is_pause_background_videos:
                 self._pre_sm_states[vb.id] = vb.video_params.is_paused
                 vb.set_pause(True)
 
@@ -92,8 +125,6 @@ class SingleModeManager(ManagerBase):
         if not self._ctx.is_single_mode:
             return
 
-        is_pause_background_videos = Settings().get("player/pause_background_videos")
-
         current_sv = next(v for v in self._ctx.video_blocks if v.isVisible())
 
         next_sv = self._find_next_single_video(current_sv, is_before)
@@ -101,7 +132,7 @@ class SingleModeManager(ManagerBase):
         if next_sv is current_sv:
             return
 
-        if is_pause_background_videos:
+        if self._ctx.is_pause_background_videos:
             self._pre_sm_states[current_sv.id] = current_sv.video_params.is_paused
             current_sv.set_pause(True)
         current_sv.hide()

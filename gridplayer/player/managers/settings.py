@@ -18,6 +18,11 @@ class SettingsManager(ManagerBase):
     set_disable_mouse_click_events = pyqtSignal(bool)
     set_disable_mouse_wheel_events = pyqtSignal(bool)
     set_disable_overlay = pyqtSignal(bool)
+    set_pause_background_videos = pyqtSignal(bool)
+    set_pause_minimized = pyqtSignal(bool)
+    set_show_overlay_border = pyqtSignal(bool)
+    set_overlay_hide_on_timeout = pyqtSignal(bool)
+    set_overlay_timeout = pyqtSignal(int)
 
     @property
     def commands(self):
@@ -53,6 +58,11 @@ class SettingsManager(ManagerBase):
             "playlist/disable_mouse_click_events": self.set_disable_mouse_click_events,
             "playlist/disable_mouse_wheel_events": self.set_disable_mouse_wheel_events,
             "playlist/disable_overlay": self.set_disable_overlay,
+            "playlist/pause_background_videos": self.set_pause_background_videos,
+            "playlist/pause_minimized": self.set_pause_minimized,
+            "playlist/show_overlay_border": self.set_show_overlay_border,
+            "playlist/overlay_hide_on_timeout": self.set_overlay_hide_on_timeout,
+            "playlist/overlay_timeout": self.set_overlay_timeout,
         }
 
         changes = self._setting_changes(previous_settings, tuple(checks))

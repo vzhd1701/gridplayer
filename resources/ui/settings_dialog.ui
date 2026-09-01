@@ -13,7 +13,7 @@
   </property>
   <layout class="QVBoxLayout" name="lay_main" stretch="1,0">
    <property name="sizeConstraint">
-    <enum>QLayout::SetMinimumSize</enum>
+    <enum>QLayout::SetDefaultConstraint</enum>
    </property>
    <item>
     <layout class="QHBoxLayout" name="lay_main_2">
@@ -25,7 +25,7 @@
        <property name="minimumSize">
         <size>
          <width>200</width>
-         <height>400</height>
+         <height>350</height>
         </size>
        </property>
        <property name="maximumSize">
@@ -116,7 +116,7 @@
       </widget>
      </item>
      <item>
-      <widget class="QStackedWidget" name="section_page">
+      <widget class="CurrentPageStackedWidget" name="section_page">
        <property name="minimumSize">
         <size>
          <width>500</width>
@@ -158,27 +158,6 @@
           </layout>
          </item>
          <item>
-          <widget class="QCheckBox" name="playerPauseBackgroundVideos">
-           <property name="text">
-            <string>Pause background videos on single mode</string>
-           </property>
-          </widget>
-         </item>
-         <item>
-          <widget class="QCheckBox" name="playerPauseWhenMinimized">
-           <property name="text">
-            <string>Pause videos when minimized</string>
-           </property>
-          </widget>
-         </item>
-         <item>
-          <widget class="QCheckBox" name="playerInhibitScreensaver">
-           <property name="text">
-            <string>Disable screensaver while playing</string>
-           </property>
-          </widget>
-         </item>
-         <item>
           <widget class="QCheckBox" name="playerOneInstance">
            <property name="text">
             <string>Allow only one instance</string>
@@ -207,9 +186,9 @@
           </widget>
          </item>
          <item>
-          <widget class="QCheckBox" name="playerShowOverlayBorder">
+          <widget class="QCheckBox" name="playerInhibitScreensaver">
            <property name="text">
-            <string>Show overlay border for active video</string>
+            <string>Disable screensaver while playing</string>
            </property>
           </widget>
          </item>
@@ -259,34 +238,13 @@
             <enum>QFormLayout::FieldsStayAtSizeHint</enum>
            </property>
            <item row="1" column="0">
-            <widget class="QCheckBox" name="timeoutOverlayFlag">
-             <property name="text">
-              <string>Hide overlay after timeout</string>
-             </property>
-            </widget>
-           </item>
-           <item row="1" column="1">
-            <layout class="QHBoxLayout" name="horizontalLayout_2">
-             <item>
-              <widget class="QSpinBox" name="timeoutOverlay"/>
-             </item>
-             <item>
-              <widget class="QLabel" name="label_3">
-               <property name="text">
-                <string>(sec)</string>
-               </property>
-              </widget>
-             </item>
-            </layout>
-           </item>
-           <item row="2" column="0">
             <widget class="QCheckBox" name="timeoutMouseHideFlag">
              <property name="text">
               <string>Hide mouse after timeout</string>
              </property>
             </widget>
            </item>
-           <item row="2" column="1">
+           <item row="1" column="1">
             <layout class="QHBoxLayout" name="horizontalLayout">
              <item>
               <widget class="QSpinBox" name="timeoutMouseHide"/>
@@ -491,293 +449,372 @@
          </item>
         </layout>
        </widget>
-       <widget class="QWidget" name="page_defaults_playlist">
-        <layout class="QVBoxLayout" name="lay_page_defaults_playlist">
-         <property name="leftMargin">
-          <number>0</number>
-         </property>
-         <property name="topMargin">
-          <number>0</number>
-         </property>
-         <property name="rightMargin">
-          <number>0</number>
-         </property>
-         <property name="bottomMargin">
-          <number>0</number>
-         </property>
-         <item>
-          <widget class="QCheckBox" name="playlistSaveWindow">
-           <property name="text">
-            <string>Save window position and size</string>
-           </property>
-          </widget>
-         </item>
-         <item>
-          <widget class="QCheckBox" name="playlistSavePosition">
-           <property name="text">
-            <string>Save videos playback position</string>
-           </property>
-          </widget>
-         </item>
-         <item>
-          <widget class="QCheckBox" name="playlistSaveState">
-           <property name="text">
-            <string>Save videos playing / paused status</string>
-           </property>
-          </widget>
-         </item>
-         <item>
-          <widget class="QCheckBox" name="playlistTrackChanges">
-           <property name="text">
-            <string>Warn about unsaved changes</string>
-           </property>
-          </widget>
-         </item>
-         <item>
-          <widget class="QCheckBox" name="playlistDisableClickEvents">
-           <property name="text">
-            <string>Disable mouse click events</string>
-           </property>
-          </widget>
-         </item>
-         <item>
-          <widget class="QCheckBox" name="playlistDisableWheelEvents">
-           <property name="text">
-            <string>Disable mouse wheel events</string>
-           </property>
-          </widget>
-         </item>
-         <item>
-          <widget class="QCheckBox" name="playlistDisableOverlay">
-           <property name="text">
-            <string>Disable overlay</string>
-           </property>
-          </widget>
-         </item>
-         <item>
-          <widget class="QCheckBox" name="gridShuffleOnLoad">
-           <property name="text">
-            <string>Shuffle on load</string>
-           </property>
-          </widget>
-         </item>
-         <item>
-          <layout class="QFormLayout" name="formLayout_2">
-           <property name="fieldGrowthPolicy">
-            <enum>QFormLayout::FieldsStayAtSizeHint</enum>
-           </property>
-           <item row="0" column="0">
-            <widget class="QLabel" name="playlistSeekSyncModeLabel">
-             <property name="text">
-              <string>Seek sync mode</string>
-             </property>
-            </widget>
-           </item>
-           <item row="0" column="1">
-            <widget class="QComboBox" name="playlistSeekSyncMode"/>
-           </item>
-          </layout>
-         </item>
-         <item>
-          <layout class="QHBoxLayout" name="horizontalLayout_7">
-           <property name="spacing">
-            <number>6</number>
-           </property>
-           <property name="rightMargin">
-            <number>0</number>
-           </property>
-           <property name="bottomMargin">
-            <number>0</number>
-           </property>
-           <item>
-            <layout class="QVBoxLayout" name="verticalLayout_2">
-             <item>
-              <widget class="QLabel" name="label">
-               <property name="font">
-                <font>
-                 <bold>true</bold>
-                </font>
-               </property>
-               <property name="text">
-                <string>Grid</string>
-               </property>
-              </widget>
-             </item>
-             <item>
-              <layout class="QFormLayout" name="formLayout">
-               <property name="fieldGrowthPolicy">
-                <enum>QFormLayout::FieldsStayAtSizeHint</enum>
-               </property>
-               <item row="0" column="1">
-                <widget class="QComboBox" name="gridMode"/>
-               </item>
-               <item row="0" column="0">
-                <widget class="QLabel" name="gridModeLabel">
-                 <property name="text">
-                  <string>Grid mode</string>
-                 </property>
-                </widget>
-               </item>
-              </layout>
-             </item>
-             <item>
-              <layout class="QFormLayout" name="formLayout_12">
-               <property name="fieldGrowthPolicy">
-                <enum>QFormLayout::FieldsStayAtSizeHint</enum>
-               </property>
-               <item row="0" column="0">
-                <widget class="QLabel" name="gridSizeLabel">
-                 <property name="text">
-                  <string>Grid size</string>
-                 </property>
-                </widget>
-               </item>
-               <item row="0" column="1">
-                <widget class="QSpinBox" name="gridSize"/>
-               </item>
-              </layout>
-             </item>
-             <item>
-              <widget class="QCheckBox" name="gridFit">
-               <property name="text">
-                <string>Fit grid cells</string>
-               </property>
-              </widget>
-             </item>
-             <item>
-              <layout class="QFormLayout" name="formLayout_11">
-               <property name="fieldGrowthPolicy">
-                <enum>QFormLayout::FieldsStayAtSizeHint</enum>
-               </property>
-               <item row="0" column="0">
-                <widget class="QLabel" name="gridRowsLabel">
-                 <property name="text">
-                  <string>Rows</string>
-                 </property>
-                </widget>
-               </item>
-               <item row="0" column="1">
-                <widget class="QSpinBox" name="gridRows"/>
-               </item>
-               <item row="1" column="0">
-                <widget class="QLabel" name="gridColsLabel">
-                 <property name="text">
-                  <string>Columns</string>
-                 </property>
-                </widget>
-               </item>
-               <item row="1" column="1">
-                <widget class="QSpinBox" name="gridCols"/>
-               </item>
-              </layout>
-             </item>
-             <item>
-              <widget class="QCheckBox" name="gridPreallocate">
-               <property name="text">
-                <string>Show all cells even when empty</string>
-               </property>
-              </widget>
-             </item>
-             <item>
-              <spacer name="verticalSpacer_6">
-               <property name="orientation">
-                <enum>Qt::Vertical</enum>
-               </property>
-               <property name="sizeHint" stdset="0">
-                <size>
-                 <width>20</width>
-                 <height>40</height>
-                </size>
-               </property>
-              </spacer>
-             </item>
-            </layout>
-           </item>
-           <item>
-            <layout class="QVBoxLayout" name="verticalLayout_3">
-             <property name="leftMargin">
-              <number>10</number>
-             </property>
-             <item>
-              <widget class="QLabel" name="label">
-               <property name="font">
-                <font>
-                 <bold>true</bold>
-                </font>
-               </property>
-               <property name="text">
-                <string>Drag-n-Drop</string>
-               </property>
-              </widget>
-             </item>
-             <item>
-              <layout class="QFormLayout" name="formLayout">
-               <property name="fieldGrowthPolicy">
-                <enum>QFormLayout::FieldsStayAtSizeHint</enum>
-               </property>
-               <item row="0" column="1">
-                <widget class="QComboBox" name="dropActionInternal"/>
-               </item>
-               <item row="1" column="0">
-                <widget class="QLabel" name="dropActionExternalLabel">
-                 <property name="text">
-                  <string>File drop</string>
-                 </property>
-                </widget>
-               </item>
-               <item row="1" column="1">
-                <widget class="QComboBox" name="dropActionExternal"/>
-               </item>
-               <item row="2" column="0">
-                <widget class="QLabel" name="dropModifierLabel">
-                 <property name="text">
-                  <string>Hold to switch</string>
-                 </property>
-                </widget>
-               </item>
-               <item row="2" column="1">
-                <widget class="QComboBox" name="dropModifier"/>
-               </item>
-               <item row="0" column="0">
-                <widget class="QLabel" name="dropActionInternalLabel">
-                 <property name="text">
-                  <string>In-window drag</string>
-                 </property>
-                </widget>
-               </item>
-              </layout>
-             </item>
-             <item>
-              <spacer name="verticalSpacer_5">
-               <property name="orientation">
-                <enum>Qt::Vertical</enum>
-               </property>
-               <property name="sizeHint" stdset="0">
-                <size>
-                 <width>20</width>
-                 <height>40</height>
-                </size>
-               </property>
-              </spacer>
-             </item>
-            </layout>
-           </item>
-           <item>
-            <spacer name="horizontalSpacer">
-             <property name="orientation">
-              <enum>Qt::Horizontal</enum>
-             </property>
-             <property name="sizeHint" stdset="0">
-              <size>
-               <width>40</width>
-               <height>20</height>
-              </size>
-             </property>
-            </spacer>
-           </item>
-          </layout>
-         </item>
-        </layout>
+       <widget class="PageScrollArea" name="page_defaults_playlist">
+        <property name="frameShape">
+         <enum>QFrame::NoFrame</enum>
+        </property>
+        <property name="horizontalScrollBarPolicy">
+         <enum>Qt::ScrollBarAlwaysOff</enum>
+        </property>
+        <property name="widgetResizable">
+         <bool>true</bool>
+        </property>
+        <widget class="QWidget" name="page_defaults_playlist_contents">
+         <layout class="QVBoxLayout" name="lay_page_defaults_playlist">
+          <property name="leftMargin">
+           <number>0</number>
+          </property>
+          <property name="topMargin">
+           <number>0</number>
+          </property>
+          <property name="rightMargin">
+           <number>0</number>
+          </property>
+          <property name="bottomMargin">
+           <number>0</number>
+          </property>
+          <item>
+           <widget class="QLabel" name="label_17">
+            <property name="font">
+             <font>
+              <bold>true</bold>
+             </font>
+            </property>
+            <property name="text">
+             <string>Saving</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QCheckBox" name="playlistTrackChanges">
+            <property name="text">
+             <string>Warn about unsaved changes</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QCheckBox" name="playlistSaveWindow">
+            <property name="text">
+             <string>Save window position and size</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QCheckBox" name="playlistSavePosition">
+            <property name="text">
+             <string>Save videos playback position</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QCheckBox" name="playlistSaveState">
+            <property name="text">
+             <string>Save videos playing / paused status</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QLabel" name="label_18">
+            <property name="font">
+             <font>
+              <bold>true</bold>
+             </font>
+            </property>
+            <property name="text">
+             <string>Playback</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QCheckBox" name="playlistPauseBackgroundVideos">
+            <property name="text">
+             <string>Pause background videos on single mode</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QCheckBox" name="playlistPauseWhenMinimized">
+            <property name="text">
+             <string>Pause videos when minimized</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <layout class="QFormLayout" name="formLayout_2">
+            <property name="fieldGrowthPolicy">
+             <enum>QFormLayout::FieldsStayAtSizeHint</enum>
+            </property>
+            <item row="0" column="1">
+             <widget class="QComboBox" name="playlistSeekSyncMode"/>
+            </item>
+            <item row="0" column="0">
+             <widget class="QLabel" name="playlistSeekSyncModeLabel">
+              <property name="text">
+               <string>Seek sync mode</string>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </item>
+          <item>
+           <widget class="QLabel" name="label_19">
+            <property name="font">
+             <font>
+              <bold>true</bold>
+             </font>
+            </property>
+            <property name="text">
+             <string>Input</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QCheckBox" name="playlistDisableClickEvents">
+            <property name="text">
+             <string>Disable mouse click events</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QCheckBox" name="playlistDisableWheelEvents">
+            <property name="text">
+             <string>Disable mouse wheel events</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QLabel" name="label_20">
+            <property name="font">
+             <font>
+              <bold>true</bold>
+             </font>
+            </property>
+            <property name="text">
+             <string>Overlay</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QCheckBox" name="playlistDisableOverlay">
+            <property name="text">
+             <string>Disable overlay</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QCheckBox" name="playlistShowOverlayBorder">
+            <property name="text">
+             <string>Show overlay border for active video</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <layout class="QFormLayout" name="formLayout_overlay_hide_on_timeout">
+            <property name="fieldGrowthPolicy">
+             <enum>QFormLayout::FieldsStayAtSizeHint</enum>
+            </property>
+            <item row="0" column="0">
+             <widget class="QCheckBox" name="timeoutOverlayFlag">
+              <property name="text">
+               <string>Hide overlay after timeout</string>
+              </property>
+             </widget>
+            </item>
+            <item row="0" column="1">
+             <layout class="QHBoxLayout" name="horizontalLayout_2">
+              <item>
+               <widget class="QSpinBox" name="timeoutOverlay"/>
+              </item>
+              <item>
+               <widget class="QLabel" name="label_3">
+                <property name="text">
+                 <string>(sec)</string>
+                </property>
+               </widget>
+              </item>
+             </layout>
+            </item>
+           </layout>
+          </item>
+          <item>
+           <layout class="QVBoxLayout" name="verticalLayout_2">
+            <item>
+             <widget class="QLabel" name="label">
+              <property name="font">
+               <font>
+                <bold>true</bold>
+               </font>
+              </property>
+              <property name="text">
+               <string>Grid</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QCheckBox" name="gridShuffleOnLoad">
+              <property name="text">
+               <string>Shuffle on load</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <layout class="QFormLayout" name="formLayout">
+              <property name="fieldGrowthPolicy">
+               <enum>QFormLayout::FieldsStayAtSizeHint</enum>
+              </property>
+              <item row="0" column="1">
+               <widget class="QComboBox" name="gridMode"/>
+              </item>
+              <item row="0" column="0">
+               <widget class="QLabel" name="gridModeLabel">
+                <property name="text">
+                 <string>Grid mode</string>
+                </property>
+               </widget>
+              </item>
+             </layout>
+            </item>
+            <item>
+             <layout class="QFormLayout" name="formLayout_12">
+              <property name="fieldGrowthPolicy">
+               <enum>QFormLayout::FieldsStayAtSizeHint</enum>
+              </property>
+              <item row="0" column="0">
+               <widget class="QLabel" name="gridSizeLabel">
+                <property name="text">
+                 <string>Grid size</string>
+                </property>
+               </widget>
+              </item>
+              <item row="0" column="1">
+               <widget class="QSpinBox" name="gridSize"/>
+              </item>
+             </layout>
+            </item>
+            <item>
+             <widget class="QCheckBox" name="gridFit">
+              <property name="text">
+               <string>Fit grid cells</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <layout class="QFormLayout" name="formLayout_11">
+              <property name="fieldGrowthPolicy">
+               <enum>QFormLayout::FieldsStayAtSizeHint</enum>
+              </property>
+              <item row="0" column="0">
+               <widget class="QLabel" name="gridRowsLabel">
+                <property name="text">
+                 <string>Rows</string>
+                </property>
+               </widget>
+              </item>
+              <item row="0" column="1">
+               <widget class="QSpinBox" name="gridRows"/>
+              </item>
+              <item row="1" column="0">
+               <widget class="QLabel" name="gridColsLabel">
+                <property name="text">
+                 <string>Columns</string>
+                </property>
+               </widget>
+              </item>
+              <item row="1" column="1">
+               <widget class="QSpinBox" name="gridCols"/>
+              </item>
+             </layout>
+            </item>
+            <item>
+             <widget class="QCheckBox" name="gridPreallocate">
+              <property name="text">
+               <string>Show all cells even when empty</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <spacer name="verticalSpacer_6">
+              <property name="orientation">
+               <enum>Qt::Vertical</enum>
+              </property>
+              <property name="sizeHint" stdset="0">
+               <size>
+                <width>20</width>
+                <height>40</height>
+               </size>
+              </property>
+             </spacer>
+            </item>
+           </layout>
+          </item>
+          <item>
+           <layout class="QVBoxLayout" name="verticalLayout_3">
+            <item>
+             <widget class="QLabel" name="label">
+              <property name="font">
+               <font>
+                <bold>true</bold>
+               </font>
+              </property>
+              <property name="text">
+               <string>Drag-n-Drop</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <layout class="QFormLayout" name="formLayout">
+              <property name="fieldGrowthPolicy">
+               <enum>QFormLayout::FieldsStayAtSizeHint</enum>
+              </property>
+              <item row="0" column="1">
+               <widget class="QComboBox" name="dropActionInternal"/>
+              </item>
+              <item row="1" column="0">
+               <widget class="QLabel" name="dropActionExternalLabel">
+                <property name="text">
+                 <string>File drop</string>
+                </property>
+               </widget>
+              </item>
+              <item row="1" column="1">
+               <widget class="QComboBox" name="dropActionExternal"/>
+              </item>
+              <item row="2" column="0">
+               <widget class="QLabel" name="dropModifierLabel">
+                <property name="text">
+                 <string>Hold to switch</string>
+                </property>
+               </widget>
+              </item>
+              <item row="2" column="1">
+               <widget class="QComboBox" name="dropModifier"/>
+              </item>
+              <item row="0" column="0">
+               <widget class="QLabel" name="dropActionInternalLabel">
+                <property name="text">
+                 <string>In-window drag</string>
+                </property>
+               </widget>
+              </item>
+             </layout>
+            </item>
+            <item>
+             <spacer name="verticalSpacer_5">
+              <property name="orientation">
+               <enum>Qt::Vertical</enum>
+              </property>
+              <property name="sizeHint" stdset="0">
+               <size>
+                <width>20</width>
+                <height>40</height>
+               </size>
+              </property>
+             </spacer>
+            </item>
+           </layout>
+          </item>
+         </layout>
+        </widget>
        </widget>
        <widget class="QWidget" name="page_defaults_video">
         <layout class="QVBoxLayout" name="lay_page_defaults_video">
@@ -1203,6 +1240,18 @@
    <class>KeymapEditor</class>
    <extends>QWidget</extends>
    <header>gridplayer.widgets.keymap_tree_view</header>
+   <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>CurrentPageStackedWidget</class>
+   <extends>QStackedWidget</extends>
+   <header>gridplayer.widgets.settings_current_page_stack</header>
+   <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>PageScrollArea</class>
+   <extends>QScrollArea</extends>
+   <header>gridplayer.widgets.settings_page_scroll_area</header>
    <container>1</container>
   </customwidget>
  </customwidgets>

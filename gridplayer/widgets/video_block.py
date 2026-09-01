@@ -445,7 +445,7 @@ class VideoBlock(QWidget):
         self.hide_overlay()
 
     def showEvent(self, event):
-        if not Settings().get("misc/overlay_hide"):
+        if not self._ctx.is_overlay_hide_on_timeout:
             self.show_overlay()
 
     def customEvent(self, event):
@@ -539,10 +539,13 @@ class VideoBlock(QWidget):
     def is_active(self, is_active):
         self._is_active = is_active
 
-        if is_active and not Settings().get("player/show_overlay_border"):
+        if is_active and not self._ctx.is_show_overlay_border:
             return
 
         self.is_active_change.emit(is_active)
+
+    def refresh_overlay_border(self):
+        self.is_active_change.emit(self._is_active and self._ctx.is_show_overlay_border)
 
     @property
     def drag_data(self):
@@ -676,7 +679,7 @@ class VideoBlock(QWidget):
             return
 
         self.overlay.set_drop_indicator(DropIndicator.NONE)
-        if self._ctx.is_disable_overlay or Settings().get("misc/overlay_hide"):
+        if self._ctx.is_disable_overlay or self._ctx.is_overlay_hide_on_timeout:
             self.overlay_hide_timer.stop()
             self.overlay.hide()
             return
@@ -688,8 +691,8 @@ class VideoBlock(QWidget):
             return
 
         self.overlay.show()
-        if Settings().get("misc/overlay_hide"):
-            self.overlay_hide_timer.start(1000 * Settings().get("misc/overlay_timeout"))
+        if self._ctx.is_overlay_hide_on_timeout:
+            self.overlay_hide_timer.start(1000 * self._ctx.overlay_timeout)
 
     def hide_overlay(self):
         if self._ctx.is_drag_ui:
@@ -700,7 +703,7 @@ class VideoBlock(QWidget):
             self.overlay.hide()
             return
 
-        if not Settings().get("misc/overlay_hide"):
+        if not self._ctx.is_overlay_hide_on_timeout:
             return
 
         self.overlay.hide()

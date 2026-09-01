@@ -133,6 +133,11 @@ def _collect_session_signals(manager):
         "disable_mouse_click_events": [],
         "disable_mouse_wheel_events": [],
         "disable_overlay": [],
+        "pause_background_videos": [],
+        "pause_minimized": [],
+        "show_overlay_border": [],
+        "overlay_hide_on_timeout": [],
+        "overlay_timeout": [],
         "grid_state": [],
     }
     manager.seek_sync_mode_loaded.connect(collected["seek_sync_mode"].append)
@@ -144,6 +149,15 @@ def _collect_session_signals(manager):
         collected["disable_mouse_wheel_events"].append
     )
     manager.disable_overlay_loaded.connect(collected["disable_overlay"].append)
+    manager.pause_background_videos_loaded.connect(
+        collected["pause_background_videos"].append
+    )
+    manager.pause_minimized_loaded.connect(collected["pause_minimized"].append)
+    manager.show_overlay_border_loaded.connect(collected["show_overlay_border"].append)
+    manager.overlay_hide_on_timeout_loaded.connect(
+        collected["overlay_hide_on_timeout"].append
+    )
+    manager.overlay_timeout_loaded.connect(collected["overlay_timeout"].append)
     manager.grid_state_loaded.connect(collected["grid_state"].append)
     return collected
 
@@ -166,6 +180,11 @@ _CUSTOM_PLAYLIST_DEFAULTS = {
     "playlist/disable_mouse_click_events": True,
     "playlist/disable_mouse_wheel_events": True,
     "playlist/disable_overlay": True,
+    "playlist/pause_background_videos": False,
+    "playlist/pause_minimized": False,
+    "playlist/show_overlay_border": True,
+    "playlist/overlay_hide_on_timeout": False,
+    "playlist/overlay_timeout": 7,
     "playlist/grid_mode": GridMode.AUTO_COLS,
     "playlist/grid_fit": False,
     "playlist/grid_size": 3,
@@ -192,6 +211,11 @@ def test_close_playlist_resets_session_to_settings_defaults(mocker):
     assert collected["disable_mouse_click_events"] == [True]
     assert collected["disable_mouse_wheel_events"] == [True]
     assert collected["disable_overlay"] == [True]
+    assert collected["pause_background_videos"] == [False]
+    assert collected["pause_minimized"] == [False]
+    assert collected["show_overlay_border"] == [True]
+    assert collected["overlay_hide_on_timeout"] == [False]
+    assert collected["overlay_timeout"] == [7]
     assert collected["grid_state"] == [
         GridState(mode=GridMode.AUTO_COLS, is_fit=False, size=3)
     ]
@@ -214,6 +238,11 @@ def test_close_playlist_does_not_reset_when_save_cancelled(mocker):
         "disable_mouse_click_events": [],
         "disable_mouse_wheel_events": [],
         "disable_overlay": [],
+        "pause_background_videos": [],
+        "pause_minimized": [],
+        "show_overlay_border": [],
+        "overlay_hide_on_timeout": [],
+        "overlay_timeout": [],
         "grid_state": [],
     }
 
@@ -232,6 +261,11 @@ def test_load_playlist_applies_file_settings_after_reset(mocker):
         disable_mouse_click_events=False,
         disable_mouse_wheel_events=False,
         disable_overlay=False,
+        pause_background_videos=True,
+        pause_minimized=True,
+        show_overlay_border=False,
+        overlay_hide_on_timeout=True,
+        overlay_timeout=3,
         grid_state=GridState(mode=GridMode.AUTO_ROWS, is_fit=True, size=0),
     )
 
@@ -245,6 +279,11 @@ def test_load_playlist_applies_file_settings_after_reset(mocker):
     assert collected["disable_mouse_click_events"] == [True, False]
     assert collected["disable_mouse_wheel_events"] == [True, False]
     assert collected["disable_overlay"] == [True, False]
+    assert collected["pause_background_videos"] == [False, True]
+    assert collected["pause_minimized"] == [False, True]
+    assert collected["show_overlay_border"] == [True, False]
+    assert collected["overlay_hide_on_timeout"] == [False, True]
+    assert collected["overlay_timeout"] == [7, 3]
     assert collected["grid_state"] == [
         GridState(mode=GridMode.AUTO_COLS, is_fit=False, size=3),
         GridState(mode=GridMode.AUTO_ROWS, is_fit=True, size=0),

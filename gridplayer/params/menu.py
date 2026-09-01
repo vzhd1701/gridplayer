@@ -370,9 +370,13 @@ SECTIONS = MappingProxyType(
             ),
             (
                 "Playlist Settings",
+                "Pause Background Videos",
+                "Pause When Minimized",
                 "Disable Mouse Click Events",
                 "Disable Mouse Wheel Events",
                 "Disable Overlay",
+                "Show Overlay Border",
+                "Hide Overlay After Timeout",
             ),
         ],
         "program": [
