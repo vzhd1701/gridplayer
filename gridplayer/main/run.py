@@ -36,6 +36,11 @@ def run_app():
     from gridplayer.player import Player
 
     player = Player()
+    app.installEventFilter(player)
+
+    if sys.argv[1:]:
+        player.process_arguments(sys.argv[1:])
+
     if Settings().get("player/start_fullscreen"):
         player.showFullScreen()
     elif Settings().get("player/start_maximized"):
@@ -43,13 +48,8 @@ def run_app():
     else:
         player.show()
 
-    # force load main app icon for Windows 11
+    # force load main app icon for Windows 11, sometimes it doesn't load if called before show
     if env.IS_WINDOWS:
         init_icon(app)
-
-    app.installEventFilter(player)
-
-    if sys.argv[1:]:
-        player.process_arguments(sys.argv[1:])
 
     return app.exec_()
