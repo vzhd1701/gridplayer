@@ -184,5 +184,12 @@ class Player(QWidget, ManagersManager):
 
         self.init()
 
+    def showEvent(self, event):
+        super().showEvent(event)
+        if env.IS_WINDOWS:
+            from gridplayer.utils.win32_window import apply_native_background
+
+            apply_native_background(self)
+
     def process_arguments(self, argv):
         self.arguments_received.emit(argv)

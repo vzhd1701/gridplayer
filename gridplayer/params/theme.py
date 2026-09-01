@@ -4,6 +4,7 @@ from PyQt5.QtGui import QColor, QPalette, QTextCursor
 from PyQt5.QtWidgets import QApplication, QLabel, QTextEdit
 
 from gridplayer.main.init_icons import switch_icon_theme
+from gridplayer.params import env
 from gridplayer.params.static import ColorScheme
 from gridplayer.settings import Settings
 from gridplayer.utils.darkmode import is_dark_mode
@@ -199,5 +200,15 @@ def apply_theme(app=None) -> None:
         app.setPalette(fusion_palette())
         app.setStyleSheet(combo_popup_stylesheet())
         _refresh_html_links(app)
+        _apply_native_window_chrome(app)
     finally:
         _applying_theme = False
+
+
+def _apply_native_window_chrome(app) -> None:
+    if not env.IS_WINDOWS:
+        return
+    from gridplayer.utils.win32_window import apply_native_background
+
+    for widget in app.topLevelWidgets():
+        apply_native_background(widget, create=False)
