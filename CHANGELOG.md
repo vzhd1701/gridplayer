@@ -6,9 +6,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+### Changed
+
+- Move pause-on-single-mode, pause-when-minimized, overlay border, and overlay hide timeout to per-playlist settings ([be0cd5c](https://github.com/vzhd1701/gridplayer/commit/be0cd5c2274b052f10b96b40f676dd2a7d24efc0))
+- Allow user to change empty playlist settings ([19dad78](https://github.com/vzhd1701/gridplayer/commit/19dad78ad52571e5dfb9642b13de09b8e8a5f865))
+- Allow user to save/open empty playlist ([6ce6bb0](https://github.com/vzhd1701/gridplayer/commit/6ce6bb088827051ff74f60204023485005aa50cd))
+- Stylize main window for Windows 11 ([c174e73](https://github.com/vzhd1701/gridplayer/commit/c174e73f22391aa5c85b0408661cf56239edd3eb))
+- Show playlist name in the window title ([237ea43](https://github.com/vzhd1701/gridplayer/commit/237ea43e5a6d97ae171a9e258a31f7b58c6f8bd1))
+
 ### Added
 
-- Replace video on drag-n-drop while holding modifier key (default: shift) ([b8affe3](https://github.com/vzhd1701/gridplayer/commit/b8affe37f2bb0feef9e196c079db0901010125d3))
+- Add fixed size grid mode ([16871a6](https://github.com/vzhd1701/gridplayer/commit/16871a699a1117c9057ee4f47ad5e1a8932f569b))
+- Add "force native drag-n-drop for in-window drag" settings flag on linux ([08d91be](https://github.com/vzhd1701/gridplayer/commit/08d91bedaf78676b81b102a554489125de01be20))
+- Add option to replace video on drag-n-drop while holding modifier key (default: shift) ([b8affe3](https://github.com/vzhd1701/gridplayer/commit/b8affe37f2bb0feef9e196c079db0901010125d3))
 - Add visual drag-n-drop indicators with option to drop before/after ([98b674f](https://github.com/vzhd1701/gridplayer/commit/98b674fadb866688086232a652b9a468d097d4ad))
 - Add option to start with maximized window ([74282df](https://github.com/vzhd1701/gridplayer/commit/74282df433867e45c7da95d10875979770933024))
 - Add option to start in fullscreen mode ([02cb6fd](https://github.com/vzhd1701/gridplayer/commit/02cb6fd04272f8356a0223b031737f4addc21c62))
@@ -16,13 +26,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Add option to disable overlay ([2c7163f](https://github.com/vzhd1701/gridplayer/commit/2c7163f34231bb1180e57d296d00f7b7f6121030))
 - Add shortcuts editor ([fa22fa7](https://github.com/vzhd1701/gridplayer/commit/fa22fa7d8767f580f701c7a5f0677b704330c5a7))
 - Add "save playlist as" option ([7cb07dd](https://github.com/vzhd1701/gridplayer/commit/7cb07dd7a275d5d82996aacd5ad2dcc6c8be7647))
-- Show playlist name in the window title ([237ea43](https://github.com/vzhd1701/gridplayer/commit/237ea43e5a6d97ae171a9e258a31f7b58c6f8bd1))
 
 ### Fixed
 
+- Parse arguments before show to speed up playlist load ([e8f7ca7](https://github.com/vzhd1701/gridplayer/commit/e8f7ca7a59962c6466a1f6c0314a7ba78ccdb3d2))
+- Don't start instance listener if single instance is disabled ([6d5d6de](https://github.com/vzhd1701/gridplayer/commit/6d5d6de547f62e5383a27611196df2d8b477edc6))
 - Wait for vlc process cleanup on linux to avoid crashes ([04821b1](https://github.com/vzhd1701/gridplayer/commit/04821b1aff7cc761492f2f5ae4c2d74591d63e11))
 - Prevent switching to single mode without active video (double click on empty space) ([526210f](https://github.com/vzhd1701/gridplayer/commit/526210f21f2ab8c46e5a250a0ccd114341d6bcba))
-- Improve drag n drop on KDE ([a7b2def](https://github.com/vzhd1701/gridplayer/commit/a7b2def2448a9ad3ac6821c23bbb4ed120f0b72b))
+- Improve drag n drop on KDE ([a7b2def](https://github.com/vzhd1701/gridplayer/commit/a7b2def2448a9ad3ac6821c23bbb4ed120f0b72b)), ([6e53fad](https://github.com/vzhd1701/gridplayer/commit/6e53fada6fdd3d17890e07402e713b4ca0b6deaf))
 - Reset playlist setting to defaults after closing playlist ([fd728f3](https://github.com/vzhd1701/gridplayer/commit/fd728f3f64c2cef240549458c51bdec30801ad62))
 - Use setWindowFilePath to update playlist name in window title ([703b6ea](https://github.com/vzhd1701/gridplayer/commit/703b6eab58d71f528c9a4e9e7d1d37dc59e74743))
 - Set proper parent to each submenu to avoid crashes on mac ([8ecffe9](https://github.com/vzhd1701/gridplayer/commit/8ecffe93a4d7b1f999e82d963cd99e335d0bc90b))
