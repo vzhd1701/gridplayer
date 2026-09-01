@@ -79,6 +79,9 @@ translations-update-contributors:
 changelog:
     conventional-changelog -p conventionalcommits -u -i /dev/null --stdout
 
+changelog-since-last:
+    conventional-changelog -p conventionalcommits -u -i /dev/null --stdout --from $(git log -1 --format='%H' --grep='^docs(changelog)')
+
 changelog-all:
     conventional-changelog -u -i /dev/null --stdout
 
