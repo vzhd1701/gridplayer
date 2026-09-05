@@ -94,7 +94,8 @@ SECTIONS = MappingProxyType(
                     "Crop Right -",
                     "Crop Bottom +",
                     "Crop Bottom -",
-                    "Crop Bottom -",
+                    "---",
+                    "Set Crop",
                     "Crop Reset",
                 ),
                 (

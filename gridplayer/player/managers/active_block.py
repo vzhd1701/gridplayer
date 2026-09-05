@@ -3,6 +3,7 @@ from pathlib import Path
 from PyQt5.QtCore import QEvent, pyqtSignal
 from PyQt5.QtGui import QCursor
 
+from gridplayer.dialogs.crop import SetCropDialog
 from gridplayer.player.managers.base import ManagerBase
 from gridplayer.utils.qt import is_modal_open, translate
 from gridplayer.widgets.video_block import VideoBlock
@@ -33,6 +34,7 @@ class ActiveBlockManager(ManagerBase):
     def commands(self):
         return {
             "active": self.cmd_active,
+            "crop_dialog": self.cmd_crop_dialog,
             "is_active_runtime_param_set_to": self.is_active_runtime_param_set_to,
             "is_active_param_set_to": self.is_active_param_set_to,
             "is_active_initialized": self.is_active_initialized,
@@ -66,6 +68,14 @@ class ActiveBlockManager(ManagerBase):
             return None
 
         return getattr(self._ctx.active_block, command)(*args)
+
+    def cmd_crop_dialog(self):
+        if self.is_no_active_block or not self.is_active_has_video():
+            return
+
+        dialog = SetCropDialog(self._ctx.active_block, parent=self.parent())
+
+        dialog.exec_()
 
     def is_active_initialized(self):
         if self.is_no_active_block:

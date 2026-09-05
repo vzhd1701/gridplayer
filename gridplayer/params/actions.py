@@ -342,6 +342,12 @@ ACTIONS = MappingProxyType(
             "func": ("active", "scale_reset"),
             "show_if": "is_active_has_video",
         },
+        "Set Crop": {
+            "title": translate("Actions", "Set Crop"),
+            "icon": "empty",
+            "func": "crop_dialog",
+            "show_if": "is_active_has_video",
+        },
         "Crop Left +": {
             "title": translate("Actions", "Crop Left +"),
             "key": "U",
