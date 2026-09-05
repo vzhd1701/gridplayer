@@ -54,9 +54,14 @@ class Context:
         self._context[var_name] = var_value
 
     def __getattr__(self, var_name):
-        if callable(self._context[var_name]):
-            return self._context[var_name]()
-        return self._context[var_name]
+        try:
+            value = self._context[var_name]
+        except KeyError:
+            raise AttributeError(var_name) from None
+
+        if callable(value):
+            return value()
+        return value
 
 
 class ManagersManager(QObject):

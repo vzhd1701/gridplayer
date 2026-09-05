@@ -14,6 +14,7 @@ from gridplayer.params.static import (
     GridMode,
 )
 from gridplayer.player.managers.base import ManagerBase
+from gridplayer.playlist_settings import PlaylistSettings
 from gridplayer.settings import Settings
 from gridplayer.utils.drop_zone import DropZone
 from gridplayer.utils.layout import FlowLayout, FlowMode, GridLayout, Layout
@@ -110,6 +111,8 @@ class GridManager(ManagerBase):
             "get_cell_at": self.get_cell_at,
             "set_add_anchor": self.set_add_anchor,
             "grid_cell_count": lambda: self.grid_dimensions.max_size,
+            "set_grid_state": self.set_grid_state,
+            "apply_grid_config": self.apply_grid_config,
         }
 
     @property
@@ -160,10 +163,64 @@ class GridManager(ManagerBase):
         self._grid_layout.preallocate = state.preallocate
         self._grid_layout.cells = [cell.model_copy() for cell in state.cells]
 
+        if self._is_fixed:
+            self._grid_layout.resize(
+                self._grid_layout.max_rows,
+                self._grid_layout.max_cols,
+                self._grid_layout.preallocate,
+            )
+
         if self._ctx.video_blocks:
             self._reconcile_layout()
 
         self._render_video_grid()
+
+    def apply_grid_config(self, config: GridState) -> bool:
+        """Apply mode/size/fit/rows/cols/preallocate like the Grid menu.
+
+        Restores do not use this — ``set_grid_state`` keeps cell positions.
+        Returns False if the user cancelled a confirmation dialog.
+        """
+        mode = config.mode
+        rows = max(1, int(config.rows))
+        cols = max(1, int(config.cols))
+        preallocate = bool(config.preallocate)
+
+        same_fixed = (
+            mode == GridMode.FIXED
+            and self._is_fixed
+            and self._grid_layout.max_rows == rows
+            and self._grid_layout.max_cols == cols
+            and self._grid_layout.preallocate == preallocate
+        )
+        same_flow = (
+            mode != GridMode.FIXED
+            and not self._is_fixed
+            and self._mode == mode
+            and self._flow.is_fit == config.is_fit
+            and self._flow.size == config.size
+        )
+        if same_fixed or same_flow:
+            self._flow.is_fit = config.is_fit
+            self._flow.size = config.size
+            return True
+
+        if mode == GridMode.FIXED:
+            if not self._apply_fixed(rows, cols, preallocate):
+                return False
+            self._flow.is_fit = config.is_fit
+            self._flow.size = config.size
+            return True
+
+        if self._is_fixed and not self._leave_fixed():
+            return False
+
+        self._mode = mode
+        self._flow.mode = _flow_mode(mode)
+        self._flow.is_fit = config.is_fit
+        self._flow.size = config.size
+        self.layout_changed.emit()
+        return True
 
     def grid_position_of(self, widget):
         index = self._grid.indexOf(widget)
@@ -249,6 +306,7 @@ class GridManager(ManagerBase):
 
         self._mode = mode
         self._flow.mode = _flow_mode(mode)
+        PlaylistSettings().set("playlist/grid_mode", mode)
         self.layout_changed.emit()
 
     def cmd_ask_grid_size(self):
@@ -265,6 +323,7 @@ class GridManager(ManagerBase):
             return
 
         self._flow.size = size
+        PlaylistSettings().set("playlist/grid_size", size)
         self.layout_changed.emit()
 
     def cmd_get_grid_size(self):
@@ -275,6 +334,7 @@ class GridManager(ManagerBase):
 
     def cmd_switch_is_grid_fit(self):
         self._flow.is_fit = not self._flow.is_fit
+        PlaylistSettings().set("playlist/grid_fit", self._flow.is_fit)
         self.layout_changed.emit()
 
     def cmd_get_fixed_grid_size(self):
@@ -289,6 +349,9 @@ class GridManager(ManagerBase):
         self._grid_layout.preallocate = not self._grid_layout.preallocate
         if not self._grid_layout.preallocate:
             self._grid_layout.compact_edges()
+        PlaylistSettings().set(
+            "playlist/grid_preallocate", self._grid_layout.preallocate
+        )
         self.layout_changed.emit()
 
     def cmd_shuffle_layout(self):
@@ -312,15 +375,23 @@ class GridManager(ManagerBase):
             include_preallocate=include_preallocate,
         )
         if result is None:
-            return
+            return False
 
         new_rows, new_cols, new_preallocate = result
-        self._apply_fixed(new_rows, new_cols, new_preallocate)
+        if not self._apply_fixed(new_rows, new_cols, new_preallocate):
+            return False
 
-    def _apply_fixed(self, rows, cols, preallocate):
+        session = PlaylistSettings()
+        session.set("playlist/grid_mode", GridMode.FIXED)
+        session.set("playlist/grid_rows", new_rows)
+        session.set("playlist/grid_cols", new_cols)
+        if include_preallocate:
+            session.set("playlist/grid_preallocate", new_preallocate)
+        return True
+
+    def _apply_fixed(self, rows, cols, preallocate) -> bool:
         if self._is_fixed:
-            self._resize_fixed(rows, cols, preallocate)
-            return
+            return self._resize_fixed(rows, cols, preallocate)
 
         live_set = set(self._ctx.video_blocks.video_ids)
         ordered = [i for i in self._flow.order() if i in live_set]
@@ -328,7 +399,7 @@ class GridManager(ManagerBase):
         extra_ids = ordered[rows * cols :]
         keep_ids = ordered[: rows * cols]
         if extra_ids and not self._confirm_overflow(rows * cols, len(extra_ids)):
-            return
+            return False
 
         self._mode = GridMode.FIXED
         self._grid_layout.max_rows = rows
@@ -337,22 +408,24 @@ class GridManager(ManagerBase):
         self._grid_layout.pack_flow(keep_ids)
         if extra_ids:
             self._ctx.commands.remove_video_blocks(extra_ids)
-            return
+            return True
 
         self.layout_changed.emit()
+        return True
 
-    def _resize_fixed(self, rows, cols, preallocate):
+    def _resize_fixed(self, rows, cols, preallocate) -> bool:
         snapshot = self._grid_layout.copy()
         leftover = self._grid_layout.resize(rows, cols, preallocate)
 
         if leftover:
             if not self._confirm_overflow(rows * cols, len(leftover)):
                 self._grid_layout = snapshot
-                return
+                return False
             self._ctx.commands.remove_video_blocks(leftover)
-            return
+            return True
 
         self.layout_changed.emit()
+        return True
 
     def _leave_fixed(self):
         holes = self._grid_layout.empty_positions(preallocate=False)
@@ -532,16 +605,14 @@ class GridManager(ManagerBase):
                 self._grid.activate()
                 return
 
-            for vb in self._ctx.video_blocks:
-                vb.show()
-
             self._adjust_window(dims)
             if self._is_fixed:
-                self._populate_fixed(dims)
+                placed = self._populate_fixed(dims)
             else:
                 self._adjust_cells(dims)
-                self._populate_flow(dims)
+                placed = self._populate_flow(dims)
 
+            self._sync_block_visibility(placed)
             self.adapt_grid(dims)
 
             self._grid.activate()
@@ -594,6 +665,11 @@ class GridManager(ManagerBase):
         for vb in self._ctx.video_blocks:
             vb.setMinimumSize(min_size)
 
+    def _sync_block_visibility(self, placed):
+        placed_set = set(placed)
+        for vb in self._ctx.video_blocks:
+            vb.setVisible(vb in placed_set)
+
     def _populate_fixed(self, dims):
         min_size = self._minimum_vb_size(dims)
         placed = set()
@@ -611,6 +687,8 @@ class GridManager(ManagerBase):
                 empty.setMinimumSize(min_size)
                 self._empty_cells.append(empty)
                 self._grid.addWidget(empty, row, col, 1, 1)
+
+        return placed
 
     def _minimum_vb_size(self, dims):
         return QSize(
@@ -632,6 +710,8 @@ class GridManager(ManagerBase):
             straight_cells = dims.cols * (dims.rows - 1)
             self._fill_grid(widgets[:straight_cells], dims)
             self._fill_last_row(widgets[straight_cells:], dims)
+
+        return widgets
 
     def _fill_grid(self, widgets, dims):
         if self._flow.mode == FlowMode.COLS:

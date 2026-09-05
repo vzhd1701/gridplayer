@@ -12,6 +12,7 @@ from gridplayer.params.static import (
     VideoTransform,
 )
 from gridplayer.player.managers.base import ManagerBase
+from gridplayer.playlist_settings import PlaylistSettings
 from gridplayer.settings import Settings
 from gridplayer.utils.qt import qt_connect, translate
 from gridplayer.widgets.video_block import VideoBlock
@@ -256,6 +257,10 @@ class VideoBlocksManager(ManagerBase):
         self._ctx.is_disable_mouse_click_events = (
             not self._ctx.is_disable_mouse_click_events
         )
+        PlaylistSettings().set(
+            "playlist/disable_mouse_click_events",
+            self._ctx.is_disable_mouse_click_events,
+        )
 
     def set_disable_mouse_wheel_events(self, is_disabled):
         self._ctx.is_disable_mouse_wheel_events = is_disabled
@@ -263,6 +268,10 @@ class VideoBlocksManager(ManagerBase):
     def toggle_disable_mouse_wheel_events(self):
         self._ctx.is_disable_mouse_wheel_events = (
             not self._ctx.is_disable_mouse_wheel_events
+        )
+        PlaylistSettings().set(
+            "playlist/disable_mouse_wheel_events",
+            self._ctx.is_disable_mouse_wheel_events,
         )
 
     def set_disable_overlay(self, is_disabled):
@@ -275,7 +284,9 @@ class VideoBlocksManager(ManagerBase):
             self.show_overlay.emit()
 
     def toggle_disable_overlay(self):
-        self.set_disable_overlay(not self._ctx.is_disable_overlay)
+        value = not self._ctx.is_disable_overlay
+        PlaylistSettings().set("playlist/disable_overlay", value)
+        self.set_disable_overlay(value)
 
     def set_show_overlay_border(self, is_show):
         self._ctx.is_show_overlay_border = is_show
@@ -283,7 +294,9 @@ class VideoBlocksManager(ManagerBase):
             vb.refresh_overlay_border()
 
     def toggle_show_overlay_border(self):
-        self.set_show_overlay_border(not self._ctx.is_show_overlay_border)
+        value = not self._ctx.is_show_overlay_border
+        PlaylistSettings().set("playlist/show_overlay_border", value)
+        self.set_show_overlay_border(value)
 
     def set_overlay_hide_on_timeout(self, is_hide):
         self._ctx.is_overlay_hide_on_timeout = is_hide
@@ -293,7 +306,9 @@ class VideoBlocksManager(ManagerBase):
         self.show_overlay.emit()
 
     def toggle_overlay_hide_on_timeout(self):
-        self.set_overlay_hide_on_timeout(not self._ctx.is_overlay_hide_on_timeout)
+        value = not self._ctx.is_overlay_hide_on_timeout
+        PlaylistSettings().set("playlist/overlay_hide_on_timeout", value)
+        self.set_overlay_hide_on_timeout(value)
 
     def set_overlay_timeout(self, timeout):
         self._ctx.overlay_timeout = timeout
@@ -319,6 +334,7 @@ class VideoBlocksManager(ManagerBase):
         return self._ctx.seek_sync_mode == mode
 
     def set_seek_sync_mode(self, mode):
+        PlaylistSettings().set("playlist/seek_sync_mode", mode)
         self._ctx.seek_sync_mode = mode
 
     def is_any_videos_initialized(self):

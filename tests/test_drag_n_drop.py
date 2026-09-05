@@ -158,7 +158,7 @@ def _patch_drop_settings(
     modifier=DropModifier.SHIFT,
 ):
     mocker.patch(
-        "gridplayer.player.managers.drag_n_drop.Settings"
+        "gridplayer.playlist_settings.Settings"
     ).return_value.get.side_effect = lambda key: {
         "playlist/drop_action_internal": internal,
         "playlist/drop_action_external": external,

@@ -7,6 +7,7 @@ from PyQt5.QtWidgets import QApplication
 from gridplayer.models.video import filter_video_uris
 from gridplayer.params import env
 from gridplayer.player.managers.base import ManagerBase
+from gridplayer.playlist_settings import PlaylistSettings
 from gridplayer.settings import Settings
 from gridplayer.utils.drag_n_drop import drop_is_replace, query_drop_modifiers
 from gridplayer.utils.drop_zone import (
@@ -377,10 +378,11 @@ class DragNDropManager(ManagerBase):
             if is_internal
             else "playlist/drop_action_external"
         )
+        session = PlaylistSettings()
         return drop_is_replace(
             query_drop_modifiers(event),
-            Settings().get(action_key),
-            Settings().get("playlist/drop_modifier"),
+            session.get(action_key),
+            session.get("playlist/drop_modifier"),
         )
 
     def _end_drag_ui_after_leave(self):

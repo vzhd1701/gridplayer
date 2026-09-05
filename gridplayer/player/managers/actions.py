@@ -242,10 +242,10 @@ class ActionsManager(ManagerBase):
         except ValueError:
             return False
 
-        if seq.is_click and getattr(self._ctx, "is_disable_mouse_click_events", False):
+        if seq.is_click and self._ctx.is_disable_mouse_click_events:
             return False
 
-        if seq.is_wheel and getattr(self._ctx, "is_disable_mouse_wheel_events", False):
+        if seq.is_wheel and self._ctx.is_disable_mouse_wheel_events:
             return False
 
         action_id = self._mouse_index.get(seq.sequence)

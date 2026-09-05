@@ -1,6 +1,7 @@
 from PyQt5.QtCore import pyqtSignal
 
 from gridplayer.player.managers.base import ManagerBase
+from gridplayer.playlist_settings import PlaylistSettings
 from gridplayer.settings import Settings
 
 
@@ -55,7 +56,9 @@ class SingleModeManager(ManagerBase):
             self._restore_hidden_videos()
 
     def toggle_pause_background_videos(self):
-        self.set_pause_background_videos(not self._ctx.is_pause_background_videos)
+        value = not self._ctx.is_pause_background_videos
+        PlaylistSettings().set("playlist/pause_background_videos", value)
+        self.set_pause_background_videos(value)
 
     def _pause_hidden_videos(self):
         for vb in self._ctx.video_blocks:

@@ -15,7 +15,7 @@ from gridplayer.params.static import (
     VideoRepeat,
     VideoTransform,
 )
-from gridplayer.settings import default_field
+from gridplayer.playlist_settings import session_field
 
 MIN_SCALE = 1.0
 MAX_SCALE = 10.0
@@ -36,28 +36,28 @@ class Video(BaseModel):
     loop_start: int | None = None
     loop_end: int | None = None
 
-    repeat_mode: VideoRepeat = default_field("video_defaults/repeat")
-    is_start_random: bool = default_field("video_defaults/random_loop")
+    repeat_mode: VideoRepeat = session_field("video_defaults/repeat")
+    is_start_random: bool = session_field("video_defaults/random_loop")
     rate: Annotated[float, Field(ge=MIN_RATE, le=MAX_RATE)] = 1.0
 
     # Generic
-    aspect_mode: VideoAspect = default_field("video_defaults/aspect")
-    is_muted: bool = default_field("video_defaults/muted")
-    is_paused: bool = default_field("video_defaults/paused")
+    aspect_mode: VideoAspect = session_field("video_defaults/aspect")
+    is_muted: bool = session_field("video_defaults/muted")
+    is_paused: bool = session_field("video_defaults/paused")
     scale: Annotated[float, Field(ge=MIN_SCALE, le=MAX_SCALE)] = 1.0
     crop: VideoCrop = VideoCrop(0, 0, 0, 0)
     volume: float = 1.0
-    transform: VideoTransform = default_field("video_defaults/transform")
+    transform: VideoTransform = session_field("video_defaults/transform")
 
     # Streamable
-    stream_quality: str = default_field("video_defaults/stream_quality")
-    auto_reload_timer_min: int = default_field("video_defaults/auto_reload_timer")
+    stream_quality: str = session_field("video_defaults/stream_quality")
+    auto_reload_timer_min: int = session_field("video_defaults/auto_reload_timer")
 
     # Tracks
     audio_track_id: int | None = None
     video_track_id: int | None = None
 
-    audio_channel_mode: AudioChannelMode = default_field("video_defaults/audio_mode")
+    audio_channel_mode: AudioChannelMode = session_field("video_defaults/audio_mode")
 
     @property
     def uri_name(self) -> str:

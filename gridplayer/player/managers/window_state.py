@@ -5,6 +5,7 @@ from PyQt5.QtCore import QEvent, Qt, pyqtSignal, pyqtSlot
 from gridplayer.params import env
 from gridplayer.params.static import WindowState
 from gridplayer.player.managers.base import ManagerBase
+from gridplayer.playlist_settings import PlaylistSettings
 from gridplayer.settings import Settings
 from gridplayer.utils.misc import force_terminate
 
@@ -98,7 +99,9 @@ class WindowStateManager(ManagerBase):
         self._ctx.is_pause_minimized = is_pause
 
     def toggle_pause_minimized(self):
-        self.set_pause_minimized(not self._ctx.is_pause_minimized)
+        value = not self._ctx.is_pause_minimized
+        PlaylistSettings().set("playlist/pause_minimized", value)
+        self.set_pause_minimized(value)
 
     def set_minimum_size(self, size):
         self.parent().setMinimumSize(size)

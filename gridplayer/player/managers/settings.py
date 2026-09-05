@@ -2,8 +2,10 @@ from PyQt5.QtCore import pyqtSignal
 
 from gridplayer.dialogs.messagebox import QCustomMessageBox
 from gridplayer.dialogs.settings import SettingsDialog
+from gridplayer.params.defaults_fields import GRID_STATE_ATTR
 from gridplayer.params.theme import apply_theme
 from gridplayer.player.managers.base import ManagerBase
+from gridplayer.playlist_settings import PlaylistSettings, grid_values_from_state
 from gridplayer.settings import Settings
 from gridplayer.utils.qt import translate
 
@@ -68,10 +70,18 @@ class SettingsManager(ManagerBase):
         changes = self._setting_changes(previous_settings, tuple(checks))
 
         for c in changes:
+            if PlaylistSettings().is_overridden(c):
+                continue
             checks[c].emit(Settings().get(c))
 
         if self._is_setting_changed(previous_settings, "player/color_scheme"):
             apply_theme()
+
+        if self._setting_changes(previous_settings, GRID_STATE_ATTR):
+            live = self._ctx.grid_state
+            applied = PlaylistSettings().applied_grid_state(live)
+            if grid_values_from_state(applied) != grid_values_from_state(live):
+                self._ctx.commands.apply_grid_config(applied)
 
     def _is_reload_needed(self, previous_settings):
         checks = {

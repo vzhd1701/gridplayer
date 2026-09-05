@@ -8,8 +8,18 @@ from pydantic import BaseModel, Field, ValidationError, model_validator
 from gridplayer.models.grid_state import GridState
 from gridplayer.models.video import Video
 from gridplayer.models.video_uri import parse_uri
-from gridplayer.params.static import SeekSyncMode, WindowState
-from gridplayer.settings import Settings, default_field
+from gridplayer.params.defaults_fields import GRID_STATE_ATTR
+from gridplayer.params.static import (
+    AudioChannelMode,
+    DropAction,
+    DropModifier,
+    SeekSyncMode,
+    VideoAspect,
+    VideoRepeat,
+    VideoTransform,
+    WindowState,
+)
+from gridplayer.settings import Settings
 
 logger = logging.getLogger(__name__)
 
@@ -21,25 +31,41 @@ class Snapshot(BaseModel):
     videos: VideosList
 
 
+class PlaylistVideoDefaults(BaseModel):
+    aspect: VideoAspect | None = None
+    transform: VideoTransform | None = None
+    repeat: VideoRepeat | None = None
+    audio_mode: AudioChannelMode | None = None
+    random_loop: bool | None = None
+    muted: bool | None = None
+    paused: bool | None = None
+    stream_quality: str | None = None
+    auto_reload_timer: int | None = None
+
+
 class Playlist(BaseModel):
     grid_state: GridState = Field(default_factory=GridState)
     window_state: WindowState | None = None
     videos: VideosList | None = None
     snapshots: dict[int, Snapshot] | None = None
-    seek_sync_mode: SeekSyncMode = default_field("playlist/seek_sync_mode")
-    shuffle_on_load: bool = default_field("playlist/shuffle_on_load")
-    disable_mouse_click_events: bool = default_field(
-        "playlist/disable_mouse_click_events"
-    )
-    disable_mouse_wheel_events: bool = default_field(
-        "playlist/disable_mouse_wheel_events"
-    )
-    disable_overlay: bool = default_field("playlist/disable_overlay")
-    pause_background_videos: bool = default_field("playlist/pause_background_videos")
-    pause_minimized: bool = default_field("playlist/pause_minimized")
-    show_overlay_border: bool = default_field("playlist/show_overlay_border")
-    overlay_hide_on_timeout: bool = default_field("playlist/overlay_hide_on_timeout")
-    overlay_timeout: int = default_field("playlist/overlay_timeout")
+    seek_sync_mode: SeekSyncMode | None = None
+    shuffle_on_load: bool | None = None
+    disable_mouse_click_events: bool | None = None
+    disable_mouse_wheel_events: bool | None = None
+    disable_overlay: bool | None = None
+    pause_background_videos: bool | None = None
+    pause_minimized: bool | None = None
+    show_overlay_border: bool | None = None
+    overlay_hide_on_timeout: bool | None = None
+    overlay_timeout: int | None = None
+    track_changes: bool | None = None
+    save_window: bool | None = None
+    save_position: bool | None = None
+    save_state: bool | None = None
+    drop_action_internal: DropAction | None = None
+    drop_action_external: DropAction | None = None
+    drop_modifier: DropModifier | None = None
+    video_defaults: PlaylistVideoDefaults = Field(default_factory=PlaylistVideoDefaults)
 
     @model_validator(mode="before")
     @classmethod
@@ -70,7 +96,7 @@ class Playlist(BaseModel):
     def parse(cls, playlist_txt):
         playlist_in = [pl.strip() for pl in playlist_txt.splitlines() if pl.strip()]
 
-        if playlist_in[0] != "#GRIDPLAYER":
+        if not playlist_in or playlist_in[0] != "#GRIDPLAYER":
             raise ValueError("Playlist format is not valid")
 
         playlist = cls._parse_params(playlist_in)
@@ -85,31 +111,14 @@ class Playlist(BaseModel):
             f.write(playlist_txt)
 
     def dumps(self):
-        playlist_config = []
-        playlist_vids = []
-
-        playlist_config.append("#GRIDPLAYER")
-
-        playlist_config.append(
-            "#P:{}".format(
-                self.model_dump_json(
-                    exclude_none=True, exclude=_excluded_fields_playlist()
-                )
-            )
-        )
+        playlist_config = ["#GRIDPLAYER", "#P:" + _dump_json(_params_data(self))]
 
         for idx, video in enumerate(self.videos or []):
-            playlist_config.append(
-                "#V{}:{}".format(
-                    idx,
-                    video.model_dump_json(
-                        exclude_none=True, exclude=_excluded_fields_video()
-                    ),
-                )
-            )
-            playlist_vids.append(str(video.uri))
+            playlist_config.append(f"#V{idx}:{_dump_json(_video_data(video, self))}")
 
-        return "\n".join(playlist_config + playlist_vids + [""])
+        playlist_vids = [str(video.uri) for video in self.videos or []]
+
+        return "\n".join([*playlist_config, *playlist_vids, ""])
 
     @classmethod
     def _parse_params(cls, playlist_in):
@@ -153,30 +162,60 @@ def _parse_video_paths(playlist_in) -> list[str]:
     return [line for line in playlist_in if line and not line.startswith("#")]
 
 
-def _excluded_fields_playlist():
-    excluded_fields_playlist = {"videos"}
-
-    exclude_list = [
-        ("playlist/save_window", "window_state"),
-    ]
-
-    for setting, field in exclude_list:
-        if not Settings().get(setting):
-            excluded_fields_playlist.add(field)
-
-    return excluded_fields_playlist
+def _effective_flag(playlist: Playlist, attr: str, settings_key: str) -> bool:
+    value = getattr(playlist, attr)
+    if value is None:
+        return Settings().get(settings_key)
+    return value
 
 
-def _excluded_fields_video():
-    excluded_fields_video = {"uri"}
+def _dump_json(data: dict) -> str:
+    return json.dumps(data, ensure_ascii=False, separators=(",", ":"))
 
-    exclude_list = [
-        ("playlist/save_position", "current_position"),
-        ("playlist/save_state", "is_paused"),
-    ]
 
-    for setting, field in exclude_list:
-        if not Settings().get(setting):
-            excluded_fields_video.add(field)
+def _params_data(playlist: Playlist) -> dict:
+    data = playlist.model_dump(mode="json", exclude_none=True)
 
-    return excluded_fields_video
+    data.pop("videos", None)  # videos are saved as URI lines
+    if not _effective_flag(playlist, "save_window", "playlist/save_window"):
+        data.pop("window_state", None)
+    if not data.get("snapshots"):
+        data.pop("snapshots", None)
+    if not data.get("video_defaults"):
+        data.pop("video_defaults", None)
+
+    grid = _grid_state_data(playlist)
+    if grid is None:
+        data.pop("grid_state", None)
+    else:
+        data["grid_state"] = grid
+
+    return data
+
+
+def _grid_state_data(playlist: Playlist) -> dict | None:
+    state = playlist.grid_state
+    data = state.model_dump(mode="json", exclude_none=True)
+
+    # Inherited keys are omitted: the next load takes them from global settings.
+    for attr in GRID_STATE_ATTR.values():
+        if attr not in state.model_fields_set:
+            data.pop(attr, None)
+    if not state.cells:
+        data.pop("cells", None)
+    if not state.video_order:
+        data.pop("video_order", None)
+
+    return data or None
+
+
+def _video_data(video: Video, playlist: Playlist) -> dict:
+    data = video.model_dump(mode="json", exclude_none=True)
+
+    data.pop("uri", None)  # the URI is the bare line itself
+    if not _effective_flag(playlist, "save_position", "playlist/save_position"):
+        data.pop("current_position", None)
+    if not _effective_flag(playlist, "save_state", "playlist/save_state"):
+        data.pop("is_paused", None)
+
+    return data

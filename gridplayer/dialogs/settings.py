@@ -10,30 +10,25 @@ from PyQt5.QtWidgets import (
     QDialog,
     QLineEdit,
     QSpinBox,
+    QVBoxLayout,
 )
 
 from gridplayer.dialogs.messagebox import QCustomMessageBox
 from gridplayer.dialogs.settings_dialog_ui import Ui_SettingsDialog
 from gridplayer.params import env
+from gridplayer.params.defaults_fields import PLAYLIST_FIELDS, VIDEO_FIELDS
 from gridplayer.params.languages import LANGUAGES
 from gridplayer.params.static import (
-    AudioChannelMode,
     ColorScheme,
-    DropAction,
-    DropModifier,
-    GridMode,
-    SeekSyncMode,
     URLResolver,
-    VideoAspect,
     VideoDriver,
-    VideoRepeat,
-    VideoTransform,
 )
 from gridplayer.settings import Settings
 from gridplayer.utils import log_config
 from gridplayer.utils.app_dir import get_app_data_dir
 from gridplayer.utils.keymap import default_keymap, merge_keymap
 from gridplayer.utils.qt import qt_connect, translate
+from gridplayer.widgets.defaults_form import DefaultsForm
 from gridplayer.widgets.keymap_tree_view import KeymapEditor
 from gridplayer.widgets.language_list import LanguageList
 from gridplayer.widgets.resolver_patterns_list import ResolverPatternsList
@@ -54,6 +49,27 @@ def _fill_combo_box(combo_box, values_dict):
 def _set_combo_box(combo_box, data_value):
     idx = combo_box.findData(data_value)
     combo_box.setCurrentIndex(idx)
+
+
+def _replace_scroll_page(scroll, form):
+    old = scroll.takeWidget()
+    if old is not None:
+        old.deleteLater()
+    scroll.setWidget(form)
+
+
+def _replace_layout_page(page, form):
+    layout = page.layout()
+    if layout is None:
+        layout = QVBoxLayout(page)
+        layout.setContentsMargins(0, 0, 0, 0)
+    else:
+        while layout.count():
+            item = layout.takeAt(0)
+            widget = item.widget()
+            if widget is not None:
+                widget.deleteLater()
+    layout.addWidget(form)
 
 
 def _set_groupbox_header_bold(groupbox):
@@ -90,38 +106,6 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
             "player/keymap": self.keymapEditor,
             "player/recent_list_enabled": self.playerRecentList,
             "player/recent_list_max_size": self.playerRecentListSize,
-            "playlist/grid_mode": self.gridMode,
-            "playlist/grid_fit": self.gridFit,
-            "playlist/grid_size": self.gridSize,
-            "playlist/grid_rows": self.gridRows,
-            "playlist/grid_cols": self.gridCols,
-            "playlist/grid_preallocate": self.gridPreallocate,
-            "playlist/shuffle_on_load": self.gridShuffleOnLoad,
-            "playlist/drop_action_internal": self.dropActionInternal,
-            "playlist/drop_action_external": self.dropActionExternal,
-            "playlist/drop_modifier": self.dropModifier,
-            "playlist/save_position": self.playlistSavePosition,
-            "playlist/save_state": self.playlistSaveState,
-            "playlist/save_window": self.playlistSaveWindow,
-            "playlist/seek_sync_mode": self.playlistSeekSyncMode,
-            "playlist/track_changes": self.playlistTrackChanges,
-            "playlist/disable_mouse_click_events": self.playlistDisableClickEvents,
-            "playlist/disable_mouse_wheel_events": self.playlistDisableWheelEvents,
-            "playlist/disable_overlay": self.playlistDisableOverlay,
-            "playlist/pause_background_videos": self.playlistPauseBackgroundVideos,
-            "playlist/pause_minimized": self.playlistPauseWhenMinimized,
-            "playlist/show_overlay_border": self.playlistShowOverlayBorder,
-            "playlist/overlay_hide_on_timeout": self.timeoutOverlayFlag,
-            "playlist/overlay_timeout": self.timeoutOverlay,
-            "video_defaults/aspect": self.videoAspect,
-            "video_defaults/transform": self.videoTransform,
-            "video_defaults/repeat": self.repeatMode,
-            "video_defaults/audio_mode": self.videoAudioMode,
-            "video_defaults/random_loop": self.videoRandomLoop,
-            "video_defaults/muted": self.videoMuted,
-            "video_defaults/paused": self.videoPaused,
-            "video_defaults/stream_quality": self.streamQuality,
-            "video_defaults/auto_reload_timer": self.streamAutoReloadTimer,
             "misc/mouse_hide": self.timeoutMouseHideFlag,
             "misc/mouse_hide_timeout": self.timeoutMouseHide,
             "misc/vlc_options": self.miscVLCOptions,
@@ -148,17 +132,6 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
 
         self.ui_customize_dynamic()
 
-    def _on_grid_mode_changed(self):
-        is_fixed = self.gridMode.currentData() == GridMode.FIXED
-        self.gridSize.setVisible(not is_fixed)
-        self.gridSizeLabel.setVisible(not is_fixed)
-        self.gridFit.setVisible(not is_fixed)
-        self.gridRows.setVisible(is_fixed)
-        self.gridRowsLabel.setVisible(is_fixed)
-        self.gridCols.setVisible(is_fixed)
-        self.gridColsLabel.setVisible(is_fixed)
-        self.gridPreallocate.setVisible(is_fixed)
-
     def ui_customize(self):
         for btn in self.buttonBox.buttons():
             btn.setIcon(QIcon())
@@ -166,6 +139,11 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
         self.ui_customize_section_index()
 
         _set_groupbox_header_bold(self.playerVideoDriverBox)
+
+        self.playlist_defaults_form = DefaultsForm(PLAYLIST_FIELDS, show_reset=False)
+        self.video_defaults_form = DefaultsForm(VIDEO_FIELDS, show_reset=False)
+        _replace_scroll_page(self.page_defaults_playlist, self.playlist_defaults_form)
+        _replace_layout_page(self.page_defaults_video, self.video_defaults_form)
 
         if env.IS_LINUX:
             self.playerStayOnTop.hide()
@@ -183,58 +161,35 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
 
     def ui_fill(self):
         self.fill_playerVideoDriver()
-        self.fill_gridMode()
-        self.fill_dropActionInternal()
-        self.fill_dropActionExternal()
-        self.fill_dropModifier()
-        self.fill_videoAspect()
-        self.fill_videoTransform()
-        self.fill_repeatMode()
         self.fill_logLevel()
         self.fill_logLevelVLC()
         self.fill_language()
         self.fill_colorScheme()
-        self.fill_streamQuality()
-        self.fill_playlistSeekSyncMode()
         self.fill_streamingResolverPriority()
-        self.fill_videoAudioMode()
 
     def ui_set_limits(self):
         self.playerVideoDriverPlayers.setRange(1, MAX_VLC_PROCESSES)
-        self.timeoutOverlay.setRange(1, 60)
         self.timeoutMouseHide.setRange(1, 60)
         self.logLimitSize.setRange(1, 1024 * 1024)
         self.logLimitBackups.setRange(1, 1000)
         self.timeoutVideoInit.setRange(1, 1000)
         self.playerRecentListSize.setRange(1, 100)
 
-        self.gridSize.setRange(0, 1000)
-        self.gridSize.setSpecialValueText(translate("Grid Size", "Auto"))
-        self.gridRows.setRange(1, 100)
-        self.gridCols.setRange(1, 100)
-
-        self.streamAutoReloadTimer.setRange(0, 1000)
-        self.streamAutoReloadTimer.setSpecialValueText(
-            translate("Auto Reload Timer", "Disabled")
-        )
-
     def ui_customize_dynamic(self):
         self.driver_selected(self.playerVideoDriver.currentIndex())
         self.timeoutMouseHide.setEnabled(self.timeoutMouseHideFlag.isChecked())
-        self.timeoutOverlay.setEnabled(self.timeoutOverlayFlag.isChecked())
         self.logLimitSize.setEnabled(self.logLimit.isChecked())
         self.logLimitBackups.setEnabled(self.logLimit.isChecked())
         self.streamingWildcardHelp.setVisible(False)
         self.playerRecentListSize.setEnabled(self.playerRecentList.isChecked())
-        self._on_grid_mode_changed()
 
         self.switch_page(None)
+        self.adjustSize()
 
     def ui_connect(self):
         qt_connect(
             (self.playerVideoDriver.currentIndexChanged, self.driver_selected),
             (self.timeoutMouseHideFlag.stateChanged, self.timeoutMouseHide.setEnabled),
-            (self.timeoutOverlayFlag.stateChanged, self.timeoutOverlay.setEnabled),
             (self.logFileOpen.clicked, self.open_logfile),
             (self.section_index.currentTextChanged, self.switch_page),
             (self.section_index.itemSelectionChanged, self.keep_index_selection),
@@ -242,7 +197,6 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
             (self.logLimit.stateChanged, self.logLimitBackups.setEnabled),
             (self.streamingWildcardHelpButton.clicked, self.toggle_wildcard_help),
             (self.playerRecentList.stateChanged, self.playerRecentListSize.setEnabled),
-            (self.gridMode.currentIndexChanged, self._on_grid_mode_changed),
         )
 
     def toggle_wildcard_help(self):
@@ -318,89 +272,6 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
 
         _fill_combo_box(self.logLevel, log_levels)
 
-    def fill_videoAspect(self):
-        aspect_ratios = {
-            VideoAspect.FIT: self.tr("Fit"),
-            VideoAspect.STRETCH: self.tr("Stretch"),
-            VideoAspect.NONE: self.tr("None"),
-        }
-
-        _fill_combo_box(self.videoAspect, aspect_ratios)
-
-    def fill_videoTransform(self):
-        transform_options = {
-            VideoTransform.ROTATE_90: self.tr("Rotate 90"),
-            VideoTransform.ROTATE_180: self.tr("Rotate 180"),
-            VideoTransform.ROTATE_270: self.tr("Rotate 270"),
-            VideoTransform.HFLIP: self.tr("Flip Horizontally"),
-            VideoTransform.VFLIP: self.tr("Flip Vertically"),
-            VideoTransform.TRANSPOSE: self.tr("Transpose"),
-            VideoTransform.ANTITRANSPOSE: self.tr("Anti-transpose"),
-            VideoTransform.NONE: self.tr("No Transform"),
-        }
-
-        _fill_combo_box(self.videoTransform, transform_options)
-
-    def fill_repeatMode(self):
-        repeat_modes = {
-            VideoRepeat.SINGLE_FILE: self.tr("Single File"),
-            VideoRepeat.DIR: self.tr("Directory"),
-            VideoRepeat.DIR_SHUFFLE: self.tr("Directory (Shuffle)"),
-        }
-
-        _fill_combo_box(self.repeatMode, repeat_modes)
-
-    def fill_gridMode(self):
-        grid_modes = {
-            GridMode.AUTO_ROWS: self.tr("Auto (Rows First)"),
-            GridMode.AUTO_COLS: self.tr("Auto (Columns First)"),
-            GridMode.FIXED: self.tr("Fixed Grid"),
-        }
-
-        _fill_combo_box(self.gridMode, grid_modes)
-
-    def fill_dropActionInternal(self):
-        actions = {
-            DropAction.INSERT: self.tr("Move / Swap"),
-            DropAction.REPLACE: self.tr("Replace"),
-        }
-        _fill_combo_box(self.dropActionInternal, actions)
-
-    def fill_dropActionExternal(self):
-        actions = {
-            DropAction.INSERT: self.tr("Add"),
-            DropAction.REPLACE: self.tr("Replace"),
-        }
-        _fill_combo_box(self.dropActionExternal, actions)
-
-    def fill_dropModifier(self):
-        # DropModifier.CTRL is Qt.ControlModifier: Ctrl on Win/Linux, Cmd on macOS.
-        # Qt.MetaModifier is the Mac Control key — do not use that label here.
-        if env.IS_MACOS:
-            modifiers = {
-                DropModifier.SHIFT: self.tr("Shift"),
-                DropModifier.CTRL: self.tr("Cmd"),
-                DropModifier.ALT: self.tr("Option"),
-                DropModifier.NONE: self.tr("Disabled"),
-            }
-        else:
-            modifiers = {
-                DropModifier.SHIFT: self.tr("Shift"),
-                DropModifier.CTRL: self.tr("Ctrl"),
-                DropModifier.ALT: self.tr("Alt"),
-                DropModifier.NONE: self.tr("Disabled"),
-            }
-        _fill_combo_box(self.dropModifier, modifiers)
-        if env.IS_LINUX:
-            # GNOME/Files only exposes Shift to this X11 window. Don't hide Ctrl/Alt:
-            # they work inside the player, and on KDE for file-manager drops too.
-            hint = self.tr(
-                "On GNOME, dropping files from the file manager only honors Shift. "
-                "Ctrl and Alt still work when dragging videos inside the player."
-            )
-            self.dropModifier.setToolTip(hint)
-            self.dropModifierLabel.setToolTip(hint)
-
     def fill_playerVideoDriver(self):
         if env.IS_MACOS:
             video_drivers = {
@@ -431,42 +302,6 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
 
         _fill_combo_box(self.playerColorScheme, schemes)
 
-    def fill_streamQuality(self):
-        quality_codes = {
-            "best": self.tr("Best"),
-            "worst": self.tr("Worst"),
-            "best_audio_only": self.tr("Best (Audio Only)"),
-            "worst_audio_only": self.tr("Worst (Audio Only)"),
-        }
-
-        standard_quality_codes = [
-            "2160p",
-            "2160p60",
-            "1440p",
-            "1440p60",
-            "1080p",
-            "1080p60",
-            "720p60",
-            "720p",
-            "480p",
-            "360p",
-            "240p",
-            "144p",
-        ]
-
-        quality_codes.update({code: code for code in standard_quality_codes})
-
-        _fill_combo_box(self.streamQuality, quality_codes)
-
-    def fill_playlistSeekSyncMode(self):
-        seek_modes = {
-            SeekSyncMode.DISABLED: self.tr("Disabled"),
-            SeekSyncMode.PERCENT: self.tr("Percent"),
-            SeekSyncMode.TIMECODE: self.tr("Timecode"),
-        }
-
-        _fill_combo_box(self.playlistSeekSyncMode, seek_modes)
-
     def fill_streamingResolverPriority(self):
         resolvers = {
             URLResolver.STREAMLINK: "Streamlink",
@@ -475,20 +310,6 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
         }
 
         _fill_combo_box(self.streamingResolverPriority, resolvers)
-
-    def fill_videoAudioMode(self):
-        modes = {
-            AudioChannelMode.UNSET: translate("Audio Mode", "Original"),
-            AudioChannelMode.STEREO: translate("Audio Mode", "Stereo"),
-            AudioChannelMode.RSTEREO: translate("Audio Mode", "Reverse Stereo"),
-            AudioChannelMode.LEFT: translate("Audio Mode", "Left"),
-            AudioChannelMode.RIGHT: translate("Audio Mode", "Right"),
-            AudioChannelMode.DOLBYS: translate("Audio Mode", "Dolby Surround"),
-            AudioChannelMode.HEADPHONES: translate("Audio Mode", "Headphones"),
-            AudioChannelMode.MONO: translate("Audio Mode", "Mono"),
-        }
-
-        _fill_combo_box(self.videoAudioMode, modes)
 
     def driver_selected(self, idx):
         driver_id = self.playerVideoDriver.itemData(idx)
@@ -521,6 +342,13 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
 
             set_function(element, setting_value)
 
+        defaults = {
+            spec.settings_key: Settings().get(spec.settings_key)
+            for spec in (*PLAYLIST_FIELDS, *VIDEO_FIELDS)
+        }
+        self.playlist_defaults_form.set_values(defaults)
+        self.video_defaults_form.set_values(defaults)
+
     def save_settings(self):
         elements_value_read_attr = {
             QCheckBox: "isChecked",
@@ -544,6 +372,18 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
             new_value = getattr(element, value_attr)()
 
             Settings().set(setting, new_value)
+
+        form_values = {
+            **self.playlist_defaults_form.values(),
+            **self.video_defaults_form.values(),
+        }
+        for key, value in form_values.items():
+            if not (
+                self.playlist_defaults_form.is_enabled(key)
+                or self.video_defaults_form.is_enabled(key)
+            ):
+                continue
+            Settings().set(key, value)
 
     def accept(self):
         self.save_settings()

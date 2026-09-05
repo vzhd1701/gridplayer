@@ -5,11 +5,18 @@ from PyQt5.QtCore import QDir, QTimer, pyqtSignal
 from PyQt5.QtWidgets import QFileDialog, QMessageBox
 
 from gridplayer.dialogs.messagebox import QCustomMessageBox
+from gridplayer.dialogs.playlist_settings import PlaylistSettingsDialog
 from gridplayer.models.grid_state import GridState
 from gridplayer.models.playlist import Playlist
 from gridplayer.models.video import filter_video_uris
 from gridplayer.params.static import SeekSyncMode, WindowState
 from gridplayer.player.managers.base import ManagerBase
+from gridplayer.playlist_settings import (
+    PlaylistSettings,
+    grid_overrides_from_state,
+    grid_state_for_dump,
+    overrides_from_playlist,
+)
 from gridplayer.settings import Settings
 from gridplayer.utils.files import get_playlist_path
 from gridplayer.utils.qt import translate
@@ -44,11 +51,15 @@ class PlaylistManager(ManagerBase):
 
         self._ctx.is_shuffle_on_load = Settings().get("playlist/shuffle_on_load")
 
-        self._saved_playlist = None
+        self._saved_playlist_path: Path | None = None
+        self._saved_playlist_state: int | None = None
 
         self._title_timer = QTimer(self)
         self._title_timer.setInterval(_TITLE_REFRESH_MS)
         self._title_timer.timeout.connect(self.update_window_title)
+
+    def init(self):
+        self._set_saved_playlist(None)
 
     @property
     def commands(self):
@@ -58,10 +69,11 @@ class PlaylistManager(ManagerBase):
             "save_playlist_as": self.cmd_save_playlist_as,
             "close_playlist": self.cmd_close_playlist,
             "is_playlist_changed": self._is_playlist_changed,
-            "is_playlist_saved": lambda: self._saved_playlist is not None,
+            "is_playlist_saved": lambda: self._saved_playlist_path is not None,
             "is_shuffle_on_load": lambda: self._ctx.is_shuffle_on_load,
             "set_shuffle_on_load": self.set_shuffle_on_load,
             "toggle_shuffle_on_load": self.toggle_shuffle_on_load,
+            "playlist_settings": self.cmd_playlist_settings,
         }
 
     def set_shuffle_on_load(self, is_shuffle_on_load):
@@ -69,6 +81,21 @@ class PlaylistManager(ManagerBase):
 
     def toggle_shuffle_on_load(self):
         self._ctx.is_shuffle_on_load = not self._ctx.is_shuffle_on_load
+        PlaylistSettings().set("playlist/shuffle_on_load", self._ctx.is_shuffle_on_load)
+
+    def cmd_playlist_settings(self):
+        dialog = PlaylistSettingsDialog(
+            overrides=PlaylistSettings().as_dict(),
+            grid_state=self._ctx.grid_state,
+            parent=self.parent(),
+        )
+        if not dialog.exec_():
+            return
+        PlaylistSettings().replace(dialog.result_overrides())
+        self._apply_effective_session()
+        self._ctx.commands.apply_grid_config(
+            dialog.result_grid_state(self._ctx.grid_state)
+        )
 
     def cmd_open_playlist(self):
         dialog = QFileDialog(
@@ -104,28 +131,24 @@ class PlaylistManager(ManagerBase):
     def cmd_save_playlist(self) -> bool:
         playlist = self._make_playlist()
 
-        if self._saved_playlist is not None:
-            return self._write_playlist(playlist, self._saved_playlist["path"])
+        if self._saved_playlist_path is not None:
+            return self._write_playlist(playlist, self._saved_playlist_path)
 
         return self._save_playlist_via_dialog(playlist)
 
     def cmd_save_playlist_as(self) -> bool:
         return self._save_playlist_via_dialog(self._make_playlist())
 
-    def on_video_count_changed(self, video_count: int) -> None:
-        if video_count == 0:
-            self._set_saved_playlist(None)
-
     def update_window_title(self) -> None:
         window = self.parent()
 
-        if self._saved_playlist is None:
+        if self._saved_playlist_path is None:
             if window.windowFilePath():
                 window.setWindowFilePath("")
             window.setWindowModified(False)
             return
 
-        file_path = str(self._saved_playlist["path"])
+        file_path = str(self._saved_playlist_path)
         if window.windowFilePath() != file_path:
             window.setWindowFilePath(file_path)
 
@@ -179,12 +202,7 @@ class PlaylistManager(ManagerBase):
         if not self.load_playlist(playlist):
             return
 
-        self._set_saved_playlist(
-            {
-                "path": playlist_file,
-                "state": hash(self._make_playlist().dumps()),
-            }
-        )
+        self._set_saved_playlist(playlist_file)
 
         self.playlist_file_loaded.emit(playlist_file)
 
@@ -192,42 +210,10 @@ class PlaylistManager(ManagerBase):
         if not self.cmd_close_playlist():
             return False
 
-        _emit(
-            (self.seek_sync_mode_loaded, playlist.seek_sync_mode),
-            (self.shuffle_on_load_loaded, playlist.shuffle_on_load),
-            (
-                self.disable_mouse_click_events_loaded,
-                playlist.disable_mouse_click_events,
-            ),
-            (
-                self.disable_mouse_wheel_events_loaded,
-                playlist.disable_mouse_wheel_events,
-            ),
-            (
-                self.disable_overlay_loaded,
-                playlist.disable_overlay,
-            ),
-            (
-                self.pause_background_videos_loaded,
-                playlist.pause_background_videos,
-            ),
-            (
-                self.pause_minimized_loaded,
-                playlist.pause_minimized,
-            ),
-            (
-                self.show_overlay_border_loaded,
-                playlist.show_overlay_border,
-            ),
-            (
-                self.overlay_hide_on_timeout_loaded,
-                playlist.overlay_hide_on_timeout,
-            ),
-            (
-                self.overlay_timeout_loaded,
-                playlist.overlay_timeout,
-            ),
-        )
+        overrides = overrides_from_playlist(playlist)
+        overrides.update(grid_overrides_from_state(playlist.grid_state))
+        PlaylistSettings().replace(overrides)
+        self._apply_effective_session()
 
         self.grid_state_loaded.emit(playlist.grid_state)
         self.videos_loaded.emit(list(playlist.videos or []))
@@ -245,10 +231,7 @@ class PlaylistManager(ManagerBase):
         return True
 
     def check_playlist_save(self) -> bool:
-        if not Settings().get("playlist/track_changes"):
-            return True
-
-        if not self._ctx.video_blocks and self._saved_playlist is None:
+        if not PlaylistSettings().get("playlist/track_changes"):
             return True
 
         if self._is_playlist_changed():
@@ -272,15 +255,15 @@ class PlaylistManager(ManagerBase):
         return True
 
     def _is_playlist_changed(self):
-        if self._saved_playlist is None:
-            return True
+        if self._saved_playlist_state is None:
+            return False
 
         playlist_state = hash(self._make_playlist().dumps())
-        return playlist_state != self._saved_playlist["state"]
+        return playlist_state != self._saved_playlist_state
 
     def _save_playlist_via_dialog(self, playlist: Playlist) -> bool:
-        if self._saved_playlist is not None:
-            save_path = self._saved_playlist["path"]
+        if self._saved_playlist_path is not None:
+            save_path = self._saved_playlist_path
         else:
             save_path = Path(QDir.homePath()) / "Untitled.gpls"
 
@@ -321,43 +304,68 @@ class PlaylistManager(ManagerBase):
             )
             return False
 
-        self._set_saved_playlist(
-            {
-                "path": file_path,
-                "state": hash(playlist.dumps()),
-            }
-        )
+        self._set_saved_playlist(file_path)
 
         self.playlist_saved.emit(file_path)
 
         return True
 
     def _reset_playlist_session(self) -> None:
-        defaults = Playlist()
-        _emit(
-            (self.seek_sync_mode_loaded, defaults.seek_sync_mode),
-            (self.shuffle_on_load_loaded, defaults.shuffle_on_load),
-            (
-                self.disable_mouse_click_events_loaded,
-                defaults.disable_mouse_click_events,
-            ),
-            (
-                self.disable_mouse_wheel_events_loaded,
-                defaults.disable_mouse_wheel_events,
-            ),
-            (self.disable_overlay_loaded, defaults.disable_overlay),
-            (self.pause_background_videos_loaded, defaults.pause_background_videos),
-            (self.pause_minimized_loaded, defaults.pause_minimized),
-            (self.show_overlay_border_loaded, defaults.show_overlay_border),
-            (self.overlay_hide_on_timeout_loaded, defaults.overlay_hide_on_timeout),
-            (self.overlay_timeout_loaded, defaults.overlay_timeout),
-            (self.grid_state_loaded, defaults.grid_state),
-        )
+        PlaylistSettings().clear()
+        self._apply_effective_session()
+        self.grid_state_loaded.emit(GridState())
 
-    def _set_saved_playlist(self, saved: dict | None) -> None:
-        self._saved_playlist = saved
+    def _apply_effective_session(self) -> None:
+        session = PlaylistSettings()
+        with session.suppress_capture():
+            _emit(
+                (
+                    self.seek_sync_mode_loaded,
+                    session.get("playlist/seek_sync_mode"),
+                ),
+                (
+                    self.shuffle_on_load_loaded,
+                    session.get("playlist/shuffle_on_load"),
+                ),
+                (
+                    self.disable_mouse_click_events_loaded,
+                    session.get("playlist/disable_mouse_click_events"),
+                ),
+                (
+                    self.disable_mouse_wheel_events_loaded,
+                    session.get("playlist/disable_mouse_wheel_events"),
+                ),
+                (
+                    self.disable_overlay_loaded,
+                    session.get("playlist/disable_overlay"),
+                ),
+                (
+                    self.pause_background_videos_loaded,
+                    session.get("playlist/pause_background_videos"),
+                ),
+                (
+                    self.pause_minimized_loaded,
+                    session.get("playlist/pause_minimized"),
+                ),
+                (
+                    self.show_overlay_border_loaded,
+                    session.get("playlist/show_overlay_border"),
+                ),
+                (
+                    self.overlay_hide_on_timeout_loaded,
+                    session.get("playlist/overlay_hide_on_timeout"),
+                ),
+                (
+                    self.overlay_timeout_loaded,
+                    session.get("playlist/overlay_timeout"),
+                ),
+            )
 
-        if saved is None:
+    def _set_saved_playlist(self, path: Path | None) -> None:
+        self._saved_playlist_path = path
+        self._saved_playlist_state = hash(self._make_playlist().dumps())
+
+        if path is None:
             self._title_timer.stop()
         elif not self._title_timer.isActive():
             self._title_timer.start()
@@ -385,20 +393,11 @@ class PlaylistManager(ManagerBase):
         videos, grid_state = self._playlist_videos_and_grid_state()
 
         return Playlist(
-            grid_state=grid_state,
+            grid_state=grid_state_for_dump(grid_state),
             window_state=self._ctx.window_state,
             videos=videos,
             snapshots=self._ctx.snapshots,
-            seek_sync_mode=self._ctx.seek_sync_mode,
-            shuffle_on_load=self._ctx.is_shuffle_on_load,
-            disable_mouse_click_events=self._ctx.is_disable_mouse_click_events,
-            disable_mouse_wheel_events=self._ctx.is_disable_mouse_wheel_events,
-            disable_overlay=self._ctx.is_disable_overlay,
-            pause_background_videos=self._ctx.is_pause_background_videos,
-            pause_minimized=self._ctx.is_pause_minimized,
-            show_overlay_border=self._ctx.is_show_overlay_border,
-            overlay_hide_on_timeout=self._ctx.is_overlay_hide_on_timeout,
-            overlay_timeout=self._ctx.overlay_timeout,
+            **PlaylistSettings().playlist_kwargs(),
         )
 
     def _playlist_videos_and_grid_state(self):

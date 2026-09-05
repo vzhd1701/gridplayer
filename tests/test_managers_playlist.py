@@ -1,3 +1,4 @@
+import json
 from pathlib import Path
 from types import SimpleNamespace
 from uuid import uuid4
@@ -5,8 +6,8 @@ from uuid import uuid4
 import pytest
 from PyQt5.QtWidgets import QApplication, QMessageBox, QWidget
 
-from gridplayer.models.grid_state import GridState
-from gridplayer.models.playlist import Playlist
+from gridplayer.models.grid_state import GridCell, GridState
+from gridplayer.models.playlist import Playlist, Snapshot
 from gridplayer.models.video import Video
 from gridplayer.params.static import (
     AudioChannelMode,
@@ -17,6 +18,7 @@ from gridplayer.params.static import (
     VideoTransform,
 )
 from gridplayer.player.managers.playlist import PlaylistManager
+from gridplayer.playlist_settings import PlaylistSettings, grid_overrides_from_state
 from gridplayer.settings import Settings, _default_settings
 
 
@@ -195,7 +197,7 @@ _CUSTOM_PLAYLIST_DEFAULTS = {
 
 
 def test_close_playlist_resets_session_to_settings_defaults(mocker):
-    manager, _parent = _make_manager()
+    manager, _parent = _make_manager(_ctx_with_grid(GridState()))
     mocker.patch.object(manager, "check_playlist_save", return_value=True)
     _patch_playlist_settings(mocker, _CUSTOM_PLAYLIST_DEFAULTS)
 
@@ -248,7 +250,7 @@ def test_close_playlist_does_not_reset_when_save_cancelled(mocker):
 
 
 def test_load_playlist_applies_file_settings_after_reset(mocker):
-    manager, _parent = _make_manager()
+    manager, _parent = _make_manager(_ctx_with_grid(GridState()))
     mocker.patch.object(manager, "check_playlist_save", return_value=True)
     _patch_playlist_settings(mocker, _CUSTOM_PLAYLIST_DEFAULTS)
 
@@ -292,7 +294,7 @@ def test_load_playlist_applies_file_settings_after_reset(mocker):
 
 def test_load_playlist_emits_videos_in_file_order(mocker):
     commands = mocker.Mock()
-    manager, _parent = _make_manager(SimpleNamespace(commands=commands))
+    manager, _parent = _make_manager(_ctx_with_grid(GridState(), commands=commands))
     mocker.patch.object(manager, "check_playlist_save", return_value=True)
     _patch_playlist_settings(mocker, _CUSTOM_PLAYLIST_DEFAULTS)
 
@@ -309,7 +311,7 @@ def test_load_playlist_emits_videos_in_file_order(mocker):
 
 def test_load_playlist_shuffles_layout_when_flag_on(mocker):
     commands = mocker.Mock()
-    manager, _parent = _make_manager(SimpleNamespace(commands=commands))
+    manager, _parent = _make_manager(_ctx_with_grid(GridState(), commands=commands))
     mocker.patch.object(manager, "check_playlist_save", return_value=True)
     _patch_playlist_settings(mocker, _CUSTOM_PLAYLIST_DEFAULTS)
 
@@ -350,6 +352,41 @@ def test_playlist_dumps_with_none_videos():
     assert text.startswith("#GRIDPLAYER\n#P:")
 
 
+def test_playlist_omits_inherited_session_fields():
+    text = Playlist(videos=[], disable_overlay=True).dumps()
+    parsed = Playlist.parse(text)
+    assert parsed.disable_overlay is True
+    assert parsed.seek_sync_mode is None
+    assert parsed.video_defaults.muted is None
+
+
+def test_playlist_dump_omits_position_and_state_by_default(mocker):
+    _patch_playlist_settings(
+        mocker, {"playlist/save_position": False, "playlist/save_state": False}
+    )
+    video = Video(uri="http://example.com/a.mp4", current_position=125, is_paused=True)
+
+    text = Playlist(videos=[video]).dumps()
+
+    assert "current_position" not in text
+    assert "is_paused" not in text
+
+
+def test_playlist_dump_keeps_position_and_state_with_overrides():
+    video = Video(uri="http://example.com/a.mp4", current_position=125, is_paused=True)
+
+    text = Playlist(videos=[video], save_position=True, save_state=False).dumps()
+    assert '"current_position":125' in text
+    assert '"is_paused"' not in text
+    parsed = Playlist.parse(text)
+    assert parsed.videos[0].current_position == 125
+
+    text = Playlist(videos=[video], save_state=True).dumps()
+    assert '"is_paused":true' in text
+    parsed = Playlist.parse(text)
+    assert parsed.videos[0].is_paused is True
+
+
 def test_load_playlist_file_accepts_empty_template(tmp_path, mocker):
     manager, _parent = _make_manager()
     mocker.patch.object(manager, "load_playlist", return_value=True)
@@ -387,7 +424,7 @@ def test_load_playlist_file_accepts_empty_template(tmp_path, mocker):
     assert loaded_playlist.grid_state.cols == 4
     assert loaded_playlist.grid_state.rows == 3
     assert loaded_playlist.seek_sync_mode == SeekSyncMode.PERCENT
-    assert manager._saved_playlist["path"] == path
+    assert manager._saved_playlist_path == path
 
 
 def test_load_playlist_file_rejects_empty_file_without_params(tmp_path, mocker):
@@ -410,6 +447,53 @@ def test_load_playlist_file_rejects_empty_file_without_params(tmp_path, mocker):
     manager.load_playlist.assert_not_called()
 
 
+def test_load_playlist_file_rejects_blank_file(tmp_path, mocker):
+    manager, _parent = _make_manager()
+    mocker.patch.object(manager, "load_playlist", return_value=True)
+
+    path = tmp_path / "blank.gpls"
+    path.write_text("   \n\n", encoding="utf-8")
+
+    errors = []
+    manager.error.connect(errors.append)
+
+    manager.load_playlist_file(path)
+
+    assert len(errors) == 1
+    assert "Invalid playlist format!" in errors[0]
+    manager.load_playlist.assert_not_called()
+
+
+def test_playlist_settings_applies_grid_via_config_not_restore(mocker):
+    apply = mocker.Mock(return_value=True)
+    ctx = SimpleNamespace(
+        commands=SimpleNamespace(apply_grid_config=apply),
+        grid_state=GridState(
+            mode=GridMode.FIXED,
+            rows=3,
+            cols=3,
+            preallocate=True,
+        ),
+    )
+    manager, _parent = _make_manager(ctx)
+    new_state = GridState(mode=GridMode.FIXED, rows=1, cols=1, preallocate=True)
+    dialog = mocker.Mock()
+    dialog.exec_.return_value = True
+    dialog.result_overrides.return_value = {}
+    dialog.result_grid_state.return_value = new_state
+    mocker.patch(
+        "gridplayer.player.managers.playlist.PlaylistSettingsDialog",
+        return_value=dialog,
+    )
+    restored = []
+    manager.grid_state_loaded.connect(restored.append)
+
+    manager.cmd_playlist_settings()
+
+    apply.assert_called_once_with(new_state)
+    assert restored == []
+
+
 def test_check_playlist_save_skips_unsaved_empty(mocker):
     manager, _parent = _make_manager(SimpleNamespace(video_blocks=[]))
     question = mocker.patch(
@@ -422,7 +506,7 @@ def test_check_playlist_save_skips_unsaved_empty(mocker):
 
 def test_check_playlist_save_prompts_dirty_empty_template(mocker):
     manager, _parent = _make_manager(SimpleNamespace(video_blocks=[]))
-    manager._saved_playlist = {"path": Path("template.gpls"), "state": 0}
+    manager._saved_playlist_path = Path("template.gpls")
     mocker.patch.object(manager, "_is_playlist_changed", return_value=True)
     question = mocker.patch(
         "gridplayer.player.managers.playlist.QCustomMessageBox.cancellable_question",
@@ -436,5 +520,210 @@ def test_check_playlist_save_prompts_dirty_empty_template(mocker):
 def test_is_playlist_saved_command():
     manager, _parent = _make_manager()
     assert manager.commands["is_playlist_saved"]() is False
-    manager._saved_playlist = {"path": Path("template.gpls"), "state": 0}
+    manager._saved_playlist_path = Path("template.gpls")
     assert manager.commands["is_playlist_saved"]() is True
+
+
+def _grid_in_dump(text):
+    lines = text.splitlines()
+    params_line = next(line for line in lines if line.startswith("#P:"))
+    return json.loads(params_line[3:])["grid_state"]
+
+
+def test_playlist_dump_omits_inherited_grid_keys():
+    text = Playlist(
+        videos=[],
+        grid_state=GridState(mode=GridMode.FIXED, rows=3, cols=3),
+    ).dumps()
+
+    grid = _grid_in_dump(text)
+
+    assert set(grid) == {"mode", "rows", "cols"}
+    assert "preallocate" not in grid
+    assert "is_fit" not in grid
+    assert "size" not in grid
+    assert "cells" not in grid
+    assert "video_order" not in grid
+
+    parsed = Playlist.parse(text)
+    overrides = grid_overrides_from_state(parsed.grid_state)
+
+    assert "playlist/grid_preallocate" not in overrides
+    assert "playlist/grid_fit" not in overrides
+    assert "playlist/grid_size" not in overrides
+    assert overrides["playlist/grid_mode"] is GridMode.FIXED
+
+
+def test_playlist_dump_keeps_explicit_grid_keys():
+    text = Playlist(
+        videos=[],
+        grid_state=GridState(preallocate=True),
+    ).dumps()
+
+    parsed = Playlist.parse(text)
+    overrides = grid_overrides_from_state(parsed.grid_state)
+
+    assert overrides == {"playlist/grid_preallocate": True}
+
+
+def test_playlist_dump_keeps_snapshot_grid_state():
+    text = Playlist(
+        videos=[],
+        grid_state=GridState(preallocate=False),
+        snapshots={
+            1: Snapshot(
+                grid_state=GridState(
+                    mode=GridMode.FIXED, rows=3, cols=3, preallocate=True
+                ),
+                videos=[],
+            ),
+        },
+    ).dumps()
+
+    parsed = Playlist.parse(text)
+
+    assert parsed.snapshots[1].grid_state.rows == 3
+    assert parsed.snapshots[1].grid_state.cols == 3
+    assert parsed.snapshots[1].grid_state.preallocate is True
+
+
+def test_playlist_dump_omits_empty_grid_state_and_snapshots():
+    text = Playlist(videos=[]).dumps()
+
+    params_line = next(line for line in text.splitlines() if line.startswith("#P:"))
+
+    assert params_line == "#P:{}"
+
+    parsed = Playlist.parse(text)
+
+    assert parsed.videos == []
+    assert parsed.snapshots is None
+    assert parsed.grid_state.cells == []
+    assert parsed.grid_state.video_order == []
+
+
+def test_playlist_dump_keeps_nonempty_cells_and_order():
+    text = Playlist(
+        videos=[],
+        grid_state=GridState(
+            cells=[GridCell(video_id="a", row=0, col=0)],
+            video_order=["a"],
+        ),
+    ).dumps()
+
+    grid = _grid_in_dump(text)
+
+    assert set(grid) == {"cells", "video_order"}
+    assert grid["cells"] == [
+        {"video_id": "a", "row": 0, "col": 0, "rowspan": 1, "colspan": 1}
+    ]
+    assert grid["video_order"] == ["a"]
+
+
+def _ctx_with_grid(live_grid, commands=None):
+    return SimpleNamespace(
+        grid_state=live_grid,
+        window_state=None,
+        snapshots={},
+        is_shuffle_on_load=False,
+        video_blocks=SimpleNamespace(blocks_for_ids=lambda ids: []),
+        commands=commands
+        if commands is not None
+        else SimpleNamespace(layout_order=lambda: []),
+    )
+
+
+def test_make_playlist_dumps_only_session_grid_overrides():
+    manager, _parent = _make_manager(
+        _ctx_with_grid(
+            GridState(
+                mode=GridMode.FIXED,
+                is_fit=True,
+                size=0,
+                rows=3,
+                cols=3,
+                preallocate=True,
+            )
+        )
+    )
+    PlaylistSettings().replace(
+        {
+            "playlist/grid_mode": GridMode.FIXED,
+            "playlist/grid_rows": 3,
+            "playlist/grid_cols": 3,
+        }
+    )
+
+    playlist = manager._make_playlist()
+    grid = _grid_in_dump(playlist.dumps())
+
+    assert set(grid) == {"mode", "rows", "cols"}
+
+
+def test_reset_grid_override_marks_playlist_changed():
+    manager, _parent = _make_manager(
+        _ctx_with_grid(
+            GridState(
+                mode=GridMode.FIXED,
+                is_fit=True,
+                size=0,
+                rows=3,
+                cols=3,
+                preallocate=True,
+            )
+        )
+    )
+    grid_state = GridState(mode=GridMode.FIXED, rows=3, cols=3, preallocate=True)
+    PlaylistSettings().replace(grid_overrides_from_state(grid_state))
+    manager._set_saved_playlist(Path("x.gpls"))
+
+    assert manager._is_playlist_changed() is False
+
+    PlaylistSettings().reset("playlist/grid_preallocate")
+
+    assert manager._is_playlist_changed() is True
+
+
+def test_init_baselines_fresh_session():
+    manager, _parent = _make_manager(_ctx_with_grid(GridState()))
+
+    manager.init()
+
+    assert manager._saved_playlist_path is None
+    assert manager._is_playlist_changed() is False
+
+
+def test_check_playlist_save_alerts_modified_empty_playlist(mocker):
+    manager, _parent = _make_manager(_ctx_with_grid(GridState()))
+    manager.init()
+    PlaylistSettings().set("playlist/disable_overlay", True)
+    question = mocker.patch(
+        "gridplayer.player.managers.playlist.QCustomMessageBox.cancellable_question",
+        return_value=QMessageBox.No,
+    )
+
+    assert manager.check_playlist_save() is True
+    question.assert_called_once()
+
+
+def test_close_playlist_rebaselines_to_pristine(mocker):
+    manager, _parent = _make_manager(
+        _ctx_with_grid(GridState(mode=GridMode.FIXED, rows=3, cols=3, preallocate=True))
+    )
+    PlaylistSettings().replace(
+        {
+            "playlist/grid_mode": GridMode.FIXED,
+            "playlist/grid_rows": 3,
+            "playlist/grid_cols": 3,
+        }
+    )
+    manager._set_saved_playlist(Path("x.gpls"))
+    mocker.patch.object(manager, "check_playlist_save", return_value=True)
+    closed = []
+    manager.playlist_closed.connect(lambda: closed.append(True))
+
+    assert manager.cmd_close_playlist() is True
+
+    assert closed == [True]
+    assert manager._saved_playlist_path is None
+    assert manager._is_playlist_changed() is False

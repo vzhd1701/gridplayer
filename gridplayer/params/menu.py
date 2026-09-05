@@ -370,6 +370,8 @@ SECTIONS = MappingProxyType(
             ),
             (
                 "Playlist Settings",
+                "Edit Playlist Settings",
+                "---",
                 "Pause Background Videos",
                 "Pause When Minimized",
                 "Disable Mouse Click Events",

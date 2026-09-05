@@ -260,267 +260,10 @@ class Ui_SettingsDialog:
         self.page_defaults_playlist.setWidgetResizable(True)
         self.page_defaults_playlist.setObjectName("page_defaults_playlist")
         self.page_defaults_playlist_contents = QtWidgets.QWidget()
+        self.page_defaults_playlist_contents.setGeometry(QtCore.QRect(0, 0, 500, 400))
         self.page_defaults_playlist_contents.setObjectName(
             "page_defaults_playlist_contents"
         )
-        self.lay_page_defaults_playlist = QtWidgets.QVBoxLayout(
-            self.page_defaults_playlist_contents
-        )
-        self.lay_page_defaults_playlist.setContentsMargins(0, 0, 0, 0)
-        self.lay_page_defaults_playlist.setObjectName("lay_page_defaults_playlist")
-        self.label_17 = QtWidgets.QLabel(self.page_defaults_playlist_contents)
-        font = QtGui.QFont()
-        font.setBold(True)
-        self.label_17.setFont(font)
-        self.label_17.setObjectName("label_17")
-        self.lay_page_defaults_playlist.addWidget(self.label_17)
-        self.playlistTrackChanges = QtWidgets.QCheckBox(
-            self.page_defaults_playlist_contents
-        )
-        self.playlistTrackChanges.setObjectName("playlistTrackChanges")
-        self.lay_page_defaults_playlist.addWidget(self.playlistTrackChanges)
-        self.playlistSaveWindow = QtWidgets.QCheckBox(
-            self.page_defaults_playlist_contents
-        )
-        self.playlistSaveWindow.setObjectName("playlistSaveWindow")
-        self.lay_page_defaults_playlist.addWidget(self.playlistSaveWindow)
-        self.playlistSavePosition = QtWidgets.QCheckBox(
-            self.page_defaults_playlist_contents
-        )
-        self.playlistSavePosition.setObjectName("playlistSavePosition")
-        self.lay_page_defaults_playlist.addWidget(self.playlistSavePosition)
-        self.playlistSaveState = QtWidgets.QCheckBox(
-            self.page_defaults_playlist_contents
-        )
-        self.playlistSaveState.setObjectName("playlistSaveState")
-        self.lay_page_defaults_playlist.addWidget(self.playlistSaveState)
-        self.label_18 = QtWidgets.QLabel(self.page_defaults_playlist_contents)
-        font = QtGui.QFont()
-        font.setBold(True)
-        self.label_18.setFont(font)
-        self.label_18.setObjectName("label_18")
-        self.lay_page_defaults_playlist.addWidget(self.label_18)
-        self.playlistPauseBackgroundVideos = QtWidgets.QCheckBox(
-            self.page_defaults_playlist_contents
-        )
-        self.playlistPauseBackgroundVideos.setObjectName(
-            "playlistPauseBackgroundVideos"
-        )
-        self.lay_page_defaults_playlist.addWidget(self.playlistPauseBackgroundVideos)
-        self.playlistPauseWhenMinimized = QtWidgets.QCheckBox(
-            self.page_defaults_playlist_contents
-        )
-        self.playlistPauseWhenMinimized.setObjectName("playlistPauseWhenMinimized")
-        self.lay_page_defaults_playlist.addWidget(self.playlistPauseWhenMinimized)
-        self.formLayout_2 = QtWidgets.QFormLayout()
-        self.formLayout_2.setFieldGrowthPolicy(
-            QtWidgets.QFormLayout.FieldsStayAtSizeHint
-        )
-        self.formLayout_2.setObjectName("formLayout_2")
-        self.playlistSeekSyncMode = QtWidgets.QComboBox(
-            self.page_defaults_playlist_contents
-        )
-        self.playlistSeekSyncMode.setObjectName("playlistSeekSyncMode")
-        self.formLayout_2.setWidget(
-            0, QtWidgets.QFormLayout.FieldRole, self.playlistSeekSyncMode
-        )
-        self.playlistSeekSyncModeLabel = QtWidgets.QLabel(
-            self.page_defaults_playlist_contents
-        )
-        self.playlistSeekSyncModeLabel.setObjectName("playlistSeekSyncModeLabel")
-        self.formLayout_2.setWidget(
-            0, QtWidgets.QFormLayout.LabelRole, self.playlistSeekSyncModeLabel
-        )
-        self.lay_page_defaults_playlist.addLayout(self.formLayout_2)
-        self.label_19 = QtWidgets.QLabel(self.page_defaults_playlist_contents)
-        font = QtGui.QFont()
-        font.setBold(True)
-        self.label_19.setFont(font)
-        self.label_19.setObjectName("label_19")
-        self.lay_page_defaults_playlist.addWidget(self.label_19)
-        self.playlistDisableClickEvents = QtWidgets.QCheckBox(
-            self.page_defaults_playlist_contents
-        )
-        self.playlistDisableClickEvents.setObjectName("playlistDisableClickEvents")
-        self.lay_page_defaults_playlist.addWidget(self.playlistDisableClickEvents)
-        self.playlistDisableWheelEvents = QtWidgets.QCheckBox(
-            self.page_defaults_playlist_contents
-        )
-        self.playlistDisableWheelEvents.setObjectName("playlistDisableWheelEvents")
-        self.lay_page_defaults_playlist.addWidget(self.playlistDisableWheelEvents)
-        self.label_20 = QtWidgets.QLabel(self.page_defaults_playlist_contents)
-        font = QtGui.QFont()
-        font.setBold(True)
-        self.label_20.setFont(font)
-        self.label_20.setObjectName("label_20")
-        self.lay_page_defaults_playlist.addWidget(self.label_20)
-        self.playlistDisableOverlay = QtWidgets.QCheckBox(
-            self.page_defaults_playlist_contents
-        )
-        self.playlistDisableOverlay.setObjectName("playlistDisableOverlay")
-        self.lay_page_defaults_playlist.addWidget(self.playlistDisableOverlay)
-        self.playlistShowOverlayBorder = QtWidgets.QCheckBox(
-            self.page_defaults_playlist_contents
-        )
-        self.playlistShowOverlayBorder.setObjectName("playlistShowOverlayBorder")
-        self.lay_page_defaults_playlist.addWidget(self.playlistShowOverlayBorder)
-        self.formLayout_overlay_hide_on_timeout = QtWidgets.QFormLayout()
-        self.formLayout_overlay_hide_on_timeout.setFieldGrowthPolicy(
-            QtWidgets.QFormLayout.FieldsStayAtSizeHint
-        )
-        self.formLayout_overlay_hide_on_timeout.setObjectName(
-            "formLayout_overlay_hide_on_timeout"
-        )
-        self.timeoutOverlayFlag = QtWidgets.QCheckBox(
-            self.page_defaults_playlist_contents
-        )
-        self.timeoutOverlayFlag.setObjectName("timeoutOverlayFlag")
-        self.formLayout_overlay_hide_on_timeout.setWidget(
-            0, QtWidgets.QFormLayout.LabelRole, self.timeoutOverlayFlag
-        )
-        self.horizontalLayout_2 = QtWidgets.QHBoxLayout()
-        self.horizontalLayout_2.setObjectName("horizontalLayout_2")
-        self.timeoutOverlay = QtWidgets.QSpinBox(self.page_defaults_playlist_contents)
-        self.timeoutOverlay.setObjectName("timeoutOverlay")
-        self.horizontalLayout_2.addWidget(self.timeoutOverlay)
-        self.label_3 = QtWidgets.QLabel(self.page_defaults_playlist_contents)
-        self.label_3.setObjectName("label_3")
-        self.horizontalLayout_2.addWidget(self.label_3)
-        self.formLayout_overlay_hide_on_timeout.setLayout(
-            0, QtWidgets.QFormLayout.FieldRole, self.horizontalLayout_2
-        )
-        self.lay_page_defaults_playlist.addLayout(
-            self.formLayout_overlay_hide_on_timeout
-        )
-        self.verticalLayout_2 = QtWidgets.QVBoxLayout()
-        self.verticalLayout_2.setObjectName("verticalLayout_2")
-        self.label = QtWidgets.QLabel(self.page_defaults_playlist_contents)
-        font = QtGui.QFont()
-        font.setBold(True)
-        self.label.setFont(font)
-        self.label.setObjectName("label")
-        self.verticalLayout_2.addWidget(self.label)
-        self.gridShuffleOnLoad = QtWidgets.QCheckBox(
-            self.page_defaults_playlist_contents
-        )
-        self.gridShuffleOnLoad.setObjectName("gridShuffleOnLoad")
-        self.verticalLayout_2.addWidget(self.gridShuffleOnLoad)
-        self.formLayout = QtWidgets.QFormLayout()
-        self.formLayout.setFieldGrowthPolicy(QtWidgets.QFormLayout.FieldsStayAtSizeHint)
-        self.formLayout.setObjectName("formLayout")
-        self.gridMode = QtWidgets.QComboBox(self.page_defaults_playlist_contents)
-        self.gridMode.setObjectName("gridMode")
-        self.formLayout.setWidget(0, QtWidgets.QFormLayout.FieldRole, self.gridMode)
-        self.gridModeLabel = QtWidgets.QLabel(self.page_defaults_playlist_contents)
-        self.gridModeLabel.setObjectName("gridModeLabel")
-        self.formLayout.setWidget(
-            0, QtWidgets.QFormLayout.LabelRole, self.gridModeLabel
-        )
-        self.verticalLayout_2.addLayout(self.formLayout)
-        self.formLayout_12 = QtWidgets.QFormLayout()
-        self.formLayout_12.setFieldGrowthPolicy(
-            QtWidgets.QFormLayout.FieldsStayAtSizeHint
-        )
-        self.formLayout_12.setObjectName("formLayout_12")
-        self.gridSizeLabel = QtWidgets.QLabel(self.page_defaults_playlist_contents)
-        self.gridSizeLabel.setObjectName("gridSizeLabel")
-        self.formLayout_12.setWidget(
-            0, QtWidgets.QFormLayout.LabelRole, self.gridSizeLabel
-        )
-        self.gridSize = QtWidgets.QSpinBox(self.page_defaults_playlist_contents)
-        self.gridSize.setObjectName("gridSize")
-        self.formLayout_12.setWidget(0, QtWidgets.QFormLayout.FieldRole, self.gridSize)
-        self.verticalLayout_2.addLayout(self.formLayout_12)
-        self.gridFit = QtWidgets.QCheckBox(self.page_defaults_playlist_contents)
-        self.gridFit.setObjectName("gridFit")
-        self.verticalLayout_2.addWidget(self.gridFit)
-        self.formLayout_11 = QtWidgets.QFormLayout()
-        self.formLayout_11.setFieldGrowthPolicy(
-            QtWidgets.QFormLayout.FieldsStayAtSizeHint
-        )
-        self.formLayout_11.setObjectName("formLayout_11")
-        self.gridRowsLabel = QtWidgets.QLabel(self.page_defaults_playlist_contents)
-        self.gridRowsLabel.setObjectName("gridRowsLabel")
-        self.formLayout_11.setWidget(
-            0, QtWidgets.QFormLayout.LabelRole, self.gridRowsLabel
-        )
-        self.gridRows = QtWidgets.QSpinBox(self.page_defaults_playlist_contents)
-        self.gridRows.setObjectName("gridRows")
-        self.formLayout_11.setWidget(0, QtWidgets.QFormLayout.FieldRole, self.gridRows)
-        self.gridColsLabel = QtWidgets.QLabel(self.page_defaults_playlist_contents)
-        self.gridColsLabel.setObjectName("gridColsLabel")
-        self.formLayout_11.setWidget(
-            1, QtWidgets.QFormLayout.LabelRole, self.gridColsLabel
-        )
-        self.gridCols = QtWidgets.QSpinBox(self.page_defaults_playlist_contents)
-        self.gridCols.setObjectName("gridCols")
-        self.formLayout_11.setWidget(1, QtWidgets.QFormLayout.FieldRole, self.gridCols)
-        self.verticalLayout_2.addLayout(self.formLayout_11)
-        self.gridPreallocate = QtWidgets.QCheckBox(self.page_defaults_playlist_contents)
-        self.gridPreallocate.setObjectName("gridPreallocate")
-        self.verticalLayout_2.addWidget(self.gridPreallocate)
-        spacerItem1 = QtWidgets.QSpacerItem(
-            20, 40, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Expanding
-        )
-        self.verticalLayout_2.addItem(spacerItem1)
-        self.lay_page_defaults_playlist.addLayout(self.verticalLayout_2)
-        self.verticalLayout_3 = QtWidgets.QVBoxLayout()
-        self.verticalLayout_3.setObjectName("verticalLayout_3")
-        self.label1 = QtWidgets.QLabel(self.page_defaults_playlist_contents)
-        font = QtGui.QFont()
-        font.setBold(True)
-        self.label1.setFont(font)
-        self.label1.setObjectName("label1")
-        self.verticalLayout_3.addWidget(self.label1)
-        self.formLayout1 = QtWidgets.QFormLayout()
-        self.formLayout1.setFieldGrowthPolicy(
-            QtWidgets.QFormLayout.FieldsStayAtSizeHint
-        )
-        self.formLayout1.setObjectName("formLayout1")
-        self.dropActionInternal = QtWidgets.QComboBox(
-            self.page_defaults_playlist_contents
-        )
-        self.dropActionInternal.setObjectName("dropActionInternal")
-        self.formLayout1.setWidget(
-            0, QtWidgets.QFormLayout.FieldRole, self.dropActionInternal
-        )
-        self.dropActionExternalLabel = QtWidgets.QLabel(
-            self.page_defaults_playlist_contents
-        )
-        self.dropActionExternalLabel.setObjectName("dropActionExternalLabel")
-        self.formLayout1.setWidget(
-            1, QtWidgets.QFormLayout.LabelRole, self.dropActionExternalLabel
-        )
-        self.dropActionExternal = QtWidgets.QComboBox(
-            self.page_defaults_playlist_contents
-        )
-        self.dropActionExternal.setObjectName("dropActionExternal")
-        self.formLayout1.setWidget(
-            1, QtWidgets.QFormLayout.FieldRole, self.dropActionExternal
-        )
-        self.dropModifierLabel = QtWidgets.QLabel(self.page_defaults_playlist_contents)
-        self.dropModifierLabel.setObjectName("dropModifierLabel")
-        self.formLayout1.setWidget(
-            2, QtWidgets.QFormLayout.LabelRole, self.dropModifierLabel
-        )
-        self.dropModifier = QtWidgets.QComboBox(self.page_defaults_playlist_contents)
-        self.dropModifier.setObjectName("dropModifier")
-        self.formLayout1.setWidget(
-            2, QtWidgets.QFormLayout.FieldRole, self.dropModifier
-        )
-        self.dropActionInternalLabel = QtWidgets.QLabel(
-            self.page_defaults_playlist_contents
-        )
-        self.dropActionInternalLabel.setObjectName("dropActionInternalLabel")
-        self.formLayout1.setWidget(
-            0, QtWidgets.QFormLayout.LabelRole, self.dropActionInternalLabel
-        )
-        self.verticalLayout_3.addLayout(self.formLayout1)
-        spacerItem2 = QtWidgets.QSpacerItem(
-            20, 40, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Expanding
-        )
-        self.verticalLayout_3.addItem(spacerItem2)
-        self.lay_page_defaults_playlist.addLayout(self.verticalLayout_3)
         self.page_defaults_playlist.setWidget(self.page_defaults_playlist_contents)
         self.section_page.addWidget(self.page_defaults_playlist)
         self.page_defaults_video = QtWidgets.QWidget()
@@ -528,97 +271,6 @@ class Ui_SettingsDialog:
         self.lay_page_defaults_video = QtWidgets.QVBoxLayout(self.page_defaults_video)
         self.lay_page_defaults_video.setContentsMargins(0, 0, 0, 0)
         self.lay_page_defaults_video.setObjectName("lay_page_defaults_video")
-        self.formLayout_4 = QtWidgets.QFormLayout()
-        self.formLayout_4.setFieldGrowthPolicy(
-            QtWidgets.QFormLayout.FieldsStayAtSizeHint
-        )
-        self.formLayout_4.setObjectName("formLayout_4")
-        self.videoAspectLabel = QtWidgets.QLabel(self.page_defaults_video)
-        self.videoAspectLabel.setObjectName("videoAspectLabel")
-        self.formLayout_4.setWidget(
-            0, QtWidgets.QFormLayout.LabelRole, self.videoAspectLabel
-        )
-        self.videoAspect = QtWidgets.QComboBox(self.page_defaults_video)
-        self.videoAspect.setObjectName("videoAspect")
-        self.formLayout_4.setWidget(
-            0, QtWidgets.QFormLayout.FieldRole, self.videoAspect
-        )
-        self.repeatModeLabel = QtWidgets.QLabel(self.page_defaults_video)
-        self.repeatModeLabel.setObjectName("repeatModeLabel")
-        self.formLayout_4.setWidget(
-            2, QtWidgets.QFormLayout.LabelRole, self.repeatModeLabel
-        )
-        self.repeatMode = QtWidgets.QComboBox(self.page_defaults_video)
-        self.repeatMode.setObjectName("repeatMode")
-        self.formLayout_4.setWidget(2, QtWidgets.QFormLayout.FieldRole, self.repeatMode)
-        self.label_15 = QtWidgets.QLabel(self.page_defaults_video)
-        self.label_15.setObjectName("label_15")
-        self.formLayout_4.setWidget(3, QtWidgets.QFormLayout.LabelRole, self.label_15)
-        self.videoAudioMode = QtWidgets.QComboBox(self.page_defaults_video)
-        self.videoAudioMode.setObjectName("videoAudioMode")
-        self.formLayout_4.setWidget(
-            3, QtWidgets.QFormLayout.FieldRole, self.videoAudioMode
-        )
-        self.videoTransformLabel = QtWidgets.QLabel(self.page_defaults_video)
-        self.videoTransformLabel.setObjectName("videoTransformLabel")
-        self.formLayout_4.setWidget(
-            1, QtWidgets.QFormLayout.LabelRole, self.videoTransformLabel
-        )
-        self.videoTransform = QtWidgets.QComboBox(self.page_defaults_video)
-        self.videoTransform.setObjectName("videoTransform")
-        self.formLayout_4.setWidget(
-            1, QtWidgets.QFormLayout.FieldRole, self.videoTransform
-        )
-        self.lay_page_defaults_video.addLayout(self.formLayout_4)
-        self.videoRandomLoop = QtWidgets.QCheckBox(self.page_defaults_video)
-        self.videoRandomLoop.setObjectName("videoRandomLoop")
-        self.lay_page_defaults_video.addWidget(self.videoRandomLoop)
-        self.videoPaused = QtWidgets.QCheckBox(self.page_defaults_video)
-        self.videoPaused.setObjectName("videoPaused")
-        self.lay_page_defaults_video.addWidget(self.videoPaused)
-        self.videoMuted = QtWidgets.QCheckBox(self.page_defaults_video)
-        self.videoMuted.setObjectName("videoMuted")
-        self.lay_page_defaults_video.addWidget(self.videoMuted)
-        self.label_12 = QtWidgets.QLabel(self.page_defaults_video)
-        font = QtGui.QFont()
-        font.setBold(True)
-        self.label_12.setFont(font)
-        self.label_12.setObjectName("label_12")
-        self.lay_page_defaults_video.addWidget(self.label_12)
-        self.formLayout_9 = QtWidgets.QFormLayout()
-        self.formLayout_9.setFieldGrowthPolicy(
-            QtWidgets.QFormLayout.FieldsStayAtSizeHint
-        )
-        self.formLayout_9.setObjectName("formLayout_9")
-        self.streamQualityLabel = QtWidgets.QLabel(self.page_defaults_video)
-        self.streamQualityLabel.setObjectName("streamQualityLabel")
-        self.formLayout_9.setWidget(
-            0, QtWidgets.QFormLayout.LabelRole, self.streamQualityLabel
-        )
-        self.streamQuality = QtWidgets.QComboBox(self.page_defaults_video)
-        self.streamQuality.setObjectName("streamQuality")
-        self.formLayout_9.setWidget(
-            0, QtWidgets.QFormLayout.FieldRole, self.streamQuality
-        )
-        self.label_13 = QtWidgets.QLabel(self.page_defaults_video)
-        self.label_13.setObjectName("label_13")
-        self.formLayout_9.setWidget(1, QtWidgets.QFormLayout.LabelRole, self.label_13)
-        self.horizontalLayout_5 = QtWidgets.QHBoxLayout()
-        self.horizontalLayout_5.setObjectName("horizontalLayout_5")
-        self.streamAutoReloadTimer = QtWidgets.QSpinBox(self.page_defaults_video)
-        self.streamAutoReloadTimer.setObjectName("streamAutoReloadTimer")
-        self.horizontalLayout_5.addWidget(self.streamAutoReloadTimer)
-        self.label_14 = QtWidgets.QLabel(self.page_defaults_video)
-        self.label_14.setObjectName("label_14")
-        self.horizontalLayout_5.addWidget(self.label_14)
-        self.formLayout_9.setLayout(
-            1, QtWidgets.QFormLayout.FieldRole, self.horizontalLayout_5
-        )
-        self.lay_page_defaults_video.addLayout(self.formLayout_9)
-        spacerItem3 = QtWidgets.QSpacerItem(
-            20, 40, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Expanding
-        )
-        self.lay_page_defaults_video.addItem(spacerItem3)
         self.section_page.addWidget(self.page_defaults_video)
         self.page_misc_advanced = QtWidgets.QWidget()
         self.page_misc_advanced.setObjectName("page_misc_advanced")
@@ -671,10 +323,10 @@ class Ui_SettingsDialog:
         self.miscForceNativeDragEvents = QtWidgets.QCheckBox(self.page_misc_advanced)
         self.miscForceNativeDragEvents.setObjectName("miscForceNativeDragEvents")
         self.lay_page_misc_advanced.addWidget(self.miscForceNativeDragEvents)
-        spacerItem4 = QtWidgets.QSpacerItem(
+        spacerItem1 = QtWidgets.QSpacerItem(
             0, 0, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Expanding
         )
-        self.lay_page_misc_advanced.addItem(spacerItem4)
+        self.lay_page_misc_advanced.addItem(spacerItem1)
         self.section_page.addWidget(self.page_misc_advanced)
         self.page_misc_logging = QtWidgets.QWidget()
         self.page_misc_logging.setObjectName("page_misc_logging")
@@ -746,10 +398,10 @@ class Ui_SettingsDialog:
             1, QtWidgets.QFormLayout.FieldRole, self.logLevelVLC
         )
         self.lay_page_misc_logging.addLayout(self.formLayout_5)
-        spacerItem5 = QtWidgets.QSpacerItem(
+        spacerItem2 = QtWidgets.QSpacerItem(
             0, 0, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Expanding
         )
-        self.lay_page_misc_logging.addItem(spacerItem5)
+        self.lay_page_misc_logging.addItem(spacerItem2)
         self.section_page.addWidget(self.page_misc_logging)
         self.lay_main_2.addWidget(self.section_page)
         self.lay_main.addLayout(self.lay_main_2)
@@ -857,76 +509,6 @@ class Ui_SettingsDialog:
                 "**.example.com will match subdomains <b>only</b></p>",
             )
         )
-        self.label_17.setText(_translate("SettingsDialog", "Saving"))
-        self.playlistTrackChanges.setText(
-            _translate("SettingsDialog", "Warn about unsaved changes")
-        )
-        self.playlistSaveWindow.setText(
-            _translate("SettingsDialog", "Save window position and size")
-        )
-        self.playlistSavePosition.setText(
-            _translate("SettingsDialog", "Save videos playback position")
-        )
-        self.playlistSaveState.setText(
-            _translate("SettingsDialog", "Save videos playing / paused status")
-        )
-        self.label_18.setText(_translate("SettingsDialog", "Playback"))
-        self.playlistPauseBackgroundVideos.setText(
-            _translate("SettingsDialog", "Pause background videos on single mode")
-        )
-        self.playlistPauseWhenMinimized.setText(
-            _translate("SettingsDialog", "Pause videos when minimized")
-        )
-        self.playlistSeekSyncModeLabel.setText(
-            _translate("SettingsDialog", "Seek sync mode")
-        )
-        self.label_19.setText(_translate("SettingsDialog", "Input"))
-        self.playlistDisableClickEvents.setText(
-            _translate("SettingsDialog", "Disable mouse click events")
-        )
-        self.playlistDisableWheelEvents.setText(
-            _translate("SettingsDialog", "Disable mouse wheel events")
-        )
-        self.label_20.setText(_translate("SettingsDialog", "Overlay"))
-        self.playlistDisableOverlay.setText(
-            _translate("SettingsDialog", "Disable overlay")
-        )
-        self.playlistShowOverlayBorder.setText(
-            _translate("SettingsDialog", "Show overlay border for active video")
-        )
-        self.timeoutOverlayFlag.setText(
-            _translate("SettingsDialog", "Hide overlay after timeout")
-        )
-        self.label_3.setText(_translate("SettingsDialog", "(sec)"))
-        self.label.setText(_translate("SettingsDialog", "Grid"))
-        self.gridShuffleOnLoad.setText(_translate("SettingsDialog", "Shuffle on load"))
-        self.gridModeLabel.setText(_translate("SettingsDialog", "Grid mode"))
-        self.gridSizeLabel.setText(_translate("SettingsDialog", "Grid size"))
-        self.gridFit.setText(_translate("SettingsDialog", "Fit grid cells"))
-        self.gridRowsLabel.setText(_translate("SettingsDialog", "Rows"))
-        self.gridColsLabel.setText(_translate("SettingsDialog", "Columns"))
-        self.gridPreallocate.setText(
-            _translate("SettingsDialog", "Show all cells even when empty")
-        )
-        self.label1.setText(_translate("SettingsDialog", "Drag-n-Drop"))
-        self.dropActionExternalLabel.setText(_translate("SettingsDialog", "File drop"))
-        self.dropModifierLabel.setText(_translate("SettingsDialog", "Hold to switch"))
-        self.dropActionInternalLabel.setText(
-            _translate("SettingsDialog", "In-window drag")
-        )
-        self.videoAspectLabel.setText(_translate("SettingsDialog", "Aspect mode"))
-        self.repeatModeLabel.setText(_translate("SettingsDialog", "Repeat mode"))
-        self.label_15.setText(_translate("SettingsDialog", "Audio mode"))
-        self.videoTransformLabel.setText(_translate("SettingsDialog", "Transform"))
-        self.videoRandomLoop.setText(
-            _translate("SettingsDialog", "Start at random position")
-        )
-        self.videoPaused.setText(_translate("SettingsDialog", "Paused"))
-        self.videoMuted.setText(_translate("SettingsDialog", "Muted"))
-        self.label_12.setText(_translate("SettingsDialog", "Streaming Videos"))
-        self.streamQualityLabel.setText(_translate("SettingsDialog", "Stream quality"))
-        self.label_13.setText(_translate("SettingsDialog", "Auto reload time"))
-        self.label_14.setText(_translate("SettingsDialog", "(min)"))
         self.playerVideoDriverBox.setTitle(
             _translate("SettingsDialog", "Video Decoder")
         )

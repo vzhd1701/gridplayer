@@ -1434,6 +1434,11 @@ ACTIONS = MappingProxyType(
             "func": ("load_snapshot", 9),
             "show_if": ("is_snapshot_exists", 9),
         },
+        "Edit Playlist Settings": {
+            "title": translate("Actions", "Edit Playlist Settings…"),
+            "icon": "settings",
+            "func": "playlist_settings",
+        },
         "Disable Mouse Click Events": {
             "title": translate("Actions", "Disable Mouse Click Events"),
             "icon": "empty",
@@ -1534,9 +1539,7 @@ ACTIONS = MappingProxyType(
             "key": "Ctrl+S",
             "icon": "save-playlist",
             "func": "save_playlist",
-            "enable_if": AND(
-                OR("is_videos", "is_playlist_saved"), "is_playlist_changed"
-            ),
+            "enable_if": "is_playlist_changed",
         },
         "Save Playlist As": {
             "title": translate("Actions", "Save Playlist As"),
@@ -1549,7 +1552,7 @@ ACTIONS = MappingProxyType(
             "key": "Ctrl+Shift+Q",
             "icon": "close-playlist",
             "func": "close_playlist",
-            "enable_if": OR("is_videos", "is_playlist_saved"),
+            "enable_if": OR("is_videos", "is_playlist_saved", "is_playlist_changed"),
         },
         "Settings": {
             "title": translate("Actions", "Settings"),
