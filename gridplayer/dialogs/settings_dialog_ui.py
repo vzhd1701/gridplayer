@@ -260,17 +260,21 @@ class Ui_SettingsDialog:
         self.page_defaults_playlist.setWidgetResizable(True)
         self.page_defaults_playlist.setObjectName("page_defaults_playlist")
         self.page_defaults_playlist_contents = QtWidgets.QWidget()
-        self.page_defaults_playlist_contents.setGeometry(QtCore.QRect(0, 0, 500, 400))
         self.page_defaults_playlist_contents.setObjectName(
             "page_defaults_playlist_contents"
         )
         self.page_defaults_playlist.setWidget(self.page_defaults_playlist_contents)
         self.section_page.addWidget(self.page_defaults_playlist)
-        self.page_defaults_video = QtWidgets.QWidget()
+        self.page_defaults_video = PageScrollArea()
+        self.page_defaults_video.setFrameShape(QtWidgets.QFrame.NoFrame)
+        self.page_defaults_video.setHorizontalScrollBarPolicy(
+            QtCore.Qt.ScrollBarAlwaysOff
+        )
+        self.page_defaults_video.setWidgetResizable(True)
         self.page_defaults_video.setObjectName("page_defaults_video")
-        self.lay_page_defaults_video = QtWidgets.QVBoxLayout(self.page_defaults_video)
-        self.lay_page_defaults_video.setContentsMargins(0, 0, 0, 0)
-        self.lay_page_defaults_video.setObjectName("lay_page_defaults_video")
+        self.page_defaults_video_contents = QtWidgets.QWidget()
+        self.page_defaults_video_contents.setObjectName("page_defaults_video_contents")
+        self.page_defaults_video.setWidget(self.page_defaults_video_contents)
         self.section_page.addWidget(self.page_defaults_video)
         self.page_misc_advanced = QtWidgets.QWidget()
         self.page_misc_advanced.setObjectName("page_misc_advanced")

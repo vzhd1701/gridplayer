@@ -140,7 +140,7 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
         self.playlist_defaults_form = DefaultsForm(PLAYLIST_FIELDS, show_reset=False)
         self.video_defaults_form = DefaultsForm(VIDEO_FIELDS, show_reset=False)
         _replace_scroll_page(self.page_defaults_playlist, self.playlist_defaults_form)
-        _replace_layout_page(self.page_defaults_video, self.video_defaults_form)
+        _replace_scroll_page(self.page_defaults_video, self.video_defaults_form)
 
         if env.IS_LINUX:
             self.playerStayOnTop.hide()
