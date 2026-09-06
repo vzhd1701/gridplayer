@@ -8,6 +8,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ### Changed
 
+- Add ask, discard, auto save options replacing "unsaved changes" flag ([d7857cf](https://github.com/vzhd1701/gridplayer/commit/d7857cf0d3463fb6f301b984b35b7153a160b5a9))
 - Move pause-on-single-mode, pause-when-minimized, overlay border, and overlay hide timeout to per-playlist settings ([be0cd5c](https://github.com/vzhd1701/gridplayer/commit/be0cd5c2274b052f10b96b40f676dd2a7d24efc0))
 - Allow user to change empty playlist settings ([19dad78](https://github.com/vzhd1701/gridplayer/commit/19dad78ad52571e5dfb9642b13de09b8e8a5f865))
 - Allow user to save/open empty playlist ([6ce6bb0](https://github.com/vzhd1701/gridplayer/commit/6ce6bb088827051ff74f60204023485005aa50cd))
@@ -16,6 +17,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ### Added
 
+- Add "set crop" dialog ([6178829](https://github.com/vzhd1701/gridplayer/commit/617882919a12cdc630e517a3fc45d929520597b4))
+- Allow setting Video defaults for rate, scale, volume, color and crop ([177599c](https://github.com/vzhd1701/gridplayer/commit/177599ccdd608978123ed47cab7a649032bed35d))
+- Add explicit per-playlist settings with global defaults ([fb80dfa](https://github.com/vzhd1701/gridplayer/commit/fb80dfac99df633024bef6738c2cf59c4aed9671))
 - Add fixed size grid mode ([16871a6](https://github.com/vzhd1701/gridplayer/commit/16871a699a1117c9057ee4f47ad5e1a8932f569b))
 - Add "force native drag-n-drop for in-window drag" settings flag on linux ([08d91be](https://github.com/vzhd1701/gridplayer/commit/08d91bedaf78676b81b102a554489125de01be20))
 - Add option to replace video on drag-n-drop while holding modifier key (default: shift) ([b8affe3](https://github.com/vzhd1701/gridplayer/commit/b8affe37f2bb0feef9e196c079db0901010125d3))
