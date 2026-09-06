@@ -13,6 +13,7 @@ from gridplayer.params.static import (
     DropModifier,
     GridMode,
     SeekSyncMode,
+    UnsavedChangesMode,
     VideoAspect,
     VideoRepeat,
     VideoTransform,
@@ -75,6 +76,22 @@ def _seek_sync_modes() -> dict:
         SeekSyncMode.PERCENT: _t("Percent"),
         SeekSyncMode.TIMECODE: _t("Timecode"),
     }
+
+
+def _unsaved_changes_modes() -> dict:
+    return {
+        UnsavedChangesMode.ASK: _t("Ask"),
+        UnsavedChangesMode.DISCARD: _t("Discard Changes"),
+        UnsavedChangesMode.AUTO_SAVE_DISCARD: _t("Auto Save or Discard"),
+        UnsavedChangesMode.AUTO_SAVE_ASK: _t("Auto Save or Ask"),
+    }
+
+
+def _unsaved_changes_tooltip() -> str:
+    return _t(
+        "Auto save applies only when the playlist has a file location; "
+        "otherwise the fallback action is used."
+    )
 
 
 def _drop_internal() -> dict:
@@ -188,11 +205,13 @@ def _f(**kwargs) -> SettingField:
 
 PLAYLIST_FIELDS: tuple[SettingField, ...] = (
     _f(
-        settings_key="playlist/track_changes",
-        playlist_attr="track_changes",
-        kind=FieldKind.CHECKBOX,
+        settings_key="playlist/unsaved_changes",
+        playlist_attr="unsaved_changes",
+        kind=FieldKind.COMBO,
         section=_t("Saving / Restoring"),
-        label=_t("Warn about unsaved changes"),
+        label=_t("Unsaved changes on close"),
+        combo_values=_unsaved_changes_modes,
+        tooltip=_unsaved_changes_tooltip(),
     ),
     _f(
         settings_key="playlist/save_window",

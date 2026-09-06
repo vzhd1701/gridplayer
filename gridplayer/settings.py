@@ -22,6 +22,7 @@ from gridplayer.params.static import (
     DropModifier,
     GridMode,
     SeekSyncMode,
+    UnsavedChangesMode,
     URLResolver,
     VideoAspect,
     VideoCrop,
@@ -60,7 +61,7 @@ _default_settings = {
     "playlist/save_state": False,
     "playlist/save_window": False,
     "playlist/seek_sync_mode": SeekSyncMode.DISABLED,
-    "playlist/track_changes": True,
+    "playlist/unsaved_changes": UnsavedChangesMode.ASK,
     "playlist/shuffle_on_load": False,
     "playlist/drop_action_internal": DropAction.INSERT,
     "playlist/drop_action_external": DropAction.INSERT,
@@ -135,6 +136,23 @@ class _Settings:
                 self.settings.setValue(new_key, self.settings.value(old_key))
             if self.settings.contains(old_key):
                 self.settings.remove(old_key)
+
+        self._migrate_track_changes_flag()
+
+    def _migrate_track_changes_flag(self):
+        """Legacy bool "warn about unsaved changes" flag → close mode enum."""
+        old_key = "playlist/track_changes"
+        new_key = "playlist/unsaved_changes"
+
+        if not self.settings.contains(old_key):
+            return
+
+        if not self.settings.contains(new_key):
+            legacy_value = str(self.settings.value(old_key)).lower()
+            mode = "discard" if legacy_value == "false" else "ask"
+            self.settings.setValue(new_key, mode)
+
+        self.settings.remove(old_key)
 
     def get(self, setting):
         setting_type = type(_default_settings[setting])

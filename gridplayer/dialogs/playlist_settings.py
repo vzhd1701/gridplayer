@@ -61,8 +61,8 @@ class PlaylistSettingsDialog(QDialog):
         root.addLayout(bottom)
 
         self._load(overrides, grid_state)
-        self.setMinimumSize(450, 400)
-        self.resize(450, 400)
+        self.setMinimumSize(500, 400)
+        self.resize(500, 400)
 
     def _wrap_scroll(self, form: DefaultsForm) -> PageScrollArea:
         form.layout().setContentsMargins(12, 12, 12, 12)

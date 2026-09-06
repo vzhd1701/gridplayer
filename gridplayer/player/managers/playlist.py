@@ -9,7 +9,7 @@ from gridplayer.dialogs.playlist_settings import PlaylistSettingsDialog
 from gridplayer.models.grid_state import GridState
 from gridplayer.models.playlist import Playlist
 from gridplayer.models.video import filter_video_uris
-from gridplayer.params.static import SeekSyncMode, WindowState
+from gridplayer.params.static import SeekSyncMode, UnsavedChangesMode, WindowState
 from gridplayer.player.managers.base import ManagerBase
 from gridplayer.playlist_settings import (
     PlaylistSettings,
@@ -231,28 +231,41 @@ class PlaylistManager(ManagerBase):
         return True
 
     def check_playlist_save(self) -> bool:
-        if not PlaylistSettings().get("playlist/track_changes"):
+        if not self._is_playlist_changed():
             return True
 
-        if self._is_playlist_changed():
-            self.alert.emit()
+        mode = PlaylistSettings().get("playlist/unsaved_changes")
 
-            ret = QCustomMessageBox.cancellable_question(
-                self.parent(),
-                translate("Dialog - Playlist close", "Playlist", "Header"),
-                translate(
-                    "Dialog - Playlist close", "Do you want to save the playlist?"
-                ),
-            )
+        if mode == UnsavedChangesMode.DISCARD:
+            return True
 
-            if ret == QMessageBox.Yes:
-                if not self.cmd_save_playlist():
-                    return False
+        if mode in (
+            UnsavedChangesMode.AUTO_SAVE_DISCARD,
+            UnsavedChangesMode.AUTO_SAVE_ASK,
+        ):
+            if self._saved_playlist_path is not None:
+                if self.cmd_save_playlist():
+                    return True
+                return self._ask_playlist_save()
 
-            elif ret == QMessageBox.Cancel:
-                return False
+            if mode == UnsavedChangesMode.AUTO_SAVE_DISCARD:
+                return True
 
-        return True
+        return self._ask_playlist_save()
+
+    def _ask_playlist_save(self) -> bool:
+        self.alert.emit()
+
+        ret = QCustomMessageBox.cancellable_question(
+            self.parent(),
+            translate("Dialog - Playlist close", "Playlist", "Header"),
+            translate("Dialog - Playlist close", "Do you want to save the playlist?"),
+        )
+
+        if ret == QMessageBox.Yes:
+            return self.cmd_save_playlist()
+
+        return ret != QMessageBox.Cancel
 
     def _is_playlist_changed(self):
         if self._saved_playlist_state is None:

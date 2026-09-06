@@ -87,6 +87,13 @@ class SeekSyncMode(AutoName):
     TIMECODE = auto()
 
 
+class UnsavedChangesMode(AutoName):
+    ASK = auto()
+    DISCARD = auto()
+    AUTO_SAVE_DISCARD = auto()
+    AUTO_SAVE_ASK = auto()
+
+
 class URLResolver(AutoName):
     STREAMLINK = auto()
     YT_DLP = auto()

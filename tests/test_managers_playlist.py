@@ -13,6 +13,7 @@ from gridplayer.params.static import (
     AudioChannelMode,
     GridMode,
     SeekSyncMode,
+    UnsavedChangesMode,
     VideoAspect,
     VideoRepeat,
     VideoTransform,
@@ -515,6 +516,118 @@ def test_check_playlist_save_prompts_dirty_empty_template(mocker):
 
     assert manager.check_playlist_save() is True
     question.assert_called_once()
+
+
+def test_check_playlist_save_discard_mode_skips_prompt(mocker):
+    manager, _parent = _make_manager(SimpleNamespace(video_blocks=[]))
+    manager._saved_playlist_path = Path("x.gpls")
+    mocker.patch.object(manager, "_is_playlist_changed", return_value=True)
+    save = mocker.patch.object(manager, "cmd_save_playlist")
+    question = mocker.patch(
+        "gridplayer.player.managers.playlist.QCustomMessageBox.cancellable_question"
+    )
+    PlaylistSettings().set("playlist/unsaved_changes", UnsavedChangesMode.DISCARD)
+
+    assert manager.check_playlist_save() is True
+    save.assert_not_called()
+    question.assert_not_called()
+
+
+def test_check_playlist_save_auto_save_discard_saves_named_playlist(mocker):
+    manager, _parent = _make_manager(SimpleNamespace(video_blocks=[]))
+    manager._saved_playlist_path = Path("x.gpls")
+    mocker.patch.object(manager, "_is_playlist_changed", return_value=True)
+    save = mocker.patch.object(manager, "cmd_save_playlist", return_value=True)
+    question = mocker.patch(
+        "gridplayer.player.managers.playlist.QCustomMessageBox.cancellable_question"
+    )
+    PlaylistSettings().set(
+        "playlist/unsaved_changes", UnsavedChangesMode.AUTO_SAVE_DISCARD
+    )
+
+    assert manager.check_playlist_save() is True
+    save.assert_called_once_with()
+    question.assert_not_called()
+
+
+def test_check_playlist_save_auto_save_discard_drops_unnamed_playlist(mocker):
+    manager, _parent = _make_manager(SimpleNamespace(video_blocks=[]))
+    mocker.patch.object(manager, "_is_playlist_changed", return_value=True)
+    save = mocker.patch.object(manager, "cmd_save_playlist")
+    question = mocker.patch(
+        "gridplayer.player.managers.playlist.QCustomMessageBox.cancellable_question"
+    )
+    PlaylistSettings().set(
+        "playlist/unsaved_changes", UnsavedChangesMode.AUTO_SAVE_DISCARD
+    )
+
+    assert manager.check_playlist_save() is True
+    save.assert_not_called()
+    question.assert_not_called()
+
+
+def test_check_playlist_save_auto_save_ask_saves_named_playlist(mocker):
+    manager, _parent = _make_manager(SimpleNamespace(video_blocks=[]))
+    manager._saved_playlist_path = Path("x.gpls")
+    mocker.patch.object(manager, "_is_playlist_changed", return_value=True)
+    save = mocker.patch.object(manager, "cmd_save_playlist", return_value=True)
+    question = mocker.patch(
+        "gridplayer.player.managers.playlist.QCustomMessageBox.cancellable_question"
+    )
+    PlaylistSettings().set("playlist/unsaved_changes", UnsavedChangesMode.AUTO_SAVE_ASK)
+
+    assert manager.check_playlist_save() is True
+    save.assert_called_once_with()
+    question.assert_not_called()
+
+
+def test_check_playlist_save_auto_save_ask_prompts_unnamed_playlist(mocker):
+    manager, _parent = _make_manager(SimpleNamespace(video_blocks=[]))
+    mocker.patch.object(manager, "_is_playlist_changed", return_value=True)
+    save = mocker.patch.object(manager, "cmd_save_playlist")
+    question = mocker.patch(
+        "gridplayer.player.managers.playlist.QCustomMessageBox.cancellable_question",
+        return_value=QMessageBox.No,
+    )
+    PlaylistSettings().set("playlist/unsaved_changes", UnsavedChangesMode.AUTO_SAVE_ASK)
+
+    assert manager.check_playlist_save() is True
+    save.assert_not_called()
+    question.assert_called_once()
+
+
+def test_check_playlist_save_auto_save_failure_falls_back_to_ask(mocker):
+    manager, _parent = _make_manager(SimpleNamespace(video_blocks=[]))
+    manager._saved_playlist_path = Path("x.gpls")
+    mocker.patch.object(manager, "_is_playlist_changed", return_value=True)
+    save = mocker.patch.object(manager, "cmd_save_playlist", return_value=False)
+    question = mocker.patch(
+        "gridplayer.player.managers.playlist.QCustomMessageBox.cancellable_question",
+        return_value=QMessageBox.No,
+    )
+    PlaylistSettings().set(
+        "playlist/unsaved_changes", UnsavedChangesMode.AUTO_SAVE_DISCARD
+    )
+
+    assert manager.check_playlist_save() is True
+    save.assert_called_once_with()
+    question.assert_called_once()
+
+
+def test_playlist_parse_migrates_legacy_track_changes_true():
+    playlist = Playlist.parse(
+        '#GRIDPLAYER\n#P:{"track_changes": true}\nhttp://example.com/a.mp4\n'
+    )
+
+    assert playlist.unsaved_changes is UnsavedChangesMode.ASK
+
+
+def test_playlist_parse_migrates_legacy_track_changes_false():
+    playlist = Playlist.parse(
+        '#GRIDPLAYER\n#P:{"track_changes": false}\nhttp://example.com/a.mp4\n'
+    )
+
+    assert playlist.unsaved_changes is UnsavedChangesMode.DISCARD
 
 
 def test_is_playlist_saved_command():

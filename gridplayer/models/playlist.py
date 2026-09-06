@@ -15,6 +15,7 @@ from gridplayer.params.static import (
     DropAction,
     DropModifier,
     SeekSyncMode,
+    UnsavedChangesMode,
     VideoAspect,
     VideoCrop,
     VideoRepeat,
@@ -65,7 +66,7 @@ class Playlist(BaseModel):
     show_overlay_border: bool | None = None
     overlay_hide_on_timeout: bool | None = None
     overlay_timeout: int | None = None
-    track_changes: bool | None = None
+    unsaved_changes: UnsavedChangesMode | None = None
     save_window: bool | None = None
     save_position: bool | None = None
     save_state: bool | None = None
@@ -89,6 +90,26 @@ class Playlist(BaseModel):
             data["disable_mouse_wheel_events"] = data.pop("disable_wheel_seek")
         else:
             data.pop("disable_wheel_seek", None)
+
+        return data
+
+    @model_validator(mode="before")
+    @classmethod
+    def _migrate_legacy_track_changes(cls, data: Any) -> Any:
+        """Legacy bool "warn about unsaved changes" flag → close mode enum."""
+        if not isinstance(data, dict):
+            return data
+
+        if "track_changes" not in data:
+            return data
+
+        legacy_flag = data.pop("track_changes")
+
+        if "unsaved_changes" not in data:
+            if legacy_flag is False:
+                data["unsaved_changes"] = UnsavedChangesMode.DISCARD
+            elif legacy_flag is True:
+                data["unsaved_changes"] = UnsavedChangesMode.ASK
 
         return data
 
