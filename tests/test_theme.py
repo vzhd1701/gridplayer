@@ -102,3 +102,30 @@ def test_apply_theme_recolors_html_links():
     label.deleteLater()
     browser.deleteLater()
     vlc.deleteLater()
+
+
+def test_dialog_button_icons_stripped_by_proxy_style(mocker):
+    mocker.patch("gridplayer.params.theme.env.IS_LINUX", True)
+
+    from PyQt5.QtWidgets import QStyle
+
+    from gridplayer.params import theme as theme_mod
+    from gridplayer.params.theme import apply_theme, create_fusion_style
+
+    style = create_fusion_style()
+
+    for standard_icon in theme_mod._DIALOG_ICON_ROLES:
+        assert style.standardIcon(standard_icon).isNull()
+
+    # non-dialog icons pass through to the wrapped Fusion style
+    assert not style.standardIcon(QStyle.SP_DirIcon).isNull()
+
+    # apply_theme wraps the app style; the stripping must survive the
+    # QStyleSheetStyle wrapper that app.setStyleSheet() puts on top of it.
+    app = QApplication.instance() or QApplication([])
+    apply_theme(app)
+    apply_theme(app)
+
+    assert theme_mod._dialog_button_style_installed
+    assert app.style().standardIcon(QStyle.SP_DialogOkButton).isNull()
+    assert not app.style().standardIcon(QStyle.SP_DirIcon).isNull()

@@ -588,8 +588,7 @@ class _AddShortcutDialogBase(QDialog):
         )
         self._buttons.accepted.connect(self._on_accept)
         self._buttons.rejected.connect(self.reject)
-        for btn in self._buttons.buttons():
-            btn.setIcon(QIcon())
+
         self._ok_button = self._buttons.button(QDialogButtonBox.Ok)
         self._ok_button.setEnabled(False)
         layout.addWidget(self._buttons)
@@ -723,8 +722,6 @@ class _AddShortcutDialogBase(QDialog):
             translate("Keymap", "Reassign"), QMessageBox.AcceptRole
         )
         msg.addButton(QMessageBox.Cancel)
-        for btn in msg.buttons():
-            btn.setIcon(QIcon())
 
         msg.exec_()
         return msg.clickedButton() == reassign_btn

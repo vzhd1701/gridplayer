@@ -1,7 +1,14 @@
 from types import MappingProxyType
 
-from PyQt5.QtGui import QColor, QPalette, QTextCursor
-from PyQt5.QtWidgets import QApplication, QLabel, QTextEdit
+from PyQt5.QtGui import QColor, QIcon, QPalette, QTextCursor
+from PyQt5.QtWidgets import (
+    QApplication,
+    QLabel,
+    QProxyStyle,
+    QStyle,
+    QStyleFactory,
+    QTextEdit,
+)
 
 from gridplayer.main.init_icons import switch_icon_theme
 from gridplayer.params import env
@@ -53,9 +60,41 @@ THEME_DARK = MappingProxyType(
 
 _applying_theme = False
 
+_DIALOG_ICON_ROLES = (
+    QStyle.SP_DialogOkButton,
+    QStyle.SP_DialogCancelButton,
+    QStyle.SP_DialogHelpButton,
+    QStyle.SP_DialogOpenButton,
+    QStyle.SP_DialogSaveButton,
+    QStyle.SP_DialogCloseButton,
+    QStyle.SP_DialogApplyButton,
+    QStyle.SP_DialogResetButton,
+    QStyle.SP_DialogDiscardButton,
+    QStyle.SP_DialogYesButton,
+    QStyle.SP_DialogNoButton,
+)
+
+
+class NoDialogButtonIcons(QProxyStyle):
+    """Blanks the standard OK/Cancel/etc icons that Linux themes add."""
+
+    def standardIcon(self, element, option=None, widget=None):
+        if element in _DIALOG_ICON_ROLES:
+            return QIcon()
+
+        return super().standardIcon(element, option, widget)
+
 
 def current_colors():
     return THEME_DARK if is_dark_mode() else THEME_LIGHT
+
+
+def create_fusion_style() -> QProxyStyle:
+    """Fusion style with the platform icons stripped from dialog buttons."""
+    if env.IS_LINUX:
+        return NoDialogButtonIcons(QStyleFactory.create("Fusion"))
+
+    return QStyleFactory.create("Fusion")
 
 
 def fusion_palette() -> QPalette:
@@ -197,12 +236,36 @@ def apply_theme(app=None) -> None:
     _applying_theme = True
     try:
         switch_icon_theme()
+        _install_dialog_button_style(app)
         app.setPalette(fusion_palette())
         app.setStyleSheet(combo_popup_stylesheet())
         _refresh_html_links(app)
         _apply_native_window_chrome(app)
     finally:
         _applying_theme = False
+
+
+_dialog_button_style_installed = False
+
+
+def _install_dialog_button_style(app) -> None:
+    """Wrap the app style so dialog buttons never get theme icons.
+
+    The GNOME platform theme reports "buttons have icons"; QDialogButtonBox
+    and QMessageBox fetch those icons from the style, so a proxy style
+    removes them for every dialog at once. Installed once per process: the
+    app stylesheet wraps the app style afterwards, hiding it from
+    isinstance() checks.
+    """
+    if not env.IS_LINUX:
+        return
+
+    global _dialog_button_style_installed
+    if _dialog_button_style_installed:
+        return
+
+    app.setStyle(NoDialogButtonIcons(QStyleFactory.create("Fusion")))
+    _dialog_button_style_installed = True
 
 
 def _apply_native_window_chrome(app) -> None:

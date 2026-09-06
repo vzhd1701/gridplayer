@@ -146,9 +146,6 @@ class QVideoRenameDialog(QtWidgets.QDialog):
         buttons.accepted.connect(self.accept)
         buttons.rejected.connect(self.reject)
 
-        for btn in buttons.buttons():
-            btn.setIcon(QIcon())
-
         return buttons
 
     def ui_setup(self):

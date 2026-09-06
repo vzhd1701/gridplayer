@@ -35,8 +35,5 @@ class ExceptionDialog(QDialog, Ui_ExceptionDialog):
 
         self.copyButton.clicked.connect(self.copy_text)
 
-        for btn in self.buttonBox.buttons():
-            btn.setIcon(QIcon())
-
     def copy_text(self):
         QApplication.clipboard().setText(self.exc_txt)

@@ -2,14 +2,18 @@ import sys
 
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QFont
-from PyQt5.QtWidgets import QApplication, QStyleFactory
+from PyQt5.QtWidgets import QApplication
 
 from gridplayer.main.init_icons import init_icon
 from gridplayer.main.init_resources import init_resources
 from gridplayer.main.init_translator import init_translator
 from gridplayer.params import env
 from gridplayer.params.static import FONT_SIZE_MAIN
-from gridplayer.params.theme import apply_theme, on_system_theme_changed
+from gridplayer.params.theme import (
+    apply_theme,
+    create_fusion_style,
+    on_system_theme_changed,
+)
 from gridplayer.utils.darkmode import watch_system_theme
 
 
@@ -22,7 +26,7 @@ def init_app():
 
     init_resources()
 
-    app.setStyle(QStyleFactory.create("Fusion"))
+    app.setStyle(create_fusion_style())
 
     app.setAttribute(Qt.AA_DisableWindowContextHelpButton)
     app.styleHints().setShowShortcutsInContextMenus(True)

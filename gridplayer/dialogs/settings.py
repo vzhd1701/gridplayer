@@ -133,9 +133,6 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
         self.ui_customize_dynamic()
 
     def ui_customize(self):
-        for btn in self.buttonBox.buttons():
-            btn.setIcon(QIcon())
-
         self.ui_customize_section_index()
 
         _set_groupbox_header_bold(self.playerVideoDriverBox)

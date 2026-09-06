@@ -27,9 +27,6 @@ class QCustomSpinboxInput(QDialog):
         self.buttons.accepted.connect(self.accept)
         self.buttons.rejected.connect(self.reject)
 
-        for btn in self.buttons.buttons():
-            btn.setIcon(QIcon())
-
         main_layout = QVBoxLayout(self)
         main_layout.setSizeConstraint(QLayout.SetMinAndMaxSize)
         main_layout.addWidget(self.spinbox)
@@ -83,9 +80,6 @@ class QFixedGridSizeDialog(QDialog):
         self.buttons.accepted.connect(self.accept)
         self.buttons.rejected.connect(self.reject)
 
-        for btn in self.buttons.buttons():
-            btn.setIcon(QIcon())
-
         form = QFormLayout()
         form.addRow(self.tr("Rows"), self.rows)
         form.addRow(self.tr("Columns"), self.cols)
@@ -134,9 +128,6 @@ class QCustomSpinboxTimeInput(QDialog):
         )
         self.buttons.accepted.connect(self.accept)
         self.buttons.rejected.connect(self.reject)
-
-        for btn in self.buttons.buttons():
-            btn.setIcon(QIcon())
 
         main_layout = QVBoxLayout(self)
         main_layout.setSizeConstraint(QLayout.SetMinAndMaxSize)

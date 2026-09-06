@@ -15,9 +15,6 @@ class QCustomMessageBox(QMessageBox):
     ):
         super().__init__(icon, title, text, buttons, parent, f)
 
-        for btn in self.buttons():
-            btn.setIcon(QIcon())
-
         icons = {
             QMessageBox.Critical: QIcon.fromTheme("error"),
             QMessageBox.Information: QIcon.fromTheme("information"),
