@@ -9,6 +9,10 @@ from pydantic_extra_types.color import Color
 
 from gridplayer.models.video_uri import VideoURI, parse_uri
 from gridplayer.params.static import (
+    MAX_RATE,
+    MAX_SCALE,
+    MIN_RATE,
+    MIN_SCALE,
     AudioChannelMode,
     VideoAspect,
     VideoCrop,
@@ -17,11 +21,6 @@ from gridplayer.params.static import (
 )
 from gridplayer.playlist_settings import session_field
 
-MIN_SCALE = 1.0
-MAX_SCALE = 10.0
-MIN_RATE = 0.2
-MAX_RATE = 12
-
 
 class Video(BaseModel):
     id: UUID4 = Field(default_factory=uuid4)
@@ -29,7 +28,7 @@ class Video(BaseModel):
 
     # Presentation
     title: str | None = None
-    color: Color = Color("white")
+    color: Color = session_field("video_defaults/color", validate=True)
 
     # Seekable video
     current_position: int = 0
@@ -38,15 +37,19 @@ class Video(BaseModel):
 
     repeat_mode: VideoRepeat = session_field("video_defaults/repeat")
     is_start_random: bool = session_field("video_defaults/random_loop")
-    rate: Annotated[float, Field(ge=MIN_RATE, le=MAX_RATE)] = 1.0
+    rate: Annotated[float, Field(ge=MIN_RATE, le=MAX_RATE)] = session_field(
+        "video_defaults/rate"
+    )
 
     # Generic
     aspect_mode: VideoAspect = session_field("video_defaults/aspect")
     is_muted: bool = session_field("video_defaults/muted")
     is_paused: bool = session_field("video_defaults/paused")
-    scale: Annotated[float, Field(ge=MIN_SCALE, le=MAX_SCALE)] = 1.0
-    crop: VideoCrop = VideoCrop(0, 0, 0, 0)
-    volume: float = 1.0
+    scale: Annotated[float, Field(ge=MIN_SCALE, le=MAX_SCALE)] = session_field(
+        "video_defaults/scale"
+    )
+    crop: VideoCrop = session_field("video_defaults/crop")
+    volume: float = session_field("video_defaults/volume")
     transform: VideoTransform = session_field("video_defaults/transform")
 
     # Streamable

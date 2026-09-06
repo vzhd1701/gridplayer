@@ -15,6 +15,11 @@ FONT_SIZE_BIG_INFO = 22 if env.IS_MACOS else 16
 
 VIDEO_END_LOOP_MARGIN_MS = 500
 
+MIN_SCALE = 1.0
+MAX_SCALE = 10.0
+MIN_RATE = 0.2
+MAX_RATE = 12
+
 
 class AutoName(Enum):
     def _generate_next_value_(name, start, count, last_values):

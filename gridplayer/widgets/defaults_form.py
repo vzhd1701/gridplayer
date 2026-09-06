@@ -1,7 +1,9 @@
 from PyQt5.QtCore import Qt, pyqtSignal
+from PyQt5.QtGui import QColor
 from PyQt5.QtWidgets import (
     QCheckBox,
     QComboBox,
+    QDoubleSpinBox,
     QHBoxLayout,
     QLabel,
     QPushButton,
@@ -11,9 +13,11 @@ from PyQt5.QtWidgets import (
     QWidget,
 )
 
+from gridplayer.dialogs.crop import QCompactCropPicker
 from gridplayer.params.defaults_fields import FieldKind, GridVisibility, SettingField
 from gridplayer.params.static import GridMode
 from gridplayer.utils.qt import translate
+from gridplayer.widgets.color_palette import QCompactColorPicker
 
 
 def _fill_combo(combo: QComboBox, values: dict) -> None:
@@ -100,6 +104,34 @@ class DefaultsForm(QWidget):
             lay.addWidget(widget)
             if spec.spin_suffix:
                 lay.addWidget(QLabel(spec.spin_suffix))
+        elif spec.kind is FieldKind.FLOAT_SPIN:
+            label = QLabel(spec.label)
+            self._labels[spec.settings_key] = label
+            lay.addWidget(label)
+            widget = QDoubleSpinBox()
+            widget.setRange(spec.spin_min, spec.spin_max)
+            widget.setDecimals(spec.spin_decimals)
+            widget.setSingleStep(spec.spin_step)
+            if spec.spin_special is not None:
+                widget.setSpecialValueText(spec.spin_special)
+            widget.valueChanged.connect(self._on_edited)
+            lay.addWidget(widget)
+        elif spec.kind is FieldKind.CROP:
+            label = QLabel(spec.label)
+            self._labels[spec.settings_key] = label
+            lay.addWidget(label)
+            widget = QCompactCropPicker()
+            widget.setObjectName(spec.settings_key)
+            widget.value_changed.connect(self._on_edited)
+            lay.addWidget(widget)
+        elif spec.kind is FieldKind.COLOR:
+            label = QLabel(spec.label)
+            self._labels[spec.settings_key] = label
+            lay.addWidget(label)
+            widget = QCompactColorPicker()
+            widget.setObjectName(spec.settings_key)
+            widget.color_changed.connect(self._on_edited)
+            lay.addWidget(widget)
         else:
             raise ValueError(f"Unknown field kind {spec.kind}")
 
@@ -208,6 +240,12 @@ class DefaultsForm(QWidget):
             _set_combo(widget, value)
         elif spec.kind is FieldKind.SPIN:
             widget.setValue(int(value))
+        elif spec.kind is FieldKind.FLOAT_SPIN:
+            widget.setValue(float(value))
+        elif spec.kind is FieldKind.CROP:
+            widget.value = value
+        elif spec.kind is FieldKind.COLOR:
+            widget.color = QColor(str(value)).getRgb()[:3]
 
     def _get_widget(self, spec: SettingField):
         widget = self._widgets[spec.settings_key]
@@ -217,6 +255,12 @@ class DefaultsForm(QWidget):
             return widget.currentData()
         if spec.kind is FieldKind.SPIN:
             return widget.value()
+        if spec.kind is FieldKind.FLOAT_SPIN:
+            return widget.value()
+        if spec.kind is FieldKind.CROP:
+            return widget.value
+        if spec.kind is FieldKind.COLOR:
+            return widget.color.name(QColor.HexRgb)
         raise ValueError(spec.kind)
 
     def _sync_enabled(self):

@@ -2,7 +2,6 @@ from collections.abc import Iterable
 from itertools import starmap
 
 from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import (
     QDialog,
     QDialogButtonBox,

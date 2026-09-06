@@ -1,5 +1,4 @@
 from PyQt5.QtCore import Qt, QTime
-from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import (
     QCheckBox,
     QDialog,

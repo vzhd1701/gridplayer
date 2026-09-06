@@ -1,3 +1,4 @@
+import json
 import logging
 from contextlib import suppress
 from enum import Enum
@@ -23,6 +24,7 @@ from gridplayer.params.static import (
     SeekSyncMode,
     URLResolver,
     VideoAspect,
+    VideoCrop,
     VideoDriver,
     VideoRepeat,
     VideoTransform,
@@ -78,6 +80,11 @@ _default_settings = {
     "video_defaults/random_loop": False,
     "video_defaults/muted": True,
     "video_defaults/paused": False,
+    "video_defaults/rate": 1.0,
+    "video_defaults/scale": 1.0,
+    "video_defaults/volume": 1.0,
+    "video_defaults/color": "#ffffff",
+    "video_defaults/crop": VideoCrop(0, 0, 0, 0),
     "video_defaults/stream_quality": "best",
     "video_defaults/auto_reload_timer": 0,
     "misc/mouse_hide": True,
@@ -140,6 +147,9 @@ class _Settings:
 
         if issubclass(setting_type, RecentList):
             return self._parse_list(setting_type, setting)
+
+        if issubclass(setting_type, tuple):
+            return self._parse_named_tuple(setting_type, setting)
 
         return self.settings.value(
             setting, _default_settings[setting], type=setting_type
@@ -208,6 +218,17 @@ class _Settings:
 
         return setting_type(res_list)
 
+    def _parse_named_tuple(self, setting_type, setting):
+        setting_value = self.settings.value(setting)
+
+        if isinstance(setting_value, str):
+            with suppress(ValueError, TypeError):
+                values = setting_value.split(",")
+                if len(values) == len(setting_type._fields):
+                    return setting_type(*(json.loads(v) for v in values))
+
+        return _default_settings[setting]
+
     def _save_list(self, setting_name, setting_value):
         self.settings.remove(setting_name)
 
@@ -225,6 +246,9 @@ class _Settings:
 
         if isinstance(setting_value, BaseModel):
             return setting_value.model_dump_json()
+
+        if isinstance(setting_value, tuple):
+            return ",".join(str(v) for v in setting_value)
 
         if isinstance(setting_value, (Path, str)):
             return str(setting_value)

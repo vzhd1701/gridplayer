@@ -75,8 +75,11 @@ def PlaylistSettings() -> _PlaylistSettings:
     return _INSTANCE
 
 
-def session_field(setting_name):
-    return Field(default_factory=lambda: PlaylistSettings().get(setting_name))
+def session_field(setting_name, validate=False):
+    return Field(
+        default_factory=lambda: PlaylistSettings().get(setting_name),
+        validate_default=validate,
+    )
 
 
 def overrides_from_playlist(playlist) -> dict:

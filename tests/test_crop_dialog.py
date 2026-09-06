@@ -3,7 +3,7 @@ from types import SimpleNamespace
 
 from PyQt5.QtWidgets import QApplication, QDialog
 
-from gridplayer.dialogs.crop import SetCropDialog
+from gridplayer.dialogs.crop import QCompactCropPicker, SetCropDialog
 from gridplayer.params.static import VideoAspect, VideoCrop, VideoTransform
 
 
@@ -38,7 +38,7 @@ class _FakeBlock:
 
 def test_dialog_initializes_from_current_crop_and_bounds():
     block = _FakeBlock(VideoCrop(10, 20, 30, 40))
-    dialog = SetCropDialog(block)
+    dialog = SetCropDialog.for_video_block(block)
 
     assert [dialog._spins[k].value() for k in ("left", "top", "right", "bottom")] == [
         10,
@@ -52,7 +52,7 @@ def test_dialog_initializes_from_current_crop_and_bounds():
 
 def test_dialog_applies_crop_live_silently():
     block = _FakeBlock()
-    dialog = SetCropDialog(block)
+    dialog = SetCropDialog.for_video_block(block)
 
     dialog._spins["left"].setValue(15)
 
@@ -61,7 +61,7 @@ def test_dialog_applies_crop_live_silently():
 
 def test_dialog_ok_commits_crop_loudly():
     block = _FakeBlock()
-    dialog = SetCropDialog(block)
+    dialog = SetCropDialog.for_video_block(block)
 
     dialog._spins["bottom"].setValue(30)
     dialog.accept()
@@ -72,7 +72,7 @@ def test_dialog_ok_commits_crop_loudly():
 
 def test_dialog_cancel_restores_crop_and_aspect():
     block = _FakeBlock(aspect=VideoAspect.FIT)
-    dialog = SetCropDialog(block)
+    dialog = SetCropDialog.for_video_block(block)
 
     dialog._spins["left"].setValue(15)
     assert block.video_params.aspect_mode is VideoAspect.NONE
@@ -87,7 +87,7 @@ def test_dialog_cancel_restores_crop_and_aspect():
 
 def test_dialog_cancel_without_changes_is_noop():
     block = _FakeBlock(VideoCrop(5, 5, 5, 5), VideoAspect.STRETCH)
-    dialog = SetCropDialog(block)
+    dialog = SetCropDialog.for_video_block(block)
 
     dialog.reject()
 
@@ -97,7 +97,7 @@ def test_dialog_cancel_without_changes_is_noop():
 
 def test_dialog_reset_zeroes_crop_live():
     block = _FakeBlock(VideoCrop(10, 10, 10, 10))
-    dialog = SetCropDialog(block)
+    dialog = SetCropDialog.for_video_block(block)
 
     dialog._on_reset()
 
@@ -107,14 +107,14 @@ def test_dialog_reset_zeroes_crop_live():
 def test_dialog_dimension_fallback_when_unknown():
     block = _FakeBlock()
     block.video_tracks = {1: SimpleNamespace(video_dimensions=(0, 0))}
-    dialog = SetCropDialog(block)
+    dialog = SetCropDialog.for_video_block(block)
 
     assert dialog._spins["left"].maximum() == 9999
 
 
 def test_dialog_shows_video_vs_cropped_size():
     block = _FakeBlock()
-    dialog = SetCropDialog(block)
+    dialog = SetCropDialog.for_video_block(block)
 
     assert dialog._size_label.text() == "Video: 640x360 | Cropped: 640x360"
 
@@ -126,7 +126,7 @@ def test_dialog_shows_video_vs_cropped_size():
 def test_dialog_size_label_swaps_for_rotation():
     block = _FakeBlock()
     block.video_params.transform = VideoTransform.ROTATE_90
-    dialog = SetCropDialog(block)
+    dialog = SetCropDialog.for_video_block(block)
 
     assert dialog._spins["left"].maximum() == 360
 
@@ -138,6 +138,68 @@ def test_dialog_size_label_swaps_for_rotation():
 def test_dialog_hides_size_label_when_dimensions_unknown():
     block = _FakeBlock()
     block.video_tracks = {1: SimpleNamespace(video_dimensions=(0, 0))}
-    dialog = SetCropDialog(block)
+    dialog = SetCropDialog.for_video_block(block)
 
     assert dialog._size_label.isHidden()
+
+
+def test_get_crop_returns_value_on_accept(mocker):
+    def fake_exec(self):
+        self._spins["left"].setValue(7)
+        self.accept()
+        return self.result()
+
+    mocker.patch.object(SetCropDialog, "exec_", fake_exec)
+
+    assert SetCropDialog.get_crop(VideoCrop(0, 0, 0, 0)) == VideoCrop(7, 0, 0, 0)
+
+
+def test_get_crop_returns_none_on_reject(mocker):
+    def fake_exec(self):
+        self.reject()
+        return self.result()
+
+    mocker.patch.object(SetCropDialog, "exec_", fake_exec)
+
+    assert SetCropDialog.get_crop(VideoCrop(0, 0, 0, 0)) is None
+
+
+def test_dialog_preview_tracks_spins():
+    block = _FakeBlock()
+    dialog = SetCropDialog.for_video_block(block)
+
+    dialog._spins["left"].setValue(15)
+
+    assert (dialog._preview._frame_w, dialog._preview._frame_h) == (640, 360)
+    assert dialog._preview._left == 15
+
+
+def test_dialog_value_mode_edits_without_block():
+    dialog = SetCropDialog(VideoCrop(1, 2, 3, 4))
+
+    assert dialog._block is None
+    assert dialog._spins["left"].value() == 1
+    assert dialog._size_label.isHidden()
+    assert dialog._area_label.isHidden()
+    assert dialog._preview.isHidden()
+
+    dialog.accept()
+
+    assert dialog.result() == QDialog.Accepted
+    assert dialog._spin_crop() == VideoCrop(1, 2, 3, 4)
+
+
+def test_compact_picker_opens_value_mode_dialog(mocker):
+    picker = QCompactCropPicker()
+    captured = {}
+
+    def fake_get_crop(crop, parent):
+        captured["crop"] = crop
+        return VideoCrop(9, 9, 9, 9)
+
+    mocker.patch.object(SetCropDialog, "get_crop", fake_get_crop)
+
+    picker._open_dialog()
+
+    assert captured["crop"] == VideoCrop(0, 0, 0, 0)
+    assert picker.value == VideoCrop(9, 9, 9, 9)

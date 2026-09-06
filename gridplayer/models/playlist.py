@@ -4,6 +4,7 @@ from pathlib import Path
 from typing import Any
 
 from pydantic import BaseModel, Field, ValidationError, model_validator
+from pydantic_extra_types.color import Color
 
 from gridplayer.models.grid_state import GridState
 from gridplayer.models.video import Video
@@ -15,6 +16,7 @@ from gridplayer.params.static import (
     DropModifier,
     SeekSyncMode,
     VideoAspect,
+    VideoCrop,
     VideoRepeat,
     VideoTransform,
     WindowState,
@@ -39,6 +41,11 @@ class PlaylistVideoDefaults(BaseModel):
     random_loop: bool | None = None
     muted: bool | None = None
     paused: bool | None = None
+    rate: float | None = None
+    scale: float | None = None
+    volume: float | None = None
+    color: Color | None = None
+    crop: VideoCrop | None = None
     stream_quality: str | None = None
     auto_reload_timer: int | None = None
 

@@ -4,6 +4,10 @@ from enum import Enum, auto
 
 from gridplayer.params import env
 from gridplayer.params.static import (
+    MAX_RATE,
+    MAX_SCALE,
+    MIN_RATE,
+    MIN_SCALE,
     AudioChannelMode,
     DropAction,
     DropModifier,
@@ -20,6 +24,9 @@ class FieldKind(Enum):
     CHECKBOX = auto()
     COMBO = auto()
     SPIN = auto()
+    FLOAT_SPIN = auto()
+    CROP = auto()
+    COLOR = auto()
 
 
 class GridVisibility(Enum):
@@ -39,8 +46,10 @@ class SettingField:
     is_grid: bool = False
     menu_action: str | None = None
     combo_values: Callable[[], dict] | None = None
-    spin_min: int = 0
-    spin_max: int = 100
+    spin_min: float = 0
+    spin_max: float = 100
+    spin_decimals: int = 0
+    spin_step: float = 0.1
     spin_special: str | None = None
     spin_suffix: str | None = None
     enabled_by: str | None = None
@@ -373,18 +382,70 @@ PLAYLIST_FIELDS: tuple[SettingField, ...] = (
 
 VIDEO_FIELDS: tuple[SettingField, ...] = (
     _f(
+        settings_key="video_defaults/color",
+        video_attr="color",
+        kind=FieldKind.COLOR,
+        section=_t("Overlay"),
+        label=_t("Overlay color"),
+    ),
+    _f(
+        settings_key="video_defaults/audio_mode",
+        video_attr="audio_mode",
+        kind=FieldKind.COMBO,
+        section=_t("Audio"),
+        label=_t("Audio mode"),
+        combo_values=_audio_modes,
+    ),
+    _f(
+        settings_key="video_defaults/volume",
+        video_attr="volume",
+        kind=FieldKind.FLOAT_SPIN,
+        section=_t("Audio"),
+        label=_t("Volume"),
+        spin_min=0,
+        spin_max=1,
+        spin_decimals=2,
+        spin_step=0.05,
+    ),
+    _f(
+        settings_key="video_defaults/muted",
+        video_attr="muted",
+        kind=FieldKind.CHECKBOX,
+        section=_t("Audio"),
+        label=_t("Muted"),
+    ),
+    _f(
+        settings_key="video_defaults/scale",
+        video_attr="scale",
+        kind=FieldKind.FLOAT_SPIN,
+        section=_t("Video"),
+        label=_t("Zoom"),
+        spin_min=MIN_SCALE,
+        spin_max=MAX_SCALE,
+        spin_decimals=1,
+        spin_step=0.1,
+    ),
+    _f(
         settings_key="video_defaults/aspect",
         video_attr="aspect",
         kind=FieldKind.COMBO,
-        section="",
+        section=_t("Video"),
         label=_t("Aspect mode"),
         combo_values=_aspects,
+    ),
+    _f(
+        settings_key="video_defaults/crop",
+        video_attr="crop",
+        kind=FieldKind.CROP,
+        section=_t("Video"),
+        label=_t("Crop"),
+        spin_max=9999,
     ),
     _f(
         settings_key="video_defaults/transform",
         video_attr="transform",
         kind=FieldKind.COMBO,
-        section="",
+        section=_t("Video"),
         label=_t("Transform"),
         combo_values=_transforms,
     ),
@@ -392,38 +453,34 @@ VIDEO_FIELDS: tuple[SettingField, ...] = (
         settings_key="video_defaults/repeat",
         video_attr="repeat",
         kind=FieldKind.COMBO,
-        section="",
+        section=_t("Playback"),
         label=_t("Repeat mode"),
         combo_values=_repeat_modes,
-    ),
-    _f(
-        settings_key="video_defaults/audio_mode",
-        video_attr="audio_mode",
-        kind=FieldKind.COMBO,
-        section="",
-        label=_t("Audio mode"),
-        combo_values=_audio_modes,
     ),
     _f(
         settings_key="video_defaults/random_loop",
         video_attr="random_loop",
         kind=FieldKind.CHECKBOX,
-        section="",
+        section=_t("Playback"),
         label=_t("Start at random position"),
     ),
     _f(
         settings_key="video_defaults/paused",
         video_attr="paused",
         kind=FieldKind.CHECKBOX,
-        section="",
+        section=_t("Playback"),
         label=_t("Paused"),
     ),
     _f(
-        settings_key="video_defaults/muted",
-        video_attr="muted",
-        kind=FieldKind.CHECKBOX,
-        section="",
-        label=_t("Muted"),
+        settings_key="video_defaults/rate",
+        video_attr="rate",
+        kind=FieldKind.FLOAT_SPIN,
+        section=_t("Playback"),
+        label=_t("Playback speed"),
+        spin_min=MIN_RATE,
+        spin_max=MAX_RATE,
+        spin_decimals=2,
+        spin_step=0.1,
     ),
     _f(
         settings_key="video_defaults/stream_quality",
@@ -455,16 +512,4 @@ GRID_STATE_ATTR = {
     "playlist/grid_rows": "rows",
     "playlist/grid_cols": "cols",
     "playlist/grid_preallocate": "preallocate",
-}
-
-VIDEO_MODEL_ATTR = {
-    "video_defaults/aspect": "aspect_mode",
-    "video_defaults/transform": "transform",
-    "video_defaults/repeat": "repeat_mode",
-    "video_defaults/audio_mode": "audio_channel_mode",
-    "video_defaults/random_loop": "is_start_random",
-    "video_defaults/paused": "is_paused",
-    "video_defaults/muted": "is_muted",
-    "video_defaults/stream_quality": "stream_quality",
-    "video_defaults/auto_reload_timer": "auto_reload_timer_min",
 }

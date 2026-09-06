@@ -1,5 +1,5 @@
-from PyQt5.QtCore import QRectF, Qt
-from PyQt5.QtGui import QColor, QPainter, QPen
+from PyQt5.QtCore import QEvent, QPointF, QRectF, QSize, Qt, pyqtSignal
+from PyQt5.QtGui import QColor, QPainter, QPen, QPixmap, QPolygonF
 from PyQt5.QtWidgets import (
     QDialog,
     QDialogButtonBox,
@@ -10,6 +10,7 @@ from PyQt5.QtWidgets import (
     QPushButton,
     QSizePolicy,
     QSpinBox,
+    QToolButton,
     QVBoxLayout,
     QWidget,
 )
@@ -18,6 +19,7 @@ from gridplayer.params.static import VideoCrop, VideoTransform
 from gridplayer.utils.qt import translate
 
 _DIMENSION_FALLBACK = 9999
+_ZERO_CROP = VideoCrop(0, 0, 0, 0)
 
 _ROTATION_TRANSFORMS = {
     VideoTransform.ROTATE_90,
@@ -104,21 +106,39 @@ class _CropPreview(QWidget):
 
 
 class SetCropDialog(QDialog):
-    """Edits the active video crop; changes are applied live to the video."""
+    """Edits a VideoCrop value; can live-apply to a video block.
 
-    def __init__(self, video_block, parent=None):
+    Two modes:
+    - value mode (live_block=None): edits a plain crop value, e.g. the
+      video_defaults editor; only the margin spins are shown (there is no
+      frame to preview); the result is read via get_crop().
+    - video mode (live_block set): shows the schematic preview and applies
+      changes to the playing video live; cancel restores the original crop
+      and aspect mode.
+    """
+
+    def __init__(
+        self,
+        crop=_ZERO_CROP,
+        video_dimensions=(0, 0),
+        is_rotated=False,
+        parent=None,
+        live_block=None,
+    ):
         super().__init__(parent)
 
-        self._block = video_block
-        self._original_crop = video_block.video_params.crop
-        self._original_aspect = video_block.video_params.aspect_mode
+        self._block = live_block
+        self._original_crop = crop
+        self._original_aspect = (
+            live_block.video_params.aspect_mode if live_block is not None else None
+        )
 
         self.setWindowTitle(translate("Dialog - Set Crop", "Set Crop"))
         self.setModal(True)
         self.setMinimumWidth(450)
 
-        self._raw_width, self._raw_height = self._track_dimensions()
-        self._is_rotated = self._block.video_params.transform in _ROTATION_TRANSFORMS
+        self._raw_width, self._raw_height = video_dimensions
+        self._is_rotated = is_rotated
         width, height = self._display_dimensions()
 
         self._preview = _CropPreview()
@@ -136,9 +156,9 @@ class SetCropDialog(QDialog):
             label = QLabel(name_title)
             spin = QSpinBox()
             spin.setRange(0, dimension or _DIMENSION_FALLBACK)
-            spin.setValue(getattr(self._original_crop, name.capitalize()))
+            spin.setValue(getattr(crop, name.capitalize()))
             spin.setAlignment(Qt.AlignRight)
-            spin.valueChanged.connect(self._apply_live)
+            spin.valueChanged.connect(self._on_value_changed)
 
             grid.addWidget(label, row, col * 2)
             grid.addWidget(spin, row, col * 2 + 1)
@@ -181,33 +201,48 @@ class SetCropDialog(QDialog):
 
         self.setFixedSize(self.sizeHint())
 
+    @classmethod
+    def for_video_block(cls, video_block, parent=None):
+        """Video mode: edits the block's crop with live preview."""
+        return cls(
+            crop=video_block.video_params.crop,
+            video_dimensions=_block_track_dimensions(video_block),
+            is_rotated=video_block.video_params.transform in _ROTATION_TRANSFORMS,
+            parent=parent,
+            live_block=video_block,
+        )
+
+    @classmethod
+    def get_crop(cls, crop=_ZERO_CROP, parent=None):
+        """Value mode: returns the edited crop, or None on cancel."""
+        dialog = cls(crop=crop, parent=parent)
+        return dialog._spin_crop() if dialog.exec_() else None
+
     def accept(self):
-        self._set_block_crop(is_silent=False)
+        if self._block is not None:
+            self._block.set_crop(self._spin_crop(), is_silent=False)
+
         super().accept()
 
     def reject(self):
-        self._restore_original()
+        if self._block is not None:
+            if self._block.video_params.crop != self._original_crop:
+                self._block.set_crop(self._original_crop, is_silent=True)
+
+            if self._block.video_params.aspect_mode != self._original_aspect:
+                self._block.set_aspect(self._original_aspect)
+
         super().reject()
 
     def _on_reset(self):
         for spin in self._spins.values():
             spin.setValue(0)
 
-    def _apply_live(self):
-        self._set_block_crop(is_silent=True)
+    def _on_value_changed(self):
+        if self._block is not None:
+            self._block.set_crop(self._spin_crop(), is_silent=True)
+
         self._update_size_label()
-
-    def _set_block_crop(self, is_silent):
-        crop = self._spin_crop()
-
-        self._block.set_crop(crop, is_silent=is_silent)
-
-    def _restore_original(self):
-        if self._block.video_params.crop != self._original_crop:
-            self._block.set_crop(self._original_crop, is_silent=True)
-
-        if self._block.video_params.aspect_mode != self._original_aspect:
-            self._block.set_aspect(self._original_aspect)
 
     def _spin_crop(self):
         return VideoCrop(
@@ -216,16 +251,6 @@ class SetCropDialog(QDialog):
             self._spins["right"].value(),
             self._spins["bottom"].value(),
         )
-
-    def _track_dimensions(self):
-        tracks = self._block.video_tracks or {}
-        track = tracks.get(self._block.video_params.video_track_id)
-        if track is None and tracks:
-            track = next(iter(tracks.values()))
-        if track is None:
-            return 0, 0
-
-        return track.video_dimensions
 
     def _display_dimensions(self):
         if self._is_rotated:
@@ -291,3 +316,119 @@ class SetCropDialog(QDialog):
             )
 
         self._preview.set_crop(video_w, video_h, *edges)
+
+
+def _block_track_dimensions(block):
+    tracks = block.video_tracks or {}
+    track = tracks.get(block.video_params.video_track_id)
+    if track is None and tracks:
+        track = next(iter(tracks.values()))
+    return (0, 0) if track is None else track.video_dimensions
+
+
+class QCompactCropPicker(QWidget):
+    """Compact crop readout that opens SetCropDialog for editing."""
+
+    value_changed = pyqtSignal()
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self._value = VideoCrop(0, 0, 0, 0)
+
+        layout = QHBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(4)
+
+        self._icon_labels = {}
+        self._readout_labels = {}
+        for direction in ("left", "right", "up", "down"):
+            icon_label = QLabel()
+            icon_label.setFixedSize(QSize(10, 10))
+            layout.addWidget(icon_label)
+            self._icon_labels[direction] = icon_label
+
+            value_label = QLabel()
+            layout.addWidget(value_label)
+            self._readout_labels[direction] = value_label
+
+        edit_button = QToolButton()
+        edit_button.setText("…")
+        edit_button.setFixedSize(20, 20)
+        edit_button.clicked.connect(self._open_dialog)
+        layout.addWidget(edit_button)
+        layout.addStretch(1)
+
+        self._update_arrow_icons()
+        self._update_readout()
+
+    def changeEvent(self, event):
+        super().changeEvent(event)
+        if event.type() == QEvent.PaletteChange:
+            self._update_arrow_icons()
+
+    def _update_arrow_icons(self):
+        for direction, label in self._icon_labels.items():
+            label.setPixmap(self._arrow_pixmap(direction))
+
+    def _arrow_pixmap(self, direction: str, size: int = 10) -> QPixmap:
+        color = QColor(self.palette().color(self.foregroundRole()))
+
+        pixmap = QPixmap(size, size)
+        pixmap.fill(Qt.transparent)
+
+        painter = QPainter(pixmap)
+        painter.setRenderHint(QPainter.Antialiasing)
+        painter.setBrush(color)
+        painter.setPen(Qt.NoPen)
+
+        if direction == "left":
+            points = [
+                QPointF(size * 0.8, 0),
+                QPointF(size * 0.8, size),
+                QPointF(0, size / 2),
+            ]
+        elif direction == "right":
+            points = [
+                QPointF(size * 0.2, 0),
+                QPointF(size * 0.2, size),
+                QPointF(size, size / 2),
+            ]
+        elif direction == "up":
+            points = [
+                QPointF(0, size * 0.8),
+                QPointF(size, size * 0.8),
+                QPointF(size / 2, 0),
+            ]
+        else:  # down
+            points = [
+                QPointF(0, size * 0.2),
+                QPointF(size, size * 0.2),
+                QPointF(size / 2, size),
+            ]
+
+        painter.drawPolygon(QPolygonF(points))
+        painter.end()
+        return pixmap
+
+    @property
+    def value(self) -> VideoCrop:
+        return self._value
+
+    @value.setter
+    def value(self, crop: VideoCrop):
+        if crop == self._value:
+            return
+        self._value = crop
+        self._update_readout()
+        self.value_changed.emit()
+
+    def _update_readout(self):
+        self._readout_labels["left"].setText(str(self._value.Left))
+        self._readout_labels["right"].setText(str(self._value.Right))
+        self._readout_labels["up"].setText(str(self._value.Top))
+        self._readout_labels["down"].setText(str(self._value.Bottom))
+
+    def _open_dialog(self):
+        crop = SetCropDialog.get_crop(self._value, parent=self.window())
+        if crop is not None:
+            self.value = crop

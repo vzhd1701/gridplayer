@@ -14,14 +14,14 @@ from gridplayer.dialogs.rename_dialog import QVideoRenameDialog
 from gridplayer.exceptions import PlayerException
 from gridplayer.models.stream import Streams
 from gridplayer.models.video import (
-    MAX_RATE,
-    MAX_SCALE,
-    MIN_RATE,
-    MIN_SCALE,
     Video,
     VideoBlockMime,
 )
 from gridplayer.params.static import (
+    MAX_RATE,
+    MAX_SCALE,
+    MIN_RATE,
+    MIN_SCALE,
     OVERLAY_ACTIVITY_EVENT,
     PLAYER_ID_LENGTH,
     VIDEO_END_LOOP_MARGIN_MS,

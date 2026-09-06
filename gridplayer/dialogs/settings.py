@@ -3,7 +3,7 @@ import logging
 import subprocess
 
 from PyQt5.QtCore import QUrl
-from PyQt5.QtGui import QDesktopServices, QIcon
+from PyQt5.QtGui import QDesktopServices
 from PyQt5.QtWidgets import (
     QCheckBox,
     QComboBox,

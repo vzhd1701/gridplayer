@@ -73,7 +73,9 @@ class ActiveBlockManager(ManagerBase):
         if self.is_no_active_block or not self.is_active_has_video():
             return
 
-        dialog = SetCropDialog(self._ctx.active_block, parent=self.parent())
+        dialog = SetCropDialog.for_video_block(
+            self._ctx.active_block, parent=self.parent()
+        )
 
         dialog.exec_()
 
