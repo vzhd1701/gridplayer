@@ -1,5 +1,6 @@
 import logging
 from abc import ABC, abstractmethod
+from contextlib import suppress
 from pathlib import Path
 
 from PyQt5.QtCore import QSize, Qt, pyqtSignal
@@ -53,6 +54,18 @@ def apply_vlc_hw_surface_geometry(
         width + 2 * offset,
         height + 2 * offset,
     )
+
+
+def remove_snapshot_file(snapshot_file: str) -> None:
+    """Remove a temp snapshot file and its directory, tolerating races.
+
+    Never let a missing/already-deleted snapshot file raise inside a Qt slot:
+    an unhandled exception in a slot aborts the whole app.
+    """
+    Path(snapshot_file).unlink(missing_ok=True)
+
+    with suppress(OSError):
+        Path(snapshot_file).parent.rmdir()
 
 
 class PauseSnapshot(QLabel):
@@ -324,8 +337,7 @@ class VideoFrameVLC(QWidget, metaclass=QABC):
         self.pause_snapshot.show()
 
         if snapshot_file:
-            Path(snapshot_file).unlink()
-            Path(snapshot_file).parent.rmdir()
+            remove_snapshot_file(snapshot_file)
 
         if self._is_status_change_in_progress:
             self.video_driver.set_pause(True)

@@ -24,8 +24,6 @@ from gridplayer.vlc_player.player_event_waiter import (
 from gridplayer.vlc_player.player_tracks_manager import TracksManager
 from gridplayer.vlc_player.static import Media, MediaInput, NotPausedError
 
-SNAPSHOT_TIMEOUT = 15
-
 MEDIA_EXTRACT_RETRY_TIME = 0.1
 
 # https://github.com/videolan/vlc/blob/c650ce1a4e352cc04192229a8878b8b6c312527d/include/vlc_aout.h#L92
@@ -454,14 +452,16 @@ class VlcPlayerBase(ABC):
 
         self._log.debug(f"Taking snapshot to {file_path}")
 
-        try:
-            with self._event_waiter.waiting_for("snapshot_taken", SNAPSHOT_TIMEOUT):
-                res = self._media_player.video_take_snapshot(0, str(file_path), 0, 0)
-        except TimeoutError:
-            self._log.error("Timed out to take snapshot")
-            res = -1
+        # libvlc_video_take_snapshot returns 0 whenever a vout exists, even if
+        # the vout-side grab times out (VLC waits 500ms) and nothing is
+        # written. The save is synchronous in VLC 3.x, so the file itself is
+        # the reliable result. The MediaPlayerSnapshotTaken event can't be
+        # used: it is only emitted on success and it is broadcast to every
+        # media player sharing the libvlc instance, so another player's
+        # snapshot would wake this player's waiter.
+        res = self._media_player.video_take_snapshot(0, str(file_path), 0, 0)
 
-        if res != 0:
+        if res != 0 or not file_path.is_file():
             self._log.error("Failed to take snapshot")
             file_path.unlink(missing_ok=True)
             file_path.parent.rmdir()
