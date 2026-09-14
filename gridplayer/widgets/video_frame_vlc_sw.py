@@ -213,12 +213,12 @@ class VideoDriverVLCSW(VLCVideoDriverThreaded):
                     self._height,
                     QImage.Format_RGB32,
                 )
-        except AttributeError:
-            # Very rare race condition
+                # Copy while the lock is held; QImage from a buffer does not copy.
+                self._pix = QPixmap.fromImage(px)
+        except (AttributeError, RuntimeError):
+            # Very rare race: mapping already closed by decoder.stop()
             self._log.warning("Shared memory is cleared already")
             return
-
-        self._pix = QPixmap.fromImage(px)
 
         self.image_ready_sig.emit()
 
@@ -276,16 +276,12 @@ class VideoFrameVLCSW(VideoFrameVLCProcess):
         if self._is_cleanup_requested:
             return True
 
-        self._is_cleanup_requested = True
-
-        self.media_track = None
-
         # need to delete these manually to avoid occasional segmentation fault
         # for some reason it won't crash if fitInView is not called (on Windows)
         # !must! come before video_driver.cleanup()
         self._scene.removeItem(self._videoitem)
 
-        self.video_driver.cleanup()
+        return super().cleanup()
 
     def take_snapshot(self) -> None:
         # no need to take snapshot, last frame stays in QGraphicsView on stop

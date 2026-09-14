@@ -14,7 +14,7 @@ class releasing:
         return self.thing
 
     def __exit__(self, *exc_info):
-        with contextlib.suppress(ValueError):
+        with contextlib.suppress(ValueError, RuntimeError):
             self.thing.release()
 
 

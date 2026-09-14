@@ -72,8 +72,9 @@ class ImageDecoder:
 
         self._stopped = True
 
-        # make sure that memory lock released in case it was locked mid-callback
-        with contextlib.suppress(ValueError):
+        # make sure that memory lock released in case it was locked mid-callback.
+        # multiprocessing.Lock raises ValueError; threading.Lock raises RuntimeError.
+        with contextlib.suppress(ValueError, RuntimeError):
             self._shared_memory.lock.release()
 
         with self._shared_memory:

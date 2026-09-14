@@ -173,8 +173,9 @@ Due to libvlc software library limitations, video decoding is split into paralle
 videos are handled by a single decoder process using the "Videos per process" setting. Setting this option too high may
 cause a high CPU load and application freeze. The optimal value is 4 videos per process.
 
-There is also "Hardware SP" mode. It handles video decoding within the same process in which GridPlayer runs. It is not
-recommended to use with many videos (>4-6) because it may cause high CPU load and application freeze.
+There are also single-process ("SP") modes. "Hardware SP" and "Software SP" handle video decoding within the same
+process in which GridPlayer runs. They are not recommended to use with many videos (>4-6) because they may cause high
+CPU load and application freeze.
 
 Due to OS inter-process restrictions, "Hardware SP" is the only available hardware mode in macOS.
 

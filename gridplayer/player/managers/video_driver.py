@@ -10,12 +10,14 @@ from gridplayer.widgets.video_frame_dummy import VideoFrameDummy
 from gridplayer.widgets.video_frame_vlc_hw import InstanceProcessVLCHW, VideoFrameVLCHW
 from gridplayer.widgets.video_frame_vlc_hw_sp import VideoFrameVLCHWSP
 from gridplayer.widgets.video_frame_vlc_sw import InstanceProcessVLCSW, VideoFrameVLCSW
+from gridplayer.widgets.video_frame_vlc_sw_sp import VideoFrameVLCSWSP
 
 
 class VideoDriverManager(ManagerBase):
     _video_drivers = {
         VideoDriver.DUMMY: VideoFrameDummy,
         VideoDriver.VLC_SW: VideoFrameVLCSW,
+        VideoDriver.VLC_SW_SP: VideoFrameVLCSWSP,
         VideoDriver.VLC_HW: VideoFrameVLCHW,
         VideoDriver.VLC_HW_SP: VideoFrameVLCHWSP,
     }
@@ -68,7 +70,10 @@ class VideoDriverManager(ManagerBase):
     def set_log_level_vlc(self, log_level):
         if self._process_manager:
             self._process_manager.set_log_level_vlc(log_level)
-        elif Settings().get("player/video_driver") == VideoDriver.VLC_HW_SP:
+        elif Settings().get("player/video_driver") in {
+            VideoDriver.VLC_HW_SP,
+            VideoDriver.VLC_SW_SP,
+        }:
             for vb in self._ctx.video_blocks:
                 driver = vb.video_driver
                 if driver is not None and hasattr(driver, "set_log_level_vlc"):

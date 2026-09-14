@@ -276,6 +276,7 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
             video_drivers = {
                 VideoDriver.VLC_HW_SP: f"{self.tr('Hardware SP')} <VLC {env.VLC_VERSION}>",
                 VideoDriver.VLC_SW: f"{self.tr('Software')} <VLC {env.VLC_VERSION}>",
+                VideoDriver.VLC_SW_SP: f"{self.tr('Software SP')} <VLC {env.VLC_VERSION}>",
                 VideoDriver.DUMMY: self.tr("Dummy"),
             }
         else:
@@ -283,6 +284,7 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
                 VideoDriver.VLC_HW: f"{self.tr('Hardware')} <VLC {env.VLC_VERSION}>",
                 VideoDriver.VLC_HW_SP: f"{self.tr('Hardware SP')} <VLC {env.VLC_VERSION}>",
                 VideoDriver.VLC_SW: f"{self.tr('Software')} <VLC {env.VLC_VERSION}>",
+                VideoDriver.VLC_SW_SP: f"{self.tr('Software SP')} <VLC {env.VLC_VERSION}>",
                 VideoDriver.DUMMY: self.tr("Dummy"),
             }
 

@@ -88,6 +88,7 @@ class VideoInitialState(AutoName):
 
 class VideoDriver(AutoName):
     VLC_SW = auto()
+    VLC_SW_SP = auto()
     VLC_HW = auto()
     VLC_HW_SP = auto()
     DUMMY = auto()
