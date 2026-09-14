@@ -7,7 +7,7 @@ from PyQt5.QtWidgets import QFileDialog, QMessageBox
 from gridplayer.dialogs.messagebox import QCustomMessageBox
 from gridplayer.dialogs.playlist_settings import PlaylistSettingsDialog
 from gridplayer.models.grid_state import GridState
-from gridplayer.models.playlist import Playlist
+from gridplayer.models.playlist import Playlist, UnsupportedPlaylistVersion
 from gridplayer.models.video import filter_video_uris
 from gridplayer.params.static import SeekSyncMode, UnsavedChangesMode, WindowState
 from gridplayer.player.managers.base import ManagerBase
@@ -176,6 +176,18 @@ class PlaylistManager(ManagerBase):
     def load_playlist_file(self, playlist_file: Path):
         try:
             playlist = Playlist.read(playlist_file)
+        except UnsupportedPlaylistVersion as e:
+            self._log.error(f"Playlist parse error: {e}")
+            self.error.emit(
+                "{}\n\n{}".format(
+                    translate(
+                        "Error",
+                        "This playlist was saved with a newer GridPlayer",
+                    ),
+                    playlist_file,
+                )
+            )
+            return
         except ValueError as e:
             self._log.error(f"Playlist parse error: {e}")
             self.error.emit(

@@ -136,7 +136,7 @@ def grid_overrides_from_state(grid_state) -> dict:
 
 
 def grid_state_for_dump(live) -> GridState:
-    """GridState for the #P: dump.
+    """GridState for the playlist file dump.
 
     Only session-overridden grid attrs are explicit; inherited attrs are left
     to defaults so the fields_set-based dump omits them. ``cells`` and

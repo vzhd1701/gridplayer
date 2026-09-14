@@ -7,7 +7,13 @@ import pytest
 from PyQt5.QtWidgets import QApplication, QMessageBox, QWidget
 
 from gridplayer.models.grid_state import GridCell, GridState
-from gridplayer.models.playlist import Playlist, Snapshot
+from gridplayer.models.playlist import (
+    FORMAT_ID,
+    FORMAT_VERSION,
+    Playlist,
+    Snapshot,
+    UnsupportedPlaylistVersion,
+)
 from gridplayer.models.video import Video
 from gridplayer.params.static import (
     AudioChannelMode,
@@ -351,8 +357,7 @@ def test_playlist_dumps_with_none_videos():
     text = Playlist(videos=None).dumps()
     parsed = Playlist.parse(text)
     assert parsed.videos == []
-    assert text == "#GRIDPLAYER\n"
-    assert "#P:" not in text
+    assert json.loads(text) == {"format": FORMAT_ID, "version": FORMAT_VERSION}
 
 
 def test_playlist_parse_accepts_header_only():
@@ -387,16 +392,18 @@ def test_playlist_dump_keeps_position_and_state_with_overrides():
     video = Video(uri="http://example.com/a.mp4", current_position=125, is_paused=True)
 
     text = Playlist(videos=[video], save_position=True, save_state=False).dumps()
-    assert '"current_position":125' in text
-    assert '"is_paused"' not in text
-    assert "playback_state" not in text
+    video_dump = json.loads(text)["videos"][0]
+    assert video_dump["current_position"] == 125
+    assert "is_paused" not in video_dump
+    assert "playback_state" not in video_dump
     parsed = Playlist.parse(text)
     assert parsed.videos[0].current_position == 125
 
     text = Playlist(videos=[video], save_state=True).dumps()
-    assert '"playback_state":"paused"' in text
-    assert '"is_paused"' not in text
-    assert '"is_stopped"' not in text
+    video_dump = json.loads(text)["videos"][0]
+    assert video_dump["playback_state"] == "paused"
+    assert "is_paused" not in video_dump
+    assert "is_stopped" not in video_dump
     parsed = Playlist.parse(text)
     assert parsed.videos[0].is_paused is True
     assert parsed.videos[0].is_stopped is False
@@ -411,9 +418,10 @@ def test_playlist_dump_writes_stopped_when_save_state():
     )
 
     text = Playlist(videos=[video], save_state=True).dumps()
-    assert '"playback_state":"stopped"' in text
-    assert '"is_paused"' not in text
-    assert '"is_stopped"' not in text
+    video_dump = json.loads(text)["videos"][0]
+    assert video_dump["playback_state"] == "stopped"
+    assert "is_paused" not in video_dump
+    assert "is_stopped" not in video_dump
     parsed = Playlist.parse(text)
     assert parsed.videos[0].is_paused is True
     assert parsed.videos[0].is_stopped is True
@@ -431,8 +439,9 @@ def test_playlist_parse_playback_state_stopped():
     assert parsed.videos[0].playback_state is VideoInitialState.STOPPED
     assert parsed.videos[0].is_paused is True
     assert parsed.videos[0].is_stopped is True
-    assert '"is_paused"' not in parsed.dumps()
-    assert '"playback_state":"stopped"' in parsed.dumps()
+    dumped = json.loads(parsed.dumps())["videos"][0]
+    assert "is_paused" not in dumped
+    assert dumped["playback_state"] == "stopped"
 
 
 def test_playlist_parse_old_paused_video_is_not_stopped():
@@ -453,18 +462,19 @@ def test_playlist_migrates_repeat_video_default():
     )
 
     assert playlist.video_defaults.end_action is VideoEndAction.STOP
-    dumped = playlist.dumps()
-    assert '"repeat":' not in dumped
-    assert '"end_action":"stop"' in dumped
+    dumped = json.loads(playlist.dumps())
+    defaults = dumped["settings"]["video_defaults"]
+    assert "repeat" not in defaults
+    assert defaults["end_action"] == "stop"
 
 
 def test_playlist_migrates_repeat_mode_on_video():
     video = Video(uri="http://example.com/a.mp4", repeat_mode="dir")
 
     assert video.end_action is VideoEndAction.NEXT_FILE
-    dumped = Playlist(videos=[video]).dumps()
-    assert '"repeat_mode":' not in dumped
-    assert '"end_action":"next_file"' in dumped
+    dumped = json.loads(Playlist(videos=[video]).dumps())["videos"][0]
+    assert "repeat_mode" not in dumped
+    assert dumped["end_action"] == "next_file"
 
 
 def test_playlist_migrates_paused_video_default():
@@ -473,9 +483,10 @@ def test_playlist_migrates_paused_video_default():
     )
 
     assert playlist.video_defaults.initial_state is VideoInitialState.PAUSED
-    dumped = playlist.dumps()
-    assert '"paused":' not in dumped
-    assert '"initial_state":"paused"' in dumped
+    dumped = json.loads(playlist.dumps())
+    defaults = dumped["settings"]["video_defaults"]
+    assert "paused" not in defaults
+    assert defaults["initial_state"] == "paused"
 
 
 def test_load_playlist_file_accepts_empty_template(tmp_path, mocker):
@@ -730,9 +741,7 @@ def test_is_playlist_saved_command():
 
 
 def _grid_in_dump(text):
-    lines = text.splitlines()
-    params_line = next(line for line in lines if line.startswith("#P:"))
-    return json.loads(params_line[3:])["grid_state"]
+    return json.loads(text)["settings"]["grid_state"]
 
 
 def test_playlist_dump_omits_inherited_grid_keys():
@@ -795,8 +804,7 @@ def test_playlist_dump_keeps_snapshot_grid_state():
 def test_playlist_dump_omits_empty_grid_state_and_snapshots():
     text = Playlist(videos=[]).dumps()
 
-    assert text == "#GRIDPLAYER\n"
-    assert "#P:" not in text
+    assert json.loads(text) == {"format": FORMAT_ID, "version": FORMAT_VERSION}
 
     parsed = Playlist.parse(text)
 
@@ -949,10 +957,13 @@ def test_playlist_dump_relative_paths(tmp_path):
 
     text = playlist.dumps(base_dir=tmp_path)
 
-    lines = text.splitlines()
-    assert lines[1].startswith("#P:")
-    assert '"save_paths_relative":true' in lines[1]
-    assert lines[-2:] == ["videos/a.mp4", "http://example.com/b.mp4"]
+    doc = json.loads(text)
+    assert set(doc) <= {"format", "version", "settings", "videos", "snapshots"}
+    assert doc["settings"]["save_paths_relative"] is True
+    assert [video["uri"] for video in doc["videos"]] == [
+        "videos/a.mp4",
+        "http://example.com/b.mp4",
+    ]
     assert str(tmp_path) not in text
 
 
@@ -962,7 +973,7 @@ def test_playlist_dump_relative_paths_requires_flag(tmp_path):
 
     text = playlist.dumps(base_dir=tmp_path)
 
-    assert str(video_file) in text
+    assert json.loads(text)["videos"][0]["uri"] == str(video_file)
     assert "save_paths_relative" not in text
 
 
@@ -976,7 +987,7 @@ def test_playlist_dump_relative_paths_falls_back_to_absolute(tmp_path, mocker):
 
     text = playlist.dumps(base_dir=tmp_path)
 
-    assert str(video_file) in text
+    assert json.loads(text)["videos"][0]["uri"] == str(video_file)
 
 
 def test_playlist_parse_resolves_relative_paths_against_base_dir(tmp_path):
@@ -1026,7 +1037,7 @@ def test_playlist_dump_relative_paths_follows_settings_when_unset(tmp_path, mock
 
     text = playlist.dumps(base_dir=tmp_path)
 
-    assert "videos/a.mp4" in text.splitlines()
+    assert json.loads(text)["videos"][0]["uri"] == "videos/a.mp4"
     assert str(tmp_path) not in text
 
 
@@ -1042,7 +1053,7 @@ def test_playlist_dump_parent_relative_paths_roundtrip(tmp_path):
 
     text = playlist.dumps(base_dir=playlist_dir)
 
-    assert "../media/a.mp4" in text.splitlines()
+    assert json.loads(text)["videos"][0]["uri"] == "../media/a.mp4"
 
     parsed = Playlist.parse(text, base_dir=playlist_dir)
 
@@ -1057,7 +1068,7 @@ def test_playlist_save_read_relative_paths(tmp_path):
     )
 
     text = playlist_file.read_text(encoding="utf-8")
-    assert "videos/a.mp4" in text.splitlines()
+    assert json.loads(text)["videos"][0]["uri"] == "videos/a.mp4"
 
     parsed = Playlist.read(playlist_file)
     assert parsed.videos[0].uri == video_file
@@ -1075,7 +1086,9 @@ def test_playlist_relative_snapshot_uris_match_videos(tmp_path):
     )
 
     text = playlist.dumps(base_dir=tmp_path)
-    assert '"uri":"videos/a.mp4"' in text
+    doc = json.loads(text)
+    assert doc["videos"][0]["uri"] == "videos/a.mp4"
+    assert doc["snapshots"]["0"]["videos"][0]["uri"] == "videos/a.mp4"
 
     parsed = Playlist.parse(text, base_dir=tmp_path)
 
@@ -1118,3 +1131,198 @@ def test_playlist_parse_converts_absolute_snapshot_file_uris_to_path(tmp_path):
 
     assert parsed.videos[0].uri == parsed.snapshots[0].videos[0].uri == video_file
     assert isinstance(parsed.snapshots[0].videos[0].uri, Path)
+
+
+def test_playlist_json_dump_uses_envelope_keys():
+    video = _video("a")
+    text = Playlist(
+        videos=[video],
+        disable_overlay=True,
+        snapshots={
+            0: Snapshot(grid_state=GridState(), videos=[video.model_copy()]),
+        },
+    ).dumps()
+    doc = json.loads(text)
+
+    assert list(doc)[:2] == ["format", "version"]
+    assert doc["format"] == FORMAT_ID
+    assert doc["version"] == FORMAT_VERSION
+    assert set(doc) == {"format", "version", "settings", "videos", "snapshots"}
+    assert "disable_overlay" not in doc
+    assert doc["settings"]["disable_overlay"] is True
+    assert doc["videos"][0]["uri"] == "http://example.com/a.mp4"
+    assert "snapshots" not in doc["settings"]
+    assert b'"format": "gridplayer-playlist"' in text.encode("utf-8")[:64]
+
+    parsed = Playlist.parse(text)
+    assert parsed.disable_overlay is True
+    assert parsed.videos[0].uri == video.uri
+    assert parsed.snapshots[0].videos[0].uri == video.uri
+
+
+def test_playlist_json_round_trip():
+    playlist = Playlist(
+        videos=[_video("a")],
+        disable_overlay=True,
+        seek_sync_mode=SeekSyncMode.PERCENT,
+        save_state=True,
+    )
+    parsed = Playlist.parse(playlist.dumps())
+
+    assert parsed.disable_overlay is True
+    assert parsed.seek_sync_mode is SeekSyncMode.PERCENT
+    assert parsed.videos[0].uri == "http://example.com/a.mp4"
+
+
+def test_playlist_parse_json_missing_version_is_v1():
+    parsed = Playlist.parse(
+        json.dumps(
+            {
+                "format": FORMAT_ID,
+                "settings": {"disable_overlay": True},
+                "videos": [{"uri": "http://example.com/a.mp4"}],
+            }
+        )
+    )
+
+    assert parsed.disable_overlay is True
+    assert parsed.videos[0].uri == "http://example.com/a.mp4"
+
+
+def test_playlist_parse_rejects_wrong_format_id():
+    with pytest.raises(ValueError, match="Playlist format is not valid"):
+        Playlist.parse(json.dumps({"format": "other", "version": 1}))
+
+
+def test_playlist_parse_rejects_newer_version():
+    with pytest.raises(UnsupportedPlaylistVersion) as exc_info:
+        Playlist.parse(json.dumps({"format": FORMAT_ID, "version": FORMAT_VERSION + 1}))
+
+    assert exc_info.value.version == FORMAT_VERSION + 1
+
+
+def test_playlist_parse_rejects_invalid_json():
+    with pytest.raises(ValueError, match="Playlist format is not valid"):
+        Playlist.parse("{not json")
+
+
+def test_playlist_parse_header_plus_json_uses_legacy_path():
+    json_body = Playlist(videos=[], disable_overlay=True).dumps()
+    parsed = Playlist.parse("#GRIDPLAYER\n" + json_body)
+
+    assert parsed.videos == []
+    assert parsed.disable_overlay is None
+
+
+def test_playlist_read_strips_utf8_bom(tmp_path):
+    path = tmp_path / "bom.gpls"
+    body = Playlist(videos=[], disable_overlay=True).dumps()
+    path.write_bytes(b"\xef\xbb\xbf" + body.encode("utf-8"))
+
+    parsed = Playlist.read(path)
+
+    assert parsed.disable_overlay is True
+    assert parsed.videos == []
+
+
+def test_playlist_parse_compact_json():
+    body = json.dumps(
+        {
+            "format": FORMAT_ID,
+            "version": FORMAT_VERSION,
+            "settings": {"disable_overlay": True},
+            "videos": [{"uri": "http://example.com/a.mp4"}],
+        },
+        separators=(",", ":"),
+    )
+
+    parsed = Playlist.parse(body)
+
+    assert parsed.disable_overlay is True
+    assert parsed.videos[0].uri == "http://example.com/a.mp4"
+    assert b'"format":"gridplayer-playlist"' in body.encode("utf-8")[:64]
+
+
+def test_playlist_parse_json_skips_invalid_videos():
+    parsed = Playlist.parse(
+        json.dumps(
+            {
+                "format": FORMAT_ID,
+                "version": 1,
+                "videos": [
+                    {"uri": "http://example.com/good.mp4"},
+                    {"uri": "http://example.com/bad.mp4", "rate": "nope"},
+                    "not-an-object",
+                    {"uri": 123},
+                    {"no_uri": True},
+                    {"uri": "http://example.com/also-good.mp4"},
+                ],
+            }
+        )
+    )
+
+    assert [video.uri for video in parsed.videos] == [
+        "http://example.com/good.mp4",
+        "http://example.com/also-good.mp4",
+    ]
+
+
+def test_playlist_parse_json_rejects_non_object_settings():
+    with pytest.raises(ValueError, match="Playlist format is not valid"):
+        Playlist.parse(json.dumps({"format": FORMAT_ID, "version": 1, "settings": []}))
+
+
+def test_playlist_parse_json_rejects_version_zero():
+    with pytest.raises(ValueError, match="Playlist format is not valid"):
+        Playlist.parse(json.dumps({"format": FORMAT_ID, "version": 0}))
+
+
+def test_playlist_parse_json_rejects_bool_version():
+    with pytest.raises(ValueError, match="Playlist format is not valid"):
+        Playlist.parse(json.dumps({"format": FORMAT_ID, "version": True}))
+
+
+def test_load_playlist_file_rejects_newer_version(tmp_path, mocker):
+    manager, _parent = _make_manager()
+    mocker.patch.object(manager, "load_playlist", return_value=True)
+
+    path = tmp_path / "new.gpls"
+    path.write_text(
+        json.dumps({"format": FORMAT_ID, "version": FORMAT_VERSION + 1}),
+        encoding="utf-8",
+    )
+
+    errors = []
+    manager.error.connect(errors.append)
+
+    manager.load_playlist_file(path)
+
+    assert len(errors) == 1
+    assert "This playlist was saved with a newer GridPlayer" in errors[0]
+    manager.load_playlist.assert_not_called()
+
+
+def test_load_playlist_file_rejects_invalid_settings(tmp_path, mocker):
+    manager, _parent = _make_manager()
+    mocker.patch.object(manager, "load_playlist", return_value=True)
+
+    path = tmp_path / "bad.gpls"
+    path.write_text(
+        json.dumps(
+            {
+                "format": FORMAT_ID,
+                "version": 1,
+                "settings": {"overlay_timeout": "nope"},
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    errors = []
+    manager.error.connect(errors.append)
+
+    manager.load_playlist_file(path)
+
+    assert len(errors) == 1
+    assert "Invalid playlist format!" in errors[0]
+    manager.load_playlist.assert_not_called()

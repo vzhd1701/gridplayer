@@ -8,6 +8,8 @@
     <glob pattern="*.gpls"/>
     <magic priority="50">
       <match type="string" value="#GRIDPLAYER" offset="0"/>
+      <match type="string" value='"format": "gridplayer-playlist"' offset="0:64"/>
+      <match type="string" value='"format":"gridplayer-playlist"' offset="0:64"/>
     </magic>
     <icon name="{APP_ID}.gpls"/>
   </mime-type>

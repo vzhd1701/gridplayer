@@ -1,7 +1,7 @@
 import json
 import logging
 from pathlib import Path
-from typing import Any
+from typing import Any, NoReturn
 
 from pydantic import BaseModel, Field, ValidationError, model_validator
 from pydantic_extra_types.color import Color
@@ -27,7 +27,20 @@ from gridplayer.settings import Settings
 
 logger = logging.getLogger(__name__)
 
+FORMAT_ID = "gridplayer-playlist"
+FORMAT_VERSION = 1
+
 VideosList = list[Video]
+
+
+class UnsupportedPlaylistVersion(ValueError):
+    def __init__(self, version: int) -> None:
+        self.version = version
+        super().__init__(f"Playlist format version {version} is not supported")
+
+
+def _invalid_playlist() -> NoReturn:
+    raise ValueError("Playlist format is not valid")
 
 
 class Snapshot(BaseModel):
@@ -135,21 +148,16 @@ class Playlist(BaseModel):
 
     @classmethod
     def read(cls, filename: Path | str) -> "Playlist":
-        playlist_txt = Path(filename).read_text(encoding="utf-8")
+        playlist_txt = Path(filename).read_text(encoding="utf-8-sig")
         return cls.parse(playlist_txt, base_dir=_playlist_base_dir(filename))
 
     @classmethod
     def parse(cls, playlist_txt: str, base_dir: Path | None = None) -> "Playlist":
-        playlist_in = [pl.strip() for pl in playlist_txt.splitlines() if pl.strip()]
-
-        if not playlist_in or playlist_in[0] != "#GRIDPLAYER":
-            raise ValueError("Playlist format is not valid")
-
-        playlist = cls._parse_params(playlist_in)
-        playlist.videos = cls._parse_videos(playlist_in, base_dir)
-        _resolve_snapshot_uris(playlist.snapshots, base_dir)
-
-        return playlist
+        text = playlist_txt.lstrip("\ufeff")
+        stripped = text.lstrip()
+        if stripped.startswith("{"):
+            return cls._parse_json(stripped, base_dir)
+        return cls._parse_legacy(text, base_dir)
 
     def save(self, filename: Path) -> None:
         Path(filename).write_text(
@@ -160,19 +168,99 @@ class Playlist(BaseModel):
         relative = base_dir is not None and self._effective_flag(
             "save_paths_relative", "playlist/save_paths_relative"
         )
-        playlist_config = ["#GRIDPLAYER"]
         params = self._params_data(base_dir, relative)
+        snapshots = params.pop("snapshots", None)
+
+        videos = []
+        for video in self.videos or []:
+            data = self._video_data(video)
+            data["uri"] = _dump_uri(video.uri, relative, base_dir)
+            videos.append(data)
+
+        doc: dict[str, Any] = {
+            "format": FORMAT_ID,
+            "version": FORMAT_VERSION,
+        }
         if params:
-            playlist_config.append("#P:" + _dump_json(params))
+            doc["settings"] = params
+        if videos:
+            doc["videos"] = videos
+        if snapshots:
+            doc["snapshots"] = snapshots
 
-        for idx, video in enumerate(self.videos or []):
-            playlist_config.append(f"#V{idx}:{_dump_json(self._video_data(video))}")
+        return json.dumps(doc, ensure_ascii=False, indent=2) + "\n"
 
-        playlist_vids = [
-            _dump_uri(video.uri, relative, base_dir) for video in self.videos or []
-        ]
+    @classmethod
+    def _parse_json(cls, playlist_txt: str, base_dir: Path | None) -> "Playlist":
+        try:
+            doc = json.loads(playlist_txt)
+        except json.JSONDecodeError as e:
+            raise ValueError("Playlist format is not valid") from e
 
-        return "\n".join([*playlist_config, *playlist_vids, ""])
+        if not isinstance(doc, dict) or doc.get("format") != FORMAT_ID:
+            _invalid_playlist()
+
+        # Omitted version is JSON v1, not "whatever FORMAT_VERSION is now".
+        version = doc.get("version", 1)
+        if isinstance(version, bool) or not isinstance(version, int) or version < 1:
+            _invalid_playlist()
+        if version > FORMAT_VERSION:
+            raise UnsupportedPlaylistVersion(version)
+
+        settings = doc.get("settings")
+        if settings is None:
+            settings = {}
+        if not isinstance(settings, dict):
+            _invalid_playlist()
+
+        payload = dict(settings)
+        payload.pop("videos", None)
+        payload.pop("snapshots", None)
+        payload["videos"] = cls._parse_json_videos(doc.get("videos"), base_dir)
+        if "snapshots" in doc:
+            payload["snapshots"] = doc["snapshots"]
+
+        playlist = cls.model_validate(payload)
+        _resolve_snapshot_uris(playlist.snapshots, base_dir)
+        return playlist
+
+    @classmethod
+    def _parse_json_videos(cls, videos_in: Any, base_dir: Path | None) -> list[Video]:
+        if videos_in is None:
+            return []
+        if not isinstance(videos_in, list):
+            _invalid_playlist()
+
+        videos = []
+        for video_args in videos_in:
+            if not isinstance(video_args, dict):
+                logger.error("Failed to add video: entry is not an object")
+                continue
+
+            uri = video_args.get("uri")
+            try:
+                video_args = dict(video_args)
+                if uri is not None:
+                    video_args["uri"] = parse_uri(uri, base_dir)
+                videos.append(Video(**video_args))
+            except (TypeError, ValidationError, ValueError) as e:
+                logger.error(f"Failed to add video '{uri}'")  # noqa: TRY400
+                logger.debug(e)
+
+        return videos
+
+    @classmethod
+    def _parse_legacy(cls, playlist_txt: str, base_dir: Path | None) -> "Playlist":
+        playlist_in = [pl.strip() for pl in playlist_txt.splitlines() if pl.strip()]
+
+        if not playlist_in or playlist_in[0] != "#GRIDPLAYER":
+            raise ValueError("Playlist format is not valid")
+
+        playlist = cls._parse_params(playlist_in)
+        playlist.videos = cls._parse_videos(playlist_in, base_dir)
+        _resolve_snapshot_uris(playlist.snapshots, base_dir)
+
+        return playlist
 
     @classmethod
     def _parse_params(cls, playlist_in: list[str]) -> "Playlist":
@@ -212,7 +300,7 @@ class Playlist(BaseModel):
     ) -> dict:
         data = self.model_dump(mode="json", exclude_none=True)
 
-        data.pop("videos", None)  # videos are saved as URI lines
+        data.pop("videos", None)  # videos are a top-level array
         if not self._effective_flag("save_window", "playlist/save_window"):
             data.pop("window_state", None)
         if not data.get("snapshots"):
@@ -249,7 +337,6 @@ class Playlist(BaseModel):
     def _video_data(self, video: Video) -> dict:
         data = video.model_dump(mode="json", exclude_none=True)
 
-        data.pop("uri", None)  # the URI is the bare line itself
         if not self._effective_flag("save_position", "playlist/save_position"):
             data.pop("current_position", None)
         if not self._effective_flag("save_state", "playlist/save_state"):
@@ -307,7 +394,3 @@ def _relativize_snapshot_uris(
             uri = video.get("uri")
             if uri is not None:
                 video["uri"] = _dump_uri(uri, relative, base_dir)
-
-
-def _dump_json(data: dict) -> str:
-    return json.dumps(data, ensure_ascii=False, separators=(",", ":"))
