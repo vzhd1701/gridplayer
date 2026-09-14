@@ -134,14 +134,12 @@ class Playlist(BaseModel):
         return data
 
     @classmethod
-    def read(cls, filename):
-        with Path(filename).open("r", encoding="utf-8") as f:
-            playlist_txt = f.read()
-
+    def read(cls, filename: Path | str) -> "Playlist":
+        playlist_txt = Path(filename).read_text(encoding="utf-8")
         return cls.parse(playlist_txt, base_dir=_playlist_base_dir(filename))
 
     @classmethod
-    def parse(cls, playlist_txt, base_dir: Path | None = None):
+    def parse(cls, playlist_txt: str, base_dir: Path | None = None) -> "Playlist":
         playlist_in = [pl.strip() for pl in playlist_txt.splitlines() if pl.strip()]
 
         if not playlist_in or playlist_in[0] != "#GRIDPLAYER":
@@ -153,23 +151,22 @@ class Playlist(BaseModel):
 
         return playlist
 
-    def save(self, filename: Path):
-        playlist_txt = self.dumps(base_dir=_playlist_base_dir(filename))
-
-        with Path(filename).open("w", encoding="utf-8") as f:
-            f.write(playlist_txt)
-
-    def dumps(self, base_dir: Path | None = None):
-        relative = base_dir is not None and _effective_flag(
-            self, "save_paths_relative", "playlist/save_paths_relative"
+    def save(self, filename: Path) -> None:
+        Path(filename).write_text(
+            self.dumps(base_dir=_playlist_base_dir(filename)), encoding="utf-8"
         )
-        playlist_config = [
-            "#GRIDPLAYER",
-            "#P:" + _dump_json(_params_data(self, base_dir, relative)),
-        ]
+
+    def dumps(self, base_dir: Path | None = None) -> str:
+        relative = base_dir is not None and self._effective_flag(
+            "save_paths_relative", "playlist/save_paths_relative"
+        )
+        playlist_config = ["#GRIDPLAYER"]
+        params = self._params_data(base_dir, relative)
+        if params:
+            playlist_config.append("#P:" + _dump_json(params))
 
         for idx, video in enumerate(self.videos or []):
-            playlist_config.append(f"#V{idx}:{_dump_json(_video_data(video, self))}")
+            playlist_config.append(f"#V{idx}:{_dump_json(self._video_data(video))}")
 
         playlist_vids = [
             _dump_uri(video.uri, relative, base_dir) for video in self.videos or []
@@ -178,14 +175,16 @@ class Playlist(BaseModel):
         return "\n".join([*playlist_config, *playlist_vids, ""])
 
     @classmethod
-    def _parse_params(cls, playlist_in):
+    def _parse_params(cls, playlist_in: list[str]) -> "Playlist":
         playlist_params = (
             cls.model_validate_json(c[3:]) for c in playlist_in if c.startswith("#P:")
         )
         return next(playlist_params, cls())
 
     @classmethod
-    def _parse_videos(cls, playlist_in, base_dir: Path | None = None):
+    def _parse_videos(
+        cls, playlist_in: list[str], base_dir: Path | None = None
+    ) -> list[Video]:
         videos = []
         video_params = _parse_video_params(playlist_in)
 
@@ -202,8 +201,64 @@ class Playlist(BaseModel):
 
         return videos
 
+    def _effective_flag(self, attr: str, settings_key: str) -> bool:
+        value = getattr(self, attr)
+        if value is None:
+            return Settings().get(settings_key)
+        return value
 
-def _parse_video_params(playlist_in):
+    def _params_data(
+        self, base_dir: Path | None = None, relative: bool = False
+    ) -> dict:
+        data = self.model_dump(mode="json", exclude_none=True)
+
+        data.pop("videos", None)  # videos are saved as URI lines
+        if not self._effective_flag("save_window", "playlist/save_window"):
+            data.pop("window_state", None)
+        if not data.get("snapshots"):
+            data.pop("snapshots", None)
+        if not data.get("video_defaults"):
+            data.pop("video_defaults", None)
+
+        if data.get("snapshots"):
+            _relativize_snapshot_uris(data["snapshots"], relative, base_dir)
+
+        grid = self._grid_state_data()
+        if grid is None:
+            data.pop("grid_state", None)
+        else:
+            data["grid_state"] = grid
+
+        return data
+
+    def _grid_state_data(self) -> dict | None:
+        state = self.grid_state
+        data = state.model_dump(mode="json", exclude_none=True)
+
+        # Inherited keys are omitted: the next load takes them from global settings.
+        for attr in GRID_STATE_ATTR.values():
+            if attr not in state.model_fields_set:
+                data.pop(attr, None)
+        if not state.cells:
+            data.pop("cells", None)
+        if not state.video_order:
+            data.pop("video_order", None)
+
+        return data or None
+
+    def _video_data(self, video: Video) -> dict:
+        data = video.model_dump(mode="json", exclude_none=True)
+
+        data.pop("uri", None)  # the URI is the bare line itself
+        if not self._effective_flag("save_position", "playlist/save_position"):
+            data.pop("current_position", None)
+        if not self._effective_flag("save_state", "playlist/save_state"):
+            data.pop("playback_state", None)
+
+        return data
+
+
+def _parse_video_params(playlist_in: list[str]) -> dict[int, Any]:
     video_param_lines = (c for c in playlist_in if c.startswith("#V"))
 
     video_params = {}
@@ -215,15 +270,8 @@ def _parse_video_params(playlist_in):
     return video_params
 
 
-def _parse_video_paths(playlist_in) -> list[str]:
+def _parse_video_paths(playlist_in: list[str]) -> list[str]:
     return [line for line in playlist_in if line and not line.startswith("#")]
-
-
-def _effective_flag(playlist: Playlist, attr: str, settings_key: str) -> bool:
-    value = getattr(playlist, attr)
-    if value is None:
-        return Settings().get(settings_key)
-    return value
 
 
 def _playlist_base_dir(filename: Path | str) -> Path:
@@ -252,7 +300,7 @@ def _resolve_snapshot_uris(
 
 
 def _relativize_snapshot_uris(
-    snapshots: dict, relative: bool, base_dir: Path | None
+    snapshots: dict[Any, Any], relative: bool, base_dir: Path | None
 ) -> None:
     for snapshot in snapshots.values():
         for video in snapshot.get("videos") or []:
@@ -263,56 +311,3 @@ def _relativize_snapshot_uris(
 
 def _dump_json(data: dict) -> str:
     return json.dumps(data, ensure_ascii=False, separators=(",", ":"))
-
-
-def _params_data(
-    playlist: Playlist, base_dir: Path | None = None, relative: bool = False
-) -> dict:
-    data = playlist.model_dump(mode="json", exclude_none=True)
-
-    data.pop("videos", None)  # videos are saved as URI lines
-    if not _effective_flag(playlist, "save_window", "playlist/save_window"):
-        data.pop("window_state", None)
-    if not data.get("snapshots"):
-        data.pop("snapshots", None)
-    if not data.get("video_defaults"):
-        data.pop("video_defaults", None)
-
-    if data.get("snapshots"):
-        _relativize_snapshot_uris(data["snapshots"], relative, base_dir)
-
-    grid = _grid_state_data(playlist)
-    if grid is None:
-        data.pop("grid_state", None)
-    else:
-        data["grid_state"] = grid
-
-    return data
-
-
-def _grid_state_data(playlist: Playlist) -> dict | None:
-    state = playlist.grid_state
-    data = state.model_dump(mode="json", exclude_none=True)
-
-    # Inherited keys are omitted: the next load takes them from global settings.
-    for attr in GRID_STATE_ATTR.values():
-        if attr not in state.model_fields_set:
-            data.pop(attr, None)
-    if not state.cells:
-        data.pop("cells", None)
-    if not state.video_order:
-        data.pop("video_order", None)
-
-    return data or None
-
-
-def _video_data(video: Video, playlist: Playlist) -> dict:
-    data = video.model_dump(mode="json", exclude_none=True)
-
-    data.pop("uri", None)  # the URI is the bare line itself
-    if not _effective_flag(playlist, "save_position", "playlist/save_position"):
-        data.pop("current_position", None)
-    if not _effective_flag(playlist, "save_state", "playlist/save_state"):
-        data.pop("playback_state", None)
-
-    return data

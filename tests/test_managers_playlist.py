@@ -351,7 +351,14 @@ def test_playlist_dumps_with_none_videos():
     text = Playlist(videos=None).dumps()
     parsed = Playlist.parse(text)
     assert parsed.videos == []
-    assert text.startswith("#GRIDPLAYER\n#P:")
+    assert text == "#GRIDPLAYER\n"
+    assert "#P:" not in text
+
+
+def test_playlist_parse_accepts_header_only():
+    parsed = Playlist.parse("#GRIDPLAYER\n")
+    assert parsed.videos == []
+    assert parsed.snapshots is None
 
 
 def test_playlist_omits_inherited_session_fields():
@@ -511,9 +518,10 @@ def test_load_playlist_file_accepts_empty_template(tmp_path, mocker):
     assert manager._saved_playlist_path == path
 
 
-def test_load_playlist_file_rejects_empty_file_without_params(tmp_path, mocker):
+def test_load_playlist_file_accepts_header_only_empty_playlist(tmp_path, mocker):
     manager, _parent = _make_manager()
     mocker.patch.object(manager, "load_playlist", return_value=True)
+    mocker.patch.object(manager, "_make_playlist", return_value=Playlist(videos=[]))
 
     path = tmp_path / "empty.gpls"
     path.write_text("#GRIDPLAYER\n", encoding="utf-8")
@@ -525,10 +533,11 @@ def test_load_playlist_file_rejects_empty_file_without_params(tmp_path, mocker):
 
     manager.load_playlist_file(path)
 
-    assert loaded == []
-    assert len(errors) == 1
-    assert "Empty or invalid playlist!" in errors[0]
-    manager.load_playlist.assert_not_called()
+    assert errors == []
+    assert loaded == [path]
+    loaded_playlist = manager.load_playlist.call_args[0][0]
+    assert loaded_playlist.videos == []
+    assert manager._saved_playlist_path == path
 
 
 def test_load_playlist_file_rejects_blank_file(tmp_path, mocker):
@@ -786,9 +795,8 @@ def test_playlist_dump_keeps_snapshot_grid_state():
 def test_playlist_dump_omits_empty_grid_state_and_snapshots():
     text = Playlist(videos=[]).dumps()
 
-    params_line = next(line for line in text.splitlines() if line.startswith("#P:"))
-
-    assert params_line == "#P:{}"
+    assert text == "#GRIDPLAYER\n"
+    assert "#P:" not in text
 
     parsed = Playlist.parse(text)
 

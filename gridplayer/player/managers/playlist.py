@@ -175,10 +175,7 @@ class PlaylistManager(ManagerBase):
 
     def load_playlist_file(self, playlist_file: Path):
         try:
-            playlist_txt = playlist_file.read_text(encoding="utf-8")
-            playlist = Playlist.parse(
-                playlist_txt, base_dir=playlist_file.absolute().parent
-            )
+            playlist = Playlist.read(playlist_file)
         except ValueError as e:
             self._log.error(f"Playlist parse error: {e}")
             self.error.emit(
@@ -190,14 +187,6 @@ class PlaylistManager(ManagerBase):
         except FileNotFoundError:
             self.error.emit(
                 "{}\n\n{}".format(translate("Error", "File not found!"), playlist_file)
-            )
-            return
-
-        if not playlist.videos and not _has_playlist_params(playlist_txt):
-            self.error.emit(
-                "{}\n\n{}".format(
-                    translate("Error", "Empty or invalid playlist!"), playlist_file
-                )
             )
             return
 
@@ -438,10 +427,6 @@ class PlaylistManager(ManagerBase):
             )
         ]
         return videos, grid_state
-
-
-def _has_playlist_params(playlist_txt: str) -> bool:
-    return any(line.strip().startswith("#P:") for line in playlist_txt.splitlines())
 
 
 def _emit_if_not_empty(*properties: tuple[pyqtSignal, Any]):
