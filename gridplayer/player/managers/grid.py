@@ -2,17 +2,13 @@ import contextlib
 import random
 from typing import NamedTuple
 
-from PyQt5.QtCore import QSize, pyqtSignal
+from PyQt5.QtCore import pyqtSignal
 from PyQt5.QtWidgets import QGridLayout, QHBoxLayout, QMessageBox, QVBoxLayout
 
 from gridplayer.dialogs.input_dialog import QCustomSpinboxInput, QFixedGridSizeDialog
 from gridplayer.dialogs.messagebox import QCustomMessageBox
 from gridplayer.models.grid_state import GridState
-from gridplayer.params.static import (
-    PLAYER_INITIAL_SIZE,
-    PLAYER_MIN_VIDEO_SIZE,
-    GridMode,
-)
+from gridplayer.params.static import GridMode
 from gridplayer.player.managers.base import ManagerBase
 from gridplayer.playlist_settings import PlaylistSettings
 from gridplayer.settings import Settings
@@ -47,7 +43,6 @@ def _flow_mode(mode: GridMode) -> FlowMode:
 
 
 class GridManager(ManagerBase):
-    minimum_size_changed = pyqtSignal(QSize)
     warning = pyqtSignal(str)
     layout_changed = pyqtSignal()
 
@@ -72,10 +67,6 @@ class GridManager(ManagerBase):
         self._add_anchor = None
         self._reloading = False
 
-        self._default_minimum_size = QSize(*PLAYER_INITIAL_SIZE)
-        self._minimum_video_size = QSize(*PLAYER_MIN_VIDEO_SIZE)
-        self._minimum_size = self._default_minimum_size
-
         self._grid = QGridLayout(self.parent())
         self._grid.setSpacing(0)
         self._grid.setContentsMargins(0, 0, 0, 0)
@@ -86,7 +77,6 @@ class GridManager(ManagerBase):
         )
 
     def init(self):
-        self.minimum_size_changed.emit(self._minimum_size)
         self.layout_changed.emit()
 
     # --- commands / public queries ---
@@ -605,11 +595,9 @@ class GridManager(ManagerBase):
                 self._grid.activate()
                 return
 
-            self._adjust_window(dims)
             if self._is_fixed:
                 placed = self._populate_fixed(dims)
             else:
-                self._adjust_cells(dims)
                 placed = self._populate_flow(dims)
 
             self._sync_block_visibility(placed)
@@ -650,51 +638,27 @@ class GridManager(ManagerBase):
 
             self.adapt_grid()
 
-    def _adjust_window(self, dims):
-        width = dims.cols * self._minimum_video_size.width()
-        height = dims.rows * self._minimum_video_size.height()
-
-        width = max(width, self._default_minimum_size.width())
-        height = max(height, self._default_minimum_size.height())
-
-        self._minimum_size = QSize(width, height)
-        self.minimum_size_changed.emit(self._minimum_size)
-
-    def _adjust_cells(self, dims):
-        min_size = self._minimum_vb_size(dims)
-        for vb in self._ctx.video_blocks:
-            vb.setMinimumSize(min_size)
-
     def _sync_block_visibility(self, placed):
         placed_set = set(placed)
         for vb in self._ctx.video_blocks:
             vb.setVisible(vb in placed_set)
 
     def _populate_fixed(self, dims):
-        min_size = self._minimum_vb_size(dims)
         placed = set()
 
         for row in range(dims.rows):
             for col in range(dims.cols):
                 vb = self._block_at(row, col)
                 if vb is not None and vb not in placed:
-                    vb.setMinimumSize(min_size)
                     self._grid.addWidget(vb, row, col, 1, 1)
                     placed.add(vb)
                     continue
 
                 empty = EmptyCell(parent=self.parent())
-                empty.setMinimumSize(min_size)
                 self._empty_cells.append(empty)
                 self._grid.addWidget(empty, row, col, 1, 1)
 
         return placed
-
-    def _minimum_vb_size(self, dims):
-        return QSize(
-            self._minimum_size.width() // dims.cols,
-            self._minimum_size.height() // dims.rows,
-        )
 
     def _populate_flow(self, dims):
         widgets = self._ctx.video_blocks.blocks_for_ids(self._flow.order())

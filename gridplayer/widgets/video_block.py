@@ -5,7 +5,7 @@ from functools import partial
 from pathlib import Path
 
 from pydantic_extra_types.color import Color
-from PyQt5.QtCore import Qt, QTimer, pyqtSignal
+from PyQt5.QtCore import QSize, Qt, QTimer, pyqtSignal
 from PyQt5.QtGui import QCursor
 from PyQt5.QtWidgets import QStackedLayout, QWidget
 
@@ -19,6 +19,7 @@ from gridplayer.models.video import (
 )
 from gridplayer.params import env
 from gridplayer.params.static import (
+    CHROME_MIN_SIZE,
     MAX_RATE,
     MAX_SCALE,
     MIN_RATE,
@@ -512,6 +513,28 @@ class VideoBlock(QWidget):
         if self._drop_indicator == DropIndicator.NONE:
             paint_idle_disc(self)
 
+    def minimumSizeHint(self):
+        return QSize(0, 0)
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        self._apply_overlay_size_policy()
+
+    @property
+    def is_overlay_fits(self) -> bool:
+        return (
+            self.width() >= CHROME_MIN_SIZE[0] and self.height() >= CHROME_MIN_SIZE[1]
+        )
+
+    def _apply_overlay_size_policy(self):
+        if not self.is_overlay_fits:
+            self.overlay_hide_timer.stop()
+            self.overlay.hide()
+            return
+
+        if not self._ctx.is_overlay_hide_on_timeout:
+            self.show_overlay()
+
     def showEvent(self, event):
         if not self._ctx.is_overlay_hide_on_timeout:
             self.show_overlay()
@@ -800,6 +823,8 @@ class VideoBlock(QWidget):
         # Floating overlays are independent windows; do not remap them while
         # this cell is hidden (single-mode background, minimized, etc.).
         if not self.isVisible():
+            return
+        if not self.is_overlay_fits:
             return
 
         self.overlay.show()

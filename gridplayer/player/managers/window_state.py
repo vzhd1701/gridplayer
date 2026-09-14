@@ -1,9 +1,9 @@
 import base64
 
-from PyQt5.QtCore import QEvent, Qt, pyqtSignal, pyqtSlot
+from PyQt5.QtCore import QEvent, QSize, Qt, pyqtSignal, pyqtSlot
 
 from gridplayer.params import env
-from gridplayer.params.static import WindowState
+from gridplayer.params.static import PLAYER_INITIAL_SIZE, PLAYER_MIN_SIZE, WindowState
 from gridplayer.player.managers.base import ManagerBase
 from gridplayer.playlist_settings import PlaylistSettings
 from gridplayer.settings import Settings
@@ -24,6 +24,9 @@ class WindowStateManager(ManagerBase):
         self.pre_minimize_unpaused = []
 
     def init(self):
+        self.parent().setMinimumSize(QSize(*PLAYER_MIN_SIZE))
+        self.parent().resize(QSize(*PLAYER_INITIAL_SIZE))
+
         # Linux has window manager for this, the flag doesn't work there anyway
         if not env.IS_LINUX and Settings().get("player/stay_on_top"):
             self.parent().setWindowFlag(Qt.WindowStaysOnTopHint)
@@ -103,12 +106,9 @@ class WindowStateManager(ManagerBase):
         PlaylistSettings().set("playlist/pause_minimized", value)
         self.set_pause_minimized(value)
 
-    def set_minimum_size(self, size):
-        self.parent().setMinimumSize(size)
-
-    def restore_to_minimum(self):
+    def restore_initial_size(self):
         if not self.parent().isMaximized() and not self.parent().isFullScreen():
-            self.parent().resize(self.parent().minimumSize())
+            self.parent().resize(QSize(*PLAYER_INITIAL_SIZE))
 
     def activate_window(self):
         self.parent().raise_()

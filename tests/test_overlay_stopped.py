@@ -213,6 +213,7 @@ def test_show_overlay_skipped_while_loading(mocker):
     block = mocker.Mock()
     block._ctx.is_drag_ui = False
     block._ctx.is_disable_overlay = False
+    block.is_overlay_fits = True
     block.is_loading = True
     block._is_error = False
     block.isVisible.return_value = True
@@ -226,6 +227,7 @@ def test_show_overlay_skipped_on_error(mocker):
     block = mocker.Mock()
     block._ctx.is_drag_ui = False
     block._ctx.is_disable_overlay = False
+    block.is_overlay_fits = True
     block.is_loading = False
     block._is_error = True
     block.isVisible.return_value = True
@@ -239,6 +241,7 @@ def test_show_overlay_skipped_when_cell_hidden(mocker):
     block = mocker.Mock()
     block._ctx.is_drag_ui = False
     block._ctx.is_disable_overlay = False
+    block.is_overlay_fits = True
     block.is_loading = False
     block._is_error = False
     block.isVisible.return_value = False
@@ -246,6 +249,52 @@ def test_show_overlay_skipped_when_cell_hidden(mocker):
     VideoBlock.show_overlay(block)
 
     block.overlay.show.assert_not_called()
+
+
+def test_show_overlay_skipped_when_cell_too_small(mocker):
+    block = mocker.Mock()
+    block._ctx.is_drag_ui = False
+    block._ctx.is_disable_overlay = False
+    block.is_overlay_fits = False
+    block.is_loading = False
+    block._is_error = False
+    block.isVisible.return_value = True
+
+    VideoBlock.show_overlay(block)
+
+    block.overlay.show.assert_not_called()
+
+
+def test_size_policy_hides_overlay_when_cell_too_small(mocker):
+    block = mocker.Mock()
+    block.is_overlay_fits = False
+
+    VideoBlock._apply_overlay_size_policy(block)
+
+    block.overlay_hide_timer.stop.assert_called_once()
+    block.overlay.hide.assert_called_once()
+    block.show_overlay.assert_not_called()
+
+
+def test_size_policy_shows_overlay_when_cell_fits(mocker):
+    block = mocker.Mock()
+    block.is_overlay_fits = True
+    block._ctx.is_overlay_hide_on_timeout = False
+
+    VideoBlock._apply_overlay_size_policy(block)
+
+    block.show_overlay.assert_called_once()
+
+
+def test_size_policy_keeps_overlay_hidden_on_timeout(mocker):
+    block = mocker.Mock()
+    block.is_overlay_fits = True
+    block._ctx.is_overlay_hide_on_timeout = True
+
+    VideoBlock._apply_overlay_size_policy(block)
+
+    block.show_overlay.assert_not_called()
+    block.overlay.hide.assert_not_called()
 
 
 def test_hide_event_unmaps_overlay_even_when_timeout_disabled(mocker):

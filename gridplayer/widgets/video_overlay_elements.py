@@ -658,6 +658,10 @@ class OverlayDropIndicator(OverlayDiscBadge):
 
         self._indicator = DropIndicator.NONE
 
+    @property
+    def indicator(self) -> DropIndicator:
+        return self._indicator
+
     def set_indicator(self, indicator: DropIndicator):
         if self._indicator == indicator:
             if indicator == DropIndicator.NONE:

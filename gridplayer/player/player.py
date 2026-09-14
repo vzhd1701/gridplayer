@@ -62,7 +62,6 @@ class Player(QWidget, ManagersManager):
                 ("pause_on_minimize", "video_blocks.cmd_all_pause"),
             ],
             "grid": [
-                ("minimum_size_changed", "window_state.set_minimum_size"),
                 ("warning", "dialogs.warning"),
                 ("video_blocks.video_count_changed", "reload_video_grid"),
                 ("layout_changed", "reload_video_grid"),
@@ -127,7 +126,7 @@ class Player(QWidget, ManagersManager):
                 ("playlist_file_loaded", "recent_list.add_recent_playlist"),
                 ("playlist_saved", "recent_list.add_recent_playlist"),
                 ("playlist_closed", "video_blocks.close_all"),
-                ("playlist_closed", "window_state.restore_to_minimum"),
+                ("playlist_closed", "window_state.restore_initial_size"),
                 ("window_state_loaded", "window_state.restore_window_state"),
                 ("grid_state_loaded", "grid.set_grid_state"),
                 ("snapshots_loaded", "snapshots.set_snapshots"),

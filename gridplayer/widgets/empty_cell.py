@@ -1,4 +1,4 @@
-from PyQt5.QtCore import QEvent, QRectF, Qt
+from PyQt5.QtCore import QEvent, QRectF, QSize, Qt
 from PyQt5.QtGui import (
     QFont,
     QPainter,
@@ -6,7 +6,7 @@ from PyQt5.QtGui import (
 )
 from PyQt5.QtWidgets import QLabel, QSizePolicy, QVBoxLayout, QWidget
 
-from gridplayer.params.static import FONT_SIZE_BIG_INFO
+from gridplayer.params.static import FONT_SIZE_BIG_INFO, INFO_LABEL_MIN_SIZE
 from gridplayer.utils.drop_zone import DropIndicator
 from gridplayer.widgets.cell_chrome import (
     TEXT_ALPHA,
@@ -56,15 +56,30 @@ class EmptyCell(QWidget):
 
     def set_drop_indicator(self, indicator: DropIndicator):
         self._drop_indicator.set_indicator(indicator)
-        if self._message_label:
-            self._message_label.setVisible(indicator == DropIndicator.NONE)
+        self._sync_message_label()
         if indicator != DropIndicator.NONE:
             self._drop_indicator.raise_()
         self.update()
 
+    def _sync_message_label(self):
+        if not self._message_label:
+            return
+
+        fits = (
+            self.width() >= INFO_LABEL_MIN_SIZE[0]
+            and self.height() >= INFO_LABEL_MIN_SIZE[1]
+        )
+        self._message_label.setVisible(
+            fits and self._drop_indicator.indicator == DropIndicator.NONE
+        )
+
+    def minimumSizeHint(self):
+        return QSize(0, 0)
+
     def resizeEvent(self, event):
         super().resizeEvent(event)
         self._update_label_margins()
+        self._sync_message_label()
 
     def _update_label_margins(self):
         if not self._message_label:

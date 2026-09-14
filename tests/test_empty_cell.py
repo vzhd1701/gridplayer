@@ -1,6 +1,8 @@
 import pytest
+from PyQt5.QtCore import QSize
 from PyQt5.QtWidgets import QApplication, QWidget
 
+from gridplayer.utils.drop_zone import DropIndicator
 from gridplayer.widgets.cell_chrome import (
     idle_disc_rect,
     paint_dashed_outline,
@@ -58,3 +60,41 @@ def test_empty_cell_paints_message_instead_of_plus():
     assert pixmap.size() == cell.size()
     assert cell._message == "Drag and drop media files or URLs here"
     assert cell.is_empty_cell
+
+
+def test_empty_cell_message_hidden_when_too_small():
+    holder = QWidget()
+    cell = EmptyCell(message="Drag and drop media files or URLs here", parent=holder)
+    holder.show()
+
+    cell.resize(640, 360)
+    assert cell._message_label.isVisibleTo(cell)
+
+    cell.resize(400, 199)
+    assert not cell._message_label.isVisibleTo(cell)
+
+    cell.resize(199, 400)
+    assert not cell._message_label.isVisibleTo(cell)
+
+    cell.resize(250, 250)
+    assert cell._message_label.isVisibleTo(cell)
+
+    cell.resize(200, 200)
+    assert not cell._message_label.isVisibleTo(cell)
+
+
+def test_empty_cell_drop_indicator_hides_message():
+    cell = EmptyCell(message="Drag and drop media files or URLs here")
+    cell.resize(640, 360)
+    assert cell._message_label.isVisibleTo(cell)
+
+    cell.set_drop_indicator(DropIndicator.DOT)
+    assert not cell._message_label.isVisibleTo(cell)
+
+    cell.set_drop_indicator(DropIndicator.NONE)
+    assert cell._message_label.isVisibleTo(cell)
+
+
+def test_empty_cell_minimum_size_hint_is_zero():
+    cell = EmptyCell(message="Drag and drop media files or URLs here")
+    assert cell.minimumSizeHint() == QSize(0, 0)
