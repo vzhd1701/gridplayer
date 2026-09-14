@@ -8,6 +8,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ### Changed
 
+- Remove minimum cell size, hide overlay if too small, reduce minimum window size ([f5be739](https://github.com/vzhd1701/gridplayer/commit/f5be7392de3e00ac3f4dadd751bea30886cca105))
+- Save playlists as JSON, playlists written by this version will not open in GridPlayer 0.5.x and older ([3c7f4c9](https://github.com/vzhd1701/gridplayer/commit/3c7f4c9e01d0cda2db4ae6dfa9e63a945beab5b4))
 - Rename Repeat to When finished: Loop this file, Next/Previous/Random in folder, Pause at start, Stop, Close ([848487b](https://github.com/vzhd1701/gridplayer/commit/848487b7d6d552229a4b503fdf5cbdac6995e373))
 - Rename video default "Paused" to "Initial state" with Playing, Paused, and Stopped ([848487b](https://github.com/vzhd1701/gridplayer/commit/848487b7d6d552229a4b503fdf5cbdac6995e373))
 - Add ask, discard, auto save options replacing "unsaved changes" flag ([d7857cf](https://github.com/vzhd1701/gridplayer/commit/d7857cf0d3463fb6f301b984b35b7153a160b5a9))
@@ -19,6 +21,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ### Added
 
+- Add single process software video decode mode ([dcf7ef4](https://github.com/vzhd1701/gridplayer/commit/dcf7ef49544787a6e540d4c23edfd97a84ba5b8a))
+- Add option to save video paths relative to the playlist file ([9c4a9d3](https://github.com/vzhd1701/gridplayer/commit/9c4a9d3196ca3db3418216bc9bff6079ffa3c760))
 - Add option to set custom portable user data dir via GP_USER_DATA_DIR env variable or --user-data-dir command line argument ([4b9d525](https://github.com/vzhd1701/gridplayer/commit/4b9d5253f9367d642cf641b5c038b660cee5b497))
 - Add stopped video state ([848487b](https://github.com/vzhd1701/gridplayer/commit/848487b7d6d552229a4b503fdf5cbdac6995e373))
 - Add "set crop" dialog ([6178829](https://github.com/vzhd1701/gridplayer/commit/617882919a12cdc630e517a3fc45d929520597b4))
@@ -37,6 +41,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ### Fixed
 
+- Optimize software mode output, speed up video loading ([0595343](https://github.com/vzhd1701/gridplayer/commit/05953431021274de0ae3b14ad81c9654a55c0d83))
+- Hide glitchy video border on windows (nvidia) and add hw_crop_border_offset option ([7969baa](https://github.com/vzhd1701/gridplayer/commit/7969baa9db9d7ea358ad13ead5ad1970e9705ed1))
+- Avoid crashes and freezes on spam play/pause for live streams in HW mode ([9957078](https://github.com/vzhd1701/gridplayer/commit/99570786cc23d18636f68a6e5063c11933a95d4b))
 - Allow setting both crop and aspect mode at the same time ([59fa623](https://github.com/vzhd1701/gridplayer/commit/59fa62321410464523169d91bb39004b5f6fa4eb))
 - Parse arguments before show to speed up playlist load ([e8f7ca7](https://github.com/vzhd1701/gridplayer/commit/e8f7ca7a59962c6466a1f6c0314a7ba78ccdb3d2))
 - Don't start instance listener if single instance is disabled ([6d5d6de](https://github.com/vzhd1701/gridplayer/commit/6d5d6de547f62e5383a27611196df2d8b477edc6))
