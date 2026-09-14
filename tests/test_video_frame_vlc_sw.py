@@ -3,10 +3,12 @@ from unittest.mock import MagicMock
 from uuid import uuid4
 
 import pytest
-from PyQt5.QtWidgets import QApplication, QGraphicsPixmapItem
+from PyQt5.QtWidgets import QApplication
 
 from gridplayer.multiprocess.safe_shared_memory import SafeSharedMemory
 from gridplayer.widgets.video_frame_vlc_sw import VideoDriverVLCSW, VideoFrameVLCSW
+from gridplayer.params.static import VideoAspect, VideoCrop
+from gridplayer.widgets.video_surface_sw import SoftwareVideoSurface
 
 
 @pytest.fixture(scope="module", autouse=True)
@@ -17,6 +19,16 @@ def _qapp():
 class _StubSWFrame(VideoFrameVLCSW):
     def driver_setup(self, vlc_options):
         return MagicMock()
+
+
+def test_software_surface_fit_covers_widget():
+    surface = SoftwareVideoSurface()
+    surface.resize(200, 100)
+    surface.present_rgb32(b"\x00\x00\x00\xff" * 4, 2, 2)
+    surface.set_view(VideoAspect.FIT, 1.0, VideoCrop(0, 0, 0, 0))
+    dest = surface._dest_rect(surface._source_rect())
+    assert dest.width() >= 200
+    assert dest.height() >= 100
 
 
 def test_sw_frame_cleanup_clears_media():
@@ -30,17 +42,17 @@ def test_sw_frame_cleanup_clears_media():
 
 
 def _driver_with_mocked_player():
-    item = QGraphicsPixmapItem()
+    surface = SoftwareVideoSurface()
     driver = VideoDriverVLCSW(
-        image_dest=item,
+        image_dest=surface,
         process_manager=MagicMock(),
         vlc_options=[],
     )
-    return driver, item
+    return driver, surface
 
 
 def test_process_image_copies_shared_memory_into_pixmap():
-    driver, item = _driver_with_mocked_player()
+    driver, surface = _driver_with_mocked_player()
     try:
         mem = SafeSharedMemory(f"test-sw-copy-{uuid4().hex[:12]}", Lock())
         mem.allocate(2 * 2 * 4)
@@ -50,17 +62,16 @@ def test_process_image_copies_shared_memory_into_pixmap():
         driver._height = 2
 
         driver.process_image()
+        driver._show_frame()
 
-        pix = item.pixmap()
-        assert pix.width() == 2
-        assert pix.height() == 2
-        assert not pix.isNull()
+        assert surface.has_frame()
+        assert surface.frame_size() == (2, 2)
     finally:
         driver.cleanup()
 
 
 def test_process_image_handles_closed_mapping():
-    driver, item = _driver_with_mocked_player()
+    driver, surface = _driver_with_mocked_player()
     try:
         mem = SafeSharedMemory(f"test-sw-closed-{uuid4().hex[:12]}", Lock())
         mem.allocate(2 * 2 * 4)
@@ -70,7 +81,8 @@ def test_process_image_handles_closed_mapping():
         mem.close()
 
         driver.process_image()
+        driver._show_frame()
 
-        assert item.pixmap().isNull()
+        assert not surface.has_frame()
     finally:
         driver.cleanup()

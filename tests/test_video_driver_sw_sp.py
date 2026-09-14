@@ -3,7 +3,7 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 import pytest
-from PyQt5.QtWidgets import QApplication, QGraphicsPixmapItem
+from PyQt5.QtWidgets import QApplication
 
 from gridplayer.params.static import VideoDriver
 from gridplayer.player.managers.video_driver import VideoDriverManager
@@ -13,6 +13,7 @@ from gridplayer.widgets.video_frame_vlc_sw_sp import (
     VideoDriverVLCSWSP,
     VideoFrameVLCSWSP,
 )
+from gridplayer.widgets.video_surface_sw import SoftwareVideoSurface
 
 
 @pytest.fixture(scope="module", autouse=True)
@@ -88,8 +89,7 @@ class _StubSWSPFrame(VideoFrameVLCSWSP):
 def test_sw_sp_frame_surface_and_snapshot():
     frame = _StubSWSPFrame(vlc_options=[])
 
-    assert frame._videoitem is not None
-    assert frame.video_surface is not None
+    assert isinstance(frame.video_surface, SoftwareVideoSurface)
 
     frame.take_snapshot()
     frame.video_driver.set_pause.assert_called_once_with(True)
@@ -104,9 +104,9 @@ def _driver_with_mocked_player(mocker):
         "gridplayer.widgets.video_frame_vlc_sw_sp.PlayerProcessSingleVLCSWSP",
         return_value=player,
     )
-    item = QGraphicsPixmapItem()
-    driver = VideoDriverVLCSWSP(image_dest=item, vlc_options=[])
-    return driver, item
+    surface = SoftwareVideoSurface()
+    driver = VideoDriverVLCSWSP(image_dest=surface, vlc_options=[])
+    return driver, surface
 
 
 def test_sw_sp_driver_uses_threading_lock(mocker):
@@ -118,56 +118,55 @@ def test_sw_sp_driver_uses_threading_lock(mocker):
 
 
 def test_process_image_noop_without_frame_size(mocker):
-    driver, item = _driver_with_mocked_player(mocker)
+    driver, surface = _driver_with_mocked_player(mocker)
     try:
         driver.process_image()
-        assert item.pixmap().isNull()
+        assert not surface.has_frame()
     finally:
         driver.cleanup()
 
 
 def test_init_frame_sets_dummy_pixmap(mocker):
-    driver, item = _driver_with_mocked_player(mocker)
+    driver, surface = _driver_with_mocked_player(mocker)
     try:
         driver.init_frame(4, 6)
-        pix = item.pixmap()
-        assert pix.width() == 4
-        assert pix.height() == 6
+        assert surface.has_frame()
+        assert surface.frame_size() == (4, 6)
     finally:
         driver.cleanup()
 
 
 def test_process_image_copies_shared_memory_into_pixmap(mocker):
-    driver, item = _driver_with_mocked_player(mocker)
+    driver, surface = _driver_with_mocked_player(mocker)
     try:
         driver.init_frame(2, 2)
         driver._shared_memory.allocate(2 * 2 * 4)
         driver._shared_memory.memory.buf[:] = b"\x00\x00\xff\xff" * 4
         driver.process_image()
-        pix = item.pixmap()
-        assert pix.width() == 2
-        assert pix.height() == 2
-        assert not pix.isNull()
+        driver._show_frame()
+        assert surface.has_frame()
+        assert surface.frame_size() == (2, 2)
     finally:
         driver.cleanup()
 
 
 def test_process_image_noop_after_cleanup(mocker):
-    driver, item = _driver_with_mocked_player(mocker)
+    driver, surface = _driver_with_mocked_player(mocker)
     driver.init_frame(2, 2)
     driver.cleanup()
     driver.process_image()
-    assert item.pixmap().width() == 2
+    assert surface.frame_size() == (2, 2)
 
 
 def test_process_image_handles_closed_mapping(mocker):
-    driver, item = _driver_with_mocked_player(mocker)
+    driver, surface = _driver_with_mocked_player(mocker)
     try:
         driver.init_frame(2, 2)
         driver._shared_memory.allocate(2 * 2 * 4)
         driver._shared_memory.close()
         driver.process_image()
-        assert item.pixmap().width() == 2
+        driver._show_frame()
+        assert surface.frame_size() == (2, 2)
     finally:
         driver.cleanup()
 

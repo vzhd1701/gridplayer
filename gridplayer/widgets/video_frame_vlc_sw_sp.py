@@ -1,27 +1,22 @@
 from threading import Event, Lock
 from uuid import uuid4
 
-from PyQt5.QtCore import QRectF, Qt, QThread, pyqtSignal, pyqtSlot
-from PyQt5.QtGui import QBrush, QImage, QPainter, QPixmap
-from PyQt5.QtWidgets import QFrame, QGraphicsPixmapItem, QGraphicsScene, QGraphicsView
+from PyQt5.QtCore import Qt, QThread, QTimer, pyqtSignal, pyqtSlot
 
 from gridplayer.multiprocess.safe_shared_memory import SafeSharedMemory
-from gridplayer.params.static import AudioChannelMode, VideoCrop
+from gridplayer.params.static import AudioChannelMode
 from gridplayer.settings import Settings
-from gridplayer.utils.aspect_calc import calc_crop_region
-from gridplayer.utils.qt import QABC, QT_ASPECT_MAP, qt_connect
+from gridplayer.utils.qt import QABC, qt_connect
 from gridplayer.vlc_player.image_decoder import ImageDecoder
 from gridplayer.vlc_player.instance import InstanceVLC
 from gridplayer.vlc_player.player_base import VlcPlayerBase
 from gridplayer.vlc_player.static import Media, MediaInput
 from gridplayer.vlc_player.video_driver_base import VLCVideoDriver
 from gridplayer.widgets.video_frame_vlc_base import VideoFrameVLC
+from gridplayer.widgets.video_surface_sw import SoftwareVideoSurface
 
 
 class PlayerProcessSingleVLCSWSP(QThread, VlcPlayerBase, metaclass=QABC):
-    is_preparse_required = True
-    is_video_size_required = True
-
     playback_status_changed = pyqtSignal(bool)
     time_changed = pyqtSignal(int)
     error_signal = pyqtSignal(str)
@@ -37,7 +32,6 @@ class PlayerProcessSingleVLCSWSP(QThread, VlcPlayerBase, metaclass=QABC):
 
     init_frame_signal = pyqtSignal(int, int)
     process_image_signal = pyqtSignal()
-    restart_load_video = pyqtSignal(MediaInput)
 
     _vout_reapply = pyqtSignal()
 
@@ -52,8 +46,6 @@ class PlayerProcessSingleVLCSWSP(QThread, VlcPlayerBase, metaclass=QABC):
         self.vlc_options = vlc_options
         self.shared_memory = shared_memory
         self.decoder = None
-
-        self._is_decoder_initialized = False
 
         # Disable hardware decoding
         self._media_options.append("avcodec-hw=none")
@@ -76,7 +68,6 @@ class PlayerProcessSingleVLCSWSP(QThread, VlcPlayerBase, metaclass=QABC):
                 self._on_vout_reapply,
             ),
         )
-        self.restart_load_video.connect(self.load_video, Qt.QueuedConnection)
 
     @pyqtSlot()
     def _on_vout_reapply(self):
@@ -114,10 +105,18 @@ class PlayerProcessSingleVLCSWSP(QThread, VlcPlayerBase, metaclass=QABC):
     def init_player(self):
         super().init_player()
 
-        self.decoder = ImageDecoder(self.shared_memory, self.ready_signal)
+        self.decoder = ImageDecoder(
+            self.shared_memory,
+            frame_ready_cb=self.ready_signal,
+            size_ready_cb=self.size_ready,
+        )
+        self.decoder.attach_media_player(self._media_player)
 
     def ready_signal(self):
         self.process_image_signal.emit()
+
+    def size_ready(self, width, height):
+        self.init_frame_signal.emit(width, height)
 
     @pyqtSlot()
     def cleanup(self):
@@ -129,18 +128,7 @@ class PlayerProcessSingleVLCSWSP(QThread, VlcPlayerBase, metaclass=QABC):
 
         self._cleanup_event.set()
 
-    def load_video_st2_set_media(self):
-        if not self._is_decoder_initialized and self.media:
-            self._init_video_decoder()
-
-        super().load_video_st2_set_media()
-
     def load_video_st4_loaded(self):
-        if not self._is_decoder_initialized:
-            # Since we need metadata to allocate video buffer, restart is required
-            self._restart_playback()
-            return
-
         self._tracks_manager.set_video_track_id(self.media_input.video.video_track_id)
         self._tracks_manager.set_audio_track_id(self.media_input.video.audio_track_id)
 
@@ -166,23 +154,6 @@ class PlayerProcessSingleVLCSWSP(QThread, VlcPlayerBase, metaclass=QABC):
 
     def adjust_view(self, size, aspect, scale, crop):
         """Done by the widget"""
-
-    def _init_video_decoder(self):
-        self._is_decoder_initialized = True
-
-        width, height = self.video_dimensions
-
-        self.decoder.set_frame(width, height)
-        # Dummy pixmap must exist before VLC can deliver the first frame.
-        self.init_frame_signal.emit(width, height)
-        self.decoder.attach_media_player(self._media_player)
-
-    def _restart_playback(self):
-        self._log.debug("Restarting playback...")
-
-        self.stop()
-
-        self.restart_load_video.emit(self.media_input)
 
     def notify_update_status(self, status, percent=0):
         self.update_status_signal.emit(status, percent)
@@ -244,7 +215,8 @@ class VideoDriverVLCSWSP(VLCVideoDriver):
         self._height = None
 
         self._image_dest = image_dest
-        self._pix = None
+        self._frame_buf = None
+        self._show_scheduled = False
 
         self._shared_memory = SafeSharedMemory(f"gp-swsp-{uuid4().hex[:16]}", Lock())
 
@@ -286,6 +258,8 @@ class VideoDriverVLCSWSP(VLCVideoDriver):
         self.player.wait_for_init()
 
     def cleanup(self):
+        self._show_scheduled = False
+        self._frame_buf = None
         # Drop the driver ref first so queued process_image slots no-op while
         # the player thread tears down the allocator-side mapping.
         shared = self._shared_memory
@@ -336,9 +310,7 @@ class VideoDriverVLCSWSP(VLCVideoDriver):
         self._width = width
         self._height = height
 
-        pix = QPixmap(self._width, self._height)
-        pix.fill(Qt.black)
-        self._image_dest.setPixmap(pix)
+        self._image_dest.present_black(self._width, self._height)
 
     @pyqtSlot()
     def process_image(self):
@@ -347,19 +319,29 @@ class VideoDriverVLCSWSP(VLCVideoDriver):
 
         try:
             with self._shared_memory:
-                px = QImage(
-                    self._shared_memory.memory.buf,
-                    self._width,
-                    self._height,
-                    QImage.Format_RGB32,
-                )
-                self._pix = QPixmap.fromImage(px)
+                self._frame_buf = bytes(self._shared_memory.memory.buf)
         except (AttributeError, RuntimeError):
-            # Very rare race: mapping already closed by decoder.stop()
             self._log.warning("Shared memory is cleared already")
             return
 
-        self._image_dest.setPixmap(self._pix)
+        self._schedule_show()
+
+    def _schedule_show(self):
+        if self._show_scheduled:
+            return
+        self._show_scheduled = True
+        QTimer.singleShot(0, self._show_frame)
+
+    def _show_frame(self):
+        self._show_scheduled = False
+        if (
+            self._frame_buf is None
+            or not self._width
+            or not self._height
+            or self._shared_memory is None
+        ):
+            return
+        self._image_dest.present_rgb32(self._frame_buf, self._width, self._height)
 
 
 class VideoFrameVLCSWSP(VideoFrameVLC):
@@ -367,72 +349,23 @@ class VideoFrameVLCSWSP(VideoFrameVLC):
 
     def driver_setup(self, vlc_options) -> VideoDriverVLCSWSP:
         return VideoDriverVLCSWSP(
-            image_dest=self._videoitem,
+            image_dest=self.video_surface,
             vlc_options=vlc_options,
             parent=self,
         )
 
     def ui_video_surface(self):
-        self._videoitem = QGraphicsPixmapItem()
-        self._videoitem.setTransformationMode(Qt.SmoothTransformation)
-        self._videoitem.setShapeMode(QGraphicsPixmapItem.BoundingRectShape)
-
-        self._scene = QGraphicsScene(self)
-        self._scene.addItem(self._videoitem)
-
-        video_surface = QGraphicsView(self._scene, self)
-        video_surface.setBackgroundBrush(QBrush(Qt.black))
-        video_surface.setWindowFlags(Qt.WindowTransparentForInput)
-        video_surface.setAttribute(Qt.WA_TransparentForMouseEvents)
-        video_surface.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-        video_surface.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-        video_surface.setFrameStyle(QFrame.NoFrame)
-        video_surface.setLineWidth(0)
-        video_surface.setRenderHints(
-            QPainter.Antialiasing
-            | QPainter.SmoothPixmapTransform
-            | QPainter.TextAntialiasing
-            | QPainter.HighQualityAntialiasing
-        )
-
-        return video_surface
-
-    def cleanup(self):
-        if self._is_cleanup_requested:
-            return True
-
-        # need to delete these manually to avoid occasional segmentation fault
-        # for some reason it won't crash if fitInView is not called (on Windows)
-        # !must! come before video_driver.cleanup()
-        self._scene.removeItem(self._videoitem)
-
-        return super().cleanup()
+        return SoftwareVideoSurface(self)
 
     def take_snapshot(self) -> None:
-        # no need to take snapshot, last frame stays in QGraphicsView on stop
+        # last frame stays painted on the surface
         self.video_driver.set_pause(True)
 
     def adjust_view(self):
         if super().adjust_view():
             return
 
-        aspect = QT_ASPECT_MAP[self._aspect]
-
-        if self._crop != VideoCrop(0, 0, 0, 0):
-            item_rect = self._videoitem.boundingRect()
-            x, y, width, height = calc_crop_region(
-                (int(item_rect.width()), int(item_rect.height())), self._crop
-            )
-            cropped = QRectF(item_rect.x() + x, item_rect.y() + y, width, height)
-
-            self.video_surface.setSceneRect(cropped)
-            self.video_surface.fitInView(cropped, aspect)
-        else:
-            self.video_surface.fitInView(self._videoitem, aspect)
-        black_border_cut = 0.05
-        self.video_surface.scale(
-            self._scale + black_border_cut, self._scale + black_border_cut
-        )
+        self.video_surface.set_view(self._aspect, self._scale, self._crop)
 
     def set_log_level_vlc(self, log_level):
         self.video_driver.set_log_level_vlc(log_level)
