@@ -176,7 +176,9 @@ class PlaylistManager(ManagerBase):
     def load_playlist_file(self, playlist_file: Path):
         try:
             playlist_txt = playlist_file.read_text(encoding="utf-8")
-            playlist = Playlist.parse(playlist_txt)
+            playlist = Playlist.parse(
+                playlist_txt, base_dir=playlist_file.absolute().parent
+            )
         except ValueError as e:
             self._log.error(f"Playlist parse error: {e}")
             self.error.emit(

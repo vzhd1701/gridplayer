@@ -8,7 +8,7 @@ from pydantic_extra_types.color import Color
 
 from gridplayer.models.grid_state import GridState
 from gridplayer.models.video import Video, migrate_end_action
-from gridplayer.models.video_uri import parse_uri
+from gridplayer.models.video_uri import parse_uri, relativize_uri
 from gridplayer.params.defaults_fields import GRID_STATE_ATTR
 from gridplayer.params.static import (
     AudioChannelMode,
@@ -89,6 +89,7 @@ class Playlist(BaseModel):
     save_window: bool | None = None
     save_position: bool | None = None
     save_state: bool | None = None
+    save_paths_relative: bool | None = None
     drop_action_internal: DropAction | None = None
     drop_action_external: DropAction | None = None
     drop_modifier: DropModifier | None = None
@@ -137,33 +138,42 @@ class Playlist(BaseModel):
         with Path(filename).open("r", encoding="utf-8") as f:
             playlist_txt = f.read()
 
-        return cls.parse(playlist_txt)
+        return cls.parse(playlist_txt, base_dir=_playlist_base_dir(filename))
 
     @classmethod
-    def parse(cls, playlist_txt):
+    def parse(cls, playlist_txt, base_dir: Path | None = None):
         playlist_in = [pl.strip() for pl in playlist_txt.splitlines() if pl.strip()]
 
         if not playlist_in or playlist_in[0] != "#GRIDPLAYER":
             raise ValueError("Playlist format is not valid")
 
         playlist = cls._parse_params(playlist_in)
-        playlist.videos = cls._parse_videos(playlist_in)
+        playlist.videos = cls._parse_videos(playlist_in, base_dir)
+        _resolve_snapshot_uris(playlist.snapshots, base_dir)
 
         return playlist
 
     def save(self, filename: Path):
-        playlist_txt = self.dumps()
+        playlist_txt = self.dumps(base_dir=_playlist_base_dir(filename))
 
         with Path(filename).open("w", encoding="utf-8") as f:
             f.write(playlist_txt)
 
-    def dumps(self):
-        playlist_config = ["#GRIDPLAYER", "#P:" + _dump_json(_params_data(self))]
+    def dumps(self, base_dir: Path | None = None):
+        relative = base_dir is not None and _effective_flag(
+            self, "save_paths_relative", "playlist/save_paths_relative"
+        )
+        playlist_config = [
+            "#GRIDPLAYER",
+            "#P:" + _dump_json(_params_data(self, base_dir, relative)),
+        ]
 
         for idx, video in enumerate(self.videos or []):
             playlist_config.append(f"#V{idx}:{_dump_json(_video_data(video, self))}")
 
-        playlist_vids = [str(video.uri) for video in self.videos or []]
+        playlist_vids = [
+            _dump_uri(video.uri, relative, base_dir) for video in self.videos or []
+        ]
 
         return "\n".join([*playlist_config, *playlist_vids, ""])
 
@@ -175,14 +185,14 @@ class Playlist(BaseModel):
         return next(playlist_params, cls())
 
     @classmethod
-    def _parse_videos(cls, playlist_in):
+    def _parse_videos(cls, playlist_in, base_dir: Path | None = None):
         videos = []
         video_params = _parse_video_params(playlist_in)
 
         for idx, uri in enumerate(_parse_video_paths(playlist_in)):
             video_args = video_params.get(idx, {})
 
-            video_args["uri"] = parse_uri(uri)
+            video_args["uri"] = parse_uri(uri, base_dir)
 
             try:
                 videos.append(Video(**video_args))
@@ -216,11 +226,48 @@ def _effective_flag(playlist: Playlist, attr: str, settings_key: str) -> bool:
     return value
 
 
+def _playlist_base_dir(filename: Path | str) -> Path:
+    return Path(filename).absolute().parent
+
+
+def _dump_uri(uri: Path | str, relative: bool, base_dir: Path | None) -> str:
+    if isinstance(uri, str) and "://" in uri:
+        return uri
+    if relative and base_dir is not None and Path(uri).is_absolute():
+        return relativize_uri(uri, base_dir)
+    return str(uri)
+
+
+def _resolve_snapshot_uris(
+    snapshots: dict[int, Snapshot] | None, base_dir: Path | None
+) -> None:
+    # JSON file URIs stay str; parse_uri so they match video Path URIs.
+    if not snapshots:
+        return
+
+    for snapshot in snapshots.values():
+        for video in snapshot.videos:
+            if isinstance(video.uri, str):
+                video.uri = parse_uri(video.uri, base_dir)
+
+
+def _relativize_snapshot_uris(
+    snapshots: dict, relative: bool, base_dir: Path | None
+) -> None:
+    for snapshot in snapshots.values():
+        for video in snapshot.get("videos") or []:
+            uri = video.get("uri")
+            if uri is not None:
+                video["uri"] = _dump_uri(uri, relative, base_dir)
+
+
 def _dump_json(data: dict) -> str:
     return json.dumps(data, ensure_ascii=False, separators=(",", ":"))
 
 
-def _params_data(playlist: Playlist) -> dict:
+def _params_data(
+    playlist: Playlist, base_dir: Path | None = None, relative: bool = False
+) -> dict:
     data = playlist.model_dump(mode="json", exclude_none=True)
 
     data.pop("videos", None)  # videos are saved as URI lines
@@ -230,6 +277,9 @@ def _params_data(playlist: Playlist) -> dict:
         data.pop("snapshots", None)
     if not data.get("video_defaults"):
         data.pop("video_defaults", None)
+
+    if data.get("snapshots"):
+        _relativize_snapshot_uris(data["snapshots"], relative, base_dir)
 
     grid = _grid_state_data(playlist)
     if grid is None:

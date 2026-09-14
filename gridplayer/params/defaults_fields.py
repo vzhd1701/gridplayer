@@ -95,6 +95,14 @@ def _unsaved_changes_tooltip() -> str:
     )
 
 
+def _save_paths_relative_tooltip() -> str:
+    return _t(
+        "Store local video paths relative to the playlist file location so the "
+        "playlist stays portable when moved together with its videos. URLs and "
+        "paths that cannot be made relative (e.g. another drive) are kept as-is."
+    )
+
+
 def _drop_internal() -> dict:
     return {
         DropAction.INSERT: _t("Move / Swap"),
@@ -246,6 +254,14 @@ PLAYLIST_FIELDS: tuple[SettingField, ...] = (
         kind=FieldKind.CHECKBOX,
         section=_t("Saving / Restoring"),
         label=_t("Save videos playback status"),
+    ),
+    _f(
+        settings_key="playlist/save_paths_relative",
+        playlist_attr="save_paths_relative",
+        kind=FieldKind.CHECKBOX,
+        section=_t("Saving / Restoring"),
+        label=_t("Save video paths relative to playlist file"),
+        tooltip=_save_paths_relative_tooltip(),
     ),
     _f(
         settings_key="playlist/pause_background_videos",

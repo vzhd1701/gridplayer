@@ -923,3 +923,190 @@ def test_close_playlist_rebaselines_to_pristine(mocker):
     assert closed == [True]
     assert manager._saved_playlist_path is None
     assert manager._is_playlist_changed() is False
+
+
+def _local_video_file(tmp_path, name):
+    path = tmp_path / name
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_bytes(b"0")
+    return path
+
+
+def test_playlist_dump_relative_paths(tmp_path):
+    video_file = _local_video_file(tmp_path, "videos/a.mp4")
+    playlist = Playlist(
+        videos=[Video(uri=video_file), _video("b")],
+        save_paths_relative=True,
+    )
+
+    text = playlist.dumps(base_dir=tmp_path)
+
+    lines = text.splitlines()
+    assert lines[1].startswith("#P:")
+    assert '"save_paths_relative":true' in lines[1]
+    assert lines[-2:] == ["videos/a.mp4", "http://example.com/b.mp4"]
+    assert str(tmp_path) not in text
+
+
+def test_playlist_dump_relative_paths_requires_flag(tmp_path):
+    video_file = _local_video_file(tmp_path, "videos/a.mp4")
+    playlist = Playlist(videos=[Video(uri=video_file)])
+
+    text = playlist.dumps(base_dir=tmp_path)
+
+    assert str(video_file) in text
+    assert "save_paths_relative" not in text
+
+
+def test_playlist_dump_relative_paths_falls_back_to_absolute(tmp_path, mocker):
+    video_file = _local_video_file(tmp_path, "videos/a.mp4")
+    playlist = Playlist(videos=[Video(uri=video_file)], save_paths_relative=True)
+    mocker.patch(
+        "gridplayer.models.video_uri.os.path.relpath",
+        side_effect=ValueError("different drive"),
+    )
+
+    text = playlist.dumps(base_dir=tmp_path)
+
+    assert str(video_file) in text
+
+
+def test_playlist_parse_resolves_relative_paths_against_base_dir(tmp_path):
+    video_file = _local_video_file(tmp_path, "videos/a.mp4")
+    text = "#GRIDPLAYER\nvideos/a.mp4\n"
+
+    playlist = Playlist.parse(text, base_dir=tmp_path)
+
+    assert playlist.videos[0].uri == video_file
+
+
+def test_playlist_parse_keeps_urls_with_base_dir(tmp_path):
+    playlist = Playlist.parse(
+        "#GRIDPLAYER\nhttp://example.com/a.mp4\n", base_dir=tmp_path
+    )
+
+    assert playlist.videos[0].uri == "http://example.com/a.mp4"
+
+
+def test_playlist_parse_without_base_dir_keeps_cwd_resolution(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    video_file = _local_video_file(tmp_path, "a.mp4")
+
+    playlist = Playlist.parse("#GRIDPLAYER\na.mp4\n")
+
+    assert playlist.videos[0].uri == video_file
+
+
+def test_load_playlist_file_resolves_relative_paths(tmp_path):
+    video_file = _local_video_file(tmp_path, "videos/a.mp4")
+    playlist_file = tmp_path / "p.gpls"
+    playlist_file.write_text("#GRIDPLAYER\nvideos/a.mp4\n", encoding="utf-8")
+
+    manager, _parent = _make_manager(_ctx_with_grid(GridState()))
+    loaded = []
+    manager.videos_loaded.connect(loaded.append)
+
+    manager.load_playlist_file(playlist_file)
+
+    assert [v.uri for v in loaded[0]] == [video_file]
+
+
+def test_playlist_dump_relative_paths_follows_settings_when_unset(tmp_path, mocker):
+    _patch_playlist_settings(mocker, {"playlist/save_paths_relative": True})
+    video_file = _local_video_file(tmp_path, "videos/a.mp4")
+    playlist = Playlist(videos=[Video(uri=video_file)])
+
+    text = playlist.dumps(base_dir=tmp_path)
+
+    assert "videos/a.mp4" in text.splitlines()
+    assert str(tmp_path) not in text
+
+
+def test_playlist_dump_parent_relative_paths_roundtrip(tmp_path):
+    media_dir = tmp_path / "media"
+    playlist_dir = tmp_path / "playlists"
+    playlist_dir.mkdir()
+    video_file = _local_video_file(media_dir, "a.mp4")
+    playlist = Playlist(
+        videos=[Video(uri=video_file)],
+        save_paths_relative=True,
+    )
+
+    text = playlist.dumps(base_dir=playlist_dir)
+
+    assert "../media/a.mp4" in text.splitlines()
+
+    parsed = Playlist.parse(text, base_dir=playlist_dir)
+
+    assert parsed.videos[0].uri == video_file
+
+
+def test_playlist_save_read_relative_paths(tmp_path):
+    video_file = _local_video_file(tmp_path, "videos/a.mp4")
+    playlist_file = tmp_path / "p.gpls"
+    Playlist(videos=[Video(uri=video_file)], save_paths_relative=True).save(
+        playlist_file
+    )
+
+    text = playlist_file.read_text(encoding="utf-8")
+    assert "videos/a.mp4" in text.splitlines()
+
+    parsed = Playlist.read(playlist_file)
+    assert parsed.videos[0].uri == video_file
+
+
+def test_playlist_relative_snapshot_uris_match_videos(tmp_path):
+    video_file = _local_video_file(tmp_path, "videos/a.mp4")
+    video = Video(uri=video_file)
+    playlist = Playlist(
+        videos=[video],
+        snapshots={
+            0: Snapshot(grid_state=GridState(), videos=[video.model_copy()]),
+        },
+        save_paths_relative=True,
+    )
+
+    text = playlist.dumps(base_dir=tmp_path)
+    assert '"uri":"videos/a.mp4"' in text
+
+    parsed = Playlist.parse(text, base_dir=tmp_path)
+
+    assert parsed.videos[0].uri == parsed.snapshots[0].videos[0].uri == video_file
+    assert isinstance(parsed.videos[0].uri, Path)
+    assert isinstance(parsed.snapshots[0].videos[0].uri, Path)
+
+
+def test_playlist_parse_resolves_snapshot_uris_when_cwd_differs(tmp_path, monkeypatch):
+    playlist_dir = tmp_path / "playlist"
+    other_dir = tmp_path / "other"
+    playlist_dir.mkdir()
+    other_dir.mkdir()
+    video_file = _local_video_file(playlist_dir, "a.mp4")
+    _local_video_file(other_dir, "a.mp4")
+    monkeypatch.chdir(other_dir)
+
+    text = (
+        "#GRIDPLAYER\n"
+        '#P:{"snapshots":{"0":{"grid_state":{},"videos":[{"uri":"a.mp4"}]}}}\n'
+        "a.mp4\n"
+    )
+    parsed = Playlist.parse(text, base_dir=playlist_dir)
+
+    assert parsed.videos[0].uri == video_file
+    assert parsed.snapshots[0].videos[0].uri == video_file
+
+
+def test_playlist_parse_converts_absolute_snapshot_file_uris_to_path(tmp_path):
+    video_file = _local_video_file(tmp_path, "a.mp4")
+    text = (
+        "#GRIDPLAYER\n"
+        '#P:{"snapshots":{"0":{"grid_state":{},"videos":[{"uri":'
+        + json.dumps(str(video_file))
+        + "}]}}}\n"
+        f"{video_file}\n"
+    )
+
+    parsed = Playlist.parse(text)
+
+    assert parsed.videos[0].uri == parsed.snapshots[0].videos[0].uri == video_file
+    assert isinstance(parsed.snapshots[0].videos[0].uri, Path)

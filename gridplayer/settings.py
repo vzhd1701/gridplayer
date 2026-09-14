@@ -59,6 +59,7 @@ _default_settings = {
     "playlist/grid_rows": 3,
     "playlist/grid_cols": 3,
     "playlist/grid_preallocate": False,
+    "playlist/save_paths_relative": False,
     "playlist/save_position": False,
     "playlist/save_state": False,
     "playlist/save_window": False,
