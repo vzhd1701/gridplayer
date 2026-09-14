@@ -8,7 +8,8 @@ from PyQt5.QtGui import QPixmap
 from PyQt5.QtWidgets import QLabel, QStackedLayout, QWidget
 
 from gridplayer.params import env
-from gridplayer.params.static import VideoAspect, VideoCrop
+from gridplayer.params.static import HWCropBorderOffset, VideoAspect, VideoCrop
+from gridplayer.settings import Settings
 from gridplayer.utils.qt import QABC, QT_ASPECT_MAP, qt_connect
 from gridplayer.vlc_player.static import Media, MediaInput
 from gridplayer.vlc_player.video_driver_base import VLCVideoDriver
@@ -19,14 +20,43 @@ DEFAULT_FPS = 25.0
 # VLC's crop can leave a 2px black border around hardware output.
 VLC_CROP_BORDER_PX = 2
 
+# VLC's Direct3D11 hardware output on Windows can also leave the last few
+# rows of its own video window unpainted at some pane sizes (up to ~7px,
+# depending on the integer placement; NVIDIA drivers show it, AMD may not).
+# A wider hidden margin keeps those rows outside the visible frame.
+VLC_WINDOWS_CROP_BORDER_PX = 8
+
+HW_CROP_BORDER_OFFSETS = {
+    HWCropBorderOffset.DISABLED: 0,
+    HWCropBorderOffset.PX2: 2,
+    HWCropBorderOffset.PX4: 4,
+    HWCropBorderOffset.PX6: 6,
+    HWCropBorderOffset.PX8: 8,
+    HWCropBorderOffset.PX10: 10,
+    HWCropBorderOffset.PX12: 12,
+}
+
 
 def vlc_hw_crop_border_offset(frame_size: QSize, window_size: QSize) -> int:
-    """How far to shift the native vout to hide VLC's 2px crop border.
+    """How far to shift the native vout to hide VLC's hardware output edges.
 
-    On Linux a window-filling surface at (-2, -2) sits outside the
-    top-level window and KWin draws a seam. Skip the shift only when
-    the frame already fills the window; interior grid tiles keep it.
+    Hides VLC's 2px crop border on all platforms, plus the unpainted bottom
+    rows of the Direct3D11 output on Windows.
+
+    Explicit values from the hw_crop_border_offset setting bypass the
+    platform defaults. With Auto, on Linux a window-filling surface at
+    (-2, -2) sits outside the top-level window and KWin draws a seam, so
+    the shift is skipped only when the frame already fills the window;
+    interior grid tiles keep it.
     """
+    setting = Settings().get("internal/hw_crop_border_offset")
+
+    if setting != HWCropBorderOffset.AUTO:
+        return HW_CROP_BORDER_OFFSETS[setting]
+
+    if env.IS_WINDOWS:
+        return VLC_WINDOWS_CROP_BORDER_PX
+
     if not env.IS_LINUX:
         return VLC_CROP_BORDER_PX
 
@@ -196,6 +226,13 @@ class VideoFrameVLC(QWidget, metaclass=QABC):
         window_size = win.size() if win is not None else self.size()
         offset = vlc_hw_crop_border_offset(self.size(), window_size)
         apply_vlc_hw_surface_geometry(self, self.video_surface, offset)
+
+        self._log.debug(
+            f"HW crop border workaround: offset={offset}"
+            f", frame={self.size().width()}x{self.size().height()}"
+            f", window={window_size.width()}x{window_size.height()}"
+            f", surface={self.video_surface.geometry().getRect()}"
+        )
 
     def driver_connect(self) -> None:
         qt_connect(

@@ -573,6 +573,27 @@
           </widget>
          </item>
          <item>
+          <layout class="QFormLayout" name="lay_miscHWCropBorder">
+           <property name="fieldGrowthPolicy">
+            <enum>QFormLayout::FieldsStayAtSizeHint</enum>
+           </property>
+           <item row="0" column="0">
+            <widget class="QLabel" name="miscHWCropBorderLabel">
+             <property name="text">
+              <string>HW video border fix</string>
+             </property>
+            </widget>
+           </item>
+           <item row="0" column="1">
+            <widget class="QComboBox" name="miscHWCropBorder">
+             <property name="toolTip">
+              <string>Hidden margin that keeps hardware video edge artifacts out of view. Auto uses the platform default.</string>
+             </property>
+            </widget>
+           </item>
+          </layout>
+         </item>
+         <item>
           <spacer name="verticalSpacer_2">
            <property name="orientation">
             <enum>Qt::Vertical</enum>

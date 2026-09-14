@@ -91,6 +91,17 @@ class VideoDriver(AutoName):
     DUMMY = auto()
 
 
+class HWCropBorderOffset(AutoName):
+    AUTO = auto()
+    DISABLED = auto()
+    PX2 = auto()
+    PX4 = auto()
+    PX6 = auto()
+    PX8 = auto()
+    PX10 = auto()
+    PX12 = auto()
+
+
 class SeekSyncMode(AutoName):
     DISABLED = auto()
     PERCENT = auto()

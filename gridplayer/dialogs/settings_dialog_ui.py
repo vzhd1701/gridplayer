@@ -327,6 +327,22 @@ class Ui_SettingsDialog:
         self.miscForceNativeDragEvents = QtWidgets.QCheckBox(self.page_misc_advanced)
         self.miscForceNativeDragEvents.setObjectName("miscForceNativeDragEvents")
         self.lay_page_misc_advanced.addWidget(self.miscForceNativeDragEvents)
+        self.lay_miscHWCropBorder = QtWidgets.QFormLayout()
+        self.lay_miscHWCropBorder.setFieldGrowthPolicy(
+            QtWidgets.QFormLayout.FieldsStayAtSizeHint
+        )
+        self.lay_miscHWCropBorder.setObjectName("lay_miscHWCropBorder")
+        self.miscHWCropBorderLabel = QtWidgets.QLabel(self.page_misc_advanced)
+        self.miscHWCropBorderLabel.setObjectName("miscHWCropBorderLabel")
+        self.lay_miscHWCropBorder.setWidget(
+            0, QtWidgets.QFormLayout.LabelRole, self.miscHWCropBorderLabel
+        )
+        self.miscHWCropBorder = QtWidgets.QComboBox(self.page_misc_advanced)
+        self.miscHWCropBorder.setObjectName("miscHWCropBorder")
+        self.lay_miscHWCropBorder.setWidget(
+            0, QtWidgets.QFormLayout.FieldRole, self.miscHWCropBorder
+        )
+        self.lay_page_misc_advanced.addLayout(self.lay_miscHWCropBorder)
         spacerItem1 = QtWidgets.QSpacerItem(
             0, 0, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Expanding
         )
@@ -537,6 +553,15 @@ class Ui_SettingsDialog:
         )
         self.miscForceNativeDragEvents.setText(
             _translate("SettingsDialog", "Force native drag-n-drop for in-window drag")
+        )
+        self.miscHWCropBorderLabel.setText(
+            _translate("SettingsDialog", "HW video border fix")
+        )
+        self.miscHWCropBorder.setToolTip(
+            _translate(
+                "SettingsDialog",
+                "Hidden margin that keeps hardware video edge artifacts out of view. Auto uses the platform default.",
+            )
         )
         self.logLimit.setText(_translate("SettingsDialog", "Limit log file size"))
         self.logLimitSizeLabel.setText(_translate("SettingsDialog", "Log file size"))

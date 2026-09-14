@@ -20,6 +20,7 @@ from gridplayer.params.defaults_fields import PLAYLIST_FIELDS, VIDEO_FIELDS
 from gridplayer.params.languages import LANGUAGES
 from gridplayer.params.static import (
     ColorScheme,
+    HWCropBorderOffset,
     URLResolver,
     VideoDriver,
 )
@@ -117,6 +118,7 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
             "internal/opaque_hw_overlay": self.miscOpaqueHWOverlay,
             "internal/fake_overlay_invisibility": self.miscFakeOverlayInvisibility,
             "internal/force_native_drag_events": self.miscForceNativeDragEvents,
+            "internal/hw_crop_border_offset": self.miscHWCropBorder,
             "streaming/hls_via_streamlink": self.streamingHLSVIAStreamlink,
             "streaming/resolver_priority": self.streamingResolverPriority,
             "streaming/resolver_priority_patterns": self.streamingResolverPriorityPatterns,
@@ -146,7 +148,6 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
             self.playerStayOnTop.hide()
 
         if not env.IS_LINUX:
-            self.section_misc.hide()
             self.miscOpaqueHWOverlay.hide()
             self.miscFakeOverlayInvisibility.hide()
             self.miscForceNativeDragEvents.hide()
@@ -163,6 +164,7 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
         self.fill_language()
         self.fill_colorScheme()
         self.fill_streamingResolverPriority()
+        self.fill_hwCropBorder()
 
     def ui_set_limits(self):
         self.playerVideoDriverPlayers.setRange(1, MAX_VLC_PROCESSES)
@@ -307,6 +309,20 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
         }
 
         _fill_combo_box(self.streamingResolverPriority, resolvers)
+
+    def fill_hwCropBorder(self):
+        values = {
+            HWCropBorderOffset.AUTO: self.tr("Auto"),
+            HWCropBorderOffset.DISABLED: self.tr("Disabled"),
+            HWCropBorderOffset.PX2: self.tr("2 px"),
+            HWCropBorderOffset.PX4: self.tr("4 px"),
+            HWCropBorderOffset.PX6: self.tr("6 px"),
+            HWCropBorderOffset.PX8: self.tr("8 px"),
+            HWCropBorderOffset.PX10: self.tr("10 px"),
+            HWCropBorderOffset.PX12: self.tr("12 px"),
+        }
+
+        _fill_combo_box(self.miscHWCropBorder, values)
 
     def driver_selected(self, idx):
         driver_id = self.playerVideoDriver.itemData(idx)
