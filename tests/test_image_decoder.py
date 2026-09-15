@@ -5,6 +5,17 @@ from uuid import uuid4
 
 from gridplayer.multiprocess.safe_shared_memory import SafeSharedMemory, releasing
 from gridplayer.vlc_player.image_decoder import ImageDecoder
+from gridplayer.vlc_player.rgb_buffer import InProcessRgbBuffer
+
+
+def test_in_process_rgb_buffer_allocate_and_close():
+    buf = InProcessRgbBuffer()
+    buf.allocate(16)
+    assert len(buf.memory.buf) == 16
+    buf.memory.buf[:] = b"\x01" * 16
+    assert buf.ptr is not None
+    buf.close()
+    assert len(buf.memory.buf) == 0
 
 
 def test_stop_unlocked_threading_lock():

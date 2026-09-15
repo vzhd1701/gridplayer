@@ -1,15 +1,14 @@
-from threading import Event, Lock
-from uuid import uuid4
+from threading import Event
 
 from PyQt5.QtCore import Qt, QThread, QTimer, pyqtSignal, pyqtSlot
 
-from gridplayer.multiprocess.safe_shared_memory import SafeSharedMemory
 from gridplayer.params.static import AudioChannelMode
 from gridplayer.settings import Settings
 from gridplayer.utils.qt import QABC, qt_connect
 from gridplayer.vlc_player.image_decoder import ImageDecoder
 from gridplayer.vlc_player.instance import InstanceVLC
 from gridplayer.vlc_player.player_base import VlcPlayerBase
+from gridplayer.vlc_player.rgb_buffer import InProcessRgbBuffer
 from gridplayer.vlc_player.static import Media, MediaInput
 from gridplayer.vlc_player.video_driver_base import VLCVideoDriver
 from gridplayer.widgets.video_frame_vlc_base import VideoFrameVLC
@@ -218,7 +217,7 @@ class VideoDriverVLCSWSP(VLCVideoDriver):
         self._frame_buf = None
         self._show_scheduled = False
 
-        self._shared_memory = SafeSharedMemory(f"gp-swsp-{uuid4().hex[:16]}", Lock())
+        self._shared_memory = InProcessRgbBuffer()
 
         self.player = PlayerProcessSingleVLCSWSP(
             vlc_options=vlc_options,
