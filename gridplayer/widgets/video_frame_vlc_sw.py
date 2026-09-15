@@ -133,8 +133,24 @@ class PlayerProcessSingleVLCSW(VlcPlayerThreaded):
 
         super().set_pause(is_paused)
 
+    def _sync_decoder_pause(self, is_paused):
+        """Keep the decoder's paused flag on the real playback state.
+
+        play()/stop()/set_pause() only cover explicit commands. Initial load
+        and the live-stream unpause failsafe move the player without going
+        through them, which used to leave the decoder paused for the whole
+        session — every frame then had to survive the paused dedup check.
+        """
+        if self.decoder is not None:
+            self.decoder.is_paused = is_paused
+
     def adjust_view(self, size, aspect, scale, crop):
         """Done by the widget"""
+
+    def notify_playback_status_changed(self, is_paused):
+        self._sync_decoder_pause(is_paused)
+
+        super().notify_playback_status_changed(is_paused)
 
 
 class VideoDriverVLCSW(VLCVideoDriverThreaded):
