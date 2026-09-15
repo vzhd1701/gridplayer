@@ -9,7 +9,10 @@ from gridplayer.vlc_player.instance import InstanceProcessVLC
 from gridplayer.vlc_player.player_base_threaded import VlcPlayerThreaded
 from gridplayer.vlc_player.static import Media
 from gridplayer.vlc_player.video_driver_base_threaded import VLCVideoDriverThreaded
-from gridplayer.widgets.video_frame_vlc_base import VideoFrameVLCProcess
+from gridplayer.widgets.video_frame_vlc_base import (
+    NATIVE_VIEW_RESIZE_INTERVAL_MS,
+    VideoFrameVLCProcess,
+)
 
 # Keep the Qt-owned X window alive until VLC has stopped presenting into it.
 HW_PLAYER_RELEASE_TIMEOUT_S = 5
@@ -140,6 +143,8 @@ class VideoDriverVLCHW(VLCVideoDriverThreaded):
 
 class VideoFrameVLCHW(VideoFrameVLCProcess):
     is_opengl = True
+    resize_view_interval_ms = NATIVE_VIEW_RESIZE_INTERVAL_MS
+    is_native_surface = True
 
     def driver_setup(self, vlc_options):
         return VideoDriverVLCHW(

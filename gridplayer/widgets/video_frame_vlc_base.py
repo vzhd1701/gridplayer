@@ -3,7 +3,7 @@ from abc import ABC, abstractmethod
 from contextlib import suppress
 from pathlib import Path
 
-from PyQt5.QtCore import QSize, Qt, pyqtSignal
+from PyQt5.QtCore import QElapsedTimer, QSize, Qt, QTimer, pyqtSignal
 from PyQt5.QtGui import QPixmap
 from PyQt5.QtWidgets import QLabel, QStackedLayout, QWidget
 
@@ -16,6 +16,16 @@ from gridplayer.vlc_player.video_driver_base import VLCVideoDriver
 from gridplayer.widgets.video_status import VideoStatus
 
 DEFAULT_FPS = 25.0
+
+# Pushing the view to a native vout is expensive: a SetWindowPos on the native
+# surface plus three libvlc control calls, per video, and the surface is one
+# VLC is actively presenting into. A resize drag delivers a resizeEvent per
+# video per mouse step, so applying every one of them inline is what makes the
+# window feel like it is resisting the drag. Frames with a native vout coalesce
+# instead (see VideoFrameVLC._adjust_view_on_resize): the video trails the pane
+# by up to this long mid-drag, the way VLC's own window does, and lands on the
+# final size as soon as the drag stops.
+NATIVE_VIEW_RESIZE_INTERVAL_MS = 100
 
 # VLC's crop can leave a 2px black border around hardware output.
 VLC_CROP_BORDER_PX = 2
@@ -70,9 +80,12 @@ def vlc_hw_crop_border_offset(frame_size: QSize, window_size: QSize) -> int:
 def apply_vlc_hw_surface_geometry(
     frame: QWidget, surface: QWidget, offset: int
 ) -> None:
-    if offset <= 0:
-        return
+    """Place a native vout surface over the frame, shifted out by `offset`.
 
+    This is the only thing that positions a native surface: it is kept out of
+    the frame layout (see VideoFrameVLC.is_native_surface), so a zero offset
+    still has to size it.
+    """
     width = frame.width()
     height = frame.height()
     if width <= 0 or height <= 0:
@@ -84,6 +97,53 @@ def apply_vlc_hw_surface_geometry(
         width + 2 * offset,
         height + 2 * offset,
     )
+
+
+def is_uncovered_fill_useful() -> bool:
+    """Whether painting under a native vout surface hides anything.
+
+    On Windows the frame and the surface reach the screen together, so the
+    strip the surface has not caught up to is the only thing showing and
+    filling it black turns a near-white tear into letterbox.
+
+    On X11 there is nothing left to hide. Once the surface is out of Qt's
+    paint path (see detach_native_surface_from_qt) the strip it has not caught
+    up to already comes up black, because the X server leaves the newly
+    exposed part of a backgroundless window undefined. Filling measured
+    identical to not filling, so leave X11 alone rather than repaint every
+    cell for a colour it already has.
+    """
+    return env.IS_WINDOWS
+
+
+def detach_native_surface_from_qt(surface: QWidget) -> None:
+    """Stop Qt from painting the window VLC presents into.
+
+    On X11 VLC presents into the window we hand it and creates nothing of its
+    own: the surface has no children in the X tree. VLC's own interface embeds
+    its vout the same way, but there the vout display ends up with a private
+    child window, so Qt only ever paints around the video, never over it.
+
+    We have no such child, and Qt keeps treating the surface as an ordinary
+    widget, so every resize flushes its (empty) backing store across the
+    window. That flush is the flicker, and its colour is whichever emptiness
+    Qt is configured for: the palette background by default, black under
+    WA_OpaquePaintEvent. Measured through a drag, both leave the cell ~90%
+    filler and ~9% video.
+
+    Disabling updates takes the widget out of Qt's paint path altogether.
+    Nothing is flushed over the window, so the X server's NorthWest bit
+    gravity keeps VLC's last frame in place until VLC draws the next one:
+    same drag, ~80% video.
+
+    X11 only. On Windows VLC creates its own child windows inside the surface
+    and Qt's painting never reaches the screen to begin with, and on macOS the
+    surface is a QMacCocoaViewContainer this has not been measured against.
+    """
+    if not env.IS_LINUX:
+        return
+
+    surface.setUpdatesEnabled(False)
 
 
 def remove_snapshot_file(snapshot_file: str) -> None:
@@ -152,10 +212,25 @@ class VideoFrameVLC(QWidget, metaclass=QABC):
 
     is_opengl: bool | None = None
 
+    # Non-zero coalesces resize-driven view updates to one per this many ms.
+    resize_view_interval_ms = 0
+
+    # True when video_surface is a native window VLC presents into itself.
+    # Such a surface is positioned by apply_vlc_hw_surface_geometry and is kept
+    # out of the layout: QStackedLayout resets every item to the frame rect on
+    # each resize, which undid the hw crop border offset between our updates
+    # and left the native window jumping in and out of place during a drag.
+    is_native_surface = False
+
     def __init__(self, vlc_options, **kwargs):
         super().__init__(**kwargs)
 
         self._log = logging.getLogger(self.__class__.__name__)
+
+        self._resize_view_clock = QElapsedTimer()
+        self._resize_view_timer = QTimer(self)
+        self._resize_view_timer.setSingleShot(True)
+        self._resize_view_timer.timeout.connect(self._adjust_view_now)
 
         self._aspect = VideoAspect.FIT
         self._scale = 1
@@ -175,7 +250,12 @@ class VideoFrameVLC(QWidget, metaclass=QABC):
 
         self.video_surface = self.ui_video_surface()
 
-        self.layout().addWidget(self.video_surface)
+        if self.is_native_surface:
+            detach_native_surface_from_qt(self.video_surface)
+            self.video_surface.setGeometry(self.rect())
+        else:
+            self.layout().addWidget(self.video_surface)
+
         self.layout().addWidget(self.pause_snapshot)
         self.layout().addWidget(self.audio_only_placeholder)
 
@@ -260,6 +340,32 @@ class VideoFrameVLC(QWidget, metaclass=QABC):
         self.layout().setContentsMargins(0, 0, 0, 0)
         self.layout().setStackingMode(QStackedLayout.StackAll)
 
+    def _fill_uncovered_black(self) -> None:
+        """Paint whatever the native surface does not cover black.
+
+        Two strips can show through mid-resize: the frame area the surface has
+        not grown into yet (it is repositioned at most every
+        resize_view_interval_ms), and the part of the surface VLC's own child
+        window has not caught up to. Unpainted, both show QPalette.Window,
+        which is near-white on a light theme and reads as the frame tearing.
+        Black matches the letterbox the video already sits in.
+
+        Only once a video track is playing: on Windows the frame is left
+        visible while the video loads (see VideoBlock._hide_video_driver), and
+        filling it early would cover the loading status behind it.
+        """
+        if not self.is_native_surface or not is_uncovered_fill_useful():
+            return
+
+        if self.autoFillBackground():
+            return
+
+        frame_palette = self.palette()
+        frame_palette.setColor(self.backgroundRole(), Qt.black)
+        self.setPalette(frame_palette)
+
+        self.setAutoFillBackground(True)
+
     def ui_helper_widgets(self) -> None:
         self.audio_only_placeholder.setMouseTracking(True)
         self.audio_only_placeholder.setWindowFlags(Qt.WindowTransparentForInput)
@@ -306,6 +412,34 @@ class VideoFrameVLC(QWidget, metaclass=QABC):
             self.pause_snapshot.adjust_view(self.size(), self._aspect, self._scale)
 
     def resizeEvent(self, event) -> None:
+        self._adjust_view_on_resize()
+
+    def _adjust_view_on_resize(self) -> None:
+        """Apply the view on resize, at most once per resize_view_interval_ms.
+
+        Leading edge so a single resize is still instant, trailing edge so the
+        size the drag ends on is never left stale.
+        """
+        interval = self.resize_view_interval_ms
+
+        if not interval:
+            self.adjust_view()
+            return
+
+        if self._resize_view_clock.isValid():
+            since_last = self._resize_view_clock.elapsed()
+        else:
+            since_last = interval
+
+        if since_last >= interval:
+            self._adjust_view_now()
+        elif not self._resize_view_timer.isActive():
+            self._resize_view_timer.start(interval - since_last)
+
+    def _adjust_view_now(self) -> None:
+        self._resize_view_timer.stop()
+        self._resize_view_clock.start()
+
         self.adjust_view()
 
     def playback_status_changed_emit(self, is_paused) -> None:
@@ -339,6 +473,7 @@ class VideoFrameVLC(QWidget, metaclass=QABC):
             self.video_surface.hide()
             self.audio_only_placeholder.show()
         else:
+            self._fill_uncovered_black()
             self.adjust_view()
 
         self.video_ready.emit()
@@ -435,6 +570,7 @@ class VideoFrameVLC(QWidget, metaclass=QABC):
             self.video_surface.hide()
             self.audio_only_placeholder.show()
         else:
+            self._fill_uncovered_black()
             self.video_surface.show()
             self.audio_only_placeholder.hide()
 

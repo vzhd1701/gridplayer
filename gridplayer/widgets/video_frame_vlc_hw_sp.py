@@ -7,7 +7,10 @@ from gridplayer.params import env
 from gridplayer.params.static import AudioChannelMode, VideoAspect, VideoCrop
 from gridplayer.settings import Settings
 from gridplayer.utils.qt import QABC, qt_connect
-from gridplayer.widgets.video_frame_vlc_base import VideoFrameVLC
+from gridplayer.widgets.video_frame_vlc_base import (
+    NATIVE_VIEW_RESIZE_INTERVAL_MS,
+    VideoFrameVLC,
+)
 
 if env.IS_MACOS:
     from PyQt5.QtWidgets import QMacCocoaViewContainer
@@ -246,6 +249,8 @@ class VideoDriverVLCHWSP(VLCVideoDriver):
 
 class VideoFrameVLCHWSP(VideoFrameVLC):
     is_opengl = True
+    resize_view_interval_ms = NATIVE_VIEW_RESIZE_INTERVAL_MS
+    is_native_surface = True
 
     def driver_setup(self, vlc_options) -> VideoDriverVLCHWSP:
         return VideoDriverVLCHWSP(
