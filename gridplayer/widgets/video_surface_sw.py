@@ -39,6 +39,15 @@ class SoftwareVideoSurface(QWidget):
     def present_rgb32(self, buf, width, height) -> None:
         if not buf or not width or not height:
             return
+
+        # Dimensions arrive via a queued signal, the buffer via shared memory
+        # that the decoder reallocates on the VLC thread. A mid-stream switch to
+        # a smaller frame lands the new buffer here while width/height are still
+        # the old, larger ones, and QImage would read past the end of it.
+        # Skip such a frame; the matching dimensions are already on their way.
+        if len(buf) < height * width * 4:
+            return
+
         # Keep buf alive for this QImage; skip .copy() (second full-frame memcpy).
         self._rgb = buf
         self._image = QImage(buf, width, height, width * 4, QImage.Format_RGB32)
