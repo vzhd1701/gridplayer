@@ -1,6 +1,7 @@
 import contextlib
 import ctypes
 import logging
+import zlib
 
 from gridplayer.multiprocess.safe_shared_memory import releasing
 from gridplayer.vlc_player.libvlc import vlc
@@ -16,6 +17,14 @@ _VideoFormatCb = ctypes.CFUNCTYPE(
     ctypes.POINTER(ctypes.c_uint),
     ctypes.POINTER(ctypes.c_uint),
 )
+
+# Frames are only deduplicated while paused, so this sampling never runs in
+# the playing hot path. Stripes are spread over the whole buffer: sampling
+# just the start of it only covered the top row of the image, so any source
+# with a static top edge (sky, a letterbox bar, a fixed camera) looked
+# unchanged and its frames were dropped.
+_FRAME_SAMPLE_STRIPES = 64
+_FRAME_SAMPLE_STRIPE_SIZE = 1024
 
 
 class ImageDecoder:
@@ -41,7 +50,7 @@ class ImageDecoder:
         self._frame_ready_cb = frame_ready_cb
         self._size_ready_cb = size_ready_cb
 
-        self._prev_frame_head = None
+        self._prev_frame_digest = None
 
     def set_frame(self, width, height):
         if width == self._width and height == self._height and self._row_size:
@@ -145,12 +154,28 @@ class ImageDecoder:
     def _is_frame_changed(self):
         # Called from unlock while the memory lock is already held.
         try:
-            new_frame_head = bytes(self._shared_memory.memory.buf[:1024])
+            new_frame_digest = self._frame_digest()
         except (AttributeError, RuntimeError):
             return False
 
-        if new_frame_head == self._prev_frame_head:
+        if new_frame_digest == self._prev_frame_digest:
             return False
 
-        self._prev_frame_head = new_frame_head
+        self._prev_frame_digest = new_frame_digest
         return True
+
+    def _frame_digest(self):
+        frame = self._shared_memory.memory.buf
+        frame_size = len(frame)
+
+        if frame_size <= _FRAME_SAMPLE_STRIPES * _FRAME_SAMPLE_STRIPE_SIZE:
+            return zlib.crc32(frame)
+
+        step = frame_size // _FRAME_SAMPLE_STRIPES
+
+        digest = 0
+        for offset in range(0, frame_size - _FRAME_SAMPLE_STRIPE_SIZE, step):
+            stripe = frame[offset : offset + _FRAME_SAMPLE_STRIPE_SIZE]
+            digest = zlib.crc32(stripe, digest)
+
+        return digest
