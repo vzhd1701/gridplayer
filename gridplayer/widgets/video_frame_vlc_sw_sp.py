@@ -46,7 +46,9 @@ class PlayerProcessSingleVLCSWSP(QThread, VlcPlayerBase, metaclass=QABC):
         self.shared_memory = shared_memory
         self.decoder = None
 
-        # Disable hardware decoding
+        # Disable hardware decoding. This has to stay a media option: libvlc
+        # ignores avcodec-hw passed as an instance option, where the hw decoder
+        # lookup silently falls back to "any" and decodes on the GPU anyway.
         self._media_options.append("avcodec-hw=none")
 
         qt_connect(
