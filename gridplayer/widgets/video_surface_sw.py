@@ -17,6 +17,7 @@ class SoftwareVideoSurface(QWidget):
         super().__init__(parent)
 
         self._image: QImage | None = None
+        self._rgb = None
         self._aspect = VideoAspect.FIT
         self._scale = 1.0
         self._crop = _ZERO_CROP
@@ -38,7 +39,9 @@ class SoftwareVideoSurface(QWidget):
     def present_rgb32(self, buf, width, height) -> None:
         if not buf or not width or not height:
             return
-        self._image = QImage(buf, width, height, width * 4, QImage.Format_RGB32).copy()
+        # Keep buf alive for this QImage; skip .copy() (second full-frame memcpy).
+        self._rgb = buf
+        self._image = QImage(buf, width, height, width * 4, QImage.Format_RGB32)
         self.update()
 
     def present_black(self, width, height) -> None:
