@@ -73,13 +73,19 @@ class WindowStateManager(ManagerBase):
             self.pre_minimize_unpaused = []
 
     def closeEvent(self, event):
-        if not self._ctx.commands.close_playlist():
+        # Ask about unsaved changes while the window is still up, then take it
+        # off screen before closing the playlist: closing it releases the video
+        # players, and a hardware video output takes a moment to let go, which
+        # the user would otherwise sit and watch happen pane by pane.
+        if not self._ctx.commands.check_playlist_save():
             event.ignore()
             return True
 
-        self.closing.emit()
-
         self.parent().hide()
+
+        self._ctx.commands.force_close_playlist()
+
+        self.closing.emit()
 
         force_terminate()
 

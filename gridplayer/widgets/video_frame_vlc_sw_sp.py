@@ -233,6 +233,7 @@ class VideoDriverVLCSWSP(VLCVideoDriver):
         self._show_scheduled = False
 
         self._shared_memory = InProcessRgbBuffer()
+        self._shared_memory_closing = None
 
         self.player = PlayerProcessSingleVLCSWSP(
             vlc_options=vlc_options,
@@ -271,15 +272,20 @@ class VideoDriverVLCSWSP(VLCVideoDriver):
         self.player.start()
         self.player.wait_for_init()
 
-    def cleanup(self):
+    def cleanup_start(self):
         self._show_scheduled = False
         self._frame_buf = None
         # Drop the driver ref first so queued process_image slots no-op while
         # the player thread tears down the allocator-side mapping.
-        shared = self._shared_memory
+        self._shared_memory_closing = self._shared_memory
         self._shared_memory = None
         self.cmd_cleanup.emit()
+
+    def cleanup_wait(self):
         self.player.wait()
+
+        shared = self._shared_memory_closing
+        self._shared_memory_closing = None
         if shared is not None:
             shared.close()
 

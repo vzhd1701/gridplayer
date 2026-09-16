@@ -231,6 +231,24 @@ def test_close_playlist_resets_session_to_settings_defaults(mocker):
     ]
 
 
+def test_force_close_playlist_does_not_ask(mocker):
+    """Closing the window asks first, then force closes.
+
+    A second prompt after a Discard would be a regression, so make the stub
+    refuse: if the check ran at all, the close could not go through.
+    """
+    manager, _parent = _make_manager(_ctx_with_grid(GridState()))
+    check = mocker.patch.object(manager, "check_playlist_save", return_value=False)
+
+    closed = []
+    manager.playlist_closed.connect(lambda: closed.append(True))
+
+    manager.cmd_force_close_playlist()
+
+    check.assert_not_called()
+    assert closed == [True]
+
+
 def test_close_playlist_does_not_reset_when_save_cancelled(mocker):
     manager, _parent = _make_manager()
     mocker.patch.object(manager, "check_playlist_save", return_value=False)

@@ -23,8 +23,26 @@ class VLCVideoDriver(QObject, metaclass=QABC):
 
         self._log = logging.getLogger(self.__class__.__name__)
 
-    @abstractmethod
-    def cleanup(self): ...
+    def cleanup(self) -> None:
+        """Release the player and wait until it is gone."""
+        self.cleanup_start()
+        self.cleanup_wait()
+
+    def cleanup_start(self) -> None:
+        """Ask the player to release itself, without waiting for it.
+
+        Releasing a hardware video output takes a noticeable moment, and
+        cleanup() blocks for it. Closing a grid one pane at a time then reads
+        as a cascade of videos going dark, so callers that close several
+        players at once start all of them here and only then wait; see
+        VideoBlocksManager.close_all.
+        """
+
+    def cleanup_wait(self) -> None:
+        """Block until the release started by cleanup_start has finished.
+
+        Called once per cleanup_start, and safe to call again after that.
+        """
 
     def time_changed_emit(self, new_time):
         self.time_changed.emit(new_time)

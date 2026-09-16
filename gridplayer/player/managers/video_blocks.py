@@ -89,6 +89,18 @@ class VideoBlocks:
         ]
 
 
+def _start_cleanup(video_blocks) -> None:
+    """Start releasing every player before waiting on any of them.
+
+    Closing a block waits for its player to let go of the video output, which
+    takes a noticeable moment in hardware mode. Done block by block that wait
+    is serial, and closing a full grid reads as the videos going dark one
+    after another. Starting them all first makes the waits overlap.
+    """
+    for video_block in list(video_blocks):
+        video_block.cleanup_start()
+
+
 class VideoBlocksManager(ManagerBase):
     video_count_changed = pyqtSignal(int)
     playings_videos_count_changed = pyqtSignal(int)
@@ -415,10 +427,11 @@ class VideoBlocksManager(ManagerBase):
         leftover_set = set(video_ids)
         if not leftover_set:
             return
-        for vb in list(self._ctx.video_blocks):
-            if vb.video_id in leftover_set:
-                self._ctx.video_blocks.remove(vb)
-                vb.close_silently()
+        removed = [vb for vb in self._ctx.video_blocks if vb.video_id in leftover_set]
+        _start_cleanup(removed)
+        for vb in removed:
+            self._ctx.video_blocks.remove(vb)
+            vb.close_silently()
         if not self._in_count_batch():
             self._emit_video_count()
 
@@ -430,6 +443,8 @@ class VideoBlocksManager(ManagerBase):
             self._emit_video_count()
 
     def close_all(self):
+        _start_cleanup(self._ctx.video_blocks)
+
         self.close_all_signal.emit()
 
         self._log.debug("Clearing video blocks array")

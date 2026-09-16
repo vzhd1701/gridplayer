@@ -362,6 +362,15 @@ class VideoBlock(QWidget):
     def crash(self, traceback_txt):
         raise PlayerException(traceback_txt)
 
+    def cleanup_start(self):
+        """Ask the video driver to release itself, without waiting for it.
+
+        Closing a grid goes through here first so every pane starts releasing
+        at once; the waiting happens later, in cleanup().
+        """
+        if self.video_driver is not None:
+            self.video_driver.cleanup_start()
+
     def cleanup(self):
         self.overlay_hide_timer.stop()
         self._in_progress_timer.stop()

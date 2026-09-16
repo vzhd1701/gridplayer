@@ -93,6 +93,14 @@ class PlayerProcessSingleVLCHWSP(QThread, VlcPlayerBase, metaclass=QABC):
 
         self._cleanup_event.wait()
 
+        # Release from this thread, not from whoever asked for the cleanup.
+        # cmd_cleanup is a direct connection (this object lives in the main
+        # thread), so releasing in the slot put every pane's hardware vout
+        # teardown on the GUI thread, one pane after another.
+        self._log.debug("Releasing player")
+
+        super().cleanup()
+
         self._log.debug("VLC instance terminating")
 
         self._instance.cleanup_instance()
@@ -111,8 +119,8 @@ class PlayerProcessSingleVLCHWSP(QThread, VlcPlayerBase, metaclass=QABC):
 
     @pyqtSlot()
     def cleanup(self):
+        """Ask the player thread to release VLC. Returns immediately."""
         self._log.debug("cmd_cleanup called")
-        super().cleanup()
 
         self._cleanup_event.set()
 
@@ -203,8 +211,10 @@ class VideoDriverVLCHWSP(VLCVideoDriver):
         self.player.start()
         self.player.wait_for_init()
 
-    def cleanup(self):
+    def cleanup_start(self):
         self.cmd_cleanup.emit()
+
+    def cleanup_wait(self):
         self.player.wait()
 
     def load_video(self, media_input: MediaInput):

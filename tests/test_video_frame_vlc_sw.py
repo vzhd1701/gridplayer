@@ -38,7 +38,8 @@ def test_sw_frame_cleanup_clears_media():
     frame.cleanup()
 
     assert frame.media is None
-    frame.video_driver.cleanup.assert_called_once()
+    frame.video_driver.cleanup_start.assert_called_once()
+    frame.video_driver.cleanup_wait.assert_called_once()
 
 
 def _driver_with_mocked_player():

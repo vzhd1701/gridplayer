@@ -68,6 +68,8 @@ class PlaylistManager(ManagerBase):
             "save_playlist": self.cmd_save_playlist,
             "save_playlist_as": self.cmd_save_playlist_as,
             "close_playlist": self.cmd_close_playlist,
+            "force_close_playlist": self.cmd_force_close_playlist,
+            "check_playlist_save": self.check_playlist_save,
             "is_playlist_changed": self._is_playlist_changed,
             "is_playlist_saved": lambda: self._saved_playlist_path is not None,
             "is_shuffle_on_load": lambda: self._ctx.is_shuffle_on_load,
@@ -119,14 +121,24 @@ class PlaylistManager(ManagerBase):
                 self.load_playlist_file(Path(files[0]))
 
     def cmd_close_playlist(self) -> bool:
+        """Ask about unsaved changes, then close the playlist."""
         if not self.check_playlist_save():
             return False
 
+        self.cmd_force_close_playlist()
+
+        return True
+
+    def cmd_force_close_playlist(self) -> None:
+        """Close the playlist without asking about unsaved changes.
+
+        For callers that have already asked: closing the window asks first so
+        that it can go off screen before the video players are torn down, and
+        asking again here would prompt twice after a Discard.
+        """
         self.playlist_closed.emit()
         self._reset_playlist_session()
         self._set_saved_playlist(None)
-
-        return True
 
     def cmd_save_playlist(self) -> bool:
         playlist = self._make_playlist()

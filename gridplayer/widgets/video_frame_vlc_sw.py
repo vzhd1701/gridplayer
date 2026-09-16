@@ -218,7 +218,7 @@ class VideoDriverVLCSW(VLCVideoDriverThreaded):
             return
         self._image_dest.present_rgb32(self._frame_buf, self._width, self._height)
 
-    def cleanup(self):
+    def cleanup_start(self):
         self._show_scheduled = False
         self._frame_buf = None
         if self._shared_memory is not None:
@@ -226,7 +226,10 @@ class VideoDriverVLCSW(VLCVideoDriverThreaded):
                 self._shared_memory.close()
                 self._shared_memory = None
 
-        super().cleanup()
+        super().cleanup_start()
+
+    def cleanup_wait(self):
+        super().cleanup_wait()
 
         self.player.cleanup()
 

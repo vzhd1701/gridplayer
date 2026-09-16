@@ -95,7 +95,8 @@ def test_sw_sp_frame_surface_and_snapshot():
     frame.video_driver.set_pause.assert_called_once_with(True)
 
     frame.cleanup()
-    frame.video_driver.cleanup.assert_called_once()
+    frame.video_driver.cleanup_start.assert_called_once()
+    frame.video_driver.cleanup_wait.assert_called_once()
 
 
 def _driver_with_mocked_player(mocker):

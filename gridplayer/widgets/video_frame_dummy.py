@@ -13,8 +13,6 @@ FAKE_VIDEO_FPS = 25
 
 
 class VideoDriverDummy(VLCVideoDriver):
-    def cleanup(self): ...
-
     def load_video(self, media_input: MediaInput): ...
 
     def snapshot(self):

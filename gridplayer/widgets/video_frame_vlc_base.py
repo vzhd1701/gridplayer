@@ -388,15 +388,25 @@ class VideoFrameVLC(QWidget, metaclass=QABC):
     def update_status_emit(self, status: str, percent) -> None:
         self.update_status.emit(status, percent)
 
-    def cleanup(self) -> bool | None:
+    def cleanup_start(self) -> None:
+        """Ask the player to release itself, without waiting for it.
+
+        Lets a whole grid start releasing at once instead of pane by pane;
+        see VideoBlocksManager.close_all.
+        """
         if self._is_cleanup_requested:
-            return True
+            return
 
         self._is_cleanup_requested = True
 
         self.media = None
 
-        self.video_driver.cleanup()
+        self.video_driver.cleanup_start()
+
+    def cleanup(self) -> None:
+        self.cleanup_start()
+
+        self.video_driver.cleanup_wait()
 
     def adjust_view(self) -> bool | None:
         if self._is_cleanup_requested:

@@ -13,8 +13,10 @@ class VLCVideoDriverThreaded(CommandLoopThreaded, VLCVideoDriver):
     def crash_thread(self, traceback_txt):
         self.crash.emit(traceback_txt)
 
-    def cleanup(self):
+    def cleanup_start(self):
         self.cmd_send("cleanup")
+
+    def cleanup_wait(self):
         self.cmd_loop_terminate()
 
     def load_video(self, media_input: MediaInput):

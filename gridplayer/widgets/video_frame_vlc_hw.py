@@ -129,13 +129,13 @@ class VideoDriverVLCHW(VLCVideoDriverThreaded):
     def player_released(self):
         self._released.set()
 
-    def cleanup(self):
-        self.cmd_send("cleanup")
+    def cleanup_wait(self):
         if not self._released.wait(timeout=HW_PLAYER_RELEASE_TIMEOUT_S):
             self._log.warning(
                 "Timed out waiting for VLC player to release the video window"
             )
-        self.cmd_loop_terminate()
+
+        super().cleanup_wait()
 
     def adjust_view(self, size, aspect, scale, crop):
         self.cmd_send("adjust_view", size, aspect, scale, crop)
