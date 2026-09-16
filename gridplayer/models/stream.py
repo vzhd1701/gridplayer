@@ -19,6 +19,10 @@ class StreamSessionOpts:
 # VLC opens with its "adaptive" demuxer
 ADAPTIVE_PROTOCOLS = frozenset({"hls", "hls_proxy", "dash", "http_hls"})
 
+# a standing instruction to fit the stream to the pane rather than a rung of
+# the quality ladder, so it is not resolved away the way "best" is
+STREAM_QUALITY_AUTO = "auto"
+
 
 @dataclass(frozen=True)
 class StreamOrigin:
@@ -147,6 +151,21 @@ class Streams:
 
         return self.worst_audio_only
 
+    def fit_to_height(self, height: int) -> tuple[str, Stream]:
+        """Pick the cheapest rung that still fills a box this tall.
+
+        Anything below the box would be upscaled into a blurrier picture than
+        the pane can show, so the smallest one that is not is the best deal.
+        """
+
+        for quality, stream in self.video_streams.items():
+            stream_height = _quality_height(quality)
+
+            if stream_height is not None and stream_height >= height:
+                return quality, stream
+
+        return self.best
+
     def by_quality(self, quality: str) -> tuple[str, Stream]:
         standard_quality_map = {
             "best": self.best,
@@ -164,19 +183,28 @@ class Streams:
         return self._guess_quality(quality)
 
     def _guess_quality(self, quality: str) -> tuple[str, Stream]:
-        quality_lines = re.search(r"^(\d+)", quality)
-        if not quality_lines:
+        quality_lines = _quality_height(quality)
+        if quality_lines is None:
             return self.best
 
-        quality_lines = int(quality_lines.group(1))
         for quality_code, stream_url in reversed(self.video_streams.items()):
-            stream_lines = re.search(r"^(\d+)", quality_code)
-            if not stream_lines:
+            stream_lines = _quality_height(quality_code)
+            if stream_lines is None:
                 continue
-
-            stream_lines = int(stream_lines.group(1))
 
             if stream_lines <= quality_lines:
                 return quality_code, stream_url
 
         return self.best
+
+
+def _quality_height(quality: str) -> int | None:
+    """How tall a stream a quality code promises, where it says so at all.
+
+    Codes are whatever the service called the format, so "1080p60 [vp9]" is
+    as good as it gets and "Unknown 2" has nothing to go on.
+    """
+
+    height = re.match(r"^(\d+)", quality)
+
+    return int(height.group(1)) if height else None

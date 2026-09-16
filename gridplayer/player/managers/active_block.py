@@ -4,6 +4,7 @@ from PyQt5.QtCore import QEvent, pyqtSignal
 from PyQt5.QtGui import QCursor
 
 from gridplayer.dialogs.crop import SetCropDialog
+from gridplayer.models.stream import STREAM_QUALITY_AUTO
 from gridplayer.player.managers.base import ManagerBase
 from gridplayer.utils.qt import is_modal_open, translate
 from gridplayer.widgets.video_block import VideoBlock
@@ -156,6 +157,14 @@ class ActiveBlockManager(ManagerBase):
             for quality, stream in reversed(list(video_streams.items()))
         ]
 
+        if streams:
+            streams = [
+                self._auto_stream_menu_item(),
+                _quality_adapt_delay_menu_item(),
+                "---",
+                *streams,
+            ]
+
         audio_only_streams = [
             _stream_menu_item(quality)
             for quality, stream in reversed(list(audio_only_streams.items()))
@@ -167,6 +176,32 @@ class ActiveBlockManager(ManagerBase):
             streams += audio_only_streams
 
         return streams
+
+    def _auto_stream_menu_item(self):
+        title = translate("Actions", "Auto")
+
+        playing = self._ctx.active_block.stream_quality_playing
+
+        is_auto = (
+            self._ctx.active_block.video_params.stream_quality == STREAM_QUALITY_AUTO
+        )
+
+        if is_auto and playing:
+            # the whole point of auto is that the rung is not the user's
+            # choice, so the menu is the only place it is ever spelled out
+            title = f"{title} ({playing})"
+
+        return {
+            "title": title,
+            "icon": "empty",
+            "func": ("active", "switch_stream_quality", STREAM_QUALITY_AUTO),
+            "check_if": (
+                "is_active_param_set_to",
+                "stream_quality",
+                STREAM_QUALITY_AUTO,
+            ),
+            "show_if": "is_active_multistream",
+        }
 
     def menu_generator_video_track(self):
         if self.is_no_active_block or not self._ctx.active_block.video_tracks:
@@ -301,6 +336,22 @@ class ActiveBlockManager(ManagerBase):
         )
 
         return next(visible_blocks_under_pos, None)
+
+
+def _quality_adapt_delay_menu_item():
+    """Setting the wait belongs next to the switch that makes it matter."""
+
+    return {
+        "title": "{}: %v".format(translate("Actions", "Adapt after")),
+        "icon": "empty",
+        "func": ("active", "quality_adapt_delay"),
+        "value_getter": ("active", "get_quality_adapt_delay"),
+        "show_if": (
+            "is_active_param_set_to",
+            "stream_quality",
+            STREAM_QUALITY_AUTO,
+        ),
+    }
 
 
 def _stream_menu_item(quality: str):

@@ -198,6 +198,7 @@ def _audio_modes() -> dict:
 
 def _stream_qualities() -> dict:
     named = {
+        "auto": _t("Auto (fit to pane)"),
         "best": _t("Best"),
         "worst": _t("Worst"),
         "best_audio_only": _t("Best (Audio Only)"),
@@ -538,6 +539,19 @@ VIDEO_FIELDS: tuple[SettingField, ...] = (
         section=_t("Streaming Videos"),
         label=_t("Stream quality"),
         combo_values=_stream_qualities,
+    ),
+    _f(
+        settings_key="video_defaults/quality_adapt_delay",
+        video_attr="quality_adapt_delay",
+        kind=FieldKind.SPIN,
+        section=_t("Streaming Videos"),
+        label=_t("Adapt Auto quality after"),
+        spin_min=1,
+        spin_max=3600,
+        spin_suffix=_t("(sec)"),
+        tooltip=_t(
+            "How long a video has to keep its new size before Auto quality follows it"
+        ),
     ),
     _f(
         settings_key="video_defaults/auto_reload_timer",

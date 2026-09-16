@@ -62,6 +62,7 @@ class PlaylistVideoDefaults(BaseModel):
     color: Color | None = None
     crop: VideoCrop | None = None
     stream_quality: str | None = None
+    quality_adapt_delay: int | None = None
     auto_reload_timer: int | None = None
 
     @model_validator(mode="before")

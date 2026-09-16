@@ -13,7 +13,7 @@ from PyQt5.QtWidgets import QStackedLayout, QWidget
 from gridplayer.dialogs.input_dialog import QCustomSpinboxInput, QCustomSpinboxTimeInput
 from gridplayer.dialogs.rename_dialog import QVideoRenameDialog
 from gridplayer.exceptions import PlayerException
-from gridplayer.models.stream import StreamOrigin, Streams
+from gridplayer.models.stream import STREAM_QUALITY_AUTO, StreamOrigin, Streams
 from gridplayer.models.video import (
     Video,
     VideoBlockMime,
@@ -53,6 +53,10 @@ from gridplayer.widgets.video_overlay import (
 from gridplayer.widgets.video_status import VideoStatus
 
 IN_PROGRESS_THRESHOLD_MS = 500
+
+# a pane that has to sit still for an hour before following its size is
+# as good as one that never follows it at all
+MAX_QUALITY_ADAPT_DELAY_S = 3600
 
 # how long to wait before trying a failed network video again. A host that
 # just turned us away is unlikely to change its mind within a second, and
@@ -224,6 +228,12 @@ class VideoBlock(QWidget):
         self._network_retry_timer = QTimer(self)
         self._network_retry_timer.setInterval(1000)
         self._network_retry_timer.timeout.connect(self._network_retry_tick)
+
+        self._stream_quality_playing = None
+
+        self._quality_adapt_timer = QTimer(self)
+        self._quality_adapt_timer.setSingleShot(True)
+        self._quality_adapt_timer.timeout.connect(self._adapt_stream_quality)
 
         self.url_resolver = self.init_url_resolver()
         self.video_driver: VideoFrameVLC | None = None
@@ -403,6 +413,7 @@ class VideoBlock(QWidget):
         self.overlay_hide_timer.stop()
         self._in_progress_timer.stop()
         self._network_retry_timer.stop()
+        self._quality_adapt_timer.stop()
 
         self._log.debug(f"{self.id}: cleaning up resolver")
         self.url_resolver.cleanup()
@@ -523,6 +534,7 @@ class VideoBlock(QWidget):
 
     def reload(self):
         self._network_retry_timer.stop()
+        self._quality_adapt_timer.stop()
 
         self.is_live = False
         self._is_error = False
@@ -636,6 +648,7 @@ class VideoBlock(QWidget):
     def resizeEvent(self, event):
         super().resizeEvent(event)
         self._apply_overlay_size_policy()
+        self._schedule_quality_adapt()
 
     @property
     def is_overlay_fits(self) -> bool:
@@ -693,6 +706,35 @@ class VideoBlock(QWidget):
             return
 
         self.manual_seek("seek", time_ms)
+
+    @only_streamable
+    def quality_adapt_delay(self):
+        delay_sec = QCustomSpinboxInput.get_int(
+            parent=self.parent(),
+            title=translate(
+                "Dialog - Set quality adapt delay", "Set quality adapt delay", "Header"
+            ),
+            initial_value=self.video_params.quality_adapt_delay_sec,
+            _min=1,
+            _max=MAX_QUALITY_ADAPT_DELAY_S,
+        )
+
+        self.set_quality_adapt_delay(delay_sec)
+
+    @only_streamable
+    def set_quality_adapt_delay(self, delay_sec):
+        self.video_params.quality_adapt_delay_sec = delay_sec
+
+        # a pane already waiting was counting to the old delay
+        if self._quality_adapt_timer.isActive():
+            self._quality_adapt_timer.start(self._quality_adapt_delay_ms)
+
+    @only_streamable
+    def get_quality_adapt_delay(self):
+        return "{} {}".format(
+            self.video_params.quality_adapt_delay_sec,
+            translate("Quality Adapt Delay", "second(s)"),
+        )
 
     @only_initialized
     @only_live
@@ -1179,14 +1221,31 @@ class VideoBlock(QWidget):
         if quality == self.video_params.stream_quality:
             return
 
+        # picking a rung by hand calls off whatever the pane was about to do
+        self._quality_adapt_timer.stop()
+
         self.reset()
 
         self.load_stream_quality(quality)
 
-    def load_stream_quality(self, wanted_quality: str):
-        quality, stream = self.streams.by_quality(wanted_quality)
+    @property
+    def stream_quality_playing(self) -> str | None:
+        """Which rung of the ladder is on screen, as opposed to what was asked."""
 
-        self.video_params.stream_quality = quality
+        return self._stream_quality_playing
+
+    def load_stream_quality(self, wanted_quality: str):
+        is_auto = wanted_quality == STREAM_QUALITY_AUTO
+
+        if is_auto:
+            quality, stream = self.streams.fit_to_height(self._pane_height_px)
+        else:
+            quality, stream = self.streams.by_quality(wanted_quality)
+
+        # "auto" outlives the rung it picked, where "best" and the rest are
+        # resolved into one and never asked again
+        self.video_params.stream_quality = STREAM_QUALITY_AUTO if is_auto else quality
+        self._stream_quality_playing = quality
 
         # switching quality resets the block, which leaves it without a driver
         self._ensure_video_driver()
@@ -1207,6 +1266,66 @@ class VideoBlock(QWidget):
                 video=self.video_params,
             )
         )
+
+    @property
+    def _quality_adapt_delay_ms(self) -> int:
+        """How long a pane has to keep its new size before the stream follows.
+
+        Dragging a window edge resizes every pane dozens of times on the way,
+        and every switch costs a reload, so the size has to settle down first.
+        """
+
+        return max(self.video_params.quality_adapt_delay_sec, 1) * 1000
+
+    @property
+    def _pane_height_px(self) -> int:
+        """How tall this pane is in the pixels a screen actually has.
+
+        The widget measures itself in the logical pixels Qt scales, so on a
+        200% display a pane reports half the detail it can really show.
+        """
+
+        return int(self.height() * self.devicePixelRatioF())
+
+    def _schedule_quality_adapt(self):
+        if self.video_params is None or not self.streams:
+            return
+
+        if self.video_params.stream_quality != STREAM_QUALITY_AUTO:
+            return
+
+        self._quality_adapt_timer.start(self._quality_adapt_delay_ms)
+
+    def _adapt_stream_quality(self):
+        """Fit the stream to the size the pane has settled on."""
+
+        if self._is_closing or self.video_params is None or not self.streams:
+            return
+
+        if self.video_params.stream_quality != STREAM_QUALITY_AUTO:
+            return
+
+        if self._is_error:
+            # a video that is already failing has the retry timer looking
+            # after it, and reloading underneath that would only confuse it
+            return
+
+        if self._is_state_change_in_progress:
+            self._quality_adapt_timer.start(self._quality_adapt_delay_ms)
+            return
+
+        quality, _ = self.streams.fit_to_height(self._pane_height_px)
+
+        if quality == self._stream_quality_playing:
+            return
+
+        self._log.debug(
+            f"Pane now fits {quality}, switching from {self._stream_quality_playing}"
+        )
+
+        self.reset()
+
+        self.load_stream_quality(STREAM_QUALITY_AUTO)
 
     def _with_origin(self, stream, quality: str):
         """Tell the proxy where this stream came from.

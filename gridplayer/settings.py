@@ -91,6 +91,7 @@ _default_settings = {
     "video_defaults/color": "#ffffff",
     "video_defaults/crop": VideoCrop(0, 0, 0, 0),
     "video_defaults/stream_quality": "best",
+    "video_defaults/quality_adapt_delay": 15,
     "video_defaults/auto_reload_timer": 0,
     "misc/mouse_hide": True,
     "misc/mouse_hide_timeout": 5,

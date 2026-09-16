@@ -78,6 +78,7 @@ class Video(BaseModel):
 
     # Streamable
     stream_quality: str = session_field("video_defaults/stream_quality")
+    quality_adapt_delay_sec: int = session_field("video_defaults/quality_adapt_delay")
     auto_reload_timer_min: int = session_field("video_defaults/auto_reload_timer")
 
     # Tracks
