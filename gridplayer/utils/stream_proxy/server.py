@@ -23,8 +23,8 @@ class StreamProxyServer(ThreadingHTTPServer):
         self._sessions_lock = Lock()
         self._sessions: dict[str, StreamSession] = {}
 
-        self._muxed_streams_lock = Lock()
-        self._muxed_streams: dict[str, Stream] = {}
+        self._streams_lock = Lock()
+        self._streams: dict[str, Stream] = {}
 
         self._ns_uuid = uuid4()
 
@@ -46,12 +46,12 @@ class StreamProxyServer(ThreadingHTTPServer):
                     stream_session=stream.session, server=self
                 )
 
-        if stream.audio_tracks:
+        if stream.is_complex:
+            # audio tracks & fragment lists do not fit into a query string
             stream_id = self.generate_id(stream)
-            with self._muxed_streams_lock:
-                existing_stream = self._muxed_streams.get(stream_id)
-                if existing_stream is None:
-                    self._muxed_streams[stream_id] = stream
+            with self._streams_lock:
+                if self._streams.get(stream_id) is None:
+                    self._streams[stream_id] = stream
 
             params = {
                 "stream_id": stream_id,
@@ -70,9 +70,9 @@ class StreamProxyServer(ThreadingHTTPServer):
         with self._sessions_lock:
             return self._sessions.get(session_id)
 
-    def get_stream(self, stream_id: str) -> Stream:
-        with self._muxed_streams_lock:
-            return self._muxed_streams.get(stream_id)
+    def get_stream(self, stream_id: str) -> Stream | None:
+        with self._streams_lock:
+            return self._streams.get(stream_id)
 
     def serve_forever(self, *args, **kwargs):
         self._log.info("Starting stream proxy server")
@@ -128,12 +128,27 @@ class ProxyRequestHandler(BaseHTTPRequestHandler):
 
         stream_id = query.get("stream_id", "")
 
-        muxed_stream = self.server.get_stream(stream_id)
+        stream_params = self.server.get_stream(stream_id)
 
-        if muxed_stream:
-            stream = stream_session.get_muxed_stream(muxed_stream)
-        else:
-            stream = stream_session.get_stream(query["url"], query["protocol"])
+        if stream_params is None:
+            if stream_id:
+                self._log.error(f"Stream {stream_id} not found")
+                self.send_error(HTTPStatus.NOT_FOUND)
+                return
+
+            if not query.get("url") or not query.get("protocol"):
+                self._log.error(f"Incomplete request: {req.path}")
+                self.send_error(HTTPStatus.BAD_REQUEST, "Invalid request")
+                return
+
+            stream_params = Stream(url=query["url"], protocol=query["protocol"])
+
+        try:
+            stream = stream_session.get_stream(stream_params)
+        except RuntimeError as err:
+            self._log.error(f"Cannot handle stream: {err}")
+            self.send_error(HTTPStatus.BAD_REQUEST)
+            return
 
         self._relay_stream(stream, request_headers)
 

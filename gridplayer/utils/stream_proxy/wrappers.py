@@ -11,10 +11,22 @@ from streamlink.stream.hls import M3U8, HLSStream, parse_m3u8
 from streamlink.stream.http import HTTPStream
 from streamlink.stream.wrappers import StreamIOIterWrapper, StreamIOThreadWrapper
 
-from gridplayer.models.stream import Stream, StreamSessionOpts
-from gridplayer.utils.stream_proxy.m3u8 import m3u8_to_str
+from gridplayer.models.stream import Stream, StreamFragment, StreamSessionOpts
+from gridplayer.utils.stream_proxy.m3u8 import (
+    build_master_playlist,
+    build_media_playlist,
+    m3u8_to_str,
+)
+from gridplayer.utils.stream_proxy.mp4 import (
+    INDEX_PROBE_SIZE,
+    INDEX_PROBE_SIZE_MAX,
+    parse_segment_index,
+)
 
 CHUNK_SIZE = 8192
+
+# last resort when neither an index nor a known duration is available
+SINGLE_SEGMENT_DURATION = 86400.0
 
 
 class HTTPStreamProxy(HTTPStream):
@@ -121,15 +133,25 @@ class HLSProxyLive(HLSStream):
     def set_request_headers(self, headers: dict[str, str]): ...
 
 
-class HLSMuxedStream:
-    def __init__(self, server, stream: Stream):
+class GeneratedPlaylistStream:
+    """Serves an HLS playlist that GridPlayer builds itself.
+
+    Everything VLC cannot open on its own (DASH representations, bare
+    fMP4 files, video paired with a separate audio track) is expressed as
+    an HLS playlist whose entries point back at this proxy.
+    """
+
+    def __init__(self, server, session_opts: StreamSessionOpts, stream: Stream):
+        self._log = logging.getLogger(self.__class__.__name__)
+
         self.server = server
+        self.session_opts = session_opts
         self.stream = stream
 
         self._playlist = None
 
     def open(self):
-        self._playlist = self._generate_hls_playlist()
+        self._playlist = self._generate_playlist()
 
     @property
     def response(self):
@@ -147,24 +169,134 @@ class HLSMuxedStream:
 
     def set_request_headers(self, headers: dict[str, str]): ...
 
-    def _generate_hls_playlist(self) -> str:
-        res = ["#EXTM3U"]
-        res += ["#EXT-X-INDEPENDENT-SEGMENTS"]
+    def _generate_playlist(self) -> str:
+        raise NotImplementedError
 
+    def _proxify(self, stream: Stream) -> str:
+        return self.server.add_stream(stream)
+
+    def _proxify_url(self, url: str) -> str:
+        return self._proxify(
+            Stream(url=url, protocol="http", session=self.session_opts)
+        )
+
+
+class HLSMuxedStream(GeneratedPlaylistStream):
+    """Pairs a video-only stream with a separate audio track."""
+
+    def __init__(self, server, stream: Stream):
+        super().__init__(server=server, session_opts=stream.session, stream=stream)
+
+    def _generate_playlist(self) -> str:
         # takes too long to load all tracks, picking the best one
         name, audio_track = self.stream.audio_tracks.best
 
-        res += [
-            '#EXT-X-MEDIA:TYPE=AUDIO,GROUP-ID="audio",'
-            f'NAME="{name}",DEFAULT=YES,URI="{self.server.add_stream(audio_track)}"'
-        ]
-
         solo_stream = dataclasses.replace(self.stream, audio_tracks=None)
 
-        res += ['#EXT-X-STREAM-INF:BANDWIDTH=0,AUDIO="audio"']
-        res += [self.server.add_stream(solo_stream)]
+        return build_master_playlist(
+            video_url=self._proxify(solo_stream),
+            audio_url=self._proxify(audio_track),
+            audio_name=name,
+        )
 
-        return "\n".join(res)
+
+class DASHPlaylistStream(GeneratedPlaylistStream):
+    """Turns a single DASH representation into an HLS media playlist.
+
+    VLC's own DASH support picks its representation by itself, so handing
+    it the manifest makes the quality menu meaningless. Segments come from
+    the resolver, which already expanded the manifest for us.
+    """
+
+    def _generate_playlist(self) -> str:
+        if not self.stream.fragments:
+            raise StreamError("DASH stream has no segments")
+
+        init_fragment = self.stream.init_fragment
+
+        return build_media_playlist(
+            segments=[
+                self._proxify_fragment(fragment) for fragment in self.stream.fragments
+            ],
+            init_segment=(
+                self._proxify_fragment(init_fragment)
+                if init_fragment is not None
+                else None
+            ),
+        )
+
+    def _proxify_fragment(self, fragment: StreamFragment) -> StreamFragment:
+        return dataclasses.replace(fragment, url=self._proxify_url(fragment.url))
+
+
+class HTTPPlaylistStream(GeneratedPlaylistStream):
+    """Turns a single fragmented MP4 file into an HLS media playlist."""
+
+    def __init__(self, server, session_opts: StreamSessionOpts, session_, stream):
+        super().__init__(server=server, session_opts=session_opts, stream=stream)
+
+        self.session = session_
+
+    def _generate_playlist(self) -> str:
+        proxy_url = self._proxify_url(self.stream.url)
+
+        index = self._read_segment_index()
+
+        if index is None:
+            self._log.debug("No segment index found, serving file as one segment")
+
+            return build_media_playlist(
+                segments=[StreamFragment(url=proxy_url, duration=self._stream_duration)]
+            )
+
+        self._log.debug(f"Segment index found, {len(index.segments)} segment(s)")
+
+        return build_media_playlist(
+            segments=index.as_fragments(proxy_url),
+            init_segment=index.as_init_fragment(proxy_url),
+        )
+
+    @property
+    def _stream_duration(self) -> float:
+        # VLC takes the playlist duration as the media length, so a wrong
+        # guess here would misplace the whole seek bar
+        return self.stream.duration or SINGLE_SEGMENT_DURATION
+
+    def _read_segment_index(self):
+        for probe_size in (INDEX_PROBE_SIZE, INDEX_PROBE_SIZE_MAX):
+            head = self._read_head(probe_size)
+
+            if head is None:
+                return None
+
+            index = parse_segment_index(head)
+
+            if index is not None:
+                return index
+
+            if len(head) < probe_size:
+                return None
+
+        return None
+
+    def _read_head(self, size: int) -> bytes | None:
+        """Read the start of the file without pulling in the whole thing.
+
+        Servers are free to ignore the range request, so the response is
+        streamed and cut short instead of being trusted to be small.
+        """
+
+        try:
+            with self.session.http.get(
+                self.stream.url,
+                headers={"Range": f"bytes=0-{size - 1}"},
+                stream=True,
+                exception=StreamError,
+            ) as response:
+                return next(response.iter_content(size), b"")
+        except (StreamError, OSError) as err:
+            self._log.debug(f"Failed to probe stream head: {err}")
+            return None
 
 
 class StreamReader:

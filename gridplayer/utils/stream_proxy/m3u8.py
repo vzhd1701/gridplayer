@@ -1,4 +1,9 @@
+import math
+from collections.abc import Sequence
+
 from streamlink.stream.hls import M3U8, ByteRange, HLSSegment
+
+from gridplayer.models.stream import StreamFragment
 
 LIVESTREAM_EDGE = 16
 
@@ -66,3 +71,59 @@ def _segment_to_str(segment: HLSSegment, add_map=False) -> list[str]:
 def _byterange_to_str(byterange: ByteRange) -> str:
     offset_txt = f"@{byterange.offset}" if byterange.offset else ""
     return f"{byterange.range}{offset_txt}"
+
+
+def build_media_playlist(
+    segments: Sequence[StreamFragment],
+    init_segment: StreamFragment | None = None,
+) -> str:
+    """Render a VOD media playlist out of plain segment references.
+
+    Used to expose non-HLS sources (DASH representations, single fMP4 files)
+    to VLC, which only knows how to pair separate audio & video through HLS.
+    """
+
+    target_duration = max((s.duration for s in segments), default=0)
+
+    res = [
+        "#EXTM3U",
+        "#EXT-X-VERSION:7",
+        "#EXT-X-PLAYLIST-TYPE:VOD",
+        f"#EXT-X-TARGETDURATION:{math.ceil(target_duration)}",
+        "#EXT-X-MEDIA-SEQUENCE:0",
+    ]
+
+    if init_segment is not None:
+        byterange = (
+            f',BYTERANGE="{init_segment.byterange}"' if init_segment.byterange else ""
+        )
+        res += [f'#EXT-X-MAP:URI="{init_segment.url}"{byterange}']
+
+    for segment in segments:
+        res += [f"#EXTINF:{segment.duration:.3f},"]
+        if segment.byterange:
+            res += [f"#EXT-X-BYTERANGE:{segment.byterange}"]
+        res += [segment.url]
+
+    res += ["#EXT-X-ENDLIST"]
+
+    return "\n".join(res)
+
+
+def build_master_playlist(video_url: str, audio_url: str, audio_name: str) -> str:
+    """Render a master playlist pairing a video-only rendition with audio."""
+
+    return "\n".join(
+        [
+            "#EXTM3U",
+            "#EXT-X-INDEPENDENT-SEGMENTS",
+            '#EXT-X-MEDIA:TYPE=AUDIO,GROUP-ID="audio",'
+            f'NAME="{_escape_attr(audio_name)}",DEFAULT=YES,URI="{audio_url}"',
+            '#EXT-X-STREAM-INF:BANDWIDTH=0,AUDIO="audio"',
+            video_url,
+        ]
+    )
+
+
+def _escape_attr(value: str) -> str:
+    return value.replace('"', "'")

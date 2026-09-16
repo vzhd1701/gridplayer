@@ -1,13 +1,22 @@
+import dataclasses
 import itertools
 import logging
 import re
 import traceback
 from functools import cached_property
+from types import MappingProxyType
+from urllib.parse import urljoin
 
 from yt_dlp import DownloadError, YoutubeDL
 from yt_dlp.utils import UnsupportedError
 
-from gridplayer.models.stream import HashableDict, Stream, Streams, StreamSessionOpts
+from gridplayer.models.stream import (
+    HashableDict,
+    Stream,
+    StreamFragment,
+    Streams,
+    StreamSessionOpts,
+)
 from gridplayer.settings import Settings
 from gridplayer.utils.url_resolve.resolver_base import ResolverBase
 from gridplayer.utils.url_resolve.static import (
@@ -16,9 +25,32 @@ from gridplayer.utils.url_resolve.static import (
     StreamOfflineError,
 )
 from gridplayer.utils.url_resolve.stream_detect import (
+    is_dash_live_stream,
+    is_fragmented_stream,
     is_hls_live_stream,
     is_http_live_stream,
 )
+
+# VLC can only pair separate audio & video through HLS, so a stream that
+# has to carry an extra audio track must be servable as a playlist
+PLAYLIST_PROTOCOLS = MappingProxyType(
+    {
+        "hls": "hls_proxy",
+        "hls_proxy": "hls_proxy",
+        "dash": "dash",
+        "http": "http_hls",
+        "http_hls": "http_hls",
+    }
+)
+
+# VLC refuses to demux anything but mp4 & mpegts out of a playlist we build,
+# WebM segments make it bail out before the first frame
+HLS_SEGMENT_EXTENSIONS = frozenset({"mp4", "m4a", "m4v", "mov", "ts", "mts", "m2ts"})
+
+# a whole file carries no segment list to state its length, so the duration
+# has to travel with it; "http" is in here because such a stream can still be
+# turned into "http_hls" later on, taking the duration with it
+FILE_PROTOCOLS = frozenset({"http", "http_hls"})
 
 
 class YoutubeDLResolver(ResolverBase):
@@ -32,6 +64,12 @@ class YoutubeDLResolver(ResolverBase):
             return self._video_info["is_live"]
 
         test_stream = self._raw_streams_main[-1]
+
+        if test_stream["protocol"] == "http_dash_segments":
+            return is_dash_live_stream(
+                url=test_stream["url"],
+                session_headers=test_stream.get("http_headers"),
+            )
 
         if "m3u8" in test_stream["protocol"]:
             return is_hls_live_stream(
@@ -99,11 +137,14 @@ class YoutubeDLResolver(ResolverBase):
             fmt for fmt in http_streams if fmt.get("vcodec") != "none"
         ]
 
-        # keeping only muxed streams or m3u8 streams (which can be paired with audio)
+        has_audio_tracks = any(self._is_playlist_capable(fmt) for fmt in audio_streams)
+
+        # a silent stream is only worth offering if audio can be paired with it
         streams_with_video = [
             fmt
             for fmt in streams_with_video
-            if fmt.get("acodec") != "none" or "m3u8" in fmt.get("protocol", "")
+            if fmt.get("acodec") != "none"
+            or (has_audio_tracks and self._is_playlist_capable(fmt))
         ]
 
         # getting all streams if no combined streams are available
@@ -139,10 +180,10 @@ class YoutubeDLResolver(ResolverBase):
 
         unknown_counter = itertools.count(1)
 
-        m3u8_audio_tracks = self._get_m3u8_audio_tracks(raw_streams_audio)
+        audio_tracks = self._get_audio_tracks(raw_streams_audio, is_live)
 
         for raw_stream in raw_streams_main + raw_streams_audio:
-            stream = self._get_stream(raw_stream, m3u8_audio_tracks, is_live)
+            stream = self._get_stream(raw_stream, audio_tracks, is_live)
 
             fmt_name = _get_fmt_name(
                 stream=raw_stream,
@@ -150,54 +191,144 @@ class YoutubeDLResolver(ResolverBase):
                 is_muxed=bool(stream.audio_tracks),
             )
 
-            streams[fmt_name] = stream
+            streams[_unique_name(streams, fmt_name)] = stream
 
         return streams
 
-    def _get_m3u8_audio_tracks(self, raw_streams_audio) -> Streams | None:
+    def _get_audio_tracks(self, raw_streams_audio, is_live) -> Streams | None:
+        """Audio tracks that can be attached to a video-only stream.
+
+        They are served as HLS renditions, so anything that cannot be
+        turned into a playlist is of no use here.
+        """
+
         if not raw_streams_audio:
             return None
 
-        # these will be used to pair up with m3u8 only, vlc can support only these
-        audio_tracks_m3u8 = [s for s in raw_streams_audio if "m3u8" in s["protocol"]]
-        return self._get_streams(audio_tracks_m3u8, [], False)
+        audio_tracks = Streams()
+
+        for raw_stream in raw_streams_audio:
+            stream = self._get_stream(raw_stream, audio_tracks=None, is_live=is_live)
+
+            playlist_protocol = self._playlist_protocol(raw_stream, stream.protocol)
+            if playlist_protocol is None:
+                continue
+
+            fmt_name = _get_audio_fmt_name(raw_stream)
+
+            # the duration set above rides along, a playlist may still need it
+            audio_tracks[_unique_name(audio_tracks, fmt_name)] = dataclasses.replace(
+                stream, protocol=playlist_protocol
+            )
+
+        return audio_tracks or None
 
     def _get_stream(
-        self, stream, m3u8_audio_tracks: Streams | None, is_live: bool
+        self, stream, audio_tracks: Streams | None, is_live: bool
     ) -> Stream:
-        is_m3u8 = "m3u8" in stream["protocol"]
+        protocol = _get_stream_protocol(stream, is_live)
 
-        if is_m3u8 and stream.get("acodec") == "none" and m3u8_audio_tracks:
-            cur_audio_tracks = m3u8_audio_tracks
-            is_live = False
-        else:
-            cur_audio_tracks = None
+        is_audio_only = _is_audio_only(stream)
 
-        url, protocol = _get_stream_url(stream, is_live)
+        is_silent = stream.get("acodec") == "none" and not is_audio_only
 
-        is_audio_only = stream.get("vcodec") == "none" or (
-            stream.get("video_ext") in {"none", None}
-            and stream.get("resolution") in {"none", None}
-            and stream.get("width") in {"none", None}
-        )
+        cur_audio_tracks = None
+        if is_silent and audio_tracks:
+            playlist_protocol = self._playlist_protocol(stream, protocol)
+
+            if playlist_protocol is not None:
+                protocol = playlist_protocol
+                cur_audio_tracks = audio_tracks
+
+        init_fragment, fragments = _get_fragments(stream, protocol)
 
         return Stream(
-            url=url,
+            url=stream["url"],
             protocol=protocol,
             is_audio_only=is_audio_only,
             audio_tracks=cur_audio_tracks,
+            fragments=fragments,
+            init_fragment=init_fragment,
+            duration=self._duration if protocol in FILE_PROTOCOLS else 0,
             session=StreamSessionOpts(
                 service=self._service_id,
                 session_headers=HashableDict(stream.get("http_headers", {})),
             ),
         )
 
+    @property
+    def _duration(self) -> float:
+        """Duration is needed to build a playlist for an unsegmented file."""
 
-def _get_stream_url(stream, is_live) -> tuple[str, str]:
+        return float(self._video_info.get("duration") or 0)
+
+    def _playlist_protocol(self, stream, protocol: str) -> str | None:
+        """Protocol to use when this stream has to be served as an HLS playlist."""
+
+        if protocol == "http" and not self._is_segmentable_file(stream):
+            return None
+
+        return PLAYLIST_PROTOCOLS.get(protocol)
+
+    def _is_playlist_capable(self, stream) -> bool:
+        protocol = _get_stream_protocol(stream, is_live=False)
+
+        return bool(self._playlist_protocol(stream, protocol))
+
+    def _is_segmentable_file(self, stream) -> bool:
+        if not _is_hls_segmentable(stream):
+            return False
+
+        # yt-dlp labels the containers it knows are published for DASH,
+        # the rest have to be looked at
+        return _is_dash_container(stream) or self._is_fragmented_source
+
+    @cached_property
+    def _is_fragmented_source(self) -> bool:
+        """Whether plain files from this site are fragmented.
+
+        A site serves every format out of the same packager, so one probe
+        settles it for all of them.
+        """
+
+        probe = next(
+            (
+                fmt
+                for fmt in reversed(self._video_info.get("formats", []))
+                if fmt.get("protocol") in {"http", "https"}
+                and fmt.get("acodec") == "none"
+                and _is_hls_segmentable(fmt)
+            ),
+            None,
+        )
+
+        if probe is None:
+            return False
+
+        try:
+            is_source_fragmented = is_fragmented_stream(
+                url=probe["url"],
+                session_headers=probe.get("http_headers"),
+            )
+        except Exception as e:
+            self._log.debug(f"Failed to probe stream for fragments: {e}")
+            return False
+
+        self._log.debug(f"yt-dlp - source is fragmented: {is_source_fragmented}")
+
+        return is_source_fragmented
+
+
+def _get_stream_protocol(stream, is_live) -> str:
     protocol = stream.get("protocol", "")
 
     if protocol in {"m3u8", "m3u8_native"}:
         protocol = "hls"
+    elif protocol == "http_dash_segments":
+        # a live manifest keeps moving and the segment list we got is only a
+        # snapshot of it, so VLC has to follow such a manifest itself
+        is_expandable = not is_live and _is_hls_segmentable(stream)
+        protocol = "dash" if is_expandable else "direct"
     elif protocol in {"http", "https"}:
         protocol = "http"
     else:
@@ -208,10 +339,74 @@ def _get_stream_url(stream, is_live) -> tuple[str, str]:
     if protocol == "hls" and (not is_via_streamlink or not is_live):
         protocol = "hls_proxy"
 
-    return stream["url"], protocol
+    return protocol
+
+
+def _is_dash_container(stream) -> bool:
+    return str(stream.get("container") or "").endswith("_dash")
+
+
+def _is_hls_segmentable(stream) -> bool:
+    extensions = {
+        str(stream.get("ext") or "").lower(),
+        str(stream.get("container") or "").lower().removesuffix("_dash"),
+    }
+
+    return bool(extensions & HLS_SEGMENT_EXTENSIONS)
+
+
+def _get_fragments(
+    stream, protocol: str
+) -> tuple[StreamFragment | None, tuple[StreamFragment, ...]]:
+    """Expand yt-dlp fragment references into absolute segment URLs."""
+
+    if protocol != "dash":
+        return None, ()
+
+    base_url = stream.get("fragment_base_url") or stream.get("url") or ""
+
+    init_fragment = None
+    fragments = []
+
+    for fragment in stream.get("fragments") or []:
+        url = fragment.get("url") or urljoin(base_url, fragment.get("path", ""))
+        duration = fragment.get("duration")
+
+        # the leading entry without a duration is the initialization segment
+        if duration is None and not fragments and init_fragment is None:
+            init_fragment = StreamFragment(url=url)
+            continue
+
+        fragments.append(StreamFragment(url=url, duration=duration or 0))
+
+    return init_fragment, tuple(fragments)
+
+
+def _unique_name(streams: Streams, fmt_name: str) -> str:
+    """Keep one format from taking over another one's place in the list."""
+
+    if fmt_name not in streams:
+        return fmt_name
+
+    for counter in itertools.count(2):
+        candidate = f"{fmt_name} #{counter}"
+
+        if candidate not in streams:
+            return candidate
+
+
+def _is_audio_only(stream) -> bool:
+    return stream.get("vcodec") == "none" or (
+        stream.get("video_ext") in {"none", None}
+        and stream.get("resolution") in {"none", None}
+        and stream.get("width") in {"none", None}
+    )
 
 
 def _get_fmt_name(stream, unknown_counter, is_muxed=False):
+    if _is_audio_only(stream):
+        return _get_audio_fmt_name(stream)
+
     fmt_name = stream.get("format_note") or stream.get("format_id")
     codec_info = _get_codec_info(stream)
 
@@ -231,6 +426,26 @@ def _get_fmt_name(stream, unknown_counter, is_muxed=False):
 
     if stream.get("acodec") == "none" and not is_muxed:
         fmt_name += " (video only)"
+
+    return fmt_name
+
+
+def _get_audio_fmt_name(stream) -> str:
+    """Name an audio-only stream by what tells it apart from the others.
+
+    The format id yt-dlp falls back to is an internal number that means
+    nothing outside the site it came from.
+    """
+
+    fmt_name = "Audio"
+
+    language = stream.get("language")
+    if language and language != "none":
+        fmt_name = f"{fmt_name} ({language})"
+
+    codec_info = _get_codec_info(stream)
+    if codec_info:
+        fmt_name = f"{fmt_name} [{codec_info}]"
 
     return fmt_name
 

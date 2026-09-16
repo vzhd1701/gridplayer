@@ -16,12 +16,30 @@ class StreamSessionOpts:
 
 
 @dataclass(frozen=True)
+class StreamFragment:
+    """A single segment of a fragmented stream (DASH segment, byte range, ...)."""
+
+    url: str
+    duration: float = 0.0
+    byterange: str | None = None
+
+
+@dataclass(frozen=True)
 class Stream:
     url: str
     protocol: str
     is_audio_only: bool = False
     session: StreamSessionOpts | None = None
     audio_tracks: Optional["Streams"] = None
+    fragments: tuple[StreamFragment, ...] | None = None
+    init_fragment: StreamFragment | None = None
+    duration: float = 0.0
+
+    @property
+    def is_complex(self) -> bool:
+        """Stream carries data that does not fit into a proxy URL query."""
+
+        return bool(self.audio_tracks or self.fragments or self.duration)
 
 
 class Streams:
@@ -45,6 +63,9 @@ class Streams:
 
     def __iter__(self):
         return iter(self.streams)
+
+    def __contains__(self, key):
+        return key in self.streams
 
     def __reversed__(self):
         return reversed(self.streams)
