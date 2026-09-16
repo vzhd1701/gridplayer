@@ -1080,6 +1080,9 @@ class VideoBlock(QWidget):
 
         self.video_params.stream_quality = quality
 
+        # switching quality resets the block, which leaves it without a driver
+        self._ensure_video_driver()
+
         if stream.protocol == "direct":
             url = stream.url
         else:
