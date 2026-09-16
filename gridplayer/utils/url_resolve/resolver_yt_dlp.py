@@ -254,6 +254,7 @@ class YoutubeDLResolver(ResolverBase):
             url=stream["url"],
             protocol=protocol,
             is_audio_only=is_audio_only,
+            video_codec=_get_video_codec(stream),
             audio_tracks=cur_audio_tracks,
             fragments=fragments,
             init_fragment=init_fragment,
@@ -498,11 +499,22 @@ def _is_bitrate_in_bits(streams) -> bool:
     return all(duration < MIN_PLAUSIBLE_DURATION for duration in implied_durations)
 
 
+def _get_video_codec(stream) -> str | None:
+    """The codec family, as both yt-dlp and VLC spell it (avc1, av01, vp09)."""
+
+    vcodec = stream.get("vcodec")
+
+    if vcodec in {None, "none"}:
+        return None
+
+    return vcodec.split(".")[0]
+
+
 def _get_codec_info(stream):
     codec = ""
 
     if stream.get("vcodec") not in {None, "none"}:
-        codec = stream.get("vcodec").split(".")[0]
+        codec = _get_video_codec(stream)
     elif stream.get("acodec") not in {None, "none"}:
         codec = stream.get("acodec").split(".")[0]
 

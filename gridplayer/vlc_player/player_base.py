@@ -26,6 +26,18 @@ from gridplayer.vlc_player.static import Media, MediaInput, NotPausedError
 
 MEDIA_EXTRACT_RETRY_TIME = 0.1
 
+# VLC's adaptive demuxer restarts the video decoder on every seek, and picking
+# that decoder rebuilds the video output -- once per hardware format avcodec
+# tries before settling. Every driver pays for that, each in its own way: the
+# ones drawing into our window handle lose it to VLC's own window while the
+# outgoing output still holds it, and the ones taking frames through shared
+# memory re-negotiate the buffer under a decoder that is still writing to it.
+# Naming the decoder up front keeps the output alive across a restart.
+#
+# "avcodec-hw=none" makes it worse rather than better: avcodec still walks
+# every hardware format, and rebuilds the video output for each one it rejects.
+SOFTWARE_DECODERS = MappingProxyType({"av01": "dav1d"})
+
 # https://github.com/videolan/vlc/blob/c650ce1a4e352cc04192229a8878b8b6c312527d/include/vlc_aout.h#L92
 AUDIO_CHANNEL_MODE_MAP = MappingProxyType(
     {
@@ -362,6 +374,14 @@ class VlcPlayerBase(ABC):
         if self.media_input.is_audio_only:
             self._media_options.append(":no-video")
 
+        if self._preferred_decoder is not None:
+            # a preference, not a demand -- VLC still falls back to the rest
+            self._log.debug(
+                f"Preferring {self._preferred_decoder}"
+                f" for {self.media_input.video_codec}"
+            )
+            self._media_options.append(f"codec={self._preferred_decoder}")
+
         self._media_input_vlc.add_options(*self._media_options)
 
         if self.is_preparse_required:
@@ -370,6 +390,15 @@ class VlcPlayerBase(ABC):
             self.notify_update_status(translate("Video Status", "Parsing media"))
         else:
             self.loopback_load_video_st2_set_media()
+
+    @property
+    def _preferred_decoder(self) -> str | None:
+        """Decoder to ask for, where the one VLC would pick costs us the window."""
+
+        if not self.media_input.is_adaptive:
+            return None
+
+        return SOFTWARE_DECODERS.get(self.media_input.video_codec)
 
     def load_video_st2_set_media(self):
         """Step 2. Start video player with parsed file"""

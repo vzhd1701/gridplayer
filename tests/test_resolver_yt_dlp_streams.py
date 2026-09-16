@@ -1,6 +1,6 @@
 import pytest
 
-from gridplayer.models.stream import StreamFragment
+from gridplayer.models.stream import Stream, StreamFragment, Streams
 from gridplayer.utils.url_resolve.resolver_yt_dlp import YoutubeDLResolver
 
 MANIFEST = "http://host/manifest.mpd"
@@ -407,3 +407,47 @@ def test_a_format_with_nothing_to_show_falls_back_to_its_id():
     resolver = _resolver({"is_live": False, "formats": formats})
 
     assert list(resolver.streams.video_streams) == ["1080p [ld]"]
+
+
+def test_streams_carry_their_codec_family():
+    """The player picks a software decoder for AV1, so it has to know."""
+
+    formats = [
+        _audio_fmt(),
+        _dash_fmt("av1", vcodec="av01.0.08M.0"),
+        _dash_fmt("h264", vcodec="avc1.640028"),
+    ]
+
+    resolver = _resolver({"is_live": False, "formats": formats})
+
+    streams = resolver.streams
+
+    assert [s.video_codec for s in streams.video_streams.values()] == ["av01", "avc1"]
+    assert [s.video_codec for s in streams.audio_only_streams.values()] == [None]
+
+
+@pytest.mark.parametrize(
+    ("protocol", "is_adaptive"),
+    [
+        ("http", False),
+        ("direct", False),
+        ("http_hls", True),
+        ("dash", True),
+        ("hls_proxy", True),
+        ("hls", True),
+    ],
+)
+def test_only_a_playlist_is_demuxed_adaptively(protocol, is_adaptive):
+    assert Stream(url="http://host/v", protocol=protocol).is_adaptive is is_adaptive
+
+
+def test_paired_audio_makes_a_playlist_out_of_any_protocol():
+    """Pairing audio means a generated playlist, whatever the video was."""
+
+    stream = Stream(
+        url="http://host/v",
+        protocol="http",
+        audio_tracks=Streams({"a": Stream(url="http://host/a", protocol="http")}),
+    )
+
+    assert stream.is_adaptive is True

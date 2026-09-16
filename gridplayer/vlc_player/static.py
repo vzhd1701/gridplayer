@@ -120,6 +120,8 @@ class MediaInput:
     size: tuple[int, int]
     video: Video
 
+    video_codec: str | None = None
+    is_adaptive: bool = False
     length: int | None = None
     _initial_seek_ms: int | None = None
 

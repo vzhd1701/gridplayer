@@ -15,6 +15,11 @@ class StreamSessionOpts:
     session_headers: HashableDict | None
 
 
+# what the proxy answers with a playlist instead of the media itself, which
+# VLC opens with its "adaptive" demuxer
+ADAPTIVE_PROTOCOLS = frozenset({"hls", "hls_proxy", "dash", "http_hls"})
+
+
 @dataclass(frozen=True)
 class StreamFragment:
     """A single segment of a fragmented stream (DASH segment, byte range, ...)."""
@@ -29,11 +34,23 @@ class Stream:
     url: str
     protocol: str
     is_audio_only: bool = False
+    video_codec: str | None = None
     session: StreamSessionOpts | None = None
     audio_tracks: Optional["Streams"] = None
     fragments: tuple[StreamFragment, ...] | None = None
     init_fragment: StreamFragment | None = None
     duration: float = 0.0
+
+    @property
+    def is_adaptive(self) -> bool:
+        """VLC opens this with its adaptive demuxer rather than a plain one.
+
+        That demuxer restarts the video decoder on every seek, where a plain
+        one just seeks. A manifest handed over untouched is demuxed adaptively
+        too, but only a live one ever is, and a live stream cannot be seeked.
+        """
+
+        return bool(self.audio_tracks) or self.protocol in ADAPTIVE_PROTOCOLS
 
     @property
     def is_complex(self) -> bool:

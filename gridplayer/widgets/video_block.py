@@ -1093,6 +1093,8 @@ class VideoBlock(QWidget):
                 uri=url,
                 is_live=self.is_live,
                 is_audio_only=stream.is_audio_only,
+                video_codec=stream.video_codec,
+                is_adaptive=stream.is_adaptive,
                 size=self.size_tuple,
                 video=self.video_params,
             )
