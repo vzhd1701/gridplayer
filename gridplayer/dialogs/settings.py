@@ -21,7 +21,6 @@ from gridplayer.params.languages import LANGUAGES
 from gridplayer.params.static import (
     ColorScheme,
     HWCropBorderOffset,
-    NetworkRetryMode,
     URLResolver,
     VideoDriver,
 )
@@ -41,8 +40,6 @@ VIDEO_DRIVERS_MULTIPROCESS = (
 )
 
 MAX_VLC_PROCESSES = 64
-
-MAX_NETWORK_RETRIES = 1000
 
 
 def _fill_combo_box(combo_box, values_dict):
@@ -123,8 +120,6 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
             "internal/force_native_drag_events": self.miscForceNativeDragEvents,
             "internal/hw_crop_border_offset": self.miscHWCropBorder,
             "streaming/hls_via_streamlink": self.streamingHLSVIAStreamlink,
-            "streaming/network_retry_mode": self.streamingNetworkRetryMode,
-            "streaming/network_retry_times": self.streamingNetworkRetryTimes,
             "streaming/resolver_priority": self.streamingResolverPriority,
             "streaming/resolver_priority_patterns": self.streamingResolverPriorityPatterns,
         }
@@ -169,7 +164,6 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
         self.fill_language()
         self.fill_colorScheme()
         self.fill_streamingResolverPriority()
-        self.fill_streamingNetworkRetryMode()
         self.fill_hwCropBorder()
 
     def ui_set_limits(self):
@@ -179,7 +173,6 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
         self.logLimitBackups.setRange(1, 1000)
         self.timeoutVideoInit.setRange(1, 1000)
         self.playerRecentListSize.setRange(1, 100)
-        self.streamingNetworkRetryTimes.setRange(1, MAX_NETWORK_RETRIES)
 
     def ui_customize_dynamic(self):
         self.driver_selected(self.playerVideoDriver.currentIndex())
@@ -188,7 +181,6 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
         self.logLimitBackups.setEnabled(self.logLimit.isChecked())
         self.streamingWildcardHelp.setVisible(False)
         self.playerRecentListSize.setEnabled(self.playerRecentList.isChecked())
-        self.network_retry_mode_selected(self.streamingNetworkRetryMode.currentIndex())
 
         self.switch_page(None)
         self.adjustSize()
@@ -204,10 +196,6 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
             (self.logLimit.stateChanged, self.logLimitBackups.setEnabled),
             (self.streamingWildcardHelpButton.clicked, self.toggle_wildcard_help),
             (self.playerRecentList.stateChanged, self.playerRecentListSize.setEnabled),
-            (
-                self.streamingNetworkRetryMode.currentIndexChanged,
-                self.network_retry_mode_selected,
-            ),
         )
 
     def toggle_wildcard_help(self):
@@ -323,20 +311,6 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
         }
 
         _fill_combo_box(self.streamingResolverPriority, resolvers)
-
-    def fill_streamingNetworkRetryMode(self):
-        modes = {
-            NetworkRetryMode.OFF: self.tr("Show error"),
-            NetworkRetryMode.TIMES: self.tr("Reload a few times"),
-            NetworkRetryMode.INFINITE: self.tr("Keep reloading"),
-        }
-
-        _fill_combo_box(self.streamingNetworkRetryMode, modes)
-
-    def network_retry_mode_selected(self, idx):
-        mode = self.streamingNetworkRetryMode.itemData(idx)
-
-        self.streamingNetworkRetryTimes.setEnabled(mode == NetworkRetryMode.TIMES)
 
     def fill_hwCropBorder(self):
         values = {

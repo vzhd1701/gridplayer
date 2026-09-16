@@ -14,6 +14,7 @@ from gridplayer.params.static import (
     AudioChannelMode,
     DropAction,
     DropModifier,
+    NetworkRetryMode,
     SeekSyncMode,
     UnsavedChangesMode,
     VideoAspect,
@@ -63,6 +64,8 @@ class PlaylistVideoDefaults(BaseModel):
     crop: VideoCrop | None = None
     stream_quality: str | None = None
     quality_adapt_delay: int | None = None
+    network_retry_mode: NetworkRetryMode | None = None
+    network_retry_times: int | None = None
     auto_reload_timer: int | None = None
 
     @model_validator(mode="before")

@@ -64,7 +64,16 @@ class ActiveBlockManager(ManagerBase):
         if self.is_no_active_block:
             return None
 
-        is_loading_command = command in {"switch_stream_quality", "reload", "close"}
+        # a video showing a network error is not playable, and these are
+        # the commands whose whole point is to be reachable from that state
+        is_loading_command = command in {
+            "switch_stream_quality",
+            "reload",
+            "close",
+            "set_network_retry_mode",
+            "network_retry_times",
+            "get_network_retry_times",
+        }
 
         if not self.is_active_playable() and not is_loading_command:
             return None

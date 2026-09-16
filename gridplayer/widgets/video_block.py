@@ -58,24 +58,12 @@ IN_PROGRESS_THRESHOLD_MS = 500
 # as good as one that never follows it at all
 MAX_QUALITY_ADAPT_DELAY_S = 3600
 
+MAX_NETWORK_RETRIES = 1000
+
 # how long to wait before trying a failed network video again. A host that
 # just turned us away is unlikely to change its mind within a second, and
 # retrying forever at full speed would be indistinguishable from an attack
 NETWORK_RETRY_DELAYS_S = (1, 2, 5, 15, 30)
-
-
-def network_retry_limit() -> int:
-    """How many times a network video may be reloaded, -1 for no limit."""
-
-    mode = Settings().get("streaming/network_retry_mode")
-
-    if mode == NetworkRetryMode.INFINITE:
-        return -1
-
-    if mode == NetworkRetryMode.TIMES:
-        return max(Settings().get("streaming/network_retry_times"), 0)
-
-    return 0
 
 
 class QStackedLayoutFloating(QStackedLayout):
@@ -456,7 +444,7 @@ class VideoBlock(QWidget):
         the last resort, not the first answer.
         """
 
-        retry_limit = network_retry_limit()
+        retry_limit = self._network_retry_limit
 
         if retry_limit == 0:
             return False
@@ -513,7 +501,7 @@ class VideoBlock(QWidget):
 
     @property
     def _network_retry_attempt_txt(self) -> str:
-        retry_limit = network_retry_limit()
+        retry_limit = self._network_retry_limit
 
         if retry_limit < 0:
             return str(self._network_retries)
@@ -706,6 +694,40 @@ class VideoBlock(QWidget):
             return
 
         self.manual_seek("seek", time_ms)
+
+    def set_network_retry_mode(self, mode):
+        self.video_params.network_retry_mode = mode
+
+        # a new policy starts with a full budget rather than what is left
+        self._network_retries = 0
+
+        if not self._network_retry_timer.isActive():
+            return
+
+        if self._network_retry_limit != 0:
+            return
+
+        # the reload this video was counting down to has just been called off
+        self._network_retry_timer.stop()
+        self.network_error()
+
+    def network_retry_times(self):
+        times = QCustomSpinboxInput.get_int(
+            parent=self.parent(),
+            title=translate(
+                "Dialog - Set reload attempts", "Set reload attempts", "Header"
+            ),
+            initial_value=self.video_params.network_retry_times,
+            _min=1,
+            _max=MAX_NETWORK_RETRIES,
+        )
+
+        self.video_params.network_retry_times = times
+
+        self._network_retries = 0
+
+    def get_network_retry_times(self):
+        return str(self.video_params.network_retry_times)
 
     @only_streamable
     def quality_adapt_delay(self):
@@ -1266,6 +1288,23 @@ class VideoBlock(QWidget):
                 video=self.video_params,
             )
         )
+
+    @property
+    def _network_retry_limit(self) -> int:
+        """How many times this video may be reloaded, -1 for no limit."""
+
+        if self.video_params is None:
+            return 0
+
+        mode = self.video_params.network_retry_mode
+
+        if mode == NetworkRetryMode.INFINITE:
+            return -1
+
+        if mode == NetworkRetryMode.TIMES:
+            return max(self.video_params.network_retry_times, 0)
+
+        return 0
 
     @property
     def _quality_adapt_delay_ms(self) -> int:

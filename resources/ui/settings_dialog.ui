@@ -383,26 +383,6 @@
            <item row="0" column="1">
             <widget class="QComboBox" name="streamingResolverPriority"/>
            </item>
-           <item row="1" column="0">
-            <widget class="QLabel" name="label_network_retry_mode">
-             <property name="text">
-              <string>On network error</string>
-             </property>
-            </widget>
-           </item>
-           <item row="1" column="1">
-            <widget class="QComboBox" name="streamingNetworkRetryMode"/>
-           </item>
-           <item row="2" column="0">
-            <widget class="QLabel" name="label_network_retry_times">
-             <property name="text">
-              <string>Reload attempts</string>
-             </property>
-            </widget>
-           </item>
-           <item row="2" column="1">
-            <widget class="QSpinBox" name="streamingNetworkRetryTimes"/>
-           </item>
           </layout>
          </item>
          <item>

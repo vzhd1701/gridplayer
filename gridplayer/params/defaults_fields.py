@@ -12,6 +12,7 @@ from gridplayer.params.static import (
     DropAction,
     DropModifier,
     GridMode,
+    NetworkRetryMode,
     SeekSyncMode,
     UnsavedChangesMode,
     VideoAspect,
@@ -55,6 +56,9 @@ class SettingField:
     spin_special: str | None = None
     spin_suffix: str | None = None
     enabled_by: str | None = None
+    # what the driving field has to be set to, where it is a combo rather
+    # than a checkbox that can only be on or off
+    enabled_by_value: object | None = None
     grid_visibility: GridVisibility = GridVisibility.ALWAYS
     tooltip: str | None = None
 
@@ -193,6 +197,14 @@ def _audio_modes() -> dict:
         AudioChannelMode.DOLBYS: translate("Audio Mode", "Dolby Surround"),
         AudioChannelMode.HEADPHONES: translate("Audio Mode", "Headphones"),
         AudioChannelMode.MONO: translate("Audio Mode", "Mono"),
+    }
+
+
+def _network_retry_modes() -> dict:
+    return {
+        NetworkRetryMode.OFF: _t("Show error"),
+        NetworkRetryMode.TIMES: _t("Reload a few times"),
+        NetworkRetryMode.INFINITE: _t("Keep reloading"),
     }
 
 
@@ -552,6 +564,25 @@ VIDEO_FIELDS: tuple[SettingField, ...] = (
         tooltip=_t(
             "How long a video has to keep its new size before Auto quality follows it"
         ),
+    ),
+    _f(
+        settings_key="video_defaults/network_retry_mode",
+        video_attr="network_retry_mode",
+        kind=FieldKind.COMBO,
+        section=_t("Streaming Videos"),
+        label=_t("On network error"),
+        combo_values=_network_retry_modes,
+    ),
+    _f(
+        settings_key="video_defaults/network_retry_times",
+        video_attr="network_retry_times",
+        kind=FieldKind.SPIN,
+        section=_t("Streaming Videos"),
+        label=_t("Reload attempts"),
+        spin_min=1,
+        spin_max=1000,
+        enabled_by="video_defaults/network_retry_mode",
+        enabled_by_value=NetworkRetryMode.TIMES,
     ),
     _f(
         settings_key="video_defaults/auto_reload_timer",

@@ -72,6 +72,8 @@ class MenuManager(ManagerBase):
                 action = self._ctx.actions[m_item]
                 _add_action(action, menu)
 
+        _strip_trailing_separator(menu)
+
     def _add_submenu(self, submenu, menu):
         sub = SUBMENUS[submenu[0]]
         sub_items = submenu[1:]
@@ -102,6 +104,19 @@ def _add_separator(menu, is_last_element):
         return
 
     menu.addSeparator()
+
+
+def _strip_trailing_separator(menu: QMenu):
+    """A divider is only earning its place while something follows it.
+
+    Whether anything does is not known until the items after it have had
+    their say, and any of them may have decided not to show up.
+    """
+
+    actions = menu.actions()
+
+    if actions and actions[-1].isSeparator():
+        menu.removeAction(actions[-1])
 
 
 def _add_action(action: QDynamicAction, menu: QMenu):

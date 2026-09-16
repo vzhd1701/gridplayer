@@ -39,6 +39,10 @@ SUBMENUS = MappingProxyType(
             "icon": "stereo-mode",
         },
         "Add": {"title": translate("Actions", "Add"), "icon": "add"},
+        "On Network Error": {
+            "title": translate("Actions", "On Network Error"),
+            "icon": "network-error",
+        },
         "Playback": {"title": translate("Actions", "Playback"), "icon": "playback"},
         "Audio": {"title": translate("Actions", "Audio"), "icon": "audio"},
         "Video": {"title": translate("Actions", "Video"), "icon": "video"},
@@ -191,6 +195,14 @@ SECTIONS = MappingProxyType(
             "Rename",
             "Reload",
             "Auto Reload: %v",
+            (
+                "On Network Error",
+                "On Network Error Show Error",
+                "On Network Error Retry Times",
+                "On Network Error Retry Forever",
+                "---",
+                "On Network Error Attempts: %v",
+            ),
             "Close",
         ],
         "video_all": [

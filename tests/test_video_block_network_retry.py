@@ -9,7 +9,7 @@ from PyQt5.QtWidgets import QApplication
 from gridplayer.models.video import Video
 from gridplayer.params.static import NetworkRetryMode
 from gridplayer.settings import Settings
-from gridplayer.widgets.video_block import VideoBlock, network_retry_limit
+from gridplayer.widgets.video_block import VideoBlock
 
 
 @pytest.fixture(scope="module", autouse=True)
@@ -24,8 +24,9 @@ def _isolated_settings(tmp_path):
 
 
 def _set_retries(mode, times=3):
-    Settings().set("streaming/network_retry_mode", mode)
-    Settings().set("streaming/network_retry_times", times)
+    # a fresh Video takes these on, which is where a block reads them from
+    Settings().set("video_defaults/network_retry_mode", mode)
+    Settings().set("video_defaults/network_retry_times", times)
 
 
 def _block(mocker, retries=0, countdown=0):
@@ -35,6 +36,7 @@ def _block(mocker, retries=0, countdown=0):
     block._network_retry_countdown = countdown
     block._is_closing = False
     block.video_params = Video(uri="http://example.com/a.mp4")
+    block._network_retry_limit = VideoBlock._network_retry_limit.fget(block)
     return block
 
 
@@ -136,12 +138,92 @@ def test_a_closing_block_is_not_reloaded(mocker):
     block.reload.assert_not_called()
 
 
-def test_the_retry_limit_follows_the_setting():
+def _limit(mocker):
+    block = mocker.Mock()
+    block.video_params = Video(uri="http://example.com/a.mp4")
+    return VideoBlock._network_retry_limit.fget(block)
+
+
+def test_the_retry_limit_follows_the_video(mocker):
     _set_retries(NetworkRetryMode.OFF)
-    assert network_retry_limit() == 0
+    assert _limit(mocker) == 0
 
     _set_retries(NetworkRetryMode.TIMES, times=5)
-    assert network_retry_limit() == 5
+    assert _limit(mocker) == 5
 
     _set_retries(NetworkRetryMode.INFINITE)
-    assert network_retry_limit() == -1
+    assert _limit(mocker) == -1
+
+
+def test_two_videos_can_disagree_about_retrying(mocker):
+    _set_retries(NetworkRetryMode.OFF)
+    stubborn = mocker.Mock()
+    stubborn.video_params = Video(uri="http://example.com/a.mp4")
+    stubborn.video_params.network_retry_mode = NetworkRetryMode.INFINITE
+
+    giving_up = mocker.Mock()
+    giving_up.video_params = Video(uri="http://example.com/b.mp4")
+
+    assert VideoBlock._network_retry_limit.fget(stubborn) == -1
+    assert VideoBlock._network_retry_limit.fget(giving_up) == 0
+
+
+def test_a_block_with_no_video_yet_has_nothing_to_retry(mocker):
+    _set_retries(NetworkRetryMode.INFINITE)
+    block = mocker.Mock()
+    block.video_params = None
+
+    assert VideoBlock._network_retry_limit.fget(block) == 0
+
+
+def test_a_mode_change_with_nothing_pending_just_records_it(mocker):
+    block = _block(mocker, retries=2)
+    block._network_retry_timer.isActive.return_value = False
+
+    VideoBlock.set_network_retry_mode(block, NetworkRetryMode.INFINITE)
+
+    assert block.video_params.network_retry_mode == NetworkRetryMode.INFINITE
+    assert block._network_retries == 0
+    block.network_error.assert_not_called()
+
+
+def test_calling_off_a_pending_reload_shows_the_error_instead(mocker):
+    block = _block(mocker, retries=1)
+    block._network_retry_timer.isActive.return_value = True
+    # what the property reports once the new mode is in place
+    block._network_retry_limit = 0
+
+    VideoBlock.set_network_retry_mode(block, NetworkRetryMode.OFF)
+
+    block._network_retry_timer.stop.assert_called_once()
+    block.network_error.assert_called_once()
+
+
+def test_a_pending_reload_survives_a_switch_to_another_retrying_mode(mocker):
+    block = _block(mocker, retries=1)
+    block._network_retry_timer.isActive.return_value = True
+    block._network_retry_limit = -1
+
+    VideoBlock.set_network_retry_mode(block, NetworkRetryMode.INFINITE)
+
+    block._network_retry_timer.stop.assert_not_called()
+    block.network_error.assert_not_called()
+
+
+def test_a_new_attempt_count_gives_the_video_a_fresh_budget(mocker):
+    block = _block(mocker, retries=2)
+    mocker.patch(
+        "gridplayer.widgets.video_block.QCustomSpinboxInput.get_int", return_value=7
+    )
+
+    VideoBlock.network_retry_times(block)
+
+    assert block.video_params.network_retry_times == 7
+    assert block._network_retries == 0
+
+
+def test_the_attempt_count_is_what_the_menu_shows(mocker):
+    block = _block(mocker)
+    block.video_params.network_retry_times = 5
+
+    assert VideoBlock.get_network_retry_times(block) == "5"

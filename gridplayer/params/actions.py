@@ -3,6 +3,7 @@ from types import MappingProxyType
 from gridplayer.params.static import (
     AudioChannelMode,
     GridMode,
+    NetworkRetryMode,
     SeekSyncMode,
     VideoAspect,
     VideoEndAction,
@@ -733,6 +734,53 @@ ACTIONS = MappingProxyType(
             "func": ("active", "auto_reload_timer"),
             "value_getter": ("active", "get_auto_reload_timer"),
             "show_if": "is_active_live",
+        },
+        "On Network Error Show Error": {
+            "title": translate("Actions", "Show Error"),
+            "icon": "error",
+            "func": ("active", "set_network_retry_mode", NetworkRetryMode.OFF),
+            "check_if": (
+                "is_active_param_set_to",
+                "network_retry_mode",
+                NetworkRetryMode.OFF,
+            ),
+            "show_if": NOT("is_active_local_file"),
+        },
+        "On Network Error Retry Times": {
+            "title": translate("Actions", "Reload a Few Times"),
+            "icon": "reload",
+            "func": ("active", "set_network_retry_mode", NetworkRetryMode.TIMES),
+            "check_if": (
+                "is_active_param_set_to",
+                "network_retry_mode",
+                NetworkRetryMode.TIMES,
+            ),
+            "show_if": NOT("is_active_local_file"),
+        },
+        "On Network Error Retry Forever": {
+            "title": translate("Actions", "Keep Reloading"),
+            "icon": "reload",
+            "func": ("active", "set_network_retry_mode", NetworkRetryMode.INFINITE),
+            "check_if": (
+                "is_active_param_set_to",
+                "network_retry_mode",
+                NetworkRetryMode.INFINITE,
+            ),
+            "show_if": NOT("is_active_local_file"),
+        },
+        "On Network Error Attempts: %v": {
+            "title": "{}: %v".format(translate("Actions", "Attempts")),
+            "icon": "empty",
+            "func": ("active", "network_retry_times"),
+            "value_getter": ("active", "get_network_retry_times"),
+            "show_if": AND(
+                NOT("is_active_local_file"),
+                (
+                    "is_active_param_set_to",
+                    "network_retry_mode",
+                    NetworkRetryMode.TIMES,
+                ),
+            ),
         },
         "Close": {
             "title": translate("Actions", "Close"),

@@ -14,6 +14,7 @@ from gridplayer.params.static import (
     MIN_RATE,
     MIN_SCALE,
     AudioChannelMode,
+    NetworkRetryMode,
     VideoAspect,
     VideoCrop,
     VideoEndAction,
@@ -79,6 +80,10 @@ class Video(BaseModel):
     # Streamable
     stream_quality: str = session_field("video_defaults/stream_quality")
     quality_adapt_delay_sec: int = session_field("video_defaults/quality_adapt_delay")
+    network_retry_mode: NetworkRetryMode = session_field(
+        "video_defaults/network_retry_mode"
+    )
+    network_retry_times: int = session_field("video_defaults/network_retry_times")
     auto_reload_timer_min: int = session_field("video_defaults/auto_reload_timer")
 
     # Tracks

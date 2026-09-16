@@ -271,7 +271,10 @@ class DefaultsForm(QWidget):
             widget = self._widgets.get(spec.settings_key)
             if driver is None or widget is None:
                 continue
-            enabled = driver.isChecked()
+            if spec.enabled_by_value is None:
+                enabled = driver.isChecked()
+            else:
+                enabled = driver.currentData() == spec.enabled_by_value
             widget.setEnabled(enabled)
             label = self._labels.get(spec.settings_key)
             if label is not None:
