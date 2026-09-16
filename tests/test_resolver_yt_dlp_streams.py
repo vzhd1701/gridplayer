@@ -337,3 +337,73 @@ def test_paired_audio_tracks_keep_their_place_too():
         "Audio [mp4a 128kbps]",
         "Audio [mp4a 128kbps] #2",
     ]
+
+
+def test_bitrates_reported_in_bits_are_brought_back_to_kbits():
+    """Some extractors hand over raw bits/s, inflating every number by 1000."""
+
+    # 70 seconds of video, as the file sizes and bitrates agree
+    formats = [
+        _audio_fmt("audio", tbr=51844, abr=51844, filesize=453735),
+        _dash_fmt("video", tbr=244052, vbr=244052, filesize=2131374),
+    ]
+
+    resolver = _resolver({"is_live": False, "formats": formats})
+
+    assert list(resolver.streams) == ["720p [avc1 244kbps]", "Audio [mp4a 51kbps]"]
+
+
+def test_plausible_bitrates_are_left_alone():
+    # 128kbps over 70 seconds really is about 1.1MB
+    formats = [
+        _audio_fmt("audio", tbr=128.0, filesize=1120000),
+        _dash_fmt("video", tbr=2200.0, filesize=19250000),
+    ]
+
+    resolver = _resolver({"is_live": False, "formats": formats})
+
+    assert list(resolver.streams) == ["720p [avc1 2200kbps]", "Audio [mp4a 128kbps]"]
+
+
+def test_bitrates_are_left_alone_when_no_file_size_says_otherwise():
+    """Without a file size there is nothing to pin the bitrate against."""
+
+    formats = [
+        _audio_fmt("audio", tbr=51844),
+        _dash_fmt("video", tbr=244052),
+    ]
+
+    resolver = _resolver({"is_live": False, "formats": formats})
+
+    assert list(resolver.streams) == [
+        "720p [avc1 244052kbps]",
+        "Audio [mp4a 51844kbps]",
+    ]
+
+
+def test_resolution_shaped_notes_still_say_which_codec_they_are():
+    """A site naming its formats "1080p" leaves them indistinguishable."""
+
+    formats = [
+        _audio_fmt(),
+        _dash_fmt("137", format_note="1080p", vcodec="avc1.64", tbr=2869.0),
+        _dash_fmt("399", format_note="1080p", vcodec="av01.0.08M.0", tbr=1569.0),
+    ]
+
+    resolver = _resolver({"is_live": False, "formats": formats})
+
+    assert list(resolver.streams.video_streams) == [
+        "1080p [avc1 2869kbps]",
+        "1080p [av01 1569kbps]",
+    ]
+
+
+def test_a_format_with_nothing_to_show_falls_back_to_its_id():
+    formats = [
+        _audio_fmt(),
+        _dash_fmt("ld", format_note="1080p", vcodec=None, tbr=None),
+    ]
+
+    resolver = _resolver({"is_live": False, "formats": formats})
+
+    assert list(resolver.streams.video_streams) == ["1080p [ld]"]

@@ -52,6 +52,12 @@ HLS_SEGMENT_EXTENSIONS = frozenset({"mp4", "m4a", "m4v", "mov", "ts", "mts", "m2
 # turned into "http_hls" later on, taking the duration with it
 FILE_PROTOCOLS = frozenset({"http", "http_hls"})
 
+# yt-dlp promises bitrates in kbit/s, but some extractors pass on the raw
+# bits/s they read off the site, inflating every number by 1000. Such a value
+# gives itself away by making the file out to be a fraction of a second long.
+BITRATE_KEYS = ("tbr", "vbr", "abr")
+MIN_PLAUSIBLE_DURATION = 1.0
+
 
 class YoutubeDLResolver(ResolverBase):
     @property
@@ -126,6 +132,8 @@ class YoutubeDLResolver(ResolverBase):
             for fmt in self._video_info.get("formats", [])
             if fmt.get("url", "").startswith("http")
         ]
+
+        _fix_bitrate_units(http_streams)
 
         audio_streams = [
             fmt
@@ -407,27 +415,32 @@ def _get_fmt_name(stream, unknown_counter, is_muxed=False):
     if _is_audio_only(stream):
         return _get_audio_fmt_name(stream)
 
-    fmt_name = stream.get("format_note") or stream.get("format_id")
-    codec_info = _get_codec_info(stream)
+    fmt_name = _get_video_fmt_name(stream, unknown_counter)
 
-    if not re.match(r"^\d+p", fmt_name):
-        if stream.get("height"):
-            if codec_info:
-                fmt_name = f"{stream['height']}p [{codec_info}]"
-            elif stream.get("format_id"):
-                fmt_name = f"{stream['height']}p [{stream['format_id']}]"
-            else:
-                fmt_name = f"{stream['height']}p"
-        else:
-            fmt_name = stream.get("format", f"Unknown {next(unknown_counter)}")
-
-            if codec_info:
-                fmt_name = f"{fmt_name} [{codec_info}]"
+    # a site usually offers the same resolution in several codecs, so the
+    # size alone does not say which one of them this is
+    details = _get_codec_info(stream) or stream.get("format_id")
+    if details:
+        fmt_name = f"{fmt_name} [{details}]"
 
     if stream.get("acodec") == "none" and not is_muxed:
         fmt_name += " (video only)"
 
     return fmt_name
+
+
+def _get_video_fmt_name(stream, unknown_counter) -> str:
+    """Name a video stream by its size, however the site chose to state it."""
+
+    fmt_name = stream.get("format_note") or stream.get("format_id") or ""
+
+    if re.match(r"^\d+p", fmt_name):
+        return fmt_name
+
+    if stream.get("height"):
+        return f"{stream['height']}p"
+
+    return stream.get("format") or f"Unknown {next(unknown_counter)}"
 
 
 def _get_audio_fmt_name(stream) -> str:
@@ -448,6 +461,41 @@ def _get_audio_fmt_name(stream) -> str:
         fmt_name = f"{fmt_name} [{codec_info}]"
 
     return fmt_name
+
+
+def _fix_bitrate_units(streams) -> None:
+    """Bring a ladder's bitrates back to the kbit/s that yt-dlp promises.
+
+    Rewrites the format dicts in place, since every consumer shares them.
+    """
+
+    if not _is_bitrate_in_bits(streams):
+        return
+
+    for fmt in streams:
+        for key in BITRATE_KEYS:
+            if fmt.get(key):
+                fmt[key] = fmt[key] / 1000
+
+
+def _is_bitrate_in_bits(streams) -> bool:
+    """Whether a ladder states its bitrates in bits/s instead of kbit/s.
+
+    A known file size pins the bitrate against the duration it implies. No
+    format in a quality ladder is a fraction of a second long, so a reading
+    that says otherwise is off by the factor that separates the two units.
+    """
+
+    implied_durations = [
+        fmt["filesize"] * 8 / (fmt["tbr"] * 1000)
+        for fmt in streams
+        if fmt.get("filesize") and fmt.get("tbr")
+    ]
+
+    if not implied_durations:
+        return False
+
+    return all(duration < MIN_PLAUSIBLE_DURATION for duration in implied_durations)
 
 
 def _get_codec_info(stream):
