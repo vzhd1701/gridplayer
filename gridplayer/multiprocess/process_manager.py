@@ -6,6 +6,7 @@ from threading import Condition, Lock
 from PyQt5.QtCore import QObject, pyqtSignal
 
 from gridplayer.multiprocess.command_loop import CommandLoopThreaded
+from gridplayer.multiprocess.job_object import create_kill_on_close_job
 from gridplayer.settings import Settings
 from gridplayer.utils.log_config import QueueListenerRoot
 from gridplayer.utils.misc import force_terminate_children, force_terminate_children_all
@@ -35,6 +36,11 @@ class ProcessManager(CommandLoopThreaded, QObject):
         self.instances = {}
 
         self.dying_instances = set()
+
+        # Our half of making sure no decoder process outlives us when we die
+        # without running any cleanup at all. The children look after
+        # themselves too, see InstanceProcess._guard_against_orphaning.
+        self._job = create_kill_on_close_job()
 
         self._instances_killed = Condition()
 
@@ -82,7 +88,13 @@ class ProcessManager(CommandLoopThreaded, QObject):
                 self.instances[instance.id] = instance
 
             self._log.debug(f"Launching process {instance.id}")
+
             instance.process.start()
+
+            # A crash in the sliver between the start and here would leave the
+            # child out of the job, but the child's own watchdog covers that:
+            # it reports a parent that is already gone.
+            self._job.assign(instance.process.pid)
 
         return instance
 
@@ -137,6 +149,10 @@ class ProcessManager(CommandLoopThreaded, QObject):
         if active_children():
             self._log.warning("Force terminating child processes...")
             force_terminate_children()
+
+        # Nothing is left to protect, and dropping this takes out whatever
+        # force_terminate_children could not.
+        self._job.close()
 
         self._log.debug("Terminating command loop...")
         self.cmd_loop_terminate()

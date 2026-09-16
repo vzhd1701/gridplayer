@@ -1,14 +1,19 @@
 import logging
+import os
 import secrets
 import traceback
 from abc import ABC, abstractmethod
-from multiprocessing import Value
+from multiprocessing import Value, parent_process
 from multiprocessing.context import Process
+from threading import Thread
 
 from gridplayer.main.init_app_env import init_app_env_id
 from gridplayer.multiprocess.command_loop import CommandLoop
+from gridplayer.multiprocess.parent_death_signal import arm_parent_death_signal
 from gridplayer.params.static import PLAYER_ID_LENGTH
 from gridplayer.utils.log_config import child_process_config
+
+ORPHANED_EXIT_CODE = 1
 
 
 class InstanceProcess(CommandLoop, ABC):
@@ -74,6 +79,8 @@ class InstanceProcess(CommandLoop, ABC):
         if self._log_queue is not None:
             child_process_config(self._log_queue, self._log_level)
 
+        self._guard_against_orphaning()
+
         try:
             self.process_body()
         except KeyboardInterrupt:
@@ -87,6 +94,42 @@ class InstanceProcess(CommandLoop, ABC):
         finally:
             if self._log_queue is not None:
                 self._log_queue.close()
+
+    # process
+    def _guard_against_orphaning(self):
+        """Make sure this process cannot outlive the player that started it.
+
+        Nothing runs in the player when it dies of an access violation, so
+        both of these have to hold without it. The kernel kills us outright
+        where it can; the watchdog covers the rest, including the moment
+        before the kernel was asked.
+
+        macOS has no kernel side to ask -- no job objects, no PDEATHSIG -- so
+        there the watchdog is all there is. It misses only a child that holds
+        the GIL for good, which libvlc cannot cause: python-vlc calls it
+        through ctypes.CDLL, which releases the GIL for the call.
+        """
+        arm_parent_death_signal()
+
+        Thread(target=self._watch_parent, daemon=True, name="parent_watch").start()
+
+    # process
+    def _watch_parent(self):
+        parent = parent_process()
+
+        if parent is None:
+            return
+
+        # Returns straight away if the parent is already gone.
+        parent.join()
+
+        logging.getLogger("InstanceProcess").critical(
+            "Parent process is gone, terminating"
+        )
+
+        # No clean shutdown to be had: the window VLC draws into belongs to the
+        # process that just died, and releasing the player would block on it.
+        os._exit(ORPHANED_EXIT_CODE)
 
     # process
     def process_body(self):
