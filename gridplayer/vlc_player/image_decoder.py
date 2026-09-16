@@ -52,19 +52,33 @@ class ImageDecoder:
 
         self._prev_frame_digest = None
 
-    def set_frame(self, width, height):
+    def set_frame(self, width, height) -> bool:
         if width == self._width and height == self._height and self._row_size:
-            return
+            return True
 
-        self._log.debug(f"Allocating shared memory for {width}x{height} frame")
+        self._log.debug(f"Sizing frame buffer for {width}x{height} frame")
 
-        if self._row_size is not None:
-            self._shared_memory.close()
+        row_size = width * 4
+
+        # VLC hands the buffer to the decoder in lock() and only takes it back
+        # in unlock(), so resizing outside that pair moves memory out from
+        # under a decoder that is still writing into it. The same lock holds
+        # off the reader, whose view of the buffer would otherwise be what
+        # keeps the old one from being released at all.
+        try:
+            with self._shared_memory:
+                self._shared_memory.allocate(height * row_size)
+        except (OSError, RuntimeError, MemoryError, ValueError) as err:
+            # the old buffer is still whatever it was, and too small for this
+            # frame, so VLC must not be let near it
+            self._log.error(f"Failed to allocate {width}x{height} frame: {err}")
+            return False
 
         self._width = width
         self._height = height
-        self._row_size = self._width * 4
-        self._shared_memory.allocate(self._height * self._row_size)
+        self._row_size = row_size
+
+        return True
 
     def attach_media_player(self, media_player):
         # display=None: VLC 3 vmem copies into our buffer in Prepare (lock/
@@ -90,9 +104,15 @@ class ImageDecoder:
             pitches[0] = frame_w * 4
             lines[0] = frame_h
 
-            self.set_frame(frame_w, frame_h)
+            # 0 tells VLC the format is not usable, which beats letting it
+            # decode into a buffer that is the wrong size or already gone
+            if not self.set_frame(frame_w, frame_h):
+                return 0
+
             if self._size_ready_cb is not None:
-                self._size_ready_cb(frame_w, frame_h)
+                # the buffer size goes along, since it is what tells the reader
+                # which buffer this frame is in
+                self._size_ready_cb(frame_w, frame_h, self._shared_memory.size)
             # VLC's internal vout pool size; lock still uses one app buffer.
             return 3
 

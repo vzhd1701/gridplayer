@@ -100,8 +100,8 @@ class PlayerProcessSingleVLCSW(VlcPlayerThreaded):
     def ready_signal(self):
         self.cmd_send("process_image")
 
-    def size_ready(self, width, height):
-        self.cmd_send("init_frame", width, height)
+    def size_ready(self, width, height, buffer_size):
+        self.cmd_send("init_frame", width, height, buffer_size)
 
     def cleanup(self):
         super().cleanup()
@@ -179,8 +179,16 @@ class VideoDriverVLCSW(VLCVideoDriverThreaded):
             {}, self.cmd_child_pipe(), vlc_options
         )
 
-    def init_frame(self, width, height):
+    def init_frame(self, width, height, buffer_size):
         self._shared_memory = self.player.get_player_shared_data()
+
+        # a bigger frame means a new segment, which the player process has
+        # already allocated by the time it tells us about it
+        try:
+            with self._shared_memory:
+                self._shared_memory.attach(buffer_size)
+        except RuntimeError as err:
+            self._log.warning(f"Frame buffer is not there: {err}")
 
         self._width = width
         self._height = height

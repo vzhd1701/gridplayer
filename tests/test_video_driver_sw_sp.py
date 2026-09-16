@@ -130,7 +130,7 @@ def test_process_image_noop_without_frame_size(mocker):
 def test_init_frame_sets_dummy_pixmap(mocker):
     driver, surface = _driver_with_mocked_player(mocker)
     try:
-        driver.init_frame(4, 6)
+        driver.init_frame(4, 6, 4 * 6 * 4)
         assert surface.has_frame()
         assert surface.frame_size() == (4, 6)
     finally:
@@ -140,7 +140,7 @@ def test_init_frame_sets_dummy_pixmap(mocker):
 def test_process_image_copies_shared_memory_into_pixmap(mocker):
     driver, surface = _driver_with_mocked_player(mocker)
     try:
-        driver.init_frame(2, 2)
+        driver.init_frame(2, 2, 2 * 2 * 4)
         driver._shared_memory.allocate(2 * 2 * 4)
         driver._shared_memory.memory.buf[:] = b"\x00\x00\xff\xff" * 4
         driver.process_image()
@@ -153,7 +153,7 @@ def test_process_image_copies_shared_memory_into_pixmap(mocker):
 
 def test_process_image_noop_after_cleanup(mocker):
     driver, surface = _driver_with_mocked_player(mocker)
-    driver.init_frame(2, 2)
+    driver.init_frame(2, 2, 2 * 2 * 4)
     driver.cleanup()
     driver.process_image()
     assert surface.frame_size() == (2, 2)
@@ -162,7 +162,7 @@ def test_process_image_noop_after_cleanup(mocker):
 def test_process_image_handles_closed_mapping(mocker):
     driver, surface = _driver_with_mocked_player(mocker)
     try:
-        driver.init_frame(2, 2)
+        driver.init_frame(2, 2, 2 * 2 * 4)
         driver._shared_memory.allocate(2 * 2 * 4)
         driver._shared_memory.close()
         driver.process_image()

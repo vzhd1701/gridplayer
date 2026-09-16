@@ -29,7 +29,7 @@ class PlayerProcessSingleVLCSWSP(QThread, VlcPlayerBase, metaclass=QABC):
     loop_load_video_st3_extract_media_track = pyqtSignal()
     loop_load_video_st4_loaded = pyqtSignal()
 
-    init_frame_signal = pyqtSignal(int, int)
+    init_frame_signal = pyqtSignal(int, int, int)
     process_image_signal = pyqtSignal()
 
     _vout_reapply = pyqtSignal()
@@ -116,8 +116,8 @@ class PlayerProcessSingleVLCSWSP(QThread, VlcPlayerBase, metaclass=QABC):
     def ready_signal(self):
         self.process_image_signal.emit()
 
-    def size_ready(self, width, height):
-        self.init_frame_signal.emit(width, height)
+    def size_ready(self, width, height, buffer_size):
+        self.init_frame_signal.emit(width, height, buffer_size)
 
     @pyqtSlot()
     def cleanup(self):
@@ -325,8 +325,12 @@ class VideoDriverVLCSWSP(VLCVideoDriver):
     def set_log_level_vlc(self, log_level):
         self.cmd_set_log_level_vlc.emit(log_level)
 
-    @pyqtSlot(int, int)
-    def init_frame(self, width, height):
+    @pyqtSlot(int, int, int)
+    def init_frame(self, width, height, buffer_size):
+        if self._shared_memory is not None:
+            with self._shared_memory:
+                self._shared_memory.attach(buffer_size)
+
         self._width = width
         self._height = height
 
