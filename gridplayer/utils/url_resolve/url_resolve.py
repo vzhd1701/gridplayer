@@ -19,6 +19,8 @@ from gridplayer.utils.url_resolve.static import (
     StreamOfflineError,
 )
 
+_log = logging.getLogger(__name__)
+
 RESOLVER_NAMES = MappingProxyType(
     {
         URLResolver.STREAMLINK: "Streamlink",
@@ -35,6 +37,29 @@ RESOLVER_MAP = MappingProxyType(
 )
 
 
+def resolve_url(url: str, on_status=None) -> ResolvedVideo | None:
+    """Resolve a page URL into playable streams.
+
+    Plain function on purpose: the proxy calls it from its own threads to
+    renew URLs that have expired, where there is no Qt object to report to.
+    """
+
+    def status(message: str) -> None:
+        if on_status is not None:
+            on_status(message)
+
+    status(translate("Video Status", "Picking URL resolvers"))
+
+    for resolver_id, resolver in _pick_resolvers(url).items():
+        status(_make_status_msg(resolver_id))
+
+        _log.debug(f"Trying to resolve URL with {resolver.__name__}")
+        with contextlib.suppress(NoResolverPlugin):
+            return resolver(url).resolve()
+
+    return None
+
+
 class VideoURLResolverWorker(QObject):
     url_resolved = pyqtSignal(ResolvedVideo)
     error = pyqtSignal()
@@ -46,29 +71,24 @@ class VideoURLResolverWorker(QObject):
 
     def resolve(self, url):
         try:
-            self.url_resolved.emit(self.resolve_url(url))
+            resolved = resolve_url(url, on_status=self.update_status.emit)
         except StreamOfflineError:
             self._log.debug("Stream is offline")
-            self._error(translate("Video Error", "Stream is offline"))
+            return self._error(translate("Video Error", "Stream is offline"))
         except BadURLException as e:
             self._log.error(e)
-            self._error(translate("Video Error", "Failed to resolve URL"))
+            return self._error(translate("Video Error", "Failed to resolve URL"))
         except Exception:
             self._log.exception("URL resolver exception")
-            self._error(translate("Video Error", "Failed to resolve URL"))
+            return self._error(translate("Video Error", "Failed to resolve URL"))
 
-    def resolve_url(self, url: str) -> ResolvedVideo | None:
-        self.update_status.emit(translate("Video Status", "Picking URL resolvers"))
-        url_resolvers = _pick_resolvers(url)
+        # no resolver claimed the URL. Emitting this would raise on the way
+        # out of the worker thread and leave the video stuck on "loading"
+        if resolved is None:
+            self._log.error(f"No resolver was able to handle {url}")
+            return self._error(translate("Video Error", "Failed to resolve URL"))
 
-        for resolver_id, resolver in url_resolvers.items():
-            self.update_status.emit(_make_status_msg(resolver_id))
-
-            self._log.debug(f"Trying to resolve URL with {resolver.__name__}")
-            with contextlib.suppress(NoResolverPlugin):
-                return resolver(url).resolve()
-
-        return None
+        self.url_resolved.emit(resolved)
 
     def _error(self, message: str) -> None:
         self.update_status.emit(message)

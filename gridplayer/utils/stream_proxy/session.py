@@ -45,17 +45,12 @@ class StreamSession:
             self._log.debug("Stream is http_hls, using HTTPPlaylistStream")
             return HTTPPlaylistStream(
                 server=self._server,
-                session_opts=self._stream_session,
                 session_=self._session,
                 stream=stream,
             )
         elif protocol == "dash":
             self._log.debug("Stream is dash, using DASHPlaylistStream")
-            return DASHPlaylistStream(
-                server=self._server,
-                session_opts=self._stream_session,
-                stream=stream,
-            )
+            return DASHPlaylistStream(server=self._server, stream=stream)
         elif protocol == "hls_proxy":
             self._log.debug("Stream is hls_proxy, using HLSProxy")
             return HLSProxy(

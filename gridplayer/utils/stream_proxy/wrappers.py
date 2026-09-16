@@ -12,6 +12,7 @@ from streamlink.stream.http import HTTPStream
 from streamlink.stream.wrappers import StreamIOIterWrapper, StreamIOThreadWrapper
 
 from gridplayer.models.stream import Stream, StreamFragment, StreamSessionOpts
+from gridplayer.utils.stream_proxy.fragments import FRAGMENT_INIT, FRAGMENT_SELF
 from gridplayer.utils.stream_proxy.m3u8 import (
     build_master_playlist,
     build_media_playlist,
@@ -141,11 +142,10 @@ class GeneratedPlaylistStream:
     an HLS playlist whose entries point back at this proxy.
     """
 
-    def __init__(self, server, session_opts: StreamSessionOpts, stream: Stream):
+    def __init__(self, server, stream: Stream):
         self._log = logging.getLogger(self.__class__.__name__)
 
         self.server = server
-        self.session_opts = session_opts
         self.stream = stream
 
         self._playlist = None
@@ -175,17 +175,14 @@ class GeneratedPlaylistStream:
     def _proxify(self, stream: Stream) -> str:
         return self.server.add_stream(stream)
 
-    def _proxify_url(self, url: str) -> str:
-        return self._proxify(
-            Stream(url=url, protocol="http", session=self.session_opts)
-        )
+    def _proxify_fragment_url(self, fragment: str) -> str:
+        """Link back to one fragment of this stream, by position."""
+
+        return self.server.add_stream(self.stream, fragment=fragment)
 
 
 class HLSMuxedStream(GeneratedPlaylistStream):
     """Pairs a video-only stream with a separate audio track."""
-
-    def __init__(self, server, stream: Stream):
-        super().__init__(server=server, session_opts=stream.session, stream=stream)
 
     def _generate_playlist(self) -> str:
         # takes too long to load all tracks, picking the best one
@@ -195,8 +192,20 @@ class HLSMuxedStream(GeneratedPlaylistStream):
 
         return build_master_playlist(
             video_url=self._proxify(solo_stream),
-            audio_url=self._proxify(audio_track),
+            audio_url=self._proxify(self._with_origin(audio_track, name)),
             audio_name=name,
+        )
+
+    def _with_origin(self, audio_track: Stream, name: str) -> Stream:
+        """Note which track this is, so it can be found again once renewed."""
+
+        origin = self.stream.origin
+
+        if origin is None:
+            return audio_track
+
+        return dataclasses.replace(
+            audio_track, origin=dataclasses.replace(origin, audio_track=name)
         )
 
 
@@ -216,29 +225,34 @@ class DASHPlaylistStream(GeneratedPlaylistStream):
 
         return build_media_playlist(
             segments=[
-                self._proxify_fragment(fragment) for fragment in self.stream.fragments
+                self._proxify_fragment(fragment, str(fragment_idx))
+                for fragment_idx, fragment in enumerate(self.stream.fragments)
             ],
             init_segment=(
-                self._proxify_fragment(init_fragment)
+                self._proxify_fragment(init_fragment, FRAGMENT_INIT)
                 if init_fragment is not None
                 else None
             ),
         )
 
-    def _proxify_fragment(self, fragment: StreamFragment) -> StreamFragment:
-        return dataclasses.replace(fragment, url=self._proxify_url(fragment.url))
+    def _proxify_fragment(
+        self, fragment: StreamFragment, fragment_id: str
+    ) -> StreamFragment:
+        return dataclasses.replace(
+            fragment, url=self._proxify_fragment_url(fragment_id)
+        )
 
 
 class HTTPPlaylistStream(GeneratedPlaylistStream):
     """Turns a single fragmented MP4 file into an HLS media playlist."""
 
-    def __init__(self, server, session_opts: StreamSessionOpts, session_, stream):
-        super().__init__(server=server, session_opts=session_opts, stream=stream)
+    def __init__(self, server, session_, stream):
+        super().__init__(server=server, stream=stream)
 
         self.session = session_
 
     def _generate_playlist(self) -> str:
-        proxy_url = self._proxify_url(self.stream.url)
+        proxy_url = self._proxify_fragment_url(FRAGMENT_SELF)
 
         index = self._read_segment_index()
 

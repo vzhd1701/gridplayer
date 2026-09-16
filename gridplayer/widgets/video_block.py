@@ -1,3 +1,4 @@
+import dataclasses
 import logging
 import random
 import secrets
@@ -12,7 +13,7 @@ from PyQt5.QtWidgets import QStackedLayout, QWidget
 from gridplayer.dialogs.input_dialog import QCustomSpinboxInput, QCustomSpinboxTimeInput
 from gridplayer.dialogs.rename_dialog import QVideoRenameDialog
 from gridplayer.exceptions import PlayerException
-from gridplayer.models.stream import Streams
+from gridplayer.models.stream import StreamOrigin, Streams
 from gridplayer.models.video import (
     Video,
     VideoBlockMime,
@@ -27,6 +28,7 @@ from gridplayer.params.static import (
     OVERLAY_ACTIVITY_EVENT,
     PLAYER_ID_LENGTH,
     VIDEO_END_LOOP_MARGIN_MS,
+    NetworkRetryMode,
     VideoAspect,
     VideoCrop,
     VideoEndAction,
@@ -51,6 +53,25 @@ from gridplayer.widgets.video_overlay import (
 from gridplayer.widgets.video_status import VideoStatus
 
 IN_PROGRESS_THRESHOLD_MS = 500
+
+# how long to wait before trying a failed network video again. A host that
+# just turned us away is unlikely to change its mind within a second, and
+# retrying forever at full speed would be indistinguishable from an attack
+NETWORK_RETRY_DELAYS_S = (1, 2, 5, 15, 30)
+
+
+def network_retry_limit() -> int:
+    """How many times a network video may be reloaded, -1 for no limit."""
+
+    mode = Settings().get("streaming/network_retry_mode")
+
+    if mode == NetworkRetryMode.INFINITE:
+        return -1
+
+    if mode == NetworkRetryMode.TIMES:
+        return max(Settings().get("streaming/network_retry_times"), 0)
+
+    return 0
 
 
 class QStackedLayoutFloating(QStackedLayout):
@@ -196,6 +217,13 @@ class VideoBlock(QWidget):
 
         self._reload_timer = QTimer(self)
         self._reload_timer.timeout.connect(self.reload)
+
+        self._network_retries = 0
+        self._network_retry_countdown = 0
+
+        self._network_retry_timer = QTimer(self)
+        self._network_retry_timer.setInterval(1000)
+        self._network_retry_timer.timeout.connect(self._network_retry_tick)
 
         self.url_resolver = self.init_url_resolver()
         self.video_driver: VideoFrameVLC | None = None
@@ -374,6 +402,7 @@ class VideoBlock(QWidget):
     def cleanup(self):
         self.overlay_hide_timer.stop()
         self._in_progress_timer.stop()
+        self._network_retry_timer.stop()
 
         self._log.debug(f"{self.id}: cleaning up resolver")
         self.url_resolver.cleanup()
@@ -398,10 +427,87 @@ class VideoBlock(QWidget):
         self.cleanup()
 
     def network_error(self):
+        if self._schedule_network_retry():
+            return
+
+        self._network_retries = 0
+
         self._is_error = True
         self._is_state_change_in_progress = False
         self.set_status("network-error")
         self.cleanup()
+
+    def _schedule_network_retry(self) -> bool:
+        """Try the video again later instead of giving up on it.
+
+        Streams break for reasons that pass: a host hiccups, a laptop wakes
+        up with no network yet, a signed URL runs out. Showing the error is
+        the last resort, not the first answer.
+        """
+
+        retry_limit = network_retry_limit()
+
+        if retry_limit == 0:
+            return False
+
+        if retry_limit > 0 and self._network_retries >= retry_limit:
+            self._log.debug(f"Giving up after {self._network_retries} retries")
+            return False
+
+        self._network_retries += 1
+
+        delay_idx = min(self._network_retries - 1, len(NETWORK_RETRY_DELAYS_S) - 1)
+        self._network_retry_countdown = NETWORK_RETRY_DELAYS_S[delay_idx]
+
+        self._log.debug(
+            f"Network error, retry {self._network_retries}"
+            f" in {self._network_retry_countdown}s"
+        )
+
+        self._is_error = False
+        self._is_state_change_in_progress = False
+
+        # the driver is of no use until the video is loaded again, and
+        # holding on to it keeps a VLC player busy for the whole wait
+        self.cleanup()
+
+        self.set_status("network-error")
+        self._show_network_retry_status()
+
+        self._network_retry_timer.start()
+
+        return True
+
+    def _network_retry_tick(self):
+        self._network_retry_countdown -= 1
+
+        if self._network_retry_countdown > 0:
+            self._show_network_retry_status()
+            return
+
+        self._network_retry_timer.stop()
+
+        if self._is_closing or self.video_params is None:
+            return
+
+        self.reload()
+
+    def _show_network_retry_status(self):
+        self.update_status(
+            translate("Video Status", "Reconnecting in {SECONDS}s ({ATTEMPT})").format(
+                SECONDS=self._network_retry_countdown,
+                ATTEMPT=self._network_retry_attempt_txt,
+            )
+        )
+
+    @property
+    def _network_retry_attempt_txt(self) -> str:
+        retry_limit = network_retry_limit()
+
+        if retry_limit < 0:
+            return str(self._network_retries)
+
+        return f"{self._network_retries}/{retry_limit}"
 
     def set_status(self, status):
         self.overlay.hide()
@@ -416,6 +522,8 @@ class VideoBlock(QWidget):
         self.video_status.percent = percent
 
     def reload(self):
+        self._network_retry_timer.stop()
+
         self.is_live = False
         self._is_error = False
         self.streams = Streams()
@@ -1086,7 +1194,7 @@ class VideoBlock(QWidget):
         if stream.protocol == "direct":
             url = stream.url
         else:
-            url = self._ctx.commands.add_stream(stream)
+            url = self._ctx.commands.add_stream(self._with_origin(stream, quality))
 
         self.load_video.emit(
             MediaInput(
@@ -1100,7 +1208,22 @@ class VideoBlock(QWidget):
             )
         )
 
+    def _with_origin(self, stream, quality: str):
+        """Tell the proxy where this stream came from.
+
+        Services sign the URLs they hand out and stop honouring them after a
+        while, so the proxy has to be able to ask for them again rather than
+        serve a video that dies partway through.
+        """
+
+        origin = StreamOrigin(url=str(self.video_params.uri), quality=quality)
+
+        return dataclasses.replace(stream, origin=origin)
+
     def load_video_finish(self):
+        # the video is playing, so whatever went wrong before is behind us
+        self._network_retries = 0
+
         # final verdict belongs to VLC
         self.is_live = self.video_driver.is_live
 

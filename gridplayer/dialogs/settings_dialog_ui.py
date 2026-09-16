@@ -209,6 +209,26 @@ class Ui_SettingsDialog:
         self.formLayout_7.setWidget(
             0, QtWidgets.QFormLayout.FieldRole, self.streamingResolverPriority
         )
+        self.label_network_retry_mode = QtWidgets.QLabel(self.page_misc_streaming)
+        self.label_network_retry_mode.setObjectName("label_network_retry_mode")
+        self.formLayout_7.setWidget(
+            1, QtWidgets.QFormLayout.LabelRole, self.label_network_retry_mode
+        )
+        self.streamingNetworkRetryMode = QtWidgets.QComboBox(self.page_misc_streaming)
+        self.streamingNetworkRetryMode.setObjectName("streamingNetworkRetryMode")
+        self.formLayout_7.setWidget(
+            1, QtWidgets.QFormLayout.FieldRole, self.streamingNetworkRetryMode
+        )
+        self.label_network_retry_times = QtWidgets.QLabel(self.page_misc_streaming)
+        self.label_network_retry_times.setObjectName("label_network_retry_times")
+        self.formLayout_7.setWidget(
+            2, QtWidgets.QFormLayout.LabelRole, self.label_network_retry_times
+        )
+        self.streamingNetworkRetryTimes = QtWidgets.QSpinBox(self.page_misc_streaming)
+        self.streamingNetworkRetryTimes.setObjectName("streamingNetworkRetryTimes")
+        self.formLayout_7.setWidget(
+            2, QtWidgets.QFormLayout.FieldRole, self.streamingNetworkRetryTimes
+        )
         self.lay_page_general_streams.addLayout(self.formLayout_7)
         self.label_10 = QtWidgets.QLabel(self.page_misc_streaming)
         font = QtGui.QFont()
@@ -515,6 +535,12 @@ class Ui_SettingsDialog:
             _translate("SettingsDialog", "Use Streamlink for HLS streams when possible")
         )
         self.label_8.setText(_translate("SettingsDialog", "Priority URL resolver"))
+        self.label_network_retry_mode.setText(
+            _translate("SettingsDialog", "On network error")
+        )
+        self.label_network_retry_times.setText(
+            _translate("SettingsDialog", "Reload attempts")
+        )
         self.label_10.setText(
             _translate("SettingsDialog", "Resolver priority patterns")
         )

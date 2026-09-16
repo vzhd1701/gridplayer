@@ -124,6 +124,14 @@ class URLResolver(AutoName):
     DIRECT = auto()
 
 
+class NetworkRetryMode(AutoName):
+    """What to do when a network video fails to load or dies mid-playback."""
+
+    OFF = auto()
+    TIMES = auto()
+    INFINITE = auto()
+
+
 class ColorScheme(AutoName):
     SYSTEM = auto()
     LIGHT = auto()

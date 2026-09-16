@@ -21,6 +21,20 @@ ADAPTIVE_PROTOCOLS = frozenset({"hls", "hls_proxy", "dash", "http_hls"})
 
 
 @dataclass(frozen=True)
+class StreamOrigin:
+    """Where a stream came from, so that it can be resolved again.
+
+    Services hand out signed URLs that stop working after a while, and there
+    is nothing in such a URL to repair once it has: the page it was resolved
+    from has to be resolved anew to get another one.
+    """
+
+    url: str
+    quality: str
+    audio_track: str | None = None
+
+
+@dataclass(frozen=True)
 class StreamFragment:
     """A single segment of a fragmented stream (DASH segment, byte range, ...)."""
 
@@ -40,6 +54,7 @@ class Stream:
     fragments: tuple[StreamFragment, ...] | None = None
     init_fragment: StreamFragment | None = None
     duration: float = 0.0
+    origin: StreamOrigin | None = None
 
     @property
     def is_adaptive(self) -> bool:
@@ -57,6 +72,12 @@ class Stream:
         """Stream carries data that does not fit into a proxy URL query."""
 
         return bool(self.audio_tracks or self.fragments or self.duration)
+
+    @property
+    def is_refreshable(self) -> bool:
+        """Stream knows where it came from, so its URLs can be renewed."""
+
+        return self.origin is not None
 
 
 class Streams:

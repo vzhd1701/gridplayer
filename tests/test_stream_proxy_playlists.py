@@ -28,10 +28,16 @@ class FakeServer:
 
     def __init__(self):
         self.streams = []
+        self.fragments = []
 
-    def add_stream(self, stream: Stream) -> str:
+    def add_stream(self, stream: Stream, fragment: str | None = None) -> str:
         self.streams.append(stream)
-        return f"http://proxy/{len(self.streams)}"
+
+        if fragment is None:
+            return f"http://proxy/{len(self.streams)}"
+
+        self.fragments.append(fragment)
+        return f"http://proxy/fragment/{fragment}"
 
 
 def _box(box_type: bytes, payload: bytes) -> bytes:
@@ -168,19 +174,18 @@ def test_dash_stream_serves_every_fragment_through_the_proxy():
         ),
     )
 
-    dash_stream = DASHPlaylistStream(server=server, session_opts=SESSION, stream=stream)
+    dash_stream = DASHPlaylistStream(server=server, stream=stream)
     dash_stream.open()
 
     playlist = dash_stream.response.content.decode()
 
-    assert sorted(s.url for s in server.streams) == [
-        "http://host/1.m4s",
-        "http://host/2.m4s",
-        "http://host/init.m4s",
-    ]
-    assert all(s.protocol == "http" for s in server.streams)
+    # the playlist points back at the stream itself, by fragment position,
+    # so that renewing the stream renews every link in it
+    assert server.fragments == ["0", "1", "init"]
+    assert {s.url for s in server.streams} == {"http://host/manifest.mpd"}
     assert "http://host/1.m4s" not in playlist
-    assert "http://proxy/2" in playlist
+    assert "http://proxy/fragment/1" in playlist
+    assert '#EXT-X-MAP:URI="http://proxy/fragment/init"' in playlist
 
 
 def test_muxed_stream_points_at_video_and_best_audio():
@@ -250,7 +255,6 @@ def test_http_stream_is_cut_up_along_its_segment_index():
 
     http_stream = HTTPPlaylistStream(
         server=server,
-        session_opts=SESSION,
         session_=FakeHTTPSession(head),
         stream=stream,
     )
@@ -267,9 +271,7 @@ def test_http_stream_probes_only_the_head_of_the_file():
     session = FakeHTTPSession(_box(b"ftyp", b"x" * 8) + _sidx([(100, 2000)]))
     stream = Stream(url="http://host/video.mp4", protocol="http_hls", session=SESSION)
 
-    http_stream = HTTPPlaylistStream(
-        server=server, session_opts=SESSION, session_=session, stream=stream
-    )
+    http_stream = HTTPPlaylistStream(server=server, session_=session, stream=stream)
     http_stream.open()
 
     assert session.requests == [("http://host/video.mp4", {"Range": "bytes=0-262143"})]
@@ -283,7 +285,6 @@ def test_http_stream_survives_a_failed_probe():
 
     http_stream = HTTPPlaylistStream(
         server=server,
-        session_opts=SESSION,
         session_=FakeHTTPSession(None),
         stream=stream,
     )
@@ -300,7 +301,6 @@ def test_http_stream_falls_back_to_a_single_segment():
 
     http_stream = HTTPPlaylistStream(
         server=server,
-        session_opts=SESSION,
         session_=FakeHTTPSession(b"no index here"),
         stream=stream,
     )
