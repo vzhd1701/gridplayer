@@ -29,6 +29,19 @@ Files matching `*_ui.py` are generated from Qt Designer `.ui` sources. Never edi
 just generate-ui
 ```
 
+## Test harnesses driving the real app
+
+Closing the player asks "do you want to save?" by default, and a harness has
+nobody to answer it, so it hangs forever after the main window closes. Set the
+playlist to discard before building the player:
+
+```python
+from gridplayer.params.static import UnsavedChangesMode
+from gridplayer.settings import Settings
+
+Settings().set("playlist/unsaved_changes", UnsavedChangesMode.DISCARD)
+```
+
 ## Code style
 
 * Follow the Ruff configuration in `pyproject.toml`.
