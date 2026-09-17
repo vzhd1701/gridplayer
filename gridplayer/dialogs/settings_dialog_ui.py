@@ -49,6 +49,14 @@ class Ui_SettingsDialog:
         item = QtWidgets.QListWidgetItem()
         self.section_index.addItem(item)
         item = QtWidgets.QListWidgetItem()
+        font = QtGui.QFont()
+        font.setBold(True)
+        item.setFont(font)
+        item.setFlags(QtCore.Qt.NoItemFlags)
+        self.section_index.addItem(item)
+        item = QtWidgets.QListWidgetItem()
+        self.section_index.addItem(item)
+        item = QtWidgets.QListWidgetItem()
         self.section_index.addItem(item)
         self.lay_main_2.addWidget(self.section_index)
         self.section_page = CurrentPageStackedWidget(SettingsDialog)
@@ -188,38 +196,46 @@ class Ui_SettingsDialog:
         self.keymapEditor.setObjectName("keymapEditor")
         self.lay_page_general_shortcuts.addWidget(self.keymapEditor)
         self.section_page.addWidget(self.page_general_shortcuts)
-        self.page_misc_streaming = QtWidgets.QWidget()
-        self.page_misc_streaming.setObjectName("page_misc_streaming")
-        self.lay_page_general_streams = QtWidgets.QVBoxLayout(self.page_misc_streaming)
-        self.lay_page_general_streams.setContentsMargins(0, 0, 0, 0)
-        self.lay_page_general_streams.setObjectName("lay_page_general_streams")
-        self.streamingHLSVIAStreamlink = QtWidgets.QCheckBox(self.page_misc_streaming)
+        self.page_streaming_resolution = QtWidgets.QWidget()
+        self.page_streaming_resolution.setObjectName("page_streaming_resolution")
+        self.lay_page_streaming_resolution = QtWidgets.QVBoxLayout(
+            self.page_streaming_resolution
+        )
+        self.lay_page_streaming_resolution.setContentsMargins(0, 0, 0, 0)
+        self.lay_page_streaming_resolution.setObjectName(
+            "lay_page_streaming_resolution"
+        )
+        self.streamingHLSVIAStreamlink = QtWidgets.QCheckBox(
+            self.page_streaming_resolution
+        )
         self.streamingHLSVIAStreamlink.setObjectName("streamingHLSVIAStreamlink")
-        self.lay_page_general_streams.addWidget(self.streamingHLSVIAStreamlink)
+        self.lay_page_streaming_resolution.addWidget(self.streamingHLSVIAStreamlink)
         self.formLayout_7 = QtWidgets.QFormLayout()
         self.formLayout_7.setFieldGrowthPolicy(
             QtWidgets.QFormLayout.FieldsStayAtSizeHint
         )
         self.formLayout_7.setObjectName("formLayout_7")
-        self.label_8 = QtWidgets.QLabel(self.page_misc_streaming)
+        self.label_8 = QtWidgets.QLabel(self.page_streaming_resolution)
         self.label_8.setObjectName("label_8")
         self.formLayout_7.setWidget(0, QtWidgets.QFormLayout.LabelRole, self.label_8)
-        self.streamingResolverPriority = QtWidgets.QComboBox(self.page_misc_streaming)
+        self.streamingResolverPriority = QtWidgets.QComboBox(
+            self.page_streaming_resolution
+        )
         self.streamingResolverPriority.setObjectName("streamingResolverPriority")
         self.formLayout_7.setWidget(
             0, QtWidgets.QFormLayout.FieldRole, self.streamingResolverPriority
         )
-        self.lay_page_general_streams.addLayout(self.formLayout_7)
-        self.label_10 = QtWidgets.QLabel(self.page_misc_streaming)
+        self.lay_page_streaming_resolution.addLayout(self.formLayout_7)
+        self.label_10 = QtWidgets.QLabel(self.page_streaming_resolution)
         font = QtGui.QFont()
         font.setBold(True)
         self.label_10.setFont(font)
         self.label_10.setObjectName("label_10")
-        self.lay_page_general_streams.addWidget(self.label_10)
+        self.lay_page_streaming_resolution.addWidget(self.label_10)
         self.verticalLayout = QtWidgets.QVBoxLayout()
         self.verticalLayout.setObjectName("verticalLayout")
         self.streamingResolverPriorityPatterns = ResolverPatternsList(
-            self.page_misc_streaming
+            self.page_streaming_resolution
         )
         self.streamingResolverPriorityPatterns.setObjectName(
             "streamingResolverPriorityPatterns"
@@ -230,14 +246,14 @@ class Ui_SettingsDialog:
             QtWidgets.QFormLayout.FieldsStayAtSizeHint
         )
         self.formLayout_8.setObjectName("formLayout_8")
-        self.label_11 = QtWidgets.QLabel(self.page_misc_streaming)
+        self.label_11 = QtWidgets.QLabel(self.page_streaming_resolution)
         font = QtGui.QFont()
         font.setBold(True)
         self.label_11.setFont(font)
         self.label_11.setObjectName("label_11")
         self.formLayout_8.setWidget(0, QtWidgets.QFormLayout.LabelRole, self.label_11)
         self.streamingWildcardHelpButton = QtWidgets.QPushButton(
-            self.page_misc_streaming
+            self.page_streaming_resolution
         )
         self.streamingWildcardHelpButton.setMaximumSize(QtCore.QSize(24, 24))
         self.streamingWildcardHelpButton.setText("?")
@@ -246,12 +262,33 @@ class Ui_SettingsDialog:
             0, QtWidgets.QFormLayout.FieldRole, self.streamingWildcardHelpButton
         )
         self.verticalLayout.addLayout(self.formLayout_8)
-        self.streamingWildcardHelp = QtWidgets.QLabel(self.page_misc_streaming)
+        self.streamingWildcardHelp = QtWidgets.QLabel(self.page_streaming_resolution)
         self.streamingWildcardHelp.setObjectName("streamingWildcardHelp")
         self.verticalLayout.addWidget(self.streamingWildcardHelp)
         self.verticalLayout.setStretch(0, 1)
-        self.lay_page_general_streams.addLayout(self.verticalLayout)
-        self.section_page.addWidget(self.page_misc_streaming)
+        self.lay_page_streaming_resolution.addLayout(self.verticalLayout)
+        self.section_page.addWidget(self.page_streaming_resolution)
+        self.page_streaming_cookies = QtWidgets.QWidget()
+        self.page_streaming_cookies.setObjectName("page_streaming_cookies")
+        self.lay_page_streaming_cookies = QtWidgets.QVBoxLayout(
+            self.page_streaming_cookies
+        )
+        self.lay_page_streaming_cookies.setContentsMargins(0, 0, 0, 0)
+        self.lay_page_streaming_cookies.setObjectName("lay_page_streaming_cookies")
+        self.cookiesEnabled = QtWidgets.QCheckBox(self.page_streaming_cookies)
+        self.cookiesEnabled.setObjectName("cookiesEnabled")
+        self.lay_page_streaming_cookies.addWidget(self.cookiesEnabled)
+        self.cookiesList = CookieStoreList(self.page_streaming_cookies)
+        self.cookiesList.setObjectName("cookiesList")
+        self.lay_page_streaming_cookies.addWidget(self.cookiesList)
+        self.cookiesAllowUpdate = QtWidgets.QCheckBox(self.page_streaming_cookies)
+        self.cookiesAllowUpdate.setObjectName("cookiesAllowUpdate")
+        self.lay_page_streaming_cookies.addWidget(self.cookiesAllowUpdate)
+        self.cookiesWarning = QtWidgets.QLabel(self.page_streaming_cookies)
+        self.cookiesWarning.setWordWrap(True)
+        self.cookiesWarning.setObjectName("cookiesWarning")
+        self.lay_page_streaming_cookies.addWidget(self.cookiesWarning)
+        self.section_page.addWidget(self.page_streaming_cookies)
         self.page_defaults_playlist = PageScrollArea()
         self.page_defaults_playlist.setFrameShape(QtWidgets.QFrame.NoFrame)
         self.page_defaults_playlist.setHorizontalScrollBarPolicy(
@@ -276,12 +313,14 @@ class Ui_SettingsDialog:
         self.page_defaults_video_contents.setObjectName("page_defaults_video_contents")
         self.page_defaults_video.setWidget(self.page_defaults_video_contents)
         self.section_page.addWidget(self.page_defaults_video)
-        self.page_misc_advanced = QtWidgets.QWidget()
-        self.page_misc_advanced.setObjectName("page_misc_advanced")
-        self.lay_page_misc_advanced = QtWidgets.QVBoxLayout(self.page_misc_advanced)
-        self.lay_page_misc_advanced.setContentsMargins(0, 0, 0, 0)
-        self.lay_page_misc_advanced.setObjectName("lay_page_misc_advanced")
-        self.playerVideoDriverBox = QtWidgets.QGroupBox(self.page_misc_advanced)
+        self.page_advanced_decoder = QtWidgets.QWidget()
+        self.page_advanced_decoder.setObjectName("page_advanced_decoder")
+        self.lay_page_advanced_decoder = QtWidgets.QVBoxLayout(
+            self.page_advanced_decoder
+        )
+        self.lay_page_advanced_decoder.setContentsMargins(0, 0, 0, 0)
+        self.lay_page_advanced_decoder.setObjectName("lay_page_advanced_decoder")
+        self.playerVideoDriverBox = QtWidgets.QGroupBox(self.page_advanced_decoder)
         self.playerVideoDriverBox.setMaximumSize(QtCore.QSize(250, 16777215))
         self.playerVideoDriverBox.setObjectName("playerVideoDriverBox")
         self.lay_playerVideoDriverBox = QtWidgets.QVBoxLayout(self.playerVideoDriverBox)
@@ -301,128 +340,132 @@ class Ui_SettingsDialog:
         self.lay_playerVideoDriverPlayers.addWidget(self.playerVideoDriverPlayers)
         self.lay_playerVideoDriverPlayers.setStretch(0, 1)
         self.lay_playerVideoDriverBox.addLayout(self.lay_playerVideoDriverPlayers)
-        self.lay_page_misc_advanced.addWidget(self.playerVideoDriverBox)
-        self.label_9 = QtWidgets.QLabel(self.page_misc_advanced)
+        self.lay_page_advanced_decoder.addWidget(self.playerVideoDriverBox)
+        self.label_9 = QtWidgets.QLabel(self.page_advanced_decoder)
         font = QtGui.QFont()
         font.setBold(True)
         self.label_9.setFont(font)
         self.label_9.setOpenExternalLinks(True)
         self.label_9.setObjectName("label_9")
-        self.lay_page_misc_advanced.addWidget(self.label_9)
-        self.miscVLCOptions = QtWidgets.QLineEdit(self.page_misc_advanced)
+        self.lay_page_advanced_decoder.addWidget(self.label_9)
+        self.miscVLCOptions = QtWidgets.QLineEdit(self.page_advanced_decoder)
         self.miscVLCOptions.setObjectName("miscVLCOptions")
-        self.lay_page_misc_advanced.addWidget(self.miscVLCOptions)
-        self.section_misc = QtWidgets.QLabel(self.page_misc_advanced)
+        self.lay_page_advanced_decoder.addWidget(self.miscVLCOptions)
+        self.section_experimental = QtWidgets.QLabel(self.page_advanced_decoder)
         font = QtGui.QFont()
         font.setBold(True)
-        self.section_misc.setFont(font)
-        self.section_misc.setObjectName("section_misc")
-        self.lay_page_misc_advanced.addWidget(self.section_misc)
-        self.miscOpaqueHWOverlay = QtWidgets.QCheckBox(self.page_misc_advanced)
+        self.section_experimental.setFont(font)
+        self.section_experimental.setObjectName("section_experimental")
+        self.lay_page_advanced_decoder.addWidget(self.section_experimental)
+        self.miscOpaqueHWOverlay = QtWidgets.QCheckBox(self.page_advanced_decoder)
         self.miscOpaqueHWOverlay.setObjectName("miscOpaqueHWOverlay")
-        self.lay_page_misc_advanced.addWidget(self.miscOpaqueHWOverlay)
-        self.miscFakeOverlayInvisibility = QtWidgets.QCheckBox(self.page_misc_advanced)
+        self.lay_page_advanced_decoder.addWidget(self.miscOpaqueHWOverlay)
+        self.miscFakeOverlayInvisibility = QtWidgets.QCheckBox(
+            self.page_advanced_decoder
+        )
         self.miscFakeOverlayInvisibility.setObjectName("miscFakeOverlayInvisibility")
-        self.lay_page_misc_advanced.addWidget(self.miscFakeOverlayInvisibility)
-        self.miscForceNativeDragEvents = QtWidgets.QCheckBox(self.page_misc_advanced)
+        self.lay_page_advanced_decoder.addWidget(self.miscFakeOverlayInvisibility)
+        self.miscForceNativeDragEvents = QtWidgets.QCheckBox(self.page_advanced_decoder)
         self.miscForceNativeDragEvents.setObjectName("miscForceNativeDragEvents")
-        self.lay_page_misc_advanced.addWidget(self.miscForceNativeDragEvents)
+        self.lay_page_advanced_decoder.addWidget(self.miscForceNativeDragEvents)
         self.lay_miscHWCropBorder = QtWidgets.QFormLayout()
         self.lay_miscHWCropBorder.setFieldGrowthPolicy(
             QtWidgets.QFormLayout.FieldsStayAtSizeHint
         )
         self.lay_miscHWCropBorder.setObjectName("lay_miscHWCropBorder")
-        self.miscHWCropBorderLabel = QtWidgets.QLabel(self.page_misc_advanced)
+        self.miscHWCropBorderLabel = QtWidgets.QLabel(self.page_advanced_decoder)
         self.miscHWCropBorderLabel.setObjectName("miscHWCropBorderLabel")
         self.lay_miscHWCropBorder.setWidget(
             0, QtWidgets.QFormLayout.LabelRole, self.miscHWCropBorderLabel
         )
-        self.miscHWCropBorder = QtWidgets.QComboBox(self.page_misc_advanced)
+        self.miscHWCropBorder = QtWidgets.QComboBox(self.page_advanced_decoder)
         self.miscHWCropBorder.setObjectName("miscHWCropBorder")
         self.lay_miscHWCropBorder.setWidget(
             0, QtWidgets.QFormLayout.FieldRole, self.miscHWCropBorder
         )
-        self.lay_page_misc_advanced.addLayout(self.lay_miscHWCropBorder)
+        self.lay_page_advanced_decoder.addLayout(self.lay_miscHWCropBorder)
         spacerItem1 = QtWidgets.QSpacerItem(
             0, 0, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Expanding
         )
-        self.lay_page_misc_advanced.addItem(spacerItem1)
-        self.section_page.addWidget(self.page_misc_advanced)
-        self.page_misc_logging = QtWidgets.QWidget()
-        self.page_misc_logging.setObjectName("page_misc_logging")
-        self.lay_page_misc_logging = QtWidgets.QVBoxLayout(self.page_misc_logging)
-        self.lay_page_misc_logging.setContentsMargins(0, 0, 0, 0)
-        self.lay_page_misc_logging.setObjectName("lay_page_misc_logging")
-        self.logLimit = QtWidgets.QCheckBox(self.page_misc_logging)
+        self.lay_page_advanced_decoder.addItem(spacerItem1)
+        self.section_page.addWidget(self.page_advanced_decoder)
+        self.page_advanced_logging = QtWidgets.QWidget()
+        self.page_advanced_logging.setObjectName("page_advanced_logging")
+        self.lay_page_advanced_logging = QtWidgets.QVBoxLayout(
+            self.page_advanced_logging
+        )
+        self.lay_page_advanced_logging.setContentsMargins(0, 0, 0, 0)
+        self.lay_page_advanced_logging.setObjectName("lay_page_advanced_logging")
+        self.logLimit = QtWidgets.QCheckBox(self.page_advanced_logging)
         self.logLimit.setObjectName("logLimit")
-        self.lay_page_misc_logging.addWidget(self.logLimit)
+        self.lay_page_advanced_logging.addWidget(self.logLimit)
         self.formLayout_6 = QtWidgets.QFormLayout()
         self.formLayout_6.setFieldGrowthPolicy(
             QtWidgets.QFormLayout.FieldsStayAtSizeHint
         )
         self.formLayout_6.setObjectName("formLayout_6")
-        self.logLimitSizeLabel = QtWidgets.QLabel(self.page_misc_logging)
+        self.logLimitSizeLabel = QtWidgets.QLabel(self.page_advanced_logging)
         self.logLimitSizeLabel.setObjectName("logLimitSizeLabel")
         self.formLayout_6.setWidget(
             0, QtWidgets.QFormLayout.LabelRole, self.logLimitSizeLabel
         )
         self.horizontalLayout_3 = QtWidgets.QHBoxLayout()
         self.horizontalLayout_3.setObjectName("horizontalLayout_3")
-        self.logLimitSize = QtWidgets.QSpinBox(self.page_misc_logging)
+        self.logLimitSize = QtWidgets.QSpinBox(self.page_advanced_logging)
         self.logLimitSize.setObjectName("logLimitSize")
         self.horizontalLayout_3.addWidget(self.logLimitSize)
-        self.label_5 = QtWidgets.QLabel(self.page_misc_logging)
+        self.label_5 = QtWidgets.QLabel(self.page_advanced_logging)
         self.label_5.setObjectName("label_5")
         self.horizontalLayout_3.addWidget(self.label_5)
         self.formLayout_6.setLayout(
             0, QtWidgets.QFormLayout.FieldRole, self.horizontalLayout_3
         )
-        self.logLimitBackupsLabel = QtWidgets.QLabel(self.page_misc_logging)
+        self.logLimitBackupsLabel = QtWidgets.QLabel(self.page_advanced_logging)
         self.logLimitBackupsLabel.setObjectName("logLimitBackupsLabel")
         self.formLayout_6.setWidget(
             1, QtWidgets.QFormLayout.LabelRole, self.logLimitBackupsLabel
         )
-        self.logLimitBackups = QtWidgets.QSpinBox(self.page_misc_logging)
+        self.logLimitBackups = QtWidgets.QSpinBox(self.page_advanced_logging)
         self.logLimitBackups.setObjectName("logLimitBackups")
         self.formLayout_6.setWidget(
             1, QtWidgets.QFormLayout.FieldRole, self.logLimitBackups
         )
-        self.lay_page_misc_logging.addLayout(self.formLayout_6)
-        self.label_6 = QtWidgets.QLabel(self.page_misc_logging)
+        self.lay_page_advanced_logging.addLayout(self.formLayout_6)
+        self.label_6 = QtWidgets.QLabel(self.page_advanced_logging)
         font = QtGui.QFont()
         font.setBold(True)
         self.label_6.setFont(font)
         self.label_6.setObjectName("label_6")
-        self.lay_page_misc_logging.addWidget(self.label_6)
+        self.lay_page_advanced_logging.addWidget(self.label_6)
         self.formLayout_5 = QtWidgets.QFormLayout()
         self.formLayout_5.setFieldGrowthPolicy(
             QtWidgets.QFormLayout.FieldsStayAtSizeHint
         )
         self.formLayout_5.setObjectName("formLayout_5")
-        self.logLevelLabel = QtWidgets.QLabel(self.page_misc_logging)
+        self.logLevelLabel = QtWidgets.QLabel(self.page_advanced_logging)
         self.logLevelLabel.setObjectName("logLevelLabel")
         self.formLayout_5.setWidget(
             0, QtWidgets.QFormLayout.LabelRole, self.logLevelLabel
         )
-        self.logLevel = QtWidgets.QComboBox(self.page_misc_logging)
+        self.logLevel = QtWidgets.QComboBox(self.page_advanced_logging)
         self.logLevel.setObjectName("logLevel")
         self.formLayout_5.setWidget(0, QtWidgets.QFormLayout.FieldRole, self.logLevel)
-        self.logLevelVLCLabel = QtWidgets.QLabel(self.page_misc_logging)
+        self.logLevelVLCLabel = QtWidgets.QLabel(self.page_advanced_logging)
         self.logLevelVLCLabel.setObjectName("logLevelVLCLabel")
         self.formLayout_5.setWidget(
             1, QtWidgets.QFormLayout.LabelRole, self.logLevelVLCLabel
         )
-        self.logLevelVLC = QtWidgets.QComboBox(self.page_misc_logging)
+        self.logLevelVLC = QtWidgets.QComboBox(self.page_advanced_logging)
         self.logLevelVLC.setObjectName("logLevelVLC")
         self.formLayout_5.setWidget(
             1, QtWidgets.QFormLayout.FieldRole, self.logLevelVLC
         )
-        self.lay_page_misc_logging.addLayout(self.formLayout_5)
+        self.lay_page_advanced_logging.addLayout(self.formLayout_5)
         spacerItem2 = QtWidgets.QSpacerItem(
             0, 0, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Expanding
         )
-        self.lay_page_misc_logging.addItem(spacerItem2)
-        self.section_page.addWidget(self.page_misc_logging)
+        self.lay_page_advanced_logging.addItem(spacerItem2)
+        self.section_page.addWidget(self.page_advanced_logging)
         self.lay_main_2.addWidget(self.section_page)
         self.lay_main.addLayout(self.lay_main_2)
         self.lay_buttons = QtWidgets.QHBoxLayout()
@@ -468,13 +511,17 @@ class Ui_SettingsDialog:
         item = self.section_index.item(6)
         item.setText(_translate("SettingsDialog", "Video"))
         item = self.section_index.item(7)
-        item.setText(_translate("SettingsDialog", "Miscellaneous"))
-        item = self.section_index.item(8)
         item.setText(_translate("SettingsDialog", "Streaming"))
+        item = self.section_index.item(8)
+        item.setText(_translate("SettingsDialog", "Link Resolution"))
         item = self.section_index.item(9)
-        item.setText(_translate("SettingsDialog", "Logging"))
+        item.setText(_translate("SettingsDialog", "Cookies"))
         item = self.section_index.item(10)
         item.setText(_translate("SettingsDialog", "Advanced"))
+        item = self.section_index.item(11)
+        item.setText(_translate("SettingsDialog", "Video Decoder"))
+        item = self.section_index.item(12)
+        item.setText(_translate("SettingsDialog", "Logging"))
         self.section_index.setSortingEnabled(__sortingEnabled)
         self.playerColorSchemeLabel.setText(
             _translate("SettingsDialog", "Color scheme")
@@ -529,6 +576,28 @@ class Ui_SettingsDialog:
                 "**.example.com will match subdomains <b>only</b></p>",
             )
         )
+        self.cookiesEnabled.setToolTip(
+            _translate(
+                "SettingsDialog",
+                "Send the stored cookies when resolving and streaming links",
+            )
+        )
+        self.cookiesEnabled.setText(_translate("SettingsDialog", "Use stored cookies"))
+        self.cookiesAllowUpdate.setToolTip(
+            _translate(
+                "SettingsDialog",
+                "Sites hand out fresh cookies as you use them. Keeping those makes a stored login last longer, at the cost of rewriting the cookies file as you watch.",
+            )
+        )
+        self.cookiesAllowUpdate.setText(
+            _translate("SettingsDialog", "Let yt-dlp refresh stored cookies")
+        )
+        self.cookiesWarning.setText(
+            _translate(
+                "SettingsDialog",
+                "Cookies are login credentials. Anyone with access to this computer can read them. Export from a private browser window and close it afterwards.",
+            )
+        )
         self.playerVideoDriverBox.setTitle(
             _translate("SettingsDialog", "Video Decoder")
         )
@@ -541,7 +610,7 @@ class Ui_SettingsDialog:
                 'VLC Options [<a href="https://wiki.videolan.org/VLC_command-line_help/">reference</a>]',
             )
         )
-        self.section_misc.setText(_translate("SettingsDialog", "Experimental"))
+        self.section_experimental.setText(_translate("SettingsDialog", "Experimental"))
         self.miscOpaqueHWOverlay.setText(
             _translate("SettingsDialog", "Opaque overlay (fix black screen)")
         )
@@ -575,6 +644,7 @@ class Ui_SettingsDialog:
         self.logFileOpen.setText(_translate("SettingsDialog", "Open log file"))
 
 
+from gridplayer.widgets.cookie_store_list import CookieStoreList
 from gridplayer.widgets.keymap_tree_view import KeymapEditor
 from gridplayer.widgets.language_list import LanguageList
 from gridplayer.widgets.resolver_patterns_list import ResolverPatternsList

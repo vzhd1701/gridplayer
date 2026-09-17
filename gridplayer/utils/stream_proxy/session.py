@@ -3,6 +3,7 @@ import logging
 from streamlink import Streamlink
 
 from gridplayer.models.stream import Stream, StreamSessionOpts
+from gridplayer.utils.cookies import apply_to_streamlink
 from gridplayer.utils.stream_proxy.wrappers import (
     DASHPlaylistStream,
     HLSMuxedStream,
@@ -22,6 +23,8 @@ class StreamSession:
 
         self._session = Streamlink()
         self._session.http.headers.update(stream_session.session_headers)
+
+        apply_to_streamlink(self._session)
 
     def get_stream(self, stream: Stream):
         if stream.audio_tracks:

@@ -2,7 +2,7 @@ import contextlib
 import logging
 import subprocess
 
-from PyQt5.QtCore import QUrl
+from PyQt5.QtCore import Qt, QUrl
 from PyQt5.QtGui import QDesktopServices
 from PyQt5.QtWidgets import (
     QCheckBox,
@@ -27,6 +27,7 @@ from gridplayer.params.static import (
 from gridplayer.settings import Settings
 from gridplayer.utils import log_config
 from gridplayer.utils.app_dir import get_app_data_dir
+from gridplayer.utils.cookies import cookie_store, same_cookies
 from gridplayer.utils.keymap import default_keymap, merge_keymap
 from gridplayer.utils.qt import qt_connect, translate
 from gridplayer.widgets.defaults_form import DefaultsForm
@@ -40,6 +41,9 @@ VIDEO_DRIVERS_MULTIPROCESS = (
 )
 
 MAX_VLC_PROCESSES = 64
+
+# where each entry in the section index keeps the page it opens
+SECTION_PAGE_ROLE = Qt.UserRole
 
 
 def _fill_combo_box(combo_box, values_dict):
@@ -122,6 +126,8 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
             "streaming/hls_via_streamlink": self.streamingHLSVIAStreamlink,
             "streaming/resolver_priority": self.streamingResolverPriority,
             "streaming/resolver_priority_patterns": self.streamingResolverPriorityPatterns,
+            "cookies/enabled": self.cookiesEnabled,
+            "cookies/allow_update": self.cookiesAllowUpdate,
         }
 
         self.ui_customize()
@@ -157,6 +163,49 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
         font.setPixelSize(16)
         self.section_index.setFont(font)
 
+        self.bind_section_pages()
+
+    def bind_section_pages(self):
+        """Tie every entry in the index to the page it opens.
+
+        Going by the entry's text would mean matching a translated string
+        against another one, which stops matching the moment either side
+        is reworded and leaves a section that quietly opens nothing.
+        """
+
+        pages = (
+            self.page_general_player,
+            self.page_general_shortcuts,
+            self.page_general_language,
+            self.page_defaults_playlist,
+            self.page_defaults_video,
+            self.page_streaming_resolution,
+            self.page_streaming_cookies,
+            self.page_advanced_decoder,
+            self.page_advanced_logging,
+        )
+
+        sections = self.section_items
+
+        if len(sections) != len(pages):
+            raise ValueError(
+                f"{len(sections)} section(s) in the index"
+                f" but {len(pages)} page(s) to open"
+            )
+
+        for item, page in zip(sections, pages):
+            item.setData(SECTION_PAGE_ROLE, page)
+
+    @property
+    def section_items(self):
+        """The entries that open a page, leaving out the group headings."""
+
+        items = (
+            self.section_index.item(row) for row in range(self.section_index.count())
+        )
+
+        return [item for item in items if item.flags() & Qt.ItemIsSelectable]
+
     def ui_fill(self):
         self.fill_playerVideoDriver()
         self.fill_logLevel()
@@ -190,13 +239,17 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
             (self.playerVideoDriver.currentIndexChanged, self.driver_selected),
             (self.timeoutMouseHideFlag.stateChanged, self.timeoutMouseHide.setEnabled),
             (self.logFileOpen.clicked, self.open_logfile),
-            (self.section_index.currentTextChanged, self.switch_page),
+            (self.section_index.currentItemChanged, self.switch_page),
             (self.section_index.itemSelectionChanged, self.keep_index_selection),
             (self.logLimit.stateChanged, self.logLimitSize.setEnabled),
             (self.logLimit.stateChanged, self.logLimitBackups.setEnabled),
             (self.streamingWildcardHelpButton.clicked, self.toggle_wildcard_help),
             (self.playerRecentList.stateChanged, self.playerRecentListSize.setEnabled),
+            (self.cookiesList.error, self.cookie_import_failed),
         )
+
+    def cookie_import_failed(self, message):
+        QCustomMessageBox.critical(self, translate("Dialog", "Error"), message)
 
     def toggle_wildcard_help(self):
         self.streamingWildcardHelp.setVisible(
@@ -207,28 +260,17 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
         if not self.section_index.selectedItems():
             self.section_index.setCurrentItem(self.section_index.currentItem())
 
-    def switch_page(self, page_name):
-        pages_map = {
-            translate("SettingsDialog", "Player"): self.page_general_player,
-            translate("SettingsDialog", "Shortcuts"): self.page_general_shortcuts,
-            translate("SettingsDialog", "Language"): self.page_general_language,
-            translate("SettingsDialog", "Playlist"): self.page_defaults_playlist,
-            translate("SettingsDialog", "Video"): self.page_defaults_video,
-            translate("SettingsDialog", "Streaming"): self.page_misc_streaming,
-            translate("SettingsDialog", "Logging"): self.page_misc_logging,
-            translate("SettingsDialog", "Advanced"): self.page_misc_advanced,
-        }
-
-        if page_name is None:
-            self.section_index.setCurrentRow(1)
+    def switch_page(self, section_item, _previous=None):
+        if section_item is None:
+            self.section_index.setCurrentItem(self.section_items[0])
             return
 
-        page_widget = pages_map.get(page_name)
+        page = section_item.data(SECTION_PAGE_ROLE)
 
-        if not page_widget:
+        if page is None:
             return
 
-        self.section_page.setCurrentWidget(page_widget)
+        self.section_page.setCurrentWidget(page)
 
     def open_logfile(self):
         log_path = get_app_data_dir() / "gridplayer.log"
@@ -364,6 +406,8 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
         self.playlist_defaults_form.set_values(defaults)
         self.video_defaults_form.set_values(defaults)
 
+        self.cookiesList.set_jar(cookie_store().jar)
+
     def save_settings(self):
         elements_value_read_attr = {
             QCheckBox: "isChecked",
@@ -399,6 +443,27 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
             ):
                 continue
             Settings().set(key, value)
+
+        self.save_cookies()
+
+    def save_cookies(self):
+        """Put the jar the page is showing on the disk.
+
+        Left until now on purpose: an import or a removal is staged in
+        the widget, so Cancel undoes it the way it undoes anything else
+        in this dialog.
+        """
+
+        store = cookie_store()
+        jar = self.cookiesList.jar
+
+        if jar is None:
+            if not store.is_empty:
+                store.clear()
+            return
+
+        if not same_cookies(jar, store.jar):
+            store.save(jar)
 
     def accept(self):
         self.save_settings()

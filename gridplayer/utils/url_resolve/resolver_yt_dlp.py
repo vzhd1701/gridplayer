@@ -18,6 +18,7 @@ from gridplayer.models.stream import (
     StreamSessionOpts,
 )
 from gridplayer.settings import Settings
+from gridplayer.utils.cookies import ytdl_cookies
 from gridplayer.utils.track_language import language_name
 from gridplayer.utils.url_resolve.resolver_base import ResolverBase
 from gridplayer.utils.url_resolve.static import (
@@ -112,7 +113,10 @@ class YoutubeDLResolver(ResolverBase):
 
     @cached_property
     def _video_info(self):
-        with YoutubeDL({"logger": self._log}) as ydl:
+        with (
+            ytdl_cookies() as cookie_opts,
+            YoutubeDL({"logger": self._log, **cookie_opts}) as ydl,
+        ):
             try:
                 return ydl.extract_info(self.url, download=False)
             except DownloadError as e:

@@ -87,7 +87,7 @@
        </item>
        <item>
         <property name="text">
-         <string>Miscellaneous</string>
+         <string>Streaming</string>
         </property>
         <property name="font">
          <font>
@@ -100,17 +100,35 @@
        </item>
        <item>
         <property name="text">
-         <string>Streaming</string>
+         <string>Link Resolution</string>
         </property>
        </item>
        <item>
         <property name="text">
-         <string>Logging</string>
+         <string>Cookies</string>
         </property>
        </item>
        <item>
         <property name="text">
          <string>Advanced</string>
+        </property>
+        <property name="font">
+         <font>
+          <bold>true</bold>
+         </font>
+        </property>
+        <property name="flags">
+         <set>NoItemFlags</set>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>Video Decoder</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>Logging</string>
         </property>
        </item>
       </widget>
@@ -347,8 +365,8 @@
          </item>
         </layout>
        </widget>
-       <widget class="QWidget" name="page_misc_streaming">
-        <layout class="QVBoxLayout" name="lay_page_general_streams">
+       <widget class="QWidget" name="page_streaming_resolution">
+        <layout class="QVBoxLayout" name="lay_page_streaming_resolution">
          <property name="leftMargin">
           <number>0</number>
          </property>
@@ -449,6 +467,55 @@
          </item>
         </layout>
        </widget>
+       <widget class="QWidget" name="page_streaming_cookies">
+        <layout class="QVBoxLayout" name="lay_page_streaming_cookies">
+         <property name="leftMargin">
+          <number>0</number>
+         </property>
+         <property name="topMargin">
+          <number>0</number>
+         </property>
+         <property name="rightMargin">
+          <number>0</number>
+         </property>
+         <property name="bottomMargin">
+          <number>0</number>
+         </property>
+         <item>
+          <widget class="QCheckBox" name="cookiesEnabled">
+           <property name="toolTip">
+            <string>Send the stored cookies when resolving and streaming links</string>
+           </property>
+           <property name="text">
+            <string>Use stored cookies</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="CookieStoreList" name="cookiesList" native="true"/>
+         </item>
+         <item>
+          <widget class="QCheckBox" name="cookiesAllowUpdate">
+           <property name="toolTip">
+            <string>Sites hand out fresh cookies as you use them. Keeping those makes a stored login last longer, at the cost of rewriting the cookies file as you watch.</string>
+           </property>
+           <property name="text">
+            <string>Let yt-dlp refresh stored cookies</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QLabel" name="cookiesWarning">
+           <property name="text">
+            <string>Cookies are login credentials. Anyone with access to this computer can read them. Export from a private browser window and close it afterwards.</string>
+           </property>
+           <property name="wordWrap">
+            <bool>true</bool>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </widget>
        <widget class="PageScrollArea" name="page_defaults_playlist">
         <property name="frameShape">
          <enum>QFrame::NoFrame</enum>
@@ -475,8 +542,8 @@
         <widget class="QWidget" name="page_defaults_video_contents">
         </widget>
        </widget>
-       <widget class="QWidget" name="page_misc_advanced">
-        <layout class="QVBoxLayout" name="lay_page_misc_advanced">
+       <widget class="QWidget" name="page_advanced_decoder">
+        <layout class="QVBoxLayout" name="lay_page_advanced_decoder">
          <property name="leftMargin">
           <number>0</number>
          </property>
@@ -540,7 +607,7 @@
           <widget class="QLineEdit" name="miscVLCOptions"/>
          </item>
          <item>
-          <widget class="QLabel" name="section_misc">
+          <widget class="QLabel" name="section_experimental">
            <property name="font">
             <font>
              <bold>true</bold>
@@ -608,8 +675,8 @@
          </item>
         </layout>
        </widget>
-       <widget class="QWidget" name="page_misc_logging">
-        <layout class="QVBoxLayout" name="lay_page_misc_logging">
+       <widget class="QWidget" name="page_advanced_logging">
+        <layout class="QVBoxLayout" name="lay_page_advanced_logging">
          <property name="leftMargin">
           <number>0</number>
          </property>
@@ -773,6 +840,12 @@
    <class>KeymapEditor</class>
    <extends>QWidget</extends>
    <header>gridplayer.widgets.keymap_tree_view</header>
+   <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>CookieStoreList</class>
+   <extends>QWidget</extends>
+   <header>gridplayer.widgets.cookie_store_list</header>
    <container>1</container>
   </customwidget>
   <customwidget>

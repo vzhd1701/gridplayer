@@ -113,6 +113,8 @@ _default_settings = {
     "streaming/hls_via_streamlink": True,
     "streaming/resolver_priority": URLResolver.STREAMLINK,
     "streaming/resolver_priority_patterns": ResolverPatterns([]),
+    "cookies/enabled": True,
+    "cookies/allow_update": True,
     "recent_list_videos": RecentListVideos(),
     "recent_list_playlists": RecentListPlaylists(),
 }

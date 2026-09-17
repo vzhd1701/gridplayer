@@ -5,6 +5,7 @@ import re
 from streamlink import Streamlink
 from streamlink.stream.http import HTTPStream
 
+from gridplayer.utils.cookies import apply_to_streamlink
 from gridplayer.utils.stream_proxy.mp4 import is_fragmented
 from gridplayer.utils.url_resolve.static import BadURLException
 
@@ -12,16 +13,35 @@ MANIFEST_HEAD = 4096
 FILE_HEAD = 64 * 1024
 
 
+def _session_for(
+    session: Streamlink | None,
+    session_headers: dict[str, str] | None,
+) -> Streamlink:
+    """A session to probe with, made here when the caller brought none.
+
+    One the caller brought comes from a resolver and carries its
+    cookies already; one made here has to be given them.
+    """
+
+    if session is not None:
+        return session
+
+    session = Streamlink()
+
+    if session_headers:
+        session.http.headers.update(session_headers)
+
+    apply_to_streamlink(session)
+
+    return session
+
+
 def is_hls_live_stream(
     url: str,
     session: Streamlink | None = None,
     session_headers: dict[str, str] | None = None,
 ) -> bool:
-    if session is None:
-        session = Streamlink()
-
-        if session_headers:
-            session.http.headers.update(session_headers)
+    session = _session_for(session, session_headers)
 
     http_stream = HTTPStream(session, url, buffered=False)
     with contextlib.closing(http_stream.open()) as stream:
@@ -49,11 +69,7 @@ def is_dash_live_stream(
 ) -> bool:
     """A DASH manifest is live when it declares itself dynamic."""
 
-    if session is None:
-        session = Streamlink()
-
-        if session_headers:
-            session.http.headers.update(session_headers)
+    session = _session_for(session, session_headers)
 
     manifest = session.http.get(url).text
 
@@ -67,11 +83,7 @@ def is_fragmented_stream(
 ) -> bool:
     """Whether a plain file is fragmented, and so can be cut into segments."""
 
-    if session is None:
-        session = Streamlink()
-
-        if session_headers:
-            session.http.headers.update(session_headers)
+    session = _session_for(session, session_headers)
 
     with session.http.get(
         url, headers={"Range": f"bytes=0-{FILE_HEAD - 1}"}, stream=True
@@ -86,11 +98,7 @@ def is_http_live_stream(
 ) -> bool:
     """if there is a content-length header, it not a stream"""
 
-    if session is None:
-        session = Streamlink()
-
-        if session_headers:
-            session.http.headers.update(session_headers)
+    session = _session_for(session, session_headers)
 
     # not using HEAD because some servers will return bad code
     with session.http.request("GET", url, stream=True) as response:
