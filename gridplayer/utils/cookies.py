@@ -19,6 +19,7 @@ import threading
 import time
 import urllib.request
 from dataclasses import dataclass
+from functools import lru_cache
 from http.cookiejar import (
     HTTPONLY_ATTR,
     HTTPONLY_PREFIX,
@@ -56,6 +57,10 @@ NETSCAPE_FIELDS = 7
 SESSION_EXPIRY = "0"
 
 EXPIRY_PATTERN = re.compile(r"[0-9]+(?:\.[0-9]+)?")
+
+# how many URLs are worth remembering the answer for; one source being
+# resolved asks about a handful, and a grid asks about one source at a time
+CACHED_COOKIE_ANSWERS = 128
 
 # what an exported cookie may call the moment it lapses
 EXPIRY_KEYS = ("expirationDate", "expires", "expiry")
@@ -317,9 +322,22 @@ def cookie_jar() -> CookieJar | None:
 def has_cookies_for(url: str) -> bool:
     """Whether the jar holds anything that would be sent to this URL.
 
-    Asking the jar itself rather than matching domains by hand: which
-    cookies a request gets is a question of subdomains, paths, secure
-    flags and expiry, and http.cookiejar already answers it.
+    Asked once per format while a source is being resolved, so the
+    answer is kept until the store changes underneath it: walking a jar
+    exported out of a browser costs a millisecond or so, and a grid of
+    videos would pay it a few hundred times over for nothing.
+    """
+
+    return _has_cookies_for(cookies_stamp(), url)
+
+
+@lru_cache(maxsize=CACHED_COOKIE_ANSWERS)
+def _has_cookies_for(stamp, url: str) -> bool:
+    """Whether a jar in this state would send anything to this URL.
+
+    The stamp is what the answer is good for rather than anything this
+    needs: a jar written to, switched off or swapped out is a different
+    jar, and answers for itself.
     """
 
     jar = cookie_jar()
@@ -360,17 +378,20 @@ def apply_to_streamlink(session) -> None:
 
 
 def cookies_stamp() -> tuple | None:
-    """What the store looks like now, to notice it being edited.
+    """Which jar is in use and what state it is in.
 
-    Cheap enough to ask before every request: a stat of the file, and the
-    setting that decides whether any of it counts. None where the cookies
-    would not be used at all, so switching them off reads as a change.
+    Cheap enough to ask before every request: a stat of the file, where
+    it is, and the setting that decides whether any of it counts. None
+    where the cookies would not be used at all, so switching them off
+    reads as a change like any other.
     """
 
     if not Settings().get("cookies/enabled"):
         return None
 
-    return _file_stamp(cookie_store().path)
+    path = cookie_store().path
+
+    return str(path), _file_stamp(path)
 
 
 @contextlib.contextmanager

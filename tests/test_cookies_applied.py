@@ -9,6 +9,7 @@ from gridplayer.utils import cookies as cookies_module
 from gridplayer.utils.cookies import (
     CookieStore,
     apply_to_streamlink,
+    has_cookies_for,
     parse_cookies,
     ytdl_cookies,
 )
@@ -216,6 +217,40 @@ class TestEveryPlaceThatReachesOut:
         )
 
         assert proxy._session.http.cookies.get("SID") == "abc"
+
+
+class TestRememberingWhetherAUrlNeedsOne:
+    """The answer is kept, because it is asked once per format.
+
+    Walking a jar exported out of a browser is not free, and a grid of
+    videos would walk it a few hundred times over to be told the same
+    thing. What is kept has to stop being kept when the jar changes.
+    """
+
+    URL = "https://www.youtube.com/v.mp4"
+
+    def test_a_login_taken_out_of_the_store_is_not_still_answered_for(
+        self, settings, store
+    ):
+        assert has_cookies_for(self.URL)
+
+        store.clear()
+
+        assert not has_cookies_for(self.URL)
+
+    def test_a_login_added_to_the_store_is_noticed(self, settings, empty_store):
+        assert not has_cookies_for(self.URL)
+
+        empty_store.save(parse_cookies(NETSCAPE_HEADER + COOKIE_LINE))
+
+        assert has_cookies_for(self.URL)
+
+    def test_switching_them_off_is_noticed(self, settings, store):
+        assert has_cookies_for(self.URL)
+
+        settings["cookies/enabled"] = False
+
+        assert not has_cookies_for(self.URL)
 
 
 class TestAUrlThatWouldGoStraightToVlc:

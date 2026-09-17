@@ -5,6 +5,7 @@ from streamlink import Streamlink
 from gridplayer.models.stream import Stream, StreamSessionOpts
 from gridplayer.utils.cookies import apply_to_streamlink, cookies_stamp
 from gridplayer.utils.stream_proxy.wrappers import (
+    DASHManifestProxy,
     DASHPlaylistStream,
     HLSMuxedStream,
     HLSProxy,
@@ -77,6 +78,14 @@ class StreamSession:
         elif protocol == "dash":
             self._log.debug("Stream is dash, using DASHPlaylistStream")
             return DASHPlaylistStream(server=self._server, stream=stream)
+        elif protocol == "dash_proxy":
+            self._log.debug("Stream is dash_proxy, using DASHManifestProxy")
+            return DASHManifestProxy(
+                server=self._server,
+                session_opts=self._stream_session,
+                session_=self._session,
+                url=stream.url,
+            )
         elif protocol == "hls_proxy":
             self._log.debug("Stream is hls_proxy, using HLSProxy")
             return HLSProxy(

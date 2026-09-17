@@ -1,6 +1,9 @@
 import struct
+from http import HTTPStatus
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 import pytest
+import requests
 
 from gridplayer.models.stream import (
     HashableDict,
@@ -14,7 +17,12 @@ from gridplayer.utils.stream_proxy.m3u8 import (
     build_media_playlist,
 )
 from gridplayer.utils.stream_proxy.mp4 import is_fragmented, parse_segment_index
+from gridplayer.utils.stream_proxy.server import (
+    ProxyRequestHandler,
+    StreamProxyServer,
+)
 from gridplayer.utils.stream_proxy.wrappers import (
+    M3U8_CONTENT_TYPE,
     DASHPlaylistStream,
     HLSMuxedStream,
     HTTPPlaylistStream,
@@ -417,7 +425,7 @@ class TestRelativeSegmentURIs:
     )
 
     def test_they_are_resolved_against_the_playlist_url(self):
-        """A URL is not a path.
+        r"""A URL is not a path.
 
         Path() eats one of the slashes after the scheme, and on Windows
         turns what is left into a backslash, so every relative segment
@@ -439,3 +447,87 @@ class TestRelativeSegmentURIs:
             "http://127.0.0.1:8777/live/seg0.ts",
             "http://127.0.0.1:8777/live/seg1.ts",
         ]
+
+
+class TestServingAPlaylistTheHostWrote:
+    """The one kind of playlist that is fetched rather than generated.
+
+    Everything else here is built from a segment list the resolver
+    already had; an HLS playlist is fetched, rewritten and handed on, so
+    it is the only one with a request behind it.
+    """
+
+    PLAYLIST = (
+        "#EXTM3U\n"
+        "#EXT-X-TARGETDURATION:4\n"
+        "#EXTINF:4.0,\n"
+        "seg0.ts\n"
+        "#EXTINF:4.0,\n"
+        "seg1.ts\n"
+        "#EXT-X-ENDLIST\n"
+    )
+
+    SEGMENT = b"segment bytes"
+
+    @pytest.fixture
+    def upstream(self, serving):
+        playlist = self.PLAYLIST
+        segment = self.SEGMENT
+
+        class Handler(BaseHTTPRequestHandler):
+            protocol_version = "HTTP/1.1"
+
+            def do_GET(self):
+                self.server.requested.append(self.path)
+
+                is_playlist = self.path.endswith(".m3u8")
+                body = playlist.encode("utf-8") if is_playlist else segment
+
+                self.send_response(HTTPStatus.OK)
+                self.send_header("Content-Length", str(len(body)))
+                self.end_headers()
+                self.wfile.write(body)
+
+            def log_message(self, format, *args):
+                """Quiet, the test is not interested"""
+
+        server = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
+        server.requested = []
+
+        return serving(server)
+
+    @pytest.fixture
+    def playlist_url(self, upstream, serving):
+        proxy = serving(StreamProxyServer(("127.0.0.1", 0), ProxyRequestHandler))
+
+        address, port = upstream.server_address
+
+        return proxy.add_stream(
+            Stream(
+                url=f"http://{address}:{port}/live/index.m3u8",
+                protocol="hls_proxy",
+                session=SESSION,
+            )
+        )
+
+    def test_its_segments_are_pointed_back_at_the_proxy(self, playlist_url):
+        response = requests.get(playlist_url, timeout=5)
+
+        segments = [
+            line for line in response.text.splitlines() if not line.startswith("#")
+        ]
+
+        assert response.headers["Content-Type"] == M3U8_CONTENT_TYPE
+        assert len(segments) == 2
+        assert all(segment.startswith("http://127.0.0.1:") for segment in segments)
+        assert not any("/live/" in segment for segment in segments)
+
+    def test_a_segment_it_points_at_is_served(self, upstream, playlist_url):
+        response = requests.get(playlist_url, timeout=5)
+
+        segment = next(
+            line for line in response.text.splitlines() if not line.startswith("#")
+        )
+
+        assert requests.get(segment, timeout=5).content == self.SEGMENT
+        assert upstream.requested == ["/live/index.m3u8", "/live/seg0.ts"]

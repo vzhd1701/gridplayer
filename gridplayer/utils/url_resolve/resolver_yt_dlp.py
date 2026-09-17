@@ -19,7 +19,7 @@ from gridplayer.models.stream import (
     StreamSessionOpts,
 )
 from gridplayer.settings import Settings
-from gridplayer.utils.cookies import ytdl_cookies
+from gridplayer.utils.cookies import has_cookies_for, ytdl_cookies
 from gridplayer.utils.track_language import language_name
 from gridplayer.utils.url_resolve.resolver_base import ResolverBase
 from gridplayer.utils.url_resolve.static import (
@@ -45,6 +45,10 @@ PLAYLIST_PROTOCOLS = MappingProxyType(
         "http_hls": "http_hls",
     }
 )
+
+# a stream whose URL is a manifest that decides for itself what plays,
+# whether VLC opens it or the proxy hands it over rewritten
+MANIFEST_PROTOCOLS = frozenset({"direct", "dash_proxy"})
 
 # what the one rung is called when a whole ladder turns out to be the same
 # manifest; naming it after any one representation would promise a size
@@ -207,13 +211,16 @@ class YoutubeDLResolver(ResolverBase):
 
         is_multilingual = _is_multilingual(raw_streams_main)
 
+        manifests_with_sound = {raw_stream["url"] for raw_stream in raw_streams_audio}
+
         for raw_stream in raw_streams_main + raw_streams_audio:
             stream = self._get_stream(raw_stream, audio_tracks, is_live)
 
             fmt_name = _get_fmt_name(
                 stream=raw_stream,
                 unknown_counter=unknown_counter,
-                is_muxed=bool(stream.audio_tracks),
+                is_muxed=bool(stream.audio_tracks)
+                or _carries_its_own_sound(stream, manifests_with_sound),
                 is_multilingual=is_multilingual,
             )
 
@@ -357,7 +364,7 @@ def _get_stream_protocol(stream, is_live) -> str:
         # a live manifest keeps moving and the segment list we got is only a
         # snapshot of it, so VLC has to follow such a manifest itself
         is_expandable = not is_live and _is_hls_segmentable(stream)
-        protocol = "dash" if is_expandable else "direct"
+        protocol = "dash" if is_expandable else _manifest_protocol(stream)
     elif protocol in {"http", "https"}:
         protocol = "http"
     else:
@@ -369,6 +376,18 @@ def _get_stream_protocol(stream, is_live) -> str:
         protocol = "hls_proxy"
 
     return protocol
+
+
+def _manifest_protocol(stream) -> str:
+    """Who fetches a manifest that VLC has to follow for itself.
+
+    VLC cannot be told a cookie, so a manifest whose segments need one is
+    fetched by the proxy and handed over pointing back at it. Where the
+    jar has nothing for the host, VLC is left to it: the relay would buy
+    nothing and cost a hop on every segment.
+    """
+
+    return "dash_proxy" if has_cookies_for(stream.get("url", "")) else "direct"
 
 
 def _is_dash_container(stream) -> bool:
@@ -465,6 +484,18 @@ def _collapse_manifest_rungs(streams: Streams) -> Streams:
     return collapsed
 
 
+def _carries_its_own_sound(stream: Stream, manifests_with_sound: set) -> bool:
+    """Whether a rung that is silent by itself is still played with sound.
+
+    A manifest is handed over whole, and VLC takes the audio out of it as
+    readily as the video. The representation the format described is
+    silent; what ends up playing is not, so calling the rung video only
+    would be telling the viewer something they can hear is untrue.
+    """
+
+    return stream.protocol in MANIFEST_PROTOCOLS and stream.url in manifests_with_sound
+
+
 def _manifest_key(stream: Stream) -> tuple | None:
     """What makes two rungs the same manifest handed over twice.
 
@@ -473,7 +504,7 @@ def _manifest_key(stream: Stream) -> tuple | None:
     even where the URL next to it is the manifest they all came from.
     """
 
-    if stream.protocol != "direct":
+    if stream.protocol not in MANIFEST_PROTOCOLS:
         return None
 
     return stream.url, stream.is_audio_only

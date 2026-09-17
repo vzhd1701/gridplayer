@@ -5,7 +5,7 @@ from collections.abc import Iterable
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from threading import Lock
-from urllib.parse import parse_qsl, urlencode, urlparse
+from urllib.parse import parse_qsl, urlencode, urljoin, urlparse
 from uuid import uuid3, uuid4
 
 from requests import HTTPError, Response
@@ -24,6 +24,12 @@ EXPIRED_STATUSES = frozenset(
         HTTPStatus.GONE,
     }
 )
+
+# where a DASH segment lands, once the manifest has been pointed here. It
+# cannot go through the query string the rest of the proxy uses: a player
+# resolves a segment against the base it was given, and resolving a
+# relative URL against one with a query throws the query away
+DASH_RELAY_PREFIX = "/dash/"
 
 # a source is only worth resolving again once per burst: every fragment in
 # flight fails at the same moment, and they all want the same fresh URLs
@@ -68,6 +74,9 @@ class StreamProxyServer(ThreadingHTTPServer):
         self._streams_lock = Lock()
         self._streams: dict[str, Stream] = {}
 
+        self._bases_lock = Lock()
+        self._bases: dict[str, tuple[str, str]] = {}
+
         # resolving a source again is slow, so one thread does it while the
         # rest of the burst waits and then reuses the result
         self._resolve_source = resolve_source
@@ -109,6 +118,54 @@ class StreamProxyServer(ThreadingHTTPServer):
             }
 
         return f"{self.base_url}/?{urlencode(params)}"
+
+    def add_base(self, base_url: str, stream_session) -> str:
+        """A URL of ours that anything under `base_url` can be asked for.
+
+        DASH names its segments with a template that only the player can
+        fill in, so there is no list of them to register the way a
+        playlist's segments are. What gets registered is where they will
+        be, and the player builds the rest of the name itself.
+        """
+
+        session_id = self._add_session(stream_session)
+
+        base_id = self.generate_id((base_url, session_id))
+
+        with self._bases_lock:
+            self._bases[base_id] = (base_url, session_id)
+
+        return f"{self.base_url}{DASH_RELAY_PREFIX}{base_id}/"
+
+    def get_base(self, base_id: str) -> tuple[str, str] | None:
+        with self._bases_lock:
+            return self._bases.get(base_id)
+
+    def dash_query(self, path: str) -> dict[str, str] | None:
+        """What a relayed DASH segment asks for, put the way the rest is put.
+
+        The player builds these out of the manifest's own templates, so
+        what arrives is a base handed out earlier with whatever a
+        template came to underneath it.
+        """
+
+        if not path.startswith(DASH_RELAY_PREFIX):
+            return None
+
+        base_id, _, tail = path.removeprefix(DASH_RELAY_PREFIX).partition("/")
+
+        base = self.get_base(base_id)
+
+        if base is None:
+            raise LookupError(f"Base {base_id} not found")
+
+        base_url, session_id = base
+
+        return {
+            "url": urljoin(base_url, tail),
+            "protocol": "http",
+            "session_id": session_id,
+        }
 
     def get_session(self, session_id: str) -> StreamSession:
         with self._sessions_lock:
@@ -314,10 +371,14 @@ class ProxyRequestHandler(BaseHTTPRequestHandler):
         self._log.debug(f"Received request: {req.path}\n{request_headers}")
 
         try:
-            query = _parse_request(req.path)
+            query = self.server.dash_query(req.path) or _parse_request(req.path)
         except ValueError as err:
             self._log.error(f"Invalid request: {err}")
             self.send_error(HTTPStatus.BAD_REQUEST, "Invalid request")
+            return
+        except LookupError as err:
+            self._log.error(f"Cannot serve stream: {err}")
+            self.send_error(HTTPStatus.NOT_FOUND)
             return
 
         session_id = query.get("session_id", "")

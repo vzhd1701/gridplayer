@@ -1,9 +1,7 @@
 """The proxy renewing stream URLs that the service stopped honouring."""
 
 import re
-from contextlib import contextmanager
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
-from threading import Thread
 from urllib.parse import parse_qsl, urlparse
 
 import pytest
@@ -50,44 +48,25 @@ class UpstreamHandler(BaseHTTPRequestHandler):
         """Quiet, the test is not interested"""
 
 
-@contextmanager
-def _serving(server):
-    thread = Thread(target=server.serve_forever, daemon=True)
-    thread.start()
-
-    try:
-        yield server
-    finally:
-        server.shutdown()
-        server.server_close()
-        thread.join(timeout=5)
-
-
 @pytest.fixture
-def upstream():
+def upstream(serving):
     server = ThreadingHTTPServer(("127.0.0.1", 0), UpstreamHandler)
     server.replies = {}
     server.requested = []
 
-    with _serving(server):
-        yield server
+    return serving(server)
 
 
 @pytest.fixture
-def proxy():
-    created = []
-
+def proxy(serving):
     def make_proxy(resolve_source=None):
-        server = StreamProxyServer(
-            ("127.0.0.1", 0), ProxyRequestHandler, resolve_source=resolve_source
+        return serving(
+            StreamProxyServer(
+                ("127.0.0.1", 0), ProxyRequestHandler, resolve_source=resolve_source
+            )
         )
-        created.append(_serving(server))
-        return created[-1].__enter__()
 
-    yield make_proxy
-
-    for serving in created:
-        serving.__exit__(None, None, None)
+    return make_proxy
 
 
 def _upstream_url(server, path):

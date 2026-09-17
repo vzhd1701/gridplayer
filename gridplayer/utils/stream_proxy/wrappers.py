@@ -23,11 +23,15 @@ from gridplayer.utils.stream_proxy.mp4 import (
     INDEX_PROBE_SIZE_MAX,
     parse_segment_index,
 )
+from gridplayer.utils.stream_proxy.mpd import rewrite_manifest
 
 CHUNK_SIZE = 8192
 
 # last resort when neither an index nor a known duration is available
 SINGLE_SEGMENT_DURATION = 86400.0
+
+M3U8_CONTENT_TYPE = "application/vnd.apple.mpegurl"
+MPD_CONTENT_TYPE = "application/dash+xml"
 
 
 class HTTPStreamProxy(HTTPStream):
@@ -57,39 +61,55 @@ class HTTPStreamProxy(HTTPStream):
         self.args["headers"] = headers
 
     def open(self):
-        reqargs = self.session.http.valid_request_args(**self.args)
-        reqargs.setdefault("method", "GET")
-        timeout = self.session.options.get("stream-timeout")
-        self._res = self.session.http.request(
-            stream=True,
-            exception=StreamError,
-            timeout=timeout,
-            **reqargs,
-        )
+        self._res = self._fetch(stream=True)
 
         fd = StreamIOIterWrapper(self._res.iter_content(CHUNK_SIZE))
         if self.buffered:
-            fd = StreamIOThreadWrapper(self.session, fd, timeout=timeout)
+            fd = StreamIOThreadWrapper(self.session, fd, timeout=self._timeout)
 
         return fd
+
+    def _fetch(self, stream: bool = False) -> Response:
+        """Ask the host for this URL, with the session's cookies and headers."""
+
+        reqargs = self.session.http.valid_request_args(**self.args)
+        reqargs.setdefault("method", "GET")
+
+        return self.session.http.request(
+            stream=stream,
+            exception=StreamError,
+            timeout=self._timeout,
+            **reqargs,
+        )
+
+    def _replace_body(self, body: str, content_type: str) -> None:
+        """Hand over what was written here rather than what was fetched.
+
+        The response that came back is answered with, headers and all, so
+        what it says about its own body has to go with the body.
+        """
+
+        self.response._content = body.encode("utf-8")
+
+        self.response.status_code = 200
+        self.response.reason = "OK"
+
+        self.response.headers.clear()
+        self.response.headers["Content-Type"] = content_type
+        self.response.headers["Content-Length"] = str(len(self.response._content))
+
+    @property
+    def _timeout(self):
+        return self.session.options.get("stream-timeout")
 
 
 class HLSProxy(HTTPStreamProxy):
     def open(self):
-        reqargs = self.session.http.valid_request_args(**self.args)
-        reqargs.setdefault("method", "GET")
-        timeout = self.session.options.get("stream-timeout")
-        self._res = self.session.http.request(
-            exception=StreamError,
-            timeout=timeout,
-            **reqargs,
-        )
+        self._res = self._fetch()
 
         hls_playlist = parse_m3u8(self._res.text, self._playlist_base_url)
 
-        hls_playlist_txt = self._proxify_hls_playlist(hls_playlist)
-
-        self._set_hls_playlist_as_response(hls_playlist_txt)
+        self._replace_body(self._proxify_hls_playlist(hls_playlist), M3U8_CONTENT_TYPE)
 
     @property
     def _playlist_base_url(self) -> str:
@@ -120,15 +140,32 @@ class HLSProxy(HTTPStreamProxy):
         )
         return self.server.add_stream(stream)
 
-    def _set_hls_playlist_as_response(self, hls_playlist: str):
-        self.response._content = hls_playlist.encode("utf-8")
 
-        self.response.status_code = 200
-        self.response.reason = "OK"
+class DASHManifestProxy(HTTPStreamProxy):
+    """Serves a live DASH manifest with its URLs pointed back at the proxy.
 
-        self.response.headers.clear()
-        self.response.headers["Content-Type"] = "application/vnd.apple.mpegurl"
-        self.response.headers["Content-Length"] = str(len(self.response._content))
+    VLC has to follow a live manifest itself, because the segment list
+    moves and only the player knows when to ask for more. So the
+    manifest is fetched here, where the cookies are, and handed over
+    with every URL in it replaced by one of ours. VLC refetches it as
+    the manifest tells it to, and each refetch is rewritten again.
+    """
+
+    def open(self):
+        self._res = self._fetch()
+
+        manifest = rewrite_manifest(
+            self._res.text,
+            # where it was fetched from in the end, which is what the
+            # relative URLs inside it hang off
+            manifest_url=self._res.url,
+            proxify=self._proxify_base,
+        )
+
+        self._replace_body(manifest, MPD_CONTENT_TYPE)
+
+    def _proxify_base(self, url: str) -> str:
+        return self.server.add_base(url, self.session_opts)
 
 
 class HLSProxyLive(HLSStream):
@@ -172,7 +209,7 @@ class GeneratedPlaylistStream:
 
         res._content = self._playlist.encode("utf-8")
 
-        res.headers["Content-Type"] = "application/vnd.apple.mpegurl"
+        res.headers["Content-Type"] = M3U8_CONTENT_TYPE
         res.headers["Content-Length"] = str(len(res._content))
 
         return res
