@@ -1,11 +1,8 @@
 import pytest
-from types import SimpleNamespace
-
+from pydantic import ValidationError
 from PyQt5.QtCore import QSettings
 from PyQt5.QtGui import QColor
 from PyQt5.QtWidgets import QApplication
-
-from pydantic import ValidationError
 
 from gridplayer.models.playlist import Playlist
 from gridplayer.models.video import Video

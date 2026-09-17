@@ -852,7 +852,7 @@ def _ctx_with_grid(live_grid, commands=None):
         video_blocks=SimpleNamespace(blocks_for_ids=lambda ids: []),
         commands=commands
         if commands is not None
-        else SimpleNamespace(layout_order=lambda: []),
+        else SimpleNamespace(layout_order=list),
     )
 
 

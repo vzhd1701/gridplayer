@@ -1,10 +1,10 @@
 """Following the pane's size with the stream quality, once it has settled."""
 
 import logging
-
-import pytest
 from functools import partial
 from unittest.mock import Mock
+
+import pytest
 from PyQt5.QtCore import QSettings
 from PyQt5.QtWidgets import QApplication
 
@@ -176,10 +176,10 @@ def _adapt_delay_action(stream_quality, delay_txt="15 second(s)"):
     """Build the submenu entry the way the action manager really does."""
 
     from gridplayer.player.manager import Commands
+    from gridplayer.player.managers.actions import ActionsManager
     from gridplayer.player.managers.active_block import (
         _quality_adapt_delay_menu_item,
     )
-    from gridplayer.player.managers.actions import ActionsManager
 
     commands = Commands()
     commands.update(

@@ -35,6 +35,13 @@ class _StubBlock:
 
 @pytest.fixture
 def blocks_manager():
+    """The manager, and a way to give it blocks to close.
+
+    The parent is held for the length of the test rather than returned
+    with the manager: dropped, Qt takes the manager down with it, and
+    every use of it raises about a deleted C++ object.
+    """
+
     parent = QWidget()
     manager = VideoBlocksManager(context=Context(), parent=parent)
 
@@ -47,6 +54,8 @@ def blocks_manager():
         return events
 
     yield manager, _with_blocks
+
+    parent.deleteLater()
 
 
 def test_frame_cleanup_start_does_not_wait():
@@ -117,7 +126,7 @@ def test_close_event_hides_window_before_tearing_players_down(mocker):
             "force_close_playlist": lambda: events.append("close"),
         }
     )
-    mocker.patch.object(window, "hide", lambda: events.append("hide"))
+    mocker.patch.object(window, "hide", side_effect=lambda: events.append("hide"))
 
     manager.closeEvent(MagicMock())
 

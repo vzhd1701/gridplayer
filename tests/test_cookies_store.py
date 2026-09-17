@@ -5,6 +5,7 @@ from http.cookiejar import LoadError, MozillaCookieJar
 
 import pytest
 from yt_dlp.cookies import YoutubeDLCookieJar
+
 from gridplayer.utils.cookies import (
     CookieImportError,
     CookieJar,

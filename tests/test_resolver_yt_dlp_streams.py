@@ -233,7 +233,9 @@ def test_a_failed_probe_leaves_the_stream_alone(is_fragmented_stream):
 
 
 def test_dash_source_is_not_probed(is_fragmented_stream):
-    _resolver({"is_live": False, "formats": [_audio_fmt(), _dash_fmt("video")]}).streams
+    assert _resolver(
+        {"is_live": False, "formats": [_audio_fmt(), _dash_fmt("video")]}
+    ).streams
 
     is_fragmented_stream.assert_not_called()
 
@@ -247,7 +249,7 @@ def test_silent_streams_are_still_offered_when_nothing_else_is_left():
 
 
 @pytest.mark.parametrize(
-    "hls_via_streamlink,expected",
+    ("hls_via_streamlink", "expected"),
     [(True, "hls"), (False, "hls_proxy")],
 )
 def test_live_hls_still_honours_the_streamlink_setting(

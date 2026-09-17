@@ -206,7 +206,7 @@ def _submenu(block):
     actions_manager._run_action = partial(ActionsManager._run_action, actions_manager)
 
     entries = {}
-    for template in manager.menu_generator_audio_track():  # noqa: B007
+    for template in manager.menu_generator_audio_track():
         if template == "---":
             continue
         action = ActionsManager._make_action(actions_manager, template)

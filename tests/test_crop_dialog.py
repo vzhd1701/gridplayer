@@ -1,6 +1,6 @@
-import pytest
 from types import SimpleNamespace
 
+import pytest
 from PyQt5.QtCore import QSize, Qt
 from PyQt5.QtGui import QPixmap
 from PyQt5.QtWidgets import QApplication, QDialog
@@ -15,8 +15,11 @@ def _qapp():
     return QApplication.instance() or QApplication([])
 
 
+NO_CROP = VideoCrop(0, 0, 0, 0)
+
+
 class _FakeBlock:
-    def __init__(self, crop=VideoCrop(0, 0, 0, 0), aspect=VideoAspect.FIT):
+    def __init__(self, crop=NO_CROP, aspect=VideoAspect.FIT):
         self.applied = []
         self.aspect_calls = []
         self.video_params = SimpleNamespace(

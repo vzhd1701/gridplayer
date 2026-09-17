@@ -6,8 +6,8 @@ import pytest
 from PyQt5.QtWidgets import QApplication
 
 from gridplayer.multiprocess.safe_shared_memory import SafeSharedMemory
-from gridplayer.widgets.video_frame_vlc_sw import VideoDriverVLCSW, VideoFrameVLCSW
 from gridplayer.params.static import VideoAspect, VideoCrop
+from gridplayer.widgets.video_frame_vlc_sw import VideoDriverVLCSW, VideoFrameVLCSW
 from gridplayer.widgets.video_surface_sw import SoftwareVideoSurface
 
 

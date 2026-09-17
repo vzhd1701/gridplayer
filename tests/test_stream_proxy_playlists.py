@@ -386,7 +386,7 @@ def test_http_stream_falls_back_to_a_single_segment():
 
 
 @pytest.mark.parametrize(
-    "head,expected",
+    ("head", "expected"),
     [
         pytest.param(
             _box(b"ftyp", b"") + _box(b"moov", b"") + _box(b"mdat", b"x"),
@@ -423,19 +423,16 @@ def test_a_truncated_header_reads_as_plain():
 class TestRelativeSegmentURIs:
     """A playlist whose segments are named relative to where it came from."""
 
-    PLAYLIST = "\n".join(
-        [
-            "#EXTM3U",
-            "#EXT-X-VERSION:3",
-            "#EXT-X-TARGETDURATION:4",
-            "#EXT-X-PLAYLIST-TYPE:VOD",
-            "#EXTINF:3.0,",
-            "seg0.ts",
-            "#EXTINF:3.0,",
-            "seg1.ts",
-            "#EXT-X-ENDLIST",
-            "",
-        ]
+    PLAYLIST = (
+        "#EXTM3U\n"
+        "#EXT-X-VERSION:3\n"
+        "#EXT-X-TARGETDURATION:4\n"
+        "#EXT-X-PLAYLIST-TYPE:VOD\n"
+        "#EXTINF:3.0,\n"
+        "seg0.ts\n"
+        "#EXTINF:3.0,\n"
+        "seg1.ts\n"
+        "#EXT-X-ENDLIST\n"
     )
 
     def test_they_are_resolved_against_the_playlist_url(self):

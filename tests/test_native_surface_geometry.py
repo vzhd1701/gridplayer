@@ -26,7 +26,10 @@ class _StubSWFrame(VideoFrameVLCSWSP):
         return MagicMock()
 
 
-def _frame_and_surface(size=QSize(800, 450)):
+DEFAULT_SIZE = QSize(800, 450)
+
+
+def _frame_and_surface(size=DEFAULT_SIZE):
     frame = QWidget()
     frame.resize(size)
     surface = QWidget(frame)

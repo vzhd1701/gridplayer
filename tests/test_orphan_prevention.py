@@ -206,7 +206,7 @@ def test_parent_death_signal_is_armed():
 
     Arming it in the test runner would leave pytest itself set up to be killed.
     """
-    armed = subprocess.run(  # noqa: S603
+    armed = subprocess.run(
         [
             sys.executable,
             "-c",

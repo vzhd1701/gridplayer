@@ -1,3 +1,5 @@
+import pytest
+
 from gridplayer.player.manager import Commands, Context
 
 
@@ -29,20 +31,12 @@ def test_context_missing_attribute_raises_attribute_error():
     assert getattr(ctx, "missing", None) is None
     assert not hasattr(ctx, "missing")
 
-    try:
-        ctx.missing
-    except AttributeError:
-        pass
-    else:
-        raise AssertionError("AttributeError not raised")
+    with pytest.raises(AttributeError):
+        _ = ctx.missing
 
 
 def test_commands_unknown_command_raises_key_error():
     commands = Commands()
 
-    try:
-        commands.unknown
-    except KeyError:
-        pass
-    else:
-        raise AssertionError("KeyError not raised")
+    with pytest.raises(KeyError):
+        _ = commands.unknown

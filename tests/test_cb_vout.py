@@ -1,7 +1,5 @@
 from unittest.mock import Mock
 
-import pytest
-
 import gridplayer.vlc_player.player_base as player_base_mod
 from gridplayer.params.static import VideoAspect, VideoCrop
 from gridplayer.vlc_player.player_base import VlcPlayerBase
@@ -195,7 +193,7 @@ def test_apply_media_input_view_uses_cached_size_when_vout_size_missing():
 
 
 def test_adjust_view_fills_missing_track_dimensions():
-    player, media_player = _make_player()
+    player, _ = _make_player()
     player.notify_video_dimensions = Mock()
     player.media = Media(
         length=-1,

@@ -96,11 +96,11 @@ def test_mouse_sequence_eq_hash():
 
 
 def test_mouse_sequence_rejects_bad_input():
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="Bad mouse sequence"):
         MouseButtonSequence("NotAButton")
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="Bad mouse sequence"):
         MouseButtonSequence("Foo+Click")  # unknown modifier
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="Bad mouse sequence"):
         MouseButtonSequence("Ctrl+NotAButton")
 
 

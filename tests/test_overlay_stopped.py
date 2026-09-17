@@ -3,7 +3,7 @@ from types import SimpleNamespace
 
 import pytest
 from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QColor, QRegion
+from PyQt5.QtGui import QRegion
 from PyQt5.QtWidgets import QApplication, QWidget
 
 from gridplayer.params.static import VideoEndAction

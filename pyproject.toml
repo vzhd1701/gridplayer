@@ -72,7 +72,7 @@ force-exclude = true
 line-ending = "lf"
 
 [tool.ruff.lint]
-exclude = ["tests/*.py", "scripts/*"]
+exclude = ["scripts/*"]
 select = [
     # Complexity
     #"PL",   # pylint

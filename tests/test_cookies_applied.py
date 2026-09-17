@@ -123,10 +123,13 @@ class TestHandingThemToYtDlp:
     def test_a_resolve_that_blew_up_still_keeps_the_refresh(self, settings, store):
         """yt-dlp saves its jar on the way out however the extraction ended."""
 
-        with pytest.raises(RuntimeError):
+        def _blow_up_mid_resolve():
             with ytdl_cookies() as cookie_opts:
                 _refresh_like_yt_dlp(cookie_opts, "refreshed")
                 raise RuntimeError("extractor blew up")
+
+        with pytest.raises(RuntimeError, match="blew up"):
+            _blow_up_mid_resolve()
 
         assert _values(store.jar) == {(".youtube.com", "SID"): "refreshed"}
 
@@ -176,7 +179,7 @@ class TestEveryPlaceThatReachesOut:
 
         mocker.patch.object(resolver_yt_dlp, "YoutubeDL", _FakeYoutubeDL)
 
-        resolver_yt_dlp.YoutubeDLResolver("http://host/v")._video_info
+        assert resolver_yt_dlp.YoutubeDLResolver("http://host/v")._video_info
 
         assert _values(_read_back(opened_with)) == {(".youtube.com", "SID"): "abc"}
 
