@@ -17,6 +17,7 @@ import os
 import re
 import threading
 import time
+import urllib.request
 from dataclasses import dataclass
 from http.cookiejar import (
     HTTPONLY_ATTR,
@@ -313,8 +314,34 @@ def cookie_jar() -> CookieJar | None:
     return jar_or_none(cookie_store().jar)
 
 
+def has_cookies_for(url: str) -> bool:
+    """Whether the jar holds anything that would be sent to this URL.
+
+    Asking the jar itself rather than matching domains by hand: which
+    cookies a request gets is a question of subdomains, paths, secure
+    flags and expiry, and http.cookiejar already answers it.
+    """
+
+    jar = cookie_jar()
+
+    if jar is None:
+        return False
+
+    request = urllib.request.Request(url)
+
+    jar.add_cookie_header(request)
+
+    return request.get_header("Cookie") is not None
+
+
 def apply_to_streamlink(session) -> None:
-    """Give a Streamlink session the stored cookies.
+    """Give a Streamlink session the stored cookies, and only those.
+
+    What the session held is cleared first, so applying this again once
+    the store has been edited leaves the session with what is stored now
+    rather than the union of that and what was stored before. A cookie
+    the host set along the way goes too, and is set again by the next
+    response that cares.
 
     Streamlink reads cookies and never writes them: there is no save
     counterpart to set_cookies_from_file, so whatever a site sets during a
@@ -322,12 +349,28 @@ def apply_to_streamlink(session) -> None:
     yt-dlp side can put anything back, see ytdl_cookies.
     """
 
+    session.http.cookies.clear()
+
     jar = cookie_jar()
 
     if jar is None:
         return
 
     session.http.cookies.update(jar)
+
+
+def cookies_stamp() -> tuple | None:
+    """What the store looks like now, to notice it being edited.
+
+    Cheap enough to ask before every request: a stat of the file, and the
+    setting that decides whether any of it counts. None where the cookies
+    would not be used at all, so switching them off reads as a change.
+    """
+
+    if not Settings().get("cookies/enabled"):
+        return None
+
+    return _file_stamp(cookie_store().path)
 
 
 @contextlib.contextmanager

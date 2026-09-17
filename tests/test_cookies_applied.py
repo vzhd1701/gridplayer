@@ -4,15 +4,21 @@ import pytest
 from requests.cookies import RequestsCookieJar
 from yt_dlp.cookies import YoutubeDLCookieJar
 
-from gridplayer.models.stream import HashableDict, StreamSessionOpts
+from gridplayer.models.stream import HashableDict, Stream, StreamSessionOpts
 from gridplayer.utils import cookies as cookies_module
-from gridplayer.utils.cookies import CookieStore, apply_to_streamlink, ytdl_cookies
+from gridplayer.utils.cookies import (
+    CookieStore,
+    apply_to_streamlink,
+    parse_cookies,
+    ytdl_cookies,
+)
 from gridplayer.utils.stream_proxy import session as proxy_session
 from gridplayer.utils.url_resolve import (
     resolver_streamlink,
     resolver_yt_dlp,
     stream_detect,
 )
+from gridplayer.utils.url_resolve.resolver_base import DirectResolver
 
 NETSCAPE_HEADER = "# Netscape HTTP Cookie File\n"
 
@@ -28,12 +34,17 @@ class _FakeSettings:
 
 
 class _FakeSession:
-    """Enough of a Streamlink session for cookies and headers to land on."""
+    """Enough of a Streamlink session for cookies and headers to land on.
+
+    And for a stream to be built against, which asks it to vet the
+    arguments the request will be made with.
+    """
 
     def __init__(self):
         self.http = type("_Http", (), {})()
         self.http.cookies = RequestsCookieJar()
         self.http.headers = {}
+        self.http.valid_request_args = dict
 
 
 @pytest.fixture
@@ -205,6 +216,124 @@ class TestEveryPlaceThatReachesOut:
         )
 
         assert proxy._session.http.cookies.get("SID") == "abc"
+
+
+class TestAUrlThatWouldGoStraightToVlc:
+    """VLC cannot be told a cookie, so one that needs it takes the long way.
+
+    Nothing here asks the resolver to reach out: which protocol a URL
+    comes back with is decided by the jar alone.
+    """
+
+    def test_one_there_is_a_login_for_is_relayed_instead(self, settings, store):
+        stream = DirectResolver("https://www.youtube.com/v.mp4").streams["generic"]
+
+        assert stream.protocol == "http"
+        assert stream.session.service == "direct"
+
+    def test_one_there_is_nothing_for_is_handed_over_as_it_was(self, settings, store):
+        """The relay costs something, so it stays out of the way."""
+
+        stream = DirectResolver("https://example.com/v.mp4").streams["generic"]
+
+        assert stream.protocol == "direct"
+        assert stream.session is None
+
+    def test_a_host_that_merely_reads_like_the_one_stored(self, settings, store):
+        """Which cookies a URL gets is the jar's question, not a string match."""
+
+        stream = DirectResolver("https://youtube.com.elsewhere.net/v.mp4").streams[
+            "generic"
+        ]
+
+        assert stream.protocol == "direct"
+
+    def test_the_switch_being_off_hands_it_over_as_it_was(self, settings, store):
+        settings["cookies/enabled"] = False
+
+        stream = DirectResolver("https://www.youtube.com/v.mp4").streams["generic"]
+
+        assert stream.protocol == "direct"
+
+    def test_an_empty_store_hands_it_over_as_it_was(self, settings, empty_store):
+        stream = DirectResolver("https://www.youtube.com/v.mp4").streams["generic"]
+
+        assert stream.protocol == "direct"
+
+
+class TestCookiesEditedWhileTheProxyIsRunning:
+    """A proxy session outlives the settings dialog and has to notice.
+
+    One is made per service and kept for as long as the proxy runs, so
+    what it was handed when it was made is not the last word on it.
+    """
+
+    @pytest.fixture
+    def proxy(self, mocker, settings, store):
+        mocker.patch.object(proxy_session, "Streamlink", _FakeSession)
+
+        return proxy_session.StreamSession(
+            stream_session=StreamSessionOpts(
+                service="yt_dlp-youtube", session_headers=HashableDict({})
+            ),
+            server=None,
+        )
+
+    def test_a_login_changed_since_is_picked_up(self, proxy, store):
+        _store(store, ".youtube.com", "SID", "changed")
+
+        _request(proxy)
+
+        assert proxy._session.http.cookies.get("SID") == "changed"
+
+    def test_one_taken_out_of_the_store_stops_being_sent(self, proxy, store):
+        store.clear()
+
+        _request(proxy)
+
+        assert not len(proxy._session.http.cookies)
+
+    def test_switching_them_off_stops_them_being_sent(self, proxy, settings):
+        settings["cookies/enabled"] = False
+
+        _request(proxy)
+
+        assert not len(proxy._session.http.cookies)
+
+    def test_an_untouched_store_leaves_the_session_as_it_is(self, proxy, store):
+        """A cookie the host set along the way is not thrown out every request."""
+
+        proxy._session.http.cookies.set("CDN", "xyz")
+
+        _request(proxy)
+
+        assert proxy._session.http.cookies.get("CDN") == "xyz"
+
+    def test_an_edit_does_take_the_hosts_own_cookie_with_it(self, proxy, store):
+        """The price of a deleted login not lingering in a running session.
+
+        What the host set is set again by the next response that cares,
+        where a login nobody could see any more would just keep going out.
+        """
+
+        proxy._session.http.cookies.set("CDN", "xyz")
+
+        _store(store, ".youtube.com", "SID", "changed")
+        _request(proxy)
+
+        assert proxy._session.http.cookies.get("CDN") is None
+
+
+def _store(store, domain, name, value):
+    line = f"{domain}\tTRUE\t/\tFALSE\t0\t{name}\t{value}\n"
+
+    store.save(parse_cookies(NETSCAPE_HEADER + line))
+
+
+def _request(proxy):
+    """Ask the session for a stream, the way serving a request does."""
+
+    proxy.get_stream(Stream(url="http://host/v.mp4", protocol="http"))
 
 
 def _refresh_like_yt_dlp(cookie_opts, value):

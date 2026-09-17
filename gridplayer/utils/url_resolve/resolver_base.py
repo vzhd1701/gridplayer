@@ -3,9 +3,19 @@ from abc import ABC, abstractmethod
 
 from streamlink import PluginError
 
-from gridplayer.models.stream import Stream, Streams
+from gridplayer.models.stream import (
+    HashableDict,
+    Stream,
+    Streams,
+    StreamSessionOpts,
+)
+from gridplayer.utils.cookies import has_cookies_for
 from gridplayer.utils.url_resolve.static import BadURLException, ResolvedVideo
 from gridplayer.utils.url_resolve.stream_detect import is_http_live_stream
+
+# every URL relayed this way shares one session: they carry no headers of
+# their own, so there is nothing to tell them apart by
+DIRECT_SERVICE = "direct"
 
 
 class ResolverBase(ABC):
@@ -52,7 +62,32 @@ class DirectResolver(ResolverBase):
 
     @property
     def streams(self) -> Streams:
-        return Streams({"generic": Stream(url=self.url, protocol="direct")})
+        """The URL as it stands, unless it takes a cookie to fetch it.
+
+        libVLC cannot be told a cookie -- its http access offers a referrer
+        and a user agent and nothing else -- so a URL that needs one is
+        fetched by the proxy and relayed instead of being handed over. The
+        relay is not free, so it is only put in the way when the jar has
+        something that would actually be sent.
+        """
+
+        if not has_cookies_for(self.url):
+            return Streams({"generic": Stream(url=self.url, protocol="direct")})
+
+        self._log.debug("URL needs a cookie, relaying it through the proxy")
+
+        return Streams(
+            {
+                "generic": Stream(
+                    url=self.url,
+                    protocol="http",
+                    session=StreamSessionOpts(
+                        service=DIRECT_SERVICE,
+                        session_headers=HashableDict(),
+                    ),
+                )
+            }
+        )
 
     @staticmethod
     def is_able_to_handle(url: str):
