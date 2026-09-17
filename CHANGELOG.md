@@ -21,6 +21,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ### Added
 
+- Add support for cookies exported from a browser, used by both yt-dlp and streamlink ([c3ba278](https://github.com/vzhd1701/gridplayer/commit/c3ba2785014a0515e11dbad7ba8786974fa699b9)), ([7b0e0ff](https://github.com/vzhd1701/gridplayer/commit/7b0e0ff3d7a39489d9490d209e7fb32a71626264)), ([58e7425](https://github.com/vzhd1701/gridplayer/commit/58e74259daa62d4ecdd7f71a56bae27be56966fc)), ([7a01e6e](https://github.com/vzhd1701/gridplayer/commit/7a01e6ec5582256cd5a9950d798c5f52b2fdb8d7))
+- Add option to pick a preferred audio track language, with support for multi-language streams ([b40dd6d](https://github.com/vzhd1701/gridplayer/commit/b40dd6dde5d5126b5f0854f9062c848000d7e2d9))
+- Add auto mode for stream quality, picking the quality that fits the pane size ([654e906](https://github.com/vzhd1701/gridplayer/commit/654e9069dedc4873db8848fae2acf37608c5df99))
+- Add option to retry a stream when it fails to load ([5450670](https://github.com/vzhd1701/gridplayer/commit/545067034c1f778739173b0f33caea86fb4f9ef2))
 - Add single process software video decode mode ([dcf7ef4](https://github.com/vzhd1701/gridplayer/commit/dcf7ef49544787a6e540d4c23edfd97a84ba5b8a))
 - Add option to save video paths relative to the playlist file ([9c4a9d3](https://github.com/vzhd1701/gridplayer/commit/9c4a9d3196ca3db3418216bc9bff6079ffa3c760))
 - Add option to set custom portable user data dir via GP_USER_DATA_DIR env variable or --user-data-dir command line argument ([4b9d525](https://github.com/vzhd1701/gridplayer/commit/4b9d5253f9367d642cf641b5c038b660cee5b497))
@@ -41,6 +45,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ### Fixed
 
+- Keep counting playback time past 24 days instead of wrapping to a negative value ([5b61b54](https://github.com/vzhd1701/gridplayer/commit/5b61b5444a82e329b5eab56565114bdcb3d0a2f5))
+- Improve streaming stability ([5450670](https://github.com/vzhd1701/gridplayer/commit/545067034c1f778739173b0f33caea86fb4f9ef2)), ([0a17ab1](https://github.com/vzhd1701/gridplayer/commit/0a17ab1c6e15acea302d5b63a3c26f37c6deb45d))
+- Force dav1d for AV1 adaptive streams to avoid glitches when seeking ([293b7cb](https://github.com/vzhd1701/gridplayer/commit/293b7cbd7725984bd5d2d6fe95f094dd80bc1411))
+- Show bitrates and codecs correctly in the stream quality menu ([ed93371](https://github.com/vzhd1701/gridplayer/commit/ed933713847e4ce78f3cb1222284d9d05ab67098))
+- Avoid freeze after changing stream quality ([3da0379](https://github.com/vzhd1701/gridplayer/commit/3da037985b80ebcbafaacd0dde3fd65ae1612f31))
+- Play DASH streams that serve audio and video from separate URLs ([8966b77](https://github.com/vzhd1701/gridplayer/commit/8966b775786d965349abbe79561edf1feb6933cd))
+- Ensure no orphan processes survive an app crash ([1139940](https://github.com/vzhd1701/gridplayer/commit/11399405e24913c0af5fdf401ca9ca0b17309a7e))
+- Speed up video teardown on Windows in hardware mode ([d537b2d](https://github.com/vzhd1701/gridplayer/commit/d537b2dc36aea1ee9cc27cd7cb9addd5c4149ffa))
+- Improve window responsiveness in hardware mode ([c4d0977](https://github.com/vzhd1701/gridplayer/commit/c4d0977cde75dbf4c8064d9943cf97b5141dbd3e))
+- Improve software decoding mode: faster output, less jitter on static video ([4d2fe22](https://github.com/vzhd1701/gridplayer/commit/4d2fe224c827eadf9423d2004a0568a62bf81d06)), ([3266e68](https://github.com/vzhd1701/gridplayer/commit/3266e68ad2236968f07c8c01947ccf9379092b36)), ([bd2f3e8](https://github.com/vzhd1701/gridplayer/commit/bd2f3e8e954cf3901db30e1f6c52e8cf19724111)), ([1e51b3e](https://github.com/vzhd1701/gridplayer/commit/1e51b3e1dd2023b615cf4a0dca266c6ed8e4311a)), ([a19134c](https://github.com/vzhd1701/gridplayer/commit/a19134c8cedfebb62cb2520f10a3e434d44554d0))
+- Keep the pause state in sync with actual playback ([3b481f6](https://github.com/vzhd1701/gridplayer/commit/3b481f6efc65eb7d5619792bf2cea81310ddf953))
 - Optimize software mode output, speed up video loading ([0595343](https://github.com/vzhd1701/gridplayer/commit/05953431021274de0ae3b14ad81c9654a55c0d83))
 - Hide glitchy video border on windows (nvidia) and add hw_crop_border_offset option ([7969baa](https://github.com/vzhd1701/gridplayer/commit/7969baa9db9d7ea358ad13ead5ad1970e9705ed1))
 - Avoid crashes and freezes on spam play/pause for live streams in HW mode ([9957078](https://github.com/vzhd1701/gridplayer/commit/99570786cc23d18636f68a6e5063c11933a95d4b))
