@@ -14,7 +14,7 @@ from gridplayer.params.static import (
 from gridplayer.player.managers.base import ManagerBase
 from gridplayer.playlist_settings import PlaylistSettings
 from gridplayer.settings import Settings
-from gridplayer.utils.qt import qt_connect, translate
+from gridplayer.utils.qt import MILLISECONDS, qt_connect, translate
 from gridplayer.widgets.video_block import VideoBlock
 
 
@@ -119,10 +119,10 @@ class VideoBlocksManager(ManagerBase):
     all_next_video = pyqtSignal()
 
     all_seek_shift_percent = pyqtSignal(int)
-    all_seek_shift_ms = pyqtSignal(int)
+    all_seek_shift_ms = pyqtSignal(MILLISECONDS)
     all_seek_random = pyqtSignal()
     all_seek_percent = pyqtSignal(float)
-    all_seek = pyqtSignal(int)
+    all_seek = pyqtSignal(MILLISECONDS)
     all_next_frame = pyqtSignal()
     all_previous_frame = pyqtSignal()
 

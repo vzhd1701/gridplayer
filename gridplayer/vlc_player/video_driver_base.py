@@ -3,12 +3,12 @@ from abc import abstractmethod
 
 from PyQt5.QtCore import QObject, pyqtSignal
 
-from gridplayer.utils.qt import QABC
+from gridplayer.utils.qt import MILLISECONDS, QABC
 from gridplayer.vlc_player.static import Media, MediaInput
 
 
 class VLCVideoDriver(QObject, metaclass=QABC):
-    time_changed = pyqtSignal(int)
+    time_changed = pyqtSignal(MILLISECONDS)
     playback_status_changed = pyqtSignal(int)
     load_finished = pyqtSignal(Media)
     snapshot_taken = pyqtSignal(str)

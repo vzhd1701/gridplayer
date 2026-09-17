@@ -10,7 +10,7 @@ from PyQt5.QtWidgets import QLabel, QStackedLayout, QWidget
 from gridplayer.params import env
 from gridplayer.params.static import HWCropBorderOffset, VideoAspect, VideoCrop
 from gridplayer.settings import Settings
-from gridplayer.utils.qt import QABC, QT_ASPECT_MAP, qt_connect
+from gridplayer.utils.qt import MILLISECONDS, QABC, QT_ASPECT_MAP, qt_connect
 from gridplayer.vlc_player.static import Media, MediaInput
 from gridplayer.vlc_player.video_driver_base import VLCVideoDriver
 from gridplayer.widgets.video_status import VideoStatus
@@ -201,7 +201,7 @@ class PauseSnapshot(QLabel):
 
 
 class VideoFrameVLC(QWidget, metaclass=QABC):
-    time_changed = pyqtSignal(int)
+    time_changed = pyqtSignal(MILLISECONDS)
     playback_status_changed = pyqtSignal(bool)
 
     video_ready = pyqtSignal()

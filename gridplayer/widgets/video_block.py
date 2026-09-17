@@ -44,7 +44,7 @@ from gridplayer.settings import Settings
 from gridplayer.utils.drop_zone import DropIndicator
 from gridplayer.utils.libvlc_options_parser import get_vlc_options
 from gridplayer.utils.next_file import next_video_file, previous_video_file
-from gridplayer.utils.qt import qt_connect, translate
+from gridplayer.utils.qt import MILLISECONDS, qt_connect, translate
 from gridplayer.utils.track_language import normalize, pick_track
 from gridplayer.utils.url_resolve.static import ResolvedVideo
 from gridplayer.utils.url_resolve.url_resolve import VideoURLResolver
@@ -162,12 +162,12 @@ class VideoBlock(QWidget):
     about_to_close = pyqtSignal(str)
 
     sync_percent_single = pyqtSignal(float)
-    sync_time_single = pyqtSignal(int)
+    sync_time_single = pyqtSignal(MILLISECONDS)
     sync_percent = pyqtSignal(float)
-    sync_time = pyqtSignal(int)
+    sync_time = pyqtSignal(MILLISECONDS)
     sync_paused = pyqtSignal(bool)
 
-    time_change = pyqtSignal(int, int)
+    time_change = pyqtSignal(MILLISECONDS, MILLISECONDS)
     volume_change = pyqtSignal(float)
     label_change = pyqtSignal(str)
     color_change = pyqtSignal(str)

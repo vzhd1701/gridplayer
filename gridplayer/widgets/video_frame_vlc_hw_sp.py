@@ -6,7 +6,7 @@ from PyQt5.QtWidgets import QWidget
 from gridplayer.params import env
 from gridplayer.params.static import AudioChannelMode, VideoAspect, VideoCrop
 from gridplayer.settings import Settings
-from gridplayer.utils.qt import QABC, qt_connect
+from gridplayer.utils.qt import MILLISECONDS, QABC, qt_connect
 from gridplayer.widgets.video_frame_vlc_base import (
     NATIVE_VIEW_RESIZE_INTERVAL_MS,
     VideoFrameVLC,
@@ -23,7 +23,7 @@ from gridplayer.vlc_player.video_driver_base import VLCVideoDriver
 
 class PlayerProcessSingleVLCHWSP(QThread, VlcPlayerBase, metaclass=QABC):
     playback_status_changed = pyqtSignal(bool)
-    time_changed = pyqtSignal(int)
+    time_changed = pyqtSignal(MILLISECONDS)
     error_signal = pyqtSignal(str)
     update_status_signal = pyqtSignal(str, int)
     snapshot_taken = pyqtSignal(str)
@@ -166,7 +166,7 @@ class VideoDriverVLCHWSP(VLCVideoDriver):
     cmd_snapshot = pyqtSignal()
     cmd_play = pyqtSignal()
     cmd_set_pause = pyqtSignal(bool)
-    cmd_set_time = pyqtSignal(int)
+    cmd_set_time = pyqtSignal(MILLISECONDS)
     cmd_set_playback_rate = pyqtSignal(float)
     cmd_audio_set_mute = pyqtSignal(bool)
     cmd_audio_set_volume = pyqtSignal(float)

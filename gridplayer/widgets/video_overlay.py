@@ -12,7 +12,7 @@ from gridplayer.params import env
 from gridplayer.params.static import OVERLAY_ACTIVITY_EVENT
 from gridplayer.utils.compositor_linux import should_make_overlay_opaque
 from gridplayer.utils.drop_zone import DropIndicator
-from gridplayer.utils.qt import qt_connect
+from gridplayer.utils.qt import MILLISECONDS, qt_connect
 from gridplayer.utils.time_txt import get_time_txt
 from gridplayer.widgets.video_overlay_buttons import (
     OverlayExitButton,
@@ -174,7 +174,7 @@ class OverlayBlock(QWidget):
     def resizeEvent(self, event):
         self._sync_progress_label()
 
-    @pyqtSlot(int, int)
+    @pyqtSlot(MILLISECONDS, MILLISECONDS)
     def set_position(self, position, length):
         position = max(0, position)
         self._last_position = (position, length)

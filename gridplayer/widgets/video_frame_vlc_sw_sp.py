@@ -4,7 +4,7 @@ from PyQt5.QtCore import Qt, QThread, QTimer, pyqtSignal, pyqtSlot
 
 from gridplayer.params.static import AudioChannelMode
 from gridplayer.settings import Settings
-from gridplayer.utils.qt import QABC, qt_connect
+from gridplayer.utils.qt import MILLISECONDS, QABC, qt_connect
 from gridplayer.vlc_player.image_decoder import ImageDecoder
 from gridplayer.vlc_player.instance import InstanceVLC
 from gridplayer.vlc_player.player_base import VlcPlayerBase
@@ -17,7 +17,7 @@ from gridplayer.widgets.video_surface_sw import SoftwareVideoSurface
 
 class PlayerProcessSingleVLCSWSP(QThread, VlcPlayerBase, metaclass=QABC):
     playback_status_changed = pyqtSignal(bool)
-    time_changed = pyqtSignal(int)
+    time_changed = pyqtSignal(MILLISECONDS)
     error_signal = pyqtSignal(str)
     update_status_signal = pyqtSignal(str, int)
     snapshot_taken = pyqtSignal(str)
@@ -211,7 +211,7 @@ class VideoDriverVLCSWSP(VLCVideoDriver):
     cmd_snapshot = pyqtSignal()
     cmd_play = pyqtSignal()
     cmd_set_pause = pyqtSignal(bool)
-    cmd_set_time = pyqtSignal(int)
+    cmd_set_time = pyqtSignal(MILLISECONDS)
     cmd_set_playback_rate = pyqtSignal(float)
     cmd_audio_set_mute = pyqtSignal(bool)
     cmd_audio_set_volume = pyqtSignal(float)

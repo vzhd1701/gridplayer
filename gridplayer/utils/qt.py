@@ -15,6 +15,13 @@ QT_ASPECT_MAP = MappingProxyType(
 )
 QT_LOG_IGNORED = ("requestActivate() called for",)
 
+# What a signal carrying milliseconds has to be declared as. PyQt maps a
+# plain int to a 32-bit one, which runs out after 24.8 days and wraps
+# without raising, quietly turning a time into a negative number. A live
+# stream whose clock is counted from the epoch, as DASH manifests have
+# it, is three orders of magnitude past that on its first frame.
+MILLISECONDS = "qint64"
+
 
 class QABC(type(QObject), ABCMeta):
     """Meta for abstract classes derived from QObject"""
