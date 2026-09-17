@@ -12,6 +12,7 @@ from gridplayer.models.video_uri import parse_uri, relativize_uri
 from gridplayer.params.defaults_fields import GRID_STATE_ATTR
 from gridplayer.params.static import (
     AudioChannelMode,
+    AudioTrackMode,
     DropAction,
     DropModifier,
     NetworkRetryMode,
@@ -54,6 +55,8 @@ class PlaylistVideoDefaults(BaseModel):
     transform: VideoTransform | None = None
     end_action: VideoEndAction | None = None
     audio_mode: AudioChannelMode | None = None
+    audio_track_mode: AudioTrackMode | None = None
+    audio_languages: str | None = None
     random_loop: bool | None = None
     muted: bool | None = None
     initial_state: VideoInitialState | None = None

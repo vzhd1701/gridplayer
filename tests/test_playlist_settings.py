@@ -16,18 +16,11 @@ def _qapp():
 
 @pytest.fixture(autouse=True)
 def _settings_get(mocker):
-    settings = Settings()
-    real_get = settings.get
+    """Answer with the shipped defaults, never with this machine's settings."""
 
-    def fake_get(key):
-        if key == "video_defaults/aspect":
-            return VideoAspect.STRETCH
-        try:
-            return real_get(key)
-        except RuntimeError:
-            return _default_settings[key]
+    defaults = {**_default_settings, "video_defaults/aspect": VideoAspect.STRETCH}
 
-    mocker.patch.object(settings, "get", side_effect=fake_get)
+    mocker.patch.object(Settings(), "get", side_effect=defaults.__getitem__)
 
 
 def _set_grid_mode(form, mode):

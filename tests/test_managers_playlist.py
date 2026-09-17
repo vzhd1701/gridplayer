@@ -51,16 +51,9 @@ def _qapp():
 
 @pytest.fixture(autouse=True)
 def _settings_get(mocker):
-    settings = Settings()
-    real_get = settings.get
+    """Answer with the shipped defaults, never with this machine's settings."""
 
-    def fake_get(key):
-        try:
-            return real_get(key)
-        except RuntimeError:
-            return _default_settings[key]
-
-    mocker.patch.object(settings, "get", side_effect=fake_get)
+    mocker.patch.object(Settings(), "get", side_effect=_default_settings.__getitem__)
 
 
 def _make_manager(ctx=None):

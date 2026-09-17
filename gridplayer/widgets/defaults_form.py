@@ -6,6 +6,7 @@ from PyQt5.QtWidgets import (
     QDoubleSpinBox,
     QHBoxLayout,
     QLabel,
+    QLineEdit,
     QPushButton,
     QSizePolicy,
     QSpinBox,
@@ -91,6 +92,16 @@ class DefaultsForm(QWidget):
             widget = QComboBox()
             _fill_combo(widget, spec.combo_values())
             widget.currentIndexChanged.connect(self._on_edited)
+            lay.addWidget(widget)
+        elif spec.kind is FieldKind.TEXT:
+            label = QLabel(spec.label)
+            self._labels[spec.settings_key] = label
+            lay.addWidget(label)
+            widget = QLineEdit()
+            widget.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+            if spec.text_placeholder:
+                widget.setPlaceholderText(spec.text_placeholder)
+            widget.textChanged.connect(self._on_edited)
             lay.addWidget(widget)
         elif spec.kind is FieldKind.SPIN:
             label = QLabel(spec.label)
@@ -235,9 +246,15 @@ class DefaultsForm(QWidget):
     def _set_widget(self, spec: SettingField, value):
         widget = self._widgets[spec.settings_key]
         if spec.kind is FieldKind.CHECKBOX:
-            widget.setChecked(bool(value))
+            widget.setChecked(
+                value == spec.checked_value
+                if spec.checked_value is not None
+                else bool(value)
+            )
         elif spec.kind is FieldKind.COMBO:
             _set_combo(widget, value)
+        elif spec.kind is FieldKind.TEXT:
+            widget.setText(str(value or ""))
         elif spec.kind is FieldKind.SPIN:
             widget.setValue(int(value))
         elif spec.kind is FieldKind.FLOAT_SPIN:
@@ -250,9 +267,14 @@ class DefaultsForm(QWidget):
     def _get_widget(self, spec: SettingField):
         widget = self._widgets[spec.settings_key]
         if spec.kind is FieldKind.CHECKBOX:
-            return widget.isChecked()
+            if spec.checked_value is None:
+                return widget.isChecked()
+
+            return spec.checked_value if widget.isChecked() else spec.unchecked_value
         if spec.kind is FieldKind.COMBO:
             return widget.currentData()
+        if spec.kind is FieldKind.TEXT:
+            return widget.text()
         if spec.kind is FieldKind.SPIN:
             return widget.value()
         if spec.kind is FieldKind.FLOAT_SPIN:
@@ -271,14 +293,36 @@ class DefaultsForm(QWidget):
             widget = self._widgets.get(spec.settings_key)
             if driver is None or widget is None:
                 continue
+            driver_spec = self._spec_for_key(spec.enabled_by)
+            if driver_spec is None:
+                continue
+
+            driver_value = self._get_widget(driver_spec)
+
             if spec.enabled_by_value is None:
-                enabled = driver.isChecked()
+                enabled = bool(driver_value)
             else:
-                enabled = driver.currentData() == spec.enabled_by_value
-            widget.setEnabled(enabled)
-            label = self._labels.get(spec.settings_key)
-            if label is not None:
-                label.setEnabled(enabled)
+                enabled = driver_value == spec.enabled_by_value
+
+            self._set_enabled(spec, enabled)
+
+    def _set_enabled(self, spec: SettingField, enabled: bool) -> None:
+        widget = self._widgets.get(spec.settings_key)
+
+        if widget is None:
+            return
+
+        widget.setEnabled(enabled)
+
+        if spec.kind is FieldKind.TEXT and spec.text_placeholder:
+            # greyed out, an example of what could go here is indistinguishable
+            # from a greyed out value that somebody put here
+            widget.setPlaceholderText(spec.text_placeholder if enabled else "")
+
+        label = self._labels.get(spec.settings_key)
+
+        if label is not None:
+            label.setEnabled(enabled)
 
     def _sync_grid_visibility(self):
         mode_widget = self._widgets.get("playlist/grid_mode")
@@ -299,12 +343,8 @@ class DefaultsForm(QWidget):
             if spec.enabled_by:
                 # enabled_by owns enablement for such fields; keep them orthogonal.
                 continue
-            widget = self._widgets.get(spec.settings_key)
-            if widget is not None:
-                widget.setEnabled(visible)
-            label = self._labels.get(spec.settings_key)
-            if label is not None:
-                label.setEnabled(visible)
+
+            self._set_enabled(spec, visible)
 
     def _sync_modified(self):
         if not self._show_reset:

@@ -18,6 +18,7 @@ from gridplayer.models.stream import (
     StreamSessionOpts,
 )
 from gridplayer.settings import Settings
+from gridplayer.utils.track_language import language_name
 from gridplayer.utils.url_resolve.resolver_base import ResolverBase
 from gridplayer.utils.url_resolve.static import (
     BadURLException,
@@ -57,6 +58,9 @@ FILE_PROTOCOLS = frozenset({"http", "http_hls"})
 # gives itself away by making the file out to be a fraction of a second long.
 BITRATE_KEYS = ("tbr", "vbr", "abr")
 MIN_PLAUSIBLE_DURATION = 1.0
+
+# what yt-dlp scores the sound a video was made with, above every dub of it
+ORIGINAL_LANGUAGE_PREFERENCE = 10
 
 
 class YoutubeDLResolver(ResolverBase):
@@ -190,6 +194,8 @@ class YoutubeDLResolver(ResolverBase):
 
         audio_tracks = self._get_audio_tracks(raw_streams_audio, is_live)
 
+        is_multilingual = _is_multilingual(raw_streams_main)
+
         for raw_stream in raw_streams_main + raw_streams_audio:
             stream = self._get_stream(raw_stream, audio_tracks, is_live)
 
@@ -197,6 +203,7 @@ class YoutubeDLResolver(ResolverBase):
                 stream=raw_stream,
                 unknown_counter=unknown_counter,
                 is_muxed=bool(stream.audio_tracks),
+                is_multilingual=is_multilingual,
             )
 
             streams[_unique_name(streams, fmt_name)] = stream
@@ -255,6 +262,8 @@ class YoutubeDLResolver(ResolverBase):
             protocol=protocol,
             is_audio_only=is_audio_only,
             video_codec=_get_video_codec(stream),
+            language=_get_language(stream),
+            is_original_language=_is_original_language(stream),
             audio_tracks=cur_audio_tracks,
             fragments=fragments,
             init_fragment=init_fragment,
@@ -391,6 +400,14 @@ def _get_fragments(
     return init_fragment, tuple(fragments)
 
 
+def _is_multilingual(raw_streams) -> bool:
+    """Whether these streams are the same video in more than one language."""
+
+    languages = {_get_language(stream) for stream in raw_streams}
+
+    return len(languages - {None}) > 1
+
+
 def _unique_name(streams: Streams, fmt_name: str) -> str:
     """Keep one format from taking over another one's place in the list."""
 
@@ -412,11 +429,19 @@ def _is_audio_only(stream) -> bool:
     )
 
 
-def _get_fmt_name(stream, unknown_counter, is_muxed=False):
+def _get_fmt_name(stream, unknown_counter, is_muxed=False, is_multilingual=False):
     if _is_audio_only(stream):
         return _get_audio_fmt_name(stream)
 
     fmt_name = _get_video_fmt_name(stream, unknown_counter)
+
+    # a dubbed video comes back as the whole ladder once per language, and
+    # nothing but the language tells one copy of a rung from another
+    if is_multilingual:
+        language = _get_language(stream)
+
+        if language:
+            fmt_name = f"{fmt_name} ({language_name(language) or language})"
 
     # a site usually offers the same resolution in several codecs, so the
     # size alone does not say which one of them this is
@@ -442,6 +467,31 @@ def _get_video_fmt_name(stream, unknown_counter) -> str:
         return f"{stream['height']}p"
 
     return stream.get("format") or f"Unknown {next(unknown_counter)}"
+
+
+def _get_language(stream) -> str | None:
+    """The language of this stream's audio, where the site names one.
+
+    A silent stream has no language of its own, whatever the site says:
+    it borrows one from whichever audio track it ends up paired with.
+    """
+
+    if stream.get("acodec") == "none":
+        return None
+
+    language = stream.get("language")
+
+    return language if language and language != "none" else None
+
+
+def _is_original_language(stream) -> bool:
+    """Whether this is the language the video was made in.
+
+    yt-dlp scores a dub below the sound it was dubbed from, and reserves
+    the top of that scale for the original.
+    """
+
+    return stream.get("language_preference") == ORIGINAL_LANGUAGE_PREFERENCE
 
 
 def _get_audio_fmt_name(stream) -> str:

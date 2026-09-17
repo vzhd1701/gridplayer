@@ -451,3 +451,73 @@ def test_paired_audio_makes_a_playlist_out_of_any_protocol():
     )
 
     assert stream.is_adaptive is True
+
+
+def test_audio_track_carries_its_language():
+    resolver = _resolver(
+        {
+            "is_live": False,
+            "formats": [_audio_fmt("audio_ja", language="ja"), _dash_fmt("video")],
+        }
+    )
+
+    _, video = next(iter(resolver.streams.video_streams.items()))
+    _, track = next(iter(video.audio_tracks.items()))
+
+    assert track.language == "ja"
+
+
+def test_silent_video_has_no_language_of_its_own():
+    """It borrows one from whichever audio track it is paired with."""
+
+    resolver = _resolver(
+        {
+            "is_live": False,
+            # yt-dlp tags a video-only format with the language of the
+            # audio group it was listed under, which it does not carry
+            "formats": [_audio_fmt(), _dash_fmt("video", language="ja")],
+        }
+    )
+
+    _, video = next(iter(resolver.streams.video_streams.items()))
+
+    assert video.language is None
+
+
+def test_muxed_video_keeps_the_language_of_its_audio():
+    """A format that carries its own sound is the language of that sound.
+
+    YouTube serves multi-language videos this way when it hands out an HLS
+    ladder: one full rendition per language, muxed, differing in nothing
+    else.
+    """
+
+    resolver = _resolver(
+        {
+            "is_live": False,
+            "formats": [
+                _dash_fmt("video_en", acodec="mp4a.40.2", language="en"),
+                _dash_fmt("video_ja", acodec="mp4a.40.2", language="ja"),
+            ],
+        }
+    )
+
+    languages = {s.language for s in resolver.streams.video_streams.values()}
+
+    assert languages == {"en", "ja"}
+
+
+@pytest.mark.parametrize("language", [None, "none", ""])
+def test_untagged_stream_has_no_language(language):
+    """yt-dlp spells "no language" several ways, none of them a language."""
+
+    resolver = _resolver(
+        {
+            "is_live": False,
+            "formats": [_dash_fmt("video", acodec="mp4a.40.2", language=language)],
+        }
+    )
+
+    _, video = next(iter(resolver.streams.video_streams.items()))
+
+    assert video.language is None

@@ -30,6 +30,9 @@ class VlcPlayerThreaded(CommandLoopThreaded, VlcPlayerBase):
     def _schedule_view_reapply(self):
         self.cmd_send_self("_apply_media_input_view")
 
+    def _schedule_tracks_reapply(self):
+        self.cmd_send_self("_reapply_tracks")
+
     def loopback_load_video_st2_set_media(self):
         self.cmd_send_self("load_video_st2_set_media")
 

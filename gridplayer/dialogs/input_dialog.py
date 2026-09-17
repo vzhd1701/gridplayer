@@ -5,12 +5,16 @@ from PyQt5.QtWidgets import (
     QDialogButtonBox,
     QFormLayout,
     QLayout,
+    QLineEdit,
     QSpinBox,
     QTimeEdit,
     QVBoxLayout,
 )
 
 from gridplayer.utils.qt import translate
+
+# a language list is short, but a one-word-wide box invites a one-word answer
+TEXT_INPUT_MIN_WIDTH = 260
 
 
 class QCustomSpinboxInput(QDialog):
@@ -53,6 +57,40 @@ class QCustomSpinboxInput(QDialog):
 
         if dialog.exec():
             return dialog.spinbox.value()
+
+        return initial_value
+
+
+class QCustomTextInput(QDialog):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
+        self.line_edit = QLineEdit(self)
+        self.line_edit.setMinimumWidth(TEXT_INPUT_MIN_WIDTH)
+
+        self.buttons = QDialogButtonBox(
+            QDialogButtonBox.Ok | QDialogButtonBox.Cancel, Qt.Horizontal, self
+        )
+        self.buttons.accepted.connect(self.accept)
+        self.buttons.rejected.connect(self.reject)
+
+        main_layout = QVBoxLayout(self)
+        main_layout.setSizeConstraint(QLayout.SetMinAndMaxSize)
+        main_layout.addWidget(self.line_edit)
+        main_layout.addWidget(self.buttons)
+
+    @classmethod
+    def get_text(cls, parent, title, initial_value="", placeholder=None):
+        dialog = cls(parent=parent)
+        dialog.setWindowTitle(title)
+        dialog.line_edit.setText(initial_value)
+        dialog.line_edit.selectAll()
+
+        if placeholder:
+            dialog.line_edit.setPlaceholderText(placeholder)
+
+        if dialog.exec():
+            return dialog.line_edit.text()
 
         return initial_value
 

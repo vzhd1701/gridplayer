@@ -303,3 +303,242 @@ class TestTracksManagerDoesNotCrashOnBadMetadata:
         for i, result in enumerate(results):
             expected = "�" if i % 2 == 0 else "eng"
             assert result.language == expected
+
+
+class FakeMediaPlayer:
+    """Just the track calls, with ids the caller controls."""
+
+    def __init__(self, video_id=1, audio_id=0, video_desc=None, audio_desc=None):
+        self.video_id = video_id
+        self.audio_id = audio_id
+        self.video_desc = video_desc if video_desc is not None else [(-1, b"Disable")]
+        self.audio_desc = audio_desc if audio_desc is not None else [(-1, b"Disable")]
+
+    def video_get_track(self):
+        return self.video_id
+
+    def audio_get_track(self):
+        return self.audio_id
+
+    def video_get_track_description(self):
+        return self.video_desc
+
+    def audio_get_track_description(self):
+        return self.audio_desc
+
+    def video_set_track(self, track_id):
+        self.video_id = track_id
+
+    def audio_set_track(self, track_id):
+        self.audio_id = track_id
+
+    def video_get_size(self):
+        return (1920, 1080)
+
+
+class TestDisablingOneTrackOfTwo:
+    """The guard against leaving a video with neither picture nor sound."""
+
+    def _manager(self, player, media_tracks=None):
+        if media_tracks is None:
+            media_tracks = [make_video_track(track_id=0), make_audio_track(track_id=0)]
+
+        return TracksManager(
+            media_player=player,
+            media_tracks=media_tracks,
+            is_audio_only=False,
+            media_uri="stream.m3u8",
+        )
+
+    def test_audio_can_be_disabled_while_the_picture_is_on(self):
+        player = FakeMediaPlayer(video_id=1, audio_id=0)
+
+        self._manager(player).set_audio_track_id(-1)
+
+        assert player.audio_get_track() == -1
+
+    def test_audio_survives_a_player_that_reports_no_video_track(self):
+        """The reported failure, and the reason the guard cannot ask libVLC.
+
+        An adaptive stream restarts its elementary streams as it runs and
+        renumbers them; from then on ``video_get_track`` answers -1 for a
+        picture that is still on screen. Reading that as "there is nothing
+        left to watch" left the sound stuck on for the life of the media.
+        """
+
+        player = FakeMediaPlayer(
+            video_id=-1,
+            audio_id=2,
+            video_desc=[(-1, b"Disable"), (3, b"Track 2")],
+            audio_desc=[(-1, b"Disable"), (2, b"Track 2")],
+        )
+        manager = self._manager(player)
+
+        assert manager.current_video_track_id is None, "the player really says -1"
+
+        manager.set_audio_track_id(-1)
+
+        assert player.audio_get_track() == -1
+
+    def test_the_picture_survives_a_player_that_reports_no_audio_track(self):
+        player = FakeMediaPlayer(
+            video_id=3,
+            audio_id=-1,
+            video_desc=[(-1, b"Disable"), (3, b"Track 2")],
+            audio_desc=[(-1, b"Disable"), (2, b"Track 2")],
+        )
+
+        self._manager(player).set_video_track_id(-1)
+
+        assert player.video_get_track() == -1
+
+    def test_audio_is_not_disabled_once_the_picture_has_been_switched_off(self):
+        player = FakeMediaPlayer(video_id=1, audio_id=0)
+        manager = self._manager(player)
+
+        manager.set_video_track_id(-1)
+        manager.set_audio_track_id(-1)
+
+        assert player.audio_get_track() == 0
+
+    def test_the_picture_is_not_disabled_once_the_sound_has_been_switched_off(self):
+        player = FakeMediaPlayer(video_id=1, audio_id=0)
+        manager = self._manager(player)
+
+        manager.set_audio_track_id(-1)
+        manager.set_video_track_id(-1)
+
+        assert player.video_get_track() == 1
+
+    def test_switching_back_to_a_track_lifts_the_guard_again(self):
+        player = FakeMediaPlayer(
+            video_id=1,
+            audio_id=0,
+            video_desc=[(-1, b"Disable"), (1, b"Track 1")],
+            audio_desc=[(-1, b"Disable"), (0, b"Track 1")],
+        )
+        manager = self._manager(player)
+
+        manager.set_video_track_id(-1)
+        manager.set_video_track_id(0)
+        manager.set_audio_track_id(-1)
+
+        assert player.audio_get_track() == -1
+
+    def test_the_picture_can_be_disabled_while_the_sound_is_on(self):
+        player = FakeMediaPlayer(video_id=1, audio_id=0)
+
+        self._manager(player).set_video_track_id(-1)
+
+        assert player.video_get_track() == -1
+
+    def test_audio_is_not_disabled_when_there_is_no_picture_to_fall_back_on(self):
+        """Nothing was switched off, there simply is no video in the media."""
+
+        player = FakeMediaPlayer(video_id=-1, audio_id=0)
+
+        self._manager(player, media_tracks=[make_audio_track(track_id=0)])
+        self._manager(
+            player, media_tracks=[make_audio_track(track_id=0)]
+        ).set_audio_track_id(-1)
+
+        assert player.audio_get_track() == 0
+
+
+class TestReapplyingTracksAfterALoop:
+    """Looping replays the media, and libVLC starts it on its own defaults."""
+
+    def _manager(self, player):
+        return TracksManager(
+            media_player=player,
+            media_tracks=[
+                make_video_track(track_id=0),
+                make_audio_track(track_id=0),
+                make_audio_track(track_id=1),
+            ],
+            is_audio_only=False,
+            media_uri="stream.m3u8",
+        )
+
+    def _player(self, **kwargs):
+        defaults = {
+            "video_id": 1,
+            "audio_id": 2,
+            "video_desc": [(-1, b"Disable"), (1, b"Track 1")],
+            "audio_desc": [(-1, b"Disable"), (2, b"Track 1"), (3, b"Track 2")],
+        }
+
+        return FakeMediaPlayer(**{**defaults, **kwargs})
+
+    def test_a_disabled_audio_track_is_switched_off_again(self):
+        """The reported failure: the sound came back on every loop."""
+
+        player = self._player()
+        manager = self._manager(player)
+
+        manager.set_audio_track_id(-1)
+
+        # the loop starts the media over, on the track libVLC prefers
+        player.audio_id = 2
+
+        assert manager.reapply() is True
+        assert player.audio_get_track() == -1
+
+    def test_a_track_chosen_by_hand_is_chosen_again(self):
+        player = self._player()
+        manager = self._manager(player)
+
+        manager.set_audio_track_id(1)
+        assert player.audio_get_track() == 3
+
+        player.audio_id = 2
+
+        assert manager.reapply() is True
+        assert player.audio_get_track() == 3
+
+    def test_nothing_is_forced_on_a_media_no_one_has_touched(self):
+        player = self._player()
+
+        assert self._manager(player).reapply() is True
+        assert player.audio_get_track() == 2, "left on whatever it started with"
+
+    def test_it_waits_for_the_new_pass_to_publish_its_streams(self):
+        """Asked too early, the player answers for the pass going away.
+
+        It reports the old selection and an empty track list, so setting
+        the track appears to work and the media then starts on the
+        defaults regardless.
+        """
+
+        player = self._player()
+        manager = self._manager(player)
+
+        manager.set_audio_track_id(-1)
+
+        # mid-restart: the old input is gone, the new one has nothing yet
+        player.audio_desc = []
+        player.video_desc = []
+
+        assert manager.reapply() is False, "must not count as done"
+
+        # the new pass is up, on its own choice of track
+        player.audio_desc = [(-1, b"Disable"), (2, b"Track 1"), (3, b"Track 2")]
+        player.video_desc = [(-1, b"Disable"), (1, b"Track 1")]
+        player.audio_id = 2
+
+        assert manager.reapply() is True
+        assert player.audio_get_track() == -1
+
+    def test_a_disabled_picture_is_switched_off_again(self):
+        """Audio is the usual case, but it is not the only track that resets."""
+
+        player = self._player()
+        manager = self._manager(player)
+
+        manager.set_video_track_id(-1)
+        assert player.video_get_track() == -1
+
+        player.video_id = 1
+
+        assert manager.reapply() is True
+        assert player.video_get_track() == -1

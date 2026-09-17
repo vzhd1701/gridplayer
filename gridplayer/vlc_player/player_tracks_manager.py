@@ -4,7 +4,7 @@ import threading
 from datetime import datetime, timezone
 
 from gridplayer.vlc_player import vlc
-from gridplayer.vlc_player.static import NO_TRACK, AudioTrack, VideoTrack
+from gridplayer.vlc_player.static import DISABLED_TRACK, AudioTrack, VideoTrack
 
 _log = logging.getLogger(__name__)
 
@@ -17,6 +17,11 @@ class TracksManager:
         self._media_uri = media_uri
 
         self._log = logging.getLogger(self.__class__.__name__)
+
+        # the last track asked for, which is both what "switched off" means
+        # here and what to ask for again after a loop; see is_video_track_off
+        self._wanted_video_track_id = None
+        self._wanted_audio_track_id = None
 
     @property
     def video_tracks(self) -> dict[int, VideoTrack]:
@@ -71,18 +76,40 @@ class TracksManager:
     def is_video_size_initialized(self) -> bool:
         return self.video_tracks and all(self._media_player.video_get_size())
 
+    @property
+    def is_video_track_off(self) -> bool:
+        """Whether the picture has been switched off.
+
+        Not a question libVLC can answer. ``video_get_track`` replies -1
+        both for a track that was disabled and for one it has lost track
+        of, which an adaptive stream causes routinely: restarting its
+        elementary streams renumbers them, and from then on the player
+        reports -1 for a picture it is still happily rendering. Only what
+        we switched off ourselves is worth going by.
+        """
+
+        return self._wanted_video_track_id == DISABLED_TRACK or not self.video_tracks
+
+    @property
+    def is_audio_track_off(self) -> bool:
+        """Whether the sound has been switched off. See is_video_track_off."""
+
+        return self._wanted_audio_track_id == DISABLED_TRACK or not self.audio_tracks
+
     def set_audio_track_id(self, track_id) -> None:
         real_track_id = self._get_real_track_id(track_id)
 
         if real_track_id is None:
             return
 
-        if real_track_id == -1 and self.current_video_track_id in NO_TRACK:
+        if real_track_id == DISABLED_TRACK and self.is_video_track_off:
             self._log.warning("Cannot disable both audio & video tracks")
             return
 
         self._log.debug(f"Set audio track {track_id} [{real_track_id}]")
         self._media_player.audio_set_track(real_track_id)
+
+        self._wanted_audio_track_id = track_id
 
     def set_video_track_id(self, track_id) -> None:
         real_track_id = self._get_real_track_id(track_id)
@@ -90,12 +117,66 @@ class TracksManager:
         if real_track_id is None:
             return
 
-        if real_track_id == -1 and self.current_audio_track_id in NO_TRACK:
+        if real_track_id == DISABLED_TRACK and self.is_audio_track_off:
             self._log.warning("Cannot disable both audio & video tracks")
             return
 
         self._log.debug(f"Set video track {track_id} [{real_track_id}]")
         self._media_player.video_set_track(real_track_id)
+
+        self._wanted_video_track_id = track_id
+
+    def reapply(self) -> bool:
+        """Ask for the chosen tracks again after the player restarted.
+
+        Looping replays the media from the top, and libVLC starts it the
+        way it would any other time: on whichever tracks it considers the
+        defaults. Anything picked since the media was loaded, a disabled
+        audio track above all, has to be asked for again.
+
+        Returns whether the sound has landed where it was asked to be.
+        The restart takes a moment, and asking too early only reaches the
+        input that is on its way out, so the caller tries again.
+        """
+
+        if self._wanted_audio_track_id is None and self._wanted_video_track_id is None:
+            # nothing was ever picked, so the defaults it comes back on
+            # are the right ones
+            return True
+
+        if not self._is_new_pass_ready:
+            return False
+
+        if self._wanted_video_track_id is not None:
+            self.set_video_track_id(self._wanted_video_track_id)
+
+        if self._wanted_audio_track_id is None:
+            return True
+
+        self.set_audio_track_id(self._wanted_audio_track_id)
+
+        real_track_id = self._get_real_track_id(self._wanted_audio_track_id)
+
+        return (
+            real_track_id is not None
+            and self._media_player.audio_get_track() == real_track_id
+        )
+
+    @property
+    def _is_new_pass_ready(self) -> bool:
+        """Whether the player is answering for the pass that is now running.
+
+        Between the two it reports the selection the old one had and no
+        tracks at all, so anything set then looks as though it took and
+        the new pass starts on the defaults regardless.
+        """
+
+        # [1:] drops the "Disable" entry libVLC puts in front, the same way
+        # the id map does; what is left is the tracks the pass really has
+        return bool(
+            self._media_player.audio_get_track_description()[1:]
+            or self._media_player.video_get_track_description()[1:]
+        )
 
     def _get_real_track_id(self, track_id) -> int | None:
         if track_id == -1:

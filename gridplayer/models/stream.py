@@ -3,6 +3,8 @@ from collections.abc import Iterable
 from dataclasses import dataclass
 from typing import Optional
 
+from gridplayer.utils.track_language import parse_preferences, pick_by_language
+
 
 class HashableDict(dict):
     def __hash__(self):
@@ -53,6 +55,12 @@ class Stream:
     protocol: str
     is_audio_only: bool = False
     video_codec: str | None = None
+    # what the source calls the language of this stream's audio, in whatever
+    # spelling it uses; see gridplayer.utils.track_language
+    language: str | None = None
+    # the language the video was made in, as opposed to dubbed into, which
+    # is the one to fall back on when the viewer asked for none of them
+    is_original_language: bool = False
     session: StreamSessionOpts | None = None
     audio_tracks: Optional["Streams"] = None
     fragments: tuple[StreamFragment, ...] | None = None
@@ -151,6 +159,82 @@ class Streams:
 
         return self.worst_audio_only
 
+    @property
+    def languages(self) -> tuple[str, ...]:
+        """The distinct languages these streams are offered in.
+
+        A rung that names no language is not a language of its own: plenty
+        of ladders tag nothing at all, and that makes them monolingual
+        rather than a ladder in the unnamed language.
+        """
+
+        languages = (
+            stream.language for stream in self.streams.values() if stream.language
+        )
+
+        return tuple(dict.fromkeys(languages))
+
+    @property
+    def is_multilingual(self) -> bool:
+        """There is a language here worth choosing between."""
+
+        return len(self.languages) > 1
+
+    @property
+    def original_language(self) -> str | None:
+        """The language the video was made in, where the source says."""
+
+        return next(
+            (
+                stream.language
+                for stream in self.streams.values()
+                if stream.is_original_language and stream.language
+            ),
+            None,
+        )
+
+    def language_for(self, preferences: str) -> str | None:
+        """Which of these languages to play, given the ones asked for.
+
+        Nothing to choose between is not a choice, so a ladder offered in
+        a single language answers with none at all.
+        """
+
+        if not self.is_multilingual:
+            return None
+
+        languages = self.languages
+
+        preferred = pick_by_language(
+            parse_preferences(preferences),
+            [(language, language) for language in languages],
+        )
+
+        # falling back on the language the video was made in, rather than
+        # on whichever dub the site happened to list first
+        return preferred or self.original_language or languages[0]
+
+    def for_language(self, language: str | None) -> "Streams":
+        """The rungs carrying one language, out of a ladder that mixes several.
+
+        Sites that dub a video hand back the whole ladder once per language,
+        so picking a size means picking a language too unless the ones
+        nobody asked for are set aside first.
+        """
+
+        if not language:
+            return self
+
+        matching = {
+            name: stream
+            for name, stream in self.streams.items()
+            if stream.language == language or _is_language_neutral(stream)
+        }
+
+        # a language that answers for nothing here is no reason to offer
+        # an empty ladder
+        return Streams(matching) if matching else self
+
     def fit_to_height(self, height: int) -> tuple[str, Stream]:
         """Pick the cheapest rung that still fills a box this tall.
 
@@ -196,6 +280,19 @@ class Streams:
                 return quality_code, stream_url
 
         return self.best
+
+
+def _is_language_neutral(stream: Stream) -> bool:
+    """A rung that belongs to no language and stands in the way of none.
+
+    A silent rung takes its language from whichever audio track is paired
+    with it, so every language has the same claim on it. A rung that
+    carries its own untagged sound is a different matter: it is in some
+    language nobody can name, so it only gets in the way of the ones
+    that can be.
+    """
+
+    return stream.language is None and bool(stream.audio_tracks)
 
 
 def _quality_height(quality: str) -> int | None:

@@ -17,6 +17,7 @@ from gridplayer.params import env
 from gridplayer.params.languages import get_system_language
 from gridplayer.params.static import (
     AudioChannelMode,
+    AudioTrackMode,
     ColorScheme,
     DropAction,
     DropModifier,
@@ -82,6 +83,8 @@ _default_settings = {
     "video_defaults/transform": VideoTransform.NONE,
     "video_defaults/end_action": VideoEndAction.LOOP_FILE,
     "video_defaults/audio_mode": AudioChannelMode.UNSET,
+    "video_defaults/audio_track_mode": AudioTrackMode.PREFERRED,
+    "video_defaults/audio_languages": "",
     "video_defaults/random_loop": False,
     "video_defaults/muted": True,
     "video_defaults/initial_state": VideoInitialState.PLAYING,

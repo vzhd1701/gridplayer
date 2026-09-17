@@ -132,6 +132,16 @@ class NetworkRetryMode(AutoName):
     INFINITE = auto()
 
 
+class AudioTrackMode(AutoName):
+    """Which audio track a video starts with, before anyone picks one by hand."""
+
+    PREFERRED = auto()
+    DISABLED = auto()
+    # a track picked by hand, which is a per-video answer rather than a
+    # default and so is never offered as one
+    EXPLICIT = auto()
+
+
 class ColorScheme(AutoName):
     SYSTEM = auto()
     LIGHT = auto()

@@ -110,15 +110,28 @@ def build_media_playlist(
     return "\n".join(res)
 
 
-def build_master_playlist(video_url: str, audio_url: str, audio_name: str) -> str:
-    """Render a master playlist pairing a video-only rendition with audio."""
+def build_master_playlist(
+    video_url: str,
+    audio_url: str,
+    audio_name: str,
+    audio_language: str | None = None,
+) -> str:
+    """Render a master playlist pairing a video-only rendition with audio.
+
+    The language rides along so that VLC reports it on the track: once
+    the playlist is all the player can see, it is the only thing a
+    preferred-language setting has left to match against.
+    """
+
+    language = f'LANGUAGE="{_escape_attr(audio_language)}",' if audio_language else ""
 
     return "\n".join(
         [
             "#EXTM3U",
             "#EXT-X-INDEPENDENT-SEGMENTS",
             '#EXT-X-MEDIA:TYPE=AUDIO,GROUP-ID="audio",'
-            f'NAME="{_escape_attr(audio_name)}",DEFAULT=YES,URI="{audio_url}"',
+            f'NAME="{_escape_attr(audio_name)}",{language}'
+            f'DEFAULT=YES,URI="{audio_url}"',
             '#EXT-X-STREAM-INF:BANDWIDTH=0,AUDIO="audio"',
             video_url,
         ]

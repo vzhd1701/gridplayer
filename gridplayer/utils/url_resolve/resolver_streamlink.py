@@ -170,8 +170,34 @@ class StreamlinkResolver(ResolverBase):
             url=src_stream.url,
             protocol=protocol,
             is_audio_only=is_audio_only,
+            language=_stream_media(src_stream, "language"),
+            is_original_language=bool(_stream_media(src_stream, "default")),
             session=StreamSessionOpts(
                 service=self._service_id,
                 session_headers=HashableDict(self._session.http.headers),
             ),
         )
+
+
+def _stream_media(src_stream, attribute: str):
+    """What the master playlist said about this rendition, if anything.
+
+    A substream keeps a reference to the playlist it was listed in, which
+    is the only place its #EXT-X-MEDIA entry survives. DEFAULT=YES is the
+    nearest thing HLS has to naming an original: it is the rendition to
+    play when the viewer asked for nothing in particular.
+    """
+
+    multivariant = getattr(src_stream, "multivariant", None)
+
+    if multivariant is None:
+        return None
+
+    return next(
+        (
+            getattr(media, attribute, None)
+            for media in multivariant.media
+            if media.uri and media.uri == src_stream.url
+        ),
+        None,
+    )

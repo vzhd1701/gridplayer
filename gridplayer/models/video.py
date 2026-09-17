@@ -14,6 +14,7 @@ from gridplayer.params.static import (
     MIN_RATE,
     MIN_SCALE,
     AudioChannelMode,
+    AudioTrackMode,
     NetworkRetryMode,
     VideoAspect,
     VideoCrop,
@@ -87,10 +88,15 @@ class Video(BaseModel):
     auto_reload_timer_min: int = session_field("video_defaults/auto_reload_timer")
 
     # Tracks
+    # the two keys an explicit pick can be stored under: the language where
+    # it tells the tracks apart, the id where nothing else does
+    audio_language: str | None = None
     audio_track_id: int | None = None
     video_track_id: int | None = None
 
     audio_channel_mode: AudioChannelMode = session_field("video_defaults/audio_mode")
+    audio_track_mode: AudioTrackMode = session_field("video_defaults/audio_track_mode")
+    audio_languages: str = session_field("video_defaults/audio_languages")
 
     @model_validator(mode="before")
     @classmethod

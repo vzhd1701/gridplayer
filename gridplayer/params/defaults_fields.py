@@ -9,6 +9,7 @@ from gridplayer.params.static import (
     MIN_RATE,
     MIN_SCALE,
     AudioChannelMode,
+    AudioTrackMode,
     DropAction,
     DropModifier,
     GridMode,
@@ -26,6 +27,7 @@ from gridplayer.utils.qt import translate
 class FieldKind(Enum):
     CHECKBOX = auto()
     COMBO = auto()
+    TEXT = auto()
     SPIN = auto()
     FLOAT_SPIN = auto()
     CROP = auto()
@@ -55,9 +57,14 @@ class SettingField:
     spin_step: float = 0.1
     spin_special: str | None = None
     spin_suffix: str | None = None
+    text_placeholder: str | None = None
+    # what a checkbox stands for, where the setting behind it is not a
+    # plain bool; ticking it stores one value and clearing it the other
+    checked_value: object | None = None
+    unchecked_value: object | None = None
     enabled_by: str | None = None
-    # what the driving field has to be set to, where it is a combo rather
-    # than a checkbox that can only be on or off
+    # what the driving field has to be set to; None means any value that
+    # counts as on, which is what a plain checkbox gives
     enabled_by_value: object | None = None
     grid_visibility: GridVisibility = GridVisibility.ALWAYS
     tooltip: str | None = None
@@ -448,6 +455,33 @@ VIDEO_FIELDS: tuple[SettingField, ...] = (
         kind=FieldKind.COLOR,
         section=_t("Overlay"),
         label=_t("Overlay color"),
+    ),
+    _f(
+        settings_key="video_defaults/audio_track_mode",
+        video_attr="audio_track_mode",
+        kind=FieldKind.CHECKBOX,
+        section=_t("Audio"),
+        label=_t("Disable audio track"),
+        checked_value=AudioTrackMode.DISABLED,
+        unchecked_value=AudioTrackMode.PREFERRED,
+        tooltip=_t(
+            "Play the video with no audio track decoded at all,"
+            " which is not the same as starting it muted"
+        ),
+    ),
+    _f(
+        settings_key="video_defaults/audio_languages",
+        video_attr="audio_languages",
+        kind=FieldKind.TEXT,
+        section=_t("Audio"),
+        label=_t("Preferred languages"),
+        text_placeholder=_t("en, ja, fr"),
+        enabled_by="video_defaults/audio_track_mode",
+        enabled_by_value=AudioTrackMode.PREFERRED,
+        tooltip=_t(
+            "Language codes or names, best first."
+            " Videos that offer none of them keep their own default track."
+        ),
     ),
     _f(
         settings_key="video_defaults/audio_mode",

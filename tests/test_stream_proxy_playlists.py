@@ -213,6 +213,56 @@ def test_muxed_stream_points_at_video_and_best_audio():
     assert 'NAME="high"' in playlist
 
 
+def test_muxed_stream_serves_the_language_it_was_narrowed_to():
+    """The block hands over one language; the proxy picks the best of it."""
+
+    server = FakeServer()
+    audio_tracks = Streams(
+        {
+            "Audio (ja) [50kbps]": Stream(
+                url="http://audio/ja-low",
+                protocol="dash",
+                session=SESSION,
+                is_audio_only=True,
+                language="ja",
+            ),
+            "Audio (ja) [128kbps]": Stream(
+                url="http://audio/ja-high",
+                protocol="dash",
+                session=SESSION,
+                is_audio_only=True,
+                language="ja",
+            ),
+        }
+    )
+    stream = Stream(
+        url="http://video",
+        protocol="dash",
+        session=SESSION,
+        audio_tracks=audio_tracks,
+    )
+
+    muxed = HLSMuxedStream(server=server, stream=stream)
+    muxed.open()
+
+    playlist = muxed.response.content.decode()
+
+    assert [s.url for s in server.streams] == ["http://video", "http://audio/ja-high"]
+    assert 'NAME="Audio (ja) [128kbps]"' in playlist
+    # without this VLC reports the track with no language, and a preferred
+    # language has nothing left to match against
+    assert 'LANGUAGE="ja"' in playlist
+
+
+def test_a_master_playlist_says_nothing_about_a_language_it_does_not_know():
+    playlist = build_master_playlist(
+        video_url="http://video", audio_url="http://audio", audio_name="Audio"
+    )
+
+    assert "LANGUAGE=" not in playlist
+    assert 'NAME="Audio",DEFAULT=YES' in playlist
+
+
 class FakeHTTPSession:
     def __init__(self, content: bytes | None):
         self.content = content
@@ -346,3 +396,46 @@ def test_a_truncated_header_reads_as_plain():
     head = _box(b"ftyp", b"") + _box(b"moov", b"x" * 64)[:32]
 
     assert is_fragmented(head) is False
+
+
+class TestRelativeSegmentURIs:
+    """A playlist whose segments are named relative to where it came from."""
+
+    PLAYLIST = "\n".join(
+        [
+            "#EXTM3U",
+            "#EXT-X-VERSION:3",
+            "#EXT-X-TARGETDURATION:4",
+            "#EXT-X-PLAYLIST-TYPE:VOD",
+            "#EXTINF:3.0,",
+            "seg0.ts",
+            "#EXTINF:3.0,",
+            "seg1.ts",
+            "#EXT-X-ENDLIST",
+            "",
+        ]
+    )
+
+    def test_they_are_resolved_against_the_playlist_url(self):
+        """A URL is not a path.
+
+        Path() eats one of the slashes after the scheme, and on Windows
+        turns what is left into a backslash, so every relative segment
+        came out as an unopenable "http:\host/seg0.ts".
+        """
+
+        from streamlink.stream.hls import parse_m3u8
+
+        from gridplayer.utils.stream_proxy.wrappers import HLSProxy
+
+        playlist_url = "http://127.0.0.1:8777/live/index.m3u8"
+
+        proxy = HLSProxy.__new__(HLSProxy)
+        proxy.args = {"url": playlist_url}
+
+        parsed = parse_m3u8(self.PLAYLIST, proxy._playlist_base_url)
+
+        assert [segment.uri for segment in parsed.segments] == [
+            "http://127.0.0.1:8777/live/seg0.ts",
+            "http://127.0.0.1:8777/live/seg1.ts",
+        ]

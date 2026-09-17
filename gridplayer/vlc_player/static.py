@@ -2,9 +2,36 @@ import random
 from dataclasses import dataclass
 
 from gridplayer.models.video import Video
+from gridplayer.params.static import AudioTrackMode
+from gridplayer.utils.track_language import pick_track
 
 DISABLED_TRACK = -1
 NO_TRACK = frozenset((None, DISABLED_TRACK))
+
+
+def wanted_audio_track_id(video, tracks: dict):
+    """Which of these tracks a video's settings call for, None for any.
+
+    Both the load and a switch made while playing have to answer this the
+    same way, or the track would change under the viewer the next time
+    anything reloaded.
+    """
+
+    if video.audio_track_mode is AudioTrackMode.DISABLED:
+        return DISABLED_TRACK
+
+    if video.audio_track_mode is AudioTrackMode.EXPLICIT:
+        picked = pick_track(video.audio_language or "", tracks)
+
+        if picked is not None:
+            return picked
+
+        # an id of -1 is the mark left by "disable", never a track that was
+        # picked, and following it here would keep a video silent for good
+        if video.audio_track_id not in NO_TRACK:
+            return video.audio_track_id
+
+    return pick_track(video.audio_languages, tracks)
 
 
 @dataclass

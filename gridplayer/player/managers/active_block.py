@@ -5,9 +5,37 @@ from PyQt5.QtGui import QCursor
 
 from gridplayer.dialogs.crop import SetCropDialog
 from gridplayer.models.stream import STREAM_QUALITY_AUTO
+from gridplayer.params.static import AudioTrackMode
 from gridplayer.player.managers.base import ManagerBase
 from gridplayer.utils.qt import is_modal_open, translate
+from gridplayer.utils.track_language import language_name
+from gridplayer.vlc_player.static import DISABLED_TRACK
 from gridplayer.widgets.video_block import VideoBlock
+
+# A video that is loading or showing a network error is not playable, and
+# these are the commands whose whole point is to be reachable from that
+# state. Choosing audio is among them because choosing it is what started
+# the reload that the next choice would otherwise land in.
+LOADING_COMMANDS = frozenset(
+    {
+        "switch_stream_quality",
+        "reload",
+        "close",
+        "set_network_retry_mode",
+        "network_retry_times",
+        "get_network_retry_times",
+        "set_audio_track",
+        "set_audio_language",
+        "apply_audio_preference",
+        "audio_languages_dialog",
+        "get_audio_languages",
+    }
+)
+
+# the mouse fires these continuously, so they are dropped all through a
+# load as a matter of course and saying so only buries the drops that mean
+# something
+QUIETLY_DROPPED_COMMANDS = frozenset({"show_overlay"})
 
 
 class ActiveBlockManager(ManagerBase):
@@ -43,6 +71,8 @@ class ActiveBlockManager(ManagerBase):
             "is_active_seekable": self.is_active_seekable,
             "is_active_live": self.is_active_live,
             "is_active_multistream": self.is_active_multistream,
+            "is_active_audio_language": self.is_active_audio_language,
+            "is_active_audio_track": self.is_active_audio_track,
             "is_active_local_file": self.is_active_local_file,
             "is_active_has_audio": self.is_active_has_audio,
             "is_active_has_video": self.is_active_has_video,
@@ -64,18 +94,10 @@ class ActiveBlockManager(ManagerBase):
         if self.is_no_active_block:
             return None
 
-        # a video showing a network error is not playable, and these are
-        # the commands whose whole point is to be reachable from that state
-        is_loading_command = command in {
-            "switch_stream_quality",
-            "reload",
-            "close",
-            "set_network_retry_mode",
-            "network_retry_times",
-            "get_network_retry_times",
-        }
+        if not self.is_active_playable() and command not in LOADING_COMMANDS:
+            if command not in QUIETLY_DROPPED_COMMANDS:
+                self._log.debug(f"Dropped {command}, active video is not playable")
 
-        if not self.is_active_playable() and not is_loading_command:
             return None
 
         return getattr(self._ctx.active_block, command)(*args)
@@ -154,12 +176,40 @@ class ActiveBlockManager(ManagerBase):
 
         return len(self._ctx.active_block.streams) > 1
 
+    def is_active_audio_language(self, language):
+        """Ticked only where the viewer named this language themselves.
+
+        Following a preference that happens to land here is the preference
+        being ticked, not the language.
+        """
+
+        if self.is_no_active_block or not self._is_active_track_explicit:
+            return False
+
+        return self._ctx.active_block.audio_language == language
+
+    def is_active_audio_track(self, track_id):
+        if self.is_no_active_block or not self._is_active_track_explicit:
+            return False
+
+        return self._ctx.active_block.video_params.audio_track_id == track_id
+
+    @property
+    def _is_active_track_explicit(self) -> bool:
+        mode = self._ctx.active_block.video_params.audio_track_mode
+
+        return mode is AudioTrackMode.EXPLICIT
+
     def menu_generator_stream_quality(self):
         if self.is_no_active_block:
             return []
 
-        video_streams = self._ctx.active_block.streams.video_streams
-        audio_only_streams = self._ctx.active_block.streams.audio_only_streams
+        # a dubbed video is the same ladder over again in every language,
+        # and only one of them is the one being played
+        ladder = self._ctx.active_block.stream_ladder
+
+        video_streams = ladder.video_streams
+        audio_only_streams = ladder.audio_only_streams
 
         streams = [
             _stream_menu_item(quality)
@@ -240,31 +290,136 @@ class ActiveBlockManager(ManagerBase):
         return menu
 
     def menu_generator_audio_track(self):
+        """Every way this video's sound can be chosen, in one list.
+
+        Which of them is on offer is a matter of where the choice can be
+        made: a site that dubs hands VLC one track per language and the
+        choice is made before it, where a file hands over all of them at
+        once and the choice is made inside it.
+        """
+
         if self.is_no_active_block or not self._ctx.active_block.audio_tracks:
             return {}
 
-        menu = [
+        return [
+            self._preferred_audio_track_menu_item(),
+            _audio_languages_menu_item(),
             {
                 "title": translate("Actions", "Disable Audio"),
                 "icon": "empty",
-                "func": ("active", "set_audio_track", -1),
-                "check_if": ("is_active_param_set_to", "audio_track_id", -1),
+                "func": ("active", "set_audio_track", DISABLED_TRACK),
+                "check_if": (
+                    "is_active_param_set_to",
+                    "audio_track_mode",
+                    AudioTrackMode.DISABLED,
+                ),
                 "show_if": "is_active_initialized",
-            }
+            },
+            "---",
+            *self._audio_choice_menu_items(),
         ]
 
-        menu += [
+    @property
+    def _preferred_audio_name(self) -> str | None:
+        """What following the preference would give, spelled out.
+
+        A language says it for a video dubbed into several, where the
+        whole ladder is reloaded to change it. A file is picked from by
+        track, and one language can cover several of those, so there the
+        track is named the way the list below names it.
+        """
+
+        block = self._ctx.active_block
+
+        if len(block.audio_language_options) > 1:
+            language = block.preferred_audio_language
+
+            return language_name(language) or language
+
+        track = self._preferred_audio_track
+
+        if track is None:
+            return None
+
+        name = language_name(track.language) or track.language
+
+        return _join_track_name(name, _track_description(track, name)) or None
+
+    @property
+    def _preferred_audio_track(self):
+        """The track the preference settles on, out of the ones a file has.
+
+        A file whose tracks answer to none of the languages asked for is
+        left to open with its own choice, and while the preference is what
+        is being followed, that choice is the answer it gave.
+        """
+
+        block = self._ctx.active_block
+
+        track = block.audio_tracks.get(block.preferred_audio_track_id)
+
+        if track is None and self._is_active_track_preferred:
+            track = block.audio_tracks.get(block.video_params.audio_track_id)
+
+        return track
+
+    @property
+    def _is_active_track_preferred(self) -> bool:
+        mode = self._ctx.active_block.video_params.audio_track_mode
+
+        return mode is AudioTrackMode.PREFERRED
+
+    def _audio_choice_menu_items(self):
+        languages = self._ctx.active_block.audio_language_options
+
+        if len(languages) > 1:
+            return [
+                {
+                    "title": language_name(language) or language,
+                    "icon": "empty",
+                    "func": ("active", "set_audio_language", language),
+                    "check_if": ("is_active_audio_language", language),
+                    "show_if": "is_active_initialized",
+                }
+                for language in languages
+            ]
+
+        return [
             {
-                "title": track.info,
+                "title": _audio_track_title(track),
                 "icon": "empty",
                 "func": ("active", "set_audio_track", track_id),
-                "check_if": ("is_active_param_set_to", "audio_track_id", track_id),
+                "check_if": ("is_active_audio_track", track_id),
                 "show_if": "is_active_initialized",
             }
             for track_id, track in self._ctx.active_block.audio_tracks.items()
         ]
 
-        return menu
+    def _preferred_audio_track_menu_item(self):
+        """Going back to the languages asked for, from a track picked by hand.
+
+        Which track that turns out to be is not the viewer's choice, so
+        the menu is the only place it is ever spelled out.
+        """
+
+        title = translate("Actions", "Preferred")
+
+        name = self._preferred_audio_name
+
+        if name:
+            title = f"{title} ({name})"
+
+        return {
+            "title": title,
+            "icon": "empty",
+            "func": ("active", "apply_audio_preference"),
+            "check_if": (
+                "is_active_param_set_to",
+                "audio_track_mode",
+                AudioTrackMode.PREFERRED,
+            ),
+            "show_if": "is_active_initialized",
+        }
 
     def update_active_under_mouse(self):
         if is_modal_open():
@@ -345,6 +500,67 @@ class ActiveBlockManager(ManagerBase):
         )
 
         return next(visible_blocks_under_pos, None)
+
+
+def _audio_languages_menu_item():
+    """The preference itself, right under the entry that follows it.
+
+    It stays put whatever is playing: a track picked by hand is not a
+    reason to hide what going back to the preference would give, and it
+    is the only place the list can be read at all without the settings.
+    """
+
+    return {
+        "title": "{}: %v".format(translate("Actions", "Languages")),
+        "icon": "empty",
+        "func": ("active", "audio_languages_dialog"),
+        "value_getter": ("active", "get_audio_languages"),
+        "show_if": "is_active_initialized",
+    }
+
+
+def _audio_track_title(track) -> str:
+    """Name a track by its language and by what the container called it.
+
+    libVLC passes on whatever was written into the file, which is a three
+    letter code more often than anything a viewer would recognise. Several
+    tracks in one language is ordinary -- rival dubs, a commentary, the
+    original kept alongside them -- and where that happens the name the
+    container gave a track is the only thing telling them apart.
+    """
+
+    name = language_name(track.language) or track.language
+
+    described = _track_description(track, name)
+
+    titled = _join_track_name(name, described)
+
+    return f"{titled}, {track.codec_info}" if titled else track.codec_info
+
+
+def _join_track_name(name: str | None, described: str | None) -> str:
+    """Language first, then what the container called the track."""
+
+    return " \u2014 ".join(part for part in (name, described) if part)
+
+
+def _track_description(track, language_name_: str | None) -> str | None:
+    """What the container called this track, when that adds anything.
+
+    Plenty of files just repeat the language there, which is already the
+    first thing the entry says.
+    """
+
+    description = (track.description or "").strip()
+
+    if not description:
+        return None
+
+    said_already = {
+        value.casefold() for value in (language_name_, track.language) if value
+    }
+
+    return None if description.casefold() in said_already else description
 
 
 def _quality_adapt_delay_menu_item():

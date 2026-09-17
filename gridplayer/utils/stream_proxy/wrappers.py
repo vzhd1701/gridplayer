@@ -3,7 +3,7 @@ import logging
 from functools import partial
 from io import IOBase
 from itertools import chain
-from pathlib import Path
+from urllib.parse import urljoin
 
 from requests import Response
 from streamlink import StreamError
@@ -85,12 +85,22 @@ class HLSProxy(HTTPStreamProxy):
             **reqargs,
         )
 
-        base_url = f"{Path(self.args['url']).parent}/"
-        hls_playlist = parse_m3u8(self._res.text, base_url)
+        hls_playlist = parse_m3u8(self._res.text, self._playlist_base_url)
 
         hls_playlist_txt = self._proxify_hls_playlist(hls_playlist)
 
         self._set_hls_playlist_as_response(hls_playlist_txt)
+
+    @property
+    def _playlist_base_url(self) -> str:
+        """What the playlist's own relative segment URIs are relative to.
+
+        A URL is not a path: Path() eats one of the slashes after the
+        scheme, and on Windows turns what is left into a backslash, so
+        every relative segment came out unopenable.
+        """
+
+        return urljoin(self.args["url"], ".")
 
     def _proxify_hls_playlist(self, hls_playlist: M3U8) -> str:
         for segment in hls_playlist.segments:  # type: HLSSegment
@@ -185,7 +195,8 @@ class HLSMuxedStream(GeneratedPlaylistStream):
     """Pairs a video-only stream with a separate audio track."""
 
     def _generate_playlist(self) -> str:
-        # takes too long to load all tracks, picking the best one
+        # takes too long to load all tracks, picking the best one; which
+        # language they are in was settled before we were handed them
         name, audio_track = self.stream.audio_tracks.best
 
         solo_stream = dataclasses.replace(self.stream, audio_tracks=None)
@@ -194,6 +205,7 @@ class HLSMuxedStream(GeneratedPlaylistStream):
             video_url=self._proxify(solo_stream),
             audio_url=self._proxify(self._with_origin(audio_track, name)),
             audio_name=name,
+            audio_language=audio_track.language,
         )
 
     def _with_origin(self, audio_track: Stream, name: str) -> Stream:

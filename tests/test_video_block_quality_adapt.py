@@ -44,6 +44,8 @@ def _block(mocker, quality=STREAM_QUALITY_AUTO, playing="360p", pane_height=300)
     block._is_error = False
     block._is_state_change_in_progress = False
     block.streams = _streams()
+    # these streams name no language, so narrowing by one changes nothing
+    block.stream_ladder = block.streams
     block._stream_quality_playing = playing
     block._pane_height_px = pane_height
     block.video_params = Video(uri="http://example.com/a.mp4")

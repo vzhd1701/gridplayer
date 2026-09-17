@@ -240,7 +240,32 @@ def _pick_stream(streams: Streams, stream: Stream) -> Stream | None:
     if stream.audio_tracks is None and fresh_stream.audio_tracks is not None:
         return dataclasses.replace(fresh_stream, audio_tracks=None)
 
+    if stream.audio_tracks and fresh_stream.audio_tracks:
+        return dataclasses.replace(
+            fresh_stream,
+            audio_tracks=_same_audio_languages(stream, fresh_stream),
+        )
+
     return fresh_stream
+
+
+def _same_audio_languages(stream: Stream, fresh_stream: Stream) -> Streams:
+    """Keep serving the languages we were serving before the renewal.
+
+    What we were handed had already been narrowed to the one the viewer
+    is listening to, where resolving the source again offers every one of
+    them over.
+    """
+
+    languages = {track.language for _, track in stream.audio_tracks.items()}
+
+    kept = {
+        name: track
+        for name, track in fresh_stream.audio_tracks.items()
+        if track.language in languages
+    }
+
+    return Streams(kept) if kept else fresh_stream.audio_tracks
 
 
 def _pick_audio_track(stream: Stream, name: str) -> Stream | None:

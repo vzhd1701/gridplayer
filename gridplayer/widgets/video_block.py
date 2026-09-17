@@ -10,7 +10,11 @@ from PyQt5.QtCore import QSize, Qt, QTimer, pyqtSignal
 from PyQt5.QtGui import QCursor
 from PyQt5.QtWidgets import QStackedLayout, QWidget
 
-from gridplayer.dialogs.input_dialog import QCustomSpinboxInput, QCustomSpinboxTimeInput
+from gridplayer.dialogs.input_dialog import (
+    QCustomSpinboxInput,
+    QCustomSpinboxTimeInput,
+    QCustomTextInput,
+)
 from gridplayer.dialogs.rename_dialog import QVideoRenameDialog
 from gridplayer.exceptions import PlayerException
 from gridplayer.models.stream import STREAM_QUALITY_AUTO, StreamOrigin, Streams
@@ -28,6 +32,7 @@ from gridplayer.params.static import (
     OVERLAY_ACTIVITY_EVENT,
     PLAYER_ID_LENGTH,
     VIDEO_END_LOOP_MARGIN_MS,
+    AudioTrackMode,
     NetworkRetryMode,
     VideoAspect,
     VideoCrop,
@@ -40,9 +45,15 @@ from gridplayer.utils.drop_zone import DropIndicator
 from gridplayer.utils.libvlc_options_parser import get_vlc_options
 from gridplayer.utils.next_file import next_video_file, previous_video_file
 from gridplayer.utils.qt import qt_connect, translate
+from gridplayer.utils.track_language import normalize, pick_track
 from gridplayer.utils.url_resolve.static import ResolvedVideo
 from gridplayer.utils.url_resolve.url_resolve import VideoURLResolver
-from gridplayer.vlc_player.static import DISABLED_TRACK, NO_TRACK, MediaInput
+from gridplayer.vlc_player.static import (
+    DISABLED_TRACK,
+    NO_TRACK,
+    MediaInput,
+    wanted_audio_track_id,
+)
 from gridplayer.widgets.cell_chrome import paint_idle_disc, paint_solid_outline
 from gridplayer.widgets.video_frame_vlc_base import VideoFrameVLC
 from gridplayer.widgets.video_overlay import (
@@ -218,6 +229,7 @@ class VideoBlock(QWidget):
         self._network_retry_timer.timeout.connect(self._network_retry_tick)
 
         self._stream_quality_playing = None
+        self._audio_language_playing = None
 
         self._quality_adapt_timer = QTimer(self)
         self._quality_adapt_timer.setSingleShot(True)
@@ -850,20 +862,163 @@ class VideoBlock(QWidget):
             return {}
         return self.video_driver.audio_tracks
 
-    @only_initialized
     def set_audio_track(self, track_id):
-        if track_id == DISABLED_TRACK and self.video_params.video_track_id in NO_TRACK:
+        self._log.debug(
+            f"Set audio track {track_id},"
+            f" initialized={self.is_video_initialized},"
+            f" video track off={self._is_video_track_off}"
+        )
+
+        if track_id == DISABLED_TRACK and self._is_video_track_off:
             self._ctx.commands.warning(
                 translate("Warning", "Cannot disable both video & audio tracks")
             )
+            return
+
+        # a track chosen by hand outranks the languages asked for, and has
+        # to outlive the reload that would otherwise resolve them again
+        self.video_params.audio_track_mode = (
+            AudioTrackMode.DISABLED
+            if track_id == DISABLED_TRACK
+            else AudioTrackMode.EXPLICIT
+        )
+
+        self.video_params.audio_language = self._track_language_key(track_id)
+        self.video_params.audio_track_id = track_id
+
+        # a video part way through a reload has no tracks to switch between
+        # yet, and will settle on this one once it does
+        if self.is_video_initialized:
+            self.video_driver.set_audio_track(track_id)
+
+    @property
+    def _is_video_track_off(self) -> bool:
+        """Whether there would be nothing left to watch without the sound.
+
+        Only an id of -1 says the picture was switched off. None says the
+        player had nothing to report when it was last asked, which is not
+        the same thing and must not cost the sound.
+        """
+
+        if self.video_driver is None or not self.is_video_initialized:
+            # part way through a load, where the player settles this itself
+            return False
+
+        return self.video_driver.cur_video_track_id == DISABLED_TRACK
+
+    def _track_language_key(self, track_id) -> str | None:
+        """The language to remember this track by, where one will do.
+
+        An id is only as good as the media it was read from, and a stream
+        is demuxed afresh on every reload. A language outlives that, but
+        only while it picks out one track rather than several.
+        """
+
+        track = self.audio_tracks.get(track_id)
+
+        if track is None or not track.language:
+            return None
+
+        namesakes = [
+            other
+            for other in self.audio_tracks.values()
+            if normalize(other.language) == normalize(track.language)
+        ]
+
+        return track.language if len(namesakes) == 1 else None
+
+    @property
+    def preferred_audio_track_id(self) -> int | None:
+        """The track this file would open with, were nothing picked by hand."""
+
+        return pick_track(self.video_params.audio_languages, self.audio_tracks)
+
+    def apply_audio_preference(self):
+        """Follow the preferred languages again, whichever way this video dubs.
+
+        A dubbed stream is served one language at a time, so going back to
+        the preference means fetching it again rather than reaching for a
+        track that was never handed over.
+        """
+
+        self.video_params.audio_track_mode = AudioTrackMode.PREFERRED
+        self.video_params.audio_language = None
+
+        # whatever was playing, including the -1 that "disable" leaves
+        self.video_params.audio_track_id = None
+
+        if self._language_variants.is_multilingual:
+            self.set_audio_language(None)
+
+        # a reload only happens where the language changed, so the tracks
+        # in hand still have to be settled either way
+        self._apply_wanted_audio_track()
+
+    def _apply_wanted_audio_track(self):
+        """Put the settings into effect on the video that is already playing."""
+
+        if self.video_driver is None or not self.is_video_initialized:
+            # part way through a reload, which will settle this on its own
+            return
+
+        track_id = wanted_audio_track_id(self.video_params, self.audio_tracks)
+
+        if track_id is None:
+            if self.video_driver.cur_audio_track_id not in NO_TRACK:
+                # something is playing already and nothing was asked for by
+                # name, so there is nothing here worth moving off
+                return
+
+            # a "disable" is still in force and the preference has no
+            # opinion, so any track at all beats going on in silence
+            track_id = next(iter(self.audio_tracks), None)
+
+        if track_id is None:
             return
 
         self.video_params.audio_track_id = track_id
         self.video_driver.set_audio_track(track_id)
 
     @only_initialized
+    def audio_languages_dialog(self):
+        """Edit the languages this video would rather be heard in."""
+
+        languages = QCustomTextInput.get_text(
+            parent=self.parent(),
+            title=translate(
+                "Dialog - Set preferred audio languages",
+                "Preferred audio languages",
+                "Header",
+            ),
+            initial_value=self.video_params.audio_languages,
+            placeholder=translate("Dialog - Set preferred audio languages", "en, ja"),
+        )
+
+        self.set_audio_languages(languages)
+
+    def set_audio_languages(self, languages: str):
+        if languages == self.video_params.audio_languages:
+            return
+
+        self.video_params.audio_languages = languages
+
+        if self.video_params.audio_track_mode is not AudioTrackMode.PREFERRED:
+            return
+
+        # the preference is what is being followed, so following it again
+        # is the whole point of having changed it
+        self.apply_audio_preference()
+
+    def get_audio_languages(self) -> str:
+        return self.video_params.audio_languages or translate("Audio Languages", "any")
+
+    @only_initialized
     def set_video_track(self, track_id):
-        if track_id == DISABLED_TRACK and self.video_params.audio_track_id in NO_TRACK:
+        # only -1 says the sound was switched off; None says it has not been
+        # read back, which is no reason to keep the picture
+        if track_id == DISABLED_TRACK and self.video_params.audio_track_id == (
+            DISABLED_TRACK
+        ):
             self._ctx.commands.warning(
                 translate("Warning", "Cannot disable both video & audio tracks")
             )
@@ -1238,6 +1393,115 @@ class VideoBlock(QWidget):
 
         self.load_stream_quality(self.video_params.stream_quality)
 
+    @property
+    def _language_variants(self) -> Streams:
+        """Where this video's languages live, out of the two places they can.
+
+        A site either dubs a video by handing back the whole ladder once
+        per language, or by offering one ladder and several audio tracks
+        to pair with it. Either way it is a set of streams that differ in
+        nothing but the language of their sound.
+        """
+
+        if not self.streams:
+            return Streams()
+
+        if self.streams.is_multilingual:
+            return self.streams
+
+        audio_tracks = next(
+            (
+                stream.audio_tracks
+                for _, stream in self.streams.items()
+                if stream.audio_tracks
+            ),
+            None,
+        )
+
+        return audio_tracks or Streams()
+
+    @property
+    def audio_language_options(self) -> tuple[str, ...]:
+        """The languages this video is dubbed into, as the site offered them."""
+
+        return self._language_variants.languages
+
+    @property
+    def audio_language(self) -> str | None:
+        """Which language this video plays, out of the several it is dubbed into.
+
+        Nothing to choose between leaves this empty, and so does a video
+        whose sound names no language at all.
+        """
+
+        variants = self._language_variants
+
+        if not variants.is_multilingual:
+            return None
+
+        picked = self.video_params.audio_language
+
+        if (
+            self.video_params.audio_track_mode is AudioTrackMode.EXPLICIT
+            and picked in variants.languages
+        ):
+            return picked
+
+        return variants.language_for(self.video_params.audio_languages)
+
+    @property
+    def preferred_audio_language(self) -> str | None:
+        """Which language the preference alone would settle on.
+
+        What is playing may be a pick made by hand instead, so this is the
+        only way to say what going back to the preference would give.
+        """
+
+        return self._language_variants.language_for(self.video_params.audio_languages)
+
+    @property
+    def stream_ladder(self) -> Streams:
+        """The rungs this video may switch between, all in the one language."""
+
+        return self.streams.for_language(self.audio_language)
+
+    @only_streamable
+    def set_audio_language(self, language: str | None):
+        """Play the same video in another one of the languages it is dubbed into.
+
+        The ladder is a different one per language, so the rung has to be
+        found again; asking for the one playing now finds the same size.
+        """
+
+        self.video_params.audio_language = language
+        self.video_params.audio_track_mode = (
+            AudioTrackMode.PREFERRED if language is None else AudioTrackMode.EXPLICIT
+        )
+
+        # the language is the pick now, and a stale id would only outvote it
+        self.video_params.audio_track_id = None
+
+        self._log.debug(
+            f"Set audio language {language},"
+            f" resolved to {self.audio_language},"
+            f" playing {self._audio_language_playing}"
+        )
+
+        if self.audio_language == self._audio_language_playing:
+            # the rung on screen is already the one asked for, so there is
+            # nothing to reload -- but the sound may have been switched off
+            # since it was loaded, and picking a language means wanting it
+            self._apply_wanted_audio_track()
+            return
+
+        # the pane is about to be reloaded anyway, and on a ladder that no
+        # longer holds the rung the timer was comparing against
+        self._quality_adapt_timer.stop()
+
+        self.reset()
+
+        self.load_stream_quality(self.video_params.stream_quality)
+
     @only_streamable
     def switch_stream_quality(self, quality: str):
         if quality == self.video_params.stream_quality:
@@ -1259,10 +1523,14 @@ class VideoBlock(QWidget):
     def load_stream_quality(self, wanted_quality: str):
         is_auto = wanted_quality == STREAM_QUALITY_AUTO
 
+        ladder = self.stream_ladder
+
+        self._audio_language_playing = self.audio_language
+
         if is_auto:
-            quality, stream = self.streams.fit_to_height(self._pane_height_px)
+            quality, stream = ladder.fit_to_height(self._pane_height_px)
         else:
-            quality, stream = self.streams.by_quality(wanted_quality)
+            quality, stream = ladder.by_quality(wanted_quality)
 
         # "auto" outlives the rung it picked, where "best" and the rest are
         # resolved into one and never asked again
@@ -1275,6 +1543,7 @@ class VideoBlock(QWidget):
         if stream.protocol == "direct":
             url = stream.url
         else:
+            stream = self._with_audio_language(stream)
             url = self._ctx.commands.add_stream(self._with_origin(stream, quality))
 
         self.load_video.emit(
@@ -1353,7 +1622,7 @@ class VideoBlock(QWidget):
             self._quality_adapt_timer.start(self._quality_adapt_delay_ms)
             return
 
-        quality, _ = self.streams.fit_to_height(self._pane_height_px)
+        quality, _ = self.stream_ladder.fit_to_height(self._pane_height_px)
 
         if quality == self._stream_quality_playing:
             return
@@ -1365,6 +1634,26 @@ class VideoBlock(QWidget):
         self.reset()
 
         self.load_stream_quality(STREAM_QUALITY_AUTO)
+
+    def _with_audio_language(self, stream):
+        """Hand the proxy only the audio tracks in the language being played.
+
+        VLC is served a playlist with one audio rendition in it, so which
+        of them it is has to be settled here; the proxy is left to pick
+        the best of whatever it is given.
+        """
+
+        if not stream.audio_tracks:
+            return stream
+
+        language = stream.audio_tracks.language_for(self.video_params.audio_languages)
+
+        if language is None:
+            return stream
+
+        return dataclasses.replace(
+            stream, audio_tracks=stream.audio_tracks.for_language(language)
+        )
 
     def _with_origin(self, stream, quality: str):
         """Tell the proxy where this stream came from.

@@ -22,9 +22,17 @@ from gridplayer.vlc_player.player_event_waiter import (
     async_wait,
 )
 from gridplayer.vlc_player.player_tracks_manager import TracksManager
-from gridplayer.vlc_player.static import Media, MediaInput, NotPausedError
+from gridplayer.vlc_player.static import (
+    Media,
+    MediaInput,
+    NotPausedError,
+    wanted_audio_track_id,
+)
 
 MEDIA_EXTRACT_RETRY_TIME = 0.1
+
+# how many of the events around a restart to try putting the tracks back on
+RESTART_REAPPLY_TRIES = 12
 
 # VLC's adaptive demuxer restarts the video decoder on every seek, and picking
 # that decoder rebuilds the video output -- once per hardware format avcodec
@@ -100,6 +108,10 @@ class VlcPlayerBase(ABC):
         self._tracks_manager: TracksManager | None = None
         self._last_video_size = (0, 0)
 
+        # counts down the events after the media ends, while the tracks are
+        # put back on the new pass; see _reapply_tracks_after_restart
+        self._restart_reapply_tries = 0
+
         self._event_manager = EventManager()
         self._event_waiter = EventWaiter()
 
@@ -169,13 +181,18 @@ class VlcPlayerBase(ABC):
         self._log.debug(
             f"Video output ready, re-applying view at {self.media_input.size}"
         )
+
         self._schedule_view_reapply()
+
+        self._reapply_tracks_after_restart()
 
     def cb_playing(self, event):
         self._log.debug("Media playing")
 
         if not self.is_video_initialized:
             return
+
+        self._reapply_tracks_after_restart()
 
         # some formats have unreliable time_change (rtp)
         # this creates a failsafe to avoid video being paused while playing
@@ -230,6 +247,9 @@ class VlcPlayerBase(ABC):
             self.error(translate("Video Error", "Video stopped before initialization"))
             return
 
+        # the player is set to repeat, so this is the start of a new pass
+        self._restart_reapply_tries = RESTART_REAPPLY_TRIES
+
     def cb_error(self, event):
         self.error(translate("Video Error", "Player error"))
 
@@ -266,6 +286,8 @@ class VlcPlayerBase(ABC):
             self.unpause()
 
         self.notify_time_changed(new_time)
+
+        self._reapply_tracks_after_restart()
 
     def unpause(self):
         if not self._is_paused:
@@ -677,6 +699,36 @@ class VlcPlayerBase(ABC):
         # cb_vout runs inside a libvlc event callback and must not re-enter libvlc.
         self._apply_media_input_view()
 
+    def _schedule_tracks_reapply(self):
+        # Deferred for the same reason as the view: cb_playing runs inside a
+        # libvlc event callback and must not re-enter libvlc.
+        self._reapply_tracks()
+
+    def _reapply_tracks_after_restart(self):
+        """Put the tracks back after a loop, once the new pass will take it.
+
+        The events that say a restart is under way all arrive before the
+        new input has its streams, so this runs on each of them in turn
+        until the player agrees, rather than chasing a media that is
+        never going to answer.
+        """
+
+        if self._restart_reapply_tries <= 0:
+            return
+
+        self._restart_reapply_tries -= 1
+
+        self._schedule_tracks_reapply()
+
+    def _reapply_tracks(self):
+        if self._tracks_manager is None:
+            self._restart_reapply_tries = 0
+            return
+
+        if self._tracks_manager.reapply():
+            self._log.debug("Media restarted, tracks re-applied")
+            self._restart_reapply_tries = 0
+
     def _apply_media_input_view(self):
         self.adjust_view(
             size=self.media_input.size,
@@ -764,7 +816,11 @@ class VlcPlayerBase(ABC):
             self._log.debug("Failed to initialize video time, probably live")
 
         self._tracks_manager.set_video_track_id(self.media_input.video.video_track_id)
-        self._tracks_manager.set_audio_track_id(self.media_input.video.audio_track_id)
+        self._tracks_manager.set_audio_track_id(
+            wanted_audio_track_id(
+                self.media_input.video, self._tracks_manager.audio_tracks
+            )
+        )
 
         return Media(
             length=length,
