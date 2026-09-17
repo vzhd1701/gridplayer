@@ -99,6 +99,17 @@ class HTTPStreamProxy(HTTPStream):
         self.response.headers["Content-Length"] = str(len(self.response._content))
 
     @property
+    def _fetched_from(self) -> str:
+        """Where the document came from in the end, redirects and all.
+
+        What is inside it is written relative to wherever it was served,
+        which is not always where it was asked for: a playlist handed to
+        another host takes its segments with it.
+        """
+
+        return self._res.url
+
+    @property
     def _timeout(self):
         return self.session.options.get("stream-timeout")
 
@@ -120,7 +131,7 @@ class HLSProxy(HTTPStreamProxy):
         every relative segment came out unopenable.
         """
 
-        return urljoin(self.args["url"], ".")
+        return urljoin(self._fetched_from, ".")
 
     def _proxify_hls_playlist(self, hls_playlist: M3U8) -> str:
         for segment in hls_playlist.segments:  # type: HLSSegment
@@ -156,9 +167,7 @@ class DASHManifestProxy(HTTPStreamProxy):
 
         manifest = rewrite_manifest(
             self._res.text,
-            # where it was fetched from in the end, which is what the
-            # relative URLs inside it hang off
-            manifest_url=self._res.url,
+            manifest_url=self._fetched_from,
             proxify=self._proxify_base,
         )
 

@@ -17,6 +17,9 @@ from gridplayer.utils.stream_proxy.mpd import MPD_NS
 from gridplayer.utils.stream_proxy.server import ProxyRequestHandler, StreamProxyServer
 from tests.conftest import LOGIN
 
+# a manifest the host answers for somewhere else
+MOVED_MANIFEST = "/moved/Manifest.mpd"
+
 SEGMENT = b"\x00\x00\x00\x18ftypiso6" + bytes(range(64))
 
 MANIFEST = (
@@ -45,6 +48,13 @@ class LiveHandler(BaseHTTPRequestHandler):
 
         if self.headers.get("Cookie") != LOGIN:
             self._send(HTTPStatus.FORBIDDEN, b"", "text/plain")
+            return
+
+        if self.path == MOVED_MANIFEST:
+            self.send_response(HTTPStatus.FOUND)
+            self.send_header("Location", "/live/Manifest.mpd")
+            self.send_header("Content-Length", "0")
+            self.end_headers()
             return
 
         if self.path.endswith(".mpd"):
@@ -78,18 +88,26 @@ def proxy(serving):
 
 
 @pytest.fixture
-def manifest_url(upstream, proxy):
-    """What VLC would be given for the live manifest upstream."""
+def relay(upstream, proxy):
+    """What VLC would be given for a manifest on the upstream host."""
 
     address, port = upstream.server_address
 
-    return proxy.add_stream(
-        Stream(
-            url=f"http://{address}:{port}/live/Manifest.mpd",
-            protocol="dash_proxy",
-            session=SESSION,
+    def _relay(path: str = "/live/Manifest.mpd") -> str:
+        return proxy.add_stream(
+            Stream(
+                url=f"http://{address}:{port}{path}",
+                protocol="dash_proxy",
+                session=SESSION,
+            )
         )
-    )
+
+    return _relay
+
+
+@pytest.fixture
+def manifest_url(relay):
+    return relay()
 
 
 def _base_url(manifest: str) -> str:
@@ -119,6 +137,21 @@ class TestTheManifest:
         template = next(ET.fromstring(manifest).iter(f"{{{MPD_NS}}}SegmentTemplate"))
 
         assert template.get("media") == "$RepresentationID$/$Number$.m4s"
+
+    def test_a_redirected_manifest_takes_its_segments_with_it(
+        self, local_login, upstream, relay
+    ):
+        """Hosts move manifests about, and what is in them moves too.
+
+        The templates are relative, so they hang off wherever the
+        manifest was actually served, not off where it was asked for.
+        """
+
+        manifest = requests.get(relay(MOVED_MANIFEST), timeout=5).text
+
+        requests.get(f"{_base_url(manifest)}V300/0.m4s", timeout=5)
+
+        assert upstream.seen[-1] == ("/live/V300/0.m4s", LOGIN)
 
 
 class TestTheSegmentsUnderIt:

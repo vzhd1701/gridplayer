@@ -4,6 +4,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 import pytest
 import requests
+from requests import Response
 
 from gridplayer.models.stream import (
     HashableDict,
@@ -29,6 +30,19 @@ from gridplayer.utils.stream_proxy.wrappers import (
 )
 
 SESSION = StreamSessionOpts(service="test", session_headers=HashableDict({}))
+
+
+# a playlist the host answers for somewhere else
+MOVED_PLAYLIST = "/moved/index.m3u8"
+
+
+def _fetched(url: str) -> Response:
+    """A response that came back from `url`, as requests reports it."""
+
+    response = Response()
+    response.url = url
+
+    return response
 
 
 class FakeServer:
@@ -436,16 +450,35 @@ class TestRelativeSegmentURIs:
 
         from gridplayer.utils.stream_proxy.wrappers import HLSProxy
 
-        playlist_url = "http://127.0.0.1:8777/live/index.m3u8"
-
         proxy = HLSProxy.__new__(HLSProxy)
-        proxy.args = {"url": playlist_url}
+        proxy._res = _fetched("http://127.0.0.1:8777/live/index.m3u8")
 
         parsed = parse_m3u8(self.PLAYLIST, proxy._playlist_base_url)
 
         assert [segment.uri for segment in parsed.segments] == [
             "http://127.0.0.1:8777/live/seg0.ts",
             "http://127.0.0.1:8777/live/seg1.ts",
+        ]
+
+    def test_they_follow_the_playlist_where_it_was_redirected_to(self):
+        """A host that moves a playlist moves its segments with it.
+
+        Resolving against the URL that was asked for would look under a
+        directory the segments were never in.
+        """
+
+        from streamlink.stream.hls import parse_m3u8
+
+        from gridplayer.utils.stream_proxy.wrappers import HLSProxy
+
+        proxy = HLSProxy.__new__(HLSProxy)
+        proxy._res = _fetched("http://127.0.0.1:8777/new/index.m3u8")
+
+        parsed = parse_m3u8(self.PLAYLIST, proxy._playlist_base_url)
+
+        assert [segment.uri for segment in parsed.segments] == [
+            "http://127.0.0.1:8777/new/seg0.ts",
+            "http://127.0.0.1:8777/new/seg1.ts",
         ]
 
 
@@ -480,6 +513,13 @@ class TestServingAPlaylistTheHostWrote:
             def do_GET(self):
                 self.server.requested.append(self.path)
 
+                if self.path == MOVED_PLAYLIST:
+                    self.send_response(HTTPStatus.FOUND)
+                    self.send_header("Location", "/live/index.m3u8")
+                    self.send_header("Content-Length", "0")
+                    self.end_headers()
+                    return
+
                 is_playlist = self.path.endswith(".m3u8")
                 body = playlist.encode("utf-8") if is_playlist else segment
 
@@ -497,18 +537,27 @@ class TestServingAPlaylistTheHostWrote:
         return serving(server)
 
     @pytest.fixture
-    def playlist_url(self, upstream, serving):
+    def relay(self, upstream, serving):
+        """What VLC would be given for a playlist on the upstream host."""
+
         proxy = serving(StreamProxyServer(("127.0.0.1", 0), ProxyRequestHandler))
 
         address, port = upstream.server_address
 
-        return proxy.add_stream(
-            Stream(
-                url=f"http://{address}:{port}/live/index.m3u8",
-                protocol="hls_proxy",
-                session=SESSION,
+        def _relay(path: str = "/live/index.m3u8") -> str:
+            return proxy.add_stream(
+                Stream(
+                    url=f"http://{address}:{port}{path}",
+                    protocol="hls_proxy",
+                    session=SESSION,
+                )
             )
-        )
+
+        return _relay
+
+    @pytest.fixture
+    def playlist_url(self, relay):
+        return relay()
 
     def test_its_segments_are_pointed_back_at_the_proxy(self, playlist_url):
         response = requests.get(playlist_url, timeout=5)
@@ -531,3 +580,25 @@ class TestServingAPlaylistTheHostWrote:
 
         assert requests.get(segment, timeout=5).content == self.SEGMENT
         assert upstream.requested == ["/live/index.m3u8", "/live/seg0.ts"]
+
+    def test_a_redirected_playlist_takes_its_segments_with_it(self, upstream, relay):
+        """Hosts move playlists about, and the segments move with them.
+
+        Resolved against the URL that was asked for, the segments would
+        be looked for under a directory they were never in, and the host
+        would answer every one of them with a 404.
+        """
+
+        response = requests.get(relay(MOVED_PLAYLIST), timeout=5)
+
+        segment = next(
+            line for line in response.text.splitlines() if not line.startswith("#")
+        )
+
+        requests.get(segment, timeout=5)
+
+        assert upstream.requested == [
+            MOVED_PLAYLIST,
+            "/live/index.m3u8",
+            "/live/seg0.ts",
+        ]
