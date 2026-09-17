@@ -20,18 +20,11 @@ from gridplayer.utils.url_resolve import (
     stream_detect,
 )
 from gridplayer.utils.url_resolve.resolver_base import DirectResolver
+from tests.conftest import FakeCookieSettings
 
 NETSCAPE_HEADER = "# Netscape HTTP Cookie File\n"
 
 COOKIE_LINE = ".youtube.com\tTRUE\t/\tFALSE\t0\tSID\tabc\n"
-
-
-class _FakeSettings:
-    def __init__(self, values):
-        self._values = values
-
-    def get(self, key):
-        return self._values[key]
 
 
 class _FakeSession:
@@ -52,7 +45,7 @@ class _FakeSession:
 def settings(monkeypatch):
     values = {"cookies/enabled": True, "cookies/allow_update": True}
 
-    monkeypatch.setattr(cookies_module, "Settings", lambda: _FakeSettings(values))
+    monkeypatch.setattr(cookies_module, "Settings", lambda: FakeCookieSettings(values))
 
     return values
 

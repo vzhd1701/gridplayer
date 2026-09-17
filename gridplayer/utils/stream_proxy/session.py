@@ -1,4 +1,5 @@
 import logging
+from types import MappingProxyType
 
 from streamlink import Streamlink
 
@@ -12,6 +13,16 @@ from gridplayer.utils.stream_proxy.wrappers import (
     HLSProxyLive,
     HTTPPlaylistStream,
     HTTPStreamProxy,
+)
+
+# wrappers that fetch their URL from the host themselves, and so are all
+# built out of the same session, headers and cookies
+RELAYED_PROTOCOLS = MappingProxyType(
+    {
+        "http": HTTPStreamProxy,
+        "hls_proxy": HLSProxy,
+        "dash_proxy": DASHManifestProxy,
+    }
 )
 
 
@@ -58,46 +69,45 @@ class StreamSession:
         apply_to_streamlink(self._session)
 
     def _get_solo_stream(self, stream: Stream):
+        wrapper = self._solo_wrapper(stream)
+
+        self._log.debug(f"Stream is {stream.protocol}, using {type(wrapper).__name__}")
+
+        return wrapper
+
+    def _solo_wrapper(self, stream: Stream):
         protocol = stream.protocol
 
-        if protocol == "http":
-            self._log.debug("Stream is http, using HTTPStreamProxy")
-            return HTTPStreamProxy(
-                server=self._server,
-                session_opts=self._stream_session,
-                session_=self._session,
-                url=stream.url,
-            )
-        elif protocol == "http_hls":
-            self._log.debug("Stream is http_hls, using HTTPPlaylistStream")
+        if protocol in RELAYED_PROTOCOLS:
+            return RELAYED_PROTOCOLS[protocol](**self._relay_args(stream))
+
+        if protocol == "http_hls":
             return HTTPPlaylistStream(
                 server=self._server,
                 session_=self._session,
                 stream=stream,
             )
-        elif protocol == "dash":
-            self._log.debug("Stream is dash, using DASHPlaylistStream")
+
+        if protocol == "dash":
             return DASHPlaylistStream(server=self._server, stream=stream)
-        elif protocol == "dash_proxy":
-            self._log.debug("Stream is dash_proxy, using DASHManifestProxy")
-            return DASHManifestProxy(
-                server=self._server,
-                session_opts=self._stream_session,
-                session_=self._session,
-                url=stream.url,
-            )
-        elif protocol == "hls_proxy":
-            self._log.debug("Stream is hls_proxy, using HLSProxy")
-            return HLSProxy(
-                server=self._server,
-                session_opts=self._stream_session,
-                session_=self._session,
-                url=stream.url,
-            )
-        elif protocol == "hls":
-            self._log.debug("Stream is hls, using HLSProxyLive")
+
+        if protocol == "hls":
             return HLSProxyLive(
                 session=self._session, url=stream.url, force_restart=True
             )
 
         raise RuntimeError(f"Cannot handle protocol {protocol}")
+
+    def _relay_args(self, stream: Stream) -> dict:
+        """What a wrapper that goes to the host for itself is built with.
+
+        The rest are handed a stream and serve a playlist out of what is
+        already known about it, so they need no session to fetch with.
+        """
+
+        return {
+            "server": self._server,
+            "session_opts": self._stream_session,
+            "session_": self._session,
+            "url": stream.url,
+        }

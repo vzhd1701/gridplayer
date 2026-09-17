@@ -15,7 +15,7 @@ LOGIN = f"{LOGIN_NAME}={LOGIN_VALUE}"
 COOKIE_LIFETIME_SEC = 10000
 
 
-class _FakeCookieSettings:
+class FakeCookieSettings:
     """The cookie switches, answering for themselves."""
 
     def __init__(self, values):
@@ -98,7 +98,7 @@ def local_login(_no_real_cookies, monkeypatch):
 
     values = {"cookies/enabled": True, "cookies/allow_update": False}
 
-    monkeypatch.setattr(cookies, "Settings", lambda: _FakeCookieSettings(values))
+    monkeypatch.setattr(cookies, "Settings", lambda: FakeCookieSettings(values))
 
     expires = int(time.time()) + COOKIE_LIFETIME_SEC
 
