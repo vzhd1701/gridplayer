@@ -3,6 +3,7 @@ import itertools
 import logging
 import re
 import traceback
+from collections import Counter
 from functools import cached_property
 from types import MappingProxyType
 from urllib.parse import urljoin
@@ -44,6 +45,12 @@ PLAYLIST_PROTOCOLS = MappingProxyType(
         "http_hls": "http_hls",
     }
 )
+
+# what the one rung is called when a whole ladder turns out to be the same
+# manifest; naming it after any one representation would promise a size
+# that VLC is under no obligation to pick
+ADAPTIVE_FMT_NAME = "Adaptive"
+ADAPTIVE_AUDIO_FMT_NAME = "Audio"
 
 # VLC refuses to demux anything but mp4 & mpegts out of a playlist we build,
 # WebM segments make it bail out before the first frame
@@ -212,7 +219,7 @@ class YoutubeDLResolver(ResolverBase):
 
             streams[_unique_name(streams, fmt_name)] = stream
 
-        return streams
+        return _collapse_manifest_rungs(streams)
 
     def _get_audio_tracks(self, raw_streams_audio, is_live) -> Streams | None:
         """Audio tracks that can be attached to a video-only stream.
@@ -423,6 +430,53 @@ def _unique_name(streams: Streams, fmt_name: str) -> str:
 
         if candidate not in streams:
             return candidate
+
+
+def _collapse_manifest_rungs(streams: Streams) -> Streams:
+    """One rung per manifest, where a whole ladder is the same manifest.
+
+    A live DASH source comes back as one format per representation, and
+    every one of them carries the manifest URL rather than its own,
+    because a live manifest has to be followed by VLC rather than
+    expanded here. VLC then picks a representation by itself, so the
+    ladder offers a choice that nothing downstream can honour: every rung
+    loads the same URL. "Auto" takes the offer at face value and reloads
+    the video on each change of pane size to arrive back where it was.
+    """
+
+    sizes = Counter(_manifest_key(stream) for _, stream in streams.items())
+
+    collapsed = Streams()
+
+    for name, stream in streams.items():
+        key = _manifest_key(stream)
+
+        if key is None or sizes[key] < 2:
+            collapsed[name] = stream
+            continue
+
+        rung = ADAPTIVE_AUDIO_FMT_NAME if stream.is_audio_only else ADAPTIVE_FMT_NAME
+
+        # the first one stands for the rest: they differ only in what they
+        # say about a representation that VLC has yet to choose
+        if rung not in collapsed:
+            collapsed[_unique_name(collapsed, rung)] = stream
+
+    return collapsed
+
+
+def _manifest_key(stream: Stream) -> tuple | None:
+    """What makes two rungs the same manifest handed over twice.
+
+    Only a stream VLC opens for itself can be one. Anything the proxy
+    serves carries its own segment list and is a rung in its own right,
+    even where the URL next to it is the manifest they all came from.
+    """
+
+    if stream.protocol != "direct":
+        return None
+
+    return stream.url, stream.is_audio_only
 
 
 def _is_audio_only(stream) -> bool:

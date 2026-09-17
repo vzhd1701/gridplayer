@@ -521,3 +521,93 @@ def test_untagged_stream_has_no_language(language):
     _, video = next(iter(resolver.streams.video_streams.items()))
 
     assert video.language is None
+
+
+def _live(*formats):
+    return _resolver({"is_live": True, "formats": list(formats)})
+
+
+def test_live_dash_rungs_that_are_all_one_manifest_become_one():
+    """A live ladder is a ladder VLC climbs, not one the menu can."""
+
+    resolver = _live(
+        _audio_fmt(),
+        _dash_fmt("360p", height=360),
+        _dash_fmt("720p", height=720),
+        _dash_fmt("1080p", height=1080),
+    )
+
+    video_streams = resolver.streams.video_streams
+
+    assert list(video_streams) == ["Adaptive"]
+    assert next(iter(video_streams.values())).url == MANIFEST
+
+
+def test_the_collapsed_rung_stops_auto_chasing_the_pane_size():
+    """Three names for one URL made every resize a reload of the same thing."""
+
+    ladder = _live(
+        _audio_fmt(),
+        _dash_fmt("360p", height=360),
+        _dash_fmt("720p", height=720),
+        _dash_fmt("1080p", height=1080),
+    ).streams
+
+    assert ladder.fit_to_height(360) == ladder.fit_to_height(1080)
+
+
+def test_live_audio_rungs_collapse_on_their_own():
+    """Audio-only stays on offer: it is served by muting, not by URL."""
+
+    resolver = _live(
+        _audio_fmt("audio_low", abr=48),
+        _audio_fmt("audio_high", abr=128),
+        _dash_fmt("720p", height=720),
+    )
+
+    assert list(resolver.streams.audio_only_streams) == ["Audio"]
+    assert list(resolver.streams.video_streams) == ["720p [avc1] (video only)"]
+
+
+def test_a_lone_live_rung_keeps_the_name_it_came_with():
+    """Nothing was promised that cannot be kept, so nothing is taken away."""
+
+    resolver = _live(_audio_fmt(), _dash_fmt("720p", height=720))
+
+    assert list(resolver.streams.video_streams) == ["720p [avc1] (video only)"]
+
+
+def test_a_ladder_the_proxy_serves_is_left_alone():
+    """Recorded DASH rungs share a manifest URL and are still real rungs.
+
+    Their segment lists are their own, so collapsing on the URL beside
+    them would throw away the quality menu on every recorded video.
+    """
+
+    resolver = _resolver(
+        {
+            "is_live": False,
+            "formats": [
+                _audio_fmt(),
+                _dash_fmt("360p", height=360),
+                _dash_fmt("720p", height=720),
+            ],
+        }
+    )
+
+    video_streams = resolver.streams.video_streams
+
+    assert len(video_streams) == 2
+    assert {s.protocol for s in video_streams.values()} == {"dash"}
+
+
+def test_two_manifests_are_two_rungs():
+    """Sameness is the URL, not the protocol: different sources still differ."""
+
+    resolver = _live(
+        _audio_fmt(),
+        _dash_fmt("a", height=720, url="http://host/one.mpd"),
+        _dash_fmt("b", height=720, url="http://host/two.mpd"),
+    )
+
+    assert len(resolver.streams.video_streams) == 2
