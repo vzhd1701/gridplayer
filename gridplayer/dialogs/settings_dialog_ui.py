@@ -288,6 +288,27 @@ class Ui_SettingsDialog:
         self.cookiesWarning.setWordWrap(True)
         self.cookiesWarning.setObjectName("cookiesWarning")
         self.lay_page_streaming_cookies.addWidget(self.cookiesWarning)
+        self.lay_cookies_howto = QtWidgets.QFormLayout()
+        self.lay_cookies_howto.setFieldGrowthPolicy(
+            QtWidgets.QFormLayout.FieldsStayAtSizeHint
+        )
+        self.lay_cookies_howto.setObjectName("lay_cookies_howto")
+        self.label_cookies_howto = QtWidgets.QLabel(self.page_streaming_cookies)
+        font = QtGui.QFont()
+        font.setBold(True)
+        self.label_cookies_howto.setFont(font)
+        self.label_cookies_howto.setObjectName("label_cookies_howto")
+        self.lay_cookies_howto.setWidget(
+            0, QtWidgets.QFormLayout.LabelRole, self.label_cookies_howto
+        )
+        self.cookiesHowToButton = QtWidgets.QPushButton(self.page_streaming_cookies)
+        self.cookiesHowToButton.setMaximumSize(QtCore.QSize(24, 24))
+        self.cookiesHowToButton.setText("?")
+        self.cookiesHowToButton.setObjectName("cookiesHowToButton")
+        self.lay_cookies_howto.setWidget(
+            0, QtWidgets.QFormLayout.FieldRole, self.cookiesHowToButton
+        )
+        self.lay_page_streaming_cookies.addLayout(self.lay_cookies_howto)
         self.section_page.addWidget(self.page_streaming_cookies)
         self.page_defaults_playlist = PageScrollArea()
         self.page_defaults_playlist.setFrameShape(QtWidgets.QFrame.NoFrame)
@@ -595,8 +616,11 @@ class Ui_SettingsDialog:
         self.cookiesWarning.setText(
             _translate(
                 "SettingsDialog",
-                "Cookies are login credentials. Anyone with access to this computer can read them. Export from a private browser window and close it afterwards.",
+                "Cookies are login credentials. Anyone with access to this computer can read them.",
             )
+        )
+        self.label_cookies_howto.setText(
+            _translate("SettingsDialog", "How to export cookies")
         )
         self.playerVideoDriverBox.setTitle(
             _translate("SettingsDialog", "Video Decoder")

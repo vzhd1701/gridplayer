@@ -30,6 +30,7 @@ from gridplayer.utils.app_dir import get_app_data_dir
 from gridplayer.utils.cookies import cookie_store, same_cookies
 from gridplayer.utils.keymap import default_keymap, merge_keymap
 from gridplayer.utils.qt import qt_connect, translate
+from gridplayer.version import __app_url__
 from gridplayer.widgets.defaults_form import DefaultsForm
 from gridplayer.widgets.keymap_tree_view import KeymapEditor
 from gridplayer.widgets.language_list import LanguageList
@@ -41,6 +42,11 @@ VIDEO_DRIVERS_MULTIPROCESS = (
 )
 
 MAX_VLC_PROCESSES = 64
+
+COOKIES_FAQ_URL = (
+    "https://github.com/yt-dlp/yt-dlp/wiki/FAQ#how-do-i-pass-cookies-to-yt-dlp"
+)
+COOKIES_README_URL = f"{__app_url__}#streaming-cookies"
 
 # where each entry in the section index keeps the page it opens
 SECTION_PAGE_ROLE = Qt.UserRole
@@ -246,6 +252,7 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
             (self.streamingWildcardHelpButton.clicked, self.toggle_wildcard_help),
             (self.playerRecentList.stateChanged, self.playerRecentListSize.setEnabled),
             (self.cookiesList.error, self.cookie_import_failed),
+            (self.cookiesHowToButton.clicked, self.show_cookies_howto),
         )
 
     def cookie_import_failed(self, message):
@@ -254,6 +261,43 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
     def toggle_wildcard_help(self):
         self.streamingWildcardHelp.setVisible(
             not self.streamingWildcardHelp.isVisible()
+        )
+
+    def show_cookies_howto(self):
+        """Explain the export in a box of its own.
+
+        The Cookies page is mostly table, and the table stops being a
+        table below about 125px. A procedure long enough to be worth
+        reading does not fit in what is left, and translations run
+        longer than the English it would have been measured against.
+        """
+
+        howto = translate(
+            "SettingsDialog - Cookies",
+            "<p>Export from a private window, and close it when you are"
+            " done:</p>"
+            "<ol>"
+            "<li>Open a private browsing window and log in to the site.</li>"
+            "<li>In the same tab, go to a page that will not keep talking to"
+            " the site, such as <tt>/robots.txt</tt>.</li>"
+            "<li>Export the site's cookies with a cookies.txt browser"
+            " extension.</li>"
+            "<li>Close the window <b>without logging out</b>. Logging out kills"
+            " the session you just exported.</li>"
+            "<li>Import the file here, or paste it.</li>"
+            "</ol>"
+            "<p>Sites like YouTube rotate cookies on open tabs. Export from"
+            " your normal session, keep browsing, and your copy goes stale,"
+            " usually within hours. A private window you never reopen has"
+            " nothing left to rotate them.</p>"
+            '<p><a href="{README}">Full instructions</a> &middot;'
+            ' <a href="{FAQ}">yt-dlp FAQ</a></p>',
+        ).format(README=COOKIES_README_URL, FAQ=COOKIES_FAQ_URL)
+
+        QCustomMessageBox.information(
+            self,
+            translate("SettingsDialog - Cookies", "How to export cookies"),
+            howto,
         )
 
     def keep_index_selection(self):

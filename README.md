@@ -24,6 +24,7 @@ information about the position, sound volume, loops, aspect ratio, etc.
 - Support for any video and audio format (VLC)
 - Support for (almost) any streaming
   URLs ([streamlink](https://streamlink.github.io/plugins.html) + [yt-dlp](https://github.com/yt-dlp/yt-dlp/blob/master/supportedsites.md))
+- Cookie support for streams that need a login
 - Hardware & software video decoding
 - Control video aspect, playback speed, zoom
 - Set loop fragments with frame percision
@@ -178,6 +179,36 @@ process in which GridPlayer runs. They are not recommended to use with many vide
 CPU load and application freeze.
 
 Due to OS inter-process restrictions, "Hardware SP" is the only available hardware mode in macOS.
+
+## Streaming cookies
+
+Some links won't resolve without a login, especially YouTube with it's *"Sign in to confirm you're not a
+bot"*. GridPlayer can store cookies and pass them to both yt-dlp and Streamlink.
+
+Go to **Settings -> Streaming -> Cookies** and import a `cookies.txt` file, or paste one from the clipboard.
+
+### Exporting cookies from your browser
+
+Export from a private window, and close it when you're done:
+
+1. Open a private browsing window and log in to your site (youtube in this example).
+2. In the same tab, go to `https://www.youtube.com/robots.txt` (any static page on the site).
+3. Export/copy cookies for the site with a browser extension ([FF](https://addons.mozilla.org/en-US/firefox/addon/cookies-txt/), [Chrome](https://chrome.google.com/webstore/detail/get-cookiestxt-locally/cclelndahbckbenkjhflpdbgdldlbecc)).
+4. Close the window **without logging out**. Logging out kills the session you just exported.
+5. Import the `cookies.txt` file into GridPlayer, or paste it.
+
+YouTube rotates cookies on open tabs. If you export from your normal session it will go stale within hours.
+A private window you never reopen has nothing left to rotate them. For the same reason, don't use one
+export in two places at once.
+
+More detail in the [yt-dlp FAQ](https://github.com/yt-dlp/yt-dlp/wiki/FAQ#how-do-i-pass-cookies-to-yt-dlp).
+
+### Where cookies are stored
+
+`cookies.txt` in the [user data directory](#default-data-directory-locations), in the standard Netscape format.
+
+The file isn't encrypted, so treat it like a password. Import only the domains you need, and clear the store when
+you're done with them.
 
 ## Known issues
 

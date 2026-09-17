@@ -1,3 +1,6 @@
+import re
+from pathlib import Path
+
 import pytest
 from PyQt5.QtCore import QEvent, Qt
 from PyQt5.QtWidgets import QApplication
@@ -7,6 +10,8 @@ from gridplayer.dialogs.settings import SettingsDialog
 from gridplayer.utils.cookies import CookieStore, parse_cookies
 
 NETSCAPE_HEADER = "# Netscape HTTP Cookie File\n"
+
+README = Path(__file__).resolve().parents[1] / "README.md"
 
 FOREVER = 4102444800
 
@@ -153,3 +158,78 @@ class TestNotRewritingForNothing:
         dialog.save_cookies()
 
         assert not store.path.exists()
+
+
+class TestTheHowTo:
+    """The export procedure is the thing that actually makes YouTube work."""
+
+    @pytest.fixture
+    def shown(self, monkeypatch):
+        seen = {}
+
+        monkeypatch.setattr(
+            settings_dialog.QCustomMessageBox,
+            "information",
+            classmethod(
+                lambda cls, parent, title, text: seen.update(title=title, text=text)
+            ),
+        )
+
+        return seen
+
+    def test_the_question_mark_opens_it(self, dialog, shown):
+        dialog.cookiesHowToButton.click()
+
+        assert shown["title"] == "How to export cookies"
+
+    def test_it_says_to_close_the_window_rather_than_log_out(self, dialog, shown):
+        """Logging out invalidates the session that was just exported."""
+
+        dialog.cookiesHowToButton.click()
+
+        assert "without logging out" in shown["text"]
+
+    def test_it_links_to_the_upstream_faq_and_to_our_own_readme(self, dialog, shown):
+        dialog.cookiesHowToButton.click()
+
+        assert settings_dialog.COOKIES_FAQ_URL in shown["text"]
+        assert settings_dialog.COOKIES_README_URL in shown["text"]
+        assert "{" not in shown["text"]
+
+    def test_the_readme_link_points_at_a_heading_that_exists(self):
+        """Renaming the heading would leave the link landing on nothing.
+
+        GitHub answers a stale anchor with the top of the page rather
+        than an error, so this would otherwise go unnoticed.
+        """
+
+        anchor = settings_dialog.COOKIES_README_URL.split("#", 1)[1]
+        headings = re.findall(r"^#+ (.+)$", README.read_text(encoding="utf-8"), re.M)
+
+        assert anchor in [h.lower().replace(" ", "-") for h in headings]
+
+    def test_the_steps_name_no_particular_site(self, dialog, shown):
+        """The advice holds for anything behind a login.
+
+        YouTube is the usual reason to reach for this, so it earns a
+        mention as an example, but not a place in the instructions.
+        """
+
+        dialog.cookiesHowToButton.click()
+
+        steps = shown["text"].split("<ol>")[1].split("</ol>")[0]
+
+        assert "youtube" not in steps.lower()
+        assert "YouTube" in shown["text"]
+
+    def test_it_does_not_live_inline_on_the_page(self, dialog, shown):
+        """Folded into the page it would be cut off.
+
+        The wildcard help on the resolver page can fold out because the
+        list under it shrinks to nothing without much loss. This page is
+        mostly table, the table stops being one below about 125px, and
+        the procedure wants roughly 600px. Whoever tries the inline
+        version again should fail here rather than in a screenshot.
+        """
+
+        assert not hasattr(dialog, "cookiesHowTo")
