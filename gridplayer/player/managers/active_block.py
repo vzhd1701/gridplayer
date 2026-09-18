@@ -4,7 +4,11 @@ from PyQt5.QtCore import QEvent, pyqtSignal
 from PyQt5.QtGui import QCursor
 
 from gridplayer.dialogs.crop import SetCropDialog
-from gridplayer.models.stream import STREAM_QUALITY_AUTO
+from gridplayer.models.stream import (
+    STREAM_QUALITY_AUDIO_ONLY,
+    STREAM_QUALITY_AUTO,
+    STREAM_QUALITY_BEST,
+)
 from gridplayer.params.static import AudioTrackMode
 from gridplayer.player.managers.base import ManagerBase
 from gridplayer.utils.qt import is_modal_open, translate
@@ -208,59 +212,85 @@ class ActiveBlockManager(ManagerBase):
         # and only one of them is the one being played
         ladder = self._ctx.active_block.stream_ladder
 
-        video_streams = ladder.video_streams
-        audio_only_streams = ladder.audio_only_streams
+        playing = self._ctx.active_block.stream_quality_playing
 
-        streams = [
-            _stream_menu_item(quality)
-            for quality, stream in reversed(list(video_streams.items()))
+        # a ladder is stored worst first, and a menu of it reads the other way
+        video_rungs = [
+            _stream_menu_item(quality, is_playing=quality == playing)
+            for quality in reversed(list(ladder.video_streams))
+        ]
+        audio_rungs = [
+            _stream_menu_item(quality, is_playing=quality == playing)
+            for quality in reversed(list(ladder.audio_only_streams))
         ]
 
-        if streams:
-            streams = [
-                self._auto_stream_menu_item(),
-                _quality_adapt_delay_menu_item(),
-                "---",
-                *streams,
-            ]
+        return _separated(
+            self._standing_quality_items(
+                has_video=bool(video_rungs), has_audio=bool(audio_rungs)
+            ),
+            video_rungs,
+            audio_rungs,
+        )
 
-        audio_only_streams = [
-            _stream_menu_item(quality)
-            for quality, stream in reversed(list(audio_only_streams.items()))
-        ]
+    def _standing_quality_items(self, has_video: bool, has_audio: bool) -> list:
+        """The choices that name what to pick rather than which rung.
 
-        if audio_only_streams:
-            if streams:
-                streams += ["---"]
-            streams += audio_only_streams
+        One of these stays chosen from one reload to the next, so it has
+        to be on the menu even where this ladder cannot honour it. A
+        choice left off the menu while it is still in force is a menu
+        that looks like nothing is chosen at all, and the pane then has
+        nowhere left to say why it is playing what it is playing.
 
-        return streams
+        Where there are no video rungs the three of them all come to the
+        same rung, so only the one that was asked for is worth offering.
+        """
 
-    def _auto_stream_menu_item(self):
-        title = translate("Actions", "Auto")
+        wanted = (
+            (STREAM_QUALITY_AUTO, translate("Actions", "Auto"), has_video),
+            (STREAM_QUALITY_BEST, translate("Actions", "Best"), has_video),
+            (STREAM_QUALITY_AUDIO_ONLY, translate("Actions", "Audio Only"), has_audio),
+        )
+
+        items = []
+
+        for quality, title, is_on_offer in wanted:
+            if not (is_on_offer or self._is_quality_chosen(quality)):
+                continue
+
+            items.append(self._standing_quality_menu_item(quality, title))
+
+            # the wait belongs with the switch that makes it matter, and
+            # there is nothing for a pane to adapt to without video rungs
+            if quality == STREAM_QUALITY_AUTO and has_video:
+                items.append(_quality_adapt_delay_menu_item())
+
+        return items
+
+    def _standing_quality_menu_item(self, quality: str, title: str):
+        """A rung asked for by what it is rather than by name.
+
+        The name the choice lands on is the one thing it does not say, and
+        that name is the whole list underneath, so the menu is the only
+        place the pane ever admits which rung it settled on. That goes
+        double for a choice this ladder could not honour, where the rung
+        named here is the only sign that it could not.
+        """
 
         playing = self._ctx.active_block.stream_quality_playing
 
-        is_auto = (
-            self._ctx.active_block.video_params.stream_quality == STREAM_QUALITY_AUTO
-        )
-
-        if is_auto and playing:
-            # the whole point of auto is that the rung is not the user's
-            # choice, so the menu is the only place it is ever spelled out
+        if self._is_quality_chosen(quality) and playing:
             title = f"{title} ({playing})"
 
         return {
             "title": title,
             "icon": "empty",
-            "func": ("active", "switch_stream_quality", STREAM_QUALITY_AUTO),
-            "check_if": (
-                "is_active_param_set_to",
-                "stream_quality",
-                STREAM_QUALITY_AUTO,
-            ),
+            "func": ("active", "switch_stream_quality", quality),
+            "check_if": ("is_active_param_set_to", "stream_quality", quality),
             "show_if": "is_active_multistream",
         }
+
+    def _is_quality_chosen(self, quality: str) -> bool:
+        return self._ctx.active_block.video_params.stream_quality == quality
 
     def menu_generator_video_track(self):
         if self.is_no_active_block or not self._ctx.active_block.video_tracks:
@@ -563,6 +593,23 @@ def _track_description(track, language_name_: str | None) -> str | None:
     return None if description.casefold() in said_already else description
 
 
+def _separated(*groups) -> list:
+    """The groups that have anything in them, with a line between them."""
+
+    menu = []
+
+    for group in groups:
+        if not group:
+            continue
+
+        if menu:
+            menu.append("---")
+
+        menu += group
+
+    return menu
+
+
 def _quality_adapt_delay_menu_item():
     """Setting the wait belongs next to the switch that makes it matter."""
 
@@ -579,10 +626,19 @@ def _quality_adapt_delay_menu_item():
     }
 
 
-def _stream_menu_item(quality: str):
+def _stream_menu_item(quality: str, is_playing: bool = False):
+    """One rung of the ladder, marked where it is the one on screen.
+
+    Being chosen and being played are not the same thing here, and the
+    menu shows them apart: the choice is the row with the background
+    behind it, and this is the row it came to. A standing choice names
+    no rung, so without this the list has nothing to say about which of
+    them answered it.
+    """
+
     return {
         "title": quality,
-        "icon": "empty",
+        "icon": "play" if is_playing else "empty",
         "func": ("active", "switch_stream_quality", quality),
         "check_if": ("is_active_param_set_to", "stream_quality", quality),
         "show_if": "is_active_multistream",

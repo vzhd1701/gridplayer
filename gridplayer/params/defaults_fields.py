@@ -219,9 +219,7 @@ def _stream_qualities() -> dict:
     named = {
         "auto": _t("Auto (fit to pane)"),
         "best": _t("Best"),
-        "worst": _t("Worst"),
-        "best_audio_only": _t("Best (Audio Only)"),
-        "worst_audio_only": _t("Worst (Audio Only)"),
+        "best_audio_only": _t("Audio Only"),
     }
     codes = (
         "2160p",

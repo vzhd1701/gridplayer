@@ -21,9 +21,18 @@ class StreamSessionOpts:
 # VLC opens with its "adaptive" demuxer
 ADAPTIVE_PROTOCOLS = frozenset({"hls", "hls_proxy", "dash", "http_hls"})
 
-# a standing instruction to fit the stream to the pane rather than a rung of
-# the quality ladder, so it is not resolved away the way "best" is
+# standing instructions: what to pick, rather than which rung was picked.
+# A ladder is rebuilt whenever a pane reloads, and the rungs are named by
+# whatever the service called its formats that day, so a choice kept as a
+# rung name is a choice that quietly stops meaning the same thing. These
+# are kept as they were asked for and answered again each time.
 STREAM_QUALITY_AUTO = "auto"
+STREAM_QUALITY_BEST = "best"
+STREAM_QUALITY_AUDIO_ONLY = "best_audio_only"
+
+STANDING_QUALITIES = frozenset(
+    {STREAM_QUALITY_AUTO, STREAM_QUALITY_BEST, STREAM_QUALITY_AUDIO_ONLY}
+)
 
 
 @dataclass(frozen=True)
@@ -251,6 +260,10 @@ class Streams:
         return self.best
 
     def by_quality(self, quality: str) -> tuple[str, Stream]:
+        # the worst ones are no longer offered anywhere, but they are still
+        # in playlists and settings files that were written while they
+        # were, and reading one of those as "best" would answer someone
+        # who asked for the cheapest rung with the dearest one
         standard_quality_map = {
             "best": self.best,
             "worst": self.worst,

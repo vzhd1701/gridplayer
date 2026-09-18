@@ -73,3 +73,31 @@ def test_a_single_rung_is_the_only_answer_however_small_the_pane():
     quality, _ = _streams("1080p").fit_to_height(50)
 
     assert quality == "1080p"
+
+
+@pytest.mark.parametrize(
+    ("wanted", "expected"),
+    [
+        ("best", "1080p"),
+        ("worst", "240p"),
+        ("best_audio_only", "audio hi"),
+        ("worst_audio_only", "audio lo"),
+    ],
+)
+def test_a_stored_choice_is_still_understood_after_it_stopped_being_offered(
+    wanted, expected
+):
+    """The worst rungs left the menus, not the playlists already naming them.
+
+    Reading one of those as "best" would answer someone who asked for the
+    cheapest rung with the dearest one, which is the opposite of what they
+    picked it for.
+    """
+
+    streams = _streams(
+        "audio lo", "240p", "1080p", "audio hi", audio_only=("audio lo", "audio hi")
+    )
+
+    quality, _ = streams.by_quality(wanted)
+
+    assert quality == expected

@@ -8,7 +8,13 @@ import pytest
 from PyQt5.QtCore import QSettings
 from PyQt5.QtWidgets import QApplication
 
-from gridplayer.models.stream import STREAM_QUALITY_AUTO, Stream, Streams
+from gridplayer.models.stream import (
+    STREAM_QUALITY_AUDIO_ONLY,
+    STREAM_QUALITY_AUTO,
+    STREAM_QUALITY_BEST,
+    Stream,
+    Streams,
+)
 from gridplayer.models.video import Video
 from gridplayer.settings import Settings
 from gridplayer.widgets.video_block import VideoBlock
@@ -25,13 +31,18 @@ def _isolated_settings(tmp_path):
     settings.settings = QSettings(str(tmp_path / "test.ini"), QSettings.IniFormat)
 
 
-def _streams():
-    return Streams(
-        {
-            quality: Stream(url=f"http://host/{quality}", protocol="http")
-            for quality in ("360p", "720p", "1080p")
-        }
-    )
+def _streams(with_audio=False, audio_name="Audio 129kbps"):
+    streams = {
+        quality: Stream(url=f"http://host/{quality}", protocol="http")
+        for quality in ("360p", "720p", "1080p")
+    }
+
+    if with_audio:
+        streams[audio_name] = Stream(
+            url="http://host/audio", protocol="http", is_audio_only=True
+        )
+
+    return Streams(streams)
 
 
 DELAY_MS = 15000
@@ -166,10 +177,77 @@ def test_auto_survives_the_rung_it_picked(mocker):
 def test_a_rung_picked_by_hand_is_recorded_as_the_choice(mocker):
     block = _block(mocker)
 
-    VideoBlock.load_stream_quality(block, "best")
+    VideoBlock.load_stream_quality(block, "720p")
 
-    assert block.video_params.stream_quality == "1080p"
+    assert block.video_params.stream_quality == "720p"
+    assert block._stream_quality_playing == "720p"
+
+
+def test_best_survives_the_rung_it_picked(mocker):
+    block = _block(mocker)
+
+    VideoBlock.load_stream_quality(block, STREAM_QUALITY_BEST)
+
+    assert block.video_params.stream_quality == STREAM_QUALITY_BEST
     assert block._stream_quality_playing == "1080p"
+
+
+def test_audio_only_survives_the_rung_it_picked(mocker):
+    block = _block(mocker)
+    block.streams = _streams(with_audio=True)
+    block.stream_ladder = block.streams
+
+    VideoBlock.load_stream_quality(block, STREAM_QUALITY_AUDIO_ONLY)
+
+    assert block.video_params.stream_quality == STREAM_QUALITY_AUDIO_ONLY
+    assert block._stream_quality_playing == "Audio 129kbps"
+
+
+def test_best_is_asked_again_of_a_ladder_that_has_since_changed(mocker):
+    """The point of keeping the instruction rather than the rung it named.
+
+    A service renames and drops formats between one resolve and the next,
+    and a rung name that is no longer on the ladder falls through to
+    whatever _guess_quality can make of it.
+    """
+
+    block = _block(mocker)
+
+    VideoBlock.load_stream_quality(block, STREAM_QUALITY_BEST)
+
+    block.streams = Streams(
+        {
+            quality: Stream(url=f"http://host/{quality}", protocol="http")
+            for quality in ("480p", "1440p")
+        }
+    )
+    block.stream_ladder = block.streams
+
+    VideoBlock.load_stream_quality(block, block.video_params.stream_quality)
+
+    assert block._stream_quality_playing == "1440p"
+
+
+def test_audio_only_is_not_answered_with_video_after_a_reload(mocker):
+    """The same, where falling back to the best rung is a mode change.
+
+    An audio-only pane whose format name went missing used to come back
+    playing video, which is not a worse answer to the question but an
+    answer to a different one.
+    """
+
+    block = _block(mocker)
+    block.streams = _streams(with_audio=True)
+    block.stream_ladder = block.streams
+
+    VideoBlock.load_stream_quality(block, STREAM_QUALITY_AUDIO_ONLY)
+
+    block.streams = _streams(with_audio=True, audio_name="Audio 92kbps [opus]")
+    block.stream_ladder = block.streams
+
+    VideoBlock.load_stream_quality(block, block.video_params.stream_quality)
+
+    assert block._stream_quality_playing == "Audio 92kbps [opus]"
 
 
 def _adapt_delay_action(stream_quality, delay_txt="15 second(s)"):

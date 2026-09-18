@@ -17,7 +17,12 @@ from gridplayer.dialogs.input_dialog import (
 )
 from gridplayer.dialogs.rename_dialog import QVideoRenameDialog
 from gridplayer.exceptions import PlayerException
-from gridplayer.models.stream import STREAM_QUALITY_AUTO, StreamOrigin, Streams
+from gridplayer.models.stream import (
+    STANDING_QUALITIES,
+    STREAM_QUALITY_AUTO,
+    StreamOrigin,
+    Streams,
+)
 from gridplayer.models.video import (
     Video,
     VideoBlockMime,
@@ -1532,9 +1537,11 @@ class VideoBlock(QWidget):
         else:
             quality, stream = ladder.by_quality(wanted_quality)
 
-        # "auto" outlives the rung it picked, where "best" and the rest are
-        # resolved into one and never asked again
-        self.video_params.stream_quality = STREAM_QUALITY_AUTO if is_auto else quality
+        # a standing instruction outlives the rung it picked, where a rung
+        # chosen by name is kept as the name it was chosen by
+        self.video_params.stream_quality = (
+            wanted_quality if wanted_quality in STANDING_QUALITIES else quality
+        )
         self._stream_quality_playing = quality
 
         # switching quality resets the block, which leaves it without a driver
