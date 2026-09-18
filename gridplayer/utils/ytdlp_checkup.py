@@ -20,6 +20,7 @@ import dataclasses
 import logging
 import re
 import urllib.error
+import urllib.parse
 import urllib.request
 from collections.abc import Callable
 from datetime import date, datetime, timezone
@@ -30,6 +31,11 @@ from yt_dlp.globals import supported_js_runtimes
 from yt_dlp.version import __version__ as YT_DLP_VERSION
 
 from gridplayer.utils.cookies import RewindingBuffer, merged_with
+from gridplayer.utils.network import (
+    DEFAULT_USER_AGENT,
+    network_opts,
+    ytdl_network_opts,
+)
 from gridplayer.utils.qt import translate
 
 TRANSLATION_CONTEXT = "yt-dlp Checkup"
@@ -82,12 +88,9 @@ BYTES_IN_KIB = 1024
 
 HTTP_FORBIDDEN = 403
 
-# what a site sends a browser; a bare Python user agent is turned away by
-# enough of them to be worth not being one
-BROWSER_USER_AGENT = (
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
-    " (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36"
-)
+# what urllib can be pointed at; a SOCKS proxy is beyond it, and the
+# checks that use it say so rather than quietly going around
+URLLIB_PROXY_SCHEMES = frozenset({"http", "https"})
 
 
 class CheckStatus(Enum):
@@ -426,7 +429,12 @@ class YouTubeCheckup:
         leave a mark on what is stored.
         """
 
-        options = {"logger": logger, "socket_timeout": REQUEST_TIMEOUT}
+        # the network page last, so a timeout set there is the one used
+        options = {
+            "logger": logger,
+            "socket_timeout": REQUEST_TIMEOUT,
+            **ytdl_network_opts(),
+        }
 
         jar = self._jar_in_use
 
@@ -438,7 +446,7 @@ class YouTubeCheckup:
 
     def _fetch_home_page(self) -> str:
         request = urllib.request.Request(
-            YOUTUBE_HOME_URL, headers={"User-Agent": BROWSER_USER_AGENT}
+            YOUTUBE_HOME_URL, headers={"User-Agent": _user_agent()}
         )
 
         return self._read(request, limit=HOME_PAGE_LIMIT).decode(
@@ -447,7 +455,7 @@ class YouTubeCheckup:
 
     def _fetch_sample(self, sample_format) -> tuple[int, int]:
         headers = {
-            "User-Agent": BROWSER_USER_AGENT,
+            "User-Agent": _user_agent(),
             **(sample_format.get("http_headers") or {}),
             "Range": f"bytes=0-{SAMPLE_BYTES - 1}",
         }
@@ -615,6 +623,16 @@ def _is_youtube_domain(domain: str) -> bool:
     )
 
 
+def _user_agent() -> str:
+    """What the checkup's own requests call themselves.
+
+    Whatever playback would use, because a checkup that asks in some
+    other way is reporting on a request nobody is going to make.
+    """
+
+    return network_opts().user_agent or DEFAULT_USER_AGENT
+
+
 def _opener(jar):
     """A URL opener that sends the stored cookies and keeps none.
 
@@ -625,7 +643,39 @@ def _opener(jar):
 
     handlers = [urllib.request.HTTPCookieProcessor(jar)] if jar is not None else []
 
+    proxy_handler = _proxy_handler()
+
+    if proxy_handler is not None:
+        handlers.append(proxy_handler)
+
     return urllib.request.build_opener(*handlers)
+
+
+def _proxy_handler():
+    """The proxy these requests go through, where the settings name one.
+
+    Nothing at all leaves urllib to find one for itself, which is what
+    going by the machine comes to. A proxy it cannot speak to is not
+    quietly gone around: a checkup that reports on a connection playback
+    would never make is worse than one that says it could not look.
+    """
+
+    opts = network_opts()
+
+    if opts.use_env:
+        return None
+
+    if not opts.proxy:
+        return urllib.request.ProxyHandler({})
+
+    scheme = urllib.parse.urlparse(opts.proxy).scheme.lower()
+
+    if scheme not in URLLIB_PROXY_SCHEMES:
+        raise urllib.error.URLError(
+            _t("this check cannot go through a {SCHEME} proxy").format(SCHEME=scheme)
+        )
+
+    return urllib.request.ProxyHandler({"http": opts.proxy, "https": opts.proxy})
 
 
 def _sample_format(video_info):

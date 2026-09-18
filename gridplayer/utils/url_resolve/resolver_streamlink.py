@@ -6,7 +6,7 @@ from streamlink.stream.hls import HLSStream, MuxedHLSStream
 
 from gridplayer.models.stream import HashableDict, Stream, Streams, StreamSessionOpts
 from gridplayer.settings import Settings
-from gridplayer.utils.cookies import apply_to_streamlink
+from gridplayer.utils.network import configure_session
 from gridplayer.utils.url_resolve.resolver_base import ResolverBase
 from gridplayer.utils.url_resolve.static import NoResolverPlugin
 from gridplayer.utils.url_resolve.stream_detect import (
@@ -59,7 +59,7 @@ class StreamlinkResolver(ResolverBase):
     def _session(self) -> Streamlink:
         session = Streamlink()
 
-        apply_to_streamlink(session)
+        configure_session(session)
 
         return session
 

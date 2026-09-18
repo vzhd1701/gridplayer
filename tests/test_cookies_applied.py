@@ -1,7 +1,6 @@
 import io
 
 import pytest
-from requests.cookies import RequestsCookieJar
 from yt_dlp.cookies import YoutubeDLCookieJar
 
 from gridplayer.models.stream import HashableDict, Stream, StreamSessionOpts
@@ -20,32 +19,19 @@ from gridplayer.utils.url_resolve import (
     stream_detect,
 )
 from gridplayer.utils.url_resolve.resolver_base import DirectResolver
-from tests.conftest import FakeCookieSettings
+from tests.conftest import FakeSettings
+from tests.conftest import FakeStreamlinkSession as _FakeSession
 
 NETSCAPE_HEADER = "# Netscape HTTP Cookie File\n"
 
 COOKIE_LINE = ".youtube.com\tTRUE\t/\tFALSE\t0\tSID\tabc\n"
 
 
-class _FakeSession:
-    """Enough of a Streamlink session for cookies and headers to land on.
-
-    And for a stream to be built against, which asks it to vet the
-    arguments the request will be made with.
-    """
-
-    def __init__(self):
-        self.http = type("_Http", (), {})()
-        self.http.cookies = RequestsCookieJar()
-        self.http.headers = {}
-        self.http.valid_request_args = dict
-
-
 @pytest.fixture
 def settings(monkeypatch):
     values = {"cookies/enabled": True, "cookies/allow_update": True}
 
-    monkeypatch.setattr(cookies_module, "Settings", lambda: FakeCookieSettings(values))
+    monkeypatch.setattr(cookies_module, "Settings", lambda: FakeSettings(values))
 
     return values
 

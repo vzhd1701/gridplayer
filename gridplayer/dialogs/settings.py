@@ -22,6 +22,8 @@ from gridplayer.params.languages import LANGUAGES
 from gridplayer.params.static import (
     ColorScheme,
     HWCropBorderOffset,
+    IPVersion,
+    ProxyMode,
     URLResolver,
     VideoDriver,
 )
@@ -44,6 +46,10 @@ VIDEO_DRIVERS_MULTIPROCESS = (
 )
 
 MAX_VLC_PROCESSES = 64
+
+# a request nobody is waiting on any more; longer than this and the
+# video has given up on its own account
+MAX_TIMEOUT_SEC = 600
 
 COOKIES_FAQ_URL = (
     "https://github.com/yt-dlp/yt-dlp/wiki/FAQ#how-do-i-pass-cookies-to-yt-dlp"
@@ -136,6 +142,12 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
             "streaming/resolver_priority_patterns": self.streamingResolverPriorityPatterns,
             "cookies/enabled": self.cookiesEnabled,
             "cookies/allow_update": self.cookiesAllowUpdate,
+            "network/proxy_mode": self.networkProxyMode,
+            "network/proxy_url": self.networkProxyUrl,
+            "network/user_agent": self.networkUserAgent,
+            "network/ip_version": self.networkIPVersion,
+            "network/timeout": self.networkTimeout,
+            "network/verify_tls": self.networkVerifyTLS,
         }
 
         self.ui_customize()
@@ -189,6 +201,7 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
             self.page_defaults_video,
             self.page_streaming_resolution,
             self.page_streaming_cookies,
+            self.page_streaming_network,
             self.page_advanced_decoder,
             self.page_advanced_logging,
         )
@@ -222,6 +235,8 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
         self.fill_colorScheme()
         self.fill_streamingResolverPriority()
         self.fill_hwCropBorder()
+        self.fill_networkProxyMode()
+        self.fill_networkIPVersion()
 
     def ui_set_limits(self):
         self.playerVideoDriverPlayers.setRange(1, MAX_VLC_PROCESSES)
@@ -230,6 +245,7 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
         self.logLimitBackups.setRange(1, 1000)
         self.timeoutVideoInit.setRange(1, 1000)
         self.playerRecentListSize.setRange(1, 100)
+        self.networkTimeout.setRange(0, MAX_TIMEOUT_SEC)
 
     def ui_customize_dynamic(self):
         self.driver_selected(self.playerVideoDriver.currentIndex())
@@ -238,6 +254,7 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
         self.logLimitBackups.setEnabled(self.logLimit.isChecked())
         self.streamingWildcardHelp.setVisible(False)
         self.playerRecentListSize.setEnabled(self.playerRecentList.isChecked())
+        self.proxy_mode_selected(self.networkProxyMode.currentIndex())
 
         self.switch_page(None)
         self.adjustSize()
@@ -256,6 +273,7 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
             (self.cookiesList.error, self.cookie_import_failed),
             (self.cookiesHowToButton.clicked, self.show_cookies_howto),
             (self.cookiesTestButton.clicked, self.run_cookies_checkup),
+            (self.networkProxyMode.currentIndexChanged, self.proxy_mode_selected),
         )
 
     def run_cookies_checkup(self):
@@ -272,6 +290,13 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
         )
 
         YtDlpCheckupDialog(self, checkup).exec_()
+
+    def proxy_mode_selected(self, idx):
+        """Only a proxy of the user's own has an address to type."""
+
+        is_custom = self.networkProxyMode.itemData(idx) is ProxyMode.CUSTOM
+
+        self.networkProxyUrl.setEnabled(is_custom)
 
     def cookie_import_failed(self, message):
         QCustomMessageBox.critical(self, translate("Dialog", "Error"), message)
@@ -415,6 +440,24 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
         }
 
         _fill_combo_box(self.streamingResolverPriority, resolvers)
+
+    def fill_networkProxyMode(self):
+        modes = {
+            ProxyMode.SYSTEM: self.tr("System"),
+            ProxyMode.NONE: self.tr("None"),
+            ProxyMode.CUSTOM: self.tr("Custom"),
+        }
+
+        _fill_combo_box(self.networkProxyMode, modes)
+
+    def fill_networkIPVersion(self):
+        versions = {
+            IPVersion.AUTO: self.tr("Automatic"),
+            IPVersion.V4: self.tr("IPv4 only"),
+            IPVersion.V6: self.tr("IPv6 only"),
+        }
+
+        _fill_combo_box(self.networkIPVersion, versions)
 
     def fill_hwCropBorder(self):
         values = {

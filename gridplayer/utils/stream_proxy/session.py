@@ -4,7 +4,7 @@ from types import MappingProxyType
 from streamlink import Streamlink
 
 from gridplayer.models.stream import Stream, StreamSessionOpts
-from gridplayer.utils.cookies import apply_to_streamlink, cookies_stamp
+from gridplayer.utils.network import configure_session, session_stamp
 from gridplayer.utils.stream_proxy.wrappers import (
     DASHManifestProxy,
     DASHPlaylistStream,
@@ -34,14 +34,13 @@ class StreamSession:
         self._server = server
 
         self._session = Streamlink()
-        self._session.http.headers.update(stream_session.session_headers)
 
-        self._cookies_stamp = cookies_stamp()
+        self._settings_stamp = session_stamp()
 
-        apply_to_streamlink(self._session)
+        self._apply_settings()
 
     def get_stream(self, stream: Stream):
-        self._sync_cookies()
+        self._sync_settings()
 
         if stream.audio_tracks:
             self._log.debug("Stream has separate audio, using HLSMuxedStream")
@@ -49,24 +48,37 @@ class StreamSession:
 
         return self._get_solo_stream(stream)
 
-    def _sync_cookies(self) -> None:
-        """Pick up cookies that were edited since this session was made.
+    def _sync_settings(self) -> None:
+        """Pick up settings that were edited since this session was made.
 
         A session is kept for as long as the proxy runs and shared by every
-        stream from the same service, so a login added or taken away in
-        settings would otherwise not be noticed until a restart.
+        stream from the same service, so a login added or taken away, or a
+        proxy switched on, would otherwise not be noticed until a restart.
         """
 
-        stamp = cookies_stamp()
+        stamp = session_stamp()
 
-        if stamp == self._cookies_stamp:
+        if stamp == self._settings_stamp:
             return
 
-        self._log.debug("Cookies were edited, applying them to the session")
+        self._log.debug("Settings were edited, applying them to the session")
 
-        self._cookies_stamp = stamp
+        self._settings_stamp = stamp
 
-        apply_to_streamlink(self._session)
+        self._apply_settings()
+
+    def _apply_settings(self) -> None:
+        """The settings, and then what the resolver said on top of them.
+
+        The headers a format came with go on last and stay the last word.
+        A site signs an address for the user agent that asked it for one,
+        so a shared default laid over that would be asking for the bytes
+        as somebody else.
+        """
+
+        configure_session(self._session)
+
+        self._session.http.headers.update(self._stream_session.session_headers)
 
     def _get_solo_stream(self, stream: Stream):
         wrapper = self._solo_wrapper(stream)

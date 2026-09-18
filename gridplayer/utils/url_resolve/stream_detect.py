@@ -5,7 +5,7 @@ import re
 from streamlink import Streamlink
 from streamlink.stream.http import HTTPStream
 
-from gridplayer.utils.cookies import apply_to_streamlink
+from gridplayer.utils.network import configure_session
 from gridplayer.utils.stream_proxy.mp4 import is_fragmented
 from gridplayer.utils.url_resolve.static import BadURLException
 
@@ -28,10 +28,13 @@ def _session_for(
 
     session = Streamlink()
 
+    configure_session(session)
+
+    # last, because a format's own headers are the last word: a site
+    # signs an address for the user agent that asked it for one, and a
+    # shared default is only ever a default
     if session_headers:
         session.http.headers.update(session_headers)
-
-    apply_to_streamlink(session)
 
     return session
 

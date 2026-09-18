@@ -619,23 +619,24 @@ def test_two_manifests_are_two_rungs():
 
 
 @pytest.fixture
-def has_cookies(mocker):
-    """Whether the jar holds a login for the host the manifest is on.
+def must_relay(mocker):
+    """Whether fetching this manifest takes more than VLC can be told.
 
-    What counts as holding one is settled in test_cookies_applied; here
-    it is only the answer that matters.
+    A stored login for the host, or a network setting VLC cannot carry
+    out. What counts as either is settled in test_cookies_applied and
+    test_network_opts; here it is only the answer that matters.
     """
 
     return mocker.patch(
-        "gridplayer.utils.url_resolve.resolver_yt_dlp.has_cookies_for",
+        "gridplayer.utils.url_resolve.resolver_yt_dlp.needs_relay",
         return_value=False,
     )
 
 
-def test_live_dash_behind_a_login_is_fetched_by_the_proxy(has_cookies):
+def test_live_dash_behind_a_login_is_fetched_by_the_proxy(must_relay):
     """VLC cannot be told a cookie, so it cannot be left to fetch this."""
 
-    has_cookies.return_value = True
+    must_relay.return_value = True
 
     resolver = _live(_audio_fmt(), _dash_fmt("720p", height=720))
 
@@ -646,7 +647,7 @@ def test_live_dash_behind_a_login_is_fetched_by_the_proxy(has_cookies):
     assert video.session is not None
 
 
-def test_live_dash_nothing_is_stored_for_is_still_left_to_vlc(has_cookies):
+def test_live_dash_nothing_is_stored_for_is_still_left_to_vlc(must_relay):
     """The relay would buy nothing and cost a hop on every segment."""
 
     resolver = _live(_audio_fmt(), _dash_fmt("720p", height=720))
@@ -656,10 +657,10 @@ def test_live_dash_nothing_is_stored_for_is_still_left_to_vlc(has_cookies):
     assert video.protocol == "direct"
 
 
-def test_recorded_dash_is_served_as_a_playlist_either_way(has_cookies):
+def test_recorded_dash_is_served_as_a_playlist_either_way(must_relay):
     """Its segments are known here, so the proxy already fetches them."""
 
-    has_cookies.return_value = True
+    must_relay.return_value = True
 
     resolver = _resolver(
         {"is_live": False, "formats": [_audio_fmt(), _dash_fmt("720p", height=720)]}
@@ -670,10 +671,10 @@ def test_recorded_dash_is_served_as_a_playlist_either_way(has_cookies):
     assert video.protocol == "dash"
 
 
-def test_a_relayed_live_ladder_is_still_only_one_rung(has_cookies):
+def test_a_relayed_live_ladder_is_still_only_one_rung(must_relay):
     """Who fetches the manifest does not make its rungs any more real."""
 
-    has_cookies.return_value = True
+    must_relay.return_value = True
 
     resolver = _live(
         _audio_fmt(),

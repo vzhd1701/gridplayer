@@ -210,6 +210,33 @@ More detail in the [yt-dlp FAQ](https://github.com/yt-dlp/yt-dlp/wiki/FAQ#how-do
 The file isn't encrypted, so treat it like a password. Import only the domains you need, and clear the store when
 you're done with them.
 
+## Network settings
+
+A proxy, an address family and a user agent shared by everything GridPlayer fetches with: yt-dlp,
+Streamlink and the player itself.
+
+Go to **Settings -> Streaming -> Network**.
+
+| Setting | What it does |
+| --- | --- |
+| **Proxy** | `System` follows the machine's own proxy settings. `None` connects directly, ignoring them. `Custom` takes an address of your own. |
+| **Proxy address** | `http://host:port`, or `socks5h://host:port` to resolve names at the proxy rather than locally. |
+| **Connect over** | Force IPv4 or IPv6 instead of letting the system choose. |
+| **Timeout** | How long to wait on a request. `Auto` leaves each tool on its own default. |
+| **User agent** | How the player identifies itself. `Auto` leaves each tool on its own. A link that came with a user agent of its own keeps it. |
+| **Verify TLS certificates** | Turn off only for a proxy that signs traffic with its own certificate. |
+
+### What these apply to
+
+**http and https links only**, apart from the user agent.
+
+The player has no proxy setting it honours everywhere, no way to be held to one address family, and no
+way to be told whose certificates to trust. So when any of those is set, links stop being handed to the
+player and are fetched by GridPlayer instead, then served to the player from `127.0.0.1`.
+
+Links of other kinds — `rtsp`, `rtmp` and so on — are opened by the player itself and go out directly.
+Only the user agent reaches those. If you need those proxied too, proxy the whole machine.
+
 ## Known issues
 
 ### Linux (Snap): Error when opening a file from the mounted disk

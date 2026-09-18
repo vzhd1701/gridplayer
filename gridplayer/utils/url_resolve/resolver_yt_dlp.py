@@ -19,7 +19,8 @@ from gridplayer.models.stream import (
     StreamSessionOpts,
 )
 from gridplayer.settings import Settings
-from gridplayer.utils.cookies import has_cookies_for, ytdl_cookies
+from gridplayer.utils.cookies import ytdl_cookies
+from gridplayer.utils.network import needs_relay, ytdl_network_opts
 from gridplayer.utils.track_language import language_name
 from gridplayer.utils.url_resolve.resolver_base import ResolverBase
 from gridplayer.utils.url_resolve.static import (
@@ -126,7 +127,9 @@ class YoutubeDLResolver(ResolverBase):
     def _video_info(self):
         with (
             ytdl_cookies() as cookie_opts,
-            YoutubeDL({"logger": self._log, **cookie_opts}) as ydl,
+            YoutubeDL(
+                {"logger": self._log, **cookie_opts, **ytdl_network_opts()}
+            ) as ydl,
         ):
             try:
                 return ydl.extract_info(self.url, download=False)
@@ -381,13 +384,14 @@ def _get_stream_protocol(stream, is_live) -> str:
 def _manifest_protocol(stream) -> str:
     """Who fetches a manifest that VLC has to follow for itself.
 
-    VLC cannot be told a cookie, so a manifest whose segments need one is
-    fetched by the proxy and handed over pointing back at it. Where the
-    jar has nothing for the host, VLC is left to it: the relay would buy
-    nothing and cost a hop on every segment.
+    VLC cannot be told a cookie, nor a proxy it will honour for every
+    access module, so a manifest whose segments need either is fetched by
+    the proxy and handed over pointing back at it. Where nothing is
+    asked of the connection that VLC cannot do itself, VLC is left to
+    it: the relay would buy nothing and cost a hop on every segment.
     """
 
-    return "dash_proxy" if has_cookies_for(stream.get("url", "")) else "direct"
+    return "dash_proxy" if needs_relay(stream.get("url", "")) else "direct"
 
 
 def _is_dash_container(stream) -> bool:

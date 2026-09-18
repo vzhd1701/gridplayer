@@ -12,6 +12,7 @@ from gridplayer.multiprocess.instance_process import InstanceProcess
 from gridplayer.multiprocess.process_manager import ProcessManager
 from gridplayer.params import env
 from gridplayer.settings import Settings
+from gridplayer.utils.network import vlc_user_agent
 from gridplayer.vlc_player.libvlc import vlc
 
 # Prepare `vsnprintf` function
@@ -31,10 +32,6 @@ vsnprintf.argtypes = (
 )
 
 VLC_USER_AGENT_NAME = "Mozilla"
-VLC_USER_AGENT = (
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
-    " (KHTML, like Gecko) Chrome/99.0.7113.93 Safari/537.36"
-)
 
 
 class InstanceProcessVLC(InstanceProcess):
@@ -140,7 +137,7 @@ class InstanceVLC:
         if self.vlc_instance is None:
             raise RuntimeError("VLC failed to initialize")
 
-        self.vlc_instance.set_user_agent(VLC_USER_AGENT_NAME, VLC_USER_AGENT)
+        self.vlc_instance.set_user_agent(VLC_USER_AGENT_NAME, vlc_user_agent())
 
         self.init_logger()
 

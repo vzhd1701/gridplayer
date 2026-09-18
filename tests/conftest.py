@@ -1,11 +1,30 @@
 import time
 from threading import Thread
+from types import MappingProxyType, SimpleNamespace
 
 import pytest
 from PyQt5.QtWidgets import QApplication
+from requests.cookies import RequestsCookieJar
 
+from gridplayer.params.static import IPVersion, ProxyMode
 from gridplayer.playlist_settings import PlaylistSettings
-from gridplayer.utils import cookies
+from gridplayer.utils import cookies, network
+
+# what a real Streamlink session starts out with, where a test cares what
+# a setting cleared again leaves behind
+DEFAULT_TIMEOUT_SEC = 20.0
+
+# the network page asking for nothing, which is how it comes out of the box
+DEFAULT_NETWORK_SETTINGS = MappingProxyType(
+    {
+        "network/proxy_mode": ProxyMode.SYSTEM,
+        "network/proxy_url": "",
+        "network/user_agent": "",
+        "network/ip_version": IPVersion.AUTO,
+        "network/timeout": 0,
+        "network/verify_tls": True,
+    }
+)
 
 # what the test hosts check for before they serve anything
 LOGIN_NAME = "SID"
@@ -15,14 +34,47 @@ LOGIN = f"{LOGIN_NAME}={LOGIN_VALUE}"
 COOKIE_LIFETIME_SEC = 10000
 
 
-class FakeCookieSettings:
-    """The cookie switches, answering for themselves."""
+class FakeSettings:
+    """A page of settings, answering for itself.
+
+    Stands in for the app-wide singleton, which reads the ini the person
+    running the tests actually has.
+    """
 
     def __init__(self, values):
         self._values = values
 
     def get(self, key):
         return self._values[key]
+
+    def sync_get(self, key):
+        return self._values[key]
+
+
+class FakeStreamlinkSession:
+    """Enough of a Streamlink session for the settings to land on.
+
+    And for a stream to be built against, which asks it to vet the
+    arguments the request will be made with. What it starts out holding
+    is what a real one does, so a test can tell a setting being applied
+    from a setting being cleared again.
+    """
+
+    def __init__(self, headers=None):
+        self.http = SimpleNamespace(
+            headers=dict(headers or {}),
+            cookies=RequestsCookieJar(),
+            proxies={},
+            trust_env=True,
+            verify=True,
+            timeout=DEFAULT_TIMEOUT_SEC,
+            valid_request_args=dict,
+        )
+
+        self.options = {}
+
+    def set_option(self, key, value):
+        self.options[key] = value
 
 
 @pytest.fixture(scope="session", autouse=True)
@@ -62,6 +114,20 @@ def _no_real_cookies(tmp_path, monkeypatch):
     return store
 
 
+@pytest.fixture(autouse=True)
+def _no_real_network_settings(monkeypatch):
+    """And away from the proxy the user actually has set.
+
+    The same resolvers ask the network page whether VLC can be left to
+    fetch a URL, so a proxy configured on this machine would have them
+    resolve differently here than on one without.
+    """
+
+    monkeypatch.setattr(
+        network, "Settings", lambda: FakeSettings(DEFAULT_NETWORK_SETTINGS)
+    )
+
+
 @pytest.fixture
 def serving():
     """Run servers on their own threads for the length of a test.
@@ -98,7 +164,7 @@ def local_login(_no_real_cookies, monkeypatch):
 
     values = {"cookies/enabled": True, "cookies/allow_update": False}
 
-    monkeypatch.setattr(cookies, "Settings", lambda: FakeCookieSettings(values))
+    monkeypatch.setattr(cookies, "Settings", lambda: FakeSettings(values))
 
     expires = int(time.time()) + COOKIE_LIFETIME_SEC
 

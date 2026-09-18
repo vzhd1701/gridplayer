@@ -49,6 +49,8 @@ class Ui_SettingsDialog:
         item = QtWidgets.QListWidgetItem()
         self.section_index.addItem(item)
         item = QtWidgets.QListWidgetItem()
+        self.section_index.addItem(item)
+        item = QtWidgets.QListWidgetItem()
         font = QtGui.QFont()
         font.setBold(True)
         item.setFont(font)
@@ -310,6 +312,82 @@ class Ui_SettingsDialog:
         self.lay_cookies_footer.addWidget(self.cookiesTestButton)
         self.lay_page_streaming_cookies.addLayout(self.lay_cookies_footer)
         self.section_page.addWidget(self.page_streaming_cookies)
+        self.page_streaming_network = QtWidgets.QWidget()
+        self.page_streaming_network.setObjectName("page_streaming_network")
+        self.lay_page_streaming_network = QtWidgets.QVBoxLayout(
+            self.page_streaming_network
+        )
+        self.lay_page_streaming_network.setContentsMargins(0, 0, 0, 0)
+        self.lay_page_streaming_network.setObjectName("lay_page_streaming_network")
+        self.lay_network_form = QtWidgets.QFormLayout()
+        self.lay_network_form.setFieldGrowthPolicy(
+            QtWidgets.QFormLayout.AllNonFixedFieldsGrow
+        )
+        self.lay_network_form.setObjectName("lay_network_form")
+        self.label_network_proxy_mode = QtWidgets.QLabel(self.page_streaming_network)
+        self.label_network_proxy_mode.setObjectName("label_network_proxy_mode")
+        self.lay_network_form.setWidget(
+            0, QtWidgets.QFormLayout.LabelRole, self.label_network_proxy_mode
+        )
+        self.networkProxyMode = QtWidgets.QComboBox(self.page_streaming_network)
+        self.networkProxyMode.setObjectName("networkProxyMode")
+        self.lay_network_form.setWidget(
+            0, QtWidgets.QFormLayout.FieldRole, self.networkProxyMode
+        )
+        self.label_network_proxy_url = QtWidgets.QLabel(self.page_streaming_network)
+        self.label_network_proxy_url.setObjectName("label_network_proxy_url")
+        self.lay_network_form.setWidget(
+            1, QtWidgets.QFormLayout.LabelRole, self.label_network_proxy_url
+        )
+        self.networkProxyUrl = QtWidgets.QLineEdit(self.page_streaming_network)
+        self.networkProxyUrl.setPlaceholderText("http://host:port, socks5h://host:port")
+        self.networkProxyUrl.setObjectName("networkProxyUrl")
+        self.lay_network_form.setWidget(
+            1, QtWidgets.QFormLayout.FieldRole, self.networkProxyUrl
+        )
+        self.label_network_ip_version = QtWidgets.QLabel(self.page_streaming_network)
+        self.label_network_ip_version.setObjectName("label_network_ip_version")
+        self.lay_network_form.setWidget(
+            2, QtWidgets.QFormLayout.LabelRole, self.label_network_ip_version
+        )
+        self.networkIPVersion = QtWidgets.QComboBox(self.page_streaming_network)
+        self.networkIPVersion.setObjectName("networkIPVersion")
+        self.lay_network_form.setWidget(
+            2, QtWidgets.QFormLayout.FieldRole, self.networkIPVersion
+        )
+        self.label_network_timeout = QtWidgets.QLabel(self.page_streaming_network)
+        self.label_network_timeout.setObjectName("label_network_timeout")
+        self.lay_network_form.setWidget(
+            3, QtWidgets.QFormLayout.LabelRole, self.label_network_timeout
+        )
+        self.networkTimeout = QtWidgets.QSpinBox(self.page_streaming_network)
+        self.networkTimeout.setObjectName("networkTimeout")
+        self.lay_network_form.setWidget(
+            3, QtWidgets.QFormLayout.FieldRole, self.networkTimeout
+        )
+        self.label_network_user_agent = QtWidgets.QLabel(self.page_streaming_network)
+        self.label_network_user_agent.setObjectName("label_network_user_agent")
+        self.lay_network_form.setWidget(
+            4, QtWidgets.QFormLayout.LabelRole, self.label_network_user_agent
+        )
+        self.networkUserAgent = QtWidgets.QLineEdit(self.page_streaming_network)
+        self.networkUserAgent.setObjectName("networkUserAgent")
+        self.lay_network_form.setWidget(
+            4, QtWidgets.QFormLayout.FieldRole, self.networkUserAgent
+        )
+        self.lay_page_streaming_network.addLayout(self.lay_network_form)
+        self.networkVerifyTLS = QtWidgets.QCheckBox(self.page_streaming_network)
+        self.networkVerifyTLS.setObjectName("networkVerifyTLS")
+        self.lay_page_streaming_network.addWidget(self.networkVerifyTLS)
+        self.networkRelayNote = QtWidgets.QLabel(self.page_streaming_network)
+        self.networkRelayNote.setWordWrap(True)
+        self.networkRelayNote.setObjectName("networkRelayNote")
+        self.lay_page_streaming_network.addWidget(self.networkRelayNote)
+        spacerItem2 = QtWidgets.QSpacerItem(
+            0, 0, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Expanding
+        )
+        self.lay_page_streaming_network.addItem(spacerItem2)
+        self.section_page.addWidget(self.page_streaming_network)
         self.page_defaults_playlist = PageScrollArea()
         self.page_defaults_playlist.setFrameShape(QtWidgets.QFrame.NoFrame)
         self.page_defaults_playlist.setHorizontalScrollBarPolicy(
@@ -405,10 +483,10 @@ class Ui_SettingsDialog:
             0, QtWidgets.QFormLayout.FieldRole, self.miscHWCropBorder
         )
         self.lay_page_advanced_decoder.addLayout(self.lay_miscHWCropBorder)
-        spacerItem2 = QtWidgets.QSpacerItem(
+        spacerItem3 = QtWidgets.QSpacerItem(
             0, 0, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Expanding
         )
-        self.lay_page_advanced_decoder.addItem(spacerItem2)
+        self.lay_page_advanced_decoder.addItem(spacerItem3)
         self.section_page.addWidget(self.page_advanced_decoder)
         self.page_advanced_logging = QtWidgets.QWidget()
         self.page_advanced_logging.setObjectName("page_advanced_logging")
@@ -482,10 +560,10 @@ class Ui_SettingsDialog:
             1, QtWidgets.QFormLayout.FieldRole, self.logLevelVLC
         )
         self.lay_page_advanced_logging.addLayout(self.formLayout_5)
-        spacerItem3 = QtWidgets.QSpacerItem(
+        spacerItem4 = QtWidgets.QSpacerItem(
             0, 0, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Expanding
         )
-        self.lay_page_advanced_logging.addItem(spacerItem3)
+        self.lay_page_advanced_logging.addItem(spacerItem4)
         self.section_page.addWidget(self.page_advanced_logging)
         self.lay_main_2.addWidget(self.section_page)
         self.lay_main.addLayout(self.lay_main_2)
@@ -538,10 +616,12 @@ class Ui_SettingsDialog:
         item = self.section_index.item(9)
         item.setText(_translate("SettingsDialog", "Cookies"))
         item = self.section_index.item(10)
-        item.setText(_translate("SettingsDialog", "Advanced"))
+        item.setText(_translate("SettingsDialog", "Network"))
         item = self.section_index.item(11)
-        item.setText(_translate("SettingsDialog", "Video Decoder"))
+        item.setText(_translate("SettingsDialog", "Advanced"))
         item = self.section_index.item(12)
+        item.setText(_translate("SettingsDialog", "Video Decoder"))
+        item = self.section_index.item(13)
         item.setText(_translate("SettingsDialog", "Logging"))
         self.section_index.setSortingEnabled(__sortingEnabled)
         self.playerColorSchemeLabel.setText(
@@ -629,6 +709,52 @@ class Ui_SettingsDialog:
             )
         )
         self.cookiesTestButton.setText(_translate("SettingsDialog", "Test yt-dlp"))
+        self.label_network_proxy_mode.setText(_translate("SettingsDialog", "Proxy"))
+        self.networkProxyMode.setToolTip(
+            _translate(
+                "SettingsDialog",
+                "System follows the machine's own proxy settings. None connects directly, ignoring them.",
+            )
+        )
+        self.label_network_proxy_url.setText(
+            _translate("SettingsDialog", "Proxy address")
+        )
+        self.label_network_ip_version.setText(
+            _translate("SettingsDialog", "Connect over")
+        )
+        self.label_network_timeout.setText(_translate("SettingsDialog", "Timeout"))
+        self.networkTimeout.setToolTip(
+            _translate(
+                "SettingsDialog", "How long to wait on a request before giving up on it"
+            )
+        )
+        self.networkTimeout.setSpecialValueText(_translate("SettingsDialog", "Auto"))
+        self.networkTimeout.setSuffix(_translate("SettingsDialog", " sec"))
+        self.label_network_user_agent.setText(
+            _translate("SettingsDialog", "User agent")
+        )
+        self.networkUserAgent.setToolTip(
+            _translate(
+                "SettingsDialog",
+                "How the player identifies itself to sites. Leave empty for the default.",
+            )
+        )
+        self.networkUserAgent.setPlaceholderText(_translate("SettingsDialog", "Auto"))
+        self.networkVerifyTLS.setToolTip(
+            _translate(
+                "SettingsDialog",
+                "Turn this off only for a proxy that signs traffic with its own certificate",
+            )
+        )
+        self.networkVerifyTLS.setText(
+            _translate("SettingsDialog", "Verify TLS certificates")
+        )
+        self.networkRelayNote.setText(
+            _translate(
+                "SettingsDialog",
+                "These settings apply to http and https links. Other links, such as rtsp and rtmp, are opened by the player itself, and only the user agent applies to them.",
+            )
+        )
         self.playerVideoDriverBox.setTitle(
             _translate("SettingsDialog", "Video Decoder")
         )

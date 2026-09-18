@@ -124,6 +124,25 @@ class URLResolver(AutoName):
     DIRECT = auto()
 
 
+class ProxyMode(AutoName):
+    """Where the proxy to reach the outside world with comes from."""
+
+    # whatever the machine is already set up with, which is what every
+    # HTTP client in here does when it is told nothing
+    SYSTEM = auto()
+    # straight out, ignoring what the machine is set up with
+    NONE = auto()
+    CUSTOM = auto()
+
+
+class IPVersion(AutoName):
+    """Which address family to reach a host over."""
+
+    AUTO = auto()
+    V4 = auto()
+    V6 = auto()
+
+
 class NetworkRetryMode(AutoName):
     """What to do when a network video fails to load or dies mid-playback."""
 

@@ -219,14 +219,27 @@ class ResolverPatternsList(QtWidgets.QWidget):
     def ui_buttons(self):
         buttons = QtWidgets.QHBoxLayout()
 
-        buttons.addWidget(self._create_button("+", self.add_row, False))
-        buttons.addWidget(self._create_button("-", self.table.remove_selected))
+        self.add_button = self._create_button("+", self.add_blank_row, False)
+        self.remove_button = self._create_button("-", self.table.remove_selected)
+
+        buttons.addWidget(self.add_button)
+        buttons.addWidget(self.remove_button)
         buttons.addWidget(self._create_button("▲", self.table.move_selected_up))
         buttons.addWidget(self._create_button("▼", self.table.move_selected_down))
 
         buttons.addStretch()
 
         return buttons
+
+    def add_blank_row(self):
+        """A row to fill in.
+
+        Its own slot because clicked() carries whether the button is
+        checked, and wiring it straight to add_row would hand that bool
+        over as the pattern to fill the row in with.
+        """
+
+        self.add_row()
 
     @property
     def empty_row_idx(self):
@@ -264,7 +277,7 @@ class ResolverPatternsList(QtWidgets.QWidget):
 
         self._init_row(row_idx)
 
-        if row_data:
+        if row_data is not None:
             self._set_row_data(row_idx, row_data)
 
         self.table.setCurrentItem(self.table.item(row_idx, 0))

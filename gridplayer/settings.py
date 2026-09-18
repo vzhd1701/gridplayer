@@ -23,7 +23,9 @@ from gridplayer.params.static import (
     DropModifier,
     GridMode,
     HWCropBorderOffset,
+    IPVersion,
     NetworkRetryMode,
+    ProxyMode,
     SeekSyncMode,
     UnsavedChangesMode,
     URLResolver,
@@ -115,6 +117,16 @@ _default_settings = {
     "streaming/resolver_priority_patterns": ResolverPatterns([]),
     "cookies/enabled": True,
     "cookies/allow_update": True,
+    "network/proxy_mode": ProxyMode.SYSTEM,
+    "network/proxy_url": "",
+    # empty means the one built in, which is what every request goes out
+    # with unless the user has a reason to say otherwise
+    "network/user_agent": "",
+    "network/ip_version": IPVersion.AUTO,
+    # zero leaves each library on its own default rather than imposing one
+    # number on clients that have thought about it separately
+    "network/timeout": 0,
+    "network/verify_tls": True,
     "recent_list_videos": RecentListVideos(),
     "recent_list_playlists": RecentListPlaylists(),
 }
