@@ -339,9 +339,11 @@ class CheckupDialog(QDialog):
         self.copy_button = buttons.addButton(
             _t("Copy report"), QDialogButtonBox.ActionRole
         )
-        self.abort_button = buttons.addButton(
-            _t("Stop"), QDialogButtonBox.DestructiveRole
-        )
+        # the same role the Close button has, because they are the same
+        # slot: one of them is on screen at a time and the other takes
+        # its place. As a destructive button macOS puts it in the group
+        # to the left of that slot and leaves the slot standing empty.
+        self.abort_button = buttons.addButton(_t("Stop"), QDialogButtonBox.RejectRole)
         self.close_button = buttons.addButton(QDialogButtonBox.Close)
 
         self.close_button.setVisible(False)
