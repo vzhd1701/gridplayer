@@ -722,10 +722,13 @@ class Ui_SettingsDialog:
         self.label_network_proxy_url.setText(
             _translate("SettingsDialog", "Proxy address")
         )
-        self.label_network_timeout.setText(_translate("SettingsDialog", "Timeout"))
+        self.label_network_timeout.setText(
+            _translate("SettingsDialog", "Request timeout")
+        )
         self.networkTimeout.setToolTip(
             _translate(
-                "SettingsDialog", "How long to wait on a request before giving up on it"
+                "SettingsDialog",
+                "How long to wait on a request before giving up on it. This applies while a link is being resolved, not while it is playing.",
             )
         )
         self.networkTimeout.setSpecialValueText(_translate("SettingsDialog", "Auto"))
