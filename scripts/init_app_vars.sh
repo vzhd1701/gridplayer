@@ -81,11 +81,11 @@ init_venv() {
     VENV_DIR="$1"
 
     if [ ! -d "$VENV_DIR" ]; then
-        python -m venv "$VENV_DIR"
+        python3 -m venv "$VENV_DIR"
 
         activate_venv "$VENV_DIR"
 
-        python -m pip install --upgrade pip
+        python3 -m pip install --upgrade pip
     else
         activate_venv "$VENV_DIR"
     fi
