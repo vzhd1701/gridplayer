@@ -288,27 +288,27 @@ class Ui_SettingsDialog:
         self.cookiesWarning.setWordWrap(True)
         self.cookiesWarning.setObjectName("cookiesWarning")
         self.lay_page_streaming_cookies.addWidget(self.cookiesWarning)
-        self.lay_cookies_howto = QtWidgets.QFormLayout()
-        self.lay_cookies_howto.setFieldGrowthPolicy(
-            QtWidgets.QFormLayout.FieldsStayAtSizeHint
-        )
-        self.lay_cookies_howto.setObjectName("lay_cookies_howto")
+        self.lay_cookies_footer = QtWidgets.QHBoxLayout()
+        self.lay_cookies_footer.setObjectName("lay_cookies_footer")
         self.label_cookies_howto = QtWidgets.QLabel(self.page_streaming_cookies)
         font = QtGui.QFont()
         font.setBold(True)
         self.label_cookies_howto.setFont(font)
         self.label_cookies_howto.setObjectName("label_cookies_howto")
-        self.lay_cookies_howto.setWidget(
-            0, QtWidgets.QFormLayout.LabelRole, self.label_cookies_howto
-        )
+        self.lay_cookies_footer.addWidget(self.label_cookies_howto)
         self.cookiesHowToButton = QtWidgets.QPushButton(self.page_streaming_cookies)
         self.cookiesHowToButton.setMaximumSize(QtCore.QSize(24, 24))
         self.cookiesHowToButton.setText("?")
         self.cookiesHowToButton.setObjectName("cookiesHowToButton")
-        self.lay_cookies_howto.setWidget(
-            0, QtWidgets.QFormLayout.FieldRole, self.cookiesHowToButton
+        self.lay_cookies_footer.addWidget(self.cookiesHowToButton)
+        spacerItem1 = QtWidgets.QSpacerItem(
+            0, 0, QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Minimum
         )
-        self.lay_page_streaming_cookies.addLayout(self.lay_cookies_howto)
+        self.lay_cookies_footer.addItem(spacerItem1)
+        self.cookiesTestButton = QtWidgets.QPushButton(self.page_streaming_cookies)
+        self.cookiesTestButton.setObjectName("cookiesTestButton")
+        self.lay_cookies_footer.addWidget(self.cookiesTestButton)
+        self.lay_page_streaming_cookies.addLayout(self.lay_cookies_footer)
         self.section_page.addWidget(self.page_streaming_cookies)
         self.page_defaults_playlist = PageScrollArea()
         self.page_defaults_playlist.setFrameShape(QtWidgets.QFrame.NoFrame)
@@ -405,10 +405,10 @@ class Ui_SettingsDialog:
             0, QtWidgets.QFormLayout.FieldRole, self.miscHWCropBorder
         )
         self.lay_page_advanced_decoder.addLayout(self.lay_miscHWCropBorder)
-        spacerItem1 = QtWidgets.QSpacerItem(
+        spacerItem2 = QtWidgets.QSpacerItem(
             0, 0, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Expanding
         )
-        self.lay_page_advanced_decoder.addItem(spacerItem1)
+        self.lay_page_advanced_decoder.addItem(spacerItem2)
         self.section_page.addWidget(self.page_advanced_decoder)
         self.page_advanced_logging = QtWidgets.QWidget()
         self.page_advanced_logging.setObjectName("page_advanced_logging")
@@ -482,10 +482,10 @@ class Ui_SettingsDialog:
             1, QtWidgets.QFormLayout.FieldRole, self.logLevelVLC
         )
         self.lay_page_advanced_logging.addLayout(self.formLayout_5)
-        spacerItem2 = QtWidgets.QSpacerItem(
+        spacerItem3 = QtWidgets.QSpacerItem(
             0, 0, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Expanding
         )
-        self.lay_page_advanced_logging.addItem(spacerItem2)
+        self.lay_page_advanced_logging.addItem(spacerItem3)
         self.section_page.addWidget(self.page_advanced_logging)
         self.lay_main_2.addWidget(self.section_page)
         self.lay_main.addLayout(self.lay_main_2)
@@ -622,6 +622,13 @@ class Ui_SettingsDialog:
         self.label_cookies_howto.setText(
             _translate("SettingsDialog", "How to export cookies")
         )
+        self.cookiesTestButton.setToolTip(
+            _translate(
+                "SettingsDialog",
+                "Try a YouTube link with these cookies and report which step fails",
+            )
+        )
+        self.cookiesTestButton.setText(_translate("SettingsDialog", "Test yt-dlp"))
         self.playerVideoDriverBox.setTitle(
             _translate("SettingsDialog", "Video Decoder")
         )

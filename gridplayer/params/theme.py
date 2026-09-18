@@ -208,6 +208,25 @@ def _html_with_link_color(html: str, color: QColor) -> str:
     return f"<style>a{{color:{color.name()}}}</style>{html}"
 
 
+def set_html_with_links(label: QLabel, html: str) -> None:
+    """Put HTML on a label so its links come out the theme's colour.
+
+    A label bakes the link colour into its document as the text is set,
+    so anything written after the theme was applied comes out in Qt's
+    own blue, which on a dark base is barely there. Text set once at
+    startup is caught by the sweep below; text written later, as a
+    dialog fills itself in, has to say so here.
+
+    The unstyled source is kept on the widget, so that sweep can colour
+    the links again from scratch when the system theme switches rather
+    than layering one rule over another.
+    """
+
+    label.setProperty(_LINK_SRC_PROP, html)
+
+    label.setText(_html_with_link_color(html, QColor(current_colors()["link"])))
+
+
 def _refresh_html_links(app) -> None:
     """HTML link color is baked into the document; palette Link is not enough."""
     link = QColor(current_colors()["link"])

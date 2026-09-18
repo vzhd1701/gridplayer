@@ -91,7 +91,7 @@ class RewindingBuffer(io.StringIO):
     Its jar truncates before writing but never seeks, so a plain StringIO
     leaves the space the old contents took up padded with NULs and what
     comes back out no longer parses. Nothing here is ours: this exists
-    for the buffer handed over in ytdl_cookies.
+    for any buffer handed to a YoutubeDL as its cookiefile.
     """
 
     def truncate(self, size=None):

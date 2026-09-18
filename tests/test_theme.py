@@ -129,3 +129,39 @@ def test_dialog_button_icons_stripped_by_proxy_style(mocker):
     assert theme_mod._dialog_button_style_installed
     assert app.style().standardIcon(QStyle.SP_DialogOkButton).isNull()
     assert not app.style().standardIcon(QStyle.SP_DirIcon).isNull()
+
+
+def test_html_set_after_the_theme_still_gets_theme_links():
+    """A dialog that fills itself in writes its links long after startup.
+
+    The colour is baked into the label's document as the text is set, so
+    text written later would otherwise come out in Qt's own blue, which
+    on a dark base is barely there.
+    """
+
+    from PyQt5.QtWidgets import QLabel
+
+    from gridplayer.params.theme import apply_theme, set_html_with_links
+
+    app = QApplication.instance() or QApplication([])
+    apply_theme(app)
+
+    label = QLabel()
+    label.show()
+
+    set_html_with_links(label, 'See <a href="https://example.com">the page</a>')
+
+    assert current_colors()["link"] in label.text()
+
+    # what the theme starts from next time, kept clean so a switch
+    # recolours the links rather than layering a rule over the old one
+    source = label.property("gp_html_src")
+    assert "<style" not in source
+
+    apply_theme(app)
+
+    assert label.property("gp_html_src") == source
+    assert label.text().count("<style") == 1
+
+    label.hide()
+    label.deleteLater()

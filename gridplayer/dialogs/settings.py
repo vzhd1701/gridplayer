@@ -15,6 +15,7 @@ from PyQt5.QtWidgets import (
 
 from gridplayer.dialogs.messagebox import QCustomMessageBox
 from gridplayer.dialogs.settings_dialog_ui import Ui_SettingsDialog
+from gridplayer.dialogs.ytdlp_checkup import YtDlpCheckupDialog
 from gridplayer.params import env
 from gridplayer.params.defaults_fields import PLAYLIST_FIELDS, VIDEO_FIELDS
 from gridplayer.params.languages import LANGUAGES
@@ -30,6 +31,7 @@ from gridplayer.utils.app_dir import get_app_data_dir
 from gridplayer.utils.cookies import cookie_store, same_cookies
 from gridplayer.utils.keymap import default_keymap, merge_keymap
 from gridplayer.utils.qt import qt_connect, translate
+from gridplayer.utils.ytdlp_checkup import YouTubeCheckup
 from gridplayer.version import __app_url__
 from gridplayer.widgets.defaults_form import DefaultsForm
 from gridplayer.widgets.keymap_tree_view import KeymapEditor
@@ -253,7 +255,23 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
             (self.playerRecentList.stateChanged, self.playerRecentListSize.setEnabled),
             (self.cookiesList.error, self.cookie_import_failed),
             (self.cookiesHowToButton.clicked, self.show_cookies_howto),
+            (self.cookiesTestButton.clicked, self.run_cookies_checkup),
         )
+
+    def run_cookies_checkup(self):
+        """Try a real link with the cookies as the page has them now.
+
+        The page is handed over rather than the store: the point is to
+        try what is on screen, which may be an import that has not been
+        accepted yet, or a login the user is about to switch off.
+        """
+
+        checkup = YouTubeCheckup(
+            jar=self.cookiesList.jar,
+            are_cookies_enabled=self.cookiesEnabled.isChecked(),
+        )
+
+        YtDlpCheckupDialog(self, checkup).exec_()
 
     def cookie_import_failed(self, message):
         QCustomMessageBox.critical(self, translate("Dialog", "Error"), message)
