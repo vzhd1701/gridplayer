@@ -1,3 +1,4 @@
+import os
 import time
 from threading import Thread
 from types import MappingProxyType, SimpleNamespace
@@ -9,6 +10,14 @@ from requests.cookies import RequestsCookieJar
 from gridplayer.params.static import ProxyMode
 from gridplayer.playlist_settings import PlaylistSettings
 from gridplayer.utils import cookies, network
+
+# Draw nowhere. A widget a test shows is a real window on this desktop
+# otherwise, and since the application is held open for the whole run,
+# one shown and not closed sits there blank until the run ends -- it is
+# never painted, because a test does not spin an event loop for it.
+#
+# Set to windows, cocoa or xcb to watch a test draw.
+os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 # what a real Streamlink session starts out with, where a test cares what
 # a setting cleared again leaves behind
@@ -136,6 +145,13 @@ def _no_real_network_settings(monkeypatch):
     )
 
 
+# how often a serving thread looks up to see whether it has been asked
+# to stop. Shutting one down waits for it to notice, so this is what a
+# test pays to put its server away, and the default of half a second is
+# most of what a suite of them costs.
+SHUTDOWN_POLL_SEC = 0.01
+
+
 @pytest.fixture
 def serving():
     """Run servers on their own threads for the length of a test.
@@ -147,7 +163,11 @@ def serving():
     running = []
 
     def _serve(server):
-        thread = Thread(target=server.serve_forever, daemon=True)
+        thread = Thread(
+            target=server.serve_forever,
+            kwargs={"poll_interval": SHUTDOWN_POLL_SEC},
+            daemon=True,
+        )
         thread.start()
 
         running.append((server, thread))
