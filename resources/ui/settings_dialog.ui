@@ -409,6 +409,81 @@
           </layout>
          </item>
          <item>
+          <widget class="QLabel" name="label_ytdlp">
+           <property name="font">
+            <font>
+             <bold>true</bold>
+            </font>
+           </property>
+           <property name="text">
+            <string notr="true">yt-dlp</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <layout class="QFormLayout" name="formLayout_ytdlp">
+           <property name="fieldGrowthPolicy">
+            <enum>QFormLayout::FieldsStayAtSizeHint</enum>
+           </property>
+           <item row="0" column="0">
+            <widget class="QLabel" name="label_js_runtime">
+             <property name="text">
+              <string>JavaScript runtime</string>
+             </property>
+            </widget>
+           </item>
+           <item row="0" column="1">
+            <widget class="QLineEdit" name="streamingJSRuntimePath">
+             <property name="sizePolicy">
+              <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+               <horstretch>0</horstretch>
+               <verstretch>0</verstretch>
+              </sizepolicy>
+             </property>
+             <property name="minimumSize">
+              <size>
+               <width>260</width>
+               <height>0</height>
+              </size>
+             </property>
+             <property name="placeholderText">
+              <string>Auto</string>
+             </property>
+             <property name="toolTip">
+              <string>Folder holding deno, node, qjs or bun. Leave empty to search the usual places.</string>
+             </property>
+            </widget>
+           </item>
+           <item row="1" column="0" colspan="2">
+            <layout class="QHBoxLayout" name="lay_ytdlp_test">
+             <item>
+              <widget class="QPushButton" name="streamingTestButton">
+               <property name="toolTip">
+                <string>Resolve a YouTube link step by step and report which step gives way</string>
+               </property>
+               <property name="text">
+                <string>Test a YouTube link</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <spacer name="spacer_ytdlp_test">
+               <property name="orientation">
+                <enum>Qt::Horizontal</enum>
+               </property>
+               <property name="sizeHint" stdset="0">
+                <size>
+                 <width>0</width>
+                 <height>0</height>
+                </size>
+               </property>
+              </spacer>
+             </item>
+            </layout>
+           </item>
+          </layout>
+         </item>
+         <item>
           <widget class="QLabel" name="label_10">
            <property name="font">
             <font>
@@ -522,29 +597,6 @@
          <item>
           <layout class="QHBoxLayout" name="lay_cookies_footer">
            <item>
-            <widget class="QPushButton" name="cookiesTestButton">
-             <property name="toolTip">
-              <string>Try a YouTube link with these cookies and report which step fails</string>
-             </property>
-             <property name="text">
-              <string>Test yt-dlp</string>
-             </property>
-            </widget>
-           </item>
-           <item>
-            <spacer name="spacer_cookies_footer">
-             <property name="orientation">
-              <enum>Qt::Horizontal</enum>
-             </property>
-             <property name="sizeHint" stdset="0">
-              <size>
-               <width>0</width>
-               <height>0</height>
-              </size>
-             </property>
-            </spacer>
-           </item>
-           <item>
             <widget class="QLabel" name="label_cookies_howto">
              <property name="font">
               <font>
@@ -568,6 +620,19 @@
               <string notr="true">?</string>
              </property>
             </widget>
+           </item>
+           <item>
+            <spacer name="spacer_cookies_footer">
+             <property name="orientation">
+              <enum>Qt::Horizontal</enum>
+             </property>
+             <property name="sizeHint" stdset="0">
+              <size>
+               <width>0</width>
+               <height>0</height>
+              </size>
+             </property>
+            </spacer>
            </item>
           </layout>
          </item>
@@ -1013,7 +1078,7 @@
       <number>0</number>
      </property>
      <item>
-      <widget class="QPushButton" name="logFileOpen">
+      <widget class="QPushButton" name="dataDirOpen">
        <property name="minimumSize">
         <size>
          <width>130</width>
@@ -1021,7 +1086,10 @@
         </size>
        </property>
        <property name="text">
-        <string>Open log file</string>
+        <string>Open data folder</string>
+       </property>
+       <property name="toolTip">
+        <string>Where the log file, the settings and the stored cookies are kept, and where a JavaScript runtime can be put for GridPlayer to find.</string>
        </property>
       </widget>
      </item>

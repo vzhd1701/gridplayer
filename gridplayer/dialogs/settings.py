@@ -141,6 +141,7 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
             "streaming/hls_via_streamlink": self.streamingHLSVIAStreamlink,
             "streaming/resolver_priority": self.streamingResolverPriority,
             "streaming/resolver_priority_patterns": self.streamingResolverPriorityPatterns,
+            "streaming/js_runtime_path": self.streamingJSRuntimePath,
             "cookies/enabled": self.cookiesEnabled,
             "cookies/allow_update": self.cookiesAllowUpdate,
             "network/proxy_mode": self.networkProxyMode,
@@ -263,7 +264,7 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
         qt_connect(
             (self.playerVideoDriver.currentIndexChanged, self.driver_selected),
             (self.timeoutMouseHideFlag.stateChanged, self.timeoutMouseHide.setEnabled),
-            (self.logFileOpen.clicked, self.open_logfile),
+            (self.dataDirOpen.clicked, self.open_data_dir),
             (self.section_index.currentItemChanged, self.switch_page),
             (self.section_index.itemSelectionChanged, self.keep_index_selection),
             (self.logLimit.stateChanged, self.logLimitSize.setEnabled),
@@ -272,22 +273,30 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
             (self.playerRecentList.stateChanged, self.playerRecentListSize.setEnabled),
             (self.cookiesList.error, self.cookie_import_failed),
             (self.cookiesHowToButton.clicked, self.show_cookies_howto),
-            (self.cookiesTestButton.clicked, self.run_cookies_checkup),
+            (self.streamingTestButton.clicked, self.run_youtube_checkup),
             (self.networkProxyMode.currentIndexChanged, self.proxy_mode_selected),
             (self.networkTestButton.clicked, self.run_network_checkup),
         )
 
-    def run_cookies_checkup(self):
-        """Try a real link with the cookies as the page has them now.
+    def run_youtube_checkup(self):
+        """Resolve a real link the way playback would, step by step.
 
-        The page is handed over rather than the store: the point is to
-        try what is on screen, which may be an import that has not been
-        accepted yet, or a login the user is about to switch off.
+        It lives on this page rather than beside the cookies because
+        two of its six steps are about cookies and the other four are
+        about whether a link resolves at all, which is what this page
+        is for. The runtime it can report as missing is set here too.
+
+        Every setting it uses is read off the pages rather than out of
+        the store: the point is to try what is on screen, which may be
+        a runtime folder just typed, a proxy just changed, or an import
+        of cookies nobody has pressed OK on yet.
         """
 
         checkup = YouTubeCheckup(
             jar=self.cookiesList.jar,
             are_cookies_enabled=self.cookiesEnabled.isChecked(),
+            js_runtime_path=self.streamingJSRuntimePath.text(),
+            net_opts=self.network_opts_on_page,
         )
 
         CheckupDialog(self, checkup).exec_()
@@ -383,23 +392,25 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
 
         self.section_page.setCurrentWidget(page)
 
-    def open_logfile(self):
-        log_path = get_app_data_dir() / "gridplayer.log"
+    def open_data_dir(self):
+        """The folder rather than the log file that used to be opened.
 
-        self._log.debug(f"Opening log file {log_path}")
+        The log is in there and named for what it is, so nothing is lost
+        by stopping one short of it, and the folder is now somewhere a
+        person is sent for reasons of their own: it is where a
+        JavaScript runtime goes on the packages that cannot see one
+        installed anywhere else. See gridplayer.utils.js_runtime.
+        """
 
-        if not log_path.is_file():
-            return QCustomMessageBox.critical(
-                self,
-                translate("Dialog", "Error"),
-                translate("Error", "Log file does not exist!"),
-            )
+        data_dir = get_app_data_dir()
+
+        self._log.debug(f"Opening data directory {data_dir}")
 
         if env.IS_SNAP:
             # https://forum.snapcraft.io/t/xdg-open-or-gvfs-open-qdesktopservices-openurl-file-somelocation-file-txt-wont-open-the-file/16824
-            subprocess.call(["xdg-open", log_path])
+            subprocess.call(["xdg-open", data_dir])
         else:
-            QDesktopServices.openUrl(QUrl.fromLocalFile(str(log_path)))
+            QDesktopServices.openUrl(QUrl.fromLocalFile(str(data_dir)))
 
     def fill_logLevelVLC(self):
         log_levels = {

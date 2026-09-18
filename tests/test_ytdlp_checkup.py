@@ -30,10 +30,11 @@ COOKIE_LIFETIME_SEC = 10000
 class Runtime:
     """Stands in for what yt-dlp reports about an installed runtime."""
 
-    def __init__(self, name, version="1.0.0", supported=True):
+    def __init__(self, name, version="1.0.0", supported=True, path=None):
         self.name = name
         self.version = version
         self.supported = supported
+        self.path = path or f"/usr/bin/{name}"
 
 
 class HomeHandler(BaseHTTPRequestHandler):
@@ -189,8 +190,16 @@ class TestVersion:
 
 class TestJsRuntime:
     @pytest.fixture(autouse=True)
-    def _only_deno_is_wanted(self, monkeypatch):
-        monkeypatch.setattr(ytdlp_checkup, "_wanted_js_runtimes", lambda: ("deno",))
+    def _no_ranking_to_be_had(self, monkeypatch):
+        """These cases are about what is installed, not which one wins.
+
+        Asked for real it would answer with whatever this machine has,
+        which is not something a test can be written against.
+        """
+
+        monkeypatch.setattr(
+            ytdlp_checkup.YouTubeCheckup, "_chosen_js_runtime", lambda self: None
+        )
 
     def test_the_runtime_yt_dlp_uses_passes(self, monkeypatch):
         _installed(monkeypatch, deno=Runtime("deno", "2.9.6"))
@@ -208,15 +217,6 @@ class TestJsRuntime:
         assert check_result.status is CheckStatus.WARNING
         assert "too old" in check_result.summary
         assert "2.3.0" in check_result.hint
-
-    def test_a_runtime_yt_dlp_will_not_reach_for_does_not_count(self, monkeypatch):
-        _installed(monkeypatch, node=Runtime("node", "24.0.0"))
-
-        check_result = YouTubeCheckup().check_js_runtime()
-
-        assert check_result.status is CheckStatus.WARNING
-        assert "node 24.0.0" in check_result.summary
-        assert "deno" in check_result.summary
 
     def test_no_runtime_at_all_explains_what_it_is_for(self, monkeypatch):
         _installed(monkeypatch)
@@ -472,7 +472,9 @@ def _version_days_ago(days: int) -> str:
 
 
 def _installed(monkeypatch, **runtimes):
-    monkeypatch.setattr(ytdlp_checkup, "_installed_js_runtimes", lambda: runtimes)
+    """The runtimes on this machine, whatever folder it is asked about."""
+
+    monkeypatch.setattr(ytdlp_checkup, "_installed_js_runtimes", lambda *_: runtimes)
 
 
 def _resolving(monkeypatch, info=None, error=None, warnings=()):
@@ -505,3 +507,268 @@ def _after_resolving(monkeypatch, info):
     checkup.check_resolve()
 
     return checkup
+
+
+class TestWhichRuntimeWins:
+    """One of them runs and the rest do not, so the line says which.
+
+    Somebody opens this because a link failed. "deno, node" tells them
+    two things are installed and nothing about what just happened.
+    """
+
+    def test_the_one_that_will_run_is_named_with_its_path(self, monkeypatch):
+        _installed(monkeypatch, deno=Runtime("deno", "2.9.7", path="/opt/deno"))
+        _chosen(monkeypatch, "deno", Runtime("deno", "2.9.7", path="/opt/deno"))
+
+        check_result = YouTubeCheckup().check_js_runtime()
+
+        assert check_result.status is CheckStatus.PASSED
+        assert check_result.summary == "deno 2.9.7"
+        assert "/opt/deno" in check_result.hint
+
+    def test_the_ones_that_will_not_run_are_named_as_such(self, monkeypatch):
+        """Installing a second one and seeing nothing change is the trap."""
+
+        _installed(
+            monkeypatch,
+            deno=Runtime("deno", "2.9.7", path="/opt/deno"),
+            node=Runtime("node", "24.0.0", path="/usr/bin/node"),
+        )
+        _chosen(monkeypatch, "deno", Runtime("deno", "2.9.7", path="/opt/deno"))
+
+        check_result = YouTubeCheckup().check_js_runtime()
+
+        assert check_result.summary == "deno 2.9.7"
+        assert "node 24.0.0" in check_result.hint
+        assert "will not use" in check_result.hint
+
+    def test_a_lone_runtime_is_not_told_it_beat_anything(self, monkeypatch):
+        _installed(monkeypatch, deno=Runtime("deno", "2.9.7", path="/opt/deno"))
+        _chosen(monkeypatch, "deno", Runtime("deno", "2.9.7", path="/opt/deno"))
+
+        assert "Also installed" not in YouTubeCheckup().check_js_runtime().hint
+
+    def test_the_winner_is_named_even_where_it_is_not_the_top_ranked(self, monkeypatch):
+        """Whoever answers is the answer; the ranking is not repeated here."""
+
+        _installed(
+            monkeypatch,
+            deno=Runtime("deno", "2.9.7", path="/opt/deno"),
+            quickjs=Runtime("quickjs-ng", "0.16.2", path="/data/qjs"),
+        )
+        _chosen(
+            monkeypatch, "quickjs", Runtime("quickjs-ng", "0.16.2", path="/data/qjs")
+        )
+
+        check_result = YouTubeCheckup().check_js_runtime()
+
+        assert check_result.summary == "quickjs-ng 0.16.2"
+        assert "/data/qjs" in check_result.hint
+        assert "deno 2.9.7" in check_result.hint
+
+    def test_a_bare_name_is_resolved_to_where_it_actually_is(self, monkeypatch):
+        """Off Windows yt-dlp leaves a PATH hit as the name it will call.
+
+        Printing that back says nothing, and saying nothing is the one
+        thing this line exists not to do.
+        """
+
+        _installed(monkeypatch, deno=Runtime("deno", "2.9.6", path="deno"))
+        _chosen(monkeypatch, "deno", Runtime("deno", "2.9.6", path="deno"))
+        monkeypatch.setattr(
+            ytdlp_checkup.shutil, "which", lambda name: f"/usr/local/bin/{name}"
+        )
+
+        assert "/usr/local/bin/deno" in YouTubeCheckup().check_js_runtime().hint
+
+    def test_a_name_that_resolves_to_nothing_is_printed_as_it_stands(self, monkeypatch):
+        """Better the bare name than an empty space where a path goes."""
+
+        _installed(monkeypatch, deno=Runtime("deno", "2.9.6", path="deno"))
+        _chosen(monkeypatch, "deno", Runtime("deno", "2.9.6", path="deno"))
+        monkeypatch.setattr(ytdlp_checkup.shutil, "which", lambda name: None)
+
+        assert "deno" in YouTubeCheckup().check_js_runtime().hint
+
+    def test_an_absolute_path_is_left_alone(self, monkeypatch, tmp_path):
+        """Nothing to look up, and PATH could answer with a different copy.
+
+        Built from tmp_path rather than written out, since what counts
+        as an absolute path is not the same on every platform.
+        """
+
+        found = []
+        absolute = str(tmp_path / "deno")
+
+        _installed(monkeypatch, deno=Runtime("deno", "2.9.7", path=absolute))
+        _chosen(monkeypatch, "deno", Runtime("deno", "2.9.7", path=absolute))
+        monkeypatch.setattr(
+            ytdlp_checkup.shutil, "which", lambda name: found.append(name)
+        )
+
+        assert absolute in YouTubeCheckup().check_js_runtime().hint
+        assert not found
+
+    def test_a_ranking_that_cannot_be_asked_for_still_lists_what_is_there(
+        self, monkeypatch
+    ):
+        """A private corner of yt-dlp, so it is allowed to go missing."""
+
+        _installed(monkeypatch, deno=Runtime("deno", "2.9.7"))
+        monkeypatch.setattr(
+            ytdlp_checkup.YouTubeCheckup, "_chosen_js_runtime", lambda self: None
+        )
+
+        check_result = YouTubeCheckup().check_js_runtime()
+
+        assert check_result.status is CheckStatus.PASSED
+        assert check_result.summary == "deno 2.9.7"
+        assert not check_result.hint
+
+    def test_it_never_raises_when_yt_dlp_moves_under_it(self, monkeypatch):
+        """The checkup is a diagnosis; it does not get to fail itself."""
+
+        _installed(monkeypatch, deno=Runtime("deno", "2.9.7"))
+        monkeypatch.setattr(ytdlp_checkup, "YoutubeDL", _raising("no such director"))
+
+        check_result = YouTubeCheckup().check_js_runtime()
+
+        assert check_result.status is CheckStatus.PASSED
+        assert check_result.summary == "deno 2.9.7"
+
+
+def _chosen(monkeypatch, name, info):
+    monkeypatch.setattr(
+        ytdlp_checkup.YouTubeCheckup, "_chosen_js_runtime", lambda self: (name, info)
+    )
+
+
+def _raising(message):
+    def _boom(*args, **kwargs):
+        raise RuntimeError(message)
+
+    return _boom
+
+
+class TestColouredErrors:
+    """yt-dlp writes for a terminal, and this is a dialog.
+
+    It wraps its errors in escape sequences when it thinks something is
+    watching that can render them, which a windowed app makes it think
+    more often than not. Printed as they stand they turn the one
+    sentence somebody needs into line noise.
+    """
+
+    COLOURED = (
+        "\x1b[0;31mERROR:\x1b[0m [youtube] aqz-KE-bpKQ:"
+        " Sign in to confirm you are not a bot. Use --cookies-from-browser"
+    )
+
+    def test_the_colours_do_not_reach_the_dialog(self):
+        said = ytdlp_checkup._last_line(self.COLOURED)
+
+        assert "\x1b" not in said
+        assert "[0;31m" not in said
+
+    def test_the_prefix_is_still_taken_off_behind_them(self):
+        """It is only a prefix once the escape in front of it is gone."""
+
+        assert not ytdlp_checkup._last_line(self.COLOURED).startswith("ERROR:")
+
+    def test_what_went_wrong_survives(self):
+        said = ytdlp_checkup._last_line(self.COLOURED)
+
+        assert "Sign in to confirm you are not a bot." in said
+        assert "--cookies-from-browser" not in said
+
+    def test_the_hint_still_recognises_it(self):
+        """The wording is matched on, so colour in it would hide the match."""
+
+        check_result = ytdlp_checkup._resolve_failure(
+            ytdlp_checkup._last_line(self.COLOURED)
+        )
+
+        assert check_result.status is CheckStatus.FAILED
+        assert "cookies" in check_result.hint.lower()
+
+    def test_ordinary_text_is_left_alone(self):
+        """The pattern has ranges in it that plain prose is full of."""
+
+        plain = "Video unavailable [youtube] A-Z_@~ 100% done"
+
+        assert ytdlp_checkup._clean_message(plain) == plain
+
+    def test_yt_dlp_is_asked_not_to_colour_in_the_first_place(self, monkeypatch):
+        """Stripping is the second line of defence, not the only one."""
+
+        made = _resolving(monkeypatch, info={"formats": [], "title": "t"})
+
+        YouTubeCheckup().check_resolve()
+
+        assert made[0].options["no_color"] is True
+
+
+class TestAFolderThatAnswersForNothing:
+    """Naming a folder is the last resort, so a wrong one is worth saying.
+
+    Nothing else looks where that setting points, which is the whole
+    reason for it. A name that holds no engine is a typo or the wrong
+    folder, and without a word about it the page is simply ignored.
+    """
+
+    def test_a_folder_holding_nothing_is_called_out(self, monkeypatch, tmp_path):
+        _installed(monkeypatch)
+        _configured(monkeypatch, tmp_path, found=None)
+
+        check_result = YouTubeCheckup().check_js_runtime()
+
+        assert check_result.status is CheckStatus.WARNING
+        assert str(tmp_path) in check_result.hint
+
+    def test_it_is_said_even_where_something_was_found_elsewhere(
+        self, monkeypatch, tmp_path
+    ):
+        """Playback works, but the setting is doing nothing and looks wrong."""
+
+        _installed(monkeypatch, deno=Runtime("deno", "2.9.7", path="/usr/bin/deno"))
+        _chosen(monkeypatch, "deno", Runtime("deno", "2.9.7", path="/usr/bin/deno"))
+        _configured(monkeypatch, tmp_path, found="/usr/bin/deno")
+
+        check_result = YouTubeCheckup().check_js_runtime()
+
+        assert check_result.status is CheckStatus.PASSED
+        assert str(tmp_path) in check_result.hint
+        assert "/usr/bin/deno" in check_result.hint
+
+    def test_a_folder_that_answered_is_not_complained_about(
+        self, monkeypatch, tmp_path
+    ):
+        found = tmp_path / "deno"
+        _installed(monkeypatch, deno=Runtime("deno", "2.9.7", path=str(found)))
+        _chosen(monkeypatch, "deno", Runtime("deno", "2.9.7", path=str(found)))
+        _configured(monkeypatch, tmp_path, found=str(found))
+
+        # the path is in the hint either way, as the one being run, so
+        # what is being checked for is the complaint rather than the path
+        assert "pointing at" not in YouTubeCheckup().check_js_runtime().hint
+
+    def test_nothing_is_said_where_no_folder_was_named(self, monkeypatch):
+        """Which is how it ships, so the usual report must stay unchanged."""
+
+        _installed(monkeypatch)
+        monkeypatch.setattr(ytdlp_checkup, "configured_dir", lambda *_: None)
+
+        check_result = YouTubeCheckup().check_js_runtime()
+
+        assert "pointing at" not in check_result.hint
+
+
+def _configured(monkeypatch, folder, found):
+    """A folder named on the page, and what the search made of it."""
+
+    monkeypatch.setattr(ytdlp_checkup, "configured_dir", lambda *_: folder)
+    monkeypatch.setattr(
+        ytdlp_checkup,
+        "ytdl_js_runtimes",
+        lambda *_: {"deno": {"path": found} if found else {}},
+    )

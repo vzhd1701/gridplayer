@@ -205,3 +205,32 @@ class TestHintMarkup:
 
     def test_warnings_stay_on_lines_of_their_own(self):
         assert _linked("one\ntwo") == "one<br>two"
+
+
+class TestTheButtons:
+    """Stop and Close are one slot with two labels, not two buttons.
+
+    Only ever one of them is on screen, and macOS lays a destructive
+    button out in the group before the slot the Close button sits in,
+    so as a destructive one Stop left the slot standing empty beside it.
+    """
+
+    def test_stop_sits_where_close_will(self, parent):
+        dialog = CheckupDialog(parent, FakeCheckup())
+
+        roles = dialog.buttons.buttonRole
+        assert roles(dialog.abort_button) == roles(dialog.close_button)
+
+    def test_the_two_of_them_are_never_both_up(self, parent):
+        dialog = CheckupDialog(parent, FakeCheckup())
+
+        assert dialog.abort_button.isVisibleTo(dialog)
+        assert not dialog.close_button.isVisibleTo(dialog)
+
+    def test_copy_is_not_in_that_slot(self, parent):
+        """It stays available while the run is still going."""
+
+        dialog = CheckupDialog(parent, FakeCheckup())
+
+        roles = dialog.buttons.buttonRole
+        assert roles(dialog.copy_button) != roles(dialog.abort_button)

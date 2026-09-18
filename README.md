@@ -157,9 +157,11 @@ standard application data location:
 | Linux    | `~/.local/share/vzhd1701/GridPlayer`                  |
 | macOS    | `~/Library/Application Support/vzhd1701/GridPlayer`   |
 
+**Settings -> Open data folder** opens this directory, whichever package you are running.
+
 On Linux, `XDG_DATA_HOME` is respected instead of `~/.local/share` when set. Sandboxed packages store the directory
 inside their own sandbox: `~/.var/app/com.vzhd1701.gridplayer/data/vzhd1701/GridPlayer` for Flatpak, and
-`~/snap/gridplayer/current/vzhd1701/GridPlayer` for Snap.
+`~/snap/gridplayer/current/.local/share/vzhd1701/GridPlayer` for Snap.
 
 ## Video Decoder settings
 
@@ -236,6 +238,37 @@ player and are fetched by GridPlayer instead, then served to the player from `12
 
 Links of other kinds — `rtsp`, `rtmp` and so on — are opened by the player itself and go out directly.
 Only the user agent reaches those. If you need those proxied too, proxy the whole machine.
+
+## JavaScript runtime
+
+YouTube scrambles its stream addresses with a script that has to be run to undo. GridPlayer doesn't ship
+an engine to run it with, so if YouTube links stop playing, install one of these and restart:
+
+| Engine | Size | Speed | |
+| --- | --- | --- | --- |
+| **[Deno](https://docs.deno.com/runtime/getting_started/installation/)** | ~110 MB | fastest | Recommended. Sandboxed by default. |
+| **[Node](https://nodejs.org/)** | ~80 MB | fastest | Version 22 or newer. Just as good, and you may have it already. |
+| **[QuickJS](https://github.com/quickjs-ng/quickjs/releases)** (`qjs`) | ~2 MB | ~7x slower | Tiny, but adds a few seconds to every YouTube link. |
+| **[Bun](https://bun.sh/)** | ~90 MB | fast | Version 1.2.11 or newer. |
+
+Any one of them is enough, and GridPlayer uses the best one it finds. It looks in these places, in order:
+
+1. The folder named in **Settings -> Streaming -> Link Resolution -> JavaScript runtime**, if you set one.
+2. The GridPlayer [data directory](#default-data-directory-locations) — drop the binary in next to
+   `settings.ini`. The **Open data folder** button at the bottom of the settings window takes you there.
+3. The usual install locations: your `PATH`, `~/.deno/bin` and `~/.bun/bin`, and on macOS the Homebrew
+   folders (`/opt/homebrew/bin`, `/usr/local/bin`).
+
+Installing an engine the ordinary way is normally all it takes. Two cases need a hand:
+
+- **Snap** can't see anything outside itself, and hidden folders like `~/.deno` are blocked, so put the
+  binary in the data folder.
+- **Node managed by nvm** lives in a folder per version, which nothing can guess. Name it in the settings.
+
+**Settings -> Streaming -> Link Resolution -> Test a YouTube link** names the one that will actually be used and where it is, since only one of several installed ever runs.
+
+Not every link needs one. YouTube often hands out addresses that need no unscrambling at all, and nothing
+else GridPlayer plays uses this. It's worth installing when YouTube specifically starts failing.
 
 ## Known issues
 

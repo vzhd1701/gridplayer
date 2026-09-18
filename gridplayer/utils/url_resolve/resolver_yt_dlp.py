@@ -20,6 +20,7 @@ from gridplayer.models.stream import (
 )
 from gridplayer.settings import Settings
 from gridplayer.utils.cookies import ytdl_cookies
+from gridplayer.utils.js_runtime import ytdl_js_runtimes
 from gridplayer.utils.network import needs_relay, ytdl_network_opts
 from gridplayer.utils.track_language import language_name
 from gridplayer.utils.url_resolve.resolver_base import ResolverBase
@@ -128,7 +129,12 @@ class YoutubeDLResolver(ResolverBase):
         with (
             ytdl_cookies() as cookie_opts,
             YoutubeDL(
-                {"logger": self._log, **cookie_opts, **ytdl_network_opts()}
+                {
+                    "logger": self._log,
+                    "js_runtimes": ytdl_js_runtimes(),
+                    **cookie_opts,
+                    **ytdl_network_opts(),
+                }
             ) as ydl,
         ):
             try:

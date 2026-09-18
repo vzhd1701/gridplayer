@@ -265,14 +265,19 @@ def fetch_capped(session, url: str, limit: int, **kwargs) -> tuple[int, bytes]:
         return response.status_code, _read_capped(response, limit)
 
 
-def ytdl_network_opts() -> dict:
+def ytdl_network_opts(opts: NetworkOpts | None = None) -> dict:
     """Network options for a YoutubeDL, leaving out what is not set.
 
     A key it is not given is one it decides for itself, which is what
     every setting left alone here should come to.
+
+    Settings other than the stored ones can be passed in, the same way
+    apply_to_streamlink takes them, which is how a checkup tries what
+    the settings page is showing rather than what was last saved.
     """
 
-    opts = network_opts()
+    if opts is None:
+        opts = network_opts()
 
     ydl_opts = {}
 

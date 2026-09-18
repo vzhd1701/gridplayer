@@ -228,6 +228,53 @@ class Ui_SettingsDialog:
             0, QtWidgets.QFormLayout.FieldRole, self.streamingResolverPriority
         )
         self.lay_page_streaming_resolution.addLayout(self.formLayout_7)
+        self.label_ytdlp = QtWidgets.QLabel(self.page_streaming_resolution)
+        font = QtGui.QFont()
+        font.setBold(True)
+        self.label_ytdlp.setFont(font)
+        self.label_ytdlp.setText("yt-dlp")
+        self.label_ytdlp.setObjectName("label_ytdlp")
+        self.lay_page_streaming_resolution.addWidget(self.label_ytdlp)
+        self.formLayout_ytdlp = QtWidgets.QFormLayout()
+        self.formLayout_ytdlp.setFieldGrowthPolicy(
+            QtWidgets.QFormLayout.FieldsStayAtSizeHint
+        )
+        self.formLayout_ytdlp.setObjectName("formLayout_ytdlp")
+        self.label_js_runtime = QtWidgets.QLabel(self.page_streaming_resolution)
+        self.label_js_runtime.setObjectName("label_js_runtime")
+        self.formLayout_ytdlp.setWidget(
+            0, QtWidgets.QFormLayout.LabelRole, self.label_js_runtime
+        )
+        self.streamingJSRuntimePath = QtWidgets.QLineEdit(
+            self.page_streaming_resolution
+        )
+        sizePolicy = QtWidgets.QSizePolicy(
+            QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Fixed
+        )
+        sizePolicy.setHorizontalStretch(0)
+        sizePolicy.setVerticalStretch(0)
+        sizePolicy.setHeightForWidth(
+            self.streamingJSRuntimePath.sizePolicy().hasHeightForWidth()
+        )
+        self.streamingJSRuntimePath.setSizePolicy(sizePolicy)
+        self.streamingJSRuntimePath.setMinimumSize(QtCore.QSize(260, 0))
+        self.streamingJSRuntimePath.setObjectName("streamingJSRuntimePath")
+        self.formLayout_ytdlp.setWidget(
+            0, QtWidgets.QFormLayout.FieldRole, self.streamingJSRuntimePath
+        )
+        self.lay_ytdlp_test = QtWidgets.QHBoxLayout()
+        self.lay_ytdlp_test.setObjectName("lay_ytdlp_test")
+        self.streamingTestButton = QtWidgets.QPushButton(self.page_streaming_resolution)
+        self.streamingTestButton.setObjectName("streamingTestButton")
+        self.lay_ytdlp_test.addWidget(self.streamingTestButton)
+        spacerItem1 = QtWidgets.QSpacerItem(
+            0, 0, QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Minimum
+        )
+        self.lay_ytdlp_test.addItem(spacerItem1)
+        self.formLayout_ytdlp.setLayout(
+            1, QtWidgets.QFormLayout.SpanningRole, self.lay_ytdlp_test
+        )
+        self.lay_page_streaming_resolution.addLayout(self.formLayout_ytdlp)
         self.label_10 = QtWidgets.QLabel(self.page_streaming_resolution)
         font = QtGui.QFont()
         font.setBold(True)
@@ -292,13 +339,6 @@ class Ui_SettingsDialog:
         self.lay_page_streaming_cookies.addWidget(self.cookiesWarning)
         self.lay_cookies_footer = QtWidgets.QHBoxLayout()
         self.lay_cookies_footer.setObjectName("lay_cookies_footer")
-        self.cookiesTestButton = QtWidgets.QPushButton(self.page_streaming_cookies)
-        self.cookiesTestButton.setObjectName("cookiesTestButton")
-        self.lay_cookies_footer.addWidget(self.cookiesTestButton)
-        spacerItem1 = QtWidgets.QSpacerItem(
-            0, 0, QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Minimum
-        )
-        self.lay_cookies_footer.addItem(spacerItem1)
         self.label_cookies_howto = QtWidgets.QLabel(self.page_streaming_cookies)
         font = QtGui.QFont()
         font.setBold(True)
@@ -310,6 +350,10 @@ class Ui_SettingsDialog:
         self.cookiesHowToButton.setText("?")
         self.cookiesHowToButton.setObjectName("cookiesHowToButton")
         self.lay_cookies_footer.addWidget(self.cookiesHowToButton)
+        spacerItem2 = QtWidgets.QSpacerItem(
+            0, 0, QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Minimum
+        )
+        self.lay_cookies_footer.addItem(spacerItem2)
         self.lay_page_streaming_cookies.addLayout(self.lay_cookies_footer)
         self.section_page.addWidget(self.page_streaming_cookies)
         self.page_streaming_network = QtWidgets.QWidget()
@@ -381,15 +425,15 @@ class Ui_SettingsDialog:
         self.networkTestButton = QtWidgets.QPushButton(self.page_streaming_network)
         self.networkTestButton.setObjectName("networkTestButton")
         self.lay_network_footer.addWidget(self.networkTestButton)
-        spacerItem2 = QtWidgets.QSpacerItem(
+        spacerItem3 = QtWidgets.QSpacerItem(
             0, 0, QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Minimum
         )
-        self.lay_network_footer.addItem(spacerItem2)
+        self.lay_network_footer.addItem(spacerItem3)
         self.lay_page_streaming_network.addLayout(self.lay_network_footer)
-        spacerItem3 = QtWidgets.QSpacerItem(
+        spacerItem4 = QtWidgets.QSpacerItem(
             0, 0, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Expanding
         )
-        self.lay_page_streaming_network.addItem(spacerItem3)
+        self.lay_page_streaming_network.addItem(spacerItem4)
         self.section_page.addWidget(self.page_streaming_network)
         self.page_defaults_playlist = PageScrollArea()
         self.page_defaults_playlist.setFrameShape(QtWidgets.QFrame.NoFrame)
@@ -486,10 +530,10 @@ class Ui_SettingsDialog:
             0, QtWidgets.QFormLayout.FieldRole, self.miscHWCropBorder
         )
         self.lay_page_advanced_decoder.addLayout(self.lay_miscHWCropBorder)
-        spacerItem4 = QtWidgets.QSpacerItem(
+        spacerItem5 = QtWidgets.QSpacerItem(
             0, 0, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Expanding
         )
-        self.lay_page_advanced_decoder.addItem(spacerItem4)
+        self.lay_page_advanced_decoder.addItem(spacerItem5)
         self.section_page.addWidget(self.page_advanced_decoder)
         self.page_advanced_logging = QtWidgets.QWidget()
         self.page_advanced_logging.setObjectName("page_advanced_logging")
@@ -563,20 +607,20 @@ class Ui_SettingsDialog:
             1, QtWidgets.QFormLayout.FieldRole, self.logLevelVLC
         )
         self.lay_page_advanced_logging.addLayout(self.formLayout_5)
-        spacerItem5 = QtWidgets.QSpacerItem(
+        spacerItem6 = QtWidgets.QSpacerItem(
             0, 0, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Expanding
         )
-        self.lay_page_advanced_logging.addItem(spacerItem5)
+        self.lay_page_advanced_logging.addItem(spacerItem6)
         self.section_page.addWidget(self.page_advanced_logging)
         self.lay_main_2.addWidget(self.section_page)
         self.lay_main.addLayout(self.lay_main_2)
         self.lay_buttons = QtWidgets.QHBoxLayout()
         self.lay_buttons.setSpacing(0)
         self.lay_buttons.setObjectName("lay_buttons")
-        self.logFileOpen = QtWidgets.QPushButton(SettingsDialog)
-        self.logFileOpen.setMinimumSize(QtCore.QSize(130, 0))
-        self.logFileOpen.setObjectName("logFileOpen")
-        self.lay_buttons.addWidget(self.logFileOpen)
+        self.dataDirOpen = QtWidgets.QPushButton(SettingsDialog)
+        self.dataDirOpen.setMinimumSize(QtCore.QSize(130, 0))
+        self.dataDirOpen.setObjectName("dataDirOpen")
+        self.lay_buttons.addWidget(self.dataDirOpen)
         self.buttonBox = QtWidgets.QDialogButtonBox(SettingsDialog)
         self.buttonBox.setOrientation(QtCore.Qt.Horizontal)
         self.buttonBox.setStandardButtons(
@@ -666,6 +710,27 @@ class Ui_SettingsDialog:
             _translate("SettingsDialog", "Use Streamlink for HLS streams when possible")
         )
         self.label_8.setText(_translate("SettingsDialog", "Priority URL resolver"))
+        self.label_js_runtime.setText(
+            _translate("SettingsDialog", "JavaScript runtime")
+        )
+        self.streamingJSRuntimePath.setPlaceholderText(
+            _translate("SettingsDialog", "Auto")
+        )
+        self.streamingJSRuntimePath.setToolTip(
+            _translate(
+                "SettingsDialog",
+                "Folder holding deno, node, qjs or bun. Leave empty to search the usual places.",
+            )
+        )
+        self.streamingTestButton.setToolTip(
+            _translate(
+                "SettingsDialog",
+                "Resolve a YouTube link step by step and report which step gives way",
+            )
+        )
+        self.streamingTestButton.setText(
+            _translate("SettingsDialog", "Test a YouTube link")
+        )
         self.label_10.setText(
             _translate("SettingsDialog", "Resolver priority patterns")
         )
@@ -702,13 +767,6 @@ class Ui_SettingsDialog:
                 "Cookies are login credentials. Anyone with access to this computer can read them.",
             )
         )
-        self.cookiesTestButton.setToolTip(
-            _translate(
-                "SettingsDialog",
-                "Try a YouTube link with these cookies and report which step fails",
-            )
-        )
-        self.cookiesTestButton.setText(_translate("SettingsDialog", "Test yt-dlp"))
         self.label_cookies_howto.setText(
             _translate("SettingsDialog", "How to export cookies")
         )
@@ -815,7 +873,13 @@ class Ui_SettingsDialog:
         self.label_6.setText(_translate("SettingsDialog", "Logging levels"))
         self.logLevelLabel.setText(_translate("SettingsDialog", "Log level"))
         self.logLevelVLCLabel.setText(_translate("SettingsDialog", "Log level (VLC)"))
-        self.logFileOpen.setText(_translate("SettingsDialog", "Open log file"))
+        self.dataDirOpen.setText(_translate("SettingsDialog", "Open data folder"))
+        self.dataDirOpen.setToolTip(
+            _translate(
+                "SettingsDialog",
+                "Where the log file, the settings and the stored cookies are kept, and where a JavaScript runtime can be put for GridPlayer to find.",
+            )
+        )
 
 
 from gridplayer.widgets.cookie_store_list import CookieStoreList

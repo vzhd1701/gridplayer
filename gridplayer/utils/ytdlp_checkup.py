@@ -16,10 +16,13 @@ Cookies are credentials. What comes back names hosts and counts, the same
 as the settings page, and never a value.
 """
 
+import dataclasses
 import logging
 import re
+import shutil
 import urllib.request
 from datetime import date, datetime, timezone
+from pathlib import Path
 
 from streamlink import Streamlink
 from yt_dlp import DownloadError, YoutubeDL
@@ -28,6 +31,7 @@ from yt_dlp.version import __version__ as YT_DLP_VERSION
 
 from gridplayer.utils.checkup import Check, CheckResult, CheckStatus, Checkup
 from gridplayer.utils.cookies import RewindingBuffer, merged_with
+from gridplayer.utils.js_runtime import configured_dir, ytdl_js_runtimes
 from gridplayer.utils.network import (
     apply_to_streamlink,
     fetch_capped,
@@ -49,7 +53,11 @@ YOUTUBE_HOME_URL = "https://www.youtube.com/"
 COOKIES_WIKI_URL = (
     "https://github.com/yt-dlp/yt-dlp/wiki/Extractors#exporting-youtube-cookies"
 )
-JS_RUNTIME_WIKI_URL = "https://github.com/yt-dlp/yt-dlp/wiki/EJS"
+# GridPlayer ships no JavaScript engine of its own -- the smallest one
+# going costs seconds per link, and the quick ones are the size of the
+# whole player -- so the runtime is something the viewer installs, and
+# this is where it says which and how
+JS_RUNTIME_HELP_URL = "https://github.com/vzhd1701/gridplayer#javascript-runtime"
 
 # yt-dlp is released about weekly and YouTube changes under it constantly;
 # a build older than this is the first thing to suspect
@@ -60,6 +68,12 @@ VERSION_DATE_PATTERN = re.compile(r"^(\d{4})\.(\d{2})\.(\d{2})")
 # where a yt-dlp error stops saying what went wrong and starts telling a
 # command line user what to type and what to read
 CLI_ADVICE_PATTERN = re.compile(r"\s(?:Use --|See https?://|Also see\s)")
+
+# the colours yt-dlp wraps its errors in. Asking it not to is the first
+# line of defence, but a message can reach here from a yt-dlp nobody
+# passed that to, and half an escape sequence in a dialog reads as
+# nonsense rather than as an error somebody can act on
+TERMINAL_SEQUENCE_PATTERN = re.compile(r"\x1b(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])")
 
 # what yt-dlp waits on a socket where the network page has named nothing:
 # long enough for a slow site to answer, short enough that a checkup that
@@ -98,7 +112,13 @@ class YouTubeCheckup(Checkup):
     expect is still a result.
     """
 
-    def __init__(self, jar=None, are_cookies_enabled: bool = True):
+    def __init__(
+        self,
+        jar=None,
+        are_cookies_enabled: bool = True,
+        js_runtime_path: str | None = None,
+        net_opts=None,
+    ):
         self._log = logging.getLogger(self.__class__.__name__)
 
         # a copy, because asking a jar what it would send clears what has
@@ -106,6 +126,13 @@ class YouTubeCheckup(Checkup):
         self._jar = merged_with(jar, None) if jar is not None else None
 
         self._are_cookies_enabled = are_cookies_enabled
+
+        # the rest of the page, for the same reason the jar is handed in:
+        # somebody who has just typed a runtime folder or a proxy and
+        # pressed the button has not pressed OK, and a test that answers
+        # for the stored settings answers a question nobody asked
+        self._js_runtime_path = js_runtime_path
+        self._net_opts = net_opts
 
         self._video_info = None
         self._streamlink = None
@@ -167,41 +194,30 @@ class YouTubeCheckup(Checkup):
         formats that need one are dropped and never offered at all.
         """
 
-        installed = _installed_js_runtimes()
-        wanted = _wanted_js_runtimes()
+        return _with_note(
+            self._js_runtime_result(), _barren_folder_note(self._js_runtime_path)
+        )
 
-        usable = {
-            name: info
-            for name, info in installed.items()
-            if name in wanted and info.supported
-        }
+    def _js_runtime_result(self) -> CheckResult:
+        """What was found, before anything is said about where it was looked for."""
+
+        # every engine yt-dlp can drive is enabled, so one that is here
+        # is one it would reach for: what is installed and what is
+        # wanted were two sets once and are the same set now
+        installed = _installed_js_runtimes(self._js_runtime_path)
+
+        usable = {name: info for name, info in installed.items() if info.supported}
 
         if usable:
-            return CheckResult(CheckStatus.PASSED, _runtime_list(usable.values()))
-
-        too_old = {name: info for name, info in installed.items() if name in wanted}
-
-        if too_old:
-            return CheckResult(
-                CheckStatus.WARNING,
-                _t("{RUNTIMES} is too old for yt-dlp").format(
-                    RUNTIMES=_runtime_list(too_old.values())
-                ),
-                _minimum_version_hint(too_old),
-            )
+            return self._js_runtime_in_use(usable)
 
         if installed:
             return CheckResult(
                 CheckStatus.WARNING,
-                _t("{RUNTIMES} found, but yt-dlp only uses {WANTED}").format(
-                    RUNTIMES=_runtime_list(installed.values()),
-                    WANTED=", ".join(wanted) or _t("none"),
+                _t("{RUNTIMES} is too old for yt-dlp").format(
+                    RUNTIMES=_runtime_list(installed.values())
                 ),
-                _t(
-                    "Install one of the runtimes yt-dlp looks for, or"
-                    " YouTube links may resolve to addresses that will not"
-                    " play. See {URL}"
-                ).format(URL=JS_RUNTIME_WIKI_URL),
+                _minimum_version_hint(installed),
             )
 
         return CheckResult(
@@ -209,10 +225,79 @@ class YouTubeCheckup(Checkup):
             _t("No JavaScript runtime found"),
             _t(
                 "YouTube scrambles its stream addresses with a script that"
-                " has to be run to undo. Install Deno and YouTube links"
+                " has to be run to undo. GridPlayer does not ship an engine"
+                " to run it with. Install Deno or Node and YouTube links"
                 " will resolve to addresses that play. See {URL}"
-            ).format(URL=JS_RUNTIME_WIKI_URL),
+            ).format(URL=JS_RUNTIME_HELP_URL),
         )
+
+    def _js_runtime_in_use(self, usable: dict) -> CheckResult:
+        """Which of the installed ones is the one that will actually run.
+
+        Several can be installed at once and only ever one of them is
+        used, so a list of what is on the machine does not answer the
+        question somebody opens this to ask. When a link fails it is
+        the engine actually running that matters, and where it is:
+        "deno" on a machine with three of them says nothing about
+        which three, and nothing about the one being picked up out of
+        a folder they have forgotten they put it in.
+        """
+
+        chosen = self._chosen_js_runtime()
+
+        if chosen is None:
+            # the ranking could not be asked for, so name what is there
+            # rather than a winner picked by guessing at the order
+            return CheckResult(CheckStatus.PASSED, _runtime_list(usable.values()))
+
+        name, info = chosen
+
+        others = [other for key, other in usable.items() if key != name]
+
+        if others:
+            hint = _t(
+                "Running {PATH}. Also installed: {OTHERS}, which yt-dlp"
+                " ranks lower and will not use."
+            ).format(PATH=_runtime_path(info), OTHERS=_runtime_list(others))
+        else:
+            hint = _t("Running {PATH}").format(PATH=_runtime_path(info))
+
+        return CheckResult(CheckStatus.PASSED, f"{info.name} {info.version}", hint)
+
+    def _chosen_js_runtime(self):
+        """The engine yt-dlp would reach for, asked of yt-dlp itself.
+
+        The order they are ranked in is yt-dlp's business and has
+        changed before, so it is not written down again here: the
+        thing that does the choosing is built the way playback builds
+        it and asked what it would choose. That is a private corner of
+        yt-dlp, so a checkup that cannot ask says nothing rather than
+        guessing.
+        """
+
+        # imported here because it is private enough that its going
+        # missing should cost this one line and not the whole checkup
+        from yt_dlp.extractor.youtube.jsc._director import initialize_jsc_director
+
+        try:
+            with YoutubeDL(
+                {
+                    "logger": _QuietLogger(),
+                    "quiet": True,
+                    "js_runtimes": ytdl_js_runtimes(self._js_runtime_path),
+                }
+            ) as ydl:
+                director = initialize_jsc_director(ydl.get_info_extractor("Youtube"))
+
+                provider = next(iter(director._get_providers([])), None)
+        except Exception as e:
+            self._log.debug(f"Could not ask yt-dlp which JS runtime it would use: {e}")
+            return None
+
+        if provider is None or provider.runtime_info is None:
+            return None
+
+        return provider.JS_RUNTIME_NAME, provider.runtime_info
 
     def check_cookies(self) -> CheckResult:
         """What the jar holds for YouTube, and whether any of it would go."""
@@ -414,7 +499,12 @@ class YouTubeCheckup(Checkup):
         options = {
             "logger": logger,
             "socket_timeout": REQUEST_TIMEOUT,
-            **ytdl_network_opts(),
+            "js_runtimes": ytdl_js_runtimes(self._js_runtime_path),
+            # what it says goes into a dialog, and yt-dlp decides to
+            # colour it by looking at streams a windowed app does not
+            # have in the state it expects
+            "no_color": True,
+            **ytdl_network_opts(self._net_opts),
         }
 
         jar = self._jar_in_use
@@ -460,7 +550,7 @@ class YouTubeCheckup(Checkup):
         if self._streamlink is None:
             self._streamlink = Streamlink()
 
-            apply_to_streamlink(self._streamlink)
+            apply_to_streamlink(self._streamlink, self._net_opts)
 
             jar = self._jar_in_use
 
@@ -513,29 +603,26 @@ def _release_date(version: str):
         return None
 
 
-def _installed_js_runtimes() -> dict:
-    """Every runtime yt-dlp knows of that is actually on this machine."""
+def _installed_js_runtimes(js_runtime_path: str | None = None) -> dict:
+    """Every runtime yt-dlp knows of that is actually on this machine.
+
+    Looked for where playback looks, rather than on PATH alone. Inside
+    a snap or a flatpak those are not the same set of places at all,
+    and a checkup that searched the smaller one would report nothing
+    installed while the pane beside it played.
+    """
+
+    enabled = ytdl_js_runtimes(js_runtime_path)
 
     found = {}
 
     for name, runtime_class in supported_js_runtimes.value.items():
-        info = runtime_class().info
+        info = runtime_class(path=enabled.get(name, {}).get("path")).info
 
         if info is not None:
             found[name] = info
 
     return found
-
-
-def _wanted_js_runtimes() -> tuple[str, ...]:
-    """The ones yt-dlp would reach for, as it is set up here.
-
-    Asked of yt-dlp rather than written down, since which runtimes are
-    enabled by default is its business and has changed before.
-    """
-
-    with YoutubeDL({"logger": _QuietLogger()}) as ydl:
-        return tuple(ydl.params.get("js_runtimes") or ())
 
 
 class _QuietLogger:
@@ -545,6 +632,70 @@ class _QuietLogger:
         """Nothing here is worth a line of its own."""
 
     info = warning = error = debug
+
+
+def _with_note(check_result: CheckResult, note: str) -> CheckResult:
+    """The same result with something added to the end of its hint."""
+
+    if not note:
+        return check_result
+
+    hint = " ".join(part for part in (check_result.hint, note) if part)
+
+    return dataclasses.replace(check_result, hint=hint)
+
+
+def _barren_folder_note(js_runtime_path: str | None = None) -> str:
+    """Whether a folder was named on the settings page and answered for nothing.
+
+    Naming one is the last resort, reached when an engine is somewhere
+    nothing else looks, so a name that turns out to hold none of them
+    is almost always a typo or the wrong folder. Without this the page
+    is simply ignored: a runtime found elsewhere hides the mistake, and
+    where there is none the report says nothing was found anywhere,
+    which is true and says nothing about the one thing that was asked
+    for by hand.
+
+    A folder is only looked for by the names the engines ship under, so
+    a binary renamed to something else is the other way to land here.
+    """
+
+    named = configured_dir(js_runtime_path)
+
+    if named is None:
+        return ""
+
+    answered_here = any(
+        Path(config["path"]).parent == named
+        for config in ytdl_js_runtimes(js_runtime_path).values()
+        if config
+    )
+
+    if answered_here:
+        return ""
+
+    return _t(
+        "Nothing named deno, node, qjs or bun is in {FOLDER}, which this"
+        " page is pointing at."
+    ).format(FOLDER=named)
+
+
+def _runtime_path(info) -> str:
+    """Where the engine actually is, spelled out.
+
+    Off Windows, yt-dlp leaves a runtime it expects to find on PATH as
+    the bare name it will call, because that is all exec needs. It is
+    not all a person needs: the reason for printing the path at all is
+    to settle which of several copies is the one running, and "deno"
+    settles nothing.
+    """
+
+    path = str(info.path)
+
+    if Path(path).is_absolute():
+        return path
+
+    return shutil.which(path) or path
 
 
 def _runtime_list(infos) -> str:
@@ -674,4 +825,6 @@ def _last_line(message: str) -> str:
 
 
 def _clean_message(message: str) -> str:
-    return re.sub(r"\s+", " ", str(message)).strip()
+    plain = TERMINAL_SEQUENCE_PATTERN.sub("", str(message))
+
+    return re.sub(r"\s+", " ", plain).strip()

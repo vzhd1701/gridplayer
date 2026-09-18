@@ -114,6 +114,9 @@ _default_settings = {
     "streaming/hls_via_streamlink": True,
     "streaming/resolver_priority": URLResolver.STREAMLINK,
     "streaming/resolver_priority_patterns": ResolverPatterns([]),
+    # empty means look in the usual places, which is most of them.
+    # See gridplayer.utils.js_runtime for what those are and why
+    "streaming/js_runtime_path": "",
     "cookies/enabled": True,
     "cookies/allow_update": True,
     "network/proxy_mode": ProxyMode.SYSTEM,
