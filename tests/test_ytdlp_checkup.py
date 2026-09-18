@@ -14,12 +14,9 @@ import pytest
 from yt_dlp import DownloadError
 
 from gridplayer.utils import ytdlp_checkup
+from gridplayer.utils.checkup import CheckStatus
 from gridplayer.utils.cookies import parse_cookies
-from gridplayer.utils.ytdlp_checkup import (
-    CheckStatus,
-    YouTubeCheckup,
-    report_text,
-)
+from gridplayer.utils.ytdlp_checkup import YouTubeCheckup
 
 MEDIA = bytes(range(256)) * 512
 
@@ -466,29 +463,6 @@ class TestFetch:
         checkup = _after_resolving(monkeypatch, info)
 
         assert "audio" in checkup.check_fetch().summary
-
-
-class TestReport:
-    def test_a_run_that_was_stopped_reports_as_far_as_it_got(self):
-        rows = [
-            ("Step one", ytdlp_checkup.CheckResult(CheckStatus.PASSED, "fine")),
-            ("Step two", None),
-        ]
-
-        report = report_text(rows)
-
-        assert "[ ok ] Step one: fine" in report
-        assert "[ -- ] Step two: Not run" in report
-
-    def test_a_hint_travels_with_the_step_it_belongs_to(self):
-        rows = [
-            (
-                "Step one",
-                ytdlp_checkup.CheckResult(CheckStatus.FAILED, "broke", "try this"),
-            )
-        ]
-
-        assert "    try this" in report_text(rows)
 
 
 def _version_days_ago(days: int) -> str:

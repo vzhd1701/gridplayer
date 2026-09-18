@@ -22,13 +22,13 @@ from PyQt5.QtGui import QIcon, QPalette
 from PyQt5.QtWidgets import QApplication, QDialog, QDialogButtonBox
 
 from gridplayer.params.theme import set_html_with_links
-from gridplayer.utils.qt import qt_connect, translate
-from gridplayer.utils.ytdlp_checkup import (
+from gridplayer.utils.checkup import (
     TRANSLATION_CONTEXT,
     CheckResult,
     CheckStatus,
     report_text,
 )
+from gridplayer.utils.qt import qt_connect, translate
 
 STATUS_ICONS = {
     CheckStatus.PASSED: "checkmark",
@@ -91,7 +91,7 @@ class CheckRunner(QObject):
         return self._cancelled.is_set()
 
     def start(self) -> None:
-        threading.Thread(target=self._run, name="ytdlp-checkup", daemon=True).start()
+        threading.Thread(target=self._run, name="checkup", daemon=True).start()
 
     def cancel(self) -> None:
         self._cancelled.set()
@@ -205,12 +205,19 @@ class CheckRow(QtWidgets.QWidget):
         return hint
 
 
-class YtDlpCheckupDialog(QDialog):
-    """A checkup, run as soon as it is shown."""
+class CheckupDialog(QDialog):
+    """A checkup, run as soon as it is shown.
+
+    What is being checked is the checkup's business rather than the
+    dialog's: it brings its own name, its own opening line and its own
+    steps, and the running and reporting are the same either way.
+    """
 
     def __init__(self, parent, checkup):
         super().__init__(parent)
 
+        self._title = checkup.title
+        self._intro = checkup.intro
         self._checks = checkup.checks
         self._results = [None] * len(self._checks)
 
@@ -219,7 +226,7 @@ class YtDlpCheckupDialog(QDialog):
         self._seconds = 0
         self._is_stopped = False
 
-        self.setWindowTitle(_t("yt-dlp checkup"))
+        self.setWindowTitle(self._title)
         self.resize(*DIALOG_SIZE)
 
         self.rows = [CheckRow(check.title, parent=self) for check in self._checks]
@@ -246,7 +253,7 @@ class YtDlpCheckupDialog(QDialog):
     def copy_report(self) -> None:
         rows = zip((check.title for check in self._checks), self._results)
 
-        QApplication.clipboard().setText(report_text(list(rows)))
+        QApplication.clipboard().setText(report_text(self._title, list(rows)))
 
     def abort(self) -> None:
         self._runner.cancel()
@@ -373,14 +380,7 @@ class YtDlpCheckupDialog(QDialog):
 
     def _ui_layout(self) -> None:
         layout = QtWidgets.QVBoxLayout(self)
-        layout.addWidget(
-            _wrapping_label(
-                _t(
-                    "Playing a YouTube link, step by step, with the cookies"
-                    " on the settings page as they stand now."
-                )
-            )
-        )
+        layout.addWidget(_wrapping_label(self._intro))
         layout.addWidget(self._ui_checks())
         layout.addWidget(self.status)
         layout.addWidget(self.progress)
@@ -409,8 +409,8 @@ def _wrapping_label(text: str):
 def _linked(hint: str) -> str:
     """A hint as rich text, with whatever is a URL in it made clickable.
 
-    Escaped first and marked up after, since a hint can be a warning
-    yt-dlp wrote and there is no telling what is in one of those.
+    Escaped first and marked up after, since a hint can be a message
+    some other tool wrote and there is no telling what is in one.
     """
 
     marked_up = URL_PATTERN.sub(

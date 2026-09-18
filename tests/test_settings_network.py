@@ -14,6 +14,7 @@ from gridplayer.dialogs.settings import SECTION_PAGE_ROLE, SettingsDialog
 from gridplayer.params.static import IPVersion, ProxyMode
 from gridplayer.settings import _Settings
 from gridplayer.utils.cookies import CookieStore
+from gridplayer.utils.network_checkup import NetworkCheckup
 
 PROXY_URL = "socks5h://127.0.0.1:1080"
 
@@ -174,6 +175,73 @@ class TestTheUserAgentField:
         dialog.save_settings()
 
         assert settings.get("network/user_agent") == ""
+
+
+class TestTheTestButton:
+    """What the checkup is handed, which is the page rather than the ini.
+
+    Somebody who has just typed a proxy in and pressed Test means that
+    proxy. They have not pressed OK yet, and nothing would be more
+    confusing than a report on the one they are replacing.
+    """
+
+    def test_it_tries_what_has_been_typed_rather_than_what_is_stored(
+        self, settings, dialog
+    ):
+        settings.set("network/proxy_url", "http://stored:8080")
+
+        _choose(dialog.networkProxyMode, ProxyMode.CUSTOM)
+        dialog.networkProxyUrl.setText(PROXY_URL)
+
+        assert dialog.network_opts_on_page.proxy == PROXY_URL
+
+    def test_the_rest_of_the_page_comes_with_it(self, dialog):
+        dialog.networkUserAgent.setText("Mozilla/5.0 (test)")
+        _choose(dialog.networkIPVersion, IPVersion.V6)
+        dialog.networkTimeout.setValue(30)
+        dialog.networkVerifyTLS.setChecked(False)
+
+        opts = dialog.network_opts_on_page
+
+        assert opts.user_agent == "Mozilla/5.0 (test)"
+        assert opts.ip_version is IPVersion.V6
+        assert opts.timeout == 30
+        assert opts.verify_tls is False
+
+    def test_an_address_left_behind_by_another_mode_is_not_used(self, dialog):
+        """The same rule the stored settings go by, on the way out too."""
+
+        dialog.networkProxyUrl.setText(PROXY_URL)
+        _choose(dialog.networkProxyMode, ProxyMode.NONE)
+
+        assert dialog.network_opts_on_page.proxy == ""
+
+    def test_pressing_it_opens_a_checkup_of_the_page(self, dialog, monkeypatch):
+        opened = []
+
+        monkeypatch.setattr(
+            settings_dialog,
+            "CheckupDialog",
+            lambda parent, checkup: _Opened(opened, checkup),
+        )
+
+        _choose(dialog.networkProxyMode, ProxyMode.CUSTOM)
+        dialog.networkProxyUrl.setText(PROXY_URL)
+
+        dialog.networkTestButton.click()
+
+        assert isinstance(opened[0], NetworkCheckup)
+        assert opened[0]._opts.proxy == PROXY_URL
+
+
+class _Opened:
+    """Stands in for the dialog, which would go out to the network."""
+
+    def __init__(self, opened, checkup):
+        opened.append(checkup)
+
+    def exec_(self):
+        return None
 
 
 class TestTheKeysThemselves:

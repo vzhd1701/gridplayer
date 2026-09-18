@@ -16,24 +16,21 @@ Cookies are credentials. What comes back names hosts and counts, the same
 as the settings page, and never a value.
 """
 
-import dataclasses
 import logging
 import re
-import urllib.error
-import urllib.parse
 import urllib.request
-from collections.abc import Callable
 from datetime import date, datetime, timezone
-from enum import Enum
 
+from streamlink import Streamlink
 from yt_dlp import DownloadError, YoutubeDL
 from yt_dlp.globals import supported_js_runtimes
 from yt_dlp.version import __version__ as YT_DLP_VERSION
 
+from gridplayer.utils.checkup import Check, CheckResult, CheckStatus, Checkup
 from gridplayer.utils.cookies import RewindingBuffer, merged_with
 from gridplayer.utils.network import (
-    DEFAULT_USER_AGENT,
-    network_opts,
+    apply_to_streamlink,
+    fetch_capped,
     ytdl_network_opts,
 )
 from gridplayer.utils.qt import translate
@@ -64,8 +61,10 @@ VERSION_DATE_PATTERN = re.compile(r"^(\d{4})\.(\d{2})\.(\d{2})")
 # command line user what to type and what to read
 CLI_ADVICE_PATTERN = re.compile(r"\s(?:Use --|See https?://|Also see\s)")
 
+# what yt-dlp waits on a socket where the network page has named nothing:
 # long enough for a slow site to answer, short enough that a checkup that
-# has hung is obvious rather than indistinguishable from a slow one
+# has hung is obvious rather than indistinguishable from a slow one. The
+# fetches after it go through a session and take the session's own.
 REQUEST_TIMEOUT = 20
 
 # enough of the media to prove the host will serve it to us
@@ -86,42 +85,11 @@ YOUTUBE_COOKIE_SITES = ("youtube.com", "google.com")
 
 BYTES_IN_KIB = 1024
 
+HTTP_BAD_REQUEST = 400
 HTTP_FORBIDDEN = 403
 
-# what urllib can be pointed at; a SOCKS proxy is beyond it, and the
-# checks that use it say so rather than quietly going around
-URLLIB_PROXY_SCHEMES = frozenset({"http", "https"})
 
-
-class CheckStatus(Enum):
-    """How one check came out.
-
-    A checkup is a diagnosis rather than a verdict, so most of what it
-    finds is a warning: something that explains a failure when one
-    happens, and is worth knowing about when nothing has failed yet.
-    """
-
-    PASSED = "passed"
-    WARNING = "warning"
-    FAILED = "failed"
-    SKIPPED = "skipped"
-
-
-@dataclasses.dataclass(frozen=True)
-class CheckResult:
-    status: CheckStatus
-    summary: str
-    # what to do about it, where there is something to do
-    hint: str = ""
-
-
-@dataclasses.dataclass(frozen=True)
-class Check:
-    title: str
-    run: Callable[[], CheckResult]
-
-
-class YouTubeCheckup:
+class YouTubeCheckup(Checkup):
     """The steps a YouTube link goes through, in the order they build up.
 
     Each check leaves behind what the next one needs, so they are run in
@@ -140,6 +108,18 @@ class YouTubeCheckup:
         self._are_cookies_enabled = are_cookies_enabled
 
         self._video_info = None
+        self._streamlink = None
+
+    @property
+    def title(self) -> str:
+        return _t("yt-dlp checkup")
+
+    @property
+    def intro(self) -> str:
+        return _t(
+            "Playing a YouTube link, step by step, with the cookies on the"
+            " settings page as they stand now."
+        )
 
     @property
     def checks(self) -> tuple[Check, ...]:
@@ -371,13 +351,14 @@ class YouTubeCheckup:
 
         try:
             status, read = self._fetch_sample(sample_format)
-        except urllib.error.HTTPError as e:
-            return _fetch_failure(e, sample_format)
         except OSError as e:
             return CheckResult(
                 CheckStatus.FAILED,
                 _t("Could not reach the stream: {ERROR}").format(ERROR=e),
             )
+
+        if status >= HTTP_BAD_REQUEST:
+            return _fetch_failure(status, sample_format)
 
         if not read:
             return CheckResult(
@@ -445,29 +426,48 @@ class YouTubeCheckup:
             return ydl.extract_info(TEST_VIDEO_URL, download=False)
 
     def _fetch_home_page(self) -> str:
-        request = urllib.request.Request(
-            YOUTUBE_HOME_URL, headers={"User-Agent": _user_agent()}
-        )
+        page = self._fetch(YOUTUBE_HOME_URL, limit=HOME_PAGE_LIMIT)[1]
 
-        return self._read(request, limit=HOME_PAGE_LIMIT).decode(
-            "utf-8", errors="replace"
-        )
+        return page.decode("utf-8", errors="replace")
 
     def _fetch_sample(self, sample_format) -> tuple[int, int]:
         headers = {
-            "User-Agent": _user_agent(),
             **(sample_format.get("http_headers") or {}),
             "Range": f"bytes=0-{SAMPLE_BYTES - 1}",
         }
 
-        request = urllib.request.Request(sample_format["url"], headers=headers)
+        status, sample = self._fetch(
+            sample_format["url"], limit=SAMPLE_BYTES, headers=headers
+        )
 
-        with _opener(self._jar_in_use).open(request, timeout=REQUEST_TIMEOUT) as res:
-            return res.status, len(res.read(SAMPLE_BYTES))
+        return status, len(sample)
 
-    def _read(self, request, limit: int) -> bytes:
-        with _opener(self._jar_in_use).open(request, timeout=REQUEST_TIMEOUT) as res:
-            return res.read(limit)
+    def _fetch(self, url: str, limit: int, headers=None) -> tuple[int, bytes]:
+        return fetch_capped(self._session(), url, limit, headers=headers)
+
+    def _session(self) -> Streamlink:
+        """A session configured the way the one behind playback is.
+
+        Made once and kept, so every request in a run goes out the same
+        way and a cookie a site sets along the way is still there for
+        the next one.
+
+        The network settings only. The cookies are put on by hand
+        because the jar being tried is the checkup's own copy of what
+        the settings page is showing, which is not what is stored.
+        """
+
+        if self._streamlink is None:
+            self._streamlink = Streamlink()
+
+            apply_to_streamlink(self._streamlink)
+
+            jar = self._jar_in_use
+
+            if jar is not None:
+                self._streamlink.http.cookies.update(jar)
+
+        return self._streamlink
 
 
 class _CollectingLogger:
@@ -495,48 +495,8 @@ class _CollectingLogger:
         self._log.error(message)
 
 
-def report_text(rows) -> str:
-    """The whole run as plain text, for pasting where it can be read.
-
-    Rows are (title, result), with a result of None for a check that
-    never ran, so an abandoned run reports as much as it got through.
-    """
-
-    ran_at = datetime.now(tz=timezone.utc).astimezone()
-
-    lines = [f"yt-dlp checkup - {ran_at.strftime('%Y-%m-%d %H:%M')}", ""]
-
-    for title, check_result in rows:
-        lines.append(
-            f"{_status_tag(check_result)} {title}: {_summary_of(check_result)}"
-        )
-
-        if check_result is not None and check_result.hint:
-            lines.extend(f"    {line}" for line in check_result.hint.splitlines())
-
-    return "\n".join(lines)
-
-
 def _t(text: str) -> str:
     return translate(TRANSLATION_CONTEXT, text)
-
-
-def _status_tag(check_result) -> str:
-    if check_result is None:
-        return "[ -- ]"
-
-    tags = {
-        CheckStatus.PASSED: "[ ok ]",
-        CheckStatus.WARNING: "[warn]",
-        CheckStatus.FAILED: "[fail]",
-        CheckStatus.SKIPPED: "[skip]",
-    }
-
-    return tags[check_result.status]
-
-
-def _summary_of(check_result) -> str:
-    return check_result.summary if check_result is not None else _t("Not run")
 
 
 def _release_date(version: str):
@@ -623,61 +583,6 @@ def _is_youtube_domain(domain: str) -> bool:
     )
 
 
-def _user_agent() -> str:
-    """What the checkup's own requests call themselves.
-
-    Whatever playback would use, because a checkup that asks in some
-    other way is reporting on a request nobody is going to make.
-    """
-
-    return network_opts().user_agent or DEFAULT_USER_AGENT
-
-
-def _opener(jar):
-    """A URL opener that sends the stored cookies and keeps none.
-
-    The jar it is given is the checkup's own copy, so a cookie the site
-    sets along the way is gone with the run rather than written back into
-    what the settings page is showing.
-    """
-
-    handlers = [urllib.request.HTTPCookieProcessor(jar)] if jar is not None else []
-
-    proxy_handler = _proxy_handler()
-
-    if proxy_handler is not None:
-        handlers.append(proxy_handler)
-
-    return urllib.request.build_opener(*handlers)
-
-
-def _proxy_handler():
-    """The proxy these requests go through, where the settings name one.
-
-    Nothing at all leaves urllib to find one for itself, which is what
-    going by the machine comes to. A proxy it cannot speak to is not
-    quietly gone around: a checkup that reports on a connection playback
-    would never make is worse than one that says it could not look.
-    """
-
-    opts = network_opts()
-
-    if opts.use_env:
-        return None
-
-    if not opts.proxy:
-        return urllib.request.ProxyHandler({})
-
-    scheme = urllib.parse.urlparse(opts.proxy).scheme.lower()
-
-    if scheme not in URLLIB_PROXY_SCHEMES:
-        raise urllib.error.URLError(
-            _t("this check cannot go through a {SCHEME} proxy").format(SCHEME=scheme)
-        )
-
-    return urllib.request.ProxyHandler({"http": opts.proxy, "https": opts.proxy})
-
-
 def _sample_format(video_info):
     """The cheapest format worth proving the site will serve.
 
@@ -730,12 +635,12 @@ def _resolve_failure(message: str) -> CheckResult:
     return CheckResult(CheckStatus.FAILED, message)
 
 
-def _fetch_failure(error, sample_format) -> CheckResult:
+def _fetch_failure(status: int, sample_format) -> CheckResult:
     summary = _t("The stream answered HTTP {STATUS} for {FORMAT}").format(
-        STATUS=error.code, FORMAT=_format_name(sample_format)
+        STATUS=status, FORMAT=_format_name(sample_format)
     )
 
-    if error.code != HTTP_FORBIDDEN:
+    if status != HTTP_FORBIDDEN:
         return CheckResult(CheckStatus.FAILED, summary)
 
     return CheckResult(

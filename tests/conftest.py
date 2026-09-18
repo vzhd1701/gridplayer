@@ -61,6 +61,10 @@ class FakeStreamlinkSession:
     """
 
     def __init__(self, headers=None):
+        # a urllib3 global on the real thing, so what it was last told is
+        # kept here where a test can see it rather than being applied
+        self.address_family = None
+
         self.http = SimpleNamespace(
             headers=dict(headers or {}),
             cookies=RequestsCookieJar(),
@@ -69,12 +73,16 @@ class FakeStreamlinkSession:
             verify=True,
             timeout=DEFAULT_TIMEOUT_SEC,
             valid_request_args=dict,
+            set_address_family=self._set_address_family,
         )
 
         self.options = {}
 
     def set_option(self, key, value):
         self.options[key] = value
+
+    def _set_address_family(self, family=None):
+        self.address_family = family
 
 
 @pytest.fixture(scope="session", autouse=True)

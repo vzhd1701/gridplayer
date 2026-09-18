@@ -12,8 +12,8 @@ import time
 import pytest
 from PyQt5.QtWidgets import QApplication, QWidget
 
-from gridplayer.dialogs.ytdlp_checkup import YtDlpCheckupDialog, _linked
-from gridplayer.utils.ytdlp_checkup import Check, CheckResult, CheckStatus
+from gridplayer.dialogs.checkup import CheckupDialog, _linked
+from gridplayer.utils.checkup import Check, CheckResult, CheckStatus
 
 WAIT_SEC = 5
 POLL_SEC = 0.01
@@ -24,6 +24,9 @@ SETTLE_SEC = 0.5
 
 class FakeCheckup:
     """A checkup of steps the test decides the timing of."""
+
+    title = "Fake checkup"
+    intro = "Nothing real is being tried here."
 
     def __init__(self, *checks):
         self.checks = checks
@@ -89,7 +92,7 @@ def test_every_step_is_listed_before_any_of_them_has_run(parent):
 
     checkup = FakeCheckup(_passing("One"), _passing("Two"))
 
-    dialog = YtDlpCheckupDialog(parent, checkup)
+    dialog = CheckupDialog(parent, checkup)
 
     assert [row.title.text() for row in dialog.rows] == ["One", "Two"]
 
@@ -97,7 +100,7 @@ def test_every_step_is_listed_before_any_of_them_has_run(parent):
 def test_a_run_fills_the_list_in(parent):
     checkup = FakeCheckup(_passing("One", "all well"), _passing("Two"))
 
-    dialog = YtDlpCheckupDialog(parent, checkup)
+    dialog = CheckupDialog(parent, checkup)
 
     assert _wait_until(_finished(dialog))
     assert dialog.rows[0].summary.text() == "all well"
@@ -107,7 +110,7 @@ def test_a_run_fills_the_list_in(parent):
 def test_a_hint_only_shows_where_there_is_one(parent):
     checkup = FakeCheckup(_passing("One", hint="do this"), _passing("Two"))
 
-    dialog = YtDlpCheckupDialog(parent, checkup)
+    dialog = CheckupDialog(parent, checkup)
     parent.show()
 
     assert _wait_until(_finished(dialog))
@@ -120,7 +123,7 @@ def test_a_step_that_goes_wrong_is_a_result_like_any_other(parent):
 
     checkup = FakeCheckup(_exploding("One"), _passing("Two"))
 
-    dialog = YtDlpCheckupDialog(parent, checkup)
+    dialog = CheckupDialog(parent, checkup)
 
     assert _wait_until(_finished(dialog))
     assert dialog._results[0].status is CheckStatus.FAILED
@@ -132,7 +135,7 @@ def test_stopping_leaves_what_was_learned_on_screen(parent):
     released = threading.Event()
     checkup = FakeCheckup(_passing("One", "all well"), _blocking("Two", released))
 
-    dialog = YtDlpCheckupDialog(parent, checkup)
+    dialog = CheckupDialog(parent, checkup)
 
     assert _wait_until(lambda: dialog._results[0] is not None)
 
@@ -155,7 +158,7 @@ def test_a_step_still_running_cannot_reach_a_closed_dialog(parent):
     released = threading.Event()
     checkup = FakeCheckup(_blocking("One", released), _passing("Two"))
 
-    dialog = YtDlpCheckupDialog(parent, checkup)
+    dialog = CheckupDialog(parent, checkup)
 
     dialog.reject()
 
@@ -171,7 +174,7 @@ def test_the_report_covers_the_steps_that_never_ran(parent):
     released = threading.Event()
     checkup = FakeCheckup(_passing("One", "all well"), _blocking("Two", released))
 
-    dialog = YtDlpCheckupDialog(parent, checkup)
+    dialog = CheckupDialog(parent, checkup)
 
     assert _wait_until(lambda: dialog._results[0] is not None)
 

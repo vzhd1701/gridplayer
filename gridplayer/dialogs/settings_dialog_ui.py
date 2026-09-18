@@ -292,6 +292,13 @@ class Ui_SettingsDialog:
         self.lay_page_streaming_cookies.addWidget(self.cookiesWarning)
         self.lay_cookies_footer = QtWidgets.QHBoxLayout()
         self.lay_cookies_footer.setObjectName("lay_cookies_footer")
+        self.cookiesTestButton = QtWidgets.QPushButton(self.page_streaming_cookies)
+        self.cookiesTestButton.setObjectName("cookiesTestButton")
+        self.lay_cookies_footer.addWidget(self.cookiesTestButton)
+        spacerItem1 = QtWidgets.QSpacerItem(
+            0, 0, QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Minimum
+        )
+        self.lay_cookies_footer.addItem(spacerItem1)
         self.label_cookies_howto = QtWidgets.QLabel(self.page_streaming_cookies)
         font = QtGui.QFont()
         font.setBold(True)
@@ -303,13 +310,6 @@ class Ui_SettingsDialog:
         self.cookiesHowToButton.setText("?")
         self.cookiesHowToButton.setObjectName("cookiesHowToButton")
         self.lay_cookies_footer.addWidget(self.cookiesHowToButton)
-        spacerItem1 = QtWidgets.QSpacerItem(
-            0, 0, QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Minimum
-        )
-        self.lay_cookies_footer.addItem(spacerItem1)
-        self.cookiesTestButton = QtWidgets.QPushButton(self.page_streaming_cookies)
-        self.cookiesTestButton.setObjectName("cookiesTestButton")
-        self.lay_cookies_footer.addWidget(self.cookiesTestButton)
         self.lay_page_streaming_cookies.addLayout(self.lay_cookies_footer)
         self.section_page.addWidget(self.page_streaming_cookies)
         self.page_streaming_network = QtWidgets.QWidget()
@@ -383,10 +383,20 @@ class Ui_SettingsDialog:
         self.networkRelayNote.setWordWrap(True)
         self.networkRelayNote.setObjectName("networkRelayNote")
         self.lay_page_streaming_network.addWidget(self.networkRelayNote)
+        self.lay_network_footer = QtWidgets.QHBoxLayout()
+        self.lay_network_footer.setObjectName("lay_network_footer")
+        self.networkTestButton = QtWidgets.QPushButton(self.page_streaming_network)
+        self.networkTestButton.setObjectName("networkTestButton")
+        self.lay_network_footer.addWidget(self.networkTestButton)
         spacerItem2 = QtWidgets.QSpacerItem(
+            0, 0, QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Minimum
+        )
+        self.lay_network_footer.addItem(spacerItem2)
+        self.lay_page_streaming_network.addLayout(self.lay_network_footer)
+        spacerItem3 = QtWidgets.QSpacerItem(
             0, 0, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Expanding
         )
-        self.lay_page_streaming_network.addItem(spacerItem2)
+        self.lay_page_streaming_network.addItem(spacerItem3)
         self.section_page.addWidget(self.page_streaming_network)
         self.page_defaults_playlist = PageScrollArea()
         self.page_defaults_playlist.setFrameShape(QtWidgets.QFrame.NoFrame)
@@ -483,10 +493,10 @@ class Ui_SettingsDialog:
             0, QtWidgets.QFormLayout.FieldRole, self.miscHWCropBorder
         )
         self.lay_page_advanced_decoder.addLayout(self.lay_miscHWCropBorder)
-        spacerItem3 = QtWidgets.QSpacerItem(
+        spacerItem4 = QtWidgets.QSpacerItem(
             0, 0, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Expanding
         )
-        self.lay_page_advanced_decoder.addItem(spacerItem3)
+        self.lay_page_advanced_decoder.addItem(spacerItem4)
         self.section_page.addWidget(self.page_advanced_decoder)
         self.page_advanced_logging = QtWidgets.QWidget()
         self.page_advanced_logging.setObjectName("page_advanced_logging")
@@ -560,10 +570,10 @@ class Ui_SettingsDialog:
             1, QtWidgets.QFormLayout.FieldRole, self.logLevelVLC
         )
         self.lay_page_advanced_logging.addLayout(self.formLayout_5)
-        spacerItem4 = QtWidgets.QSpacerItem(
+        spacerItem5 = QtWidgets.QSpacerItem(
             0, 0, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Expanding
         )
-        self.lay_page_advanced_logging.addItem(spacerItem4)
+        self.lay_page_advanced_logging.addItem(spacerItem5)
         self.section_page.addWidget(self.page_advanced_logging)
         self.lay_main_2.addWidget(self.section_page)
         self.lay_main.addLayout(self.lay_main_2)
@@ -699,9 +709,6 @@ class Ui_SettingsDialog:
                 "Cookies are login credentials. Anyone with access to this computer can read them.",
             )
         )
-        self.label_cookies_howto.setText(
-            _translate("SettingsDialog", "How to export cookies")
-        )
         self.cookiesTestButton.setToolTip(
             _translate(
                 "SettingsDialog",
@@ -709,6 +716,9 @@ class Ui_SettingsDialog:
             )
         )
         self.cookiesTestButton.setText(_translate("SettingsDialog", "Test yt-dlp"))
+        self.label_cookies_howto.setText(
+            _translate("SettingsDialog", "How to export cookies")
+        )
         self.label_network_proxy_mode.setText(_translate("SettingsDialog", "Proxy"))
         self.networkProxyMode.setToolTip(
             _translate(
@@ -755,6 +765,13 @@ class Ui_SettingsDialog:
                 "These settings apply to http and https links. Other links, such as rtsp and rtmp, are opened by the player itself, and only the user agent applies to them.",
             )
         )
+        self.networkTestButton.setToolTip(
+            _translate(
+                "SettingsDialog",
+                "Try these settings against a real address and report which step fails",
+            )
+        )
+        self.networkTestButton.setText(_translate("SettingsDialog", "Test network"))
         self.playerVideoDriverBox.setTitle(
             _translate("SettingsDialog", "Video Decoder")
         )

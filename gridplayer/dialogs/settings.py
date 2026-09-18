@@ -13,9 +13,9 @@ from PyQt5.QtWidgets import (
     QVBoxLayout,
 )
 
+from gridplayer.dialogs.checkup import CheckupDialog
 from gridplayer.dialogs.messagebox import QCustomMessageBox
 from gridplayer.dialogs.settings_dialog_ui import Ui_SettingsDialog
-from gridplayer.dialogs.ytdlp_checkup import YtDlpCheckupDialog
 from gridplayer.params import env
 from gridplayer.params.defaults_fields import PLAYLIST_FIELDS, VIDEO_FIELDS
 from gridplayer.params.languages import LANGUAGES
@@ -32,6 +32,8 @@ from gridplayer.utils import log_config
 from gridplayer.utils.app_dir import get_app_data_dir
 from gridplayer.utils.cookies import cookie_store, same_cookies
 from gridplayer.utils.keymap import default_keymap, merge_keymap
+from gridplayer.utils.network import opts_for
+from gridplayer.utils.network_checkup import NetworkCheckup
 from gridplayer.utils.qt import qt_connect, translate
 from gridplayer.utils.ytdlp_checkup import YouTubeCheckup
 from gridplayer.version import __app_url__
@@ -274,6 +276,7 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
             (self.cookiesHowToButton.clicked, self.show_cookies_howto),
             (self.cookiesTestButton.clicked, self.run_cookies_checkup),
             (self.networkProxyMode.currentIndexChanged, self.proxy_mode_selected),
+            (self.networkTestButton.clicked, self.run_network_checkup),
         )
 
     def run_cookies_checkup(self):
@@ -289,7 +292,30 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
             are_cookies_enabled=self.cookiesEnabled.isChecked(),
         )
 
-        YtDlpCheckupDialog(self, checkup).exec_()
+        CheckupDialog(self, checkup).exec_()
+
+    def run_network_checkup(self):
+        """Try the network settings as the page has them now.
+
+        Read off the widgets rather than out of the store, for the same
+        reason the cookies test is: what somebody wants tried is what
+        they have just typed, and they have not pressed OK yet.
+        """
+
+        CheckupDialog(self, NetworkCheckup(self.network_opts_on_page)).exec_()
+
+    @property
+    def network_opts_on_page(self):
+        """The Network page as the settings it would be saved as."""
+
+        return opts_for(
+            proxy_mode=self.networkProxyMode.currentData(),
+            proxy_url=self.networkProxyUrl.text(),
+            user_agent=self.networkUserAgent.text(),
+            ip_version=self.networkIPVersion.currentData(),
+            timeout=self.networkTimeout.value(),
+            verify_tls=self.networkVerifyTLS.isChecked(),
+        )
 
     def proxy_mode_selected(self, idx):
         """Only a proxy of the user's own has an address to type."""

@@ -6,6 +6,8 @@ passed on is a proxy that quietly is not used, and the only sign of it
 is traffic going somewhere the user said it should not.
 """
 
+import socket
+
 import pytest
 
 from gridplayer.models.stream import HashableDict, Stream, StreamSessionOpts
@@ -68,13 +70,23 @@ def proxy_set(monkeypatch):
 def _answer_with(monkeypatch, opts):
     """Make every reader of the page see this one.
 
-    The checkup keeps its own reference to the reader, so patching the
-    network module alone would leave its own requests on the real
-    settings and quietly pass whatever it was handed.
+    One patch reaches all of them: nothing reads the settings for
+    itself, they all ask the network module, and it resolves the reader
+    out of its own globals when they do.
     """
 
-    for module in (network_module, ytdlp_checkup):
-        monkeypatch.setattr(module, "network_opts", lambda: opts)
+    monkeypatch.setattr(network_module, "network_opts", lambda: opts)
+
+
+def _nothing_set():
+    return network_module.NetworkOpts(
+        proxy_mode=ProxyMode.SYSTEM,
+        proxy="",
+        user_agent="",
+        ip_version=IPVersion.AUTO,
+        timeout=0,
+        verify_tls=True,
+    )
 
 
 @pytest.fixture
@@ -164,17 +176,7 @@ class TestWhoseUserAgentWins:
             server=None,
         )
 
-        _answer_with(
-            monkeypatch,
-            network_module.NetworkOpts(
-                proxy_mode=ProxyMode.SYSTEM,
-                proxy="",
-                user_agent="",
-                ip_version=IPVersion.AUTO,
-                timeout=0,
-                verify_tls=True,
-            ),
-        )
+        _answer_with(monkeypatch, _nothing_set())
 
         relay.get_stream(Stream(url="http://host/v.mp4", protocol="http"))
 
@@ -215,30 +217,71 @@ class TestTheYtDlpSide:
 
         assert _FakeYoutubeDL.opened_with["proxy"] == PROXY_URL
 
-    def test_the_checkups_own_requests_go_through_it_too(self, proxy_set, no_cookies):
-        handler = ytdlp_checkup._proxy_handler()
-
-        assert handler.proxies == {"http": PROXY_URL, "https": PROXY_URL}
-
-    def test_a_proxy_urllib_cannot_speak_to_is_said_out_loud(
-        self, monkeypatch, no_cookies
+    def test_the_checkups_own_requests_go_through_it_too(
+        self, mocker, proxy_set, no_cookies
     ):
-        """Going direct instead would be reporting on the wrong connection."""
+        mocker.patch.object(ytdlp_checkup, "Streamlink", _FakeSession)
+
+        session = ytdlp_checkup.YouTubeCheckup()._session()
+
+        assert session.http.proxies == {"http": PROXY_URL, "https": PROXY_URL}
+
+    def test_a_socks_proxy_is_no_longer_beyond_them(
+        self, mocker, monkeypatch, no_cookies
+    ):
+        """They used to be made with urllib, which cannot speak SOCKS.
+
+        Going around the proxy instead would have reported on a
+        connection playback was never going to make.
+        """
+
+        socks = "socks5h://127.0.0.1:1080"
 
         _answer_with(
             monkeypatch,
             network_module.NetworkOpts(
                 proxy_mode=ProxyMode.CUSTOM,
-                proxy="socks5h://127.0.0.1:1080",
+                proxy=socks,
                 user_agent="",
                 ip_version=IPVersion.AUTO,
                 timeout=0,
                 verify_tls=True,
             ),
         )
+        mocker.patch.object(ytdlp_checkup, "Streamlink", _FakeSession)
 
-        with pytest.raises(OSError, match="socks5h"):
-            ytdlp_checkup._proxy_handler()
+        session = ytdlp_checkup.YouTubeCheckup()._session()
+
+        assert session.http.proxies == {"http": socks, "https": socks}
+
+
+class TestTheAddressFamily:
+    """Not the session's to keep, whatever it looks like.
+
+    Streamlink holds the restriction in a urllib3 global and its ipv4
+    and ipv6 options only ever turn one on: set to False on a session
+    that never had them on, they leave the last one turned on standing.
+    So a session set back to Auto has to say so outright, or whoever
+    forced a family last speaks for every session made after them.
+    """
+
+    def test_forcing_one_says_which(self, proxy_set, no_cookies):
+        session = _FakeSession()
+
+        network_module.apply_to_streamlink(session)
+
+        assert session.address_family is socket.AF_INET
+
+    def test_auto_clears_it_even_on_a_session_that_never_set_it(
+        self, monkeypatch, no_cookies
+    ):
+        _answer_with(monkeypatch, _nothing_set())
+
+        session = _FakeSession()
+
+        network_module.apply_to_streamlink(session)
+
+        assert session.address_family is None
 
 
 class TestTheVlcSide:

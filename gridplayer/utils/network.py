@@ -15,9 +15,13 @@ instead, which fetches with the same session as everything else. See
 needs_relay.
 """
 
+import contextlib
+import socket
 import urllib.parse
 from dataclasses import dataclass
 from types import MappingProxyType
+
+from streamlink.exceptions import StreamlinkError
 
 from gridplayer.params.static import IPVersion, ProxyMode
 from gridplayer.settings import Settings
@@ -51,6 +55,18 @@ SOURCE_ADDRESS = MappingProxyType(
         IPVersion.V6: "::",
     }
 )
+
+# the same thing said the way a socket says it
+ADDRESS_FAMILIES = MappingProxyType(
+    {
+        IPVersion.V4: socket.AF_INET,
+        IPVersion.V6: socket.AF_INET6,
+    }
+)
+
+# how much of a response is taken off the wire at a time while it is
+# being read up to a cap
+CHUNK_BYTES = 16 * 1024
 
 # where what a session held before this module first wrote to it is
 # remembered, so that clearing a setting hands that back rather than
@@ -116,15 +132,44 @@ def network_opts() -> NetworkOpts:
 
     settings = Settings()
 
-    proxy_mode = settings.get("network/proxy_mode")
-
-    return NetworkOpts(
-        proxy_mode=proxy_mode,
-        proxy=_proxy_url(settings, proxy_mode),
-        user_agent=settings.get("network/user_agent").strip(),
+    return opts_for(
+        proxy_mode=settings.get("network/proxy_mode"),
+        proxy_url=settings.get("network/proxy_url"),
+        user_agent=settings.get("network/user_agent"),
         ip_version=settings.get("network/ip_version"),
         timeout=settings.get("network/timeout"),
         verify_tls=settings.get("network/verify_tls"),
+    )
+
+
+def opts_for(
+    *,
+    proxy_mode: ProxyMode,
+    proxy_url: str,
+    user_agent: str,
+    ip_version: IPVersion,
+    timeout: int,
+    verify_tls: bool,
+) -> NetworkOpts:
+    """What the settings come to, wherever they were read from.
+
+    Stored is the usual answer, but not the only one: the settings page
+    builds these out of its own widgets so that a checkup tries what is
+    on screen rather than what was last saved.
+    """
+
+    return NetworkOpts(
+        proxy_mode=proxy_mode,
+        # Custom with nothing filled in is read as no proxy rather than
+        # as the machine's: the user has said they want one of their
+        # own, and falling back to the one they were moving away from
+        # would be answering a half-finished form with the opposite of
+        # what it says.
+        proxy=proxy_url.strip() if proxy_mode is ProxyMode.CUSTOM else "",
+        user_agent=user_agent.strip(),
+        ip_version=ip_version,
+        timeout=timeout,
+        verify_tls=verify_tls,
     )
 
 
@@ -153,7 +198,7 @@ def session_stamp() -> tuple:
     return cookies_stamp(), network_opts()
 
 
-def configure_session(session) -> None:
+def configure_session(session, opts: NetworkOpts | None = None) -> None:
     """Everything a Streamlink session needs before anything is fetched with it.
 
     Two pages of settings and one session, and every place that makes one
@@ -165,19 +210,23 @@ def configure_session(session) -> None:
     """
 
     apply_cookies(session)
-    apply_to_streamlink(session)
+    apply_to_streamlink(session, opts)
 
 
-def apply_to_streamlink(session) -> None:
+def apply_to_streamlink(session, opts: NetworkOpts | None = None) -> None:
     """Give a Streamlink session the network settings, and only those.
 
     Safe to call again on a session that is already running: the headers
     this put on last time are lifted off first, so a header the user has
     since deleted goes with them, and one that was laid over a value the
     session came with gives that value back.
+
+    Settings other than the stored ones can be passed in, which is how a
+    checkup tries what the settings page is showing.
     """
 
-    opts = network_opts()
+    if opts is None:
+        opts = network_opts()
 
     # trust_env covers rather more than proxies -- a CA bundle and a
     # netrc named in the environment go the same way -- but there is no
@@ -196,6 +245,37 @@ def apply_to_streamlink(session) -> None:
 
     session.set_option("ipv4", opts.ip_version is IPVersion.V4)
     session.set_option("ipv6", opts.ip_version is IPVersion.V6)
+
+    # and the half of it those two will not do. Streamlink's ipv4 and
+    # ipv6 options only ever turn the restriction on: set to False on a
+    # session that never had them on, they leave whatever the last
+    # session turned on still standing. And what stands is a urllib3
+    # global rather than anything this session owns, so Auto has to be
+    # said outright or it means "whatever was asked for last".
+    session.http.set_address_family(ADDRESS_FAMILIES.get(opts.ip_version))
+
+
+def fetch_capped(session, url: str, limit: int, **kwargs) -> tuple[int, bytes]:
+    """Fetch as much of something as is worth looking at, and no more.
+
+    The checkups fetch to find out what happens rather than to play
+    anything, so a refusal is answered like any other response: what a
+    host said no with is as much of a result as what it said yes with.
+
+    What went wrong on the way still raises, but as itself. Streamlink
+    wraps it in a PluginError with a sentence about the URL in front,
+    which is right for a plugin and wrong here: a checkup tells a proxy
+    that refused us from a certificate nothing trusts by the type of
+    what was raised.
+    """
+
+    try:
+        response = session.http.get(url, stream=True, raise_for_status=False, **kwargs)
+    except StreamlinkError as e:
+        raise (getattr(e, "err", None) or e) from None
+
+    with contextlib.closing(response):
+        return response.status_code, _read_capped(response, limit)
 
 
 def ytdl_network_opts() -> dict:
@@ -236,19 +316,24 @@ def vlc_user_agent() -> str:
     return network_opts().user_agent or DEFAULT_USER_AGENT
 
 
-def _proxy_url(settings, proxy_mode: ProxyMode) -> str:
-    """The proxy to fetch through, empty where there is none.
+def _read_capped(response, limit: int) -> bytes:
+    """As much of a response as was asked for, taken a chunk at a time.
 
-    Custom with nothing filled in is read as no proxy rather than as the
-    machine's: the user has said they want one of their own, and falling
-    back to the one they were moving away from would be answering a
-    half-finished form with the opposite of what it says.
+    A checkup only ever wants the first slice of what it fetched -- a
+    config block near the top of a page, enough of a stream to prove the
+    host will serve it -- and reading the rest costs bandwidth to throw
+    away.
     """
 
-    if proxy_mode is not ProxyMode.CUSTOM:
-        return ""
+    read = bytearray()
 
-    return settings.get("network/proxy_url").strip()
+    for chunk in response.iter_content(CHUNK_BYTES):
+        read += chunk
+
+        if len(read) >= limit:
+            break
+
+    return bytes(read[:limit])
 
 
 def _apply_timeout(session, timeout: int) -> None:
