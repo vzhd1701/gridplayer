@@ -221,9 +221,9 @@ Go to **Settings -> Streaming -> Network**.
 | --- | --- |
 | **Proxy** | `System` follows the machine's own proxy settings. `None` connects directly, ignoring them. `Custom` takes an address of your own. |
 | **Proxy address** | `http://host:port`, or `socks5h://host:port` to resolve names at the proxy rather than locally. |
-| **Connect over** | Force IPv4 or IPv6 instead of letting the system choose. |
 | **Timeout** | How long to wait on a request. `Auto` leaves each tool on its own default. |
 | **User agent** | How the player identifies itself. `Auto` leaves each tool on its own. A link that came with a user agent of its own keeps it. |
+| **Force IPv4** | Skip IPv6. Fixes a connection that stalls on IPv6 that is offered but does not work, and sites that turn away your IPv6 address. |
 | **Verify TLS certificates** | Turn off only for a proxy that signs traffic with its own certificate. |
 
 ### What these apply to

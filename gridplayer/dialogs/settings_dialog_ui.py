@@ -345,37 +345,30 @@ class Ui_SettingsDialog:
         self.lay_network_form.setWidget(
             1, QtWidgets.QFormLayout.FieldRole, self.networkProxyUrl
         )
-        self.label_network_ip_version = QtWidgets.QLabel(self.page_streaming_network)
-        self.label_network_ip_version.setObjectName("label_network_ip_version")
-        self.lay_network_form.setWidget(
-            2, QtWidgets.QFormLayout.LabelRole, self.label_network_ip_version
-        )
-        self.networkIPVersion = QtWidgets.QComboBox(self.page_streaming_network)
-        self.networkIPVersion.setObjectName("networkIPVersion")
-        self.lay_network_form.setWidget(
-            2, QtWidgets.QFormLayout.FieldRole, self.networkIPVersion
-        )
         self.label_network_timeout = QtWidgets.QLabel(self.page_streaming_network)
         self.label_network_timeout.setObjectName("label_network_timeout")
         self.lay_network_form.setWidget(
-            3, QtWidgets.QFormLayout.LabelRole, self.label_network_timeout
+            2, QtWidgets.QFormLayout.LabelRole, self.label_network_timeout
         )
         self.networkTimeout = QtWidgets.QSpinBox(self.page_streaming_network)
         self.networkTimeout.setObjectName("networkTimeout")
         self.lay_network_form.setWidget(
-            3, QtWidgets.QFormLayout.FieldRole, self.networkTimeout
+            2, QtWidgets.QFormLayout.FieldRole, self.networkTimeout
         )
         self.label_network_user_agent = QtWidgets.QLabel(self.page_streaming_network)
         self.label_network_user_agent.setObjectName("label_network_user_agent")
         self.lay_network_form.setWidget(
-            4, QtWidgets.QFormLayout.LabelRole, self.label_network_user_agent
+            3, QtWidgets.QFormLayout.LabelRole, self.label_network_user_agent
         )
         self.networkUserAgent = QtWidgets.QLineEdit(self.page_streaming_network)
         self.networkUserAgent.setObjectName("networkUserAgent")
         self.lay_network_form.setWidget(
-            4, QtWidgets.QFormLayout.FieldRole, self.networkUserAgent
+            3, QtWidgets.QFormLayout.FieldRole, self.networkUserAgent
         )
         self.lay_page_streaming_network.addLayout(self.lay_network_form)
+        self.networkForceIPv4 = QtWidgets.QCheckBox(self.page_streaming_network)
+        self.networkForceIPv4.setObjectName("networkForceIPv4")
+        self.lay_page_streaming_network.addWidget(self.networkForceIPv4)
         self.networkVerifyTLS = QtWidgets.QCheckBox(self.page_streaming_network)
         self.networkVerifyTLS.setObjectName("networkVerifyTLS")
         self.lay_page_streaming_network.addWidget(self.networkVerifyTLS)
@@ -729,9 +722,6 @@ class Ui_SettingsDialog:
         self.label_network_proxy_url.setText(
             _translate("SettingsDialog", "Proxy address")
         )
-        self.label_network_ip_version.setText(
-            _translate("SettingsDialog", "Connect over")
-        )
         self.label_network_timeout.setText(_translate("SettingsDialog", "Timeout"))
         self.networkTimeout.setToolTip(
             _translate(
@@ -750,6 +740,13 @@ class Ui_SettingsDialog:
             )
         )
         self.networkUserAgent.setPlaceholderText(_translate("SettingsDialog", "Auto"))
+        self.networkForceIPv4.setToolTip(
+            _translate(
+                "SettingsDialog",
+                "Skip IPv6 and connect over IPv4 only. Fixes a connection that stalls on IPv6 that is offered but does not work, and sites that turn away your IPv6 address.",
+            )
+        )
+        self.networkForceIPv4.setText(_translate("SettingsDialog", "Force IPv4"))
         self.networkVerifyTLS.setToolTip(
             _translate(
                 "SettingsDialog",

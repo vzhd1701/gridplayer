@@ -135,14 +135,6 @@ class ProxyMode(AutoName):
     CUSTOM = auto()
 
 
-class IPVersion(AutoName):
-    """Which address family to reach a host over."""
-
-    AUTO = auto()
-    V4 = auto()
-    V6 = auto()
-
-
 class NetworkRetryMode(AutoName):
     """What to do when a network video fails to load or dies mid-playback."""
 

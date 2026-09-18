@@ -6,9 +6,11 @@ usable flag, plus the decision that follows from a setting VLC cannot be
 told at all.
 """
 
+import socket
+
 import pytest
 
-from gridplayer.params.static import IPVersion, ProxyMode
+from gridplayer.params.static import ProxyMode
 from gridplayer.utils import cookies as cookies_module
 from gridplayer.utils import network as network_module
 from gridplayer.utils.network import (
@@ -36,7 +38,7 @@ def settings(monkeypatch):
         "network/proxy_mode": ProxyMode.SYSTEM,
         "network/proxy_url": "",
         "network/user_agent": "",
-        "network/ip_version": IPVersion.AUTO,
+        "network/force_ipv4": False,
         "network/timeout": 0,
         "network/verify_tls": True,
     }
@@ -64,7 +66,7 @@ class TestReadingThePage:
             proxy_mode=ProxyMode.SYSTEM,
             proxy="",
             user_agent="",
-            ip_version=IPVersion.AUTO,
+            force_ipv4=False,
             timeout=0,
             verify_tls=True,
         )
@@ -138,7 +140,7 @@ class TestWhetherALinkCanStillGoStraightToVlc:
         assert needs_relay(VIDEO_URL)
 
     def test_an_address_family(self, settings, no_cookies):
-        settings["network/ip_version"] = IPVersion.V4
+        settings["network/force_ipv4"] = True
 
         assert needs_relay(VIDEO_URL)
 
@@ -198,15 +200,17 @@ class TestHandingThemToYtDlp:
     def test_going_by_the_machine_leaves_it_to_look(self, settings):
         assert "proxy" not in ytdl_network_opts()
 
-    def test_an_address_family_is_a_source_address(self, settings):
-        settings["network/ip_version"] = IPVersion.V4
+    def test_forcing_ipv4_is_a_source_address(self, settings):
+        """Binding to the IPv4 any-address is how yt-dlp is told which."""
+
+        settings["network/force_ipv4"] = True
 
         assert ytdl_network_opts()["source_address"] == "0.0.0.0"
 
-    def test_the_other_address_family(self, settings):
-        settings["network/ip_version"] = IPVersion.V6
+    def test_not_forcing_it_leaves_the_choice_alone(self, settings):
+        settings["network/force_ipv4"] = False
 
-        assert ytdl_network_opts()["source_address"] == "::"
+        assert "source_address" not in ytdl_network_opts()
 
     def test_the_user_agent_goes_as_a_header(self, settings):
         settings["network/user_agent"] = "Mozilla/5.0 (test)"
@@ -256,13 +260,14 @@ class TestHandingThemToStreamlink:
         assert session.http.proxies == {}
         assert session.http.trust_env is False
 
-    def test_an_address_family(self, settings):
-        settings["network/ip_version"] = IPVersion.V4
+    def test_forcing_ipv4(self, settings):
+        settings["network/force_ipv4"] = True
         session = _FakeSession()
 
         apply_to_streamlink(session)
 
-        assert session.options == {"ipv4": True, "ipv6": False}
+        assert session.options == {"ipv4": True}
+        assert session.address_family is socket.AF_INET
 
     def test_certificates_going_unchecked(self, settings):
         settings["network/verify_tls"] = False

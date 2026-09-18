@@ -14,7 +14,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import pytest
 import requests
 
-from gridplayer.params.static import IPVersion, ProxyMode
+from gridplayer.params.static import ProxyMode
 from gridplayer.utils import network
 from gridplayer.utils.stream_proxy.server import ProxyRequestHandler, StreamProxyServer
 from gridplayer.utils.url_resolve.resolver_base import DirectResolver
@@ -138,7 +138,7 @@ def proxy_configured(forwarder, monkeypatch):
                 "network/proxy_mode": ProxyMode.CUSTOM,
                 "network/proxy_url": _url_of(forwarder),
                 "network/user_agent": "",
-                "network/ip_version": IPVersion.AUTO,
+                "network/force_ipv4": False,
                 "network/timeout": 0,
                 "network/verify_tls": True,
             }

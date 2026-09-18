@@ -19,11 +19,10 @@ import contextlib
 import socket
 import urllib.parse
 from dataclasses import dataclass
-from types import MappingProxyType
 
 from streamlink.exceptions import StreamlinkError
 
-from gridplayer.params.static import IPVersion, ProxyMode
+from gridplayer.params.static import ProxyMode
 from gridplayer.settings import Settings
 from gridplayer.utils.cookies import apply_to_streamlink as apply_cookies
 from gridplayer.utils.cookies import cookies_stamp, has_cookies_for
@@ -48,21 +47,9 @@ DEFAULT_USER_AGENT = (
 # way round however much a setting might want them to
 RELAYABLE_SCHEMES = frozenset({"http", "https"})
 
-# what a client binds to in order to be held to one address family
-SOURCE_ADDRESS = MappingProxyType(
-    {
-        IPVersion.V4: "0.0.0.0",
-        IPVersion.V6: "::",
-    }
-)
-
-# the same thing said the way a socket says it
-ADDRESS_FAMILIES = MappingProxyType(
-    {
-        IPVersion.V4: socket.AF_INET,
-        IPVersion.V6: socket.AF_INET6,
-    }
-)
+# what a client binds to in order to be held to IPv4. Binding to the
+# any-address of a family is how yt-dlp is told which one to use
+IPV4_SOURCE_ADDRESS = "0.0.0.0"
 
 # how much of a response is taken off the wire at a time while it is
 # being read up to a cap
@@ -89,7 +76,8 @@ class NetworkOpts:
     proxy: str
     # empty leaves every client on the user agent it came with
     user_agent: str
-    ip_version: IPVersion
+    # skip IPv6 and go out over IPv4 only
+    force_ipv4: bool
     # zero leaves every client on the timeout it came with
     timeout: int
     verify_tls: bool
@@ -117,7 +105,7 @@ class NetworkOpts:
 
         return (
             self.proxy_mode is not ProxyMode.SYSTEM
-            or self.ip_version is not IPVersion.AUTO
+            or self.force_ipv4
             or not self.verify_tls
         )
 
@@ -136,7 +124,7 @@ def network_opts() -> NetworkOpts:
         proxy_mode=settings.get("network/proxy_mode"),
         proxy_url=settings.get("network/proxy_url"),
         user_agent=settings.get("network/user_agent"),
-        ip_version=settings.get("network/ip_version"),
+        force_ipv4=settings.get("network/force_ipv4"),
         timeout=settings.get("network/timeout"),
         verify_tls=settings.get("network/verify_tls"),
     )
@@ -147,7 +135,7 @@ def opts_for(
     proxy_mode: ProxyMode,
     proxy_url: str,
     user_agent: str,
-    ip_version: IPVersion,
+    force_ipv4: bool,
     timeout: int,
     verify_tls: bool,
 ) -> NetworkOpts:
@@ -167,7 +155,7 @@ def opts_for(
         # what it says.
         proxy=proxy_url.strip() if proxy_mode is ProxyMode.CUSTOM else "",
         user_agent=user_agent.strip(),
-        ip_version=ip_version,
+        force_ipv4=force_ipv4,
         timeout=timeout,
         verify_tls=verify_tls,
     )
@@ -243,16 +231,15 @@ def apply_to_streamlink(session, opts: NetworkOpts | None = None) -> None:
     _apply_timeout(session, opts.timeout)
     _apply_user_agent(session, opts.user_agent)
 
-    session.set_option("ipv4", opts.ip_version is IPVersion.V4)
-    session.set_option("ipv6", opts.ip_version is IPVersion.V6)
+    session.set_option("ipv4", opts.force_ipv4)
 
-    # and the half of it those two will not do. Streamlink's ipv4 and
-    # ipv6 options only ever turn the restriction on: set to False on a
-    # session that never had them on, they leave whatever the last
-    # session turned on still standing. And what stands is a urllib3
-    # global rather than anything this session owns, so Auto has to be
-    # said outright or it means "whatever was asked for last".
-    session.http.set_address_family(ADDRESS_FAMILIES.get(opts.ip_version))
+    # and the half of it that will not do. Streamlink's ipv4 option only
+    # ever turns the restriction on: set to False on a session that
+    # never had it on, it leaves whatever the last session turned on
+    # still standing. And what stands is a urllib3 global rather than
+    # anything this session owns, so not forcing it has to be said
+    # outright or it means "whatever was asked for last".
+    session.http.set_address_family(socket.AF_INET if opts.force_ipv4 else None)
 
 
 def fetch_capped(session, url: str, limit: int, **kwargs) -> tuple[int, bytes]:
@@ -297,9 +284,8 @@ def ytdl_network_opts() -> dict:
     if opts.user_agent:
         ydl_opts["http_headers"] = {"User-Agent": opts.user_agent}
 
-    source_address = SOURCE_ADDRESS.get(opts.ip_version)
-    if source_address is not None:
-        ydl_opts["source_address"] = source_address
+    if opts.force_ipv4:
+        ydl_opts["source_address"] = IPV4_SOURCE_ADDRESS
 
     if not opts.verify_tls:
         ydl_opts["nocheckcertificate"] = True

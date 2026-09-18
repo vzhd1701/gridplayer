@@ -23,7 +23,6 @@ from gridplayer.params.static import (
     DropModifier,
     GridMode,
     HWCropBorderOffset,
-    IPVersion,
     NetworkRetryMode,
     ProxyMode,
     SeekSyncMode,
@@ -122,7 +121,10 @@ _default_settings = {
     # empty means the one built in, which is what every request goes out
     # with unless the user has a reason to say otherwise
     "network/user_agent": "",
-    "network/ip_version": IPVersion.AUTO,
+    # IPv6 that is advertised but does not work stalls every request until
+    # it times out, and nothing here races the two families the way a
+    # browser does. Forcing IPv4 is the way out of that.
+    "network/force_ipv4": False,
     # zero leaves each library on its own default rather than imposing one
     # number on clients that have thought about it separately
     "network/timeout": 0,

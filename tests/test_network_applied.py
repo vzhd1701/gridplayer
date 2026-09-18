@@ -11,7 +11,7 @@ import socket
 import pytest
 
 from gridplayer.models.stream import HashableDict, Stream, StreamSessionOpts
-from gridplayer.params.static import IPVersion, ProxyMode
+from gridplayer.params.static import ProxyMode
 from gridplayer.utils import network as network_module
 from gridplayer.utils import ytdlp_checkup
 from gridplayer.utils.stream_proxy import session as proxy_session
@@ -57,7 +57,7 @@ def proxy_set(monkeypatch):
         proxy_mode=ProxyMode.CUSTOM,
         proxy=PROXY_URL,
         user_agent=CUSTOM_USER_AGENT,
-        ip_version=IPVersion.V4,
+        force_ipv4=True,
         timeout=0,
         verify_tls=True,
     )
@@ -83,7 +83,7 @@ def _nothing_set():
         proxy_mode=ProxyMode.SYSTEM,
         proxy="",
         user_agent="",
-        ip_version=IPVersion.AUTO,
+        force_ipv4=False,
         timeout=0,
         verify_tls=True,
     )
@@ -112,7 +112,7 @@ class TestTheStreamlinkSide:
 
         assert session.http.proxies == {"http": PROXY_URL, "https": PROXY_URL}
         assert session.http.headers["User-Agent"] == CUSTOM_USER_AGENT
-        assert session.options == {"ipv4": True, "ipv6": False}
+        assert session.options == {"ipv4": True}
 
     def test_the_probes_that_tell_live_from_recorded(
         self, mocker, proxy_set, no_cookies
@@ -243,7 +243,7 @@ class TestTheYtDlpSide:
                 proxy_mode=ProxyMode.CUSTOM,
                 proxy=socks,
                 user_agent="",
-                ip_version=IPVersion.AUTO,
+                force_ipv4=False,
                 timeout=0,
                 verify_tls=True,
             ),
@@ -355,7 +355,7 @@ class TestALinkThatWouldHaveGoneStraightToVlc:
                 proxy_mode=ProxyMode.CUSTOM,
                 proxy=PROXY_URL,
                 user_agent="",
-                ip_version=IPVersion.AUTO,
+                force_ipv4=False,
                 timeout=0,
                 verify_tls=True,
             ),

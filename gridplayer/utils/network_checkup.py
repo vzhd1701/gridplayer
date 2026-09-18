@@ -26,10 +26,9 @@ from types import MappingProxyType
 import requests
 from streamlink import Streamlink
 
-from gridplayer.params.static import IPVersion, ProxyMode
+from gridplayer.params.static import ProxyMode
 from gridplayer.utils.checkup import Check, CheckResult, CheckStatus, Checkup
 from gridplayer.utils.network import (
-    ADDRESS_FAMILIES,
     NetworkOpts,
     apply_to_streamlink,
     fetch_capped,
@@ -200,8 +199,9 @@ class NetworkCheckup(Checkup):
         The name is the proxy's where there is one and the site's where
         there is not, because that is the one this machine looks up
         either way. Forcing an address family is answered here: a host
-        with no address of the family asked for cannot be reached, and
-        this is where that stops being mysterious.
+        Forcing IPv4 is answered here too: a host that only has an IPv6
+        address cannot be reached that way, and this is where that stops
+        being mysterious.
         """
 
         if self._is_proxy_usable is False:
@@ -209,7 +209,7 @@ class NetworkCheckup(Checkup):
 
         host, port, _ = self._endpoint
 
-        family = ADDRESS_FAMILIES.get(self._opts.ip_version, socket.AF_UNSPEC)
+        family = socket.AF_INET if self._opts.force_ipv4 else socket.AF_UNSPEC
 
         try:
             found = socket.getaddrinfo(host, port, family, socket.SOCK_STREAM)
@@ -395,9 +395,7 @@ class NetworkCheckup(Checkup):
         """
 
         lines = [
-            _t("Connect over: {VALUE}").format(
-                VALUE=_ip_version_text(self._opts.ip_version)
-            ),
+            _t("Force IPv4: {VALUE}").format(VALUE=_yes_or_no(self._opts.force_ipv4)),
             _t("Timeout: {VALUE}").format(VALUE=_timeout_text(self._opts.timeout)),
             _t("User agent: {VALUE}").format(VALUE=self._opts.user_agent or _t("Auto")),
             _t("Verify TLS certificates: {VALUE}").format(
@@ -597,30 +595,12 @@ def _redacted(url: str) -> str:
     )
 
 
-def _family_word(ip_version: IPVersion) -> str:
-    """IPv4 or IPv6, for a sentence that already says what is being said."""
-
-    return _family_name(ADDRESS_FAMILIES.get(ip_version, socket.AF_UNSPEC))
-
-
 def _no_usable_proxy() -> CheckResult:
     """Nothing past the proxy is worth trying until the address is right."""
 
     return CheckResult(
         CheckStatus.SKIPPED, _t("Not tried, the proxy address has to be right first")
     )
-
-
-def _ip_version_text(ip_version: IPVersion) -> str:
-    """As the "Connect over" box spells it."""
-
-    if ip_version is IPVersion.V4:
-        return _t("IPv4 only")
-
-    if ip_version is IPVersion.V6:
-        return _t("IPv6 only")
-
-    return _t("Automatic")
 
 
 def _timeout_text(timeout: int) -> str:
@@ -685,11 +665,10 @@ def _lookup_error(host: str, error: OSError) -> str:
 
 
 def _dns_hint(opts: NetworkOpts) -> str:
-    if opts.ip_version is not IPVersion.AUTO:
+    if opts.force_ipv4:
         return _t(
-            'The host may have no {FAMILY} address. Set "Connect over"'
-            " back to Automatic and try again."
-        ).format(FAMILY=_family_word(opts.ip_version))
+            'The host may have no IPv4 address. Turn "Force IPv4" off and try again.'
+        )
 
     return _t("The name did not resolve. Check the address and your DNS.")
 
@@ -701,12 +680,12 @@ def _connect_hint(opts: NetworkOpts) -> str:
             " Check that it is running and that the port is right."
         )
 
-    if opts.ip_version is not IPVersion.AUTO:
+    if opts.force_ipv4:
         return _t(
-            "The address resolved but would not take a connection. If your"
-            ' network does not carry {FAMILY}, set "Connect over" back to'
-            " Automatic."
-        ).format(FAMILY=_family_word(opts.ip_version))
+            "The address resolved but would not take a connection. Try"
+            ' turning "Force IPv4" off, in case the host is only reachable'
+            " over IPv6."
+        )
 
     return _t("Nothing answered at that address.")
 

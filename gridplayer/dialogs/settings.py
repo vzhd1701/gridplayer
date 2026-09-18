@@ -22,7 +22,6 @@ from gridplayer.params.languages import LANGUAGES
 from gridplayer.params.static import (
     ColorScheme,
     HWCropBorderOffset,
-    IPVersion,
     ProxyMode,
     URLResolver,
     VideoDriver,
@@ -147,7 +146,7 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
             "network/proxy_mode": self.networkProxyMode,
             "network/proxy_url": self.networkProxyUrl,
             "network/user_agent": self.networkUserAgent,
-            "network/ip_version": self.networkIPVersion,
+            "network/force_ipv4": self.networkForceIPv4,
             "network/timeout": self.networkTimeout,
             "network/verify_tls": self.networkVerifyTLS,
         }
@@ -238,7 +237,6 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
         self.fill_streamingResolverPriority()
         self.fill_hwCropBorder()
         self.fill_networkProxyMode()
-        self.fill_networkIPVersion()
 
     def ui_set_limits(self):
         self.playerVideoDriverPlayers.setRange(1, MAX_VLC_PROCESSES)
@@ -312,7 +310,7 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
             proxy_mode=self.networkProxyMode.currentData(),
             proxy_url=self.networkProxyUrl.text(),
             user_agent=self.networkUserAgent.text(),
-            ip_version=self.networkIPVersion.currentData(),
+            force_ipv4=self.networkForceIPv4.isChecked(),
             timeout=self.networkTimeout.value(),
             verify_tls=self.networkVerifyTLS.isChecked(),
         )
@@ -475,15 +473,6 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
         }
 
         _fill_combo_box(self.networkProxyMode, modes)
-
-    def fill_networkIPVersion(self):
-        versions = {
-            IPVersion.AUTO: self.tr("Automatic"),
-            IPVersion.V4: self.tr("IPv4 only"),
-            IPVersion.V6: self.tr("IPv6 only"),
-        }
-
-        _fill_combo_box(self.networkIPVersion, versions)
 
     def fill_hwCropBorder(self):
         values = {

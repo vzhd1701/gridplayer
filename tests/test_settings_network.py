@@ -11,7 +11,7 @@ from PyQt5.QtWidgets import QApplication
 
 from gridplayer.dialogs import settings as settings_dialog
 from gridplayer.dialogs.settings import SECTION_PAGE_ROLE, SettingsDialog
-from gridplayer.params.static import IPVersion, ProxyMode
+from gridplayer.params.static import ProxyMode
 from gridplayer.settings import _Settings
 from gridplayer.utils.cookies import CookieStore
 from gridplayer.utils.network_checkup import NetworkCheckup
@@ -22,7 +22,7 @@ NETWORK_KEYS = (
     "network/proxy_mode",
     "network/proxy_url",
     "network/user_agent",
-    "network/ip_version",
+    "network/force_ipv4",
     "network/timeout",
     "network/verify_tls",
 )
@@ -97,7 +97,7 @@ class TestWhatIsStoredShowsUpOnThePage:
     def test_out_of_the_box_it_asks_for_nothing(self, dialog):
         assert dialog.networkProxyMode.currentData() is ProxyMode.SYSTEM
         assert dialog.networkUserAgent.text() == ""
-        assert dialog.networkIPVersion.currentData() is IPVersion.AUTO
+        assert not dialog.networkForceIPv4.isChecked()
         assert dialog.networkTimeout.value() == 0
         assert dialog.networkVerifyTLS.isChecked()
 
@@ -123,14 +123,14 @@ class TestWhatIsOnThePageIsStored:
 
     def test_the_rest_of_the_page(self, settings, dialog):
         dialog.networkUserAgent.setText("Mozilla/5.0 (test)")
-        _choose(dialog.networkIPVersion, IPVersion.V4)
+        dialog.networkForceIPv4.setChecked(True)
         dialog.networkTimeout.setValue(30)
         dialog.networkVerifyTLS.setChecked(False)
 
         dialog.save_settings()
 
         assert settings.get("network/user_agent") == "Mozilla/5.0 (test)"
-        assert settings.get("network/ip_version") is IPVersion.V4
+        assert settings.get("network/force_ipv4") is True
         assert settings.get("network/timeout") == 30
         assert settings.get("network/verify_tls") is False
 
@@ -197,14 +197,14 @@ class TestTheTestButton:
 
     def test_the_rest_of_the_page_comes_with_it(self, dialog):
         dialog.networkUserAgent.setText("Mozilla/5.0 (test)")
-        _choose(dialog.networkIPVersion, IPVersion.V6)
+        dialog.networkForceIPv4.setChecked(True)
         dialog.networkTimeout.setValue(30)
         dialog.networkVerifyTLS.setChecked(False)
 
         opts = dialog.network_opts_on_page
 
         assert opts.user_agent == "Mozilla/5.0 (test)"
-        assert opts.ip_version is IPVersion.V6
+        assert opts.force_ipv4 is True
         assert opts.timeout == 30
         assert opts.verify_tls is False
 
@@ -251,7 +251,7 @@ class TestTheKeysThemselves:
         assert settings.get("network/proxy_mode") is ProxyMode.SYSTEM
         assert settings.get("network/proxy_url") == ""
         assert settings.get("network/user_agent") == ""
-        assert settings.get("network/ip_version") is IPVersion.AUTO
+        assert settings.get("network/force_ipv4") is False
         assert settings.get("network/timeout") == 0
         assert settings.get("network/verify_tls") is True
 

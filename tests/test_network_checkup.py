@@ -16,8 +16,9 @@ from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 import pytest
+from urllib3.util import connection
 
-from gridplayer.params.static import IPVersion, ProxyMode
+from gridplayer.params.static import ProxyMode
 from gridplayer.utils import network_checkup
 from gridplayer.utils.checkup import CheckStatus
 from gridplayer.utils.network import opts_for
@@ -31,6 +32,10 @@ UNROUTABLE_HOST = "192.0.2.1"
 
 # reserved to never resolve
 UNRESOLVABLE_HOST = "nothing.invalid"
+
+# a literal with no IPv4 form at all, so asking for one is refused whether
+# or not this machine has IPv6 of its own
+IPV6_ONLY_HOST = "::1"
 
 # short enough that a step which is meant to give up has given up before
 # the test runner starts wondering
@@ -129,7 +134,7 @@ def _checkup(**kwargs) -> NetworkCheckup:
             proxy_mode=kwargs.get("proxy_mode", ProxyMode.SYSTEM),
             proxy_url=kwargs.get("proxy_url", ""),
             user_agent=kwargs.get("user_agent", ""),
-            ip_version=kwargs.get("ip_version", IPVersion.AUTO),
+            force_ipv4=kwargs.get("force_ipv4", False),
             timeout=kwargs.get("timeout", TIMEOUT_SEC),
             verify_tls=kwargs.get("verify_tls", True),
         )
@@ -188,7 +193,7 @@ class TestNothingIsConfigured:
         said = _step(_checkup(), "Settings in use")
 
         assert said.status is CheckStatus.PASSED
-        assert "Connect over: Automatic" in said.hint
+        assert "Force IPv4: No" in said.hint
 
     def test_nothing_says_the_player_is_being_cut_out(self, site):
         """No setting the player cannot be given, so no relaying."""
@@ -371,7 +376,7 @@ class TestWhatTheSettingsAreReportedAs:
     @pytest.mark.parametrize(
         ("kwargs", "said"),
         [
-            ({"ip_version": IPVersion.V4}, "Connect over: IPv4 only"),
+            ({"force_ipv4": True}, "Force IPv4: Yes"),
             ({"timeout": 30}, "Timeout: 30 sec"),
             (
                 {"user_agent": "Mozilla/5.0 (test)"},
@@ -384,29 +389,45 @@ class TestWhatTheSettingsAreReportedAs:
         assert said in _step(_checkup(**kwargs), "Settings in use").hint
 
 
-class TestForcingAnAddressFamily:
-    def test_a_host_with_no_address_of_that_family_is_explained(self, site):
-        """IPv6 on a name that is only ever 127.0.0.1."""
+class TestForcingIPv4:
+    """The one thing it costs, and the thing it must not leave behind."""
 
-        ran = _up_to(_checkup(ip_version=IPVersion.V6), "Looking up the address")
+    def test_a_host_that_is_only_reachable_over_ipv6_says_so(self, site):
+        said = _step(
+            _checkup(
+                proxy_mode=ProxyMode.CUSTOM,
+                proxy_url=f"http://[{IPV6_ONLY_HOST}]:8080",
+                force_ipv4=True,
+            ),
+            "Looking up the address",
+        )
 
-        assert ran["Looking up the address"].status is CheckStatus.FAILED
-        assert "IPv6" in ran["Looking up the address"].hint
+        assert said.status is CheckStatus.FAILED
+        assert "Force IPv4" in said.hint
 
-    def test_the_family_that_is_there_is_reported(self, site):
-        said = _up_to(_checkup(ip_version=IPVersion.V4), "Looking up the address")[
-            "Looking up the address"
-        ]
+    def test_the_same_host_is_found_with_it_off(self, site):
+        """So the failure above is the setting, not the host being wrong."""
+
+        said = _step(
+            _checkup(
+                proxy_mode=ProxyMode.CUSTOM,
+                proxy_url=f"http://[{IPV6_ONLY_HOST}]:8080",
+            ),
+            "Looking up the address",
+        )
+
+        assert said.status is CheckStatus.PASSED
+
+    def test_the_family_used_is_reported(self, site):
+        said = _step(_checkup(force_ipv4=True), "Looking up the address")
 
         assert "IPv4" in said.summary
 
     def test_the_process_is_left_as_it_was_found(self, site):
         """It is a urllib3 global, and videos are playing behind the dialog."""
 
-        from urllib3.util import connection
-
         before = connection.allowed_gai_family()
 
-        _run(_checkup(ip_version=IPVersion.V4))
+        _run(_checkup(force_ipv4=True))
 
         assert connection.allowed_gai_family() == before

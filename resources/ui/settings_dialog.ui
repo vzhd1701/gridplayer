@@ -621,23 +621,13 @@
             </widget>
            </item>
            <item row="2" column="0">
-            <widget class="QLabel" name="label_network_ip_version">
-             <property name="text">
-              <string>Connect over</string>
-             </property>
-            </widget>
-           </item>
-           <item row="2" column="1">
-            <widget class="QComboBox" name="networkIPVersion"/>
-           </item>
-           <item row="3" column="0">
             <widget class="QLabel" name="label_network_timeout">
              <property name="text">
               <string>Timeout</string>
              </property>
             </widget>
            </item>
-           <item row="3" column="1">
+           <item row="2" column="1">
             <widget class="QSpinBox" name="networkTimeout">
              <property name="toolTip">
               <string>How long to wait on a request before giving up on it</string>
@@ -650,14 +640,14 @@
              </property>
             </widget>
            </item>
-           <item row="4" column="0">
+           <item row="3" column="0">
             <widget class="QLabel" name="label_network_user_agent">
              <property name="text">
               <string>User agent</string>
              </property>
             </widget>
            </item>
-           <item row="4" column="1">
+           <item row="3" column="1">
             <widget class="QLineEdit" name="networkUserAgent">
              <property name="toolTip">
               <string>How the player identifies itself to sites. Leave empty for the default.</string>
@@ -668,6 +658,16 @@
             </widget>
            </item>
           </layout>
+         </item>
+         <item>
+          <widget class="QCheckBox" name="networkForceIPv4">
+           <property name="toolTip">
+            <string>Skip IPv6 and connect over IPv4 only. Fixes a connection that stalls on IPv6 that is offered but does not work, and sites that turn away your IPv6 address.</string>
+           </property>
+           <property name="text">
+            <string>Force IPv4</string>
+           </property>
+          </widget>
          </item>
          <item>
           <widget class="QCheckBox" name="networkVerifyTLS">

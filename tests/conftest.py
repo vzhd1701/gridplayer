@@ -6,7 +6,7 @@ import pytest
 from PyQt5.QtWidgets import QApplication
 from requests.cookies import RequestsCookieJar
 
-from gridplayer.params.static import IPVersion, ProxyMode
+from gridplayer.params.static import ProxyMode
 from gridplayer.playlist_settings import PlaylistSettings
 from gridplayer.utils import cookies, network
 
@@ -20,7 +20,7 @@ DEFAULT_NETWORK_SETTINGS = MappingProxyType(
         "network/proxy_mode": ProxyMode.SYSTEM,
         "network/proxy_url": "",
         "network/user_agent": "",
-        "network/ip_version": IPVersion.AUTO,
+        "network/force_ipv4": False,
         "network/timeout": 0,
         "network/verify_tls": True,
     }
