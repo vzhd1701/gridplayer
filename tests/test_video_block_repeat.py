@@ -493,3 +493,115 @@ def test_seek_holds_off_wrap_detection(mocker):
     block.video_driver.set_time.assert_called_once_with(1500)
     assert block._last_time == 1500
     block._seek_settle_timer.start.assert_called_once()
+
+
+def test_seek_marks_itself_before_it_is_made(mocker):
+    """The mark has to be down before libVLC is asked to move.
+
+    The single process drivers call libVLC on this very thread, and it
+    reports the new time from inside the call. A wheel seek past the end
+    lands back at the start, and marked afterwards that update reads as a
+    finished pass -- running the end action from inside the seek itself.
+    """
+    block = mocker.Mock()
+    block.is_video_initialized = True
+    block.is_live = False
+    block.loop_start = 0
+    block.loop_end = 10000
+    seen = {}
+
+    def _set_time(seek_ms):
+        seen["last_time"] = block._last_time
+        seen["is_settling"] = block._seek_settle_timer.start.called
+
+    block.video_driver.set_time.side_effect = _set_time
+
+    VideoBlock.seek(block, 50)
+
+    assert seen == {"last_time": 50, "is_settling": True}
+
+
+def _shift_block(mocker, end_action, time=9950, length=10000, **video_kwargs):
+    block = _block(mocker, end_action=end_action, **video_kwargs)
+    block.is_video_initialized = True
+    block.is_live = False
+    block.time = time
+    block.video_driver.length = length
+    block.loop_start = VideoBlock.loop_start.fget(block)
+    block.loop_end = VideoBlock.loop_end.fget(block)
+    block.is_end_a_loop = VideoBlock.is_end_a_loop.fget(block)
+
+    return block
+
+
+def test_seek_past_the_end_runs_the_end_action(mocker):
+    """A video meant to move on at the end moves on when seeked there."""
+    block = _shift_block(mocker, VideoEndAction.NEXT_FILE)
+
+    VideoBlock.seek_shift_ms(block, 100)
+
+    block.loop_end_action.assert_called_once_with()
+    block.seek.assert_not_called()
+
+
+def test_seek_past_the_end_of_a_looping_video_carries_on(mocker):
+    """Wheeling through a looping video stays continuous."""
+    block = _shift_block(mocker, VideoEndAction.LOOP_FILE)
+
+    VideoBlock.seek_shift_ms(block, 100)
+
+    block.seek.assert_called_once_with(50)
+    block.loop_end_action.assert_not_called()
+
+
+def test_seek_past_the_end_of_a_segment_carries_on(mocker):
+    """A segment loops whatever the end action says, so the seek wraps."""
+    block = _shift_block(
+        mocker, VideoEndAction.STOP, time=4950, loop_start=1000, loop_end=5000
+    )
+
+    VideoBlock.seek_shift_ms(block, 100)
+
+    block.seek.assert_called_once_with(1050)
+    block.loop_end_action.assert_not_called()
+
+
+def test_seek_within_the_video_is_left_alone(mocker):
+    block = _shift_block(mocker, VideoEndAction.STOP, time=5000)
+
+    VideoBlock.seek_shift_ms(block, 100)
+
+    block.seek.assert_called_once_with(5100)
+    block.loop_end_action.assert_not_called()
+
+
+def test_seek_before_the_start_still_wraps_to_the_end(mocker):
+    """Only the end has an end action; the start keeps wrapping."""
+    block = _shift_block(mocker, VideoEndAction.STOP, time=50)
+
+    VideoBlock.seek_shift_ms(block, -100)
+
+    block.seek.assert_called_once_with(9950)
+    block.loop_end_action.assert_not_called()
+
+
+@pytest.mark.parametrize("left_behind", [None, "loading"])
+def test_manual_seek_past_the_end_that_takes_the_player_away(mocker, left_behind):
+    """Stopped and closed leave no player, and the next file leaves a new one.
+
+    Neither has a position left to report.
+    """
+    block = mocker.Mock()
+    block.is_video_initialized = True
+    block.is_live = False
+
+    def _seek_shift_percent(shift_percent):
+        block.video_driver = None if left_behind is None else mocker.Mock()
+        block.is_video_initialized = False
+
+    block.seek_shift_percent = _seek_shift_percent
+
+    VideoBlock.manual_seek(block, "seek_shift_percent", 1)
+
+    block.sync_time.emit.assert_not_called()
+    block.sync_percent.emit.assert_not_called()

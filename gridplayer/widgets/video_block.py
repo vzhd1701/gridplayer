@@ -696,6 +696,12 @@ class VideoBlock(QWidget):
     def manual_seek(self, command, *args):
         getattr(self, command)(*args)
 
+        # a seek past the end is the end arriving early, and the end action
+        # may have taken the player away with it -- stopped, closed, or left
+        # loading the next file, with no position to report either way
+        if not self.is_video_initialized:
+            return
+
         if command in {"next_frame", "previous_frame"} and self.video_tracks:
             self.sync_paused.emit(True)
 
@@ -1112,6 +1118,21 @@ class VideoBlock(QWidget):
             return length
 
         return self.video_params.loop_end
+
+    @property
+    def is_end_a_loop(self) -> bool:
+        """Whether reaching the end here only starts the video over again.
+
+        A segment is a loop whatever the end action says, and so is the end
+        action that loops the file. Everything else leaves the video behind.
+        """
+
+        is_segment = (
+            self.video_params.loop_start is not None
+            or self.video_params.loop_end is not None
+        )
+
+        return is_segment or self.video_params.end_action == VideoEndAction.LOOP_FILE
 
     def set_drop_indicator(self, indicator: DropIndicator):
         self._drop_indicator = indicator
@@ -1836,6 +1857,15 @@ class VideoBlock(QWidget):
         seek_stretch = self.loop_end - self.loop_start
 
         if seek_ms > 0 and self.time + seek_ms > self.loop_end:
+            # Seeking past the end is the end arriving early, and a video that
+            # is meant to move on when it gets there should move on here too.
+            # Only where the end just starts the video over does the seek
+            # carry on into the next pass, which is what keeps wheeling
+            # through a looping video continuous.
+            if not self.is_end_a_loop:
+                self.loop_end_action()
+                return
+
             rest = self.loop_end - self.time
             seek_set = seek_ms - rest
             seek_set = seek_set - (seek_set // seek_stretch) * seek_stretch
@@ -1876,11 +1906,17 @@ class VideoBlock(QWidget):
         if seek_ms < self.loop_start or seek_ms > self.loop_end:
             seek_ms = self.loop_start
 
-        self.video_driver.set_time(seek_ms)
-        self.time = seek_ms
-
+        # Marked before the seek is made, not after: the single process
+        # drivers call libVLC on this very thread, and it reports the new time
+        # from inside that call. Marked afterwards, a seek that moves the time
+        # backwards -- wheeling past the end lands back at the start -- reads
+        # as a finished pass, and the end action then stops the player from
+        # inside libVLC, which deadlocks against the seek it is still making.
         self._last_time = seek_ms
         self._seek_settle_timer.start()
+
+        self.time = seek_ms
+        self.video_driver.set_time(seek_ms)
 
     @only_with_video_tacks
     @only_seekable
