@@ -331,3 +331,165 @@ def test_switch_video_stopped_other_file_starts_playback(mocker):
     assert block.video_params.uri == Path("/tmp/b.mp4")
     assert block.video_params.playback_state is VideoInitialState.PLAYING
     block.set_video.assert_called_once_with(block.video_params)
+
+
+def test_loop_end_is_the_actual_end(mocker):
+    """No margin cut off the end, VLC wraps the input around on its own."""
+    block = _block(mocker, loop_end=None)
+    block.video_driver.length = 400
+
+    assert VideoBlock.loop_end.fget(block) == 400
+
+
+def test_loop_end_without_driver(mocker):
+    block = _block(mocker, loop_end=None)
+    block.video_driver = None
+
+    assert VideoBlock.loop_end.fget(block) == 0
+
+
+def test_loop_end_explicit_wins(mocker):
+    block = _block(mocker, loop_end=1500)
+    block.video_driver.length = 2000
+
+    assert VideoBlock.loop_end.fget(block) == 1500
+
+
+def _wrap_block(mocker, last_time, is_settling=False, length=10000):
+    block = mocker.Mock()
+    block._last_time = last_time
+    block._seek_settle_timer.isActive.return_value = is_settling
+    block.video_driver.length = length
+
+    return block
+
+
+def test_first_time_update_is_not_a_wrap(mocker):
+    block = _wrap_block(mocker, None)
+
+    assert VideoBlock._is_loop_wrapped(block, 150) is False
+    assert block._last_time == 150
+
+
+def test_time_moving_forward_is_not_a_wrap(mocker):
+    block = _wrap_block(mocker, 150)
+
+    assert VideoBlock._is_loop_wrapped(block, 400) is False
+    assert block._last_time == 400
+
+
+def test_time_falling_back_to_the_start_is_a_wrap(mocker):
+    block = _wrap_block(mocker, 9655)
+
+    assert VideoBlock._is_loop_wrapped(block, 401) is True
+    assert block._last_time == 401
+
+
+def test_time_jitter_is_not_a_wrap(mocker):
+    """A stream reports its time a few ms backwards now and then."""
+    block = _wrap_block(mocker, 2318)
+
+    assert VideoBlock._is_loop_wrapped(block, 2317) is False
+
+
+def test_short_video_wrap(mocker):
+    """A 400ms video hands back only what it has."""
+    block = _wrap_block(mocker, 391, length=400)
+
+    assert VideoBlock._is_loop_wrapped(block, 291) is True
+
+
+def test_no_wrap_without_a_length(mocker):
+    block = _wrap_block(mocker, 9655, length=0)
+
+    assert VideoBlock._is_loop_wrapped(block, 401) is False
+
+
+def test_settling_seek_is_not_a_wrap(mocker):
+    """Time updates sent before a seek landed are not a finished pass."""
+    block = _wrap_block(mocker, 100, is_settling=True)
+
+    # a stale update from before the seek, then the player settling on it
+    assert VideoBlock._is_loop_wrapped(block, 1950) is False
+    assert VideoBlock._is_loop_wrapped(block, 150) is False
+
+    assert block._last_time == 100
+
+
+def test_wrapped_plain_loop_lets_vlc_be(mocker):
+    block = _block(mocker, end_action=VideoEndAction.LOOP_FILE)
+
+    VideoBlock._loop_wrapped(block)
+
+    block.loop_end_action.assert_not_called()
+
+
+def test_wrapped_random_start_acts(mocker):
+    block = _block(mocker, end_action=VideoEndAction.LOOP_FILE, is_start_random=True)
+
+    VideoBlock._loop_wrapped(block)
+
+    block.loop_end_action.assert_called_once()
+
+
+def test_wrapped_with_loop_start_acts(mocker):
+    block = _block(mocker, end_action=VideoEndAction.LOOP_FILE, loop_start=1500)
+
+    VideoBlock._loop_wrapped(block)
+
+    block.loop_end_action.assert_called_once()
+
+
+def test_wrapped_stop_acts(mocker):
+    block = _block(mocker, end_action=VideoEndAction.STOP)
+
+    VideoBlock._loop_wrapped(block)
+
+    block.loop_end_action.assert_called_once()
+
+
+def _playing_block(mocker, is_wrapped):
+    block = mocker.Mock()
+    block.is_video_initialized = True
+    block.is_live = False
+    block.is_stopped = False
+    block.loop_start = 0
+    block.loop_end = 2000
+    block._is_loop_wrapped.return_value = is_wrapped
+
+    return block
+
+
+def test_time_changed_plays_up_to_the_end(mocker):
+    """The last stretch of a video is not cut off any more."""
+    block = _playing_block(mocker, is_wrapped=False)
+
+    VideoBlock.time_changed(block, 1903)
+
+    block._loop_wrapped.assert_not_called()
+    block.seek.assert_not_called()
+    block.loop_end_action.assert_not_called()
+
+
+def test_time_changed_picks_up_the_wrap(mocker):
+    block = _playing_block(mocker, is_wrapped=True)
+
+    VideoBlock.time_changed(block, 100)
+
+    block._loop_wrapped.assert_called_once()
+    block.seek.assert_not_called()
+    block.loop_end_action.assert_not_called()
+
+
+def test_seek_holds_off_wrap_detection(mocker):
+    block = mocker.Mock()
+    block.is_video_initialized = True
+    block.is_live = False
+    block.loop_start = 0
+    block.loop_end = 2000
+
+    VideoBlock.seek(block, 1500)
+
+    block.video_driver.set_time.assert_called_once_with(1500)
+    assert block._last_time == 1500
+    block._seek_settle_timer.start.assert_called_once()

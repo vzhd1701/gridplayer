@@ -6,11 +6,7 @@ from time import time
 from types import MappingProxyType
 
 from gridplayer.params import env
-from gridplayer.params.static import (
-    VIDEO_END_LOOP_MARGIN_MS,
-    AudioChannelMode,
-    VideoTransform,
-)
+from gridplayer.params.static import AudioChannelMode, VideoTransform
 from gridplayer.settings import Settings
 from gridplayer.utils.aspect_calc import calc_resize_scale, calc_view_geometry
 from gridplayer.utils.misc import is_url
@@ -26,6 +22,7 @@ from gridplayer.vlc_player.static import (
     Media,
     MediaInput,
     NotPausedError,
+    is_loop_wrapped,
     wanted_audio_track_id,
 )
 
@@ -33,6 +30,24 @@ MEDIA_EXTRACT_RETRY_TIME = 0.1
 
 # how many of the events around a restart to try putting the tracks back on
 RESTART_REAPPLY_TRIES = 12
+
+# VLC loops the input in place: it seeks back inside the same input thread, so
+# there is no end of media, no demuxer or decoder teardown and no new video
+# output -- unlike the media list player's repeat, which restarts the item.
+# Nothing has to be cut off the end to beat the time event round trip, so even
+# a 400ms clip loops cleanly, and a finished pass shows up as nothing but the
+# time going backwards.
+#
+# The count has to be positive (a negative one reads as "do not repeat"), so
+# "forever" is a number no playback will reach: 2 billion passes of a 400ms
+# clip is 25 years.
+#
+# Adaptive media loops this way too, but the wrap is a seek, and that demuxer
+# restarts its elementary streams on one and renumbers them (see
+# Stream.is_adaptive). A track picked by hand is held by the number it had, so
+# it comes back selecting nothing at all -- hence
+# _arm_tracks_reapply_if_renumbered, since no end of media arrives to arm it.
+INPUT_REPEAT_FOREVER = 2_000_000_000
 
 # VLC's adaptive demuxer restarts the video decoder on every seek, and picking
 # that decoder rebuilds the video output -- once per hardware format avcodec
@@ -112,6 +127,9 @@ class VlcPlayerBase(ABC):
         # put back on the new pass; see _reapply_tracks_after_restart
         self._restart_reapply_tries = 0
 
+        # last time update seen, to tell a finished pass from a running one
+        self._last_time = None
+
         self._event_manager = EventManager()
         self._event_waiter = EventWaiter()
 
@@ -128,6 +146,10 @@ class VlcPlayerBase(ABC):
 
     def init_player(self):
         self._playlist_player = self.instance.media_list_player_new()
+
+        # backstop for whatever :input-repeat does not cover: restarting the
+        # item beats ending on a black frame, even though every pass costs a
+        # decoder and video output rebuild
         self._playlist_player.set_playback_mode(vlc.PlaybackMode.repeat)
 
         self._media_player = self._playlist_player.get_media_player()
@@ -183,6 +205,10 @@ class VlcPlayerBase(ABC):
         )
 
         self._schedule_view_reapply()
+
+        # A video output arriving once the media is up is the decoder having
+        # been restarted under us. Nothing else announces it.
+        self._arm_tracks_reapply_if_renumbered()
 
         self._reapply_tracks_after_restart()
 
@@ -248,7 +274,7 @@ class VlcPlayerBase(ABC):
             return
 
         # the player is set to repeat, so this is the start of a new pass
-        self._restart_reapply_tries = RESTART_REAPPLY_TRIES
+        self._arm_tracks_reapply()
 
     def cb_error(self, event):
         self.error(translate("Video Error", "Player error"))
@@ -284,6 +310,14 @@ class VlcPlayerBase(ABC):
 
         if self._is_paused:
             self.unpause()
+
+        # a pass ending without a picture to rebuild -- audio only -- leaves
+        # the time falling back as the only sign the streams were restarted
+        if self.media is not None:
+            if is_loop_wrapped(self._last_time, new_time, self.media.length):
+                self._arm_tracks_reapply_if_renumbered()
+
+        self._last_time = new_time
 
         self.notify_time_changed(new_time)
 
@@ -374,6 +408,7 @@ class VlcPlayerBase(ABC):
 
         self.media_input = media_input
         self._last_video_size = (0, 0)
+        self._last_time = None
 
         self._log.info(f"Loading {self.media_input.uri}")
 
@@ -392,6 +427,10 @@ class VlcPlayerBase(ABC):
             return self.error(translate("Video Error", "Failed to load media"))
 
         self._event_manager.attach_to_media(self._media_input_vlc)
+
+        if not self.media_input.is_live:
+            # let VLC wrap the input around on its own, seamlessly
+            self._media_options.append(f":input-repeat={INPUT_REPEAT_FOREVER}")
 
         if self.media_input.is_audio_only:
             self._media_options.append(":no-video")
@@ -547,8 +586,15 @@ class VlcPlayerBase(ABC):
         if self.media_input.is_live:
             return
 
-        if seek_ms > self.media.length - VIDEO_END_LOOP_MARGIN_MS:
-            return
+        # Seeks close to the end used to be dropped, to keep the player from
+        # running the media out; with :input-repeat it wraps instead of ending,
+        # so clamping is enough -- and a video shorter than the old margin can
+        # be seeked at all now.
+        seek_ms = max(seek_ms, 0)
+
+        # a media with no length known yet has no end to clamp to
+        if self.media.length > 0:
+            seek_ms = min(seek_ms, self.media.length - 1)
 
         self._media_player.set_time(seek_ms)
 
@@ -703,6 +749,27 @@ class VlcPlayerBase(ABC):
         # Deferred for the same reason as the view: cb_playing runs inside a
         # libvlc event callback and must not re-enter libvlc.
         self._reapply_tracks()
+
+    def _arm_tracks_reapply(self):
+        """Put the chosen tracks back over the events that follow."""
+
+        if not self.is_video_initialized:
+            return
+
+        self._restart_reapply_tries = RESTART_REAPPLY_TRIES
+
+    def _arm_tracks_reapply_if_renumbered(self):
+        """The same, for streams restarted where the media never ended.
+
+        Only the adaptive demuxer does that, and only it renumbers the
+        streams it restarts. Everything else comes back on the tracks it
+        left on, and asking again would flush the sound for nothing.
+        """
+
+        if self.media_input is None or not self.media_input.is_adaptive:
+            return
+
+        self._arm_tracks_reapply()
 
     def _reapply_tracks_after_restart(self):
         """Put the tracks back after a loop, once the new pass will take it.

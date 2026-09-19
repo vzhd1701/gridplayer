@@ -8,6 +8,27 @@ from gridplayer.utils.track_language import pick_track
 DISABLED_TRACK = -1
 NO_TRACK = frozenset((None, DISABLED_TRACK))
 
+# How much of the video the time has to give up at once to count as a finished
+# pass. A stream reports its time a few ms backwards now and then all on its
+# own, and an eighth of the length sits far above that and far below what
+# starting over really hands back.
+LOOP_WRAP_DROP_FRACTION = 8
+
+
+def is_loop_wrapped(last_time: int | None, new_time: int, length: int) -> bool:
+    """Whether the time falling this far back means another pass has begun.
+
+    A pass that came to an end leaves no event behind: VLC loops the input
+    without ending the media, and where the media does end and the item is
+    played again, that is the player's own business. What both have in common
+    is the time dropping back to the beginning.
+    """
+
+    if last_time is None or length <= 0:
+        return False
+
+    return last_time - new_time > length / LOOP_WRAP_DROP_FRACTION
+
 
 def wanted_audio_track_id(video, tracks: dict):
     """Which of these tracks a video's settings call for, None for any.

@@ -36,7 +36,6 @@ from gridplayer.params.static import (
     MIN_SCALE,
     OVERLAY_ACTIVITY_EVENT,
     PLAYER_ID_LENGTH,
-    VIDEO_END_LOOP_MARGIN_MS,
     AudioTrackMode,
     NetworkRetryMode,
     VideoAspect,
@@ -57,6 +56,7 @@ from gridplayer.vlc_player.static import (
     DISABLED_TRACK,
     NO_TRACK,
     MediaInput,
+    is_loop_wrapped,
     wanted_audio_track_id,
 )
 from gridplayer.widgets.cell_chrome import paint_idle_disc, paint_solid_outline
@@ -69,6 +69,12 @@ from gridplayer.widgets.video_overlay import (
 from gridplayer.widgets.video_status import VideoStatus
 
 IN_PROGRESS_THRESHOLD_MS = 500
+
+# A seek sends the time backwards the same way the end of a pass does, and the
+# player takes a few time updates to settle on the new position. Loop detection
+# stays off for this long after one, so an update sent before the seek landed
+# is not mistaken for the video wrapping around.
+SEEK_SETTLE_MS = 500
 
 # a pane that has to sit still for an hour before following its size is
 # as good as one that never follows it at all
@@ -213,6 +219,9 @@ class VideoBlock(QWidget):
 
         self._is_state_change_in_progress = False
 
+        # last time update seen, to tell a finished pass from a running one
+        self._last_time = None
+
         # Components
         self.overlay_hide_timer = QTimer(self)
         self.overlay_hide_timer.setSingleShot(True)
@@ -239,6 +248,10 @@ class VideoBlock(QWidget):
         self._quality_adapt_timer = QTimer(self)
         self._quality_adapt_timer.setSingleShot(True)
         self._quality_adapt_timer.timeout.connect(self._adapt_stream_quality)
+
+        self._seek_settle_timer = QTimer(self)
+        self._seek_settle_timer.setSingleShot(True)
+        self._seek_settle_timer.setInterval(SEEK_SETTLE_MS)
 
         self.url_resolver = self.init_url_resolver()
         self.video_driver: VideoFrameVLC | None = None
@@ -1094,8 +1107,9 @@ class VideoBlock(QWidget):
             length = 0
             if self.video_driver is not None:
                 length = self.video_driver.length
-            # Loop end margin before actual end for seamless loop
-            return max(length - VIDEO_END_LOOP_MARGIN_MS, 0)
+            # No margin before the actual end: VLC wraps the input around on
+            # its own, and a finished pass is caught after the fact
+            return length
 
         return self.video_params.loop_end
 
@@ -1188,6 +1202,8 @@ class VideoBlock(QWidget):
 
     @only_initialized
     def time_changed(self, new_time):
+        is_wrapped = self._is_loop_wrapped(new_time)
+
         self.time = new_time
 
         if self.is_live:
@@ -1196,12 +1212,41 @@ class VideoBlock(QWidget):
         if self.is_stopped:
             return
 
+        if is_wrapped:
+            self._loop_wrapped()
+            return
+
         # 100ms headspace for slow callbacks
         if self.time < self.loop_start - 100:
             self.seek(self.loop_start)
 
         elif self.time > self.loop_end:
             self.loop_end_action()
+
+    def _is_loop_wrapped(self, new_time) -> bool:
+        """Has the video begun another pass since the last time update?"""
+
+        if self._seek_settle_timer.isActive():
+            return False
+
+        last_time, self._last_time = self._last_time, new_time
+
+        return is_loop_wrapped(last_time, new_time, self.video_driver.length)
+
+    def _loop_wrapped(self):
+        """The video wrapped around on its own, mind whatever is left to do."""
+
+        is_plain_loop = (
+            self.video_params.end_action == VideoEndAction.LOOP_FILE
+            and self.video_params.loop_start is None
+            and not self.video_params.is_start_random
+        )
+
+        # VLC has already looped it seamlessly, which is the whole point
+        if is_plain_loop:
+            return
+
+        self.loop_end_action()
 
     def playback_status_changed(self, is_paused):
         self._is_state_change_in_progress = False
@@ -1678,6 +1723,9 @@ class VideoBlock(QWidget):
         # the video is playing, so whatever went wrong before is behind us
         self._network_retries = 0
 
+        # a fresh player has no pass behind it to compare times against
+        self._last_time = None
+
         # final verdict belongs to VLC
         self.is_live = self.video_driver.is_live
 
@@ -1830,6 +1878,9 @@ class VideoBlock(QWidget):
 
         self.video_driver.set_time(seek_ms)
         self.time = seek_ms
+
+        self._last_time = seek_ms
+        self._seek_settle_timer.start()
 
     @only_with_video_tacks
     @only_seekable
