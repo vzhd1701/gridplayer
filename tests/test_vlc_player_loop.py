@@ -6,7 +6,11 @@ from PyQt5.QtWidgets import QApplication
 
 from gridplayer.models.video import Video
 from gridplayer.settings import Settings
-from gridplayer.vlc_player.player_base import INPUT_REPEAT_FOREVER, VlcPlayerBase
+from gridplayer.vlc_player.player_base import (
+    INPUT_REPEAT_FOREVER,
+    RESTART_REAPPLY_TRIES,
+    VlcPlayerBase,
+)
 from gridplayer.vlc_player.static import Media, MediaInput
 
 URI = "http://example.com/a.mp4"
@@ -91,11 +95,13 @@ def _loaded_media(is_live, is_adaptive=False):
     return media
 
 
-def _seeking_player(length, is_live=False):
+def _seeking_player(length, is_live=False, is_adaptive=False):
     player = _MinimalPlayer(vlc_instance=None)
 
+    player.is_video_initialized = True
     player._media_player = _FakeMediaPlayer()
-    player.media_input = _media_input(is_live)
+    player._tracks_manager = _FakeTracksManager()
+    player.media_input = _media_input(is_live, is_adaptive)
     player.media = Media(length=length, video_tracks={}, audio_tracks={})
 
     return player
@@ -234,3 +240,36 @@ def test_live_seek_is_ignored():
     player.set_time(100)
 
     assert player._media_player.times == []
+
+
+def test_adaptive_seek_puts_tracks_back():
+    """The viewer dragging the bar renumbers the streams just as a wrap does."""
+    player = _seeking_player(30000, is_adaptive=True)
+
+    player.set_time(21000)
+
+    assert player._restart_reapply_tries == RESTART_REAPPLY_TRIES
+
+
+def test_seek_without_a_picture_puts_tracks_back():
+    """Audio only has nothing else to go by.
+
+    There is no video output to announce the restart, and a seek forward
+    leaves the time no lower than it found it, so the wrap check sees
+    nothing either.
+    """
+    player = _seeking_player(30000, is_adaptive=True)
+    player.media = Media(length=30000, video_tracks={}, audio_tracks={1: object()})
+
+    player.set_time(21000)
+
+    assert player._restart_reapply_tries == RESTART_REAPPLY_TRIES
+
+
+def test_plain_seek_leaves_tracks_alone():
+    """A plain seek comes back on the tracks it left on."""
+    player = _seeking_player(30000)
+
+    player.set_time(21000)
+
+    assert player._restart_reapply_tries == 0

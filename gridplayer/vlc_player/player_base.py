@@ -598,6 +598,13 @@ class VlcPlayerBase(ABC):
 
         self._media_player.set_time(seek_ms)
 
+        # An adaptive seek restarts the streams and renumbers them whether it
+        # came from a loop or from the viewer dragging the bar. A video stream
+        # says so by rebuilding its output; one without a picture says nothing
+        # at all, and a seek forward leaves the time no lower than it found it,
+        # so nothing else here would notice.
+        self._arm_tracks_reapply_if_renumbered()
+
     @only_initialized_player
     def set_playback_rate(self, rate):
         if self.media_input.is_live:
