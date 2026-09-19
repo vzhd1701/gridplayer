@@ -530,13 +530,16 @@ class VideoFrameVLC(QWidget, metaclass=QABC):
     def set_playback_rate(self, rate) -> None:
         self.video_driver.set_playback_rate(rate)
 
-    def get_ms_per_frame(self) -> int:
+    def get_ms_per_frame(self) -> float:
+        # Not rounded to whole milliseconds: at 23.976 fps a frame lasts
+        # 41.7ms, and stepping by 41 lands short of the next frame often
+        # enough that a press eventually shows the frame it started on.
+        # A track can also come without a frame rate at all.
+        fps = None
         if self.media.cur_video_track:
             fps = self.media.cur_video_track.fps
-        else:
-            fps = DEFAULT_FPS
 
-        return int(1000 / fps)
+        return 1000 / (fps or DEFAULT_FPS)
 
     def audio_set_mute(self, is_muted) -> None:
         self.video_driver.audio_set_mute(is_muted)

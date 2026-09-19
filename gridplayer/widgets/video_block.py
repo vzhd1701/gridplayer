@@ -1940,7 +1940,15 @@ class VideoBlock(QWidget):
 
         ms_per_frame = self.video_driver.get_ms_per_frame()
 
-        self.seek_shift_ms(ms_per_frame * frames)
+        # Counted from the frame the video is on rather than added to the
+        # time it reports, so that steps rounded to whole milliseconds cannot
+        # pile up their leftovers until a press lands back on the frame it
+        # started from. The seek aims at the middle of the frame it wants,
+        # since a whole millisecond lands on either side of a frame's edge.
+        frame_no = int(self.time // ms_per_frame)
+        new_time = round((frame_no + frames + 0.5) * ms_per_frame)
+
+        self.seek_shift_ms(new_time - self.time)
 
     @only_with_video_tacks
     @only_initialized
