@@ -205,6 +205,7 @@ class VideoFrameVLC(QWidget, metaclass=QABC):
     playback_status_changed = pyqtSignal(bool)
 
     video_ready = pyqtSignal()
+    tracks_changed = pyqtSignal()
 
     error = pyqtSignal(str)
     crash = pyqtSignal(str)
@@ -295,6 +296,14 @@ class VideoFrameVLC(QWidget, metaclass=QABC):
     def cur_audio_track_id(self) -> int | None:
         return self.media.cur_audio_track_id
 
+    @property
+    def external_audio_ids(self) -> tuple[int, ...]:
+        return self.media.external_audio_ids
+
+    @property
+    def default_audio_track_id(self) -> int | None:
+        return self.media.default_audio_track_id
+
     @abstractmethod
     def driver_setup(self, vlc_options) -> VLCVideoDriver: ...
 
@@ -322,6 +331,7 @@ class VideoFrameVLC(QWidget, metaclass=QABC):
             ),
             (self.video_driver.time_changed, self.time_changed_emit),
             (self.video_driver.load_finished, self.load_video_finish),
+            (self.video_driver.tracks_changed, self._on_tracks_changed),
             (self.video_driver.snapshot_taken, self.snapshot_taken),
             (self.video_driver.video_dimensions_changed, self.set_track_dimensions),
             (self.video_driver.error, self.error_emit),
@@ -571,10 +581,20 @@ class VideoFrameVLC(QWidget, metaclass=QABC):
             if not all(track.video_dimensions):
                 track.video_dimensions = size
 
+    def _on_tracks_changed(self, media: Media) -> None:
+        """Take a track list that grew after the load, without reloading."""
+
+        self.media = media
+
+        self.tracks_changed.emit()
+
     def set_audio_track(self, track_id):
         self.media.cur_audio_track_id = track_id
 
         self.video_driver.set_audio_track(track_id)
+
+    def add_audio_slave(self, uri: str) -> None:
+        self.video_driver.add_audio_slave(uri)
 
     def set_video_track(self, track_id):
         self.media.cur_video_track_id = track_id

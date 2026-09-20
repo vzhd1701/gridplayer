@@ -207,6 +207,14 @@ def _audio_modes() -> dict:
     }
 
 
+def _audio_track_modes() -> dict:
+    return {
+        AudioTrackMode.DEFAULT: _t("Default"),
+        AudioTrackMode.PREFERRED: _t("Preferred Language"),
+        AudioTrackMode.DISABLED: _t("Disable Audio"),
+    }
+
+
 def _network_retry_modes() -> dict:
     return {
         NetworkRetryMode.OFF: _t("Show error"),
@@ -457,14 +465,14 @@ VIDEO_FIELDS: tuple[SettingField, ...] = (
     _f(
         settings_key="video_defaults/audio_track_mode",
         video_attr="audio_track_mode",
-        kind=FieldKind.CHECKBOX,
+        kind=FieldKind.COMBO,
         section=_t("Audio"),
-        label=_t("Disable audio track"),
-        checked_value=AudioTrackMode.DISABLED,
-        unchecked_value=AudioTrackMode.PREFERRED,
+        label=_t("Audio track"),
+        combo_values=_audio_track_modes,
         tooltip=_t(
-            "Play the video with no audio track decoded at all,"
-            " which is not the same as starting it muted"
+            "Which track a video opens on: the one its own file marks as the"
+            " default, the one answering the preferred languages below, or"
+            " none decoded at all, which is not the same as starting muted."
         ),
     ),
     _f(
@@ -479,6 +487,18 @@ VIDEO_FIELDS: tuple[SettingField, ...] = (
         tooltip=_t(
             "Language codes or names, best first."
             " Videos that offer none of them keep their own default track."
+        ),
+    ),
+    _f(
+        settings_key="video_defaults/external_audio_autodiscover",
+        video_attr="external_audio_autodiscover",
+        kind=FieldKind.CHECKBOX,
+        section=_t("Audio"),
+        label=_t("Detect external audio files"),
+        tooltip=_t(
+            "Offer audio files named after the video and kept beside it,"
+            " so they can be played in place of its own sound."
+            " Nothing is opened until one of them is picked."
         ),
     ),
     _f(

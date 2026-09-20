@@ -1,10 +1,13 @@
+import dataclasses
 import logging
 import tempfile
 from abc import ABC, abstractmethod
+from functools import partial
 from pathlib import Path
 from time import time
 from types import MappingProxyType
 
+from gridplayer.models.audio_selection import AudioExternal, track_of_file
 from gridplayer.params import env
 from gridplayer.params.static import AudioChannelMode, VideoTransform
 from gridplayer.settings import Settings
@@ -27,6 +30,20 @@ from gridplayer.vlc_player.static import (
 )
 
 MEDIA_EXTRACT_RETRY_TIME = 0.1
+
+# An audio file attached to a video that is already playing is opened in
+# VLC's own time, and the track it brings shows up whenever that is done.
+# Asking again until it does beats guessing how long a disk takes.
+SLAVE_TRACK_RETRY_TIME = 0.1
+
+# Nothing rides on the number: only one file is ever attached, and libVLC
+# opens it whatever priority it was handed.
+SLAVE_PRIORITY = 4
+
+# A file that opens at all is measured in tens of milliseconds; one that
+# never will is better handed back quickly, so the video can be loaded with
+# it instead while the viewer is still looking at the pane they clicked.
+SLAVE_TRACK_RETRIES = 6
 
 # how many of the events around a restart to try putting the tracks back on
 RESTART_REAPPLY_TRIES = 12
@@ -112,6 +129,12 @@ class VlcPlayerBase(ABC):
 
         self._timer_unpause_failsafe = None
         self._timer_extract_media_track = None
+        self._timer_audio_slave = None
+
+        # how many audio tracks the file has of its own, counted before any
+        # external audio went on; None where it could not be counted
+        self._own_audio_count = None
+        self._is_parse_for_audio_slave = False
 
         self.media_input: MediaInput | None = None
         self.media: Media | None = None
@@ -282,6 +305,10 @@ class VlcPlayerBase(ABC):
     def cb_parse_changed(self, event):
         self._log.debug("Media parse changed")
 
+        if self._is_parse_for_audio_slave:
+            self._load_video_with_audio_slave(event.u.new_status)
+            return
+
         if event.u.new_status == vlc.MediaParsedStatus.skipped:
             self._log.debug("Media parsing skipped")
 
@@ -340,6 +367,9 @@ class VlcPlayerBase(ABC):
         if self._timer_extract_media_track is not None:
             self._timer_extract_media_track.cancel()
 
+        if self._timer_audio_slave is not None:
+            self._timer_audio_slave.cancel()
+
         if self._timer_unpause_failsafe is not None:
             self._timer_unpause_failsafe.cancel()
 
@@ -387,6 +417,9 @@ class VlcPlayerBase(ABC):
     @abstractmethod
     def notify_snapshot_taken(self, snapshot_path): ...
 
+    def notify_tracks_changed(self, media_track: Media) -> None:  # noqa: B027
+        """Forward a track list that changed after the load. No-op by default."""
+
     def notify_video_dimensions(self, width: int, height: int) -> None:  # noqa: B027
         """Forward decoded size to the widget. Default is a no-op."""
 
@@ -409,6 +442,7 @@ class VlcPlayerBase(ABC):
         self.media_input = media_input
         self._last_video_size = (0, 0)
         self._last_time = None
+        self._own_audio_count = None
 
         self._log.info(f"Loading {self.media_input.uri}")
 
@@ -445,12 +479,180 @@ class VlcPlayerBase(ABC):
 
         self._media_input_vlc.add_options(*self._media_options)
 
-        if self.is_preparse_required:
+        # External audio has to go on before the video starts, and what the
+        # file has of its own has to be counted before that -- afterwards
+        # there is no telling the two apart. Reading the file is the only
+        # way to count them, so a video with external audio is parsed first.
+        self._is_parse_for_audio_slave = (
+            self.media_input.selected_audio_slave is not None
+        )
+
+        if self.is_preparse_required or self._is_parse_for_audio_slave:
             self._media_input_vlc.parse_with_options(parse_flag, parse_timeout)
 
             self.notify_update_status(translate("Video Status", "Parsing media"))
         else:
             self.loopback_load_video_st2_set_media()
+
+    def _load_video_with_audio_slave(self, parse_status) -> None:
+        """Step 1b. Count the file's own audio, then add the files to it.
+
+        A video that will not parse still plays: it only loses the ability
+        to say which of its tracks came from where.
+        """
+
+        self._is_parse_for_audio_slave = False
+
+        if parse_status == vlc.MediaParsedStatus.done:
+            self._count_own_audio_tracks()
+        else:
+            self._log.warning(f"Media parse came back {parse_status}")
+
+        self._attach_audio_slave()
+
+        self.loopback_load_video_st2_set_media()
+
+    def _count_own_audio_tracks(self) -> None:
+        media_tracks = self._read_media_tracks()
+
+        if media_tracks is None:
+            return
+
+        self._own_audio_count = sum(
+            1 for track in media_tracks if track.type == vlc.TrackType.audio
+        )
+
+        self._log.debug(f"Video has {self._own_audio_count} audio tracks of its own")
+
+    def _attach_audio_slave(self) -> None:
+        """Hand VLC the audio file this video is to be played with."""
+
+        uri = self.media_input.selected_audio_slave
+
+        if uri is None:
+            return
+
+        self._log.debug(f"Attaching audio slave {uri}")
+
+        self._media_input_vlc.slaves_add(vlc.MediaSlaveType.audio, SLAVE_PRIORITY, uri)
+
+    @only_initialized_player
+    def add_audio_slave(self, uri: str) -> None:
+        """Play an audio file alongside a video that is already loaded.
+
+        The same thing _attach_audio_slave does at load, done without
+        taking the video down and putting it back up for it. Only sound to
+        be heard right away comes this way: a video that already has a file
+        attached is loaded again instead, since libVLC will not take one
+        back and two of them cannot be told apart.
+        """
+
+        if self.media is None or not uri:
+            return
+
+        self._log.debug(f"Adding audio slave {uri}")
+
+        if self._media_player.add_slave(vlc.MediaSlaveType.audio, uri, True) != 0:
+            self._log.warning(f"Failed to add audio slave {uri}")
+            return
+
+        self.media_input.selected_audio_slave = uri
+
+        self._await_audio_slave_track(
+            len(self.media.audio_tracks) + 1, SLAVE_TRACK_RETRIES
+        )
+
+    def _await_audio_slave_track(self, wanted_count: int, tries_left: int) -> None:
+        """Wait for VLC to open what it was handed, then take the list again.
+
+        A file is opened in VLC's own time and the tracks show up whenever
+        that is done, so there is nothing to do but ask again.
+        """
+
+        media_tracks = self._read_media_tracks()
+
+        is_arrived = media_tracks is not None and (
+            sum(1 for t in media_tracks if t.type == vlc.TrackType.audio)
+            >= wanted_count
+        )
+
+        if not is_arrived and tries_left > 0:
+            self._timer_audio_slave = async_wait(
+                SLAVE_TRACK_RETRY_TIME,
+                partial(self._await_audio_slave_track, wanted_count, tries_left - 1),
+            )
+            return
+
+        if media_tracks is None:
+            return
+
+        if not is_arrived:
+            self._log.warning("Audio slave brought no track")
+
+        self._refresh_media_tracks(media_tracks)
+
+    def _read_media_tracks(self):
+        # the player is released before the media is, and a wait that
+        # outlived it has nothing left to ask
+        if self._media_input_vlc is None or self._media_player is None:
+            return None
+
+        media_tracks = self._media_input_vlc.tracks_get()
+
+        return list(media_tracks) if media_tracks else None
+
+    def _refresh_media_tracks(self, media_tracks) -> None:
+        """Take the track list again, after something changed what is in it."""
+
+        if self._tracks_manager is None or self.media is None:
+            return
+
+        if self._media_player is None:
+            return
+
+        self._tracks_manager.update_tracks(media_tracks)
+
+        self.media = dataclasses.replace(
+            self.media,
+            video_tracks=self._tracks_manager.video_tracks,
+            audio_tracks=self._tracks_manager.audio_tracks,
+            cur_video_track_id=self._tracks_manager.current_video_track_id,
+            cur_audio_track_id=self._tracks_manager.current_audio_track_id,
+            external_audio_ids=self._external_audio_ids(),
+        )
+
+        self.notify_tracks_changed(self.media)
+
+    def _wanted_audio_track_id(self) -> int | None:
+        """Which track this video's settings call for, its own file included."""
+
+        selection = self.media_input.video.audio_selection
+
+        if isinstance(selection, AudioExternal):
+            picked = track_of_file(selection, self._external_audio_ids())
+
+            if picked is not None:
+                return picked
+
+        return wanted_audio_track_id(
+            self.media_input.video, self._tracks_manager.audio_tracks
+        )
+
+    def _external_audio_ids(self) -> tuple[int, ...]:
+        """Which audio tracks came out of the file attached to the video.
+
+        The video's own are counted before anything goes on, and libVLC
+        puts what a file brings after them, so everything past that count
+        is the file's. One file is attached at a time for exactly this
+        reason: libVLC never says which stream came from where, and with
+        one file there is nothing left to say -- all of these are its own,
+        however many it turns out to hold.
+        """
+
+        if self._own_audio_count is None:
+            return ()
+
+        return tuple(self._tracks_manager.audio_tracks)[self._own_audio_count :]
 
     @property
     def _preferred_decoder(self) -> str | None:
@@ -889,12 +1091,20 @@ class VlcPlayerBase(ABC):
 
             self._log.debug("Failed to initialize video time, probably live")
 
+        if (
+            self._own_audio_count is None
+            and self.media_input.selected_audio_slave is None
+        ):
+            # nothing was attached, so everything it has it has of its own,
+            # and anything added later can be told apart from it
+            self._own_audio_count = len(self._tracks_manager.audio_tracks)
+
+        # what libVLC opened on before anything was asked of it, which is
+        # the track the file itself puts forward
+        default_audio_track_id = self._tracks_manager.current_audio_track_id
+
         self._tracks_manager.set_video_track_id(self.media_input.video.video_track_id)
-        self._tracks_manager.set_audio_track_id(
-            wanted_audio_track_id(
-                self.media_input.video, self._tracks_manager.audio_tracks
-            )
-        )
+        self._tracks_manager.set_audio_track_id(self._wanted_audio_track_id())
 
         return Media(
             length=length,
@@ -902,6 +1112,8 @@ class VlcPlayerBase(ABC):
             audio_tracks=self._tracks_manager.audio_tracks,
             cur_video_track_id=self._tracks_manager.current_video_track_id,
             cur_audio_track_id=self._tracks_manager.current_audio_track_id,
+            external_audio_ids=self._external_audio_ids(),
+            default_audio_track_id=default_audio_track_id,
         )
 
     def _fill_missing_track_dimensions(self) -> bool:

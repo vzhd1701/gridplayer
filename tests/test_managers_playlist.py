@@ -6,6 +6,7 @@ from uuid import uuid4
 import pytest
 from PyQt5.QtWidgets import QApplication, QMessageBox, QWidget
 
+from gridplayer.models.audio_selection import AudioExternal
 from gridplayer.models.grid_state import GridCell, GridState
 from gridplayer.models.playlist import (
     FORMAT_ID,
@@ -1337,3 +1338,79 @@ def test_load_playlist_file_rejects_invalid_settings(tmp_path, mocker):
     assert len(errors) == 1
     assert "Invalid playlist format!" in errors[0]
     manager.load_playlist.assert_not_called()
+
+
+def test_playlist_dump_relative_external_audio(tmp_path):
+    """Audio kept beside a video travels with it or it is not found again."""
+
+    video_file = _local_video_file(tmp_path, "videos/a.mp4")
+    audio_file = _local_video_file(tmp_path, "videos/a.rus.mp3")
+    playlist = Playlist(
+        videos=[Video(uri=video_file, external_audio=[audio_file])],
+        save_paths_relative=True,
+    )
+
+    text = playlist.dumps(base_dir=tmp_path)
+
+    assert json.loads(text)["videos"][0]["external_audio"] == ["videos/a.rus.mp3"]
+    assert str(tmp_path) not in text
+
+
+def test_playlist_dump_keeps_external_audio_absolute_without_the_flag(tmp_path):
+    video_file = _local_video_file(tmp_path, "videos/a.mp4")
+    audio_file = _local_video_file(tmp_path, "videos/a.rus.mp3")
+    playlist = Playlist(videos=[Video(uri=video_file, external_audio=[audio_file])])
+
+    text = playlist.dumps(base_dir=tmp_path)
+
+    assert json.loads(text)["videos"][0]["external_audio"] == [str(audio_file)]
+
+
+def test_playlist_dump_leaves_out_external_audio_nobody_picked(tmp_path):
+    playlist = Playlist(videos=[Video(uri=_local_video_file(tmp_path, "a.mp4"))])
+
+    assert "external_audio" not in json.loads(playlist.dumps())["videos"][0]
+
+
+def test_playlist_parse_resolves_external_audio_against_base_dir(tmp_path):
+    video_file = _local_video_file(tmp_path, "videos/a.mp4")
+    audio_file = _local_video_file(tmp_path, "videos/a.rus.mp3")
+    playlist = Playlist(
+        videos=[Video(uri=video_file, external_audio=[audio_file])],
+        save_paths_relative=True,
+    )
+
+    reopened = Playlist.parse(playlist.dumps(base_dir=tmp_path), base_dir=tmp_path)
+
+    assert reopened.videos[0].external_audio == [audio_file]
+
+
+def test_playlist_keeps_external_audio_that_has_gone_missing(tmp_path):
+    """A file that is not there any more must not cost the whole playlist."""
+
+    video_file = _local_video_file(tmp_path, "a.mp4")
+    playlist = Playlist(
+        videos=[Video(uri=video_file, external_audio=[tmp_path / "gone.mp3"])]
+    )
+
+    reopened = Playlist.parse(playlist.dumps(base_dir=tmp_path), base_dir=tmp_path)
+
+    assert reopened.videos[0].external_audio == [tmp_path / "gone.mp3"]
+
+
+def test_playlist_snapshot_keeps_which_track_of_a_file_was_chosen(tmp_path):
+    """Undoing something else must not move the sound to another dub."""
+
+    video_file = _local_video_file(tmp_path, "videos/a.mp4")
+    audio_file = _local_video_file(tmp_path, "videos/a.dubs.m4a")
+    chosen = AudioExternal(file=audio_file, track=1)
+    video = Video(uri=video_file, external_audio=[audio_file], audio_selection=chosen)
+    playlist = Playlist(
+        videos=[video],
+        snapshots={0: Snapshot(grid_state=GridState(), videos=[video.model_copy()])},
+        save_paths_relative=True,
+    )
+
+    parsed = Playlist.parse(playlist.dumps(base_dir=tmp_path), base_dir=tmp_path)
+
+    assert parsed.snapshots[0].videos[0].audio_selection == chosen

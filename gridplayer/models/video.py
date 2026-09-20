@@ -7,6 +7,12 @@ from uuid import uuid4
 from pydantic import UUID4, BaseModel, Field, ValidationError, model_validator
 from pydantic_extra_types.color import Color
 
+from gridplayer.models.audio_selection import (
+    AudioDefault,
+    AudioDisabled,
+    AudioPreferred,
+    AudioSelection,
+)
 from gridplayer.models.video_uri import VideoURI, parse_uri
 from gridplayer.params.static import (
     MAX_RATE,
@@ -22,7 +28,7 @@ from gridplayer.params.static import (
     VideoInitialState,
     VideoTransform,
 )
-from gridplayer.playlist_settings import session_field
+from gridplayer.playlist_settings import PlaylistSettings, session_field
 
 _LEGACY_END_ACTION = {
     "none": VideoEndAction.STOP,
@@ -36,6 +42,63 @@ def migrate_end_action(value):
     if isinstance(value, str):
         return _LEGACY_END_ACTION.get(value, value)
     return value
+
+
+# What each mode a video can be set to default to comes out as. Only three
+# of the six choices are here: the rest name a track, a language or a file,
+# and none of those mean anything until there is a video to name them in.
+_DEFAULT_AUDIO_SELECTION = {
+    AudioTrackMode.DEFAULT: AudioDefault,
+    AudioTrackMode.PREFERRED: AudioPreferred,
+    AudioTrackMode.DISABLED: AudioDisabled,
+}
+
+
+def default_audio_selection() -> AudioSelection:
+    """The sound a video starts on, as the defaults have it.
+
+    A playlist carries video defaults of its own and can name a mode that
+    was never one -- EXPLICIT is a per-video answer -- which is no reason
+    to refuse to open it.
+    """
+
+    mode = PlaylistSettings().get("video_defaults/audio_track_mode")
+
+    return _DEFAULT_AUDIO_SELECTION.get(mode, AudioDefault)()
+
+
+def _audio_selection_from_legacy(data: dict) -> dict | None:
+    """Read a pick that was spread over the three keys it used to take.
+
+    The words are the ones those playlists were written with, "explicit"
+    among them, which said a track had been picked by hand and left the
+    other two keys to say which. Nothing recorded which of the tracks was
+    an external file's, so a pick of one comes back as the id it had: the
+    same track where the files are still the same, and the preference
+    where they are not.
+    """
+
+    mode = data.get("audio_track_mode")
+    mode = getattr(mode, "value", mode)
+
+    if mode is None:
+        return None
+
+    if mode == "disabled":
+        return {"kind": "disabled"}
+
+    if mode == "explicit":
+        language = data.get("audio_language")
+
+        if language:
+            return {"kind": "language", "tag": language}
+
+        track_id = data.get("audio_track_id")
+
+        if track_id is not None and track_id != -1:
+            return {"kind": "track", "id": track_id}
+
+    return {"kind": "preferred"}
 
 
 def _playback_state_from_legacy(data: dict):
@@ -88,15 +151,25 @@ class Video(BaseModel):
     auto_reload_timer_min: int = session_field("video_defaults/auto_reload_timer")
 
     # Tracks
-    # the two keys an explicit pick can be stored under: the language where
-    # it tells the tracks apart, the id where nothing else does
-    audio_language: str | None = None
-    audio_track_id: int | None = None
     video_track_id: int | None = None
 
+    # what this video's sound was chosen to be, whichever of the five ways
+    # it was chosen; see models/audio_selection.py
+    audio_selection: AudioSelection = Field(default_factory=default_audio_selection)
+
     audio_channel_mode: AudioChannelMode = session_field("video_defaults/audio_mode")
-    audio_track_mode: AudioTrackMode = session_field("video_defaults/audio_track_mode")
+
+    # the languages to go by where nothing was picked by hand, which is a
+    # standing preference rather than a choice of track
     audio_languages: str = session_field("video_defaults/audio_languages")
+
+    # External audio
+    # files picked to play alongside this video, in the order they were
+    # picked, which is the order their tracks come back in
+    external_audio: list[Path] = Field(default_factory=list)
+    is_external_audio_autodiscover: bool = session_field(
+        "video_defaults/external_audio_autodiscover"
+    )
 
     @model_validator(mode="before")
     @classmethod
@@ -115,6 +188,20 @@ class Video(BaseModel):
             data.pop("repeat_mode", None)
         if "end_action" in data:
             data["end_action"] = migrate_end_action(data["end_action"])
+
+        if "audio_selection" not in data:
+            legacy_audio = _audio_selection_from_legacy(data)
+
+            if legacy_audio is not None:
+                data["audio_selection"] = legacy_audio
+
+        for legacy_audio_key in (
+            "audio_track_mode",
+            "audio_track_id",
+            "audio_language",
+        ):
+            data.pop(legacy_audio_key, None)
+
         return data
 
     @property

@@ -8,7 +8,7 @@ from pathlib import Path
 from pydantic_extra_types.color import Color
 from PyQt5.QtCore import QSize, Qt, QTimer, pyqtSignal
 from PyQt5.QtGui import QCursor
-from PyQt5.QtWidgets import QStackedLayout, QWidget
+from PyQt5.QtWidgets import QFileDialog, QStackedLayout, QWidget
 
 from gridplayer.dialogs.input_dialog import (
     QCustomSpinboxInput,
@@ -17,6 +17,15 @@ from gridplayer.dialogs.input_dialog import (
 )
 from gridplayer.dialogs.rename_dialog import QVideoRenameDialog
 from gridplayer.exceptions import PlayerException
+from gridplayer.models.audio_selection import (
+    AudioDefault,
+    AudioDisabled,
+    AudioExternal,
+    AudioLanguage,
+    AudioPreferred,
+    AudioTrackId,
+    track_of_file,
+)
 from gridplayer.models.stream import (
     STANDING_QUALITIES,
     STREAM_QUALITY_AUTO,
@@ -26,8 +35,10 @@ from gridplayer.models.stream import (
 from gridplayer.models.video import (
     Video,
     VideoBlockMime,
+    default_audio_selection,
 )
 from gridplayer.params import env
+from gridplayer.params.extensions import SUPPORTED_AUDIO_EXT
 from gridplayer.params.static import (
     CHROME_MIN_SIZE,
     MAX_RATE,
@@ -36,7 +47,6 @@ from gridplayer.params.static import (
     MIN_SCALE,
     OVERLAY_ACTIVITY_EVENT,
     PLAYER_ID_LENGTH,
-    AudioTrackMode,
     NetworkRetryMode,
     VideoAspect,
     VideoCrop,
@@ -46,6 +56,11 @@ from gridplayer.params.static import (
 )
 from gridplayer.settings import Settings
 from gridplayer.utils.drop_zone import DropIndicator
+from gridplayer.utils.external_audio import (
+    discover_audio_files,
+    silenced_by_seeking,
+    unplayable_as_audio_slave,
+)
 from gridplayer.utils.libvlc_options_parser import get_vlc_options
 from gridplayer.utils.next_file import next_video_file, previous_video_file
 from gridplayer.utils.qt import MILLISECONDS, qt_connect, translate
@@ -167,6 +182,19 @@ def only_streamable(func):
     return wrapper
 
 
+def _file_names(file_paths) -> str:
+    return ", ".join(file_path.name for file_path in file_paths)
+
+
+def _audio_files_filter() -> str:
+    extensions = " ".join(f"*.{ext}" for ext in sorted(SUPPORTED_AUDIO_EXT))
+
+    audio = translate("Dialog - Add external audio", "Audio", "File formats")
+    every = translate("Dialog - Add external audio", "All", "File formats")
+
+    return f"{audio} ({extensions});;{every} (*)"
+
+
 class VideoBlock(QWidget):
     load_video = pyqtSignal(MediaInput)
 
@@ -245,6 +273,10 @@ class VideoBlock(QWidget):
         self._stream_quality_playing = None
         self._audio_language_playing = None
 
+        # the audio file this load was opened with, which libVLC holds on to
+        # until the next one whatever track is picked meanwhile
+        self._attached_audio_file: Path | None = None
+
         self._quality_adapt_timer = QTimer(self)
         self._quality_adapt_timer.setSingleShot(True)
         self._quality_adapt_timer.timeout.connect(self._adapt_stream_quality)
@@ -277,6 +309,7 @@ class VideoBlock(QWidget):
 
         qt_connect(
             (video_driver.video_ready, self.load_video_finish),
+            (video_driver.tracks_changed, self.tracks_changed),
             (video_driver.time_changed, self.time_changed),
             (video_driver.playback_status_changed, self.playback_status_changed),
             (video_driver.error, self.video_driver_error),
@@ -901,19 +934,45 @@ class VideoBlock(QWidget):
 
         # a track chosen by hand outranks the languages asked for, and has
         # to outlive the reload that would otherwise resolve them again
-        self.video_params.audio_track_mode = (
-            AudioTrackMode.DISABLED
-            if track_id == DISABLED_TRACK
-            else AudioTrackMode.EXPLICIT
-        )
-
-        self.video_params.audio_language = self._track_language_key(track_id)
-        self.video_params.audio_track_id = track_id
+        self.video_params.audio_selection = self._audio_selection_for(track_id)
 
         # a video part way through a reload has no tracks to switch between
         # yet, and will settle on this one once it does
         if self.is_video_initialized:
             self.video_driver.set_audio_track(track_id)
+
+    def _audio_selection_for(self, track_id):
+        """How to remember this track, by the steadiest name it answers to.
+
+        A file of its own keeps its name whatever the tracks do, a language
+        outlives a source that renumbers them, and an id is what is left
+        where neither says anything.
+        """
+
+        if track_id == DISABLED_TRACK:
+            return AudioDisabled()
+
+        external_file = self.external_audio_tracks.get(track_id)
+
+        if external_file is not None:
+            return AudioExternal(
+                file=external_file,
+                track=self.external_audio_track_ids.index(track_id),
+            )
+
+        language = self._track_language_key(track_id)
+
+        if language is not None:
+            return AudioLanguage(tag=language)
+
+        return AudioTrackId(id=track_id)
+
+    def restore_audio_selection(self, selection) -> None:
+        """Put a remembered choice of sound back in force, as a snapshot does."""
+
+        self.video_params.audio_selection = selection
+
+        self._apply_wanted_audio_track()
 
     @property
     def _is_video_track_off(self) -> bool:
@@ -952,10 +1011,36 @@ class VideoBlock(QWidget):
         return track.language if len(namesakes) == 1 else None
 
     @property
+    def audio_track_playing(self) -> int | None:
+        """Which track the sound is coming from, whatever was asked for.
+
+        What was asked for can be a preference rather than a track, and
+        then this is the only place the answer it came to is written down.
+        """
+
+        if self.video_driver is None or not self.is_video_initialized:
+            return None
+
+        return self.video_driver.cur_audio_track_id
+
+    @property
+    def audio_language_playing(self) -> str | None:
+        """Which of the languages on offer the rung on screen was loaded for."""
+
+        return self._audio_language_playing
+
+    @property
     def preferred_audio_track_id(self) -> int | None:
         """The track this file would open with, were nothing picked by hand."""
 
         return pick_track(self.video_params.audio_languages, self.audio_tracks)
+
+    def apply_audio_default(self):
+        """Leave the sound to the video's own file, preference and all."""
+
+        self.video_params.audio_selection = AudioDefault()
+
+        self._apply_wanted_audio_track()
 
     def apply_audio_preference(self):
         """Follow the preferred languages again, whichever way this video dubs.
@@ -965,11 +1050,7 @@ class VideoBlock(QWidget):
         track that was never handed over.
         """
 
-        self.video_params.audio_track_mode = AudioTrackMode.PREFERRED
-        self.video_params.audio_language = None
-
-        # whatever was playing, including the -1 that "disable" leaves
-        self.video_params.audio_track_id = None
+        self.video_params.audio_selection = AudioPreferred()
 
         if self._language_variants.is_multilingual:
             self.set_audio_language(None)
@@ -985,7 +1066,7 @@ class VideoBlock(QWidget):
             # part way through a reload, which will settle this on its own
             return
 
-        track_id = wanted_audio_track_id(self.video_params, self.audio_tracks)
+        track_id = self._wanted_audio_track_id()
 
         if track_id is None:
             if self.video_driver.cur_audio_track_id not in NO_TRACK:
@@ -1000,8 +1081,29 @@ class VideoBlock(QWidget):
         if track_id is None:
             return
 
-        self.video_params.audio_track_id = track_id
         self.video_driver.set_audio_track(track_id)
+
+    def _wanted_audio_track_id(self) -> int | None:
+        """Which track this video's settings call for, its own files included.
+
+        Only the block knows which track came out of which file, so a pick
+        of one is answered here; everything else the video can answer for
+        itself.
+        """
+
+        selection = self.video_params.audio_selection
+
+        if isinstance(selection, AudioDefault):
+            return self.default_audio_track_id
+
+        if isinstance(selection, AudioExternal):
+            if selection.file == self.attached_audio_file:
+                picked = track_of_file(selection, self.external_audio_track_ids)
+
+                if picked is not None:
+                    return picked
+
+        return wanted_audio_track_id(self.video_params, self.audio_tracks)
 
     @only_initialized
     def audio_languages_dialog(self):
@@ -1026,7 +1128,7 @@ class VideoBlock(QWidget):
 
         self.video_params.audio_languages = languages
 
-        if self.video_params.audio_track_mode is not AudioTrackMode.PREFERRED:
+        if not isinstance(self.video_params.audio_selection, AudioPreferred):
             return
 
         # the preference is what is being followed, so following it again
@@ -1036,12 +1138,369 @@ class VideoBlock(QWidget):
     def get_audio_languages(self) -> str:
         return self.video_params.audio_languages or translate("Audio Languages", "any")
 
+    @property
+    def discovered_audio_files(self) -> list[Path]:
+        """Audio files named after this video that nobody has picked yet.
+
+        Finding them is a directory listing and nothing else. A file here
+        has not been opened and costs nothing until it is chosen, which is
+        what makes it safe to look on every video in the grid.
+        """
+
+        if (
+            not self.is_local_file
+            or not self.video_params.is_external_audio_autodiscover
+        ):
+            return []
+
+        attached = set(self.video_params.external_audio)
+
+        return [
+            found
+            for found in discover_audio_files(self.video_params.uri)
+            if found not in attached
+        ]
+
+    @property
+    def external_audio_track_ids(self) -> tuple[int, ...]:
+        """The tracks that came out of a file, as the player saw them arrive.
+
+        More than one where the file holds more than one, which is theirs
+        to tell apart: with a single file attached, every track past the
+        video's own came out of it.
+        """
+
+        if self.video_driver is None or not self.is_video_initialized:
+            return ()
+
+        return self.video_driver.external_audio_ids
+
+    @property
+    def default_audio_track_id(self) -> int | None:
+        """The track the video's own file puts forward.
+
+        What libVLC opened on, as long as that was the video's own doing.
+        A file attached at load takes the sound for itself as soon as its
+        stream arrives, and what libVLC opened on is then that file -- no
+        answer at all to what the video would have played alone. The first
+        of its own tracks is as close as this gets to one.
+        """
+
+        if self.video_driver is None or not self.is_video_initialized:
+            return None
+
+        from_file = set(self.external_audio_track_ids)
+
+        own_tracks = [
+            track_id for track_id in self.audio_tracks if track_id not in from_file
+        ]
+
+        opened_on = self.video_driver.default_audio_track_id
+
+        if opened_on in own_tracks:
+            return opened_on
+
+        return own_tracks[0] if own_tracks else None
+
+    @property
+    def attached_audio_file(self) -> Path | None:
+        """The external audio libVLC was really handed, if any.
+
+        Not the same question as which sound was chosen: libVLC never takes
+        a file back, so one handed over is still there after the viewer
+        switches to a track of the video's own, and its track is still in
+        the list wearing its name. Only a fresh load changes this.
+
+        One at a time, since libVLC never says which stream came from which
+        file and two of them would leave the pair to be told apart by
+        guesswork.
+        """
+
+        return self._attached_audio_file
+
+    @property
+    def _audio_file_to_attach(self) -> Path | None:
+        """The file the next load is to open this video with.
+
+        A file that is no longer where the playlist left it -- renamed, or
+        on a drive nobody plugged in -- is no use to libVLC, though it
+        keeps its place in the list in case whatever moved it moves it back.
+        """
+
+        selection = self.video_params.audio_selection
+
+        if not isinstance(selection, AudioExternal):
+            return None
+
+        if not selection.file.is_absolute() or not selection.file.is_file():
+            return None
+
+        return selection.file
+
+    @property
+    def offered_audio_files(self) -> list[Path]:
+        """Files this video can be played with, other than the one it is on."""
+
+        attached = self.attached_audio_file
+
+        known = [
+            file_path
+            for file_path in self.video_params.external_audio
+            # one that is not there cannot be played, and a row that does
+            # nothing is worse than no row
+            if file_path != attached and file_path.is_file()
+        ]
+
+        return known + self.discovered_audio_files
+
+    @property
+    def external_audio_tracks(self) -> dict[int, Path]:
+        """Which file each external track came out of, where there is one."""
+
+        file_path = self.attached_audio_file
+
+        if file_path is None:
+            return {}
+
+        return dict.fromkeys(self.external_audio_track_ids, file_path)
+
+    @property
+    def selected_audio_slave_uri(self) -> str | None:
+        """The file the video is to be played with, for the player to find."""
+
+        wanted = self._audio_file_to_attach
+
+        return None if wanted is None else wanted.as_uri()
+
+    @only_local_file
+    def add_external_audio_dialog(self) -> None:
+        """Pick audio files to play this video with."""
+
+        file_names, _ = QFileDialog.getOpenFileNames(
+            self.parent(),
+            translate("Dialog - Add external audio", "Add External Audio", "Header"),
+            str(self.video_params.uri.parent),
+            _audio_files_filter(),
+        )
+
+        self.add_external_audio([Path(file_name) for file_name in file_names])
+
+    def add_external_audio(self, file_paths) -> None:
+        """Play these audio files with the video, starting on the first.
+
+        One picked while the video is up goes on where it stands: VLC takes
+        a file at any time, so nothing has to be loaded again for it.
+        """
+
+        new_files = [
+            file_path
+            for file_path in file_paths
+            if file_path.is_absolute()
+            and file_path not in self.video_params.external_audio
+        ]
+
+        if not new_files:
+            return
+
+        self._warn_about_awkward_audio(new_files)
+
+        self.video_params.external_audio = [
+            *self.video_params.external_audio,
+            *new_files,
+        ]
+
+        # sound asked for by name outranks the languages asked for, the same
+        # way picking a track by hand does
+        self.video_params.audio_selection = AudioExternal(file=new_files[0])
+
+        self._put_external_audio_into_effect()
+
+    def _forget_audio_file_that_is_gone(self) -> None:
+        """Let go of a pick whose file is not where the playlist left it.
+
+        A choice naming nothing on the disk is one the menu cannot show as
+        taken, and a video that looks as though nothing at all is chosen
+        reads worse than one back on the sound it would otherwise open on.
+        The file keeps its place in the list, in case whatever moved it
+        moves it back.
+        """
+
+        selection = self.video_params.audio_selection
+
+        if not isinstance(selection, AudioExternal):
+            return
+
+        if self._audio_file_to_attach is not None:
+            return
+
+        self._log.debug(f"{selection.file.name} is not there any more")
+
+        self.video_params.audio_selection = default_audio_selection()
+
+    def _put_external_audio_into_effect(self) -> None:
+        """Play the file that was picked, the cheapest way that is certain.
+
+        libVLC takes a file at any time but never gives one back, and it
+        never says which stream came from which file. A video that has one
+        already is therefore loaded again rather than handed a second,
+        which costs a moment and leaves no room for a mix-up.
+        """
+
+        if not self.is_video_initialized:
+            # part way through a load, which will open it with the video
+            return
+
+        if self._attached_audio_file is not None:
+            self._log.debug("A file is on already, loading the video again")
+
+            self.reload()
+            return
+
+        wanted = self._audio_file_to_attach
+
+        if wanted is not None:
+            self._attached_audio_file = wanted
+
+            self.video_driver.add_audio_slave(wanted.as_uri())
+
+    def _warn_about_awkward_audio(self, file_paths) -> None:
+        """Say so where libVLC will not make a sound of what was picked.
+
+        The files are taken anyway: this is what one build of VLC does with
+        them, and being told beats a track that sits there silently.
+        """
+
+        unplayable = unplayable_as_audio_slave(file_paths)
+        silenced = silenced_by_seeking(file_paths)
+
+        warnings = []
+
+        if unplayable:
+            warnings.append(
+                translate(
+                    "Warning",
+                    "VLC cannot play {FILES} alongside a video.",
+                ).format(FILES=_file_names(unplayable))
+            )
+
+        if silenced:
+            warnings.append(
+                translate(
+                    "Warning",
+                    "{FILES} will fall silent once the video is seeked.",
+                ).format(FILES=_file_names(silenced))
+            )
+
+        if not warnings:
+            return
+
+        warnings.append(
+            translate("Warning", "Convert to MP3, M4A, FLAC or AC3 to play it.")
+        )
+
+        self._ctx.commands.warning("\n\n".join(warnings))
+
+    def play_external_audio(self, file_name: str) -> None:
+        """Hear this file, whether it has been attached yet or not."""
+
+        file_path = Path(file_name)
+
+        if file_path == self.attached_audio_file:
+            # it is on already, and may only have been switched away from
+            if self.external_audio_track_ids:
+                self.set_audio_track(self.external_audio_track_ids[0])
+
+            return
+
+        if file_path not in self.video_params.external_audio:
+            self.add_external_audio([file_path])
+            return
+
+        self.video_params.audio_selection = AudioExternal(file=file_path)
+
+        self._put_external_audio_into_effect()
+
+    def remove_external_audio(self) -> None:
+        """Play the video on its own sound again.
+
+        libVLC has no way to take back a file it has been handed, so the
+        video is loaded once more, this time without them.
+        """
+
+        if not self.video_params.external_audio:
+            return
+
+        is_external_playing = isinstance(
+            self.video_params.audio_selection, AudioExternal
+        )
+
+        self.video_params.external_audio = []
+
+        if is_external_playing:
+            # the track that was playing leaves with the file it came from,
+            # so the video goes back to whatever it would have opened on
+            self.video_params.audio_selection = default_audio_selection()
+
+        self.reload()
+
+    def set_external_audio_autodiscover(self, is_on: bool) -> None:
+        """Whether to offer the audio files kept beside this video."""
+
+        self.video_params.is_external_audio_autodiscover = is_on
+
+    def tracks_changed(self) -> None:
+        """Take note of a track that appeared after the video was loaded.
+
+        What is playing is the player's business, not the choice's: writing
+        it back here is what used to turn "go by my languages" into "play
+        track three" behind the viewer's back.
+        """
+
+        self.is_audio_present_change.emit(bool(self.audio_tracks))
+
+        if self._is_external_audio_short:
+            # libVLC took the file and brought nothing back, which some
+            # formats do when handed to a video that is already playing.
+            # Opening them with the video is the way that always works.
+            self._log.debug("External audio brought no track, loading it again")
+
+            self.reload()
+
+    @property
+    def _is_external_audio_short(self) -> bool:
+        """Whether the file that was handed over has no track to show for it."""
+
+        return (
+            self.attached_audio_file is not None and not self.external_audio_track_ids
+        )
+
+    def _adopt_audio_if_silent(self) -> None:
+        """Give a video with no sound of its own the one file found beside it.
+
+        A silent video next to an audio file named after it is the one case
+        where doing nothing reads as a fault rather than as a choice. Where
+        several were found, which of them to play is nobody's guess but the
+        viewer's, and they are left in the menu to be picked from.
+        """
+
+        if self.audio_tracks or self.video_params.external_audio:
+            return
+
+        found = self.discovered_audio_files
+
+        if len(found) != 1:
+            return
+
+        self._log.debug(f"Adopting {found[0].name} as the sound of a silent video")
+
+        self.add_external_audio(found)
+
     @only_initialized
     def set_video_track(self, track_id):
         # only -1 says the sound was switched off; None says it has not been
         # read back, which is no reason to keep the picture
-        if track_id == DISABLED_TRACK and self.video_params.audio_track_id == (
-            DISABLED_TRACK
+        if track_id == DISABLED_TRACK and isinstance(
+            self.video_params.audio_selection, AudioDisabled
         ):
             self._ctx.commands.warning(
                 translate("Warning", "Cannot disable both video & audio tracks")
@@ -1367,7 +1826,7 @@ class VideoBlock(QWidget):
             return
 
         self.set_video_track(snapshot.video_track_id)
-        self.set_audio_track(snapshot.audio_track_id)
+        self.restore_audio_selection(snapshot.audio_selection)
 
         self.set_audio_channel_mode(snapshot.audio_channel_mode)
 
@@ -1430,6 +1889,10 @@ class VideoBlock(QWidget):
         self.overlay.hide()
         self._sync_cell_background()
         self._ensure_video_driver()
+
+        self._forget_audio_file_that_is_gone()
+
+        self._attached_audio_file = self._audio_file_to_attach
         if self.video_params.is_http_url:
             self.url_resolver.resolve(self.video_params.uri)
         else:
@@ -1440,6 +1903,7 @@ class VideoBlock(QWidget):
                     is_audio_only=False,
                     size=self.size_tuple,
                     video=self.video_params,
+                    selected_audio_slave=self.selected_audio_slave_uri,
                 )
             )
 
@@ -1510,13 +1974,10 @@ class VideoBlock(QWidget):
         if not variants.is_multilingual:
             return None
 
-        picked = self.video_params.audio_language
+        selection = self.video_params.audio_selection
 
-        if (
-            self.video_params.audio_track_mode is AudioTrackMode.EXPLICIT
-            and picked in variants.languages
-        ):
-            return picked
+        if isinstance(selection, AudioLanguage) and selection.tag in variants.languages:
+            return selection.tag
 
         return variants.language_for(self.video_params.audio_languages)
 
@@ -1544,13 +2005,9 @@ class VideoBlock(QWidget):
         found again; asking for the one playing now finds the same size.
         """
 
-        self.video_params.audio_language = language
-        self.video_params.audio_track_mode = (
-            AudioTrackMode.PREFERRED if language is None else AudioTrackMode.EXPLICIT
+        self.video_params.audio_selection = (
+            AudioPreferred() if language is None else AudioLanguage(tag=language)
         )
-
-        # the language is the pick now, and a stale id would only outvote it
-        self.video_params.audio_track_id = None
 
         self._log.debug(
             f"Set audio language {language},"
@@ -1773,9 +2230,10 @@ class VideoBlock(QWidget):
         self.set_auto_reload_timer(self.video_params.auto_reload_timer_min)
 
         self.video_params.video_track_id = self.video_driver.cur_video_track_id
-        self.video_params.audio_track_id = self.video_driver.cur_audio_track_id
 
         self.is_audio_present_change.emit(bool(self.audio_tracks))
+
+        self._adopt_audio_if_silent()
 
         self.video_status.hide()
         self.video_driver.show()

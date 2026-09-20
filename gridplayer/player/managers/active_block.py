@@ -4,12 +4,19 @@ from PyQt5.QtCore import QEvent, pyqtSignal
 from PyQt5.QtGui import QCursor
 
 from gridplayer.dialogs.crop import SetCropDialog
+from gridplayer.models.audio_selection import (
+    AudioDefault,
+    AudioDisabled,
+    AudioExternal,
+    AudioLanguage,
+    AudioPreferred,
+    AudioTrackId,
+)
 from gridplayer.models.stream import (
     STREAM_QUALITY_AUDIO_ONLY,
     STREAM_QUALITY_AUTO,
     STREAM_QUALITY_BEST,
 )
-from gridplayer.params.static import AudioTrackMode
 from gridplayer.player.managers.base import ManagerBase
 from gridplayer.utils.qt import is_modal_open, translate
 from gridplayer.utils.track_language import language_name
@@ -31,8 +38,13 @@ LOADING_COMMANDS = frozenset(
         "set_audio_track",
         "set_audio_language",
         "apply_audio_preference",
+        "apply_audio_default",
         "audio_languages_dialog",
         "get_audio_languages",
+        "add_external_audio_dialog",
+        "play_external_audio",
+        "remove_external_audio",
+        "set_external_audio_autodiscover",
     }
 )
 
@@ -77,6 +89,9 @@ class ActiveBlockManager(ManagerBase):
             "is_active_multistream": self.is_active_multistream,
             "is_active_audio_language": self.is_active_audio_language,
             "is_active_audio_track": self.is_active_audio_track,
+            "is_active_audio_preferred": self.is_active_audio_preferred,
+            "is_active_audio_disabled": self.is_active_audio_disabled,
+            "is_active_audio_default": self.is_active_audio_default,
             "is_active_local_file": self.is_active_local_file,
             "is_active_has_audio": self.is_active_has_audio,
             "is_active_has_video": self.is_active_has_video,
@@ -187,22 +202,43 @@ class ActiveBlockManager(ManagerBase):
         being ticked, not the language.
         """
 
-        if self.is_no_active_block or not self._is_active_track_explicit:
-            return False
+        selection = self._active_audio_selection()
 
-        return self._ctx.active_block.audio_language == language
+        return isinstance(selection, AudioLanguage) and selection.tag == language
 
     def is_active_audio_track(self, track_id):
-        if self.is_no_active_block or not self._is_active_track_explicit:
-            return False
+        """Ticked where this track is the one that was named by hand.
 
-        return self._ctx.active_block.video_params.audio_track_id == track_id
+        A track out of a file is named by the file, so it answers to that
+        instead: the id it happens to have is nobody's choice.
+        """
 
-    @property
-    def _is_active_track_explicit(self) -> bool:
-        mode = self._ctx.active_block.video_params.audio_track_mode
+        selection = self._active_audio_selection()
 
-        return mode is AudioTrackMode.EXPLICIT
+        if isinstance(selection, AudioExternal):
+            block = self._ctx.active_block
+
+            if block.external_audio_tracks.get(track_id) != selection.file:
+                return False
+
+            return block.external_audio_track_ids.index(track_id) == selection.track
+
+        return isinstance(selection, AudioTrackId) and selection.id == track_id
+
+    def is_active_audio_preferred(self) -> bool:
+        return isinstance(self._active_audio_selection(), AudioPreferred)
+
+    def is_active_audio_default(self) -> bool:
+        return isinstance(self._active_audio_selection(), AudioDefault)
+
+    def is_active_audio_disabled(self) -> bool:
+        return isinstance(self._active_audio_selection(), AudioDisabled)
+
+    def _active_audio_selection(self):
+        if self.is_no_active_block:
+            return None
+
+        return self._ctx.active_block.video_params.audio_selection
 
     def menu_generator_stream_quality(self):
         if self.is_no_active_block:
@@ -325,28 +361,149 @@ class ActiveBlockManager(ManagerBase):
         Which of them is on offer is a matter of where the choice can be
         made: a site that dubs hands VLC one track per language and the
         choice is made before it, where a file hands over all of them at
-        once and the choice is made inside it.
+        once and the choice is made inside it. A file kept beside the video
+        is a third place again, and one the video itself knows nothing of.
         """
 
-        if self.is_no_active_block or not self._ctx.active_block.audio_tracks:
+        if self.is_no_active_block:
             return {}
 
-        return [
-            self._preferred_audio_track_menu_item(),
-            _audio_languages_menu_item(),
+        external = self._external_audio_menu_items()
+
+        if not self._ctx.active_block.audio_tracks:
+            # a silent video has nothing to choose between, but what is
+            # lying next to it is the whole point of looking
+            return external or {}
+
+        return _separated(
+            [
+                _audio_default_menu_item(),
+                self._preferred_audio_track_menu_item(),
+                _audio_languages_menu_item(),
+                {
+                    "title": translate("Actions", "Disable Audio"),
+                    "icon": "empty",
+                    "func": ("active", "set_audio_track", DISABLED_TRACK),
+                    "check_if": "is_active_audio_disabled",
+                    "show_if": "is_active_initialized",
+                },
+            ],
+            self._audio_choice_menu_items(),
+            external,
+        )
+
+    def _external_audio_menu_items(self):
+        """The audio kept beside this video: what is there, and how to add more.
+
+        A file found next to the video is a name and nothing else until it
+        is picked, so these sit below the tracks rather than among them.
+        The one already playing is a track by now, and is listed there.
+
+        What can be played and what can be done about it are two different
+        lists, and read as two.
+        """
+
+        block = self._ctx.active_block
+
+        if not block.is_local_file:
+            return []
+
+        files = self._attached_audio_menu_items() + [
             {
-                "title": translate("Actions", "Disable Audio"),
+                "title": file_path.name,
                 "icon": "empty",
-                "func": ("active", "set_audio_track", DISABLED_TRACK),
+                "func": ("active", "play_external_audio", str(file_path)),
+                "show_if": "is_active_local_file",
+            }
+            for file_path in block.offered_audio_files
+        ]
+
+        commands = [
+            {
+                "title": translate("Actions", "Add External Audio..."),
+                "icon": "empty",
+                "func": ("active", "add_external_audio_dialog"),
+                "show_if": "is_active_local_file",
+            }
+        ]
+
+        if block.video_params.external_audio:
+            commands.append(
+                {
+                    "title": translate("Actions", "Remove External Audio"),
+                    "icon": "empty",
+                    "func": ("active", "remove_external_audio"),
+                    "show_if": "is_active_local_file",
+                }
+            )
+
+        commands.append(
+            {
+                "title": translate("Actions", "Detect Audio Files"),
+                "icon": "empty",
+                "func": (
+                    "active",
+                    "set_external_audio_autodiscover",
+                    not block.video_params.is_external_audio_autodiscover,
+                ),
                 "check_if": (
                     "is_active_param_set_to",
-                    "audio_track_mode",
-                    AudioTrackMode.DISABLED,
+                    "is_external_audio_autodiscover",
+                    True,
                 ),
-                "show_if": "is_active_initialized",
-            },
-            "---",
-            *self._audio_choice_menu_items(),
+                "show_if": "is_active_local_file",
+            }
+        )
+
+        # the files are things to play, the rest are things to do with them
+        return _separated(files, commands)
+
+    def _attached_audio_menu_items(self):
+        """The file the video was opened with, a row for each track it holds.
+
+        Most hold one. A file holding several is listed once per track,
+        since which of them to play is as much a choice as which file.
+        A file that brought none at all is still named, so that it does
+        not look as though nothing was opened.
+        """
+
+        block = self._ctx.active_block
+
+        file_path = block.attached_audio_file
+
+        if file_path is None:
+            return []
+
+        tracks = block.audio_tracks
+        playing = block.audio_track_playing
+
+        from_file = [
+            track_id
+            for track_id in block.external_audio_track_ids
+            if track_id in tracks
+        ]
+
+        # a file with one track in it needs no telling apart from itself
+        numbers = range(1, len(from_file) + 1) if len(from_file) > 1 else [None]
+
+        rows = [
+            {
+                "title": _external_track_title(file_path, tracks[track_id], number),
+                "icon": "play" if track_id == playing else "empty",
+                "func": ("active", "set_audio_track", track_id),
+                "check_if": ("is_active_audio_track", track_id),
+                "show_if": "is_active_local_file",
+            }
+            for track_id, number in zip(from_file, numbers)
+        ]
+
+        return rows or [
+            {
+                "title": file_path.name,
+                "icon": "empty",
+                "func": ("active", "play_external_audio", str(file_path)),
+                "show_if": "is_active_local_file",
+            }
         ]
 
     @property
@@ -388,25 +545,31 @@ class ActiveBlockManager(ManagerBase):
 
         track = block.audio_tracks.get(block.preferred_audio_track_id)
 
-        if track is None and self._is_active_track_preferred:
-            track = block.audio_tracks.get(block.video_params.audio_track_id)
+        if track is None and self.is_active_audio_preferred():
+            track = block.audio_tracks.get(block.audio_track_playing)
 
         return track
 
-    @property
-    def _is_active_track_preferred(self) -> bool:
-        mode = self._ctx.active_block.video_params.audio_track_mode
-
-        return mode is AudioTrackMode.PREFERRED
-
     def _audio_choice_menu_items(self):
-        languages = self._ctx.active_block.audio_language_options
+        """What there is to choose between, with the one being heard marked.
+
+        Being chosen and being heard are not the same thing: a preference
+        names no track, and the row it settles on is ticked nowhere. The
+        mark is the only place the pane says which one answered it, the
+        same way the stream ladder marks the rung it came to.
+        """
+
+        block = self._ctx.active_block
+
+        languages = block.audio_language_options
 
         if len(languages) > 1:
+            playing = block.audio_language_playing
+
             return [
                 {
                     "title": language_name(language) or language,
-                    "icon": "empty",
+                    "icon": "play" if language == playing else "empty",
                     "func": ("active", "set_audio_language", language),
                     "check_if": ("is_active_audio_language", language),
                     "show_if": "is_active_initialized",
@@ -414,15 +577,21 @@ class ActiveBlockManager(ManagerBase):
                 for language in languages
             ]
 
+        # what came out of a file of its own is listed with that file, under
+        # its own heading, rather than among the tracks the video came with
+        external_ids = set(block.external_audio_track_ids)
+        playing = block.audio_track_playing
+
         return [
             {
                 "title": _audio_track_title(track),
-                "icon": "empty",
+                "icon": "play" if track_id == playing else "empty",
                 "func": ("active", "set_audio_track", track_id),
                 "check_if": ("is_active_audio_track", track_id),
                 "show_if": "is_active_initialized",
             }
-            for track_id, track in self._ctx.active_block.audio_tracks.items()
+            for track_id, track in block.audio_tracks.items()
+            if track_id not in external_ids
         ]
 
     def _preferred_audio_track_menu_item(self):
@@ -443,11 +612,7 @@ class ActiveBlockManager(ManagerBase):
             "title": title,
             "icon": "empty",
             "func": ("active", "apply_audio_preference"),
-            "check_if": (
-                "is_active_param_set_to",
-                "audio_track_mode",
-                AudioTrackMode.PREFERRED,
-            ),
+            "check_if": "is_active_audio_preferred",
             "show_if": "is_active_initialized",
         }
 
@@ -532,6 +697,22 @@ class ActiveBlockManager(ManagerBase):
         return next(visible_blocks_under_pos, None)
 
 
+def _audio_default_menu_item():
+    """The track the video's own file puts forward, nothing asked of VLC.
+
+    The preferred languages do not reach it, which is the whole point of
+    having it: a standing preference is not always wanted here.
+    """
+
+    return {
+        "title": translate("Actions", "Default"),
+        "icon": "empty",
+        "func": ("active", "apply_audio_default"),
+        "check_if": "is_active_audio_default",
+        "show_if": "is_active_initialized",
+    }
+
+
 def _audio_languages_menu_item():
     """The preference itself, right under the entry that follows it.
 
@@ -549,6 +730,24 @@ def _audio_languages_menu_item():
     }
 
 
+def _external_track_title(file_path, track, number=None) -> str:
+    """Name a track by the file it came in, and by whatever tells it apart.
+
+    Most files hold one track, and the name they were saved under is the
+    whole answer -- the audio inside says nothing about which of several
+    dubs it is. One holding several has to say which is which: by language
+    or by the name the file gave them where there is one, and by their
+    place in the file where there is nothing else to go on.
+    """
+
+    told_apart = _track_name(track)
+
+    if not told_apart and number is not None:
+        told_apart = f"#{number}"
+
+    return f"{_join_track_name(file_path.name, told_apart)}, {track.codec_info}"
+
+
 def _audio_track_title(track) -> str:
     """Name a track by its language and by what the container called it.
 
@@ -559,13 +758,17 @@ def _audio_track_title(track) -> str:
     container gave a track is the only thing telling them apart.
     """
 
-    name = language_name(track.language) or track.language
-
-    described = _track_description(track, name)
-
-    titled = _join_track_name(name, described)
+    titled = _track_name(track)
 
     return f"{titled}, {track.codec_info}" if titled else track.codec_info
+
+
+def _track_name(track) -> str:
+    """What the track itself has to go by, where it has anything at all."""
+
+    name = language_name(track.language) or track.language
+
+    return _join_track_name(name, _track_description(track, name))
 
 
 def _join_track_name(name: str | None, described: str | None) -> str:

@@ -30,6 +30,7 @@ class PlayerProcessSingleVLCHWSP(QThread, VlcPlayerBase, metaclass=QABC):
     video_dimensions_changed = pyqtSignal(int, int)
 
     load_video_done = pyqtSignal(Media)
+    tracks_changed = pyqtSignal(Media)
 
     loop_load_video_st2_set_media = pyqtSignal()
     loop_load_video_st3_extract_media_track = pyqtSignal()
@@ -139,6 +140,9 @@ class PlayerProcessSingleVLCHWSP(QThread, VlcPlayerBase, metaclass=QABC):
     def notify_load_video_done(self, media_track):
         self.load_video_done.emit(media_track)
 
+    def notify_tracks_changed(self, media_track):
+        self.tracks_changed.emit(media_track)
+
     def notify_snapshot_taken(self, snapshot_path):
         self.snapshot_taken.emit(snapshot_path)
 
@@ -172,6 +176,7 @@ class VideoDriverVLCHWSP(VLCVideoDriver):
     cmd_audio_set_volume = pyqtSignal(float)
     cmd_set_video_track = pyqtSignal(int)
     cmd_set_audio_track = pyqtSignal(int)
+    cmd_add_audio_slave = pyqtSignal(str)
     cmd_set_audio_channel_mode = pyqtSignal(AudioChannelMode)
     cmd_adjust_view = pyqtSignal(tuple, VideoAspect, float, VideoCrop)
     cmd_set_log_level_vlc = pyqtSignal(int)
@@ -186,6 +191,7 @@ class VideoDriverVLCHWSP(VLCVideoDriver):
 
         qt_connect(
             (self.player.load_video_done, self.load_video_done),
+            (self.player.tracks_changed, self.tracks_changed_emit),
             (self.player.snapshot_taken, self.snapshot_taken_emit),
             (self.player.video_dimensions_changed, self.set_video_dimensions),
             (self.player.playback_status_changed, self.playback_status_changed_emit),
@@ -202,6 +208,7 @@ class VideoDriverVLCHWSP(VLCVideoDriver):
             (self.cmd_audio_set_volume, self.player.audio_set_volume),
             (self.cmd_set_video_track, self.player.set_video_track),
             (self.cmd_set_audio_track, self.player.set_audio_track),
+            (self.cmd_add_audio_slave, self.player.add_audio_slave),
             (self.cmd_set_audio_channel_mode, self.player.set_audio_channel_mode),
             (self.cmd_adjust_view, self.player.adjust_view),
             (self.cmd_set_log_level_vlc, self.player.set_log_level_vlc),
@@ -246,6 +253,9 @@ class VideoDriverVLCHWSP(VLCVideoDriver):
 
     def set_audio_track(self, track_id):
         self.cmd_set_audio_track.emit(track_id)
+
+    def add_audio_slave(self, uri):
+        self.cmd_add_audio_slave.emit(uri)
 
     def set_audio_channel_mode(self, mode):
         self.cmd_set_audio_channel_mode.emit(mode)

@@ -1,7 +1,12 @@
 import pytest
 from PyQt5.QtCore import QSettings
-from PyQt5.QtWidgets import QApplication, QCheckBox, QLineEdit
+from PyQt5.QtWidgets import QApplication, QComboBox, QLineEdit
 
+from gridplayer.models.audio_selection import (
+    AudioDefault,
+    AudioDisabled,
+    AudioLanguage,
+)
 from gridplayer.models.playlist import Playlist
 from gridplayer.models.video import Video
 from gridplayer.params.defaults_fields import VIDEO_FIELDS, FieldKind
@@ -67,6 +72,8 @@ def test_languages_field_is_a_text_box_with_an_example_in_it():
 
 def test_text_field_renders_a_line_edit():
     form = _form()
+    # the example only shows while the field is live; see _sync_enabled_by
+    form.set_values({MODE_KEY: AudioTrackMode.PREFERRED})
     widget = form._widgets[LANGUAGES_KEY]
 
     assert isinstance(widget, QLineEdit)
@@ -94,6 +101,7 @@ def test_text_field_shows_an_empty_default_as_empty():
     [
         (AudioTrackMode.PREFERRED, True),
         (AudioTrackMode.DISABLED, False),
+        (AudioTrackMode.DEFAULT, False),
     ],
 )
 def test_languages_field_follows_the_mode(mode, is_enabled):
@@ -112,7 +120,7 @@ def test_video_takes_both_defaults_from_settings():
 
     video = Video(uri="http://host/video")
 
-    assert video.audio_track_mode is AudioTrackMode.DISABLED
+    assert video.audio_selection == AudioDisabled()
     assert video.audio_languages == "ja, en"
 
 
@@ -153,16 +161,12 @@ def test_an_explicit_pick_survives_a_playlist_round_trip():
     from gridplayer.models.video import Video
 
     video = Video(uri="http://example.com/a.mp4")
-    video.audio_track_mode = AudioTrackMode.EXPLICIT
-    video.audio_language = "jpn"
-    video.audio_track_id = 2
+    video.audio_selection = AudioLanguage(tag="jpn")
 
     reloaded = Playlist._parse_json(Playlist(videos=[video]).dumps(), base_dir=None)
     stored = reloaded.videos[0]
 
-    assert stored.audio_track_mode is AudioTrackMode.EXPLICIT
-    assert stored.audio_language == "jpn"
-    assert stored.audio_track_id == 2
+    assert stored.audio_selection == AudioLanguage(tag="jpn")
 
 
 def test_the_preference_list_is_not_where_a_pick_is_stored():
@@ -172,60 +176,48 @@ def test_the_preference_list_is_not_where_a_pick_is_stored():
 
     video = Video(uri="http://example.com/a.mp4")
 
-    assert "audio_language" in type(video).model_fields
+    assert "audio_selection" in type(video).model_fields
     assert "audio_languages" in type(video).model_fields
-    assert video.audio_language is None
+    assert video.audio_selection == AudioDefault()
 
 
 MUTED_KEY = "video_defaults/muted"
 
 
-class TestDisablingAudioIsATickBox:
-    """Two states with names of their own read worse than one tick box."""
+class TestTheAudioTrackDefaultIsAChoiceOfThree:
+    """A tick box could only say two of the three things worth saying."""
 
-    def test_the_field_is_a_check_box_that_says_what_ticking_it_does(self):
+    def test_the_field_offers_them_by_name(self):
         spec = _spec(MODE_KEY)
 
-        assert spec.kind is FieldKind.CHECKBOX
-        assert spec.label == "Disable audio track"
+        assert spec.kind is FieldKind.COMBO
+        assert spec.label == "Audio track"
+        assert list(spec.combo_values()) == [
+            AudioTrackMode.DEFAULT,
+            AudioTrackMode.PREFERRED,
+            AudioTrackMode.DISABLED,
+        ]
 
-    def test_it_renders_as_one(self):
+    def test_it_renders_as_a_drop_down(self):
         form = _form()
 
-        assert isinstance(form._widgets[MODE_KEY], QCheckBox)
+        assert isinstance(form._widgets[MODE_KEY], QComboBox)
 
     @pytest.mark.parametrize(
-        ("mode", "is_ticked"),
-        [
-            (AudioTrackMode.DISABLED, True),
-            (AudioTrackMode.PREFERRED, False),
-        ],
+        "mode",
+        [AudioTrackMode.DEFAULT, AudioTrackMode.PREFERRED, AudioTrackMode.DISABLED],
     )
-    def test_the_tick_shows_the_mode_it_stands_for(self, mode, is_ticked):
-        form = _form()
-
-        form.set_values({MODE_KEY: mode})
-
-        assert form._widgets[MODE_KEY].isChecked() is is_ticked
-
-    @pytest.mark.parametrize(
-        ("is_ticked", "mode"),
-        [
-            (True, AudioTrackMode.DISABLED),
-            (False, AudioTrackMode.PREFERRED),
-        ],
-    )
-    def test_ticking_it_stores_the_mode_not_a_bool(self, is_ticked, mode):
+    def test_what_is_picked_is_what_comes_back(self, mode):
         """What is saved has to stay an AudioTrackMode.
 
-        The same value is a per-video setting with a third state the box
+        The same value is read as a per-video choice with states the list
         never offers, and a bool in the middle of that would not survive
         the round trip through a playlist.
         """
 
         form = _form()
 
-        form._widgets[MODE_KEY].setChecked(is_ticked)
+        form.set_values({MODE_KEY: mode})
 
         assert form.values()[MODE_KEY] is mode
 

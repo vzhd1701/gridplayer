@@ -24,6 +24,9 @@ class VlcPlayerThreaded(CommandLoopThreaded, VlcPlayerBase):
     def notify_snapshot_taken(self, snapshot_path):
         self.cmd_send("snapshot_taken_emit", snapshot_path)
 
+    def notify_tracks_changed(self, media_track):
+        self.cmd_send("tracks_changed_emit", media_track)
+
     def notify_video_dimensions(self, width, height):
         self.cmd_send("set_video_dimensions", width, height)
 

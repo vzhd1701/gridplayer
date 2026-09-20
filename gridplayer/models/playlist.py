@@ -6,6 +6,7 @@ from typing import Any, NoReturn
 from pydantic import BaseModel, Field, ValidationError, model_validator
 from pydantic_extra_types.color import Color
 
+from gridplayer.models.audio_selection import AudioExternal
 from gridplayer.models.grid_state import GridState
 from gridplayer.models.video import Video, migrate_end_action
 from gridplayer.models.video_uri import parse_uri, relativize_uri
@@ -57,6 +58,7 @@ class PlaylistVideoDefaults(BaseModel):
     audio_mode: AudioChannelMode | None = None
     audio_track_mode: AudioTrackMode | None = None
     audio_languages: str | None = None
+    external_audio_autodiscover: bool | None = None
     random_loop: bool | None = None
     muted: bool | None = None
     initial_state: VideoInitialState | None = None
@@ -182,6 +184,8 @@ class Playlist(BaseModel):
         for video in self.videos or []:
             data = self._video_data(video)
             data["uri"] = _dump_uri(video.uri, relative, base_dir)
+            _dump_external_audio(data, video.external_audio, relative, base_dir)
+            _dump_audio_selection(data, relative, base_dir)
             videos.append(data)
 
         doc: dict[str, Any] = {
@@ -249,6 +253,8 @@ class Playlist(BaseModel):
                 video_args = dict(video_args)
                 if uri is not None:
                     video_args["uri"] = parse_uri(uri, base_dir)
+                _resolve_external_audio(video_args, base_dir)
+                _resolve_audio_selection(video_args, base_dir)
                 videos.append(Video(**video_args))
             except (TypeError, ValidationError, ValueError) as e:
                 logger.error(f"Failed to add video '{uri}'")  # noqa: TRY400
@@ -287,6 +293,8 @@ class Playlist(BaseModel):
             video_args = video_params.get(idx, {})
 
             video_args["uri"] = parse_uri(uri, base_dir)
+            _resolve_external_audio(video_args, base_dir)
+            _resolve_audio_selection(video_args, base_dir)
 
             try:
                 videos.append(Video(**video_args))
@@ -372,6 +380,57 @@ def _playlist_base_dir(filename: Path | str) -> Path:
     return Path(filename).absolute().parent
 
 
+def _dump_external_audio(
+    video_data: dict, files, relative: bool, base_dir: Path | None
+) -> None:
+    """Write the audio files the same way the video they belong to is written.
+
+    They sit next to it, so a playlist that travels with the videos has to
+    carry them the same way or they would be looked for where they are not.
+    """
+
+    if not files:
+        video_data.pop("external_audio", None)
+        return
+
+    video_data["external_audio"] = [
+        _dump_uri(file_path, relative, base_dir) for file_path in files
+    ]
+
+
+def _dump_audio_selection(
+    video_data: dict, relative: bool, base_dir: Path | None
+) -> None:
+    """Write a chosen file the same way the list it came from is written."""
+
+    selection = video_data.get("audio_selection")
+
+    if not isinstance(selection, dict) or selection.get("kind") != "external":
+        return
+
+    selection["file"] = _dump_uri(selection["file"], relative, base_dir)
+
+
+def _resolve_audio_selection(video_args: dict, base_dir: Path | None) -> None:
+    selection = video_args.get("audio_selection")
+
+    if not isinstance(selection, dict) or selection.get("kind") != "external":
+        return
+
+    selection["file"] = parse_uri(str(selection["file"]), base_dir)
+
+
+def _resolve_external_audio(video_args: dict, base_dir: Path | None) -> None:
+    files = video_args.get("external_audio")
+
+    if not files:
+        return
+
+    video_args["external_audio"] = [
+        parse_uri(str(file_path), base_dir) for file_path in files
+    ]
+
+
 def _dump_uri(uri: Path | str, relative: bool, base_dir: Path | None) -> str:
     if isinstance(uri, str) and "://" in uri:
         return uri
@@ -392,6 +451,19 @@ def _resolve_snapshot_uris(
             if isinstance(video.uri, str):
                 video.uri = parse_uri(video.uri, base_dir)
 
+            if video.external_audio:
+                video.external_audio = [
+                    Path(parse_uri(str(file_path), base_dir))
+                    for file_path in video.external_audio
+                ]
+
+            selection = video.audio_selection
+
+            if isinstance(selection, AudioExternal):
+                video.audio_selection = selection.model_copy(
+                    update={"file": Path(parse_uri(str(selection.file), base_dir))}
+                )
+
 
 def _relativize_snapshot_uris(
     snapshots: dict[Any, Any], relative: bool, base_dir: Path | None
@@ -401,3 +473,8 @@ def _relativize_snapshot_uris(
             uri = video.get("uri")
             if uri is not None:
                 video["uri"] = _dump_uri(uri, relative, base_dir)
+
+            _dump_external_audio(
+                video, video.get("external_audio") or [], relative, base_dir
+            )
+            _dump_audio_selection(video, relative, base_dir)

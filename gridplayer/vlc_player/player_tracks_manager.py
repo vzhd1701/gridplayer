@@ -23,6 +23,17 @@ class TracksManager:
         self._wanted_video_track_id = None
         self._wanted_audio_track_id = None
 
+    def update_tracks(self, media_tracks) -> None:
+        """Take the track list again, keeping what has been picked so far.
+
+        An audio file attached while the video plays adds a track to a
+        media that was read once at load. Only the list changes: the picks
+        this manager is holding on to outlive it, since a loop wrap still
+        has to put them back.
+        """
+
+        self._media_tracks = media_tracks
+
     @property
     def video_tracks(self) -> dict[int, VideoTrack]:
         if self._is_audio_only:

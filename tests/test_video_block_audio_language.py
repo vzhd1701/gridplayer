@@ -6,9 +6,12 @@ import pytest
 from PyQt5.QtCore import QSettings
 from PyQt5.QtWidgets import QApplication
 
+from gridplayer.models.audio_selection import (
+    AudioLanguage,
+    AudioPreferred,
+)
 from gridplayer.models.stream import STREAM_QUALITY_AUTO, Stream, Streams
 from gridplayer.models.video import Video
-from gridplayer.params.static import AudioTrackMode
 from gridplayer.settings import Settings
 from gridplayer.widgets.video_block import VideoBlock
 
@@ -138,8 +141,7 @@ def test_switching_language_reloads_at_the_same_size(mocker):
 
     VideoBlock.set_audio_language(block, "tlh")
 
-    assert block.video_params.audio_language == "tlh"
-    assert block.video_params.audio_track_mode is AudioTrackMode.EXPLICIT
+    assert block.video_params.audio_selection == AudioLanguage(tag="tlh")
     block.reset.assert_called_once()
     block.load_stream_quality.assert_called_once_with("720p (en)")
 
@@ -157,8 +159,7 @@ def test_switching_language_leaves_the_preference_list_alone(mocker):
 
 def test_an_explicit_language_outranks_the_preference(mocker):
     block = _block(mocker, "en")
-    block.video_params.audio_language = "cop"
-    block.video_params.audio_track_mode = AudioTrackMode.EXPLICIT
+    block.video_params.audio_selection = AudioLanguage(tag="cop")
 
     assert _language(block) == "cop"
 
@@ -167,22 +168,19 @@ def test_an_explicit_language_the_video_no_longer_offers_is_dropped(mocker):
     """Another ladder, another set of languages; the preference stands in."""
 
     block = _block(mocker, "en")
-    block.video_params.audio_language = "de"
-    block.video_params.audio_track_mode = AudioTrackMode.EXPLICIT
+    block.video_params.audio_selection = AudioLanguage(tag="de")
 
     assert _language(block) == "en"
 
 
 def test_going_back_to_preferred_clears_the_pick(mocker):
     block = _block(mocker, "en")
-    block.video_params.audio_language = "tlh"
-    block.video_params.audio_track_mode = AudioTrackMode.EXPLICIT
+    block.video_params.audio_selection = AudioLanguage(tag="tlh")
     block._audio_language_playing = "tlh"
 
     VideoBlock.set_audio_language(block, None)
 
-    assert block.video_params.audio_language is None
-    assert block.video_params.audio_track_mode is AudioTrackMode.PREFERRED
+    assert block.video_params.audio_selection == AudioPreferred()
     block.reset.assert_called_once()
 
 
@@ -200,8 +198,7 @@ def test_switching_language_calls_off_a_pending_quality_adapt(mocker):
 def test_switching_to_the_language_already_playing_does_nothing(mocker):
     block = _block(mocker, "en")
     block._audio_language_playing = "tlh"
-    block.video_params.audio_language = "tlh"
-    block.video_params.audio_track_mode = AudioTrackMode.EXPLICIT
+    block.video_params.audio_selection = AudioLanguage(tag="tlh")
     block.audio_language = _language(block)
 
     VideoBlock.set_audio_language(block, "tlh")

@@ -1,8 +1,13 @@
 import random
 from dataclasses import dataclass
 
+from gridplayer.models.audio_selection import (
+    AudioDefault,
+    AudioDisabled,
+    AudioLanguage,
+    AudioTrackId,
+)
 from gridplayer.models.video import Video
-from gridplayer.params.static import AudioTrackMode
 from gridplayer.utils.track_language import pick_track
 
 DISABLED_TRACK = -1
@@ -35,22 +40,32 @@ def wanted_audio_track_id(video, tracks: dict):
 
     Both the load and a switch made while playing have to answer this the
     same way, or the track would change under the viewer the next time
-    anything reloaded.
+    anything reloaded. A pick of a file of the video's own is not answered
+    here: only whoever knows which track each file brought can answer it.
+
+    A pick that these tracks cannot honour -- a language this source does
+    not carry, an id it no longer has -- falls back to the preference,
+    which is what the viewer would be left with had they picked nothing.
     """
 
-    if video.audio_track_mode is AudioTrackMode.DISABLED:
+    selection = video.audio_selection
+
+    if isinstance(selection, AudioDisabled):
         return DISABLED_TRACK
 
-    if video.audio_track_mode is AudioTrackMode.EXPLICIT:
-        picked = pick_track(video.audio_language or "", tracks)
+    if isinstance(selection, AudioDefault):
+        # nothing is asked of libVLC, so it opens on whichever track the
+        # file itself puts forward
+        return None
+
+    if isinstance(selection, AudioLanguage):
+        picked = pick_track(selection.tag, tracks)
 
         if picked is not None:
             return picked
 
-        # an id of -1 is the mark left by "disable", never a track that was
-        # picked, and following it here would keep a video silent for good
-        if video.audio_track_id not in NO_TRACK:
-            return video.audio_track_id
+    if isinstance(selection, AudioTrackId) and selection.id in tracks:
+        return selection.id
 
     return pick_track(video.audio_languages, tracks)
 
@@ -139,6 +154,14 @@ class Media:
     cur_audio_track_id: int | None = None
     cur_video_track_id: int | None = None
 
+    # the tracks that came out of the file attached to this video, in the
+    # order libVLC put them in
+    external_audio_ids: tuple[int, ...] = ()
+
+    # the track libVLC opened on before anything was asked of it, which is
+    # the one the file itself puts forward
+    default_audio_track_id: int | None = None
+
     @property
     def is_live(self) -> bool:
         return self.length == -1
@@ -171,6 +194,12 @@ class MediaInput:
     video_codec: str | None = None
     is_adaptive: bool = False
     length: int | None = None
+
+    # the audio file to open along with the video, where one was picked.
+    # Only ever one: libVLC never says which stream came from which file,
+    # so a second would leave the two of them to be told apart by guesswork.
+    selected_audio_slave: str | None = None
+
     _initial_seek_ms: int | None = None
 
     @property

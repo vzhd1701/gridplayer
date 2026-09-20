@@ -8,9 +8,15 @@ import pytest
 from PyQt5.QtCore import QSettings
 from PyQt5.QtWidgets import QApplication
 
+from gridplayer.models.audio_selection import (
+    AudioDefault,
+    AudioDisabled,
+    AudioLanguage,
+    AudioPreferred,
+    AudioTrackId,
+)
 from gridplayer.models.stream import Stream, Streams
 from gridplayer.models.video import Video
-from gridplayer.params.static import AudioTrackMode
 from gridplayer.settings import Settings
 from gridplayer.vlc_player.static import (
     DISABLED_TRACK,
@@ -51,15 +57,15 @@ def _track(language):
 TRACKS = {0: _track("eng"), 1: _track("jpn"), 2: _track(None)}
 
 
-def _player(mocker, languages="", mode=AudioTrackMode.PREFERRED, track_id=None):
+def _player(mocker, languages="", selection=None):
     player = mocker.Mock()
     player._tracks_manager = mocker.Mock()
     player._tracks_manager.audio_tracks = TRACKS
 
     video = Video(uri="http://example.com/a.mp4")
     video.audio_languages = languages
-    video.audio_track_mode = mode
-    video.audio_track_id = track_id
+    # this file is about the languages, so that is what these follow
+    video.audio_selection = AudioPreferred() if selection is None else selection
 
     player.media_input = mocker.Mock()
     player.media_input.video = video
@@ -104,13 +110,13 @@ def test_an_untagged_track_answers_to_no_language(mocker):
 
 
 def test_disabled_opens_with_no_audio_at_all(mocker):
-    player = _player(mocker, "en", mode=AudioTrackMode.DISABLED)
+    player = _player(mocker, "en", selection=AudioDisabled())
 
     assert _wanted(player) == DISABLED_TRACK
 
 
 def test_a_track_picked_by_hand_outranks_the_language_asked_for(mocker):
-    player = _player(mocker, "en", mode=AudioTrackMode.EXPLICIT, track_id=1)
+    player = _player(mocker, "en", selection=AudioTrackId(id=1))
 
     assert _wanted(player) == 1
 
@@ -121,11 +127,16 @@ def _block(mocker, languages="", tracks=None):
     block.audio_tracks = TRACKS if tracks is None else tracks
     block.video_params = Video(uri="http://example.com/a.mp4")
     block.video_params.audio_languages = languages
+    block.video_params.audio_selection = AudioPreferred()
     block.video_params.video_track_id = 0
     block._track_language_key = partial(VideoBlock._track_language_key, block)
+    block._audio_selection_for = partial(VideoBlock._audio_selection_for, block)
+    block._wanted_audio_track_id = partial(VideoBlock._wanted_audio_track_id, block)
     block._apply_wanted_audio_track = partial(
         VideoBlock._apply_wanted_audio_track, block
     )
+    # a file with nothing beside it, so every track is one of its own
+    block.external_audio_tracks = {}
     block.is_video_initialized = True
     # there is a picture, so the sound may be turned off
     block._is_video_track_off = False
@@ -140,19 +151,18 @@ def test_picking_a_track_by_hand_records_that_it_was_picked(mocker):
 
     VideoBlock.set_audio_track(block, 1)
 
-    assert block.video_params.audio_track_mode is AudioTrackMode.EXPLICIT
-    assert block.video_params.audio_track_id == 1
+    assert block.video_params.audio_selection == AudioLanguage(tag="jpn")
     block.video_driver.set_audio_track.assert_called_once_with(1)
 
 
-def test_disabling_audio_is_recorded_as_a_mode_rather_than_a_track(mocker):
-    """The track id is overwritten on every load; the mode is not."""
+def test_disabling_audio_is_a_choice_of_its_own(mocker):
+    """Silence is not a track, and is not remembered as one."""
 
     block = _block(mocker)
 
     VideoBlock.set_audio_track(block, DISABLED_TRACK)
 
-    assert block.video_params.audio_track_mode is AudioTrackMode.DISABLED
+    assert block.video_params.audio_selection == AudioDisabled()
 
 
 def test_going_back_to_preferred_applies_the_language_again(mocker):
@@ -161,8 +171,7 @@ def test_going_back_to_preferred_applies_the_language_again(mocker):
 
     VideoBlock.apply_audio_preference(block)
 
-    assert block.video_params.audio_track_mode is AudioTrackMode.PREFERRED
-    assert block.video_params.audio_track_id == 1
+    assert block.video_params.audio_selection == AudioPreferred()
     block.video_driver.set_audio_track.assert_called_once_with(1)
 
 
@@ -174,7 +183,7 @@ def test_going_back_to_preferred_keeps_the_track_when_nothing_matches(mocker):
 
     VideoBlock.apply_audio_preference(block)
 
-    assert block.video_params.audio_track_mode is AudioTrackMode.PREFERRED
+    assert block.video_params.audio_selection == AudioPreferred()
     block.video_driver.set_audio_track.assert_not_called()
 
 
@@ -182,13 +191,12 @@ def test_going_back_to_preferred_lifts_a_disable_even_with_no_match(mocker):
     """Otherwise "disable" would be a one-way door on an untagged video."""
 
     block = _block(mocker, "de")
-    block.video_params.audio_track_mode = AudioTrackMode.DISABLED
-    block.video_params.audio_track_id = DISABLED_TRACK
+    block.video_params.audio_selection = AudioDisabled()
     block.video_driver.cur_audio_track_id = DISABLED_TRACK
 
     VideoBlock.apply_audio_preference(block)
 
-    assert block.video_params.audio_track_mode is AudioTrackMode.PREFERRED
+    assert block.video_params.audio_selection == AudioPreferred()
     block.video_driver.set_audio_track.assert_called_once_with(0)
 
 
@@ -229,8 +237,7 @@ def test_a_pick_is_remembered_by_language_where_that_names_one_track(mocker):
 
     VideoBlock.set_audio_track(block, 1)
 
-    assert block.video_params.audio_language == "jpn"
-    assert block.video_params.audio_track_id == 1
+    assert block.video_params.audio_selection == AudioLanguage(tag="jpn")
 
 
 def test_a_pick_falls_back_to_the_id_where_two_tracks_share_a_language(mocker):
@@ -240,8 +247,7 @@ def test_a_pick_falls_back_to_the_id_where_two_tracks_share_a_language(mocker):
 
     VideoBlock.set_audio_track(block, 1)
 
-    assert block.video_params.audio_language is None
-    assert block.video_params.audio_track_id == 1
+    assert block.video_params.audio_selection == AudioTrackId(id=1)
 
 
 def test_a_pick_falls_back_to_the_id_for_an_untagged_track(mocker):
@@ -249,8 +255,7 @@ def test_a_pick_falls_back_to_the_id_for_an_untagged_track(mocker):
 
     VideoBlock.set_audio_track(block, 2)
 
-    assert block.video_params.audio_language is None
-    assert block.video_params.audio_track_id == 2
+    assert block.video_params.audio_selection == AudioTrackId(id=2)
 
 
 def test_namesakes_are_spotted_across_spellings_of_the_same_language(mocker):
@@ -260,41 +265,40 @@ def test_namesakes_are_spotted_across_spellings_of_the_same_language(mocker):
 
     VideoBlock.set_audio_track(block, 0)
 
-    assert block.video_params.audio_language is None
+    assert block.video_params.audio_selection == AudioTrackId(id=0)
 
 
 def test_a_language_keyed_pick_survives_new_track_ids(mocker):
     """The stream was demuxed again and everything moved up one."""
 
-    player = _player(mocker, mode=AudioTrackMode.EXPLICIT, track_id=1)
-    player.media_input.video.audio_language = "jpn"
+    player = _player(mocker, selection=AudioLanguage(tag="jpn"))
     player._tracks_manager.audio_tracks = {7: _track("eng"), 8: _track("jpn")}
 
     assert _wanted(player) == 8
 
 
 def test_an_id_keyed_pick_is_used_where_no_language_was_stored(mocker):
-    player = _player(mocker, mode=AudioTrackMode.EXPLICIT, track_id=2)
-    player.media_input.video.audio_language = None
+    player = _player(mocker, selection=AudioTrackId(id=2))
 
     assert _wanted(player) == 2
 
 
-def test_a_language_keyed_pick_falls_back_to_the_id_when_it_is_gone(mocker):
-    player = _player(mocker, mode=AudioTrackMode.EXPLICIT, track_id=1)
-    player.media_input.video.audio_language = "kor"
+def test_a_language_this_source_does_not_carry_falls_back_to_the_preference(mocker):
+    """What was asked for is not here, so what is left is what was asked of it."""
+
+    player = _player(mocker, "ja", selection=AudioLanguage(tag="kor"))
 
     assert _wanted(player) == 1
 
 
 def test_going_back_to_preferred_forgets_the_pick(mocker):
     block = _block(mocker, "ja")
-    block.video_params.audio_language = "fre"
+    block.video_params.audio_selection = AudioLanguage(tag="fre")
     block.preferred_audio_track_id = VideoBlock.preferred_audio_track_id.fget(block)
 
     VideoBlock.apply_audio_preference(block)
 
-    assert block.video_params.audio_language is None
+    assert block.video_params.audio_selection == AudioPreferred()
 
 
 def test_disabling_audio_sticks_while_a_video_is_still_reloading(mocker):
@@ -305,7 +309,7 @@ def test_disabling_audio_sticks_while_a_video_is_still_reloading(mocker):
 
     VideoBlock.set_audio_track(block, DISABLED_TRACK)
 
-    assert block.video_params.audio_track_mode is AudioTrackMode.DISABLED
+    assert block.video_params.audio_selection == AudioDisabled()
     block.video_driver.set_audio_track.assert_not_called()
 
     # what the load then settles on
@@ -313,28 +317,25 @@ def test_disabling_audio_sticks_while_a_video_is_still_reloading(mocker):
 
 
 def test_picking_a_language_after_a_disable_is_not_still_silent(mocker):
-    """The -1 left behind must not outlive the mode that put it there."""
+    """One field holds the choice, so the disable cannot outlive it."""
 
     video = Video(uri="http://example.com/a.mp4")
-    video.audio_track_mode = AudioTrackMode.DISABLED
-    video.audio_track_id = DISABLED_TRACK
+    video.audio_selection = AudioDisabled()
 
     # the viewer now picks a language from the dubbed stream's menu
-    video.audio_track_mode = AudioTrackMode.EXPLICIT
-    video.audio_language = "tlh"
-    video.audio_track_id = None
+    video.audio_selection = AudioLanguage(tag="tlh")
 
     # VLC is handed one rendition per language, and it may name none of them
     assert wanted_audio_track_id(video, {0: _track(None)}) is None
 
 
-def test_a_stale_disable_is_never_mistaken_for_a_track_that_was_picked(mocker):
-    video = Video(uri="http://example.com/a.mp4")
-    video.audio_track_mode = AudioTrackMode.EXPLICIT
-    video.audio_language = "kor"
-    video.audio_track_id = DISABLED_TRACK
+def test_a_language_nothing_answers_to_leaves_the_video_speaking(mocker):
+    """Falling back on the preference, never on the silence of a disable."""
 
-    assert wanted_audio_track_id(video, TRACKS) is None
+    video = Video(uri="http://example.com/a.mp4")
+    video.audio_selection = AudioLanguage(tag="kor")
+
+    assert wanted_audio_track_id(video, TRACKS) != DISABLED_TRACK
 
 
 def _player_for(block):
@@ -343,3 +344,11 @@ def _player_for(block):
         _tracks_manager=SimpleNamespace(audio_tracks=block.audio_tracks),
     )
     return player
+
+
+def test_a_video_left_on_its_own_default_ignores_the_languages(mocker):
+    """The whole point of the default: a standing preference is not always wanted."""
+
+    player = _player(mocker, "ja", selection=AudioDefault())
+
+    assert _wanted(player) is None

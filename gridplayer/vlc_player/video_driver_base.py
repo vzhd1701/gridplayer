@@ -11,6 +11,7 @@ class VLCVideoDriver(QObject, metaclass=QABC):
     time_changed = pyqtSignal(MILLISECONDS)
     playback_status_changed = pyqtSignal(int)
     load_finished = pyqtSignal(Media)
+    tracks_changed = pyqtSignal(Media)
     snapshot_taken = pyqtSignal(str)
     video_dimensions_changed = pyqtSignal(int, int)
 
@@ -56,6 +57,9 @@ class VLCVideoDriver(QObject, metaclass=QABC):
     def load_video_done(self, media_track: Media):
         self.load_finished.emit(media_track)
 
+    def tracks_changed_emit(self, media_track: Media):
+        self.tracks_changed.emit(media_track)
+
     @abstractmethod
     def snapshot(self): ...
 
@@ -85,6 +89,9 @@ class VLCVideoDriver(QObject, metaclass=QABC):
 
     @abstractmethod
     def set_audio_track(self, track_id): ...
+
+    @abstractmethod
+    def add_audio_slave(self, uri): ...
 
     @abstractmethod
     def set_video_track(self, track_id): ...

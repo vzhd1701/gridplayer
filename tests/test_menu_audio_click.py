@@ -12,9 +12,12 @@ from types import SimpleNamespace
 import pytest
 from PyQt5.QtWidgets import QApplication, QWidget
 
+from gridplayer.models.audio_selection import (
+    AudioDisabled,
+    AudioLanguage,
+)
 from gridplayer.models.stream import Stream, Streams
 from gridplayer.models.video import Video
-from gridplayer.params.static import AudioTrackMode
 from gridplayer.player.manager import Commands
 from gridplayer.player.managers.actions import ActionsManager
 from gridplayer.player.managers.active_block import ActiveBlockManager
@@ -102,11 +105,22 @@ class _Block:
     stream_ladder = VideoBlock.stream_ladder
     audio_tracks = VideoBlock.audio_tracks
     is_video_initialized = VideoBlock.is_video_initialized
+    is_local_file = VideoBlock.is_local_file
+    audio_track_playing = VideoBlock.audio_track_playing
+    audio_language_playing = VideoBlock.audio_language_playing
+    apply_audio_default = VideoBlock.apply_audio_default
+    default_audio_track_id = VideoBlock.default_audio_track_id
+    offered_audio_files = VideoBlock.offered_audio_files
+    discovered_audio_files = VideoBlock.discovered_audio_files
+    attached_audio_file = VideoBlock.attached_audio_file
+    external_audio_track_ids = VideoBlock.external_audio_track_ids
 
     set_audio_language = VideoBlock.set_audio_language
     apply_audio_preference = VideoBlock.apply_audio_preference
     _apply_wanted_audio_track = VideoBlock._apply_wanted_audio_track
     set_audio_track = VideoBlock.set_audio_track
+    _audio_selection_for = VideoBlock._audio_selection_for
+    _wanted_audio_track_id = VideoBlock._wanted_audio_track_id
     _is_video_track_off = VideoBlock._is_video_track_off
     _track_language_key = VideoBlock._track_language_key
     get_audio_languages = VideoBlock.get_audio_languages
@@ -125,6 +139,8 @@ class _Block:
         )
         self.warnings = []
         self.reloads = []
+        # a stream with nothing beside it, so every track is one of its own
+        self.external_audio_tracks = {}
         self.video_track_unmapped = False
 
         self.load_stream_quality("best")
@@ -156,7 +172,6 @@ class _Block:
         self.video_params.video_track_id = (
             None if self.video_track_unmapped else self.video_driver.cur_video_track_id
         )
-        self.video_params.audio_track_id = self.video_driver.cur_audio_track_id
 
 
 class _Manager(ActiveBlockManager):
@@ -192,6 +207,9 @@ def _submenu(block):
             ),
             "is_active_audio_language": manager.is_active_audio_language,
             "is_active_audio_track": manager.is_active_audio_track,
+            "is_active_audio_preferred": manager.is_active_audio_preferred,
+            "is_active_audio_disabled": manager.is_active_audio_disabled,
+            "is_active_audio_default": manager.is_active_audio_default,
         }
     )
 
@@ -230,7 +248,7 @@ def test_disable_audio_works_on_a_freshly_opened_video():
 
     _click(block, "Disable Audio")
 
-    assert block.video_params.audio_track_mode is AudioTrackMode.DISABLED
+    assert block.video_params.audio_selection == AudioDisabled()
     assert block.video_driver.calls == [DISABLED_TRACK]
 
 
@@ -240,11 +258,11 @@ def test_disable_audio_works_after_a_language_was_picked():
     block = _Block()
 
     _click(block, "Klingon")
-    assert block.video_params.audio_language == "tlh"
+    assert block.video_params.audio_selection == AudioLanguage(tag="tlh")
 
     _click(block, "Disable Audio")
 
-    assert block.video_params.audio_track_mode is AudioTrackMode.DISABLED
+    assert block.video_params.audio_selection == AudioDisabled()
     assert block.video_driver.calls[-1] == DISABLED_TRACK
     assert block.warnings == []
 
@@ -256,7 +274,7 @@ def test_disable_audio_works_after_going_back_to_preferred():
     _click(block, "Preferred")
     _click(block, "Disable Audio")
 
-    assert block.video_params.audio_track_mode is AudioTrackMode.DISABLED
+    assert block.video_params.audio_selection == AudioDisabled()
     assert block.video_driver.calls[-1] == DISABLED_TRACK
 
 
@@ -266,9 +284,8 @@ def test_a_language_can_be_picked_again_after_disabling():
     _click(block, "Disable Audio")
     _click(block, "Klingon")
 
-    assert block.video_params.audio_track_mode is AudioTrackMode.EXPLICIT
+    assert block.video_params.audio_selection == AudioLanguage(tag="tlh")
     assert block.audio_language == "tlh"
-    assert block.video_params.audio_track_id != DISABLED_TRACK
 
 
 def test_disable_audio_works_when_the_video_track_came_back_unmapped():
@@ -288,7 +305,7 @@ def test_disable_audio_works_when_the_video_track_came_back_unmapped():
     _click(block, "Disable Audio")
 
     assert block.warnings == []
-    assert block.video_params.audio_track_mode is AudioTrackMode.DISABLED
+    assert block.video_params.audio_selection == AudioDisabled()
     assert block.video_driver.calls[-1] == DISABLED_TRACK
 
 
@@ -317,7 +334,7 @@ def test_disabling_audio_is_still_refused_when_the_picture_is_off():
     _click(block, "Disable Audio")
 
     assert block.warnings
-    assert block.video_params.audio_track_mode is not AudioTrackMode.DISABLED
+    assert block.video_params.audio_selection != AudioDisabled()
 
 
 def test_the_language_already_playing_still_turns_the_sound_back_on():
@@ -338,6 +355,6 @@ def test_the_language_already_playing_still_turns_the_sound_back_on():
 
     _click(block, "Coptic")
 
-    assert block.video_params.audio_track_mode is AudioTrackMode.EXPLICIT
+    assert block.video_params.audio_selection == AudioLanguage(tag="cop")
     assert block.video_driver.tracks_manager.audio_track != DISABLED_TRACK
     assert len(block.reloads) == reloads_before, "the same rung needs no reload"
