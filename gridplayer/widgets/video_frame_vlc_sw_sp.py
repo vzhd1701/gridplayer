@@ -223,6 +223,7 @@ class VideoDriverVLCSWSP(VLCVideoDriver):
     cmd_set_audio_track = pyqtSignal(int)
     cmd_add_audio_slave = pyqtSignal(str)
     cmd_set_audio_channel_mode = pyqtSignal(AudioChannelMode)
+    cmd_set_audio_delay = pyqtSignal(int)
     cmd_set_log_level_vlc = pyqtSignal(int)
 
     cmd_cleanup = pyqtSignal()
@@ -267,6 +268,7 @@ class VideoDriverVLCSWSP(VLCVideoDriver):
             (self.cmd_set_audio_track, self.player.set_audio_track),
             (self.cmd_add_audio_slave, self.player.add_audio_slave),
             (self.cmd_set_audio_channel_mode, self.player.set_audio_channel_mode),
+            (self.cmd_set_audio_delay, self.player.set_audio_delay),
             (self.cmd_set_log_level_vlc, self.player.set_log_level_vlc),
             (self.cmd_cleanup, self.player.cleanup),
         )
@@ -331,6 +333,9 @@ class VideoDriverVLCSWSP(VLCVideoDriver):
 
     def set_audio_channel_mode(self, mode):
         self.cmd_set_audio_channel_mode.emit(mode)
+
+    def set_audio_delay(self, delay_ms):
+        self.cmd_set_audio_delay.emit(delay_ms)
 
     def set_log_level_vlc(self, log_level):
         self.cmd_set_log_level_vlc.emit(log_level)

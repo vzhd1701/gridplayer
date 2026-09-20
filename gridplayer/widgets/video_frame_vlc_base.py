@@ -614,6 +614,9 @@ class VideoFrameVLC(QWidget, metaclass=QABC):
     def set_audio_channel_mode(self, mode):
         self.video_driver.set_audio_channel_mode(mode)
 
+    def set_audio_delay(self, delay_ms):
+        self.video_driver.set_audio_delay(delay_ms)
+
 
 class VideoFrameVLCProcess(VideoFrameVLC, ABC):
     def __init__(self, process_manager, **kwargs):

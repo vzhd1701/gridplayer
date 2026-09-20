@@ -20,6 +20,13 @@ MAX_SCALE = 10.0
 MIN_RATE = 0.2
 MAX_RATE = 12
 
+# How far the sound can be moved against the picture, and by how much at a
+# time. The step is the one VLC moves it by on its own keys, small enough to
+# tune by ear and large enough to get somewhere.
+MIN_AUDIO_DELAY_MS = -60000
+MAX_AUDIO_DELAY_MS = 60000
+AUDIO_DELAY_STEP_MS = 50
+
 
 class AutoName(Enum):
     def _generate_next_value_(name, start, count, last_values):

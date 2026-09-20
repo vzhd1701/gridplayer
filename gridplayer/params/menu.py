@@ -38,6 +38,10 @@ SUBMENUS = MappingProxyType(
             "title": translate("Actions", "Audio Mode"),
             "icon": "stereo-mode",
         },
+        "Audio Delay": {
+            "title": translate("Actions", "Audio Delay"),
+            "icon": "seek-sync",
+        },
         "Add": {"title": translate("Actions", "Add"), "icon": "add"},
         "On Network Error": {
             "title": translate("Actions", "On Network Error"),
@@ -62,6 +66,14 @@ SECTIONS = MappingProxyType(
             (
                 "Audio",
                 "Audio Track",
+                (
+                    "Audio Delay",
+                    "Audio Delay: %v",
+                    "---",
+                    "Audio Delay Later",
+                    "Audio Delay Earlier",
+                    "Audio Delay Reset",
+                ),
                 (
                     "Audio Mode",
                     "Audio Mode - Original",
@@ -225,6 +237,14 @@ SECTIONS = MappingProxyType(
                         "Audio Mode - Dolby Surround [ALL]",
                         "Audio Mode - Headphones [ALL]",
                         "Audio Mode - Mono [ALL]",
+                    ),
+                    (
+                        "Audio Delay",
+                        "Audio Delay Set [ALL]",
+                        "---",
+                        "Audio Delay Later [ALL]",
+                        "Audio Delay Earlier [ALL]",
+                        "Audio Delay Reset [ALL]",
                     ),
                     "---",
                     "Audio Volume - Increase [ALL]",

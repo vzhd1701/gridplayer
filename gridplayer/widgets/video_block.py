@@ -10,6 +10,7 @@ from PyQt5.QtCore import QSize, Qt, QTimer, pyqtSignal
 from PyQt5.QtGui import QCursor
 from PyQt5.QtWidgets import QFileDialog, QStackedLayout, QWidget
 
+from gridplayer.dialogs.audio_delay import SetAudioDelayDialog
 from gridplayer.dialogs.input_dialog import (
     QCustomSpinboxInput,
     QCustomSpinboxTimeInput,
@@ -40,9 +41,12 @@ from gridplayer.models.video import (
 from gridplayer.params import env
 from gridplayer.params.extensions import SUPPORTED_AUDIO_EXT
 from gridplayer.params.static import (
+    AUDIO_DELAY_STEP_MS,
     CHROME_MIN_SIZE,
+    MAX_AUDIO_DELAY_MS,
     MAX_RATE,
     MAX_SCALE,
+    MIN_AUDIO_DELAY_MS,
     MIN_RATE,
     MIN_SCALE,
     OVERLAY_ACTIVITY_EVENT,
@@ -184,6 +188,17 @@ def only_streamable(func):
 
 def _file_names(file_paths) -> str:
     return ", ".join(file_path.name for file_path in file_paths)
+
+
+def audio_delay_txt(delay_ms: int) -> str:
+    """A delay as it reads, signed, since which way it goes is the point."""
+
+    milliseconds = translate("Audio Delay", "ms")
+
+    if not delay_ms:
+        return f"0 {milliseconds}"
+
+    return f"{delay_ms:+d} {milliseconds}"
 
 
 def _audio_files_filter() -> str:
@@ -1518,6 +1533,44 @@ class VideoBlock(QWidget):
         self.video_params.audio_channel_mode = mode
         self.video_driver.set_audio_channel_mode(mode)
 
+    @only_initialized
+    def set_audio_delay(self, delay_ms, is_silent=False):
+        if not self.audio_tracks:
+            return
+
+        delay_ms = min(max(delay_ms, MIN_AUDIO_DELAY_MS), MAX_AUDIO_DELAY_MS)
+
+        self.video_params.audio_delay_ms = delay_ms
+        self.video_driver.set_audio_delay(delay_ms)
+
+        if not is_silent:
+            self.info_change.emit(f"Audio delay: {audio_delay_txt(delay_ms)}")
+
+    @only_initialized
+    def audio_delay_increase(self):
+        self.set_audio_delay(self.video_params.audio_delay_ms + AUDIO_DELAY_STEP_MS)
+
+    @only_initialized
+    def audio_delay_decrease(self):
+        self.set_audio_delay(self.video_params.audio_delay_ms - AUDIO_DELAY_STEP_MS)
+
+    @only_initialized
+    def audio_delay_reset(self):
+        self.set_audio_delay(0)
+
+    @only_initialized
+    def audio_delay_dialog(self):
+        if not self.audio_tracks:
+            return
+
+        dialog = SetAudioDelayDialog.for_video_block(self, parent=self.parent())
+
+        dialog.exec_()
+
+    @only_initialized
+    def get_audio_delay(self):
+        return audio_delay_txt(self.video_params.audio_delay_ms)
+
     @property
     def video_id(self) -> str:
         return str(self.video_params.id)
@@ -1829,6 +1882,7 @@ class VideoBlock(QWidget):
         self.restore_audio_selection(snapshot.audio_selection)
 
         self.set_audio_channel_mode(snapshot.audio_channel_mode)
+        self.set_audio_delay(snapshot.audio_delay_ms, is_silent=True)
 
         self.set_aspect(snapshot.aspect_mode)
         self.set_muted(snapshot.is_muted)
@@ -2219,6 +2273,7 @@ class VideoBlock(QWidget):
         self.color = self.video_params.color.as_hex()
 
         self.set_audio_channel_mode(self.video_params.audio_channel_mode)
+        self.set_audio_delay(self.video_params.audio_delay_ms, is_silent=True)
 
         self.set_volume(self.video_params.volume)
         self.set_muted(self.video_params.is_muted)

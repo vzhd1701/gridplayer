@@ -313,6 +313,8 @@ class FakeMediaPlayer:
         self.audio_id = audio_id
         self.video_desc = video_desc if video_desc is not None else [(-1, b"Disable")]
         self.audio_desc = audio_desc if audio_desc is not None else [(-1, b"Disable")]
+        self.audio_delay_us = 0
+        self.calls = []
 
     def video_get_track(self):
         return self.video_id
@@ -331,6 +333,13 @@ class FakeMediaPlayer:
 
     def audio_set_track(self, track_id):
         self.audio_id = track_id
+        self.calls.append(("audio_set_track", track_id))
+
+    def audio_set_delay(self, delay_us):
+        self.audio_delay_us = delay_us
+        self.calls.append(("audio_set_delay", delay_us))
+
+        return 0
 
     def video_get_size(self):
         return (1920, 1080)
@@ -542,3 +551,50 @@ class TestReapplyingTracksAfterALoop:
 
         assert manager.reapply() is True
         assert player.video_get_track() == -1
+
+    def test_the_delay_is_asked_for_again(self):
+        """libVLC drops it with the media, the same way it drops the track."""
+
+        player = self._player()
+        manager = self._manager(player)
+
+        manager.set_audio_delay_ms(150)
+        assert player.audio_delay_us == 150000
+
+        player.audio_delay_us = 0
+
+        assert manager.reapply() is True
+        assert player.audio_delay_us == 150000
+
+    def test_a_delay_on_its_own_is_worth_asking_for(self):
+        """No track was ever picked, which used to end the matter here."""
+
+        player = self._player()
+        manager = self._manager(player)
+
+        manager.set_audio_delay_ms(-200)
+        player.audio_delay_us = 0
+
+        assert manager.reapply() is True
+        assert player.audio_delay_us == -200000
+
+    def test_it_goes_on_after_the_track_it_is_measured_against(self):
+        player = self._player()
+        manager = self._manager(player)
+
+        manager.set_audio_track_id(1)
+        manager.set_audio_delay_ms(100)
+        player.calls.clear()
+
+        manager.reapply()
+
+        assert [call[0] for call in player.calls] == [
+            "audio_set_track",
+            "audio_set_delay",
+        ]
+
+    def test_a_media_nobody_has_touched_is_left_level(self):
+        player = self._player()
+
+        assert self._manager(player).reapply() is True
+        assert player.calls == []

@@ -2,6 +2,7 @@ import contextlib
 
 from PyQt5.QtCore import Qt, pyqtSignal
 
+from gridplayer.dialogs.audio_delay import SetAudioDelayDialog
 from gridplayer.dialogs.input_dialog import QCustomSpinboxInput, QCustomSpinboxTimeInput
 from gridplayer.models.video import Video
 from gridplayer.params.static import (
@@ -148,6 +149,11 @@ class VideoBlocksManager(ManagerBase):
     all_set_auto_reload_timer = pyqtSignal(int)
     all_set_audio_channel_mode = pyqtSignal(AudioChannelMode)
 
+    all_set_audio_delay = pyqtSignal(int)
+    all_audio_delay_increase = pyqtSignal()
+    all_audio_delay_decrease = pyqtSignal()
+    all_audio_delay_reset = pyqtSignal()
+
     all_volume_increase = pyqtSignal()
     all_volume_decrease = pyqtSignal()
     all_set_muted = pyqtSignal(bool)
@@ -187,6 +193,7 @@ class VideoBlocksManager(ManagerBase):
             "all_pause": self.cmd_all_pause,
             "all_seek_timecode": self.cmd_seek_timecode,
             "all_set_auto_reload_timer": self.cmd_set_auto_reload_timer,
+            "all_set_audio_delay": self.cmd_set_audio_delay,
             "is_videos": lambda: bool(self._ctx.video_blocks),
             "is_any_videos_initialized": self.is_any_videos_initialized,
             "is_any_videos_playable": self.is_any_videos_playable,
@@ -264,6 +271,16 @@ class VideoBlocksManager(ManagerBase):
         )
 
         self.all_set_auto_reload_timer.emit(time_minutes)
+
+    def cmd_set_audio_delay(self):
+        # nothing to hear it against while it is being set, so this one is
+        # typed rather than found by ear the way a single video's is
+        delay_ms = SetAudioDelayDialog.get_delay_ms(parent=self.parent())
+
+        if delay_ms is None:
+            return
+
+        self.all_set_audio_delay.emit(delay_ms)
 
     def set_disable_mouse_click_events(self, is_disabled):
         self._ctx.is_disable_mouse_click_events = is_disabled
@@ -504,6 +521,10 @@ class VideoBlocksManager(ManagerBase):
             (self.all_set_transform, vb.set_transform),
             (self.all_set_auto_reload_timer, vb.set_auto_reload_timer),
             (self.all_set_audio_channel_mode, vb.set_audio_channel_mode),
+            (self.all_set_audio_delay, vb.set_audio_delay),
+            (self.all_audio_delay_increase, vb.audio_delay_increase),
+            (self.all_audio_delay_decrease, vb.audio_delay_decrease),
+            (self.all_audio_delay_reset, vb.audio_delay_reset),
             (self.all_volume_increase, vb.volume_increase),
             (self.all_volume_decrease, vb.volume_decrease),
             (self.all_set_muted, vb.set_muted),

@@ -8,6 +8,8 @@ from gridplayer.vlc_player.static import DISABLED_TRACK, AudioTrack, VideoTrack
 
 _log = logging.getLogger(__name__)
 
+MICROSECONDS_IN_MS = 1000
+
 
 class TracksManager:
     def __init__(self, media_player, media_tracks, is_audio_only, media_uri=None):
@@ -22,6 +24,10 @@ class TracksManager:
         # here and what to ask for again after a loop; see is_video_track_off
         self._wanted_video_track_id = None
         self._wanted_audio_track_id = None
+
+        # the head start the sound was given over the picture, which the
+        # player forgets every time it opens a media; see reapply
+        self._wanted_audio_delay_ms = 0
 
     def update_tracks(self, media_tracks) -> None:
         """Take the track list again, keeping what has been picked so far.
@@ -137,20 +143,46 @@ class TracksManager:
 
         self._wanted_video_track_id = track_id
 
+    def set_audio_delay_ms(self, delay_ms: int) -> None:
+        """Move the sound against the picture, by milliseconds, later positive.
+
+        libVLC counts in microseconds and drops the whole thing whenever it
+        opens a media, which is why what was asked for is kept here.
+        """
+
+        self._log.debug(f"Set audio delay {delay_ms} ms")
+
+        is_set = self._media_player.audio_set_delay(delay_ms * MICROSECONDS_IN_MS) == 0
+
+        if delay_ms and not is_set:
+            # most likely nothing is playing for the sound to be moved
+            # against; what was asked for is kept all the same, and the
+            # next pass to start is asked again
+            self._log.warning(f"Failed to set audio delay {delay_ms} ms")
+
+        self._wanted_audio_delay_ms = delay_ms
+
     def reapply(self) -> bool:
         """Ask for the chosen tracks again after the player restarted.
 
         Looping replays the media from the top, and libVLC starts it the
         way it would any other time: on whichever tracks it considers the
-        defaults. Anything picked since the media was loaded, a disabled
-        audio track above all, has to be asked for again.
+        defaults, with the sound back level with the picture. Anything
+        picked since the media was loaded, a disabled audio track above
+        all, has to be asked for again.
 
         Returns whether the sound has landed where it was asked to be.
         The restart takes a moment, and asking too early only reaches the
         input that is on its way out, so the caller tries again.
         """
 
-        if self._wanted_audio_track_id is None and self._wanted_video_track_id is None:
+        is_nothing_wanted = (
+            self._wanted_audio_track_id is None
+            and self._wanted_video_track_id is None
+            and not self._wanted_audio_delay_ms
+        )
+
+        if is_nothing_wanted:
             # nothing was ever picked, so the defaults it comes back on
             # are the right ones
             return True
@@ -161,10 +193,16 @@ class TracksManager:
         if self._wanted_video_track_id is not None:
             self.set_video_track_id(self._wanted_video_track_id)
 
+        if self._wanted_audio_track_id is not None:
+            self.set_audio_track_id(self._wanted_audio_track_id)
+
+        # after the track, since which track is playing is the one thing a
+        # delay is measured against
+        if self._wanted_audio_delay_ms:
+            self.set_audio_delay_ms(self._wanted_audio_delay_ms)
+
         if self._wanted_audio_track_id is None:
             return True
-
-        self.set_audio_track_id(self._wanted_audio_track_id)
 
         real_track_id = self._get_real_track_id(self._wanted_audio_track_id)
 

@@ -15,8 +15,10 @@ from gridplayer.models.audio_selection import (
 )
 from gridplayer.models.video_uri import VideoURI, parse_uri
 from gridplayer.params.static import (
+    MAX_AUDIO_DELAY_MS,
     MAX_RATE,
     MAX_SCALE,
+    MIN_AUDIO_DELAY_MS,
     MIN_RATE,
     MIN_SCALE,
     AudioChannelMode,
@@ -158,6 +160,13 @@ class Video(BaseModel):
     audio_selection: AudioSelection = Field(default_factory=default_audio_selection)
 
     audio_channel_mode: AudioChannelMode = session_field("video_defaults/audio_mode")
+
+    # how far the sound runs behind the picture, positive for later. An
+    # audio file cut from another release of the same film is the reason
+    # this exists, so it belongs to the video rather than to any preference
+    audio_delay_ms: Annotated[
+        int, Field(ge=MIN_AUDIO_DELAY_MS, le=MAX_AUDIO_DELAY_MS)
+    ] = 0
 
     # the languages to go by where nothing was picked by hand, which is a
     # standing preference rather than a choice of track

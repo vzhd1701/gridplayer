@@ -836,6 +836,10 @@ class VlcPlayerBase(ABC):
     def set_audio_channel_mode(self, mode: AudioChannelMode):
         self._media_player.audio_set_channel(AUDIO_CHANNEL_MODE_MAP[mode])
 
+    @only_initialized_player
+    def set_audio_delay(self, delay_ms: int):
+        self._tracks_manager.set_audio_delay_ms(delay_ms)
+
     @property
     def video_dimensions(self):
         if self._media_player is None or self.media is None:
@@ -1105,6 +1109,7 @@ class VlcPlayerBase(ABC):
 
         self._tracks_manager.set_video_track_id(self.media_input.video.video_track_id)
         self._tracks_manager.set_audio_track_id(self._wanted_audio_track_id())
+        self._tracks_manager.set_audio_delay_ms(self.media_input.video.audio_delay_ms)
 
         return Media(
             length=length,

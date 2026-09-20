@@ -38,6 +38,8 @@ class VideoDriverDummy(VLCVideoDriver):
 
     def set_audio_channel_mode(self, mode): ...
 
+    def set_audio_delay(self, delay_ms): ...
+
 
 class VideoFrameDummy(VideoFrameVLC):
     is_opengl = False
