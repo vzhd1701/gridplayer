@@ -120,6 +120,8 @@ class _FakeTracksManager:
         self.video_tracks = {}
         self.current_video_track_id = None
         self.current_audio_track_id = 1
+        self.subtitle_tracks = {}
+        self.current_subtitle_track_id = None
 
     @property
     def audio_tracks(self):
@@ -127,6 +129,9 @@ class _FakeTracksManager:
 
     def update_tracks(self, media_tracks):
         self.updated.append(media_tracks)
+
+    def set_subtitle_track_id(self, track_id):
+        self.current_subtitle_track_id = track_id
 
 
 def _media_input(audio_slave=None):

@@ -1,11 +1,17 @@
 import random
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from gridplayer.models.audio_selection import (
     AudioDefault,
     AudioDisabled,
     AudioLanguage,
     AudioTrackId,
+)
+from gridplayer.models.subtitle_selection import (
+    SubtitleDefault,
+    SubtitleDisabled,
+    SubtitleLanguage,
+    SubtitleTrackId,
 )
 from gridplayer.models.video import Video
 from gridplayer.utils.track_language import pick_track
@@ -68,6 +74,50 @@ def wanted_audio_track_id(video, tracks: dict):
         return selection.id
 
     return pick_track(video.audio_languages, tracks)
+
+
+def wanted_subtitle_track_id(video, tracks: dict, external_ids=()):
+    """Which of these tracks a video's settings call for, None to leave be.
+
+    Where the sound gives up and takes whatever it can get, this gives up
+    and shows nothing: a track in a language nobody asked for is worse than
+    a bare picture, which is not true of a sound track nobody asked for.
+
+    Tracks a file of their own brought are kept out of the language
+    matching. libVLC writes that file's name where an embedded track's
+    language goes, so matching against them is matching against a path.
+    A pick of one is not answered here at all: only whoever knows which
+    track came out of which file can answer that.
+    """
+
+    selection = video.subtitle_selection
+
+    if isinstance(selection, SubtitleDisabled):
+        return DISABLED_TRACK
+
+    if isinstance(selection, SubtitleDefault):
+        # nothing is asked of libVLC, so what it opened on stands, and that
+        # is whichever track the container marks
+        return None
+
+    if isinstance(selection, SubtitleTrackId) and selection.id in tracks:
+        return selection.id
+
+    own_tracks = {
+        track_id: track
+        for track_id, track in tracks.items()
+        if track_id not in external_ids
+    }
+
+    if isinstance(selection, SubtitleLanguage):
+        picked = pick_track(selection.tag, own_tracks)
+
+        if picked is not None:
+            return picked
+
+    picked = pick_track(video.subtitle_languages, own_tracks)
+
+    return DISABLED_TRACK if picked is None else picked
 
 
 @dataclass
@@ -145,6 +195,26 @@ class AudioTrack(MediaTrack):
 
 
 @dataclass
+class SubtitleTrack(MediaTrack):
+    """One subtitle track, whether the video carried it or a file brought it.
+
+    ``bitrate`` is nothing here -- libVLC reports zero for every subtitle
+    track -- so the codec and the encoding are all there is to show.
+    """
+
+    encoding: str | None = None
+
+    @property
+    def codec_info(self):
+        info = [self.codec]
+
+        if self.encoding:
+            info += [self.encoding]
+
+        return ", ".join(info)
+
+
+@dataclass
 class Media:
     length: int
 
@@ -161,6 +231,18 @@ class Media:
     # the track libVLC opened on before anything was asked of it, which is
     # the one the file itself puts forward
     default_audio_track_id: int | None = None
+
+    # Subtitles. Defaulted, unlike the picture and the sound, since a media
+    # that has none is the ordinary case rather than a broken one.
+    subtitle_tracks: dict[int, SubtitleTrack] = field(default_factory=dict)
+    cur_subtitle_track_id: int | None = None
+
+    # the tracks the subtitle files brought, in the order they were opened
+    external_subtitle_ids: tuple[int, ...] = ()
+
+    # the track libVLC would have shown had it been left alone, which is
+    # the one the container marks default or forced
+    default_subtitle_track_id: int | None = None
 
     @property
     def is_live(self) -> bool:
@@ -182,6 +264,23 @@ class Media:
             return None
         return self.audio_tracks[self.cur_audio_track_id]
 
+    @property
+    def cur_subtitle_track(self):
+        if self.cur_subtitle_track_id in NO_TRACK:
+            return None
+        return self.subtitle_tracks.get(self.cur_subtitle_track_id)
+
+    @property
+    def has_subtitles(self) -> bool:
+        """Whether there is anything to show, picture to show it on included.
+
+        A track with the video switched off has nowhere to be drawn: VLC
+        blends subtitles into the picture, and without one there is no
+        video output to blend into.
+        """
+
+        return bool(self.subtitle_tracks) and not self.is_audio_only
+
 
 @dataclass
 class MediaInput:
@@ -199,6 +298,12 @@ class MediaInput:
     # Only ever one: libVLC never says which stream came from which file,
     # so a second would leave the two of them to be told apart by guesswork.
     selected_audio_slave: str | None = None
+
+    # the subtitle files to open along with the video, in the order they
+    # were picked. Several is allowed here where audio gets one: libVLC
+    # opens each as a track of its own and writes the file's name into the
+    # track description, so which came from where is never in doubt.
+    selected_subtitle_slaves: tuple[str, ...] = ()
 
     _initial_seek_ms: int | None = None
 

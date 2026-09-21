@@ -13,17 +13,26 @@ from gridplayer.models.audio_selection import (
     AudioPreferred,
     AudioSelection,
 )
+from gridplayer.models.subtitle_selection import (
+    SubtitleDefault,
+    SubtitleDisabled,
+    SubtitlePreferred,
+    SubtitleSelection,
+)
 from gridplayer.models.video_uri import VideoURI, parse_uri
 from gridplayer.params.static import (
     MAX_AUDIO_DELAY_MS,
     MAX_RATE,
     MAX_SCALE,
+    MAX_SUBTITLE_DELAY_MS,
     MIN_AUDIO_DELAY_MS,
     MIN_RATE,
     MIN_SCALE,
+    MIN_SUBTITLE_DELAY_MS,
     AudioChannelMode,
     AudioTrackMode,
     NetworkRetryMode,
+    SubtitleTrackMode,
     VideoAspect,
     VideoCrop,
     VideoEndAction,
@@ -67,6 +76,23 @@ def default_audio_selection() -> AudioSelection:
     mode = PlaylistSettings().get("video_defaults/audio_track_mode")
 
     return _DEFAULT_AUDIO_SELECTION.get(mode, AudioDefault)()
+
+
+# The same three of the six for subtitles. The others name a track, a
+# language or a file, none of which mean anything until there is a video.
+_DEFAULT_SUBTITLE_SELECTION = {
+    SubtitleTrackMode.DISABLED: SubtitleDisabled,
+    SubtitleTrackMode.PREFERRED: SubtitlePreferred,
+    SubtitleTrackMode.DEFAULT: SubtitleDefault,
+}
+
+
+def default_subtitle_selection() -> SubtitleSelection:
+    """The subtitles a video starts on, as the defaults have it."""
+
+    mode = PlaylistSettings().get("video_defaults/subtitle_track_mode")
+
+    return _DEFAULT_SUBTITLE_SELECTION.get(mode, SubtitleDisabled)()
 
 
 def _audio_selection_from_legacy(data: dict) -> dict | None:
@@ -178,6 +204,30 @@ class Video(BaseModel):
     external_audio: list[Path] = Field(default_factory=list)
     is_external_audio_autodiscover: bool = session_field(
         "video_defaults/external_audio_autodiscover"
+    )
+
+    # Subtitles
+    # what this video's subtitles were chosen to be, whichever of the six
+    # ways they were chosen; see models/subtitle_selection.py
+    subtitle_selection: SubtitleSelection = Field(
+        default_factory=default_subtitle_selection
+    )
+
+    # how far the subtitles run behind the picture, positive for later. A
+    # file cut for another release of the same video is why this exists, so
+    # it belongs to the video rather than to any preference
+    subtitle_delay_ms: Annotated[
+        int, Field(ge=MIN_SUBTITLE_DELAY_MS, le=MAX_SUBTITLE_DELAY_MS)
+    ] = 0
+
+    # the languages to go by where nothing was picked by hand
+    subtitle_languages: str = session_field("video_defaults/subtitle_languages")
+
+    # subtitle files picked for this video, in the order they were picked,
+    # which is the order their tracks come back in
+    external_subtitles: list[Path] = Field(default_factory=list)
+    is_external_subtitle_autodiscover: bool = session_field(
+        "video_defaults/external_subtitle_autodiscover"
     )
 
     @model_validator(mode="before")

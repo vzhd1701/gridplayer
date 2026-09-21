@@ -4,6 +4,7 @@ from PyQt5.QtCore import Qt, pyqtSignal
 
 from gridplayer.dialogs.audio_delay import SetAudioDelayDialog
 from gridplayer.dialogs.input_dialog import QCustomSpinboxInput, QCustomSpinboxTimeInput
+from gridplayer.dialogs.subtitle_delay import SetSubtitleDelayDialog
 from gridplayer.models.video import Video
 from gridplayer.params.static import (
     AudioChannelMode,
@@ -154,6 +155,11 @@ class VideoBlocksManager(ManagerBase):
     all_audio_delay_decrease = pyqtSignal()
     all_audio_delay_reset = pyqtSignal()
 
+    all_set_subtitle_delay = pyqtSignal(int)
+    all_subtitle_delay_increase = pyqtSignal()
+    all_subtitle_delay_decrease = pyqtSignal()
+    all_subtitle_delay_reset = pyqtSignal()
+
     all_volume_increase = pyqtSignal()
     all_volume_decrease = pyqtSignal()
     all_set_muted = pyqtSignal(bool)
@@ -194,6 +200,7 @@ class VideoBlocksManager(ManagerBase):
             "all_seek_timecode": self.cmd_seek_timecode,
             "all_set_auto_reload_timer": self.cmd_set_auto_reload_timer,
             "all_set_audio_delay": self.cmd_set_audio_delay,
+            "all_set_subtitle_delay": self.cmd_set_subtitle_delay,
             "is_videos": lambda: bool(self._ctx.video_blocks),
             "is_any_videos_initialized": self.is_any_videos_initialized,
             "is_any_videos_playable": self.is_any_videos_playable,
@@ -202,6 +209,7 @@ class VideoBlocksManager(ManagerBase):
             "is_any_videos_local_file": self.is_any_videos_local_file,
             "is_any_videos_live": self.is_any_videos_live,
             "is_any_videos_have_audio": self.is_any_videos_have_audio,
+            "is_any_videos_have_subtitles": self.is_any_videos_have_subtitles,
             "is_any_videos_have_video": self.is_any_videos_have_video,
             "is_seek_sync_mode_set_to": self.is_seek_sync_mode_set_to,
             "set_seek_sync_mode": self.set_seek_sync_mode,
@@ -281,6 +289,16 @@ class VideoBlocksManager(ManagerBase):
             return
 
         self.all_set_audio_delay.emit(delay_ms)
+
+    def cmd_set_subtitle_delay(self):
+        # nothing to see it against while it is being set, so this one is
+        # typed rather than found by eye the way a single video's is
+        delay_ms = SetSubtitleDelayDialog.get_delay_ms(parent=self.parent())
+
+        if delay_ms is None:
+            return
+
+        self.all_set_subtitle_delay.emit(delay_ms)
 
     def set_disable_mouse_click_events(self, is_disabled):
         self._ctx.is_disable_mouse_click_events = is_disabled
@@ -389,6 +407,9 @@ class VideoBlocksManager(ManagerBase):
 
     def is_any_videos_have_video(self):
         return any(vb.video_tracks for vb in self._ctx.video_blocks.initialized)
+
+    def is_any_videos_have_subtitles(self):
+        return any(vb.has_subtitles for vb in self._ctx.video_blocks.initialized)
 
     def is_any_videos_local_file(self):
         return any(vb.is_local_file and vb.is_playable for vb in self._ctx.video_blocks)
@@ -525,6 +546,10 @@ class VideoBlocksManager(ManagerBase):
             (self.all_audio_delay_increase, vb.audio_delay_increase),
             (self.all_audio_delay_decrease, vb.audio_delay_decrease),
             (self.all_audio_delay_reset, vb.audio_delay_reset),
+            (self.all_set_subtitle_delay, vb.set_subtitle_delay),
+            (self.all_subtitle_delay_increase, vb.subtitle_delay_increase),
+            (self.all_subtitle_delay_decrease, vb.subtitle_delay_decrease),
+            (self.all_subtitle_delay_reset, vb.subtitle_delay_reset),
             (self.all_volume_increase, vb.volume_increase),
             (self.all_volume_decrease, vb.volume_decrease),
             (self.all_set_muted, vb.set_muted),

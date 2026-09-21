@@ -304,6 +304,26 @@ class VideoFrameVLC(QWidget, metaclass=QABC):
     def default_audio_track_id(self) -> int | None:
         return self.media.default_audio_track_id
 
+    @property
+    def subtitle_tracks(self):
+        return self.media.subtitle_tracks
+
+    @property
+    def cur_subtitle_track_id(self) -> int | None:
+        return self.media.cur_subtitle_track_id
+
+    @property
+    def external_subtitle_ids(self) -> tuple[int, ...]:
+        return self.media.external_subtitle_ids
+
+    @property
+    def default_subtitle_track_id(self) -> int | None:
+        return self.media.default_subtitle_track_id
+
+    @property
+    def has_subtitles(self) -> bool:
+        return self.media.has_subtitles
+
     @abstractmethod
     def driver_setup(self, vlc_options) -> VLCVideoDriver: ...
 
@@ -611,11 +631,22 @@ class VideoFrameVLC(QWidget, metaclass=QABC):
 
         self.adjust_view()
 
+    def set_subtitle_track(self, track_id):
+        self.media.cur_subtitle_track_id = track_id
+
+        self.video_driver.set_subtitle_track(track_id)
+
+    def add_subtitle_slave(self, uri: str) -> None:
+        self.video_driver.add_subtitle_slave(uri)
+
     def set_audio_channel_mode(self, mode):
         self.video_driver.set_audio_channel_mode(mode)
 
     def set_audio_delay(self, delay_ms):
         self.video_driver.set_audio_delay(delay_ms)
+
+    def set_subtitle_delay(self, delay_ms):
+        self.video_driver.set_subtitle_delay(delay_ms)
 
 
 class VideoFrameVLCProcess(VideoFrameVLC, ABC):

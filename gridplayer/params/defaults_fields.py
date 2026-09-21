@@ -15,6 +15,7 @@ from gridplayer.params.static import (
     GridMode,
     NetworkRetryMode,
     SeekSyncMode,
+    SubtitleTrackMode,
     UnsavedChangesMode,
     VideoAspect,
     VideoEndAction,
@@ -204,6 +205,14 @@ def _audio_modes() -> dict:
         AudioChannelMode.DOLBYS: translate("Audio Mode", "Dolby Surround"),
         AudioChannelMode.HEADPHONES: translate("Audio Mode", "Headphones"),
         AudioChannelMode.MONO: translate("Audio Mode", "Mono"),
+    }
+
+
+def _subtitle_track_modes() -> dict:
+    return {
+        SubtitleTrackMode.DISABLED: _t("Off"),
+        SubtitleTrackMode.PREFERRED: _t("Preferred Language"),
+        SubtitleTrackMode.DEFAULT: _t("Default"),
     }
 
 
@@ -508,6 +517,45 @@ VIDEO_FIELDS: tuple[SettingField, ...] = (
         section=_t("Audio"),
         label=_t("Audio mode"),
         combo_values=_audio_modes,
+    ),
+    _f(
+        settings_key="video_defaults/subtitle_track_mode",
+        video_attr="subtitle_track_mode",
+        kind=FieldKind.COMBO,
+        section=_t("Subtitles"),
+        label=_t("Subtitles"),
+        combo_values=_subtitle_track_modes,
+        tooltip=_t(
+            "Which subtitle a video opens on: none, the one answering the"
+            " preferred languages below, or the one its container marks as"
+            " the default. Videos are opened with none unless told otherwise."
+        ),
+    ),
+    _f(
+        settings_key="video_defaults/subtitle_languages",
+        video_attr="subtitle_languages",
+        kind=FieldKind.TEXT,
+        section=_t("Subtitles"),
+        label=_t("Preferred languages"),
+        text_placeholder=_t("en, ja, fr"),
+        enabled_by="video_defaults/subtitle_track_mode",
+        enabled_by_value=SubtitleTrackMode.PREFERRED,
+        tooltip=_t(
+            "Language codes or names, best first."
+            " Videos that offer none of them are shown without subtitles."
+        ),
+    ),
+    _f(
+        settings_key="video_defaults/external_subtitle_autodiscover",
+        video_attr="external_subtitle_autodiscover",
+        kind=FieldKind.CHECKBOX,
+        section=_t("Subtitles"),
+        label=_t("Detect external subtitle files"),
+        tooltip=_t(
+            "Offer subtitle files named after the video and kept beside it,"
+            " so they can be shown over it."
+            " Nothing is opened until one of them is picked."
+        ),
     ),
     _f(
         settings_key="video_defaults/volume",

@@ -8,6 +8,7 @@ from pydantic_extra_types.color import Color
 
 from gridplayer.models.audio_selection import AudioExternal
 from gridplayer.models.grid_state import GridState
+from gridplayer.models.subtitle_selection import SubtitleExternal
 from gridplayer.models.video import Video, migrate_end_action
 from gridplayer.models.video_uri import parse_uri, relativize_uri
 from gridplayer.params.defaults_fields import GRID_STATE_ATTR
@@ -18,6 +19,7 @@ from gridplayer.params.static import (
     DropModifier,
     NetworkRetryMode,
     SeekSyncMode,
+    SubtitleTrackMode,
     UnsavedChangesMode,
     VideoAspect,
     VideoCrop,
@@ -59,6 +61,9 @@ class PlaylistVideoDefaults(BaseModel):
     audio_track_mode: AudioTrackMode | None = None
     audio_languages: str | None = None
     external_audio_autodiscover: bool | None = None
+    subtitle_track_mode: SubtitleTrackMode | None = None
+    subtitle_languages: str | None = None
+    external_subtitle_autodiscover: bool | None = None
     random_loop: bool | None = None
     muted: bool | None = None
     initial_state: VideoInitialState | None = None
@@ -184,8 +189,18 @@ class Playlist(BaseModel):
         for video in self.videos or []:
             data = self._video_data(video)
             data["uri"] = _dump_uri(video.uri, relative, base_dir)
-            _dump_external_audio(data, video.external_audio, relative, base_dir)
-            _dump_audio_selection(data, relative, base_dir)
+            _dump_external_files(
+                data, "external_audio", video.external_audio, relative, base_dir
+            )
+            _dump_file_selection(data, "audio_selection", relative, base_dir)
+            _dump_external_files(
+                data,
+                "external_subtitles",
+                video.external_subtitles,
+                relative,
+                base_dir,
+            )
+            _dump_file_selection(data, "subtitle_selection", relative, base_dir)
             videos.append(data)
 
         doc: dict[str, Any] = {
@@ -253,8 +268,10 @@ class Playlist(BaseModel):
                 video_args = dict(video_args)
                 if uri is not None:
                     video_args["uri"] = parse_uri(uri, base_dir)
-                _resolve_external_audio(video_args, base_dir)
-                _resolve_audio_selection(video_args, base_dir)
+                _resolve_external_files(video_args, "external_audio", base_dir)
+                _resolve_file_selection(video_args, "audio_selection", base_dir)
+                _resolve_external_files(video_args, "external_subtitles", base_dir)
+                _resolve_file_selection(video_args, "subtitle_selection", base_dir)
                 videos.append(Video(**video_args))
             except (TypeError, ValidationError, ValueError) as e:
                 logger.error(f"Failed to add video '{uri}'")  # noqa: TRY400
@@ -293,8 +310,10 @@ class Playlist(BaseModel):
             video_args = video_params.get(idx, {})
 
             video_args["uri"] = parse_uri(uri, base_dir)
-            _resolve_external_audio(video_args, base_dir)
-            _resolve_audio_selection(video_args, base_dir)
+            _resolve_external_files(video_args, "external_audio", base_dir)
+            _resolve_file_selection(video_args, "audio_selection", base_dir)
+            _resolve_external_files(video_args, "external_subtitles", base_dir)
+            _resolve_file_selection(video_args, "subtitle_selection", base_dir)
 
             try:
                 videos.append(Video(**video_args))
@@ -380,30 +399,30 @@ def _playlist_base_dir(filename: Path | str) -> Path:
     return Path(filename).absolute().parent
 
 
-def _dump_external_audio(
-    video_data: dict, files, relative: bool, base_dir: Path | None
+def _dump_external_files(
+    video_data: dict, key: str, files, relative: bool, base_dir: Path | None
 ) -> None:
-    """Write the audio files the same way the video they belong to is written.
+    """Write files kept beside a video the way the video itself is written.
 
     They sit next to it, so a playlist that travels with the videos has to
     carry them the same way or they would be looked for where they are not.
+    The same for the audio files and for the subtitle ones, which differ
+    only in the key they are written under.
     """
 
     if not files:
-        video_data.pop("external_audio", None)
+        video_data.pop(key, None)
         return
 
-    video_data["external_audio"] = [
-        _dump_uri(file_path, relative, base_dir) for file_path in files
-    ]
+    video_data[key] = [_dump_uri(file_path, relative, base_dir) for file_path in files]
 
 
-def _dump_audio_selection(
-    video_data: dict, relative: bool, base_dir: Path | None
+def _dump_file_selection(
+    video_data: dict, key: str, relative: bool, base_dir: Path | None
 ) -> None:
     """Write a chosen file the same way the list it came from is written."""
 
-    selection = video_data.get("audio_selection")
+    selection = video_data.get(key)
 
     if not isinstance(selection, dict) or selection.get("kind") != "external":
         return
@@ -411,8 +430,8 @@ def _dump_audio_selection(
     selection["file"] = _dump_uri(selection["file"], relative, base_dir)
 
 
-def _resolve_audio_selection(video_args: dict, base_dir: Path | None) -> None:
-    selection = video_args.get("audio_selection")
+def _resolve_file_selection(video_args: dict, key: str, base_dir: Path | None) -> None:
+    selection = video_args.get(key)
 
     if not isinstance(selection, dict) or selection.get("kind") != "external":
         return
@@ -420,15 +439,13 @@ def _resolve_audio_selection(video_args: dict, base_dir: Path | None) -> None:
     selection["file"] = parse_uri(str(selection["file"]), base_dir)
 
 
-def _resolve_external_audio(video_args: dict, base_dir: Path | None) -> None:
-    files = video_args.get("external_audio")
+def _resolve_external_files(video_args: dict, key: str, base_dir: Path | None) -> None:
+    files = video_args.get(key)
 
     if not files:
         return
 
-    video_args["external_audio"] = [
-        parse_uri(str(file_path), base_dir) for file_path in files
-    ]
+    video_args[key] = [parse_uri(str(file_path), base_dir) for file_path in files]
 
 
 def _dump_uri(uri: Path | str, relative: bool, base_dir: Path | None) -> str:
@@ -457,11 +474,24 @@ def _resolve_snapshot_uris(
                     for file_path in video.external_audio
                 ]
 
+            if video.external_subtitles:
+                video.external_subtitles = [
+                    Path(parse_uri(str(file_path), base_dir))
+                    for file_path in video.external_subtitles
+                ]
+
             selection = video.audio_selection
 
             if isinstance(selection, AudioExternal):
                 video.audio_selection = selection.model_copy(
                     update={"file": Path(parse_uri(str(selection.file), base_dir))}
+                )
+
+            subtitles = video.subtitle_selection
+
+            if isinstance(subtitles, SubtitleExternal):
+                video.subtitle_selection = subtitles.model_copy(
+                    update={"file": Path(parse_uri(str(subtitles.file), base_dir))}
                 )
 
 
@@ -474,7 +504,19 @@ def _relativize_snapshot_uris(
             if uri is not None:
                 video["uri"] = _dump_uri(uri, relative, base_dir)
 
-            _dump_external_audio(
-                video, video.get("external_audio") or [], relative, base_dir
+            _dump_external_files(
+                video,
+                "external_audio",
+                video.get("external_audio") or [],
+                relative,
+                base_dir,
             )
-            _dump_audio_selection(video, relative, base_dir)
+            _dump_file_selection(video, "audio_selection", relative, base_dir)
+            _dump_external_files(
+                video,
+                "external_subtitles",
+                video.get("external_subtitles") or [],
+                relative,
+                base_dir,
+            )
+            _dump_file_selection(video, "subtitle_selection", relative, base_dir)

@@ -133,6 +133,7 @@ class PlayerProcessSingleVLCSWSP(QThread, VlcPlayerBase, metaclass=QABC):
     def load_video_st4_loaded(self):
         self._tracks_manager.set_video_track_id(self.media_input.video.video_track_id)
         self._tracks_manager.set_audio_track_id(self._wanted_audio_track_id())
+        self._apply_wanted_subtitle_track()
 
         super().load_video_st4_loaded()
 
@@ -221,9 +222,12 @@ class VideoDriverVLCSWSP(VLCVideoDriver):
     cmd_audio_set_volume = pyqtSignal(float)
     cmd_set_video_track = pyqtSignal(int)
     cmd_set_audio_track = pyqtSignal(int)
+    cmd_set_subtitle_track = pyqtSignal(int)
+    cmd_add_subtitle_slave = pyqtSignal(str)
     cmd_add_audio_slave = pyqtSignal(str)
     cmd_set_audio_channel_mode = pyqtSignal(AudioChannelMode)
     cmd_set_audio_delay = pyqtSignal(int)
+    cmd_set_subtitle_delay = pyqtSignal(int)
     cmd_set_log_level_vlc = pyqtSignal(int)
 
     cmd_cleanup = pyqtSignal()
@@ -266,9 +270,12 @@ class VideoDriverVLCSWSP(VLCVideoDriver):
             (self.cmd_audio_set_volume, self.player.audio_set_volume),
             (self.cmd_set_video_track, self.player.set_video_track),
             (self.cmd_set_audio_track, self.player.set_audio_track),
+            (self.cmd_set_subtitle_track, self.player.set_subtitle_track),
+            (self.cmd_add_subtitle_slave, self.player.add_subtitle_slave),
             (self.cmd_add_audio_slave, self.player.add_audio_slave),
             (self.cmd_set_audio_channel_mode, self.player.set_audio_channel_mode),
             (self.cmd_set_audio_delay, self.player.set_audio_delay),
+            (self.cmd_set_subtitle_delay, self.player.set_subtitle_delay),
             (self.cmd_set_log_level_vlc, self.player.set_log_level_vlc),
             (self.cmd_cleanup, self.player.cleanup),
         )
@@ -328,6 +335,12 @@ class VideoDriverVLCSWSP(VLCVideoDriver):
     def set_audio_track(self, track_id):
         self.cmd_set_audio_track.emit(track_id)
 
+    def set_subtitle_track(self, track_id):
+        self.cmd_set_subtitle_track.emit(track_id)
+
+    def add_subtitle_slave(self, uri):
+        self.cmd_add_subtitle_slave.emit(uri)
+
     def add_audio_slave(self, uri):
         self.cmd_add_audio_slave.emit(uri)
 
@@ -336,6 +349,9 @@ class VideoDriverVLCSWSP(VLCVideoDriver):
 
     def set_audio_delay(self, delay_ms):
         self.cmd_set_audio_delay.emit(delay_ms)
+
+    def set_subtitle_delay(self, delay_ms):
+        self.cmd_set_subtitle_delay.emit(delay_ms)
 
     def set_log_level_vlc(self, log_level):
         self.cmd_set_log_level_vlc.emit(log_level)

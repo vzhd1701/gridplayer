@@ -27,6 +27,14 @@ MIN_AUDIO_DELAY_MS = -60000
 MAX_AUDIO_DELAY_MS = 60000
 AUDIO_DELAY_STEP_MS = 50
 
+# The same for the subtitles, over a wider range and in coarser steps. A
+# subtitle file cut for another release of the same film can be out by whole
+# minutes, where sound that far out would not be worth listening to, and the
+# eye is a poorer judge of a few tens of milliseconds than the ear.
+MIN_SUBTITLE_DELAY_MS = -300000
+MAX_SUBTITLE_DELAY_MS = 300000
+SUBTITLE_DELAY_STEP_MS = 100
+
 
 class AutoName(Enum):
     def _generate_next_value_(name, start, count, last_values):
@@ -156,6 +164,18 @@ class AudioTrackMode(AutoName):
     DEFAULT = auto()
     PREFERRED = auto()
     DISABLED = auto()
+
+
+class SubtitleTrackMode(AutoName):
+    """Which subtitle a video starts with, before anyone picks one by hand."""
+
+    # none, which is where a video starts unless it is told otherwise. Not
+    # the same as having none to show: the tracks are still there to pick.
+    DISABLED = auto()
+    PREFERRED = auto()
+    # whichever one the container marks default or forced, which is what a
+    # player that was told nothing would show
+    DEFAULT = auto()
 
 
 class ColorScheme(AutoName):

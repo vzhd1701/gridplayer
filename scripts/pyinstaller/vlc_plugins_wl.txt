@@ -126,3 +126,8 @@ libzvbi_plugin.dylib
 libauhal_plugin.dylib
 libcaopengllayer_plugin.dylib
 libvout_macosx_plugin.dylib
+libblend_plugin.dylib
+libscale_plugin.dylib
+libfreetype_plugin.dylib
+libquartztext_plugin.dylib
+libxml_plugin.dylib

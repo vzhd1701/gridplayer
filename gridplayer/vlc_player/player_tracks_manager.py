@@ -4,7 +4,12 @@ import threading
 from datetime import datetime, timezone
 
 from gridplayer.vlc_player import vlc
-from gridplayer.vlc_player.static import DISABLED_TRACK, AudioTrack, VideoTrack
+from gridplayer.vlc_player.static import (
+    DISABLED_TRACK,
+    AudioTrack,
+    SubtitleTrack,
+    VideoTrack,
+)
 
 _log = logging.getLogger(__name__)
 
@@ -25,9 +30,17 @@ class TracksManager:
         self._wanted_video_track_id = None
         self._wanted_audio_track_id = None
 
+        # the subtitle asked for, which a restart forgets like the rest. A
+        # video that was never asked leaves this alone, so that a media with
+        # no subtitles in it costs nothing on every loop.
+        self._wanted_subtitle_track_id = None
+
         # the head start the sound was given over the picture, which the
         # player forgets every time it opens a media; see reapply
         self._wanted_audio_delay_ms = 0
+
+        # the same for the subtitles, forgotten just as readily
+        self._wanted_subtitle_delay_ms = 0
 
     def update_tracks(self, media_tracks) -> None:
         """Take the track list again, keeping what has been picked so far.
@@ -72,7 +85,26 @@ class TracksManager:
         return self.tracks_map.get(self._media_player.audio_get_track())
 
     @property
+    def subtitle_tracks(self) -> dict[int, SubtitleTrack]:
+        return {
+            t.id: _convert_subtitle_track(t, self._media_uri)
+            for t in self._media_tracks
+            if t.type == vlc.TrackType.ext
+        }
+
+    @property
+    def current_subtitle_track_id(self) -> int | None:
+        return self.tracks_map.get(self._media_player.video_get_spu())
+
+    @property
     def tracks_map(self) -> dict[int, int]:
+        """What libVLC calls each track against what the media calls it.
+
+        One map for all three kinds: libVLC numbers the tracks of an input
+        in one sequence whatever they carry, so a subtitle never answers to
+        the same number as a picture or a sound.
+        """
+
         tracks_map = {}
 
         video_track_real_ids = [
@@ -86,6 +118,12 @@ class TracksManager:
         ]
 
         tracks_map.update(dict(zip(audio_track_real_ids, self.audio_tracks)))
+
+        subtitle_track_real_ids = [
+            t_id for t_id, _ in self._media_player.video_get_spu_description()[1:]
+        ]
+
+        tracks_map.update(dict(zip(subtitle_track_real_ids, self.subtitle_tracks)))
 
         return tracks_map
 
@@ -143,6 +181,29 @@ class TracksManager:
 
         self._wanted_video_track_id = track_id
 
+    def set_subtitle_track_id(self, track_id) -> None:
+        """Show this subtitle, or DISABLED_TRACK to show none.
+
+        Nothing is guarded against here the way the picture and the sound
+        guard each other: showing no subtitle is the ordinary state, and the
+        one every video is put into unless it asked for something else.
+
+        libVLC's answer is worth nothing: it reports success, and reports the
+        track as showing afterwards, even for a media opened where subtitles
+        were never going to be decoded at all. Only whether a picture comes
+        back with the words on it really tells.
+        """
+
+        real_track_id = self._get_real_track_id(track_id)
+
+        if real_track_id is None:
+            return
+
+        self._log.debug(f"Set subtitle track {track_id} [{real_track_id}]")
+        self._media_player.video_set_spu(real_track_id)
+
+        self._wanted_subtitle_track_id = track_id
+
     def set_audio_delay_ms(self, delay_ms: int) -> None:
         """Move the sound against the picture, by milliseconds, later positive.
 
@@ -162,6 +223,27 @@ class TracksManager:
 
         self._wanted_audio_delay_ms = delay_ms
 
+    def set_subtitle_delay_ms(self, delay_ms: int) -> None:
+        """Move the subtitles against the picture, by ms, later positive.
+
+        Microseconds to libVLC here as well, and dropped whenever it opens a
+        media, the same as the sound's.
+        """
+
+        self._log.debug(f"Set subtitle delay {delay_ms} ms")
+
+        is_set = (
+            self._media_player.video_set_spu_delay(delay_ms * MICROSECONDS_IN_MS) == 0
+        )
+
+        if delay_ms and not is_set:
+            # most likely nothing is showing for the words to be moved
+            # against; what was asked for is kept all the same, and asked
+            # for again on the next pass to start
+            self._log.warning(f"Failed to set subtitle delay {delay_ms} ms")
+
+        self._wanted_subtitle_delay_ms = delay_ms
+
     def reapply(self) -> bool:
         """Ask for the chosen tracks again after the player restarted.
 
@@ -179,7 +261,9 @@ class TracksManager:
         is_nothing_wanted = (
             self._wanted_audio_track_id is None
             and self._wanted_video_track_id is None
+            and self._wanted_subtitle_track_id is None
             and not self._wanted_audio_delay_ms
+            and not self._wanted_subtitle_delay_ms
         )
 
         if is_nothing_wanted:
@@ -196,10 +280,19 @@ class TracksManager:
         if self._wanted_audio_track_id is not None:
             self.set_audio_track_id(self._wanted_audio_track_id)
 
+        # A new pass starts on whichever subtitle the container marks, so a
+        # video watched without them would come back wearing them. Putting
+        # the pick back covers being switched off just as much as being on.
+        if self._wanted_subtitle_track_id is not None:
+            self.set_subtitle_track_id(self._wanted_subtitle_track_id)
+
         # after the track, since which track is playing is the one thing a
         # delay is measured against
         if self._wanted_audio_delay_ms:
             self.set_audio_delay_ms(self._wanted_audio_delay_ms)
+
+        if self._wanted_subtitle_delay_ms:
+            self.set_subtitle_delay_ms(self._wanted_subtitle_delay_ms)
 
         if self._wanted_audio_track_id is None:
             return True
@@ -347,6 +440,37 @@ def _convert_audio_track(audio_track, media_uri=None):
         ),
         codec=_decode_track_field(
             vlc.libvlc_media_get_codec_description(audio_track.type, audio_track.codec),
+            field_name="codec",
+            default="",
+            **track_kwargs,
+        ),
+    )
+
+
+def _convert_subtitle_track(subtitle_track, media_uri=None):
+    st_content = subtitle_track.u.subtitle.contents
+
+    track_kwargs = {
+        "media_uri": media_uri,
+        "track_type": "subtitle",
+        "track_id": subtitle_track.id,
+    }
+
+    return SubtitleTrack(
+        encoding=_decode_track_field(
+            st_content.encoding, field_name="encoding", **track_kwargs
+        ),
+        bitrate=subtitle_track.bitrate,
+        language=_decode_track_field(
+            subtitle_track.language, field_name="language", **track_kwargs
+        ),
+        description=_decode_track_field(
+            subtitle_track.description, field_name="description", **track_kwargs
+        ),
+        codec=_decode_track_field(
+            vlc.libvlc_media_get_codec_description(
+                subtitle_track.type, subtitle_track.codec
+            ),
             field_name="codec",
             default="",
             **track_kwargs,

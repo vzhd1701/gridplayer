@@ -632,6 +632,41 @@ ACTIONS = MappingProxyType(
             "func": ("active", "audio_delay_reset"),
             "show_if": "is_active_has_audio",
         },
+        "Subtitle Track": {
+            "title": translate("Actions", "Subtitle Track"),
+            "icon": "track",
+            "show_if": "is_active_initialized",
+            "menu_generator": "menu_generator_subtitle_track",
+        },
+        "Subtitle Delay: %v": {
+            "title": "{}: %v".format(translate("Actions", "Delay")),
+            "icon": "empty",
+            "func": ("active", "subtitle_delay_dialog"),
+            "value_getter": ("active", "get_subtitle_delay"),
+            "show_if": "is_active_has_subtitles",
+        },
+        "Subtitle Delay Later": {
+            "title": translate("Actions", "Later"),
+            # G and H are what VLC moves subtitles with, and they sit next
+            # to the J and K the sound is moved with, in the same order
+            "key": "H",
+            "icon": "empty",
+            "func": ("active", "subtitle_delay_increase"),
+            "show_if": "is_active_has_subtitles",
+        },
+        "Subtitle Delay Earlier": {
+            "title": translate("Actions", "Earlier"),
+            "key": "G",
+            "icon": "empty",
+            "func": ("active", "subtitle_delay_decrease"),
+            "show_if": "is_active_has_subtitles",
+        },
+        "Subtitle Delay Reset": {
+            "title": translate("Actions", "Reset"),
+            "icon": "empty",
+            "func": ("active", "subtitle_delay_reset"),
+            "show_if": "is_active_has_subtitles",
+        },
         "Audio Mode - Original": {
             "title": translate("Audio Mode", "Original"),
             "icon": "empty",
@@ -1374,6 +1409,32 @@ ACTIONS = MappingProxyType(
             "icon": "volume-unmute",
             "show_if": "is_any_videos_have_audio",
             "func": ("all", "set_muted", False),
+        },
+        "Subtitle Delay Set [ALL]": {
+            "title": translate("Actions", "Set Delay"),
+            "icon": "empty",
+            "func": "all_set_subtitle_delay",
+            "show_if": "is_any_videos_have_subtitles",
+        },
+        "Subtitle Delay Later [ALL]": {
+            "title": translate("Actions", "Later"),
+            "key": "Shift+H",
+            "icon": "empty",
+            "func": ("all", "subtitle_delay_increase"),
+            "show_if": "is_any_videos_have_subtitles",
+        },
+        "Subtitle Delay Earlier [ALL]": {
+            "title": translate("Actions", "Earlier"),
+            "key": "Shift+G",
+            "icon": "empty",
+            "func": ("all", "subtitle_delay_decrease"),
+            "show_if": "is_any_videos_have_subtitles",
+        },
+        "Subtitle Delay Reset [ALL]": {
+            "title": translate("Actions", "Reset"),
+            "icon": "empty",
+            "func": ("all", "subtitle_delay_reset"),
+            "show_if": "is_any_videos_have_subtitles",
         },
         "Reload [ALL]": {
             "title": translate("Actions", "Reload"),

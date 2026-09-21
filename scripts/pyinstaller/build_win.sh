@@ -68,6 +68,16 @@ if [ ! -d "$VLC_EMBED_SRC" ]; then
     mkdir -p "$VLC_EMBED_SRC/plugins/video_filter"
     cp "$BUILD_DIR"/vlc-*/plugins/video_filter/libtransform_plugin.dll "$VLC_EMBED_SRC/plugins/video_filter"
 
+    # Subtitles need both of these, and neither says so when it is missing:
+    # the track is decoded and selected, and nothing is ever drawn.
+    # blend composites the subpicture onto the frame, scale fits bitmap
+    # subtitles (DVD, PGS) to it.
+    cp "$BUILD_DIR"/vlc-*/plugins/video_filter/libblend_plugin.dll "$VLC_EMBED_SRC/plugins/video_filter"
+    cp "$BUILD_DIR"/vlc-*/plugins/video_filter/libscale_plugin.dll "$VLC_EMBED_SRC/plugins/video_filter"
+
+    # freetype draws the text ones
+    cp -a "$BUILD_DIR"/vlc-*/plugins/text_renderer "$VLC_EMBED_SRC/plugins"
+
     "$BUILD_DIR"/vlc-*/vlc-cache-gen.exe "$VLC_EMBED_SRC/plugins"
 
     cp -a "$BUILD_DIR"/vlc-*/libvlc.dll "$VLC_EMBED_SRC"

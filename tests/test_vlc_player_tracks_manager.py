@@ -35,10 +35,16 @@ class FakePointer:
         self.contents = contents
 
 
+class FakeSubtitleContent:
+    def __init__(self, encoding=b"UTF-8"):
+        self.encoding = encoding
+
+
 class FakeUnion:
-    def __init__(self, video=None, audio=None):
+    def __init__(self, video=None, audio=None, subtitle=None):
         self.video = video
         self.audio = audio
+        self.subtitle = subtitle
 
 
 class FakeMediaTrack:
@@ -53,6 +59,7 @@ class FakeMediaTrack:
         codec=0,
         video_content=None,
         audio_content=None,
+        subtitle_content=None,
     ):
         self.id = track_id
         self.type = track_type
@@ -63,6 +70,7 @@ class FakeMediaTrack:
         self.u = FakeUnion(
             video=FakePointer(video_content) if video_content else None,
             audio=FakePointer(audio_content) if audio_content else None,
+            subtitle=FakePointer(subtitle_content) if subtitle_content else None,
         )
 
 
@@ -77,6 +85,14 @@ def make_audio_track(**kwargs):
     kwargs.setdefault("track_id", 0)
     kwargs.setdefault("track_type", vlc.TrackType.audio)
     kwargs.setdefault("audio_content", FakeAudioContent())
+    return FakeMediaTrack(**kwargs)
+
+
+def make_subtitle_track(**kwargs):
+    kwargs.setdefault("track_id", 0)
+    # libVLC calls a subtitle track "ext", which is the only name it has
+    kwargs.setdefault("track_type", vlc.TrackType.ext)
+    kwargs.setdefault("subtitle_content", FakeSubtitleContent())
     return FakeMediaTrack(**kwargs)
 
 
@@ -308,12 +324,23 @@ class TestTracksManagerDoesNotCrashOnBadMetadata:
 class FakeMediaPlayer:
     """Just the track calls, with ids the caller controls."""
 
-    def __init__(self, video_id=1, audio_id=0, video_desc=None, audio_desc=None):
+    def __init__(
+        self,
+        video_id=1,
+        audio_id=0,
+        video_desc=None,
+        audio_desc=None,
+        spu_id=-1,
+        spu_desc=None,
+    ):
         self.video_id = video_id
         self.audio_id = audio_id
+        self.spu_id = spu_id
         self.video_desc = video_desc if video_desc is not None else [(-1, b"Disable")]
         self.audio_desc = audio_desc if audio_desc is not None else [(-1, b"Disable")]
+        self.spu_desc = spu_desc if spu_desc is not None else [(-1, b"Disable")]
         self.audio_delay_us = 0
+        self.spu_delay_us = 0
         self.calls = []
 
     def video_get_track(self):
@@ -338,6 +365,24 @@ class FakeMediaPlayer:
     def audio_set_delay(self, delay_us):
         self.audio_delay_us = delay_us
         self.calls.append(("audio_set_delay", delay_us))
+
+        return 0
+
+    def video_get_spu(self):
+        return self.spu_id
+
+    def video_get_spu_description(self):
+        return self.spu_desc
+
+    def video_set_spu(self, track_id):
+        self.spu_id = track_id
+        self.calls.append(("video_set_spu", track_id))
+
+        return 0
+
+    def video_set_spu_delay(self, delay_us):
+        self.spu_delay_us = delay_us
+        self.calls.append(("video_set_spu_delay", delay_us))
 
         return 0
 

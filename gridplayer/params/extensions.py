@@ -133,3 +133,35 @@ SUPPORTED_VIDEO_EXT = frozenset(
 )
 
 SUPPORTED_MEDIA_EXT = frozenset(SUPPORTED_AUDIO_EXT | SUPPORTED_VIDEO_EXT)
+
+# https://github.com/videolan/vlc/blob/3.0.16/include/vlc_interface.h#L164
+SUPPORTED_SUBTITLE_EXT = frozenset(
+    (
+        "aqt",
+        "ass",
+        "cdg",
+        "dfxp",
+        "dks",
+        "idx",
+        "jss",
+        "mks",
+        "mpl2",
+        "pjs",
+        "psb",
+        "rt",
+        "sami",
+        "scc",
+        "smi",
+        "smil",
+        "srt",
+        "ssa",
+        "stl",
+        "sub",
+        "tt",
+        "ttml",
+        "txt",
+        "usf",
+        "utf",
+        "vtt",
+    )
+)

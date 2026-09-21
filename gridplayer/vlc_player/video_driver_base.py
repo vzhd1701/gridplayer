@@ -97,10 +97,19 @@ class VLCVideoDriver(QObject, metaclass=QABC):
     def set_video_track(self, track_id): ...
 
     @abstractmethod
+    def set_subtitle_track(self, track_id): ...
+
+    @abstractmethod
+    def add_subtitle_slave(self, uri): ...
+
+    @abstractmethod
     def set_audio_channel_mode(self, mode): ...
 
     @abstractmethod
     def set_audio_delay(self, delay_ms): ...
+
+    @abstractmethod
+    def set_subtitle_delay(self, delay_ms): ...
 
     def error_state(self, error):
         self.error.emit(error)

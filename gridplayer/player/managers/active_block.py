@@ -1,3 +1,4 @@
+from collections import Counter
 from pathlib import Path
 
 from PyQt5.QtCore import QEvent, pyqtSignal
@@ -16,6 +17,14 @@ from gridplayer.models.stream import (
     STREAM_QUALITY_AUDIO_ONLY,
     STREAM_QUALITY_AUTO,
     STREAM_QUALITY_BEST,
+)
+from gridplayer.models.subtitle_selection import (
+    SubtitleDefault,
+    SubtitleDisabled,
+    SubtitleExternal,
+    SubtitleLanguage,
+    SubtitlePreferred,
+    SubtitleTrackId,
 )
 from gridplayer.player.managers.base import ManagerBase
 from gridplayer.utils.qt import is_modal_open, translate
@@ -45,6 +54,16 @@ LOADING_COMMANDS = frozenset(
         "play_external_audio",
         "remove_external_audio",
         "set_external_audio_autodiscover",
+        "set_subtitle_track",
+        "apply_subtitle_preference",
+        "apply_subtitle_default",
+        "disable_subtitles",
+        "subtitle_languages_dialog",
+        "get_subtitle_languages",
+        "add_external_subtitles_dialog",
+        "show_external_subtitle",
+        "remove_external_subtitles",
+        "set_external_subtitle_autodiscover",
     }
 )
 
@@ -95,9 +114,15 @@ class ActiveBlockManager(ManagerBase):
             "is_active_local_file": self.is_active_local_file,
             "is_active_has_audio": self.is_active_has_audio,
             "is_active_has_video": self.is_active_has_video,
+            "is_active_has_subtitles": self.is_active_has_subtitles,
+            "is_active_subtitle_track": self.is_active_subtitle_track,
+            "is_active_subtitle_preferred": self.is_active_subtitle_preferred,
+            "is_active_subtitle_default": self.is_active_subtitle_default,
+            "is_active_subtitle_disabled": self.is_active_subtitle_disabled,
             "menu_generator_stream_quality": self.menu_generator_stream_quality,
             "menu_generator_video_track": self.menu_generator_video_track,
             "menu_generator_audio_track": self.menu_generator_audio_track,
+            "menu_generator_subtitle_track": self.menu_generator_subtitle_track,
             "next_active": self.next_active,
             "previous_active": self.previous_active,
             "update_active_under_mouse": self.update_active_under_mouse,
@@ -239,6 +264,55 @@ class ActiveBlockManager(ManagerBase):
             return None
 
         return self._ctx.active_block.video_params.audio_selection
+
+    def is_active_has_subtitles(self):
+        if not self.is_active_initialized():
+            return False
+
+        return self._ctx.active_block.has_subtitles
+
+    def is_active_subtitle_track(self, track_id):
+        """Ticked where this track is the one that was named by hand.
+
+        A track out of a file answers to that file, and one the viewer
+        picked by its language answers to the language: the id it happens
+        to have is nobody's choice in either case.
+        """
+
+        selection = self._active_subtitle_selection()
+
+        if self.is_no_active_block:
+            return False
+
+        block = self._ctx.active_block
+
+        if isinstance(selection, SubtitleExternal):
+            if block.external_subtitle_tracks.get(track_id) != selection.file:
+                return False
+
+            return block.subtitle_number_in_file(track_id, selection.file) == (
+                selection.track
+            )
+
+        if isinstance(selection, SubtitleLanguage):
+            return block.subtitle_language_key(track_id) == selection.tag
+
+        return isinstance(selection, SubtitleTrackId) and selection.id == track_id
+
+    def is_active_subtitle_preferred(self) -> bool:
+        return isinstance(self._active_subtitle_selection(), SubtitlePreferred)
+
+    def is_active_subtitle_default(self) -> bool:
+        return isinstance(self._active_subtitle_selection(), SubtitleDefault)
+
+    def is_active_subtitle_disabled(self) -> bool:
+        return isinstance(self._active_subtitle_selection(), SubtitleDisabled)
+
+    def _active_subtitle_selection(self):
+        if self.is_no_active_block:
+            return None
+
+        return self._ctx.active_block.video_params.subtitle_selection
 
     def menu_generator_stream_quality(self):
         if self.is_no_active_block:
@@ -594,6 +668,238 @@ class ActiveBlockManager(ManagerBase):
             if track_id not in external_ids
         ]
 
+    def menu_generator_subtitle_track(self):
+        """Every way this video's subtitles can be chosen, in one list.
+
+        The same list the sound gets, read from the other end. It opens on
+        "off", because that is where every video starts and going back to
+        it is the commonest thing asked of this menu, and everything under
+        it is a way of asking for something instead.
+        """
+
+        if self.is_no_active_block:
+            return {}
+
+        block = self._ctx.active_block
+
+        external = self._external_subtitle_menu_items()
+
+        if not block.subtitle_tracks:
+            # a video carrying none is still worth looking beside, which is
+            # where most subtitles live anyway
+            return external or {}
+
+        return _separated(
+            [
+                _subtitles_off_menu_item(),
+                *self._subtitle_default_menu_items(),
+                self._preferred_subtitle_menu_item(),
+                _subtitle_languages_menu_item(),
+            ],
+            self._subtitle_choice_menu_items(),
+            external,
+        )
+
+    def _subtitle_default_menu_items(self):
+        """The track the container marks, where it marks one at all.
+
+        Left out otherwise. "Whichever one the file puts forward" reads as
+        a choice only where the file put one forward, and most do not --
+        the ones that do are films carrying forced captions for their
+        subtitled passages, which is exactly who wants this row.
+        """
+
+        if self._ctx.active_block.default_subtitle_track_id is None:
+            return []
+
+        return [
+            {
+                "title": translate("Actions", "Default"),
+                "icon": "empty",
+                "func": ("active", "apply_subtitle_default"),
+                "check_if": "is_active_subtitle_default",
+                "show_if": "is_active_initialized",
+            }
+        ]
+
+    def _preferred_subtitle_menu_item(self):
+        """Going back to the languages asked for, from a track picked by hand."""
+
+        title = translate("Actions", "Preferred")
+
+        name = self._preferred_subtitle_name
+
+        if name:
+            title = f"{title} ({name})"
+
+        return {
+            "title": title,
+            "icon": "empty",
+            "func": ("active", "apply_subtitle_preference"),
+            "check_if": "is_active_subtitle_preferred",
+            "show_if": "is_active_initialized",
+        }
+
+    @property
+    def _preferred_subtitle_name(self) -> str | None:
+        """What following the preference would give, spelled out.
+
+        Nothing at all is a real answer here, where the sound would fall
+        back on whatever it could find: subtitles in a language nobody
+        asked for are worse than a bare picture.
+        """
+
+        block = self._ctx.active_block
+
+        track = block.subtitle_tracks.get(block.preferred_subtitle_track_id)
+
+        if track is None:
+            return None
+
+        name = language_name(track.language) or track.language
+
+        return _join_track_name(name, _track_description(track, name)) or None
+
+    def _subtitle_choice_menu_items(self):
+        """The tracks the video carries, with the one on screen marked.
+
+        Being chosen and being shown are not the same thing: a preference
+        names no track, and the row it settles on is ticked nowhere. The
+        mark is the only place the pane says which one answered it.
+        """
+
+        block = self._ctx.active_block
+
+        external_ids = set(block.external_subtitle_track_ids)
+        showing = block.subtitle_track_showing
+
+        return [
+            {
+                "title": _subtitle_track_title(track),
+                "icon": "play" if track_id == showing else "empty",
+                "func": ("active", "set_subtitle_track", track_id),
+                "check_if": ("is_active_subtitle_track", track_id),
+                "show_if": "is_active_initialized",
+            }
+            for track_id, track in block.subtitle_tracks.items()
+            if track_id not in external_ids
+        ]
+
+    def _external_subtitle_menu_items(self):
+        """The subtitle files beside this video: what is there, and how to add.
+
+        A file found next to the video is a name and nothing else until it
+        is picked, so these sit below the tracks rather than among them.
+        One already showing is a track by now, and is listed here under the
+        name of the file it came from.
+        """
+
+        block = self._ctx.active_block
+
+        if not block.is_local_file:
+            return []
+
+        files = self._attached_subtitle_menu_items() + [
+            {
+                "title": block.subtitle_file_name(file_path),
+                "icon": "empty",
+                "func": ("active", "show_external_subtitle", str(file_path)),
+                "show_if": "is_active_local_file",
+            }
+            for file_path in block.offered_subtitle_files
+        ]
+
+        commands = [
+            {
+                "title": translate("Actions", "Add External Subtitles..."),
+                "icon": "empty",
+                "func": ("active", "add_external_subtitles_dialog"),
+                "show_if": "is_active_local_file",
+            }
+        ]
+
+        if block.video_params.external_subtitles:
+            commands.append(
+                {
+                    "title": translate("Actions", "Remove External Subtitles"),
+                    "icon": "empty",
+                    "func": ("active", "remove_external_subtitles"),
+                    "show_if": "is_active_local_file",
+                }
+            )
+
+        commands.append(
+            {
+                "title": translate("Actions", "Detect Subtitle Files"),
+                "icon": "empty",
+                "func": (
+                    "active",
+                    "set_external_subtitle_autodiscover",
+                    not block.video_params.is_external_subtitle_autodiscover,
+                ),
+                "check_if": (
+                    "is_active_param_set_to",
+                    "is_external_subtitle_autodiscover",
+                    True,
+                ),
+                "show_if": "is_active_local_file",
+            }
+        )
+
+        # the files are things to show, the rest are things to do with them
+        return _separated(files, commands)
+
+    def _attached_subtitle_menu_items(self):
+        """A row for every track the files already handed over brought.
+
+        Most files hold one, and the name they were saved under is the
+        whole answer. One holding several is listed once per track, since
+        which of them to show is as much a choice as which file: a VobSub
+        index off a DVD can carry a dozen languages, and it says which
+        each of them is.
+        """
+
+        block = self._ctx.active_block
+
+        by_track = block.external_subtitle_tracks
+
+        if not by_track:
+            return []
+
+        showing = block.subtitle_track_showing
+
+        tracks_per_file = Counter(by_track.values())
+        seen_in_file: Counter = Counter()
+
+        rows = []
+
+        for track_id, file_path in by_track.items():
+            if track_id not in block.subtitle_tracks:
+                continue
+
+            number = None
+
+            # a file with one track in it needs no telling apart from itself
+            if tracks_per_file[file_path] > 1:
+                seen_in_file[file_path] += 1
+                number = seen_in_file[file_path]
+
+            rows.append(
+                {
+                    "title": _external_subtitle_title(
+                        block.subtitle_file_name(file_path),
+                        block.external_subtitle_track_name(track_id),
+                        number,
+                    ),
+                    "icon": "play" if track_id == showing else "empty",
+                    "func": ("active", "set_subtitle_track", track_id),
+                    "check_if": ("is_active_subtitle_track", track_id),
+                    "show_if": "is_active_local_file",
+                }
+            )
+
+        return rows
+
     def _preferred_audio_track_menu_item(self):
         """Going back to the languages asked for, from a track picked by hand.
 
@@ -728,6 +1034,57 @@ def _audio_languages_menu_item():
         "value_getter": ("active", "get_audio_languages"),
         "show_if": "is_active_initialized",
     }
+
+
+def _subtitles_off_menu_item():
+    """Showing none, which is what every video starts on."""
+
+    return {
+        "title": translate("Actions", "Off"),
+        "icon": "empty",
+        "func": ("active", "disable_subtitles"),
+        "check_if": "is_active_subtitle_disabled",
+        "show_if": "is_active_initialized",
+    }
+
+
+def _subtitle_languages_menu_item():
+    """The preference itself, right under the entry that follows it."""
+
+    return {
+        "title": "{}: %v".format(translate("Actions", "Languages")),
+        "icon": "empty",
+        "func": ("active", "subtitle_languages_dialog"),
+        "value_getter": ("active", "get_subtitle_languages"),
+        "show_if": "is_active_initialized",
+    }
+
+
+def _subtitle_track_title(track) -> str:
+    """Name a subtitle by its language and by what the container called it.
+
+    Without the codec the sound tracks carry: how many channels a dub has
+    is worth knowing before picking it, where one line of text is much
+    like another. The codec stands in only where there is nothing else.
+    """
+
+    return _track_name(track) or track.codec
+
+
+def _external_subtitle_title(label: str, track_name=None, number=None) -> str:
+    """Name a subtitle by the file it came in, and by whatever tells it apart.
+
+    The file's own name is the whole answer for the ones holding a single
+    track. A file holding several usually says which language each of them
+    is; where it does not, their place in it is all there is to go on.
+    """
+
+    told_apart = track_name
+
+    if not told_apart and number is not None:
+        told_apart = f"#{number}"
+
+    return _join_track_name(label, told_apart)
 
 
 def _external_track_title(file_path, track, number=None) -> str:

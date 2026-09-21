@@ -8,6 +8,8 @@ from time import time
 from types import MappingProxyType
 
 from gridplayer.models.audio_selection import AudioExternal, track_of_file
+from gridplayer.models.subtitle_selection import SubtitleExternal
+from gridplayer.models.subtitle_selection import track_of_file as subtitle_track_of_file
 from gridplayer.params import env
 from gridplayer.params.static import AudioChannelMode, VideoTransform
 from gridplayer.settings import Settings
@@ -27,6 +29,7 @@ from gridplayer.vlc_player.static import (
     NotPausedError,
     is_loop_wrapped,
     wanted_audio_track_id,
+    wanted_subtitle_track_id,
 )
 
 MEDIA_EXTRACT_RETRY_TIME = 0.1
@@ -130,11 +133,16 @@ class VlcPlayerBase(ABC):
         self._timer_unpause_failsafe = None
         self._timer_extract_media_track = None
         self._timer_audio_slave = None
+        self._timer_subtitle_slave = None
 
         # how many audio tracks the file has of its own, counted before any
         # external audio went on; None where it could not be counted
         self._own_audio_count = None
-        self._is_parse_for_audio_slave = False
+
+        # the same for subtitles, counted in the same pass
+        self._own_subtitle_count = None
+
+        self._is_parse_for_slaves = False
 
         self.media_input: MediaInput | None = None
         self.media: Media | None = None
@@ -305,8 +313,8 @@ class VlcPlayerBase(ABC):
     def cb_parse_changed(self, event):
         self._log.debug("Media parse changed")
 
-        if self._is_parse_for_audio_slave:
-            self._load_video_with_audio_slave(event.u.new_status)
+        if self._is_parse_for_slaves:
+            self._load_video_with_slaves(event.u.new_status)
             return
 
         if event.u.new_status == vlc.MediaParsedStatus.skipped:
@@ -369,6 +377,9 @@ class VlcPlayerBase(ABC):
 
         if self._timer_audio_slave is not None:
             self._timer_audio_slave.cancel()
+
+        if self._timer_subtitle_slave is not None:
+            self._timer_subtitle_slave.cancel()
 
         if self._timer_unpause_failsafe is not None:
             self._timer_unpause_failsafe.cancel()
@@ -443,6 +454,7 @@ class VlcPlayerBase(ABC):
         self._last_video_size = (0, 0)
         self._last_time = None
         self._own_audio_count = None
+        self._own_subtitle_count = None
 
         self._log.info(f"Loading {self.media_input.uri}")
 
@@ -479,40 +491,42 @@ class VlcPlayerBase(ABC):
 
         self._media_input_vlc.add_options(*self._media_options)
 
-        # External audio has to go on before the video starts, and what the
-        # file has of its own has to be counted before that -- afterwards
-        # there is no telling the two apart. Reading the file is the only
-        # way to count them, so a video with external audio is parsed first.
-        self._is_parse_for_audio_slave = (
+        # Files of their own have to go on before the video starts, and what
+        # the video has of its own has to be counted before that -- afterwards
+        # there is no telling the two apart. Reading the file is the only way
+        # to count them, so a video with either kind attached is parsed first.
+        self._is_parse_for_slaves = (
             self.media_input.selected_audio_slave is not None
+            or bool(self.media_input.selected_subtitle_slaves)
         )
 
-        if self.is_preparse_required or self._is_parse_for_audio_slave:
+        if self.is_preparse_required or self._is_parse_for_slaves:
             self._media_input_vlc.parse_with_options(parse_flag, parse_timeout)
 
             self.notify_update_status(translate("Video Status", "Parsing media"))
         else:
             self.loopback_load_video_st2_set_media()
 
-    def _load_video_with_audio_slave(self, parse_status) -> None:
-        """Step 1b. Count the file's own audio, then add the files to it.
+    def _load_video_with_slaves(self, parse_status) -> None:
+        """Step 1b. Count what the video has of its own, then add the files.
 
         A video that will not parse still plays: it only loses the ability
         to say which of its tracks came from where.
         """
 
-        self._is_parse_for_audio_slave = False
+        self._is_parse_for_slaves = False
 
         if parse_status == vlc.MediaParsedStatus.done:
-            self._count_own_audio_tracks()
+            self._count_own_tracks()
         else:
             self._log.warning(f"Media parse came back {parse_status}")
 
         self._attach_audio_slave()
+        self._attach_subtitle_slaves()
 
         self.loopback_load_video_st2_set_media()
 
-    def _count_own_audio_tracks(self) -> None:
+    def _count_own_tracks(self) -> None:
         media_tracks = self._read_media_tracks()
 
         if media_tracks is None:
@@ -522,7 +536,14 @@ class VlcPlayerBase(ABC):
             1 for track in media_tracks if track.type == vlc.TrackType.audio
         )
 
-        self._log.debug(f"Video has {self._own_audio_count} audio tracks of its own")
+        self._own_subtitle_count = sum(
+            1 for track in media_tracks if track.type == vlc.TrackType.ext
+        )
+
+        self._log.debug(
+            f"Video has {self._own_audio_count} audio"
+            f" and {self._own_subtitle_count} subtitle tracks of its own"
+        )
 
     def _attach_audio_slave(self) -> None:
         """Hand VLC the audio file this video is to be played with."""
@@ -535,6 +556,92 @@ class VlcPlayerBase(ABC):
         self._log.debug(f"Attaching audio slave {uri}")
 
         self._media_input_vlc.slaves_add(vlc.MediaSlaveType.audio, SLAVE_PRIORITY, uri)
+
+    def _attach_subtitle_slaves(self) -> None:
+        """Hand VLC the subtitle files this video is to be shown with.
+
+        As many as were picked, where the sound gets one: libVLC opens each
+        as a track of its own and writes the file's name into the track
+        description, so nothing has to be told apart by counting alone.
+        """
+
+        for uri in self.media_input.selected_subtitle_slaves:
+            self._log.debug(f"Attaching subtitle slave {uri}")
+
+            self._media_input_vlc.slaves_add(
+                vlc.MediaSlaveType.subtitle, SLAVE_PRIORITY, uri
+            )
+
+    @only_initialized_player
+    def add_subtitle_slave(self, uri: str) -> None:
+        """Show a subtitle file on a video that is already loaded.
+
+        No reload is needed for this, unlike an audio file: the tracks a
+        subtitle file brings can be told from the video's own whatever else
+        is attached, so there is never a reason to start over.
+        """
+
+        if self.media is None or not uri:
+            return
+
+        if uri in self.media_input.selected_subtitle_slaves:
+            return
+
+        self._log.debug(f"Adding subtitle slave {uri}")
+
+        # not selected here: which subtitle to show is settled by what was
+        # picked for this video, once the track it brought has turned up.
+        # Letting libVLC choose would put the file on screen even where the
+        # video is being watched with its subtitles off.
+        if self._media_player.add_slave(vlc.MediaSlaveType.subtitle, uri, False) != 0:
+            self._log.warning(f"Failed to add subtitle slave {uri}")
+            return
+
+        self.media_input.selected_subtitle_slaves = (
+            *self.media_input.selected_subtitle_slaves,
+            uri,
+        )
+
+        self._await_subtitle_slave_track(
+            len(self.media.subtitle_tracks) + 1, SLAVE_TRACK_RETRIES
+        )
+
+    def _await_subtitle_slave_track(self, wanted_count: int, tries_left: int) -> None:
+        """Wait for VLC to open what it was handed, then take the list again.
+
+        The same wait an audio file needs, and for the same reason: the
+        file is opened in VLC's own time and the track shows up whenever
+        that is done.
+        """
+
+        media_tracks = self._read_media_tracks()
+
+        is_arrived = media_tracks is not None and (
+            sum(1 for t in media_tracks if t.type == vlc.TrackType.ext) >= wanted_count
+        )
+
+        if not is_arrived and tries_left > 0:
+            self._timer_subtitle_slave = async_wait(
+                SLAVE_TRACK_RETRY_TIME,
+                partial(self._await_subtitle_slave_track, wanted_count, tries_left - 1),
+            )
+            return
+
+        if media_tracks is None:
+            return
+
+        if not is_arrived:
+            self._log.warning("Subtitle slave brought no track")
+
+        if self._tracks_manager is not None:
+            self._tracks_manager.update_tracks(media_tracks)
+
+        # the file was picked to be read, so put it on screen now that
+        # there is something to put on. Before the refresh, so that the
+        # pane is told once, with the track already showing.
+        self._apply_wanted_subtitle_track()
+
+        self._refresh_media_tracks(media_tracks)
 
     @only_initialized_player
     def add_audio_slave(self, uri: str) -> None:
@@ -619,6 +726,9 @@ class VlcPlayerBase(ABC):
             cur_video_track_id=self._tracks_manager.current_video_track_id,
             cur_audio_track_id=self._tracks_manager.current_audio_track_id,
             external_audio_ids=self._external_audio_ids(),
+            subtitle_tracks=self._tracks_manager.subtitle_tracks,
+            cur_subtitle_track_id=self._tracks_manager.current_subtitle_track_id,
+            external_subtitle_ids=self._external_subtitle_ids(),
         )
 
         self.notify_tracks_changed(self.media)
@@ -653,6 +763,56 @@ class VlcPlayerBase(ABC):
             return ()
 
         return tuple(self._tracks_manager.audio_tracks)[self._own_audio_count :]
+
+    def _wanted_subtitle_track_id(self) -> int | None:
+        """Which subtitle this video's settings call for, its own files included.
+
+        Only the player knows which track came out of which file, so a pick
+        of one is answered here; everything else the video can answer for
+        itself.
+        """
+
+        selection = self.media_input.video.subtitle_selection
+
+        if isinstance(selection, SubtitleExternal):
+            picked = subtitle_track_of_file(selection, self._external_subtitle_ids())
+
+            if picked is not None:
+                return picked
+
+        return wanted_subtitle_track_id(
+            self.media_input.video,
+            self._tracks_manager.subtitle_tracks,
+            self._external_subtitle_ids(),
+        )
+
+    def _external_subtitle_ids(self) -> tuple[int, ...]:
+        """Which subtitle tracks came out of the files attached to the video.
+
+        Counted the same way the audio's are: what the video has of its own
+        is counted before anything goes on, and libVLC puts what a file
+        brings after that. Several files can be attached here where audio
+        takes one, since each is named in its own track description and the
+        order they were attached in is the order they come back in.
+        """
+
+        if self._own_subtitle_count is None:
+            return ()
+
+        return tuple(self._tracks_manager.subtitle_tracks)[self._own_subtitle_count :]
+
+    def _apply_wanted_subtitle_track(self) -> None:
+        """Show whichever subtitle this video's settings call for.
+
+        A media with none to show is left alone rather than switched off:
+        there is nothing to switch off, and leaving it alone is what keeps
+        a video with no subtitles in it from paying for them on every loop.
+        """
+
+        if self._tracks_manager is None or not self._tracks_manager.subtitle_tracks:
+            return
+
+        self._tracks_manager.set_subtitle_track_id(self._wanted_subtitle_track_id())
 
     @property
     def _preferred_decoder(self) -> str | None:
@@ -833,12 +993,20 @@ class VlcPlayerBase(ABC):
         self._tracks_manager.set_video_track_id(track_id)
 
     @only_initialized_player
+    def set_subtitle_track(self, track_id):
+        self._tracks_manager.set_subtitle_track_id(track_id)
+
+    @only_initialized_player
     def set_audio_channel_mode(self, mode: AudioChannelMode):
         self._media_player.audio_set_channel(AUDIO_CHANNEL_MODE_MAP[mode])
 
     @only_initialized_player
     def set_audio_delay(self, delay_ms: int):
         self._tracks_manager.set_audio_delay_ms(delay_ms)
+
+    @only_initialized_player
+    def set_subtitle_delay(self, delay_ms: int):
+        self._tracks_manager.set_subtitle_delay_ms(delay_ms)
 
     @property
     def video_dimensions(self):
@@ -1103,13 +1271,32 @@ class VlcPlayerBase(ABC):
             # and anything added later can be told apart from it
             self._own_audio_count = len(self._tracks_manager.audio_tracks)
 
+        if (
+            self._own_subtitle_count is None
+            and not self.media_input.selected_subtitle_slaves
+        ):
+            self._own_subtitle_count = len(self._tracks_manager.subtitle_tracks)
+
         # what libVLC opened on before anything was asked of it, which is
         # the track the file itself puts forward
         default_audio_track_id = self._tracks_manager.current_audio_track_id
 
+        # the same for subtitles. VLC turns one on by itself wherever the
+        # container marks it default or forced, so this has to be read
+        # before anything is asked of it -- and then, for most videos,
+        # promptly switched off again just below.
+        default_subtitle_track_id = self._tracks_manager.current_subtitle_track_id
+
         self._tracks_manager.set_video_track_id(self.media_input.video.video_track_id)
         self._tracks_manager.set_audio_track_id(self._wanted_audio_track_id())
         self._tracks_manager.set_audio_delay_ms(self.media_input.video.audio_delay_ms)
+
+        self._apply_wanted_subtitle_track()
+
+        if self.media_input.video.subtitle_delay_ms:
+            self._tracks_manager.set_subtitle_delay_ms(
+                self.media_input.video.subtitle_delay_ms
+            )
 
         return Media(
             length=length,
@@ -1119,6 +1306,10 @@ class VlcPlayerBase(ABC):
             cur_audio_track_id=self._tracks_manager.current_audio_track_id,
             external_audio_ids=self._external_audio_ids(),
             default_audio_track_id=default_audio_track_id,
+            subtitle_tracks=self._tracks_manager.subtitle_tracks,
+            cur_subtitle_track_id=self._tracks_manager.current_subtitle_track_id,
+            external_subtitle_ids=self._external_subtitle_ids(),
+            default_subtitle_track_id=default_subtitle_track_id,
         )
 
     def _fill_missing_track_dimensions(self) -> bool:

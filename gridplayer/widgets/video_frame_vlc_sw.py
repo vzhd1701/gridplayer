@@ -116,6 +116,7 @@ class PlayerProcessSingleVLCSW(VlcPlayerThreaded):
     def load_video_st4_loaded(self):
         self._tracks_manager.set_video_track_id(self.media_input.video.video_track_id)
         self._tracks_manager.set_audio_track_id(self._wanted_audio_track_id())
+        self._apply_wanted_subtitle_track()
 
         super().load_video_st4_loaded()
 

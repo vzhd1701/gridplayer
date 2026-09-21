@@ -89,11 +89,18 @@ class InstanceVLC:
         options = [
             "--quiet",
             "--no-disable-screensaver",
+            # subtitle files beside a video are found by us rather than by
+            # VLC, so that a video opens with the one that was picked for it
+            # and nothing else; see gridplayer.utils.external_subtitles
             "--no-sub-autodetect-file",
             "--no-lua",
             "--no-osd",
             "--no-snapshot-preview",
-            "--no-spu",
+            # NOTE: "--no-spu" must not go here. It is settled when the input
+            # opens and cannot be undone afterwards: libvlc_video_set_spu then
+            # returns success and libvlc_video_get_spu reports the track, while
+            # nothing is ever decoded or drawn. Subtitles are switched off per
+            # video instead, by asking for no track at all; see TracksManager.
             "--no-interact",
             "--no-stats",
             "--no-keyboard-events",

@@ -8,10 +8,14 @@ plugins/lua
 plugins/meta_engine
 plugins/notify
 plugins/services_discovery
+# only the overlays nothing here asks for: marquee, logo, rss, subsdelay.
+# Subtitles themselves are decoded in plugins/codec and drawn by
+# plugins/text_renderer, both of which stay. The subtitle delay does not
+# need subsdelay either -- libvlc_video_set_spu_delay shifts the timestamps
+# in the core, and was measured working with this whole directory gone.
 plugins/spu
 plugins/stream_extractor
 plugins/stream_out
-plugins/text_renderer
 plugins/video_splitter
 plugins/visualization
 # remove input modules for devices, screen capture, vnc, smb, etc

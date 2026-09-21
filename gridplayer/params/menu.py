@@ -40,7 +40,12 @@ SUBMENUS = MappingProxyType(
         },
         "Audio Delay": {
             "title": translate("Actions", "Audio Delay"),
-            "icon": "seek-sync",
+            "icon": "delay",
+        },
+        "Subtitles": {"title": translate("Actions", "Subtitles"), "icon": "subtitles"},
+        "Subtitle Delay": {
+            "title": translate("Actions", "Subtitle Delay"),
+            "icon": "delay",
         },
         "Add": {"title": translate("Actions", "Add"), "icon": "add"},
         "On Network Error": {
@@ -129,6 +134,18 @@ SECTIONS = MappingProxyType(
                     "Transpose",
                     "Anti-transpose",
                     "No Transform",
+                ),
+            ),
+            (
+                "Subtitles",
+                "Subtitle Track",
+                (
+                    "Subtitle Delay",
+                    "Subtitle Delay: %v",
+                    "---",
+                    "Subtitle Delay Later",
+                    "Subtitle Delay Earlier",
+                    "Subtitle Delay Reset",
                 ),
             ),
             (
@@ -289,6 +306,17 @@ SECTIONS = MappingProxyType(
                         "Transpose [ALL]",
                         "Anti-transpose [ALL]",
                         "No Transform [ALL]",
+                    ),
+                ),
+                (
+                    "Subtitles",
+                    (
+                        "Subtitle Delay",
+                        "Subtitle Delay Set [ALL]",
+                        "---",
+                        "Subtitle Delay Later [ALL]",
+                        "Subtitle Delay Earlier [ALL]",
+                        "Subtitle Delay Reset [ALL]",
                     ),
                 ),
                 (

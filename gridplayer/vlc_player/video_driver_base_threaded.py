@@ -52,8 +52,17 @@ class VLCVideoDriverThreaded(CommandLoopThreaded, VLCVideoDriver):
     def set_video_track(self, track_id):
         self.cmd_send("set_video_track", track_id)
 
+    def set_subtitle_track(self, track_id):
+        self.cmd_send("set_subtitle_track", track_id)
+
+    def add_subtitle_slave(self, uri):
+        self.cmd_send("add_subtitle_slave", uri)
+
     def set_audio_channel_mode(self, mode):
         self.cmd_send("set_audio_channel_mode", mode)
 
     def set_audio_delay(self, delay_ms):
         self.cmd_send("set_audio_delay", delay_ms)
+
+    def set_subtitle_delay(self, delay_ms):
+        self.cmd_send("set_subtitle_delay", delay_ms)
