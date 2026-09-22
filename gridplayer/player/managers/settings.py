@@ -3,6 +3,7 @@ from PyQt5.QtCore import pyqtSignal
 from gridplayer.dialogs.messagebox import QCustomMessageBox
 from gridplayer.dialogs.settings import SettingsDialog
 from gridplayer.params.defaults_fields import GRID_STATE_ATTR
+from gridplayer.params.subtitle_style import SUBTITLE_STYLE_SETTINGS
 from gridplayer.params.theme import apply_theme
 from gridplayer.player.managers.base import ManagerBase
 from gridplayer.playlist_settings import PlaylistSettings, grid_values_from_state
@@ -92,6 +93,9 @@ class SettingsManager(ManagerBase):
             "internal/opaque_hw_overlay",
             "internal/fake_overlay_invisibility",
             "misc/vlc_options",
+            # what subtitles look like is settled when a VLC process
+            # starts, so a video has to be opened again to be redrawn
+            *SUBTITLE_STYLE_SETTINGS,
         }
 
         return self._setting_changes(previous_settings, checks)

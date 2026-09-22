@@ -8,16 +8,22 @@ from PyQt5.QtWidgets import (
     QCheckBox,
     QComboBox,
     QDialog,
+    QLabel,
     QLineEdit,
     QSpinBox,
     QVBoxLayout,
+    QWidget,
 )
 
 from gridplayer.dialogs.checkup import CheckupDialog
 from gridplayer.dialogs.messagebox import QCustomMessageBox
 from gridplayer.dialogs.settings_dialog_ui import Ui_SettingsDialog
 from gridplayer.params import env
-from gridplayer.params.defaults_fields import PLAYLIST_FIELDS, VIDEO_FIELDS
+from gridplayer.params.defaults_fields import (
+    PLAYLIST_FIELDS,
+    SUBTITLE_STYLE_FIELDS,
+    VIDEO_FIELDS,
+)
 from gridplayer.params.languages import LANGUAGES
 from gridplayer.params.static import (
     ColorScheme,
@@ -90,6 +96,32 @@ def _replace_layout_page(page, form):
             if widget is not None:
                 widget.deleteLater()
     layout.addWidget(form)
+
+
+def _with_note(form, text):
+    """A page with something said at the top of it.
+
+    Not a tooltip on any one row, because what it says is true of the
+    whole page. At the top rather than the bottom because the page is
+    longer than it is tall and the bottom of it is behind a scroll.
+    """
+
+    page = QWidget()
+
+    layout = QVBoxLayout(page)
+    layout.setContentsMargins(0, 0, 0, 0)
+    layout.setSpacing(12)
+
+    note = QLabel(text)
+    note.setWordWrap(True)
+    font = note.font()
+    font.setItalic(True)
+    note.setFont(font)
+
+    layout.addWidget(note)
+    layout.addWidget(form)
+
+    return page
 
 
 def _set_groupbox_header_bold(groupbox):
@@ -169,8 +201,26 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
 
         self.playlist_defaults_form = DefaultsForm(PLAYLIST_FIELDS, show_reset=False)
         self.video_defaults_form = DefaultsForm(VIDEO_FIELDS, show_reset=False)
+        self.subtitle_style_form = DefaultsForm(SUBTITLE_STYLE_FIELDS, show_reset=False)
+        self.forms = (
+            self.playlist_defaults_form,
+            self.video_defaults_form,
+            self.subtitle_style_form,
+        )
+
         _replace_scroll_page(self.page_defaults_playlist, self.playlist_defaults_form)
         _replace_scroll_page(self.page_defaults_video, self.video_defaults_form)
+        _replace_scroll_page(
+            self.page_subtitle_style,
+            _with_note(
+                self.subtitle_style_form,
+                translate(
+                    "SettingsDialog",
+                    "Applies to text subtitles. ASS and SSA files carry styling of"
+                    " their own, and only the position below reaches them.",
+                ),
+            ),
+        )
 
         if env.IS_LINUX:
             self.playerStayOnTop.hide()
@@ -197,6 +247,7 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
 
         pages = (
             self.page_general_player,
+            self.page_subtitle_style,
             self.page_general_shortcuts,
             self.page_general_language,
             self.page_defaults_playlist,
@@ -530,12 +581,12 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
 
             set_function(element, setting_value)
 
-        defaults = {
+        form_values = {
             spec.settings_key: Settings().get(spec.settings_key)
-            for spec in (*PLAYLIST_FIELDS, *VIDEO_FIELDS)
+            for spec in (*PLAYLIST_FIELDS, *VIDEO_FIELDS, *SUBTITLE_STYLE_FIELDS)
         }
-        self.playlist_defaults_form.set_values(defaults)
-        self.video_defaults_form.set_values(defaults)
+        for form in self.forms:
+            form.set_values(form_values)
 
         self.cookiesList.set_jar(cookie_store().jar)
 
@@ -563,17 +614,12 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
 
             Settings().set(setting, new_value)
 
-        form_values = {
-            **self.playlist_defaults_form.values(),
-            **self.video_defaults_form.values(),
-        }
-        for key, value in form_values.items():
-            if not (
-                self.playlist_defaults_form.is_enabled(key)
-                or self.video_defaults_form.is_enabled(key)
-            ):
-                continue
-            Settings().set(key, value)
+        for form in self.forms:
+            for key, value in form.values().items():
+                # a row that is greyed out is not one to save over, the
+                # same as a widget of the dialog's own above
+                if form.is_enabled(key):
+                    Settings().set(key, value)
 
         self.save_cookies()
 

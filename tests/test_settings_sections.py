@@ -6,7 +6,7 @@ from gridplayer.dialogs.settings import SECTION_PAGE_ROLE, SettingsDialog
 
 # the index as it is meant to read, group heading by group heading
 SECTIONS = (
-    ("General", ("Player", "Shortcuts", "Language")),
+    ("General", ("Player", "Subtitle Style", "Shortcuts", "Language")),
     ("Defaults", ("Playlist", "Video")),
     ("Streaming", ("Link Resolution", "Cookies", "Network")),
     ("Advanced", ("Video Decoder", "Logging")),
@@ -16,6 +16,7 @@ SECTIONS = (
 # so that a mis-ordered list of pages cannot agree with itself
 PAGES = {
     "Player": "page_general_player",
+    "Subtitle Style": "page_subtitle_style",
     "Shortcuts": "page_general_shortcuts",
     "Language": "page_general_language",
     "Playlist": "page_defaults_playlist",

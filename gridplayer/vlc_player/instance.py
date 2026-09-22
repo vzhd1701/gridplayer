@@ -11,6 +11,10 @@ import certifi
 from gridplayer.multiprocess.instance_process import InstanceProcess
 from gridplayer.multiprocess.process_manager import ProcessManager
 from gridplayer.params import env
+from gridplayer.params.subtitle_style import (
+    SUBTITLE_STYLE_SETTINGS,
+    subtitle_style_options,
+)
 from gridplayer.settings import Settings
 from gridplayer.utils.network import vlc_user_agent
 from gridplayer.vlc_player.libvlc import vlc
@@ -106,6 +110,9 @@ class InstanceVLC:
             "--no-keyboard-events",
             "--no-mouse-events",
             *self.vlc_options,
+            # before the options typed by hand, which are last so that
+            # they still win over anything a page here has set
+            *_subtitle_style_options(),
             *_iter_settings_options(),
         ]
 
@@ -223,6 +230,18 @@ def _is_plugin_cache_exists() -> bool:
     plugin_cache_path = Path(vlc.plugin_path) / "plugins.dat"
 
     return plugin_cache_path.is_file()
+
+
+def _subtitle_style_options() -> list[str]:
+    """What subtitles are to look like in the process about to start.
+
+    Read here rather than passed in because this runs in that process,
+    where the settings are read off the disk like every other one.
+    """
+
+    style = {key: Settings().sync_get(key) for key in SUBTITLE_STYLE_SETTINGS}
+
+    return subtitle_style_options(style)
 
 
 def _iter_settings_options() -> Iterator[str]:

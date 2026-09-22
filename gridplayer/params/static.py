@@ -178,6 +178,20 @@ class SubtitleTrackMode(AutoName):
     DEFAULT = auto()
 
 
+class SubtitleOutline(AutoName):
+    """The rim drawn around every glyph, which is what keeps text readable.
+
+    Named rather than measured in pixels because that is what VLC offers:
+    it takes one of four thicknesses, and Normal is what it draws unless
+    it is told otherwise.
+    """
+
+    NONE = auto()
+    THIN = auto()
+    NORMAL = auto()
+    THICK = auto()
+
+
 class ColorScheme(AutoName):
     SYSTEM = auto()
     LIGHT = auto()

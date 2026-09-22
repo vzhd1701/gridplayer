@@ -304,6 +304,8 @@ class DefaultsForm(QWidget):
 
             if spec.enabled_by_value is None:
                 enabled = bool(driver_value)
+            elif isinstance(spec.enabled_by_value, tuple):
+                enabled = driver_value in spec.enabled_by_value
             else:
                 enabled = driver_value == spec.enabled_by_value
 

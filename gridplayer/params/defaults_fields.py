@@ -2,6 +2,8 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from enum import Enum, auto
 
+from PyQt5.QtGui import QFontDatabase
+
 from gridplayer.params import env
 from gridplayer.params.static import (
     MAX_RATE,
@@ -15,6 +17,7 @@ from gridplayer.params.static import (
     GridMode,
     NetworkRetryMode,
     SeekSyncMode,
+    SubtitleOutline,
     SubtitleTrackMode,
     UnsavedChangesMode,
     VideoAspect,
@@ -66,7 +69,9 @@ class SettingField:
     unchecked_value: object | None = None
     enabled_by: str | None = None
     # what the driving field has to be set to; None means any value that
-    # counts as on, which is what a plain checkbox gives
+    # counts as on, which is what a plain checkbox gives, and a tuple
+    # means any one of several, which is what a combo with more than one
+    # setting worth having gives
     enabled_by_value: object | None = None
     grid_visibility: GridVisibility = GridVisibility.ALWAYS
     tooltip: str | None = None
@@ -258,6 +263,35 @@ def _stream_qualities() -> dict:
         "144p",
     )
     return {**named, **{code: code for code in codes}}
+
+
+def _font_families() -> dict:
+    """Every font on this machine, with VLC's own pick at the top.
+
+    Default is an empty name rather than a font, so that nothing is
+    passed and VLC goes on choosing for itself.
+    """
+
+    families = QFontDatabase().families()
+
+    return {"": _t("Default"), **{family: family for family in families}}
+
+
+def _subtitle_outlines() -> dict:
+    return {
+        SubtitleOutline.NONE: _t("None"),
+        SubtitleOutline.THIN: _t("Thin"),
+        SubtitleOutline.NORMAL: _t("Normal"),
+        SubtitleOutline.THICK: _t("Thick"),
+    }
+
+
+# the outline colour is worth nothing without an outline to draw
+_OUTLINE_DRAWN = (
+    SubtitleOutline.THIN,
+    SubtitleOutline.NORMAL,
+    SubtitleOutline.THICK,
+)
 
 
 def _f(**kwargs) -> SettingField:
@@ -726,3 +760,104 @@ GRID_STATE_ATTR = {
     "playlist/grid_cols": "cols",
     "playlist/grid_preallocate": "preallocate",
 }
+
+
+SUBTITLE_STYLE_FIELDS: tuple[SettingField, ...] = (
+    _f(
+        settings_key="subtitles/font",
+        kind=FieldKind.COMBO,
+        section=_t("Text"),
+        label=_t("Font"),
+        combo_values=_font_families,
+    ),
+    _f(
+        settings_key="subtitles/size_scale",
+        kind=FieldKind.SPIN,
+        section=_t("Text"),
+        label=_t("Size"),
+        spin_min=10,
+        spin_max=500,
+        spin_suffix="%",
+        tooltip=_t(
+            "Size against the one VLC picks, which already follows the"
+            " height of the video, so a small pane gets small subtitles"
+            " without this being touched."
+        ),
+    ),
+    _f(
+        settings_key="subtitles/color",
+        kind=FieldKind.COLOR,
+        section=_t("Text"),
+        label=_t("Color"),
+    ),
+    _f(
+        settings_key="subtitles/bold",
+        kind=FieldKind.CHECKBOX,
+        section=_t("Text"),
+        label=_t("Bold"),
+    ),
+    _f(
+        settings_key="subtitles/outline",
+        kind=FieldKind.COMBO,
+        section=_t("Effects"),
+        label=_t("Outline"),
+        combo_values=_subtitle_outlines,
+        tooltip=_t(
+            "The rim drawn around every glyph, which is what keeps white"
+            " text readable over a light picture."
+        ),
+    ),
+    _f(
+        settings_key="subtitles/outline_color",
+        kind=FieldKind.COLOR,
+        section=_t("Effects"),
+        label=_t("Outline color"),
+        enabled_by="subtitles/outline",
+        enabled_by_value=_OUTLINE_DRAWN,
+    ),
+    _f(
+        settings_key="subtitles/shadow",
+        kind=FieldKind.CHECKBOX,
+        section=_t("Effects"),
+        label=_t("Shadow"),
+    ),
+    _f(
+        settings_key="subtitles/shadow_color",
+        kind=FieldKind.COLOR,
+        section=_t("Effects"),
+        label=_t("Shadow color"),
+        enabled_by="subtitles/shadow",
+    ),
+    _f(
+        settings_key="subtitles/background",
+        kind=FieldKind.CHECKBOX,
+        section=_t("Effects"),
+        label=_t("Background box"),
+        tooltip=_t(
+            "Draw the text on a filled box, which is the one thing that"
+            " stays readable over any picture at all."
+        ),
+    ),
+    _f(
+        settings_key="subtitles/background_color",
+        kind=FieldKind.COLOR,
+        section=_t("Effects"),
+        label=_t("Background color"),
+        enabled_by="subtitles/background",
+    ),
+    _f(
+        settings_key="subtitles/margin",
+        kind=FieldKind.SPIN,
+        section=_t("Position"),
+        label=_t("Raise from bottom"),
+        spin_min=0,
+        spin_max=500,
+        spin_special=_t("Default"),
+        spin_suffix=_t("px"),
+        tooltip=_t(
+            "How far up from the bottom of the picture subtitles are drawn."
+            " This is the one setting here that ASS and SSA subtitles follow"
+            " as well."
+        ),
+    ),
+)

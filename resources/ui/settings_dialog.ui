@@ -54,6 +54,11 @@
        </item>
        <item>
         <property name="text">
+         <string>Subtitle Style</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
          <string>Shortcuts</string>
         </property>
        </item>
@@ -318,6 +323,19 @@
           </spacer>
          </item>
         </layout>
+       </widget>
+       <widget class="PageScrollArea" name="page_subtitle_style">
+        <property name="frameShape">
+         <enum>QFrame::NoFrame</enum>
+        </property>
+        <property name="horizontalScrollBarPolicy">
+         <enum>Qt::ScrollBarAlwaysOff</enum>
+        </property>
+        <property name="widgetResizable">
+         <bool>true</bool>
+        </property>
+        <widget class="QWidget" name="page_subtitle_style_contents">
+        </widget>
        </widget>
        <widget class="QWidget" name="page_general_language">
         <layout class="QVBoxLayout" name="lay_page_general_language">

@@ -37,6 +37,7 @@ from gridplayer.params.static import (
     VideoTransform,
 )
 from gridplayer.params.subtitle_encodings import DEFAULT_ENCODING
+from gridplayer.params.subtitle_style import SUBTITLE_STYLE_DEFAULTS
 from gridplayer.utils.app_dir import get_app_data_dir
 from gridplayer.utils.keymap import KeymapOverrides
 from gridplayer.utils.log_config import DISABLED
@@ -106,6 +107,9 @@ _default_settings = {
     "video_defaults/network_retry_mode": NetworkRetryMode.TIMES,
     "video_defaults/network_retry_times": 3,
     "video_defaults/auto_reload_timer": 0,
+    # what subtitles look like, which VLC settles per process rather
+    # than per video; see gridplayer.params.subtitle_style
+    **SUBTITLE_STYLE_DEFAULTS,
     "misc/mouse_hide": True,
     "misc/mouse_hide_timeout": 5,
     "misc/vlc_options": "",
