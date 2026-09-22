@@ -489,6 +489,16 @@ class VlcPlayerBase(ABC):
             )
             self._media_options.append(f"codec={self._preferred_decoder}")
 
+        if self.media_input.video.subtitle_encoding:
+            # a fallback rather than an override: VLC reads the file as UTF-8
+            # wherever it is valid UTF-8 and only reaches for this when it is
+            # not, so a file that was already UTF-8 comes out the same either
+            # way. Text subtitles only -- ASS and SSA go through libass, which
+            # this never reaches.
+            self._media_options.append(
+                f":subsdec-encoding={self.media_input.video.subtitle_encoding}"
+            )
+
         self._media_input_vlc.add_options(*self._media_options)
 
         # Files of their own have to go on before the video starts, and what

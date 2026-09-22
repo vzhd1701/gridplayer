@@ -22,6 +22,7 @@ from gridplayer.params.static import (
     VideoInitialState,
     VideoTransform,
 )
+from gridplayer.params.subtitle_encodings import SUBTITLE_ENCODINGS
 from gridplayer.utils.qt import translate
 
 
@@ -214,6 +215,10 @@ def _subtitle_track_modes() -> dict:
         SubtitleTrackMode.PREFERRED: _t("Preferred Language"),
         SubtitleTrackMode.DEFAULT: _t("Default"),
     }
+
+
+def _subtitle_encodings() -> dict:
+    return {"": _t("Default"), **SUBTITLE_ENCODINGS}
 
 
 def _audio_track_modes() -> dict:
@@ -543,6 +548,20 @@ VIDEO_FIELDS: tuple[SettingField, ...] = (
         tooltip=_t(
             "Language codes or names, best first."
             " Videos that offer none of them are shown without subtitles."
+        ),
+    ),
+    _f(
+        settings_key="video_defaults/subtitle_encoding",
+        video_attr="subtitle_encoding",
+        kind=FieldKind.COMBO,
+        section=_t("Subtitles"),
+        label=_t("Text encoding"),
+        combo_values=_subtitle_encodings,
+        tooltip=_t(
+            "What a subtitle file is read as where it is not UTF-8."
+            " UTF-8 files are recognised on their own and are left alone by"
+            " this; anything else is read as Western European unless another"
+            " set is picked here. ASS and SSA subtitles are not affected."
         ),
     ),
     _f(

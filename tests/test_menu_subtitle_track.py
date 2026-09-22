@@ -189,6 +189,21 @@ class TestWhatIsOnOffer:
 
         assert "Text subtitles with various tags" in _titles(menu)
 
+    def test_what_the_text_is_read_as_comes_last_and_on_its_own(self):
+        """The row nobody needs: a file written in UTF-8 never reaches it."""
+
+        titles = _titles(_manager().menu_generator_subtitle_track())
+
+        assert titles[-1] == "Encoding: %v"
+        assert titles[-2] == "---"
+
+    def test_a_video_with_nothing_to_read_is_not_asked_how_to_read_it(self):
+        menu = _manager(
+            tracks={}, offered=[Path("a.srt")]
+        ).menu_generator_subtitle_track()
+
+        assert "Encoding: %v" not in _titles(menu)
+
 
 class TestWhatIsTicked:
     def test_off_where_nothing_was_asked_for(self):

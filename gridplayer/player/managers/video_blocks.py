@@ -387,6 +387,18 @@ class VideoBlocksManager(ManagerBase):
         PlaylistSettings().set("playlist/seek_sync_mode", mode)
         self._ctx.seek_sync_mode = mode
 
+    def apply_subtitle_encoding(self, encoding: str):
+        """Give the videos already open a subtitle encoding that has changed.
+
+        What a subtitle file is read as is settled when the input opens, so
+        a video that is already playing has to be opened again to take a new
+        one. Handing it a video that differs is enough -- set_video reopens
+        on its own account once it does.
+        """
+
+        for vb in self._ctx.video_blocks:
+            vb.set_subtitle_encoding(encoding)
+
     def is_any_videos_initialized(self):
         return bool(self._ctx.video_blocks.initialized)
 

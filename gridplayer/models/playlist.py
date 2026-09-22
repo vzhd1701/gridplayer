@@ -63,6 +63,7 @@ class PlaylistVideoDefaults(BaseModel):
     external_audio_autodiscover: bool | None = None
     subtitle_track_mode: SubtitleTrackMode | None = None
     subtitle_languages: str | None = None
+    subtitle_encoding: str | None = None
     external_subtitle_autodiscover: bool | None = None
     random_loop: bool | None = None
     muted: bool | None = None

@@ -36,6 +36,7 @@ from gridplayer.params.static import (
     VideoInitialState,
     VideoTransform,
 )
+from gridplayer.params.subtitle_encodings import DEFAULT_ENCODING
 from gridplayer.utils.app_dir import get_app_data_dir
 from gridplayer.utils.keymap import KeymapOverrides
 from gridplayer.utils.log_config import DISABLED
@@ -90,6 +91,7 @@ _default_settings = {
     "video_defaults/external_audio_autodiscover": False,
     "video_defaults/subtitle_track_mode": SubtitleTrackMode.DISABLED,
     "video_defaults/subtitle_languages": "",
+    "video_defaults/subtitle_encoding": DEFAULT_ENCODING,
     "video_defaults/external_subtitle_autodiscover": False,
     "video_defaults/random_loop": False,
     "video_defaults/muted": True,

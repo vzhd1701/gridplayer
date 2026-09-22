@@ -18,6 +18,7 @@ from gridplayer.dialogs.input_dialog import (
 )
 from gridplayer.dialogs.rename_dialog import QVideoRenameDialog
 from gridplayer.dialogs.subtitle_delay import SetSubtitleDelayDialog
+from gridplayer.dialogs.subtitle_encoding import SetSubtitleEncodingDialog
 from gridplayer.exceptions import PlayerException
 from gridplayer.models.audio_selection import (
     AudioDefault,
@@ -266,6 +267,22 @@ def _subtitle_track_file_stem(track) -> str | None:
         return None
 
     return track.language.replace("\\", "/").rsplit("/", 1)[-1].casefold()
+
+
+def _is_reopen_needed(old: Video | None, new: Video) -> bool:
+    """Whether a change needs the video opened again rather than adjusted.
+
+    Instance options decide which VLC process a video is played in, so a
+    change to one only takes hold in a new process. The subtitle encoding
+    is a media option rather than an instance one -- as an instance option
+    it would fork the process pool one way per encoding -- but it is settled
+    when the input opens just the same, so it needs reopening too.
+    """
+
+    if get_vlc_options(old) != get_vlc_options(new):
+        return True
+
+    return old is not None and old.subtitle_encoding != new.subtitle_encoding
 
 
 class VideoBlock(QWidget):
@@ -2138,6 +2155,39 @@ class VideoBlock(QWidget):
             "Subtitle Languages", "any"
         )
 
+    def set_subtitle_encoding(self, encoding: str) -> None:
+        """Read this video's subtitle files as a different character set.
+
+        Which set a file is read as is settled when the input opens, so the
+        video is handed back to itself and set_video reopens it.
+        """
+
+        if self.video_params.subtitle_encoding == encoding:
+            return
+
+        self.set_video(
+            self.video_params.model_copy(update={"subtitle_encoding": encoding})
+        )
+
+    @only_initialized
+    def subtitle_encoding_dialog(self):
+        """Pick what this video's subtitle files are read as."""
+
+        encoding = SetSubtitleEncodingDialog.get_encoding(
+            encoding=self.video_params.subtitle_encoding,
+            parent=self.parent(),
+        )
+
+        if encoding is None:
+            return
+
+        self.set_subtitle_encoding(encoding)
+
+    def get_subtitle_encoding(self) -> str:
+        return self.video_params.subtitle_encoding or translate(
+            "Subtitle Encoding", "Default"
+        )
+
     @only_initialized
     def set_subtitle_delay(self, delay_ms, is_silent=False):
         if not self.subtitle_tracks:
@@ -2576,14 +2626,12 @@ class VideoBlock(QWidget):
 
     def set_video(self, video_params: Video):
         is_first_video = self.video_params is None
-        is_options_changed = get_vlc_options(self.video_params) != get_vlc_options(
-            video_params
-        )
+        is_reopen_needed = _is_reopen_needed(self.video_params, video_params)
 
         self.video_params = video_params
 
         # Shut down current video
-        if not is_first_video or is_options_changed:
+        if not is_first_video or is_reopen_needed:
             self.reset()
 
         if self.video_params.is_stopped and not self.is_video_initialized:

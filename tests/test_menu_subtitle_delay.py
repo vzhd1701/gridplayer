@@ -79,7 +79,7 @@ class TestWhereItSits:
         subtitles = _submenu("video_active", "Subtitles")
         names = [item[0] if isinstance(item, tuple) else item for item in subtitles]
 
-        assert names[names.index("Subtitle Track") + 1] == SUBMENU
+        assert names.index(SUBMENU) == names.index("Subtitle Track") + 1
 
     def test_it_lists_the_readout_then_the_three_moves(self):
         assert list(_submenu("video_active", "Subtitles", SUBMENU)[1:]) == ACTIVE_ROWS

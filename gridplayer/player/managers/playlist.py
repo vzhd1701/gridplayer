@@ -41,6 +41,7 @@ class PlaylistManager(ManagerBase):
     show_overlay_border_loaded = pyqtSignal(bool)
     overlay_hide_on_timeout_loaded = pyqtSignal(bool)
     overlay_timeout_loaded = pyqtSignal(int)
+    subtitle_encoding_loaded = pyqtSignal(str)
     videos_loaded = pyqtSignal(list)
 
     alert = pyqtSignal()
@@ -386,6 +387,10 @@ class PlaylistManager(ManagerBase):
                 (
                     self.overlay_timeout_loaded,
                     session.get("playlist/overlay_timeout"),
+                ),
+                (
+                    self.subtitle_encoding_loaded,
+                    session.get("video_defaults/subtitle_encoding"),
                 ),
             )
 

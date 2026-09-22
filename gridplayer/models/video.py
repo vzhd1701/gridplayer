@@ -223,6 +223,10 @@ class Video(BaseModel):
     # the languages to go by where nothing was picked by hand
     subtitle_languages: str = session_field("video_defaults/subtitle_languages")
 
+    # what a text subtitle file is read as where it is not UTF-8. Settled
+    # when the file opens, so changing it reloads the video
+    subtitle_encoding: str = session_field("video_defaults/subtitle_encoding")
+
     # subtitle files picked for this video, in the order they were picked,
     # which is the order their tracks come back in
     external_subtitles: list[Path] = Field(default_factory=list)

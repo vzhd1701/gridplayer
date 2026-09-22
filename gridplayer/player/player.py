@@ -120,6 +120,10 @@ class Player(QWidget, ManagersManager):
                     "video_blocks.set_overlay_hide_on_timeout",
                 ),
                 ("set_overlay_timeout", "video_blocks.set_overlay_timeout"),
+                (
+                    "set_subtitle_encoding",
+                    "video_blocks.apply_subtitle_encoding",
+                ),
             ],
             "playlist": [
                 ("s.arguments_received", "process_arguments"),
@@ -163,6 +167,10 @@ class Player(QWidget, ManagersManager):
                 (
                     "overlay_timeout_loaded",
                     "video_blocks.set_overlay_timeout",
+                ),
+                (
+                    "subtitle_encoding_loaded",
+                    "video_blocks.apply_subtitle_encoding",
                 ),
                 ("videos_loaded", "video_blocks.add_videos"),
                 ("alert", "window_state.activate_window"),

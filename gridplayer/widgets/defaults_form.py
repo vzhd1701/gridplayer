@@ -19,6 +19,7 @@ from gridplayer.params.defaults_fields import FieldKind, GridVisibility, Setting
 from gridplayer.params.static import GridMode
 from gridplayer.utils.qt import translate
 from gridplayer.widgets.color_palette import QCompactColorPicker
+from gridplayer.widgets.combo_box import cap_popup_height
 
 
 def _fill_combo(combo: QComboBox, values: dict) -> None:
@@ -90,7 +91,9 @@ class DefaultsForm(QWidget):
             self._labels[spec.settings_key] = label
             lay.addWidget(label)
             widget = QComboBox()
-            _fill_combo(widget, spec.combo_values())
+            values = spec.combo_values()
+            _fill_combo(widget, values)
+            cap_popup_height(widget, len(values))
             widget.currentIndexChanged.connect(self._on_edited)
             lay.addWidget(widget)
         elif spec.kind is FieldKind.TEXT:

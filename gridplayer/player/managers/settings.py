@@ -25,6 +25,7 @@ class SettingsManager(ManagerBase):
     set_show_overlay_border = pyqtSignal(bool)
     set_overlay_hide_on_timeout = pyqtSignal(bool)
     set_overlay_timeout = pyqtSignal(int)
+    set_subtitle_encoding = pyqtSignal(str)
 
     @property
     def commands(self):
@@ -65,6 +66,7 @@ class SettingsManager(ManagerBase):
             "playlist/show_overlay_border": self.set_show_overlay_border,
             "playlist/overlay_hide_on_timeout": self.set_overlay_hide_on_timeout,
             "playlist/overlay_timeout": self.set_overlay_timeout,
+            "video_defaults/subtitle_encoding": self.set_subtitle_encoding,
         }
 
         changes = self._setting_changes(previous_settings, tuple(checks))

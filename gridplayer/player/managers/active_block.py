@@ -64,6 +64,9 @@ LOADING_COMMANDS = frozenset(
         "show_external_subtitle",
         "remove_external_subtitles",
         "set_external_subtitle_autodiscover",
+        "set_subtitle_encoding",
+        "subtitle_encoding_dialog",
+        "get_subtitle_encoding",
     }
 )
 
@@ -698,6 +701,7 @@ class ActiveBlockManager(ManagerBase):
             ],
             self._subtitle_choice_menu_items(),
             external,
+            [_subtitle_encoding_menu_item()],
         )
 
     def _subtitle_default_menu_items(self):
@@ -1056,6 +1060,26 @@ def _subtitle_languages_menu_item():
         "icon": "empty",
         "func": ("active", "subtitle_languages_dialog"),
         "value_getter": ("active", "get_subtitle_languages"),
+        "show_if": "is_active_initialized",
+    }
+
+
+def _subtitle_encoding_menu_item():
+    """What the subtitle text is read as, under the subtitles themselves.
+
+    Last because it is the row nobody needs: a file written in UTF-8 is
+    recognised as such on its own and nothing here touches it, so this is
+    only ever reached for by somebody looking at the wrong letters. It
+    opens a box rather than a submenu because forty-odd character sets is
+    a list to scroll, not a column to walk. ASS and SSA are read by libass
+    on its own account and are not affected either way.
+    """
+
+    return {
+        "title": "{}: %v".format(translate("Actions", "Encoding")),
+        "icon": "empty",
+        "func": ("active", "subtitle_encoding_dialog"),
+        "value_getter": ("active", "get_subtitle_encoding"),
         "show_if": "is_active_initialized",
     }
 
