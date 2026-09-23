@@ -1,0 +1,56 @@
+name: test
+
+on:
+  push:
+    branches: [ master, develop ]
+  pull_request:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install the latest version of uv
+        uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
+
+      - name: Lint
+        run: |
+          uv run --locked --only-group dev ruff check .
+          uv run --locked --only-group dev ruff format --check .
+          uv run --locked --only-group dev rumdl check .
+
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        # the oldest supported, which the release builds use, and the newest
+        python-version: [ "3.10", "3.14" ]
+    runs-on: ubuntu-latest
+    env:
+      UV_PYTHON: ${{ matrix.python-version }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v7
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install the latest version of uv
+        uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
+
+      # libvlc is loaded on import, Qt draws offscreen but still wants GL and fonts
+      - name: Install requirements
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            libvlc5 vlc-plugin-base \
+            libegl1 libgl1 libxkbcommon0 libfontconfig1 libdbus-1-3
+
+      - name: Run tests
+        run: uv run --locked pytest

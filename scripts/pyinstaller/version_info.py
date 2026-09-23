@@ -8,15 +8,15 @@ VSVersionInfo(
         # filevers and prodvers should be always a tuple with four items: (1, 2, 3, 4)
         # Set not needed items to zero 0. Must always contain 4 elements.
         filevers=(
-            int("{APP_VERSION}".split(".")[0]),
-            int("{APP_VERSION}".split(".")[1]),
-            int("{APP_VERSION}".split(".")[2]),
+            int("{APP_VERSION_NUMERIC}".split(".")[0]),
+            int("{APP_VERSION_NUMERIC}".split(".")[1]),
+            int("{APP_VERSION_NUMERIC}".split(".")[2]),
             0,
         ),
         prodvers=(
-            int("{APP_VERSION}".split(".")[0]),
-            int("{APP_VERSION}".split(".")[1]),
-            int("{APP_VERSION}".split(".")[2]),
+            int("{APP_VERSION_NUMERIC}".split(".")[0]),
+            int("{APP_VERSION_NUMERIC}".split(".")[1]),
+            int("{APP_VERSION_NUMERIC}".split(".")[2]),
             0,
         ),
         # Contains a bitmask that specifies the valid bits 'flags'r
@@ -43,14 +43,14 @@ VSVersionInfo(
                     [
                         StringStruct("CompanyName", "{APP_AUTHOR}"),
                         StringStruct("FileDescription", "{APP_DISP_NAME}"),
-                        StringStruct("FileVersion", "{APP_VERSION}.0"),
+                        StringStruct("FileVersion", "{APP_VERSION_NUMERIC}.0"),
                         StringStruct("InternalName", "{APP_NAME}"),
                         StringStruct(
                             "LegalCopyright", "© {APP_AUTHOR}. All rights reserved."
                         ),
                         StringStruct("OriginalFilename", "{APP_NAME}.exe"),
                         StringStruct("ProductName", "{APP_DISP_NAME}"),
-                        StringStruct("ProductVersion", "{APP_VERSION}.0"),
+                        StringStruct("ProductVersion", "{APP_VERSION_NUMERIC}.0"),
                     ],
                 )
             ]

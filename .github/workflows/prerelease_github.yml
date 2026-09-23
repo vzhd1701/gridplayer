@@ -1,0 +1,102 @@
+name: prerelease_github
+
+on:
+  workflow_dispatch:
+  # To build every push to develop as well, uncomment:
+  # push:
+  #   branches: [ develop ]
+  #   paths-ignore:
+  #     - "**.md"
+  #     - "resources/translations/**"
+  #     - ".github/ISSUE_TEMPLATE/**"
+
+concurrency:
+  group: prerelease_github
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  # AppImage updates of a dev build follow this tag, see scripts/init_app_vars.sh
+  PRERELEASE_TAG: continuous
+
+jobs:
+  test:
+    uses: ./.github/workflows/test.yml
+
+  build:
+    needs: [ test ]
+    uses: ./.github/workflows/build.yml
+    with:
+      dev: true
+
+  prerelease:
+    needs: [ build ]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Extract unreleased changes
+        uses: ffurrer2/extract-release-notes@v3
+        with:
+          prerelease: true
+          release_notes_file: unreleased.md
+
+      - name: Compose release notes
+        env:
+          REF_NAME: ${{ github.ref_name }}
+          COMMIT_SHA: ${{ github.sha }}
+          REPO_URL: ${{ github.server_url }}/${{ github.repository }}
+          BUILD_VERSION: ${{ needs.build.outputs.version }}
+        run: |
+          last_release=$(grep -m1 -oP '^## \[\K[0-9][^]]*' CHANGELOG.md || true)
+          since=${last_release:+ since $last_release}
+          {
+            echo "Built from \`$REF_NAME\` at [\`${COMMIT_SHA::7}\`]($REPO_URL/commit/$COMMIT_SHA) on $(date -u +%F). Reports version \`$BUILD_VERSION\`."
+            echo
+            echo "> **Development build, not a stable release.** For everyday use grab the [latest release]($REPO_URL/releases/latest)."
+            echo ">"
+            echo "> It may change your settings and playlists in ways the stable release cannot read back. To keep them apart, use the Windows portable zip, or start it with \`--user-data-dir <folder>\`."
+            echo
+            if grep -q '^- ' unreleased.md; then
+              echo "## Changes$since"
+              echo
+              cat unreleased.md
+            else
+              echo "No changes recorded in the changelog$since."
+            fi
+            if [ -n "$last_release" ]; then
+              echo
+              echo "The changelog is updated now and then, see [all commits since $last_release]($REPO_URL/compare/v$last_release...$COMMIT_SHA) for the rest."
+            fi
+          } > release_notes.md
+
+      - name: Load release binaries
+        uses: actions/download-artifact@v8
+        with:
+          pattern: release_dist_bin_*
+          merge-multiple: true
+          path: dist
+
+      - name: Move ${{ env.PRERELEASE_TAG }} tag to current commit
+        run: |
+          git tag -f "$PRERELEASE_TAG"
+          git push -f origin "refs/tags/$PRERELEASE_TAG"
+
+      - name: Update pre-release
+        uses: ncipollo/release-action@v1
+        with:
+          name: Development build (${{ needs.build.outputs.version }})
+          bodyFile: release_notes.md
+          artifacts: "dist/*"
+          token: ${{ secrets.GITHUB_TOKEN }}
+          tag: ${{ env.PRERELEASE_TAG }}
+          commit: ${{ github.sha }}
+          prerelease: true
+          makeLatest: false
+          allowUpdates: true
+          removeArtifacts: true

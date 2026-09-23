@@ -20,7 +20,7 @@ copy_with_app_vars "$SCRIPT_DIR/app.appdata.xml" "$BUILD_DIR_META/${APP_ID}.appd
 uv run --frozen "$SCRIPT_DIR/inject_changelog.py" \
     "$BUILD_DIR_META/${APP_ID}.appdata.xml" \
     "$ROOT_DIR/CHANGELOG.md" \
-    --version "$APP_VERSION"
+    --version "$APP_CHANGELOG_VERSION"
 
 appstream-util validate "$BUILD_DIR_META/${APP_ID}.appdata.xml"
 

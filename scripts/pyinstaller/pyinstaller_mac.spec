@@ -18,7 +18,8 @@ def strip_list(src_list, items_to_strip):
 
 APP_NAME = "{APP_NAME}"
 APP_ID = "{APP_ID}"
-APP_VERSION = "{APP_VERSION}"
+# Info.plist takes nothing but numbers for the bundle version
+APP_VERSION = "{APP_VERSION_NUMERIC}"
 APP_TARGET_ARCH = "{APP_TARGET_ARCH}"
 SRC_DIR = os.path.abspath("./{APP_MODULE}")
 BUILD_DIR = os.path.abspath("./build")

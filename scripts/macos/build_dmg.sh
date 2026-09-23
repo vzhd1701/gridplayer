@@ -6,8 +6,9 @@ SCRIPT_DIR="$( cd "$( dirname $0 )" && pwd )"
 
 source "scripts/init_app_vars.sh"
 
-DEFAULT_DMG_FILE="$DIST_DIR/$APP_NAME $APP_VERSION.dmg"
-TARGET_DMG_FILE="$DIST_DIR/$APP_NAME $APP_VERSION"_"$APP_TARGET_ARCH_SUFFIX.dmg"
+# create-dmg names it after the bundle version, see pyinstaller_mac.spec
+DEFAULT_DMG_FILE="$DIST_DIR/$APP_NAME $APP_VERSION_NUMERIC.dmg"
+TARGET_DMG_FILE="$DIST_DIR/$APP_NAME $APP_FILE_VERSION"_"$APP_TARGET_ARCH_SUFFIX.dmg"
 
 create_default_dmg() {
     create-dmg --overwrite --no-code-sign "$DIST_DIR/$APP_NAME.app" "$DIST_DIR"

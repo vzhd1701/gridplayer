@@ -138,9 +138,9 @@ echo "==> Generating AppImage"
 
 # fuse doesn't work inside docker
 export APPIMAGE_EXTRACT_AND_RUN=1
-export UPDATE_INFORMATION="gh-releases-zsync|vzhd1701|gridplayer|latest|GridPlayer-*x86_64.AppImage.zsync"
+export UPDATE_INFORMATION="gh-releases-zsync|vzhd1701|gridplayer|$APP_UPDATE_RELEASE|GridPlayer-*x86_64.AppImage.zsync"
 export ARCH="x86_64"
-export VERSION="$APP_VERSION"
+export VERSION="$APP_FILE_VERSION"
 
 ./linuxdeploy-x86_64.AppImage \
     -l /lib64/libxcb-icccm.so.4 \

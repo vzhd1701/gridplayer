@@ -7,6 +7,9 @@ build-requirements:
 build:
     uv build
 
+stamp-dev-version:
+    python scripts/stamp_dev_version.py
+
 build-wheel:
     if [ ! -f dist/*.whl ]; then uv build --wheel; fi
 

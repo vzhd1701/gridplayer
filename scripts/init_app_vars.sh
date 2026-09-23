@@ -122,7 +122,27 @@ export APP_AUTHOR_CONTACT=$(sed -n 's/__author_contact__ = "\([^"]*\).*/\1/p' "$
 export APP_URL=$(sed -n 's/__app_url__ = "\([^"]*\).*/\1/p' "$APP_BASE_DIR/version.py")
 export APP_BUGTRACKER_URL=$(sed -n 's/__app_bugtracker_url__ = "\([^"]*\).*/\1/p' "$APP_BASE_DIR/version.py")
 
-export APP_CDN_URL_ROOT="https://cdn.jsdelivr.net/gh/${APP_REPO_SLUG}@v${APP_VERSION}"
+[[ "$APP_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+ ]] || die "Cannot parse version: $APP_VERSION"
+
+# X.Y.Z alone, for the version fields that take nothing but numbers
+export APP_VERSION_NUMERIC="${BASH_REMATCH[0]}"
+
+# A dev snapshot (see scripts/stamp_dev_version.py) gets fixed file names,
+# so the download links of the "continuous" pre-release never change,
+# notes from the unreleased changes, and AppImage updates from that
+# pre-release rather than from the latest stable release
+if [[ "$APP_VERSION" == *.dev.* ]]; then
+    export APP_FILE_VERSION="dev"
+    export APP_CHANGELOG_VERSION="unreleased"
+    export APP_UPDATE_RELEASE="continuous"
+else
+    export APP_FILE_VERSION="$APP_VERSION"
+    export APP_CHANGELOG_VERSION="$APP_VERSION"
+    export APP_UPDATE_RELEASE="latest"
+fi
+
+# a dev snapshot has no tag of its own, it borrows the last release's
+export APP_CDN_URL_ROOT="https://cdn.jsdelivr.net/gh/${APP_REPO_SLUG}@v${APP_VERSION_NUMERIC}"
 
 if [[ "$OSTYPE" == "darwin"* ]]; then
     export APP_TARGET_ARCH=$(normalize_macos_arch "${BUILD_MACOS_ARCH:-arm64}")

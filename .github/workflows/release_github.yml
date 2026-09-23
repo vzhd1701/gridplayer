@@ -11,161 +11,19 @@ on:
     tags:
       - "v[0-9]+.[0-9]+.[0-9]+"
 
-env:
-  BUILD_PYTHON_VERSION: "3.10"
+permissions:
+  contents: read
 
 jobs:
-  build_python:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v7
-      - uses: extractions/setup-just@v4
-
-      - name: Set up Python ${{ env.BUILD_PYTHON_VERSION }}
-        uses: actions/setup-python@v7
-        with:
-          python-version: ${{ env.BUILD_PYTHON_VERSION }}
-
-      - name: Install the latest version of uv
-        uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
-
-      - name: Export requirements
-        run: just build-requirements
-
-      - name: Build project for distribution
-        run: just build
-
-      - name: Save release python requirements
-        uses: actions/upload-artifact@v7
-        with:
-          name: release_dist_reqs
-          path: build/requirements.txt
-
-      - name: Save release python packages
-        uses: actions/upload-artifact@v7
-        with:
-          name: release_dist_python
-          path: dist
-
-  build_mac:
-    needs: build_python
-    strategy:
-      matrix:
-        include:
-          - arch: x64
-            runner: macos-15-intel
-          - arch: arm64
-            runner: macos-15
-    runs-on: ${{ matrix.runner }}
-
-    steps:
-      - uses: actions/checkout@v7
-      - uses: extractions/setup-just@v4
-
-      - name: Load release python requirements
-        uses: actions/download-artifact@v8
-        with:
-          name: release_dist_reqs
-          path: build
-
-      - uses: actions/setup-python@v7
-        with:
-          python-version: ${{ env.BUILD_PYTHON_VERSION }}
-
-      - uses: actions/setup-node@v7
-        with:
-          node-version: 20
-
-      - name: Install requirements
-        run: |
-          brew install gnu-sed graphicsmagick imagemagick
-          npm install --global create-dmg
-
-      - name: Build
-        run: |
-          just ${{ matrix.arch == 'arm64' && 'build-macos-package-arm64' || 'build-macos-package' }}
-          just clean-pyinstaller-dist
-
-      - name: Save release binaries for macos ${{ matrix.arch }}
-        uses: actions/upload-artifact@v7
-        with:
-          name: release_dist_bin_macos_${{ matrix.arch }}
-          path: dist
-
-  build_win:
-    needs: build_python
-    strategy:
-      matrix:
-        arch: [ x86, x64 ]
-    runs-on: windows-latest
-    steps:
-      - uses: actions/checkout@v7
-      - uses: extractions/setup-just@v4
-
-      - name: Load release python requirements
-        uses: actions/download-artifact@v8
-        with:
-          name: release_dist_reqs
-          path: build
-
-      - uses: actions/setup-python@v7
-        with:
-          python-version: ${{ env.BUILD_PYTHON_VERSION }}
-          architecture: ${{ matrix.arch }}
-
-      - name: Install requirements
-        uses: crazy-max/ghaction-chocolatey@v4
-        with:
-          args: install wget zip
-
-      - name: Build
-        env:
-          BUILD_ARCH: ${{ matrix.arch == 'x86' && 'win32' || 'win64' }}
-        run: |
-          just build-win-package
-          just clean-pyinstaller-dist
-
-      - name: Save release binaries for windows ${{ matrix.arch }}
-        uses: actions/upload-artifact@v7
-        with:
-          name: release_dist_bin_windows_${{ matrix.arch }}
-          path: dist
-
-  build_appimage:
-    needs: build_python
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v7
-      - uses: extractions/setup-just@v4
-
-      - name: Load release python packages
-        uses: actions/download-artifact@v8
-        with:
-          name: release_dist_python
-          path: dist
-
-      - uses: actions/setup-python@v7
-        with:
-          python-version: ${{ env.BUILD_PYTHON_VERSION }}
-
-      - name: Install requirements
-        run: |
-          sudo apt-get install -y desktop-file-utils appstream-util
-
-      - name: Build
-        run: |
-          just build-linux-appimage
-
-      - name: Save release binaries for linux x64
-        uses: actions/upload-artifact@v7
-        with:
-          name: release_dist_bin_linux_x64
-          path: dist
+  build:
+    uses: ./.github/workflows/build.yml
 
   release:
     if: github.event_name == 'push' || github.event.inputs.tag != ''
-    needs: [ build_win, build_mac, build_appimage ]
+    needs: [ build ]
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -180,34 +38,11 @@ jobs:
           name: release_dist_python
           path: dist
 
-      - name: Load release binaries for linux x64
+      - name: Load release binaries
         uses: actions/download-artifact@v8
         with:
-          name: release_dist_bin_linux_x64
-          path: dist
-
-      - name: Load release binaries for windows x86
-        uses: actions/download-artifact@v8
-        with:
-          name: release_dist_bin_windows_x86
-          path: dist
-
-      - name: Load release binaries for windows x64
-        uses: actions/download-artifact@v8
-        with:
-          name: release_dist_bin_windows_x64
-          path: dist
-
-      - name: Load release binaries for macos x64
-        uses: actions/download-artifact@v8
-        with:
-          name: release_dist_bin_macos_x64
-          path: dist
-
-      - name: Load release binaries for macos arm64
-        uses: actions/download-artifact@v8
-        with:
-          name: release_dist_bin_macos_arm64
+          pattern: release_dist_bin_*
+          merge-multiple: true
           path: dist
 
       - name: Create Release
