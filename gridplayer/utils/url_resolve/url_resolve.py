@@ -105,25 +105,85 @@ class VideoURLResolver(QObject):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
+        self._is_busy = False
+        self._is_closed = False
+
         self.thread = QThread()
 
         self.worker = VideoURLResolverWorker()
         self.worker.moveToThread(self.thread)
 
-        self.worker.url_resolved.connect(self.url_resolved)
-        self.worker.error.connect(self.error)
-        self.worker.update_status.connect(self.update_status)
+        self.worker.url_resolved.connect(self._on_resolved)
+        self.worker.error.connect(self._on_error)
+        self.worker.update_status.connect(self._on_status)
 
         self._resolve_url.connect(self.worker.resolve)
 
         self.thread.start()
 
     def cleanup(self):
+        if self._is_closed:
+            return
+
+        self._is_closed = True
+
+        self.worker.url_resolved.disconnect()
+        self.worker.error.disconnect()
+        self.worker.update_status.disconnect()
+
         self.thread.quit()
-        self.thread.wait()
+
+        # a resolver can't be interrupted, and yt-dlp on a slow host can
+        # take its time, so waiting for it here freezes whoever is closing
+        if self._is_busy:
+            _abandon(self.thread, self.worker)
+        else:
+            self.thread.wait()
 
     def resolve(self, url):
+        if self._is_closed:
+            return
+
+        self._is_busy = True
         self._resolve_url.emit(url)
+
+    # results posted just before cleanup still arrive after it
+    def _on_resolved(self, video: ResolvedVideo):
+        self._is_busy = False
+        if not self._is_closed:
+            self.url_resolved.emit(video)
+
+    def _on_error(self):
+        self._is_busy = False
+        if not self._is_closed:
+            self.error.emit()
+
+    def _on_status(self, message: str):
+        if not self._is_closed:
+            self.update_status.emit(message)
+
+
+# resolver threads whose video went away mid-resolve, left to run out on
+# their own. They are held here until they do: a QThread dropped while it
+# is still running takes the whole app down with it.
+_abandoned: set[tuple[QThread, QObject]] = set()
+
+
+def _abandon(thread: QThread, worker: QObject) -> None:
+    _log.debug("Leaving URL resolve to finish in the background")
+
+    entry = (thread, worker)
+    _abandoned.add(entry)
+
+    def release():
+        thread.wait()
+        _abandoned.discard(entry)
+
+    thread.finished.connect(release)
+
+    # it may have stopped before there was anyone to tell
+    if thread.isFinished():
+        release()
 
 
 def _make_status_msg(resolver_id: URLResolver):
