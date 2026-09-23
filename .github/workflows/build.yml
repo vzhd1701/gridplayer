@@ -185,6 +185,10 @@ jobs:
         with:
           python-version: ${{ env.BUILD_PYTHON_VERSION }}
 
+      # the Linux metadata puts the changelog in with uv run
+      - name: Install the latest version of uv
+        uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
+
       - name: Install requirements
         run: |
           sudo apt-get install -y desktop-file-utils appstream-util
