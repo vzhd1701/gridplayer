@@ -52,7 +52,7 @@ def _unwrap_dbus(value):
     return value
 
 
-def _portal_read(namespace: str, key: str):
+def portal_read(namespace: str, key: str):
     bus = QDBusConnection.sessionBus()
     if not bus.isConnected():
         return None
@@ -74,7 +74,7 @@ def _portal_read(namespace: str, key: str):
 
 
 def _portal_color_scheme() -> "int | None":
-    value = _portal_read(_PORTAL_NS, _PORTAL_KEY)
+    value = portal_read(_PORTAL_NS, _PORTAL_KEY)
     if value is None:
         return None
     try:

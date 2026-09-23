@@ -15,6 +15,7 @@ from gridplayer.params.theme import (
     on_system_theme_changed,
 )
 from gridplayer.utils.darkmode import watch_system_theme
+from gridplayer.utils.wayland import follow_desktop_cursor
 
 
 def init_app():
@@ -22,6 +23,8 @@ def init_app():
         app = QApplication([*sys.argv, "-platform", env.QT_PLATFORM])
     else:
         app = QApplication(sys.argv)
+
+    follow_desktop_cursor()
 
     init_resources()
 
