@@ -48,21 +48,32 @@ def is_hls_live_stream(
 
     http_stream = HTTPStream(session, url, buffered=False)
     with contextlib.closing(http_stream.open()) as stream:
+        lines = (line.decode("utf-8") for line in stream)
+
         first_lines = 20
-        playlist_header = "".join(
-            line.decode("utf-8") for line in itertools.islice(stream, first_lines)
-        )
+        playlist_header = "".join(itertools.islice(lines, first_lines))
 
-    if "#EXT-X-TWITCH-LIVE-SEQUENCE" in playlist_header:
-        return True
+        if "#EXT-X-TWITCH-LIVE-SEQUENCE" in playlist_header:
+            return True
 
-    if "#EXT-X-PLAYLIST-TYPE:VOD" in playlist_header:
-        return False
+        if "#EXT-X-PLAYLIST-TYPE:VOD" in playlist_header:
+            return False
 
-    if re.search("#EXT-X-MEDIA-SEQUENCE:0$", playlist_header, re.M):
-        return False
+        if re.search("#EXT-X-MEDIA-SEQUENCE:0$", playlist_header, re.M):
+            return False
 
-    return bool(re.search(r"#EXT-X-MEDIA-SEQUENCE:[\d.]+$", playlist_header, re.M))
+        if not re.search(r"#EXT-X-MEDIA-SEQUENCE:[\d.]+$", playlist_header, re.M):
+            return False
+
+        # A window that has moved past its first segment is what a live
+        # playlist looks like, but some hosts number a finished video from
+        # one. Only the end of the playlist tells them apart, since a
+        # finished one says so in its last line.
+        return not _has_endlist(itertools.chain(playlist_header.splitlines(), lines))
+
+
+def _has_endlist(lines) -> bool:
+    return any(line.strip() == "#EXT-X-ENDLIST" for line in lines)
 
 
 def is_dash_live_stream(
