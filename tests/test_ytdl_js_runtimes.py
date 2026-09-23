@@ -193,7 +193,9 @@ class TestWhereItLooks:
         assert "/run/host/usr/bin" in [d.replace("\\", "/") for d in searched]
 
     def test_nothing_else_is_shown_them(self, data_dir, no_setting):
-        assert not [d for d in js_runtime.js_runtime_dirs() if "run" in str(d)]
+        host = js_runtime.FLATPAK_HOST_ROOT
+
+        assert not [d for d in js_runtime.js_runtime_dirs() if d.is_relative_to(host)]
 
 
 def _exe(basename: str) -> str:

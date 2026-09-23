@@ -19,7 +19,10 @@ from gridplayer.widgets.cookie_store_list import (
 
 NETSCAPE_HEADER = "# Netscape HTTP Cookie File\n"
 
-LONG_AFTER = 4102444800  # 2100
+# Noon on 2100-01-01 where the tests run, since the table shows local
+# dates: a UTC midnight is the day before west of Greenwich, and a minute
+# before it is the day before in UTC itself
+LONG_AFTER = int(time.mktime((2100, 1, 1, 12, 0, 0, 0, 0, -1)))
 LONG_AGO = 1000000000  # 2001
 SESSION = 0
 SOON = int(time.time()) + 30 * 24 * 3600
