@@ -8,6 +8,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ### Changed
 
+- Add Best and Audio only to the stream quality menu, drop Worst ([76c4dbc](https://github.com/vzhd1701/gridplayer/commit/76c4dbc1abaa0228028704f80826bb1f81f3c1d3))
 - Remove minimum cell size, hide overlay if too small, reduce minimum window size ([f5be739](https://github.com/vzhd1701/gridplayer/commit/f5be7392de3e00ac3f4dadd751bea30886cca105))
 - Save playlists as JSON, playlists written by this version will not open in GridPlayer 0.5.x and older ([3c7f4c9](https://github.com/vzhd1701/gridplayer/commit/3c7f4c9e01d0cda2db4ae6dfa9e63a945beab5b4))
 - Rename Repeat to When finished: Loop this file, Next/Previous/Random in folder, Pause at start, Stop, Close ([848487b](https://github.com/vzhd1701/gridplayer/commit/848487b7d6d552229a4b503fdf5cbdac6995e373))
@@ -21,8 +22,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ### Added
 
+- Add `--platform` command line argument to force xcb or wayland on linux ([3b19205](https://github.com/vzhd1701/gridplayer/commit/3b192051738050add5b35f858c642929fae13431))
+- Add browser impersonation for yt-dlp, for sites that block non-browser requests (not available in 32-bit Windows build) ([9a4ef05](https://github.com/vzhd1701/gridplayer/commit/9a4ef05a54d0a835fe07592d0d42cc0c89208dae))
+- Add option to select audio output device per video ([c02a4b6](https://github.com/vzhd1701/gridplayer/commit/c02a4b639801ec8278eaa57848541efef13a9ec6))
+- Add subtitles support with track selection, external subtitle files, encoding and style settings ([470e40c](https://github.com/vzhd1701/gridplayer/commit/470e40c56ee7067a8e43f3ae9e48d54c38452b2b)), ([f433b35](https://github.com/vzhd1701/gridplayer/commit/f433b3539f598059a346573f7e0d7adb4822136c)), ([58f370d](https://github.com/vzhd1701/gridplayer/commit/58f370d66ad2c389951276d61aeb438a4bba0ab3))
+- Add option to set audio delay ([f6d46da](https://github.com/vzhd1701/gridplayer/commit/f6d46dad02eb3620a2bfdf4ee98f7e0675533632))
+- Add option to attach external audio tracks ([efea4fb](https://github.com/vzhd1701/gridplayer/commit/efea4fb44e2c70448fc921420af09cec47e6cfbf))
+- Add option to set JS runtime path for yt-dlp, improve its auto detection ([ad13b69](https://github.com/vzhd1701/gridplayer/commit/ad13b69e530b34488001d52c3a41df5d3abc37a3))
+- Add network and yt-dlp checks in settings ([9e16e83](https://github.com/vzhd1701/gridplayer/commit/9e16e83fb453026d2281cd20ad1ec91623a536fd)), ([7b1abd6](https://github.com/vzhd1701/gridplayer/commit/7b1abd6c557e11fd9fafb3b58a3da2b6604b5cb8))
+- Add network settings: HTTP/SOCKS proxy, user agent, request timeout, force IPv4 and TLS verification ([d22ea68](https://github.com/vzhd1701/gridplayer/commit/d22ea6800fe25982b8bc045da84665c2282871f6))
 - Add support for cookies exported from a browser, used by both yt-dlp and streamlink ([c3ba278](https://github.com/vzhd1701/gridplayer/commit/c3ba2785014a0515e11dbad7ba8786974fa699b9)), ([7b0e0ff](https://github.com/vzhd1701/gridplayer/commit/7b0e0ff3d7a39489d9490d209e7fb32a71626264)), ([58e7425](https://github.com/vzhd1701/gridplayer/commit/58e74259daa62d4ecdd7f71a56bae27be56966fc)), ([7a01e6e](https://github.com/vzhd1701/gridplayer/commit/7a01e6ec5582256cd5a9950d798c5f52b2fdb8d7))
-- Add option to pick a preferred audio track language, with support for multi-language streams ([b40dd6d](https://github.com/vzhd1701/gridplayer/commit/b40dd6dde5d5126b5f0854f9062c848000d7e2d9))
+- Add option to pick a preferred audio track language, with support for multi-language streams ([b40dd6d](https://github.com/vzhd1701/gridplayer/commit/b40dd6dde5d5126b5f0854f9062c848000d7e2d9)), ([117b2ea](https://github.com/vzhd1701/gridplayer/commit/117b2ea5a7f8571fd16949f52add8b4d714f9cb4))
 - Add auto mode for stream quality, picking the quality that fits the pane size ([654e906](https://github.com/vzhd1701/gridplayer/commit/654e9069dedc4873db8848fae2acf37608c5df99))
 - Add option to retry a stream when it fails to load ([5450670](https://github.com/vzhd1701/gridplayer/commit/545067034c1f778739173b0f33caea86fb4f9ef2))
 - Add single process software video decode mode ([dcf7ef4](https://github.com/vzhd1701/gridplayer/commit/dcf7ef49544787a6e540d4c23edfd97a84ba5b8a))
@@ -45,6 +55,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ### Fixed
 
+- Run on xcb (Xwayland) on linux for hardware video, fall back to software video decoding on pure wayland ([3b19205](https://github.com/vzhd1701/gridplayer/commit/3b192051738050add5b35f858c642929fae13431)), ([e5816a6](https://github.com/vzhd1701/gridplayer/commit/e5816a63af2ac38de3b535732ffd05a1c94e9b99)), ([9f1c12c](https://github.com/vzhd1701/gridplayer/commit/9f1c12c23712e9f4a5f4b8d7b5a151954c92819e)), ([f5f77c2](https://github.com/vzhd1701/gridplayer/commit/f5f77c27d69167f2b204603414d2d4cba1c9dfc9))
+- Play AES-128 encrypted HLS streams ([3b81f84](https://github.com/vzhd1701/gridplayer/commit/3b81f84c146d36034640ffe73782395312b1d557))
+- Fix some HLS videos playing only the last minute or failing to load ([9525976](https://github.com/vzhd1701/gridplayer/commit/9525976c95d897a1214c5e104c48f766955de173)), ([7cabff8](https://github.com/vzhd1701/gridplayer/commit/7cabff8f045aaf6514c39968a0b056b7f4c634ad))
+- Close videos faster while their URL is still resolving ([687ad79](https://github.com/vzhd1701/gridplayer/commit/687ad79beee63be2d44a7fbc6ebeb152ec7daa24))
+- Make next/previous frame stepping more accurate ([fa490af](https://github.com/vzhd1701/gridplayer/commit/fa490af19cfb2b45bfdbcfd4f1d7f12e43c1c22c))
+- Loop videos seamlessly, even very short clips ([b14e633](https://github.com/vzhd1701/gridplayer/commit/b14e6338c1b868c499ef971ff3b2640cc36dcd99))
 - Keep counting playback time past 24 days instead of wrapping to a negative value ([5b61b54](https://github.com/vzhd1701/gridplayer/commit/5b61b5444a82e329b5eab56565114bdcb3d0a2f5))
 - Improve streaming stability ([5450670](https://github.com/vzhd1701/gridplayer/commit/545067034c1f778739173b0f33caea86fb4f9ef2)), ([0a17ab1](https://github.com/vzhd1701/gridplayer/commit/0a17ab1c6e15acea302d5b63a3c26f37c6deb45d))
 - Force dav1d for AV1 adaptive streams to avoid glitches when seeking ([293b7cb](https://github.com/vzhd1701/gridplayer/commit/293b7cbd7725984bd5d2d6fe95f094dd80bc1411))
@@ -85,7 +101,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Handle invalid track metadata and duplicate closes ([#319](https://github.com/vzhd1701/gridplayer/issues/319)) ([b0ade83](https://github.com/vzhd1701/gridplayer/commit/b0ade837afaecb86b77fe4ced0f4c0a4935568bf))
 - Improve missing libvlc handling ([fd4539f](https://github.com/vzhd1701/gridplayer/commit/fd4539f80742fa0bf70c850cf3a41c39e4bc843c))
 - Check if action is enabled on invoke to keep hotkeys always active ([5a18d0c](https://github.com/vzhd1701/gridplayer/commit/5a18d0c48a99bd82fa19fffcdeb12e789a696339))
-- Force xcb on linux becuase libVLC doesnt work with wayland ([f5f77c2](https://github.com/vzhd1701/gridplayer/commit/f5f77c27d69167f2b204603414d2d4cba1c9dfc9))
 
 ## [0.5.5] - 2026-07-24
 
