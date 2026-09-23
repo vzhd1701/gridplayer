@@ -3,11 +3,11 @@ import logging
 from functools import partial
 from io import IOBase
 from itertools import chain
-from urllib.parse import urljoin
+from urllib.parse import urljoin, urlparse
 
 from requests import Response
 from streamlink import StreamError
-from streamlink.stream.hls import M3U8, HLSStream, parse_m3u8
+from streamlink.stream.hls import M3U8, HLSStream, Key, parse_m3u8
 from streamlink.stream.http import HTTPStream
 from streamlink.stream.wrappers import StreamIOIterWrapper, StreamIOThreadWrapper
 
@@ -136,12 +136,29 @@ class HLSProxy(HTTPStreamProxy):
     def _proxify_hls_playlist(self, hls_playlist: M3U8) -> str:
         for segment in hls_playlist.segments:  # type: HLSSegment
             segment.uri = self._proxify_url(segment.uri)
+            segment.key = self._proxify_key(segment.key)
             if segment.map:
                 segment.map = dataclasses.replace(
-                    segment.map, uri=self._proxify_url(segment.map.uri)
+                    segment.map,
+                    uri=self._proxify_url(segment.map.uri),
+                    key=self._proxify_key(segment.map.key),
                 )
 
         return m3u8_to_str(hls_playlist)
+
+    def _proxify_key(self, key: Key | None) -> Key | None:
+        """Point the key at the proxy, as the segments it decrypts are.
+
+        A host that wants cookies for its segments wants them for its
+        key too. Only a key that is fetched over HTTP goes through here:
+        one written into the playlist as data, or held by a DRM system,
+        is not something the proxy could fetch.
+        """
+
+        if key is None or urlparse(key.uri or "").scheme not in {"http", "https"}:
+            return key
+
+        return dataclasses.replace(key, uri=self._proxify_url(key.uri))
 
     def _proxify_url(self, url):
         stream = Stream(

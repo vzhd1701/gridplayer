@@ -2,9 +2,12 @@ import re
 import struct
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from types import MappingProxyType
 
 import pytest
 import requests
+from Crypto.Cipher import AES
+from Crypto.Util.Padding import pad, unpad
 from requests import Response
 from streamlink.stream.hls import parse_m3u8
 
@@ -170,6 +173,166 @@ def test_a_live_window_is_cut_down_to_its_edge():
     assert _served_segments(playlist) == [
         f"http://seg/{n}.ts" for n in range(40 - LIVESTREAM_EDGE, 40)
     ]
+
+
+def test_a_live_edge_is_numbered_from_where_it_starts():
+    """The edge starts further along than the window it was cut from.
+
+    Numbered from the start of the window, every segment would be taken
+    for one 24 places before it, and one encrypted without an IV of its
+    own is decrypted with its number.
+    """
+
+    playlist = _host_playlist(first_num=1000, count=40)
+
+    served = m3u8_to_str(parse_m3u8(playlist, "http://host/"))
+
+    assert f"#EXT-X-MEDIA-SEQUENCE:{1000 + 40 - LIVESTREAM_EDGE}" in served
+
+
+def _served_body(playlist: str) -> list[str]:
+    """What the rewritten playlist says past its header."""
+
+    lines = m3u8_to_str(parse_m3u8(playlist, "http://host/")).splitlines()
+
+    header_end = next(
+        n for n, line in enumerate(lines) if line.startswith("#EXT-X-TARGETDURATION")
+    )
+
+    return lines[header_end + 1 :]
+
+
+class TestEncryptedPlaylists:
+    """AES-128 playlists name the key their segments are decrypted with.
+
+    Leaving the key out hands VLC segments it has no way to decrypt.
+    """
+
+    def test_the_key_is_kept_where_it_is_declared(self):
+        playlist = (
+            "#EXTM3U\n"
+            "#EXT-X-TARGETDURATION:4\n"
+            '#EXT-X-KEY:METHOD=AES-128,URI="key1"\n'
+            "#EXTINF:4.0,\n"
+            "seg0.ts\n"
+            "#EXTINF:4.0,\n"
+            "seg1.ts\n"
+            '#EXT-X-KEY:METHOD=AES-128,URI="key2"\n'
+            "#EXTINF:4.0,\n"
+            "seg2.ts\n"
+            "#EXT-X-ENDLIST\n"
+        )
+
+        assert _served_body(playlist) == [
+            '#EXT-X-KEY:METHOD=AES-128,URI="http://host/key1"',
+            "#EXTINF:4.0,",
+            "http://host/seg0.ts",
+            "#EXTINF:4.0,",
+            "http://host/seg1.ts",
+            '#EXT-X-KEY:METHOD=AES-128,URI="http://host/key2"',
+            "#EXTINF:4.0,",
+            "http://host/seg2.ts",
+            "#EXT-X-ENDLIST",
+        ]
+
+    def test_the_key_keeps_everything_it_was_declared_with(self):
+        playlist = (
+            "#EXTM3U\n"
+            "#EXT-X-VERSION:5\n"
+            "#EXT-X-TARGETDURATION:4\n"
+            '#EXT-X-KEY:METHOD=AES-128,URI="key",IV=0x0123456789abcdef0123456789ABCDEF,'
+            'KEYFORMAT="identity",KEYFORMATVERSIONS="1"\n'
+            "#EXTINF:4.0,\n"
+            "seg0.ts\n"
+            "#EXT-X-ENDLIST\n"
+        )
+
+        assert (
+            '#EXT-X-KEY:METHOD=AES-128,URI="http://host/key",'
+            "IV=0x0123456789ABCDEF0123456789ABCDEF,"
+            'KEYFORMAT="identity",KEYFORMATVERSIONS="1"'
+        ) in _served_body(playlist)
+
+    def test_a_playlist_that_stops_encrypting_says_so(self):
+        playlist = (
+            "#EXTM3U\n"
+            "#EXT-X-TARGETDURATION:4\n"
+            '#EXT-X-KEY:METHOD=AES-128,URI="key"\n'
+            "#EXTINF:4.0,\n"
+            "seg0.ts\n"
+            "#EXT-X-KEY:METHOD=NONE\n"
+            "#EXTINF:4.0,\n"
+            "seg1.ts\n"
+            "#EXT-X-ENDLIST\n"
+        )
+
+        lines = _served_body(playlist)
+
+        assert (
+            lines.index("#EXT-X-KEY:METHOD=NONE")
+            == lines.index("http://host/seg0.ts") + 1
+        )
+
+    def test_a_playlist_that_never_encrypted_says_nothing_about_keys(self):
+        playlist = _host_playlist(first_num=0, count=3, end="#EXT-X-ENDLIST\n")
+
+        assert not any(line.startswith("#EXT-X-KEY") for line in _served_body(playlist))
+
+    def test_an_init_segment_mapped_before_the_key_is_left_unencrypted(self):
+        """A key only covers what comes after it, the map included."""
+
+        playlist = (
+            "#EXTM3U\n"
+            "#EXT-X-VERSION:7\n"
+            "#EXT-X-TARGETDURATION:4\n"
+            '#EXT-X-MAP:URI="init.mp4"\n'
+            '#EXT-X-KEY:METHOD=AES-128,URI="key"\n'
+            "#EXTINF:4.0,\n"
+            "seg0.m4s\n"
+            "#EXT-X-ENDLIST\n"
+        )
+
+        assert _served_body(playlist) == [
+            '#EXT-X-MAP:URI="http://host/init.mp4"',
+            '#EXT-X-KEY:METHOD=AES-128,URI="http://host/key"',
+            "#EXTINF:4.0,",
+            "http://host/seg0.m4s",
+            "#EXT-X-ENDLIST",
+        ]
+
+    def test_an_init_segment_mapped_after_the_key_is_encrypted_with_it(self):
+        playlist = (
+            "#EXTM3U\n"
+            "#EXT-X-VERSION:7\n"
+            "#EXT-X-TARGETDURATION:4\n"
+            '#EXT-X-KEY:METHOD=AES-128,URI="key"\n'
+            '#EXT-X-MAP:URI="init.mp4"\n'
+            "#EXTINF:4.0,\n"
+            "seg0.m4s\n"
+            "#EXT-X-ENDLIST\n"
+        )
+
+        assert _served_body(playlist)[:2] == [
+            '#EXT-X-KEY:METHOD=AES-128,URI="http://host/key"',
+            '#EXT-X-MAP:URI="http://host/init.mp4"',
+        ]
+
+    def test_a_live_edge_keeps_the_key_declared_before_it(self):
+        """The key was declared once, above segments cut off the window."""
+
+        segments = "".join(f"#EXTINF:4.0,\nseg{n}.ts\n" for n in range(40))
+        playlist = (
+            "#EXTM3U\n"
+            "#EXT-X-TARGETDURATION:4\n"
+            "#EXT-X-MEDIA-SEQUENCE:1000\n"
+            '#EXT-X-KEY:METHOD=AES-128,URI="key"\n'
+            f"{segments}"
+        )
+
+        assert _served_body(playlist)[:2] == [
+            '#EXT-X-KEY:METHOD=AES-128,URI="http://host/key"',
+            "#EXTINF:4.0,",
+        ]
 
 
 def test_master_playlist_pairs_audio_with_video():
@@ -550,10 +713,14 @@ class TestServingAPlaylistTheHostWrote:
 
     SEGMENT = b"segment bytes"
 
+    # anything else the host has, by path
+    FILES = MappingProxyType({})
+
     @pytest.fixture
     def upstream(self, serving):
         playlist = self.PLAYLIST
         segment = self.SEGMENT
+        files = self.FILES
 
         class Handler(BaseHTTPRequestHandler):
             protocol_version = "HTTP/1.1"
@@ -570,6 +737,7 @@ class TestServingAPlaylistTheHostWrote:
 
                 is_playlist = self.path.endswith(".m3u8")
                 body = playlist.encode("utf-8") if is_playlist else segment
+                body = files.get(self.path, body)
 
                 self.send_response(HTTPStatus.OK)
                 self.send_header("Content-Length", str(len(body)))
@@ -675,3 +843,66 @@ class TestServingAPlaylistWithAnInitSegment(TestServingAPlaylistTheHostWrote):
         assert init_url.startswith("http://127.0.0.1:")
         assert requests.get(init_url, timeout=5).content == self.SEGMENT
         assert upstream.requested == ["/live/index.m3u8", "/live/init.mp4"]
+
+
+AES_KEY = bytes(range(16))
+
+# numbered past zero, so that a segment without an IV of its own is not
+# decrypted right by an IV that happened to be all zeroes
+FIRST_SEGMENT_NUM = 7
+
+PLAIN_SEGMENT = b"segment bytes, decrypted"
+
+
+def _encrypted(data: bytes, segment_num: int) -> bytes:
+    """A segment the way an AES-128 host serves it, IV left to its number."""
+
+    iv = segment_num.to_bytes(16, "big")
+
+    return AES.new(AES_KEY, AES.MODE_CBC, iv).encrypt(pad(data, AES.block_size))
+
+
+class TestServingAnEncryptedPlaylist(TestServingAPlaylistTheHostWrote):
+    """AES-128 segments come with a key the host wants cookies for too."""
+
+    PLAYLIST = (
+        "#EXTM3U\n"
+        "#EXT-X-TARGETDURATION:4\n"
+        f"#EXT-X-MEDIA-SEQUENCE:{FIRST_SEGMENT_NUM}\n"
+        '#EXT-X-KEY:METHOD=AES-128,URI="stream.key"\n'
+        "#EXTINF:4.0,\n"
+        "seg0.ts\n"
+        "#EXTINF:4.0,\n"
+        "seg1.ts\n"
+        "#EXT-X-ENDLIST\n"
+    )
+
+    SEGMENT = _encrypted(PLAIN_SEGMENT, FIRST_SEGMENT_NUM)
+
+    FILES = MappingProxyType({"/live/stream.key": AES_KEY})
+
+    def test_the_key_is_pointed_back_at_the_proxy(self, upstream, relay):
+        response = requests.get(relay(), timeout=5)
+
+        key_url = re.search(r'#EXT-X-KEY:METHOD=AES-128,URI="([^"]+)"', response.text)
+
+        assert key_url.group(1).startswith("http://127.0.0.1:")
+        assert requests.get(key_url.group(1), timeout=5).content == AES_KEY
+        assert upstream.requested == ["/live/index.m3u8", "/live/stream.key"]
+
+    def test_what_is_served_decrypts_with_what_the_playlist_says(self, relay):
+        """Everything a player needs to decrypt a segment, as it gets it."""
+
+        playlist_url = relay()
+        playlist = requests.get(playlist_url, timeout=5).text
+
+        parsed = parse_m3u8(playlist, playlist_url)
+        segment = parsed.segments[0]
+
+        key = requests.get(segment.key.uri, timeout=5).content
+        data = requests.get(segment.uri, timeout=5).content
+        iv = segment.key.iv or segment.num.to_bytes(16, "big")
+
+        decrypted = unpad(AES.new(key, AES.MODE_CBC, iv).decrypt(data), AES.block_size)
+
+        assert decrypted == PLAIN_SEGMENT

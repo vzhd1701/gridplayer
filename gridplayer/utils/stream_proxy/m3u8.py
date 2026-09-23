@@ -1,7 +1,7 @@
 import math
 from collections.abc import Sequence
 
-from streamlink.stream.hls import M3U8, ByteRange, HLSSegment
+from streamlink.stream.hls import M3U8, ByteRange, HLSSegment, Key, Map
 
 from gridplayer.models.stream import StreamFragment
 
@@ -9,28 +9,42 @@ LIVESTREAM_EDGE = 16
 
 
 def m3u8_to_str(hls_playlist: M3U8):
-    res = ["#EXTM3U"]
-    res += [f"#EXT-X-VERSION:{hls_playlist.version}"]
-    if hls_playlist.playlist_type:
-        res += [f"#EXT-X-PLAYLIST-TYPE:{hls_playlist.playlist_type}"]
-    if hls_playlist.media_sequence:
-        res += [f"#EXT-X-MEDIA-SEQUENCE:{hls_playlist.media_sequence}"]
-    res += [f"#EXT-X-TARGETDURATION:{hls_playlist.targetduration}"]
-
     # grab only the edge if it's a livestream
     if _is_live_window(hls_playlist):
         segments = hls_playlist.segments[-LIVESTREAM_EDGE:]
     else:
         segments = hls_playlist.segments
 
+    # the edge starts further along than the window did, and a segment
+    # encrypted without an IV of its own is decrypted with its number
+    media_sequence = segments[0].num if segments else hls_playlist.media_sequence
+
+    res = ["#EXTM3U"]
+    if hls_playlist.version:
+        res += [f"#EXT-X-VERSION:{hls_playlist.version}"]
+    if hls_playlist.playlist_type:
+        res += [f"#EXT-X-PLAYLIST-TYPE:{hls_playlist.playlist_type}"]
+    if media_sequence:
+        res += [f"#EXT-X-MEDIA-SEQUENCE:{media_sequence}"]
+    res += [f"#EXT-X-TARGETDURATION:{hls_playlist.targetduration}"]
+
     s_map = None
+    s_key = None
     for s in segments:
+        # the key in effect where the map was declared is the one it is
+        # encrypted with, which need not be the segment's own
         if s.map is not None and s.map != s_map:
             s_map = s.map
 
-            res += _segment_to_str(s, add_map=True)
-        else:
-            res += _segment_to_str(s)
+            res += _key_change(s_key, s.map.key)
+            s_key = _key_in_effect(s.map.key)
+
+            res += [_map_to_str(s.map)]
+
+        res += _key_change(s_key, s.key)
+        s_key = _key_in_effect(s.key)
+
+        res += _segment_to_str(s)
 
     if hls_playlist.is_endlist:
         res += ["#EXT-X-ENDLIST"]
@@ -52,7 +66,60 @@ def _is_live_window(hls_playlist: M3U8) -> bool:
     return bool(hls_playlist.media_sequence) and not is_finished
 
 
-def _segment_to_str(segment: HLSSegment, add_map=False) -> list[str]:
+def _key_in_effect(key: Key | None) -> Key | None:
+    """The key segments are decrypted with, or nothing when they are not."""
+
+    if key is None or key.method == "NONE":
+        return None
+
+    return key
+
+
+def _key_change(in_effect: Key | None, key: Key | None) -> list[str]:
+    """What has to be said for `key` to take over from the one in effect.
+
+    A key stays in effect for every segment after it, so it is only
+    written out where it changes, and a playlist that stops encrypting
+    part way through has to say so.
+    """
+
+    key = _key_in_effect(key)
+
+    if key == in_effect:
+        return []
+
+    if key is None:
+        return ["#EXT-X-KEY:METHOD=NONE"]
+
+    return [_key_to_str(key)]
+
+
+def _key_to_str(key: Key) -> str:
+    attrs = [f"METHOD={key.method}"]
+
+    if key.uri:
+        attrs += [f'URI="{key.uri}"']
+    if key.iv is not None:
+        attrs += [f"IV=0x{key.iv.hex().upper()}"]
+    if key.key_format:
+        attrs += [f'KEYFORMAT="{key.key_format}"']
+    if key.key_format_versions:
+        attrs += [f'KEYFORMATVERSIONS="{key.key_format_versions}"']
+
+    return "#EXT-X-KEY:{}".format(",".join(attrs))
+
+
+def _map_to_str(segment_map: Map) -> str:
+    byterange = (
+        f',BYTERANGE="{_byterange_to_str(segment_map.byterange)}"'
+        if segment_map.byterange
+        else ""
+    )
+
+    return f'#EXT-X-MAP:URI="{segment_map.uri}"{byterange}'
+
+
+def _segment_to_str(segment: HLSSegment) -> list[str]:
     res = []
 
     if segment.date:
@@ -63,15 +130,6 @@ def _segment_to_str(segment: HLSSegment, add_map=False) -> list[str]:
         res += ["#EXT-X-DISCONTINUITY"]
     if segment.byterange:
         res += [f"#EXT-X-BYTERANGE:{_byterange_to_str(segment.byterange)}"]
-    if segment.map and add_map:
-        res += [
-            '#EXT-X-MAP:URI="{}"{}'.format(
-                segment.map.uri,
-                f',BYTERANGE="{_byterange_to_str(segment.map.byterange)}"'
-                if segment.map.byterange
-                else "",
-            )
-        ]
 
     res += [
         "#EXTINF:{},{}".format(segment.duration, segment.title if segment.title else "")
