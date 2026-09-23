@@ -71,6 +71,27 @@ def test_dashdash_allows_dash_prefixed_filename(monkeypatch):
     assert sys.argv == ["gridplayer", "-weird.mp4"]
 
 
+def test_dashdash_keeps_files_on_both_sides_in_order(monkeypatch):
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        ["gridplayer", "a.mp4", "--user-data-dir", "data", "--", "-b.mp4", "c.mp4"],
+    )
+
+    init_cli_args()
+
+    assert os.environ[app_dir.ENV_USER_DATA_DIR] == "data"
+    assert sys.argv == ["gridplayer", "a.mp4", "-b.mp4", "c.mp4"]
+
+
+def test_dashdash_makes_options_after_it_files(monkeypatch):
+    monkeypatch.setattr(sys, "argv", ["gridplayer", "--", "--version", "--"])
+
+    init_cli_args()
+
+    assert sys.argv == ["gridplayer", "--version", "--"]
+
+
 def test_unknown_option_exits_two(monkeypatch, capsys):
     monkeypatch.setattr(sys, "argv", ["gridplayer", "-platform", "xcb"])
 

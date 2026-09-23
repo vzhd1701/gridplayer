@@ -46,9 +46,18 @@ def init_cli_args(argv=None):
         version=f"{__app_name__} {__version__}",
     )
 
+    # Everything after -- is a file however it looks. Split off here
+    # because parse_intermixed_args before Python 3.12 rejects -- with
+    # nothing but dash prefixed names after it and no file before it
+    if "--" in argv:
+        dashdash_at = argv.index("--")
+        argv, files_after_dashdash = argv[:dashdash_at], argv[dashdash_at + 1 :]
+    else:
+        files_after_dashdash = []
+
     args = parser.parse_intermixed_args(argv)
 
-    sys.argv[:] = [sys.argv[0], *args.files]
+    sys.argv[:] = [sys.argv[0], *args.files, *files_after_dashdash]
 
     if args.user_data_dir.strip():
         os.environ[ENV_USER_DATA_DIR] = args.user_data_dir.strip()
