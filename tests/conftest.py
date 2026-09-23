@@ -19,6 +19,12 @@ from gridplayer.utils import cookies, network
 # Set to windows, cocoa or xcb to watch a test draw.
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
+# Talk to no desktop either. On Linux the dark mode check asks the desktop
+# portal over the session bus, and where there is a bus with no portal
+# answering on it (a login over ssh) every ask waits out the 25 second
+# D-Bus timeout, twice. A bus that is not there is given up on at once.
+os.environ["DBUS_SESSION_BUS_ADDRESS"] = "unix:path=/nonexistent/gridplayer-tests"
+
 # what a real Streamlink session starts out with, where a test cares what
 # a setting cleared again leaves behind
 DEFAULT_TIMEOUT_SEC = 20.0

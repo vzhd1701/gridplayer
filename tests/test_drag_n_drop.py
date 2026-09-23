@@ -1,3 +1,4 @@
+import time
 from types import SimpleNamespace
 
 import pytest
@@ -257,7 +258,11 @@ def test_drag_leave_ends_drag_ui_after_event_loop(mocker):
     assert ended == []
     assert manager._drag_leave_timer.isActive()
 
-    QApplication.processEvents()
+    # at once everywhere but Linux, where X11 is given a grace period
+    deadline = time.monotonic() + 2
+    while not ended and time.monotonic() < deadline:
+        QApplication.processEvents()
+        time.sleep(0.01)
 
     assert ended == [False]
     assert not manager._drag_leave_timer.isActive()

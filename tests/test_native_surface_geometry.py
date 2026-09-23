@@ -6,6 +6,7 @@ from PyQt5.QtWidgets import QApplication, QWidget
 
 import gridplayer.widgets.video_frame_vlc_base as vlc_base
 from gridplayer.params.static import HWCropBorderOffset
+from gridplayer.utils import darkmode
 from gridplayer.widgets.video_frame_vlc_base import apply_vlc_hw_surface_geometry
 from gridplayer.widgets.video_frame_vlc_hw_sp import VideoFrameVLCHWSP
 from gridplayer.widgets.video_frame_vlc_sw_sp import VideoFrameVLCSWSP
@@ -99,6 +100,9 @@ def _stub_offset_setting(monkeypatch):
 def _platform(monkeypatch, *, windows):
     monkeypatch.setattr(vlc_base.env, "IS_WINDOWS", windows)
     monkeypatch.setattr(vlc_base.env, "IS_LINUX", not windows)
+
+    # the pretend platform would be asked for its colour scheme the real way
+    monkeypatch.setattr(darkmode, "is_system_dark_mode", lambda: False)
 
 
 def test_native_frame_fills_uncovered_area_black_once_loaded(monkeypatch):
