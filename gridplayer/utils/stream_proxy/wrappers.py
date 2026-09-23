@@ -137,8 +137,8 @@ class HLSProxy(HTTPStreamProxy):
         for segment in hls_playlist.segments:  # type: HLSSegment
             segment.uri = self._proxify_url(segment.uri)
             if segment.map:
-                segment.map = segment.map._replace(
-                    uri=self._proxify_url(segment.map.uri)
+                segment.map = dataclasses.replace(
+                    segment.map, uri=self._proxify_url(segment.map.uri)
                 )
 
         return m3u8_to_str(hls_playlist)

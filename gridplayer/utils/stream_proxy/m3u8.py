@@ -18,7 +18,7 @@ def m3u8_to_str(hls_playlist: M3U8):
     res += [f"#EXT-X-TARGETDURATION:{hls_playlist.targetduration}"]
 
     # grab only the edge if it's a livestream
-    if hls_playlist.media_sequence:
+    if _is_live_window(hls_playlist):
         segments = hls_playlist.segments[-LIVESTREAM_EDGE:]
     else:
         segments = hls_playlist.segments
@@ -36,6 +36,20 @@ def m3u8_to_str(hls_playlist: M3U8):
         res += ["#EXT-X-ENDLIST"]
 
     return "\n".join(res)
+
+
+def _is_live_window(hls_playlist: M3U8) -> bool:
+    """Whether a playlist is a window sliding along a live stream.
+
+    A window has moved on from its first segment, so it numbers them from
+    somewhere past zero. That alone does not make it live: some hosts
+    number a finished video from one, and cutting such a playlist down
+    to its edge leaves only the last minute of it to play.
+    """
+
+    is_finished = hls_playlist.is_endlist or hls_playlist.playlist_type == "VOD"
+
+    return bool(hls_playlist.media_sequence) and not is_finished
 
 
 def _segment_to_str(segment: HLSSegment, add_map=False) -> list[str]:

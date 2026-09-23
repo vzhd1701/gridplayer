@@ -1,3 +1,4 @@
+import re
 import struct
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -5,6 +6,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import pytest
 import requests
 from requests import Response
+from streamlink.stream.hls import parse_m3u8
 
 from gridplayer.models.stream import (
     HashableDict,
@@ -14,8 +16,10 @@ from gridplayer.models.stream import (
     StreamSessionOpts,
 )
 from gridplayer.utils.stream_proxy.m3u8 import (
+    LIVESTREAM_EDGE,
     build_master_playlist,
     build_media_playlist,
+    m3u8_to_str,
 )
 from gridplayer.utils.stream_proxy.mp4 import is_fragmented, parse_segment_index
 from gridplayer.utils.stream_proxy.server import (
@@ -119,6 +123,53 @@ def test_media_playlist_without_init_segment():
 
     assert "#EXT-X-MAP" not in playlist
     assert "#EXT-X-TARGETDURATION:30" in playlist
+
+
+def _host_playlist(first_num: int, count: int, header: str = "", end: str = ""):
+    segments = "".join(f"#EXTINF:4.0,\nhttp://seg/{n}.ts\n" for n in range(count))
+
+    return (
+        "#EXTM3U\n"
+        "#EXT-X-TARGETDURATION:4\n"
+        f"{header}"
+        f"#EXT-X-MEDIA-SEQUENCE:{first_num}\n"
+        f"{segments}"
+        f"{end}"
+    )
+
+
+def _served_segments(playlist: str) -> list[str]:
+    served = m3u8_to_str(parse_m3u8(playlist, "http://host/"))
+
+    return [line for line in served.splitlines() if line.startswith("http://seg/")]
+
+
+@pytest.mark.parametrize(
+    ("header", "end"),
+    [
+        ("#EXT-X-PLAYLIST-TYPE:VOD\n", "#EXT-X-ENDLIST\n"),
+        ("#EXT-X-PLAYLIST-TYPE:VOD\n", ""),
+        ("", "#EXT-X-ENDLIST\n"),
+    ],
+)
+def test_a_finished_playlist_numbered_from_one_is_served_whole(header, end):
+    """Some hosts number a finished video from one rather than zero.
+
+    Cutting such a playlist down to its edge left only the last minute
+    of a quarter-hour video to play.
+    """
+
+    playlist = _host_playlist(first_num=1, count=40, header=header, end=end)
+
+    assert len(_served_segments(playlist)) == 40
+
+
+def test_a_live_window_is_cut_down_to_its_edge():
+    playlist = _host_playlist(first_num=1000, count=40)
+
+    assert _served_segments(playlist) == [
+        f"http://seg/{n}.ts" for n in range(40 - LIVESTREAM_EDGE, 40)
+    ]
 
 
 def test_master_playlist_pairs_audio_with_video():
@@ -599,3 +650,28 @@ class TestServingAPlaylistTheHostWrote:
             "/live/index.m3u8",
             "/live/seg0.ts",
         ]
+
+
+class TestServingAPlaylistWithAnInitSegment(TestServingAPlaylistTheHostWrote):
+    """fMP4 segments are played after an init segment the playlist maps."""
+
+    PLAYLIST = (
+        "#EXTM3U\n"
+        "#EXT-X-VERSION:7\n"
+        "#EXT-X-TARGETDURATION:4\n"
+        '#EXT-X-MAP:URI="init.mp4"\n'
+        "#EXTINF:4.0,\n"
+        "seg0.ts\n"
+        "#EXTINF:4.0,\n"
+        "seg1.ts\n"
+        "#EXT-X-ENDLIST\n"
+    )
+
+    def test_the_init_segment_is_pointed_back_at_the_proxy(self, upstream, relay):
+        response = requests.get(relay(), timeout=5)
+
+        init_url = re.search(r'#EXT-X-MAP:URI="([^"]+)"', response.text).group(1)
+
+        assert init_url.startswith("http://127.0.0.1:")
+        assert requests.get(init_url, timeout=5).content == self.SEGMENT
+        assert upstream.requested == ["/live/index.m3u8", "/live/init.mp4"]
