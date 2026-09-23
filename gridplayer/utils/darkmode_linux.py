@@ -2,7 +2,7 @@ import logging
 import os
 
 from PyQt5.QtCore import QObject, QTimer, pyqtSlot
-from PyQt5.QtDBus import QDBusConnection, QDBusInterface, QDBusVariant
+from PyQt5.QtDBus import QDBus, QDBusConnection, QDBusMessage, QDBusVariant
 
 logger = logging.getLogger(__name__)
 
@@ -16,6 +16,25 @@ _PORTAL_PREFER_LIGHT = 2
 
 _RETRY_MS = 50
 _RETRY_MAX = 16
+
+# A running portal answers in a few milliseconds, and one started for the
+# first ask of a session well inside this. One that is installed but has
+# no desktop to work with (a login over ssh, a bare window manager) is
+# started and never answers, and D-Bus would wait 25 seconds for it on
+# every ask, several of which come with each video opened.
+_PORTAL_TIMEOUT_MS = 3000
+
+# what a portal that was asked and never answered comes back as
+_PORTAL_NO_ANSWER = frozenset(
+    {
+        "org.freedesktop.DBus.Error.NoReply",
+        "org.freedesktop.DBus.Error.TimedOut",
+    }
+)
+
+# Set once the portal has not answered, so it is not waited on again. It
+# is asked again after it is heard from, which a signal from it means.
+_portal_is_silent = False
 
 
 def linux_is_dark() -> bool:
@@ -53,17 +72,32 @@ def _unwrap_dbus(value):
 
 
 def portal_read(namespace: str, key: str):
+    global _portal_is_silent
+
+    if _portal_is_silent:
+        return None
+
     bus = QDBusConnection.sessionBus()
     if not bus.isConnected():
         return None
 
-    iface = QDBusInterface(_PORTAL_SERVICE, _PORTAL_PATH, _PORTAL_IFACE, bus)
-    if not iface.isValid():
-        return None
+    # A call made straight, since a QDBusInterface asks the portal to
+    # describe itself before anything else, which is a second wait on it
+    message = QDBusMessage.createMethodCall(
+        _PORTAL_SERVICE, _PORTAL_PATH, _PORTAL_IFACE, "Read"
+    )
+    message.setArguments([namespace, key])
 
-    reply = iface.call("Read", namespace, key)
-    if reply.errorName():
-        logger.debug("Portal Read %s %s: %s", namespace, key, reply.errorMessage())
+    reply = bus.call(message, QDBus.Block, _PORTAL_TIMEOUT_MS)
+    if reply.type() == QDBusMessage.ErrorMessage:
+        if reply.errorName() in _PORTAL_NO_ANSWER:
+            logger.warning(
+                "Desktop portal does not answer, not asking it again: %s",
+                reply.errorMessage(),
+            )
+            _portal_is_silent = True
+        else:
+            logger.debug("Portal Read %s %s: %s", namespace, key, reply.errorMessage())
         return None
 
     args = reply.arguments()
@@ -89,6 +123,11 @@ def _portal_color_scheme() -> "int | None":
 class _PortalSink(QObject):
     @pyqtSlot(str, str, QDBusVariant)
     def setting_changed(self, namespace, key, value):
+        global _portal_is_silent
+
+        # a portal that sends signals answers too, whatever it did before
+        _portal_is_silent = False
+
         watcher = self.parent()
         if watcher is None:
             return
