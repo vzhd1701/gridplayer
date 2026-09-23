@@ -21,7 +21,17 @@ init_venv "$BUILD_DIR/venv-pyinstaller"
 # Reduce size by installing src version of pydantic
 export PIP_NO_BINARY="pydantic"
 
-pip install -r "$BUILD_DIR/requirements.txt"
+REQUIREMENTS="$BUILD_DIR/requirements.txt"
+
+# curl-cffi has no 32-bit Windows wheel, and its sdist builds against a
+# libcurl DLL that nothing bundles, so yt-dlp goes without browser
+# impersonation in that build
+if [ "$BUILD_ARCH" = "win32" ]; then
+    REQUIREMENTS="$BUILD_DIR/requirements-win32.txt"
+    grep -v "^curl-cffi==" "$BUILD_DIR/requirements.txt" > "$REQUIREMENTS"
+fi
+
+pip install -r "$REQUIREMENTS"
 pip install pyinstaller=="$PYINSTALLER_VERSION"
 
 # Copy icons to build dir

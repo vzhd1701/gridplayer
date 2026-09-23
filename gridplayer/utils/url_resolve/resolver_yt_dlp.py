@@ -161,6 +161,22 @@ class YoutubeDLResolver(ResolverBase):
             if fmt.get("url", "").startswith("http")
         ]
 
+        # yt-dlp would fetch these posing as a browser, but VLC and the
+        # proxy cannot, so the host would turn them away on the first request
+        fetchable = [fmt for fmt in http_streams if not _needs_impersonation(fmt)]
+        if len(fetchable) < len(http_streams):
+            self._log.debug(
+                f"yt-dlp - skipping {len(http_streams) - len(fetchable)} stream(s)"
+                " that can only be fetched with browser impersonation"
+            )
+
+            if not fetchable:
+                raise BadURLException(
+                    "yt-dlp - all streams need browser impersonation to be fetched"
+                )
+
+            http_streams = fetchable
+
         _fix_bitrate_units(http_streams)
 
         audio_streams = [
@@ -398,6 +414,19 @@ def _manifest_protocol(stream) -> str:
     """
 
     return "dash_proxy" if needs_relay(stream.get("url", "")) else "direct"
+
+
+def _needs_impersonation(stream) -> bool:
+    """Whether yt-dlp would only fetch this stream posing as a browser.
+
+    Read the way yt-dlp reads it: True or an empty string takes any
+    target, a target or a list of them asks for those, and anything else
+    empty means plain requests will do.
+    """
+
+    impersonate = stream.get("impersonate")
+
+    return impersonate == "" or bool(impersonate)
 
 
 def _is_dash_container(stream) -> bool:

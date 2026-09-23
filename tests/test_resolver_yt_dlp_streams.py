@@ -1,10 +1,12 @@
 import pytest
+from yt_dlp.networking.impersonate import ImpersonateTarget
 
 from gridplayer.models.stream import Stream, StreamFragment, Streams
 from gridplayer.utils.url_resolve.resolver_yt_dlp import (
     YoutubeDLResolver,
     _carries_its_own_sound,
 )
+from gridplayer.utils.url_resolve.static import BadURLException
 
 MANIFEST = "http://host/manifest.mpd"
 
@@ -246,6 +248,56 @@ def test_silent_streams_are_still_offered_when_nothing_else_is_left():
     _, video = next(iter(resolver.streams.video_streams.items()))
 
     assert video.audio_tracks is None
+
+
+def _muxed_fmt(format_id, **kwargs):
+    return _dash_fmt(
+        format_id,
+        url=f"http://host/{format_id}.mp4",
+        protocol="https",
+        fragments=None,
+        container=None,
+        acodec="mp4a.40.2",
+        **kwargs,
+    )
+
+
+@pytest.mark.parametrize(
+    "impersonate",
+    [True, "", "chrome", ["chrome", "firefox"], ImpersonateTarget("chrome")],
+)
+def test_streams_only_a_browser_can_fetch_are_left_out(impersonate):
+    """VLC and the proxy cannot pose as a browser the way yt-dlp does."""
+
+    formats = [
+        _muxed_fmt("plain", height=360),
+        _muxed_fmt("guarded", height=720, impersonate=impersonate),
+    ]
+
+    streams = _resolver({"is_live": False, "formats": formats}).streams
+
+    assert [s.url for s in streams.video_streams.values()] == ["http://host/plain.mp4"]
+
+
+@pytest.mark.parametrize("impersonate", [None, False, []])
+def test_streams_that_ask_for_no_impersonation_are_kept(impersonate):
+    formats = [
+        _muxed_fmt("plain", height=360),
+        _muxed_fmt("other", height=720, impersonate=impersonate),
+    ]
+
+    streams = _resolver({"is_live": False, "formats": formats}).streams
+
+    assert len(streams.video_streams) == 2
+
+
+def test_nothing_left_after_impersonation_is_a_bad_url():
+    resolver = _resolver(
+        {"is_live": False, "formats": [_muxed_fmt("guarded", impersonate=True)]}
+    )
+
+    with pytest.raises(BadURLException, match="impersonation"):
+        _ = resolver.streams
 
 
 @pytest.mark.parametrize(

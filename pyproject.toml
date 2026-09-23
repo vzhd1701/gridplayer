@@ -37,7 +37,10 @@ dependencies = [
     "pydantic-extra-types (>=2.10.6,<3.0.0)",
     "pycountry (>=24.6.1)",
     "streamlink (>=8.4.0,<9.0.0)",
-    "yt-dlp[default] (>=2026.07.04,<2027.0.0)",
+    # curl-cffi has no 32-bit Windows wheel, building it from source there
+    # takes MSVC, and no marker can tell 32-bit Python from 64-bit on
+    # Windows, so the 32-bit build strips it out in build_win.sh
+    "yt-dlp[default,curl-cffi] (>=2026.07.04,<2027.0.0)",
     "pyobjc-core ; sys_platform == 'darwin'",
     "pyobjc-framework-Cocoa ; sys_platform == 'darwin'",
 ]

@@ -12,7 +12,7 @@ process_requirements() {
 
     packages_del=(
         "pyqt5-qt5" "pyqt5-sip" "pyqt5"
-        "brotlicffi" "cffi" "pycparser"
+        "brotlicffi"
         "pyobjc-core" "pyobjc-framework-cocoa" "exceptiongroup" "six"
     )
 
@@ -48,7 +48,7 @@ wget -nc -q -O flatpak-pip-generator https://raw.githubusercontent.com/flatpak/f
 
 rm -f *.yml
 
-python flatpak-pip-generator --requirements-file="$BUILD_DIR_PYTHON_DEPS/requirements.txt" --yaml --cleanup scripts --output dependencies --prefer-wheels pydantic_core --runtime "org.kde.Sdk//5.15-25.08"
+python flatpak-pip-generator --requirements-file="$BUILD_DIR_PYTHON_DEPS/requirements.txt" --yaml --cleanup scripts --output dependencies --prefer-wheels pydantic_core,cffi,curl_cffi --runtime "org.kde.Sdk//5.15-25.08"
 mv dependencies.yaml dependencies.yml
 
 python flatpak-pip-generator --yaml --build-only --output uv_build --prefer-wheels uv_build --runtime "org.kde.Sdk//5.15-25.08" uv_build

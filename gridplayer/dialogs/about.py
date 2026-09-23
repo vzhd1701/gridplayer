@@ -20,6 +20,12 @@ from gridplayer.version import (
     __version__,
 )
 
+try:
+    from curl_cffi import __version__ as CURL_CFFI_VERSION
+except ImportError:
+    # not shipped where it has no wheel to install from (32-bit Windows)
+    CURL_CFFI_VERSION = None
+
 PYTHON_VERSION = sys.version.split(" ")[0]
 QT_VERSION = qVersion() or "Unknown"
 
@@ -158,6 +164,17 @@ class AboutDialog(QDialog, Ui_AboutDialog):
                 ),
             ],
         }
+
+        if CURL_CFFI_VERSION is not None:
+            attributions["python"].append(
+                Attribution(
+                    "curl_cffi",
+                    CURL_CFFI_VERSION,
+                    "lexiforest",
+                    "MIT License",
+                    "https://github.com/lexiforest/curl_cffi",
+                )
+            )
 
         attributions_txt = [
             "<style>p, h3 {text-align: center;}</style>",

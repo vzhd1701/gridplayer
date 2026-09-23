@@ -55,6 +55,13 @@ except ModuleNotFoundError:
 else:
     paths_to_check.append((Path(_objc.__file__).resolve(), "PyObjC extension"))
 
+try:
+    from curl_cffi import _wrapper
+except ModuleNotFoundError:
+    pass
+else:
+    paths_to_check.append((Path(_wrapper.__file__).resolve(), "curl_cffi extension"))
+
 errors = []
 
 for path, label in paths_to_check:
