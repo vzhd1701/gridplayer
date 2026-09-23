@@ -1,6 +1,7 @@
 import random
 from dataclasses import dataclass, field
 
+from gridplayer.models.audio_device import AudioDevice
 from gridplayer.models.audio_selection import (
     AudioDefault,
     AudioDisabled,
@@ -243,6 +244,12 @@ class Media:
     # the track libVLC would have shown had it been left alone, which is
     # the one the container marks default or forced
     default_subtitle_track_id: int | None = None
+
+    # Audio devices. Every way out of the machine the output module in
+    # force can reach, read per player rather than per media: the list
+    # belongs to the process, and riding along here saves the window a
+    # VLC instance of its own to ask.
+    audio_devices: tuple[AudioDevice, ...] = ()
 
     @property
     def is_live(self) -> bool:

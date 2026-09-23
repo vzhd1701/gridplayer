@@ -222,6 +222,7 @@ class VideoDriverVLCSWSP(VLCVideoDriver):
     cmd_audio_set_volume = pyqtSignal(float)
     cmd_set_video_track = pyqtSignal(int)
     cmd_set_audio_track = pyqtSignal(int)
+    cmd_set_audio_device = pyqtSignal(object)
     cmd_set_subtitle_track = pyqtSignal(int)
     cmd_add_subtitle_slave = pyqtSignal(str)
     cmd_add_audio_slave = pyqtSignal(str)
@@ -270,6 +271,7 @@ class VideoDriverVLCSWSP(VLCVideoDriver):
             (self.cmd_audio_set_volume, self.player.audio_set_volume),
             (self.cmd_set_video_track, self.player.set_video_track),
             (self.cmd_set_audio_track, self.player.set_audio_track),
+            (self.cmd_set_audio_device, self.player.set_audio_device),
             (self.cmd_set_subtitle_track, self.player.set_subtitle_track),
             (self.cmd_add_subtitle_slave, self.player.add_subtitle_slave),
             (self.cmd_add_audio_slave, self.player.add_audio_slave),
@@ -334,6 +336,9 @@ class VideoDriverVLCSWSP(VLCVideoDriver):
 
     def set_audio_track(self, track_id):
         self.cmd_set_audio_track.emit(track_id)
+
+    def set_audio_device(self, device):
+        self.cmd_set_audio_device.emit(device)
 
     def set_subtitle_track(self, track_id):
         self.cmd_set_subtitle_track.emit(track_id)

@@ -59,6 +59,7 @@ icon-symbolic,icons/custom/aspect fit.svg,aspect-fit
 icon-symbolic,icons/custom/aspect none.svg,aspect-none
 icon-symbolic,icons/custom/aspect stretch.svg,aspect-stretch
 icon-symbolic,icons/custom/aspect.svg,aspect
+icon-symbolic,icons/custom/audio device.svg,audio-device
 icon-symbolic,icons/custom/audio only.svg,audio-only
 icon-symbolic,icons/custom/checkmark.svg,checkmark
 icon-symbolic,icons/custom/close all.svg,close-playlist

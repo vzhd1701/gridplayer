@@ -7,6 +7,7 @@ from uuid import uuid4
 from pydantic import UUID4, BaseModel, Field, ValidationError, model_validator
 from pydantic_extra_types.color import Color
 
+from gridplayer.models.audio_device import AudioDevice
 from gridplayer.models.audio_selection import (
     AudioDefault,
     AudioDisabled,
@@ -197,6 +198,13 @@ class Video(BaseModel):
     # the languages to go by where nothing was picked by hand, which is a
     # standing preference rather than a choice of track
     audio_languages: str = session_field("video_defaults/audio_languages")
+
+    # the way out of the machine this video's sound is sent, None for
+    # whichever one everything else is using. Not a default anybody can
+    # set: an id names a jack on one machine and nothing at all on the
+    # next, and every video going one way is what the machine already
+    # does; see models/audio_device.py
+    audio_device: AudioDevice | None = None
 
     # External audio
     # files picked to play alongside this video, in the order they were

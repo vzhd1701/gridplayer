@@ -90,6 +90,7 @@ SECTIONS = MappingProxyType(
                     "Audio Mode - Headphones",
                     "Audio Mode - Mono",
                 ),
+                "Audio Device",
                 "---",
                 "Audio Volume - Increase",
                 "Audio Volume - Decrease",

@@ -1015,6 +1015,19 @@ class VideoBlock(QWidget):
             return {}
         return self.video_driver.audio_tracks
 
+    @property
+    def audio_devices(self):
+        """Every way out of the machine the process playing this can reach.
+
+        Nothing until it has loaded: the list is read where VLC lives,
+        and comes back with the media.
+        """
+
+        if self.video_driver is None or not self.is_video_initialized:
+            return ()
+
+        return self.video_driver.audio_devices
+
     def set_audio_track(self, track_id):
         self._log.debug(
             f"Set audio track {track_id},"
@@ -1062,6 +1075,24 @@ class VideoBlock(QWidget):
             return AudioLanguage(tag=language)
 
         return AudioTrackId(id=track_id)
+
+    def set_audio_device(self, device) -> None:
+        """Send this video's sound another way out of the machine.
+
+        Remembered on the video rather than anywhere shared, which is the
+        whole point: telling one video's sound from another's is what this
+        is for, and an id names a jack on this machine and nothing at all
+        on the next; see models/audio_device.py
+        """
+
+        self._log.debug(f"Set audio device {device}")
+
+        self.video_params.audio_device = device
+
+        # a video part way through a load is told when it gets there, by
+        # whatever opens it; see PlayerBase._apply_wanted_audio_device
+        if self.is_video_initialized:
+            self.video_driver.set_audio_device(device)
 
     def restore_audio_selection(self, selection) -> None:
         """Put a remembered choice of sound back in force, as a snapshot does."""

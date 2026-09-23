@@ -293,6 +293,10 @@ class VideoFrameVLC(QWidget, metaclass=QABC):
         return self.media.audio_tracks
 
     @property
+    def audio_devices(self):
+        return self.media.audio_devices
+
+    @property
     def cur_audio_track_id(self) -> int | None:
         return self.media.cur_audio_track_id
 
@@ -612,6 +616,9 @@ class VideoFrameVLC(QWidget, metaclass=QABC):
         self.media.cur_audio_track_id = track_id
 
         self.video_driver.set_audio_track(track_id)
+
+    def set_audio_device(self, device):
+        self.video_driver.set_audio_device(device)
 
     def add_audio_slave(self, uri: str) -> None:
         self.video_driver.add_audio_slave(uri)

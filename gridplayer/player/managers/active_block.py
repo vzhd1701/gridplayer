@@ -5,6 +5,7 @@ from PyQt5.QtCore import QEvent, pyqtSignal
 from PyQt5.QtGui import QCursor
 
 from gridplayer.dialogs.crop import SetCropDialog
+from gridplayer.models.audio_device import resolve_device_id
 from gridplayer.models.audio_selection import (
     AudioDefault,
     AudioDisabled,
@@ -45,6 +46,7 @@ LOADING_COMMANDS = frozenset(
         "network_retry_times",
         "get_network_retry_times",
         "set_audio_track",
+        "set_audio_device",
         "set_audio_language",
         "apply_audio_preference",
         "apply_audio_default",
@@ -111,6 +113,9 @@ class ActiveBlockManager(ManagerBase):
             "is_active_multistream": self.is_active_multistream,
             "is_active_audio_language": self.is_active_audio_language,
             "is_active_audio_track": self.is_active_audio_track,
+            "is_active_audio_device": self.is_active_audio_device,
+            "is_active_audio_device_default": self.is_active_audio_device_default,
+            "is_active_audio_device_missing": self.is_active_audio_device_missing,
             "is_active_audio_preferred": self.is_active_audio_preferred,
             "is_active_audio_disabled": self.is_active_audio_disabled,
             "is_active_audio_default": self.is_active_audio_default,
@@ -125,6 +130,7 @@ class ActiveBlockManager(ManagerBase):
             "menu_generator_stream_quality": self.menu_generator_stream_quality,
             "menu_generator_video_track": self.menu_generator_video_track,
             "menu_generator_audio_track": self.menu_generator_audio_track,
+            "menu_generator_audio_device": self.menu_generator_audio_device,
             "menu_generator_subtitle_track": self.menu_generator_subtitle_track,
             "next_active": self.next_active,
             "previous_active": self.previous_active,
@@ -252,6 +258,46 @@ class ActiveBlockManager(ManagerBase):
             return block.external_audio_track_ids.index(track_id) == selection.track
 
         return isinstance(selection, AudioTrackId) and selection.id == track_id
+
+    def is_active_audio_device(self, device_id) -> bool:
+        """Ticked on the device the sound is really going to.
+
+        Which is not always the one that was picked: a choice found again
+        by name, after the ids all changed underneath it, belongs to the
+        row it landed on rather than the row it was made on.
+        """
+
+        block = self._ctx.active_block
+
+        if self.is_no_active_block:
+            return False
+
+        chosen = block.video_params.audio_device
+
+        return (
+            chosen is not None
+            and resolve_device_id(chosen, block.audio_devices) == device_id
+        )
+
+    def is_active_audio_device_default(self) -> bool:
+        """Ticked where this video never asked for a way out of its own."""
+
+        if self.is_no_active_block:
+            return False
+
+        return self._ctx.active_block.video_params.audio_device is None
+
+    def is_active_audio_device_missing(self) -> bool:
+        """Whether what this video asked for is not here to be asked for."""
+
+        if self.is_no_active_block:
+            return False
+
+        block = self._ctx.active_block
+
+        chosen = block.video_params.audio_device
+
+        return chosen is not None and not resolve_device_id(chosen, block.audio_devices)
 
     def is_active_audio_preferred(self) -> bool:
         return isinstance(self._active_audio_selection(), AudioPreferred)
@@ -468,6 +514,67 @@ class ActiveBlockManager(ManagerBase):
             self._audio_choice_menu_items(),
             external,
         )
+
+    def menu_generator_audio_device(self):
+        """Every way out of the machine this video's sound could take.
+
+        The machine's own heads the list, which is what a video that was
+        never asked is already using. Nothing is offered until the video
+        has loaded: the list belongs to the process playing it, and the
+        window keeps no VLC of its own to ask.
+        """
+
+        if self.is_no_active_block:
+            return {}
+
+        devices = self._ctx.active_block.audio_devices
+
+        if not devices:
+            return {}
+
+        return _separated(
+            [_audio_device_default_menu_item()],
+            [
+                {
+                    "title": device.name or device.id,
+                    "icon": "empty",
+                    "func": ("active", "set_audio_device", device),
+                    "check_if": ("is_active_audio_device", device.id),
+                    "show_if": "is_active_has_audio",
+                }
+                for device in devices
+            ],
+            self._missing_audio_device_menu_items(),
+        )
+
+    def _missing_audio_device_menu_items(self):
+        """The device this video was told to use, where it is not here.
+
+        Named rather than quietly dropped. libVLC takes an id that is no
+        longer there without a word and then plays the video in silence,
+        so a viewer who unplugs a headset has nothing else to go on.
+        The sound falls back to the machine's own way out; picking that
+        row is how the choice is cleared for good.
+        """
+
+        block = self._ctx.active_block
+
+        chosen = block.video_params.audio_device
+
+        if chosen is None or resolve_device_id(chosen, block.audio_devices):
+            return []
+
+        return [
+            {
+                "title": translate("Actions", "{} (not connected)").format(
+                    chosen.name or chosen.id
+                ),
+                "icon": "empty",
+                "func": ("active", "set_audio_device", chosen),
+                "check_if": "is_active_audio_device_missing",
+                "show_if": "is_active_has_audio",
+            }
+        ]
 
     def _external_audio_menu_items(self):
         """The audio kept beside this video: what is there, and how to add more.
@@ -1005,6 +1112,22 @@ class ActiveBlockManager(ManagerBase):
         )
 
         return next(visible_blocks_under_pos, None)
+
+
+def _audio_device_default_menu_item():
+    """Whichever way out of the machine everything else is using.
+
+    What every video gets unless it was told otherwise, and the row that
+    puts one back where it started.
+    """
+
+    return {
+        "title": translate("Actions", "System Default"),
+        "icon": "empty",
+        "func": ("active", "set_audio_device", None),
+        "check_if": "is_active_audio_device_default",
+        "show_if": "is_active_has_audio",
+    }
 
 
 def _audio_default_menu_item():

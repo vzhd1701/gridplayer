@@ -7,6 +7,11 @@ from pathlib import Path
 from time import time
 from types import MappingProxyType
 
+from gridplayer.models.audio_device import (
+    SYSTEM_DEFAULT_DEVICE_ID,
+    AudioDevice,
+    resolve_device_id,
+)
 from gridplayer.models.audio_selection import AudioExternal, track_of_file
 from gridplayer.models.subtitle_selection import SubtitleExternal
 from gridplayer.models.subtitle_selection import track_of_file as subtitle_track_of_file
@@ -811,6 +816,69 @@ class VlcPlayerBase(ABC):
 
         return tuple(self._tracks_manager.subtitle_tracks)[self._own_subtitle_count :]
 
+    @property
+    def _audio_devices(self) -> tuple[AudioDevice, ...]:
+        """Every way out of the machine the output module in force offers.
+
+        Asked of the player rather than of the instance, which is where
+        libVLC keeps it, and answerable before anything has played. The
+        entry with no id of its own is left out: it stands for whichever
+        way out the machine is using, which is what a video that chose
+        nothing is already getting.
+        """
+
+        devices = []
+
+        devices_head = self._media_player.audio_output_device_enum()
+
+        device_ptr = devices_head
+
+        while device_ptr:
+            device = device_ptr.contents
+
+            if device.device:
+                devices.append(
+                    AudioDevice(
+                        id=_decode_device_field(device.device),
+                        name=_decode_device_field(device.description),
+                    )
+                )
+
+            device_ptr = device.next
+
+        if devices_head:
+            vlc.libvlc_audio_output_device_list_release(devices_head)
+
+        return tuple(devices)
+
+    def _apply_wanted_audio_device(self, available: tuple[AudioDevice, ...]) -> None:
+        """Send this video's sound the way it was told to, if it still can.
+
+        Asked for on every load because the player forgets it: stopping one
+        drops the choice, and what opens next comes back on the machine's
+        own way out with nothing anywhere to say it ever moved.
+        """
+
+        wanted = self.media_input.video.audio_device
+
+        if wanted is None:
+            return
+
+        device_id = resolve_device_id(wanted, available)
+
+        if device_id is None:
+            # the window says so too, having been handed the same list;
+            # here it is worth a line because silence is the alternative
+            self._log.warning(
+                f"Audio device {wanted.name or wanted.id} is not here,"
+                " leaving the sound where the machine puts it"
+            )
+            return
+
+        self._log.debug(f"Set audio device {device_id}")
+
+        self._media_player.audio_output_device_set(None, device_id)
+
     def _apply_wanted_subtitle_track(self) -> None:
         """Show whichever subtitle this video's settings call for.
 
@@ -1005,6 +1073,30 @@ class VlcPlayerBase(ABC):
     @only_initialized_player
     def set_subtitle_track(self, track_id):
         self._tracks_manager.set_subtitle_track_id(track_id)
+
+    @only_initialized_player
+    def set_audio_device(self, device: AudioDevice | None):
+        """Send this video's sound another way out, while it plays.
+
+        It moves at once, which the track and the delay do not: passing no
+        module name asks libVLC to move the sound rather than to note it
+        down for whatever opens next.
+
+        Kept on the media input as well, since that is what the next load
+        reads, and a load is where the choice would otherwise be dropped.
+        """
+
+        self.media_input.video.audio_device = device
+
+        if device is None:
+            self._log.debug("Set audio device to the machine's own")
+
+            # an id of nothing at all, which is not the same as asking for
+            # nothing: asking for nothing leaves the player where it is
+            self._media_player.audio_output_device_set(None, SYSTEM_DEFAULT_DEVICE_ID)
+            return
+
+        self._apply_wanted_audio_device(self._audio_devices)
 
     @only_initialized_player
     def set_audio_channel_mode(self, mode: AudioChannelMode):
@@ -1301,6 +1393,12 @@ class VlcPlayerBase(ABC):
         self._tracks_manager.set_audio_track_id(self._wanted_audio_track_id())
         self._tracks_manager.set_audio_delay_ms(self.media_input.video.audio_delay_ms)
 
+        # read once, since the choice is settled against the same list the
+        # window is about to be handed
+        audio_devices = self._audio_devices
+
+        self._apply_wanted_audio_device(audio_devices)
+
         self._apply_wanted_subtitle_track()
 
         if self.media_input.video.subtitle_delay_ms:
@@ -1320,6 +1418,7 @@ class VlcPlayerBase(ABC):
             cur_subtitle_track_id=self._tracks_manager.current_subtitle_track_id,
             external_subtitle_ids=self._external_subtitle_ids(),
             default_subtitle_track_id=default_subtitle_track_id,
+            audio_devices=audio_devices,
         )
 
     def _fill_missing_track_dimensions(self) -> bool:
@@ -1352,3 +1451,17 @@ class VlcPlayerBase(ABC):
             return -1
 
         return self._media_input_vlc.get_duration() or -1
+
+
+def _decode_device_field(value) -> str:
+    """What libVLC wrote there, as text.
+
+    The description is whatever the sound card's driver put in it, and a
+    name that will not decode is no reason to lose the device it belongs
+    to -- it is still a way out of the machine, and still pickable.
+    """
+
+    if value is None:
+        return ""
+
+    return value.decode(errors="replace")

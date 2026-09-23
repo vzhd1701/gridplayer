@@ -605,6 +605,12 @@ ACTIONS = MappingProxyType(
             "show_if": "is_active_initialized",
             "menu_generator": "menu_generator_audio_track",
         },
+        "Audio Device": {
+            "title": translate("Actions", "Audio Device"),
+            "icon": "audio-device",
+            "show_if": "is_active_has_audio",
+            "menu_generator": "menu_generator_audio_device",
+        },
         "Audio Delay: %v": {
             "title": "{}: %v".format(translate("Actions", "Delay")),
             "icon": "empty",

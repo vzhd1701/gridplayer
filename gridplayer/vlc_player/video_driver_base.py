@@ -91,6 +91,9 @@ class VLCVideoDriver(QObject, metaclass=QABC):
     def set_audio_track(self, track_id): ...
 
     @abstractmethod
+    def set_audio_device(self, device): ...
+
+    @abstractmethod
     def add_audio_slave(self, uri): ...
 
     @abstractmethod
