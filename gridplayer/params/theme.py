@@ -288,6 +288,12 @@ def _install_dialog_button_style(app) -> None:
 
 
 def _apply_native_window_chrome(app) -> None:
+    if env.IS_LINUX:
+        from gridplayer.utils.wayland_window import refresh_window_frames
+
+        refresh_window_frames()
+        return
+
     if not env.IS_WINDOWS:
         return
     from gridplayer.utils.win32_window import apply_native_background
