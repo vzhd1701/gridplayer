@@ -4,12 +4,14 @@ import sys
 import pytest
 
 from gridplayer.main.init_cli import init_cli_args
+from gridplayer.params import env
 from gridplayer.utils import app_dir
 
 
 @pytest.fixture(autouse=True)
 def _clean_env(monkeypatch):
     monkeypatch.delenv(app_dir.ENV_USER_DATA_DIR, raising=False)
+    monkeypatch.setattr(env, "QT_PLATFORM", env.QT_PLATFORM)
 
 
 def test_no_options_keeps_argv_and_env(monkeypatch):
@@ -134,3 +136,41 @@ def test_empty_env_var_is_ignored(monkeypatch, tmp_path):
     monkeypatch.chdir(tmp_path)
 
     assert app_dir.get_user_data_dir_override() is None
+
+
+@pytest.mark.parametrize("platform", ["xcb", "wayland"])
+def test_platform_replaces_detected(monkeypatch, platform):
+    monkeypatch.setattr(env, "IS_LINUX", True)
+    monkeypatch.setattr(env, "QT_PLATFORM", "detected")
+    monkeypatch.setattr(sys, "argv", ["gridplayer", "--platform", platform, "a.mp4"])
+
+    init_cli_args()
+
+    assert env.QT_PLATFORM == platform
+    assert sys.argv == ["gridplayer", "a.mp4"]
+
+
+def test_platform_auto_keeps_detected(monkeypatch):
+    monkeypatch.setattr(env, "IS_LINUX", True)
+    monkeypatch.setattr(env, "QT_PLATFORM", "detected")
+    monkeypatch.setattr(sys, "argv", ["gridplayer", "--platform", "auto"])
+
+    init_cli_args()
+
+    assert env.QT_PLATFORM == "detected"
+
+
+def test_platform_unknown_rejected(monkeypatch):
+    monkeypatch.setattr(env, "IS_LINUX", True)
+    monkeypatch.setattr(sys, "argv", ["gridplayer", "--platform", "eglfs"])
+
+    with pytest.raises(SystemExit):
+        init_cli_args()
+
+
+def test_platform_linux_only(monkeypatch):
+    monkeypatch.setattr(env, "IS_LINUX", False)
+    monkeypatch.setattr(sys, "argv", ["gridplayer", "--platform", "xcb"])
+
+    with pytest.raises(SystemExit):
+        init_cli_args()

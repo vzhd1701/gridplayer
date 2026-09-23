@@ -2,8 +2,11 @@ import argparse
 import os
 import sys
 
+from gridplayer.params import env
 from gridplayer.utils.app_dir import ENV_USER_DATA_DIR
 from gridplayer.version import __app_name__, __version__
+
+QT_PLATFORMS = ("auto", "xcb", "wayland")
 
 
 def init_cli_args(argv=None):
@@ -29,6 +32,14 @@ def init_cli_args(argv=None):
         help="store settings and log files in PATH instead of the default"
         f" location (also settable via {ENV_USER_DATA_DIR} environment variable)",
     )
+    if env.IS_LINUX:
+        parser.add_argument(
+            "--platform",
+            choices=QT_PLATFORMS,
+            default="auto",
+            help="display server to run on: auto picks xcb (X11 or Xwayland)"
+            " when there is one, wayland otherwise; hardware video needs xcb",
+        )
     parser.add_argument(
         "--version",
         action="version",
@@ -41,3 +52,6 @@ def init_cli_args(argv=None):
 
     if args.user_data_dir.strip():
         os.environ[ENV_USER_DATA_DIR] = args.user_data_dir.strip()
+
+    if getattr(args, "platform", "auto") != "auto":
+        env.QT_PLATFORM = args.platform

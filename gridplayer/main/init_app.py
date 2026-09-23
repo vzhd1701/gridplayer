@@ -18,9 +18,8 @@ from gridplayer.utils.darkmode import watch_system_theme
 
 
 def init_app():
-    # Wayland doesnt work with libVLC, forcing xcb
-    if env.IS_LINUX:
-        app = QApplication([*sys.argv, "-platform", "xcb"])
+    if env.QT_PLATFORM:
+        app = QApplication([*sys.argv, "-platform", env.QT_PLATFORM])
     else:
         app = QApplication(sys.argv)
 

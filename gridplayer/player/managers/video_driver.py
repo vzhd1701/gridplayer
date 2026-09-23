@@ -5,6 +5,7 @@ from gridplayer.params import env
 from gridplayer.params.static import VideoDriver
 from gridplayer.player.managers.base import ManagerBase
 from gridplayer.settings import Settings
+from gridplayer.utils.video_driver import session_video_driver
 from gridplayer.vlc_player.instance import ProcessManagerVLC
 from gridplayer.widgets.video_frame_dummy import VideoFrameDummy
 from gridplayer.widgets.video_frame_vlc_hw import InstanceProcessVLCHW, VideoFrameVLCHW
@@ -45,6 +46,8 @@ class VideoDriverManager(ManagerBase):
         if video_driver == VideoDriver.VLC_HW and env.IS_MACOS:
             video_driver = VideoDriver.VLC_HW_SP
             Settings().set("player/video_driver", video_driver)
+
+        video_driver = session_video_driver(video_driver)
 
         is_multiprocess = video_driver in self._multiprocess_drivers
 

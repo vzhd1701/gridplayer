@@ -40,6 +40,7 @@ from gridplayer.utils.keymap import default_keymap, merge_keymap
 from gridplayer.utils.network import opts_for
 from gridplayer.utils.network_checkup import NetworkCheckup
 from gridplayer.utils.qt import qt_connect, translate
+from gridplayer.utils.video_driver import is_hw_video_available, session_video_driver
 from gridplayer.utils.ytdlp_checkup import YouTubeCheckup
 from gridplayer.version import __app_url__
 from gridplayer.widgets.defaults_form import DefaultsForm
@@ -229,6 +230,20 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
             self.miscOpaqueHWOverlay.hide()
             self.miscFakeOverlayInvisibility.hide()
             self.miscForceNativeDragEvents.hide()
+
+        if not is_hw_video_available():
+            self.playerVideoDriver.setToolTip(
+                self.tr(
+                    "Hardware drivers need an X server (Xwayland),"
+                    " which this session doesn't have."
+                )
+            )
+
+            # these only ever touch Hardware video, and a disabled one is
+            # left as it is on save
+            self.miscOpaqueHWOverlay.setEnabled(False)
+            self.miscFakeOverlayInvisibility.setEnabled(False)
+            self.miscHWCropBorder.setEnabled(False)
 
     def ui_customize_section_index(self):
         font = self.section_index.font()
@@ -503,6 +518,13 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
                 VideoDriver.DUMMY: self.tr("Dummy"),
             }
 
+        if not is_hw_video_available():
+            video_drivers = {
+                driver: name
+                for driver, name in video_drivers.items()
+                if session_video_driver(driver) == driver
+            }
+
         _fill_combo_box(self.playerVideoDriver, video_drivers)
 
     def fill_language(self):
@@ -581,6 +603,11 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
 
             set_function(element, setting_value)
 
+        _set_combo_box(
+            self.playerVideoDriver,
+            session_video_driver(Settings().get("player/video_driver")),
+        )
+
         form_values = {
             spec.settings_key: Settings().get(spec.settings_key)
             for spec in (*PLAYLIST_FIELDS, *VIDEO_FIELDS, *SUBTITLE_STYLE_FIELDS)
@@ -612,6 +639,9 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
 
             new_value = getattr(element, value_attr)()
 
+            if self._is_session_driver_kept(setting, new_value):
+                continue
+
             Settings().set(setting, new_value)
 
         for form in self.forms:
@@ -622,6 +652,20 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
                     Settings().set(key, value)
 
         self.save_cookies()
+
+    @staticmethod
+    def _is_session_driver_kept(setting, value):
+        """The driver on show is the stand-in for the one saved.
+
+        Where Hardware can't run, the dialog shows its Software twin;
+        saving that back would lose the Hardware pick for the sessions
+        that can run it.
+        """
+
+        if setting != "player/video_driver":
+            return False
+
+        return value == session_video_driver(Settings().get(setting))
 
     def save_cookies(self):
         """Put the jar the page is showing on the disk.

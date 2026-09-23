@@ -31,6 +31,7 @@ def log_environment():
         f"OS Release: {platform.release()}",
         f"Python: {platform.python_version()}",
         f"Qt: {Qt.qVersion()}",
+        f"Qt platform: {env.QT_PLATFORM}" if env.QT_PLATFORM else "",
         f"MP Start method: {multiprocessing.get_start_method()}",
         f"is_pyinstaller_frozen: {env.IS_PYINSTALLER}",
         f"_MEIPASS: {sys._MEIPASS}" if env.IS_PYINSTALLER else "",
