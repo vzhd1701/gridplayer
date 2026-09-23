@@ -3,6 +3,10 @@ name: Crowdin Contributors Action
 on:
   workflow_dispatch:
 
+permissions:
+  contents: write
+  pull-requests: write
+
 jobs:
   crowdin-contributors:
     runs-on: ubuntu-latest
