@@ -526,6 +526,11 @@ def _split(url: str):
     except ValueError:
         return None
 
+    # Python before 3.11 takes the 127.0.0.1 in 127.0.0.1:1080 for a
+    # scheme, later ones know a scheme starts with a letter
+    if parsed.scheme and not parsed.scheme[0].isalpha():
+        return parsed._replace(scheme="", path=f"{parsed.scheme}:{parsed.path}")
+
     return parsed
 
 
