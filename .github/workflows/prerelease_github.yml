@@ -2,6 +2,11 @@ name: prerelease_github
 
 on:
   workflow_dispatch:
+    inputs:
+      draft:
+        description: 'Keep the pre-release as a draft, hidden until published by hand'
+        type: boolean
+        default: false
   # To build every push to develop as well, uncomment:
   # push:
   #   branches: [ develop ]
@@ -96,6 +101,8 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           tag: ${{ env.PRERELEASE_TAG }}
           commit: ${{ github.sha }}
+          # also applied on update, so a run without it publishes a draft left by an earlier one
+          draft: ${{ inputs.draft == true }}
           prerelease: true
           makeLatest: false
           allowUpdates: true
