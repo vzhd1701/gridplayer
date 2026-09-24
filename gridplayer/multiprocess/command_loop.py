@@ -1,7 +1,7 @@
 import logging
 import traceback
 from multiprocessing import Pipe, connection
-from threading import Thread, get_ident
+from threading import Lock, Thread, get_ident
 
 
 class CommandLoop:
@@ -11,6 +11,27 @@ class CommandLoop:
         cmd_pipe, self_pipe = Pipe() if pipe is None else pipe
         self._pipe = cmd_pipe
         self._self_pipe = self_pipe
+
+        # a connection takes one message at a time, and a player sends from
+        # the thread running its commands and from VLC's event thread at once
+        self._pipe_lock = Lock()
+        self._self_pipe_lock = Lock()
+
+    def __getstate__(self):
+        # a player process is handed to its child whole, and a lock cannot
+        # be; the child gets locks of its own
+        state = self.__dict__.copy()
+
+        del state["_pipe_lock"]
+        del state["_self_pipe_lock"]
+
+        return state
+
+    def __setstate__(self, state):
+        self.__dict__.update(state)
+
+        self._pipe_lock = Lock()
+        self._self_pipe_lock = Lock()
 
     def cmd_loop_run(self):
         while connection.wait([self._pipe]):
@@ -36,10 +57,12 @@ class CommandLoop:
         self.cmd_send_self("loop_stop")
 
     def cmd_send(self, cmd_name, *cmd_args):
-        self._pipe.send((cmd_name, cmd_args))
+        with self._pipe_lock:
+            self._pipe.send((cmd_name, cmd_args))
 
     def cmd_send_self(self, cmd_name, *cmd_args):
-        self._self_pipe.send((cmd_name, cmd_args))
+        with self._self_pipe_lock:
+            self._self_pipe.send((cmd_name, cmd_args))
 
     def cmd_child_pipe(self):
         return self._self_pipe, self._pipe
