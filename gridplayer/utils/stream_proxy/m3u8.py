@@ -201,9 +201,11 @@ def build_master_playlist(
         [
             "#EXTM3U",
             "#EXT-X-INDEPENDENT-SEGMENTS",
-            '#EXT-X-MEDIA:TYPE=AUDIO,GROUP-ID="audio",'
-            f'NAME="{_escape_attr(audio_name)}",{language}'
-            f'DEFAULT=YES,URI="{audio_url}"',
+            (
+                '#EXT-X-MEDIA:TYPE=AUDIO,GROUP-ID="audio",'
+                f'NAME="{_escape_attr(audio_name)}",{language}'
+                f'DEFAULT=YES,URI="{audio_url}"'
+            ),
             '#EXT-X-STREAM-INF:BANDWIDTH=0,AUDIO="audio"',
             video_url,
         ]

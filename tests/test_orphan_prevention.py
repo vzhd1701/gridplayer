@@ -210,13 +210,15 @@ def test_parent_death_signal_is_armed():
         [
             sys.executable,
             "-c",
-            "import ctypes;"
-            "from gridplayer.multiprocess.parent_death_signal import"
-            " arm_parent_death_signal;"
-            "arm_parent_death_signal();"
-            "armed = ctypes.c_int();"
-            "ctypes.CDLL('libc.so.6').prctl(2, ctypes.byref(armed));"
-            "print(armed.value)",
+            (
+                "import ctypes;"
+                "from gridplayer.multiprocess.parent_death_signal import"
+                " arm_parent_death_signal;"
+                "arm_parent_death_signal();"
+                "armed = ctypes.c_int();"
+                "ctypes.CDLL('libc.so.6').prctl(2, ctypes.byref(armed));"
+                "print(armed.value)"
+            ),
         ],
         capture_output=True,
         text=True,
