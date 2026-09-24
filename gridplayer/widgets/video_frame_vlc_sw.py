@@ -5,6 +5,7 @@ from PyQt5.QtCore import QTimer, pyqtSignal
 from gridplayer.multiprocess.safe_shared_memory import SafeSharedMemory
 from gridplayer.params.static import PLAYER_ID_LENGTH
 from gridplayer.utils.qt import qt_connect
+from gridplayer.utils.screenshots import ScreenshotView
 from gridplayer.vlc_player.image_decoder import ImageDecoder
 from gridplayer.vlc_player.instance import InstanceProcessVLC
 from gridplayer.vlc_player.player_base_threaded import VlcPlayerThreaded
@@ -260,6 +261,17 @@ class VideoFrameVLCSW(VideoFrameVLCProcess):
     def take_snapshot(self) -> None:
         # last frame stays painted on the surface
         self.video_driver.set_pause(True)
+
+    def shown_frame_image(self):
+        track = self.media.cur_video_track if self.media else None
+        visible_size = track.video_dimensions if track else None
+
+        return self.video_surface.frame_image(visible_size)
+
+    def screenshot_view(self):
+        size = (self.size().width(), self.size().height())
+
+        return ScreenshotView(size, self._aspect, self._crop)
 
     def adjust_view(self):
         if super().adjust_view():

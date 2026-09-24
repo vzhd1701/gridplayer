@@ -491,6 +491,9 @@ class VlcPlayerBase(ABC):
     @abstractmethod
     def notify_snapshot_taken(self, snapshot_path): ...
 
+    def notify_screenshot_taken(self, frame_path: str) -> None:  # noqa: B027
+        """Hand over the PNG a screenshot grabbed, empty if none. No-op by default."""
+
     def notify_tracks_changed(self, media_track: Media) -> None:  # noqa: B027
         """Forward a track list that changed after the load. No-op by default."""
 
@@ -1038,13 +1041,20 @@ class VlcPlayerBase(ABC):
         self.notify_playback_status_changed(self._is_paused)
         self.notify_time_changed(self.media_input.initial_time)
 
-    @only_initialized_player
-    def snapshot(self):
+    def _grab_frame(self) -> Path | None:
+        """Write the frame on show to a PNG in a temp folder of its own.
+
+        The frame is the one VLC hands to its video output: at the size it
+        was decoded, after the video filters (deinterlace, transform) and,
+        where VLC does the cropping, as the view crops it. libVLC 3 writes
+        PNG whatever the file is called.
+        """
+
         tmp_root = env.FLATPAK_RUNTIME_DIR if env.IS_FLATPAK else None
 
         file_path = Path(tempfile.mkdtemp(dir=tmp_root)) / "snapshot.png"
 
-        self._log.debug(f"Taking snapshot to {file_path}")
+        self._log.debug(f"Grabbing frame to {file_path}")
 
         # libvlc_video_take_snapshot returns 0 whenever a vout exists, even if
         # the vout-side grab times out (VLC waits 500ms) and nothing is
@@ -1056,13 +1066,36 @@ class VlcPlayerBase(ABC):
         res = self._media_player.video_take_snapshot(0, str(file_path), 0, 0)
 
         if res != 0 or not file_path.is_file():
-            self._log.error("Failed to take snapshot")
             file_path.unlink(missing_ok=True)
             file_path.parent.rmdir()
+            return None
+
+        return file_path
+
+    @only_initialized_player
+    def snapshot(self):
+        file_path = self._grab_frame()
+
+        if file_path is None:
+            self._log.error("Failed to take snapshot")
             self.notify_snapshot_taken("")
             return
 
         self.notify_snapshot_taken(str(file_path))
+
+    def screenshot(self):
+        # answered even with no player to ask, so the side waiting on it
+        # always hears back
+        file_path = None
+        if self._media_player is not None:
+            file_path = self._grab_frame()
+
+        if file_path is None:
+            self._log.warning("Failed to grab frame for screenshot")
+            self.notify_screenshot_taken("")
+            return
+
+        self.notify_screenshot_taken(str(file_path))
 
     @only_initialized_player
     def stop(self):

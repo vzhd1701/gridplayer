@@ -4,13 +4,14 @@ from contextlib import suppress
 from pathlib import Path
 
 from PyQt5.QtCore import QElapsedTimer, QSize, Qt, QTimer, pyqtSignal
-from PyQt5.QtGui import QPixmap
+from PyQt5.QtGui import QImage, QPixmap
 from PyQt5.QtWidgets import QLabel, QStackedLayout, QWidget
 
 from gridplayer.params import env
 from gridplayer.params.static import HWCropBorderOffset, VideoAspect, VideoCrop
 from gridplayer.settings import Settings
 from gridplayer.utils.qt import MILLISECONDS, QABC, QT_ASPECT_MAP, qt_connect
+from gridplayer.utils.screenshots import ScreenshotView
 from gridplayer.vlc_player.static import Media, MediaInput
 from gridplayer.vlc_player.video_driver_base import VLCVideoDriver
 from gridplayer.widgets.video_status import VideoStatus
@@ -166,6 +167,7 @@ class PauseSnapshot(QLabel):
         self.setStyleSheet("background-color:black;")
 
         self._snapshot_pixmap: QPixmap | None = None
+        self._is_blank = False
 
     def set_snapshot_file(self, snapshot_file: str):
         # failed snapshot
@@ -173,12 +175,22 @@ class PauseSnapshot(QLabel):
             pixmap = QPixmap(1, 1)
             pixmap.fill(Qt.black)
             self.set_pixmap(pixmap)
+            self._is_blank = True
             return
 
         self.set_pixmap(QPixmap(snapshot_file))
 
     def set_pixmap(self, pixmap: QPixmap | None):
         self._snapshot_pixmap = QPixmap(pixmap) if pixmap is not None else None
+        self._is_blank = False
+
+    def frame_image(self) -> QImage | None:
+        """The frame being shown in place of the video, if there is one."""
+
+        if self._snapshot_pixmap is None or self._is_blank:
+            return None
+
+        return self._snapshot_pixmap.toImage()
 
     def adjust_view(self, size: QSize, aspect, scale: float):
         if self._snapshot_pixmap is None:
@@ -198,6 +210,7 @@ class PauseSnapshot(QLabel):
 
     def reset(self):
         self._snapshot_pixmap = None
+        self._is_blank = False
 
 
 class VideoFrameVLC(QWidget, metaclass=QABC):
@@ -210,6 +223,13 @@ class VideoFrameVLC(QWidget, metaclass=QABC):
     error = pyqtSignal(str)
     crash = pyqtSignal(str)
     update_status = pyqtSignal(str, int)
+
+    # The frame a screenshot was asked for: the path of a PNG in a temp
+    # folder, which the receiver removes once done with it, or a QImage
+    # where VLC had no frame to give but one is on show all the same, or
+    # None when there is nothing to save. Then the ScreenshotView to cut
+    # it down to, or None to keep all of it.
+    screenshot_taken = pyqtSignal(object, object)
 
     is_opengl: bool | None = None
 
@@ -357,6 +377,7 @@ class VideoFrameVLC(QWidget, metaclass=QABC):
             (self.video_driver.load_finished, self.load_video_finish),
             (self.video_driver.tracks_changed, self._on_tracks_changed),
             (self.video_driver.snapshot_taken, self.snapshot_taken),
+            (self.video_driver.screenshot_taken, self._on_screenshot_taken),
             (self.video_driver.video_dimensions_changed, self.set_track_dimensions),
             (self.video_driver.error, self.error_emit),
             (self.video_driver.crash, self.crash_emit),
@@ -557,6 +578,39 @@ class VideoFrameVLC(QWidget, metaclass=QABC):
 
         if self._is_status_change_in_progress:
             self.video_driver.set_pause(True)
+
+    def take_screenshot(self) -> None:
+        self.video_driver.screenshot()
+
+    def _on_screenshot_taken(self, frame_file: str) -> None:
+        view = self.screenshot_view()
+
+        if frame_file:
+            self.screenshot_taken.emit(frame_file, view)
+            return
+
+        # A paused live stream is stopped, so VLC has no video output left
+        # to grab from, while its last frame is still up on the pane.
+        self.screenshot_taken.emit(self.shown_frame_image(), view)
+
+    def screenshot_view(self) -> ScreenshotView | None:
+        """How to cut a screenshot down, where VLC keeps all of the frame.
+
+        The hardware drivers have VLC crop the frame to the view, and its
+        snapshot comes out cropped with it, with no way to ask for the
+        whole frame. Frames drawn here get the same cut, so a screenshot
+        is the same picture whichever driver took it.
+        """
+
+        return None
+
+    def shown_frame_image(self) -> QImage | None:
+        """The frame on show when VLC can't give one, if there is any."""
+
+        if not self.pause_snapshot.isVisible():
+            return None
+
+        return self.pause_snapshot.frame_image()
 
     def set_time(self, seek_ms) -> None:
         self.video_driver.set_time(seek_ms)

@@ -51,6 +51,7 @@ icon-symbolic,icons/basic/069-pen.svg,rename
 icon-symbolic,icons/basic/152-recycle.svg,reload
 icon-symbolic,icons/basic/129-more.svg,playlist-settings
 icon-symbolic,icons/basic/111-layers.svg,snapshots
+icon-symbolic,icons/basic/107-image.svg,screenshot
 icon-symbolic,icons/basic/227-low volume.svg,audio
 icon-symbolic,icons/basic/225-mute.svg,volume-mute
 icon-symbolic,icons/custom/add url.svg,add-url

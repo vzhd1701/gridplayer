@@ -26,6 +26,7 @@ from gridplayer.params.static import (
     HWCropBorderOffset,
     NetworkRetryMode,
     ProxyMode,
+    ScreenshotFormat,
     SeekSyncMode,
     SubtitleTrackMode,
     UnsavedChangesMode,
@@ -61,6 +62,13 @@ _default_settings = {
     "player/keymap": KeymapOverrides({}),
     "player/recent_list_enabled": True,
     "player/recent_list_max_size": 10,
+    # empty means the screenshots folder in the app data folder, worked out
+    # when a screenshot is taken so it follows a portable or moved data dir
+    "screenshots/dir": "",
+    # in the style of mpv screenshot-template, see gridplayer.utils.screenshots
+    "screenshots/filename_template": "%F_%P",
+    "screenshots/format": ScreenshotFormat.PNG,
+    "screenshots/jpg_quality": 90,
     "playlist/grid_mode": GridMode.AUTO_ROWS,
     "playlist/grid_fit": True,
     "playlist/grid_size": 0,

@@ -73,7 +73,6 @@ del_bins = [
     "PyQt5/Qt5/plugins/bearer/libqgenericbearer",
     "PyQt5/Qt5/plugins/imageformats/libqgif",
     "PyQt5/Qt5/plugins/imageformats/libqico",
-    "PyQt5/Qt5/plugins/imageformats/libqjpeg",
     "PyQt5/Qt5/plugins/imageformats/libqmacheif",
     "PyQt5/Qt5/plugins/imageformats/libqmacjp2",
     "PyQt5/Qt5/plugins/imageformats/libqtga",

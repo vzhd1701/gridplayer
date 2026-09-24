@@ -1,6 +1,7 @@
 import contextlib
 import logging
 import subprocess
+from pathlib import Path
 
 from PyQt5.QtCore import Qt, QUrl
 from PyQt5.QtGui import QDesktopServices
@@ -8,6 +9,7 @@ from PyQt5.QtWidgets import (
     QCheckBox,
     QComboBox,
     QDialog,
+    QFileDialog,
     QLabel,
     QLineEdit,
     QSpinBox,
@@ -29,6 +31,7 @@ from gridplayer.params.static import (
     ColorScheme,
     HWCropBorderOffset,
     ProxyMode,
+    ScreenshotFormat,
     URLResolver,
     VideoDriver,
 )
@@ -39,6 +42,11 @@ from gridplayer.utils.cookies import cookie_store, same_cookies
 from gridplayer.utils.keymap import default_keymap, merge_keymap
 from gridplayer.utils.network import opts_for
 from gridplayer.utils.qt import qt_connect, translate
+from gridplayer.utils.screenshots import (
+    default_screenshots_dir,
+    screenshots_dir,
+    unknown_specifiers,
+)
 from gridplayer.utils.video_driver import is_hw_video_available, session_video_driver
 from gridplayer.version import __app_url__
 from gridplayer.widgets.defaults_form import DefaultsForm
@@ -157,6 +165,10 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
             "player/keymap": self.keymapEditor,
             "player/recent_list_enabled": self.playerRecentList,
             "player/recent_list_max_size": self.playerRecentListSize,
+            "screenshots/dir": self.screenshotsDir,
+            "screenshots/filename_template": self.screenshotsFilenameTemplate,
+            "screenshots/format": self.screenshotsFormat,
+            "screenshots/jpg_quality": self.screenshotsJPGQuality,
             "misc/mouse_hide": self.timeoutMouseHideFlag,
             "misc/mouse_hide_timeout": self.timeoutMouseHide,
             "misc/vlc_options": self.miscVLCOptions,
@@ -220,6 +232,9 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
                 ),
             ),
         )
+
+        # the placeholder is short enough to fit, this is where it is
+        self.screenshotsDir.setToolTip(str(default_screenshots_dir()))
 
         if env.IS_LINUX:
             self.playerStayOnTop.hide()
@@ -302,6 +317,7 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
         self.fill_streamingResolverPriority()
         self.fill_hwCropBorder()
         self.fill_networkProxyMode()
+        self.fill_screenshotsFormat()
 
     def ui_set_limits(self):
         self.playerVideoDriverPlayers.setRange(1, MAX_VLC_PROCESSES)
@@ -311,6 +327,7 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
         self.timeoutVideoInit.setRange(1, 1000)
         self.playerRecentListSize.setRange(1, 100)
         self.networkTimeout.setRange(0, MAX_TIMEOUT_SEC)
+        self.screenshotsJPGQuality.setRange(1, 100)
 
     def ui_customize_dynamic(self):
         self.driver_selected(self.playerVideoDriver.currentIndex())
@@ -320,6 +337,7 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
         self.streamingWildcardHelp.setVisible(False)
         self.playerRecentListSize.setEnabled(self.playerRecentList.isChecked())
         self.proxy_mode_selected(self.networkProxyMode.currentIndex())
+        self.screenshot_format_selected(self.screenshotsFormat.currentIndex())
 
         self.switch_page(None)
         self.adjustSize()
@@ -340,6 +358,15 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
             (self.streamingTestButton.clicked, self.run_youtube_checkup),
             (self.networkProxyMode.currentIndexChanged, self.proxy_mode_selected),
             (self.networkTestButton.clicked, self.run_network_checkup),
+            (self.screenshotsDirBrowse.clicked, self.browse_screenshots_dir),
+            (
+                self.screenshotsFilenameTemplateHelpButton.clicked,
+                self.show_screenshot_template_help,
+            ),
+            (
+                self.screenshotsFormat.currentIndexChanged,
+                self.screenshot_format_selected,
+            ),
         )
 
     def run_youtube_checkup(self):
@@ -483,6 +510,72 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
         else:
             QDesktopServices.openUrl(QUrl.fromLocalFile(str(data_dir)))
 
+    def browse_screenshots_dir(self):
+        start_dir = screenshots_dir(self.screenshotsDir.text())
+
+        folder = QFileDialog.getExistingDirectory(
+            self,
+            self.tr("Screenshots folder"),
+            str(start_dir) if start_dir.is_dir() else "",
+        )
+
+        if folder:
+            self.screenshotsDir.setText(str(Path(folder)))
+
+    def show_screenshot_template_help(self):
+        """The specifiers, in a box of their own.
+
+        Seven of them with what each gives is a table, and a table does not
+        go in a tooltip anyone can read or under a field on a page that is
+        already full. See gridplayer.utils.screenshots for what they do.
+        """
+
+        help_text = self.tr(
+            "<p>The file name is made from the format, with these replaced:</p>"
+            "<table cellspacing='0' cellpadding='3'>"
+            "<tr><td><tt>%f</tt></td><td>video name</td></tr>"
+            "<tr><td><tt>%F</tt></td><td>video name without extension</td></tr>"
+            "<tr><td><tt>%p</tt></td><td>position in the video, 01-02-03</td></tr>"
+            "<tr><td><tt>%P</tt></td>"
+            "<td>position in the video with milliseconds, 01-02-03.456</td></tr>"
+            "<tr><td><tt>%n</tt></td>"
+            "<td>number, 0001 and up, the first one not taken yet</td></tr>"
+            "<tr><td><tt>%D</tt></td><td>date, 2026-09-24</td></tr>"
+            "<tr><td><tt>%T</tt></td>"
+            "<td>date and time, 2026-09-24_13-05-09</td></tr>"
+            "<tr><td><tt>%tY</tt></td><td>year, 2026</td></tr>"
+            "<tr><td><tt>%ty</tt></td><td>year, 26</td></tr>"
+            "<tr><td><tt>%tm</tt></td><td>month, 09</td></tr>"
+            "<tr><td><tt>%td</tt></td><td>day, 24</td></tr>"
+            "<tr><td><tt>%tH</tt></td><td>hour, 13</td></tr>"
+            "<tr><td><tt>%tM</tt></td><td>minute, 05</td></tr>"
+            "<tr><td><tt>%tS</tt></td><td>second, 09</td></tr>"
+            "<tr><td><tt>%%</tt></td><td>a percent sign</td></tr>"
+            "</table>"
+            "<p>For example:</p>"
+            "<table cellspacing='0' cellpadding='3'>"
+            "<tr><td><tt>%F_%P</tt></td><td><tt>clip_00-01-02.345.png</tt></td></tr>"
+            "<tr><td><tt>%D_%n</tt></td>"
+            "<td><tt>2026-09-24_0001.png</tt></td></tr>"
+            "<tr><td><tt>%F %T</tt></td>"
+            "<td><tt>clip 2026-09-24_13-05-09.png</tt></td></tr>"
+            "</table>"
+            "<p>Without <tt>%n</tt>, a name that is taken gets a number"
+            " in brackets after it. Characters a file name can't have are"
+            " replaced with <tt>_</tt>. Leave the format empty to go back to"
+            " <tt>%F_%P</tt>.</p>"
+        )
+
+        QCustomMessageBox.information(
+            self, self.tr("Screenshot file name format"), help_text
+        )
+
+    def screenshot_format_selected(self, idx):
+        is_jpg = self.screenshotsFormat.itemData(idx) == ScreenshotFormat.JPG
+
+        self.screenshotsJPGQualityLabel.setEnabled(is_jpg)
+        self.screenshotsJPGQuality.setEnabled(is_jpg)
+
     def fill_logLevelVLC(self):
         log_levels = {
             log_config.DISABLED: translate("ErrorLevel", "None"),
@@ -556,6 +649,14 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
         }
 
         _fill_combo_box(self.streamingResolverPriority, resolvers)
+
+    def fill_screenshotsFormat(self):
+        formats = {
+            ScreenshotFormat.PNG: "PNG",
+            ScreenshotFormat.JPG: "JPG",
+        }
+
+        _fill_combo_box(self.screenshotsFormat, formats)
 
     def fill_networkProxyMode(self):
         modes = {
@@ -659,6 +760,10 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
                 if form.is_enabled(key):
                     Settings().set(key, value)
 
+        # a file name has to come from somewhere
+        if not self.screenshotsFilenameTemplate.text().strip():
+            Settings().reset("screenshots/filename_template")
+
         self.save_cookies()
 
     @staticmethod
@@ -694,7 +799,30 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
         if not same_cookies(jar, store.jar):
             store.save(jar)
 
+    def is_screenshot_template_valid(self):
+        unknown = unknown_specifiers(self.screenshotsFilenameTemplate.text())
+
+        if not unknown:
+            return True
+
+        QCustomMessageBox.warning(
+            self,
+            translate("Dialog", "Warning"),
+            self.tr(
+                "The screenshot file name format has unknown specifiers:"
+                " {SPECIFIERS}. Write %% for a percent sign."
+            ).format(SPECIFIERS=", ".join(unknown)),
+        )
+
+        self.section_index.setCurrentItem(self.section_items[0])
+        self.screenshotsFilenameTemplate.setFocus()
+
+        return False
+
     def accept(self):
+        if not self.is_screenshot_template_valid():
+            return
+
         self.save_settings()
 
         super().accept()

@@ -33,6 +33,7 @@ class PlayerProcessSingleVLCHWSP(QThread, VlcPlayerBase, metaclass=QABC):
     error_signal = pyqtSignal(str)
     update_status_signal = pyqtSignal(str, int)
     snapshot_taken = pyqtSignal(str)
+    screenshot_taken = pyqtSignal(str)
     video_dimensions_changed = pyqtSignal(int, int)
 
     load_video_done = pyqtSignal(Media)
@@ -152,6 +153,9 @@ class PlayerProcessSingleVLCHWSP(QThread, VlcPlayerBase, metaclass=QABC):
     def notify_snapshot_taken(self, snapshot_path):
         self.snapshot_taken.emit(snapshot_path)
 
+    def notify_screenshot_taken(self, frame_path):
+        self.screenshot_taken.emit(frame_path)
+
     def notify_video_dimensions(self, width, height):
         self.video_dimensions_changed.emit(width, height)
 
@@ -174,6 +178,7 @@ class PlayerProcessSingleVLCHWSP(QThread, VlcPlayerBase, metaclass=QABC):
 class VideoDriverVLCHWSP(VLCVideoDriver):
     cmd_load_video = pyqtSignal(MediaInput)
     cmd_snapshot = pyqtSignal()
+    cmd_screenshot = pyqtSignal()
     cmd_play = pyqtSignal()
     cmd_set_pause = pyqtSignal(bool)
     cmd_set_time = pyqtSignal(MILLISECONDS)
@@ -205,6 +210,7 @@ class VideoDriverVLCHWSP(VLCVideoDriver):
             (self.player.load_video_done, self.load_video_done),
             (self.player.tracks_changed, self.tracks_changed_emit),
             (self.player.snapshot_taken, self.snapshot_taken_emit),
+            (self.player.screenshot_taken, self.screenshot_taken_emit),
             (self.player.video_dimensions_changed, self.set_video_dimensions),
             (self.player.playback_status_changed, self.playback_status_changed_emit),
             (self.player.time_changed, self.time_changed),
@@ -212,6 +218,7 @@ class VideoDriverVLCHWSP(VLCVideoDriver):
             (self.player.update_status_signal, self.update_status),
             (self.cmd_load_video, self.player.load_video),
             (self.cmd_snapshot, self.player.snapshot),
+            (self.cmd_screenshot, self.player.screenshot),
             (self.cmd_play, self.player.play),
             (self.cmd_set_pause, self.player.set_pause),
             (self.cmd_set_time, self.player.set_time),
@@ -247,6 +254,9 @@ class VideoDriverVLCHWSP(VLCVideoDriver):
 
     def snapshot(self):
         self.cmd_snapshot.emit()
+
+    def screenshot(self):
+        self.cmd_screenshot.emit()
 
     def play(self):
         self.cmd_play.emit()

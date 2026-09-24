@@ -105,3 +105,47 @@ def test_remove_snapshot_file_removes_file_and_dir(tmp_path):
     remove_snapshot_file(str(snapshot))
 
     assert not snap_dir.exists()
+
+
+class _ScreenshotPlayer(_MinimalPlayer):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
+        self.screenshots = []
+
+    def notify_screenshot_taken(self, frame_path):
+        self.screenshots.append(frame_path)
+
+
+def test_screenshot_notifies_written_file():
+    media_player = _FakeMediaPlayer()
+    player = _ScreenshotPlayer()
+    player._media_player = media_player
+
+    player.screenshot()
+
+    assert player.screenshots == media_player.requested_paths
+    assert player.snapshots == []
+
+    remove_snapshot_file(player.screenshots[0])
+
+
+def test_screenshot_reports_failure_when_libvlc_lies():
+    media_player = _FakeMediaPlayer(result=0, write_file=False)
+    player = _ScreenshotPlayer()
+    player._media_player = media_player
+
+    player.screenshot()
+
+    assert player.screenshots == [""]
+    assert not Path(media_player.requested_paths[0]).parent.exists()
+
+
+def test_screenshot_answers_without_media_player():
+    """Unlike the pause snapshot, somebody is waiting to hear back."""
+
+    player = _ScreenshotPlayer()
+
+    player.screenshot()
+
+    assert player.screenshots == [""]

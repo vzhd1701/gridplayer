@@ -18,6 +18,8 @@ class SoftwareVideoSurface(QWidget):
 
         self._image: QImage | None = None
         self._rgb = None
+        # the placeholder shown before the first frame, not one worth saving
+        self._is_black = False
         self._aspect = VideoAspect.FIT
         self._scale = 1.0
         self._crop = _ZERO_CROP
@@ -36,6 +38,23 @@ class SoftwareVideoSurface(QWidget):
             return 0, 0
         return self._image.width(), self._image.height()
 
+    def frame_image(self, visible_size: tuple[int, int] | None = None) -> QImage | None:
+        """A copy of the frame on show, as it came from the decoder.
+
+        The decoder pads its buffer out to a size it likes, 788x576 coming
+        as 800x578, so the part of it that is picture can be asked for.
+        """
+
+        if not self.has_frame() or self._is_black:
+            return None
+
+        width, height = visible_size or (0, 0)
+
+        if 0 < width <= self._image.width() and 0 < height <= self._image.height():
+            return self._image.copy(0, 0, width, height)
+
+        return self._image.copy()
+
     def present_rgb32(self, buf, width, height) -> None:
         if not buf or not width or not height:
             return
@@ -51,6 +70,7 @@ class SoftwareVideoSurface(QWidget):
         # Keep buf alive for this QImage; skip .copy() (second full-frame memcpy).
         self._rgb = buf
         self._image = QImage(buf, width, height, width * 4, QImage.Format_RGB32)
+        self._is_black = False
         self.update()
 
     def present_black(self, width, height) -> None:
@@ -59,6 +79,7 @@ class SoftwareVideoSurface(QWidget):
         image = QImage(width, height, QImage.Format_RGB32)
         image.fill(Qt.black)
         self._image = image
+        self._is_black = True
         self.update()
 
     def set_view(self, aspect: VideoAspect, scale: float, crop: VideoCrop) -> None:

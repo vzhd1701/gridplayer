@@ -9,6 +9,7 @@ from gridplayer.params.static import (
 )
 from gridplayer.settings import Settings
 from gridplayer.utils.qt import MILLISECONDS, QABC, qt_connect
+from gridplayer.utils.screenshots import ScreenshotView
 from gridplayer.vlc_player.image_decoder import ImageDecoder
 from gridplayer.vlc_player.instance import InstanceVLC
 from gridplayer.vlc_player.player_base import VlcPlayerBase
@@ -25,6 +26,7 @@ class PlayerProcessSingleVLCSWSP(QThread, VlcPlayerBase, metaclass=QABC):
     error_signal = pyqtSignal(str)
     update_status_signal = pyqtSignal(str, int)
     snapshot_taken = pyqtSignal(str)
+    screenshot_taken = pyqtSignal(str)
     video_dimensions_changed = pyqtSignal(int, int)
 
     load_video_done = pyqtSignal(Media)
@@ -196,6 +198,9 @@ class PlayerProcessSingleVLCSWSP(QThread, VlcPlayerBase, metaclass=QABC):
     def notify_snapshot_taken(self, snapshot_path):
         self.snapshot_taken.emit(snapshot_path)
 
+    def notify_screenshot_taken(self, frame_path):
+        self.screenshot_taken.emit(frame_path)
+
     def notify_video_dimensions(self, width, height):
         self.video_dimensions_changed.emit(width, height)
 
@@ -218,6 +223,7 @@ class PlayerProcessSingleVLCSWSP(QThread, VlcPlayerBase, metaclass=QABC):
 class VideoDriverVLCSWSP(VLCVideoDriver):
     cmd_load_video = pyqtSignal(MediaInput)
     cmd_snapshot = pyqtSignal()
+    cmd_screenshot = pyqtSignal()
     cmd_play = pyqtSignal()
     cmd_set_pause = pyqtSignal(bool)
     cmd_set_time = pyqtSignal(MILLISECONDS)
@@ -260,6 +266,7 @@ class VideoDriverVLCSWSP(VLCVideoDriver):
             (self.player.load_video_done, self.load_video_done),
             (self.player.tracks_changed, self.tracks_changed_emit),
             (self.player.snapshot_taken, self.snapshot_taken_emit),
+            (self.player.screenshot_taken, self.screenshot_taken_emit),
             (self.player.video_dimensions_changed, self.set_video_dimensions),
             (self.player.playback_status_changed, self.playback_status_changed_emit),
             (self.player.time_changed, self.time_changed),
@@ -268,6 +275,7 @@ class VideoDriverVLCSWSP(VLCVideoDriver):
             (self.player.init_frame_signal, self.init_frame),
             (self.cmd_load_video, self.player.load_video),
             (self.cmd_snapshot, self.player.snapshot),
+            (self.cmd_screenshot, self.player.screenshot),
             (self.cmd_play, self.player.play),
             (self.cmd_set_pause, self.player.set_pause),
             (self.cmd_set_time, self.player.set_time),
@@ -318,6 +326,9 @@ class VideoDriverVLCSWSP(VLCVideoDriver):
 
     def snapshot(self):
         self.cmd_snapshot.emit()
+
+    def screenshot(self):
+        self.cmd_screenshot.emit()
 
     def play(self):
         self.cmd_play.emit()
@@ -429,6 +440,17 @@ class VideoFrameVLCSWSP(VideoFrameVLC):
     def take_snapshot(self) -> None:
         # last frame stays painted on the surface
         self.video_driver.set_pause(True)
+
+    def shown_frame_image(self):
+        track = self.media.cur_video_track if self.media else None
+        visible_size = track.video_dimensions if track else None
+
+        return self.video_surface.frame_image(visible_size)
+
+    def screenshot_view(self):
+        size = (self.size().width(), self.size().height())
+
+        return ScreenshotView(size, self._aspect, self._crop)
 
     def adjust_view(self):
         if super().adjust_view():

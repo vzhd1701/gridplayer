@@ -24,6 +24,9 @@ class VlcPlayerThreaded(CommandLoopThreaded, VlcPlayerBase):
     def notify_snapshot_taken(self, snapshot_path):
         self.cmd_send("snapshot_taken_emit", snapshot_path)
 
+    def notify_screenshot_taken(self, frame_path):
+        self.cmd_send("screenshot_taken_emit", frame_path)
+
     def notify_tracks_changed(self, media_track):
         self.cmd_send("tracks_changed_emit", media_track)
 

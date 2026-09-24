@@ -2,6 +2,7 @@ import dataclasses
 import logging
 import random
 import secrets
+from datetime import datetime
 from functools import partial
 from pathlib import Path
 
@@ -91,6 +92,12 @@ from gridplayer.utils.external_subtitles import (
 from gridplayer.utils.libvlc_options_parser import get_vlc_options
 from gridplayer.utils.next_file import next_video_file, previous_video_file
 from gridplayer.utils.qt import MILLISECONDS, qt_connect, translate
+from gridplayer.utils.screenshots import (
+    ScreenshotJob,
+    ScreenshotName,
+    remove_frame_file,
+    screenshots_dir,
+)
 from gridplayer.utils.track_language import language_name, normalize, pick_track
 from gridplayer.utils.url_resolve.static import ResolvedVideo
 from gridplayer.utils.url_resolve.url_resolve import VideoURLResolver
@@ -401,6 +408,10 @@ class VideoBlock(QWidget):
         self._seek_settle_timer.setSingleShot(True)
         self._seek_settle_timer.setInterval(SEEK_SETTLE_MS)
 
+        # held until they are done, the pool only has the C++ side of them
+        self._screenshot_jobs: set[ScreenshotJob] = set()
+        self._is_screenshot_quiet = False
+
         self.url_resolver = self.init_url_resolver()
         self.video_driver: VideoFrameVLC | None = None
 
@@ -431,6 +442,10 @@ class VideoBlock(QWidget):
             (video_driver.error, self.video_driver_error),
             (video_driver.crash, self.crash),
             (video_driver.update_status, self.update_status),
+            # Left connected when the driver is let go: a frame asked for
+            # before a reload is still the one that was wanted, and a PNG
+            # nobody receives would be left behind in the temp folder.
+            (video_driver.screenshot_taken, self._screenshot_taken),
             (self.load_video, video_driver.load_video),
         )
 
@@ -3501,3 +3516,68 @@ class VideoBlock(QWidget):
 
         self.title = new_name
         self.color = self.video_params.color.as_hex()
+
+    @only_initialized
+    @only_with_video_tacks
+    def take_screenshot(self, is_quiet=False):
+        # Every video at once would be a warning box per video that fails,
+        # one on top of the other, and all for the same reason more often
+        # than not. Quiet says so on the video's overlay instead.
+        self._is_screenshot_quiet = is_quiet
+
+        self.video_driver.take_screenshot()
+
+    def _screenshot_taken(self, frame, view):
+        if frame is None:
+            self._report_screenshot_failure(
+                translate("Warning", "There is no video frame to take a screenshot of")
+            )
+            return
+
+        try:
+            name = ScreenshotName(
+                template=Settings().get("screenshots/filename_template"),
+                title=self.title or self.video_params.uri_name,
+                position_ms=0 if self.is_live else (self.time or 0),
+                now=datetime.now().astimezone(),
+            )
+
+            job = ScreenshotJob(
+                source=frame,
+                directory=screenshots_dir(Settings().get("screenshots/dir")),
+                name=name,
+                image_format=Settings().get("screenshots/format"),
+                jpg_quality=Settings().get("screenshots/jpg_quality"),
+                view=view,
+            )
+        except Exception:
+            if isinstance(frame, str):
+                remove_frame_file(frame)
+            raise
+
+        qt_connect(
+            (job.saved, self._screenshot_saved),
+            (job.failed, self._screenshot_failed),
+            (job.saved, partial(self._screenshot_jobs.discard, job)),
+            (job.failed, partial(self._screenshot_jobs.discard, job)),
+        )
+
+        self._screenshot_jobs.add(job)
+        job.start()
+
+    def _screenshot_saved(self, _path):
+        self.show_overlay()
+        self.info_change.emit(translate("Screenshot", "Screenshot saved"))
+
+    def _screenshot_failed(self, error):
+        self._report_screenshot_failure(
+            translate("Warning", "Could not save the screenshot"), error
+        )
+
+    def _report_screenshot_failure(self, message, detail=""):
+        if self._is_screenshot_quiet:
+            self.show_overlay()
+            self.info_change.emit(translate("Screenshot", "Screenshot failed"))
+            return
+
+        self._ctx.commands.warning(f"{message}\n\n{detail}" if detail else message)

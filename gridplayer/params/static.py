@@ -218,6 +218,11 @@ class ColorScheme(AutoName):
     DARK = auto()
 
 
+class ScreenshotFormat(AutoName):
+    PNG = auto()
+    JPG = auto()
+
+
 class AudioChannelMode(AutoName):
     UNSET = auto()
     STEREO = auto()

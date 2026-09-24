@@ -112,6 +112,53 @@ def calc_view_geometry(
     return _format_border_view(override, borders)
 
 
+def calc_view_borders(
+    video_dimensions: tuple[int, int],
+    size: tuple[int, int],
+    aspect: VideoAspect,
+    crop: VideoCrop,
+) -> VideoCrop:
+    """What the view cuts off each side of the frame, in video pixels.
+
+    The same part calc_view_geometry has VLC crop to, which is where a
+    screenshot on the hardware drivers ends up: FIT centers the pane's
+    shape on what the user crop leaves, the others keep all of that. The
+    zoom and the aspect override are not in it; VLC applies those later,
+    where its snapshot doesn't see them.
+    """
+    scr_x, scr_y = size
+    vid_x, vid_y = video_dimensions
+
+    if aspect != VideoAspect.FIT or min(scr_x, scr_y, vid_x, vid_y) <= 0:
+        return crop
+
+    if crop == _ZERO_CROP:
+        return _ratio_borders(video_dimensions, size)
+
+    return _fit_borders(video_dimensions, size, crop)
+
+
+def _ratio_borders(video_dimensions: tuple[int, int], size: tuple[int, int]):
+    """The borders VLC takes off for the ratio-form geometry FIT sends.
+
+    Its own rounding, which is not _fit_borders': the side that is cut is
+    scaled and rounded down, and a pixel left over by centering it goes to
+    the right or the bottom (VoutDisplayCropRatio in VLC 3).
+    """
+    scr_x, scr_y = size
+    vid_x, vid_y = video_dimensions
+
+    scaled_x = vid_y * scr_x // scr_y
+
+    if scaled_x < vid_x:
+        left = (vid_x - scaled_x) // 2
+        return VideoCrop(left, 0, vid_x - scaled_x - left, 0)
+
+    scaled_y = vid_x * scr_y // scr_x
+    top = (vid_y - scaled_y) // 2
+    return VideoCrop(0, top, 0, vid_y - scaled_y - top)
+
+
 def _format_border_view(
     override: tuple[int, int], borders: VideoCrop
 ) -> tuple[str, str]:

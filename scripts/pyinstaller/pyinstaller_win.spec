@@ -63,7 +63,6 @@ del_bins = [
     r"PyQt5\Qt5\bin\Qt5WebSockets",
     r"PyQt5\Qt5\plugins\imageformats\qgif",
     r"PyQt5\Qt5\plugins\imageformats\qicns",
-    r"PyQt5\Qt5\plugins\imageformats\qjpeg",
     r"PyQt5\Qt5\plugins\imageformats\qtga",
     r"PyQt5\Qt5\plugins\imageformats\qtiff",
     r"PyQt5\Qt5\plugins\imageformats\qwbmp",

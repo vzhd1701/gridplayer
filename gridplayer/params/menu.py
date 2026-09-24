@@ -158,6 +158,8 @@ SECTIONS = MappingProxyType(
                     "Deinterlace Mode - Phosphor",
                     "Deinterlace Mode - Film NTSC (IVTC)",
                 ),
+                "---",
+                "Take Screenshot",
             ),
             (
                 "Subtitles",
@@ -330,6 +332,8 @@ SECTIONS = MappingProxyType(
                         "Anti-transpose [ALL]",
                         "No Transform [ALL]",
                     ),
+                    "---",
+                    "Take Screenshot [ALL]",
                 ),
                 (
                     "Subtitles",

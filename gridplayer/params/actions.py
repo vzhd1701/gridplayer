@@ -731,6 +731,13 @@ ACTIONS = MappingProxyType(
             ),
             "show_if": "is_active_has_video",
         },
+        "Take Screenshot": {
+            "title": translate("Actions", "Take Screenshot"),
+            "key": "Alt+S",
+            "icon": "screenshot",
+            "func": ("active", "take_screenshot"),
+            "show_if": "is_active_has_video",
+        },
         "Seek Others (Percent)": {
             "title": translate("Actions", "Sync By Percent"),
             "icon": "seek-sync-percent",
@@ -1472,6 +1479,15 @@ ACTIONS = MappingProxyType(
             "title": translate("Transform", "No Transform"),
             "icon": "empty",
             "func": ("all", "set_transform", VideoTransform.NONE),
+            "show_if": "is_any_videos_have_video",
+        },
+        "Take Screenshot [ALL]": {
+            "title": translate("Actions", "Take Screenshot"),
+            "key": "Shift+Alt+S",
+            "icon": "screenshot",
+            # quiet: a failure is said on the video's own overlay, not in a
+            # warning box per video
+            "func": ("all", "take_screenshot", True),
             "show_if": "is_any_videos_have_video",
         },
         "Audio Mode - Original [ALL]": {

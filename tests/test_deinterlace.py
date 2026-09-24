@@ -292,16 +292,24 @@ class TestTheMenu:
             if isinstance(item, tuple) and item[0] == "Video"
         )
 
+    def _deinterlace_submenu(self):
+        return next(
+            item
+            for item in self._video_submenu()
+            if isinstance(item, tuple) and item[0] == "Deinterlace"
+        )
+
     def test_it_is_one_submenu_below_the_others_in_video(self):
+        """The last submenu; Take Screenshot goes under all of them."""
+
         video = self._video_submenu()
         submenus = [i[0] for i in video if isinstance(i, tuple)]
 
         assert submenus[-1] == "Deinterlace"
-        assert video[-1][0] == "Deinterlace"
         assert "Deinterlace" in SUBMENUS
 
     def test_the_state_comes_first_then_the_modes(self):
-        deinterlace = self._video_submenu()[-1]
+        deinterlace = self._deinterlace_submenu()
 
         assert deinterlace[1:5] == (
             "Deinterlace Auto",
@@ -313,7 +321,7 @@ class TestTheMenu:
         assert modes == list(VideoDeinterlaceMode)
 
     def test_every_row_reaches_the_video_and_shows_what_is_in_force(self):
-        deinterlace = self._video_submenu()[-1]
+        deinterlace = self._deinterlace_submenu()
 
         for name in deinterlace[1:]:
             if name == "---":

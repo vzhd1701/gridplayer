@@ -13,6 +13,9 @@ class VLCVideoDriver(QObject, metaclass=QABC):
     load_finished = pyqtSignal(Media)
     tracks_changed = pyqtSignal(Media)
     snapshot_taken = pyqtSignal(str)
+    # a PNG of the frame on show, for the receiver to move and then remove;
+    # empty when VLC had none to give
+    screenshot_taken = pyqtSignal(str)
     video_dimensions_changed = pyqtSignal(int, int)
 
     error = pyqtSignal(str)
@@ -65,6 +68,12 @@ class VLCVideoDriver(QObject, metaclass=QABC):
 
     def snapshot_taken_emit(self, snapshot_path):
         self.snapshot_taken.emit(snapshot_path)
+
+    @abstractmethod
+    def screenshot(self): ...
+
+    def screenshot_taken_emit(self, frame_path):
+        self.screenshot_taken.emit(frame_path)
 
     def set_video_dimensions(self, width, height):
         self.video_dimensions_changed.emit(width, height)

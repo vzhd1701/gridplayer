@@ -168,6 +168,83 @@ class Ui_SettingsDialog:
             0, QtWidgets.QFormLayout.FieldRole, self.horizontalLayout_4
         )
         self.lay_section_player.addLayout(self.formLayout_3)
+        self.section_screenshots = QtWidgets.QLabel(self.page_general_player)
+        font = QtGui.QFont()
+        font.setBold(True)
+        self.section_screenshots.setFont(font)
+        self.section_screenshots.setObjectName("section_screenshots")
+        self.lay_section_player.addWidget(self.section_screenshots)
+        self.formLayout_screenshots = QtWidgets.QFormLayout()
+        self.formLayout_screenshots.setFieldGrowthPolicy(
+            QtWidgets.QFormLayout.FieldsStayAtSizeHint
+        )
+        self.formLayout_screenshots.setObjectName("formLayout_screenshots")
+        self.screenshotsDirLabel = QtWidgets.QLabel(self.page_general_player)
+        self.screenshotsDirLabel.setObjectName("screenshotsDirLabel")
+        self.formLayout_screenshots.setWidget(
+            0, QtWidgets.QFormLayout.LabelRole, self.screenshotsDirLabel
+        )
+        self.lay_screenshots_dir = QtWidgets.QHBoxLayout()
+        self.lay_screenshots_dir.setObjectName("lay_screenshots_dir")
+        self.screenshotsDir = QtWidgets.QLineEdit(self.page_general_player)
+        self.screenshotsDir.setMinimumSize(QtCore.QSize(260, 0))
+        self.screenshotsDir.setObjectName("screenshotsDir")
+        self.lay_screenshots_dir.addWidget(self.screenshotsDir)
+        self.screenshotsDirBrowse = QtWidgets.QPushButton(self.page_general_player)
+        self.screenshotsDirBrowse.setObjectName("screenshotsDirBrowse")
+        self.lay_screenshots_dir.addWidget(self.screenshotsDirBrowse)
+        self.formLayout_screenshots.setLayout(
+            0, QtWidgets.QFormLayout.FieldRole, self.lay_screenshots_dir
+        )
+        self.screenshotsFilenameTemplateLabel = QtWidgets.QLabel(
+            self.page_general_player
+        )
+        self.screenshotsFilenameTemplateLabel.setObjectName(
+            "screenshotsFilenameTemplateLabel"
+        )
+        self.formLayout_screenshots.setWidget(
+            1, QtWidgets.QFormLayout.LabelRole, self.screenshotsFilenameTemplateLabel
+        )
+        self.lay_screenshots_template = QtWidgets.QHBoxLayout()
+        self.lay_screenshots_template.setObjectName("lay_screenshots_template")
+        self.screenshotsFilenameTemplate = QtWidgets.QLineEdit(self.page_general_player)
+        self.screenshotsFilenameTemplate.setMinimumSize(QtCore.QSize(260, 0))
+        self.screenshotsFilenameTemplate.setObjectName("screenshotsFilenameTemplate")
+        self.lay_screenshots_template.addWidget(self.screenshotsFilenameTemplate)
+        self.screenshotsFilenameTemplateHelpButton = QtWidgets.QPushButton(
+            self.page_general_player
+        )
+        self.screenshotsFilenameTemplateHelpButton.setMaximumSize(QtCore.QSize(24, 24))
+        self.screenshotsFilenameTemplateHelpButton.setText("?")
+        self.screenshotsFilenameTemplateHelpButton.setObjectName(
+            "screenshotsFilenameTemplateHelpButton"
+        )
+        self.lay_screenshots_template.addWidget(
+            self.screenshotsFilenameTemplateHelpButton
+        )
+        self.formLayout_screenshots.setLayout(
+            1, QtWidgets.QFormLayout.FieldRole, self.lay_screenshots_template
+        )
+        self.screenshotsFormatLabel = QtWidgets.QLabel(self.page_general_player)
+        self.screenshotsFormatLabel.setObjectName("screenshotsFormatLabel")
+        self.formLayout_screenshots.setWidget(
+            2, QtWidgets.QFormLayout.LabelRole, self.screenshotsFormatLabel
+        )
+        self.lay_screenshots_format = QtWidgets.QHBoxLayout()
+        self.lay_screenshots_format.setObjectName("lay_screenshots_format")
+        self.screenshotsFormat = QtWidgets.QComboBox(self.page_general_player)
+        self.screenshotsFormat.setObjectName("screenshotsFormat")
+        self.lay_screenshots_format.addWidget(self.screenshotsFormat)
+        self.screenshotsJPGQualityLabel = QtWidgets.QLabel(self.page_general_player)
+        self.screenshotsJPGQualityLabel.setObjectName("screenshotsJPGQualityLabel")
+        self.lay_screenshots_format.addWidget(self.screenshotsJPGQualityLabel)
+        self.screenshotsJPGQuality = QtWidgets.QSpinBox(self.page_general_player)
+        self.screenshotsJPGQuality.setObjectName("screenshotsJPGQuality")
+        self.lay_screenshots_format.addWidget(self.screenshotsJPGQuality)
+        self.formLayout_screenshots.setLayout(
+            2, QtWidgets.QFormLayout.FieldRole, self.lay_screenshots_format
+        )
+        self.lay_section_player.addLayout(self.formLayout_screenshots)
         spacerItem = QtWidgets.QSpacerItem(
             20, 40, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Expanding
         )
@@ -715,6 +792,17 @@ class Ui_SettingsDialog:
             _translate("SettingsDialog", "Video initialization timeout")
         )
         self.label_7.setText(_translate("SettingsDialog", "(sec)"))
+        self.section_screenshots.setText(_translate("SettingsDialog", "Screenshots"))
+        self.screenshotsDirLabel.setText(_translate("SettingsDialog", "Folder"))
+        self.screenshotsDir.setPlaceholderText(
+            _translate("SettingsDialog", "In the data folder")
+        )
+        self.screenshotsDirBrowse.setText(_translate("SettingsDialog", "Browse..."))
+        self.screenshotsFilenameTemplateLabel.setText(
+            _translate("SettingsDialog", "File name format")
+        )
+        self.screenshotsFormatLabel.setText(_translate("SettingsDialog", "Format"))
+        self.screenshotsJPGQualityLabel.setText(_translate("SettingsDialog", "Quality"))
         self.label_4.setText(
             _translate(
                 "SettingsDialog",

@@ -18,6 +18,9 @@ class VideoDriverDummy(VLCVideoDriver):
     def snapshot(self):
         self.snapshot_taken_emit("")
 
+    def screenshot(self):
+        self.screenshot_taken_emit("")
+
     def play(self): ...
 
     def set_pause(self, is_paused): ...

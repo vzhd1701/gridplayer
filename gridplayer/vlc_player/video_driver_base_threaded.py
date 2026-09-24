@@ -25,6 +25,9 @@ class VLCVideoDriverThreaded(CommandLoopThreaded, VLCVideoDriver):
     def snapshot(self):
         self.cmd_send("snapshot")
 
+    def screenshot(self):
+        self.cmd_send("screenshot")
+
     def play(self):
         self.cmd_send("play")
 
