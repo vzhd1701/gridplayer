@@ -115,12 +115,37 @@ class HTTPStreamProxy(HTTPStream):
 
 
 class HLSProxy(HTTPStreamProxy):
-    def open(self):
-        self._res = self._fetch()
+    """Serves a playlist the host wrote, with its URLs pointed at the proxy.
 
-        hls_playlist = parse_m3u8(self._res.text, self._playlist_base_url)
+    A finished playlist that knows where it came from has its segments
+    pointed at by their place in it rather than by their URL. VLC asks for
+    them one by one, the last long after the playlist was fetched, and a
+    host may stop honouring a URL it signed, or refuse the ones it signed
+    this time round from the start. A place in the playlist can be looked
+    up again in the playlist of the source resolved anew; a URL cannot.
+    """
+
+    def __init__(self, *args, stream: Stream | None = None, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        self.stream = stream
+
+    def open(self):
+        hls_playlist = self._fetch_playlist()
 
         self._replace_body(self._proxify_hls_playlist(hls_playlist), M3U8_CONTENT_TYPE)
+
+    def fetch_segments(
+        self,
+    ) -> tuple[StreamFragment | None, tuple[StreamFragment, ...]]:
+        """What the playlist lists, as fragments to be served by position."""
+
+        return _playlist_segments(self._fetch_playlist())
+
+    def _fetch_playlist(self) -> M3U8:
+        self._res = self._fetch()
+
+        return parse_m3u8(self._res.text, self._playlist_base_url)
 
     @property
     def _playlist_base_url(self) -> str:
@@ -134,6 +159,56 @@ class HLSProxy(HTTPStreamProxy):
         return urljoin(self._fetched_from, ".")
 
     def _proxify_hls_playlist(self, hls_playlist: M3U8) -> str:
+        if self._is_served_by_position(hls_playlist):
+            self._point_at_positions(hls_playlist)
+        else:
+            self._point_at_urls(hls_playlist)
+
+        return m3u8_to_str(hls_playlist)
+
+    def _is_served_by_position(self, hls_playlist: M3U8) -> bool:
+        """Whether the segments can be pointed at by their place.
+
+        Only in a finished playlist does a place stay put: a live one is a
+        window sliding along the stream, and VLC fetches it again every
+        few seconds anyway, each fetch renewed on its own. One init segment
+        at most, because a renewed playlist can only be told apart from the
+        old one by position, and there is no position for a second one.
+        """
+
+        if self.stream is None or not self.stream.is_refreshable:
+            return False
+
+        is_finished = hls_playlist.is_endlist or hls_playlist.playlist_type == "VOD"
+
+        maps = {segment.map.uri for segment in hls_playlist.segments if segment.map}
+
+        return is_finished and bool(hls_playlist.segments) and len(maps) <= 1
+
+    def _point_at_positions(self, hls_playlist: M3U8) -> None:
+        init_fragment, fragments = _playlist_segments(hls_playlist)
+
+        stream = dataclasses.replace(
+            self.stream, fragments=fragments, init_fragment=init_fragment
+        )
+
+        positions = [str(fragment_idx) for fragment_idx in range(len(fragments))]
+
+        urls = self.server.add_fragments(stream, [*positions, FRAGMENT_INIT])
+
+        init_url = urls.pop()
+
+        for segment, url in zip(hls_playlist.segments, urls, strict=True):
+            segment.uri = url
+            segment.key = self._proxify_key(segment.key)
+            if segment.map:
+                segment.map = dataclasses.replace(
+                    segment.map,
+                    uri=init_url,
+                    key=self._proxify_key(segment.map.key),
+                )
+
+    def _point_at_urls(self, hls_playlist: M3U8) -> None:
         for segment in hls_playlist.segments:  # type: HLSSegment
             segment.uri = self._proxify_url(segment.uri)
             segment.key = self._proxify_key(segment.key)
@@ -143,8 +218,6 @@ class HLSProxy(HTTPStreamProxy):
                     uri=self._proxify_url(segment.map.uri),
                     key=self._proxify_key(segment.map.key),
                 )
-
-        return m3u8_to_str(hls_playlist)
 
     def _proxify_key(self, key: Key | None) -> Key | None:
         """Point the key at the proxy, as the segments it decrypts are.
@@ -167,6 +240,27 @@ class HLSProxy(HTTPStreamProxy):
             session=self.session_opts,
         )
         return self.server.add_stream(stream)
+
+
+def _playlist_segments(
+    hls_playlist: M3U8,
+) -> tuple[StreamFragment | None, tuple[StreamFragment, ...]]:
+    """A host's playlist as the init segment and segments it lists.
+
+    Byte ranges stay in the playlist VLC is given, and VLC asks for them
+    itself, so a fragment here is only ever the URL to ask.
+    """
+
+    fragments = tuple(
+        StreamFragment(url=segment.uri, duration=segment.duration)
+        for segment in hls_playlist.segments
+    )
+
+    map_uris = {segment.map.uri for segment in hls_playlist.segments if segment.map}
+
+    init_fragment = StreamFragment(url=map_uris.pop()) if len(map_uris) == 1 else None
+
+    return init_fragment, fragments
 
 
 class DASHManifestProxy(HTTPStreamProxy):

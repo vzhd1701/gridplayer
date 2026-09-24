@@ -1,9 +1,11 @@
 import dataclasses
 import logging
 import time
+from bisect import bisect_right
 from collections.abc import Iterable
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from itertools import accumulate
 from threading import Lock
 from urllib.parse import parse_qsl, urlencode, urljoin, urlparse
 from uuid import uuid3, uuid4
@@ -11,7 +13,7 @@ from uuid import uuid3, uuid4
 from requests import HTTPError, Response
 from streamlink import StreamError
 
-from gridplayer.models.stream import Stream, StreamOrigin, Streams
+from gridplayer.models.stream import Stream, StreamFragment, StreamOrigin, Streams
 from gridplayer.utils.stream_proxy.fragments import fragment_stream
 from gridplayer.utils.stream_proxy.session import StreamSession
 from gridplayer.utils.stream_proxy.wrappers import HTTPStreamProxy, StreamReader
@@ -119,6 +121,24 @@ class StreamProxyServer(ThreadingHTTPServer):
 
         return f"{self.base_url}/?{urlencode(params)}"
 
+    def add_fragments(self, stream: Stream, fragments: Iterable[str]) -> list[str]:
+        """URLs of ours for many fragments of one stream.
+
+        The same as asking add_stream for each, but the stream is looked up
+        once: a long video has thousands of segments, and hashing a list of
+        them once per segment takes seconds.
+        """
+
+        params = {
+            "stream_id": self._add_stream(stream),
+            "session_id": self._add_session(stream.session),
+        }
+
+        return [
+            f"{self.base_url}/?{urlencode({**params, 'fragment': fragment})}"
+            for fragment in fragments
+        ]
+
     def add_base(self, base_url: str, stream_session) -> str:
         """A URL of ours that anything under `base_url` can be asked for.
 
@@ -175,17 +195,28 @@ class StreamProxyServer(ThreadingHTTPServer):
         with self._streams_lock:
             return self._streams.get(stream_id)
 
-    def refresh_stream(self, stream_id: str) -> Stream | None:
+    def refresh_stream(
+        self, stream_id: str, stale: Stream | None = None
+    ) -> Stream | None:
         """Replace a stream's expired URLs with freshly resolved ones.
 
         The stream keeps its id, because the playlist VLC is playing points
         at that id and there is no way to hand it a different one.
+
+        `stale` is the stream as the caller found it before its request was
+        refused. VLC asks for more than one segment at a time, and they all
+        fail together; once one of them has renewed the stream, the rest
+        only have to ask again.
         """
 
         stream = self.get_stream(stream_id)
 
         if stream is None or stream.origin is None or self._resolve_source is None:
             return None
+
+        if stale is not None and stream != stale:
+            self._log.debug("Stream was renewed in the meantime")
+            return stream
 
         streams = self._refresh_source(stream.origin)
 
@@ -199,6 +230,12 @@ class StreamProxyServer(ThreadingHTTPServer):
             return None
 
         fresh_stream = dataclasses.replace(fresh_stream, origin=stream.origin)
+
+        if _is_playlist_segments(stream):
+            fresh_stream = self._with_playlist_segments(stream, fresh_stream)
+
+            if fresh_stream is None:
+                return None
 
         if fresh_stream == stream:
             # a fragmented stream keeps its manifest URL and renews only the
@@ -272,6 +309,71 @@ class StreamProxyServer(ThreadingHTTPServer):
             return None
 
         return resolved.streams
+
+    def _with_playlist_segments(self, stream: Stream, fresh: Stream) -> Stream | None:
+        """The renewed stream with the segments of its own playlist.
+
+        Resolving the source again only gives the playlist's new URL. The
+        segments VLC is asking for are listed in that playlist, so it has
+        to be fetched, with the renewed stream's own cookies and headers.
+        """
+
+        if fresh.session is None:
+            return None
+
+        session = self.get_session(self._add_session(fresh.session))
+
+        try:
+            init_fragment, fragments = session.playlist_segments(fresh)
+        except Exception:
+            self._log.exception("Failed to fetch the renewed playlist")
+            return None
+
+        if not fragments:
+            self._log.warning("Renewed playlist has no segments")
+            return None
+
+        return dataclasses.replace(
+            fresh,
+            fragments=_realign(stream.fragments, fragments),
+            init_fragment=init_fragment,
+        )
+
+
+def _is_playlist_segments(stream: Stream) -> bool:
+    """A host's HLS playlist, served to VLC segment by segment by position."""
+
+    return stream.protocol == "hls_proxy" and stream.fragments is not None
+
+
+def _realign(
+    old: tuple[StreamFragment, ...], new: tuple[StreamFragment, ...]
+) -> tuple[StreamFragment, ...]:
+    """Line renewed segments up with the positions VLC already has.
+
+    VLC holds on to the playlist it was given and asks for its segments
+    by their place in it. A source resolved again can hand out a playlist
+    cut up differently, and then the same place is a different moment in
+    the video, so each old segment is matched to the new one that plays
+    where it started.
+    """
+
+    if len(old) == len(new):
+        return new
+
+    starts = list(accumulate((fragment.duration for fragment in new), initial=0.0))
+
+    aligned = []
+    start = 0.0
+
+    for fragment in old:
+        # a hair past the start, so that one landing on a boundary is not
+        # taken for the end of the segment before it
+        idx = bisect_right(starts, start + 1e-3) - 1
+        aligned.append(new[min(max(idx, 0), len(new) - 1)])
+        start += fragment.duration
+
+    return tuple(aligned)
 
 
 def _pick_stream(streams: Streams, stream: Stream) -> Stream | None:
@@ -396,6 +498,10 @@ class ProxyRequestHandler(BaseHTTPRequestHandler):
         stream_id = query.get("stream_id", "")
 
         while True:
+            # what was stored when this try began, to tell whether someone
+            # else renewed it while this try was being refused
+            stored = self.server.get_stream(stream_id) if stream_id else None
+
             try:
                 stream_params = self._stream_params(stream_id, query)
             except ValueError as err:
@@ -419,12 +525,14 @@ class ProxyRequestHandler(BaseHTTPRequestHandler):
             if failure is None:
                 return
 
-            if not self._wait_to_retry(failure, stream_id):
+            if not self._wait_to_retry(failure, stream_id, stored):
                 break
 
         self._relay_failure(failure)
 
-    def _wait_to_retry(self, failure: RelayFailure, stream_id: str) -> bool:
+    def _wait_to_retry(
+        self, failure: RelayFailure, stream_id: str, stored: Stream | None
+    ) -> bool:
         """Get ready to ask for the stream again, if that could go any better."""
 
         if self._is_response_started:
@@ -435,7 +543,7 @@ class ProxyRequestHandler(BaseHTTPRequestHandler):
         if failure.is_expired and self._is_refresh_allowed:
             self._is_refresh_allowed = False
 
-            if self.server.refresh_stream(stream_id) is not None:
+            if self.server.refresh_stream(stream_id, stale=stored) is not None:
                 self._log.debug("Stream URLs renewed, retrying request")
                 return True
 

@@ -3,7 +3,7 @@ from types import MappingProxyType
 
 from streamlink import Streamlink
 
-from gridplayer.models.stream import Stream, StreamSessionOpts
+from gridplayer.models.stream import Stream, StreamFragment, StreamSessionOpts
 from gridplayer.utils.network import configure_session, session_stamp
 from gridplayer.utils.stream_proxy.wrappers import (
     DASHManifestProxy,
@@ -20,7 +20,6 @@ from gridplayer.utils.stream_proxy.wrappers import (
 RELAYED_PROTOCOLS = MappingProxyType(
     {
         "http": HTTPStreamProxy,
-        "hls_proxy": HLSProxy,
         "dash_proxy": DASHManifestProxy,
     }
 )
@@ -47,6 +46,15 @@ class StreamSession:
             return HLSMuxedStream(server=self._server, stream=stream)
 
         return self._get_solo_stream(stream)
+
+    def playlist_segments(
+        self, stream: Stream
+    ) -> tuple[StreamFragment | None, tuple[StreamFragment, ...]]:
+        """The init segment and segments of an HLS playlist the host serves."""
+
+        self._sync_settings()
+
+        return HLSProxy(**self._relay_args(stream), stream=stream).fetch_segments()
 
     def _sync_settings(self) -> None:
         """Pick up settings that were edited since this session was made.
@@ -89,6 +97,11 @@ class StreamSession:
 
     def _solo_wrapper(self, stream: Stream):
         protocol = stream.protocol
+
+        if protocol == "hls_proxy":
+            # relayed like the rest, and handed the stream as well, so that
+            # its segments can be pointed back at it
+            return HLSProxy(**self._relay_args(stream), stream=stream)
 
         if protocol in RELAYED_PROTOCOLS:
             return RELAYED_PROTOCOLS[protocol](**self._relay_args(stream))
