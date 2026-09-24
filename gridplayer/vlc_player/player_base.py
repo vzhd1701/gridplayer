@@ -63,16 +63,33 @@ RESTART_REAPPLY_TRIES = 12
 # a 400ms clip loops cleanly, and a finished pass shows up as nothing but the
 # time going backwards.
 #
-# The count has to be positive (a negative one reads as "do not repeat"), so
-# "forever" is a number no playback will reach: 2 billion passes of a 400ms
-# clip is 25 years.
+# The count has to be positive (a negative one reads as "do not repeat"), and
+# it cannot be one no playback will reach: VLC repeats an input that stopped
+# playing too, a pass every fraction of a millisecond with nothing to show
+# for it. One that never started is caught early (see DEAD_INPUT_PASSES);
+# one that stalls once it is up, like a seek past where a file really ends,
+# is left to run out of passes, which takes well under a second for a few
+# thousand and ends the media, and the media list player's repeat starts it
+# over. A real loop that uses them all up goes on the same way: one restart
+# every 10000 passes, over an hour of even a 400ms clip.
 #
 # Adaptive media loops this way too, but the wrap is a seek, and that demuxer
 # restarts its elementary streams on one and renumbers them (see
 # Stream.is_adaptive). A track picked by hand is held by the number it had, so
 # it comes back selecting nothing at all -- hence
 # _arm_tracks_reapply_if_renumbered, since no end of media arrives to arm it.
-INPUT_REPEAT_FOREVER = 2_000_000_000
+INPUT_REPEAT_PASSES = 10_000
+
+# How a dead input is caught before it runs out of passes. Every pass VLC
+# makes over an input that never plays starts its buffering over from
+# nothing, and says so -- a "Buffering" event at exactly zero, thousands of
+# them a second, while the time never moves. A file whose header survived
+# gets its streams added and even buffers up a little on each pass, so the
+# time is the one thing to go by. A healthy load reports zero once or twice
+# before its time starts, however slow the host, and a seek or a loop two
+# more before it moves again. After this many the input is taken for dead,
+# milliseconds in rather than seconds.
+DEAD_INPUT_PASSES = 50
 
 # VLC's adaptive demuxer restarts the video decoder on every seek, and picking
 # that decoder rebuilds the video output -- once per hardware format avcodec
@@ -149,6 +166,9 @@ class VlcPlayerBase(ABC):
 
         self._is_parse_for_slaves = False
 
+        # zero-buffering passes since the time last moved, see DEAD_INPUT_PASSES
+        self._dead_input_passes = 0
+
         self.media_input: MediaInput | None = None
         self.media: Media | None = None
 
@@ -215,10 +235,40 @@ class VlcPlayerBase(ABC):
             self._event_manager.subscribe(event_name, callback)
 
     def cb_buffering(self, event):
+        # exactly zero, not rounded down to it: a slow host starts at a
+        # fraction of a percent, which is buffering all the same
+        if event.u.new_cache == 0:
+            self._dead_input_passes += 1
+
+            if self._dead_input_passes == DEAD_INPUT_PASSES:
+                self._on_dead_input()
+
+        # the passes keep coming until whoever was told tears the player
+        # down, and each would be another status to send
+        if self._dead_input_passes >= DEAD_INPUT_PASSES:
+            return
+
         buffered_percent = int(event.u.new_cache)
         self.notify_update_status(
             translate("Video Status", "Buffering"), buffered_percent
         )
+
+    def _on_dead_input(self):
+        """VLC going round an input that plays nothing, see DEAD_INPUT_PASSES.
+
+        Once the video is up this is left to run out of passes instead,
+        which ends the media and has the media list player restart it:
+        a seek past where a file really ends does this, and playing on
+        from the start beats an error.
+        """
+
+        if self.is_video_initialized:
+            self._log.debug("Input is going round without playing, waiting it out")
+            return
+
+        self._log.debug("Input is going round without playing anything")
+
+        self.error(translate("Video Error", "Video stopped before initialization"))
 
     def cb_vout(self, event):
         # macOS: _adjust_view_initial skips the synchronous vout wait, so
@@ -343,6 +393,8 @@ class VlcPlayerBase(ABC):
         if new_time == 0:
             return
 
+        self._dead_input_passes = 0
+
         if not self.is_video_initialized:
             if self.media_input.is_live:
                 self.media_input.initial_time = new_time
@@ -460,6 +512,7 @@ class VlcPlayerBase(ABC):
         self._last_time = None
         self._own_audio_count = None
         self._own_subtitle_count = None
+        self._dead_input_passes = 0
 
         self._log.info(f"Loading {self.media_input.uri}")
 
@@ -481,7 +534,7 @@ class VlcPlayerBase(ABC):
 
         if not self.media_input.is_live:
             # let VLC wrap the input around on its own, seamlessly
-            self._media_options.append(f":input-repeat={INPUT_REPEAT_FOREVER}")
+            self._media_options.append(f":input-repeat={INPUT_REPEAT_PASSES}")
 
         if self.media_input.is_audio_only:
             self._media_options.append(":no-video")

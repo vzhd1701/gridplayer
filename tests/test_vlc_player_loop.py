@@ -7,7 +7,8 @@ from PyQt5.QtWidgets import QApplication
 from gridplayer.models.video import Video
 from gridplayer.settings import Settings
 from gridplayer.vlc_player.player_base import (
-    INPUT_REPEAT_FOREVER,
+    DEAD_INPUT_PASSES,
+    INPUT_REPEAT_PASSES,
     RESTART_REAPPLY_TRIES,
     VlcPlayerBase,
 )
@@ -111,7 +112,126 @@ def test_seekable_media_loops_in_place():
     """VLC wraps the input around itself, no restart and nothing cut off."""
     media = _loaded_media(is_live=False)
 
-    assert f":input-repeat={INPUT_REPEAT_FOREVER}" in media.options
+    assert f":input-repeat={INPUT_REPEAT_PASSES}" in media.options
+
+
+def test_a_stalled_input_runs_out_of_passes_quickly():
+    """VLC repeats an input that stopped playing too, a pass per fraction of a ms.
+
+    One that stalls once the video is up -- a seek past where a file really
+    ends -- is left to run out of them, so there have to be few enough for
+    that to be over in well under a second.
+    """
+
+    assert 0 < INPUT_REPEAT_PASSES <= 10_000
+
+
+def _buffering(value):
+    return SimpleNamespace(u=SimpleNamespace(new_cache=value))
+
+
+def _time(value):
+    return SimpleNamespace(u=SimpleNamespace(new_time=value))
+
+
+def _loading_player():
+    """A player partway through loading, recording what it reports."""
+
+    player = _MinimalPlayer(vlc_instance=None)
+    player.media_input = _media_input(is_live=False)
+
+    player.errors = []
+    player.statuses = []
+    player.notify_error = player.errors.append
+    player.notify_update_status = lambda status, percent=0: player.statuses.append(
+        percent
+    )
+
+    return player
+
+
+def test_an_input_going_round_without_playing_is_caught_at_once():
+    """A refused stream or a broken file: zero buffered, pass after pass.
+
+    Reported as the load failing, the same as running out of passes would,
+    only milliseconds in and not seconds.
+    """
+
+    player = _loading_player()
+
+    for _ in range(DEAD_INPUT_PASSES * 20):
+        player.cb_buffering(_buffering(0.0))
+
+    assert player.errors == ["Video stopped before initialization"]
+
+
+def test_the_flood_is_not_passed_on_once_caught():
+    """Each pass would be a status sent to the GUI process otherwise."""
+
+    player = _loading_player()
+
+    for _ in range(DEAD_INPUT_PASSES * 20):
+        player.cb_buffering(_buffering(0.0))
+
+    assert len(player.statuses) < DEAD_INPUT_PASSES
+
+
+def test_a_broken_file_that_buffers_a_little_each_pass_is_caught_too():
+    """A header that survived gets its streams and buffers some of nothing."""
+
+    player = _loading_player()
+
+    for _ in range(DEAD_INPUT_PASSES):
+        for value in (0.0, 0.0, 4.0, 25.0, 100.0):
+            player.cb_buffering(_buffering(value))
+
+    assert player.errors == ["Video stopped before initialization"]
+
+
+def test_a_load_that_starts_playing_is_not_taken_for_dead():
+    """Seeks and loops report zero a couple of times before time moves on."""
+
+    player = _loading_player()
+
+    for step in range(DEAD_INPUT_PASSES * 20):
+        player.cb_buffering(_buffering(0.0))
+        player.cb_buffering(_buffering(0.0))
+        player.cb_time_changed(_time(1000 + step))
+
+    assert player.errors == []
+
+
+def test_a_slow_host_starting_at_a_fraction_of_a_percent_is_buffering():
+    player = _loading_player()
+
+    for _ in range(DEAD_INPUT_PASSES * 20):
+        player.cb_buffering(_buffering(0.3))
+
+    assert player.errors == []
+
+
+def test_an_input_that_stalls_once_up_is_left_to_run_out_of_passes():
+    """Running out restarts it from the start, which beats an error."""
+
+    player = _loading_player()
+    player.is_video_initialized = True
+
+    for _ in range(DEAD_INPUT_PASSES * 20):
+        player.cb_buffering(_buffering(0.0))
+
+    assert player.errors == []
+
+
+def test_an_end_before_the_video_is_up_is_an_error():
+    """How a dead input that ran out of passes gets reported."""
+
+    errors = []
+    player = _MinimalPlayer(vlc_instance=None)
+    player.notify_error = errors.append
+
+    player.cb_end_reached(None)
+
+    assert errors == ["Video stopped before initialization"]
 
 
 def test_live_media_is_not_repeated():
@@ -124,7 +244,7 @@ def test_adaptive_media_loops_in_place_too():
     """It renumbers its streams on the wrap, which the re-apply answers."""
     media = _loaded_media(is_live=False, is_adaptive=True)
 
-    assert f":input-repeat={INPUT_REPEAT_FOREVER}" in media.options
+    assert f":input-repeat={INPUT_REPEAT_PASSES}" in media.options
 
 
 class _FakeTracksManager:
