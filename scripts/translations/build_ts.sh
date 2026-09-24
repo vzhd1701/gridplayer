@@ -6,7 +6,6 @@ SCRIPT_DIR="$( cd "$( dirname $0 )" && pwd )"
 
 . "scripts/init_app_vars.sh"
 
-BLACK=$(uv run --frozen ruff format)
 PYLUPDATE=$(uv run --frozen which pylupdate5)
 DEST_TS_FILE="$RESOURCES_DIR/translations/en_US.ts"
 
@@ -17,10 +16,10 @@ cp -a "$APP_BASE_DIR" "$TEMPD"
 
 APP_BASE_TMP="$TEMPD/$APP_MODULE"
 
-echo "Expanding source code lines"
+echo "Putting translate calls on single lines"
 
-# Expanding all lines so it will be easier for PYLUPDATE to parse long translate(***)
-$BLACK -q --line-length 200000000000 --config "format.skip-magic-trailing-comma = true" "$APP_BASE_TMP"
+# pylupdate5 misses a translate(***) whose text does not start on the line it opens on
+uv run --frozen python "$SCRIPT_DIR/flatten_translate_calls.py" "$APP_BASE_TMP"
 
 echo "Extracting translation lines"
 cp "$DEST_TS_FILE" "$APP_BASE_TMP/en_US.ts"
