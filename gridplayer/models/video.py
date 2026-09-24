@@ -36,6 +36,8 @@ from gridplayer.params.static import (
     SubtitleTrackMode,
     VideoAspect,
     VideoCrop,
+    VideoDeinterlace,
+    VideoDeinterlaceMode,
     VideoEndAction,
     VideoInitialState,
     VideoTransform,
@@ -169,6 +171,10 @@ class Video(BaseModel):
     crop: VideoCrop = session_field("video_defaults/crop")
     volume: float = session_field("video_defaults/volume")
     transform: VideoTransform = session_field("video_defaults/transform")
+    deinterlace: VideoDeinterlace = session_field("video_defaults/deinterlace")
+    deinterlace_mode: VideoDeinterlaceMode = session_field(
+        "video_defaults/deinterlace_mode"
+    )
 
     # Streamable
     stream_quality: str = session_field("video_defaults/stream_quality")

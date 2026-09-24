@@ -16,9 +16,15 @@ from gridplayer.models.audio_selection import AudioExternal, track_of_file
 from gridplayer.models.subtitle_selection import SubtitleExternal
 from gridplayer.models.subtitle_selection import track_of_file as subtitle_track_of_file
 from gridplayer.params import env
-from gridplayer.params.static import AudioChannelMode, VideoTransform
+from gridplayer.params.static import (
+    AudioChannelMode,
+    VideoDeinterlace,
+    VideoDeinterlaceMode,
+    VideoTransform,
+)
 from gridplayer.settings import Settings
 from gridplayer.utils.aspect_calc import calc_resize_scale, calc_view_geometry
+from gridplayer.utils.libvlc_options_parser import DeinterlaceModeMap
 from gridplayer.utils.misc import is_url
 from gridplayer.vlc_player.libvlc import vlc
 from gridplayer.vlc_player.player_event_manager import EventManager
@@ -558,6 +564,11 @@ class VlcPlayerBase(ABC):
             )
 
         self._media_input_vlc.add_options(*self._media_options)
+
+        self._apply_deinterlace(
+            self.media_input.video.deinterlace,
+            self.media_input.video.deinterlace_mode,
+        )
 
         # Files of their own have to go on before the video starts, and what
         # the video has of its own has to be counted before that -- afterwards
@@ -1154,6 +1165,33 @@ class VlcPlayerBase(ABC):
     @only_initialized_player
     def set_audio_channel_mode(self, mode: AudioChannelMode):
         self._media_player.audio_set_channel(AUDIO_CHANNEL_MODE_MAP[mode])
+
+    @only_initialized_player
+    def set_deinterlace(
+        self, deinterlace: VideoDeinterlace, mode: VideoDeinterlaceMode
+    ):
+        self.media_input.video.deinterlace = deinterlace
+        self.media_input.video.deinterlace_mode = mode
+
+        self._apply_deinterlace(deinterlace, mode)
+
+    def _apply_deinterlace(
+        self, deinterlace: VideoDeinterlace, mode: VideoDeinterlaceMode
+    ):
+        # Kept on the media player rather than on its video output, so it
+        # holds for outputs made later too, such as the one a live stream
+        # gets back after stop/play. Auto is where every player starts, and
+        # libVLC 3 has no call to go back to it: a player once switched on
+        # or off has to be made anew for that, which is reloading the video.
+        if deinterlace == VideoDeinterlace.ON:
+            # libVLC 3 turns "auto" away here, and every deinterlacer that
+            # reads the mode, software or GPU, takes "auto" to mean "x"
+            if mode == VideoDeinterlaceMode.AUTO:
+                mode = VideoDeinterlaceMode.X
+
+            self._media_player.video_set_deinterlace(DeinterlaceModeMap[mode])
+        elif deinterlace == VideoDeinterlace.OFF:
+            self._media_player.video_set_deinterlace(None)
 
     @only_initialized_player
     def set_audio_delay(self, delay_ms: int):

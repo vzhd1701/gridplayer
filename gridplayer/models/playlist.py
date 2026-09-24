@@ -23,6 +23,8 @@ from gridplayer.params.static import (
     UnsavedChangesMode,
     VideoAspect,
     VideoCrop,
+    VideoDeinterlace,
+    VideoDeinterlaceMode,
     VideoEndAction,
     VideoInitialState,
     VideoTransform,
@@ -56,6 +58,8 @@ class Snapshot(BaseModel):
 class PlaylistVideoDefaults(BaseModel):
     aspect: VideoAspect | None = None
     transform: VideoTransform | None = None
+    deinterlace: VideoDeinterlace | None = None
+    deinterlace_mode: VideoDeinterlaceMode | None = None
     end_action: VideoEndAction | None = None
     audio_mode: AudioChannelMode | None = None
     audio_track_mode: AudioTrackMode | None = None

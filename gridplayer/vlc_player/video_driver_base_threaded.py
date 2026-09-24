@@ -64,6 +64,9 @@ class VLCVideoDriverThreaded(CommandLoopThreaded, VLCVideoDriver):
     def set_audio_channel_mode(self, mode):
         self.cmd_send("set_audio_channel_mode", mode)
 
+    def set_deinterlace(self, deinterlace, mode):
+        self.cmd_send("set_deinterlace", deinterlace, mode)
+
     def set_audio_delay(self, delay_ms):
         self.cmd_send("set_audio_delay", delay_ms)
 

@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="532pt" height="532pt" version="1.1" viewBox="-27 -17 532 532" xmlns="http://www.w3.org/2000/svg">
+ <path d="m47 40h383c31.5 0 57 25.5 57 57v306c0 31.5-25.5 57-57 57h-383c-31.5 0-57-25.5-57-57v-306c0-31.5 25.5-57 57-57zm0 26c-17.1 0-31 13.9-31 31v306c0 17.1 13.9 31 31 31h383c17.1 0 31-13.9 31-31v-306c0-17.1-13.9-31-31-31z" fill-rule="evenodd"/>
+ <g>
+  <rect x="88" y="103" width="250" height="22"/>
+  <rect x="138" y="137" width="250" height="22"/>
+  <rect x="88" y="171" width="250" height="22"/>
+  <rect x="138" y="205" width="250" height="22"/>
+  <rect x="88" y="239" width="250" height="22"/>
+  <rect x="138" y="273" width="250" height="22"/>
+  <rect x="88" y="307" width="250" height="22"/>
+  <rect x="138" y="341" width="250" height="22"/>
+  <rect x="88" y="375" width="250" height="22"/>
+ </g>
+</svg>

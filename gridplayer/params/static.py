@@ -83,6 +83,26 @@ class VideoTransform(AutoName):
     NONE = auto()
 
 
+class VideoDeinterlace(AutoName):
+    AUTO = auto()
+    ON = auto()
+    OFF = auto()
+
+
+class VideoDeinterlaceMode(AutoName):
+    AUTO = auto()
+    DISCARD = auto()
+    BLEND = auto()
+    MEAN = auto()
+    BOB = auto()
+    LINEAR = auto()
+    X = auto()
+    YADIF = auto()
+    YADIF2X = auto()
+    PHOSPHOR = auto()
+    IVTC = auto()
+
+
 class VideoEndAction(AutoName):
     LOOP_FILE = auto()
     NEXT_FILE = auto()

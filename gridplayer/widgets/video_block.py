@@ -71,6 +71,8 @@ from gridplayer.params.static import (
     NetworkRetryMode,
     VideoAspect,
     VideoCrop,
+    VideoDeinterlace,
+    VideoDeinterlaceMode,
     VideoEndAction,
     VideoInitialState,
     VideoTransform,
@@ -283,6 +285,24 @@ def _is_reopen_needed(old: Video | None, new: Video) -> bool:
         return True
 
     return old is not None and old.subtitle_encoding != new.subtitle_encoding
+
+
+def _is_deinterlace_reload_needed(
+    current: Video, deinterlace: VideoDeinterlace, mode: VideoDeinterlaceMode
+) -> bool:
+    """Whether a deinterlace setting needs the video opened again.
+
+    libVLC 3 switches a player's deinterlacing on or off, mode and all, while
+    it plays; but it has no call to put a player back on auto, which is only
+    where a player starts, and on auto the mode comes from the VLC instance.
+    """
+
+    if deinterlace != VideoDeinterlace.AUTO:
+        return False
+
+    return (
+        current.deinterlace != VideoDeinterlace.AUTO or current.deinterlace_mode != mode
+    )
 
 
 class VideoBlock(QWidget):
@@ -2623,6 +2643,13 @@ class VideoBlock(QWidget):
             self._start_load()
             return
 
+        if self.video_tracks and _is_deinterlace_reload_needed(
+            self.video_params, snapshot.deinterlace, snapshot.deinterlace_mode
+        ):
+            self.video_params = snapshot.model_copy()
+            self.reload()
+            return
+
         self.set_video_track(snapshot.video_track_id)
         self.restore_audio_selection(snapshot.audio_selection)
 
@@ -2633,6 +2660,7 @@ class VideoBlock(QWidget):
         self.set_subtitle_delay(snapshot.subtitle_delay_ms, is_silent=True)
 
         self.set_aspect(snapshot.aspect_mode)
+        self.set_deinterlace_params(snapshot.deinterlace, snapshot.deinterlace_mode)
         self.set_muted(snapshot.is_muted)
         self.set_pause(snapshot.is_paused)
         self.set_scale(snapshot.scale, is_silent=True)
@@ -3077,6 +3105,35 @@ class VideoBlock(QWidget):
         self.video_params.transform = transform
 
         self.reload()
+
+    @only_with_video_tacks
+    def set_deinterlace(self, deinterlace: VideoDeinterlace):
+        self.set_deinterlace_params(deinterlace, self.video_params.deinterlace_mode)
+
+    @only_with_video_tacks
+    def set_deinterlace_mode(self, mode: VideoDeinterlaceMode):
+        # picking a mode is asking for it, as it is in VLC's own menu
+        deinterlace = self.video_params.deinterlace
+        if deinterlace == VideoDeinterlace.OFF:
+            deinterlace = VideoDeinterlace.ON
+
+        self.set_deinterlace_params(deinterlace, mode)
+
+    @only_with_video_tacks
+    def set_deinterlace_params(
+        self, deinterlace: VideoDeinterlace, mode: VideoDeinterlaceMode
+    ):
+        is_reload_needed = _is_deinterlace_reload_needed(
+            self.video_params, deinterlace, mode
+        )
+
+        self.video_params.deinterlace = deinterlace
+        self.video_params.deinterlace_mode = mode
+
+        if is_reload_needed:
+            self.reload()
+        else:
+            self.video_driver.set_deinterlace(deinterlace, mode)
 
     @only_seekable
     def toggle_loop_random(self):

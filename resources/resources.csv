@@ -66,6 +66,7 @@ icon-symbolic,icons/custom/close all.svg,close-playlist
 icon-symbolic,icons/custom/columns first.svg,grid-columns-first
 icon-symbolic,icons/custom/crop.svg,crop
 icon-symbolic,icons/custom/delay.svg,delay
+icon-symbolic,icons/custom/deinterlace.svg,deinterlace
 icon-symbolic,icons/custom/empty.svg,empty
 icon-symbolic,icons/custom/error.svg,error
 icon-symbolic,icons/custom/fullscreen.svg,fullscreen

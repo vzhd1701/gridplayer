@@ -4,7 +4,13 @@ from PyQt5.QtCore import Qt, QThread, pyqtSignal, pyqtSlot
 from PyQt5.QtWidgets import QWidget
 
 from gridplayer.params import env
-from gridplayer.params.static import AudioChannelMode, VideoAspect, VideoCrop
+from gridplayer.params.static import (
+    AudioChannelMode,
+    VideoAspect,
+    VideoCrop,
+    VideoDeinterlace,
+    VideoDeinterlaceMode,
+)
 from gridplayer.settings import Settings
 from gridplayer.utils.qt import MILLISECONDS, QABC, qt_connect
 from gridplayer.widgets.video_frame_vlc_base import (
@@ -181,6 +187,7 @@ class VideoDriverVLCHWSP(VLCVideoDriver):
     cmd_add_subtitle_slave = pyqtSignal(str)
     cmd_add_audio_slave = pyqtSignal(str)
     cmd_set_audio_channel_mode = pyqtSignal(AudioChannelMode)
+    cmd_set_deinterlace = pyqtSignal(VideoDeinterlace, VideoDeinterlaceMode)
     cmd_set_audio_delay = pyqtSignal(int)
     cmd_set_subtitle_delay = pyqtSignal(int)
     cmd_adjust_view = pyqtSignal(tuple, VideoAspect, float, VideoCrop)
@@ -218,6 +225,7 @@ class VideoDriverVLCHWSP(VLCVideoDriver):
             (self.cmd_add_subtitle_slave, self.player.add_subtitle_slave),
             (self.cmd_add_audio_slave, self.player.add_audio_slave),
             (self.cmd_set_audio_channel_mode, self.player.set_audio_channel_mode),
+            (self.cmd_set_deinterlace, self.player.set_deinterlace),
             (self.cmd_set_audio_delay, self.player.set_audio_delay),
             (self.cmd_set_subtitle_delay, self.player.set_subtitle_delay),
             (self.cmd_adjust_view, self.player.adjust_view),
@@ -278,6 +286,9 @@ class VideoDriverVLCHWSP(VLCVideoDriver):
 
     def set_audio_channel_mode(self, mode):
         self.cmd_set_audio_channel_mode.emit(mode)
+
+    def set_deinterlace(self, deinterlace, mode):
+        self.cmd_set_deinterlace.emit(deinterlace, mode)
 
     def set_audio_delay(self, delay_ms):
         self.cmd_set_audio_delay.emit(delay_ms)

@@ -21,6 +21,8 @@ from gridplayer.params.static import (
     SubtitleTrackMode,
     UnsavedChangesMode,
     VideoAspect,
+    VideoDeinterlace,
+    VideoDeinterlaceMode,
     VideoEndAction,
     VideoInitialState,
     VideoTransform,
@@ -178,6 +180,31 @@ def _transforms() -> dict:
         VideoTransform.TRANSPOSE: _t("Transpose"),
         VideoTransform.ANTITRANSPOSE: _t("Anti-transpose"),
         VideoTransform.NONE: _t("No Transform"),
+    }
+
+
+def _deinterlace_states() -> dict:
+    # in the menu's own contexts, so each string is translated once for both
+    return {
+        VideoDeinterlace.AUTO: translate("Deinterlace", "Automatic"),
+        VideoDeinterlace.ON: translate("Deinterlace", "On"),
+        VideoDeinterlace.OFF: translate("Deinterlace", "Off"),
+    }
+
+
+def _deinterlace_modes() -> dict:
+    return {
+        VideoDeinterlaceMode.AUTO: translate("Deinterlace Mode", "Auto"),
+        VideoDeinterlaceMode.DISCARD: translate("Deinterlace Mode", "Discard"),
+        VideoDeinterlaceMode.BLEND: translate("Deinterlace Mode", "Blend"),
+        VideoDeinterlaceMode.MEAN: translate("Deinterlace Mode", "Mean"),
+        VideoDeinterlaceMode.BOB: translate("Deinterlace Mode", "Bob"),
+        VideoDeinterlaceMode.LINEAR: translate("Deinterlace Mode", "Linear"),
+        VideoDeinterlaceMode.X: translate("Deinterlace Mode", "X"),
+        VideoDeinterlaceMode.YADIF: translate("Deinterlace Mode", "Yadif"),
+        VideoDeinterlaceMode.YADIF2X: translate("Deinterlace Mode", "Yadif (2x)"),
+        VideoDeinterlaceMode.PHOSPHOR: translate("Deinterlace Mode", "Phosphor"),
+        VideoDeinterlaceMode.IVTC: translate("Deinterlace Mode", "Film NTSC (IVTC)"),
     }
 
 
@@ -662,6 +689,36 @@ VIDEO_FIELDS: tuple[SettingField, ...] = (
         section=_t("Video"),
         label=_t("Transform"),
         combo_values=_transforms,
+    ),
+    _f(
+        settings_key="video_defaults/deinterlace",
+        video_attr="deinterlace",
+        kind=FieldKind.COMBO,
+        section=_t("Video"),
+        label=translate("Actions", "Deinterlace"),
+        combo_values=_deinterlace_states,
+        tooltip=_t(
+            "Automatic deinterlaces only the videos marked as interlaced."
+            " Some are marked wrongly and show combing on moving edges;"
+            " turn it on for those."
+        ),
+    ),
+    _f(
+        settings_key="video_defaults/deinterlace_mode",
+        video_attr="deinterlace_mode",
+        kind=FieldKind.COMBO,
+        section=_t("Video"),
+        label=_t("Deinterlace mode"),
+        combo_values=_deinterlace_modes,
+        enabled_by="video_defaults/deinterlace",
+        enabled_by_value=(VideoDeinterlace.AUTO, VideoDeinterlace.ON),
+        tooltip=_t(
+            "Auto leaves it to VLC, which currently picks X. Yadif (2x), Bob"
+            " and Phosphor double the frame rate, which costs more with many"
+            " videos playing. With hardware decoding the GPU does the work and"
+            " has fewer modes of its own; a mode it lacks falls back to one"
+            " it has."
+        ),
     ),
     _f(
         settings_key="video_defaults/end_action",
