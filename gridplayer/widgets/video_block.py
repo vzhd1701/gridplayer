@@ -1163,28 +1163,22 @@ class VideoBlock(QWidget):
         return pick_track(self.video_params.audio_languages, self.audio_tracks)
 
     def apply_audio_default(self):
-        """Leave the sound to the video's own file, preference and all."""
+        """Leave the sound to the video's own file, preference and all.
+
+        A dubbed video's own is the language it was made in, which may be
+        another one than the dub on screen.
+        """
 
         self.video_params.audio_selection = AudioDefault()
 
-        self._apply_wanted_audio_track()
+        self._follow_audio_language()
 
     def apply_audio_preference(self):
-        """Follow the preferred languages again, whichever way this video dubs.
-
-        A dubbed stream is served one language at a time, so going back to
-        the preference means fetching it again rather than reaching for a
-        track that was never handed over.
-        """
+        """Follow the preferred languages again, whichever way this video dubs."""
 
         self.video_params.audio_selection = AudioPreferred()
 
-        if self._language_variants.is_multilingual:
-            self.set_audio_language(None)
-
-        # a reload only happens where the language changed, so the tracks
-        # in hand still have to be settled either way
-        self._apply_wanted_audio_track()
+        self._follow_audio_language()
 
     def _apply_wanted_audio_track(self):
         """Put the settings into effect on the video that is already playing."""
@@ -2779,7 +2773,10 @@ class VideoBlock(QWidget):
         whose sound names no language at all.
         """
 
-        variants = self._language_variants
+        return self._language_among(self._language_variants)
+
+    def _language_among(self, variants: Streams) -> str | None:
+        """Which of these languages the sound asked for comes to."""
 
         if not variants.is_multilingual:
             return None
@@ -2788,6 +2785,11 @@ class VideoBlock(QWidget):
 
         if isinstance(selection, AudioLanguage) and selection.tag in variants.languages:
             return selection.tag
+
+        if isinstance(selection, AudioDefault):
+            # the languages asked for do not apply to the video's own sound,
+            # which is the language it was made in
+            return variants.language_for("")
 
         return variants.language_for(self.video_params.audio_languages)
 
@@ -2825,10 +2827,20 @@ class VideoBlock(QWidget):
             f" playing {self._audio_language_playing}"
         )
 
-        if self.audio_language == self._audio_language_playing:
-            # the rung on screen is already the one asked for, so there is
-            # nothing to reload -- but the sound may have been switched off
-            # since it was loaded, and picking a language means wanting it
+        self._follow_audio_language()
+
+    def _follow_audio_language(self):
+        """Put the sound asked for into effect, in whichever dub it calls for.
+
+        A dubbed stream is served one language at a time, so another one
+        means fetching the ladder again rather than reaching for a track
+        that was never handed over.
+        """
+
+        if not self.streams or self.audio_language == self._audio_language_playing:
+            # the rung on screen already carries it, so there is nothing to
+            # reload -- but the sound may have been switched off since it
+            # was loaded, and asking for a language means wanting it
             self._apply_wanted_audio_track()
             return
 
@@ -2986,7 +2998,7 @@ class VideoBlock(QWidget):
         if not stream.audio_tracks:
             return stream
 
-        language = stream.audio_tracks.language_for(self.video_params.audio_languages)
+        language = self._language_among(stream.audio_tracks)
 
         if language is None:
             return stream

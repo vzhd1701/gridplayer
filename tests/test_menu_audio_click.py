@@ -13,6 +13,7 @@ import pytest
 from PyQt5.QtWidgets import QApplication, QWidget
 
 from gridplayer.models.audio_selection import (
+    AudioDefault,
     AudioDisabled,
     AudioLanguage,
 )
@@ -100,6 +101,7 @@ class _Block:
     _language_variants = VideoBlock._language_variants
     audio_language_options = VideoBlock.audio_language_options
     audio_language = VideoBlock.audio_language
+    _language_among = VideoBlock._language_among
     preferred_audio_language = VideoBlock.preferred_audio_language
     preferred_audio_track_id = VideoBlock.preferred_audio_track_id
     stream_ladder = VideoBlock.stream_ladder
@@ -117,6 +119,7 @@ class _Block:
 
     set_audio_language = VideoBlock.set_audio_language
     apply_audio_preference = VideoBlock.apply_audio_preference
+    _follow_audio_language = VideoBlock._follow_audio_language
     _apply_wanted_audio_track = VideoBlock._apply_wanted_audio_track
     set_audio_track = VideoBlock.set_audio_track
     _audio_selection_for = VideoBlock._audio_selection_for
@@ -358,3 +361,24 @@ def test_the_language_already_playing_still_turns_the_sound_back_on():
     assert block.video_params.audio_selection == AudioLanguage(tag="cop")
     assert block.video_driver.tracks_manager.audio_track != DISABLED_TRACK
     assert len(block.reloads) == reloads_before, "the same rung needs no reload"
+
+
+def test_default_brings_a_dubbed_video_back_to_its_own_language():
+    """Coptic, then Default: the reported failure.
+
+    Only the Coptic track had been handed over, so there was nothing to
+    switch to without a reload. The block went on saying English while
+    Coptic played, and the quality menu listed English rungs with none
+    of them marked as the one on screen.
+    """
+
+    block = _Block()
+
+    _click(block, "Coptic")
+    _click(block, "Default")
+
+    assert block.video_params.audio_selection == AudioDefault()
+    assert block.audio_language_playing == "en"
+    assert block.reloads[-1] == "720p (en)"
+    # the rung on screen is on the ladder the quality menu lists
+    assert block.video_params.stream_quality in block.stream_ladder

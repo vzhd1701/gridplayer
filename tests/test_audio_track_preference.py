@@ -141,7 +141,9 @@ def _block(mocker, languages="", tracks=None):
     # there is a picture, so the sound may be turned off
     block._is_video_track_off = False
     # a file is not dubbed by the site, so nothing is served per language
+    block.streams = Streams()
     block._language_variants = Streams()
+    block._follow_audio_language = partial(VideoBlock._follow_audio_language, block)
 
     return block
 
@@ -204,21 +206,19 @@ def test_going_back_to_preferred_refetches_a_dubbed_stream(mocker):
     """There is only one track in hand, and it is the one being left behind."""
 
     block = _block(mocker, "en")
-    block._language_variants = Streams(
+    block.streams = Streams(
         {
             language: Stream(url="http://host/s", protocol="http", language=language)
             for language in ("tlh", "en")
         }
     )
-
-    # the tracks in hand are settled either way, but the reload is what
-    # actually brings the preferred language back
-    block._apply_wanted_audio_track = mocker.Mock()
+    block.audio_language = "en"
+    block._audio_language_playing = "tlh"
 
     VideoBlock.apply_audio_preference(block)
 
-    block.set_audio_language.assert_called_once_with(None)
-    block._apply_wanted_audio_track.assert_called_once()
+    block.reset.assert_called_once()
+    block.load_stream_quality.assert_called_once()
 
 
 def test_the_preferred_track_is_found_by_language(mocker):

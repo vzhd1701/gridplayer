@@ -12,6 +12,7 @@ from gridplayer.models.audio_selection import (
     AudioExternal,
     AudioTrackId,
 )
+from gridplayer.models.stream import Streams
 from gridplayer.models.video import Video
 from gridplayer.settings import Settings
 from gridplayer.vlc_player.static import AudioTrack
@@ -88,6 +89,7 @@ class _Block:
     tracks_changed = VideoBlock.tracks_changed
     apply_audio_default = VideoBlock.apply_audio_default
     restore_audio_selection = VideoBlock.restore_audio_selection
+    _follow_audio_language = VideoBlock._follow_audio_language
 
     _audio_selection_for = VideoBlock._audio_selection_for
     _forget_audio_file_that_is_gone = VideoBlock._forget_audio_file_that_is_gone
@@ -113,6 +115,8 @@ class _Block:
 
         self.is_video_initialized = is_initialized
         self.audio_tracks = {0: _track("eng")} if tracks is None else tracks
+        # a file, which no site serves one language at a time
+        self.streams = Streams()
 
         self.video_driver = _Driver()
         self.video_driver.external_audio_ids = (
