@@ -36,6 +36,11 @@ class AboutDialog(QDialog, Ui_AboutDialog):
         from streamlink import __version__ as STREAMLINK_VERSION
         from yt_dlp.version import __version__ as YT_DLP_VERSION
 
+        from gridplayer.utils.percent_re import untangle_percent_re
+
+        # yt-dlp patches urllib3 as it is imported; see utils/percent_re.py
+        untangle_percent_re()
+
         try:
             from curl_cffi import __version__ as CURL_CFFI_VERSION
         except ImportError:

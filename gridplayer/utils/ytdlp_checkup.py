@@ -37,7 +37,11 @@ from gridplayer.utils.network import (
     fetch_capped,
     ytdl_network_opts,
 )
+from gridplayer.utils.percent_re import untangle_percent_re
 from gridplayer.utils.qt import translate
+
+# yt-dlp patches urllib3 as it is imported; see utils/percent_re.py
+untangle_percent_re()
 
 TRANSLATION_CONTEXT = "yt-dlp Checkup"
 

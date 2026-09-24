@@ -22,6 +22,7 @@ from gridplayer.settings import Settings
 from gridplayer.utils.cookies import ytdl_cookies
 from gridplayer.utils.js_runtime import ytdl_js_runtimes
 from gridplayer.utils.network import needs_relay, ytdl_network_opts
+from gridplayer.utils.percent_re import untangle_percent_re
 from gridplayer.utils.track_language import language_name
 from gridplayer.utils.url_resolve.resolver_base import ResolverBase
 from gridplayer.utils.url_resolve.static import (
@@ -35,6 +36,9 @@ from gridplayer.utils.url_resolve.stream_detect import (
     is_hls_live_stream,
     is_http_live_stream,
 )
+
+# yt-dlp patches urllib3 as it is imported; see utils/percent_re.py
+untangle_percent_re()
 
 # VLC can only pair separate audio & video through HLS, so a stream that
 # has to carry an extra audio track must be servable as a playlist

@@ -240,6 +240,11 @@ def _get_resolvers(
 def _is_match_youtube(url: str) -> bool:
     from yt_dlp.extractor import youtube as yt_extractor
 
+    from gridplayer.utils.percent_re import untangle_percent_re
+
+    # yt-dlp patches urllib3 as it is imported; see utils/percent_re.py
+    untangle_percent_re()
+
     yt_extractors = (
         yt_extractor.YoutubeIE,
         yt_extractor.YoutubeYtBeIE,

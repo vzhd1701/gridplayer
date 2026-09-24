@@ -30,6 +30,10 @@ from yt_dlp.globals import supported_js_runtimes
 from gridplayer.params import env
 from gridplayer.settings import Settings
 from gridplayer.utils.app_dir import get_app_data_dir
+from gridplayer.utils.percent_re import untangle_percent_re
+
+# yt-dlp patches urllib3 as it is imported; see utils/percent_re.py
+untangle_percent_re()
 
 # what each engine's binary is called on disk, which is not always what
 # yt-dlp calls the engine: quickjs ships as "qjs". Only consulted for
