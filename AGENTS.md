@@ -42,6 +42,26 @@ from gridplayer.settings import Settings
 Settings().set("playlist/unsaved_changes", UnsavedChangesMode.DISCARD)
 ```
 
+## Translatable strings
+
+`pylupdate5` only extracts a string when it sees a literal context and a
+literal text in the call itself. Anything else still translates at runtime if
+the entry happens to exist, but never reaches translators.
+
+* Always write `translate("Context", "Text")` (or `self.tr("Text")`) with
+  string literals at the call site.
+* Do not add wrapper helpers such as `_t(text)` / `_tr(text)`, and do not pass
+  the context through a constant or variable.
+* Do not put `tr()` / `translate()` inside f-strings; translate first, then
+  format or concatenate.
+* Do not call `translate()` at import time in modules loaded before
+  `init_translator()` (see `tests/test_translation_timing.py`).
+* A choice or toggle shown both in the menu (`params/actions.py`,
+  `player/managers/active_block.py`) and in the settings form
+  (`params/defaults_fields.py`) uses one context named after the setting
+  (e.g. `Transform`, `When Finished`, `Playlist Settings`). Other menu strings
+  use `Actions`; other settings form strings use `SettingsDialog`.
+
 ## Code style
 
 * Follow the Ruff configuration in `pyproject.toml`.
