@@ -38,10 +38,8 @@ from gridplayer.utils.app_dir import get_app_data_dir
 from gridplayer.utils.cookies import cookie_store, same_cookies
 from gridplayer.utils.keymap import default_keymap, merge_keymap
 from gridplayer.utils.network import opts_for
-from gridplayer.utils.network_checkup import NetworkCheckup
 from gridplayer.utils.qt import qt_connect, translate
 from gridplayer.utils.video_driver import is_hw_video_available, session_video_driver
-from gridplayer.utils.ytdlp_checkup import YouTubeCheckup
 from gridplayer.version import __app_url__
 from gridplayer.widgets.defaults_form import DefaultsForm
 from gridplayer.widgets.keymap_tree_view import KeymapEditor
@@ -358,6 +356,10 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
         of cookies nobody has pressed OK on yet.
         """
 
+        # yt-dlp and streamlink are slow to import, and the settings dialog
+        # is imported at startup
+        from gridplayer.utils.ytdlp_checkup import YouTubeCheckup
+
         checkup = YouTubeCheckup(
             jar=self.cookiesList.jar,
             are_cookies_enabled=self.cookiesEnabled.isChecked(),
@@ -374,6 +376,9 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
         reason the cookies test is: what somebody wants tried is what
         they have just typed, and they have not pressed OK yet.
         """
+
+        # slow to import for the same reason as the YouTube one
+        from gridplayer.utils.network_checkup import NetworkCheckup
 
         CheckupDialog(self, NetworkCheckup(self.network_opts_on_page)).exec_()
 

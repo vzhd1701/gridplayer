@@ -2,7 +2,6 @@ from threading import Lock
 
 from gridplayer.models.stream import Stream
 from gridplayer.player.managers.base import ManagerBase
-from gridplayer.utils.stream_proxy.stream_proxy import StreamProxy
 
 
 class StreamProxyManager(ManagerBase):
@@ -16,6 +15,10 @@ class StreamProxyManager(ManagerBase):
     def stream_proxy(self):
         with self._stream_proxy_lock:
             if self._stream_proxy is None:
+                # the proxy is built on streamlink, which is slow to import,
+                # and most sessions never play a stream through it
+                from gridplayer.utils.stream_proxy.stream_proxy import StreamProxy
+
                 self._stream_proxy = StreamProxy(parent=self)
                 self._stream_proxy.start()
 

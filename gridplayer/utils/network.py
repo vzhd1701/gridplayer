@@ -20,8 +20,6 @@ import socket
 import urllib.parse
 from dataclasses import dataclass
 
-from streamlink.exceptions import StreamlinkError
-
 from gridplayer.params.static import ProxyMode
 from gridplayer.settings import Settings
 from gridplayer.utils.cookies import apply_to_streamlink as apply_cookies
@@ -255,6 +253,10 @@ def fetch_capped(session, url: str, limit: int, **kwargs) -> tuple[int, bytes]:
     that refused us from a certificate nothing trusts by the type of
     what was raised.
     """
+
+    # not at the top: this module is imported at startup, and pulling in
+    # any part of streamlink imports all of it
+    from streamlink.exceptions import StreamlinkError
 
     try:
         response = session.http.get(url, stream=True, raise_for_status=False, **kwargs)

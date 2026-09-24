@@ -1,23 +1,23 @@
 import contextlib
 import logging
 from types import MappingProxyType
+from typing import TYPE_CHECKING
 
 from PyQt5.QtCore import QObject, QThread, pyqtSignal
-from yt_dlp.extractor import youtube as yt_extractor
 
 from gridplayer.models.resolver_patterns import ResolverPatterns
 from gridplayer.params.static import URLResolver
 from gridplayer.settings import Settings
 from gridplayer.utils.qt import translate
-from gridplayer.utils.url_resolve.resolver_base import DirectResolver, ResolverBase
-from gridplayer.utils.url_resolve.resolver_streamlink import StreamlinkResolver
-from gridplayer.utils.url_resolve.resolver_yt_dlp import YoutubeDLResolver
 from gridplayer.utils.url_resolve.static import (
     BadURLException,
     NoResolverPlugin,
     ResolvedVideo,
     StreamOfflineError,
 )
+
+if TYPE_CHECKING:
+    from gridplayer.utils.url_resolve.resolver_base import ResolverBase
 
 _log = logging.getLogger(__name__)
 
@@ -28,13 +28,20 @@ RESOLVER_NAMES = MappingProxyType(
     }
 )
 
-RESOLVER_MAP = MappingProxyType(
-    {
+
+# streamlink and yt-dlp take a good third of a second to import, so they
+# are left until a URL needs resolving, on the worker thread, instead of
+# holding up every startup whether it opens a URL or not
+def _resolver_map() -> dict[URLResolver, type["ResolverBase"]]:
+    from gridplayer.utils.url_resolve.resolver_base import DirectResolver
+    from gridplayer.utils.url_resolve.resolver_streamlink import StreamlinkResolver
+    from gridplayer.utils.url_resolve.resolver_yt_dlp import YoutubeDLResolver
+
+    return {
         URLResolver.STREAMLINK: StreamlinkResolver,
         URLResolver.YT_DLP: YoutubeDLResolver,
         URLResolver.DIRECT: DirectResolver,
     }
-)
 
 
 def resolve_url(url: str, on_status=None) -> ResolvedVideo | None:
@@ -195,9 +202,9 @@ def _make_status_msg(resolver_id: URLResolver):
     )
 
 
-def _pick_resolvers(url) -> dict[URLResolver, type[ResolverBase]]:
+def _pick_resolvers(url) -> dict[URLResolver, type["ResolverBase"]]:
     if _is_match_youtube(url):
-        return {URLResolver.YT_DLP: YoutubeDLResolver}
+        return {URLResolver.YT_DLP: _resolver_map()[URLResolver.YT_DLP]}
 
     url_resolvers = _get_resolvers(url)
 
@@ -210,7 +217,9 @@ def _pick_resolvers(url) -> dict[URLResolver, type[ResolverBase]]:
 
 def _get_resolvers(
     url: str,
-) -> dict[URLResolver, type[ResolverBase]]:
+) -> dict[URLResolver, type["ResolverBase"]]:
+    resolver_map = _resolver_map()
+
     priority_resolver: URLResolver = Settings().get("streaming/resolver_priority")
     patterns: ResolverPatterns = Settings().get("streaming/resolver_priority_patterns")
 
@@ -218,17 +227,19 @@ def _get_resolvers(
 
     resolvers = {
         resolver_id: resolver
-        for resolver_id, resolver in RESOLVER_MAP.items()
+        for resolver_id, resolver in resolver_map.items()
         if resolver_id != url_resolver
     }
 
     return {
-        url_resolver: RESOLVER_MAP[url_resolver],
+        url_resolver: resolver_map[url_resolver],
         **resolvers,
     }
 
 
 def _is_match_youtube(url: str) -> bool:
+    from yt_dlp.extractor import youtube as yt_extractor
+
     yt_extractors = (
         yt_extractor.YoutubeIE,
         yt_extractor.YoutubeYtBeIE,

@@ -1,12 +1,12 @@
-import importlib.resources
 import os
-import platform
 import sys
 from pathlib import Path
 
-IS_LINUX = platform.system() == "Linux"
-IS_MACOS = platform.system() == "Darwin"
-IS_WINDOWS = platform.system() == "Windows"
+# not platform.system(): on Windows it asks WMI, which holds up every
+# startup by a few dozen milliseconds to say what sys.platform already does
+IS_LINUX = sys.platform.startswith("linux")
+IS_MACOS = sys.platform == "darwin"
+IS_WINDOWS = sys.platform == "win32"
 
 
 def _is_kde() -> bool:
@@ -59,6 +59,9 @@ def _resolve_resources_dir() -> Path:
     # PYZ archive.
     if IS_PYINSTALLER:
         return PYINSTALLER_LIB_ROOT / "gridplayer" / "resources"
+
+    import importlib.resources
+
     return Path(str(importlib.resources.files("gridplayer") / "resources"))
 
 

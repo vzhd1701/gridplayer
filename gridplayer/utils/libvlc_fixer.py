@@ -1,7 +1,6 @@
 import ctypes
 import logging
 import os
-import platform
 import sys
 from contextlib import contextmanager
 from pathlib import Path
@@ -43,15 +42,13 @@ def _fix_plugins_path():
         )
         return
 
-    plugin_path_map = {
-        "Darwin": str(vlc_lib_root.parent / "plugins"),
-        "Windows": str(vlc_lib_root / "plugins"),
-        "Linux": str(vlc_lib_root / "vlc" / "plugins"),
-    }
-
-    try:
-        vlc_module.plugin_path = plugin_path_map[platform.system()]
-    except KeyError:
+    if env.IS_MACOS:
+        vlc_module.plugin_path = str(vlc_lib_root.parent / "plugins")
+    elif env.IS_WINDOWS:
+        vlc_module.plugin_path = str(vlc_lib_root / "plugins")
+    elif env.IS_LINUX:
+        vlc_module.plugin_path = str(vlc_lib_root / "vlc" / "plugins")
+    else:
         raise RuntimeError("Unsupported platform")
 
 

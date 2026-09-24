@@ -2,12 +2,9 @@ import sys
 from typing import NamedTuple
 
 from pydantic.version import VERSION as PYDANTIC_VERSION
-from PyQt5.Qt import PYQT_VERSION_STR
-from PyQt5.QtCore import qVersion
+from PyQt5.QtCore import PYQT_VERSION_STR, qVersion
 from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import QDialog
-from streamlink import __version__ as STREAMLINK_VERSION
-from yt_dlp.version import __version__ as YT_DLP_VERSION
 
 from gridplayer.dialogs.about_dialog_ui import Ui_AboutDialog
 from gridplayer.params import env
@@ -19,12 +16,6 @@ from gridplayer.version import (
     __display_name__,
     __version__,
 )
-
-try:
-    from curl_cffi import __version__ as CURL_CFFI_VERSION
-except ImportError:
-    # not shipped where it has no wheel to install from (32-bit Windows)
-    CURL_CFFI_VERSION = None
 
 PYTHON_VERSION = sys.version.split(" ")[0]
 QT_VERSION = qVersion() or "Unknown"
@@ -40,6 +31,17 @@ class Attribution(NamedTuple):
 
 class AboutDialog(QDialog, Ui_AboutDialog):
     def __init__(self, parent):
+        # imported here and not at the top: streamlink and yt-dlp take a
+        # good third of a second to import, which startup shouldn't wait on
+        from streamlink import __version__ as STREAMLINK_VERSION
+        from yt_dlp.version import __version__ as YT_DLP_VERSION
+
+        try:
+            from curl_cffi import __version__ as CURL_CFFI_VERSION
+        except ImportError:
+            # not shipped where it has no wheel to install from (32-bit Windows)
+            CURL_CFFI_VERSION = None
+
         super().__init__(parent)
 
         self.setupUi(self)

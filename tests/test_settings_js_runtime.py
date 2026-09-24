@@ -14,6 +14,7 @@ from PyQt5.QtWidgets import QApplication
 from gridplayer.dialogs import settings as settings_dialog
 from gridplayer.dialogs.settings import SettingsDialog
 from gridplayer.settings import _Settings
+from gridplayer.utils import ytdlp_checkup
 from gridplayer.utils.cookies import CookieStore
 
 SETTING = "streaming/js_runtime_path"
@@ -148,7 +149,7 @@ class TestTheYouTubeTestButton:
         Somebody pastes cookies and tests them before pressing OK.
         """
 
-        made = mocker.patch.object(settings_dialog, "YouTubeCheckup")
+        made = mocker.patch.object(ytdlp_checkup, "YouTubeCheckup")
         mocker.patch.object(settings_dialog, "CheckupDialog")
 
         dialog.run_youtube_checkup()
@@ -181,7 +182,7 @@ class TestTheTestTriesWhatIsOnScreen:
 
     @pytest.fixture
     def tried(self, dialog, mocker):
-        made = mocker.patch.object(settings_dialog, "YouTubeCheckup")
+        made = mocker.patch.object(ytdlp_checkup, "YouTubeCheckup")
         mocker.patch.object(settings_dialog, "CheckupDialog")
 
         def _run():
