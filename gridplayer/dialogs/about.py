@@ -183,15 +183,16 @@ class AboutDialog(QDialog, Ui_AboutDialog):
                 )
             )
 
+        # tr() kept out of the f-strings, where pylupdate5 cannot see it
         attributions_txt = [
             "<style>p, h3 {text-align: center;}</style>",
-            f"<h3>{self.tr('Core')}</h3>",
+            "<h3>" + self.tr("Core") + "</h3>",
             self.generate_attributions(attributions["core"]),
-            f"<h3>{self.tr('Python packages')}</h3>",
+            "<h3>" + self.tr("Python packages") + "</h3>",
             self.generate_attributions(attributions["python"]),
-            f"<h3>{self.tr('Graphics')}</h3>",
+            "<h3>" + self.tr("Graphics") + "</h3>",
             self.generate_attributions(attributions["gui"]),
-            f"<h3>{self.tr('Translations')}</h3>",
+            "<h3>" + self.tr("Translations") + "</h3>",
             self.generate_attributions_translations(),
         ]
 

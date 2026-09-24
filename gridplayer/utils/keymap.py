@@ -4,32 +4,11 @@ from __future__ import annotations
 
 from enum import Enum, auto
 
-from pydantic import RootModel
 from PyQt5.QtCore import QEvent, Qt
 from PyQt5.QtGui import QKeySequence, QWheelEvent
 
+from gridplayer.models.keymap_overrides import KeymapOverrides
 from gridplayer.params.actions import ACTIONS
-
-
-class KeymapOverrides(RootModel):
-    """Sparse user overrides: action_id -> list of shortcut strings."""
-
-    root: dict[str, list[str]] = {}
-
-    def __iter__(self):
-        return iter(self.root)
-
-    def __getitem__(self, item):
-        return self.root[item]
-
-    def get(self, key, default=None):
-        return self.root.get(key, default)
-
-    def items(self):
-        return self.root.items()
-
-    def __bool__(self):
-        return bool(self.root)
 
 
 class WheelDirection(Enum):

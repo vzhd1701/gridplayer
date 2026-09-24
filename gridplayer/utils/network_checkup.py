@@ -36,8 +36,6 @@ from gridplayer.utils.network import (
 )
 from gridplayer.utils.qt import translate
 
-TRANSLATION_CONTEXT = "Network Checkup"
-
 # A page whose whole job is to be fetched by something that is not a
 # browser, on the site this player is pointed at more than any other. It
 # is small, it is never personalised, and asking for it is the least
@@ -115,23 +113,31 @@ class NetworkCheckup(Checkup):
 
     @property
     def title(self) -> str:
-        return _t("Network checkup")
+        return translate("Network Checkup", "Network checkup")
 
     @property
     def intro(self) -> str:
-        return _t(
+        return translate(
+            "Network Checkup",
             "The network settings on this page, tried against a real"
-            " address. No cookies are sent."
+            " address. No cookies are sent.",
         )
 
     @property
     def checks(self) -> tuple[Check, ...]:
         return (
-            Check(_t("Settings in use"), self.check_settings),
-            Check(_t("Proxy address"), self.check_proxy_address),
-            Check(_t("Looking up the address"), self.check_lookup),
-            Check(_t("Opening a connection"), self.check_connect),
-            Check(_t("Fetching a page"), self.check_fetch),
+            Check(translate("Network Checkup", "Settings in use"), self.check_settings),
+            Check(
+                translate("Network Checkup", "Proxy address"), self.check_proxy_address
+            ),
+            Check(
+                translate("Network Checkup", "Looking up the address"),
+                self.check_lookup,
+            ),
+            Check(
+                translate("Network Checkup", "Opening a connection"), self.check_connect
+            ),
+            Check(translate("Network Checkup", "Fetching a page"), self.check_fetch),
         )
 
     def check_settings(self) -> CheckResult:
@@ -166,27 +172,33 @@ class NetworkCheckup(Checkup):
         if parsed is None or not parsed.scheme:
             return CheckResult(
                 CheckStatus.FAILED,
-                _t("The address does not say what kind of proxy it is"),
-                _t(
+                translate(
+                    "Network Checkup",
+                    "The address does not say what kind of proxy it is",
+                ),
+                translate(
+                    "Network Checkup",
                     "Start it with the kind and ://, as in"
-                    " http://host:port or socks5h://host:port."
+                    " http://host:port or socks5h://host:port.",
                 ),
             )
 
         if parsed.scheme not in PROXY_SCHEMES:
             return CheckResult(
                 CheckStatus.FAILED,
-                _t("{SCHEME} is not a kind of proxy GridPlayer can use").format(
-                    SCHEME=parsed.scheme
-                ),
-                _t("It understands {SCHEMES}.").format(
+                translate(
+                    "Network Checkup",
+                    "{SCHEME} is not a kind of proxy GridPlayer can use",
+                ).format(SCHEME=parsed.scheme),
+                translate("Network Checkup", "It understands {SCHEMES}.").format(
                     SCHEMES=", ".join(PROXY_SCHEMES)
                 ),
             )
 
         if not parsed.hostname:
             return CheckResult(
-                CheckStatus.FAILED, _t("The address names no host to connect to")
+                CheckStatus.FAILED,
+                translate("Network Checkup", "The address names no host to connect to"),
             )
 
         self._is_proxy_usable = True
@@ -240,7 +252,10 @@ class NetworkCheckup(Checkup):
             return _no_usable_proxy()
 
         if not self._addresses:
-            return CheckResult(CheckStatus.SKIPPED, _t("No address to connect to"))
+            return CheckResult(
+                CheckStatus.SKIPPED,
+                translate("Network Checkup", "No address to connect to"),
+            )
 
         started = time.monotonic()
 
@@ -249,9 +264,9 @@ class NetworkCheckup(Checkup):
         if error is not None:
             return CheckResult(
                 CheckStatus.FAILED,
-                _t("Could not connect to {WHAT}: {ERROR}").format(
-                    WHAT=self._endpoint[2], ERROR=_clipped(error)
-                ),
+                translate(
+                    "Network Checkup", "Could not connect to {WHAT}: {ERROR}"
+                ).format(WHAT=self._endpoint[2], ERROR=_clipped(error)),
                 _connect_hint(self._opts),
             )
 
@@ -259,7 +274,9 @@ class NetworkCheckup(Checkup):
 
         return CheckResult(
             CheckStatus.PASSED,
-            _t("Connected to {WHAT} over {FAMILY} in {SECONDS}").format(
+            translate(
+                "Network Checkup", "Connected to {WHAT} over {FAMILY} in {SECONDS}"
+            ).format(
                 WHAT=_reached_text(self._endpoint[2], address),
                 FAMILY=_family_name(family),
                 SECONDS=_seconds(time.monotonic() - started),
@@ -279,9 +296,9 @@ class NetworkCheckup(Checkup):
         if not self._is_reached:
             return CheckResult(
                 CheckStatus.SKIPPED,
-                _t("Not tried, {WHAT} could not be reached").format(
-                    WHAT=self._endpoint[2]
-                ),
+                translate(
+                    "Network Checkup", "Not tried, {WHAT} could not be reached"
+                ).format(WHAT=self._endpoint[2]),
             )
 
         started = time.monotonic()
@@ -297,7 +314,9 @@ class NetworkCheckup(Checkup):
                 CheckStatus.FAILED, _clipped(e), _connect_hint(self._opts)
             )
 
-        summary = _t("HTTP {STATUS}, {KIB} KiB from {HOST} in {SECONDS}").format(
+        summary = translate(
+            "Network Checkup", "HTTP {STATUS}, {KIB} KiB from {HOST} in {SECONDS}"
+        ).format(
             STATUS=status,
             KIB=read // BYTES_IN_KIB or 1,
             HOST=_site_endpoint()[0],
@@ -308,10 +327,11 @@ class NetworkCheckup(Checkup):
             return CheckResult(
                 CheckStatus.WARNING,
                 summary,
-                _t(
+                translate(
+                    "Network Checkup",
                     "The connection worked and the host turned the request"
                     " down, which is between you and that host rather than"
-                    " a problem with these settings."
+                    " a problem with these settings.",
                 ),
             )
 
@@ -319,7 +339,9 @@ class NetworkCheckup(Checkup):
             return CheckResult(
                 CheckStatus.WARNING,
                 summary,
-                _t("The host answered without sending anything."),
+                translate(
+                    "Network Checkup", "The host answered without sending anything."
+                ),
             )
 
         return CheckResult(CheckStatus.PASSED, summary)
@@ -346,7 +368,9 @@ class NetworkCheckup(Checkup):
             return (
                 parsed.hostname,
                 _port_of(parsed),
-                _t("the proxy at {HOST}").format(HOST=parsed.hostname),
+                translate("Network Checkup", "the proxy at {HOST}").format(
+                    HOST=parsed.hostname
+                ),
             )
 
         return _site_endpoint()
@@ -360,31 +384,39 @@ class NetworkCheckup(Checkup):
     @property
     def _nothing_to_check(self) -> str:
         if self._opts.use_env:
-            return _t("No address to check, the system settings are in use")
+            return translate(
+                "Network Checkup", "No address to check, the system settings are in use"
+            )
 
-        return _t("No address to check, no proxy is in use")
+        return translate("Network Checkup", "No address to check, no proxy is in use")
 
     @property
     def _proxy_summary(self) -> str:
         """The Proxy setting, and what it works out to."""
 
         if self._opts.proxy:
-            return _t("Proxy: Custom, {PROXY}").format(
+            return translate("Network Checkup", "Proxy: Custom, {PROXY}").format(
                 PROXY=_redacted(self._opts.proxy)
             )
 
         if self._is_proxy_missing:
-            return _t("Proxy: Custom, but no address filled in")
+            return translate(
+                "Network Checkup", "Proxy: Custom, but no address filled in"
+            )
 
         if not self._opts.use_env:
-            return _t("Proxy: None")
+            return translate("Network Checkup", "Proxy: None")
 
         from_machine = _machine_proxies()
 
         if not from_machine:
-            return _t("Proxy: System, none set on this machine")
+            return translate(
+                "Network Checkup", "Proxy: System, none set on this machine"
+            )
 
-        return _t("Proxy: System, {PROXIES}").format(PROXIES=", ".join(from_machine))
+        return translate("Network Checkup", "Proxy: System, {PROXIES}").format(
+            PROXIES=", ".join(from_machine)
+        )
 
     @property
     def _settings_list(self) -> str:
@@ -395,10 +427,16 @@ class NetworkCheckup(Checkup):
         """
 
         lines = [
-            _t("Force IPv4: {VALUE}").format(VALUE=_yes_or_no(self._opts.force_ipv4)),
-            _t("Timeout: {VALUE}").format(VALUE=_timeout_text(self._opts.timeout)),
-            _t("User agent: {VALUE}").format(VALUE=self._opts.user_agent or _t("Auto")),
-            _t("Verify TLS certificates: {VALUE}").format(
+            translate("Network Checkup", "Force IPv4: {VALUE}").format(
+                VALUE=_yes_or_no(self._opts.force_ipv4)
+            ),
+            translate("Network Checkup", "Timeout: {VALUE}").format(
+                VALUE=_timeout_text(self._opts.timeout)
+            ),
+            translate("Network Checkup", "User agent: {VALUE}").format(
+                VALUE=self._opts.user_agent or translate("Network Checkup", "Auto")
+            ),
+            translate("Network Checkup", "Verify TLS certificates: {VALUE}").format(
                 VALUE=_yes_or_no(self._opts.verify_tls)
             ),
         ]
@@ -406,19 +444,21 @@ class NetworkCheckup(Checkup):
         if self._is_proxy_missing:
             lines += [
                 "",
-                _t(
+                translate(
+                    "Network Checkup",
                     "No proxy will be used. Fill in the address, or set"
-                    " Proxy to System or None."
+                    " Proxy to System or None.",
                 ),
             ]
 
         if self._opts.is_relay_required:
             lines += [
                 "",
-                _t(
+                translate(
+                    "Network Checkup",
                     "http and https links go through GridPlayer instead of"
                     " straight to the player, because the player cannot be"
-                    " given these settings."
+                    " given these settings.",
                 ),
             ]
 
@@ -479,30 +519,31 @@ class NetworkCheckup(Checkup):
         return status, len(page)
 
 
-def _t(text: str) -> str:
-    return translate(TRANSLATION_CONTEXT, text)
-
-
 def _proxy_address_result(parsed) -> CheckResult:
     """What a well-formed proxy address is still worth saying about."""
 
     port = _port_of(parsed)
 
-    summary = _t("{SCHEME} proxy at {HOST}, port {PORT}").format(
-        SCHEME=parsed.scheme, HOST=parsed.hostname, PORT=port
-    )
+    summary = translate(
+        "Network Checkup", "{SCHEME} proxy at {HOST}, port {PORT}"
+    ).format(SCHEME=parsed.scheme, HOST=parsed.hostname, PORT=port)
 
     hints = []
 
     if parsed.port is None:
-        hints.append(_t("No port was given, so {PORT} is assumed.").format(PORT=port))
+        hints.append(
+            translate(
+                "Network Checkup", "No port was given, so {PORT} is assumed."
+            ).format(PORT=port)
+        )
 
     if parsed.scheme.startswith("socks") and parsed.scheme not in REMOTE_DNS_SCHEMES:
         hints.append(
-            _t(
+            translate(
+                "Network Checkup",
                 "{SCHEME} looks host names up on this machine. Use {REMOTE}"
                 " instead to have the proxy look them up, which is what you"
-                " want if the names you are after only resolve on its side."
+                " want if the names you are after only resolve on its side.",
             ).format(SCHEME=parsed.scheme, REMOTE=_remote_dns_twin(parsed.scheme))
         )
 
@@ -604,19 +645,26 @@ def _no_usable_proxy() -> CheckResult:
     """Nothing past the proxy is worth trying until the address is right."""
 
     return CheckResult(
-        CheckStatus.SKIPPED, _t("Not tried, the proxy address has to be right first")
+        CheckStatus.SKIPPED,
+        translate(
+            "Network Checkup", "Not tried, the proxy address has to be right first"
+        ),
     )
 
 
 def _timeout_text(timeout: int) -> str:
     if timeout:
-        return _t("{SECONDS} sec").format(SECONDS=timeout)
+        return translate("Network Checkup", "{SECONDS} sec").format(SECONDS=timeout)
 
-    return _t("Auto")
+    return translate("Network Checkup", "Auto")
 
 
 def _yes_or_no(flag: bool) -> str:
-    return _t("Yes") if flag else _t("No")
+    return (
+        translate("Network Checkup", "Yes")
+        if flag
+        else translate("Network Checkup", "No")
+    )
 
 
 def _addresses_summary(host: str, addresses) -> str:
@@ -629,9 +677,11 @@ def _addresses_summary(host: str, addresses) -> str:
     rest = len(addresses) - ADDRESSES_SHOWN
 
     if rest > 0:
-        shown = _t("{SHOWN} and {REST} more").format(SHOWN=shown, REST=rest)
+        shown = translate("Network Checkup", "{SHOWN} and {REST} more").format(
+            SHOWN=shown, REST=rest
+        )
 
-    return _t("{HOST} is {SHOWN} ({FAMILIES})").format(
+    return translate("Network Checkup", "{HOST} is {SHOWN} ({FAMILIES})").format(
         HOST=host, SHOWN=shown, FAMILIES=families
     )
 
@@ -652,7 +702,9 @@ def _reached_text(name: str, address) -> str:
     if reached in name:
         return name
 
-    return _t("{NAME} at {ADDRESS}").format(NAME=name, ADDRESS=reached)
+    return translate("Network Checkup", "{NAME} at {ADDRESS}").format(
+        NAME=name, ADDRESS=reached
+    )
 
 
 def _family_name(family) -> str:
@@ -660,56 +712,68 @@ def _family_name(family) -> str:
 
 
 def _seconds(elapsed: float) -> str:
-    return _t("{SECONDS} sec").format(SECONDS=f"{elapsed:.2f}")
+    return translate("Network Checkup", "{SECONDS} sec").format(
+        SECONDS=f"{elapsed:.2f}"
+    )
 
 
 def _lookup_error(host: str, error: OSError) -> str:
-    return _t("{HOST} could not be looked up: {ERROR}").format(
-        HOST=host, ERROR=_clipped(error)
-    )
+    return translate(
+        "Network Checkup", "{HOST} could not be looked up: {ERROR}"
+    ).format(HOST=host, ERROR=_clipped(error))
 
 
 def _dns_hint(opts: NetworkOpts) -> str:
     if opts.force_ipv4:
-        return _t(
-            'The host may have no IPv4 address. Turn "Force IPv4" off and try again.'
+        return translate(
+            "Network Checkup",
+            'The host may have no IPv4 address. Turn "Force IPv4" off and try again.',
         )
 
-    return _t("The name did not resolve. Check the address and your DNS.")
+    return translate(
+        "Network Checkup", "The name did not resolve. Check the address and your DNS."
+    )
 
 
 def _connect_hint(opts: NetworkOpts) -> str:
     if opts.proxy:
-        return _t(
+        return translate(
+            "Network Checkup",
             "Nothing answered where the proxy address says it should be."
-            " Check that it is running and that the port is right."
+            " Check that it is running and that the port is right.",
         )
 
     if opts.force_ipv4:
-        return _t(
+        return translate(
+            "Network Checkup",
             "The address resolved but would not take a connection. Try"
             ' turning "Force IPv4" off, in case the host is only reachable'
-            " over IPv6."
+            " over IPv6.",
         )
 
-    return _t("Nothing answered at that address.")
+    return translate("Network Checkup", "Nothing answered at that address.")
 
 
 def _tls_hint(opts: NetworkOpts) -> str:
     if opts.verify_tls:
-        return _t(
+        return translate(
+            "Network Checkup",
             "This machine does not trust the certificate. A proxy that"
             " inspects traffic signs with its own, which is the one case"
-            ' for turning "Verify TLS certificates" off.'
+            ' for turning "Verify TLS certificates" off.',
         )
 
-    return _t("The secure connection failed even with certificate checks off.")
+    return translate(
+        "Network Checkup",
+        "The secure connection failed even with certificate checks off.",
+    )
 
 
 def _proxy_error_hint() -> str:
-    return _t(
+    return translate(
+        "Network Checkup",
         "The proxy would not pass the request on. That is usually"
-        " credentials it wanted, or a host it will not connect to."
+        " credentials it wanted, or a host it will not connect to.",
     )
 
 

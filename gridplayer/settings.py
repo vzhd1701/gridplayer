@@ -7,6 +7,7 @@ from pathlib import Path
 from pydantic import BaseModel, Field
 from PyQt5.QtCore import QSettings
 
+from gridplayer.models.keymap_overrides import KeymapOverrides
 from gridplayer.models.recent_list import (
     RecentList,
     RecentListPlaylists,
@@ -41,7 +42,6 @@ from gridplayer.params.static import (
 from gridplayer.params.subtitle_encodings import DEFAULT_ENCODING
 from gridplayer.params.subtitle_style import SUBTITLE_STYLE_DEFAULTS
 from gridplayer.utils.app_dir import get_app_data_dir
-from gridplayer.utils.keymap import KeymapOverrides
 from gridplayer.utils.log_config import DISABLED
 
 SETTINGS = None

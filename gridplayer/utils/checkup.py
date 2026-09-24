@@ -20,8 +20,6 @@ from enum import Enum
 
 from gridplayer.utils.qt import translate
 
-TRANSLATION_CONTEXT = "Checkup"
-
 
 class CheckStatus(Enum):
     """How one check came out.
@@ -96,10 +94,6 @@ def report_text(title: str, rows) -> str:
     return "\n".join(lines)
 
 
-def _t(text: str) -> str:
-    return translate(TRANSLATION_CONTEXT, text)
-
-
 def _status_tag(check_result) -> str:
     if check_result is None:
         return "[ -- ]"
@@ -115,4 +109,8 @@ def _status_tag(check_result) -> str:
 
 
 def _summary_of(check_result) -> str:
-    return check_result.summary if check_result is not None else _t("Not run")
+    return (
+        check_result.summary
+        if check_result is not None
+        else translate("Checkup", "Not run")
+    )

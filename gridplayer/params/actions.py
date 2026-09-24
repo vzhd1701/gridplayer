@@ -281,7 +281,7 @@ ACTIONS = MappingProxyType(
             "show_if": "is_active_seekable",
         },
         "When Finished Loop File": {
-            "title": translate("Actions", "Loop This File"),
+            "title": translate("When Finished", "Loop This File"),
             "icon": "loop-single",
             "func": ("active", "set_end_action", VideoEndAction.LOOP_FILE),
             "check_if": (
@@ -292,7 +292,7 @@ ACTIONS = MappingProxyType(
             "show_if": AND("is_active_playable", NOT("is_active_live")),
         },
         "When Finished Next": {
-            "title": translate("Actions", "Play Next File"),
+            "title": translate("When Finished", "Play Next File"),
             "icon": "next-video-file",
             "func": ("active", "set_end_action", VideoEndAction.NEXT_FILE),
             "check_if": (
@@ -303,7 +303,7 @@ ACTIONS = MappingProxyType(
             "show_if": "is_active_local_file",
         },
         "When Finished Previous": {
-            "title": translate("Actions", "Play Previous File"),
+            "title": translate("When Finished", "Play Previous File"),
             "icon": "previous-video-file",
             "func": ("active", "set_end_action", VideoEndAction.PREVIOUS_FILE),
             "check_if": (
@@ -314,7 +314,7 @@ ACTIONS = MappingProxyType(
             "show_if": "is_active_local_file",
         },
         "When Finished Shuffle": {
-            "title": translate("Actions", "Random In Folder"),
+            "title": translate("When Finished", "Random In Folder"),
             "icon": "loop-dir-shuffle",
             "func": ("active", "set_end_action", VideoEndAction.SHUFFLE_FILE),
             "check_if": (
@@ -325,7 +325,7 @@ ACTIONS = MappingProxyType(
             "show_if": "is_active_local_file",
         },
         "When Finished Pause": {
-            "title": translate("Actions", "Pause At Start"),
+            "title": translate("When Finished", "Pause At Start"),
             "icon": "pause",
             "func": ("active", "set_end_action", VideoEndAction.PAUSE),
             "check_if": (
@@ -336,7 +336,7 @@ ACTIONS = MappingProxyType(
             "show_if": AND("is_active_playable", NOT("is_active_live")),
         },
         "When Finished Stop": {
-            "title": translate("Actions", "Stop"),
+            "title": translate("When Finished", "Stop"),
             "icon": "stop",
             "func": ("active", "set_end_action", VideoEndAction.STOP),
             "check_if": (
@@ -347,7 +347,7 @@ ACTIONS = MappingProxyType(
             "show_if": AND("is_active_playable", NOT("is_active_live")),
         },
         "When Finished Close": {
-            "title": translate("Actions", "Close"),
+            "title": translate("When Finished", "Close"),
             "icon": "close",
             "func": ("active", "set_end_action", VideoEndAction.CLOSE),
             "check_if": (
@@ -469,28 +469,28 @@ ACTIONS = MappingProxyType(
             "show_if": "is_active_has_video",
         },
         "Aspect Fit": {
-            "title": translate("Actions", "Aspect Fit"),
+            "title": translate("Aspect", "Aspect Fit"),
             "icon": "aspect-fit",
             "func": ("active", "set_aspect", VideoAspect.FIT),
             "check_if": ("is_active_param_set_to", "aspect_mode", VideoAspect.FIT),
             "show_if": "is_active_has_video",
         },
         "Aspect Stretch": {
-            "title": translate("Actions", "Aspect Stretch"),
+            "title": translate("Aspect", "Aspect Stretch"),
             "icon": "aspect-stretch",
             "func": ("active", "set_aspect", VideoAspect.STRETCH),
             "check_if": ("is_active_param_set_to", "aspect_mode", VideoAspect.STRETCH),
             "show_if": "is_active_has_video",
         },
         "Aspect None": {
-            "title": translate("Actions", "Aspect None"),
+            "title": translate("Aspect", "Aspect None"),
             "icon": "aspect-none",
             "func": ("active", "set_aspect", VideoAspect.NONE),
             "check_if": ("is_active_param_set_to", "aspect_mode", VideoAspect.NONE),
             "show_if": "is_active_has_video",
         },
         "Rotate 90": {
-            "title": translate("Actions", "Rotate 90"),
+            "title": translate("Transform", "Rotate 90"),
             "icon": "empty",
             "func": ("active", "set_transform", VideoTransform.ROTATE_90),
             "check_if": (
@@ -501,7 +501,7 @@ ACTIONS = MappingProxyType(
             "show_if": "is_active_has_video",
         },
         "Rotate 180": {
-            "title": translate("Actions", "Rotate 180"),
+            "title": translate("Transform", "Rotate 180"),
             "icon": "empty",
             "func": ("active", "set_transform", VideoTransform.ROTATE_180),
             "check_if": (
@@ -512,7 +512,7 @@ ACTIONS = MappingProxyType(
             "show_if": "is_active_has_video",
         },
         "Rotate 270": {
-            "title": translate("Actions", "Rotate 270"),
+            "title": translate("Transform", "Rotate 270"),
             "icon": "empty",
             "func": ("active", "set_transform", VideoTransform.ROTATE_270),
             "check_if": (
@@ -523,7 +523,7 @@ ACTIONS = MappingProxyType(
             "show_if": "is_active_has_video",
         },
         "Flip Horizontally": {
-            "title": translate("Actions", "Flip Horizontally"),
+            "title": translate("Transform", "Flip Horizontally"),
             "icon": "empty",
             "func": ("active", "set_transform", VideoTransform.HFLIP),
             "check_if": (
@@ -534,7 +534,7 @@ ACTIONS = MappingProxyType(
             "show_if": "is_active_has_video",
         },
         "Flip Vertically": {
-            "title": translate("Actions", "Flip Vertically"),
+            "title": translate("Transform", "Flip Vertically"),
             "icon": "empty",
             "func": ("active", "set_transform", VideoTransform.VFLIP),
             "check_if": (
@@ -545,7 +545,7 @@ ACTIONS = MappingProxyType(
             "show_if": "is_active_has_video",
         },
         "Transpose": {
-            "title": translate("Actions", "Transpose"),
+            "title": translate("Transform", "Transpose"),
             "icon": "empty",
             "func": ("active", "set_transform", VideoTransform.TRANSPOSE),
             "check_if": (
@@ -556,7 +556,7 @@ ACTIONS = MappingProxyType(
             "show_if": "is_active_has_video",
         },
         "Anti-transpose": {
-            "title": translate("Actions", "Anti-transpose"),
+            "title": translate("Transform", "Anti-transpose"),
             "icon": "empty",
             "func": ("active", "set_transform", VideoTransform.ANTITRANSPOSE),
             "check_if": (
@@ -567,7 +567,7 @@ ACTIONS = MappingProxyType(
             "show_if": "is_active_has_video",
         },
         "No Transform": {
-            "title": translate("Actions", "No Transform"),
+            "title": translate("Transform", "No Transform"),
             "icon": "empty",
             "func": ("active", "set_transform", VideoTransform.NONE),
             "check_if": (
@@ -960,7 +960,7 @@ ACTIONS = MappingProxyType(
             "show_if": "is_active_live",
         },
         "On Network Error Show Error": {
-            "title": translate("Actions", "Show Error"),
+            "title": translate("On Network Error", "Show Error"),
             "icon": "error",
             "func": ("active", "set_network_retry_mode", NetworkRetryMode.OFF),
             "check_if": (
@@ -971,7 +971,7 @@ ACTIONS = MappingProxyType(
             "show_if": NOT("is_active_local_file"),
         },
         "On Network Error Retry Times": {
-            "title": translate("Actions", "Reload a Few Times"),
+            "title": translate("On Network Error", "Reload a Few Times"),
             "icon": "reload",
             "func": ("active", "set_network_retry_mode", NetworkRetryMode.TIMES),
             "check_if": (
@@ -982,7 +982,7 @@ ACTIONS = MappingProxyType(
             "show_if": NOT("is_active_local_file"),
         },
         "On Network Error Retry Forever": {
-            "title": translate("Actions", "Keep Reloading"),
+            "title": translate("On Network Error", "Keep Reloading"),
             "icon": "reload",
             "func": ("active", "set_network_retry_mode", NetworkRetryMode.INFINITE),
             "check_if": (
@@ -1262,43 +1262,43 @@ ACTIONS = MappingProxyType(
             "show_if": "is_any_videos_seekable",
         },
         "When Finished Loop File [ALL]": {
-            "title": translate("Actions", "Loop This File"),
+            "title": translate("When Finished", "Loop This File"),
             "icon": "loop-single",
             "func": ("all", "set_end_action", VideoEndAction.LOOP_FILE),
             "show_if": "is_any_videos_playable_not_live",
         },
         "When Finished Next [ALL]": {
-            "title": translate("Actions", "Play Next File"),
+            "title": translate("When Finished", "Play Next File"),
             "icon": "next-video-file",
             "func": ("all", "set_end_action", VideoEndAction.NEXT_FILE),
             "show_if": "is_any_videos_local_file",
         },
         "When Finished Previous [ALL]": {
-            "title": translate("Actions", "Play Previous File"),
+            "title": translate("When Finished", "Play Previous File"),
             "icon": "previous-video-file",
             "func": ("all", "set_end_action", VideoEndAction.PREVIOUS_FILE),
             "show_if": "is_any_videos_local_file",
         },
         "When Finished Shuffle [ALL]": {
-            "title": translate("Actions", "Random In Folder"),
+            "title": translate("When Finished", "Random In Folder"),
             "icon": "loop-dir-shuffle",
             "func": ("all", "set_end_action", VideoEndAction.SHUFFLE_FILE),
             "show_if": "is_any_videos_local_file",
         },
         "When Finished Pause [ALL]": {
-            "title": translate("Actions", "Pause At Start"),
+            "title": translate("When Finished", "Pause At Start"),
             "icon": "pause",
             "func": ("all", "set_end_action", VideoEndAction.PAUSE),
             "show_if": "is_any_videos_playable_not_live",
         },
         "When Finished Stop [ALL]": {
-            "title": translate("Actions", "Stop"),
+            "title": translate("When Finished", "Stop"),
             "icon": "stop",
             "func": ("all", "set_end_action", VideoEndAction.STOP),
             "show_if": "is_any_videos_playable_not_live",
         },
         "When Finished Close [ALL]": {
-            "title": translate("Actions", "Close"),
+            "title": translate("When Finished", "Close"),
             "icon": "close",
             "func": ("all", "set_end_action", VideoEndAction.CLOSE),
             "show_if": "is_any_videos_playable_not_live",
@@ -1409,67 +1409,67 @@ ACTIONS = MappingProxyType(
             "show_if": "is_any_videos_have_video",
         },
         "Aspect Fit [ALL]": {
-            "title": translate("Actions", "Aspect Fit"),
+            "title": translate("Aspect", "Aspect Fit"),
             "icon": "aspect-fit",
             "func": ("all", "set_aspect", VideoAspect.FIT),
             "show_if": "is_any_videos_have_video",
         },
         "Aspect Stretch [ALL]": {
-            "title": translate("Actions", "Aspect Stretch"),
+            "title": translate("Aspect", "Aspect Stretch"),
             "icon": "aspect-stretch",
             "func": ("all", "set_aspect", VideoAspect.STRETCH),
             "show_if": "is_any_videos_have_video",
         },
         "Aspect None [ALL]": {
-            "title": translate("Actions", "Aspect None"),
+            "title": translate("Aspect", "Aspect None"),
             "icon": "aspect-none",
             "func": ("all", "set_aspect", VideoAspect.NONE),
             "show_if": "is_any_videos_have_video",
         },
         "Rotate 90 [ALL]": {
-            "title": translate("Actions", "Rotate 90"),
+            "title": translate("Transform", "Rotate 90"),
             "icon": "empty",
             "func": ("all", "set_transform", VideoTransform.ROTATE_90),
             "show_if": "is_any_videos_have_video",
         },
         "Rotate 180 [ALL]": {
-            "title": translate("Actions", "Rotate 180"),
+            "title": translate("Transform", "Rotate 180"),
             "icon": "empty",
             "func": ("all", "set_transform", VideoTransform.ROTATE_180),
             "show_if": "is_any_videos_have_video",
         },
         "Rotate 270 [ALL]": {
-            "title": translate("Actions", "Rotate 270"),
+            "title": translate("Transform", "Rotate 270"),
             "icon": "empty",
             "func": ("all", "set_transform", VideoTransform.ROTATE_270),
             "show_if": "is_any_videos_have_video",
         },
         "Flip Horizontally [ALL]": {
-            "title": translate("Actions", "Flip Horizontally"),
+            "title": translate("Transform", "Flip Horizontally"),
             "icon": "empty",
             "func": ("all", "set_transform", VideoTransform.HFLIP),
             "show_if": "is_any_videos_have_video",
         },
         "Flip Vertically [ALL]": {
-            "title": translate("Actions", "Flip Vertically"),
+            "title": translate("Transform", "Flip Vertically"),
             "icon": "empty",
             "func": ("all", "set_transform", VideoTransform.VFLIP),
             "show_if": "is_any_videos_have_video",
         },
         "Transpose [ALL]": {
-            "title": translate("Actions", "Transpose"),
+            "title": translate("Transform", "Transpose"),
             "icon": "empty",
             "func": ("all", "set_transform", VideoTransform.TRANSPOSE),
             "show_if": "is_any_videos_have_video",
         },
         "Anti-transpose [ALL]": {
-            "title": translate("Actions", "Anti-transpose"),
+            "title": translate("Transform", "Anti-transpose"),
             "icon": "empty",
             "func": ("all", "set_transform", VideoTransform.ANTITRANSPOSE),
             "show_if": "is_any_videos_have_video",
         },
         "No Transform [ALL]": {
-            "title": translate("Actions", "No Transform"),
+            "title": translate("Transform", "No Transform"),
             "icon": "empty",
             "func": ("all", "set_transform", VideoTransform.NONE),
             "show_if": "is_any_videos_have_video",
@@ -1612,19 +1612,19 @@ ACTIONS = MappingProxyType(
         },
         # Playlist
         "Seek Sync (Disabled)": {
-            "title": translate("Actions", "Disabled"),
+            "title": translate("Seek Sync", "Disabled"),
             "icon": "empty",
             "func": ("set_seek_sync_mode", SeekSyncMode.DISABLED),
             "check_if": ("is_seek_sync_mode_set_to", SeekSyncMode.DISABLED),
         },
         "Seek Sync (Percent)": {
-            "title": translate("Actions", "Sync By Percent"),
+            "title": translate("Seek Sync", "Sync By Percent"),
             "icon": "seek-sync-percent",
             "func": ("set_seek_sync_mode", SeekSyncMode.PERCENT),
             "check_if": ("is_seek_sync_mode_set_to", SeekSyncMode.PERCENT),
         },
         "Seek Sync (Timecode)": {
-            "title": translate("Actions", "Sync By Timecode"),
+            "title": translate("Seek Sync", "Sync By Timecode"),
             "icon": "seek-sync-time",
             "func": ("set_seek_sync_mode", SeekSyncMode.TIMECODE),
             "check_if": ("is_seek_sync_mode_set_to", SeekSyncMode.TIMECODE),
@@ -1637,19 +1637,19 @@ ACTIONS = MappingProxyType(
             "show_if": "is_more_than_one_video",
         },
         "Shuffle Grid On Load": {
-            "title": translate("Actions", "Shuffle On Load"),
+            "title": translate("Playlist Settings", "Shuffle On Load"),
             "icon": "loop-random",
             "func": "toggle_shuffle_on_load",
             "check_if": "is_shuffle_on_load",
         },
         "Rows First": {
-            "title": translate("Actions", "Auto (Rows First)"),
+            "title": translate("Grid Mode", "Auto (Rows First)"),
             "icon": "grid-rows-first",
             "func": ("set_grid_mode", GridMode.AUTO_ROWS),
             "check_if": ("is_grid_mode_set_to", GridMode.AUTO_ROWS),
         },
         "Columns First": {
-            "title": translate("Actions", "Auto (Columns First)"),
+            "title": translate("Grid Mode", "Auto (Columns First)"),
             "icon": "grid-columns-first",
             "func": ("set_grid_mode", GridMode.AUTO_COLS),
             "check_if": ("is_grid_mode_set_to", GridMode.AUTO_COLS),
@@ -1669,7 +1669,7 @@ ACTIONS = MappingProxyType(
             "show_if": NOT(("is_grid_mode_set_to", GridMode.FIXED)),
         },
         "Fixed Grid": {
-            "title": translate("Actions", "Fixed Grid"),
+            "title": translate("Grid Mode", "Fixed Grid"),
             "icon": "grid",
             "func": ("set_grid_mode", GridMode.FIXED),
             "check_if": ("is_grid_mode_set_to", GridMode.FIXED),
@@ -1854,43 +1854,47 @@ ACTIONS = MappingProxyType(
             "func": "playlist_settings",
         },
         "Disable Mouse Click Events": {
-            "title": translate("Actions", "Disable Mouse Click Events"),
+            "title": translate("Playlist Settings", "Disable Mouse Click Events"),
             "icon": "empty",
             "func": "toggle_disable_mouse_click_events",
             "check_if": "is_disable_mouse_click_events",
         },
         "Disable Mouse Wheel Events": {
-            "title": translate("Actions", "Disable Mouse Wheel Events"),
+            "title": translate("Playlist Settings", "Disable Mouse Wheel Events"),
             "icon": "empty",
             "func": "toggle_disable_mouse_wheel_events",
             "check_if": "is_disable_mouse_wheel_events",
         },
         "Disable Overlay": {
-            "title": translate("Actions", "Disable Overlay"),
+            "title": translate("Playlist Settings", "Disable Overlay"),
             "icon": "empty",
             "func": "toggle_disable_overlay",
             "check_if": "is_disable_overlay",
         },
         "Pause Background Videos": {
-            "title": translate("Actions", "Pause background videos on single mode"),
+            "title": translate(
+                "Playlist Settings", "Pause background videos on single mode"
+            ),
             "icon": "empty",
             "func": "toggle_pause_background_videos",
             "check_if": "is_pause_background_videos",
         },
         "Pause When Minimized": {
-            "title": translate("Actions", "Pause videos when minimized"),
+            "title": translate("Playlist Settings", "Pause videos when minimized"),
             "icon": "empty",
             "func": "toggle_pause_minimized",
             "check_if": "is_pause_minimized",
         },
         "Show Overlay Border": {
-            "title": translate("Actions", "Show overlay border for active video"),
+            "title": translate(
+                "Playlist Settings", "Show overlay border for active video"
+            ),
             "icon": "empty",
             "func": "toggle_show_overlay_border",
             "check_if": "is_show_overlay_border",
         },
         "Hide Overlay After Timeout": {
-            "title": translate("Actions", "Hide overlay after timeout"),
+            "title": translate("Playlist Settings", "Hide overlay after timeout"),
             "icon": "empty",
             "func": "toggle_overlay_hide_on_timeout",
             "check_if": "is_overlay_hide_on_timeout",

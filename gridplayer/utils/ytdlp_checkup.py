@@ -43,7 +43,6 @@ from gridplayer.utils.qt import translate
 # yt-dlp patches urllib3 as it is imported; see utils/percent_re.py
 untangle_percent_re()
 
-TRANSLATION_CONTEXT = "yt-dlp Checkup"
 
 # Blender's own upload: old enough to be a fixture, still published in the
 # full modern ladder, so resolving it exercises the signature and manifest
@@ -143,24 +142,33 @@ class YouTubeCheckup(Checkup):
 
     @property
     def title(self) -> str:
-        return _t("yt-dlp checkup")
+        return translate("yt-dlp Checkup", "yt-dlp checkup")
 
     @property
     def intro(self) -> str:
-        return _t(
+        return translate(
+            "yt-dlp Checkup",
             "Playing a YouTube link, step by step, with the cookies on the"
-            " settings page as they stand now."
+            " settings page as they stand now.",
         )
 
     @property
     def checks(self) -> tuple[Check, ...]:
         return (
-            Check(_t("yt-dlp version"), self.check_version),
-            Check(_t("JavaScript runtime"), self.check_js_runtime),
-            Check(_t("Stored YouTube cookies"), self.check_cookies),
-            Check(_t("YouTube sign-in"), self.check_sign_in),
-            Check(_t("Resolving a test video"), self.check_resolve),
-            Check(_t("Fetching the stream"), self.check_fetch),
+            Check(translate("yt-dlp Checkup", "yt-dlp version"), self.check_version),
+            Check(
+                translate("yt-dlp Checkup", "JavaScript runtime"), self.check_js_runtime
+            ),
+            Check(
+                translate("yt-dlp Checkup", "Stored YouTube cookies"),
+                self.check_cookies,
+            ),
+            Check(translate("yt-dlp Checkup", "YouTube sign-in"), self.check_sign_in),
+            Check(
+                translate("yt-dlp Checkup", "Resolving a test video"),
+                self.check_resolve,
+            ),
+            Check(translate("yt-dlp Checkup", "Fetching the stream"), self.check_fetch),
         )
 
     def check_version(self) -> CheckResult:
@@ -171,9 +179,9 @@ class YouTubeCheckup(Checkup):
 
         age = (datetime.now(tz=timezone.utc).date() - released).days
 
-        summary = _t("{VERSION}, released {DAYS} days ago").format(
-            VERSION=YT_DLP_VERSION, DAYS=age
-        )
+        summary = translate(
+            "yt-dlp Checkup", "{VERSION}, released {DAYS} days ago"
+        ).format(VERSION=YT_DLP_VERSION, DAYS=age)
 
         if age < STALE_VERSION_DAYS:
             return CheckResult(CheckStatus.PASSED, summary)
@@ -181,11 +189,12 @@ class YouTubeCheckup(Checkup):
         return CheckResult(
             CheckStatus.WARNING,
             summary,
-            _t(
+            translate(
+                "yt-dlp Checkup",
                 "YouTube changes what it serves every few weeks, and an old"
                 " yt-dlp is the most common reason a link stops resolving."
                 " It ships with GridPlayer, so updating it means updating"
-                " GridPlayer."
+                " GridPlayer.",
             ),
         )
 
@@ -218,7 +227,7 @@ class YouTubeCheckup(Checkup):
         if installed:
             return CheckResult(
                 CheckStatus.WARNING,
-                _t("{RUNTIMES} is too old for yt-dlp").format(
+                translate("yt-dlp Checkup", "{RUNTIMES} is too old for yt-dlp").format(
                     RUNTIMES=_runtime_list(installed.values())
                 ),
                 _minimum_version_hint(installed),
@@ -226,12 +235,13 @@ class YouTubeCheckup(Checkup):
 
         return CheckResult(
             CheckStatus.WARNING,
-            _t("No JavaScript runtime found"),
-            _t(
+            translate("yt-dlp Checkup", "No JavaScript runtime found"),
+            translate(
+                "yt-dlp Checkup",
                 "YouTube scrambles its stream addresses with a script that"
                 " has to be run to undo. GridPlayer does not ship an engine"
                 " to run it with. Install Deno or Node and YouTube links"
-                " will resolve to addresses that play. See {URL}"
+                " will resolve to addresses that play. See {URL}",
             ).format(URL=JS_RUNTIME_HELP_URL),
         )
 
@@ -259,12 +269,15 @@ class YouTubeCheckup(Checkup):
         others = [other for key, other in usable.items() if key != name]
 
         if others:
-            hint = _t(
+            hint = translate(
+                "yt-dlp Checkup",
                 "Running {PATH}. Also installed: {OTHERS}, which yt-dlp"
-                " ranks lower and will not use."
+                " ranks lower and will not use.",
             ).format(PATH=_runtime_path(info), OTHERS=_runtime_list(others))
         else:
-            hint = _t("Running {PATH}").format(PATH=_runtime_path(info))
+            hint = translate("yt-dlp Checkup", "Running {PATH}").format(
+                PATH=_runtime_path(info)
+            )
 
         return CheckResult(CheckStatus.PASSED, f"{info.name} {info.version}", hint)
 
@@ -311,15 +324,16 @@ class YouTubeCheckup(Checkup):
         if not domains:
             return CheckResult(
                 CheckStatus.SKIPPED,
-                _t("No YouTube cookies stored"),
-                _t(
+                translate("yt-dlp Checkup", "No YouTube cookies stored"),
+                translate(
+                    "yt-dlp Checkup",
                     "The rest of the checkup runs as a signed-out viewer,"
                     " which YouTube increasingly asks to prove itself."
-                    " Import cookies on this page to test a signed-in one."
+                    " Import cookies on this page to test a signed-in one.",
                 ),
             )
 
-        stored = _t("{COOKIES} cookies for {DOMAINS}").format(
+        stored = translate("yt-dlp Checkup", "{COOKIES} cookies for {DOMAINS}").format(
             COOKIES=sum(count for _, count in domains),
             DOMAINS=", ".join(domain for domain, _ in domains),
         )
@@ -327,20 +341,26 @@ class YouTubeCheckup(Checkup):
         if not self._are_cookies_enabled:
             return CheckResult(
                 CheckStatus.WARNING,
-                _t("{STORED}, but switched off").format(STORED=stored),
-                _t(
+                translate("yt-dlp Checkup", "{STORED}, but switched off").format(
+                    STORED=stored
+                ),
+                translate(
+                    "yt-dlp Checkup",
                     "The rest of the checkup runs without them, as playback"
-                    ' would. Tick "Use stored cookies" to have them sent.'
+                    ' would. Tick "Use stored cookies" to have them sent.',
                 ),
             )
 
         if self._cookie_header is None:
             return CheckResult(
                 CheckStatus.WARNING,
-                _t("{STORED}, none of them still good").format(STORED=stored),
-                _t(
+                translate("yt-dlp Checkup", "{STORED}, none of them still good").format(
+                    STORED=stored
+                ),
+                translate(
+                    "yt-dlp Checkup",
                     "Every stored YouTube cookie has expired, so none would"
-                    " be sent. Export the site again. See {URL}"
+                    " be sent. Export the site again. See {URL}",
                 ).format(URL=COOKIES_WIKI_URL),
             )
 
@@ -355,39 +375,47 @@ class YouTubeCheckup(Checkup):
         """
 
         if self._cookie_header is None:
-            return CheckResult(CheckStatus.SKIPPED, _t("No cookies to sign in with"))
+            return CheckResult(
+                CheckStatus.SKIPPED,
+                translate("yt-dlp Checkup", "No cookies to sign in with"),
+            )
 
         try:
             page = self._fetch_home_page()
         except OSError as e:
             return CheckResult(
                 CheckStatus.FAILED,
-                _t("Could not reach YouTube: {ERROR}").format(ERROR=e),
+                translate("yt-dlp Checkup", "Could not reach YouTube: {ERROR}").format(
+                    ERROR=e
+                ),
             )
 
         if LOGGED_IN_MARKER in page:
             return CheckResult(
-                CheckStatus.PASSED, _t("YouTube answered as a signed-in viewer")
+                CheckStatus.PASSED,
+                translate("yt-dlp Checkup", "YouTube answered as a signed-in viewer"),
             )
 
         if LOGGED_OUT_MARKER in page:
             return CheckResult(
                 CheckStatus.WARNING,
-                _t("YouTube answered as a signed-out viewer"),
-                _t(
+                translate("yt-dlp Checkup", "YouTube answered as a signed-out viewer"),
+                translate(
+                    "yt-dlp Checkup",
                     "The cookies reached the site but no longer name a"
                     " session. Exporting from a tab you keep browsing goes"
                     " stale within hours; export from a private window and"
-                    " close it without logging out. See {URL}"
+                    " close it without logging out. See {URL}",
                 ).format(URL=COOKIES_WIKI_URL),
             )
 
         return CheckResult(
             CheckStatus.WARNING,
-            _t("YouTube did not say either way"),
-            _t(
+            translate("yt-dlp Checkup", "YouTube did not say either way"),
+            translate(
+                "yt-dlp Checkup",
                 "The page came back in a shape this check does not know."
-                " The steps below still say whether playback works."
+                " The steps below still say whether playback works.",
             ),
         )
 
@@ -406,14 +434,16 @@ class YouTubeCheckup(Checkup):
 
         formats = self._video_info.get("formats") or []
 
-        summary = _t('{FORMATS} formats for "{TITLE}"').format(
+        summary = translate("yt-dlp Checkup", '{FORMATS} formats for "{TITLE}"').format(
             FORMATS=len(formats), TITLE=self._video_info.get("title") or TEST_VIDEO_URL
         )
 
         if logger.warnings:
             return CheckResult(
                 CheckStatus.WARNING,
-                _t("{SUMMARY}, with warnings").format(SUMMARY=summary),
+                translate("yt-dlp Checkup", "{SUMMARY}, with warnings").format(
+                    SUMMARY=summary
+                ),
                 "\n".join(logger.warnings),
             )
 
@@ -428,14 +458,19 @@ class YouTubeCheckup(Checkup):
         """
 
         if self._video_info is None:
-            return CheckResult(CheckStatus.SKIPPED, _t("Nothing was resolved to fetch"))
+            return CheckResult(
+                CheckStatus.SKIPPED,
+                translate("yt-dlp Checkup", "Nothing was resolved to fetch"),
+            )
 
         sample_format = _sample_format(self._video_info)
 
         if sample_format is None:
             return CheckResult(
                 CheckStatus.FAILED,
-                _t("No format came back with an address to fetch"),
+                translate(
+                    "yt-dlp Checkup", "No format came back with an address to fetch"
+                ),
             )
 
         try:
@@ -443,7 +478,9 @@ class YouTubeCheckup(Checkup):
         except OSError as e:
             return CheckResult(
                 CheckStatus.FAILED,
-                _t("Could not reach the stream: {ERROR}").format(ERROR=e),
+                translate(
+                    "yt-dlp Checkup", "Could not reach the stream: {ERROR}"
+                ).format(ERROR=e),
             )
 
         if status >= HTTP_BAD_REQUEST:
@@ -452,14 +489,16 @@ class YouTubeCheckup(Checkup):
         if not read:
             return CheckResult(
                 CheckStatus.FAILED,
-                _t("The stream answered {STATUS} but sent nothing").format(
-                    STATUS=status
-                ),
+                translate(
+                    "yt-dlp Checkup", "The stream answered {STATUS} but sent nothing"
+                ).format(STATUS=status),
             )
 
         return CheckResult(
             CheckStatus.PASSED,
-            _t("HTTP {STATUS}, {KIB} KiB from format {FORMAT}").format(
+            translate(
+                "yt-dlp Checkup", "HTTP {STATUS}, {KIB} KiB from format {FORMAT}"
+            ).format(
                 KIB=read // BYTES_IN_KIB or 1,
                 FORMAT=_format_name(sample_format),
                 STATUS=status,
@@ -589,10 +628,6 @@ class _CollectingLogger:
         self._log.error(message)
 
 
-def _t(text: str) -> str:
-    return translate(TRANSLATION_CONTEXT, text)
-
-
 def _release_date(version: str):
     """When this yt-dlp was cut, which is what its version number is."""
 
@@ -678,9 +713,10 @@ def _barren_folder_note(js_runtime_path: str | None = None) -> str:
     if answered_here:
         return ""
 
-    return _t(
+    return translate(
+        "yt-dlp Checkup",
         "Nothing named deno, node, qjs or bun is in {FOLDER}, which this"
-        " page is pointing at."
+        " page is pointing at.",
     ).format(FOLDER=named)
 
 
@@ -711,7 +747,9 @@ def _minimum_version_hint(too_old: dict) -> str:
         f"{name} {_version_text(supported_js_runtimes.value[name])}" for name in too_old
     )
 
-    return _t("yt-dlp needs {WANTED} or newer.").format(WANTED=wanted)
+    return translate("yt-dlp Checkup", "yt-dlp needs {WANTED} or newer.").format(
+        WANTED=wanted
+    )
 
 
 def _version_text(runtime_class) -> str:
@@ -769,10 +807,11 @@ def _resolve_failure(message: str) -> CheckResult:
         return CheckResult(
             CheckStatus.FAILED,
             message,
-            _t(
+            translate(
+                "yt-dlp Checkup",
                 "YouTube wants a signed-in session from this address."
                 " Import YouTube cookies on this page, exported from a"
-                " private window. See {URL}"
+                " private window. See {URL}",
             ).format(URL=COOKIES_WIKI_URL),
         )
 
@@ -780,10 +819,11 @@ def _resolve_failure(message: str) -> CheckResult:
         return CheckResult(
             CheckStatus.FAILED,
             message,
-            _t(
+            translate(
+                "yt-dlp Checkup",
                 "The video this checkup uses may have been taken down or"
                 " blocked where you are, which says nothing about your"
-                " own links."
+                " own links.",
             ),
         )
 
@@ -791,9 +831,9 @@ def _resolve_failure(message: str) -> CheckResult:
 
 
 def _fetch_failure(status: int, sample_format) -> CheckResult:
-    summary = _t("The stream answered HTTP {STATUS} for {FORMAT}").format(
-        STATUS=status, FORMAT=_format_name(sample_format)
-    )
+    summary = translate(
+        "yt-dlp Checkup", "The stream answered HTTP {STATUS} for {FORMAT}"
+    ).format(STATUS=status, FORMAT=_format_name(sample_format))
 
     if status != HTTP_FORBIDDEN:
         return CheckResult(CheckStatus.FAILED, summary)
@@ -801,11 +841,12 @@ def _fetch_failure(status: int, sample_format) -> CheckResult:
     return CheckResult(
         CheckStatus.FAILED,
         summary,
-        _t(
+        translate(
+            "yt-dlp Checkup",
             "The address resolved but the site refused to serve it. That is"
             " usually an address signed by a player script that could not be"
             " run, or cookies belonging to a different address than the one"
-            " asking. Check the JavaScript runtime above."
+            " asking. Check the JavaScript runtime above.",
         ),
     )
 

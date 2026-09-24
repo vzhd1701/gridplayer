@@ -23,7 +23,6 @@ from PyQt5.QtWidgets import QApplication, QDialog, QDialogButtonBox
 
 from gridplayer.params.theme import set_html_with_links
 from gridplayer.utils.checkup import (
-    TRANSLATION_CONTEXT,
     CheckResult,
     CheckStatus,
     report_text,
@@ -60,10 +59,6 @@ DIALOG_SIZE = (620, 560)
 # a hint is as likely as not to end in the page that explains the rest of
 # it, and a URL nobody can click is a URL nobody reads
 URL_PATTERN = re.compile(r"https?://\S+")
-
-
-def _t(text: str) -> str:
-    return translate(TRANSLATION_CONTEXT, text)
 
 
 class CheckRunner(QObject):
@@ -129,7 +124,7 @@ class CheckRow(QtWidgets.QWidget):
 
         self.icon = self._ui_icon()
         self.title = self._ui_title(title)
-        self.summary = _wrapping_label(_t("Waiting"))
+        self.summary = _wrapping_label(translate("Checkup", "Waiting"))
         self.hint = self._ui_hint()
 
         lines = QtWidgets.QVBoxLayout()
@@ -149,13 +144,13 @@ class CheckRow(QtWidgets.QWidget):
 
     def set_pending(self) -> None:
         self._set_icon(PENDING_ICON)
-        self.summary.setText(_t("Waiting"))
+        self.summary.setText(translate("Checkup", "Waiting"))
         self.hint.setVisible(False)
         self.setEnabled(False)
 
     def set_running(self) -> None:
         self._set_icon(PENDING_ICON)
-        self.summary.setText(_t("Running..."))
+        self.summary.setText(translate("Checkup", "Running..."))
         self.setEnabled(True)
 
     def set_result(self, check_result) -> None:
@@ -169,7 +164,7 @@ class CheckRow(QtWidgets.QWidget):
 
     def set_not_run(self) -> None:
         self._set_icon(PENDING_ICON)
-        self.summary.setText(_t("Not run"))
+        self.summary.setText(translate("Checkup", "Not run"))
         self.hint.setVisible(False)
         self.setEnabled(False)
 
@@ -264,7 +259,7 @@ class CheckupDialog(QDialog):
         self.rows[index].set_running()
 
         self.status.setText(
-            _t("Step {STEP} of {STEPS}: {TITLE}").format(
+            translate("Checkup", "Step {STEP} of {STEPS}: {TITLE}").format(
                 STEP=index + 1, STEPS=len(self._checks), TITLE=self._checks[index].title
             )
         )
@@ -318,7 +313,9 @@ class CheckupDialog(QDialog):
         self.progress.setFormat(_elapsed_text(int(self._seconds)))
 
         self.status.setText(
-            _t("Stopped") if is_cancelled else _summary_line(self._results)
+            translate("Checkup", "Stopped")
+            if is_cancelled
+            else _summary_line(self._results)
         )
 
         self.abort_button.setVisible(False)
@@ -337,13 +334,15 @@ class CheckupDialog(QDialog):
         buttons = QDialogButtonBox(parent=self)
 
         self.copy_button = buttons.addButton(
-            _t("Copy report"), QDialogButtonBox.ActionRole
+            translate("Checkup", "Copy report"), QDialogButtonBox.ActionRole
         )
         # the same role the Close button has, because they are the same
         # slot: one of them is on screen at a time and the other takes
         # its place. As a destructive button macOS puts it in the group
         # to the left of that slot and leaves the slot standing empty.
-        self.abort_button = buttons.addButton(_t("Stop"), QDialogButtonBox.RejectRole)
+        self.abort_button = buttons.addButton(
+            translate("Checkup", "Stop"), QDialogButtonBox.RejectRole
+        )
         self.close_button = buttons.addButton(QDialogButtonBox.Close)
 
         self.close_button.setVisible(False)
@@ -444,17 +443,19 @@ def _summary_line(results) -> str:
     warned = sum(r.status is CheckStatus.WARNING for r in counted)
 
     if failed and warned:
-        return _t("{FAILED} failed, {WARNED} to look at").format(
+        return translate("Checkup", "{FAILED} failed, {WARNED} to look at").format(
             FAILED=failed, WARNED=warned
         )
 
     if failed:
-        return _t("{FAILED} failed").format(FAILED=failed)
+        return translate("Checkup", "{FAILED} failed").format(FAILED=failed)
 
     if warned:
-        return _t("Nothing failed, {WARNED} to look at").format(WARNED=warned)
+        return translate("Checkup", "Nothing failed, {WARNED} to look at").format(
+            WARNED=warned
+        )
 
-    return _t("All good")
+    return translate("Checkup", "All good")
 
 
 def _crashed(error: Exception) -> CheckResult:

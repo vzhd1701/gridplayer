@@ -79,107 +79,110 @@ class SettingField:
     tooltip: str | None = None
 
 
-def _t(text: str) -> str:
-    return translate("SettingsDialog", text)
-
-
 def _grid_modes() -> dict:
     return {
-        GridMode.AUTO_ROWS: _t("Auto (Rows First)"),
-        GridMode.AUTO_COLS: _t("Auto (Columns First)"),
-        GridMode.FIXED: _t("Fixed Grid"),
+        GridMode.AUTO_ROWS: translate("Grid Mode", "Auto (Rows First)"),
+        GridMode.AUTO_COLS: translate("Grid Mode", "Auto (Columns First)"),
+        GridMode.FIXED: translate("Grid Mode", "Fixed Grid"),
     }
 
 
 def _seek_sync_modes() -> dict:
     return {
-        SeekSyncMode.DISABLED: _t("Disabled"),
-        SeekSyncMode.PERCENT: _t("Percent"),
-        SeekSyncMode.TIMECODE: _t("Timecode"),
+        SeekSyncMode.DISABLED: translate("Seek Sync", "Disabled"),
+        SeekSyncMode.PERCENT: translate("Seek Sync", "Percent"),
+        SeekSyncMode.TIMECODE: translate("Seek Sync", "Timecode"),
     }
 
 
 def _unsaved_changes_modes() -> dict:
     return {
-        UnsavedChangesMode.ASK: _t("Ask"),
-        UnsavedChangesMode.DISCARD: _t("Discard Changes"),
-        UnsavedChangesMode.AUTO_SAVE_DISCARD: _t("Auto Save or Discard"),
-        UnsavedChangesMode.AUTO_SAVE_ASK: _t("Auto Save or Ask"),
+        UnsavedChangesMode.ASK: translate("SettingsDialog", "Ask"),
+        UnsavedChangesMode.DISCARD: translate("SettingsDialog", "Discard Changes"),
+        UnsavedChangesMode.AUTO_SAVE_DISCARD: translate(
+            "SettingsDialog", "Auto Save or Discard"
+        ),
+        UnsavedChangesMode.AUTO_SAVE_ASK: translate(
+            "SettingsDialog", "Auto Save or Ask"
+        ),
     }
 
 
 def _unsaved_changes_tooltip() -> str:
-    return _t(
+    return translate(
+        "SettingsDialog",
         "Auto save applies only when the playlist has a file location; "
-        "otherwise the fallback action is used."
+        "otherwise the fallback action is used.",
     )
 
 
 def _save_paths_relative_tooltip() -> str:
-    return _t(
+    return translate(
+        "SettingsDialog",
         "Store local video paths relative to the playlist file location so the "
         "playlist stays portable when moved together with its videos. URLs and "
-        "paths that cannot be made relative (e.g. another drive) are kept as-is."
+        "paths that cannot be made relative (e.g. another drive) are kept as-is.",
     )
 
 
 def _drop_internal() -> dict:
     return {
-        DropAction.INSERT: _t("Move / Swap"),
-        DropAction.REPLACE: _t("Replace"),
+        DropAction.INSERT: translate("SettingsDialog", "Move / Swap"),
+        DropAction.REPLACE: translate("SettingsDialog", "Replace"),
     }
 
 
 def _drop_external() -> dict:
     return {
-        DropAction.INSERT: _t("Add"),
-        DropAction.REPLACE: _t("Replace"),
+        DropAction.INSERT: translate("SettingsDialog", "Add"),
+        DropAction.REPLACE: translate("SettingsDialog", "Replace"),
     }
 
 
 def _drop_modifiers() -> dict:
     if env.IS_MACOS:
         return {
-            DropModifier.SHIFT: _t("Shift"),
-            DropModifier.CTRL: _t("Cmd"),
-            DropModifier.ALT: _t("Option"),
-            DropModifier.NONE: _t("Disabled"),
+            DropModifier.SHIFT: translate("SettingsDialog", "Shift"),
+            DropModifier.CTRL: translate("SettingsDialog", "Cmd"),
+            DropModifier.ALT: translate("SettingsDialog", "Option"),
+            DropModifier.NONE: translate("SettingsDialog", "Disabled"),
         }
     return {
-        DropModifier.SHIFT: _t("Shift"),
-        DropModifier.CTRL: _t("Ctrl"),
-        DropModifier.ALT: _t("Alt"),
-        DropModifier.NONE: _t("Disabled"),
+        DropModifier.SHIFT: translate("SettingsDialog", "Shift"),
+        DropModifier.CTRL: translate("SettingsDialog", "Ctrl"),
+        DropModifier.ALT: translate("SettingsDialog", "Alt"),
+        DropModifier.NONE: translate("SettingsDialog", "Disabled"),
     }
 
 
 def _drop_modifier_tooltip() -> str | None:
     if not env.IS_LINUX:
         return None
-    return _t(
+    return translate(
+        "SettingsDialog",
         "On GNOME, dropping files from the file manager only honors Shift. "
-        "Ctrl and Alt still work when dragging videos inside the player."
+        "Ctrl and Alt still work when dragging videos inside the player.",
     )
 
 
 def _aspects() -> dict:
     return {
-        VideoAspect.FIT: _t("Fit"),
-        VideoAspect.STRETCH: _t("Stretch"),
-        VideoAspect.NONE: _t("None"),
+        VideoAspect.FIT: translate("Aspect", "Fit"),
+        VideoAspect.STRETCH: translate("Aspect", "Stretch"),
+        VideoAspect.NONE: translate("Aspect", "None"),
     }
 
 
 def _transforms() -> dict:
     return {
-        VideoTransform.ROTATE_90: _t("Rotate 90"),
-        VideoTransform.ROTATE_180: _t("Rotate 180"),
-        VideoTransform.ROTATE_270: _t("Rotate 270"),
-        VideoTransform.HFLIP: _t("Flip Horizontally"),
-        VideoTransform.VFLIP: _t("Flip Vertically"),
-        VideoTransform.TRANSPOSE: _t("Transpose"),
-        VideoTransform.ANTITRANSPOSE: _t("Anti-transpose"),
-        VideoTransform.NONE: _t("No Transform"),
+        VideoTransform.ROTATE_90: translate("Transform", "Rotate 90"),
+        VideoTransform.ROTATE_180: translate("Transform", "Rotate 180"),
+        VideoTransform.ROTATE_270: translate("Transform", "Rotate 270"),
+        VideoTransform.HFLIP: translate("Transform", "Flip Horizontally"),
+        VideoTransform.VFLIP: translate("Transform", "Flip Vertically"),
+        VideoTransform.TRANSPOSE: translate("Transform", "Transpose"),
+        VideoTransform.ANTITRANSPOSE: translate("Transform", "Anti-transpose"),
+        VideoTransform.NONE: translate("Transform", "No Transform"),
     }
 
 
@@ -210,21 +213,21 @@ def _deinterlace_modes() -> dict:
 
 def _end_actions() -> dict:
     return {
-        VideoEndAction.LOOP_FILE: _t("Loop this file"),
-        VideoEndAction.NEXT_FILE: _t("Next in folder"),
-        VideoEndAction.PREVIOUS_FILE: _t("Previous in folder"),
-        VideoEndAction.SHUFFLE_FILE: _t("Random in folder"),
-        VideoEndAction.PAUSE: _t("Pause at start"),
-        VideoEndAction.STOP: _t("Stop"),
-        VideoEndAction.CLOSE: _t("Close"),
+        VideoEndAction.LOOP_FILE: translate("When Finished", "Loop this file"),
+        VideoEndAction.NEXT_FILE: translate("When Finished", "Next in folder"),
+        VideoEndAction.PREVIOUS_FILE: translate("When Finished", "Previous in folder"),
+        VideoEndAction.SHUFFLE_FILE: translate("When Finished", "Random in folder"),
+        VideoEndAction.PAUSE: translate("When Finished", "Pause at start"),
+        VideoEndAction.STOP: translate("When Finished", "Stop"),
+        VideoEndAction.CLOSE: translate("When Finished", "Close"),
     }
 
 
 def _initial_states() -> dict:
     return {
-        VideoInitialState.PLAYING: _t("Playing"),
-        VideoInitialState.PAUSED: _t("Paused"),
-        VideoInitialState.STOPPED: _t("Stopped"),
+        VideoInitialState.PLAYING: translate("SettingsDialog", "Playing"),
+        VideoInitialState.PAUSED: translate("SettingsDialog", "Paused"),
+        VideoInitialState.STOPPED: translate("SettingsDialog", "Stopped"),
     }
 
 
@@ -243,37 +246,37 @@ def _audio_modes() -> dict:
 
 def _subtitle_track_modes() -> dict:
     return {
-        SubtitleTrackMode.DISABLED: _t("Off"),
-        SubtitleTrackMode.PREFERRED: _t("Preferred Language"),
-        SubtitleTrackMode.DEFAULT: _t("Default"),
+        SubtitleTrackMode.DISABLED: translate("Subtitle Track", "Off"),
+        SubtitleTrackMode.PREFERRED: translate("Subtitle Track", "Preferred Language"),
+        SubtitleTrackMode.DEFAULT: translate("Subtitle Track", "Default"),
     }
 
 
 def _subtitle_encodings() -> dict:
-    return {"": _t("Default"), **SUBTITLE_ENCODINGS}
+    return {"": translate("Subtitle Encoding", "Default"), **SUBTITLE_ENCODINGS}
 
 
 def _audio_track_modes() -> dict:
     return {
-        AudioTrackMode.DEFAULT: _t("Default"),
-        AudioTrackMode.PREFERRED: _t("Preferred Language"),
-        AudioTrackMode.DISABLED: _t("Disable Audio"),
+        AudioTrackMode.DEFAULT: translate("Audio Track", "Default"),
+        AudioTrackMode.PREFERRED: translate("Audio Track", "Preferred Language"),
+        AudioTrackMode.DISABLED: translate("Audio Track", "Disable Audio"),
     }
 
 
 def _network_retry_modes() -> dict:
     return {
-        NetworkRetryMode.OFF: _t("Show error"),
-        NetworkRetryMode.TIMES: _t("Reload a few times"),
-        NetworkRetryMode.INFINITE: _t("Keep reloading"),
+        NetworkRetryMode.OFF: translate("On Network Error", "Show error"),
+        NetworkRetryMode.TIMES: translate("On Network Error", "Reload a few times"),
+        NetworkRetryMode.INFINITE: translate("On Network Error", "Keep reloading"),
     }
 
 
 def _stream_qualities() -> dict:
     named = {
-        "auto": _t("Auto (fit to pane)"),
-        "best": _t("Best"),
-        "best_audio_only": _t("Audio Only"),
+        "auto": translate("Stream Quality", "Auto (fit to pane)"),
+        "best": translate("Stream Quality", "Best"),
+        "best_audio_only": translate("Stream Quality", "Audio Only"),
     }
     codes = (
         "2160p",
@@ -301,15 +304,18 @@ def _font_families() -> dict:
 
     families = QFontDatabase().families()
 
-    return {"": _t("Default"), **{family: family for family in families}}
+    return {
+        "": translate("SettingsDialog", "Default"),
+        **{family: family for family in families},
+    }
 
 
 def _subtitle_outlines() -> dict:
     return {
-        SubtitleOutline.NONE: _t("None"),
-        SubtitleOutline.THIN: _t("Thin"),
-        SubtitleOutline.NORMAL: _t("Normal"),
-        SubtitleOutline.THICK: _t("Thick"),
+        SubtitleOutline.NONE: translate("SettingsDialog", "None"),
+        SubtitleOutline.THIN: translate("SettingsDialog", "Thin"),
+        SubtitleOutline.NORMAL: translate("SettingsDialog", "Normal"),
+        SubtitleOutline.THICK: translate("SettingsDialog", "Thick"),
     }
 
 
@@ -330,8 +336,8 @@ PLAYLIST_FIELDS: tuple[SettingField, ...] = (
         settings_key="playlist/unsaved_changes",
         playlist_attr="unsaved_changes",
         kind=FieldKind.COMBO,
-        section=_t("Saving / Restoring"),
-        label=_t("Unsaved changes on close"),
+        section=translate("SettingsDialog", "Saving / Restoring"),
+        label=translate("SettingsDialog", "Unsaved changes on close"),
         combo_values=_unsaved_changes_modes,
         tooltip=_unsaved_changes_tooltip(),
     ),
@@ -339,146 +345,146 @@ PLAYLIST_FIELDS: tuple[SettingField, ...] = (
         settings_key="playlist/save_window",
         playlist_attr="save_window",
         kind=FieldKind.CHECKBOX,
-        section=_t("Saving / Restoring"),
-        label=_t("Save window position and size"),
+        section=translate("SettingsDialog", "Saving / Restoring"),
+        label=translate("SettingsDialog", "Save window position and size"),
     ),
     _f(
         settings_key="playlist/save_position",
         playlist_attr="save_position",
         kind=FieldKind.CHECKBOX,
-        section=_t("Saving / Restoring"),
-        label=_t("Save videos playback position"),
+        section=translate("SettingsDialog", "Saving / Restoring"),
+        label=translate("SettingsDialog", "Save videos playback position"),
     ),
     _f(
         settings_key="playlist/save_state",
         playlist_attr="save_state",
         kind=FieldKind.CHECKBOX,
-        section=_t("Saving / Restoring"),
-        label=_t("Save videos playback status"),
+        section=translate("SettingsDialog", "Saving / Restoring"),
+        label=translate("SettingsDialog", "Save videos playback status"),
     ),
     _f(
         settings_key="playlist/save_paths_relative",
         playlist_attr="save_paths_relative",
         kind=FieldKind.CHECKBOX,
-        section=_t("Saving / Restoring"),
-        label=_t("Save video paths relative to playlist file"),
+        section=translate("SettingsDialog", "Saving / Restoring"),
+        label=translate("SettingsDialog", "Save video paths relative to playlist file"),
         tooltip=_save_paths_relative_tooltip(),
     ),
     _f(
         settings_key="playlist/pause_background_videos",
         playlist_attr="pause_background_videos",
         kind=FieldKind.CHECKBOX,
-        section=_t("Playback"),
-        label=_t("Pause background videos on single mode"),
+        section=translate("SettingsDialog", "Playback"),
+        label=translate("Playlist Settings", "Pause background videos on single mode"),
         menu_action="Pause Background Videos",
     ),
     _f(
         settings_key="playlist/pause_minimized",
         playlist_attr="pause_minimized",
         kind=FieldKind.CHECKBOX,
-        section=_t("Playback"),
-        label=_t("Pause videos when minimized"),
+        section=translate("SettingsDialog", "Playback"),
+        label=translate("Playlist Settings", "Pause videos when minimized"),
         menu_action="Pause When Minimized",
     ),
     _f(
         settings_key="playlist/seek_sync_mode",
         playlist_attr="seek_sync_mode",
         kind=FieldKind.COMBO,
-        section=_t("Playback"),
-        label=_t("Seek sync mode"),
+        section=translate("SettingsDialog", "Playback"),
+        label=translate("SettingsDialog", "Seek sync mode"),
         combo_values=_seek_sync_modes,
     ),
     _f(
         settings_key="playlist/disable_mouse_click_events",
         playlist_attr="disable_mouse_click_events",
         kind=FieldKind.CHECKBOX,
-        section=_t("Input"),
-        label=_t("Disable mouse click events"),
+        section=translate("SettingsDialog", "Input"),
+        label=translate("Playlist Settings", "Disable mouse click events"),
         menu_action="Disable Mouse Click Events",
     ),
     _f(
         settings_key="playlist/disable_mouse_wheel_events",
         playlist_attr="disable_mouse_wheel_events",
         kind=FieldKind.CHECKBOX,
-        section=_t("Input"),
-        label=_t("Disable mouse wheel events"),
+        section=translate("SettingsDialog", "Input"),
+        label=translate("Playlist Settings", "Disable mouse wheel events"),
         menu_action="Disable Mouse Wheel Events",
     ),
     _f(
         settings_key="playlist/disable_overlay",
         playlist_attr="disable_overlay",
         kind=FieldKind.CHECKBOX,
-        section=_t("Overlay"),
-        label=_t("Disable overlay"),
+        section=translate("SettingsDialog", "Overlay"),
+        label=translate("Playlist Settings", "Disable overlay"),
         menu_action="Disable Overlay",
     ),
     _f(
         settings_key="playlist/show_overlay_border",
         playlist_attr="show_overlay_border",
         kind=FieldKind.CHECKBOX,
-        section=_t("Overlay"),
-        label=_t("Show overlay border for active video"),
+        section=translate("SettingsDialog", "Overlay"),
+        label=translate("Playlist Settings", "Show overlay border for active video"),
         menu_action="Show Overlay Border",
     ),
     _f(
         settings_key="playlist/overlay_hide_on_timeout",
         playlist_attr="overlay_hide_on_timeout",
         kind=FieldKind.CHECKBOX,
-        section=_t("Overlay"),
-        label=_t("Hide overlay after timeout"),
+        section=translate("SettingsDialog", "Overlay"),
+        label=translate("Playlist Settings", "Hide overlay after timeout"),
         menu_action="Hide Overlay After Timeout",
     ),
     _f(
         settings_key="playlist/overlay_timeout",
         playlist_attr="overlay_timeout",
         kind=FieldKind.SPIN,
-        section=_t("Overlay"),
-        label=_t("Overlay timeout"),
+        section=translate("SettingsDialog", "Overlay"),
+        label=translate("SettingsDialog", "Overlay timeout"),
         spin_min=1,
         spin_max=60,
-        spin_suffix=_t("(sec)"),
+        spin_suffix=translate("SettingsDialog", "(sec)"),
         enabled_by="playlist/overlay_hide_on_timeout",
     ),
     _f(
         settings_key="playlist/shuffle_on_load",
         playlist_attr="shuffle_on_load",
         kind=FieldKind.CHECKBOX,
-        section=_t("Grid"),
-        label=_t("Shuffle on load"),
+        section=translate("SettingsDialog", "Grid"),
+        label=translate("Playlist Settings", "Shuffle on load"),
         menu_action="Shuffle Grid On Load",
     ),
     _f(
         settings_key="playlist/grid_mode",
         kind=FieldKind.COMBO,
-        section=_t("Grid"),
-        label=_t("Grid mode"),
+        section=translate("SettingsDialog", "Grid"),
+        label=translate("SettingsDialog", "Grid mode"),
         is_grid=True,
         combo_values=_grid_modes,
     ),
     _f(
         settings_key="playlist/grid_size",
         kind=FieldKind.SPIN,
-        section=_t("Grid"),
-        label=_t("Grid size"),
+        section=translate("SettingsDialog", "Grid"),
+        label=translate("SettingsDialog", "Grid size"),
         is_grid=True,
         spin_min=0,
         spin_max=1000,
-        spin_special=translate("Grid Size", "Auto"),
+        spin_special=translate("SettingsDialog", "Auto"),
         grid_visibility=GridVisibility.AUTO_ONLY,
     ),
     _f(
         settings_key="playlist/grid_fit",
         kind=FieldKind.CHECKBOX,
-        section=_t("Grid"),
-        label=_t("Fit grid cells"),
+        section=translate("SettingsDialog", "Grid"),
+        label=translate("SettingsDialog", "Fit grid cells"),
         is_grid=True,
         grid_visibility=GridVisibility.AUTO_ONLY,
     ),
     _f(
         settings_key="playlist/grid_rows",
         kind=FieldKind.SPIN,
-        section=_t("Grid"),
-        label=_t("Rows"),
+        section=translate("SettingsDialog", "Grid"),
+        label=translate("SettingsDialog", "Rows"),
         is_grid=True,
         spin_min=1,
         spin_max=100,
@@ -487,8 +493,8 @@ PLAYLIST_FIELDS: tuple[SettingField, ...] = (
     _f(
         settings_key="playlist/grid_cols",
         kind=FieldKind.SPIN,
-        section=_t("Grid"),
-        label=_t("Columns"),
+        section=translate("SettingsDialog", "Grid"),
+        label=translate("SettingsDialog", "Columns"),
         is_grid=True,
         spin_min=1,
         spin_max=100,
@@ -497,8 +503,8 @@ PLAYLIST_FIELDS: tuple[SettingField, ...] = (
     _f(
         settings_key="playlist/grid_preallocate",
         kind=FieldKind.CHECKBOX,
-        section=_t("Grid"),
-        label=_t("Show all cells even when empty"),
+        section=translate("SettingsDialog", "Grid"),
+        label=translate("SettingsDialog", "Show all cells even when empty"),
         is_grid=True,
         grid_visibility=GridVisibility.FIXED_ONLY,
     ),
@@ -506,24 +512,24 @@ PLAYLIST_FIELDS: tuple[SettingField, ...] = (
         settings_key="playlist/drop_action_internal",
         playlist_attr="drop_action_internal",
         kind=FieldKind.COMBO,
-        section=_t("Drag-n-Drop"),
-        label=_t("In-window drag"),
+        section=translate("SettingsDialog", "Drag-n-Drop"),
+        label=translate("SettingsDialog", "In-window drag"),
         combo_values=_drop_internal,
     ),
     _f(
         settings_key="playlist/drop_action_external",
         playlist_attr="drop_action_external",
         kind=FieldKind.COMBO,
-        section=_t("Drag-n-Drop"),
-        label=_t("File drop"),
+        section=translate("SettingsDialog", "Drag-n-Drop"),
+        label=translate("SettingsDialog", "File drop"),
         combo_values=_drop_external,
     ),
     _f(
         settings_key="playlist/drop_modifier",
         playlist_attr="drop_modifier",
         kind=FieldKind.COMBO,
-        section=_t("Drag-n-Drop"),
-        label=_t("Hold to switch"),
+        section=translate("SettingsDialog", "Drag-n-Drop"),
+        label=translate("SettingsDialog", "Hold to switch"),
         combo_values=_drop_modifiers,
         tooltip=_drop_modifier_tooltip(),
     ),
@@ -534,115 +540,122 @@ VIDEO_FIELDS: tuple[SettingField, ...] = (
         settings_key="video_defaults/color",
         video_attr="color",
         kind=FieldKind.COLOR,
-        section=_t("Overlay"),
-        label=_t("Overlay color"),
+        section=translate("SettingsDialog", "Overlay"),
+        label=translate("SettingsDialog", "Overlay color"),
     ),
     _f(
         settings_key="video_defaults/audio_track_mode",
         video_attr="audio_track_mode",
         kind=FieldKind.COMBO,
-        section=_t("Audio"),
-        label=_t("Audio track"),
+        section=translate("SettingsDialog", "Audio"),
+        label=translate("SettingsDialog", "Audio track"),
         combo_values=_audio_track_modes,
-        tooltip=_t(
+        tooltip=translate(
+            "SettingsDialog",
             "Which track a video opens on: the one its own file marks as the"
             " default, the one answering the preferred languages below, or"
-            " none decoded at all, which is not the same as starting muted."
+            " none decoded at all, which is not the same as starting muted.",
         ),
     ),
     _f(
         settings_key="video_defaults/audio_languages",
         video_attr="audio_languages",
         kind=FieldKind.TEXT,
-        section=_t("Audio"),
-        label=_t("Preferred languages"),
-        text_placeholder=_t("en, ja, fr"),
+        section=translate("SettingsDialog", "Audio"),
+        label=translate("SettingsDialog", "Preferred languages"),
+        text_placeholder=translate("SettingsDialog", "en, ja, fr"),
         enabled_by="video_defaults/audio_track_mode",
         enabled_by_value=AudioTrackMode.PREFERRED,
-        tooltip=_t(
+        tooltip=translate(
+            "SettingsDialog",
             "Language codes or names, best first."
-            " Videos that offer none of them keep their own default track."
+            " Videos that offer none of them keep their own default track.",
         ),
     ),
     _f(
         settings_key="video_defaults/external_audio_autodiscover",
         video_attr="external_audio_autodiscover",
         kind=FieldKind.CHECKBOX,
-        section=_t("Audio"),
-        label=_t("Detect external audio files"),
-        tooltip=_t(
+        section=translate("SettingsDialog", "Audio"),
+        label=translate("SettingsDialog", "Detect external audio files"),
+        tooltip=translate(
+            "SettingsDialog",
             "Offer audio files named after the video and kept beside it,"
             " so they can be played in place of its own sound."
-            " Nothing is opened until one of them is picked."
+            " Nothing is opened until one of them is picked.",
         ),
     ),
     _f(
         settings_key="video_defaults/audio_mode",
         video_attr="audio_mode",
         kind=FieldKind.COMBO,
-        section=_t("Audio"),
-        label=_t("Audio mode"),
+        section=translate("SettingsDialog", "Audio"),
+        label=translate("SettingsDialog", "Audio mode"),
         combo_values=_audio_modes,
     ),
     _f(
         settings_key="video_defaults/subtitle_track_mode",
         video_attr="subtitle_track_mode",
         kind=FieldKind.COMBO,
-        section=_t("Subtitles"),
-        label=_t("Subtitles"),
+        section=translate("SettingsDialog", "Subtitles"),
+        label=translate("SettingsDialog", "Subtitles"),
         combo_values=_subtitle_track_modes,
-        tooltip=_t(
+        tooltip=translate(
+            "SettingsDialog",
             "Which subtitle a video opens on: none, the one answering the"
             " preferred languages below, or the one its container marks as"
-            " the default. Videos are opened with none unless told otherwise."
+            " the default. Videos are opened with none unless told otherwise.",
         ),
     ),
     _f(
         settings_key="video_defaults/subtitle_languages",
         video_attr="subtitle_languages",
         kind=FieldKind.TEXT,
-        section=_t("Subtitles"),
-        label=_t("Preferred languages"),
-        text_placeholder=_t("en, ja, fr"),
+        section=translate("SettingsDialog", "Subtitles"),
+        label=translate("SettingsDialog", "Preferred languages"),
+        text_placeholder=translate("SettingsDialog", "en, ja, fr"),
         enabled_by="video_defaults/subtitle_track_mode",
         enabled_by_value=SubtitleTrackMode.PREFERRED,
-        tooltip=_t(
+        tooltip=translate(
+            "SettingsDialog",
             "Language codes or names, best first."
-            " Videos that offer none of them are shown without subtitles."
+            " Videos that offer none of them are shown without subtitles.",
         ),
     ),
     _f(
         settings_key="video_defaults/subtitle_encoding",
         video_attr="subtitle_encoding",
         kind=FieldKind.COMBO,
-        section=_t("Subtitles"),
-        label=_t("Text encoding"),
+        section=translate("SettingsDialog", "Subtitles"),
+        label=translate("SettingsDialog", "Text encoding"),
         combo_values=_subtitle_encodings,
-        tooltip=_t(
+        tooltip=translate(
+            "SettingsDialog",
             "What a subtitle file is read as where it is not UTF-8."
             " UTF-8 files are recognised on their own and are left alone by"
             " this; anything else is read as Western European unless another"
-            " set is picked here. ASS and SSA subtitles are not affected."
+            " set is picked here. ASS and SSA subtitles are not affected.",
         ),
     ),
     _f(
         settings_key="video_defaults/external_subtitle_autodiscover",
         video_attr="external_subtitle_autodiscover",
         kind=FieldKind.CHECKBOX,
-        section=_t("Subtitles"),
-        label=_t("Detect external subtitle files"),
-        tooltip=_t(
+        section=translate("SettingsDialog", "Subtitles"),
+        label=translate("SettingsDialog", "Detect external subtitle files"),
+        tooltip=translate(
+            "SettingsDialog",
             "Offer subtitle files named after the video and kept beside it,"
             " so they can be shown over it."
-            " Nothing is opened until one of them is picked."
+            " Nothing is opened until one of them is picked.",
         ),
     ),
     _f(
         settings_key="video_defaults/volume",
         video_attr="volume",
         kind=FieldKind.FLOAT_SPIN,
-        section=_t("Audio"),
-        label=_t("Volume"),
+        section=translate("SettingsDialog", "Audio"),
+        label=translate("SettingsDialog", "Volume"),
         spin_min=0,
         spin_max=1,
         spin_decimals=2,
@@ -652,15 +665,15 @@ VIDEO_FIELDS: tuple[SettingField, ...] = (
         settings_key="video_defaults/muted",
         video_attr="muted",
         kind=FieldKind.CHECKBOX,
-        section=_t("Audio"),
-        label=_t("Muted"),
+        section=translate("SettingsDialog", "Audio"),
+        label=translate("SettingsDialog", "Muted"),
     ),
     _f(
         settings_key="video_defaults/scale",
         video_attr="scale",
         kind=FieldKind.FLOAT_SPIN,
-        section=_t("Video"),
-        label=_t("Zoom"),
+        section=translate("SettingsDialog", "Video"),
+        label=translate("SettingsDialog", "Zoom"),
         spin_min=MIN_SCALE,
         spin_max=MAX_SCALE,
         spin_decimals=1,
@@ -670,85 +683,87 @@ VIDEO_FIELDS: tuple[SettingField, ...] = (
         settings_key="video_defaults/aspect",
         video_attr="aspect",
         kind=FieldKind.COMBO,
-        section=_t("Video"),
-        label=_t("Aspect mode"),
+        section=translate("SettingsDialog", "Video"),
+        label=translate("SettingsDialog", "Aspect mode"),
         combo_values=_aspects,
     ),
     _f(
         settings_key="video_defaults/crop",
         video_attr="crop",
         kind=FieldKind.CROP,
-        section=_t("Video"),
-        label=_t("Crop"),
+        section=translate("SettingsDialog", "Video"),
+        label=translate("SettingsDialog", "Crop"),
         spin_max=9999,
     ),
     _f(
         settings_key="video_defaults/transform",
         video_attr="transform",
         kind=FieldKind.COMBO,
-        section=_t("Video"),
-        label=_t("Transform"),
+        section=translate("SettingsDialog", "Video"),
+        label=translate("SettingsDialog", "Transform"),
         combo_values=_transforms,
     ),
     _f(
         settings_key="video_defaults/deinterlace",
         video_attr="deinterlace",
         kind=FieldKind.COMBO,
-        section=_t("Video"),
-        label=translate("Actions", "Deinterlace"),
+        section=translate("SettingsDialog", "Video"),
+        label=translate("SettingsDialog", "Deinterlace"),
         combo_values=_deinterlace_states,
-        tooltip=_t(
+        tooltip=translate(
+            "SettingsDialog",
             "Automatic deinterlaces only the videos marked as interlaced."
             " Some are marked wrongly and show combing on moving edges;"
-            " turn it on for those."
+            " turn it on for those.",
         ),
     ),
     _f(
         settings_key="video_defaults/deinterlace_mode",
         video_attr="deinterlace_mode",
         kind=FieldKind.COMBO,
-        section=_t("Video"),
-        label=_t("Deinterlace mode"),
+        section=translate("SettingsDialog", "Video"),
+        label=translate("SettingsDialog", "Deinterlace mode"),
         combo_values=_deinterlace_modes,
         enabled_by="video_defaults/deinterlace",
         enabled_by_value=(VideoDeinterlace.AUTO, VideoDeinterlace.ON),
-        tooltip=_t(
+        tooltip=translate(
+            "SettingsDialog",
             "Auto leaves it to VLC, which currently picks X. Yadif (2x), Bob"
             " and Phosphor double the frame rate, which costs more with many"
             " videos playing. With hardware decoding the GPU does the work and"
             " has fewer modes of its own; a mode it lacks falls back to one"
-            " it has."
+            " it has.",
         ),
     ),
     _f(
         settings_key="video_defaults/end_action",
         video_attr="end_action",
         kind=FieldKind.COMBO,
-        section=_t("Playback"),
-        label=_t("When finished"),
+        section=translate("SettingsDialog", "Playback"),
+        label=translate("SettingsDialog", "When finished"),
         combo_values=_end_actions,
     ),
     _f(
         settings_key="video_defaults/random_loop",
         video_attr="random_loop",
         kind=FieldKind.CHECKBOX,
-        section=_t("Playback"),
-        label=_t("Start at random position"),
+        section=translate("SettingsDialog", "Playback"),
+        label=translate("SettingsDialog", "Start at random position"),
     ),
     _f(
         settings_key="video_defaults/initial_state",
         video_attr="initial_state",
         kind=FieldKind.COMBO,
-        section=_t("Playback"),
-        label=_t("Initial state"),
+        section=translate("SettingsDialog", "Playback"),
+        label=translate("SettingsDialog", "Initial state"),
         combo_values=_initial_states,
     ),
     _f(
         settings_key="video_defaults/rate",
         video_attr="rate",
         kind=FieldKind.FLOAT_SPIN,
-        section=_t("Playback"),
-        label=_t("Playback speed"),
+        section=translate("SettingsDialog", "Playback"),
+        label=translate("SettingsDialog", "Playback speed"),
         spin_min=MIN_RATE,
         spin_max=MAX_RATE,
         spin_decimals=2,
@@ -758,37 +773,38 @@ VIDEO_FIELDS: tuple[SettingField, ...] = (
         settings_key="video_defaults/stream_quality",
         video_attr="stream_quality",
         kind=FieldKind.COMBO,
-        section=_t("Streaming Videos"),
-        label=_t("Stream quality"),
+        section=translate("SettingsDialog", "Streaming Videos"),
+        label=translate("SettingsDialog", "Stream quality"),
         combo_values=_stream_qualities,
     ),
     _f(
         settings_key="video_defaults/quality_adapt_delay",
         video_attr="quality_adapt_delay",
         kind=FieldKind.SPIN,
-        section=_t("Streaming Videos"),
-        label=_t("Adapt Auto quality after"),
+        section=translate("SettingsDialog", "Streaming Videos"),
+        label=translate("SettingsDialog", "Adapt Auto quality after"),
         spin_min=1,
         spin_max=3600,
-        spin_suffix=_t("(sec)"),
-        tooltip=_t(
-            "How long a video has to keep its new size before Auto quality follows it"
+        spin_suffix=translate("SettingsDialog", "(sec)"),
+        tooltip=translate(
+            "SettingsDialog",
+            "How long a video has to keep its new size before Auto quality follows it",
         ),
     ),
     _f(
         settings_key="video_defaults/network_retry_mode",
         video_attr="network_retry_mode",
         kind=FieldKind.COMBO,
-        section=_t("Streaming Videos"),
-        label=_t("On network error"),
+        section=translate("SettingsDialog", "Streaming Videos"),
+        label=translate("SettingsDialog", "On network error"),
         combo_values=_network_retry_modes,
     ),
     _f(
         settings_key="video_defaults/network_retry_times",
         video_attr="network_retry_times",
         kind=FieldKind.SPIN,
-        section=_t("Streaming Videos"),
-        label=_t("Reload attempts"),
+        section=translate("SettingsDialog", "Streaming Videos"),
+        label=translate("SettingsDialog", "Reload attempts"),
         spin_min=1,
         spin_max=1000,
         enabled_by="video_defaults/network_retry_mode",
@@ -798,12 +814,12 @@ VIDEO_FIELDS: tuple[SettingField, ...] = (
         settings_key="video_defaults/auto_reload_timer",
         video_attr="auto_reload_timer",
         kind=FieldKind.SPIN,
-        section=_t("Streaming Videos"),
-        label=_t("Auto reload time"),
+        section=translate("SettingsDialog", "Streaming Videos"),
+        label=translate("SettingsDialog", "Auto reload time"),
         spin_min=0,
         spin_max=1000,
-        spin_special=translate("Auto Reload Timer", "Disabled"),
-        spin_suffix=_t("(min)"),
+        spin_special=translate("SettingsDialog", "Disabled"),
+        spin_suffix=translate("SettingsDialog", "(min)"),
     ),
 )
 
@@ -823,98 +839,102 @@ SUBTITLE_STYLE_FIELDS: tuple[SettingField, ...] = (
     _f(
         settings_key="subtitles/font",
         kind=FieldKind.COMBO,
-        section=_t("Text"),
-        label=_t("Font"),
+        section=translate("SettingsDialog", "Text"),
+        label=translate("SettingsDialog", "Font"),
         combo_values=_font_families,
     ),
     _f(
         settings_key="subtitles/size_scale",
         kind=FieldKind.SPIN,
-        section=_t("Text"),
-        label=_t("Size"),
+        section=translate("SettingsDialog", "Text"),
+        label=translate("SettingsDialog", "Size"),
         spin_min=10,
         spin_max=500,
         spin_suffix="%",
-        tooltip=_t(
+        tooltip=translate(
+            "SettingsDialog",
             "Size against the one VLC picks, which already follows the"
             " height of the video, so a small pane gets small subtitles"
-            " without this being touched."
+            " without this being touched.",
         ),
     ),
     _f(
         settings_key="subtitles/color",
         kind=FieldKind.COLOR,
-        section=_t("Text"),
-        label=_t("Color"),
+        section=translate("SettingsDialog", "Text"),
+        label=translate("SettingsDialog", "Color"),
     ),
     _f(
         settings_key="subtitles/bold",
         kind=FieldKind.CHECKBOX,
-        section=_t("Text"),
-        label=_t("Bold"),
+        section=translate("SettingsDialog", "Text"),
+        label=translate("SettingsDialog", "Bold"),
     ),
     _f(
         settings_key="subtitles/outline",
         kind=FieldKind.COMBO,
-        section=_t("Effects"),
-        label=_t("Outline"),
+        section=translate("SettingsDialog", "Effects"),
+        label=translate("SettingsDialog", "Outline"),
         combo_values=_subtitle_outlines,
-        tooltip=_t(
+        tooltip=translate(
+            "SettingsDialog",
             "The rim drawn around every glyph, which is what keeps white"
-            " text readable over a light picture."
+            " text readable over a light picture.",
         ),
     ),
     _f(
         settings_key="subtitles/outline_color",
         kind=FieldKind.COLOR,
-        section=_t("Effects"),
-        label=_t("Outline color"),
+        section=translate("SettingsDialog", "Effects"),
+        label=translate("SettingsDialog", "Outline color"),
         enabled_by="subtitles/outline",
         enabled_by_value=_OUTLINE_DRAWN,
     ),
     _f(
         settings_key="subtitles/shadow",
         kind=FieldKind.CHECKBOX,
-        section=_t("Effects"),
-        label=_t("Shadow"),
+        section=translate("SettingsDialog", "Effects"),
+        label=translate("SettingsDialog", "Shadow"),
     ),
     _f(
         settings_key="subtitles/shadow_color",
         kind=FieldKind.COLOR,
-        section=_t("Effects"),
-        label=_t("Shadow color"),
+        section=translate("SettingsDialog", "Effects"),
+        label=translate("SettingsDialog", "Shadow color"),
         enabled_by="subtitles/shadow",
     ),
     _f(
         settings_key="subtitles/background",
         kind=FieldKind.CHECKBOX,
-        section=_t("Effects"),
-        label=_t("Background box"),
-        tooltip=_t(
+        section=translate("SettingsDialog", "Effects"),
+        label=translate("SettingsDialog", "Background box"),
+        tooltip=translate(
+            "SettingsDialog",
             "Draw the text on a filled box, which is the one thing that"
-            " stays readable over any picture at all."
+            " stays readable over any picture at all.",
         ),
     ),
     _f(
         settings_key="subtitles/background_color",
         kind=FieldKind.COLOR,
-        section=_t("Effects"),
-        label=_t("Background color"),
+        section=translate("SettingsDialog", "Effects"),
+        label=translate("SettingsDialog", "Background color"),
         enabled_by="subtitles/background",
     ),
     _f(
         settings_key="subtitles/margin",
         kind=FieldKind.SPIN,
-        section=_t("Position"),
-        label=_t("Raise from bottom"),
+        section=translate("SettingsDialog", "Position"),
+        label=translate("SettingsDialog", "Raise from bottom"),
         spin_min=0,
         spin_max=500,
-        spin_special=_t("Default"),
-        spin_suffix=_t("px"),
-        tooltip=_t(
+        spin_special=translate("SettingsDialog", "Default"),
+        spin_suffix=translate("SettingsDialog", "px"),
+        tooltip=translate(
+            "SettingsDialog",
             "How far up from the bottom of the picture subtitles are drawn."
             " This is the one setting here that ASS and SSA subtitles follow"
-            " as well."
+            " as well.",
         ),
     ),
 )

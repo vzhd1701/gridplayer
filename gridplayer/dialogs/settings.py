@@ -507,19 +507,22 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
         _fill_combo_box(self.logLevel, log_levels)
 
     def fill_playerVideoDriver(self):
+        # tr() kept out of the f-strings, where pylupdate5 cannot see it
+        vlc_version = f" <VLC {env.VLC_VERSION}>"
+
         if env.IS_MACOS:
             video_drivers = {
-                VideoDriver.VLC_HW_SP: f"{self.tr('Hardware SP')} <VLC {env.VLC_VERSION}>",
-                VideoDriver.VLC_SW: f"{self.tr('Software')} <VLC {env.VLC_VERSION}>",
-                VideoDriver.VLC_SW_SP: f"{self.tr('Software SP')} <VLC {env.VLC_VERSION}>",
+                VideoDriver.VLC_HW_SP: self.tr("Hardware SP") + vlc_version,
+                VideoDriver.VLC_SW: self.tr("Software") + vlc_version,
+                VideoDriver.VLC_SW_SP: self.tr("Software SP") + vlc_version,
                 VideoDriver.DUMMY: self.tr("Dummy"),
             }
         else:
             video_drivers = {
-                VideoDriver.VLC_HW: f"{self.tr('Hardware')} <VLC {env.VLC_VERSION}>",
-                VideoDriver.VLC_HW_SP: f"{self.tr('Hardware SP')} <VLC {env.VLC_VERSION}>",
-                VideoDriver.VLC_SW: f"{self.tr('Software')} <VLC {env.VLC_VERSION}>",
-                VideoDriver.VLC_SW_SP: f"{self.tr('Software SP')} <VLC {env.VLC_VERSION}>",
+                VideoDriver.VLC_HW: self.tr("Hardware") + vlc_version,
+                VideoDriver.VLC_HW_SP: self.tr("Hardware SP") + vlc_version,
+                VideoDriver.VLC_SW: self.tr("Software") + vlc_version,
+                VideoDriver.VLC_SW_SP: self.tr("Software SP") + vlc_version,
                 VideoDriver.DUMMY: self.tr("Dummy"),
             }
 

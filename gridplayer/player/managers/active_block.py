@@ -405,9 +405,13 @@ class ActiveBlockManager(ManagerBase):
         """
 
         wanted = (
-            (STREAM_QUALITY_AUTO, translate("Actions", "Auto"), has_video),
-            (STREAM_QUALITY_BEST, translate("Actions", "Best"), has_video),
-            (STREAM_QUALITY_AUDIO_ONLY, translate("Actions", "Audio Only"), has_audio),
+            (STREAM_QUALITY_AUTO, translate("Stream Quality", "Auto"), has_video),
+            (STREAM_QUALITY_BEST, translate("Stream Quality", "Best"), has_video),
+            (
+                STREAM_QUALITY_AUDIO_ONLY,
+                translate("Stream Quality", "Audio Only"),
+                has_audio,
+            ),
         )
 
         items = []
@@ -504,7 +508,7 @@ class ActiveBlockManager(ManagerBase):
                 self._preferred_audio_track_menu_item(),
                 _audio_languages_menu_item(),
                 {
-                    "title": translate("Actions", "Disable Audio"),
+                    "title": translate("Audio Track", "Disable Audio"),
                     "icon": "empty",
                     "func": ("active", "set_audio_track", DISABLED_TRACK),
                     "check_if": "is_active_audio_disabled",
@@ -825,7 +829,7 @@ class ActiveBlockManager(ManagerBase):
 
         return [
             {
-                "title": translate("Actions", "Default"),
+                "title": translate("Subtitle Track", "Default"),
                 "icon": "empty",
                 "func": ("active", "apply_subtitle_default"),
                 "check_if": "is_active_subtitle_default",
@@ -836,7 +840,7 @@ class ActiveBlockManager(ManagerBase):
     def _preferred_subtitle_menu_item(self):
         """Going back to the languages asked for, from a track picked by hand."""
 
-        title = translate("Actions", "Preferred")
+        title = translate("Subtitle Track", "Preferred")
 
         name = self._preferred_subtitle_name
 
@@ -1018,7 +1022,7 @@ class ActiveBlockManager(ManagerBase):
         the menu is the only place it is ever spelled out.
         """
 
-        title = translate("Actions", "Preferred")
+        title = translate("Audio Track", "Preferred")
 
         name = self._preferred_audio_name
 
@@ -1138,7 +1142,7 @@ def _audio_default_menu_item():
     """
 
     return {
-        "title": translate("Actions", "Default"),
+        "title": translate("Audio Track", "Default"),
         "icon": "empty",
         "func": ("active", "apply_audio_default"),
         "check_if": "is_active_audio_default",
@@ -1167,7 +1171,7 @@ def _subtitles_off_menu_item():
     """Showing none, which is what every video starts on."""
 
     return {
-        "title": translate("Actions", "Off"),
+        "title": translate("Subtitle Track", "Off"),
         "icon": "empty",
         "func": ("active", "disable_subtitles"),
         "check_if": "is_active_subtitle_disabled",
