@@ -96,12 +96,12 @@ PY
 }
 
 if [ "$APP_TARGET_ARCH" = "arm64" ]; then
-    VLC_URL="https://get.videolan.org/vlc/3.0.21/macosx/vlc-3.0.21-arm64.dmg"
+    VLC_URL="https://get.videolan.org/vlc/3.0.24/macosx/vlc-3.0.24-arm64.dmg"
 else
-    VLC_URL="https://get.videolan.org/vlc/3.0.21/macosx/vlc-3.0.21-intel64.dmg"
+    VLC_URL="https://get.videolan.org/vlc/3.0.24/macosx/vlc-3.0.24-intel64.dmg"
 fi
 
-PYINSTALLER_VERSION="6.17.0"
+PYINSTALLER_VERSION="6.22.3"
 
 mkdir -p "$BUILD_DIR"
 
