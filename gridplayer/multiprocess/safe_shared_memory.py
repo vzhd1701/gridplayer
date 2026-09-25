@@ -32,6 +32,12 @@ class SafeSharedMemory:
 
     The two sides agree on nothing but the buffer size, which the reader is
     told along with the frame it belongs to.
+
+    A segment's name is only needed until the reader has found it, so the
+    reader takes it down as soon as it has the segment mapped. Leaving that to
+    the allocator ties it to the player process living long enough, and
+    closing the app kills players without waiting for them: on Linux the
+    segment would then stay in /dev/shm until reboot.
     """
 
     def __init__(self, name, lock):
@@ -118,6 +124,13 @@ class SafeSharedMemory:
 
         memory = self._open_segment(segment_name, size, is_creating)
 
+        if not is_creating:
+            # both sides have it mapped now, and a mapping outlives the name
+            # it was opened by; on Windows there is no name to take down, the
+            # segment goes with the last handle to it
+            with contextlib.suppress(FileNotFoundError):
+                memory.unlink()
+
         previous = self._memory
 
         self._memory = memory
@@ -169,6 +182,8 @@ class SafeSharedMemory:
         if not self._close_memory(memory):
             return
 
+        # the reader has taken the name down already, unless it never got
+        # around to this segment
         if self._is_allocator:
             with contextlib.suppress(FileNotFoundError):
                 memory.unlink()
