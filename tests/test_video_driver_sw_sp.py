@@ -208,3 +208,23 @@ def test_settings_combo_includes_software_sp(mocker):
     dialog.playerVideoDriverPlayers.setEnabled(True)
     SettingsDialog.driver_selected(dialog, idx)
     assert not dialog.playerVideoDriverPlayers.isEnabled()
+
+
+def test_frame_is_copied_when_shown_not_when_delivered(mocker):
+    driver, surface = _driver_with_mocked_player(mocker)
+    try:
+        driver.init_frame(2, 2, 2 * 2 * 4)
+        driver._shared_memory.allocate(2 * 2 * 4)
+        read = mocker.spy(driver._frame_reader, "read")
+
+        driver._shared_memory.memory.buf[:] = b"\x01\x01\x01\xff" * 4
+        driver.process_image()
+        driver._shared_memory.memory.buf[:] = b"\x02\x02\x02\xff" * 4
+        driver.process_image()
+        assert read.call_count == 0
+
+        driver._show_frame()
+        assert read.call_count == 1
+        assert surface.frame_image().pixel(0, 0) == 0xFF020202
+    finally:
+        driver.cleanup()

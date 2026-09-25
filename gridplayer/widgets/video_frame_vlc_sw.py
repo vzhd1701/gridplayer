@@ -9,6 +9,7 @@ from gridplayer.utils.screenshots import ScreenshotView
 from gridplayer.vlc_player.image_decoder import ImageDecoder
 from gridplayer.vlc_player.instance import InstanceProcessVLC
 from gridplayer.vlc_player.player_base_threaded import VlcPlayerThreaded
+from gridplayer.vlc_player.rgb_buffer import FrameReader
 from gridplayer.vlc_player.video_driver_base_threaded import VLCVideoDriverThreaded
 from gridplayer.widgets.video_frame_vlc_base import VideoFrameVLCProcess
 from gridplayer.widgets.video_surface_sw import SoftwareVideoSurface
@@ -169,7 +170,7 @@ class VideoDriverVLCSW(VLCVideoDriverThreaded):
 
         self._image_dest = image_dest
         self._shared_memory = None
-        self._frame_buf = None
+        self._frame_reader = FrameReader()
         self._show_scheduled = False
 
         qt_connect(
@@ -201,14 +202,9 @@ class VideoDriverVLCSW(VLCVideoDriverThreaded):
         self._image_dest.present_black(self._width, self._height)
 
     def process_image(self):
+        # the frame is copied when it is about to be shown, so frames that
+        # come faster than the window shows them are never copied at all
         if self._shared_memory is None or not self._width or not self._height:
-            return
-
-        try:
-            with self._shared_memory:
-                self._frame_buf = bytes(self._shared_memory.memory.buf)
-        except (AttributeError, RuntimeError):
-            self._log.warning("Shared memory is cleared already")
             return
 
         self.image_ready_sig.emit()
@@ -224,13 +220,24 @@ class VideoDriverVLCSW(VLCVideoDriverThreaded):
 
     def _show_frame(self):
         self._show_scheduled = False
-        if self._frame_buf is None or not self._width or not self._height:
+
+        # the pipe thread can move these on while we copy
+        shared_memory, width, height = self._shared_memory, self._width, self._height
+        if shared_memory is None or not width or not height:
             return
-        self._image_dest.present_rgb32(self._frame_buf, self._width, self._height)
+
+        try:
+            frame = self._frame_reader.read(shared_memory, width, height)
+        except (AttributeError, RuntimeError):
+            self._log.warning("Shared memory is cleared already")
+            return
+
+        if frame is not None:
+            self._image_dest.present_rgb32(frame, width, height)
 
     def cleanup_start(self):
         self._show_scheduled = False
-        self._frame_buf = None
+        self._frame_reader.clear()
         if self._shared_memory is not None:
             with self._shared_memory:
                 self._shared_memory.close()

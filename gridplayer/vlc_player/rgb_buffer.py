@@ -65,3 +65,49 @@ class InProcessRgbBuffer:
 
     def __exit__(self, *exc):
         self.lock.release()
+
+
+class FrameReader:
+    """The reader's own copy of the latest frame, refilled in place.
+
+    A fresh bytes object per frame costs an allocation the size of the frame,
+    which is most of what the copy costs. The buffer here is kept instead and
+    only replaced when the frame size changes, never resized: the QImage on
+    show still points into the one it was made from.
+
+    Refilling the buffer that is on show is only safe on the thread that
+    paints it, so read() belongs there too. Called from any other thread it
+    would write a frame into the picture while it is being drawn.
+
+    The copy is a memoryview slice assignment, so Python checks both ends
+    against the objects themselves and refuses a size that doesn't match
+    rather than trusting the arithmetic.
+    """
+
+    def __init__(self):
+        self._buf = None
+
+    def read(self, shared_memory, width, height):
+        """Copy the frame out, or return None when the buffer can't hold it.
+
+        Only ``width * height * 4`` bytes are taken, which is the frame as
+        the decoder lays it out; the buffer only ever grows and can be much
+        bigger than that.
+        """
+
+        size = width * height * 4
+
+        with shared_memory:
+            frame = shared_memory.memory.buf
+            if frame is None or len(frame) < size:
+                return None
+
+            if self._buf is None or len(self._buf) != size:
+                self._buf = bytearray(size)
+
+            memoryview(self._buf)[:] = frame[:size]
+
+        return self._buf
+
+    def clear(self):
+        self._buf = None

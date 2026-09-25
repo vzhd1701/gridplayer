@@ -87,3 +87,26 @@ def test_process_image_handles_closed_mapping():
         assert not surface.has_frame()
     finally:
         driver.cleanup()
+
+
+def test_frame_is_copied_when_shown_not_when_delivered(mocker):
+    driver, surface = _driver_with_mocked_player()
+    try:
+        mem = SafeSharedMemory(f"test-sw-late-{uuid4().hex[:12]}", Lock())
+        mem.allocate(2 * 2 * 4)
+        driver._shared_memory = mem
+        driver._width = 2
+        driver._height = 2
+        read = mocker.spy(driver._frame_reader, "read")
+
+        mem.memory.buf[:16] = b"\x01\x01\x01\xff" * 4
+        driver.process_image()
+        mem.memory.buf[:16] = b"\x02\x02\x02\xff" * 4
+        driver.process_image()
+        assert read.call_count == 0
+
+        driver._show_frame()
+        assert read.call_count == 1
+        assert surface.frame_image().pixel(0, 0) == 0xFF020202
+    finally:
+        driver.cleanup()
