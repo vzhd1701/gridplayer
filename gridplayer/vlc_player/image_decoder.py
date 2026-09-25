@@ -1,4 +1,3 @@
-import contextlib
 import ctypes
 import logging
 import zlib
@@ -25,6 +24,10 @@ _VideoFormatCb = ctypes.CFUNCTYPE(
 # unchanged and its frames were dropped.
 _FRAME_SAMPLE_STRIPES = 64
 _FRAME_SAMPLE_STRIPE_SIZE = 1024
+
+# How long stop() waits for the frame lock. Whoever holds it gives it back
+# within a frame copy, this only bounds one that never does.
+_STOP_LOCK_TIMEOUT = 1.0
 
 
 class ImageDecoder:
@@ -163,13 +166,22 @@ class ImageDecoder:
 
         self._stopped = True
 
-        # make sure that memory lock released in case it was locked mid-callback.
-        # multiprocessing.Lock raises ValueError; threading.Lock raises RuntimeError.
-        with contextlib.suppress(ValueError, RuntimeError):
-            self._shared_memory.lock.release()
+        # VLC has been let go of by now, so the lock is held at most by the
+        # reader copying a frame out, which in multi-process mode is another
+        # process. Releasing it from here took it out from under the reader,
+        # whose own release then came on top of ours and raised. A holder that
+        # never gives it back is not waited on forever: the mapping closed
+        # here is this side's own.
+        lock = self._shared_memory.lock
+        is_locked = lock.acquire(timeout=_STOP_LOCK_TIMEOUT)
+        if not is_locked:
+            self._log.warning("Frame lock was not given back, closing without it")
 
-        with self._shared_memory:
+        try:
             self._shared_memory.close()
+        finally:
+            if is_locked:
+                lock.release()
 
     def _is_frame_changed(self):
         # Called from unlock while the memory lock is already held.

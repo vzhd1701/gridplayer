@@ -3,6 +3,7 @@ import ctypes
 from multiprocessing import Lock as MPLock
 from multiprocessing.shared_memory import SharedMemory
 from threading import Lock as ThreadLock
+from threading import Thread
 from uuid import uuid4
 
 import pytest
@@ -250,3 +251,62 @@ def test_a_shared_buffer_never_shrinks_either():
         assert writer.size == 1920 * 1152 * 4
     finally:
         writer.close()
+
+
+class _HeldBuffer:
+    """A frame buffer whose lock someone else may be holding."""
+
+    def __init__(self, lock, events):
+        self.lock = lock
+        self._events = events
+
+    def close(self):
+        self._events.append("close")
+
+    def __enter__(self):
+        return self.lock.acquire()
+
+    def __exit__(self, *args):
+        return self.lock.release()
+
+
+@pytest.mark.parametrize("make_lock", [ThreadLock, MPLock])
+def test_stop_waits_for_the_reader_to_give_the_lock_back(make_lock):
+    events = []
+    buffer = _HeldBuffer(make_lock(), events)
+    decoder = ImageDecoder(buffer)
+
+    # the reader copying a frame out, from the other process as far as the
+    # lock can tell
+    buffer.lock.acquire()
+    stopping = Thread(target=decoder.stop)
+    stopping.start()
+    stopping.join(0.2)
+
+    assert stopping.is_alive()
+    assert events == []
+
+    events.append("reader done")
+    buffer.lock.release()
+    stopping.join(5)
+
+    assert not stopping.is_alive()
+    assert events == ["reader done", "close"]
+    # given back once, and only once
+    assert buffer.lock.acquire(False)
+    buffer.lock.release()
+
+
+def test_stop_closes_without_a_lock_that_is_never_given_back(monkeypatch, caplog):
+    monkeypatch.setattr("gridplayer.vlc_player.image_decoder._STOP_LOCK_TIMEOUT", 0.05)
+    events = []
+    buffer = _HeldBuffer(ThreadLock(), events)
+    decoder = ImageDecoder(buffer)
+    buffer.lock.acquire()
+
+    decoder.stop()
+
+    assert events == ["close"]
+    # still its holder's: stop never had it to give back
+    assert buffer.lock.locked()
+    assert "not given back" in caplog.text
