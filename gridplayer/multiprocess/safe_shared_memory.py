@@ -175,10 +175,6 @@ class SafeSharedMemory:
         if memory is None:
             return
 
-        # our own ctypes view of the mapping is only really gone once the cycle
-        # holding it is collected, and mmap refuses to close until it is
-        gc.collect()
-
         if not self._close_memory(memory):
             return
 
@@ -189,6 +185,18 @@ class SafeSharedMemory:
                 memory.unlink()
 
     def _close_memory(self, memory) -> bool:
+        try:
+            memory.close()
+        except BufferError:
+            # our own ctypes view of the mapping is only really gone once the
+            # cycle holding it is collected, and mmap refuses to close until it
+            # is. Only the side that hands VLC the pointer has such a view, and
+            # a full collection can hold everything up for a hundred
+            # milliseconds, so it waits until a close is actually refused.
+            gc.collect()
+        else:
+            return True
+
         for _ in range(CLOSE_RETRIES):
             try:
                 memory.close()
