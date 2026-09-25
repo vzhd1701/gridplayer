@@ -57,7 +57,8 @@ def test_process_image_copies_shared_memory_into_pixmap():
     try:
         mem = SafeSharedMemory(f"test-sw-copy-{uuid4().hex[:12]}", Lock())
         mem.allocate(2 * 2 * 4)
-        mem.memory.buf[:] = b"\x00\x00\xff\xff" * 4
+        # macOS rounds a segment up to a whole page
+        mem.memory.buf[:16] = b"\x00\x00\xff\xff" * 4
         driver._shared_memory = mem
         driver._width = 2
         driver._height = 2

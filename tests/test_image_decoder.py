@@ -12,6 +12,12 @@ from gridplayer.vlc_player.image_decoder import ImageDecoder
 from gridplayer.vlc_player.rgb_buffer import InProcessRgbBuffer
 
 
+def _segment_name(tag):
+    # macOS refuses a shared memory name longer than 31 characters, and the
+    # leading slash and the "-<size>" suffix count towards it
+    return f"dec-{tag}-{uuid4().hex[:8]}"
+
+
 def test_in_process_rgb_buffer_allocate_and_close():
     buf = InProcessRgbBuffer()
     buf.allocate(16)
@@ -33,7 +39,7 @@ def test_stop_unlocked_multiprocessing_lock():
 
 
 def test_stop_after_allocate_threading_lock():
-    name = f"test-imgdec-alloc-{uuid4().hex[:12]}"
+    name = _segment_name("alloc")
     decoder = ImageDecoder(SafeSharedMemory(name, ThreadLock()))
     decoder.set_frame(2, 2)
     decoder.stop()
@@ -98,7 +104,7 @@ def test_attach_uses_format_callbacks():
 def test_format_callback_allocates_and_notifies_size():
     sizes = []
     decoder = ImageDecoder(
-        SafeSharedMemory(f"test-imgdec-fmt-{uuid4().hex[:12]}", ThreadLock()),
+        SafeSharedMemory(_segment_name("fmt"), ThreadLock()),
         size_ready_cb=lambda w, h, buf: sizes.append((w, h, buf)),
     )
 
@@ -129,7 +135,7 @@ def test_format_callback_allocates_and_notifies_size():
 
 
 def test_a_new_frame_size_moves_both_sides_to_a_new_segment():
-    name = f"test-imgdec-resize-{uuid4().hex[:12]}"
+    name = _segment_name("resize")
     writer = SafeSharedMemory(name, ThreadLock())
     reader = SafeSharedMemory(name, ThreadLock())
     try:
@@ -149,7 +155,7 @@ def test_a_new_frame_size_moves_both_sides_to_a_new_segment():
 
 
 def test_a_segment_left_behind_is_taken_over_rather_than_fought_over():
-    name = f"test-imgdec-leftover-{uuid4().hex[:12]}"
+    name = _segment_name("leftover")
     writer = SafeSharedMemory(name, ThreadLock())
     leftover = SharedMemory(name=f"{name}-16", create=True, size=16)
     try:
@@ -164,7 +170,7 @@ def test_a_segment_left_behind_is_taken_over_rather_than_fought_over():
 
 
 def test_attaching_to_a_frame_nobody_allocated_says_so():
-    reader = SafeSharedMemory(f"test-imgdec-missing-{uuid4().hex[:12]}", ThreadLock())
+    reader = SafeSharedMemory(_segment_name("missing"), ThreadLock())
 
     with pytest.raises(RuntimeError):
         reader.attach(16)
@@ -235,7 +241,7 @@ def test_the_buffer_never_shrinks_under_an_output_on_its_way_out():
 
 
 def test_a_shared_buffer_never_shrinks_either():
-    name = f"test-imgdec-shrink-{uuid4().hex[:12]}"
+    name = _segment_name("shrink")
     writer = SafeSharedMemory(name, ThreadLock())
     try:
         writer.allocate(1920 * 1152 * 4)
