@@ -7,6 +7,7 @@ from PyQt5.QtWidgets import QApplication, QWidget
 import gridplayer.widgets.video_frame_vlc_base as vlc_base
 from gridplayer.params.static import HWCropBorderOffset
 from gridplayer.utils import darkmode
+from gridplayer.utils.aspect_calc import ViewPlacement
 from gridplayer.widgets.video_frame_vlc_base import apply_vlc_hw_surface_geometry
 from gridplayer.widgets.video_frame_vlc_hw_sp import VideoFrameVLCHWSP
 from gridplayer.widgets.video_frame_vlc_sw_sp import VideoFrameVLCSWSP
@@ -53,6 +54,33 @@ def test_surface_geometry_still_sizes_surface_without_offset():
     apply_vlc_hw_surface_geometry(frame, surface, 0)
 
     assert surface.geometry().getRect() == (0, 0, 800, 450)
+
+
+def test_surface_goes_over_the_picture():
+    """VLC fills its window with the picture, so the window places it."""
+    frame, surface = _frame_and_surface()
+
+    apply_vlc_hw_surface_geometry(frame, surface, 8, (100, 50, 400, 225))
+
+    assert surface.geometry().getRect() == (92, 42, 416, 241)
+
+
+def test_surface_takes_in_a_pixel_the_picture_is_partly_in():
+    frame, surface = _frame_and_surface()
+
+    apply_vlc_hw_surface_geometry(frame, surface, 0, (0, 87.5, 800, 224.5))
+
+    assert surface.geometry().getRect() == (0, 87, 800, 225)
+
+
+def test_surface_edges_on_whole_pixels_stay_there():
+    frame, surface = _frame_and_surface()
+
+    apply_vlc_hw_surface_geometry(
+        frame, surface, 0, (0.1 + 0.2 - 0.3, 100.00000000001, 800, 250)
+    )
+
+    assert surface.geometry().getRect() == (0, 100, 800, 250)
 
 
 def test_surface_geometry_ignores_unlaid_out_frame():
@@ -113,7 +141,7 @@ def test_native_frame_fills_uncovered_area_black_once_loaded(monkeypatch):
     # the loading status shows through the frame until a track is playing
     assert not frame.autoFillBackground()
 
-    frame.load_video_finish(MagicMock(is_audio_only=False))
+    frame.load_video_finish(MagicMock(is_audio_only=False, cur_video_track=None))
 
     assert frame.autoFillBackground()
     assert frame.palette().color(frame.backgroundRole()) == Qt.black
@@ -126,9 +154,54 @@ def test_native_frame_is_not_filled_on_x11(monkeypatch):
     _platform(monkeypatch, windows=False)
     frame = _StubHWFrame(vlc_options=[])
 
-    frame.load_video_finish(MagicMock(is_audio_only=False))
+    frame.load_video_finish(MagicMock(is_audio_only=False, cur_video_track=None))
 
     assert not frame.autoFillBackground()
+
+
+def _placed_at(frame, monkeypatch, target):
+    placement = ViewPlacement(source=(0, 0, 1, 1), target=target)
+    monkeypatch.setattr(frame, "view_placement", lambda: placement)
+
+
+def test_native_frame_fills_the_letterbox_black_on_x11(monkeypatch):
+    """The surface is over the picture only, the rest is Qt's to paint."""
+    _stub_offset_setting(monkeypatch)
+    _platform(monkeypatch, windows=False)
+    frame = _StubHWFrame(vlc_options=[])
+    frame.resize(DEFAULT_SIZE)
+    _placed_at(frame, monkeypatch, (0, 0, 400, 450))
+
+    frame._place_native_surface()
+
+    assert frame.video_surface.geometry().getRect() == (-8, -8, 416, 466)
+    assert frame.autoFillBackground()
+    assert frame.palette().color(frame.backgroundRole()) == Qt.black
+
+
+def test_native_frame_is_not_filled_on_x11_while_covered(monkeypatch):
+    _stub_offset_setting(monkeypatch)
+    _platform(monkeypatch, windows=False)
+    frame = _StubHWFrame(vlc_options=[])
+    frame.resize(DEFAULT_SIZE)
+    _placed_at(frame, monkeypatch, (0, 0, 800, 450))
+
+    frame._place_native_surface()
+
+    assert frame.video_surface.geometry().getRect() == (-8, -8, 816, 466)
+    assert not frame.autoFillBackground()
+
+
+def test_native_surface_covers_the_frame_with_no_picture_to_go_by(monkeypatch):
+    _stub_offset_setting(monkeypatch)
+    _platform(monkeypatch, windows=True)
+    frame = _StubHWFrame(vlc_options=[])
+    frame.resize(DEFAULT_SIZE)
+    monkeypatch.setattr(frame, "view_placement", lambda: None)
+
+    frame._place_native_surface()
+
+    assert frame.video_surface.geometry().getRect() == (-8, -8, 816, 466)
 
 
 def test_native_frame_stays_clear_for_audio_only(monkeypatch):
@@ -144,7 +217,7 @@ def test_software_frame_keeps_default_background(monkeypatch):
     _platform(monkeypatch, windows=True)
     frame = _StubSWFrame(vlc_options=[])
 
-    frame.load_video_finish(MagicMock(is_audio_only=False))
+    frame.load_video_finish(MagicMock(is_audio_only=False, cur_video_track=None))
 
     assert not frame.autoFillBackground()
 

@@ -23,7 +23,7 @@ from gridplayer.params.static import (
     ViewParams,
 )
 from gridplayer.settings import Settings
-from gridplayer.utils.aspect_calc import calc_view_geometry
+from gridplayer.utils.aspect_calc import calc_view_geometry, calc_whole_geometry
 from gridplayer.utils.libvlc_options_parser import DeinterlaceModeMap
 from gridplayer.utils.misc import is_url
 from gridplayer.vlc_player.libvlc import vlc
@@ -1234,6 +1234,16 @@ class VlcPlayerBase(ABC):
     def set_subtitle_delay(self, delay_ms: int):
         self._tracks_manager.set_subtitle_delay_ms(delay_ms)
 
+    def _shown_video_track(self):
+        """The video track on show, None where there is none."""
+
+        if self.media is None or self._tracks_manager is None:
+            return None
+
+        tracks = self.media.video_tracks or {}
+
+        return tracks.get(self._tracks_manager.current_video_track_id)
+
     @property
     def frame_dimensions(self):
         """The frame's size as the video output gets it.
@@ -1271,6 +1281,7 @@ class VlcPlayerBase(ABC):
             self.media_input.video.crop = view.crop
             self.media_input.video.anchor = view.anchor
             self.media_input.video.shift = view.shift
+            self.media_input.video.is_shift_past_edges = view.is_shift_past_edges
 
         if self.media is None:
             # video not loaded yet, video frame resized on init
@@ -1285,9 +1296,20 @@ class VlcPlayerBase(ABC):
     def _apply_view(self, size, view: ViewParams):
         transform = self.media_input.video.transform if self.media_input else None
 
-        aspect_override, crop_geometry_fmt = calc_view_geometry(
-            self.frame_dimensions, size, view, transform
-        )
+        geometry = None
+
+        # VLC crops a picture it turns or flips wrong: have it draw all of
+        # it instead, into a window the frame puts over all of it
+        track = self._shown_video_track()
+        if track is not None and track.is_reoriented:
+            geometry = calc_whole_geometry(
+                self.frame_dimensions, size, view, transform, track.is_turned
+            )
+
+        if geometry is None:
+            geometry = calc_view_geometry(self.frame_dimensions, size, view, transform)
+
+        aspect_override, crop_geometry_fmt = geometry
 
         self._log.debug(
             f"size: {size}"
@@ -1408,7 +1430,12 @@ class VlcPlayerBase(ABC):
         self.adjust_view(
             size=self.media_input.size,
             view=ViewParams(
-                video.aspect_mode, video.scale, video.crop, video.anchor, video.shift
+                video.aspect_mode,
+                video.scale,
+                video.crop,
+                video.anchor,
+                video.shift,
+                video.is_shift_past_edges,
             ),
         )
 

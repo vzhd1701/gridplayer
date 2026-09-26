@@ -343,7 +343,7 @@ class VideoFrameVLCHWSP(VideoFrameVLC):
         size = (self.size().width(), self.size().height())
         self.video_driver.adjust_view(size, self._view)
 
-        self._apply_hw_crop_border_workaround()
+        self._place_native_surface()
 
     def load_video_finish(self, media_track: Media):
         if env.IS_MACOS:

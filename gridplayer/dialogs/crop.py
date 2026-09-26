@@ -309,7 +309,13 @@ def _block_track_dimensions(block):
     track = tracks.get(block.video_params.video_track_id)
     if track is None and tracks:
         track = next(iter(tracks.values()))
-    return (0, 0) if track is None else track.video_dimensions
+    if track is None:
+        return 0, 0
+
+    width, height = track.video_dimensions
+
+    # turned by VLC before it is cropped, see VideoTrack.is_turned
+    return (height, width) if track.is_turned else (width, height)
 
 
 class QCompactCropPicker(QWidget):

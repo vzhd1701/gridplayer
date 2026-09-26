@@ -79,6 +79,7 @@ class PlaylistVideoDefaults(BaseModel):
     color: Color | None = None
     crop: VideoCrop | None = None
     anchor: VideoAnchor | None = None
+    shift_past_edges: bool | None = None
     stream_quality: str | None = None
     quality_adapt_delay: int | None = None
     network_retry_mode: NetworkRetryMode | None = None

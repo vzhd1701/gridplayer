@@ -293,6 +293,41 @@ def test_adjust_view_keeps_the_position_for_vout_reapply():
     ]
 
 
+def test_adjust_view_has_vlc_draw_all_of_a_picture_it_turns():
+    """VLC crops a picture it turns wrong: it is told to draw all of it,
+    in the shape it is shown in but the way it is stored."""
+    player, media_player = _make_player()
+    player._tracks_manager = Mock(current_video_track_id=1)
+    player.media = Media(
+        length=-1,
+        video_tracks={
+            1: VideoTrack(
+                video_dimensions=(640, 360),
+                fps=None,
+                codec="H264",
+                bitrate=0,
+                language=None,
+                description=None,
+                orientation=VideoTransform.ROTATE_90,
+            )
+        },
+        audio_tracks={},
+        cur_video_track_id=1,
+    )
+
+    player.adjust_view(
+        size=(400, 500),
+        view=ViewParams(VideoAspect.FIT, 2.0, VideoCrop(0, 0, 0, 0)),
+    )
+
+    # on its side 360x640, covering 400x500 at 400x711, zoomed to 800x1422
+    assert media_player.calls == [
+        ("aspect_ratio", "711:400"),
+        ("crop_geometry", "+0+0+0+0"),
+        ("scale", 0),
+    ]
+
+
 def test_cb_vout_noop_when_audio_only(monkeypatch):
     """macOS but audio-only media: cb_vout returns early, no scheduling."""
     monkeypatch.setattr(player_base_mod.env, "IS_MACOS", True)

@@ -8,6 +8,7 @@ from PyQt5.QtWidgets import QApplication
 
 from gridplayer.multiprocess.safe_shared_memory import SafeSharedMemory
 from gridplayer.params.static import VideoAspect, VideoTransform, ViewParams
+from gridplayer.vlc_player.static import VideoTrack
 from gridplayer.widgets.video_frame_vlc_sw import VideoDriverVLCSW, VideoFrameVLCSW
 from gridplayer.widgets.video_surface_sw import SoftwareVideoSurface
 
@@ -95,7 +96,14 @@ def test_sw_frame_views_the_frame_in_video_pixels():
     frame.resize(640, 360)
     frame.media = MagicMock()
     frame.media.is_audio_only = False
-    frame.media.cur_video_track.video_dimensions = (640, 360)
+    frame.media.cur_video_track = VideoTrack(
+        codec="h264",
+        bitrate=0,
+        language=None,
+        description=None,
+        video_dimensions=(640, 360),
+        fps=None,
+    )
     frame.video_surface.present_rgb32(bytes(640 * 386 * 4), 640, 386)
 
     frame.set_scale(2.0)

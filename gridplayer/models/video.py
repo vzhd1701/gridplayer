@@ -175,6 +175,7 @@ class Video(BaseModel):
     # where the picture is moved from the anchor, in video pixels; like the
     # place it was left playing at, nothing a default could say for another
     shift: VideoShift = VideoShift(0, 0)
+    is_shift_past_edges: bool = session_field("video_defaults/shift_past_edges")
     volume: float = session_field("video_defaults/volume")
     transform: VideoTransform = session_field("video_defaults/transform")
     deinterlace: VideoDeinterlace = session_field("video_defaults/deinterlace")

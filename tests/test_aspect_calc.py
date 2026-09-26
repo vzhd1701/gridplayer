@@ -1,3 +1,6 @@
+import math
+import random
+
 import pytest
 
 from gridplayer.params.static import (
@@ -10,11 +13,14 @@ from gridplayer.params.static import (
 )
 from gridplayer.utils.aspect_calc import (
     calc_crop_region,
+    calc_moved_shift,
     calc_view_borders,
     calc_view_geometry,
     calc_view_placement,
     calc_view_shift,
     calc_view_step,
+    calc_whole_geometry,
+    calc_whole_placement,
 )
 
 VIDEO = (1920, 1080)
@@ -30,8 +36,9 @@ def _view(
     crop=NO_CROP,
     anchor=VideoAnchor.CENTER,
     shift=NO_SHIFT,
+    is_shift_past_edges=False,
 ):
-    return ViewParams(aspect, scale, crop, anchor, shift)
+    return ViewParams(aspect, scale, crop, anchor, shift, is_shift_past_edges)
 
 
 def _approx(rect):
@@ -48,6 +55,34 @@ def _shown_ratio(override, frame, borders):
     _, _, region_x, region_y = calc_crop_region(frame, borders)
 
     return (region_x * num * frame[1]) / (region_y * den * frame[0])
+
+
+def _fits_vlc(override, frame, borders):
+    """Whether VLC 3's 32-bit unsigned sums on the override come out right.
+
+    It makes the SAR num * frame_h : den * frame_w and reduces it, then
+    places the picture multiplying its terms by the cropped region's sides.
+    """
+
+    num, den = (int(part) for part in override.split(":"))
+    frame_w, frame_h = frame
+    _, _, region_w, region_h = calc_crop_region(frame, borders)
+
+    sar_num, sar_den = num * frame_h, den * frame_w
+    shared = math.gcd(sar_num, sar_den)
+    sar_num, sar_den = sar_num // shared, sar_den // shared
+
+    return all(
+        product < 1 << 32
+        for product in (
+            num * frame_h,
+            den * frame_w,
+            region_w * sar_num,
+            region_h * sar_den,
+            region_h * sar_num,
+            region_w * sar_den,
+        )
+    )
 
 
 def _borders(geometry):
@@ -113,25 +148,6 @@ class TestPlacementFit:
         placement = calc_view_placement(VIDEO, SQUARE, _view(shift=VideoShift(0, 50)))
 
         assert placement.source == _approx((420, 0, 1080, 1080))
-
-    def test_past_the_edges_shows_black(self):
-        # 100 frame pixels is 100 * 900/1080 pane pixels
-        placement = calc_view_placement(
-            VIDEO,
-            SQUARE,
-            _view(anchor=VideoAnchor.LEFT, shift=VideoShift(100, 0)),
-            is_beyond_edges=True,
-        )
-
-        assert placement.target == _approx((250 / 3, 0, 900 - 250 / 3, 900))
-        assert placement.source == _approx((0, 0, 980, 1080))
-
-    def test_moved_clear_of_the_pane_is_nothing(self):
-        placement = calc_view_placement(
-            VIDEO, SQUARE, _view(shift=VideoShift(0, 2000)), is_beyond_edges=True
-        )
-
-        assert placement is None
 
     def test_the_user_crop_is_covered_from_its_middle(self):
         # 960x1080 left, 16:9 of it is 960x540
@@ -335,6 +351,151 @@ class TestShiftHeldAtTheEdges:
         assert calc_view_shift((0, 0), SQUARE, view) == VideoShift(5000, 0)
 
 
+class TestPastTheEdges:
+    """Where the picture may go when it is let past the pane's edges."""
+
+    def test_shows_black_where_the_picture_has_gone_from(self):
+        # 100 frame pixels is 100 * 900/1080 pane pixels
+        view = _view(
+            anchor=VideoAnchor.LEFT, shift=VideoShift(100, 0), is_shift_past_edges=True
+        )
+
+        placement = calc_view_placement(VIDEO, SQUARE, view)
+
+        assert placement.target == _approx((250 / 3, 0, 900 - 250 / 3, 900))
+        assert placement.source == _approx((0, 0, 980, 1080))
+
+    def test_a_bigger_picture_goes_as_far_as_the_middle_of_the_pane(self):
+        # zoomed to 3200x1800 in 1600x900, 5/3 pane pixels to a frame pixel
+        view = _view(scale=2.0, shift=VideoShift(5000, 0), is_shift_past_edges=True)
+
+        placement = calc_view_placement(VIDEO, PANE, view)
+
+        assert placement.target == _approx((800, 0, 800, 900))
+        assert placement.source == _approx((0, 270, 480, 540))
+
+    def test_a_smaller_picture_goes_as_far_as_half_of_it_out(self):
+        # 900x506.25 in a 900x900 pane, pulled up half out of it
+        view = _view(
+            VideoAspect.NONE, shift=VideoShift(0, -5000), is_shift_past_edges=True
+        )
+
+        placement = calc_view_placement(VIDEO, SQUARE, view)
+
+        assert placement.target == _approx((0, 0, 900, 253.125))
+        assert placement.source == _approx((0, 540, 1920, 540))
+
+    @pytest.mark.parametrize(
+        "view",
+        [
+            _view(shift=VideoShift(-300, 0)),
+            _view(anchor=VideoAnchor.LEFT, shift=VideoShift(-500, 0)),
+            _view(VideoAspect.NONE, shift=VideoShift(0, 200)),
+            _view(VideoAspect.NONE, scale=3.0, shift=VideoShift(400, -100)),
+        ],
+    )
+    def test_within_the_edges_it_goes_where_it_would_anyway(self, view):
+        allowed = view._replace(is_shift_past_edges=True)
+
+        assert calc_view_placement(VIDEO, SQUARE, allowed) == calc_view_placement(
+            VIDEO, SQUARE, view
+        )
+
+    def test_the_shift_is_held_where_the_picture_stops(self):
+        # 0.46875 pane pixels to a frame pixel, 196.875 above the picture
+        # at the anchor and 253.125 of it to take out of the pane
+        view = _view(
+            VideoAspect.NONE, shift=VideoShift(0, -5000), is_shift_past_edges=True
+        )
+
+        assert calc_view_shift(VIDEO, SQUARE, view) == VideoShift(0, -960)
+
+    def test_it_is_held_within_the_edges_again_once_not_let_past(self):
+        view = _view(VideoAspect.NONE, shift=VideoShift(0, -960))
+
+        assert calc_view_shift(VIDEO, SQUARE, view) == VideoShift(0, -420)
+
+    def test_is_never_clear_of_the_pane(self):
+        view = _view(
+            scale=10.0, shift=VideoShift(-99999, 99999), is_shift_past_edges=True
+        )
+
+        placement = calc_view_placement(VIDEO, SQUARE, view)
+
+        assert placement.target == _approx((0, 450, 450, 450))
+
+
+class TestWholePlacement:
+    """All of a picture VLC turns as it shows it, for the pane to cut."""
+
+    def test_is_all_of_the_picture_where_it_goes(self):
+        # 1600x900, half of the 700 it is too wide by off each side
+        placement = calc_whole_placement(VIDEO, SQUARE, _view())
+
+        assert placement.source == _approx((0, 0, 1920, 1080))
+        assert placement.target == _approx((-350, 0, 1600, 900))
+
+    @pytest.mark.parametrize(
+        "view",
+        [
+            _view(anchor=VideoAnchor.RIGHT),
+            _view(scale=2.0, anchor=VideoAnchor.TOP_LEFT, shift=VideoShift(-90, 40)),
+            _view(
+                VideoAspect.NONE, shift=VideoShift(0, -5000), is_shift_past_edges=True
+            ),
+            _view(scale=3.0, shift=VideoShift(5000, 5000), is_shift_past_edges=True),
+            _view(VideoAspect.STRETCH, scale=1.5, anchor=VideoAnchor.BOTTOM),
+        ],
+    )
+    def test_the_pane_cuts_it_down_to_the_view(self, view):
+        whole = calc_whole_placement(VIDEO, PANE, view)
+        shown = calc_view_placement(VIDEO, PANE, view)
+
+        x, y, width, height = whole.target
+        left, top = max(x, 0), max(y, 0)
+        right, bottom = min(x + width, PANE[0]), min(y + height, PANE[1])
+
+        assert (left, top, right - left, bottom - top) == _approx(shown.target)
+
+    def test_there_is_none_with_a_crop_of_the_users(self):
+        view = _view(crop=VideoCrop(10, 0, 0, 0))
+
+        assert calc_whole_placement(VIDEO, PANE, view) is None
+
+    def test_there_is_none_too_big_to_draw(self):
+        # 16000x9000: a side it could have, more pixels than it could
+        assert calc_whole_placement(VIDEO, PANE, _view(scale=10.0)) is None
+        assert calc_whole_placement(VIDEO, PANE, _view(scale=3.0)) is not None
+
+
+class TestWholeGeometry:
+    """What VLC is told for a picture it turns: its shape, and no crop."""
+
+    def test_the_shape_is_given_the_way_the_frame_is_stored(self):
+        # on its side 360x640, covering 400x500 at 400x711, stored 711x400
+        geometry = calc_whole_geometry((640, 360), (400, 500), _view(), is_turned=True)
+
+        assert geometry == ("711:400", "+0+0+0+0")
+
+    def test_a_picture_turned_over_keeps_its_shape(self):
+        # upside down, 640x360 covers 400x500 at 889x500
+        geometry = calc_whole_geometry((640, 360), (400, 500), _view())
+
+        assert geometry == ("889:500", "+0+0+0+0")
+
+    def test_stretched_it_takes_the_pane_s_shape(self):
+        view = _view(VideoAspect.STRETCH)
+
+        geometry = calc_whole_geometry((640, 360), (400, 500), view, is_turned=True)
+
+        assert geometry == ("5:4", "+0+0+0+0")
+
+    def test_there_is_none_with_a_crop_of_the_users(self):
+        view = _view(crop=VideoCrop(0, 0, 0, 10))
+
+        assert calc_whole_geometry((640, 360), (400, 500), view) is None
+
+
 class TestStep:
     """What a move right and a move down add to the shift."""
 
@@ -366,11 +527,47 @@ class TestStep:
 
         assert across < 0 < down
 
+    def test_is_the_same_past_the_edges(self):
+        """Less of it is on show out there, but a press goes as far."""
+
+        view = _view(VideoAspect.NONE, is_shift_past_edges=True)
+        moved_out = view._replace(shift=VideoShift(0, -900))
+
+        assert calc_view_step(VIDEO, SQUARE, moved_out) == calc_view_step(
+            VIDEO, SQUARE, view
+        )
+
     def test_is_at_least_a_pixel(self):
         assert calc_view_step((10, 10), SQUARE, _view(scale=10.0)) == (-1, -1)
 
     def test_is_nothing_with_nothing_to_work_from(self):
         assert calc_view_step((0, 0), SQUARE, _view()) == (0, 0)
+
+
+class TestMovedShift:
+    """Where so many moves take the picture: whole steps from the anchor."""
+
+    def test_goes_a_whole_step_at_a_time(self):
+        # zoomed in, 540x540 on show and 27 a step, looking right and up
+        view = _view(scale=2.0)
+
+        assert calc_moved_shift(VIDEO, SQUARE, view, (2, -1)) == VideoShift(-54, 27)
+
+    def test_from_between_steps_goes_to_the_next(self):
+        view = _view(VideoAspect.NONE, shift=VideoShift(0, -70))
+
+        assert calc_moved_shift(VIDEO, SQUARE, view, (0, 1)) == VideoShift(0, -54)
+        assert calc_moved_shift(VIDEO, SQUARE, view, (0, -1)) == VideoShift(0, -108)
+
+    def test_is_held_where_the_picture_stops(self):
+        view = _view(VideoAspect.NONE, shift=VideoShift(0, 400))
+
+        assert calc_moved_shift(VIDEO, SQUARE, view, (0, 3)) == VideoShift(0, 420)
+
+    def test_stays_put_with_nothing_to_work_from(self):
+        view = _view(shift=VideoShift(7, 7))
+
+        assert calc_moved_shift((0, 0), SQUARE, view, (1, 1)) == VideoShift(7, 7)
 
 
 class TestPlacementNothing:
@@ -476,19 +673,14 @@ class TestViewGeometry:
             "+0+270+0+270",
         )
 
-    def test_stretch_tiny_override_stays_in_vlc_sar_range(self):
-        # Inverse of the degenerate huge-ratio case: 1x1 region in a 1px-wide
-        # huge pane. The reduced fraction must still fit VLC's uint32 SAR math.
+    def test_stretch_too_thin_for_vlc_falls_back_to_native(self):
+        # 1x1 region in a 1px-wide huge pane: no SAR VLC can do its sums on
+        # comes near, so "0:0" leaves the picture its own shape
         crop = VideoCrop(1919, 1079, 0, 0)
 
-        override, geo = calc_view_geometry(
+        assert calc_view_geometry(
             VIDEO, (1, 600000), _view(VideoAspect.STRETCH, crop=crop)
-        )
-        num, den = (int(part) for part in override.split(":"))
-
-        assert geo == "+1919+1079+0+0"
-        assert 0 < num <= (1 << 19) - 1
-        assert 0 < den <= (1 << 19) - 1
+        ) == ("0:0", "+1919+1079+0+0")
 
     def test_stretch_degenerate_override_falls_back_to_native(self):
         # 1x1 region in a 1px-tall huge pane -> absurd ratio -> "0:0" resets
@@ -537,10 +729,46 @@ class TestViewGeometry:
             num, den = (int(part) for part in override.split(":"))
             _, _, target_w, target_h = calc_view_placement(VIDEO, pane, view).target
 
-            assert 0 < num <= (1 << 19) - 1
-            assert 0 < den <= (1 << 19) - 1
+            assert 0 < num
+            assert 0 < den
+            assert _fits_vlc(override, VIDEO, _borders(geometry))
             assert _shown_ratio(override, VIDEO, _borders(geometry)) == pytest.approx(
                 round(target_w) / round(target_h), rel=1e-4
+            )
+
+    def test_moved_past_an_edge_it_is_not_placed_out_of_shape(self):
+        """A crop that leaves an awkward region made VLC's sums on the
+        SAR wrap round, and it placed the picture 1527 high in 675."""
+
+        view = _view(shift=VideoShift(0, -41), is_shift_past_edges=True)
+
+        override, geometry = calc_view_geometry(VIDEO, (1039, 684), view)
+
+        assert geometry == "+140+41+140+0"
+        assert _fits_vlc(override, VIDEO, _borders(geometry))
+
+    def test_every_override_fits_vlc_s_sums(self):
+        rng = random.Random(7)
+
+        for _ in range(3000):
+            frame = rng.choice([VIDEO, (1917, 1079), (720, 576), (4096, 2160)])
+            pane = (rng.randint(50, 2000), rng.randint(50, 1200))
+            view = _view(
+                rng.choice(list(VideoAspect)),
+                rng.choice([1.0, 1.3, 2.0, 7.5]),
+                VideoCrop(*(rng.choice([0, 0, 3, 41]) for _ in range(4))),
+                rng.choice(list(VideoAnchor)),
+                VideoShift(rng.randint(-3000, 3000), rng.randint(-3000, 3000)),
+                rng.random() < 0.5,
+            )
+            override, geometry = calc_view_geometry(frame, pane, view)
+            _, _, target_w, target_h = calc_view_placement(frame, pane, view).target
+
+            assert _fits_vlc(override, frame, _borders(geometry))
+            # a frame whose sides share nothing leaves the SAR's terms in
+            # the hundreds: within a pixel in five hundred
+            assert _shown_ratio(override, frame, _borders(geometry)) == pytest.approx(
+                round(target_w) / round(target_h), rel=2e-3
             )
 
     @pytest.mark.parametrize(

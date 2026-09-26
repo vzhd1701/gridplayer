@@ -3,6 +3,7 @@ from concurrent.futures import ThreadPoolExecutor
 
 import pytest
 
+from gridplayer.params.static import VideoTransform
 from gridplayer.vlc_player import vlc
 from gridplayer.vlc_player.player_tracks_manager import (
     TracksManager,
@@ -17,11 +18,19 @@ VALID_UNICODE = "日本語トラック".encode()
 
 
 class FakeVideoContent:
-    def __init__(self, width=1920, height=1080, frame_rate_num=30, frame_rate_den=1):
+    def __init__(
+        self,
+        width=1920,
+        height=1080,
+        frame_rate_num=30,
+        frame_rate_den=1,
+        orientation=vlc.VideoOrient.top_left,
+    ):
         self.width = width
         self.height = height
         self.frame_rate_num = frame_rate_num
         self.frame_rate_den = frame_rate_den
+        self.orientation = orientation
 
 
 class FakeAudioContent:
@@ -207,6 +216,34 @@ class TestConvertVideoTrack:
         assert result.codec == "H264"
         assert result.video_dimensions == (1920, 1080)
         assert result.fps == 30.0
+
+    @pytest.mark.parametrize(
+        ("orientation", "transform", "is_turned"),
+        [
+            (vlc.VideoOrient.top_left, VideoTransform.NONE, False),
+            (vlc.VideoOrient.top_right, VideoTransform.HFLIP, False),
+            (vlc.VideoOrient.bottom_left, VideoTransform.VFLIP, False),
+            (vlc.VideoOrient.bottom_right, VideoTransform.ROTATE_180, False),
+            (vlc.VideoOrient.left_top, VideoTransform.TRANSPOSE, True),
+            (vlc.VideoOrient.left_bottom, VideoTransform.ROTATE_270, True),
+            (vlc.VideoOrient.right_top, VideoTransform.ROTATE_90, True),
+            (vlc.VideoOrient.right_bottom, VideoTransform.ANTITRANSPOSE, True),
+        ],
+    )
+    def test_a_file_says_how_to_turn_it(self, orientation, transform, is_turned):
+        """A phone held upright records 1920x1080 and says to show it
+        turned, which VLC does."""
+
+        track = make_video_track(
+            video_content=FakeVideoContent(orientation=orientation)
+        )
+
+        result = _convert_video_track(track, media_uri="phone.mp4")
+
+        assert result.video_dimensions == (1920, 1080)
+        assert result.orientation == transform
+        assert result.is_turned is is_turned
+        assert result.is_reoriented is (transform != VideoTransform.NONE)
 
     def test_zero_metadata_size_uses_fallback(self):
         track = make_video_track(video_content=FakeVideoContent(width=0, height=0))

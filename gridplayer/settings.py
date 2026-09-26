@@ -116,6 +116,7 @@ _default_settings = {
     "video_defaults/color": "#ffffff",
     "video_defaults/crop": VideoCrop(0, 0, 0, 0),
     "video_defaults/anchor": VideoAnchor.CENTER,
+    "video_defaults/shift_past_edges": False,
     "video_defaults/stream_quality": "best",
     "video_defaults/quality_adapt_delay": 15,
     "video_defaults/network_retry_mode": NetworkRetryMode.TIMES,

@@ -2683,6 +2683,7 @@ class VideoBlock(QWidget):
         self.set_scale(snapshot.scale, is_silent=True)
         self.set_crop(snapshot.crop, is_silent=True)
         self.set_anchor(snapshot.anchor)
+        self.set_shift_past_edges(snapshot.is_shift_past_edges)
         self.set_shift(snapshot.shift, is_silent=True)
         self.set_volume(snapshot.volume)
 
@@ -3413,6 +3414,26 @@ class VideoBlock(QWidget):
     @only_initialized
     def shift_reset(self):
         self.set_shift(VideoShift(0, 0))
+
+    @only_with_video_tacks
+    @only_initialized
+    def toggle_shift_past_edges(self):
+        self.set_shift_past_edges(not self.video_params.is_shift_past_edges)
+
+    @only_with_video_tacks
+    @only_initialized
+    def set_shift_past_edges(self, is_shift_past_edges: bool):
+        """Let the picture be moved past the edges of the pane, or not.
+
+        Kept within them again, it stays where they hold it, which is where
+        the next move goes from.
+        """
+
+        self.video_params.is_shift_past_edges = is_shift_past_edges
+        self.video_driver.set_shift_past_edges(is_shift_past_edges)
+
+        # no steps is where the picture stands now
+        self.set_shift(self.video_driver.shifted_by(0, 0), is_silent=True)
 
     @only_initialized
     @only_seekable

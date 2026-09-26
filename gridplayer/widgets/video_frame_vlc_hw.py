@@ -174,4 +174,4 @@ class VideoFrameVLCHW(VideoFrameVLCProcess):
         size = (self.size().width(), self.size().height())
         self.video_driver.adjust_view(size, self._view)
 
-        self._apply_hw_crop_border_workaround()
+        self._place_native_surface()

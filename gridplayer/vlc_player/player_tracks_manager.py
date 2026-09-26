@@ -3,6 +3,7 @@ import os
 import threading
 from datetime import datetime, timezone
 
+from gridplayer.params.static import VideoTransform
 from gridplayer.vlc_player import vlc
 from gridplayer.vlc_player.static import (
     DISABLED_TRACK,
@@ -382,6 +383,22 @@ def _decode_track_field(
     return default
 
 
+# What each orientation a file can be tagged with takes to show it the
+# right way up, as VLC does, in the transforms of our own. VLC describes
+# how the stored picture is turned, so showing it is the turn back: a
+# picture it calls turned clockwise is shown turned anticlockwise, measured.
+_ORIENTATION_TRANSFORMS = {
+    vlc.VideoOrient.top_left: VideoTransform.NONE,
+    vlc.VideoOrient.top_right: VideoTransform.HFLIP,
+    vlc.VideoOrient.bottom_left: VideoTransform.VFLIP,
+    vlc.VideoOrient.bottom_right: VideoTransform.ROTATE_180,
+    vlc.VideoOrient.left_top: VideoTransform.TRANSPOSE,
+    vlc.VideoOrient.left_bottom: VideoTransform.ROTATE_270,
+    vlc.VideoOrient.right_top: VideoTransform.ROTATE_90,
+    vlc.VideoOrient.right_bottom: VideoTransform.ANTITRANSPOSE,
+}
+
+
 def _convert_video_track(video_track, media_uri=None, fallback_size=(0, 0)):
     vt_content = video_track.u.video.contents
 
@@ -403,6 +420,9 @@ def _convert_video_track(video_track, media_uri=None, fallback_size=(0, 0)):
     return VideoTrack(
         video_dimensions=(width, height),
         fps=fps,
+        orientation=_ORIENTATION_TRANSFORMS.get(
+            vt_content.orientation, VideoTransform.NONE
+        ),
         bitrate=video_track.bitrate,
         language=_decode_track_field(
             video_track.language, field_name="language", **track_kwargs

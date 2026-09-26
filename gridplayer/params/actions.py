@@ -497,6 +497,13 @@ ACTIONS = MappingProxyType(
             "func": ("active", "shift_by", 0, 1),
             "show_if": "is_active_has_video",
         },
+        "Move Past Edges": {
+            "title": translate("Actions", "Move Past Edges"),
+            "icon": "empty",
+            "func": ("active", "toggle_shift_past_edges"),
+            "check_if": ("is_active_param_set_to", "is_shift_past_edges", True),
+            "show_if": "is_active_has_video",
+        },
         "Position Reset": {
             "title": translate("Actions", "Position Reset"),
             "icon": "empty",
@@ -1539,6 +1546,12 @@ ACTIONS = MappingProxyType(
             "key": "Shift+Alt+Down",
             "icon": "empty",
             "func": ("all", "shift_by", 0, 1),
+            "show_if": "is_any_videos_have_video",
+        },
+        "Move Past Edges [ALL]": {
+            "title": translate("Actions", "Move Past Edges"),
+            "icon": "empty",
+            "func": ("all", "toggle_shift_past_edges"),
             "show_if": "is_any_videos_have_video",
         },
         "Position Reset [ALL]": {

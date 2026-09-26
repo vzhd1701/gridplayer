@@ -149,6 +149,7 @@ class VideoBlocksManager(ManagerBase):
     all_set_anchor = pyqtSignal(VideoAnchor)
     all_shift_by = pyqtSignal(int, int)
     all_shift_reset = pyqtSignal()
+    all_toggle_shift_past_edges = pyqtSignal()
 
     all_set_aspect = pyqtSignal(VideoAspect)
     all_set_transform = pyqtSignal(VideoTransform)
@@ -559,6 +560,7 @@ class VideoBlocksManager(ManagerBase):
             (self.all_set_anchor, vb.set_anchor),
             (self.all_shift_by, vb.shift_by),
             (self.all_shift_reset, vb.shift_reset),
+            (self.all_toggle_shift_past_edges, vb.toggle_shift_past_edges),
             (self.all_set_aspect, vb.set_aspect),
             (self.all_set_transform, vb.set_transform),
             (self.all_take_screenshot, vb.take_screenshot),

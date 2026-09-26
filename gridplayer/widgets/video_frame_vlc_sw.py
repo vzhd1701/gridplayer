@@ -278,6 +278,7 @@ class VideoFrameVLCSW(VideoFrameVLCProcess):
             self._view,
             self._transform,
             self.video_surface.picture_size(),
+            self._orientation(),
         )
 
     def adjust_view(self):

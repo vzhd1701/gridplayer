@@ -15,6 +15,7 @@ from gridplayer.models.subtitle_selection import (
     SubtitleTrackId,
 )
 from gridplayer.models.video import Video
+from gridplayer.params.static import ROTATION_TRANSFORMS, VideoTransform
 from gridplayer.utils.track_language import pick_track
 
 DISABLED_TRACK = -1
@@ -157,6 +158,22 @@ class MediaTrack:
 class VideoTrack(MediaTrack):
     video_dimensions: tuple[int, int]
     fps: float | None
+    # What the file says to turn or flip it by to show it, as a phone
+    # records it, and VLC does as it shows it.
+    orientation: VideoTransform = VideoTransform.NONE
+
+    @property
+    def is_turned(self) -> bool:
+        """Shown on its side: video_dimensions the other way round."""
+
+        return self.orientation in ROTATION_TRANSFORMS
+
+    @property
+    def is_reoriented(self) -> bool:
+        """Turned or flipped at all, which VLC 3 crops wrong on hardware
+        output; see calc_whole_placement."""
+
+        return self.orientation != VideoTransform.NONE
 
     @property
     def codec_info(self):

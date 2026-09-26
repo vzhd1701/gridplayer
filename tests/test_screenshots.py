@@ -45,6 +45,7 @@ from gridplayer.utils.screenshots import (
     sanitize_filename,
     save_screenshot,
     screenshots_dir,
+    transformed_image,
     unknown_specifiers,
 )
 from gridplayer.widgets.video_block import VideoBlock
@@ -299,6 +300,47 @@ class TestTheViewRegion:
         assert view.cut(640, 360) == (None, None)
 
 
+def _marked(width, height) -> QImage:
+    """Black, with the top left corner red."""
+
+    image = QImage(width, height, QImage.Format_RGB32)
+    image.fill(QColor("black"))
+    for x in range(4):
+        for y in range(4):
+            image.setPixelColor(x, y, QColor("red"))
+    return image
+
+
+class TestTurningAnImage:
+    """Where each transform takes a pixel, as VLC's own does."""
+
+    @pytest.mark.parametrize(
+        ("transform", "size", "moved"),
+        [
+            (VideoTransform.NONE, (3, 2), lambda x, y: (x, y)),
+            (VideoTransform.HFLIP, (3, 2), lambda x, y: (2 - x, y)),
+            (VideoTransform.VFLIP, (3, 2), lambda x, y: (x, 1 - y)),
+            (VideoTransform.ROTATE_90, (2, 3), lambda x, y: (1 - y, x)),
+            (VideoTransform.ROTATE_180, (3, 2), lambda x, y: (2 - x, 1 - y)),
+            (VideoTransform.ROTATE_270, (2, 3), lambda x, y: (y, 2 - x)),
+            (VideoTransform.TRANSPOSE, (2, 3), lambda x, y: (y, x)),
+            (VideoTransform.ANTITRANSPOSE, (2, 3), lambda x, y: (1 - y, 2 - x)),
+        ],
+    )
+    def test_every_pixel_goes_where_it_should(self, transform, size, moved):
+        image = QImage(3, 2, QImage.Format_RGB32)
+        for x in range(3):
+            for y in range(2):
+                image.setPixelColor(x, y, QColor(x * 100, y * 100, 50))
+
+        turned = transformed_image(image, transform)
+
+        assert (turned.width(), turned.height()) == size
+        for x in range(3):
+            for y in range(2):
+                assert turned.pixelColor(*moved(x, y)) == image.pixelColor(x, y)
+
+
 class TestSaving:
     def test_a_png_is_copied_as_it_is(self, tmp_path):
         source = _frame_file(tmp_path)
@@ -373,6 +415,52 @@ class TestSaving:
         )
 
         assert QImage(str(path)).size() == QSize(36, 64)
+
+    @pytest.mark.parametrize("image_format", list(ScreenshotFormat))
+    def test_a_frame_vlc_turns_is_saved_the_right_way_up(self, tmp_path, image_format):
+        """VLC writes the frame of a phone video the way it is stored."""
+
+        folder = tmp_path / "vlc_tmp"
+        folder.mkdir()
+        source = folder / "snapshot.png"
+        _marked(64, 36).save(str(source), "PNG")
+        view = ScreenshotView(
+            (36, 64), None, VideoTransform.NONE, (36, 64), VideoTransform.ROTATE_90
+        )
+
+        path = save_screenshot(str(source), tmp_path, _name(), image_format, 90, view)
+
+        image = QImage(str(path))
+        assert image.size() == QSize(36, 64)
+        # the stored top left corner is the top right one turned clockwise
+        assert image.pixelColor(34, 1).red() > 200
+
+    def test_a_turned_frame_is_cut_the_way_it_is_shown(self, tmp_path):
+        source = _frame_file(tmp_path, 64, 36)
+        view = ScreenshotView(
+            (36, 64),
+            ViewParams(VideoAspect.NONE, crop=VideoCrop(0, 32, 0, 0)),
+            VideoTransform.NONE,
+            (36, 64),
+            VideoTransform.ROTATE_270,
+        )
+
+        path = save_screenshot(
+            source, tmp_path, _name(), ScreenshotFormat.PNG, 90, view
+        )
+
+        assert QImage(str(path)).size() == QSize(36, 32)
+
+    def test_a_frame_in_memory_is_already_the_right_way_up(self, tmp_path):
+        view = ScreenshotView(
+            (32, 16), None, VideoTransform.NONE, (32, 16), VideoTransform.ROTATE_90
+        )
+
+        path = save_screenshot(
+            _frame(), tmp_path, _name(), ScreenshotFormat.PNG, 90, view
+        )
+
+        assert QImage(str(path)).size() == _frame().size()
 
     def test_a_frame_in_memory_is_saved_too(self, tmp_path):
         """Where VLC had nothing to give, the frame on show is saved instead."""

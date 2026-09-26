@@ -719,6 +719,13 @@ VIDEO_FIELDS: tuple[SettingField, ...] = (
         combo_values=_anchors,
     ),
     _f(
+        settings_key="video_defaults/shift_past_edges",
+        video_attr="shift_past_edges",
+        kind=FieldKind.CHECKBOX,
+        section=translate("SettingsDialog", "Video"),
+        label=translate("SettingsDialog", "Allow moving past the edges"),
+    ),
+    _f(
         settings_key="video_defaults/transform",
         video_attr="transform",
         kind=FieldKind.COMBO,

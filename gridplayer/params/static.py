@@ -104,6 +104,9 @@ class ViewParams(NamedTuple):
     crop: VideoCrop = VideoCrop(0, 0, 0, 0)
     anchor: VideoAnchor = VideoAnchor.CENTER
     shift: VideoShift = VideoShift(0, 0)
+    # whether the shift may take the picture past the pane's edges, with
+    # black showing where it has gone from
+    is_shift_past_edges: bool = False
 
 
 class VideoTransform(AutoName):

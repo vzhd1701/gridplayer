@@ -1,4 +1,5 @@
 import logging
+import math
 from abc import ABC, abstractmethod
 from contextlib import suppress
 from pathlib import Path
@@ -18,10 +19,11 @@ from gridplayer.params.static import (
 )
 from gridplayer.settings import Settings
 from gridplayer.utils.aspect_calc import (
+    Rect,
     ViewPlacement,
+    calc_moved_shift,
     calc_view_placement,
-    calc_view_shift,
-    calc_view_step,
+    calc_whole_placement,
 )
 from gridplayer.utils.qt import MILLISECONDS, QABC, qt_connect
 from gridplayer.utils.screenshots import ScreenshotView
@@ -49,6 +51,10 @@ VLC_CROP_BORDER_PX = 2
 # depending on the integer placement; NVIDIA drivers show it, AMD may not).
 # A wider hidden margin keeps those rows outside the visible frame.
 VLC_WINDOWS_CROP_BORDER_PX = 8
+
+# How far off a whole pixel a picture edge can be and still count as on it,
+# for the float error in working it out.
+_PIXEL_SLACK = 1e-6
 
 HW_CROP_BORDER_OFFSETS = {
     HWCropBorderOffset.DISABLED: 0,
@@ -92,9 +98,17 @@ def vlc_hw_crop_border_offset(frame_size: QSize, window_size: QSize) -> int:
 
 
 def apply_vlc_hw_surface_geometry(
-    frame: QWidget, surface: QWidget, offset: int
+    frame: QWidget, surface: QWidget, offset: int, target: Rect | None = None
 ) -> None:
-    """Place a native vout surface over the frame, shifted out by `offset`.
+    """Place a native vout surface over the video, grown by `offset` each way.
+
+    Over the target, the part of the frame the picture is shown in, or
+    the whole frame where there is none to go by. VLC fills its window
+    with the picture, centred, so the window is what puts the picture
+    against a side or moves it. Grown on every side, it stays centred on
+    the target, and VLC scales the picture up into the margin: past the
+    frame where the picture reaches it, which hides VLC's edges there, and
+    into the black around it where it does not.
 
     This is the only thing that positions a native surface: it is kept out of
     the frame layout (see VideoFrameVLC.is_native_surface), so a zero offset
@@ -105,15 +119,25 @@ def apply_vlc_hw_surface_geometry(
     if width <= 0 or height <= 0:
         return
 
+    left, top, right, bottom = 0, 0, width, height
+
+    if target is not None:
+        # every pixel the picture is in, which a part of one still is
+        x, y, target_w, target_h = target
+        left = math.floor(x + _PIXEL_SLACK)
+        top = math.floor(y + _PIXEL_SLACK)
+        right = max(math.ceil(x + target_w - _PIXEL_SLACK), left + 1)
+        bottom = max(math.ceil(y + target_h - _PIXEL_SLACK), top + 1)
+
     surface.setGeometry(
-        -offset,
-        -offset,
-        width + 2 * offset,
-        height + 2 * offset,
+        left - offset,
+        top - offset,
+        right - left + 2 * offset,
+        bottom - top + 2 * offset,
     )
 
 
-def is_uncovered_fill_useful() -> bool:
+def is_uncovered_fill_useful(is_letterboxed: bool = False) -> bool:
     """Whether painting under a native vout surface hides anything.
 
     On Windows the frame and the surface reach the screen together, so the
@@ -126,8 +150,12 @@ def is_uncovered_fill_useful() -> bool:
     exposed part of a backgroundless window undefined. Filling measured
     identical to not filling, so leave X11 alone rather than repaint every
     cell for a colour it already has.
+
+    Unless the surface is only over the picture, smaller than the frame or
+    off its middle: the rest is then the frame's own to paint, for good,
+    and Qt paints it in the palette colour.
     """
-    return env.IS_WINDOWS
+    return env.IS_WINDOWS or is_letterboxed
 
 
 def detach_native_surface_from_qt(surface: QWidget) -> None:
@@ -385,14 +413,25 @@ class VideoFrameVLC(QWidget, metaclass=QABC):
     @abstractmethod
     def ui_video_surface(self) -> QWidget: ...
 
-    def _apply_hw_crop_border_workaround(self) -> None:
+    def _place_native_surface(self) -> None:
+        """Put the surface VLC presents into over the video.
+
+        See apply_vlc_hw_surface_geometry. Whatever of the frame it leaves
+        uncovered is letterbox, filled black.
+        """
+
         win = self.window()
         window_size = win.size() if win is not None else self.size()
         offset = vlc_hw_crop_border_offset(self.size(), window_size)
-        apply_vlc_hw_surface_geometry(self, self.video_surface, offset)
+        placement = self._native_surface_placement()
+        target = placement.target if placement is not None else None
+        apply_vlc_hw_surface_geometry(self, self.video_surface, offset, target)
+
+        if not self.video_surface.geometry().contains(self.rect()):
+            self._fill_uncovered_black(is_letterboxed=True)
 
         self._log.debug(
-            f"HW crop border workaround: offset={offset}"
+            f"HW surface: offset={offset}"
             f", frame={self.size().width()}x{self.size().height()}"
             f", window={window_size.width()}x{window_size.height()}"
             f", surface={self.video_surface.geometry().getRect()}"
@@ -426,7 +465,7 @@ class VideoFrameVLC(QWidget, metaclass=QABC):
         self.layout().setContentsMargins(0, 0, 0, 0)
         self.layout().setStackingMode(QStackedLayout.StackAll)
 
-    def _fill_uncovered_black(self) -> None:
+    def _fill_uncovered_black(self, is_letterboxed: bool = False) -> None:
         """Paint whatever the native surface does not cover black.
 
         Two strips can show through mid-resize: the frame area the surface has
@@ -434,13 +473,17 @@ class VideoFrameVLC(QWidget, metaclass=QABC):
         resize_view_interval_ms), and the part of the surface VLC's own child
         window has not caught up to. Unpainted, both show QPalette.Window,
         which is near-white on a light theme and reads as the frame tearing.
-        Black matches the letterbox the video already sits in.
+        Black matches the letterbox the video already sits in, and where the
+        surface is only over the picture it is that letterbox.
 
         Only once a video track is playing: on Windows the frame is left
         visible while the video loads (see VideoBlock._hide_video_driver), and
         filling it early would cover the loading status behind it.
         """
-        if not self.is_native_surface or not is_uncovered_fill_useful():
+        if not self.is_native_surface:
+            return
+
+        if not is_uncovered_fill_useful(is_letterboxed):
             return
 
         if self.autoFillBackground():
@@ -559,7 +602,12 @@ class VideoFrameVLC(QWidget, metaclass=QABC):
         video = media_input.video
 
         self._view = ViewParams(
-            video.aspect_mode, video.scale, video.crop, video.anchor, video.shift
+            video.aspect_mode,
+            video.scale,
+            video.crop,
+            video.anchor,
+            video.shift,
+            video.is_shift_past_edges,
         )
         # changing it reloads the video, so it holds for as long as this does
         self._transform = video.transform
@@ -638,9 +686,47 @@ class VideoFrameVLC(QWidget, metaclass=QABC):
         screenshot is the same picture whichever driver took it.
         """
 
+        if self._is_drawn_whole():
+            # all of the picture, for the pane to cut: cut it the same
+            view = self._view
+        else:
+            view = None
+
         return ScreenshotView(
-            self._pane_size(), None, self._transform, self._frame_size()
+            self._pane_size(),
+            view,
+            self._transform,
+            self._frame_size(),
+            self._orientation(),
         )
+
+    def _native_surface_placement(self) -> ViewPlacement | None:
+        """What VLC is asked to draw into its window, and where that goes.
+
+        The part on show, but all of a picture VLC turns or flips, which
+        it crops wrong: see calc_whole_placement. The player makes the
+        same choice from the same track.
+        """
+
+        return self._whole_placement() or self.view_placement()
+
+    def _is_drawn_whole(self) -> bool:
+        return self._whole_placement() is not None
+
+    def _whole_placement(self) -> ViewPlacement | None:
+        if self._orientation() == VideoTransform.NONE:
+            return None
+
+        return calc_whole_placement(
+            self._view_frame_size(), self._pane_size(), self._view, self._transform
+        )
+
+    def _orientation(self) -> VideoTransform:
+        """What the file says to turn or flip the picture by to show it."""
+
+        track = self.media.cur_video_track if self.media else None
+
+        return track.orientation if track is not None else VideoTransform.NONE
 
     def view_placement(self) -> ViewPlacement | None:
         """Where the video is on show in the pane, and what of it."""
@@ -652,22 +738,17 @@ class VideoFrameVLC(QWidget, metaclass=QABC):
     def shifted_by(self, steps_x: int, steps_y: int) -> VideoShift:
         """The shift a move of so many steps right and down comes to.
 
-        Left and up are negative; calc_view_step says which way the picture
-        goes. From where the picture stands, and held within the edges
-        again, so what is kept is where the picture really goes.
+        Left and up are negative; see calc_moved_shift. What is kept is
+        where the picture really goes.
         """
 
-        frame_size, pane_size = self._view_frame_size(), self._pane_size()
-        shift = calc_view_shift(frame_size, pane_size, self._view, self._transform)
-        step_x, step_y = calc_view_step(
-            frame_size, pane_size, self._view, self._transform
+        return calc_moved_shift(
+            self._view_frame_size(),
+            self._pane_size(),
+            self._view,
+            (steps_x, steps_y),
+            self._transform,
         )
-
-        moved = self._view._replace(
-            shift=VideoShift(shift.X + steps_x * step_x, shift.Y + steps_y * step_y)
-        )
-
-        return calc_view_shift(frame_size, pane_size, moved, self._transform)
 
     def _pane_size(self) -> tuple[int, int]:
         return self.size().width(), self.size().height()
@@ -678,11 +759,20 @@ class VideoFrameVLC(QWidget, metaclass=QABC):
         return self._frame_size()
 
     def _frame_size(self) -> tuple[int, int]:
-        """The frame's size as the video output gets it, (0, 0) if unknown."""
+        """The frame's size as the video output gets it, (0, 0) if unknown.
+
+        Turned where the file says to show it on its side, which VLC does
+        before anything here sees it.
+        """
 
         track = self.media.cur_video_track if self.media else None
 
-        return track.video_dimensions if track else (0, 0)
+        if track is None:
+            return 0, 0
+
+        width, height = track.video_dimensions
+
+        return (height, width) if track.is_turned else (width, height)
 
     def shown_frame_image(self) -> QImage | None:
         """The frame on show when VLC can't give one, if there is any."""
@@ -737,6 +827,11 @@ class VideoFrameVLC(QWidget, metaclass=QABC):
 
     def set_shift(self, shift: VideoShift) -> None:
         self._view = self._view._replace(shift=shift)
+
+        self.adjust_view()
+
+    def set_shift_past_edges(self, is_shift_past_edges: bool) -> None:
+        self._view = self._view._replace(is_shift_past_edges=is_shift_past_edges)
 
         self.adjust_view()
 

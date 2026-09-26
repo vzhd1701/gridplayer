@@ -29,7 +29,9 @@ class _FakeBlock:
             video_track_id=1,
             transform=VideoTransform.NONE,
         )
-        self.video_tracks = {1: SimpleNamespace(video_dimensions=(640, 360))}
+        self.video_tracks = {
+            1: SimpleNamespace(video_dimensions=(640, 360), is_turned=False)
+        }
 
     def set_crop(self, crop, is_silent=False):
         clamped = VideoCrop(*(max(v, 0) for v in crop))
@@ -112,7 +114,7 @@ def test_dialog_reset_zeroes_crop_live():
 
 def test_dialog_dimension_fallback_when_unknown():
     block = _FakeBlock()
-    block.video_tracks = {1: SimpleNamespace(video_dimensions=(0, 0))}
+    block.video_tracks = {1: SimpleNamespace(video_dimensions=(0, 0), is_turned=False)}
     dialog = SetCropDialog.for_video_block(block)
 
     assert dialog._spins["left"].maximum() == 9999
@@ -148,9 +150,21 @@ def test_dialog_crops_a_rotated_frame_along_the_picture_on_screen():
     assert dialog._preview._top == 0
 
 
+def test_dialog_crops_a_turned_file_as_it_is_shown():
+    """A file that says to show it on its side is turned before anything
+    is cut from it: Left takes from the 360 across it is shown at."""
+    block = _FakeBlock()
+    block.video_tracks[1].is_turned = True
+    dialog = SetCropDialog.for_video_block(block)
+
+    assert dialog._spins["left"].maximum() == 360
+    assert dialog._spins["top"].maximum() == 640
+    assert dialog._size_label.text() == "Video: 360x640 | Cropped: 360x640"
+
+
 def test_dialog_hides_size_label_when_dimensions_unknown():
     block = _FakeBlock()
-    block.video_tracks = {1: SimpleNamespace(video_dimensions=(0, 0))}
+    block.video_tracks = {1: SimpleNamespace(video_dimensions=(0, 0), is_turned=False)}
     dialog = SetCropDialog.for_video_block(block)
 
     assert dialog._size_label.isHidden()

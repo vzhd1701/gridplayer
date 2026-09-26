@@ -32,7 +32,7 @@ from datetime import datetime
 from pathlib import Path
 
 from PyQt5.QtCore import QObject, QRect, QRunnable, QSize, Qt, QThreadPool, pyqtSignal
-from PyQt5.QtGui import QImage, QImageReader
+from PyQt5.QtGui import QImage, QImageReader, QTransform
 
 from gridplayer.params.static import (
     ROTATION_TRANSFORMS,
@@ -300,12 +300,17 @@ class ScreenshotView:
     scaled up to a size the decoder likes and so not in video pixels; and
     a rotated one either way is at its unrotated size with the turned
     picture squeezed into it. The screenshot is put back in shape.
+
+    The orientation is what the file says to turn or flip the picture by
+    to show it. VLC does, but writes the frame the way it is stored, so a
+    frame file is turned the right way up before anything else.
     """
 
     size: tuple[int, int]
     view: ViewParams | None = None
     transform: VideoTransform | None = VideoTransform.NONE
     frame_size: tuple[int, int] = (0, 0)
+    orientation: VideoTransform = VideoTransform.NONE
 
     def cut(self, width: int, height: int) -> tuple[QRect | None, QSize | None]:
         """What of an image this size to keep, and what size to make it.
@@ -391,8 +396,14 @@ def _write_frame(
 ) -> None:
     is_file = isinstance(source, str)
 
+    # a frame handed over as an image is already the way it is shown
+    turn = view.orientation if is_file and view is not None else None
+
     # the header is enough to tell whether there is anything to cut
     size = QImageReader(source).size() if is_file else source.size()
+
+    if turn in ROTATION_TRANSFORMS:
+        size = size.transposed()
 
     rect, shape = (
         (None, None) if view is None else view.cut(size.width(), size.height())
@@ -401,6 +412,7 @@ def _write_frame(
     if (
         is_file
         and image_format == ScreenshotFormat.PNG
+        and turn in {None, VideoTransform.NONE}
         and rect is None
         and shape is None
     ):
@@ -411,6 +423,9 @@ def _write_frame(
 
     if image.isNull():
         raise OSError(f"Cannot read the frame from {source}")
+
+    if turn is not None:
+        image = transformed_image(image, turn)
 
     if rect is not None:
         image = image.copy(rect)
@@ -425,6 +440,39 @@ def _write_frame(
     # in a build that left the plugin out, there is no JPG writer at all
     if not image.save(str(path), extension, quality):
         raise OSError(f"Cannot write {extension} image to {path}")
+
+
+def transformed_image(image: QImage, transform: VideoTransform) -> QImage:
+    """The image turned or flipped as the transform says, as VLC does it."""
+
+    if transform == VideoTransform.HFLIP:
+        return image.mirrored(True, False)
+
+    if transform == VideoTransform.VFLIP:
+        return image.mirrored(False, True)
+
+    # clockwise on screen, where y goes down
+    degrees = {
+        VideoTransform.ROTATE_90: 90,
+        VideoTransform.ROTATE_180: 180,
+        VideoTransform.ROTATE_270: 270,
+        VideoTransform.TRANSPOSE: 90,
+        VideoTransform.ANTITRANSPOSE: 90,
+    }.get(transform)
+
+    if degrees is None:
+        return image
+
+    turned = image.transformed(QTransform().rotate(degrees))
+
+    # a quarter turn and a flip across is a flip along the diagonal
+    if transform == VideoTransform.TRANSPOSE:
+        return turned.mirrored(True, False)
+
+    if transform == VideoTransform.ANTITRANSPOSE:
+        return turned.mirrored(False, True)
+
+    return turned
 
 
 def remove_frame_file(frame_file: str) -> None:
