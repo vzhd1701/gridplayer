@@ -21,6 +21,7 @@ from gridplayer.params.static import (
     SeekSyncMode,
     SubtitleTrackMode,
     UnsavedChangesMode,
+    VideoAnchor,
     VideoAspect,
     VideoCrop,
     VideoDeinterlace,
@@ -77,6 +78,7 @@ class PlaylistVideoDefaults(BaseModel):
     volume: float | None = None
     color: Color | None = None
     crop: VideoCrop | None = None
+    anchor: VideoAnchor | None = None
     stream_quality: str | None = None
     quality_adapt_delay: int | None = None
     network_retry_mode: NetworkRetryMode | None = None

@@ -1,8 +1,10 @@
+import math
 from dataclasses import dataclass
 from fractions import Fraction
 
 from gridplayer.params.static import (
     ROTATION_TRANSFORMS,
+    SHIFT_STEP,
     VideoAnchor,
     VideoAspect,
     VideoCrop,
@@ -17,7 +19,9 @@ from gridplayer.params.static import (
 # at or below 2^19 - 1 so that product cannot overflow uint32; anything
 # beyond is a degenerate stretch anyway.
 _OVERRIDE_RATIO_LIMIT = (1 << 19) - 1
-_ZERO_SHIFT = VideoShift(0, 0)
+
+# What float error a shift worked out to lie on a whole pixel can carry.
+_ROUNDING_SLACK = 1e-6
 
 # Where the picture sits in the room it has to move in, per axis: 0 against
 # the left or top edge, 1 against the right or bottom one.
@@ -69,8 +73,6 @@ def calc_view_placement(
     pane_size: tuple[int, int],
     view: ViewParams,
     transform: VideoTransform | None = VideoTransform.NONE,
-    anchor: VideoAnchor = VideoAnchor.CENTER,
-    shift: VideoShift = _ZERO_SHIFT,
     is_beyond_edges: bool = False,
 ) -> ViewPlacement | None:
     """Where a frame goes in a pane: the one sum every driver draws from.
@@ -90,46 +92,96 @@ def calc_view_placement(
     None when there is nothing to place: no frame, no pane, or a picture
     moved clear of the pane.
     """
-    frame_w, frame_h = frame_size
-    pane_w, pane_h = pane_size
+    fit = _Fit.of(frame_size, pane_size, view, transform)
 
-    if min(frame_w, frame_h, pane_w, pane_h, view.scale) <= 0:
+    if fit is None:
         return None
 
-    x, y, region_w, region_h = calc_crop_region(frame_size, view.crop)
-    unit_x, unit_y = _frame_pixel_shape(frame_size, transform)
+    pane_w, pane_h = pane_size
+    anchor_x, anchor_y = _ANCHOR_POSITIONS[view.anchor]
 
-    fit_x = pane_w / (region_w * unit_x)
-    fit_y = pane_h / (region_h * unit_y)
+    left = _place(pane_w, fit.picture_w, anchor_x, view.shift.X * fit.per_x)
+    top = _place(pane_h, fit.picture_h, anchor_y, view.shift.Y * fit.per_y)
 
-    if view.aspect == VideoAspect.FIT:
-        fit_x = fit_y = max(fit_x, fit_y)
-    elif view.aspect == VideoAspect.NONE:
-        fit_x = fit_y = min(fit_x, fit_y)
+    if not is_beyond_edges:
+        left = _hold(left, pane_w - fit.picture_w)
+        top = _hold(top, pane_h - fit.picture_h)
 
-    # pane pixels per frame pixel
-    per_x = fit_x * unit_x * view.scale
-    per_y = fit_y * unit_y * view.scale
-
-    anchor_x, anchor_y = _ANCHOR_POSITIONS[anchor]
-
-    left = _place(pane_w, region_w * per_x, anchor_x, shift.X * per_x, is_beyond_edges)
-    top = _place(pane_h, region_h * per_y, anchor_y, shift.Y * per_y, is_beyond_edges)
-
-    target_x, target_w = _clip(left, region_w * per_x, pane_w)
-    target_y, target_h = _clip(top, region_h * per_y, pane_h)
+    target_x, target_w = _clip(left, fit.picture_w, pane_w)
+    target_y, target_h = _clip(top, fit.picture_h, pane_h)
 
     if target_w <= 0 or target_h <= 0:
         return None
 
     return ViewPlacement(
         source=(
-            x + (target_x - left) / per_x,
-            y + (target_y - top) / per_y,
-            target_w / per_x,
-            target_h / per_y,
+            fit.x + (target_x - left) / fit.per_x,
+            fit.y + (target_y - top) / fit.per_y,
+            target_w / fit.per_x,
+            target_h / fit.per_y,
         ),
         target=(target_x, target_y, target_w, target_h),
+    )
+
+
+def calc_view_shift(
+    frame_size: tuple[int, int],
+    pane_size: tuple[int, int],
+    view: ViewParams,
+    transform: VideoTransform | None = VideoTransform.NONE,
+) -> VideoShift:
+    """The shift the picture really stands at, in whole frame pixels.
+
+    What was asked for where it is within the edges, the nearest shift
+    that is where it would take the picture past them. A move goes from
+    here, not from wherever past an edge the picture was held at, which
+    would take presses to come back from without anything moving.
+
+    The shift as it is where there is nothing to work it out from.
+    """
+    fit = _Fit.of(frame_size, pane_size, view, transform)
+
+    if fit is None:
+        return view.shift
+
+    pane_w, pane_h = pane_size
+    anchor_x, anchor_y = _ANCHOR_POSITIONS[view.anchor]
+
+    return VideoShift(
+        _held_shift(view.shift.X, pane_w - fit.picture_w, anchor_x, fit.per_x),
+        _held_shift(view.shift.Y, pane_h - fit.picture_h, anchor_y, fit.per_y),
+    )
+
+
+def calc_view_step(
+    frame_size: tuple[int, int],
+    pane_size: tuple[int, int],
+    view: ViewParams,
+    transform: VideoTransform | None = VideoTransform.NONE,
+) -> tuple[int, int]:
+    """What one move right and one move down add to the shift.
+
+    A move goes the way it says. Where the picture is bigger than the pane
+    that is looking further that way, so the picture slides the other way
+    to bring more of that side in; where it is smaller, it is the picture
+    that goes that way, across the room it has in the pane.
+
+    A share of the part on show, so a press goes as far on screen however
+    big the video is and however far it is zoomed. (0, 0) where there is
+    nothing to work it out from.
+    """
+    fit = _Fit.of(frame_size, pane_size, view, transform)
+    placement = calc_view_placement(frame_size, pane_size, view, transform)
+
+    if fit is None or placement is None:
+        return 0, 0
+
+    pane_w, pane_h = pane_size
+    _, _, width, height = placement.source
+
+    return (
+        _step(width, fit.picture_w > pane_w + _ROUNDING_SLACK),
+        _step(height, fit.picture_h > pane_h + _ROUNDING_SLACK),
     )
 
 
@@ -212,16 +264,84 @@ def _display_size(
     return frame_size
 
 
-def _place(
-    pane: float, picture: float, anchor: float, shift: float, is_beyond_edges: bool
-) -> float:
-    room = pane - picture
-    position = room * anchor + shift
+@dataclass(frozen=True)
+class _Fit:
+    """A frame sized for a pane: the region on show and its scale."""
 
-    if is_beyond_edges:
-        return position
+    x: int
+    y: int
+    region_w: int
+    region_h: int
+    # pane pixels per frame pixel
+    per_x: float
+    per_y: float
+
+    @property
+    def picture_w(self) -> float:
+        return self.region_w * self.per_x
+
+    @property
+    def picture_h(self) -> float:
+        return self.region_h * self.per_y
+
+    @classmethod
+    def of(
+        cls,
+        frame_size: tuple[int, int],
+        pane_size: tuple[int, int],
+        view: ViewParams,
+        transform: VideoTransform | None,
+    ) -> "_Fit | None":
+        frame_w, frame_h = frame_size
+        pane_w, pane_h = pane_size
+
+        if min(frame_w, frame_h, pane_w, pane_h, view.scale) <= 0:
+            return None
+
+        x, y, region_w, region_h = calc_crop_region(frame_size, view.crop)
+        unit_x, unit_y = _frame_pixel_shape(frame_size, transform)
+
+        fit_x = pane_w / (region_w * unit_x)
+        fit_y = pane_h / (region_h * unit_y)
+
+        if view.aspect == VideoAspect.FIT:
+            fit_x = fit_y = max(fit_x, fit_y)
+        elif view.aspect == VideoAspect.NONE:
+            fit_x = fit_y = min(fit_x, fit_y)
+
+        return cls(
+            x=x,
+            y=y,
+            region_w=region_w,
+            region_h=region_h,
+            per_x=fit_x * unit_x * view.scale,
+            per_y=fit_y * unit_y * view.scale,
+        )
+
+
+def _place(pane: float, picture: float, anchor: float, shift: float) -> float:
+    return (pane - picture) * anchor + shift
+
+
+def _hold(position: float, room: float) -> float:
+    """Keep a picture from leaving black beside it, or being cut itself."""
 
     return min(max(position, min(room, 0)), max(room, 0))
+
+
+def _step(shown: float, is_bigger_than_pane: bool) -> int:
+    step = max(round(shown * SHIFT_STEP), 1)
+
+    return -step if is_bigger_than_pane else step
+
+
+def _held_shift(shift: int, room: float, anchor: float, per: float) -> int:
+    # 0 is always within: no shift leaves the picture at the anchor's place
+    # in the room, which is inside it
+    lowest = math.ceil((min(room, 0) - room * anchor) / per - _ROUNDING_SLACK)
+    highest = math.floor((max(room, 0) - room * anchor) / per + _ROUNDING_SLACK)
+
+    return min(max(shift, lowest), highest)
 
 
 def _clip(start: float, length: float, pane: float) -> tuple[float, float]:

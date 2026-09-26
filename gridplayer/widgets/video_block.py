@@ -70,12 +70,14 @@ from gridplayer.params.static import (
     PLAYER_ID_LENGTH,
     SUBTITLE_DELAY_STEP_MS,
     NetworkRetryMode,
+    VideoAnchor,
     VideoAspect,
     VideoCrop,
     VideoDeinterlace,
     VideoDeinterlaceMode,
     VideoEndAction,
     VideoInitialState,
+    VideoShift,
     VideoTransform,
 )
 from gridplayer.settings import Settings
@@ -2680,6 +2682,8 @@ class VideoBlock(QWidget):
         self.set_pause(snapshot.is_paused)
         self.set_scale(snapshot.scale, is_silent=True)
         self.set_crop(snapshot.crop, is_silent=True)
+        self.set_anchor(snapshot.anchor)
+        self.set_shift(snapshot.shift, is_silent=True)
         self.set_volume(snapshot.volume)
 
         self.seek(snapshot.current_position)
@@ -3369,6 +3373,46 @@ class VideoBlock(QWidget):
             self.info_change.emit(
                 "Crop: L{} T{} R{} B{}".format(*self.video_params.crop)
             )
+
+    @only_with_video_tacks
+    @only_initialized
+    def set_anchor(self, anchor: VideoAnchor):
+        """Put the picture against a side or corner, or in the middle.
+
+        Picking one is putting the picture there, so a move made from the
+        one before is let go of.
+        """
+
+        self.video_params.anchor = anchor
+        self.video_driver.set_anchor(anchor)
+
+        self.set_shift(VideoShift(0, 0), is_silent=True)
+
+    @only_with_video_tacks
+    @only_initialized
+    def set_shift(self, shift: VideoShift, is_silent=False):
+        if self.video_params.shift != shift:
+            self.video_params.shift = shift
+            self.video_driver.set_shift(shift)
+
+        if not is_silent:
+            self.info_change.emit("Position: X{} Y{}".format(*shift))
+
+    @only_with_video_tacks
+    @only_initialized
+    def shift_by(self, steps_x: int, steps_y: int):
+        """Move so many steps right and down, left and up negative.
+
+        Where the picture is bigger than the pane, that is looking further
+        that way; where it is smaller, the picture goes that way itself.
+        """
+
+        self.set_shift(self.video_driver.shifted_by(steps_x, steps_y))
+
+    @only_with_video_tacks
+    @only_initialized
+    def shift_reset(self):
+        self.set_shift(VideoShift(0, 0))
 
     @only_initialized
     @only_seekable

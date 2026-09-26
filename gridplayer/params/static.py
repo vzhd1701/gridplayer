@@ -17,6 +17,10 @@ FONT_SIZE_BIG_INFO = 22 if env.IS_MACOS else 16
 
 MIN_SCALE = 1.0
 MAX_SCALE = 10.0
+
+# How far one move takes the picture: this much of the part on show, so a
+# press goes as far on screen whatever the video's size or the zoom.
+SHIFT_STEP = 0.05
 MIN_RATE = 0.2
 MAX_RATE = 12
 
@@ -98,6 +102,8 @@ class ViewParams(NamedTuple):
     aspect: VideoAspect = VideoAspect.FIT
     scale: float = 1.0
     crop: VideoCrop = VideoCrop(0, 0, 0, 0)
+    anchor: VideoAnchor = VideoAnchor.CENTER
+    shift: VideoShift = VideoShift(0, 0)
 
 
 class VideoTransform(AutoName):

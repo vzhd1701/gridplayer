@@ -458,5 +458,8 @@ class VideoFrameVLCSWSP(VideoFrameVLC):
 
         self.video_surface.set_view(self._view, self._transform, self._frame_size())
 
+    def _view_frame_size(self):
+        return self.video_surface.picture_size()
+
     def set_log_level_vlc(self, log_level):
         self.video_driver.set_log_level_vlc(log_level)

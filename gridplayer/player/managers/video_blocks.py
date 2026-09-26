@@ -9,6 +9,7 @@ from gridplayer.models.video import Video
 from gridplayer.params.static import (
     AudioChannelMode,
     SeekSyncMode,
+    VideoAnchor,
     VideoAspect,
     VideoEndAction,
     VideoTransform,
@@ -144,6 +145,10 @@ class VideoBlocksManager(ManagerBase):
 
     all_crop = pyqtSignal(int, int, int, int)
     all_crop_reset = pyqtSignal()
+
+    all_set_anchor = pyqtSignal(VideoAnchor)
+    all_shift_by = pyqtSignal(int, int)
+    all_shift_reset = pyqtSignal()
 
     all_set_aspect = pyqtSignal(VideoAspect)
     all_set_transform = pyqtSignal(VideoTransform)
@@ -551,6 +556,9 @@ class VideoBlocksManager(ManagerBase):
             (self.all_scale_reset, vb.scale_reset),
             (self.all_crop, vb.crop),
             (self.all_crop_reset, vb.crop_reset),
+            (self.all_set_anchor, vb.set_anchor),
+            (self.all_shift_by, vb.shift_by),
+            (self.all_shift_reset, vb.shift_reset),
             (self.all_set_aspect, vb.set_aspect),
             (self.all_set_transform, vb.set_transform),
             (self.all_take_screenshot, vb.take_screenshot),

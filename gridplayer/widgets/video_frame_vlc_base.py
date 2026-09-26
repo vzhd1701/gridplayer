@@ -10,12 +10,19 @@ from PyQt5.QtWidgets import QLabel, QStackedLayout, QWidget
 from gridplayer.params import env
 from gridplayer.params.static import (
     HWCropBorderOffset,
+    VideoAnchor,
     VideoAspect,
+    VideoShift,
     VideoTransform,
     ViewParams,
 )
 from gridplayer.settings import Settings
-from gridplayer.utils.aspect_calc import ViewPlacement, calc_view_placement
+from gridplayer.utils.aspect_calc import (
+    ViewPlacement,
+    calc_view_placement,
+    calc_view_shift,
+    calc_view_step,
+)
 from gridplayer.utils.qt import MILLISECONDS, QABC, qt_connect
 from gridplayer.utils.screenshots import ScreenshotView
 from gridplayer.vlc_player.static import Media, MediaInput
@@ -551,7 +558,9 @@ class VideoFrameVLC(QWidget, metaclass=QABC):
     def load_video(self, media_input: MediaInput) -> None:
         video = media_input.video
 
-        self._view = ViewParams(video.aspect_mode, video.scale, video.crop)
+        self._view = ViewParams(
+            video.aspect_mode, video.scale, video.crop, video.anchor, video.shift
+        )
         # changing it reloads the video, so it holds for as long as this does
         self._transform = video.transform
 
@@ -637,11 +646,36 @@ class VideoFrameVLC(QWidget, metaclass=QABC):
         """Where the video is on show in the pane, and what of it."""
 
         return calc_view_placement(
-            self._frame_size(), self._pane_size(), self._view, self._transform
+            self._view_frame_size(), self._pane_size(), self._view, self._transform
         )
+
+    def shifted_by(self, steps_x: int, steps_y: int) -> VideoShift:
+        """The shift a move of so many steps right and down comes to.
+
+        Left and up are negative; calc_view_step says which way the picture
+        goes. From where the picture stands, and held within the edges
+        again, so what is kept is where the picture really goes.
+        """
+
+        frame_size, pane_size = self._view_frame_size(), self._pane_size()
+        shift = calc_view_shift(frame_size, pane_size, self._view, self._transform)
+        step_x, step_y = calc_view_step(
+            frame_size, pane_size, self._view, self._transform
+        )
+
+        moved = self._view._replace(
+            shift=VideoShift(shift.X + steps_x * step_x, shift.Y + steps_y * step_y)
+        )
+
+        return calc_view_shift(frame_size, pane_size, moved, self._transform)
 
     def _pane_size(self) -> tuple[int, int]:
         return self.size().width(), self.size().height()
+
+    def _view_frame_size(self) -> tuple[int, int]:
+        """The frame's size in the pixels the view is in."""
+
+        return self._frame_size()
 
     def _frame_size(self) -> tuple[int, int]:
         """The frame's size as the video output gets it, (0, 0) if unknown."""
@@ -693,6 +727,16 @@ class VideoFrameVLC(QWidget, metaclass=QABC):
 
     def set_crop(self, crop) -> None:
         self._view = self._view._replace(crop=crop)
+
+        self.adjust_view()
+
+    def set_anchor(self, anchor: VideoAnchor) -> None:
+        self._view = self._view._replace(anchor=anchor)
+
+        self.adjust_view()
+
+    def set_shift(self, shift: VideoShift) -> None:
+        self._view = self._view._replace(shift=shift)
 
         self.adjust_view()
 

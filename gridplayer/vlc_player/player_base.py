@@ -1262,13 +1262,15 @@ class VlcPlayerBase(ABC):
         # (cb_vout) and _adjust_view_initial use the real laid-out size, not a
         # stale pre-layout value captured at load. Live streams stop/play on
         # pause, which recreates the vout and re-applies from media_input —
-        # crop/aspect/scale must be persisted here too (the widget copy of
+        # the view must be persisted here too (the widget copy of
         # Video is a different object after the multiprocess pickle).
         if self.media_input is not None:
             self.media_input.size = size
             self.media_input.video.aspect_mode = view.aspect
             self.media_input.video.scale = view.scale
             self.media_input.video.crop = view.crop
+            self.media_input.video.anchor = view.anchor
+            self.media_input.video.shift = view.shift
 
         if self.media is None:
             # video not loaded yet, video frame resized on init
@@ -1405,7 +1407,9 @@ class VlcPlayerBase(ABC):
 
         self.adjust_view(
             size=self.media_input.size,
-            view=ViewParams(video.aspect_mode, video.scale, video.crop),
+            view=ViewParams(
+                video.aspect_mode, video.scale, video.crop, video.anchor, video.shift
+            ),
         )
 
     def _set_pause_initial(self, is_paused):

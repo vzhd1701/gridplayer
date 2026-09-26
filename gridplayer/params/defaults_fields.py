@@ -20,6 +20,7 @@ from gridplayer.params.static import (
     SubtitleOutline,
     SubtitleTrackMode,
     UnsavedChangesMode,
+    VideoAnchor,
     VideoAspect,
     VideoDeinterlace,
     VideoDeinterlaceMode,
@@ -170,6 +171,20 @@ def _aspects() -> dict:
         VideoAspect.FIT: translate("Aspect", "Fit"),
         VideoAspect.STRETCH: translate("Aspect", "Stretch"),
         VideoAspect.NONE: translate("Aspect", "None"),
+    }
+
+
+def _anchors() -> dict:
+    return {
+        VideoAnchor.CENTER: translate("Alignment", "Center"),
+        VideoAnchor.TOP: translate("Alignment", "Top"),
+        VideoAnchor.BOTTOM: translate("Alignment", "Bottom"),
+        VideoAnchor.LEFT: translate("Alignment", "Left"),
+        VideoAnchor.RIGHT: translate("Alignment", "Right"),
+        VideoAnchor.TOP_LEFT: translate("Alignment", "Top Left"),
+        VideoAnchor.TOP_RIGHT: translate("Alignment", "Top Right"),
+        VideoAnchor.BOTTOM_LEFT: translate("Alignment", "Bottom Left"),
+        VideoAnchor.BOTTOM_RIGHT: translate("Alignment", "Bottom Right"),
     }
 
 
@@ -694,6 +709,14 @@ VIDEO_FIELDS: tuple[SettingField, ...] = (
         section=translate("SettingsDialog", "Video"),
         label=translate("SettingsDialog", "Crop"),
         spin_max=9999,
+    ),
+    _f(
+        settings_key="video_defaults/anchor",
+        video_attr="anchor",
+        kind=FieldKind.COMBO,
+        section=translate("SettingsDialog", "Video"),
+        label=translate("SettingsDialog", "Alignment"),
+        combo_values=_anchors,
     ),
     _f(
         settings_key="video_defaults/transform",

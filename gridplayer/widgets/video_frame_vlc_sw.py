@@ -285,3 +285,6 @@ class VideoFrameVLCSW(VideoFrameVLCProcess):
             return
 
         self.video_surface.set_view(self._view, self._transform, self._frame_size())
+
+    def _view_frame_size(self):
+        return self.video_surface.picture_size()

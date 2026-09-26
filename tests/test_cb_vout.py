@@ -1,7 +1,14 @@
 from unittest.mock import Mock
 
 import gridplayer.vlc_player.player_base as player_base_mod
-from gridplayer.params.static import VideoAspect, VideoCrop, VideoTransform, ViewParams
+from gridplayer.params.static import (
+    VideoAnchor,
+    VideoAspect,
+    VideoCrop,
+    VideoShift,
+    VideoTransform,
+    ViewParams,
+)
 from gridplayer.vlc_player.player_base import VlcPlayerBase
 from gridplayer.vlc_player.static import Media, VideoTrack
 
@@ -54,6 +61,8 @@ def _make_player(aspect_mode=VideoAspect.FIT, is_audio_only=False):
     media_input.video.aspect_mode = aspect_mode
     media_input.video.scale = 1.0
     media_input.video.crop = VideoCrop(0, 0, 0, 0)
+    media_input.video.anchor = VideoAnchor.CENTER
+    media_input.video.shift = VideoShift(0, 0)
     media_input.video.transform = None
     player.media_input = media_input
 
@@ -263,6 +272,23 @@ def test_adjust_view_crops_a_rotated_frame_at_its_own_size():
     assert media_player.calls == [
         ("aspect_ratio", "9:16"),
         ("crop_geometry", "+160+90+160+90"),
+        ("scale", 0),
+    ]
+
+
+def test_adjust_view_keeps_the_position_for_vout_reapply():
+    """A live stream's vout comes back from media_input, anchor and all."""
+    player, media_player = _make_player()
+    view = ViewParams(VideoAspect.FIT, 2.0, VideoCrop(0, 0, 0, 0), VideoAnchor.TOP_LEFT)
+
+    player.adjust_view(size=(640, 360), view=view)
+    media_player.calls.clear()
+    player._apply_media_input_view()
+
+    assert player.media_input.video.anchor is VideoAnchor.TOP_LEFT
+    assert media_player.calls == [
+        ("aspect_ratio", "16:9"),
+        ("crop_geometry", "+0+0+320+180"),
         ("scale", 0),
     ]
 

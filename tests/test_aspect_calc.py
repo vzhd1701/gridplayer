@@ -13,16 +13,25 @@ from gridplayer.utils.aspect_calc import (
     calc_view_borders,
     calc_view_geometry,
     calc_view_placement,
+    calc_view_shift,
+    calc_view_step,
 )
 
 VIDEO = (1920, 1080)
 PANE = (1600, 900)
 SQUARE = (900, 900)
 NO_CROP = VideoCrop(0, 0, 0, 0)
+NO_SHIFT = VideoShift(0, 0)
 
 
-def _view(aspect=VideoAspect.FIT, scale=1.0, crop=NO_CROP):
-    return ViewParams(aspect, scale, crop)
+def _view(
+    aspect=VideoAspect.FIT,
+    scale=1.0,
+    crop=NO_CROP,
+    anchor=VideoAnchor.CENTER,
+    shift=NO_SHIFT,
+):
+    return ViewParams(aspect, scale, crop, anchor, shift)
 
 
 def _approx(rect):
@@ -74,40 +83,34 @@ class TestPlacementFit:
     )
     def test_the_anchor_picks_what_is_cut_off(self, anchor, source_x):
         # a wide picture in a square pane has room to move across only
-        placement = calc_view_placement(VIDEO, SQUARE, _view(), anchor=anchor)
+        placement = calc_view_placement(VIDEO, SQUARE, _view(anchor=anchor))
 
         assert placement.source == _approx((source_x, 0, 1080, 1080))
         assert placement.target == _approx((0, 0, 900, 900))
 
     def test_the_shift_moves_the_picture(self):
         # the picture moves 100 frame pixels left, so 100 more of its right
-        placement = calc_view_placement(
-            VIDEO, SQUARE, _view(), shift=VideoShift(-100, 0)
-        )
+        placement = calc_view_placement(VIDEO, SQUARE, _view(shift=VideoShift(-100, 0)))
 
         assert placement.source == _approx((520, 0, 1080, 1080))
 
     def test_the_shift_is_counted_from_the_anchor(self):
         placement = calc_view_placement(
-            VIDEO,
-            SQUARE,
-            _view(),
-            anchor=VideoAnchor.LEFT,
-            shift=VideoShift(-100, 0),
+            VIDEO, SQUARE, _view(anchor=VideoAnchor.LEFT, shift=VideoShift(-100, 0))
         )
 
         assert placement.source == _approx((100, 0, 1080, 1080))
 
     @pytest.mark.parametrize("shift", [VideoShift(5000, 0), VideoShift(-5000, 0)])
     def test_the_shift_stops_at_the_edges(self, shift):
-        placement = calc_view_placement(VIDEO, SQUARE, _view(), shift=shift)
+        placement = calc_view_placement(VIDEO, SQUARE, _view(shift=shift))
 
         source_x = 0 if shift.X > 0 else 840
         assert placement.source == _approx((source_x, 0, 1080, 1080))
         assert placement.target == _approx((0, 0, 900, 900))
 
     def test_the_shift_is_held_on_an_axis_with_no_room(self):
-        placement = calc_view_placement(VIDEO, SQUARE, _view(), shift=VideoShift(0, 50))
+        placement = calc_view_placement(VIDEO, SQUARE, _view(shift=VideoShift(0, 50)))
 
         assert placement.source == _approx((420, 0, 1080, 1080))
 
@@ -116,9 +119,7 @@ class TestPlacementFit:
         placement = calc_view_placement(
             VIDEO,
             SQUARE,
-            _view(),
-            anchor=VideoAnchor.LEFT,
-            shift=VideoShift(100, 0),
+            _view(anchor=VideoAnchor.LEFT, shift=VideoShift(100, 0)),
             is_beyond_edges=True,
         )
 
@@ -127,7 +128,7 @@ class TestPlacementFit:
 
     def test_moved_clear_of_the_pane_is_nothing(self):
         placement = calc_view_placement(
-            VIDEO, SQUARE, _view(), shift=VideoShift(0, 2000), is_beyond_edges=True
+            VIDEO, SQUARE, _view(shift=VideoShift(0, 2000)), is_beyond_edges=True
         )
 
         assert placement is None
@@ -150,14 +151,14 @@ class TestPlacementZoom:
 
     def test_zooms_about_the_anchor(self):
         placement = calc_view_placement(
-            VIDEO, PANE, _view(scale=2.0), anchor=VideoAnchor.BOTTOM_RIGHT
+            VIDEO, PANE, _view(scale=2.0, anchor=VideoAnchor.BOTTOM_RIGHT)
         )
 
         assert placement.source == _approx((960, 540, 960, 540))
 
     def test_pans_across_the_zoomed_picture(self):
         placement = calc_view_placement(
-            VIDEO, PANE, _view(scale=2.0), shift=VideoShift(-200, 100)
+            VIDEO, PANE, _view(scale=2.0, shift=VideoShift(-200, 100))
         )
 
         assert placement.source == _approx((680, 170, 960, 540))
@@ -198,14 +199,14 @@ class TestPlacementNoneAndStretch:
     )
     def test_none_stands_where_the_anchor_says(self, anchor, top):
         placement = calc_view_placement(
-            VIDEO, SQUARE, _view(VideoAspect.NONE), anchor=anchor
+            VIDEO, SQUARE, _view(VideoAspect.NONE, anchor=anchor)
         )
 
         assert placement.target == _approx((0, top, 900, 506.25))
 
     def test_none_is_kept_whole_inside_the_pane(self):
         placement = calc_view_placement(
-            VIDEO, SQUARE, _view(VideoAspect.NONE), shift=VideoShift(0, -2000)
+            VIDEO, SQUARE, _view(VideoAspect.NONE, shift=VideoShift(0, -2000))
         )
 
         assert placement.target == _approx((0, 0, 900, 506.25))
@@ -213,7 +214,7 @@ class TestPlacementNoneAndStretch:
     @pytest.mark.parametrize("anchor", list(VideoAnchor))
     def test_stretch_has_no_room_to_move(self, anchor):
         placement = calc_view_placement(
-            VIDEO, SQUARE, _view(VideoAspect.STRETCH), anchor=anchor
+            VIDEO, SQUARE, _view(VideoAspect.STRETCH, anchor=anchor)
         )
 
         assert placement.source == _approx((0, 0, 1920, 1080))
@@ -221,7 +222,7 @@ class TestPlacementNoneAndStretch:
 
     def test_stretch_zoomed_can_pan(self):
         placement = calc_view_placement(
-            VIDEO, SQUARE, _view(VideoAspect.STRETCH, scale=2.0), anchor=VideoAnchor.TOP
+            VIDEO, SQUARE, _view(VideoAspect.STRETCH, scale=2.0, anchor=VideoAnchor.TOP)
         )
 
         assert placement.source == _approx((480, 0, 960, 540))
@@ -287,6 +288,89 @@ class TestPlacementRotation:
         )
 
         assert placement.source == _approx((0, 0, 640, 360))
+
+
+class TestShiftHeldAtTheEdges:
+    """Where a move starts from: the shift the picture really stands at."""
+
+    def test_within_the_edges_it_is_as_asked(self):
+        view = _view(shift=VideoShift(-100, 0))
+
+        assert calc_view_shift(VIDEO, SQUARE, view) == VideoShift(-100, 0)
+
+    @pytest.mark.parametrize(
+        ("shift", "held"),
+        [
+            # 700 pane pixels of room across, 840 frame pixels, half each way
+            (VideoShift(5000, 50), VideoShift(420, 0)),
+            (VideoShift(-5000, -50), VideoShift(-420, 0)),
+        ],
+    )
+    def test_past_an_edge_it_is_where_the_picture_stops(self, shift, held):
+        assert calc_view_shift(VIDEO, SQUARE, _view(shift=shift)) == held
+
+    @pytest.mark.parametrize(
+        ("shift", "held"),
+        [
+            (VideoShift(300, 0), VideoShift(0, 0)),
+            (VideoShift(-5000, 0), VideoShift(-840, 0)),
+        ],
+    )
+    def test_it_is_counted_from_the_anchor(self, shift, held):
+        """Against the left edge the picture can only go left."""
+
+        view = _view(anchor=VideoAnchor.LEFT, shift=shift)
+
+        assert calc_view_shift(VIDEO, SQUARE, view) == held
+
+    def test_a_smaller_picture_moves_about_inside_the_pane(self):
+        # 900x506.25 in a 900x900 pane, 420 frame pixels of room up or down
+        view = _view(VideoAspect.NONE, shift=VideoShift(10, 1000))
+
+        assert calc_view_shift(VIDEO, SQUARE, view) == VideoShift(0, 420)
+
+    def test_nothing_to_work_from_leaves_it_as_it_is(self):
+        view = _view(shift=VideoShift(5000, 0))
+
+        assert calc_view_shift((0, 0), SQUARE, view) == VideoShift(5000, 0)
+
+
+class TestStep:
+    """What a move right and a move down add to the shift."""
+
+    def test_is_a_share_of_what_is_on_show(self):
+        # 1080x1080 of it on show in a square pane
+        _, down = calc_view_step(VIDEO, SQUARE, _view())
+
+        assert down == 54
+
+    def test_is_shorter_zoomed_in(self):
+        assert calc_view_step(VIDEO, SQUARE, _view(scale=2.0)) == (-27, -27)
+
+    def test_looks_further_that_way_where_the_picture_is_bigger(self):
+        """Going right brings more of its right side in: it slides left."""
+
+        across, _ = calc_view_step(VIDEO, SQUARE, _view())
+
+        assert across == -54
+
+    def test_moves_the_picture_that_way_where_it_is_smaller(self):
+        # all 1920x1080 on show, letterboxed, with room up and down
+        assert calc_view_step(VIDEO, SQUARE, _view(VideoAspect.NONE)) == (96, 54)
+
+    def test_takes_each_way_on_its_own(self):
+        # zoomed out of a tall pane: bigger across, smaller down
+        view = _view(VideoAspect.NONE, scale=1.5)
+
+        across, down = calc_view_step(VIDEO, (900, 2000), view)
+
+        assert across < 0 < down
+
+    def test_is_at_least_a_pixel(self):
+        assert calc_view_step((10, 10), SQUARE, _view(scale=10.0)) == (-1, -1)
+
+    def test_is_nothing_with_nothing_to_work_from(self):
+        assert calc_view_step((0, 0), SQUARE, _view()) == (0, 0)
 
 
 class TestPlacementNothing:
@@ -458,6 +542,25 @@ class TestViewGeometry:
             assert _shown_ratio(override, VIDEO, _borders(geometry)) == pytest.approx(
                 round(target_w) / round(target_h), rel=1e-4
             )
+
+    @pytest.mark.parametrize(
+        ("anchor", "geometry"),
+        [
+            (VideoAnchor.LEFT, "+0+0+840+0"),
+            (VideoAnchor.CENTER, "+420+0+420+0"),
+            (VideoAnchor.BOTTOM_RIGHT, "+840+0+0+0"),
+        ],
+    )
+    def test_the_anchor_is_in_the_crop(self, anchor, geometry):
+        assert calc_view_geometry(VIDEO, SQUARE, _view(anchor=anchor)) == (
+            "16:9",
+            geometry,
+        )
+
+    def test_the_shift_is_in_the_crop(self):
+        view = _view(scale=2.0, shift=VideoShift(-200, 100))
+
+        assert calc_view_geometry(VIDEO, PANE, view) == ("16:9", "+680+170+280+370")
 
 
 class TestViewGeometryRotated:

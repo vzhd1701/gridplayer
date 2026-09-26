@@ -34,12 +34,14 @@ from gridplayer.params.static import (
     AudioTrackMode,
     NetworkRetryMode,
     SubtitleTrackMode,
+    VideoAnchor,
     VideoAspect,
     VideoCrop,
     VideoDeinterlace,
     VideoDeinterlaceMode,
     VideoEndAction,
     VideoInitialState,
+    VideoShift,
     VideoTransform,
 )
 from gridplayer.playlist_settings import PlaylistSettings, session_field
@@ -169,6 +171,10 @@ class Video(BaseModel):
         "video_defaults/scale"
     )
     crop: VideoCrop = session_field("video_defaults/crop")
+    anchor: VideoAnchor = session_field("video_defaults/anchor")
+    # where the picture is moved from the anchor, in video pixels; like the
+    # place it was left playing at, nothing a default could say for another
+    shift: VideoShift = VideoShift(0, 0)
     volume: float = session_field("video_defaults/volume")
     transform: VideoTransform = session_field("video_defaults/transform")
     deinterlace: VideoDeinterlace = session_field("video_defaults/deinterlace")
