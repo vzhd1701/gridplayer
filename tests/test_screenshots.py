@@ -12,7 +12,7 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 import pytest
-from PyQt5.QtCore import QEvent, QRect, QSettings
+from PyQt5.QtCore import QEvent, QRect, QSettings, QSize
 from PyQt5.QtGui import QColor, QImage
 from PyQt5.QtWidgets import QApplication
 
@@ -20,12 +20,17 @@ from gridplayer.dialogs import settings as settings_dialog
 from gridplayer.dialogs.settings import SettingsDialog
 from gridplayer.params.actions import ACTIONS
 from gridplayer.params.menu import SECTIONS
-from gridplayer.params.static import ScreenshotFormat, VideoAspect, VideoCrop
+from gridplayer.params.static import (
+    ScreenshotFormat,
+    VideoAspect,
+    VideoCrop,
+    VideoTransform,
+    ViewParams,
+)
 from gridplayer.player.managers.video_blocks import VideoBlocksManager
 from gridplayer.settings import _Settings
 from gridplayer.utils import screenshots
 from gridplayer.utils.app_dir import ENV_USER_DATA_DIR
-from gridplayer.utils.aspect_calc import calc_view_borders, calc_view_geometry
 from gridplayer.utils.cookies import CookieStore
 from gridplayer.utils.screenshots import (
     DEFAULT_STEM,
@@ -45,8 +50,6 @@ from gridplayer.utils.screenshots import (
 from gridplayer.widgets.video_block import VideoBlock
 
 NOW = datetime(2026, 9, 24, 13, 5, 9, tzinfo=timezone.utc)
-
-ZERO_CROP = VideoCrop(0, 0, 0, 0)
 
 
 def _name(template="shot", title="clip.mkv", position_ms=0) -> ScreenshotName:
@@ -209,74 +212,91 @@ class TestNamesTaken:
 class TestTheViewRegion:
     """SW frames are cut the way VLC cuts them on the hardware drivers."""
 
-    @pytest.mark.parametrize("aspect", [VideoAspect.NONE, VideoAspect.STRETCH])
-    def test_only_the_user_crop_outside_fit(self, aspect):
-        crop = VideoCrop(10, 20, 30, 40)
+    def test_nothing_cut_is_nothing_to_do(self):
+        fit = ScreenshotView((400, 300), ViewParams(VideoAspect.FIT))
+        none = ScreenshotView((100, 100), ViewParams(VideoAspect.NONE))
 
-        assert calc_view_borders((800, 600), (400, 400), aspect, crop) == crop
+        assert fit.cut(800, 600) == (None, None)
+        assert none.cut(800, 600) == (None, None)
 
-    def test_fit_takes_the_pane_shape_from_the_middle(self):
-        borders = calc_view_borders((800, 600), (400, 200), VideoAspect.FIT, ZERO_CROP)
+    def test_no_frame_is_nothing_to_do(self):
+        view = ScreenshotView((400, 300), ViewParams(crop=VideoCrop(1, 1, 1, 1)))
 
-        assert borders == VideoCrop(0, 100, 0, 100)
+        assert view.cut(0, 0) == (None, None)
 
-    @pytest.mark.parametrize(
-        ("size", "borders"),
-        [
-            # 788 * 500 / 900 = 437.8, measured 788x437 from VLC
-            ((900, 500), VideoCrop(0, 69, 0, 70)),
-            ((300, 500), VideoCrop(221, 0, 222, 0)),
-        ],
-    )
-    def test_fit_rounds_the_way_vlc_does(self, size, borders):
-        assert calc_view_borders((788, 576), size, VideoAspect.FIT, ZERO_CROP) == (
-            borders
-        )
+    def test_a_frame_vlc_has_cut_is_left(self):
+        view = ScreenshotView((400, 200), None)
 
-    def test_fit_does_it_to_what_the_user_crop_leaves(self):
-        crop = VideoCrop(100, 0, 100, 0)
-
-        borders = calc_view_borders((800, 600), (400, 400), VideoAspect.FIT, crop)
-
-        # 600x600 left, square already
-        assert borders == crop
-
-    def test_it_is_what_vlc_is_told_to_crop(self):
-        """With a user crop, the geometry VLC gets is these very borders."""
-
-        crop = VideoCrop(10, 20, 30, 40)
-
-        for aspect in VideoAspect:
-            borders = calc_view_borders((800, 600), (500, 200), aspect, crop)
-            _, geometry = calc_view_geometry((800, 600), (500, 200), aspect, crop)
-
-            assert geometry == (
-                f"+{borders.Left}+{borders.Top}+{borders.Right}+{borders.Bottom}"
-            )
-
-    def test_nothing_cut_is_no_rect(self):
-        fit = ScreenshotView((400, 300), VideoAspect.FIT, ZERO_CROP)
-        none = ScreenshotView((100, 100), VideoAspect.NONE, ZERO_CROP)
-
-        assert fit.rect(800, 600) is None
-        assert none.rect(800, 600) is None
-
-    def test_no_frame_is_no_rect(self):
-        view = ScreenshotView((400, 300), VideoAspect.FIT, VideoCrop(1, 1, 1, 1))
-
-        assert view.rect(0, 0) is None
+        assert view.cut(800, 600) == (None, None)
 
     def test_it_is_worked_out_for_the_frame_as_it_is(self):
-        """Not for the padded buffer the frame was on show from."""
+        view = ScreenshotView((400, 200), ViewParams(VideoAspect.FIT))
 
-        view = ScreenshotView((400, 200), VideoAspect.FIT, ZERO_CROP)
-
-        assert view.rect(800, 600) == QRect(0, 100, 800, 400)
+        assert view.cut(800, 600) == (QRect(0, 100, 800, 400), None)
 
     def test_the_user_crop_is_in_frame_pixels(self):
-        view = ScreenshotView((400, 400), VideoAspect.NONE, VideoCrop(100, 50, 100, 50))
+        view = ScreenshotView(
+            (400, 400), ViewParams(VideoAspect.NONE, crop=VideoCrop(100, 50, 100, 50))
+        )
 
-        assert view.rect(788, 576) == QRect(100, 50, 588, 476)
+        assert view.cut(788, 576) == (QRect(100, 50, 588, 476), None)
+
+    def test_the_zoom_is_cut_out_too(self):
+        """What VLC crops to on the hardware drivers, zoom and all."""
+
+        view = ScreenshotView((400, 300), ViewParams(VideoAspect.FIT, 2.0))
+
+        assert view.cut(800, 600) == (QRect(200, 150, 400, 300), None)
+
+    def test_a_frame_scaled_up_by_the_decoder_is_sized_back(self):
+        """640x360 comes drawn from a 640x386 frame, the picture scaled up."""
+
+        view = ScreenshotView(
+            (640, 360), ViewParams(VideoAspect.NONE), None, (640, 360)
+        )
+
+        assert view.cut(640, 386) == (None, QSize(640, 360))
+
+    def test_a_cut_of_a_frame_scaled_up_is_made_in_its_pixels(self):
+        view = ScreenshotView((640, 360), ViewParams(scale=2.0), None, (640, 360))
+
+        # the middle 320x180 of the picture, 96.5 rows down the frame
+        assert view.cut(640, 386) == (QRect(160, 96, 320, 193), QSize(320, 180))
+
+    def test_a_rotated_frame_is_shaped_back(self):
+        view = ScreenshotView((360, 640), None, VideoTransform.ROTATE_90, (640, 360))
+
+        assert view.cut(640, 360) == (None, QSize(360, 640))
+
+    def test_a_cut_of_a_rotated_frame_is_shaped_back(self):
+        # a 640x114 band of the squeezed frame is 360x203 of the picture
+        view = ScreenshotView((640, 360), None, VideoTransform.TRANSPOSE, (640, 360))
+
+        assert view.cut(640, 114) == (None, QSize(360, 203))
+
+    def test_a_rotated_frame_drawn_here_is_shaped_back(self):
+        view = ScreenshotView(
+            (360, 640),
+            ViewParams(VideoAspect.NONE),
+            VideoTransform.ROTATE_90,
+            (640, 360),
+        )
+
+        assert view.cut(640, 386) == (None, QSize(360, 640))
+
+    @pytest.mark.parametrize(
+        "transform",
+        [VideoTransform.NONE, VideoTransform.HFLIP, VideoTransform.ROTATE_180, None],
+    )
+    def test_an_unrotated_frame_keeps_its_shape(self, transform):
+        view = ScreenshotView((640, 360), None, transform, (640, 360))
+
+        assert view.cut(640, 360) == (None, None)
+
+    def test_a_rotation_of_a_frame_of_no_size_is_left(self):
+        view = ScreenshotView((640, 360), None, VideoTransform.ROTATE_90)
+
+        assert view.cut(640, 360) == (None, None)
 
 
 class TestSaving:
@@ -311,7 +331,9 @@ class TestSaving:
 
     @pytest.mark.parametrize("image_format", list(ScreenshotFormat))
     def test_the_view_is_cut_out(self, tmp_path, image_format):
-        view = ScreenshotView((100, 100), VideoAspect.NONE, VideoCrop(10, 0, 10, 10))
+        view = ScreenshotView(
+            (100, 100), ViewParams(VideoAspect.NONE, crop=VideoCrop(10, 0, 10, 10))
+        )
 
         path = save_screenshot(
             _frame_file(tmp_path, 40, 20), tmp_path, _name(), image_format, 90, view
@@ -322,13 +344,35 @@ class TestSaving:
 
     def test_a_view_that_keeps_it_all_copies_the_png(self, tmp_path):
         source = _frame_file(tmp_path)
-        view = ScreenshotView((32, 16), VideoAspect.FIT, ZERO_CROP)
+        view = ScreenshotView((32, 16), ViewParams(VideoAspect.FIT))
 
         path = save_screenshot(
             source, tmp_path, _name(), ScreenshotFormat.PNG, 90, view
         )
 
         assert path.read_bytes() == Path(source).read_bytes()
+
+    def test_a_png_vlc_cut_is_copied_as_it_is(self, tmp_path):
+        source = _frame_file(tmp_path)
+        view = ScreenshotView((32, 16), None, VideoTransform.HFLIP, (32, 16))
+
+        path = save_screenshot(
+            source, tmp_path, _name(), ScreenshotFormat.PNG, 90, view
+        )
+
+        assert path.read_bytes() == Path(source).read_bytes()
+
+    @pytest.mark.parametrize("image_format", list(ScreenshotFormat))
+    def test_a_rotated_frame_is_saved_in_its_shape(self, tmp_path, image_format):
+        """VLC's snapshot of a rotated video is squeezed into the unrotated size."""
+
+        view = ScreenshotView((36, 64), None, VideoTransform.ROTATE_90, (64, 36))
+
+        path = save_screenshot(
+            _frame_file(tmp_path, 64, 36), tmp_path, _name(), image_format, 90, view
+        )
+
+        assert QImage(str(path)).size() == QSize(36, 64)
 
     def test_a_frame_in_memory_is_saved_too(self, tmp_path):
         """Where VLC had nothing to give, the frame on show is saved instead."""

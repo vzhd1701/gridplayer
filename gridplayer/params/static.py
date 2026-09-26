@@ -72,6 +72,34 @@ class VideoCrop(NamedTuple):
     Bottom: int
 
 
+class VideoAnchor(AutoName):
+    CENTER = auto()
+    TOP = auto()
+    BOTTOM = auto()
+    LEFT = auto()
+    RIGHT = auto()
+    TOP_LEFT = auto()
+    TOP_RIGHT = auto()
+    BOTTOM_LEFT = auto()
+    BOTTOM_RIGHT = auto()
+
+
+class VideoShift(NamedTuple):
+    X: int
+    Y: int
+
+
+class ViewParams(NamedTuple):
+    """How a video is fitted into its pane, as one value.
+
+    What every view update carries from the widget to the player.
+    """
+
+    aspect: VideoAspect = VideoAspect.FIT
+    scale: float = 1.0
+    crop: VideoCrop = VideoCrop(0, 0, 0, 0)
+
+
 class VideoTransform(AutoName):
     ROTATE_90 = auto()
     ROTATE_180 = auto()
@@ -81,6 +109,18 @@ class VideoTransform(AutoName):
     TRANSPOSE = auto()
     ANTITRANSPOSE = auto()
     NONE = auto()
+
+
+# The transforms that turn the picture on its side. VLC 3 still hands the
+# frame over at its unrotated size, with the turned picture squeezed into it.
+ROTATION_TRANSFORMS = frozenset(
+    {
+        VideoTransform.ROTATE_90,
+        VideoTransform.ROTATE_270,
+        VideoTransform.TRANSPOSE,
+        VideoTransform.ANTITRANSPOSE,
+    }
+)
 
 
 class VideoDeinterlace(AutoName):

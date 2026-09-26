@@ -149,7 +149,7 @@ class PlayerProcessSingleVLCSW(VlcPlayerThreaded):
         if self.decoder is not None:
             self.decoder.is_paused = is_paused
 
-    def adjust_view(self, size, aspect, scale, crop):
+    def _apply_view(self, size, view):
         """Done by the widget"""
 
     def notify_playback_status_changed(self, is_paused):
@@ -270,18 +270,18 @@ class VideoFrameVLCSW(VideoFrameVLCProcess):
         self.video_driver.set_pause(True)
 
     def shown_frame_image(self):
-        track = self.media.cur_video_track if self.media else None
-        visible_size = track.video_dimensions if track else None
-
-        return self.video_surface.frame_image(visible_size)
+        return self.video_surface.frame_image()
 
     def screenshot_view(self):
-        size = (self.size().width(), self.size().height())
-
-        return ScreenshotView(size, self._aspect, self._crop)
+        return ScreenshotView(
+            self._pane_size(),
+            self._view,
+            self._transform,
+            self.video_surface.picture_size(),
+        )
 
     def adjust_view(self):
         if super().adjust_view():
             return
 
-        self.video_surface.set_view(self._aspect, self._scale, self._crop)
+        self.video_surface.set_view(self._view, self._transform, self._frame_size())

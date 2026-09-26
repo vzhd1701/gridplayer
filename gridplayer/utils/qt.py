@@ -1,18 +1,8 @@
 from abc import ABCMeta
-from types import MappingProxyType
 
-from PyQt5.QtCore import QCoreApplication, QObject, Qt
+from PyQt5.QtCore import QCoreApplication, QObject
 from PyQt5.QtWidgets import QApplication
 
-from gridplayer.params.static import VideoAspect
-
-QT_ASPECT_MAP = MappingProxyType(
-    {
-        VideoAspect.FIT: Qt.KeepAspectRatioByExpanding,
-        VideoAspect.STRETCH: Qt.IgnoreAspectRatio,
-        VideoAspect.NONE: Qt.KeepAspectRatio,
-    }
-)
 QT_LOG_IGNORED = ("requestActivate() called for",)
 
 # What a signal carrying milliseconds has to be declared as. PyQt maps a

@@ -1,12 +1,13 @@
 from types import SimpleNamespace
 
 import pytest
-from PyQt5.QtCore import QSize, Qt
+from PyQt5.QtCore import QMargins, QSize, Qt
 from PyQt5.QtGui import QPixmap
 from PyQt5.QtWidgets import QApplication, QDialog
 
 from gridplayer.dialogs.crop import QCompactCropPicker, SetCropDialog
 from gridplayer.params.static import VideoAspect, VideoCrop, VideoTransform
+from gridplayer.utils.aspect_calc import ViewPlacement
 from gridplayer.widgets.video_frame_vlc_base import PauseSnapshot
 
 
@@ -194,17 +195,55 @@ def test_dialog_value_mode_edits_without_block():
     assert dialog._spin_crop() == VideoCrop(1, 2, 3, 4)
 
 
-def test_pause_snapshot_does_not_crop_displayed_frame():
-    """VLC snapshots the already-cropped output; scaling must not crop again."""
+def _snapshot(width, height):
     snapshot = PauseSnapshot()
-    pixmap = QPixmap(640, 360)
+    pixmap = QPixmap(width, height)
     pixmap.fill(Qt.black)
     snapshot._snapshot_pixmap = pixmap
+    return snapshot
 
-    snapshot.adjust_view(QSize(640, 360), VideoAspect.FIT, 1.0)
+
+def test_pause_snapshot_does_not_crop_displayed_frame():
+    """VLC snapshots the already-cropped output; scaling must not crop again."""
+    snapshot = _snapshot(640, 360)
+
+    placement = ViewPlacement((0, 0, 640, 360), (0, 0, 640, 360))
+    snapshot.adjust_view(QSize(640, 360), placement)
 
     result = snapshot.pixmap()
     assert (result.width(), result.height()) == (640, 360)
+
+
+def test_pause_snapshot_does_not_zoom_what_vlc_zoomed_already():
+    """The zoom is in VLC's crop, so its snapshot is the zoomed part."""
+    snapshot = _snapshot(320, 180)
+
+    placement = ViewPlacement((160, 90, 320, 180), (0, 0, 640, 360))
+    snapshot.adjust_view(QSize(640, 360), placement)
+
+    result = snapshot.pixmap()
+    assert (result.width(), result.height()) == (640, 360)
+
+
+def test_pause_snapshot_is_stretched_over_where_the_video_was():
+    """A rotated video's snapshot comes squeezed into the unrotated size."""
+    snapshot = _snapshot(640, 360)
+
+    placement = ViewPlacement((0, 0, 640, 360), (140, 0, 360, 640))
+    snapshot.adjust_view(QSize(640, 640), placement)
+
+    result = snapshot.pixmap()
+    assert (result.width(), result.height()) == (360, 640)
+    assert snapshot.contentsMargins() == QMargins(140, 0, 140, 0)
+
+
+def test_pause_snapshot_without_a_placement_fits_the_pane():
+    snapshot = _snapshot(640, 360)
+
+    snapshot.adjust_view(QSize(320, 320), None)
+
+    result = snapshot.pixmap()
+    assert (result.width(), result.height()) == (320, 180)
 
 
 def test_compact_picker_opens_value_mode_dialog(mocker):

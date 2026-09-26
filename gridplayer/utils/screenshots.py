@@ -31,10 +31,15 @@ from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 
-from PyQt5.QtCore import QObject, QRect, QRunnable, QThreadPool, pyqtSignal
+from PyQt5.QtCore import QObject, QRect, QRunnable, QSize, Qt, QThreadPool, pyqtSignal
 from PyQt5.QtGui import QImage, QImageReader
 
-from gridplayer.params.static import ScreenshotFormat, VideoAspect, VideoCrop
+from gridplayer.params.static import (
+    ROTATION_TRANSFORMS,
+    ScreenshotFormat,
+    VideoTransform,
+    ViewParams,
+)
 from gridplayer.utils.app_dir import get_app_data_dir
 from gridplayer.utils.aspect_calc import calc_crop_region, calc_view_borders
 
@@ -283,33 +288,69 @@ def reserve_path(directory: Path, name: ScreenshotName, extension: str) -> Path:
 
 @dataclass(frozen=True)
 class ScreenshotView:
-    """How a frame is on show, for cutting a screenshot down to the same.
+    """How a frame is on show, for making a screenshot the same picture.
 
-    Only frames drawn here need it. The hardware drivers have VLC crop the
-    frame to the view, and its snapshot comes out cropped with it.
+    The frame size is the frame's in video pixels, which is what the view
+    is worked out in; (0, 0) where it isn't known. The view is what to cut
+    the frame down to, or None where VLC has done that already: the
+    hardware drivers have it crop the frame to the view, and its snapshot
+    comes out cropped with it, in video pixels.
+
+    The frame drawn here is handed over as it came to be drawn, which is
+    scaled up to a size the decoder likes and so not in video pixels; and
+    a rotated one either way is at its unrotated size with the turned
+    picture squeezed into it. The screenshot is put back in shape.
     """
 
     size: tuple[int, int]
-    aspect: VideoAspect
-    crop: VideoCrop
+    view: ViewParams | None = None
+    transform: VideoTransform | None = VideoTransform.NONE
+    frame_size: tuple[int, int] = (0, 0)
 
-    def rect(self, width: int, height: int) -> QRect | None:
-        """What of a frame this size the view keeps, None for all of it.
+    def cut(self, width: int, height: int) -> tuple[QRect | None, QSize | None]:
+        """What of an image this size to keep, and what size to make it.
 
-        Worked out for the frame as it is, not as it was on show: the
-        buffer drawn from is padded out to what the decoder likes, which
-        the PNG VLC writes is not.
+        None for either where it is fine as it is.
         """
 
         if width <= 0 or height <= 0:
-            return None
+            return None, None
 
-        borders = calc_view_borders((width, height), self.size, self.aspect, self.crop)
+        if self.view is None:
+            return None, self._reshaped((width, height), QSize(width, height))
 
-        if not any(borders):
-            return None
+        frame = self.frame_size if all(self.frame_size) else (width, height)
+        borders = calc_view_borders(frame, self.size, self.view, self.transform)
+        x, y, cut_w, cut_h = calc_crop_region(frame, borders)
 
-        return QRect(*calc_crop_region((width, height), borders))
+        scale_x, scale_y = width / frame[0], height / frame[1]
+        rect = QRect(
+            round(x * scale_x),
+            round(y * scale_y),
+            max(round(cut_w * scale_x), 1),
+            max(round(cut_h * scale_y), 1),
+        )
+
+        if rect == QRect(0, 0, width, height):
+            rect = None
+
+        cut_size = rect.size() if rect is not None else QSize(width, height)
+
+        return rect, self._reshaped((cut_w, cut_h), cut_size)
+
+    def _reshaped(self, size: tuple[int, int], cut_size: QSize) -> QSize | None:
+        """The size a cut this many video pixels is, None if it is that."""
+
+        width, height = size
+        frame_w, frame_h = self.frame_size
+
+        if self.transform in ROTATION_TRANSFORMS and frame_w > 0 and frame_h > 0:
+            width = max(round(width * frame_h / frame_w), 1)
+            height = max(round(height * frame_w / frame_h), 1)
+
+        shaped = QSize(width, height)
+
+        return None if shaped == cut_size else shaped
 
 
 def save_screenshot(
@@ -324,7 +365,8 @@ def save_screenshot(
 
     The source is a PNG file VLC wrote, or the frame itself where VLC could
     not give one. The view is what to cut it down to, where VLC left the
-    cropping to us. A PNG file wanted as it is gets copied untouched.
+    cropping to us, and how to shape a rotated one back. A PNG file wanted
+    as it is gets copied untouched.
     """
 
     directory.mkdir(parents=True, exist_ok=True)
@@ -352,9 +394,16 @@ def _write_frame(
     # the header is enough to tell whether there is anything to cut
     size = QImageReader(source).size() if is_file else source.size()
 
-    rect = view.rect(size.width(), size.height()) if view is not None else None
+    rect, shape = (
+        (None, None) if view is None else view.cut(size.width(), size.height())
+    )
 
-    if is_file and image_format == ScreenshotFormat.PNG and rect is None:
+    if (
+        is_file
+        and image_format == ScreenshotFormat.PNG
+        and rect is None
+        and shape is None
+    ):
         shutil.copyfile(source, path)
         return
 
@@ -365,6 +414,9 @@ def _write_frame(
 
     if rect is not None:
         image = image.copy(rect)
+
+    if shape is not None:
+        image = image.scaled(shape, Qt.IgnoreAspectRatio, Qt.SmoothTransformation)
 
     extension = FORMAT_EXTENSIONS[image_format].upper()
     quality = jpg_quality if image_format == ScreenshotFormat.JPG else -1

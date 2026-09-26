@@ -1,7 +1,7 @@
 from unittest.mock import Mock
 
 import gridplayer.vlc_player.player_base as player_base_mod
-from gridplayer.params.static import VideoAspect, VideoCrop
+from gridplayer.params.static import VideoAspect, VideoCrop, VideoTransform, ViewParams
 from gridplayer.vlc_player.player_base import VlcPlayerBase
 from gridplayer.vlc_player.static import Media, VideoTrack
 
@@ -108,9 +108,7 @@ def test_adjust_view_crop_stretch_compensates_override():
 
     player.adjust_view(
         size=(640, 360),
-        aspect=VideoAspect.STRETCH,
-        scale=1.0,
-        crop=VideoCrop(160, 0, 160, 0),
+        view=ViewParams(VideoAspect.STRETCH, 1.0, VideoCrop(160, 0, 160, 0)),
     )
 
     # Region 320x360 (8:9) must display as 16:9 -> override 32:9.
@@ -128,14 +126,12 @@ def test_adjust_view_crop_fit_extends_borders():
 
     player.adjust_view(
         size=(640, 360),
-        aspect=VideoAspect.FIT,
-        scale=1.0,
-        crop=VideoCrop(160, 0, 160, 0),
+        view=ViewParams(VideoAspect.FIT, 1.0, VideoCrop(160, 0, 160, 0)),
     )
 
     # Region 320x360 -> crop down to 320x180 (16:9) -> 90 top/bottom.
     assert media_player.calls == [
-        ("aspect_ratio", "640:360"),
+        ("aspect_ratio", "16:9"),
         ("crop_geometry", "+160+90+160+90"),
         ("scale", 0),
     ]
@@ -149,9 +145,7 @@ def test_adjust_view_persists_crop_for_vout_reapply():
 
     player.adjust_view(
         size=(640, 360),
-        aspect=VideoAspect.FIT,
-        scale=1.0,
-        crop=crop,
+        view=ViewParams(VideoAspect.FIT, 1.0, crop),
     )
 
     assert player.media_input.video.crop == crop
@@ -161,7 +155,7 @@ def test_adjust_view_persists_crop_for_vout_reapply():
     player._apply_media_input_view()
 
     assert media_player.calls == [
-        ("aspect_ratio", "640:360"),
+        ("aspect_ratio", "16:9"),
         ("crop_geometry", "+160+90+160+90"),
         ("scale", 0),
     ]
@@ -175,9 +169,7 @@ def test_apply_media_input_view_uses_cached_size_when_vout_size_missing():
 
     player.adjust_view(
         size=(640, 360),
-        aspect=VideoAspect.FIT,
-        scale=1.0,
-        crop=crop,
+        view=ViewParams(VideoAspect.FIT, 1.0, crop),
     )
 
     media_player.video_get_size = lambda num=0: (0, 0)
@@ -186,7 +178,7 @@ def test_apply_media_input_view_uses_cached_size_when_vout_size_missing():
     player._apply_media_input_view()
 
     assert media_player.calls == [
-        ("aspect_ratio", "640:360"),
+        ("aspect_ratio", "16:9"),
         ("crop_geometry", "+160+90+160+90"),
         ("scale", 0),
     ]
@@ -213,9 +205,7 @@ def test_adjust_view_fills_missing_track_dimensions():
 
     player.adjust_view(
         size=(640, 360),
-        aspect=VideoAspect.FIT,
-        scale=1.0,
-        crop=VideoCrop(0, 0, 0, 0),
+        view=ViewParams(VideoAspect.FIT, 1.0, VideoCrop(0, 0, 0, 0)),
     )
 
     assert player.media.video_tracks[1].video_dimensions == (640, 360)
@@ -229,14 +219,50 @@ def test_adjust_view_crop_none_letterboxes_user_region():
 
     player.adjust_view(
         size=(640, 360),
-        aspect=VideoAspect.NONE,
-        scale=1.0,
-        crop=VideoCrop(160, 0, 160, 0),
+        view=ViewParams(VideoAspect.NONE, 1.0, VideoCrop(160, 0, 160, 0)),
+    )
+
+    # Region 320x360 shown in its own shape, letterboxed
+    assert media_player.calls == [
+        ("aspect_ratio", "16:9"),
+        ("crop_geometry", "+160+0+160+0"),
+        ("scale", 0),
+    ]
+
+
+def test_adjust_view_puts_the_zoom_in_the_crop():
+    """VLC's own zoom only ever zooms about the middle, and its snapshot
+    would not see it; the crop does both."""
+    player, media_player = _make_player()
+
+    player.adjust_view(
+        size=(640, 360),
+        view=ViewParams(VideoAspect.FIT, 2.0, VideoCrop(0, 0, 0, 0)),
     )
 
     assert media_player.calls == [
-        ("aspect_ratio", "640:360"),
-        ("crop_geometry", "+160+0+160+0"),
+        ("aspect_ratio", "16:9"),
+        ("crop_geometry", "+160+90+160+90"),
+        ("scale", 0),
+    ]
+
+
+def test_adjust_view_crops_a_rotated_frame_at_its_own_size():
+    """VLC hands a rotated frame over at its unrotated size, the turned
+    picture squeezed into it, and crops it there."""
+    player, media_player = _make_player()
+    player.media_input.video.transform = VideoTransform.ROTATE_90
+
+    player.adjust_view(
+        size=(360, 640),
+        view=ViewParams(VideoAspect.FIT, 1.0, VideoCrop(160, 0, 160, 0)),
+    )
+
+    # 320x360 frame pixels left are 180x640 on screen, so a 9:16 pane
+    # takes the middle half of them down
+    assert media_player.calls == [
+        ("aspect_ratio", "9:16"),
+        ("crop_geometry", "+160+90+160+90"),
         ("scale", 0),
     ]
 

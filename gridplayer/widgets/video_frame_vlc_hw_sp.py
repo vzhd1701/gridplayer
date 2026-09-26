@@ -6,10 +6,9 @@ from PyQt5.QtWidgets import QWidget
 from gridplayer.params import env
 from gridplayer.params.static import (
     AudioChannelMode,
-    VideoAspect,
-    VideoCrop,
     VideoDeinterlace,
     VideoDeinterlaceMode,
+    ViewParams,
 )
 from gridplayer.settings import Settings
 from gridplayer.utils.qt import MILLISECONDS, QABC, qt_connect
@@ -195,7 +194,7 @@ class VideoDriverVLCHWSP(VLCVideoDriver):
     cmd_set_deinterlace = pyqtSignal(VideoDeinterlace, VideoDeinterlaceMode)
     cmd_set_audio_delay = pyqtSignal(int)
     cmd_set_subtitle_delay = pyqtSignal(int)
-    cmd_adjust_view = pyqtSignal(tuple, VideoAspect, float, VideoCrop)
+    cmd_adjust_view = pyqtSignal(tuple, ViewParams)
     cmd_set_log_level_vlc = pyqtSignal(int)
 
     cmd_init_player = pyqtSignal()
@@ -306,8 +305,8 @@ class VideoDriverVLCHWSP(VLCVideoDriver):
     def set_subtitle_delay(self, delay_ms):
         self.cmd_set_subtitle_delay.emit(delay_ms)
 
-    def adjust_view(self, size, aspect, scale, crop):
-        self.cmd_adjust_view.emit(size, aspect, scale, crop)
+    def adjust_view(self, size, view):
+        self.cmd_adjust_view.emit(size, view)
 
     def set_log_level_vlc(self, log_level):
         self.cmd_set_log_level_vlc.emit(log_level)
@@ -342,7 +341,7 @@ class VideoFrameVLCHWSP(VideoFrameVLC):
             return
 
         size = (self.size().width(), self.size().height())
-        self.video_driver.adjust_view(size, self._aspect, self._scale, self._crop)
+        self.video_driver.adjust_view(size, self._view)
 
         self._apply_hw_crop_border_workaround()
 

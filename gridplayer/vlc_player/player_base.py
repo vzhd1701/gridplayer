@@ -20,10 +20,10 @@ from gridplayer.params.static import (
     AudioChannelMode,
     VideoDeinterlace,
     VideoDeinterlaceMode,
-    VideoTransform,
+    ViewParams,
 )
 from gridplayer.settings import Settings
-from gridplayer.utils.aspect_calc import calc_resize_scale, calc_view_geometry
+from gridplayer.utils.aspect_calc import calc_view_geometry
 from gridplayer.utils.libvlc_options_parser import DeinterlaceModeMap
 from gridplayer.utils.misc import is_url
 from gridplayer.vlc_player.libvlc import vlc
@@ -1235,7 +1235,13 @@ class VlcPlayerBase(ABC):
         self._tracks_manager.set_subtitle_delay_ms(delay_ms)
 
     @property
-    def video_dimensions(self):
+    def frame_dimensions(self):
+        """The frame's size as the video output gets it.
+
+        After the transform, which for the rotations is still the unrotated
+        size with the turned picture squeezed into it; that is the size VLC
+        crops in. calc_view_geometry is told the transform to shape it back.
+        """
         if self._media_player is None or self.media is None:
             return 0, 0
 
@@ -1248,20 +1254,10 @@ class VlcPlayerBase(ABC):
             # so FIT/STRETCH crop geometry is not computed as letterbox.
             video_size = self._last_video_size
 
-        rotation_transforms = {
-            VideoTransform.ROTATE_90,
-            VideoTransform.ROTATE_270,
-            VideoTransform.TRANSPOSE,
-            VideoTransform.ANTITRANSPOSE,
-        }
-
-        if self.media_input.video.transform in rotation_transforms:
-            return tuple(reversed(video_size))
-
         return video_size
 
     @only_initialized_player
-    def adjust_view(self, size, aspect, scale, crop):
+    def adjust_view(self, size, view: ViewParams):
         # Keep the pane size current on every call so the post-vout re-apply
         # (cb_vout) and _adjust_view_initial use the real laid-out size, not a
         # stale pre-layout value captured at load. Live streams stop/play on
@@ -1270,9 +1266,9 @@ class VlcPlayerBase(ABC):
         # Video is a different object after the multiprocess pickle).
         if self.media_input is not None:
             self.media_input.size = size
-            self.media_input.video.aspect_mode = aspect
-            self.media_input.video.scale = scale
-            self.media_input.video.crop = crop
+            self.media_input.video.aspect_mode = view.aspect
+            self.media_input.video.scale = view.scale
+            self.media_input.video.crop = view.crop
 
         if self.media is None:
             # video not loaded yet, video frame resized on init
@@ -1282,27 +1278,28 @@ class VlcPlayerBase(ABC):
             width, height = self._media_player.video_get_size()
             self.notify_video_dimensions(width, height)
 
+        self._apply_view(size, view)
+
+    def _apply_view(self, size, view: ViewParams):
+        transform = self.media_input.video.transform if self.media_input else None
+
         aspect_override, crop_geometry_fmt = calc_view_geometry(
-            self.video_dimensions, size, aspect, crop
+            self.frame_dimensions, size, view, transform
         )
 
         self._log.debug(
             f"size: {size}"
-            f", aspect: {aspect}"
-            f", scale: {scale}"
-            f", crop: {crop}"
+            f", view: {view}"
             f", aspect_override: {aspect_override}"
             f", crop_geo_fmt: {crop_geometry_fmt}"
-        )
-
-        resize_scale = calc_resize_scale(
-            self.video_dimensions, size, aspect, scale, crop
         )
 
         self._media_player.video_set_aspect_ratio(aspect_override)
         # https://github.com/videolan/vlc/blob/e9eceaed4d838dbd84638bfb2e4bdd08294163b1/src/video_output/display.c#L887
         self._media_player.video_set_crop_geometry(crop_geometry_fmt)
-        self._media_player.video_set_scale(resize_scale)
+        # The zoom is in the crop: VLC's own always zooms about the middle,
+        # and its snapshot would not see it. Leave it filling the window.
+        self._media_player.video_set_scale(0)
 
     def _try_set_initial_state(self):
         try:
@@ -1404,11 +1401,11 @@ class VlcPlayerBase(ABC):
             self._restart_reapply_tries = 0
 
     def _apply_media_input_view(self):
+        video = self.media_input.video
+
         self.adjust_view(
             size=self.media_input.size,
-            aspect=self.media_input.video.aspect_mode,
-            scale=self.media_input.video.scale,
-            crop=self.media_input.video.crop,
+            view=ViewParams(video.aspect_mode, video.scale, video.crop),
         )
 
     def _set_pause_initial(self, is_paused):

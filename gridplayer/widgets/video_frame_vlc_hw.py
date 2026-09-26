@@ -137,8 +137,8 @@ class VideoDriverVLCHW(VLCVideoDriverThreaded):
 
         super().cleanup_wait()
 
-    def adjust_view(self, size, aspect, scale, crop):
-        self.cmd_send("adjust_view", size, aspect, scale, crop)
+    def adjust_view(self, size, view):
+        self.cmd_send("adjust_view", size, view)
 
 
 class VideoFrameVLCHW(VideoFrameVLCProcess):
@@ -172,6 +172,6 @@ class VideoFrameVLCHW(VideoFrameVLCProcess):
             return
 
         size = (self.size().width(), self.size().height())
-        self.video_driver.adjust_view(size, self._aspect, self._scale, self._crop)
+        self.video_driver.adjust_view(size, self._view)
 
         self._apply_hw_crop_border_workaround()

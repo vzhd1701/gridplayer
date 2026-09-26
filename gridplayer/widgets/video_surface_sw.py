@@ -1,13 +1,15 @@
-from PyQt5.QtCore import QRect, QRectF, Qt
+from PyQt5.QtCore import QRectF, Qt
 from PyQt5.QtGui import QImage, QPainter
 from PyQt5.QtWidgets import QWidget
 
-from gridplayer.params.static import VideoAspect, VideoCrop
-from gridplayer.utils.aspect_calc import calc_crop_region
+from gridplayer.params.static import VideoTransform, ViewParams
+from gridplayer.utils.aspect_calc import ViewPlacement, calc_view_placement
 
-_ZERO_CROP = VideoCrop(0, 0, 0, 0)
-# Same extra zoom as the old QGraphicsView path, to hide decoder edge pixels.
-_BLACK_BORDER_CUT = 0.05
+# How much bigger than the picture VLC can make the frame it hands over. It
+# asks for a size its decoder likes, 640x360 coming as 640x386 or 788x576 as
+# 800x578, and scales the picture up to fill all of it. A track size further
+# off than this is one the stream has since moved away from.
+_MAX_FRAME_OVERSIZE = 64
 
 
 class SoftwareVideoSurface(QWidget):
@@ -20,9 +22,9 @@ class SoftwareVideoSurface(QWidget):
         self._rgb = None
         # the placeholder shown before the first frame, not one worth saving
         self._is_black = False
-        self._aspect = VideoAspect.FIT
-        self._scale = 1.0
-        self._crop = _ZERO_CROP
+        self._view = ViewParams()
+        self._transform = VideoTransform.NONE
+        self._track_size: tuple[int, int] | None = None
 
         self.setAttribute(Qt.WA_OpaquePaintEvent)
         self.setAttribute(Qt.WA_NoSystemBackground)
@@ -38,20 +40,39 @@ class SoftwareVideoSurface(QWidget):
             return 0, 0
         return self._image.width(), self._image.height()
 
-    def frame_image(self, visible_size: tuple[int, int] | None = None) -> QImage | None:
+    def picture_size(self) -> tuple[int, int]:
+        """The frame's size in video pixels, the ones the view is in.
+
+        The frame comes scaled up to a size the decoder likes, so its own
+        pixels are not square: the track's size says what shape it is.
+        The frame's own size where the track has none, or one the frames
+        no longer come at.
+        """
+
+        frame_w, frame_h = self.frame_size()
+
+        if self._track_size is None:
+            return frame_w, frame_h
+
+        width, height = self._track_size
+
+        is_track_size = (
+            0 < width <= frame_w
+            and 0 < height <= frame_h
+            and frame_w - width <= _MAX_FRAME_OVERSIZE
+            and frame_h - height <= _MAX_FRAME_OVERSIZE
+        )
+
+        return (width, height) if is_track_size else (frame_w, frame_h)
+
+    def frame_image(self) -> QImage | None:
         """A copy of the frame on show, as it came from the decoder.
 
-        The decoder pads its buffer out to a size it likes, 788x576 coming
-        as 800x578, so the part of it that is picture can be asked for.
+        At the size it came at, see picture_size for the size it is.
         """
 
         if not self.has_frame() or self._is_black:
             return None
-
-        width, height = visible_size or (0, 0)
-
-        if 0 < width <= self._image.width() and 0 < height <= self._image.height():
-            return self._image.copy(0, 0, width, height)
 
         return self._image.copy()
 
@@ -82,11 +103,40 @@ class SoftwareVideoSurface(QWidget):
         self._is_black = True
         self.update()
 
-    def set_view(self, aspect: VideoAspect, scale: float, crop: VideoCrop) -> None:
-        self._aspect = aspect
-        self._scale = scale
-        self._crop = crop
+    def set_view(
+        self,
+        view: ViewParams,
+        transform: VideoTransform | None = VideoTransform.NONE,
+        track_size: tuple[int, int] | None = None,
+    ) -> None:
+        self._view = view
+        self._transform = transform
+        self._track_size = track_size
         self.update()
+
+    def placement(self) -> ViewPlacement | None:
+        """Where the frame goes, the source in the frame's own pixels."""
+
+        picture_w, picture_h = self.picture_size()
+
+        placement = calc_view_placement(
+            (picture_w, picture_h),
+            (self.width(), self.height()),
+            self._view,
+            self._transform,
+        )
+
+        if placement is None:
+            return None
+
+        frame_w, frame_h = self.frame_size()
+        scale_x, scale_y = frame_w / picture_w, frame_h / picture_h
+        x, y, width, height = placement.source
+
+        return ViewPlacement(
+            source=(x * scale_x, y * scale_y, width * scale_x, height * scale_y),
+            target=placement.target,
+        )
 
     def paintEvent(self, event) -> None:
         painter = QPainter(self)
@@ -96,42 +146,10 @@ class SoftwareVideoSurface(QWidget):
         if not self.has_frame():
             return
 
-        src = self._source_rect()
-        dest = self._dest_rect(src)
-        if dest.isEmpty() or src.isEmpty():
+        placement = self.placement()
+        if placement is None:
             return
-        painter.drawImage(dest, self._image, QRectF(src))
 
-    def _source_rect(self) -> QRect:
-        width, height = self.frame_size()
-        x, y, crop_w, crop_h = calc_crop_region((width, height), self._crop)
-        return QRect(x, y, crop_w, crop_h)
-
-    def _dest_rect(self, src: QRect) -> QRectF:
-        widget_w = self.width()
-        widget_h = self.height()
-        if widget_w <= 0 or widget_h <= 0 or src.isEmpty():
-            return QRectF()
-
-        src_w = src.width()
-        src_h = src.height()
-        scale = self._scale + _BLACK_BORDER_CUT
-
-        if self._aspect == VideoAspect.STRETCH:
-            dest_w = widget_w * scale
-            dest_h = widget_h * scale
-        elif self._aspect == VideoAspect.FIT:
-            fit = max(widget_w / src_w, widget_h / src_h) * scale
-            dest_w = src_w * fit
-            dest_h = src_h * fit
-        else:
-            fit = min(widget_w / src_w, widget_h / src_h) * scale
-            dest_w = src_w * fit
-            dest_h = src_h * fit
-
-        return QRectF(
-            (widget_w - dest_w) / 2,
-            (widget_h - dest_h) / 2,
-            dest_w,
-            dest_h,
+        painter.drawImage(
+            QRectF(*placement.target), self._image, QRectF(*placement.source)
         )

@@ -8,9 +8,15 @@ from PyQt5.QtGui import QImage, QPixmap
 from PyQt5.QtWidgets import QLabel, QStackedLayout, QWidget
 
 from gridplayer.params import env
-from gridplayer.params.static import HWCropBorderOffset, VideoAspect, VideoCrop
+from gridplayer.params.static import (
+    HWCropBorderOffset,
+    VideoAspect,
+    VideoTransform,
+    ViewParams,
+)
 from gridplayer.settings import Settings
-from gridplayer.utils.qt import MILLISECONDS, QABC, QT_ASPECT_MAP, qt_connect
+from gridplayer.utils.aspect_calc import ViewPlacement, calc_view_placement
+from gridplayer.utils.qt import MILLISECONDS, QABC, qt_connect
 from gridplayer.utils.screenshots import ScreenshotView
 from gridplayer.vlc_player.static import Media, MediaInput
 from gridplayer.vlc_player.video_driver_base import VLCVideoDriver
@@ -192,19 +198,38 @@ class PauseSnapshot(QLabel):
 
         return self._snapshot_pixmap.toImage()
 
-    def adjust_view(self, size: QSize, aspect, scale: float):
+    def adjust_view(self, size: QSize, placement: ViewPlacement | None):
+        """Put the snapshot where the video was on show.
+
+        VLC snapshots the frame already cut down to the view, zoom and all,
+        but not yet shaped for the screen, which under a rotation leaves it
+        squeezed. So it is stretched over the part of the pane the video
+        took up, rather than fitted to it.
+        """
         if self._snapshot_pixmap is None:
             return
 
-        # video_take_snapshot captures the displayed (already cropped) frame.
-        scaled_size = QSize(
-            int(size.width() * scale),
-            int(size.height() * scale),
-        )
+        if placement is None:
+            self.setContentsMargins(0, 0, 0, 0)
+            self.setPixmap(
+                self._snapshot_pixmap.scaled(
+                    size, Qt.KeepAspectRatio, Qt.SmoothTransformation
+                )
+            )
+            return
 
+        x, y, width, height = (round(v) for v in placement.target)
+        width, height = max(width, 1), max(height, 1)
+
+        self.setContentsMargins(
+            x,
+            y,
+            max(size.width() - x - width, 0),
+            max(size.height() - y - height, 0),
+        )
         self.setPixmap(
             self._snapshot_pixmap.scaled(
-                scaled_size, QT_ASPECT_MAP[aspect], Qt.SmoothTransformation
+                width, height, Qt.IgnoreAspectRatio, Qt.SmoothTransformation
             )
         )
 
@@ -253,9 +278,8 @@ class VideoFrameVLC(QWidget, metaclass=QABC):
         self._resize_view_timer.setSingleShot(True)
         self._resize_view_timer.timeout.connect(self._adjust_view_now)
 
-        self._aspect = VideoAspect.FIT
-        self._scale = 1
-        self._crop = VideoCrop(0, 0, 0, 0)
+        self._view = ViewParams()
+        self._transform = VideoTransform.NONE
 
         self._is_status_change_in_progress = False
         self._is_cleanup_requested = False
@@ -474,7 +498,7 @@ class VideoFrameVLC(QWidget, metaclass=QABC):
             return True
 
         if self.pause_snapshot.isVisible():
-            self.pause_snapshot.adjust_view(self.size(), self._aspect, self._scale)
+            self.pause_snapshot.adjust_view(self.size(), self.view_placement())
 
     def resizeEvent(self, event) -> None:
         self._adjust_view_on_resize()
@@ -525,9 +549,11 @@ class VideoFrameVLC(QWidget, metaclass=QABC):
         self.time_changed.emit(new_time)
 
     def load_video(self, media_input: MediaInput) -> None:
-        self._aspect = media_input.video.aspect_mode
-        self._scale = media_input.video.scale
-        self._crop = media_input.video.crop
+        video = media_input.video
+
+        self._view = ViewParams(video.aspect_mode, video.scale, video.crop)
+        # changing it reloads the video, so it holds for as long as this does
+        self._transform = video.transform
 
         self.video_driver.load_video(media_input)
 
@@ -570,7 +596,7 @@ class VideoFrameVLC(QWidget, metaclass=QABC):
 
     def snapshot_taken(self, snapshot_file: str) -> None:
         self.pause_snapshot.set_snapshot_file(snapshot_file)
-        self.pause_snapshot.adjust_view(self.size(), self._aspect, self._scale)
+        self.pause_snapshot.adjust_view(self.size(), self.view_placement())
         self.pause_snapshot.show()
 
         if snapshot_file:
@@ -594,15 +620,35 @@ class VideoFrameVLC(QWidget, metaclass=QABC):
         self.screenshot_taken.emit(self.shown_frame_image(), view)
 
     def screenshot_view(self) -> ScreenshotView | None:
-        """How to cut a screenshot down, where VLC keeps all of the frame.
+        """How to make a screenshot the picture on show.
 
-        The hardware drivers have VLC crop the frame to the view, and its
-        snapshot comes out cropped with it, with no way to ask for the
-        whole frame. Frames drawn here get the same cut, so a screenshot
-        is the same picture whichever driver took it.
+        The hardware drivers have VLC crop the frame to the view, zoom
+        included, and its snapshot comes out cropped with it, with no way
+        to ask for the whole frame. What is left to do is shaping a rotated
+        frame back. Frames drawn here get the same cut on top, so a
+        screenshot is the same picture whichever driver took it.
         """
 
-        return None
+        return ScreenshotView(
+            self._pane_size(), None, self._transform, self._frame_size()
+        )
+
+    def view_placement(self) -> ViewPlacement | None:
+        """Where the video is on show in the pane, and what of it."""
+
+        return calc_view_placement(
+            self._frame_size(), self._pane_size(), self._view, self._transform
+        )
+
+    def _pane_size(self) -> tuple[int, int]:
+        return self.size().width(), self.size().height()
+
+    def _frame_size(self) -> tuple[int, int]:
+        """The frame's size as the video output gets it, (0, 0) if unknown."""
+
+        track = self.media.cur_video_track if self.media else None
+
+        return track.video_dimensions if track else (0, 0)
 
     def shown_frame_image(self) -> QImage | None:
         """The frame on show when VLC can't give one, if there is any."""
@@ -636,17 +682,17 @@ class VideoFrameVLC(QWidget, metaclass=QABC):
         self.video_driver.audio_set_volume(volume)
 
     def set_aspect_ratio(self, aspect: VideoAspect) -> None:
-        self._aspect = aspect
+        self._view = self._view._replace(aspect=aspect)
 
         self.adjust_view()
 
     def set_scale(self, scale) -> None:
-        self._scale = scale
+        self._view = self._view._replace(scale=scale)
 
         self.adjust_view()
 
     def set_crop(self, crop) -> None:
-        self._crop = crop
+        self._view = self._view._replace(crop=crop)
 
         self.adjust_view()
 
@@ -655,9 +701,15 @@ class VideoFrameVLC(QWidget, metaclass=QABC):
             return
 
         size = (width, height)
+        is_updated = False
         for track in self.media.video_tracks.values():
             if not all(track.video_dimensions):
                 track.video_dimensions = size
+                is_updated = True
+
+        # the view here is worked out from them too
+        if is_updated:
+            self.adjust_view()
 
     def _on_tracks_changed(self, media: Media) -> None:
         """Take a track list that grew after the load, without reloading."""
