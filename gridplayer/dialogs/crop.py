@@ -15,18 +15,11 @@ from PyQt5.QtWidgets import (
     QWidget,
 )
 
-from gridplayer.params.static import VideoCrop, VideoTransform
+from gridplayer.params.static import ROTATION_TRANSFORMS, VideoCrop
 from gridplayer.utils.qt import translate
 
 _DIMENSION_FALLBACK = 9999
 _ZERO_CROP = VideoCrop(0, 0, 0, 0)
-
-_ROTATION_TRANSFORMS = {
-    VideoTransform.ROTATE_90,
-    VideoTransform.ROTATE_270,
-    VideoTransform.TRANSPOSE,
-    VideoTransform.ANTITRANSPOSE,
-}
 
 
 class _CropPreview(QWidget):
@@ -133,9 +126,14 @@ class SetCropDialog(QDialog):
         self.setModal(True)
         self.setMinimumWidth(450)
 
+        # The margins are in frame pixels along the axes the picture is shown
+        # in. A rotation keeps the frame at its unrotated size and squeezes
+        # the turned picture into it (see calc_view_placement), so Left and
+        # Right still take from the raw width even though it spans what is
+        # the picture's width on screen.
         self._raw_width, self._raw_height = video_dimensions
         self._is_rotated = is_rotated
-        width, height = self._display_dimensions()
+        width, height = self._raw_width, self._raw_height
 
         self._preview = _CropPreview()
 
@@ -203,7 +201,7 @@ class SetCropDialog(QDialog):
         return cls(
             crop=video_block.video_params.crop,
             video_dimensions=_block_track_dimensions(video_block),
-            is_rotated=video_block.video_params.transform in _ROTATION_TRANSFORMS,
+            is_rotated=video_block.video_params.transform in ROTATION_TRANSFORMS,
             parent=parent,
             live_block=video_block,
         )
@@ -251,6 +249,13 @@ class SetCropDialog(QDialog):
 
         return self._raw_width, self._raw_height
 
+    def _display_scale(self):
+        """Screen pixels per frame pixel, across and down."""
+
+        video_w, video_h = self._display_dimensions()
+
+        return video_w / self._raw_width, video_h / self._raw_height
+
     def _update_size_label(self):
         if not self._raw_width or not self._raw_height:
             self._size_label.hide()
@@ -263,11 +268,11 @@ class SetCropDialog(QDialog):
         right = self._spins["right"].value()
         bottom = self._spins["bottom"].value()
 
-        cropped_w = max(self._raw_width - left - right, 0)
-        cropped_h = max(self._raw_height - top - bottom, 0)
         video_w, video_h = self._display_dimensions()
-        if self._is_rotated:
-            cropped_w, cropped_h = cropped_h, cropped_w
+        scale_x, scale_y = self._display_scale()
+
+        cropped_w = round(max(self._raw_width - left - right, 0) * scale_x)
+        cropped_h = round(max(self._raw_height - top - bottom, 0) * scale_y)
 
         self._size_label.setText(
             "{}: {}x{} | {}: {}x{}".format(
@@ -292,21 +297,9 @@ class SetCropDialog(QDialog):
         else:
             self._area_label.hide()
 
-        # The preview is drawn in display space. For unrotated video the
-        # spin values map onto that space directly; for rotated video the
-        # exact left/right/top/bottom split after rotation is ambiguous, so
-        # the removed margin is shown centered on each axis instead.
-        if not self._is_rotated:
-            edges = (left, top, right, bottom)
-        else:
-            horiz_reduction = max(video_w - cropped_w, 0)
-            vert_reduction = max(video_h - cropped_h, 0)
-            edges = (
-                horiz_reduction / 2,
-                vert_reduction / 2,
-                horiz_reduction / 2,
-                vert_reduction / 2,
-            )
+        # The preview is drawn in display space. Each margin is on the side
+        # it is named for; under a rotation a frame pixel just isn't square.
+        edges = (left * scale_x, top * scale_y, right * scale_x, bottom * scale_y)
 
         self._preview.set_crop(video_w, video_h, *edges)
 

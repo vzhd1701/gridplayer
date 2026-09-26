@@ -129,16 +129,23 @@ def test_dialog_shows_video_vs_cropped_size():
     assert dialog._size_label.text() == "Video: 640x360 | Cropped: 625x360"
 
 
-def test_dialog_size_label_swaps_for_rotation():
+def test_dialog_crops_a_rotated_frame_along_the_picture_on_screen():
+    """VLC keeps a rotated frame at its unrotated size, the turned picture
+    squeezed into it, and crops it after turning: Left takes from the
+    frame's 640 across, which span the picture's 360 across on screen."""
     block = _FakeBlock()
     block.video_params.transform = VideoTransform.ROTATE_90
     dialog = SetCropDialog.for_video_block(block)
 
-    assert dialog._spins["left"].maximum() == 360
+    assert dialog._spins["left"].maximum() == 640
+    assert dialog._spins["top"].maximum() == 360
 
-    dialog._spins["left"].setValue(15)
+    dialog._spins["left"].setValue(160)
 
-    assert dialog._size_label.text() == "Video: 360x640 | Cropped: 360x625"
+    assert dialog._size_label.text() == "Video: 360x640 | Cropped: 270x640"
+    assert (dialog._preview._frame_w, dialog._preview._frame_h) == (360, 640)
+    assert dialog._preview._left == pytest.approx(90)
+    assert dialog._preview._top == 0
 
 
 def test_dialog_hides_size_label_when_dimensions_unknown():
