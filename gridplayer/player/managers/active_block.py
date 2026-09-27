@@ -5,6 +5,7 @@ from PyQt5.QtCore import QEvent, pyqtSignal
 from PyQt5.QtGui import QCursor
 
 from gridplayer.dialogs.crop import SetCropDialog
+from gridplayer.dialogs.position import SetPositionDialog
 from gridplayer.models.audio_device import resolve_device_id
 from gridplayer.models.audio_selection import (
     AudioDefault,
@@ -104,6 +105,7 @@ class ActiveBlockManager(ManagerBase):
         return {
             "active": self.cmd_active,
             "crop_dialog": self.cmd_crop_dialog,
+            "position_dialog": self.cmd_position_dialog,
             "is_active_runtime_param_set_to": self.is_active_runtime_param_set_to,
             "is_active_param_set_to": self.is_active_param_set_to,
             "is_active_initialized": self.is_active_initialized,
@@ -162,6 +164,14 @@ class ActiveBlockManager(ManagerBase):
         dialog = SetCropDialog.for_video_block(
             self._ctx.active_block, parent=self.parent()
         )
+
+        dialog.exec_()
+
+    def cmd_position_dialog(self):
+        if self.is_no_active_block or not self.is_active_has_video():
+            return
+
+        dialog = SetPositionDialog(self._ctx.active_block, parent=self.parent())
 
         dialog.exec_()
 

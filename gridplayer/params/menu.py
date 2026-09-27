@@ -148,6 +148,7 @@ SECTIONS = MappingProxyType(
                     "Move Down",
                     "Move Past Edges",
                     "---",
+                    "Set Position",
                     "Position Reset",
                 ),
                 (

@@ -22,6 +22,8 @@ from gridplayer.utils.aspect_calc import (
     Rect,
     ViewPlacement,
     calc_moved_shift,
+    calc_picture_rect,
+    calc_shift_range,
     calc_view_placement,
     calc_whole_placement,
 )
@@ -809,6 +811,20 @@ class VideoFrameVLC(QWidget, metaclass=QABC):
             self._view,
             (steps_x, steps_y),
             self._transform,
+        )
+
+    def shift_range(self) -> tuple[VideoShift, VideoShift]:
+        """The least and the most the shift can be; see calc_shift_range."""
+
+        return calc_shift_range(
+            self._view_frame_size(), self._pane_size(), self._view, self._transform
+        )
+
+    def picture_rect(self) -> Rect | None:
+        """Where all of the picture is, in the pane or past its edges."""
+
+        return calc_picture_rect(
+            self._view_frame_size(), self._pane_size(), self._view, self._transform
         )
 
     def _pane_size(self) -> tuple[int, int]:

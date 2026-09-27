@@ -14,6 +14,8 @@ from gridplayer.params.static import (
 from gridplayer.utils.aspect_calc import (
     calc_crop_region,
     calc_moved_shift,
+    calc_picture_rect,
+    calc_shift_range,
     calc_view_borders,
     calc_view_geometry,
     calc_view_placement,
@@ -349,6 +351,67 @@ class TestShiftHeldAtTheEdges:
         view = _view(shift=VideoShift(5000, 0))
 
         assert calc_view_shift((0, 0), SQUARE, view) == VideoShift(5000, 0)
+
+
+class TestShiftRange:
+    """How far the shift can go each way, which is where it is held."""
+
+    def test_it_is_the_room_either_side_of_the_anchor(self):
+        # 700 pane pixels of room across, 840 frame pixels, half each way
+        assert calc_shift_range(VIDEO, SQUARE, _view()) == (
+            VideoShift(-420, 0),
+            VideoShift(420, 0),
+        )
+
+    def test_against_an_edge_it_only_goes_away_from_it(self):
+        view = _view(anchor=VideoAnchor.LEFT)
+
+        assert calc_shift_range(VIDEO, SQUARE, view) == (
+            VideoShift(-840, 0),
+            VideoShift(0, 0),
+        )
+
+    def test_past_the_edges_it_goes_as_far_as_half_on_show(self):
+        # 900x506.25: half of 506.25 up or down past the 393.75 of room,
+        # and half the pane across, 960 frame pixels every way
+        view = _view(VideoAspect.NONE, is_shift_past_edges=True)
+
+        assert calc_shift_range(VIDEO, SQUARE, view) == (
+            VideoShift(-960, -960),
+            VideoShift(960, 960),
+        )
+
+    def test_nothing_to_work_from_leaves_it_as_it_is(self):
+        view = _view(shift=VideoShift(5000, 0))
+
+        assert calc_shift_range((0, 0), SQUARE, view) == (
+            VideoShift(5000, 0),
+            VideoShift(5000, 0),
+        )
+
+
+class TestPictureRect:
+    """All of the picture where it goes, the pane's edges not cutting it."""
+
+    def test_a_bigger_picture_reaches_past_the_pane(self):
+        # 1600x900, 350 of it too wide each side
+        assert calc_picture_rect(VIDEO, SQUARE, _view()) == _approx(
+            (-350, 0, 1600, 900)
+        )
+
+    def test_it_is_what_the_crop_keeps_where_it_is_moved_to(self):
+        # 960x1080 kept fits the square at 800x900, 50 in; 50 frame pixels
+        # right is 41.7 more
+        view = _view(
+            VideoAspect.NONE, crop=VideoCrop(480, 0, 480, 0), shift=VideoShift(50, 0)
+        )
+
+        assert calc_picture_rect(VIDEO, SQUARE, view) == _approx(
+            (50 + 125 / 3, 0, 800, 900)
+        )
+
+    def test_there_is_none_with_nothing_to_place(self):
+        assert calc_picture_rect((0, 0), SQUARE, _view()) is None
 
 
 class TestPastTheEdges:

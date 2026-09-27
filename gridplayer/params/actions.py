@@ -504,6 +504,12 @@ ACTIONS = MappingProxyType(
             "check_if": ("is_active_param_set_to", "is_shift_past_edges", True),
             "show_if": "is_active_has_video",
         },
+        "Set Position": {
+            "title": translate("Actions", "Set Position"),
+            "icon": "empty",
+            "func": "position_dialog",
+            "show_if": "is_active_has_video",
+        },
         "Position Reset": {
             "title": translate("Actions", "Position Reset"),
             "icon": "empty",

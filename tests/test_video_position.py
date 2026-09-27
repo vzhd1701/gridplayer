@@ -251,6 +251,14 @@ class TestTheMenu:
             "toggle_shift_past_edges",
         )
 
+    def test_the_dialog_is_next_to_the_reset(self):
+        position = _submenu("video_active", "Position")
+        action = ACTIONS["Set Position"]
+
+        assert position[position.index("Position Reset") - 1] == "Set Position"
+        assert action["func"] == "position_dialog"
+        assert action["show_if"] == "is_active_has_video"
+
     def test_the_reset_is_last(self):
         assert _submenu("video_active", "Position")[-1] == "Position Reset"
         assert ACTIONS["Position Reset"]["func"] == ("active", "shift_reset")

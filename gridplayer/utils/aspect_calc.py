@@ -221,28 +221,68 @@ def calc_view_shift(
 
     The shift as it is where there is nothing to work it out from.
     """
+    lowest, highest = calc_shift_range(frame_size, pane_size, view, transform)
+
+    return VideoShift(
+        min(max(view.shift.X, lowest.X), highest.X),
+        min(max(view.shift.Y, lowest.Y), highest.Y),
+    )
+
+
+def calc_shift_range(
+    frame_size: tuple[int, int],
+    pane_size: tuple[int, int],
+    view: ViewParams,
+    transform: VideoTransform | None = VideoTransform.NONE,
+) -> tuple[VideoShift, VideoShift]:
+    """The least and the most the shift can be, in whole frame pixels.
+
+    As far as the bounds calc_view_placement holds the picture in let it
+    go, from the anchor's place, left and up and then right and down. 0
+    is always in it. Both the shift as it is where there is nothing to
+    work it out from.
+    """
     fit = _Fit.of(frame_size, pane_size, view, transform)
 
     if fit is None:
-        return view.shift
+        return view.shift, view.shift
 
     pane_w, pane_h = pane_size
     anchor_x, anchor_y = _ANCHOR_POSITIONS[view.anchor]
 
-    return VideoShift(
-        _held_shift(
-            view.shift.X,
-            _bounds(pane_w, fit.picture_w, view.is_shift_past_edges),
-            (pane_w - fit.picture_w) * anchor_x,
-            fit.per_x,
-        ),
-        _held_shift(
-            view.shift.Y,
-            _bounds(pane_h, fit.picture_h, view.is_shift_past_edges),
-            (pane_h - fit.picture_h) * anchor_y,
-            fit.per_y,
-        ),
+    lowest_x, highest_x = _shift_range(
+        _bounds(pane_w, fit.picture_w, view.is_shift_past_edges),
+        (pane_w - fit.picture_w) * anchor_x,
+        fit.per_x,
     )
+    lowest_y, highest_y = _shift_range(
+        _bounds(pane_h, fit.picture_h, view.is_shift_past_edges),
+        (pane_h - fit.picture_h) * anchor_y,
+        fit.per_y,
+    )
+
+    return VideoShift(lowest_x, lowest_y), VideoShift(highest_x, highest_y)
+
+
+def calc_picture_rect(
+    frame_size: tuple[int, int],
+    pane_size: tuple[int, int],
+    view: ViewParams,
+    transform: VideoTransform | None = VideoTransform.NONE,
+) -> Rect | None:
+    """Where all of the picture goes in the pane, past its edges where it is.
+
+    What the crop keeps, as calc_view_placement places it before the pane
+    cuts it. None when there is nothing to place.
+    """
+    fit = _Fit.of(frame_size, pane_size, view, transform)
+
+    if fit is None:
+        return None
+
+    left, top = _picture_position(fit, pane_size, view)
+
+    return left, top, fit.picture_w, fit.picture_h
 
 
 def calc_view_step(
@@ -518,15 +558,15 @@ def _on_steps(shift: int, by: int, step: int) -> int:
     return (-(-shift // step) + count) * step
 
 
-def _held_shift(
-    shift: int, bounds: tuple[float, float], anchored: float, per: float
-) -> int:
+def _shift_range(
+    bounds: tuple[float, float], anchored: float, per: float
+) -> tuple[int, int]:
     # 0 is always within: no shift leaves the picture at the anchor's place
     # in the room, which is inside the bounds either way
     lowest = math.ceil((bounds[0] - anchored) / per - _ROUNDING_SLACK)
     highest = math.floor((bounds[1] - anchored) / per + _ROUNDING_SLACK)
 
-    return min(max(shift, lowest), highest)
+    return lowest, highest
 
 
 def _clip(start: float, length: float, pane: float) -> tuple[float, float]:
