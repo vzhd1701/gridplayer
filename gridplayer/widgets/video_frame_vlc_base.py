@@ -4,7 +4,7 @@ from abc import ABC, abstractmethod
 from contextlib import suppress
 from pathlib import Path
 
-from PyQt5.QtCore import QElapsedTimer, QSize, Qt, QTimer, pyqtSignal
+from PyQt5.QtCore import QElapsedTimer, QRect, QSize, Qt, QTimer, pyqtSignal
 from PyQt5.QtGui import QImage, QPixmap
 from PyQt5.QtWidgets import QLabel, QStackedLayout, QWidget
 
@@ -98,7 +98,12 @@ def vlc_hw_crop_border_offset(frame_size: QSize, window_size: QSize) -> int:
 
 
 def apply_vlc_hw_surface_geometry(
-    frame: QWidget, surface: QWidget, offset: int, target: Rect | None = None
+    frame: QWidget,
+    clip: QWidget,
+    surface: QWidget,
+    offset: int,
+    target: Rect | None = None,
+    shown: Rect | None = None,
 ) -> None:
     """Place a native vout surface over the video, grown by `offset` each way.
 
@@ -110,6 +115,10 @@ def apply_vlc_hw_surface_geometry(
     frame where the picture reaches it, which hides VLC's edges there, and
     into the black around it where it does not.
 
+    The surface is inside the clip, which cuts it to the frame, or, where
+    VLC draws more of the picture than is on show, to `shown`, the part of
+    the frame the picture is on show in.
+
     This is the only thing that positions a native surface: it is kept out of
     the frame layout (see VideoFrameVLC.is_native_surface), so a zero offset
     still has to size it.
@@ -119,22 +128,31 @@ def apply_vlc_hw_surface_geometry(
     if width <= 0 or height <= 0:
         return
 
-    left, top, right, bottom = 0, 0, width, height
+    frame_rect = QRect(0, 0, width, height)
+    surface_rect = frame_rect if target is None else _pixels_in(target)
+    clip_rect = frame_rect if shown is None else frame_rect & _pixels_in(shown)
 
-    if target is not None:
-        # every pixel the picture is in, which a part of one still is
-        x, y, target_w, target_h = target
-        left = math.floor(x + _PIXEL_SLACK)
-        top = math.floor(y + _PIXEL_SLACK)
-        right = max(math.ceil(x + target_w - _PIXEL_SLACK), left + 1)
-        bottom = max(math.ceil(y + target_h - _PIXEL_SLACK), top + 1)
+    if clip_rect.isEmpty():
+        clip_rect = frame_rect
 
+    clip.setGeometry(clip_rect)
     surface.setGeometry(
-        left - offset,
-        top - offset,
-        right - left + 2 * offset,
-        bottom - top + 2 * offset,
+        surface_rect.adjusted(-offset, -offset, offset, offset).translated(
+            -clip_rect.topLeft()
+        )
     )
+
+
+def _pixels_in(rect: Rect) -> QRect:
+    """Every pixel of the rect, which a part of one still is."""
+
+    x, y, width, height = rect
+    left = math.floor(x + _PIXEL_SLACK)
+    top = math.floor(y + _PIXEL_SLACK)
+    right = max(math.ceil(x + width - _PIXEL_SLACK), left + 1)
+    bottom = max(math.ceil(y + height - _PIXEL_SLACK), top + 1)
+
+    return QRect(left, top, right - left, bottom - top)
 
 
 def is_uncovered_fill_useful(is_letterboxed: bool = False) -> bool:
@@ -301,6 +319,7 @@ class VideoFrameVLC(QWidget, metaclass=QABC):
     # out of the layout: QStackedLayout resets every item to the frame rect on
     # each resize, which undid the hw crop border offset between our updates
     # and left the native window jumping in and out of place during a drag.
+    # So is video_clip, the window it is inside of, which cuts it down.
     is_native_surface = False
 
     def __init__(self, vlc_options, **kwargs):
@@ -328,11 +347,15 @@ class VideoFrameVLC(QWidget, metaclass=QABC):
 
         self.ui_helper_widgets()
 
+        # the native surface's parent, made before it so it stacks the same
+        self.video_clip = self.ui_video_clip() if self.is_native_surface else None
+
         self.video_surface = self.ui_video_surface()
 
         if self.is_native_surface:
             detach_native_surface_from_qt(self.video_surface)
-            self.video_surface.setGeometry(self.rect())
+            self.video_clip.setGeometry(self.rect())
+            self.video_surface.setGeometry(self.video_clip.rect())
         else:
             self.layout().addWidget(self.video_surface)
 
@@ -413,11 +436,27 @@ class VideoFrameVLC(QWidget, metaclass=QABC):
     @abstractmethod
     def ui_video_surface(self) -> QWidget: ...
 
+    def ui_video_clip(self) -> QWidget:
+        """The window a native surface is inside of, to be cut down by.
+
+        Nothing of its own shows: where the surface leaves it uncovered,
+        Qt paints what is under it, the frame, as it did with no clip.
+        """
+
+        video_clip = QWidget(self)
+        video_clip.setMouseTracking(True)
+        video_clip.setWindowFlags(Qt.WindowTransparentForInput)
+        video_clip.setAttribute(Qt.WA_TransparentForMouseEvents)
+
+        return video_clip
+
     def _place_native_surface(self) -> None:
         """Put the surface VLC presents into over the video.
 
-        See apply_vlc_hw_surface_geometry. Whatever of the frame it leaves
-        uncovered is letterbox, filled black.
+        See apply_vlc_hw_surface_geometry. Where VLC draws all of the frame
+        (see calc_whole_placement), it is cut down to the part on show.
+        Whatever of the frame it leaves uncovered is letterbox, filled
+        black.
         """
 
         win = self.window()
@@ -425,17 +464,39 @@ class VideoFrameVLC(QWidget, metaclass=QABC):
         offset = vlc_hw_crop_border_offset(self.size(), window_size)
         placement = self._native_surface_placement()
         target = placement.target if placement is not None else None
-        apply_vlc_hw_surface_geometry(self, self.video_surface, offset, target)
+        shown = None
 
-        if not self.video_surface.geometry().contains(self.rect()):
+        if self._is_drawn_whole():
+            view_placement = self.view_placement()
+            shown = view_placement.target if view_placement is not None else None
+
+        apply_vlc_hw_surface_geometry(
+            self, self.video_clip, self.video_surface, offset, target, shown
+        )
+
+        if not self.native_surface_rect().contains(self.rect()):
             self._fill_uncovered_black(is_letterboxed=True)
 
         self._log.debug(
             f"HW surface: offset={offset}"
             f", frame={self.size().width()}x{self.size().height()}"
             f", window={window_size.width()}x{window_size.height()}"
+            f", clip={self.video_clip.geometry().getRect()}"
             f", surface={self.video_surface.geometry().getRect()}"
         )
+
+    def native_surface_rect(self) -> QRect:
+        """What of the frame the native surface covers, clip and all."""
+
+        clip_rect = self.video_clip.geometry()
+        surface_rect = self.video_surface.geometry().translated(clip_rect.topLeft())
+
+        return clip_rect & surface_rect
+
+    def _video_widget(self) -> QWidget:
+        """What to hide for there to be no video on show."""
+
+        return self.video_clip if self.is_native_surface else self.video_surface
 
     def driver_connect(self) -> None:
         qt_connect(
@@ -618,7 +679,7 @@ class VideoFrameVLC(QWidget, metaclass=QABC):
         self.media = media
 
         if self.media.is_audio_only:
-            self.video_surface.hide()
+            self._video_widget().hide()
             self.audio_only_placeholder.show()
         else:
             self._fill_uncovered_black()
@@ -872,11 +933,11 @@ class VideoFrameVLC(QWidget, metaclass=QABC):
         self.media.cur_video_track_id = track_id
 
         if track_id == -1:
-            self.video_surface.hide()
+            self._video_widget().hide()
             self.audio_only_placeholder.show()
         else:
             self._fill_uncovered_black()
-            self.video_surface.show()
+            self._video_widget().show()
             self.audio_only_placeholder.hide()
 
         self.video_driver.set_video_track(track_id)

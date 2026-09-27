@@ -160,7 +160,7 @@ class VideoFrameVLCHW(VideoFrameVLCProcess):
             # https://stackoverflow.com/questions/583202/mac-os-x-can-one-process-render-to-another-processs-window
             raise NotImplementedError
 
-        video_surface = QWidget(self)
+        video_surface = QWidget(self.video_clip)
         video_surface.setMouseTracking(True)
         video_surface.setWindowFlags(Qt.WindowTransparentForInput)
         video_surface.setAttribute(Qt.WA_TransparentForMouseEvents)

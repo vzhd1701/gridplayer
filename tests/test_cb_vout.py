@@ -1,5 +1,7 @@
 from unittest.mock import Mock
 
+import pytest
+
 import gridplayer.vlc_player.player_base as player_base_mod
 from gridplayer.params.static import (
     VideoAnchor,
@@ -293,9 +295,11 @@ def test_adjust_view_keeps_the_position_for_vout_reapply():
     ]
 
 
-def test_adjust_view_has_vlc_draw_all_of_a_picture_it_turns():
+@pytest.mark.parametrize("crop", [VideoCrop(0, 0, 0, 0), VideoCrop(60, 0, 60, 0)])
+def test_adjust_view_has_vlc_draw_all_of_a_picture_it_turns(crop):
     """VLC crops a picture it turns wrong: it is told to draw all of it,
-    in the shape it is shown in but the way it is stored."""
+    in the shape it is shown in but the way it is stored, and not to crop
+    it, even where the user does."""
     player, media_player = _make_player()
     player._tracks_manager = Mock(current_video_track_id=1)
     player.media = Media(
@@ -317,10 +321,11 @@ def test_adjust_view_has_vlc_draw_all_of_a_picture_it_turns():
 
     player.adjust_view(
         size=(400, 500),
-        view=ViewParams(VideoAspect.FIT, 2.0, VideoCrop(0, 0, 0, 0)),
+        view=ViewParams(VideoAspect.FIT, 2.0, crop),
     )
 
-    # on its side 360x640, covering 400x500 at 400x711, zoomed to 800x1422
+    # on its side 360x640, covering 400x500 at 400x711, zoomed to 800x1422;
+    # cropped, all of it is still drawn, just bigger
     assert media_player.calls == [
         ("aspect_ratio", "711:400"),
         ("crop_geometry", "+0+0+0+0"),

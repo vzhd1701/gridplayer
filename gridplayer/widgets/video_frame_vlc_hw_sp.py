@@ -326,9 +326,9 @@ class VideoFrameVLCHWSP(VideoFrameVLC):
 
     def ui_video_surface(self):
         if env.IS_MACOS:
-            video_surface = QMacCocoaViewContainer(0, self)
+            video_surface = QMacCocoaViewContainer(0, self.video_clip)
         else:
-            video_surface = QWidget(self)
+            video_surface = QWidget(self.video_clip)
 
         video_surface.setMouseTracking(True)
         video_surface.setWindowFlags(Qt.WindowTransparentForInput)

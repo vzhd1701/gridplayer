@@ -134,39 +134,38 @@ def calc_whole_placement(
     view: ViewParams,
     transform: VideoTransform | None = VideoTransform.NONE,
 ) -> ViewPlacement | None:
-    """All of the picture and where it goes, past the pane where it is.
+    """All of the frame and where it goes, past the pane where it is.
 
     For a video VLC turns or flips as it shows it, as the file says to: a
     phone recording, mostly. VLC 3 crops such a picture wrong, so the
     hardware drivers ask it for no crop at all and put its window over the
-    whole picture, where calc_view_placement has it, for the pane to cut.
+    whole frame, where calc_view_placement has the part of it on show,
+    and cut that window down to the part on show. What the user's crop
+    takes off is drawn with the rest, just never on show.
 
-    None where that would take too big a window, or where there is a crop
-    of the user's to make, which there is no way round VLC for; and where
-    there is nothing to place.
+    None where that would take too big a window, and where there is
+    nothing to place.
     """
-
-    if view.crop != _NO_CROP:
-        return None
 
     fit = _Fit.of(frame_size, pane_size, view, transform)
 
     if fit is None:
         return None
 
-    picture_w, picture_h = fit.picture_w, fit.picture_h
+    frame_w, frame_h = frame_size
+    whole_w, whole_h = frame_w * fit.per_x, frame_h * fit.per_y
 
-    if max(picture_w, picture_h) > _WHOLE_MAX_SIDE:
+    if max(whole_w, whole_h) > _WHOLE_MAX_SIDE:
         return None
 
-    if picture_w * picture_h > _WHOLE_MAX_PIXELS:
+    if whole_w * whole_h > _WHOLE_MAX_PIXELS:
         return None
 
     left, top = _picture_position(fit, pane_size, view)
 
     return ViewPlacement(
-        source=(fit.x, fit.y, fit.region_w, fit.region_h),
-        target=(left, top, picture_w, picture_h),
+        source=(0, 0, frame_w, frame_h),
+        target=(left - fit.x * fit.per_x, top - fit.y * fit.per_y, whole_w, whole_h),
     )
 
 

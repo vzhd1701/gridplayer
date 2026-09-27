@@ -34,64 +34,94 @@ DEFAULT_SIZE = QSize(800, 450)
 def _frame_and_surface(size=DEFAULT_SIZE):
     frame = QWidget()
     frame.resize(size)
-    surface = QWidget(frame)
-    return frame, surface
+    clip = QWidget(frame)
+    surface = QWidget(clip)
+    return frame, clip, surface
 
 
 def test_surface_geometry_applies_offset():
-    frame, surface = _frame_and_surface()
+    frame, clip, surface = _frame_and_surface()
 
-    apply_vlc_hw_surface_geometry(frame, surface, 8)
+    apply_vlc_hw_surface_geometry(frame, clip, surface, 8)
 
     assert surface.geometry().getRect() == (-8, -8, 816, 466)
 
 
 def test_surface_geometry_still_sizes_surface_without_offset():
     """The native surface is not in the layout, so nothing else would size it."""
-    frame, surface = _frame_and_surface()
+    frame, clip, surface = _frame_and_surface()
     surface.setGeometry(-8, -8, 816, 466)
 
-    apply_vlc_hw_surface_geometry(frame, surface, 0)
+    apply_vlc_hw_surface_geometry(frame, clip, surface, 0)
 
     assert surface.geometry().getRect() == (0, 0, 800, 450)
 
 
 def test_surface_goes_over_the_picture():
     """VLC fills its window with the picture, so the window places it."""
-    frame, surface = _frame_and_surface()
+    frame, clip, surface = _frame_and_surface()
 
-    apply_vlc_hw_surface_geometry(frame, surface, 8, (100, 50, 400, 225))
+    apply_vlc_hw_surface_geometry(frame, clip, surface, 8, (100, 50, 400, 225))
 
     assert surface.geometry().getRect() == (92, 42, 416, 241)
 
 
 def test_surface_takes_in_a_pixel_the_picture_is_partly_in():
-    frame, surface = _frame_and_surface()
+    frame, clip, surface = _frame_and_surface()
 
-    apply_vlc_hw_surface_geometry(frame, surface, 0, (0, 87.5, 800, 224.5))
+    apply_vlc_hw_surface_geometry(frame, clip, surface, 0, (0, 87.5, 800, 224.5))
 
     assert surface.geometry().getRect() == (0, 87, 800, 225)
 
 
 def test_surface_edges_on_whole_pixels_stay_there():
-    frame, surface = _frame_and_surface()
+    frame, clip, surface = _frame_and_surface()
 
     apply_vlc_hw_surface_geometry(
-        frame, surface, 0, (0.1 + 0.2 - 0.3, 100.00000000001, 800, 250)
+        frame, clip, surface, 0, (0.1 + 0.2 - 0.3, 100.00000000001, 800, 250)
     )
 
     assert surface.geometry().getRect() == (0, 100, 800, 250)
 
 
 def test_surface_geometry_ignores_unlaid_out_frame():
-    frame = QWidget()
-    frame.resize(0, 0)
-    surface = QWidget(frame)
+    frame, clip, surface = _frame_and_surface(QSize(0, 0))
     surface.setGeometry(-8, -8, 816, 466)
 
-    apply_vlc_hw_surface_geometry(frame, surface, 8)
+    apply_vlc_hw_surface_geometry(frame, clip, surface, 8)
 
     assert surface.geometry().getRect() == (-8, -8, 816, 466)
+
+
+def test_the_clip_is_the_frame_with_no_part_on_show_to_cut_to():
+    frame, clip, surface = _frame_and_surface()
+
+    apply_vlc_hw_surface_geometry(frame, clip, surface, 8, (100, 50, 400, 225))
+
+    assert clip.geometry().getRect() == (0, 0, 800, 450)
+
+
+def test_the_clip_cuts_the_surface_down_to_the_part_on_show():
+    """VLC draws all of the frame, crop and all, and only a part is on show."""
+    frame, clip, surface = _frame_and_surface()
+
+    apply_vlc_hw_surface_geometry(
+        frame, clip, surface, 8, (-100, -200, 1000, 900), (150.5, 0, 500, 450)
+    )
+
+    assert clip.geometry().getRect() == (150, 0, 501, 450)
+    # still over all of it, from where the clip is
+    assert surface.geometry().getRect() == (-258, -208, 1016, 916)
+
+
+def test_the_clip_is_no_bigger_than_the_frame():
+    frame, clip, surface = _frame_and_surface()
+
+    apply_vlc_hw_surface_geometry(
+        frame, clip, surface, 8, (-100, -200, 1000, 900), (-50, -20, 1000, 900)
+    )
+
+    assert clip.geometry().getRect() == (0, 0, 800, 450)
 
 
 def test_native_surface_is_kept_out_of_the_layout():
@@ -104,7 +134,9 @@ def test_native_surface_is_kept_out_of_the_layout():
 
     assert frame.is_native_surface
     assert frame.video_surface not in items
-    assert frame.video_surface.parent() is frame
+    assert frame.video_clip not in items
+    assert frame.video_surface.parent() is frame.video_clip
+    assert frame.video_clip.parent() is frame
 
 
 def test_software_surface_stays_in_the_layout():

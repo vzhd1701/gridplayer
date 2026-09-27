@@ -426,7 +426,7 @@ class TestPastTheEdges:
 
 
 class TestWholePlacement:
-    """All of a picture VLC turns as it shows it, for the pane to cut."""
+    """All of a frame VLC turns as it shows it, to be cut to the view."""
 
     def test_is_all_of_the_picture_where_it_goes(self):
         # 1600x900, half of the 700 it is too wide by off each side
@@ -457,10 +457,47 @@ class TestWholePlacement:
 
         assert (left, top, right - left, bottom - top) == _approx(shown.target)
 
-    def test_there_is_none_with_a_crop_of_the_users(self):
-        view = _view(crop=VideoCrop(10, 0, 0, 0))
+    def test_a_crop_of_the_users_is_drawn_too(self):
+        # 1600x1080 left of it covers the square at 1333x900, centred, and
+        # the 320 cut off the left is 267 more to the left of that
+        view = _view(crop=VideoCrop(320, 0, 0, 0))
 
-        assert calc_whole_placement(VIDEO, PANE, view) is None
+        placement = calc_whole_placement(VIDEO, SQUARE, view)
+
+        assert placement.source == _approx((0, 0, 1920, 1080))
+        assert placement.target == _approx((-1450 / 3, 0, 1600, 900))
+
+    @pytest.mark.parametrize(
+        "view",
+        [
+            _view(crop=VideoCrop(320, 0, 0, 0)),
+            _view(crop=VideoCrop(100, 200, 300, 50), anchor=VideoAnchor.TOP_LEFT),
+            _view(VideoAspect.NONE, crop=VideoCrop(0, 300, 900, 0)),
+            _view(
+                VideoAspect.NONE,
+                crop=VideoCrop(500, 0, 0, 400),
+                shift=VideoShift(0, -5000),
+                is_shift_past_edges=True,
+            ),
+            _view(scale=2.5, crop=VideoCrop(40, 30, 20, 10), shift=VideoShift(90, 40)),
+        ],
+    )
+    def test_the_part_the_crop_keeps_is_where_the_view_has_it(self, view):
+        whole = calc_whole_placement(VIDEO, PANE, view)
+        shown = calc_view_placement(VIDEO, PANE, view)
+
+        x, y, width, height = whole.target
+        per_x, per_y = width / VIDEO[0], height / VIDEO[1]
+        crop = view.crop
+        kept_left = x + crop.Left * per_x
+        kept_top = y + crop.Top * per_y
+        kept_right = x + width - crop.Right * per_x
+        kept_bottom = y + height - crop.Bottom * per_y
+
+        left, top = max(kept_left, 0), max(kept_top, 0)
+        right, bottom = min(kept_right, PANE[0]), min(kept_bottom, PANE[1])
+
+        assert (left, top, right - left, bottom - top) == _approx(shown.target)
 
     def test_there_is_none_too_big_to_draw(self):
         # 16000x9000: a side it could have, more pixels than it could
@@ -490,10 +527,13 @@ class TestWholeGeometry:
 
         assert geometry == ("5:4", "+0+0+0+0")
 
-    def test_there_is_none_with_a_crop_of_the_users(self):
+    def test_with_a_crop_of_the_users_it_is_all_of_the_frame(self):
+        # 640x350 kept covers 400x500 at 914x500, the whole frame 914x514
         view = _view(crop=VideoCrop(0, 0, 0, 10))
 
-        assert calc_whole_geometry((640, 360), (400, 500), view) is None
+        geometry = calc_whole_geometry((640, 360), (400, 500), view)
+
+        assert geometry == ("457:257", "+0+0+0+0")
 
 
 class TestStep:

@@ -25,6 +25,7 @@ from gridplayer.params.static import (
     HWCropBorderOffset,
     VideoAnchor,
     VideoAspect,
+    VideoCrop,
     VideoShift,
     VideoTransform,
     ViewParams,
@@ -558,7 +559,26 @@ class TestTheHardwareSurface:
 
         frame.adjust_view()
 
+        assert frame.video_clip.geometry().getRect() == (0, 0, 900, 900)
         assert frame.video_surface.geometry().getRect() == (-8, -358, 916, 1616)
+
+    def test_it_is_cut_to_what_a_crop_keeps_of_a_picture_vlc_turns(self):
+        """All of it is drawn, what the crop takes off too. On its side, the
+        1080x960 kept fits 900x900 at 900x800, 50 down; the 480 cut off
+        above it is 400 more up, and all of it is 900x1600."""
+        frame = _frame()
+        frame.media.cur_video_track = _track((1920, 1080), VideoTransform.ROTATE_90)
+        frame._view = frame._view._replace(
+            aspect=VideoAspect.NONE, crop=VideoCrop(0, 480, 0, 480)
+        )
+
+        frame.adjust_view()
+
+        assert frame.video_clip.geometry().getRect() == (0, 50, 900, 800)
+        # (-8, -358) in the pane
+        assert frame.video_surface.geometry().getRect() == (-8, -408, 916, 1616)
+        assert frame.native_surface_rect().getRect() == (0, 50, 900, 800)
+        assert frame.screenshot_view().view == frame._view
 
     def test_a_screenshot_of_a_picture_vlc_turns_is_cut_here(self):
         frame = _frame()
