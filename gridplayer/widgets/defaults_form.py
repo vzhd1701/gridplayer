@@ -1,5 +1,5 @@
-from PyQt5.QtCore import Qt, pyqtSignal
-from PyQt5.QtGui import QColor
+from PyQt5.QtCore import QSize, Qt, pyqtSignal
+from PyQt5.QtGui import QColor, QIcon
 from PyQt5.QtWidgets import (
     QCheckBox,
     QComboBox,
@@ -7,9 +7,9 @@ from PyQt5.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QLineEdit,
-    QPushButton,
     QSizePolicy,
     QSpinBox,
+    QToolButton,
     QVBoxLayout,
     QWidget,
 )
@@ -51,7 +51,7 @@ class DefaultsForm(QWidget):
         self._widgets: dict[str, QWidget] = {}
         self._labels: dict[str, QWidget] = {}
         self._rows: dict[str, QWidget] = {}
-        self._reset_btns: dict[str, QPushButton] = {}
+        self._reset_btns: dict[str, QToolButton] = {}
         self._overridden: set[str] = set()
         self._updating = False
 
@@ -156,7 +156,11 @@ class DefaultsForm(QWidget):
             holder.setToolTip(spec.tooltip)
 
         if self._show_reset:
-            reset = QPushButton(translate("SettingsDialog", "Reset"))
+            reset = QToolButton()
+            reset.setIcon(QIcon.fromTheme("reset"))
+            reset.setIconSize(QSize(14, 14))
+            reset.setAutoRaise(True)
+            reset.setToolTip(translate("SettingsDialog", "Reset"))
             reset.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
             reset.clicked.connect(
                 lambda _=False, key=spec.settings_key: self._on_reset(key)
