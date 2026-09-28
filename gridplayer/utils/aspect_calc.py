@@ -353,6 +353,41 @@ def calc_moved_shift(
     return calc_view_shift(frame_size, pane_size, moved, transform)
 
 
+def calc_dragged_shift(
+    frame_size: tuple[int, int],
+    pane_size: tuple[int, int],
+    view: ViewParams,
+    moved: tuple[float, float],
+    transform: VideoTransform | None = VideoTransform.NONE,
+) -> tuple[VideoShift, tuple[float, float]]:
+    """The shift the picture goes to, dragged along with the pointer.
+
+    `moved` is how far the pointer went, right and down, in pane pixels.
+    The picture goes the same way as far, whether it is bigger than the
+    pane or not, from where it stands (see calc_view_shift), in whole frame
+    pixels and held within the bounds after.
+
+    Also what of the move is left over, less than a frame pixel each way,
+    for the next move to go on from, so a slow drag of a zoomed in picture
+    still gets somewhere. Nothing is left over where the picture was held:
+    going back takes it back at once. The shift as it is, and nothing left
+    over, where there is nothing to work it out from.
+    """
+    fit = _Fit.of(frame_size, pane_size, view, transform)
+
+    if fit is None:
+        return view.shift, (0.0, 0.0)
+
+    lowest, highest = calc_shift_range(frame_size, pane_size, view, transform)
+    shift = calc_view_shift(frame_size, pane_size, view, transform)
+    moved_x, moved_y = moved
+
+    shift_x, left_x = _dragged(shift.X, moved_x, fit.per_x, lowest.X, highest.X)
+    shift_y, left_y = _dragged(shift.Y, moved_y, fit.per_y, lowest.Y, highest.Y)
+
+    return VideoShift(shift_x, shift_y), (left_x, left_y)
+
+
 def calc_view_borders(
     frame_size: tuple[int, int],
     pane_size: tuple[int, int],
@@ -542,6 +577,21 @@ def _step(shown: float, is_bigger_than_pane: bool) -> int:
     step = max(round(shown * SHIFT_STEP), 1)
 
     return -step if is_bigger_than_pane else step
+
+
+def _dragged(
+    shift: int, moved: float, per: float, lowest: int, highest: int
+) -> tuple[int, float]:
+    """The shift moved so many pane pixels, and what is left over of them."""
+
+    wanted = shift + moved / per
+    whole = math.floor(wanted + 0.5)
+    held = min(max(whole, lowest), highest)
+
+    if held != whole:
+        return held, 0.0
+
+    return held, (wanted - held) * per
 
 
 def _on_steps(shift: int, by: int, step: int) -> int:

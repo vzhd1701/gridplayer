@@ -3412,6 +3412,22 @@ class VideoBlock(QWidget):
 
     @only_with_video_tacks
     @only_initialized
+    def pan_by(self, moved_x: float, moved_y: float) -> tuple[float, float]:
+        """Take the picture along with the pointer, so many pane pixels.
+
+        Right and down, left and up negative. The picture goes the way the
+        pointer does, as a sheet of paper under a hand would. Hands back
+        what is left over of the move, for the next one to go on from.
+        """
+
+        shift, left_over = self.video_driver.dragged_shift(moved_x, moved_y)
+
+        self.set_shift(shift, is_silent=True)
+
+        return left_over
+
+    @only_with_video_tacks
+    @only_initialized
     def shift_reset(self):
         self.set_shift(VideoShift(0, 0))
 

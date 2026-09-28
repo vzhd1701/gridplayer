@@ -287,6 +287,22 @@ class Ui_SettingsDialog:
         self.keymapEditor = KeymapEditor(self.page_general_shortcuts)
         self.keymapEditor.setObjectName("keymapEditor")
         self.lay_page_general_shortcuts.addWidget(self.keymapEditor)
+        self.formLayout_pan_trigger = QtWidgets.QFormLayout()
+        self.formLayout_pan_trigger.setFieldGrowthPolicy(
+            QtWidgets.QFormLayout.FieldsStayAtSizeHint
+        )
+        self.formLayout_pan_trigger.setObjectName("formLayout_pan_trigger")
+        self.playerPanTriggerLabel = QtWidgets.QLabel(self.page_general_shortcuts)
+        self.playerPanTriggerLabel.setObjectName("playerPanTriggerLabel")
+        self.formLayout_pan_trigger.setWidget(
+            0, QtWidgets.QFormLayout.LabelRole, self.playerPanTriggerLabel
+        )
+        self.playerPanTrigger = QtWidgets.QComboBox(self.page_general_shortcuts)
+        self.playerPanTrigger.setObjectName("playerPanTrigger")
+        self.formLayout_pan_trigger.setWidget(
+            0, QtWidgets.QFormLayout.FieldRole, self.playerPanTrigger
+        )
+        self.lay_page_general_shortcuts.addLayout(self.formLayout_pan_trigger)
         self.section_page.addWidget(self.page_general_shortcuts)
         self.page_streaming_resolution = QtWidgets.QWidget()
         self.page_streaming_resolution.setObjectName("page_streaming_resolution")
@@ -808,6 +824,9 @@ class Ui_SettingsDialog:
                 "SettingsDialog",
                 '<p>If you have a handful of free time and a desire to support this project, please <a href="https://crowdin.com/project/gridplayer">help with the translation</a>. No coding skills or special software is required!</p><p><a href="https://github.com/vzhd1701/gridplayer#translations">Full list of translators</a></p>',
             )
+        )
+        self.playerPanTriggerLabel.setText(
+            _translate("SettingsDialog", "Move video within its cell with")
         )
         self.streamingHLSVIAStreamlink.setText(
             _translate("SettingsDialog", "Use Streamlink for HLS streams when possible")

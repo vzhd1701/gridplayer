@@ -63,6 +63,16 @@ class DropModifier(AutoName):
     NONE = auto()
 
 
+class PanTrigger(AutoName):
+    """What a drag has to be made with to move a video's picture about."""
+
+    MIDDLE = auto()
+    CTRL = auto()
+    SHIFT = auto()
+    ALT = auto()
+    NONE = auto()
+
+
 class VideoAspect(AutoName):
     FIT = auto()
     STRETCH = auto()

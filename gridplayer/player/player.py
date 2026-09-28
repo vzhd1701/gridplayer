@@ -14,6 +14,7 @@ from gridplayer.player.managers.log import LogManager
 from gridplayer.player.managers.macos_fileopen import MacOSFileOpenManager
 from gridplayer.player.managers.menu import MenuManager
 from gridplayer.player.managers.mouse_hide import MouseHideManager
+from gridplayer.player.managers.pan import PanManager
 from gridplayer.player.managers.playlist import PlaylistManager
 from gridplayer.player.managers.recent_list import RecentListManager
 from gridplayer.player.managers.screensaver import ScreensaverManager
@@ -46,6 +47,7 @@ class Player(QWidget, ManagersManager):
             "active_block": ActiveBlockManager,
             "mouse_hide": MouseHideManager,
             "drag_n_drop": DragNDropManager,
+            "pan": PanManager,
             "single_mode": SingleModeManager,
             "log": LogManager,
             "stream_proxy": StreamProxyManager,
@@ -211,6 +213,8 @@ class Player(QWidget, ManagersManager):
         self.global_event_filters.append("mouse_hide")
         # Linux in-window drag is a fake drag (KWin cursor + GNOME modifiers).
         self.global_event_filters.append("drag_n_drop")
+        # wherever the middle button goes once pressed on a video
+        self.global_event_filters.append("pan")
 
         self.event_filters = [
             "window_state",

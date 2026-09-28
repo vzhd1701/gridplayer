@@ -13,6 +13,7 @@ from gridplayer.params.static import (
 )
 from gridplayer.utils.aspect_calc import (
     calc_crop_region,
+    calc_dragged_shift,
     calc_moved_shift,
     calc_picture_rect,
     calc_shift_range,
@@ -351,6 +352,68 @@ class TestShiftHeldAtTheEdges:
         view = _view(shift=VideoShift(5000, 0))
 
         assert calc_view_shift((0, 0), SQUARE, view) == VideoShift(5000, 0)
+
+
+class TestDraggedShift:
+    """Where the picture goes, dragged along with the pointer."""
+
+    def test_it_goes_as_far_as_the_pointer(self):
+        # 1600x900 in the square, 900/1080 pane pixels a frame pixel
+        shift, left_over = calc_dragged_shift(VIDEO, SQUARE, _view(), (50, 0))
+
+        assert shift == VideoShift(60, 0)
+        assert left_over == _approx((0, 0))
+
+    def test_a_bigger_picture_goes_the_pointer_s_way_too(self):
+        """Not the way a move from the menu takes it: that is looking
+        further, and this is taking hold of the picture."""
+
+        shift, _ = calc_dragged_shift(VIDEO, SQUARE, _view(), (-50, 0))
+
+        assert shift == VideoShift(-60, 0)
+
+    def test_it_goes_from_where_the_picture_stands(self):
+        view = _view(shift=VideoShift(5000, 0))
+
+        shift, _ = calc_dragged_shift(VIDEO, SQUARE, view, (-50, 0))
+
+        assert shift == VideoShift(360, 0)
+
+    def test_less_than_a_frame_pixel_is_left_over_for_the_next_move(self):
+        # zoomed in 4x, 10/3 pane pixels a frame pixel
+        view = _view(scale=4.0)
+
+        shift, left_over = calc_dragged_shift(VIDEO, SQUARE, view, (1, 0))
+
+        assert shift == NO_SHIFT
+        assert left_over == _approx((1, 0))
+
+        shift, left_over = calc_dragged_shift(VIDEO, SQUARE, view, (2, 0))
+
+        assert shift == VideoShift(1, 0)
+        assert left_over == _approx((2 - 10 / 3, 0))
+
+    def test_held_at_an_edge_nothing_is_left_over(self):
+        shift, left_over = calc_dragged_shift(VIDEO, SQUARE, _view(), (5000, 1.4))
+
+        assert shift == VideoShift(420, 0)
+        assert left_over == _approx((0, 0))
+
+    def test_past_the_edges_it_goes_further(self):
+        view = _view(is_shift_past_edges=True)
+
+        shift, _ = calc_dragged_shift(VIDEO, SQUARE, view, (5000, 0))
+
+        assert shift == calc_shift_range(VIDEO, SQUARE, view)[1]._replace(Y=0)
+        assert shift.X > 420
+
+    def test_nothing_to_work_from_leaves_it_as_it_is(self):
+        view = _view(shift=VideoShift(10, 0))
+
+        assert calc_dragged_shift((0, 0), SQUARE, view, (50, 0)) == (
+            VideoShift(10, 0),
+            (0.0, 0.0),
+        )
 
 
 class TestShiftRange:

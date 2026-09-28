@@ -25,6 +25,7 @@ from gridplayer.params.static import (
     GridMode,
     HWCropBorderOffset,
     NetworkRetryMode,
+    PanTrigger,
     ProxyMode,
     ScreenshotFormat,
     SeekSyncMode,
@@ -61,6 +62,7 @@ _default_settings = {
     "player/language": get_system_language(),
     "player/color_scheme": ColorScheme.SYSTEM,
     "player/keymap": KeymapOverrides({}),
+    "player/pan_trigger": PanTrigger.MIDDLE,
     "player/recent_list_enabled": True,
     "player/recent_list_max_size": 10,
     # empty means the screenshots folder in the app data folder, worked out

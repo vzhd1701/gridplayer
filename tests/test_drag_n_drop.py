@@ -2,7 +2,7 @@ import time
 from types import SimpleNamespace
 
 import pytest
-from PyQt5.QtCore import QEvent, QPoint, Qt
+from PyQt5.QtCore import QEvent, QPoint, QPointF, Qt
 from PyQt5.QtGui import QKeyEvent, QMouseEvent
 from PyQt5.QtWidgets import QApplication, QWidget
 
@@ -76,6 +76,8 @@ class _Ctx:
             get_cell_at=lambda *_a, **_k: None,
             update_active_under_mouse=lambda: None,
             activate_window=lambda: None,
+            get_video_block_under_mouse=lambda: object(),
+            is_pan_press=lambda _event: False,
         )
 
 
@@ -83,6 +85,41 @@ def _make_manager():
     parent = QWidget()
     manager = DragNDropManager(context=_Ctx(), parent=parent)
     return manager, parent
+
+
+def _left_press():
+    return QMouseEvent(
+        QEvent.MouseButtonPress,
+        QPointF(10, 20),
+        Qt.LeftButton,
+        Qt.LeftButton,
+        Qt.ControlModifier,
+    )
+
+
+def test_a_left_press_is_the_start_of_moving_the_video(mocker):
+    manager, _parent = _make_manager()
+    mocker.patch(
+        "gridplayer.player.managers.drag_n_drop.is_modal_open", return_value=False
+    )
+
+    manager.mousePressEvent(_left_press())
+
+    assert manager._drag_start_position == QPoint(10, 20)
+
+
+def test_a_press_that_drags_the_picture_moves_no_video(mocker):
+    """The pan_trigger setting's key held: see PanManager."""
+
+    manager, _parent = _make_manager()
+    manager._ctx.commands.is_pan_press = lambda _event: True
+    mocker.patch(
+        "gridplayer.player.managers.drag_n_drop.is_modal_open", return_value=False
+    )
+
+    manager.mousePressEvent(_left_press())
+
+    assert manager._drag_start_position is None
 
 
 def test_linux_uses_fake_drag_by_default(mocker):

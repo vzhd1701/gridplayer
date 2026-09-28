@@ -30,6 +30,7 @@ from gridplayer.params.languages import LANGUAGES
 from gridplayer.params.static import (
     ColorScheme,
     HWCropBorderOffset,
+    PanTrigger,
     ProxyMode,
     ScreenshotFormat,
     URLResolver,
@@ -163,6 +164,7 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
             "player/color_scheme": self.playerColorScheme,
             "player/language": self.listLanguages,
             "player/keymap": self.keymapEditor,
+            "player/pan_trigger": self.playerPanTrigger,
             "player/recent_list_enabled": self.playerRecentList,
             "player/recent_list_max_size": self.playerRecentListSize,
             "screenshots/dir": self.screenshotsDir,
@@ -239,6 +241,13 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
         if env.IS_LINUX:
             self.playerStayOnTop.hide()
 
+            self.playerPanTrigger.setToolTip(
+                self.tr(
+                    "Many Linux desktops use Alt + drag to move windows,"
+                    " so it may never reach the player."
+                )
+            )
+
         if not env.IS_LINUX:
             self.miscOpaqueHWOverlay.hide()
             self.miscFakeOverlayInvisibility.hide()
@@ -314,6 +323,7 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
         self.fill_logLevelVLC()
         self.fill_language()
         self.fill_colorScheme()
+        self.fill_panTrigger()
         self.fill_streamingResolverPriority()
         self.fill_hwCropBorder()
         self.fill_networkProxyMode()
@@ -640,6 +650,26 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
         }
 
         _fill_combo_box(self.playerColorScheme, schemes)
+
+    def fill_panTrigger(self):
+        if env.IS_MACOS:
+            triggers = {
+                PanTrigger.MIDDLE: self.tr("Middle button"),
+                PanTrigger.CTRL: self.tr("Cmd + left button"),
+                PanTrigger.SHIFT: self.tr("Shift + left button"),
+                PanTrigger.ALT: self.tr("Option + left button"),
+                PanTrigger.NONE: self.tr("Disabled"),
+            }
+        else:
+            triggers = {
+                PanTrigger.MIDDLE: self.tr("Middle button"),
+                PanTrigger.CTRL: self.tr("Ctrl + left button"),
+                PanTrigger.SHIFT: self.tr("Shift + left button"),
+                PanTrigger.ALT: self.tr("Alt + left button"),
+                PanTrigger.NONE: self.tr("Disabled"),
+            }
+
+        _fill_combo_box(self.playerPanTrigger, triggers)
 
     def fill_streamingResolverPriority(self):
         resolvers = {

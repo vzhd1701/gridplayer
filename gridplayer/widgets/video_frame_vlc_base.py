@@ -21,6 +21,7 @@ from gridplayer.settings import Settings
 from gridplayer.utils.aspect_calc import (
     Rect,
     ViewPlacement,
+    calc_dragged_shift,
     calc_moved_shift,
     calc_picture_rect,
     calc_shift_range,
@@ -810,6 +811,23 @@ class VideoFrameVLC(QWidget, metaclass=QABC):
             self._pane_size(),
             self._view,
             (steps_x, steps_y),
+            self._transform,
+        )
+
+    def dragged_shift(
+        self, moved_x: float, moved_y: float
+    ) -> tuple[VideoShift, tuple[float, float]]:
+        """The shift a drag of so many pane pixels takes the picture to.
+
+        Right and down, left and up negative, with what is left over of
+        them; see calc_dragged_shift.
+        """
+
+        return calc_dragged_shift(
+            self._view_frame_size(),
+            self._pane_size(),
+            self._view,
+            (moved_x, moved_y),
             self._transform,
         )
 

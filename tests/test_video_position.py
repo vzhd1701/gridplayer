@@ -284,6 +284,7 @@ def _block(anchor=VideoAnchor.CENTER, shift=NO_SHIFT, is_shift_past_edges=False)
         "set_anchor",
         "set_shift",
         "shift_by",
+        "pan_by",
         "shift_reset",
         "toggle_shift_past_edges",
         "set_shift_past_edges",
@@ -329,6 +330,20 @@ class TestOnOneVideo:
 
         block.video_driver.set_shift.assert_not_called()
         block.info_change.emit.assert_called_once_with("Position: X420 Y0")
+
+    def test_a_drag_takes_it_along_quietly(self):
+        """The whole way, not a word till the drag is let go of."""
+
+        block = _block()
+        block.video_driver.dragged_shift.return_value = (VideoShift(-7, 3), (0.5, 0))
+
+        left_over = block.pan_by(-8.0, 2.5)
+
+        block.video_driver.dragged_shift.assert_called_once_with(-8.0, 2.5)
+        block.video_driver.set_shift.assert_called_once_with(VideoShift(-7, 3))
+        assert block.video_params.shift == VideoShift(-7, 3)
+        assert left_over == (0.5, 0)
+        block.info_change.emit.assert_not_called()
 
     def test_the_reset_brings_it_back_to_the_alignment(self):
         block = _block(anchor=VideoAnchor.TOP, shift=VideoShift(0, -30))

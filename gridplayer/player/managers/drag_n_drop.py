@@ -102,6 +102,11 @@ class DragNDropManager(ManagerBase):
         if event.button() != Qt.LeftButton:
             return
 
+        # dragging the picture about instead, see PanManager
+        if self._ctx.commands.is_pan_press(event):
+            self._drag_start_position = None
+            return
+
         self._drag_start_position = event.pos()
 
     def mouseMoveEvent(self, event):

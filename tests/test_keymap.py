@@ -148,6 +148,9 @@ def test_mouse_sequence_from_wheel_directions():
     shift_up = _wheel_event(dy=120, modifiers=Qt.ShiftModifier)
     assert str(MouseButtonSequence.from_event(shift_up)) == "Shift+Wheel-Up"
 
+    ctrl_down = _wheel_event(dy=-120, modifiers=Qt.ControlModifier)
+    assert str(MouseButtonSequence.from_event(ctrl_down)) == "Ctrl+Wheel-Down"
+
 
 def test_mouse_sequence_from_event_errors():
     empty_wheel = _wheel_event(dx=0, dy=0)
@@ -327,6 +330,8 @@ def test_default_mouse_bindings():
     assert "Wheel-Up" in defaults["-1%"]
     assert "Shift+Wheel-Down" in defaults["+5%"]
     assert "Shift+Wheel-Up" in defaults["-5%"]
+    assert defaults["Zoom In"] == ["+", "Ctrl+Wheel-Up"]
+    assert defaults["Zoom Out"] == ["-", "Ctrl+Wheel-Down"]
 
 
 def test_default_keymap_has_no_duplicate_shortcuts():
