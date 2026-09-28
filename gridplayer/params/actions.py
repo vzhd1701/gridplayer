@@ -381,14 +381,14 @@ ACTIONS = MappingProxyType(
         },
         "Zoom In": {
             "title": translate("Actions", "Zoom In"),
-            "key": "+",
+            "keys": ["+", "Ctrl+Wheel-Up"],
             "icon": "zoom-in",
             "func": ("active", "scale_increase"),
             "show_if": "is_active_has_video",
         },
         "Zoom Out": {
             "title": translate("Actions", "Zoom Out"),
-            "key": "-",
+            "keys": ["-", "Ctrl+Wheel-Down"],
             "icon": "zoom-out",
             "func": ("active", "scale_decrease"),
             "show_if": "is_active_has_video",
