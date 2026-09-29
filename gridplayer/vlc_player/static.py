@@ -1,5 +1,6 @@
 import random
 from dataclasses import dataclass, field
+from enum import Enum, auto
 
 from gridplayer.models.audio_device import AudioDevice
 from gridplayer.models.audio_selection import (
@@ -28,6 +29,32 @@ NO_TRACK = frozenset((None, DISABLED_TRACK))
 # starting over really hands back.
 LOOP_WRAP_DROP_FRACTION = 8
 
+# A seek lands on the keyframe before where it was aimed and decodes its way
+# to the aim from there, and VLC reports the time it landed on meanwhile: a
+# hair short on a file, but seconds short on a stream, where it lands on the
+# start of a segment -- up to 10.5s, measured on YouTube. This far short of
+# where a seek was aimed, the video still counts as on its way there.
+SEEK_LANDING_MS = 20000
+
+# How far past where a seek was aimed it can first be seen and still be that
+# seek arriving, at normal speed: VLC comes out of one a few hundred ms on,
+# measured on YouTube. A faster rate covers more ground between two reports.
+SEEK_ARRIVAL_MS = 5000
+
+# A seek that landed short sits where it landed until it has decoded its way
+# to the aim. Seen this far from there, it has done with landing: playing on
+# from where it landed, or gone round from the end of a short video.
+SEEK_LANDED_MOVE_MS = 1000
+
+
+class SeekLanding(Enum):
+    # the aim repeated back, or short of it on the way there
+    LANDING = auto()
+    # just past the aim, or playing on from where it landed short
+    ARRIVED = auto()
+    # nowhere this seek could have taken the video
+    ASTRAY = auto()
+
 
 def is_loop_wrapped(last_time: int | None, new_time: int, length: int) -> bool:
     """Whether the time falling this far back means another pass has begun.
@@ -42,6 +69,43 @@ def is_loop_wrapped(last_time: int | None, new_time: int, length: int) -> bool:
         return False
 
     return last_time - new_time > length / LOOP_WRAP_DROP_FRACTION
+
+
+def arriving_time(time_ms: int, seek_target: int | None) -> int:
+    """Where the video is, a seek still on its way counting as there already.
+
+    The target is where the last seek was aimed, for as long as the time has
+    not been seen past it.
+    """
+
+    if seek_target is not None and 0 <= seek_target - time_ms <= SEEK_LANDING_MS:
+        return seek_target
+
+    return time_ms
+
+
+def seek_landing(
+    time_ms: int, seek_target: int, landed_ms: int | None, rate: float
+) -> SeekLanding:
+    """What a time reported after a seek says about how the seek is going.
+
+    landed_ms is the first time reported short of the aim, if one was.
+    """
+
+    if time_ms == seek_target:
+        return SeekLanding.LANDING
+
+    if 0 < time_ms - seek_target <= SEEK_ARRIVAL_MS * max(rate, 1):
+        return SeekLanding.ARRIVED
+
+    if 0 < seek_target - time_ms <= SEEK_LANDING_MS:
+        if landed_ms is None or abs(time_ms - landed_ms) <= SEEK_LANDED_MOVE_MS:
+            return SeekLanding.LANDING
+
+        if time_ms > landed_ms:
+            return SeekLanding.ARRIVED
+
+    return SeekLanding.ASTRAY
 
 
 def wanted_audio_track_id(video, tracks: dict):

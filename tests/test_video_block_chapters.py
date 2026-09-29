@@ -311,6 +311,22 @@ class TestJumpingOnAStream:
 
         assert block.chapter_playing == 1
 
+    def test_a_looped_chapter_coming_round_is_sent_back_once(self, block, mocker):
+        block.seek_chapter(2)
+        _reported(block, 25400)
+        block.loop_chapter()
+
+        set_time = mocker.spy(block.video_driver, "set_time")
+
+        # past its end, back to its start, where the stream lands short
+        _reported(block, 40100)
+        _reported(block, LANDING_ON_A_STREAM_MS)
+        _reported(block, LANDING_ON_A_STREAM_MS + 5)
+        _reported(block, 25400)
+
+        assert [call.args for call in set_time.call_args_list] == [(25000,)]
+        assert block.time == 25400
+
 
 class _Manager(ActiveBlockManager):
     """The manager's menu methods, without the rest of the player behind them."""

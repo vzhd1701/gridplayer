@@ -7,6 +7,14 @@ from PyQt5.QtWidgets import QApplication
 from gridplayer.models.video import Video
 from gridplayer.params.static import VideoEndAction, VideoInitialState
 from gridplayer.settings import Settings
+from gridplayer.vlc_player.static import (
+    SEEK_ARRIVAL_MS,
+    SEEK_LANDED_MOVE_MS,
+    SEEK_LANDING_MS,
+    SeekLanding,
+    arriving_time,
+    seek_landing,
+)
 from gridplayer.widgets.video_block import VideoBlock
 
 
@@ -457,7 +465,7 @@ def _playing_block(mocker, is_wrapped):
     block.loop_end = 2000
     block._is_loop_wrapped.return_value = is_wrapped
     # no seek on its way anywhere
-    block._seek_target = None
+    block._follow_seek.return_value = False
 
     return block
 
@@ -483,12 +491,84 @@ def test_time_changed_picks_up_the_wrap(mocker):
     block.loop_end_action.assert_not_called()
 
 
+def test_time_changed_sends_the_video_back_into_the_loop(mocker):
+    block = _playing_block(mocker, is_wrapped=False)
+    block.loop_start = 30000
+
+    VideoBlock.time_changed(block, 12000)
+
+    block.seek.assert_called_once_with(30000)
+
+
+def test_time_changed_leaves_a_seek_on_its_way_alone(mocker):
+    """A stream reports the segment it landed in before the time it was sent to.
+
+    Seconds back from the aim, that is short of a loop's start, and on a
+    short video as far back as a pass coming round would go.
+    """
+    block = _playing_block(mocker, is_wrapped=True)
+    block.loop_start = 30000
+    block._follow_seek.return_value = True
+
+    VideoBlock.time_changed(block, 30000 - 2300)
+
+    block._loop_wrapped.assert_not_called()
+    block.seek.assert_not_called()
+    block.loop_end_action.assert_not_called()
+
+
+@pytest.mark.parametrize(
+    ("time_ms", "seek_target", "arriving"),
+    [
+        (27700, None, 27700),
+        # still landing, a hair short on a file or seconds short on a stream
+        (29990, 30000, 30000),
+        (27700, 30000, 30000),
+        (30000, 30000, 30000),
+        # further short than any landing: it went somewhere else
+        (30000 - SEEK_LANDING_MS - 1, 30000, 30000 - SEEK_LANDING_MS - 1),
+    ],
+)
+def test_arriving_time(time_ms, seek_target, arriving):
+    assert arriving_time(time_ms, seek_target) == arriving
+
+
+# aimed at 30000, first seen short of it at 27700, the way a stream lands
+TARGET = 30000
+LANDED = 27700
+
+
+@pytest.mark.parametrize(
+    ("time_ms", "landed_ms", "rate", "landing"),
+    [
+        # the aim repeated back before anything has happened
+        (TARGET, None, 1, SeekLanding.LANDING),
+        (LANDED, None, 1, SeekLanding.LANDING),
+        (LANDED + 15, LANDED, 1, SeekLanding.LANDING),
+        (TARGET + 400, LANDED, 1, SeekLanding.ARRIVED),
+        # landed short for good, and playing on from there
+        (LANDED + SEEK_LANDED_MOVE_MS + 1, LANDED, 1, SeekLanding.ARRIVED),
+        # gone round from the end of a short video while landing
+        (300, 20000, 1, SeekLanding.ASTRAY),
+        (LANDED - SEEK_LANDED_MOVE_MS - 1, LANDED, 1, SeekLanding.ASTRAY),
+        # where a seek before it went, which this one never took over from
+        (TARGET - SEEK_LANDING_MS - 1, None, 1, SeekLanding.ASTRAY),
+        (TARGET + SEEK_ARRIVAL_MS + 1, None, 1, SeekLanding.ASTRAY),
+        # four times as fast covers four times the ground between reports
+        (TARGET + SEEK_ARRIVAL_MS + 1, None, 4, SeekLanding.ARRIVED),
+    ],
+)
+def test_seek_landing(time_ms, landed_ms, rate, landing):
+    assert seek_landing(time_ms, TARGET, landed_ms, rate) is landing
+
+
 def test_seek_holds_off_wrap_detection(mocker):
     block = mocker.Mock()
     block.is_video_initialized = True
     block.is_live = False
     block.loop_start = 0
     block.loop_end = 2000
+    block.video_driver.length = 2000
 
     VideoBlock.seek(block, 1500)
 
@@ -510,6 +590,7 @@ def test_seek_marks_itself_before_it_is_made(mocker):
     block.is_live = False
     block.loop_start = 0
     block.loop_end = 10000
+    block.video_driver.length = 10000
     seen = {}
 
     def _set_time(seek_ms):

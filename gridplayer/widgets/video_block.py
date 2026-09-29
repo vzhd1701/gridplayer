@@ -118,8 +118,12 @@ from gridplayer.utils.url_resolve.url_resolve import VideoURLResolver
 from gridplayer.vlc_player.static import (
     DISABLED_TRACK,
     NO_TRACK,
+    SEEK_ARRIVAL_MS,
     MediaInput,
+    SeekLanding,
+    arriving_time,
     is_loop_wrapped,
+    seek_landing,
     wanted_audio_track_id,
     wanted_subtitle_track_id,
 )
@@ -140,12 +144,11 @@ IN_PROGRESS_THRESHOLD_MS = 500
 # is not mistaken for the video wrapping around.
 SEEK_SETTLE_MS = 500
 
-# A seek lands on the keyframe before where it was aimed and decodes its way
-# to the aim from there, and VLC reports the time it landed on meanwhile: a
-# hair short on a file, but seconds short on a stream, where it lands on the
-# start of a segment -- up to 10.5s, measured on YouTube. This far short of
-# where a seek was aimed, the video still counts as on its way there.
-SEEK_LANDING_MS = 20000
+# VLC's adaptive demuxer turns a seek down while it is still restarting its
+# streams for the one before -- "not seekable" in its own log, and nothing
+# else to say so -- and plays on from where that one took it. Made again once
+# the time shows up where the seek could never have landed, it takes.
+SEEK_RETRIES = 2
 
 # a pane that has to sit still for an hour before following its size is
 # as good as one that never follows it at all
@@ -439,9 +442,19 @@ class VideoBlock(QWidget):
         self._seek_settle_timer.setSingleShot(True)
         self._seek_settle_timer.setInterval(SEEK_SETTLE_MS)
 
-        # where the last seek was aimed, until the video is seen past it;
-        # see _chapter_time
+        # where the last seek was aimed, until the video is seen to get there;
+        # the first time reported short of it; and how many more times it may
+        # be made again. See _follow_seek
         self._seek_target: int | None = None
+        self._seek_landed_at: int | None = None
+        self._seek_retries = 0
+
+        # the seek before the last, when the last was made before it landed
+        self._seek_behind: int | None = None
+
+        # whether what plays is opened by VLC's adaptive demuxer, the one
+        # that turns seeks down; see SEEK_RETRIES
+        self._is_adaptive = False
 
         # held until they are done, the pool only has the C++ side of them
         self._screenshot_jobs: set[ScreenshotJob] = set()
@@ -519,7 +532,10 @@ class VideoBlock(QWidget):
 
         # whatever opens next brings chapters of its own, or none
         self._set_chapters(())
+
+        # a seek made on it has nothing left to land on
         self._seek_target = None
+        self._seek_behind = None
 
         if self.video_driver is None:
             return
@@ -2560,15 +2576,19 @@ class VideoBlock(QWidget):
 
         self.time = new_time
 
-        # seen past where the last seek was aimed, it has got there; seen at
-        # it proves nothing, the driver repeats the aim before it has landed
-        if self._seek_target is not None and new_time > self._seek_target:
-            self._seek_target = None
+        is_seek_on_its_way = self._follow_seek(new_time)
 
         if self.is_live:
             return
 
         if self.is_stopped:
+            return
+
+        # Where a seek has not got to yet says nothing about the loop. On a
+        # stream it lands seconds short, as far back as a short video's wrap
+        # would go, and short of a loop's start, from where it would be sent
+        # back to land short again, over and over.
+        if is_seek_on_its_way:
             return
 
         if is_wrapped:
@@ -2591,6 +2611,79 @@ class VideoBlock(QWidget):
         last_time, self._last_time = self._last_time, new_time
 
         return is_loop_wrapped(last_time, new_time, self.video_driver.length)
+
+    def _follow_seek(self, new_time) -> bool:
+        """Keep up with the last seek, True while the time is its doing.
+
+        That is while it lands, and while it is made again after the stream
+        turned it down, the time then being where the one before it went.
+        """
+
+        target = self._seek_target
+
+        if target is None:
+            return False
+
+        rate = self.video_params.rate
+
+        if self._seek_behind is not None and new_time != target:
+            behind, self._seek_behind = self._seek_behind, None
+
+            # the one before it repeated back, which says nothing yet
+            if new_time == behind:
+                self._seek_behind = behind
+                return True
+
+            # The first word since, and it is the one before landing. How far
+            # that is from this one's aim cannot tell them apart on a short
+            # video: every time there is near enough to be this one landing.
+            is_behinds = seek_landing(new_time, behind, None, rate) is not (
+                SeekLanding.ASTRAY
+            )
+            is_this_ones = seek_landing(new_time, target, None, rate) is (
+                SeekLanding.ARRIVED
+            )
+
+            if is_behinds and not is_this_ones:
+                return self._seek_again(new_time)
+
+        landing = seek_landing(new_time, target, self._seek_landed_at, rate)
+
+        if landing is SeekLanding.LANDING:
+            if new_time != target and self._seek_landed_at is None:
+                self._seek_landed_at = new_time
+            return True
+
+        if landing is SeekLanding.ASTRAY and self._seek_retries > 0:
+            return self._seek_again(new_time)
+
+        self._seek_target = None
+        return False
+
+    def _seek_again(self, new_time) -> bool:
+        """Make the last seek again, the stream having turned it down."""
+
+        self._seek_retries -= 1
+        self._seek_landed_at = None
+
+        self._log.debug(
+            f"Seek to {self._seek_target} did not take, at {new_time} instead"
+        )
+
+        # not from in here: the driver would report the time from inside the
+        # call, back into this one before it is done
+        QTimer.singleShot(0, self._retry_seek)
+
+        return True
+
+    def _retry_seek(self):
+        if self._seek_target is None or not self.is_video_initialized:
+            return
+
+        self._last_time = self._seek_target
+        self._seek_settle_timer.start()
+
+        self.video_driver.set_time(self._seek_target)
 
     def _loop_wrapped(self):
         """The video wrapped around on its own, mind whatever is left to do."""
@@ -2792,6 +2885,9 @@ class VideoBlock(QWidget):
         # a URL is resolved again and brings the site's list back with it
         self._site_chapters = ()
         self._site_length_ms = 0
+
+        # a file is never adaptive; a URL says so once its stream is picked
+        self._is_adaptive = False
 
         if self.video_params.is_http_url:
             self.url_resolver.resolve(self.video_params.uri)
@@ -2998,6 +3094,8 @@ class VideoBlock(QWidget):
         else:
             stream = self._with_audio_language(stream)
             url = self._ctx.commands.add_stream(self._with_origin(stream, quality))
+
+        self._is_adaptive = stream.is_adaptive
 
         self.load_video.emit(
             MediaInput(
@@ -3325,23 +3423,7 @@ class VideoBlock(QWidget):
         if not self._chapters:
             return None
 
-        return chapter_index_at(self._chapters, self._chapter_time)
-
-    @property
-    def _chapter_time(self) -> int:
-        """Where the video is, as far as its chapters go.
-
-        A seek still on its way counts as there already. Read off the time
-        alone, a jump to a chapter on a stream sits in the chapter before it
-        for a second or so, and a press of next then jumps to the same one.
-        """
-
-        target = self._seek_target
-
-        if target is not None and 0 <= target - self.time <= SEEK_LANDING_MS:
-            return target
-
-        return self.time
+        return chapter_index_at(self._chapters, self._arriving_time)
 
     def is_chapter_reachable(self, index: int) -> bool:
         """Whether a jump to this chapter would land inside the loop."""
@@ -3360,7 +3442,7 @@ class VideoBlock(QWidget):
             return
 
         stop_ms = next_stop(
-            self._chapters, self._chapter_time, self.loop_start, self.loop_end
+            self._chapters, self._arriving_time, self.loop_start, self.loop_end
         )
 
         if stop_ms is None:
@@ -3378,7 +3460,7 @@ class VideoBlock(QWidget):
 
         self._seek_chapter_stop(
             previous_stop(
-                self._chapters, self._chapter_time, self.loop_start, self.loop_end
+                self._chapters, self._arriving_time, self.loop_start, self.loop_end
             )
         )
 
@@ -3409,7 +3491,7 @@ class VideoBlock(QWidget):
 
         length = self.video_driver.length
 
-        start_ms, end_ms = span_at(self._chapters, self._chapter_time, length)
+        start_ms, end_ms = span_at(self._chapters, self._arriving_time, length)
 
         # cleared first: the new start can lie past the old end
         self.reset_loop()
@@ -3495,10 +3577,36 @@ class VideoBlock(QWidget):
         # inside libVLC, which deadlocks against the seek it is still making.
         self._last_time = seek_ms
         self._seek_settle_timer.start()
+
+        # made before the one before it has landed, while the stream is still
+        # restarting for that one, it is likely to be turned down
+        is_behind = self._seek_target is not None and self._seek_landed_at is None
+        behind = self._seek_target
+
         self._seek_target = seek_ms
+        self._seek_landed_at = None
+
+        # one that close to the end can run into it before it is seen to
+        # arrive, which is no sign of it having been turned down
+        is_near_end = self.video_driver.length - seek_ms <= SEEK_ARRIVAL_MS
+        self._seek_retries = (
+            SEEK_RETRIES if self._is_adaptive and not is_near_end else 0
+        )
+        self._seek_behind = behind if is_behind and self._seek_retries else None
 
         self.time = seek_ms
         self.video_driver.set_time(seek_ms)
+
+    @property
+    def _arriving_time(self) -> int:
+        """Where the video is, a seek still on its way counting as there already.
+
+        Read off the time alone, a seek on a stream sits short of where it
+        was aimed for a second or so: a jump to a chapter reads as still in
+        the one before, so a press of next jumps to the same one again.
+        """
+
+        return arriving_time(self.time, self._seek_target)
 
     @only_with_video_tacks
     @only_seekable
