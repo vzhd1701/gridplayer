@@ -37,12 +37,14 @@ class PlayerProcessSingleVLCHWSP(QThread, VlcPlayerBase, metaclass=QABC):
 
     load_video_done = pyqtSignal(Media)
     tracks_changed = pyqtSignal(Media)
+    chapters_changed = pyqtSignal(tuple)
 
     loop_load_video_st2_set_media = pyqtSignal()
     loop_load_video_st3_extract_media_track = pyqtSignal()
     loop_load_video_st4_loaded = pyqtSignal()
 
     _vout_reapply = pyqtSignal()
+    _chapters_refresh = pyqtSignal()
 
     def __init__(self, win_id, vlc_options, **kwargs):
         super().__init__(vlc_instance=None, **kwargs)
@@ -72,17 +74,29 @@ class PlayerProcessSingleVLCHWSP(QThread, VlcPlayerBase, metaclass=QABC):
                 self._vout_reapply,
                 self._on_vout_reapply,
             ),
+            (
+                self._chapters_refresh,
+                self._on_chapters_refresh,
+            ),
         )
 
     @pyqtSlot()
     def _on_vout_reapply(self):
         self._apply_media_input_view()
 
+    @pyqtSlot()
+    def _on_chapters_refresh(self):
+        self._refresh_chapters()
+
     def _schedule_view_reapply(self):
         # Emitted from libvlc's event thread; this player object's affinity is the
         # main thread, so Qt delivers via QueuedConnection onto the main event
         # loop — off the libvlc callback thread. Avoids re-entering libvlc.
         self._vout_reapply.emit()
+
+    def _schedule_chapters_refresh(self):
+        # the same way off the libvlc callback thread as the view above
+        self._chapters_refresh.emit()
 
     def run(self):
         self._instance = InstanceVLC(0, self.vlc_options)
@@ -149,6 +163,9 @@ class PlayerProcessSingleVLCHWSP(QThread, VlcPlayerBase, metaclass=QABC):
     def notify_tracks_changed(self, media_track):
         self.tracks_changed.emit(media_track)
 
+    def notify_chapters_changed(self, chapters):
+        self.chapters_changed.emit(chapters)
+
     def notify_snapshot_taken(self, snapshot_path):
         self.snapshot_taken.emit(snapshot_path)
 
@@ -208,6 +225,7 @@ class VideoDriverVLCHWSP(VLCVideoDriver):
         qt_connect(
             (self.player.load_video_done, self.load_video_done),
             (self.player.tracks_changed, self.tracks_changed_emit),
+            (self.player.chapters_changed, self.chapters_changed_emit),
             (self.player.snapshot_taken, self.snapshot_taken_emit),
             (self.player.screenshot_taken, self.screenshot_taken_emit),
             (self.player.video_dimensions_changed, self.set_video_dimensions),

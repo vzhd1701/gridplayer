@@ -5,6 +5,7 @@ from gridplayer.utils.qt import translate
 SUBMENUS = MappingProxyType(
     {
         "Jump (to)": {"title": translate("Actions", "Jump (to)"), "icon": "jump-to"},
+        "Chapters": {"title": translate("Actions", "Chapters"), "icon": "chapters"},
         "Loop": {"title": translate("Actions", "Loop"), "icon": "loop"},
         "When Finished": {
             "title": translate("Actions", "When Finished"),
@@ -236,6 +237,13 @@ SECTIONS = MappingProxyType(
                     "-30s",
                 ),
                 (
+                    "Chapters",
+                    "Previous Chapter",
+                    "Next Chapter",
+                    "---",
+                    "Chapter List",
+                ),
+                (
                     "Seek Others",
                     "Seek Others (Percent)",
                     "Seek Others (Timecode)",
@@ -246,6 +254,7 @@ SECTIONS = MappingProxyType(
                     "---",
                     "Set Loop Start",
                     "Set Loop End",
+                    "Loop Chapter",
                     "Loop Reset",
                 ),
                 (
@@ -429,11 +438,17 @@ SECTIONS = MappingProxyType(
                         "-30s [ALL]",
                     ),
                     (
+                        "Chapters",
+                        "Previous Chapter [ALL]",
+                        "Next Chapter [ALL]",
+                    ),
+                    (
                         "Loop",
                         "Random Loop [ALL]",
                         "---",
                         "Set Loop Start [ALL]",
                         "Set Loop End [ALL]",
+                        "Loop Chapter [ALL]",
                         "Loop Reset [ALL]",
                     ),
                     (

@@ -205,6 +205,7 @@ class OverlayBlock(QWidget):
         self.progress_bar_placeholder.hide()
 
         self.floating_progress.length = length
+        self.progress_bar.length = length
         self.label_progress.text = f"{position_txt} / {length_txt}"
         self.progress_bar.position = position_percent
         self._apply_stopped_chrome()
@@ -217,6 +218,11 @@ class OverlayBlock(QWidget):
     @pyqtSlot(float)
     def set_loop_end(self, position):
         self.progress_bar.loop_end = position
+
+    @pyqtSlot(tuple)
+    def set_seek_marks(self, marks):
+        self.progress_bar.marks = marks
+        self.floating_progress.marks = marks
 
     @pyqtSlot(str)
     def set_label(self, label):

@@ -232,6 +232,18 @@ class SubtitleTrack(MediaTrack):
         return ", ".join(info)
 
 
+@dataclass(frozen=True)
+class Chapter:
+    """Where a chapter of the file starts, and what the file calls it.
+
+    Only where it starts: libVLC works out how long each one is from where
+    the next one starts, so that is where its end is worked out here too.
+    """
+
+    start_ms: int
+    name: str | None = None
+
+
 @dataclass
 class Media:
     length: int
@@ -267,6 +279,12 @@ class Media:
     # belongs to the process, and riding along here saves the window a
     # VLC instance of its own to ask.
     audio_devices: tuple[AudioDevice, ...] = ()
+
+    # The chapters of the title that is playing, as the file lists them.
+    # libVLC only has them once the input is running, not from the preparse,
+    # and a file can list more as it plays, so they can also arrive after
+    # the load; see VlcPlayerBase.cb_title_changed.
+    chapters: tuple[Chapter, ...] = ()
 
     @property
     def is_live(self) -> bool:

@@ -30,6 +30,7 @@ from gridplayer.models.audio_selection import (
     AudioTrackId,
     track_of_file,
 )
+from gridplayer.models.seek_mark import SeekMark, SeekMarkKind
 from gridplayer.models.stream import (
     STANDING_QUALITIES,
     STREAM_QUALITY_AUTO,
@@ -81,6 +82,15 @@ from gridplayer.params.static import (
     VideoTransform,
 )
 from gridplayer.settings import Settings
+from gridplayer.utils.chapters import (
+    chapter_index_at,
+    chapter_span,
+    clean_chapters,
+    is_span_reachable,
+    next_stop,
+    previous_stop,
+    span_at,
+)
 from gridplayer.utils.drop_zone import DropIndicator
 from gridplayer.utils.external_audio import (
     discover_audio_files,
@@ -106,6 +116,7 @@ from gridplayer.utils.url_resolve.url_resolve import VideoURLResolver
 from gridplayer.vlc_player.static import (
     DISABLED_TRACK,
     NO_TRACK,
+    Chapter,
     MediaInput,
     is_loop_wrapped,
     wanted_audio_track_id,
@@ -331,6 +342,7 @@ class VideoBlock(QWidget):
     color_change = pyqtSignal(str)
     loop_start_change = pyqtSignal(float)
     loop_end_change = pyqtSignal(float)
+    seek_marks_change = pyqtSignal(tuple)
     is_paused_change = pyqtSignal(bool)
     is_stopped_change = pyqtSignal(bool)
     is_muted_change = pyqtSignal(bool)
@@ -368,6 +380,9 @@ class VideoBlock(QWidget):
 
         # last time update seen, to tell a finished pass from a running one
         self._last_time = None
+
+        # the file's chapters, as far as they are any use; see clean_chapters
+        self._chapters: tuple[Chapter, ...] = ()
 
         # Components
         self.overlay_hide_timer = QTimer(self)
@@ -439,6 +454,7 @@ class VideoBlock(QWidget):
         qt_connect(
             (video_driver.video_ready, self.load_video_finish),
             (video_driver.tracks_changed, self.tracks_changed),
+            (video_driver.chapters_changed, self._update_chapters),
             (video_driver.time_changed, self.time_changed),
             (video_driver.playback_status_changed, self.playback_status_changed),
             (video_driver.error, self.video_driver_error),
@@ -482,6 +498,9 @@ class VideoBlock(QWidget):
     def _destroy_video_driver(self):
         self._is_state_change_in_progress = False
         self._in_progress_timer.stop()
+
+        # whatever opens next brings chapters of its own, or none
+        self._set_chapters(())
 
         if self.video_driver is None:
             return
@@ -546,6 +565,7 @@ class VideoBlock(QWidget):
             (self.color_change, overlay.set_color),
             (self.loop_start_change, overlay.set_loop_start),
             (self.loop_end_change, overlay.set_loop_end),
+            (self.seek_marks_change, overlay.set_seek_marks),
             (self.is_paused_change, overlay.set_is_paused),
             (self.is_stopped_change, overlay.set_is_stopped),
             (self.is_in_progress_change, overlay.set_is_in_progress),
@@ -3102,6 +3122,8 @@ class VideoBlock(QWidget):
 
         self.video_params.video_track_id = self.video_driver.cur_video_track_id
 
+        self._update_chapters()
+
         self.is_audio_present_change.emit(bool(self.audio_tracks))
 
         self._adopt_audio_if_silent()
@@ -3197,6 +3219,135 @@ class VideoBlock(QWidget):
     def reset_loop(self):
         self.set_loop_start_time(None)
         self.set_loop_end_time(None)
+
+    # Chapters
+    #
+    # Every jump is a seek to where a chapter starts, never libVLC's own
+    # chapter calls: those move the time without seek() knowing, and a jump
+    # back of any size then reads as the video having finished a pass, which
+    # sets off the end action. A loop narrows everything down to itself, the
+    # same as it does for the seek bar.
+
+    @property
+    def chapters(self) -> tuple[Chapter, ...]:
+        return self._chapters
+
+    def _update_chapters(self):
+        if not self.is_video_initialized or self.is_live:
+            self._set_chapters(())
+            return
+
+        self._set_chapters(
+            clean_chapters(self.video_driver.chapters, self.video_driver.length)
+        )
+
+    def _set_chapters(self, chapters: tuple[Chapter, ...]):
+        if chapters == self._chapters:
+            return
+
+        self._chapters = chapters
+
+        self.seek_marks_change.emit(
+            tuple(
+                SeekMark(
+                    time_ms=chapter.start_ms,
+                    label=self.chapter_name(index),
+                    kind=SeekMarkKind.CHAPTER,
+                )
+                for index, chapter in enumerate(chapters)
+            )
+        )
+
+    def chapter_name(self, index: int) -> str:
+        name = self._chapters[index].name
+
+        if name:
+            return name
+
+        return translate("Actions", "Chapter {NUMBER}").format(NUMBER=index + 1)
+
+    @property
+    def chapter_playing(self) -> int | None:
+        """Which chapter the video is in, None before the first one starts."""
+
+        if not self._chapters:
+            return None
+
+        return chapter_index_at(self._chapters, self.time)
+
+    def is_chapter_reachable(self, index: int) -> bool:
+        """Whether a jump to this chapter would land inside the loop."""
+
+        if not self.is_video_initialized or not 0 <= index < len(self._chapters):
+            return False
+
+        span = chapter_span(self._chapters, index, self.video_driver.length)
+
+        return is_span_reachable(span, self.loop_start, self.loop_end)
+
+    @only_initialized
+    @only_seekable
+    def next_chapter(self):
+        if not self._chapters:
+            return
+
+        stop_ms = next_stop(self._chapters, self.time, self.loop_start, self.loop_end)
+
+        if stop_ms is None:
+            # past the last chapter is the end, arriving early
+            self.loop_end_action()
+            return
+
+        self._seek_chapter_stop(stop_ms)
+
+    @only_initialized
+    @only_seekable
+    def previous_chapter(self):
+        if not self._chapters:
+            return
+
+        self._seek_chapter_stop(
+            previous_stop(self._chapters, self.time, self.loop_start, self.loop_end)
+        )
+
+    @only_initialized
+    @only_seekable
+    def seek_chapter(self, index: int):
+        if not self.is_chapter_reachable(index):
+            return
+
+        # a chapter the loop starts part way into is joined where it does
+        self._seek_chapter_stop(max(self._chapters[index].start_ms, self.loop_start))
+
+    def _seek_chapter_stop(self, stop_ms: int):
+        self.seek(stop_ms)
+
+        index = chapter_index_at(self._chapters, stop_ms)
+
+        if index is not None:
+            self.info_change.emit(self.chapter_name(index))
+
+    @only_initialized
+    @only_seekable
+    def loop_chapter(self):
+        """Loop the chapter the video is in, as a segment of its own."""
+
+        if not self._chapters:
+            return
+
+        length = self.video_driver.length
+
+        start_ms, end_ms = span_at(self._chapters, self.time, length)
+
+        # cleared first: the new start can lie past the old end
+        self.reset_loop()
+
+        self.set_loop_start_time(start_ms)
+
+        # the last chapter runs to the end of the file, which is where an
+        # unset end already is
+        if end_ms < length:
+            self.set_loop_end_time(end_ms)
 
     @only_seekable
     def set_end_action(self, end_action: VideoEndAction):

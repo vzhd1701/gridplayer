@@ -30,6 +30,9 @@ class VlcPlayerThreaded(CommandLoopThreaded, VlcPlayerBase):
     def notify_tracks_changed(self, media_track):
         self.cmd_send("tracks_changed_emit", media_track)
 
+    def notify_chapters_changed(self, chapters):
+        self.cmd_send("chapters_changed_emit", chapters)
+
     def notify_video_dimensions(self, width, height):
         self.cmd_send("set_video_dimensions", width, height)
 
@@ -38,6 +41,9 @@ class VlcPlayerThreaded(CommandLoopThreaded, VlcPlayerBase):
 
     def _schedule_tracks_reapply(self):
         self.cmd_send_self("_reapply_tracks")
+
+    def _schedule_chapters_refresh(self):
+        self.cmd_send_self("_refresh_chapters")
 
     def loopback_load_video_st2_set_media(self):
         self.cmd_send_self("load_video_st2_set_media")

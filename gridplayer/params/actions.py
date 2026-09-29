@@ -253,6 +253,27 @@ ACTIONS = MappingProxyType(
             "func": ("active", "manual_seek", "seek_shift_ms", -30000),
             "show_if": "is_active_seekable",
         },
+        "Previous Chapter": {
+            "title": translate("Actions", "Previous Chapter"),
+            "icon": "chapter-previous",
+            "func": ("active", "manual_seek", "previous_chapter"),
+            "show_if": "is_active_has_chapters",
+        },
+        "Next Chapter": {
+            "title": translate("Actions", "Next Chapter"),
+            "icon": "chapter-next",
+            "func": ("active", "manual_seek", "next_chapter"),
+            "show_if": "is_active_has_chapters",
+        },
+        "Chapter List": {
+            # the chapters go straight into the menu it sits in, so this
+            # title is never shown
+            "title": translate("Actions", "Chapters"),
+            "icon": "chapters",
+            "show_if": "is_active_has_chapters",
+            "menu_generator": "menu_generator_chapters",
+            "is_menu_inline": True,
+        },
         "Random Loop": {
             "title": translate("Actions", "Random Loop"),
             "icon": "loop-random",
@@ -280,6 +301,12 @@ ACTIONS = MappingProxyType(
             "icon": "loop-reset",
             "func": ("active", "reset_loop"),
             "show_if": "is_active_seekable",
+        },
+        "Loop Chapter": {
+            "title": translate("Actions", "Loop Chapter"),
+            "icon": "loop-chapter",
+            "func": ("active", "loop_chapter"),
+            "show_if": "is_active_has_chapters",
         },
         "When Finished Loop File": {
             "title": translate("When Finished", "Loop This File"),
@@ -1352,6 +1379,18 @@ ACTIONS = MappingProxyType(
             "func": ("all", "seek_shift_ms", -30000),
             "show_if": "is_any_videos_seekable",
         },
+        "Previous Chapter [ALL]": {
+            "title": translate("Actions", "Previous Chapter"),
+            "icon": "chapter-previous",
+            "func": ("all", "previous_chapter"),
+            "show_if": "is_any_videos_have_chapters",
+        },
+        "Next Chapter [ALL]": {
+            "title": translate("Actions", "Next Chapter"),
+            "icon": "chapter-next",
+            "func": ("all", "next_chapter"),
+            "show_if": "is_any_videos_have_chapters",
+        },
         "Random Loop [ALL]": {
             "title": translate("Actions", "Random Loop"),
             "icon": "loop-random",
@@ -1378,6 +1417,12 @@ ACTIONS = MappingProxyType(
             "icon": "loop-reset",
             "func": ("all", "reset_loop"),
             "show_if": "is_any_videos_seekable",
+        },
+        "Loop Chapter [ALL]": {
+            "title": translate("Actions", "Loop Chapter"),
+            "icon": "loop-chapter",
+            "func": ("all", "loop_chapter"),
+            "show_if": "is_any_videos_have_chapters",
         },
         "When Finished Loop File [ALL]": {
             "title": translate("When Finished", "Loop This File"),

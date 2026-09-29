@@ -63,6 +63,9 @@ icon-symbolic,icons/custom/aspect stretch.svg,aspect-stretch
 icon-symbolic,icons/custom/aspect.svg,aspect
 icon-symbolic,icons/custom/audio device.svg,audio-device
 icon-symbolic,icons/custom/audio only.svg,audio-only
+icon-symbolic,icons/custom/chapter next.svg,chapter-next
+icon-symbolic,icons/custom/chapter previous.svg,chapter-previous
+icon-symbolic,icons/custom/chapters.svg,chapters
 icon-symbolic,icons/custom/checkmark.svg,checkmark
 icon-symbolic,icons/custom/close all.svg,close-playlist
 icon-symbolic,icons/custom/columns first.svg,grid-columns-first
@@ -77,6 +80,7 @@ icon-symbolic,icons/custom/grid size.svg,grid-size
 icon-symbolic,icons/custom/grid-show-all.svg,grid-show-all
 icon-symbolic,icons/custom/information.svg,information
 icon-symbolic,icons/custom/jump.svg,jump-to
+icon-symbolic,icons/custom/loop chapter.svg,loop-chapter
 icon-symbolic,icons/custom/loop dir shuffle.svg,loop-dir-shuffle
 icon-symbolic,icons/custom/loop dir.svg,loop-dir
 icon-symbolic,icons/custom/loop end.svg,loop-end

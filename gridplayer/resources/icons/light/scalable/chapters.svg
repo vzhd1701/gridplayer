@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="532pt" height="532pt" version="1.1" viewBox="-10 -10 532 532" xmlns="http://www.w3.org/2000/svg">
+ <path fill-rule="evenodd" d="m48 128h416a48 48 0 0 1 48 48v160a48 48 0 0 1-48 48h-416a48 48 0 0 1-48-48v-160a48 48 0 0 1 48-48zm0 25a23 23 0 0 0-23 23v160a23 23 0 0 0 23 23h416a23 23 0 0 0 23-23v-160a23 23 0 0 0-23-23z"/>
+ <path d="m140 140h80l-40 64z"/>
+ <path d="m140 372h80l-40-64z"/>
+ <path d="m292 140h80l-40 64z"/>
+ <path d="m292 372h80l-40-64z"/>
+</svg>

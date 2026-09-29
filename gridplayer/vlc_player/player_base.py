@@ -1,3 +1,4 @@
+import ctypes
 import dataclasses
 import logging
 import tempfile
@@ -35,6 +36,7 @@ from gridplayer.vlc_player.player_event_waiter import (
 )
 from gridplayer.vlc_player.player_tracks_manager import TracksManager
 from gridplayer.vlc_player.static import (
+    Chapter,
     Media,
     MediaInput,
     NotPausedError,
@@ -234,6 +236,7 @@ class VlcPlayerBase(ABC):
             "time_changed": self.cb_time_changed,
             "media_parsed_changed": self.cb_parse_changed,
             "buffering": self.cb_buffering,
+            "title_changed": self.cb_title_changed,
             "vout": self.cb_vout,
         }
 
@@ -303,6 +306,18 @@ class VlcPlayerBase(ABC):
         self._arm_tracks_reapply_if_renumbered()
 
         self._reapply_tracks_after_restart()
+
+    def cb_title_changed(self, event):
+        # The input lists the chapters a file declares as it opens, before
+        # the buffering the load waits on, so the load finds those itself.
+        # This is for the ones listed later: a chained Ogg lists each link's
+        # own as playback reaches it, and a disc image moves between titles
+        # with chapters of their own. An mkv sends one on every seek too,
+        # with nothing new in it.
+        #
+        # Deferred for the same reason as the view: this runs inside a
+        # libvlc event callback and must not re-enter libvlc.
+        self._schedule_chapters_refresh()
 
     def cb_playing(self, event):
         self._log.debug("Media playing")
@@ -496,6 +511,9 @@ class VlcPlayerBase(ABC):
 
     def notify_tracks_changed(self, media_track: Media) -> None:  # noqa: B027
         """Forward a track list that changed after the load. No-op by default."""
+
+    def notify_chapters_changed(self, chapters: tuple[Chapter, ...]) -> None:  # noqa: B027
+        """Forward chapters that arrived or changed after the load. No-op by default."""
 
     def notify_video_dimensions(self, width: int, height: int) -> None:  # noqa: B027
         """Forward decoded size to the widget. Default is a no-op."""
@@ -1034,6 +1052,10 @@ class VlcPlayerBase(ABC):
 
         self._fill_missing_track_dimensions()
 
+        # the input listed them as it opened, before the buffering step 3
+        # waited on; any it lists later are sent on by _refresh_chapters
+        self.media = dataclasses.replace(self.media, chapters=self._read_chapters())
+
         self.is_video_initialized = True
 
         self.notify_load_video_done(self.media)
@@ -1378,6 +1400,75 @@ class VlcPlayerBase(ABC):
         # libvlc event callback and must not re-enter libvlc.
         self._reapply_tracks()
 
+    def _schedule_chapters_refresh(self):
+        # Deferred for the same reason as the view; see cb_title_changed.
+        self._refresh_chapters()
+
+    def _refresh_chapters(self):
+        """Send on chapters that turned up or changed after the load.
+
+        Before the load is done there is nobody to tell yet, and the load
+        reads them itself as it finishes.
+        """
+
+        if not self.is_video_initialized or self.media is None:
+            return
+
+        chapters = self._read_chapters()
+
+        if chapters == self.media.chapters:
+            return
+
+        self._log.debug(f"Chapters changed, {len(chapters)} now")
+
+        self.media = dataclasses.replace(self.media, chapters=chapters)
+
+        self.notify_chapters_changed(chapters)
+
+    def _read_chapters(self) -> tuple[Chapter, ...]:
+        """The chapters of the title that is playing, as libVLC lists them.
+
+        Not through MediaPlayer.get_full_chapter_descriptions: it never
+        hands the list back to libVLC to free, and it raises where there is
+        no list at all, which is every video without chapters. Its argument
+        types are a pointer short of the C side's, so the casts here follow
+        its own.
+        """
+
+        if self._media_player is None:
+            return ()
+
+        descriptions = ctypes.POINTER(vlc.ChapterDescription)()
+
+        count = vlc.libvlc_media_player_get_full_chapter_descriptions(
+            self._media_player, -1, ctypes.byref(descriptions)
+        )
+
+        if count <= 0:
+            return ()
+
+        pointers = ctypes.cast(
+            descriptions,
+            ctypes.POINTER(ctypes.POINTER(vlc.ChapterDescription) * count),
+        )
+
+        try:
+            return tuple(
+                Chapter(
+                    start_ms=int(pointer.contents.time_offset),
+                    name=_decode_chapter_name(pointer.contents.name),
+                )
+                for pointer in pointers.contents
+            )
+        finally:
+            vlc.libvlc_chapter_descriptions_release(
+                ctypes.cast(
+                    descriptions,
+                    ctypes.POINTER(ctypes.POINTER(vlc.ChapterDescription)),
+                ),
+                count,
+            )
+
     def _arm_tracks_reapply(self):
         """Put the chosen tracks back over the events that follow."""
 
@@ -1615,5 +1706,18 @@ def _decode_device_field(value) -> str:
 
     if value is None:
         return ""
+
+    return value.decode(errors="replace")
+
+
+def _decode_chapter_name(value) -> str | None:
+    """A chapter's name as text, None where the file gave it none.
+
+    Most containers keep UTF-8 there; one that does not still leaves a
+    chapter to jump to, with a character or two to spare.
+    """
+
+    if value is None:
+        return None
 
     return value.decode(errors="replace")

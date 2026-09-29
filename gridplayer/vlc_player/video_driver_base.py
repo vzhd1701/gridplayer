@@ -12,6 +12,7 @@ class VLCVideoDriver(QObject, metaclass=QABC):
     playback_status_changed = pyqtSignal(int)
     load_finished = pyqtSignal(Media)
     tracks_changed = pyqtSignal(Media)
+    chapters_changed = pyqtSignal(tuple)
     snapshot_taken = pyqtSignal(str)
     # a PNG of the frame on show, for the receiver to move and then remove;
     # empty when VLC had none to give
@@ -62,6 +63,9 @@ class VLCVideoDriver(QObject, metaclass=QABC):
 
     def tracks_changed_emit(self, media_track: Media):
         self.tracks_changed.emit(media_track)
+
+    def chapters_changed_emit(self, chapters: tuple):
+        self.chapters_changed.emit(chapters)
 
     @abstractmethod
     def snapshot(self): ...

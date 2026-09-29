@@ -32,6 +32,10 @@ class QDynamicAction(QAction):
 
         self.menu_generator = None
 
+        # what the generator makes goes straight into the menu this action
+        # is put in, rather than into a submenu of its own
+        self.is_menu_inline = False
+
     @property
     def is_skipped(self) -> bool:
         if self.show_if and not self.show_if():
@@ -283,6 +287,7 @@ class ActionsManager(ManagerBase):
         # menus can't have shortcuts
         if cmd.get("menu_generator"):
             action.menu_generator = self._resolve_menu_generator(cmd["menu_generator"])
+            action.is_menu_inline = cmd.get("is_menu_inline", False)
         else:
             command = self._ctx.commands.resolve(cmd["func"])
             action.triggered.connect(

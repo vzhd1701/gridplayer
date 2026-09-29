@@ -14,9 +14,44 @@ from PyQt5.QtGui import (
 )
 from PyQt5.QtWidgets import QGraphicsOpacityEffect, QSizePolicy, QWidget
 
+from gridplayer.models.seek_mark import SeekMarkKind, chapter_at
 from gridplayer.params.static import OVERLAY_ACTIVITY_EVENT
 from gridplayer.utils.drop_zone import DropIndicator
 from gridplayer.utils.time_txt import get_time_txt
+
+# A chapter is marked the way mpv marks it: a wedge cut into the top and the
+# bottom edge of the bar, which leaves the middle of it to the loop marks'
+# full-height lines.
+CHAPTER_NOTCH_DEPTH = 3
+
+# The wedges narrow along with the bar, down to a 1px tick, so a small cell
+# is not all notches. As (bar width from, half the wedge's width): 7px wide
+# from a 280px bar, which is a cell of about 440px, and a tick below 120px.
+CHAPTER_NOTCH_WIDTHS = ((280, 3), (200, 2), (120, 1))
+
+# Notches closer than this to the one before, past their own width, are
+# left out, so a file with hundreds of chapters does not turn the bar into
+# a comb.
+CHAPTER_NOTCH_MIN_GAP = 2
+
+# How far the chapter under the mouse stands out from the rest of the bar.
+CHAPTER_HOVER_ALPHA = 70
+
+# A chapter name cut down to less than this is no name, and is left off.
+HOVER_LABEL_MIN_NAME_PX = 30
+
+# half the width of the pointer under the hover label
+HOVER_POINTER_HALF_WIDTH = 5
+
+
+def chapter_notch_half_width(bar_width: int) -> int:
+    """How far a chapter notch reaches either side of its middle, 0 for a tick."""
+
+    for from_width, half_width in CHAPTER_NOTCH_WIDTHS:
+        if bar_width >= from_width:
+            return half_width
+
+    return 0
 
 
 class OverlayWidget(QWidget):
@@ -165,24 +200,67 @@ class OverlayShortLabelFloating(OverlayShortLabel):
         super().__init__(**kwargs)
 
         self.length = None
+        self.marks = ()
 
         self.is_opaque = False
 
         self._clip_region = None
 
+        # where the pointer sits along the label, None for the middle
+        self._pointer_x = None
+
     def on_mouse_over(self, pos, progress_pos):
         if self.length is None:
             return
 
-        new_time = int((self.length * progress_pos) // 1000)
-        self.text = get_time_txt(new_time, strip=True)
+        time_ms = int(self.length * progress_pos)
+        self.text = self._hover_text(time_ms)
 
-        x_middle = round(self.rect().width() / 2)
+        # sized now rather than at the next paint, since where it goes
+        # depends on how wide it is
+        self.update_visuals()
 
-        pos.setX(pos.x() - x_middle)
-        pos.setY(pos.y() - self.rect().height())
-        self.move(pos)
+        # kept inside the overlay, with the pointer still under the mouse
+        width = self.width()
+        overlay_width = self.parentWidget().width()
+
+        left = min(max(pos.x() - width // 2, 0), max(overlay_width - width, 0))
+
+        self._pointer_x = min(
+            max(pos.x() - left, HOVER_POINTER_HALF_WIDTH),
+            width - HOVER_POINTER_HALF_WIDTH,
+        )
+
+        self.move(left, pos.y() - self.height())
         self.show()
+        self.update()
+
+    def _hover_text(self, time_ms: int) -> str:
+        """The time under the mouse, and the chapter it is in where there is one."""
+
+        time_txt = get_time_txt(time_ms // 1000, strip=True)
+
+        chapter = chapter_at(self.marks, time_ms, self.length)
+
+        if chapter is None:
+            return time_txt
+
+        prefix = f"{time_txt} - "
+
+        metrics = QFontMetrics(self.font())
+
+        room = (
+            self.parentWidget().width()
+            - OverlayWidget.padding * 2
+            - metrics.horizontalAdvance(prefix)
+        )
+
+        if room < HOVER_LABEL_MIN_NAME_PX:
+            return time_txt
+
+        name = metrics.elidedText(chapter[0].label, Qt.ElideRight, room)
+
+        return f"{prefix}{name}"
 
     def on_mouse_left(self):
         self.hide()
@@ -214,12 +292,16 @@ class OverlayShortLabelFloating(OverlayShortLabel):
 
         path = QPainterPath()
 
-        middle_x = round(rect.width() / 2)
+        middle_x = self._pointer_x
+        if middle_x is None:
+            middle_x = round(rect.width() / 2)
 
-        path.moveTo(middle_x - 5, rect.height() - 10)
-        path.lineTo(middle_x + 5, rect.height() - 10)
+        half_width = HOVER_POINTER_HALF_WIDTH
+
+        path.moveTo(middle_x - half_width, rect.height() - 10)
+        path.lineTo(middle_x + half_width, rect.height() - 10)
         path.lineTo(middle_x, rect.height())
-        path.lineTo(middle_x - 5, rect.height() - 10)
+        path.lineTo(middle_x - half_width, rect.height() - 10)
 
         painter.setPen(Qt.NoPen)
         painter.fillPath(path, self.color)
@@ -268,7 +350,12 @@ class OverlayProgressBar(OverlayBar):
         self._position = 0
         self._loop_start = 0
         self._loop_end = 100
+        self._marks = ()
         self.progress_select_x = None
+
+        # the video's length in ms, which the marks are placed against;
+        # kept up to date along with the position, and repainted with it
+        self.length = 0
 
     def leaveEvent(self, event):
         self.update()
@@ -331,6 +418,9 @@ class OverlayProgressBar(OverlayBar):
 
         if self.progress_select_x is not None and self.underMouse():
             self.draw_progress_bar_select(painter, self.rect(), progress_rect)
+            self.draw_hovered_chapter(painter)
+
+        self.draw_chapter_notches(painter)
 
         if self.loop_start > 0:
             self.draw_loop_mark(painter, self.rect(), self.loop_start)
@@ -357,6 +447,87 @@ class OverlayProgressBar(OverlayBar):
 
         painter.fillRect(cur_start_loop_rect, Qt.green)
 
+    def draw_hovered_chapter(self, painter):
+        """Set the chapter under the mouse apart from the rest of the bar."""
+
+        if not self.length:
+            return
+
+        hover_ms = self.progress_select_x / self.width() * self.length
+
+        chapter = chapter_at(self._marks, hover_ms, self.length)
+
+        if chapter is None:
+            return
+
+        _, start_ms, end_ms = chapter
+
+        left = self._x_at(start_ms)
+        right = self._x_at(end_ms)
+
+        highlight = QColor(self.color_contrast)
+        highlight.setAlpha(CHAPTER_HOVER_ALPHA)
+
+        painter.fillRect(QRect(left, 0, right - left, self.height()), highlight)
+
+    def draw_chapter_notches(self, painter):
+        if not self.length:
+            return
+
+        half_width = chapter_notch_half_width(self.width())
+        min_gap = half_width * 2 + CHAPTER_NOTCH_MIN_GAP
+
+        painter.save()
+        painter.setRenderHint(QPainter.Antialiasing, True)
+        painter.setPen(Qt.NoPen)
+        painter.setBrush(self.color_contrast)
+
+        last_x = None
+
+        for mark in self._marks:
+            if mark.kind != SeekMarkKind.CHAPTER:
+                continue
+
+            x = self._x_at(mark.time_ms)
+
+            # the ends of the bar mark those places well enough already
+            if x <= half_width or x >= self.width() - half_width:
+                continue
+
+            if last_x is not None and x - last_x < min_gap:
+                continue
+
+            last_x = x
+
+            self._draw_chapter_notch(painter, x, half_width)
+
+        painter.restore()
+
+    def _draw_chapter_notch(self, painter, x, half_width):
+        depth = CHAPTER_NOTCH_DEPTH
+        bottom = self.height()
+
+        if not half_width:
+            # a wedge with no width is no wedge; a tick is what is left
+            painter.fillRect(QRect(x, 0, 1, depth), self.color_contrast)
+            painter.fillRect(QRect(x, bottom - depth, 1, depth), self.color_contrast)
+            return
+
+        # (the edge it is cut into, how far in its point reaches)
+        for edge_y, tip_y in ((0, depth), (bottom, bottom - depth)):
+            painter.drawPolygon(
+                QPolygonF(
+                    [
+                        QPointF(x - half_width, edge_y),
+                        QPointF(x + half_width, edge_y),
+                        QPointF(x, tip_y),
+                    ]
+                )
+            )
+
+    def _x_at(self, time_ms) -> int:
+        return math.ceil(self.width() * time_ms / self.length)
+
     @property
     def position(self):
         return self._position
@@ -364,6 +535,15 @@ class OverlayProgressBar(OverlayBar):
     @position.setter
     def position(self, position):
         self._position = position
+        self.update()
+
+    @property
+    def marks(self):
+        return self._marks
+
+    @marks.setter
+    def marks(self, marks):
+        self._marks = tuple(marks)
         self.update()
 
     @property

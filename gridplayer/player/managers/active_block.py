@@ -30,6 +30,7 @@ from gridplayer.models.subtitle_selection import (
 )
 from gridplayer.player.managers.base import ManagerBase
 from gridplayer.utils.qt import is_modal_open, translate
+from gridplayer.utils.time_txt import get_time_txt
 from gridplayer.utils.track_language import language_name
 from gridplayer.vlc_player.static import DISABLED_TRACK
 from gridplayer.widgets.video_block import VideoBlock
@@ -129,6 +130,10 @@ class ActiveBlockManager(ManagerBase):
             "is_active_subtitle_preferred": self.is_active_subtitle_preferred,
             "is_active_subtitle_default": self.is_active_subtitle_default,
             "is_active_subtitle_disabled": self.is_active_subtitle_disabled,
+            "is_active_has_chapters": self.is_active_has_chapters,
+            "is_active_chapter_playing": self.is_active_chapter_playing,
+            "is_active_chapter_reachable": self.is_active_chapter_reachable,
+            "menu_generator_chapters": self.menu_generator_chapters,
             "menu_generator_stream_quality": self.menu_generator_stream_quality,
             "menu_generator_video_track": self.menu_generator_video_track,
             "menu_generator_audio_track": self.menu_generator_audio_track,
@@ -372,6 +377,49 @@ class ActiveBlockManager(ManagerBase):
             return None
 
         return self._ctx.active_block.video_params.subtitle_selection
+
+    def is_active_has_chapters(self):
+        if not self.is_active_seekable():
+            return False
+
+        return bool(self._ctx.active_block.chapters)
+
+    def is_active_chapter_playing(self, index) -> bool:
+        if self.is_no_active_block:
+            return False
+
+        return self._ctx.active_block.chapter_playing == index
+
+    def is_active_chapter_reachable(self, index) -> bool:
+        """Grayed out where the loop leaves the chapter out altogether."""
+
+        if self.is_no_active_block:
+            return False
+
+        return self._ctx.active_block.is_chapter_reachable(index)
+
+    def menu_generator_chapters(self):
+        """Every chapter of the file, with where it starts beside its name."""
+
+        if not self.is_active_has_chapters():
+            return []
+
+        block = self._ctx.active_block
+        length_ms = block.video_driver.length
+
+        return [
+            {
+                "title": _chapter_title(
+                    block.chapter_name(index), chapter.start_ms, length_ms
+                ),
+                "icon": "empty",
+                "func": ("active", "manual_seek", "seek_chapter", index),
+                "check_if": ("is_active_chapter_playing", index),
+                "enable_if": ("is_active_chapter_reachable", index),
+                "show_if": "is_active_has_chapters",
+            }
+            for index, chapter in enumerate(block.chapters)
+        ]
 
     def menu_generator_stream_quality(self):
         if self.is_no_active_block:
@@ -1312,6 +1360,19 @@ def _track_description(track, language_name_: str | None) -> str | None:
     }
 
     return None if description.casefold() in said_already else description
+
+
+def _chapter_title(name: str, start_ms: int, length_ms: int) -> str:
+    """A chapter's name, with where it starts where a shortcut would go.
+
+    Past the tab is the shortcut column, which lines the times up down the
+    right of the menu. An ampersand is doubled so it shows as one instead
+    of underlining the letter after it.
+    """
+
+    start_txt = get_time_txt(start_ms // 1000, length_ms // 1000)
+
+    return "{}\t{}".format(name.replace("&", "&&"), start_txt)
 
 
 def _separated(*groups) -> list:

@@ -1,3 +1,4 @@
+import dataclasses
 import logging
 import math
 from abc import ABC, abstractmethod
@@ -30,7 +31,7 @@ from gridplayer.utils.aspect_calc import (
 )
 from gridplayer.utils.qt import MILLISECONDS, QABC, qt_connect
 from gridplayer.utils.screenshots import ScreenshotView
-from gridplayer.vlc_player.static import Media, MediaInput
+from gridplayer.vlc_player.static import Chapter, Media, MediaInput
 from gridplayer.vlc_player.video_driver_base import VLCVideoDriver
 from gridplayer.widgets.video_status import VideoStatus
 
@@ -300,6 +301,7 @@ class VideoFrameVLC(QWidget, metaclass=QABC):
 
     video_ready = pyqtSignal()
     tracks_changed = pyqtSignal()
+    chapters_changed = pyqtSignal()
 
     error = pyqtSignal(str)
     crash = pyqtSignal(str)
@@ -433,6 +435,10 @@ class VideoFrameVLC(QWidget, metaclass=QABC):
     def has_subtitles(self) -> bool:
         return self.media.has_subtitles
 
+    @property
+    def chapters(self) -> tuple[Chapter, ...]:
+        return self.media.chapters
+
     @abstractmethod
     def driver_setup(self, vlc_options) -> VLCVideoDriver: ...
 
@@ -510,6 +516,7 @@ class VideoFrameVLC(QWidget, metaclass=QABC):
             (self.video_driver.time_changed, self.time_changed_emit),
             (self.video_driver.load_finished, self.load_video_finish),
             (self.video_driver.tracks_changed, self._on_tracks_changed),
+            (self.video_driver.chapters_changed, self._on_chapters_changed),
             (self.video_driver.snapshot_taken, self.snapshot_taken),
             (self.video_driver.screenshot_taken, self._on_screenshot_taken),
             (self.video_driver.video_dimensions_changed, self.set_track_dimensions),
@@ -951,6 +958,18 @@ class VideoFrameVLC(QWidget, metaclass=QABC):
         self.media = media
 
         self.tracks_changed.emit()
+
+    def _on_chapters_changed(self, chapters: tuple) -> None:
+        """Take chapters the file listed only after the load was done."""
+
+        # the player only sends these once it has reported the load, but
+        # a video let go of in between has no media left to put them on
+        if self.media is None:
+            return
+
+        self.media = dataclasses.replace(self.media, chapters=chapters)
+
+        self.chapters_changed.emit()
 
     def set_audio_track(self, track_id):
         self.media.cur_audio_track_id = track_id

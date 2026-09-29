@@ -70,7 +70,11 @@ class MenuManager(ManagerBase):
                 _add_separator(menu, is_last_element)
             else:
                 action = self._ctx.actions[m_item]
-                _add_action(action, menu)
+
+                if action.is_menu_inline:
+                    _add_inline_actions(action, menu)
+                else:
+                    _add_action(action, menu)
 
         _strip_trailing_separator(menu)
 
@@ -124,3 +128,24 @@ def _add_action(action: QDynamicAction, menu: QMenu):
         return
 
     menu.addAction(action.to_menu_action(menu))
+
+
+def _add_inline_actions(action: QDynamicAction, menu: QMenu):
+    """Put a generated list into this menu, in place of a submenu of its own.
+
+    For a list that belongs next to fixed actions, which a generated
+    submenu cannot hold: those need shortcuts, and a place in the keymap.
+    """
+
+    if action.show_if and not action.show_if():
+        return
+
+    for generated in action.menu_generator(menu):
+        if generated == "---":
+            _add_separator(menu, is_last_element=False)
+            continue
+
+        if generated.is_skipped:
+            continue
+
+        menu.addAction(generated.to_menu_action(menu))

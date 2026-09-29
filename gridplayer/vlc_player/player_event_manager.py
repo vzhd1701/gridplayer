@@ -15,6 +15,7 @@ class EventManager:
         "stopped": vlc.EventType.MediaPlayerStopped,
         "playing": vlc.EventType.MediaPlayerPlaying,
         "time_changed": vlc.EventType.MediaPlayerTimeChanged,
+        "title_changed": vlc.EventType.MediaPlayerTitleChanged,
         "vout": vlc.EventType.MediaPlayerVout,
     }
 
