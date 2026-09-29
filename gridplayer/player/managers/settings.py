@@ -3,6 +3,7 @@ from PyQt5.QtCore import pyqtSignal
 from gridplayer.dialogs.messagebox import QCustomMessageBox
 from gridplayer.dialogs.settings import SettingsDialog
 from gridplayer.params.defaults_fields import GRID_STATE_ATTR
+from gridplayer.params.sponsorblock import SPONSORBLOCK_SETTINGS
 from gridplayer.params.subtitle_style import SUBTITLE_STYLE_SETTINGS
 from gridplayer.params.theme import apply_theme
 from gridplayer.player.managers.base import ManagerBase
@@ -27,6 +28,7 @@ class SettingsManager(ManagerBase):
     set_overlay_hide_on_timeout = pyqtSignal(bool)
     set_overlay_timeout = pyqtSignal(int)
     set_subtitle_encoding = pyqtSignal(str)
+    sponsorblock_changed = pyqtSignal()
 
     @property
     def commands(self):
@@ -76,6 +78,10 @@ class SettingsManager(ManagerBase):
             if PlaylistSettings().is_overridden(c):
                 continue
             checks[c].emit(Settings().get(c))
+
+        # one signal for the lot: the videos read what they need themselves
+        if self._setting_changes(previous_settings, SPONSORBLOCK_SETTINGS):
+            self.sponsorblock_changed.emit()
 
         if self._is_setting_changed(previous_settings, "player/color_scheme"):
             apply_theme()

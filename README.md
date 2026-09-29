@@ -25,6 +25,7 @@ information about the position, sound volume, loops, aspect ratio, etc.
 - Support for (almost) any streaming
   URLs ([streamlink](https://streamlink.github.io/plugins.html) + [yt-dlp](https://github.com/yt-dlp/yt-dlp/blob/master/supportedsites.md))
 - Cookie support for streams that need a login
+- Skip sponsors and other marked parts of YouTube videos with [SponsorBlock](#sponsorblock)
 - Hardware & software video decoding
 - Control video aspect, playback speed, zoom
 - Set loop fragments with frame percision
@@ -348,6 +349,11 @@ This software was build using
   - Licensed under *MediaLoot License*
 - **Flag Icons** by [Panayiotis Lipiridis](https://github.com/lipis/flag-icons)
   - Licensed under *MIT License*
+
+### Data
+
+- **SponsorBlock** by [Ajay Ramachandran and contributors](https://sponsor.ajay.app/)
+  - Licensed under *CC BY-NC-SA 4.0*
 
 ## Translations
 

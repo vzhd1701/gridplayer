@@ -134,6 +134,14 @@ class YoutubeDLResolver(ResolverBase):
     def duration_ms(self) -> int:
         return round(self._duration * 1000)
 
+    @property
+    def youtube_id(self) -> str | None:
+        # a short, a youtu.be link and an embed all end up here, as the video
+        if self._video_info.get("extractor_key") != "Youtube" or self.is_live:
+            return None
+
+        return self._video_info.get("id")
+
     @staticmethod
     def is_able_to_handle(url: str) -> bool:
         logger = logging.getLogger("YoutubeDLResolver")

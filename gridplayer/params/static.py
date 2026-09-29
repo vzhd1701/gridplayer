@@ -227,6 +227,16 @@ class ProxyMode(AutoName):
     CUSTOM = auto()
 
 
+class SponsorBlockMode(AutoName):
+    """What becomes of a kind of segment SponsorBlock's users have marked."""
+
+    # passed over as the video plays into it
+    SKIP = auto()
+    # marked on the seek bar and named under the mouse, and played through
+    SHOW = auto()
+    OFF = auto()
+
+
 class NetworkRetryMode(AutoName):
     """What to do when a network video fails to load or dies mid-playback."""
 

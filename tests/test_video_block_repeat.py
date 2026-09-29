@@ -107,7 +107,7 @@ def test_pause_at_start_seeks_and_pauses(mocker):
 
     VideoBlock._pause_at_start(block)
 
-    block.seek.assert_called_once_with(0)
+    block._seek_loop_start.assert_called_once_with()
     block.set_pause.assert_called_once_with(True)
     block.stop_playback.assert_not_called()
     block._destroy_video_driver.assert_not_called()
@@ -324,7 +324,7 @@ def test_switch_video_initialized_same_file_seeks(mocker):
 
     VideoBlock.switch_video(block, uri)
 
-    block.seek.assert_called_once_with(0)
+    block._seek_loop_start.assert_called_once_with()
     block._load_and_play.assert_not_called()
 
 
@@ -497,7 +497,7 @@ def test_time_changed_sends_the_video_back_into_the_loop(mocker):
 
     VideoBlock.time_changed(block, 12000)
 
-    block.seek.assert_called_once_with(30000)
+    block._seek_loop_start.assert_called_once_with()
 
 
 def test_time_changed_leaves_a_seek_on_its_way_alone(mocker):
@@ -569,6 +569,7 @@ def test_seek_holds_off_wrap_detection(mocker):
     block.loop_start = 0
     block.loop_end = 2000
     block.video_driver.length = 2000
+    block._skip_spans = ()
 
     VideoBlock.seek(block, 1500)
 
@@ -591,6 +592,7 @@ def test_seek_marks_itself_before_it_is_made(mocker):
     block.loop_start = 0
     block.loop_end = 10000
     block.video_driver.length = 10000
+    block._skip_spans = ()
     seen = {}
 
     def _set_time(seek_ms):

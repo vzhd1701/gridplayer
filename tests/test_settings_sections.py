@@ -8,7 +8,7 @@ from gridplayer.dialogs.settings import SECTION_PAGE_ROLE, SettingsDialog
 SECTIONS = (
     ("General", ("Player", "Subtitle Style", "Shortcuts", "Language")),
     ("Defaults", ("Playlist", "Video")),
-    ("Streaming", ("Link Resolution", "Cookies", "Network")),
+    ("Streaming", ("Link Resolution", "SponsorBlock", "Cookies", "Network")),
     ("Advanced", ("Video Decoder", "Logging")),
 )
 
@@ -22,6 +22,7 @@ PAGES = {
     "Playlist": "page_defaults_playlist",
     "Video": "page_defaults_video",
     "Link Resolution": "page_streaming_resolution",
+    "SponsorBlock": "page_streaming_sponsorblock",
     "Cookies": "page_streaming_cookies",
     "Network": "page_streaming_network",
     "Video Decoder": "page_advanced_decoder",

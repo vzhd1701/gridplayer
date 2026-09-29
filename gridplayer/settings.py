@@ -29,6 +29,7 @@ from gridplayer.params.static import (
     ProxyMode,
     ScreenshotFormat,
     SeekSyncMode,
+    SponsorBlockMode,
     SubtitleTrackMode,
     UnsavedChangesMode,
     URLResolver,
@@ -145,6 +146,21 @@ _default_settings = {
     # empty means look in the usual places, which is most of them.
     # See gridplayer.utils.js_runtime for what those are and why
     "streaming/js_runtime_path": "",
+    # Off until asked for: every YouTube video played would otherwise be
+    # looked up on a server that is neither YouTube nor ours. Only sponsors
+    # are skipped out of the box, as in the extension; the plugs and the
+    # reminders are only marked. See gridplayer.params.sponsorblock
+    "sponsorblock/enabled": False,
+    "sponsorblock/sponsor": SponsorBlockMode.SKIP,
+    "sponsorblock/selfpromo": SponsorBlockMode.SHOW,
+    "sponsorblock/interaction": SponsorBlockMode.SHOW,
+    "sponsorblock/intro": SponsorBlockMode.OFF,
+    "sponsorblock/outro": SponsorBlockMode.OFF,
+    "sponsorblock/preview": SponsorBlockMode.OFF,
+    "sponsorblock/hook": SponsorBlockMode.OFF,
+    "sponsorblock/filler": SponsorBlockMode.OFF,
+    "sponsorblock/music_offtopic": SponsorBlockMode.OFF,
+    "sponsorblock/poi_highlight": SponsorBlockMode.SHOW,
     "cookies/enabled": True,
     "cookies/allow_update": True,
     "network/proxy_mode": ProxyMode.SYSTEM,

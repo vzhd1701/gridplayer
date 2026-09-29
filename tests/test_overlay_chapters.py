@@ -39,7 +39,7 @@ def _hover(overlay, fraction):
     x = round(bar.width() * fraction)
 
     overlay.floating_progress.on_mouse_over(
-        bar.mapToParent(QPoint(x, 0)), x / bar.width()
+        bar.mapToParent(QPoint(x, 0)), x / bar.width(), bar.width()
     )
 
     return overlay.floating_progress

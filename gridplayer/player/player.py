@@ -126,6 +126,10 @@ class Player(QWidget, ManagersManager):
                     "set_subtitle_encoding",
                     "video_blocks.apply_subtitle_encoding",
                 ),
+                (
+                    "sponsorblock_changed",
+                    "video_blocks.apply_sponsorblock_settings",
+                ),
             ],
             "playlist": [
                 ("s.arguments_received", "process_arguments"),

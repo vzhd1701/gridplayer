@@ -14,7 +14,7 @@ from PyQt5.QtGui import (
 )
 from PyQt5.QtWidgets import QGraphicsOpacityEffect, QSizePolicy, QWidget
 
-from gridplayer.models.seek_mark import SeekMarkKind, chapter_at
+from gridplayer.models.seek_mark import SeekMarkKind, chapter_at, segments_at
 from gridplayer.params.static import OVERLAY_ACTIVITY_EVENT
 from gridplayer.utils.drop_zone import DropIndicator
 from gridplayer.utils.time_txt import get_time_txt
@@ -42,6 +42,19 @@ HOVER_LABEL_MIN_NAME_PX = 30
 
 # half the width of the pointer under the hover label
 HOVER_POINTER_HALF_WIDTH = 5
+
+# Segments are drawn in a band through the middle of the bar, a third of its
+# height: over the progress, which still reads above and below them, and
+# clear of the edges, where the chapters are notched.
+SEGMENT_BAND_FRACTION = 3
+
+# How far off a highlight the mouse can be and still name it, a highlight
+# being a place with no length to be over.
+HIGHLIGHT_HOVER_PX = 4
+
+# the square of a segment's colour in front of its name, and the gap after it
+SEGMENT_SWATCH_PX = 8
+SEGMENT_SWATCH_GAP_PX = 5
 
 
 def chapter_notch_half_width(bar_width: int) -> int:
@@ -202,6 +215,10 @@ class OverlayShortLabelFloating(OverlayShortLabel):
         self.length = None
         self.marks = ()
 
+        # the segments under the mouse, named on a line of their own below
+        # the time: their names and the colour of the first; None for none
+        self.segment_line: tuple[str, QColor] | None = None
+
         self.is_opaque = False
 
         self._clip_region = None
@@ -209,16 +226,24 @@ class OverlayShortLabelFloating(OverlayShortLabel):
         # where the pointer sits along the label, None for the middle
         self._pointer_x = None
 
-    def on_mouse_over(self, pos, progress_pos):
+    def on_mouse_over(self, pos, progress_pos, bar_width):
         if self.length is None:
             return
 
         time_ms = int(self.length * progress_pos)
         self.text = self._hover_text(time_ms)
 
+        near_ms = self.length * HIGHLIGHT_HOVER_PX / bar_width
+        self.segment_line = self._hover_segment_line(time_ms, near_ms)
+
         # sized now rather than at the next paint, since where it goes
         # depends on how wide it is
         self.update_visuals()
+
+        # a cell too short for a second line above the bar goes without it
+        if self.segment_line is not None and pos.y() < self.height():
+            self.segment_line = None
+            self.update_visuals()
 
         # kept inside the overlay, with the pointer still under the mouse
         width = self.width()
@@ -262,6 +287,34 @@ class OverlayShortLabelFloating(OverlayShortLabel):
 
         return f"{prefix}{name}"
 
+    def _hover_segment_line(self, time_ms: int, near_ms: float):
+        """The segments under the mouse, for the line below the time."""
+
+        segments = segments_at(self.marks, time_ms, near_ms)
+
+        if not segments:
+            return None
+
+        metrics = QFontMetrics(self.font())
+
+        room = (
+            self.parentWidget().width()
+            - OverlayWidget.padding * 2
+            - SEGMENT_SWATCH_PX
+            - SEGMENT_SWATCH_GAP_PX
+        )
+
+        if room < HOVER_LABEL_MIN_NAME_PX:
+            return None
+
+        # pieces of one kind that overlap are one kind to name
+        names = ", ".join(dict.fromkeys(mark.label for mark in segments))
+
+        return (
+            metrics.elidedText(names, Qt.ElideRight, room),
+            QColor(segments[0].color),
+        )
+
     def on_mouse_left(self):
         self.hide()
 
@@ -276,7 +329,11 @@ class OverlayShortLabelFloating(OverlayShortLabel):
 
         painter.fillRect(text_box, self.color)
         painter.setPen(self.color_contrast)
-        painter.drawText(text_box, Qt.AlignCenter, self.text)
+
+        if self.segment_line is None:
+            painter.drawText(text_box, Qt.AlignCenter, self.text)
+        else:
+            self.draw_two_lines(painter, text_box)
 
         if self.is_opaque:
             self._clip_region = QRegion(text_box)
@@ -286,6 +343,46 @@ class OverlayShortLabelFloating(OverlayShortLabel):
             return
 
         self.draw_triangle(painter, self.rect())
+
+    def draw_two_lines(self, painter, text_box):
+        """The time, over the segments under the mouse by their colour."""
+
+        metrics = QFontMetrics(self.font())
+        line_height = metrics.height()
+
+        top = text_box.top() + (text_box.height() - line_height * 2) // 2
+
+        painter.drawText(
+            QRect(text_box.left(), top, text_box.width(), line_height),
+            Qt.AlignCenter,
+            self.text,
+        )
+
+        name, color = self.segment_line
+
+        name_left = SEGMENT_SWATCH_PX + SEGMENT_SWATCH_GAP_PX
+        line_width = name_left + metrics.horizontalAdvance(name)
+
+        left = text_box.left() + (text_box.width() - line_width) // 2
+        top += line_height
+
+        swatch = QRect(
+            left,
+            top + (line_height - SEGMENT_SWATCH_PX) // 2,
+            SEGMENT_SWATCH_PX,
+            SEGMENT_SWATCH_PX,
+        )
+
+        painter.fillRect(swatch, color)
+
+        # rimmed in the colour of the text, or yellow on white is nowhere
+        painter.drawRect(swatch.adjusted(0, 0, -1, -1))
+
+        painter.drawText(
+            QRect(left + name_left, top, line_width - name_left, line_height),
+            Qt.AlignVCenter | Qt.AlignLeft,
+            name,
+        )
 
     def draw_triangle(self, painter, rect):
         painter.setRenderHint(QPainter.Antialiasing, True)
@@ -316,10 +413,21 @@ class OverlayShortLabelFloating(OverlayShortLabel):
         metrics = QFontMetrics(self.font())
         size = metrics.size(0, self._text)
 
-        width = size.width() + padding
-        height = size.height() + padding + 10
+        width = size.width()
+        height = size.height()
 
-        self.setFixedSize(width, height)
+        if self.segment_line is not None:
+            name, _ = self.segment_line
+
+            width = max(
+                width,
+                SEGMENT_SWATCH_PX
+                + SEGMENT_SWATCH_GAP_PX
+                + metrics.horizontalAdvance(name),
+            )
+            height += metrics.height()
+
+        self.setFixedSize(width + padding, height + padding + 10)
 
         self._is_visuals_updated = True
 
@@ -338,7 +446,9 @@ class OverlayBar(OverlayWidget):
 class OverlayProgressBar(OverlayBar):
     position_changed = pyqtSignal(float)
 
-    mouse_over = pyqtSignal(QPoint, float)
+    # where the mouse is over the top edge of the bar, how far along it, and
+    # how wide the bar is, which says how much of the video a pixel covers
+    mouse_over = pyqtSignal(QPoint, float, int)
     mouse_left = pyqtSignal()
 
     def __init__(self, **kwargs):
@@ -372,7 +482,7 @@ class OverlayProgressBar(OverlayBar):
         top_edge = self.mapToParent(QPoint(self.progress_select_x, 0))
         mouse_position = self.progress_select_x / self.width()
 
-        self.mouse_over.emit(top_edge, mouse_position)
+        self.mouse_over.emit(top_edge, mouse_position, self.width())
 
         if QGuiApplication.mouseButtons() == Qt.LeftButton:
             self._update_position(self.progress_select_x)
@@ -420,6 +530,7 @@ class OverlayProgressBar(OverlayBar):
             self.draw_progress_bar_select(painter, self.rect(), progress_rect)
             self.draw_hovered_chapter(painter)
 
+        self.draw_segments(painter)
         self.draw_chapter_notches(painter)
 
         if self.loop_start > 0:
@@ -469,6 +580,62 @@ class OverlayProgressBar(OverlayBar):
         highlight.setAlpha(CHAPTER_HOVER_ALPHA)
 
         painter.fillRect(QRect(left, 0, right - left, self.height()), highlight)
+
+    def draw_segments(self, painter):
+        """Colour the segments in, and put a diamond on each highlight."""
+
+        if not self.length:
+            return
+
+        band_top = self.height() // SEGMENT_BAND_FRACTION
+        band_height = self.height() - band_top * 2
+
+        highlights = []
+
+        for mark in self._marks:
+            if mark.kind == SeekMarkKind.HIGHLIGHT:
+                highlights.append(mark)
+                continue
+
+            if mark.kind != SeekMarkKind.SEGMENT:
+                continue
+
+            left = self._x_at(mark.time_ms)
+            right = self._x_at(min(mark.end_ms, self.length))
+
+            # one too short for a pixel of its own is still there
+            painter.fillRect(
+                QRect(left, band_top, max(right - left, 1), band_height),
+                QColor(mark.color),
+            )
+
+        if not highlights:
+            return
+
+        # taller than the band, so that it stands out of it
+        half_size = band_height // 2 + 2
+        middle_y = self.height() / 2
+
+        painter.save()
+        painter.setRenderHint(QPainter.Antialiasing, True)
+        painter.setPen(Qt.NoPen)
+
+        for mark in highlights:
+            x = self._x_at(mark.time_ms)
+
+            painter.setBrush(QColor(mark.color))
+            painter.drawPolygon(
+                QPolygonF(
+                    [
+                        QPointF(x, middle_y - half_size),
+                        QPointF(x + half_size, middle_y),
+                        QPointF(x, middle_y + half_size),
+                        QPointF(x - half_size, middle_y),
+                    ]
+                )
+            )
+
+        painter.restore()
 
     def draw_chapter_notches(self, painter):
         if not self.length:

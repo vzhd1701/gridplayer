@@ -111,3 +111,27 @@ def test_apply_settings_skips_grid_config_when_unchanged(mocker):
     manager._apply_settings(dict(_default_settings))
 
     apply.assert_not_called()
+
+
+def test_apply_settings_tells_the_videos_about_sponsorblock(mocker):
+    manager = _manager(mocker.Mock())
+    changed = mocker.Mock()
+    manager.sponsorblock_changed.connect(changed)
+    current = dict(_default_settings)
+    current["sponsorblock/enabled"] = True
+    mocker.patch.object(Settings(), "get", side_effect=current.__getitem__)
+
+    manager._apply_settings(dict(_default_settings))
+
+    changed.assert_called_once_with()
+
+
+def test_apply_settings_leaves_sponsorblock_be_when_unchanged(mocker):
+    manager = _manager(mocker.Mock())
+    changed = mocker.Mock()
+    manager.sponsorblock_changed.connect(changed)
+    mocker.patch.object(Settings(), "get", side_effect=_default_settings.__getitem__)
+
+    manager._apply_settings(dict(_default_settings))
+
+    changed.assert_not_called()

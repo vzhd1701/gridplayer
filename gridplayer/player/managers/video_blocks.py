@@ -410,6 +410,16 @@ class VideoBlocksManager(ManagerBase):
         for vb in self._ctx.video_blocks:
             vb.set_subtitle_encoding(encoding)
 
+    def apply_sponsorblock_settings(self):
+        """Mark and skip in the videos already open as the settings now say.
+
+        Switched on, a video looks itself up; switched off, it drops what it
+        marked. What was found is kept either way.
+        """
+
+        for vb in self._ctx.video_blocks:
+            vb.apply_sponsorblock_settings()
+
     def is_any_videos_initialized(self):
         return bool(self._ctx.video_blocks.initialized)
 

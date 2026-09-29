@@ -36,3 +36,6 @@ class ResolvedVideo:
     chapters: tuple[Chapter, ...] = ()
     # how long the site says the video is, 0 where it does not say
     duration_ms: int = 0
+    # the ID of a YouTube video that is not live, which is what SponsorBlock
+    # is asked about; None for anything else
+    youtube_id: str | None = None

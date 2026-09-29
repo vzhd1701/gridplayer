@@ -49,6 +49,9 @@ class Ui_SettingsDialog:
         item = QtWidgets.QListWidgetItem()
         self.section_index.addItem(item)
         item = QtWidgets.QListWidgetItem()
+        item.setText("SponsorBlock")
+        self.section_index.addItem(item)
+        item = QtWidgets.QListWidgetItem()
         self.section_index.addItem(item)
         item = QtWidgets.QListWidgetItem()
         self.section_index.addItem(item)
@@ -423,6 +426,21 @@ class Ui_SettingsDialog:
         self.verticalLayout.setStretch(0, 1)
         self.lay_page_streaming_resolution.addLayout(self.verticalLayout)
         self.section_page.addWidget(self.page_streaming_resolution)
+        self.page_streaming_sponsorblock = PageScrollArea()
+        self.page_streaming_sponsorblock.setFrameShape(QtWidgets.QFrame.NoFrame)
+        self.page_streaming_sponsorblock.setHorizontalScrollBarPolicy(
+            QtCore.Qt.ScrollBarAlwaysOff
+        )
+        self.page_streaming_sponsorblock.setWidgetResizable(True)
+        self.page_streaming_sponsorblock.setObjectName("page_streaming_sponsorblock")
+        self.page_streaming_sponsorblock_contents = QtWidgets.QWidget()
+        self.page_streaming_sponsorblock_contents.setObjectName(
+            "page_streaming_sponsorblock_contents"
+        )
+        self.page_streaming_sponsorblock.setWidget(
+            self.page_streaming_sponsorblock_contents
+        )
+        self.section_page.addWidget(self.page_streaming_sponsorblock)
         self.page_streaming_cookies = QtWidgets.QWidget()
         self.page_streaming_cookies.setObjectName("page_streaming_cookies")
         self.lay_page_streaming_cookies = QtWidgets.QVBoxLayout(
@@ -768,15 +786,15 @@ class Ui_SettingsDialog:
         item.setText(_translate("SettingsDialog", "Streaming"))
         item = self.section_index.item(9)
         item.setText(_translate("SettingsDialog", "Link Resolution"))
-        item = self.section_index.item(10)
-        item.setText(_translate("SettingsDialog", "Cookies"))
         item = self.section_index.item(11)
-        item.setText(_translate("SettingsDialog", "Network"))
+        item.setText(_translate("SettingsDialog", "Cookies"))
         item = self.section_index.item(12)
-        item.setText(_translate("SettingsDialog", "Advanced"))
+        item.setText(_translate("SettingsDialog", "Network"))
         item = self.section_index.item(13)
-        item.setText(_translate("SettingsDialog", "Video Decoder"))
+        item.setText(_translate("SettingsDialog", "Advanced"))
         item = self.section_index.item(14)
+        item.setText(_translate("SettingsDialog", "Video Decoder"))
+        item = self.section_index.item(15)
         item.setText(_translate("SettingsDialog", "Logging"))
         self.section_index.setSortingEnabled(__sortingEnabled)
         self.playerColorSchemeLabel.setText(

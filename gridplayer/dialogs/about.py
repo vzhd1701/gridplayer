@@ -170,6 +170,16 @@ class AboutDialog(QDialog, Ui_AboutDialog):
                     "https://github.com/lipis/flag-icons",
                 ),
             ],
+            # the segments skipped and marked in YouTube videos
+            "data": [
+                Attribution(
+                    "SponsorBlock",
+                    None,
+                    "Ajay Ramachandran and contributors",
+                    "CC BY-NC-SA 4.0",
+                    "https://sponsor.ajay.app/",
+                ),
+            ],
         }
 
         if CURL_CFFI_VERSION is not None:
@@ -192,6 +202,8 @@ class AboutDialog(QDialog, Ui_AboutDialog):
             self.generate_attributions(attributions["python"]),
             "<h3>" + self.tr("Graphics") + "</h3>",
             self.generate_attributions(attributions["gui"]),
+            "<h3>" + self.tr("Data") + "</h3>",
+            self.generate_attributions(attributions["data"]),
             "<h3>" + self.tr("Translations") + "</h3>",
             self.generate_attributions_translations(),
         ]

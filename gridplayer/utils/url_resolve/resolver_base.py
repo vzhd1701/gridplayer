@@ -49,6 +49,12 @@ class ResolverBase(ABC):
 
         return 0
 
+    @property
+    def youtube_id(self) -> str | None:
+        """The ID of a YouTube video that is not live, where the resolver can tell."""
+
+        return None
+
     @staticmethod
     @abstractmethod
     def is_able_to_handle(url) -> bool: ...
@@ -60,6 +66,7 @@ class ResolverBase(ABC):
             is_live=self.is_live,
             chapters=self.chapters,
             duration_ms=self.duration_ms,
+            youtube_id=self.youtube_id,
         )
 
 

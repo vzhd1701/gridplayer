@@ -110,6 +110,11 @@
        </item>
        <item>
         <property name="text">
+         <string notr="true">SponsorBlock</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
          <string>Cookies</string>
         </property>
        </item>
@@ -689,6 +694,19 @@
           </layout>
          </item>
         </layout>
+       </widget>
+       <widget class="PageScrollArea" name="page_streaming_sponsorblock">
+        <property name="frameShape">
+         <enum>QFrame::NoFrame</enum>
+        </property>
+        <property name="horizontalScrollBarPolicy">
+         <enum>Qt::ScrollBarAlwaysOff</enum>
+        </property>
+        <property name="widgetResizable">
+         <bool>true</bool>
+        </property>
+        <widget class="QWidget" name="page_streaming_sponsorblock_contents">
+        </widget>
        </widget>
        <widget class="QWidget" name="page_streaming_cookies">
         <layout class="QVBoxLayout" name="lay_page_streaming_cookies">

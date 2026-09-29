@@ -4,12 +4,14 @@ import subprocess
 from pathlib import Path
 
 from PyQt5.QtCore import Qt, QUrl
-from PyQt5.QtGui import QDesktopServices
+from PyQt5.QtGui import QColor, QDesktopServices, QPainter, QPixmap
 from PyQt5.QtWidgets import (
     QCheckBox,
     QComboBox,
     QDialog,
     QFileDialog,
+    QFormLayout,
+    QHBoxLayout,
     QLabel,
     QLineEdit,
     QSpinBox,
@@ -27,12 +29,20 @@ from gridplayer.params.defaults_fields import (
     VIDEO_FIELDS,
 )
 from gridplayer.params.languages import LANGUAGES
+from gridplayer.params.sponsorblock import (
+    CATEGORY_COLORS,
+    ENABLED_SETTING,
+    allowed_modes,
+    category_name,
+    category_setting,
+)
 from gridplayer.params.static import (
     ColorScheme,
     HWCropBorderOffset,
     PanTrigger,
     ProxyMode,
     ScreenshotFormat,
+    SponsorBlockMode,
     URLResolver,
     VideoDriver,
 )
@@ -70,6 +80,11 @@ COOKIES_FAQ_URL = (
     "https://github.com/yt-dlp/yt-dlp/wiki/FAQ#how-do-i-pass-cookies-to-yt-dlp"
 )
 COOKIES_README_URL = f"{__app_url__}#streaming-cookies"
+
+SPONSORBLOCK_URL = "https://sponsor.ajay.app/"
+
+# the square of a category's colour in front of its name
+SPONSORBLOCK_SWATCH_PX = 12
 
 # where each entry in the section index keeps the page it opens
 SECTION_PAGE_ROLE = Qt.UserRole
@@ -122,6 +137,7 @@ def _with_note(form, text):
 
     note = QLabel(text)
     note.setWordWrap(True)
+    note.setOpenExternalLinks(True)
     font = note.font()
     font.setItalic(True)
     note.setFont(font)
@@ -130,6 +146,31 @@ def _with_note(form, text):
     layout.addWidget(form)
 
     return page
+
+
+def _category_label(category: str) -> QWidget:
+    """A SponsorBlock category's name, after the colour it is marked in."""
+
+    pixmap = QPixmap(SPONSORBLOCK_SWATCH_PX, SPONSORBLOCK_SWATCH_PX)
+    pixmap.fill(QColor(CATEGORY_COLORS[category]))
+
+    # rimmed, or yellow on a light window is nowhere
+    painter = QPainter(pixmap)
+    painter.setPen(QColor(0, 0, 0, 90))
+    painter.drawRect(pixmap.rect().adjusted(0, 0, -1, -1))
+    painter.end()
+
+    swatch = QLabel()
+    swatch.setPixmap(pixmap)
+
+    label = QWidget()
+
+    layout = QHBoxLayout(label)
+    layout.setContentsMargins(0, 0, 0, 0)
+    layout.addWidget(swatch)
+    layout.addWidget(QLabel(category_name(category)), 1)
+
+    return label
 
 
 def _set_groupbox_header_bold(groupbox):
@@ -235,6 +276,8 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
             ),
         )
 
+        self.ui_customize_sponsorblock()
+
         # the placeholder is short enough to fit, this is where it is
         self.screenshotsDir.setToolTip(str(default_screenshots_dir()))
 
@@ -267,6 +310,62 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
             self.miscFakeOverlayInvisibility.setEnabled(False)
             self.miscHWCropBorder.setEnabled(False)
 
+    def ui_customize_sponsorblock(self):
+        """The SponsorBlock page, a row for each category it knows.
+
+        Made here rather than in Designer, from the one list the seek bar
+        goes by too, so that a category is added in one place.
+        """
+
+        mode_names = {
+            SponsorBlockMode.SKIP: self.tr("Skip"),
+            SponsorBlockMode.SHOW: self.tr("Show in seek bar"),
+            SponsorBlockMode.OFF: self.tr("Disabled"),
+        }
+
+        form = QWidget()
+
+        layout = QVBoxLayout(form)
+        layout.setContentsMargins(0, 0, 0, 0)
+
+        self.sponsorblockEnabled = QCheckBox(
+            self.tr("Use SponsorBlock on YouTube videos")
+        )
+        layout.addWidget(self.sponsorblockEnabled)
+
+        self.sponsorblockCategories = QWidget()
+
+        rows = QFormLayout(self.sponsorblockCategories)
+        rows.setContentsMargins(0, 0, 0, 0)
+        rows.setFieldGrowthPolicy(QFormLayout.FieldsStayAtSizeHint)
+
+        self.settings_map[ENABLED_SETTING] = self.sponsorblockEnabled
+
+        for category in CATEGORY_COLORS:
+            combo_box = QComboBox()
+
+            _fill_combo_box(
+                combo_box, {mode: mode_names[mode] for mode in allowed_modes(category)}
+            )
+
+            rows.addRow(_category_label(category), combo_box)
+
+            self.settings_map[category_setting(category)] = combo_box
+
+        layout.addWidget(self.sponsorblockCategories)
+        layout.addStretch()
+
+        note = self.tr(
+            "<p>Every YouTube video you play is looked up on SponsorBlock, where"
+            " viewers mark the parts of videos that are sponsors, self-promotion"
+            " and the like. Only the first characters of a hash of the"
+            " video's ID are sent.</p>"
+            '<p>Segments from <a href="{URL}">SponsorBlock</a>,'
+            " under CC BY-NC-SA 4.0.</p>"
+        ).format(URL=SPONSORBLOCK_URL)
+
+        _replace_scroll_page(self.page_streaming_sponsorblock, _with_note(form, note))
+
     def ui_customize_section_index(self):
         font = self.section_index.font()
         font.setPixelSize(16)
@@ -290,6 +389,7 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
             self.page_defaults_playlist,
             self.page_defaults_video,
             self.page_streaming_resolution,
+            self.page_streaming_sponsorblock,
             self.page_streaming_cookies,
             self.page_streaming_network,
             self.page_advanced_decoder,
@@ -348,6 +448,7 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
         self.playerRecentListSize.setEnabled(self.playerRecentList.isChecked())
         self.proxy_mode_selected(self.networkProxyMode.currentIndex())
         self.screenshot_format_selected(self.screenshotsFormat.currentIndex())
+        self.sponsorblockCategories.setEnabled(self.sponsorblockEnabled.isChecked())
 
         self.switch_page(None)
         self.adjustSize()
@@ -368,6 +469,10 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
             (self.streamingTestButton.clicked, self.run_youtube_checkup),
             (self.networkProxyMode.currentIndexChanged, self.proxy_mode_selected),
             (self.networkTestButton.clicked, self.run_network_checkup),
+            (
+                self.sponsorblockEnabled.toggled,
+                self.sponsorblockCategories.setEnabled,
+            ),
             (self.screenshotsDirBrowse.clicked, self.browse_screenshots_dir),
             (
                 self.screenshotsFilenameTemplateHelpButton.clicked,
