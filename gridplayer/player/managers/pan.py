@@ -1,5 +1,5 @@
 from PyQt5.QtCore import QEvent, QPoint, Qt
-from PyQt5.QtGui import QCursor
+from PyQt5.QtGui import QCursor, QWindow
 from PyQt5.QtWidgets import QApplication
 
 from gridplayer.params.static import PanTrigger
@@ -49,6 +49,18 @@ class PanManager(ManagerBase):
             QEvent.MouseMove: self.mouse_move,
             QEvent.MouseButtonRelease: self.mouse_release,
         }
+
+    def eventFilter(self, event_object, event) -> bool:
+        # Filtering the whole application, a mouse event is seen first on the
+        # window it came to, before Qt has handed it to a widget. Qt only lets
+        # go of the widget the button went down on once the window has had
+        # the release: eaten there, every move after it still goes to that
+        # widget, and the overlay's bars under the pointer never hear of them
+        # until the next click.
+        if isinstance(event_object, QWindow):
+            return False
+
+        return super().eventFilter(event_object, event)
 
     def is_pan_press(self, event) -> bool:
         """Whether a press starts dragging a picture about, not anything else."""

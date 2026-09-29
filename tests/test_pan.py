@@ -3,7 +3,7 @@ from types import SimpleNamespace
 import pytest
 from PyQt5.QtCore import QEvent, QPoint, QPointF, Qt
 from PyQt5.QtGui import QMouseEvent
-from PyQt5.QtWidgets import QApplication
+from PyQt5.QtWidgets import QApplication, QWidget
 
 import gridplayer.player.managers.pan as pan_module
 from gridplayer.params.static import PanTrigger, VideoShift
@@ -209,6 +209,82 @@ def test_the_same_press_seen_again_does_not_start_over():
     _move_to(manager, 160, 100)
 
     assert block.pans == [(50, 0), (10, 0)]
+
+
+class _Recorder(QWidget):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+
+        self.setMouseTracking(True)
+        self.seen = []
+
+    def mouseMoveEvent(self, event):
+        self.seen.append(QEvent.MouseMove)
+
+    def mouseReleaseEvent(self, event):
+        self.seen.append(QEvent.MouseButtonRelease)
+
+
+def _to_window(widget, kind, x, y, button, buttons):
+    """As the platform delivers it: to the window, which finds the widget."""
+
+    local = QPoint(x, y)
+    _Cursor.at = widget.mapToGlobal(local)
+
+    QApplication.sendEvent(
+        widget.windowHandle(),
+        QMouseEvent(
+            kind,
+            QPointF(local),
+            QPointF(local),
+            QPointF(_Cursor.at),
+            button,
+            buttons,
+            Qt.NoModifier,
+        ),
+    )
+
+
+def test_after_a_drag_the_pointer_is_heard_where_it_is():
+    """Not still by the video pressed on: the overlay's bars, over it in a
+    window of their own, would not follow the pointer until the next click."""
+
+    player = QWidget()
+    player.setGeometry(0, 0, 200, 200)
+    video = _Recorder(player)
+    video.setGeometry(player.rect())
+
+    overlay = QWidget()
+    overlay.setGeometry(300, 0, 200, 200)
+    bar = _Recorder(overlay)
+    bar.setGeometry(0, 150, 200, 20)
+
+    player.show()
+    overlay.show()
+
+    block = _Block()
+    manager = _manager(block)
+    QApplication.instance().installEventFilter(manager)
+
+    try:
+        _to_window(
+            player, QEvent.MouseButtonPress, 50, 50, Qt.MiddleButton, Qt.MiddleButton
+        )
+        _to_window(player, QEvent.MouseMove, 90, 50, Qt.NoButton, Qt.MiddleButton)
+        _to_window(
+            player, QEvent.MouseButtonRelease, 90, 50, Qt.MiddleButton, Qt.NoButton
+        )
+
+        _to_window(overlay, QEvent.MouseMove, 20, 160, Qt.NoButton, Qt.NoButton)
+    finally:
+        QApplication.instance().removeEventFilter(manager)
+        player.close()
+        overlay.close()
+
+    assert block.pans == [(40, 0)]
+    # the drag and its release are the picture's, never the video's
+    assert video.seen == []
+    assert bar.seen == [QEvent.MouseMove]
 
 
 @pytest.mark.parametrize(
