@@ -1,8 +1,8 @@
 """Places on the seek bar worth marking, whoever put them there.
 
 The bar draws and names them without knowing where they came from: the
-file's own chapters today, and whatever else is marked on the timeline
-later on, each in a look of its own.
+chapters today, the file's own or the site's, and whatever else is marked
+on the timeline later on, each in a look of its own.
 """
 
 from bisect import bisect_right

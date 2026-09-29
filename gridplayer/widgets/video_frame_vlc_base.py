@@ -9,6 +9,7 @@ from PyQt5.QtCore import QElapsedTimer, QRect, QSize, Qt, QTimer, pyqtSignal
 from PyQt5.QtGui import QImage, QPixmap
 from PyQt5.QtWidgets import QLabel, QStackedLayout, QWidget
 
+from gridplayer.models.chapter import Chapter
 from gridplayer.params import env
 from gridplayer.params.static import (
     HWCropBorderOffset,
@@ -31,7 +32,7 @@ from gridplayer.utils.aspect_calc import (
 )
 from gridplayer.utils.qt import MILLISECONDS, QABC, qt_connect
 from gridplayer.utils.screenshots import ScreenshotView
-from gridplayer.vlc_player.static import Chapter, Media, MediaInput
+from gridplayer.vlc_player.static import Media, MediaInput
 from gridplayer.vlc_player.video_driver_base import VLCVideoDriver
 from gridplayer.widgets.video_status import VideoStatus
 

@@ -3,6 +3,7 @@ from abc import ABC, abstractmethod
 
 from streamlink import PluginError
 
+from gridplayer.models.chapter import Chapter
 from gridplayer.models.stream import (
     HashableDict,
     Stream,
@@ -36,6 +37,18 @@ class ResolverBase(ABC):
     @abstractmethod
     def streams(self) -> Streams: ...
 
+    @property
+    def chapters(self) -> tuple[Chapter, ...]:
+        """The chapters the site lists, where the resolver can tell."""
+
+        return ()
+
+    @property
+    def duration_ms(self) -> int:
+        """How long the site says the video is, 0 where it does not say."""
+
+        return 0
+
     @staticmethod
     @abstractmethod
     def is_able_to_handle(url) -> bool: ...
@@ -45,6 +58,8 @@ class ResolverBase(ABC):
             title=self.title,
             streams=self.streams,
             is_live=self.is_live,
+            chapters=self.chapters,
+            duration_ms=self.duration_ms,
         )
 
 

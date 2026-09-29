@@ -14,6 +14,7 @@ from gridplayer.models.audio_device import (
     resolve_device_id,
 )
 from gridplayer.models.audio_selection import AudioExternal, track_of_file
+from gridplayer.models.chapter import Chapter
 from gridplayer.models.subtitle_selection import SubtitleExternal
 from gridplayer.models.subtitle_selection import track_of_file as subtitle_track_of_file
 from gridplayer.params import env
@@ -36,7 +37,6 @@ from gridplayer.vlc_player.player_event_waiter import (
 )
 from gridplayer.vlc_player.player_tracks_manager import TracksManager
 from gridplayer.vlc_player.static import (
-    Chapter,
     Media,
     MediaInput,
     NotPausedError,

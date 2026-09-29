@@ -9,12 +9,13 @@ import ctypes
 
 import pytest
 
+from gridplayer.models.chapter import Chapter
 from gridplayer.models.video import Video
 from gridplayer.vlc_player import player_base
 from gridplayer.vlc_player.libvlc import vlc
 from gridplayer.vlc_player.player_base import VlcPlayerBase
 from gridplayer.vlc_player.player_event_manager import EventManager
-from gridplayer.vlc_player.static import Chapter, Media, MediaInput
+from gridplayer.vlc_player.static import Media, MediaInput
 
 ChapterDescription = vlc.ChapterDescription
 

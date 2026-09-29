@@ -456,6 +456,8 @@ def _playing_block(mocker, is_wrapped):
     block.loop_start = 0
     block.loop_end = 2000
     block._is_loop_wrapped.return_value = is_wrapped
+    # no seek on its way anywhere
+    block._seek_target = None
 
     return block
 

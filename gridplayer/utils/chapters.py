@@ -7,7 +7,7 @@ and a chapter that starts outside of it has nowhere to be jumped to.
 
 from bisect import bisect_right
 
-from gridplayer.vlc_player.static import Chapter
+from gridplayer.models.chapter import Chapter
 
 # VLC reports the time a hair short of where a seek landed -- 10ms before a
 # chapter's start, measured on mkv, mp4 and m4a alike -- so a video sitting
@@ -18,6 +18,14 @@ CHAPTER_TOLERANCE_MS = 250
 # Going back from further into a chapter than this starts the same chapter
 # over, as VLC does. Only near its start does it go to the one before.
 CHAPTER_RESTART_MS = 3000
+
+# How far the length of what plays may be from the length the site gives
+# before the site's chapters are taken to be for some other cut of it: the
+# larger of the two. A site rounds to the second and a stream can run a
+# little over; adverts spliced into the stream, or a preview in place of the
+# video, put it out by far more.
+SITE_LENGTH_SLACK_MS = 5000
+SITE_LENGTH_SLACK_RATIO = 0.02
 
 
 def clean_chapters(chapters, length: int) -> tuple[Chapter, ...]:
@@ -56,6 +64,20 @@ def _clean_name(name: str | None) -> str | None:
         return None
 
     return name.strip() or None
+
+
+def is_site_length_playing(length: int, site_length_ms: int) -> bool:
+    """Whether what plays is as long as the site says, near enough.
+
+    Either one unknown leaves nothing to go against, which counts as yes.
+    """
+
+    if length <= 0 or site_length_ms <= 0:
+        return True
+
+    slack_ms = max(SITE_LENGTH_SLACK_MS, site_length_ms * SITE_LENGTH_SLACK_RATIO)
+
+    return abs(length - site_length_ms) <= slack_ms
 
 
 def chapter_index_at(chapters, time_ms: int) -> int | None:

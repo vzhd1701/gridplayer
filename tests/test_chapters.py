@@ -2,6 +2,7 @@
 
 import pytest
 
+from gridplayer.models.chapter import Chapter
 from gridplayer.utils.chapters import (
     CHAPTER_RESTART_MS,
     CHAPTER_TOLERANCE_MS,
@@ -9,12 +10,12 @@ from gridplayer.utils.chapters import (
     chapter_span,
     chapter_stops,
     clean_chapters,
+    is_site_length_playing,
     is_span_reachable,
     next_stop,
     previous_stop,
     span_at,
 )
-from gridplayer.vlc_player.static import Chapter
 
 LENGTH = 60000
 
@@ -161,6 +162,26 @@ class TestTheLoop:
     )
     def test_a_chapter_is_reachable_where_it_overlaps_the_loop(self, span, reachable):
         assert is_span_reachable(span, 15000, 40000) is reachable
+
+
+HOUR_MS = 3600000
+
+
+class TestTheSitesLength:
+    def test_a_second_out_is_the_same_video(self):
+        assert is_site_length_playing(LENGTH + 1000, LENGTH)
+
+    def test_a_minute_out_is_some_other_cut_of_it(self):
+        assert not is_site_length_playing(LENGTH + 60000, LENGTH)
+
+    def test_a_long_video_is_given_room_in_proportion(self):
+        # two percent of an hour is 72 seconds
+        assert is_site_length_playing(HOUR_MS + 60000, HOUR_MS)
+        assert not is_site_length_playing(HOUR_MS + 90000, HOUR_MS)
+
+    @pytest.mark.parametrize(("length", "site_length"), [(-1, LENGTH), (LENGTH, 0)])
+    def test_either_one_unknown_is_nothing_to_go_against(self, length, site_length):
+        assert is_site_length_playing(length, site_length)
 
 
 def test_the_tolerance_is_well_past_what_a_seek_was_measured_to_miss_by():

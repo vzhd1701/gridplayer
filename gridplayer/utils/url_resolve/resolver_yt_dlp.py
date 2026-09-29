@@ -1,6 +1,7 @@
 import dataclasses
 import itertools
 import logging
+import math
 import re
 import traceback
 from collections import Counter
@@ -9,8 +10,9 @@ from types import MappingProxyType
 from urllib.parse import urljoin
 
 from yt_dlp import DownloadError, YoutubeDL
-from yt_dlp.utils import UnsupportedError
+from yt_dlp.utils import UnsupportedError, float_or_none
 
+from gridplayer.models.chapter import Chapter
 from gridplayer.models.stream import (
     HashableDict,
     Stream,
@@ -80,6 +82,9 @@ MIN_PLAUSIBLE_DURATION = 1.0
 # what yt-dlp scores the sound a video was made with, above every dub of it
 ORIGINAL_LANGUAGE_PREFERENCE = 10
 
+# what yt-dlp calls a chapter the site left without a name
+UNTITLED_CHAPTER = re.compile(r"<Untitled Chapter \d+>")
+
 
 class YoutubeDLResolver(ResolverBase):
     @property
@@ -120,6 +125,14 @@ class YoutubeDLResolver(ResolverBase):
             raw_streams_audio=self._raw_streams_audio,
             is_live=self.is_live,
         )
+
+    @property
+    def chapters(self) -> tuple[Chapter, ...]:
+        return _get_chapters(self._video_info.get("chapters"))
+
+    @property
+    def duration_ms(self) -> int:
+        return round(self._duration * 1000)
 
     @staticmethod
     def is_able_to_handle(url: str) -> bool:
@@ -705,3 +718,42 @@ def _get_codec_info(stream):
         codec += f" {tbr}kbps"
 
     return codec.strip()
+
+
+def _get_chapters(raw_chapters) -> tuple[Chapter, ...]:
+    """The chapters the site lists, less the one yt-dlp makes up.
+
+    A list that starts past the beginning gets an untitled chapter put in
+    front of it, so that it covers the whole video. Before the first chapter
+    is no chapter's, as it is in a file, so that one goes -- unless none of
+    them have a name, where it cannot be told from the site's own.
+    """
+
+    chapters = []
+
+    for raw in raw_chapters or ():
+        start = float_or_none(raw.get("start_time"))
+
+        # a site's list is no reason for a video not to play
+        if start is None or not math.isfinite(start):
+            continue
+
+        chapters.append(
+            Chapter(start_ms=round(start * 1000), name=_chapter_name(raw.get("title")))
+        )
+
+    is_any_named = any(chapter.name for chapter in chapters)
+
+    if is_any_named and chapters[0].start_ms == 0 and chapters[0].name is None:
+        chapters = chapters[1:]
+
+    return tuple(chapters)
+
+
+def _chapter_name(title) -> str | None:
+    """What the site calls a chapter, None where yt-dlp named it instead."""
+
+    if not isinstance(title, str) or UNTITLED_CHAPTER.fullmatch(title.strip()):
+        return None
+
+    return title

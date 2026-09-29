@@ -30,6 +30,7 @@ from gridplayer.models.audio_selection import (
     AudioTrackId,
     track_of_file,
 )
+from gridplayer.models.chapter import Chapter
 from gridplayer.models.seek_mark import SeekMark, SeekMarkKind
 from gridplayer.models.stream import (
     STANDING_QUALITIES,
@@ -86,6 +87,7 @@ from gridplayer.utils.chapters import (
     chapter_index_at,
     chapter_span,
     clean_chapters,
+    is_site_length_playing,
     is_span_reachable,
     next_stop,
     previous_stop,
@@ -116,7 +118,6 @@ from gridplayer.utils.url_resolve.url_resolve import VideoURLResolver
 from gridplayer.vlc_player.static import (
     DISABLED_TRACK,
     NO_TRACK,
-    Chapter,
     MediaInput,
     is_loop_wrapped,
     wanted_audio_track_id,
@@ -138,6 +139,13 @@ IN_PROGRESS_THRESHOLD_MS = 500
 # stays off for this long after one, so an update sent before the seek landed
 # is not mistaken for the video wrapping around.
 SEEK_SETTLE_MS = 500
+
+# A seek lands on the keyframe before where it was aimed and decodes its way
+# to the aim from there, and VLC reports the time it landed on meanwhile: a
+# hair short on a file, but seconds short on a stream, where it lands on the
+# start of a segment -- up to 10.5s, measured on YouTube. This far short of
+# where a seek was aimed, the video still counts as on its way there.
+SEEK_LANDING_MS = 20000
 
 # a pane that has to sit still for an hour before following its size is
 # as good as one that never follows it at all
@@ -381,8 +389,14 @@ class VideoBlock(QWidget):
         # last time update seen, to tell a finished pass from a running one
         self._last_time = None
 
-        # the file's chapters, as far as they are any use; see clean_chapters
+        # the file's chapters, or the site's where it has none, as far as
+        # they are any use; see clean_chapters
         self._chapters: tuple[Chapter, ...] = ()
+
+        # what the site a URL resolved on lists, and how long it says the
+        # video is, for when the file lists none; see _update_chapters
+        self._site_chapters: tuple[Chapter, ...] = ()
+        self._site_length_ms = 0
 
         # Components
         self.overlay_hide_timer = QTimer(self)
@@ -424,6 +438,10 @@ class VideoBlock(QWidget):
         self._seek_settle_timer = QTimer(self)
         self._seek_settle_timer.setSingleShot(True)
         self._seek_settle_timer.setInterval(SEEK_SETTLE_MS)
+
+        # where the last seek was aimed, until the video is seen past it;
+        # see _chapter_time
+        self._seek_target: int | None = None
 
         # held until they are done, the pool only has the C++ side of them
         self._screenshot_jobs: set[ScreenshotJob] = set()
@@ -501,6 +519,7 @@ class VideoBlock(QWidget):
 
         # whatever opens next brings chapters of its own, or none
         self._set_chapters(())
+        self._seek_target = None
 
         if self.video_driver is None:
             return
@@ -2541,6 +2560,11 @@ class VideoBlock(QWidget):
 
         self.time = new_time
 
+        # seen past where the last seek was aimed, it has got there; seen at
+        # it proves nothing, the driver repeats the aim before it has landed
+        if self._seek_target is not None and new_time > self._seek_target:
+            self._seek_target = None
+
         if self.is_live:
             return
 
@@ -2764,6 +2788,11 @@ class VideoBlock(QWidget):
         self._attached_audio_file = self._audio_file_to_attach
         self._attached_subtitle_files = self._subtitle_files_to_attach
 
+        # the video may not be the one that was here, whatever else stays;
+        # a URL is resolved again and brings the site's list back with it
+        self._site_chapters = ()
+        self._site_length_ms = 0
+
         if self.video_params.is_http_url:
             self.url_resolver.resolve(self.video_params.uri)
         else:
@@ -2797,6 +2826,10 @@ class VideoBlock(QWidget):
 
         self.streams = video.streams
         self.is_live = video.is_live
+
+        # kept, like the streams, through a switch of quality or of dub
+        self._site_chapters = video.chapters
+        self._site_length_ms = video.duration_ms
 
         self.load_stream_quality(self.video_params.stream_quality)
 
@@ -3237,9 +3270,28 @@ class VideoBlock(QWidget):
             self._set_chapters(())
             return
 
-        self._set_chapters(
-            clean_chapters(self.video_driver.chapters, self.video_driver.length)
-        )
+        length = self.video_driver.length
+
+        # the file's own are in the time the player keeps, where the site's
+        # are only as good as the site's idea of what it is serving
+        chapters = self.video_driver.chapters or self._site_chapters_playing(length)
+
+        self._set_chapters(clean_chapters(chapters, length))
+
+    def _site_chapters_playing(self, length: int) -> tuple[Chapter, ...]:
+        """The site's chapters, if what plays is the video they were made for."""
+
+        if not self._site_chapters:
+            return ()
+
+        if not is_site_length_playing(length, self._site_length_ms):
+            self._log.debug(
+                f"Site chapters left out, the site says {self._site_length_ms}ms"
+                f" but {length}ms is playing"
+            )
+            return ()
+
+        return self._site_chapters
 
     def _set_chapters(self, chapters: tuple[Chapter, ...]):
         if chapters == self._chapters:
@@ -3273,7 +3325,23 @@ class VideoBlock(QWidget):
         if not self._chapters:
             return None
 
-        return chapter_index_at(self._chapters, self.time)
+        return chapter_index_at(self._chapters, self._chapter_time)
+
+    @property
+    def _chapter_time(self) -> int:
+        """Where the video is, as far as its chapters go.
+
+        A seek still on its way counts as there already. Read off the time
+        alone, a jump to a chapter on a stream sits in the chapter before it
+        for a second or so, and a press of next then jumps to the same one.
+        """
+
+        target = self._seek_target
+
+        if target is not None and 0 <= target - self.time <= SEEK_LANDING_MS:
+            return target
+
+        return self.time
 
     def is_chapter_reachable(self, index: int) -> bool:
         """Whether a jump to this chapter would land inside the loop."""
@@ -3291,7 +3359,9 @@ class VideoBlock(QWidget):
         if not self._chapters:
             return
 
-        stop_ms = next_stop(self._chapters, self.time, self.loop_start, self.loop_end)
+        stop_ms = next_stop(
+            self._chapters, self._chapter_time, self.loop_start, self.loop_end
+        )
 
         if stop_ms is None:
             # past the last chapter is the end, arriving early
@@ -3307,7 +3377,9 @@ class VideoBlock(QWidget):
             return
 
         self._seek_chapter_stop(
-            previous_stop(self._chapters, self.time, self.loop_start, self.loop_end)
+            previous_stop(
+                self._chapters, self._chapter_time, self.loop_start, self.loop_end
+            )
         )
 
     @only_initialized
@@ -3337,7 +3409,7 @@ class VideoBlock(QWidget):
 
         length = self.video_driver.length
 
-        start_ms, end_ms = span_at(self._chapters, self.time, length)
+        start_ms, end_ms = span_at(self._chapters, self._chapter_time, length)
 
         # cleared first: the new start can lie past the old end
         self.reset_loop()
@@ -3423,6 +3495,7 @@ class VideoBlock(QWidget):
         # inside libVLC, which deadlocks against the seek it is still making.
         self._last_time = seek_ms
         self._seek_settle_timer.start()
+        self._seek_target = seek_ms
 
         self.time = seek_ms
         self.video_driver.set_time(seek_ms)

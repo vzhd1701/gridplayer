@@ -9,15 +9,18 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 import pytest
-from PyQt5.QtCore import QSettings
+from PyQt5.QtCore import QObject, QSettings, pyqtSignal
 from PyQt5.QtWidgets import QWidget
 
+from gridplayer.models.chapter import Chapter
 from gridplayer.models.seek_mark import SeekMark, SeekMarkKind
+from gridplayer.models.stream import Stream, Streams
 from gridplayer.models.video import Video
 from gridplayer.params.static import VideoEndAction, VideoInitialState
 from gridplayer.player.managers.active_block import ActiveBlockManager
 from gridplayer.settings import Settings
-from gridplayer.vlc_player.static import Chapter
+from gridplayer.utils.url_resolve.static import ResolvedVideo
+from gridplayer.widgets import video_block as video_block_module
 from gridplayer.widgets.video_block import VideoBlock
 from gridplayer.widgets.video_frame_dummy import VideoFrameDummy
 
@@ -255,6 +258,60 @@ class TestLooping:
         assert block.time == 10000
 
 
+# where VLC reports a stream to be while a seek to 25000 lands: the start of
+# the segment before it, the way a YouTube stream reported it
+LANDING_ON_A_STREAM_MS = 25000 - 2300
+
+
+def _reported(block, time_ms):
+    block.video_driver.time_changed.emit(time_ms)
+
+
+class TestJumpingOnAStream:
+    def test_next_while_a_jump_is_still_landing_moves_on(self, block):
+        block.seek_chapter(2)
+        _reported(block, LANDING_ON_A_STREAM_MS)
+
+        block.next_chapter()
+
+        assert block.time == 40000
+
+    def test_a_jump_still_landing_is_in_the_chapter_it_was_aimed_at(self, block):
+        block.seek_chapter(2)
+        _reported(block, LANDING_ON_A_STREAM_MS)
+
+        assert block.chapter_playing == 2
+
+    def test_a_seek_from_the_bar_counts_the_same(self, block):
+        block.seek(25000)
+        _reported(block, LANDING_ON_A_STREAM_MS)
+
+        assert block.chapter_playing == 2
+
+    def test_loop_chapter_while_a_jump_is_landing_loops_that_one(self, block):
+        block.seek_chapter(2)
+        _reported(block, LANDING_ON_A_STREAM_MS)
+
+        block.loop_chapter()
+
+        assert (block.loop_start, block.loop_end) == (25000, 40000)
+
+    def test_once_seen_past_its_aim_the_time_is_taken_as_it_comes(self, block):
+        block.seek_chapter(2)
+        _reported(block, 25000)
+        _reported(block, 25400)
+        _reported(block, LANDING_ON_A_STREAM_MS)
+
+        assert block.chapter_playing == 1
+
+    def test_far_short_of_its_aim_the_video_is_somewhere_else(self, block):
+        # a seek that never happened, while the video played on elsewhere
+        block.seek_chapter(3)
+        _reported(block, 12000)
+
+        assert block.chapter_playing == 1
+
+
 class _Manager(ActiveBlockManager):
     """The manager's menu methods, without the rest of the player behind them."""
 
@@ -305,3 +362,134 @@ class TestTheMenu:
 
         assert not manager.is_active_has_chapters()
         assert manager.menu_generator_chapters() == []
+
+
+SITE_CHAPTERS = (Chapter(0, "Intro"), Chapter(20000, "Build"), Chapter(45000, "Outro"))
+
+
+class _BareFrame(VideoFrameDummy):
+    """A file that lists no chapters of its own, as a site's stream never does."""
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
+        self._fake_media_track = dataclasses.replace(
+            self._fake_media_track, length=LENGTH
+        )
+
+
+class _LiveFrame(VideoFrameDummy):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
+        self._fake_media_track = dataclasses.replace(self._fake_media_track, length=-1)
+
+
+def _resolved(**kwargs):
+    return ResolvedVideo(
+        **{
+            "title": "Site video",
+            "is_live": False,
+            "streams": Streams(
+                {
+                    "720p": Stream(url="https://cdn/720.mp4", protocol="direct"),
+                    "360p": Stream(url="https://cdn/360.mp4", protocol="direct"),
+                }
+            ),
+            "chapters": SITE_CHAPTERS,
+            "duration_ms": LENGTH,
+            **kwargs,
+        }
+    )
+
+
+@pytest.fixture
+def url_block(monkeypatch):
+    """A block playing a URL, which the site resolves at once to what it's told."""
+
+    blocks = []
+
+    def make(resolved, frame=_BareFrame):
+        class _SiteResolver(QObject):
+            url_resolved = pyqtSignal(ResolvedVideo)
+            error = pyqtSignal()
+            update_status = pyqtSignal(str)
+
+            def resolve(self, url):
+                self.url_resolved.emit(resolved)
+
+            def cleanup(self): ...
+
+        monkeypatch.setattr(video_block_module, "VideoURLResolver", _SiteResolver)
+
+        parent = QWidget()
+        block = VideoBlock(video_driver=frame, context=_context(), parent=parent)
+        blocks.append((parent, block))
+
+        block.set_video(
+            Video(
+                uri="https://site/watch?v=1",
+                stream_quality="720p",
+                playback_state=VideoInitialState.PAUSED,
+            )
+        )
+
+        assert block.is_video_initialized
+
+        return block
+
+    yield make
+
+    for _, block in blocks:
+        block.cleanup()
+        block.url_resolver.cleanup()
+
+
+class TestSiteChapters:
+    def test_a_url_whose_file_lists_none_gets_the_sites(self, url_block):
+        block = url_block(_resolved())
+
+        assert block.chapters == SITE_CHAPTERS
+        assert [mark.label for mark in _marks(block)] == ["Intro", "Build", "Outro"]
+
+    def test_the_files_own_come_first(self, url_block):
+        block = url_block(_resolved(), frame=_ChapterFrame)
+
+        assert block.chapters == CHAPTERS
+
+    def test_a_site_out_on_the_length_is_left_out(self, url_block):
+        block = url_block(_resolved(duration_ms=LENGTH + 30000))
+
+        assert block.chapters == ()
+
+    def test_a_site_that_gives_no_length_is_taken_at_its_word(self, url_block):
+        block = url_block(_resolved(duration_ms=0))
+
+        assert block.chapters == SITE_CHAPTERS
+
+    def test_a_live_stream_has_none(self, url_block):
+        block = url_block(_resolved(), frame=_LiveFrame)
+
+        assert block.chapters == ()
+
+    def test_they_last_through_a_switch_of_quality(self, url_block):
+        block = url_block(_resolved())
+
+        block.switch_stream_quality("360p")
+
+        assert block.is_video_initialized
+        assert block.stream_quality_playing == "360p"
+        assert block.chapters == SITE_CHAPTERS
+
+    def test_a_file_put_in_the_urls_place_brings_none_of_them(
+        self, url_block, tmp_path
+    ):
+        block = url_block(_resolved())
+
+        video_file = tmp_path / "movie.mkv"
+        video_file.touch()
+
+        block.set_video(Video(uri=video_file, playback_state=VideoInitialState.PAUSED))
+
+        assert block.is_video_initialized
+        assert block.chapters == ()

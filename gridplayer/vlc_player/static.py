@@ -8,6 +8,7 @@ from gridplayer.models.audio_selection import (
     AudioLanguage,
     AudioTrackId,
 )
+from gridplayer.models.chapter import Chapter
 from gridplayer.models.subtitle_selection import (
     SubtitleDefault,
     SubtitleDisabled,
@@ -230,18 +231,6 @@ class SubtitleTrack(MediaTrack):
             info += [self.encoding]
 
         return ", ".join(info)
-
-
-@dataclass(frozen=True)
-class Chapter:
-    """Where a chapter of the file starts, and what the file calls it.
-
-    Only where it starts: libVLC works out how long each one is from where
-    the next one starts, so that is where its end is worked out here too.
-    """
-
-    start_ms: int
-    name: str | None = None
 
 
 @dataclass
