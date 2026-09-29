@@ -46,6 +46,10 @@ PROPAGATED_EVENTS_FILTERED = (
     QEvent.Drop,
 )
 
+# what a widget on the opaque overlay does that changes the shape the window
+# is cut to
+SHAPE_EVENTS = frozenset({QEvent.Show, QEvent.Hide, QEvent.Move, QEvent.Resize})
+
 
 class OverlayBlock(QWidget):
     set_vid_pos = pyqtSignal(float)
@@ -447,6 +451,16 @@ class OverlayBlockFloating(OverlayBlock):
         self.is_opaque = True
         self._sync_opaque_window_color()
 
+        # Whatever is outside the shape is not painted at all, so a widget
+        # has to be inside it before it paints: the shape is cut again the
+        # moment one is shown, hidden, moved or resized, never later.
+        for widget in self.findChildren(OverlayWidget):
+            widget.installEventFilter(self)
+
+        # the hover label moves with the mouse, and says once it is in place
+        # rather than at every step of getting there
+        self.floating_progress.shape_changed.connect(self.refresh_opaque_mask)
+
     def setGeometry(self, rect):
         new_pos = self.parent().mapToGlobal(QPoint())
         rect.moveTopLeft(new_pos)
@@ -481,16 +495,32 @@ class OverlayBlockFloating(OverlayBlock):
     def _apply_opaque_mask(self, new_mask: QRegion) -> None:
         # X11 Shape setMask briefly unmasks the window. Opaque fill is the
         # video color (default white), so a redundant reshape flashes the cell.
-        if new_mask != self.mask():
-            self.setMask(new_mask)
+        old_mask = self.mask()
+
+        if new_mask == old_mask:
+            return
+
+        self.setMask(new_mask)
+
+        # Qt repaints nothing a window's shape grows into, and shows what it
+        # last painted there: a label that changed while outside the shape
+        # comes up as it was, or blank. Put off by Qt until the paint is done
+        # when this is called from one.
+        revealed = new_mask.subtracted(old_mask)
+
+        if not revealed.isEmpty():
+            self.update(revealed)
 
     def _opaque_mask(self) -> QRegion:
         dummy = QRegion(QRect(0, 0, 1, 1))
         mask = QRegion(dummy)
         has_shape = False
 
+        # As shown once the overlay is, whether it is now or not: a shape
+        # worked out while it is hidden is the one it comes back with, and
+        # only what is inside that is painted when it does.
         for child in self.findChildren(OverlayWidget):
-            if not child.isVisible():
+            if not child.isVisibleTo(self):
                 continue
             has_shape = True
             child_mask = child.mask()
@@ -525,6 +555,15 @@ class OverlayBlockFloating(OverlayBlock):
 
     def eventFilter(self, event_object, event) -> bool:
         """Track parent window move events and follow it"""
+
+        if isinstance(event_object, OverlayWidget) and event.type() in SHAPE_EVENTS:
+            # the hover label says for itself once it has been put somewhere
+            if event_object is not self.floating_progress or (
+                event.type() == QEvent.Hide
+            ):
+                self.refresh_opaque_mask()
+
+            return False
 
         if event_object == self.parent().window():
             if event.type() == QEvent.Move:

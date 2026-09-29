@@ -40,8 +40,9 @@ CHAPTER_HOVER_ALPHA = 70
 # A chapter name cut down to less than this is no name, and is left off.
 HOVER_LABEL_MIN_NAME_PX = 30
 
-# half the width of the pointer under the hover label
+# half the width of the pointer under the hover label, and its height
 HOVER_POINTER_HALF_WIDTH = 5
+HOVER_POINTER_HEIGHT = 10
 
 # Segments are drawn in a band through the middle of the bar, a third of its
 # height: over the progress, which still reads above and below them, and
@@ -209,6 +210,9 @@ class OverlayShortLabel(OverlayWidget):
 
 
 class OverlayShortLabelFloating(OverlayShortLabel):
+    # cut to a new shape on the opaque overlay, which cuts its window to it
+    shape_changed = pyqtSignal()
+
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
@@ -220,8 +224,6 @@ class OverlayShortLabelFloating(OverlayShortLabel):
         self.segment_line: tuple[str, QColor] | None = None
 
         self.is_opaque = False
-
-        self._clip_region = None
 
         # where the pointer sits along the label, None for the middle
         self._pointer_x = None
@@ -258,7 +260,27 @@ class OverlayShortLabelFloating(OverlayShortLabel):
 
         self.move(left, pos.y() - self.height())
         self.show()
+        self._update_shape()
         self.update()
+
+    def _update_shape(self):
+        """Cut the label to its box and its pointer, on the opaque overlay.
+
+        Once it is in place and before it paints, never while it paints: the
+        overlay cuts its window to what is on it, and whatever is outside
+        that is not painted at all. A shape changed while painting comes too
+        late for the paint it is changed in.
+        """
+
+        if not self.is_opaque:
+            return
+
+        shape = QRegion(self._text_box()) + QRegion(self._pointer().toPolygon())
+
+        if shape != self.mask():
+            self.setMask(shape)
+
+        self.shape_changed.emit()
 
     def _hover_text(self, time_ms: int) -> str:
         """The time under the mouse, and the chapter it is in where there is one."""
@@ -324,8 +346,7 @@ class OverlayShortLabelFloating(OverlayShortLabel):
         if not self._is_visuals_updated:
             self.update_visuals()
 
-        text_box = self.rect().translated(0, 0)
-        text_box.setHeight(text_box.height() - 10)
+        text_box = self._text_box()
 
         painter.fillRect(text_box, self.color)
         painter.setPen(self.color_contrast)
@@ -335,14 +356,34 @@ class OverlayShortLabelFloating(OverlayShortLabel):
         else:
             self.draw_two_lines(painter, text_box)
 
-        if self.is_opaque:
-            self._clip_region = QRegion(text_box)
-            self.draw_triangle(painter, self.rect())
-            self.setMask(self._clip_region)
+        self.draw_triangle(painter)
 
-            return
+    def _text_box(self) -> QRect:
+        """Where the text goes, above the pointer."""
 
-        self.draw_triangle(painter, self.rect())
+        text_box = self.rect()
+        text_box.setHeight(text_box.height() - HOVER_POINTER_HEIGHT)
+
+        return text_box
+
+    def _pointer(self) -> QPolygonF:
+        """The pointer below the text, over where the mouse is."""
+
+        middle_x = self._pointer_x
+        if middle_x is None:
+            middle_x = round(self.width() / 2)
+
+        bottom = self.height()
+        top = bottom - HOVER_POINTER_HEIGHT
+        half_width = HOVER_POINTER_HALF_WIDTH
+
+        return QPolygonF(
+            [
+                QPointF(middle_x - half_width, top),
+                QPointF(middle_x + half_width, top),
+                QPointF(middle_x, bottom),
+            ]
+        )
 
     def draw_two_lines(self, painter, text_box):
         """The time, over the segments under the mouse by their colour."""
@@ -384,28 +425,15 @@ class OverlayShortLabelFloating(OverlayShortLabel):
             name,
         )
 
-    def draw_triangle(self, painter, rect):
+    def draw_triangle(self, painter):
         painter.setRenderHint(QPainter.Antialiasing, True)
 
         path = QPainterPath()
-
-        middle_x = self._pointer_x
-        if middle_x is None:
-            middle_x = round(rect.width() / 2)
-
-        half_width = HOVER_POINTER_HALF_WIDTH
-
-        path.moveTo(middle_x - half_width, rect.height() - 10)
-        path.lineTo(middle_x + half_width, rect.height() - 10)
-        path.lineTo(middle_x, rect.height())
-        path.lineTo(middle_x - half_width, rect.height() - 10)
+        path.addPolygon(self._pointer())
+        path.closeSubpath()
 
         painter.setPen(Qt.NoPen)
         painter.fillPath(path, self.color)
-
-        if self.is_opaque:
-            painter.setClipPath(path)
-            self._clip_region = self._clip_region.united(painter.clipRegion())
 
     def update_visuals(self):
         padding = 10
@@ -427,7 +455,7 @@ class OverlayShortLabelFloating(OverlayShortLabel):
             )
             height += metrics.height()
 
-        self.setFixedSize(width + padding, height + padding + 10)
+        self.setFixedSize(width + padding, height + padding + HOVER_POINTER_HEIGHT)
 
         self._is_visuals_updated = True
 
