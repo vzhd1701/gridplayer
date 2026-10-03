@@ -1,8 +1,7 @@
 from abc import ABC, abstractmethod
 
 from PyQt5.QtCore import QPropertyAnimation, Qt, pyqtProperty, pyqtSignal
-from PyQt5.QtGui import QColor, QCursor, QPainter
-from PyQt5.QtWidgets import qApp
+from PyQt5.QtGui import QColor, QPainter
 
 from gridplayer.utils.qt import QABC
 from gridplayer.widgets.video_overlay_elements import OverlayWidget
@@ -54,9 +53,6 @@ class OverlayButton(OverlayWidget, metaclass=QABC):
             self.icon_off(self.rect(), painter, color_fg, color_bg)
         else:
             self.icon(self.rect(), painter, color_fg, color_bg)
-
-    def underMouse(self):
-        return qApp.widgetAt(QCursor.pos()) is self
 
     def leaveEvent(self, event):
         self.update()
