@@ -32,6 +32,7 @@ from gridplayer.utils.aspect_calc import (
 )
 from gridplayer.utils.qt import MILLISECONDS, QABC, qt_connect
 from gridplayer.utils.screenshots import ScreenshotView
+from gridplayer.utils.win32_vlc_vout import fit_vlc_vout_windows
 from gridplayer.vlc_player.static import Media, MediaInput
 from gridplayer.vlc_player.video_driver_base import VLCVideoDriver
 from gridplayer.widgets.video_status import VideoStatus
@@ -126,7 +127,8 @@ def apply_vlc_hw_surface_geometry(
 
     This is the only thing that positions a native surface: it is kept out of
     the frame layout (see VideoFrameVLC.is_native_surface), so a zero offset
-    still has to size it.
+    still has to size it. On Windows it sizes VLC's own windows inside it
+    along with it (see fit_vlc_vout_windows).
     """
     width = frame.width()
     height = frame.height()
@@ -146,6 +148,8 @@ def apply_vlc_hw_surface_geometry(
             -clip_rect.topLeft()
         )
     )
+
+    fit_vlc_vout_windows(surface)
 
 
 def _pixels_in(rect: Rect) -> QRect:

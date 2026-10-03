@@ -357,10 +357,11 @@ class VideoFrameVLCHWSP(VideoFrameVLC):
         if super().adjust_view():
             return
 
+        # VLC's windows first: see fit_vlc_vout_windows
+        self._place_native_surface()
+
         size = (self.size().width(), self.size().height())
         self.video_driver.adjust_view(size, self._view)
-
-        self._place_native_surface()
 
     def load_video_finish(self, media_track: Media):
         if env.IS_MACOS:
