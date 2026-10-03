@@ -1,3 +1,5 @@
+import sys
+
 from PyQt5.QtCore import QEvent, QPoint, QRect, Qt, QTimer, pyqtSignal, pyqtSlot
 from PyQt5.QtGui import QGuiApplication, QPalette, QRegion
 from PyQt5.QtWidgets import (
@@ -50,6 +52,17 @@ PROPAGATED_EVENTS_FILTERED = (
 # what a widget on the opaque overlay does that changes the shape the window
 # is cut to
 SHAPE_EVENTS = frozenset({QEvent.Show, QEvent.Hide, QEvent.Move, QEvent.Resize})
+
+# The first Windows to layer a child window, not only a top-level one. The
+# executable has to say in its manifest that it knows Windows 8 as well,
+# which python.exe's and PyInstaller's both do.
+WINDOWS_8 = (6, 2)
+
+
+def is_layered_child_supported() -> bool:
+    """Whether the overlay over a hardware video can be a child window."""
+
+    return env.IS_WINDOWS and sys.getwindowsversion()[:2] >= WINDOWS_8
 
 
 class OverlayBlock(QWidget):
@@ -389,6 +402,49 @@ class OverlayBlock(QWidget):
         self._overlay_opacity = opacity
         for widget in self.findChildren(OverlayWidget):
             widget.set_overlay_opacity(opacity)
+
+
+class OverlayBlockChild(OverlayBlock):
+    """The overlay over a hardware video, as a child window of the cell.
+
+    Nothing a cell paints shows over a hardware video. VLC presents into
+    native windows of its own inside the cell's, and Qt paints the widgets
+    of a window into one opaque image that it copies into each native
+    window there is, so an overlay drawn into it covers the video, or is
+    covered by it. What shows over the video is a window stacked above
+    VLC's with alpha of its own: layered. Up to Windows 7 only a top-level
+    window can be layered, hence OverlayBlockFloating, kept over the cell
+    by hand. From Windows 8 a child window can be layered as well, so this
+    one is inside the cell's: it moves, clips and hides with the cell by
+    itself, and stays over the video by being stacked above it (see
+    VideoBlock._ensure_video_driver).
+    """
+
+    def __init__(self, parent):
+        super().__init__(parent)
+
+        # frameless with alpha is what Qt draws with UpdateLayeredWindow
+        self.setAttribute(Qt.WA_TranslucentBackground)
+        self.setAttribute(Qt.WA_ShowWithoutActivating)
+        self.setWindowFlags(
+            Qt.Window
+            | Qt.FramelessWindowHint
+            | Qt.WindowDoesNotAcceptFocus
+            | Qt.NoDropShadowWindowHint
+        )
+
+        parent.winId()
+        self.winId()
+        self.windowHandle().setParent(parent.windowHandle())
+
+    def event(self, event):
+        # A window of its own, the mouse events nothing on it takes stop here
+        # rather than going on to the cell. Drags never come: Qt takes them
+        # only at the top-level window, the player.
+        if event.type() in PROPAGATED_EVENTS:
+            QApplication.sendEvent(self.parent(), event)
+
+        return super().event(event)
 
 
 class OverlayBlockFloating(OverlayBlock):

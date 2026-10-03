@@ -169,8 +169,10 @@ from gridplayer.widgets.custom_menu import CustomMenu
 from gridplayer.widgets.video_frame_vlc_base import VideoFrameVLC
 from gridplayer.widgets.video_overlay import (
     OverlayBlock,
+    OverlayBlockChild,
     OverlayBlockFloating,
     OverlayFakeInvisible,
+    is_layered_child_supported,
 )
 from gridplayer.widgets.video_status import VideoStatus
 
@@ -607,6 +609,12 @@ class VideoBlock(QWidget):
             self.layout_main.addWidget(self.video_driver)
         else:
             self.layout_main.insertWidget(overlay_index, self.video_driver)
+
+        # the frame's native window is made after the overlay's, and a child
+        # overlay only shows over the video stacked above it
+        if isinstance(self.overlay, OverlayBlockChild):
+            self.overlay.raise_()
+
         self._hide_video_driver()
         return self.video_driver
 
@@ -686,14 +694,17 @@ class VideoBlock(QWidget):
         self.reset_url_resolver()
 
     def init_overlay(self):
-        if self._driver_has_native_surface():
-            if Settings().get("internal/fake_overlay_invisibility"):
-                overlay = OverlayFakeInvisible(self)
-            else:
-                overlay = OverlayBlockFloating(self)
-            self.installEventFilter(overlay)
-        else:
+        if not self._driver_has_native_surface():
             overlay = OverlayBlock(self)
+        elif is_layered_child_supported():
+            overlay = OverlayBlockChild(self)
+        elif Settings().get("internal/fake_overlay_invisibility"):
+            overlay = OverlayFakeInvisible(self)
+        else:
+            overlay = OverlayBlockFloating(self)
+
+        if isinstance(overlay, OverlayBlockFloating):
+            self.installEventFilter(overlay)
 
         qt_connect(
             (overlay.set_vid_pos, partial(self.manual_seek, "seek_percent")),
@@ -724,7 +735,7 @@ class VideoBlock(QWidget):
     def ui_setup(self):
         self.setMouseTracking(True)
 
-        if self._driver_has_native_surface():
+        if isinstance(self.overlay, OverlayBlockFloating):
             self.layout_main = QStackedLayoutFloating(self)
         else:
             self.layout_main = QStackedLayout(self)
@@ -988,8 +999,9 @@ class VideoBlock(QWidget):
         return actions_manager.handle_mouse_event(event)
 
     def hideEvent(self, event):
-        # OverlayBlockFloating is a Qt.Tool window, so hiding this cell does
-        # not hide it. Always unmap it here — hide_overlay() is chrome-timeout
+        # The overlay of a hardware video is a window of its own, floating
+        # or a child one, so hiding this cell does not hide it as far as Qt
+        # knows. Always unmap it here — hide_overlay() is chrome-timeout
         # policy and is a no-op when overlays stay visible.
         self.overlay_hide_timer.stop()
         self.overlay.hide()
@@ -2673,7 +2685,7 @@ class VideoBlock(QWidget):
             return
         if self.is_loading or self._is_error:
             return
-        # Floating overlays are independent windows; do not remap them while
+        # Hardware overlays are windows of their own; do not remap them while
         # this cell is hidden (single-mode background, minimized, etc.).
         if not self.isVisible():
             return
