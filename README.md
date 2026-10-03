@@ -25,7 +25,7 @@ information about the position, sound volume, loops, aspect ratio, etc.
 - Support for (almost) any streaming
   URLs ([streamlink](https://streamlink.github.io/plugins.html) + [yt-dlp](https://github.com/yt-dlp/yt-dlp/blob/master/supportedsites.md))
 - Cookie support for streams that need a login
-- Skip sponsors and other marked parts of YouTube videos with [SponsorBlock](#sponsorblock)
+- Skip sponsors and other marked parts of YouTube videos with [SponsorBlock](https://sponsor.ajay.app/)
 - Hardware & software video decoding
 - Control video aspect, playback speed, zoom
 - Set loop fragments with frame percision
