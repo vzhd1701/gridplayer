@@ -31,7 +31,9 @@ from gridplayer.params.static import (
     ViewParams,
 )
 from gridplayer.settings import Settings
+from gridplayer.utils.aspect_calc import calc_view_geometry, calc_vlc_picture
 from gridplayer.vlc_player.static import VideoTrack
+from gridplayer.widgets import video_frame_vlc_base as vlc_base
 from gridplayer.widgets.video_block import VideoBlock
 from gridplayer.widgets.video_frame_vlc_hw_sp import VideoFrameVLCHWSP
 
@@ -544,8 +546,30 @@ class TestTheHardwareSurface:
     """VLC fills its window with the picture: the window is what places it."""
 
     @pytest.fixture(autouse=True)
-    def _margin(self):
+    def _margin(self, monkeypatch):
         Settings().set("internal/hw_crop_border_offset", HWCropBorderOffset.PX8)
+
+        # on Windows the window grows a little more for VLC's picture in it
+        # to be whole 4-row blocks: see test_vlc_picture_is_whole_blocks
+        monkeypatch.setattr(vlc_base.env, "IS_WINDOWS", False)
+
+    def test_vlc_picture_is_whole_blocks(self, monkeypatch):
+        """1080x1080 of the frame on show in a 900x901 pane: in the 916x917
+        window the margin makes, VLC's picture would be 915x917, 917 tall,
+        a row past a whole block; grown to 918x920 it is 918x920."""
+        monkeypatch.setattr(vlc_base.env, "IS_WINDOWS", True)
+        frame = _frame()
+        frame.resize(900, 901)
+
+        frame.adjust_view()
+
+        surface = frame.video_surface.geometry()
+        geometry = calc_view_geometry((1920, 1080), (900, 901), frame._view)
+        picture = calc_vlc_picture(
+            (1920, 1080), geometry, (surface.width(), surface.height())
+        )
+        assert picture[3] % 4 == 0
+        assert surface.getRect() == (-9, -9, 918, 920)
 
     def test_it_covers_the_pane_where_the_picture_does(self):
         frame = _frame()

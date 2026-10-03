@@ -19,12 +19,16 @@ showed in 189 of 200 switches without this, in none of 240 with it.
 from __future__ import annotations
 
 import ctypes
+import math
 from ctypes import wintypes
 
+from PyQt5.QtCore import QRect
 from PyQt5.QtGui import QGuiApplication
 from PyQt5.QtWidgets import QWidget
 
 Rect = tuple[int, int, int, int]
+# a rect in fractions of a pixel, as a Qt one comes out in the window's own
+Area = tuple[float, float, float, float]
 
 VLC_MAIN_WINDOW_CLASS = "VLC video main"
 
@@ -43,8 +47,12 @@ _SWP_FLAGS = _SWP_NOZORDER | _SWP_NOACTIVATE | _SWP_NOOWNERZORDER | _SWP_ASYNCWI
 _user32 = None
 
 
-def fit_vlc_vout_windows(surface: QWidget) -> None:
+def fit_vlc_vout_windows(surface: QWidget, was_shown: QRect, shown: QRect) -> None:
     """Size VLC's windows to the surface, just resized.
+
+    `was_shown` and `shown` are the parts of the surface on show before and
+    after, in its own coordinates: VLC's last picture is stretched so that
+    what was on show of it is on show again, at the new size.
 
     Not before resizing it: Qt moves the cell before it resizes what is in
     it, and VLC, seeing the surface moved but not yet resized, could size
@@ -65,10 +73,25 @@ def fit_vlc_vout_windows(surface: QWidget) -> None:
     if not surface.isVisible():
         return
 
-    _fit_vlc_windows(int(surface.winId()))
+    if was_shown.isEmpty() or shown.isEmpty():
+        return
+
+    ratio = surface.devicePixelRatioF()
+    _fit_vlc_windows(
+        int(surface.winId()), _native(was_shown, ratio), _native(shown, ratio)
+    )
 
 
-def _fit_vlc_windows(surface: int) -> None:
+def _native(rect: QRect, ratio: float) -> Area:
+    return (
+        rect.x() * ratio,
+        rect.y() * ratio,
+        rect.width() * ratio,
+        rect.height() * ratio,
+    )
+
+
+def _fit_vlc_windows(surface: int, was_shown: Area, shown: Area) -> None:
     width, height = _client_size(surface)
     if width <= 0 or height <= 0:
         return
@@ -85,22 +108,47 @@ def _fit_vlc_windows(surface: int) -> None:
             continue
 
         # the picture window first: read where VLC has it in the old size
-        scale_x = width / main_width
-        scale_y = height / main_height
         pictures = [(child, _rect_in(child, main)) for child in _children(main)]
 
         _set_rect(main, (0, 0, width, height))
 
-        for child, (x, y, w, h) in pictures:
-            _set_rect(
-                child,
-                (
-                    round(x * scale_x),
-                    round(y * scale_y),
-                    round(w * scale_x),
-                    round(h * scale_y),
-                ),
-            )
+        for child, rect in pictures:
+            if rect[2] > 0 and rect[3] > 0:
+                _set_rect(child, _mapped(rect, was_shown, shown))
+
+
+def _mapped(rect: Rect, was_shown: Area, shown: Area) -> Rect:
+    """Where the picture window goes for what was on show to fill what is.
+
+    Not all of VLC's picture is on show: the surface is grown past it by a
+    margin on every side (see vlc_hw_crop_border_offset), and what VLC draws
+    there stays out of sight. It leaves strips of black there, and rows of
+    black at the bottom where its picture window is not whole 4-row blocks
+    (see VLC_WINDOWS_PICTURE_ROW_BLOCK). Fitted into the new size whole, the
+    picture brought them into sight, stretched by the ~3x of a cell going
+    single: a black line at the bottom. Taken from inside what was on show,
+    a pixel in on every side for the rounding, they stay out of sight at any
+    scale.
+
+    The picture is stretched where the cell changes shape, for the moment
+    it takes VLC to draw one of its own.
+    """
+    from_x, from_y, from_width, from_height = was_shown
+    if from_width > 2 and from_height > 2:
+        from_x, from_y = from_x + 1, from_y + 1
+        from_width, from_height = from_width - 2, from_height - 2
+
+    to_x, to_y, to_width, to_height = shown
+    scale_x = to_width / from_width
+    scale_y = to_height / from_height
+
+    x, y, width, height = rect
+    left = math.floor(to_x + (x - from_x) * scale_x)
+    top = math.floor(to_y + (y - from_y) * scale_y)
+    right = math.ceil(to_x + (x + width - from_x) * scale_x)
+    bottom = math.ceil(to_y + (y + height - from_y) * scale_y)
+
+    return left, top, right - left, bottom - top
 
 
 def _load_user32():

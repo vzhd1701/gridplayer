@@ -5,7 +5,16 @@ from abc import ABC, abstractmethod
 from contextlib import suppress
 from pathlib import Path
 
-from PyQt5.QtCore import QElapsedTimer, QRect, QSize, Qt, QTimer, pyqtSignal
+from PyQt5.QtCore import (
+    QElapsedTimer,
+    QMargins,
+    QPoint,
+    QRect,
+    QSize,
+    Qt,
+    QTimer,
+    pyqtSignal,
+)
 from PyQt5.QtGui import QImage, QPixmap
 from PyQt5.QtWidgets import QLabel, QStackedLayout, QWidget
 
@@ -27,7 +36,9 @@ from gridplayer.utils.aspect_calc import (
     calc_moved_shift,
     calc_picture_rect,
     calc_shift_range,
+    calc_view_geometry,
     calc_view_placement,
+    calc_vlc_picture,
     calc_whole_placement,
 )
 from gridplayer.utils.qt import MILLISECONDS, QABC, qt_connect
@@ -57,6 +68,19 @@ VLC_CROP_BORDER_PX = 2
 # depending on the integer placement; NVIDIA drivers show it, AMD may not).
 # A wider hidden margin keeps those rows outside the visible frame.
 VLC_WINDOWS_CROP_BORDER_PX = 8
+
+# VLC's Direct3D11 output draws its picture into a buffer a whole number of
+# 4-row blocks tall, and Windows squeezes that into the picture's window:
+# where the window is not, the rows the buffer has past it come out black
+# along the bottom, 4 - height % 4 of them. The margin hides them, until
+# the picture is stretched before VLC draws one of the new size, as a cell
+# going single: ~3x, past the margin, a black line under the video for a
+# frame. Measured, on NVIDIA, the line at every size the picture window was
+# 1 or 2 rows past a whole block and at none it was whole.
+VLC_WINDOWS_PICTURE_ROW_BLOCK = 4
+
+# How much the surface is grown by at most for that, across and down.
+_PICTURE_BLOCK_MAX_PAD = 7
 
 # How far off a whole pixel a picture edge can be and still count as on it,
 # for the float error in working it out.
@@ -103,6 +127,48 @@ def vlc_hw_crop_border_offset(frame_size: QSize, window_size: QSize) -> int:
     return 0 if fills_window else VLC_CROP_BORDER_PX
 
 
+def calc_picture_block_padding(
+    surface_size: QSize, ratio: float, picture_height
+) -> QMargins:
+    """What to grow a surface by for VLC's picture in it to be whole blocks.
+
+    See VLC_WINDOWS_PICTURE_ROW_BLOCK. `picture_height` is how tall VLC
+    makes its picture window in a window of the given size, in the window's
+    own pixels, None where that is not known; the surface is `ratio` of
+    those to its own. VLC fills its window across or down, whichever it
+    reaches first, and the other side follows from the picture's shape, so
+    either side can be what makes the height; the least growth that makes
+    it whole is kept, split between both sides to keep the picture centred.
+    Nothing where nothing within reach does, or where it is not known.
+    """
+    for total in range(2 * _PICTURE_BLOCK_MAX_PAD + 1):
+        for pad_w in range(
+            max(total - _PICTURE_BLOCK_MAX_PAD, 0),
+            min(total, _PICTURE_BLOCK_MAX_PAD) + 1,
+        ):
+            pad_h = total - pad_w
+            height = picture_height(
+                _native_px(surface_size.width() + pad_w, ratio),
+                _native_px(surface_size.height() + pad_h, ratio),
+            )
+
+            if height is None:
+                return QMargins()
+
+            if height % VLC_WINDOWS_PICTURE_ROW_BLOCK == 0:
+                return QMargins(
+                    pad_w // 2, pad_h // 2, pad_w - pad_w // 2, pad_h - pad_h // 2
+                )
+
+    return QMargins()
+
+
+def _native_px(length: int, ratio: float) -> int:
+    """A length in Qt pixels in the window's own, rounded the way Qt does."""
+
+    return int(length * ratio + 0.5)
+
+
 def apply_vlc_hw_surface_geometry(
     frame: QWidget,
     clip: QWidget,
@@ -110,6 +176,7 @@ def apply_vlc_hw_surface_geometry(
     offset: int,
     target: Rect | None = None,
     shown: Rect | None = None,
+    padding: QMargins | None = None,
 ) -> None:
     """Place a native vout surface over the video, grown by `offset` each way.
 
@@ -129,6 +196,9 @@ def apply_vlc_hw_surface_geometry(
     the frame layout (see VideoFrameVLC.is_native_surface), so a zero offset
     still has to size it. On Windows it sizes VLC's own windows inside it
     along with it (see fit_vlc_vout_windows).
+
+    `padding` grows it a little more on top of that, see
+    calc_picture_block_padding.
     """
     width = frame.width()
     height = frame.height()
@@ -142,14 +212,29 @@ def apply_vlc_hw_surface_geometry(
     if clip_rect.isEmpty():
         clip_rect = frame_rect
 
+    padding = padding or QMargins()
+    surface_geometry = surface_rect.adjusted(
+        -offset - padding.left(),
+        -offset - padding.top(),
+        offset + padding.right(),
+        offset + padding.bottom(),
+    ).translated(-clip_rect.topLeft())
+
+    was_shown = _shown_of(clip.size(), surface.geometry())
+
     clip.setGeometry(clip_rect)
-    surface.setGeometry(
-        surface_rect.adjusted(-offset, -offset, offset, offset).translated(
-            -clip_rect.topLeft()
-        )
+    surface.setGeometry(surface_geometry)
+
+    fit_vlc_vout_windows(
+        surface, was_shown, _shown_of(clip_rect.size(), surface_geometry)
     )
 
-    fit_vlc_vout_windows(surface)
+
+def _shown_of(clip_size: QSize, surface_geometry: QRect) -> QRect:
+    """The part of the surface the clip leaves on show, in its own coordinates."""
+
+    shown = QRect(QPoint(0, 0), clip_size) & surface_geometry
+    return shown.translated(-surface_geometry.topLeft())
 
 
 def _pixels_in(rect: Rect) -> QRect:
@@ -485,7 +570,13 @@ class VideoFrameVLC(QWidget, metaclass=QABC):
             shown = view_placement.target if view_placement is not None else None
 
         apply_vlc_hw_surface_geometry(
-            self, self.video_clip, self.video_surface, offset, target, shown
+            self,
+            self.video_clip,
+            self.video_surface,
+            offset,
+            target,
+            shown,
+            self._picture_block_padding(target, offset),
         )
 
         if not self.native_surface_rect().contains(self.rect()):
@@ -497,6 +588,30 @@ class VideoFrameVLC(QWidget, metaclass=QABC):
             f", window={window_size.width()}x{window_size.height()}"
             f", clip={self.video_clip.geometry().getRect()}"
             f", surface={self.video_surface.geometry().getRect()}"
+        )
+
+    def _picture_block_padding(self, target: Rect | None, offset: int) -> QMargins:
+        """See calc_picture_block_padding: Windows only, where it is known.
+
+        Not for a picture VLC turns as the file says (see
+        calc_whole_placement): it turns it in placing it too.
+        """
+        if not env.IS_WINDOWS or target is None or self._is_drawn_whole():
+            return QMargins()
+
+        frame_size = self._view_frame_size()
+        geometry = calc_view_geometry(
+            frame_size, self._pane_size(), self._view, self._transform
+        )
+
+        def picture_height(width: int, height: int) -> int | None:
+            picture = calc_vlc_picture(frame_size, geometry, (width, height))
+            return picture[3] if picture is not None else None
+
+        return calc_picture_block_padding(
+            _pixels_in(target).size().grownBy(QMargins(offset, offset, offset, offset)),
+            self.video_surface.devicePixelRatioF(),
+            picture_height,
         )
 
     def native_surface_rect(self) -> QRect:

@@ -1,6 +1,7 @@
 from unittest.mock import MagicMock
 
 import pytest
+from PyQt5.QtCore import QRect
 from PyQt5.QtWidgets import QApplication
 
 import gridplayer.utils.win32_vlc_vout as vlc_vout
@@ -39,34 +40,70 @@ class _Windows:
         )
 
 
+# a 3x3 cell of a 1200x700 window and the whole window, each with the 8px
+# margin the surface is grown by on every side
+CELL_SHOWN = (8, 8, 400, 234)
+WINDOW_SHOWN = (8, 8, 1200, 700)
+
+
+def _covers(rect, area):
+    x, y, w, h = rect
+    ax, ay, aw, ah = area
+    return x <= ax and y <= ay and x + w >= ax + aw and y + h >= ay + ah
+
+
 def test_vlc_windows_grow_with_the_surface(monkeypatch):
     """A cell going single: VLC's windows are still the size of the cell."""
     windows = _Windows(monkeypatch, (1216, 716), (416, 250), (0, 3, 416, 243))
 
-    vlc_vout._fit_vlc_windows(SURFACE)
+    vlc_vout._fit_vlc_windows(SURFACE, CELL_SHOWN, WINDOW_SHOWN)
 
-    assert windows.moved == [
-        (MAIN, (0, 0, 1216, 716)),
-        (PICTURE, (0, 9, 1216, 696)),
-    ]
+    assert windows.moved[0] == (MAIN, (0, 0, 1216, 716))
+    picture, rect = windows.moved[1]
+    assert picture == PICTURE
+    assert _covers(rect, WINDOW_SHOWN)
 
 
 def test_vlc_windows_shrink_with_the_surface(monkeypatch):
     windows = _Windows(monkeypatch, (416, 250), (1216, 716), (0, 3, 1216, 709))
 
-    vlc_vout._fit_vlc_windows(SURFACE)
+    vlc_vout._fit_vlc_windows(SURFACE, WINDOW_SHOWN, CELL_SHOWN)
 
-    assert windows.moved == [
-        (MAIN, (0, 0, 416, 250)),
-        (PICTURE, (0, 1, 416, 248)),
-    ]
+    assert windows.moved[0] == (MAIN, (0, 0, 416, 250))
+    assert _covers(windows.moved[1][1], CELL_SHOWN)
+
+
+def test_what_was_out_of_sight_stays_out_of_sight(monkeypatch):
+    """The picture reaches 4 rows below what is on show of the cell, where
+    NVIDIA can leave rows unpainted. Stretched ~3x for single mode they
+    reached past the margin: a black line at the bottom for a moment."""
+    windows = _Windows(monkeypatch, (1216, 716), (416, 250), (0, 3, 416, 243))
+
+    vlc_vout._fit_vlc_windows(SURFACE, CELL_SHOWN, WINDOW_SHOWN)
+
+    _, (_x, y, _w, h) = windows.moved[1]
+    shown_bottom = WINDOW_SHOWN[1] + WINDOW_SHOWN[3]
+    hidden_rows = (3 + 243) - (CELL_SHOWN[1] + CELL_SHOWN[3])
+    assert (y + h) - shown_bottom >= 3 * hidden_rows
+    assert WINDOW_SHOWN[1] - y >= 3 * (CELL_SHOWN[1] - 3)
+
+
+def test_pillarboxed_picture_fills_what_is_on_show(monkeypatch):
+    """With bars, the surface is over the picture only, and so is the
+    part of it on show."""
+    windows = _Windows(monkeypatch, (226, 716), (618, 250), (0, 0, 618, 250))
+
+    vlc_vout._fit_vlc_windows(SURFACE, (8, 8, 602, 234), (8, 8, 210, 700))
+
+    assert windows.moved[0] == (MAIN, (0, 0, 226, 716))
+    assert _covers(windows.moved[1][1], (8, 8, 210, 700))
 
 
 def test_vlc_windows_left_alone_once_vlc_caught_up(monkeypatch):
     """VLC's own placement of the picture is never second-guessed."""
     windows = _Windows(monkeypatch, (416, 250), (416, 250), (0, 3, 416, 243))
 
-    vlc_vout._fit_vlc_windows(SURFACE)
+    vlc_vout._fit_vlc_windows(SURFACE, CELL_SHOWN, CELL_SHOWN)
 
     assert windows.moved == []
 
@@ -75,7 +112,7 @@ def test_windows_that_are_not_vlc_left_alone(monkeypatch):
     windows = _Windows(monkeypatch, (1216, 716), (416, 250), (0, 3, 416, 243))
     windows.classes[MAIN] = "Qt5152QWindowIcon"
 
-    vlc_vout._fit_vlc_windows(SURFACE)
+    vlc_vout._fit_vlc_windows(SURFACE, CELL_SHOWN, WINDOW_SHOWN)
 
     assert windows.moved == []
 
@@ -83,7 +120,7 @@ def test_windows_that_are_not_vlc_left_alone(monkeypatch):
 def test_vlc_windows_not_made_yet(monkeypatch):
     windows = _Windows(monkeypatch, (1216, 716), (0, 0), (0, 0, 0, 0))
 
-    vlc_vout._fit_vlc_windows(SURFACE)
+    vlc_vout._fit_vlc_windows(SURFACE, CELL_SHOWN, WINDOW_SHOWN)
 
     assert windows.moved == []
 
@@ -94,7 +131,7 @@ def test_nothing_done_off_windows(monkeypatch):
     monkeypatch.setattr(vlc_vout, "_fit_vlc_windows", fit)
     surface = MagicMock(isVisible=lambda: True)
 
-    vlc_vout.fit_vlc_vout_windows(surface)
+    vlc_vout.fit_vlc_vout_windows(surface, QRect(0, 0, 9, 9), QRect(0, 0, 9, 9))
 
     fit.assert_not_called()
 

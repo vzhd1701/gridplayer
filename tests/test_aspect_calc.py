@@ -22,6 +22,7 @@ from gridplayer.utils.aspect_calc import (
     calc_view_placement,
     calc_view_shift,
     calc_view_step,
+    calc_vlc_picture,
     calc_whole_geometry,
     calc_whole_placement,
 )
@@ -1018,3 +1019,41 @@ class TestCropRegion:
     )
     def test_clamped_to_video_bounds(self, crop, expected):
         assert calc_crop_region(VIDEO, crop) == expected
+
+
+class TestVlcPicture:
+    """Where VLC 3 put its picture window, measured on Windows, Direct3D11:
+    the frame, the pane the view is for, VLC's window, the 8px hidden margin
+    on every side of it, and the picture window VLC made in it."""
+
+    @pytest.mark.parametrize(
+        ("frame", "pane", "window", "measured"),
+        [
+            ((720, 960), (414, 240), (430, 256), (0, 3, 430, 249)),
+            ((720, 960), (426, 240), (442, 256), (0, 3, 442, 249)),
+            ((720, 960), (427, 240), (443, 256), (0, 4, 443, 248)),
+            ((720, 960), (533, 300), (549, 316), (0, 3, 549, 309)),
+            ((720, 960), (534, 300), (550, 316), (0, 4, 550, 308)),
+            ((720, 960), (426, 241), (442, 257), (0, 3, 442, 250)),
+            ((1920, 1080), (400, 234), (416, 250), (0, 3, 416, 243)),
+            ((1920, 1080), (426, 240), (442, 256), (0, 3, 442, 249)),
+            ((1920, 1080), (1200, 700), (1216, 716), (0, 3, 1216, 709)),
+            ((1920, 1080), (1280, 720), (1296, 736), (0, 3, 1296, 729)),
+        ],
+    )
+    def test_as_vlc_placed_it(self, frame, pane, window, measured):
+        geometry = calc_view_geometry(frame, pane, _view())
+
+        assert calc_vlc_picture(frame, geometry, window) == measured
+
+    def test_fills_down_where_it_reaches_the_bottom_first(self):
+        geometry = calc_view_geometry((720, 960), (300, 400), _view())
+
+        x, _y, width, height = calc_vlc_picture((720, 960), geometry, (400, 416))
+
+        assert height == 416
+        assert width < 400
+        assert x == (400 - width) // 2
+
+    def test_not_known_with_the_files_own_shape(self):
+        assert calc_vlc_picture(VIDEO, ("0:0", "+0+0+0+0"), (400, 300)) is None

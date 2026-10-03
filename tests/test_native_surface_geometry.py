@@ -1,14 +1,17 @@
 from unittest.mock import MagicMock
 
 import pytest
-from PyQt5.QtCore import QSize, Qt
+from PyQt5.QtCore import QMargins, QSize, Qt
 from PyQt5.QtWidgets import QApplication, QWidget
 
 import gridplayer.widgets.video_frame_vlc_base as vlc_base
 from gridplayer.params.static import HWCropBorderOffset
 from gridplayer.utils import darkmode
 from gridplayer.utils.aspect_calc import ViewPlacement
-from gridplayer.widgets.video_frame_vlc_base import apply_vlc_hw_surface_geometry
+from gridplayer.widgets.video_frame_vlc_base import (
+    apply_vlc_hw_surface_geometry,
+    calc_picture_block_padding,
+)
 from gridplayer.widgets.video_frame_vlc_hw_sp import VideoFrameVLCHWSP
 from gridplayer.widgets.video_frame_vlc_sw_sp import VideoFrameVLCSWSP
 
@@ -318,3 +321,53 @@ def test_software_frame_applies_every_resize(monkeypatch):
 
     assert len(calls) == 3
     assert not frame._resize_view_timer.isActive()
+
+
+def _height_of_width(width, height):
+    """A picture filling its window across, its height following."""
+    return width * 9 // 16
+
+
+def test_no_padding_where_the_picture_is_whole_blocks_already():
+    assert calc_picture_block_padding(QSize(448, 260), 1.0, _height_of_width) == (
+        QMargins()
+    )
+
+
+def test_padding_across_where_the_width_makes_the_height():
+    """442 across makes the picture 248, 444 makes it 249: 442 is kept,
+    but 443 needs growing to the next width that comes out whole."""
+    padding = calc_picture_block_padding(QSize(443, 260), 1.0, _height_of_width)
+
+    width = 443 + padding.left() + padding.right()
+    assert _height_of_width(width, 260) % 4 == 0
+    assert padding.top() == padding.bottom() == 0
+    assert abs(padding.left() - padding.right()) <= 1
+
+
+def test_padding_down_where_the_picture_fills_the_height():
+    padding = calc_picture_block_padding(QSize(300, 249), 1.0, lambda w, h: h)
+
+    assert padding == QMargins(0, 1, 0, 2)
+
+
+def test_padding_in_the_windows_own_pixels():
+    """At 150% one Qt pixel more is one or two of the window's."""
+    padding = calc_picture_block_padding(QSize(300, 166), 1.5, lambda w, h: h)
+
+    height = int((166 + padding.top() + padding.bottom()) * 1.5 + 0.5)
+    assert height % 4 == 0
+
+
+def test_no_padding_where_the_picture_is_not_known():
+    assert calc_picture_block_padding(QSize(300, 249), 1.0, lambda w, h: None) == (
+        QMargins()
+    )
+
+
+def test_surface_grown_by_the_padding():
+    frame, clip, surface = _frame_and_surface()
+
+    apply_vlc_hw_surface_geometry(frame, clip, surface, 8, padding=QMargins(1, 0, 2, 0))
+
+    assert surface.geometry().getRect() == (-9, -8, 819, 466)

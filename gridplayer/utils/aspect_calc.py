@@ -441,6 +441,49 @@ def calc_view_geometry(
     return _format_view(override, borders)
 
 
+def calc_vlc_picture(
+    frame_size: tuple[int, int],
+    geometry: tuple[str, str],
+    window_size: tuple[int, int],
+) -> tuple[int, int, int, int] | None:
+    """Where VLC 3 puts the picture in a window this size, told the geometry.
+
+    vout_display_PlacePicture (src/video_output/display.c), filling the
+    window with no zoom of VLC's own, as the hardware drivers have it: the
+    override makes the frame's SAR num * frame_h : den * frame_w, reduced,
+    the crop leaves the region, and the region goes in as large as it fits
+    and in the middle, in VLC's whole-pixel sums. It matched VLC's own
+    placement to the pixel everywhere it was measured.
+
+    The geometry is calc_view_geometry's, not a turned file's: VLC turns
+    those in placing them too. None where VLC goes by the file's own shape.
+    """
+    override, crop = geometry
+    num, den = (int(part) for part in override.split(":"))
+    frame_w, frame_h = frame_size
+    window_w, window_h = window_size
+
+    if min(num, den, frame_w, frame_h, window_w, window_h) <= 0:
+        return None
+
+    borders = VideoCrop(*(int(part) for part in crop.split("+")[1:]))
+    _, _, region_w, region_h = calc_crop_region(frame_size, borders)
+
+    sar_num, sar_den = num * frame_h, den * frame_w
+    shared = math.gcd(sar_num, sar_den)
+    sar_num, sar_den = sar_num // shared, sar_den // shared
+
+    fill_w = region_w * window_h * sar_num // (region_h * sar_den)
+
+    if fill_w <= window_w:
+        width, height = fill_w, window_h
+    else:
+        width = window_w
+        height = region_h * window_w * sar_den // (region_w * sar_num)
+
+    return (window_w - width) // 2, (window_h - height) // 2, width, height
+
+
 def _frame_pixel_shape(
     frame_size: tuple[int, int], transform: VideoTransform | None
 ) -> tuple[float, float]:
