@@ -14,6 +14,10 @@ presentation is stretched over the window it presents into, so its last
 picture fills the new size until it draws one for it. Measured entering and
 leaving single mode in a 3x3 grid, in every aspect mode: the old picture
 showed in 189 of 200 switches without this, in none of 240 with it.
+
+VLC also makes its "VLC video output" window hidden, and shows it only once
+it has drawn the first picture into it. Until then "VLC video main" is all
+there is, and it is black: see vlc_picture.
 """
 
 from __future__ import annotations
@@ -21,6 +25,7 @@ from __future__ import annotations
 import ctypes
 import math
 from ctypes import wintypes
+from typing import NamedTuple
 
 from PyQt5.QtCore import QRect
 from PyQt5.QtGui import QGuiApplication
@@ -35,6 +40,9 @@ VLC_MAIN_WINDOW_CLASS = "VLC video main"
 _GW_HWNDNEXT = 2
 _GW_CHILD = 5
 
+_GWL_STYLE = -16
+_WS_VISIBLE = 0x10000000
+
 _SWP_NOZORDER = 0x0004
 _SWP_NOACTIVATE = 0x0010
 _SWP_NOOWNERZORDER = 0x0200
@@ -45,6 +53,16 @@ _SWP_ASYNCWINDOWPOS = 0x4000
 _SWP_FLAGS = _SWP_NOZORDER | _SWP_NOACTIVATE | _SWP_NOOWNERZORDER | _SWP_ASYNCWINDOWPOS
 
 _user32 = None
+
+
+class VlcPicture(NamedTuple):
+    """VLC's picture window in a surface, in the surface's own pixels."""
+
+    is_shown: bool
+    # where it is in VLC's main window
+    rect: Rect
+    window_size: tuple[int, int]
+    surface_size: tuple[int, int]
 
 
 def fit_vlc_vout_windows(surface: QWidget, was_shown: QRect, shown: QRect) -> None:
@@ -80,6 +98,39 @@ def fit_vlc_vout_windows(surface: QWidget, was_shown: QRect, shown: QRect) -> No
     _fit_vlc_windows(
         int(surface.winId()), _native(was_shown, ratio), _native(shown, ratio)
     )
+
+
+def vlc_picture(surface: QWidget) -> VlcPicture | None:
+    """VLC's picture window in the surface, as it is now.
+
+    VLC shows it right after it first draws into it. Measured opening a 3x3
+    grid: in every cell it came up within a capture of the picture, 70-280ms
+    after the player said it was loaded, with "VLC video main" black under
+    it until then.
+
+    Shown by the window's own flag, not by whether it is on screen: a cell
+    out of sight, as in single mode, still has its picture. None where there
+    is nothing to go by: not on Windows, or no VLC window in the surface, as
+    when VLC has none for an audio track or has stopped.
+    """
+    if QGuiApplication.platformName() != "windows":
+        return None
+
+    hwnd = int(surface.winId())
+
+    for main in _children(hwnd):
+        if not _class_name(main).startswith(VLC_MAIN_WINDOW_CLASS):
+            continue
+
+        for picture in _children(main):
+            return VlcPicture(
+                is_shown=_is_shown(picture),
+                rect=_rect_in(picture, main),
+                window_size=_client_size(main),
+                surface_size=_client_size(hwnd),
+            )
+
+    return None
 
 
 def _native(rect: QRect, ratio: float) -> Area:
@@ -172,6 +223,8 @@ def _load_user32():
     user32.MapWindowPoints.restype = ctypes.c_int
     user32.GetClassNameW.argtypes = [wintypes.HWND, wintypes.LPWSTR, ctypes.c_int]
     user32.GetClassNameW.restype = ctypes.c_int
+    user32.GetWindowLongPtrW.argtypes = [wintypes.HWND, ctypes.c_int]
+    user32.GetWindowLongPtrW.restype = ctypes.c_ssize_t
     user32.SetWindowPos.argtypes = [
         wintypes.HWND,
         wintypes.HWND,
@@ -203,6 +256,10 @@ def _class_name(hwnd: int) -> str:
     name = ctypes.create_unicode_buffer(64)
     _load_user32().GetClassNameW(hwnd, name, len(name))
     return name.value
+
+
+def _is_shown(hwnd: int) -> bool:
+    return bool(_load_user32().GetWindowLongPtrW(hwnd, _GWL_STYLE) & _WS_VISIBLE)
 
 
 def _client_size(hwnd: int) -> tuple[int, int]:

@@ -29,12 +29,14 @@ class _Windows:
             PICTURE: "VLC video output 00000186B0EFC8B0",
         }
         self.rects = {PICTURE: picture_rect}
+        self.shown = set()
         self.moved = []
 
         monkeypatch.setattr(vlc_vout, "_client_size", self.client.__getitem__)
         monkeypatch.setattr(vlc_vout, "_children", self.tree.__getitem__)
         monkeypatch.setattr(vlc_vout, "_class_name", self.classes.__getitem__)
         monkeypatch.setattr(vlc_vout, "_rect_in", lambda hwnd, _: self.rects[hwnd])
+        monkeypatch.setattr(vlc_vout, "_is_shown", self.shown.__contains__)
         monkeypatch.setattr(
             vlc_vout, "_set_rect", lambda hwnd, rect: self.moved.append((hwnd, rect))
         )
@@ -134,6 +136,53 @@ def test_nothing_done_off_windows(monkeypatch):
     vlc_vout.fit_vlc_vout_windows(surface, QRect(0, 0, 9, 9), QRect(0, 0, 9, 9))
 
     fit.assert_not_called()
+
+
+def _on_windows(monkeypatch):
+    monkeypatch.setattr(vlc_vout.QGuiApplication, "platformName", lambda: "windows")
+    return MagicMock(winId=lambda: SURFACE)
+
+
+def test_vlc_picture_not_up_until_vlc_shows_it(monkeypatch):
+    """VLC makes its picture window hidden and shows it once it has drawn
+    into it: until then only its black main window is there."""
+    windows = _Windows(monkeypatch, (416, 250), (416, 250), (0, 3, 416, 243))
+    surface = _on_windows(monkeypatch)
+
+    assert vlc_vout.vlc_picture(surface) == vlc_vout.VlcPicture(
+        is_shown=False,
+        rect=(0, 3, 416, 243),
+        window_size=(416, 250),
+        surface_size=(416, 250),
+    )
+
+    windows.shown.add(PICTURE)
+
+    assert vlc_vout.vlc_picture(surface).is_shown
+
+
+def test_vlc_picture_says_how_far_vlc_has_caught_up(monkeypatch):
+    _Windows(monkeypatch, (1216, 716), (416, 250), (0, 3, 416, 243))
+    surface = _on_windows(monkeypatch)
+
+    picture = vlc_vout.vlc_picture(surface)
+
+    assert picture.window_size == (416, 250)
+    assert picture.surface_size == (1216, 716)
+
+
+def test_no_vlc_picture_without_vlc_windows(monkeypatch):
+    windows = _Windows(monkeypatch, (416, 250), (416, 250), (0, 3, 416, 243))
+    windows.classes[MAIN] = "Qt5152QWindowIcon"
+    surface = _on_windows(monkeypatch)
+
+    assert vlc_vout.vlc_picture(surface) is None
+
+
+def test_no_vlc_picture_off_windows():
+    surface = MagicMock(winId=lambda: SURFACE)
+
+    assert vlc_vout.vlc_picture(surface) is None
 
 
 def _hw_frame(frame_cls):

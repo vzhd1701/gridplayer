@@ -460,6 +460,10 @@ class VideoBlock(QWidget):
 
         self._is_state_change_in_progress = False
 
+        # the loading status left over a video just loaded until there is a
+        # picture of it on show, see VideoFrameVLC.is_picture_pending
+        self._is_status_kept_for_picture = False
+
         # last time update seen, to tell a finished pass from a running one
         self._last_time = None
 
@@ -583,6 +587,7 @@ class VideoBlock(QWidget):
 
         qt_connect(
             (video_driver.video_ready, self.load_video_finish),
+            (video_driver.picture_shown, self._picture_shown),
             (video_driver.tracks_changed, self.tracks_changed),
             (video_driver.chapters_changed, self._update_chapters),
             (video_driver.time_changed, self.time_changed),
@@ -655,8 +660,11 @@ class VideoBlock(QWidget):
         if self.video_driver is None:
             return
 
+        self._is_status_kept_for_picture = False
+
         self.load_video.disconnect()
         self.video_driver.video_ready.disconnect()
+        self.video_driver.picture_shown.disconnect()
         self.video_driver.time_changed.disconnect()
         self.video_driver.playback_status_changed.disconnect()
         self.video_driver.error.disconnect()
@@ -884,6 +892,8 @@ class VideoBlock(QWidget):
         return f"{self._network_retries}/{retry_limit}"
 
     def set_status(self, status):
+        self._is_status_kept_for_picture = False
+
         self.overlay.hide()
         self._hide_video_driver()
 
@@ -3507,13 +3517,32 @@ class VideoBlock(QWidget):
 
         self._adopt_audio_if_silent()
 
-        self.video_status.hide()
+        # over the video until there is a picture of it to show instead
+        self._is_status_kept_for_picture = self.video_driver.is_picture_pending
+        if not self._is_status_kept_for_picture:
+            self.video_status.hide()
+
         self.video_driver.show()
         self.is_stopped_change.emit(self.is_stopped)
         self.time_change.emit(self.time, self.video_driver.length)
         self.show_overlay()
 
         self.video_driver.adjust_view()
+
+    def _picture_shown(self):
+        """Take the loading status off the video, now there is a picture.
+
+        On Windows the status is a native window over the frame's, as made
+        (seen in the window tree), so it keeps VLC's windows and their black
+        out of sight until then. Unless it has been given something else to
+        show since.
+        """
+        if not self._is_status_kept_for_picture:
+            return
+
+        self._is_status_kept_for_picture = False
+
+        self.video_status.hide()
 
     @only_with_video_tacks
     def set_aspect(self, aspect: VideoAspect):

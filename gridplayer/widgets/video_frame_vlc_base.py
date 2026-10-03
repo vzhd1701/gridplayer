@@ -43,7 +43,11 @@ from gridplayer.utils.aspect_calc import (
 )
 from gridplayer.utils.qt import MILLISECONDS, QABC, qt_connect
 from gridplayer.utils.screenshots import ScreenshotView
-from gridplayer.utils.win32_vlc_vout import fit_vlc_vout_windows
+from gridplayer.utils.win32_vlc_vout import (
+    VlcPicture,
+    fit_vlc_vout_windows,
+    vlc_picture,
+)
 from gridplayer.vlc_player.static import Media, MediaInput
 from gridplayer.vlc_player.video_driver_base import VLCVideoDriver
 from gridplayer.widgets.video_status import VideoStatus
@@ -59,6 +63,14 @@ DEFAULT_FPS = 25.0
 # by up to this long mid-drag, the way VLC's own window does, and lands on the
 # final size as soon as the drag stops.
 NATIVE_VIEW_RESIZE_INTERVAL_MS = 100
+
+# How often to look for VLC's first picture of a video just loaded, how long
+# to wait for it at most, and how long for it to go where the view puts it
+# once it is up: see VideoFrameVLC.is_picture_pending. Measured opening a
+# 3x3 grid, it was up 70-280ms after the load and in place within ~100ms.
+FIRST_PICTURE_POLL_MS = 10
+FIRST_PICTURE_TIMEOUT_MS = 1500
+FIRST_PICTURE_PLACE_TIMEOUT_MS = 300
 
 # VLC's crop can leave a 2px black border around hardware output.
 VLC_CROP_BORDER_PX = 2
@@ -390,6 +402,9 @@ class VideoFrameVLC(QWidget, metaclass=QABC):
     playback_status_changed = pyqtSignal(bool)
 
     video_ready = pyqtSignal()
+    # The picture of the video just loaded is on show, where it comes only
+    # after video_ready: see is_picture_pending.
+    picture_shown = pyqtSignal()
     tracks_changed = pyqtSignal()
     chapters_changed = pyqtSignal()
 
@@ -426,6 +441,13 @@ class VideoFrameVLC(QWidget, metaclass=QABC):
         self._resize_view_timer = QTimer(self)
         self._resize_view_timer.setSingleShot(True)
         self._resize_view_timer.timeout.connect(self._adjust_view_now)
+
+        self._first_picture_clock = QElapsedTimer()
+        self._picture_up_clock = QElapsedTimer()
+        self._picture_in_place_clock = QElapsedTimer()
+        self._first_picture_timer = QTimer(self)
+        self._first_picture_timer.setInterval(FIRST_PICTURE_POLL_MS)
+        self._first_picture_timer.timeout.connect(self._look_for_first_picture)
 
         self._view = ViewParams()
         self._transform = VideoTransform.NONE
@@ -476,6 +498,31 @@ class VideoFrameVLC(QWidget, metaclass=QABC):
     @property
     def is_video_initialized(self) -> bool:
         return self.media is not None
+
+    @property
+    def is_picture_pending(self) -> bool:
+        """Loaded, with the video not on show as it should be yet.
+
+        VLC's hardware output on Windows is black until VLC draws its first
+        picture (see vlc_picture), which comes after the player says the
+        video is loaded: a cell showed black for that long, its loading
+        status taken off on the load. And that picture can be all of the
+        frame, VLC taking up the view it was given only after it: then it
+        moves its picture window to the view's shape and stretches that
+        picture over it until it draws the next, a portrait video squashed
+        flat across its cell for a frame.
+
+        So until VLC's picture window is up where VLC puts the view's
+        picture (see calc_vlc_picture), and has been for a frame. Or for at
+        most FIRST_PICTURE_TIMEOUT_MS, or FIRST_PICTURE_PLACE_TIMEOUT_MS
+        once it is up anywhere. Then picture_shown.
+
+        Not always enough: VLC can draw that first picture whole into a
+        window placed for the view, and keep it until the video starts
+        playing. Seen for 100-180ms in 3 of 108 portrait videos opened at a
+        saved position into landscape cells.
+        """
+        return self._first_picture_timer.isActive()
 
     @property
     def video_tracks(self):
@@ -721,6 +768,8 @@ class VideoFrameVLC(QWidget, metaclass=QABC):
 
         self.media = None
 
+        self._first_picture_timer.stop()
+
         self.video_driver.cleanup_start()
 
     def cleanup(self) -> None:
@@ -814,8 +863,82 @@ class VideoFrameVLC(QWidget, metaclass=QABC):
         else:
             self._fill_uncovered_black()
             self.adjust_view()
+            self._wait_for_first_picture()
 
         self.video_ready.emit()
+
+    def _wait_for_first_picture(self) -> None:
+        if not self.is_native_surface:
+            return
+
+        if vlc_picture(self.video_surface) is None:
+            return
+
+        self._first_picture_clock.start()
+        self._picture_up_clock.invalidate()
+        self._picture_in_place_clock.invalidate()
+        self._first_picture_timer.start()
+
+    def _look_for_first_picture(self) -> None:
+        if not self._is_first_picture_settled():
+            return
+
+        self._first_picture_timer.stop()
+
+        self.picture_shown.emit()
+
+    def _is_first_picture_settled(self) -> bool:
+        picture = vlc_picture(self.video_surface)
+
+        if picture is None:
+            return True
+
+        if self._first_picture_clock.hasExpired(FIRST_PICTURE_TIMEOUT_MS):
+            return True
+
+        if picture.is_shown and not self._picture_up_clock.isValid():
+            self._picture_up_clock.start()
+
+        if not self._is_picture_in_place(picture):
+            self._picture_in_place_clock.invalidate()
+
+            # not where it was worked out to go, and not going there
+            return self._picture_up_clock.isValid() and (
+                self._picture_up_clock.hasExpired(FIRST_PICTURE_PLACE_TIMEOUT_MS)
+            )
+
+        if not self._picture_in_place_clock.isValid():
+            self._picture_in_place_clock.start()
+
+        # VLC draws the view's picture there with the next frame
+        return self._picture_in_place_clock.elapsed() > self.get_ms_per_frame()
+
+    def _is_picture_in_place(self, picture: VlcPicture) -> bool:
+        if not picture.is_shown:
+            return False
+
+        if picture.window_size != picture.surface_size:
+            return False
+
+        rect = self._vlc_picture_rect(picture.surface_size)
+
+        return rect is None or picture.rect == rect
+
+    def _vlc_picture_rect(self, window_size: tuple[int, int]) -> Rect | None:
+        """Where VLC puts the view's picture in its window, if that is known.
+
+        See calc_vlc_picture. Not for a picture VLC turns as the file says
+        (see calc_whole_placement): it turns it in placing it too.
+        """
+        if self._is_drawn_whole():
+            return None
+
+        frame_size = self._view_frame_size()
+        geometry = calc_view_geometry(
+            frame_size, self._pane_size(), self._view, self._transform
+        )
+
+        return calc_vlc_picture(frame_size, geometry, window_size)
 
     def play(self) -> None:
         if self._is_status_change_in_progress:
