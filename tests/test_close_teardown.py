@@ -26,6 +26,9 @@ class _StubBlock:
         self.video_id = name
         self.video_params = MagicMock()
 
+    def hide(self):
+        self._events.append(("hide", self.id))
+
     def cleanup_start(self):
         self._events.append(("start", self.id))
 
@@ -44,9 +47,10 @@ def blocks_manager():
 
     parent = QWidget()
     manager = VideoBlocksManager(context=Context(), parent=parent)
+    events = []
+    parent.repaint = lambda: events.append(("repaint",))
 
     def _with_blocks(*names):
-        events = []
         for name in names:
             block = _StubBlock(events, name)
             manager._ctx.video_blocks.append(block)
@@ -83,13 +87,37 @@ def test_close_all_starts_every_player_before_closing_any(blocks_manager):
 
     manager.close_all()
 
-    assert events == [
+    assert [e for e in events if e[0] in ("start", "close")] == [
         ("start", "a"),
         ("start", "b"),
         ("start", "c"),
         ("close", "a"),
         ("close", "b"),
         ("close", "c"),
+    ]
+
+
+def test_close_all_takes_every_video_off_screen_before_any_is_waited_on(
+    blocks_manager,
+):
+    """The window is not painted while the players let go, one by one:
+    whatever was still on show played on and went black in turn, and the
+    grid's empty cell came up only after the last of them, the window blank
+    until then."""
+    manager, with_blocks = blocks_manager
+    events = with_blocks("a", "b", "c")
+    manager.video_count_changed.connect(lambda count: events.append(("count", count)))
+
+    manager.close_all()
+
+    assert events[:6] == [
+        ("hide", "a"),
+        ("hide", "b"),
+        ("hide", "c"),
+        # the grid lays itself out without them on this, empty cell and all
+        ("count", 0),
+        ("repaint",),
+        ("start", "a"),
     ]
 
 

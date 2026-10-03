@@ -526,9 +526,20 @@ class VideoBlocksManager(ManagerBase):
             self._emit_video_count()
 
     def close_all(self):
-        _start_cleanup(self._ctx.video_blocks)
+        """Close every video, off screen all at once before any wait.
 
-        self.close_all_signal.emit()
+        The waits for the players overlap (see _start_cleanup), but the
+        window is not painted while they run, and each block was hidden only
+        as it closed: hardware videos still on show played on, each going
+        black the moment its player let go, in whatever order the players
+        did, and the grid's empty cell came up only once the last wait was
+        over, the window blank until then. So every block is hidden, and the
+        grid laid out without them, and that painted, before the first wait.
+        """
+        video_blocks = list(self._ctx.video_blocks)
+
+        for video_block in video_blocks:
+            video_block.hide()
 
         self._log.debug("Clearing video blocks array")
 
@@ -536,6 +547,12 @@ class VideoBlocksManager(ManagerBase):
 
         if not self._in_count_batch():
             self._emit_video_count()
+
+        self.parent().repaint()
+
+        _start_cleanup(video_blocks)
+
+        self.close_all_signal.emit()
 
     def playing_count_change(self):
         playing_videos_count = len(self._ctx.video_blocks.unpaused)
