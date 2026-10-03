@@ -252,8 +252,6 @@ class VideoDriverVLCSW(VLCVideoDriverThreaded):
 
 
 class VideoFrameVLCSW(VideoFrameVLCProcess):
-    is_opengl = False
-
     def driver_setup(self, vlc_options) -> VideoDriverVLCSW:
         return VideoDriverVLCSW(
             image_dest=self.video_surface,

@@ -55,8 +55,6 @@ class VideoDriverDummy(VLCVideoDriver):
 
 
 class VideoFrameDummy(VideoFrameVLC):
-    is_opengl = False
-
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 

@@ -331,7 +331,6 @@ class VideoDriverVLCHWSP(VLCVideoDriver):
 
 
 class VideoFrameVLCHWSP(VideoFrameVLC):
-    is_opengl = True
     resize_view_interval_ms = NATIVE_VIEW_RESIZE_INTERVAL_MS
     is_native_surface = True
 

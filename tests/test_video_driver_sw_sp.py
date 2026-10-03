@@ -25,8 +25,8 @@ def test_vlc_sw_sp_enum_value():
     assert VideoDriver.VLC_SW_SP.value == "vlc_sw_sp"
 
 
-def test_sw_sp_frame_is_not_opengl():
-    assert VideoFrameVLCSWSP.is_opengl is False
+def test_sw_sp_frame_paints_the_video_itself():
+    assert VideoFrameVLCSWSP.is_native_surface is False
 
 
 def test_manager_returns_sw_sp_without_process_manager(mocker):

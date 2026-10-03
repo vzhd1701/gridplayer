@@ -443,8 +443,6 @@ class VideoDriverVLCSWSP(VLCVideoDriver):
 
 
 class VideoFrameVLCSWSP(VideoFrameVLC):
-    is_opengl = False
-
     def driver_setup(self, vlc_options) -> VideoDriverVLCSWSP:
         return VideoDriverVLCSWSP(
             image_dest=self.video_surface,

@@ -567,11 +567,11 @@ class VideoBlock(QWidget):
         self.video_status.show()
         self.overlay.hide()
 
-    def _driver_is_opengl(self) -> bool:
+    def _driver_has_native_surface(self) -> bool:
         cls = self.video_driver_cls
         if isinstance(cls, partial):
             cls = cls.func
-        return bool(getattr(cls, "is_opengl", False))
+        return bool(getattr(cls, "is_native_surface", False))
 
     def init_video_driver(self) -> VideoFrameVLC:
         vlc_options = get_vlc_options(self.video_params)
@@ -618,7 +618,7 @@ class VideoBlock(QWidget):
         # Happens only on Windows
         # Possibly related issue - short ~100-300ms "freeze-frame" lag before video starts actually playing
         # especially noticeable on streaming vids, also happens on Linux
-        if env.IS_WINDOWS and self._driver_is_opengl():
+        if env.IS_WINDOWS and self._driver_has_native_surface():
             return
 
         self.video_driver.hide()
@@ -686,7 +686,7 @@ class VideoBlock(QWidget):
         self.reset_url_resolver()
 
     def init_overlay(self):
-        if self._driver_is_opengl():
+        if self._driver_has_native_surface():
             if Settings().get("internal/fake_overlay_invisibility"):
                 overlay = OverlayFakeInvisible(self)
             else:
@@ -724,7 +724,7 @@ class VideoBlock(QWidget):
     def ui_setup(self):
         self.setMouseTracking(True)
 
-        if self._driver_is_opengl():
+        if self._driver_has_native_surface():
             self.layout_main = QStackedLayoutFloating(self)
         else:
             self.layout_main = QStackedLayout(self)

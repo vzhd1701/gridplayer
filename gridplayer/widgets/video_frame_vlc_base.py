@@ -315,8 +315,6 @@ class VideoFrameVLC(QWidget, metaclass=QABC):
     # it down to, or None to keep all of it.
     screenshot_taken = pyqtSignal(object, object)
 
-    is_opengl: bool | None = None
-
     # Non-zero coalesces resize-driven view updates to one per this many ms.
     resize_view_interval_ms = 0
 
@@ -326,6 +324,8 @@ class VideoFrameVLC(QWidget, metaclass=QABC):
     # each resize, which undid the hw crop border offset between our updates
     # and left the native window jumping in and out of place during a drag.
     # So is video_clip, the window it is inside of, which cuts it down.
+    # Nothing the cell paints shows over such a video, so the cell puts its
+    # overlay in a window of its own (see VideoBlock.init_overlay).
     is_native_surface = False
 
     def __init__(self, vlc_options, **kwargs):
