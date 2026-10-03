@@ -111,8 +111,9 @@ class SingleModeManager(ManagerBase):
                 continue
 
             self._restore_playing(vb)
-            vb.show()
 
+        # The grid shows the hidden videos as it lays them out again, all at
+        # once. Shown here one by one, each would lay the grid out on the spot.
         self.mode_changed.emit()
 
     def _switch_single_video(self, is_before):

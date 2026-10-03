@@ -130,6 +130,26 @@ class GridManager(ManagerBase):
         finally:
             self.parent().setUpdatesEnabled(True)
 
+    @contextlib.contextmanager
+    def _laid_out_once(self):
+        """Lay the cells out once, as they end up, not at every step there.
+
+        Showing a hidden cell lays the grid out there and then, with whatever
+        cells and stretch it has at that point. Showing several in a row, as
+        leaving single mode does, resized the cells already on show through
+        every grid in between: 600x700, then 400x700, then 400x350 in a 3x2
+        grid. A hardware video sends the first of those to VLC at once and
+        holds the rest back (see NATIVE_VIEW_RESIZE_INTERVAL_MS), so it was
+        drawn stretched or zoomed into its cell for a moment.
+        """
+        self._grid.setEnabled(False)
+        try:
+            yield
+        finally:
+            self._grid.setEnabled(True)
+
+        self._grid.activate()
+
     def grid_state(self):
         return GridState(
             mode=self._mode,
@@ -588,11 +608,10 @@ class GridManager(ManagerBase):
 
         dims = self.grid_dimensions
 
-        with self.slow_ui_operation():
+        with self.slow_ui_operation(), self._laid_out_once():
             self._reset_video_grid()
 
             if not self._ctx.video_blocks and not self._show_empties:
-                self._grid.activate()
                 return
 
             if self._is_fixed:
@@ -602,8 +621,6 @@ class GridManager(ManagerBase):
 
             self._sync_block_visibility(placed)
             self.adapt_grid(dims)
-
-            self._grid.activate()
 
     def _reset_grid_stretch(self):
         for c in range(self._grid.columnCount()):
