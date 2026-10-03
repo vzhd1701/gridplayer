@@ -14,6 +14,7 @@ from gridplayer.models.audio_selection import (
     AudioPreferred,
     AudioSelection,
 )
+from gridplayer.models.bookmark import Bookmark
 from gridplayer.models.subtitle_selection import (
     SubtitleDefault,
     SubtitleDisabled,
@@ -315,6 +316,10 @@ class Video(BaseModel):
 class VideoBlockMime(BaseModel):
     id: str
     video: Video
+
+    # the playlist keeps these apart from the video, and another player
+    # would get the video without them
+    bookmarks: list[Bookmark] = Field(default_factory=list)
 
 
 def filter_video_uris(uris: Iterable[str]) -> list[Video]:

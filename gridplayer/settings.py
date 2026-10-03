@@ -84,6 +84,7 @@ _default_settings = {
     "playlist/save_state": False,
     "playlist/save_window": False,
     "playlist/seek_sync_mode": SeekSyncMode.DISABLED,
+    "playlist/bookmarks_shared": True,
     "playlist/unsaved_changes": UnsavedChangesMode.ASK,
     "playlist/shuffle_on_load": False,
     "playlist/drop_action_internal": DropAction.INSERT,

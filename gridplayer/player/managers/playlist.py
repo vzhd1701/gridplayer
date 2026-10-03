@@ -19,9 +19,12 @@ from gridplayer.playlist_settings import (
 )
 from gridplayer.settings import Settings
 from gridplayer.utils.files import get_playlist_path
-from gridplayer.utils.qt import translate
+from gridplayer.utils.qt import is_modal_open, translate
 
 _TITLE_REFRESH_MS = 500
+
+# how often files sent from outside look for the dialog they wait on to close
+_ARGUMENTS_WAIT_MS = 250
 
 
 class PlaylistManager(ManagerBase):
@@ -31,6 +34,9 @@ class PlaylistManager(ManagerBase):
     window_state_loaded = pyqtSignal(WindowState)
     grid_state_loaded = pyqtSignal(GridState)
     snapshots_loaded = pyqtSignal(dict)
+    # the files' bookmarks, and the ids of the videos about to open
+    bookmarks_loaded = pyqtSignal(list, list)
+    bookmarks_shared_loaded = pyqtSignal(bool)
     seek_sync_mode_loaded = pyqtSignal(SeekSyncMode)
     shuffle_on_load_loaded = pyqtSignal(bool)
     disable_mouse_click_events_loaded = pyqtSignal(bool)
@@ -58,6 +64,12 @@ class PlaylistManager(ManagerBase):
         self._title_timer = QTimer(self)
         self._title_timer.setInterval(_TITLE_REFRESH_MS)
         self._title_timer.timeout.connect(self.update_window_title)
+
+        # files and playlists sent from outside while a dialog was open
+        self._waiting_arguments: list[list[str]] = []
+        self._arguments_timer = QTimer(self)
+        self._arguments_timer.setInterval(_ARGUMENTS_WAIT_MS)
+        self._arguments_timer.timeout.connect(self._process_waiting_arguments)
 
     def init(self):
         self._set_saved_playlist(None)
@@ -94,11 +106,25 @@ class PlaylistManager(ManagerBase):
         )
         if not dialog.exec_():
             return
-        PlaylistSettings().replace(dialog.result_overrides())
+        PlaylistSettings().replace(
+            self._with_bookmarks_sharing_confirmed(dialog.result_overrides())
+        )
         self._apply_effective_session()
         self._ctx.commands.apply_grid_config(
             dialog.result_grid_state(self._ctx.grid_state)
         )
+
+    def _with_bookmarks_sharing_confirmed(self, overrides: dict) -> dict:
+        """The overrides, but for the bookmarks' sharing where the viewer
+        thought better of the change: those stay as they are."""
+
+        key = "playlist/bookmarks_shared"
+        is_shared = overrides.get(key, Settings().get(key))
+
+        if self._ctx.commands.confirm_bookmarks_shared(is_shared):
+            return overrides
+
+        return {**overrides, key: not is_shared}
 
     def cmd_open_playlist(self):
         dialog = QFileDialog(
@@ -171,6 +197,15 @@ class PlaylistManager(ManagerBase):
         if not argv:
             return
 
+        # Sent from outside while a dialog is open, as a file opened from the
+        # file manager is, they wait for it to close, as a drop does: a
+        # playlist opened under a dialog leaves it working on one gone.
+        if is_modal_open():
+            self._waiting_arguments.append(argv)
+            self._arguments_timer.start()
+            self.alert.emit()
+            return
+
         playlist = get_playlist_path(argv)
 
         if playlist:
@@ -185,6 +220,17 @@ class PlaylistManager(ManagerBase):
 
         self._ctx.commands.add_videos_to_layout(videos)
         self.alert.emit()
+
+    def _process_waiting_arguments(self):
+        if is_modal_open():
+            return
+
+        self._arguments_timer.stop()
+
+        waiting, self._waiting_arguments = self._waiting_arguments, []
+
+        for argv in waiting:
+            self.process_arguments(argv)
 
     def load_playlist_file(self, playlist_file: Path):
         try:
@@ -230,6 +276,12 @@ class PlaylistManager(ManagerBase):
         overrides.update(grid_overrides_from_state(playlist.grid_state))
         PlaylistSettings().replace(overrides)
         self._apply_effective_session()
+
+        # in place before the videos, for each to find its own as it opens
+        self.bookmarks_loaded.emit(
+            list(playlist.bookmarks or []),
+            [video.id for video in playlist.videos or []],
+        )
 
         self.grid_state_loaded.emit(playlist.grid_state)
         self.videos_loaded.emit(list(playlist.videos or []))
@@ -333,6 +385,9 @@ class PlaylistManager(ManagerBase):
             )
             return False
 
+        # those of the cells closed meanwhile were left out of it
+        self._ctx.commands.forget_bookmarks_of_cells_gone()
+
         self._set_saved_playlist(file_path)
 
         self.playlist_saved.emit(file_path)
@@ -348,6 +403,10 @@ class PlaylistManager(ManagerBase):
         session = PlaylistSettings()
         with session.suppress_capture():
             _emit(
+                (
+                    self.bookmarks_shared_loaded,
+                    session.get("playlist/bookmarks_shared"),
+                ),
                 (
                     self.seek_sync_mode_loaded,
                     session.get("playlist/seek_sync_mode"),
@@ -424,13 +483,23 @@ class PlaylistManager(ManagerBase):
 
     def _make_playlist(self):
         videos, grid_state = self._playlist_videos_and_grid_state()
+        bookmarks = self._ctx.commands.bookmarks_to_save()
+        settings = PlaylistSettings().playlist_kwargs()
+
+        # With bookmarks, a playlist says how they are kept, whatever the
+        # default: opened where the default is the other way, the cells' own
+        # lists would be merged, or a file's shared list given to only the
+        # first cell to open it.
+        if bookmarks:
+            settings["bookmarks_shared"] = self._ctx.commands.is_bookmarks_shared()
 
         return Playlist(
             grid_state=grid_state_for_dump(grid_state),
             window_state=self._ctx.window_state,
             videos=videos,
             snapshots=self._ctx.snapshots,
-            **PlaylistSettings().playlist_kwargs(),
+            bookmarks=bookmarks,
+            **settings,
         )
 
     def _playlist_videos_and_grid_state(self):

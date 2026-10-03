@@ -32,6 +32,8 @@ def _isolated_settings(tmp_path):
 def _block(mocker, **video_kwargs):
     block = mocker.Mock()
     block.video_params = Video(uri="http://example.com/a.mp4", **video_kwargs)
+    # no bookmarks being edited to hold the video where it is
+    block._is_editing_bookmarks = False
     return block
 
 

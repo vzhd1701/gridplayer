@@ -29,6 +29,7 @@ icon,icons/flags/zh_CN.svg,flag_zh_CN
 icon,icons/flags/zh_TW.svg,flag_zh_TW
 icon-symbolic,icons/basic/003-add.svg,add
 icon-symbolic,icons/basic/138-pages.svg,add-clipboard
+icon-symbolic,icons/basic/138-pages.svg,copy
 icon-symbolic,icons/basic/031-cancel.svg,close
 icon-symbolic,icons/basic/042-sand clock.svg,processing
 icon-symbolic,icons/basic/067-down arrow.svg,save-playlist
@@ -63,6 +64,14 @@ icon-symbolic,icons/custom/aspect stretch.svg,aspect-stretch
 icon-symbolic,icons/custom/aspect.svg,aspect
 icon-symbolic,icons/custom/audio device.svg,audio-device
 icon-symbolic,icons/custom/audio only.svg,audio-only
+icon-symbolic,icons/custom/bookmark add.svg,bookmark-add
+icon-symbolic,icons/custom/bookmark manage.svg,bookmark-manage
+icon-symbolic,icons/custom/bookmark next.svg,bookmark-next
+icon-symbolic,icons/custom/bookmark previous.svg,bookmark-previous
+icon-symbolic,icons/custom/bookmark remove all.svg,bookmark-remove-all
+icon-symbolic,icons/custom/bookmark remove.svg,bookmark-remove
+icon-symbolic,icons/custom/bookmark rename.svg,bookmark-rename
+icon-symbolic,icons/custom/bookmarks.svg,bookmarks
 icon-symbolic,icons/custom/chapter next.svg,chapter-next
 icon-symbolic,icons/custom/chapter previous.svg,chapter-previous
 icon-symbolic,icons/custom/chapters.svg,chapters
@@ -93,6 +102,7 @@ icon-symbolic,icons/custom/minus-1.svg,seek-minus-1
 icon-symbolic,icons/custom/minus-10.svg,seek-minus-10
 icon-symbolic,icons/custom/minus-5.svg,seek-minus-5
 icon-symbolic,icons/custom/network error.svg,network-error
+icon-symbolic,icons/custom/paste.svg,paste
 icon-symbolic,icons/custom/next frame.svg,next-frame
 icon-symbolic,icons/custom/play pause.svg,play-pause
 icon-symbolic,icons/custom/playback.svg,playback

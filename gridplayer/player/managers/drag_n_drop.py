@@ -363,7 +363,14 @@ class DragNDropManager(ManagerBase):
             return
 
         self._log.debug("Dropped video from another instance")
-        self._drop_on_layout([dropped_video.video], None, dst, zone, is_replace)
+
+        video = dropped_video.video
+        self._drop_on_layout([video], None, dst, zone, is_replace)
+
+        # kept by the playlist apart from the video, they come along beside
+        # it, once it is in: a full grid turns it away
+        if self._ctx.video_blocks.by_video_id(video.id) is not None:
+            self._ctx.bookmarks.add(video.uri, video.id, dropped_video.bookmarks)
 
     # --- hover / source glyphs ---
 

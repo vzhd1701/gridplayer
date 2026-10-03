@@ -7,6 +7,7 @@ from pydantic import BaseModel, Field, ValidationError, model_validator
 from pydantic_extra_types.color import Color
 
 from gridplayer.models.audio_selection import AudioExternal
+from gridplayer.models.file_bookmarks import FileBookmarks
 from gridplayer.models.grid_state import GridState
 from gridplayer.models.subtitle_selection import SubtitleExternal
 from gridplayer.models.video import Video, migrate_end_action
@@ -110,7 +111,9 @@ class Playlist(BaseModel):
     window_state: WindowState | None = None
     videos: VideosList | None = None
     snapshots: dict[int, Snapshot] | None = None
+    bookmarks: list[FileBookmarks] | None = None
     seek_sync_mode: SeekSyncMode | None = None
+    bookmarks_shared: bool | None = None
     shuffle_on_load: bool | None = None
     disable_mouse_click_events: bool | None = None
     disable_mouse_wheel_events: bool | None = None
@@ -211,6 +214,12 @@ class Playlist(BaseModel):
             _dump_file_selection(data, "subtitle_selection", relative, base_dir)
             videos.append(data)
 
+        bookmarks = [
+            _file_bookmarks_data(entry, relative, base_dir)
+            for entry in self.bookmarks or []
+            if entry.bookmarks
+        ]
+
         doc: dict[str, Any] = {
             "format": FORMAT_ID,
             "version": FORMAT_VERSION,
@@ -219,6 +228,8 @@ class Playlist(BaseModel):
             doc["settings"] = params
         if videos:
             doc["videos"] = videos
+        if bookmarks:
+            doc["bookmarks"] = bookmarks
         if snapshots:
             doc["snapshots"] = snapshots
 
@@ -250,7 +261,9 @@ class Playlist(BaseModel):
         payload = dict(settings)
         payload.pop("videos", None)
         payload.pop("snapshots", None)
+        payload.pop("bookmarks", None)
         payload["videos"] = cls._parse_json_videos(doc.get("videos"), base_dir)
+        payload["bookmarks"] = _parse_json_bookmarks(doc.get("bookmarks"), base_dir)
         if "snapshots" in doc:
             payload["snapshots"] = doc["snapshots"]
 
@@ -343,6 +356,7 @@ class Playlist(BaseModel):
         data = self.model_dump(mode="json", exclude_none=True)
 
         data.pop("videos", None)  # videos are a top-level array
+        data.pop("bookmarks", None)  # and so are the bookmarks
         if not self._effective_flag("save_window", "playlist/save_window"):
             data.pop("window_state", None)
         if not data.get("snapshots"):
@@ -405,6 +419,52 @@ def _parse_video_paths(playlist_in: list[str]) -> list[str]:
 
 def _playlist_base_dir(filename: Path | str) -> Path:
     return Path(filename).absolute().parent
+
+
+def _file_bookmarks_data(
+    entry: FileBookmarks, relative: bool, base_dir: Path | None
+) -> dict:
+    """A file's bookmarks, its path written the way the videos' are."""
+
+    data = entry.model_dump(mode="json", exclude_none=True)
+    data["uri"] = _dump_uri(entry.uri, relative, base_dir)
+
+    return data
+
+
+def _parse_json_bookmarks(entries_in: Any, base_dir: Path | None) -> list:
+    """The files' bookmarks, any that make no sense left out.
+
+    They are no reason to turn the whole playlist down: its videos play the
+    same without them.
+    """
+
+    if entries_in is None:
+        return []
+
+    if not isinstance(entries_in, list):
+        logger.error("Failed to read the bookmarks: not a list")
+        return []
+
+    entries = []
+
+    for entry_args in entries_in:
+        if not isinstance(entry_args, dict):
+            logger.error("Failed to read bookmarks: entry is not an object")
+            continue
+
+        uri = entry_args.get("uri")
+
+        try:
+            entry_args = dict(entry_args)
+            if isinstance(uri, str):
+                entry_args["uri"] = parse_uri(uri, base_dir)
+            entries.append(FileBookmarks(**entry_args))
+        except (TypeError, ValidationError, ValueError) as e:
+            logger.error(f"Failed to read the bookmarks of '{uri}'")  # noqa: TRY400
+            logger.debug(e)
+
+    return entries
 
 
 def _dump_external_files(

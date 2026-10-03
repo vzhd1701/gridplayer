@@ -1,12 +1,14 @@
 """Chapters on the seek bar: the notches, and the label that names them."""
 
 import math
+import re
 
 import pytest
 from PyQt5.QtCore import QPoint, Qt
 from PyQt5.QtWidgets import QApplication, QWidget
 
 from gridplayer.models.seek_mark import SeekMark, chapter_at
+from gridplayer.utils.time_txt import ms_time_txt
 from gridplayer.widgets.video_overlay import OverlayBlock
 from gridplayer.widgets.video_overlay_elements import chapter_notch_half_width
 
@@ -69,18 +71,26 @@ class TestTheHoverLabel:
 
         label = _hover(overlay, 30.5 / 60)
 
-        assert label.text == "0:30 - The Heist"
+        assert re.fullmatch(r"0:30\.\d{3} - The Heist", label.text)
 
     def test_before_the_first_chapter_it_is_only_the_time(self, overlay):
         overlay.set_seek_marks(MARKS)
 
-        assert _hover(overlay, 3.5 / 60).text == "0:03"
+        assert re.fullmatch(r"0:03\.\d{3}", _hover(overlay, 3.5 / 60).text)
 
     def test_without_chapters_it_is_only_the_time(self, overlay):
-        assert _hover(overlay, 30.5 / 60).text == "0:30"
+        assert re.fullmatch(r"0:30\.\d{3}", _hover(overlay, 30.5 / 60).text)
+
+    def test_the_time_is_to_the_millisecond(self, overlay):
+        bar = overlay.progress_bar
+        x = round(bar.width() * 0.5)
+
+        label = _hover(overlay, 0.5)
+
+        assert label.text == ms_time_txt(int(LENGTH * x / bar.width()), strip=True)
 
     def test_a_name_too_long_for_the_pane_is_cut_short(self, overlay):
-        overlay.resize(260, 150)
+        overlay.resize(380, 150)
         overlay.set_seek_marks(MARKS)
 
         label = _hover(overlay, 54.5 / 60)
@@ -116,6 +126,9 @@ class TestTheHoverLabel:
     def test_it_is_sized_for_the_new_text_before_it_is_placed(self, overlay):
         """Sizing at the next paint left it off centre for a frame."""
 
+        # wide enough for the longer one to sit centred too
+        overlay.resize(720, 200)
+        QApplication.processEvents()
         overlay.set_seek_marks(MARKS)
 
         label = _hover(overlay, 0.05)

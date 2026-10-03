@@ -6,6 +6,7 @@ SUBMENUS = MappingProxyType(
     {
         "Jump (to)": {"title": translate("Actions", "Jump (to)"), "icon": "jump-to"},
         "Chapters": {"title": translate("Actions", "Chapters"), "icon": "chapters"},
+        "Bookmarks": {"title": translate("Actions", "Bookmarks"), "icon": "bookmarks"},
         "Loop": {"title": translate("Actions", "Loop"), "icon": "loop"},
         "When Finished": {
             "title": translate("Actions", "When Finished"),
@@ -244,6 +245,15 @@ SECTIONS = MappingProxyType(
                     "Chapter List",
                 ),
                 (
+                    "Bookmarks",
+                    "Add Bookmark",
+                    "Previous Bookmark",
+                    "Next Bookmark",
+                    "Manage Bookmarks",
+                    "---",
+                    "Bookmark List",
+                ),
+                (
                     "Seek Others",
                     "Seek Others (Percent)",
                     "Seek Others (Timecode)",
@@ -443,6 +453,11 @@ SECTIONS = MappingProxyType(
                         "Next Chapter [ALL]",
                     ),
                     (
+                        "Bookmarks",
+                        "Previous Bookmark [ALL]",
+                        "Next Bookmark [ALL]",
+                    ),
+                    (
                         "Loop",
                         "Random Loop [ALL]",
                         "---",
@@ -538,6 +553,9 @@ SECTIONS = MappingProxyType(
             (
                 "Playlist Settings",
                 "Edit Playlist Settings",
+                "---",
+                "Bookmarks in Playlist",
+                "Share Bookmarks",
                 "---",
                 "Pause Background Videos",
                 "Pause When Minimized",

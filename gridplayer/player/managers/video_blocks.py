@@ -130,6 +130,8 @@ class VideoBlocksManager(ManagerBase):
     all_previous_frame = pyqtSignal()
     all_next_chapter = pyqtSignal()
     all_previous_chapter = pyqtSignal()
+    all_next_bookmark = pyqtSignal()
+    all_previous_bookmark = pyqtSignal()
 
     all_toggle_loop_random = pyqtSignal()
     all_set_loop_start = pyqtSignal()
@@ -222,6 +224,7 @@ class VideoBlocksManager(ManagerBase):
             "is_any_videos_have_subtitles": self.is_any_videos_have_subtitles,
             "is_any_videos_have_video": self.is_any_videos_have_video,
             "is_any_videos_have_chapters": self.is_any_videos_have_chapters,
+            "is_any_videos_have_bookmarks": self.is_any_videos_have_bookmarks,
             "is_seek_sync_mode_set_to": self.is_seek_sync_mode_set_to,
             "set_seek_sync_mode": self.set_seek_sync_mode,
             "reload_all": self.reload_videos,
@@ -448,6 +451,11 @@ class VideoBlocksManager(ManagerBase):
         # a live stream never has any; see VideoBlock._update_chapters
         return any(vb.chapters for vb in self._ctx.video_blocks.initialized)
 
+    def is_any_videos_have_bookmarks(self):
+        return any(
+            vb.bookmarks and not vb.is_live for vb in self._ctx.video_blocks.initialized
+        )
+
     def is_any_videos_local_file(self):
         return any(vb.is_local_file and vb.is_playable for vb in self._ctx.video_blocks)
 
@@ -564,6 +572,8 @@ class VideoBlocksManager(ManagerBase):
             (self.all_previous_frame, vb.previous_frame),
             (self.all_next_chapter, vb.next_chapter),
             (self.all_previous_chapter, vb.previous_chapter),
+            (self.all_next_bookmark, vb.next_bookmark),
+            (self.all_previous_bookmark, vb.previous_bookmark),
             (self.all_toggle_loop_random, vb.toggle_loop_random),
             (self.all_set_loop_start, vb.set_loop_start),
             (self.all_set_loop_end, vb.set_loop_end),

@@ -1,12 +1,15 @@
 import json
 from pathlib import Path
 from types import SimpleNamespace
+from unittest.mock import call
 from uuid import uuid4
 
 import pytest
 from PyQt5.QtWidgets import QApplication, QMessageBox, QWidget
 
 from gridplayer.models.audio_selection import AudioExternal
+from gridplayer.models.bookmark import Bookmark
+from gridplayer.models.file_bookmarks import FileBookmarks
 from gridplayer.models.grid_state import GridCell, GridState
 from gridplayer.models.playlist import (
     FORMAT_ID,
@@ -57,10 +60,24 @@ def _settings_get(mocker):
     mocker.patch.object(Settings(), "get", side_effect=_default_settings.__getitem__)
 
 
+def _without_bookmarks(ctx):
+    """The bookmarks' commands, answered as a player without any would."""
+
+    if not hasattr(ctx, "commands"):
+        ctx.commands = SimpleNamespace()
+
+    ctx.commands.bookmarks_to_save = list
+    ctx.commands.is_bookmarks_shared = lambda: True
+    ctx.commands.confirm_bookmarks_shared = lambda _is_shared: True
+    ctx.commands.forget_bookmarks_of_cells_gone = lambda: None
+
+    return ctx
+
+
 def _make_manager(ctx=None):
     parent = QWidget()
     manager = PlaylistManager(
-        context=SimpleNamespace() if ctx is None else ctx,
+        context=_without_bookmarks(SimpleNamespace() if ctx is None else ctx),
         parent=parent,
     )
     return manager, parent
@@ -363,6 +380,62 @@ def test_process_arguments_adds_files_to_layout(mocker):
 
     commands.add_videos_to_layout.assert_called_once_with(videos)
     commands.shuffle_layout.assert_not_called()
+
+
+class TestArgumentsWhileADialogIsOpen:
+    """Files and playlists sent from outside, as one opened from the file
+    manager is, wait for an open dialog to close."""
+
+    @pytest.fixture
+    def manager(self, mocker):
+        commands = mocker.Mock()
+        manager, parent = _make_manager(SimpleNamespace(commands=commands))
+        manager.kept_parent = parent
+        mocker.patch(
+            "gridplayer.player.managers.playlist.get_playlist_path",
+            return_value=None,
+        )
+        mocker.patch(
+            "gridplayer.player.managers.playlist.filter_video_uris",
+            side_effect=lambda uris: [f"video {uri}" for uri in uris],
+        )
+        return manager
+
+    @pytest.fixture
+    def modal(self, mocker):
+        state = SimpleNamespace(is_open=True)
+        mocker.patch(
+            "gridplayer.player.managers.playlist.is_modal_open",
+            side_effect=lambda: state.is_open,
+        )
+        return state
+
+    def test_they_wait(self, manager, modal):
+        manager.process_arguments(["a.mp4"])
+        manager._process_waiting_arguments()
+
+        manager._ctx.commands.add_videos_to_layout.assert_not_called()
+
+    def test_the_window_comes_up_on_the_dialog(self, manager, modal):
+        alerts = []
+        manager.alert.connect(lambda: alerts.append(True))
+
+        manager.process_arguments(["a.mp4"])
+
+        assert alerts == [True]
+
+    def test_once_it_is_closed_they_come_in_order(self, manager, modal):
+        manager.process_arguments(["a.mp4"])
+        manager.process_arguments(["b.mp4"])
+
+        modal.is_open = False
+        manager._process_waiting_arguments()
+
+        assert manager._ctx.commands.add_videos_to_layout.call_args_list == [
+            call(["video a.mp4"]),
+            call(["video b.mp4"]),
+        ]
+        assert not manager._arguments_timer.isActive()
 
 
 def test_playlist_dumps_with_none_videos():
@@ -1414,3 +1487,105 @@ def test_playlist_snapshot_keeps_which_track_of_a_file_was_chosen(tmp_path):
     parsed = Playlist.parse(playlist.dumps(base_dir=tmp_path), base_dir=tmp_path)
 
     assert parsed.snapshots[0].videos[0].audio_selection == chosen
+
+
+class TestBookmarks:
+    ENTRIES = [
+        FileBookmarks(
+            uri="http://example.com/a.mp4", bookmarks=[Bookmark(time_ms=5000)]
+        )
+    ]
+
+    def _manager(self, entries, is_shared=True):
+        manager, parent = _make_manager(_ctx_with_grid(GridState()))
+        manager._ctx.commands.bookmarks_to_save = lambda: list(entries)
+        manager._ctx.commands.is_bookmarks_shared = lambda: is_shared
+        return manager, parent
+
+    def test_they_are_saved_with_the_playlist(self):
+        manager, _parent = self._manager(self.ENTRIES)
+
+        playlist = manager._make_playlist()
+
+        assert playlist.bookmarks == self.ENTRIES
+
+    def test_shared_the_playlist_says_so(self):
+        manager, _parent = self._manager(self.ENTRIES)
+
+        assert manager._make_playlist().bookmarks_shared is True
+
+    def test_kept_by_cell_the_playlist_says_so(self):
+        manager, _parent = self._manager(self.ENTRIES, is_shared=False)
+
+        assert manager._make_playlist().bookmarks_shared is False
+
+    def test_without_any_it_says_nothing_of_how(self):
+        manager, _parent = self._manager([], is_shared=False)
+
+        assert manager._make_playlist().bookmarks_shared is None
+
+    def test_they_are_in_place_before_the_videos_open(self, mocker):
+        commands = mocker.Mock()
+        manager, _parent = _make_manager(_ctx_with_grid(GridState(), commands=commands))
+        mocker.patch.object(manager, "check_playlist_save", return_value=True)
+        _patch_playlist_settings(mocker, _CUSTOM_PLAYLIST_DEFAULTS)
+
+        order = []
+        manager.bookmarks_loaded.connect(
+            lambda entries, cells: order.append((entries, cells))
+        )
+        manager.videos_loaded.connect(lambda _videos: order.append("videos"))
+
+        video = _video("a")
+        playlist = _playlist([video], shuffle_on_load=False)
+        playlist.bookmarks = self.ENTRIES
+        manager.load_playlist(playlist)
+
+        # with the cells the videos open in, to tell those that do not
+        assert order == [(self.ENTRIES, [video.id]), "videos"]
+
+    def test_once_saved_those_of_cells_closed_are_forgotten(self, mocker):
+        manager, _parent = _make_manager()
+        mocker.patch.object(manager, "_set_saved_playlist")
+        forgotten = []
+        manager._ctx.commands.forget_bookmarks_of_cells_gone = lambda: forgotten.append(
+            True
+        )
+
+        manager._write_playlist(_Playlist(), Path("x.gpls"))
+
+        assert forgotten == [True]
+
+    def test_not_saved_they_are_kept(self, mocker):
+        manager, _parent = _make_manager()
+        manager.error.connect(lambda _message: None)
+        forgotten = []
+        manager._ctx.commands.forget_bookmarks_of_cells_gone = lambda: forgotten.append(
+            True
+        )
+
+        manager._write_playlist(_Playlist(error=OSError("full")), Path("x.gpls"))
+
+        assert forgotten == []
+
+    def test_sharing_thought_better_of_stays_as_it_was(self):
+        manager, _parent = _make_manager()
+        manager._ctx.commands.confirm_bookmarks_shared = lambda _is_shared: False
+
+        overrides = manager._with_bookmarks_sharing_confirmed(
+            {"playlist/bookmarks_shared": False, "playlist/overlay_timeout": 5}
+        )
+
+        assert overrides == {
+            "playlist/bookmarks_shared": True,
+            "playlist/overlay_timeout": 5,
+        }
+
+    def test_sharing_gone_on_with_is_changed(self):
+        manager, _parent = _make_manager()
+
+        overrides = manager._with_bookmarks_sharing_confirmed(
+            {"playlist/bookmarks_shared": False}
+        )
+
+        assert overrides == {"playlist/bookmarks_shared": False}

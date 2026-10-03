@@ -126,6 +126,16 @@ def _save_paths_relative_tooltip() -> str:
     )
 
 
+def _bookmarks_shared_tooltip() -> str:
+    return translate(
+        "SettingsDialog",
+        "On: every cell playing a file shows the same bookmarks, and they stay"
+        " in the playlist when the cell is closed or moves on to another file.\n"
+        "Off: each cell keeps its own, and a cell's bookmarks are removed with"
+        " it when it is closed.",
+    )
+
+
 def _drop_internal() -> dict:
     return {
         DropAction.INSERT: translate("SettingsDialog", "Move / Swap"),
@@ -408,6 +418,17 @@ PLAYLIST_FIELDS: tuple[SettingField, ...] = (
         section=translate("SettingsDialog", "Playback"),
         label=translate("SettingsDialog", "Seek sync mode"),
         combo_values=_seek_sync_modes,
+    ),
+    _f(
+        settings_key="playlist/bookmarks_shared",
+        playlist_attr="bookmarks_shared",
+        kind=FieldKind.CHECKBOX,
+        section=translate("SettingsDialog", "Playback"),
+        label=translate(
+            "Playlist Settings", "Share bookmarks between cells with the same file"
+        ),
+        menu_action="Share Bookmarks",
+        tooltip=_bookmarks_shared_tooltip(),
     ),
     _f(
         settings_key="playlist/disable_mouse_click_events",

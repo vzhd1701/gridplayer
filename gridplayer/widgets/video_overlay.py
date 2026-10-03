@@ -20,6 +20,7 @@ from gridplayer.widgets.video_overlay_buttons import (
     OverlayVolumeButton,
 )
 from gridplayer.widgets.video_overlay_elements import (
+    OverlayBookmarkMarkers,
     OverlayBorder,
     OverlayDropIndicator,
     OverlayLabel,
@@ -59,6 +60,12 @@ class OverlayBlock(QWidget):
     play_pause_clicked = pyqtSignal()
     mute_unmute_clicked = pyqtSignal()
 
+    # a bookmark's marker clicked, by the bookmark's time
+    bookmark_clicked = pyqtSignal(tuple)
+
+    # a marker's menu asked for: where, and the times of its bookmarks
+    bookmark_menu_requested = pyqtSignal(QPoint, tuple)
+
     def __init__(self, parent=None):
         super().__init__(parent)
 
@@ -94,6 +101,13 @@ class OverlayBlock(QWidget):
         qt_connect(
             (self.progress_bar.mouse_over, self.floating_progress.on_mouse_over),
             (self.progress_bar.mouse_left, self.floating_progress.on_mouse_left),
+            (self.bookmark_markers.marker_over, self.floating_progress.on_marker_over),
+            (self.bookmark_markers.marker_left, self.floating_progress.on_mouse_left),
+            (self.bookmark_markers.marker_clicked, self.bookmark_clicked),
+            (
+                self.bookmark_markers.marker_menu_requested,
+                self.bookmark_menu_requested,
+            ),
             (self.exit_button.clicked, self.exit),
             (self.play_pause_button.clicked, self.play_pause),
             (self.progress_bar.position_changed, self.emit_position),
@@ -169,6 +183,13 @@ class OverlayBlock(QWidget):
         self.bottom_bar.addWidget(self.progress_bar_placeholder, 1)
         self.bottom_bar.addWidget(self.volume_button)
 
+        # right above the bar, outside of the layout; under the rest, so that
+        # in a short cell a notice under the title shows over it
+        self.bookmark_markers = OverlayBookmarkMarkers(
+            bar=self.progress_bar, parent=self.control_widget
+        )
+        self.bookmark_markers.lower()
+
         self.floating_progress = OverlayShortLabelFloating(parent=self)
 
     def customEvent(self, event):
@@ -209,7 +230,9 @@ class OverlayBlock(QWidget):
         self.progress_bar_placeholder.hide()
 
         self.floating_progress.length = length
+        self.floating_progress.on_position(position)
         self.progress_bar.length = length
+        self.bookmark_markers.set_length(length)
         self.label_progress.text = f"{position_txt} / {length_txt}"
         self.progress_bar.position = position_percent
         self._apply_stopped_chrome()
@@ -227,6 +250,7 @@ class OverlayBlock(QWidget):
     def set_seek_marks(self, marks):
         self.progress_bar.marks = marks
         self.floating_progress.marks = marks
+        self.bookmark_markers.set_marks(marks)
 
     @pyqtSlot(str)
     def set_label(self, label):
@@ -460,6 +484,11 @@ class OverlayBlockFloating(OverlayBlock):
         # the hover label moves with the mouse, and says once it is in place
         # rather than at every step of getting there
         self.floating_progress.shape_changed.connect(self.refresh_opaque_mask)
+
+        # the bookmarks' markers come and go without the strip moving
+        self.bookmark_markers.is_opaque = True
+        self.bookmark_markers.update_shape()
+        self.bookmark_markers.shape_changed.connect(self.refresh_opaque_mask)
 
     def setGeometry(self, rect):
         new_pos = self.parent().mapToGlobal(QPoint())

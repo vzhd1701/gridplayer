@@ -274,6 +274,39 @@ ACTIONS = MappingProxyType(
             "menu_generator": "menu_generator_chapters",
             "is_menu_inline": True,
         },
+        "Add Bookmark": {
+            "title": translate("Actions", "Add Bookmark"),
+            "icon": "bookmark-add",
+            "func": ("active", "add_bookmark"),
+            "show_if": "is_active_seekable",
+        },
+        "Previous Bookmark": {
+            "title": translate("Actions", "Previous Bookmark"),
+            "icon": "bookmark-previous",
+            "func": ("active", "manual_seek", "previous_bookmark"),
+            "show_if": "is_active_has_bookmarks",
+        },
+        "Next Bookmark": {
+            "title": translate("Actions", "Next Bookmark"),
+            "icon": "bookmark-next",
+            "func": ("active", "manual_seek", "next_bookmark"),
+            "show_if": "is_active_has_bookmarks",
+        },
+        "Bookmark List": {
+            # the bookmarks go straight into the menu it sits in, so this
+            # title is never shown
+            "title": translate("Actions", "Bookmarks"),
+            "icon": "bookmarks",
+            "show_if": "is_active_has_bookmarks",
+            "menu_generator": "menu_generator_bookmarks",
+            "is_menu_inline": True,
+        },
+        "Manage Bookmarks": {
+            "title": translate("Actions", "Manage Bookmarks…"),
+            "icon": "bookmark-manage",
+            "func": ("active", "manage_bookmarks"),
+            "show_if": "is_active_seekable",
+        },
         "Random Loop": {
             "title": translate("Actions", "Random Loop"),
             "icon": "loop-random",
@@ -1391,6 +1424,18 @@ ACTIONS = MappingProxyType(
             "func": ("all", "next_chapter"),
             "show_if": "is_any_videos_have_chapters",
         },
+        "Previous Bookmark [ALL]": {
+            "title": translate("Actions", "Previous Bookmark"),
+            "icon": "bookmark-previous",
+            "func": ("all", "previous_bookmark"),
+            "show_if": "is_any_videos_have_bookmarks",
+        },
+        "Next Bookmark [ALL]": {
+            "title": translate("Actions", "Next Bookmark"),
+            "icon": "bookmark-next",
+            "func": ("all", "next_bookmark"),
+            "show_if": "is_any_videos_have_bookmarks",
+        },
         "Random Loop [ALL]": {
             "title": translate("Actions", "Random Loop"),
             "icon": "loop-random",
@@ -2118,6 +2163,19 @@ ACTIONS = MappingProxyType(
             "title": translate("Actions", "Edit Playlist Settings…"),
             "icon": "settings",
             "func": "playlist_settings",
+        },
+        "Bookmarks in Playlist": {
+            "title": translate("Actions", "Bookmarks in Playlist…"),
+            "icon": "bookmarks",
+            "func": "bookmarks_in_playlist",
+        },
+        "Share Bookmarks": {
+            "title": translate(
+                "Playlist Settings", "Share bookmarks between cells with the same file"
+            ),
+            "icon": "empty",
+            "func": "toggle_bookmarks_shared",
+            "check_if": "is_bookmarks_shared",
         },
         "Disable Mouse Click Events": {
             "title": translate("Playlist Settings", "Disable Mouse Click Events"),

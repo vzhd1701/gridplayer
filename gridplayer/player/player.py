@@ -6,6 +6,7 @@ from gridplayer.player.manager import ManagersManager
 from gridplayer.player.managers.actions import ActionsManager
 from gridplayer.player.managers.active_block import ActiveBlockManager
 from gridplayer.player.managers.add_videos import AddVideosManager
+from gridplayer.player.managers.bookmarks import BookmarksManager
 from gridplayer.player.managers.dialogs import DialogsManager
 from gridplayer.player.managers.drag_n_drop import DragNDropManager
 from gridplayer.player.managers.grid import GridManager
@@ -43,6 +44,7 @@ class Player(QWidget, ManagersManager):
             "grid": GridManager,
             "playlist": PlaylistManager,
             "snapshots": SnapshotsManager,
+            "bookmarks": BookmarksManager,
             "screensaver": ScreensaverManager,
             "active_block": ActiveBlockManager,
             "mouse_hide": MouseHideManager,
@@ -186,6 +188,14 @@ class Player(QWidget, ManagersManager):
                 ("grid_state_loaded", "grid.set_grid_state"),
                 ("video_blocks.video_count_changed", "clear_snapshots"),
                 ("warning", "dialogs.warning"),
+            ],
+            # after the playlist's own: the cells close before their
+            # bookmarks are cleared away
+            "bookmarks": [
+                ("playlist.bookmarks_loaded", "set_bookmarks"),
+                ("playlist.bookmarks_shared_loaded", "set_bookmarks_shared"),
+                ("playlist.playlist_closed", "clear"),
+                ("settings.set_bookmarks_shared", "set_bookmarks_shared"),
             ],
             "add_videos": [
                 ("videos_added", "grid.add_videos_to_layout"),

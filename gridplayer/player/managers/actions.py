@@ -31,6 +31,9 @@ class QDynamicAction(QAction):
         self.toggle = None
 
         self.menu_generator = None
+        # what the generator makes its items of, to tell whether there are
+        # any without making them
+        self.menu_templates = None
 
         # what the generator makes goes straight into the menu this action
         # is put in, rather than into a submenu of its own
@@ -45,7 +48,18 @@ class QDynamicAction(QAction):
             return False
 
         # skip empty submenus
-        return bool(self.menu_generator and not self.menu_generator())
+        if self.menu_generator is None:
+            return False
+
+        if self.menu_templates is not None:
+            return not self.menu_templates()
+
+        # made only to be counted, in a menu of their own to go with it
+        counted = CustomMenu()
+        is_empty = not self.menu_generator(counted)
+        counted.deleteLater()
+
+        return is_empty
 
     @property
     def is_enabled(self):
@@ -73,10 +87,14 @@ class QDynamicAction(QAction):
 
         return self._icon_id
 
-    def adapt(self):
+    def adapt(self, menu=None):
         # Keep this QAction enabled so shortcuts still fire. enable_if is
         # applied to a menu proxy (grayed out) and checked again on invoke.
-        if self.icon_id:
+        # A generated item may bring an icon of its own, drawn for it, rather
+        # than one of the theme's.
+        if isinstance(self.icon_id, QIcon):
+            self.setIcon(self.icon_id)
+        elif self.icon_id:
             self.setIcon(QIcon.fromTheme(self.icon_id))
 
         if self.value_getter is None:
@@ -85,7 +103,7 @@ class QDynamicAction(QAction):
             self.setText(self.title.replace("%v", self.value_getter()))
 
         if self.is_enabled and self.menu_generator:
-            self._generate_submenu()
+            self._generate_submenu(menu)
 
         elif self.check_if is not None:
             self.setCheckable(True)
@@ -93,7 +111,7 @@ class QDynamicAction(QAction):
 
     def to_menu_action(self, parent) -> QAction:
         """Menu-only stand-in: grayed out when enable_if is false."""
-        self.adapt()
+        self.adapt(parent)
 
         proxy = QAction(self.icon(), self.text(), parent)
         proxy.setShortcuts(self.shortcuts())
@@ -115,8 +133,10 @@ class QDynamicAction(QAction):
 
         return proxy
 
-    def _generate_submenu(self):
-        generated_menu = CustomMenu(parent=self.parent())
+    def _generate_submenu(self, menu=None):
+        # owned by the menu it is shown in, and gone with it; the action's
+        # own parent, the window, would keep one for every time it is shown
+        generated_menu = CustomMenu(parent=menu if menu is not None else self.parent())
         actions = self.menu_generator(generated_menu)
 
         for a in actions:
@@ -287,6 +307,7 @@ class ActionsManager(ManagerBase):
         # menus can't have shortcuts
         if cmd.get("menu_generator"):
             action.menu_generator = self._resolve_menu_generator(cmd["menu_generator"])
+            action.menu_templates = self._ctx.commands.resolve(cmd["menu_generator"])
             action.is_menu_inline = cmd.get("is_menu_inline", False)
         else:
             command = self._ctx.commands.resolve(cmd["func"])

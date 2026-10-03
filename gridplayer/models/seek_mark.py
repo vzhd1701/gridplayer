@@ -1,8 +1,9 @@
 """Places on the seek bar worth marking, whoever put them there.
 
 The bar draws and names them without knowing where they came from: the
-chapters, the file's own or the site's, and the parts of a YouTube video
-that SponsorBlock's users have marked, each in a look of its own.
+chapters, the file's own or the site's, the parts of a YouTube video that
+SponsorBlock's users have marked, and the viewer's own bookmarks, each in a
+look of its own.
 """
 
 from bisect import bisect_right
@@ -17,6 +18,8 @@ class SeekMarkKind(Enum):
     SEGMENT = auto()
     # a single place picked out as the one worth seeing
     HIGHLIGHT = auto()
+    # a place the viewer marked, to come back to
+    BOOKMARK = auto()
 
 
 @dataclass(frozen=True)
@@ -26,7 +29,7 @@ class SeekMark:
     kind: SeekMarkKind = SeekMarkKind.CHAPTER
     # where a segment ends; None for a mark that is a place
     end_ms: int | None = None
-    # what it is drawn in, None for the bar's own colours
+    # what it is drawn in, None for the bar's own colours, or a bookmark's
     color: str | None = None
 
 

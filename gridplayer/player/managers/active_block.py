@@ -29,10 +29,12 @@ from gridplayer.models.subtitle_selection import (
     SubtitleTrackId,
 )
 from gridplayer.player.managers.base import ManagerBase
+from gridplayer.utils.bookmarks import default_bookmark_name
 from gridplayer.utils.qt import is_modal_open, translate
-from gridplayer.utils.time_txt import get_time_txt
+from gridplayer.utils.time_txt import timed_title
 from gridplayer.utils.track_language import language_name
 from gridplayer.vlc_player.static import DISABLED_TRACK
+from gridplayer.widgets.bookmark_colors import bookmark_icon
 from gridplayer.widgets.video_block import VideoBlock
 
 # A video that is loading or showing a network error is not playable, and
@@ -134,6 +136,10 @@ class ActiveBlockManager(ManagerBase):
             "is_active_chapter_playing": self.is_active_chapter_playing,
             "is_active_chapter_reachable": self.is_active_chapter_reachable,
             "menu_generator_chapters": self.menu_generator_chapters,
+            "is_active_has_bookmarks": self.is_active_has_bookmarks,
+            "is_active_bookmark_here": self.is_active_bookmark_here,
+            "is_active_bookmark_reachable": self.is_active_bookmark_reachable,
+            "menu_generator_bookmarks": self.menu_generator_bookmarks,
             "menu_generator_stream_quality": self.menu_generator_stream_quality,
             "menu_generator_video_track": self.menu_generator_video_track,
             "menu_generator_audio_track": self.menu_generator_audio_track,
@@ -409,7 +415,7 @@ class ActiveBlockManager(ManagerBase):
 
         return [
             {
-                "title": _chapter_title(
+                "title": timed_title(
                     block.chapter_name(index), chapter.start_ms, length_ms
                 ),
                 "icon": "empty",
@@ -419,6 +425,52 @@ class ActiveBlockManager(ManagerBase):
                 "show_if": "is_active_has_chapters",
             }
             for index, chapter in enumerate(block.chapters)
+        ]
+
+    def is_active_has_bookmarks(self):
+        if not self.is_active_seekable():
+            return False
+
+        return bool(self._ctx.active_block.bookmarks)
+
+    def is_active_bookmark_here(self, index) -> bool:
+        if self.is_no_active_block:
+            return False
+
+        return self._ctx.active_block.bookmark_here == index
+
+    def is_active_bookmark_reachable(self, index) -> bool:
+        """Grayed out outside the loop, and past the end of what plays."""
+
+        if self.is_no_active_block:
+            return False
+
+        return self._ctx.active_block.is_bookmark_reachable(index)
+
+    def menu_generator_bookmarks(self):
+        """Every bookmark of the video, its marker in its colour before its
+        name, and where it is beside it."""
+
+        if not self.is_active_has_bookmarks():
+            return []
+
+        block = self._ctx.active_block
+        length_ms = block.video_driver.length
+
+        return [
+            {
+                "title": timed_title(
+                    bookmark.name or default_bookmark_name(index),
+                    bookmark.time_ms,
+                    length_ms,
+                ),
+                "icon": bookmark_icon([bookmark.color]),
+                "func": ("active", "manual_seek", "seek_bookmark", index),
+                "check_if": ("is_active_bookmark_here", index),
+                "enable_if": ("is_active_bookmark_reachable", index),
+                "show_if": "is_active_has_bookmarks",
+            }
+            for index, bookmark in enumerate(block.bookmarks)
         ]
 
     def menu_generator_stream_quality(self):
@@ -1360,19 +1412,6 @@ def _track_description(track, language_name_: str | None) -> str | None:
     }
 
     return None if description.casefold() in said_already else description
-
-
-def _chapter_title(name: str, start_ms: int, length_ms: int) -> str:
-    """A chapter's name, with where it starts where a shortcut would go.
-
-    Past the tab is the shortcut column, which lines the times up down the
-    right of the menu. An ampersand is doubled so it shows as one instead
-    of underlining the letter after it.
-    """
-
-    start_txt = get_time_txt(start_ms // 1000, length_ms // 1000)
-
-    return "{}\t{}".format(name.replace("&", "&&"), start_txt)
 
 
 def _separated(*groups) -> list:

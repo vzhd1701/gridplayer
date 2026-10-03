@@ -28,6 +28,7 @@ class SettingsManager(ManagerBase):
     set_overlay_hide_on_timeout = pyqtSignal(bool)
     set_overlay_timeout = pyqtSignal(int)
     set_subtitle_encoding = pyqtSignal(str)
+    set_bookmarks_shared = pyqtSignal(bool)
     sponsorblock_changed = pyqtSignal()
 
     @property
@@ -70,12 +71,17 @@ class SettingsManager(ManagerBase):
             "playlist/overlay_hide_on_timeout": self.set_overlay_hide_on_timeout,
             "playlist/overlay_timeout": self.set_overlay_timeout,
             "video_defaults/subtitle_encoding": self.set_subtitle_encoding,
+            "playlist/bookmarks_shared": self.set_bookmarks_shared,
         }
 
         changes = self._setting_changes(previous_settings, tuple(checks))
 
         for c in changes:
             if PlaylistSettings().is_overridden(c):
+                continue
+            if c == "playlist/bookmarks_shared" and not self._is_sharing_confirmed(
+                previous_settings[c]
+            ):
                 continue
             checks[c].emit(Settings().get(c))
 
@@ -91,6 +97,17 @@ class SettingsManager(ManagerBase):
             applied = PlaylistSettings().applied_grid_state(live)
             if grid_values_from_state(applied) != grid_values_from_state(live):
                 self._ctx.commands.apply_grid_config(applied)
+
+    def _is_sharing_confirmed(self, was_shared) -> bool:
+        """Whether the open playlist's bookmarks follow the new default: a
+        viewer who thinks better of it keeps them there as they were."""
+
+        if self._ctx.commands.confirm_bookmarks_shared(not was_shared):
+            return True
+
+        PlaylistSettings().set("playlist/bookmarks_shared", was_shared)
+
+        return False
 
     def _is_reload_needed(self, previous_settings):
         checks = {

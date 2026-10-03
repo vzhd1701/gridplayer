@@ -156,7 +156,8 @@ class TestTheHoverLabel:
 
         label = _hover(overlay, 30.5 / 60)
 
-        assert label.text == "0:30 - The Heist"
+        assert label.text.startswith("0:30.")
+        assert label.text.endswith(" - The Heist")
         assert label.segment_line == ("Sponsor", QColor(SPONSOR_COLOR))
 
     def test_outside_one_there_is_no_second_line(self, overlay):
@@ -171,7 +172,7 @@ class TestTheHoverLabel:
 
         label = _hover(overlay, 30.5 / 60)
 
-        assert label.text == "0:30"
+        assert label.text.startswith("0:30.")
         assert label.segment_line[0] == "Sponsor"
 
     def test_the_second_line_makes_it_taller(self, overlay):

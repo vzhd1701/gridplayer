@@ -349,3 +349,51 @@ def test_fake_drag_leave_does_not_end_drag_ui(mocker):
 
     assert ended == []
     assert not manager._drag_leave_timer.isActive()
+
+
+class TestADropFromAnotherInstance:
+    """A cell dragged over from another window comes with its bookmarks,
+    kept by the playlist apart from the video."""
+
+    def _drop(self, tmp_path, is_taken):
+        from gridplayer.models.bookmark import Bookmark
+        from gridplayer.models.video import Video
+        from gridplayer.player.managers.bookmarks import BookmarksRegistry
+
+        (tmp_path / "movie.mkv").touch()
+        video = Video(uri=tmp_path / "movie.mkv")
+        bookmarks = (Bookmark(time_ms=30000, name="Goal"),)
+        placed = {}
+
+        ctx = _Ctx()
+        ctx.bookmarks = BookmarksRegistry()
+        ctx.video_blocks = SimpleNamespace(
+            by_id=lambda _id: None,
+            by_video_id=lambda _id: placed.get(str(_id)),
+        )
+
+        def layout_drop(videos, *_args):
+            if is_taken:
+                placed[str(videos[0].id)] = object()
+
+        ctx.commands.layout_drop = layout_drop
+        ctx.commands.add_recent_videos = lambda _videos: None
+
+        # the parent kept alive while it drops
+        manager, _parent = _make_manager()
+        manager._ctx = ctx
+
+        dropped = SimpleNamespace(id=video.id, video=video, bookmarks=bookmarks)
+        manager._drop_video_block(dropped, None, None, False)
+
+        return ctx.bookmarks, video, bookmarks
+
+    def test_its_bookmarks_come_with_it(self, tmp_path):
+        registry, video, bookmarks = self._drop(tmp_path, is_taken=True)
+
+        assert registry.get(video.uri, video.id) == bookmarks
+
+    def test_turned_away_by_a_full_grid_it_leaves_none(self, tmp_path):
+        registry, _video, _bookmarks = self._drop(tmp_path, is_taken=False)
+
+        assert registry.entries() == []
