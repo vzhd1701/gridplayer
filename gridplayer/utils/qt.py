@@ -1,7 +1,8 @@
 from abc import ABCMeta
 
-from PyQt5.QtCore import QCoreApplication, QObject
-from PyQt5.QtWidgets import QApplication
+from PyQt5.QtCore import QCoreApplication, QObject, Qt
+from PyQt5.QtGui import QGuiApplication
+from PyQt5.QtWidgets import QApplication, QWidget
 
 QT_LOG_IGNORED = ("requestActivate() called for",)
 
@@ -12,6 +13,11 @@ QT_LOG_IGNORED = ("requestActivate() called for",)
 # it, is three orders of magnitude past that on its first frame.
 MILLISECONDS = "qint64"
 
+# Qt's xcb plugin writes a window's _NET_WM_WINDOW_TYPE from this property of
+# its QWindow. 1 is QXcbWindowFunctions::Normal.
+XCB_WM_WINDOW_TYPE = "_q_xcb_wm_window_type"
+XCB_WM_WINDOW_TYPE_NORMAL = 0x000001
+
 
 class QABC(type(QObject), ABCMeta):
     """Meta for abstract classes derived from QObject"""
@@ -19,6 +25,35 @@ class QABC(type(QObject), ABCMeta):
 
 def is_modal_open():
     return bool(QApplication.activeModalWidget() or QApplication.activePopupWidget())
+
+
+def detach_modal_dialog(dialog: QWidget):
+    """Let a modal dialog be moved apart from the window it belongs to.
+
+    GNOME attaches a modal dialog to its window: it is pinned under that
+    window's title bar, dragged along with it, and can't be moved on its own.
+    It only does that to dialogs, so the dialog is called a normal window
+    instead, which still stays above its window and keeps it blocked. Only
+    X11 (Xwayland too) has the type. Goes before the dialog is first shown.
+    """
+
+    if QGuiApplication.platformName() != "xcb":
+        return
+
+    # Qt writes the type from the property when it makes the native window,
+    # or when the window's flags change. The QWindow to hold the property
+    # only comes with the native window, so that is made here, as showing
+    # would, not shown yet, and the flags changed back and forth with one
+    # that X11 has no use for. Not with winId() or WA_NativeWindow: those
+    # make every other child of the dialog's parent native too.
+    dialog.create()
+
+    window = dialog.windowHandle()
+    window.setProperty(XCB_WM_WINDOW_TYPE, XCB_WM_WINDOW_TYPE_NORMAL)
+
+    flags = window.flags()
+    window.setFlags(flags ^ Qt.WindowContextHelpButtonHint)
+    window.setFlags(flags)
 
 
 def qt_connect(*connections):

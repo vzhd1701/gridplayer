@@ -67,7 +67,7 @@ from gridplayer.utils.bookmarks import (
     parse_bookmarks_txt,
     with_bookmark,
 )
-from gridplayer.utils.qt import translate
+from gridplayer.utils.qt import detach_modal_dialog, translate
 from gridplayer.utils.time_txt import (
     get_time_txt,
     ms_time_txt,
@@ -729,6 +729,9 @@ class BookmarksDialog(QDialog):
         self._is_set_up = False
 
         super().__init__(parent)
+
+        # to be moved off the video it plays, to see the video beside it
+        detach_modal_dialog(self)
 
         self._block = block
         self._original = block.bookmarks
