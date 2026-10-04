@@ -1,3 +1,4 @@
+from types import SimpleNamespace
 from unittest.mock import Mock
 
 import pytest
@@ -345,3 +346,132 @@ def test_cb_vout_noop_when_audio_only(monkeypatch):
     player.cb_vout(None)
 
     assert scheduler.call_count == 0
+
+
+def _time_event(new_time):
+    return SimpleNamespace(u=SimpleNamespace(new_time=new_time))
+
+
+def test_time_applies_a_view_worked_out_without_a_frame_size_again():
+    """A stream with no frame size of its own: VLC finds it only after its
+    video output is up, when the view is applied. Applied then, a FIT view
+    is the whole frame with bars, until something applies it again."""
+    player, media_player = _make_player()
+    player.media_input.is_live = True
+    view = ViewParams(VideoAspect.FIT, 1.0, VideoCrop(0, 0, 0, 0))
+
+    media_player.video_get_size = lambda num=0: (0, 0)
+    player.adjust_view(size=(640, 200), view=view)
+
+    assert ("aspect_ratio", "0:0") in media_player.calls
+
+    # still not there at the first time event, at 0
+    media_player.calls.clear()
+    player.cb_time_changed(_time_event(0))
+
+    assert ("aspect_ratio", "0:0") in media_player.calls
+
+    media_player.video_get_size = lambda num=0: (640, 360)
+    media_player.calls.clear()
+    player.cb_time_changed(_time_event(0))
+
+    assert media_player.calls == [
+        ("aspect_ratio", "16:9"),
+        ("crop_geometry", "+0+80+0+80"),
+        ("scale", 0),
+    ]
+
+    # and left alone after that
+    media_player.calls.clear()
+    player.cb_time_changed(_time_event(0))
+
+    assert media_player.calls == []
+
+
+def test_time_leaves_a_view_worked_out_with_a_frame_size_alone():
+    player, _ = _make_player()
+    player.media_input.is_live = True
+    scheduler = Mock()
+    player._schedule_view_reapply = scheduler
+
+    player.adjust_view(
+        size=(640, 200),
+        view=ViewParams(VideoAspect.FIT, 1.0, VideoCrop(0, 0, 0, 0)),
+    )
+    player.cb_time_changed(_time_event(0))
+
+    scheduler.assert_not_called()
+
+
+class _CountingMedia:
+    """The media as libVLC counts it: how many pictures it has put on screen."""
+
+    def __init__(self, displayed, is_counted=True):
+        self.displayed = displayed
+        self.is_counted = is_counted
+
+    def get_stats(self, stats):
+        stats.displayed_pictures = self.displayed
+        return self.is_counted
+
+
+def _player_counting(displayed, **kwargs):
+    player, _ = _make_player(**kwargs)
+    player.media_input.is_live = True
+    player._media_input_vlc = _CountingMedia(displayed)
+    player.notify_playback_started = Mock()
+    return player
+
+
+def test_playback_told_once_vlc_has_a_second_picture_on_screen():
+    """VLC keeps a stream's first picture up, frozen, until playback proper
+    starts; the one after it is playback under way."""
+    player = _player_counting(displayed=1)
+
+    player.cb_time_changed(_time_event(0))
+    player.cb_time_changed(_time_event(260))
+
+    player.notify_playback_started.assert_not_called()
+
+    player._media_input_vlc.displayed = 3
+    player.cb_time_changed(_time_event(540))
+    player.cb_time_changed(_time_event(820))
+
+    player.notify_playback_started.assert_called_once()
+
+
+def test_playback_not_told_without_counts_to_go_by():
+    player = _player_counting(displayed=5)
+    player._media_input_vlc.is_counted = False
+
+    player.cb_time_changed(_time_event(260))
+
+    player.notify_playback_started.assert_not_called()
+
+
+def test_playback_not_looked_for_with_audio_only():
+    player = _player_counting(displayed=5, is_audio_only=True)
+
+    player.cb_time_changed(_time_event(260))
+
+    player.notify_playback_started.assert_not_called()
+
+
+def test_vlc_counts_the_pictures_it_shows(tmp_path):
+    """The counts are the only sign a stream VLC froze on its first picture
+    has started playing, and "--no-stats" stops VLC keeping them."""
+    from PyQt5.QtCore import QSettings
+
+    from gridplayer.settings import Settings
+    from gridplayer.vlc_player.instance import InstanceVLC
+
+    settings = Settings()
+    real_settings = settings.settings
+    settings.settings = QSettings(str(tmp_path / "test.ini"), QSettings.IniFormat)
+    try:
+        instance = InstanceVLC(0, [])
+        instance._logger = Mock()
+
+        assert "--no-stats" not in instance.init_options
+    finally:
+        settings.settings = real_settings

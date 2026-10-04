@@ -28,6 +28,7 @@ class PlayerProcessSingleVLCSWSP(QThread, VlcPlayerBase, metaclass=QABC):
     snapshot_taken = pyqtSignal(str)
     screenshot_taken = pyqtSignal(str)
     video_dimensions_changed = pyqtSignal(int, int)
+    playback_started = pyqtSignal()
 
     load_video_done = pyqtSignal(Media)
     tracks_changed = pyqtSignal(Media)
@@ -42,6 +43,7 @@ class PlayerProcessSingleVLCSWSP(QThread, VlcPlayerBase, metaclass=QABC):
 
     _vout_reapply = pyqtSignal()
     _chapters_refresh = pyqtSignal()
+    _playback_check = pyqtSignal()
 
     def __init__(self, vlc_options, shared_memory, **kwargs):
         super().__init__(vlc_instance=None, **kwargs)
@@ -81,6 +83,10 @@ class PlayerProcessSingleVLCSWSP(QThread, VlcPlayerBase, metaclass=QABC):
                 self._chapters_refresh,
                 self._on_chapters_refresh,
             ),
+            (
+                self._playback_check,
+                self._on_playback_check,
+            ),
         )
 
     @pyqtSlot()
@@ -91,6 +97,10 @@ class PlayerProcessSingleVLCSWSP(QThread, VlcPlayerBase, metaclass=QABC):
     def _on_chapters_refresh(self):
         self._refresh_chapters()
 
+    @pyqtSlot()
+    def _on_playback_check(self):
+        self._check_playback_started()
+
     def _schedule_view_reapply(self):
         # Emitted from libvlc's event thread; this player object's affinity is the
         # main thread, so Qt delivers via QueuedConnection onto the main event
@@ -100,6 +110,10 @@ class PlayerProcessSingleVLCSWSP(QThread, VlcPlayerBase, metaclass=QABC):
     def _schedule_chapters_refresh(self):
         # the same way off the libvlc callback thread as the view above
         self._chapters_refresh.emit()
+
+    def _schedule_playback_check(self):
+        # and the same again
+        self._playback_check.emit()
 
     def run(self):
         options = [*self.vlc_options, "--vout=vdummy"]
@@ -221,6 +235,9 @@ class PlayerProcessSingleVLCSWSP(QThread, VlcPlayerBase, metaclass=QABC):
     def notify_video_dimensions(self, width, height):
         self.video_dimensions_changed.emit(width, height)
 
+    def notify_playback_started(self):
+        self.playback_started.emit()
+
     def loopback_load_video_st2_set_media(self):
         self.loop_load_video_st2_set_media.emit()
 
@@ -286,6 +303,7 @@ class VideoDriverVLCSWSP(VLCVideoDriver):
             (self.player.snapshot_taken, self.snapshot_taken_emit),
             (self.player.screenshot_taken, self.screenshot_taken_emit),
             (self.player.video_dimensions_changed, self.set_video_dimensions),
+            (self.player.playback_started, self.playback_started_emit),
             (self.player.playback_status_changed, self.playback_status_changed_emit),
             (self.player.time_changed, self.time_changed),
             (self.player.error_signal, self.error),

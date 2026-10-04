@@ -106,7 +106,9 @@ class InstanceVLC:
             # nothing is ever decoded or drawn. Subtitles are switched off per
             # video instead, by asking for no track at all; see TracksManager.
             "--no-interact",
-            "--no-stats",
+            # NOTE: no "--no-stats" either. How many pictures VLC has put on
+            # screen is the only sign that a stream it froze on its first
+            # one has started playing; see VlcPlayerBase._check_playback_started
             "--no-keyboard-events",
             "--no-mouse-events",
             *self.vlc_options,

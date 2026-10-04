@@ -72,6 +72,11 @@ FIRST_PICTURE_POLL_MS = 10
 FIRST_PICTURE_TIMEOUT_MS = 1500
 FIRST_PICTURE_PLACE_TIMEOUT_MS = 300
 
+# How long to wait at most for a stream loaded with no frame size to start
+# playing: see VideoFrameVLC.is_picture_pending. Measured opening 4 HLS
+# streams at once, it was 750-1050ms after the load.
+FIRST_PLAYBACK_TIMEOUT_MS = 3000
+
 # VLC's crop can leave a 2px black border around hardware output.
 VLC_CROP_BORDER_PX = 2
 
@@ -445,6 +450,11 @@ class VideoFrameVLC(QWidget, metaclass=QABC):
         self._first_picture_clock = QElapsedTimer()
         self._picture_up_clock = QElapsedTimer()
         self._picture_in_place_clock = QElapsedTimer()
+        # loaded with no frame size, as a stream can be, to play, and playing
+        # since: see is_picture_pending
+        self._is_paused_on_load = False
+        self._is_playback_awaited = False
+        self._is_playback_started = False
         self._first_picture_timer = QTimer(self)
         self._first_picture_timer.setInterval(FIRST_PICTURE_POLL_MS)
         self._first_picture_timer.timeout.connect(self._look_for_first_picture)
@@ -521,6 +531,19 @@ class VideoFrameVLC(QWidget, metaclass=QABC):
         window placed for the view, and keep it until the video starts
         playing. Seen for 100-180ms in 3 of 108 portrait videos opened at a
         saved position into landscape cells.
+
+        A stream can load with no frame size, and VLC only finds it a few
+        tens of ms after its video output is up. VLC shows the stream's
+        first picture as soon as it is decoded and keeps it up, frozen,
+        until playback proper starts, 650-850ms later on 4 HLS streams
+        opened at once; and that picture is often drawn for the view worked
+        out without the size, the whole frame with bars, then stretched
+        over the view's shape once VLC takes the view up. Its window is
+        where it should be then, so nothing here could tell. For one of
+        those the wait goes on until the player says VLC is playing (see
+        VlcPlayerBase._check_playback_started), on every platform, within
+        FIRST_PLAYBACK_TIMEOUT_MS; and then, on Windows, as above. Not for
+        one loaded paused, which never plays.
         """
         return self._first_picture_timer.isActive()
 
@@ -687,6 +710,7 @@ class VideoFrameVLC(QWidget, metaclass=QABC):
             (self.video_driver.snapshot_taken, self.snapshot_taken),
             (self.video_driver.screenshot_taken, self._on_screenshot_taken),
             (self.video_driver.video_dimensions_changed, self.set_track_dimensions),
+            (self.video_driver.playback_started, self._on_playback_started),
             (self.video_driver.error, self.error_emit),
             (self.video_driver.crash, self.crash_emit),
             (self.video_driver.update_status, self.update_status_emit),
@@ -852,6 +876,9 @@ class VideoFrameVLC(QWidget, metaclass=QABC):
         # changing it reloads the video, so it holds for as long as this does
         self._transform = video.transform
 
+        self._is_paused_on_load = video.is_paused
+        self._is_playback_started = False
+
         self.video_driver.load_video(media_input)
 
     def load_video_finish(self, media: Media) -> None:
@@ -871,7 +898,13 @@ class VideoFrameVLC(QWidget, metaclass=QABC):
         if not self.is_native_surface:
             return
 
-        if vlc_picture(self.video_surface) is None:
+        # one loaded paused never plays to wait for
+        self._is_playback_awaited = (
+            not all(self._frame_size()) and not self._is_paused_on_load
+        )
+
+        # the playback is something to wait for wherever VLC draws
+        if vlc_picture(self.video_surface) is None and not self._is_playback_awaited:
             return
 
         self._first_picture_clock.start()
@@ -888,16 +921,28 @@ class VideoFrameVLC(QWidget, metaclass=QABC):
         self.picture_shown.emit()
 
     def _is_first_picture_settled(self) -> bool:
+        if self._is_playback_awaited:
+            if self._first_picture_clock.hasExpired(FIRST_PLAYBACK_TIMEOUT_MS):
+                return True
+
+            # the picture on show until then is the first one, frozen
+            if not self._is_playback_started:
+                return False
+
+        elif self._first_picture_clock.hasExpired(FIRST_PICTURE_TIMEOUT_MS):
+            return True
+
         picture = vlc_picture(self.video_surface)
 
         if picture is None:
             return True
 
-        if self._first_picture_clock.hasExpired(FIRST_PICTURE_TIMEOUT_MS):
-            return True
-
         if picture.is_shown and not self._picture_up_clock.isValid():
             self._picture_up_clock.start()
+
+        # where it goes is worked out from the frame's size
+        if not all(self._frame_size()):
+            return False
 
         if not self._is_picture_in_place(picture):
             self._picture_in_place_clock.invalidate()
@@ -1194,6 +1239,12 @@ class VideoFrameVLC(QWidget, metaclass=QABC):
         # the view here is worked out from them too
         if is_updated:
             self.adjust_view()
+
+    def _on_playback_started(self) -> None:
+        self._is_playback_started = True
+
+        # the picture on show is a new one now; see _is_first_picture_settled
+        self._picture_up_clock.invalidate()
 
     def _on_tracks_changed(self, media: Media) -> None:
         """Take a track list that grew after the load, without reloading."""

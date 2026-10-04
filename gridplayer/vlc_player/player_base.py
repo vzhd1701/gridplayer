@@ -187,6 +187,14 @@ class VlcPlayerBase(ABC):
         self._tracks_manager: TracksManager | None = None
         self._last_video_size = (0, 0)
 
+        # the view was last applied with no frame size to work it out from;
+        # see cb_time_changed
+        self._is_view_unsized = False
+
+        # the load is playing pictures, and has been said to be; see
+        # _check_playback_started
+        self._is_playback_reported = False
+
         # counts down the events after the media ends, while the tracks are
         # put back on the new pass; see _reapply_tracks_after_restart
         self._restart_reapply_tries = 0
@@ -409,6 +417,19 @@ class VlcPlayerBase(ABC):
             self.loopback_load_video_st2_set_media()
 
     def cb_time_changed(self, event):
+        # A stream can come with no frame size of its own, and VLC finds it
+        # only a few tens of ms after the video output is up, which is when
+        # the view is applied. Worked out without it, the view is the whole
+        # frame with bars at its sides, FIT or not, until the next resize.
+        # Nothing announces the size, but time starts coming in right after
+        # it, the first at 0, so keep trying until it is there.
+        if self._is_view_unsized:
+            self._schedule_view_reapply()
+
+        # counted along with the time, so looked at as it comes
+        if self._is_playback_pending:
+            self._schedule_playback_check()
+
         new_time = int(event.u.new_time)
 
         if new_time == 0:
@@ -518,6 +539,9 @@ class VlcPlayerBase(ABC):
     def notify_video_dimensions(self, width: int, height: int) -> None:  # noqa: B027
         """Forward decoded size to the widget. Default is a no-op."""
 
+    def notify_playback_started(self) -> None:  # noqa: B027
+        """Tell the widget VLC is playing pictures. Default is a no-op."""
+
     @abstractmethod
     def loopback_load_video_st2_set_media(self): ...
 
@@ -536,6 +560,8 @@ class VlcPlayerBase(ABC):
 
         self.media_input = media_input
         self._last_video_size = (0, 0)
+        self._is_view_unsized = False
+        self._is_playback_reported = False
         self._last_time = None
         self._own_audio_count = None
         self._own_subtitle_count = None
@@ -1318,6 +1344,9 @@ class VlcPlayerBase(ABC):
     def _apply_view(self, size, view: ViewParams):
         transform = self.media_input.video.transform if self.media_input else None
 
+        frame_size = self.frame_dimensions
+        self._is_view_unsized = not all(frame_size)
+
         geometry = None
 
         # VLC crops a picture it turns or flips wrong: have it draw all of
@@ -1325,11 +1354,11 @@ class VlcPlayerBase(ABC):
         track = self._shown_video_track()
         if track is not None and track.is_reoriented:
             geometry = calc_whole_geometry(
-                self.frame_dimensions, size, view, transform, track.is_turned
+                frame_size, size, view, transform, track.is_turned
             )
 
         if geometry is None:
-            geometry = calc_view_geometry(self.frame_dimensions, size, view, transform)
+            geometry = calc_view_geometry(frame_size, size, view, transform)
 
         aspect_override, crop_geometry_fmt = geometry
 
@@ -1403,6 +1432,43 @@ class VlcPlayerBase(ABC):
     def _schedule_chapters_refresh(self):
         # Deferred for the same reason as the view; see cb_title_changed.
         self._refresh_chapters()
+
+    def _schedule_playback_check(self):
+        # Deferred for the same reason as the view; see cb_time_changed.
+        self._check_playback_started()
+
+    @property
+    def _is_playback_pending(self) -> bool:
+        return (
+            not self._is_playback_reported
+            and self.media is not None
+            and not self.media.is_audio_only
+        )
+
+    def _check_playback_started(self):
+        """Say so once VLC is putting pictures on screen as it plays.
+
+        VLC shows a stream's first picture the moment it is decoded, then
+        keeps it up, frozen, until playback proper starts: most of a second
+        later with the default network caching, 650-850ms on 4 HLS streams
+        opened at once. Drawn before the frame size was known, that picture
+        is in the wrong shape all that time. A second picture on screen is
+        playback under way. VLC counts them along with the time it reports,
+        every quarter of a second.
+        """
+        if not self._is_playback_pending or self._media_input_vlc is None:
+            return
+
+        stats = vlc.MediaStats()
+        if not self._media_input_vlc.get_stats(stats):
+            return
+
+        if stats.displayed_pictures < 2:
+            return
+
+        self._is_playback_reported = True
+
+        self.notify_playback_started()
 
     def _refresh_chapters(self):
         """Send on chapters that turned up or changed after the load.

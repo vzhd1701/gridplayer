@@ -18,6 +18,9 @@ class VLCVideoDriver(QObject, metaclass=QABC):
     # empty when VLC had none to give
     screenshot_taken = pyqtSignal(str)
     video_dimensions_changed = pyqtSignal(int, int)
+    # VLC is putting pictures on screen as it plays, past the first it shows
+    # on its own; once per load
+    playback_started = pyqtSignal()
 
     error = pyqtSignal(str)
     crash = pyqtSignal(str)
@@ -81,6 +84,9 @@ class VLCVideoDriver(QObject, metaclass=QABC):
 
     def set_video_dimensions(self, width, height):
         self.video_dimensions_changed.emit(width, height)
+
+    def playback_started_emit(self):
+        self.playback_started.emit()
 
     @abstractmethod
     def play(self): ...
