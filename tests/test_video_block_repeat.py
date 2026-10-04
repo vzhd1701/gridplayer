@@ -159,6 +159,7 @@ def test_stopped_overlay_uses_hide_timer(mocker):
     block.is_stopped = True
     block.is_loading = False
     block._is_error = False
+    block._is_status_kept_for_picture = False
     block.isVisible.return_value = True
 
     VideoBlock.show_overlay(block)

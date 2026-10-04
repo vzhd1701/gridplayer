@@ -244,6 +244,7 @@ def test_show_overlay_skipped_when_cell_hidden(mocker):
     block.is_overlay_fits = True
     block.is_loading = False
     block._is_error = False
+    block._is_status_kept_for_picture = False
     block.isVisible.return_value = False
 
     VideoBlock.show_overlay(block)
@@ -258,6 +259,7 @@ def test_show_overlay_skipped_when_cell_too_small(mocker):
     block.is_overlay_fits = False
     block.is_loading = False
     block._is_error = False
+    block._is_status_kept_for_picture = False
     block.isVisible.return_value = True
 
     VideoBlock.show_overlay(block)

@@ -262,3 +262,40 @@ def test_cell_status_given_something_else_to_show_stays(mocker):
     VideoBlock._picture_shown(block)
 
     block.video_status.hide.assert_not_called()
+
+
+def _block_showing_overlays(mocker, is_picture_pending):
+    block = mocker.Mock()
+    block.video_driver.is_picture_pending = is_picture_pending
+    block._ctx.is_drag_ui = False
+    block._ctx.is_disable_overlay = False
+    block._ctx.is_overlay_hide_on_timeout = False
+    block.is_loading = False
+    block._is_error = False
+    block.is_overlay_fits = True
+    block.isVisible.return_value = True
+    block.show_overlay = lambda: VideoBlock.show_overlay(block)
+    return block
+
+
+def test_cell_holds_its_overlay_back_until_the_picture_is_up(mocker):
+    """Not over a loading status still counting, a stream's for longest."""
+    block = _block_showing_overlays(mocker, is_picture_pending=True)
+
+    VideoBlock.load_video_finish(block)
+    # the mouse moving over it meanwhile
+    block.show_overlay()
+
+    block.overlay.show.assert_not_called()
+
+    VideoBlock._picture_shown(block)
+
+    block.overlay.show.assert_called_once()
+
+
+def test_cell_shows_its_overlay_on_the_load_with_nothing_to_wait_for(mocker):
+    block = _block_showing_overlays(mocker, is_picture_pending=False)
+
+    VideoBlock.load_video_finish(block)
+
+    block.overlay.show.assert_called_once()

@@ -2695,6 +2695,9 @@ class VideoBlock(QWidget):
             return
         if self.is_loading or self._is_error:
             return
+        # still loading as far as the viewer can tell, see _picture_shown
+        if self._is_status_kept_for_picture:
+            return
         # Hardware overlays are windows of their own; do not remap them while
         # this cell is hidden (single-mode background, minimized, etc.).
         if not self.isVisible():
@@ -3536,6 +3539,10 @@ class VideoBlock(QWidget):
         (seen in the window tree), so it keeps VLC's windows and their black
         out of sight until then. Unless it has been given something else to
         show since.
+
+        The overlay is held back until then too: shown on the load, it sat
+        over a loading status still counting, for up to as long as the
+        picture takes (see FIRST_PICTURE_TIMEOUT_MS), a stream's longest.
         """
         if not self._is_status_kept_for_picture:
             return
@@ -3543,6 +3550,7 @@ class VideoBlock(QWidget):
         self._is_status_kept_for_picture = False
 
         self.video_status.hide()
+        self.show_overlay()
 
     @only_with_video_tacks
     def set_aspect(self, aspect: VideoAspect):
