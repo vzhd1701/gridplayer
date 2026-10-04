@@ -3,7 +3,13 @@ import random
 from typing import NamedTuple
 
 from PyQt5.QtCore import pyqtSignal
-from PyQt5.QtWidgets import QGridLayout, QHBoxLayout, QMessageBox, QVBoxLayout
+from PyQt5.QtWidgets import (
+    QGridLayout,
+    QHBoxLayout,
+    QMessageBox,
+    QSizePolicy,
+    QVBoxLayout,
+)
 
 from gridplayer.dialogs.input_dialog import QCustomSpinboxInput, QFixedGridSizeDialog
 from gridplayer.dialogs.messagebox import QCustomMessageBox
@@ -619,8 +625,8 @@ class GridManager(ManagerBase):
             else:
                 placed = self._populate_flow(dims)
 
-            self._sync_block_visibility(placed)
             self.adapt_grid(dims)
+            self._sync_block_visibility(placed)
 
     def _reset_grid_stretch(self):
         for c in range(self._grid.columnCount()):
@@ -658,7 +664,47 @@ class GridManager(ManagerBase):
     def _sync_block_visibility(self, placed):
         placed_set = set(placed)
         for vb in self._ctx.video_blocks:
-            vb.setVisible(vb in placed_set)
+            if vb not in placed_set:
+                vb.hide()
+
+        coming = [
+            vb for vb in self._ctx.video_blocks if vb in placed_set and vb.isHidden()
+        ]
+        self._place_while_hidden(coming)
+        for vb in coming:
+            vb.show()
+
+    def _place_while_hidden(self, blocks):
+        """Lay out the cells about to be shown before they are on screen.
+
+        A hardware video's cell is a native window, and showing it puts it on
+        screen wherever it is at that point. The grid lays the cells out only
+        once they are all shown (see _laid_out_once), so a new cell came up
+        at the window's top left, 100x30, and was then moved into place. A
+        native window takes the pixels it covers along when it moves, so the
+        corner of the window, with the empty grid's outline in it, showed at
+        the top left of every new cell until the grid was painted.
+
+        A hidden cell is left out of the layout unless it keeps its space, so
+        each one keeps it for one pass, laid out with the rest as they all end
+        up.
+        """
+        if not blocks:
+            return
+
+        policies = [vb.sizePolicy() for vb in blocks]
+        for vb, policy in zip(blocks, policies):
+            kept = QSizePolicy(policy)
+            kept.setRetainSizeWhenHidden(True)
+            vb.setSizePolicy(kept)
+
+        was_enabled = self._grid.isEnabled()
+        self._grid.setEnabled(True)
+        self._grid.activate()
+        self._grid.setEnabled(was_enabled)
+
+        for vb, policy in zip(blocks, policies):
+            vb.setSizePolicy(policy)
 
     def _populate_fixed(self, dims):
         placed = set()

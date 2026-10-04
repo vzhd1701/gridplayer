@@ -130,3 +130,82 @@ def test_apply_grid_config_leave_fixed_with_holes(mocker):
     question.assert_called_once()
     assert manager._mode is GridMode.AUTO_ROWS
     assert manager._flow.ids == ["A", "B"]
+
+
+class _NativeCell(QWidget):
+    """A hardware video's cell as the grid sees one: a native window, noting
+    where it is each time it comes on screen."""
+
+    def __init__(self, video_id, parent):
+        super().__init__(parent)
+        self.id = video_id
+        self.video_id = video_id
+        self.shown_at = []
+        self.winId()
+
+    def showEvent(self, event):
+        self.shown_at.append(self.geometry())
+
+
+class _Cells:
+    def __init__(self, cells):
+        self._cells = cells
+
+    @property
+    def video_ids(self):
+        return [c.video_id for c in self._cells]
+
+    def __bool__(self):
+        return bool(self._cells)
+
+    def __iter__(self):
+        return iter(self._cells)
+
+    def __len__(self):
+        return len(self._cells)
+
+    def by_video_id(self, video_id):
+        return next((c for c in self._cells if c.video_id == video_id), None)
+
+    def blocks_for_ids(self, video_ids):
+        return [self.by_video_id(i) for i in video_ids if self.by_video_id(i)]
+
+
+@pytest.mark.parametrize(
+    "grid_state",
+    [
+        GridState(mode=GridMode.AUTO_ROWS, is_fit=True, size=0),
+        GridState(mode=GridMode.FIXED, rows=3, cols=3, preallocate=True),
+    ],
+    ids=["auto", "fixed_with_empty_cells"],
+)
+def test_new_cells_come_on_screen_in_place(grid_state):
+    """A cell is shown where it ends up, not moved there once shown.
+
+    A native window takes the pixels it covers along when it moves, so a
+    hardware video's cell shown at the top left and moved into place after
+    carried a piece of the window's corner into its cell.
+    """
+    window = QWidget()
+    window.resize(1200, 700)
+    ctx = SimpleNamespace(
+        video_blocks=_Cells([]),
+        is_shuffle_on_load=False,
+        is_single_mode=False,
+        commands=SimpleNamespace(remove_video_blocks=lambda *_a, **_k: None),
+    )
+    grid = GridManager(context=ctx, parent=window)
+    grid.set_grid_state(grid_state)
+    window.show()
+    QApplication.processEvents()
+
+    cells = [_NativeCell(f"v{n}", window) for n in range(5)]
+    ctx.video_blocks = _Cells(cells)
+    grid.reload_video_grid()
+
+    placed = [c.geometry() for c in cells]
+    assert len({r.getRect() for r in placed}) == len(cells)
+    assert all(r.width() > 100 for r in placed)
+    assert [c.shown_at for c in cells] == [[r] for r in placed]
+
+    window.close()
