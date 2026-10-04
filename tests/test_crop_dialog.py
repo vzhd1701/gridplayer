@@ -1,13 +1,12 @@
 from types import SimpleNamespace
 
 import pytest
-from PyQt5.QtCore import QMargins, QSize, Qt
+from PyQt5.QtCore import QRectF, QSize, Qt
 from PyQt5.QtGui import QPixmap
 from PyQt5.QtWidgets import QApplication, QDialog
 
 from gridplayer.dialogs.crop import QCompactCropPicker, SetCropDialog
 from gridplayer.params.static import VideoAspect, VideoCrop, VideoTransform
-from gridplayer.utils.aspect_calc import ViewPlacement
 from gridplayer.widgets.video_frame_vlc_base import PauseSnapshot
 
 
@@ -228,34 +227,36 @@ def test_pause_snapshot_does_not_crop_displayed_frame():
     """VLC snapshots the already-cropped output; scaling must not crop again."""
     snapshot = _snapshot(640, 360)
 
-    placement = ViewPlacement((0, 0, 640, 360), (0, 0, 640, 360))
-    snapshot.adjust_view(QSize(640, 360), placement)
+    snapshot.adjust_view(QSize(640, 360), (0, 0, 640, 360))
 
-    result = snapshot.pixmap()
-    assert (result.width(), result.height()) == (640, 360)
+    assert snapshot.picture_rect() == QRectF(0, 0, 640, 360)
 
 
 def test_pause_snapshot_does_not_zoom_what_vlc_zoomed_already():
     """The zoom is in VLC's crop, so its snapshot is the zoomed part."""
     snapshot = _snapshot(320, 180)
 
-    placement = ViewPlacement((160, 90, 320, 180), (0, 0, 640, 360))
-    snapshot.adjust_view(QSize(640, 360), placement)
+    snapshot.adjust_view(QSize(640, 360), (0, 0, 640, 360))
 
-    result = snapshot.pixmap()
-    assert (result.width(), result.height()) == (640, 360)
+    assert snapshot.picture_rect() == QRectF(0, 0, 640, 360)
 
 
 def test_pause_snapshot_is_stretched_over_where_the_video_was():
     """A rotated video's snapshot comes squeezed into the unrotated size."""
     snapshot = _snapshot(640, 360)
 
-    placement = ViewPlacement((0, 0, 640, 360), (140, 0, 360, 640))
-    snapshot.adjust_view(QSize(640, 640), placement)
+    snapshot.adjust_view(QSize(640, 640), (140, 0, 360, 640))
 
-    result = snapshot.pixmap()
-    assert (result.width(), result.height()) == (360, 640)
-    assert snapshot.contentsMargins() == QMargins(140, 0, 140, 0)
+    assert snapshot.picture_rect() == QRectF(140, 0, 360, 640)
+
+
+def test_pause_snapshot_reaches_past_the_pane_where_the_video_did():
+    """VLC scales its picture up into the hidden margin of a native surface."""
+    snapshot = _snapshot(640, 360)
+
+    snapshot.adjust_view(QSize(640, 360), (-8, -4.4, 656, 368.8))
+
+    assert snapshot.picture_rect() == QRectF(-8, -4, 656, 368)
 
 
 def test_pause_snapshot_without_a_placement_fits_the_pane():
@@ -263,8 +264,17 @@ def test_pause_snapshot_without_a_placement_fits_the_pane():
 
     snapshot.adjust_view(QSize(320, 320), None)
 
-    result = snapshot.pixmap()
-    assert (result.width(), result.height()) == (320, 180)
+    assert snapshot.picture_rect() == QRectF(0, 70, 320, 180)
+
+
+def test_pause_snapshot_reset_takes_the_picture_down():
+    snapshot = _snapshot(640, 360)
+    snapshot.adjust_view(QSize(640, 360), (0, 0, 640, 360))
+
+    snapshot.reset()
+
+    assert snapshot.picture_rect() is None
+    assert snapshot.frame_image() is None
 
 
 def test_compact_picker_opens_value_mode_dialog(mocker):

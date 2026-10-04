@@ -1,3 +1,4 @@
+from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 import pytest
@@ -5,7 +6,7 @@ from PyQt5.QtCore import QMargins, QSize, Qt
 from PyQt5.QtWidgets import QApplication, QWidget
 
 import gridplayer.widgets.video_frame_vlc_base as vlc_base
-from gridplayer.params.static import HWCropBorderOffset
+from gridplayer.params.static import HWCropBorderOffset, VideoAspect, VideoTransform
 from gridplayer.utils import darkmode
 from gridplayer.utils.aspect_calc import ViewPlacement
 from gridplayer.widgets.video_frame_vlc_base import (
@@ -371,3 +372,59 @@ def test_surface_grown_by_the_padding():
     apply_vlc_hw_surface_geometry(frame, clip, surface, 8, padding=QMargins(1, 0, 2, 0))
 
     assert surface.geometry().getRect() == (-9, -8, 819, 466)
+
+
+def _playing_1080p(frame, aspect=VideoAspect.FIT):
+    frame.media = SimpleNamespace(
+        cur_video_track=SimpleNamespace(
+            video_dimensions=(1920, 1080),
+            is_turned=False,
+            orientation=VideoTransform.NONE,
+        )
+    )
+    frame._view = frame._view._replace(aspect=aspect)
+    frame.resize(550, 500)
+
+
+def test_paused_picture_goes_where_vlc_draws_it(monkeypatch):
+    """VLC scales its picture up into the surface's hidden margin, so the
+    snapshot of it goes past the pane as far: not over the bare target."""
+    _stub_offset_setting(monkeypatch)
+    _platform(monkeypatch, windows=True)
+    frame = _StubHWFrame(vlc_options=[])
+    _playing_1080p(frame)
+
+    assert frame.view_placement().target == (0, 0, 550, 500)
+    # the surface is (-8, -8, 567, 516), a pixel wider for whole blocks
+    assert frame._shown_picture_rect() == (-8, -8, 567, 516)
+
+
+def test_paused_picture_a_row_lower_under_opengl(monkeypatch):
+    """VLC's OpenGL output puts an odd row left over above the picture."""
+    _stub_offset_setting(monkeypatch)
+    _platform(monkeypatch, windows=False)
+    frame = _StubHWFrame(vlc_options=[])
+    _playing_1080p(frame, aspect=VideoAspect.NONE)
+
+    # surface (-8, 87, 566, 326), the picture 317 rows of it, VLC working
+    # out 4 above and 5 below
+    assert frame._shown_picture_rect() == (-8, 92, 566, 317)
+
+
+def test_paused_picture_of_a_software_frame_is_the_target(monkeypatch):
+    _stub_offset_setting(monkeypatch)
+    _platform(monkeypatch, windows=True)
+    frame = _StubSWFrame(vlc_options=[])
+    frame.resize(DEFAULT_SIZE)
+    _placed_at(frame, monkeypatch, (100, 0, 600, 450))
+
+    assert frame._shown_picture_rect() == (100, 0, 600, 450)
+
+
+def test_paused_picture_nowhere_with_no_frame_size(monkeypatch):
+    _stub_offset_setting(monkeypatch)
+    _platform(monkeypatch, windows=True)
+    frame = _StubHWFrame(vlc_options=[])
+    frame.resize(DEFAULT_SIZE)
+
+    assert frame._shown_picture_rect() is None

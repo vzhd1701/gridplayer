@@ -9,14 +9,17 @@ from PyQt5.QtCore import (
     QElapsedTimer,
     QMargins,
     QPoint,
+    QPointF,
     QRect,
+    QRectF,
     QSize,
+    QSizeF,
     Qt,
     QTimer,
     pyqtSignal,
 )
-from PyQt5.QtGui import QImage, QPixmap
-from PyQt5.QtWidgets import QLabel, QStackedLayout, QWidget
+from PyQt5.QtGui import QImage, QPainter, QPixmap
+from PyQt5.QtWidgets import QStackedLayout, QWidget
 
 from gridplayer.models.chapter import Chapter
 from gridplayer.params import env
@@ -181,9 +184,10 @@ def calc_picture_block_padding(
 
 
 def _native_px(length: int, ratio: float) -> int:
-    """A length in Qt pixels in the window's own, rounded the way Qt does."""
+    """A length or position in Qt pixels in the window's own, rounded the
+    way Qt does: halves up, -13.5 to -13 too."""
 
-    return int(length * ratio + 0.5)
+    return math.floor(length * ratio + 0.5)
 
 
 def apply_vlc_hw_surface_geometry(
@@ -223,18 +227,13 @@ def apply_vlc_hw_surface_geometry(
         return
 
     frame_rect = QRect(0, 0, width, height)
-    surface_rect = frame_rect if target is None else _pixels_in(target)
     clip_rect = frame_rect if shown is None else frame_rect & _pixels_in(shown)
 
     if clip_rect.isEmpty():
         clip_rect = frame_rect
 
-    padding = padding or QMargins()
-    surface_geometry = surface_rect.adjusted(
-        -offset - padding.left(),
-        -offset - padding.top(),
-        offset + padding.right(),
-        offset + padding.bottom(),
+    surface_geometry = calc_vlc_hw_surface_rect(
+        frame.size(), offset, target, padding
     ).translated(-clip_rect.topLeft())
 
     was_shown = _shown_of(clip.size(), surface.geometry())
@@ -244,6 +243,27 @@ def apply_vlc_hw_surface_geometry(
 
     fit_vlc_vout_windows(
         surface, was_shown, _shown_of(clip_rect.size(), surface_geometry)
+    )
+
+
+def calc_vlc_hw_surface_rect(
+    frame_size: QSize,
+    offset: int,
+    target: Rect | None = None,
+    padding: QMargins | None = None,
+) -> QRect:
+    """Where apply_vlc_hw_surface_geometry puts the surface, in the frame."""
+
+    frame_rect = QRect(QPoint(0, 0), frame_size)
+    surface_rect = frame_rect if target is None else _pixels_in(target)
+
+    padding = padding or QMargins()
+
+    return surface_rect.adjusted(
+        -offset - padding.left(),
+        -offset - padding.top(),
+        offset + padding.right(),
+        offset + padding.bottom(),
     )
 
 
@@ -329,15 +349,20 @@ def remove_snapshot_file(snapshot_file: str) -> None:
         Path(snapshot_file).parent.rmdir()
 
 
-class PauseSnapshot(QLabel):
+class PauseSnapshot(QWidget):
+    """The frame a paused live stream stopped on, up in place of the video."""
+
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
-        self.setAlignment(Qt.AlignCenter)
-        self.setStyleSheet("background-color:black;")
+        self.setAttribute(Qt.WA_OpaquePaintEvent)
 
         self._snapshot_pixmap: QPixmap | None = None
         self._is_blank = False
+
+        # the snapshot at the size it goes up at, and where in here
+        self._picture: QPixmap | None = None
+        self._picture_pos = QPointF()
 
     def set_snapshot_file(self, snapshot_file: str):
         # failed snapshot
@@ -362,43 +387,66 @@ class PauseSnapshot(QLabel):
 
         return self._snapshot_pixmap.toImage()
 
-    def adjust_view(self, size: QSize, placement: ViewPlacement | None):
+    def adjust_view(self, size: QSize, rect: Rect | None):
         """Put the snapshot where the video was on show.
 
         VLC snapshots the frame already cut down to the view, zoom and all,
         but not yet shaped for the screen, which under a rotation leaves it
-        squeezed. So it is stretched over the part of the pane the video
-        took up, rather than fitted to it.
+        squeezed. So it is stretched over `rect`, where the video's picture
+        was on show in the pane, rather than fitted to it: past the pane's
+        edges where VLC drew it past them (see
+        VideoFrameVLC._shown_picture_rect). Fitted into the pane, in the
+        middle, where that is not known.
         """
         if self._snapshot_pixmap is None:
             return
 
-        if placement is None:
-            self.setContentsMargins(0, 0, 0, 0)
-            self.setPixmap(
-                self._snapshot_pixmap.scaled(
-                    size, Qt.KeepAspectRatio, Qt.SmoothTransformation
-                )
+        if rect is None:
+            fitted = self._snapshot_pixmap.size().scaled(size, Qt.KeepAspectRatio)
+            rect = (
+                (size.width() - fitted.width()) // 2,
+                (size.height() - fitted.height()) // 2,
+                fitted.width(),
+                fitted.height(),
             )
-            return
 
-        x, y, width, height = (round(v) for v in placement.target)
-        width, height = max(width, 1), max(height, 1)
+        # edges on whole pixels of the screen's
+        ratio = self.devicePixelRatioF()
+        x, y, width, height = rect
+        left, top = round(x * ratio), round(y * ratio)
+        right, bottom = round((x + width) * ratio), round((y + height) * ratio)
 
-        self.setContentsMargins(
-            x,
-            y,
-            max(size.width() - x - width, 0),
-            max(size.height() - y - height, 0),
+        self._picture = self._snapshot_pixmap.scaled(
+            max(right - left, 1),
+            max(bottom - top, 1),
+            Qt.IgnoreAspectRatio,
+            Qt.SmoothTransformation,
         )
-        self.setPixmap(
-            self._snapshot_pixmap.scaled(
-                width, height, Qt.IgnoreAspectRatio, Qt.SmoothTransformation
-            )
-        )
+        self._picture.setDevicePixelRatio(ratio)
+        self._picture_pos = QPointF(left / ratio, top / ratio)
+
+        self.update()
+
+    def picture_rect(self) -> QRectF | None:
+        """Where the snapshot is up, in this widget, if it is."""
+
+        if self._picture is None:
+            return None
+
+        size = QSizeF(self._picture.size()) / self._picture.devicePixelRatio()
+
+        return QRectF(self._picture_pos, size)
+
+    def paintEvent(self, event) -> None:
+        painter = QPainter(self)
+        painter.fillRect(self.rect(), Qt.black)
+
+        if self._picture is not None:
+            painter.drawPixmap(self._picture_pos, self._picture)
 
     def reset(self):
         self._snapshot_pixmap = None
+        self._picture = None
         self._is_blank = False
 
 
@@ -628,16 +676,7 @@ class VideoFrameVLC(QWidget, metaclass=QABC):
         black.
         """
 
-        win = self.window()
-        window_size = win.size() if win is not None else self.size()
-        offset = vlc_hw_crop_border_offset(self.size(), window_size)
-        placement = self._native_surface_placement()
-        target = placement.target if placement is not None else None
-        shown = None
-
-        if self._is_drawn_whole():
-            view_placement = self.view_placement()
-            shown = view_placement.target if view_placement is not None else None
+        offset, target, shown, padding = self._native_surface_layout()
 
         apply_vlc_hw_surface_geometry(
             self,
@@ -646,11 +685,13 @@ class VideoFrameVLC(QWidget, metaclass=QABC):
             offset,
             target,
             shown,
-            self._picture_block_padding(target, offset),
+            padding,
         )
 
         if not self.native_surface_rect().contains(self.rect()):
             self._fill_uncovered_black(is_letterboxed=True)
+
+        window_size = self._window_size()
 
         self._log.debug(
             f"HW surface: offset={offset}"
@@ -659,6 +700,28 @@ class VideoFrameVLC(QWidget, metaclass=QABC):
             f", clip={self.video_clip.geometry().getRect()}"
             f", surface={self.video_surface.geometry().getRect()}"
         )
+
+    def _native_surface_layout(
+        self,
+    ) -> tuple[int, Rect | None, Rect | None, QMargins]:
+        """Where the native surface goes: apply_vlc_hw_surface_geometry's
+        offset, target, part on show and padding."""
+
+        offset = vlc_hw_crop_border_offset(self.size(), self._window_size())
+        placement = self._native_surface_placement()
+        target = placement.target if placement is not None else None
+        shown = None
+
+        if self._is_drawn_whole():
+            view_placement = self.view_placement()
+            shown = view_placement.target if view_placement is not None else None
+
+        return offset, target, shown, self._picture_block_padding(target, offset)
+
+    def _window_size(self) -> QSize:
+        win = self.window()
+
+        return win.size() if win is not None else self.size()
 
     def _picture_block_padding(self, target: Rect | None, offset: int) -> QMargins:
         """See calc_picture_block_padding: Windows only, where it is known.
@@ -812,7 +875,7 @@ class VideoFrameVLC(QWidget, metaclass=QABC):
             return True
 
         if self.pause_snapshot.isVisible():
-            self.pause_snapshot.adjust_view(self.size(), self.view_placement())
+            self.pause_snapshot.adjust_view(self.size(), self._shown_picture_rect())
 
     def resizeEvent(self, event) -> None:
         self._adjust_view_on_resize()
@@ -1012,7 +1075,7 @@ class VideoFrameVLC(QWidget, metaclass=QABC):
 
     def snapshot_taken(self, snapshot_file: str) -> None:
         self.pause_snapshot.set_snapshot_file(snapshot_file)
-        self.pause_snapshot.adjust_view(self.size(), self.view_placement())
+        self.pause_snapshot.adjust_view(self.size(), self._shown_picture_rect())
         self.pause_snapshot.show()
 
         if snapshot_file:
@@ -1092,6 +1155,54 @@ class VideoFrameVLC(QWidget, metaclass=QABC):
 
         return calc_view_placement(
             self._view_frame_size(), self._pane_size(), self._view, self._transform
+        )
+
+    def _shown_picture_rect(self) -> Rect | None:
+        """Where the picture of the view is on show in the pane, as drawn.
+
+        The view's target, but a native surface is grown past that (see
+        apply_vlc_hw_surface_geometry) and VLC scales its picture up into
+        the margin with it: 8px each way take a 550x500 cell's picture ~3%
+        bigger than the target. So where VLC puts it in a surface that
+        size (see calc_vlc_picture), past the pane's edges where it goes
+        past them. Not for a picture VLC draws whole (see
+        calc_whole_placement), nor where it is not known.
+        """
+        placement = self.view_placement()
+
+        if placement is None:
+            return None
+
+        if not self.is_native_surface or self._is_drawn_whole():
+            return placement.target
+
+        # in the window's own pixels, as Qt puts it there: the clip, which
+        # the surface is placed in, is the frame for a picture not drawn whole
+        offset, target, _, padding = self._native_surface_layout()
+        surface = calc_vlc_hw_surface_rect(self.size(), offset, target, padding)
+        ratio = self.video_surface.devicePixelRatioF()
+        window_w = _native_px(surface.width(), ratio)
+        window_h = _native_px(surface.height(), ratio)
+
+        picture = self._vlc_picture_rect((window_w, window_h))
+
+        if picture is None:
+            return placement.target
+
+        x, y, width, height = picture
+
+        # VLC's OpenGL output hands the picture's place, counted from the
+        # top, to glViewport, which counts from the bottom: where the rows
+        # left over are odd, the picture is a row lower than VLC worked out.
+        # Measured letterboxed on X11.
+        if env.IS_LINUX:
+            y = window_h - y - height
+
+        return (
+            (_native_px(surface.x(), ratio) + x) / ratio,
+            (_native_px(surface.y(), ratio) + y) / ratio,
+            width / ratio,
+            height / ratio,
         )
 
     def shifted_by(self, steps_x: int, steps_y: int) -> VideoShift:
