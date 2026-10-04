@@ -1,4 +1,6 @@
 from gridplayer.multiprocess.command_loop import CommandLoopThreaded
+from gridplayer.multiprocess.process_manager import describe_exit_code
+from gridplayer.utils.qt import translate
 from gridplayer.vlc_player.static import MediaInput
 from gridplayer.vlc_player.video_driver_base import VLCVideoDriver
 
@@ -7,13 +9,38 @@ class VLCVideoDriverThreaded(CommandLoopThreaded, VLCVideoDriver):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
+        self._is_cleanup_started = False
+
         self.crash_func = self.crash_thread
         self.cmd_loop_start_thread()
 
     def crash_thread(self, traceback_txt):
         self.crash.emit(traceback_txt)
 
+    def process_crashed(self, exit_code):
+        """The process the player ran in died, and the player with it.
+
+        Called from the process manager's thread.
+        """
+
+        self.player_gone()
+
+        # going anyway, and nobody is waiting to hear about it
+        if self._is_cleanup_started:
+            return
+
+        self._log.error(
+            f"Video process died with exit code {describe_exit_code(exit_code)}"
+        )
+
+        self.error.emit(translate("Video Error", "Video process crashed"))
+
+    def player_gone(self):
+        """Stop waiting on a player that can no longer answer."""
+
     def cleanup_start(self):
+        self._is_cleanup_started = True
+
         self.cmd_send("cleanup")
 
     def cleanup_wait(self):

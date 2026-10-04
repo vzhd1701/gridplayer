@@ -21,7 +21,9 @@ def force_terminate_resource_tracker():
 
 def force_terminate_children():
     for p in active_children():
-        p.terminate()
+        # the process manager closes the ones that exit as they do
+        with suppress(ValueError):
+            p.terminate()
 
 
 def force_terminate_children_all():

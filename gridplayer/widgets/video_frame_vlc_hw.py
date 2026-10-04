@@ -120,13 +120,17 @@ class VideoDriverVLCHW(VLCVideoDriverThreaded):
 
         self._released = Event()
 
-        process_manager.init_player(
+        self.player = process_manager.init_player(
             {"win_id": win_id},
             self.cmd_child_pipe(),
             vlc_options,
+            on_crash=self.process_crashed,
         )
 
     def player_released(self):
+        self._released.set()
+
+    def player_gone(self):
         self._released.set()
 
     def cleanup_wait(self):
@@ -136,6 +140,8 @@ class VideoDriverVLCHW(VLCVideoDriverThreaded):
             )
 
         super().cleanup_wait()
+
+        self.player.cleanup()
 
     def adjust_view(self, size, view):
         self.cmd_send("adjust_view", size, view)

@@ -11,6 +11,7 @@ import signal
 import subprocess
 import sys
 import time
+from multiprocessing import Pipe
 from unittest.mock import MagicMock
 
 import pytest
@@ -46,6 +47,9 @@ class _RecordingInstance:
         self.process = MagicMock()
         self.process.pid = 4321
         self.process.start.side_effect = lambda: self._events.append("start")
+
+        # the manager waits on it, and it never exits
+        self.process.sentinel, self._sentinel_end = Pipe(duplex=False)
 
 
 class _RecordingManager(ProcessManager):

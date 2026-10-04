@@ -179,7 +179,7 @@ class VideoDriverVLCSW(VLCVideoDriverThreaded):
         )
 
         self.player = process_manager.init_player(
-            {}, self.cmd_child_pipe(), vlc_options
+            {}, self.cmd_child_pipe(), vlc_options, on_crash=self.process_crashed
         )
 
     def init_frame(self, width, height, buffer_size):

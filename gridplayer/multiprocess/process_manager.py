@@ -1,6 +1,6 @@
 import logging
 import os
-from multiprocessing import Queue, active_children, get_start_method
+from multiprocessing import Queue, active_children, connection, get_start_method
 from threading import Condition, Lock
 
 from PyQt5.QtCore import QObject, pyqtSignal
@@ -13,15 +13,33 @@ from gridplayer.utils.misc import force_terminate_children, force_terminate_chil
 
 
 class PlayerInstance:
-    def __init__(self, instance, player_id):
+    def __init__(self, instance, player_id, manager):
         self._instance = instance
         self._player_id = player_id
+        self._manager = manager
 
     def get_player_shared_data(self):
         return self._instance.get_player_shared_data(self._player_id)
 
     def cleanup(self):
         self._instance.cleanup_player_shared_data(self._player_id)
+
+        self._manager.forget_player(self._instance.id, self._player_id)
+
+
+def describe_exit_code(exit_code) -> str:
+    if exit_code is None:
+        return "unknown"
+
+    # killed by a signal, as multiprocessing reports it
+    if exit_code < 0:
+        return f"signal {-exit_code}"
+
+    # Windows exception codes, such as 0xC0000005 for an access violation
+    if exit_code > 0xFFFF:
+        return f"{exit_code:#010x}"
+
+    return str(exit_code)
 
 
 class ProcessManager(CommandLoopThreaded, QObject):
@@ -35,7 +53,15 @@ class ProcessManager(CommandLoopThreaded, QObject):
         self.instances_lock = Lock()
         self.instances = {}
 
-        self.dying_instances = set()
+        # instances that said they are done, until their process is gone
+        self._exiting_instances = {}
+
+        # who to tell when an instance dies under its players, by instance
+        # and then by player; see init_player
+        self._crash_listeners = {}
+
+        # processes going down because we are taking them down
+        self._is_shutting_down = False
 
         # Our half of making sure no decoder process outlives us when we die
         # without running any cleanup at all. The children look after
@@ -77,15 +103,10 @@ class ProcessManager(CommandLoopThreaded, QObject):
             ]
 
     def get_instance(self, options):
-        self._reap_dead_instances()
-
         instance = self._get_available_instance(options)
 
         if instance is None:
             instance = self.create_instance(options=options)
-
-            with self.instances_lock:
-                self.instances[instance.id] = instance
 
             self._log.debug(f"Launching process {instance.id}")
 
@@ -95,6 +116,13 @@ class ProcessManager(CommandLoopThreaded, QObject):
             # child out of the job, but the child's own watchdog covers that:
             # it reports a parent that is already gone.
             self._job.assign(instance.process.pid)
+
+            # only once started: the loop waits on every process listed here
+            with self.instances_lock:
+                self.instances[instance.id] = instance
+
+            # and is waiting on the ones it knew of before this one
+            self.cmd_send_self("watch_processes")
 
         return instance
 
@@ -111,31 +139,124 @@ class ProcessManager(CommandLoopThreaded, QObject):
 
         return instance
 
-    def init_player(self, init_data, pipe, options):
+    def init_player(self, init_data, pipe, options, on_crash=None):
+        """Start a player in a process, and say if that process dies.
+
+        on_crash is called with the exit code when the process dies before
+        the player was released, from the thread the manager runs on.
+        """
+
         instance = self.get_instance(options)
         player_id = instance.request_new_player(init_data, pipe)
 
-        return PlayerInstance(instance, player_id)
+        if on_crash is not None:
+            with self.instances_lock:
+                is_alive = instance.id in self.instances
+                if is_alive:
+                    listeners = self._crash_listeners.setdefault(instance.id, {})
+                    listeners[player_id] = on_crash
+
+            # gone before there was anyone to tell
+            if not is_alive:
+                on_crash(None)
+
+        return PlayerInstance(instance, player_id, self)
+
+    def forget_player(self, inst_id, player_id):
+        with self.instances_lock:
+            self._crash_listeners.get(inst_id, {}).pop(player_id, None)
 
     def cleanup_instance(self, inst_id):
         with self.instances_lock:
             instance = self.instances.pop(inst_id, None)
 
-        if instance is None:
-            return
+            if instance is None:
+                return
 
-        self.dying_instances.add(inst_id)
+            self._crash_listeners.pop(inst_id, None)
+
+            # Its process goes on releasing VLC for a moment. Waiting for it
+            # here would hold up the news from every other process, so it is
+            # let go of once it exits; see cmd_loop_run.
+            self._exiting_instances[inst_id] = instance
+
+    def watch_processes(self):
+        """Nothing to do: getting here has the loop wait on new processes."""
+
+    def cmd_loop_run(self):
+        """Wait for news from the processes, and for the processes to exit.
+
+        A process that dies of an access violation says nothing on its way
+        out, and its pipes do not break either: this process holds both of
+        their ends. That it has exited is all there is to go by.
+        """
+
+        while True:
+            with self.instances_lock:
+                watched = {
+                    instance.process.sentinel: instance
+                    for instance in (
+                        *self.instances.values(),
+                        *self._exiting_instances.values(),
+                    )
+                }
+
+            ready = connection.wait([self._pipe, *watched])
+
+            # all of it before the exits: what an instance sent on its way
+            # out says whether it was meant to go
+            while self._pipe.poll():
+                command_name, command_args = self._pipe.recv()
+
+                if command_name == "loop_stop":
+                    return
+
+                self.cmd_process_command(command_args, command_name)
+
+            for sentinel in ready:
+                if sentinel in watched:
+                    self._process_exited(watched[sentinel])
+
+    def _process_exited(self, instance):
+        with self.instances_lock:
+            is_expected = self._exiting_instances.pop(instance.id, None) is not None
+            if not is_expected:
+                self.instances.pop(instance.id, None)
+
+            listeners = self._crash_listeners.pop(instance.id, {})
 
         instance.process.join()
+        exit_code = instance.process.exitcode
         instance.process.close()
 
-        self.dying_instances.remove(inst_id)
+        # its last player was released, and it was on its way out anyway
+        with instance.is_dead.get_lock():
+            is_expected = is_expected or bool(instance.is_dead.value)
+
+        if not is_expected and not self._is_shutting_down:
+            self._log.error(
+                f"Decoder process {instance.id} died"
+                f" with exit code {describe_exit_code(exit_code)},"
+                f" taking {len(listeners)} player(s) with it"
+            )
+
+            for on_crash in listeners.values():
+                self._report_crash(on_crash, exit_code)
 
         with self._instances_killed:
-            if not self.instances and not self.dying_instances:
+            if not self.instances and not self._exiting_instances:
                 self._instances_killed.notify()
 
+    def _report_crash(self, on_crash, exit_code):
+        # one player failing to hear of it must not keep it from the others
+        try:
+            on_crash(exit_code)
+        except Exception:
+            self._log.warning("Failed to report a crash", exc_info=True)
+
     def crash_all(self, traceback_txt):
+        self._is_shutting_down = True
+
         force_terminate_children_all()
 
         self.crash.emit(traceback_txt)
@@ -143,8 +264,12 @@ class ProcessManager(CommandLoopThreaded, QObject):
     def cleanup(self):
         self._log.debug("Waiting for processes to shut down...")
 
+        # Until each has released VLC; what is left of them after that is
+        # Python's own shutdown, and not worth holding the player up for.
         with self._instances_killed:
             self._instances_killed.wait_for(lambda: not self.instances, timeout=5)
+
+        self._is_shutting_down = True
 
         if active_children():
             self._log.warning("Force terminating child processes...")
@@ -182,21 +307,3 @@ class ProcessManager(CommandLoopThreaded, QObject):
                 return False
 
         return instance.process.is_alive()
-
-    def _reap_dead_instances(self):
-        with self.instances_lock:
-            dead_ids = [
-                inst_id
-                for inst_id, inst in self.instances.items()
-                if not self._is_instance_alive(inst)
-            ]
-
-        for inst_id in dead_ids:
-            self._log.warning(f"Reaping dead decoder process {inst_id}")
-            try:
-                self.cleanup_instance(inst_id)
-            except Exception:
-                self._log.warning(
-                    f"Failed to reap decoder process {inst_id}",
-                    exc_info=True,
-                )
