@@ -9,7 +9,7 @@ from gridplayer.utils.screenshots import ScreenshotView
 from gridplayer.vlc_player.image_decoder import ImageDecoder
 from gridplayer.vlc_player.instance import InstanceProcessVLC
 from gridplayer.vlc_player.player_base_threaded import VlcPlayerThreaded
-from gridplayer.vlc_player.rgb_buffer import FrameReader
+from gridplayer.vlc_player.rgb_buffer import FrameReader, holding
 from gridplayer.vlc_player.video_driver_base_threaded import VLCVideoDriverThreaded
 from gridplayer.widgets.video_frame_vlc_base import VideoFrameVLCProcess
 from gridplayer.widgets.video_surface_sw import SoftwareVideoSurface
@@ -188,8 +188,9 @@ class VideoDriverVLCSW(VLCVideoDriverThreaded):
         # a bigger frame means a new segment, which the player process has
         # already allocated by the time it tells us about it
         try:
-            with self._shared_memory:
-                self._shared_memory.attach(buffer_size)
+            with holding(self._shared_memory.lock) as is_locked:
+                if is_locked:
+                    self._shared_memory.attach(buffer_size)
         except RuntimeError as err:
             self._log.warning(f"Frame buffer is not there: {err}")
 
@@ -239,7 +240,11 @@ class VideoDriverVLCSW(VLCVideoDriverThreaded):
         self._show_scheduled = False
         self._frame_reader.clear()
         if self._shared_memory is not None:
-            with self._shared_memory:
+            # the mapping closed here is this side's own, so a lock the
+            # player died holding is no reason to keep it
+            with holding(self._shared_memory.lock) as is_locked:
+                if not is_locked:
+                    self._log.warning("Frame lock was not given back")
                 self._shared_memory.close()
                 self._shared_memory = None
 

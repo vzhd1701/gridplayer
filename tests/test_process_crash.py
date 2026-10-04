@@ -259,3 +259,26 @@ def test_closing_a_hardware_driver_does_not_wait_on_a_dead_player(mocker):
     start = time.monotonic()
     driver.cleanup()
     assert time.monotonic() - start < 1
+
+
+def test_closing_a_software_driver_does_not_wait_on_a_dead_players_lock(
+    monkeypatch,
+):
+    """A player that died writing a frame never gives the frame lock back."""
+    from gridplayer.vlc_player import rgb_buffer
+    from gridplayer.vlc_player.rgb_buffer import InProcessRgbBuffer
+    from gridplayer.widgets.video_frame_vlc_sw import VideoDriverVLCSW
+
+    monkeypatch.setattr(rgb_buffer, "FRAME_LOCK_TIMEOUT_S", 0.05)
+    driver = VideoDriverVLCSW(
+        image_dest=MagicMock(), process_manager=MagicMock(), vlc_options=()
+    )
+    memory = InProcessRgbBuffer()
+    memory.allocate(64)
+    memory.lock.acquire()
+    driver._shared_memory = memory
+
+    driver.cleanup()
+
+    assert driver._shared_memory is None
+    assert memory.size == 0

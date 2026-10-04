@@ -1,5 +1,22 @@
 import ctypes
+from contextlib import contextmanager
 from threading import Lock
+
+# A frame takes milliseconds to write. The writer can be another process,
+# though, and one that dies holding the lock never gives it back.
+FRAME_LOCK_TIMEOUT_S = 1.0
+
+
+@contextmanager
+def holding(lock):
+    """Hold the lock if it comes within the timeout; says whether it did."""
+
+    is_locked = lock.acquire(timeout=FRAME_LOCK_TIMEOUT_S)
+    try:
+        yield is_locked
+    finally:
+        if is_locked:
+            lock.release()
 
 
 class InProcessRgbBuffer:
@@ -97,7 +114,10 @@ class FrameReader:
 
         size = width * height * 4
 
-        with shared_memory:
+        with holding(shared_memory.lock) as is_locked:
+            if not is_locked:
+                return None
+
             frame = shared_memory.memory.buf
             if frame is None or len(frame) < size:
                 return None

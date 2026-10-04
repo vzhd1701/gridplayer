@@ -6,6 +6,7 @@ import pytest
 from PyQt5.QtWidgets import QApplication
 
 from gridplayer.multiprocess.safe_shared_memory import SafeSharedMemory
+from gridplayer.vlc_player import rgb_buffer
 from gridplayer.vlc_player.rgb_buffer import FrameReader, InProcessRgbBuffer
 from gridplayer.widgets.video_surface_sw import SoftwareVideoSurface
 
@@ -131,3 +132,23 @@ def test_screenshot_is_not_changed_by_the_next_frame():
 
     assert _pixels(shot) == b"\x01\x02\x03\xff" * 16
     assert _pixels(surface.frame_image()) == b"\x09\x08\x07\xff" * 16
+
+
+def test_a_frame_lock_never_given_back_skips_the_frame(monkeypatch):
+    """The writer can be a player process that died holding it."""
+    monkeypatch.setattr(rgb_buffer, "FRAME_LOCK_TIMEOUT_S", 0.05)
+    buffer = _buffer_with(b"\x01" * 64)
+    buffer.lock.acquire()
+
+    try:
+        assert FrameReader().read(buffer, 4, 4) is None
+    finally:
+        buffer.lock.release()
+
+
+def test_the_frame_lock_is_given_back_after_a_read():
+    buffer = _buffer_with(b"\x01" * 64)
+
+    FrameReader().read(buffer, 4, 4)
+
+    assert buffer.lock.acquire(blocking=False)
