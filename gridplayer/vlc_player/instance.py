@@ -17,6 +17,7 @@ from gridplayer.params.subtitle_style import (
 )
 from gridplayer.settings import Settings
 from gridplayer.utils.network import vlc_user_agent
+from gridplayer.utils.win32_com import keep_mta_alive
 from gridplayer.vlc_player.libvlc import vlc
 
 # Prepare `vsnprintf` function
@@ -147,6 +148,9 @@ class InstanceVLC:
         self._logger = logging.getLogger("VLC")
 
         warnings.filterwarnings("ignore", category=DeprecationWarning)
+
+        # before any video output can open a window
+        keep_mta_alive()
 
         self.vlc_instance = vlc.Instance(self.init_options)
 
