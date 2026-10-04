@@ -158,7 +158,7 @@ class QCustomSpinboxTimeInput(QDialog):
         super().__init__(**kwargs)
 
         self.timebox = QTimeEdit(self)
-        self.timebox.setDisplayFormat("hh:mm:ss")
+        self.timebox.setDisplayFormat("hh:mm:ss.zzz")
 
         self.buttons = QDialogButtonBox(
             QDialogButtonBox.Ok | QDialogButtonBox.Cancel, Qt.Horizontal, self
