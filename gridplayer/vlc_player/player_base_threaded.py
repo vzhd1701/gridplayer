@@ -6,6 +6,15 @@ class VlcPlayerThreaded(CommandLoopThreaded, VlcPlayerBase):
     def start(self):
         self.cmd_loop_start_thread(self.init_player)
 
+    def cmd_process_command(self, command_args, command_name):
+        # Commands go on arriving until the loop stops: the steps of a load,
+        # the re-applies VLC's events ask for. Behind the release they would
+        # all act on players libVLC has freed.
+        if self._is_released:
+            return
+
+        super().cmd_process_command(command_args, command_name)
+
     def notify_update_status(self, status, percent=0):
         self.cmd_send("update_status_emit", status, percent)
 

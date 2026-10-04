@@ -187,6 +187,9 @@ class VlcPlayerBase(ABC):
         self._tracks_manager: TracksManager | None = None
         self._last_video_size = (0, 0)
 
+        # the players above are gone, freed by libVLC; see cleanup
+        self._is_released = False
+
         # the view was last applied with no frame size to work it out from;
         # see cb_time_changed
         self._is_view_unsized = False
@@ -470,6 +473,11 @@ class VlcPlayerBase(ABC):
 
     def cleanup(self):
         self.is_video_initialized = False
+
+        # Anything still queued for this player, such as the re-applies VLC's
+        # events ask for, would reach it after libVLC frees it, through the
+        # tracks manager's reference if not ours: an access violation.
+        self._is_released = True
 
         if self._timer_extract_media_track is not None:
             self._timer_extract_media_track.cancel()
@@ -1573,7 +1581,7 @@ class VlcPlayerBase(ABC):
         self._schedule_tracks_reapply()
 
     def _reapply_tracks(self):
-        if self._tracks_manager is None:
+        if self._tracks_manager is None or self._is_released:
             self._restart_reapply_tries = 0
             return
 
