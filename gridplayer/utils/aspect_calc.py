@@ -388,6 +388,83 @@ def calc_dragged_shift(
     return VideoShift(shift_x, shift_y), (left_x, left_y)
 
 
+def calc_zoomed_shift(
+    frame_size: tuple[int, int],
+    pane_size: tuple[int, int],
+    view: ViewParams,
+    scale: float,
+    focus: tuple[float, float],
+    transform: VideoTransform | None = VideoTransform.NONE,
+    kept: tuple[float | None, float | None] = (None, None),
+) -> tuple[VideoShift, tuple[float | None, float | None]]:
+    """The shift that keeps what is under a pane point there, zoomed.
+
+    `focus` is the point in pane pixels, and the part of the picture under
+    it stays under it at the new scale: a zoom about that point rather
+    than about the anchor's place. Over no picture, the nearest part of the
+    picture on show is the one that stays.
+
+    On an axis where the zoomed picture is no bigger than the pane, it goes
+    to the anchor's place instead. Zoomed out about a point off to one side,
+    it would otherwise be left against that side of the room it has. Not
+    past the edges, where the picture stands wherever it is put.
+
+    Held within the bounds after (see calc_view_shift), so near an edge the
+    point slides out from under the focus rather than black coming in.
+
+    Also the frame point kept on each axis, for the next zoom about the same
+    focus to keep in its place, as `kept`: the shift is in whole frame
+    pixels, and the point found under the focus again each time would
+    wander by up to half of one a zoom, many screen pixels on a small video
+    zoomed far in. None where none was kept, the picture having gone to the
+    anchor's place or been held. The shift as it is, and nothing kept, where
+    there is nothing to work it out from.
+    """
+    fit = _Fit.of(frame_size, pane_size, view, transform)
+    zoomed = view._replace(scale=scale)
+    zoomed_fit = _Fit.of(frame_size, pane_size, zoomed, transform)
+
+    if fit is None or zoomed_fit is None:
+        return view.shift, (None, None)
+
+    pane_w, pane_h = pane_size
+    anchor_x, anchor_y = _ANCHOR_POSITIONS[view.anchor]
+    left, top = _picture_position(fit, pane_size, view)
+    focus_x, focus_y = focus
+    kept_x, kept_y = kept
+
+    wanted_x, kept_x = _zoomed_shift(
+        pane_w,
+        (left, fit.picture_w, fit.per_x),
+        (zoomed_fit.picture_w, zoomed_fit.per_x),
+        anchor_x,
+        focus_x,
+        kept_x,
+        view.is_shift_past_edges,
+    )
+    wanted_y, kept_y = _zoomed_shift(
+        pane_h,
+        (top, fit.picture_h, fit.per_y),
+        (zoomed_fit.picture_h, zoomed_fit.per_y),
+        anchor_y,
+        focus_y,
+        kept_y,
+        view.is_shift_past_edges,
+    )
+
+    shift = calc_view_shift(
+        frame_size,
+        pane_size,
+        zoomed._replace(shift=VideoShift(wanted_x, wanted_y)),
+        transform,
+    )
+
+    return shift, (
+        kept_x if shift.X == wanted_x else None,
+        kept_y if shift.Y == wanted_y else None,
+    )
+
+
 def calc_view_borders(
     frame_size: tuple[int, int],
     pane_size: tuple[int, int],
@@ -635,6 +712,43 @@ def _dragged(
         return held, 0.0
 
     return held, (wanted - held) * per
+
+
+def _zoomed_shift(
+    pane: float,
+    before: tuple[float, float, float],
+    after: tuple[float, float],
+    anchor: float,
+    focus: float,
+    kept: float | None,
+    is_shift_past_edges: bool,
+) -> tuple[int, float | None]:
+    """One axis of calc_zoomed_shift: the shift wanted, and the point kept.
+
+    `before` is where the picture's near edge stands, how long it is and
+    how many pane pixels a frame pixel takes; `after` the last two zoomed.
+    The point is in frame pixels from the picture's near edge.
+    """
+
+    start, picture, per = before
+    zoomed_picture, zoomed_per = after
+
+    if not is_shift_past_edges and zoomed_picture <= pane + _ROUNDING_SLACK:
+        return 0, None
+
+    if kept is None:
+        # the nearest part of the picture on show, which is not kept for
+        # the next zoom where it is not the focus: it moves as it zooms
+        at = min(max(focus, start, 0), start + picture, pane)
+        point = (at - start) / per
+        is_kept = abs(at - focus) <= _ROUNDING_SLACK
+    else:
+        at, point, is_kept = focus, kept, True
+
+    near = at - point * zoomed_per
+    wanted = (near - (pane - zoomed_picture) * anchor) / zoomed_per
+
+    return math.floor(wanted + 0.5), point if is_kept else None
 
 
 def _on_steps(shift: int, by: int, step: int) -> int:

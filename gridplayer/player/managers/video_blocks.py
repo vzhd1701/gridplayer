@@ -133,7 +133,7 @@ class VideoBlocksManager(ManagerBase):
     all_next_bookmark = pyqtSignal()
     all_previous_bookmark = pyqtSignal()
 
-    all_toggle_loop_random = pyqtSignal()
+    all_set_loop_random = pyqtSignal(bool)
     all_set_loop_start = pyqtSignal()
     all_set_loop_end = pyqtSignal()
     all_loop_chapter = pyqtSignal()
@@ -147,6 +147,7 @@ class VideoBlocksManager(ManagerBase):
     all_scale_increase = pyqtSignal()
     all_scale_decrease = pyqtSignal()
     all_scale_reset = pyqtSignal()
+    all_set_zoom_to_cursor = pyqtSignal(bool)
 
     all_crop = pyqtSignal(int, int, int, int)
     all_crop_reset = pyqtSignal()
@@ -154,7 +155,7 @@ class VideoBlocksManager(ManagerBase):
     all_set_anchor = pyqtSignal(VideoAnchor)
     all_shift_by = pyqtSignal(int, int)
     all_shift_reset = pyqtSignal()
-    all_toggle_shift_past_edges = pyqtSignal()
+    all_set_shift_past_edges = pyqtSignal(bool)
 
     all_set_aspect = pyqtSignal(VideoAspect)
     all_set_transform = pyqtSignal(VideoTransform)
@@ -225,6 +226,7 @@ class VideoBlocksManager(ManagerBase):
             "is_any_videos_have_video": self.is_any_videos_have_video,
             "is_any_videos_have_chapters": self.is_any_videos_have_chapters,
             "is_any_videos_have_bookmarks": self.is_any_videos_have_bookmarks,
+            "is_all_videos_param_set_to": self.is_all_videos_param_set_to,
             "is_seek_sync_mode_set_to": self.is_seek_sync_mode_set_to,
             "set_seek_sync_mode": self.set_seek_sync_mode,
             "reload_all": self.reload_videos,
@@ -451,6 +453,23 @@ class VideoBlocksManager(ManagerBase):
         # a live stream never has any; see VideoBlock._update_chapters
         return any(vb.chapters for vb in self._ctx.video_blocks.initialized)
 
+    def is_all_videos_param_set_to(self, param_name, param_value):
+        """Whether every video has it so, which ticks the choice for all.
+
+        Every one, stopped and loading too: a choice for all is made for
+        them as well. Neither choice is ticked while they differ.
+        """
+
+        params = [
+            vb.video_params
+            for vb in self._ctx.video_blocks
+            if vb.video_params is not None
+        ]
+
+        return bool(params) and all(
+            getattr(p, param_name) == param_value for p in params
+        )
+
     def is_any_videos_have_bookmarks(self):
         return any(
             vb.bookmarks and not vb.is_live for vb in self._ctx.video_blocks.initialized
@@ -591,7 +610,7 @@ class VideoBlocksManager(ManagerBase):
             (self.all_previous_chapter, vb.previous_chapter),
             (self.all_next_bookmark, vb.next_bookmark),
             (self.all_previous_bookmark, vb.previous_bookmark),
-            (self.all_toggle_loop_random, vb.toggle_loop_random),
+            (self.all_set_loop_random, vb.set_loop_random),
             (self.all_set_loop_start, vb.set_loop_start),
             (self.all_set_loop_end, vb.set_loop_end),
             (self.all_loop_chapter, vb.loop_chapter),
@@ -603,12 +622,13 @@ class VideoBlocksManager(ManagerBase):
             (self.all_scale_increase, vb.scale_increase),
             (self.all_scale_decrease, vb.scale_decrease),
             (self.all_scale_reset, vb.scale_reset),
+            (self.all_set_zoom_to_cursor, vb.set_zoom_to_cursor),
             (self.all_crop, vb.crop),
             (self.all_crop_reset, vb.crop_reset),
             (self.all_set_anchor, vb.set_anchor),
             (self.all_shift_by, vb.shift_by),
             (self.all_shift_reset, vb.shift_reset),
-            (self.all_toggle_shift_past_edges, vb.toggle_shift_past_edges),
+            (self.all_set_shift_past_edges, vb.set_shift_past_edges),
             (self.all_set_aspect, vb.set_aspect),
             (self.all_set_transform, vb.set_transform),
             (self.all_take_screenshot, vb.take_screenshot),

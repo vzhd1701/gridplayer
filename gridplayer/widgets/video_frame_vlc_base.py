@@ -43,6 +43,7 @@ from gridplayer.utils.aspect_calc import (
     calc_view_placement,
     calc_vlc_picture,
     calc_whole_placement,
+    calc_zoomed_shift,
 )
 from gridplayer.utils.qt import MILLISECONDS, QABC, qt_connect
 from gridplayer.utils.screenshots import ScreenshotView
@@ -509,6 +510,9 @@ class VideoFrameVLC(QWidget, metaclass=QABC):
 
         self._view = ViewParams()
         self._transform = VideoTransform.NONE
+        # the frame points the last zoom about a point kept under it, and
+        # what for: see zoomed_shift
+        self._zoom_kept = None
 
         self._is_status_change_in_progress = False
         self._is_cleanup_requested = False
@@ -1237,6 +1241,69 @@ class VideoFrameVLC(QWidget, metaclass=QABC):
             self._transform,
         )
 
+    def zoomed_shift(self, scale: float, focus: tuple[float, float]) -> VideoShift:
+        """The shift a zoom to `scale` about a pane point comes to.
+
+        See calc_zoomed_shift. The point is where the viewer sees it, on
+        the picture as drawn (see _view_point). The frame points it keeps
+        under it are kept here, for the next zoom to go on from where it
+        is about the same point of the same picture in the same pane: one
+        wheel notch after another with the pointer still.
+        """
+
+        frame_size, pane_size = self._view_frame_size(), self._pane_size()
+        kept = (None, None)
+
+        if self._zoom_kept is not None:
+            kept_for, kept_points = self._zoom_kept
+
+            if kept_for == (frame_size, pane_size, focus, self._view):
+                kept = kept_points
+
+        shift, kept = calc_zoomed_shift(
+            frame_size,
+            pane_size,
+            self._view,
+            scale,
+            self._view_point(focus),
+            self._transform,
+            kept,
+        )
+
+        zoomed = self._view._replace(scale=scale, shift=shift)
+        self._zoom_kept = ((frame_size, pane_size, focus, zoomed), kept)
+
+        return shift
+
+    def _view_point(self, point: tuple[float, float]) -> tuple[float, float]:
+        """Where a point of the pane is in the view's placement of the picture.
+
+        The same point, but on a native surface, where VLC draws the
+        picture a little bigger than the view has it (see
+        _shown_picture_rect): what is on show at a point off the middle is
+        what the view has a little nearer the middle. Zoomed about the
+        point as drawn instead, the part of the picture under the pointer
+        would slide away from it, by ~40 pixels at 10x near a side of a
+        900 pixel cell.
+        """
+
+        placement = self.view_placement()
+        shown = self._shown_picture_rect()
+
+        if placement is None or shown is None:
+            return point
+
+        target_x, target_y, target_w, target_h = placement.target
+        shown_x, shown_y, shown_w, shown_h = shown
+
+        if shown_w <= 0 or shown_h <= 0:
+            return point
+
+        return (
+            target_x + (point[0] - shown_x) * target_w / shown_w,
+            target_y + (point[1] - shown_y) * target_h / shown_h,
+        )
+
     def shift_range(self) -> tuple[VideoShift, VideoShift]:
         """The least and the most the shift can be; see calc_shift_range."""
 
@@ -1313,6 +1380,17 @@ class VideoFrameVLC(QWidget, metaclass=QABC):
 
     def set_scale(self, scale) -> None:
         self._view = self._view._replace(scale=scale)
+
+        self.adjust_view()
+
+    def set_zoom(self, scale, shift: VideoShift) -> None:
+        """Zoom and move the picture in one, for a zoom about a point.
+
+        One after the other, the picture would be on show zoomed about the
+        anchor for a moment before it moved: the hardware drivers place
+        VLC's window at once, and the crop reaches the player after.
+        """
+        self._view = self._view._replace(scale=scale, shift=shift)
 
         self.adjust_view()
 

@@ -76,6 +76,7 @@ class PlaylistVideoDefaults(BaseModel):
     initial_state: VideoInitialState | None = None
     rate: float | None = None
     scale: float | None = None
+    zoom_to_cursor: bool | None = None
     volume: float | None = None
     color: Color | None = None
     crop: VideoCrop | None = None

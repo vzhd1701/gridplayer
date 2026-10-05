@@ -460,6 +460,13 @@ ACTIONS = MappingProxyType(
             "func": ("active", "scale_reset"),
             "show_if": "is_active_has_video",
         },
+        "Zoom to Cursor": {
+            "title": translate("Zoom", "Zoom to Cursor"),
+            "icon": "empty",
+            "func": ("active", "toggle_zoom_to_cursor"),
+            "check_if": ("is_active_param_set_to", "is_zoom_to_cursor", True),
+            "show_if": "is_active_has_video",
+        },
         "Set Crop": {
             "title": translate("Actions", "Set Crop"),
             "icon": "empty",
@@ -1436,10 +1443,18 @@ ACTIONS = MappingProxyType(
             "func": ("all", "next_bookmark"),
             "show_if": "is_any_videos_have_bookmarks",
         },
-        "Random Loop [ALL]": {
-            "title": translate("Actions", "Random Loop"),
-            "icon": "loop-random",
-            "func": ("all", "toggle_loop_random"),
+        "Random Loop On [ALL]": {
+            "title": translate("Actions", "On"),
+            "icon": "empty",
+            "func": ("all", "set_loop_random", True),
+            "check_if": ("is_all_videos_param_set_to", "is_start_random", True),
+            "show_if": "is_any_videos_seekable",
+        },
+        "Random Loop Off [ALL]": {
+            "title": translate("Actions", "Off"),
+            "icon": "empty",
+            "func": ("all", "set_loop_random", False),
+            "check_if": ("is_all_videos_param_set_to", "is_start_random", False),
             "show_if": "is_any_videos_seekable",
         },
         "Set Loop Start [ALL]": {
@@ -1553,6 +1568,20 @@ ACTIONS = MappingProxyType(
             "func": ("all", "scale_reset"),
             "show_if": "is_any_videos_have_video",
         },
+        "Zoom to Cursor On [ALL]": {
+            "title": translate("Actions", "On"),
+            "icon": "empty",
+            "func": ("all", "set_zoom_to_cursor", True),
+            "check_if": ("is_all_videos_param_set_to", "is_zoom_to_cursor", True),
+            "show_if": "is_any_videos_have_video",
+        },
+        "Zoom to Cursor Off [ALL]": {
+            "title": translate("Actions", "Off"),
+            "icon": "empty",
+            "func": ("all", "set_zoom_to_cursor", False),
+            "check_if": ("is_all_videos_param_set_to", "is_zoom_to_cursor", False),
+            "show_if": "is_any_videos_have_video",
+        },
         "Crop Left + [ALL]": {
             "title": translate("Actions", "Crop Left +"),
             "key": "Shift+U",
@@ -1644,10 +1673,18 @@ ACTIONS = MappingProxyType(
             "func": ("all", "shift_by", 0, 1),
             "show_if": "is_any_videos_have_video",
         },
-        "Move Past Edges [ALL]": {
-            "title": translate("Actions", "Move Past Edges"),
+        "Move Past Edges On [ALL]": {
+            "title": translate("Actions", "On"),
             "icon": "empty",
-            "func": ("all", "toggle_shift_past_edges"),
+            "func": ("all", "set_shift_past_edges", True),
+            "check_if": ("is_all_videos_param_set_to", "is_shift_past_edges", True),
+            "show_if": "is_any_videos_have_video",
+        },
+        "Move Past Edges Off [ALL]": {
+            "title": translate("Actions", "Off"),
+            "icon": "empty",
+            "func": ("all", "set_shift_past_edges", False),
+            "check_if": ("is_all_videos_param_set_to", "is_shift_past_edges", False),
             "show_if": "is_any_videos_have_video",
         },
         "Position Reset [ALL]": {

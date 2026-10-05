@@ -171,6 +171,9 @@ class Video(BaseModel):
     scale: Annotated[float, Field(ge=MIN_SCALE, le=MAX_SCALE)] = session_field(
         "video_defaults/scale"
     )
+    # whether a zoom goes about the point under the pointer, rather than
+    # about the anchor's place, while the pointer is over the video
+    is_zoom_to_cursor: bool = session_field("video_defaults/zoom_to_cursor")
     crop: VideoCrop = session_field("video_defaults/crop")
     anchor: VideoAnchor = session_field("video_defaults/anchor")
     # where the picture is moved from the anchor, in video pixels; like the

@@ -116,6 +116,7 @@ _default_settings = {
     "video_defaults/initial_state": VideoInitialState.PLAYING,
     "video_defaults/rate": 1.0,
     "video_defaults/scale": 1.0,
+    "video_defaults/zoom_to_cursor": False,
     "video_defaults/volume": 1.0,
     "video_defaults/color": "#ffffff",
     "video_defaults/crop": VideoCrop(0, 0, 0, 0),

@@ -25,6 +25,7 @@ from gridplayer.utils.aspect_calc import (
     calc_vlc_picture,
     calc_whole_geometry,
     calc_whole_placement,
+    calc_zoomed_shift,
 )
 
 VIDEO = (1920, 1080)
@@ -414,6 +415,149 @@ class TestDraggedShift:
         assert calc_dragged_shift((0, 0), SQUARE, view, (50, 0)) == (
             VideoShift(10, 0),
             (0.0, 0.0),
+        )
+
+
+def _under(view, focus, frame=VIDEO, pane=SQUARE, transform=VideoTransform.NONE):
+    """The frame point under a pane point, from what the crop keeps."""
+
+    left, top, width, height = calc_picture_rect(frame, pane, view, transform)
+    _, _, region_w, region_h = calc_crop_region(frame, view.crop)
+
+    return (
+        (focus[0] - left) * region_w / width,
+        (focus[1] - top) * region_h / height,
+    )
+
+
+class TestZoomedShift:
+    """A zoom about a point: what is under it stays under it."""
+
+    def test_it_keeps_the_point_under_the_focus(self):
+        # 1600x900 at 900/1080, (1140, 360) under (600, 300); at 2x that
+        # takes the picture to (-1300, -300), 150 pane pixels from the
+        # middle each way, 90 frame pixels at 1800/1080
+        shift, kept = calc_zoomed_shift(VIDEO, SQUARE, _view(), 2.0, (600, 300))
+
+        assert shift == VideoShift(-90, 90)
+        assert kept == _approx((1140, 360))
+
+    def test_about_the_anchor_s_place_it_is_the_usual_zoom(self):
+        shift, _ = calc_zoomed_shift(VIDEO, SQUARE, _view(), 2.0, (450, 450))
+
+        assert shift == NO_SHIFT
+
+    @pytest.mark.parametrize(
+        ("view", "transform"),
+        [
+            (_view(), VideoTransform.NONE),
+            (_view(anchor=VideoAnchor.TOP_LEFT), VideoTransform.NONE),
+            (_view(anchor=VideoAnchor.BOTTOM_RIGHT), VideoTransform.NONE),
+            (_view(shift=VideoShift(-200, 0)), VideoTransform.NONE),
+            (_view(crop=VideoCrop(100, 40, 300, 0)), VideoTransform.NONE),
+            (_view(aspect=VideoAspect.STRETCH), VideoTransform.NONE),
+            (_view(scale=1.5, is_shift_past_edges=True), VideoTransform.NONE),
+            (_view(), VideoTransform.ROTATE_90),
+        ],
+    )
+    @pytest.mark.parametrize("scale", [1.1, 2.0, 3.7])
+    def test_wherever_the_picture_is_and_however_it_is_shown(
+        self, view, transform, scale
+    ):
+        focus = (530, 410)
+        point = _under(view, focus, transform=transform)
+
+        shift, kept = calc_zoomed_shift(VIDEO, SQUARE, view, scale, focus, transform)
+        zoomed = view._replace(scale=scale, shift=shift)
+
+        assert kept == _approx(point)
+        # off by what the whole frame pixels the shift is in round away
+        assert _under(zoomed, focus, transform=transform) == pytest.approx(
+            point, abs=0.5
+        )
+
+    def test_near_an_edge_the_point_slides_off_rather_than_black_coming_in(self):
+        view = _view(scale=2.0)
+        _, highest = calc_shift_range(VIDEO, SQUARE, view)
+        view = view._replace(shift=highest)
+
+        # the left edge in the pane's: zoomed out about a point beside it,
+        # it would come away from the edge
+        shift, kept = calc_zoomed_shift(VIDEO, SQUARE, view, 1.5, (5, 450))
+
+        zoomed = view._replace(scale=1.5)
+        assert shift.X == calc_shift_range(VIDEO, SQUARE, zoomed)[1].X
+        assert kept[0] is None
+
+    def test_an_axis_the_picture_fits_on_goes_to_the_anchor_s_place(self):
+        """Letterboxed, 900x506.25, and still only 759.375 tall at 1.5x."""
+
+        view = _view(aspect=VideoAspect.NONE, shift=VideoShift(0, 100))
+
+        shift, kept = calc_zoomed_shift(VIDEO, SQUARE, view, 1.5, (300, 300))
+
+        assert shift.Y == 0
+        assert kept[1] is None
+        # across it is bigger than the pane, and follows the focus
+        assert shift.X != 0
+        assert kept[0] is not None
+
+    def test_past_the_edges_it_follows_the_focus_on_that_axis_too(self):
+        view = _view(aspect=VideoAspect.NONE, is_shift_past_edges=True)
+        point = _under(view, (300, 300))
+
+        shift, kept = calc_zoomed_shift(VIDEO, SQUARE, view, 1.5, (300, 300))
+
+        assert shift.Y != 0
+        assert kept == _approx(point)
+
+    def test_over_the_bars_the_nearest_part_of_the_picture_stays(self):
+        """The picture's top row, at 196.875 in the pane, stays there: at
+        1.5x, 70.3125 from the top centred, 180 frame pixels further down
+        at 0.703125 pane pixels each. Not kept, the edge being no focus."""
+
+        view = _view(aspect=VideoAspect.NONE, is_shift_past_edges=True)
+
+        shift, kept = calc_zoomed_shift(VIDEO, SQUARE, view, 1.5, (450, 50))
+
+        assert shift.Y == 180
+        assert kept[1] is None
+        assert kept[0] is not None
+
+    def test_zoomed_in_and_back_out_about_a_point_it_is_where_it_was(self):
+        scales = [round(1 + step / 10, 1) for step in range(1, 21)]
+        view, kept = _view(), (None, None)
+
+        for scale in [*scales, *reversed(scales[:-1]), 1.0]:
+            shift, kept = calc_zoomed_shift(
+                VIDEO, SQUARE, view, scale, (600, 300), kept=kept
+            )
+            view = view._replace(scale=scale, shift=shift)
+
+        assert view.shift == NO_SHIFT
+
+    def test_the_kept_point_does_not_wander_far_zoomed_in(self):
+        """640x360 in a 1600x900 pane at 10x is 25 screen pixels a frame
+        pixel: zoomed about the point found under the focus each time, it
+        could wander by half of one a notch."""
+
+        small, pane, focus = (640, 360), (1600, 900), (1003, 517)
+        view, kept = _view(), (None, None)
+        point = _under(view, focus, small, pane)
+
+        for step in range(1, 91):
+            scale = round(1 + step / 10, 1)
+            shift, kept = calc_zoomed_shift(small, pane, view, scale, focus, kept=kept)
+            view = view._replace(scale=scale, shift=shift)
+
+            assert _under(view, focus, small, pane) == pytest.approx(point, abs=0.5)
+
+    def test_nothing_to_work_from_leaves_it_as_it_is(self):
+        view = _view(shift=VideoShift(10, 0))
+
+        assert calc_zoomed_shift((0, 0), SQUARE, view, 2.0, (5, 5)) == (
+            VideoShift(10, 0),
+            (None, None),
         )
 
 

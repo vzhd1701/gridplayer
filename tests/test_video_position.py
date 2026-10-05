@@ -10,10 +10,11 @@ let past them as far as leaves half the picture on show.
 
 import json
 from functools import partial
+from types import SimpleNamespace
 from unittest.mock import MagicMock, Mock
 
 import pytest
-from PyQt5.QtCore import QSettings
+from PyQt5.QtCore import QPoint, QRect, QSettings
 from PyQt5.QtWidgets import QApplication
 
 from gridplayer.models.playlist import Playlist, PlaylistVideoDefaults
@@ -22,6 +23,7 @@ from gridplayer.params.actions import ACTIONS
 from gridplayer.params.defaults_fields import VIDEO_FIELDS, FieldKind
 from gridplayer.params.menu import SECTIONS, SUBMENUS
 from gridplayer.params.static import (
+    MAX_SCALE,
     HWCropBorderOffset,
     VideoAnchor,
     VideoAspect,
@@ -30,9 +32,13 @@ from gridplayer.params.static import (
     VideoTransform,
     ViewParams,
 )
+from gridplayer.player.managers.menu import MenuManager
+from gridplayer.player.managers.video_blocks import VideoBlocksManager
+from gridplayer.playlist_settings import PlaylistSettings, overrides_from_playlist
 from gridplayer.settings import Settings
 from gridplayer.utils.aspect_calc import calc_view_geometry, calc_vlc_picture
 from gridplayer.vlc_player.static import VideoTrack
+from gridplayer.widgets import video_block as video_block_module
 from gridplayer.widgets import video_frame_vlc_base as vlc_base
 from gridplayer.widgets.video_block import VideoBlock
 from gridplayer.widgets.video_frame_vlc_hw_sp import VideoFrameVLCHWSP
@@ -124,6 +130,42 @@ class TestPastTheEdgesIsRemembered:
         assert not Playlist.parse(json.dumps(doc)).videos[0].is_shift_past_edges
 
 
+class TestZoomToCursorIsRemembered:
+    def test_a_new_video_zooms_about_the_alignment(self):
+        assert not Video(uri=URI).is_zoom_to_cursor
+
+    def test_a_new_video_zooms_to_the_cursor_as_the_defaults_say(self):
+        Settings().set("video_defaults/zoom_to_cursor", True)
+
+        assert Video(uri=URI).is_zoom_to_cursor
+
+    def test_a_playlist_can_carry_its_own_default(self):
+        assert PlaylistVideoDefaults().zoom_to_cursor is None
+        assert PlaylistVideoDefaults(zoom_to_cursor=True).zoom_to_cursor
+
+    def test_the_playlist_s_default_is_the_one_its_new_videos_get(self):
+        playlist = Playlist(video_defaults=PlaylistVideoDefaults(zoom_to_cursor=True))
+
+        overrides = overrides_from_playlist(playlist)
+        PlaylistSettings().replace(overrides)
+
+        assert overrides == {"video_defaults/zoom_to_cursor": True}
+        assert Video(uri=URI).is_zoom_to_cursor
+
+    def test_a_playlist_keeps_it_for_each_video(self):
+        video = Video(uri=URI, is_zoom_to_cursor=True)
+
+        loaded = Playlist.parse(Playlist(videos=[video]).dumps()).videos[0]
+
+        assert loaded.is_zoom_to_cursor
+
+    def test_an_older_playlist_zooms_about_the_alignment(self):
+        doc = json.loads(Playlist(videos=[Video(uri=URI)]).dumps())
+        del doc["videos"][0]["is_zoom_to_cursor"]
+
+        assert not Playlist.parse(json.dumps(doc)).videos[0].is_zoom_to_cursor
+
+
 class TestPlaylistSettings:
     def test_the_alignment_sits_under_crop_in_the_video_section(self):
         keys = [f.settings_key for f in VIDEO_FIELDS]
@@ -147,6 +189,17 @@ class TestPlaylistSettings:
         assert spec.kind == FieldKind.CHECKBOX
         assert spec.video_attr == "shift_past_edges"
 
+    def test_zooming_to_the_cursor_sits_under_the_zoom(self):
+        keys = [f.settings_key for f in VIDEO_FIELDS]
+        at = keys.index("video_defaults/scale")
+
+        assert keys[at + 1] == "video_defaults/zoom_to_cursor"
+
+        spec = VIDEO_FIELDS[at + 1]
+        assert spec.section == "Video"
+        assert spec.kind == FieldKind.CHECKBOX
+        assert spec.video_attr == "zoom_to_cursor"
+
     def test_there_is_no_default_for_the_position(self):
         """A place moved to in one video means nothing for another."""
 
@@ -163,16 +216,36 @@ def _submenu(section, name):
     return next(item for item in video if isinstance(item, tuple) and item[0] == name)
 
 
-def _all_videos_submenu(name):
+def _all_videos_section(name):
     all_videos = next(
         item
         for item in SECTIONS["video_all"]
         if isinstance(item, tuple) and item[0] == "[ALL]"
     )
-    video = next(
-        item for item in all_videos if isinstance(item, tuple) and item[0] == "Video"
+    return next(
+        item for item in all_videos if isinstance(item, tuple) and item[0] == name
     )
+
+
+def _all_videos_submenu(name):
+    video = _all_videos_section("Video")
     return next(item for item in video if isinstance(item, tuple) and item[0] == name)
+
+
+def _assert_set_for_all(name, param):
+    """On and Off, each setting it so for every video, and ticked where
+    every video already has it so."""
+
+    assert name in SUBMENUS
+
+    for word, value in (("On", True), ("Off", False)):
+        action = ACTIONS[f"{name} {word} [ALL]"]
+        target, command, arg = action["func"]
+
+        assert (target, arg) == ("all", value)
+        assert hasattr(VideoBlock, command)
+        assert hasattr(VideoBlocksManager, f"all_{command}")
+        assert action["check_if"] == ("is_all_videos_param_set_to", param, value)
 
 
 class TestTheMenu:
@@ -244,14 +317,12 @@ class TestTheMenu:
 
         all_videos = _all_videos_submenu("Position")
 
-        assert (
-            all_videos[all_videos.index("Move Down [ALL]") + 1]
-            == "Move Past Edges [ALL]"
+        assert all_videos[all_videos.index("Move Down [ALL]") + 1] == (
+            "Move Past Edges",
+            "Move Past Edges On [ALL]",
+            "Move Past Edges Off [ALL]",
         )
-        assert ACTIONS["Move Past Edges [ALL]"]["func"] == (
-            "all",
-            "toggle_shift_past_edges",
-        )
+        _assert_set_for_all("Move Past Edges", "is_shift_past_edges")
 
     def test_the_dialog_is_next_to_the_reset(self):
         position = _submenu("video_active", "Position")
@@ -272,6 +343,46 @@ class TestTheMenu:
         anchors = [ACTIONS[name]["func"] for name in position[1:10]]
 
         assert anchors == [("all", "set_anchor", a) for a in VideoAnchor]
+
+    def test_zooming_to_the_cursor_is_a_toggle_at_the_bottom_of_zoom(self):
+        action = ACTIONS["Zoom to Cursor"]
+
+        assert _submenu("video_active", "Zoom")[-2:] == ("---", "Zoom to Cursor")
+        assert action["func"] == ("active", "toggle_zoom_to_cursor")
+        assert action["check_if"] == (
+            "is_active_param_set_to",
+            "is_zoom_to_cursor",
+            True,
+        )
+        assert action["show_if"] == "is_active_has_video"
+        assert hasattr(VideoBlock, "toggle_zoom_to_cursor")
+
+    def test_every_video_can_be_set_to_zoom_to_the_cursor_or_not(self):
+        assert _all_videos_submenu("Zoom")[-2:] == (
+            "---",
+            ("Zoom to Cursor", "Zoom to Cursor On [ALL]", "Zoom to Cursor Off [ALL]"),
+        )
+        _assert_set_for_all("Zoom to Cursor", "is_zoom_to_cursor")
+
+    def test_every_video_can_be_set_to_loop_at_random_or_not(self):
+        loop = next(
+            item
+            for item in _all_videos_section("Playback")
+            if isinstance(item, tuple) and item[0] == "Loop"
+        )
+
+        assert loop[1] == (
+            "Random Loop",
+            "Random Loop On [ALL]",
+            "Random Loop Off [ALL]",
+        )
+        _assert_set_for_all("Random Loop", "is_start_random")
+
+    def test_the_old_flips_for_all_are_gone(self):
+        """Each video flipped its own way: mixed, they stayed mixed."""
+
+        for name in ("Zoom to Cursor", "Move Past Edges", "Random Loop"):
+            assert f"{name} [ALL]" not in ACTIONS
 
 
 def _block(anchor=VideoAnchor.CENTER, shift=NO_SHIFT, is_shift_past_edges=False):
@@ -376,6 +487,30 @@ class TestOnOneVideo:
         assert block.video_params.shift == VideoShift(0, -420)
         block.info_change.emit.assert_not_called()
 
+    def test_a_stopped_video_keeps_it_for_when_it_plays(self):
+        """Set for every video at once: one stopped has no player to tell."""
+
+        block = _block()
+        block.video_driver = None
+        block.is_video_initialized = False
+        block.video_tracks = []
+
+        block.set_shift_past_edges(True)
+
+        assert block.video_params.is_shift_past_edges
+
+    def test_one_still_loading_gets_it_into_its_view(self):
+        block = _block()
+        block.is_video_initialized = False
+        block.video_tracks = []
+
+        block.set_shift_past_edges(True)
+
+        assert block.video_params.is_shift_past_edges
+        block.video_driver.set_shift_past_edges.assert_called_once_with(True)
+        # where it stands is worked out once there is a picture to place
+        block.video_driver.shifted_by.assert_not_called()
+
     def test_a_video_without_a_picture_is_left_alone(self):
         block = _block()
         block.video_tracks = []
@@ -386,6 +521,251 @@ class TestOnOneVideo:
         assert block.video_params.anchor == VideoAnchor.CENTER
         block.video_driver.set_anchor.assert_not_called()
         block.video_driver.shifted_by.assert_not_called()
+
+
+def _zooming_block(is_zoom_to_cursor=True, scale=1.0, shift=NO_SHIFT, focus=(600, 300)):
+    block = Mock(spec=VideoBlock)
+    block.video_params = Video(
+        uri=URI, scale=scale, shift=shift, is_zoom_to_cursor=is_zoom_to_cursor
+    )
+    block.video_tracks = [0]
+    block.is_video_initialized = True
+    block.video_driver = Mock()
+    block.video_driver.zoomed_shift.return_value = VideoShift(-90, 90)
+    block._zoom_focus.return_value = focus
+    for name in (
+        "scale_increase",
+        "scale_decrease",
+        "scale_reset",
+        "set_scale",
+        "_zoom_to",
+        "_set_zoom",
+        "toggle_zoom_to_cursor",
+        "set_zoom_to_cursor",
+    ):
+        setattr(block, name, partial(getattr(VideoBlock, name), block))
+    return block
+
+
+class TestZoomingToTheCursor:
+    def test_it_zooms_and_moves_the_picture_in_one_go(self):
+        block = _zooming_block()
+
+        block.scale_increase()
+
+        block.video_driver.zoomed_shift.assert_called_once_with(1.1, (600, 300))
+        block.video_driver.set_zoom.assert_called_once_with(1.1, VideoShift(-90, 90))
+        block.video_driver.set_scale.assert_not_called()
+        assert block.video_params.scale == 1.1
+        assert block.video_params.shift == VideoShift(-90, 90)
+        block.info_change.emit.assert_called_once_with("Zoom: 1.1")
+
+    def test_out_as_well_as_in(self):
+        block = _zooming_block(scale=2.0)
+
+        block.scale_decrease()
+
+        block.video_driver.zoomed_shift.assert_called_once_with(1.9, (600, 300))
+        assert block.video_params.scale == 1.9
+
+    def test_with_the_pointer_elsewhere_it_zooms_about_the_alignment(self):
+        block = _zooming_block(shift=VideoShift(20, 0), focus=None)
+
+        block.scale_increase()
+
+        block.video_driver.set_scale.assert_called_once_with(1.1)
+        block.video_driver.zoomed_shift.assert_not_called()
+        assert block.video_params.shift == VideoShift(20, 0)
+
+    def test_as_far_as_it_goes_it_does_not_move(self):
+        block = _zooming_block(scale=MAX_SCALE)
+
+        block.scale_increase()
+
+        block.video_driver.zoomed_shift.assert_not_called()
+        block.video_driver.set_scale.assert_called_once_with(MAX_SCALE)
+
+    def test_the_reset_puts_the_picture_back_in_its_place(self):
+        block = _zooming_block(scale=3.0, shift=VideoShift(-90, 90), focus=None)
+
+        block.scale_reset()
+
+        block.video_driver.set_zoom.assert_called_once_with(1.0, NO_SHIFT)
+        assert block.video_params.scale == 1.0
+        assert block.video_params.shift == NO_SHIFT
+
+    def test_zoomed_about_the_alignment_the_reset_leaves_a_move_alone(self):
+        block = _zooming_block(
+            is_zoom_to_cursor=False, scale=3.0, shift=VideoShift(-90, 90)
+        )
+
+        block.scale_reset()
+
+        block.video_driver.set_scale.assert_called_once_with(1.0)
+        block.video_driver.set_zoom.assert_not_called()
+        assert block.video_params.shift == VideoShift(-90, 90)
+
+    def test_it_can_be_switched_on_and_off(self):
+        block = _zooming_block(is_zoom_to_cursor=False)
+
+        block.toggle_zoom_to_cursor()
+        assert block.video_params.is_zoom_to_cursor
+
+        block.toggle_zoom_to_cursor()
+        assert not block.video_params.is_zoom_to_cursor
+
+    def test_a_video_without_a_picture_is_left_alone(self):
+        block = _zooming_block()
+        block.video_tracks = []
+
+        block.scale_increase()
+        block.toggle_zoom_to_cursor()
+
+        block.video_driver.zoomed_shift.assert_not_called()
+        assert block.video_params.is_zoom_to_cursor
+
+    def test_a_stopped_video_keeps_it_for_when_it_plays(self):
+        block = _zooming_block(is_zoom_to_cursor=False)
+        block.video_driver = None
+        block.is_video_initialized = False
+        block.video_tracks = []
+
+        block.set_zoom_to_cursor(True)
+
+        assert block.video_params.is_zoom_to_cursor
+
+
+def _manager(*videos):
+    context = SimpleNamespace()
+    manager = VideoBlocksManager(context=context, parent=None)
+    # in place of the empty one it starts with
+    context.video_blocks = [SimpleNamespace(video_params=video) for video in videos]
+    return manager
+
+
+class TestForEveryVideo:
+    """A choice made for all of them is the same for every one."""
+
+    @pytest.mark.parametrize(
+        "command", ["set_zoom_to_cursor", "set_shift_past_edges", "set_loop_random"]
+    )
+    @pytest.mark.parametrize("value", [True, False])
+    def test_each_one_is_told_what_to_have(self, command, value):
+        manager = _manager()
+        told = Mock()
+        getattr(manager, f"all_{command}").connect(told)
+
+        manager.cmd_all(command, value)
+
+        told.assert_called_once_with(value)
+
+    def test_the_choice_they_all_have_is_ticked(self):
+        manager = _manager(
+            Video(uri=URI, is_zoom_to_cursor=True),
+            Video(uri=URI, is_zoom_to_cursor=True),
+        )
+
+        assert manager.is_all_videos_param_set_to("is_zoom_to_cursor", True)
+        assert not manager.is_all_videos_param_set_to("is_zoom_to_cursor", False)
+
+    def test_neither_is_ticked_while_they_differ(self):
+        manager = _manager(
+            Video(uri=URI, is_zoom_to_cursor=True),
+            Video(uri=URI, is_zoom_to_cursor=False),
+        )
+
+        assert not manager.is_all_videos_param_set_to("is_zoom_to_cursor", True)
+        assert not manager.is_all_videos_param_set_to("is_zoom_to_cursor", False)
+
+    def test_neither_is_ticked_with_no_videos(self):
+        manager = _manager()
+
+        assert not manager.is_all_videos_param_set_to("is_zoom_to_cursor", False)
+
+    def test_one_between_videos_does_not_count(self):
+        """Reloading, it has no video for a moment."""
+
+        manager = _manager(Video(uri=URI, is_start_random=True), None)
+
+        assert manager.is_all_videos_param_set_to("is_start_random", True)
+
+    def test_a_video_loops_at_random_as_it_is_told(self):
+        block = Mock(spec=VideoBlock)
+        block.video_params = Video(uri=URI)
+        block.is_live = False
+        block.set_loop_random = partial(VideoBlock.set_loop_random, block)
+
+        VideoBlock.set_loop_random(block, True)
+        assert block.video_params.is_start_random
+
+        VideoBlock.toggle_loop_random(block)
+        assert not block.video_params.is_start_random
+
+
+def _focus(
+    monkeypatch, pointer, menu_pos=None, is_zoom_to_cursor=True, is_visible=True
+):
+    """Where a 400x300 cell at (100, 100) on the screen zooms about."""
+
+    block = Mock(spec=VideoBlock)
+    block.video_params = Video(uri=URI, is_zoom_to_cursor=is_zoom_to_cursor)
+    block._ctx = SimpleNamespace(context_menu_pos=menu_pos)
+    block.isVisible.return_value = is_visible
+    block.rect.return_value = QRect(0, 0, 400, 300)
+    block.mapFromGlobal.side_effect = lambda pos: pos - QPoint(100, 100)
+    block.video_driver = Mock()
+    block.video_driver.mapFromGlobal.side_effect = lambda pos: pos - QPoint(100, 100)
+
+    monkeypatch.setattr(
+        video_block_module, "QCursor", Mock(pos=Mock(return_value=pointer))
+    )
+
+    return VideoBlock._zoom_focus(block)
+
+
+class TestWhereTheZoomGoesAbout:
+    def test_the_pointer_over_the_video(self, monkeypatch):
+        assert _focus(monkeypatch, QPoint(250, 180)) == (150, 80)
+
+    def test_nowhere_with_the_pointer_outside_the_cell(self, monkeypatch):
+        assert _focus(monkeypatch, QPoint(550, 180)) is None
+
+    def test_nowhere_where_the_video_zooms_about_the_alignment(self, monkeypatch):
+        assert _focus(monkeypatch, QPoint(250, 180), is_zoom_to_cursor=False) is None
+
+    def test_nowhere_for_a_video_out_of_sight(self, monkeypatch):
+        """Single mode hides the rest where they were: not under the pointer."""
+
+        assert _focus(monkeypatch, QPoint(250, 180), is_visible=False) is None
+
+    def test_where_the_menu_was_opened_for_a_zoom_picked_from_it(self, monkeypatch):
+        # the menu's item is off to the side, outside the cell
+        focus = _focus(monkeypatch, QPoint(700, 180), menu_pos=QPoint(150, 120))
+
+        assert focus == (50, 20)
+
+    def test_nowhere_for_a_cell_the_menu_was_not_opened_over(self, monkeypatch):
+        focus = _focus(monkeypatch, QPoint(250, 180), menu_pos=QPoint(700, 120))
+
+        assert focus is None
+
+
+def test_the_menu_says_where_it_was_opened_while_it_is_open():
+    context = SimpleNamespace(video_blocks=[], active_block=None, commands=Mock())
+    manager = MenuManager(context=context, parent=None)
+    seen = []
+
+    menu = Mock()
+    menu.exec_.side_effect = lambda _pos: seen.append(context.context_menu_pos)
+    manager.make_menu = Mock(return_value=menu)
+
+    event = Mock()
+    event.globalPos.return_value = QPoint(150, 120)
+
+    manager.contextMenuEvent(event)
+
+    assert seen == [QPoint(150, 120)]
+    assert context.context_menu_pos is None
 
 
 def test_a_snapshot_puts_the_picture_back_where_it_was():
@@ -406,6 +786,18 @@ def test_a_snapshot_puts_the_picture_back_where_it_was():
     block.set_anchor.assert_called_once_with(VideoAnchor.RIGHT)
     block.set_shift_past_edges.assert_called_once_with(True)
     block.set_shift.assert_called_once_with(VideoShift(0, 25), is_silent=True)
+
+
+def test_a_snapshot_puts_back_what_the_zoom_goes_about():
+    block = Mock(spec=VideoBlock)
+    block.video_params = Video(uri=URI)
+    block.video_tracks = [0]
+    block.is_video_initialized = True
+    block._default_title = "a"
+
+    VideoBlock.apply_snapshot(block, Video(uri=URI, is_zoom_to_cursor=True))
+
+    block.set_zoom_to_cursor.assert_called_once_with(True)
 
 
 def _track(size, orientation=VideoTransform.NONE):
@@ -542,6 +934,83 @@ class TestMovingInThePane:
         assert frame._view.is_shift_past_edges
 
 
+class TestZoomingInThePane:
+    @pytest.fixture(autouse=True)
+    def _drawn_where_the_view_has_it(self):
+        """No margin: the picture is where the view puts it, as on the
+        software drivers. See TestTheHardwareSurface for one drawn bigger."""
+
+        Settings().set("internal/hw_crop_border_offset", HWCropBorderOffset.DISABLED)
+
+    @pytest.fixture
+    def kept(self, monkeypatch):
+        """What each zoom about a point was handed to keep."""
+
+        handed = []
+        real = vlc_base.calc_zoomed_shift
+
+        def _spy(*args):
+            handed.append(args[-1])
+            return real(*args)
+
+        monkeypatch.setattr(vlc_base, "calc_zoomed_shift", _spy)
+
+        return handed
+
+    @staticmethod
+    def _zoom(frame, scale, focus=(600, 300)):
+        frame.set_zoom(scale, frame.zoomed_shift(scale, focus))
+
+    def test_about_a_point_the_point_stays(self):
+        # (1140, 360) under (600, 300); see TestZoomedShift
+        assert _frame().zoomed_shift(2.0, (600, 300)) == VideoShift(-90, 90)
+
+    def test_the_picture_is_zoomed_and_moved_in_one_go(self):
+        frame = _frame()
+        frame.adjust_view = Mock()
+
+        frame.set_zoom(2.0, VideoShift(-90, 90))
+
+        frame.adjust_view.assert_called_once_with()
+        assert frame._view.scale == 2.0
+        assert frame._view.shift == VideoShift(-90, 90)
+
+    def test_the_next_zoom_about_the_same_point_keeps_the_same_one(self, kept):
+        frame = _frame()
+
+        self._zoom(frame, 1.1)
+        self._zoom(frame, 1.2)
+
+        assert kept[0] == (None, None)
+        assert kept[1] == pytest.approx((1140, 360))
+
+    def test_with_the_pointer_moved_it_starts_again(self, kept):
+        frame = _frame()
+
+        self._zoom(frame, 1.1)
+        self._zoom(frame, 1.2, focus=(601, 300))
+
+        assert kept[1] == (None, None)
+
+    def test_with_the_picture_moved_in_between_it_starts_again(self, kept):
+        frame = _frame()
+
+        self._zoom(frame, 1.1)
+        frame.set_shift(frame.shifted_by(1, 0))
+        self._zoom(frame, 1.2)
+
+        assert kept[1] == (None, None)
+
+    def test_with_the_pane_resized_in_between_it_starts_again(self, kept):
+        frame = _frame()
+
+        self._zoom(frame, 1.1)
+        frame.resize(900, 800)
+        self._zoom(frame, 1.2)
+
+        assert kept[1] == (None, None)
+
+
 class TestTheHardwareSurface:
     """VLC fills its window with the picture: the window is what places it."""
 
@@ -642,6 +1111,31 @@ class TestTheHardwareSurface:
 
         assert view.view is None
         assert view.orientation == VideoTransform.NONE
+
+    def test_a_zoom_about_a_point_keeps_what_is_drawn_there(self):
+        """VLC draws the picture 916/900 as big as the view has it, so what
+        is on show at a point off the middle is what the view has a little
+        nearer it. That stays under the point; zoomed about the point as
+        the view has it, it would slide 15 pixels away at 4x."""
+
+        frame = _frame()
+
+        def drawn_at(x, y):
+            """Where a frame point is drawn in the pane."""
+            source_x, source_y, source_w, source_h = frame.view_placement().source
+            shown_x, shown_y, shown_w, shown_h = frame._shown_picture_rect()
+
+            return (
+                shown_x + (x - source_x) * shown_w / source_w,
+                shown_y + (y - source_y) * shown_h / source_h,
+            )
+
+        point = drawn_at(1300, 300)
+
+        frame.set_zoom(4.0, frame.zoomed_shift(4.0, point))
+
+        # half a frame pixel: 900/1080 pane pixels each at 1x, drawn bigger
+        assert drawn_at(1300, 300) == pytest.approx(point, abs=1.75)
 
     def test_it_goes_where_the_picture_is_moved(self):
         frame = _frame(anchor=VideoAnchor.TOP)

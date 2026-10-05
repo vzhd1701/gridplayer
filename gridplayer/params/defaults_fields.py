@@ -716,6 +716,20 @@ VIDEO_FIELDS: tuple[SettingField, ...] = (
         spin_step=0.1,
     ),
     _f(
+        settings_key="video_defaults/zoom_to_cursor",
+        video_attr="zoom_to_cursor",
+        kind=FieldKind.CHECKBOX,
+        section=translate("SettingsDialog", "Video"),
+        label=translate("Zoom", "Zoom to cursor"),
+        tooltip=translate(
+            "SettingsDialog",
+            "Zoom in and out about the point under the mouse pointer rather"
+            " than about the alignment. With the pointer outside the video,"
+            " the zoom goes about the alignment as usual."
+            " Resetting the zoom also puts the picture back in its place.",
+        ),
+    ),
+    _f(
         settings_key="video_defaults/aspect",
         video_attr="aspect",
         kind=FieldKind.COMBO,

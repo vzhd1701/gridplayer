@@ -8,15 +8,21 @@ SUBMENUS = MappingProxyType(
         "Chapters": {"title": translate("Actions", "Chapters"), "icon": "chapters"},
         "Bookmarks": {"title": translate("Actions", "Bookmarks"), "icon": "bookmarks"},
         "Loop": {"title": translate("Actions", "Loop"), "icon": "loop"},
+        "Random Loop": {
+            "title": translate("Actions", "Random Loop"),
+            "icon": "loop-random",
+        },
         "When Finished": {
             "title": translate("Actions", "When Finished"),
             "icon": "playback-finish",
         },
         "Speed": {"title": translate("Actions", "Speed"), "icon": "speed"},
         "Zoom": {"title": translate("Actions", "Zoom"), "icon": "zoom"},
+        "Zoom to Cursor": {"title": translate("Zoom", "Zoom to Cursor")},
         "Aspect": {"title": translate("Actions", "Aspect"), "icon": "aspect"},
         "Crop": {"title": translate("Actions", "Crop"), "icon": "crop"},
         "Position": {"title": translate("Actions", "Position"), "icon": "anchor"},
+        "Move Past Edges": {"title": translate("Actions", "Move Past Edges")},
         "Transform": {"title": translate("Actions", "Transform"), "icon": "rotate"},
         "Deinterlace": {
             "title": translate("Actions", "Deinterlace"),
@@ -111,6 +117,8 @@ SECTIONS = MappingProxyType(
                     "Zoom In",
                     "Zoom Out",
                     "Zoom Reset",
+                    "---",
+                    "Zoom to Cursor",
                 ),
                 (
                     "Aspect",
@@ -342,6 +350,12 @@ SECTIONS = MappingProxyType(
                         "Zoom In [ALL]",
                         "Zoom Out [ALL]",
                         "Zoom Reset [ALL]",
+                        "---",
+                        (
+                            "Zoom to Cursor",
+                            "Zoom to Cursor On [ALL]",
+                            "Zoom to Cursor Off [ALL]",
+                        ),
                     ),
                     (
                         "Aspect",
@@ -378,7 +392,11 @@ SECTIONS = MappingProxyType(
                         "Move Right [ALL]",
                         "Move Up [ALL]",
                         "Move Down [ALL]",
-                        "Move Past Edges [ALL]",
+                        (
+                            "Move Past Edges",
+                            "Move Past Edges On [ALL]",
+                            "Move Past Edges Off [ALL]",
+                        ),
                         "---",
                         "Position Reset [ALL]",
                     ),
@@ -459,7 +477,11 @@ SECTIONS = MappingProxyType(
                     ),
                     (
                         "Loop",
-                        "Random Loop [ALL]",
+                        (
+                            "Random Loop",
+                            "Random Loop On [ALL]",
+                            "Random Loop Off [ALL]",
+                        ),
                         "---",
                         "Set Loop Start [ALL]",
                         "Set Loop End [ALL]",

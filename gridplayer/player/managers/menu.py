@@ -9,6 +9,13 @@ from gridplayer.widgets.custom_menu import CustomMenu
 
 
 class MenuManager(ManagerBase):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
+        # where the open menu was asked for, which is what an action picked
+        # from it is about: the pointer has gone on to the item by then
+        self._ctx.context_menu_pos = None
+
     @property
     def event_map(self):
         return {
@@ -25,7 +32,12 @@ class MenuManager(ManagerBase):
             self._ctx.commands.set_add_anchor(None)
 
         menu = self.make_menu()
-        menu.exec_(event.globalPos())
+
+        self._ctx.context_menu_pos = event.globalPos()
+        try:
+            menu.exec_(event.globalPos())
+        finally:
+            self._ctx.context_menu_pos = None
 
         self._ctx.commands.set_add_anchor(None)
 

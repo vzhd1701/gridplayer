@@ -3064,6 +3064,7 @@ class VideoBlock(QWidget):
         self.set_muted(snapshot.is_muted)
         self.set_pause(snapshot.is_paused)
         self.set_scale(snapshot.scale, is_silent=True)
+        self.set_zoom_to_cursor(snapshot.is_zoom_to_cursor)
         self.set_crop(snapshot.crop, is_silent=True)
         self.set_anchor(snapshot.anchor)
         self.set_shift_past_edges(snapshot.is_shift_past_edges)
@@ -3595,7 +3596,16 @@ class VideoBlock(QWidget):
 
     @only_seekable
     def toggle_loop_random(self):
-        self.video_params.is_start_random = not self.video_params.is_start_random
+        self.set_loop_random(not self.video_params.is_start_random)
+
+    def set_loop_random(self, is_start_random: bool):
+        """Start each pass somewhere at random, or where the loop starts.
+
+        Kept for a video stopped or still loading too, which goes by it
+        once it plays, and for one that is live, which never loops.
+        """
+
+        self.video_params.is_start_random = is_start_random
 
     @only_seekable
     def set_loop_start(self):
@@ -4467,23 +4477,23 @@ class VideoBlock(QWidget):
     @only_with_video_tacks
     @only_initialized
     def scale_increase(self):
-        self.video_params.scale += 0.1
-        self.video_params.scale = min(round(self.video_params.scale, 1), MAX_SCALE)
-
-        self.set_scale(self.video_params.scale)
+        self._zoom_to(min(round(self.video_params.scale + 0.1, 1), MAX_SCALE))
 
     @only_with_video_tacks
     @only_initialized
     def scale_decrease(self):
-        self.video_params.scale -= 0.1
-        self.video_params.scale = max(round(self.video_params.scale, 1), MIN_SCALE)
-
-        self.set_scale(self.video_params.scale)
+        self._zoom_to(max(round(self.video_params.scale - 0.1, 1), MIN_SCALE))
 
     @only_with_video_tacks
     @only_initialized
     def scale_reset(self):
-        self.set_scale(1.0)
+        """Back to the whole picture, and, zoomed about the pointer, back in
+        its place: where it stands then is the zooms' doing, not a move."""
+
+        if self.video_params.is_zoom_to_cursor:
+            self._set_zoom(1.0, VideoShift(0, 0))
+        else:
+            self.set_scale(1.0)
 
     @only_with_video_tacks
     @only_initialized
@@ -4494,6 +4504,62 @@ class VideoBlock(QWidget):
 
         if not is_silent:
             self.info_change.emit(f"Zoom: {scale}")
+
+    def _zoom_to(self, scale):
+        """Zoom about the pointer where this video zooms to it, else as usual."""
+
+        focus = self._zoom_focus()
+
+        if focus is None or scale == self.video_params.scale:
+            self.set_scale(scale)
+            return
+
+        self._set_zoom(scale, self.video_driver.zoomed_shift(scale, focus))
+
+    def _set_zoom(self, scale, shift: VideoShift):
+        self.video_params.scale = scale
+        self.video_params.shift = shift
+
+        self.video_driver.set_zoom(scale, shift)
+
+        self.info_change.emit(f"Zoom: {scale}")
+
+    def _zoom_focus(self) -> tuple[int, int] | None:
+        """Where in the pane a zoom goes about, None for the anchor's place.
+
+        The pointer, where this video zooms to it and it is over the video.
+        A zoom picked from the context menu goes about where the menu was
+        opened, the pointer being on the menu's item by then.
+        """
+
+        if not self.video_params.is_zoom_to_cursor or not self.isVisible():
+            return None
+
+        pointer = getattr(self._ctx, "context_menu_pos", None)
+
+        if pointer is None:
+            pointer = QCursor.pos()
+
+        if not self.rect().contains(self.mapFromGlobal(pointer)):
+            return None
+
+        focus = self.video_driver.mapFromGlobal(pointer)
+
+        return focus.x(), focus.y()
+
+    @only_with_video_tacks
+    @only_initialized
+    def toggle_zoom_to_cursor(self):
+        self.set_zoom_to_cursor(not self.video_params.is_zoom_to_cursor)
+
+    def set_zoom_to_cursor(self, is_zoom_to_cursor: bool):
+        """Zoom about the point under the pointer, or about the anchor's.
+
+        Kept for a video stopped or still loading too: nothing but a zoom
+        looks at it, and that is only made with a picture on show.
+        """
+
+        self.video_params.is_zoom_to_cursor = is_zoom_to_cursor
 
     @only_with_video_tacks
     @only_initialized
@@ -4592,20 +4658,25 @@ class VideoBlock(QWidget):
     def toggle_shift_past_edges(self):
         self.set_shift_past_edges(not self.video_params.is_shift_past_edges)
 
-    @only_with_video_tacks
-    @only_initialized
     def set_shift_past_edges(self, is_shift_past_edges: bool):
         """Let the picture be moved past the edges of the pane, or not.
 
         Kept within them again, it stays where they hold it, which is where
-        the next move goes from.
+        the next move goes from. Kept for a video stopped or still loading
+        too, which takes it up with the rest of its view as it loads.
         """
 
         self.video_params.is_shift_past_edges = is_shift_past_edges
+
+        if self.video_driver is None:
+            return
+
+        # one loading already has its view: it goes by this one instead
         self.video_driver.set_shift_past_edges(is_shift_past_edges)
 
-        # no steps is where the picture stands now
-        self.set_shift(self.video_driver.shifted_by(0, 0), is_silent=True)
+        if self.is_video_initialized and self.video_tracks:
+            # no steps is where the picture stands now
+            self.set_shift(self.video_driver.shifted_by(0, 0), is_silent=True)
 
     @only_initialized
     @only_seekable
