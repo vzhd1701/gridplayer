@@ -41,7 +41,7 @@ from PyQt5.QtWidgets import QColorDialog, QHBoxLayout, QWidget
 from gridplayer.params.theme import current_colors
 from gridplayer.utils.qt import translate
 from gridplayer.widgets.color_palette import QColorCircle
-from gridplayer.widgets.custom_menu import CustomMenu
+from gridplayer.widgets.custom_menu import CustomMenu, checked_icon
 from gridplayer.widgets.video_overlay_elements import (
     BOOKMARK_COLOR,
     BOOKMARK_MARKER,
@@ -275,7 +275,8 @@ def bookmark_color_menu(parent, colors, slot_for, custom_slot) -> CustomMenu:
     menu.setIcon(bookmark_icon(colors, rim))
 
     def add(color, title):
-        action = menu.addAction(bookmark_icon([color], rim), title)
+        icon = checked_icon(bookmark_icon([color], rim), is_choice=True)
+        action = menu.addAction(icon, title)
         action.setCheckable(True)
         action.setChecked(shared == color)
         action.triggered.connect(slot_for(color))
@@ -293,7 +294,10 @@ def bookmark_color_menu(parent, colors, slot_for, custom_slot) -> CustomMenu:
     is_custom = isinstance(shared, str) and shared not in dict(presets)
 
     custom = menu.addAction(
-        bookmark_icon([shared], rim) if is_custom else _any_color_icon(rim),
+        checked_icon(
+            bookmark_icon([shared], rim) if is_custom else _any_color_icon(rim),
+            is_choice=True,
+        ),
         translate("Actions", "Custom…"),
     )
     custom.setCheckable(True)

@@ -350,6 +350,7 @@ ACTIONS = MappingProxyType(
                 "end_action",
                 VideoEndAction.LOOP_FILE,
             ),
+            "is_choice": True,
             "show_if": AND("is_active_playable", NOT("is_active_live")),
         },
         "When Finished Next": {
@@ -361,6 +362,7 @@ ACTIONS = MappingProxyType(
                 "end_action",
                 VideoEndAction.NEXT_FILE,
             ),
+            "is_choice": True,
             "show_if": "is_active_local_file",
         },
         "When Finished Previous": {
@@ -372,6 +374,7 @@ ACTIONS = MappingProxyType(
                 "end_action",
                 VideoEndAction.PREVIOUS_FILE,
             ),
+            "is_choice": True,
             "show_if": "is_active_local_file",
         },
         "When Finished Shuffle": {
@@ -383,6 +386,7 @@ ACTIONS = MappingProxyType(
                 "end_action",
                 VideoEndAction.SHUFFLE_FILE,
             ),
+            "is_choice": True,
             "show_if": "is_active_local_file",
         },
         "When Finished Pause": {
@@ -394,6 +398,7 @@ ACTIONS = MappingProxyType(
                 "end_action",
                 VideoEndAction.PAUSE,
             ),
+            "is_choice": True,
             "show_if": AND("is_active_playable", NOT("is_active_live")),
         },
         "When Finished Stop": {
@@ -405,6 +410,7 @@ ACTIONS = MappingProxyType(
                 "end_action",
                 VideoEndAction.STOP,
             ),
+            "is_choice": True,
             "show_if": AND("is_active_playable", NOT("is_active_live")),
         },
         "When Finished Close": {
@@ -416,6 +422,7 @@ ACTIONS = MappingProxyType(
                 "end_action",
                 VideoEndAction.CLOSE,
             ),
+            "is_choice": True,
             "show_if": AND("is_active_playable", NOT("is_active_live")),
         },
         "Faster": {
@@ -588,6 +595,7 @@ ACTIONS = MappingProxyType(
             "icon": "empty",
             "func": ("active", "set_anchor", VideoAnchor.CENTER),
             "check_if": ("is_active_param_set_to", "anchor", VideoAnchor.CENTER),
+            "is_choice": True,
             "show_if": "is_active_has_video",
         },
         "Align Top": {
@@ -595,6 +603,7 @@ ACTIONS = MappingProxyType(
             "icon": "empty",
             "func": ("active", "set_anchor", VideoAnchor.TOP),
             "check_if": ("is_active_param_set_to", "anchor", VideoAnchor.TOP),
+            "is_choice": True,
             "show_if": "is_active_has_video",
         },
         "Align Bottom": {
@@ -602,6 +611,7 @@ ACTIONS = MappingProxyType(
             "icon": "empty",
             "func": ("active", "set_anchor", VideoAnchor.BOTTOM),
             "check_if": ("is_active_param_set_to", "anchor", VideoAnchor.BOTTOM),
+            "is_choice": True,
             "show_if": "is_active_has_video",
         },
         "Align Left": {
@@ -609,6 +619,7 @@ ACTIONS = MappingProxyType(
             "icon": "empty",
             "func": ("active", "set_anchor", VideoAnchor.LEFT),
             "check_if": ("is_active_param_set_to", "anchor", VideoAnchor.LEFT),
+            "is_choice": True,
             "show_if": "is_active_has_video",
         },
         "Align Right": {
@@ -616,6 +627,7 @@ ACTIONS = MappingProxyType(
             "icon": "empty",
             "func": ("active", "set_anchor", VideoAnchor.RIGHT),
             "check_if": ("is_active_param_set_to", "anchor", VideoAnchor.RIGHT),
+            "is_choice": True,
             "show_if": "is_active_has_video",
         },
         "Align Top Left": {
@@ -623,6 +635,7 @@ ACTIONS = MappingProxyType(
             "icon": "empty",
             "func": ("active", "set_anchor", VideoAnchor.TOP_LEFT),
             "check_if": ("is_active_param_set_to", "anchor", VideoAnchor.TOP_LEFT),
+            "is_choice": True,
             "show_if": "is_active_has_video",
         },
         "Align Top Right": {
@@ -630,6 +643,7 @@ ACTIONS = MappingProxyType(
             "icon": "empty",
             "func": ("active", "set_anchor", VideoAnchor.TOP_RIGHT),
             "check_if": ("is_active_param_set_to", "anchor", VideoAnchor.TOP_RIGHT),
+            "is_choice": True,
             "show_if": "is_active_has_video",
         },
         "Align Bottom Left": {
@@ -637,6 +651,7 @@ ACTIONS = MappingProxyType(
             "icon": "empty",
             "func": ("active", "set_anchor", VideoAnchor.BOTTOM_LEFT),
             "check_if": ("is_active_param_set_to", "anchor", VideoAnchor.BOTTOM_LEFT),
+            "is_choice": True,
             "show_if": "is_active_has_video",
         },
         "Align Bottom Right": {
@@ -644,6 +659,7 @@ ACTIONS = MappingProxyType(
             "icon": "empty",
             "func": ("active", "set_anchor", VideoAnchor.BOTTOM_RIGHT),
             "check_if": ("is_active_param_set_to", "anchor", VideoAnchor.BOTTOM_RIGHT),
+            "is_choice": True,
             "show_if": "is_active_has_video",
         },
         "Aspect Fit": {
@@ -651,6 +667,7 @@ ACTIONS = MappingProxyType(
             "icon": "aspect-fit",
             "func": ("active", "set_aspect", VideoAspect.FIT),
             "check_if": ("is_active_param_set_to", "aspect_mode", VideoAspect.FIT),
+            "is_choice": True,
             "show_if": "is_active_has_video",
         },
         "Aspect Stretch": {
@@ -658,6 +675,7 @@ ACTIONS = MappingProxyType(
             "icon": "aspect-stretch",
             "func": ("active", "set_aspect", VideoAspect.STRETCH),
             "check_if": ("is_active_param_set_to", "aspect_mode", VideoAspect.STRETCH),
+            "is_choice": True,
             "show_if": "is_active_has_video",
         },
         "Aspect None": {
@@ -665,6 +683,7 @@ ACTIONS = MappingProxyType(
             "icon": "aspect-none",
             "func": ("active", "set_aspect", VideoAspect.NONE),
             "check_if": ("is_active_param_set_to", "aspect_mode", VideoAspect.NONE),
+            "is_choice": True,
             "show_if": "is_active_has_video",
         },
         "Rotate 90": {
@@ -676,6 +695,7 @@ ACTIONS = MappingProxyType(
                 "transform",
                 VideoTransform.ROTATE_90,
             ),
+            "is_choice": True,
             "show_if": "is_active_has_video",
         },
         "Rotate 180": {
@@ -687,6 +707,7 @@ ACTIONS = MappingProxyType(
                 "transform",
                 VideoTransform.ROTATE_180,
             ),
+            "is_choice": True,
             "show_if": "is_active_has_video",
         },
         "Rotate 270": {
@@ -698,6 +719,7 @@ ACTIONS = MappingProxyType(
                 "transform",
                 VideoTransform.ROTATE_270,
             ),
+            "is_choice": True,
             "show_if": "is_active_has_video",
         },
         "Flip Horizontally": {
@@ -709,6 +731,7 @@ ACTIONS = MappingProxyType(
                 "transform",
                 VideoTransform.HFLIP,
             ),
+            "is_choice": True,
             "show_if": "is_active_has_video",
         },
         "Flip Vertically": {
@@ -720,6 +743,7 @@ ACTIONS = MappingProxyType(
                 "transform",
                 VideoTransform.VFLIP,
             ),
+            "is_choice": True,
             "show_if": "is_active_has_video",
         },
         "Transpose": {
@@ -731,6 +755,7 @@ ACTIONS = MappingProxyType(
                 "transform",
                 VideoTransform.TRANSPOSE,
             ),
+            "is_choice": True,
             "show_if": "is_active_has_video",
         },
         "Anti-transpose": {
@@ -742,6 +767,7 @@ ACTIONS = MappingProxyType(
                 "transform",
                 VideoTransform.ANTITRANSPOSE,
             ),
+            "is_choice": True,
             "show_if": "is_active_has_video",
         },
         "No Transform": {
@@ -753,6 +779,7 @@ ACTIONS = MappingProxyType(
                 "transform",
                 VideoTransform.NONE,
             ),
+            "is_choice": True,
             "show_if": "is_active_has_video",
         },
         "Deinterlace Auto": {
@@ -764,6 +791,7 @@ ACTIONS = MappingProxyType(
                 "deinterlace",
                 VideoDeinterlace.AUTO,
             ),
+            "is_choice": True,
             "show_if": "is_active_has_video",
         },
         "Deinterlace On": {
@@ -775,6 +803,7 @@ ACTIONS = MappingProxyType(
                 "deinterlace",
                 VideoDeinterlace.ON,
             ),
+            "is_choice": True,
             "show_if": "is_active_has_video",
         },
         "Deinterlace Off": {
@@ -786,6 +815,7 @@ ACTIONS = MappingProxyType(
                 "deinterlace",
                 VideoDeinterlace.OFF,
             ),
+            "is_choice": True,
             "show_if": "is_active_has_video",
         },
         "Deinterlace Mode - Auto": {
@@ -797,6 +827,7 @@ ACTIONS = MappingProxyType(
                 "deinterlace_mode",
                 VideoDeinterlaceMode.AUTO,
             ),
+            "is_choice": True,
             "show_if": "is_active_has_video",
         },
         "Deinterlace Mode - Discard": {
@@ -808,6 +839,7 @@ ACTIONS = MappingProxyType(
                 "deinterlace_mode",
                 VideoDeinterlaceMode.DISCARD,
             ),
+            "is_choice": True,
             "show_if": "is_active_has_video",
         },
         "Deinterlace Mode - Blend": {
@@ -819,6 +851,7 @@ ACTIONS = MappingProxyType(
                 "deinterlace_mode",
                 VideoDeinterlaceMode.BLEND,
             ),
+            "is_choice": True,
             "show_if": "is_active_has_video",
         },
         "Deinterlace Mode - Mean": {
@@ -830,6 +863,7 @@ ACTIONS = MappingProxyType(
                 "deinterlace_mode",
                 VideoDeinterlaceMode.MEAN,
             ),
+            "is_choice": True,
             "show_if": "is_active_has_video",
         },
         "Deinterlace Mode - Bob": {
@@ -841,6 +875,7 @@ ACTIONS = MappingProxyType(
                 "deinterlace_mode",
                 VideoDeinterlaceMode.BOB,
             ),
+            "is_choice": True,
             "show_if": "is_active_has_video",
         },
         "Deinterlace Mode - Linear": {
@@ -852,6 +887,7 @@ ACTIONS = MappingProxyType(
                 "deinterlace_mode",
                 VideoDeinterlaceMode.LINEAR,
             ),
+            "is_choice": True,
             "show_if": "is_active_has_video",
         },
         "Deinterlace Mode - X": {
@@ -863,6 +899,7 @@ ACTIONS = MappingProxyType(
                 "deinterlace_mode",
                 VideoDeinterlaceMode.X,
             ),
+            "is_choice": True,
             "show_if": "is_active_has_video",
         },
         "Deinterlace Mode - Yadif": {
@@ -874,6 +911,7 @@ ACTIONS = MappingProxyType(
                 "deinterlace_mode",
                 VideoDeinterlaceMode.YADIF,
             ),
+            "is_choice": True,
             "show_if": "is_active_has_video",
         },
         "Deinterlace Mode - Yadif (2x)": {
@@ -885,6 +923,7 @@ ACTIONS = MappingProxyType(
                 "deinterlace_mode",
                 VideoDeinterlaceMode.YADIF2X,
             ),
+            "is_choice": True,
             "show_if": "is_active_has_video",
         },
         "Deinterlace Mode - Phosphor": {
@@ -896,6 +935,7 @@ ACTIONS = MappingProxyType(
                 "deinterlace_mode",
                 VideoDeinterlaceMode.PHOSPHOR,
             ),
+            "is_choice": True,
             "show_if": "is_active_has_video",
         },
         "Deinterlace Mode - Film NTSC (IVTC)": {
@@ -907,6 +947,7 @@ ACTIONS = MappingProxyType(
                 "deinterlace_mode",
                 VideoDeinterlaceMode.IVTC,
             ),
+            "is_choice": True,
             "show_if": "is_active_has_video",
         },
         "Take Screenshot": {
@@ -1024,6 +1065,7 @@ ACTIONS = MappingProxyType(
                 "audio_channel_mode",
                 AudioChannelMode.UNSET,
             ),
+            "is_choice": True,
         },
         "Audio Mode - Stereo": {
             "title": translate("Audio Mode", "Stereo"),
@@ -1035,6 +1077,7 @@ ACTIONS = MappingProxyType(
                 "audio_channel_mode",
                 AudioChannelMode.STEREO,
             ),
+            "is_choice": True,
         },
         "Audio Mode - Reverse Stereo": {
             "title": translate("Audio Mode", "Reverse Stereo"),
@@ -1046,6 +1089,7 @@ ACTIONS = MappingProxyType(
                 "audio_channel_mode",
                 AudioChannelMode.RSTEREO,
             ),
+            "is_choice": True,
         },
         "Audio Mode - Left": {
             "title": translate("Audio Mode", "Left"),
@@ -1057,6 +1101,7 @@ ACTIONS = MappingProxyType(
                 "audio_channel_mode",
                 AudioChannelMode.LEFT,
             ),
+            "is_choice": True,
         },
         "Audio Mode - Right": {
             "title": translate("Audio Mode", "Right"),
@@ -1068,6 +1113,7 @@ ACTIONS = MappingProxyType(
                 "audio_channel_mode",
                 AudioChannelMode.RIGHT,
             ),
+            "is_choice": True,
         },
         "Audio Mode - Dolby Surround": {
             "title": translate("Audio Mode", "Dolby Surround"),
@@ -1079,6 +1125,7 @@ ACTIONS = MappingProxyType(
                 "audio_channel_mode",
                 AudioChannelMode.DOLBYS,
             ),
+            "is_choice": True,
         },
         "Audio Mode - Headphones": {
             "title": translate("Audio Mode", "Headphones"),
@@ -1090,6 +1137,7 @@ ACTIONS = MappingProxyType(
                 "audio_channel_mode",
                 AudioChannelMode.HEADPHONES,
             ),
+            "is_choice": True,
         },
         "Audio Mode - Mono": {
             "title": translate("Audio Mode", "Mono"),
@@ -1101,6 +1149,7 @@ ACTIONS = MappingProxyType(
                 "audio_channel_mode",
                 AudioChannelMode.MONO,
             ),
+            "is_choice": True,
         },
         "Audio Volume - Increase": {
             "title": translate("Audio Volume", "Increase Volume"),
@@ -1153,6 +1202,7 @@ ACTIONS = MappingProxyType(
                 "network_retry_mode",
                 NetworkRetryMode.OFF,
             ),
+            "is_choice": True,
             "show_if": NOT("is_active_local_file"),
         },
         "On Network Error Retry Times": {
@@ -1164,6 +1214,7 @@ ACTIONS = MappingProxyType(
                 "network_retry_mode",
                 NetworkRetryMode.TIMES,
             ),
+            "is_choice": True,
             "show_if": NOT("is_active_local_file"),
         },
         "On Network Error Retry Forever": {
@@ -1175,6 +1226,7 @@ ACTIONS = MappingProxyType(
                 "network_retry_mode",
                 NetworkRetryMode.INFINITE,
             ),
+            "is_choice": True,
             "show_if": NOT("is_active_local_file"),
         },
         "On Network Error Attempts: %v": {
@@ -1448,6 +1500,7 @@ ACTIONS = MappingProxyType(
             "icon": "empty",
             "func": ("all", "set_loop_random", True),
             "check_if": ("is_all_videos_param_set_to", "is_start_random", True),
+            "is_choice": True,
             "show_if": "is_any_videos_seekable",
         },
         "Random Loop Off [ALL]": {
@@ -1455,6 +1508,7 @@ ACTIONS = MappingProxyType(
             "icon": "empty",
             "func": ("all", "set_loop_random", False),
             "check_if": ("is_all_videos_param_set_to", "is_start_random", False),
+            "is_choice": True,
             "show_if": "is_any_videos_seekable",
         },
         "Set Loop Start [ALL]": {
@@ -1573,6 +1627,7 @@ ACTIONS = MappingProxyType(
             "icon": "empty",
             "func": ("all", "set_zoom_to_cursor", True),
             "check_if": ("is_all_videos_param_set_to", "is_zoom_to_cursor", True),
+            "is_choice": True,
             "show_if": "is_any_videos_have_video",
         },
         "Zoom to Cursor Off [ALL]": {
@@ -1580,6 +1635,7 @@ ACTIONS = MappingProxyType(
             "icon": "empty",
             "func": ("all", "set_zoom_to_cursor", False),
             "check_if": ("is_all_videos_param_set_to", "is_zoom_to_cursor", False),
+            "is_choice": True,
             "show_if": "is_any_videos_have_video",
         },
         "Crop Left + [ALL]": {
@@ -1678,6 +1734,7 @@ ACTIONS = MappingProxyType(
             "icon": "empty",
             "func": ("all", "set_shift_past_edges", True),
             "check_if": ("is_all_videos_param_set_to", "is_shift_past_edges", True),
+            "is_choice": True,
             "show_if": "is_any_videos_have_video",
         },
         "Move Past Edges Off [ALL]": {
@@ -1685,6 +1742,7 @@ ACTIONS = MappingProxyType(
             "icon": "empty",
             "func": ("all", "set_shift_past_edges", False),
             "check_if": ("is_all_videos_param_set_to", "is_shift_past_edges", False),
+            "is_choice": True,
             "show_if": "is_any_videos_have_video",
         },
         "Position Reset [ALL]": {
@@ -1964,18 +2022,21 @@ ACTIONS = MappingProxyType(
             "icon": "empty",
             "func": ("set_seek_sync_mode", SeekSyncMode.DISABLED),
             "check_if": ("is_seek_sync_mode_set_to", SeekSyncMode.DISABLED),
+            "is_choice": True,
         },
         "Seek Sync (Percent)": {
             "title": translate("Seek Sync", "Sync By Percent"),
             "icon": "seek-sync-percent",
             "func": ("set_seek_sync_mode", SeekSyncMode.PERCENT),
             "check_if": ("is_seek_sync_mode_set_to", SeekSyncMode.PERCENT),
+            "is_choice": True,
         },
         "Seek Sync (Timecode)": {
             "title": translate("Seek Sync", "Sync By Timecode"),
             "icon": "seek-sync-time",
             "func": ("set_seek_sync_mode", SeekSyncMode.TIMECODE),
             "check_if": ("is_seek_sync_mode_set_to", SeekSyncMode.TIMECODE),
+            "is_choice": True,
         },
         "Shuffle Grid": {
             "title": translate("Actions", "Shuffle"),
@@ -1995,12 +2056,14 @@ ACTIONS = MappingProxyType(
             "icon": "grid-rows-first",
             "func": ("set_grid_mode", GridMode.AUTO_ROWS),
             "check_if": ("is_grid_mode_set_to", GridMode.AUTO_ROWS),
+            "is_choice": True,
         },
         "Columns First": {
             "title": translate("Grid Mode", "Auto (Columns First)"),
             "icon": "grid-columns-first",
             "func": ("set_grid_mode", GridMode.AUTO_COLS),
             "check_if": ("is_grid_mode_set_to", GridMode.AUTO_COLS),
+            "is_choice": True,
         },
         "Fit Cells": {
             "title": translate("Actions", "Fit Cells"),
@@ -2021,6 +2084,7 @@ ACTIONS = MappingProxyType(
             "icon": "grid",
             "func": ("set_grid_mode", GridMode.FIXED),
             "check_if": ("is_grid_mode_set_to", GridMode.FIXED),
+            "is_choice": True,
         },
         "Grid Size: %v": {
             "title": translate("Actions", "Grid Size: %v"),

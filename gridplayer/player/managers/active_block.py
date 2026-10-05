@@ -421,6 +421,7 @@ class ActiveBlockManager(ManagerBase):
                 "icon": "empty",
                 "func": ("active", "manual_seek", "seek_chapter", index),
                 "check_if": ("is_active_chapter_playing", index),
+                "is_choice": True,
                 "enable_if": ("is_active_chapter_reachable", index),
                 "show_if": "is_active_has_chapters",
             }
@@ -467,6 +468,7 @@ class ActiveBlockManager(ManagerBase):
                 "icon": bookmark_icon([bookmark.color]),
                 "func": ("active", "manual_seek", "seek_bookmark", index),
                 "check_if": ("is_active_bookmark_here", index),
+                "is_choice": True,
                 "enable_if": ("is_active_bookmark_reachable", index),
                 "show_if": "is_active_has_bookmarks",
             }
@@ -559,6 +561,7 @@ class ActiveBlockManager(ManagerBase):
             "icon": "empty",
             "func": ("active", "switch_stream_quality", quality),
             "check_if": ("is_active_param_set_to", "stream_quality", quality),
+            "is_choice": True,
             "show_if": "is_active_multistream",
         }
 
@@ -575,6 +578,7 @@ class ActiveBlockManager(ManagerBase):
                 "icon": "empty",
                 "func": ("active", "set_video_track", -1),
                 "check_if": ("is_active_param_set_to", "video_track_id", -1),
+                "is_choice": True,
                 "show_if": "is_active_initialized",
             }
         ]
@@ -585,6 +589,7 @@ class ActiveBlockManager(ManagerBase):
                 "icon": "empty",
                 "func": ("active", "set_video_track", track_id),
                 "check_if": ("is_active_param_set_to", "video_track_id", track_id),
+                "is_choice": True,
                 "show_if": "is_active_initialized",
             }
             for track_id, track in self._ctx.active_block.video_tracks.items()
@@ -622,6 +627,7 @@ class ActiveBlockManager(ManagerBase):
                     "icon": "empty",
                     "func": ("active", "set_audio_track", DISABLED_TRACK),
                     "check_if": "is_active_audio_disabled",
+                    "is_choice": True,
                     "show_if": "is_active_initialized",
                 },
             ],
@@ -654,6 +660,7 @@ class ActiveBlockManager(ManagerBase):
                     "icon": "empty",
                     "func": ("active", "set_audio_device", device),
                     "check_if": ("is_active_audio_device", device.id),
+                    "is_choice": True,
                     "show_if": "is_active_has_audio",
                 }
                 for device in devices
@@ -686,6 +693,7 @@ class ActiveBlockManager(ManagerBase):
                 "icon": "empty",
                 "func": ("active", "set_audio_device", chosen),
                 "check_if": "is_active_audio_device_missing",
+                "is_choice": True,
                 "show_if": "is_active_has_audio",
             }
         ]
@@ -790,6 +798,7 @@ class ActiveBlockManager(ManagerBase):
                 "icon": "play" if track_id == playing else "empty",
                 "func": ("active", "set_audio_track", track_id),
                 "check_if": ("is_active_audio_track", track_id),
+                "is_choice": True,
                 "show_if": "is_active_local_file",
             }
             for track_id, number in zip(from_file, numbers)
@@ -870,6 +879,7 @@ class ActiveBlockManager(ManagerBase):
                     "icon": "play" if language == playing else "empty",
                     "func": ("active", "set_audio_language", language),
                     "check_if": ("is_active_audio_language", language),
+                    "is_choice": True,
                     "show_if": "is_active_initialized",
                 }
                 for language in languages
@@ -886,6 +896,7 @@ class ActiveBlockManager(ManagerBase):
                 "icon": "play" if track_id == playing else "empty",
                 "func": ("active", "set_audio_track", track_id),
                 "check_if": ("is_active_audio_track", track_id),
+                "is_choice": True,
                 "show_if": "is_active_initialized",
             }
             for track_id, track in block.audio_tracks.items()
@@ -943,6 +954,7 @@ class ActiveBlockManager(ManagerBase):
                 "icon": "empty",
                 "func": ("active", "apply_subtitle_default"),
                 "check_if": "is_active_subtitle_default",
+                "is_choice": True,
                 "show_if": "is_active_initialized",
             }
         ]
@@ -962,6 +974,7 @@ class ActiveBlockManager(ManagerBase):
             "icon": "empty",
             "func": ("active", "apply_subtitle_preference"),
             "check_if": "is_active_subtitle_preferred",
+            "is_choice": True,
             "show_if": "is_active_initialized",
         }
 
@@ -1004,6 +1017,7 @@ class ActiveBlockManager(ManagerBase):
                 "icon": "play" if track_id == showing else "empty",
                 "func": ("active", "set_subtitle_track", track_id),
                 "check_if": ("is_active_subtitle_track", track_id),
+                "is_choice": True,
                 "show_if": "is_active_initialized",
             }
             for track_id, track in block.subtitle_tracks.items()
@@ -1119,6 +1133,7 @@ class ActiveBlockManager(ManagerBase):
                     "icon": "play" if track_id == showing else "empty",
                     "func": ("active", "set_subtitle_track", track_id),
                     "check_if": ("is_active_subtitle_track", track_id),
+                    "is_choice": True,
                     "show_if": "is_active_local_file",
                 }
             )
@@ -1144,6 +1159,7 @@ class ActiveBlockManager(ManagerBase):
             "icon": "empty",
             "func": ("active", "apply_audio_preference"),
             "check_if": "is_active_audio_preferred",
+            "is_choice": True,
             "show_if": "is_active_initialized",
         }
 
@@ -1240,6 +1256,7 @@ def _audio_device_default_menu_item():
         "icon": "empty",
         "func": ("active", "set_audio_device", None),
         "check_if": "is_active_audio_device_default",
+        "is_choice": True,
         "show_if": "is_active_has_audio",
     }
 
@@ -1256,6 +1273,7 @@ def _audio_default_menu_item():
         "icon": "empty",
         "func": ("active", "apply_audio_default"),
         "check_if": "is_active_audio_default",
+        "is_choice": True,
         "show_if": "is_active_initialized",
     }
 
@@ -1285,6 +1303,7 @@ def _subtitles_off_menu_item():
         "icon": "empty",
         "func": ("active", "disable_subtitles"),
         "check_if": "is_active_subtitle_disabled",
+        "is_choice": True,
         "show_if": "is_active_initialized",
     }
 
@@ -1462,5 +1481,6 @@ def _stream_menu_item(quality: str, is_playing: bool = False):
         "icon": "play" if is_playing else "empty",
         "func": ("active", "switch_stream_quality", quality),
         "check_if": ("is_active_param_set_to", "stream_quality", quality),
+        "is_choice": True,
         "show_if": "is_active_multistream",
     }

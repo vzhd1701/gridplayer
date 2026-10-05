@@ -33,7 +33,6 @@ THEME_LIGHT = MappingProxyType(
         "border": "#aaaaaa",
         "background": "#eeeeee",
         "background_selected": "#aaaaaa",
-        "background_checked": "#888888",
     }
 )
 
@@ -54,7 +53,6 @@ THEME_DARK = MappingProxyType(
         "border": "#888888",
         "background": "#444444",
         "background_selected": "#888888",
-        "background_checked": "#666666",
     }
 )
 

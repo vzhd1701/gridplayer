@@ -14,7 +14,7 @@ from gridplayer.utils.keymap import (
     qkeysequences_for_shortcut,
     split_shortcuts,
 )
-from gridplayer.widgets.custom_menu import CustomMenu
+from gridplayer.widgets.custom_menu import CustomMenu, checked_icon
 
 
 class QDynamicAction(QAction):
@@ -29,6 +29,10 @@ class QDynamicAction(QAction):
         self.show_if = None
         self.value_getter = None
         self.toggle = None
+
+        # checked, it is the one picked out of several, rather than a
+        # setting that is on; the menu marks the two differently
+        self.is_choice = False
 
         self.menu_generator = None
         # what the generator makes its items of, to tell whether there are
@@ -123,6 +127,7 @@ class QDynamicAction(QAction):
         if self.isCheckable():
             proxy.setCheckable(True)
             proxy.setChecked(self.isChecked())
+            proxy.setIcon(checked_icon(self.icon(), is_choice=self.is_choice))
 
         submenu = self.menu()
         if submenu is not None:
@@ -314,6 +319,8 @@ class ActionsManager(ManagerBase):
             action.triggered.connect(
                 lambda _checked=False, a=action, c=command: self._run_action(a, c)
             )
+
+        action.is_choice = cmd.get("is_choice", False)
 
         self._map_dynamic_functions(action, cmd)
 
