@@ -167,7 +167,10 @@ class DefaultsForm(QWidget):
             )
             self._reset_btns[spec.settings_key] = reset
             lay.addWidget(reset, alignment=Qt.AlignVCenter)
-            holder.setMinimumHeight(reset.sizeHint().height())
+            # Keep the row as tall as with the reset button shown. The reset
+            # button is still counted here, and taller fields (the color
+            # swatch) set the height themselves.
+            holder.setMinimumHeight(lay.minimumSize().height())
             reset.hide()
 
         lay.addStretch(1)
