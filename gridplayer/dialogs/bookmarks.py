@@ -9,6 +9,7 @@ bookmarks the video had.
 import html
 import math
 from enum import IntEnum
+from time import monotonic
 
 from PyQt5.QtCore import (
     QAbstractTableModel,
@@ -122,6 +123,16 @@ HERE_ICON_PX = 12
 
 # how long something said in place of the hint under the list stays
 STATUS_MS = 4000
+
+# VLC tells the time four times a second, every so often only twice, and the
+# bar and the time to the millisecond would go in jumps of that: in between,
+# while it plays, they go on by themselves at the video's speed. No further
+# than this past the last time told, for a video that stalls; and a time told
+# no more than this short of where they got to is them a hair ahead, not the
+# video going back, which they wait for rather than step back to.
+GLIDE_INTERVAL_MS = 16
+GLIDE_MAX_MS = 600
+GLIDE_SLACK_MS = 150
 
 DIALOG_SIZE = QSize(560, 470)
 DIALOG_MIN_SIZE = QSize(460, 360)
@@ -769,6 +780,17 @@ class BookmarksDialog(QDialog):
         self._status_timer.setInterval(STATUS_MS)
         self._status_timer.timeout.connect(self._show_hint)
 
+        # the last time told, and when; and no further back than this until
+        # the next, where the bar was then
+        self._told = (0, monotonic())
+        self._glide_floor = 0
+        self._glided_to = 0
+
+        self._glide_timer = QTimer(self)
+        self._glide_timer.setInterval(GLIDE_INTERVAL_MS)
+        self._glide_timer.setTimerType(Qt.PreciseTimer)
+        self._glide_timer.timeout.connect(self._glide)
+
         self._ui_setup()
         self._ui_connect()
 
@@ -951,6 +973,8 @@ class BookmarksDialog(QDialog):
 
         self._block_connections = []
 
+        self._glide_timer.stop()
+
         self._hide_hover_tip()
 
         super().done(result)
@@ -984,7 +1008,7 @@ class BookmarksDialog(QDialog):
         if self._block.is_video_initialized:
             position_ms = self._block.time_to_bookmark
 
-        self._player.set_position(position_ms, self._length)
+        self._tell(position_ms)
         self._model.set_here(self._block.bookmark_here)
 
         self._update_buttons()
@@ -994,8 +1018,64 @@ class BookmarksDialog(QDialog):
         if self._tip_marks and self._hover_tip.isVisible():
             self._show_hover_tip(self._marker_tip_txt())
 
+    def _tell(self, position_ms):
+        """Show a time the video told, and go on from it while it plays."""
+
+        is_hair_ahead = 0 < self._glided_to - position_ms <= GLIDE_SLACK_MS
+
+        self._told = (position_ms, monotonic())
+        self._glide_floor = (
+            self._glided_to if is_hair_ahead and self._is_gliding else position_ms
+        )
+
+        self._glide()
+
+    @property
+    def _is_playing(self) -> bool:
+        block = self._block
+
+        return (
+            block.is_video_initialized
+            and not block.is_live
+            and not block.is_stopped
+            and not block.video_params.is_paused
+            and self._length > 0
+        )
+
+    @property
+    def _is_gliding(self) -> bool:
+        # A seek on its way shows where it is going, and the video plays on
+        # from there once it lands; the times told meanwhile are not that.
+        return self._is_playing and not self._block.is_seek_on_its_way
+
+    def _glide(self):
+        position_ms, told_at = self._told
+
+        if self._is_gliding:
+            rate = self._block.video_params.rate
+            gone_ms = min((monotonic() - told_at) * 1000, GLIDE_MAX_MS) * rate
+
+            # the video starts over at the loop's end, or stops at its own
+            end_ms = min(self._block.loop_end, self._length) - 1
+            glided_ms = min(position_ms + round(gone_ms), end_ms)
+
+            position_ms = max(position_ms, glided_ms, self._glide_floor)
+
+        # kept going through a seek, to go on as soon as it has landed
+        if not self._is_playing:
+            self._glide_timer.stop()
+        elif not self._glide_timer.isActive():
+            self._glide_timer.start()
+
+        self._glided_to = position_ms
+        self._player.set_position(position_ms, self._length)
+
     def _show_paused(self, is_paused):
         self._player.play_pause.is_off = not is_paused
+
+        # Paused, exactly where it was told to be, for a bookmark to be added
+        # there; played on, from there and from now.
+        self._tell(self._told[0])
 
         # held at the start, and played on from there
         if not is_paused and self._is_held:

@@ -4483,6 +4483,12 @@ class VideoBlock(QWidget):
 
         return arriving_time(self.time, self._seek_target)
 
+    @property
+    def is_seek_on_its_way(self) -> bool:
+        """Whether the last seek has yet to be seen to land."""
+
+        return self._seek_target is not None
+
     @only_with_video_tacks
     @only_seekable
     @only_initialized

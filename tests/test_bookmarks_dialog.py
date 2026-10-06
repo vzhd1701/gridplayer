@@ -1253,6 +1253,104 @@ class TestToTheMillisecond:
         assert dialog._player.time_label.text == "00:30.000 / 01:00"
 
 
+class TestGoingOnBetweenTimes:
+    """VLC tells the time every 250ms or 500ms; in between, while the video
+    plays, the bar and the time go on by themselves."""
+
+    @pytest.fixture
+    def clock(self, monkeypatch):
+        now = [100.0]
+        monkeypatch.setattr(dialog_module, "monotonic", lambda: now[0])
+
+        def _wait(ms):
+            now[0] += ms / 1000
+
+        return _wait
+
+    @pytest.fixture
+    def playing(self, block, dialog, clock):
+        dialog._player.play_pause.clicked.emit()
+
+        # the time goes where a test says and nowhere else
+        block.video_driver._fake_player_timer.stop()
+
+        block.time = 20000
+
+        return dialog
+
+    @staticmethod
+    def _shown(dialog, clock, ms):
+        clock(ms)
+        dialog._glide()
+
+        return dialog._player.time_label.text
+
+    def test_it_goes_on_from_the_last_time_told(self, block, playing, clock):
+        assert self._shown(playing, clock, 200) == "00:20.200 / 01:00"
+        assert playing._player.bar.position == pytest.approx(20200 / LENGTH)
+        assert playing._glide_timer.isActive()
+
+    def test_at_the_video_s_speed(self, block, playing, clock):
+        block.video_params.rate = 2.0
+
+        assert self._shown(playing, clock, 200) == "00:20.400 / 01:00"
+
+    def test_no_further_than_a_while_past_it_for_a_video_that_stalls(
+        self, block, playing, clock
+    ):
+        assert self._shown(playing, clock, 5000) == "00:20.600 / 01:00"
+
+    def test_not_past_the_end(self, block, playing, clock):
+        block.time = LENGTH - 100
+
+        assert self._shown(playing, clock, 500) == "00:59.999 / 01:00"
+
+    def test_a_time_told_a_hair_short_of_it_is_waited_for(self, block, playing, clock):
+        self._shown(playing, clock, 240)
+
+        block.time = 20200
+
+        assert playing._player.time_label.text == "00:20.240 / 01:00"
+        assert self._shown(playing, clock, 20) == "00:20.240 / 01:00"
+        assert self._shown(playing, clock, 30) == "00:20.250 / 01:00"
+
+    def test_one_further_back_is_gone_back_to(self, block, playing, clock):
+        self._shown(playing, clock, 240)
+
+        # started over at the end of its loop
+        block.time = 5000
+
+        assert playing._player.time_label.text == "00:05.000 / 01:00"
+
+    def test_a_seek_on_its_way_shows_where_it_goes(self, block, playing, clock):
+        block.seek(40000)
+
+        assert self._shown(playing, clock, 300) == "00:40.000 / 01:00"
+        assert playing._glide_timer.isActive()
+
+    def test_paused_it_shows_the_time_told(self, block, playing, clock):
+        self._shown(playing, clock, 200)
+
+        block.set_pause(True)
+
+        assert playing._player.time_label.text == "00:20.000 / 01:00"
+        assert self._shown(playing, clock, 200) == "00:20.000 / 01:00"
+        assert not playing._glide_timer.isActive()
+
+    def test_played_on_it_goes_on_from_then(self, block, playing, clock):
+        block.set_pause(True)
+        clock(3000)
+        block.set_pause(False)
+        block.video_driver._fake_player_timer.stop()
+
+        assert self._shown(playing, clock, 100) == "00:20.100 / 01:00"
+
+    def test_closed_it_stops(self, block, playing):
+        playing.reject()
+
+        assert not playing._glide_timer.isActive()
+
+
 class TestTheHoverTip:
     @pytest.fixture
     def mouse_at(self, mocker):
