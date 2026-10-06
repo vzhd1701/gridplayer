@@ -73,6 +73,20 @@ class PanTrigger(AutoName):
     NONE = auto()
 
 
+class ZoomSelectTrigger(AutoName):
+    """What a drag has to be made with to select a part to zoom to.
+
+    The same choices as PanTrigger, by the same names: one taken by that
+    is not this one's.
+    """
+
+    MIDDLE = auto()
+    CTRL = auto()
+    SHIFT = auto()
+    ALT = auto()
+    NONE = auto()
+
+
 class VideoAspect(AutoName):
     FIT = auto()
     STRETCH = auto()

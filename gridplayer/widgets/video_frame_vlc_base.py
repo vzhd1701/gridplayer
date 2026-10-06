@@ -38,6 +38,7 @@ from gridplayer.utils.aspect_calc import (
     calc_dragged_shift,
     calc_moved_shift,
     calc_picture_rect,
+    calc_selection_zoom,
     calc_shift_range,
     calc_view_geometry,
     calc_view_placement,
@@ -1274,6 +1275,56 @@ class VideoFrameVLC(QWidget, metaclass=QABC):
         self._zoom_kept = ((frame_size, pane_size, focus, zoomed), kept)
 
         return shift
+
+    def selection_zoom(self, selection: Rect) -> tuple[float, VideoShift] | None:
+        """The zoom and shift a part of the pane selected comes to.
+
+        See calc_selection_zoom. The part is where the viewer sees it, on
+        the picture as drawn (see _view_point), and (x, y, width, height).
+        It goes into as much of the pane as is on show of the picture as
+        the view has it: drawn bigger, the selection fitted into all of the
+        pane would go past its edges as drawn, ~8 pixels each side.
+        """
+
+        pane_w, pane_h = self._pane_size()
+        x, y, width, height = selection
+
+        left, top = self._view_point((x, y))
+        right, bottom = self._view_point((x + width, y + height))
+
+        room_left, room_top = self._view_point((0, 0))
+        room_right, room_bottom = self._view_point((pane_w, pane_h))
+
+        return calc_selection_zoom(
+            self._view_frame_size(),
+            (pane_w, pane_h),
+            self._view,
+            (left, top, right - left, bottom - top),
+            self._transform,
+            room=(room_right - room_left, room_bottom - room_top),
+        )
+
+    def shown_picture_area(self) -> Rect | None:
+        """The part of the pane the picture is drawn over, None for none.
+
+        As the viewer sees it (see _shown_picture_rect), within the pane.
+        """
+
+        shown = self._shown_picture_rect()
+
+        if shown is None:
+            return None
+
+        x, y, width, height = shown
+        pane_w, pane_h = self._pane_size()
+
+        left, top = max(x, 0), max(y, 0)
+        right, bottom = min(x + width, pane_w), min(y + height, pane_h)
+
+        if right <= left or bottom <= top:
+            return None
+
+        return left, top, right - left, bottom - top
 
     def _view_point(self, point: tuple[float, float]) -> tuple[float, float]:
         """Where a point of the pane is in the view's placement of the picture.

@@ -17,11 +17,13 @@ from gridplayer.utils.drop_zone import DropIndicator
 from gridplayer.utils.qt import MILLISECONDS, qt_connect
 from gridplayer.utils.time_txt import get_time_txt
 from gridplayer.widgets.video_overlay_buttons import (
+    OverlayButton,
     OverlayExitButton,
     OverlayPlayPauseButton,
     OverlayVolumeButton,
 )
 from gridplayer.widgets.video_overlay_elements import (
+    OverlayBar,
     OverlayBookmarkMarkers,
     OverlayBorder,
     OverlayDropIndicator,
@@ -31,6 +33,8 @@ from gridplayer.widgets.video_overlay_elements import (
     OverlayShortLabelFloating,
     OverlayVolumeBar,
     OverlayWidget,
+    OverlayZoomHint,
+    OverlayZoomSelection,
 )
 
 PROPAGATED_EVENTS = (
@@ -146,9 +150,14 @@ class OverlayBlock(QWidget):
         self.drop_indicator = OverlayDropIndicator(parent=self)
         self.drop_indicator.hide()
 
+        self.zoom_selection = OverlayZoomSelection(parent=self)
+        self.zoom_hint = OverlayZoomHint(parent=self)
+
         layout_main.addWidget(self.control_widget)
         layout_main.addWidget(self.border_widget)
         layout_main.addWidget(self.drop_indicator)
+        layout_main.addWidget(self.zoom_selection)
+        layout_main.addWidget(self.zoom_hint)
 
         self.top_bar = QVBoxLayout()
         self.middle = QHBoxLayout()
@@ -393,6 +402,35 @@ class OverlayBlock(QWidget):
             self.drop_indicator.raise_()
         self.update()
 
+    def set_zoom_selection(self, selection: QRect | None):
+        """Outline the part of the picture being selected to zoom to."""
+
+        self.zoom_selection.set_selection(selection)
+
+    def set_zoom_hint(self, is_shown: bool):
+        """Say how to select a part of the picture to zoom to, or not."""
+
+        self.zoom_hint.set_shown(is_shown)
+
+    def is_control_at(self, global_pos: QPoint) -> bool:
+        """Whether a press there is one of the overlay's own controls':
+        a button, a bar or a bookmark's marker, which act on it themselves.
+
+        Looked for here rather than with QApplication.widgetAt, which never
+        looks inside a window of the cell's own, as OverlayBlockChild is.
+        """
+
+        if not self.isVisible():
+            return False
+
+        pos = self.mapFromGlobal(global_pos)
+        widget = self.childAt(pos)
+
+        if isinstance(widget, OverlayBookmarkMarkers):
+            return widget.is_marker_at(widget.mapFrom(self, pos).x())
+
+        return isinstance(widget, (OverlayButton, OverlayBar))
+
     def _set_opacity(self, opacity):
         # Opacity lives on each OverlayWidget, not on this parent. A single
         # QGraphicsOpacityEffect here cached the whole tree and left seams
@@ -545,6 +583,11 @@ class OverlayBlockFloating(OverlayBlock):
         self.bookmark_markers.is_opaque = True
         self.bookmark_markers.update_shape()
         self.bookmark_markers.shape_changed.connect(self.refresh_opaque_mask)
+
+        # the outline of a selection to zoom to moves about the cell without
+        # the widget it is drawn on moving, and the hint goes with its size
+        self.zoom_selection.shape_changed.connect(self.refresh_opaque_mask)
+        self.zoom_hint.shape_changed.connect(self.refresh_opaque_mask)
 
     def setGeometry(self, rect):
         new_pos = self.parent().mapToGlobal(QPoint())

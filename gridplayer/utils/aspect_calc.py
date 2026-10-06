@@ -3,6 +3,7 @@ from dataclasses import dataclass
 from fractions import Fraction
 
 from gridplayer.params.static import (
+    MAX_SCALE,
     ROTATION_TRANSFORMS,
     SHIFT_STEP,
     VideoAnchor,
@@ -465,6 +466,94 @@ def calc_zoomed_shift(
     )
 
 
+def calc_selection_zoom(
+    frame_size: tuple[int, int],
+    pane_size: tuple[int, int],
+    view: ViewParams,
+    selection: Rect,
+    transform: VideoTransform | None = VideoTransform.NONE,
+    max_scale: float = MAX_SCALE,
+    room: tuple[float, float] | None = None,
+) -> tuple[float, VideoShift] | None:
+    """The zoom and shift that fit a part of the picture into the pane.
+
+    `selection` is (x, y, width, height) in pane pixels. What of it is over
+    the picture on show is fitted whole into the pane, as big as it goes
+    there, and put in its middle: a zoom about the middle of the pane that
+    keeps the middle of the selection there. The picture is never zoomed
+    out, the selection having been on show, so fitting already.
+
+    `room` is how much of the pane the selection may take, all of it if not
+    given: where the picture is drawn bigger than the view has it, as on
+    a hardware surface, a little less of it is on show.
+
+    Up to max_scale, where the selection is smaller in the pane then. The
+    scale is in hundredths, down, which still fits the selection and reads
+    as a number. On an axis where the picture fits the pane, it goes to
+    the anchor's place, and it is held within the bounds after, as a zoom
+    about a point is (see calc_zoomed_shift): by an edge, the selection
+    goes off the middle rather than black coming in.
+
+    None where nothing of the selection is over the picture, and where
+    there is nothing to work it out from.
+    """
+    fit = _Fit.of(frame_size, pane_size, view, transform)
+
+    if fit is None:
+        return None
+
+    pane_w, pane_h = pane_size
+    left, top = _picture_position(fit, pane_size, view)
+
+    start_x, end_x = _over_picture(selection[0], selection[2], left, fit.picture_w)
+    start_y, end_y = _over_picture(selection[1], selection[3], top, fit.picture_h)
+
+    start_x, end_x = max(start_x, 0), min(end_x, pane_w)
+    start_y, end_y = max(start_y, 0), min(end_y, pane_h)
+
+    if end_x - start_x <= _ROUNDING_SLACK or end_y - start_y <= _ROUNDING_SLACK:
+        return None
+
+    room_w, room_h = room or pane_size
+    by = min(room_w / (end_x - start_x), room_h / (end_y - start_y))
+    scale = min(view.scale * by, max_scale)
+    scale = max(math.floor(scale * 100 + _ROUNDING_SLACK) / 100, view.scale)
+
+    zoomed = view._replace(scale=scale)
+    zoomed_fit = _Fit.of(frame_size, pane_size, zoomed, transform)
+    anchor_x, anchor_y = _ANCHOR_POSITIONS[view.anchor]
+
+    # the selection's middle, kept at the pane's: the point is in frame
+    # pixels from the picture's near edge, as _zoomed_shift has it
+    wanted_x, _ = _zoomed_shift(
+        pane_w,
+        (left, fit.picture_w, fit.per_x),
+        (zoomed_fit.picture_w, zoomed_fit.per_x),
+        anchor_x,
+        pane_w / 2,
+        ((start_x + end_x) / 2 - left) / fit.per_x,
+        view.is_shift_past_edges,
+    )
+    wanted_y, _ = _zoomed_shift(
+        pane_h,
+        (top, fit.picture_h, fit.per_y),
+        (zoomed_fit.picture_h, zoomed_fit.per_y),
+        anchor_y,
+        pane_h / 2,
+        ((start_y + end_y) / 2 - top) / fit.per_y,
+        view.is_shift_past_edges,
+    )
+
+    shift = calc_view_shift(
+        frame_size,
+        pane_size,
+        zoomed._replace(shift=VideoShift(wanted_x, wanted_y)),
+        transform,
+    )
+
+    return scale, shift
+
+
 def calc_view_borders(
     frame_size: tuple[int, int],
     pane_size: tuple[int, int],
@@ -749,6 +838,14 @@ def _zoomed_shift(
     wanted = (near - (pane - zoomed_picture) * anchor) / zoomed_per
 
     return math.floor(wanted + 0.5), point if is_kept else None
+
+
+def _over_picture(
+    start: float, length: float, picture_start: float, picture: float
+) -> tuple[float, float]:
+    """Where a stretch of one axis starts and ends over the picture."""
+
+    return max(start, picture_start), min(start + length, picture_start + picture)
 
 
 def _on_steps(shift: int, by: int, step: int) -> int:

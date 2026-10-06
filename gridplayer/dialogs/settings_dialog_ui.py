@@ -305,6 +305,18 @@ class Ui_SettingsDialog:
         self.formLayout_pan_trigger.setWidget(
             0, QtWidgets.QFormLayout.FieldRole, self.playerPanTrigger
         )
+        self.playerZoomSelectTriggerLabel = QtWidgets.QLabel(
+            self.page_general_shortcuts
+        )
+        self.playerZoomSelectTriggerLabel.setObjectName("playerZoomSelectTriggerLabel")
+        self.formLayout_pan_trigger.setWidget(
+            1, QtWidgets.QFormLayout.LabelRole, self.playerZoomSelectTriggerLabel
+        )
+        self.playerZoomSelectTrigger = QtWidgets.QComboBox(self.page_general_shortcuts)
+        self.playerZoomSelectTrigger.setObjectName("playerZoomSelectTrigger")
+        self.formLayout_pan_trigger.setWidget(
+            1, QtWidgets.QFormLayout.FieldRole, self.playerZoomSelectTrigger
+        )
         self.lay_page_general_shortcuts.addLayout(self.formLayout_pan_trigger)
         self.section_page.addWidget(self.page_general_shortcuts)
         self.page_streaming_resolution = QtWidgets.QWidget()
@@ -845,6 +857,9 @@ class Ui_SettingsDialog:
         )
         self.playerPanTriggerLabel.setText(
             _translate("SettingsDialog", "Move video within its cell with")
+        )
+        self.playerZoomSelectTriggerLabel.setText(
+            _translate("SettingsDialog", "Zoom into a part of a video with")
         )
         self.streamingHLSVIAStreamlink.setText(
             _translate("SettingsDialog", "Use Streamlink for HLS streams when possible")

@@ -514,6 +514,16 @@
            <item row="0" column="1">
             <widget class="QComboBox" name="playerPanTrigger"/>
            </item>
+           <item row="1" column="0">
+            <widget class="QLabel" name="playerZoomSelectTriggerLabel">
+             <property name="text">
+              <string>Zoom into a part of a video with</string>
+             </property>
+            </widget>
+           </item>
+           <item row="1" column="1">
+            <widget class="QComboBox" name="playerZoomSelectTrigger"/>
+           </item>
           </layout>
          </item>
         </layout>

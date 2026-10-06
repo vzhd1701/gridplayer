@@ -8,7 +8,7 @@ from functools import partial
 from pathlib import Path
 
 from pydantic_extra_types.color import Color
-from PyQt5.QtCore import QSize, Qt, QTimer, pyqtSignal
+from PyQt5.QtCore import QRect, QRectF, QSize, Qt, QTimer, pyqtSignal
 from PyQt5.QtGui import QCursor, QIcon
 from PyQt5.QtWidgets import QFileDialog, QStackedLayout, QWidget
 
@@ -451,6 +451,14 @@ class VideoBlock(QWidget):
         self._is_active = False
         self._is_closing = False
         self._drop_indicator = DropIndicator.NONE
+
+        # the part of the picture being selected to zoom to, while it is
+        self._zoom_selection: QRect | None = None
+        # how to select one, said once Zoom to Selection is picked
+        self._is_zoom_hint_shown = False
+        # where the picture stands is a zoom to a selection's doing, which
+        # the zoom's reset undoes along with it
+        self._is_zoomed_to_selection = False
 
         self._title = None
         self._color = None
@@ -2713,6 +2721,10 @@ class VideoBlock(QWidget):
         if self._ctx.is_drag_ui:
             return
 
+        # it shows a selection to zoom to, or how to make one
+        if self._is_zoom_ui():
+            return
+
         if self._ctx.is_disable_overlay:
             self.overlay_hide_timer.stop()
             self.overlay.hide()
@@ -4487,13 +4499,16 @@ class VideoBlock(QWidget):
     @only_with_video_tacks
     @only_initialized
     def scale_reset(self):
-        """Back to the whole picture, and, zoomed about the pointer, back in
-        its place: where it stands then is the zooms' doing, not a move."""
+        """Back to the whole picture, and, zoomed about the pointer or to a
+        selection, back in its place: where it stands then is the zooms'
+        doing, not a move."""
 
-        if self.video_params.is_zoom_to_cursor:
+        if self.video_params.is_zoom_to_cursor or self._is_zoomed_to_selection:
             self._set_zoom(1.0, VideoShift(0, 0))
         else:
             self.set_scale(1.0)
+
+        self._is_zoomed_to_selection = False
 
     @only_with_video_tacks
     @only_initialized
@@ -4546,6 +4561,118 @@ class VideoBlock(QWidget):
         focus = self.video_driver.mapFromGlobal(pointer)
 
         return focus.x(), focus.y()
+
+    @only_with_video_tacks
+    @only_initialized
+    def zoom_to_selection(self, selection: QRect):
+        """Fit a part of the picture into the cell, in its middle.
+
+        The part is in this cell's pixels, where it was selected over the
+        picture as drawn; see VideoFrameVLC.selection_zoom.
+        """
+
+        origin = self.video_driver.pos()
+        zoom = self.video_driver.selection_zoom(
+            (
+                selection.x() - origin.x(),
+                selection.y() - origin.y(),
+                selection.width(),
+                selection.height(),
+            )
+        )
+
+        if zoom is None:
+            return
+
+        self._is_zoomed_to_selection = True
+        self._set_zoom(*zoom)
+
+    def zoom_selection_area(self) -> QRect | None:
+        """Where in this cell a part of the picture can be selected to zoom
+        to: over the picture as drawn. None where there is none on show."""
+
+        if not self.is_video_initialized or not self.video_tracks:
+            return None
+
+        area = self.video_driver.shown_picture_area()
+
+        if area is None:
+            return None
+
+        x, y, width, height = area
+        origin = self.video_driver.pos()
+
+        return (
+            QRectF(x + origin.x(), y + origin.y(), width, height)
+            .toAlignedRect()
+            .intersected(self.rect())
+        )
+
+    def show_zoom_selection(self, selection: QRect | None):
+        """Mark the part of the picture being selected to zoom to.
+
+        On the overlay, with its chrome out of the way, and shown even where
+        it is off or the cell is too small for it. In place of the hint,
+        which it says all of. None once the selecting is over, which puts
+        the overlay back the way it would be.
+        """
+
+        was_zoom_ui = self._is_zoom_ui()
+
+        if selection is not None:
+            self._zoom_selection = QRect(selection)
+            self._is_zoom_hint_shown = False
+
+            self.overlay.set_zoom_hint(False)
+            self.overlay.set_zoom_selection(selection)
+        elif self._zoom_selection is not None:
+            self._zoom_selection = None
+
+            self.overlay.set_zoom_selection(None)
+
+        self._zoom_ui_changed(was_zoom_ui)
+
+    def show_zoom_hint(self, is_shown: bool):
+        """Say how to select a part of the picture to zoom to, or not.
+
+        Once Zoom to Selection is picked, until the selecting starts, on
+        the overlay as the selection itself is (see show_zoom_selection).
+        """
+
+        if is_shown == self._is_zoom_hint_shown:
+            return
+
+        was_zoom_ui = self._is_zoom_ui()
+        self._is_zoom_hint_shown = is_shown
+
+        self.overlay.set_zoom_hint(is_shown)
+
+        self._zoom_ui_changed(was_zoom_ui)
+
+    def _is_zoom_ui(self) -> bool:
+        return self._zoom_selection is not None or self._is_zoom_hint_shown
+
+    def _zoom_ui_changed(self, was_zoom_ui: bool):
+        """The overlay shown for zooming to a selection, with that alone on
+        it, or put back the way it would be once it is done with."""
+
+        if self._is_zoom_ui() == was_zoom_ui:
+            return
+
+        if self._is_zoom_ui():
+            self.overlay_hide_timer.stop()
+            self.overlay.set_is_chrome_visible(False)
+            self.overlay.show()
+            return
+
+        self.overlay.set_is_chrome_visible(not self._ctx.is_drag_ui)
+
+        if self._ctx.is_disable_overlay or not self.is_overlay_fits:
+            self.overlay_hide_timer.stop()
+            self.overlay.hide()
+            return
+
+        self.show_overlay()
 
     @only_with_video_tacks
     @only_initialized
@@ -4610,6 +4737,7 @@ class VideoBlock(QWidget):
         self.video_driver.set_anchor(anchor)
 
         self.set_shift(VideoShift(0, 0), is_silent=True)
+        self._is_zoomed_to_selection = False
 
     @only_with_video_tacks
     @only_initialized
@@ -4652,6 +4780,7 @@ class VideoBlock(QWidget):
     @only_initialized
     def shift_reset(self):
         self.set_shift(VideoShift(0, 0))
+        self._is_zoomed_to_selection = False
 
     @only_with_video_tacks
     @only_initialized

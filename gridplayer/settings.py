@@ -42,6 +42,7 @@ from gridplayer.params.static import (
     VideoEndAction,
     VideoInitialState,
     VideoTransform,
+    ZoomSelectTrigger,
 )
 from gridplayer.params.subtitle_encodings import DEFAULT_ENCODING
 from gridplayer.params.subtitle_style import SUBTITLE_STYLE_DEFAULTS
@@ -64,6 +65,7 @@ _default_settings = {
     "player/color_scheme": ColorScheme.SYSTEM,
     "player/keymap": KeymapOverrides({}),
     "player/pan_trigger": PanTrigger.MIDDLE,
+    "player/zoom_select_trigger": ZoomSelectTrigger.NONE,
     "player/recent_list_enabled": True,
     "player/recent_list_max_size": 10,
     # empty means the screenshots folder in the app data folder, worked out

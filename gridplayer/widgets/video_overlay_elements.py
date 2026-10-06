@@ -1502,6 +1502,11 @@ class OverlayBookmarkMarkers(OverlayWidget):
         self.setMask(QRegion(QBitmap.fromImage(painted.createAlphaMask())))
         self.shape_changed.emit()
 
+    def is_marker_at(self, x: int) -> bool:
+        """Whether a press this far across would be on a marker."""
+
+        return self._marker_at(x) is not None
+
     def _marker_at(self, x: int) -> tuple[int, list] | None:
         index = marker_under(self._markers, x)
 
@@ -1771,6 +1776,207 @@ class OverlayBorder(OverlayWidget):
                 max(0, self.height() - inset * 2),
             )
         )
+
+
+class OverlayZoomSelection(OverlayWidget):
+    """The part of the picture being selected to zoom to, outlined.
+
+    A line in the video's colour with one of its contrast inside it, which
+    shows over any picture, and the part itself lightly veiled in the
+    colour. On the opaque overlay, which shows nothing through it, the
+    lines alone: the window is cut to them.
+    """
+
+    # the line in the video's colour, and the one in its contrast inside it
+    line_width = 2
+    contrast_width = 1
+
+    # how much of the video's colour veils the part selected
+    veil_alpha = 40
+
+    # the lines moved, for the opaque overlay to be cut to them
+    shape_changed = pyqtSignal()
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
+        self.setAttribute(Qt.WA_TransparentForMouseEvents)
+        self.setMinimumSize(0, 0)
+
+        self._selection = QRect()
+
+        self.hide()
+
+    @property
+    def selection(self) -> QRect:
+        return QRect(self._selection)
+
+    def set_selection(self, selection: QRect | None) -> None:
+        """Outline a part of the overlay, nothing for None or an empty one."""
+
+        old_selection = self._selection
+        self._selection = QRect() if selection is None else QRect(selection)
+
+        if self._selection.isEmpty():
+            self.hide()
+
+            if not self.mask().isEmpty():
+                self.clearMask()
+
+            self.shape_changed.emit()
+            return
+
+        if self._is_parent_opaque():
+            self.setMask(self._lines_region())
+
+        self.update(old_selection.united(self._selection))
+        self.show()
+
+        self.shape_changed.emit()
+
+    def set_overlay_opacity(self, opacity):
+        # see-through by its own colours; an effect would draw all of the
+        # overlay offscreen again at every step of the selecting
+        self.setGraphicsEffect(None)
+
+    def paintEvent(self, event) -> None:
+        if self._selection.isEmpty():
+            return
+
+        painter = QPainter(self)
+        inner = _inset(self._selection, self.line_width)
+
+        if not self._is_parent_opaque():
+            veil = QColor(self.color)
+            veil.setAlpha(self.veil_alpha)
+            painter.fillRect(inner, veil)
+
+        painter.setClipRegion(_band(self._selection, self.line_width))
+        painter.fillRect(self._selection, self.color)
+
+        painter.setClipRegion(_band(inner, self.contrast_width))
+        painter.fillRect(inner, self.color_contrast)
+
+    def _lines_region(self) -> QRegion:
+        return _band(self._selection, self.line_width + self.contrast_width)
+
+    def _is_parent_opaque(self) -> bool:
+        return bool(getattr(self.parent(), "is_opaque", False))
+
+
+class OverlayZoomHint(OverlayWidget):
+    """How to select a part of the picture to zoom to, in the middle of it.
+
+    Shown once Zoom to Selection is picked, until the selecting starts. A
+    box like the overlay's other labels, in the video's colour with the
+    text in its contrast: shorter where the cell is too small for all of
+    it, left out where it is too small for any.
+    """
+
+    line_gap = 4
+
+    # where it is, for the opaque overlay to be cut to it
+    shape_changed = pyqtSignal()
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
+        self.setAttribute(Qt.WA_TransparentForMouseEvents)
+        self.setMinimumSize(0, 0)
+
+        self._is_wanted = False
+
+        self.hide()
+
+    def set_shown(self, is_shown: bool) -> None:
+        self._is_wanted = is_shown
+        self._update_shape()
+
+    def resizeEvent(self, event) -> None:
+        if self._is_wanted:
+            self._update_shape()
+
+    def paintEvent(self, event) -> None:
+        lines, box = self._layout()
+
+        if box is None:
+            return
+
+        painter = QPainter(self)
+        painter.fillRect(box, self.color)
+        painter.setPen(self.color_contrast)
+
+        metrics = QFontMetrics(self.font())
+        line_box = QRect(box.adjusted(0, self.padding, 0, 0))
+        line_box.setHeight(metrics.height())
+
+        for line in lines:
+            painter.drawText(line_box, Qt.AlignCenter, line)
+            line_box.translate(0, metrics.height() + self.line_gap)
+
+    def _layout(self) -> tuple[tuple[str, ...], QRect | None]:
+        """What it says and where, whatever of it fits the cell."""
+
+        metrics = QFontMetrics(self.font())
+        room = self.rect().adjusted(
+            self.padding, self.padding, -self.padding, -self.padding
+        )
+
+        for lines in self._wordings():
+            width = max(metrics.horizontalAdvance(line) for line in lines)
+            height = metrics.height() * len(lines) + self.line_gap * (len(lines) - 1)
+
+            box = QRect(0, 0, width + self.padding * 2, height + self.padding * 2)
+
+            if box.width() <= room.width() and box.height() <= room.height():
+                box.moveCenter(self.rect().center())
+                return lines, box
+
+        return (), None
+
+    @staticmethod
+    def _wordings() -> tuple[tuple[str, ...], ...]:
+        """Each shorter than the one before, for smaller cells."""
+
+        return (
+            (
+                translate("Zoom", "Drag to select an area to zoom in"),
+                translate("Zoom", "Esc to cancel"),
+            ),
+            (translate("Zoom", "Drag to zoom in"),),
+        )
+
+    def _update_shape(self) -> None:
+        _, box = self._layout()
+
+        if not self._is_wanted or box is None:
+            self.hide()
+            self.shape_changed.emit()
+            return
+
+        # on the opaque overlay, nothing past the box: cut to it before
+        # it shows, see OverlayBlockFloating.make_opaque
+        if getattr(self.parent(), "is_opaque", False):
+            self.setMask(QRegion(box))
+
+        self.show()
+        self.update()
+        self.shape_changed.emit()
+
+
+def _inset(rect: QRect, width: int) -> QRect:
+    return rect.adjusted(width, width, -width, -width)
+
+
+def _band(rect: QRect, width: int) -> QRegion:
+    """The edge of a rectangle so wide inside it, all of a narrower one."""
+
+    inside = _inset(rect, width)
+
+    if inside.isEmpty():
+        return QRegion(rect)
+
+    return QRegion(rect) - QRegion(inside)
 
 
 class OverlayDiscBadge(OverlayWidget):

@@ -16,6 +16,7 @@ from gridplayer.utils.aspect_calc import (
     calc_dragged_shift,
     calc_moved_shift,
     calc_picture_rect,
+    calc_selection_zoom,
     calc_shift_range,
     calc_view_borders,
     calc_view_geometry,
@@ -559,6 +560,169 @@ class TestZoomedShift:
             VideoShift(10, 0),
             (None, None),
         )
+
+
+def _at(view, point, frame=VIDEO, pane=SQUARE, transform=VideoTransform.NONE):
+    """The pane point over a frame point, the other way round from _under."""
+
+    left, top, width, height = calc_picture_rect(frame, pane, view, transform)
+    _, _, region_w, region_h = calc_crop_region(frame, view.crop)
+
+    return (
+        left + point[0] * width / region_w,
+        top + point[1] * height / region_h,
+    )
+
+
+class TestSelectionZoom:
+    """A part of the picture fitted into the pane, in its middle."""
+
+    def test_it_fits_the_selection_into_the_pane_in_its_middle(self):
+        # 1600x900 at 900/1080, from -350 across: the selection's middle,
+        # (250, 250), is over (720, 300); at 3x, 2.5 pane pixels a frame
+        # pixel, the picture goes to (-1350, -300) to have it at (450, 450),
+        # 600 right and down of where it would be centred
+        scale, shift = calc_selection_zoom(VIDEO, SQUARE, _view(), (100, 100, 300, 300))
+
+        assert scale == 3.0
+        assert shift == VideoShift(240, 240)
+
+    @pytest.mark.parametrize(
+        ("view", "transform"),
+        [
+            (_view(), VideoTransform.NONE),
+            (_view(anchor=VideoAnchor.TOP_LEFT), VideoTransform.NONE),
+            (_view(anchor=VideoAnchor.BOTTOM_RIGHT), VideoTransform.NONE),
+            (_view(shift=VideoShift(-200, 0)), VideoTransform.NONE),
+            (_view(crop=VideoCrop(100, 40, 300, 0)), VideoTransform.NONE),
+            (_view(aspect=VideoAspect.STRETCH), VideoTransform.NONE),
+            (_view(scale=1.5, shift=VideoShift(90, -60)), VideoTransform.NONE),
+            (_view(scale=1.5, is_shift_past_edges=True), VideoTransform.NONE),
+            (_view(), VideoTransform.ROTATE_90),
+        ],
+    )
+    @pytest.mark.parametrize(
+        "selection",
+        [(300, 250, 200, 150), (420, 380, 60, 140), (250, 300, 400, 120)],
+    )
+    def test_wherever_the_picture_is_and_however_it_is_shown(
+        self, view, transform, selection
+    ):
+        x, y, width, height = selection
+        middle = _under(view, (x + width / 2, y + height / 2), transform=transform)
+        corners = (
+            _under(view, (x, y), transform=transform),
+            _under(view, (x + width, y + height), transform=transform),
+        )
+
+        scale, shift = calc_selection_zoom(VIDEO, SQUARE, view, selection, transform)
+        zoomed = view._replace(scale=scale, shift=shift)
+
+        # off by what the whole frame pixels the shift is in round away
+        assert _under(zoomed, (450, 450), transform=transform) == pytest.approx(
+            middle, abs=0.5
+        )
+
+        (left, top), (right, bottom) = (
+            _at(zoomed, corner, transform=transform) for corner in corners
+        )
+        assert right - left <= 900 + 1e-6
+        assert bottom - top <= 900 + 1e-6
+        # as big as it goes, in hundredths
+        assert max(right - left, bottom - top) > 900 * (1 - 0.01 / scale) - 1e-6
+
+    def test_it_fits_rather_than_fills(self):
+        """600x100: as wide as the pane, and the rest of the picture above
+        and below it, rather than 100 as tall as the pane and cut off."""
+
+        scale, _ = calc_selection_zoom(VIDEO, SQUARE, _view(), (150, 400, 600, 100))
+
+        assert scale == 1.5
+
+    def test_the_scale_is_in_hundredths_down(self):
+        """900/350 is 2.5714..., which would not read as a number."""
+
+        scale, _ = calc_selection_zoom(VIDEO, SQUARE, _view(), (275, 275, 350, 350))
+
+        assert scale == 2.57
+
+    def test_no_further_than_the_zoom_goes(self):
+        scale, shift = calc_selection_zoom(
+            VIDEO, SQUARE, _view(), (595, 395, 10, 10), max_scale=10.0
+        )
+        zoomed = _view(scale=scale, shift=shift)
+
+        assert scale == 10.0
+        # still in the middle, smaller than the pane
+        assert _under(zoomed, (450, 450)) == pytest.approx(
+            _under(_view(), (600, 400)), abs=0.5
+        )
+
+    def test_it_never_zooms_out(self):
+        """All of what is on show selected, a zoom in already."""
+
+        view = _view(scale=2.0, shift=VideoShift(100, 0))
+
+        scale, shift = calc_selection_zoom(VIDEO, SQUARE, view, (0, 0, 900, 900))
+
+        assert scale == 2.0
+        assert shift == VideoShift(100, 0)
+
+    def test_by_an_edge_it_goes_off_the_middle_rather_than_black_coming_in(self):
+        """Against the top of the picture; across, it is cut off by the pane
+        either side, and the selection's middle can go to the pane's."""
+
+        view = _view()
+
+        scale, shift = calc_selection_zoom(VIDEO, SQUARE, view, (400, 0, 100, 100))
+        zoomed = view._replace(scale=scale, shift=shift)
+
+        assert scale == 9.0
+        assert shift.Y == calc_shift_range(VIDEO, SQUARE, zoomed)[1].Y
+        # the pane's top row is the selection's still
+        assert _under(zoomed, (450, 0))[1] == pytest.approx(_under(view, (450, 0))[1])
+        assert _under(zoomed, (450, 450))[0] == pytest.approx(
+            _under(view, (450, 50))[0], abs=0.5
+        )
+
+    def test_only_what_is_over_the_picture_counts(self):
+        """Letterboxed, 900x506.25 from 196.875 down: 450x103.125 of it."""
+
+        view = _view(aspect=VideoAspect.NONE)
+
+        scale, _ = calc_selection_zoom(VIDEO, SQUARE, view, (0, 0, 450, 300))
+
+        assert scale == 2.0
+
+    def test_over_the_bars_alone_there_is_nothing_to_zoom_to(self):
+        view = _view(aspect=VideoAspect.NONE)
+
+        assert calc_selection_zoom(VIDEO, SQUARE, view, (0, 0, 900, 150)) is None
+
+    def test_an_axis_the_picture_fits_on_goes_to_the_anchor_s_place(self):
+        """Letterboxed, and still only 759.375 tall at 1.5x."""
+
+        view = _view(aspect=VideoAspect.NONE)
+
+        scale, shift = calc_selection_zoom(VIDEO, SQUARE, view, (0, 300, 600, 100))
+
+        assert scale == 1.5
+        assert shift.Y == 0
+        # across it is bigger than the pane, and goes against the left side
+        zoomed = view._replace(scale=1.5)
+        assert shift.X == calc_shift_range(VIDEO, SQUARE, zoomed)[1].X
+
+    def test_past_the_edges_it_is_in_the_middle_on_that_axis_too(self):
+        view = _view(aspect=VideoAspect.NONE, is_shift_past_edges=True)
+        middle = _under(view, (300, 350))
+
+        scale, shift = calc_selection_zoom(VIDEO, SQUARE, view, (0, 300, 600, 100))
+        zoomed = view._replace(scale=scale, shift=shift)
+
+        assert _under(zoomed, (450, 450)) == pytest.approx(middle, abs=0.5)
+
+    def test_nothing_to_work_from_is_nothing_to_zoom_to(self):
+        assert calc_selection_zoom((0, 0), SQUARE, _view(), (5, 5, 50, 50)) is None
 
 
 class TestShiftRange:

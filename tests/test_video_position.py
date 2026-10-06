@@ -357,6 +357,21 @@ class TestTheMenu:
         assert action["show_if"] == "is_active_has_video"
         assert hasattr(VideoBlock, "toggle_zoom_to_cursor")
 
+    def test_a_selection_to_zoom_to_is_picked_for_from_zoom(self):
+        """The next drag over a video selects; see ZoomSelectManager."""
+
+        from gridplayer.player.managers.zoom_select import ZoomSelectManager
+
+        action = ACTIONS["Zoom to Selection"]
+        zoom = _submenu("video_active", "Zoom")
+
+        assert zoom.index("Zoom to Selection") == zoom.index("Zoom Reset") - 1
+        assert action["func"] == "arm_zoom_selection"
+        assert action["show_if"] == "is_active_has_video"
+        assert "key" not in action
+        assert "keys" not in action
+        assert "arm_zoom_selection" in ZoomSelectManager(context=None).commands
+
     def test_every_video_can_be_set_to_zoom_to_the_cursor_or_not(self):
         assert _all_videos_submenu("Zoom")[-2:] == (
             "---",
@@ -532,7 +547,10 @@ def _zooming_block(is_zoom_to_cursor=True, scale=1.0, shift=NO_SHIFT, focus=(600
     block.is_video_initialized = True
     block.video_driver = Mock()
     block.video_driver.zoomed_shift.return_value = VideoShift(-90, 90)
+    block.video_driver.selection_zoom.return_value = (3.0, VideoShift(240, 240))
+    block.video_driver.pos.return_value = QPoint(0, 0)
     block._zoom_focus.return_value = focus
+    block._is_zoomed_to_selection = False
     for name in (
         "scale_increase",
         "scale_decrease",
@@ -542,6 +560,10 @@ def _zooming_block(is_zoom_to_cursor=True, scale=1.0, shift=NO_SHIFT, focus=(600
         "_set_zoom",
         "toggle_zoom_to_cursor",
         "set_zoom_to_cursor",
+        "zoom_to_selection",
+        "set_shift",
+        "shift_reset",
+        "set_anchor",
     ):
         setattr(block, name, partial(getattr(VideoBlock, name), block))
     return block
@@ -633,6 +655,95 @@ class TestZoomingToTheCursor:
         block.set_zoom_to_cursor(True)
 
         assert block.video_params.is_zoom_to_cursor
+
+
+class TestZoomingToASelection:
+    def test_it_zooms_and_moves_the_picture_in_one_go(self):
+        block = _zooming_block(is_zoom_to_cursor=False)
+
+        block.zoom_to_selection(QRect(100, 100, 300, 300))
+
+        block.video_driver.selection_zoom.assert_called_once_with((100, 100, 300, 300))
+        block.video_driver.set_zoom.assert_called_once_with(3.0, VideoShift(240, 240))
+        assert block.video_params.scale == 3.0
+        assert block.video_params.shift == VideoShift(240, 240)
+        block.info_change.emit.assert_called_once_with("Zoom: 3.0")
+
+    def test_the_selection_is_taken_to_the_frame_s_pixels(self):
+        block = _zooming_block()
+        block.video_driver.pos.return_value = QPoint(10, 20)
+
+        block.zoom_to_selection(QRect(100, 100, 300, 200))
+
+        block.video_driver.selection_zoom.assert_called_once_with((90, 80, 300, 200))
+
+    def test_with_nothing_to_zoom_to_nothing_changes(self):
+        block = _zooming_block(shift=VideoShift(20, 0))
+        block.video_driver.selection_zoom.return_value = None
+
+        block.zoom_to_selection(QRect(0, 0, 50, 50))
+
+        block.video_driver.set_zoom.assert_not_called()
+        block.info_change.emit.assert_not_called()
+        assert block.video_params.shift == VideoShift(20, 0)
+        assert not block._is_zoomed_to_selection
+
+    def test_the_reset_puts_the_picture_back_in_its_place(self):
+        """As zoomed about the pointer: where it stands is the zoom's doing."""
+
+        block = _zooming_block(is_zoom_to_cursor=False)
+
+        block.zoom_to_selection(QRect(100, 100, 300, 300))
+        block.scale_reset()
+
+        block.video_driver.set_zoom.assert_called_with(1.0, NO_SHIFT)
+        block.video_driver.set_scale.assert_not_called()
+        assert block.video_params.shift == NO_SHIFT
+
+    def test_moved_on_after_it_the_reset_still_puts_it_back(self):
+        block = _zooming_block(is_zoom_to_cursor=False)
+
+        block.zoom_to_selection(QRect(100, 100, 300, 300))
+        block.set_shift(VideoShift(300, 200))
+        block.scale_reset()
+
+        block.video_driver.set_zoom.assert_called_with(1.0, NO_SHIFT)
+
+    def test_once_reset_the_next_reset_leaves_a_move_alone(self):
+        block = _zooming_block(is_zoom_to_cursor=False)
+
+        block.zoom_to_selection(QRect(100, 100, 300, 300))
+        block.scale_reset()
+        block.set_shift(VideoShift(-90, 90))
+        block.scale_reset()
+
+        block.video_driver.set_scale.assert_called_once_with(1.0)
+        assert block.video_params.shift == VideoShift(-90, 90)
+
+    @pytest.mark.parametrize(
+        "put_back",
+        [
+            lambda block: block.shift_reset(),
+            lambda block: block.set_anchor(VideoAnchor.TOP),
+        ],
+    )
+    def test_put_back_in_its_place_the_zoom_s_reset_is_the_usual_one(self, put_back):
+        block = _zooming_block(is_zoom_to_cursor=False)
+
+        block.zoom_to_selection(QRect(100, 100, 300, 300))
+        put_back(block)
+        block.set_shift(VideoShift(-90, 90))
+        block.scale_reset()
+
+        block.video_driver.set_scale.assert_called_once_with(1.0)
+
+    def test_a_video_without_a_picture_is_left_alone(self):
+        block = _zooming_block()
+        block.video_tracks = []
+
+        block.zoom_to_selection(QRect(100, 100, 300, 300))
+
+        block.video_driver.selection_zoom.assert_not_called()
 
 
 def _manager(*videos):
@@ -812,6 +923,18 @@ def _track(size, orientation=VideoTransform.NONE):
     )
 
 
+def _drawn_at(frame, x, y):
+    """Where a frame point is drawn in the pane."""
+
+    source_x, source_y, source_w, source_h = frame.view_placement().source
+    shown_x, shown_y, shown_w, shown_h = frame._shown_picture_rect()
+
+    return (
+        shown_x + (x - source_x) * shown_w / source_w,
+        shown_y + (y - source_y) * shown_h / source_h,
+    )
+
+
 class _StubFrame(VideoFrameVLCHWSP):
     def driver_setup(self, vlc_options):
         return MagicMock()
@@ -964,6 +1087,28 @@ class TestZoomingInThePane:
     def test_about_a_point_the_point_stays(self):
         # (1140, 360) under (600, 300); see TestZoomedShift
         assert _frame().zoomed_shift(2.0, (600, 300)) == VideoShift(-90, 90)
+
+    def test_a_selection_goes_into_the_middle(self):
+        # see TestSelectionZoom
+        assert _frame().selection_zoom((100, 100, 300, 300)) == (
+            3.0,
+            VideoShift(240, 240),
+        )
+
+    def test_selected_is_over_the_picture_within_the_pane(self):
+        """1600x900 from -350 across, cut to the pane."""
+
+        assert _frame().shown_picture_area() == (0, 0, 900, 900)
+
+    def test_letterboxed_it_is_over_the_picture_alone(self):
+        """506.25 tall from 196.875 down, as VLC places it in whole pixels."""
+
+        frame = _frame()
+        frame._view = frame._view._replace(aspect=VideoAspect.NONE)
+
+        assert frame.shown_picture_area() == pytest.approx(
+            (0, 196.875, 900, 506.25), abs=2
+        )
 
     def test_the_picture_is_zoomed_and_moved_in_one_go(self):
         frame = _frame()
@@ -1120,22 +1265,36 @@ class TestTheHardwareSurface:
 
         frame = _frame()
 
-        def drawn_at(x, y):
-            """Where a frame point is drawn in the pane."""
-            source_x, source_y, source_w, source_h = frame.view_placement().source
-            shown_x, shown_y, shown_w, shown_h = frame._shown_picture_rect()
-
-            return (
-                shown_x + (x - source_x) * shown_w / source_w,
-                shown_y + (y - source_y) * shown_h / source_h,
-            )
-
-        point = drawn_at(1300, 300)
+        point = _drawn_at(frame, 1300, 300)
 
         frame.set_zoom(4.0, frame.zoomed_shift(4.0, point))
 
         # half a frame pixel: 900/1080 pane pixels each at 1x, drawn bigger
-        assert drawn_at(1300, 300) == pytest.approx(point, abs=1.75)
+        assert _drawn_at(frame, 1300, 300) == pytest.approx(point, abs=1.75)
+
+    def test_a_selection_is_fitted_into_the_cell_as_drawn(self):
+        """Fitted as the view has it, it would be drawn 916/900 as big as
+        the cell, and go past each side of it by 8 pixels."""
+
+        frame = _frame()
+
+        left, top = _drawn_at(frame, 1100, 200)
+        right, bottom = _drawn_at(frame, 1400, 500)
+
+        frame.set_zoom(*frame.selection_zoom((left, top, right - left, bottom - top)))
+
+        left, top = _drawn_at(frame, 1100, 200)
+        right, bottom = _drawn_at(frame, 1400, 500)
+
+        assert min(left, top) >= -0.5
+        assert max(right, bottom) <= 900.5
+        # as big as it goes, in hundredths of the zoom
+        assert right - left > 900 * (1 - 0.01 / 3.5)
+        # off by half a frame pixel, 900/1080 pane pixels each at 1x, drawn
+        # bigger
+        assert ((left + right) / 2, (top + bottom) / 2) == pytest.approx(
+            (450, 450), abs=1.5
+        )
 
     def test_it_goes_where_the_picture_is_moved(self):
         frame = _frame(anchor=VideoAnchor.TOP)

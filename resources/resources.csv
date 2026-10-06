@@ -46,6 +46,7 @@ icon-symbolic,icons/basic/163-search.svg,zoom
 icon-symbolic,icons/basic/234-zoom.svg,zoom-reset
 icon-symbolic,icons/basic/235-zoom in.svg,zoom-in
 icon-symbolic,icons/basic/236-zoom out.svg,zoom-out
+icon-symbolic,icons/custom/zoom selection.svg,zoom-selection
 icon-symbolic,icons/basic/083-backward.svg,previous-video-file
 icon-symbolic,icons/basic/084-forward.svg,next-video-file
 icon-symbolic,icons/basic/069-pen.svg,rename

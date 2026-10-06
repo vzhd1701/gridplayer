@@ -45,6 +45,7 @@ from gridplayer.params.static import (
     SponsorBlockMode,
     URLResolver,
     VideoDriver,
+    ZoomSelectTrigger,
 )
 from gridplayer.settings import Settings
 from gridplayer.utils import log_config
@@ -98,6 +99,18 @@ def _fill_combo_box(combo_box, values_dict):
 def _set_combo_box(combo_box, data_value):
     idx = combo_box.findData(data_value)
     combo_box.setCurrentIndex(idx)
+
+
+def _grey_out_taken(combo_box, taken):
+    """Grey out the choice another setting has taken, if any but none."""
+
+    model = combo_box.model()
+
+    for index in range(combo_box.count()):
+        name = combo_box.itemData(index).name
+        is_taken = taken is not None and taken.name != "NONE" and name == taken.name
+
+        model.item(index).setEnabled(not is_taken)
 
 
 def _replace_scroll_page(scroll, form):
@@ -206,6 +219,7 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
             "player/language": self.listLanguages,
             "player/keymap": self.keymapEditor,
             "player/pan_trigger": self.playerPanTrigger,
+            "player/zoom_select_trigger": self.playerZoomSelectTrigger,
             "player/recent_list_enabled": self.playerRecentList,
             "player/recent_list_max_size": self.playerRecentListSize,
             "screenshots/dir": self.screenshotsDir,
@@ -284,12 +298,12 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
         if env.IS_LINUX:
             self.playerStayOnTop.hide()
 
-            self.playerPanTrigger.setToolTip(
-                self.tr(
-                    "Many Linux desktops use Alt + drag to move windows,"
-                    " so it may never reach the player."
-                )
+            alt_drag_note = self.tr(
+                "Many Linux desktops use Alt + drag to move windows,"
+                " so it may never reach the player."
             )
+            self.playerPanTrigger.setToolTip(alt_drag_note)
+            self.playerZoomSelectTrigger.setToolTip(alt_drag_note)
 
         if not env.IS_LINUX:
             self.miscOpaqueHWOverlay.hide()
@@ -424,6 +438,7 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
         self.fill_language()
         self.fill_colorScheme()
         self.fill_panTrigger()
+        self.fill_zoomSelectTrigger()
         self.fill_streamingResolverPriority()
         self.fill_hwCropBorder()
         self.fill_networkProxyMode()
@@ -468,6 +483,11 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
             (self.cookiesHowToButton.clicked, self.show_cookies_howto),
             (self.streamingTestButton.clicked, self.run_youtube_checkup),
             (self.networkProxyMode.currentIndexChanged, self.proxy_mode_selected),
+            (self.playerPanTrigger.currentIndexChanged, self.mouse_trigger_selected),
+            (
+                self.playerZoomSelectTrigger.currentIndexChanged,
+                self.mouse_trigger_selected,
+            ),
             (self.networkTestButton.clicked, self.run_network_checkup),
             (
                 self.sponsorblockEnabled.toggled,
@@ -775,6 +795,37 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
             }
 
         _fill_combo_box(self.playerPanTrigger, triggers)
+
+    def fill_zoomSelectTrigger(self):
+        if env.IS_MACOS:
+            triggers = {
+                ZoomSelectTrigger.MIDDLE: self.tr("Middle button"),
+                ZoomSelectTrigger.CTRL: self.tr("Cmd + left button"),
+                ZoomSelectTrigger.SHIFT: self.tr("Shift + left button"),
+                ZoomSelectTrigger.ALT: self.tr("Option + left button"),
+                ZoomSelectTrigger.NONE: self.tr("Disabled"),
+            }
+        else:
+            triggers = {
+                ZoomSelectTrigger.MIDDLE: self.tr("Middle button"),
+                ZoomSelectTrigger.CTRL: self.tr("Ctrl + left button"),
+                ZoomSelectTrigger.SHIFT: self.tr("Shift + left button"),
+                ZoomSelectTrigger.ALT: self.tr("Alt + left button"),
+                ZoomSelectTrigger.NONE: self.tr("Disabled"),
+            }
+
+        _fill_combo_box(self.playerZoomSelectTrigger, triggers)
+
+    def mouse_trigger_selected(self):
+        """Grey out in each the choice the other has: one drag cannot both
+        move the picture about and select a part of it to zoom to."""
+
+        _grey_out_taken(
+            self.playerZoomSelectTrigger, self.playerPanTrigger.currentData()
+        )
+        _grey_out_taken(
+            self.playerPanTrigger, self.playerZoomSelectTrigger.currentData()
+        )
 
     def fill_streamingResolverPriority(self):
         resolvers = {

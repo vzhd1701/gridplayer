@@ -26,6 +26,7 @@ from gridplayer.player.managers.stream_proxy import StreamProxyManager
 from gridplayer.player.managers.video_blocks import VideoBlocksManager
 from gridplayer.player.managers.video_driver import VideoDriverManager
 from gridplayer.player.managers.window_state import WindowStateManager
+from gridplayer.player.managers.zoom_select import ZoomSelectManager
 
 
 class Player(QWidget, ManagersManager):
@@ -50,6 +51,7 @@ class Player(QWidget, ManagersManager):
             "mouse_hide": MouseHideManager,
             "drag_n_drop": DragNDropManager,
             "pan": PanManager,
+            "zoom_select": ZoomSelectManager,
             "single_mode": SingleModeManager,
             "log": LogManager,
             "stream_proxy": StreamProxyManager,
@@ -225,6 +227,8 @@ class Player(QWidget, ManagersManager):
             ]
 
         self.global_event_filters.append("mouse_hide")
+        # takes its press before a drag would move the video, or the picture
+        self.global_event_filters.append("zoom_select")
         # Linux in-window drag is a fake drag (KWin cursor + GNOME modifiers).
         self.global_event_filters.append("drag_n_drop")
         # wherever the middle button goes once pressed on a video

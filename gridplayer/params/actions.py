@@ -460,6 +460,12 @@ ACTIONS = MappingProxyType(
             "func": ("active", "scale_decrease"),
             "show_if": "is_active_has_video",
         },
+        "Zoom to Selection": {
+            "title": translate("Actions", "Zoom to Selection"),
+            "icon": "zoom-selection",
+            "func": "arm_zoom_selection",
+            "show_if": "is_active_has_video",
+        },
         "Zoom Reset": {
             "title": translate("Actions", "Zoom Reset"),
             "key": "*",

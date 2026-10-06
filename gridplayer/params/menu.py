@@ -116,6 +116,7 @@ SECTIONS = MappingProxyType(
                     "Zoom",
                     "Zoom In",
                     "Zoom Out",
+                    "Zoom to Selection",
                     "Zoom Reset",
                     "---",
                     "Zoom to Cursor",
