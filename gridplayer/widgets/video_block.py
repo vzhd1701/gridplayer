@@ -1278,6 +1278,12 @@ class VideoBlock(QWidget):
         return isinstance(self.video_params.uri, Path)
 
     @property
+    def youtube_id(self) -> str | None:
+        """The YouTube video this URL turned out to be, once resolved."""
+
+        return self._youtube_id
+
+    @property
     def video_tracks(self):
         if self.video_driver is None or not self.is_video_initialized:
             return {}

@@ -30,6 +30,10 @@ icon,icons/flags/zh_TW.svg,flag_zh_TW
 icon-symbolic,icons/basic/003-add.svg,add
 icon-symbolic,icons/basic/138-pages.svg,add-clipboard
 icon-symbolic,icons/basic/138-pages.svg,copy
+icon-symbolic,icons/basic/179-document.svg,file
+icon-symbolic,icons/basic/092-folder.svg,show-in-folder
+icon-symbolic,icons/custom/copy url time.svg,copy-url-time
+icon-symbolic,icons/basic/167-share.svg,open-in-browser
 icon-symbolic,icons/basic/031-cancel.svg,close
 icon-symbolic,icons/basic/042-sand clock.svg,processing
 icon-symbolic,icons/basic/067-down arrow.svg,save-playlist

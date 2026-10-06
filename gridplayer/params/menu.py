@@ -69,6 +69,8 @@ SUBMENUS = MappingProxyType(
         "Playback": {"title": translate("Actions", "Playback"), "icon": "playback"},
         "Audio": {"title": translate("Actions", "Audio"), "icon": "audio"},
         "Video": {"title": translate("Actions", "Video"), "icon": "video"},
+        "File": {"title": translate("Actions", "File"), "icon": "file"},
+        "URL": {"title": translate("Actions", "URL"), "icon": "add-url"},
     }
 )
 
@@ -299,6 +301,20 @@ SECTIONS = MappingProxyType(
                 "Sync Others (Zoom and Position)",
             ),
             "Stream Quality",
+            (
+                "File",
+                "Copy File Name",
+                "Copy File Path",
+                "---",
+                "Show in Folder",
+            ),
+            (
+                "URL",
+                "Copy URL",
+                "Copy URL at Current Time",
+                "---",
+                "Open in Browser",
+            ),
             "Rename",
             "Reload",
             "Auto Reload: %v",
@@ -514,6 +530,8 @@ SECTIONS = MappingProxyType(
                 "---",
                 "Reload [ALL]",
                 "Auto Reload [ALL]",
+                "---",
+                "Copy Paths and URLs [ALL]",
             ),
             (
                 "Snapshots",

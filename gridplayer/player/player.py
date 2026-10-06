@@ -11,6 +11,7 @@ from gridplayer.player.managers.dialogs import DialogsManager
 from gridplayer.player.managers.drag_n_drop import DragNDropManager
 from gridplayer.player.managers.grid import GridManager
 from gridplayer.player.managers.instance_listener import InstanceListenerManager
+from gridplayer.player.managers.locations import LocationsManager
 from gridplayer.player.managers.log import LogManager
 from gridplayer.player.managers.macos_fileopen import MacOSFileOpenManager
 from gridplayer.player.managers.menu import MenuManager
@@ -48,6 +49,7 @@ class Player(QWidget, ManagersManager):
             "bookmarks": BookmarksManager,
             "screensaver": ScreensaverManager,
             "active_block": ActiveBlockManager,
+            "locations": LocationsManager,
             "mouse_hide": MouseHideManager,
             "drag_n_drop": DragNDropManager,
             "pan": PanManager,

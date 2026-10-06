@@ -1185,6 +1185,42 @@ ACTIONS = MappingProxyType(
             "show_if": "is_active_has_audio",
             "func": ("active", "mute_unmute"),
         },
+        "Copy File Name": {
+            "title": translate("Actions", "Copy File Name"),
+            "icon": "copy",
+            "func": "copy_active_file_name",
+            "show_if": "is_active_file",
+        },
+        "Copy File Path": {
+            "title": translate("Actions", "Copy File Path"),
+            "icon": "copy",
+            "func": "copy_active_file_path",
+            "show_if": "is_active_file",
+        },
+        "Show in Folder": {
+            "title": translate("Actions", "Show in Folder"),
+            "icon": "show-in-folder",
+            "func": "show_active_in_folder",
+            "show_if": "is_active_file",
+        },
+        "Copy URL": {
+            "title": translate("Actions", "Copy URL"),
+            "icon": "copy",
+            "func": "copy_active_url",
+            "show_if": "is_active_url",
+        },
+        "Copy URL at Current Time": {
+            "title": translate("Actions", "Copy URL at Current Time"),
+            "icon": "copy-url-time",
+            "func": "copy_active_url_at_time",
+            "show_if": "is_active_url_at_time",
+        },
+        "Open in Browser": {
+            "title": translate("Actions", "Open in Browser"),
+            "icon": "open-in-browser",
+            "func": "open_active_url",
+            "show_if": "is_active_web_url",
+        },
         "Rename": {
             "title": translate("Actions", "Rename"),
             "key": "F4",
@@ -2027,6 +2063,11 @@ ACTIONS = MappingProxyType(
             "icon": "reload",
             "func": "all_set_auto_reload_timer",
             "show_if": "is_any_videos_live",
+        },
+        "Copy Paths and URLs [ALL]": {
+            "title": translate("Actions", "Copy Paths and URLs"),
+            "icon": "copy",
+            "func": "copy_all_locations",
         },
         # Playlist
         "Seek Sync (Disabled)": {
