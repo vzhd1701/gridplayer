@@ -145,6 +145,9 @@ class Player(QWidget, ManagersManager):
                 ("grid_state_loaded", "grid.set_grid_state"),
                 ("snapshots_loaded", "snapshots.set_snapshots"),
                 ("seek_sync_mode_loaded", "video_blocks.set_seek_sync_mode"),
+                ("view_sync_loaded", "video_blocks.set_view_sync"),
+                ("pause_sync_loaded", "video_blocks.set_pause_sync"),
+                ("rate_sync_loaded", "video_blocks.set_rate_sync"),
                 ("shuffle_on_load_loaded", "playlist.set_shuffle_on_load"),
                 (
                     "disable_mouse_click_events_loaded",

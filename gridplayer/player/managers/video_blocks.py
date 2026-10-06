@@ -1,4 +1,5 @@
 import contextlib
+from functools import partial
 
 from PyQt5.QtCore import Qt, pyqtSignal
 
@@ -18,7 +19,19 @@ from gridplayer.player.managers.base import ManagerBase
 from gridplayer.playlist_settings import PlaylistSettings
 from gridplayer.settings import Settings
 from gridplayer.utils.qt import MILLISECONDS, qt_connect, translate
-from gridplayer.widgets.video_block import VideoBlock
+from gridplayer.widgets.video_block import SyncedView, VideoBlock
+
+# what [ALL] does to the views, which leaves the one synced to out of date
+_VIEW_COMMANDS = frozenset(
+    {
+        "scale_increase",
+        "scale_decrease",
+        "scale_reset",
+        "set_anchor",
+        "shift_by",
+        "shift_reset",
+    }
+)
 
 
 class VideoBlocks:
@@ -181,6 +194,13 @@ class VideoBlocksManager(ManagerBase):
         super().__init__(**kwargs)
 
         self._ctx.seek_sync_mode = Settings().get("playlist/seek_sync_mode")
+        self._ctx.is_view_sync = Settings().get("playlist/view_sync")
+        self._ctx.is_pause_sync = Settings().get("playlist/pause_sync")
+        self._ctx.is_rate_sync = Settings().get("playlist/rate_sync")
+        # the view the videos were last synced to, for one that loads after
+        # to show as well; None with their views not synced
+        self._ctx.synced_view = None
+        self._view_leader_id: str | None = None
         self._ctx.is_disable_mouse_click_events = Settings().get(
             "playlist/disable_mouse_click_events"
         )
@@ -229,6 +249,16 @@ class VideoBlocksManager(ManagerBase):
             "is_all_videos_param_set_to": self.is_all_videos_param_set_to,
             "is_seek_sync_mode_set_to": self.is_seek_sync_mode_set_to,
             "set_seek_sync_mode": self.set_seek_sync_mode,
+            "is_view_sync": lambda: self._ctx.is_view_sync,
+            "set_view_sync": self.set_view_sync,
+            "toggle_view_sync": self.toggle_view_sync,
+            "is_pause_sync": lambda: self._ctx.is_pause_sync,
+            "set_pause_sync": self.set_pause_sync,
+            "toggle_pause_sync": self.toggle_pause_sync,
+            "is_rate_sync": lambda: self._ctx.is_rate_sync,
+            "set_rate_sync": self.set_rate_sync,
+            "toggle_rate_sync": self.toggle_rate_sync,
+            "forget_synced_view": self.forget_synced_view,
             "reload_all": self.reload_videos,
             "is_disable_mouse_click_events": lambda: (
                 self._ctx.is_disable_mouse_click_events
@@ -257,6 +287,9 @@ class VideoBlocksManager(ManagerBase):
 
     def cmd_all(self, command, *args):
         getattr(self, f"all_{command}").emit(*args)
+
+        if command in _VIEW_COMMANDS:
+            self._refresh_synced_view()
 
     def cmd_all_play_pause(self):
         is_at_least_one_unpaused = bool(self._ctx.video_blocks.unpaused)
@@ -402,6 +435,125 @@ class VideoBlocksManager(ManagerBase):
     def set_seek_sync_mode(self, mode):
         PlaylistSettings().set("playlist/seek_sync_mode", mode)
         self._ctx.seek_sync_mode = mode
+
+    def set_view_sync(self, is_sync: bool):
+        """Have the others show the part of their pictures one is zoomed or
+        moved to, or not. From the next zoom or move on: switched on, the
+        videos are left as they are until then."""
+
+        if is_sync == self._ctx.is_view_sync:
+            return
+
+        self._ctx.is_view_sync = is_sync
+        self.forget_synced_view()
+
+    def toggle_view_sync(self):
+        value = not self._ctx.is_view_sync
+        PlaylistSettings().set("playlist/view_sync", value)
+        self.set_view_sync(value)
+
+    def set_pause_sync(self, is_sync: bool):
+        self._ctx.is_pause_sync = is_sync
+
+    def toggle_pause_sync(self):
+        value = not self._ctx.is_pause_sync
+        PlaylistSettings().set("playlist/pause_sync", value)
+        self.set_pause_sync(value)
+
+    def set_rate_sync(self, is_sync: bool):
+        self._ctx.is_rate_sync = is_sync
+
+    def toggle_rate_sync(self):
+        value = not self._ctx.is_rate_sync
+        PlaylistSettings().set("playlist/rate_sync", value)
+        self.set_rate_sync(value)
+
+    def forget_synced_view(self):
+        """Let a video that loads from now on show its own view, as it has
+        it, until the next zoom or move is synced. Once a snapshot's views
+        are put in place, say."""
+
+        self._ctx.synced_view = None
+        self._view_leader_id = None
+
+    def sync_view(self, leader: VideoBlock, synced: SyncedView):
+        """The others to show the part of their pictures the leader does,
+        zoomed or moved by the viewer, where their views are synced."""
+
+        if not self._ctx.is_view_sync:
+            return
+
+        self._ctx.synced_view = synced
+        self._view_leader_id = leader.id
+
+        self._follow_view(leader, synced)
+
+    def sync_view_single(self, leader: VideoBlock, synced: SyncedView):
+        """The others to show the part of their pictures the leader does,
+        this once, synced or not."""
+
+        if self._ctx.is_view_sync:
+            self.sync_view(leader, synced)
+            return
+
+        self._follow_view(leader, synced)
+
+    def _follow_view(self, leader: VideoBlock, synced: SyncedView):
+        for vb in self._ctx.video_blocks:
+            if vb is not leader:
+                vb.follow_view(synced)
+
+    def _refresh_synced_view(self):
+        """The view to sync to as the one it was taken from now has it, all
+        of them zoomed or moved alike: else one that loads after would go
+        back to the view before."""
+
+        if self._ctx.synced_view is None:
+            return
+
+        leader = self._ctx.video_blocks.by_id(self._view_leader_id)
+        synced = leader.synced_view() if leader is not None else None
+
+        if synced is not None:
+            self._ctx.synced_view = synced
+
+    def sync_pause(self, leader: VideoBlock, is_paused: bool):
+        """The others to play or pause as the leader was by the viewer,
+        where that is synced.
+
+        Not those single mode keeps paused out of sight: they stay paused,
+        to take up where they were once it is left.
+        """
+
+        if not self._ctx.is_pause_sync:
+            return
+
+        is_kept_paused = getattr(self._ctx, "is_single_mode", False) and getattr(
+            self._ctx, "is_pause_background_videos", False
+        )
+
+        for vb in self._ctx.video_blocks:
+            if vb is leader or (is_kept_paused and vb.isHidden()):
+                continue
+
+            vb.set_pause(is_paused)
+
+    def sync_frame_step_pause(self, is_paused: bool):
+        """All paused for a step to another frame, where the others follow:
+        their play and pause synced, or the seek that comes with the step."""
+
+        if self._ctx.is_pause_sync or self._ctx.seek_sync_mode != SeekSyncMode.DISABLED:
+            self.set_pause.emit(is_paused)
+
+    def sync_rate(self, leader: VideoBlock, rate: float):
+        """The others to play at the leader's speed, where that is synced."""
+
+        if not self._ctx.is_rate_sync:
+            return
+
+        for vb in self._ctx.video_blocks:
+            if vb is not leader:
+                vb.follow_rate(rate)
 
     def apply_subtitle_encoding(self, encoding: str):
         """Give the videos already open a subtitle encoding that has changed.
@@ -563,6 +715,7 @@ class VideoBlocksManager(ManagerBase):
         self._log.debug("Clearing video blocks array")
 
         self._ctx.video_blocks.clear()
+        self.forget_synced_view()
 
         if not self._in_count_batch():
             self._emit_video_count()
@@ -595,7 +748,11 @@ class VideoBlocksManager(ManagerBase):
             (vb.sync_time, self.seek_sync_timecode),
             (vb.sync_percent_single, self.all_seek_percent),
             (vb.sync_time_single, self.all_seek),
-            (vb.sync_paused, self.set_pause),
+            (vb.sync_paused, self.sync_frame_step_pause),
+            (vb.sync_pause, partial(self.sync_pause, vb)),
+            (vb.sync_view, partial(self.sync_view, vb)),
+            (vb.sync_view_single, partial(self.sync_view_single, vb)),
+            (vb.sync_rate, partial(self.sync_rate, vb)),
             (vb.destroyed, self._video_block_destroyed),
             (self.set_pause, vb.set_pause),
             (self.all_stop_playback, vb.stop_playback),

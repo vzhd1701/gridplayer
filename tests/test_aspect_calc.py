@@ -14,9 +14,11 @@ from gridplayer.params.static import (
 from gridplayer.utils.aspect_calc import (
     calc_crop_region,
     calc_dragged_shift,
+    calc_followed_view,
     calc_moved_shift,
     calc_picture_rect,
     calc_selection_zoom,
+    calc_shared_view,
     calc_shift_range,
     calc_view_borders,
     calc_view_geometry,
@@ -723,6 +725,136 @@ class TestSelectionZoom:
 
     def test_nothing_to_work_from_is_nothing_to_zoom_to(self):
         assert calc_selection_zoom((0, 0), SQUARE, _view(), (5, 5, 50, 50)) is None
+
+
+def _middle(view, frame, pane=PANE):
+    """The share of the picture at the pane's middle, across and down."""
+
+    left, top, width, height = calc_picture_rect(frame, pane, view)
+
+    return (pane[0] / 2 - left) / width, (pane[1] / 2 - top) / height
+
+
+def _followed(leader, follower=None, frame=VIDEO, pane=PANE):
+    shared = calc_shared_view(VIDEO, PANE, leader)
+
+    return calc_followed_view(frame, pane, follower or _view(), shared)
+
+
+class TestFollowingAView:
+    """Another video showing the part of its picture one shows of its own."""
+
+    def test_the_same_video_in_the_same_pane_is_the_same_pixel_for_pixel(self):
+        leader = _view(scale=3.3, anchor=VideoAnchor.TOP, shift=VideoShift(-317, -123))
+
+        followed = _followed(leader, _view(scale=7.0, shift=VideoShift(500, 0)))
+
+        assert followed == leader
+
+    def test_one_held_by_its_edges_is_followed_where_it_stands(self):
+        leader = _view(scale=2.0, shift=VideoShift(5000, 0))
+
+        followed = _followed(leader)
+
+        assert followed.shift == calc_view_shift(VIDEO, PANE, leader)
+
+    def test_a_smaller_copy_shows_the_same_part(self):
+        leader = _view(scale=3.0, shift=VideoShift(-300, 120))
+
+        followed = _followed(leader, frame=(960, 540))
+
+        assert followed.shift == VideoShift(-150, 60)
+        assert _middle(followed, (960, 540)) == pytest.approx(_middle(leader, VIDEO))
+
+    def test_a_pane_of_another_size_shows_the_same_part(self):
+        leader = _view(scale=3.0, shift=VideoShift(-300, 120))
+
+        followed = _followed(leader, pane=(1601, 900))
+
+        # as near as a whole frame pixel gets
+        assert _middle(followed, VIDEO, (1601, 900)) == pytest.approx(
+            _middle(leader, VIDEO), abs=0.5 / 1080
+        )
+
+    def test_a_picture_of_another_shape_has_the_same_point_in_the_middle(self):
+        leader = _view(scale=3.0, shift=VideoShift(-300, 120))
+
+        followed = _followed(leader, _view(aspect=VideoAspect.NONE), frame=(640, 480))
+
+        assert followed.aspect == VideoAspect.NONE
+        assert _middle(followed, (640, 480)) == pytest.approx(
+            _middle(leader, VIDEO), abs=0.5 / 480
+        )
+
+    def test_a_picture_smaller_than_its_pane_stands_where_the_other_does(self):
+        # 1200x900 in 1600x900 and 2000x900, moved a quarter of the way
+        # across the room beside it, 100 of 400
+        leader = _view(aspect=VideoAspect.NONE, shift=VideoShift(-120, 0))
+        assert calc_picture_rect((1440, 1080), PANE, leader)[0] == pytest.approx(100)
+
+        shared = calc_shared_view((1440, 1080), PANE, leader)
+        followed = calc_followed_view(
+            (1440, 1080), (2000, 900), _view(aspect=VideoAspect.NONE), shared
+        )
+
+        left = calc_picture_rect((1440, 1080), (2000, 900), followed)[0]
+
+        assert left == pytest.approx(200, abs=900 / 1080)
+
+    def test_one_against_a_corner_is_followed_into_it(self):
+        leader = _view(aspect=VideoAspect.NONE, anchor=VideoAnchor.TOP_LEFT)
+        shared = calc_shared_view((1440, 1080), PANE, leader)
+
+        followed = calc_followed_view(
+            (1080, 1080), PANE, _view(aspect=VideoAspect.NONE), shared
+        )
+
+        assert followed.anchor == VideoAnchor.TOP_LEFT
+        assert followed.shift == NO_SHIFT
+        assert calc_picture_rect((1080, 1080), PANE, followed)[:2] == (0, 0)
+
+    def test_back_in_its_place_the_other_is_too(self):
+        followed = _followed(
+            _view(),
+            _view(scale=4.0, shift=VideoShift(-90, 40)),
+            frame=(960, 720),
+        )
+
+        assert followed.scale == 1.0
+        assert followed.shift == NO_SHIFT
+
+    def test_the_zoom_and_the_alignment_are_taken_and_the_rest_kept(self):
+        follower = _view(
+            aspect=VideoAspect.STRETCH,
+            scale=5.0,
+            crop=VideoCrop(10, 20, 30, 40),
+            anchor=VideoAnchor.TOP,
+            is_shift_past_edges=True,
+        )
+
+        followed = _followed(
+            _view(scale=2.0, anchor=VideoAnchor.BOTTOM_RIGHT), follower
+        )
+
+        assert followed.scale == 2.0
+        assert followed.anchor == VideoAnchor.BOTTOM_RIGHT
+        assert followed.aspect == VideoAspect.STRETCH
+        assert followed.crop == VideoCrop(10, 20, 30, 40)
+        assert followed.is_shift_past_edges
+
+    def test_past_the_edges_it_is_held_by_its_own(self):
+        leader = _view(scale=2.0, shift=VideoShift(800, 0), is_shift_past_edges=True)
+
+        followed = _followed(leader)
+
+        assert followed.shift == calc_view_shift(
+            VIDEO, PANE, _view(scale=2.0, shift=VideoShift(800, 0))
+        )
+        assert followed.shift.X < 800
+
+    def test_nothing_without_a_frame(self):
+        assert calc_shared_view((0, 0), PANE, _view()) is None
+        assert _followed(_view(), frame=(0, 0)) is None
 
 
 class TestShiftRange:

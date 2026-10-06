@@ -264,7 +264,7 @@ class TestTheMenu:
     def test_the_alignments_come_first_middle_then_sides_then_corners(self):
         position = _submenu("video_active", "Position")
 
-        anchors = [ACTIONS[name]["func"][2] for name in position[1:10]]
+        anchors = [ACTIONS[name]["func"][3] for name in position[1:10]]
 
         assert anchors == list(VideoAnchor)
         assert position[10] == "---"
@@ -274,9 +274,10 @@ class TestTheMenu:
 
         for name in position[1:10]:
             action = ACTIONS[name]
-            target, command, anchor = action["func"]
+            target, manual, command, anchor = action["func"]
 
-            assert (target, command) == ("active", "set_anchor")
+            # the viewer's own, for the others to follow where synced
+            assert (target, manual, command) == ("active", "manual_view", "set_anchor")
             assert hasattr(VideoBlock, command)
             assert action["check_if"] == ("is_active_param_set_to", "anchor", anchor)
 
@@ -293,7 +294,7 @@ class TestTheMenu:
         action = ACTIONS[name]
 
         assert action["key"] == key
-        assert action["func"] == ("active", "shift_by", *steps)
+        assert action["func"] == ("active", "manual_view", "shift_by", *steps)
         assert name in _submenu("video_active", "Position")
 
         all_videos = ACTIONS[f"{name} [ALL]"]
@@ -334,7 +335,11 @@ class TestTheMenu:
 
     def test_the_reset_is_last(self):
         assert _submenu("video_active", "Position")[-1] == "Position Reset"
-        assert ACTIONS["Position Reset"]["func"] == ("active", "shift_reset")
+        assert ACTIONS["Position Reset"]["func"] == (
+            "active",
+            "manual_view",
+            "shift_reset",
+        )
         assert _all_videos_submenu("Position")[-1] == "Position Reset [ALL]"
 
     def test_every_video_can_be_aligned_at_once(self):

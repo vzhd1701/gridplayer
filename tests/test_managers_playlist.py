@@ -150,6 +150,9 @@ def test_write_playlist_does_not_emit_playlist_saved_on_error(mocker):
 def _collect_session_signals(manager):
     collected = {
         "seek_sync_mode": [],
+        "view_sync": [],
+        "pause_sync": [],
+        "rate_sync": [],
         "shuffle_on_load": [],
         "disable_mouse_click_events": [],
         "disable_mouse_wheel_events": [],
@@ -162,6 +165,9 @@ def _collect_session_signals(manager):
         "grid_state": [],
     }
     manager.seek_sync_mode_loaded.connect(collected["seek_sync_mode"].append)
+    manager.view_sync_loaded.connect(collected["view_sync"].append)
+    manager.pause_sync_loaded.connect(collected["pause_sync"].append)
+    manager.rate_sync_loaded.connect(collected["rate_sync"].append)
     manager.shuffle_on_load_loaded.connect(collected["shuffle_on_load"].append)
     manager.disable_mouse_click_events_loaded.connect(
         collected["disable_mouse_click_events"].append
@@ -197,6 +203,9 @@ def _patch_playlist_settings(mocker, overrides):
 
 _CUSTOM_PLAYLIST_DEFAULTS = {
     "playlist/seek_sync_mode": SeekSyncMode.PERCENT,
+    "playlist/view_sync": True,
+    "playlist/pause_sync": True,
+    "playlist/rate_sync": True,
     "playlist/shuffle_on_load": True,
     "playlist/disable_mouse_click_events": True,
     "playlist/disable_mouse_wheel_events": True,
@@ -228,6 +237,9 @@ def test_close_playlist_resets_session_to_settings_defaults(mocker):
 
     assert closed == [True]
     assert collected["seek_sync_mode"] == [SeekSyncMode.PERCENT]
+    assert collected["view_sync"] == [True]
+    assert collected["pause_sync"] == [True]
+    assert collected["rate_sync"] == [True]
     assert collected["shuffle_on_load"] == [True]
     assert collected["disable_mouse_click_events"] == [True]
     assert collected["disable_mouse_wheel_events"] == [True]
@@ -273,6 +285,9 @@ def test_close_playlist_does_not_reset_when_save_cancelled(mocker):
     assert closed == []
     assert collected == {
         "seek_sync_mode": [],
+        "view_sync": [],
+        "pause_sync": [],
+        "rate_sync": [],
         "shuffle_on_load": [],
         "disable_mouse_click_events": [],
         "disable_mouse_wheel_events": [],
@@ -296,6 +311,9 @@ def test_load_playlist_applies_file_settings_after_reset(mocker):
     playlist = Playlist(
         videos=[],
         seek_sync_mode=SeekSyncMode.TIMECODE,
+        view_sync=False,
+        pause_sync=False,
+        rate_sync=False,
         shuffle_on_load=False,
         disable_mouse_click_events=False,
         disable_mouse_wheel_events=False,
@@ -314,6 +332,9 @@ def test_load_playlist_applies_file_settings_after_reset(mocker):
         SeekSyncMode.PERCENT,
         SeekSyncMode.TIMECODE,
     ]
+    assert collected["view_sync"] == [True, False]
+    assert collected["pause_sync"] == [True, False]
+    assert collected["rate_sync"] == [True, False]
     assert collected["shuffle_on_load"] == [True, False]
     assert collected["disable_mouse_click_events"] == [True, False]
     assert collected["disable_mouse_wheel_events"] == [True, False]
@@ -592,6 +613,9 @@ def test_load_playlist_file_accepts_empty_template(tmp_path, mocker):
                 preallocate=True,
             ),
             seek_sync_mode=SeekSyncMode.PERCENT,
+            view_sync=True,
+            pause_sync=True,
+            rate_sync=True,
         ).dumps(),
         encoding="utf-8",
     )
@@ -611,6 +635,9 @@ def test_load_playlist_file_accepts_empty_template(tmp_path, mocker):
     assert loaded_playlist.grid_state.cols == 4
     assert loaded_playlist.grid_state.rows == 3
     assert loaded_playlist.seek_sync_mode == SeekSyncMode.PERCENT
+    assert loaded_playlist.view_sync is True
+    assert loaded_playlist.pause_sync is True
+    assert loaded_playlist.rate_sync is True
     assert manager._saved_playlist_path == path
 
 

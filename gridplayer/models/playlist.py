@@ -114,6 +114,9 @@ class Playlist(BaseModel):
     snapshots: dict[int, Snapshot] | None = None
     bookmarks: list[FileBookmarks] | None = None
     seek_sync_mode: SeekSyncMode | None = None
+    view_sync: bool | None = None
+    pause_sync: bool | None = None
+    rate_sync: bool | None = None
     bookmarks_shared: bool | None = None
     shuffle_on_load: bool | None = None
     disable_mouse_click_events: bool | None = None

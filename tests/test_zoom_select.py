@@ -41,6 +41,7 @@ class _Block(QWidget):
         self.shown = []
         self.zooms = []
         self.hints = []
+        self.synced = []
 
     def mapFromGlobal(self, pos):
         return QPoint(pos)
@@ -50,6 +51,11 @@ class _Block(QWidget):
 
     def show_zoom_selection(self, selection):
         self.shown.append(selection)
+
+    def manual_view(self, command, *args):
+        # as VideoBlock does, the others following where their views are synced
+        self.synced.append(command)
+        return getattr(self, command)(*args)
 
     def zoom_to_selection(self, selection):
         self.zooms.append(selection)
@@ -184,6 +190,8 @@ class TestWithTheKey:
         ]
         assert block.zooms == [QRect(100, 100, 300, 200)]
         assert _cursor_shape() is None
+        # for the others to follow, where their views are synced
+        assert block.synced == ["zoom_to_selection"]
 
     def test_dragged_up_and_left_it_is_the_same(self, manager, block):
         _press(manager, block)

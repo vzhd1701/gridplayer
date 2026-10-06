@@ -41,6 +41,7 @@ class _Block:
             anchor=anchor, shift=shift, is_shift_past_edges=is_past
         )
         self.shifts = []
+        self.synced = []
 
         self.video_driver = _StubFrame(vlc_options=[])
         self.video_driver.resize(900, 900)
@@ -62,6 +63,10 @@ class _Block:
         )
 
     # as VideoBlock does them
+
+    def manual_view(self, command, *args):
+        self.synced.append(command)
+        return getattr(self, command)(*args)
 
     def set_anchor(self, anchor):
         self.video_params.anchor = anchor
@@ -169,6 +174,8 @@ def test_ok_says_where_the_picture_ended_up():
 
     assert block.shifts[-1] == (VideoShift(0, -30), False)
     assert dialog.result() == QDialog.Accepted
+    # once, for the others to follow where their views are synced
+    assert block.synced == ["set_shift"]
 
 
 def test_cancel_puts_back_what_there_was():
@@ -193,6 +200,8 @@ def test_cancel_puts_back_what_there_was():
         VideoShift(0, -30),
         False,
     )
+    # what was tried was never the others' to follow
+    assert block.synced == []
 
 
 def test_cancel_with_nothing_changed_leaves_it_be():

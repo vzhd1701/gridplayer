@@ -235,8 +235,9 @@ class SetPositionDialog(QDialog):
         self.setFixedSize(self.sizeHint())
 
     def accept(self):
-        # says where the picture ended up, as a move from the menu does
-        self._block.set_shift(self._block.video_params.shift, is_silent=False)
+        # says where the picture ended up, as a move from the menu does, and
+        # has the others follow it where their views are synced
+        self._block.manual_view("set_shift", self._block.video_params.shift, False)
 
         super().accept()
 

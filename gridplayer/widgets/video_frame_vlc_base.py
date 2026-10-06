@@ -34,11 +34,14 @@ from gridplayer.params.static import (
 from gridplayer.settings import Settings
 from gridplayer.utils.aspect_calc import (
     Rect,
+    SharedView,
     ViewPlacement,
     calc_dragged_shift,
+    calc_followed_view,
     calc_moved_shift,
     calc_picture_rect,
     calc_selection_zoom,
+    calc_shared_view,
     calc_shift_range,
     calc_view_geometry,
     calc_view_placement,
@@ -462,6 +465,9 @@ class VideoFrameVLC(QWidget, metaclass=QABC):
     picture_shown = pyqtSignal()
     tracks_changed = pyqtSignal()
     chapters_changed = pyqtSignal()
+    # The view taken after another video's once the frame's size came in,
+    # a ViewParams: see follow_view.
+    view_followed = pyqtSignal(object)
 
     error = pyqtSignal(str)
     crash = pyqtSignal(str)
@@ -514,6 +520,8 @@ class VideoFrameVLC(QWidget, metaclass=QABC):
         # the frame points the last zoom about a point kept under it, and
         # what for: see zoomed_shift
         self._zoom_kept = None
+        # another video's view, to follow once the frame's size is known
+        self._shared_to_follow: SharedView | None = None
 
         self._is_status_change_in_progress = False
         self._is_cleanup_requested = False
@@ -943,6 +951,7 @@ class VideoFrameVLC(QWidget, metaclass=QABC):
         )
         # changing it reloads the video, so it holds for as long as this does
         self._transform = video.transform
+        self._shared_to_follow = None
 
         self._is_paused_on_load = video.is_paused
         self._is_playback_started = False
@@ -1304,6 +1313,52 @@ class VideoFrameVLC(QWidget, metaclass=QABC):
             room=(room_right - room_left, room_bottom - room_top),
         )
 
+    def shared_view(self) -> SharedView | None:
+        """Where the picture is, for other videos to show theirs alike.
+
+        See calc_shared_view. None where it is not known.
+        """
+
+        return calc_shared_view(
+            self._view_frame_size(), self._pane_size(), self._view, self._transform
+        )
+
+    def follow_view(self, shared: SharedView) -> ViewParams | None:
+        """Show the part of the picture another video shows of its own.
+
+        See calc_followed_view. Where the frame's size is not known yet, as
+        it is not for a stream until its first picture, kept until it is
+        (see set_track_dimensions), view_followed saying what it came to.
+        The view, None where it is kept for later.
+        """
+
+        view = self._followed_view(shared)
+
+        if view is None:
+            self._shared_to_follow = shared
+            return None
+
+        self._shared_to_follow = None
+
+        # unchanged where this one's edges hold it, the other dragged on
+        if view != self._view:
+            self._view = view
+            self.adjust_view()
+
+        return view
+
+    def _followed_view(self, shared: SharedView) -> ViewParams | None:
+        frame_size = self._view_frame_size()
+
+        # the software drivers know the frame's size from a frame, which
+        # has not come yet where a video has only just loaded
+        if not all(frame_size):
+            frame_size = self._frame_size()
+
+        return calc_followed_view(
+            frame_size, self._pane_size(), self._view, shared, self._transform
+        )
+
     def shown_picture_area(self) -> Rect | None:
         """The part of the pane the picture is drawn over, None for none.
 
@@ -1476,9 +1531,19 @@ class VideoFrameVLC(QWidget, metaclass=QABC):
                 track.video_dimensions = size
                 is_updated = True
 
+        if not is_updated:
+            return
+
+        if self._shared_to_follow is not None:
+            view = self._followed_view(self._shared_to_follow)
+
+            if view is not None:
+                self._shared_to_follow = None
+                self._view = view
+                self.view_followed.emit(view)
+
         # the view here is worked out from them too
-        if is_updated:
-            self.adjust_view()
+        self.adjust_view()
 
     def _on_playback_started(self) -> None:
         self._is_playback_started = True

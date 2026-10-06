@@ -212,7 +212,7 @@ class ZoomSelectManager(ManagerBase):
             self._swallowed_buttons.add(event.button())
 
         if not selection.isEmpty():
-            block.zoom_to_selection(selection)
+            block.manual_view("zoom_to_selection", selection)
 
     def mouse_release(self, event):
         """A release as it comes to a widget, after the window had it."""

@@ -136,6 +136,15 @@ def _bookmarks_shared_tooltip() -> str:
     )
 
 
+def _view_sync_tooltip() -> str:
+    return translate(
+        "Sync",
+        "Zooming or moving the picture of one video shows the same part of the"
+        " picture in the others. Videos of the same size show exactly the same"
+        " pixels.",
+    )
+
+
 def _drop_internal() -> dict:
     return {
         DropAction.INSERT: translate("SettingsDialog", "Move / Swap"),
@@ -412,14 +421,6 @@ PLAYLIST_FIELDS: tuple[SettingField, ...] = (
         menu_action="Pause When Minimized",
     ),
     _f(
-        settings_key="playlist/seek_sync_mode",
-        playlist_attr="seek_sync_mode",
-        kind=FieldKind.COMBO,
-        section=translate("SettingsDialog", "Playback"),
-        label=translate("SettingsDialog", "Seek sync mode"),
-        combo_values=_seek_sync_modes,
-    ),
-    _f(
         settings_key="playlist/bookmarks_shared",
         playlist_attr="bookmarks_shared",
         kind=FieldKind.CHECKBOX,
@@ -429,6 +430,39 @@ PLAYLIST_FIELDS: tuple[SettingField, ...] = (
         ),
         menu_action="Share Bookmarks",
         tooltip=_bookmarks_shared_tooltip(),
+    ),
+    _f(
+        settings_key="playlist/seek_sync_mode",
+        playlist_attr="seek_sync_mode",
+        kind=FieldKind.COMBO,
+        section=translate("SettingsDialog", "Sync"),
+        label=translate("SettingsDialog", "Seek sync mode"),
+        combo_values=_seek_sync_modes,
+    ),
+    _f(
+        settings_key="playlist/view_sync",
+        playlist_attr="view_sync",
+        kind=FieldKind.CHECKBOX,
+        section=translate("SettingsDialog", "Sync"),
+        label=translate("Sync", "Sync zoom and position"),
+        menu_action="Sync Zoom and Position",
+        tooltip=_view_sync_tooltip(),
+    ),
+    _f(
+        settings_key="playlist/pause_sync",
+        playlist_attr="pause_sync",
+        kind=FieldKind.CHECKBOX,
+        section=translate("SettingsDialog", "Sync"),
+        label=translate("Sync", "Sync play and pause"),
+        menu_action="Sync Play / Pause",
+    ),
+    _f(
+        settings_key="playlist/rate_sync",
+        playlist_attr="rate_sync",
+        kind=FieldKind.CHECKBOX,
+        section=translate("SettingsDialog", "Sync"),
+        label=translate("Sync", "Sync speed"),
+        menu_action="Sync Speed",
     ),
     _f(
         settings_key="playlist/disable_mouse_click_events",

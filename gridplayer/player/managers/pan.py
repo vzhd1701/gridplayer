@@ -110,7 +110,9 @@ class PanManager(ManagerBase):
             return True
 
         left_x, left_y = self._left_over
-        left_over = self._block.pan_by(moved.x() + left_x, moved.y() + left_y)
+        left_over = self._block.manual_view(
+            "pan_by", moved.x() + left_x, moved.y() + left_y
+        )
         self._left_over = left_over or (0.0, 0.0)
 
         return True

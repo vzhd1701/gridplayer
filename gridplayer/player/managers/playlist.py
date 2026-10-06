@@ -38,6 +38,9 @@ class PlaylistManager(ManagerBase):
     bookmarks_loaded = pyqtSignal(list, list)
     bookmarks_shared_loaded = pyqtSignal(bool)
     seek_sync_mode_loaded = pyqtSignal(SeekSyncMode)
+    view_sync_loaded = pyqtSignal(bool)
+    pause_sync_loaded = pyqtSignal(bool)
+    rate_sync_loaded = pyqtSignal(bool)
     shuffle_on_load_loaded = pyqtSignal(bool)
     disable_mouse_click_events_loaded = pyqtSignal(bool)
     disable_mouse_wheel_events_loaded = pyqtSignal(bool)
@@ -411,6 +414,9 @@ class PlaylistManager(ManagerBase):
                     self.seek_sync_mode_loaded,
                     session.get("playlist/seek_sync_mode"),
                 ),
+                (self.view_sync_loaded, session.get("playlist/view_sync")),
+                (self.pause_sync_loaded, session.get("playlist/pause_sync")),
+                (self.rate_sync_loaded, session.get("playlist/rate_sync")),
                 (
                     self.shuffle_on_load_loaded,
                     session.get("playlist/shuffle_on_load"),

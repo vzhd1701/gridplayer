@@ -1,6 +1,7 @@
 import math
 from dataclasses import dataclass
 from fractions import Fraction
+from typing import NamedTuple
 
 from gridplayer.params.static import (
     MAX_SCALE,
@@ -554,6 +555,122 @@ def calc_selection_zoom(
     return scale, shift
 
 
+class AxisPlace(NamedTuple):
+    """Where a picture stands on one axis of its pane, see calc_shared_view."""
+
+    # the point of the picture at the pane's middle, or where in the room
+    # beside the picture it stands
+    is_middle: bool
+    # of the picture's length, or of the room's
+    share: float
+
+
+@dataclass(frozen=True)
+class SharedView:
+    """A video's view of its picture, for other videos to show theirs alike.
+
+    See calc_shared_view; `view` is the video's own, its shift where the
+    picture really stands.
+    """
+
+    view: ViewParams
+    frame_size: tuple[int, int]
+    pane_size: tuple[int, int]
+    transform: VideoTransform | None
+    place_x: AxisPlace
+    place_y: AxisPlace
+
+
+def calc_shared_view(
+    frame_size: tuple[int, int],
+    pane_size: tuple[int, int],
+    view: ViewParams,
+    transform: VideoTransform | None = VideoTransform.NONE,
+) -> SharedView | None:
+    """Where a picture is in its pane, for other videos to show the same part.
+
+    The scale goes as it is, being one of the picture's fit already, and so
+    does the anchor. On an axis where the picture is bigger than the pane,
+    the point of it at the pane's middle, a share of the picture: another
+    picture puts the same point there, whatever its size. Where it is
+    smaller, where it stands in the room beside it, a share of the room:
+    against one edge or the other, or anywhere between. Where it fits
+    exactly, at the anchor's place, or the point at the middle where it has
+    been moved past the edges.
+
+    None where there is nothing to work it out from.
+    """
+    fit = _Fit.of(frame_size, pane_size, view, transform)
+
+    if fit is None:
+        return None
+
+    pane_w, pane_h = pane_size
+    anchor_x, anchor_y = _ANCHOR_POSITIONS[view.anchor]
+    left, top = _picture_position(fit, pane_size, view)
+
+    return SharedView(
+        view=view._replace(
+            shift=calc_view_shift(frame_size, pane_size, view, transform)
+        ),
+        frame_size=tuple(frame_size),
+        pane_size=tuple(pane_size),
+        transform=transform,
+        place_x=_axis_place(pane_w, fit.picture_w, left, anchor_x),
+        place_y=_axis_place(pane_h, fit.picture_h, top, anchor_y),
+    )
+
+
+def calc_followed_view(
+    frame_size: tuple[int, int],
+    pane_size: tuple[int, int],
+    view: ViewParams,
+    shared: SharedView,
+    transform: VideoTransform | None = VideoTransform.NONE,
+) -> ViewParams | None:
+    """This video's view, showing the part of its picture another one shows.
+
+    The scale and the anchor are the shared ones, the rest of the view this
+    video's own: its crop, its aspect, whether it may go past the edges.
+    The same video in a pane the same takes the shift as it is, every pixel
+    where it is in the other. Any other puts its picture where the other's
+    stands (see calc_shared_view), to the nearest whole frame pixel. Held
+    within its own bounds either way (see calc_view_shift).
+
+    None where there is nothing to work it out from.
+    """
+    followed = view._replace(scale=shared.view.scale, anchor=shared.view.anchor)
+    fit = _Fit.of(frame_size, pane_size, followed, transform)
+
+    if fit is None:
+        return None
+
+    is_same = (
+        tuple(frame_size) == shared.frame_size
+        and tuple(pane_size) == shared.pane_size
+        and transform == shared.transform
+        and view.crop == shared.view.crop
+        and view.aspect == shared.view.aspect
+    )
+
+    if is_same:
+        shift = shared.view.shift
+    else:
+        pane_w, pane_h = pane_size
+        anchor_x, anchor_y = _ANCHOR_POSITIONS[followed.anchor]
+
+        shift = VideoShift(
+            _followed_shift(pane_w, fit.picture_w, fit.per_x, anchor_x, shared.place_x),
+            _followed_shift(pane_h, fit.picture_h, fit.per_y, anchor_y, shared.place_y),
+        )
+
+    followed = followed._replace(shift=shift)
+
+    return followed._replace(
+        shift=calc_view_shift(frame_size, pane_size, followed, transform)
+    )
+
+
 def calc_view_borders(
     frame_size: tuple[int, int],
     pane_size: tuple[int, int],
@@ -838,6 +955,35 @@ def _zoomed_shift(
     wanted = (near - (pane - zoomed_picture) * anchor) / zoomed_per
 
     return math.floor(wanted + 0.5), point if is_kept else None
+
+
+def _axis_place(pane: float, picture: float, start: float, anchor: float) -> AxisPlace:
+    """One axis of calc_shared_view, the picture's near edge at `start`."""
+
+    room = pane - picture
+
+    if room > _ROUNDING_SLACK:
+        return AxisPlace(is_middle=False, share=start / room)
+
+    if room >= -_ROUNDING_SLACK and abs(start) <= _ROUNDING_SLACK:
+        return AxisPlace(is_middle=False, share=anchor)
+
+    return AxisPlace(is_middle=True, share=(pane / 2 - start) / picture)
+
+
+def _followed_shift(
+    pane: float, picture: float, per: float, anchor: float, place: AxisPlace
+) -> int:
+    """One axis of calc_followed_view: the shift that puts the picture there."""
+
+    room = pane - picture
+
+    if place.is_middle:
+        start = pane / 2 - place.share * picture
+    else:
+        start = place.share * room
+
+    return math.floor((start - room * anchor) / per + 0.5)
 
 
 def _over_picture(

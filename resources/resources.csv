@@ -130,6 +130,8 @@ icon-symbolic,icons/custom/speed.svg,speed
 icon-symbolic,icons/custom/stereo mode.svg,stereo-mode
 icon-symbolic,icons/custom/stream quality.svg,stream-quality
 icon-symbolic,icons/custom/subtitles.svg,subtitles
+icon-symbolic,icons/custom/sync others.svg,sync-others
+icon-symbolic,icons/custom/sync.svg,sync
 icon-symbolic,icons/custom/track.svg,track
 icon-symbolic,icons/custom/video.svg,video
 icon-symbolic,icons/custom/volume decrease.svg,volume-decrease

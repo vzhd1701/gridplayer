@@ -65,6 +65,7 @@ def _context():
     context.is_disable_overlay = False
     context.is_show_overlay_border = False
     context.overlay_timeout = 1
+    context.synced_view = None
 
     return context
 

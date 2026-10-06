@@ -63,6 +63,10 @@ class SnapshotsManager(ManagerBase):
 
         snapshot = self._snapshots[_id]
 
+        # each video's own view, not the one they were synced to, also for
+        # those that are loaded again for it
+        self._ctx.commands.forget_synced_view()
+
         if len(snapshot.videos) != len(self._ctx.video_blocks):
             raise RuntimeError(
                 "Snapshot has different number of videos than current playlist"

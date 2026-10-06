@@ -6,6 +6,7 @@ import secrets
 from datetime import datetime
 from functools import partial
 from pathlib import Path
+from typing import NamedTuple
 
 from pydantic_extra_types.color import Color
 from PyQt5.QtCore import QRect, QRectF, QSize, Qt, QTimer, pyqtSignal
@@ -92,8 +93,10 @@ from gridplayer.params.static import (
     VideoInitialState,
     VideoShift,
     VideoTransform,
+    ViewParams,
 )
 from gridplayer.settings import Settings
+from gridplayer.utils.aspect_calc import SharedView
 from gridplayer.utils.bookmarks import (
     bookmark_at,
     default_bookmark_name,
@@ -387,6 +390,15 @@ def _is_deinterlace_reload_needed(
     )
 
 
+class SyncedView(NamedTuple):
+    """A video's view, for the others to follow: see VideoBlock.synced_view."""
+
+    view: SharedView
+    # where the picture stands is a zoom to a selection's doing, which a
+    # reset of the zoom then undoes in the others too
+    is_zoomed_to_selection: bool
+
+
 def _segment_mark(segment: SponsorSegment) -> SeekMark:
     """A SponsorBlock segment as the seek bar marks it, by its colour."""
 
@@ -416,7 +428,15 @@ class VideoBlock(QWidget):
     sync_time_single = pyqtSignal(MILLISECONDS)
     sync_percent = pyqtSignal(float)
     sync_time = pyqtSignal(MILLISECONDS)
+    # the others paused for a step to the next or the previous frame
     sync_paused = pyqtSignal(bool)
+    # what the viewer had this one do, for the others to follow where that
+    # is synced: played or paused, zoomed or moved (a SyncedView), the speed
+    sync_pause = pyqtSignal(bool)
+    sync_view = pyqtSignal(object)
+    sync_rate = pyqtSignal(float)
+    # the view, for the others to follow this once
+    sync_view_single = pyqtSignal(object)
 
     time_change = pyqtSignal(MILLISECONDS, MILLISECONDS)
     volume_change = pyqtSignal(float)
@@ -459,6 +479,8 @@ class VideoBlock(QWidget):
         # where the picture stands is a zoom to a selection's doing, which
         # the zoom's reset undoes along with it
         self._is_zoomed_to_selection = False
+        # another video's view, to show once this one is playing
+        self._view_to_follow: SyncedView | None = None
 
         self._title = None
         self._color = None
@@ -596,6 +618,7 @@ class VideoBlock(QWidget):
         qt_connect(
             (video_driver.video_ready, self.load_video_finish),
             (video_driver.picture_shown, self._picture_shown),
+            (video_driver.view_followed, self._view_followed),
             (video_driver.tracks_changed, self.tracks_changed),
             (video_driver.chapters_changed, self._update_chapters),
             (video_driver.time_changed, self.time_changed),
@@ -673,6 +696,7 @@ class VideoBlock(QWidget):
         self.load_video.disconnect()
         self.video_driver.video_ready.disconnect()
         self.video_driver.picture_shown.disconnect()
+        self.video_driver.view_followed.disconnect()
         self.video_driver.time_changed.disconnect()
         self.video_driver.playback_status_changed.disconnect()
         self.video_driver.error.disconnect()
@@ -3041,6 +3065,9 @@ class VideoBlock(QWidget):
         if snapshot.uri != self.video_params.uri:
             return
 
+        # the snapshot's view is the one to show
+        self._view_to_follow = None
+
         self.title = snapshot.title or self._default_title
         self.color = snapshot.color.as_hex()
 
@@ -3537,6 +3564,8 @@ class VideoBlock(QWidget):
         self._is_status_kept_for_picture = self.video_driver.is_picture_pending
         if not self._is_status_kept_for_picture:
             self.video_status.hide()
+
+        self._follow_synced_view()
 
         self.video_driver.show()
         self.is_stopped_change.emit(self.is_stopped)
@@ -4674,6 +4703,84 @@ class VideoBlock(QWidget):
 
         self.show_overlay()
 
+    def manual_view(self, command, *args):
+        """Zoom or move the picture as the viewer asked, for the others to
+        follow where their views are synced (see VideoBlocksManager).
+
+        The view as it then is, even where the command left it as it was:
+        the others come to show what this one does, from wherever they are.
+        What the command gives back goes back (see pan_by).
+        """
+
+        result = getattr(self, command)(*args)
+
+        synced = self.synced_view()
+
+        if synced is not None:
+            self.sync_view.emit(synced)
+
+        return result
+
+    @only_with_video_tacks
+    @only_initialized
+    def sync_others_view(self):
+        """Have the others show the part of their pictures this one shows."""
+
+        synced = self.synced_view()
+
+        if synced is not None:
+            self.sync_view_single.emit(synced)
+
+    def synced_view(self) -> SyncedView | None:
+        """This video's view, for the others to follow; None for none."""
+
+        if not self.is_video_initialized or not self.video_tracks:
+            return None
+
+        shared = self.video_driver.shared_view()
+
+        if shared is None:
+            return None
+
+        return SyncedView(shared, self._is_zoomed_to_selection)
+
+    def follow_view(self, synced: SyncedView):
+        """Show the part of the picture another video shows of its own.
+
+        Quietly, the other saying what it shows. One that is not playing yet
+        shows it once it is (see load_video_finish), and one waiting for its
+        frame's size once that is known (see VideoFrameVLC.follow_view).
+        """
+
+        if not self.is_video_initialized:
+            self._view_to_follow = synced
+            return
+
+        if not self.video_tracks:
+            return
+
+        self._is_zoomed_to_selection = synced.is_zoomed_to_selection
+
+        view = self.video_driver.follow_view(synced.view)
+
+        if view is not None:
+            self._view_followed(view)
+
+    def _view_followed(self, view: ViewParams):
+        self.video_params.scale = view.scale
+        self.video_params.anchor = view.anchor
+        self.video_params.shift = view.shift
+
+    def _follow_synced_view(self):
+        """Show the view this one was to follow once playing, or else the
+        one the videos are synced to, having just loaded."""
+
+        synced = self._view_to_follow or getattr(self._ctx, "synced_view", None)
+        self._view_to_follow = None
+
+        if synced is not None:
+            self.follow_view(synced)
+
     @only_with_video_tacks
     @only_initialized
     def toggle_zoom_to_cursor(self):
@@ -4807,6 +4914,26 @@ class VideoBlock(QWidget):
             # no steps is where the picture stands now
             self.set_shift(self.video_driver.shifted_by(0, 0), is_silent=True)
 
+    def manual_rate(self, command):
+        """Change the speed as the viewer asked, for the others to follow
+        where speeds are synced (see VideoBlocksManager)."""
+
+        getattr(self, command)()
+
+        if self.is_video_initialized and not self.is_live:
+            self.sync_rate.emit(self.video_params.rate)
+
+    def follow_rate(self, rate: float):
+        """Play at another video's speed, quietly. One that is not playing
+        yet plays at it once it is."""
+
+        if self.is_live:
+            return
+
+        self.video_params.rate = rate
+
+        self.set_rate(rate, is_silent=True)
+
     @only_initialized
     @only_seekable
     def rate_increase(self):
@@ -4893,7 +5020,17 @@ class VideoBlock(QWidget):
         self.set_volume(self.video_params.volume)
 
     def play_pause(self):
-        self.set_pause(not self.video_params.is_paused)
+        """Play or pause as the viewer asked, the others following where
+        playing and pausing is synced (see VideoBlocksManager)."""
+
+        if self._is_state_change_in_progress:
+            return
+
+        is_paused = not self.video_params.is_paused
+
+        self.set_pause(is_paused)
+
+        self.sync_pause.emit(is_paused)
 
     @only_local_file
     def previous_video(self):

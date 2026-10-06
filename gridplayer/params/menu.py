@@ -30,10 +30,11 @@ SUBMENUS = MappingProxyType(
         },
         "[ALL]": {"title": translate("Actions", "[ALL]"), "icon": "all"},
         "Grid": {"title": translate("Actions", "Grid"), "icon": "grid"},
-        "Seek Sync": {"title": translate("Actions", "Seek Sync"), "icon": "seek-sync"},
-        "Seek Others": {
+        "Sync": {"title": translate("Actions", "Sync"), "icon": "sync"},
+        "Seek Sync": {"title": translate("Actions", "Seek"), "icon": "seek-sync"},
+        "Sync Others": {
             "title": translate("Actions", "Sync Others"),
-            "icon": "seek-sync",
+            "icon": "sync-others",
         },
         "Percent": {
             "title": translate("Actions", "Percent"),
@@ -263,11 +264,6 @@ SECTIONS = MappingProxyType(
                     "Bookmark List",
                 ),
                 (
-                    "Seek Others",
-                    "Seek Others (Percent)",
-                    "Seek Others (Timecode)",
-                ),
-                (
                     "Loop",
                     "Random Loop",
                     "---",
@@ -294,6 +290,13 @@ SECTIONS = MappingProxyType(
                     "Slower",
                     "Normal",
                 ),
+            ),
+            (
+                "Sync Others",
+                "Seek Others (Percent)",
+                "Seek Others (Timecode)",
+                "---",
+                "Sync Others (Zoom and Position)",
             ),
             "Stream Quality",
             "Rename",
@@ -554,10 +557,17 @@ SECTIONS = MappingProxyType(
         ],
         "playlist": [
             (
-                "Seek Sync",
-                "Seek Sync (Disabled)",
-                "Seek Sync (Percent)",
-                "Seek Sync (Timecode)",
+                "Sync",
+                (
+                    "Seek Sync",
+                    "Seek Sync (Disabled)",
+                    "Seek Sync (Percent)",
+                    "Seek Sync (Timecode)",
+                ),
+                "---",
+                "Sync Zoom and Position",
+                "Sync Play / Pause",
+                "Sync Speed",
             ),
             (
                 "Grid",
