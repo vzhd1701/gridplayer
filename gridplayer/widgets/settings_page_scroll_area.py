@@ -1,6 +1,8 @@
-from PyQt5.QtCore import QSize, Qt
+from PyQt5.QtCore import QEvent, QSize, Qt
 from PyQt5.QtGui import QPainter
 from PyQt5.QtWidgets import (
+    QAbstractSpinBox,
+    QComboBox,
     QFrame,
     QScrollArea,
     QScrollBar,
@@ -8,6 +10,8 @@ from PyQt5.QtWidgets import (
     QStyle,
     QWidget,
 )
+
+_WHEEL_FIELDS = (QComboBox, QAbstractSpinBox)
 
 
 def _scrollbar_extent(widget: QWidget) -> int:
@@ -49,6 +53,28 @@ class PageScrollArea(QScrollArea):
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.setContentsMargins(0, 1, 1, 1)
+
+    def setWidget(self, widget):
+        super().setWidget(widget)
+
+        # A field the pointer passes over while the page scrolls would take
+        # the wheel and change its value. It only gets it once clicked.
+        for field in widget.findChildren(_WHEEL_FIELDS):
+            field.setFocusPolicy(Qt.StrongFocus)
+            field.installEventFilter(self)
+
+    def eventFilter(self, obj, event):
+        # The scroll bars are filtered here too, and handing them their own
+        # wheel back would go round forever.
+        if (
+            event.type() == QEvent.Wheel
+            and isinstance(obj, _WHEEL_FIELDS)
+            and not obj.hasFocus()
+        ):
+            self.wheelEvent(event)
+            return True
+
+        return super().eventFilter(obj, event)
 
     def sizeHint(self):
         inner = self.widget()
