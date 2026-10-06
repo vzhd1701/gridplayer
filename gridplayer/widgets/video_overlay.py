@@ -640,9 +640,7 @@ class OverlayBlockFloating(OverlayBlock):
             self.update(revealed)
 
     def _opaque_mask(self) -> QRegion:
-        dummy = QRegion(QRect(0, 0, 1, 1))
-        mask = QRegion(dummy)
-        has_shape = False
+        mask = QRegion()
 
         # As shown once the overlay is, whether it is now or not: a shape
         # worked out while it is hidden is the one it comes back with, and
@@ -650,21 +648,14 @@ class OverlayBlockFloating(OverlayBlock):
         for child in self.findChildren(OverlayWidget):
             if not child.isVisibleTo(self):
                 continue
-            has_shape = True
-            child_mask = child.mask()
-            if not child_mask.isEmpty():
-                mask += child_mask.translated(child.pos())
-            else:
-                mask += QRegion(child.geometry())
+            mask += child.opaque_shape().translated(child.pos())
 
-        if has_shape:
-            if not self.border_widget.isVisible():
-                mask -= dummy
+        if not mask.isEmpty():
             return mask
 
         # Empty mask is treated as unmasked on X11, so the opaque window
         # would cover the whole video. Keep a 1px hole while mapped.
-        return dummy
+        return QRegion(QRect(0, 0, 1, 1))
 
     def _sync_opaque_window_color(self):
         if not self.is_opaque:

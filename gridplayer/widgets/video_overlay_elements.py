@@ -234,6 +234,23 @@ def draw_bookmark_marker(painter, shape: QPolygonF, colors, rim: QColor):
     painter.restore()
 
 
+def underlay_bookmark_markers(painter, cut: QRegion, rim: QColor):
+    """What markers are cut to on the opaque overlay, in their rim's colour,
+    for them to be painted over.
+
+    A marker's edges are drawn smooth: a pixel an edge only partly covers is
+    painted partly, for the rest to show through. On the opaque overlay what
+    shows there is the overlay's own colour, not the video, and a light one
+    stands round the marker's point as a pale fringe. Over the rim's colour
+    the edge comes out as the rim drawn out to the end of the cut instead.
+    """
+
+    painter.save()
+    painter.setClipRegion(cut)
+    painter.fillRect(cut.boundingRect(), rim)
+    painter.restore()
+
+
 def bookmark_markers(marks, length: int, bar_width: int) -> list[tuple[int, list]]:
     """Where along the bar each marker stands, and the bookmarks it stands for.
 
@@ -375,6 +392,17 @@ class OverlayWidget(QWidget):
             effect.setOpacity(opacity)
             self.setGraphicsEffect(effect)
         self.update()
+
+    def opaque_shape(self) -> QRegion:
+        """What of it the opaque overlay cuts its window to, in its own
+        coordinates: where it is cut to, or all of it."""
+
+        mask = self.mask()
+
+        if mask.isEmpty():
+            return QRegion(self.rect())
+
+        return mask
 
     @property
     def color(self):
@@ -836,6 +864,12 @@ class OverlayShortLabelFloating(OverlayShortLabel):
             self.draw_lines(painter, text_box, under_lines)
         else:
             painter.drawText(text_box, Qt.AlignCenter, self.text)
+
+        if self.is_opaque and self._is_on_marker:
+            # the marker below the box, as the label is cut to it
+            underlay_bookmark_markers(
+                painter, self.mask() - QRegion(text_box), self.color_contrast
+            )
 
         self.draw_pointer(painter)
 
@@ -1417,6 +1451,7 @@ class OverlayBookmarkMarkers(OverlayWidget):
         self._is_pressed = False
 
         self.is_opaque = False
+        self._shape = QRegion()
 
         self.setMouseTracking(True)
         self.setFixedHeight(BOOKMARK_STRIP_HEIGHT)
@@ -1475,21 +1510,15 @@ class OverlayBookmarkMarkers(OverlayWidget):
                 self._set_hovered(marker_under(self._markers, mouse.x()))
 
     def update_shape(self):
-        """Cut the strip to its markers as they are painted, on the opaque
-        overlay, all but the one the hover label has taken.
+        """What of the strip the opaque overlay cuts its window to: its
+        markers as they are painted, all but the one the hover label has
+        taken.
 
         Its window is painted in the overlay's colour wherever it is not cut
-        away, so a marker cut out any bigger stands on a box of it. Only
-        there, too: a widget faded by a graphics effect paints nothing
-        through a cut at all.
+        away, so a marker cut out any bigger stands on a box of it.
         """
 
         if not self.is_opaque:
-            return
-
-        if not self._markers:
-            self.clearMask()
-            self.shape_changed.emit()
             return
 
         painted = QImage(self.size(), QImage.Format_ARGB32_Premultiplied)
@@ -1499,8 +1528,17 @@ class OverlayBookmarkMarkers(OverlayWidget):
         self._paint_markers(painter)
         painter.end()
 
-        self.setMask(QRegion(QBitmap.fromImage(painted.createAlphaMask())))
+        self._shape = QRegion(QBitmap.fromImage(painted.createAlphaMask()))
+
         self.shape_changed.emit()
+
+    def opaque_shape(self) -> QRegion:
+        # Not a mask of its own: Qt gives a widget the mouse only inside its
+        # mask, and the marker the label draws would be left out of it, which
+        # sends the mouse over it to the video. An empty one, with its only
+        # marker taken, would be no mask at all to Qt, and leave all of the
+        # strip standing in the overlay's colour.
+        return QRegion(self._shape)
 
     def is_marker_at(self, x: int) -> bool:
         """Whether a press this far across would be on a marker."""
@@ -1593,6 +1631,9 @@ class OverlayBookmarkMarkers(OverlayWidget):
 
     def paintEvent(self, event):
         painter = QPainter(self)
+
+        if self.is_opaque:
+            underlay_bookmark_markers(painter, self._shape, self.color_contrast)
 
         self._paint_markers(painter)
 

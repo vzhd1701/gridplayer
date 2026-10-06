@@ -735,7 +735,7 @@ class TestOnTheOpaqueOverlay:
                 if image.pixelColor(x, y).alpha() >= 128:
                     painted += QRegion(x, y, 1, 1)
 
-        assert strip.mask() == painted
+        assert strip.opaque_shape() == painted
 
     def test_the_one_under_the_mouse_is_taken_in_as_the_labels_pointer(self, opaque):
         opaque.set_seek_marks((GOAL,))
@@ -748,11 +748,43 @@ class TestOnTheOpaqueOverlay:
 
         _move_over(opaque, x)
         assert opaque.mask().contains(grown_edge)
-        assert not _strip(opaque).mask().contains(QPoint(x, TIP_ROW - 2))
+        assert not _strip(opaque).opaque_shape().contains(QPoint(x, TIP_ROW - 2))
 
         _send(_strip(opaque), QEvent(QEvent.Leave))
         assert not opaque.mask().contains(grown_edge)
-        assert _strip(opaque).mask().contains(QPoint(x, TIP_ROW - 2))
+        assert _strip(opaque).opaque_shape().contains(QPoint(x, TIP_ROW - 2))
+
+    def test_its_only_marker_taken_the_strip_leaves_the_video(self, opaque):
+        """Painting nothing then, it would stand as a box of the overlay's
+        colour between the label and the bar."""
+
+        opaque.set_seek_marks((GOAL,))
+        x = _marker_x(opaque)
+
+        _move_over(opaque, x)
+
+        beside = self._in_overlay(opaque, x + BOOKMARK_HOVER_PX + 10, 5)
+        strip_start = self._in_overlay(opaque, 0, 5)
+
+        assert not opaque.mask().contains(beside)
+        assert not opaque.mask().contains(strip_start)
+
+    @pytest.mark.parametrize("marks", [(GOAL,), (GOAL, _bookmark(50000, "Later"))])
+    def test_the_one_under_the_mouse_still_takes_the_mouse(self, opaque, marks):
+        """Left to the label to draw, it is the strip's still: otherwise the
+        mouse over it leaves the strip, which gives it back, and so on, and a
+        click on it goes to the video."""
+
+        opaque.set_seek_marks(marks)
+        x = _marker_x(opaque)
+
+        _move_over(opaque, x)
+
+        for dx in (-BOOKMARK_TAIL.half_width + 1, 0, BOOKMARK_TAIL.half_width - 1):
+            at = self._in_overlay(opaque, x + dx, TIP_ROW - 4)
+
+            assert opaque.mask().contains(at)
+            assert opaque.childAt(at) is _strip(opaque)
 
     def test_the_label_is_cut_to_its_box_and_the_marker(self, opaque):
         """Beside the marker's point is the video, not the label's colour."""
@@ -802,6 +834,38 @@ class TestOnTheOpaqueOverlay:
         image = _grab(opaque)
 
         assert _is_colour(image, x, TIP_ROW - 2, BOOKMARK_COLOR)
+
+    def test_the_markers_cover_all_of_the_cut(self, opaque):
+        """Where they paint only partly, the overlay's colour shows round
+        them, never the video."""
+
+        opaque.set_seek_marks((GOAL, _bookmark(50000, "Later")))
+        strip = _strip(opaque)
+
+        assert _seen_through_in_cut(strip) == []
+
+    def test_and_so_does_the_one_the_label_takes(self, opaque):
+        opaque.set_seek_marks((GOAL,))
+
+        _move_over(opaque, _marker_x(opaque))
+
+        assert _seen_through_in_cut(opaque.floating_progress) == []
+
+
+def _seen_through_in_cut(widget):
+    """The pixels inside a widget's cut that it paints only partly or not at
+    all, by itself."""
+
+    image = widget.grab().toImage()
+
+    cut = widget.opaque_shape()
+
+    return [
+        (x, y)
+        for y in range(image.height())
+        for x in range(image.width())
+        if cut.contains(QPoint(x, y)) and image.pixelColor(x, y).alpha() < 255
+    ]
 
 
 class TestTheHoverLabelOverASharedMarker:
