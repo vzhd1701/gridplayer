@@ -110,6 +110,7 @@ class InstanceVLC:
             "--no-keyboard-events",
             "--no-mouse-events",
             *self.vlc_options,
+            *_audio_output_options(),
             # before the options typed by hand, which are last so that
             # they still win over anything a page here has set
             *_subtitle_style_options(),
@@ -242,6 +243,15 @@ def _subtitle_style_options() -> list[str]:
     style = {key: Settings().sync_get(key) for key in SUBTITLE_STYLE_SETTINGS}
 
     return subtitle_style_options(style)
+
+
+def _audio_output_options() -> list[str]:
+    """Audio output to ask VLC for, ahead of any typed by hand."""
+
+    if env.IS_LINUX:
+        return ["--aout=pulse,any"]
+
+    return []
 
 
 def _iter_settings_options() -> Iterator[str]:
