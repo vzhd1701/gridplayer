@@ -1019,6 +1019,7 @@ ACTIONS = MappingProxyType(
         },
         "Audio Delay: %v": {
             "title": "{}: %v".format(translate("Actions", "Delay")),
+            "keymap_title": translate("Actions", "Set Delay"),
             "icon": "empty",
             "func": ("active", "audio_delay_dialog"),
             "value_getter": ("active", "get_audio_delay"),
@@ -1052,6 +1053,7 @@ ACTIONS = MappingProxyType(
         },
         "Subtitle Delay: %v": {
             "title": "{}: %v".format(translate("Actions", "Delay")),
+            "keymap_title": translate("Actions", "Set Delay"),
             "icon": "empty",
             "func": ("active", "subtitle_delay_dialog"),
             "value_getter": ("active", "get_subtitle_delay"),
@@ -1248,6 +1250,7 @@ ACTIONS = MappingProxyType(
         },
         "Auto Reload: %v": {
             "title": "{}: %v".format(translate("Actions", "Auto Reload")),
+            "keymap_title": translate("Actions", "Set Auto Reload"),
             "icon": "reload",
             "func": ("active", "auto_reload_timer"),
             "value_getter": ("active", "get_auto_reload_timer"),
@@ -1291,6 +1294,7 @@ ACTIONS = MappingProxyType(
         },
         "On Network Error Attempts: %v": {
             "title": "{}: %v".format(translate("Actions", "Attempts")),
+            "keymap_title": translate("Actions", "Set Attempts"),
             "icon": "empty",
             "func": ("active", "network_retry_times"),
             "value_getter": ("active", "get_network_retry_times"),
@@ -2169,6 +2173,7 @@ ACTIONS = MappingProxyType(
         },
         "Size: %v": {
             "title": translate("Actions", "Size: %v"),
+            "keymap_title": translate("Actions", "Set Size"),
             "icon": "grid-size",
             "func": "ask_grid_size",
             "value_getter": "get_grid_size",
@@ -2183,6 +2188,7 @@ ACTIONS = MappingProxyType(
         },
         "Grid Size: %v": {
             "title": translate("Actions", "Grid Size: %v"),
+            "keymap_title": translate("Actions", "Set Grid Size"),
             "icon": "grid-size",
             "func": "ask_fixed_grid_size",
             "value_getter": "get_fixed_grid_size",
