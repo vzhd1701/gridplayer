@@ -31,9 +31,11 @@ def _qapp():
 
 @pytest.fixture
 def editor():
-    # never deleteLater(): a KeymapEditor deleted that way takes the test
-    # process down with it, as it did before there were gestures in it
-    return KeymapEditor()
+    editor = KeymapEditor()
+
+    yield editor
+
+    editor.deleteLater()
 
 
 def _gestures_folder(editor):

@@ -44,7 +44,10 @@ class TableWidgetDragRows(QtWidgets.QTableWidget):
         self.itemSelectionChanged.connect(self._on_selection_changed)
 
     def ui_init(self):
-        self.setStyle(RowDropIndicatorStyle("Fusion"))
+        # parented, so it is not freed before the list (see KeymapTreeView)
+        style = RowDropIndicatorStyle("Fusion")
+        style.setParent(self)
+        self.setStyle(style)
 
         self.setDragEnabled(True)
         self.setAcceptDrops(True)

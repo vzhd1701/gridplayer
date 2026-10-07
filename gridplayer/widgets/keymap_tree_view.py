@@ -1296,7 +1296,13 @@ class KeymapTreeView(QTreeView):
 
         self._source_model = QStandardItemModel(self)
 
-        self.setStyle(NoFrameFocus("Fusion"))
+        # A widget never owns its style. Left to its Python wrapper, the style
+        # can be freed first when the view is deleteLater()'d, and the
+        # stylesheet's wrapper style below then reads freed memory on the
+        # way out. Parented, it goes with the view.
+        style = NoFrameFocus("Fusion")
+        style.setParent(self)
+        self.setStyle(style)
         self.setUniformRowHeights(True)
         self.setHeaderHidden(True)
         self.setIndentation(24)
