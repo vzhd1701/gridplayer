@@ -226,6 +226,18 @@
           </widget>
          </item>
          <item>
+          <widget class="QLabel" name="section_history">
+           <property name="font">
+            <font>
+             <bold>true</bold>
+            </font>
+           </property>
+           <property name="text">
+            <string>History</string>
+           </property>
+          </widget>
+         </item>
+         <item>
           <layout class="QFormLayout" name="formLayout_10">
            <property name="fieldGrowthPolicy">
             <enum>QFormLayout::FieldsStayAtSizeHint</enum>
@@ -252,6 +264,13 @@
             </layout>
            </item>
           </layout>
+         </item>
+         <item>
+          <widget class="QCheckBox" name="playerReopenLastPlaylist">
+           <property name="text">
+            <string>Reopen last playlist on startup</string>
+           </property>
+          </widget>
          </item>
          <item>
           <widget class="QLabel" name="section_timeouts">

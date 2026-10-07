@@ -68,6 +68,7 @@ _default_settings = {
     "player/keymap": KeymapOverrides({}),
     "player/recent_list_enabled": True,
     "player/recent_list_max_size": 10,
+    "player/reopen_last_playlist": False,
     # empty means the screenshots folder in the app data folder, worked out
     # when a screenshot is taken so it follows a portable or moved data dir
     "screenshots/dir": "",
@@ -189,6 +190,8 @@ _default_settings = {
     "network/verify_tls": True,
     "recent_list_videos": RecentListVideos(),
     "recent_list_playlists": RecentListPlaylists(),
+    # the playlist file open when the player was last closed, empty for none
+    "last_playlist": "",
 }
 
 if env.IS_MACOS:

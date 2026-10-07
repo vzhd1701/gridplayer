@@ -92,7 +92,56 @@ class PlaylistManager(ManagerBase):
             "set_shuffle_on_load": self.set_shuffle_on_load,
             "toggle_shuffle_on_load": self.toggle_shuffle_on_load,
             "playlist_settings": self.cmd_playlist_settings,
+            "remember_last_playlist": self.remember_last_playlist,
         }
+
+    def remember_last_playlist(self) -> None:
+        """Keep the playlist file that is open as the player closes.
+
+        Synced here because the player ends with os._exit, which leaves
+        nothing to write what QSettings still has pending.
+        """
+
+        path = self._saved_playlist_path
+
+        if path is None or not Settings().get("player/reopen_last_playlist"):
+            Settings().set("last_playlist", "")
+        else:
+            Settings().set("last_playlist", str(path))
+
+        Settings().sync()
+
+    def restore_last_playlist(self) -> None:
+        """Open the playlist that was open when the player was last closed.
+
+        Not over anything opened meanwhile, such as a file sent from the
+        file manager. Forgotten before it opens, and remembered again on a
+        clean close: a playlist that brings the player down would otherwise
+        bring it down on every start.
+        """
+
+        if not Settings().get("player/reopen_last_playlist"):
+            return
+
+        last_playlist = Settings().get("last_playlist")
+
+        if not last_playlist:
+            return
+
+        if self._saved_playlist_path is not None or self._ctx.video_blocks:
+            return
+
+        path = Path(last_playlist)
+
+        # a drive that isn't there today is no reason for an error on start
+        if not path.is_file():
+            self._log.info(f"Last playlist not found: {path}")
+            return
+
+        Settings().set("last_playlist", "")
+        Settings().sync()
+
+        self.load_playlist_file(path)
 
     def set_shuffle_on_load(self, is_shuffle_on_load):
         self._ctx.is_shuffle_on_load = is_shuffle_on_load

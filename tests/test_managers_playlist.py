@@ -1616,3 +1616,136 @@ class TestBookmarks:
         )
 
         assert overrides == {"playlist/bookmarks_shared": False}
+
+
+class TestLastPlaylist:
+    @pytest.fixture
+    def settings(self, mocker):
+        """The shipped defaults with the flag turned on, and where the
+        player would have written."""
+
+        values = {
+            **_default_settings,
+            "player/reopen_last_playlist": True,
+        }
+
+        mocker.patch.object(Settings(), "get", side_effect=values.__getitem__)
+        mocker.patch.object(Settings(), "set", side_effect=values.__setitem__)
+        mocker.patch.object(Settings(), "sync")
+
+        return values
+
+    @pytest.fixture
+    def manager(self):
+        manager, parent = _make_manager(SimpleNamespace(video_blocks=[]))
+        yield manager
+        parent.deleteLater()
+
+    @pytest.fixture
+    def last_playlist(self, tmp_path, settings):
+        path = tmp_path / "last.gpls"
+        path.write_text("#GRIDPLAYER\n", encoding="utf-8")
+        settings["last_playlist"] = str(path)
+        return path
+
+    def test_the_open_playlist_is_remembered(self, manager, settings, tmp_path):
+        manager._saved_playlist_path = tmp_path / "open.gpls"
+
+        manager.remember_last_playlist()
+
+        assert settings["last_playlist"] == str(tmp_path / "open.gpls")
+        Settings().sync.assert_called_once()
+
+    def test_no_playlist_open_forgets_it(self, manager, settings):
+        settings["last_playlist"] = "before.gpls"
+
+        manager.remember_last_playlist()
+
+        assert settings["last_playlist"] == ""
+        Settings().sync.assert_called_once()
+
+    def test_flag_off_forgets_it(self, manager, settings, tmp_path):
+        settings["player/reopen_last_playlist"] = False
+        settings["last_playlist"] = "before.gpls"
+        manager._saved_playlist_path = tmp_path / "open.gpls"
+
+        manager.remember_last_playlist()
+
+        assert settings["last_playlist"] == ""
+
+    def test_restore_opens_it(self, manager, mocker, last_playlist):
+        load = mocker.patch.object(manager, "load_playlist_file")
+
+        manager.restore_last_playlist()
+
+        load.assert_called_once_with(last_playlist)
+
+    def test_restore_forgets_it_before_opening(
+        self, manager, mocker, settings, last_playlist
+    ):
+        seen = []
+        mocker.patch.object(
+            manager,
+            "load_playlist_file",
+            side_effect=lambda _path: seen.append(settings["last_playlist"]),
+        )
+
+        manager.restore_last_playlist()
+
+        assert seen == [""]
+        Settings().sync.assert_called_once()
+
+    def test_restore_with_flag_off_does_nothing(
+        self, manager, mocker, settings, last_playlist
+    ):
+        settings["player/reopen_last_playlist"] = False
+        load = mocker.patch.object(manager, "load_playlist_file")
+
+        manager.restore_last_playlist()
+
+        load.assert_not_called()
+        assert settings["last_playlist"] == str(last_playlist)
+
+    def test_restore_of_a_missing_file_says_nothing(
+        self, manager, mocker, settings, tmp_path
+    ):
+        settings["last_playlist"] = str(tmp_path / "gone.gpls")
+        load = mocker.patch.object(manager, "load_playlist_file")
+        errors = []
+        manager.error.connect(errors.append)
+
+        manager.restore_last_playlist()
+
+        load.assert_not_called()
+        assert errors == []
+
+    def test_restore_leaves_videos_opened_meanwhile(
+        self, manager, mocker, last_playlist
+    ):
+        manager._ctx.video_blocks = [object()]
+        load = mocker.patch.object(manager, "load_playlist_file")
+
+        manager.restore_last_playlist()
+
+        load.assert_not_called()
+
+    def test_restore_leaves_a_playlist_opened_meanwhile(
+        self, manager, mocker, last_playlist, tmp_path
+    ):
+        manager._saved_playlist_path = tmp_path / "other.gpls"
+        load = mocker.patch.object(manager, "load_playlist_file")
+
+        manager.restore_last_playlist()
+
+        load.assert_not_called()
+
+    def test_restore_loads_the_real_file(self, manager, mocker, last_playlist):
+        mocker.patch.object(manager, "load_playlist", return_value=True)
+        mocker.patch.object(manager, "_make_playlist", return_value=Playlist(videos=[]))
+        loaded = []
+        manager.playlist_file_loaded.connect(loaded.append)
+
+        manager.restore_last_playlist()
+
+        assert loaded == [last_playlist]
+        assert manager._saved_playlist_path == last_playlist

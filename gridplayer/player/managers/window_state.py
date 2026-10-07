@@ -81,6 +81,9 @@ class WindowStateManager(ManagerBase):
             event.ignore()
             return True
 
+        # after the question, which can save the playlist somewhere new
+        self._ctx.commands.remember_last_playlist()
+
         self.parent().hide()
 
         self._ctx.commands.force_close_playlist()

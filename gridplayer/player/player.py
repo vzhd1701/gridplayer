@@ -32,6 +32,7 @@ from gridplayer.player.managers.zoom_select import ZoomSelectManager
 
 class Player(QWidget, ManagersManager):
     arguments_received = pyqtSignal(list)
+    restore_requested = pyqtSignal()
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -139,6 +140,7 @@ class Player(QWidget, ManagersManager):
             ],
             "playlist": [
                 ("s.arguments_received", "process_arguments"),
+                ("s.restore_requested", "restore_last_playlist"),
                 ("playlist_file_loaded", "recent_list.add_recent_playlist"),
                 ("playlist_saved", "recent_list.add_recent_playlist"),
                 ("playlist_closed", "video_blocks.close_all"),
@@ -260,3 +262,6 @@ class Player(QWidget, ManagersManager):
 
     def process_arguments(self, argv):
         self.arguments_received.emit(argv)
+
+    def restore_last_playlist(self):
+        self.restore_requested.emit()

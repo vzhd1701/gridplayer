@@ -1,5 +1,7 @@
 import sys
 
+from PyQt5.QtCore import QTimer
+
 from gridplayer.dialogs.messagebox import QCustomMessageBox
 from gridplayer.main.init_app import init_app
 from gridplayer.main.init_icons import init_icon
@@ -51,5 +53,10 @@ def run_app():
     # force load main app icon for Windows 11, sometimes it doesn't load if called before show
     if env.IS_WINDOWS:
         init_icon(app)
+
+    # once the loop runs, and not over a file opened by then, such as one
+    # macOS sends as an event rather than an argument
+    if not sys.argv[1:]:
+        QTimer.singleShot(0, player.restore_last_playlist)
 
     return app.exec_()

@@ -206,6 +206,7 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
             "player/keymap": self.keymapEditor,
             "player/recent_list_enabled": self.playerRecentList,
             "player/recent_list_max_size": self.playerRecentListSize,
+            "player/reopen_last_playlist": self.playerReopenLastPlaylist,
             "screenshots/dir": self.screenshotsDir,
             "screenshots/filename_template": self.screenshotsFilenameTemplate,
             "screenshots/format": self.screenshotsFormat,

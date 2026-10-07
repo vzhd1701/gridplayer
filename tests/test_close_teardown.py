@@ -151,6 +151,7 @@ def test_close_event_hides_window_before_tearing_players_down(mocker):
     manager, window, _ = _window_state_manager(
         {
             "check_playlist_save": lambda: (events.append("ask"), True)[1],
+            "remember_last_playlist": lambda: events.append("remember"),
             "force_close_playlist": lambda: events.append("close"),
         }
     )
@@ -158,7 +159,7 @@ def test_close_event_hides_window_before_tearing_players_down(mocker):
 
     manager.closeEvent(MagicMock())
 
-    assert events == ["ask", "hide", "close"]
+    assert events == ["ask", "remember", "hide", "close"]
 
 
 def test_close_event_keeps_window_when_save_is_cancelled(mocker):
@@ -167,6 +168,7 @@ def test_close_event_keeps_window_when_save_is_cancelled(mocker):
     manager, _, ctx = _window_state_manager(
         {
             "check_playlist_save": lambda: False,
+            "remember_last_playlist": MagicMock(),
             "force_close_playlist": MagicMock(),
         }
     )
@@ -175,5 +177,6 @@ def test_close_event_keeps_window_when_save_is_cancelled(mocker):
     assert manager.closeEvent(event) is True
 
     event.ignore.assert_called_once()
+    ctx.commands.remember_last_playlist.assert_not_called()
     ctx.commands.force_close_playlist.assert_not_called()
     terminate.assert_not_called()

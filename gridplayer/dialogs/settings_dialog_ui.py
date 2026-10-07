@@ -105,6 +105,12 @@ class Ui_SettingsDialog:
         self.playerInhibitScreensaver = QtWidgets.QCheckBox(self.page_general_player)
         self.playerInhibitScreensaver.setObjectName("playerInhibitScreensaver")
         self.lay_section_player.addWidget(self.playerInhibitScreensaver)
+        self.section_history = QtWidgets.QLabel(self.page_general_player)
+        font = QtGui.QFont()
+        font.setBold(True)
+        self.section_history.setFont(font)
+        self.section_history.setObjectName("section_history")
+        self.lay_section_player.addWidget(self.section_history)
         self.formLayout_10 = QtWidgets.QFormLayout()
         self.formLayout_10.setFieldGrowthPolicy(
             QtWidgets.QFormLayout.FieldsStayAtSizeHint
@@ -127,6 +133,9 @@ class Ui_SettingsDialog:
             0, QtWidgets.QFormLayout.FieldRole, self.horizontalLayout_6
         )
         self.lay_section_player.addLayout(self.formLayout_10)
+        self.playerReopenLastPlaylist = QtWidgets.QCheckBox(self.page_general_player)
+        self.playerReopenLastPlaylist.setObjectName("playerReopenLastPlaylist")
+        self.lay_section_player.addWidget(self.playerReopenLastPlaylist)
         self.section_timeouts = QtWidgets.QLabel(self.page_general_player)
         font = QtGui.QFont()
         font.setBold(True)
@@ -797,10 +806,14 @@ class Ui_SettingsDialog:
         self.playerInhibitScreensaver.setText(
             _translate("SettingsDialog", "Disable screensaver while playing")
         )
+        self.section_history.setText(_translate("SettingsDialog", "History"))
         self.playerRecentList.setText(
             _translate("SettingsDialog", "Enable recent list, maximum size")
         )
         self.label_16.setText(_translate("SettingsDialog", "(items)"))
+        self.playerReopenLastPlaylist.setText(
+            _translate("SettingsDialog", "Reopen last playlist on startup")
+        )
         self.section_timeouts.setText(_translate("SettingsDialog", "Timeouts"))
         self.timeoutMouseHideFlag.setText(
             _translate("SettingsDialog", "Hide mouse after timeout")
