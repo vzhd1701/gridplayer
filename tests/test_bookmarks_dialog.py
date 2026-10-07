@@ -748,7 +748,7 @@ class TestHeldAtTheEnd:
         [
             (VideoEndAction.NEXT_FILE, "Play Next File"),
             (VideoEndAction.PREVIOUS_FILE, "Play Previous File"),
-            (VideoEndAction.SHUFFLE_FILE, "Random In Folder"),
+            (VideoEndAction.SHUFFLE_FILE, "Play Random File"),
             (VideoEndAction.CLOSE, "Close"),
         ],
     )

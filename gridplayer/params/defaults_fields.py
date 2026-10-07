@@ -293,9 +293,9 @@ def _shuffle_avoid_open_tooltip() -> str:
 def _end_actions() -> dict:
     return {
         VideoEndAction.LOOP_FILE: translate("When Finished", "Loop this file"),
-        VideoEndAction.NEXT_FILE: translate("When Finished", "Next in folder"),
-        VideoEndAction.PREVIOUS_FILE: translate("When Finished", "Previous in folder"),
-        VideoEndAction.SHUFFLE_FILE: translate("When Finished", "Random in folder"),
+        VideoEndAction.NEXT_FILE: translate("When Finished", "Play next file"),
+        VideoEndAction.PREVIOUS_FILE: translate("When Finished", "Play previous file"),
+        VideoEndAction.SHUFFLE_FILE: translate("When Finished", "Play random file"),
         VideoEndAction.PAUSE: translate("When Finished", "Pause at start"),
         VideoEndAction.STOP: translate("When Finished", "Stop"),
         VideoEndAction.CLOSE: translate("When Finished", "Close"),

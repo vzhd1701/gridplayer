@@ -217,6 +217,7 @@ SECTIONS = MappingProxyType(
                 "Playback",
                 "Play Previous File",
                 "Play Next File",
+                "Play Random File",
                 "Include Subfolders",
                 "---",
                 (
@@ -454,6 +455,7 @@ SECTIONS = MappingProxyType(
                     "Playback",
                     "Play Previous File [ALL]",
                     "Play Next File [ALL]",
+                    "Play Random File [ALL]",
                     (
                         "Include Subfolders",
                         "Include Subfolders On [ALL]",

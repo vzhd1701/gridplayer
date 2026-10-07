@@ -71,6 +71,12 @@ ACTIONS = MappingProxyType(
             "func": ("active", "next_video"),
             "show_if": "is_active_local_file",
         },
+        "Play Random File": {
+            "title": translate("Actions", "Play Random File"),
+            "icon": "loop-dir-shuffle",
+            "func": ("active", "shuffle_video"),
+            "show_if": "is_active_local_file",
+        },
         "Include Subfolders": {
             "title": translate("Folder Navigation", "Include Subfolders"),
             "icon": "folder-tree",
@@ -397,7 +403,7 @@ ACTIONS = MappingProxyType(
             "show_if": "is_active_local_file",
         },
         "When Finished Shuffle": {
-            "title": translate("When Finished", "Random In Folder"),
+            "title": translate("When Finished", "Play Random File"),
             "icon": "loop-dir-shuffle",
             "func": ("active", "set_end_action", VideoEndAction.SHUFFLE_FILE),
             "check_if": (
@@ -1360,6 +1366,12 @@ ACTIONS = MappingProxyType(
             "func": ("all", "next_video"),
             "show_if": "is_any_videos_local_file",
         },
+        "Play Random File [ALL]": {
+            "title": translate("Actions", "Play Random File"),
+            "icon": "loop-dir-shuffle",
+            "func": ("all", "shuffle_video"),
+            "show_if": "is_any_videos_local_file",
+        },
         "Include Subfolders On [ALL]": {
             "title": translate("Actions", "On"),
             "icon": "empty",
@@ -1656,7 +1668,7 @@ ACTIONS = MappingProxyType(
             "show_if": "is_any_videos_local_file",
         },
         "When Finished Shuffle [ALL]": {
-            "title": translate("When Finished", "Random In Folder"),
+            "title": translate("When Finished", "Play Random File"),
             "icon": "loop-dir-shuffle",
             "func": ("all", "set_end_action", VideoEndAction.SHUFFLE_FILE),
             "show_if": "is_any_videos_local_file",

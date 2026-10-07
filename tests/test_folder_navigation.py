@@ -428,6 +428,17 @@ class TestRandom:
         block.next_video()
         assert _uri(block) == first
 
+    def test_play_random_file_while_looping_the_file(self, make_block, tree):
+        block = make_block(tree / "a.mp4", end_action=VideoEndAction.LOOP_FILE)
+
+        block.shuffle_video()
+        first = _uri(block)
+        block.shuffle_video()
+
+        assert first == tree / "b.mp4"
+        assert _uri(block) == tree / "a.mp4"
+        assert block.video_params.end_action == VideoEndAction.LOOP_FILE
+
     def test_with_none_played_before_previous_starts_it_over(self, make_block, tree):
         block = make_block(tree / "a.mp4", end_action=VideoEndAction.SHUFFLE_FILE)
 
@@ -540,5 +551,7 @@ def test_the_menu_offers_it():
     offered = {name for section in SECTIONS.values() for name in items(section)}
 
     assert "Include Subfolders" in offered
+    assert "Play Random File" in offered
+    assert "Play Random File [ALL]" in offered
     assert "Include Subfolders On [ALL]" in offered
     assert "Include Subfolders Off [ALL]" in offered

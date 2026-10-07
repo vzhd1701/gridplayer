@@ -134,6 +134,7 @@ class VideoBlocksManager(ManagerBase):
 
     all_previous_video = pyqtSignal()
     all_next_video = pyqtSignal()
+    all_shuffle_video = pyqtSignal()
 
     all_seek_shift_percent = pyqtSignal(int)
     all_seek_shift_ms = pyqtSignal(MILLISECONDS)
@@ -815,6 +816,7 @@ class VideoBlocksManager(ManagerBase):
             (self.all_set_muted, vb.set_muted),
             (self.all_previous_video, vb.previous_video),
             (self.all_next_video, vb.next_video),
+            (self.all_shuffle_video, vb.shuffle_video),
             (self.hide_overlay, vb.hide_overlay),
             (self.show_overlay, vb.show_overlay),
             (self.set_drag_ui, vb.set_drag_ui),

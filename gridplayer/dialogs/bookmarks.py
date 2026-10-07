@@ -202,7 +202,7 @@ def held_end_action_txt(end_action: VideoEndAction) -> str:
     return {
         VideoEndAction.NEXT_FILE: translate("When Finished", "Play Next File"),
         VideoEndAction.PREVIOUS_FILE: translate("When Finished", "Play Previous File"),
-        VideoEndAction.SHUFFLE_FILE: translate("When Finished", "Random In Folder"),
+        VideoEndAction.SHUFFLE_FILE: translate("When Finished", "Play Random File"),
         VideoEndAction.CLOSE: translate("When Finished", "Close"),
     }[end_action]
 
