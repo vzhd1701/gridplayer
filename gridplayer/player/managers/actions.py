@@ -8,6 +8,7 @@ from gridplayer.settings import Settings
 from gridplayer.utils.keymap import (
     KeymapOverrides,
     MouseButtonSequence,
+    WheelNotches,
     default_keymap,
     find_duplicate_shortcuts,
     merge_keymap,
@@ -167,6 +168,7 @@ class ActionsManager(ManagerBase):
         self._mouse_index: dict[str, str] = {}
         self._bindings: dict[str, list[str]] = {}
         self._invoking = False
+        self._wheel_notches = WheelNotches()
 
         self._ctx.actions = self._make_actions()
         self._ctx.actions_manager = self
@@ -280,6 +282,13 @@ class ActionsManager(ManagerBase):
         action_id = self._mouse_index.get(seq.sequence)
         if not action_id:
             return False
+
+        if seq.is_wheel:
+            # Once for each whole notch, a turn short of one included: let
+            # go, it would reach the player window and be counted again.
+            for _ in range(self._wheel_notches.notches(event)):
+                self.trigger(action_id)
+            return True
 
         return self.trigger(action_id)
 

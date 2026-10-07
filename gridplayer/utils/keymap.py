@@ -18,6 +18,54 @@ class WheelDirection(Enum):
     RIGHT = auto()
 
 
+# One notch of a plain mouse wheel, in the eighths of a degree Qt counts a
+# turn in.
+WHEEL_NOTCH = 120
+
+# Left that long, what a wheel turned short of a notch is let go, so that a
+# brush of a touchpad does not finish a notch begun minutes before.
+WHEEL_PAUSE_MS = 500
+
+
+class WheelNotches:
+    """Whole notches out of a wheel's turns, however finely it reports them.
+
+    A plain mouse wheel reports each notch as it clicks. A touchpad or a
+    smooth scrolling wheel reports a notch in many small turns, and a
+    shortcut fired on every one of them would seek or zoom many times over
+    for one stroke. Turns are added up here and a shortcut fired once for
+    each whole notch they come to. Turned the other way, on the other axis
+    or with other keys held, it starts over.
+    """
+
+    def __init__(self):
+        self._rest = 0
+        self._turned = None
+        self._last_ms = None
+
+    def notches(self, event) -> int:
+        """How many notches the wheel has come to with this turn."""
+
+        delta = event.angleDelta()
+        is_vertical = delta.y() != 0
+        turn = delta.y() if is_vertical else delta.x()
+        turned = (is_vertical, turn > 0, int(event.modifiers()))
+
+        ms = event.timestamp()
+        is_paused = self._last_ms is not None and ms - self._last_ms > WHEEL_PAUSE_MS
+
+        if turned != self._turned or is_paused:
+            self._rest = 0
+
+        self._turned = turned
+        self._last_ms = ms
+
+        self._rest += abs(turn)
+        notches, self._rest = divmod(self._rest, WHEEL_NOTCH)
+
+        return notches
+
+
 class MouseButtonSequence:
     modifier_map = {
         Qt.ControlModifier: "Ctrl",

@@ -7,6 +7,7 @@ from PyQt5.QtCore import QEvent, QPoint, Qt
 from PyQt5.QtGui import QKeyEvent, QKeySequence, QMouseEvent, QWheelEvent
 from PyQt5.QtWidgets import QApplication
 
+from gridplayer.params.actions import ACTIONS
 from gridplayer.utils.keymap import (
     KeymapOverrides,
     MouseButtonSequence,
@@ -482,3 +483,19 @@ def test_sparse_overrides_empty_when_all_default():
     sparse = sparse_overrides(defaults, defaults)
     assert sparse.root == {}
     assert not sparse
+
+
+@pytest.mark.parametrize(
+    "action_id",
+    [
+        action_id
+        for action_id, action in ACTIONS.items()
+        if not action.get("menu_generator")
+    ],
+)
+def test_the_shortcuts_list_never_shows_a_placeholder(action_id):
+    """A title the menu fills in as it opens has a fixed one to be listed by."""
+
+    from gridplayer.widgets.keymap_tree_view import _action_title
+
+    assert "%v" not in _action_title(ACTIONS[action_id])
