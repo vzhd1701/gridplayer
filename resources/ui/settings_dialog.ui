@@ -499,33 +499,6 @@
          <item>
           <widget class="KeymapEditor" name="keymapEditor" native="true"/>
          </item>
-         <item>
-          <layout class="QFormLayout" name="formLayout_pan_trigger">
-           <property name="fieldGrowthPolicy">
-            <enum>QFormLayout::FieldsStayAtSizeHint</enum>
-           </property>
-           <item row="0" column="0">
-            <widget class="QLabel" name="playerPanTriggerLabel">
-             <property name="text">
-              <string>Move video within its cell with</string>
-             </property>
-            </widget>
-           </item>
-           <item row="0" column="1">
-            <widget class="QComboBox" name="playerPanTrigger"/>
-           </item>
-           <item row="1" column="0">
-            <widget class="QLabel" name="playerZoomSelectTriggerLabel">
-             <property name="text">
-              <string>Zoom into a part of a video with</string>
-             </property>
-            </widget>
-           </item>
-           <item row="1" column="1">
-            <widget class="QComboBox" name="playerZoomSelectTrigger"/>
-           </item>
-          </layout>
-         </item>
         </layout>
        </widget>
        <widget class="QWidget" name="page_streaming_resolution">

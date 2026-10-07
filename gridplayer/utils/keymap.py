@@ -6,9 +6,12 @@ from enum import Enum, auto
 
 from PyQt5.QtCore import QEvent, Qt
 from PyQt5.QtGui import QKeySequence, QWheelEvent
+from PyQt5.QtWidgets import QApplication
 
 from gridplayer.models.keymap_overrides import KeymapOverrides
 from gridplayer.params.actions import ACTIONS
+from gridplayer.params.gestures import GESTURE_DROP_SWITCH, GESTURES, GestureKind
+from gridplayer.settings import Settings
 
 
 class WheelDirection(Enum):
@@ -66,6 +69,28 @@ class WheelNotches:
         return notches
 
 
+# The key held while a video is dropped, to drop it the other way, as the
+# keymap stores it. Meta is not one: the desktop has it, and on macOS it is
+# the Control key, with which a click is a right click.
+HOLD_KEYS = {
+    "Hold Shift": Qt.ShiftModifier,
+    "Hold Ctrl": Qt.ControlModifier,
+    "Hold Alt": Qt.AltModifier,
+}
+
+
+class DragProblem(Enum):
+    """Why a mouse drag cannot be one to set."""
+
+    NOT_A_DRAG = auto()
+    # with the left button and no key, it moves the video to another cell
+    MOVES_VIDEO = auto()
+    # the menu opens on the press on X11 and macOS, before it is a drag
+    RIGHT_BUTTON = auto()
+    # the desktop's, and on macOS the Control key, which makes a right click
+    META = auto()
+
+
 class MouseButtonSequence:
     modifier_map = {
         Qt.ControlModifier: "Ctrl",
@@ -111,18 +136,23 @@ class MouseButtonSequence:
         WheelDirection.RIGHT: "Wheel-Right",
     }
 
+    # the same buttons pressed and moved: "Middle-Drag", "Drag-4"
+    drag_map = {
+        button: name.replace("Click", "Drag") for button, name in click_map.items()
+    }
+
     def __init__(self, sequence: str):
-        if "+" in sequence:
-            *modifiers, button = sequence.split("+")
-            if set(modifiers) - set(self.modifier_map.values()):
-                raise ValueError("Bad mouse sequence")
-        else:
-            button = sequence
+        *modifiers, button = sequence.split("+")
+        if set(modifiers) - set(self.modifier_map.values()):
+            raise ValueError("Bad mouse sequence")
 
         if button not in self.allowed_buttons:
             raise ValueError("Bad mouse sequence")
 
-        self.sequence = sequence
+        self.modifiers = [m for m in self.modifier_map.values() if m in modifiers]
+        self.button_name = button
+        # the keys always in the same order, the one a press writes them in
+        self.sequence = "+".join([*self.modifiers, button])
 
     def __eq__(self, other):
         if not isinstance(other, MouseButtonSequence):
@@ -138,16 +168,34 @@ class MouseButtonSequence:
     @property
     def allowed_buttons(self) -> set:
         double = {f"Double {button}" for button in self.click_map.values()}
-        return {*self.click_map.values(), *self.wheel_direction_map.values(), *double}
+        return {
+            *self.click_map.values(),
+            *self.wheel_direction_map.values(),
+            *double,
+            *self.drag_map.values(),
+        }
 
     @property
     def is_wheel(self) -> bool:
-        button = self.sequence.split("+")[-1]
-        return button in self.wheel_direction_map.values()
+        return self.button_name in self.wheel_direction_map.values()
+
+    @property
+    def is_drag(self) -> bool:
+        return self.button_name in self.drag_map.values()
 
     @property
     def is_click(self) -> bool:
-        return not self.is_wheel
+        return not self.is_wheel and not self.is_drag
+
+    @property
+    def drag_button(self) -> Qt.MouseButton | None:
+        """The button a drag is made with, None if it is not a drag."""
+
+        for button, name in self.drag_map.items():
+            if name == self.button_name:
+                return button
+
+        return None
 
     @classmethod
     def is_mouse_sequence(cls, text: str) -> bool:
@@ -199,8 +247,24 @@ class MouseButtonSequence:
         raise ValueError("Unsupported event")
 
     @classmethod
-    def _convert_button(cls, button, is_double, wheel_direction, modifiers):
-        if button is not None:
+    def from_drag_press(cls, button, modifiers):
+        """The drag a press starts, with the keys held as it went down."""
+
+        return cls._convert_button(
+            button=button,
+            is_double=False,
+            wheel_direction=None,
+            modifiers=modifiers,
+            is_drag=True,
+        )
+
+    @classmethod
+    def _convert_button(
+        cls, button, is_double, wheel_direction, modifiers, is_drag=False
+    ):
+        if button is not None and is_drag:
+            key_name = cls.drag_map.get(button)
+        elif button is not None:
             key_name = cls.click_map.get(button)
         elif wheel_direction is not None:
             key_name = cls.wheel_direction_map[wheel_direction]
@@ -232,6 +296,9 @@ def normalize_shortcut(shortcut: str) -> str | None:
         return None
 
     text = str(shortcut).strip()
+    if text in HOLD_KEYS:
+        return text
+
     if MouseButtonSequence.is_mouse_sequence(text):
         return str(MouseButtonSequence(text))
 
@@ -315,11 +382,76 @@ def default_shortcuts(action: dict) -> list[str]:
 
 
 def default_keymap() -> dict[str, list[str]]:
-    return {
+    keymap = {
         action_id: default_shortcuts(action)
         for action_id, action in ACTIONS.items()
         if not action.get("menu_generator")
     }
+
+    keymap.update(_default_gesture_keymap())
+
+    return keymap
+
+
+def _default_gesture_keymap() -> dict[str, list[str]]:
+    return {
+        gesture_id: list(gesture.keys)
+        for gesture_id, gesture in GESTURES.items()
+        if gesture.kind is not GestureKind.FIXED
+    }
+
+
+def drag_problem(shortcut: str) -> DragProblem | None:
+    """Why a drag cannot be set, None if it can."""
+
+    try:
+        sequence = MouseButtonSequence(shortcut)
+    except ValueError:
+        return DragProblem.NOT_A_DRAG
+
+    if not sequence.is_drag:
+        return DragProblem.NOT_A_DRAG
+
+    if "Meta" in sequence.modifiers:
+        return DragProblem.META
+
+    if sequence.drag_button == Qt.RightButton:
+        return DragProblem.RIGHT_BUTTON
+
+    if sequence.drag_button == Qt.LeftButton and not sequence.modifiers:
+        return DragProblem.MOVES_VIDEO
+
+    return None
+
+
+def _is_drag(shortcut: str) -> bool:
+    return (
+        MouseButtonSequence.is_mouse_sequence(shortcut)
+        and MouseButtonSequence(shortcut).is_drag
+    )
+
+
+def fit_shortcuts(action_id: str, shortcuts: list[str]) -> list[str]:
+    """The shortcuts that can be what the action or gesture is set to.
+
+    A drag only to a drag, the key held through a drop only to that, and
+    neither to an action: the editor never lets them be, a settings file
+    written by hand might.
+    """
+
+    shortcuts = normalize_shortcuts(shortcuts)
+    gesture = GESTURES.get(action_id)
+
+    if gesture is None:
+        return [s for s in shortcuts if s not in HOLD_KEYS and not _is_drag(s)]
+
+    if gesture.kind is GestureKind.DRAG:
+        return [s for s in shortcuts if drag_problem(s) is None]
+
+    if gesture.kind is GestureKind.HOLD:
+        return [s for s in shortcuts if s in HOLD_KEYS][:1]
+
+    return list(gesture.keys)
 
 
 def merge_keymap(
@@ -336,9 +468,60 @@ def merge_keymap(
     for action_id, shortcuts in overrides.items():
         if action_id not in result and action_id not in ACTIONS:
             continue
-        result[action_id] = normalize_shortcuts(list(shortcuts))
+        result[action_id] = fit_shortcuts(action_id, list(shortcuts))
 
     return dedupe_keymap(result, defaults)
+
+
+def gesture_shortcuts(
+    gesture_id: str,
+    overrides: dict[str, list[str]] | KeymapOverrides | None = None,
+) -> list[str]:
+    """What a gesture is set to, as the keymap in the settings has it.
+
+    Only the gestures are gone through, not every action: this is asked on
+    every press of a mouse button.
+    """
+
+    if overrides is None:
+        overrides = Settings().get("player/keymap")
+
+    defaults = _default_gesture_keymap()
+    gestures = {
+        g_id: fit_shortcuts(g_id, list(overrides.get(g_id, keys)))
+        for g_id, keys in defaults.items()
+    }
+
+    return dedupe_keymap(gestures, defaults).get(gesture_id, [])
+
+
+def is_gesture_press(gesture_id: str, event) -> bool:
+    """Whether a press starts a drag the gesture is set to.
+
+    The keys held have to be the very ones of the drag, no more: with one
+    drag set to Ctrl and another to Ctrl and Shift, each is only the one.
+    """
+
+    # as the drop does: the press may not say, where the window was not
+    # focused when it came
+    held = QApplication.queryKeyboardModifiers() | event.modifiers()
+
+    try:
+        drag = MouseButtonSequence.from_drag_press(event.button(), held)
+    except ValueError:
+        return False
+
+    return drag.sequence in gesture_shortcuts(gesture_id)
+
+
+def drop_switch_modifier(
+    overrides: dict[str, list[str]] | KeymapOverrides | None = None,
+) -> Qt.KeyboardModifier | None:
+    """The key held while a video is dropped to drop it the other way."""
+
+    held = gesture_shortcuts(GESTURE_DROP_SWITCH, overrides)
+
+    return HOLD_KEYS[held[0]] if held else None
 
 
 def dedupe_keymap(

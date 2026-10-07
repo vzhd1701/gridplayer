@@ -7,7 +7,9 @@ from PyQt5.QtGui import QContextMenuEvent, QKeyEvent, QMouseEvent, QWindow
 from PyQt5.QtWidgets import QApplication, QWidget
 
 import gridplayer.player.managers.zoom_select as zoom_select_module
-from gridplayer.params.static import PanTrigger, ZoomSelectTrigger
+import gridplayer.utils.keymap as keymap_module
+from gridplayer.models.keymap_overrides import KeymapOverrides
+from gridplayer.params.gestures import GESTURE_PAN, GESTURE_ZOOM_SELECT
 from gridplayer.player.managers.zoom_select import ZoomSelectManager
 
 
@@ -64,24 +66,24 @@ class _Block(QWidget):
         self.hints.append(is_shown)
 
 
-_SETTINGS = {}
+_KEYMAP = {}
 
 
-def _trigger(trigger, pan=PanTrigger.MIDDLE):
-    _SETTINGS["player/zoom_select_trigger"] = trigger
-    _SETTINGS["player/pan_trigger"] = pan
+def _trigger(*drags, pan=("Middle-Drag",)):
+    _KEYMAP[GESTURE_ZOOM_SELECT] = list(drags)
+    _KEYMAP[GESTURE_PAN] = list(pan)
 
 
 @pytest.fixture(autouse=True)
 def _pointer(monkeypatch):
     _Cursor.at = QPoint(100, 100)
-    _trigger(ZoomSelectTrigger.CTRL)
+    _trigger("Ctrl+Drag")
     monkeypatch.setattr(zoom_select_module, "QCursor", _Cursor)
     monkeypatch.setattr(zoom_select_module, "is_modal_open", lambda: False)
     monkeypatch.setattr(
-        zoom_select_module,
+        keymap_module,
         "Settings",
-        lambda: SimpleNamespace(get=_SETTINGS.__getitem__),
+        lambda: SimpleNamespace(get=lambda _key: KeymapOverrides(dict(_KEYMAP))),
     )
     monkeypatch.setattr(QApplication, "queryKeyboardModifiers", lambda: Qt.NoModifier)
 
@@ -230,9 +232,9 @@ class TestWithTheKey:
     @pytest.mark.parametrize(
         ("trigger", "keys"),
         [
-            (ZoomSelectTrigger.CTRL, Qt.ControlModifier),
-            (ZoomSelectTrigger.SHIFT, Qt.ShiftModifier),
-            (ZoomSelectTrigger.ALT, Qt.AltModifier),
+            ("Ctrl+Drag", Qt.ControlModifier),
+            ("Shift+Drag", Qt.ShiftModifier),
+            ("Alt+Drag", Qt.AltModifier),
         ],
     )
     def test_the_left_button_selects_with_the_key_it_is_set_to(
@@ -256,7 +258,7 @@ class TestWithTheKey:
         assert _press(manager, block, keys=Qt.NoModifier) is True
 
     def test_set_to_the_middle_button_it_selects_with_that(self, manager, block):
-        _trigger(ZoomSelectTrigger.MIDDLE, pan=PanTrigger.CTRL)
+        _trigger("Middle-Drag", pan=("Ctrl+Drag",))
 
         assert _press(manager, block, Qt.LeftButton, Qt.ControlModifier) is None
         assert _press(manager, block, Qt.MiddleButton, Qt.NoModifier) is True
@@ -266,22 +268,28 @@ class TestWithTheKey:
         assert _release(manager, Qt.MiddleButton) is True
         assert block.zooms == [QRect(100, 100, 200, 200)]
 
-    def test_off_by_default_nothing_selects(self, manager, block):
-        from gridplayer.settings import _default_settings
+    def test_by_default_it_is_a_left_drag_with_ctrl(self, manager, block):
+        from gridplayer.utils.keymap import default_keymap
 
-        _trigger(_default_settings["player/zoom_select_trigger"])
+        assert default_keymap()[GESTURE_ZOOM_SELECT] == ["Ctrl+Drag"]
 
-        assert _default_settings["player/zoom_select_trigger"] is (
-            ZoomSelectTrigger.NONE
-        )
-        assert _press(manager, block) is None
+        _trigger(*default_keymap()[GESTURE_ZOOM_SELECT])
+
+        assert _press(manager, block, Qt.MiddleButton, Qt.NoModifier) is None
+        assert _press(manager, block, keys=Qt.ControlModifier) is True
+
+    def test_set_to_nothing_nothing_selects(self, manager, block):
+        _trigger()
+
+        assert _press(manager, block, keys=Qt.ControlModifier) is None
         assert _press(manager, block, Qt.MiddleButton, Qt.NoModifier) is None
 
     def test_what_moves_the_picture_about_does_not_select(self, manager, block):
-        """The settings do not let the two be the same; set so anyway, the
-        picture is moved, as it was before there was a selection."""
+        """The shortcuts editor does not let the two be the same; set so
+        anyway, by hand, the picture is moved, as it was before there was a
+        selection."""
 
-        _trigger(ZoomSelectTrigger.CTRL, pan=PanTrigger.CTRL)
+        _trigger("Ctrl+Drag", pan=("Ctrl+Drag",))
 
         assert _press(manager, block) is None
 
@@ -527,7 +535,7 @@ class TestTheHint:
 
 class TestPickedFromTheMenu:
     def test_the_next_drag_selects_whatever_is_held(self, manager, block):
-        _trigger(ZoomSelectTrigger.NONE)
+        _trigger()
 
         manager.arm()
 
@@ -541,7 +549,7 @@ class TestPickedFromTheMenu:
         assert _cursor_shape() is None
 
     def test_only_the_next_one(self, manager, block):
-        _trigger(ZoomSelectTrigger.NONE)
+        _trigger()
 
         manager.arm()
         _press(manager, block, keys=Qt.NoModifier)
@@ -768,52 +776,35 @@ def test_let_go_of_the_button_held_is_still_not_a_drag(real_player):
 
 
 class TestTheSetting:
-    def test_it_is_chosen_beside_moving_the_picture(self):
+    def test_it_is_set_beside_moving_the_picture(self):
         from gridplayer.dialogs.settings import SettingsDialog
-        from gridplayer.settings import Settings
 
         dialog = SettingsDialog(None)
-        combo = dialog.playerZoomSelectTrigger
+        bindings = dialog.keymapEditor.get_bindings()
 
-        assert combo.parent() is dialog.page_general_shortcuts
-        assert [combo.itemData(i) for i in range(combo.count())] == list(
-            ZoomSelectTrigger
+        assert bindings[GESTURE_ZOOM_SELECT] == ["Ctrl+Drag"]
+        assert bindings[GESTURE_PAN] == ["Middle-Drag"]
+
+    def test_what_one_has_the_other_is_told_of(self):
+        """One drag is never both: adding it to one, the other is named."""
+
+        from gridplayer.dialogs.settings import SettingsDialog
+
+        dialog = SettingsDialog(None)
+        conflicts = dialog.keymapEditor.tree.build_conflict_map(
+            exclude_action_id=GESTURE_ZOOM_SELECT
         )
-        assert combo.currentData() == Settings().get("player/zoom_select_trigger")
 
-    def test_what_one_has_the_other_has_greyed_out(self):
-        from gridplayer.dialogs.settings import SettingsDialog
-
-        dialog = SettingsDialog(None)
-        pan, zoom = dialog.playerPanTrigger, dialog.playerZoomSelectTrigger
-
-        def enabled(combo):
-            return [
-                combo.itemData(i).name
-                for i in range(combo.count())
-                if combo.model().item(i).isEnabled()
-            ]
-
-        pan.setCurrentIndex(pan.findData(PanTrigger.MIDDLE))
-        zoom.setCurrentIndex(zoom.findData(ZoomSelectTrigger.CTRL))
-
-        assert enabled(zoom) == ["CTRL", "SHIFT", "ALT", "NONE"]
-        assert enabled(pan) == ["MIDDLE", "SHIFT", "ALT", "NONE"]
-
-        # off, neither takes anything from the other
-        zoom.setCurrentIndex(zoom.findData(ZoomSelectTrigger.NONE))
-        pan.setCurrentIndex(pan.findData(PanTrigger.NONE))
-
-        assert enabled(zoom) == [t.name for t in ZoomSelectTrigger]
-        assert enabled(pan) == [t.name for t in PanTrigger]
+        assert [owner for owner, _ in conflicts["Middle-Drag"]] == [GESTURE_PAN]
 
     def test_it_is_saved(self, mocker):
         from gridplayer.dialogs.settings import SettingsDialog
         from gridplayer.settings import Settings
 
         dialog = SettingsDialog(None)
-        combo = dialog.playerZoomSelectTrigger
-        combo.setCurrentIndex(combo.findData(ZoomSelectTrigger.SHIFT))
+        dialog.keymapEditor.tree.set_action_shortcuts(
+            GESTURE_ZOOM_SELECT, ["Shift+Drag"]
+        )
 
         written = {}
         mocker.patch.object(
@@ -824,4 +815,4 @@ class TestTheSetting:
 
         dialog.save_settings()
 
-        assert written["player/zoom_select_trigger"] is ZoomSelectTrigger.SHIFT
+        assert written["player/keymap"].get(GESTURE_ZOOM_SELECT) == ["Shift+Drag"]

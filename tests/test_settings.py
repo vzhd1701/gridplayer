@@ -143,3 +143,87 @@ def test_migrate_paused_noop_without_legacy_key(tmp_path):
 
     assert not settings.settings.contains("video_defaults/initial_state")
     assert settings.settings.value("player/language") == "en_US"
+
+
+def test_migrate_mouse_triggers_into_the_keymap(tmp_path):
+    settings = _make_settings(
+        tmp_path,
+        {
+            "player/pan_trigger": "ctrl",
+            "player/zoom_select_trigger": "middle",
+            "playlist/drop_modifier": "alt",
+        },
+    )
+
+    settings._migrate_mouse_triggers()
+
+    for old_key in (
+        "player/pan_trigger",
+        "player/zoom_select_trigger",
+        "playlist/drop_modifier",
+    ):
+        assert not settings.settings.contains(old_key)
+
+    assert settings.get("player/keymap").root == {
+        "gesture:pan": ["Ctrl+Drag"],
+        "gesture:zoom_select": ["Middle-Drag"],
+        "gesture:drop_switch": ["Hold Alt"],
+    }
+
+
+def test_migrate_mouse_triggers_turned_off_are_set_to_nothing(tmp_path):
+    settings = _make_settings(
+        tmp_path,
+        {"player/pan_trigger": "none", "playlist/drop_modifier": "none"},
+    )
+
+    settings._migrate_mouse_triggers()
+
+    assert settings.get("player/keymap").root == {
+        "gesture:pan": [],
+        "gesture:drop_switch": [],
+    }
+
+
+def test_migrate_mouse_triggers_left_at_default_add_nothing(tmp_path):
+    settings = _make_settings(
+        tmp_path,
+        {
+            "player/pan_trigger": "middle",
+            "player/zoom_select_trigger": "none",
+            "playlist/drop_modifier": "shift",
+        },
+    )
+
+    settings._migrate_mouse_triggers()
+
+    assert not settings.settings.contains("player/pan_trigger")
+    assert settings.get("player/keymap").root == {}
+
+
+def test_migrate_mouse_triggers_keeps_the_rest_of_the_keymap(tmp_path):
+    settings = _make_settings(
+        tmp_path,
+        {
+            "player/keymap": '{"Play / Pause": ["P"], "gesture:pan": ["Back-Drag"]}',
+            "player/pan_trigger": "shift",
+            "player/zoom_select_trigger": "alt",
+        },
+    )
+
+    settings._migrate_mouse_triggers()
+
+    # one already in the keymap is newer than the setting it came from
+    assert settings.get("player/keymap").root == {
+        "Play / Pause": ["P"],
+        "gesture:pan": ["Back-Drag"],
+        "gesture:zoom_select": ["Alt+Drag"],
+    }
+
+
+def test_migrate_mouse_triggers_noop_without_legacy_keys(tmp_path):
+    settings = _make_settings(tmp_path, {"player/language": "en_US"})
+
+    settings._migrate_mouse_triggers()
+
+    assert not settings.settings.contains("player/keymap")

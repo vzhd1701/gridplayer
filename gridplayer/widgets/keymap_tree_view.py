@@ -36,19 +36,29 @@ from PyQt5.QtWidgets import (
 )
 
 from gridplayer.dialogs.messagebox import QCustomMessageBox
+from gridplayer.params import env
 from gridplayer.params.actions import ACTIONS
+from gridplayer.params.gestures import (
+    GESTURE_DROP_SWITCH,
+    GESTURES,
+    GestureKind,
+    gesture_title,
+)
 from gridplayer.params.menu import SECTIONS, SUBMENUS
 from gridplayer.utils.keymap import (
+    HOLD_KEYS,
+    DragProblem,
     KeymapOverrides,
     MouseButtonSequence,
     default_shortcuts,
+    drag_problem,
     key_sequence_from_event,
     normalize_shortcut,
     normalize_shortcuts,
     sparse_overrides,
 )
 from gridplayer.utils.qt import translate
-from gridplayer.widgets.custom_menu import ICON_SIZE, CustomMenu
+from gridplayer.widgets.custom_menu import ICON_SIZE, CustomMenu, checked_icon
 
 # ---------------------------------------------------------------------------
 # Model roles
@@ -63,6 +73,9 @@ DATA_PATH = Qt.UserRole + 15  # list[str] breadcrumb titles
 DATA_EXPANDED = Qt.UserRole + 16
 DATA_SEARCH_TEXT = Qt.UserRole + 17
 DATA_HAS_MODIFIED_CHILD = Qt.UserRole + 18
+# what a row is set to: an action's shortcuts, a gesture's drags, or the key
+# held through a drop, see GestureKind; None for an action
+DATA_KIND = Qt.UserRole + 19
 
 SECTION_TITLES = {
     "video_active": translate("Keymap", "Single video"),
@@ -70,6 +83,9 @@ SECTION_TITLES = {
     "playlist": translate("Keymap", "Playlist"),
     "program": translate("Keymap", "Program"),
 }
+
+GESTURES_TITLE = translate("Keymap", "Mouse drag")
+GESTURES_ICON = "mouse-drag"
 
 # Same theme icons as menu "Video", "[ALL]", "Playlist Settings", and "Settings"
 SECTION_ICONS = {
@@ -98,6 +114,12 @@ MOUSE_PLACEHOLDER = translate(
     "Keymap",
     "Enter shortcut here: single or double-click, scroll the wheel,"
     " modify with Ctrl, Alt and Shift",
+)
+
+DRAG_PLACEHOLDER = translate(
+    "Keymap",
+    "Press a mouse button here, holding Ctrl, Alt or Shift if the drag"
+    " is to be made with them",
 )
 
 
@@ -421,6 +443,8 @@ class MouseShortcutField(QFrame):
 
     sequence_changed = pyqtSignal(str)
 
+    placeholder = MOUSE_PLACEHOLDER
+
     def __init__(self, parent=None):
         super().__init__(parent)
 
@@ -430,7 +454,7 @@ class MouseShortcutField(QFrame):
         self.setFocusPolicy(Qt.StrongFocus)
         self.setMinimumHeight(72)
         self.setCursor(Qt.PointingHandCursor)
-        self.setToolTip(MOUSE_PLACEHOLDER)
+        self.setToolTip(self.placeholder)
 
         self.setStyleSheet(
             """
@@ -453,7 +477,7 @@ class MouseShortcutField(QFrame):
         layout = QVBoxLayout(self)
         layout.setContentsMargins(12, 8, 12, 8)
 
-        self._label = QLabel(MOUSE_PLACEHOLDER, self)
+        self._label = QLabel(self.placeholder, self)
         self._label.setWordWrap(True)
         self._label.setAlignment(Qt.AlignCenter)
         self._label.setStyleSheet("color: #ccc; font-style: italic;")
@@ -470,7 +494,7 @@ class MouseShortcutField(QFrame):
                 "color: #fff; font-style: normal; font-weight: bold;"
             )
         else:
-            self._label.setText(MOUSE_PLACEHOLDER)
+            self._label.setText(self.placeholder)
             self._label.setStyleSheet("color: #ccc; font-style: italic;")
         self.sequence_changed.emit(self._sequence)
 
@@ -503,6 +527,70 @@ class MouseShortcutField(QFrame):
             return
         self.set_sequence(str(seq))
         event.accept()
+
+
+class MouseDragField(MouseShortcutField):
+    """The same capture area for a drag: the button pressed, the keys held.
+
+    A press is all it takes; a double-click or the wheel is no drag.
+    """
+
+    placeholder = DRAG_PLACEHOLDER
+
+    def mousePressEvent(self, event):
+        try:
+            seq = MouseButtonSequence.from_drag_press(event.button(), event.modifiers())
+        except ValueError:
+            event.accept()
+            return
+        self.set_sequence(str(seq))
+        event.accept()
+
+    def mouseDoubleClickEvent(self, event):
+        event.accept()
+
+    def wheelEvent(self, event):
+        event.accept()
+
+
+def _drag_problem_text(problem: DragProblem) -> str:
+    if problem is DragProblem.MOVES_VIDEO:
+        return translate(
+            "Keymap",
+            "A plain drag with the left button moves the video to another"
+            " cell. Hold a key with it, or press another button.",
+        )
+
+    if problem is DragProblem.RIGHT_BUTTON:
+        return translate(
+            "Keymap", "The right button opens the menu, it cannot be dragged with."
+        )
+
+    if problem is DragProblem.META:
+        return translate(
+            "Keymap",
+            "Meta cannot be held for a drag: the system keeps it for itself.",
+        )
+
+    return translate("Keymap", "This is not a mouse drag.")
+
+
+def _mouse_keys_note(sequence: str) -> str | None:
+    """Why a mouse shortcut with these keys might not reach the player."""
+
+    if not env.IS_LINUX or not MouseButtonSequence.is_mouse_sequence(sequence):
+        return None
+
+    modifiers = MouseButtonSequence(sequence).modifiers
+
+    if "Alt" not in modifiers and "Meta" not in modifiers:
+        return None
+
+    return translate(
+        "Keymap",
+        "Many Linux desktops use Alt or Super with the mouse to move and"
+        " resize windows, so it may never reach the player.",
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -561,6 +649,13 @@ class _AddShortcutDialogBase(QDialog):
             layout.addWidget(existing_lbl)
 
         layout.addWidget(self._create_input_row())
+
+        # why the shortcut cannot be, or might not work where it is
+        self._note_label = QLabel(self)
+        self._note_label.setWordWrap(True)
+        self._note_label.setStyleSheet("color: #888;")
+        self._note_label.setVisible(False)
+        layout.addWidget(self._note_label)
 
         self._warning_frame = QFrame(self)
         self._warning_frame.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Fixed)
@@ -629,13 +724,31 @@ class _AddShortcutDialogBase(QDialog):
         self._clear_button = btn
         return btn
 
+    def _problem_for(self, seq: str) -> str | None:
+        """Why a shortcut cannot be set here, None if it can."""
+        return None
+
+    def _note_for(self, seq: str) -> str | None:
+        """What to know about a shortcut that can be set, if anything."""
+        return None
+
     def _on_sequence_changed(self, _text: str = ""):
         seq = self._current_sequence()
         has_seq = bool(seq)
-        self._ok_button.setEnabled(has_seq)
+        problem = self._problem_for(seq) if has_seq else None
+        self._ok_button.setEnabled(has_seq and problem is None)
         if self._clear_button is not None:
             self._clear_button.setEnabled(has_seq)
         self._update_conflicts(seq)
+        self._update_note(problem or (self._note_for(seq) if has_seq else None))
+
+    def _update_note(self, note: str | None):
+        if (note or "") == self._note_label.text():
+            return
+
+        self._note_label.setText(note or "")
+        self._note_label.setVisible(bool(note))
+        self._relayout_dialog(expanding=self._warning_frame.isVisibleTo(self))
 
     def _conflicts_for(self, seq: str) -> list[tuple[str, str]]:
         if not seq:
@@ -684,7 +797,7 @@ class _AddShortcutDialogBase(QDialog):
 
         width = max(self.width(), self.minimumWidth(), self.sizeHint().width())
 
-        if expanding:
+        if expanding or self._note_label.isVisibleTo(self):
             height = self.sizeHint().height()
             self.resize(width, height)
         else:
@@ -696,7 +809,7 @@ class _AddShortcutDialogBase(QDialog):
 
     def _on_accept(self):
         seq = normalize_shortcut(self._current_sequence())
-        if not seq:
+        if not seq or self._problem_for(seq):
             return
 
         conflicts = self._conflicts_for(seq)
@@ -781,6 +894,8 @@ class AddKeyboardShortcutDialog(_AddShortcutDialogBase):
 
 
 class AddMouseShortcutDialog(_AddShortcutDialogBase):
+    field_class = MouseShortcutField
+
     def _window_title(self) -> str:
         return translate("Keymap", "Add mouse shortcut")
 
@@ -790,7 +905,7 @@ class AddMouseShortcutDialog(_AddShortcutDialogBase):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(6)
 
-        self._mouse_field = MouseShortcutField(row)
+        self._mouse_field = self.field_class(row)
         self._mouse_field.sequence_changed.connect(self._on_sequence_changed)
         layout.addWidget(self._mouse_field, 1)
 
@@ -803,6 +918,49 @@ class AddMouseShortcutDialog(_AddShortcutDialogBase):
 
     def _clear_sequence(self):
         self._mouse_field.clear()
+
+    def _note_for(self, seq: str) -> str | None:
+        return _mouse_keys_note(seq)
+
+
+class AddDragShortcutDialog(AddMouseShortcutDialog):
+    """A drag for a gesture: a button pressed with keys held, then moved."""
+
+    def __init__(self, *, hold_key: str | None = None, **kwargs):
+        # the key held to switch a drop, which a drag with it alone takes
+        # before the drop has it
+        self._hold_key = hold_key
+
+        super().__init__(**kwargs)
+
+    field_class = MouseDragField
+
+    def _window_title(self) -> str:
+        return translate("Keymap", "Add mouse drag")
+
+    def _problem_for(self, seq: str) -> str | None:
+        problem = drag_problem(seq)
+        return None if problem is None else _drag_problem_text(problem)
+
+    def _note_for(self, seq: str) -> str | None:
+        hold_key = HOLD_KEYS.get(self._hold_key)
+        drag = MouseButtonSequence(seq)
+
+        is_hold_key_drag = (
+            hold_key is not None
+            and drag.drag_button == Qt.LeftButton
+            and drag.modifiers == [self._hold_key.removeprefix("Hold ")]
+        )
+
+        if not is_hold_key_drag:
+            return super()._note_for(seq)
+
+        return translate(
+            "Keymap",
+            "{key} is also held to switch where a video is dropped. Held before"
+            " the press, it will start this drag instead of moving the video;"
+            " pressed once the video is moving, it still switches the drop.",
+        ).format(key=drag.modifiers[0])
 
 
 # ---------------------------------------------------------------------------
@@ -835,9 +993,52 @@ def _set_action_item(
     path: list[str],
     shortcuts: list[str] | None = None,
 ):
-    title = _action_title(action)
-    icon = _action_icon(action)
-    defaults = _default_shortcuts(action)
+    _set_binding_item(
+        item,
+        action_id,
+        title=_action_title(action),
+        icon=_action_icon(action),
+        defaults=_default_shortcuts(action),
+        path=path,
+        shortcuts=shortcuts,
+    )
+
+
+def _set_gesture_item(
+    item: QStandardItem,
+    gesture_id: str,
+    path: list[str],
+    shortcuts: list[str] | None = None,
+):
+    gesture = GESTURES[gesture_id]
+
+    _set_binding_item(
+        item,
+        gesture_id,
+        title=gesture_title(gesture_id),
+        icon=gesture.icon,
+        defaults=list(gesture.keys),
+        path=path,
+        # shown for what it is, whatever the settings say
+        shortcuts=None if gesture.kind is GestureKind.FIXED else shortcuts,
+        kind=gesture.kind,
+    )
+
+    # greyed, to say there is nothing to set
+    item.setEnabled(gesture.kind is not GestureKind.FIXED)
+
+
+def _set_binding_item(
+    item: QStandardItem,
+    action_id: str,
+    *,
+    title: str,
+    icon: str | None,
+    defaults: list[str],
+    path: list[str],
+    shortcuts: list[str] | None,
+    kind: GestureKind | None = None,
+):
     current = list(defaults if shortcuts is None else shortcuts)
     is_modified = current != defaults
 
@@ -845,6 +1046,7 @@ def _set_action_item(
     item.setIcon(QIcon.fromTheme(icon or "empty"))
     item.setEditable(False)
     item.setData(action_id, DATA_ACTION_ID)
+    item.setData(kind, DATA_KIND)
     item.setData(current, DATA_SHORTCUTS)
     item.setData(defaults, DATA_DEFAULT_SHORTCUTS)
     item.setData(is_modified, DATA_IS_MODIFIED)
@@ -860,12 +1062,16 @@ def _set_action_item(
         ),
         DATA_SEARCH_TEXT,
     )
-    item.setToolTip(_action_tooltip(title, path, current, defaults))
+    item.setToolTip(_action_tooltip(title, path, current, defaults, action_id))
     _apply_modified_font(item, is_modified)
 
 
 def _action_tooltip(
-    title: str, path: list[str], current: list[str], defaults: list[str]
+    title: str,
+    path: list[str],
+    current: list[str],
+    defaults: list[str],
+    action_id: str | None = None,
 ) -> str:
     lines = [_path_label(path, title)]
     lines.append(
@@ -878,7 +1084,50 @@ def _action_tooltip(
             keys=_format_shortcuts(defaults) or translate("Keymap", "(none)")
         )
     )
+
+    note = _gesture_note(action_id)
+    if note:
+        lines.extend(("", note))
+
     return "\n".join(lines)
+
+
+def _gesture_note(action_id: str | None) -> str | None:
+    gesture = GESTURES.get(action_id)
+
+    if gesture is None:
+        return None
+
+    if gesture.kind is GestureKind.FIXED:
+        return translate(
+            "Keymap",
+            "Always a plain drag with the left button: hold the key set for"
+            " switching the drop action to drop the other way.",
+        )
+
+    if gesture.kind is GestureKind.HOLD:
+        note = translate(
+            "Keymap",
+            "Held while a video or a file is dropped, it drops the other way"
+            " (see Drag-n-Drop in the settings).",
+        )
+
+        if env.IS_LINUX:
+            gnome_note = translate(
+                "Keymap",
+                "On GNOME, dropping files from the file manager only honors"
+                " Shift. Ctrl and Alt still work when dragging videos inside"
+                " the player.",
+            )
+            note = f"{note}\n{gnome_note}"
+
+        return note
+
+    return translate(
+        "Keymap",
+        "Pressed with the keys held, then moved. A press that is not moved"
+        " is still a click for the shortcuts.",
+    )
 
 
 def _apply_modified_font(item: QStandardItem, modified: bool):
@@ -892,7 +1141,7 @@ def fill_keymap_model(
     model: QStandardItemModel,
     bindings: dict[str, list[str]] | None = None,
 ):
-    """Populate model from SECTIONS / ACTIONS.
+    """Populate model from SECTIONS / ACTIONS, and GESTURES after them.
 
     ``bindings`` maps action_id -> list of shortcut strings. When omitted,
     defaults from ACTIONS are used.
@@ -911,6 +1160,17 @@ def fill_keymap_model(
         )
         model.appendRow(section_root)
         _add_tree_items(section_root, section_items, [section_title], bindings)
+
+    gestures_root = QStandardItem()
+    _set_folder_item(gestures_root, GESTURES_TITLE, [GESTURES_TITLE], GESTURES_ICON)
+    model.appendRow(gestures_root)
+
+    for gesture_id in GESTURES:
+        item = QStandardItem()
+        _set_gesture_item(
+            item, gesture_id, [GESTURES_TITLE], shortcuts=bindings.get(gesture_id)
+        )
+        gestures_root.appendRow(item)
 
     _refresh_modified_ancestors(model)
 
@@ -993,6 +1253,14 @@ def _iter_action_items(model: QStandardItemModel):
         yield from walk(root.child(row))
 
 
+def _iter_bound_items(model: QStandardItemModel):
+    """The rows that can be set, not one only shown for what it is."""
+
+    for item in _iter_action_items(model):
+        if item.data(DATA_KIND) is not GestureKind.FIXED:
+            yield item
+
+
 def _find_action_item(
     model: QStandardItemModel, action_id: str
 ) -> QStandardItem | None:
@@ -1073,7 +1341,7 @@ class KeymapTreeView(QTreeView):
     def get_bindings(self) -> dict[str, list[str]]:
         return {
             item.data(DATA_ACTION_ID): list(item.data(DATA_SHORTCUTS) or [])
-            for item in _iter_action_items(self._source_model)
+            for item in _iter_bound_items(self._source_model)
         }
 
     def set_bindings(self, bindings: dict[str, list[str]]):
@@ -1099,7 +1367,7 @@ class KeymapTreeView(QTreeView):
         """shortcut -> [(action_id, display label), ...]"""
         result: dict[str, list[tuple[str, str]]] = {}
         seen: set[tuple[str, str]] = set()
-        for item in _iter_action_items(self._source_model):
+        for item in _iter_bound_items(self._source_model):
             action_id = item.data(DATA_ACTION_ID)
             if action_id == exclude_action_id:
                 continue
@@ -1138,7 +1406,9 @@ class KeymapTreeView(QTreeView):
                 ),
                 DATA_SEARCH_TEXT,
             )
-            item.setToolTip(_action_tooltip(item.text(), path, current, defaults))
+            item.setToolTip(
+                _action_tooltip(item.text(), path, current, defaults, action_id)
+            )
             _apply_modified_font(item, is_modified)
 
             # Refresh persistent editor chips
@@ -1412,19 +1682,31 @@ class KeymapEditor(QWidget):
         is_modified = bool(item.data(DATA_IS_MODIFIED))
         path = item.data(DATA_PATH) or []
         title = item.text()
+        kind = item.data(DATA_KIND)
+
+        if kind is GestureKind.FIXED:
+            return
 
         menu = CustomMenu(parent=self)
 
-        menu.addAction(
-            translate("Keymap", "Add keyboard shortcut"),
-            lambda: self._add_keyboard(action_id, title, path, shortcuts),
-        )
-        menu.addAction(
-            translate("Keymap", "Add mouse shortcut"),
-            lambda: self._add_mouse(action_id, title, path, shortcuts),
-        )
+        if kind is GestureKind.HOLD:
+            self._add_hold_choices(menu, action_id, shortcuts)
+        elif kind is GestureKind.DRAG:
+            menu.addAction(
+                translate("Keymap", "Add mouse drag"),
+                lambda: self._add_drag(action_id, title, path, shortcuts),
+            )
+        else:
+            menu.addAction(
+                translate("Keymap", "Add keyboard shortcut"),
+                lambda: self._add_keyboard(action_id, title, path, shortcuts),
+            )
+            menu.addAction(
+                translate("Keymap", "Add mouse shortcut"),
+                lambda: self._add_mouse(action_id, title, path, shortcuts),
+            )
 
-        if shortcuts:
+        if shortcuts and kind is not GestureKind.HOLD:
             menu.addSeparator()
             for sc in shortcuts:
                 menu.addAction(
@@ -1434,10 +1716,15 @@ class KeymapEditor(QWidget):
 
         if is_modified:
             menu.addSeparator()
-            menu.addAction(
+            reset = menu.addAction(
                 translate("Keymap", "Reset shortcut"),
                 lambda: self._reset_action(action_id, defaults),
             )
+
+            # beside the choices' marks: an item with no icon is measured
+            # without one but drawn after it, its end cut off
+            if kind is GestureKind.HOLD:
+                reset.setIcon(QIcon.fromTheme("empty"))
 
         menu.exec_(global_pos)
 
@@ -1478,6 +1765,47 @@ class KeymapEditor(QWidget):
             dialog.result_sequence(),
             dialog.conflicts(),
         )
+
+    def _add_drag(
+        self, action_id: str, title: str, path: list[str], existing: list[str]
+    ):
+        hold_item = _find_action_item(self.tree.source_model(), GESTURE_DROP_SWITCH)
+        hold_keys = list(hold_item.data(DATA_SHORTCUTS) or []) if hold_item else []
+
+        dialog = AddDragShortcutDialog(
+            action_title=title,
+            path=path,
+            existing_shortcuts=existing,
+            conflict_map=self.tree.build_conflict_map(exclude_action_id=action_id),
+            hold_key=hold_keys[0] if hold_keys else None,
+            parent=self,
+        )
+        if dialog.exec_() != QDialog.Accepted:
+            return
+        self._apply_new_shortcut(
+            action_id,
+            existing,
+            dialog.result_sequence(),
+            dialog.conflicts(),
+        )
+
+    def _add_hold_choices(self, menu, action_id: str, current: list[str]):
+        """One key or none, picked from the few there are."""
+
+        choices = [(key, key.removeprefix("Hold ")) for key in HOLD_KEYS]
+        choices.append((None, translate("Keymap", "None")))
+
+        for key, label in choices:
+            is_current = current == ([key] if key else [])
+            action = menu.addAction(
+                label,
+                lambda k=key: self.tree.set_action_shortcuts(
+                    action_id, [k] if k else []
+                ),
+            )
+            action.setCheckable(True)
+            action.setChecked(is_current)
+            action.setIcon(checked_icon(QIcon.fromTheme("empty"), is_choice=True))
 
     def _apply_new_shortcut(
         self,

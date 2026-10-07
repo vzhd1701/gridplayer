@@ -9,7 +9,7 @@ from __future__ import annotations
 from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import QApplication
 
-from gridplayer.params.static import DropAction, DropModifier
+from gridplayer.params.static import DropAction
 
 _FILE_DROP_FORMATS = (
     "text/uri-list",
@@ -18,18 +18,14 @@ _FILE_DROP_FORMATS = (
     "application/x-gtk-local-dnd",
 )
 
-_DROP_MODIFIERS = {
-    DropModifier.SHIFT: Qt.ShiftModifier,
-    DropModifier.CTRL: Qt.ControlModifier,
-    DropModifier.ALT: Qt.AltModifier,
-}
-
 
 def drop_is_replace(qt_modifiers, action, modifier) -> bool:
-    if modifier == DropModifier.NONE:
+    """Whether a drop replaces, ``modifier`` the key held to switch, if any."""
+
+    if modifier is None:
         return action == DropAction.REPLACE
 
-    held = bool(qt_modifiers & _DROP_MODIFIERS[modifier])
+    held = bool(qt_modifiers & modifier)
     if action == DropAction.REPLACE:
         return not held
     return held

@@ -15,17 +15,20 @@ from gridplayer.models.recent_list import (
 )
 from gridplayer.models.resolver_patterns import ResolverPatterns
 from gridplayer.params import env
+from gridplayer.params.gestures import (
+    GESTURE_DROP_SWITCH,
+    GESTURE_PAN,
+    GESTURE_ZOOM_SELECT,
+)
 from gridplayer.params.languages import get_system_language
 from gridplayer.params.static import (
     AudioChannelMode,
     AudioTrackMode,
     ColorScheme,
     DropAction,
-    DropModifier,
     GridMode,
     HWCropBorderOffset,
     NetworkRetryMode,
-    PanTrigger,
     ProxyMode,
     ScreenshotFormat,
     SeekSyncMode,
@@ -42,7 +45,6 @@ from gridplayer.params.static import (
     VideoEndAction,
     VideoInitialState,
     VideoTransform,
-    ZoomSelectTrigger,
 )
 from gridplayer.params.subtitle_encodings import DEFAULT_ENCODING
 from gridplayer.params.subtitle_style import SUBTITLE_STYLE_DEFAULTS
@@ -64,8 +66,6 @@ _default_settings = {
     "player/language": get_system_language(),
     "player/color_scheme": ColorScheme.SYSTEM,
     "player/keymap": KeymapOverrides({}),
-    "player/pan_trigger": PanTrigger.MIDDLE,
-    "player/zoom_select_trigger": ZoomSelectTrigger.NONE,
     "player/recent_list_enabled": True,
     "player/recent_list_max_size": 10,
     # empty means the screenshots folder in the app data folder, worked out
@@ -99,7 +99,6 @@ _default_settings = {
     "playlist/shuffle_on_load": False,
     "playlist/drop_action_internal": DropAction.INSERT,
     "playlist/drop_action_external": DropAction.INSERT,
-    "playlist/drop_modifier": DropModifier.SHIFT,
     "playlist/disable_mouse_click_events": False,
     "playlist/disable_mouse_wheel_events": False,
     "playlist/disable_overlay": False,
@@ -226,6 +225,7 @@ class _Settings:
         self._migrate_track_changes_flag()
         self._migrate_paused_to_initial_state()
         self._migrate_repeat_to_end_action()
+        self._migrate_mouse_triggers()
 
     def _migrate_track_changes_flag(self):
         """Legacy bool "warn about unsaved changes" flag → close mode enum."""
@@ -281,6 +281,42 @@ class _Settings:
         current = self.settings.value(new_key)
         if isinstance(current, str) and current in aliases:
             self.settings.setValue(new_key, aliases[current])
+
+    def _migrate_mouse_triggers(self):
+        """The drags once picked from lists, and the key held to switch a
+        drop, into the keymap, where they are set alongside the shortcuts.
+
+        One set to its old default is left to the keymap's, the same.
+        """
+        drags = {
+            "middle": "Middle-Drag",
+            "ctrl": "Ctrl+Drag",
+            "shift": "Shift+Drag",
+            "alt": "Alt+Drag",
+        }
+        holds = {"shift": "Hold Shift", "ctrl": "Hold Ctrl", "alt": "Hold Alt"}
+        moved = {
+            "player/pan_trigger": (GESTURE_PAN, "middle", drags),
+            "player/zoom_select_trigger": (GESTURE_ZOOM_SELECT, "none", drags),
+            "playlist/drop_modifier": (GESTURE_DROP_SWITCH, "shift", holds),
+        }
+
+        if not any(self.settings.contains(old_key) for old_key in moved):
+            return
+
+        overrides = dict(self.get("player/keymap").root)
+
+        for old_key, (gesture_id, old_default, keys) in moved.items():
+            if not self.settings.contains(old_key):
+                continue
+
+            value = str(self.settings.value(old_key))
+            if value != old_default and gesture_id not in overrides:
+                overrides[gesture_id] = [keys[value]] if value in keys else []
+
+            self.settings.remove(old_key)
+
+        self.set("player/keymap", KeymapOverrides(overrides))
 
     def get(self, setting):
         setting_type = type(_default_settings[setting])

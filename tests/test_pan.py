@@ -6,7 +6,10 @@ from PyQt5.QtGui import QMouseEvent
 from PyQt5.QtWidgets import QApplication, QWidget
 
 import gridplayer.player.managers.pan as pan_module
-from gridplayer.params.static import PanTrigger, VideoShift
+import gridplayer.utils.keymap as keymap_module
+from gridplayer.models.keymap_overrides import KeymapOverrides
+from gridplayer.params.gestures import GESTURE_PAN
+from gridplayer.params.static import VideoShift
 from gridplayer.player.managers.pan import PanManager
 from gridplayer.widgets.video_overlay_elements import OverlayBar
 
@@ -50,23 +53,25 @@ class _Block:
         self.shifts.append((shift, is_silent))
 
 
-_TRIGGER = {"value": PanTrigger.MIDDLE}
+_TRIGGER = {"value": ["Middle-Drag"]}
 
 
-def _trigger(trigger):
-    _TRIGGER["value"] = trigger
+def _trigger(*drags):
+    _TRIGGER["value"] = list(drags)
 
 
 @pytest.fixture(autouse=True)
 def _pointer(monkeypatch):
     _Cursor.at = QPoint(100, 100)
-    _trigger(PanTrigger.MIDDLE)
+    _trigger("Middle-Drag")
     monkeypatch.setattr(pan_module, "QCursor", _Cursor)
     monkeypatch.setattr(pan_module, "is_modal_open", lambda: False)
     monkeypatch.setattr(
-        pan_module,
+        keymap_module,
         "Settings",
-        lambda: SimpleNamespace(get=lambda _key: _TRIGGER["value"]),
+        lambda: SimpleNamespace(
+            get=lambda _key: KeymapOverrides({GESTURE_PAN: _TRIGGER["value"]})
+        ),
     )
     monkeypatch.setattr(QApplication, "queryKeyboardModifiers", lambda: Qt.NoModifier)
     monkeypatch.setattr(QApplication, "widgetAt", lambda *_: None)
@@ -298,9 +303,9 @@ def test_after_a_drag_the_pointer_is_heard_where_it_is():
 @pytest.mark.parametrize(
     ("trigger", "keys"),
     [
-        (PanTrigger.CTRL, Qt.ControlModifier),
-        (PanTrigger.SHIFT, Qt.ShiftModifier),
-        (PanTrigger.ALT, Qt.AltModifier),
+        ("Ctrl+Drag", Qt.ControlModifier),
+        ("Shift+Drag", Qt.ShiftModifier),
+        ("Alt+Drag", Qt.AltModifier),
     ],
 )
 def test_the_left_button_drags_with_the_key_it_is_set_to(trigger, keys):
@@ -316,7 +321,7 @@ def test_the_left_button_drags_with_the_key_it_is_set_to(trigger, keys):
 
 
 def test_without_the_key_the_left_button_is_left_to_moving_the_cell():
-    _trigger(PanTrigger.CTRL)
+    _trigger("Ctrl+Drag")
     block = _Block()
     manager = _manager(block)
 
@@ -331,7 +336,7 @@ def test_without_the_key_the_left_button_is_left_to_moving_the_cell():
 
 
 def test_set_to_a_key_the_middle_button_does_nothing():
-    _trigger(PanTrigger.CTRL)
+    _trigger("Ctrl+Drag")
     block = _Block()
     manager = _manager(block)
 
@@ -343,7 +348,7 @@ def test_set_to_a_key_the_middle_button_does_nothing():
 def test_a_key_held_down_is_seen_where_the_press_does_not_say(monkeypatch):
     """As a drop sees it: the press into a window that was not focused."""
 
-    _trigger(PanTrigger.CTRL)
+    _trigger("Ctrl+Drag")
     monkeypatch.setattr(
         QApplication, "queryKeyboardModifiers", lambda: Qt.ControlModifier
     )
@@ -356,7 +361,7 @@ def test_a_key_held_down_is_seen_where_the_press_does_not_say(monkeypatch):
 
 
 def test_the_overlay_s_buttons_and_bars_keep_their_left_press(monkeypatch):
-    _trigger(PanTrigger.CTRL)
+    _trigger("Ctrl+Drag")
     bar = OverlayBar()
     monkeypatch.setattr(QApplication, "widgetAt", lambda *_: bar)
     manager = _manager(_Block())
@@ -384,7 +389,7 @@ def test_the_middle_button_drags_over_the_overlay_too(monkeypatch):
 
 
 def test_disabled_nothing_drags_the_picture():
-    _trigger(PanTrigger.NONE)
+    _trigger()
     block = _Block()
     manager = _manager(block)
 
@@ -399,28 +404,53 @@ def test_disabled_nothing_drags_the_picture():
     assert block.pans == []
 
 
-def test_it_is_a_player_setting_middle_by_default():
+def test_more_keys_held_than_the_drag_has_are_another_drag():
+    _trigger("Ctrl+Drag")
+    block = _Block()
+    manager = _manager(block)
+
+    _press(manager, Qt.LeftButton, Qt.ControlModifier | Qt.ShiftModifier)
+
+    assert _move_to(manager, 150, 100, buttons=Qt.LeftButton) is None
+    assert block.pans == []
+
+
+def test_any_of_the_drags_it_is_set_to_drags_the_picture():
+    _trigger("Ctrl+Drag", "Back-Drag")
+    manager = _manager(_Block())
+
+    for button, keys in (
+        (Qt.LeftButton, Qt.ControlModifier),
+        (Qt.BackButton, Qt.NoModifier),
+    ):
+        assert manager.is_pan_press(
+            _event(QEvent.MouseButtonPress, button, button, keys)
+        )
+
+    assert not manager.is_pan_press(_event(QEvent.MouseButtonPress))
+
+
+def test_it_is_set_in_the_keymap_middle_by_default():
     """The same for every playlist: a way of using the mouse, not a video's."""
 
     from gridplayer.params.defaults_fields import PLAYLIST_FIELDS
-    from gridplayer.settings import _default_settings
+    from gridplayer.utils.keymap import default_keymap
 
-    assert _default_settings["player/pan_trigger"] == PanTrigger.MIDDLE
+    assert default_keymap()[GESTURE_PAN] == ["Middle-Drag"]
     assert "pan" not in " ".join(spec.settings_key for spec in PLAYLIST_FIELDS)
 
 
-def test_it_is_chosen_on_the_shortcuts_page(mocker):
+def test_it_is_set_on_the_shortcuts_page(mocker):
     from gridplayer.dialogs.settings import SettingsDialog
     from gridplayer.settings import Settings
 
     dialog = SettingsDialog(None)
-    combo = dialog.playerPanTrigger
+    editor = dialog.keymapEditor
 
-    assert combo.parent() is dialog.page_general_shortcuts
-    assert [combo.itemData(i) for i in range(combo.count())] == list(PanTrigger)
-    assert combo.currentData() == Settings().get("player/pan_trigger")
+    assert editor.parent() is dialog.page_general_shortcuts
+    assert editor.get_bindings()[GESTURE_PAN] == ["Middle-Drag"]
 
-    combo.setCurrentIndex(combo.findData(PanTrigger.SHIFT))
+    editor.tree.set_action_shortcuts(GESTURE_PAN, ["Middle-Drag", "Shift+Drag"])
 
     written = {}
     mocker.patch.object(
@@ -431,4 +461,4 @@ def test_it_is_chosen_on_the_shortcuts_page(mocker):
 
     dialog.save_settings()
 
-    assert written["player/pan_trigger"] is PanTrigger.SHIFT
+    assert written["player/keymap"].get(GESTURE_PAN) == ["Middle-Drag", "Shift+Drag"]

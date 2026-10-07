@@ -2,28 +2,22 @@ from PyQt5.QtCore import QEvent, QPoint, Qt
 from PyQt5.QtGui import QCursor, QWindow
 from PyQt5.QtWidgets import QApplication
 
-from gridplayer.params.static import PanTrigger
+from gridplayer.params.gestures import GESTURE_PAN
 from gridplayer.player.managers.base import ManagerBase
-from gridplayer.settings import Settings
+from gridplayer.utils.keymap import is_gesture_press
 from gridplayer.utils.qt import is_modal_open
 from gridplayer.widgets.video_overlay_buttons import OverlayButton
 from gridplayer.widgets.video_overlay_elements import OverlayBar
-
-_TRIGGER_MODIFIERS = {
-    PanTrigger.CTRL: Qt.ControlModifier,
-    PanTrigger.SHIFT: Qt.ShiftModifier,
-    PanTrigger.ALT: Qt.AltModifier,
-}
 
 
 class PanManager(ManagerBase):
     """Dragging a video's picture about, the picture going with the pointer.
 
-    With the middle button by default, which nothing else uses; or the
-    left one with a key held (see the pan_trigger setting). A plain left
-    drag is always moving the video to another cell, and holding the key
-    only counts when it is down before the button is: a key pressed once
-    a video is being moved is the drop's, as ever.
+    With the drags it is set to in the keymap, the middle button by default,
+    which nothing else uses. A plain left drag is always moving the video
+    to another cell, and the keys of a drag only count when they are down
+    before the button is: a key pressed once a video is being moved is the
+    drop's, as ever.
 
     A click with no drag is still a click, for the keymap to have.
     """
@@ -158,20 +152,11 @@ class PanManager(ManagerBase):
 
 
 def _is_trigger(event) -> bool:
-    trigger = Settings().get("player/pan_trigger")
-
-    if trigger == PanTrigger.MIDDLE:
-        return event.button() == Qt.MiddleButton
-
-    if trigger not in _TRIGGER_MODIFIERS or event.button() != Qt.LeftButton:
+    if not is_gesture_press(GESTURE_PAN, event):
         return False
 
-    # as the drop does: the press may not say, where the window was not
-    # focused when it came
-    held = QApplication.queryKeyboardModifiers() | event.modifiers()
-
-    if not held & _TRIGGER_MODIFIERS[trigger]:
-        return False
+    if event.button() != Qt.LeftButton:
+        return True
 
     # the overlay's buttons and bars act on a left press themselves
     pressed = QApplication.widgetAt(QCursor.pos())

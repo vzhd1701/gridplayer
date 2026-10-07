@@ -61,37 +61,6 @@ class DropAction(AutoName):
     REPLACE = auto()
 
 
-class DropModifier(AutoName):
-    SHIFT = auto()
-    CTRL = auto()
-    ALT = auto()
-    NONE = auto()
-
-
-class PanTrigger(AutoName):
-    """What a drag has to be made with to move a video's picture about."""
-
-    MIDDLE = auto()
-    CTRL = auto()
-    SHIFT = auto()
-    ALT = auto()
-    NONE = auto()
-
-
-class ZoomSelectTrigger(AutoName):
-    """What a drag has to be made with to select a part to zoom to.
-
-    The same choices as PanTrigger, by the same names: one taken by that
-    is not this one's.
-    """
-
-    MIDDLE = auto()
-    CTRL = auto()
-    SHIFT = auto()
-    ALT = auto()
-    NONE = auto()
-
-
 class VideoAspect(AutoName):
     FIT = auto()
     STRETCH = auto()

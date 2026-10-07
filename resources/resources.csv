@@ -86,6 +86,7 @@ icon-symbolic,icons/custom/columns first.svg,grid-columns-first
 icon-symbolic,icons/custom/crop.svg,crop
 icon-symbolic,icons/custom/delay.svg,delay
 icon-symbolic,icons/custom/deinterlace.svg,deinterlace
+icon-symbolic,icons/custom/drop switch.svg,drop-switch
 icon-symbolic,icons/custom/empty.svg,empty
 icon-symbolic,icons/custom/error.svg,error
 icon-symbolic,icons/custom/fullscreen.svg,fullscreen
@@ -106,6 +107,7 @@ icon-symbolic,icons/custom/minimize window.svg,minimize
 icon-symbolic,icons/custom/minus-1.svg,seek-minus-1
 icon-symbolic,icons/custom/minus-10.svg,seek-minus-10
 icon-symbolic,icons/custom/minus-5.svg,seek-minus-5
+icon-symbolic,icons/custom/mouse drag.svg,mouse-drag
 icon-symbolic,icons/custom/network error.svg,network-error
 icon-symbolic,icons/custom/paste.svg,paste
 icon-symbolic,icons/custom/next frame.svg,next-frame

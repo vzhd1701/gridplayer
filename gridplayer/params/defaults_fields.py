@@ -15,7 +15,6 @@ from gridplayer.params.static import (
     AudioChannelMode,
     AudioTrackMode,
     DropAction,
-    DropModifier,
     GridMode,
     NetworkRetryMode,
     SeekSyncMode,
@@ -177,30 +176,23 @@ def _drop_external() -> dict:
     }
 
 
-def _drop_modifiers() -> dict:
-    if env.IS_MACOS:
-        return {
-            DropModifier.SHIFT: translate("SettingsDialog", "Shift"),
-            DropModifier.CTRL: translate("SettingsDialog", "Cmd"),
-            DropModifier.ALT: translate("SettingsDialog", "Option"),
-            DropModifier.NONE: translate("SettingsDialog", "Disabled"),
-        }
-    return {
-        DropModifier.SHIFT: translate("SettingsDialog", "Shift"),
-        DropModifier.CTRL: translate("SettingsDialog", "Ctrl"),
-        DropModifier.ALT: translate("SettingsDialog", "Alt"),
-        DropModifier.NONE: translate("SettingsDialog", "Disabled"),
-    }
+def _drop_action_tooltip() -> str:
+    tooltip = translate(
+        "SettingsDialog",
+        'Hold the key set for "Hold to switch drop action" on the Shortcuts'
+        " page while dropping to do the other one.",
+    )
 
-
-def _drop_modifier_tooltip() -> str | None:
     if not env.IS_LINUX:
-        return None
-    return translate(
+        return tooltip
+
+    gnome_note = translate(
         "SettingsDialog",
         "On GNOME, dropping files from the file manager only honors Shift. "
         "Ctrl and Alt still work when dragging videos inside the player.",
     )
+
+    return f"{tooltip}\n\n{gnome_note}"
 
 
 def _aspects() -> dict:
@@ -658,6 +650,7 @@ PLAYLIST_FIELDS: tuple[SettingField, ...] = (
         section=translate("SettingsDialog", "Drag-n-Drop"),
         label=translate("SettingsDialog", "In-window drag"),
         combo_values=_drop_internal,
+        tooltip=_drop_action_tooltip(),
     ),
     _f(
         settings_key="playlist/drop_action_external",
@@ -666,15 +659,7 @@ PLAYLIST_FIELDS: tuple[SettingField, ...] = (
         section=translate("SettingsDialog", "Drag-n-Drop"),
         label=translate("SettingsDialog", "File drop"),
         combo_values=_drop_external,
-    ),
-    _f(
-        settings_key="playlist/drop_modifier",
-        playlist_attr="drop_modifier",
-        kind=FieldKind.COMBO,
-        section=translate("SettingsDialog", "Drag-n-Drop"),
-        label=translate("SettingsDialog", "Hold to switch"),
-        combo_values=_drop_modifiers,
-        tooltip=_drop_modifier_tooltip(),
+        tooltip=_drop_action_tooltip(),
     ),
 )
 

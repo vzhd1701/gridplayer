@@ -22,6 +22,7 @@ from gridplayer.utils.files import (
     get_playlist_path,
     mime_has_video,
 )
+from gridplayer.utils.keymap import drop_switch_modifier
 from gridplayer.utils.qt import is_modal_open
 
 # X11 XDND Enter is a later client message, not already queued. timer(0)
@@ -102,7 +103,8 @@ class DragNDropManager(ManagerBase):
         if event.button() != Qt.LeftButton:
             return
 
-        # dragging the picture about instead, see PanManager
+        # dragging the picture about instead, see PanManager (a selection
+        # to zoom to has taken its press before this, see ZoomSelectManager)
         if self._ctx.commands.is_pan_press(event):
             self._drag_start_position = None
             return
@@ -394,7 +396,7 @@ class DragNDropManager(ManagerBase):
         return drop_is_replace(
             query_drop_modifiers(event),
             session.get(action_key),
-            session.get("playlist/drop_modifier"),
+            drop_switch_modifier(),
         )
 
     def _end_drag_ui_after_leave(self):

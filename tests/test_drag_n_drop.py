@@ -6,7 +6,7 @@ from PyQt5.QtCore import QEvent, QPoint, QPointF, Qt
 from PyQt5.QtGui import QKeyEvent, QMouseEvent
 from PyQt5.QtWidgets import QApplication, QWidget
 
-from gridplayer.params.static import DropAction, DropModifier
+from gridplayer.params.static import DropAction
 from gridplayer.player.managers.drag_n_drop import DragNDropManager
 from gridplayer.utils.drag_n_drop import drop_is_replace
 
@@ -32,7 +32,7 @@ def _key_press(key, modifiers=Qt.NoModifier):
 
 def test_drop_is_replace_insert_default_shift():
     action = DropAction.INSERT
-    modifier = DropModifier.SHIFT
+    modifier = Qt.ShiftModifier
     assert drop_is_replace(Qt.NoModifier, action, modifier) is False
     assert drop_is_replace(Qt.ShiftModifier, action, modifier) is True
     assert drop_is_replace(Qt.ControlModifier, action, modifier) is False
@@ -43,28 +43,23 @@ def test_drop_is_replace_insert_default_shift():
 
 def test_drop_is_replace_insert_ctrl_or_alt():
     action = DropAction.INSERT
-    assert drop_is_replace(Qt.ControlModifier, action, DropModifier.CTRL) is True
-    assert drop_is_replace(Qt.ShiftModifier, action, DropModifier.CTRL) is False
-    assert drop_is_replace(Qt.AltModifier, action, DropModifier.ALT) is True
-    assert drop_is_replace(Qt.ShiftModifier, action, DropModifier.ALT) is False
+    assert drop_is_replace(Qt.ControlModifier, action, Qt.ControlModifier) is True
+    assert drop_is_replace(Qt.ShiftModifier, action, Qt.ControlModifier) is False
+    assert drop_is_replace(Qt.AltModifier, action, Qt.AltModifier) is True
+    assert drop_is_replace(Qt.ShiftModifier, action, Qt.AltModifier) is False
 
 
 def test_drop_is_replace_replace_default_inverts_modifier():
     action = DropAction.REPLACE
-    modifier = DropModifier.SHIFT
+    modifier = Qt.ShiftModifier
     assert drop_is_replace(Qt.NoModifier, action, modifier) is True
     assert drop_is_replace(Qt.ShiftModifier, action, modifier) is False
 
 
 def test_drop_is_replace_none_ignores_keys():
-    assert (
-        drop_is_replace(Qt.ShiftModifier, DropAction.INSERT, DropModifier.NONE) is False
-    )
-    assert drop_is_replace(Qt.NoModifier, DropAction.REPLACE, DropModifier.NONE) is True
-    assert (
-        drop_is_replace(Qt.ControlModifier, DropAction.REPLACE, DropModifier.NONE)
-        is True
-    )
+    assert drop_is_replace(Qt.ShiftModifier, DropAction.INSERT, None) is False
+    assert drop_is_replace(Qt.NoModifier, DropAction.REPLACE, None) is True
+    assert drop_is_replace(Qt.ControlModifier, DropAction.REPLACE, None) is True
 
 
 class _Ctx:
@@ -109,7 +104,7 @@ def test_a_left_press_is_the_start_of_moving_the_video(mocker):
 
 
 def test_a_press_that_drags_the_picture_moves_no_video(mocker):
-    """The pan_trigger setting's key held: see PanManager."""
+    """A drag the picture is moved about with: see PanManager."""
 
     manager, _parent = _make_manager()
     manager._ctx.commands.is_pan_press = lambda _event: True
@@ -193,15 +188,18 @@ def _patch_drop_settings(
     mocker,
     internal=DropAction.INSERT,
     external=DropAction.INSERT,
-    modifier=DropModifier.SHIFT,
+    modifier=Qt.ShiftModifier,
 ):
     mocker.patch(
         "gridplayer.playlist_settings.Settings"
     ).return_value.get.side_effect = lambda key: {
         "playlist/drop_action_internal": internal,
         "playlist/drop_action_external": external,
-        "playlist/drop_modifier": modifier,
     }[key]
+    mocker.patch(
+        "gridplayer.player.managers.drag_n_drop.drop_switch_modifier",
+        return_value=modifier,
+    )
 
 
 def test_is_replace_reads_os_keyboard_state(mocker):

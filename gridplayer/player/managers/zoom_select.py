@@ -4,26 +4,19 @@ from PyQt5.QtCore import QEvent, QPoint, QRect, QSize, Qt
 from PyQt5.QtGui import QCursor, QWindow
 from PyQt5.QtWidgets import QApplication
 
-from gridplayer.params.static import ZoomSelectTrigger
+from gridplayer.params.gestures import GESTURE_ZOOM_SELECT
 from gridplayer.player.managers.base import ManagerBase
-from gridplayer.settings import Settings
+from gridplayer.utils.keymap import is_gesture_press
 from gridplayer.utils.qt import is_modal_open
 from gridplayer.widgets.video_overlay import OverlayBlock
-
-_TRIGGER_MODIFIERS = {
-    ZoomSelectTrigger.CTRL: Qt.ControlModifier,
-    ZoomSelectTrigger.SHIFT: Qt.ShiftModifier,
-    ZoomSelectTrigger.ALT: Qt.AltModifier,
-}
 
 
 class ZoomSelectManager(ManagerBase):
     """Zooming in on a part of a video's picture, selected with the mouse.
 
-    A drag over the picture with the left button and a key held, or with
-    the middle one (see the zoom_select_trigger setting, off by default);
-    or the next left drag after Zoom to Selection is picked, whatever is
-    held. Let go of, the part dragged over is fitted into the cell, in its
+    A drag over the picture with one of the drags it is set to in the
+    keymap, the left button with Ctrl by default; or the next left drag
+    after Zoom to Selection is picked, whatever is held. Let go of, the part dragged over is fitted into the cell, in its
     middle (see VideoBlock.zoom_to_selection).
 
     The press is taken here, and the moves after it, before a drag would
@@ -275,7 +268,7 @@ class ZoomSelectManager(ManagerBase):
     def _trigger_block(self, event, event_object):
         """The video a press selects a part of, None if it does not."""
 
-        if is_modal_open() or not _is_trigger(event):
+        if is_modal_open() or not is_gesture_press(GESTURE_ZOOM_SELECT, event):
             return None
 
         block = self._selectable_block(event_object)
@@ -439,27 +432,3 @@ def _is_part_of(widget, block) -> bool:
         widget = widget.parentWidget()
 
     return False
-
-
-def _is_trigger(event) -> bool:
-    settings = Settings()
-    trigger = settings.get("player/zoom_select_trigger")
-
-    if trigger == ZoomSelectTrigger.NONE:
-        return False
-
-    # moving the picture about has it, which the settings do not let be
-    if trigger.value == settings.get("player/pan_trigger").value:
-        return False
-
-    if trigger == ZoomSelectTrigger.MIDDLE:
-        return event.button() == Qt.MiddleButton
-
-    if event.button() != Qt.LeftButton:
-        return False
-
-    # as the drop does: the press may not say, where the window was not
-    # focused when it came
-    held = QApplication.queryKeyboardModifiers() | event.modifiers()
-
-    return bool(held & _TRIGGER_MODIFIERS[trigger])

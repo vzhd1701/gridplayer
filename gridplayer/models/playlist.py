@@ -17,7 +17,6 @@ from gridplayer.params.static import (
     AudioChannelMode,
     AudioTrackMode,
     DropAction,
-    DropModifier,
     NetworkRetryMode,
     SeekSyncMode,
     SubtitleTrackMode,
@@ -139,7 +138,6 @@ class Playlist(BaseModel):
     save_paths_relative: bool | None = None
     drop_action_internal: DropAction | None = None
     drop_action_external: DropAction | None = None
-    drop_modifier: DropModifier | None = None
     video_defaults: PlaylistVideoDefaults = Field(default_factory=PlaylistVideoDefaults)
 
     @model_validator(mode="before")
