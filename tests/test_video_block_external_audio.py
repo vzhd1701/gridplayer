@@ -85,6 +85,7 @@ class _Block:
     add_external_audio = VideoBlock.add_external_audio
     play_external_audio = VideoBlock.play_external_audio
     remove_external_audio = VideoBlock.remove_external_audio
+    _drop_external_audio = VideoBlock._drop_external_audio
     set_external_audio_autodiscover = VideoBlock.set_external_audio_autodiscover
     tracks_changed = VideoBlock.tracks_changed
     apply_audio_default = VideoBlock.apply_audio_default

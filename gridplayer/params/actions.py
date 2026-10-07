@@ -71,6 +71,13 @@ ACTIONS = MappingProxyType(
             "func": ("active", "next_video"),
             "show_if": "is_active_local_file",
         },
+        "Include Subfolders": {
+            "title": translate("Folder Navigation", "Include Subfolders"),
+            "icon": "folder-tree",
+            "func": ("active", "toggle_dir_recursive"),
+            "check_if": ("is_active_param_set_to", "is_dir_recursive", True),
+            "show_if": "is_active_local_file",
+        },
         "0%": {
             "title": "0%",
             "key": "0",
@@ -1351,6 +1358,22 @@ ACTIONS = MappingProxyType(
             "key": "Shift+PgDown",
             "icon": "next-video-file",
             "func": ("all", "next_video"),
+            "show_if": "is_any_videos_local_file",
+        },
+        "Include Subfolders On [ALL]": {
+            "title": translate("Actions", "On"),
+            "icon": "empty",
+            "func": ("all", "set_dir_recursive", True),
+            "check_if": ("is_all_videos_param_set_to", "is_dir_recursive", True),
+            "is_choice": True,
+            "show_if": "is_any_videos_local_file",
+        },
+        "Include Subfolders Off [ALL]": {
+            "title": translate("Actions", "Off"),
+            "icon": "empty",
+            "func": ("all", "set_dir_recursive", False),
+            "check_if": ("is_all_videos_param_set_to", "is_dir_recursive", False),
+            "is_choice": True,
             "show_if": "is_any_videos_local_file",
         },
         "0% [ALL]": {

@@ -159,6 +159,12 @@ class Video(BaseModel):
     loop_end: int | None = None
 
     end_action: VideoEndAction = session_field("video_defaults/end_action")
+    # whether the next, previous or a random file is looked for in the
+    # folders under the one they started in as well; see utils/next_file.py
+    is_dir_recursive: bool = session_field("video_defaults/dir_recursive")
+    # the folder they started in: the one the file playing was in when
+    # subfolders were included, None until then
+    dir_root: Path | None = None
     is_start_random: bool = session_field("video_defaults/random_loop")
     rate: Annotated[float, Field(ge=MIN_RATE, le=MAX_RATE)] = session_field(
         "video_defaults/rate"

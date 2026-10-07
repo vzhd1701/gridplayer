@@ -16,6 +16,10 @@ SUBMENUS = MappingProxyType(
             "title": translate("Actions", "When Finished"),
             "icon": "playback-finish",
         },
+        "Include Subfolders": {
+            "title": translate("Folder Navigation", "Include Subfolders"),
+            "icon": "folder-tree",
+        },
         "Speed": {"title": translate("Actions", "Speed"), "icon": "speed"},
         "Zoom": {"title": translate("Actions", "Zoom"), "icon": "zoom"},
         "Zoom to Cursor": {"title": translate("Zoom", "Zoom to Cursor")},
@@ -213,6 +217,7 @@ SECTIONS = MappingProxyType(
                 "Playback",
                 "Play Previous File",
                 "Play Next File",
+                "Include Subfolders",
                 "---",
                 (
                     "Jump (to)",
@@ -449,6 +454,11 @@ SECTIONS = MappingProxyType(
                     "Playback",
                     "Play Previous File [ALL]",
                     "Play Next File [ALL]",
+                    (
+                        "Include Subfolders",
+                        "Include Subfolders On [ALL]",
+                        "Include Subfolders Off [ALL]",
+                    ),
                     "---",
                     (
                         "Jump (to)",

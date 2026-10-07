@@ -125,8 +125,8 @@ from gridplayer.utils.external_subtitles import (
     discover_subtitle_files,
     subtitle_file_label,
 )
+from gridplayer.utils.folder_navigator import FolderNavigator, FolderStep
 from gridplayer.utils.libvlc_options_parser import get_vlc_options
-from gridplayer.utils.next_file import next_video_file, previous_video_file
 from gridplayer.utils.qt import MILLISECONDS, qt_connect, translate
 from gridplayer.utils.screenshots import (
     ScreenshotJob,
@@ -595,6 +595,20 @@ class VideoBlock(QWidget):
 
         sponsorblock_fetcher().fetched.connect(self._sponsor_segments_fetched)
 
+        # the next, previous or a random file of the folder, to put in this
+        # one's place
+        self._folder_navigator = FolderNavigator(
+            video=lambda: self.video_params,
+            switch=self.switch_video,
+            tell=self.info_change.emit,
+            tell_next=self._tell_once_loaded,
+            hold_end=self._hold_end_for_bookmarks,
+            open_elsewhere=self._files_open_elsewhere,
+        )
+        # a word to say once the next file is on show, the overlay being
+        # hidden while it loads
+        self._notice_once_loaded: str | None = None
+
         self.overlay = self.init_overlay()
 
         self.ui_setup()
@@ -819,6 +833,8 @@ class VideoBlock(QWidget):
         # the lookup outlives the video, it answers every one of them
         with contextlib.suppress(TypeError):
             sponsorblock_fetcher().fetched.disconnect(self._sponsor_segments_fetched)
+
+        self._folder_navigator.close()
 
         self._log.debug(f"{self.id}: cleaning up driver ")
         self._destroy_video_driver()
@@ -1830,18 +1846,17 @@ class VideoBlock(QWidget):
         if not self.video_params.external_audio:
             return
 
-        is_external_playing = isinstance(
-            self.video_params.audio_selection, AudioExternal
-        )
-
-        self.video_params.external_audio = []
-
-        if is_external_playing:
-            # the track that was playing leaves with the file it came from,
-            # so the video goes back to whatever it would have opened on
-            self.video_params.audio_selection = default_audio_selection()
+        self._drop_external_audio()
 
         self.reload()
+
+    def _drop_external_audio(self) -> None:
+        self.video_params.external_audio = []
+
+        # the track that was playing leaves with the file it came from, so
+        # the video goes back to whatever it would have opened on
+        if isinstance(self.video_params.audio_selection, AudioExternal):
+            self.video_params.audio_selection = default_audio_selection()
 
     def set_external_audio_autodiscover(self, is_on: bool) -> None:
         """Whether to offer the audio files kept beside this video."""
@@ -2385,17 +2400,16 @@ class VideoBlock(QWidget):
         if not self.video_params.external_subtitles:
             return
 
-        is_external_showing = isinstance(
-            self.video_params.subtitle_selection, SubtitleExternal
-        )
-
-        self.video_params.external_subtitles = []
-
-        if is_external_showing:
-            # the track that was showing leaves with the file it came from
-            self.video_params.subtitle_selection = default_subtitle_selection()
+        self._drop_external_subtitles()
 
         self.reload()
+
+    def _drop_external_subtitles(self) -> None:
+        self.video_params.external_subtitles = []
+
+        # the track that was showing leaves with the file it came from
+        if isinstance(self.video_params.subtitle_selection, SubtitleExternal):
+            self.video_params.subtitle_selection = default_subtitle_selection()
 
     def set_external_subtitle_autodiscover(self, is_on: bool) -> None:
         """Whether to offer the subtitle files kept beside this video."""
@@ -2965,22 +2979,17 @@ class VideoBlock(QWidget):
 
         end_action = self.video_params.end_action
 
-        # The bookmarks manager, or a bookmark's name being typed or its
-        # colour picked, holds the video in its cell, paused at the start: closed, or another file put
-        # in its place, it would take the bookmarks being edited away with
-        # it. The end action is the same again on the next pass.
-        if self._is_editing_bookmarks and end_action in LEAVING_END_ACTIONS:
-            self._hold_end(end_action)
+        if self._hold_end_for_bookmarks():
             return
 
         if end_action == VideoEndAction.LOOP_FILE:
             self._loop_to_start()
         elif end_action == VideoEndAction.NEXT_FILE:
-            self.next_video()
+            self.next_video(is_end=True)
         elif end_action == VideoEndAction.PREVIOUS_FILE:
-            self.previous_video()
+            self.previous_video(is_end=True)
         elif end_action == VideoEndAction.SHUFFLE_FILE:
-            self.shuffle_video()
+            self.shuffle_video(is_end=True)
         elif end_action == VideoEndAction.PAUSE:
             self._pause_at_start()
         elif end_action == VideoEndAction.STOP:
@@ -3008,6 +3017,26 @@ class VideoBlock(QWidget):
         self._seek_loop_start()
         self.set_pause(True)
 
+    def _hold_end_for_bookmarks(self) -> bool:
+        """Pause at the start in place of an end action that would take the
+        video out of its cell, while its bookmarks are being edited, and say
+        whether it did.
+
+        The bookmarks manager, or a bookmark's name being typed or its
+        colour picked, holds the video in its cell: closed, or another file
+        put in its place, it would take the bookmarks being edited away with
+        it. The end action is the same again on the next pass.
+        """
+
+        end_action = self.video_params.end_action
+
+        if not self._is_editing_bookmarks or end_action not in LEAVING_END_ACTIONS:
+            return False
+
+        self._hold_end(end_action)
+
+        return True
+
     @property
     def _is_editing_bookmarks(self) -> bool:
         return self._bookmarks_manager is not None or self._is_editing_bookmark
@@ -3031,6 +3060,8 @@ class VideoBlock(QWidget):
         )
 
     def stop_playback(self):
+        self._folder_navigator.cancel()
+
         if self.video_params is not None:
             self.video_params.current_position = 0
             self.video_params.loop_start = None
@@ -3576,6 +3607,10 @@ class VideoBlock(QWidget):
         self.is_stopped_change.emit(self.is_stopped)
         self.time_change.emit(self.time, self.video_driver.length)
         self.show_overlay()
+
+        if self._notice_once_loaded is not None:
+            self.info_change.emit(self._notice_once_loaded)
+            self._notice_once_loaded = None
 
         self.video_driver.adjust_view()
 
@@ -4373,6 +4408,8 @@ class VideoBlock(QWidget):
 
     @only_seekable
     def set_end_action(self, end_action: VideoEndAction):
+        self._folder_navigator.cancel()
+
         self.video_params.end_action = end_action
 
     @only_initialized
@@ -4452,6 +4489,11 @@ class VideoBlock(QWidget):
 
         if seek_ms < self.loop_start or seek_ms > self.loop_end:
             seek_ms = self.loop_start
+
+        # the viewer going back into the video stays in it, whatever file
+        # its end was looking for
+        if is_viewers:
+            self._folder_navigator.cancel()
 
         # Marked before the seek is made, not after: the single process
         # drivers call libVLC on this very thread, and it reports the new time
@@ -5052,16 +5094,63 @@ class VideoBlock(QWidget):
         self.sync_pause.emit(is_paused)
 
     @only_local_file
-    def previous_video(self):
-        self.switch_video(previous_video_file(self.video_params.uri))
+    def previous_video(self, is_end=False):
+        # where files come at random, the one before is the one played before
+        if self.video_params.end_action == VideoEndAction.SHUFFLE_FILE:
+            self._folder_navigator.step(FolderStep.BACK, is_end=is_end)
+        else:
+            self._folder_navigator.step(FolderStep.PREVIOUS, is_end=is_end)
 
     @only_local_file
-    def next_video(self):
-        self.switch_video(next_video_file(self.video_params.uri))
+    def next_video(self, is_end=False):
+        if self.video_params.end_action == VideoEndAction.SHUFFLE_FILE:
+            self._folder_navigator.step(FolderStep.RANDOM, is_end=is_end)
+        else:
+            self._folder_navigator.step(FolderStep.NEXT, is_end=is_end)
 
     @only_local_file
-    def shuffle_video(self):
-        self.switch_video(next_video_file(self.video_params.uri, is_shuffle=True))
+    def shuffle_video(self, is_end=False):
+        self._folder_navigator.step(FolderStep.RANDOM, is_end=is_end)
+
+    @only_local_file
+    def toggle_dir_recursive(self):
+        self.set_dir_recursive(not self.video_params.is_dir_recursive)
+
+    def set_dir_recursive(self, is_dir_recursive: bool):
+        """Look for the next, previous or a random file in the subfolders as
+        well, or only in the folder of the file playing.
+
+        The subfolders are the ones under the folder of the file playing
+        now, and stay so until they are left out again. Kept for a video
+        stopped or still loading too, and for a URL, which has no folder
+        to go through.
+        """
+
+        params = self.video_params
+
+        if is_dir_recursive == params.is_dir_recursive:
+            return
+
+        self._folder_navigator.cancel()
+
+        params.is_dir_recursive = is_dir_recursive
+
+        if is_dir_recursive and params.is_local_file:
+            params.dir_root = params.uri.parent
+        else:
+            params.dir_root = None
+
+    def _tell_once_loaded(self, notice: str):
+        self._notice_once_loaded = notice
+
+    def _files_open_elsewhere(self) -> list[Path]:
+        return [
+            block.video_params.uri
+            for block in self._ctx.video_blocks
+            if block is not self
+            and block.video_params is not None
+            and block.video_params.is_local_file
+        ]
 
     @only_local_file
     def switch_video(self, new_video: Path):
@@ -5079,8 +5168,11 @@ class VideoBlock(QWidget):
 
         self._close_bookmarks_manager()
 
+        self._folder_navigator.cancel()
+
         self.reset_loop()
         self.video_params.current_position = 0
+        self._forget_files_of_previous_video()
         # its bookmarks, if it has any, come with the file: see bookmarks
         self.video_params.uri = new_video
         self.video_params.playback_state = VideoInitialState.PLAYING
@@ -5088,6 +5180,17 @@ class VideoBlock(QWidget):
         self._default_title = None
 
         self.set_video(self.video_params)
+
+    def _forget_files_of_previous_video(self):
+        """Leave the audio and subtitle files picked for the video that was
+        here behind with it.
+
+        They were picked for that one; files of the next one's own are found
+        again where they are looked for by themselves.
+        """
+
+        self._drop_external_audio()
+        self._drop_external_subtitles()
 
     def rename(self):
         new_data = QVideoRenameDialog.get_edits(

@@ -91,6 +91,7 @@ class _Block:
     add_external_subtitles = VideoBlock.add_external_subtitles
     show_external_subtitle = VideoBlock.show_external_subtitle
     remove_external_subtitles = VideoBlock.remove_external_subtitles
+    _drop_external_subtitles = VideoBlock._drop_external_subtitles
     set_external_subtitle_autodiscover = VideoBlock.set_external_subtitle_autodiscover
     restore_subtitle_selection = VideoBlock.restore_subtitle_selection
     subtitle_file_name = VideoBlock.subtitle_file_name

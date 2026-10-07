@@ -62,6 +62,7 @@ class PlaylistVideoDefaults(BaseModel):
     deinterlace: VideoDeinterlace | None = None
     deinterlace_mode: VideoDeinterlaceMode | None = None
     end_action: VideoEndAction | None = None
+    dir_recursive: bool | None = None
     audio_mode: AudioChannelMode | None = None
     audio_track_mode: AudioTrackMode | None = None
     audio_languages: str | None = None
@@ -122,6 +123,9 @@ class Playlist(BaseModel):
     seek_step_long: float | None = None
     zoom_step: int | None = None
     zoom_proportional: bool | None = None
+    folder_skip_hidden: bool | None = None
+    folder_max_entries: int | None = None
+    shuffle_avoid_open: bool | None = None
     shuffle_on_load: bool | None = None
     disable_mouse_click_events: bool | None = None
     disable_mouse_wheel_events: bool | None = None
@@ -207,6 +211,7 @@ class Playlist(BaseModel):
         for video in self.videos or []:
             data = self._video_data(video)
             data["uri"] = _dump_uri(video.uri, relative, base_dir)
+            _dump_dir_root(data, relative, base_dir)
             _dump_external_files(
                 data, "external_audio", video.external_audio, relative, base_dir
             )
@@ -296,6 +301,7 @@ class Playlist(BaseModel):
                 video_args = dict(video_args)
                 if uri is not None:
                     video_args["uri"] = parse_uri(uri, base_dir)
+                _resolve_dir_root(video_args, base_dir)
                 _resolve_external_files(video_args, "external_audio", base_dir)
                 _resolve_file_selection(video_args, "audio_selection", base_dir)
                 _resolve_external_files(video_args, "external_subtitles", base_dir)
@@ -338,6 +344,7 @@ class Playlist(BaseModel):
             video_args = video_params.get(idx, {})
 
             video_args["uri"] = parse_uri(uri, base_dir)
+            _resolve_dir_root(video_args, base_dir)
             _resolve_external_files(video_args, "external_audio", base_dir)
             _resolve_file_selection(video_args, "audio_selection", base_dir)
             _resolve_external_files(video_args, "external_subtitles", base_dir)
@@ -492,6 +499,22 @@ def _dump_external_files(
     video_data[key] = [_dump_uri(file_path, relative, base_dir) for file_path in files]
 
 
+def _dump_dir_root(video_data: dict, relative: bool, base_dir: Path | None) -> None:
+    """Write the folder a video steps through the way the video is written."""
+
+    dir_root = video_data.get("dir_root")
+
+    if dir_root is not None:
+        video_data["dir_root"] = _dump_uri(dir_root, relative, base_dir)
+
+
+def _resolve_dir_root(video_args: dict, base_dir: Path | None) -> None:
+    dir_root = video_args.get("dir_root")
+
+    if isinstance(dir_root, str):
+        video_args["dir_root"] = parse_uri(dir_root, base_dir)
+
+
 def _dump_file_selection(
     video_data: dict, key: str, relative: bool, base_dir: Path | None
 ) -> None:
@@ -543,6 +566,9 @@ def _resolve_snapshot_uris(
             if isinstance(video.uri, str):
                 video.uri = parse_uri(video.uri, base_dir)
 
+            if video.dir_root is not None:
+                video.dir_root = Path(parse_uri(str(video.dir_root), base_dir))
+
             if video.external_audio:
                 video.external_audio = [
                     Path(parse_uri(str(file_path), base_dir))
@@ -578,6 +604,8 @@ def _relativize_snapshot_uris(
             uri = video.get("uri")
             if uri is not None:
                 video["uri"] = _dump_uri(uri, relative, base_dir)
+
+            _dump_dir_root(video, relative, base_dir)
 
             _dump_external_files(
                 video,

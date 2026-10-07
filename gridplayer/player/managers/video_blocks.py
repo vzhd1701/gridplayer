@@ -153,6 +153,7 @@ class VideoBlocksManager(ManagerBase):
     all_loop_chapter = pyqtSignal()
     all_reset_loop = pyqtSignal()
     all_set_end_action = pyqtSignal(VideoEndAction)
+    all_set_dir_recursive = pyqtSignal(bool)
 
     all_rate_increase = pyqtSignal()
     all_rate_decrease = pyqtSignal()
@@ -782,6 +783,7 @@ class VideoBlocksManager(ManagerBase):
             (self.all_loop_chapter, vb.loop_chapter),
             (self.all_reset_loop, vb.reset_loop),
             (self.all_set_end_action, vb.set_end_action),
+            (self.all_set_dir_recursive, vb.set_dir_recursive),
             (self.all_rate_increase, vb.rate_increase),
             (self.all_rate_decrease, vb.rate_decrease),
             (self.all_rate_reset, vb.rate_reset),

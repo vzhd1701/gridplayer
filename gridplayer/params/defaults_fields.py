@@ -255,6 +255,41 @@ def _deinterlace_modes() -> dict:
     }
 
 
+def _dir_recursive_tooltip() -> str:
+    return translate(
+        "Folder Navigation",
+        "Next, previous and random files are looked for in the folders under"
+        " the one the video was in when this was turned on, as well as in"
+        " that one. Play Next File and Play Previous File go the same way.",
+    )
+
+
+def _folder_skip_hidden_tooltip() -> str:
+    return translate(
+        "SettingsDialog",
+        "Pass over hidden files and folders (on Linux and macOS, the ones"
+        " named with a leading dot), and the ones systems keep their own"
+        " things in, such as the recycle bin or a NAS's thumbnails.",
+    )
+
+
+def _folder_max_entries_tooltip() -> str:
+    return translate(
+        "SettingsDialog",
+        "How many files and folders, videos or not, to look through at most"
+        " when subfolders are included, so that a whole drive does not have"
+        " to be gone through first.",
+    )
+
+
+def _shuffle_avoid_open_tooltip() -> str:
+    return translate(
+        "SettingsDialog",
+        "A random file that is already open in another cell is put off until"
+        " later, as long as there is another one to play.",
+    )
+
+
 def _end_actions() -> dict:
     return {
         VideoEndAction.LOOP_FILE: translate("When Finished", "Loop this file"),
@@ -495,6 +530,33 @@ PLAYLIST_FIELDS: tuple[SettingField, ...] = (
         section=translate("SettingsDialog", "Step Sizes"),
         label=translate("SettingsDialog", "Zoom in proportion to current zoom"),
         tooltip=_zoom_proportional_tooltip(),
+    ),
+    _f(
+        settings_key="playlist/folder_skip_hidden",
+        playlist_attr="folder_skip_hidden",
+        kind=FieldKind.CHECKBOX,
+        section=translate("SettingsDialog", "Folder Navigation"),
+        label=translate("SettingsDialog", "Skip hidden and system files"),
+        tooltip=_folder_skip_hidden_tooltip(),
+    ),
+    _f(
+        settings_key="playlist/folder_max_entries",
+        playlist_attr="folder_max_entries",
+        kind=FieldKind.SPIN,
+        section=translate("SettingsDialog", "Folder Navigation"),
+        label=translate("SettingsDialog", "Most files to look through"),
+        spin_min=0,
+        spin_max=1000000,
+        spin_special=translate("SettingsDialog", "No limit"),
+        tooltip=_folder_max_entries_tooltip(),
+    ),
+    _f(
+        settings_key="playlist/shuffle_avoid_open",
+        playlist_attr="shuffle_avoid_open",
+        kind=FieldKind.CHECKBOX,
+        section=translate("SettingsDialog", "Folder Navigation"),
+        label=translate("SettingsDialog", "Avoid random files open in other cells"),
+        tooltip=_shuffle_avoid_open_tooltip(),
     ),
     _f(
         settings_key="playlist/seek_sync_mode",
@@ -899,6 +961,14 @@ VIDEO_FIELDS: tuple[SettingField, ...] = (
         section=translate("SettingsDialog", "Playback"),
         label=translate("SettingsDialog", "When finished"),
         combo_values=_end_actions,
+    ),
+    _f(
+        settings_key="video_defaults/dir_recursive",
+        video_attr="dir_recursive",
+        kind=FieldKind.CHECKBOX,
+        section=translate("SettingsDialog", "Playback"),
+        label=translate("Folder Navigation", "Include subfolders"),
+        tooltip=_dir_recursive_tooltip(),
     ),
     _f(
         settings_key="video_defaults/random_loop",
