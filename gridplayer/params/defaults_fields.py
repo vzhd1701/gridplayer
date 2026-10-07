@@ -8,8 +8,10 @@ from gridplayer.params import env
 from gridplayer.params.static import (
     MAX_RATE,
     MAX_SCALE,
+    MAX_SEEK_STEP_SECONDS,
     MIN_RATE,
     MIN_SCALE,
+    MIN_SEEK_STEP_SECONDS,
     AudioChannelMode,
     AudioTrackMode,
     DropAction,
@@ -133,6 +135,22 @@ def _bookmarks_shared_tooltip() -> str:
         " in the playlist when the cell is closed or moves on to another file.\n"
         "Off: each cell keeps its own, and a cell's bookmarks are removed with"
         " it when it is closed.",
+    )
+
+
+def _zoom_step_tooltip() -> str:
+    return translate(
+        "SettingsDialog",
+        "How much one zoom in or out changes the zoom: a share of the whole"
+        " picture, or of what is on screen when zooming in proportion.",
+    )
+
+
+def _zoom_proportional_tooltip() -> str:
+    return translate(
+        "SettingsDialog",
+        "Each step changes the zoom by the same share of what is on screen,"
+        " so zooming feels the same at 2x and at 8x.",
     )
 
 
@@ -430,6 +448,61 @@ PLAYLIST_FIELDS: tuple[SettingField, ...] = (
         ),
         menu_action="Share Bookmarks",
         tooltip=_bookmarks_shared_tooltip(),
+    ),
+    _f(
+        settings_key="playlist/seek_step_short",
+        playlist_attr="seek_step_short",
+        kind=FieldKind.FLOAT_SPIN,
+        section=translate("SettingsDialog", "Step Sizes"),
+        label=translate("SettingsDialog", "Short seek"),
+        spin_min=MIN_SEEK_STEP_SECONDS,
+        spin_max=MAX_SEEK_STEP_SECONDS,
+        spin_decimals=3,
+        spin_step=1.0,
+        spin_suffix=translate("SettingsDialog", "(sec)"),
+    ),
+    _f(
+        settings_key="playlist/seek_step_medium",
+        playlist_attr="seek_step_medium",
+        kind=FieldKind.FLOAT_SPIN,
+        section=translate("SettingsDialog", "Step Sizes"),
+        label=translate("SettingsDialog", "Medium seek"),
+        spin_min=MIN_SEEK_STEP_SECONDS,
+        spin_max=MAX_SEEK_STEP_SECONDS,
+        spin_decimals=3,
+        spin_step=1.0,
+        spin_suffix=translate("SettingsDialog", "(sec)"),
+    ),
+    _f(
+        settings_key="playlist/seek_step_long",
+        playlist_attr="seek_step_long",
+        kind=FieldKind.FLOAT_SPIN,
+        section=translate("SettingsDialog", "Step Sizes"),
+        label=translate("SettingsDialog", "Long seek"),
+        spin_min=MIN_SEEK_STEP_SECONDS,
+        spin_max=MAX_SEEK_STEP_SECONDS,
+        spin_decimals=3,
+        spin_step=1.0,
+        spin_suffix=translate("SettingsDialog", "(sec)"),
+    ),
+    _f(
+        settings_key="playlist/zoom_step",
+        playlist_attr="zoom_step",
+        kind=FieldKind.SPIN,
+        section=translate("SettingsDialog", "Step Sizes"),
+        label=translate("SettingsDialog", "Zoom"),
+        spin_min=1,
+        spin_max=100,
+        spin_suffix="%",
+        tooltip=_zoom_step_tooltip(),
+    ),
+    _f(
+        settings_key="playlist/zoom_proportional",
+        playlist_attr="zoom_proportional",
+        kind=FieldKind.CHECKBOX,
+        section=translate("SettingsDialog", "Step Sizes"),
+        label=translate("SettingsDialog", "Zoom in proportion to current zoom"),
+        tooltip=_zoom_proportional_tooltip(),
     ),
     _f(
         settings_key="playlist/seek_sync_mode",

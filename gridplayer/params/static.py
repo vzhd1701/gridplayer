@@ -18,6 +18,11 @@ FONT_SIZE_BIG_INFO = 22 if env.IS_MACOS else 16
 MIN_SCALE = 1.0
 MAX_SCALE = 10.0
 
+# What a seek step can be set to: to the millisecond, and up to an hour;
+# past that a timecode or a share of the video gets there in one go anyway.
+MIN_SEEK_STEP_SECONDS = 0.001
+MAX_SEEK_STEP_SECONDS = 3600
+
 # How far one move takes the picture: this much of the part on show, so a
 # press goes as far on screen whatever the video's size or the zoom.
 SHIFT_STEP = 0.05

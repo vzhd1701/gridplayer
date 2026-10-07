@@ -73,11 +73,9 @@ from gridplayer.params.static import (
     CHROME_MIN_SIZE,
     MAX_AUDIO_DELAY_MS,
     MAX_RATE,
-    MAX_SCALE,
     MAX_SUBTITLE_DELAY_MS,
     MIN_AUDIO_DELAY_MS,
     MIN_RATE,
-    MIN_SCALE,
     MIN_SUBTITLE_DELAY_MS,
     OVERLAY_ACTIVITY_EVENT,
     PLAYER_ID_LENGTH,
@@ -146,6 +144,7 @@ from gridplayer.utils.sponsorblock import (
     skip_spans,
     sponsorblock_fetcher,
 )
+from gridplayer.utils.step_sizes import seek_step_ms, zoom_stepped
 from gridplayer.utils.time_txt import timed_title
 from gridplayer.utils.track_language import language_name, normalize, pick_track
 from gridplayer.utils.url_resolve.static import ResolvedVideo
@@ -4420,6 +4419,14 @@ class VideoBlock(QWidget):
 
     @only_initialized
     @only_seekable
+    def seek_step(self, slot, direction):
+        """Seek by one of the playlist's steps, "short", "medium" or "long",
+        forwards (direction 1) or back (-1)."""
+
+        self.seek_shift_ms(direction * seek_step_ms(slot))
+
+    @only_initialized
+    @only_seekable
     def seek_random(self, is_viewers=True):
         random_ms = random.randint(self.loop_start, self.loop_end)
 
@@ -4530,12 +4537,12 @@ class VideoBlock(QWidget):
     @only_with_video_tacks
     @only_initialized
     def scale_increase(self):
-        self._zoom_to(min(round(self.video_params.scale + 0.1, 1), MAX_SCALE))
+        self._zoom_to(zoom_stepped(self.video_params.scale, 1))
 
     @only_with_video_tacks
     @only_initialized
     def scale_decrease(self):
-        self._zoom_to(max(round(self.video_params.scale - 0.1, 1), MIN_SCALE))
+        self._zoom_to(zoom_stepped(self.video_params.scale, -1))
 
     @only_with_video_tacks
     @only_initialized

@@ -130,6 +130,8 @@ class DefaultsForm(QWidget):
                 widget.setSpecialValueText(spec.spin_special)
             widget.valueChanged.connect(self._on_edited)
             lay.addWidget(widget)
+            if spec.spin_suffix:
+                lay.addWidget(QLabel(spec.spin_suffix))
         elif spec.kind is FieldKind.CROP:
             label = QLabel(spec.label)
             self._labels[spec.settings_key] = label

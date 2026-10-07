@@ -107,6 +107,10 @@ MOUSE_PLACEHOLDER = translate(
 
 
 def _action_title(action: dict) -> str:
+    # a title the menu fills in as it opens has a fixed one to go by here
+    if "keymap_title" in action:
+        return str(action["keymap_title"])
+
     title = action["title"]
     if action.get("toggle") and isinstance(title, tuple):
         return "{} / {}".format(*title)

@@ -19,6 +19,7 @@ from gridplayer.player.managers.base import ManagerBase
 from gridplayer.playlist_settings import PlaylistSettings
 from gridplayer.settings import Settings
 from gridplayer.utils.qt import MILLISECONDS, qt_connect, translate
+from gridplayer.utils.step_sizes import seek_step_label, seek_step_ms
 from gridplayer.widgets.video_block import SyncedView, VideoBlock
 
 # what [ALL] does to the views, which leaves the one synced to out of date
@@ -231,6 +232,8 @@ class VideoBlocksManager(ManagerBase):
             "all_play": self.cmd_all_play,
             "all_pause": self.cmd_all_pause,
             "all_seek_timecode": self.cmd_seek_timecode,
+            "all_seek_step": self.cmd_seek_step,
+            "seek_step_label": seek_step_label,
             "all_set_auto_reload_timer": self.cmd_set_auto_reload_timer,
             "all_set_audio_delay": self.cmd_set_audio_delay,
             "all_set_subtitle_delay": self.cmd_set_subtitle_delay,
@@ -315,6 +318,12 @@ class VideoBlocksManager(ManagerBase):
             return
 
         self.all_seek.emit(time_ms)
+
+    def cmd_seek_step(self, slot, direction):
+        """Every video by one of the playlist's seek steps; see
+        VideoBlock.seek_step."""
+
+        self.all_seek_shift_ms.emit(direction * seek_step_ms(slot))
 
     def cmd_set_auto_reload_timer(self):
         time_minutes = QCustomSpinboxInput.get_int(

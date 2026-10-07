@@ -544,6 +544,10 @@ class TestOnOneVideo:
 
 
 def _zooming_block(is_zoom_to_cursor=True, scale=1.0, shift=NO_SHIFT, focus=(600, 300)):
+    # the steps as they come, whatever this machine has them set to
+    PlaylistSettings().set("playlist/zoom_step", 10)
+    PlaylistSettings().set("playlist/zoom_proportional", False)
+
     block = Mock(spec=VideoBlock)
     block.video_params = Video(
         uri=URI, scale=scale, shift=shift, is_zoom_to_cursor=is_zoom_to_cursor

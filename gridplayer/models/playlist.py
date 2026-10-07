@@ -118,6 +118,11 @@ class Playlist(BaseModel):
     pause_sync: bool | None = None
     rate_sync: bool | None = None
     bookmarks_shared: bool | None = None
+    seek_step_short: float | None = None
+    seek_step_medium: float | None = None
+    seek_step_long: float | None = None
+    zoom_step: int | None = None
+    zoom_proportional: bool | None = None
     shuffle_on_load: bool | None = None
     disable_mouse_click_events: bool | None = None
     disable_mouse_wheel_events: bool | None = None
