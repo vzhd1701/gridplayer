@@ -324,8 +324,9 @@ def _item_tooltip(name: str, where: str) -> str:
     lines = [] if name == where else [f"<b>{html.escape(name)}</b>"]
     lines.append(html.escape(where))
 
-    # on a line each, however long: a link has no spaces to wrap at
-    return f"<p style='white-space:pre'>{'<br>'.join(lines)}</p>"
+    # on a line each; a long link, with no spaces to wrap at, wraps
+    # anywhere in the tip (see widgets.tooltip)
+    return f"<p>{'<br>'.join(lines)}</p>"
 
 
 class ListItemsModel(QAbstractTableModel):

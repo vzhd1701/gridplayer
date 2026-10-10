@@ -1393,8 +1393,10 @@ class TestTheHoverTip:
         bar = dialog._player.bar
         bar_bottom = bar.mapToGlobal(QPoint(0, bar.height())).y()
 
-        assert tip.y() > bar_bottom
-        assert tip.x() + tip.width() // 2 == pytest.approx(500, abs=1)
+        box = tip.box_geometry()
+
+        assert box.top() > bar_bottom
+        assert box.center().x() == pytest.approx(500, abs=1)
 
     def test_a_marker_s_names_its_bookmarks(self, dialog, mouse_at):
         mouse_at(500)

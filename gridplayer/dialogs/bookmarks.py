@@ -40,17 +40,12 @@ from PyQt5.QtWidgets import (
     QApplication,
     QDialog,
     QDialogButtonBox,
-    QFrame,
     QHBoxLayout,
     QHeaderView,
     QLabel,
     QLineEdit,
     QPushButton,
-    QStyle,
     QStyledItemDelegate,
-    QStyleOptionFrame,
-    QStylePainter,
-    QToolTip,
     QTreeView,
     QVBoxLayout,
     QWidget,
@@ -82,6 +77,7 @@ from gridplayer.widgets.bookmark_colors import (
     text_marker_html,
 )
 from gridplayer.widgets.custom_menu import CustomMenu
+from gridplayer.widgets.tooltip import TipWindow
 from gridplayer.widgets.video_overlay_buttons import OverlayPlayPauseButton
 from gridplayer.widgets.video_overlay_elements import (
     BOOKMARK_MARKER,
@@ -627,66 +623,38 @@ class _Markers(OverlayBookmarkMarkers):
             self._draw_marker(painter, x, BOOKMARK_TAIL, marks)
 
 
-class HoverTip(QLabel):
+class HoverTip(TipWindow):
     """A tooltip that keeps up with the mouse along the bar.
 
-    Qt's own stays where it was shown until its text changes, so along the
-    bar it hops from place to place; this one moves with every move of the
-    mouse, at a height of its own, and stays up while the mouse is there.
-    It looks as Qt's do.
+    The app's other tips stay put under what they are about, so along the
+    bar one would hop from place to place; this one moves with every move
+    of the mouse, at a height of its own, and stays up while the mouse is
+    there. It looks as the others do.
     """
-
-    def __init__(self, parent=None):
-        super().__init__(parent, Qt.ToolTip)
-
-        self.setAttribute(Qt.WA_ShowWithoutActivating)
-        self.setAttribute(Qt.WA_TransparentForMouseEvents)
-
-        self.setForegroundRole(QPalette.ToolTipText)
-        self.setBackgroundRole(QPalette.ToolTipBase)
-        self.setPalette(QToolTip.palette())
-        self.setFont(QToolTip.font())
-
-        style = self.style()
-        self.setMargin(
-            1 + style.pixelMetric(QStyle.PM_ToolTipLabelFrameWidth, None, self)
-        )
-        self.setFrameStyle(QFrame.NoFrame)
-        self.setWindowOpacity(
-            style.styleHint(QStyle.SH_ToolTipLabel_Opacity, None, self) / 255
-        )
 
     def show_at(self, text, x, top, bottom):
         """Show the text centred on x, under bottom, or over top where the
         screen ends below it; all on the screen's own coordinates."""
-
-        if text != self.text():
-            self.setText(text)
-            self.adjustSize()
 
         screen = QApplication.screenAt(QPoint(x, bottom))
         if screen is None:
             screen = QApplication.primaryScreen()
         area = screen.availableGeometry()
 
-        left = x - self.width() // 2
-        left = max(area.left(), min(left, area.right() + 1 - self.width()))
+        if text != self.text():
+            self.set_text(text, area.width())
+
+        box = self.box_size()
+
+        left = x - box.width() // 2
+        left = max(area.left(), min(left, area.right() + 1 - box.width()))
 
         y = bottom + HOVER_TIP_GAP
-        if y + self.height() > area.bottom() + 1:
-            y = top - HOVER_TIP_GAP - self.height()
+        if y + box.height() > area.bottom() + 1:
+            y = top - HOVER_TIP_GAP - box.height()
 
-        self.move(left, y)
-        self.show()
-
-    def paintEvent(self, event):
-        painter = QStylePainter(self)
-        option = QStyleOptionFrame()
-        option.initFrom(self)
-        painter.drawPrimitive(QStyle.PE_PanelTipLabel, option)
-        painter.end()
-
-        super().paintEvent(event)
+        self.move_box(QPoint(left, y))
+        self.show_now()
 
 
 class _Bar(OverlayProgressBar):

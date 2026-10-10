@@ -956,14 +956,18 @@ class Ui_SettingsDialog:
         self.cacheModeLabel.setToolTip(
             _translate(
                 "SettingsDialog",
-                "Where downloaded thumbnails and lists are kept. In memory: nothing is saved to disk, and it's cleared when GridPlayer closes.",
+                "Where downloaded thumbnails and lists are kept.\n"
+                "On disk: kept after GridPlayer closes, up to the limit.\n"
+                "In memory: cleared when GridPlayer closes.",
             )
         )
         self.cacheModeLabel.setText(_translate("SettingsDialog", "Keep"))
         self.cacheMode.setToolTip(
             _translate(
                 "SettingsDialog",
-                "Where downloaded thumbnails and lists are kept. In memory: nothing is saved to disk, and it's cleared when GridPlayer closes.",
+                "Where downloaded thumbnails and lists are kept.\n"
+                "On disk: kept after GridPlayer closes, up to the limit.\n"
+                "In memory: cleared when GridPlayer closes.",
             )
         )
         self.cacheMaxMBLabel.setToolTip(
@@ -1017,7 +1021,7 @@ class Ui_SettingsDialog:
         self.streamingTestButton.setToolTip(
             _translate(
                 "SettingsDialog",
-                "Resolve a YouTube link step by step and report which step gives way",
+                "Open a YouTube link step by step and show which step fails",
             )
         )
         self.streamingTestButton.setText(
@@ -1047,7 +1051,7 @@ class Ui_SettingsDialog:
         self.cookiesAllowUpdate.setToolTip(
             _translate(
                 "SettingsDialog",
-                "Sites hand out fresh cookies as you use them. Keeping those makes a stored login last longer, at the cost of rewriting the cookies file as you watch.",
+                "Save new cookies that sites send while you watch. Keeps logins working longer, but rewrites the cookies file often.",
             )
         )
         self.cookiesAllowUpdate.setText(
@@ -1066,7 +1070,9 @@ class Ui_SettingsDialog:
         self.networkProxyMode.setToolTip(
             _translate(
                 "SettingsDialog",
-                "System follows the machine's own proxy settings. None connects directly, ignoring them.",
+                "System: use your computer's proxy settings.\n"
+                "None: connect directly.\n"
+                "Custom: use the proxy address you enter.",
             )
         )
         self.label_network_proxy_url.setText(
@@ -1078,7 +1084,7 @@ class Ui_SettingsDialog:
         self.networkTimeout.setToolTip(
             _translate(
                 "SettingsDialog",
-                "How long to wait on a request before giving up on it. This applies while a link is being resolved, not while it is playing.",
+                "How long to wait for a site to answer while opening a link. Doesn't affect playback.",
             )
         )
         self.networkTimeout.setSpecialValueText(_translate("SettingsDialog", "Auto"))
@@ -1096,7 +1102,7 @@ class Ui_SettingsDialog:
         self.networkForceIPv4.setToolTip(
             _translate(
                 "SettingsDialog",
-                "Skip IPv6 and connect over IPv4 only. Fixes a connection that stalls on IPv6 that is offered but does not work, and sites that turn away your IPv6 address.",
+                "Connect over IPv4 only. Try this if links stall or a site blocks your IPv6 address.",
             )
         )
         self.networkForceIPv4.setText(_translate("SettingsDialog", "Force IPv4"))
@@ -1118,7 +1124,7 @@ class Ui_SettingsDialog:
         self.networkTestButton.setToolTip(
             _translate(
                 "SettingsDialog",
-                "Try these settings against a real address and report which step fails",
+                "Test these settings on a real link and show which step fails",
             )
         )
         self.networkTestButton.setText(_translate("SettingsDialog", "Test network"))
@@ -1153,7 +1159,7 @@ class Ui_SettingsDialog:
         self.miscHWCropBorder.setToolTip(
             _translate(
                 "SettingsDialog",
-                "Hidden margin that keeps hardware video edge artifacts out of view. Auto uses the platform default.",
+                "Crops a few pixels off the edges to hide glitches from hardware video. Auto uses the default for your system.",
             )
         )
         self.logLimit.setText(_translate("SettingsDialog", "Limit log file size"))
@@ -1169,7 +1175,7 @@ class Ui_SettingsDialog:
         self.dataDirOpen.setToolTip(
             _translate(
                 "SettingsDialog",
-                "Where the log file, the settings and the stored cookies are kept, and where a JavaScript runtime can be put for GridPlayer to find.",
+                "Holds the log, settings and cookies. You can also put a JavaScript runtime here.",
             )
         )
 

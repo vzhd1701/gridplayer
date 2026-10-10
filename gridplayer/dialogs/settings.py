@@ -290,7 +290,7 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
         self.screenshotsDir.setToolTip(str(default_screenshots_dir()))
 
         self.cacheClear.setToolTip(
-            self.tr("Delete everything in the cache. Folder: {FOLDER}").format(
+            self.tr("Delete everything in the cache folder:\n{FOLDER}").format(
                 FOLDER=cache.cache_root()
             )
         )

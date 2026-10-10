@@ -9,6 +9,7 @@ from gridplayer.params import env
 from gridplayer.settings import Settings
 from gridplayer.utils.libvlc import init_vlc
 from gridplayer.utils.qt import translate
+from gridplayer.widgets.tooltip import install_tooltips
 
 
 def run_app():
@@ -39,6 +40,9 @@ def run_app():
 
     player = Player()
     app.installEventFilter(player)
+
+    # after the player's, so it sees the clicks and keys the player takes
+    install_tooltips(app)
 
     if sys.argv[1:]:
         player.process_arguments(sys.argv[1:])

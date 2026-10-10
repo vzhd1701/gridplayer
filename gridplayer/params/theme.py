@@ -27,7 +27,7 @@ THEME_LIGHT = MappingProxyType(
         "button_text": "#000000",
         "highlight": "#bbbbbb",
         "highlighted_text": "#000000",
-        "tooltip_base": "#ffffdc",
+        "tooltip_base": "#ffffff",
         "tooltip_text": "#000000",
         "link": "#0066cc",
         "border": "#aaaaaa",
@@ -47,7 +47,7 @@ THEME_DARK = MappingProxyType(
         "button_text": "#eeeeee",
         "highlight": "#666666",
         "highlighted_text": "#ffffff",
-        "tooltip_base": "#444444",
+        "tooltip_base": "#3a3a3a",
         "tooltip_text": "#eeeeee",
         "link": "#6ab0ff",
         "border": "#888888",
@@ -146,6 +146,21 @@ def combo_popup_stylesheet() -> str:
         f"color: {colors['text']};"
         "background: transparent;"
         "outline: 0;"
+        "}"
+    )
+
+
+def tooltip_stylesheet() -> str:
+    """Qt's own tooltip, for what widgets.tooltip leaves to it (tabs, menu
+    items, headers), in the same colours as ours."""
+
+    colors = current_colors()
+    return (
+        "QToolTip {"
+        f"background-color: {colors['tooltip_base']};"
+        f"color: {colors['tooltip_text']};"
+        f"border: 1px solid {colors['border']};"
+        "padding: 3px 6px;"
         "}"
     )
 
@@ -255,7 +270,7 @@ def apply_theme(app=None) -> None:
         switch_icon_theme()
         _install_dialog_button_style(app)
         app.setPalette(fusion_palette())
-        app.setStyleSheet(combo_popup_stylesheet())
+        app.setStyleSheet(combo_popup_stylesheet() + tooltip_stylesheet())
         _refresh_html_links(app)
         _apply_native_window_chrome(app)
     finally:

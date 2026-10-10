@@ -238,17 +238,19 @@ def _text_marker_png(color: str | None, rim_rgba: int, scale: int) -> bytes:
 def text_marker_html(color: str | None, rim: QColor, scale: int) -> str:
     """A bookmark's marker in its colour, as the bar draws it, to stand in
     a line of rich text, with room after it for the name; drawn at the
-    screen's scale."""
+    screen's scale.
+
+    It stands on the baseline as a capital does, and is about as tall as
+    one. vertical-align: middle would centre it on a quarter of the
+    font's x-height, which Qt has as 3 px for Hack on Windows: the marker
+    hung below the digits and made the line taller than the text's."""
 
     width, height = _text_marker_size()
 
     png = _text_marker_png(color, rim.rgba(), scale)
     src = "data:image/png;base64," + base64.b64encode(png).decode("ascii")
 
-    return (
-        f'<img src="{src}" width="{width}" height="{height}"'
-        ' style="vertical-align: middle">'
-    )
+    return f'<img src="{src}" width="{width}" height="{height}">'
 
 
 def _any_color_icon(rim: QColor) -> QIcon:

@@ -410,7 +410,9 @@
            <item row="0" column="0">
             <widget class="QLabel" name="cacheModeLabel">
              <property name="toolTip">
-              <string>Where downloaded thumbnails and lists are kept. In memory: nothing is saved to disk, and it&apos;s cleared when GridPlayer closes.</string>
+              <string>Where downloaded thumbnails and lists are kept.
+On disk: kept after GridPlayer closes, up to the limit.
+In memory: cleared when GridPlayer closes.</string>
              </property>
              <property name="text">
               <string>Keep</string>
@@ -420,7 +422,9 @@
            <item row="0" column="1">
             <widget class="QComboBox" name="cacheMode">
              <property name="toolTip">
-              <string>Where downloaded thumbnails and lists are kept. In memory: nothing is saved to disk, and it&apos;s cleared when GridPlayer closes.</string>
+              <string>Where downloaded thumbnails and lists are kept.
+On disk: kept after GridPlayer closes, up to the limit.
+In memory: cleared when GridPlayer closes.</string>
              </property>
             </widget>
            </item>
@@ -748,7 +752,7 @@
              <item>
               <widget class="QPushButton" name="streamingTestButton">
                <property name="toolTip">
-                <string>Resolve a YouTube link step by step and report which step gives way</string>
+                <string>Open a YouTube link step by step and show which step fails</string>
                </property>
                <property name="text">
                 <string>Test a YouTube link</string>
@@ -879,7 +883,7 @@
          <item>
           <widget class="QCheckBox" name="cookiesAllowUpdate">
            <property name="toolTip">
-            <string>Sites hand out fresh cookies as you use them. Keeping those makes a stored login last longer, at the cost of rewriting the cookies file as you watch.</string>
+            <string>Save new cookies that sites send while you watch. Keeps logins working longer, but rewrites the cookies file often.</string>
            </property>
            <property name="text">
             <string>Let yt-dlp refresh stored cookies</string>
@@ -969,7 +973,9 @@
            <item row="0" column="1">
             <widget class="QComboBox" name="networkProxyMode">
              <property name="toolTip">
-              <string>System follows the machine's own proxy settings. None connects directly, ignoring them.</string>
+              <string>System: use your computer's proxy settings.
+None: connect directly.
+Custom: use the proxy address you enter.</string>
              </property>
             </widget>
            </item>
@@ -997,7 +1003,7 @@
            <item row="2" column="1">
             <widget class="QSpinBox" name="networkTimeout">
              <property name="toolTip">
-              <string>How long to wait on a request before giving up on it. This applies while a link is being resolved, not while it is playing.</string>
+              <string>How long to wait for a site to answer while opening a link. Doesn't affect playback.</string>
              </property>
              <property name="specialValueText">
               <string>Auto</string>
@@ -1029,7 +1035,7 @@
          <item>
           <widget class="QCheckBox" name="networkForceIPv4">
            <property name="toolTip">
-            <string>Skip IPv6 and connect over IPv4 only. Fixes a connection that stalls on IPv6 that is offered but does not work, and sites that turn away your IPv6 address.</string>
+            <string>Connect over IPv4 only. Try this if links stall or a site blocks your IPv6 address.</string>
            </property>
            <property name="text">
             <string>Force IPv4</string>
@@ -1061,7 +1067,7 @@
            <item>
             <widget class="QPushButton" name="networkTestButton">
              <property name="toolTip">
-              <string>Try these settings against a real address and report which step fails</string>
+              <string>Test these settings on a real link and show which step fails</string>
              </property>
              <property name="text">
               <string>Test network</string>
@@ -1236,7 +1242,7 @@
            <item row="0" column="1">
             <widget class="QComboBox" name="miscHWCropBorder">
              <property name="toolTip">
-              <string>Hidden margin that keeps hardware video edge artifacts out of view. Auto uses the platform default.</string>
+              <string>Crops a few pixels off the edges to hide glitches from hardware video. Auto uses the default for your system.</string>
              </property>
             </widget>
            </item>
@@ -1391,7 +1397,7 @@
         <string>Open data folder</string>
        </property>
        <property name="toolTip">
-        <string>Where the log file, the settings and the stored cookies are kept, and where a JavaScript runtime can be put for GridPlayer to find.</string>
+        <string>Holds the log, settings and cookies. You can also put a JavaScript runtime here.</string>
        </property>
       </widget>
      </item>

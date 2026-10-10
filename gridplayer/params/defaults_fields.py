@@ -118,17 +118,16 @@ def _unsaved_changes_modes() -> dict:
 def _unsaved_changes_tooltip() -> str:
     return translate(
         "SettingsDialog",
-        "Auto save applies only when the playlist has a file location;"
-        " otherwise the fallback action is used.",
+        "Auto save only works for a playlist that's already saved to a file."
+        " Otherwise it discards or asks.",
     )
 
 
 def _save_paths_relative_tooltip() -> str:
     return translate(
         "SettingsDialog",
-        "Store local video paths relative to the playlist file location so the"
-        " playlist stays portable when moved together with its videos. URLs and"
-        " paths that cannot be made relative (e.g. another drive) are kept as-is.",
+        "So you can move the playlist together with its videos. Links and paths"
+        " on another drive stay as they are.",
     )
 
 
@@ -243,9 +242,11 @@ def _list_get_info_tooltip() -> str:
 def _add_mode_tooltip() -> str:
     return translate(
         "Adding",
-        "How many cells to use for added files, folders and playlists. One per item:"
-        " each gets its own cell. One for all: everything in one cell. One per video:"
-        " every video gets its own cell, even inside folders and playlists.",
+        "How many cells to use for added files, folders and playlists.\n"
+        "One per item: each file and folder gets its own cell.\n"
+        "One for all: everything in one cell.\n"
+        "One per video: every video gets its own cell, even inside folders and"
+        " playlists.",
     )
 
 
@@ -1065,8 +1066,9 @@ VIDEO_FIELDS: tuple[SettingField, ...] = (
         combo_values=_deinterlace_states,
         tooltip=translate(
             "SettingsDialog",
-            "Automatic deinterlaces only videos marked as interlaced. Turn it on for"
-            " videos with combing on moving edges.",
+            "Automatic: only videos marked as interlaced.\n"
+            "On: always. Use it if you see combing on moving edges.\n"
+            "Off: never.",
         ),
     ),
     _f(
@@ -1080,9 +1082,10 @@ VIDEO_FIELDS: tuple[SettingField, ...] = (
         enabled_by_value=(VideoDeinterlace.AUTO, VideoDeinterlace.ON),
         tooltip=translate(
             "SettingsDialog",
-            "Auto lets VLC choose (currently X). Yadif (2x), Bob and Phosphor double"
-            " the frame rate, which costs more with many videos. With hardware"
-            " decoding, the GPU has fewer modes and falls back to one it supports.",
+            "Auto: VLC chooses (currently X).\n"
+            "Yadif (2x), Bob and Phosphor double the frame rate, which costs more"
+            " with many videos.\n"
+            "With hardware decoding, the GPU may use another mode it supports.",
         ),
     ),
     _f(
