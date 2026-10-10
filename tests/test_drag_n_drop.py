@@ -2,13 +2,15 @@ import time
 from types import SimpleNamespace
 
 import pytest
-from PyQt5.QtCore import QEvent, QMimeData, QPoint, QPointF, Qt
+from PyQt5.QtCore import QEvent, QMimeData, QPoint, QPointF, Qt, QUrl
 from PyQt5.QtGui import QDropEvent, QKeyEvent, QMouseEvent
 from PyQt5.QtWidgets import QApplication, QDialog, QLineEdit, QWidget
 
-from gridplayer.params.static import DropAction
+from gridplayer.models.media_list import ListSource, MediaList
+from gridplayer.params.static import DropAction, ListSourceKind
 from gridplayer.player.managers.drag_n_drop import DragNDropManager
 from gridplayer.utils.drag_n_drop import drop_is_replace
+from gridplayer.utils.drop_zone import DropIndicator, DropZone
 from gridplayer.utils.files import LIST_MIME, VIDEO_MIME
 
 
@@ -541,3 +543,74 @@ class TestAWindowOverThePlayer:
         self.player.setGeometry(0, 0, 4000, 4000)
 
         assert manager._is_pointer_over_player() is False
+
+
+class _ListCell:
+    def __init__(self, media_list):
+        self.media_list = media_list
+        self.shown = []
+
+    def set_drop_indicator(self, indicator):
+        self.shown.append(indicator)
+
+
+def _dragged(mime):
+    return SimpleNamespace(mimeData=lambda: mime)
+
+
+def _files():
+    mime = QMimeData()
+    mime.setUrls([QUrl.fromLocalFile("C:/videos/a.mp4")])
+    return _dragged(mime)
+
+
+class TestTheMarkOverACellPlayingAList:
+    @pytest.fixture
+    def shown(self, mocker):
+        def _shown(media_list, zone, event, is_internal=False, is_replace=False):
+            manager, _parent = _make_manager()
+            cell = _ListCell(media_list)
+            mocker.patch.object(manager, "_hover_at", return_value=(cell, zone))
+            mocker.patch.object(manager, "_is_replace", return_value=is_replace)
+
+            manager._update_drop_target(QPoint(), is_internal=is_internal, event=event)
+
+            return cell.shown[-1]
+
+        return _shown
+
+    def test_files_in_its_middle_go_on_its_list(self, shown):
+        assert shown(MediaList(), DropZone.CENTER, _files()) == (
+            DropIndicator.ADD_TO_LIST
+        )
+
+    def test_at_its_edge_in_a_cell_of_their_own(self, shown):
+        assert shown(MediaList(), DropZone.AFTER, _files()) == DropIndicator.ARROW_RIGHT
+
+    def test_to_replace_its_video(self, shown):
+        assert (
+            shown(MediaList(), DropZone.CENTER, _files(), is_replace=True)
+            == DropIndicator.REPLACE
+        )
+
+    def test_not_for_a_linked_list(self, shown):
+        linked = MediaList(
+            source=ListSource(kind=ListSourceKind.URL, location="http://tv/l"),
+            is_linked=True,
+        )
+
+        assert shown(linked, DropZone.CENTER, _files()) == DropIndicator.DOT
+
+    def test_not_for_a_cell_from_another_player(self, shown):
+        mime = QMimeData()
+        mime.setData(VIDEO_MIME, b"{}")
+
+        assert shown(MediaList(), DropZone.CENTER, _dragged(mime)) == (
+            DropIndicator.DOT
+        )
+
+    def test_not_for_a_cell_of_this_one(self, shown):
+        assert (
+            shown(MediaList(), DropZone.CENTER, _files(), is_internal=True)
+            == DropIndicator.SWAP
+        )

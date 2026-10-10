@@ -20,6 +20,7 @@ class DropIndicator(Enum):
     SWAP = auto()
     DOT = auto()
     REPLACE = auto()
+    ADD_TO_LIST = auto()
     SOURCE = auto()
 
 
@@ -77,14 +78,35 @@ def insert_index(dst_index: int, zone: DropZone) -> int:
     return dst_index
 
 
+def adds_to_list(cell, zone: DropZone | None, is_replace: bool) -> bool:
+    """Whether files dropped on a cell go on the list it plays, rather than
+    into cells of their own: dropped in its middle, not to replace its
+    video, on a cell playing a list that takes more. A list linked to its
+    source has what the source has and nothing else."""
+
+    if cell is None or zone != DropZone.CENTER or is_replace:
+        return False
+
+    media_list = getattr(cell, "media_list", None)
+
+    return (
+        media_list is not None
+        and not media_list.is_linked
+        and not getattr(cell, "is_closing", False)
+    )
+
+
 def indicator_for(
     zone: DropZone | None,
     is_internal: bool,
     grid_mode: GridMode,
     is_replace: bool = False,
+    is_add_to_list: bool = False,
 ) -> DropIndicator:
     if is_replace and zone is not None:
         return DropIndicator.REPLACE
+    if zone == DropZone.CENTER and is_add_to_list:
+        return DropIndicator.ADD_TO_LIST
     if zone == DropZone.CENTER:
         return DropIndicator.SWAP if is_internal else DropIndicator.DOT
     if zone == DropZone.ABOVE:

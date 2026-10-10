@@ -38,6 +38,7 @@ from gridplayer.params.static import (
 from gridplayer.player.managers.base import ManagerBase
 from gridplayer.playlist_settings import PlaylistSettings
 from gridplayer.settings import Settings
+from gridplayer.utils.drop_zone import DropZone, adds_to_list
 from gridplayer.utils.files import extract_mime_uris
 from gridplayer.utils.folder_navigator import scan_rules
 from gridplayer.utils.list_files import (
@@ -532,7 +533,9 @@ class AddVideosManager(ManagerBase):
         self._restore_cursor()
 
         uris = reading.request.uris
-        is_asked = PlaylistSettings().get("playlist/add_mode") == AddMode.ASK
+        is_asked = PlaylistSettings().get(
+            "playlist/add_mode"
+        ) == AddMode.ASK and not _is_onto_list(reading.request.drop)
 
         if is_asked:
             question = _question_txt(len(uris))
@@ -612,7 +615,10 @@ class AddVideosManager(ManagerBase):
 
         mode = PlaylistSettings().get("playlist/add_mode")
 
-        if mode not in {AddMode.CELL_EACH, AddMode.ONE_CELL}:
+        # what goes on a cell's list has no cell of its own to wait in
+        if mode not in {AddMode.CELL_EACH, AddMode.ONE_CELL} or _is_onto_list(
+            request.drop
+        ):
             return False
 
         if mode == AddMode.CELL_EACH and not self._is_added_anyway(len(request.uris)):
@@ -845,9 +851,13 @@ class AddVideosManager(ManagerBase):
 
         ask = ask or self._ask
 
+        # dropped in the middle of a cell playing a list: on its list, as
+        # the drop showed, however the playlist says to add
+        if _is_onto_list(drop):
+            return _ADD_TO_CELL
+
         mode = PlaylistSettings().get("playlist/add_mode")
-        target = _cell_dropped_on(drop)
-        is_replace = drop.is_replace if drop else False
+        target = _video_cell_dropped_in(drop)
 
         if mode != AddMode.ASK:
             if not self._is_added_anyway(count_cells(groups, mode)):
@@ -858,36 +868,36 @@ class AddVideosManager(ManagerBase):
         choices = choices_for(groups)
 
         # one way, and no cell to add them to instead: nothing to ask
-        if len(choices) == 1 and not _can_add_to(target):
+        if len(choices) == 1 and target is None:
             return choices[0]
 
-        return ask(groups, choices, target, is_replace)
+        return ask(groups, choices, target)
 
-    def _ask(self, groups, choices, target, is_replace):
-        question = self._question(groups, choices, target, is_replace)
+    def _ask(self, groups, choices, target):
+        question = self._question(groups, choices, target)
 
         return AddChoiceDialog.ask(
             question.question, question.what, question.options, self.parent()
         )
 
-    def _ask_in_dialog(self, groups, choices, target, is_replace):
+    def _ask_in_dialog(self, groups, choices, target):
         """Asked in the dialog that is up, saying how far reading has got:
         the answer comes once the viewer gives it."""
 
-        question = self._question(groups, choices, target, is_replace)
+        question = self._question(groups, choices, target)
 
         self._dialog.set_question(question.question, question.what, question.options)
 
         return _ASKING
 
-    def _question(self, groups, choices, target, is_replace):
+    def _question(self, groups, choices, target):
         """What the viewer is asked of the groups: how to put them into
         cells, a way that adds many warned of under it."""
 
         free = self._ctx.commands.grid_free_capacity()
         options = [
             _warned(option, groups, free)
-            for option in add_options(groups, choices, target, is_replace, free)
+            for option in add_options(groups, choices, target, free)
         ]
         what = [_name_of(group) for group in groups]
 
@@ -965,6 +975,7 @@ class AddVideosManager(ManagerBase):
 
             self._ctx.lists.put(media_list)
             self._ctx.lists.tell_added(media_list.id, [item.key for item in added])
+            block.tell_added_to_list(len(added))
             return
 
         params = block.video_params
@@ -978,6 +989,7 @@ class AddVideosManager(ManagerBase):
         self._tell_added(media_list)
 
         block.take_list(media_list.id, 0)
+        block.tell_added_to_list(len(items))
 
     def _tell_added(self, media_list):
         """A list made of what was added: its items, for what is known of
@@ -1109,52 +1121,57 @@ def _cell_dropped_on(drop):
     return drop.dst if getattr(drop.dst, "video_params", None) is not None else None
 
 
-def add_options(groups, choices, target, is_replace, free) -> list:
+def _is_onto_list(drop) -> bool:
+    """Whether what was dropped goes on the list of the cell it was dropped
+    in the middle of."""
+
+    return drop is not None and adds_to_list(drop.dst, drop.zone, drop.is_replace)
+
+
+def _video_cell_dropped_in(drop):
+    """The cell playing a video of its own, not a list, things were dropped
+    in the middle of, its video kept: to be offered to play them after it.
+    None for none."""
+
+    target = _cell_dropped_on(drop)
+
+    if (
+        target is None
+        or drop.zone != DropZone.CENTER
+        or drop.is_replace
+        or target.media_list is not None
+    ):
+        return None
+
+    return target
+
+
+def add_options(groups, choices, target, free) -> list:
     """The ways to put the groups into cells, as the viewer is offered
     them: each with how many cells it takes, and whether that many fit,
-    free the cells there are room for, None for no end to them. A cell they
-    were dropped on is offered to add them to, after a gap."""
+    free the cells there are room for, None for no end to them.
+
+    target is the cell playing a video of its own they were dropped in the
+    middle of, offered to play them after it, after a gap; None for none.
+    """
 
     options = [_mode_option(groups, mode, free) for mode in choices]
 
+    # one file, asked of only where it may go in the cell it was dropped on
     if len(groups) == 1 and not isinstance(groups[0], ListInput):
-        # one file, put where it was dropped: in place of a cell's video, or
-        # in a cell of its own
-        if target is not None and is_replace:
-            title = translate("Adding", "In place of this cell's video")
-        else:
-            title = translate("Adding", "In a cell of its own")
-
+        title = translate("Adding", "In a cell of its own")
         options = [option._replace(title=title) for option in options]
 
-    if not _can_add_to(target):
+    if target is None:
         return options
 
-    if target.media_list is not None:
-        to_cell = AddOption(
-            _ADD_TO_CELL,
-            translate("Adding", "Add to this cell's list"),
-            about=translate("Adding", "After what is on it."),
-        )
-    else:
-        to_cell = AddOption(
-            _ADD_TO_CELL,
-            translate("Adding", "Play in this cell, after its video"),
-            about=translate("Adding", "Makes a list that starts with its video."),
-        )
+    to_cell = AddOption(
+        _ADD_TO_CELL,
+        translate("Adding", "Play in this cell, after its video"),
+        about=translate("Adding", "Makes a list that starts with its video."),
+    )
 
     return [*options, None, to_cell]
-
-
-def _can_add_to(target) -> bool:
-    """Whether what was dropped on a cell may be added to what it plays:
-    not to a linked list, which has what its source has and nothing
-    else; and not with no cell dropped on."""
-
-    if target is None:
-        return False
-
-    return target.media_list is None or not target.media_list.is_linked
 
 
 def _mode_option(groups, mode, free) -> AddOption:

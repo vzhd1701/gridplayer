@@ -2184,6 +2184,8 @@ class OverlayDropIndicator(OverlayDiscBadge):
             self._draw_dot(painter, circle)
         elif self._indicator == DropIndicator.REPLACE:
             self._draw_replace(painter, circle)
+        elif self._indicator == DropIndicator.ADD_TO_LIST:
+            self._draw_add_to_list(painter, circle)
         else:
             self._draw_arrow(painter, circle)
 
@@ -2208,6 +2210,14 @@ class OverlayDropIndicator(OverlayDiscBadge):
         painter.setPen(QPen(self._glyph_color, stroke, Qt.SolidLine, Qt.RoundCap))
         painter.drawLine(QPointF(cx - arm, cy - arm), QPointF(cx + arm, cy + arm))
         painter.drawLine(QPointF(cx + arm, cy - arm), QPointF(cx - arm, cy + arm))
+
+    def _draw_add_to_list(self, painter: QPainter, circle: QRectF):
+        cx, cy = circle.center().x(), circle.center().y()
+        arm = circle.width() / 2 * 0.5
+        stroke = max(2.0, circle.width() / 2 * 0.145)
+        painter.setPen(QPen(self._glyph_color, stroke, Qt.SolidLine, Qt.RoundCap))
+        painter.drawLine(QPointF(cx - arm, cy), QPointF(cx + arm, cy))
+        painter.drawLine(QPointF(cx, cy - arm), QPointF(cx, cy + arm))
 
     def _draw_asterisk(self, painter: QPainter, circle: QRectF):
         cx, cy = circle.center().x(), circle.center().y()

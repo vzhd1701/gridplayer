@@ -1,7 +1,11 @@
-from gridplayer.params.static import GridMode
+from types import SimpleNamespace
+
+from gridplayer.models.media_list import ListSource, MediaList
+from gridplayer.params.static import GridMode, ListSourceKind
 from gridplayer.utils.drop_zone import (
     DropIndicator,
     DropZone,
+    adds_to_list,
     indicator_for,
     insert_index,
     zone_at,
@@ -80,4 +84,56 @@ def test_indicator_for():
     assert (
         indicator_for(DropZone.CENTER, True, rows, is_replace=True)
         is DropIndicator.REPLACE
+    )
+
+
+def _list_cell(**fields):
+    return SimpleNamespace(media_list=MediaList(**fields))
+
+
+def test_adds_to_list_only_in_the_middle_of_a_cell_playing_one():
+    cell = _list_cell()
+
+    assert adds_to_list(cell, DropZone.CENTER, False)
+    for zone in (DropZone.BEFORE, DropZone.AFTER, DropZone.ABOVE, DropZone.BELOW):
+        assert not adds_to_list(cell, zone, False)
+    assert not adds_to_list(cell, None, False)
+
+
+def test_adds_to_list_not_to_replace_its_video():
+    assert not adds_to_list(_list_cell(), DropZone.CENTER, True)
+
+
+def test_adds_to_list_not_to_a_cell_with_no_list_or_none():
+    assert not adds_to_list(SimpleNamespace(media_list=None), DropZone.CENTER, False)
+    assert not adds_to_list(SimpleNamespace(), DropZone.CENTER, False)
+    assert not adds_to_list(None, DropZone.CENTER, False)
+
+
+def test_adds_to_list_not_to_a_linked_list_or_a_closing_cell():
+    linked = _list_cell(
+        source=ListSource(kind=ListSourceKind.URL, location="http://tv/l"),
+        is_linked=True,
+    )
+    closing = SimpleNamespace(media_list=MediaList(), is_closing=True)
+
+    assert not adds_to_list(linked, DropZone.CENTER, False)
+    assert not adds_to_list(closing, DropZone.CENTER, False)
+
+
+def test_indicator_for_adding_to_a_list():
+    mode = GridMode.AUTO_ROWS
+
+    assert (
+        indicator_for(DropZone.CENTER, False, mode, is_add_to_list=True)
+        == DropIndicator.ADD_TO_LIST
+    )
+    # replacing wins, and an edge stays an edge
+    assert (
+        indicator_for(DropZone.CENTER, False, mode, True, is_add_to_list=True)
+        == DropIndicator.REPLACE
+    )
+    assert (
+        indicator_for(DropZone.AFTER, False, mode, is_add_to_list=True)
+        == DropIndicator.ARROW_RIGHT
     )

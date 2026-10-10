@@ -25,6 +25,7 @@ from gridplayer.player.managers.lists import MediaListsRegistry
 from gridplayer.playlist_settings import PlaylistSettings
 from gridplayer.settings import Settings
 from gridplayer.utils import list_progress
+from gridplayer.utils.drop_zone import DropZone
 from gridplayer.utils.list_progress import ReadingEnough
 from gridplayer.utils.media_import import Expanded, ListInput, expand_inputs
 from gridplayer.utils.next_file import MAX_MISSING_FILES
@@ -573,7 +574,7 @@ class TestTheWayTheyArePutIntoCells:
 
         (video,) = _add(manager, things)
 
-        _groups, choices, _target, _is_replace = asked.call_args.args
+        _groups, choices, _target = asked.call_args.args
         assert choices == [AddMode.CELL_EACH, AddMode.ONE_CELL, AddMode.CELL_PER_FILE]
         assert len(_list_of(manager, video).items) == 4
 
@@ -683,36 +684,17 @@ class TestWhatTheViewerIsOffered:
         _question, _what, options = self._offered(asked)
         assert options[1][3] == "3 cells, only 2 fit"
 
-    def test_dropped_onto_a_cell_with_a_list(self, manager, tmp_path, asked):
+    def test_dropped_in_the_middle_of_a_cell_with_a_video(
+        self, manager, tmp_path, asked
+    ):
         a, b = _touch(tmp_path, "a.mp4", "b.mp4")
-        media_list = manager._ctx.lists.add(MediaList(items=[ListItem(uri=a)]))
-        cell = SimpleNamespace(
-            video_params=Video(uri=a, list_id=media_list.id), media_list=media_list
-        )
+        cell = SimpleNamespace(video_params=Video(uri=a), media_list=None)
 
-        _add(manager, [b], drop=(cell, None, False))
+        _add(manager, [b], drop=(cell, DropZone.CENTER, False))
 
         _question, _what, options = asked.call_args.args[:3]
         assert [_option_txt(option) if option else None for option in options] == [
             (AddMode.CELL_EACH, "In a cell of its own", "", ""),
-            None,
-            (
-                add_videos._ADD_TO_CELL,
-                "Add to this cell's list",
-                "After what is on it.",
-                "",
-            ),
-        ]
-
-    def test_dropped_onto_a_cell_to_replace_its_video(self, manager, tmp_path, asked):
-        a, b = _touch(tmp_path, "a.mp4", "b.mp4")
-        cell = SimpleNamespace(video_params=Video(uri=a), media_list=None)
-
-        _add(manager, [b], drop=(cell, None, True))
-
-        _question, _what, options = asked.call_args.args[:3]
-        assert [_option_txt(option) if option else None for option in options] == [
-            (AddMode.CELL_EACH, "In place of this cell's video", "", ""),
             None,
             (
                 add_videos._ADD_TO_CELL,
@@ -721,6 +703,25 @@ class TestWhatTheViewerIsOffered:
                 "",
             ),
         ]
+
+    @pytest.mark.parametrize(
+        ("zone", "is_replace"),
+        [(DropZone.AFTER, False), (DropZone.ABOVE, False), (DropZone.CENTER, True)],
+    )
+    def test_one_file_at_its_edge_or_replacing_its_video_is_not_asked_about(
+        self, manager, tmp_path, asked, zone, is_replace
+    ):
+        a, b = _touch(tmp_path, "a.mp4", "b.mp4")
+        cell = SimpleNamespace(video_params=Video(uri=a), media_list=None)
+
+        _add(manager, [b], drop=(cell, zone, is_replace))
+
+        asked.assert_not_called()
+        videos, _src, at, in_zone, replaced = (
+            manager._ctx.commands.layout_drop.call_args.args
+        )
+        assert [video.uri for video in videos] == [b]
+        assert (at, in_zone, replaced) == (cell, zone, is_replace)
 
     def test_asked_over_the_player(self, manager, tmp_path, asked):
         a, b = _touch(tmp_path, "a.mp4", "b.mp4")
@@ -802,21 +803,24 @@ class TestDropped:
             video_params=Video(uri=a, list_id=media_list.id), media_list=media_list
         )
 
-        _add(manager, [b, c], drop=(cell, None, False))
+        _add(manager, [b, c], drop=(cell, DropZone.CENTER, False))
 
         asked.assert_called_once()
+        assert asked.call_args.args[2] is None
+        assert manager._ctx.lists.get(media_list.id).items == media_list.items
 
-    def test_onto_a_cell_asked_its_list_is_offered(self, manager, tmp_path, mocker):
+    def test_in_the_middle_of_a_cell_asked_it_is_offered(
+        self, manager, tmp_path, mocker
+    ):
         PlaylistSettings().set("playlist/add_mode", AddMode.ASK)
         asked = mocker.patch.object(manager, "_ask", return_value=None)
         (a,) = _touch(tmp_path, "a.mp4")
         cell = SimpleNamespace(video_params=Video(uri=a), media_list=None)
 
-        _add(manager, [a], drop=(cell, None, False))
+        _add(manager, [a], drop=(cell, DropZone.CENTER, False))
 
-        _groups, _choices, target, is_replace = asked.call_args.args
+        _groups, _choices, target = asked.call_args.args
         assert target is cell
-        assert is_replace is False
 
 
 class TestToldAsAdded:
@@ -841,16 +845,16 @@ class TestToldAsAdded:
 
         assert told == []
 
-    def test_what_is_added_to_a_cells_list(self, manager, tmp_path, mocker, told):
+    def test_what_is_added_to_a_cells_list(self, manager, tmp_path, told):
         a, b = _touch(tmp_path, "a.mp4", "b.mp4")
         media_list = manager._ctx.lists.add(MediaList(items=[ListItem(uri=a)]))
         cell = SimpleNamespace(
-            video_params=Video(uri=a, list_id=media_list.id), media_list=media_list
+            video_params=Video(uri=a, list_id=media_list.id),
+            media_list=media_list,
+            tell_added_to_list=MagicMock(),
         )
-        PlaylistSettings().set("playlist/add_mode", AddMode.ASK)
-        mocker.patch.object(manager, "_ask", return_value=add_videos._ADD_TO_CELL)
 
-        _add(manager, [b], drop=(cell, None, False))
+        _add(manager, [b], drop=(cell, DropZone.CENTER, False))
 
         added = manager._ctx.lists.get(media_list.id).items[-1]
         assert told == [(media_list.id, [added.key])]
@@ -860,17 +864,16 @@ class TestAddedToACell:
     def _cell(self, manager, video, media_list=None):
         cell = SimpleNamespace(video_params=video, media_list=media_list)
         cell.take_list = MagicMock()
+        cell.tell_added_to_list = MagicMock()
 
         return cell
 
-    def test_after_what_its_list_has(self, manager, tmp_path, mocker):
+    def test_after_what_its_list_has(self, manager, tmp_path):
         a, b, c = _touch(tmp_path, "a.mp4", "b.mp4", "c.mp4")
         media_list = manager._ctx.lists.add(MediaList(items=[ListItem(uri=a)]))
         cell = self._cell(manager, Video(uri=a, list_id=media_list.id), media_list)
-        PlaylistSettings().set("playlist/add_mode", AddMode.ASK)
-        mocker.patch.object(manager, "_ask", return_value=add_videos._ADD_TO_CELL)
 
-        _add(manager, [b, c], drop=(cell, None, False))
+        _add(manager, [b, c], drop=(cell, DropZone.CENTER, False))
 
         assert [item.uri for item in manager._ctx.lists.get(media_list.id).items] == [
             a,
@@ -886,12 +889,13 @@ class TestAddedToACell:
         PlaylistSettings().set("playlist/add_mode", AddMode.ASK)
         mocker.patch.object(manager, "_ask", return_value=add_videos._ADD_TO_CELL)
 
-        _add(manager, [b], drop=(cell, None, False))
+        _add(manager, [b], drop=(cell, DropZone.CENTER, False))
 
         (media_list,) = manager._ctx.lists.lists()
         assert [item.uri for item in media_list.items] == [a, b]
         assert media_list.items[0].title == "Mine"
         cell.take_list.assert_called_once_with(media_list.id, 0)
+        cell.tell_added_to_list.assert_called_once_with(1)
 
 
 class TestAListOnASite:
@@ -1443,3 +1447,91 @@ class TestHowFarReadingHasGot:
         _add(manager, [tmp_path / "A", tmp_path / "B"])
 
         assert told == [("files", 2, None), ("files", 5, None)]
+
+
+class TestDroppedInTheMiddleOfAList:
+    """Files dropped in the middle of a cell playing a list go on its list,
+    as the mark there shows; at an edge, or to replace its video, they go
+    as anywhere else."""
+
+    @pytest.fixture
+    def cell(self, manager, tmp_path):
+        (a,) = _touch(tmp_path, "a.mp4")
+        media_list = manager._ctx.lists.add(MediaList(items=[ListItem(uri=a)]))
+
+        return SimpleNamespace(
+            video_params=Video(uri=a, list_id=media_list.id),
+            media_list=media_list,
+            tell_added_to_list=MagicMock(),
+        )
+
+    def _items(self, manager, cell):
+        return [item.uri for item in manager._ctx.lists.get(cell.media_list.id).items]
+
+    @pytest.mark.parametrize("mode", list(AddMode))
+    def test_on_its_list_unasked_however_the_playlist_adds(
+        self, manager, tmp_path, cell, mocker, mode
+    ):
+        PlaylistSettings().set("playlist/add_mode", mode)
+        asked = mocker.patch.object(add_videos.AddChoiceDialog, "ask")
+        b, c = _touch(tmp_path, "b.mp4", "c.mp4")
+
+        _add(manager, [b, c], drop=(cell, DropZone.CENTER, False))
+
+        asked.assert_not_called()
+        assert self._items(manager, cell)[1:] == [b, c]
+        manager._ctx.commands.layout_drop.assert_not_called()
+        cell.tell_added_to_list.assert_called_once_with(2)
+
+    def test_a_folder_too_with_no_cell_put_in_to_wait_for_it(
+        self, manager, tmp_path, cell
+    ):
+        PlaylistSettings().set("playlist/add_mode", AddMode.CELL_EACH)
+        files = _touch(tmp_path / "Shows", "1.mkv", "2.mkv")
+
+        _add(manager, [tmp_path / "Shows"], drop=(cell, DropZone.CENTER, False))
+
+        assert self._items(manager, cell)[1:] == list(files)
+        manager._ctx.commands.layout_drop.assert_not_called()
+        cell.tell_added_to_list.assert_called_once_with(2)
+
+    @pytest.mark.parametrize("zone", [DropZone.BEFORE, DropZone.BELOW])
+    def test_at_its_edge_in_a_cell_of_its_own(self, manager, tmp_path, cell, zone):
+        (b,) = _touch(tmp_path, "b.mp4")
+
+        _add(manager, [b], drop=(cell, zone, False))
+
+        videos, _src, at, in_zone, is_replace = (
+            manager._ctx.commands.layout_drop.call_args.args
+        )
+        assert [video.uri for video in videos] == [b]
+        assert (at, in_zone, is_replace) == (cell, zone, False)
+        assert len(self._items(manager, cell)) == 1
+        cell.tell_added_to_list.assert_not_called()
+
+    def test_at_its_edge_asked_its_list_is_not_offered(
+        self, manager, tmp_path, cell, mocker
+    ):
+        PlaylistSettings().set("playlist/add_mode", AddMode.ASK)
+        asked = mocker.patch.object(manager, "_ask", return_value=None)
+        b, c = _touch(tmp_path, "b.mp4", "c.mp4")
+
+        _add(manager, [b, c], drop=(cell, DropZone.AFTER, False))
+
+        _groups, _choices, target = asked.call_args.args
+        assert target is None
+
+    def test_to_replace_its_video_in_its_place(self, manager, tmp_path, cell, mocker):
+        PlaylistSettings().set("playlist/add_mode", AddMode.ASK)
+        asked = mocker.patch.object(add_videos.AddChoiceDialog, "ask")
+        (b,) = _touch(tmp_path, "b.mp4")
+
+        _add(manager, [b], drop=(cell, DropZone.CENTER, True))
+
+        asked.assert_not_called()
+        videos, _src, at, _zone, is_replace = (
+            manager._ctx.commands.layout_drop.call_args.args
+        )
+        assert [video.uri for video in videos] == [b]
+        assert (at, is_replace) == (cell, True)
+        assert len(self._items(manager, cell)) == 1

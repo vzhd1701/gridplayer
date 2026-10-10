@@ -13,6 +13,7 @@ from gridplayer.utils.drag_n_drop import drop_is_replace, query_drop_modifiers
 from gridplayer.utils.drop_zone import (
     DropIndicator,
     DropZone,
+    adds_to_list,
     indicator_for,
     zone_at,
 )
@@ -51,6 +52,7 @@ class DragNDropManager(ManagerBase):
         self._drop_zone = None
         self._drop_is_internal = False
         self._drop_is_replace = False
+        self._drop_is_add_to_list = False
         self._source_block = None
 
         # Overlay Tool windows (and overlay ↔ player) emit DragLeave before
@@ -495,7 +497,15 @@ class DragNDropManager(ManagerBase):
         if is_internal and getattr(block, "is_empty_cell", False):
             zone = DropZone.CENTER
 
-        self._set_hover(block, zone, is_internal, is_replace)
+        # files, not a cell from another player, going on the cell's list
+        is_add_to_list = (
+            event is not None
+            and not is_internal
+            and not mime_has_video(event.mimeData())
+            and adds_to_list(block, zone, is_replace)
+        )
+
+        self._set_hover(block, zone, is_internal, is_replace, is_add_to_list)
 
     def _hover_at(self, global_pos):
         block = self._ctx.commands.get_cell_at(global_pos)
@@ -512,12 +522,13 @@ class DragNDropManager(ManagerBase):
         )
         return block, zone
 
-    def _set_hover(self, block, zone, is_internal, is_replace):
+    def _set_hover(self, block, zone, is_internal, is_replace, is_add_to_list):
         is_nothing_changed = (
             self._drop_block is block
             and self._drop_zone is zone
             and self._drop_is_internal is is_internal
             and self._drop_is_replace is is_replace
+            and self._drop_is_add_to_list is is_add_to_list
         )
 
         if is_nothing_changed:
@@ -528,6 +539,7 @@ class DragNDropManager(ManagerBase):
         self._drop_zone = zone
         self._drop_is_internal = is_internal
         self._drop_is_replace = is_replace
+        self._drop_is_add_to_list = is_add_to_list
 
         if block is not None and block is not self._source_block:
             block.set_drop_indicator(
@@ -536,6 +548,7 @@ class DragNDropManager(ManagerBase):
                     is_internal,
                     self._ctx.grid_state.mode,
                     is_replace=is_replace,
+                    is_add_to_list=is_add_to_list,
                 )
             )
 
@@ -556,6 +569,7 @@ class DragNDropManager(ManagerBase):
         self._drop_zone = None
         self._drop_is_internal = False
         self._drop_is_replace = False
+        self._drop_is_add_to_list = False
 
     def _clear_hover_indicator_if_not(self, block):
         if (

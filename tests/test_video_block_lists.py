@@ -1288,3 +1288,14 @@ class TestDraggedToAnotherPlayer:
         dragged = block.drag_data.model_dump_json()
 
         assert str(file_list.items[1].uri.name) not in dragged
+
+
+class TestToldOfWhatIsAdded:
+    def test_says_how_many_under_its_title(self, make_cell, file_list):
+        block = make_cell(file_list)
+        said = []
+        block.info_change.connect(said.append)
+
+        block.tell_added_to_list(3)
+
+        assert said == ["Added to the list: 3"]

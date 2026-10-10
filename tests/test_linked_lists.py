@@ -1090,29 +1090,19 @@ class TestNothingAdded:
 
         assert "Refresh" in dialog._list.empty_txt[1]
 
-    def test_dropped_on_its_cell_it_is_not_offered_to_add_to(self):
-        from gridplayer.params.static import AddMode
-        from gridplayer.player.managers.add_videos import add_options
+    def test_dropped_in_the_middle_of_its_cell_it_is_not_added_to(self):
+        from gridplayer.utils.drop_zone import DropZone, adds_to_list
 
-        target = SimpleNamespace(media_list=_linked(*_channels(1, 2)))
+        cell = SimpleNamespace(media_list=_linked(*_channels(1, 2)))
 
-        options = add_options(
-            [ListItem(uri="http://mine/1")], [AddMode.CELL_EACH], target, False, None
-        )
+        assert not adds_to_list(cell, DropZone.CENTER, False)
 
-        assert [option.data for option in options if option] == [AddMode.CELL_EACH]
+    def test_but_a_list_kept_whole_is(self):
+        from gridplayer.utils.drop_zone import DropZone, adds_to_list
 
-    def test_but_on_a_list_kept_whole_s(self):
-        from gridplayer.params.static import AddMode
-        from gridplayer.player.managers.add_videos import _ADD_TO_CELL, add_options
+        cell = SimpleNamespace(media_list=MediaList(items=_channels(1, 2)))
 
-        target = SimpleNamespace(media_list=MediaList(items=_channels(1, 2)))
-
-        options = add_options(
-            [ListItem(uri="http://mine/1")], [AddMode.CELL_EACH], target, False, None
-        )
-
-        assert options[-1].data == _ADD_TO_CELL
+        assert adds_to_list(cell, DropZone.CENTER, False)
 
 
 class TestLinkingInTheWindow:

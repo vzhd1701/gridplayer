@@ -141,7 +141,7 @@ from gridplayer.utils.external_subtitles import (
 from gridplayer.utils.folder_navigator import FolderNavigator, FolderStep
 from gridplayer.utils.libvlc_options_parser import get_vlc_options
 from gridplayer.utils.list_navigator import ListNavigator
-from gridplayer.utils.qt import MILLISECONDS, qt_connect, translate
+from gridplayer.utils.qt import MILLISECONDS, count_txt, qt_connect, translate
 from gridplayer.utils.screenshots import (
     ScreenshotJob,
     ScreenshotName,
@@ -5542,6 +5542,17 @@ class VideoBlock(QWidget):
         # up as long as the window is, and gone after the usual while once
         # it is closed
         self.show_overlay()
+
+    def tell_added_to_list(self, count: int):
+        """Files dropped on the cell put on its list: said under its title
+        for a moment, nothing else showing that they were."""
+
+        self.show_overlay()
+        self.info_change.emit(
+            translate("Lists", "Added to the list: {COUNT}").format(
+                COUNT=count_txt(count)
+            )
+        )
 
     def leave_list(self):
         """Play the item it is on as a video of its own from now on: Next
