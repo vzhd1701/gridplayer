@@ -9,6 +9,7 @@ from gridplayer.params.theme import apply_theme
 from gridplayer.player.managers.base import ManagerBase
 from gridplayer.playlist_settings import PlaylistSettings, grid_values_from_state
 from gridplayer.settings import Settings
+from gridplayer.utils import cache
 from gridplayer.utils.qt import translate
 
 
@@ -91,6 +92,9 @@ class SettingsManager(ManagerBase):
 
         if self._is_setting_changed(previous_settings, "player/color_scheme"):
             apply_theme()
+
+        if self._setting_changes(previous_settings, cache.CACHE_SETTINGS):
+            cache.apply_settings()
 
         if self._setting_changes(previous_settings, GRID_STATE_ATTR):
             live = self._ctx.grid_state

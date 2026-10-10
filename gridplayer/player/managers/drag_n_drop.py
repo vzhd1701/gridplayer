@@ -1,10 +1,10 @@
 from pathlib import Path
 
-from PyQt5.QtCore import QEvent, QMimeData, Qt, QTimer, pyqtSignal
+from PyQt5.QtCore import QEvent, Qt, QTimer, pyqtSignal
 from PyQt5.QtGui import QCursor, QDrag
 from PyQt5.QtWidgets import QApplication
 
-from gridplayer.models.video import filter_video_uris
+from gridplayer.models.media_list import as_path
 from gridplayer.params import env
 from gridplayer.player.managers.base import ManagerBase
 from gridplayer.playlist_settings import PlaylistSettings
@@ -16,7 +16,10 @@ from gridplayer.utils.drop_zone import (
     indicator_for,
     zone_at,
 )
+from gridplayer.utils.excepthook import dragging
 from gridplayer.utils.files import (
+    cell_mime_data,
+    extract_mime_list,
     extract_mime_uris,
     extract_mime_video,
     get_playlist_path,
@@ -79,6 +82,15 @@ class DragNDropManager(ManagerBase):
             QEvent.DragLeave: self.dragLeaveEvent,
         }
 
+    def eventFilter(self, event_object, event) -> bool:
+        # the List window over a video: a press there is no drag of the video,
+        # nor the player to bring to the front, and rows dropped there are
+        # the list's
+        if event.type() in self.event_map and self.is_elsewhere(event_object):
+            return False
+
+        return super().eventFilter(event_object, event)
+
     # --- start drag (mouse) ---
 
     def mousePressEvent(self, event):
@@ -135,7 +147,8 @@ class DragNDropManager(ManagerBase):
         if drag is not None:
             self._ensure_drag_ui()
             self._set_source(source)
-            drag.exec()
+            with dragging():
+                drag.exec()
             self._end_drag_ui()
 
     def mouseReleaseEvent(self, event):
@@ -169,12 +182,7 @@ class DragNDropManager(ManagerBase):
 
         self._drag_start_position = None
         drag = QDrag(self.parent())
-        mime_data = QMimeData()
-        mime_data.setData(
-            "application/x-gridplayer-video",
-            block.drag_data.model_dump_json().encode("utf-8"),
-        )
-        drag.setMimeData(mime_data)
+        drag.setMimeData(cell_mime_data(block.drag_data, block.media_list))
         return drag
 
     # --- Fake drag (Linux xcb / XWayland) ---
@@ -304,18 +312,20 @@ class DragNDropManager(ManagerBase):
         is_replace = self._drop_is_replace
 
         drop_files = extract_mime_uris(event.mimeData())
-        drop_video = extract_mime_video(event.mimeData())
+        drop_video, drop_list = self._dropped_video(event.mimeData())
 
         # Always accept so Qt sends XdndFinished. Rejecting from a filter
         # without that leaves Dolphin and QXcbDrag stuck until restart.
         event.acceptProposedAction()
         QTimer.singleShot(
             0,
-            lambda: self._finish_drop(drop_files, drop_video, dst, zone, is_replace),
+            lambda: self._finish_drop(
+                drop_files, drop_video, drop_list, dst, zone, is_replace
+            ),
         )
         return True
 
-    def _finish_drop(self, drop_files, drop_video, dst, zone, is_replace):
+    def _finish_drop(self, drop_files, drop_video, drop_list, dst, zone, is_replace):
         self._end_drag_ui()
 
         if drop_files:
@@ -323,7 +333,7 @@ class DragNDropManager(ManagerBase):
             return
 
         if drop_video:
-            self._drop_video_block(drop_video, dst, zone, is_replace)
+            self._drop_video_block(drop_video, drop_list, dst, zone, is_replace)
 
     def _accept_drag(self, event):
         drag_data = event.mimeData()
@@ -332,6 +342,17 @@ class DragNDropManager(ManagerBase):
 
         event.acceptProposedAction()
         return True
+
+    def _dropped_video(self, mime_data) -> tuple:
+        """The cell dropped, and the list it plays from where it came from
+        another player: asked for only then, a channel list being large."""
+
+        drop_video = extract_mime_video(mime_data)
+
+        if drop_video is None or self._ctx.video_blocks.by_id(drop_video.id):
+            return drop_video, None
+
+        return drop_video, extract_mime_list(mime_data)
 
     def _local_block_from_event(self, event):
         drag_video = extract_mime_video(event.mimeData())
@@ -354,10 +375,11 @@ class DragNDropManager(ManagerBase):
             self.playlist_dropped.emit(playlist)
             return
 
-        videos = filter_video_uris(drop_files)
-        self._drop_on_layout(videos, None, dst, zone, is_replace)
+        # read first where it is a folder or a list, and put into cells the
+        # way the playlist says, or the viewer picks
+        self._ctx.commands.add_media(drop_files, drop=(dst, zone, is_replace))
 
-    def _drop_video_block(self, dropped_video, dst, zone, is_replace):
+    def _drop_video_block(self, dropped_video, dropped_list, dst, zone, is_replace):
         src_video = self._ctx.video_blocks.by_id(dropped_video.id)
 
         if src_video:
@@ -367,12 +389,25 @@ class DragNDropManager(ManagerBase):
         self._log.debug("Dropped video from another instance")
 
         video = dropped_video.video
+
+        # a file comes over as its path in text, as a link would
+        video.uri = as_path(video.uri)
+
+        # the list it plays from comes along, there before the cell is: it
+        # finds its list as it opens. Under an id of its own, if this
+        # player has one with the same id that is another list by now
+        if dropped_list is not None:
+            video.list_id = self._ctx.lists.add(dropped_list).id
+
         self._drop_on_layout([video], None, dst, zone, is_replace)
 
         # kept by the playlist apart from the video, they come along beside
         # it, once it is in: a full grid turns it away
         if self._ctx.video_blocks.by_video_id(video.id) is not None:
             self._ctx.bookmarks.add(video.uri, video.id, dropped_video.bookmarks)
+        elif dropped_list is not None:
+            # and its list with it, no cell left to play from it
+            self._ctx.lists.drop_if_untaken(video.list_id)
 
     # --- hover / source glyphs ---
 
@@ -418,6 +453,10 @@ class DragNDropManager(ManagerBase):
 
         player = self.parent()
         if player is None:
+            return False
+
+        # gone on to the List window over it
+        if self.is_elsewhere_at(QCursor.pos()):
             return False
 
         return player.rect().contains(player.mapFromGlobal(QCursor.pos()))

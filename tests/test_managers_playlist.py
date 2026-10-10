@@ -70,6 +70,8 @@ def _without_bookmarks(ctx):
     ctx.commands.is_bookmarks_shared = lambda: True
     ctx.commands.confirm_bookmarks_shared = lambda _is_shared: True
     ctx.commands.forget_bookmarks_of_cells_gone = lambda: None
+    ctx.commands.lists_to_save = list
+    ctx.commands.forget_left_lists = lambda: None
 
     return ctx
 
@@ -387,19 +389,15 @@ def test_load_playlist_shuffles_layout_when_flag_on(mocker):
 def test_process_arguments_adds_files_to_layout(mocker):
     commands = mocker.Mock()
     manager, _parent = _make_manager(SimpleNamespace(commands=commands))
-    videos = ["file-a"]
     mocker.patch(
         "gridplayer.player.managers.playlist.get_playlist_path",
         return_value=None,
     )
-    mocker.patch(
-        "gridplayer.player.managers.playlist.filter_video_uris",
-        return_value=videos,
-    )
 
     manager.process_arguments(["a.mp4"])
 
-    commands.add_videos_to_layout.assert_called_once_with(videos)
+    # read and put into cells the way anything added is; see AddVideosManager
+    commands.add_media.assert_called_once_with(["a.mp4"])
     commands.shuffle_layout.assert_not_called()
 
 
@@ -416,10 +414,6 @@ class TestArgumentsWhileADialogIsOpen:
             "gridplayer.player.managers.playlist.get_playlist_path",
             return_value=None,
         )
-        mocker.patch(
-            "gridplayer.player.managers.playlist.filter_video_uris",
-            side_effect=lambda uris: [f"video {uri}" for uri in uris],
-        )
         return manager
 
     @pytest.fixture
@@ -435,7 +429,7 @@ class TestArgumentsWhileADialogIsOpen:
         manager.process_arguments(["a.mp4"])
         manager._process_waiting_arguments()
 
-        manager._ctx.commands.add_videos_to_layout.assert_not_called()
+        manager._ctx.commands.add_media.assert_not_called()
 
     def test_the_window_comes_up_on_the_dialog(self, manager, modal):
         alerts = []
@@ -452,9 +446,9 @@ class TestArgumentsWhileADialogIsOpen:
         modal.is_open = False
         manager._process_waiting_arguments()
 
-        assert manager._ctx.commands.add_videos_to_layout.call_args_list == [
-            call(["video a.mp4"]),
-            call(["video b.mp4"]),
+        assert manager._ctx.commands.add_media.call_args_list == [
+            call(["a.mp4"]),
+            call(["b.mp4"]),
         ]
         assert not manager._arguments_timer.isActive()
 

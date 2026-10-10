@@ -111,6 +111,11 @@ DEAD_INPUT_PASSES = 50
 # every hardware format, and rebuilds the video output for each one it rejects.
 SOFTWARE_DECODERS = MappingProxyType({"av01": "dav1d"})
 
+# the headers VLC's http access lets an input set, by its options' names
+HTTP_HEADER_OPTIONS = MappingProxyType(
+    {"user-agent": "http-user-agent", "referer": "http-referrer"}
+)
+
 # https://github.com/videolan/vlc/blob/c650ce1a4e352cc04192229a8878b8b6c312527d/include/vlc_aout.h#L92
 AUDIO_CHANNEL_MODE_MAP = MappingProxyType(
     {
@@ -599,6 +604,8 @@ class VlcPlayerBase(ABC):
 
         if self.media_input.is_audio_only:
             self._media_options.append(":no-video")
+
+        self._media_options.extend(_http_header_options(self.media_input.http_headers))
 
         if self._preferred_decoder is not None:
             # a preference, not a demand -- VLC still falls back to the rest
@@ -1795,3 +1802,21 @@ def _decode_chapter_name(value) -> str | None:
         return None
 
     return value.decode(errors="replace")
+
+
+def _http_header_options(headers) -> list[str]:
+    """Input options to fetch a link with these headers, the ones VLC knows.
+
+    Options set on an input outrank the user agent the whole instance was
+    given, so a channel list's own goes to that channel alone.
+    """
+
+    options = []
+
+    for name, value in headers.items():
+        option = HTTP_HEADER_OPTIONS.get(name.lower())
+
+        if option is not None and value:
+            options.append(f":{option}={value}")
+
+    return options

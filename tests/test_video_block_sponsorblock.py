@@ -20,6 +20,7 @@ from gridplayer.params.static import (
     VideoEndAction,
     VideoInitialState,
 )
+from gridplayer.player.managers.lists import MediaListsRegistry
 from gridplayer.settings import Settings
 from gridplayer.utils import sponsorblock
 from gridplayer.utils.sponsorblock import SKIP_JOIN_MS, SKIP_MIN_MS
@@ -65,6 +66,7 @@ def _context():
     context.is_show_overlay_border = False
     context.overlay_timeout = 1
     context.synced_view = None
+    context.lists = MediaListsRegistry()
 
     return context
 

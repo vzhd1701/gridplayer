@@ -5,6 +5,10 @@ from gridplayer.params import env
 
 PLAYER_ID_LENGTH = 8
 
+# adding more cells than this at once warns first: every cell plays at the
+# same time, and so many can freeze the player
+MANY_CELLS = 20
+
 PLAYER_INITIAL_SIZE = (640, 360)
 PLAYER_MIN_SIZE = (200, 150)
 CHROME_MIN_SIZE = (150, 100)
@@ -160,6 +164,95 @@ class VideoEndAction(AutoName):
     CLOSE = auto()
 
 
+# the end actions that go along a list, for a cell that plays one
+LIST_STEP_END_ACTIONS = frozenset(
+    {
+        VideoEndAction.NEXT_FILE,
+        VideoEndAction.PREVIOUS_FILE,
+        VideoEndAction.SHUFFLE_FILE,
+    }
+)
+
+
+class ListEndAction(AutoName):
+    """What a cell does once it has played through its list.
+
+    The list is over when Next would go round to its first item, Previous
+    to its last, or a random one would start another round: every item
+    played once.
+    """
+
+    START_OVER = auto()
+    PAUSE = auto()
+    STOP = auto()
+    CLOSE = auto()
+
+
+class AddMode(AutoName):
+    """How files, folders and lists added together are put into cells."""
+
+    # a cell for each file, and one for each folder and list, which plays
+    # what is in it one after the other
+    CELL_EACH = auto()
+    # everything in one cell, one after the other
+    ONE_CELL = auto()
+    # a cell for every file, those in folders and lists as well
+    CELL_PER_FILE = auto()
+    ASK = auto()
+
+
+class ListView(AutoName):
+    """What the items of a list are shown by in its window."""
+
+    TITLES = auto()
+    # the title, and the file's path or the link under it
+    TITLES_AND_LOCATIONS = auto()
+    LOCATIONS = auto()
+    # the video's picture, and its title with what its site says of it under
+    # it: offered for lists read from a site that has pictures
+    THUMBNAILS = auto()
+
+
+class ListSourceKind(AutoName):
+    """Where a list was read from, to read it again from."""
+
+    FOLDER = auto()
+    FILE = auto()
+    URL = auto()
+
+
+class ListUpdate(AutoName):
+    """How often a linked list is read again from its source."""
+
+    # each time the playlist is loaded, and not while it is open
+    ON_LOAD = auto()
+    # once what was read is this old: as the playlist is loaded, and
+    # while it is open
+    FIVE_MINUTES = auto()
+    FIFTEEN_MINUTES = auto()
+    HOURLY = auto()
+    SIX_HOURS = auto()
+    DAILY = auto()
+    # only by Refresh
+    MANUAL = auto()
+    # a list's own: once what was read is as old as it says
+    CUSTOM = auto()
+
+
+class ListSort(AutoName):
+    """An order a list was put in by what its items are, kept for a list
+    read again from its source each time to be put in it again."""
+
+    NAME = auto()
+    LENGTH = auto()
+    GROUP = auto()
+    # most first
+    VIEWS = auto()
+    # newest first
+    PUBLISHED = auto()
+    SHUFFLE = auto()
+
+
 class VideoInitialState(AutoName):
     PLAYING = auto()
     PAUSED = auto()
@@ -267,6 +360,15 @@ class SubtitleOutline(AutoName):
     THIN = auto()
     NORMAL = auto()
     THICK = auto()
+
+
+class CacheMode(AutoName):
+    """Where what is kept to save downloading it again is kept."""
+
+    # on disk, up to a size, for the next time the app runs
+    DISK = auto()
+    # in memory, gone when the app closes: nothing on disk
+    MEMORY = auto()
 
 
 class ColorScheme(AutoName):

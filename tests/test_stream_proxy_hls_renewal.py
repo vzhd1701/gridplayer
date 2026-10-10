@@ -99,7 +99,7 @@ def resolved():
 def proxy(serving, upstream, resolved):
     """A proxy whose source resolves anew to the playlist at /new/."""
 
-    def resolve_source(url):
+    def resolve_source(url, headers=None):
         resolved.append(url)
 
         fresh = _playlist_stream(upstream, "/new/index.m3u8")

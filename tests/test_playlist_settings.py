@@ -1,11 +1,18 @@
+from types import SimpleNamespace
+
 import pytest
 from PyQt5.QtWidgets import QApplication, QWidget
 
 from gridplayer.models.grid_state import GridState
+from gridplayer.models.playlist import Playlist
 from gridplayer.models.video import Video
 from gridplayer.params.defaults_fields import PLAYLIST_FIELDS
-from gridplayer.params.static import GridMode, VideoAspect
-from gridplayer.playlist_settings import PlaylistSettings, grid_overrides_from_state
+from gridplayer.params.static import GridMode, ListView, VideoAspect
+from gridplayer.playlist_settings import (
+    PlaylistSettings,
+    grid_overrides_from_state,
+    overrides_from_playlist,
+)
 from gridplayer.settings import Settings, _default_settings
 
 
@@ -37,13 +44,12 @@ def test_get_falls_back_to_settings():
     assert PlaylistSettings().get("video_defaults/aspect") is VideoAspect.STRETCH
 
 
-def test_filter_video_uris_applies_playlist_aspect():
-    from gridplayer.models.video import filter_video_uris
+def test_a_video_made_takes_the_playlist_aspect():
+    from gridplayer.models.video import Video
 
     PlaylistSettings().set("video_defaults/aspect", VideoAspect.NONE)
-    videos = filter_video_uris(["http://example.com/a.mp4"])
-    assert len(videos) == 1
-    assert videos[0].aspect_mode is VideoAspect.NONE
+    video = Video(uri="http://example.com/a.mp4")
+    assert video.aspect_mode is VideoAspect.NONE
 
 
 def test_playlist_kwargs_builds_video_defaults_from_overrides(mocker):
@@ -162,20 +168,27 @@ def test_grid_overrides_omit_preallocate_when_file_omits_it():
 
 
 def test_recent_list_add_uses_playlist_video_defaults(mocker):
+    from gridplayer.player.managers.add_videos import _video
+
+    PlaylistSettings().set("video_defaults/aspect", VideoAspect.NONE)
+
+    assert _video("http://example.com/a.mp4").aspect_mode is VideoAspect.NONE
+
+
+def test_recent_list_add_goes_the_way_anything_added_does(mocker):
     from gridplayer.player.managers.recent_list import RecentListManager
 
     parent = QWidget()
-    PlaylistSettings().set("video_defaults/aspect", VideoAspect.NONE)
-    manager = RecentListManager(context=object(), parent=parent)
+    commands = mocker.Mock()
+    manager = RecentListManager(
+        context=SimpleNamespace(commands=commands), parent=parent
+    )
     manager._keep_parent = parent
-    mocker.patch.object(manager, "add_recent_videos")
-    added = []
-    manager.videos_added.connect(added.append)
 
     manager.cmd_add_video("http://example.com/a.mp4")
 
-    assert len(added) == 1
-    assert added[0][0].aspect_mode is VideoAspect.NONE
+    # a folder or a list read again, for what is in it now
+    commands.add_media.assert_called_once_with(["http://example.com/a.mp4"])
 
 
 def test_defaults_form_disables_hidden_grid_fields():
@@ -284,3 +297,12 @@ def test_settings_dialog_save_skips_hidden_grid_fields(mocker):
 
     assert hidden_key not in written
     assert written["playlist/grid_mode"] is other_mode
+
+
+def test_what_lists_are_shown_by_is_the_playlist_s_to_keep():
+    playlist = Playlist.parse(Playlist(list_view=ListView.LOCATIONS).dumps())
+
+    assert overrides_from_playlist(playlist)["playlist/list_view"] == (
+        ListView.LOCATIONS
+    )
+    assert _default_settings["playlist/list_view"] == ListView.TITLES

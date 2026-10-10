@@ -6,6 +6,7 @@ from PyQt5.QtWidgets import QApplication
 from gridplayer.models.stream import Stream, Streams
 from gridplayer.utils.url_resolve.static import (
     BadURLException,
+    PlaylistURLError,
     ResolvedVideo,
     StreamOfflineError,
 )
@@ -70,6 +71,7 @@ def test_a_url_nobody_could_resolve_is_reported_as_an_error(mocker):
     [
         pytest.param(StreamOfflineError(), id="offline"),
         pytest.param(BadURLException("bad"), id="bad_url"),
+        pytest.param(PlaylistURLError(), id="playlist"),
         pytest.param(RuntimeError("boom"), id="unexpected"),
     ],
 )
@@ -82,3 +84,36 @@ def test_a_failed_resolve_is_reported_as_an_error(error, mocker):
 
     assert not resolved
     assert errors
+
+
+class TestAListTheLinkTurnsOutToBe:
+    def _reading(self, mocker, counts):
+        def resolve(url, on_status=None, headers=None, progress=None):
+            for count in counts:
+                progress("items", count)
+            return None
+
+        mocker.patch(RESOLVE_URL, side_effect=resolve)
+
+    def test_how_far_it_is_read_said(self, mocker):
+        self._reading(mocker, [1200])
+        worker, _, _ = _worker()
+        said = []
+        worker.update_status.connect(said.append)
+
+        worker.resolve("http://page")
+
+        assert said[0] == "Reading the list… 1,200 items"
+
+    def test_read_no_further_once_the_video_is_let_go_of(self, mocker):
+        self._reading(mocker, [1, 2])
+        worker, resolved, errors = _worker()
+        said = []
+        worker.update_status.connect(said.append)
+        worker.stop.set()
+
+        worker.resolve("http://page")
+
+        assert said == []
+        assert not resolved
+        assert not errors

@@ -3,6 +3,7 @@ from PyQt5.QtCore import QEvent, Qt
 from PyQt5.QtWidgets import QApplication
 
 from gridplayer.dialogs.settings import SECTION_PAGE_ROLE, SettingsDialog
+from gridplayer.widgets.settings_page_scroll_area import PageScrollArea
 
 # the index as it is meant to read, group heading by group heading
 SECTIONS = (
@@ -112,6 +113,14 @@ class TestEverySectionOpensItsPage:
 
         assert dialog.section_index.currentItem() is dialog.section_items[0]
         assert dialog.section_page.currentWidget() is dialog.page_general_player
+
+    def test_the_player_page_scrolls_rather_than_make_the_dialog_taller(self, dialog):
+        page = dialog.page_general_player
+        wanted = page.widget().sizeHint().height()
+        resolution = dialog.page_streaming_resolution.minimumSizeHint().height()
+
+        assert isinstance(page, PageScrollArea)
+        assert dialog.section_page.sizeHint().height() == resolution < wanted
 
 
 class TestKeepingTheTwoSidesInStep:

@@ -52,27 +52,33 @@ class VideoStatus(QWidget):
         layout.setSpacing(20)
 
     def resizeEvent(self, event):
+        self._fit_info()
+
         # maintain 10% margin
-
-        if self.status_text:
-            if self.can_fit_info:
-                status_info_min_height = min(
-                    int(self.height() * 0.1),
-                    40,
-                )
-                status_info_max_height = int(status_info_min_height * 1.5)
-
-                self.status_info.setMinimumHeight(status_info_min_height)
-                self.status_info.setMaximumHeight(status_info_max_height)
-
-                self.status_info.show()
-            else:
-                self.status_info.hide()
-
         v_margin = int(event.size().height() * 0.1)
         h_margin = int(event.size().width() * 0.1)
 
         self.layout().setContentsMargins(h_margin, v_margin, h_margin, v_margin)
+
+    def _fit_info(self):
+        """The text sized for the cell, or hidden where it has no room: on
+        each resize, and when text comes to a cell sized while it had none."""
+
+        if not self.status_text:
+            self.status_info.hide()
+            return
+
+        if not self.can_fit_info:
+            self.status_info.hide()
+            return
+
+        status_info_min_height = min(int(self.height() * 0.1), 40)
+        status_info_max_height = int(status_info_min_height * 1.5)
+
+        self.status_info.setMinimumHeight(status_info_min_height)
+        self.status_info.setMaximumHeight(status_info_max_height)
+
+        self.status_info.show()
 
     @property
     def can_fit_info(self):
@@ -104,10 +110,7 @@ class VideoStatus(QWidget):
     def status_text(self, text):
         self.status_info.text = text
 
-        if text and self.can_fit_info:
-            self.status_info.show()
-        else:
-            self.status_info.hide()
+        self._fit_info()
 
     @property
     def percent(self):

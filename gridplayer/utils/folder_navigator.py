@@ -26,6 +26,17 @@ class FolderStep(Enum):
     BACK = auto()
 
 
+def scan_rules() -> ScanRules:
+    """How a folder and the folders in it are read, as the playlist says."""
+
+    settings = PlaylistSettings()
+
+    return ScanRules(
+        is_skip_hidden=settings.get("playlist/folder_skip_hidden"),
+        max_entries=settings.get("playlist/folder_max_entries"),
+    )
+
+
 class _PendingStep(NamedTuple):
     """A step to take once the tree has been looked through."""
 
@@ -96,7 +107,7 @@ class FolderNavigator:
             self._pending = _PendingStep(
                 key=key, step=step, uri=self._video().uri, is_end=is_end
             )
-            self._tell(translate("Folder Navigation", "Looking through the folders…"))
+            self._tell(translate("Folder Navigation", "Scanning folders…"))
             return
 
         self._take_step(step, scan, key, is_end=is_end, is_retry=is_retry)
@@ -116,11 +127,10 @@ class FolderNavigator:
 
     def _scan_key(self) -> ScanKey:
         video = self._video()
-        settings = PlaylistSettings()
-
-        is_skip_hidden = settings.get("playlist/folder_skip_hidden")
 
         if not video.is_dir_recursive:
+            is_skip_hidden = PlaylistSettings().get("playlist/folder_skip_hidden")
+
             return ScanKey(
                 root=video.uri.parent,
                 is_recursive=False,
@@ -132,14 +142,7 @@ class FolderNavigator:
         if video.dir_root is None or not video.uri.is_relative_to(video.dir_root):
             video.dir_root = video.uri.parent
 
-        return ScanKey(
-            root=video.dir_root,
-            is_recursive=True,
-            rules=ScanRules(
-                is_skip_hidden=is_skip_hidden,
-                max_entries=settings.get("playlist/folder_max_entries"),
-            ),
-        )
+        return ScanKey(root=video.dir_root, is_recursive=True, rules=scan_rules())
 
     def _scanned(self, key: ScanKey) -> None:
         pending = self._pending

@@ -134,6 +134,16 @@ SUPPORTED_VIDEO_EXT = frozenset(
 
 SUPPORTED_MEDIA_EXT = frozenset(SUPPORTED_AUDIO_EXT | SUPPORTED_VIDEO_EXT)
 
+# lists of files and links that players and channel providers save, read
+# for a cell to play one after the other; see utils/list_files.py
+SUPPORTED_M3U_EXT = frozenset(("m3u", "m3u8"))
+SUPPORTED_PLS_EXT = frozenset(("pls",))
+SUPPORTED_XSPF_EXT = frozenset(("xspf",))
+
+SUPPORTED_LIST_EXT = frozenset(
+    SUPPORTED_M3U_EXT | SUPPORTED_PLS_EXT | SUPPORTED_XSPF_EXT
+)
+
 # https://github.com/videolan/vlc/blob/3.0.16/include/vlc_interface.h#L164
 SUPPORTED_SUBTITLE_EXT = frozenset(
     (

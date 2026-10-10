@@ -145,9 +145,10 @@ class TestThePlaylists:
     def test_they_sit_in_playlist_settings_after_editing_them(self):
         settings = _submenu(SECTIONS["playlist"], "Playlist Settings")
 
-        assert settings[:5] == [
+        assert settings[:6] == [
             "Edit Playlist Settings",
             "---",
+            "Lists in Playlist",
             "Bookmarks in Playlist",
             "Share Bookmarks",
             "---",

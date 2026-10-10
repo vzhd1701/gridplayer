@@ -1,12 +1,21 @@
 from abc import ABC, abstractmethod
 
-from PyQt5.QtCore import QPropertyAnimation, Qt, pyqtProperty, pyqtSignal
-from PyQt5.QtGui import QColor, QPainter
+from PyQt5.QtCore import (
+    QEvent,
+    QPropertyAnimation,
+    QRect,
+    Qt,
+    pyqtProperty,
+    pyqtSignal,
+)
+from PyQt5.QtGui import QColor, QFontMetrics, QPainter
+from PyQt5.QtWidgets import QWIDGETSIZE_MAX
 
 from gridplayer.utils.qt import QABC
 from gridplayer.widgets.video_overlay_elements import OverlayWidget
 from gridplayer.widgets.video_overlay_icons import (
     draw_cross,
+    draw_list,
     draw_pause,
     draw_play,
     draw_spin_circle,
@@ -165,3 +174,82 @@ class OverlayVolumeButton(OverlayButton):
 
     def icon_off(self, rect, painter, color_fg, color_bg):
         return draw_volume_off(rect, painter, color_fg, color_bg)
+
+
+class OverlayListPlaceButton(OverlayButton):
+    """Which item of its list a cell plays, "3/12", after the list's sign:
+    clicked, the List window on the list.
+
+    The number in the labels' contrast, to be read as theirs is; the sign
+    in the buttons', for it to be seen as one of them.
+    """
+
+    # around the sign and the number, and between them
+    margin = 6
+    gap = 5
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
+        self._text = ""
+
+        # as wide as what it says, where the others are square
+        self.setMaximumWidth(QWIDGETSIZE_MAX)
+
+    @property
+    def text(self) -> str:
+        return self._text
+
+    @text.setter
+    def text(self, text: str):
+        self._text = text
+
+        self._fit()
+        self.update()
+
+    def changeEvent(self, event):
+        if event.type() == QEvent.FontChange:
+            self._fit()
+
+        super().changeEvent(event)
+
+    def _fit(self):
+        width = QFontMetrics(self.font()).horizontalAdvance(self._text)
+
+        self.setFixedWidth(
+            self.margin + self._sign_rect().width() + self.gap + width + self.margin
+        )
+
+    def paintEvent(self, event):
+        painter = QPainter(self)
+
+        if self.underMouse():
+            color_bg = self.color_contrast_mid
+            color_sign = color_text = self.color
+        else:
+            color_bg = self.color
+            color_sign = self.color_contrast_mid
+            color_text = self.color_contrast
+
+        painter.fillRect(self.rect(), color_bg)
+
+        sign = self._sign_rect()
+        draw_list(sign, painter, color_sign, color_bg)
+
+        painter.setPen(color_text)
+        painter.drawText(
+            self.rect().adjusted(sign.right() + 1 + self.gap, 0, 0, 0),
+            Qt.AlignVCenter | Qt.AlignLeft,
+            self._text,
+        )
+
+    def _sign_rect(self) -> QRect:
+        # as tall as the other buttons' icons are, a little wider
+        height = self.minimumHeight() - 10
+        width = round(height * 1.2)
+
+        return QRect(self.margin, (self.minimumHeight() - height) // 2, width, height)
+
+    def icon(self, rect, painter, color_fg, color_bg): ...
+
+    def icon_off(self, rect, painter, color_fg, color_bg): ...

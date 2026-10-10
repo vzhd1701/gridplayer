@@ -101,6 +101,7 @@ class GridManager(ManagerBase):
             "ask_fixed_grid_size": self.cmd_ask_fixed_grid_size,
             "get_fixed_grid_size": self.cmd_get_fixed_grid_size,
             "add_videos_to_layout": self.add_videos_to_layout,
+            "grid_free_capacity": lambda: self._layout.free_capacity(),
             "layout_drop": self.cmd_layout_drop,
             "layout_order": lambda: self._layout.order(),
             "shuffle_layout": self.cmd_shuffle_layout,

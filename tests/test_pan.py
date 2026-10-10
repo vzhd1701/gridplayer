@@ -3,7 +3,7 @@ from types import SimpleNamespace
 import pytest
 from PyQt5.QtCore import QEvent, QPoint, QPointF, Qt
 from PyQt5.QtGui import QMouseEvent
-from PyQt5.QtWidgets import QApplication, QWidget
+from PyQt5.QtWidgets import QApplication, QDialog, QLineEdit, QWidget
 
 import gridplayer.player.managers.pan as pan_module
 import gridplayer.utils.keymap as keymap_module
@@ -82,11 +82,11 @@ def _pointer(monkeypatch):
         QApplication.restoreOverrideCursor()
 
 
-def _manager(block):
+def _manager(block, player=None):
     context = SimpleNamespace(
         commands=SimpleNamespace(get_video_block_under_mouse=lambda: block)
     )
-    return PanManager(context=context)
+    return PanManager(context=context, parent=player)
 
 
 def _event(kind, button=Qt.MiddleButton, buttons=Qt.MiddleButton, keys=Qt.NoModifier):
@@ -276,7 +276,7 @@ def test_after_a_drag_the_pointer_is_heard_where_it_is():
     overlay.show()
 
     block = _Block()
-    manager = _manager(block)
+    manager = _manager(block, player)
     QApplication.instance().installEventFilter(manager)
 
     try:
@@ -462,3 +462,34 @@ def test_it_is_set_on_the_shortcuts_page(mocker):
     dialog.save_settings()
 
     assert written["player/keymap"].get(GESTURE_PAN) == ["Middle-Drag", "Shift+Drag"]
+
+
+class TestAWindowOverThePlayer:
+    """The List window, open beside the player and over a video: a drag
+    there is its own."""
+
+    def _manager(self, block):
+        self.player = QWidget()
+        return _manager(block, self.player)
+
+    def test_nothing_is_dragged_from_it(self):
+        block = _Block()
+        manager = self._manager(block)
+        over = QLineEdit(QDialog(self.player))
+
+        manager.eventFilter(over, _event(QEvent.MouseButtonPress))
+        _Cursor.at = QPoint(200, 100)
+        manager.eventFilter(over, _event(QEvent.MouseMove, Qt.NoButton))
+
+        assert block.pans == []
+
+    def test_the_player_s_own_still_drags(self):
+        block = _Block()
+        manager = self._manager(block)
+        cell = QWidget(self.player)
+
+        manager.eventFilter(cell, _event(QEvent.MouseButtonPress))
+        _Cursor.at = QPoint(200, 100)
+        manager.eventFilter(cell, _event(QEvent.MouseMove, Qt.NoButton))
+
+        assert block.pans == [(100, 0)]

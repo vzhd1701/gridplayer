@@ -2,13 +2,14 @@ import time
 from types import SimpleNamespace
 
 import pytest
-from PyQt5.QtCore import QEvent, QPoint, QPointF, Qt
-from PyQt5.QtGui import QKeyEvent, QMouseEvent
-from PyQt5.QtWidgets import QApplication, QWidget
+from PyQt5.QtCore import QEvent, QMimeData, QPoint, QPointF, Qt
+from PyQt5.QtGui import QDropEvent, QKeyEvent, QMouseEvent
+from PyQt5.QtWidgets import QApplication, QDialog, QLineEdit, QWidget
 
 from gridplayer.params.static import DropAction
 from gridplayer.player.managers.drag_n_drop import DragNDropManager
 from gridplayer.utils.drag_n_drop import drop_is_replace
+from gridplayer.utils.files import LIST_MIME, VIDEO_MIME
 
 
 @pytest.fixture(scope="module", autouse=True)
@@ -353,18 +354,23 @@ class TestADropFromAnotherInstance:
     """A cell dragged over from another window comes with its bookmarks,
     kept by the playlist apart from the video."""
 
-    def _drop(self, tmp_path, is_taken):
+    def _drop(self, tmp_path, is_taken, media_list=None, lists=None):
         from gridplayer.models.bookmark import Bookmark
-        from gridplayer.models.video import Video
+        from gridplayer.models.video import Video, VideoBlockMime
         from gridplayer.player.managers.bookmarks import BookmarksRegistry
+        from gridplayer.player.managers.lists import MediaListsRegistry
 
         (tmp_path / "movie.mkv").touch()
-        video = Video(uri=tmp_path / "movie.mkv")
+        video = Video(
+            uri=tmp_path / "movie.mkv",
+            list_id=None if media_list is None else media_list.id,
+        )
         bookmarks = (Bookmark(time_ms=30000, name="Goal"),)
         placed = {}
 
         ctx = _Ctx()
         ctx.bookmarks = BookmarksRegistry()
+        ctx.lists = lists if lists is not None else MediaListsRegistry()
         ctx.video_blocks = SimpleNamespace(
             by_id=lambda _id: None,
             by_video_id=lambda _id: placed.get(str(_id)),
@@ -381,10 +387,24 @@ class TestADropFromAnotherInstance:
         manager, _parent = _make_manager()
         manager._ctx = ctx
 
-        dropped = SimpleNamespace(id=video.id, video=video, bookmarks=bookmarks)
-        manager._drop_video_block(dropped, None, None, False)
+        # as it comes over: in text, from another process, its list apart
+        mime_data = QMimeData()
+        mime_data.setData(
+            VIDEO_MIME,
+            VideoBlockMime(id="other", video=video, bookmarks=bookmarks)
+            .model_dump_json()
+            .encode(),
+        )
+        if media_list is not None:
+            mime_data.setData(LIST_MIME, media_list.model_dump_json().encode())
 
-        return ctx.bookmarks, video, bookmarks
+        dropped, dropped_list = manager._dropped_video(mime_data)
+        manager._drop_video_block(dropped, dropped_list, None, None, False)
+
+        self.ctx = ctx
+        self.dropped = dropped
+
+        return ctx.bookmarks, dropped.video, bookmarks
 
     def test_its_bookmarks_come_with_it(self, tmp_path):
         registry, video, bookmarks = self._drop(tmp_path, is_taken=True)
@@ -395,3 +415,129 @@ class TestADropFromAnotherInstance:
         registry, _video, _bookmarks = self._drop(tmp_path, is_taken=False)
 
         assert registry.entries() == []
+
+    def test_its_file_is_a_file_here_too(self, tmp_path):
+        _registry, video, _bookmarks = self._drop(tmp_path, is_taken=True)
+
+        assert video.uri == tmp_path / "movie.mkv"
+        assert video.is_local_file
+
+    def test_the_list_it_plays_from_comes_with_it(self, tmp_path):
+        from gridplayer.models.media_list import ListItem, MediaList
+
+        media_list = MediaList(
+            name="Channels", items=[ListItem(uri=tmp_path / "movie.mkv")]
+        )
+
+        _registry, video, _bookmarks = self._drop(
+            tmp_path, is_taken=True, media_list=media_list
+        )
+
+        here = self.ctx.lists.get(video.list_id)
+        assert here.name == "Channels"
+        assert here.items[0].uri == tmp_path / "movie.mkv"
+
+    def test_under_an_id_of_its_own_where_it_is_taken(self, tmp_path):
+        from gridplayer.models.media_list import ListItem, MediaList
+        from gridplayer.player.managers.lists import MediaListsRegistry
+
+        lists = MediaListsRegistry()
+        mine = lists.add(MediaList(name="Mine"))
+        theirs = MediaList(id=mine.id, name="Theirs", items=[ListItem(uri="x://y")])
+
+        _registry, video, _bookmarks = self._drop(
+            tmp_path, is_taken=True, media_list=theirs, lists=lists
+        )
+
+        assert video.list_id != mine.id
+        assert lists.get(mine.id).name == "Mine"
+        assert lists.get(video.list_id).name == "Theirs"
+
+    def test_a_list_read_from_a_file_or_a_folder_comes_too(self, tmp_path):
+        from gridplayer.models.media_list import ListItem, ListSource, MediaList
+        from gridplayer.params.static import ListSourceKind
+
+        media_list = MediaList(
+            name="Channels",
+            items=[ListItem(uri=tmp_path / "movie.mkv"), ListItem(uri="http://tv/1")],
+            source=ListSource(kind=ListSourceKind.FOLDER, location=tmp_path),
+            removed=(tmp_path / "gone.mkv", "http://tv/2"),
+        )
+
+        _registry, video, _bookmarks = self._drop(
+            tmp_path, is_taken=True, media_list=media_list
+        )
+
+        here = self.ctx.lists.get(video.list_id)
+        assert here.source.location == tmp_path
+        assert here.removed == (tmp_path / "gone.mkv", "http://tv/2")
+        assert [item.uri for item in here.items] == [
+            tmp_path / "movie.mkv",
+            "http://tv/1",
+        ]
+
+    def test_turned_away_its_list_is_not_kept(self, tmp_path):
+        from gridplayer.models.media_list import MediaList
+
+        self._drop(tmp_path, is_taken=False, media_list=MediaList(name="Channels"))
+
+        assert self.ctx.lists.lists() == []
+
+
+class TestAWindowOverThePlayer:
+    """The List window, open beside the player and over a video: its mouse
+    and its drops are its own."""
+
+    @pytest.fixture
+    def manager(self, mocker):
+        mocker.patch(
+            "gridplayer.player.managers.drag_n_drop.is_modal_open", return_value=False
+        )
+        manager, self.player = _make_manager()
+        self.activated = []
+        manager._ctx.commands.activate_window = lambda: self.activated.append(True)
+        self.window = QDialog(self.player)
+        return manager
+
+    def test_a_press_there_moves_no_video_and_keeps_its_focus(self, manager):
+        field = QLineEdit(self.window)
+
+        assert manager.eventFilter(field, _left_press()) is False
+
+        assert manager._drag_start_position is None
+        assert self.activated == []
+
+    def test_seen_at_its_window_first_too(self, manager):
+        self.window.winId()
+
+        manager.eventFilter(self.window.windowHandle(), _left_press())
+
+        assert manager._drag_start_position is None
+        assert self.activated == []
+
+    def test_what_is_dropped_there_is_its_own(self, manager, mocker):
+        finish = mocker.patch.object(manager, "_finish_drop")
+        data = QMimeData()
+        data.setText("http://tv/1")
+        drop = QDropEvent(
+            QPointF(5, 5), Qt.CopyAction, data, Qt.LeftButton, Qt.NoModifier
+        )
+
+        assert manager.eventFilter(QWidget(self.window), drop) is False
+        QApplication.processEvents()
+
+        finish.assert_not_called()
+        assert not drop.isAccepted()
+
+    def test_the_player_s_own_still_moves_the_video(self, manager):
+        manager.eventFilter(QWidget(self.player), _left_press())
+
+        assert manager._drag_start_position == QPoint(10, 20)
+        assert self.activated == [True]
+
+    def test_a_drag_gone_on_to_it_is_off_the_player(self, manager, mocker):
+        mocker.patch("gridplayer.player.managers.drag_n_drop.env.IS_LINUX", False)
+        mocker.patch.object(QApplication, "topLevelAt", return_value=self.window)
+        self.player.setGeometry(0, 0, 4000, 4000)
+
+        assert manager._is_pointer_over_player() is False

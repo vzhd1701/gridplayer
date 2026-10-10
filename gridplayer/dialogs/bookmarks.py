@@ -166,7 +166,7 @@ def mixed_color(color: QColor, other: QColor, amount: float) -> QColor:
     )
 
 
-def _here_icon(color: QColor) -> QIcon:
+def here_icon(color: QColor) -> QIcon:
     """A small play mark: the bookmark the video is at."""
 
     pixmap = QPixmap(24, 24)
@@ -182,7 +182,7 @@ def _here_icon(color: QColor) -> QIcon:
     return QIcon(pixmap)
 
 
-def _blank_icon() -> QIcon:
+def blank_icon() -> QIcon:
     """The room the play mark takes, kept in every row to line the times up."""
 
     pixmap = QPixmap(24, 24)
@@ -213,6 +213,19 @@ def with_key_txt(item_txt: str, key) -> str:
     key_txt = QKeySequence(key).toString(QKeySequence.NativeText)
 
     return f"{item_txt}\t{key_txt}"
+
+
+def dialog_button(icon: str | None, text: str, tooltip=None) -> QPushButton:
+    """A button of a dialog's row of them, with its theme icon, if any."""
+
+    button = QPushButton(QIcon.fromTheme(icon) if icon else QIcon(), text)
+    button.setIconSize(QSize(16, 16))
+    button.setAutoDefault(False)
+
+    if tooltip:
+        button.setToolTip(tooltip)
+
+    return button
 
 
 def paint_empty_txt(view, painter, line_txt, hint_txt):
@@ -262,7 +275,7 @@ class BookmarksModel(QAbstractTableModel):
         self.length = 0
 
         self._here_icon = QIcon()
-        self._blank_icon = _blank_icon()
+        self._blank_icon = blank_icon()
         self._colors = {}
         self._unnamed_font = QFont()
 
@@ -279,7 +292,7 @@ class BookmarksModel(QAbstractTableModel):
             "out_of_reach": palette.color(QPalette.Disabled, QPalette.Text),
         }
 
-        self._here_icon = _here_icon(text)
+        self._here_icon = here_icon(text)
 
         self._marker_icons = {}
         self._marker_rim = text
@@ -835,15 +848,15 @@ class BookmarksDialog(QDialog):
         self._hint = QLabel()
         self._hint.setWordWrap(True)
 
-        self._add_button = self._button(
+        self._add_button = dialog_button(
             "bookmark-add",
             translate("Dialog - Bookmarks", "Add"),
             translate("Dialog - Bookmarks", "Add a bookmark where the video is now"),
         )
-        self._remove_button = self._button(
+        self._remove_button = dialog_button(
             "bookmark-remove", translate("Dialog - Bookmarks", "Remove")
         )
-        self._copy_button = self._button(
+        self._copy_button = dialog_button(
             "copy",
             translate("Dialog - Bookmarks", "Copy All"),
             translate(
@@ -851,7 +864,7 @@ class BookmarksDialog(QDialog):
                 "Copy all the bookmarks as timestamps, one to a line, like 1:23 Intro",
             ),
         )
-        self._paste_button = self._button(
+        self._paste_button = dialog_button(
             "paste",
             translate("Dialog - Bookmarks", "Paste"),
             translate(
@@ -859,7 +872,7 @@ class BookmarksDialog(QDialog):
                 "Add bookmarks from copied timestamps, one to a line, like 1:23 Intro",
             ),
         )
-        self._remove_all_button = self._button(
+        self._remove_all_button = dialog_button(
             "bookmark-remove-all", translate("Dialog - Bookmarks", "Remove All")
         )
 
@@ -888,16 +901,6 @@ class BookmarksDialog(QDialog):
         root.addLayout(tools)
         root.addSpacing(4)
         root.addLayout(bottom)
-
-    def _button(self, icon, text, tooltip=None) -> QPushButton:
-        button = QPushButton(QIcon.fromTheme(icon), text)
-        button.setIconSize(QSize(16, 16))
-        button.setAutoDefault(False)
-
-        if tooltip:
-            button.setToolTip(tooltip)
-
-        return button
 
     def _ui_connect(self):
         block = self._block

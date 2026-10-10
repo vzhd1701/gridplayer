@@ -1,3 +1,4 @@
+import weakref
 from pathlib import Path
 from typing import Any
 
@@ -8,7 +9,6 @@ from gridplayer.dialogs.messagebox import QCustomMessageBox
 from gridplayer.dialogs.playlist_settings import PlaylistSettingsDialog
 from gridplayer.models.grid_state import GridState
 from gridplayer.models.playlist import Playlist, UnsupportedPlaylistVersion
-from gridplayer.models.video import filter_video_uris
 from gridplayer.params.static import SeekSyncMode, UnsavedChangesMode, WindowState
 from gridplayer.player.managers.base import ManagerBase
 from gridplayer.playlist_settings import (
@@ -36,6 +36,8 @@ class PlaylistManager(ManagerBase):
     snapshots_loaded = pyqtSignal(dict)
     # the files' bookmarks, and the ids of the videos about to open
     bookmarks_loaded = pyqtSignal(list, list)
+    # the lists the cells play from
+    lists_loaded = pyqtSignal(list)
     bookmarks_shared_loaded = pyqtSignal(bool)
     seek_sync_mode_loaded = pyqtSignal(SeekSyncMode)
     view_sync_loaded = pyqtSignal(bool)
@@ -62,7 +64,7 @@ class PlaylistManager(ManagerBase):
         self._ctx.is_shuffle_on_load = Settings().get("playlist/shuffle_on_load")
 
         self._saved_playlist_path: Path | None = None
-        self._saved_playlist_state: int | None = None
+        self._saved_playlist_state: tuple | None = None
 
         self._title_timer = QTimer(self)
         self._title_timer.setInterval(_TITLE_REFRESH_MS)
@@ -264,13 +266,7 @@ class PlaylistManager(ManagerBase):
             self.load_playlist_file(playlist)
             return
 
-        videos = filter_video_uris(argv)
-
-        if not videos:
-            self.error.emit(translate("Error", "No supported files or URLs!"))
-            return
-
-        self._ctx.commands.add_videos_to_layout(videos)
+        self._ctx.commands.add_media(argv)
         self.alert.emit()
 
     def _process_waiting_arguments(self):
@@ -330,6 +326,7 @@ class PlaylistManager(ManagerBase):
         self._apply_effective_session()
 
         # in place before the videos, for each to find its own as it opens
+        self.lists_loaded.emit(list(playlist.lists or []))
         self.bookmarks_loaded.emit(
             list(playlist.bookmarks or []),
             [video.id for video in playlist.videos or []],
@@ -391,8 +388,38 @@ class PlaylistManager(ManagerBase):
         if self._saved_playlist_state is None:
             return False
 
-        playlist_state = hash(self._make_playlist().dumps())
-        return playlist_state != self._saved_playlist_state
+        return not _is_same_state(self._playlist_state(), self._saved_playlist_state)
+
+    def _playlist_state(self) -> tuple:
+        """What the playlist is now, to tell a change from: the lists by the
+        lists themselves, the rest by what it would be written as.
+
+        A list is a new one whenever it is edited, so the same list is the
+        same contents; writing out its items each time to compare them took
+        seconds for a channel list, and the menu and the window title ask.
+
+        A linked list by what the playlist keeps of it, the few items the
+        viewer did something to: read again as the playlist opens, it is
+        another list, but the playlist is not changed by that. Nor by where
+        on it its cells are now: the same item is at another place once its
+        source has more or less, or could not be read, and is found by what
+        it is.
+        """
+
+        playlist = self._make_playlist()
+        lists = tuple(playlist.lists_as_saved())
+
+        linked = {media_list.id for media_list in lists if media_list.is_linked}
+        videos = [
+            video.model_copy(update={"list_index": None})
+            if video.list_id in linked
+            else video
+            for video in playlist.videos or []
+        ]
+
+        rest = playlist.model_copy(update={"lists": None, "videos": videos}).dumps()
+
+        return hash(rest), lists
 
     def _save_playlist_via_dialog(self, playlist: Playlist) -> bool:
         if self._saved_playlist_path is not None:
@@ -439,6 +466,7 @@ class PlaylistManager(ManagerBase):
 
         # those of the cells closed meanwhile were left out of it
         self._ctx.commands.forget_bookmarks_of_cells_gone()
+        self._ctx.commands.forget_left_lists()
 
         self._set_saved_playlist(file_path)
 
@@ -510,7 +538,7 @@ class PlaylistManager(ManagerBase):
 
     def _set_saved_playlist(self, path: Path | None) -> None:
         self._saved_playlist_path = path
-        self._saved_playlist_state = hash(self._make_playlist().dumps())
+        self._saved_playlist_state = _held_lightly(self._playlist_state())
 
         if path is None:
             self._title_timer.stop()
@@ -554,6 +582,7 @@ class PlaylistManager(ManagerBase):
             videos=videos,
             snapshots=self._ctx.snapshots,
             bookmarks=bookmarks,
+            lists=self._ctx.commands.lists_to_save(),
             **settings,
         )
 
@@ -591,3 +620,45 @@ def _emit_if_not_empty(*properties: tuple[pyqtSignal, Any]):
 def _emit(*properties: tuple[pyqtSignal, Any]):
     for signal, property_value in properties:
         signal.emit(property_value)
+
+
+def _is_same_state(one: tuple, other: tuple) -> bool:
+    rest, lists = one
+    other_rest, other_lists = other
+
+    return (
+        rest == other_rest
+        and len(lists) == len(other_lists)
+        and all(_is_same_list(a, b) for a, b in zip(lists, other_lists, strict=True))
+    )
+
+
+def _held_lightly(state: tuple) -> tuple:
+    """The playlist as saved, kept to tell a change from: a list kept whole
+    by a weak reference, a list edited being another list, and the one
+    replaced let go of; a channel list is a hundred megabytes."""
+
+    rest, lists = state
+
+    return rest, tuple(
+        media_list if media_list.is_linked else weakref.ref(media_list)
+        for media_list in lists
+    )
+
+
+def _is_same_list(one, other) -> bool:
+    if isinstance(other, weakref.ref):
+        return other() is one
+
+    if one is other:
+        return True
+
+    # a linked one is a few items, told apart item by item; read again
+    # as the playlist opens, it was read at another time, which is no
+    # change of the playlist's
+    if not (one.is_linked and other.is_linked):
+        return False
+
+    return one.model_copy(update={"read_at": None}) == other.model_copy(
+        update={"read_at": None}
+    )

@@ -6,16 +6,21 @@ from PyQt5.QtGui import QFontDatabase
 
 from gridplayer.params import env
 from gridplayer.params.static import (
+    MANY_CELLS,
     MAX_RATE,
     MAX_SCALE,
     MAX_SEEK_STEP_SECONDS,
     MIN_RATE,
     MIN_SCALE,
     MIN_SEEK_STEP_SECONDS,
+    AddMode,
     AudioChannelMode,
     AudioTrackMode,
     DropAction,
     GridMode,
+    ListEndAction,
+    ListUpdate,
+    ListView,
     NetworkRetryMode,
     SeekSyncMode,
     SubtitleOutline,
@@ -113,52 +118,47 @@ def _unsaved_changes_modes() -> dict:
 def _unsaved_changes_tooltip() -> str:
     return translate(
         "SettingsDialog",
-        "Auto save applies only when the playlist has a file location; "
-        "otherwise the fallback action is used.",
+        "Auto save applies only when the playlist has a file location;"
+        " otherwise the fallback action is used.",
     )
 
 
 def _save_paths_relative_tooltip() -> str:
     return translate(
         "SettingsDialog",
-        "Store local video paths relative to the playlist file location so the "
-        "playlist stays portable when moved together with its videos. URLs and "
-        "paths that cannot be made relative (e.g. another drive) are kept as-is.",
+        "Store local video paths relative to the playlist file location so the"
+        " playlist stays portable when moved together with its videos. URLs and"
+        " paths that cannot be made relative (e.g. another drive) are kept as-is.",
     )
 
 
 def _bookmarks_shared_tooltip() -> str:
     return translate(
         "SettingsDialog",
-        "On: every cell playing a file shows the same bookmarks, and they stay"
-        " in the playlist when the cell is closed or moves on to another file.\n"
-        "Off: each cell keeps its own, and a cell's bookmarks are removed with"
-        " it when it is closed.",
+        "On: cells playing the same file share its bookmarks, and they stay when a"
+        " cell closes.\nOff: each cell has its own, removed when the cell closes.",
     )
 
 
 def _zoom_step_tooltip() -> str:
     return translate(
         "SettingsDialog",
-        "How much one zoom in or out changes the zoom: a share of the whole"
-        " picture, or of what is on screen when zooming in proportion.",
+        "How much each zoom in or out step changes the zoom.",
     )
 
 
 def _zoom_proportional_tooltip() -> str:
     return translate(
         "SettingsDialog",
-        "Each step changes the zoom by the same share of what is on screen,"
-        " so zooming feels the same at 2x and at 8x.",
+        "Each step zooms by the same share of what's on screen, so it feels the same"
+        " at 2x and 8x.",
     )
 
 
 def _view_sync_tooltip() -> str:
     return translate(
         "Sync",
-        "Zooming or moving the picture of one video shows the same part of the"
-        " picture in the others. Videos of the same size show exactly the same"
-        " pixels.",
+        "Zooming or panning one video does the same in the others.",
     )
 
 
@@ -176,11 +176,92 @@ def _drop_external() -> dict:
     }
 
 
+def _add_modes() -> dict:
+    return {
+        AddMode.CELL_EACH: translate("Adding", "One per item"),
+        AddMode.ONE_CELL: translate("Adding", "One for all"),
+        AddMode.CELL_PER_FILE: translate("Adding", "One per video"),
+        AddMode.ASK: translate("Adding", "Ask"),
+    }
+
+
+def _list_views() -> dict:
+    return {
+        ListView.TITLES: translate("SettingsDialog", "Titles"),
+        ListView.TITLES_AND_LOCATIONS: translate("SettingsDialog", "Titles and paths"),
+        ListView.LOCATIONS: translate("SettingsDialog", "Paths"),
+    }
+
+
+def _list_view_tooltip() -> str:
+    return translate(
+        "SettingsDialog",
+        "How items are shown in the List window: titles, titles with paths or links,"
+        " or just paths or links.",
+    )
+
+
+def _list_thumbnails_tooltip() -> str:
+    return translate(
+        "SettingsDialog",
+        "Show thumbnails, channel, views and upload date for lists from sites like"
+        " YouTube.",
+    )
+
+
+def list_update_txts() -> dict:
+    """How often linked lists are read again, as the playlist's setting
+    and each list's own choice in its List window say it."""
+
+    return {
+        ListUpdate.ON_LOAD: translate("Lists", "On playlist load"),
+        ListUpdate.FIVE_MINUTES: translate("Lists", "Every 5 minutes"),
+        ListUpdate.FIFTEEN_MINUTES: translate("Lists", "Every 15 minutes"),
+        ListUpdate.HOURLY: translate("Lists", "Every hour"),
+        ListUpdate.SIX_HOURS: translate("Lists", "Every 6 hours"),
+        ListUpdate.DAILY: translate("Lists", "Every day"),
+        ListUpdate.MANUAL: translate("Lists", "Manually"),
+    }
+
+
+def _list_update_tooltip() -> str:
+    return translate(
+        "SettingsDialog",
+        "How often linked lists update from their source. You can change it for each"
+        " list in its List window.",
+    )
+
+
+def _list_get_info_tooltip() -> str:
+    return translate(
+        "SettingsDialog",
+        "Look up titles, lengths and thumbnails for files and links you add to a"
+        " list. When off, use Get Info in the List window.",
+    )
+
+
+def _add_mode_tooltip() -> str:
+    return translate(
+        "Adding",
+        "How many cells to use for added files, folders and playlists. One per item:"
+        " each gets its own cell. One for all: everything in one cell. One per video:"
+        " every video gets its own cell, even inside folders and playlists.",
+    )
+
+
+def _warn_many_cells_tooltip() -> str:
+    return translate(
+        "SettingsDialog",
+        "Ask before adding more than {COUNT} cells at once. Too many can freeze the"
+        " player.",
+    ).format(COUNT=MANY_CELLS)
+
+
 def _drop_action_tooltip() -> str:
     tooltip = translate(
         "SettingsDialog",
-        'Hold the key set for "Hold to switch drop action" on the Shortcuts'
-        " page while dropping to do the other one.",
+        'Hold the "Hold to switch drop action" key (see Shortcuts) while'
+        " dropping to do the other action.",
     )
 
     if not env.IS_LINUX:
@@ -188,8 +269,8 @@ def _drop_action_tooltip() -> str:
 
     gnome_note = translate(
         "SettingsDialog",
-        "On GNOME, dropping files from the file manager only honors Shift. "
-        "Ctrl and Alt still work when dragging videos inside the player.",
+        "On GNOME, dropping files from the file manager only honors Shift."
+        " Ctrl and Alt still work when dragging videos inside the player.",
     )
 
     return f"{tooltip}\n\n{gnome_note}"
@@ -258,35 +339,28 @@ def _deinterlace_modes() -> dict:
 def _dir_recursive_tooltip() -> str:
     return translate(
         "Folder Navigation",
-        "Next, previous and random files are looked for in the folders under"
-        " the one the video was in when this was turned on, as well as in"
-        " that one. Play Next File and Play Previous File go the same way.",
+        "Next, previous and random files also come from subfolders.",
     )
 
 
 def _folder_skip_hidden_tooltip() -> str:
     return translate(
         "SettingsDialog",
-        "Pass over hidden files and folders (on Linux and macOS, the ones"
-        " named with a leading dot), and the ones systems keep their own"
-        " things in, such as the recycle bin or a NAS's thumbnails.",
+        "Skip hidden files and folders, and system folders like the recycle bin.",
     )
 
 
 def _folder_max_entries_tooltip() -> str:
     return translate(
         "SettingsDialog",
-        "How many files and folders, videos or not, to look through at most"
-        " when subfolders are included, so that a whole drive does not have"
-        " to be gone through first.",
+        "The most files and folders to scan when subfolders are included.",
     )
 
 
 def _shuffle_avoid_open_tooltip() -> str:
     return translate(
         "SettingsDialog",
-        "A random file that is already open in another cell is put off until"
-        " later, as long as there is another one to play.",
+        "Random play skips files already open in other cells when it can.",
     )
 
 
@@ -300,6 +374,22 @@ def _end_actions() -> dict:
         VideoEndAction.STOP: translate("When Finished", "Stop"),
         VideoEndAction.CLOSE: translate("When Finished", "Close"),
     }
+
+
+def _list_end_actions() -> dict:
+    return {
+        ListEndAction.START_OVER: translate("Lists", "Start over"),
+        ListEndAction.PAUSE: translate("Lists", "Pause at start"),
+        ListEndAction.STOP: translate("Lists", "Stop"),
+        ListEndAction.CLOSE: translate("Lists", "Close"),
+    }
+
+
+def _list_end_action_tooltip() -> str:
+    return translate(
+        "Lists",
+        "What a cell playing a list does after the last item.",
+    )
 
 
 def _initial_states() -> dict:
@@ -528,7 +618,7 @@ PLAYLIST_FIELDS: tuple[SettingField, ...] = (
         playlist_attr="zoom_proportional",
         kind=FieldKind.CHECKBOX,
         section=translate("SettingsDialog", "Step Sizes"),
-        label=translate("SettingsDialog", "Zoom in proportion to current zoom"),
+        label=translate("SettingsDialog", "Proportional zoom"),
         tooltip=_zoom_proportional_tooltip(),
     ),
     _f(
@@ -544,7 +634,7 @@ PLAYLIST_FIELDS: tuple[SettingField, ...] = (
         playlist_attr="folder_max_entries",
         kind=FieldKind.SPIN,
         section=translate("SettingsDialog", "Folder Navigation"),
-        label=translate("SettingsDialog", "Most files to look through"),
+        label=translate("SettingsDialog", "File limit"),
         spin_min=0,
         spin_max=1000000,
         spin_special=translate("SettingsDialog", "No limit"),
@@ -555,7 +645,7 @@ PLAYLIST_FIELDS: tuple[SettingField, ...] = (
         playlist_attr="shuffle_avoid_open",
         kind=FieldKind.CHECKBOX,
         section=translate("SettingsDialog", "Folder Navigation"),
-        label=translate("SettingsDialog", "Avoid random files open in other cells"),
+        label=translate("SettingsDialog", "Skip files open in other cells"),
         tooltip=_shuffle_avoid_open_tooltip(),
     ),
     _f(
@@ -723,6 +813,57 @@ PLAYLIST_FIELDS: tuple[SettingField, ...] = (
         combo_values=_drop_external,
         tooltip=_drop_action_tooltip(),
     ),
+    _f(
+        settings_key="playlist/add_mode",
+        playlist_attr="add_mode",
+        kind=FieldKind.COMBO,
+        section=translate("SettingsDialog", "Drag-n-Drop"),
+        label=translate("Adding", "Cells"),
+        combo_values=_add_modes,
+        tooltip=_add_mode_tooltip(),
+    ),
+    _f(
+        settings_key="playlist/warn_many_cells",
+        playlist_attr="warn_many_cells",
+        kind=FieldKind.CHECKBOX,
+        section=translate("SettingsDialog", "Drag-n-Drop"),
+        label=translate("SettingsDialog", "Warn about too many cells"),
+        tooltip=_warn_many_cells_tooltip(),
+    ),
+    _f(
+        settings_key="playlist/list_view",
+        playlist_attr="list_view",
+        kind=FieldKind.COMBO,
+        section=translate("SettingsDialog", "Lists"),
+        label=translate("SettingsDialog", "List view"),
+        combo_values=_list_views,
+        tooltip=_list_view_tooltip(),
+    ),
+    _f(
+        settings_key="playlist/list_thumbnails",
+        playlist_attr="list_thumbnails",
+        kind=FieldKind.CHECKBOX,
+        section=translate("SettingsDialog", "Lists"),
+        label=translate("SettingsDialog", "Thumbnails when available"),
+        tooltip=_list_thumbnails_tooltip(),
+    ),
+    _f(
+        settings_key="playlist/list_get_info",
+        playlist_attr="list_get_info",
+        kind=FieldKind.CHECKBOX,
+        section=translate("SettingsDialog", "Lists"),
+        label=translate("SettingsDialog", "Get info automatically"),
+        tooltip=_list_get_info_tooltip(),
+    ),
+    _f(
+        settings_key="playlist/list_update",
+        playlist_attr="list_update",
+        kind=FieldKind.COMBO,
+        section=translate("SettingsDialog", "Lists"),
+        label=translate("SettingsDialog", "Update linked lists"),
+        combo_values=list_update_txts,
+        tooltip=_list_update_tooltip(),
+    ),
 )
 
 VIDEO_FIELDS: tuple[SettingField, ...] = (
@@ -742,9 +883,9 @@ VIDEO_FIELDS: tuple[SettingField, ...] = (
         combo_values=_audio_track_modes,
         tooltip=translate(
             "SettingsDialog",
-            "Which track a video opens on: the one its own file marks as the"
-            " default, the one answering the preferred languages below, or"
-            " none decoded at all, which is not the same as starting muted.",
+            "Which audio track to start with: the file's default, one in your"
+            " preferred languages, or none (no audio decoded, which isn't the same as"
+            " muted).",
         ),
     ),
     _f(
@@ -770,9 +911,8 @@ VIDEO_FIELDS: tuple[SettingField, ...] = (
         label=translate("SettingsDialog", "Detect external audio files"),
         tooltip=translate(
             "SettingsDialog",
-            "Offer audio files named after the video and kept beside it,"
-            " so they can be played in place of its own sound."
-            " Nothing is opened until one of them is picked.",
+            "Offer audio files next to the video with the same name. They're opened"
+            " only when you pick one.",
         ),
     ),
     _f(
@@ -792,9 +932,8 @@ VIDEO_FIELDS: tuple[SettingField, ...] = (
         combo_values=_subtitle_track_modes,
         tooltip=translate(
             "SettingsDialog",
-            "Which subtitle a video opens on: none, the one answering the"
-            " preferred languages below, or the one its container marks as"
-            " the default. Videos are opened with none unless told otherwise.",
+            "Which subtitles to start with: none, ones in your preferred languages,"
+            " or the file's default.",
         ),
     ),
     _f(
@@ -821,10 +960,8 @@ VIDEO_FIELDS: tuple[SettingField, ...] = (
         combo_values=_subtitle_encodings,
         tooltip=translate(
             "SettingsDialog",
-            "What a subtitle file is read as where it is not UTF-8."
-            " UTF-8 files are recognised on their own and are left alone by"
-            " this; anything else is read as Western European unless another"
-            " set is picked here. ASS and SSA subtitles are not affected.",
+            "Encoding for subtitle files that aren't UTF-8. UTF-8 is detected"
+            " automatically. Doesn't affect ASS and SSA subtitles.",
         ),
     ),
     _f(
@@ -835,9 +972,8 @@ VIDEO_FIELDS: tuple[SettingField, ...] = (
         label=translate("SettingsDialog", "Detect external subtitle files"),
         tooltip=translate(
             "SettingsDialog",
-            "Offer subtitle files named after the video and kept beside it,"
-            " so they can be shown over it."
-            " Nothing is opened until one of them is picked.",
+            "Offer subtitle files next to the video with the same name. They're"
+            " opened only when you pick one.",
         ),
     ),
     _f(
@@ -877,10 +1013,8 @@ VIDEO_FIELDS: tuple[SettingField, ...] = (
         label=translate("Zoom", "Zoom to cursor"),
         tooltip=translate(
             "SettingsDialog",
-            "Zoom in and out about the point under the mouse pointer rather"
-            " than about the alignment. With the pointer outside the video,"
-            " the zoom goes about the alignment as usual."
-            " Resetting the zoom also puts the picture back in its place.",
+            "Zoom toward the mouse pointer instead of the alignment point. Resetting"
+            " the zoom also recenters the picture.",
         ),
     ),
     _f(
@@ -931,9 +1065,8 @@ VIDEO_FIELDS: tuple[SettingField, ...] = (
         combo_values=_deinterlace_states,
         tooltip=translate(
             "SettingsDialog",
-            "Automatic deinterlaces only the videos marked as interlaced."
-            " Some are marked wrongly and show combing on moving edges;"
-            " turn it on for those.",
+            "Automatic deinterlaces only videos marked as interlaced. Turn it on for"
+            " videos with combing on moving edges.",
         ),
     ),
     _f(
@@ -947,11 +1080,9 @@ VIDEO_FIELDS: tuple[SettingField, ...] = (
         enabled_by_value=(VideoDeinterlace.AUTO, VideoDeinterlace.ON),
         tooltip=translate(
             "SettingsDialog",
-            "Auto leaves it to VLC, which currently picks X. Yadif (2x), Bob"
-            " and Phosphor double the frame rate, which costs more with many"
-            " videos playing. With hardware decoding the GPU does the work and"
-            " has fewer modes of its own; a mode it lacks falls back to one"
-            " it has.",
+            "Auto lets VLC choose (currently X). Yadif (2x), Bob and Phosphor double"
+            " the frame rate, which costs more with many videos. With hardware"
+            " decoding, the GPU has fewer modes and falls back to one it supports.",
         ),
     ),
     _f(
@@ -969,6 +1100,15 @@ VIDEO_FIELDS: tuple[SettingField, ...] = (
         section=translate("SettingsDialog", "Playback"),
         label=translate("Folder Navigation", "Include subfolders"),
         tooltip=_dir_recursive_tooltip(),
+    ),
+    _f(
+        settings_key="video_defaults/list_end_action",
+        video_attr="list_end_action",
+        kind=FieldKind.COMBO,
+        section=translate("SettingsDialog", "Playback"),
+        label=translate("Lists", "When list ends"),
+        combo_values=_list_end_actions,
+        tooltip=_list_end_action_tooltip(),
     ),
     _f(
         settings_key="video_defaults/random_loop",
@@ -1015,7 +1155,7 @@ VIDEO_FIELDS: tuple[SettingField, ...] = (
         spin_suffix=translate("SettingsDialog", "(sec)"),
         tooltip=translate(
             "SettingsDialog",
-            "How long a video has to keep its new size before Auto quality follows it",
+            "How long a video must keep its new size before Auto quality adjusts",
         ),
     ),
     _f(
@@ -1080,9 +1220,7 @@ SUBTITLE_STYLE_FIELDS: tuple[SettingField, ...] = (
         spin_suffix="%",
         tooltip=translate(
             "SettingsDialog",
-            "Size against the one VLC picks, which already follows the"
-            " height of the video, so a small pane gets small subtitles"
-            " without this being touched.",
+            "Relative to VLC's size, which already scales with the video.",
         ),
     ),
     _f(
@@ -1105,8 +1243,7 @@ SUBTITLE_STYLE_FIELDS: tuple[SettingField, ...] = (
         combo_values=_subtitle_outlines,
         tooltip=translate(
             "SettingsDialog",
-            "The rim drawn around every glyph, which is what keeps white"
-            " text readable over a light picture.",
+            "Outline around the text. Keeps white text readable on bright pictures.",
         ),
     ),
     _f(
@@ -1137,8 +1274,7 @@ SUBTITLE_STYLE_FIELDS: tuple[SettingField, ...] = (
         label=translate("SettingsDialog", "Background box"),
         tooltip=translate(
             "SettingsDialog",
-            "Draw the text on a filled box, which is the one thing that"
-            " stays readable over any picture at all.",
+            "Draw text on a solid box, readable over any picture.",
         ),
     ),
     _f(
@@ -1159,9 +1295,8 @@ SUBTITLE_STYLE_FIELDS: tuple[SettingField, ...] = (
         spin_suffix=translate("SettingsDialog", "px"),
         tooltip=translate(
             "SettingsDialog",
-            "How far up from the bottom of the picture subtitles are drawn."
-            " This is the one setting here that ASS and SSA subtitles follow"
-            " as well.",
+            "Distance from the bottom of the picture. Also applies to ASS and SSA"
+            " subtitles.",
         ),
     ),
 )

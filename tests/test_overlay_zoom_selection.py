@@ -139,6 +139,15 @@ class TestItsOwnControls:
 
         assert overlay.is_control_at(middle)
 
+    def test_which_item_of_its_list_is_one(self, overlay):
+        overlay.set_list_place("3/12")
+        QApplication.processEvents()
+
+        button = overlay.list_place_button
+        middle = button.mapToGlobal(button.rect().center())
+
+        assert overlay.is_control_at(middle)
+
     def test_the_picture_is_not(self, overlay):
         assert not overlay.is_control_at(overlay.mapToGlobal(QPoint(320, 180)))
 

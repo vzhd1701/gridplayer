@@ -54,6 +54,10 @@ class PanManager(ManagerBase):
         if isinstance(event_object, QWindow):
             return False
 
+        # the List window over a video, its own
+        if self._block is None and self.is_elsewhere(event_object):
+            return False
+
         return super().eventFilter(event_object, event)
 
     def is_pan_press(self, event) -> bool:

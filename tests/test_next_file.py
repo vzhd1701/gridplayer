@@ -9,6 +9,7 @@ from pathlib import Path
 
 import pytest
 
+from gridplayer.utils.list_progress import ReadingEnough
 from gridplayer.utils.next_file import (
     FolderScan,
     ScanRules,
@@ -202,6 +203,39 @@ class TestWhatIsFound:
         scan = scan_folder(tmp_path, is_recursive=True, rules=ScanRules(max_entries=3))
 
         assert _names(scan) == ["1.mp4", "sub/2.mp4"]
+        assert not scan.is_truncated
+
+
+class TestHowFarItHasGot:
+    def test_told_the_files_found_after_each_folder(self, tmp_path):
+        _touch(tmp_path, "a.mp4", "b.mp4", "sub/c.mp4", "sub/deeper/d.mp4")
+        told = []
+
+        scan_folder(
+            tmp_path,
+            is_recursive=True,
+            progress=lambda what, count, of=None: told.append((what, count)),
+        )
+
+        assert told == [("files", 2), ("files", 3), ("files", 4)]
+
+    def test_ended_with_the_files_found_by_then(self, tmp_path):
+        _touch(tmp_path, "a.mp4", "b.mp4", "sub/c.mp4", "sub/deeper/d.mp4")
+
+        def progress(what, count, of=None):
+            if count == 3:
+                raise ReadingEnough
+
+        scan = scan_folder(tmp_path, is_recursive=True, progress=progress)
+
+        assert _names(scan) == ["a.mp4", "b.mp4", "sub/c.mp4"]
+        assert scan.is_truncated
+
+    def test_all_of_it_looked_through_is_not_cut_short(self, tmp_path):
+        _touch(tmp_path, "a.mp4", "sub/b.mp4")
+
+        scan = scan_folder(tmp_path, is_recursive=True, progress=lambda *said: None)
+
         assert not scan.is_truncated
 
 

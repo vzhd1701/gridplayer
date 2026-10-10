@@ -1,4 +1,5 @@
 from PyQt5.QtCore import QEvent, Qt, QTimer, pyqtSignal
+from PyQt5.QtGui import QCursor
 from PyQt5.QtWidgets import QApplication
 
 from gridplayer.player.managers.base import ManagerBase
@@ -41,6 +42,10 @@ class MouseHideManager(ManagerBase):
         self.mouse_timer.stop()
 
         if not self._ctx.video_blocks or is_modal_open():
+            return
+
+        # resting on the List window, being read
+        if self.is_elsewhere_at(QCursor.pos()):
             return
 
         if QApplication.overrideCursor() is None:

@@ -9,14 +9,19 @@ from pydantic_extra_types.color import Color
 from gridplayer.models.audio_selection import AudioExternal
 from gridplayer.models.file_bookmarks import FileBookmarks
 from gridplayer.models.grid_state import GridState
+from gridplayer.models.media_list import ListItem, MediaList
 from gridplayer.models.subtitle_selection import SubtitleExternal
 from gridplayer.models.video import Video, migrate_end_action
 from gridplayer.models.video_uri import parse_uri, relativize_uri
 from gridplayer.params.defaults_fields import GRID_STATE_ATTR
 from gridplayer.params.static import (
+    AddMode,
     AudioChannelMode,
     AudioTrackMode,
     DropAction,
+    ListEndAction,
+    ListUpdate,
+    ListView,
     NetworkRetryMode,
     SeekSyncMode,
     SubtitleTrackMode,
@@ -32,6 +37,7 @@ from gridplayer.params.static import (
     WindowState,
 )
 from gridplayer.settings import Settings
+from gridplayer.utils.list_refresh import linked_items, uri_key
 
 logger = logging.getLogger(__name__)
 
@@ -63,6 +69,7 @@ class PlaylistVideoDefaults(BaseModel):
     deinterlace_mode: VideoDeinterlaceMode | None = None
     end_action: VideoEndAction | None = None
     dir_recursive: bool | None = None
+    list_end_action: ListEndAction | None = None
     audio_mode: AudioChannelMode | None = None
     audio_track_mode: AudioTrackMode | None = None
     audio_languages: str | None = None
@@ -113,6 +120,7 @@ class Playlist(BaseModel):
     videos: VideosList | None = None
     snapshots: dict[int, Snapshot] | None = None
     bookmarks: list[FileBookmarks] | None = None
+    lists: list[MediaList] | None = None
     seek_sync_mode: SeekSyncMode | None = None
     view_sync: bool | None = None
     pause_sync: bool | None = None
@@ -142,6 +150,12 @@ class Playlist(BaseModel):
     save_paths_relative: bool | None = None
     drop_action_internal: DropAction | None = None
     drop_action_external: DropAction | None = None
+    add_mode: AddMode | None = None
+    warn_many_cells: bool | None = None
+    list_view: ListView | None = None
+    list_thumbnails: bool | None = None
+    list_get_info: bool | None = None
+    list_update: ListUpdate | None = None
     video_defaults: PlaylistVideoDefaults = Field(default_factory=PlaylistVideoDefaults)
 
     @model_validator(mode="before")
@@ -232,6 +246,11 @@ class Playlist(BaseModel):
             if entry.bookmarks
         ]
 
+        lists = [
+            _media_list_data(media_list, relative, base_dir)
+            for media_list in self.lists_as_saved()
+        ]
+
         doc: dict[str, Any] = {
             "format": FORMAT_ID,
             "version": FORMAT_VERSION,
@@ -242,10 +261,32 @@ class Playlist(BaseModel):
             doc["videos"] = videos
         if bookmarks:
             doc["bookmarks"] = bookmarks
+        if lists:
+            doc["lists"] = lists
         if snapshots:
             doc["snapshots"] = snapshots
 
         return json.dumps(doc, ensure_ascii=False, indent=2) + "\n"
+
+    def lists_as_saved(self) -> list[MediaList]:
+        """The lists as the playlist keeps them: a linked one with only what
+        was done to it and the items its cells play, read again from its
+        source as the playlist opens."""
+
+        playing = _playing_on_lists(self.videos or [])
+
+        return [
+            media_list.model_copy(
+                update={
+                    "items": linked_items(
+                        media_list, playing.get(media_list.id, frozenset())
+                    )
+                }
+            )
+            if media_list.is_linked and media_list.source is not None
+            else media_list
+            for media_list in self.lists or []
+        ]
 
     @classmethod
     def _parse_json(cls, playlist_txt: str, base_dir: Path | None) -> "Playlist":
@@ -274,7 +315,11 @@ class Playlist(BaseModel):
         payload.pop("videos", None)
         payload.pop("snapshots", None)
         payload.pop("bookmarks", None)
-        payload["videos"] = cls._parse_json_videos(doc.get("videos"), base_dir)
+        payload.pop("lists", None)
+        payload["lists"] = _parse_json_lists(doc.get("lists"), base_dir)
+        payload["videos"] = cls._parse_json_videos(
+            doc.get("videos"), base_dir, {str(ml.id): ml for ml in payload["lists"]}
+        )
         payload["bookmarks"] = _parse_json_bookmarks(doc.get("bookmarks"), base_dir)
         if "snapshots" in doc:
             payload["snapshots"] = doc["snapshots"]
@@ -284,7 +329,9 @@ class Playlist(BaseModel):
         return playlist
 
     @classmethod
-    def _parse_json_videos(cls, videos_in: Any, base_dir: Path | None) -> list[Video]:
+    def _parse_json_videos(
+        cls, videos_in: Any, base_dir: Path | None, lists: dict | None = None
+    ) -> list[Video]:
         if videos_in is None:
             return []
         if not isinstance(videos_in, list):
@@ -300,13 +347,13 @@ class Playlist(BaseModel):
             try:
                 video_args = dict(video_args)
                 if uri is not None:
-                    video_args["uri"] = parse_uri(uri, base_dir)
+                    video_args["uri"] = _parsed_video_uri(video_args, base_dir)
                 _resolve_dir_root(video_args, base_dir)
                 _resolve_external_files(video_args, "external_audio", base_dir)
                 _resolve_file_selection(video_args, "audio_selection", base_dir)
                 _resolve_external_files(video_args, "external_subtitles", base_dir)
                 _resolve_file_selection(video_args, "subtitle_selection", base_dir)
-                videos.append(Video(**video_args))
+                videos.append(_video_on_its_list(video_args, lists or {}))
             except (TypeError, ValidationError, ValueError) as e:
                 logger.error(f"Failed to add video '{uri}'")  # noqa: TRY400
                 logger.debug(e)
@@ -367,10 +414,13 @@ class Playlist(BaseModel):
     def _params_data(
         self, base_dir: Path | None = None, relative: bool = False
     ) -> dict:
-        data = self.model_dump(mode="json", exclude_none=True)
+        # videos are a top-level array, and so are the bookmarks and the
+        # lists: not written out here only to be thrown away, a channel list
+        # taking a tenth of a second
+        data = self.model_dump(
+            mode="json", exclude_none=True, exclude={"videos", "bookmarks", "lists"}
+        )
 
-        data.pop("videos", None)  # videos are a top-level array
-        data.pop("bookmarks", None)  # and so are the bookmarks
         if not self._effective_flag("save_window", "playlist/save_window"):
             data.pop("window_state", None)
         if not data.get("snapshots"):
@@ -444,6 +494,190 @@ def _file_bookmarks_data(
     data["uri"] = _dump_uri(entry.uri, relative, base_dir)
 
     return data
+
+
+def saved_list_bytes(media_list: MediaList, sample: int = 200) -> int:
+    """About how much a list kept whole makes a playlist's file bigger:
+    some of its items written out, spread over it, as many times over as
+    it has. Writing out a channel list whole takes a second."""
+
+    items = media_list.items
+
+    if not items:
+        return 0
+
+    picked = items[:: max(1, len(items) // sample)][:sample]
+
+    def written(some) -> int:
+        kept = media_list.model_copy(update={"is_linked": False, "items": some})
+        return len(Playlist(lists=[kept]).dumps().encode("utf-8"))
+
+    per_item = (written(picked) - written(())) / len(picked)
+
+    return int(per_item * len(items))
+
+
+def _playing_on_lists(videos) -> dict:
+    """The files and links the cells play, by uri_key, by the lists they
+    play them from."""
+
+    playing = {}
+
+    for video in videos:
+        if video.list_id is not None:
+            playing.setdefault(video.list_id, set()).add(uri_key(video.uri))
+
+    return playing
+
+
+def _parsed_video_uri(video_args: dict, base_dir: Path | None):
+    """A video's file or link; for a cell waiting for a folder to be read,
+    the folder by its path as text, as it waits for it."""
+
+    uri = parse_uri(video_args["uri"], base_dir)
+
+    if video_args.get("read_as_list") and isinstance(uri, Path) and not uri.is_file():
+        return str(uri)
+
+    return uri
+
+
+def _video_on_its_list(video_args: dict, lists: dict) -> Video:
+    """The video; for a cell that plays a list, even where the file it was
+    on is gone, for the cell to go on along the list from there.
+
+    A file is gone for the day more often than for good, its drive not
+    plugged in, and a cell playing a list has the rest of the list to go
+    on with; one playing a file of its own has nothing else, and goes.
+    Which item is next is the cell's to find: a linked list has only the
+    items cells play until it is read again.
+    """
+
+    try:
+        return Video(**video_args)
+    except ValidationError:
+        uri = video_args.get("uri")
+
+        if not isinstance(uri, Path) or str(video_args.get("list_id")) not in lists:
+            raise
+
+        logger.warning(f"Not found, going on along its list: {uri}")
+
+    # checked as any other but for being there
+    video = Video(**{**video_args, "uri": str(uri)})
+    video.uri = uri
+
+    return video
+
+
+def _media_list_data(
+    media_list: MediaList, relative: bool, base_dir: Path | None
+) -> dict:
+    """A list, the paths on it written the way the videos' are."""
+
+    data = _without_defaults(
+        media_list.model_dump(mode="json", exclude_none=True),
+        is_linked=False,
+        is_reversed=False,
+        removed_names=[],
+    )
+
+    data["items"] = [
+        _item_data(item, item_data, relative, base_dir)
+        for item, item_data in zip(media_list.items, data["items"], strict=True)
+    ]
+
+    if media_list.removed:
+        data["removed"] = [
+            _dump_uri(uri, relative, base_dir) for uri in media_list.removed
+        ]
+    else:
+        data.pop("removed", None)
+
+    if media_list.source is not None:
+        data["source"]["location"] = _dump_uri(
+            media_list.source.location, relative, base_dir
+        )
+
+    return data
+
+
+def _item_data(
+    item: ListItem, item_data: dict, relative: bool, base_dir: Path | None
+) -> dict:
+    data = _without_defaults(
+        {**item_data, "uri": _dump_uri(item.uri, relative, base_dir)},
+        is_added=False,
+        is_renamed=False,
+    )
+
+    if "details" in data:
+        data["details"] = _without_defaults(data["details"], is_published_exact=False)
+
+    return data
+
+
+def _without_defaults(data: dict, **defaults) -> dict:
+    """What is said only where it is not the usual, as most items are."""
+
+    return {
+        key: value
+        for key, value in data.items()
+        if key not in defaults or value != defaults[key]
+    }
+
+
+def _parse_json_lists(lists_in: Any, base_dir: Path | None) -> list[MediaList]:
+    """The lists, any that make no sense left out, and so are their items.
+
+    No reason to turn the whole playlist down: the cells play their files
+    the same without them.
+    """
+
+    if lists_in is None:
+        return []
+
+    if not isinstance(lists_in, list):
+        logger.error("Failed to read the lists: not a list")
+        return []
+
+    lists = []
+
+    for list_args in lists_in:
+        if not isinstance(list_args, dict):
+            logger.error("Failed to read a list: entry is not an object")
+            continue
+
+        try:
+            list_args = dict(list_args)
+            items = list_args.get("items")
+            if isinstance(items, list):
+                list_args["items"] = [_resolved_item(item, base_dir) for item in items]
+            removed = list_args.get("removed")
+            if isinstance(removed, list):
+                list_args["removed"] = [
+                    parse_uri(uri, base_dir) if isinstance(uri, str) else uri
+                    for uri in removed
+                ]
+            source = list_args.get("source")
+            if isinstance(source, dict) and isinstance(source.get("location"), str):
+                list_args["source"] = {
+                    **source,
+                    "location": parse_uri(source["location"], base_dir),
+                }
+            lists.append(MediaList(**list_args))
+        except (TypeError, ValidationError, ValueError) as e:
+            logger.error(f"Failed to read the list '{list_args.get('name')}'")  # noqa: TRY400
+            logger.debug(e)
+
+    return lists
+
+
+def _resolved_item(item: Any, base_dir: Path | None) -> Any:
+    if isinstance(item, dict) and isinstance(item.get("uri"), str):
+        return {**item, "uri": parse_uri(item["uri"], base_dir)}
+
+    return item
 
 
 def _parse_json_bookmarks(entries_in: Any, base_dir: Path | None) -> list:

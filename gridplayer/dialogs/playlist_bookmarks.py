@@ -6,15 +6,12 @@ Removals are made as they go, as they are in the bookmarks manager, and
 Cancel puts back what was removed.
 """
 
-import contextlib
-from concurrent.futures import ThreadPoolExecutor
 from enum import Enum, IntEnum, auto
 from pathlib import Path
 
 from pydantic import ValidationError
 from PyQt5.QtCore import (
     QEvent,
-    QObject,
     QPoint,
     QRect,
     QRectF,
@@ -43,7 +40,6 @@ from PyQt5.QtWidgets import (
     QHBoxLayout,
     QHeaderView,
     QLabel,
-    QPushButton,
     QStyle,
     QStyledItemDelegate,
     QTreeView,
@@ -56,6 +52,7 @@ from gridplayer.dialogs.bookmarks import (
     ROW_HEIGHT,
     STATUS_MS,
     TIME_FADE,
+    dialog_button,
     mixed_color,
     paint_empty_txt,
     with_key_txt,
@@ -66,6 +63,7 @@ from gridplayer.utils.bookmarks import (
     default_bookmark_name,
     file_key,
 )
+from gridplayer.utils.file_checks import FileChecks
 from gridplayer.utils.qt import translate
 from gridplayer.utils.time_txt import ms_time_txt
 from gridplayer.widgets.bookmark_colors import LIST_ICON_SHARE, bookmark_icon
@@ -88,10 +86,6 @@ SWATCH_PX = 12
 # a bookmark's marker between its time and its name, as the manager has it
 MARKER_PX = 12
 MARKER_GAP_PX = 6
-
-# telling whether a file is still there can take a while on a network drive
-# that is gone, so it is asked off to the side, a few at a time
-FILE_CHECKS_AT_ONCE = 4
 
 # every row carries its file's entry; a bookmark's row the bookmark, as it
 # is shown, and its time
@@ -175,32 +169,6 @@ def _look_for(path: Path) -> Found:
 
     # nothing to tell a folder gone from one out of reach for now
     return Found.NO_FOLDER
-
-
-class _FileChecks(QObject):
-    """Whether files are still there, told one by one as each is known."""
-
-    checked = pyqtSignal(str, object)
-
-    def __init__(self, parent=None):
-        super().__init__(parent)
-
-        self._pool = ThreadPoolExecutor(max_workers=FILE_CHECKS_AT_ONCE)
-
-    def check(self, key: str, path: Path):
-        future = self._pool.submit(_look_for, path)
-        future.add_done_callback(lambda done: self._tell(key, done))
-
-    def stop(self):
-        self._pool.shutdown(wait=False, cancel_futures=True)
-
-    def _tell(self, key, done):
-        if done.cancelled():
-            return
-
-        # (the dialog may be gone by the time a slow one is known)
-        with contextlib.suppress(RuntimeError):
-            self.checked.emit(key, done.result())
 
 
 class _BookmarkRowDelegate(QStyledItemDelegate):
@@ -381,7 +349,7 @@ class PlaylistBookmarksDialog(QDialog):
 
         # what was found of each file not open, by its key, once known
         self._found: dict[str, Found] = {}
-        self._checks = _FileChecks(self)
+        self._checks = FileChecks(_look_for, self)
         self._checks.checked.connect(self._on_checked)
 
         self._statuses = {}
@@ -445,7 +413,7 @@ class PlaylistBookmarksDialog(QDialog):
         self._hint = QLabel()
         self._hint.setWordWrap(True)
 
-        self._open_button = self._button(
+        self._open_button = dialog_button(
             "add-files",
             translate("Dialog - Playlist bookmarks", "Open"),
             translate(
@@ -453,7 +421,7 @@ class PlaylistBookmarksDialog(QDialog):
                 "Open the file in a new cell, with its bookmarks",
             ),
         )
-        self._copy_button = self._button(
+        self._copy_button = dialog_button(
             "copy",
             translate("Dialog - Playlist bookmarks", "Copy"),
             translate(
@@ -462,10 +430,10 @@ class PlaylistBookmarksDialog(QDialog):
                 " like 1:23 Intro; those of several files under each file's name",
             ),
         )
-        self._remove_button = self._button(
+        self._remove_button = dialog_button(
             "bookmark-remove", translate("Dialog - Playlist bookmarks", "Remove")
         )
-        self._unreachable_button = self._button(
+        self._unreachable_button = dialog_button(
             "bookmark-remove-all",
             translate("Dialog - Playlist bookmarks", "Remove Unreachable"),
             translate(
@@ -499,16 +467,6 @@ class PlaylistBookmarksDialog(QDialog):
         root.addLayout(tools)
         root.addSpacing(4)
         root.addLayout(bottom)
-
-    def _button(self, icon, text, tooltip=None) -> QPushButton:
-        button = QPushButton(QIcon.fromTheme(icon), text)
-        button.setIconSize(QSize(ICON_PX, ICON_PX))
-        button.setAutoDefault(False)
-
-        if tooltip:
-            button.setToolTip(tooltip)
-
-        return button
 
     def _ui_connect(self):
         self._registry.changed.connect(self._reload_timer.start)

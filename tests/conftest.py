@@ -9,7 +9,7 @@ from requests.cookies import RequestsCookieJar
 
 from gridplayer.params.static import ProxyMode
 from gridplayer.playlist_settings import PlaylistSettings
-from gridplayer.utils import cookies, network
+from gridplayer.utils import cache, cookies, network
 
 # Draw nowhere. A widget a test shows is a real window on this desktop
 # otherwise, and since the application is held open for the whole run,
@@ -149,6 +149,18 @@ def _no_real_network_settings(monkeypatch):
     monkeypatch.setattr(
         network, "Settings", lambda: FakeSettings(DEFAULT_NETWORK_SETTINGS)
     )
+
+
+@pytest.fixture(autouse=True)
+def _no_real_cache(tmp_path, monkeypatch):
+    """And away from the cache the user has: the Settings dialog measures
+    it as it opens, and its Clear button empties it."""
+
+    root = tmp_path / "cache"
+
+    monkeypatch.setattr(cache, "cache_root", lambda: root)
+
+    return root
 
 
 # how often a serving thread looks up to see whether it has been asked

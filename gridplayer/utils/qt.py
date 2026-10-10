@@ -1,6 +1,6 @@
 from abc import ABCMeta
 
-from PyQt5.QtCore import QCoreApplication, QObject, Qt
+from PyQt5.QtCore import QCoreApplication, QLocale, QObject, Qt
 from PyQt5.QtGui import QGuiApplication
 from PyQt5.QtWidgets import QApplication, QWidget
 
@@ -67,6 +67,12 @@ def tr(text):
 
 def translate(context, text, disambiguation=None):
     return QCoreApplication.translate(context, text, disambiguation)
+
+
+def count_txt(count: int) -> str:
+    """A number as the viewer's language writes it: 40,000 in English."""
+
+    return QLocale().toString(count)
 
 
 def is_qt_log_ignored(message):

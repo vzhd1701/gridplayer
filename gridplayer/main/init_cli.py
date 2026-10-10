@@ -16,14 +16,17 @@ def init_cli_args(argv=None):
     parser = argparse.ArgumentParser(
         prog=__app_name__,
         description="Play videos side-by-side",
-        epilog="FILE and URL arguments open media files, .gpls playlists,"
-        " or streaming URLs on startup.",
+        epilog="FILE and URL arguments open media files, folders, .gpls"
+        " playlists, media lists (.m3u, .m3u8, .pls, .xspf), or streaming URLs"
+        " on startup. A folder or a media list plays in one cell, one file"
+        " after another.",
     )
     parser.add_argument(
         "files",
         nargs="*",
         metavar="FILE|URL",
-        help="media files, .gpls playlists, or streaming URLs to open on startup",
+        help="media files, folders, .gpls playlists, media lists, or streaming"
+        " URLs to open on startup",
     )
     parser.add_argument(
         "--user-data-dir",

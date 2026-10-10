@@ -14,11 +14,12 @@ from gridplayer.params import env
 from gridplayer.params.static import OVERLAY_ACTIVITY_EVENT
 from gridplayer.utils.compositor_linux import should_make_overlay_opaque
 from gridplayer.utils.drop_zone import DropIndicator
-from gridplayer.utils.qt import MILLISECONDS, qt_connect
+from gridplayer.utils.qt import MILLISECONDS, qt_connect, translate
 from gridplayer.utils.time_txt import get_time_txt
 from gridplayer.widgets.video_overlay_buttons import (
     OverlayButton,
     OverlayExitButton,
+    OverlayListPlaceButton,
     OverlayPlayPauseButton,
     OverlayVolumeButton,
 )
@@ -28,6 +29,7 @@ from gridplayer.widgets.video_overlay_elements import (
     OverlayBorder,
     OverlayDropIndicator,
     OverlayLabel,
+    OverlayListWindowTag,
     OverlayProgressBar,
     OverlayShortLabel,
     OverlayShortLabelFloating,
@@ -83,6 +85,9 @@ class OverlayBlock(QWidget):
     # a marker's menu asked for: where, and the times of its bookmarks
     bookmark_menu_requested = pyqtSignal(QPoint, tuple)
 
+    # which item of its list the cell plays clicked, for the List window
+    list_place_clicked = pyqtSignal()
+
     def __init__(self, parent=None):
         super().__init__(parent)
 
@@ -108,6 +113,8 @@ class OverlayBlock(QWidget):
         self.label_info_hide_timer.timeout.connect(self.label_info.hide)
 
         self.label_info.hide()
+        self.list_place_button.hide()
+        self.label_list_window.hide()
         self.floating_progress.hide()
 
         self.label_progress.hide()
@@ -126,6 +133,7 @@ class OverlayBlock(QWidget):
                 self.bookmark_menu_requested,
             ),
             (self.exit_button.clicked, self.exit),
+            (self.list_place_button.clicked, self.list_place_clicked),
             (self.play_pause_button.clicked, self.play_pause),
             (self.progress_bar.position_changed, self.emit_position),
             (self.volume_button.clicked, self.mute_unmute),
@@ -170,13 +178,23 @@ class OverlayBlock(QWidget):
         self.label_text = OverlayLabel(parent=self)
         self.exit_button = OverlayExitButton(parent=self)
 
+        # which item of its list a cell plays, "3/12", for a cell with a
+        # list: what its window is opened by
+        self.list_place_button = OverlayListPlaceButton(parent=self)
+
         self.title_bar = QHBoxLayout()
+        self.title_bar.addWidget(self.list_place_button)
         self.title_bar.addWidget(self.label_text, 1)
         self.title_bar.addWidget(self.exit_button)
 
         self.label_info = OverlayShortLabel(parent=self)
 
+        # the List window is open on the cell, and plays in it
+        self.label_list_window = OverlayListWindowTag(parent=self)
+        self.label_list_window.text = translate("Lists", "Current list")
+
         self.info_bar = QHBoxLayout()
+        self.info_bar.addWidget(self.label_list_window)
         self.info_bar.addWidget(self.label_info)
         self.info_bar.addStretch()
 
@@ -277,6 +295,20 @@ class OverlayBlock(QWidget):
     @pyqtSlot(str)
     def set_label(self, label):
         self.label_text.label = label
+
+    @pyqtSlot(str)
+    def set_list_place(self, place_txt):
+        """Which item of its list the cell plays; nothing, where it has none."""
+
+        if place_txt:
+            self.list_place_button.text = place_txt
+
+        self.list_place_button.setVisible(bool(place_txt))
+
+    def set_list_window_shown(self, is_shown: bool):
+        """Said under the title while the List window plays in the cell."""
+
+        self.label_list_window.setVisible(is_shown)
 
     @pyqtSlot(str)
     def set_color(self, color):

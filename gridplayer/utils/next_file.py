@@ -18,6 +18,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from gridplayer.params.extensions import SUPPORTED_MEDIA_EXT
+from gridplayer.utils.list_progress import ReadingEnough
 
 # folders that operating systems, NAS boxes and file managers keep their own
 # things in, not hidden where they were not made on a system that hides them
@@ -111,18 +112,9 @@ class FolderScan:
         if not self.files:
             return None
 
-        count = len(self.files)
         place, is_found = self._place(current)
 
-        if is_found:
-            return self.files[(place + step) % count]
-
-        # the place it would go is the one after it, and the one before it
-        # is the one before that
-        if step > 0:
-            return self.files[(place + step - 1) % count]
-
-        return self.files[(place + step) % count]
+        return self.files[neighbour_place(place, is_found, step) % len(self.files)]
 
     def existing_neighbour(
         self,
@@ -143,6 +135,17 @@ class FolderScan:
             file_path = self.neighbour(file_path, step)
 
         return None
+
+
+def neighbour_place(place: int, is_found: bool, step: int) -> int:
+    """The place so many on from one, not yet taken round an end. For one
+    that is not among them, counted from where it would be: the one there
+    now is the one after it, and the one before it the one before that."""
+
+    if not is_found and step > 0:
+        return place + step - 1
+
+    return place + step
 
 
 def natural_key(name: str) -> tuple:
@@ -182,13 +185,17 @@ def is_media_file_name(name: str) -> bool:
 
 
 def scan_folder(
-    root: Path, is_recursive: bool, rules: ScanRules | None = None
+    root: Path, is_recursive: bool, rules: ScanRules | None = None, progress=None
 ) -> FolderScan:
     """The media files in a folder, and in its subfolders if asked for.
 
     Links to folders are not followed: one to a folder above it would go
     round for ever, and one elsewhere would play what was never under the
     root. A folder that cannot be read is passed over.
+
+    progress is told how many files are found so far, after each folder:
+    ("files", count); where it raises ReadingEnough, the files found by
+    then are all there is.
     """
 
     rules = rules or ScanRules()
@@ -211,11 +218,17 @@ def scan_folder(
         files.extend(folder_files)
         folders.extend(reversed(subfolders))
 
+        if progress is not None:
+            try:
+                progress("files", len(files))
+            except ReadingEnough:
+                break
+
     return FolderScan(
         root=root,
         files=tuple(files),
         keys=tuple(order_key(file_path, root) for file_path in files),
-        is_truncated=budget.is_spent,
+        is_truncated=budget.is_spent or bool(folders),
     )
 
 
@@ -391,6 +404,13 @@ class ShuffleBag:
         if self._played[-1] != current:
             self._remove_pending(current)
             self._push_played(current)
+
+    @property
+    def is_round_over(self) -> bool:
+        """Whether every one has been played since the order last started,
+        so that the next one starts it over."""
+
+        return bool(self._played) and not self._pending
 
     def next(
         self,

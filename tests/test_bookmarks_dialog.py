@@ -31,6 +31,7 @@ from gridplayer.models.seek_mark import SeekMarkKind
 from gridplayer.models.video import Video
 from gridplayer.params.static import VideoEndAction, VideoInitialState
 from gridplayer.player.managers.bookmarks import BookmarksRegistry
+from gridplayer.player.managers.lists import MediaListsRegistry
 from gridplayer.settings import Settings
 from gridplayer.widgets.video_block import VideoBlock
 from gridplayer.widgets.video_frame_dummy import VideoFrameDummy
@@ -86,6 +87,7 @@ def _context():
     context.is_show_overlay_border = False
     context.overlay_timeout = 1
     context.synced_view = None
+    context.lists = MediaListsRegistry()
     context.bookmarks = BookmarksRegistry()
 
     return context

@@ -155,7 +155,14 @@ mime_plist["CFBundleDocumentTypes"] += [
         "CFBundleTypeName": APP_NAME + " playlist file",
         "CFBundleTypeRole": "Viewer",
         "LSItemContentTypes": [APP_ID + ".gpls"],
-    }
+    },
+    # media lists, played in a cell one file after another
+    {
+        "CFBundleTypeExtensions": ["m3u", "m3u8", "pls", "xspf"],
+        "CFBundleTypeIconFile": "mime.icns",
+        "CFBundleTypeName": "Media list",
+        "CFBundleTypeRole": "Viewer",
+    },
 ]
 
 mime_plist["UTExportedTypeDeclarations"] = [

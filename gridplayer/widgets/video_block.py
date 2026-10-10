@@ -36,11 +36,20 @@ from gridplayer.models.audio_selection import (
 )
 from gridplayer.models.bookmark import Bookmark, bookmark_color
 from gridplayer.models.chapter import Chapter
+from gridplayer.models.media_list import (
+    ItemDetails,
+    ListItem,
+    ListSource,
+    MediaList,
+    list_step_action,
+    merged_details,
+)
 from gridplayer.models.seek_mark import SeekMark, SeekMarkKind
 from gridplayer.models.sponsor_segment import SponsorSegment
 from gridplayer.models.stream import (
     STANDING_QUALITIES,
     STREAM_QUALITY_AUTO,
+    HashableDict,
     StreamOrigin,
     Streams,
 )
@@ -71,6 +80,7 @@ from gridplayer.params.sponsorblock import (
 from gridplayer.params.static import (
     AUDIO_DELAY_STEP_MS,
     CHROME_MIN_SIZE,
+    LIST_STEP_END_ACTIONS,
     MAX_AUDIO_DELAY_MS,
     MAX_RATE,
     MAX_SUBTITLE_DELAY_MS,
@@ -80,6 +90,8 @@ from gridplayer.params.static import (
     OVERLAY_ACTIVITY_EVENT,
     PLAYER_ID_LENGTH,
     SUBTITLE_DELAY_STEP_MS,
+    ListEndAction,
+    ListSourceKind,
     NetworkRetryMode,
     SponsorBlockMode,
     VideoAnchor,
@@ -98,6 +110,7 @@ from gridplayer.utils.aspect_calc import SharedView
 from gridplayer.utils.bookmarks import (
     bookmark_at,
     default_bookmark_name,
+    file_key,
     is_bookmarked,
     is_in_stretch,
     next_bookmark_index,
@@ -127,6 +140,7 @@ from gridplayer.utils.external_subtitles import (
 )
 from gridplayer.utils.folder_navigator import FolderNavigator, FolderStep
 from gridplayer.utils.libvlc_options_parser import get_vlc_options
+from gridplayer.utils.list_navigator import ListNavigator
 from gridplayer.utils.qt import MILLISECONDS, qt_connect, translate
 from gridplayer.utils.screenshots import (
     ScreenshotJob,
@@ -147,7 +161,7 @@ from gridplayer.utils.sponsorblock import (
 from gridplayer.utils.step_sizes import seek_step_ms, zoom_stepped
 from gridplayer.utils.time_txt import timed_title
 from gridplayer.utils.track_language import language_name, normalize, pick_track
-from gridplayer.utils.url_resolve.static import ResolvedVideo
+from gridplayer.utils.url_resolve.static import ResolvedList, ResolvedVideo
 from gridplayer.utils.url_resolve.url_resolve import VideoURLResolver
 from gridplayer.vlc_player.static import (
     DISABLED_TRACK,
@@ -202,6 +216,16 @@ MAX_NETWORK_RETRIES = 1000
 # just turned us away is unlikely to change its mind within a second, and
 # retrying forever at full speed would be indistinguishable from an attack
 NETWORK_RETRY_DELAYS_S = (1, 2, 5, 15, 30)
+
+# how long the error of an item of a list that would not play is shown,
+# before the next one is put in its place
+SKIP_FAILED_ITEM_MS = 2000
+
+# how many items of a list in a row may not play before it is left at that
+MAX_FAILED_ITEMS_IN_A_ROW = 10
+
+# the place, over the video, of one taken off its list while it played
+NOT_ON_LIST_TXT = "\u2013"
 
 # the end actions that take the video out of its cell: closed, or another
 # file put in its place
@@ -278,6 +302,19 @@ def only_local_file(func):
     def wrapper(*args, **kwargs):
         self = args[0]
         if not self.is_local_file:
+            return None
+        return func(*args, **kwargs)
+
+    return wrapper
+
+
+def only_navigable(func):
+    """Only for a video with others to go on to: the files of its folder, or
+    the items of its list, links among them."""
+
+    def wrapper(*args, **kwargs):
+        self = args[0]
+        if not self.is_navigable:
             return None
         return func(*args, **kwargs)
 
@@ -440,6 +477,10 @@ class VideoBlock(QWidget):
     time_change = pyqtSignal(MILLISECONDS, MILLISECONDS)
     volume_change = pyqtSignal(float)
     label_change = pyqtSignal(str)
+    # the cell is closing, for a window open on it to close with it
+    closing = pyqtSignal()
+    # which item of its list it plays, "3/12", empty for a cell with no list
+    list_place_change = pyqtSignal(str)
     color_change = pyqtSignal(str)
     loop_start_change = pyqtSignal(float)
     loop_end_change = pyqtSignal(float)
@@ -609,6 +650,44 @@ class VideoBlock(QWidget):
         # hidden while it loads
         self._notice_once_loaded: str | None = None
 
+        # the item of its list the video was put in by, to know it by its
+        # key when the list is edited: the same file may be on it more than
+        # once; and by its link then, to know when its source gave it a new
+        # one
+        self._held_item: ListItem | None = None
+
+        # the next, previous or a random item of the list, for a cell that
+        # plays one instead of going through its folder
+        self._list_navigator = ListNavigator(
+            video=lambda: self.video_params,
+            media_list=lambda: self.media_list,
+            item_key=lambda: None if self._held_item is None else self._held_item.key,
+            switch=self.play_list_item,
+            end_of_list=self._end_list,
+            open_elsewhere=self._uris_open_elsewhere,
+        )
+
+        # items of the list that would not play, one after the other: a
+        # list that has none that will is not gone round for ever
+        self._list_failures_in_a_row = 0
+
+        # the List window is open on the cell, and plays in it
+        self._is_list_window_shown = False
+
+        self._skip_failed_timer = QTimer(self)
+        self._skip_failed_timer.setSingleShot(True)
+        self._skip_failed_timer.setInterval(SKIP_FAILED_ITEM_MS)
+        self._skip_failed_timer.timeout.connect(self._skip_failed_item)
+
+        # shared with other cells, the list may change in any of them
+        self._ctx.lists.changed.connect(self._list_changed)
+        self._ctx.lists.waiting_progress.connect(self._on_waiting_progress)
+
+        # its file gone as the playlist opened, waiting for its list to be
+        # read again to go on along it from there
+        self._is_waiting_for_list_read = False
+        self._ctx.lists.reading_changed.connect(self._on_list_reading)
+
         self.overlay = self.init_overlay()
 
         self.ui_setup()
@@ -727,6 +806,7 @@ class VideoBlock(QWidget):
         url_resolver = VideoURLResolver(parent=self)
         url_resolver.error.connect(self.network_error)
         url_resolver.url_resolved.connect(self.set_video_url)
+        url_resolver.list_resolved.connect(self._link_was_a_list)
         url_resolver.update_status.connect(self.update_status)
 
         return url_resolver
@@ -734,6 +814,7 @@ class VideoBlock(QWidget):
     def reset_url_resolver(self):
         self.url_resolver.error.disconnect()
         self.url_resolver.url_resolved.disconnect()
+        self.url_resolver.list_resolved.disconnect()
 
         self.url_resolver.cleanup()
 
@@ -767,9 +848,11 @@ class VideoBlock(QWidget):
             (overlay.mute_unmute_clicked, self.mute_unmute),
             (overlay.bookmark_clicked, self.jump_to_bookmark_at),
             (overlay.bookmark_menu_requested, self.show_bookmark_menu),
+            (overlay.list_place_clicked, self.show_list_window),
             (self.time_change, overlay.set_position),
             (self.volume_change, overlay.set_volume_position),
             (self.label_change, overlay.set_label),
+            (self.list_place_change, overlay.set_list_place),
             (self.color_change, overlay.set_color),
             (self.loop_start_change, overlay.set_loop_start),
             (self.loop_end_change, overlay.set_loop_end),
@@ -826,6 +909,7 @@ class VideoBlock(QWidget):
         self._in_progress_timer.stop()
         self._network_retry_timer.stop()
         self._quality_adapt_timer.stop()
+        self._skip_failed_timer.stop()
 
         self._log.debug(f"{self.id}: cleaning up resolver")
         self.url_resolver.cleanup()
@@ -854,6 +938,7 @@ class VideoBlock(QWidget):
         self._is_state_change_in_progress = False
         self.set_status("error")
         self.cleanup()
+        self._schedule_skip_failed_item()
 
     def network_error(self):
         if self._schedule_network_retry():
@@ -865,6 +950,7 @@ class VideoBlock(QWidget):
         self._is_state_change_in_progress = False
         self.set_status("network-error")
         self.cleanup()
+        self._schedule_skip_failed_item()
 
     def _schedule_network_retry(self) -> bool:
         """Try the video again later instead of giving up on it.
@@ -906,6 +992,10 @@ class VideoBlock(QWidget):
         self._network_retry_timer.start()
 
         return True
+
+    def _drop_network_retries(self):
+        self._network_retry_timer.stop()
+        self._network_retries = 0
 
     def _network_retry_tick(self):
         self._network_retry_countdown -= 1
@@ -980,9 +1070,13 @@ class VideoBlock(QWidget):
 
         self._close_bookmarks_manager()
 
+        self.closing.emit()
+
         # what the cell looked like, for the bookmarks it leaves behind, if
-        # each cell keeps its own, to be told apart by
+        # each cell keeps its own, to be told apart by; and the list it
+        # waited for no longer read for it
         if self.video_params is not None:
+            self._ctx.lists.stop_waiting(self.video_params.id)
             self._ctx.bookmarks.remember_cell(
                 self.video_params.id,
                 self.title or self.video_params.uri_name,
@@ -1273,8 +1367,13 @@ class VideoBlock(QWidget):
 
     @property
     def drag_data(self):
+        """What a cell dragged says of itself; the list it plays from goes
+        apart from it, see files.cell_mime_data."""
+
         return VideoBlockMime(
-            id=self.id, video=self.video_params, bookmarks=list(self.bookmarks)
+            id=self.id,
+            video=self.video_params,
+            bookmarks=list(self.bookmarks),
         )
 
     @property
@@ -1291,6 +1390,55 @@ class VideoBlock(QWidget):
     @property
     def is_local_file(self):
         return isinstance(self.video_params.uri, Path)
+
+    @property
+    def media_list(self) -> MediaList | None:
+        """The list the cell plays from, None where it has none."""
+
+        if self.video_params is None:
+            return None
+
+        return self._ctx.lists.get(self.video_params.list_id)
+
+    @property
+    def list_item(self) -> ListItem | None:
+        """The item of its list the video playing is, None where it is not
+        on it, or there is no list."""
+
+        place = self._list_navigator.place()
+
+        if place is None or not place.is_found:
+            return None
+
+        return self.media_list.items[place.index]
+
+    @property
+    def is_closing(self) -> bool:
+        return self._is_closing
+
+    @property
+    def _item_headers(self) -> dict[str, str]:
+        """What a channel list says to fetch the item playing with."""
+
+        item = self.list_item
+        headers = self.video_params.http_headers if item is None else item.http_headers
+
+        return {} if headers is None else headers.as_dict()
+
+    @property
+    def is_navigable(self) -> bool:
+        return self.media_list is not None or self.is_local_file
+
+    @property
+    def _custom_title(self) -> str | None:
+        """What the viewer named the video, if anything: the cell's own name,
+        or for a cell that plays a list, the item's on the list."""
+
+        if self.media_list is not None:
+            item = self.list_item
+            return None if item is None else item.title
+
+        return self.video_params.title
 
     @property
     def youtube_id(self) -> str | None:
@@ -2773,6 +2921,10 @@ class VideoBlock(QWidget):
             self.overlay.hide()
             return
 
+        # the List window plays in it: it stays in sight, marked
+        if self._is_list_window_shown:
+            return
+
         if not self._ctx.is_overlay_hide_on_timeout:
             return
 
@@ -2982,20 +3134,34 @@ class VideoBlock(QWidget):
         if self._hold_end_for_bookmarks():
             return
 
+        if self._step_at_end(end_action):
+            return
+
         if end_action == VideoEndAction.LOOP_FILE:
             self._loop_to_start()
-        elif end_action == VideoEndAction.NEXT_FILE:
-            self.next_video(is_end=True)
-        elif end_action == VideoEndAction.PREVIOUS_FILE:
-            self.previous_video(is_end=True)
-        elif end_action == VideoEndAction.SHUFFLE_FILE:
-            self.shuffle_video(is_end=True)
         elif end_action == VideoEndAction.PAUSE:
             self._pause_at_start()
         elif end_action == VideoEndAction.STOP:
             self.stop_playback()
         elif end_action == VideoEndAction.CLOSE:
             QTimer.singleShot(0, self.close)
+
+    def _step_at_end(self, end_action: VideoEndAction) -> bool:
+        """On to another file, or item of the list, if that is what the
+        video does at its end; whether it went."""
+
+        step = {
+            VideoEndAction.NEXT_FILE: self.next_video,
+            VideoEndAction.PREVIOUS_FILE: self.previous_video,
+            VideoEndAction.SHUFFLE_FILE: self.shuffle_video,
+        }.get(end_action)
+
+        if step is None:
+            return False
+
+        step(is_end=True)
+
+        return True
 
     def _loop_to_start(self):
         if self.video_params.is_start_random:
@@ -3060,7 +3226,7 @@ class VideoBlock(QWidget):
         )
 
     def stop_playback(self):
-        self._folder_navigator.cancel()
+        self._cancel_steps()
 
         if self.video_params is not None:
             self.video_params.current_position = 0
@@ -3099,29 +3265,29 @@ class VideoBlock(QWidget):
 
     def apply_snapshot(self, snapshot: Video):
         if snapshot.uri != self.video_params.uri:
+            self._apply_snapshot_of_another_file(snapshot)
             return
 
         # the snapshot's view is the one to show
         self._view_to_follow = None
 
-        self.title = snapshot.title or self._default_title
         self.color = snapshot.color.as_hex()
 
         if snapshot.is_stopped:
-            self.video_params = snapshot.model_copy()
+            self._take_snapshot_params(snapshot)
             self._destroy_video_driver()
             self._present_stopped()
             return
 
         if not self.is_video_initialized:
-            self.video_params = snapshot.model_copy()
+            self._take_snapshot_params(snapshot)
             self._start_load()
             return
 
         if self.video_tracks and _is_deinterlace_reload_needed(
             self.video_params, snapshot.deinterlace, snapshot.deinterlace_mode
         ):
-            self.video_params = snapshot.model_copy()
+            self._take_snapshot_params(snapshot)
             self.reload()
             return
 
@@ -3154,17 +3320,65 @@ class VideoBlock(QWidget):
         self.switch_stream_quality(snapshot.stream_quality)
         self.set_auto_reload_timer(snapshot.auto_reload_timer_min)
 
+        self._take_snapshot_params(snapshot)
+
+    def _take_snapshot_params(self, snapshot: Video):
+        """The snapshot's video in place of the cell's, and named as it
+        was then."""
+
         self.video_params = snapshot.model_copy()
+
+        self.title = self._custom_title or self._default_title
+
+    def _apply_snapshot_of_another_file(self, snapshot: Video):
+        """Put the file the snapshot was taken of back in the cell, as the
+        snapshot has it: the cell went on to another file since, the next
+        on its list or in its folder."""
+
+        self._close_bookmarks_manager()
+        self._cancel_steps()
+
+        self._view_to_follow = None
+        self._held_item = None
+        self._title = None
+        self._default_title = None
+
+        self.set_video(snapshot.model_copy())
 
     def set_video(self, video_params: Video):
         is_first_video = self.video_params is None
         is_reopen_needed = _is_reopen_needed(self.video_params, video_params)
 
+        # another video in place of one waiting for its list: not read for it
+        if not is_first_video and self.video_params.id != video_params.id:
+            self._ctx.lists.stop_waiting(self.video_params.id)
+
+        # a list the playlist does not have, as one edited by hand would
+        if self._ctx.lists.get(video_params.list_id) is None:
+            video_params.list_id = None
+            video_params.list_index = None
+
         self.video_params = video_params
+
+        if video_params.list_id is not None:
+            self._ctx.lists.take_up(video_params.list_id)
+
+        self._show_list_place()
+
+        # known by its item from now on, the list read again at the latest
+        # as the playlist opens
+        self._held_item = self.list_item
 
         # a file's bookmarks left from when they were shared, if this is the
         # first cell to open it since
         self._ctx.bookmarks.claim(self.video_params.uri, self.video_params.id)
+
+        # another video in the cell's place, or this one given to it again:
+        # a reload of the one before still to come is not for it, and it
+        # may be reloaded as many times as any; one that is reloaded comes
+        # back here as the cell's first
+        if not is_first_video:
+            self._drop_network_retries()
 
         # Shut down current video
         if not is_first_video or is_reopen_needed:
@@ -3176,15 +3390,39 @@ class VideoBlock(QWidget):
 
         self._start_load()
 
+    def _present_waiting(self):
+        """The cell there at once, saying so while the list it is to play
+        is read: a channel list from a provider can take a minute."""
+
+        self._present_unloaded("processing", translate("Lists", "Reading the list…"))
+
+    def _present_gone_file(self):
+        """The file the cell is on gone, and its list not read again to go
+        on along: the cell says so."""
+
+        self._is_error = True
+        self._present_unloaded("error", translate("Lists", "File not found"))
+
+    def _present_unloaded(self, status: str, text: str):
+        self.set_status(status)
+        self.update_status(text)
+
+        if self._default_title is None:
+            self._default_title = self.video_params.uri_name
+
+        self.title = self._custom_title or self._default_title
+        self.color = self.video_params.color.as_hex()
+
+    def _on_waiting_progress(self, video_id, text: str, percent: int = 0):
+        if self.video_params is not None and self.video_params.id == video_id:
+            self.update_status(text, percent)
+
     def _present_stopped(self):
         if self._default_title is None:
             self._default_title = self.video_params.uri_name
 
         if self.title is None:
-            if self.video_params.title is None:
-                self.title = self._default_title
-            else:
-                self.title = self.video_params.title
+            self.title = self._custom_title or self._default_title
 
         self.color = self.video_params.color.as_hex()
         self.is_audio_present_change.emit(False)
@@ -3196,6 +3434,23 @@ class VideoBlock(QWidget):
         self.show_overlay()
 
     def _start_load(self):
+        # a list still being read for it: nothing to load until it is
+        if self._ctx.lists.is_waiting(self.video_params.id):
+            self._present_waiting()
+            return
+
+        # saved with the playlist as it waited: read again
+        if self.video_params.read_as_list:
+            self._ctx.commands.read_for_cell(self.video_params)
+            self._present_waiting()
+            return
+
+        self._is_waiting_for_list_read = False
+
+        if self._is_list_file_gone:
+            self._go_on_from_gone_file()
+            return
+
         self.overlay_hide_timer.stop()
         self.overlay.hide()
         self._sync_cell_background()
@@ -3223,7 +3478,7 @@ class VideoBlock(QWidget):
         self._is_adaptive = False
 
         if self.video_params.is_http_url:
-            self.url_resolver.resolve(self.video_params.uri)
+            self.url_resolver.resolve(self.video_params.uri, self._item_headers)
         else:
             self.load_video.emit(
                 MediaInput(
@@ -3250,7 +3505,7 @@ class VideoBlock(QWidget):
     def set_video_url(self, video: ResolvedVideo):
         self._default_title = video.title
 
-        if self.video_params.title is None:
+        if self._custom_title is None:
             self.title = video.title
 
         self.streams = video.streams
@@ -3262,6 +3517,8 @@ class VideoBlock(QWidget):
 
         self._youtube_id = video.youtube_id
         self._look_up_sponsor_segments()
+
+        self._learn_item_details(video.details)
 
         self.load_stream_quality(self.video_params.stream_quality)
 
@@ -3442,6 +3699,10 @@ class VideoBlock(QWidget):
                 is_adaptive=stream.is_adaptive,
                 size=self.size_tuple,
                 video=self.video_params,
+                # the proxy fetches the rest with them already
+                http_headers=(
+                    self._item_headers if stream.protocol == "direct" else {}
+                ),
             )
         )
 
@@ -3550,7 +3811,11 @@ class VideoBlock(QWidget):
         serve a video that dies partway through.
         """
 
-        origin = StreamOrigin(url=str(self.video_params.uri), quality=quality)
+        origin = StreamOrigin(
+            url=str(self.video_params.uri),
+            quality=quality,
+            headers=HashableDict(self._item_headers) or None,
+        )
 
         return dataclasses.replace(stream, origin=origin)
 
@@ -3568,12 +3833,14 @@ class VideoBlock(QWidget):
             self._default_title = self.video_params.uri_name
 
         if self.title is None:
-            if self.video_params.title is None:
-                self.title = self._default_title
-            else:
-                self.title = self.video_params.title
+            self.title = self._custom_title or self._default_title
 
         self.color = self.video_params.color.as_hex()
+
+        # it plays, so the list is not one without anything that will
+        self._list_failures_in_a_row = 0
+
+        self._learn_item_length()
 
         self.set_audio_channel_mode(self.video_params.audio_channel_mode)
         self.set_audio_delay(self.video_params.audio_delay_ms, is_silent=True)
@@ -4408,9 +4675,15 @@ class VideoBlock(QWidget):
 
     @only_seekable
     def set_end_action(self, end_action: VideoEndAction):
-        self._folder_navigator.cancel()
+        self._cancel_steps()
 
         self.video_params.end_action = end_action
+
+    def set_list_end_action(self, list_end_action: ListEndAction):
+        """What to do once the list has been played through. Kept for a
+        cell with no list too, for when it has one."""
+
+        self.video_params.list_end_action = list_end_action
 
     @only_initialized
     @only_seekable
@@ -4493,7 +4766,7 @@ class VideoBlock(QWidget):
         # the viewer going back into the video stays in it, whatever file
         # its end was looking for
         if is_viewers:
-            self._folder_navigator.cancel()
+            self._cancel_steps()
 
         # Marked before the seek is made, not after: the single process
         # drivers call libVLC on this very thread, and it reports the new time
@@ -5093,24 +5366,428 @@ class VideoBlock(QWidget):
 
         self.sync_pause.emit(is_paused)
 
-    @only_local_file
+    @property
+    def _navigator(self) -> FolderNavigator | ListNavigator:
+        """The way to the next video: along the list, for a cell that plays
+        one, or through the folder of the file."""
+
+        if self.media_list is not None:
+            return self._list_navigator
+
+        return self._folder_navigator
+
+    @only_navigable
     def previous_video(self, is_end=False):
         # where files come at random, the one before is the one played before
         if self.video_params.end_action == VideoEndAction.SHUFFLE_FILE:
-            self._folder_navigator.step(FolderStep.BACK, is_end=is_end)
+            self._navigator.step(FolderStep.BACK, is_end=is_end)
         else:
-            self._folder_navigator.step(FolderStep.PREVIOUS, is_end=is_end)
+            self._navigator.step(FolderStep.PREVIOUS, is_end=is_end)
 
-    @only_local_file
+    @only_navigable
     def next_video(self, is_end=False):
         if self.video_params.end_action == VideoEndAction.SHUFFLE_FILE:
-            self._folder_navigator.step(FolderStep.RANDOM, is_end=is_end)
+            self._navigator.step(FolderStep.RANDOM, is_end=is_end)
         else:
-            self._folder_navigator.step(FolderStep.NEXT, is_end=is_end)
+            self._navigator.step(FolderStep.NEXT, is_end=is_end)
 
-    @only_local_file
+    @only_navigable
     def shuffle_video(self, is_end=False):
-        self._folder_navigator.step(FolderStep.RANDOM, is_end=is_end)
+        self._navigator.step(FolderStep.RANDOM, is_end=is_end)
+
+    def _cancel_steps(self):
+        """Take no step for the end of the video still on its way: the
+        viewer did something else with it meanwhile."""
+
+        self._folder_navigator.cancel()
+        self._skip_failed_timer.stop()
+
+    def _link_was_a_list(self, resolved: ResolvedList):
+        """The link leads to a list of videos rather than to one: the cell
+        plays the list from its first video, and an item of a list that is
+        one has the list's videos take its place on it.
+
+        After the resolver is done telling: putting a video in the cell's
+        place starts the resolver over.
+        """
+
+        QTimer.singleShot(0, lambda: self._play_link_as_list(resolved))
+
+    def _play_link_as_list(self, resolved: ResolvedList):
+        if self._is_closing or self.video_params is None:
+            return
+
+        media_list = self.media_list
+        item = self.list_item
+
+        if media_list is not None and item is not None:
+            index = media_list.index_of_key(item.key)
+
+            self._ctx.lists.put(
+                media_list.model_copy(
+                    update={
+                        "items": media_list.items[:index]
+                        + resolved.items
+                        + media_list.items[index + 1 :]
+                    }
+                )
+            )
+
+            self.play_list_item(index)
+            return
+
+        url = self.video_params.uri
+
+        source = ListSource(kind=ListSourceKind.URL, location=url)
+
+        new_list = self._ctx.lists.add(
+            MediaList.read_from(
+                self.video_params.title or resolved.title, resolved.items, source
+            )
+        )
+
+        self.take_list(new_list.id, 0)
+        self.play_list_item(0)
+
+    def play_read(self, uri: Path | str) -> None:
+        """Play the one file or link that what the cell waited for turned
+        out to be: a link to a stream rather than a list, or a folder with
+        one video in it."""
+
+        self._switch_to(uri)
+
+    def take_list(self, list_id, index: int):
+        """Play from a list from now on, the video playing being the item
+        at that place on it.
+
+        Its name goes with it onto the list, where a cell playing a list
+        keeps the names; and it goes along the list at its end, unless it is
+        set to already.
+        """
+
+        params = self.video_params
+
+        self._cancel_steps()
+
+        params.list_id = list_id
+        params.list_index = index
+        params.title = None
+
+        params.end_action = list_step_action(params.end_action)
+
+        media_list = self.media_list
+        item = None if media_list is None else media_list.items[index]
+        self._held_item = item
+
+        self._ctx.lists.take_up(list_id)
+
+        # An item that is not the video yet is put in its place next: its
+        # place is told then. Looked for now, the video would be looked for
+        # all along the list, which a channel list makes a long look.
+        if item is not None and file_key(item.uri) != file_key(params.uri):
+            return
+
+        self._show_list_state()
+
+    def play_list_item(self, index: int | None):
+        """Put an item of the cell's list in the cell, by its place on it."""
+
+        media_list = self.media_list
+
+        if media_list is None:
+            return
+
+        # none to play, every one around gone
+        if index is None or not 0 <= index < len(media_list.items):
+            self.update_status(translate("Lists", "Nothing on the list to play"))
+            self.error()
+            return
+
+        item = media_list.items[index]
+
+        self._held_item = item
+        self.video_params.list_index = index
+
+        # the same file played again stays: its place is told here. Another
+        # put in its place tells its own, once it is the video
+        if file_key(item.uri) == file_key(self.video_params.uri):
+            self._show_list_place()
+
+        self._switch_to(item.uri)
+
+    def show_list_window(self):
+        """The List window on the cell's list, which item of it it plays
+        clicked over the video."""
+
+        if self.media_list is not None:
+            self._ctx.commands.list_window_for(self)
+
+    @property
+    def is_list_window_shown(self) -> bool:
+        return self._is_list_window_shown
+
+    def set_list_window_shown(self, is_shown: bool):
+        """The List window open on the cell, beside the player, playing what
+        is picked in it here: the overlay stays up while it is, saying so
+        under the title, for the cell to be found among the others; unless
+        there is to be none."""
+
+        self._is_list_window_shown = is_shown
+
+        self.overlay.set_list_window_shown(is_shown)
+
+        if is_shown:
+            self.overlay_hide_timer.stop()
+
+        # up as long as the window is, and gone after the usual while once
+        # it is closed
+        self.show_overlay()
+
+    def leave_list(self):
+        """Play the item it is on as a video of its own from now on: Next
+        goes through its folder again, as for any file.
+
+        The name the item had on the list stays the cell's. The list stays
+        for any other cell playing it, and goes when the playlist is saved
+        if none does.
+        """
+
+        params = self.video_params
+
+        if params is None or params.list_id is None:
+            return
+
+        item = self.list_item
+
+        self._cancel_steps()
+
+        params.title = None if item is None else item.title
+        params.list_id = None
+        params.list_index = None
+        self._held_item = None
+
+        # and what the list said to fetch it with
+        if item is not None:
+            params.http_headers = item.http_headers
+
+        self._show_list_state()
+
+    def _learn_item_length(self):
+        """How long an item turned out to be, where its list did not say:
+        the list says from now on, for its window to show."""
+
+        item = self.list_item
+
+        if item is None or item.duration_ms is not None or self.is_live:
+            return
+
+        length = self.video_driver.length
+
+        if not length or length <= 0:
+            return
+
+        self._ctx.lists.update_item(
+            self.video_params.list_id, item.key, duration_ms=int(length)
+        )
+
+    def _learn_item_details(self, details: ItemDetails | None):
+        """What the site said of the item as it was looked up to be played:
+        its list says it from now on, when it was put up to the second
+        rather than as near as the list page said it, and its views as
+        they are now."""
+
+        item = self.list_item
+
+        if item is None or details is None:
+            return
+
+        learned = merged_details(item.details, details)
+
+        if learned != item.details:
+            self._ctx.lists.update_item(
+                self.video_params.list_id, item.key, details=learned
+            )
+
+    def _show_list_place(self):
+        """Say over the video which item of its list the cell plays."""
+
+        self.list_place_change.emit(self.list_place_txt)
+
+    @property
+    def list_place_txt(self) -> str:
+        """Which item of its list the cell plays, "3/12"; empty where it
+        plays no list."""
+
+        media_list = self.media_list
+
+        if media_list is None:
+            return ""
+
+        place = self._list_navigator.place()
+        count = len(media_list.items)
+
+        # the video playing taken off the list meanwhile
+        if place is None or not place.is_found:
+            return f"{NOT_ON_LIST_TXT}/{count}"
+
+        return f"{place.index + 1}/{count}"
+
+    def _end_list(self, list_end_action: ListEndAction):
+        """The list has been played through, and this is what is done."""
+
+        if list_end_action == ListEndAction.PAUSE:
+            self._pause_at_start()
+        elif list_end_action == ListEndAction.STOP:
+            self.stop_playback()
+        elif list_end_action == ListEndAction.CLOSE:
+            QTimer.singleShot(0, self.close)
+
+    def _list_changed(self, list_id):
+        """The list edited, in this cell or another one playing from it."""
+
+        if self.video_params is None or list_id != self.video_params.list_id:
+            return
+
+        self._follow_new_link()
+
+        place = self._list_navigator.place()
+
+        if place is None:
+            return
+
+        # where it is on the list now, for the playlist to say
+        if place.is_found:
+            self.video_params.list_index = place.index
+            self._held_item = self.media_list.items[place.index]
+
+        self._show_list_state()
+
+    def _show_list_state(self):
+        """Where the cell is on its list, and its name as the item is now
+        called: renamed on the list, maybe in another cell."""
+
+        self._show_list_place()
+
+        if self._default_title is not None:
+            self.title = self._custom_title or self._default_title
+
+    @property
+    def _is_list_file_gone(self) -> bool:
+        """Whether the cell plays a list and the file it is on is gone."""
+
+        params = self.video_params
+
+        if params.list_id is None or not isinstance(params.uri, Path):
+            return False
+
+        try:
+            return not params.uri.is_file()
+        except OSError:
+            return True
+
+    def _go_on_from_gone_file(self):
+        """The file the cell is on gone, its drive not plugged in: the next
+        item there is on its list in its place.
+
+        A linked list still to be read again as the playlist opens is
+        waited for, having only the items cells play until then; one that
+        could not be read is not gone along, and the cell says the file is
+        not there.
+        """
+
+        list_id = self.video_params.list_id
+
+        if self._ctx.lists.is_read_expected(list_id):
+            self._is_waiting_for_list_read = True
+            self._present_waiting()
+            return
+
+        if self._ctx.lists.is_as_saved(list_id):
+            self._present_gone_file()
+            return
+
+        self._list_navigator.step(FolderStep.NEXT)
+
+    def _on_list_reading(self, list_id):
+        """Its list read again as the playlist opened, or not: the cell
+        waiting for it goes on."""
+
+        if (
+            not self._is_waiting_for_list_read
+            or self.video_params is None
+            or list_id != self.video_params.list_id
+            or self._ctx.lists.is_read_expected(list_id)
+        ):
+            return
+
+        self._start_load()
+
+    def _follow_new_link(self):
+        """Its item read again from the source with a new link, the same
+        item still: a channel provider gives out new links each time, a new
+        token in each. The stream playing goes on; a reload takes the new
+        link, and so does the playlist."""
+
+        held = self._held_item
+
+        if held is None:
+            return
+
+        item = self.media_list.item_by_key(held.key)
+
+        if item is None or item.uri == held.uri:
+            return
+
+        # gone on to another video meanwhile
+        if file_key(held.uri) != file_key(self.video_params.uri):
+            return
+
+        self.video_params.uri = item.uri
+        self._held_item = item
+
+    def _schedule_skip_failed_item(self):
+        """Go on to the next item of the list in a moment, where this one
+        will not play and the list is played through by itself.
+
+        Not for a list that is gone through by hand: a channel that does not
+        answer is for the viewer to leave. And not for ever: a list on which
+        nothing plays, a drive gone or no network, is gone round once.
+        """
+
+        media_list = self.media_list
+
+        if (
+            media_list is None
+            or self._is_closing
+            or self.video_params.end_action not in LIST_STEP_END_ACTIONS
+        ):
+            return
+
+        self._list_failures_in_a_row += 1
+
+        # so many in a row is the network, or a site turning every one of
+        # them away, rather than the videos: asking again for one after the
+        # other only makes a site that limits how often it is asked say no
+        # for longer
+        limit = min(len(media_list.items), MAX_FAILED_ITEMS_IN_A_ROW)
+
+        if self._list_failures_in_a_row > limit:
+            return
+
+        self._skip_failed_timer.start()
+
+    def _skip_failed_item(self):
+        if self._is_closing or self.media_list is None:
+            return
+
+        self._step_at_end(self.video_params.end_action)
+
+    def _uris_open_elsewhere(self) -> list:
+        return [
+            block.video_params.uri
+            for block in self._ctx.video_blocks
+            if block is not self and block.video_params is not None
+        ]
 
     @only_local_file
     def toggle_dir_recursive(self):
@@ -5131,7 +5808,7 @@ class VideoBlock(QWidget):
         if is_dir_recursive == params.is_dir_recursive:
             return
 
-        self._folder_navigator.cancel()
+        self._cancel_steps()
 
         params.is_dir_recursive = is_dir_recursive
 
@@ -5159,6 +5836,13 @@ class VideoBlock(QWidget):
             self.error()
             return
 
+        self._switch_to(new_video)
+
+    def _switch_to(self, new_video: Path | str):
+        """Put another file or link in the cell's place, the one after
+        this one or before it, in the folder or on the list; the cell's
+        settings stay as they are."""
+
         if new_video == self.video_params.uri:
             if self.is_video_initialized:
                 self._seek_loop_start()
@@ -5168,7 +5852,7 @@ class VideoBlock(QWidget):
 
         self._close_bookmarks_manager()
 
-        self._folder_navigator.cancel()
+        self._cancel_steps()
 
         self.reset_loop()
         self.video_params.current_position = 0
@@ -5193,11 +5877,13 @@ class VideoBlock(QWidget):
         self._drop_external_subtitles()
 
     def rename(self):
+        cur_title = self.title
+
         new_data = QVideoRenameDialog.get_edits(
             parent=self.parent(),
             title=translate("Dialog - Rename video", "Rename video", "Header"),
             orig_title=self._default_title,
-            cur_title=self.title,
+            cur_title=cur_title,
             cur_color=self.video_params.color.as_rgb_tuple(),
         )
 
@@ -5208,10 +5894,20 @@ class VideoBlock(QWidget):
 
         self.video_params.color = Color(new_color)
 
-        if new_name == self._default_title:
-            self.video_params.title = None
+        custom_title = None if new_name == self._default_title else new_name
+
+        item = self.list_item
+
+        # on a list, the item is what is named, for every cell playing it;
+        # its name left be where only the color was changed, the name
+        # the list gave it the list's still
+        if self.media_list is not None and item is not None:
+            if new_name != cur_title:
+                self._ctx.lists.rename_item(
+                    self.video_params.list_id, item.key, custom_title
+                )
         else:
-            self.video_params.title = new_name
+            self.video_params.title = custom_title
 
         self.title = new_name
         self.color = self.video_params.color.as_hex()

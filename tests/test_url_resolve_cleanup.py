@@ -56,7 +56,7 @@ def slow_resolve(mocker):
     started = threading.Event()
     release = threading.Event()
 
-    def _resolve(url, on_status=None):
+    def _resolve(url, on_status=None, headers=None, progress=None):
         started.set()
         release.wait(TIMEOUT_SEC)
         return VIDEO
@@ -121,3 +121,14 @@ def test_cleanup_twice_is_harmless(slow_resolve):
     release.set()
 
     assert _process_events_until(lambda: not url_resolve._abandoned)
+
+
+def test_a_list_still_read_is_asked_to_stop(slow_resolve):
+    started, _ = slow_resolve
+    resolver, _ = _resolver()
+    resolver.resolve("http://page")
+    assert started.wait(TIMEOUT_SEC)
+
+    resolver.cleanup()
+
+    assert resolver.worker.stop.is_set()

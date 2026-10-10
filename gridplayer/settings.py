@@ -22,12 +22,17 @@ from gridplayer.params.gestures import (
 )
 from gridplayer.params.languages import get_system_language
 from gridplayer.params.static import (
+    AddMode,
     AudioChannelMode,
     AudioTrackMode,
+    CacheMode,
     ColorScheme,
     DropAction,
     GridMode,
     HWCropBorderOffset,
+    ListEndAction,
+    ListUpdate,
+    ListView,
     NetworkRetryMode,
     ProxyMode,
     ScreenshotFormat,
@@ -69,6 +74,7 @@ _default_settings = {
     "player/recent_list_enabled": True,
     "player/recent_list_max_size": 10,
     "player/reopen_last_playlist": False,
+    "player/list_max_mb": 512,
     # empty means the screenshots folder in the app data folder, worked out
     # when a screenshot is taken so it follows a portable or moved data dir
     "screenshots/dir": "",
@@ -76,6 +82,10 @@ _default_settings = {
     "screenshots/filename_template": "%F_%P",
     "screenshots/format": ScreenshotFormat.PNG,
     "screenshots/jpg_quality": 90,
+    # thumbnails and the like, kept so they are not downloaded again;
+    # see gridplayer.utils.cache
+    "cache/mode": CacheMode.DISK,
+    "cache/max_mb": 1024,
     "playlist/grid_mode": GridMode.AUTO_ROWS,
     "playlist/grid_fit": True,
     "playlist/grid_size": 0,
@@ -103,6 +113,12 @@ _default_settings = {
     "playlist/shuffle_on_load": False,
     "playlist/drop_action_internal": DropAction.INSERT,
     "playlist/drop_action_external": DropAction.INSERT,
+    "playlist/add_mode": AddMode.CELL_EACH,
+    "playlist/warn_many_cells": True,
+    "playlist/list_view": ListView.TITLES,
+    "playlist/list_thumbnails": True,
+    "playlist/list_get_info": False,
+    "playlist/list_update": ListUpdate.ON_LOAD,
     "playlist/disable_mouse_click_events": False,
     "playlist/disable_mouse_wheel_events": False,
     "playlist/disable_overlay": False,
@@ -117,6 +133,7 @@ _default_settings = {
     "video_defaults/deinterlace_mode": VideoDeinterlaceMode.AUTO,
     "video_defaults/end_action": VideoEndAction.LOOP_FILE,
     "video_defaults/dir_recursive": False,
+    "video_defaults/list_end_action": ListEndAction.START_OVER,
     "video_defaults/audio_mode": AudioChannelMode.UNSET,
     "video_defaults/audio_track_mode": AudioTrackMode.DEFAULT,
     "video_defaults/audio_languages": "",

@@ -159,7 +159,17 @@
        <property name="currentIndex">
         <number>4</number>
        </property>
-       <widget class="QWidget" name="page_general_player">
+       <widget class="PageScrollArea" name="page_general_player">
+        <property name="frameShape">
+         <enum>QFrame::NoFrame</enum>
+        </property>
+        <property name="horizontalScrollBarPolicy">
+         <enum>Qt::ScrollBarAlwaysOff</enum>
+        </property>
+        <property name="widgetResizable">
+         <bool>true</bool>
+        </property>
+       <widget class="QWidget" name="page_general_player_contents">
         <layout class="QVBoxLayout" name="lay_section_player">
          <property name="leftMargin">
           <number>0</number>
@@ -334,6 +344,134 @@
           </layout>
          </item>
          <item>
+          <widget class="QLabel" name="section_memory">
+           <property name="font">
+            <font>
+             <bold>true</bold>
+            </font>
+           </property>
+           <property name="text">
+            <string>Memory</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <layout class="QFormLayout" name="formLayout_memory">
+           <property name="fieldGrowthPolicy">
+            <enum>QFormLayout::FieldsStayAtSizeHint</enum>
+           </property>
+           <item row="0" column="0">
+            <widget class="QLabel" name="playerListMaxMBLabel">
+             <property name="toolTip">
+              <string>Larger M3U, PLS and XSPF playlists won&apos;t be loaded. IPTV lists can be hundreds of MB and take about 2.5 times their size in memory. GridPlayer&apos;s own playlists have no limit.</string>
+             </property>
+             <property name="text">
+              <string>M3U size limit</string>
+             </property>
+            </widget>
+           </item>
+           <item row="0" column="1">
+            <layout class="QHBoxLayout" name="horizontalLayout_memory">
+             <item>
+              <widget class="QSpinBox" name="playerListMaxMB">
+               <property name="toolTip">
+                <string>Larger M3U, PLS and XSPF playlists won&apos;t be loaded. IPTV lists can be hundreds of MB and take about 2.5 times their size in memory. GridPlayer&apos;s own playlists have no limit.</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QLabel" name="playerListMaxMBUnit">
+               <property name="text">
+                <string>(MB)</string>
+               </property>
+              </widget>
+             </item>
+            </layout>
+           </item>
+          </layout>
+         </item>
+         <item>
+          <widget class="QLabel" name="section_cache">
+           <property name="font">
+            <font>
+             <bold>true</bold>
+            </font>
+           </property>
+           <property name="text">
+            <string>Cache</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <layout class="QFormLayout" name="formLayout_cache">
+           <property name="fieldGrowthPolicy">
+            <enum>QFormLayout::FieldsStayAtSizeHint</enum>
+           </property>
+           <item row="0" column="0">
+            <widget class="QLabel" name="cacheModeLabel">
+             <property name="toolTip">
+              <string>Where downloaded thumbnails and lists are kept. In memory: nothing is saved to disk, and it&apos;s cleared when GridPlayer closes.</string>
+             </property>
+             <property name="text">
+              <string>Keep</string>
+             </property>
+            </widget>
+           </item>
+           <item row="0" column="1">
+            <widget class="QComboBox" name="cacheMode">
+             <property name="toolTip">
+              <string>Where downloaded thumbnails and lists are kept. In memory: nothing is saved to disk, and it&apos;s cleared when GridPlayer closes.</string>
+             </property>
+            </widget>
+           </item>
+           <item row="1" column="0">
+            <widget class="QLabel" name="cacheMaxMBLabel">
+             <property name="toolTip">
+              <string>Maximum cache size on disk. The oldest files are deleted first.</string>
+             </property>
+             <property name="text">
+              <string>Limit</string>
+             </property>
+            </widget>
+           </item>
+           <item row="1" column="1">
+            <layout class="QHBoxLayout" name="horizontalLayout_cache_size">
+             <item>
+              <widget class="QSpinBox" name="cacheMaxMB">
+               <property name="toolTip">
+                <string>Maximum cache size on disk. The oldest files are deleted first.</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QLabel" name="cacheMaxMBUnit">
+               <property name="text">
+                <string>(MB)</string>
+               </property>
+              </widget>
+             </item>
+            </layout>
+           </item>
+           <item row="2" column="1">
+            <layout class="QHBoxLayout" name="horizontalLayout_cache_clear">
+             <item>
+              <widget class="QToolButton" name="cacheClear">
+               <property name="text">
+                <string>Clear</string>
+               </property>
+               <property name="popupMode">
+                <enum>QToolButton::MenuButtonPopup</enum>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QLabel" name="cacheSize"/>
+             </item>
+            </layout>
+           </item>
+          </layout>
+         </item>
+         <item>
           <widget class="QLabel" name="section_screenshots">
            <property name="font">
             <font>
@@ -455,6 +593,7 @@
           </spacer>
          </item>
         </layout>
+       </widget>
        </widget>
        <widget class="PageScrollArea" name="page_subtitle_style">
         <property name="frameShape">

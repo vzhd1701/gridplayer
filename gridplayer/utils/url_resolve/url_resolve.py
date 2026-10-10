@@ -1,5 +1,6 @@
 import contextlib
 import logging
+import threading
 from types import MappingProxyType
 from typing import TYPE_CHECKING
 
@@ -8,10 +9,14 @@ from PyQt5.QtCore import QObject, QThread, pyqtSignal
 from gridplayer.models.resolver_patterns import ResolverPatterns
 from gridplayer.params.static import URLResolver
 from gridplayer.settings import Settings
+from gridplayer.utils.list_progress import ReadingStopped, Throttled, reading_txt
+from gridplayer.utils.off_thread import interface_first
 from gridplayer.utils.qt import translate
 from gridplayer.utils.url_resolve.static import (
     BadURLException,
     NoResolverPlugin,
+    PlaylistURLError,
+    ResolvedList,
     ResolvedVideo,
     StreamOfflineError,
 )
@@ -44,8 +49,12 @@ def _resolver_map() -> dict[URLResolver, type["ResolverBase"]]:
     }
 
 
-def resolve_url(url: str, on_status=None) -> ResolvedVideo | None:
-    """Resolve a page URL into playable streams.
+def resolve_url(
+    url: str, on_status=None, headers: dict[str, str] | None = None, progress=None
+) -> ResolvedVideo | None:
+    """Resolve a page URL into playable streams, fetched with these headers
+    on top of the settings. progress is told how many videos are read of a
+    list the URL turns out to be, as they are; see ResolverBase.
 
     Plain function on purpose: the proxy calls it from its own threads to
     renew URLs that have expired, where there is no Qt object to report to.
@@ -62,13 +71,14 @@ def resolve_url(url: str, on_status=None) -> ResolvedVideo | None:
 
         _log.debug(f"Trying to resolve URL with {resolver.__name__}")
         with contextlib.suppress(NoResolverPlugin):
-            return resolver(url).resolve()
+            return resolver(url, headers=headers, progress=progress).resolve()
 
     return None
 
 
 class VideoURLResolverWorker(QObject):
     url_resolved = pyqtSignal(ResolvedVideo)
+    list_resolved = pyqtSignal(ResolvedList)
     error = pyqtSignal()
     update_status = pyqtSignal(str)
 
@@ -76,12 +86,29 @@ class VideoURLResolverWorker(QObject):
         super().__init__(*args, **kwargs)
         self._log = logging.getLogger(self.__class__.__name__)
 
-    def resolve(self, url):
+        # set once the video is let go of: a list the link turns out to be,
+        # still being read, is read no further than its next video
+        self.stop = threading.Event()
+
+    def resolve(self, url, headers=None):
+        progress = Throttled(self._tell_reading, stop=self.stop)
+
         try:
-            resolved = resolve_url(url, on_status=self.update_status.emit)
+            with interface_first():
+                resolved = resolve_url(
+                    url,
+                    on_status=self.update_status.emit,
+                    headers=headers,
+                    progress=progress,
+                )
+        except ReadingStopped:
+            self._log.debug(f"Stopped reading the list behind {url}")
+            return None
         except StreamOfflineError:
             self._log.debug("Stream is offline")
             return self._error(translate("Video Error", "Stream is offline"))
+        except PlaylistURLError as e:
+            return self._list(url, e.info)
         except BadURLException as e:
             self._log.error(e)
             return self._error(translate("Video Error", "Failed to resolve URL"))
@@ -97,17 +124,37 @@ class VideoURLResolverWorker(QObject):
 
         self.url_resolved.emit(resolved)
 
+    def _tell_reading(self, what: str, count: int, of: int | None = None) -> None:
+        self.update_status.emit(reading_txt(what, count, of)[0])
+
     def _error(self, message: str) -> None:
         self.update_status.emit(message)
         self.error.emit()
 
+    def _list(self, url: str, info: dict) -> None:
+        from gridplayer.utils.web_lists import web_list_items
+
+        items = web_list_items(info)
+
+        if not items:
+            self._log.error(f"Link to a playlist with nothing to play on it: {url}")
+            return self._error(translate("Video Error", "This link is a playlist"))
+
+        self._log.debug(f"Link to a playlist of {len(items)}: {url}")
+
+        self.list_resolved.emit(
+            ResolvedList(title=info.get("title") or url, items=items)
+        )
+
 
 class VideoURLResolver(QObject):
     url_resolved = pyqtSignal(ResolvedVideo)
+    # the link leads to a list of videos rather than to one
+    list_resolved = pyqtSignal(ResolvedList)
     error = pyqtSignal()
     update_status = pyqtSignal(str)
 
-    _resolve_url = pyqtSignal(str)
+    _resolve_url = pyqtSignal(str, object)
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -121,6 +168,7 @@ class VideoURLResolver(QObject):
         self.worker.moveToThread(self.thread)
 
         self.worker.url_resolved.connect(self._on_resolved)
+        self.worker.list_resolved.connect(self._on_list)
         self.worker.error.connect(self._on_error)
         self.worker.update_status.connect(self._on_status)
 
@@ -133,8 +181,10 @@ class VideoURLResolver(QObject):
             return
 
         self._is_closed = True
+        self.worker.stop.set()
 
         self.worker.url_resolved.disconnect()
+        self.worker.list_resolved.disconnect()
         self.worker.error.disconnect()
         self.worker.update_status.disconnect()
 
@@ -147,18 +197,23 @@ class VideoURLResolver(QObject):
         else:
             self.thread.wait()
 
-    def resolve(self, url):
+    def resolve(self, url, headers=None):
         if self._is_closed:
             return
 
         self._is_busy = True
-        self._resolve_url.emit(url)
+        self._resolve_url.emit(url, headers)
 
     # results posted just before cleanup still arrive after it
     def _on_resolved(self, video: ResolvedVideo):
         self._is_busy = False
         if not self._is_closed:
             self.url_resolved.emit(video)
+
+    def _on_list(self, resolved_list: ResolvedList):
+        self._is_busy = False
+        if not self._is_closed:
+            self.list_resolved.emit(resolved_list)
 
     def _on_error(self):
         self._is_busy = False
@@ -245,11 +300,15 @@ def _is_match_youtube(url: str) -> bool:
     # yt-dlp patches urllib3 as it is imported; see utils/percent_re.py
     untangle_percent_re()
 
+    # the playlist and channel ones too: Streamlink knows nothing of lists,
+    # and a video opened from a playlist is one of its links
     yt_extractors = (
         yt_extractor.YoutubeIE,
         yt_extractor.YoutubeYtBeIE,
         yt_extractor.YoutubeLivestreamEmbedIE,
         yt_extractor.YoutubeClipIE,
+        yt_extractor.YoutubeTabIE,
+        yt_extractor.YoutubePlaylistIE,
     )
 
     return any(ie.suitable(url) for ie in yt_extractors)

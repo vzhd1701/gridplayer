@@ -17,6 +17,7 @@ from PyQt5.QtWidgets import QApplication, QWidget
 
 from gridplayer.models.video import Video
 from gridplayer.params.static import VideoInitialState
+from gridplayer.player.managers.lists import MediaListsRegistry
 from gridplayer.settings import Settings
 from gridplayer.widgets import video_block as video_block_module
 from gridplayer.widgets import video_overlay
@@ -70,6 +71,7 @@ def _context():
     context.is_show_overlay_border = False
     context.overlay_timeout = 1
     context.synced_view = None
+    context.lists = MediaListsRegistry()
 
     return context
 

@@ -400,6 +400,10 @@ class MediaInput:
     # track description, so which came from where is never in doubt.
     selected_subtitle_slaves: tuple[str, ...] = ()
 
+    # what a link handed straight to VLC is fetched with, a channel list's
+    # user agent and referrer; VLC's http access takes those two and no more
+    http_headers: dict[str, str] = field(default_factory=dict)
+
     _initial_seek_ms: int | None = None
 
     @property

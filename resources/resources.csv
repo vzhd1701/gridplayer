@@ -61,6 +61,7 @@ icon-symbolic,icons/basic/107-image.svg,screenshot
 icon-symbolic,icons/basic/007-anchor.svg,anchor
 icon-symbolic,icons/basic/227-low volume.svg,audio
 icon-symbolic,icons/basic/225-mute.svg,volume-mute
+icon-symbolic,icons/custom/add folder.svg,add-folder
 icon-symbolic,icons/custom/add url.svg,add-url
 icon-symbolic,icons/custom/all.svg,all
 icon-symbolic,icons/custom/aspect fit.svg,aspect-fit
@@ -82,6 +83,7 @@ icon-symbolic,icons/custom/chapter previous.svg,chapter-previous
 icon-symbolic,icons/custom/chapters.svg,chapters
 icon-symbolic,icons/custom/checkmark.svg,checkmark
 icon-symbolic,icons/custom/close all.svg,close-playlist
+icon-symbolic,icons/custom/cross.svg,cross
 icon-symbolic,icons/custom/columns first.svg,grid-columns-first
 icon-symbolic,icons/custom/crop.svg,crop
 icon-symbolic,icons/custom/delay.svg,delay
@@ -96,6 +98,9 @@ icon-symbolic,icons/custom/grid size.svg,grid-size
 icon-symbolic,icons/custom/grid-show-all.svg,grid-show-all
 icon-symbolic,icons/custom/information.svg,information
 icon-symbolic,icons/custom/jump.svg,jump-to
+icon-symbolic,icons/custom/list end.svg,list-end
+icon-symbolic,icons/custom/list.svg,list
+icon-symbolic,icons/custom/list view.svg,list-view
 icon-symbolic,icons/custom/loop chapter.svg,loop-chapter
 icon-symbolic,icons/custom/loop dir shuffle.svg,loop-dir-shuffle
 icon-symbolic,icons/custom/loop dir.svg,loop-dir
@@ -130,6 +135,7 @@ icon-symbolic,icons/custom/seek sync.svg,seek-sync
 icon-symbolic,icons/custom/settings.svg,settings
 icon-symbolic,icons/custom/single mode off.svg,single-mode-off
 icon-symbolic,icons/custom/single mode on.svg,single-mode-on
+icon-symbolic,icons/custom/sort.svg,sort
 icon-symbolic,icons/custom/speed faster.svg,speed-faster
 icon-symbolic,icons/custom/speed reset.svg,speed-reset
 icon-symbolic,icons/custom/speed slower.svg,speed-slower

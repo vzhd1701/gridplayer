@@ -61,6 +61,10 @@ class StreamlinkResolver(ResolverBase):
 
         configure_session(session)
 
+        # carried on into every stream's session headers, so the proxy
+        # fetches the stream the same way
+        session.http.headers.update(self.headers)
+
         return session
 
     @cached_property

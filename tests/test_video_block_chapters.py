@@ -18,6 +18,7 @@ from gridplayer.models.stream import Stream, Streams
 from gridplayer.models.video import Video
 from gridplayer.params.static import VideoEndAction, VideoInitialState
 from gridplayer.player.managers.active_block import ActiveBlockManager
+from gridplayer.player.managers.lists import MediaListsRegistry
 from gridplayer.settings import Settings
 from gridplayer.utils.url_resolve.static import ResolvedVideo
 from gridplayer.widgets import video_block as video_block_module
@@ -66,6 +67,7 @@ def _context():
     context.is_show_overlay_border = False
     context.overlay_timeout = 1
     context.synced_view = None
+    context.lists = MediaListsRegistry()
 
     return context
 
@@ -429,10 +431,11 @@ def url_block(monkeypatch):
     def make(resolved, frame=_BareFrame):
         class _SiteResolver(QObject):
             url_resolved = pyqtSignal(ResolvedVideo)
+            list_resolved = pyqtSignal(object)
             error = pyqtSignal()
             update_status = pyqtSignal(str)
 
-            def resolve(self, url):
+            def resolve(self, url, headers=None):
                 self.url_resolved.emit(resolved)
 
             def cleanup(self): ...

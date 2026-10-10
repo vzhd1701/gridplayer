@@ -33,3 +33,23 @@ def test_another_site_is_not_youtube():
 
 def test_a_link_played_as_it_is_is_nobodys():
     assert DirectResolver("https://cdn/video.mp4").youtube_id is None
+
+
+class TestWhatTheSiteSaysOfTheVideo:
+    def test_when_it_was_put_up_to_the_second(self):
+        details = _resolver(
+            channel="Channel", view_count=92789, timestamp=1273312425
+        ).details
+
+        assert details.channel == "Channel"
+        assert details.view_count == 92789
+        assert details.published == 1273312425
+        assert details.is_published_exact
+
+    def test_its_picture(self):
+        assert _resolver().details.thumbnail == (
+            f"https://i.ytimg.com/vi/{VIDEO_ID}/mqdefault.jpg"
+        )
+
+    def test_nothing_from_a_link_played_as_it_is(self):
+        assert DirectResolver("https://cdn/video.mp4").details is None

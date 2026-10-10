@@ -47,6 +47,9 @@ class StreamOrigin:
     url: str
     quality: str
     audio_track: str | None = None
+    # what the page itself was fetched with, a channel list's user agent
+    # and referrer, to fetch it again with
+    headers: HashableDict | None = None
 
 
 @dataclass(frozen=True)

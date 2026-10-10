@@ -289,17 +289,19 @@ class StreamProxyServer(ThreadingHTTPServer):
                 self._log.debug("Reusing the source resolved a moment ago")
                 return streams
 
-            streams = self._resolve_streams(origin.url)
+            streams = self._resolve_streams(origin)
 
             self._refreshed[origin.url] = (time.monotonic(), streams)
 
             return streams
 
-    def _resolve_streams(self, url: str) -> Streams | None:
-        self._log.debug(f"Resolving {url} again to renew expired stream URLs")
+    def _resolve_streams(self, origin: StreamOrigin) -> Streams | None:
+        self._log.debug(f"Resolving {origin.url} again to renew expired stream URLs")
+
+        headers = dict(origin.headers) if origin.headers else None
 
         try:
-            resolved = self._resolve_source(url)
+            resolved = self._resolve_source(origin.url, headers=headers)
         except Exception:
             self._log.exception("Failed to resolve source again")
             return None

@@ -91,7 +91,7 @@ def _dash_stream(url, quality="best", origin=True):
 def _resolver(upstream, path, calls=None):
     """Stands in for the URL resolver, handing back a stream on ``path``."""
 
-    def resolve_source(url):
+    def resolve_source(url, headers=None):
         if calls is not None:
             calls.append(url)
 
@@ -171,7 +171,7 @@ def test_a_stream_nobody_can_renew_relays_the_refusal(upstream, proxy):
 def test_a_source_that_cannot_be_resolved_again_relays_the_refusal(upstream, proxy):
     upstream.replies = {"/old/0.m4s": (403, b"expired")}
 
-    def resolve_source(url):
+    def resolve_source(url, headers=None):
         raise RuntimeError("no network")
 
     server = proxy(resolve_source)

@@ -27,6 +27,7 @@ from gridplayer.params.static import (
 )
 from gridplayer.player.manager import Context
 from gridplayer.player.managers.bookmarks import BookmarksRegistry
+from gridplayer.player.managers.lists import MediaListsRegistry
 from gridplayer.player.managers.snapshots import SnapshotsManager
 from gridplayer.player.managers.video_blocks import VideoBlocksManager
 from gridplayer.playlist_settings import PlaylistSettings
@@ -691,6 +692,7 @@ def grid(tmp_path):
     context = Context()
     context.video_driver = lambda: VideoFrameDummy
     context.bookmarks = BookmarksRegistry()
+    context.lists = MediaListsRegistry()
     context.commands = MagicMock()
     manager = VideoBlocksManager(context=context, parent=parent)
     blocks = []

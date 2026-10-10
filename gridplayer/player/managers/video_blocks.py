@@ -9,6 +9,7 @@ from gridplayer.dialogs.subtitle_delay import SetSubtitleDelayDialog
 from gridplayer.models.video import Video
 from gridplayer.params.static import (
     AudioChannelMode,
+    ListEndAction,
     SeekSyncMode,
     VideoAnchor,
     VideoAspect,
@@ -155,6 +156,7 @@ class VideoBlocksManager(ManagerBase):
     all_reset_loop = pyqtSignal()
     all_set_end_action = pyqtSignal(VideoEndAction)
     all_set_dir_recursive = pyqtSignal(bool)
+    all_set_list_end_action = pyqtSignal(ListEndAction)
 
     all_rate_increase = pyqtSignal()
     all_rate_decrease = pyqtSignal()
@@ -245,6 +247,7 @@ class VideoBlocksManager(ManagerBase):
             "is_any_videos_playable_not_live": self.is_any_videos_playable_not_live,
             "is_any_videos_seekable": self.is_any_videos_seekable,
             "is_any_videos_local_file": self.is_any_videos_local_file,
+            "is_any_videos_navigable": self.is_any_videos_navigable,
             "is_any_videos_live": self.is_any_videos_live,
             "is_any_videos_have_audio": self.is_any_videos_have_audio,
             "is_any_videos_have_subtitles": self.is_any_videos_have_subtitles,
@@ -392,6 +395,13 @@ class VideoBlocksManager(ManagerBase):
 
         if not self._ctx.is_overlay_hide_on_timeout:
             self.show_overlay.emit()
+            return
+
+        # up as long as the List window is open on it, the others once the
+        # mouse is over them
+        for vb in self._ctx.video_blocks:
+            if vb.is_list_window_shown:
+                vb.show_overlay()
 
     def toggle_disable_overlay(self):
         value = not self._ctx.is_disable_overlay
@@ -641,6 +651,12 @@ class VideoBlocksManager(ManagerBase):
     def is_any_videos_local_file(self):
         return any(vb.is_local_file and vb.is_playable for vb in self._ctx.video_blocks)
 
+    def is_any_videos_navigable(self):
+        return any(
+            vb.media_list is not None or (vb.is_local_file and vb.is_playable)
+            for vb in self._ctx.video_blocks
+        )
+
     def reload_videos(self):
         if self._videos_to_reload:
             self._log.warning("Reload: operation in progress")
@@ -785,6 +801,7 @@ class VideoBlocksManager(ManagerBase):
             (self.all_reset_loop, vb.reset_loop),
             (self.all_set_end_action, vb.set_end_action),
             (self.all_set_dir_recursive, vb.set_dir_recursive),
+            (self.all_set_list_end_action, vb.set_list_end_action),
             (self.all_rate_increase, vb.rate_increase),
             (self.all_rate_decrease, vb.rate_decrease),
             (self.all_rate_reset, vb.rate_reset),

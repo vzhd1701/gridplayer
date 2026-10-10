@@ -516,6 +516,33 @@ class OverlayShortLabel(OverlayWidget):
         self.update()
 
 
+class OverlayListWindowTag(OverlayShortLabel):
+    """Under the title of the cell the List window is open on, while it is:
+    the colours the other way round, for the cell the window plays in to be
+    found among the others, and rimmed in the overlay's colour, for the box
+    to show over a dark picture as well as a light one."""
+
+    rim_width = 1.5
+
+    def paintEvent(self, event):
+        if not self._is_visuals_updated:
+            self.update_visuals()
+
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.Antialiasing)
+
+        painter.fillRect(self.rect(), self.color_contrast)
+
+        pen = QPen(self.color)
+        pen.setWidthF(self.rim_width)
+        painter.setPen(pen)
+
+        inset = self.rim_width / 2
+        painter.drawRect(QRectF(self.rect()).adjusted(inset, inset, -inset, -inset))
+
+        painter.drawText(self.rect(), Qt.AlignCenter, self.text)
+
+
 class OverlayShortLabelFloating(OverlayShortLabel):
     # cut to a new shape on the opaque overlay, which cuts its window to it
     shape_changed = pyqtSignal()

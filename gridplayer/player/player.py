@@ -11,6 +11,7 @@ from gridplayer.player.managers.dialogs import DialogsManager
 from gridplayer.player.managers.drag_n_drop import DragNDropManager
 from gridplayer.player.managers.grid import GridManager
 from gridplayer.player.managers.instance_listener import InstanceListenerManager
+from gridplayer.player.managers.lists import ListsManager
 from gridplayer.player.managers.locations import LocationsManager
 from gridplayer.player.managers.log import LogManager
 from gridplayer.player.managers.macos_fileopen import MacOSFileOpenManager
@@ -48,6 +49,7 @@ class Player(QWidget, ManagersManager):
             "playlist": PlaylistManager,
             "snapshots": SnapshotsManager,
             "bookmarks": BookmarksManager,
+            "lists": ListsManager,
             "screensaver": ScreensaverManager,
             "active_block": ActiveBlockManager,
             "locations": LocationsManager,
@@ -206,15 +208,21 @@ class Player(QWidget, ManagersManager):
                 ("playlist.playlist_closed", "clear"),
                 ("settings.set_bookmarks_shared", "set_bookmarks_shared"),
             ],
+            # after the playlist's own as well: the cells close before the
+            # lists they play from are cleared away
+            "lists": [
+                ("playlist.lists_loaded", "set_lists"),
+                ("playlist.playlist_closed", "clear"),
+                ("error", "dialogs.error"),
+                ("window_state.closing", "cleanup"),
+            ],
             "add_videos": [
                 ("videos_added", "grid.add_videos_to_layout"),
                 ("videos_added", "window_state.activate_window"),
-                ("videos_added", "recent_list.add_recent_videos"),
                 ("error", "dialogs.error"),
+                ("warning", "dialogs.warning"),
             ],
             "recent_list": [
-                ("videos_added", "grid.add_videos_to_layout"),
-                ("videos_added", "window_state.activate_window"),
                 ("playlist_opened", "playlist.load_playlist_file"),
                 ("error", "dialogs.error"),
             ],

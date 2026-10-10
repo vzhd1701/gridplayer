@@ -125,6 +125,7 @@ class ActiveBlockManager(ManagerBase):
             "is_active_audio_disabled": self.is_active_audio_disabled,
             "is_active_audio_default": self.is_active_audio_default,
             "is_active_local_file": self.is_active_local_file,
+            "is_active_navigable": self.is_active_navigable,
             "is_active_has_audio": self.is_active_has_audio,
             "is_active_has_video": self.is_active_has_video,
             "is_active_has_subtitles": self.is_active_has_subtitles,
@@ -231,6 +232,21 @@ class ActiveBlockManager(ManagerBase):
             return False
 
         return isinstance(self._ctx.active_block.video_params.uri, Path)
+
+    def is_active_navigable(self):
+        """Whether the active video has others to go on to: a file of the
+        folder, or an item of its list, whatever state this one is in. A
+        channel that does not answer is one to go on from."""
+
+        if self.is_no_active_block:
+            return False
+
+        block = self._ctx.active_block
+
+        if block.media_list is not None:
+            return True
+
+        return self.is_active_local_file()
 
     def is_active_has_audio(self):
         if not self.is_active_initialized():

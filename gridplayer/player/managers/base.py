@@ -2,6 +2,10 @@ import inspect
 import logging
 
 from PyQt5.QtCore import QObject
+from PyQt5.QtGui import QWindow
+from PyQt5.QtWidgets import QApplication, QWidget
+
+from gridplayer.widgets.video_overlay import OverlayBlock
 
 
 class ManagerBase(QObject):
@@ -29,3 +33,32 @@ class ManagerBase(QObject):
             return result is True
 
         return False
+
+    def is_elsewhere(self, event_object) -> bool:
+        """Whether an event is for a window over the player rather than the
+        player's own, or a video's overlay of its own: the List window, say.
+        Whatever videos are under it, its mouse and its drops are its own.
+
+        Filtering the whole application, an event is seen at the window it
+        came to before the widget it is for, see PanManager.
+        """
+
+        widget = event_object
+
+        if isinstance(widget, QWindow):
+            widget = QWidget.find(widget.winId())
+
+        # the application's own, or a window that is no widget's
+        if not isinstance(widget, QWidget):
+            return False
+
+        window = widget.window()
+
+        return window is not self.parent() and not isinstance(window, OverlayBlock)
+
+    def is_elsewhere_at(self, global_pos) -> bool:
+        """Whether a window over the player is where the pointer is."""
+
+        window = QApplication.topLevelAt(global_pos)
+
+        return window is not None and self.is_elsewhere(window)

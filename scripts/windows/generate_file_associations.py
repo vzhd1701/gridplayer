@@ -1,7 +1,11 @@
 import argparse
 from pathlib import Path
 
-from gridplayer.params.extensions import SUPPORTED_AUDIO_EXT, SUPPORTED_VIDEO_EXT
+from gridplayer.params.extensions import (
+    SUPPORTED_AUDIO_EXT,
+    SUPPORTED_LIST_EXT,
+    SUPPORTED_VIDEO_EXT,
+)
 from gridplayer.version import __app_name__
 
 MULTISELECT_KEY = (
@@ -183,6 +187,10 @@ if __name__ == "__main__":
         ),
         *iter_ext_blocks(
             SUPPORTED_VIDEO_EXT, "Video", is_multiselect=True, is_new_ext=False
+        ),
+        # played as lists, a cell each, or one cell going through them
+        *iter_ext_blocks(
+            SUPPORTED_LIST_EXT, "Media List", is_multiselect=True, is_new_ext=False
         ),
         generate_ext_block("gpls", "Playlist", is_multiselect=False, is_new_ext=True),
     ]

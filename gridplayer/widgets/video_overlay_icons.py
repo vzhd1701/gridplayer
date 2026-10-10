@@ -70,6 +70,16 @@ def draw_cross(rect, painter, color_fg, color_bg):
     )
 
 
+def draw_list(rect, painter, color_fg, color_bg):
+    """Three lines, the list's sign."""
+
+    thickness = max(2, round(rect.height() / 4.5))
+
+    for row in range(3):
+        y = rect.y() + (rect.height() - thickness) * row // 2
+        painter.fillRect(rect.x(), y, rect.width(), thickness, color_fg)
+
+
 def draw_spin_circle(
     rect: QRect, painter: QPainter, color_fg: QColor, color_bg: QColor, spin: int
 ):

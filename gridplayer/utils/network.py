@@ -60,6 +60,15 @@ _ORIGINAL_USER_AGENT = "_gp_network_user_agent"
 _ORIGINAL_TIMEOUT = "_gp_network_timeout"
 
 
+class HTTPStatusError(OSError):
+    """A host that answered, and answered no: its HTTP status."""
+
+    def __init__(self, status: int):
+        super().__init__(f"HTTP {status}")
+
+        self.status = status
+
+
 @dataclass(frozen=True)
 class NetworkOpts:
     """The network settings, as one thing that can be compared and hashed.
@@ -240,7 +249,9 @@ def apply_to_streamlink(session, opts: NetworkOpts | None = None) -> None:
     session.http.set_address_family(socket.AF_INET if opts.force_ipv4 else None)
 
 
-def fetch_capped(session, url: str, limit: int, **kwargs) -> tuple[int, bytes]:
+def fetch_capped(
+    session, url: str, limit: int, on_read=None, keep_reading=None, **kwargs
+) -> tuple[int, bytes]:
     """Fetch as much of something as is worth looking at, and no more.
 
     The checkups fetch to find out what happens rather than to play
@@ -264,7 +275,9 @@ def fetch_capped(session, url: str, limit: int, **kwargs) -> tuple[int, bytes]:
         raise (getattr(e, "err", None) or e) from None
 
     with contextlib.closing(response):
-        return response.status_code, _read_capped(response, limit)
+        return response.status_code, _read_capped(
+            response, limit, on_read, keep_reading
+        )
 
 
 def ytdl_network_opts(opts: NetworkOpts | None = None) -> dict:
@@ -309,7 +322,7 @@ def vlc_user_agent() -> str:
     return network_opts().user_agent or DEFAULT_USER_AGENT
 
 
-def _read_capped(response, limit: int) -> bytes:
+def _read_capped(response, limit: int, on_read=None, keep_reading=None) -> bytes:
     """As much of a response as was asked for, taken a chunk at a time.
 
     A checkup only ever wants the first slice of what it fetched -- a
@@ -320,13 +333,49 @@ def _read_capped(response, limit: int) -> bytes:
 
     read = bytearray()
 
+    expected = _expected_bytes(response) if on_read is not None else None
+
     for chunk in response.iter_content(CHUNK_BYTES):
         read += chunk
+
+        # how much is read so far, and of how much, for whoever waits to
+        # be told
+        if on_read is not None:
+            on_read(_received_bytes(response, len(read)), expected)
 
         if len(read) >= limit:
             break
 
-    return bytes(read[:limit])
+        # what is read so far is enough to tell it is not worth the rest
+        if keep_reading is not None and not keep_reading(read):
+            break
+
+    # cut in place, copied once: a list may be hundreds of megabytes
+    del read[limit:]
+
+    return bytes(read)
+
+
+def _expected_bytes(response) -> int | None:
+    """How large the response says it is, as sent: compressed, where it is
+    sent compressed. None where it does not say."""
+
+    try:
+        expected = int(response.headers.get("Content-Length"))
+    except (TypeError, ValueError):
+        return None
+
+    return expected if expected > 0 else None
+
+
+def _received_bytes(response, decoded: int) -> int:
+    """How much of the response has come, as sent, to go with what it said
+    it would be: what it was read into is larger, where it came compressed."""
+
+    try:
+        return int(response.raw.tell())
+    except (AttributeError, TypeError, ValueError, OSError):
+        return decoded
 
 
 def _apply_timeout(session, timeout: int) -> None:

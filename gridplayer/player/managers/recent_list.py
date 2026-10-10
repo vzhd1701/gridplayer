@@ -11,7 +11,6 @@ from gridplayer.utils.qt import translate
 
 
 class RecentListManager(ManagerBase):
-    videos_added = pyqtSignal(list)
     playlist_opened = pyqtSignal(Path)
 
     error = pyqtSignal(str)
@@ -29,6 +28,7 @@ class RecentListManager(ManagerBase):
             "menu_generator_recent_playlists": self.menu_generator_recent_playlists,
             "is_recent_list_enabled": self.is_recent_list_enabled,
             "add_recent_videos": self.add_recent_videos,
+            "add_recent_uris": self.add_recent_uris,
         }
 
     def is_recent_list_enabled(self):
@@ -71,10 +71,8 @@ class RecentListManager(ManagerBase):
             )
             return
 
-        videos = [Video(uri=uri)]
-
-        self.add_recent_videos(videos)
-        self.videos_added.emit(videos)
+        # a folder or a list is read again, for what is in it now
+        self._ctx.commands.add_media([uri])
 
     def cmd_clear_recent_videos(self) -> None:
         Settings().reset("recent_list_videos")
@@ -83,12 +81,18 @@ class RecentListManager(ManagerBase):
         return bool(Settings().get("recent_list_videos"))
 
     def add_recent_videos(self, videos: list[Video]) -> None:
+        self.add_recent_uris([v.uri for v in videos])
+
+    def add_recent_uris(self, uris) -> None:
+        """Files and links, and folders and lists by where they were read
+        from, to add again from the recent list."""
+
         if not self.is_recent_list_enabled():
             return
 
         recent_videos: RecentListVideos = Settings().get("recent_list_videos")
 
-        recent_videos.add([v.uri for v in videos])
+        recent_videos.add(list(uris))
         recent_videos.truncate(Settings().get("player/recent_list_max_size"))
 
         Settings().set("recent_list_videos", recent_videos)

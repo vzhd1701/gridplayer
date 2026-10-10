@@ -24,6 +24,7 @@ from gridplayer.params.static import VideoEndAction, VideoInitialState
 from gridplayer.player.managers.actions import QDynamicAction
 from gridplayer.player.managers.active_block import ActiveBlockManager
 from gridplayer.player.managers.bookmarks import BookmarksRegistry
+from gridplayer.player.managers.lists import MediaListsRegistry
 from gridplayer.settings import Settings
 from gridplayer.utils.bookmarks import default_bookmark_name
 from gridplayer.utils.sponsorblock import SkipSpan
@@ -82,6 +83,7 @@ def _context():
     context.is_show_overlay_border = False
     context.overlay_timeout = 1
     context.synced_view = None
+    context.lists = MediaListsRegistry()
     context.bookmarks = BookmarksRegistry()
 
     return context

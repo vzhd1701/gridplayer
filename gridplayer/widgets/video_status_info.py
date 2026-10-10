@@ -53,6 +53,9 @@ class StatusInfo(QWidget):
         self._adjust_font(self.size())
         self.update()
 
+        # on one line or two, the box asked for again (see minimumSizeHint)
+        self.updateGeometry()
+
     @property
     def percent(self):
         return self._percent
@@ -73,6 +76,11 @@ class StatusInfo(QWidget):
 
     def resizeEvent(self, event) -> None:
         self._adjust_font(event.size())
+
+        # whether the text fits on one line is told by the width: asked
+        # before the box was given one, it was told by a width it never had
+        if event.size().width() != event.oldSize().width():
+            self.updateGeometry()
 
     def paintEvent(self, event):
         painter = QPainter(self)
@@ -146,12 +154,17 @@ class StatusInfo(QWidget):
         if QFontMetrics(font).lineSpacing() > text_box.height():
             return True
 
-        lines = self._get_lines_to_draw(font, text_box)
+        multiliner = TextMultiliner(self.text, font)
+        lines = multiliner.get_multiline_text(
+            max_lines=3, max_width=text_box.width(), max_height=text_box.height()
+        )
 
         if single_line and len(lines) > 1:
             return True
 
-        return lines[-1].endswith("…")
+        # cut short to fit: not a text ending in an ellipsis of its own, such
+        # as "Reading the list…", which would never be let grow
+        return multiliner.is_cut_short
 
     def _text_box_for_size(self, width, height):
         return QRect(0, 0, width, height).adjusted(
@@ -208,6 +221,9 @@ class TextMultiliner:
         self._cur_y = 0
         self._is_last_line = False
 
+        # the last line elided, the text not fitting
+        self.is_cut_short = False
+
     @contextlib.contextmanager
     def text_layout_ctx(self):
         self.text_layout.beginLayout()
@@ -218,6 +234,7 @@ class TextMultiliner:
         self._lines = []
         self._cur_y = 0
         self._is_last_line = False
+        self.is_cut_short = False
 
         with self.text_layout_ctx():
             while True:
@@ -250,4 +267,8 @@ class TextMultiliner:
         self._is_last_line = True
 
         last_line = self.text[line.textStart() :]
-        return self.font_metrics.elidedText(last_line, Qt.ElideRight, max_width)
+        shown = self.font_metrics.elidedText(last_line, Qt.ElideRight, max_width)
+
+        self.is_cut_short = shown != last_line
+
+        return shown

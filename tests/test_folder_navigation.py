@@ -16,6 +16,7 @@ from gridplayer.models.video import Video
 from gridplayer.params.menu import SECTIONS
 from gridplayer.params.static import VideoEndAction, VideoInitialState
 from gridplayer.player.managers.bookmarks import BookmarksRegistry
+from gridplayer.player.managers.lists import MediaListsRegistry
 from gridplayer.playlist_settings import PlaylistSettings
 from gridplayer.settings import Settings
 from gridplayer.utils.folder_index import FolderIndex, folder_index
@@ -60,6 +61,7 @@ def _context(blocks=()):
     context.is_show_overlay_border = False
     context.overlay_timeout = 1
     context.synced_view = None
+    context.lists = MediaListsRegistry()
     context.bookmarks = BookmarksRegistry()
     context.video_blocks = blocks
 
@@ -288,7 +290,7 @@ class TestWhileTheTreeIsLookedThrough:
 
         block.next_video()
 
-        assert block.notices == ["Looking through the folders…"]
+        assert block.notices == ["Scanning folders…"]
 
     @pytest.mark.parametrize(
         "action",

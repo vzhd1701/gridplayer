@@ -16,6 +16,10 @@ SUBMENUS = MappingProxyType(
             "title": translate("Actions", "When Finished"),
             "icon": "playback-finish",
         },
+        "At the End of the List": {
+            "title": translate("Lists", "At the End of the List"),
+            "icon": "list-end",
+        },
         "Include Subfolders": {
             "title": translate("Folder Navigation", "Include Subfolders"),
             "icon": "folder-tree",
@@ -219,6 +223,16 @@ SECTIONS = MappingProxyType(
                 "Play Next File",
                 "Play Random File",
                 "Include Subfolders",
+                "---",
+                "List",
+                (
+                    "At the End of the List",
+                    "List End Start Over",
+                    "List End Pause",
+                    "List End Stop",
+                    "List End Close",
+                ),
+                "Leave the List",
                 "---",
                 (
                     "Jump (to)",
@@ -463,6 +477,14 @@ SECTIONS = MappingProxyType(
                     ),
                     "---",
                     (
+                        "At the End of the List",
+                        "List End Start Over [ALL]",
+                        "List End Pause [ALL]",
+                        "List End Stop [ALL]",
+                        "List End Close [ALL]",
+                    ),
+                    "---",
+                    (
                         "Jump (to)",
                         (
                             "Percent",
@@ -617,6 +639,7 @@ SECTIONS = MappingProxyType(
                 "Playlist Settings",
                 "Edit Playlist Settings",
                 "---",
+                "Lists in Playlist",
                 "Bookmarks in Playlist",
                 "Share Bookmarks",
                 "---",
@@ -633,6 +656,7 @@ SECTIONS = MappingProxyType(
             (
                 "Add",
                 "Add - Files",
+                "Add - Folder",
                 "Add - URL(s)",
                 "Add - Clipboard",
                 "Add - Recent Videos",

@@ -69,9 +69,18 @@ class Ui_SettingsDialog:
         self.section_page = CurrentPageStackedWidget(SettingsDialog)
         self.section_page.setMinimumSize(QtCore.QSize(500, 0))
         self.section_page.setObjectName("section_page")
-        self.page_general_player = QtWidgets.QWidget()
+        self.page_general_player = PageScrollArea()
+        self.page_general_player.setFrameShape(QtWidgets.QFrame.NoFrame)
+        self.page_general_player.setHorizontalScrollBarPolicy(
+            QtCore.Qt.ScrollBarAlwaysOff
+        )
+        self.page_general_player.setWidgetResizable(True)
         self.page_general_player.setObjectName("page_general_player")
-        self.lay_section_player = QtWidgets.QVBoxLayout(self.page_general_player)
+        self.page_general_player_contents = QtWidgets.QWidget()
+        self.page_general_player_contents.setObjectName("page_general_player_contents")
+        self.lay_section_player = QtWidgets.QVBoxLayout(
+            self.page_general_player_contents
+        )
         self.lay_section_player.setContentsMargins(0, 0, 0, 0)
         self.lay_section_player.setObjectName("lay_section_player")
         self.formLayout_color_scheme = QtWidgets.QFormLayout()
@@ -79,33 +88,41 @@ class Ui_SettingsDialog:
             QtWidgets.QFormLayout.FieldsStayAtSizeHint
         )
         self.formLayout_color_scheme.setObjectName("formLayout_color_scheme")
-        self.playerColorSchemeLabel = QtWidgets.QLabel(self.page_general_player)
+        self.playerColorSchemeLabel = QtWidgets.QLabel(
+            self.page_general_player_contents
+        )
         self.playerColorSchemeLabel.setObjectName("playerColorSchemeLabel")
         self.formLayout_color_scheme.setWidget(
             0, QtWidgets.QFormLayout.LabelRole, self.playerColorSchemeLabel
         )
-        self.playerColorScheme = QtWidgets.QComboBox(self.page_general_player)
+        self.playerColorScheme = QtWidgets.QComboBox(self.page_general_player_contents)
         self.playerColorScheme.setObjectName("playerColorScheme")
         self.formLayout_color_scheme.setWidget(
             0, QtWidgets.QFormLayout.FieldRole, self.playerColorScheme
         )
         self.lay_section_player.addLayout(self.formLayout_color_scheme)
-        self.playerOneInstance = QtWidgets.QCheckBox(self.page_general_player)
+        self.playerOneInstance = QtWidgets.QCheckBox(self.page_general_player_contents)
         self.playerOneInstance.setObjectName("playerOneInstance")
         self.lay_section_player.addWidget(self.playerOneInstance)
-        self.playerStayOnTop = QtWidgets.QCheckBox(self.page_general_player)
+        self.playerStayOnTop = QtWidgets.QCheckBox(self.page_general_player_contents)
         self.playerStayOnTop.setObjectName("playerStayOnTop")
         self.lay_section_player.addWidget(self.playerStayOnTop)
-        self.playerStartMaximized = QtWidgets.QCheckBox(self.page_general_player)
+        self.playerStartMaximized = QtWidgets.QCheckBox(
+            self.page_general_player_contents
+        )
         self.playerStartMaximized.setObjectName("playerStartMaximized")
         self.lay_section_player.addWidget(self.playerStartMaximized)
-        self.playerStartFullscreen = QtWidgets.QCheckBox(self.page_general_player)
+        self.playerStartFullscreen = QtWidgets.QCheckBox(
+            self.page_general_player_contents
+        )
         self.playerStartFullscreen.setObjectName("playerStartFullscreen")
         self.lay_section_player.addWidget(self.playerStartFullscreen)
-        self.playerInhibitScreensaver = QtWidgets.QCheckBox(self.page_general_player)
+        self.playerInhibitScreensaver = QtWidgets.QCheckBox(
+            self.page_general_player_contents
+        )
         self.playerInhibitScreensaver.setObjectName("playerInhibitScreensaver")
         self.lay_section_player.addWidget(self.playerInhibitScreensaver)
-        self.section_history = QtWidgets.QLabel(self.page_general_player)
+        self.section_history = QtWidgets.QLabel(self.page_general_player_contents)
         font = QtGui.QFont()
         font.setBold(True)
         self.section_history.setFont(font)
@@ -116,27 +133,31 @@ class Ui_SettingsDialog:
             QtWidgets.QFormLayout.FieldsStayAtSizeHint
         )
         self.formLayout_10.setObjectName("formLayout_10")
-        self.playerRecentList = QtWidgets.QCheckBox(self.page_general_player)
+        self.playerRecentList = QtWidgets.QCheckBox(self.page_general_player_contents)
         self.playerRecentList.setObjectName("playerRecentList")
         self.formLayout_10.setWidget(
             0, QtWidgets.QFormLayout.LabelRole, self.playerRecentList
         )
         self.horizontalLayout_6 = QtWidgets.QHBoxLayout()
         self.horizontalLayout_6.setObjectName("horizontalLayout_6")
-        self.playerRecentListSize = QtWidgets.QSpinBox(self.page_general_player)
+        self.playerRecentListSize = QtWidgets.QSpinBox(
+            self.page_general_player_contents
+        )
         self.playerRecentListSize.setObjectName("playerRecentListSize")
         self.horizontalLayout_6.addWidget(self.playerRecentListSize)
-        self.label_16 = QtWidgets.QLabel(self.page_general_player)
+        self.label_16 = QtWidgets.QLabel(self.page_general_player_contents)
         self.label_16.setObjectName("label_16")
         self.horizontalLayout_6.addWidget(self.label_16)
         self.formLayout_10.setLayout(
             0, QtWidgets.QFormLayout.FieldRole, self.horizontalLayout_6
         )
         self.lay_section_player.addLayout(self.formLayout_10)
-        self.playerReopenLastPlaylist = QtWidgets.QCheckBox(self.page_general_player)
+        self.playerReopenLastPlaylist = QtWidgets.QCheckBox(
+            self.page_general_player_contents
+        )
         self.playerReopenLastPlaylist.setObjectName("playerReopenLastPlaylist")
         self.lay_section_player.addWidget(self.playerReopenLastPlaylist)
-        self.section_timeouts = QtWidgets.QLabel(self.page_general_player)
+        self.section_timeouts = QtWidgets.QLabel(self.page_general_player_contents)
         font = QtGui.QFont()
         font.setBold(True)
         self.section_timeouts.setFont(font)
@@ -147,40 +168,120 @@ class Ui_SettingsDialog:
             QtWidgets.QFormLayout.FieldsStayAtSizeHint
         )
         self.formLayout_3.setObjectName("formLayout_3")
-        self.timeoutMouseHideFlag = QtWidgets.QCheckBox(self.page_general_player)
+        self.timeoutMouseHideFlag = QtWidgets.QCheckBox(
+            self.page_general_player_contents
+        )
         self.timeoutMouseHideFlag.setObjectName("timeoutMouseHideFlag")
         self.formLayout_3.setWidget(
             1, QtWidgets.QFormLayout.LabelRole, self.timeoutMouseHideFlag
         )
         self.horizontalLayout = QtWidgets.QHBoxLayout()
         self.horizontalLayout.setObjectName("horizontalLayout")
-        self.timeoutMouseHide = QtWidgets.QSpinBox(self.page_general_player)
+        self.timeoutMouseHide = QtWidgets.QSpinBox(self.page_general_player_contents)
         self.timeoutMouseHide.setObjectName("timeoutMouseHide")
         self.horizontalLayout.addWidget(self.timeoutMouseHide)
-        self.label_2 = QtWidgets.QLabel(self.page_general_player)
+        self.label_2 = QtWidgets.QLabel(self.page_general_player_contents)
         self.label_2.setObjectName("label_2")
         self.horizontalLayout.addWidget(self.label_2)
         self.formLayout_3.setLayout(
             1, QtWidgets.QFormLayout.FieldRole, self.horizontalLayout
         )
-        self.timeoutVideoInitLabel = QtWidgets.QLabel(self.page_general_player)
+        self.timeoutVideoInitLabel = QtWidgets.QLabel(self.page_general_player_contents)
         self.timeoutVideoInitLabel.setObjectName("timeoutVideoInitLabel")
         self.formLayout_3.setWidget(
             0, QtWidgets.QFormLayout.LabelRole, self.timeoutVideoInitLabel
         )
         self.horizontalLayout_4 = QtWidgets.QHBoxLayout()
         self.horizontalLayout_4.setObjectName("horizontalLayout_4")
-        self.timeoutVideoInit = QtWidgets.QSpinBox(self.page_general_player)
+        self.timeoutVideoInit = QtWidgets.QSpinBox(self.page_general_player_contents)
         self.timeoutVideoInit.setObjectName("timeoutVideoInit")
         self.horizontalLayout_4.addWidget(self.timeoutVideoInit)
-        self.label_7 = QtWidgets.QLabel(self.page_general_player)
+        self.label_7 = QtWidgets.QLabel(self.page_general_player_contents)
         self.label_7.setObjectName("label_7")
         self.horizontalLayout_4.addWidget(self.label_7)
         self.formLayout_3.setLayout(
             0, QtWidgets.QFormLayout.FieldRole, self.horizontalLayout_4
         )
         self.lay_section_player.addLayout(self.formLayout_3)
-        self.section_screenshots = QtWidgets.QLabel(self.page_general_player)
+        self.section_memory = QtWidgets.QLabel(self.page_general_player_contents)
+        font = QtGui.QFont()
+        font.setBold(True)
+        self.section_memory.setFont(font)
+        self.section_memory.setObjectName("section_memory")
+        self.lay_section_player.addWidget(self.section_memory)
+        self.formLayout_memory = QtWidgets.QFormLayout()
+        self.formLayout_memory.setFieldGrowthPolicy(
+            QtWidgets.QFormLayout.FieldsStayAtSizeHint
+        )
+        self.formLayout_memory.setObjectName("formLayout_memory")
+        self.playerListMaxMBLabel = QtWidgets.QLabel(self.page_general_player_contents)
+        self.playerListMaxMBLabel.setObjectName("playerListMaxMBLabel")
+        self.formLayout_memory.setWidget(
+            0, QtWidgets.QFormLayout.LabelRole, self.playerListMaxMBLabel
+        )
+        self.horizontalLayout_memory = QtWidgets.QHBoxLayout()
+        self.horizontalLayout_memory.setObjectName("horizontalLayout_memory")
+        self.playerListMaxMB = QtWidgets.QSpinBox(self.page_general_player_contents)
+        self.playerListMaxMB.setObjectName("playerListMaxMB")
+        self.horizontalLayout_memory.addWidget(self.playerListMaxMB)
+        self.playerListMaxMBUnit = QtWidgets.QLabel(self.page_general_player_contents)
+        self.playerListMaxMBUnit.setObjectName("playerListMaxMBUnit")
+        self.horizontalLayout_memory.addWidget(self.playerListMaxMBUnit)
+        self.formLayout_memory.setLayout(
+            0, QtWidgets.QFormLayout.FieldRole, self.horizontalLayout_memory
+        )
+        self.lay_section_player.addLayout(self.formLayout_memory)
+        self.section_cache = QtWidgets.QLabel(self.page_general_player_contents)
+        font = QtGui.QFont()
+        font.setBold(True)
+        self.section_cache.setFont(font)
+        self.section_cache.setObjectName("section_cache")
+        self.lay_section_player.addWidget(self.section_cache)
+        self.formLayout_cache = QtWidgets.QFormLayout()
+        self.formLayout_cache.setFieldGrowthPolicy(
+            QtWidgets.QFormLayout.FieldsStayAtSizeHint
+        )
+        self.formLayout_cache.setObjectName("formLayout_cache")
+        self.cacheModeLabel = QtWidgets.QLabel(self.page_general_player_contents)
+        self.cacheModeLabel.setObjectName("cacheModeLabel")
+        self.formLayout_cache.setWidget(
+            0, QtWidgets.QFormLayout.LabelRole, self.cacheModeLabel
+        )
+        self.cacheMode = QtWidgets.QComboBox(self.page_general_player_contents)
+        self.cacheMode.setObjectName("cacheMode")
+        self.formLayout_cache.setWidget(
+            0, QtWidgets.QFormLayout.FieldRole, self.cacheMode
+        )
+        self.cacheMaxMBLabel = QtWidgets.QLabel(self.page_general_player_contents)
+        self.cacheMaxMBLabel.setObjectName("cacheMaxMBLabel")
+        self.formLayout_cache.setWidget(
+            1, QtWidgets.QFormLayout.LabelRole, self.cacheMaxMBLabel
+        )
+        self.horizontalLayout_cache_size = QtWidgets.QHBoxLayout()
+        self.horizontalLayout_cache_size.setObjectName("horizontalLayout_cache_size")
+        self.cacheMaxMB = QtWidgets.QSpinBox(self.page_general_player_contents)
+        self.cacheMaxMB.setObjectName("cacheMaxMB")
+        self.horizontalLayout_cache_size.addWidget(self.cacheMaxMB)
+        self.cacheMaxMBUnit = QtWidgets.QLabel(self.page_general_player_contents)
+        self.cacheMaxMBUnit.setObjectName("cacheMaxMBUnit")
+        self.horizontalLayout_cache_size.addWidget(self.cacheMaxMBUnit)
+        self.formLayout_cache.setLayout(
+            1, QtWidgets.QFormLayout.FieldRole, self.horizontalLayout_cache_size
+        )
+        self.horizontalLayout_cache_clear = QtWidgets.QHBoxLayout()
+        self.horizontalLayout_cache_clear.setObjectName("horizontalLayout_cache_clear")
+        self.cacheClear = QtWidgets.QToolButton(self.page_general_player_contents)
+        self.cacheClear.setPopupMode(QtWidgets.QToolButton.MenuButtonPopup)
+        self.cacheClear.setObjectName("cacheClear")
+        self.horizontalLayout_cache_clear.addWidget(self.cacheClear)
+        self.cacheSize = QtWidgets.QLabel(self.page_general_player_contents)
+        self.cacheSize.setObjectName("cacheSize")
+        self.horizontalLayout_cache_clear.addWidget(self.cacheSize)
+        self.formLayout_cache.setLayout(
+            2, QtWidgets.QFormLayout.FieldRole, self.horizontalLayout_cache_clear
+        )
+        self.lay_section_player.addLayout(self.formLayout_cache)
+        self.section_screenshots = QtWidgets.QLabel(self.page_general_player_contents)
         font = QtGui.QFont()
         font.setBold(True)
         self.section_screenshots.setFont(font)
@@ -191,25 +292,27 @@ class Ui_SettingsDialog:
             QtWidgets.QFormLayout.FieldsStayAtSizeHint
         )
         self.formLayout_screenshots.setObjectName("formLayout_screenshots")
-        self.screenshotsDirLabel = QtWidgets.QLabel(self.page_general_player)
+        self.screenshotsDirLabel = QtWidgets.QLabel(self.page_general_player_contents)
         self.screenshotsDirLabel.setObjectName("screenshotsDirLabel")
         self.formLayout_screenshots.setWidget(
             0, QtWidgets.QFormLayout.LabelRole, self.screenshotsDirLabel
         )
         self.lay_screenshots_dir = QtWidgets.QHBoxLayout()
         self.lay_screenshots_dir.setObjectName("lay_screenshots_dir")
-        self.screenshotsDir = QtWidgets.QLineEdit(self.page_general_player)
+        self.screenshotsDir = QtWidgets.QLineEdit(self.page_general_player_contents)
         self.screenshotsDir.setMinimumSize(QtCore.QSize(260, 0))
         self.screenshotsDir.setObjectName("screenshotsDir")
         self.lay_screenshots_dir.addWidget(self.screenshotsDir)
-        self.screenshotsDirBrowse = QtWidgets.QPushButton(self.page_general_player)
+        self.screenshotsDirBrowse = QtWidgets.QPushButton(
+            self.page_general_player_contents
+        )
         self.screenshotsDirBrowse.setObjectName("screenshotsDirBrowse")
         self.lay_screenshots_dir.addWidget(self.screenshotsDirBrowse)
         self.formLayout_screenshots.setLayout(
             0, QtWidgets.QFormLayout.FieldRole, self.lay_screenshots_dir
         )
         self.screenshotsFilenameTemplateLabel = QtWidgets.QLabel(
-            self.page_general_player
+            self.page_general_player_contents
         )
         self.screenshotsFilenameTemplateLabel.setObjectName(
             "screenshotsFilenameTemplateLabel"
@@ -219,12 +322,14 @@ class Ui_SettingsDialog:
         )
         self.lay_screenshots_template = QtWidgets.QHBoxLayout()
         self.lay_screenshots_template.setObjectName("lay_screenshots_template")
-        self.screenshotsFilenameTemplate = QtWidgets.QLineEdit(self.page_general_player)
+        self.screenshotsFilenameTemplate = QtWidgets.QLineEdit(
+            self.page_general_player_contents
+        )
         self.screenshotsFilenameTemplate.setMinimumSize(QtCore.QSize(260, 0))
         self.screenshotsFilenameTemplate.setObjectName("screenshotsFilenameTemplate")
         self.lay_screenshots_template.addWidget(self.screenshotsFilenameTemplate)
         self.screenshotsFilenameTemplateHelpButton = QtWidgets.QPushButton(
-            self.page_general_player
+            self.page_general_player_contents
         )
         self.screenshotsFilenameTemplateHelpButton.setMaximumSize(QtCore.QSize(24, 24))
         self.screenshotsFilenameTemplateHelpButton.setText("?")
@@ -237,20 +342,26 @@ class Ui_SettingsDialog:
         self.formLayout_screenshots.setLayout(
             1, QtWidgets.QFormLayout.FieldRole, self.lay_screenshots_template
         )
-        self.screenshotsFormatLabel = QtWidgets.QLabel(self.page_general_player)
+        self.screenshotsFormatLabel = QtWidgets.QLabel(
+            self.page_general_player_contents
+        )
         self.screenshotsFormatLabel.setObjectName("screenshotsFormatLabel")
         self.formLayout_screenshots.setWidget(
             2, QtWidgets.QFormLayout.LabelRole, self.screenshotsFormatLabel
         )
         self.lay_screenshots_format = QtWidgets.QHBoxLayout()
         self.lay_screenshots_format.setObjectName("lay_screenshots_format")
-        self.screenshotsFormat = QtWidgets.QComboBox(self.page_general_player)
+        self.screenshotsFormat = QtWidgets.QComboBox(self.page_general_player_contents)
         self.screenshotsFormat.setObjectName("screenshotsFormat")
         self.lay_screenshots_format.addWidget(self.screenshotsFormat)
-        self.screenshotsJPGQualityLabel = QtWidgets.QLabel(self.page_general_player)
+        self.screenshotsJPGQualityLabel = QtWidgets.QLabel(
+            self.page_general_player_contents
+        )
         self.screenshotsJPGQualityLabel.setObjectName("screenshotsJPGQualityLabel")
         self.lay_screenshots_format.addWidget(self.screenshotsJPGQualityLabel)
-        self.screenshotsJPGQuality = QtWidgets.QSpinBox(self.page_general_player)
+        self.screenshotsJPGQuality = QtWidgets.QSpinBox(
+            self.page_general_player_contents
+        )
         self.screenshotsJPGQuality.setObjectName("screenshotsJPGQuality")
         self.lay_screenshots_format.addWidget(self.screenshotsJPGQuality)
         self.formLayout_screenshots.setLayout(
@@ -261,6 +372,7 @@ class Ui_SettingsDialog:
             20, 40, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Expanding
         )
         self.lay_section_player.addItem(spacerItem)
+        self.page_general_player.setWidget(self.page_general_player_contents)
         self.section_page.addWidget(self.page_general_player)
         self.page_subtitle_style = PageScrollArea()
         self.page_subtitle_style.setFrameShape(QtWidgets.QFrame.NoFrame)
@@ -823,6 +935,52 @@ class Ui_SettingsDialog:
             _translate("SettingsDialog", "Video initialization timeout")
         )
         self.label_7.setText(_translate("SettingsDialog", "(sec)"))
+        self.section_memory.setText(_translate("SettingsDialog", "Memory"))
+        self.playerListMaxMBLabel.setToolTip(
+            _translate(
+                "SettingsDialog",
+                "Larger M3U, PLS and XSPF playlists won't be loaded. IPTV lists can be hundreds of MB and take about 2.5 times their size in memory. GridPlayer's own playlists have no limit.",
+            )
+        )
+        self.playerListMaxMBLabel.setText(
+            _translate("SettingsDialog", "M3U size limit")
+        )
+        self.playerListMaxMB.setToolTip(
+            _translate(
+                "SettingsDialog",
+                "Larger M3U, PLS and XSPF playlists won't be loaded. IPTV lists can be hundreds of MB and take about 2.5 times their size in memory. GridPlayer's own playlists have no limit.",
+            )
+        )
+        self.playerListMaxMBUnit.setText(_translate("SettingsDialog", "(MB)"))
+        self.section_cache.setText(_translate("SettingsDialog", "Cache"))
+        self.cacheModeLabel.setToolTip(
+            _translate(
+                "SettingsDialog",
+                "Where downloaded thumbnails and lists are kept. In memory: nothing is saved to disk, and it's cleared when GridPlayer closes.",
+            )
+        )
+        self.cacheModeLabel.setText(_translate("SettingsDialog", "Keep"))
+        self.cacheMode.setToolTip(
+            _translate(
+                "SettingsDialog",
+                "Where downloaded thumbnails and lists are kept. In memory: nothing is saved to disk, and it's cleared when GridPlayer closes.",
+            )
+        )
+        self.cacheMaxMBLabel.setToolTip(
+            _translate(
+                "SettingsDialog",
+                "Maximum cache size on disk. The oldest files are deleted first.",
+            )
+        )
+        self.cacheMaxMBLabel.setText(_translate("SettingsDialog", "Limit"))
+        self.cacheMaxMB.setToolTip(
+            _translate(
+                "SettingsDialog",
+                "Maximum cache size on disk. The oldest files are deleted first.",
+            )
+        )
+        self.cacheMaxMBUnit.setText(_translate("SettingsDialog", "(MB)"))
+        self.cacheClear.setText(_translate("SettingsDialog", "Clear"))
         self.section_screenshots.setText(_translate("SettingsDialog", "Screenshots"))
         self.screenshotsDirLabel.setText(_translate("SettingsDialog", "Folder"))
         self.screenshotsDir.setPlaceholderText(

@@ -4,6 +4,7 @@ from abc import ABC, abstractmethod
 from streamlink import PluginError
 
 from gridplayer.models.chapter import Chapter
+from gridplayer.models.media_list import ItemDetails
 from gridplayer.models.stream import (
     HashableDict,
     Stream,
@@ -20,10 +21,18 @@ DIRECT_SERVICE = "direct"
 
 
 class ResolverBase(ABC):
-    def __init__(self, url: str):
+    def __init__(self, url: str, headers: dict[str, str] | None = None, progress=None):
         self._log = logging.getLogger(self.__class__.__name__)
 
         self.url = url
+
+        # what the link is to be fetched with on top of the settings: the
+        # user agent and referrer a channel list gives for it
+        self.headers = HashableDict(headers or {})
+
+        # told how many videos are read so far of a list the link turns out
+        # to be, where the resolver can tell: ("items", count)
+        self.progress = progress
 
     @property
     @abstractmethod
@@ -55,6 +64,13 @@ class ResolverBase(ABC):
 
         return None
 
+    @property
+    def details(self) -> ItemDetails | None:
+        """What the site says of the video: its channel, views, when it was
+        put up and its picture, where the resolver can tell."""
+
+        return None
+
     @staticmethod
     @abstractmethod
     def is_able_to_handle(url) -> bool: ...
@@ -67,6 +83,7 @@ class ResolverBase(ABC):
             chapters=self.chapters,
             duration_ms=self.duration_ms,
             youtube_id=self.youtube_id,
+            details=self.details,
         )
 
 
@@ -78,7 +95,7 @@ class DirectResolver(ResolverBase):
     @property
     def is_live(self) -> bool:
         try:
-            return is_http_live_stream(self.url)
+            return is_http_live_stream(self.url, session_headers=self.headers)
         except PluginError:
             raise BadURLException(f"Cannot open URL {self.url}")
 
@@ -106,7 +123,7 @@ class DirectResolver(ResolverBase):
                     protocol="http",
                     session=StreamSessionOpts(
                         service=DIRECT_SERVICE,
-                        session_headers=HashableDict(),
+                        session_headers=self.headers,
                     ),
                 )
             }

@@ -311,8 +311,12 @@ def test_hide_event_unmaps_overlay_even_when_timeout_disabled(mocker):
 
 def test_start_load_hides_overlay(mocker):
     block = mocker.Mock()
-    block.video_params = mocker.Mock(is_http_url=False, uri="file.mp4")
+    block.video_params = mocker.Mock(
+        is_http_url=False, uri="file.mp4", read_as_list=None
+    )
     block.size_tuple = (100, 100)
+    block._ctx.lists.is_waiting.return_value = False
+    block._is_list_file_gone = False
     mocker.patch("gridplayer.widgets.video_block.MediaInput")
 
     VideoBlock._start_load(block)

@@ -265,6 +265,7 @@ class TestSnapshots:
         block = _block(*current)
         block.is_video_initialized = True
         block._default_title = "a"
+        block._take_snapshot_params = partial(VideoBlock._take_snapshot_params, block)
 
         snapshot = _video(*wanted)
         VideoBlock.apply_snapshot(block, snapshot)

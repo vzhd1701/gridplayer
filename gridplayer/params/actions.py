@@ -3,6 +3,7 @@ from types import MappingProxyType
 from gridplayer.params.static import (
     AudioChannelMode,
     GridMode,
+    ListEndAction,
     NetworkRetryMode,
     SeekSyncMode,
     VideoAnchor,
@@ -62,27 +63,28 @@ ACTIONS = MappingProxyType(
             "key": "PgUp",
             "icon": "previous-video-file",
             "func": ("active", "previous_video"),
-            "show_if": "is_active_local_file",
+            "show_if": "is_active_navigable",
         },
         "Play Next File": {
             "title": translate("Actions", "Play Next File"),
             "key": "PgDown",
             "icon": "next-video-file",
             "func": ("active", "next_video"),
-            "show_if": "is_active_local_file",
+            "show_if": "is_active_navigable",
         },
         "Play Random File": {
             "title": translate("Actions", "Play Random File"),
             "icon": "loop-dir-shuffle",
             "func": ("active", "shuffle_video"),
-            "show_if": "is_active_local_file",
+            "show_if": "is_active_navigable",
         },
         "Include Subfolders": {
             "title": translate("Folder Navigation", "Include Subfolders"),
             "icon": "folder-tree",
             "func": ("active", "toggle_dir_recursive"),
             "check_if": ("is_active_param_set_to", "is_dir_recursive", True),
-            "show_if": "is_active_local_file",
+            # a list goes its own way, not through the folder
+            "show_if": AND("is_active_local_file", NOT("is_active_list_cell")),
         },
         "0%": {
             "title": "0%",
@@ -388,7 +390,7 @@ ACTIONS = MappingProxyType(
                 VideoEndAction.NEXT_FILE,
             ),
             "is_choice": True,
-            "show_if": "is_active_local_file",
+            "show_if": "is_active_navigable",
         },
         "When Finished Previous": {
             "title": translate("When Finished", "Play Previous File"),
@@ -400,7 +402,7 @@ ACTIONS = MappingProxyType(
                 VideoEndAction.PREVIOUS_FILE,
             ),
             "is_choice": True,
-            "show_if": "is_active_local_file",
+            "show_if": "is_active_navigable",
         },
         "When Finished Shuffle": {
             "title": translate("When Finished", "Play Random File"),
@@ -412,7 +414,67 @@ ACTIONS = MappingProxyType(
                 VideoEndAction.SHUFFLE_FILE,
             ),
             "is_choice": True,
-            "show_if": "is_active_local_file",
+            "show_if": "is_active_navigable",
+        },
+        "List": {
+            "title": translate("Actions", "List…"),
+            "icon": "list",
+            "func": "manage_list",
+            "show_if": "is_active_video_set",
+        },
+        "Leave the List": {
+            "title": translate("Actions", "Leave the List"),
+            "icon": "empty",
+            "func": ("active", "leave_list"),
+            "show_if": "is_active_list_cell",
+        },
+        "List End Start Over": {
+            "title": translate("Lists", "Start Over"),
+            "icon": "loop-dir",
+            "func": ("active", "set_list_end_action", ListEndAction.START_OVER),
+            "check_if": (
+                "is_active_param_set_to",
+                "list_end_action",
+                ListEndAction.START_OVER,
+            ),
+            "is_choice": True,
+            "show_if": "is_active_list_cell",
+        },
+        "List End Pause": {
+            "title": translate("Lists", "Pause At Start"),
+            "icon": "pause",
+            "func": ("active", "set_list_end_action", ListEndAction.PAUSE),
+            "check_if": (
+                "is_active_param_set_to",
+                "list_end_action",
+                ListEndAction.PAUSE,
+            ),
+            "is_choice": True,
+            "show_if": "is_active_list_cell",
+        },
+        "List End Stop": {
+            "title": translate("Lists", "Stop"),
+            "icon": "stop",
+            "func": ("active", "set_list_end_action", ListEndAction.STOP),
+            "check_if": (
+                "is_active_param_set_to",
+                "list_end_action",
+                ListEndAction.STOP,
+            ),
+            "is_choice": True,
+            "show_if": "is_active_list_cell",
+        },
+        "List End Close": {
+            "title": translate("Lists", "Close"),
+            "icon": "close",
+            "func": ("active", "set_list_end_action", ListEndAction.CLOSE),
+            "check_if": (
+                "is_active_param_set_to",
+                "list_end_action",
+                ListEndAction.CLOSE,
+            ),
+            "is_choice": True,
+            "show_if": "is_active_list_cell",
         },
         "When Finished Pause": {
             "title": translate("When Finished", "Pause At Start"),
@@ -1357,20 +1419,20 @@ ACTIONS = MappingProxyType(
             "key": "Shift+PgUp",
             "icon": "previous-video-file",
             "func": ("all", "previous_video"),
-            "show_if": "is_any_videos_local_file",
+            "show_if": "is_any_videos_navigable",
         },
         "Play Next File [ALL]": {
             "title": translate("Actions", "Play Next File"),
             "key": "Shift+PgDown",
             "icon": "next-video-file",
             "func": ("all", "next_video"),
-            "show_if": "is_any_videos_local_file",
+            "show_if": "is_any_videos_navigable",
         },
         "Play Random File [ALL]": {
             "title": translate("Actions", "Play Random File"),
             "icon": "loop-dir-shuffle",
             "func": ("all", "shuffle_video"),
-            "show_if": "is_any_videos_local_file",
+            "show_if": "is_any_videos_navigable",
         },
         "Include Subfolders On [ALL]": {
             "title": translate("Actions", "On"),
@@ -1659,19 +1721,43 @@ ACTIONS = MappingProxyType(
             "title": translate("When Finished", "Play Next File"),
             "icon": "next-video-file",
             "func": ("all", "set_end_action", VideoEndAction.NEXT_FILE),
-            "show_if": "is_any_videos_local_file",
+            "show_if": "is_any_videos_navigable",
         },
         "When Finished Previous [ALL]": {
             "title": translate("When Finished", "Play Previous File"),
             "icon": "previous-video-file",
             "func": ("all", "set_end_action", VideoEndAction.PREVIOUS_FILE),
-            "show_if": "is_any_videos_local_file",
+            "show_if": "is_any_videos_navigable",
         },
         "When Finished Shuffle [ALL]": {
             "title": translate("When Finished", "Play Random File"),
             "icon": "loop-dir-shuffle",
             "func": ("all", "set_end_action", VideoEndAction.SHUFFLE_FILE),
-            "show_if": "is_any_videos_local_file",
+            "show_if": "is_any_videos_navigable",
+        },
+        "List End Start Over [ALL]": {
+            "title": translate("Lists", "Start Over"),
+            "icon": "loop-dir",
+            "func": ("all", "set_list_end_action", ListEndAction.START_OVER),
+            "show_if": "is_any_videos_list_cell",
+        },
+        "List End Pause [ALL]": {
+            "title": translate("Lists", "Pause At Start"),
+            "icon": "pause",
+            "func": ("all", "set_list_end_action", ListEndAction.PAUSE),
+            "show_if": "is_any_videos_list_cell",
+        },
+        "List End Stop [ALL]": {
+            "title": translate("Lists", "Stop"),
+            "icon": "stop",
+            "func": ("all", "set_list_end_action", ListEndAction.STOP),
+            "show_if": "is_any_videos_list_cell",
+        },
+        "List End Close [ALL]": {
+            "title": translate("Lists", "Close"),
+            "icon": "close",
+            "func": ("all", "set_list_end_action", ListEndAction.CLOSE),
+            "show_if": "is_any_videos_list_cell",
         },
         "When Finished Pause [ALL]": {
             "title": translate("When Finished", "Pause At Start"),
@@ -2406,6 +2492,11 @@ ACTIONS = MappingProxyType(
             "icon": "bookmarks",
             "func": "bookmarks_in_playlist",
         },
+        "Lists in Playlist": {
+            "title": translate("Actions", "Lists in Playlist…"),
+            "icon": "list",
+            "func": "lists_in_playlist",
+        },
         "Share Bookmarks": {
             "title": translate(
                 "Playlist Settings", "Share bookmarks between cells with the same file"
@@ -2479,6 +2570,11 @@ ACTIONS = MappingProxyType(
             "key": "Ctrl+A",
             "icon": "add-files",
             "func": "add_videos",
+        },
+        "Add - Folder": {
+            "title": translate("Actions", "Add Folder"),
+            "icon": "add-folder",
+            "func": "add_folder",
         },
         "Add - URL(s)": {
             "title": translate("Actions", "Add URL(s)"),

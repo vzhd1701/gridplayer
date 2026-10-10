@@ -13,6 +13,7 @@ from yt_dlp import DownloadError, YoutubeDL
 from yt_dlp.utils import UnsupportedError, float_or_none
 
 from gridplayer.models.chapter import Chapter
+from gridplayer.models.media_list import ItemDetails
 from gridplayer.models.stream import (
     HashableDict,
     Stream,
@@ -30,6 +31,7 @@ from gridplayer.utils.url_resolve.resolver_base import ResolverBase
 from gridplayer.utils.url_resolve.static import (
     BadURLException,
     NoResolverPlugin,
+    PlaylistURLError,
     StreamOfflineError,
 )
 from gridplayer.utils.url_resolve.stream_detect import (
@@ -37,6 +39,13 @@ from gridplayer.utils.url_resolve.stream_detect import (
     is_fragmented_stream,
     is_hls_live_stream,
     is_http_live_stream,
+)
+from gridplayer.utils.web_lists import (
+    LINK_RESULT_TYPES,
+    LIST_RESULT_TYPES,
+    MAX_WEB_LIST_ITEMS,
+    counted_entries,
+    item_details,
 )
 
 # yt-dlp patches urllib3 as it is imported; see utils/percent_re.py
@@ -84,6 +93,9 @@ ORIGINAL_LANGUAGE_PREFERENCE = 10
 
 # what yt-dlp calls a chapter the site left without a name
 UNTITLED_CHAPTER = re.compile(r"<Untitled Chapter \d+>")
+
+# how many lists of one, one inside the other, are looked into for the video
+MAX_LIST_NESTING = 3
 
 
 class YoutubeDLResolver(ResolverBase):
@@ -142,6 +154,11 @@ class YoutubeDLResolver(ResolverBase):
 
         return self._video_info.get("id")
 
+    @property
+    def details(self) -> ItemDetails | None:
+        # looked up on its own, when it was put up is known to the second
+        return item_details(self._video_info, is_exact=True)
+
     @staticmethod
     def is_able_to_handle(url: str) -> bool:
         logger = logging.getLogger("YoutubeDLResolver")
@@ -151,19 +168,41 @@ class YoutubeDLResolver(ResolverBase):
 
     @cached_property
     def _video_info(self):
+        network_opts = ytdl_network_opts()
+
+        # on top of the settings' user agent: the formats carry them on into
+        # what the proxy fetches with
+        if self.headers:
+            network_opts["http_headers"] = {
+                **network_opts.get("http_headers", {}),
+                **self.headers,
+            }
+
         with (
             ytdl_cookies() as cookie_opts,
             YoutubeDL(
                 {
                     "logger": self._log,
                     "js_runtimes": ytdl_js_runtimes(),
+                    # a video opened from a playlist carries the list along
+                    # in its link, and is still the one video to play
+                    "noplaylist": True,
+                    # a list is only read for what is on it, rather than
+                    # every video on it looked up before the first one plays
+                    "extract_flat": "in_playlist",
+                    # and only as far as a list read before it is put in a
+                    # cell: a channel can have tens of thousands
+                    "playlistend": MAX_WEB_LIST_ITEMS,
                     **cookie_opts,
-                    **ytdl_network_opts(),
+                    **network_opts,
                 }
             ) as ydl,
         ):
+            if self.progress is not None:
+                _count_list_entries(ydl, self.progress)
+
             try:
-                return ydl.extract_info(self.url, download=False)
+                return _video_of(ydl, ydl.extract_info(self.url, download=False))
             except DownloadError as e:
                 if e.exc_info[0] is UnsupportedError:
                     raise NoResolverPlugin
@@ -403,6 +442,52 @@ class YoutubeDLResolver(ResolverBase):
         self._log.debug(f"yt-dlp - source is fragmented: {is_source_fragmented}")
 
         return is_source_fragmented
+
+
+def _count_list_entries(ydl, progress) -> None:
+    """Have yt-dlp tell progress how many videos of a list it has read, as
+    each page of them comes: a link is only found to be a list once it is
+    read, and a channel's can take a minute.
+
+    yt-dlp reads a list's videos as it processes the list, and processes
+    every result it gets through the one method: set on the instance, the
+    lists it is handed are handed on with their videos counted."""
+
+    process = ydl.process_ie_result
+
+    def process_counted(ie_result, *args, **kwargs):
+        if ie_result.get("_type") in LIST_RESULT_TYPES:
+            ie_result = counted_entries(ie_result, progress)
+
+        return process(ie_result, *args, **kwargs)
+
+    ydl.process_ie_result = process_counted
+
+
+def _video_of(ydl, info, depth=0):
+    """The one video a result stands for.
+
+    A list of one is that one: some sites put a single video in a list of
+    its own. A list of more is no one video to play.
+    """
+
+    if info.get("_type") not in LIST_RESULT_TYPES:
+        return info
+
+    entries = [entry for entry in info.get("entries") or () if entry]
+
+    if len(entries) != 1 or depth >= MAX_LIST_NESTING:
+        raise PlaylistURLError(info)
+
+    entry = entries[0]
+
+    # read for what it is, as everything on a list is: looked up only now
+    if entry.get("_type") in LINK_RESULT_TYPES:
+        entry = ydl.extract_info(
+            entry["url"], download=False, ie_key=entry.get("ie_key")
+        )
+
+    return _video_of(ydl, entry, depth + 1)
 
 
 def _get_stream_protocol(stream, is_live) -> str:

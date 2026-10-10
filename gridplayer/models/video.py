@@ -1,10 +1,8 @@
-import logging
-from collections.abc import Iterable
 from pathlib import Path
 from typing import Annotated, Any
-from uuid import uuid4
+from uuid import UUID, uuid4
 
-from pydantic import UUID4, BaseModel, Field, ValidationError, model_validator
+from pydantic import UUID4, BaseModel, Field, model_validator
 from pydantic_extra_types.color import Color
 
 from gridplayer.models.audio_device import AudioDevice
@@ -15,13 +13,14 @@ from gridplayer.models.audio_selection import (
     AudioSelection,
 )
 from gridplayer.models.bookmark import Bookmark
+from gridplayer.models.media_list import HttpHeaders
 from gridplayer.models.subtitle_selection import (
     SubtitleDefault,
     SubtitleDisabled,
     SubtitlePreferred,
     SubtitleSelection,
 )
-from gridplayer.models.video_uri import VideoURI, parse_uri
+from gridplayer.models.video_uri import VideoURI
 from gridplayer.params.static import (
     MAX_AUDIO_DELAY_MS,
     MAX_RATE,
@@ -33,6 +32,7 @@ from gridplayer.params.static import (
     MIN_SUBTITLE_DELAY_MS,
     AudioChannelMode,
     AudioTrackMode,
+    ListEndAction,
     NetworkRetryMode,
     SubtitleTrackMode,
     VideoAnchor,
@@ -165,6 +165,22 @@ class Video(BaseModel):
     # the folder they started in: the one the file playing was in when
     # subfolders were included, None until then
     dir_root: Path | None = None
+    # the list this cell plays from, one the playlist keeps (see
+    # models/media_list.py), and where on it the video playing is: the
+    # same file may be on it more than once. None for a cell with no list,
+    # which goes through the folder of its file instead
+    list_id: UUID | None = None
+    list_index: int | None = None
+    # what is done once the list has been played through
+    list_end_action: ListEndAction = session_field("video_defaults/list_end_action")
+    # the cell waits for what uri is to be read, a folder, a list file or a
+    # link to a list, to play that; read again as the playlist opens where
+    # it was saved before it was. None for a video
+    read_as_list: bool | None = None
+    # what a channel list says to fetch it with, for one of its channels
+    # played on its own: in a cell of its own, or the cell left the list.
+    # Played from the list, the item's are
+    http_headers: HttpHeaders | None = None
     is_start_random: bool = session_field("video_defaults/random_loop")
     rate: Annotated[float, Field(ge=MIN_RATE, le=MAX_RATE)] = session_field(
         "video_defaults/rate"
@@ -329,18 +345,3 @@ class VideoBlockMime(BaseModel):
     # the playlist keeps these apart from the video, and another player
     # would get the video without them
     bookmarks: list[Bookmark] = Field(default_factory=list)
-
-
-def filter_video_uris(uris: Iterable[str]) -> list[Video]:
-    valid_urls = []
-
-    for uri in uris:
-        try:
-            video = Video(uri=parse_uri(uri))
-        except ValidationError as e:
-            logging.getLogger("filter_video_uris").error(str(e))  # noqa: TRY400
-            continue
-
-        valid_urls.append(video)
-
-    return valid_urls

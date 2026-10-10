@@ -1,10 +1,11 @@
 import contextlib
 import logging
 import subprocess
+import threading
 from pathlib import Path
 
-from PyQt5.QtCore import Qt, QUrl
-from PyQt5.QtGui import QColor, QDesktopServices, QPainter, QPixmap
+from PyQt5.QtCore import QLocale, Qt, QUrl, pyqtSignal
+from PyQt5.QtGui import QColor, QDesktopServices, QIcon, QPainter, QPixmap
 from PyQt5.QtWidgets import (
     QCheckBox,
     QComboBox,
@@ -37,6 +38,7 @@ from gridplayer.params.sponsorblock import (
     category_setting,
 )
 from gridplayer.params.static import (
+    CacheMode,
     ColorScheme,
     HWCropBorderOffset,
     ProxyMode,
@@ -46,7 +48,7 @@ from gridplayer.params.static import (
     VideoDriver,
 )
 from gridplayer.settings import Settings
-from gridplayer.utils import log_config
+from gridplayer.utils import cache, log_config
 from gridplayer.utils.app_dir import get_app_data_dir
 from gridplayer.utils.cookies import cookie_store, same_cookies
 from gridplayer.utils.keymap import default_keymap, merge_keymap
@@ -59,6 +61,7 @@ from gridplayer.utils.screenshots import (
 )
 from gridplayer.utils.video_driver import is_hw_video_available, session_video_driver
 from gridplayer.version import __app_url__
+from gridplayer.widgets.custom_menu import CustomMenu
 from gridplayer.widgets.defaults_form import DefaultsForm
 from gridplayer.widgets.keymap_tree_view import KeymapEditor
 from gridplayer.widgets.language_list import LanguageList
@@ -185,6 +188,9 @@ def _set_groupbox_header_bold(groupbox):
 
 
 class SettingsDialog(QDialog, Ui_SettingsDialog):
+    # what the cache comes to, worked out on a thread of its own
+    cache_measured = pyqtSignal(object)
+
     def __init__(self, parent):
         super().__init__(parent)
 
@@ -207,6 +213,9 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
             "player/recent_list_enabled": self.playerRecentList,
             "player/recent_list_max_size": self.playerRecentListSize,
             "player/reopen_last_playlist": self.playerReopenLastPlaylist,
+            "player/list_max_mb": self.playerListMaxMB,
+            "cache/mode": self.cacheMode,
+            "cache/max_mb": self.cacheMaxMB,
             "screenshots/dir": self.screenshotsDir,
             "screenshots/filename_template": self.screenshotsFilenameTemplate,
             "screenshots/format": self.screenshotsFormat,
@@ -269,8 +278,8 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
                 self.subtitle_style_form,
                 translate(
                     "SettingsDialog",
-                    "Applies to text subtitles. ASS and SSA files carry styling of"
-                    " their own, and only the position below reaches them.",
+                    "Applies to text subtitles. ASS and SSA subtitles keep their own"
+                    " style, except the position.",
                 ),
             ),
         )
@@ -279,6 +288,21 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
 
         # the placeholder is short enough to fit, this is where it is
         self.screenshotsDir.setToolTip(str(default_screenshots_dir()))
+
+        self.cacheClear.setToolTip(
+            self.tr("Delete everything in the cache. Folder: {FOLDER}").format(
+                FOLDER=cache.cache_root()
+            )
+        )
+
+        # the folder it is in, opened from the arrow beside Clear
+        cache_menu = CustomMenu(parent=self.cacheClear)
+        self.cache_open_action = cache_menu.addAction(
+            QIcon.fromTheme("show-in-folder"),
+            self.tr("Open Folder"),
+            self.open_cache_dir,
+        )
+        self.cacheClear.setMenu(cache_menu)
 
         if env.IS_LINUX:
             self.playerStayOnTop.hide()
@@ -348,12 +372,7 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
         layout.addStretch()
 
         note = self.tr(
-            "<p>Every YouTube video you play is looked up on SponsorBlock, where"
-            " viewers mark the parts of videos that are sponsors, self-promotion"
-            " and the like. Only the first characters of a hash of the"
-            " video's ID are sent.</p>"
-            '<p>Segments from <a href="{URL}">SponsorBlock</a>,'
-            " under CC BY-NC-SA 4.0.</p>"
+            '<p>Every YouTube video you play is checked on SponsorBlock, where viewers mark sponsors, self-promotion and similar segments. Only a short prefix of a hash of the video\'s ID is sent.</p><p>Segments from <a href="{URL}">SponsorBlock</a>, under CC BY-NC-SA 4.0.</p>'
         ).format(URL=SPONSORBLOCK_URL)
 
         _replace_scroll_page(self.page_streaming_sponsorblock, _with_note(form, note))
@@ -419,6 +438,7 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
         self.fill_hwCropBorder()
         self.fill_networkProxyMode()
         self.fill_screenshotsFormat()
+        self.fill_cacheMode()
 
     def ui_set_limits(self):
         self.playerVideoDriverPlayers.setRange(1, MAX_VLC_PROCESSES)
@@ -429,6 +449,8 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
         self.playerRecentListSize.setRange(1, 100)
         self.networkTimeout.setRange(0, MAX_TIMEOUT_SEC)
         self.screenshotsJPGQuality.setRange(1, 100)
+        self.playerListMaxMB.setRange(1, 8192)
+        self.cacheMaxMB.setRange(1, 8192)
 
     def ui_customize_dynamic(self):
         self.driver_selected(self.playerVideoDriver.currentIndex())
@@ -440,6 +462,8 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
         self.proxy_mode_selected(self.networkProxyMode.currentIndex())
         self.screenshot_format_selected(self.screenshotsFormat.currentIndex())
         self.sponsorblockCategories.setEnabled(self.sponsorblockEnabled.isChecked())
+        self.cache_mode_selected(self.cacheMode.currentIndex())
+        self.measure_cache()
 
         self.switch_page(None)
         self.adjustSize()
@@ -473,6 +497,9 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
                 self.screenshotsFormat.currentIndexChanged,
                 self.screenshot_format_selected,
             ),
+            (self.cacheMode.currentIndexChanged, self.cache_mode_selected),
+            (self.cacheClear.clicked, self.clear_cache),
+            (self.cache_measured, self.show_cache_size),
         )
 
     def run_youtube_checkup(self):
@@ -596,6 +623,14 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
 
         self.section_page.setCurrentWidget(page)
 
+    def open_cache_dir(self):
+        folder = cache.cache_root()
+
+        # opened before anything was kept there, as an empty folder
+        folder.mkdir(parents=True, exist_ok=True)
+
+        self._open_folder(folder)
+
     def open_data_dir(self):
         """The folder rather than the log file that used to be opened.
 
@@ -606,15 +641,16 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
         installed anywhere else. See gridplayer.utils.js_runtime.
         """
 
-        data_dir = get_app_data_dir()
+        self._open_folder(get_app_data_dir())
 
-        self._log.debug(f"Opening data directory {data_dir}")
+    def _open_folder(self, folder):
+        self._log.debug(f"Opening folder {folder}")
 
         if env.IS_SNAP:
             # https://forum.snapcraft.io/t/xdg-open-or-gvfs-open-qdesktopservices-openurl-file-somelocation-file-txt-wont-open-the-file/16824
-            subprocess.call(["xdg-open", data_dir])
+            subprocess.call(["xdg-open", folder])
         else:
-            QDesktopServices.openUrl(QUrl.fromLocalFile(str(data_dir)))
+            QDesktopServices.openUrl(QUrl.fromLocalFile(str(folder)))
 
     def browse_screenshots_dir(self):
         start_dir = screenshots_dir(self.screenshotsDir.text())
@@ -681,6 +717,63 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
 
         self.screenshotsJPGQualityLabel.setEnabled(is_jpg)
         self.screenshotsJPGQuality.setEnabled(is_jpg)
+
+    def cache_mode_selected(self, idx):
+        is_on_disk = self.cacheMode.itemData(idx) == CacheMode.DISK
+
+        self.cacheMaxMBLabel.setEnabled(is_on_disk)
+        self.cacheMaxMB.setEnabled(is_on_disk)
+        self.cacheMaxMBUnit.setEnabled(is_on_disk)
+
+        # nothing on disk to see, kept in memory
+        self.cache_open_action.setEnabled(is_on_disk)
+
+    def measure_cache(self, first=None):
+        """What the cache comes to, put beside Clear once it is known.
+
+        On a thread of its own, after whatever is to be done first: a
+        large cache is a lot of files to look over, or to delete.
+        """
+
+        def work():
+            if first is not None:
+                first()
+
+            size = cache.kept_bytes()
+
+            # the dialog may have gone meanwhile
+            with contextlib.suppress(RuntimeError):
+                self.cache_measured.emit(size)
+
+        threading.Thread(target=work, name="cache size", daemon=True).start()
+
+    def clear_cache(self):
+        """Cleared at once rather than on OK: nothing is lost but what
+        would be downloaded again."""
+
+        self.cacheClear.setEnabled(False)
+        self.cacheSize.setText(self.tr("Clearing..."))
+
+        self.measure_cache(first=cache.clear)
+
+    def show_cache_size(self, size):
+        self.cacheClear.setEnabled(size > 0)
+
+        if size == 0:
+            self.cacheSize.setText(self.tr("Empty"))
+            return
+
+        megabytes = QLocale().toString(max(size / cache.MB, 0.1), "f", 1)
+
+        self.cacheSize.setText(self.tr("{SIZE} MB used").format(SIZE=megabytes))
+
+    def fill_cacheMode(self):
+        modes = {
+            CacheMode.DISK: self.tr("On disk"),
+            CacheMode.MEMORY: self.tr("In memory"),
+        }
+
+        _fill_combo_box(self.cacheMode, modes)
 
     def fill_logLevelVLC(self):
         log_levels = {

@@ -8,7 +8,6 @@ from gridplayer.params.gestures import GESTURE_ZOOM_SELECT
 from gridplayer.player.managers.base import ManagerBase
 from gridplayer.utils.keymap import is_gesture_press
 from gridplayer.utils.qt import is_modal_open
-from gridplayer.widgets.video_overlay import OverlayBlock
 
 
 class ZoomSelectManager(ManagerBase):
@@ -244,7 +243,7 @@ class ZoomSelectManager(ManagerBase):
         return None
 
     def _armed_press(self, event, event_object):
-        if is_modal_open() or not self._is_players(event_object):
+        if is_modal_open() or self.is_elsewhere(event_object):
             # gone on to something else
             self._stop()
             return None
@@ -294,14 +293,6 @@ class ZoomSelectManager(ManagerBase):
             return None
 
         return block
-
-    def _is_players(self, widget) -> bool:
-        """Whether a widget is in the player's window, or a video's overlay
-        of its own, rather than a window that is over the player."""
-
-        window = widget.window()
-
-        return window is self.parent() or isinstance(window, OverlayBlock)
 
     def _start(self, block, button):
         self._block = block

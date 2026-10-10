@@ -1,3 +1,4 @@
+from functools import partial
 from pathlib import Path
 
 import pytest
@@ -35,6 +36,7 @@ def _block(mocker, **video_kwargs):
     # no bookmarks being edited to hold the video where it is
     block._is_editing_bookmarks = False
     block._hold_end_for_bookmarks.return_value = False
+    block._step_at_end = partial(VideoBlock._step_at_end, block)
     return block
 
 
@@ -162,6 +164,7 @@ def test_stopped_overlay_uses_hide_timer(mocker):
     block._is_error = False
     block._is_status_kept_for_picture = False
     block._is_zoom_ui.return_value = False
+    block._is_list_window_shown = False
     block.isVisible.return_value = True
 
     VideoBlock.show_overlay(block)
@@ -244,6 +247,7 @@ def test_apply_snapshot_stopped_destroys_driver(mocker):
     snapshot = Video(uri="http://example.com/a.mp4", is_paused=True, is_stopped=True)
     block.video_params = Video(uri=snapshot.uri, is_paused=False, is_stopped=False)
     block._default_title = "a.mp4"
+    block._take_snapshot_params = partial(VideoBlock._take_snapshot_params, block)
 
     VideoBlock.apply_snapshot(block, snapshot)
 
@@ -259,6 +263,7 @@ def test_apply_snapshot_playing_on_stopped_starts_load(mocker):
     block.video_params = Video(uri=snapshot.uri, is_paused=True, is_stopped=True)
     block.is_video_initialized = False
     block._default_title = "a.mp4"
+    block._take_snapshot_params = partial(VideoBlock._take_snapshot_params, block)
 
     VideoBlock.apply_snapshot(block, snapshot)
 
@@ -312,6 +317,8 @@ def test_switch_video_stopped_same_file_loads(mocker):
     block.video_params = mocker.Mock(uri=uri)
     block.is_video_initialized = False
 
+    block._switch_to = partial(VideoBlock._switch_to, block)
+
     VideoBlock.switch_video(block, uri)
 
     block._load_and_play.assert_called_once()
@@ -327,6 +334,8 @@ def test_switch_video_initialized_same_file_seeks(mocker):
     block.is_video_initialized = True
     block.loop_start = 0
 
+    block._switch_to = partial(VideoBlock._switch_to, block)
+
     VideoBlock.switch_video(block, uri)
 
     block._seek_loop_start.assert_called_once_with()
@@ -338,6 +347,8 @@ def test_switch_video_stopped_other_file_starts_playback(mocker):
     block.is_local_file = True
     block.video_params = mocker.Mock(uri=Path("/tmp/a.mp4"))
     block.is_video_initialized = False
+
+    block._switch_to = partial(VideoBlock._switch_to, block)
 
     VideoBlock.switch_video(block, Path("/tmp/b.mp4"))
 
