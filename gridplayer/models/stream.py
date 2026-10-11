@@ -321,3 +321,15 @@ def _quality_height(quality: str) -> int | None:
     height = re.match(r"^(\d+)", quality)
 
     return int(height.group(1)) if height else None
+
+
+def short_quality_name(quality: str) -> str:
+    """The size a quality code starts with, without the codec and the rest.
+
+    "1080p60 [vp9] (video only)" says "1080p60" in a word, and the menu is
+    there for the rest. A code that names no size is left as it is.
+    """
+
+    size = re.match(r"^\d+p\d*(?=\s|$)", quality)
+
+    return size.group(0) if size else quality

@@ -288,3 +288,35 @@ def test_the_delay_entry_spells_out_the_wait_it_is_set_to():
 
 def test_the_delay_entry_stays_out_of_sight_on_a_hand_picked_rung():
     assert _adapt_delay_action("1080p").is_skipped is True
+
+
+def test_the_status_names_the_stream_picked_out_of_several(mocker):
+    block = _block(mocker, playing="720p")
+
+    assert VideoBlock._video_detail(block) == "720p"
+
+
+def test_the_status_names_no_stream_where_there_was_only_one(mocker):
+    block = _block(mocker, playing="generic")
+    block.streams = Streams(
+        {"generic": Stream(url="http://host/a.mp4", protocol="direct")}
+    )
+
+    assert VideoBlock._video_detail(block) == ""
+
+
+@pytest.mark.parametrize(
+    ("quality", "said"),
+    [
+        ("1080p60 [vp9] (video only)", "1080p60"),
+        ("720p (English) [avc1]", "720p"),
+        ("1080p", "1080p"),
+        ("9300k", "9300k"),
+        ("hls-2 [avc1]", "hls-2 [avc1]"),
+        ("Audio 129kbps [opus]", "Audio 129kbps [opus]"),
+    ],
+)
+def test_the_status_says_a_stream_by_its_size_alone(mocker, quality, said):
+    block = _block(mocker, playing=quality)
+
+    assert VideoBlock._video_detail(block) == said

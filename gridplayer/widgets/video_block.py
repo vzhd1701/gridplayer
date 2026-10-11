@@ -58,6 +58,7 @@ from gridplayer.models.stream import (
     HashableDict,
     StreamOrigin,
     Streams,
+    short_quality_name,
 )
 from gridplayer.models.subtitle_selection import (
     SubtitleDefault,
@@ -1439,10 +1440,15 @@ class VideoBlock(QWidget):
         )
 
     def _video_detail(self) -> str:
-        """The stream picked, of a link with several."""
+        """The stream picked, of a link with several.
 
-        if self.streams and self._stream_quality_playing:
-            return self._stream_quality_playing
+        A link with one stream has nothing to pick, and what its one
+        stream is called ("generic", "[0]", "9300k") is no news to anyone.
+        The Quality menu is left out for it on the same grounds.
+        """
+
+        if len(self.streams) > 1 and self._stream_quality_playing:
+            return short_quality_name(self._stream_quality_playing)
 
         return ""
 
