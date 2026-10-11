@@ -58,6 +58,7 @@ from gridplayer.dialogs.bookmarks import (
     with_key_txt,
 )
 from gridplayer.models.video import Video
+from gridplayer.params.theme import secondary_text_color, set_secondary
 from gridplayer.utils.bookmarks import (
     bookmarks_txt,
     default_bookmark_name,
@@ -527,7 +528,7 @@ class PlaylistBookmarksDialog(QDialog):
             "unreachable": QColor(
                 WARNING_COLOR_DARK if is_dark else WARNING_COLOR_LIGHT
             ),
-            "idle": palette.color(QPalette.PlaceholderText),
+            "idle": secondary_text_color(),
             "gone": palette.color(QPalette.Disabled, QPalette.Text),
             "count": mixed_color(
                 palette.color(QPalette.Text), palette.color(QPalette.Base), TIME_FADE
@@ -596,11 +597,11 @@ class PlaylistBookmarksDialog(QDialog):
             ]
 
         self._hint.setText(" · ".join(parts) if entries else "")
-        self._hint.setForegroundRole(QPalette.PlaceholderText)
+        set_secondary(self._hint)
 
     def _say(self, text):
         self._hint.setText(text)
-        self._hint.setForegroundRole(QPalette.WindowText)
+        set_secondary(self._hint, False)
 
         self._status_timer.start()
 

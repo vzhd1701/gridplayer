@@ -220,7 +220,7 @@ class Player(QWidget, ManagersManager):
                 ("videos_added", "grid.add_videos_to_layout"),
                 ("videos_added", "window_state.activate_window"),
                 ("error", "dialogs.error"),
-                ("warning", "dialogs.warning"),
+                ("failed", "dialogs.failed"),
             ],
             "recent_list": [
                 ("playlist_opened", "playlist.load_playlist_file"),

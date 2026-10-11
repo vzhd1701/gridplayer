@@ -47,9 +47,10 @@ class SettingsManager(ManagerBase):
             QCustomMessageBox.information(
                 self.parent(),
                 translate("Dialog - Settings apply restart", "Settings", "Header"),
-                translate(
+                translate("Dialog - Settings apply restart", "Restart to apply"),
+                info=translate(
                     "Dialog - Settings apply restart",
-                    "Restart is required for the new settings to take effect.",
+                    "Some of the new settings work after you restart GridPlayer.",
                 ),
             )
 

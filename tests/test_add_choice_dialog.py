@@ -1,6 +1,8 @@
 """The dialog asking how what is being added goes into the grid."""
 
+from PyQt5.QtGui import QFont
 from PyQt5.QtWidgets import (
+    QApplication,
     QCheckBox,
     QDialog,
     QFrame,
@@ -12,6 +14,8 @@ from PyQt5.QtWidgets import (
 
 from gridplayer.dialogs import add_choice
 from gridplayer.dialogs.add_choice import AddChoiceDialog, AddOption, ManyCellsDialog
+from gridplayer.main.init_resources import init_resources
+from gridplayer.params.static import FONT_SIZE_MAIN
 
 OPTIONS = [
     AddOption("each", "A cell for each", about="One after another.", note="3 cells"),
@@ -243,7 +247,7 @@ class TestUpWhileItIsRead:
 
         dialog.set_question("How?", ["Big Folder — 1 items"], OPTIONS)
 
-        assert "Stopped. Only what was found so far will be added." in _texts(dialog)
+        assert "Stopped. Only what was found will be added." in _texts(dialog)
         assert not _shown(_push_button(dialog, "Stop"))
 
     def test_enter_only_ever_adds(self):
@@ -298,3 +302,45 @@ class TestManyCellsWarning:
         mocker.patch.object(ManyCellsDialog, "exec_", return_value=QDialog.Rejected)
 
         assert ManyCellsDialog.ask(30)[0] is False
+
+
+class TestFitted:
+    def test_no_gap_round_the_question_where_a_line_wraps(self):
+        """Sized at its hint's width, where lines wrap more, and widened only
+        then, it would be left taller than it needs, the question taking a
+        share of it as a gap. In the app's own font, at its own size."""
+
+        init_resources()
+
+        names = [
+            f"2025-08-14 Holiday trip part {n} final export 4K.mp4" for n in range(30)
+        ]
+
+        dialog = AddChoiceDialog(
+            "Add 30 items",
+            names,
+            [
+                AddOption(
+                    "each",
+                    "Each video in its own cell",
+                    note="30 cells",
+                    warning="30 cells at once can freeze the player.",
+                ),
+                AddOption(
+                    "one",
+                    "All in one cell",
+                    about="Plays all 30 videos as a list.",
+                    note="1 cell",
+                ),
+            ],
+        )
+        dialog.setFont(QFont("Hack", FONT_SIZE_MAIN))
+
+        dialog.show()
+        QApplication.processEvents()
+
+        assert dialog.height() == dialog.heightForWidth(dialog.width())
+        label = dialog._question_label
+        assert label.height() == label.heightForWidth(label.width())
+
+        dialog.close()

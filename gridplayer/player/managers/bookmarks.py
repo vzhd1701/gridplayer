@@ -370,19 +370,18 @@ class BookmarksManager(ManagerBase):
         box = QCustomMessageBox(
             QMessageBox.Question,
             translate("Dialog - Bookmarks sharing", "Bookmarks", "Header"),
-            "{}\n\n{}".format(
-                translate(
-                    "Dialog - Bookmarks sharing",
-                    "Stop sharing bookmarks between cells?",
-                ),
-                translate(
-                    "Dialog - Bookmarks sharing",
-                    "Each cell gets its own copy of its file's bookmarks. From"
-                    " then on, a cell's bookmarks are removed with it when it is"
-                    " closed and the playlist is saved.",
-                ),
+            translate(
+                "Dialog - Bookmarks sharing", "Stop sharing bookmarks between cells?"
             ),
             parent=self.parent(),
+        )
+        box.setInformativeText(
+            translate(
+                "Dialog - Bookmarks sharing",
+                "Each cell gets its own copy of its file's bookmarks. From"
+                " then on, a cell's bookmarks are removed with it when it is"
+                " closed and the playlist is saved.",
+            )
         )
         stop = box.addButton(
             translate("Dialog - Bookmarks sharing", "Stop Sharing"),
@@ -400,42 +399,39 @@ class BookmarksManager(ManagerBase):
         if not disagreeing:
             return True
 
-        files = [
-            translate("Dialog - Bookmarks sharing", "{FILE} — {COUNT} cells").format(
-                FILE=file_name(uri), COUNT=count
+        rows = [
+            (
+                file_name(uri),
+                translate("Dialog - Bookmarks sharing", "{COUNT} cells").format(
+                    COUNT=count
+                ),
             )
             for uri, count in disagreeing[:MERGE_FILES_LISTED]
         ]
 
         if len(disagreeing) > MERGE_FILES_LISTED:
-            files.append(
-                translate("Dialog - Bookmarks sharing", "and {COUNT} more").format(
-                    COUNT=len(disagreeing) - MERGE_FILES_LISTED
-                )
+            more = translate("Dialog - Bookmarks sharing", "and {COUNT} more").format(
+                COUNT=len(disagreeing) - MERGE_FILES_LISTED
             )
+            rows.append((more, ""))
 
         box = QCustomMessageBox(
             QMessageBox.Question,
             translate("Dialog - Bookmarks sharing", "Bookmarks", "Header"),
-            "{}\n\n{}\n\n{}\n\n{}".format(
-                translate(
-                    "Dialog - Bookmarks sharing",
-                    "Some files have different bookmarks in different cells:",
-                ),
-                "\n".join(f"    {line}" for line in files),
-                translate(
-                    "Dialog - Bookmarks sharing",
-                    "Merge them into one list for each file? Where two are at the"
-                    " same place, the name from the first cell in the grid is"
-                    " kept.",
-                ),
-                translate(
-                    "Dialog - Bookmarks sharing",
-                    "Keep Separate leaves this playlist's bookmarks to each cell.",
-                ),
+            translate(
+                "Dialog - Bookmarks sharing", "Merge the bookmarks of each file?"
             ),
             parent=self.parent(),
         )
+        box.setInformativeText(
+            translate(
+                "Dialog - Bookmarks sharing",
+                "These files have different bookmarks in different cells. Where"
+                " two are at the same place, the name from the first cell is"
+                " kept.",
+            )
+        )
+        box.set_list(rows)
         merge = box.addButton(
             translate("Dialog - Bookmarks sharing", "Merge"), QMessageBox.AcceptRole
         )

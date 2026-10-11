@@ -54,6 +54,7 @@ from PyQt5.QtWidgets import (
 from gridplayer.models.bookmark import Bookmark
 from gridplayer.models.seek_mark import SeekMarkKind, chapter_at
 from gridplayer.params.static import VideoEndAction
+from gridplayer.params.theme import secondary_text_color, set_secondary
 from gridplayer.utils.bookmarks import (
     bookmark_on,
     bookmarks_txt,
@@ -226,7 +227,7 @@ def paint_empty_txt(view, painter, line_txt, hint_txt):
     hint_rect.setTop(rect.center().y() + 4)
 
     painter.setFont(view.font())
-    painter.setPen(view.palette().color(QPalette.PlaceholderText))
+    painter.setPen(secondary_text_color())
     painter.drawText(
         hint_rect, Qt.AlignHCenter | Qt.AlignTop | Qt.TextWordWrap, hint_txt
     )
@@ -1307,11 +1308,11 @@ class BookmarksDialog(QDialog):
             if count
             else ""
         )
-        self._hint.setForegroundRole(QPalette.PlaceholderText)
+        set_secondary(self._hint)
 
     def _say(self, text, is_lasting=False):
         self._hint.setText(text)
-        self._hint.setForegroundRole(QPalette.WindowText)
+        set_secondary(self._hint, False)
 
         self._is_held = is_lasting
 

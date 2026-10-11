@@ -107,6 +107,7 @@ from gridplayer.params.static import (
     ListUpdate,
     ListView,
 )
+from gridplayer.params.theme import secondary_text_color, set_secondary
 from gridplayer.playlist_settings import PlaylistSettings
 from gridplayer.utils.error_txts import error_tag, read_error_txts
 from gridplayer.utils.excepthook import dragging
@@ -377,7 +378,7 @@ class ListItemsModel(QAbstractTableModel):
 
     def set_look(self, palette: QPalette, font: QFont):
         self._colors = {
-            "dim": palette.color(QPalette.PlaceholderText),
+            "dim": secondary_text_color(),
         }
 
         self._here_icon = here_icon(palette.color(QPalette.Text))
@@ -774,7 +775,7 @@ class _RowDelegate(QStyledItemDelegate):
             color = QColor(color)
             color.setAlphaF(PICKED_LOCATION_ALPHA)
         else:
-            color = palette.color(QPalette.PlaceholderText)
+            color = secondary_text_color()
 
         _paint_line(style, under, _second_line(lines), color, painter)
 
@@ -1779,10 +1780,9 @@ class MediaListDialog(QDialog):
 
         self._source_button = self._corner_button()
 
-        # where it came from, quieter than what it is: the role rather than a
-        # colour, which the panel's style sheet would not let it be given
+        # where it came from, quieter than what it is
         self._source_label = ElidedLabel()
-        self._source_label.setForegroundRole(QPalette.PlaceholderText)
+        set_secondary(self._source_label)
 
         # how far reading the list again, or what is added, has got
         self._progress_label = ElidedLabel()
@@ -1849,7 +1849,7 @@ class MediaListDialog(QDialog):
 
         self._error_about = QLabel()
         self._error_about.setWordWrap(True)
-        self._error_about.setForegroundRole(QPalette.PlaceholderText)
+        set_secondary(self._error_about)
 
         self._error_again_button = dialog_button(
             "reload", translate("Dialog - List", "Try Again")
@@ -1904,7 +1904,7 @@ class MediaListDialog(QDialog):
         )
 
         self._linked_label = QLabel(translate("Dialog - List", "Linked"))
-        self._linked_label.setForegroundRole(QPalette.PlaceholderText)
+        set_secondary(self._linked_label)
 
         self._unlink_button = _TagButton()
         self._unlink_button.setObjectName("unlinkButton")

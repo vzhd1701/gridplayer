@@ -13,6 +13,7 @@ from PyQt5.QtWidgets import QApplication, QDialog, QFileDialog, qApp
 
 from gridplayer.dialogs.add_choice import (
     AddChoiceDialog,
+    AddedItem,
     AddOption,
     ManyCellsDialog,
     many_cells_txt,
@@ -33,6 +34,7 @@ from gridplayer.params.extensions import (
 from gridplayer.params.static import (
     MANY_CELLS,
     AddMode,
+    ListSourceKind,
     VideoEndAction,
 )
 from gridplayer.player.managers.base import ManagerBase
@@ -386,7 +388,9 @@ class AddVideosManager(ManagerBase):
     videos_added = pyqtSignal(list)
 
     error = pyqtSignal(str)
-    warning = pyqtSignal(str)
+    # what could not be read and why, as (where, why); and whether nothing
+    # was added at all
+    failed = pyqtSignal(object, bool)
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -521,7 +525,7 @@ class AddVideosManager(ManagerBase):
 
             choice = AddChoiceDialog.ask(
                 translate("Adding", "Add just this video, or its playlist?"),
-                [uri],
+                [AddedItem(uri, "add-url")],
                 [
                     AddOption("video", translate("Adding", "Just this video")),
                     AddOption(
@@ -588,7 +592,7 @@ class AddVideosManager(ManagerBase):
             question = translate("Adding", "Finding the videos to add…")
 
         dialog = AddChoiceDialog.reading(
-            question, [_uri_name(uri) for uri in uris], is_asked, self.parent()
+            question, [_uri_item(uri) for uri in uris], is_asked, self.parent()
         )
         dialog.stop_asked.connect(self._stop_reading)
         dialog.finished.connect(functools.partial(self._dialog_closed, dialog))
@@ -764,7 +768,7 @@ class AddVideosManager(ManagerBase):
             self._ctx.commands.add_recent_uris(recent_uris(groups))
 
         if failed:
-            self.warning.emit(_failed_txt(failed))
+            self.failed.emit(tuple(failed), False)
 
         return True
 
@@ -820,7 +824,7 @@ class AddVideosManager(ManagerBase):
 
         if not groups:
             block.close()
-            self.error.emit(_failed_txt(expanded.failed))
+            self.failed.emit(expanded.failed, True)
             return
 
         (group,) = plan_cells(groups, AddMode.ONE_CELL)
@@ -835,7 +839,7 @@ class AddVideosManager(ManagerBase):
             self._ctx.commands.add_recent_uris(recent_uris(groups))
 
         if expanded.failed:
-            self.warning.emit(_failed_txt(expanded.failed))
+            self.failed.emit(expanded.failed, False)
 
     def _play_read_list(self, block, read: ListInput) -> bool:
         """The list played in the cell from the first item there is of it,
@@ -846,7 +850,7 @@ class AddVideosManager(ManagerBase):
 
         if first is None:
             block.close()
-            self.error.emit(translate("Error", "No supported files or URLs!"))
+            self.failed.emit((), True)
             return False
 
         media_list = self._ctx.lists.add(
@@ -881,7 +885,7 @@ class AddVideosManager(ManagerBase):
 
             # stopped before anything was found, there is nothing to tell
             if not reading.enough.is_set():
-                self.error.emit(_failed_txt(expanded.failed))
+                self.failed.emit(expanded.failed, True)
 
             self._done_with_request()
             return
@@ -903,7 +907,7 @@ class AddVideosManager(ManagerBase):
         groups = list(expanded.groups)
 
         if not groups:
-            self.error.emit(_failed_txt(expanded.failed))
+            self.failed.emit(expanded.failed, True)
             return
 
         choice = self._add_mode(groups, request.drop)
@@ -925,7 +929,7 @@ class AddVideosManager(ManagerBase):
             )
 
         if expanded.failed:
-            self.warning.emit(_failed_txt(expanded.failed))
+            self.failed.emit(expanded.failed, False)
 
     def _add_mode(self, groups, drop, ask=None):
         """How to put the groups into cells, as the playlist says or as the
@@ -1017,7 +1021,7 @@ class AddVideosManager(ManagerBase):
         videos = [video for video in map(self._video_for, cells) if video is not None]
 
         if not videos:
-            self.error.emit(translate("Error", "No supported files or URLs!"))
+            self.failed.emit((), True)
             return False
 
         self._put_in_cells(videos, drop)
@@ -1094,9 +1098,9 @@ class _Question(NamedTuple):
 
 def _question_txt(count: int) -> str:
     if count == 1:
-        return translate("Adding", "How should this be added?")
+        return translate("Adding", "Add 1 item")
 
-    return translate("Adding", "How should these be added?")
+    return translate("Adding", "Add {COUNT} items").format(COUNT=count_txt(count))
 
 
 def _is_warned_of(cells: int) -> bool:
@@ -1121,14 +1125,24 @@ def _warned(option, groups, free):
     return option._replace(warning=many_cells_txt(cells))
 
 
-def _uri_name(uri: str) -> str:
+def _uri_item(uri: str) -> AddedItem:
     """What is being added, as the viewer is told it before it is read: a
     file or folder by its name, a link as it is."""
 
     if is_url(uri):
-        return uri
+        return AddedItem(uri, "add-url")
 
-    return Path(uri).name or uri
+    path = Path(uri)
+    name = path.name or uri
+
+    if is_list_file_name(uri):
+        return AddedItem(name, "add-files")
+
+    with contextlib.suppress(OSError):
+        if path.is_dir():
+            return AddedItem(name, "add-folder")
+
+    return AddedItem(name, "video")
 
 
 def list_end_action() -> VideoEndAction:
@@ -1245,16 +1259,16 @@ def add_options(groups, choices, target, free) -> list:
 
     # one file, asked of only where it may go in the cell it was dropped on
     if len(groups) == 1 and not isinstance(groups[0], ListInput):
-        title = translate("Adding", "In a cell of its own")
-        options = [option._replace(title=title) for option in options]
+        title = translate("Adding", "In a new cell")
+        options = [option._replace(title=title, note="") for option in options]
 
     if target is None:
         return options
 
     to_cell = AddOption(
         _ADD_TO_CELL,
-        translate("Adding", "Play in this cell, after its video"),
-        about=translate("Adding", "Makes a list that starts with its video."),
+        translate("Adding", "After this cell's video"),
+        about=translate("Adding", "The cell plays them next, as a list."),
     )
 
     return [*options, None, to_cell]
@@ -1267,81 +1281,80 @@ def _mode_option(groups, mode, free) -> AddOption:
     if mode == AddMode.ONE_CELL:
         return AddOption(
             mode,
-            translate("Adding", "One cell for everything"),
+            translate("Adding", "All in one cell"),
             about=translate("Adding", "Plays all {COUNT} videos as a list.").format(
                 COUNT=count_txt(count_cells(groups, AddMode.CELL_PER_FILE))
             ),
+            note=translate("Adding", "1 cell"),
         )
 
     if mode == AddMode.CELL_PER_FILE:
         option = AddOption(
             mode,
-            translate("Adding", "A cell for each video"),
-            about=translate("Adding", "Including videos inside folders and playlists."),
+            translate("Adding", "Each video in its own cell"),
+            about=translate("Adding", "Videos inside folders and playlists too."),
         )
     elif not lists:
-        option = AddOption(mode, translate("Adding", "A cell for each video"))
+        option = AddOption(mode, translate("Adding", "Each video in its own cell"))
     elif len(groups) == 1:
         option = AddOption(
             mode,
-            translate("Adding", "One cell"),
-            about=translate("Adding", "Plays them as a list."),
+            translate("Adding", "In one cell"),
+            about=translate("Adding", "Plays as a list."),
         )
     else:
         option = AddOption(
             mode,
-            translate("Adding", "A cell for each file, folder and playlist"),
-            about=translate(
-                "Adding",
-                "A folder or playlist plays as a list.",
-            ),
+            translate("Adding", "Each item in its own cell"),
+            about=translate("Adding", "Folders and playlists play as lists."),
         )
 
-    if cells < 2:
+    if cells < 1:
         return option
 
     if free is not None and cells > free:
-        note = translate("Adding", "{COUNT} cells, only {FREE} fit").format(
+        note = translate("Adding", "{COUNT} cells ({FREE} fit)").format(
             COUNT=count_txt(cells), FREE=count_txt(free)
         )
+    elif cells == 1:
+        note = translate("Adding", "1 cell")
     else:
         note = translate("Adding", "{COUNT} cells").format(COUNT=count_txt(cells))
 
     return option._replace(note=note)
 
 
-def _name_of(group) -> str:
-    """What is being added, as the viewer is told it: a list by its name and
-    how much is on it, a file by its own."""
+def _name_of(group) -> AddedItem:
+    """What is being added, as the viewer is told it: a list by its name,
+    what it was read from and how much is on it, a file by its own."""
 
     if isinstance(group, ListInput):
-        return translate("Adding", "{NAME} — {COUNT} items").format(
-            NAME=group.name, COUNT=count_txt(len(group.items))
+        return AddedItem(
+            group.name,
+            _list_icon(group),
+            translate("Adding", "{COUNT} items").format(
+                COUNT=count_txt(len(group.items))
+            ),
         )
 
-    return group.title or group.uri_name
+    return AddedItem(group.title or group.uri_name, "video")
 
 
-def _failed_txt(failed) -> str:
-    if not failed:
-        return translate("Error", "No supported files or URLs!")
+def _list_icon(group: ListInput) -> str:
+    """The icon of what a list was read from, as the List window has it."""
 
-    lines = [f"{where}\n    {why}" for where, why in failed[:_FAILED_LISTED]]
+    if group.source is None:
+        return "list"
 
-    if len(failed) > _FAILED_LISTED:
-        lines.append(
-            translate("Adding", "and {COUNT} more").format(
-                COUNT=len(failed) - _FAILED_LISTED
-            )
-        )
+    kind = group.source.kind
 
-    return "{}\n\n{}".format(
-        translate("Adding", "Could not be read:"), "\n".join(lines)
-    )
+    if kind == ListSourceKind.URL:
+        return "add-url"
 
+    if kind == ListSourceKind.FILE:
+        return "add-files"
 
-# how many of the things that could not be read are named
-_FAILED_LISTED = 5
+    return "add-folder"
 
 
 def media_name_filters() -> list[str]:

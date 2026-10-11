@@ -20,12 +20,12 @@ def run_app():
     except FileNotFoundError:
         QCustomMessageBox.critical(
             None,
-            translate("Dialog", "Error"),
-            translate(
+            "GridPlayer",
+            translate("Error", "VLC is not installed"),
+            info=translate(
                 "Error",
-                "<p>VLC player is required!</p><p>Please visit"
-                ' <a href="https://www.videolan.org/vlc/">VLC official site</a>'
-                " for instructions on how to install it.</p>",
+                'GridPlayer plays videos with VLC. Get it from the <a href="'
+                'https://www.videolan.org/vlc/">VLC website</a>.',
             ),
         )
         return 1

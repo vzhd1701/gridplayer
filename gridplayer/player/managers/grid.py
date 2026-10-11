@@ -20,7 +20,7 @@ from gridplayer.playlist_settings import PlaylistSettings
 from gridplayer.settings import Settings
 from gridplayer.utils.drop_zone import DropZone
 from gridplayer.utils.layout import FlowLayout, FlowMode, GridLayout, Layout
-from gridplayer.utils.qt import translate
+from gridplayer.utils.qt import count_txt, translate
 from gridplayer.widgets.empty_cell import EmptyCell
 
 
@@ -447,15 +447,14 @@ class GridManager(ManagerBase):
     def _leave_fixed(self):
         holes = self._grid_layout.empty_positions(preallocate=False)
         if holes and self._ctx.video_blocks:
-            ret = QCustomMessageBox.question(
+            is_removed = QCustomMessageBox.confirm(
                 self.parent(),
                 translate("Dialog - Set grid size", "Set grid size", "Header"),
-                translate(
-                    "Warning",
-                    "Empty cells will be removed. Videos keep their current order.",
-                ),
+                translate("Dialog - Set grid size", "Remove the empty cells?"),
+                translate("Dialog - Set grid size", "Remove"),
+                info=translate("Dialog - Set grid size", "Videos keep their order."),
             )
-            if ret != QMessageBox.Yes:
+            if not is_removed:
                 return False
 
         self._flow.ids = self._grid_layout.order()
@@ -463,20 +462,19 @@ class GridManager(ManagerBase):
         return True
 
     def _confirm_overflow(self, capacity, count) -> bool:
-        msg = (
-            translate(
-                "Warning",
-                "This grid can hold {CAPACITY} videos. {COUNT} videos will be closed.",
-            )
-            .replace("{CAPACITY}", str(capacity))
-            .replace("{COUNT}", str(count))
-        )
-        ret = QCustomMessageBox.cancellable_question(
+        return QCustomMessageBox.confirm(
             self.parent(),
             translate("Dialog - Set grid size", "Set grid size", "Header"),
-            msg,
+            translate("Dialog - Set grid size", "Close {COUNT} videos?").format(
+                COUNT=count_txt(count)
+            ),
+            translate("Dialog - Set grid size", "Close Videos"),
+            info=translate(
+                "Dialog - Set grid size", "This grid holds {CAPACITY} videos."
+            ).format(CAPACITY=count_txt(capacity)),
+            is_destructive=True,
+            icon=QMessageBox.Warning,
         )
-        return ret == QMessageBox.Yes
 
     def _reconcile_layout(self):
         live_set = set(self._ctx.video_blocks.video_ids)

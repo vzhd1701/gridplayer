@@ -11,6 +11,7 @@ import pytest
 from PyQt5.QtCore import QSettings
 from PyQt5.QtWidgets import QApplication, QDialog, QWidget
 
+from gridplayer.dialogs.add_choice import AddedItem
 from gridplayer.models.media_list import (
     HttpHeaders,
     ListItem,
@@ -138,7 +139,11 @@ def manager(grid):
     manager.errors = []
     manager.error.connect(manager.errors.append)
     manager.warnings = []
-    manager.warning.connect(manager.warnings.append)
+    manager.failed.connect(
+        lambda failed, is_nothing_added: (
+            manager.errors if is_nothing_added else manager.warnings
+        ).append("\n".join(f"{where}\n    {why}" for where, why in failed))
+    )
 
     return manager
 
@@ -617,25 +622,29 @@ class TestWhatTheViewerIsOffered:
         _add(manager, [a, b, tmp_path / "Shows"])
 
         assert self._offered(asked) == (
-            "How should these be added?",
-            ["a.mp4", "b.mp4", "Shows — 2 items"],
+            "Add 3 items",
+            [
+                AddedItem("a.mp4", "video"),
+                AddedItem("b.mp4", "video"),
+                AddedItem("Shows", "add-folder", "2 items"),
+            ],
             [
                 (
                     AddMode.CELL_EACH,
-                    "A cell for each file, folder and playlist",
-                    "A folder or playlist plays as a list.",
+                    "Each item in its own cell",
+                    "Folders and playlists play as lists.",
                     "3 cells",
                 ),
                 (
                     AddMode.ONE_CELL,
-                    "One cell for everything",
+                    "All in one cell",
                     "Plays all 4 videos as a list.",
-                    "",
+                    "1 cell",
                 ),
                 (
                     AddMode.CELL_PER_FILE,
-                    "A cell for each video",
-                    "Including videos inside folders and playlists.",
+                    "Each video in its own cell",
+                    "Videos inside folders and playlists too.",
                     "4 cells",
                 ),
             ],
@@ -648,12 +657,12 @@ class TestWhatTheViewerIsOffered:
 
         _question, _what, options = self._offered(asked)
         assert options == [
-            (AddMode.CELL_EACH, "A cell for each video", "", "2 cells"),
+            (AddMode.CELL_EACH, "Each video in its own cell", "", "2 cells"),
             (
                 AddMode.ONE_CELL,
-                "One cell for everything",
+                "All in one cell",
                 "Plays all 2 videos as a list.",
-                "",
+                "1 cell",
             ),
         ]
 
@@ -663,14 +672,14 @@ class TestWhatTheViewerIsOffered:
         _add(manager, [tmp_path / "Shows"])
 
         question, what, options = self._offered(asked)
-        assert question == "How should this be added?"
-        assert what == ["Shows — 3 items"]
+        assert question == "Add 1 item"
+        assert what == [AddedItem("Shows", "add-folder", "3 items")]
         assert options == [
-            (AddMode.CELL_EACH, "One cell", "Plays them as a list.", ""),
+            (AddMode.CELL_EACH, "In one cell", "Plays as a list.", "1 cell"),
             (
                 AddMode.CELL_PER_FILE,
-                "A cell for each video",
-                "Including videos inside folders and playlists.",
+                "Each video in its own cell",
+                "Videos inside folders and playlists too.",
                 "3 cells",
             ),
         ]
@@ -682,7 +691,7 @@ class TestWhatTheViewerIsOffered:
         _add(manager, [tmp_path / "Shows"])
 
         _question, _what, options = self._offered(asked)
-        assert options[1][3] == "3 cells, only 2 fit"
+        assert options[1][3] == "3 cells (2 fit)"
 
     def test_dropped_in_the_middle_of_a_cell_with_a_video(
         self, manager, tmp_path, asked
@@ -694,12 +703,12 @@ class TestWhatTheViewerIsOffered:
 
         _question, _what, options = asked.call_args.args[:3]
         assert [_option_txt(option) if option else None for option in options] == [
-            (AddMode.CELL_EACH, "In a cell of its own", "", ""),
+            (AddMode.CELL_EACH, "In a new cell", "", ""),
             None,
             (
                 add_videos._ADD_TO_CELL,
-                "Play in this cell, after its video",
-                "Makes a list that starts with its video.",
+                "After this cell's video",
+                "The cell plays them next, as a list.",
                 "",
             ),
         ]
@@ -1155,7 +1164,7 @@ class TestManyCellsAsked:
 
         _add(manager, files)
 
-        assert asked.call_args.args[0] == "How should these be added?"
+        assert asked.call_args.args[0] == "Add 4 items"
         assert self._warnings(asked) == [
             "4 cells at once can freeze the player.",
             "",
@@ -1200,7 +1209,7 @@ class TestManyCellsAsked:
             items=tuple(ListItem(uri=f"https://h/{n}") for n in range(1500)),
         )
 
-        assert add_videos._name_of(big) == "Big — 1,500 items"
+        assert add_videos._name_of(big) == AddedItem("Big", "list", "1,500 items")
         assert add_videos._mode_option([big], AddMode.CELL_PER_FILE, None).note == (
             "1,500 cells"
         )
@@ -1347,8 +1356,8 @@ class TestShownAsItIsRead:
         _wait_until(lambda: asked.called)
 
         question, what, _options = asked.call_args.args[:3]
-        assert question == "How should this be added?"
-        assert what[0].startswith("Big — ")
+        assert question == "Add 1 item"
+        assert what[0].name == "Big"
         assert manager.added == []
 
         dialog.done(QDialog.Accepted)
@@ -1369,7 +1378,7 @@ class TestShownAsItIsRead:
         # the second never read
         _question, what, _options = asked.call_args.args[:3]
         assert len(what) == 1
-        assert what[0].startswith("Big — ")
+        assert what[0].name == "Big"
 
     @pytest.mark.usefixtures("asked_mode")
     def test_thought_better_of_nothing_added(self, manager, slow):
@@ -1486,8 +1495,8 @@ class TestShownAsItIsRead:
         # read before it, and what needs no reading after it
         _question, what, _options = asked.call_args.args[:3]
         assert len(what) == 2
-        assert what[0].startswith("Big — ")
-        assert what[1] == "c.mp4"
+        assert what[0].name == "Big"
+        assert what[1] == AddedItem("c.mp4", "video")
 
     @pytest.mark.usefixtures("asked_mode")
     def test_what_a_link_let_go_of_reads_at_last_is_for_nobody(

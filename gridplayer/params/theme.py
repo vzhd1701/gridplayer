@@ -8,6 +8,7 @@ from PyQt5.QtWidgets import (
     QStyle,
     QStyleFactory,
     QTextEdit,
+    QWidget,
 )
 
 from gridplayer.main.init_icons import switch_icon_theme
@@ -23,6 +24,7 @@ THEME_LIGHT = MappingProxyType(
         "alternate": "#f5f5f5",
         "text": "#000000",
         "text_disabled": "#888888",
+        "text_secondary": "#505050",
         "button": "#eeeeee",
         "button_text": "#000000",
         "highlight": "#bbbbbb",
@@ -43,6 +45,7 @@ THEME_DARK = MappingProxyType(
         "alternate": "#4a4a4a",
         "text": "#eeeeee",
         "text_disabled": "#888888",
+        "text_secondary": "#c4c4c4",
         "button": "#444444",
         "button_text": "#eeeeee",
         "highlight": "#666666",
@@ -147,6 +150,32 @@ def combo_popup_stylesheet() -> str:
         "background: transparent;"
         "outline: 0;"
         "}"
+    )
+
+
+def secondary_text_color() -> QColor:
+    """Text that says less than the text around it, and is still meant to
+    be read: lighter than the text, darker than a placeholder or a disabled
+    control."""
+
+    return QColor(current_colors()["text_secondary"])
+
+
+def set_secondary(widget: QWidget, is_secondary: bool = True) -> None:
+    """A label in the secondary text colour, or back in the text colour;
+    it follows the theme as it switches."""
+
+    widget.setProperty("secondary", is_secondary)
+
+    # a property is matched by the style sheet only as the widget is polished
+    widget.style().unpolish(widget)
+    widget.style().polish(widget)
+    widget.update()
+
+
+def secondary_stylesheet() -> str:
+    return (
+        f'QLabel[secondary="true"] {{ color: {current_colors()["text_secondary"]}; }}'
     )
 
 
@@ -273,7 +302,9 @@ def apply_theme(app=None) -> None:
         switch_icon_theme()
         _install_dialog_button_style(app)
         app.setPalette(fusion_palette())
-        app.setStyleSheet(combo_popup_stylesheet() + tooltip_stylesheet())
+        app.setStyleSheet(
+            combo_popup_stylesheet() + tooltip_stylesheet() + secondary_stylesheet()
+        )
         _refresh_html_links(app)
         _apply_native_window_chrome(app)
     finally:

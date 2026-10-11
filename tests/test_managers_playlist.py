@@ -720,7 +720,7 @@ def test_check_playlist_save_prompts_dirty_empty_template(mocker):
     mocker.patch.object(manager, "_is_playlist_changed", return_value=True)
     question = mocker.patch(
         "gridplayer.player.managers.playlist.QCustomMessageBox.cancellable_question",
-        return_value=QMessageBox.No,
+        return_value=QMessageBox.Discard,
     )
 
     assert manager.check_playlist_save() is True
@@ -796,7 +796,7 @@ def test_check_playlist_save_auto_save_ask_prompts_unnamed_playlist(mocker):
     save = mocker.patch.object(manager, "cmd_save_playlist")
     question = mocker.patch(
         "gridplayer.player.managers.playlist.QCustomMessageBox.cancellable_question",
-        return_value=QMessageBox.No,
+        return_value=QMessageBox.Discard,
     )
     PlaylistSettings().set("playlist/unsaved_changes", UnsavedChangesMode.AUTO_SAVE_ASK)
 
@@ -812,7 +812,7 @@ def test_check_playlist_save_auto_save_failure_falls_back_to_ask(mocker):
     save = mocker.patch.object(manager, "cmd_save_playlist", return_value=False)
     question = mocker.patch(
         "gridplayer.player.managers.playlist.QCustomMessageBox.cancellable_question",
-        return_value=QMessageBox.No,
+        return_value=QMessageBox.Discard,
     )
     PlaylistSettings().set(
         "playlist/unsaved_changes", UnsavedChangesMode.AUTO_SAVE_DISCARD
@@ -1017,7 +1017,7 @@ def test_check_playlist_save_alerts_modified_empty_playlist(mocker):
     PlaylistSettings().set("playlist/disable_overlay", True)
     question = mocker.patch(
         "gridplayer.player.managers.playlist.QCustomMessageBox.cancellable_question",
-        return_value=QMessageBox.No,
+        return_value=QMessageBox.Discard,
     )
 
     assert manager.check_playlist_save() is True

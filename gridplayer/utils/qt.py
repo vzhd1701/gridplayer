@@ -75,6 +75,19 @@ def count_txt(count: int) -> str:
     return QLocale().toString(count)
 
 
+def fit_height(window: QWidget) -> None:
+    """A window as tall as its words need at the width it is.
+
+    Qt sizes a window at its size hint's width, where wrapped lines wrap
+    more, and only then widens it to its minimum width: the height left
+    over is spread between its rows, as gaps."""
+
+    height = window.heightForWidth(window.width())
+
+    if height > 0:
+        window.resize(window.width(), height)
+
+
 def is_qt_log_ignored(message):
     for ignored in QT_LOG_IGNORED:
         if ignored in message:

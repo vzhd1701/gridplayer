@@ -9,7 +9,7 @@ import pytest
 from PyQt5.QtCore import QPoint, QSettings, Qt
 from PyQt5.QtGui import QContextMenuEvent, QKeySequence
 from PyQt5.QtTest import QTest
-from PyQt5.QtWidgets import QApplication, QWidget
+from PyQt5.QtWidgets import QApplication, QLabel, QWidget
 
 from gridplayer.dialogs import playlist_bookmarks as viewer_module
 from gridplayer.dialogs.messagebox import QCustomMessageBox
@@ -96,7 +96,7 @@ def answers(mocker):
     to_give = []
 
     def _exec(box):
-        asked.append(box.text())
+        asked.append("\n".join(label.text() for label in box.findChildren(QLabel)))
         answer = to_give.pop(0)
         next(button for button in box.buttons() if answer in button.text()).click()
         return 0
@@ -162,7 +162,7 @@ class TestSharing:
 
         manager.cmd_toggle_bookmarks_shared()
 
-        assert "movie.mkv — 2 cells" in answers.asked[0]
+        assert "movie.mkv\n2 cells" in answers.asked[0]
         assert manager.registry.is_shared
         assert len(manager.registry.get(movie, None)) == 3
 

@@ -3,7 +3,7 @@ read: what it is, where it broke and its code, and the error itself as it
 was raised, to copy into a bug report."""
 
 from PyQt5.QtCore import QSize, Qt, pyqtSignal
-from PyQt5.QtGui import QIcon, QPalette
+from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import (
     QApplication,
     QDialog,
@@ -16,6 +16,7 @@ from PyQt5.QtWidgets import (
 )
 
 from gridplayer.dialogs.bookmarks import dialog_button
+from gridplayer.params.theme import set_secondary
 from gridplayer.utils.qt import translate
 from gridplayer.utils.video_errors import ShownError
 from gridplayer.widgets.error_tag import ErrorTag
@@ -100,7 +101,7 @@ class ErrorDetailsDialog(QDialog):
         if error.about:
             about = QLabel(error.about)
             about.setWordWrap(True)
-            about.setForegroundRole(QPalette.PlaceholderText)
+            set_secondary(about)
             words.addWidget(about)
 
         header = QHBoxLayout()
@@ -115,7 +116,7 @@ class ErrorDetailsDialog(QDialog):
 
         for label, value in rows:
             name = QLabel(label)
-            name.setForegroundRole(QPalette.PlaceholderText)
+            set_secondary(name)
 
             shown = QLabel(value)
             shown.setTextInteractionFlags(Qt.TextSelectableByMouse)

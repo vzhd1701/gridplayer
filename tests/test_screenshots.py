@@ -709,7 +709,7 @@ class TestTheSettings:
 
         dialog.screenshotsFilenameTemplateHelpButton.click()
 
-        text = shown.call_args.args[2]
+        text = shown.call_args.kwargs["info"]
         for specifier in ("%f", "%F", "%p", "%P", "%n", "%D", "%T", "%tY", "%tS", "%%"):
             assert f"<tt>{specifier}</tt>" in text
 

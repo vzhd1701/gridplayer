@@ -171,7 +171,9 @@ class TestTheHowTo:
             settings_dialog.QCustomMessageBox,
             "information",
             classmethod(
-                lambda cls, parent, title, text: seen.update(title=title, text=text)
+                lambda cls, parent, title, text, info="": seen.update(
+                    title=text, text=info
+                )
             ),
         )
 

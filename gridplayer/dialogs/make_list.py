@@ -16,8 +16,9 @@ from PyQt5.QtWidgets import (
     QVBoxLayout,
 )
 
-from gridplayer.dialogs.add_choice import bold, dimmed, indented
-from gridplayer.utils.qt import translate
+from gridplayer.dialogs.add_choice import bold, indented
+from gridplayer.dialogs.messagebox import TEXT_SCALE
+from gridplayer.utils.qt import fit_height, translate
 from gridplayer.widgets.elided_label import ElidedLabel
 
 
@@ -46,12 +47,15 @@ class MakeListDialog(QDialog):
             translate("Dialog - Make list", "Make this cell play a list?")
         )
         bold(question)
+        font = question.font()
+        font.setPointSizeF(font.pointSizeF() * TEXT_SCALE)
+        question.setFont(font)
 
         about = QLabel(
             translate(
                 "Dialog - Make list",
-                "This cell plays a single video. As a list, Next and Previous go"
-                " through the list instead of the folder, and you can edit it.",
+                "Next and Previous will go through the list instead of the"
+                " folder. You can edit the list.",
             )
         )
         about.setWordWrap(True)
@@ -67,8 +71,14 @@ class MakeListDialog(QDialog):
         )
         self._recursive_box.setChecked(is_recursive)
 
+        # the folder in a box of the colours of a field, as a path is
         folder_label = ElidedLabel("" if folder is None else str(folder))
-        dimmed(folder_label)
+        folder_label.setObjectName("makeListFolder")
+        folder_label.setStyleSheet(
+            "#makeListFolder { background: palette(base);"
+            " border: 1px solid palette(mid); border-radius: 4px;"
+            " padding: 3px 7px }"
+        )
 
         self._choices = QButtonGroup(self)
         self._choices.addButton(self._video_choice)
@@ -81,6 +91,10 @@ class MakeListDialog(QDialog):
         buttons.addButton(QDialogButtonBox.Cancel)
         buttons.accepted.connect(self.accept)
         buttons.rejected.connect(self.reject)
+
+        for button in buttons.buttons():
+            button.setAutoDefault(False)
+        self._make_button.setDefault(True)
 
         root = QVBoxLayout(self)
         root.setContentsMargins(16, 16, 16, 16)
@@ -104,12 +118,19 @@ class MakeListDialog(QDialog):
         root.addSpacing(6)
         root.addWidget(buttons)
 
+        # once in the dialog: taken into it, a button is given its font
+        bold(self._make_button)
+
         self._folder_choice.toggled.connect(self._recursive_box.setEnabled)
         self._recursive_box.setEnabled(self._folder_choice.isChecked())
 
         self.setMinimumWidth(420)
 
         self._make_button.setFocus()
+
+    def showEvent(self, event):
+        super().showEvent(event)
+        fit_height(self)
 
     def choice(self) -> MakeListChoice:
         if self._folder_choice.isChecked():

@@ -373,13 +373,29 @@ class PlaylistManager(ManagerBase):
     def _ask_playlist_save(self) -> bool:
         self.alert.emit()
 
+        path = self._saved_playlist_path
+
+        if path is None:
+            question = translate(
+                "Dialog - Playlist close", "Save changes to the playlist?"
+            )
+        else:
+            question = translate(
+                "Dialog - Playlist close", "Save changes to “{NAME}”?"
+            ).format(NAME=path.name)
+
         ret = QCustomMessageBox.cancellable_question(
             self.parent(),
             translate("Dialog - Playlist close", "Playlist", "Header"),
-            translate("Dialog - Playlist close", "Do you want to save the playlist?"),
+            question,
+            buttons=QMessageBox.Save | QMessageBox.Discard | QMessageBox.Cancel,
+            info=translate(
+                "Dialog - Playlist close",
+                "Your changes will be lost if you don't save them.",
+            ),
         )
 
-        if ret == QMessageBox.Yes:
+        if ret == QMessageBox.Save:
             return self.cmd_save_playlist()
 
         return ret != QMessageBox.Cancel
@@ -549,17 +565,22 @@ class PlaylistManager(ManagerBase):
 
     def _is_overwrite_denied(self, file_path: Path):
         if file_path.is_file():
-            q_message = translate(
-                "Dialog - Playlist overwrite", "Do you want to overwrite {FILE_NAME}?"
-            ).replace("{FILE_NAME}", file_path.name)
-
-            ret = QCustomMessageBox.question(
+            is_replaced = QCustomMessageBox.confirm(
                 self.parent(),
                 translate("Dialog - Playlist overwrite", "Playlist", "Header"),
-                q_message,
+                translate("Dialog - Playlist overwrite", "Replace “{NAME}”?").format(
+                    NAME=file_path.name
+                ),
+                translate("Dialog - Playlist overwrite", "Replace"),
+                info=translate(
+                    "Dialog - Playlist overwrite",
+                    "A playlist with this name already exists.",
+                ),
+                is_destructive=True,
+                icon=QMessageBox.Warning,
             )
 
-            if ret != QMessageBox.No:
+            if not is_replaced:
                 return True
 
         return False

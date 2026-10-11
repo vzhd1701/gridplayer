@@ -823,25 +823,16 @@ class _AddShortcutDialogBase(QDialog):
     def _confirm_reassign(self, seq: str, conflicts: list[tuple[str, str]]) -> bool:
         """Ask whether to steal the shortcut from the other action. False = cancel."""
         _action_id, display = conflicts[0]
-        msg = QMessageBox(self)
-        msg.setIcon(QMessageBox.Warning)
-        msg.setWindowTitle(translate("Keymap", "Shortcut already in use"))
-        msg.setText(
-            translate(
-                "Keymap",
-                "The shortcut «{key}» is already assigned to:\n\n"
-                "{action}\n\n"
-                "Reassign it here and remove it from that action?",
-            ).format(key=seq, action=display)
+        return QCustomMessageBox.confirm(
+            self,
+            translate("Keymap", "Shortcut already in use"),
+            translate("Keymap", "Reassign «{key}»?").format(key=seq),
+            translate("Keymap", "Reassign"),
+            info=translate(
+                "Keymap", "It's used by “{action}”. It will be removed from there."
+            ).format(action=display),
+            icon=QMessageBox.Warning,
         )
-
-        reassign_btn = msg.addButton(
-            translate("Keymap", "Reassign"), QMessageBox.AcceptRole
-        )
-        msg.addButton(QMessageBox.Cancel)
-
-        msg.exec_()
-        return msg.clickedButton() == reassign_btn
 
     def result_sequence(self) -> str:
         return self._result_sequence
@@ -1853,15 +1844,15 @@ class KeymapEditor(QWidget):
         if self.tree.modified_count() == 0:
             return
 
-        answer = QCustomMessageBox.question(
+        is_reset = QCustomMessageBox.confirm(
             self,
             translate("Keymap", "Reset all shortcuts"),
-            translate(
-                "Keymap",
-                "Restore every shortcut to its default value?",
-            ),
+            translate("Keymap", "Reset all shortcuts?"),
+            translate("Keymap", "Reset"),
+            info=translate("Keymap", "Every shortcut goes back to its default."),
+            is_destructive=True,
         )
-        if answer == QMessageBox.Yes:
+        if is_reset:
             self.tree.reset_all_to_defaults()
 
     def _on_bindings_changed(self):

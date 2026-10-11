@@ -15,7 +15,6 @@ from PyQt5.QtCore import QPoint, QSize, Qt, QTimer
 from PyQt5.QtGui import (
     QContextMenuEvent,
     QPainter,
-    QPalette,
     QStandardItem,
     QStandardItemModel,
 )
@@ -39,6 +38,7 @@ from gridplayer.dialogs.bookmarks import (
 from gridplayer.dialogs.media_list import export_m3u
 from gridplayer.models.media_list import MediaList
 from gridplayer.params.static import ListSourceKind
+from gridplayer.params.theme import secondary_text_color
 from gridplayer.utils.qt import count_txt, translate
 from gridplayer.widgets.custom_menu import CustomMenu
 
@@ -291,7 +291,7 @@ class PlaylistListsDialog(QDialog):
 
         self._model.removeRows(0, self._model.rowCount())
 
-        dim = self._list.palette().color(QPalette.PlaceholderText)
+        dim = secondary_text_color()
 
         for media_list in self._registry.lists():
             cells = numbers.get(media_list.id)

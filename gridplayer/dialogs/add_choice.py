@@ -1,6 +1,6 @@
 """Asked how what is being added goes into the grid: what is being added, and
-the ways there are to put it into cells, the first of them picked before it
-is. A way that adds many cells is warned of under it.
+the ways there are to put it into cells, a card each, the first of them
+picked before it is. A way that adds many cells is warned of on its card.
 
 What has to be read first -- a folder, a list file, a link to a list -- may
 take a while: the dialog comes up as it is read, saying how far it has got,
@@ -18,6 +18,7 @@ from PyQt5.QtWidgets import (
     QFrame,
     QHBoxLayout,
     QLabel,
+    QMessageBox,
     QProgressBar,
     QPushButton,
     QRadioButton,
@@ -25,18 +26,36 @@ from PyQt5.QtWidgets import (
     QWidget,
 )
 
-from gridplayer.utils.qt import count_txt, translate
+from gridplayer.dialogs.messagebox import TEXT_SCALE, QCustomMessageBox
+from gridplayer.params.theme import set_secondary
+from gridplayer.utils.qt import count_txt, fit_height, translate
 from gridplayer.widgets.elided_label import ElidedLabel
 
 # how far a choice's line about it is set in, under the choice
 INDENT_PX = 24
 
+# how narrow the dialog may get, its margins left out
+MIN_WIDTH_PX = 428
+
 # how many of the things being added are named
 WHAT_LISTED = 4
 
-# the warning sign under an option, and in the warning of its own
+# the sign of what kind of thing each thing being added is
+ITEM_ICON_PX = 14
+
+# the warning sign on an option's card
 WARNING_ICON_PX = 16
-WARNING_DIALOG_ICON_PX = 32
+
+
+class AddedItem(NamedTuple):
+    """A thing being added, as it is listed: its name, the icon of what
+    kind of thing it is, and how much is in it."""
+
+    name: str
+    # the icon's name; empty for none
+    icon: str = ""
+    # as "48 items"; empty for a thing that is one
+    count: str = ""
 
 
 class AddOption(NamedTuple):
@@ -59,13 +78,13 @@ class AddChoiceDialog(QDialog):
     def __init__(
         self,
         question: str,
-        what: list[str],
+        what: list,
         options: list,
         parent=None,
     ):
-        """what are the things being added, by name; an option of None
-        puts a line between the ones before it and after it. The first
-        option is picked to start with."""
+        """what are the things being added, as AddedItem or by name alone;
+        an option of None puts a line between the ones before it and after
+        it. The first option is picked to start with."""
 
         super().__init__(parent)
 
@@ -74,6 +93,13 @@ class AddChoiceDialog(QDialog):
         self._question_label = QLabel()
         self._question_label.setWordWrap(True)
         bold(self._question_label)
+        font = self._question_label.font()
+        font.setPointSizeF(font.pointSizeF() * TEXT_SCALE)
+        self._question_label.setFont(font)
+
+        # on what it says rather than on the dialog: the dialog's own would
+        # let it be narrower than what is in it, in a big font
+        self._question_label.setMinimumWidth(MIN_WIDTH_PX)
 
         self._what = QWidget()
 
@@ -104,12 +130,13 @@ class AddChoiceDialog(QDialog):
         self._root.addWidget(self._question_label)
         self._root.addWidget(self._what)
         self._root.addWidget(self._reading)
-        self._root.addSpacing(4)
+        self._root.addSpacing(2)
         self._root.addWidget(self._options_box)
         self._root.addSpacing(6)
         self._root.addWidget(buttons)
 
-        self.setMinimumWidth(460)
+        # once in the dialog: taken into it, a button is given its font
+        bold(self._add_button)
 
         self._is_reading = False
         self._is_stopped = False
@@ -120,7 +147,7 @@ class AddChoiceDialog(QDialog):
     def is_reading(self) -> bool:
         return self._is_reading
 
-    def set_question(self, question: str, what: list[str], options: list) -> None:
+    def set_question(self, question: str, what: list, options: list) -> None:
         """What is asked, of what, and the ways to answer it, as when made:
         asked once what is being added is read. Stopped before it was all
         read, it says so."""
@@ -198,7 +225,7 @@ class AddChoiceDialog(QDialog):
         self._reading.show_stopping()
         self.stop_asked.emit()
 
-    def _show_what(self, what: list[str]) -> None:
+    def _show_what(self, what: list) -> None:
         self._what = self._replaced(self._what, _what_lines(what))
         self._what.setVisible(bool(what))
 
@@ -210,18 +237,20 @@ class AddChoiceDialog(QDialog):
         box = QWidget()
         layout = QVBoxLayout(box)
         layout.setContentsMargins(0, 0, 0, 0)
-        layout.setSpacing(10)
+        layout.setSpacing(6)
 
         for option in options:
             if option is None:
+                layout.addSpacing(2)
                 layout.addWidget(_separator())
+                layout.addSpacing(2)
                 continue
 
             button = QRadioButton(option.title)
             self._choices.addButton(button)
             self._options[button] = option
 
-            layout.addLayout(_option_lines(button, option))
+            layout.addWidget(_OptionCard(button, option))
 
         self._options_box = self._replaced(self._options_box, box)
         self._options_box.setVisible(bool(options))
@@ -239,10 +268,78 @@ class AddChoiceDialog(QDialog):
 
         return new
 
+    def showEvent(self, event):
+        super().showEvent(event)
+        fit_height(self)
+
     def _fit(self) -> None:
         if self.isVisible():
             self._root.activate()
             self.adjustSize()
+            fit_height(self)
+
+
+class _OptionCard(QFrame):
+    """An option in a box of its own, picked by a click anywhere on it: its
+    radio button, how many cells it takes, what it does and what may go
+    wrong. The one picked stands out in the colours of a field."""
+
+    def __init__(self, button: QRadioButton, option: AddOption, parent=None):
+        super().__init__(parent)
+
+        self._button = button
+
+        self.setObjectName("addOption")
+        self.setStyleSheet(
+            "#addOption { border: 1px solid palette(mid); border-radius: 5px;"
+            " padding: 1px }"
+            '#addOption[picked="true"] { background: palette(base);'
+            " border: 2px solid palette(text); padding: 0px }"
+        )
+
+        bold(button)
+
+        title_line = QHBoxLayout()
+        title_line.addWidget(button)
+        title_line.addStretch(1)
+
+        if option.note:
+            note = QLabel(option.note)
+            set_secondary(note)
+            title_line.addWidget(note)
+
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(9, 7, 9, 8)
+        layout.setSpacing(3)
+        layout.addLayout(title_line)
+
+        if option.about:
+            about = QLabel(option.about)
+            about.setWordWrap(True)
+            set_secondary(about)
+            layout.addLayout(indented(about))
+
+        if option.warning:
+            layout.addSpacing(3)
+            layout.addLayout(indented(warning_box(option.warning, is_boxed=False)))
+
+        button.toggled.connect(self._show_picked)
+        self._show_picked(button.isChecked())
+
+    def mousePressEvent(self, event):
+        if event.button() == Qt.LeftButton:
+            self._button.setChecked(True)
+            self._button.setFocus(Qt.MouseFocusReason)
+
+        super().mousePressEvent(event)
+
+    def _show_picked(self, is_picked: bool) -> None:
+        self.setProperty("picked", is_picked)
+
+        # a property is matched by the style sheet only as it is polished
+        self.style().unpolish(self)
+        self.style().polish(self)
+        self.update()
 
 
 class _ReadingLine(QWidget):
@@ -286,7 +383,7 @@ class _ReadingLine(QWidget):
 
     def show_stopped(self):
         self._label.setText(
-            translate("Adding", "Stopped. Only what was found so far will be added.")
+            translate("Adding", "Stopped. Only what was found will be added.")
         )
         self._bar.hide()
         self.stop_button.hide()
@@ -301,60 +398,60 @@ class _ReadingLine(QWidget):
             self._bar.setRange(0, 0)
 
 
-def _what_lines(what: list[str]) -> QWidget:
-    lines = []
+def _what_lines(what: list) -> QWidget:
+    """The things being added, a line each in a box of the colours of a
+    field: what kind of thing, its name, and how much is in it."""
 
-    for name in what[:WHAT_LISTED]:
-        # the whole name in its tooltip, cut short as it may be
-        line = ElidedLabel()
-        line.setText(name)
-        lines.append(line)
+    box = QFrame()
+    box.setObjectName("addWhat")
+    box.setStyleSheet(
+        "#addWhat { background: palette(base); border: 1px solid palette(mid);"
+        " border-radius: 4px }"
+    )
+
+    layout = QVBoxLayout(box)
+    layout.setContentsMargins(10, 6, 10, 6)
+    layout.setSpacing(3)
+
+    for item in what[:WHAT_LISTED]:
+        layout.addLayout(_what_line(_as_item(item)))
 
     if len(what) > WHAT_LISTED:
-        lines.append(
-            QLabel(
-                translate("Adding", "and {COUNT} more").format(
-                    COUNT=count_txt(len(what) - WHAT_LISTED)
-                )
+        more = QLabel(
+            translate("Adding", "and {COUNT} more").format(
+                COUNT=count_txt(len(what) - WHAT_LISTED)
             )
         )
-
-    box = QWidget()
-    layout = QVBoxLayout(box)
-    layout.setContentsMargins(0, 0, 0, 0)
-    layout.setSpacing(2)
-
-    for line in lines:
-        dimmed(line)
-        layout.addWidget(line)
+        set_secondary(more)
+        layout.addWidget(more)
 
     return box
 
 
-def _option_lines(button: QRadioButton, option: AddOption) -> QVBoxLayout:
-    title_line = QHBoxLayout()
-    title_line.addWidget(button)
-    title_line.addStretch(1)
+def _as_item(item) -> AddedItem:
+    return item if isinstance(item, AddedItem) else AddedItem(item)
 
-    if option.note:
-        note = QLabel(option.note)
-        dimmed(note)
-        title_line.addWidget(note)
 
-    layout = QVBoxLayout()
-    layout.setSpacing(4)
-    layout.addLayout(title_line)
+def _what_line(item: AddedItem) -> QHBoxLayout:
+    line = QHBoxLayout()
+    line.setSpacing(8)
 
-    if option.about:
-        about = QLabel(option.about)
-        about.setWordWrap(True)
-        dimmed(about)
-        layout.addLayout(indented(about))
+    if item.icon:
+        icon = QLabel()
+        icon.setPixmap(
+            QIcon.fromTheme(item.icon).pixmap(QSize(ITEM_ICON_PX, ITEM_ICON_PX))
+        )
+        line.addWidget(icon)
 
-    if option.warning:
-        layout.addLayout(indented(warning_box(option.warning)))
+    # the whole name in its tooltip, cut short as it may be
+    line.addWidget(ElidedLabel(item.name), 1)
 
-    return layout
+    if item.count:
+        count = QLabel(item.count)
+        set_secondary(count)
+        line.addWidget(count)
+
+    return line
 
 
 def indented(widget: QWidget) -> QHBoxLayout:
@@ -364,16 +461,18 @@ def indented(widget: QWidget) -> QHBoxLayout:
     return line
 
 
-def warning_box(text: str) -> QFrame:
+def warning_box(text: str, is_boxed: bool = True) -> QFrame:
     """What may go wrong where an option is picked: the warning sign and the
-    words in bold, in a box of the colours of a field."""
+    words in bold, in a box of the colours of a field, or on what is
+    under it."""
 
     box = QFrame()
     box.setObjectName("addWarning")
-    box.setStyleSheet(
-        "#addWarning { background: palette(base); border: 1px solid palette(mid);"
-        " border-radius: 4px }"
-    )
+    if is_boxed:
+        box.setStyleSheet(
+            "#addWarning { background: palette(base);"
+            " border: 1px solid palette(mid); border-radius: 4px }"
+        )
 
     icon = QLabel()
     icon.setPixmap(
@@ -386,7 +485,7 @@ def warning_box(text: str) -> QFrame:
     bold(label)
 
     layout = QHBoxLayout(box)
-    layout.setContentsMargins(10, 7, 10, 7)
+    layout.setContentsMargins(*((10, 7, 10, 7) if is_boxed else (0, 0, 0, 0)))
     layout.setSpacing(8)
     layout.addWidget(icon)
     layout.addWidget(label, 1)
@@ -400,66 +499,27 @@ def many_cells_txt(count: int) -> str:
     )
 
 
-class ManyCellsDialog(QDialog):
+class ManyCellsDialog(QCustomMessageBox):
     """A warning before adding many cells at once, where how is settled
     already: added, or not, and nothing else to pick."""
 
     def __init__(self, count: int, parent=None):
-        super().__init__(parent)
-
-        self.setWindowTitle(translate("Adding", "Add", "Header"))
-        self.setMinimumWidth(420)
-
-        icon = QLabel()
-        icon.setPixmap(
-            QIcon.fromTheme("warning").pixmap(
-                QSize(WARNING_DIALOG_ICON_PX, WARNING_DIALOG_ICON_PX)
-            )
+        super().__init__(
+            QMessageBox.Warning,
+            translate("Adding", "Add", "Header"),
+            translate("Adding", "Add {COUNT} cells?").format(COUNT=count_txt(count)),
+            parent=parent,
         )
-        icon.setAlignment(Qt.AlignTop)
 
-        question = QLabel(
-            translate("Adding", "Add {COUNT} cells?").format(COUNT=count_txt(count))
-        )
-        bold(question)
-
-        warning = QLabel(many_cells_txt(count))
-        warning.setWordWrap(True)
+        self.setInformativeText(many_cells_txt(count))
 
         self._again = QCheckBox(translate("Adding", "Don't warn again"))
+        self.setCheckBox(self._again)
 
-        buttons = QDialogButtonBox()
-        add_button = buttons.addButton(
-            translate("Adding", "Add"), QDialogButtonBox.AcceptRole
+        self.setDefaultButton(
+            self.addButton(translate("Adding", "Add"), QMessageBox.AcceptRole)
         )
-        buttons.addButton(QDialogButtonBox.Cancel)
-        buttons.accepted.connect(self.accept)
-        buttons.rejected.connect(self.reject)
-
-        for button in buttons.buttons():
-            button.setAutoDefault(False)
-        add_button.setDefault(True)
-
-        words = QVBoxLayout()
-        words.setSpacing(6)
-        words.addWidget(question)
-        words.addWidget(warning)
-
-        top = QHBoxLayout()
-        top.setSpacing(14)
-        top.addWidget(icon)
-        top.addLayout(words, 1)
-
-        bottom = QHBoxLayout()
-        bottom.addWidget(self._again)
-        bottom.addStretch(1)
-        bottom.addWidget(buttons)
-
-        root = QVBoxLayout(self)
-        root.setContentsMargins(16, 16, 16, 16)
-        root.setSpacing(16)
-        root.addLayout(top)
-        root.addLayout(bottom)
+        self.addButton(QMessageBox.Cancel)
 
     @property
     def is_warned_again(self) -> bool:
@@ -479,6 +539,48 @@ class ManyCellsDialog(QDialog):
         return is_added, is_warned_again
 
 
+def show_failed(failed, is_nothing_added: bool, parent=None) -> None:
+    """What could not be added, and why, as (where, why): the first few of
+    them listed, all of them to copy. None at all said, where nothing that
+    was dropped or opened could be played."""
+
+    icon = QMessageBox.Critical if is_nothing_added else QMessageBox.Warning
+    title = translate("Adding", "Add", "Header")
+
+    if not failed:
+        QCustomMessageBox.critical(
+            parent,
+            title,
+            translate("Adding", "Nothing to add"),
+            info=translate("Adding", "None of these are videos, audio or playlists."),
+        )
+        return
+
+    if len(failed) == 1:
+        text = translate("Adding", "Couldn't add 1 item")
+    else:
+        text = translate("Adding", "Couldn't add {COUNT} items").format(
+            COUNT=count_txt(len(failed))
+        )
+
+    rows = list(failed[:FAILED_LISTED])
+    if len(failed) > FAILED_LISTED:
+        more = translate("Adding", "and {COUNT} more").format(
+            COUNT=count_txt(len(failed) - FAILED_LISTED)
+        )
+        rows.append((more, ""))
+
+    box = QCustomMessageBox(icon, title, text, QMessageBox.Ok, parent)
+    box.set_list(rows)
+    box.set_copy_text("\n".join(f"{where}\n    {why}" for where, why in failed))
+    box.exec_()
+    box.deleteLater()
+
+
+# how many of the things that could not be added are listed
+FAILED_LISTED = 5
+
+
 def _separator() -> QFrame:
     line = QFrame()
     line.setFrameShape(QFrame.HLine)
@@ -493,13 +595,7 @@ def _separator() -> QFrame:
     return line
 
 
-def bold(label: QLabel) -> None:
-    font = label.font()
+def bold(widget: QWidget) -> None:
+    font = widget.font()
     font.setBold(True)
-    label.setFont(font)
-
-
-def dimmed(label: QLabel) -> None:
-    palette = label.palette()
-    palette.setColor(QPalette.WindowText, palette.color(QPalette.PlaceholderText))
-    label.setPalette(palette)
+    widget.setFont(font)

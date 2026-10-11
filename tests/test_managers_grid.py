@@ -1,7 +1,7 @@
 from types import SimpleNamespace
 
 import pytest
-from PyQt5.QtWidgets import QApplication, QMessageBox, QWidget
+from PyQt5.QtWidgets import QApplication, QWidget
 
 from gridplayer.models.grid_state import GridCell, GridState
 from gridplayer.params.static import GridMode
@@ -118,8 +118,8 @@ def test_apply_grid_config_leave_fixed_with_holes(mocker):
         ],
     )
     question = mocker.patch(
-        "gridplayer.player.managers.grid.QCustomMessageBox.question",
-        return_value=QMessageBox.Yes,
+        "gridplayer.player.managers.grid.QCustomMessageBox.confirm",
+        return_value=True,
     )
 
     ok = manager.apply_grid_config(

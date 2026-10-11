@@ -603,8 +603,9 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
 
         QCustomMessageBox.information(
             self,
+            translate("SettingsDialog - Cookies", "Cookies", "Header"),
             translate("SettingsDialog - Cookies", "How to export cookies"),
-            howto,
+            info=howto,
         )
 
     def keep_index_selection(self):
@@ -709,7 +710,10 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
         )
 
         QCustomMessageBox.information(
-            self, self.tr("Screenshot file name format"), help_text
+            self,
+            self.tr("Screenshots"),
+            self.tr("Screenshot file name format"),
+            info=help_text,
         )
 
     def screenshot_format_selected(self, idx):
@@ -1006,11 +1010,11 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
 
         QCustomMessageBox.warning(
             self,
-            translate("Dialog", "Warning"),
-            self.tr(
-                "The screenshot file name format has unknown specifiers:"
-                " {SPECIFIERS}. Write %% for a percent sign."
-            ).format(SPECIFIERS=", ".join(unknown)),
+            self.tr("Screenshots"),
+            self.tr("Unknown specifiers in the file name: {SPECIFIERS}").format(
+                SPECIFIERS=", ".join(unknown)
+            ),
+            info=self.tr("Write %% for a percent sign."),
         )
 
         self.section_index.setCurrentItem(self.section_items[0])
