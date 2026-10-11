@@ -476,16 +476,6 @@ class OverlayBlock(QWidget):
     def set_is_paused(self, is_paused):
         self.play_pause_button.is_off = not is_paused
 
-    @pyqtSlot(bool)
-    def set_is_stopped(self, is_stopped):
-        """Stopped or playing, where the cell is one or the other: a cell
-        still loading, or failed, is told what it is by set_mode."""
-
-        if self._mode not in {OverlayMode.VIDEO, OverlayMode.STOPPED}:
-            return
-
-        self.set_mode(OverlayMode.STOPPED if is_stopped else OverlayMode.VIDEO)
-
     @property
     def mode(self) -> OverlayMode:
         return self._mode
@@ -761,9 +751,14 @@ class OverlayBlockFloating(OverlayBlock):
         super().set_is_chrome_visible(visible)
         self.refresh_opaque_mask()
 
-    def set_is_stopped(self, is_stopped):
-        super().set_is_stopped(is_stopped)
-        self.refresh_opaque_mask()
+    def set_mode(self, mode: OverlayMode):
+        # told again on every move of the mouse: cut again for a change only
+        is_changed = mode is not self.mode
+
+        super().set_mode(mode)
+
+        if is_changed:
+            self.refresh_opaque_mask()
 
     def set_drop_indicator(self, indicator: DropIndicator):
         super().set_drop_indicator(indicator)

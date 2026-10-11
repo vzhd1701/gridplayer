@@ -909,7 +909,8 @@ class VideoBlock(QWidget):
             (self.loop_end_change, overlay.set_loop_end),
             (self.seek_marks_change, overlay.set_seek_marks),
             (self.is_paused_change, overlay.set_is_paused),
-            (self.is_stopped_change, overlay.set_is_stopped),
+            # what it shows is the cell's to say, stopped or not
+            (self.is_stopped_change, self._sync_overlay_mode),
             (self.is_in_progress_change, overlay.set_is_in_progress),
             (self.is_muted_change, overlay.set_is_muted),
             (self.info_change, overlay.set_info_label),
@@ -1314,7 +1315,7 @@ class VideoBlock(QWidget):
         if self._is_error:
             return OverlayMode.ERROR
 
-        if self.is_stopped and not self.is_video_initialized:
+        if self.is_stopped:
             return OverlayMode.STOPPED
 
         # the status over the cell, whatever player is still behind it, as

@@ -27,7 +27,6 @@ def overlay():
     overlay.setAttribute(Qt.WA_DontShowOnScreen)
     overlay.resize(520, 200)
     overlay.set_color("#ffffff")
-    overlay.set_is_stopped(False)
     overlay.set_position(27000, LENGTH)
     overlay.show()
 
@@ -205,7 +204,6 @@ def cell():
 
     overlay = OverlayBlock(holder)
     overlay.set_color("#ffffff")
-    overlay.set_is_stopped(False)
     overlay.set_position(27000, LENGTH)
     holder.show()
 

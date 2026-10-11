@@ -38,7 +38,7 @@ def test_stopped_overlay_offers_play_only():
 
     assert not overlay.progress_bar.isHidden()
 
-    overlay.set_is_stopped(True)
+    overlay.set_mode(OverlayMode.STOPPED)
 
     assert not overlay.play_button.isHidden()
     assert overlay.stop_button.isHidden()
@@ -54,7 +54,7 @@ def test_stopped_overlay_offers_play_only():
 
     assert overlay.progress_bar.isHidden()
 
-    overlay.set_is_stopped(False)
+    overlay.set_mode(OverlayMode.VIDEO)
 
     assert not overlay.progress_bar.isHidden()
     assert not overlay.play_pause_button.isHidden()
@@ -143,8 +143,8 @@ def test_leaving_stopped_shows_timecode_without_resize():
     overlay = OverlayBlock()
     overlay.resize(400, 300)
     overlay.show()
-    overlay.set_is_stopped(True)
-    overlay.set_is_stopped(False)
+    overlay.set_mode(OverlayMode.STOPPED)
+    overlay.set_mode(OverlayMode.VIDEO)
     overlay.set_position(1500, 10_000)
 
     assert overlay.progress_bar.isEnabled()
@@ -173,15 +173,6 @@ def test_loading_overlay_offers_stop_only():
     stop = overlay.stop_button
     assert stop.x() < 40
     assert stop.y() > overlay.height() * 0.6
-
-
-def test_loading_overlay_keeps_its_mode_through_stopped_signals():
-    overlay = OverlayBlock()
-    overlay.set_mode(OverlayMode.LOADING)
-
-    overlay.set_is_stopped(False)
-
-    assert overlay.mode is OverlayMode.LOADING
 
 
 def test_error_overlay_offers_what_the_cell_can_do():

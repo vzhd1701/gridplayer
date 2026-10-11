@@ -31,7 +31,6 @@ def overlay():
     overlay.setAttribute(Qt.WA_DontShowOnScreen)
     overlay.resize(520, 200)
     overlay.set_color("#ffffff")
-    overlay.set_is_stopped(False)
     # before any of the marks, so the progress is not under them
     overlay.set_position(1000, LENGTH)
     overlay.show()

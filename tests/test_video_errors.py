@@ -913,6 +913,27 @@ class TestOnTheCell:
 
         start_load.assert_not_called()
 
+    def test_its_overlay_goes_from_stopped_straight_to_loading(self, make_cell):
+        """What the overlay shows is the cell's alone to say: told by the cell
+        it was no longer stopped, it went to a video's on its own first."""
+
+        block = make_cell("https://site.example/watch")
+        block.stop_playback()
+
+        assert block.overlay.mode is OverlayMode.STOPPED
+        assert block.overlay._is_on_chrome
+
+        modes = []
+        set_mode = block.overlay.set_mode
+        block.overlay.set_mode = lambda mode: (modes.append(mode), set_mode(mode))
+
+        block.set_pause(False)
+
+        assert block.is_loading
+        assert OverlayMode.VIDEO not in modes
+        assert block.overlay.mode is OverlayMode.LOADING
+        assert block.overlay._is_on_chrome
+
     def test_the_menu_stops_it_while_it_loads(self, make_cell):
         """The menu's Stop, and its key, as well as its own: it was there
         only once the video played."""

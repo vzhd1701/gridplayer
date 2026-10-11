@@ -26,7 +26,6 @@ def _shown(overlay, holder):
     holder.resize(640, 360)
     overlay.resize(640, 360)
     overlay.set_color("#ffffff")
-    overlay.set_is_stopped(False)
     overlay.set_position(27000, 60000)
 
     holder.show()

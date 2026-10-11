@@ -9,7 +9,11 @@ from PyQt5.QtWidgets import QApplication, QWidget
 
 from gridplayer.models.seek_mark import SeekMark, SeekMarkKind
 from gridplayer.widgets import video_overlay_elements
-from gridplayer.widgets.video_overlay import OverlayBlock, OverlayBlockFloating
+from gridplayer.widgets.video_overlay import (
+    OverlayBlock,
+    OverlayBlockFloating,
+    OverlayMode,
+)
 from gridplayer.widgets.video_overlay_elements import (
     BOOKMARK_COLOR,
     BOOKMARK_HOVER_PX,
@@ -46,7 +50,6 @@ def overlay():
     overlay.setAttribute(Qt.WA_DontShowOnScreen)
     overlay.resize(800, 200)
     overlay.set_color("#ffffff")
-    overlay.set_is_stopped(False)
     # before any of the marks, so the progress is not under them
     overlay.set_position(1000, LENGTH)
     overlay.show()
@@ -250,10 +253,10 @@ class TestTheStrip:
     def test_it_goes_with_the_bar_when_the_video_stops(self, overlay):
         overlay.set_seek_marks((GOAL,))
 
-        overlay.set_is_stopped(True)
+        overlay.set_mode(OverlayMode.STOPPED)
         assert not _strip(overlay).isVisible()
 
-        overlay.set_is_stopped(False)
+        overlay.set_mode(OverlayMode.VIDEO)
         assert _strip(overlay).isVisible()
 
     def test_a_video_with_no_length_has_none(self, overlay):
@@ -692,7 +695,6 @@ class TestOnTheOpaqueOverlay:
         overlay.make_opaque()
         overlay.resize(640, 360)
         overlay.set_color("#ffffff")
-        overlay.set_is_stopped(False)
         overlay.set_position(1000, LENGTH)
 
         holder.show()
