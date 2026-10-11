@@ -72,11 +72,16 @@ GLYPH_MIN = 20
 GLYPH_MAX = 52
 
 # A larger cell says it all larger, the sizes above grown by its shorter
-# side past this: three quarters as fast as the cell grows, up to twice as
-# large, a full-screen cell's.
+# side past this: three quarters as fast as the cell grows, up to half as
+# large again, a full-screen cell's.
 SCALE_FROM = 360
 SCALE_RATE = 0.75
-SCALE_MAX = 2.0
+SCALE_MAX = 1.5
+
+# What it is doing and the lines under it, this many points larger than the
+# app's font in a cell of SCALE_FROM, grown from there in whole points
+TITLE_POINTS = 2
+DETAIL_POINTS = 1
 
 FRAME_MS = 33
 
@@ -475,14 +480,14 @@ class VideoStatus(QWidget):
         key = (self.font().key(), self.scale())
 
         if self._fonts_of is None or self._fonts_of[0] != key:
-            base = QFont(self.font())
-            base.setPointSizeF(self._px(base.pointSizeF()))
+            points = self.font().pointSizeF()
 
-            bold = QFont(base)
+            bold = QFont(self.font())
+            bold.setPointSizeF(math.floor(self._px(points + TITLE_POINTS) + 0.5))
             bold.setBold(True)
 
-            small = QFont(base)
-            small.setPointSizeF(max(base.pointSizeF() - self._px(1), 7))
+            small = QFont(self.font())
+            small.setPointSizeF(math.floor(self._px(points + DETAIL_POINTS) + 0.5))
 
             self._fonts_of = (key, (bold, small))
 
