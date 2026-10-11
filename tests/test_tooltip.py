@@ -204,9 +204,16 @@ class TestTipWindow:
 
         box = tip.set_text(LONG)
 
-        char = QFontMetricsF(tip.font()).averageCharWidth()
-        assert box.width() <= math.ceil(TIP_MAX_CHARS * char) + 2 * TIP_PADDING_X + 2
-        assert box.height() > 2 * one_line
+        metrics = QFontMetricsF(tip.font())
+        cap = math.ceil(TIP_MAX_CHARS * metrics.averageCharWidth())
+        assert box.width() <= cap + 2 * TIP_PADDING_X + 2
+
+        # as many lines as that width takes, however wide the font's letters
+        # run against its average: two on Linux, three on Windows
+        needed = math.ceil(metrics.horizontalAdvance(LONG) / cap)
+        assert needed > 1
+        assert tip._doc.firstBlock().layout().lineCount() >= needed
+        assert box.height() > one_line
 
     def test_keeps_its_line_breaks(self):
         tip = TipWindow()

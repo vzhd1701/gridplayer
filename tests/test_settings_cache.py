@@ -84,11 +84,11 @@ def _said(dialog, text, timeout=5):
 
 
 class TestSavedAndShownAgain:
-    def test_out_of_the_box_on_disk_up_to_64_mb(self, make_dialog):
+    def test_out_of_the_box_on_disk_up_to_1024_mb(self, make_dialog):
         dialog = make_dialog()
 
         assert dialog.cacheMode.currentData() is CacheMode.DISK
-        assert dialog.cacheMaxMB.value() == 64
+        assert dialog.cacheMaxMB.value() == 1024
         assert dialog.cacheMaxMB.isEnabled()
 
     def test_what_was_stored(self, settings, make_dialog):
@@ -109,7 +109,7 @@ class TestSavedAndShownAgain:
 
         assert settings.get("cache/mode") is CacheMode.MEMORY
         # greyed out, as it was left
-        assert settings.get("cache/max_mb") == 64
+        assert settings.get("cache/max_mb") == 1024
 
 
 class TestTheSizeLimit:

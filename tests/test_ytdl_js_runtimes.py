@@ -45,6 +45,20 @@ def data_dir(monkeypatch, tmp_path):
     return app_data
 
 
+@pytest.fixture(autouse=True)
+def home(monkeypatch, tmp_path):
+    """An empty home and no Mac folders, so an engine installed on the
+    machine running the tests is never found in place of nothing."""
+
+    home = tmp_path / "home"
+    home.mkdir()
+
+    monkeypatch.setattr(js_runtime.Path, "home", classmethod(lambda cls: home))
+    monkeypatch.setattr(js_runtime.env, "IS_MACOS", False)
+
+    return home
+
+
 def test_every_engine_yt_dlp_can_drive_is_offered():
     """Not a vote for one of them: yt-dlp ranks them and picks."""
 
@@ -267,30 +281,20 @@ class TestTheInstallersOwnFolders:
         assert any(d.endswith("/.deno/bin") for d in searched)
         assert any(d.endswith("/.bun/bin") for d in searched)
 
-    def test_an_engine_installed_that_way_is_found(
-        self, monkeypatch, data_dir, no_setting, tmp_path
-    ):
-        home = tmp_path / "home"
+    def test_an_engine_installed_that_way_is_found(self, home, data_dir, no_setting):
         deno_bin = home / ".deno" / "bin"
         deno_bin.mkdir(parents=True)
         _fake_binary(deno_bin, "deno")
 
-        monkeypatch.setattr(js_runtime.Path, "home", classmethod(lambda cls: home))
-
         assert ytdl_js_runtimes()["deno"] == {"path": str(deno_bin / _exe("deno"))}
 
-    def test_the_data_folder_still_comes_first(
-        self, monkeypatch, data_dir, no_setting, tmp_path
-    ):
+    def test_the_data_folder_still_comes_first(self, home, data_dir, no_setting):
         """It is the one a person put there on purpose."""
 
-        home = tmp_path / "home"
         deno_bin = home / ".deno" / "bin"
         deno_bin.mkdir(parents=True)
         _fake_binary(deno_bin, "deno")
         _fake_binary(data_dir, "deno")
-
-        monkeypatch.setattr(js_runtime.Path, "home", classmethod(lambda cls: home))
 
         assert ytdl_js_runtimes()["deno"] == {"path": str(data_dir / _exe("deno"))}
 
