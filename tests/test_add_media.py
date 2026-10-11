@@ -1274,6 +1274,33 @@ class TestShownAsItIsRead:
         _wait_for_reading(manager)
 
     @pytest.fixture
+    def stuck(self, manager, mocker):
+        """D:/Stuck read as a link that does not answer: never telling how
+        far it has got, so never told to stop, until the test is over."""
+
+        stuck = SimpleNamespace(is_waiting=threading.Event(), gate=threading.Event())
+        read = add_videos.expand_inputs
+
+        def reading(uris, rules, progress=None, **kwargs):
+            if [str(uri) for uri in uris] != ["D:/Stuck"]:
+                return read(uris, rules, progress=progress, **kwargs)
+
+            stuck.is_waiting.set()
+            stuck.gate.wait(10)
+            return Expanded()
+
+        mocker.patch.object(add_videos, "expand_inputs", side_effect=reading)
+        mocker.patch.object(add_videos, "_is_read_slowly", side_effect=_is_far)
+        manager._show_reading_timer.setInterval(0)
+
+        yield stuck
+
+        if manager._dialog is not None:
+            manager._dialog.reject()
+        stuck.gate.set()
+        _wait_for_reading(manager)
+
+    @pytest.fixture
     def asked_mode(self):
         PlaylistSettings().set("playlist/add_mode", AddMode.ASK)
 
@@ -1301,7 +1328,7 @@ class TestShownAsItIsRead:
         told = mocker.spy(add_videos.AddChoiceDialog, "tell_reading")
         manager._reading = add_videos._Reading(add_videos._Request(["D:/Big"], None))
 
-        manager._tell_reading("files", 25700)
+        manager._tell_reading(manager._reading, "files", 25700)
         manager._show_reading()
 
         assert told.call_args.args[1:] == (
@@ -1425,6 +1452,61 @@ class TestShownAsItIsRead:
         assert manager._dialog is None
 
     @pytest.mark.usefixtures("asked_mode")
+    def test_thought_better_of_a_link_that_does_not_answer(
+        self, manager, stuck, tmp_path
+    ):
+        (b,) = _touch(tmp_path, "b.mp4")
+        manager.add_media(["D:/Stuck"])
+        dialog = self._dialog(manager)
+
+        manager.add_media([b])
+        dialog.reject()
+        _wait_for_reading(manager, timeout=1)
+
+        ((video,),) = manager.added
+        assert video.uri == b
+        assert manager._dialog is None
+
+    @pytest.mark.usefixtures("asked_mode")
+    def test_stopped_a_link_that_does_not_answer_is_let_go(
+        self, manager, slow, stuck, tmp_path, mocker
+    ):
+        manager._stop_wait_timer.setInterval(50)
+        (c,) = _touch(tmp_path, "c.mp4")
+        manager.add_media(["D:/Big", "D:/Stuck", "D:/Bigger", c])
+        dialog = self._dialog(manager)
+        asked = mocker.spy(dialog, "set_question")
+        _wait_until(lambda: slow_files_found(manager) > 3)
+        slow.gate.set()
+        _wait_until(lambda: stuck.is_waiting.is_set())
+
+        dialog.stop_asked.emit()
+        _wait_until(lambda: asked.called, timeout=2)
+
+        # read before it, and what needs no reading after it
+        _question, what, _options = asked.call_args.args[:3]
+        assert len(what) == 2
+        assert what[0].startswith("Big — ")
+        assert what[1] == "c.mp4"
+
+    @pytest.mark.usefixtures("asked_mode")
+    def test_what_a_link_let_go_of_reads_at_last_is_for_nobody(
+        self, manager, stuck, tmp_path
+    ):
+        manager.add_media(["D:/Stuck"])
+        dialog = self._dialog(manager)
+        reading = manager._reading
+        dialog.reject()
+
+        (b,) = _touch(tmp_path, "b.mp4")
+        manager._reader.done.emit(reading, Expanded(groups=(ListItem(uri=b),)))
+        manager._reader.progress.emit(reading, "files", 5, None)
+        QApplication.processEvents()
+
+        assert manager.added == []
+        assert manager._told is None
+
+    @pytest.mark.usefixtures("asked_mode")
     def test_read_quickly_asked_without_it(self, manager, tmp_path, mocker):
         asked = mocker.patch.object(manager, "_ask", return_value=None)
         _touch(tmp_path / "Shows", "1.mkv", "2.mkv")
@@ -1442,7 +1524,7 @@ class TestHowFarReadingHasGot:
         _touch(tmp_path / "A", "1.mkv", "2.mkv")
         _touch(tmp_path / "B", "1.mkv", "2.mkv", "3.mkv")
         told = []
-        manager._reader.progress.connect(lambda *args: told.append(args))
+        manager._reader.progress.connect(lambda _reading, *args: told.append(args))
 
         _add(manager, [tmp_path / "A", tmp_path / "B"])
 

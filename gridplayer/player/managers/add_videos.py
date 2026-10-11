@@ -86,6 +86,11 @@ _ADD_TO_CELL = "add_to_cell"
 # got: what takes less is asked about, or put into cells, once it is read
 SHOW_READING_AFTER_MS = 400
 
+# how long Stop waits for the reading to end with what it has found: a link
+# that is slow to answer is let go after it, and what was read before it
+# is what is added
+STOP_WAIT_MS = 2000
+
 # a question put in the dialog already up, its answer still to come
 _ASKING = "asking"
 
@@ -109,24 +114,60 @@ class _Request(NamedTuple):
 
 class _Reading:
     """What was added, read before it is put into cells: asked to stop, and
-    nothing of it kept, or to end with what is found by then."""
+    nothing of it kept, or to end with what is found by then.
+
+    What is read is kept a thing added at a time, for it to be let go of
+    with what was read by then: a link that does not answer is not given
+    up on until it times out, if ever, and stops nothing meanwhile."""
 
     def __init__(self, request: _Request):
         self.request = request
         self.stop = threading.Event()
         self.enough = threading.Event()
 
-        # thought better of: let go once the reading has stopped
-        self.is_cancelled = False
+        self._lock = threading.Lock()
+        self._groups = []
+        self._failed = []
+        self._read_count = 0
+        self._is_let_go = False
+
+    def keep(self, expanded: Expanded) -> None:
+        """What the next thing added was read as, nothing for one skipped."""
+
+        with self._lock:
+            if self._is_let_go:
+                return
+
+            self._groups.extend(expanded.groups)
+            self._failed.extend(expanded.failed)
+            self._read_count += 1
+
+    def expanded(self) -> Expanded:
+        with self._lock:
+            return Expanded(groups=tuple(self._groups), failed=tuple(self._failed))
+
+    def let_go(self) -> tuple[Expanded, list]:
+        """No more kept of what is read, and the reading asked to stop: what
+        was read by then, and the things added not read yet."""
+
+        with self._lock:
+            self._is_let_go = True
+            self.stop.set()
+
+            return (
+                Expanded(groups=tuple(self._groups), failed=tuple(self._failed)),
+                self.request.uris[self._read_count :],
+            )
 
 
 class _Reader(QObject):
     """Reads what was added off the interface thread, says how far it has
     got, and says when done."""
 
-    # what is told, how many, and of what, as reading_txt takes them; the
-    # files and items counted are all those found so far
-    progress = pyqtSignal(str, object, object)
+    # what is read, then what is told, how many, and of what, as
+    # reading_txt takes them; the files and items counted are all those
+    # found so far
+    progress = pyqtSignal(object, str, object, object)
 
     done = pyqtSignal(object, object)
 
@@ -155,7 +196,6 @@ class _Reader(QObject):
             self.done.emit(reading, expanded)
 
     def _read_each(self, reading, rules, max_list_bytes) -> Expanded:
-        groups, failed = [], []
         found = 0
 
         for uri in reading.request.uris:
@@ -164,29 +204,29 @@ class _Reader(QObject):
 
             # asked to end: what needs no reading is still added
             if reading.enough.is_set() and _is_read_slowly(uri):
+                reading.keep(Expanded())
                 continue
 
             tell = Throttled(
-                functools.partial(self._tell, found),
+                functools.partial(self._tell, reading, found),
                 stop=reading.stop,
                 enough=reading.enough,
             )
 
             expanded = expand_inputs([uri], rules, **list_readers(tell, max_list_bytes))
 
-            groups.extend(expanded.groups)
-            failed.extend(expanded.failed)
+            reading.keep(expanded)
             found += count_cells(expanded.groups, AddMode.CELL_PER_FILE)
 
-        return Expanded(groups=tuple(groups), failed=tuple(failed))
+        return reading.expanded()
 
-    def _tell(self, found, what, count, of=None):
+    def _tell(self, reading, found, what, count, of=None):
         # counted on from what was found of the things added before
         if what in _COUNTED:
             count += found
 
         with contextlib.suppress(RuntimeError):
-            self.progress.emit(what, count, of)
+            self.progress.emit(reading, what, count, of)
 
 
 class _CellReader(QObject):
@@ -384,6 +424,11 @@ class AddVideosManager(ManagerBase):
         self._show_reading_timer.setInterval(SHOW_READING_AFTER_MS)
         self._show_reading_timer.timeout.connect(self._show_reading)
 
+        self._stop_wait_timer = QTimer(self)
+        self._stop_wait_timer.setSingleShot(True)
+        self._stop_wait_timer.setInterval(STOP_WAIT_MS)
+        self._stop_wait_timer.timeout.connect(self._stop_waiting)
+
     @property
     def commands(self):
         return {
@@ -545,7 +590,7 @@ class AddVideosManager(ManagerBase):
         dialog = AddChoiceDialog.reading(
             question, [_uri_name(uri) for uri in uris], is_asked, self.parent()
         )
-        dialog.stop_asked.connect(reading.enough.set)
+        dialog.stop_asked.connect(self._stop_reading)
         dialog.finished.connect(functools.partial(self._dialog_closed, dialog))
 
         # as far as it had got before the dialog was up
@@ -555,11 +600,46 @@ class AddVideosManager(ManagerBase):
         self._dialog = dialog
         dialog.open()
 
-    def _tell_reading(self, what: str, count: int, of: int | None = None):
+    def _tell_reading(self, reading, what: str, count: int, of: int | None = None):
+        # one let go of may still say how far it got
+        if reading is not self._reading:
+            return
+
         self._told = (what, count, of)
 
         if self._dialog is not None:
             self._dialog.tell_reading(*reading_txt(what, count, of))
+
+    def _stop_reading(self):
+        """Stop pressed: the reading ends with what it has found, or is let
+        go of where it does not in a while."""
+
+        if self._reading is not None:
+            self._reading.enough.set()
+            self._stop_wait_timer.start()
+
+    def _stop_waiting(self):
+        """The reading did not end when asked: stuck waiting on a link. What
+        was read before it is what there is, with the rest that needs no
+        reading."""
+
+        reading = self._reading
+
+        if reading is None:
+            return
+
+        read, unread = reading.let_go()
+        rest = expand_inputs(
+            [uri for uri in unread if not _is_read_slowly(uri)], scan_rules()
+        )
+
+        self._read(
+            reading,
+            Expanded(
+                groups=(*read.groups, *rest.groups),
+                failed=(*read.failed, *rest.failed),
+            ),
+        )
 
     def _dialog_closed(self, dialog, result):
         if dialog is not self._dialog:
@@ -571,10 +651,15 @@ class AddVideosManager(ManagerBase):
         asked, self._asked = self._asked, None
 
         if asked is None:
-            # thought better of as it was read: once it stops, it is let go
-            if self._reading is not None:
-                self._reading.is_cancelled = True
-                self._reading.stop.set()
+            # thought better of as it was read: let go of there and then,
+            # for what is added next not to wait on a link that does not
+            # answer
+            reading, self._reading = self._reading, None
+
+            if reading is not None:
+                reading.let_go()
+                self._stop_wait_timer.stop()
+                self._done_with_request()
             return
 
         request, expanded, groups = asked
@@ -775,13 +860,14 @@ class AddVideosManager(ManagerBase):
         return True
 
     def _read(self, reading, expanded):
+        # one let go of: what it read is for nobody
+        if reading is not self._reading:
+            return
+
         self._reading = None
         self._show_reading_timer.stop()
+        self._stop_wait_timer.stop()
         self._restore_cursor()
-
-        if reading.is_cancelled:
-            self._done_with_request()
-            return
 
         if self._dialog is None:
             self._place(reading.request, expanded)
