@@ -40,6 +40,10 @@ BOX_SHADOW_ALPHA = 0.45
 # how far round a box its shadow reaches, for what is painted again with it
 BOX_SHADOW_MARGIN = BOX_SHADOW_RINGS + BOX_SHADOW_DROP + 1
 
+# the opaque overlay's active ring, cut out of a window with nothing see-
+# through about it: this much of its inside drawn as its shadow would be
+OPAQUE_RING_EDGE = 1
+
 # The bars' colours: pure red and blue glare over a video and in a window
 # alike, so quieter ones, readable over a light picture and a dark one; green
 # where the overlay's own colour is reddish. The grey over what is ahead of
@@ -2085,8 +2089,14 @@ class OverlayBorder(OverlayWidget):
             # Same idea as OverlayShortLabelFloating: clip the paint, then
             # setMask so the opaque parent only maps this ring (not the
             # full stacked-layout rect, which would cover the video).
-            painter.setBrush(QBrush(self.color))
+            # A window's shape has no shadow to give, so the ring's inner
+            # edge is drawn in the grey of the shadow's darkest line in place
+            # of one: the ring alone is lost on a picture of its own colour.
+            painter.setBrush(QBrush(self.color_contrast_mid))
             painter.setClipPath(self._ring_path())
+            painter.drawRect(self.rect())
+            painter.setBrush(QBrush(self.color))
+            painter.setClipPath(self._ring_path(self.border_width - OPAQUE_RING_EDGE))
             painter.drawRect(self.rect())
             self._apply_ring_mask()
             return
@@ -2097,11 +2107,11 @@ class OverlayBorder(OverlayWidget):
     def _apply_ring_mask(self):
         self.setMask(self._ring_region())
 
-    def _ring_path(self) -> QPainterPath:
+    def _ring_path(self, width: int | None = None) -> QPainterPath:
         path = QPainterPath()
         path.setFillRule(Qt.OddEvenFill)
         path.addRect(QRectF(self.rect()))
-        inset = float(self.border_width)
+        inset = float(self.border_width if width is None else width)
         path.addRect(
             QRectF(
                 inset,

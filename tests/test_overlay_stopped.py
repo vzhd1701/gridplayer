@@ -18,7 +18,10 @@ from gridplayer.widgets.video_overlay import (
     OverlayBlockFloating,
     OverlayMode,
 )
-from gridplayer.widgets.video_overlay_elements import OverlayDropIndicator
+from gridplayer.widgets.video_overlay_elements import (
+    OverlayBorder,
+    OverlayDropIndicator,
+)
 
 
 @pytest.fixture(scope="module", autouse=True)
@@ -805,6 +808,29 @@ def test_drop_indicator_glyph_change_does_not_reset_mask():
 
     assert not badge.isHidden()
     assert badge.mask() == mask
+
+
+def test_opaque_active_ring_shows_on_a_picture_of_its_own_colour():
+    """Cut out of a window, it has no shadow to give: white on a white
+    picture, it was not there at all. Its inside edge is drawn in the grey
+    of the shadow instead."""
+
+    parent = QWidget()
+    parent.is_opaque = True
+    ring = OverlayBorder(parent=parent)
+    ring.color = "#ffffff"
+    ring.resize(100, 80)
+
+    image = QImage(100, 80, QImage.Format_ARGB32)
+    image.fill(Qt.transparent)
+    ring.render(image, QPoint(0, 0), QRegion(), QWidget.DrawChildren)
+
+    width = ring.border_width
+    row = [image.pixelColor(x, 40) for x in range(width + 1)]
+
+    assert {color.name() for color in row[: width - 1]} == {"#ffffff"}
+    assert row[width - 1].name() == ring.color_contrast_mid.name() == "#9b9b9b"
+    assert row[width].alpha() == 0
 
 
 def test_opaque_mask_not_reapplied_when_unchanged(mocker):
