@@ -5,7 +5,7 @@ links alike."""
 from pathlib import Path
 
 import pytest
-from PyQt5.QtCore import QMimeData
+from PyQt5.QtCore import QMimeData, QUrl
 from PyQt5.QtWidgets import QApplication
 
 from gridplayer.models.media_list import ListItem, ListSource, MediaList
@@ -16,6 +16,7 @@ from gridplayer.utils.files import (
     VIDEO_MIME,
     cell_mime_data,
     extract_mime_list,
+    extract_mime_uris,
     extract_mime_video,
 )
 
@@ -125,3 +126,42 @@ def test_an_item_read_back_from_text_is_a_path_or_a_link():
     assert ListItem.model_validate_json('{"uri": "/shows/a.mkv"}').uri == Path(
         "/shows/a.mkv"
     )
+
+
+class TestFilesDropped:
+    @pytest.fixture
+    def folder(self, tmp_path):
+        for name in ("a.mkv", "b.MP3", "c.m3u", "d.gpls", "notes.txt", "photo.jpg"):
+            (tmp_path / name).write_bytes(b"")
+        (tmp_path / "no_extension").write_bytes(b"")
+        (tmp_path / "sub").mkdir()
+        return tmp_path
+
+    def _dropped(self, paths):
+        mime_data = QMimeData()
+        mime_data.setUrls([QUrl.fromLocalFile(str(path)) for path in paths])
+        return [Path(uri).name for uri in extract_mime_uris(mime_data)]
+
+    def test_media_lists_playlists_and_folders_taken(self, folder):
+        names = ("a.mkv", "b.MP3", "c.m3u", "d.gpls", "sub")
+
+        assert self._dropped(folder / name for name in names) == list(names)
+
+    @pytest.mark.parametrize("name", ["notes.txt", "photo.jpg", "no_extension"])
+    def test_other_files_left_out(self, folder, name):
+        assert self._dropped([folder / name]) == []
+
+    def test_left_out_from_among_the_rest(self, folder):
+        assert self._dropped([folder / "notes.txt", folder / "a.mkv"]) == ["a.mkv"]
+
+    def test_missing_file_left_out(self, folder):
+        assert self._dropped([folder / "gone.mkv"]) == []
+
+    def test_links_taken_whatever_they_end_in(self):
+        mime_data = QMimeData()
+        mime_data.setText("http://tv/notes.txt\nhttps://youtu.be/x")
+
+        assert extract_mime_uris(mime_data) == [
+            "http://tv/notes.txt",
+            "https://youtu.be/x",
+        ]

@@ -6,9 +6,13 @@ from PyQt5.QtCore import QByteArray, QMimeData
 
 from gridplayer.models.media_list import MediaList
 from gridplayer.models.video import VideoBlockMime
+from gridplayer.params.extensions import SUPPORTED_LIST_EXT, SUPPORTED_MEDIA_EXT
 from gridplayer.utils.misc import is_url
 
 VIDEO_MIME = "application/x-gridplayer-video"
+
+# files dropped or pasted that are taken: anything else is left out
+_KNOWN_FILE_EXT = frozenset(SUPPORTED_MEDIA_EXT | SUPPORTED_LIST_EXT | {"gpls"})
 
 # the list a dragged cell plays from, for another player to play it from too
 LIST_MIME = "application/x-gridplayer-list"
@@ -113,14 +117,24 @@ def extract_mime_uris(dnd_data: QMimeData) -> list[str]:
 
 def _filter_uris(uris: list[str]) -> list[str]:
     # a folder is played as the list of what is in it
-    def _is_existing_file_or_folder(u: str) -> bool:
+    def _is_playable_file_or_folder(u: str) -> bool:
         try:
             path = Path(u)
-            return path.is_file() or path.is_dir()
+            if path.is_dir():
+                return True
+            return _is_known_file_name(path.name) and path.is_file()
         except OSError:
             return False
 
-    return [u for u in uris if is_url(u) or _is_existing_file_or_folder(u)]
+    return [u for u in uris if is_url(u) or _is_playable_file_or_folder(u)]
+
+
+def _is_known_file_name(name: str) -> bool:
+    """A media file, a list file or a playlist, by its extension."""
+
+    _, dot, extension = name.rpartition(".")
+
+    return bool(dot) and extension.lower() in _KNOWN_FILE_EXT
 
 
 def get_playlist_path(uris: list[str | Path]) -> Path | None:
