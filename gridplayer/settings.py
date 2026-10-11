@@ -212,6 +212,9 @@ _default_settings = {
     # number on clients that have thought about it separately
     "network/timeout": 0,
     "network/verify_tls": True,
+    # Streamlink refuses an http link in an https playlist; VLC, mpv and
+    # ffmpeg follow it, and some IPTV hosts depend on that
+    "network/allow_http_in_playlists": True,
     "recent_list_videos": RecentListVideos(),
     "recent_list_playlists": RecentListPlaylists(),
     # the playlist file open when the player was last closed, empty for none

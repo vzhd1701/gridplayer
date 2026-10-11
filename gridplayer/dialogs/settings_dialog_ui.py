@@ -645,6 +645,11 @@ class Ui_SettingsDialog:
         self.networkVerifyTLS = QtWidgets.QCheckBox(self.page_streaming_network)
         self.networkVerifyTLS.setObjectName("networkVerifyTLS")
         self.lay_page_streaming_network.addWidget(self.networkVerifyTLS)
+        self.networkAllowHTTPInPlaylists = QtWidgets.QCheckBox(
+            self.page_streaming_network
+        )
+        self.networkAllowHTTPInPlaylists.setObjectName("networkAllowHTTPInPlaylists")
+        self.lay_page_streaming_network.addWidget(self.networkAllowHTTPInPlaylists)
         self.networkRelayNote = QtWidgets.QLabel(self.page_streaming_network)
         self.networkRelayNote.setWordWrap(True)
         self.networkRelayNote.setObjectName("networkRelayNote")
@@ -1114,6 +1119,15 @@ class Ui_SettingsDialog:
         )
         self.networkVerifyTLS.setText(
             _translate("SettingsDialog", "Verify TLS certificates")
+        )
+        self.networkAllowHTTPInPlaylists.setToolTip(
+            _translate(
+                "SettingsDialog",
+                "Some streams have an https playlist that links to http video. Turn this off to block those links.",
+            )
+        )
+        self.networkAllowHTTPInPlaylists.setText(
+            _translate("SettingsDialog", "Allow http links in https playlists")
         )
         self.networkRelayNote.setText(
             _translate(

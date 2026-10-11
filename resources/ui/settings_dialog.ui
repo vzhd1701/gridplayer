@@ -1053,6 +1053,16 @@ Custom: use the proxy address you enter.</string>
           </widget>
          </item>
          <item>
+          <widget class="QCheckBox" name="networkAllowHTTPInPlaylists">
+           <property name="toolTip">
+            <string>Some streams have an https playlist that links to http video. Turn this off to block those links.</string>
+           </property>
+           <property name="text">
+            <string>Allow http links in https playlists</string>
+           </property>
+          </widget>
+         </item>
+         <item>
           <widget class="QLabel" name="networkRelayNote">
            <property name="text">
             <string>These settings apply to http and https links. Other links, such as rtsp and rtmp, are opened by the player itself, and only the user agent applies to them.</string>

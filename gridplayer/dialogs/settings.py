@@ -244,6 +244,7 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
             "network/force_ipv4": self.networkForceIPv4,
             "network/timeout": self.networkTimeout,
             "network/verify_tls": self.networkVerifyTLS,
+            "network/allow_http_in_playlists": self.networkAllowHTTPInPlaylists,
         }
 
         self.ui_customize()

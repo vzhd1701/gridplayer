@@ -11,9 +11,13 @@ from gridplayer.models.stream import (
     Streams,
     StreamSessionOpts,
 )
+from gridplayer.utils.http_in_playlists import allow_http_in_playlists
 from gridplayer.utils.network import needs_relay
 from gridplayer.utils.url_resolve.static import BadURLException, ResolvedVideo
 from gridplayer.utils.url_resolve.stream_detect import is_http_live_stream
+
+# every resolver is a subclass of this, so no playlist is read before it
+allow_http_in_playlists()
 
 # every URL relayed this way shares one session: they carry no headers of
 # their own, so there is nothing to tell them apart by

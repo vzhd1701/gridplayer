@@ -25,6 +25,7 @@ NETWORK_KEYS = (
     "network/force_ipv4",
     "network/timeout",
     "network/verify_tls",
+    "network/allow_http_in_playlists",
 )
 
 
@@ -100,6 +101,7 @@ class TestWhatIsStoredShowsUpOnThePage:
         assert not dialog.networkForceIPv4.isChecked()
         assert dialog.networkTimeout.value() == 0
         assert dialog.networkVerifyTLS.isChecked()
+        assert dialog.networkAllowHTTPInPlaylists.isChecked()
 
     def test_a_proxy_that_was_stored(self, settings, make_dialog):
         settings.set("network/proxy_mode", ProxyMode.CUSTOM)
@@ -126,6 +128,7 @@ class TestWhatIsOnThePageIsStored:
         dialog.networkForceIPv4.setChecked(True)
         dialog.networkTimeout.setValue(30)
         dialog.networkVerifyTLS.setChecked(False)
+        dialog.networkAllowHTTPInPlaylists.setChecked(False)
 
         dialog.save_settings()
 
@@ -133,6 +136,7 @@ class TestWhatIsOnThePageIsStored:
         assert settings.get("network/force_ipv4") is True
         assert settings.get("network/timeout") == 30
         assert settings.get("network/verify_tls") is False
+        assert settings.get("network/allow_http_in_playlists") is False
 
 
 class TestTheAddressOnlyMattersForACustomProxy:
@@ -200,6 +204,7 @@ class TestTheTestButton:
         dialog.networkForceIPv4.setChecked(True)
         dialog.networkTimeout.setValue(30)
         dialog.networkVerifyTLS.setChecked(False)
+        dialog.networkAllowHTTPInPlaylists.setChecked(False)
 
         opts = dialog.network_opts_on_page
 

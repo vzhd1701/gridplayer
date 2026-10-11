@@ -12,6 +12,7 @@ from streamlink.stream.http import HTTPStream
 from streamlink.stream.wrappers import StreamIOIterWrapper, StreamIOThreadWrapper
 
 from gridplayer.models.stream import Stream, StreamFragment, StreamSessionOpts
+from gridplayer.utils.http_in_playlists import allow_http_in_playlists
 from gridplayer.utils.stream_proxy.fragments import FRAGMENT_INIT, FRAGMENT_SELF
 from gridplayer.utils.stream_proxy.m3u8 import (
     build_master_playlist,
@@ -32,6 +33,9 @@ SINGLE_SEGMENT_DURATION = 86400.0
 
 M3U8_CONTENT_TYPE = "application/vnd.apple.mpegurl"
 MPD_CONTENT_TYPE = "application/dash+xml"
+
+# the proxy reads playlists itself, and may be the first thing that does
+allow_http_in_playlists()
 
 
 class HTTPStreamProxy(HTTPStream):
