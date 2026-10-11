@@ -45,7 +45,7 @@ from gridplayer.vlc_player.static import (
     wanted_audio_track_id,
     wanted_subtitle_track_id,
 )
-from gridplayer.vlc_player.vlc_errors import vlc_errors_since
+from gridplayer.vlc_player.vlc_errors import note_video_thread, vlc_errors_since
 
 MEDIA_EXTRACT_RETRY_TIME = 0.1
 
@@ -290,6 +290,7 @@ class VlcPlayerBase(ABC):
 
     def _note_vlc_thread(self, event):
         self._vlc_threads.add(threading.get_ident())
+        note_video_thread()
 
     def cb_buffering(self, event):
         # exactly zero, not rounded down to it: a slow host starts at a
@@ -559,12 +560,13 @@ class VlcPlayerBase(ABC):
         """What VLC said went wrong with this video: since it began to open
         it, or once it plays, in the moments before."""
 
-        since = self._timeout_init_start or 0
+        opened_at = self._timeout_init_start or 0
+        since = opened_at
 
         if self.is_video_initialized:
             since = max(since, time() - VLC_SAID_PLAYING_S)
 
-        return vlc_errors_since(since, self._vlc_threads)
+        return vlc_errors_since(since, self._vlc_threads, opened_at=opened_at)
 
     @abstractmethod
     def notify_update_status(self, status, percent=0): ...

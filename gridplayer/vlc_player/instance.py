@@ -19,7 +19,14 @@ from gridplayer.settings import Settings
 from gridplayer.utils.network import vlc_user_agent
 from gridplayer.utils.win32_com import keep_mta_alive
 from gridplayer.vlc_player.libvlc import vlc
-from gridplayer.vlc_player.vlc_errors import is_keeping_vlc_errors, keep_vlc_error
+from gridplayer.vlc_player.vlc_errors import (
+    http_refusal,
+    is_http_answer,
+    is_keeping_vlc_errors,
+    is_said_of_vlc_itself,
+    keep_vlc_error,
+    note_vlc_object,
+)
 
 # Prepare `vsnprintf` function
 if env.IS_WINDOWS:
@@ -36,6 +43,36 @@ vsnprintf.argtypes = (
     ctypes.c_char_p,
     ctypes.c_void_p,
 )
+
+# The VLC object a log line was said as. vlc.py's binding of it takes the
+# object's id in, where the C function hands its type name, its header and
+# its id back.
+_log_get_object = ctypes.CFUNCTYPE(
+    None,
+    vlc.Log_ptr,
+    ctypes.POINTER(ctypes.c_char_p),
+    ctypes.POINTER(ctypes.c_char_p),
+    ctypes.POINTER(ctypes.c_size_t),
+)(("libvlc_log_get_object", vlc.dll))
+
+
+def _vlc_object_of(ctx) -> int:
+    """Which VLC object said it, as a number of its own; 0 for none."""
+
+    vlc_object = ctypes.c_size_t()
+    _log_get_object(ctx, None, None, ctypes.byref(vlc_object))
+
+    return vlc_object.value
+
+
+def _vlc_object_type_of(ctx) -> bytes:
+    """What kind of VLC object said it: b"demux", b"stream", ..."""
+
+    name = ctypes.c_char_p()
+    _log_get_object(ctx, ctypes.byref(name), None, None)
+
+    return name.value or b""
+
 
 VLC_USER_AGENT_NAME = "Mozilla"
 
@@ -177,18 +214,42 @@ class InstanceVLC:
         def _cb(ptr_data, level, ctx, fmt, args):
             log_level = self.log_level_map[vlc.LogLevel(level)]
 
+            # whatever is said, by whom: what a video's object says on a
+            # thread of no video, fetching its segments, is the video's
+            vlc_object = _vlc_object_of(ctx)
+            note_vlc_object(vlc_object)
+
             # kept whatever is logged, for a video that fails to tell
-            is_kept = log_level >= logging.ERROR and is_keeping_vlc_errors()
+            is_kept = (
+                log_level >= logging.ERROR
+                and not is_said_of_vlc_itself(fmt)
+                and is_keeping_vlc_errors()
+            )
+
+            # what a server answered the segments of a stream being fetched,
+            # said nowhere else; the HTTP access says it as an error itself
+            is_answer = (
+                log_level == logging.DEBUG
+                and is_http_answer(fmt)
+                and _vlc_object_type_of(ctx) == b"demux"
+            )
+
             is_logged = log_level >= self._vlc_log_level
 
-            if not is_kept and not is_logged:
+            if not (is_kept or is_answer or is_logged):
                 return
 
             # formatted once: the arguments are used up by it on some systems
             log_head, log_msg = self._format_log_msg(args, ctx, fmt)
 
             if is_kept:
-                keep_vlc_error(log_msg)
+                keep_vlc_error(log_msg, vlc_object)
+
+            if is_answer:
+                refusal = http_refusal(log_msg)
+
+                if refusal is not None and is_keeping_vlc_errors():
+                    keep_vlc_error(refusal, vlc_object)
 
             if not is_logged:
                 return

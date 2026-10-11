@@ -261,6 +261,8 @@ class TestVLCSaid:
     def _said(self, monkeypatch):
         monkeypatch.setattr(vlc_errors, "_said", type(vlc_errors._said)(maxlen=64))
         monkeypatch.setattr(vlc_errors, "_counted", {})
+        monkeypatch.setattr(vlc_errors, "_heard", {})
+        monkeypatch.setattr(vlc_errors, "_video_threads", set())
 
     def test_a_flood_kept_a_few_a_second(self, monkeypatch):
         """A stream gone bad says the same over and over, each put
@@ -340,12 +342,122 @@ class TestVLCSaid:
         player._vlc_threads.add(threading.get_ident())
         player.is_video_initialized = True
 
-        vlc_errors._said.append((time.time() - 3000, threading.get_ident(), "old"))
+        vlc_errors._said.append((time.time() - 3000, threading.get_ident(), 0, "old"))
         vlc_errors.keep_vlc_error("now")
 
         player.error("Video stopped unexpectedly")
 
         assert player.errors == [("Video stopped unexpectedly", ("now",))]
+
+    def test_what_its_segments_fetched_elsewhere_said(self):
+        """The segments of a stream are fetched on a thread of their own,
+        that no event comes on, by an object that speaks on the video's
+        threads as well."""
+
+        demux = 0x7F01
+        began = time.time()
+        vlc_errors.note_video_thread()
+        vlc_errors.note_vlc_object(demux)
+
+        _on_a_thread(lambda: vlc_errors.keep_vlc_error("http: HTTP/1.1 403", demux))
+
+        assert vlc_errors.vlc_errors_since(began, {threading.get_ident()}) == [
+            "http: HTTP/1.1 403"
+        ]
+
+    def test_another_video_s_threads_left_to_it_whoever_speaks(self):
+        """An object of the whole process, heard on this video's thread,
+        says something on another video's: that is the other one's."""
+
+        shared = 0x7F02
+        vlc_errors.note_vlc_object(shared)
+
+        def theirs():
+            vlc_errors.note_video_thread()
+            vlc_errors.keep_vlc_error("audio output: theirs", shared)
+
+        _on_a_thread(theirs)
+
+        assert vlc_errors.vlc_errors_since(0, {threading.get_ident()}) == []
+
+    def test_an_object_heard_before_the_video_opened_left_out(self):
+        """The ids of VLC's objects are used again once they are gone."""
+
+        reused = 0x7F03
+        vlc_errors.note_vlc_object(reused)
+        time.sleep(0.01)
+        opened_at = time.time()
+
+        _on_a_thread(lambda: vlc_errors.keep_vlc_error("someone else's", reused))
+
+        said = vlc_errors.vlc_errors_since(
+            opened_at, {threading.get_ident()}, opened_at=opened_at
+        )
+
+        assert said == []
+
+    def test_once_it_plays_its_objects_heard_since_it_opened(self):
+        """Heard as it opened, long before what went wrong while it played."""
+
+        demux = 0x7F04
+        opened_at = time.time() - 600
+        vlc_errors._heard[threading.get_ident()] = {demux: opened_at + 1}
+        now = time.time()
+
+        _on_a_thread(lambda: vlc_errors.keep_vlc_error("adaptive: gone", demux))
+
+        said = vlc_errors.vlc_errors_since(
+            now - 10, {threading.get_ident()}, opened_at=opened_at
+        )
+
+        assert said == ["adaptive: gone"]
+
+    @pytest.mark.parametrize(
+        ("fmt", "is_its_own"),
+        [
+            (b"INPUT_CONTROL_SET_POSITION %2.1f%% failed", True),
+            (b"HTTP %d error", False),
+            (None, False),
+        ],
+    )
+    def test_what_vlc_says_of_itself_told_apart(self, fmt, is_its_own):
+        """Rewinding a dead stream, each time :input-repeat starts it over:
+        thousands of times a second, of nothing but VLC's own doing."""
+
+        assert vlc_errors.is_said_of_vlc_itself(fmt) is is_its_own
+
+    @pytest.mark.parametrize(
+        ("said", "refusal"),
+        [
+            (
+                "http: incoming response:\nHTTP/1.0 403 Forbidden\nServer: x",
+                "http: HTTP/1.0 403 Forbidden",
+            ),
+            (
+                "http: incoming response:\nHTTP/1.1 503 Service Unavailable\n",
+                "http: HTTP/1.1 503 Service Unavailable",
+            ),
+            ("http: incoming response:\nHTTP/1.1 200 OK\nServer: x", None),
+            ("http: incoming response:\nHTTP/2 404 \n", "http: HTTP/2 404"),
+        ],
+    )
+    def test_a_server_turning_vlc_away(self, said, refusal):
+        assert vlc_errors.is_http_answer(b"incoming response:\n%s")
+        assert vlc_errors.http_refusal(said) == refusal
+
+    def test_a_server_turning_vlc_away_tells_the_card(self):
+        error = player_error(
+            "Video stopped before initialization",
+            ("http: HTTP/1.1 403 Forbidden", "adaptive: Failed to create demuxer"),
+        )
+
+        assert (error.where, error.code) == ("Server", "HTTP 403")
+
+
+def _on_a_thread(said):
+    thread = threading.Thread(target=said)
+    thread.start()
+    thread.join()
 
 
 class _Player(VlcPlayerBase):
