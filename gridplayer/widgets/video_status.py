@@ -10,7 +10,6 @@ doing, a bar, and where it is in the steps it goes through.
 import dataclasses
 import math
 import time
-from dataclasses import dataclass
 from enum import Enum, auto
 
 from PyQt5.QtCore import QPointF, QRect, QRectF, Qt, QTimer
@@ -26,6 +25,7 @@ from PyQt5.QtGui import (
 from PyQt5.QtWidgets import QGraphicsOpacityEffect, QSizePolicy, QWidget
 
 from gridplayer.utils.qt import translate
+from gridplayer.utils.video_errors import ShownError
 from gridplayer.widgets.cell_chrome import (
     CHROME_ALPHA,
     TEXT_ALPHA,
@@ -137,20 +137,6 @@ class StepState(Enum):
     TODO = auto()
 
 
-@dataclass(frozen=True)
-class ErrorCard:
-    """Why the video could not play, as its cell says it: a few words, a
-    line on what that means, the tag of where it broke and its code, and a
-    note of what happens next."""
-
-    title: str
-    about: str = ""
-    where: str = ""
-    code: str = ""
-    note: str = ""
-    icon: str = "error"
-
-
 class StatusMode(Enum):
     LOADING = auto()
     ERROR = auto()
@@ -211,7 +197,9 @@ class VideoStatus(QWidget):
         self._is_progress_known = False
         self._steps: tuple[tuple[str, StepState], ...] = ()
 
-        self._error: ErrorCard | None = None
+        # why it could not play, and what happens next
+        self._error: ShownError | None = None
+        self._note = ""
 
         # the countdown to trying again: from what, and from when
         self._countdown_total = 0
@@ -253,10 +241,13 @@ class VideoStatus(QWidget):
         elif icon in {"error", "network-error"}:
             self._mode = StatusMode.ERROR
 
+            is_network = icon == "network-error"
+
             if self._error is None:
-                self._error = ErrorCard(title=self._text, icon=icon)
+                self._error = ShownError(title=self._text, is_network=is_network)
+                self._note = ""
             else:
-                self._error = dataclasses.replace(self._error, icon=icon)
+                self._error = dataclasses.replace(self._error, is_network=is_network)
         else:
             self._mode = StatusMode.ICON
 
@@ -317,8 +308,14 @@ class VideoStatus(QWidget):
         return self._countdown_left
 
     @property
-    def error(self) -> ErrorCard | None:
+    def error(self) -> ShownError | None:
         return self._error if self._mode is StatusMode.ERROR else None
+
+    @property
+    def note(self) -> str:
+        """What happens next, under the error."""
+
+        return self._note if self._mode is StatusMode.ERROR else ""
 
     def show_loading(
         self,
@@ -362,11 +359,12 @@ class VideoStatus(QWidget):
         self._countdown_total = max(seconds_total, 1)
         self._countdown_told_at = time.monotonic()
 
-    def show_error(self, card: ErrorCard):
+    def show_error(self, error: ShownError, note: str = ""):
         self._mode = StatusMode.ERROR
-        self._icon_name = card.icon
-        self._text = card.title
-        self._error = card
+        self._icon_name = error.icon
+        self._text = error.title
+        self._error = error
+        self._note = note
 
         self._sync_ticker()
         self.update()
@@ -545,7 +543,7 @@ class VideoStatus(QWidget):
         if error.where or error.code:
             rows.append((self._px(TAG_HEIGHT), self._row_tag, 60))
 
-        if error.note:
+        if self._note:
             rows.append((small_height, self._row_note, 10))
 
         return rows
@@ -884,7 +882,7 @@ class VideoStatus(QWidget):
         box = QRect(0, 0, int(side), int(side))
         box.moveCenter(rect.center().toPoint())
 
-        icon = self._error.icon or "error"
+        icon = self._error.icon
 
         painter.save()
         painter.setOpacity(TEXT_ALPHA / 255)
@@ -964,4 +962,4 @@ class VideoStatus(QWidget):
     def _row_note(self, painter, rect):
         _, small = self._fonts()
         _, _, dim, _ = self._colors()
-        self._draw_line(painter, rect, self._error.note, small, dim)
+        self._draw_line(painter, rect, self._note, small, dim)

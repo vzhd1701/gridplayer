@@ -1,7 +1,8 @@
 """Why a video would not play, as its cell says it and its Details window
 tells it in full: from what a resolver raised finding it behind its link,
 what the stream proxy was answered fetching it, what VLC said opening it,
-or the file itself gone.
+or the file itself gone. A list that could not be read is told the same
+way in the List window.
 """
 
 import dataclasses
@@ -39,9 +40,10 @@ _CHAIN_TOLD = 6
 
 
 @dataclass(frozen=True)
-class VideoError:
-    """What went wrong: a few words, a line on what that means, where it
-    broke and its code for the tag, and in full for the Details window."""
+class ShownError:
+    """What went wrong, as it is shown: a few words, a line on what that
+    means, where it broke and its code for the tag, and in full for the
+    Details window."""
 
     title: str
     about: str = ""
@@ -53,7 +55,8 @@ class VideoError:
     # as raised, and what VLC said
     raw: str = ""
     is_network: bool = False
-    at: float = field(default_factory=time.time)
+    # when, not what: the same thing gone wrong again is the same error
+    at: float = field(default_factory=time.time, compare=False)
 
     @property
     def icon(self) -> str:
@@ -80,18 +83,23 @@ def read_code_full_txt(read: ReadError) -> str:
     return error_tag(read)[1]
 
 
-def _of_read_error(read: ReadError, raw: str) -> VideoError:
-    title, about = read_error_txts(read, is_video=True)
+def shown_read_error(
+    read: ReadError, raw: str | None = None, is_video: bool = True
+) -> ShownError:
+    """Why a video behind a link, or a list, could not be read; told in full
+    as raised, unless what to tell is given."""
+
+    title, about = read_error_txts(read, is_video=is_video)
     where, code = error_tag(read)
 
-    return VideoError(
+    return ShownError(
         title=title,
         about=about,
         where=where,
         code=code,
         code_full=read_code_full_txt(read),
         host=read.host,
-        raw=raw,
+        raw=read.raw if raw is None else raw,
         is_network=read.is_network,
     )
 
@@ -113,16 +121,16 @@ def chain_txt(error: BaseException) -> str:
     return "\n".join(lines)
 
 
-def resolve_error(error: BaseException, url: str) -> VideoError:
+def resolve_error(error: BaseException, url: str) -> ShownError:
     """A resolver could not find the video behind the link."""
 
     read = read_error_of(error, ListSource(kind=ListSourceKind.URL, location=url))
 
-    return _of_read_error(read, chain_txt(error))
+    return shown_read_error(read, chain_txt(error))
 
 
-def stream_offline_error(url: str) -> VideoError:
-    return VideoError(
+def stream_offline_error(url: str) -> ShownError:
+    return ShownError(
         title=translate("Video Error", "Stream is offline"),
         about=translate("Video Error", "Nothing is streaming right now."),
         where=where_server_txt(),
@@ -131,8 +139,8 @@ def stream_offline_error(url: str) -> VideoError:
     )
 
 
-def unresolved_error(url: str) -> VideoError:
-    return VideoError(
+def unresolved_error(url: str) -> ShownError:
+    return ShownError(
         title=translate("Video Error", "Couldn't find the video"),
         about=translate("Video Error", "No resolver could open this link."),
         where=where_link_txt(),
@@ -141,8 +149,8 @@ def unresolved_error(url: str) -> VideoError:
     )
 
 
-def empty_link_list_error(url: str) -> VideoError:
-    return VideoError(
+def empty_link_list_error(url: str) -> ShownError:
+    return ShownError(
         title=translate("Video Error", "This link is a playlist"),
         about=translate("Video Error", "There's nothing on it to play."),
         where=where_link_txt(),
@@ -151,12 +159,12 @@ def empty_link_list_error(url: str) -> VideoError:
     )
 
 
-def file_error(kind: ReadErrorKind, path) -> VideoError:
+def file_error(kind: ReadErrorKind, path) -> ShownError:
     """The file gone, or not to be opened."""
 
     read = ReadError(kind=kind, raw=str(path), source_kind=ListSourceKind.FILE)
 
-    return _of_read_error(read, str(path))
+    return shown_read_error(read, str(path))
 
 
 @dataclass(frozen=True)
@@ -172,7 +180,7 @@ class ProxyFailure:
     at: float = field(default_factory=time.monotonic)
 
 
-def proxy_error(failure: ProxyFailure, vlc_lines: tuple[str, ...] = ()) -> VideoError:
+def proxy_error(failure: ProxyFailure, vlc_lines: tuple[str, ...] = ()) -> ShownError:
     host = host_of(failure.url)
 
     raw_lines = [f"{failure.url}"]
@@ -190,7 +198,7 @@ def proxy_error(failure: ProxyFailure, vlc_lines: tuple[str, ...] = ()) -> Video
     if failure.status is not None:
         read = ReadError(kind=ReadErrorKind.HTTP, raw=raw, status=failure.status)
         return dataclasses.replace(
-            _of_read_error(read, raw),
+            shown_read_error(read, raw),
             host=host,
             code_full=http_code_full_txt(failure.status, failure.reason),
         )
@@ -202,7 +210,7 @@ def proxy_error(failure: ProxyFailure, vlc_lines: tuple[str, ...] = ()) -> Video
         host=host,
     )
 
-    return _of_read_error(read, raw)
+    return shown_read_error(read, raw)
 
 
 def _vlc_said_lines(vlc_lines: tuple[str, ...]) -> list[str]:
@@ -216,7 +224,7 @@ def _vlc_said_lines(vlc_lines: tuple[str, ...]) -> list[str]:
 
 def player_error(
     message: str, vlc_lines: tuple[str, ...] = (), url: str = ""
-) -> VideoError:
+) -> ShownError:
     """VLC could not play it, by what it said: an HTTP status where it
     fetched a link itself and was turned away."""
 
@@ -227,7 +235,7 @@ def player_error(
     if status is not None:
         title, about = http_error_txts(status)
 
-        return VideoError(
+        return ShownError(
             title=title,
             about=about,
             where=where_server_txt(),
@@ -237,7 +245,7 @@ def player_error(
             raw=raw,
         )
 
-    return VideoError(
+    return ShownError(
         title=message,
         about=_first_vlc_line(vlc_lines),
         where=where_player_txt(),

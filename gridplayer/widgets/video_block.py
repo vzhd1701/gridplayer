@@ -17,7 +17,11 @@ from PyQt5.QtWidgets import QFileDialog, QStackedLayout, QWidget
 from gridplayer.dialogs.audio_delay import SetAudioDelayDialog
 from gridplayer.dialogs.bookmark_rename_dialog import QBookmarkRenameDialog
 from gridplayer.dialogs.bookmarks import BookmarksDialog, held_end_action_txt
-from gridplayer.dialogs.error_details import ErrorDetails, ErrorDetailsDialog
+from gridplayer.dialogs.error_details import (
+    DetailRows,
+    ErrorDetailsDialog,
+    code_rows,
+)
 from gridplayer.dialogs.input_dialog import (
     QCustomSpinboxInput,
     QCustomSpinboxTimeInput,
@@ -168,7 +172,7 @@ from gridplayer.utils.url_resolve.static import ResolvedList, ResolvedVideo
 from gridplayer.utils.url_resolve.url_resolve import VideoURLResolver
 from gridplayer.utils.video_errors import (
     ProxyFailure,
-    VideoError,
+    ShownError,
     file_error,
     player_error,
     proxy_error,
@@ -206,7 +210,6 @@ from gridplayer.widgets.video_overlay import (
     is_layered_child_supported,
 )
 from gridplayer.widgets.video_status import (
-    ErrorCard,
     LoadStage,
     StepState,
     VideoStatus,
@@ -618,7 +621,7 @@ class VideoBlock(QWidget):
         # what went wrong last, the stage it went wrong at and how many times
         # it was tried; the proxy's URL of the stream, for what it was told
         # fetching it, and from when
-        self._last_error: VideoError | None = None
+        self._last_error: ShownError | None = None
         self._error_stage: LoadStage | None = None
         self._error_tries = 0
         self._proxied_url: str | None = None
@@ -988,11 +991,11 @@ class VideoBlock(QWidget):
 
         return self.error()
 
-    def _on_resolve_failed(self, error: VideoError):
+    def _on_resolve_failed(self, error: ShownError):
         self._last_error = error
         self.update_status(error.title)
 
-    def _player_error(self, message: str, vlc_lines: tuple[str, ...]) -> VideoError:
+    def _player_error(self, message: str, vlc_lines: tuple[str, ...]) -> ShownError:
         """Why VLC could not play it: the file gone, what the proxy was
         told fetching the stream, or what VLC said."""
 
@@ -1057,28 +1060,18 @@ class VideoBlock(QWidget):
 
         # not what the status said last: that is how far it loaded
         if error is None:
-            error = VideoError(title=translate("Video Error", "Can't play the video"))
+            error = ShownError(title=translate("Video Error", "Can't play the video"))
             self._last_error = error
 
         # where it got to, kept for its Details; the next load starts afresh
         self._error_stage = self._load_stage
         self._load_stage = None
 
-        self.video_status.show_error(self._error_card(error))
+        self.video_status.show_error(error, self._skip_note())
         self._sync_overlay_mode()
 
         if self._skip_failed_timer.isActive():
             self._skip_note_timer.start()
-
-    def _error_card(self, error: VideoError) -> ErrorCard:
-        return ErrorCard(
-            title=error.title,
-            about=error.about,
-            where=error.where,
-            code=error.code,
-            note=self._skip_note(),
-            icon=error.icon,
-        )
 
     def _skip_note(self) -> str:
         if not self._skip_failed_timer.isActive():
@@ -1100,7 +1093,7 @@ class VideoBlock(QWidget):
             self._skip_note_timer.stop()
 
         if self._is_error and self._last_error is not None:
-            self.video_status.show_error(self._error_card(self._last_error))
+            self.video_status.show_error(self._last_error, self._skip_note())
 
     def show_error_details(self):
         """Everything known of why it failed, in a window of its own."""
@@ -1116,7 +1109,9 @@ class VideoBlock(QWidget):
         self._skip_failed_timer.stop()
         self._refresh_skip_note()
 
-        dialog = ErrorDetailsDialog(self._error_details(error), parent=self.window())
+        dialog = ErrorDetailsDialog(
+            error, self._error_rows(error), parent=self.window()
+        )
         dialog.try_again.connect(self.reload)
         dialog.exec_()
         dialog.deleteLater()
@@ -1127,7 +1122,9 @@ class VideoBlock(QWidget):
             self._skip_note_timer.start()
             self._refresh_skip_note()
 
-    def _error_details(self, error: VideoError) -> ErrorDetails:
+    def _error_rows(self, error: ShownError) -> DetailRows:
+        """What its Details window says of the video besides."""
+
         uri = self.video_params.uri
 
         # a link named by itself is said once, as the link
@@ -1164,13 +1161,7 @@ class VideoBlock(QWidget):
         if step:
             rows.append((translate("Error Details", "Step"), step))
 
-        if error.code_full or error.code:
-            rows.append(
-                (translate("Error Details", "Code"), error.code_full or error.code)
-            )
-
-        if error.host:
-            rows.append((translate("Error Details", "Server"), error.host))
+        rows.extend(code_rows(error))
 
         if self._error_tries:
             limit = self._network_retry_limit
@@ -1193,15 +1184,7 @@ class VideoBlock(QWidget):
             )
         )
 
-        return ErrorDetails(
-            title=error.title,
-            about=error.about,
-            where=error.where,
-            code=error.code,
-            rows=tuple(rows),
-            raw=error.raw,
-            icon=error.icon,
-        )
+        return tuple(rows)
 
     def _schedule_network_retry(self) -> bool:
         """Try the video again later instead of giving up on it.
@@ -6029,7 +6012,7 @@ class VideoBlock(QWidget):
 
         # none to play, every one around gone
         if index is None or not 0 <= index < len(media_list.items):
-            self._last_error = VideoError(
+            self._last_error = ShownError(
                 title=translate("Lists", "Nothing on the list to play")
             )
             self.error()

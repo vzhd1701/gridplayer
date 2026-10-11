@@ -1061,7 +1061,7 @@ class TestReadingAgain:
         dialog._error_details_button.click()
 
         (details_dialog,) = shown
-        assert "Folder not found: <D:/Videos>" in details_dialog._details.raw
+        assert "Folder not found: <D:/Videos>" in details_dialog._error.raw
         assert "Folder not found: <D:/Videos>" in details_dialog.raw.toPlainText()
 
     def test_reloaded_with_everything_undone_once_said(

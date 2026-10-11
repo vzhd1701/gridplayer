@@ -3,9 +3,9 @@ from PyQt5.QtCore import QRectF
 from PyQt5.QtGui import QImage, QPainter
 from PyQt5.QtWidgets import QApplication
 
+from gridplayer.utils.video_errors import ShownError
 from gridplayer.widgets import video_status as status_module
 from gridplayer.widgets.video_status import (
-    ErrorCard,
     LoadStage,
     StatusMode,
     StepState,
@@ -243,25 +243,25 @@ def test_an_error_said_by_the_old_way_becomes_a_card():
 
 def test_loading_again_forgets_the_error():
     status = VideoStatus(is_framed=True)
-    status.show_error(ErrorCard(title="Access denied", where="Server", code="403"))
+    status.show_error(ShownError(title="Access denied", where="Server", code="403"))
 
     status.icon = "processing"
     status.status_text = "Timed out"
     status.icon = "network-error"
 
-    assert status.error == ErrorCard(title="Timed out", icon="network-error")
+    assert status.error == ShownError(title="Timed out", is_network=True)
 
 
 def test_an_error_card_in_full():
     status = VideoStatus(is_framed=True)
     status.show_error(
-        ErrorCard(
+        ShownError(
             title="Access denied",
             about="The server refused. The link may have expired.",
             where="Server",
             code="HTTP 403",
-            note="Next file in 5 s",
-        )
+        ),
+        "Next file in 5 s",
     )
 
     assert _painted(status, 480, 300) == [
@@ -276,13 +276,13 @@ def test_an_error_card_in_full():
 def test_a_small_error_cell_keeps_the_tag():
     status = VideoStatus(is_framed=True)
     status.show_error(
-        ErrorCard(
+        ShownError(
             title="Access denied",
             about="The server refused. The link may have expired.",
             where="Server",
             code="403",
-            note="Next file in 5 s",
-        )
+        ),
+        "Next file in 5 s",
     )
 
     assert _painted(status, 150, 100) == ["_row_error_icon", "_row_tag"]
@@ -314,7 +314,7 @@ def test_it_moves_only_while_loading_and_shown():
 
     assert status._ticker.isActive()
 
-    status.show_error(ErrorCard(title="Access denied"))
+    status.show_error(ShownError(title="Access denied"))
     assert not status._ticker.isActive()
 
     status.show_loading(LoadStage.VIDEO, "Opening…")

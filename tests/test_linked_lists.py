@@ -829,13 +829,13 @@ class TestTheWindow:
         dialog._error_details_button.click()
 
         (details_dialog,) = shown
-        details = details_dialog._details
-        rows = dict(details.rows)
-        assert details.title == "Not found"
-        assert (details.where, details.code) == ("Server", "HTTP 404")
+        error = details_dialog._error
+        rows = dict(details_dialog._rows)
+        assert error.title == "Not found"
+        assert (error.where, error.code) == ("Server", "HTTP 404")
         assert rows["Code"] == "HTTP 404 Not Found"
         assert rows["Server"] == "provider.example"
-        assert details.raw == "404 Client Error: Not Found for url"
+        assert error.raw == "404 Client Error: Not Found for url"
 
     def test_edited_after_and_cancelled_it_is_as_read(self, window):
         registry = MediaListsRegistry()

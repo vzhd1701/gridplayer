@@ -83,7 +83,11 @@ from gridplayer.dialogs.bookmarks import (
     paint_empty_txt,
     with_key_txt,
 )
-from gridplayer.dialogs.error_details import ErrorDetails, ErrorDetailsDialog
+from gridplayer.dialogs.error_details import (
+    DetailRows,
+    ErrorDetailsDialog,
+    code_rows,
+)
 from gridplayer.dialogs.messagebox import QCustomMessageBox
 from gridplayer.dialogs.unlink_list import UnlinkListDialog
 from gridplayer.dialogs.update_every import UpdateEveryDialog, every_txt, in_txt
@@ -148,7 +152,7 @@ from gridplayer.utils.show_in_folder import FolderRevealer
 from gridplayer.utils.thumbnails import ThumbnailLoader
 from gridplayer.utils.time_txt import get_time_txt
 from gridplayer.utils.url_resolve.static import PLUGIN_URLS
-from gridplayer.utils.video_errors import read_code_full_txt
+from gridplayer.utils.video_errors import ShownError, shown_read_error
 from gridplayer.widgets.combo_box import ElidedComboBox, cap_popup_height
 from gridplayer.widgets.custom_menu import CustomMenu, checked_icon
 from gridplayer.widgets.elided_label import ElidedLabel
@@ -3463,8 +3467,10 @@ class MediaListDialog(QDialog):
         if error is None:
             return
 
+        shown = shown_read_error(error, is_video=False)
+
         dialog = ErrorDetailsDialog(
-            read_error_details(error, self._media_list), parent=self
+            shown, list_error_rows(shown, self._media_list), parent=self
         )
         dialog.try_again.connect(self._try_again)
         dialog.exec_()
@@ -4290,9 +4296,8 @@ def _file_name(name: str) -> str:
     return sanitize_filename(name) if name.strip(" .") else "list"
 
 
-def read_error_details(error: ReadError, media_list) -> ErrorDetails:
-    title, about = read_error_txts(error)
-    where, code = error_tag(error)
+def list_error_rows(error: ShownError, media_list) -> DetailRows:
+    """What the Details window says of the list it could not read."""
 
     rows = [(translate("Error Details", "List"), media_list.name)]
 
@@ -4308,20 +4313,4 @@ def read_error_details(error: ReadError, media_list) -> ErrorDetails:
 
         rows.append((label, str(source.location)))
 
-    code_full = read_code_full_txt(error)
-
-    if code_full:
-        rows.append((translate("Error Details", "Code"), code_full))
-
-    if error.host:
-        rows.append((translate("Error Details", "Server"), error.host))
-
-    return ErrorDetails(
-        title=title,
-        about=about,
-        where=where,
-        code=code,
-        rows=tuple(rows),
-        raw=error.raw,
-        icon=error.icon,
-    )
+    return (*rows, *code_rows(error))

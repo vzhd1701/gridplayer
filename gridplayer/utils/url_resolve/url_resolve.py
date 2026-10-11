@@ -20,7 +20,7 @@ from gridplayer.utils.url_resolve.static import (
     StreamOfflineError,
 )
 from gridplayer.utils.video_errors import (
-    VideoError,
+    ShownError,
     empty_link_list_error,
     resolve_error,
     stream_offline_error,
@@ -151,7 +151,7 @@ class VideoURLResolverWorker(QObject):
     def _tell_reading(self, what: str, count: int, of: int | None = None) -> None:
         self.reading.emit(reading_txt(what, count, of)[0])
 
-    def _error(self, error: VideoError) -> None:
+    def _error(self, error: ShownError) -> None:
         self.failed.emit(error)
         self.error.emit()
 
@@ -262,7 +262,7 @@ class VideoURLResolver(QObject):
         if not self._is_closed:
             self.reading.emit(said)
 
-    def _on_failed(self, error: VideoError):
+    def _on_failed(self, error: ShownError):
         if not self._is_closed:
             self.failed.emit(error)
 

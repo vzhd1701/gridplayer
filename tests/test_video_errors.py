@@ -16,7 +16,7 @@ from PyQt5.QtCore import QSettings
 from PyQt5.QtWidgets import QApplication, QWidget
 from yt_dlp.utils import DownloadError
 
-from gridplayer.dialogs.error_details import ErrorDetails, ErrorDetailsDialog
+from gridplayer.dialogs.error_details import ErrorDetailsDialog, details_txt
 from gridplayer.models.media_list import ListItem, MediaList
 from gridplayer.models.stream import HashableDict, Stream, StreamSessionOpts
 from gridplayer.models.video import Video
@@ -49,7 +49,7 @@ from gridplayer.utils.url_resolve.url_resolve import (
 )
 from gridplayer.utils.video_errors import (
     ProxyFailure,
-    VideoError,
+    ShownError,
     file_error,
     player_error,
     proxy_error,
@@ -498,7 +498,7 @@ class TestTheWorker:
         worker.resolve("https://site.example/v")
 
         (error,) = failed
-        assert isinstance(error, VideoError)
+        assert isinstance(error, ShownError)
         assert error.title == title
 
     def test_the_resolver_named_as_it_is_tried(self, mocker):
@@ -718,7 +718,7 @@ class TestOnTheCell:
 
         block.video_driver_error("Player error")
 
-        assert block.video_status.error.note == "Next file in 2 s"
+        assert block.video_status.note == "Next file in 2 s"
         assert not block.overlay.next_button.isHidden()
         assert block.overlay.next_button.text == "Next"
 
@@ -731,7 +731,7 @@ class TestOnTheCell:
             make_cell, tmp_path, end_action=VideoEndAction.PREVIOUS_FILE
         )
 
-        assert block.video_status.error.note == "Previous file in 2 s"
+        assert block.video_status.note == "Previous file in 2 s"
         assert not block.overlay.next_button.isHidden()
         assert block.overlay.next_button.text == "Previous"
 
@@ -756,16 +756,16 @@ class TestOnTheCell:
         block.overlay.details_button.clicked.emit()
 
         (dialog,) = shown
-        details = dialog._details
-        rows = dict(details.rows)
-        assert details.title == "Access denied"
+        error = dialog._error
+        rows = dict(dialog._rows)
+        assert error.title == "Access denied"
         assert rows["Video"] == "Deep Sea"
         assert rows["Link"] == "https://site.example/watch"
         assert rows["Step"] == "Resolving the link"
         assert rows["Code"] == "HTTP 403 Forbidden"
         assert rows["Server"] == "site.example"
-        assert "403 Client Error" in details.raw
-        assert "Access denied" in details.as_text()
+        assert "403 Client Error" in error.raw
+        assert "Access denied" in details_txt(error, dialog._rows)
 
     def test_forgotten_once_it_plays(self, make_cell, tmp_path):
         video = tmp_path / "a.mp4"
@@ -792,7 +792,7 @@ class TestOnTheCell:
         assert while_read == [False]
         # closed with nothing done in it: on through the list as before
         assert block._skip_failed_timer.isActive()
-        assert block.video_status.error.note == "Next file in 2 s"
+        assert block.video_status.note == "Next file in 2 s"
 
         block._skip_failed_timer.stop()
 
@@ -1023,7 +1023,7 @@ def test_the_details_tag_never_a_window_of_its_own():
     and went as the dialog was laid out."""
 
     dialog = ErrorDetailsDialog(
-        ErrorDetails(title="Access denied", where="Server", code="HTTP 403")
+        ShownError(title="Access denied", where="Server", code="HTTP 403")
     )
 
     assert not dialog.tag.isWindow()

@@ -2,8 +2,6 @@
 read: what it is, where it broke and its code, and the error itself as it
 was raised, to copy into a bug report."""
 
-from dataclasses import dataclass
-
 from PyQt5.QtCore import QSize, Qt, pyqtSignal
 from PyQt5.QtGui import QIcon, QPalette
 from PyQt5.QtWidgets import (
@@ -19,58 +17,67 @@ from PyQt5.QtWidgets import (
 
 from gridplayer.dialogs.bookmarks import dialog_button
 from gridplayer.utils.qt import translate
+from gridplayer.utils.video_errors import ShownError
 from gridplayer.widgets.error_tag import ErrorTag
 
 ICON_PX = 32
 
 
-@dataclass(frozen=True)
-class ErrorDetails:
-    title: str
-    about: str = ""
-    where: str = ""
-    code: str = ""
-    # what is known of it, a row each: (label, value)
-    rows: tuple[tuple[str, str], ...] = ()
-    raw: str = ""
-    icon: str = "error"
+# what is known of it besides, a row each: (label, value)
+DetailRows = tuple[tuple[str, str], ...]
 
-    def as_text(self) -> str:
-        """All of it, for the clipboard."""
 
-        lines = [self.title]
+def code_rows(error: ShownError) -> list[tuple[str, str]]:
+    """Its code in full, and the server that answered."""
 
-        if self.about:
-            lines.append(self.about)
+    rows = []
 
-        if self.where or self.code:
-            lines.append(" · ".join(part for part in (self.where, self.code) if part))
+    if error.code_full or error.code:
+        rows.append((translate("Error Details", "Code"), error.code_full or error.code))
 
-        lines.append("")
-        lines.extend(f"{label}: {value}" for label, value in self.rows)
+    if error.host:
+        rows.append((translate("Error Details", "Server"), error.host))
 
-        if self.raw:
-            lines.extend(("", self.raw))
+    return rows
 
-        return "\n".join(lines)
+
+def details_txt(error: ShownError, rows: DetailRows) -> str:
+    """All of it, for the clipboard."""
+
+    lines = [error.title]
+
+    if error.about:
+        lines.append(error.about)
+
+    if error.where or error.code:
+        lines.append(" · ".join(part for part in (error.where, error.code) if part))
+
+    lines.append("")
+    lines.extend(f"{label}: {value}" for label, value in rows)
+
+    if error.raw:
+        lines.extend(("", error.raw))
+
+    return "\n".join(lines)
 
 
 class ErrorDetailsDialog(QDialog):
     try_again = pyqtSignal()
 
-    def __init__(self, details: ErrorDetails, parent=None):
+    def __init__(self, error: ShownError, rows: DetailRows = (), parent=None):
         super().__init__(parent)
 
-        self._details = details
+        self._error = error
+        self._rows = rows
 
         self.setWindowTitle(translate("Error Details", "Error Details"))
         self.setMinimumWidth(560)
 
         icon = QLabel()
-        icon.setPixmap(QIcon.fromTheme(details.icon).pixmap(QSize(ICON_PX, ICON_PX)))
+        icon.setPixmap(QIcon.fromTheme(error.icon).pixmap(QSize(ICON_PX, ICON_PX)))
         icon.setAlignment(Qt.AlignTop)
 
-        title = QLabel(details.title)
+        title = QLabel(error.title)
         font = title.font()
         font.setBold(True)
         title.setFont(font)
@@ -78,7 +85,7 @@ class ErrorDetailsDialog(QDialog):
 
         # its own from the start: shown with no parent, it is a window
         self.tag = ErrorTag(parent=self)
-        self.tag.set_tag(details.where, details.code)
+        self.tag.set_tag(error.where, error.code)
 
         title_row = QHBoxLayout()
         title_row.setSpacing(8)
@@ -90,8 +97,8 @@ class ErrorDetailsDialog(QDialog):
         words.setSpacing(4)
         words.addLayout(title_row)
 
-        if details.about:
-            about = QLabel(details.about)
+        if error.about:
+            about = QLabel(error.about)
             about.setWordWrap(True)
             about.setForegroundRole(QPalette.PlaceholderText)
             words.addWidget(about)
@@ -106,7 +113,7 @@ class ErrorDetailsDialog(QDialog):
         form.setVerticalSpacing(6)
         form.setLabelAlignment(Qt.AlignLeft)
 
-        for label, value in details.rows:
+        for label, value in rows:
             name = QLabel(label)
             name.setForegroundRole(QPalette.PlaceholderText)
 
@@ -122,10 +129,10 @@ class ErrorDetailsDialog(QDialog):
         layout.addLayout(header)
         layout.addLayout(form)
 
-        if details.raw:
+        if error.raw:
             raw_title = QLabel(translate("Error Details", "Technical details"))
 
-            self.raw = QPlainTextEdit(details.raw)
+            self.raw = QPlainTextEdit(error.raw)
             self.raw.setReadOnly(True)
             self.raw.setLineWrapMode(QPlainTextEdit.NoWrap)
             self.raw.setMinimumHeight(140)
@@ -153,7 +160,7 @@ class ErrorDetailsDialog(QDialog):
         layout.addLayout(buttons)
 
     def copy(self):
-        QApplication.clipboard().setText(self._details.as_text())
+        QApplication.clipboard().setText(details_txt(self._error, self._rows))
 
     def _try_again(self):
         self.try_again.emit()
