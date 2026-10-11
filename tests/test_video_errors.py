@@ -608,6 +608,20 @@ class TestOnTheCell:
 
         assert block.video_status.error.note == "Next file in 2 s"
         assert not block.overlay.next_button.isHidden()
+        assert block.overlay.next_button.text == "Next"
+
+        block._skip_failed_timer.stop()
+
+    def test_a_list_played_back_to_front_says_the_one_before_comes(
+        self, make_cell, tmp_path
+    ):
+        block, _ = _failed_list_item(
+            make_cell, tmp_path, end_action=VideoEndAction.PREVIOUS_FILE
+        )
+
+        assert block.video_status.error.note == "Previous file in 2 s"
+        assert not block.overlay.next_button.isHidden()
+        assert block.overlay.next_button.text == "Previous"
 
         block._skip_failed_timer.stop()
 

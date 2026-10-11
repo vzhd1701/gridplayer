@@ -137,9 +137,11 @@ class OverlayBlock(QWidget):
         self._last_position = (0, 0)
         self._volume_button_wanted = True
 
-        # what a failed cell offers past trying again
+        # what a failed cell offers past trying again; its Next goes back
+        # where its list is played back to front
         self._has_error_details = False
         self._can_go_next = False
+        self._is_going_back = False
 
         self.ui_setup()
 
@@ -496,14 +498,26 @@ class OverlayBlock(QWidget):
         self._mode = mode
         self._sync_bottom_bar()
 
-    def set_error_actions(self, has_details: bool, can_go_next: bool):
+    def set_error_actions(
+        self, has_details: bool, can_go_next: bool, is_going_back: bool = False
+    ):
         """What a failed cell offers past trying again."""
 
-        if (has_details, can_go_next) == (self._has_error_details, self._can_go_next):
+        actions = (has_details, can_go_next, is_going_back)
+        shown = (self._has_error_details, self._can_go_next, self._is_going_back)
+
+        if actions == shown:
             return
 
         self._has_error_details = has_details
         self._can_go_next = can_go_next
+        self._is_going_back = is_going_back
+
+        if is_going_back:
+            self.next_button.text = translate("Overlay", "Previous")
+        else:
+            self.next_button.text = translate("Overlay", "Next")
+
         self._sync_bottom_bar()
 
     def set_is_on_chrome(self, is_on_chrome: bool):

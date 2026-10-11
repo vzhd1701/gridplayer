@@ -1085,6 +1085,11 @@ class VideoBlock(QWidget):
 
         seconds = max(1, -(-self._skip_failed_timer.remainingTime() // 1000))
 
+        if self._is_list_going_back:
+            return translate("Video Status", "Previous file in {SECONDS} s").format(
+                SECONDS=seconds
+            )
+
         return translate("Video Status", "Next file in {SECONDS} s").format(
             SECONDS=seconds
         )
@@ -1328,6 +1333,7 @@ class VideoBlock(QWidget):
             self.overlay.set_error_actions(
                 has_details=self._last_error is not None,
                 can_go_next=self._can_skip_failed_item,
+                is_going_back=self._is_list_going_back,
             )
 
         self.overlay.set_mode(mode)
@@ -1338,6 +1344,15 @@ class VideoBlock(QWidget):
         media_list = self.media_list
 
         return media_list is not None and len(media_list.items) > 1
+
+    @property
+    def _is_list_going_back(self) -> bool:
+        # on to the item before, at the end of each: Next, and the count
+        # down to it, go back
+        return (
+            self.video_params is not None
+            and self.video_params.end_action == VideoEndAction.PREVIOUS_FILE
+        )
 
     def skip_failed_item_now(self):
         """On to the item that comes next, now rather than in a moment: the
