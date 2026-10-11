@@ -25,16 +25,17 @@ class FileChecks(QObject):
         self._pool = ThreadPoolExecutor(max_workers=FILE_CHECKS_AT_ONCE)
 
     def check(self, key: str, path: Path):
-        future = self._pool.submit(self._look, path)
-        future.add_done_callback(lambda done: self._tell(key, done))
+        # told from the pool's thread, so always on a later turn of the
+        # receiver's: a future done already calls a callback given it at
+        # once, in the middle of whoever asked
+        self._pool.submit(self._check, key, path)
 
     def stop(self):
         self._pool.shutdown(wait=False, cancel_futures=True)
 
-    def _tell(self, key, done):
-        if done.cancelled():
-            return
+    def _check(self, key: str, path: Path):
+        found = self._look(path)
 
         # (the dialog may be gone by the time a slow one is known)
         with contextlib.suppress(RuntimeError):
-            self.checked.emit(key, done.result())
+            self.checked.emit(key, found)
