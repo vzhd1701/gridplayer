@@ -3,10 +3,11 @@ import logging
 import time
 from bisect import bisect_right
 from collections.abc import Iterable
+from contextlib import contextmanager
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from itertools import accumulate
-from threading import Lock
+from threading import Lock, local
 from urllib.parse import parse_qsl, urlencode, urljoin, urlparse
 from uuid import uuid3, uuid4
 
@@ -14,9 +15,11 @@ from requests import HTTPError, Response
 from streamlink import StreamError
 
 from gridplayer.models.stream import Stream, StreamFragment, StreamOrigin, Streams
+from gridplayer.utils.list_errors import read_error_of
 from gridplayer.utils.stream_proxy.fragments import fragment_stream
 from gridplayer.utils.stream_proxy.session import StreamSession
 from gridplayer.utils.stream_proxy.wrappers import HTTPStreamProxy, StreamReader
+from gridplayer.utils.video_errors import ProxyFailure, chain_txt
 
 # a signed URL that has run out answers like this, on every request, forever
 EXPIRED_STATUSES = frozenset(
@@ -53,6 +56,9 @@ class RelayFailure:
 
     response: Response | None = None
 
+    # what broke on the way, where there is no response
+    error: BaseException | None = None
+
     @property
     def is_transient(self) -> bool:
         return self.response is None
@@ -78,6 +84,16 @@ class StreamProxyServer(ThreadingHTTPServer):
 
         self._bases_lock = Lock()
         self._bases: dict[str, tuple[str, str]] = {}
+
+        # what each stream a video was handed last could not be fetched for,
+        # for the video that failed on it to say why. Not by session: one
+        # session serves every stream of a service, other videos' as well
+        self._failures_lock = Lock()
+        self._failures: dict[str, ProxyFailure] = {}
+
+        # the stream a video was handed that the request this thread serves
+        # is part of, for the URLs written into what it serves to say so too
+        self._serving = local()
 
         # resolving a source again is slow, so one thread does it while the
         # rest of the burst waits and then reuses the result
@@ -119,7 +135,7 @@ class StreamProxyServer(ThreadingHTTPServer):
                 "session_id": session_id,
             }
 
-        return f"{self.base_url}/?{urlencode(params)}"
+        return f"{self.base_url}/?{urlencode(self._owned(params))}"
 
     def add_fragments(self, stream: Stream, fragments: Iterable[str]) -> list[str]:
         """URLs of ours for many fragments of one stream.
@@ -129,10 +145,12 @@ class StreamProxyServer(ThreadingHTTPServer):
         them once per segment takes seconds.
         """
 
-        params = {
-            "stream_id": self._add_stream(stream),
-            "session_id": self._add_session(stream.session),
-        }
+        params = self._owned(
+            {
+                "stream_id": self._add_stream(stream),
+                "session_id": self._add_session(stream.session),
+            }
+        )
 
         return [
             f"{self.base_url}/?{urlencode({**params, 'fragment': fragment})}"
@@ -149,15 +167,16 @@ class StreamProxyServer(ThreadingHTTPServer):
         """
 
         session_id = self._add_session(stream_session)
+        owner = self._owner()
 
-        base_id = self.generate_id((base_url, session_id))
+        base_id = self.generate_id((base_url, session_id, owner))
 
         with self._bases_lock:
-            self._bases[base_id] = (base_url, session_id)
+            self._bases[base_id] = (base_url, session_id, owner)
 
         return f"{self.base_url}{DASH_RELAY_PREFIX}{base_id}/"
 
-    def get_base(self, base_id: str) -> tuple[str, str] | None:
+    def get_base(self, base_id: str) -> tuple[str, str, str] | None:
         with self._bases_lock:
             return self._bases.get(base_id)
 
@@ -179,12 +198,13 @@ class StreamProxyServer(ThreadingHTTPServer):
         if base is None:
             raise LookupError(f"Base {base_id} not found")
 
-        base_url, session_id = base
+        base_url, session_id, owner = base
 
         return {
             "url": urljoin(base_url, tail),
             "protocol": "http",
             "session_id": session_id,
+            "owner": owner,
         }
 
     def get_session(self, session_id: str) -> StreamSession:
@@ -194,6 +214,30 @@ class StreamProxyServer(ThreadingHTTPServer):
     def get_stream(self, stream_id: str) -> Stream | None:
         with self._streams_lock:
             return self._streams.get(stream_id)
+
+    @contextmanager
+    def serving(self, query: dict[str, str]):
+        """While a request is served, for what it hands out to be its own."""
+
+        self._serving.owner = _owner_of(query)
+
+        try:
+            yield
+        finally:
+            self._serving.owner = None
+
+    def note_failure(self, query: dict[str, str], failure: ProxyFailure) -> None:
+        with self._failures_lock:
+            self._failures[_owner_of(query)] = failure
+
+    def failure_of(self, url: str) -> ProxyFailure | None:
+        """What the stream behind one of our URLs last could not be fetched
+        for, None for nothing."""
+
+        owner = _owner_of(_parse_request(url))
+
+        with self._failures_lock:
+            return self._failures.get(owner)
 
     def refresh_stream(
         self, stream_id: str, stale: Stream | None = None
@@ -257,6 +301,17 @@ class StreamProxyServer(ThreadingHTTPServer):
         self._log.info("Shutting down stream proxy server")
 
         super().shutdown()
+
+    def _owner(self) -> str:
+        return getattr(self._serving, "owner", None) or ""
+
+    def _owned(self, params: dict[str, str]) -> dict[str, str]:
+        """With the stream a video was handed these are part of, where
+        they are handed out while serving it."""
+
+        owner = self._owner()
+
+        return {**params, "owner": owner} if owner else params
 
     def _add_session(self, stream_session) -> str:
         session_id = self.generate_id(stream_session)
@@ -494,7 +549,8 @@ class ProxyRequestHandler(BaseHTTPRequestHandler):
             self.send_error(HTTPStatus.NOT_FOUND)
             return
 
-        self._serve_stream(stream_session, query, request_headers)
+        with self.server.serving(query):
+            self._serve_stream(stream_session, query, request_headers)
 
     def _serve_stream(self, stream_session, query, request_headers):
         stream_id = query.get("stream_id", "")
@@ -529,6 +585,8 @@ class ProxyRequestHandler(BaseHTTPRequestHandler):
 
             if not self._wait_to_retry(failure, stream_id, stored):
                 break
+
+        self.server.note_failure(query, _proxy_failure(failure, stream_params.url))
 
         self._relay_failure(failure)
 
@@ -616,7 +674,7 @@ class ProxyRequestHandler(BaseHTTPRequestHandler):
         self._log.error(f"Error when streaming: {err}")
         self._log.debug("Traceback", exc_info=err)
 
-        return RelayFailure()
+        return RelayFailure(error=err)
 
     def _safe_relay_response(
         self, response: Response, chunks: Iterable[bytes] | None = None
@@ -656,6 +714,16 @@ def _parse_request(path: str):
     return dict(parse_qsl(url.query))
 
 
+def _owner_of(query: dict[str, str]) -> str:
+    """The stream a video was handed that a request of ours is part of.
+
+    Asked for as it was handed over, that is itself. Anything it handed
+    out in turn, a playlist's segments say, carries it along.
+    """
+
+    return query.get("owner") or query.get("stream_id") or query.get("url", "")
+
+
 def _filter_request_headers(headers: dict[str, str]):
     filtered_headers = {
         "host",
@@ -675,3 +743,21 @@ def _filter_response_headers(headers: dict[str, str]):
     }
 
     return {k: v for k, v in headers.items() if k.lower() not in filtered_headers}
+
+
+def _proxy_failure(failure: RelayFailure, url: str) -> ProxyFailure:
+    if failure.response is not None:
+        return ProxyFailure(
+            url=url,
+            status=failure.response.status_code,
+            reason=failure.response.reason or "",
+        )
+
+    if failure.error is None:
+        return ProxyFailure(url=url)
+
+    return ProxyFailure(
+        url=url,
+        error=chain_txt(failure.error),
+        kind=read_error_of(failure.error, None).kind,
+    )

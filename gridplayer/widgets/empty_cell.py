@@ -17,6 +17,11 @@ from gridplayer.widgets.cell_chrome import (
 )
 from gridplayer.widgets.video_overlay_elements import OverlayDropIndicator
 
+# the plus's bars, thicker in a larger cell, thicker than the frame's line
+PLUS_BAR_SHARE = 96
+PLUS_BAR_MIN = 2.0
+PLUS_BAR_MAX = 6.0
+
 
 class EmptyCell(QWidget):
     is_empty_cell = True
@@ -84,10 +89,9 @@ class EmptyCell(QWidget):
     def _update_label_margins(self):
         if not self._message_label:
             return
-        _, stroke, _ = dashed_frame(self)
-        margin = max(6.0, min(self.width(), self.height()) / 24)
+        rect, stroke, _ = dashed_frame(self)
         inset = stroke * 5
-        pad = round(margin + inset)
+        pad = round(rect.left() + inset)
         self.layout().setContentsMargins(pad, pad, pad, pad)
 
     def changeEvent(self, event):
@@ -119,12 +123,13 @@ class EmptyCell(QWidget):
         if self._message:
             return
 
-        rect, stroke, _ = dashed_frame(self)
-        self._paint_plus(painter, rect, stroke)
+        rect, _, _ = dashed_frame(self)
+        self._paint_plus(painter, rect)
 
-    def _paint_plus(self, painter, rect, stroke):
-        plus = max(8.0, min(rect.width(), rect.height()) / 4)
-        bar = stroke
+    def _paint_plus(self, painter, rect):
+        side = min(rect.width(), rect.height())
+        plus = max(8.0, side / 4)
+        bar = min(max(side / PLUS_BAR_SHARE, PLUS_BAR_MIN), PLUS_BAR_MAX)
         cx, cy = rect.center().x(), rect.center().y()
         cap = bar / 2
 

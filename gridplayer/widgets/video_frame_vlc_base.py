@@ -469,7 +469,8 @@ class VideoFrameVLC(QWidget, metaclass=QABC):
     # a ViewParams: see follow_view.
     view_followed = pyqtSignal(object)
 
-    error = pyqtSignal(str)
+    # the error, and what VLC said went wrong with the video as it did
+    error = pyqtSignal(str, tuple)
     crash = pyqtSignal(str)
     update_status = pyqtSignal(str, int)
 
@@ -847,10 +848,10 @@ class VideoFrameVLC(QWidget, metaclass=QABC):
     def crash_emit(self, exception_txt) -> None:
         self.crash.emit(exception_txt)
 
-    def error_emit(self, error: str) -> None:
+    def error_emit(self, error: str, vlc_lines: tuple[str, ...]) -> None:
         self.cleanup()
 
-        self.error.emit(error)
+        self.error.emit(error, vlc_lines)
 
     def update_status_emit(self, status: str, percent) -> None:
         self.update_status.emit(status, percent)

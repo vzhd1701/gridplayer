@@ -4,9 +4,9 @@ import ssl
 import pytest
 import requests
 
-from gridplayer.dialogs.media_list import read_error_txts
 from gridplayer.models.media_list import ListSource
 from gridplayer.params.static import ListSourceKind
+from gridplayer.utils.error_txts import error_tag, read_error_txts
 from gridplayer.utils.list_errors import (
     ReadError,
     ReadErrorKind,
@@ -240,20 +240,58 @@ class TestTexts:
     @pytest.mark.parametrize(
         ("status", "title"),
         [
-            (401, "Login needed (HTTP 401)"),
-            (403, "Access denied (HTTP 403)"),
-            (404, "Not found (HTTP 404)"),
-            (410, "Not found (HTTP 410)"),
-            (429, "Too many requests (HTTP 429)"),
-            (500, "Server error (HTTP 500)"),
-            (503, "Server error (HTTP 503)"),
-            (418, "Request refused (HTTP 418)"),
+            (401, "Login needed"),
+            (403, "Access denied"),
+            (404, "Not found"),
+            (410, "Not found"),
+            (429, "Too many requests"),
+            (500, "Server error"),
+            (503, "Server error"),
+            (418, "Request refused"),
         ],
     )
     def test_http(self, status, title):
+        """The code is the tag's to say."""
+
         error = ReadError(kind=ReadErrorKind.HTTP, raw="", status=status)
 
         assert read_error_txts(error)[0] == title
+        assert error_tag(error) == ("Server", f"HTTP {status}")
+
+    @pytest.mark.parametrize(
+        ("kind", "tag"),
+        [
+            (ReadErrorKind.DNS, ("Network", "DNS")),
+            (ReadErrorKind.TIMEOUT, ("Network", "Timeout")),
+            (ReadErrorKind.REFUSED, ("Network", "Refused")),
+            (ReadErrorKind.LOST, ("Network", "Reset")),
+            (ReadErrorKind.PROXY, ("Network", "Proxy")),
+            (ReadErrorKind.SECURE, ("Network", "TLS")),
+            (ReadErrorKind.BLOCKED, ("Server", "Blocked")),
+            (ReadErrorKind.MISSING, ("File", "Missing")),
+            (ReadErrorKind.NO_ACCESS, ("File", "No access")),
+            (ReadErrorKind.TOO_LARGE, ("List", "Too big")),
+        ],
+    )
+    def test_tag_tells_where_it_broke(self, kind, tag):
+        assert error_tag(ReadError(kind=kind, raw="")) == tag
+
+    @pytest.mark.parametrize("kind", list(ReadErrorKind))
+    def test_every_kind_tagged(self, kind):
+        where, code = error_tag(ReadError(kind=kind, raw="", status=404))
+
+        assert where
+        assert code
+
+    def test_a_video_behind_a_link_said_as_one(self):
+        error = ReadError(
+            kind=ReadErrorKind.OTHER, raw="boom", source_kind=ListSourceKind.URL
+        )
+
+        assert read_error_txts(error, is_video=True) == (
+            "Couldn't find the video",
+            "boom",
+        )
 
     @pytest.mark.parametrize("kind", list(ReadErrorKind))
     def test_every_kind_said(self, kind):

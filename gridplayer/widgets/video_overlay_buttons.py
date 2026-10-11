@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+from collections.abc import Callable
 
 from PyQt5.QtCore import (
     QEvent,
@@ -46,16 +47,20 @@ class OverlayButton(OverlayWidget, metaclass=QABC):
     def paintEvent(self, event):
         painter = QPainter(self)
 
-        if self.underMouse():
-            color_bg = self.color_contrast_mid
-            color_fg = self.color
-        else:
-            color_bg = self.color
-            color_fg = self.color_contrast_mid
+        color_bg, color_fg = self.colors()
 
-        painter.fillRect(self.rect(), color_bg)
+        self.paint_box(painter, fill=color_bg)
 
         self.draw_icon(painter, color_fg, color_bg)
+
+    def colors(self) -> tuple[QColor, QColor]:
+        """Its box's fill and what is drawn on it, the other way round under
+        the mouse."""
+
+        if self.underMouse():
+            return self.hover_fill_color, self.hover_text_color
+
+        return self.fill_color, self.text_color
 
     def draw_icon(self, painter: QPainter, color_fg: QColor, color_bg: QColor):
         if self._is_off:
@@ -176,25 +181,29 @@ class OverlayVolumeButton(OverlayButton):
         return draw_volume_off(rect, painter, color_fg, color_bg)
 
 
-class OverlayListPlaceButton(OverlayButton):
-    """Which item of its list a cell plays, "3/12", after the list's sign:
-    clicked, the List window on the list.
+class OverlayTextButton(OverlayButton):
+    """A button that says what it does, where an icon alone would not: the
+    actions of a stopped cell, one still loading, or failed.
 
-    The number in the labels' contrast, to be read as theirs is; the sign
-    in the buttons', for it to be seen as one of them.
-    """
+    Its sign, where it has one, drawn as the icon buttons draw theirs, the
+    same size in the same place: Play, then Stop while it loads, then the
+    video's pause, one after the other where the others were."""
 
-    # around the sign and the number, and between them
-    margin = 6
-    gap = 5
+    margin = 7
+    gap = 6
 
-    def __init__(self, **kwargs):
+    # how far in the icon buttons' icons end, from their right edge
+    sign_inset = 5
+
+    def __init__(self, text: str = "", sign: Callable | None = None, **kwargs):
         super().__init__(**kwargs)
 
-        self._text = ""
+        self._text = text
+        self._sign = sign
 
         # as wide as what it says, where the others are square
         self.setMaximumWidth(QWIDGETSIZE_MAX)
+        self._fit()
 
     @property
     def text(self) -> str:
@@ -213,35 +222,60 @@ class OverlayListPlaceButton(OverlayButton):
 
         super().changeEvent(event)
 
-    def _fit(self):
-        width = QFontMetrics(self.font()).horizontalAdvance(self._text)
+    def _sign_rect(self) -> QRect:
+        side = self.minimumHeight()
 
-        self.setFixedWidth(
-            self.margin + self._sign_rect().width() + self.gap + width + self.margin
-        )
+        return QRect(0, 0, side, side)
+
+    def _text_left(self) -> int:
+        if self._sign is None:
+            return self.margin
+
+        return self.minimumHeight() - self.sign_inset + self.gap
+
+    def _fit(self):
+        text_width = QFontMetrics(self.font()).horizontalAdvance(self._text)
+
+        self.setFixedWidth(self._text_left() + text_width + self.margin)
 
     def paintEvent(self, event):
         painter = QPainter(self)
 
-        if self.underMouse():
-            color_bg = self.color_contrast_mid
-            color_sign = color_text = self.color
-        else:
-            color_bg = self.color
-            color_sign = self.color_contrast_mid
-            color_text = self.color_contrast
+        color_bg, color_fg = self.colors()
 
-        painter.fillRect(self.rect(), color_bg)
+        self.paint_box(painter, fill=color_bg)
 
-        sign = self._sign_rect()
-        draw_list(sign, painter, color_sign, color_bg)
+        if self._sign is not None:
+            painter.save()
+            self._sign(self._sign_rect(), painter, color_fg, color_bg)
+            painter.restore()
 
-        painter.setPen(color_text)
+        painter.setPen(color_fg)
         painter.drawText(
-            self.rect().adjusted(sign.right() + 1 + self.gap, 0, 0, 0),
+            self.rect().adjusted(self._text_left(), 0, 0, 0),
             Qt.AlignVCenter | Qt.AlignLeft,
             self._text,
         )
+
+    def icon(self, rect, painter, color_fg, color_bg): ...
+
+    def icon_off(self, rect, painter, color_fg, color_bg): ...
+
+
+class OverlayListPlaceButton(OverlayTextButton):
+    """Which item of its list a cell plays, "3/12", after the list's sign:
+    clicked, the List window on the list.
+
+    The number in the labels' contrast, to be read as theirs is; the sign
+    in the buttons', for it to be seen as one of them.
+    """
+
+    # around the sign and the number, and between them
+    margin = 6
+    gap = 5
+
+    def __init__(self, **kwargs):
+        super().__init__(sign=draw_list, **kwargs)
 
     def _sign_rect(self) -> QRect:
         # as tall as the other buttons' icons are, a little wider
@@ -250,6 +284,13 @@ class OverlayListPlaceButton(OverlayButton):
 
         return QRect(self.margin, (self.minimumHeight() - height) // 2, width, height)
 
-    def icon(self, rect, painter, color_fg, color_bg): ...
+    def _text_left(self) -> int:
+        return self._sign_rect().right() + 1 + self.gap
 
-    def icon_off(self, rect, painter, color_fg, color_bg): ...
+    def _fit(self):
+        # the sign alone while the list is still being read
+        if not self._text:
+            self.setFixedWidth(self.margin + self._sign_rect().width() + self.margin)
+            return
+
+        super()._fit()

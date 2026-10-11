@@ -32,6 +32,7 @@ from gridplayer.utils.url_resolve.static import (
     BadURLException,
     NoResolverPlugin,
     PlaylistURLError,
+    ResolverFailed,
     StreamOfflineError,
 )
 from gridplayer.utils.url_resolve.stream_detect import (
@@ -211,7 +212,7 @@ class YoutubeDLResolver(ResolverBase):
                     raise StreamOfflineError
 
                 self._log.debug(f"yt-dlp error:\n{traceback.format_exc()}")
-                raise NoResolverPlugin
+                raise ResolverFailed from e
 
     @cached_property
     def _raw_streams(self):

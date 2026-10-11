@@ -1,4 +1,3 @@
-import contextlib
 import logging
 import threading
 from types import MappingProxyType
@@ -11,14 +10,21 @@ from gridplayer.params.static import URLResolver
 from gridplayer.settings import Settings
 from gridplayer.utils.list_progress import ReadingStopped, Throttled, reading_txt
 from gridplayer.utils.off_thread import interface_first
-from gridplayer.utils.qt import translate
 from gridplayer.utils.url_resolve.static import (
     BadURLException,
     NoResolverPlugin,
     PlaylistURLError,
     ResolvedList,
     ResolvedVideo,
+    ResolverFailed,
     StreamOfflineError,
+)
+from gridplayer.utils.video_errors import (
+    VideoError,
+    empty_link_list_error,
+    resolve_error,
+    stream_offline_error,
+    unresolved_error,
 )
 
 if TYPE_CHECKING:
@@ -50,28 +56,41 @@ def _resolver_map() -> dict[URLResolver, type["ResolverBase"]]:
 
 
 def resolve_url(
-    url: str, on_status=None, headers: dict[str, str] | None = None, progress=None
+    url: str,
+    headers: dict[str, str] | None = None,
+    progress=None,
+    on_resolver=None,
 ) -> ResolvedVideo | None:
     """Resolve a page URL into playable streams, fetched with these headers
     on top of the settings. progress is told how many videos are read of a
-    list the URL turns out to be, as they are; see ResolverBase.
+    list the URL turns out to be, as they are; see ResolverBase. on_resolver
+    is told the name of each resolver as it is tried, nothing for a link
+    played as it is.
 
     Plain function on purpose: the proxy calls it from its own threads to
     renew URLs that have expired, where there is no Qt object to report to.
+
+    Where a resolver took the link for its own and none could read it,
+    raises what that one ran into.
     """
 
-    def status(message: str) -> None:
-        if on_status is not None:
-            on_status(message)
-
-    status(translate("Video Status", "Picking URL resolvers"))
+    failure = None
 
     for resolver_id, resolver in _pick_resolvers(url).items():
-        status(_make_status_msg(resolver_id))
+        if on_resolver is not None:
+            on_resolver(RESOLVER_NAMES.get(resolver_id, ""))
 
         _log.debug(f"Trying to resolve URL with {resolver.__name__}")
-        with contextlib.suppress(NoResolverPlugin):
+        try:
             return resolver(url, headers=headers, progress=progress).resolve()
+        except ResolverFailed as e:
+            # the first to take it for its own knows best why it failed
+            failure = failure or e.__cause__
+        except NoResolverPlugin:
+            pass
+
+    if failure is not None:
+        raise failure
 
     return None
 
@@ -80,7 +99,12 @@ class VideoURLResolverWorker(QObject):
     url_resolved = pyqtSignal(ResolvedVideo)
     list_resolved = pyqtSignal(ResolvedList)
     error = pyqtSignal()
-    update_status = pyqtSignal(str)
+
+    # the resolver tried, by name; a list the link turns out to be, as far as
+    # it is read; and what went wrong, before the error itself
+    resolving = pyqtSignal(str)
+    reading = pyqtSignal(str)
+    failed = pyqtSignal(object)
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -97,38 +121,38 @@ class VideoURLResolverWorker(QObject):
             with interface_first():
                 resolved = resolve_url(
                     url,
-                    on_status=self.update_status.emit,
                     headers=headers,
                     progress=progress,
+                    on_resolver=self.resolving.emit,
                 )
         except ReadingStopped:
             self._log.debug(f"Stopped reading the list behind {url}")
             return None
         except StreamOfflineError:
             self._log.debug("Stream is offline")
-            return self._error(translate("Video Error", "Stream is offline"))
+            return self._error(stream_offline_error(url))
         except PlaylistURLError as e:
             return self._list(url, e.info)
         except BadURLException as e:
             self._log.error(e)
-            return self._error(translate("Video Error", "Failed to resolve URL"))
-        except Exception:
+            return self._error(resolve_error(e, url))
+        except Exception as e:
             self._log.exception("URL resolver exception")
-            return self._error(translate("Video Error", "Failed to resolve URL"))
+            return self._error(resolve_error(e, url))
 
         # no resolver claimed the URL. Emitting this would raise on the way
         # out of the worker thread and leave the video stuck on "loading"
         if resolved is None:
             self._log.error(f"No resolver was able to handle {url}")
-            return self._error(translate("Video Error", "Failed to resolve URL"))
+            return self._error(unresolved_error(url))
 
         self.url_resolved.emit(resolved)
 
     def _tell_reading(self, what: str, count: int, of: int | None = None) -> None:
-        self.update_status.emit(reading_txt(what, count, of)[0])
+        self.reading.emit(reading_txt(what, count, of)[0])
 
-    def _error(self, message: str) -> None:
-        self.update_status.emit(message)
+    def _error(self, error: VideoError) -> None:
+        self.failed.emit(error)
         self.error.emit()
 
     def _list(self, url: str, info: dict) -> None:
@@ -138,7 +162,7 @@ class VideoURLResolverWorker(QObject):
 
         if not items:
             self._log.error(f"Link to a playlist with nothing to play on it: {url}")
-            return self._error(translate("Video Error", "This link is a playlist"))
+            return self._error(empty_link_list_error(url))
 
         self._log.debug(f"Link to a playlist of {len(items)}: {url}")
 
@@ -152,7 +176,9 @@ class VideoURLResolver(QObject):
     # the link leads to a list of videos rather than to one
     list_resolved = pyqtSignal(ResolvedList)
     error = pyqtSignal()
-    update_status = pyqtSignal(str)
+    resolving = pyqtSignal(str)
+    reading = pyqtSignal(str)
+    failed = pyqtSignal(object)
 
     _resolve_url = pyqtSignal(str, object)
 
@@ -170,7 +196,9 @@ class VideoURLResolver(QObject):
         self.worker.url_resolved.connect(self._on_resolved)
         self.worker.list_resolved.connect(self._on_list)
         self.worker.error.connect(self._on_error)
-        self.worker.update_status.connect(self._on_status)
+        self.worker.resolving.connect(self._on_resolving)
+        self.worker.reading.connect(self._on_reading)
+        self.worker.failed.connect(self._on_failed)
 
         self._resolve_url.connect(self.worker.resolve)
 
@@ -186,7 +214,9 @@ class VideoURLResolver(QObject):
         self.worker.url_resolved.disconnect()
         self.worker.list_resolved.disconnect()
         self.worker.error.disconnect()
-        self.worker.update_status.disconnect()
+        self.worker.resolving.disconnect()
+        self.worker.reading.disconnect()
+        self.worker.failed.disconnect()
 
         self.thread.quit()
 
@@ -196,6 +226,10 @@ class VideoURLResolver(QObject):
             _abandon(self.thread, self.worker)
         else:
             self.thread.wait()
+
+    @property
+    def is_busy(self) -> bool:
+        return self._is_busy
 
     def resolve(self, url, headers=None):
         if self._is_closed:
@@ -220,9 +254,17 @@ class VideoURLResolver(QObject):
         if not self._is_closed:
             self.error.emit()
 
-    def _on_status(self, message: str):
+    def _on_resolving(self, name: str):
         if not self._is_closed:
-            self.update_status.emit(message)
+            self.resolving.emit(name)
+
+    def _on_reading(self, said: str):
+        if not self._is_closed:
+            self.reading.emit(said)
+
+    def _on_failed(self, error: VideoError):
+        if not self._is_closed:
+            self.failed.emit(error)
 
 
 # resolver threads whose video went away mid-resolve, left to run out on
@@ -246,15 +288,6 @@ def _abandon(thread: QThread, worker: QObject) -> None:
     # it may have stopped before there was anyone to tell
     if thread.isFinished():
         release()
-
-
-def _make_status_msg(resolver_id: URLResolver):
-    if resolver_id == URLResolver.DIRECT:
-        return translate("Video Status", "Playing URL directly")
-
-    return translate("Video Status", "Resolving URL via {RESOLVER_NAME}").format(
-        RESOLVER_NAME=RESOLVER_NAMES[resolver_id]
-    )
 
 
 def _pick_resolvers(url) -> dict[URLResolver, type["ResolverBase"]]:

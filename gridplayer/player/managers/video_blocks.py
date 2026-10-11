@@ -224,8 +224,6 @@ class VideoBlocksManager(ManagerBase):
 
         self._ctx.video_blocks = VideoBlocks()
 
-        self._live_video_blocks = 0
-        self._videos_to_reload = []
         self._count_batch_depth = 0
 
     @property
@@ -658,28 +656,49 @@ class VideoBlocksManager(ManagerBase):
         )
 
     def reload_videos(self):
-        if self._videos_to_reload:
-            self._log.warning("Reload: operation in progress")
-            return
+        """Open every video again, in players started afresh.
 
-        self._videos_to_reload = self._ctx.video_blocks.videos
+        The cells stay on screen while their players let go, each saying it
+        loads again, and new ones take their places once the players are
+        started again. Closed first, the grid was shown empty, its empty cell
+        and all, until the new ones came.
+        """
+        video_blocks = list(self._ctx.video_blocks)
+        videos = self._ctx.video_blocks.videos
 
-        self._log.debug("Reload: closing all")
+        self._log.debug("Reload: letting the players go")
 
-        if self._live_video_blocks == 0:
-            self.reload_all_closed.emit()
-        else:
-            self.close_all()
+        # said by all of them before any lets go: a hardware video's cell,
+        # once its player has, shows what was there before its picture came
+        for video_block in video_blocks:
+            video_block.show_reloading()
 
-    def reload_videos_finish(self):
+        _start_cleanup(video_blocks)
+
+        for video_block in video_blocks:
+            video_block.release_player()
+
         self._log.debug("Reload: terminating driver")
 
         self.reload_all_closed.emit()
 
+        if not video_blocks:
+            return
+
         self._log.debug("Reload: adding videos back")
 
-        self.add_videos(self._videos_to_reload)
-        self._videos_to_reload = []
+        # the new ones laid out in their places and shown, the old ones gone,
+        # all before the window is painted again
+        with self.batch():
+            self._take_off_screen(video_blocks)
+            self.forget_synced_view()
+
+            # before the new ones come: closing one stops its list being read
+            # for its video, theirs too
+            for video_block in video_blocks:
+                video_block.close_silently()
+
+            self.add_videos(videos)
 
     @contextlib.contextmanager
     def batch(self):
@@ -709,12 +728,12 @@ class VideoBlocksManager(ManagerBase):
         if not leftover_set:
             return
         removed = [vb for vb in self._ctx.video_blocks if vb.video_id in leftover_set]
+
+        self._take_off_screen(removed)
+
         _start_cleanup(removed)
         for vb in removed:
-            self._ctx.video_blocks.remove(vb)
             vb.close_silently()
-        if not self._in_count_batch():
-            self._emit_video_count()
 
     def close_single(self, _id):
         closing_block = self._ctx.video_blocks.by_id(_id)
@@ -736,30 +755,44 @@ class VideoBlocksManager(ManagerBase):
         """
         video_blocks = list(self._ctx.video_blocks)
 
-        for video_block in video_blocks:
-            video_block.hide()
-
         self._log.debug("Clearing video blocks array")
 
-        self._ctx.video_blocks.clear()
         self.forget_synced_view()
-
-        if not self._in_count_batch():
-            self._emit_video_count()
-
-        self.parent().repaint()
+        self._take_off_screen(video_blocks)
 
         _start_cleanup(video_blocks)
 
         self.close_all_signal.emit()
+
+    def _take_off_screen(self, video_blocks):
+        """Hidden and out of the grid, and the window painted without them,
+        before any of their players is waited on: it is not painted while
+        they are, and a hardware video's cell, once its player lets go,
+        shows what was painted there before its picture came.
+
+        In a batch, laid out and painted once it is over, along with what
+        else it brings.
+        """
+
+        is_any_shown = any(vb.isVisible() for vb in video_blocks)
+
+        for vb in video_blocks:
+            vb.hide()
+            self._ctx.video_blocks.remove(vb)
+
+        if self._in_count_batch():
+            return
+
+        self._emit_video_count()
+
+        if is_any_shown:
+            self.parent().repaint()
 
     def playing_count_change(self):
         playing_videos_count = len(self._ctx.video_blocks.unpaused)
         self.playings_videos_count_changed.emit(playing_videos_count)
 
     def _add_video_block(self, video):
-        self._live_video_blocks += 1
-
         vb = VideoBlock(
             video_driver=self._ctx.video_driver,
             context=self._ctx,
@@ -780,7 +813,6 @@ class VideoBlocksManager(ManagerBase):
             (vb.sync_view, partial(self.sync_view, vb)),
             (vb.sync_view_single, partial(self.sync_view_single, vb)),
             (vb.sync_rate, partial(self.sync_rate, vb)),
-            (vb.destroyed, self._video_block_destroyed),
             (self.set_pause, vb.set_pause),
             (self.all_stop_playback, vb.stop_playback),
             (self.all_seek_shift_percent, vb.seek_shift_percent),
@@ -845,12 +877,3 @@ class VideoBlocksManager(ManagerBase):
         self._ctx.video_blocks.append(vb)
 
         return vb
-
-    def _video_block_destroyed(self, _):
-        self._live_video_blocks -= 1
-
-        if self._live_video_blocks == 0:
-            self._log.debug("No more live video blocks")
-
-            if self._videos_to_reload:
-                self.reload_videos_finish()

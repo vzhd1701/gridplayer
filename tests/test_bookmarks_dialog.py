@@ -10,7 +10,7 @@ from unittest.mock import MagicMock
 
 import pytest
 from PyQt5.QtCore import QPoint, QSettings, Qt, QTimer
-from PyQt5.QtGui import QColor, QContextMenuEvent, QIcon, QKeySequence
+from PyQt5.QtGui import QColor, QContextMenuEvent, QIcon, QKeySequence, QPalette
 from PyQt5.QtTest import QTest
 from PyQt5.QtWidgets import (
     QAbstractItemView,
@@ -1200,15 +1200,46 @@ class TestThePlayerRow:
         assert player.time_label.x() > player.play_pause.geometry().right() + 1
         assert player.bar.x() > player.time_label.geometry().right() + 1
 
-    def test_the_bar_is_in_quieter_colours_than_over_a_video(self, dialog):
+    @pytest.mark.parametrize("name", ["play_pause", "time_label", "bar"])
+    def test_solid_on_the_dialog_corners_and_all(self, dialog, name):
+        """Not the see-through rounded boxes they are over a video: the
+        dialog's own grey showed through them."""
+
+        player = dialog._player
+        palette = player.palette()
+        palette.setColor(QPalette.Window, QColor(Qt.red))
+        player.setPalette(palette)
+        player.setAutoFillBackground(True)
+
+        image = player.grab().toImage()
+        widget = getattr(player, name)
+        box = widget.geometry()
+
+        # not rounded off it
+        for corner in (box.topLeft(), box.bottomRight()):
+            assert QColor(image.pixel(corner)) != QColor(Qt.red)
+
+        # nor mixed with it
+        if widget is not player.bar:
+            inside = QPoint(box.left() + 2, box.center().y())
+            assert QColor(image.pixel(inside)).name() == widget.fill_color.name()
+
+    def test_the_bar_is_in_the_same_quiet_colours_as_over_a_video(self, dialog):
         bar = dialog._player.bar
         over_a_video = OverlayProgressBar()
         over_a_video.color = bar.color
 
-        assert over_a_video.color_progress == QColor(Qt.red)
-        assert over_a_video.color_select == QColor(Qt.blue)
         assert bar.color_progress.name() == "#d14747"
         assert bar.color_select.name() == "#4775d1"
+        assert over_a_video.color_progress == bar.color_progress
+        assert over_a_video.color_select == bar.color_select
+        assert over_a_video.color_ahead == bar.color_ahead
+
+    def test_over_a_reddish_overlay_the_bar_is_a_quiet_green(self):
+        bar = OverlayProgressBar()
+        bar.color = QColor("#a01010")
+
+        assert bar.color_progress.name() == "#47d147"
 
     def test_the_grey_ahead_of_it_is_half_as_far_from_the_bar(self, dialog):
         bar = dialog._player.bar

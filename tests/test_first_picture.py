@@ -23,6 +23,7 @@ from gridplayer.widgets.video_frame_vlc_base import (
 )
 from gridplayer.widgets.video_frame_vlc_hw_sp import VideoFrameVLCHWSP
 from gridplayer.widgets.video_frame_vlc_sw_sp import VideoFrameVLCSWSP
+from gridplayer.widgets.video_overlay import OverlayMode
 
 # where the picture goes in the cell's VLC window, and the window's size
 PLACED = (0, 4, 416, 242)
@@ -425,19 +426,24 @@ def _block_showing_overlays(mocker, is_picture_pending):
     return block
 
 
-def test_cell_holds_its_overlay_back_until_the_picture_is_up(mocker):
-    """Not over a loading status still counting, a stream's for longest."""
+def test_cell_overlay_says_loading_until_the_picture_is_up(mocker):
+    """Up over the loading status still counting, a stream's for longest,
+    with Stop rather than the video's controls."""
     block = _block_showing_overlays(mocker, is_picture_pending=True)
+    block.is_stopped = False
+    block.is_video_initialized = True
+    block._overlay_mode = lambda: VideoBlock._overlay_mode(block)
+    block._sync_overlay_mode = lambda: VideoBlock._sync_overlay_mode(block)
 
     VideoBlock.load_video_finish(block)
     # the mouse moving over it meanwhile
     block.show_overlay()
 
-    block.overlay.show.assert_not_called()
+    block.overlay.set_mode.assert_called_with(OverlayMode.LOADING)
 
     VideoBlock._picture_shown(block)
 
-    block.overlay.show.assert_called_once()
+    block.overlay.set_mode.assert_called_with(OverlayMode.VIDEO)
 
 
 def test_cell_shows_its_overlay_on_the_load_with_nothing_to_wait_for(mocker):

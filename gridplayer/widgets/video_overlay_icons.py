@@ -1,6 +1,6 @@
 import math
 
-from PyQt5.QtCore import QRect, Qt
+from PyQt5.QtCore import QRect, QRectF, Qt
 from PyQt5.QtGui import QBrush, QColor, QPainter, QPainterPath, QPen
 
 
@@ -50,6 +50,19 @@ def draw_pause(rect, painter, color_fg, color_bg):
     painter.fillRect(rect.width() - 5 - 5, rect.y() + 4, 5, rect.height() - 8, color_fg)
 
 
+def draw_stop(rect, painter, color_fg, color_bg):
+    """A square as wide as play and pause are, as heavy as pause looks."""
+
+    painter.setRenderHint(QPainter.Antialiasing, True)
+
+    side = rect.width() - 10
+    square = QRectF(rect.x() + 5, rect.y() + (rect.height() - side) // 2, side, side)
+
+    painter.setPen(Qt.NoPen)
+    painter.setBrush(color_fg)
+    painter.drawRoundedRect(square, 1.5, 1.5)
+
+
 def draw_cross(rect, painter, color_fg, color_bg):
     painter.setRenderHint(QPainter.Antialiasing, True)
     painter.setPen(QPen(color_fg, 4))
@@ -87,8 +100,7 @@ def draw_spin_circle(
 
     rect_spin = rect.adjusted(5, 5, -5, -5)
 
-    painter.setPen(QPen(color_fg, 4))
-    painter.drawArc(rect_spin, 0, 16 * 360)
-
-    painter.setPen(QPen(color_bg, 2))
-    painter.drawArc(rect_spin, -spin * 16, 16 * 90)
+    # a ring with a gap going round, drawn rather than cut out of the ring:
+    # the box under it may let the picture through
+    painter.setPen(QPen(color_fg, 3, Qt.SolidLine, Qt.RoundCap))
+    painter.drawArc(rect_spin, (-spin + 90) * 16, 16 * 270)

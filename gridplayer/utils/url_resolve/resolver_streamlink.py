@@ -8,7 +8,7 @@ from gridplayer.models.stream import HashableDict, Stream, Streams, StreamSessio
 from gridplayer.settings import Settings
 from gridplayer.utils.network import configure_session
 from gridplayer.utils.url_resolve.resolver_base import ResolverBase
-from gridplayer.utils.url_resolve.static import NoResolverPlugin
+from gridplayer.utils.url_resolve.static import NoResolverPlugin, ResolverFailed
 from gridplayer.utils.url_resolve.stream_detect import (
     is_hls_live_stream,
     is_http_live_stream,
@@ -91,7 +91,7 @@ class StreamlinkResolver(ResolverBase):
         except PluginError as e:
             self._log.warning(f"Streamlink - plugin error [{e}]")
             self._log.debug("Traceback", exc_info=e)
-            raise NoResolverPlugin
+            raise ResolverFailed from e
 
         if not streams:
             self._log.debug("Streamlink - no streams found")

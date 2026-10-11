@@ -56,7 +56,7 @@ def slow_resolve(mocker):
     started = threading.Event()
     release = threading.Event()
 
-    def _resolve(url, on_status=None, headers=None, progress=None):
+    def _resolve(url, headers=None, progress=None, on_resolver=None):
         started.set()
         release.wait(TIMEOUT_SEC)
         return VIDEO

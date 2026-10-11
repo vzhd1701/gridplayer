@@ -83,6 +83,7 @@ from gridplayer.dialogs.bookmarks import (
     paint_empty_txt,
     with_key_txt,
 )
+from gridplayer.dialogs.error_details import ErrorDetails, ErrorDetailsDialog
 from gridplayer.dialogs.messagebox import QCustomMessageBox
 from gridplayer.dialogs.unlink_list import UnlinkListDialog
 from gridplayer.dialogs.update_every import UpdateEveryDialog, every_txt, in_txt
@@ -103,15 +104,14 @@ from gridplayer.params.static import (
     ListView,
 )
 from gridplayer.playlist_settings import PlaylistSettings
+from gridplayer.utils.error_txts import error_tag, read_error_txts
 from gridplayer.utils.excepthook import dragging
 from gridplayer.utils.file_checks import FileChecks
 from gridplayer.utils.files import extract_mime_uris
 from gridplayer.utils.item_info import may_be_looked_up
 from gridplayer.utils.list_errors import (
     ReadError,
-    ReadErrorKind,
     read_error_of,
-    site_name,
 )
 from gridplayer.utils.list_files import m3u_text
 from gridplayer.utils.list_order import (
@@ -148,9 +148,11 @@ from gridplayer.utils.show_in_folder import FolderRevealer
 from gridplayer.utils.thumbnails import ThumbnailLoader
 from gridplayer.utils.time_txt import get_time_txt
 from gridplayer.utils.url_resolve.static import PLUGIN_URLS
+from gridplayer.utils.video_errors import read_code_full_txt
 from gridplayer.widgets.combo_box import ElidedComboBox, cap_popup_height
 from gridplayer.widgets.custom_menu import CustomMenu, checked_icon
 from gridplayer.widgets.elided_label import ElidedLabel
+from gridplayer.widgets.error_tag import ErrorTag
 
 DIALOG_SIZE = QSize(600, 560)
 DIALOG_MIN_SIZE = QSize(460, 380)
@@ -218,13 +220,6 @@ UNLINK_ICON_PX = 12
 # that away
 READ_ERROR_ICON_PX = 16
 HIDE_ERROR_ICON_PX = 12
-
-# the HTTP answers said each in words of their own
-HTTP_UNAUTHORIZED = 401
-HTTP_FORBIDDEN = 403
-HTTP_NOT_THERE = frozenset((404, 410))
-HTTP_TOO_MANY_REQUESTS = 429
-HTTP_SERVER_ERRORS = (500, 600)
 
 # the sign on the button stopping a lookup, in the line under the list
 LOOKUP_ICON_PX = 14
@@ -1842,6 +1837,9 @@ class MediaListDialog(QDialog):
         font.setBold(True)
         self._error_title.setFont(font)
 
+        # where it broke and its code
+        self._error_tag = ErrorTag()
+
         self._error_about = QLabel()
         self._error_about.setWordWrap(True)
         self._error_about.setForegroundRole(QPalette.PlaceholderText)
@@ -1851,6 +1849,11 @@ class MediaListDialog(QDialog):
         )
         self._error_again_button.clicked.connect(self._try_again)
 
+        self._error_details_button = dialog_button(
+            None, translate("Dialog - List", "Details")
+        )
+        self._error_details_button.clicked.connect(self._show_read_error_details)
+
         self._error_hide_button = self._corner_button()
         self._error_hide_button.setIcon(QIcon.fromTheme("cross"))
         self._error_hide_button.setIconSize(
@@ -1859,9 +1862,15 @@ class MediaListDialog(QDialog):
         self._error_hide_button.setToolTip(translate("Dialog - List", "Hide"))
         self._error_hide_button.clicked.connect(self._hide_read_error)
 
+        title_row = QHBoxLayout()
+        title_row.setSpacing(8)
+        title_row.addWidget(self._error_title)
+        title_row.addWidget(self._error_tag, 0, Qt.AlignVCenter)
+        title_row.addStretch(1)
+
         words = QVBoxLayout()
         words.setSpacing(2)
-        words.addWidget(self._error_title)
+        words.addLayout(title_row)
         words.addWidget(self._error_about)
 
         box = QWidget()
@@ -1870,6 +1879,7 @@ class MediaListDialog(QDialog):
         layout.setSpacing(8)
         layout.addWidget(self._error_icon)
         layout.addLayout(words, 1)
+        layout.addWidget(self._error_details_button, 0, Qt.AlignVCenter)
         layout.addWidget(self._error_again_button, 0, Qt.AlignVCenter)
         layout.addWidget(self._error_hide_button, 0, Qt.AlignVCenter)
 
@@ -3434,19 +3444,31 @@ class MediaListDialog(QDialog):
             return
 
         title, about = read_error_txts(error)
-        icon = "network-error" if error.is_network else "error"
 
         self._error_icon.setPixmap(
-            QIcon.fromTheme(icon).pixmap(QSize(READ_ERROR_ICON_PX, READ_ERROR_ICON_PX))
+            QIcon.fromTheme(error.icon).pixmap(
+                QSize(READ_ERROR_ICON_PX, READ_ERROR_ICON_PX)
+            )
         )
         self._error_title.setText(title)
+        self._error_tag.set_tag(*error_tag(error))
         self._error_about.setText(about)
 
-        # the error as it was raised, for whoever wants it: wrapped, as
-        # rich text is
-        tooltip = f"<p>{html.escape(error.raw)}</p>"
-        for label in (self._error_icon, self._error_title, self._error_about):
-            label.setToolTip(tooltip)
+    def _show_read_error_details(self):
+        """All that is known of why the list could not be read, the error
+        as it was raised among it, in a window of its own."""
+
+        error = self._read_error
+
+        if error is None:
+            return
+
+        dialog = ErrorDetailsDialog(
+            read_error_details(error, self._media_list), parent=self
+        )
+        dialog.try_again.connect(self._try_again)
+        dialog.exec_()
+        dialog.deleteLater()
 
     def _hide_read_error(self):
         self._registry.forget_read_error(self._list_id)
@@ -4206,197 +4228,6 @@ def published_txt(published: int, now: float | None = None) -> str:
     return translate("Dialog - List", "{COUNT} minutes ago").format(COUNT=minutes)
 
 
-def read_error_txts(error: ReadError) -> tuple[str, str]:
-    """What the list could not be read from its source for: a few words,
-    and a line on what that means or what to do."""
-
-    kind = error.kind
-    host = error.host
-
-    if kind is ReadErrorKind.HTTP:
-        return _http_error_txts(error.status)
-
-    if kind is ReadErrorKind.PROXY:
-        return (
-            translate("Dialog - List", "Proxy error"),
-            translate(
-                "Dialog - List", "Couldn't connect through the proxy set in Settings."
-            ),
-        )
-
-    if kind is ReadErrorKind.CERTIFICATE:
-        return (
-            translate("Dialog - List", "Secure connection failed"),
-            translate("Dialog - List", "The site's certificate isn't trusted."),
-        )
-
-    if kind is ReadErrorKind.SECURE:
-        return (
-            translate("Dialog - List", "Secure connection failed"),
-            translate(
-                "Dialog - List", "Couldn't make a secure connection to {HOST}."
-            ).format(HOST=host),
-        )
-
-    if kind is ReadErrorKind.DNS:
-        return (
-            translate("Dialog - List", "Server not found"),
-            translate(
-                "Dialog - List",
-                "Couldn't find {HOST}. Check the link and your internet connection.",
-            ).format(HOST=host),
-        )
-
-    if kind is ReadErrorKind.TIMEOUT:
-        return (
-            translate("Dialog - List", "Timed out"),
-            translate("Dialog - List", "{HOST} took too long to answer.").format(
-                HOST=host
-            ),
-        )
-
-    if kind is ReadErrorKind.REFUSED:
-        return (
-            translate("Dialog - List", "Connection refused"),
-            translate("Dialog - List", "{HOST} isn't accepting connections.").format(
-                HOST=host
-            ),
-        )
-
-    if kind is ReadErrorKind.LOST:
-        return (
-            translate("Dialog - List", "Connection lost"),
-            translate("Dialog - List", "The connection to {HOST} was cut off.").format(
-                HOST=host
-            ),
-        )
-
-    if kind is ReadErrorKind.CONNECTION:
-        return (
-            translate("Dialog - List", "Couldn't connect"),
-            translate(
-                "Dialog - List",
-                "Couldn't reach {HOST}. Check your internet connection.",
-            ).format(HOST=host),
-        )
-
-    if kind is ReadErrorKind.BLOCKED:
-        return (
-            translate("Dialog - List", "{SITE} is blocking requests").format(
-                SITE=site_name(host)
-            ),
-            translate(
-                "Dialog - List", "Try again later, or set up cookies in Settings."
-            ),
-        )
-
-    if kind is ReadErrorKind.GONE:
-        return (
-            translate("Dialog - List", "Not found"),
-            translate("Dialog - List", "It may be private or deleted."),
-        )
-
-    if kind is ReadErrorKind.NOT_A_LIST:
-        if error.source_kind == ListSourceKind.FILE:
-            about = translate("Dialog - List", "The file isn't a playlist.")
-        else:
-            about = translate("Dialog - List", "The link didn't return a playlist.")
-
-        return translate("Dialog - List", "Not a playlist"), about
-
-    if kind is ReadErrorKind.TOO_LARGE:
-        return (
-            translate("Dialog - List", "Playlist too big"),
-            translate(
-                "Dialog - List",
-                "It's over the M3U size limit ({SIZE} MB). You can raise it in"
-                " Settings.",
-            ).format(SIZE=error.limit_mb),
-        )
-
-    if kind is ReadErrorKind.EMPTY:
-        return (
-            translate("Dialog - List", "Empty playlist"),
-            translate("Dialog - List", "The source has nothing to play right now."),
-        )
-
-    if kind is ReadErrorKind.MISSING:
-        if error.source_kind == ListSourceKind.FOLDER:
-            title = translate("Dialog - List", "Folder not found")
-        else:
-            title = translate("Dialog - List", "File not found")
-
-        return title, translate(
-            "Dialog - List", "It may have been moved, renamed or deleted."
-        )
-
-    if kind is ReadErrorKind.NO_ACCESS:
-        return (
-            translate("Dialog - List", "Access denied"),
-            translate("Dialog - List", "You don't have permission to open it."),
-        )
-
-    if error.source_kind == ListSourceKind.URL:
-        title = translate("Dialog - List", "Couldn't download the list")
-    else:
-        title = translate("Dialog - List", "Couldn't read the list")
-
-    return title, error.raw_said
-
-
-def _http_error_txts(status: int) -> tuple[str, str]:
-    if status == HTTP_UNAUTHORIZED:
-        return (
-            translate("Dialog - List", "Login needed (HTTP {CODE})").format(
-                CODE=status
-            ),
-            translate("Dialog - List", "The server wants a username and password."),
-        )
-
-    if status == HTTP_FORBIDDEN:
-        return (
-            translate("Dialog - List", "Access denied (HTTP {CODE})").format(
-                CODE=status
-            ),
-            translate(
-                "Dialog - List", "The server refused. The link may have expired."
-            ),
-        )
-
-    if status in HTTP_NOT_THERE:
-        return (
-            translate("Dialog - List", "Not found (HTTP {CODE})").format(CODE=status),
-            translate("Dialog - List", "The server has nothing at this link."),
-        )
-
-    if status == HTTP_TOO_MANY_REQUESTS:
-        return (
-            translate("Dialog - List", "Too many requests (HTTP {CODE})").format(
-                CODE=status
-            ),
-            translate(
-                "Dialog - List",
-                "The server is limiting requests. Try again later.",
-            ),
-        )
-
-    if HTTP_SERVER_ERRORS[0] <= status < HTTP_SERVER_ERRORS[1]:
-        return (
-            translate("Dialog - List", "Server error (HTTP {CODE})").format(
-                CODE=status
-            ),
-            translate(
-                "Dialog - List",
-                "The problem is on the server's side. Try again later.",
-            ),
-        )
-
-    return (
-        translate("Dialog - List", "Request refused (HTTP {CODE})").format(CODE=status),
-        translate("Dialog - List", "The server didn't accept the request."),
-    )
-
-
 # how the list is told apart from what its source has now, by how it is
 # read again
 _MERGES = {
@@ -4457,3 +4288,40 @@ def _file_name(name: str) -> str:
     """A name fit to be a file's: a list called nothing is a list."""
 
     return sanitize_filename(name) if name.strip(" .") else "list"
+
+
+def read_error_details(error: ReadError, media_list) -> ErrorDetails:
+    title, about = read_error_txts(error)
+    where, code = error_tag(error)
+
+    rows = [(translate("Error Details", "List"), media_list.name)]
+
+    source = media_list.source
+
+    if source is not None:
+        if source.kind == ListSourceKind.URL:
+            label = translate("Error Details", "Link")
+        elif source.kind == ListSourceKind.FOLDER:
+            label = translate("Error Details", "Folder")
+        else:
+            label = translate("Error Details", "File")
+
+        rows.append((label, str(source.location)))
+
+    code_full = read_code_full_txt(error)
+
+    if code_full:
+        rows.append((translate("Error Details", "Code"), code_full))
+
+    if error.host:
+        rows.append((translate("Error Details", "Server"), error.host))
+
+    return ErrorDetails(
+        title=title,
+        about=about,
+        where=where,
+        code=code,
+        rows=tuple(rows),
+        raw=error.raw,
+        icon=error.icon,
+    )

@@ -33,7 +33,7 @@ class _MinimalPlayer(VlcPlayerBase):
 
     def notify_snapshot_taken(self, snapshot_path): ...
     def notify_update_status(self, status, percent=0): ...
-    def notify_error(self, error): ...
+    def notify_error(self, error, vlc_lines=()): ...
     def notify_time_changed(self, new_time): ...
     def notify_playback_status_changed(self, new_status): ...
     def notify_load_video_done(self, media_track): ...
@@ -142,7 +142,7 @@ def _loading_player():
 
     player.errors = []
     player.statuses = []
-    player.notify_error = player.errors.append
+    player.notify_error = lambda error, vlc_lines: player.errors.append(error)
     player.notify_update_status = lambda status, percent=0: player.statuses.append(
         percent
     )
@@ -227,7 +227,7 @@ def test_an_end_before_the_video_is_up_is_an_error():
 
     errors = []
     player = _MinimalPlayer(vlc_instance=None)
-    player.notify_error = errors.append
+    player.notify_error = lambda error, vlc_lines: errors.append(error)
 
     player.cb_end_reached(None)
 

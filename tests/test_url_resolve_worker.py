@@ -88,7 +88,7 @@ def test_a_failed_resolve_is_reported_as_an_error(error, mocker):
 
 class TestAListTheLinkTurnsOutToBe:
     def _reading(self, mocker, counts):
-        def resolve(url, on_status=None, headers=None, progress=None):
+        def resolve(url, headers=None, progress=None, **kwargs):
             for count in counts:
                 progress("items", count)
             return None
@@ -99,7 +99,7 @@ class TestAListTheLinkTurnsOutToBe:
         self._reading(mocker, [1200])
         worker, _, _ = _worker()
         said = []
-        worker.update_status.connect(said.append)
+        worker.reading.connect(said.append)
 
         worker.resolve("http://page")
 
@@ -109,7 +109,7 @@ class TestAListTheLinkTurnsOutToBe:
         self._reading(mocker, [1, 2])
         worker, resolved, errors = _worker()
         said = []
-        worker.update_status.connect(said.append)
+        worker.reading.connect(said.append)
         worker.stop.set()
 
         worker.resolve("http://page")

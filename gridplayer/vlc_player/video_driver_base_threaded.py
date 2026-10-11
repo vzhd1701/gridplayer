@@ -33,7 +33,7 @@ class VLCVideoDriverThreaded(CommandLoopThreaded, VLCVideoDriver):
             f"Video process died with exit code {describe_exit_code(exit_code)}"
         )
 
-        self.error.emit(translate("Video Error", "Video process crashed"))
+        self.error.emit(translate("Video Error", "Video process crashed"), ())
 
     def player_gone(self):
         """Stop waiting on a player that can no longer answer."""

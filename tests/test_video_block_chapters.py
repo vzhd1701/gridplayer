@@ -434,6 +434,9 @@ def url_block(monkeypatch):
             list_resolved = pyqtSignal(object)
             error = pyqtSignal()
             update_status = pyqtSignal(str)
+            resolving = pyqtSignal(str)
+            reading = pyqtSignal(str)
+            failed = pyqtSignal(object)
 
             def resolve(self, url, headers=None):
                 self.url_resolved.emit(resolved)

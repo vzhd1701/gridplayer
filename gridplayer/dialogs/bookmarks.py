@@ -86,6 +86,7 @@ from gridplayer.widgets.video_overlay_elements import (
     OverlayBookmarkMarkers,
     OverlayProgressBar,
     OverlayShortLabel,
+    mixed_color,
 )
 
 # The bar is the overlay's, in a grey of the dialog's own: this much of the
@@ -94,14 +95,6 @@ from gridplayer.widgets.video_overlay_elements import (
 # see-through, which fringes text in colour.
 BAR_TINT = 0.13
 TIME_FADE = 0.38
-
-# The overlay's pure red and blue stand out over any video, and glare in a
-# window: here, quieter ones, readable on a light grey and a dark one alike;
-# and the grey over what is ahead of the mouse, this much of the way from the
-# bar's to the overlay's.
-BAR_PROGRESS_COLOR = "#d14747"
-BAR_SELECT_COLOR = "#4775d1"
-BAR_AHEAD_SHADE = 0.5
 
 # the play button, the time and the bar, each a box of its own
 PLAYER_ROW_SPACING = 6
@@ -149,17 +142,6 @@ ADD_KEY = Qt.Key_Insert
 class Column(IntEnum):
     TIME = 0
     NAME = 1
-
-
-def mixed_color(color: QColor, other: QColor, amount: float) -> QColor:
-    """The colour with this much of the other in it."""
-
-    return QColor.fromRgbF(
-        *(
-            channel + (other_channel - channel) * amount
-            for channel, other_channel in zip(color.getRgbF()[:3], other.getRgbF()[:3])
-        )
-    )
 
 
 def here_icon(color: QColor) -> QIcon:
@@ -657,35 +639,23 @@ class HoverTip(TipWindow):
         self.show_now()
 
 
-class _Bar(OverlayProgressBar):
-    """The overlay's bar, in quieter colours."""
-
-    @property
-    def color_progress(self):
-        return QColor(BAR_PROGRESS_COLOR)
-
-    @property
-    def color_select(self):
-        return QColor(BAR_SELECT_COLOR)
-
-    @property
-    def color_ahead(self):
-        return mixed_color(self.color, self.color_contrast_mid, BAR_AHEAD_SHADE)
-
-
 class PlayerRow(QWidget):
     """The video as its overlay shows it at the foot of its cell: play and
     pause, the time, the bar and the bookmarks' markers above it, the same
-    widgets in a grey of the dialog's, set apart, the bar in quieter
-    colours."""
+    widgets in a grey of the dialog's, set apart."""
 
     def __init__(self, parent=None):
         super().__init__(parent)
 
         self.play_pause = OverlayPlayPauseButton(parent=self)
         self.time_label = OverlayShortLabel(parent=self)
-        self.bar = _Bar(parent=self)
+        self.bar = OverlayProgressBar(parent=self)
         self.markers = _Markers(bar=self.bar, parent=self)
+
+        # solid, as on the opaque overlay: the dialog is not to show through
+        # them, nor are their corners to be rounded off it
+        for widget in (self.play_pause, self.time_label, self.bar):
+            widget.set_overlay_opacity(1)
 
         layout = QHBoxLayout(self)
         layout.setContentsMargins(0, BOOKMARK_STRIP_HEIGHT, 0, 0)

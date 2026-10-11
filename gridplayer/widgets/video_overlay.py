@@ -1,7 +1,16 @@
 import sys
+from enum import Enum, auto
 
-from PyQt5.QtCore import QEvent, QPoint, QRect, Qt, QTimer, pyqtSignal, pyqtSlot
-from PyQt5.QtGui import QGuiApplication, QPalette, QRegion
+from PyQt5.QtCore import (
+    QEvent,
+    QPoint,
+    QRect,
+    Qt,
+    QTimer,
+    pyqtSignal,
+    pyqtSlot,
+)
+from PyQt5.QtGui import QGuiApplication, QPainter, QPalette, QRegion
 from PyQt5.QtWidgets import (
     QApplication,
     QHBoxLayout,
@@ -21,9 +30,11 @@ from gridplayer.widgets.video_overlay_buttons import (
     OverlayExitButton,
     OverlayListPlaceButton,
     OverlayPlayPauseButton,
+    OverlayTextButton,
     OverlayVolumeButton,
 )
 from gridplayer.widgets.video_overlay_elements import (
+    BOX_SHADOW_MARGIN,
     OverlayBar,
     OverlayBookmarkMarkers,
     OverlayBorder,
@@ -38,6 +49,26 @@ from gridplayer.widgets.video_overlay_elements import (
     OverlayZoomHint,
     OverlayZoomSelection,
 )
+from gridplayer.widgets.video_overlay_icons import draw_play, draw_stop
+
+# how far in from the cell's edges the controls are: over a video, and as
+# far in over a cell with no picture, clear of its frame, which runs close
+# round the edge for them to stay where they are
+CONTROL_MARGIN = 10
+
+
+class OverlayMode(Enum):
+    """What the cell under the overlay shows, which says what it offers."""
+
+    # a video: play, the bar, the time and the sound
+    VIDEO = auto()
+    # stopped: a way to play it
+    STOPPED = auto()
+    # still loading: a way to stop it
+    LOADING = auto()
+    # failed: try again, more about why, and on to the next of its list
+    ERROR = auto()
+
 
 PROPAGATED_EVENTS = (
     QEvent.MouseButtonRelease,
@@ -88,24 +119,42 @@ class OverlayBlock(QWidget):
     # which item of its list the cell plays clicked, for the List window
     list_place_clicked = pyqtSignal()
 
+    # the actions of a cell still loading, or failed
+    stop_clicked = pyqtSignal()
+    retry_clicked = pyqtSignal()
+    details_clicked = pyqtSignal()
+    next_clicked = pyqtSignal()
+
     def __init__(self, parent=None):
         super().__init__(parent)
 
         self.setMouseTracking(True)
 
-        self.ui_setup()
-
         self._is_chrome_visible = True
         self._is_active = False
-        self._is_stopped = False
+        self._mode = OverlayMode.VIDEO
+        self._is_on_chrome = False
         self._last_position = (0, 0)
         self._volume_button_wanted = True
+
+        # what a failed cell offers past trying again
+        self._has_error_details = False
+        self._can_go_next = False
+
+        self.ui_setup()
 
         self._set_opacity(0.5)
 
         self.ui_customize_dynamic()
 
         self.ui_connect()
+
+        # as it is to start with; from then on, as what it shows changes
+        self._sync_bottom_bar()
+
+        # the shadows round the boxes go where the boxes go
+        for widget in self.findChildren(OverlayWidget):
+            widget.installEventFilter(self)
 
     def ui_customize_dynamic(self):
         self.label_info_hide_timer = QTimer()
@@ -120,6 +169,12 @@ class OverlayBlock(QWidget):
         self.label_progress.hide()
         self.progress_bar.hide()
         self.progress_bar_placeholder.show()
+
+        self.play_button.hide()
+        self.stop_button.hide()
+        self.retry_button.hide()
+        self.details_button.hide()
+        self.next_button.hide()
 
     def ui_connect(self):
         qt_connect(
@@ -138,6 +193,11 @@ class OverlayBlock(QWidget):
             (self.progress_bar.position_changed, self.emit_position),
             (self.volume_button.clicked, self.mute_unmute),
             (self.volume_bar.position_changed, self.emit_volume_position),
+            (self.play_button.clicked, self.play_pause),
+            (self.stop_button.clicked, self.stop_clicked),
+            (self.retry_button.clicked, self.retry_clicked),
+            (self.details_button.clicked, self.details_clicked),
+            (self.next_button.clicked, self.next_clicked),
         )
 
     def ui_setup(self):
@@ -153,7 +213,9 @@ class OverlayBlock(QWidget):
         self.border_widget.hide()
 
         layout_control = QVBoxLayout(self.control_widget)
-        layout_control.setContentsMargins(10, 10, 10, 10)
+        layout_control.setContentsMargins(
+            CONTROL_MARGIN, CONTROL_MARGIN, CONTROL_MARGIN, CONTROL_MARGIN
+        )
 
         self.drop_indicator = OverlayDropIndicator(parent=self)
         self.drop_indicator.hide()
@@ -217,10 +279,31 @@ class OverlayBlock(QWidget):
         self.progress_bar_placeholder = QWidget(parent=self)
         self.volume_button = OverlayVolumeButton(parent=self)
 
+        self.play_button = OverlayTextButton(
+            text=translate("Overlay", "Play"), sign=draw_play, parent=self
+        )
+        self.stop_button = OverlayTextButton(
+            text=translate("Overlay", "Stop"), sign=draw_stop, parent=self
+        )
+        self.retry_button = OverlayTextButton(
+            text=translate("Overlay", "Try Again"), parent=self
+        )
+        self.details_button = OverlayTextButton(
+            text=translate("Overlay", "Details"), parent=self
+        )
+        self.next_button = OverlayTextButton(
+            text=translate("Overlay", "Next"), parent=self
+        )
+
         self.bottom_bar.addWidget(self.play_pause_button)
+        self.bottom_bar.addWidget(self.play_button)
+        self.bottom_bar.addWidget(self.stop_button)
+        self.bottom_bar.addWidget(self.retry_button)
+        self.bottom_bar.addWidget(self.details_button)
         self.bottom_bar.addWidget(self.label_progress)
         self.bottom_bar.addWidget(self.progress_bar, 1)
         self.bottom_bar.addWidget(self.progress_bar_placeholder, 1)
+        self.bottom_bar.addWidget(self.next_button)
         self.bottom_bar.addWidget(self.volume_button)
 
         # right above the bar, outside of the layout; under the rest, so that
@@ -239,24 +322,93 @@ class OverlayBlock(QWidget):
     def resizeEvent(self, event):
         self._sync_progress_label()
 
+    def paintEvent(self, event):
+        self._paint_shadows(event.rect())
+
+    def _paint_shadows(self, area: QRect):
+        """The soft shadows round the boxes, under them, where they are.
+
+        Painted by the overlay itself: a box's shadow falls past the box,
+        where the box cannot paint. The boxes paint over this after.
+        """
+
+        if getattr(self, "is_opaque", False):
+            return
+
+        painter = None
+        reach = BOX_SHADOW_MARGIN
+
+        for widget in self._shadow_casters():
+            origin = widget.mapTo(self, QPoint(0, 0))
+            bounds = QRect(origin, widget.size())
+
+            if not bounds.adjusted(-reach, -reach, reach, reach).intersects(area):
+                continue
+
+            shadow = widget.shadow()
+
+            if shadow is None:
+                continue
+
+            if painter is None:
+                painter = QPainter(self)
+
+            pixmap, at = shadow
+            painter.drawPixmap(origin + at, pixmap)
+
+    def _shadow_casters(self) -> list[OverlayWidget]:
+        return [
+            widget
+            for widget in self.findChildren(OverlayWidget)
+            if widget.casts_shadow and widget.isVisibleTo(self)
+        ]
+
+    def _track_shadow(self, widget, event):
+        """Paint again where a box's shadow was and where it is now: Qt
+        paints again only where the box itself was and is."""
+
+        if not isinstance(widget, OverlayWidget) or not widget.casts_shadow:
+            return
+
+        if event.type() not in SHAPE_EVENTS:
+            return
+
+        rects = [widget.geometry()]
+
+        if event.type() == QEvent.Move:
+            rects.append(QRect(event.oldPos(), widget.size()))
+        elif event.type() == QEvent.Resize:
+            rects.append(QRect(widget.pos(), event.oldSize()))
+
+        parent = widget.parentWidget()
+        reach = BOX_SHADOW_MARGIN
+
+        for rect in rects:
+            if parent is not self:
+                rect = QRect(parent.mapTo(self, rect.topLeft()), rect.size())
+
+            self.update(rect.adjusted(-reach, -reach, reach, reach))
+
+    def eventFilter(self, event_object, event) -> bool:
+        self._track_shadow(event_object, event)
+
+        return super().eventFilter(event_object, event)
+
     @pyqtSlot(MILLISECONDS, MILLISECONDS)
     def set_position(self, position, length):
         position = max(0, position)
+        _, last_length = self._last_position
         self._last_position = (position, length)
+
+        # the bar is there or not by whether there is a length: told the
+        # time several times a second, laid out again only as that changes
+        if (length > 0) != (last_length > 0):
+            self._sync_bottom_bar()
 
         if length <= 0:
             position_txt = get_time_txt(position // 1000)
 
-            self.floating_progress.hide()
-
-            self.progress_bar.setEnabled(False)
-            self.progress_bar.hide()
-
-            self.progress_bar_placeholder.show()
-
             self.label_progress.text = f"{position_txt}"
-            self._apply_stopped_chrome()
-            self._sync_progress_label()
 
             return
 
@@ -264,19 +416,12 @@ class OverlayBlock(QWidget):
         position_txt = get_time_txt(position // 1000, length // 1000)
         length_txt = get_time_txt(length // 1000)
 
-        self.progress_bar.setEnabled(True)
-        self.progress_bar.show()
-
-        self.progress_bar_placeholder.hide()
-
         self.floating_progress.length = length
         self.floating_progress.on_position(position)
         self.progress_bar.length = length
         self.bookmark_markers.set_length(length)
         self.label_progress.text = f"{position_txt} / {length_txt}"
         self.progress_bar.position = position_percent
-        self._apply_stopped_chrome()
-        self._sync_progress_label()
 
     @pyqtSlot(float)
     def set_loop_start(self, position):
@@ -331,18 +476,51 @@ class OverlayBlock(QWidget):
 
     @pyqtSlot(bool)
     def set_is_stopped(self, is_stopped):
-        if self._is_stopped == is_stopped:
-            self._apply_stopped_chrome()
+        """Stopped or playing, where the cell is one or the other: a cell
+        still loading, or failed, is told what it is by set_mode."""
+
+        if self._mode not in {OverlayMode.VIDEO, OverlayMode.STOPPED}:
             return
 
-        self._is_stopped = is_stopped
-        self._apply_stopped_chrome()
-        if not is_stopped:
-            position, length = self._last_position
-            if length > 0:
-                self.set_position(position, length)
-            else:
-                self._sync_progress_label()
+        self.set_mode(OverlayMode.STOPPED if is_stopped else OverlayMode.VIDEO)
+
+    @property
+    def mode(self) -> OverlayMode:
+        return self._mode
+
+    def set_mode(self, mode: OverlayMode):
+        # told again on every move of the mouse over the cell
+        if mode is self._mode:
+            return
+
+        self._mode = mode
+        self._sync_bottom_bar()
+
+    def set_error_actions(self, has_details: bool, can_go_next: bool):
+        """What a failed cell offers past trying again."""
+
+        if (has_details, can_go_next) == (self._has_error_details, self._can_go_next):
+            return
+
+        self._has_error_details = has_details
+        self._can_go_next = can_go_next
+        self._sync_bottom_bar()
+
+    def set_is_on_chrome(self, is_on_chrome: bool):
+        """Over a cell with no picture, its controls drawn as the app's own
+        boxes, and the frame itself telling the active cell rather than a
+        border of its own."""
+
+        if self._is_on_chrome == is_on_chrome:
+            return
+
+        self._is_on_chrome = is_on_chrome
+
+        for widget in self.findChildren(OverlayWidget):
+            widget.set_on_chrome(is_on_chrome)
+
+        self._sync_border()
+        self.update()
 
     @pyqtSlot(bool)
     def set_is_muted(self, is_muted):
@@ -376,7 +554,7 @@ class OverlayBlock(QWidget):
     @pyqtSlot(bool)
     def set_is_active(self, is_active):
         self._is_active = is_active
-        self.border_widget.setVisible(is_active and self._is_chrome_visible)
+        self._sync_border()
         self.update()
 
     def set_is_chrome_visible(self, visible: bool):
@@ -384,29 +562,45 @@ class OverlayBlock(QWidget):
         self.control_widget.setVisible(visible)
         if not visible:
             self.floating_progress.hide()
-        self.border_widget.setVisible(visible and self._is_active)
-        self._apply_stopped_chrome()
+        self._sync_border()
+        self._sync_bottom_bar()
         self.update()
 
-    def _apply_stopped_chrome(self):
-        if not getattr(self, "is_opaque", False):
-            self._set_opacity(0.5)
-        if self._is_stopped:
-            self.progress_bar.hide()
-            self.progress_bar_placeholder.show()
-            self.label_progress.hide()
-            self.floating_progress.hide()
-            self.play_pause_button.show()
-            self.volume_button.hide()
-            self.volume_bar.hide()
-            return
+    def _sync_border(self):
+        # over a cell with no picture its frame says it is the active one
+        self.border_widget.setVisible(
+            self._is_active and self._is_chrome_visible and not self._is_on_chrome
+        )
 
-        self.play_pause_button.show()
+    def _sync_bottom_bar(self):
+        mode = self._mode
+        is_video = mode is OverlayMode.VIDEO
+
+        _, length = self._last_position
+        has_bar = is_video and length > 0
+
+        self.play_pause_button.setVisible(is_video)
+
+        self.progress_bar.setEnabled(length > 0)
+        self.progress_bar.setVisible(has_bar)
+        self.progress_bar_placeholder.setVisible(not has_bar)
+
+        if not has_bar:
+            self.floating_progress.hide()
+
+        self.play_button.setVisible(mode is OverlayMode.STOPPED)
+        self.stop_button.setVisible(mode is OverlayMode.LOADING)
+
+        is_error = mode is OverlayMode.ERROR
+        self.retry_button.setVisible(is_error)
+        self.details_button.setVisible(is_error and self._has_error_details)
+        self.next_button.setVisible(is_error and self._can_go_next)
+
         self._sync_volume_chrome()
         self._sync_progress_label()
 
     def _sync_progress_label(self):
-        if self._is_stopped:
+        if self._mode is not OverlayMode.VIDEO:
             self.label_progress.hide()
             return
         too_narrow_to_fit = 250
@@ -419,7 +613,7 @@ class OverlayBlock(QWidget):
         self._sync_volume_chrome()
 
     def _sync_volume_chrome(self):
-        if self._is_stopped:
+        if self._mode is not OverlayMode.VIDEO:
             self.volume_button.hide()
             self.volume_bar.hide()
             return
@@ -427,6 +621,13 @@ class OverlayBlock(QWidget):
         self.volume_button.setVisible(self._volume_button_wanted)
         show_bar = self._volume_button_wanted and not self.volume_button.is_off
         self.volume_bar.setVisible(show_bar)
+
+    def lay_out_now(self):
+        """Its controls where they go now, rather than once the event loop
+        comes round, for it to be painted at once as it is now."""
+
+        self.layout().activate()
+        self.control_widget.layout().activate()
 
     def set_drop_indicator(self, indicator: DropIndicator):
         self.drop_indicator.set_indicator(indicator)
@@ -466,8 +667,8 @@ class OverlayBlock(QWidget):
     def _set_opacity(self, opacity):
         # Opacity lives on each OverlayWidget, not on this parent. A single
         # QGraphicsOpacityEffect here cached the whole tree and left seams
-        # when the seek timer moved. Per-widget effects fade an already
-        # composited control (readable text/icons) without recaching siblings.
+        # when the seek timer moved. Each widget paints itself see-through,
+        # by its own colours.
         self.setGraphicsEffect(None)
         self._overlay_opacity = opacity
         for widget in self.findChildren(OverlayWidget):
@@ -636,6 +837,7 @@ class OverlayBlockFloating(OverlayBlock):
 
     def paintEvent(self, event):
         if not self.is_opaque:
+            super().paintEvent(event)
             return
 
         # setMask during paint clips to the old shape, so any newly shown
@@ -706,6 +908,8 @@ class OverlayBlockFloating(OverlayBlock):
 
     def eventFilter(self, event_object, event) -> bool:
         """Track parent window move events and follow it"""
+
+        self._track_shadow(event_object, event)
 
         if isinstance(event_object, OverlayWidget) and event.type() in SHAPE_EVENTS:
             # the hover label says for itself once it has been put somewhere

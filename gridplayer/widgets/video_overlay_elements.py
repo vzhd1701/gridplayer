@@ -13,11 +13,13 @@ from PyQt5.QtGui import (
     QImage,
     QPainter,
     QPainterPath,
+    QPalette,
     QPen,
+    QPixmap,
     QPolygonF,
     QRegion,
 )
-from PyQt5.QtWidgets import QGraphicsOpacityEffect, QSizePolicy, QWidget
+from PyQt5.QtWidgets import QApplication, QSizePolicy, QWidget
 
 from gridplayer.models.seek_mark import SeekMarkKind, chapter_at, segments_at
 from gridplayer.params.static import OVERLAY_ACTIVITY_EVENT
@@ -25,6 +27,27 @@ from gridplayer.utils.bookmarks import bookmark_on
 from gridplayer.utils.drop_zone import DropIndicator
 from gridplayer.utils.qt import translate
 from gridplayer.utils.time_txt import ms_time_txt
+
+# The overlay's boxes over a video: the fill lets the picture through, what
+# is written and drawn on it does not, and a soft shadow round each box gives
+# it an edge over a picture as light as the fill itself.
+BOX_FILL_ALPHA = 0.7
+BOX_RADIUS = 4.0
+BOX_SHADOW_RINGS = 4
+BOX_SHADOW_DROP = 1
+BOX_SHADOW_ALPHA = 0.45
+
+# how far round a box its shadow reaches, for what is painted again with it
+BOX_SHADOW_MARGIN = BOX_SHADOW_RINGS + BOX_SHADOW_DROP + 1
+
+# The bars' colours: pure red and blue glare over a video and in a window
+# alike, so quieter ones, readable over a light picture and a dark one; green
+# where the overlay's own colour is reddish. The grey over what is ahead of
+# the mouse, this much of the way from the box's colour to its mid contrast.
+BAR_PROGRESS_COLOR = "#d14747"
+BAR_PROGRESS_COLOR_ON_RED = "#47d147"
+BAR_SELECT_COLOR = "#4775d1"
+BAR_AHEAD_SHADE = 0.5
 
 # A chapter is marked the way mpv marks it: a wedge cut into the top and the
 # bottom edge of the bar, which leaves the middle of it to the loop marks'
@@ -111,6 +134,17 @@ BOOKMARK_ROW_MARKER_GAP_PX = 4
 
 # how many more there are is said fainter than the names
 BOOKMARK_MORE_OPACITY = 0.7
+
+
+def mixed_color(color: QColor, other: QColor, amount: float) -> QColor:
+    """The colour with this much of the other in it."""
+
+    return QColor.fromRgbF(
+        *(
+            channel + (other_channel - channel) * amount
+            for channel, other_channel in zip(color.getRgbF()[:3], other.getRgbF()[:3])
+        )
+    )
 
 
 def chapter_notch_half_width(bar_width: int) -> int:
@@ -364,14 +398,105 @@ def _swatch_width(line: _UnderLine) -> int:
     return 0
 
 
+def _theme_color(role: QPalette.ColorRole) -> QColor:
+    """The theme's, as apply_theme put it in the app's palette: read there
+    at each paint, rather than from the settings and the system again."""
+
+    return QApplication.palette().color(role)
+
+
+def paint_box_shadow(painter: QPainter, path: QPainterPath, peak_alpha: float):
+    """A soft shadow round a box, outside it only: strokes along its edge,
+    fainter the wider, adding up to darkest at the edge, a pixel lower.
+
+    The box's own fill lets the picture through, so the shadow is kept out
+    from under it, or the box would come out darker than its colour.
+    """
+
+    rings = BOX_SHADOW_RINGS
+    step_alpha = peak_alpha / (rings / 2)
+
+    bounds = path.boundingRect().adjusted(
+        -rings - 1, -rings - 1, rings + 1, rings + BOX_SHADOW_DROP + 1
+    )
+
+    outside = QPainterPath()
+    outside.addRect(bounds)
+
+    painter.save()
+    painter.setRenderHint(QPainter.Antialiasing, True)
+    painter.setClipPath(outside.subtracted(path))
+    painter.setBrush(Qt.NoBrush)
+
+    shadow = path.translated(0, BOX_SHADOW_DROP)
+
+    for ring in range(rings, 0, -1):
+        color = QColor(0, 0, 0)
+        color.setAlphaF(step_alpha * (1 - ring / (rings + 1)))
+
+        pen = QPen(color, ring * 2)
+        pen.setJoinStyle(Qt.RoundJoin)
+        painter.setPen(pen)
+        painter.drawPath(shadow)
+
+    painter.restore()
+
+
+def _box_shadow_pixmap(path: QPainterPath, dpr: float) -> tuple[QPixmap, QPoint]:
+    """The shadow round a box, drawn on a pixmap of its own, and where that
+    goes in the box's coordinates."""
+
+    reach = BOX_SHADOW_MARGIN
+    rect = path.boundingRect().toAlignedRect().adjusted(-reach, -reach, reach, reach)
+
+    pixmap = QPixmap(rect.size() * dpr)
+    pixmap.setDevicePixelRatio(dpr)
+    pixmap.fill(Qt.transparent)
+
+    painter = QPainter(pixmap)
+    painter.translate(-rect.topLeft())
+    paint_box_shadow(painter, path, BOX_SHADOW_ALPHA)
+    painter.end()
+
+    return pixmap, rect.topLeft()
+
+
+def _rounded_rect_path(rect: QRectF, radius: float) -> QPainterPath:
+    path = QPainterPath()
+
+    if radius > 0:
+        path.addRoundedRect(rect, radius, radius)
+    else:
+        path.addRect(rect)
+
+    return path
+
+
 class OverlayWidget(QWidget):
     padding = 10
+
+    # whether the overlay casts a soft shadow round its box, see OverlayBlock
+    casts_shadow = True
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
         font_height = 13
         self._color = QColor(Qt.white)
+
+        # on the opaque overlay, which shows nothing through it: no see-through
+        # fill, no rounded corners and no shadows, the window being cut to the
+        # widgets' rectangles
+        self._is_solid = False
+
+        # over a cell with no picture, a stopped, loading or failed one,
+        # drawn as the app's own boxes are, see OverlayBlock.set_is_on_chrome
+        self._is_on_chrome = False
+
+        # its shadow, drawn once for as long as its box stays as it is: the
+        # box's outline and the pixel ratio it was drawn at, the pixmap,
+        # and where that goes
+        self._shadow: tuple[QPainterPath, float, QPixmap, QPoint] | None = None
 
         # These widgets paint their own pixels. A system/style fill would be
         # opaque and shows up as a solid box under translucent compositing.
@@ -381,17 +506,119 @@ class OverlayWidget(QWidget):
         self.setMinimumHeight(font_height + self.padding)
 
     def set_overlay_opacity(self, opacity):
-        # Fade the finished widget, not each stroke. Painter opacity makes
-        # text/icons 50% on top of a 50% fill, which is much too dim.
-        # A per-widget effect keeps the original contrast (opaque draw, then
-        # one 0.5 pass) without a parent-level pixmap that recaches siblings.
-        if opacity >= 1:
-            self.setGraphicsEffect(None)
-        else:
-            effect = QGraphicsOpacityEffect(self)
-            effect.setOpacity(opacity)
-            self.setGraphicsEffect(effect)
+        """Solid on the opaque overlay, at 1; see-through everywhere else."""
+
+        self._is_solid = opacity >= 1
         self.update()
+
+    def set_on_chrome(self, is_on_chrome: bool):
+        if self._is_on_chrome == is_on_chrome:
+            return
+
+        self._is_on_chrome = is_on_chrome
+        self.update()
+
+    def box_rect(self) -> QRectF:
+        """Where its box is, in its own coordinates."""
+
+        return QRectF(self.rect())
+
+    def shadow(self) -> tuple[QPixmap, QPoint] | None:
+        """Its shadow, see OverlayBlock, and where it goes in its own
+        coordinates; None with no box."""
+
+        path = self.box_path()
+
+        if path.isEmpty():
+            return None
+
+        dpr = self.devicePixelRatioF()
+        cached = self._shadow
+
+        if cached is None or cached[0] != path or cached[1] != dpr:
+            cached = (path, dpr, *_box_shadow_pixmap(path, dpr))
+            self._shadow = cached
+
+        return cached[2], cached[3]
+
+    def box_path(self, inset: float = 0.0) -> QPainterPath:
+        """Its box's outline: rounded but on the opaque overlay. Inset, for a
+        rim drawn along the inside of it."""
+
+        rect = self.box_rect().adjusted(inset, inset, -inset, -inset)
+
+        if self._is_solid:
+            return _rounded_rect_path(rect, 0)
+
+        return _rounded_rect_path(rect, max(BOX_RADIUS - inset, 0))
+
+    @property
+    def fill_color(self) -> QColor:
+        """What its box is filled with: the video's colour, letting the
+        picture through; over a cell with no picture, the theme's base."""
+
+        if self._is_on_chrome:
+            return _theme_color(QPalette.Base)
+
+        color = QColor(self.color)
+
+        if not self._is_solid:
+            color.setAlphaF(BOX_FILL_ALPHA)
+
+        return color
+
+    @property
+    def text_color(self) -> QColor:
+        """What is written and drawn on its box, never see-through."""
+
+        if self._is_on_chrome:
+            return _theme_color(QPalette.Text)
+
+        return self.color_contrast
+
+    @property
+    def hover_fill_color(self) -> QColor:
+        """Its box under the mouse, for one that is clicked."""
+
+        if self._is_on_chrome:
+            return _theme_color(QPalette.Highlight)
+
+        if self._is_solid:
+            return self.color_contrast_mid
+
+        color = QColor(self.color_contrast)
+        color.setAlphaF(BOX_FILL_ALPHA)
+
+        return color
+
+    @property
+    def hover_text_color(self) -> QColor:
+        if self._is_on_chrome:
+            return _theme_color(QPalette.Text)
+
+        return QColor(self.color)
+
+    def paint_box(self, painter: QPainter, fill: QColor | None = None):
+        """Its box, filled. Its edge is the shadow round it, the same over a
+        cell with no picture as over a video, for the box to look as large:
+        a line inside its edge makes it look smaller."""
+
+        painter.save()
+        painter.setRenderHint(QPainter.Antialiasing, not self._is_solid)
+        painter.setPen(Qt.NoPen)
+        painter.fillPath(self.box_path(), self.fill_color if fill is None else fill)
+        painter.restore()
+
+    def fill_in_box(self, painter: QPainter, rect: QRect | QRectF, color):
+        """A part of its box filled, kept to the box's rounded corners."""
+
+        part = QPainterPath()
+        part.addRect(QRectF(rect))
+
+        painter.save()
+        painter.setRenderHint(QPainter.Antialiasing, not self._is_solid)
+        painter.fillPath(self.box_path().intersected(part), QColor(color))
+        painter.restore()
 
     def opaque_shape(self) -> QRegion:
         """What of it the opaque overlay cuts its window to, in its own
@@ -440,10 +667,10 @@ class OverlayLabel(OverlayWidget):
     def paintEvent(self, event):
         painter = QPainter(self)
 
-        label = self.printable_label(event.rect().width(), painter.font())
+        label = self.printable_label(self.width(), painter.font())
 
-        painter.fillRect(self.rect(), self.color)
-        painter.setPen(self.color_contrast)
+        self.paint_box(painter)
+        painter.setPen(self.text_color)
         painter.drawText(self.rect(), Qt.AlignCenter, label)
 
     def printable_label(self, width, font):
@@ -484,8 +711,8 @@ class OverlayShortLabel(OverlayWidget):
         if not self._is_visuals_updated:
             self.update_visuals()
 
-        painter.fillRect(self.rect(), self.color)
-        painter.setPen(self.color_contrast)
+        self.paint_box(painter)
+        painter.setPen(self.text_color)
         painter.drawText(self.rect(), Qt.AlignCenter, self.text)
 
     def update_visuals(self):
@@ -531,14 +758,22 @@ class OverlayListWindowTag(OverlayShortLabel):
         painter = QPainter(self)
         painter.setRenderHint(QPainter.Antialiasing)
 
-        painter.fillRect(self.rect(), self.color_contrast)
+        fill = QColor(self.text_color)
 
-        pen = QPen(self.color)
+        if not self._is_solid and not self._is_on_chrome:
+            fill.setAlphaF(BOX_FILL_ALPHA)
+
+        # the others' fill, for its rim and its text
+        rim = QColor(self.fill_color)
+        rim.setAlpha(255)
+
+        self.paint_box(painter, fill=fill)
+
+        pen = QPen(rim)
         pen.setWidthF(self.rim_width)
         painter.setPen(pen)
-
-        inset = self.rim_width / 2
-        painter.drawRect(QRectF(self.rect()).adjusted(inset, inset, -inset, -inset))
+        painter.setBrush(Qt.NoBrush)
+        painter.drawPath(self.box_path(inset=self.rim_width / 2))
 
         painter.drawText(self.rect(), Qt.AlignCenter, self.text)
 
@@ -882,8 +1117,17 @@ class OverlayShortLabelFloating(OverlayShortLabel):
 
         text_box = self._text_box()
 
-        painter.fillRect(text_box, self.color)
-        painter.setPen(self.color_contrast)
+        if self._is_solid:
+            painter.fillRect(text_box, self.color)
+        else:
+            # the box and its pointer in one, or the fill would be laid on
+            # twice where they meet
+            painter.save()
+            painter.setRenderHint(QPainter.Antialiasing, True)
+            painter.fillPath(self.box_path(), self.fill_color)
+            painter.restore()
+
+        painter.setPen(self.text_color)
 
         under_lines = self._under_lines()
 
@@ -899,6 +1143,24 @@ class OverlayShortLabelFloating(OverlayShortLabel):
             )
 
         self.draw_pointer(painter)
+
+    def box_path(self, inset: float = 0.0) -> QPainterPath:
+        """The text's box, rounded, with the pointer under it: but over a
+        marker, which is a marker of its own, rimmed."""
+
+        path = _rounded_rect_path(
+            QRectF(self._text_box()).adjusted(inset, inset, -inset, -inset),
+            0 if self._is_solid else max(BOX_RADIUS - inset, 0),
+        )
+
+        if self._is_on_marker:
+            return path
+
+        pointer = QPainterPath()
+        pointer.addPolygon(self._pointer())
+        pointer.closeSubpath()
+
+        return path.united(pointer)
 
     def _pointer_height(self) -> int:
         if self._is_on_marker:
@@ -1065,6 +1327,10 @@ class OverlayShortLabelFloating(OverlayShortLabel):
             painter.drawPolyline(QPolygonF([*list(pointer)[1:], pointer[0]]))
             return
 
+        # filled along with the box, see paintEvent
+        if not self._is_solid:
+            return
+
         path = QPainterPath()
         path.addPolygon(pointer)
         path.closeSubpath()
@@ -1096,21 +1362,21 @@ class OverlayBar(OverlayWidget):
         is_color_reddish = 0 <= self.color.hue() <= 50 or 310 <= self.color.hue() <= 360
 
         if is_color_reddish:
-            return QColor(Qt.green)
+            return QColor(BAR_PROGRESS_COLOR_ON_RED)
 
-        return QColor(Qt.red)
+        return QColor(BAR_PROGRESS_COLOR)
 
     @property
     def color_select(self):
         """What has been played, while the mouse is over the bar."""
 
-        return QColor(Qt.blue)
+        return QColor(BAR_SELECT_COLOR)
 
     @property
     def color_ahead(self):
         """What is ahead, up to the mouse, while it is over the bar."""
 
-        return self.color_contrast_mid
+        return mixed_color(self.color, self.color_contrast_mid, BAR_AHEAD_SHADE)
 
 
 class OverlayProgressBar(OverlayBar):
@@ -1209,7 +1475,7 @@ class OverlayProgressBar(OverlayBar):
     def paintEvent(self, event):
         painter = QPainter(self)
 
-        painter.fillRect(self.rect(), self.color)
+        self.paint_box(painter)
 
         progress_rect = self.rect().translated(0, 0)
 
@@ -1217,7 +1483,10 @@ class OverlayProgressBar(OverlayBar):
 
         progress_rect.setWidth(cur_fill)
 
-        painter.fillRect(progress_rect, self.color_progress)
+        self.fill_in_box(painter, progress_rect, self.color_progress)
+
+        # the rest within the box's rounded corners too
+        painter.setClipPath(self.box_path())
 
         if self.progress_select_x is not None and self.underMouse():
             self.draw_progress_bar_select(painter, self.rect(), progress_rect)
@@ -1237,10 +1506,10 @@ class OverlayProgressBar(OverlayBar):
         progress_rect_sel.setRight(self.progress_select_x - 1)
 
         if progress_rect_sel.right() <= progress_rect.right():
-            painter.fillRect(progress_rect_sel, self.color_select)
+            self.fill_in_box(painter, progress_rect_sel, self.color_select)
         else:
-            painter.fillRect(progress_rect_sel, self.color_ahead)
-            painter.fillRect(progress_rect, self.color_select)
+            self.fill_in_box(painter, progress_rect_sel, self.color_ahead)
+            self.fill_in_box(painter, progress_rect, self.color_select)
 
     def draw_loop_mark(self, painter, rect, loop_mark_percent):
         cur_start_loop_rect = rect.translated(0, 0)
@@ -1461,6 +1730,9 @@ class OverlayBookmarkMarkers(OverlayWidget):
 
     # cut to a new shape on the opaque overlay, which cuts its window to it
     shape_changed = pyqtSignal()
+
+    # the markers are rimmed, and the strip itself is no box
+    casts_shadow = False
 
     def __init__(self, bar: OverlayProgressBar, **kwargs):
         super().__init__(**kwargs)
@@ -1739,7 +2011,7 @@ class OverlayVolumeBar(OverlayBar):
     def paintEvent(self, event):
         painter = QPainter(self)
 
-        painter.fillRect(self.rect(), self.color)
+        self.paint_box(painter)
 
         progress_rect = self.rect().translated(0, 0)
 
@@ -1748,7 +2020,7 @@ class OverlayVolumeBar(OverlayBar):
         progress_rect.setY(self.rect().height() - cur_fill)
         progress_rect.setHeight(cur_fill)
 
-        painter.fillRect(progress_rect, self.color_progress)
+        self.fill_in_box(painter, progress_rect, self.color_progress)
 
         if self.progress_select_y is not None and self.underMouse():
             self.draw_progress_bar_select(painter, self.rect(), progress_rect)
@@ -1758,10 +2030,10 @@ class OverlayVolumeBar(OverlayBar):
         progress_rect_sel.setTop(self.progress_select_y)
 
         if progress_rect_sel.top() >= progress_rect.top():
-            painter.fillRect(progress_rect_sel, self.color_select)
+            self.fill_in_box(painter, progress_rect_sel, self.color_select)
         else:
-            painter.fillRect(progress_rect_sel, self.color_ahead)
-            painter.fillRect(progress_rect, self.color_select)
+            self.fill_in_box(painter, progress_rect_sel, self.color_ahead)
+            self.fill_in_box(painter, progress_rect, self.color_select)
 
     @property
     def position(self):
@@ -1800,20 +2072,26 @@ class OverlayBorder(OverlayWidget):
     def resizeEvent(self, event) -> None:
         self._apply_ring_mask()
 
+    def box_path(self, inset: float = 0.0) -> QPainterPath:
+        """The ring: its shadow falls inside it, onto the picture."""
+
+        return self._ring_path()
+
     def paintEvent(self, event) -> None:
         painter = QPainter(self)
         painter.setPen(Qt.NoPen)
-        painter.setBrush(QBrush(self.color))
 
         if getattr(self.parent(), "is_opaque", False):
             # Same idea as OverlayShortLabelFloating: clip the paint, then
             # setMask so the opaque parent only maps this ring (not the
             # full stacked-layout rect, which would cover the video).
+            painter.setBrush(QBrush(self.color))
             painter.setClipPath(self._ring_path())
             painter.drawRect(self.rect())
             self._apply_ring_mask()
             return
 
+        painter.setBrush(QBrush(self.fill_color))
         painter.drawRect(self.rect())
 
     def _apply_ring_mask(self):
@@ -1865,6 +2143,9 @@ class OverlayZoomSelection(OverlayWidget):
     # the lines moved, for the opaque overlay to be cut to them
     shape_changed = pyqtSignal()
 
+    # lined in the contrast colour already, which shows over any picture
+    casts_shadow = False
+
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
@@ -1901,11 +2182,6 @@ class OverlayZoomSelection(OverlayWidget):
         self.show()
 
         self.shape_changed.emit()
-
-    def set_overlay_opacity(self, opacity):
-        # see-through by its own colours; an effect would draw all of the
-        # overlay offscreen again at every step of the selecting
-        self.setGraphicsEffect(None)
 
     def paintEvent(self, event) -> None:
         if self._selection.isEmpty():
@@ -1964,6 +2240,11 @@ class OverlayZoomHint(OverlayWidget):
         if self._is_wanted:
             self._update_shape()
 
+    def box_rect(self) -> QRectF:
+        _, box = self._layout()
+
+        return QRectF() if box is None else QRectF(box)
+
     def paintEvent(self, event) -> None:
         lines, box = self._layout()
 
@@ -1971,8 +2252,8 @@ class OverlayZoomHint(OverlayWidget):
             return
 
         painter = QPainter(self)
-        painter.fillRect(box, self.color)
-        painter.setPen(self.color_contrast)
+        self.paint_box(painter)
+        painter.setPen(self.text_color)
 
         metrics = QFontMetrics(self.font())
         line_box = QRect(box.adjusted(0, self.padding, 0, 0))
@@ -2050,20 +2331,56 @@ def _band(rect: QRect, width: int) -> QRegion:
 class OverlayDiscBadge(OverlayWidget):
     """Centered disc badge used by drag targets."""
 
+    casts_shadow = False
+
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
         self.setAttribute(Qt.WA_TransparentForMouseEvents)
         self.setMinimumSize(0, 0)
 
-        self._circle_color = QColor(0, 0, 0)
-        self._glyph_color = QColor(255, 255, 255)
+        self._colors = (QColor(0, 0, 0), QColor(255, 255, 255))
+
+        # over a cell with no picture, the cell's own disc's colours, as the
+        # empty and the stopped cells draw theirs
+        self._chrome_colors: tuple[QColor, QColor] | None = None
+
+        # over a video, disc and glyph alike let the picture through, evenly;
+        # solid on the opaque overlay, and over a cell with no picture
+        self._opacity = 1.0
+
         self.hide()
 
+    def set_overlay_opacity(self, opacity):
+        self._opacity = opacity
+
+        super().set_overlay_opacity(opacity)
+
+    @property
+    def opacity(self) -> float:
+        """How much of it covers what is behind it, disc and glyph alike."""
+
+        return 1.0 if self._shown_chrome_colors else self._opacity
+
     def set_colors(self, circle: QColor, glyph: QColor) -> None:
-        self._circle_color = QColor(circle)
-        self._glyph_color = QColor(glyph)
+        self._colors = (QColor(circle), QColor(glyph))
         self.update()
+
+    def set_chrome_colors(self, circle: QColor, glyph: QColor) -> None:
+        self._chrome_colors = (QColor(circle), QColor(glyph))
+        self.update()
+
+    @property
+    def _shown_chrome_colors(self) -> tuple[QColor, QColor] | None:
+        return self._chrome_colors if self._is_on_chrome else None
+
+    @property
+    def circle_color(self) -> QColor:
+        return QColor((self._shown_chrome_colors or self._colors)[0])
+
+    @property
+    def glyph_color(self) -> QColor:
+        return QColor((self._shown_chrome_colors or self._colors)[1])
 
     def resizeEvent(self, event) -> None:
         self._update_mask()
@@ -2082,14 +2399,44 @@ class OverlayDiscBadge(OverlayWidget):
             mask = QRegion(disc_rect, QRegion.Ellipse)
             self._set_mask_if_changed(mask)
             painter.setClipRegion(mask)
-            painter.fillRect(disc_rect, self._circle_color)
+            painter.fillRect(disc_rect, self.circle_color)
             painter.setRenderHint(QPainter.Antialiasing)
             self._draw_glyph(painter, QRectF(disc_rect))
             return
 
+        if self.opacity >= 1:
+            self._paint_disc(painter)
+            return
+
+        # Painted solid first and let through as one: faded stroke by stroke,
+        # the glyph's strokes would come out darker where they cross, and a
+        # glyph solid on a faded disc reads as a dark disc on the picture.
+        # As large as the disc, the rest of it being empty: it is made anew
+        # at every paint.
+        area = self._glyph_rect().toAlignedRect().adjusted(-1, -1, 1, 1)
+
+        ratio = self.devicePixelRatioF()
+        layer = QImage(
+            round(area.width() * ratio),
+            round(area.height() * ratio),
+            QImage.Format_ARGB32_Premultiplied,
+        )
+        layer.setDevicePixelRatio(ratio)
+        layer.fill(Qt.transparent)
+
+        layer_painter = QPainter(layer)
+        layer_painter.translate(-area.topLeft())
+        self._paint_disc(layer_painter)
+        layer_painter.end()
+
+        painter.setOpacity(self.opacity)
+        painter.drawImage(area.topLeft(), layer)
+
+    def _paint_disc(self, painter: QPainter):
         circle = self._glyph_rect()
+        painter.setPen(Qt.NoPen)
         painter.setRenderHint(QPainter.Antialiasing)
-        painter.setBrush(QBrush(self._circle_color))
+        painter.setBrush(QBrush(self.circle_color))
         painter.drawEllipse(circle)
         self._draw_glyph(painter, circle)
 
@@ -2175,7 +2522,7 @@ class OverlayDropIndicator(OverlayDiscBadge):
         return self._indicator != DropIndicator.NONE
 
     def _draw_glyph(self, painter: QPainter, circle: QRectF):
-        painter.setBrush(QBrush(self._glyph_color))
+        painter.setBrush(QBrush(self.glyph_color))
         if self._indicator == DropIndicator.SWAP:
             self._draw_swap(painter, circle)
         elif self._indicator == DropIndicator.SOURCE:
@@ -2207,7 +2554,7 @@ class OverlayDropIndicator(OverlayDiscBadge):
         cx, cy = circle.center().x(), circle.center().y()
         arm = circle.width() / 2 * 0.38
         stroke = max(2.0, circle.width() / 2 * 0.145)
-        painter.setPen(QPen(self._glyph_color, stroke, Qt.SolidLine, Qt.RoundCap))
+        painter.setPen(QPen(self.glyph_color, stroke, Qt.SolidLine, Qt.RoundCap))
         painter.drawLine(QPointF(cx - arm, cy - arm), QPointF(cx + arm, cy + arm))
         painter.drawLine(QPointF(cx + arm, cy - arm), QPointF(cx - arm, cy + arm))
 
@@ -2215,7 +2562,7 @@ class OverlayDropIndicator(OverlayDiscBadge):
         cx, cy = circle.center().x(), circle.center().y()
         arm = circle.width() / 2 * 0.5
         stroke = max(2.0, circle.width() / 2 * 0.145)
-        painter.setPen(QPen(self._glyph_color, stroke, Qt.SolidLine, Qt.RoundCap))
+        painter.setPen(QPen(self.glyph_color, stroke, Qt.SolidLine, Qt.RoundCap))
         painter.drawLine(QPointF(cx - arm, cy), QPointF(cx + arm, cy))
         painter.drawLine(QPointF(cx, cy - arm), QPointF(cx, cy + arm))
 
@@ -2224,7 +2571,7 @@ class OverlayDropIndicator(OverlayDiscBadge):
         radius = circle.width() / 2
         length = radius * 0.52
         stroke = max(2.0, radius * 0.145)
-        painter.setPen(QPen(self._glyph_color, stroke, Qt.SolidLine, Qt.RoundCap))
+        painter.setPen(QPen(self.glyph_color, stroke, Qt.SolidLine, Qt.RoundCap))
         for deg in (90.0, 150.0, 210.0):
             rad = math.radians(deg)
             dx = math.cos(rad) * length
@@ -2262,7 +2609,7 @@ class OverlayDropIndicator(OverlayDiscBadge):
         radius = circle.width() / 2
         arc_r = radius * 0.44
         stroke = max(2.0, radius * 0.145)
-        color = self._glyph_color
+        color = self.glyph_color
 
         pen = QPen(color, stroke, Qt.SolidLine, Qt.FlatCap, Qt.RoundJoin)
         painter.setPen(pen)

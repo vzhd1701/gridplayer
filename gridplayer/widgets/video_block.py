@@ -3,7 +3,8 @@ import dataclasses
 import logging
 import random
 import secrets
-from datetime import datetime
+import time
+from datetime import datetime, timezone
 from functools import partial
 from pathlib import Path
 from typing import NamedTuple
@@ -16,6 +17,7 @@ from PyQt5.QtWidgets import QFileDialog, QStackedLayout, QWidget
 from gridplayer.dialogs.audio_delay import SetAudioDelayDialog
 from gridplayer.dialogs.bookmark_rename_dialog import QBookmarkRenameDialog
 from gridplayer.dialogs.bookmarks import BookmarksDialog, held_end_action_txt
+from gridplayer.dialogs.error_details import ErrorDetails, ErrorDetailsDialog
 from gridplayer.dialogs.input_dialog import (
     QCustomSpinboxInput,
     QCustomSpinboxTimeInput,
@@ -140,6 +142,7 @@ from gridplayer.utils.external_subtitles import (
 )
 from gridplayer.utils.folder_navigator import FolderNavigator, FolderStep
 from gridplayer.utils.libvlc_options_parser import get_vlc_options
+from gridplayer.utils.list_errors import ReadErrorKind
 from gridplayer.utils.list_navigator import ListNavigator
 from gridplayer.utils.qt import MILLISECONDS, count_txt, qt_connect, translate
 from gridplayer.utils.screenshots import (
@@ -163,6 +166,13 @@ from gridplayer.utils.time_txt import timed_title
 from gridplayer.utils.track_language import language_name, normalize, pick_track
 from gridplayer.utils.url_resolve.static import ResolvedList, ResolvedVideo
 from gridplayer.utils.url_resolve.url_resolve import VideoURLResolver
+from gridplayer.utils.video_errors import (
+    ProxyFailure,
+    VideoError,
+    file_error,
+    player_error,
+    proxy_error,
+)
 from gridplayer.vlc_player.static import (
     DISABLED_TRACK,
     NO_TRACK,
@@ -180,7 +190,11 @@ from gridplayer.widgets.bookmark_colors import (
     bookmark_icon,
     color_picked_by_hand,
 )
-from gridplayer.widgets.cell_chrome import paint_idle_disc, paint_solid_outline
+from gridplayer.widgets.cell_chrome import (
+    chrome_color_on_cell,
+    paint_idle_disc,
+    paint_solid_outline,
+)
 from gridplayer.widgets.custom_menu import CustomMenu
 from gridplayer.widgets.video_frame_vlc_base import VideoFrameVLC
 from gridplayer.widgets.video_overlay import (
@@ -188,9 +202,16 @@ from gridplayer.widgets.video_overlay import (
     OverlayBlockChild,
     OverlayBlockFloating,
     OverlayFakeInvisible,
+    OverlayMode,
     is_layered_child_supported,
 )
-from gridplayer.widgets.video_status import VideoStatus
+from gridplayer.widgets.video_status import (
+    ErrorCard,
+    LoadStage,
+    StepState,
+    VideoStatus,
+    step_label,
+)
 
 IN_PROGRESS_THRESHOLD_MS = 500
 
@@ -587,6 +608,29 @@ class VideoBlock(QWidget):
 
         self._network_retries = 0
         self._network_retry_countdown = 0
+        self._network_retry_delay = 0
+
+        # how far it got loading: the stage it is at, and the ones it goes
+        # through
+        self._load_stage: LoadStage | None = None
+        self._load_steps: tuple[LoadStage, ...] = ()
+
+        # what went wrong last, the stage it went wrong at and how many times
+        # it was tried; the proxy's URL of the stream, for what it was told
+        # fetching it, and from when
+        self._last_error: VideoError | None = None
+        self._error_stage: LoadStage | None = None
+        self._error_tries = 0
+        self._proxied_url: str | None = None
+        self._stream_loaded_at = 0.0
+
+        # the note under a failed item's card counting down to the next one;
+        # precise, as the wait it counts down: a coarse timer on Linux runs
+        # up to 5% long, and 2 s left said "3 s"
+        self._skip_note_timer = QTimer(self)
+        self._skip_note_timer.setTimerType(Qt.PreciseTimer)
+        self._skip_note_timer.setInterval(1000)
+        self._skip_note_timer.timeout.connect(self._refresh_skip_note)
 
         self._network_retry_timer = QTimer(self)
         self._network_retry_timer.setInterval(1000)
@@ -676,6 +720,7 @@ class VideoBlock(QWidget):
 
         self._skip_failed_timer = QTimer(self)
         self._skip_failed_timer.setSingleShot(True)
+        self._skip_failed_timer.setTimerType(Qt.PreciseTimer)
         self._skip_failed_timer.setInterval(SKIP_FAILED_ITEM_MS)
         self._skip_failed_timer.timeout.connect(self._skip_failed_item)
 
@@ -717,7 +762,7 @@ class VideoBlock(QWidget):
             (video_driver.playback_status_changed, self.playback_status_changed),
             (video_driver.error, self.video_driver_error),
             (video_driver.crash, self.crash),
-            (video_driver.update_status, self.update_status),
+            (video_driver.update_status, self._on_driver_status),
             # Left connected when the driver is let go: a frame asked for
             # before a reload is still the one that was wanted, and a PNG
             # nobody receives would be left behind in the temp folder.
@@ -807,7 +852,9 @@ class VideoBlock(QWidget):
         url_resolver.error.connect(self.network_error)
         url_resolver.url_resolved.connect(self.set_video_url)
         url_resolver.list_resolved.connect(self._link_was_a_list)
-        url_resolver.update_status.connect(self.update_status)
+        url_resolver.resolving.connect(self._on_resolving)
+        url_resolver.reading.connect(self._on_link_list_reading)
+        url_resolver.failed.connect(self._on_resolve_failed)
 
         return url_resolver
 
@@ -849,6 +896,10 @@ class VideoBlock(QWidget):
             (overlay.bookmark_clicked, self.jump_to_bookmark_at),
             (overlay.bookmark_menu_requested, self.show_bookmark_menu),
             (overlay.list_place_clicked, self.show_list_window),
+            (overlay.stop_clicked, self.stop_playback),
+            (overlay.retry_clicked, self.reload),
+            (overlay.next_clicked, self.skip_failed_item_now),
+            (overlay.details_clicked, self.show_error_details),
             (self.time_change, overlay.set_position),
             (self.volume_change, overlay.set_volume_position),
             (self.label_change, overlay.set_label),
@@ -880,9 +931,7 @@ class VideoBlock(QWidget):
         self.layout_main.setContentsMargins(0, 0, 0, 0)
         self.layout_main.setStackingMode(QStackedLayout.StackAll)
 
-        self.video_status = VideoStatus(
-            parent=self, status_text=translate("Video Status", "Initializing")
-        )
+        self.video_status = VideoStatus(parent=self, is_framed=True)
         self.video_status.setMouseTracking(True)
         self.video_status.setWindowFlags(Qt.WindowTransparentForInput)
 
@@ -925,25 +974,71 @@ class VideoBlock(QWidget):
 
         self._log.debug(f"{self.id}: cleaning up done")
 
-    def video_driver_error(self, error):
-        self.update_status(translate("Video Error", error))
+    def video_driver_error(self, error: str, vlc_lines: tuple[str, ...] = ()):
+        # marked for translation where the player process says it, which
+        # has no translator of its own
+        message = translate("Video Error", error)
+
+        self._last_error = self._player_error(message, vlc_lines)
+        self.update_status(message)
 
         if not self.video_params.is_local_file:
             return self.network_error()
 
         return self.error()
 
+    def _on_resolve_failed(self, error: VideoError):
+        self._last_error = error
+        self.update_status(error.title)
+
+    def _player_error(self, message: str, vlc_lines: tuple[str, ...]) -> VideoError:
+        """Why VLC could not play it: the file gone, what the proxy was
+        told fetching the stream, or what VLC said."""
+
+        uri = self.video_params.uri
+
+        if self.video_params.is_local_file:
+            if not uri.exists():
+                return file_error(ReadErrorKind.MISSING, uri)
+
+            return player_error(message, vlc_lines)
+
+        failure = self._proxy_failure()
+
+        if failure is not None:
+            return proxy_error(failure, vlc_lines)
+
+        return player_error(message, vlc_lines, url=str(uri))
+
+    def _proxy_failure(self) -> ProxyFailure | None:
+        if self._proxied_url is None:
+            return None
+
+        failure = self._ctx.commands.stream_failure(self._proxied_url)
+
+        if not isinstance(failure, ProxyFailure):
+            return None
+
+        # what it was told fetching it this time, not before
+        if failure.at < self._stream_loaded_at:
+            return None
+
+        return failure
+
     def error(self):
         self._is_error = True
         self._is_state_change_in_progress = False
+        self._error_tries = 0
         self.set_status("error")
         self.cleanup()
         self._schedule_skip_failed_item()
+        self._show_error_card()
 
     def network_error(self):
         if self._schedule_network_retry():
             return
 
+        self._error_tries = self._network_retries
         self._network_retries = 0
 
         self._is_error = True
@@ -951,6 +1046,156 @@ class VideoBlock(QWidget):
         self.set_status("network-error")
         self.cleanup()
         self._schedule_skip_failed_item()
+        self._show_error_card()
+
+    def _show_error_card(self):
+        """Why it failed, on the cell: in a few words, what that means,
+        the tag of where it broke, and what comes next."""
+
+        error = self._last_error
+
+        # not what the status said last: that is how far it loaded
+        if error is None:
+            error = VideoError(title=translate("Video Error", "Can't play the video"))
+            self._last_error = error
+
+        # where it got to, kept for its Details; the next load starts afresh
+        self._error_stage = self._load_stage
+        self._load_stage = None
+
+        self.video_status.show_error(self._error_card(error))
+        self._sync_overlay_mode()
+
+        if self._skip_failed_timer.isActive():
+            self._skip_note_timer.start()
+
+    def _error_card(self, error: VideoError) -> ErrorCard:
+        return ErrorCard(
+            title=error.title,
+            about=error.about,
+            where=error.where,
+            code=error.code,
+            note=self._skip_note(),
+            icon=error.icon,
+        )
+
+    def _skip_note(self) -> str:
+        if not self._skip_failed_timer.isActive():
+            return ""
+
+        seconds = max(1, -(-self._skip_failed_timer.remainingTime() // 1000))
+
+        return translate("Video Status", "Next file in {SECONDS} s").format(
+            SECONDS=seconds
+        )
+
+    def _refresh_skip_note(self):
+        if not self._skip_failed_timer.isActive():
+            self._skip_note_timer.stop()
+
+        if self._is_error and self._last_error is not None:
+            self.video_status.show_error(self._error_card(self._last_error))
+
+    def show_error_details(self):
+        """Everything known of why it failed, in a window of its own."""
+
+        error = self._last_error
+
+        if error is None:
+            return
+
+        # held while it is read, for its Try Again to be for this item and
+        # not the one the list would have gone on to meanwhile
+        is_skipping = self._skip_failed_timer.isActive()
+        self._skip_failed_timer.stop()
+        self._refresh_skip_note()
+
+        dialog = ErrorDetailsDialog(self._error_details(error), parent=self.window())
+        dialog.try_again.connect(self.reload)
+        dialog.exec_()
+        dialog.deleteLater()
+
+        # left as it was: on through the list, the count started over
+        if is_skipping and self._last_error is error and not self._is_closing:
+            self._skip_failed_timer.start()
+            self._skip_note_timer.start()
+            self._refresh_skip_note()
+
+    def _error_details(self, error: VideoError) -> ErrorDetails:
+        uri = self.video_params.uri
+
+        # a link named by itself is said once, as the link
+        rows = []
+
+        if self.title and self.title != str(uri):
+            rows.append((translate("Error Details", "Video"), self.title))
+
+        media_list = self.media_list
+
+        if media_list is not None:
+            name = media_list.name or translate("Error Details", "List")
+            place = self._list_navigator.place()
+
+            if place is not None and place.is_found:
+                name = translate("Error Details", "{LIST}, {PLACE} of {COUNT}").format(
+                    LIST=name, PLACE=place.index + 1, COUNT=len(media_list.items)
+                )
+
+            rows.append((translate("Error Details", "List"), name))
+
+        if self.video_params.is_local_file:
+            rows.append((translate("Error Details", "File"), str(uri)))
+        else:
+            rows.append((translate("Error Details", "Link"), str(uri)))
+
+        step = {
+            LoadStage.LIST: translate("Error Details", "Reading the list"),
+            LoadStage.LINK: translate("Error Details", "Resolving the link"),
+            LoadStage.VIDEO: translate("Error Details", "Opening the video"),
+            LoadStage.RECONNECT: translate("Error Details", "Opening the video"),
+        }.get(self._error_stage)
+
+        if step:
+            rows.append((translate("Error Details", "Step"), step))
+
+        if error.code_full or error.code:
+            rows.append(
+                (translate("Error Details", "Code"), error.code_full or error.code)
+            )
+
+        if error.host:
+            rows.append((translate("Error Details", "Server"), error.host))
+
+        if self._error_tries:
+            limit = self._network_retry_limit
+
+            if limit > 0:
+                tries = translate("Error Details", "{COUNT} of {LIMIT}").format(
+                    COUNT=self._error_tries, LIMIT=limit
+                )
+            else:
+                tries = str(self._error_tries)
+
+            rows.append((translate("Error Details", "Tries"), tries))
+
+        rows.append(
+            (
+                translate("Error Details", "When"),
+                datetime.fromtimestamp(error.at, tz=timezone.utc)
+                .astimezone()
+                .strftime("%H:%M:%S"),
+            )
+        )
+
+        return ErrorDetails(
+            title=error.title,
+            about=error.about,
+            where=error.where,
+            code=error.code,
+            rows=tuple(rows),
+            raw=error.raw,
+            icon=error.icon,
+        )
 
     def _schedule_network_retry(self) -> bool:
         """Try the video again later instead of giving up on it.
@@ -973,6 +1218,7 @@ class VideoBlock(QWidget):
 
         delay_idx = min(self._network_retries - 1, len(NETWORK_RETRY_DELAYS_S) - 1)
         self._network_retry_countdown = NETWORK_RETRY_DELAYS_S[delay_idx]
+        self._network_retry_delay = self._network_retry_countdown
 
         self._log.debug(
             f"Network error, retry {self._network_retries}"
@@ -986,7 +1232,8 @@ class VideoBlock(QWidget):
         # holding on to it keeps a VLC player busy for the whole wait
         self.cleanup()
 
-        self.set_status("network-error")
+        self._load_stage = LoadStage.RECONNECT
+        self.set_status("processing")
         self._show_network_retry_status()
 
         self._network_retry_timer.start()
@@ -1012,11 +1259,17 @@ class VideoBlock(QWidget):
         self.reload()
 
     def _show_network_retry_status(self):
-        self.update_status(
-            translate("Video Status", "Reconnecting in {SECONDS}s ({ATTEMPT})").format(
-                SECONDS=self._network_retry_countdown,
-                ATTEMPT=self._network_retry_attempt_txt,
-            )
+        detail = self._network_retry_attempt_txt
+
+        # what went wrong the last time, in short
+        error = self._last_error
+
+        if error is not None and (error.where or error.code):
+            tag = " ".join(part for part in (error.where, error.code) if part)
+            detail = f"{detail} · {tag}"
+
+        self.video_status.show_reconnect(
+            self._network_retry_countdown, self._network_retry_delay, detail
         )
 
     @property
@@ -1024,23 +1277,166 @@ class VideoBlock(QWidget):
         retry_limit = self._network_retry_limit
 
         if retry_limit < 0:
-            return str(self._network_retries)
+            return translate("Video Status", "Try {ATTEMPT}").format(
+                ATTEMPT=self._network_retries
+            )
 
-        return f"{self._network_retries}/{retry_limit}"
+        return translate("Video Status", "Try {ATTEMPT} of {LIMIT}").format(
+            ATTEMPT=self._network_retries, LIMIT=retry_limit
+        )
 
     def set_status(self, status):
         self._is_status_kept_for_picture = False
 
-        self.overlay.hide()
         self._hide_video_driver()
 
         self.video_status.icon = status
         self.video_status.show()
+
+        # still there, to close the cell or stop it, now for what it shows,
+        # and painted so along with the status: a reload lets the old player
+        # go before the event loop comes round to paint it
+        self._sync_overlay_mode()
+        self.overlay.lay_out_now()
+
         self.repaint()
 
-    def update_status(self, info_text, percent=0):
+        # a window of its own is not painted along with the cell
+        if self.overlay.isWindow() and self.overlay.isVisible():
+            self.overlay.repaint()
+
+    def _overlay_mode(self) -> OverlayMode:
+        if self._is_error:
+            return OverlayMode.ERROR
+
+        if self.is_stopped and not self.is_video_initialized:
+            return OverlayMode.STOPPED
+
+        # the status over the cell, whatever player is still behind it, as
+        # a reload says so before the old one is gone
+        is_status_shown = not self.video_status.isHidden()
+
+        if self.is_loading or self._is_status_kept_for_picture or is_status_shown:
+            return OverlayMode.LOADING
+
+        return OverlayMode.VIDEO
+
+    def _sync_overlay_mode(self):
+        mode = self._overlay_mode()
+
+        if mode is OverlayMode.ERROR:
+            self.overlay.set_error_actions(
+                has_details=self._last_error is not None,
+                can_go_next=self._can_skip_failed_item,
+            )
+
+        self.overlay.set_mode(mode)
+        self.overlay.set_is_on_chrome(mode is not OverlayMode.VIDEO)
+
+    @property
+    def _can_skip_failed_item(self) -> bool:
+        media_list = self.media_list
+
+        return media_list is not None and len(media_list.items) > 1
+
+    def skip_failed_item_now(self):
+        """On to the item that comes next, now rather than in a moment: the
+        way the list goes by itself where it does, at its end as well."""
+
+        self._skip_failed_timer.stop()
+
+        if self._is_closing or self.media_list is None:
+            return
+
+        if not self._step_at_end(self.video_params.end_action):
+            self.next_video()
+
+    def update_status(self, info_text):
         self.video_status.status_text = translate("Video Status", info_text)
-        self.video_status.percent = percent
+        self.video_status.percent = 0
+
+    def _show_stage(
+        self,
+        stage: LoadStage,
+        text: str,
+        detail: str = "",
+        percent: int | None = None,
+    ):
+        """Loading, at this stage of it, and where that is among the ones
+        it goes through."""
+
+        self._load_stage = stage
+
+        self.video_status.show_loading(
+            stage, text, detail, percent, steps=self._steps_at(stage)
+        )
+
+    def _steps_at(self, stage: LoadStage) -> tuple[tuple[str, StepState], ...]:
+        steps = self._load_steps
+
+        if stage not in steps or len(steps) < 2:
+            return ()
+
+        at = steps.index(stage)
+
+        return tuple(
+            (
+                step_label(step),
+                StepState.DONE
+                if index < at
+                else StepState.CURRENT
+                if index == at
+                else StepState.TODO,
+            )
+            for index, step in enumerate(steps)
+        )
+
+    def _on_resolving(self, name: str):
+        self._show_resolving_link(name)
+
+    def _show_resolving_link(self, resolver: str = ""):
+        self._show_stage(
+            LoadStage.LINK,
+            translate("Video Status", "Resolving the link…"),
+            resolver,
+        )
+
+    def _on_link_list_reading(self, said: str):
+        """The link turned out to be a list, read as it is."""
+
+        self._load_steps = (LoadStage.LINK, LoadStage.LIST, LoadStage.VIDEO)
+        self._show_stage(LoadStage.LIST, said)
+
+    def _on_driver_status(self, status: str, percent: int = 0):
+        """What the player says as it opens the video, said plainly."""
+
+        if status in {"Buffering", translate("Video Status", "Buffering")}:
+            self._show_stage(
+                LoadStage.VIDEO,
+                translate("Video Status", "Buffering {PERCENT}%").format(
+                    PERCENT=percent
+                ),
+                self._video_detail(),
+                percent,
+            )
+            return
+
+        self._show_opening()
+
+    def _show_opening(self):
+        self._show_stage(
+            LoadStage.VIDEO,
+            translate("Video Status", "Opening…"),
+            self._video_detail(),
+        )
+
+    def _video_detail(self) -> str:
+        """The stream picked, of a link with several."""
+
+        if self.streams and self._stream_quality_playing:
+            return self._stream_quality_playing
+
+        return ""
 
     def reload(self):
         self._network_retry_timer.stop()
@@ -1058,6 +1454,31 @@ class VideoBlock(QWidget):
         self.video_params = None
 
         self.set_video(video_params)
+
+    def show_reloading(self):
+        """Say it loads again, over the video, as a cell opening it afresh
+        does at first, its player about to be let go for all of them to be
+        opened again (VideoBlocksManager.reload_videos)."""
+
+        if self.video_driver is None:
+            return
+
+        self._is_error = False
+
+        is_link = self.video_params.is_http_url
+        self._load_steps = (*((LoadStage.LINK,) if is_link else ()), LoadStage.VIDEO)
+
+        if is_link:
+            self._show_resolving_link()
+        else:
+            self._show_opening()
+
+        self.set_status("processing")
+
+    def release_player(self):
+        """Let its player go, waiting until it has."""
+
+        self._destroy_video_driver()
 
     def close_silently(self):
         self.close(notify=False)
@@ -1087,6 +1508,16 @@ class VideoBlock(QWidget):
 
         if notify:
             self.about_to_close.emit(self.id)
+
+        # off screen, and the window painted without it, before its player is
+        # waited on (closeEvent): a hardware video's cell, once its player
+        # lets go, shows what was painted there before its picture came, the
+        # loading status, until the window is painted again
+        if self.isVisible():
+            self.hide()
+
+            if self.parentWidget() is not None:
+                self.parentWidget().repaint()
 
         super().close()
 
@@ -1164,7 +1595,7 @@ class VideoBlock(QWidget):
     def _paint_stopped_chrome(self):
         if not self.is_stopped:
             return
-        paint_solid_outline(self)
+        paint_solid_outline(self, is_active=self.is_active_shown)
         if self._drop_indicator == DropIndicator.NONE:
             paint_idle_disc(self)
 
@@ -1357,13 +1788,31 @@ class VideoBlock(QWidget):
     def is_active(self, is_active):
         self._is_active = is_active
 
+        self._update_chrome()
+
         if is_active and not self._ctx.is_show_overlay_border:
             return
 
         self.is_active_change.emit(is_active)
 
     def refresh_overlay_border(self):
-        self.is_active_change.emit(self._is_active and self._ctx.is_show_overlay_border)
+        self.is_active_change.emit(self.is_active_shown)
+        self._update_chrome()
+
+    @property
+    def is_active_shown(self) -> bool:
+        """Whether the cell is marked as the active one: by the overlay's
+        border over a video, by the frame over a cell with no picture."""
+
+        return self._is_active and self._ctx.is_show_overlay_border
+
+    def _update_chrome(self):
+        """The frame painted again, of a cell with no picture."""
+
+        if self.is_stopped:
+            self.update()
+
+        self.video_status.set_is_active(self.is_active_shown)
 
     @property
     def drag_data(self):
@@ -2839,12 +3288,23 @@ class VideoBlock(QWidget):
         # flashes Window fill (default white) over the whole cell.
         if indicator == DropIndicator.NONE and opaque_drag:
             self.overlay.hide()
+        self._sync_drop_chrome(indicator)
         self.overlay.set_drop_indicator(indicator)
         if self.is_stopped:
             self.update()
         if indicator != DropIndicator.NONE:
             self.overlay.show()
             self.overlay_hide_timer.stop()
+
+    def _sync_drop_chrome(self, indicator: DropIndicator):
+        """Over a cell with no picture, the drop target is the cell's own
+        disc, as the stopped and the empty cells draw theirs, in place of
+        what the cell says."""
+
+        self.overlay.drop_indicator.set_chrome_colors(
+            chrome_color_on_cell(self), self.palette().color(self.backgroundRole())
+        )
+        self.video_status.set_is_content_shown(indicator == DropIndicator.NONE)
 
     def set_drag_ui(self, is_drag_ui: bool):
         if is_drag_ui and getattr(self.overlay, "is_opaque", False):
@@ -2892,11 +3352,8 @@ class VideoBlock(QWidget):
     def show_overlay(self):
         if self._ctx.is_drag_ui or self._ctx.is_disable_overlay:
             return
-        if self.is_loading or self._is_error:
-            return
-        # still loading as far as the viewer can tell, see _picture_shown
-        if self._is_status_kept_for_picture:
-            return
+        # shown while loading too, and once it failed: for what it shows
+        self._sync_overlay_mode()
         # Hardware overlays are windows of their own; do not remap them while
         # this cell is hidden (single-mode background, minimized, etc.).
         if not self.isVisible():
@@ -3226,9 +3683,27 @@ class VideoBlock(QWidget):
         )
 
     def stop_playback(self):
+        # stopped from the menu as from its own Stop, nothing left to start
+        # it again by itself: a reconnect counting down, a link still being
+        # resolved, a list being read, the next item of its list (below)
+        self._drop_network_retries()
+        self._is_waiting_for_list_read = False
+
+        if self.url_resolver is not None and self.url_resolver.is_busy:
+            self.reset_url_resolver()
+
         self._cancel_steps()
 
+        # one that failed, stopped, is a stopped one like any other: played
+        # from there, not left on Try Again with its reason gone
+        self._is_error = False
+
+        # nor as far as it got loading: played again, its steps start afresh
+        self._load_stage = None
+
         if self.video_params is not None:
+            self._ctx.lists.stop_waiting(self.video_params.id)
+
             self.video_params.current_position = 0
             self.video_params.loop_start = None
             self.video_params.loop_end = None
@@ -3396,6 +3871,9 @@ class VideoBlock(QWidget):
 
         self._present_unloaded("processing", translate("Lists", "Reading the list…"))
 
+        self._load_steps = (LoadStage.LIST, LoadStage.VIDEO)
+        self._show_stage(LoadStage.LIST, translate("Lists", "Reading the list…"))
+
     def _present_gone_file(self):
         """The file the cell is on gone, and its list not read again to go
         on along: the cell says so."""
@@ -3415,7 +3893,7 @@ class VideoBlock(QWidget):
 
     def _on_waiting_progress(self, video_id, text: str, percent: int = 0):
         if self.video_params is not None and self.video_params.id == video_id:
-            self.update_status(text, percent)
+            self._show_stage(LoadStage.LIST, text, percent=percent or None)
 
     def _present_stopped(self):
         if self._default_title is None:
@@ -3434,6 +3912,20 @@ class VideoBlock(QWidget):
         self.show_overlay()
 
     def _start_load(self):
+        # what went wrong before is behind it, but while it is tried again
+        if self._network_retries == 0:
+            self._last_error = None
+
+        self._skip_note_timer.stop()
+
+        # named from the start, on the overlay shown while it loads: a link
+        # by its file name until its page gives it a title
+        if self._default_title is None:
+            self._default_title = self.video_params.uri_name
+
+        if self.title is None:
+            self.title = self._custom_title or self._default_title
+
         # a list still being read for it: nothing to load until it is
         if self._ctx.lists.is_waiting(self.video_params.id):
             self._present_waiting()
@@ -3451,10 +3943,16 @@ class VideoBlock(QWidget):
             self._go_on_from_gone_file()
             return
 
-        self.overlay_hide_timer.stop()
-        self.overlay.hide()
         self._sync_cell_background()
         self._ensure_video_driver()
+
+        # the list read for it, if it was, then the link, then the video
+        was_listed = self._load_stage is LoadStage.LIST
+        self._load_steps = (
+            *((LoadStage.LIST,) if was_listed else ()),
+            *((LoadStage.LINK,) if self.video_params.is_http_url else ()),
+            LoadStage.VIDEO,
+        )
 
         self._forget_audio_file_that_is_gone()
         self._forget_subtitle_files_that_are_gone()
@@ -3478,8 +3976,10 @@ class VideoBlock(QWidget):
         self._is_adaptive = False
 
         if self.video_params.is_http_url:
+            self._show_resolving_link()
             self.url_resolver.resolve(self.video_params.uri, self._item_headers)
         else:
+            self._show_opening()
             self.load_video.emit(
                 MediaInput(
                     uri=str(self.video_params.uri),
@@ -3684,11 +4184,17 @@ class VideoBlock(QWidget):
 
         if stream.protocol == "direct":
             url = stream.url
+            self._proxied_url = None
         else:
             stream = self._with_audio_language(stream)
             url = self._ctx.commands.add_stream(self._with_origin(stream, quality))
+            self._proxied_url = url if isinstance(url, str) else None
+
+        self._stream_loaded_at = time.monotonic()
 
         self._is_adaptive = stream.is_adaptive
+
+        self._show_opening()
 
         self.load_video.emit(
             MediaInput(
@@ -3822,6 +4328,7 @@ class VideoBlock(QWidget):
     def load_video_finish(self):
         # the video is playing, so whatever went wrong before is behind us
         self._network_retries = 0
+        self._last_error = None
 
         # a fresh player has no pass behind it to compare times against
         self._last_time = None
@@ -5499,7 +6006,9 @@ class VideoBlock(QWidget):
 
         # none to play, every one around gone
         if index is None or not 0 <= index < len(media_list.items):
-            self.update_status(translate("Lists", "Nothing on the list to play"))
+            self._last_error = VideoError(
+                title=translate("Lists", "Nothing on the list to play")
+            )
             self.error()
             return
 
@@ -5844,6 +6353,7 @@ class VideoBlock(QWidget):
     def switch_video(self, new_video: Path):
         # If single file in the dir and was removed, highly unlikely but still
         if new_video is None:
+            self._last_error = file_error(ReadErrorKind.MISSING, self.video_params.uri)
             self.error()
             return
 

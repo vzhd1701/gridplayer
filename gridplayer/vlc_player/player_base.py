@@ -2,6 +2,7 @@ import ctypes
 import dataclasses
 import logging
 import tempfile
+import threading
 from abc import ABC, abstractmethod
 from functools import partial
 from pathlib import Path
@@ -44,8 +45,27 @@ from gridplayer.vlc_player.static import (
     wanted_audio_track_id,
     wanted_subtitle_track_id,
 )
+from gridplayer.vlc_player.vlc_errors import vlc_errors_since
 
 MEDIA_EXTRACT_RETRY_TIME = 0.1
+
+# What VLC sends on the threads it opens, reads and decodes a video on.
+# Not Stopped: that comes on whichever thread stopped the player, which is
+# the one every player of the process is driven from.
+VLC_THREAD_EVENTS = (
+    "opening",
+    "buffering",
+    "playing",
+    "paused",
+    "end_reached",
+    "encountered_error",
+    "time_changed",
+    "title_changed",
+    "vout",
+)
+
+# once a video plays, how far back what VLC said is about why it stopped
+VLC_SAID_PLAYING_S = 10
 
 # An audio file attached to a video that is already playing is opened in
 # VLC's own time, and the track it brings shows up whenever that is done.
@@ -165,6 +185,11 @@ class VlcPlayerBase(ABC):
         self._timeout_init = None
         self._get_time_retries = 0
 
+        # the threads VLC opens, reads and decodes this load on, told by
+        # its events coming on them, for what VLC says on them to be told
+        # apart from what it says of the other videos of the process
+        self._vlc_threads: set[int] = set()
+
         self._timer_unpause_failsafe = None
         self._timer_extract_media_track = None
         self._timer_audio_slave = None
@@ -241,6 +266,10 @@ class VlcPlayerBase(ABC):
         self._event_manager.attach_to_media_player(self._media_player)
 
     def init_event_manager(self):
+        # first, for the error event's thread to be known as it is told
+        for event_name in VLC_THREAD_EVENTS:
+            self._event_manager.subscribe(event_name, self._note_vlc_thread)
+
         self._event_waiter.subscribe(self._event_manager)
 
         callbacks = {
@@ -258,6 +287,9 @@ class VlcPlayerBase(ABC):
 
         for event_name, callback in callbacks.items():
             self._event_manager.subscribe(event_name, callback)
+
+    def _note_vlc_thread(self, event):
+        self._vlc_threads.add(threading.get_ident())
 
     def cb_buffering(self, event):
         # exactly zero, not rounded down to it: a slow host starts at a
@@ -520,13 +552,25 @@ class VlcPlayerBase(ABC):
 
     def error(self, message):
         self._log.error(message)
-        self.notify_error(message)
+
+        self.notify_error(message, tuple(self._vlc_said()))
+
+    def _vlc_said(self) -> list[str]:
+        """What VLC said went wrong with this video: since it began to open
+        it, or once it plays, in the moments before."""
+
+        since = self._timeout_init_start or 0
+
+        if self.is_video_initialized:
+            since = max(since, time() - VLC_SAID_PLAYING_S)
+
+        return vlc_errors_since(since, self._vlc_threads)
 
     @abstractmethod
     def notify_update_status(self, status, percent=0): ...
 
     @abstractmethod
-    def notify_error(self, error): ...
+    def notify_error(self, error, vlc_lines=()): ...
 
     @abstractmethod
     def notify_time_changed(self, new_time): ...
@@ -570,6 +614,7 @@ class VlcPlayerBase(ABC):
         self._timeout_init = Settings().sync_get("player/video_init_timeout")
         self._timeout_init_start = time()
         self._get_time_retries = 0
+        self._vlc_threads.clear()
 
         self.media_input = media_input
         self._last_video_size = (0, 0)

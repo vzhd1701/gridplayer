@@ -1044,14 +1044,25 @@ class TestReadingAgain:
         assert _wait_until(lambda: not dialog._is_reading)
         assert not dialog._error_box.isHidden()
 
-    def test_full_error_in_the_tooltip(self, make_dialog, season, reading):
+    def test_full_error_in_the_details(self, make_dialog, season, reading, mocker):
         reading.fresh = FileNotFoundError("Folder not found: <D:/Videos>")
         dialog = make_dialog(season)
+        shown = []
+        mocker.patch(
+            "gridplayer.dialogs.media_list.ErrorDetailsDialog.exec_",
+            lambda details_dialog: shown.append(details_dialog),
+        )
 
         dialog._refresh()
 
         assert _wait_until(lambda: not dialog._error_box.isHidden())
-        assert "Folder not found: &lt;D:/Videos&gt;" in dialog._error_title.toolTip()
+        assert dialog._error_tag.tag == ("File", "Missing")
+
+        dialog._error_details_button.click()
+
+        (details_dialog,) = shown
+        assert "Folder not found: <D:/Videos>" in details_dialog._details.raw
+        assert "Folder not found: <D:/Videos>" in details_dialog.raw.toPlainText()
 
     def test_reloaded_with_everything_undone_once_said(
         self, make_dialog, registry, season, reading, mocker

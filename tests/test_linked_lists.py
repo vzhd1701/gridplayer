@@ -802,8 +802,40 @@ class TestTheWindow:
         )
 
         assert not dialog._error_box.isHidden()
-        assert dialog._error_title.text() == "Not found (HTTP 404)"
+        assert dialog._error_title.text() == "Not found"
+        assert dialog._error_tag.tag == ("Server", "HTTP 404")
         assert "HTTP 404" not in dialog._hint.text()
+
+    def test_its_details_in_full(self, window, mocker):
+        registry = MediaListsRegistry()
+        media_list = registry.add(_linked(_channel(2)))
+        registry.start_reading(media_list.id, threading.Event())
+        dialog = window(registry, media_list)
+        registry.finish_reading(
+            media_list.id,
+            ReadError(
+                kind=ReadErrorKind.HTTP,
+                raw="404 Client Error: Not Found for url",
+                status=404,
+                host="provider.example",
+            ),
+        )
+        shown = []
+        mocker.patch(
+            "gridplayer.dialogs.media_list.ErrorDetailsDialog.exec_",
+            lambda details_dialog: shown.append(details_dialog),
+        )
+
+        dialog._error_details_button.click()
+
+        (details_dialog,) = shown
+        details = details_dialog._details
+        rows = dict(details.rows)
+        assert details.title == "Not found"
+        assert (details.where, details.code) == ("Server", "HTTP 404")
+        assert rows["Code"] == "HTTP 404 Not Found"
+        assert rows["Server"] == "provider.example"
+        assert details.raw == "404 Client Error: Not Found for url"
 
     def test_edited_after_and_cancelled_it_is_as_read(self, window):
         registry = MediaListsRegistry()

@@ -225,7 +225,9 @@ class TestGoingAlongTheList:
 
         block.network_error()
 
-        assert block.video_status.status_text == "Reconnecting in 1s (1/3)"
+        assert block.video_status.status_text == "Reconnecting…"
+        assert block.video_status.countdown == 1
+        assert block.video_status.detail == "Try 1 of 3"
 
     def test_a_video_put_in_its_place_reloaded_as_many_times_as_any(
         self, make_cell, lists
@@ -240,7 +242,9 @@ class TestGoingAlongTheList:
         block.set_video(Video(uri="https://example.com/other.mp4"))
         block.network_error()
 
-        assert block.video_status.status_text == "Reconnecting in 1s (1/3)"
+        assert block.video_status.status_text == "Reconnecting…"
+        assert block.video_status.countdown == 1
+        assert block.video_status.detail == "Try 1 of 3"
 
     def test_the_same_file_twice_on_the_list_is_two_places(self, make_cell, lists):
         channels = lists.add(

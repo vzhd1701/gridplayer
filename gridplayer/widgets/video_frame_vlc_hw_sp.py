@@ -29,7 +29,7 @@ from gridplayer.vlc_player.video_driver_base import VLCVideoDriver
 class PlayerProcessSingleVLCHWSP(QThread, VlcPlayerBase, metaclass=QABC):
     playback_status_changed = pyqtSignal(bool)
     time_changed = pyqtSignal(MILLISECONDS)
-    error_signal = pyqtSignal(str)
+    error_signal = pyqtSignal(str, tuple)
     update_status_signal = pyqtSignal(str, int)
     snapshot_taken = pyqtSignal(str)
     screenshot_taken = pyqtSignal(str)
@@ -162,8 +162,8 @@ class PlayerProcessSingleVLCHWSP(QThread, VlcPlayerBase, metaclass=QABC):
     def notify_update_status(self, status, percent=0):
         self.update_status_signal.emit(status, percent)
 
-    def notify_error(self, error):
-        self.error_signal.emit(error)
+    def notify_error(self, error, vlc_lines=()):
+        self.error_signal.emit(error, tuple(vlc_lines))
 
     def notify_time_changed(self, new_time):
         self.time_changed.emit(new_time)

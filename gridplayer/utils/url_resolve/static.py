@@ -24,6 +24,12 @@ class NoResolverPlugin(Exception):
     """Exception for no resolver plugin"""
 
 
+class ResolverFailed(NoResolverPlugin):
+    """The resolver took the link for one of its own and could not read
+    it, raised from what went wrong. The next one is tried all the same,
+    but where none can, that is why."""
+
+
 class StreamOfflineError(Exception):
     """Exception for offline streams"""
 

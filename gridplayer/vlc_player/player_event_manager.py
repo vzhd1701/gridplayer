@@ -10,6 +10,7 @@ class EventManager:
         "buffering": vlc.EventType.MediaPlayerBuffering,
         "encountered_error": vlc.EventType.MediaPlayerEncounteredError,
         "end_reached": vlc.EventType.MediaPlayerEndReached,
+        "opening": vlc.EventType.MediaPlayerOpening,
         "paused": vlc.EventType.MediaPlayerPaused,
         "snapshot_taken": vlc.EventType.MediaPlayerSnapshotTaken,
         "stopped": vlc.EventType.MediaPlayerStopped,

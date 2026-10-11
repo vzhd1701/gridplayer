@@ -19,6 +19,7 @@ from gridplayer.settings import Settings
 from gridplayer.utils.network import vlc_user_agent
 from gridplayer.utils.win32_com import keep_mta_alive
 from gridplayer.vlc_player.libvlc import vlc
+from gridplayer.vlc_player.vlc_errors import is_keeping_vlc_errors, keep_vlc_error
 
 # Prepare `vsnprintf` function
 if env.IS_WINDOWS:
@@ -86,7 +87,6 @@ class InstanceVLC:
 
         self._logger = None
         self._logger_cb = None
-        self._logger_buf = None
         self._logger_buf_len = 1024
 
     @property
@@ -168,7 +168,6 @@ class InstanceVLC:
     # process
     def init_logger(self):
         self._logger_cb = self.libvlc_log_callback()
-        self._logger_buf = ctypes.create_string_buffer(self._logger_buf_len)
 
         self.vlc_instance.log_set(self._logger_cb, None)
 
@@ -178,10 +177,21 @@ class InstanceVLC:
         def _cb(ptr_data, level, ctx, fmt, args):
             log_level = self.log_level_map[vlc.LogLevel(level)]
 
-            if log_level < self._vlc_log_level:
+            # kept whatever is logged, for a video that fails to tell
+            is_kept = log_level >= logging.ERROR and is_keeping_vlc_errors()
+            is_logged = log_level >= self._vlc_log_level
+
+            if not is_kept and not is_logged:
                 return
 
+            # formatted once: the arguments are used up by it on some systems
             log_head, log_msg = self._format_log_msg(args, ctx, fmt)
+
+            if is_kept:
+                keep_vlc_error(log_msg)
+
+            if not is_logged:
+                return
 
             if self._logger.level == logging.DEBUG:
                 self._logger.log(log_level, log_head)
@@ -197,9 +207,13 @@ class InstanceVLC:
     def _format_log_msg(self, args, ctx, fmt):
         m_name, m_file, m_line = vlc.libvlc_log_get_context(ctx)
 
-        # Format given fmt/args pair
-        str_len = vsnprintf(self._logger_buf, self._logger_buf_len, fmt, args)
-        log_txt = self._logger_buf.raw[:str_len].decode(errors="ignore")
+        # Format given fmt/args pair, in a buffer of its own: VLC logs from
+        # several threads at once
+        buffer = ctypes.create_string_buffer(self._logger_buf_len)
+        str_len = vsnprintf(buffer, self._logger_buf_len, fmt, args)
+        log_txt = buffer.raw[: min(str_len, self._logger_buf_len - 1)].decode(
+            errors="ignore"
+        )
 
         log_head = f"{m_file.decode(errors='ignore')}:{m_line}"
         log_msg = f"{m_name.decode(errors='ignore')}: {log_txt}"

@@ -22,7 +22,8 @@ class VLCVideoDriver(QObject, metaclass=QABC):
     # on its own; once per load
     playback_started = pyqtSignal()
 
-    error = pyqtSignal(str)
+    # the error, and what VLC said went wrong with the video as it did
+    error = pyqtSignal(str, tuple)
     crash = pyqtSignal(str)
     update_status = pyqtSignal(str, int)
 
@@ -136,8 +137,8 @@ class VLCVideoDriver(QObject, metaclass=QABC):
     @abstractmethod
     def set_subtitle_delay(self, delay_ms): ...
 
-    def error_state(self, error):
-        self.error.emit(error)
+    def error_state(self, error, vlc_lines=()):
+        self.error.emit(error, tuple(vlc_lines))
 
     def update_status_emit(self, status, percent):
         self.update_status.emit(status, percent)

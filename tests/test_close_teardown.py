@@ -1,12 +1,24 @@
 from unittest.mock import MagicMock
 
 import pytest
+from PyQt5.QtCore import QSettings
 from PyQt5.QtWidgets import QApplication, QWidget
 
+from gridplayer.models.video import Video
+from gridplayer.params.static import VideoInitialState
 from gridplayer.player.manager import Commands, Context
+from gridplayer.player.managers.bookmarks import BookmarksRegistry
+from gridplayer.player.managers.lists import MediaListsRegistry
 from gridplayer.player.managers.video_blocks import VideoBlocksManager
 from gridplayer.player.managers.window_state import WindowStateManager
+from gridplayer.playlist_settings import PlaylistSettings
+from gridplayer.settings import Settings
+from gridplayer.utils.url_resolve.url_resolve import VideoURLResolver
+from gridplayer.widgets.video_block import VideoBlock
+from gridplayer.widgets.video_frame_dummy import VideoFrameDummy
 from gridplayer.widgets.video_frame_vlc_sw import VideoFrameVLCSW
+from gridplayer.widgets.video_overlay import OverlayMode
+from gridplayer.widgets.video_status import LoadStage, StepState
 
 
 @pytest.fixture(scope="module", autouse=True)
@@ -29,8 +41,17 @@ class _StubBlock:
     def hide(self):
         self._events.append(("hide", self.id))
 
+    def isVisible(self):
+        return True
+
+    def show_reloading(self):
+        self._events.append(("reloading", self.id))
+
     def cleanup_start(self):
         self._events.append(("start", self.id))
+
+    def release_player(self):
+        self._events.append(("release", self.id))
 
     def close_silently(self):
         self._events.append(("close", self.id))
@@ -122,17 +143,193 @@ def test_close_all_takes_every_video_off_screen_before_any_is_waited_on(
 
 
 def test_remove_videos_starts_every_player_before_closing_any(blocks_manager):
+    """And off screen, the grid laid out and painted without them, before
+    any wait, as close_all does it."""
     manager, with_blocks = blocks_manager
     events = with_blocks("a", "b")
+    manager.video_count_changed.connect(lambda count: events.append(("count", count)))
 
     manager.remove_videos(["a", "b"])
 
     assert events == [
+        ("hide", "a"),
+        ("hide", "b"),
+        ("count", 0),
+        ("repaint",),
         ("start", "a"),
         ("start", "b"),
         ("close", "a"),
         ("close", "b"),
     ]
+
+
+def test_reload_keeps_the_cells_until_new_ones_take_their_places(blocks_manager):
+    """Closed first, the grid was shown empty, its empty cell and all, until
+    the players were started again and the new cells came."""
+    manager, with_blocks = blocks_manager
+    events = with_blocks("a", "b")
+    manager.video_count_changed.connect(lambda count: events.append(("count", count)))
+    manager.reload_all_closed.connect(lambda: events.append(("restart",)))
+
+    names = {id(block.video_params): block.id for block in manager._ctx.video_blocks}
+
+    def _add(video):
+        block = _StubBlock(events, names[id(video)] + "'")
+        manager._ctx.video_blocks.append(block)
+        events.append(("add", block.id))
+        return block
+
+    manager._add_video_block = _add
+
+    manager.reload_videos()
+
+    assert events == [
+        # said by all before any player lets go, and those started at once
+        ("reloading", "a"),
+        ("reloading", "b"),
+        ("start", "a"),
+        ("start", "b"),
+        ("release", "a"),
+        ("release", "b"),
+        ("restart",),
+        # swapped for the new ones in one go, the window not painted between
+        ("hide", "a"),
+        ("hide", "b"),
+        ("close", "a"),
+        ("close", "b"),
+        ("add", "a'"),
+        ("add", "b'"),
+        ("count", 2),
+    ]
+    assert [block.id for block in manager._ctx.video_blocks] == ["a'", "b'"]
+
+
+def test_reload_with_no_cells_restarts_the_players(blocks_manager):
+    manager, _ = blocks_manager
+    restarts = []
+    manager.reload_all_closed.connect(lambda: restarts.append(True))
+
+    manager.reload_videos()
+
+    assert restarts == [True]
+
+
+@pytest.fixture
+def cell(mocker, tmp_path):
+    """A cell on show in a window, on a player that is not there."""
+
+    mocker.patch.object(VideoURLResolver, "resolve")
+
+    settings = Settings()
+    real_settings = settings.settings
+    settings.settings = QSettings(str(tmp_path / "test.ini"), QSettings.IniFormat)
+
+    context = MagicMock()
+    context.is_overlay_hide_on_timeout = False
+    context.is_drag_ui = False
+    context.is_disable_overlay = False
+    context.is_show_overlay_border = False
+    context.overlay_timeout = 1
+    context.synced_view = None
+    context.lists = MediaListsRegistry()
+    context.bookmarks = BookmarksRegistry()
+    context.video_blocks = []
+
+    window = QWidget()
+    window.resize(640, 360)
+    block = VideoBlock(video_driver=VideoFrameDummy, context=context, parent=window)
+    block.resize(640, 360)
+    window.show()
+    block.show()
+
+    yield block, window
+
+    if not block._is_closing:
+        block.close_silently()
+    VideoBlock.cleanup(block)
+    window.deleteLater()
+
+    settings.settings = real_settings
+    PlaylistSettings().clear()
+
+
+def test_a_cell_closed_is_off_screen_before_its_player_is_waited_on(cell):
+    """A hardware video's cell, once its player lets go, shows what was
+    painted there before its picture came, the loading status, and the
+    window is not painted while the player is waited on."""
+    block, window = cell
+    seen = []
+    window.repaint = lambda: seen.append("painted")
+    block.cleanup = lambda: seen.append(
+        "waited off screen" if block.isHidden() else "waited on show"
+    )
+
+    block.close()
+
+    assert seen == ["painted", "waited off screen"]
+
+
+def test_a_cell_closed_off_screen_leaves_the_window_be(cell):
+    """Closing them all takes them off screen and paints the window once,
+    rather than once for each."""
+    block, window = cell
+    seen = []
+    window.repaint = lambda: seen.append("painted")
+    block.cleanup = lambda: seen.append("waited")
+    block.hide()
+
+    block.close_silently()
+
+    assert seen == ["waited"]
+
+
+@pytest.mark.parametrize(
+    ("uri", "said", "steps"),
+    [
+        ("file", "Opening…", ()),
+        (
+            "https://example.com/v.m3u8",
+            "Resolving the link…",
+            (StepState.CURRENT, StepState.TODO),
+        ),
+    ],
+)
+def test_reloading_says_so_over_the_video_as_a_new_cell_does(
+    cell, tmp_path, uri, said, steps
+):
+    block, _ = cell
+
+    if uri == "file":
+        uri = tmp_path / "a.mp4"
+        uri.touch()
+
+    block.set_video(Video(uri=uri))
+    block._show_stage(LoadStage.VIDEO, "Buffering 100%")
+    block.video_status.hide()
+
+    block.show_reloading()
+
+    assert not block.video_status.isHidden()
+    assert block.video_status.status_text == said
+    assert tuple(state for _, state in block.video_status.steps) == steps
+    assert block.overlay.mode is OverlayMode.LOADING
+    assert block.video_driver is not None
+
+    block.release_player()
+
+    assert block.video_driver is None
+
+
+def test_reloading_leaves_a_stopped_cell_stopped(cell, tmp_path):
+    block, _ = cell
+    path = tmp_path / "a.mp4"
+    path.touch()
+    block.set_video(Video(uri=path, playback_state=VideoInitialState.STOPPED))
+
+    block.show_reloading()
+
+    assert block.video_status.isHidden()
+    assert block.overlay.mode is OverlayMode.STOPPED
 
 
 def _window_state_manager(commands):

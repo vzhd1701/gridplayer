@@ -25,11 +25,13 @@ SITE_REFUSALS = (
     "The page needs to be reloaded",
 )
 
-# what a site says of a list it will not show at all
+# what a site says of a list, or a video, it will not show at all; looked
+# for in any case, YouTube saying "Private video"
 _SITE_GONE = (
     "does not exist",
     "is private",
     "private playlist",
+    "private video",
     "unavailable",
     "no longer available",
     "has been removed",
@@ -141,6 +143,10 @@ class ReadError:
         return self.kind in NETWORK_KINDS
 
     @property
+    def icon(self) -> str:
+        return "network-error" if self.is_network else "error"
+
+    @property
     def raw_said(self) -> str:
         """The error as raised, cut short to say where nothing better is
         known of it: its first line."""
@@ -161,7 +167,7 @@ def read_error_of(error: BaseException, source: ListSource | None) -> ReadError:
     """What the list could not be read for, from what was raised reading it
     from its source."""
 
-    chain = _chain(error)
+    chain = error_chain(error)
     raw = str(error)
 
     source_kind = None if source is None else source.kind
@@ -173,7 +179,7 @@ def read_error_of(error: BaseException, source: ListSource | None) -> ReadError:
         )
 
     for each in chain:
-        status = getattr(each, "status", None)
+        status = _status_of(each)
 
         if _type_names(each) & _HTTP_ERROR_TYPES and isinstance(status, int):
             return found(ReadErrorKind.HTTP, status=status)
@@ -197,7 +203,9 @@ def read_error_of(error: BaseException, source: ListSource | None) -> ReadError:
 
             return found(kind)
 
-    if names & _SITE_ERROR_TYPES and any(gone in said for gone in _SITE_GONE):
+    said_lower = said.lower()
+
+    if names & _SITE_ERROR_TYPES and any(gone in said_lower for gone in _SITE_GONE):
         return found(ReadErrorKind.GONE)
 
     return found(ReadErrorKind.OTHER)
@@ -214,7 +222,21 @@ def site_name(host: str) -> str:
     return host.removeprefix("www.")
 
 
-def _chain(error: BaseException) -> list[BaseException]:
+def _status_of(error: BaseException) -> int | None:
+    """The HTTP status an error carries: yt-dlp's and httpx's on the error,
+    requests' on the response it keeps."""
+
+    status = getattr(error, "status", None)
+
+    if isinstance(status, int):
+        return status
+
+    status = getattr(getattr(error, "response", None), "status_code", None)
+
+    return status if isinstance(status, int) else None
+
+
+def error_chain(error: BaseException) -> list[BaseException]:
     """The error raised and the ones under it: what it was raised from,
     and what yt-dlp, requests and urllib3 keep of what they wrap."""
 
@@ -253,11 +275,15 @@ def _type_names(error: BaseException) -> set[str]:
     return {cls.__name__ for cls in type(error).__mro__}
 
 
+def host_of(url) -> str:
+    return urllib.parse.urlsplit(str(url)).hostname or ""
+
+
 def _host_of(source: ListSource | None) -> str:
     if source is None or source.kind != ListSourceKind.URL:
         return ""
 
-    return urllib.parse.urlsplit(str(source.location)).hostname or ""
+    return host_of(source.location)
 
 
 def _limit_mb(chain) -> int | None:

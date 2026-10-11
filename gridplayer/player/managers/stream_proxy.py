@@ -28,10 +28,23 @@ class StreamProxyManager(ManagerBase):
     def commands(self):
         return {
             "add_stream": self.cmd_add_stream,
+            "stream_failure": self.cmd_stream_failure,
         }
 
     def cmd_add_stream(self, stream: Stream) -> str:
         return self.stream_proxy.add_stream(stream)
+
+    def cmd_stream_failure(self, url: str):
+        """What the stream behind a URL of the proxy's last could not be
+        fetched for, None for nothing; never starting the proxy to say."""
+
+        with self._stream_proxy_lock:
+            proxy = self._stream_proxy
+
+        if proxy is None:
+            return None
+
+        return proxy.server.failure_of(url)
 
     def cleanup(self):
         if self._stream_proxy is not None:
