@@ -46,12 +46,13 @@ OPAQUE_RING_EDGE = 1
 
 # The bars' colours: pure red and blue glare over a video and in a window
 # alike, so quieter ones, readable over a light picture and a dark one; green
-# where the overlay's own colour is reddish. The grey over what is ahead of
-# the mouse, this much of the way from the box's colour to its mid contrast.
+# where the overlay's own colour is reddish. What is ahead, up to the mouse,
+# in the blue faded this much of the way to the box's colour: a grey there
+# came out as grey as the see-through box over a dark picture.
 BAR_PROGRESS_COLOR = "#d14747"
 BAR_PROGRESS_COLOR_ON_RED = "#47d147"
 BAR_SELECT_COLOR = "#4775d1"
-BAR_AHEAD_SHADE = 0.5
+BAR_AHEAD_FADE = 0.4
 
 # A chapter is marked the way mpv marks it: a wedge cut into the top and the
 # bottom edge of the bar, which leaves the middle of it to the loop marks'
@@ -611,17 +612,6 @@ class OverlayWidget(QWidget):
         painter.setRenderHint(QPainter.Antialiasing, not self._is_solid)
         painter.setPen(Qt.NoPen)
         painter.fillPath(self.box_path(), self.fill_color if fill is None else fill)
-        painter.restore()
-
-    def fill_in_box(self, painter: QPainter, rect: QRect | QRectF, color):
-        """A part of its box filled, kept to the box's rounded corners."""
-
-        part = QPainterPath()
-        part.addRect(QRectF(rect))
-
-        painter.save()
-        painter.setRenderHint(QPainter.Antialiasing, not self._is_solid)
-        painter.fillPath(self.box_path().intersected(part), QColor(color))
         painter.restore()
 
     def opaque_shape(self) -> QRegion:
@@ -1380,7 +1370,36 @@ class OverlayBar(OverlayWidget):
     def color_ahead(self):
         """What is ahead, up to the mouse, while it is over the bar."""
 
-        return mixed_color(self.color, self.color_contrast_mid, BAR_AHEAD_SHADE)
+        return mixed_color(self.color_select, self.color, BAR_AHEAD_FADE)
+
+    def paint_bar(self, painter: QPainter, parts):
+        """Its box, filled part by part: (rect, colour) each, side by side,
+        and the rest of it in its own fill.
+
+        Each pixel along the box's smooth rounded edge is painted once. A part
+        laid over the fill there would leave the fill showing round it, a pale
+        fringe round the progress's corners over a dark picture.
+        """
+
+        box = self.box_path()
+        rest = QPainterPath(box)
+
+        painter.save()
+        painter.setRenderHint(QPainter.Antialiasing, not self._is_solid)
+        painter.setPen(Qt.NoPen)
+
+        for rect, color in parts:
+            if rect.isEmpty():
+                continue
+
+            part = QPainterPath()
+            part.addRect(QRectF(rect))
+
+            painter.fillPath(box.intersected(part), QColor(color))
+            rest = rest.subtracted(part)
+
+        painter.fillPath(rest, self.fill_color)
+        painter.restore()
 
 
 class OverlayProgressBar(OverlayBar):
@@ -1479,21 +1498,14 @@ class OverlayProgressBar(OverlayBar):
     def paintEvent(self, event):
         painter = QPainter(self)
 
-        self.paint_box(painter)
+        is_hovered = self.progress_select_x is not None and self.underMouse()
 
-        progress_rect = self.rect().translated(0, 0)
-
-        cur_fill = math.ceil(self.rect().width() * self.position)
-
-        progress_rect.setWidth(cur_fill)
-
-        self.fill_in_box(painter, progress_rect, self.color_progress)
+        self.paint_bar(painter, self._filled_parts(is_hovered))
 
         # the rest within the box's rounded corners too
         painter.setClipPath(self.box_path())
 
-        if self.progress_select_x is not None and self.underMouse():
-            self.draw_progress_bar_select(painter, self.rect(), progress_rect)
+        if is_hovered:
             self.draw_hovered_chapter(painter)
 
         self.draw_segments(painter)
@@ -1505,15 +1517,27 @@ class OverlayProgressBar(OverlayBar):
         if self.loop_end < 100:
             self.draw_loop_mark(painter, self.rect(), self.loop_end)
 
-    def draw_progress_bar_select(self, painter, rect, progress_rect):
-        progress_rect_sel = rect.translated(0, 0)
-        progress_rect_sel.setRight(self.progress_select_x - 1)
+    def _filled_parts(self, is_hovered):
+        """What is played from the left, and under the mouse up to it."""
 
-        if progress_rect_sel.right() <= progress_rect.right():
-            self.fill_in_box(painter, progress_rect_sel, self.color_select)
-        else:
-            self.fill_in_box(painter, progress_rect_sel, self.color_ahead)
-            self.fill_in_box(painter, progress_rect, self.color_select)
+        height = self.height()
+        played = math.ceil(self.width() * self.position)
+
+        if not is_hovered:
+            return [(QRect(0, 0, played, height), self.color_progress)]
+
+        mouse = self.progress_select_x
+
+        if mouse <= played:
+            return [
+                (QRect(0, 0, mouse, height), self.color_select),
+                (QRect(mouse, 0, played - mouse, height), self.color_progress),
+            ]
+
+        return [
+            (QRect(0, 0, played, height), self.color_select),
+            (QRect(played, 0, mouse - played, height), self.color_ahead),
+        ]
 
     def draw_loop_mark(self, painter, rect, loop_mark_percent):
         cur_start_loop_rect = rect.translated(0, 0)
@@ -2015,29 +2039,32 @@ class OverlayVolumeBar(OverlayBar):
     def paintEvent(self, event):
         painter = QPainter(self)
 
-        self.paint_box(painter)
+        is_hovered = self.progress_select_y is not None and self.underMouse()
 
-        progress_rect = self.rect().translated(0, 0)
+        self.paint_bar(painter, self._filled_parts(is_hovered))
 
-        cur_fill = math.ceil(self.rect().height() * self.position)
+    def _filled_parts(self, is_hovered):
+        """The volume from the bottom, and under the mouse up to it."""
 
-        progress_rect.setY(self.rect().height() - cur_fill)
-        progress_rect.setHeight(cur_fill)
+        width = self.width()
+        height = self.height()
+        top = height - math.ceil(height * self.position)
 
-        self.fill_in_box(painter, progress_rect, self.color_progress)
+        if not is_hovered:
+            return [(QRect(0, top, width, height - top), self.color_progress)]
 
-        if self.progress_select_y is not None and self.underMouse():
-            self.draw_progress_bar_select(painter, self.rect(), progress_rect)
+        mouse = self.progress_select_y
 
-    def draw_progress_bar_select(self, painter, rect, progress_rect):
-        progress_rect_sel = rect.translated(0, 0)
-        progress_rect_sel.setTop(self.progress_select_y)
+        if mouse >= top:
+            return [
+                (QRect(0, mouse, width, height - mouse), self.color_select),
+                (QRect(0, top, width, mouse - top), self.color_progress),
+            ]
 
-        if progress_rect_sel.top() >= progress_rect.top():
-            self.fill_in_box(painter, progress_rect_sel, self.color_select)
-        else:
-            self.fill_in_box(painter, progress_rect_sel, self.color_ahead)
-            self.fill_in_box(painter, progress_rect, self.color_select)
+        return [
+            (QRect(0, top, width, height - top), self.color_select),
+            (QRect(0, mouse, width, top - mouse), self.color_ahead),
+        ]
 
     @property
     def position(self):

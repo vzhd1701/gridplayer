@@ -1241,14 +1241,16 @@ class TestThePlayerRow:
 
         assert bar.color_progress.name() == "#47d147"
 
-    def test_the_grey_ahead_of_it_is_half_as_far_from_the_bar(self, dialog):
+    def test_ahead_of_it_is_the_blue_faded_toward_the_bar(self, dialog):
+        """Not a grey, which over a dark picture came out as grey as the
+        see-through bar itself."""
+
         bar = dialog._player.bar
         ahead = bar.color_ahead
-        loud = bar.color_contrast_mid
+        select = bar.color_select
 
-        assert ahead.lightness() == pytest.approx(
-            (bar.color.lightness() + loud.lightness()) / 2, abs=2
-        )
+        assert ahead.hue() == pytest.approx(select.hue(), abs=2)
+        assert select.lightness() < ahead.lightness() < bar.color.lightness()
 
     @pytest.mark.parametrize(("hover", "x"), [(0.9, 0.1), (0.9, 0.7), (0.3, 0.1)])
     def test_hovered_it_is_painted_in_them(self, block, dialog, hover, x):
