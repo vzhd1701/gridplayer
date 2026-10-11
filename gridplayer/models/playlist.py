@@ -20,6 +20,7 @@ from gridplayer.params.static import (
     AudioTrackMode,
     DropAction,
     ListEndAction,
+    ListFailAction,
     ListUpdate,
     ListView,
     NetworkRetryMode,
@@ -70,6 +71,8 @@ class PlaylistVideoDefaults(BaseModel):
     end_action: VideoEndAction | None = None
     dir_recursive: bool | None = None
     list_end_action: ListEndAction | None = None
+    list_fail_action: ListFailAction | None = None
+    list_fail_wait: int | None = None
     audio_mode: AudioChannelMode | None = None
     audio_track_mode: AudioTrackMode | None = None
     audio_languages: str | None = None

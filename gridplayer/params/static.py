@@ -174,6 +174,17 @@ LIST_STEP_END_ACTIONS = frozenset(
 )
 
 
+class ListFailAction(AutoName):
+    """What a cell playing a list does when a video of it won't play."""
+
+    SHOW_ERROR = auto()
+    PLAY_NEXT = auto()
+
+
+# how long a failed item's error may be shown before the next one, in seconds
+MAX_LIST_FAIL_WAIT_SEC = 300
+
+
 class ListEndAction(AutoName):
     """What a cell does once it has played through its list.
 

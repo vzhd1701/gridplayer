@@ -20,6 +20,10 @@ SUBMENUS = MappingProxyType(
             "title": translate("Lists", "At the End of the List"),
             "icon": "list-end",
         },
+        "When Video Fails": {
+            "title": translate("When Video Fails", "When Video Fails"),
+            "icon": "error",
+        },
         "Include Subfolders": {
             "title": translate("Folder Navigation", "Include Subfolders"),
             "icon": "folder-tree",
@@ -231,6 +235,13 @@ SECTIONS = MappingProxyType(
                     "List End Pause",
                     "List End Stop",
                     "List End Close",
+                ),
+                (
+                    "When Video Fails",
+                    "When Video Fails Show Error",
+                    "When Video Fails Play Next",
+                    "---",
+                    "When Video Fails Next After: %v",
                 ),
                 "Leave the List",
                 "---",
@@ -482,6 +493,13 @@ SECTIONS = MappingProxyType(
                         "List End Pause [ALL]",
                         "List End Stop [ALL]",
                         "List End Close [ALL]",
+                    ),
+                    (
+                        "When Video Fails",
+                        "When Video Fails Show Error [ALL]",
+                        "When Video Fails Play Next [ALL]",
+                        "---",
+                        "When Video Fails Next After [ALL]",
                     ),
                     "---",
                     (

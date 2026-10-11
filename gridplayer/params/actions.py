@@ -4,6 +4,7 @@ from gridplayer.params.static import (
     AudioChannelMode,
     GridMode,
     ListEndAction,
+    ListFailAction,
     NetworkRetryMode,
     SeekSyncMode,
     VideoAnchor,
@@ -475,6 +476,45 @@ ACTIONS = MappingProxyType(
             ),
             "is_choice": True,
             "show_if": "is_active_list_cell",
+        },
+        "When Video Fails Show Error": {
+            "title": translate("When Video Fails", "Show Error"),
+            "icon": "error",
+            "func": ("active", "set_list_fail_action", ListFailAction.SHOW_ERROR),
+            "check_if": (
+                "is_active_param_set_to",
+                "list_fail_action",
+                ListFailAction.SHOW_ERROR,
+            ),
+            "is_choice": True,
+            "show_if": "is_active_list_cell",
+        },
+        "When Video Fails Play Next": {
+            "title": translate("When Video Fails", "Play Next"),
+            "icon": "next-video-file",
+            "func": ("active", "set_list_fail_action", ListFailAction.PLAY_NEXT),
+            "check_if": (
+                "is_active_param_set_to",
+                "list_fail_action",
+                ListFailAction.PLAY_NEXT,
+            ),
+            "is_choice": True,
+            "show_if": "is_active_list_cell",
+        },
+        "When Video Fails Next After: %v": {
+            "title": "{}: %v".format(translate("When Video Fails", "Next After")),
+            "keymap_title": translate("When Video Fails", "Set Next After"),
+            "icon": "empty",
+            "func": ("active", "list_fail_wait"),
+            "value_getter": ("active", "get_list_fail_wait"),
+            "show_if": AND(
+                "is_active_list_cell",
+                (
+                    "is_active_param_set_to",
+                    "list_fail_action",
+                    ListFailAction.PLAY_NEXT,
+                ),
+            ),
         },
         "When Finished Pause": {
             "title": translate("When Finished", "Pause At Start"),
@@ -1757,6 +1797,24 @@ ACTIONS = MappingProxyType(
             "title": translate("Lists", "Close"),
             "icon": "close",
             "func": ("all", "set_list_end_action", ListEndAction.CLOSE),
+            "show_if": "is_any_videos_list_cell",
+        },
+        "When Video Fails Show Error [ALL]": {
+            "title": translate("When Video Fails", "Show Error"),
+            "icon": "error",
+            "func": ("all", "set_list_fail_action", ListFailAction.SHOW_ERROR),
+            "show_if": "is_any_videos_list_cell",
+        },
+        "When Video Fails Play Next [ALL]": {
+            "title": translate("When Video Fails", "Play Next"),
+            "icon": "next-video-file",
+            "func": ("all", "set_list_fail_action", ListFailAction.PLAY_NEXT),
+            "show_if": "is_any_videos_list_cell",
+        },
+        "When Video Fails Next After [ALL]": {
+            "title": translate("When Video Fails", "Set Next After"),
+            "icon": "empty",
+            "func": "all_set_list_fail_wait",
             "show_if": "is_any_videos_list_cell",
         },
         "When Finished Pause [ALL]": {

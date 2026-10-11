@@ -21,6 +21,7 @@ from gridplayer.models.media_list import ListItem, MediaList
 from gridplayer.models.stream import HashableDict, Stream, StreamSessionOpts
 from gridplayer.models.video import Video
 from gridplayer.params.static import (
+    ListFailAction,
     NetworkRetryMode,
     URLResolver,
     VideoEndAction,
@@ -54,6 +55,7 @@ from gridplayer.utils.video_errors import (
     player_error,
     proxy_error,
     resolve_error,
+    stream_offline_error,
 )
 from gridplayer.vlc_player import vlc_errors
 from gridplayer.vlc_player.player_base import VlcPlayerBase
@@ -254,6 +256,84 @@ class TestFromTheProxy:
 
         assert proxy.failure_of(mine).status == 403
         assert proxy.failure_of(theirs) is None
+
+
+class TestWorthAReload:
+    @pytest.mark.parametrize("status", [400, 401, 403, 404, 410, 429, 451])
+    def test_not_what_a_server_turns_down_for_good(self, status):
+        error = resolve_error(_http_error(status), "https://site.example/watch")
+
+        assert not error.is_retryable
+
+    @pytest.mark.parametrize("status", [408, 500, 502, 503, 504])
+    def test_what_a_server_may_answer_otherwise(self, status):
+        error = resolve_error(_http_error(status), "https://site.example/watch")
+
+        assert error.is_retryable
+
+    def test_not_a_video_a_site_has_taken_down(self):
+        error = resolve_error(
+            DownloadError("ERROR: [youtube] abc: Private video"),
+            "https://www.youtube.com/watch?v=abc",
+        )
+
+        assert not error.is_retryable
+
+    def test_a_connection_that_failed(self):
+        error = resolve_error(
+            requests.ConnectionError("Connection aborted"), "https://site.example/v"
+        )
+
+        assert error.is_retryable
+
+    def test_not_a_stream_with_nothing_on(self):
+        assert not stream_offline_error("https://site.example/live").is_retryable
+
+    def test_by_what_the_proxy_was_answered(self):
+        refused = ProxyFailure(url="https://cdn.example/seg.ts", status=410)
+        broken = _proxy_failure(
+            RelayFailure(error=ConnectionResetError("reset by peer")),
+            "https://cdn.example/live.m3u8",
+        )
+
+        assert not proxy_error(refused).is_retryable
+        assert proxy_error(broken).is_retryable
+
+    def test_by_what_vlc_was_answered(self):
+        refused = player_error("Failed to load media", ("http: HTTP 404 error",))
+        broken = player_error("Player error", ("main decoder: Codec not supported",))
+
+        assert not refused.is_retryable
+        assert broken.is_retryable
+
+    def test_not_a_file_gone(self, tmp_path):
+        assert not file_error(ReadErrorKind.MISSING, tmp_path / "a.mp4").is_retryable
+
+
+class TestASiteRefusing:
+    def test_too_many_requests(self):
+        error = resolve_error(_http_error(429), "https://site.example/watch")
+
+        assert error.is_refused
+
+    def test_a_bot_check(self):
+        error = resolve_error(
+            DownloadError("ERROR: [youtube] abc: Sign in to confirm you're not a bot"),
+            "https://www.youtube.com/watch?v=abc",
+        )
+
+        assert error.is_refused
+
+    def test_too_many_requests_vlc_was_answered(self):
+        error = player_error("Failed to load media", ("http: HTTP 429 error",))
+
+        assert error.is_refused
+
+    @pytest.mark.parametrize("status", [403, 404, 503])
+    def test_not_what_else_a_server_answers(self, status):
+        error = resolve_error(_http_error(status), "https://site.example/watch")
+
+        assert not error.is_refused
 
 
 class TestVLCSaid:
@@ -979,6 +1059,103 @@ class TestOnTheCell:
         assert not block._skip_failed_timer.isActive()
         assert block.video_params.uri == files[0]
         assert block.overlay.mode is OverlayMode.STOPPED
+
+
+class TestAListOfLinks:
+    """An item that would not play: reloaded, or the next one played."""
+
+    def test_one_gone_is_not_reloaded_but_the_next_played(self, make_cell):
+        block = _failed_link(make_cell, _http_error(404))
+
+        assert not block._network_retry_timer.isActive()
+        assert block._skip_failed_timer.isActive()
+        assert block.video_status.error.code == "HTTP 404"
+
+        block._skip_failed_timer.timeout.emit()
+
+        assert block.video_params.uri == "https://site.example/1"
+
+    def test_one_that_may_answer_otherwise_is_reloaded_first(self, make_cell):
+        block = _failed_link(make_cell, _http_error(503))
+
+        assert block._network_retry_timer.isActive()
+        assert not block._skip_failed_timer.isActive()
+
+    def test_reloaded_where_set_to_show_the_error(self, make_cell):
+        block = _failed_link(
+            make_cell, _http_error(404), list_fail_action=ListFailAction.SHOW_ERROR
+        )
+
+        assert block._network_retry_timer.isActive()
+
+    def test_reloaded_once_it_played(self, make_cell):
+        """A link that ran out, while it played, may come back with a new
+        one: it is found again on a reload."""
+
+        block = _failed_link(make_cell, None)
+        block._has_item_played = True
+
+        _fail(block, _http_error(403))
+
+        assert block._network_retry_timer.isActive()
+
+    def test_the_next_one_is_not_taken_to_have_played(self, make_cell):
+        block = _failed_link(make_cell, None)
+        block._has_item_played = True
+        block.next_video()
+
+        _fail(block, _http_error(403))
+
+        assert not block._network_retry_timer.isActive()
+
+    def test_one_with_no_list_is_reloaded(self, make_cell):
+        block = make_cell(
+            "https://site.example/0",
+            network_retry_mode=NetworkRetryMode.TIMES,
+            network_retry_times=3,
+        )
+
+        _fail(block, _http_error(404))
+
+        assert block._network_retry_timer.isActive()
+
+    def test_its_menu_is_there_once_it_failed(self, make_cell):
+        block = _failed_link(make_cell, _http_error(404))
+        menu = _menu_on(block)
+
+        menu.cmd_active("set_list_fail_action", ListFailAction.SHOW_ERROR)
+
+        assert block.video_params.list_fail_action is ListFailAction.SHOW_ERROR
+        assert not block._skip_failed_timer.isActive()
+        assert menu.cmd_active("get_list_fail_wait") == "2 s"
+
+
+def _failed_link(make_cell, error, **video_kwargs):
+    """The first of three links of a list, failed with what is given."""
+
+    links = [f"https://site.example/{n}" for n in range(3)]
+
+    lists = MediaListsRegistry()
+    media_list = lists.add(MediaList(items=[ListItem(uri=link) for link in links]))
+    block = make_cell(
+        links[0],
+        media_list=media_list,
+        lists=lists,
+        end_action=VideoEndAction.NEXT_FILE,
+        network_retry_mode=NetworkRetryMode.TIMES,
+        network_retry_times=3,
+        **video_kwargs,
+    )
+
+    if error is not None:
+        _fail(block, error)
+
+    return block
+
+
+def _fail(block, error):
+    block.url_resolver.failed.emit(resolve_error(error, str(block.video_params.uri)))
+    block.url_resolver.error.emit()
 
 
 def _menu_on(block) -> ActiveBlockManager:

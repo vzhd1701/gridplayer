@@ -86,8 +86,8 @@ from gridplayer.params.sponsorblock import (
 from gridplayer.params.static import (
     AUDIO_DELAY_STEP_MS,
     CHROME_MIN_SIZE,
-    LIST_STEP_END_ACTIONS,
     MAX_AUDIO_DELAY_MS,
+    MAX_LIST_FAIL_WAIT_SEC,
     MAX_RATE,
     MAX_SUBTITLE_DELAY_MS,
     MIN_AUDIO_DELAY_MS,
@@ -97,6 +97,7 @@ from gridplayer.params.static import (
     PLAYER_ID_LENGTH,
     SUBTITLE_DELAY_STEP_MS,
     ListEndAction,
+    ListFailAction,
     ListSourceKind,
     NetworkRetryMode,
     SponsorBlockMode,
@@ -241,12 +242,9 @@ MAX_NETWORK_RETRIES = 1000
 # retrying forever at full speed would be indistinguishable from an attack
 NETWORK_RETRY_DELAYS_S = (1, 2, 5, 15, 30)
 
-# how long the error of an item of a list that would not play is shown,
-# before the next one is put in its place
-SKIP_FAILED_ITEM_MS = 2000
-
-# how many items of a list in a row may not play before it is left at that
-MAX_FAILED_ITEMS_IN_A_ROW = 10
+# how many items of a list in a row may fail for the network, or a site
+# turning requests away, before it is left at that
+MAX_NETWORK_FAILURES_IN_A_ROW = 10
 
 # the place, over the video, of one taken off its list while it played
 NOT_ON_LIST_TXT = "\u2013"
@@ -388,6 +386,13 @@ def subtitle_delay_txt(delay_ms: int) -> str:
         return f"0 {milliseconds}"
 
     return f"{delay_ms:+d} {milliseconds}"
+
+
+def list_fail_wait_txt(wait_sec: int) -> str:
+    if not wait_sec:
+        return translate("When Video Fails", "At once")
+
+    return translate("When Video Fails", "{SECONDS} s").format(SECONDS=wait_sec)
 
 
 def _subtitle_files_filter() -> str:
@@ -715,8 +720,10 @@ class VideoBlock(QWidget):
         )
 
         # items of the list that would not play, one after the other: a
-        # list that has none that will is not gone round for ever
+        # list that has none that will is not gone round for ever; and of
+        # them, the ones that failed for the network or a site refusing
         self._list_failures_in_a_row = 0
+        self._network_failures_in_a_row = 0
 
         # the List window is open on the cell, and plays in it
         self._is_list_window_shown = False
@@ -724,8 +731,11 @@ class VideoBlock(QWidget):
         self._skip_failed_timer = QTimer(self)
         self._skip_failed_timer.setSingleShot(True)
         self._skip_failed_timer.setTimerType(Qt.PreciseTimer)
-        self._skip_failed_timer.setInterval(SKIP_FAILED_ITEM_MS)
         self._skip_failed_timer.timeout.connect(self._skip_failed_item)
+
+        # the item playing has played since it was put in the cell: a
+        # reload may yet bring it back, whatever it failed with
+        self._has_item_played = False
 
         # shared with other cells, the list may change in any of them
         self._ctx.lists.changed.connect(self._list_changed)
@@ -1039,7 +1049,7 @@ class VideoBlock(QWidget):
         self._show_error_card()
 
     def network_error(self):
-        if self._schedule_network_retry():
+        if not self._is_reload_futile and self._schedule_network_retry():
             return
 
         self._error_tries = self._network_retries
@@ -1070,11 +1080,11 @@ class VideoBlock(QWidget):
         self.video_status.show_error(error, self._skip_note())
         self._sync_overlay_mode()
 
-        if self._skip_failed_timer.isActive():
-            self._skip_note_timer.start()
-
     def _skip_note(self) -> str:
         if not self._skip_failed_timer.isActive():
+            return self._given_up_txt()
+
+        if self._skip_failed_timer.interval() == 0:
             return ""
 
         seconds = max(1, -(-self._skip_failed_timer.remainingTime() // 1000))
@@ -1118,8 +1128,7 @@ class VideoBlock(QWidget):
 
         # left as it was: on through the list, the count started over
         if is_skipping and self._last_error is error and not self._is_closing:
-            self._skip_failed_timer.start()
-            self._skip_note_timer.start()
+            self._start_skip_count()
             self._refresh_skip_note()
 
     def _error_rows(self, error: ShownError) -> DetailRows:
@@ -3860,6 +3869,7 @@ class VideoBlock(QWidget):
         # back here as the cell's first
         if not is_first_video:
             self._drop_network_retries()
+            self._has_item_played = False
 
         # Shut down current video
         if not is_first_video or is_reopen_needed:
@@ -4352,6 +4362,8 @@ class VideoBlock(QWidget):
 
         # it plays, so the list is not one without anything that will
         self._list_failures_in_a_row = 0
+        self._network_failures_in_a_row = 0
+        self._has_item_played = True
 
         self._learn_item_length()
 
@@ -5197,6 +5209,36 @@ class VideoBlock(QWidget):
         cell with no list too, for when it has one."""
 
         self.video_params.list_end_action = list_end_action
+
+    def set_list_fail_action(self, list_fail_action: ListFailAction):
+        """What to do when an item of the list won't play. Kept for a cell
+        with no list too, for when it has one."""
+
+        self.video_params.list_fail_action = list_fail_action
+
+        self._restart_skip_count()
+
+    def list_fail_wait(self):
+        wait_sec = QCustomSpinboxInput.get_int(
+            parent=self.parent(),
+            title=translate("When Video Fails", "Play next after (sec)"),
+            special_text=translate("When Video Fails", "At once"),
+            initial_value=self.video_params.list_fail_wait_sec,
+            _min=0,
+            _max=MAX_LIST_FAIL_WAIT_SEC,
+            cancel_value=None,
+        )
+
+        if wait_sec is not None:
+            self.set_list_fail_wait(wait_sec)
+
+    def set_list_fail_wait(self, wait_sec: int):
+        self.video_params.list_fail_wait_sec = wait_sec
+
+        self._restart_skip_count()
+
+    def get_list_fail_wait(self) -> str:
+        return list_fail_wait_txt(self.video_params.list_fail_wait_sec)
 
     @only_initialized
     @only_seekable
@@ -6273,40 +6315,115 @@ class VideoBlock(QWidget):
 
     def _schedule_skip_failed_item(self):
         """Go on to the next item of the list in a moment, where this one
-        will not play and the list is played through by itself.
+        will not play and the cell is set to.
 
-        Not for a list that is gone through by hand: a channel that does not
-        answer is for the viewer to leave. And not for ever: a list on which
-        nothing plays, a drive gone or no network, is gone round once.
+        Not for ever: a list on which nothing plays is gone round once, and
+        one that fails for the network or a site refusing is left sooner.
         """
+
+        if self.media_list is None or self._is_closing:
+            return
+
+        self._list_failures_in_a_row += 1
+
+        if not self._is_item_dead:
+            self._network_failures_in_a_row += 1
+
+        if self._is_failed_skipped:
+            self._start_skip_count()
+
+    @property
+    def _is_item_dead(self) -> bool:
+        """Failed for itself: a file that won't play, or a server that
+        answered it has nothing there. Not the network down or a site
+        turning requests away, which the next item would fail for too."""
+
+        if self.video_params.is_local_file:
+            return True
+
+        error = self._last_error
+
+        return error is not None and not error.is_retryable and not error.is_refused
+
+    def _given_up_txt(self) -> str:
+        """Why the list no longer goes on past the item failed, if it
+        doesn't."""
 
         media_list = self.media_list
 
         if (
             media_list is None
-            or self._is_closing
-            or self.video_params.end_action not in LIST_STEP_END_ACTIONS
+            or self.video_params is None
+            or self.video_params.list_fail_action != ListFailAction.PLAY_NEXT
         ):
-            return
-
-        self._list_failures_in_a_row += 1
+            return ""
 
         # so many in a row is the network, or a site turning every one of
         # them away, rather than the videos: asking again for one after the
         # other only makes a site that limits how often it is asked say no
         # for longer
-        limit = min(len(media_list.items), MAX_FAILED_ITEMS_IN_A_ROW)
+        if self._network_failures_in_a_row > MAX_NETWORK_FAILURES_IN_A_ROW:
+            return translate("Video Status", "Stopped: {COUNT} failed in a row").format(
+                COUNT=self._list_failures_in_a_row
+            )
 
-        if self._list_failures_in_a_row > limit:
+        if self._list_failures_in_a_row > len(media_list.items):
+            return translate("Video Status", "Stopped: nothing on the list plays")
+
+        return ""
+
+    @property
+    def _is_failed_skipped(self) -> bool:
+        if self.media_list is None or self._is_closing:
+            return False
+
+        if self.video_params.list_fail_action != ListFailAction.PLAY_NEXT:
+            return False
+
+        return not self._given_up_txt()
+
+    @property
+    def _is_reload_futile(self) -> bool:
+        """An item that never played, failing for what a reload would only
+        be told again, where the next one is to be played instead."""
+
+        error = self._last_error
+
+        return (
+            error is not None
+            and not error.is_retryable
+            and not self._has_item_played
+            and self._is_failed_skipped
+        )
+
+    def _start_skip_count(self):
+        self._skip_failed_timer.start(self.video_params.list_fail_wait_sec * 1000)
+
+        if self._skip_failed_timer.interval() > 0:
+            self._skip_note_timer.start()
+
+    def _restart_skip_count(self):
+        """The count to the next item after a failed one, once what is done
+        then was changed: started over, or called off."""
+
+        if not self._is_error:
             return
 
-        self._skip_failed_timer.start()
+        if self._is_failed_skipped:
+            self._start_skip_count()
+        else:
+            self._skip_failed_timer.stop()
+
+        self._refresh_skip_note()
 
     def _skip_failed_item(self):
         if self._is_closing or self.media_list is None:
             return
 
-        self._step_at_end(self.video_params.end_action)
+        # along the list the way it goes by itself; on to the next where it
+        # doesn't
+        if not self._step_at_end(self.video_params.end_action):
+            self.next_video(is_end=True)
 
     def _uris_open_elsewhere(self) -> list:
         return [

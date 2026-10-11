@@ -33,6 +33,7 @@ from gridplayer.params.static import (
     AudioChannelMode,
     AudioTrackMode,
     ListEndAction,
+    ListFailAction,
     NetworkRetryMode,
     SubtitleTrackMode,
     VideoAnchor,
@@ -173,6 +174,10 @@ class Video(BaseModel):
     list_index: int | None = None
     # what is done once the list has been played through
     list_end_action: ListEndAction = session_field("video_defaults/list_end_action")
+    # what is done when an item of the list won't play, and how many seconds
+    # its error shows before the next one
+    list_fail_action: ListFailAction = session_field("video_defaults/list_fail_action")
+    list_fail_wait_sec: int = session_field("video_defaults/list_fail_wait")
     # the cell waits for what uri is to be read, a folder, a list file or a
     # link to a list, to play that; read again as the playlist opens where
     # it was saved before it was. None for a video

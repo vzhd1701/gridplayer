@@ -7,6 +7,7 @@ from PyQt5.QtGui import QFontDatabase
 from gridplayer.params import env
 from gridplayer.params.static import (
     MANY_CELLS,
+    MAX_LIST_FAIL_WAIT_SEC,
     MAX_RATE,
     MAX_SCALE,
     MAX_SEEK_STEP_SECONDS,
@@ -19,6 +20,7 @@ from gridplayer.params.static import (
     DropAction,
     GridMode,
     ListEndAction,
+    ListFailAction,
     ListUpdate,
     ListView,
     NetworkRetryMode,
@@ -390,6 +392,21 @@ def _list_end_action_tooltip() -> str:
     return translate(
         "Lists",
         "What a cell playing a list does after the last item.",
+    )
+
+
+def _list_fail_actions() -> dict:
+    return {
+        ListFailAction.SHOW_ERROR: translate("When Video Fails", "Show error"),
+        ListFailAction.PLAY_NEXT: translate("When Video Fails", "Play next"),
+    }
+
+
+def _list_fail_action_tooltip() -> str:
+    return translate(
+        "When Video Fails",
+        "For cells playing a list. Play next doesn't reload a video"
+        " that's gone or refused.",
     )
 
 
@@ -1112,6 +1129,28 @@ VIDEO_FIELDS: tuple[SettingField, ...] = (
         label=translate("Lists", "When list ends"),
         combo_values=_list_end_actions,
         tooltip=_list_end_action_tooltip(),
+    ),
+    _f(
+        settings_key="video_defaults/list_fail_action",
+        video_attr="list_fail_action",
+        kind=FieldKind.COMBO,
+        section=translate("SettingsDialog", "Playback"),
+        label=translate("When Video Fails", "When video fails"),
+        combo_values=_list_fail_actions,
+        tooltip=_list_fail_action_tooltip(),
+    ),
+    _f(
+        settings_key="video_defaults/list_fail_wait",
+        video_attr="list_fail_wait",
+        kind=FieldKind.SPIN,
+        section=translate("SettingsDialog", "Playback"),
+        label=translate("When Video Fails", "Next after"),
+        spin_min=0,
+        spin_max=MAX_LIST_FAIL_WAIT_SEC,
+        spin_special=translate("When Video Fails", "At once"),
+        spin_suffix=translate("SettingsDialog", "(sec)"),
+        enabled_by="video_defaults/list_fail_action",
+        enabled_by_value=ListFailAction.PLAY_NEXT,
     ),
     _f(
         settings_key="video_defaults/random_loop",

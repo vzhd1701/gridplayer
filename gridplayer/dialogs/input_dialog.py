@@ -16,6 +16,9 @@ from gridplayer.utils.qt import translate
 # a language list is short, but a one-word-wide box invites a one-word answer
 TEXT_INPUT_MIN_WIDTH = 260
 
+# what a cancelled number dialog says by default: the number it started at
+_INITIAL_VALUE = object()
+
 
 class QCustomSpinboxInput(QDialog):
     def __init__(self, **kwargs):
@@ -45,7 +48,11 @@ class QCustomSpinboxInput(QDialog):
         _min=-2147483647,
         _max=2147483647,
         step=1,
+        cancel_value=_INITIAL_VALUE,
     ):
+        """The number chosen; on Cancel, the one it started at unless told
+        what else to say then."""
+
         dialog = cls(parent=parent)
         dialog.setWindowTitle(title)
         dialog.spinbox.setRange(_min, _max)
@@ -58,7 +65,10 @@ class QCustomSpinboxInput(QDialog):
         if dialog.exec():
             return dialog.spinbox.value()
 
-        return initial_value
+        if cancel_value is _INITIAL_VALUE:
+            return initial_value
+
+        return cancel_value
 
 
 class QCustomTextInput(QDialog):

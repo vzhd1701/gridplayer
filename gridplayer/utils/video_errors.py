@@ -38,6 +38,30 @@ _VLC_HTTP_STATUS = re.compile(r"\b(?:HTTP(?:/\d(?:\.\d)?)?|status)\D{0,12}([45]\
 # how many of the errors under the one raised are told in the details
 _CHAIN_TOLD = 6
 
+# answered the same however soon they are asked again
+_LASTING_STATUSES = frozenset(
+    {
+        HTTPStatus.BAD_REQUEST,
+        HTTPStatus.UNAUTHORIZED,
+        HTTPStatus.FORBIDDEN,
+        HTTPStatus.NOT_FOUND,
+        HTTPStatus.METHOD_NOT_ALLOWED,
+        HTTPStatus.GONE,
+        HTTPStatus.TOO_MANY_REQUESTS,
+        HTTPStatus.UNAVAILABLE_FOR_LEGAL_REASONS,
+    }
+)
+_LASTING_KINDS = frozenset(
+    {
+        ReadErrorKind.BLOCKED,
+        ReadErrorKind.GONE,
+        ReadErrorKind.EMPTY,
+        ReadErrorKind.NOT_A_LIST,
+        ReadErrorKind.MISSING,
+        ReadErrorKind.NO_ACCESS,
+    }
+)
+
 
 @dataclass(frozen=True)
 class ShownError:
@@ -55,6 +79,12 @@ class ShownError:
     # as raised, and what VLC said
     raw: str = ""
     is_network: bool = False
+    # whether a reload might be answered otherwise: not for a video gone,
+    # refused or with nothing there to play
+    is_retryable: bool = True
+    # a site turning requests away, too many or from a bot: the next video
+    # asked of it is likely to be too
+    is_refused: bool = False
     # when, not what: the same thing gone wrong again is the same error
     at: float = field(default_factory=time.time, compare=False)
 
@@ -71,6 +101,20 @@ def http_code_full_txt(status: int, reason: str = "") -> str:
             reason = ""
 
     return f"{http_code_txt(status)} {reason}".strip()
+
+
+def is_refused_read(read: ReadError) -> bool:
+    if read.kind is ReadErrorKind.HTTP:
+        return read.status == HTTPStatus.TOO_MANY_REQUESTS
+
+    return read.kind is ReadErrorKind.BLOCKED
+
+
+def is_retryable_read(read: ReadError) -> bool:
+    if read.kind is ReadErrorKind.HTTP:
+        return read.status not in _LASTING_STATUSES
+
+    return read.kind not in _LASTING_KINDS
 
 
 def read_code_full_txt(read: ReadError) -> str:
@@ -101,6 +145,8 @@ def shown_read_error(
         host=read.host,
         raw=read.raw if raw is None else raw,
         is_network=read.is_network,
+        is_retryable=is_retryable_read(read),
+        is_refused=is_refused_read(read),
     )
 
 
@@ -136,6 +182,7 @@ def stream_offline_error(url: str) -> ShownError:
         where=where_server_txt(),
         code=translate("Video Error", "Offline"),
         host=host_of(url),
+        is_retryable=False,
     )
 
 
@@ -146,6 +193,7 @@ def unresolved_error(url: str) -> ShownError:
         where=where_link_txt(),
         code=translate("Video Error", "Unsupported"),
         host=host_of(url),
+        is_retryable=False,
     )
 
 
@@ -156,6 +204,7 @@ def empty_link_list_error(url: str) -> ShownError:
         where=where_link_txt(),
         code=translate("Video Error", "Empty"),
         host=host_of(url),
+        is_retryable=False,
     )
 
 
@@ -243,6 +292,8 @@ def player_error(
             code_full=http_code_full_txt(status),
             host=host_of(url),
             raw=raw,
+            is_retryable=status not in _LASTING_STATUSES,
+            is_refused=status == HTTPStatus.TOO_MANY_REQUESTS,
         )
 
     return ShownError(

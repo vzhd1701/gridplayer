@@ -8,8 +8,10 @@ from gridplayer.dialogs.input_dialog import QCustomSpinboxInput, QCustomSpinboxT
 from gridplayer.dialogs.subtitle_delay import SetSubtitleDelayDialog
 from gridplayer.models.video import Video
 from gridplayer.params.static import (
+    MAX_LIST_FAIL_WAIT_SEC,
     AudioChannelMode,
     ListEndAction,
+    ListFailAction,
     SeekSyncMode,
     VideoAnchor,
     VideoAspect,
@@ -157,6 +159,8 @@ class VideoBlocksManager(ManagerBase):
     all_set_end_action = pyqtSignal(VideoEndAction)
     all_set_dir_recursive = pyqtSignal(bool)
     all_set_list_end_action = pyqtSignal(ListEndAction)
+    all_set_list_fail_action = pyqtSignal(ListFailAction)
+    all_set_list_fail_wait = pyqtSignal(int)
 
     all_rate_increase = pyqtSignal()
     all_rate_decrease = pyqtSignal()
@@ -238,6 +242,7 @@ class VideoBlocksManager(ManagerBase):
             "seek_step_label": seek_step_label,
             "all_set_auto_reload_timer": self.cmd_set_auto_reload_timer,
             "all_set_audio_delay": self.cmd_set_audio_delay,
+            "all_set_list_fail_wait": self.cmd_set_list_fail_wait,
             "all_set_subtitle_delay": self.cmd_set_subtitle_delay,
             "is_videos": lambda: bool(self._ctx.video_blocks),
             "is_any_videos_initialized": self.is_any_videos_initialized,
@@ -351,6 +356,22 @@ class VideoBlocksManager(ManagerBase):
             return
 
         self.all_set_audio_delay.emit(delay_ms)
+
+    def cmd_set_list_fail_wait(self):
+        wait_sec = QCustomSpinboxInput.get_int(
+            parent=self.parent(),
+            title=translate("When Video Fails", "Play next after (sec)"),
+            special_text=translate("When Video Fails", "At once"),
+            initial_value=PlaylistSettings().get("video_defaults/list_fail_wait"),
+            _min=0,
+            _max=MAX_LIST_FAIL_WAIT_SEC,
+            cancel_value=None,
+        )
+
+        if wait_sec is None:
+            return
+
+        self.all_set_list_fail_wait.emit(wait_sec)
 
     def cmd_set_subtitle_delay(self):
         # nothing to see it against while it is being set, so this one is
@@ -838,6 +859,8 @@ class VideoBlocksManager(ManagerBase):
             (self.all_set_end_action, vb.set_end_action),
             (self.all_set_dir_recursive, vb.set_dir_recursive),
             (self.all_set_list_end_action, vb.set_list_end_action),
+            (self.all_set_list_fail_action, vb.set_list_fail_action),
+            (self.all_set_list_fail_wait, vb.set_list_fail_wait),
             (self.all_rate_increase, vb.rate_increase),
             (self.all_rate_decrease, vb.rate_decrease),
             (self.all_rate_reset, vb.rate_reset),

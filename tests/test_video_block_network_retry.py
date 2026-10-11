@@ -35,6 +35,7 @@ def _block(mocker, retries=0, countdown=0):
     block._network_retries = retries
     block._network_retry_countdown = countdown
     block._is_closing = False
+    block._is_reload_futile = False
     block.video_params = Video(uri="http://example.com/a.mp4")
     block._network_retry_limit = VideoBlock._network_retry_limit.fget(block)
     return block
