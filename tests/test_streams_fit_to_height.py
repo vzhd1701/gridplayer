@@ -61,6 +61,24 @@ def test_a_rung_that_does_not_say_its_size_is_passed_over():
     assert quality == "480p"
 
 
+def test_a_rung_named_by_its_bitrate_is_not_read_as_its_size():
+    # every one of these would fill any pane, read as a size, and the
+    # cheapest of them would always be picked
+    streams = _streams("1500k", "4500k", "9300k")
+
+    quality, _ = streams.fit_to_height(1080)
+
+    assert quality == "9300k"
+
+
+def test_a_rung_named_by_its_bitrate_is_passed_over_for_one_that_says_its_size():
+    streams = _streams("800k", "720p", "9300k")
+
+    quality, _ = streams.fit_to_height(700)
+
+    assert quality == "720p"
+
+
 def test_audio_only_rungs_are_not_offered_to_a_pane():
     streams = _streams("audio", "360p", "720p", audio_only=("audio",))
 

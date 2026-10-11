@@ -315,10 +315,12 @@ def _quality_height(quality: str) -> int | None:
     """How tall a stream a quality code promises, where it says so at all.
 
     Codes are whatever the service called the format, so "1080p60 [vp9]" is
-    as good as it gets and "Unknown 2" has nothing to go on.
+    as good as it gets and "Unknown 2" has nothing to go on. A number with
+    no "p" after it is something else: "9300k" is a bitrate, not a stream
+    9300 lines tall.
     """
 
-    height = re.match(r"^(\d+)", quality)
+    height = re.match(r"^(\d+)p", quality)
 
     return int(height.group(1)) if height else None
 
