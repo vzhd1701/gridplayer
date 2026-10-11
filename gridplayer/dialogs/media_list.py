@@ -1100,6 +1100,9 @@ class ItemList(QTableView):
         self.horizontalHeader().hide()
         self.verticalHeader().hide()
         self.verticalHeader().setSectionResizeMode(QHeaderView.Fixed)
+        # rows as tall as they are told: Qt holds them to what the hidden
+        # header's text would need, more than a row in a big system font
+        self.verticalHeader().setMinimumSectionSize(ROW_HEIGHT)
         self.verticalHeader().setDefaultSectionSize(ROW_HEIGHT)
         self.setSelectionMode(QAbstractItemView.ExtendedSelection)
         self.setSelectionBehavior(QAbstractItemView.SelectRows)
