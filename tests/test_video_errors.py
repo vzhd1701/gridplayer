@@ -1060,6 +1060,25 @@ class TestOnTheCell:
         assert block.video_params.uri == files[0]
         assert block.overlay.mode is OverlayMode.STOPPED
 
+    @pytest.mark.parametrize(
+        ("command", "index"), [("next_video", 1), ("previous_video", 2)]
+    )
+    def test_the_menu_steps_along_its_list_while_it_loads(
+        self, make_cell, command, index
+    ):
+        uris = [f"https://site.example/{name}" for name in ("a", "b", "c")]
+        lists = MediaListsRegistry()
+        media_list = lists.add(MediaList(items=[ListItem(uri=u) for u in uris]))
+        block = make_cell(uris[0], media_list=media_list, lists=lists)
+        menu = _menu_on(block)
+
+        assert block.is_loading
+        assert not menu.is_active_playable()
+
+        menu.cmd_active(command)
+
+        assert block.video_params.uri == uris[index]
+
 
 class TestAListOfLinks:
     """An item that would not play: reloaded, or the next one played."""
