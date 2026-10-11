@@ -7,6 +7,7 @@ import threading
 import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 import pytest
@@ -25,6 +26,7 @@ from gridplayer.params.static import (
     VideoEndAction,
     VideoInitialState,
 )
+from gridplayer.player.managers.active_block import ActiveBlockManager
 from gridplayer.player.managers.bookmarks import BookmarksRegistry
 from gridplayer.player.managers.lists import MediaListsRegistry
 from gridplayer.playlist_settings import PlaylistSettings
@@ -784,6 +786,61 @@ class TestOnTheCell:
         block._on_list_reading(block.video_params.list_id)
 
         start_load.assert_not_called()
+
+    def test_the_menu_stops_it_while_it_loads(self, make_cell):
+        """The menu's Stop, and its key, as well as its own: it was there
+        only once the video played."""
+
+        block = make_cell("https://site.example/watch")
+        menu = _menu_on(block)
+
+        assert block.is_loading
+        assert menu.is_active_stoppable()
+
+        menu.cmd_active("stop_playback")
+
+        assert block.overlay.mode is OverlayMode.STOPPED
+        assert not menu.is_active_stoppable()
+
+    def test_the_menu_stops_it_while_it_reconnects(self, make_cell):
+        block = make_cell(
+            "https://site.example/watch",
+            network_retry_mode=NetworkRetryMode.TIMES,
+            network_retry_times=3,
+        )
+        block.url_resolver.failed.emit(
+            resolve_error(_http_error(503), "https://site.example/watch")
+        )
+        block.url_resolver.error.emit()
+        menu = _menu_on(block)
+
+        assert menu.is_active_stoppable()
+
+        menu.cmd_active("stop_playback")
+
+        assert not block._network_retry_timer.isActive()
+        assert block.overlay.mode is OverlayMode.STOPPED
+
+    def test_the_menu_stops_its_list_going_on_once_it_failed(self, make_cell, tmp_path):
+        block, files = _failed_list_item(make_cell, tmp_path)
+        menu = _menu_on(block)
+
+        assert menu.is_active_stoppable()
+
+        menu.cmd_active("stop_playback")
+
+        assert not block._skip_failed_timer.isActive()
+        assert block.video_params.uri == files[0]
+        assert block.overlay.mode is OverlayMode.STOPPED
+
+
+def _menu_on(block) -> ActiveBlockManager:
+    """What the menu asks, and does, of the cell it is shown for."""
+
+    menu = ActiveBlockManager(context=SimpleNamespace(active_block=None))
+    menu._ctx.active_block = block
+
+    return menu
 
 
 def _failed_list_item(make_cell, tmp_path, end_action=VideoEndAction.NEXT_FILE):

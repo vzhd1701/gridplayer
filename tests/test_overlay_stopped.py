@@ -6,6 +6,7 @@ from PyQt5.QtCore import QPoint, QRect, Qt
 from PyQt5.QtGui import QColor, QImage, QRegion
 from PyQt5.QtWidgets import QApplication, QWidget
 
+from gridplayer.params.actions import ACTIONS
 from gridplayer.params.static import VideoEndAction
 from gridplayer.player.managers.active_block import ActiveBlockManager
 from gridplayer.player.managers.video_blocks import VideoBlocksManager
@@ -375,6 +376,44 @@ def test_any_local_file_includes_stopped(mocker):
 
     assert VideoBlocksManager.is_any_videos_local_file(manager) is True
     assert VideoBlocksManager.is_any_videos_playable_not_live(manager) is True
+
+
+def test_stop_in_the_menu_for_every_cell_not_stopped_yet(mocker):
+    """Loading, reconnecting or failed as well as playing: it was there only
+    once the video played."""
+
+    loading = mocker.Mock(is_video_initialized=False, is_stopped=False)
+    stopped = mocker.Mock(is_video_initialized=False, is_stopped=True)
+    empty = mocker.Mock(is_stopped=False, video_params=None)
+
+    assert VideoBlock.is_stoppable.fget(loading) is True
+    assert VideoBlock.is_stoppable.fget(stopped) is False
+    assert VideoBlock.is_stoppable.fget(empty) is False
+
+    for block in (loading, stopped):
+        block.is_stoppable = VideoBlock.is_stoppable.fget(block)
+
+    assert ACTIONS["Stop"]["show_if"] == "is_active_stoppable"
+    assert _active_manager(loading).is_active_stoppable() is True
+    assert _active_manager(stopped).is_active_stoppable() is False
+
+    assert ACTIONS["Stop [ALL]"]["show_if"] == "is_any_videos_stoppable"
+    manager = mocker.Mock()
+    manager._ctx.video_blocks = [stopped]
+    assert VideoBlocksManager.is_any_videos_stoppable(manager) is False
+    manager._ctx.video_blocks = [stopped, loading]
+    assert VideoBlocksManager.is_any_videos_stoppable(manager) is True
+
+
+def test_cmd_active_stops_while_loading(mocker):
+    block = mocker.Mock()
+    block.is_video_initialized = False
+    block.is_playable = False
+    manager = _active_manager(block)
+
+    manager.cmd_active("stop_playback")
+
+    block.stop_playback.assert_called_once()
 
 
 def test_any_local_file_excludes_loading(mocker):

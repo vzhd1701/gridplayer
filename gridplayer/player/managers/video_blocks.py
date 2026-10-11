@@ -242,6 +242,7 @@ class VideoBlocksManager(ManagerBase):
             "is_videos": lambda: bool(self._ctx.video_blocks),
             "is_any_videos_initialized": self.is_any_videos_initialized,
             "is_any_videos_playable": self.is_any_videos_playable,
+            "is_any_videos_stoppable": self.is_any_videos_stoppable,
             "is_any_videos_playable_not_live": self.is_any_videos_playable_not_live,
             "is_any_videos_seekable": self.is_any_videos_seekable,
             "is_any_videos_local_file": self.is_any_videos_local_file,
@@ -601,6 +602,9 @@ class VideoBlocksManager(ManagerBase):
 
     def is_any_videos_playable(self):
         return any(vb.is_playable for vb in self._ctx.video_blocks)
+
+    def is_any_videos_stoppable(self):
+        return any(vb.is_stoppable for vb in self._ctx.video_blocks)
 
     def is_any_videos_playable_not_live(self):
         return any(vb.is_playable and not vb.is_live for vb in self._ctx.video_blocks)

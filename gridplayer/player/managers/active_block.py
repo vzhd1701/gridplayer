@@ -45,6 +45,7 @@ LOADING_COMMANDS = frozenset(
     {
         "switch_stream_quality",
         "reload",
+        "stop_playback",
         "close",
         "set_network_retry_mode",
         "network_retry_times",
@@ -113,6 +114,7 @@ class ActiveBlockManager(ManagerBase):
             "is_active_param_set_to": self.is_active_param_set_to,
             "is_active_initialized": self.is_active_initialized,
             "is_active_playable": self.is_active_playable,
+            "is_active_stoppable": self.is_active_stoppable,
             "is_active_seekable": self.is_active_seekable,
             "is_active_live": self.is_active_live,
             "is_active_multistream": self.is_active_multistream,
@@ -198,6 +200,12 @@ class ActiveBlockManager(ManagerBase):
             return False
 
         return self._ctx.active_block.is_playable
+
+    def is_active_stoppable(self):
+        if self.is_no_active_block:
+            return False
+
+        return self._ctx.active_block.is_stoppable
 
     def is_active_param_set_to(self, param_name, param_value):
         if self.is_no_active_block:

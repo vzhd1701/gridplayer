@@ -3349,6 +3349,13 @@ class VideoBlock(QWidget):
             not self.is_video_initialized and not self.is_stopped and not self._is_error
         )
 
+    @property
+    def is_stoppable(self) -> bool:
+        """Playing, or on its way to: loading, reconnecting, or failed and
+        about to go on to the next item of its list."""
+
+        return self.video_params is not None and not self.is_stopped
+
     def show_overlay(self):
         if self._ctx.is_drag_ui or self._ctx.is_disable_overlay:
             return

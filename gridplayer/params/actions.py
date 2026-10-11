@@ -31,7 +31,7 @@ ACTIONS = MappingProxyType(
             "title": translate("Actions", "Stop"),
             "icon": "stop",
             "func": ("active", "stop_playback"),
-            "show_if": "is_active_initialized",
+            "show_if": "is_active_stoppable",
         },
         "Single Mode ON / OFF": {
             "title": (
@@ -1412,7 +1412,7 @@ ACTIONS = MappingProxyType(
             "title": translate("Actions", "Stop"),
             "icon": "stop",
             "func": ("all", "stop_playback"),
-            "show_if": "is_any_videos_initialized",
+            "show_if": "is_any_videos_stoppable",
         },
         "Play Previous File [ALL]": {
             "title": translate("Actions", "Play Previous File"),
