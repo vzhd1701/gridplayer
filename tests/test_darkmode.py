@@ -1,3 +1,5 @@
+from types import SimpleNamespace
+
 from gridplayer.params import theme
 from gridplayer.params.static import ColorScheme
 from gridplayer.utils import darkmode
@@ -48,3 +50,30 @@ def test_on_system_theme_changed_applies_when_system(monkeypatch):
 
     theme.on_system_theme_changed()
     assert called == [True]
+
+
+def test_system_asked_once_until_the_theme_is_applied_again(monkeypatch):
+    asked = []
+
+    def macos_is_dark():
+        asked.append(True)
+        return True
+
+    monkeypatch.setattr(darkmode, "Settings", lambda: _FakeSettings(ColorScheme.SYSTEM))
+    monkeypatch.setattr(darkmode.env, "IS_MACOS", True)
+    monkeypatch.setattr(darkmode, "_macos_is_dark", macos_is_dark)
+    # nothing to put the theme on: only what it asks again
+    monkeypatch.setattr(theme, "QApplication", SimpleNamespace(instance=lambda: None))
+    darkmode.is_system_dark_mode.cache_clear()
+
+    try:
+        assert darkmode.is_dark_mode() is True
+        assert darkmode.is_dark_mode() is True
+        assert len(asked) == 1
+
+        theme.apply_theme()
+
+        assert darkmode.is_dark_mode() is True
+        assert len(asked) == 2
+    finally:
+        darkmode.is_system_dark_mode.cache_clear()

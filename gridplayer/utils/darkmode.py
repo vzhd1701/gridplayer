@@ -1,3 +1,4 @@
+import functools
 import logging
 
 from gridplayer.params import env
@@ -19,6 +20,10 @@ def is_dark_mode() -> bool:
     return is_system_dark_mode()
 
 
+# Asked once, until the theme is applied again (apply_theme forgets it):
+# the colours are read on every paint of some widgets, and asking is a
+# registry read on Windows and a D-Bus call to the portal on Linux.
+@functools.cache
 def is_system_dark_mode() -> bool:
     if env.IS_MACOS:
         return _macos_is_dark()

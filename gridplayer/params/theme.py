@@ -14,7 +14,7 @@ from gridplayer.main.init_icons import switch_icon_theme
 from gridplayer.params import env
 from gridplayer.params.static import ColorScheme
 from gridplayer.settings import Settings
-from gridplayer.utils.darkmode import is_dark_mode
+from gridplayer.utils.darkmode import is_dark_mode, is_system_dark_mode
 
 THEME_LIGHT = MappingProxyType(
     {
@@ -260,6 +260,9 @@ def apply_theme(app=None) -> None:
     global _applying_theme
     if _applying_theme:
         return
+
+    # the system may have switched since it was last asked
+    is_system_dark_mode.cache_clear()
 
     app = app or QApplication.instance()
     if app is None:
