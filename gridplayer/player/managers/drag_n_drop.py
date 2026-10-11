@@ -211,8 +211,9 @@ class DragNDropManager(ManagerBase):
 
         self._cancel_fake_drag()
 
+        # a cell of this player, moved within it
         if src:
-            self._drop_video_block(src, dst, zone, is_replace)
+            self._drop_on_layout([], src, dst, zone, is_replace)
 
         self._is_swallow_click_after_fake_drag = True
 

@@ -352,6 +352,37 @@ def test_fake_drag_leave_does_not_end_drag_ui(mocker):
     assert not manager._drag_leave_timer.isActive()
 
 
+def test_fake_drag_released_moves_the_cell_it_started_on():
+    """Linux drags a cell without QDrag: let go, it is put where it was
+    over, the way a QDrag drop puts it."""
+
+    manager, _parent = _make_manager()
+    source, target = (
+        SimpleNamespace(set_drop_indicator=lambda _indicator: None) for _ in range(2)
+    )
+    dropped = []
+    manager._ctx.commands.layout_drop = lambda *args: dropped.append(args)
+    manager._ctx.commands.add_recent_videos = lambda _videos: None
+    manager._is_fake_drag_active = True
+    manager._source_block = source
+    manager._drop_block = target
+    manager._drop_zone = DropZone.BEFORE
+    manager._drop_is_replace = True
+
+    manager.mouseReleaseEvent(
+        QMouseEvent(
+            QEvent.MouseButtonRelease,
+            QPointF(1, 1),
+            Qt.LeftButton,
+            Qt.NoButton,
+            Qt.NoModifier,
+        )
+    )
+
+    assert dropped == [([], source, target, DropZone.BEFORE, True)]
+    assert not manager._is_fake_drag_active
+
+
 class TestADropFromAnotherInstance:
     """A cell dragged over from another window comes with its bookmarks,
     kept by the playlist apart from the video."""
