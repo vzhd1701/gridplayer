@@ -862,6 +862,13 @@ class VideoBlock(QWidget):
         self.video_driver = None
         self.layout_main.removeWidget(old_driver)
         old_driver.hide()
+
+        # painted without it before its player is waited on: a hardware
+        # video's window, gone, shows what was painted under it before its
+        # picture came, the loading status, until the cell is painted again
+        if self.isVisible():
+            self.repaint()
+
         old_driver.cleanup()
         old_driver.deleteLater()
 
@@ -885,8 +892,23 @@ class VideoBlock(QWidget):
 
         self.url_resolver = self.init_url_resolver()
 
-    def reset(self):
+    def reset(self, is_link_kept=False):
+        """Ready the cell for a load begun afresh, its old player let go.
+
+        is_link_kept: the link already resolved, its stream opened again.
+        """
+
         self._is_error = False
+
+        # shown while the old player is let go: where the load to come
+        # starts, not how far the one before it got; a list read for it
+        # is where it started already
+        if self._load_stage is not LoadStage.LIST:
+            if is_link_kept:
+                self._show_opening()
+            else:
+                self._show_load_start()
+
         self.set_status("processing")
 
         self._destroy_video_driver()
@@ -1482,6 +1504,11 @@ class VideoBlock(QWidget):
             return
 
         self._is_error = False
+        self._show_load_start()
+        self.set_status("processing")
+
+    def _show_load_start(self):
+        """The first stage of a load begun afresh: its link, or its video."""
 
         is_link = self.video_params.is_http_url
         self._load_steps = (*((LoadStage.LINK,) if is_link else ()), LoadStage.VIDEO)
@@ -1490,8 +1517,6 @@ class VideoBlock(QWidget):
             self._show_resolving_link()
         else:
             self._show_opening()
-
-        self.set_status("processing")
 
     def release_player(self):
         """Let its player go, waiting until it has."""
@@ -3785,8 +3810,10 @@ class VideoBlock(QWidget):
             self.loop_end_change.emit(100.0)
 
         self._set_playback_state(VideoInitialState.STOPPED)
-        self._destroy_video_driver()
+
+        # gone before the cell is painted as its player is let go
         self.video_status.hide()
+        self._destroy_video_driver()
         self.show_overlay()
 
     def _set_playback_state(self, state: VideoInitialState):
@@ -4213,7 +4240,7 @@ class VideoBlock(QWidget):
         # longer holds the rung the timer was comparing against
         self._quality_adapt_timer.stop()
 
-        self.reset()
+        self.reset(is_link_kept=True)
 
         self.load_stream_quality(self.video_params.stream_quality)
 
@@ -4225,7 +4252,7 @@ class VideoBlock(QWidget):
         # picking a rung by hand calls off whatever the pane was about to do
         self._quality_adapt_timer.stop()
 
-        self.reset()
+        self.reset(is_link_kept=True)
 
         self.load_stream_quality(quality)
 
@@ -4360,7 +4387,7 @@ class VideoBlock(QWidget):
             f"Pane now fits {quality}, switching from {self._stream_quality_playing}"
         )
 
-        self.reset()
+        self.reset(is_link_kept=True)
 
         self.load_stream_quality(STREAM_QUALITY_AUTO)
 

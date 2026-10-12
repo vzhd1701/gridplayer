@@ -152,7 +152,7 @@ class _Block:
     def is_playable(self):
         return self.is_video_initialized
 
-    def reset(self):
+    def reset(self, is_link_kept=False):
         pass
 
     def load_stream_quality(self, wanted):

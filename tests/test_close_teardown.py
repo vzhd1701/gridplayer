@@ -332,6 +332,60 @@ def test_reloading_leaves_a_stopped_cell_stopped(cell, tmp_path):
     assert block.overlay.mode is OverlayMode.STOPPED
 
 
+def _playing(block, path):
+    block.set_video(Video(uri=path))
+    block._show_stage(LoadStage.VIDEO, "Buffering 100%")
+    block.video_status.hide()
+
+
+def test_a_cell_stopped_is_painted_stopped_before_its_player_is_waited_on(
+    cell, tmp_path
+):
+    """A hardware video's window, gone, shows what was painted under it
+    before its picture came, the loading status, until the cell is painted
+    again; the window is not painted while the player is waited on."""
+    block, _ = cell
+    path = tmp_path / "a.mp4"
+    path.touch()
+    _playing(block, path)
+
+    seen = []
+    block.repaint = lambda: seen.append(
+        "painted" if block.video_status.isHidden() else "painted with status"
+    )
+    block.video_driver.cleanup = lambda: seen.append("waited")
+
+    block.stop_playback()
+
+    assert seen == ["painted", "waited"]
+
+
+@pytest.mark.parametrize("how", ["reload", "next"])
+def test_a_load_begun_again_says_so_while_the_old_player_is_waited_on(
+    cell, tmp_path, how
+):
+    """Not how far the load before it got, painted over the video as the
+    old player lets go."""
+    block, _ = cell
+    path = tmp_path / "a.mp4"
+    other = tmp_path / "b.mp4"
+    path.touch()
+    other.touch()
+    _playing(block, path)
+
+    seen = []
+    block.video_driver.cleanup = lambda: seen.append(
+        (block.video_status.isHidden(), block.video_status.status_text)
+    )
+
+    if how == "reload":
+        block.reload()
+    else:
+        block._switch_to(other)
+
+    assert seen == [(False, "Opening…")]
+
+
 def _window_state_manager(commands):
     window = QWidget()
     ctx = Context()
