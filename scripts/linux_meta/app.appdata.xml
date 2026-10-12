@@ -24,6 +24,9 @@
       <li>Cross-platform (Linux, Mac, and Windows)</li>
       <li>Support for any video and audio format (VLC)</li>
       <li>Support for (almost) any streaming URLs (streamlink + yt-dlp)</li>
+      <li>Play a whole list in one cell: m3u, pls and xspf playlists, folders, YouTube playlists, IPTV channels</li>
+      <li>Cookie support for streams that need a login</li>
+      <li>Skip sponsors and other marked parts of YouTube videos with SponsorBlock</li>
       <li>Hardware and software video decoding</li>
       <li>Control video aspect, playback speed, zoom</li>
       <li>Set loop fragments with frame precision</li>

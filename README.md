@@ -24,11 +24,12 @@ information about the position, sound volume, loops, aspect ratio, etc.
 - Support for any video and audio format (VLC)
 - Support for (almost) any streaming
   URLs ([streamlink](https://streamlink.github.io/plugins.html) + [yt-dlp](https://github.com/yt-dlp/yt-dlp/blob/master/supportedsites.md))
+- Play a whole list in one cell: m3u, pls and xspf playlists, folders, YouTube playlists, IPTV channels
 - Cookie support for streams that need a login
 - Skip sponsors and other marked parts of YouTube videos with [SponsorBlock](https://sponsor.ajay.app/)
 - Hardware & software video decoding
 - Control video aspect, playback speed, zoom
-- Set loop fragments with frame percision
+- Set loop fragments with frame precision
 - Configurable grid layout
 - Easy swap videos with drag-n-drop
 - Playlist retains settings for each video
@@ -67,7 +68,8 @@ scoop install gridplayer
 
 #### Note on AppImage
 
-The AppImage was built using Ubuntu Focal Fossa libraries, so compatibility is Ubuntu 20+.
+The AppImage is built on `manylinux_2_28` (glibc 2.28), so it runs on Ubuntu 20.04+, Debian 10+, Fedora 29+,
+RHEL / AlmaLinux / Rocky 8+ and other distros of the same age or newer.
 
 You may need to set execute permissions on AppImage file in order to run it:
 
@@ -118,13 +120,15 @@ The same notes about the Python version and external packages from above apply h
 gridplayer [options] [FILE|URL ...]
 ```
 
-Any arguments that are not options are treated as media files, `.gpls` playlists, or streaming URLs
-(`https://`, `rtsp://`, ...) to open on startup. Unrecognized options are rejected with an error; use `--` to open
+Any arguments that are not options are treated as media files, folders, `.gpls` playlists, media lists (`.m3u`,
+`.m3u8`, `.pls`, `.xspf`), or streaming URLs (`https://`, `rtsp://`, ...) to open on startup. A folder or a media list
+plays in one cell, one file after another. Unrecognized options are rejected with an error; use `--` to open
 dash-prefixed filenames.
 
 | Option                | Description                                                                                                            |
 | --------------------- | ---------------------------------------------------------------------------------------------------------------------- |
 | `--user-data-dir PATH` | Store settings and log files in `PATH` instead of the default location. Relative paths are resolved against the current working directory. |
+| `--platform {auto,xcb,wayland}` | Linux only. Display server to run on. `auto` picks `xcb` (X11 or Xwayland) when there is one, `wayland` otherwise. Hardware video needs `xcb`. |
 | `--version`           | Show the application version and exit.                                                                                 |
 | `--help`              | Show the available options and exit.                                                                                   |
 
