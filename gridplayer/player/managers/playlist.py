@@ -90,6 +90,7 @@ class PlaylistManager(ManagerBase):
             "check_playlist_save": self.check_playlist_save,
             "is_playlist_changed": self._is_playlist_changed,
             "is_playlist_saved": lambda: self._saved_playlist_path is not None,
+            "saved_playlist_path": lambda: self._saved_playlist_path,
             "is_shuffle_on_load": lambda: self._ctx.is_shuffle_on_load,
             "set_shuffle_on_load": self.set_shuffle_on_load,
             "toggle_shuffle_on_load": self.toggle_shuffle_on_load,

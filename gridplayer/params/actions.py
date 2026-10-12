@@ -47,14 +47,14 @@ ACTIONS = MappingProxyType(
         },
         "Previous Video": {
             "title": translate("Actions", "Previous Video"),
-            "key": "B",
+            "keys": ["B", "Media Previous"],
             "icon": "previous-video",
             "func": "previous_single_video",
             "show_if": AND("is_single_mode", "is_more_than_one_video"),
         },
         "Next Video": {
             "title": translate("Actions", "Next Video"),
-            "key": "N",
+            "keys": ["N", "Media Next"],
             "icon": "next-video",
             "func": "next_single_video",
             "show_if": AND("is_single_mode", "is_more_than_one_video"),
@@ -1431,7 +1431,8 @@ ACTIONS = MappingProxyType(
         # All Videos
         "Play / Pause [ALL]": {
             "title": translate("Actions", "Play / Pause"),
-            "key": "Space",
+            # most keyboards' play / pause key comes as Media Play
+            "keys": ["Space", "Media Play", "Toggle Media Play/Pause"],
             "icon": "play-pause",
             "func": "all_play_pause",
             "show_if": "is_any_videos_playable",
@@ -1444,12 +1445,14 @@ ACTIONS = MappingProxyType(
         },
         "Pause [ALL]": {
             "title": translate("Actions", "Pause"),
+            "key": "Media Pause",
             "icon": "pause",
             "func": "all_pause",
             "show_if": "is_any_videos_initialized",
         },
         "Stop [ALL]": {
             "title": translate("Actions", "Stop"),
+            "key": "Media Stop",
             "icon": "stop",
             "func": ("all", "stop_playback"),
             "show_if": "is_any_videos_stoppable",

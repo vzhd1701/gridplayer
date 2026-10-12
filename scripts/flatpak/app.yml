@@ -19,6 +19,8 @@ finish-args:
 - "--filesystem=xdg-run/gvfs"
 # Screen inhibit
 - "--talk-name=org.freedesktop.ScreenSaver"
+# Media keys in the background
+- "--own-name=org.mpris.MediaPlayer2.{APP_MODULE}.*"
 # Can't use Wayland
 - "--env=QT_QPA_PLATFORM=xcb"
 # Disable annoying warnings

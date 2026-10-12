@@ -65,6 +65,7 @@ _default_settings = {
     "player/video_driver_players": 4,
     "player/video_init_timeout": 120,
     "player/inhibit_screensaver": True,
+    "player/media_keys_background": True,
     "player/one_instance": True,
     "player/stay_on_top": False,
     "player/start_maximized": False,

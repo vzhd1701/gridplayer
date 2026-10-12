@@ -43,6 +43,12 @@ dependencies = [
     "yt-dlp[default,curl-cffi] (>=2026.07.04,<2027.0.0)",
     "pyobjc-core ; sys_platform == 'darwin'",
     "pyobjc-framework-Cocoa ; sys_platform == 'darwin'",
+    # media keys in the background
+    "pyobjc-framework-MediaPlayer ; sys_platform == 'darwin'",
+    "winrt-runtime (>=3.2.1,<4.0.0) ; sys_platform == 'win32'",
+    "winrt-Windows.Foundation (>=3.2.1,<4.0.0) ; sys_platform == 'win32'",
+    "winrt-Windows.Media (>=3.2.1,<4.0.0) ; sys_platform == 'win32'",
+    "winrt-Windows.Media.Playback (>=3.2.1,<4.0.0) ; sys_platform == 'win32'",
 ]
 
 [project.urls]

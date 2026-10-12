@@ -236,6 +236,13 @@
           </widget>
          </item>
          <item>
+          <widget class="QCheckBox" name="playerMediaKeysBackground">
+           <property name="text">
+            <string>Control playback with media keys globally</string>
+           </property>
+          </widget>
+         </item>
+         <item>
           <widget class="QLabel" name="section_history">
            <property name="font">
             <font>

@@ -56,6 +56,7 @@ class WindowStateManager(ManagerBase):
             "is_pause_minimized": lambda: self._ctx.is_pause_minimized,
             "set_pause_minimized": self.set_pause_minimized,
             "toggle_pause_minimized": self.toggle_pause_minimized,
+            "forget_minimize_pause": self.forget_minimize_pause,
         }
 
     def changeEvent(self, event):
@@ -109,6 +110,12 @@ class WindowStateManager(ManagerBase):
 
     def set_pause_minimized(self, is_pause):
         self._ctx.is_pause_minimized = is_pause
+
+    def forget_minimize_pause(self):
+        """Played or paused while minimized, by the media keys: the videos
+        are left as they are on return, rather than played again."""
+
+        self.pre_minimize_unpaused = []
 
     def toggle_pause_minimized(self):
         value = not self._ctx.is_pause_minimized

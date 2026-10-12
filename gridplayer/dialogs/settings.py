@@ -203,6 +203,7 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
             "player/video_driver_players": self.playerVideoDriverPlayers,
             "player/video_init_timeout": self.timeoutVideoInit,
             "player/inhibit_screensaver": self.playerInhibitScreensaver,
+            "player/media_keys_background": self.playerMediaKeysBackground,
             "player/one_instance": self.playerOneInstance,
             "player/stay_on_top": self.playerStayOnTop,
             "player/start_maximized": self.playerStartMaximized,

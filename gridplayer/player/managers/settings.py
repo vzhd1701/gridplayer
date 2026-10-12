@@ -16,6 +16,7 @@ from gridplayer.utils.qt import translate
 class SettingsManager(ManagerBase):
     reload = pyqtSignal()
     set_screensaver = pyqtSignal(int)
+    set_media_keys_background = pyqtSignal(bool)
     set_log_level = pyqtSignal(int)
     set_log_level_vlc = pyqtSignal(int)
     set_recent_list_enabled = pyqtSignal(bool)
@@ -62,6 +63,7 @@ class SettingsManager(ManagerBase):
             "logging/log_level": self.set_log_level,
             "logging/log_level_vlc": self.set_log_level_vlc,
             "player/inhibit_screensaver": self.set_screensaver,
+            "player/media_keys_background": self.set_media_keys_background,
             "player/recent_list_enabled": self.set_recent_list_enabled,
             "player/keymap": self.keymap_changed,
             "playlist/disable_mouse_click_events": self.set_disable_mouse_click_events,

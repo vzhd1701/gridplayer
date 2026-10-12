@@ -15,6 +15,7 @@ from gridplayer.player.managers.lists import ListsManager
 from gridplayer.player.managers.locations import LocationsManager
 from gridplayer.player.managers.log import LogManager
 from gridplayer.player.managers.macos_fileopen import MacOSFileOpenManager
+from gridplayer.player.managers.media_session import MediaSessionManager
 from gridplayer.player.managers.menu import MenuManager
 from gridplayer.player.managers.mouse_hide import MouseHideManager
 from gridplayer.player.managers.pan import PanManager
@@ -66,6 +67,7 @@ class Player(QWidget, ManagersManager):
             "settings": SettingsManager,
             "actions": ActionsManager,
             "menu": MenuManager,
+            "media_session": MediaSessionManager,
         }
 
         self.connections = {
@@ -82,6 +84,14 @@ class Player(QWidget, ManagersManager):
             ],
             "mouse_hide": [
                 ("video_blocks.video_count_changed", "show_cursor"),
+            ],
+            "media_session": [
+                ("video_blocks.playings_videos_count_changed", "refresh"),
+                ("video_blocks.video_count_changed", "refresh"),
+                ("single_mode.mode_changed", "refresh"),
+                ("playlist.playlist_file_loaded", "refresh"),
+                ("playlist.playlist_saved", "refresh"),
+                ("window_state.closing", "cleanup"),
             ],
             "active_block": [
                 ("video_blocks.video_count_changed", "update_active_under_mouse"),
@@ -103,11 +113,14 @@ class Player(QWidget, ManagersManager):
             "settings": [
                 ("reload", "video_blocks.reload_videos"),
                 ("set_screensaver", "screensaver.screensaver_check"),
+                ("set_media_keys_background", "media_session.set_enabled"),
                 ("set_log_level", "log.set_log_level"),
                 ("set_log_level", "video_driver.set_log_level"),
                 ("set_log_level_vlc", "video_driver.set_log_level_vlc"),
                 ("set_recent_list_enabled", "recent_list.set_recent_list_state"),
                 ("keymap_changed", "actions.apply_bindings"),
+                # after the keymap's own, which its buttons go by
+                ("keymap_changed", "media_session.refresh"),
                 (
                     "set_disable_mouse_click_events",
                     "video_blocks.set_disable_mouse_click_events",

@@ -19,6 +19,8 @@ SRC_DIR = os.path.abspath("./{APP_MODULE}")
 BUILD_DIR = os.path.abspath("./build")
 
 hiddenimports = collect_submodules('streamlink.plugins')
+# the WinRT media controls load the projections they hand out by name
+hiddenimports += collect_submodules('winrt')
 
 excludes = [
     "altgraph",

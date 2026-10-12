@@ -168,6 +168,12 @@ parts:
       (cd ${CRAFT_PROJECT_DIR}/meta/icons && find * -type f -exec install -Dm 644 "{}" "${CRAFT_PART_INSTALL}/meta/gui/icons/{}" \;)
       for f in $(find "${CRAFT_PART_INSTALL}/meta/gui/icons" -type f); do mv $f ${f%/*}/snap.{APP_MODULE}.${f##*/}; done
 
+# media keys in the background
+slots:
+  mpris:
+    interface: mpris
+    name: {APP_MODULE}
+
 apps:
   gridplayer:
     extensions:
@@ -181,6 +187,8 @@ apps:
     command-chain:
       - bin/snapcraft-preload
     common-id: {APP_ID}
+    slots:
+      - mpris
     plugs:
       - unity7
       - audio-playback

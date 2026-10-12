@@ -257,6 +257,25 @@ class ActionsManager(ManagerBase):
         action.trigger()
         return True
 
+    def action_for_key(self, key: str) -> str | None:
+        """The action a keyboard shortcut is bound to, as the keymap writes
+        it: a media key the system sends while the player is in the
+        background, say."""
+
+        return next(
+            (action_id for action_id, keys in self._bindings.items() if key in keys),
+            None,
+        )
+
+    def is_action_available(self, action_id: str) -> bool:
+        """Whether an action would do anything, as its menu item shows."""
+
+        action = self._ctx.actions.get(action_id)
+        if action is None or action.menu_generator:
+            return False
+
+        return not action.is_skipped and action.is_enabled
+
     def action_for_mouse_sequence(
         self, sequence: str | MouseButtonSequence
     ) -> str | None:

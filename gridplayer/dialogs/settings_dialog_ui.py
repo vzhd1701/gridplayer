@@ -122,6 +122,11 @@ class Ui_SettingsDialog:
         )
         self.playerInhibitScreensaver.setObjectName("playerInhibitScreensaver")
         self.lay_section_player.addWidget(self.playerInhibitScreensaver)
+        self.playerMediaKeysBackground = QtWidgets.QCheckBox(
+            self.page_general_player_contents
+        )
+        self.playerMediaKeysBackground.setObjectName("playerMediaKeysBackground")
+        self.lay_section_player.addWidget(self.playerMediaKeysBackground)
         self.section_history = QtWidgets.QLabel(self.page_general_player_contents)
         font = QtGui.QFont()
         font.setBold(True)
@@ -922,6 +927,9 @@ class Ui_SettingsDialog:
         )
         self.playerInhibitScreensaver.setText(
             _translate("SettingsDialog", "Disable screensaver while playing")
+        )
+        self.playerMediaKeysBackground.setText(
+            _translate("SettingsDialog", "Control playback with media keys globally")
         )
         self.section_history.setText(_translate("SettingsDialog", "History"))
         self.playerRecentList.setText(

@@ -31,9 +31,9 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{
 Source: "*"; DestDir: "{app}"; Flags: recursesubdirs;
 
 [Icons]
-Name: "{group}\{APP_DISP_NAME}"; Filename: "{app}\{APP_NAME}.exe"
+Name: "{group}\{APP_DISP_NAME}"; Filename: "{app}\{APP_NAME}.exe"; AppUserModelID: "{APP_ID}"
 Name: "{group}\{cm:UninstallProgram,{APP_NAME}}"; Filename: "{uninstallexe}"
-Name: "{autodesktop}\{APP_DISP_NAME}"; Filename: "{app}\{APP_NAME}.exe"; Tasks: desktopicon
+Name: "{autodesktop}\{APP_DISP_NAME}"; Filename: "{app}\{APP_NAME}.exe"; AppUserModelID: "{APP_ID}"; Tasks: desktopicon
 
 [Run]
 Filename: "{app}\{APP_NAME}.exe"; Flags: nowait postinstall skipifsilent 64bit; Description: "{cm:LaunchProgram,{APP_NAME}}"
