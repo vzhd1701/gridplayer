@@ -538,6 +538,27 @@ def test_overlay_on_chrome_but_over_a_video(mocker):
         block.overlay.set_is_on_chrome.assert_called_with(mode is not OverlayMode.VIDEO)
 
 
+@pytest.mark.parametrize(
+    ("is_drag_ui", "is_disable_overlay"), [(False, True), (True, False)]
+)
+def test_overlay_mode_kept_while_it_stays_hidden(
+    mocker, is_drag_ui, is_disable_overlay
+):
+    """A playlist opened with the overlay off: its drop disc let the
+    picture through once the video played, not solid as while it loaded."""
+
+    block = mocker.Mock()
+    block._ctx.is_drag_ui = is_drag_ui
+    block._ctx.is_disable_overlay = is_disable_overlay
+    block.is_overlay_fits = True
+    block.isVisible.return_value = True
+
+    VideoBlock.show_overlay(block)
+
+    block._sync_overlay_mode.assert_called_once()
+    block.overlay.show.assert_not_called()
+
+
 def test_show_overlay_skipped_when_cell_hidden(mocker):
     block = mocker.Mock()
     block._ctx.is_drag_ui = False

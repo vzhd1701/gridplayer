@@ -3449,10 +3449,13 @@ class VideoBlock(QWidget):
         return self.video_params is not None and not self.is_stopped
 
     def show_overlay(self):
+        # shown while loading too, and once it failed: for what it shows.
+        # Kept in step even while it stays hidden: dragging shows it, and
+        # its drop disc is solid over a cell with no picture, see-through
+        # over a playing one
+        self._sync_overlay_mode()
         if self._ctx.is_drag_ui or self._ctx.is_disable_overlay:
             return
-        # shown while loading too, and once it failed: for what it shows
-        self._sync_overlay_mode()
         # Hardware overlays are windows of their own; do not remap them while
         # this cell is hidden (single-mode background, minimized, etc.).
         if not self.isVisible():
