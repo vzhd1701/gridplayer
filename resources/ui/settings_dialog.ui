@@ -243,6 +243,81 @@
           </widget>
          </item>
          <item>
+          <widget class="QLabel" name="section_tray">
+           <property name="font">
+            <font>
+             <bold>true</bold>
+            </font>
+           </property>
+           <property name="text">
+            <string>Tray</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QCheckBox" name="playerTrayIcon">
+           <property name="text">
+            <string>Show icon in the tray</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QWidget" name="playerTrayOptions" native="true">
+           <layout class="QVBoxLayout" name="lay_tray_options">
+            <property name="leftMargin">
+             <number>0</number>
+            </property>
+            <property name="topMargin">
+             <number>0</number>
+            </property>
+            <property name="rightMargin">
+             <number>0</number>
+            </property>
+            <property name="bottomMargin">
+             <number>0</number>
+            </property>
+            <item>
+             <widget class="QCheckBox" name="playerMinimizeToTray">
+              <property name="text">
+               <string>Minimize to the tray</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QCheckBox" name="playerCloseToTray">
+              <property name="text">
+               <string>Close to the tray</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QCheckBox" name="playerHideTaskbar">
+              <property name="text">
+               <string>Hide from the taskbar</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QCheckBox" name="playerTrayStopVideo">
+              <property name="toolTip">
+               <string>Audio keeps playing. The picture may be black for a moment when you show the window.</string>
+              </property>
+              <property name="text">
+               <string>Stop video decoding while in the tray</string>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </widget>
+         </item>
+         <item>
+          <widget class="QLabel" name="playerTrayUnavailable">
+           <property name="text">
+            <string>Your desktop has no tray.</string>
+           </property>
+          </widget>
+         </item>
+         <item>
           <widget class="QLabel" name="section_history">
            <property name="font">
             <font>

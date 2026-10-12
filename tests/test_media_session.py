@@ -95,7 +95,9 @@ def session(monkeypatch):
     return sessions
 
 
-def _manager(blocks=(), actions=None, playlist_path=None, is_single_mode=False):
+def _manager(
+    blocks=(), actions=None, playlist_path=None, is_single_mode=False, is_away=False
+):
     parent = QWidget()
     calls = []
     ctx = SimpleNamespace(
@@ -105,6 +107,7 @@ def _manager(blocks=(), actions=None, playlist_path=None, is_single_mode=False):
         commands=SimpleNamespace(
             saved_playlist_path=lambda: playlist_path,
             forget_minimize_pause=lambda: calls.append("forget"),
+            is_window_away=lambda: is_away,
             activate_window=lambda: calls.append("activate"),
         ),
     )
@@ -266,13 +269,22 @@ def test_unbound_key_does_nothing(session):
     assert actions.triggered == []
 
 
-def test_media_key_while_minimized_forgets_the_minimize_pause(session, mocker):
-    manager = _manager(blocks=[FakeBlock("one")])
-    mocker.patch.object(manager.parent(), "isMinimized", return_value=True)
+def test_media_key_while_away_forgets_the_minimize_pause(session):
+    """Minimized or in the tray."""
+
+    manager = _manager(blocks=[FakeBlock("one")], is_away=True)
 
     session[0].command.emit(KEY_PAUSE)
 
     assert manager.calls == ["forget"]
+
+
+def test_media_key_on_screen_keeps_the_minimize_pause(session):
+    manager = _manager(blocks=[FakeBlock("one")])
+
+    session[0].command.emit(KEY_PAUSE)
+
+    assert manager.calls == []
 
 
 def test_raise_brings_the_window_up(session):

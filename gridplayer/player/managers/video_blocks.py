@@ -228,6 +228,9 @@ class VideoBlocksManager(ManagerBase):
 
         self._ctx.video_blocks = VideoBlocks()
 
+        # the picture of every video switched off, the player in the tray
+        self._ctx.is_video_decoding_stopped = False
+
         self._count_batch_depth = 0
 
     @property
@@ -237,6 +240,7 @@ class VideoBlocksManager(ManagerBase):
             "all_play_pause": self.cmd_all_play_pause,
             "all_play": self.cmd_all_play,
             "all_pause": self.cmd_all_pause,
+            "set_video_decoding_stopped": self.set_video_decoding_stopped,
             "all_seek_timecode": self.cmd_seek_timecode,
             "all_seek_step": self.cmd_seek_step,
             "seek_step_label": seek_step_label,
@@ -316,6 +320,14 @@ class VideoBlocksManager(ManagerBase):
 
     def cmd_all_pause(self):
         self.set_pause.emit(True)
+
+    def set_video_decoding_stopped(self, is_stopped: bool) -> None:
+        """The pictures off while the player is in the tray, and back on."""
+
+        self._ctx.is_video_decoding_stopped = is_stopped
+
+        for vb in self._ctx.video_blocks:
+            vb.set_video_decoding_stopped(is_stopped)
 
     def cmd_seek_timecode(self):
         time_ms = QCustomSpinboxTimeInput.get_time_ms_int(

@@ -26,6 +26,7 @@ from gridplayer.player.managers.settings import SettingsManager
 from gridplayer.player.managers.single_mode import SingleModeManager
 from gridplayer.player.managers.snapshots import SnapshotsManager
 from gridplayer.player.managers.stream_proxy import StreamProxyManager
+from gridplayer.player.managers.tray import TrayManager
 from gridplayer.player.managers.video_blocks import VideoBlocksManager
 from gridplayer.player.managers.video_driver import VideoDriverManager
 from gridplayer.player.managers.window_state import WindowStateManager
@@ -68,11 +69,13 @@ class Player(QWidget, ManagersManager):
             "actions": ActionsManager,
             "menu": MenuManager,
             "media_session": MediaSessionManager,
+            "tray": TrayManager,
         }
 
         self.connections = {
             "window_state": [
                 ("pause_on_minimize", "video_blocks.cmd_all_pause"),
+                ("away_changed", "screensaver.set_away"),
             ],
             "grid": [
                 ("warning", "dialogs.warning"),
@@ -112,7 +115,7 @@ class Player(QWidget, ManagersManager):
             ],
             "settings": [
                 ("reload", "video_blocks.reload_videos"),
-                ("set_screensaver", "screensaver.screensaver_check"),
+                ("set_screensaver", "screensaver.refresh"),
                 ("set_media_keys_background", "media_session.set_enabled"),
                 ("set_log_level", "log.set_log_level"),
                 ("set_log_level", "video_driver.set_log_level"),
@@ -239,6 +242,12 @@ class Player(QWidget, ManagersManager):
                 ("playlist_opened", "playlist.load_playlist_file"),
                 ("error", "dialogs.error"),
             ],
+            "tray": [
+                ("settings.tray_settings_changed", "apply_settings"),
+                # whether the taskbar button can go depends on the icon
+                ("changed", "window_state.apply_taskbar"),
+                ("window_state.closing", "cleanup"),
+            ],
         }
 
         if env.IS_MACOS:
@@ -250,6 +259,8 @@ class Player(QWidget, ManagersManager):
         else:
             self.managers["instance_listener"] = InstanceListenerManager
             self.connections["instance_listener"] = [
+                # the window back from the tray before the files come in
+                ("activate_requested", "window_state.activate_window"),
                 ("files_opened", "playlist.process_arguments"),
                 ("window_state.closing", "cleanup"),
             ]

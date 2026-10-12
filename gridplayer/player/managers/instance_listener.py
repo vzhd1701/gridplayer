@@ -8,6 +8,7 @@ from gridplayer.utils.single_instance import Listener
 
 class InstanceListenerManager(ManagerBase):
     files_opened = pyqtSignal(list)
+    activate_requested = pyqtSignal()
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -15,6 +16,7 @@ class InstanceListenerManager(ManagerBase):
         self._instance_listener = Listener()
 
         qt_connect(
+            (self._instance_listener.activate, self.activate_requested),
             (self._instance_listener.open_files, self.files_opened),
         )
 

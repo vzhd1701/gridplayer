@@ -1,4 +1,4 @@
-from PyQt5.QtCore import Qt, QTimer
+from PyQt5.QtCore import QTimer
 
 from gridplayer.player.managers.base import ManagerBase
 from gridplayer.settings import Settings
@@ -91,18 +91,15 @@ class MediaSessionManager(ManagerBase):
 
         self._ctx.actions_manager.trigger(action_id)
 
-        # played or paused while away, the videos stay as left on return
-        if self.parent().isMinimized():
+        # played or paused while away, minimized or in the tray, the videos
+        # stay as left on return
+        if self._ctx.commands.is_window_away():
             self._ctx.commands.forget_minimize_pause()
 
         self.refresh()
 
     def raise_window(self):
-        window = self.parent()
-
-        if window.isMinimized():
-            window.setWindowState(window.windowState() & ~Qt.WindowMinimized)
-
+        # minimized or in the tray, it comes back as well
         self._ctx.commands.activate_window()
 
     def _action_for(self, key):

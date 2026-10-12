@@ -21,6 +21,9 @@ finish-args:
 - "--talk-name=org.freedesktop.ScreenSaver"
 # Media keys in the background
 - "--own-name=org.mpris.MediaPlayer2.{APP_MODULE}.*"
+# Tray icon, and its note that the player is still running
+- "--talk-name=org.kde.StatusNotifierWatcher"
+- "--talk-name=org.freedesktop.Notifications"
 # Can't use Wayland
 - "--env=QT_QPA_PLATFORM=xcb"
 # Disable annoying warnings

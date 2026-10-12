@@ -23,15 +23,20 @@ functions = [
 objc.loadBundleFunctions(IOKit, globals(), functions)
 
 
-def assertNoIdleSleep(reason=None):
+# the screen kept on, which keeps the system awake as well
+ASSERTION_NO_DISPLAY_SLEEP = "NoDisplaySleepAssertion"
+# the system kept awake, the screen let go to sleep
+ASSERTION_NO_IDLE_SLEEP = "NoIdleSleepAssertion"
+
+
+def assertNoIdleSleep(reason=None, assertion_type=ASSERTION_NO_IDLE_SLEEP):
     """Uses IOKit functions to prevent idle sleep."""
-    kIOPMAssertionTypeNoIdleSleep = "NoIdleSleepAssertion"
     kIOPMAssertionLevelOn = 255
 
     if not reason:
         reason = "Some reason"
     errcode, assertID = IOPMAssertionCreateWithName(  # noqa: F821
-        kIOPMAssertionTypeNoIdleSleep, kIOPMAssertionLevelOn, reason, None
+        assertion_type, kIOPMAssertionLevelOn, reason, None
     )
     if errcode:
         return None

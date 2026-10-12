@@ -6,6 +6,7 @@ file,fonts/Hack/LICENSE.md,fonts/Hack/LICENSE.md
 icon,icons/main/png/48x48.png,main_ico_48
 icon,icons/main/svg/big.svg,main_ico_big
 icon,icons/main/svg/normal.svg,main_ico_svg
+icon,icons/main/svg/symbolic.svg,main_ico_symbolic
 icon,icons/main/sys/macos.icns,main_ico_mac
 icon,icons/main/sys/windows.ico,main_ico_win
 icon,icons/flags/ar_SA.svg,flag_ar_SA

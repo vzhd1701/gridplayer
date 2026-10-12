@@ -599,6 +599,10 @@ class VideoBlock(QWidget):
         # a bookmark's new name being typed, or its colour picked
         self._is_editing_bookmark = False
 
+        # the picture switched off while the player is in the tray, to be
+        # switched back on as it comes back; see set_video_decoding_stopped
+        self._is_video_stopped_in_tray = False
+
         # shared with other cells, the bookmarks may change in any of them
         self._ctx.bookmarks.changed.connect(self._update_seek_marks)
 
@@ -3174,6 +3178,55 @@ class VideoBlock(QWidget):
         self.video_params.video_track_id = track_id
         self.video_driver.set_video_track(track_id)
 
+    def set_video_decoding_stopped(self, is_stopped: bool) -> None:
+        """Switch the picture off while the player is in the tray, and back on.
+
+        The sound plays on, the picture is not decoded. Only the player is
+        told: the video's own track stays as picked, and is what is saved.
+        A paused video decodes nothing anyway and is left alone, as is one
+        with no sound to play instead.
+        """
+
+        if not self.is_video_initialized or not self.video_tracks:
+            self._is_video_stopped_in_tray = False
+            return
+
+        if is_stopped:
+            if self._is_video_stopped_in_tray or self.video_params.is_paused:
+                return
+
+            if not self.audio_tracks or isinstance(
+                self.video_params.audio_selection, AudioDisabled
+            ):
+                return
+
+            if self.video_params.video_track_id == DISABLED_TRACK:
+                return
+
+            self._is_video_stopped_in_tray = True
+            self.video_driver.set_video_track(DISABLED_TRACK)
+            return
+
+        if not self._is_video_stopped_in_tray:
+            return
+
+        self._is_video_stopped_in_tray = False
+
+        track_id = self.video_params.video_track_id
+        if track_id is None:
+            track_id = min(self.video_tracks)
+
+        self.video_driver.set_video_track(track_id)
+
+        # Switched back on, the picture is decoded from wherever the stream
+        # is, between key frames, and D3D11 hardware decoding of 10-bit HEVC
+        # mostly never recovers from that ("hardware acceleration picture
+        # allocation failed", black from then on). The same spot asked for
+        # again starts it at a key frame. Paused while away, a video gets
+        # the picture it has no other way to show that way too.
+        if not self.is_live and self.time:
+            self.video_driver.set_time(self.time)
+
     @only_initialized
     def set_audio_channel_mode(self, mode):
         if not self.audio_tracks:
@@ -4386,6 +4439,11 @@ class VideoBlock(QWidget):
         self.set_auto_reload_timer(self.video_params.auto_reload_timer_min)
 
         self.video_params.video_track_id = self.video_driver.cur_video_track_id
+
+        # a fresh player shows the picture, loaded in the tray it is not to
+        self._is_video_stopped_in_tray = False
+        if getattr(self._ctx, "is_video_decoding_stopped", False):
+            self.set_video_decoding_stopped(True)
 
         self._update_chapters()
         self._update_sponsor_segments()

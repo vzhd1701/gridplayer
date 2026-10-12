@@ -2706,7 +2706,7 @@ ACTIONS = MappingProxyType(
             "title": translate("Actions", "Quit"),
             "key": "Q",
             "icon": "quit",
-            "func": "close",
+            "func": "quit",
         },
         # Invisible
         "Next Active": {

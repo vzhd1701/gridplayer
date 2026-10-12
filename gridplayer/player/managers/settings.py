@@ -12,6 +12,10 @@ from gridplayer.settings import Settings
 from gridplayer.utils import cache
 from gridplayer.utils.qt import translate
 
+# what puts the tray icon up and takes the taskbar button away; the rest are
+# read as they are needed
+TRAY_SETTINGS = ("player/tray_icon", "player/hide_taskbar")
+
 
 class SettingsManager(ManagerBase):
     reload = pyqtSignal()
@@ -32,6 +36,7 @@ class SettingsManager(ManagerBase):
     set_subtitle_encoding = pyqtSignal(str)
     set_bookmarks_shared = pyqtSignal(bool)
     sponsorblock_changed = pyqtSignal()
+    tray_settings_changed = pyqtSignal()
 
     @property
     def commands(self):
@@ -92,6 +97,9 @@ class SettingsManager(ManagerBase):
         # one signal for the lot: the videos read what they need themselves
         if self._setting_changes(previous_settings, SPONSORBLOCK_SETTINGS):
             self.sponsorblock_changed.emit()
+
+        if self._setting_changes(previous_settings, TRAY_SETTINGS):
+            self.tray_settings_changed.emit()
 
         if self._is_setting_changed(previous_settings, "player/color_scheme"):
             apply_theme()

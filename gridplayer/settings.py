@@ -70,6 +70,15 @@ _default_settings = {
     "player/stay_on_top": False,
     "player/start_maximized": False,
     "player/start_fullscreen": False,
+    # the icon in the tray (the menu bar on macOS), and what goes there
+    "player/tray_icon": False,
+    "player/minimize_to_tray": False,
+    "player/close_to_tray": False,
+    "player/hide_taskbar": False,
+    "player/tray_stop_video": False,
+    # the note that the player is still running, shown the first time it
+    # is closed to the tray
+    "player/tray_note_shown": False,
     "player/language": get_system_language(),
     "player/color_scheme": ColorScheme.SYSTEM,
     "player/keymap": KeymapOverrides({}),

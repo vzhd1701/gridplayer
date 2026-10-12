@@ -59,6 +59,8 @@ def _init_listener() -> connection.Listener | None:
 
 class Listener(QObject):
     open_files = pyqtSignal(list)
+    # started again, with files or without: the window is to be shown
+    activate = pyqtSignal()
 
     def __init__(self):
         super().__init__()
@@ -110,7 +112,12 @@ class Listener(QObject):
         if input_data == "ping":
             self._log.debug("Received ping from another instance")
 
-        if isinstance(input_data, list) and input_data:
+        if not isinstance(input_data, list):
+            return
+
+        self.activate.emit()
+
+        if input_data:
             self.open_files.emit(input_data)
 
 
@@ -160,9 +167,24 @@ def is_delegated_to_primary(argv):
     if not is_other_instance_running():
         return False
 
+    # the running one is to come to the front, which Windows only lets a
+    # process do that the user is working with, as with this one
+    _allow_foreground()
+
     try:
         _send_data(argv[1:])
     except (FileNotFoundError, ConnectionRefusedError):
         return False
 
     return True
+
+
+def _allow_foreground():
+    if not env.IS_WINDOWS:
+        return
+
+    import ctypes
+
+    asfw_any = ctypes.c_uint32(-1).value
+
+    ctypes.windll.user32.AllowSetForegroundWindow(asfw_any)

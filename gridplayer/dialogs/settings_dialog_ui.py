@@ -127,6 +127,36 @@ class Ui_SettingsDialog:
         )
         self.playerMediaKeysBackground.setObjectName("playerMediaKeysBackground")
         self.lay_section_player.addWidget(self.playerMediaKeysBackground)
+        self.section_tray = QtWidgets.QLabel(self.page_general_player_contents)
+        font = QtGui.QFont()
+        font.setBold(True)
+        self.section_tray.setFont(font)
+        self.section_tray.setObjectName("section_tray")
+        self.lay_section_player.addWidget(self.section_tray)
+        self.playerTrayIcon = QtWidgets.QCheckBox(self.page_general_player_contents)
+        self.playerTrayIcon.setObjectName("playerTrayIcon")
+        self.lay_section_player.addWidget(self.playerTrayIcon)
+        self.playerTrayOptions = QtWidgets.QWidget(self.page_general_player_contents)
+        self.playerTrayOptions.setObjectName("playerTrayOptions")
+        self.lay_tray_options = QtWidgets.QVBoxLayout(self.playerTrayOptions)
+        self.lay_tray_options.setContentsMargins(0, 0, 0, 0)
+        self.lay_tray_options.setObjectName("lay_tray_options")
+        self.playerMinimizeToTray = QtWidgets.QCheckBox(self.playerTrayOptions)
+        self.playerMinimizeToTray.setObjectName("playerMinimizeToTray")
+        self.lay_tray_options.addWidget(self.playerMinimizeToTray)
+        self.playerCloseToTray = QtWidgets.QCheckBox(self.playerTrayOptions)
+        self.playerCloseToTray.setObjectName("playerCloseToTray")
+        self.lay_tray_options.addWidget(self.playerCloseToTray)
+        self.playerHideTaskbar = QtWidgets.QCheckBox(self.playerTrayOptions)
+        self.playerHideTaskbar.setObjectName("playerHideTaskbar")
+        self.lay_tray_options.addWidget(self.playerHideTaskbar)
+        self.playerTrayStopVideo = QtWidgets.QCheckBox(self.playerTrayOptions)
+        self.playerTrayStopVideo.setObjectName("playerTrayStopVideo")
+        self.lay_tray_options.addWidget(self.playerTrayStopVideo)
+        self.lay_section_player.addWidget(self.playerTrayOptions)
+        self.playerTrayUnavailable = QtWidgets.QLabel(self.page_general_player_contents)
+        self.playerTrayUnavailable.setObjectName("playerTrayUnavailable")
+        self.lay_section_player.addWidget(self.playerTrayUnavailable)
         self.section_history = QtWidgets.QLabel(self.page_general_player_contents)
         font = QtGui.QFont()
         font.setBold(True)
@@ -930,6 +960,31 @@ class Ui_SettingsDialog:
         )
         self.playerMediaKeysBackground.setText(
             _translate("SettingsDialog", "Control playback with media keys globally")
+        )
+        self.section_tray.setText(_translate("SettingsDialog", "Tray"))
+        self.playerTrayIcon.setText(
+            _translate("SettingsDialog", "Show icon in the tray")
+        )
+        self.playerMinimizeToTray.setText(
+            _translate("SettingsDialog", "Minimize to the tray")
+        )
+        self.playerCloseToTray.setText(
+            _translate("SettingsDialog", "Close to the tray")
+        )
+        self.playerHideTaskbar.setText(
+            _translate("SettingsDialog", "Hide from the taskbar")
+        )
+        self.playerTrayStopVideo.setToolTip(
+            _translate(
+                "SettingsDialog",
+                "Audio keeps playing. The picture may be black for a moment when you show the window.",
+            )
+        )
+        self.playerTrayStopVideo.setText(
+            _translate("SettingsDialog", "Stop video decoding while in the tray")
+        )
+        self.playerTrayUnavailable.setText(
+            _translate("SettingsDialog", "Your desktop has no tray.")
         )
         self.section_history.setText(_translate("SettingsDialog", "History"))
         self.playerRecentList.setText(

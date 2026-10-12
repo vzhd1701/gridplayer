@@ -16,6 +16,7 @@ from PyQt5.QtWidgets import (
     QLabel,
     QLineEdit,
     QSpinBox,
+    QSystemTrayIcon,
     QVBoxLayout,
     QWidget,
 )
@@ -59,6 +60,7 @@ from gridplayer.utils.screenshots import (
     screenshots_dir,
     unknown_specifiers,
 )
+from gridplayer.utils.taskbar import TaskbarHidingBlocker, taskbar_hiding_blocker
 from gridplayer.utils.video_driver import is_hw_video_available, session_video_driver
 from gridplayer.version import __app_url__
 from gridplayer.widgets.custom_menu import CustomMenu
@@ -208,6 +210,11 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
             "player/stay_on_top": self.playerStayOnTop,
             "player/start_maximized": self.playerStartMaximized,
             "player/start_fullscreen": self.playerStartFullscreen,
+            "player/tray_icon": self.playerTrayIcon,
+            "player/minimize_to_tray": self.playerMinimizeToTray,
+            "player/close_to_tray": self.playerCloseToTray,
+            "player/hide_taskbar": self.playerHideTaskbar,
+            "player/tray_stop_video": self.playerTrayStopVideo,
             "player/color_scheme": self.playerColorScheme,
             "player/language": self.listLanguages,
             "player/keymap": self.keymapEditor,
@@ -288,6 +295,8 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
 
         self.ui_customize_sponsorblock()
 
+        self.ui_customize_tray()
+
         # the placeholder is short enough to fit, this is where it is
         self.screenshotsDir.setToolTip(str(default_screenshots_dir()))
 
@@ -327,6 +336,61 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
             self.miscOpaqueHWOverlay.setEnabled(False)
             self.miscFakeOverlayInvisibility.setEnabled(False)
             self.miscHWCropBorder.setEnabled(False)
+
+    def ui_customize_tray(self):
+        if env.IS_MACOS:
+            self.section_tray.setText(self.tr("Menu bar"))
+            self.playerTrayIcon.setText(self.tr("Show icon in the menu bar"))
+            self.playerMinimizeToTray.setText(self.tr("Minimize to the menu bar"))
+            self.playerCloseToTray.setText(self.tr("Close to the menu bar"))
+            self.playerHideTaskbar.setText(self.tr("Hide from the Dock"))
+            self.playerTrayStopVideo.setText(
+                self.tr("Stop video decoding while in the menu bar")
+            )
+
+        is_tray_available = QSystemTrayIcon.isSystemTrayAvailable()
+
+        self.playerTrayUnavailable.setVisible(not is_tray_available)
+        if not is_tray_available:
+            self.playerTrayIcon.setEnabled(False)
+
+        blocker = taskbar_hiding_blocker()
+
+        self._is_hide_taskbar_available = blocker is None
+        if not self._is_hide_taskbar_available:
+            self.playerHideTaskbar.setEnabled(False)
+
+        if blocker == TaskbarHidingBlocker.WAYLAND:
+            self.playerHideTaskbar.setToolTip(self.tr("Not available on Wayland."))
+        elif blocker == TaskbarHidingBlocker.GNOME:
+            self.playerHideTaskbar.setToolTip(
+                self.tr("Not available on GNOME. It stops the window from minimizing.")
+            )
+
+        # minimize's own tick, while hiding from the taskbar ticks it for it
+        self._minimize_to_tray_own = None
+
+    def tray_options_changed(self, *_):
+        is_tray = self.playerTrayIcon.isEnabled() and self.playerTrayIcon.isChecked()
+
+        # a disabled one is left as it is on save, see save_settings
+        self.playerTrayOptions.setEnabled(is_tray)
+
+        # with no taskbar button, minimizing can only go to the tray
+        is_forced = (
+            is_tray
+            and self._is_hide_taskbar_available
+            and self.playerHideTaskbar.isChecked()
+        )
+
+        if is_forced and self._minimize_to_tray_own is None:
+            self._minimize_to_tray_own = self.playerMinimizeToTray.isChecked()
+            self.playerMinimizeToTray.setChecked(True)
+        elif not is_forced and self._minimize_to_tray_own is not None:
+            self.playerMinimizeToTray.setChecked(self._minimize_to_tray_own)
+            self._minimize_to_tray_own = None
+
+        self.playerMinimizeToTray.setEnabled(not is_forced)
 
     def ui_customize_sponsorblock(self):
         """The SponsorBlock page, a row for each category it knows.
@@ -466,6 +530,7 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
         self.sponsorblockCategories.setEnabled(self.sponsorblockEnabled.isChecked())
         self.cache_mode_selected(self.cacheMode.currentIndex())
         self.measure_cache()
+        self.tray_options_changed()
 
         self.switch_page(None)
         self.adjustSize()
@@ -500,6 +565,8 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
                 self.screenshot_format_selected,
             ),
             (self.cacheMode.currentIndexChanged, self.cache_mode_selected),
+            (self.playerTrayIcon.toggled, self.tray_options_changed),
+            (self.playerHideTaskbar.toggled, self.tray_options_changed),
             (self.cacheClear.clicked, self.clear_cache),
             (self.cache_measured, self.show_cache_size),
         )
