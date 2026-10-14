@@ -1,4 +1,5 @@
 from collections import Counter
+from operator import attrgetter
 from pathlib import Path
 
 from PyQt5.QtCore import QEvent, pyqtSignal
@@ -175,7 +176,8 @@ class ActiveBlockManager(ManagerBase):
 
             return None
 
-        return getattr(self._ctx.active_block, command)(*args)
+        # a dotted name, "bookmarks.next", reaches a part of the block
+        return attrgetter(command)(self._ctx.active_block)(*args)
 
     def cmd_crop_dialog(self):
         if self.is_no_active_block or not self.is_active_has_video():
@@ -225,7 +227,7 @@ class ActiveBlockManager(ManagerBase):
         if self.is_no_active_block:
             return False
 
-        active_video_param = getattr(self._ctx.active_block, param_name)
+        active_video_param = attrgetter(param_name)(self._ctx.active_block)
 
         return active_video_param == param_value
 

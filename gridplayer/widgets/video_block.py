@@ -6,6 +6,7 @@ import secrets
 import time
 from datetime import datetime, timezone
 from functools import partial
+from operator import attrgetter
 from pathlib import Path
 
 from pydantic_extra_types.color import Color
@@ -1513,7 +1514,7 @@ class VideoBlock(QWidget):
     @only_seekable
     def manual_seek(self, command, *args):
         # one that went nowhere leaves the others nothing to follow
-        if getattr(self, command)(*args) is False:
+        if attrgetter(command)(self)(*args) is False:
             return
 
         # a seek past the end is the end arriving early, and the end action
@@ -5531,7 +5532,7 @@ class VideoBlock(QWidget):
         What the command gives back goes back (see pan_by).
         """
 
-        result = getattr(self, command)(*args)
+        result = attrgetter(command)(self)(*args)
 
         synced = self.synced_view()
 
@@ -5737,7 +5738,7 @@ class VideoBlock(QWidget):
         """Change the speed as the viewer asked, for the others to follow
         where speeds are synced (see VideoBlocksManager)."""
 
-        getattr(self, command)()
+        attrgetter(command)(self)()
 
         if self.is_video_initialized and not self.is_live:
             self.sync_rate.emit(self.video_params.rate)
