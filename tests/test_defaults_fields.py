@@ -50,3 +50,15 @@ def test_the_grid_state_names_are_the_grid_fields():
         "playlist/grid_cols": "cols",
         "playlist/grid_preallocate": "preallocate",
     }
+
+
+@FIELD_LISTS
+def test_what_enables_or_shows_a_field_is_in_its_form(fields):
+    # a form leaves a field alone when what it names isn't there
+    keys = {spec.settings_key for spec in fields}
+
+    for spec in fields:
+        for rule in (spec.enabled_when, spec.shown_when):
+            if rule is not None:
+                assert rule.key in keys, spec.settings_key
+                assert rule.values, spec.settings_key

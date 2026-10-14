@@ -215,7 +215,7 @@ class TestWhatIsOffered:
         assert spec.choices is _subtitle_encodings
         # it has to apply to a track picked from the menu too, not only to
         # one a video opens with, so nothing gates it
-        assert spec.enabled_by is None
+        assert spec.enabled_when is None
 
 
 class TestTakingHold:

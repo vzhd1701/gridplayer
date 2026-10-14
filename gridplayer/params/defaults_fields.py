@@ -39,6 +39,15 @@ from gridplayer.params.subtitle_encodings import SUBTITLE_ENCODINGS
 from gridplayer.utils.qt import translate
 
 
+@dataclass(frozen=True)
+class When:
+    """Met while another field of the same form, named by key, has one of the
+    values; by default, while that checkbox is ticked."""
+
+    key: str
+    values: tuple = (True,)
+
+
 @dataclass(frozen=True, kw_only=True)
 class SettingField:
     """What every field has; the subclasses say how it is edited."""
@@ -52,14 +61,9 @@ class SettingField:
     attr: str | None = None
     # the name in the playlist's grid state, for the grid fields
     grid_attr: str | None = None
-    enabled_by: str | None = None
-    # the values of the driving field that enable this one; the default is
-    # what a ticked checkbox gives
-    enabled_by_values: tuple = (True,)
-    # shown only while the field named here has one of these values; hidden,
-    # it is off as well, unless enabled_by already decides that
-    shown_by: str | None = None
-    shown_by_values: tuple = ()
+    enabled_when: When | None = None
+    # hidden, it is off as well, unless enabled_when already decides that
+    shown_when: When | None = None
     tooltip: str | None = None
 
 
@@ -734,7 +738,7 @@ PLAYLIST_FIELDS: tuple[SettingField, ...] = (
         minimum=1,
         maximum=60,
         suffix=translate("SettingsDialog", "(sec)"),
-        enabled_by="playlist/overlay_hide_on_timeout",
+        enabled_when=When("playlist/overlay_hide_on_timeout"),
     ),
     CheckboxField(
         settings_key="playlist/shuffle_on_load",
@@ -757,16 +761,14 @@ PLAYLIST_FIELDS: tuple[SettingField, ...] = (
         minimum=0,
         maximum=1000,
         special_text=translate("SettingsDialog", "Auto"),
-        shown_by="playlist/grid_mode",
-        shown_by_values=_GRID_AUTO,
+        shown_when=When("playlist/grid_mode", _GRID_AUTO),
     ),
     CheckboxField(
         settings_key="playlist/grid_fit",
         section=translate("SettingsDialog", "Grid"),
         label=translate("SettingsDialog", "Fit grid cells"),
         grid_attr="is_fit",
-        shown_by="playlist/grid_mode",
-        shown_by_values=_GRID_AUTO,
+        shown_when=When("playlist/grid_mode", _GRID_AUTO),
     ),
     SpinField(
         settings_key="playlist/grid_rows",
@@ -775,8 +777,7 @@ PLAYLIST_FIELDS: tuple[SettingField, ...] = (
         grid_attr="rows",
         minimum=1,
         maximum=100,
-        shown_by="playlist/grid_mode",
-        shown_by_values=_GRID_FIXED,
+        shown_when=When("playlist/grid_mode", _GRID_FIXED),
     ),
     SpinField(
         settings_key="playlist/grid_cols",
@@ -785,16 +786,14 @@ PLAYLIST_FIELDS: tuple[SettingField, ...] = (
         grid_attr="cols",
         minimum=1,
         maximum=100,
-        shown_by="playlist/grid_mode",
-        shown_by_values=_GRID_FIXED,
+        shown_when=When("playlist/grid_mode", _GRID_FIXED),
     ),
     CheckboxField(
         settings_key="playlist/grid_preallocate",
         section=translate("SettingsDialog", "Grid"),
         label=translate("SettingsDialog", "Show all cells even when empty"),
         grid_attr="preallocate",
-        shown_by="playlist/grid_mode",
-        shown_by_values=_GRID_FIXED,
+        shown_when=When("playlist/grid_mode", _GRID_FIXED),
     ),
     ComboField(
         settings_key="playlist/drop_action_internal",
@@ -885,8 +884,9 @@ VIDEO_FIELDS: tuple[SettingField, ...] = (
         section=translate("SettingsDialog", "Audio"),
         label=translate("SettingsDialog", "Preferred languages"),
         placeholder=translate("SettingsDialog", "en, ja, fr"),
-        enabled_by="video_defaults/audio_track_mode",
-        enabled_by_values=(AudioTrackMode.PREFERRED,),
+        enabled_when=When(
+            "video_defaults/audio_track_mode", (AudioTrackMode.PREFERRED,)
+        ),
         tooltip=translate(
             "SettingsDialog",
             "Language codes or names, best first."
@@ -945,8 +945,9 @@ VIDEO_FIELDS: tuple[SettingField, ...] = (
         section=translate("SettingsDialog", "Subtitles"),
         label=translate("SettingsDialog", "Preferred languages"),
         placeholder=translate("SettingsDialog", "en, ja, fr"),
-        enabled_by="video_defaults/subtitle_track_mode",
-        enabled_by_values=(SubtitleTrackMode.PREFERRED,),
+        enabled_when=When(
+            "video_defaults/subtitle_track_mode", (SubtitleTrackMode.PREFERRED,)
+        ),
         tooltip=translate(
             "SettingsDialog",
             "Language codes or names, best first."
@@ -1049,8 +1050,9 @@ VIDEO_FIELDS: tuple[SettingField, ...] = (
         section=translate("SettingsDialog", "Video"),
         label=translate("SettingsDialog", "Deinterlace mode"),
         choices=_deinterlace_modes,
-        enabled_by="video_defaults/deinterlace",
-        enabled_by_values=(VideoDeinterlace.AUTO, VideoDeinterlace.ON),
+        enabled_when=When(
+            "video_defaults/deinterlace", (VideoDeinterlace.AUTO, VideoDeinterlace.ON)
+        ),
         tooltip=translate(
             "SettingsDialog",
             "Auto: VLC chooses (currently X).\n"
@@ -1098,8 +1100,9 @@ VIDEO_FIELDS: tuple[SettingField, ...] = (
         maximum=MAX_LIST_FAIL_WAIT_SEC,
         special_text=translate("When Video Fails", "At once"),
         suffix=translate("SettingsDialog", "(sec)"),
-        enabled_by="video_defaults/list_fail_action",
-        enabled_by_values=(ListFailAction.PLAY_NEXT,),
+        enabled_when=When(
+            "video_defaults/list_fail_action", (ListFailAction.PLAY_NEXT,)
+        ),
     ),
     CheckboxField(
         settings_key="video_defaults/random_loop",
@@ -1158,8 +1161,9 @@ VIDEO_FIELDS: tuple[SettingField, ...] = (
         label=translate("SettingsDialog", "Reload attempts"),
         minimum=1,
         maximum=1000,
-        enabled_by="video_defaults/network_retry_mode",
-        enabled_by_values=(NetworkRetryMode.TIMES,),
+        enabled_when=When(
+            "video_defaults/network_retry_mode", (NetworkRetryMode.TIMES,)
+        ),
     ),
     SpinField(
         settings_key="video_defaults/auto_reload_timer",
@@ -1221,8 +1225,7 @@ SUBTITLE_STYLE_FIELDS: tuple[SettingField, ...] = (
         settings_key="subtitles/outline_color",
         section=translate("SettingsDialog", "Effects"),
         label=translate("SettingsDialog", "Outline color"),
-        enabled_by="subtitles/outline",
-        enabled_by_values=_OUTLINE_DRAWN,
+        enabled_when=When("subtitles/outline", _OUTLINE_DRAWN),
     ),
     CheckboxField(
         settings_key="subtitles/shadow",
@@ -1233,7 +1236,7 @@ SUBTITLE_STYLE_FIELDS: tuple[SettingField, ...] = (
         settings_key="subtitles/shadow_color",
         section=translate("SettingsDialog", "Effects"),
         label=translate("SettingsDialog", "Shadow color"),
-        enabled_by="subtitles/shadow",
+        enabled_when=When("subtitles/shadow"),
     ),
     CheckboxField(
         settings_key="subtitles/background",
@@ -1248,7 +1251,7 @@ SUBTITLE_STYLE_FIELDS: tuple[SettingField, ...] = (
         settings_key="subtitles/background_color",
         section=translate("SettingsDialog", "Effects"),
         label=translate("SettingsDialog", "Background color"),
-        enabled_by="subtitles/background",
+        enabled_when=When("subtitles/background"),
     ),
     SpinField(
         settings_key="subtitles/margin",

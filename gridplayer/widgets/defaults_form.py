@@ -384,28 +384,30 @@ class DefaultsForm(QWidget):
 
     def _sync_enabled(self):
         for spec in self._fields:
-            if not spec.enabled_by:
+            rule = spec.enabled_when
+            if rule is None:
                 continue
-            driver = self._editors.get(spec.enabled_by)
+            driver = self._editors.get(rule.key)
             if driver is None:
                 continue
 
-            enabled = driver.value() in spec.enabled_by_values
+            enabled = driver.value() in rule.values
             self._editors[spec.settings_key].set_enabled(enabled)
 
     def _sync_shown(self):
         for spec in self._fields:
-            if not spec.shown_by:
+            rule = spec.shown_when
+            if rule is None:
                 continue
-            driver = self._editors.get(spec.shown_by)
+            driver = self._editors.get(rule.key)
             if driver is None:
                 continue
 
-            shown = driver.value() in spec.shown_by_values
+            shown = driver.value() in rule.values
             self._rows[spec.settings_key].setVisible(shown)
 
-            if spec.enabled_by:
-                # enabled_by owns enablement for such fields; keep them orthogonal.
+            if spec.enabled_when:
+                # enabled_when owns enablement for such fields; keep them orthogonal.
                 continue
 
             self._editors[spec.settings_key].set_enabled(shown)

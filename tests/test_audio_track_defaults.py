@@ -72,7 +72,7 @@ def test_languages_field_is_a_text_box_with_an_example_in_it():
 
 def test_text_field_renders_a_line_edit():
     form = _form()
-    # the example only shows while the field is live; see _sync_enabled_by
+    # the example only shows while the field is live; see _sync_enabled
     form.set_values({MODE_KEY: AudioTrackMode.PREFERRED})
     widget = form._widgets[LANGUAGES_KEY]
 
