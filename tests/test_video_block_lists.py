@@ -805,7 +805,7 @@ class TestAnItemThatWillNotPlay:
         block = _long_link_list(make_cell, lists)
 
         for _ in range(MAX_FAILED + 1):
-            block._last_error = ShownError(title="Not found", is_retryable=False)
+            block.status.last_error = ShownError(title="Not found", is_retryable=False)
             block.error()
             assert block.recovery.is_skip_counting
             block.recovery.stop_skip()
@@ -814,11 +814,11 @@ class TestAnItemThatWillNotPlay:
         block = _long_link_list(make_cell, lists)
 
         for _ in range(MAX_FAILED):
-            block._last_error = ShownError(title="No connection", is_network=True)
+            block.status.last_error = ShownError(title="No connection", is_network=True)
             block.error()
             block.recovery.stop_skip()
 
-        block._last_error = ShownError(title="No connection", is_network=True)
+        block.status.last_error = ShownError(title="No connection", is_network=True)
         block.error()
 
         assert not block.recovery.is_skip_counting
@@ -831,11 +831,11 @@ class TestAnItemThatWillNotPlay:
         block = _long_link_list(make_cell, lists)
 
         for _ in range(MAX_FAILED):
-            block._last_error = refused
+            block.status.last_error = refused
             block.error()
             block.recovery.stop_skip()
 
-        block._last_error = refused
+        block.status.last_error = refused
         block.error()
 
         assert not block.recovery.is_skip_counting
@@ -848,7 +848,7 @@ class TestAnItemThatWillNotPlay:
         lost = ShownError(title="No connection", is_network=True)
 
         for n in range(2 * MAX_FAILED + 1):
-            block._last_error = gone if n % 2 else lost
+            block.status.last_error = gone if n % 2 else lost
             block.error()
             block.recovery.stop_skip()
 

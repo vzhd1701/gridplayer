@@ -61,8 +61,8 @@ def _timers(mocker):
 def _block(mocker, quality=STREAM_QUALITY_AUTO, playing="360p", pane_height=300):
     block = mocker.Mock()
     block._log = logging.getLogger("test")
-    block._is_closing = False
-    block._is_error = False
+    block.is_closing = False
+    block.is_error = False
     block._is_state_change_in_progress = False
     block._item_headers = {}
     # these streams name no language, so the ladder is all of them
@@ -175,7 +175,7 @@ def test_a_pane_in_the_middle_of_loading_is_asked_again_later(mocker):
 
 def test_a_failing_pane_is_left_to_the_retry_timer(mocker):
     block = _adapting(mocker, playing="360p", pane_height=700)
-    block._is_error = True
+    block.is_error = True
 
     block.stream._adapt()
 
@@ -185,7 +185,7 @@ def test_a_failing_pane_is_left_to_the_retry_timer(mocker):
 
 def test_a_closing_pane_does_not_start_loading_a_new_stream(mocker):
     block = _adapting(mocker, playing="360p", pane_height=700)
-    block._is_closing = True
+    block.is_closing = True
 
     block.stream._adapt()
 

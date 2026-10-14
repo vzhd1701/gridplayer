@@ -1,5 +1,6 @@
 from pathlib import Path
 from types import SimpleNamespace
+from unittest.mock import Mock
 
 import pytest
 from PyQt5.QtCore import QPoint, QRect, Qt
@@ -13,6 +14,7 @@ from gridplayer.player.managers.video_blocks import VideoBlocksManager
 from gridplayer.utils.drop_zone import DropIndicator
 from gridplayer.widgets.cell_chrome import dashed_frame
 from gridplayer.widgets.video_block import VideoBlock
+from gridplayer.widgets.video_block_status import StatusControl
 from gridplayer.widgets.video_overlay import (
     OverlayBlock,
     OverlayBlockFloating,
@@ -439,7 +441,7 @@ def test_show_overlay_while_loading(mocker):
 
     VideoBlock.show_overlay(block)
 
-    block._sync_overlay_mode.assert_called_once()
+    block.status.sync_overlay_mode.assert_called_once()
     block.overlay.show.assert_called_once()
 
 
@@ -455,7 +457,7 @@ def test_show_overlay_on_error(mocker):
 
     VideoBlock.show_overlay(block)
 
-    block._sync_overlay_mode.assert_called_once()
+    block.status.sync_overlay_mode.assert_called_once()
     block.overlay.show.assert_called_once()
 
 
@@ -475,14 +477,15 @@ def test_overlay_mode_follows_the_cell(
     mocker, is_error, is_stopped, is_initialized, is_kept, is_status, mode
 ):
     block = mocker.Mock()
-    block._is_error = is_error
+    block.is_error = is_error
     block.is_stopped = is_stopped
     block.is_video_initialized = is_initialized
     block.is_loading = not is_initialized and not is_stopped and not is_error
-    block._is_status_kept_for_picture = is_kept
     block.video_status.isHidden.return_value = not is_status
+    status = StatusControl(block)
+    status.is_kept_for_picture = is_kept
 
-    assert VideoBlock._overlay_mode(block) is mode
+    assert status._overlay_mode() is mode
 
 
 def test_the_overlay_turns_along_with_the_status(mocker):
@@ -492,14 +495,15 @@ def test_the_overlay_turns_along_with_the_status(mocker):
     block = mocker.Mock()
     order = []
 
-    block._sync_overlay_mode.side_effect = lambda: order.append("mode")
+    status = StatusControl(block)
+    status.sync_overlay_mode = lambda: order.append("mode")
     block.overlay.lay_out_now.side_effect = lambda: order.append("laid out")
     block.repaint.side_effect = lambda: order.append("cell")
     block.overlay.isWindow.return_value = True
     block.overlay.isVisible.return_value = True
     block.overlay.repaint.side_effect = lambda: order.append("overlay")
 
-    VideoBlock.set_status(block, "processing")
+    status.show("processing")
 
     assert order == ["mode", "laid out", "cell", "overlay"]
 
@@ -528,11 +532,12 @@ def test_the_overlay_laid_out_at_once():
 
 def test_overlay_on_chrome_but_over_a_video(mocker):
     block = mocker.Mock()
+    status = StatusControl(block)
 
     for mode in OverlayMode:
-        block._overlay_mode.return_value = mode
+        status._overlay_mode = Mock(return_value=mode)
 
-        VideoBlock._sync_overlay_mode(block)
+        status.sync_overlay_mode()
 
         block.overlay.set_mode.assert_called_with(mode)
         block.overlay.set_is_on_chrome.assert_called_with(mode is not OverlayMode.VIDEO)
@@ -555,7 +560,7 @@ def test_overlay_mode_kept_while_it_stays_hidden(
 
     VideoBlock.show_overlay(block)
 
-    block._sync_overlay_mode.assert_called_once()
+    block.status.sync_overlay_mode.assert_called_once()
     block.overlay.show.assert_not_called()
 
 
@@ -566,7 +571,7 @@ def test_show_overlay_skipped_when_cell_hidden(mocker):
     block.is_overlay_fits = True
     block.is_loading = False
     block._is_error = False
-    block._is_status_kept_for_picture = False
+    block.status.is_kept_for_picture = False
     block.isVisible.return_value = False
 
     VideoBlock.show_overlay(block)
@@ -581,7 +586,7 @@ def test_show_overlay_skipped_when_cell_too_small(mocker):
     block.is_overlay_fits = False
     block.is_loading = False
     block._is_error = False
-    block._is_status_kept_for_picture = False
+    block.status.is_kept_for_picture = False
     block.isVisible.return_value = True
 
     VideoBlock.show_overlay(block)

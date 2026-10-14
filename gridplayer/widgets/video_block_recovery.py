@@ -130,9 +130,9 @@ class RecoveryControl(VideoBlockPart):
         if not self._skip_timer.isActive():
             self._note_timer.stop()
 
-        if self._block._is_error and self._block._last_error is not None:
+        if self._block.is_error and self._block.status.last_error is not None:
             self._block.video_status.show_error(
-                self._block._last_error, self.skip_note()
+                self._block.status.last_error, self.skip_note()
             )
 
     def schedule_retry(self) -> bool:
@@ -169,8 +169,8 @@ class RecoveryControl(VideoBlockPart):
         # holding on to it keeps a VLC player busy for the whole wait
         self._block.cleanup()
 
-        self._block._load_stage = LoadStage.RECONNECT
-        self._block.set_status("processing")
+        self._block.status.load_stage = LoadStage.RECONNECT
+        self._block.status.show("processing")
         self._show_retry_status()
 
         self._retry_timer.start()
@@ -190,7 +190,7 @@ class RecoveryControl(VideoBlockPart):
 
         self._retry_timer.stop()
 
-        if self._block._is_closing or self._block.video_params is None:
+        if self._block.is_closing or self._block.video_params is None:
             return
 
         self._block.reload()
@@ -199,7 +199,7 @@ class RecoveryControl(VideoBlockPart):
         detail = self._attempt_txt
 
         # what went wrong the last time, in short
-        error = self._block._last_error
+        error = self._block.status.last_error
 
         if error is not None and (error.where or error.code):
             tag = " ".join(part for part in (error.where, error.code) if part)
@@ -241,7 +241,7 @@ class RecoveryControl(VideoBlockPart):
 
         self._skip_timer.stop()
 
-        if self._block._is_closing or self._block.media_list is None:
+        if self._block.is_closing or self._block.media_list is None:
             return
 
         if not self._block._step_at_end(self._block.video_params.end_action):
@@ -336,7 +336,7 @@ class RecoveryControl(VideoBlockPart):
         one that fails for the network or a site refusing is left sooner.
         """
 
-        if self._block.media_list is None or self._block._is_closing:
+        if self._block.media_list is None or self._block.is_closing:
             return
 
         self._failures_in_a_row += 1
@@ -356,7 +356,7 @@ class RecoveryControl(VideoBlockPart):
         if self._block.video_params.is_local_file:
             return True
 
-        error = self._block._last_error
+        error = self._block.status.last_error
 
         return error is not None and not error.is_retryable and not error.is_refused
 
@@ -389,7 +389,7 @@ class RecoveryControl(VideoBlockPart):
 
     @property
     def _is_skipped(self) -> bool:
-        if self._block.media_list is None or self._block._is_closing:
+        if self._block.media_list is None or self._block.is_closing:
             return False
 
         if self._block.video_params.list_fail_action != ListFailAction.PLAY_NEXT:
@@ -402,7 +402,7 @@ class RecoveryControl(VideoBlockPart):
         """An item that never played, failing for what a reload would only
         be told again, where the next one is to be played instead."""
 
-        error = self._block._last_error
+        error = self._block.status.last_error
 
         return (
             error is not None
@@ -421,7 +421,7 @@ class RecoveryControl(VideoBlockPart):
         """The count to the next item after a failed one, once what is done
         then was changed: started over, or called off."""
 
-        if not self._block._is_error:
+        if not self._block.is_error:
             return
 
         if self._is_skipped:
@@ -432,7 +432,7 @@ class RecoveryControl(VideoBlockPart):
         self.refresh_skip_note()
 
     def _skip(self):
-        if self._block._is_closing or self._block.media_list is None:
+        if self._block.is_closing or self._block.media_list is None:
             return
 
         # along the list the way it goes by itself; on to the next where it
