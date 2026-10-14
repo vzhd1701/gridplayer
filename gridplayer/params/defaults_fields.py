@@ -1170,8 +1170,6 @@ VIDEO_FIELDS: tuple[SettingField, ...] = (
     ),
 )
 
-ALL_DEFAULT_FIELDS: tuple[SettingField, ...] = PLAYLIST_FIELDS + VIDEO_FIELDS
-
 GRID_STATE_ATTR = {
     "playlist/grid_mode": "mode",
     "playlist/grid_fit": "is_fit",
