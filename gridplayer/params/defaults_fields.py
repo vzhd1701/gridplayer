@@ -908,6 +908,22 @@ VIDEO_FIELDS: tuple[SettingField, ...] = (
         label=translate("SettingsDialog", "Audio mode"),
         choices=_audio_modes,
     ),
+    FloatSpinField(
+        settings_key="video_defaults/volume",
+        video_attr="volume",
+        section=translate("SettingsDialog", "Audio"),
+        label=translate("SettingsDialog", "Volume"),
+        minimum=0,
+        maximum=1,
+        decimals=2,
+        step=0.05,
+    ),
+    CheckboxField(
+        settings_key="video_defaults/muted",
+        video_attr="muted",
+        section=translate("SettingsDialog", "Audio"),
+        label=translate("SettingsDialog", "Muted"),
+    ),
     ComboField(
         settings_key="video_defaults/subtitle_track_mode",
         video_attr="subtitle_track_mode",
@@ -956,22 +972,6 @@ VIDEO_FIELDS: tuple[SettingField, ...] = (
             "Offer subtitle files next to the video with the same name. They're"
             " opened only when you pick one.",
         ),
-    ),
-    FloatSpinField(
-        settings_key="video_defaults/volume",
-        video_attr="volume",
-        section=translate("SettingsDialog", "Audio"),
-        label=translate("SettingsDialog", "Volume"),
-        minimum=0,
-        maximum=1,
-        decimals=2,
-        step=0.05,
-    ),
-    CheckboxField(
-        settings_key="video_defaults/muted",
-        video_attr="muted",
-        section=translate("SettingsDialog", "Audio"),
-        label=translate("SettingsDialog", "Muted"),
     ),
     FloatSpinField(
         settings_key="video_defaults/scale",
