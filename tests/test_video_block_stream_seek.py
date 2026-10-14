@@ -114,7 +114,7 @@ class TestLanding:
         assert _seeks(block) == [15000]
 
     def test_landing_short_of_a_loop_is_not_sent_back(self, block):
-        block.set_loop_start_time(12000)
+        block.loop.set_start_time(12000)
         block.seek(12000)
         _reported(block, 12000 - 2300)
         _reported(block, 12000 - 2290)

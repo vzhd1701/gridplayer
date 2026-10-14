@@ -83,12 +83,6 @@ from gridplayer.utils.libvlc_options_parser import (
 from gridplayer.utils.list_errors import ReadErrorKind
 from gridplayer.utils.list_navigator import ListNavigator
 from gridplayer.utils.qt import MILLISECONDS, count_txt, qt_connect, translate
-from gridplayer.utils.screenshots import (
-    ScreenshotJob,
-    ScreenshotName,
-    remove_frame_file,
-    screenshots_dir,
-)
 from gridplayer.utils.sponsorblock import (
     segment_mark,
 )
@@ -129,6 +123,8 @@ from gridplayer.widgets.video_block_guards import (
     only_streamable,
     only_with_video_tacks,
 )
+from gridplayer.widgets.video_block_loop import LoopControl
+from gridplayer.widgets.video_block_screenshot import ScreenshotControl
 from gridplayer.widgets.video_block_sponsorblock import SponsorBlockControl
 from gridplayer.widgets.video_block_subtitles import SubtitleControl
 from gridplayer.widgets.video_block_view import ViewControl
@@ -355,10 +351,6 @@ class VideoBlock(QWidget):
         # that turns seeks down; see SEEK_RETRIES
         self._is_adaptive = False
 
-        # held until they are done, the pool only has the C++ side of them
-        self._screenshot_jobs: set[ScreenshotJob] = set()
-        self._is_screenshot_quiet = False
-
         self.url_resolver = self.init_url_resolver()
         self.video_driver: VideoFrameVLC | None = None
 
@@ -368,6 +360,8 @@ class VideoBlock(QWidget):
         self.sponsorblock = SponsorBlockControl(self)
         self.subtitles = SubtitleControl(self)
         self.audio = AudioControl(self)
+        self.loop = LoopControl(self)
+        self.screenshot = ScreenshotControl(self)
 
         # the next, previous or a random file of the folder, to put in this
         # one's place
@@ -460,7 +454,7 @@ class VideoBlock(QWidget):
             # Left connected when the driver is let go: a frame asked for
             # before a reload is still the one that was wanted, and a PNG
             # nobody receives would be left behind in the temp folder.
-            (video_driver.screenshot_taken, self._screenshot_taken),
+            (video_driver.screenshot_taken, self.screenshot.taken),
             (self.load_video, video_driver.load_video),
         )
 
@@ -603,10 +597,10 @@ class VideoBlock(QWidget):
 
         qt_connect(
             (overlay.set_vid_pos, partial(self.manual_seek, "seek_percent")),
-            (overlay.set_volume, self.set_volume),
+            (overlay.set_volume, self.audio.set_volume),
             (overlay.exit_clicked, self.close),
             (overlay.play_pause_clicked, self.play_pause),
-            (overlay.mute_unmute_clicked, self.mute_unmute),
+            (overlay.mute_unmute_clicked, self.audio.mute_unmute),
             (overlay.bookmark_clicked, self.bookmarker.jump_to_marker),
             (overlay.bookmark_menu_requested, self.bookmarker.show_marker_menu),
             (overlay.list_place_clicked, self.show_list_window),
@@ -2207,7 +2201,7 @@ class VideoBlock(QWidget):
 
         self.set_aspect(snapshot.aspect_mode)
         self.set_deinterlace_params(snapshot.deinterlace, snapshot.deinterlace_mode)
-        self.set_muted(snapshot.is_muted)
+        self.audio.set_muted(snapshot.is_muted)
         self.set_pause(snapshot.is_paused)
         self.view.set_scale(snapshot.scale, is_silent=True)
         self.view.set_zoom_to_cursor(snapshot.is_zoom_to_cursor)
@@ -2215,11 +2209,11 @@ class VideoBlock(QWidget):
         self.view.set_anchor(snapshot.anchor)
         self.view.set_shift_past_edges(snapshot.is_shift_past_edges)
         self.view.set_shift(snapshot.shift, is_silent=True)
-        self.set_volume(snapshot.volume)
+        self.audio.set_volume(snapshot.volume)
 
         self.seek(snapshot.current_position)
-        self.set_loop_start_time(snapshot.loop_start)
-        self.set_loop_end_time(snapshot.loop_end)
+        self.loop.set_start_time(snapshot.loop_start)
+        self.loop.set_end_time(snapshot.loop_end)
         self.set_rate(snapshot.rate, is_silent=True)
 
         self.switch_stream_quality(snapshot.stream_quality)
@@ -2779,11 +2773,11 @@ class VideoBlock(QWidget):
         self.audio.set_channel_mode(self.video_params.audio_channel_mode)
         self.audio.set_delay(self.video_params.audio_delay_ms, is_silent=True)
 
-        self.set_volume(self.video_params.volume)
-        self.set_muted(self.video_params.is_muted)
+        self.audio.set_volume(self.video_params.volume)
+        self.audio.set_muted(self.video_params.is_muted)
 
-        self.set_loop_start_time(self.video_params.loop_start)
-        self.set_loop_end_time(self.video_params.loop_end)
+        self.loop.set_start_time(self.video_params.loop_start)
+        self.loop.set_end_time(self.video_params.loop_end)
         self.set_rate(self.video_params.rate, is_silent=True)
 
         self.set_auto_reload_timer(self.video_params.auto_reload_timer_min)
@@ -2880,58 +2874,6 @@ class VideoBlock(QWidget):
             self.reload()
         else:
             self.video_driver.set_deinterlace(deinterlace, mode)
-
-    @only_seekable
-    def toggle_loop_random(self):
-        self.set_loop_random(not self.video_params.is_start_random)
-
-    def set_loop_random(self, is_start_random: bool):
-        """Start each pass somewhere at random, or where the loop starts.
-
-        Kept for a video stopped or still loading too, which goes by it
-        once it plays, and for one that is live, which never loops.
-        """
-
-        self.video_params.is_start_random = is_start_random
-
-    @only_seekable
-    def set_loop_start(self):
-        self.set_loop_start_time(self.time)
-
-    @only_seekable
-    def set_loop_start_time(self, new_time):
-        if None not in {self.video_params.loop_end, new_time}:
-            if new_time >= self.video_params.loop_end:
-                return
-
-        self.video_params.loop_start = new_time
-
-        if new_time is None:
-            self.loop_start_change.emit(0)
-        else:
-            self.loop_start_change.emit(new_time / self.video_driver.length)
-
-    @only_seekable
-    def set_loop_end(self):
-        self.set_loop_end_time(self.time)
-
-    @only_seekable
-    def set_loop_end_time(self, new_time):
-        if None not in {self.video_params.loop_start, new_time}:
-            if new_time <= self.video_params.loop_start:
-                return
-
-        self.video_params.loop_end = new_time
-
-        if new_time is None:
-            self.loop_end_change.emit(100.0)
-        else:
-            self.loop_end_change.emit(new_time / self.video_driver.length)
-
-    @only_seekable
-    def reset_loop(self):
-        self.set_loop_start_time(None)
-        self.set_loop_end_time(None)
 
     @property
     def seek_marks(self) -> tuple[SeekMark, ...]:
@@ -3267,43 +3209,6 @@ class VideoBlock(QWidget):
         self._in_progress_timer.start()
 
         self.video_driver.set_pause(paused)
-
-    def mute_unmute(self):
-        self.set_muted(not self.video_params.is_muted)
-
-    @only_initialized
-    def set_muted(self, muted):
-        self.video_params.is_muted = muted
-
-        self.video_driver.audio_set_mute(self.video_params.is_muted)
-
-        self.is_muted_change.emit(self.video_params.is_muted)
-
-    @only_initialized
-    def set_volume(self, percent):
-        self.video_params.volume = round(percent, 2)
-
-        self.video_driver.audio_set_volume(self.video_params.volume)
-
-        self.volume_change.emit(percent)
-
-    @only_initialized
-    def volume_increase(self):
-        self.set_muted(False)
-
-        self.video_params.volume += 0.05
-        self.video_params.volume = min(round(self.video_params.volume, 2), 1.0)
-
-        self.set_volume(self.video_params.volume)
-
-    @only_initialized
-    def volume_decrease(self):
-        self.set_muted(False)
-
-        self.video_params.volume -= 0.05
-        self.video_params.volume = max(round(self.video_params.volume, 2), 0)
-
-        self.set_volume(self.video_params.volume)
 
     def play_pause(self):
         """Play or pause as the viewer asked, the others following where
@@ -3895,7 +3800,7 @@ class VideoBlock(QWidget):
 
         self._cancel_steps()
 
-        self.reset_loop()
+        self.loop.reset()
         self.video_params.current_position = 0
         self._forget_files_of_previous_video()
         # its bookmarks, if it has any, come with the file: see bookmarks
@@ -3952,68 +3857,3 @@ class VideoBlock(QWidget):
 
         self.title = new_name
         self.color = self.video_params.color.as_hex()
-
-    @only_initialized
-    @only_with_video_tacks
-    def take_screenshot(self, is_quiet=False):
-        # Every video at once would be a warning box per video that fails,
-        # one on top of the other, and all for the same reason more often
-        # than not. Quiet says so on the video's overlay instead.
-        self._is_screenshot_quiet = is_quiet
-
-        self.video_driver.take_screenshot()
-
-    def _screenshot_taken(self, frame, view):
-        if frame is None:
-            self._report_screenshot_failure(
-                translate("Warning", "There is no video frame to take a screenshot of")
-            )
-            return
-
-        try:
-            name = ScreenshotName(
-                template=Settings().get("screenshots/filename_template"),
-                title=self.title or self.video_params.uri_name,
-                position_ms=0 if self.is_live else (self.time or 0),
-                now=datetime.now().astimezone(),
-            )
-
-            job = ScreenshotJob(
-                source=frame,
-                directory=screenshots_dir(Settings().get("screenshots/dir")),
-                name=name,
-                image_format=Settings().get("screenshots/format"),
-                jpg_quality=Settings().get("screenshots/jpg_quality"),
-                view=view,
-            )
-        except Exception:
-            if isinstance(frame, str):
-                remove_frame_file(frame)
-            raise
-
-        qt_connect(
-            (job.saved, self._screenshot_saved),
-            (job.failed, self._screenshot_failed),
-            (job.saved, partial(self._screenshot_jobs.discard, job)),
-            (job.failed, partial(self._screenshot_jobs.discard, job)),
-        )
-
-        self._screenshot_jobs.add(job)
-        job.start()
-
-    def _screenshot_saved(self, _path):
-        self.show_overlay()
-        self.info_change.emit(translate("Screenshot", "Screenshot saved"))
-
-    def _screenshot_failed(self, error):
-        self._report_screenshot_failure(
-            translate("Warning", "Could not save the screenshot"), error
-        )
-
-    def _report_screenshot_failure(self, message, detail=""):
-        if self._is_screenshot_quiet:
-            self.show_overlay()
-            self.info_change.emit(translate("Screenshot", "Screenshot failed"))
-            return
-
-        self._ctx.commands.warning(f"{message}\n\n{detail}" if detail else message)

@@ -432,8 +432,8 @@ class TestTheLoop:
         )
 
         block.seek(25000)
-        block.set_loop_start_time(20000)
-        block.set_loop_end_time(40000)
+        block.loop.set_start_time(20000)
+        block.loop.set_end_time(40000)
 
         return block
 
@@ -673,7 +673,7 @@ class TestTheMenu:
         manager = _Manager(block)
 
         block.seek(25000)
-        block.set_loop_start_time(20000)
+        block.loop.set_start_time(20000)
 
         enabled = [manager.is_active_bookmark_reachable(i) for i in range(2)]
 
@@ -715,7 +715,7 @@ class TestClickingAMarker:
 
     def test_one_outside_the_loop_goes_nowhere(self, block):
         block.seek(25000)
-        block.set_loop_start_time(20000)
+        block.loop.set_start_time(20000)
 
         synced = []
         block.sync_time.connect(synced.append)
@@ -796,7 +796,7 @@ class TestAMarkersMenu:
 
     def test_jump_to_one_outside_the_loop_is_grayed_out(self, block):
         block.seek(25000)
-        block.set_loop_start_time(20000)
+        block.loop.set_start_time(20000)
 
         jump = self._item(block.bookmarker.marker_menu((10000,)), "Jump to Bookmark")
 
@@ -995,7 +995,7 @@ class TestClickingAMarkerAgainAndAgain:
         block = make_block(self.SHARED)
         # past the one at 30.6, not near enough the next to be on it
         block.seek(30800)
-        block.set_loop_start_time(30500)
+        block.loop.set_start_time(30500)
 
         assert [self._click(block) for _ in range(3)] == [31200, 30600, 31200]
 

@@ -9,7 +9,6 @@ let past them as far as leaves half the picture on show.
 """
 
 import json
-from functools import partial
 from types import SimpleNamespace
 from unittest.mock import MagicMock, Mock
 
@@ -41,6 +40,7 @@ from gridplayer.vlc_player.static import VideoTrack
 from gridplayer.widgets import video_block_view as video_block_view_module
 from gridplayer.widgets import video_frame_vlc_base as vlc_base
 from gridplayer.widgets.video_block import VideoBlock
+from gridplayer.widgets.video_block_loop import LoopControl
 from gridplayer.widgets.video_block_view import ViewControl
 from gridplayer.widgets.video_frame_vlc_hw_sp import VideoFrameVLCHWSP
 from tests.conftest import mock_block_parts
@@ -234,9 +234,10 @@ def _all_videos_submenu(name):
     return next(item for item in video if isinstance(item, tuple) and item[0] == name)
 
 
-def _assert_set_for_all(name, param, owner=ViewControl):
+def _assert_set_for_all(name, param, owner=ViewControl, method=None):
     """On and Off, each setting it so for every video, and ticked where
-    every video already has it so."""
+    every video already has it so; method is what the manager's all_command
+    signal is wired to, where it is named otherwise."""
 
     assert name in SUBMENUS
 
@@ -245,7 +246,7 @@ def _assert_set_for_all(name, param, owner=ViewControl):
         target, command, arg = action["func"]
 
         assert (target, arg) == ("all", value)
-        assert hasattr(owner, command)
+        assert hasattr(owner, method or command)
         assert hasattr(VideoBlocksManager, f"all_{command}")
         assert action["check_if"] == ("is_all_videos_param_set_to", param, value)
 
@@ -402,7 +403,9 @@ class TestTheMenu:
             "Random Loop On [ALL]",
             "Random Loop Off [ALL]",
         )
-        _assert_set_for_all("Random Loop", "is_start_random", owner=VideoBlock)
+        _assert_set_for_all(
+            "Random Loop", "is_start_random", owner=LoopControl, method="set_random"
+        )
 
     def test_the_old_flips_for_all_are_gone(self):
         """Each video flipped its own way: mixed, they stayed mixed."""
@@ -795,12 +798,12 @@ class TestForEveryVideo:
         block = Mock(spec=VideoBlock)
         block.video_params = Video(uri=URI)
         block.is_live = False
-        block.set_loop_random = partial(VideoBlock.set_loop_random, block)
+        block.loop = LoopControl(block)
 
-        VideoBlock.set_loop_random(block, True)
+        block.loop.set_random(True)
         assert block.video_params.is_start_random
 
-        VideoBlock.toggle_loop_random(block)
+        block.loop.toggle_random()
         assert not block.video_params.is_start_random
 
 

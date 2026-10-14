@@ -1,5 +1,6 @@
 """The sound of a video block: its tracks, where they go out of the machine,
-the languages it would rather be heard in, and audio files kept beside it.
+the languages it would rather be heard in, audio files kept beside it, and
+how loud it is.
 
 A dubbed stream that changes its language by loading another rung is the
 block's to follow (see VideoBlock.follow_audio_language); everything that
@@ -671,6 +672,47 @@ class AudioControl(VideoBlockPart):
         )
 
         self.add_external(found)
+
+    def mute_unmute(self):
+        self.set_muted(not self._block.video_params.is_muted)
+
+    @only_initialized
+    def set_muted(self, muted):
+        self._block.video_params.is_muted = muted
+
+        self._block.video_driver.audio_set_mute(self._block.video_params.is_muted)
+
+        self._block.is_muted_change.emit(self._block.video_params.is_muted)
+
+    @only_initialized
+    def set_volume(self, percent):
+        self._block.video_params.volume = round(percent, 2)
+
+        self._block.video_driver.audio_set_volume(self._block.video_params.volume)
+
+        self._block.volume_change.emit(percent)
+
+    @only_initialized
+    def volume_increase(self):
+        self.set_muted(False)
+
+        self._block.video_params.volume += 0.05
+        self._block.video_params.volume = min(
+            round(self._block.video_params.volume, 2), 1.0
+        )
+
+        self.set_volume(self._block.video_params.volume)
+
+    @only_initialized
+    def volume_decrease(self):
+        self.set_muted(False)
+
+        self._block.video_params.volume -= 0.05
+        self._block.video_params.volume = max(
+            round(self._block.video_params.volume, 2), 0
+        )
+
+        self.set_volume(self._block.video_params.volume)
 
     @only_initialized
     def set_channel_mode(self, mode):

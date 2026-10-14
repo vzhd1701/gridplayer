@@ -55,6 +55,8 @@ def _block_parts():
     from gridplayer.widgets.video_block_audio import AudioControl
     from gridplayer.widgets.video_block_bookmarker import Bookmarker
     from gridplayer.widgets.video_block_chapters import ChapterControl
+    from gridplayer.widgets.video_block_loop import LoopControl
+    from gridplayer.widgets.video_block_screenshot import ScreenshotControl
     from gridplayer.widgets.video_block_sponsorblock import SponsorBlockControl
     from gridplayer.widgets.video_block_subtitles import SubtitleControl
     from gridplayer.widgets.video_block_view import ViewControl
@@ -63,6 +65,8 @@ def _block_parts():
         "audio": AudioControl,
         "bookmarker": Bookmarker,
         "chapters": ChapterControl,
+        "loop": LoopControl,
+        "screenshot": ScreenshotControl,
         "sponsorblock": SponsorBlockControl,
         "subtitles": SubtitleControl,
         "view": ViewControl,

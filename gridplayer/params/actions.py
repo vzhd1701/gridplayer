@@ -338,7 +338,7 @@ ACTIONS = MappingProxyType(
         "Random Loop": {
             "title": translate("Actions", "Random Loop"),
             "icon": "loop-random",
-            "func": ("active", "toggle_loop_random"),
+            "func": ("active", "loop.toggle_random"),
             "check_if": ("is_active_param_set_to", "is_start_random", True),
             "show_if": "is_active_seekable",
         },
@@ -346,21 +346,21 @@ ACTIONS = MappingProxyType(
             "title": translate("Actions", "Set Loop Start"),
             "key": ",",
             "icon": "loop-start",
-            "func": ("active", "set_loop_start"),
+            "func": ("active", "loop.set_start"),
             "show_if": "is_active_seekable",
         },
         "Set Loop End": {
             "title": translate("Actions", "Set Loop End"),
             "key": ".",
             "icon": "loop-end",
-            "func": ("active", "set_loop_end"),
+            "func": ("active", "loop.set_end"),
             "show_if": "is_active_seekable",
         },
         "Loop Reset": {
             "title": translate("Actions", "Loop Reset"),
             "key": "/",
             "icon": "loop-reset",
-            "func": ("active", "reset_loop"),
+            "func": ("active", "loop.reset"),
             "show_if": "is_active_seekable",
         },
         "Loop Chapter": {
@@ -1097,7 +1097,7 @@ ACTIONS = MappingProxyType(
             "title": translate("Actions", "Take Screenshot"),
             "key": "Alt+S",
             "icon": "screenshot",
-            "func": ("active", "take_screenshot"),
+            "func": ("active", "screenshot.take"),
             "show_if": "is_active_has_video",
         },
         "Seek Others (Percent)": {
@@ -1306,13 +1306,13 @@ ACTIONS = MappingProxyType(
             "title": translate("Audio Volume", "Increase Volume"),
             "icon": "volume-increase",
             "show_if": "is_active_has_audio",
-            "func": ("active", "volume_increase"),
+            "func": ("active", "audio.volume_increase"),
         },
         "Audio Volume - Decrease": {
             "title": translate("Audio Volume", "Decrease Volume"),
             "icon": "volume-decrease",
             "show_if": "is_active_has_audio",
-            "func": ("active", "volume_decrease"),
+            "func": ("active", "audio.volume_decrease"),
         },
         "Audio Volume - Mute / Unmute": {
             "title": (
@@ -1322,7 +1322,7 @@ ACTIONS = MappingProxyType(
             "icon": ("volume-mute", "volume-unmute"),
             "toggle": ("is_active_param_set_to", "is_muted", True),
             "show_if": "is_active_has_audio",
-            "func": ("active", "mute_unmute"),
+            "func": ("active", "audio.mute_unmute"),
         },
         "Copy File Name": {
             "title": translate("Actions", "Copy File Name"),

@@ -48,7 +48,7 @@ from gridplayer.utils.screenshots import (
     transformed_image,
     unknown_specifiers,
 )
-from gridplayer.widgets.video_block import VideoBlock
+from gridplayer.widgets.video_block_screenshot import ScreenshotControl
 
 NOW = datetime(2026, 9, 24, 13, 5, 9, tzinfo=timezone.utc)
 
@@ -541,7 +541,7 @@ class TestTheAction:
     def test_it_asks_the_active_video(self):
         action = ACTIONS["Take Screenshot"]
 
-        assert action["func"] == ("active", "take_screenshot")
+        assert action["func"] == ("active", "screenshot.take")
         assert action["show_if"] == "is_active_has_video"
 
     def test_it_is_not_one_of_the_grid_snapshots(self):
@@ -578,18 +578,21 @@ class TestTheActionForAll:
 
 
 class TestHowAFailureIsSaid:
-    def _block(self, is_quiet):
-        return SimpleNamespace(
-            _is_screenshot_quiet=is_quiet,
+    def _screenshot(self, is_quiet):
+        block = SimpleNamespace(
             show_overlay=MagicMock(),
             info_change=MagicMock(),
             _ctx=SimpleNamespace(commands=SimpleNamespace(warning=MagicMock())),
         )
+        screenshot = ScreenshotControl(block)
+        screenshot._is_quiet = is_quiet
+
+        return block, screenshot
 
     def test_one_video_gets_a_warning_with_the_reason(self):
-        block = self._block(is_quiet=False)
+        block, screenshot = self._screenshot(is_quiet=False)
 
-        VideoBlock._report_screenshot_failure(block, "Could not save", "disk full")
+        screenshot._report_failure("Could not save", "disk full")
 
         block._ctx.commands.warning.assert_called_once_with(
             "Could not save\n\ndisk full"
@@ -599,9 +602,9 @@ class TestHowAFailureIsSaid:
     def test_every_video_at_once_says_so_on_the_overlay(self):
         """Not a warning box per video, one on top of the other."""
 
-        block = self._block(is_quiet=True)
+        block, screenshot = self._screenshot(is_quiet=True)
 
-        VideoBlock._report_screenshot_failure(block, "Could not save", "disk full")
+        screenshot._report_failure("Could not save", "disk full")
 
         block._ctx.commands.warning.assert_not_called()
         block.show_overlay.assert_called_once()
