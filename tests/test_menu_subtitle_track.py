@@ -100,18 +100,20 @@ def _manager(
         return language_name(track.language) or track.language
 
     block = SimpleNamespace(
-        subtitle_tracks=subtitle_tracks,
-        has_subtitles=bool(subtitle_tracks),
-        subtitle_track_showing=showing,
-        preferred_subtitle_track_id=preferred,
-        default_subtitle_track_id=default,
-        external_subtitle_track_ids=tuple(external_tracks),
-        external_subtitle_tracks=external_tracks,
-        offered_subtitle_files=list(offered),
-        subtitle_file_name=lambda path: path.name,
-        external_subtitle_track_name=_external_track_name,
-        subtitle_number_in_file=_number_in_file,
-        subtitle_language_key=_language_key,
+        subtitles=SimpleNamespace(
+            tracks=subtitle_tracks,
+            has_any=bool(subtitle_tracks),
+            track_showing=showing,
+            preferred_track_id=preferred,
+            default_track_id=default,
+            external_track_ids=tuple(external_tracks),
+            external_tracks=external_tracks,
+            offered_files=list(offered),
+            file_name=lambda path: path.name,
+            external_track_name=_external_track_name,
+            number_in_file=_number_in_file,
+            language_key=_language_key,
+        ),
         is_local_file=is_local_file,
         video_params=SimpleNamespace(
             subtitle_selection=SubtitleDisabled() if selection is None else selection,

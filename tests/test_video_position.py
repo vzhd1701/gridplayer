@@ -43,6 +43,7 @@ from gridplayer.widgets import video_frame_vlc_base as vlc_base
 from gridplayer.widgets.video_block import VideoBlock
 from gridplayer.widgets.video_block_view import ViewControl
 from gridplayer.widgets.video_frame_vlc_hw_sp import VideoFrameVLCHWSP
+from tests.conftest import mock_block_parts
 
 URI = "http://example.com/a.mp4"
 NO_SHIFT = VideoShift(0, 0)
@@ -875,7 +876,7 @@ def test_a_snapshot_puts_the_picture_back_where_it_was():
     block.video_tracks = [0]
     block.is_video_initialized = True
     block._default_title = "a"
-    block.view = Mock(spec=ViewControl)
+    mock_block_parts(block)
 
     snapshot = Video(
         uri=URI,
@@ -896,7 +897,7 @@ def test_a_snapshot_puts_back_what_the_zoom_goes_about():
     block.video_tracks = [0]
     block.is_video_initialized = True
     block._default_title = "a"
-    block.view = Mock(spec=ViewControl)
+    mock_block_parts(block)
 
     VideoBlock.apply_snapshot(block, Video(uri=URI, is_zoom_to_cursor=True))
 

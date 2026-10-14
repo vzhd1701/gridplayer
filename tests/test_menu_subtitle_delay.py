@@ -12,7 +12,7 @@ from gridplayer.player.manager import Commands
 from gridplayer.player.managers.actions import ActionsManager
 from gridplayer.player.managers.active_block import ActiveBlockManager
 from gridplayer.player.managers.video_blocks import VideoBlocksManager
-from gridplayer.widgets.video_block import VideoBlock
+from tests.conftest import is_block_command
 
 SUBMENU = "Subtitle Delay"
 
@@ -137,11 +137,11 @@ class TestWhereTheRowsLead:
         action = ACTIONS[name]
 
         assert action["func"][0] == "active"
-        assert hasattr(VideoBlock, action["func"][1])
+        assert is_block_command(action["func"][1])
         assert hasattr(ActiveBlockManager, action["show_if"])
 
         if action.get("value_getter"):
-            assert hasattr(VideoBlock, action["value_getter"][1])
+            assert is_block_command(action["value_getter"][1])
 
     @pytest.mark.parametrize("name", [row for row in ALL_ROWS if row != "---"])
     def test_an_all_row_names_something_every_video_can_do(self, name):
@@ -152,9 +152,10 @@ class TestWhereTheRowsLead:
 
         if isinstance(func, tuple):
             assert func[0] == "all"
-            # cmd_all emits all_<command> at every block's method of that name
+            # cmd_all emits all_<command> at every block's subtitles, at the
+            # method of that name less its "subtitle_"
             assert hasattr(VideoBlocksManager, f"all_{func[1]}")
-            assert hasattr(VideoBlock, func[1])
+            assert is_block_command(f"subtitles.{func[1].removeprefix('subtitle_')}")
         else:
             assert hasattr(VideoBlocksManager, func)
             assert hasattr(VideoBlocksManager, "cmd_set_subtitle_delay")
