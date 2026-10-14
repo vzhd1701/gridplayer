@@ -535,7 +535,7 @@ class TestWhatTheSiteSaysOfAnItem:
     PICTURE = "https://i.ytimg.com/vi/a/mqdefault.jpg"
 
     def _looked_up(self, block, mocker, details):
-        mocker.patch.object(block, "load_stream_quality")
+        mocker.patch.object(block.stream, "load_quality")
 
         block.set_video_url(
             ResolvedVideo(title="A", is_live=False, streams=Streams(), details=details)
@@ -1037,7 +1037,7 @@ class TestAChannelsOwnHeaders:
         block = make_cell(channels)
         stream = Stream(url=URL.format(0), protocol="hls_proxy")
 
-        origin = block._with_origin(stream, "best").origin
+        origin = block.stream._with_origin(stream, "best").origin
 
         assert origin.headers == self.HEADERS
 
@@ -1045,7 +1045,7 @@ class TestAChannelsOwnHeaders:
         block = make_cell(channels, index=1)
         stream = Stream(url=URL.format(1), protocol="hls_proxy")
 
-        assert block._with_origin(stream, "best").origin.headers is None
+        assert block.stream._with_origin(stream, "best").origin.headers is None
 
     def test_a_channel_on_its_own_with_its_own(
         self, make_cell, file_list, no_resolving

@@ -499,10 +499,10 @@ class TestSiteChapters:
     def test_they_last_through_a_switch_of_quality(self, url_block):
         block = url_block(_resolved())
 
-        block.switch_stream_quality("360p")
+        block.stream.switch_quality("360p")
 
         assert block.is_video_initialized
-        assert block.stream_quality_playing == "360p"
+        assert block.stream.quality_playing == "360p"
         assert block.chapters.all == SITE_CHAPTERS
 
     def test_a_file_put_in_the_urls_place_brings_none_of_them(

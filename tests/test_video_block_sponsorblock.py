@@ -177,7 +177,7 @@ class TestPlayingIntoOne:
         assert _seeks(block) == [SPONSOR.end_ms]
 
     def test_landing_seconds_short_on_a_stream_is_not_skipped_again(self, block):
-        block._is_adaptive = True
+        block.stream.is_adaptive = True
         _found(block, SPONSOR)
 
         _reported(block, 60100)
@@ -193,7 +193,7 @@ class TestPlayingIntoOne:
         Skipped again, it would land in the same place, over and over.
         """
 
-        block._is_adaptive = True
+        block.stream.is_adaptive = True
         _found(block, SPONSOR)
 
         _reported(block, 60100)
@@ -267,7 +267,7 @@ class TestSeekingIntoOne:
     def test_a_seek_past_one_landing_inside_it_on_a_stream_is_let_land(self, block):
         """The stream says where the keyframe before the aim is, first."""
 
-        block._is_adaptive = True
+        block.stream.is_adaptive = True
         _found(block, SPONSOR)
 
         block.seek(95000)
@@ -468,7 +468,7 @@ class TestLookingItUp:
         )
 
     def test_a_youtube_video_is_looked_up_as_it_resolves(self, block, mocker):
-        mocker.patch.object(block, "load_stream_quality")
+        mocker.patch.object(block.stream, "load_quality")
         fetch = mocker.patch.object(
             sponsorblock.sponsorblock_fetcher(), "fetch", return_value=None
         )
@@ -478,7 +478,7 @@ class TestLookingItUp:
         fetch.assert_called_once_with(VIDEO_ID, LENGTH)
 
     def test_anything_else_is_not(self, block, mocker):
-        mocker.patch.object(block, "load_stream_quality")
+        mocker.patch.object(block.stream, "load_quality")
         fetch = mocker.patch.object(sponsorblock.sponsorblock_fetcher(), "fetch")
 
         block.set_video_url(self._resolved(youtube_id=None))
@@ -487,7 +487,7 @@ class TestLookingItUp:
 
     def test_nor_anything_with_it_switched_off(self, block, mocker):
         Settings().set("sponsorblock/enabled", False)
-        mocker.patch.object(block, "load_stream_quality")
+        mocker.patch.object(block.stream, "load_quality")
         fetch = mocker.patch.object(sponsorblock.sponsorblock_fetcher(), "fetch")
 
         block.set_video_url(self._resolved())
@@ -495,7 +495,7 @@ class TestLookingItUp:
         fetch.assert_not_called()
 
     def test_the_answer_arriving_later_is_taken_up(self, block, mocker):
-        mocker.patch.object(block, "load_stream_quality")
+        mocker.patch.object(block.stream, "load_quality")
         mocker.patch.object(
             sponsorblock.sponsorblock_fetcher(), "fetch", return_value=None
         )

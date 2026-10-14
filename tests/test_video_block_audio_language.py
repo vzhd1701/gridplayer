@@ -1,7 +1,7 @@
 """Choosing which language a dubbed video plays in."""
 
 import logging
-from functools import partial
+from unittest.mock import Mock
 
 import pytest
 from PyQt5.QtCore import QSettings
@@ -15,8 +15,8 @@ from gridplayer.models.audio_selection import (
 from gridplayer.models.stream import STREAM_QUALITY_AUTO, Stream, Streams
 from gridplayer.models.video import Video
 from gridplayer.settings import Settings
-from gridplayer.widgets.video_block import VideoBlock
 from gridplayer.widgets.video_block_audio import AudioControl
+from gridplayer.widgets.video_block_stream import StreamControl
 
 
 @pytest.fixture(scope="module", autouse=True)
@@ -51,33 +51,42 @@ def _dubbed_ladder(original="en"):
     )
 
 
+@pytest.fixture(autouse=True)
+def _timers(mocker):
+    # a stand-in block is no QObject for the part's timers to belong to,
+    # and what matters is only whether they were started or stopped
+    mocker.patch(
+        "gridplayer.widgets.video_block_stream.QTimer",
+        side_effect=lambda *args, **kwargs: Mock(),
+    )
+
+
 def _block(mocker, languages="", streams=None):
     block = mocker.Mock()
     block._log = logging.getLogger("test")
     block.streams = _dubbed_ladder() if streams is None else streams
-    block._language_variants = VideoBlock._language_variants.fget(block)
     block.video_params = Video(uri="http://example.com/a.mp4")
     block.video_params.audio_languages = languages
     # this file is about the languages, so that is what these follow
     block.video_params.audio_selection = AudioPreferred()
     block.video_params.stream_quality = STREAM_QUALITY_AUTO
-    block._language_among = partial(VideoBlock._language_among, block)
-    block.follow_audio_language = partial(VideoBlock.follow_audio_language, block)
+
+    block.stream = StreamControl(block)
+    # what is loaded is the quality tests' business; here only that it is
+    mocker.patch.object(block.stream, "load_quality")
     return block
 
 
 def _language(block):
-    block._language_variants = VideoBlock._language_variants.fget(block)
-    return VideoBlock.audio_language.fget(block)
+    return block.stream.audio_language
 
 
 def _options(block):
-    return VideoBlock.audio_language_options.fget(block)
+    return block.stream.audio_language_options
 
 
 def _ladder(block):
-    block.audio_language = _language(block)
-    return VideoBlock.stream_ladder.fget(block)
+    return block.stream.ladder
 
 
 def test_the_preferred_language_is_the_one_played(mocker):
@@ -144,22 +153,22 @@ def test_the_whole_ladder_shows_when_there_is_one_language(mocker):
 def test_switching_language_reloads_at_the_same_size(mocker):
     block = _block(mocker, "en")
     block.video_params.stream_quality = "720p (en)"
-    block._audio_language_playing = "en"
+    block.stream._audio_language_playing = "en"
 
-    VideoBlock.set_audio_language(block, "tlh")
+    block.stream.set_audio_language("tlh")
 
     assert block.video_params.audio_selection == AudioLanguage(tag="tlh")
     block.reset.assert_called_once()
-    block.load_stream_quality.assert_called_once_with("720p (en)")
+    block.stream.load_quality.assert_called_once_with("720p (en)")
 
 
 def test_switching_language_leaves_the_preference_list_alone(mocker):
     """The list is what "Preferred" follows, and picking one is not that."""
 
     block = _block(mocker, "en, de")
-    block._audio_language_playing = "en"
+    block.stream._audio_language_playing = "en"
 
-    VideoBlock.set_audio_language(block, "tlh")
+    block.stream.set_audio_language("tlh")
 
     assert block.video_params.audio_languages == "en, de"
 
@@ -183,9 +192,9 @@ def test_an_explicit_language_the_video_no_longer_offers_is_dropped(mocker):
 def test_going_back_to_preferred_clears_the_pick(mocker):
     block = _block(mocker, "en")
     block.video_params.audio_selection = AudioLanguage(tag="tlh")
-    block._audio_language_playing = "tlh"
+    block.stream._audio_language_playing = "tlh"
 
-    VideoBlock.set_audio_language(block, None)
+    block.stream.set_audio_language(None)
 
     assert block.video_params.audio_selection == AudioPreferred()
     block.reset.assert_called_once()
@@ -195,23 +204,22 @@ def test_switching_language_calls_off_a_pending_quality_adapt(mocker):
     """The rung it was counting towards is not on the new ladder."""
 
     block = _block(mocker, "en")
-    block._audio_language_playing = "en"
+    block.stream._audio_language_playing = "en"
 
-    VideoBlock.set_audio_language(block, "cop")
+    block.stream.set_audio_language("cop")
 
-    block._quality_adapt_timer.stop.assert_called_once()
+    block.stream._adapt_timer.stop.assert_called_once()
 
 
 def test_switching_to_the_language_already_playing_does_nothing(mocker):
     block = _block(mocker, "en")
-    block._audio_language_playing = "tlh"
+    block.stream._audio_language_playing = "tlh"
     block.video_params.audio_selection = AudioLanguage(tag="tlh")
-    block.audio_language = _language(block)
 
-    VideoBlock.set_audio_language(block, "tlh")
+    block.stream.set_audio_language("tlh")
 
     block.reset.assert_not_called()
-    block.load_stream_quality.assert_not_called()
+    block.stream.load_quality.assert_not_called()
 
 
 def test_default_is_the_language_the_video_was_made_in(mocker):
@@ -228,20 +236,18 @@ def test_going_back_to_default_refetches_the_original(mocker):
 
     block = _block(mocker)
     block.video_params.audio_selection = AudioLanguage(tag="cop")
-    block._audio_language_playing = "cop"
-    block.audio_language = "en"
+    block.stream._audio_language_playing = "cop"
 
     AudioControl(block).apply_default()
 
     assert block.video_params.audio_selection == AudioDefault()
     block.reset.assert_called_once()
-    block.load_stream_quality.assert_called_once()
+    block.stream.load_quality.assert_called_once()
 
 
 def test_going_back_to_default_on_the_original_does_not_reload(mocker):
     block = _block(mocker)
-    block._audio_language_playing = "en"
-    block.audio_language = "en"
+    block.stream._audio_language_playing = "en"
 
     AudioControl(block).apply_default()
 
@@ -302,7 +308,7 @@ def test_only_the_chosen_language_is_handed_to_the_proxy(mocker):
     block = _block(mocker, "ja")
     stream = _paired_stream("en", "ja")
 
-    narrowed = VideoBlock._with_audio_language(block, stream)
+    narrowed = block.stream._with_audio_language(stream)
 
     assert {t.language for _, t in narrowed.audio_tracks.items()} == {"ja"}
 
@@ -313,7 +319,7 @@ def test_a_language_picked_by_hand_is_the_one_handed_to_the_proxy(mocker):
     block = _block(mocker, "ja")
     block.video_params.audio_selection = AudioLanguage(tag="en")
 
-    narrowed = VideoBlock._with_audio_language(block, _paired_stream("en", "ja"))
+    narrowed = block.stream._with_audio_language(_paired_stream("en", "ja"))
 
     assert {t.language for _, t in narrowed.audio_tracks.items()} == {"en"}
 
@@ -323,7 +329,7 @@ def test_every_rendition_of_the_language_is_handed_over(mocker):
 
     block = _block(mocker, "ja")
 
-    narrowed = VideoBlock._with_audio_language(block, _paired_stream("en", "ja"))
+    narrowed = block.stream._with_audio_language(_paired_stream("en", "ja"))
 
     assert len(narrowed.audio_tracks) == 2
 
@@ -332,11 +338,11 @@ def test_a_stream_with_one_audio_language_is_handed_over_untouched(mocker):
     block = _block(mocker, "ja")
     stream = _paired_stream("en")
 
-    assert VideoBlock._with_audio_language(block, stream) is stream
+    assert block.stream._with_audio_language(stream) is stream
 
 
 def test_a_stream_with_no_audio_tracks_is_handed_over_untouched(mocker):
     block = _block(mocker, "ja")
     stream = Stream(url="http://host/v", protocol="http")
 
-    assert VideoBlock._with_audio_language(block, stream) is stream
+    assert block.stream._with_audio_language(stream) is stream

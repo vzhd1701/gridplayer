@@ -81,7 +81,7 @@ def block(tmp_path, mocker):
     assert block.is_video_initialized
 
     # what a stream's stand-in would have said, where a file's cannot
-    block._is_adaptive = True
+    block.stream.is_adaptive = True
 
     block.set_time = mocker.spy(block.video_driver, "set_time")
 
@@ -200,7 +200,7 @@ class TestTurnedDown:
         assert _seeks(block) == [3000, LENGTH - 1000]
 
     def test_one_on_a_file_is_not_made_again(self, block):
-        block._is_adaptive = False
+        block.stream.is_adaptive = False
 
         block.seek(3000)
         block.seek(12000)

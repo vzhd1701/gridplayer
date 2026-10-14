@@ -13,6 +13,7 @@ from gridplayer.models.stream import (
     Streams,
 )
 from gridplayer.player.managers.active_block import ActiveBlockManager
+from tests.conftest import is_block_command
 
 
 @pytest.fixture(scope="module", autouse=True)
@@ -58,8 +59,7 @@ def _manager(ladder=None, quality=STREAM_QUALITY_AUTO, playing="720p"):
     ladder = _ladder() if ladder is None else ladder
 
     block = SimpleNamespace(
-        stream_ladder=ladder,
-        stream_quality_playing=playing,
+        stream=SimpleNamespace(ladder=ladder, quality_playing=playing),
         video_params=SimpleNamespace(stream_quality=quality),
     )
 
@@ -320,12 +320,10 @@ def test_the_standing_choices_leave_the_mark_to_the_rungs():
 def test_every_row_calls_something_that_exists_on_a_block():
     """A menu entry pointing at nothing fails silently at the click."""
 
-    from gridplayer.widgets.video_block import VideoBlock
-
     menu = _manager(ladder=_ladder(audio=(AUDIO_RUNG,))).menu_generator_stream_quality()
 
     called = [item["func"][1] for item in menu if item != "---"]
 
     assert called
     for name in called:
-        assert hasattr(VideoBlock, name), name
+        assert is_block_command(name), name

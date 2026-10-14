@@ -1,8 +1,8 @@
 """Applying the language preference to the tracks libVLC found in a file."""
 
 import logging
-from functools import partial
 from types import SimpleNamespace
+from unittest.mock import Mock
 
 import pytest
 from PyQt5.QtCore import QSettings
@@ -23,8 +23,8 @@ from gridplayer.vlc_player.static import (
     AudioTrack,
     wanted_audio_track_id,
 )
-from gridplayer.widgets.video_block import VideoBlock
 from gridplayer.widgets.video_block_audio import AudioControl
+from gridplayer.widgets.video_block_stream import StreamControl
 
 
 @pytest.fixture(scope="module", autouse=True)
@@ -122,6 +122,16 @@ def test_a_track_picked_by_hand_outranks_the_language_asked_for(mocker):
     assert _wanted(player) == 1
 
 
+@pytest.fixture(autouse=True)
+def _timers(mocker):
+    # a stand-in block is no QObject for the stream part's timers to belong
+    # to, and none of them is waited for here
+    mocker.patch(
+        "gridplayer.widgets.video_block_stream.QTimer",
+        side_effect=lambda *args, **kwargs: Mock(),
+    )
+
+
 def _block(mocker, languages="", tracks=None):
     block = mocker.Mock()
     block._log = logging.getLogger("test")
@@ -137,9 +147,10 @@ def _block(mocker, languages="", tracks=None):
     block.is_video_initialized = True
     # a file is not dubbed by the site, so nothing is served per language
     block.streams = Streams()
-    block._language_variants = Streams()
-    block.follow_audio_language = partial(VideoBlock.follow_audio_language, block)
     block.audio = AudioControl(block)
+    block.stream = StreamControl(block)
+    # what is loaded is the quality tests' business; here only that it is
+    mocker.patch.object(block.stream, "load_quality")
 
     return block
 
@@ -207,13 +218,12 @@ def test_going_back_to_preferred_refetches_a_dubbed_stream(mocker):
             for language in ("tlh", "en")
         }
     )
-    block.audio_language = "en"
-    block._audio_language_playing = "tlh"
+    block.stream._audio_language_playing = "tlh"
 
     block.audio.apply_preference()
 
     block.reset.assert_called_once()
-    block.load_stream_quality.assert_called_once()
+    block.stream.load_quality.assert_called_once()
 
 
 def test_the_preferred_track_is_found_by_language(mocker):

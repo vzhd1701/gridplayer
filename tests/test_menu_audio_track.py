@@ -108,11 +108,13 @@ def _manager(
             ),
             attached_file=next(iter(external_tracks.values()), None),
         ),
-        audio_language_options=languages,
-        audio_language=playing_language,
-        preferred_audio_language=preferred_language,
+        stream=SimpleNamespace(
+            audio_language_options=languages,
+            audio_language=playing_language,
+            preferred_audio_language=preferred_language,
+            audio_language_playing=playing_language,
+        ),
         is_local_file=is_local_file,
-        audio_language_playing=playing_language,
         video_params=SimpleNamespace(
             audio_selection=AudioPreferred() if selection is None else selection,
             external_audio=external,

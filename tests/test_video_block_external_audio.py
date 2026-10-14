@@ -4,7 +4,7 @@ import logging
 from types import SimpleNamespace
 
 import pytest
-from PyQt5.QtCore import QSettings
+from PyQt5.QtCore import QObject, QSettings
 from PyQt5.QtWidgets import QApplication
 
 from gridplayer.models.audio_selection import (
@@ -18,6 +18,7 @@ from gridplayer.settings import Settings
 from gridplayer.vlc_player.static import AudioTrack
 from gridplayer.widgets.video_block import VideoBlock
 from gridplayer.widgets.video_block_audio import AudioControl
+from gridplayer.widgets.video_block_stream import StreamControl
 
 
 @pytest.fixture(scope="module", autouse=True)
@@ -70,11 +71,12 @@ class _Driver:
         self.tracks_set.append(track_id)
 
 
-class _Block:
-    """A block with its real audio part, and no player behind it."""
+class _Block(QObject):
+    """A block with its real audio and stream parts, and no player behind it.
+
+    A QObject, for the stream part's timers to belong to."""
 
     is_local_file = VideoBlock.is_local_file
-    follow_audio_language = VideoBlock.follow_audio_language
 
     def __init__(
         self,
@@ -84,6 +86,8 @@ class _Block:
         autodiscover=True,
         external_id=None,
     ):
+        super().__init__()
+
         self._log = logging.getLogger("test-block")
 
         self.video_params = Video(uri=video_path)
@@ -112,6 +116,7 @@ class _Block:
         )
 
         self.audio = AudioControl(self)
+        self.stream = StreamControl(self)
 
         # the track picked, rather than the player told of it
         self.selected = []

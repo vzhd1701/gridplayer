@@ -10,6 +10,7 @@ from functools import partial
 from types import SimpleNamespace
 
 import pytest
+from PyQt5.QtCore import QObject
 from PyQt5.QtWidgets import QApplication, QWidget
 
 from gridplayer.models.audio_selection import (
@@ -29,6 +30,7 @@ from gridplayer.vlc_player.static import (
 )
 from gridplayer.widgets.video_block import VideoBlock
 from gridplayer.widgets.video_block_audio import AudioControl
+from gridplayer.widgets.video_block_stream import StreamControl
 
 
 @pytest.fixture(scope="module", autouse=True)
@@ -96,29 +98,20 @@ class _Driver:
         self.cur_audio_track_id = self.tracks_manager.audio_track
 
 
-class _Block:
-    """A block with its real audio part and the reload stubbed out."""
+class _Block(QObject):
+    """A block with its real audio and stream parts and the reload stubbed
+    out; a QObject, for the stream part's timers to belong to."""
 
-    _language_variants = VideoBlock._language_variants
-    audio_language_options = VideoBlock.audio_language_options
-    audio_language = VideoBlock.audio_language
-    _language_among = VideoBlock._language_among
-    preferred_audio_language = VideoBlock.preferred_audio_language
-    stream_ladder = VideoBlock.stream_ladder
     is_video_initialized = VideoBlock.is_video_initialized
     is_local_file = VideoBlock.is_local_file
-    audio_language_playing = VideoBlock.audio_language_playing
-
-    set_audio_language = VideoBlock.set_audio_language
-    follow_audio_language = VideoBlock.follow_audio_language
 
     def __init__(self):
+        super().__init__()
+
         self._log = logging.getLogger("test-block")
         self.streams = _ladder()
         self.video_params = Video(uri="http://example.com/v")
         self.video_driver = _Driver()
-        self._audio_language_playing = None
-        self._quality_adapt_timer = SimpleNamespace(stop=lambda: None)
         self._ctx = SimpleNamespace(
             commands=SimpleNamespace(
                 warning=lambda message: self.warnings.append(message)
@@ -131,6 +124,9 @@ class _Block:
         # a stream with nothing beside it, so every track is one of its own
         self.audio = AudioControl(self)
 
+        self.stream = StreamControl(self)
+        self.stream.load_quality = self.load_stream_quality
+
         self.load_stream_quality("best")
 
     @property
@@ -140,11 +136,14 @@ class _Block:
     def reset(self, is_link_kept=False):
         pass
 
+    def reload(self):
+        pass
+
     def load_stream_quality(self, wanted):
-        quality, _ = self.stream_ladder.by_quality(wanted)
+        quality, _ = self.stream.ladder.by_quality(wanted)
 
         self.video_params.stream_quality = quality
-        self._audio_language_playing = self.audio_language
+        self.stream._audio_language_playing = self.stream.audio_language
         self.reloads.append(quality)
 
         # what the player settles on when the new media comes up
@@ -273,7 +272,7 @@ def test_a_language_can_be_picked_again_after_disabling():
     _click(block, "Klingon")
 
     assert block.video_params.audio_selection == AudioLanguage(tag="tlh")
-    assert block.audio_language == "tlh"
+    assert block.stream.audio_language == "tlh"
 
 
 def test_disable_audio_works_when_the_video_track_came_back_unmapped():
@@ -317,7 +316,7 @@ def test_disable_audio_reaches_the_player_after_a_language_was_picked():
 def test_disabling_audio_is_still_refused_when_the_picture_is_off():
     block = _Block()
     block.video_driver.cur_video_track_id = DISABLED_TRACK
-    block.load_stream_quality("best")
+    block.stream.load_quality("best")
 
     _click(block, "Disable Audio")
 
@@ -363,7 +362,7 @@ def test_default_brings_a_dubbed_video_back_to_its_own_language():
     _click(block, "Default")
 
     assert block.video_params.audio_selection == AudioDefault()
-    assert block.audio_language_playing == "en"
+    assert block.stream.audio_language_playing == "en"
     assert block.reloads[-1] == "720p (en)"
     # the rung on screen is on the ladder the quality menu lists
-    assert block.video_params.stream_quality in block.stream_ladder
+    assert block.video_params.stream_quality in block.stream.ladder

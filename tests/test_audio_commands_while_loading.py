@@ -14,7 +14,7 @@ from gridplayer.player.managers.active_block import ActiveBlockManager
 # nothing after a switch
 AUDIO_COMMANDS = (
     "audio.set_track",
-    "set_audio_language",
+    "stream.set_audio_language",
     "audio.apply_preference",
     "audio.languages_dialog",
     "audio.get_languages",
