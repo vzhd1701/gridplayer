@@ -780,7 +780,7 @@ class TestOnTheCell:
         assert block.video_status.detail == "Try 1 of 3 · Server HTTP 503"
         assert block.overlay.mode is OverlayMode.LOADING
 
-        block._network_retry_timer.stop()
+        block.recovery._retry_timer.stop()
 
     def test_a_list_item_says_when_the_next_one_comes(self, make_cell, tmp_path):
         files = [tmp_path / name for name in ("a.mp4", "b.mp4")]
@@ -802,7 +802,7 @@ class TestOnTheCell:
         assert not block.overlay.next_button.isHidden()
         assert block.overlay.next_button.text == "Next"
 
-        block._skip_failed_timer.stop()
+        block.recovery.stop_skip()
 
     def test_a_list_played_back_to_front_says_the_one_before_comes(
         self, make_cell, tmp_path
@@ -815,7 +815,7 @@ class TestOnTheCell:
         assert not block.overlay.next_button.isHidden()
         assert block.overlay.next_button.text == "Previous"
 
-        block._skip_failed_timer.stop()
+        block.recovery.stop_skip()
 
     def test_its_details_in_full(self, make_cell, mocker):
         block = make_cell(
@@ -864,17 +864,17 @@ class TestOnTheCell:
         while_read = []
         mocker.patch(
             "gridplayer.widgets.video_block.ErrorDetailsDialog.exec_",
-            side_effect=lambda: while_read.append(block._skip_failed_timer.isActive()),
+            side_effect=lambda: while_read.append(block.recovery.is_skip_counting),
         )
 
         block.show_error_details()
 
         assert while_read == [False]
         # closed with nothing done in it: on through the list as before
-        assert block._skip_failed_timer.isActive()
+        assert block.recovery.is_skip_counting
         assert block.video_status.note == "Next file in 2 s"
 
-        block._skip_failed_timer.stop()
+        block.recovery.stop_skip()
 
     def test_its_try_again_for_the_item_that_failed(self, make_cell, tmp_path, mocker):
         block, files = _failed_list_item(make_cell, tmp_path)
@@ -887,7 +887,7 @@ class TestOnTheCell:
 
         assert block.video_params.uri == files[0]
         assert not block._is_error
-        assert not block._skip_failed_timer.isActive()
+        assert not block.recovery.is_skip_counting
 
     def test_next_goes_the_way_the_list_goes_by_itself(
         self, make_cell, tmp_path, mocker
@@ -953,12 +953,12 @@ class TestOnTheCell:
             resolve_error(_http_error(503), "https://site.example/watch")
         )
         block.url_resolver.error.emit()
-        assert block._network_retry_timer.isActive()
+        assert block.recovery._retry_timer.isActive()
 
         block.stop_playback()
 
-        assert not block._network_retry_timer.isActive()
-        assert block._network_retries == 0
+        assert not block.recovery._retry_timer.isActive()
+        assert block.recovery._retries == 0
         assert block.overlay.mode is OverlayMode.STOPPED
 
     def test_stopped_from_the_menu_its_list_goes_on_no_further(
@@ -968,7 +968,7 @@ class TestOnTheCell:
 
         block.stop_playback()
 
-        assert not block._skip_failed_timer.isActive()
+        assert not block.recovery.is_skip_counting
         assert block.video_params.uri == files[0]
 
     def test_stopped_while_its_link_resolves_what_it_finds_is_let_go(self, make_cell):
@@ -1045,7 +1045,7 @@ class TestOnTheCell:
 
         menu.cmd_active("stop_playback")
 
-        assert not block._network_retry_timer.isActive()
+        assert not block.recovery._retry_timer.isActive()
         assert block.overlay.mode is OverlayMode.STOPPED
 
     def test_the_menu_stops_its_list_going_on_once_it_failed(self, make_cell, tmp_path):
@@ -1056,7 +1056,7 @@ class TestOnTheCell:
 
         menu.cmd_active("stop_playback")
 
-        assert not block._skip_failed_timer.isActive()
+        assert not block.recovery.is_skip_counting
         assert block.video_params.uri == files[0]
         assert block.overlay.mode is OverlayMode.STOPPED
 
@@ -1086,26 +1086,26 @@ class TestAListOfLinks:
     def test_one_gone_is_not_reloaded_but_the_next_played(self, make_cell):
         block = _failed_link(make_cell, _http_error(404))
 
-        assert not block._network_retry_timer.isActive()
-        assert block._skip_failed_timer.isActive()
+        assert not block.recovery._retry_timer.isActive()
+        assert block.recovery.is_skip_counting
         assert block.video_status.error.code == "HTTP 404"
 
-        block._skip_failed_timer.timeout.emit()
+        block.recovery._skip_timer.timeout.emit()
 
         assert block.video_params.uri == "https://site.example/1"
 
     def test_one_that_may_answer_otherwise_is_reloaded_first(self, make_cell):
         block = _failed_link(make_cell, _http_error(503))
 
-        assert block._network_retry_timer.isActive()
-        assert not block._skip_failed_timer.isActive()
+        assert block.recovery._retry_timer.isActive()
+        assert not block.recovery.is_skip_counting
 
     def test_reloaded_where_set_to_show_the_error(self, make_cell):
         block = _failed_link(
             make_cell, _http_error(404), list_fail_action=ListFailAction.SHOW_ERROR
         )
 
-        assert block._network_retry_timer.isActive()
+        assert block.recovery._retry_timer.isActive()
 
     def test_reloaded_once_it_played(self, make_cell):
         """A link that ran out, while it played, may come back with a new
@@ -1116,7 +1116,7 @@ class TestAListOfLinks:
 
         _fail(block, _http_error(403))
 
-        assert block._network_retry_timer.isActive()
+        assert block.recovery._retry_timer.isActive()
 
     def test_the_next_one_is_not_taken_to_have_played(self, make_cell):
         block = _failed_link(make_cell, None)
@@ -1125,7 +1125,7 @@ class TestAListOfLinks:
 
         _fail(block, _http_error(403))
 
-        assert not block._network_retry_timer.isActive()
+        assert not block.recovery._retry_timer.isActive()
 
     def test_one_with_no_list_is_reloaded(self, make_cell):
         block = make_cell(
@@ -1136,17 +1136,17 @@ class TestAListOfLinks:
 
         _fail(block, _http_error(404))
 
-        assert block._network_retry_timer.isActive()
+        assert block.recovery._retry_timer.isActive()
 
     def test_its_menu_is_there_once_it_failed(self, make_cell):
         block = _failed_link(make_cell, _http_error(404))
         menu = _menu_on(block)
 
-        menu.cmd_active("set_list_fail_action", ListFailAction.SHOW_ERROR)
+        menu.cmd_active("recovery.set_fail_action", ListFailAction.SHOW_ERROR)
 
         assert block.video_params.list_fail_action is ListFailAction.SHOW_ERROR
-        assert not block._skip_failed_timer.isActive()
-        assert menu.cmd_active("get_list_fail_wait") == "2 s"
+        assert not block.recovery.is_skip_counting
+        assert menu.cmd_active("recovery.get_fail_wait") == "2 s"
 
 
 def _failed_link(make_cell, error, **video_kwargs):
@@ -1201,7 +1201,7 @@ def _failed_list_item(make_cell, tmp_path, end_action=VideoEndAction.NEXT_FILE):
 
     block.video_driver_error("Player error")
 
-    assert block._skip_failed_timer.isActive()
+    assert block.recovery.is_skip_counting
 
     return block, files
 

@@ -55,15 +55,12 @@ from gridplayer.models.video import (
 from gridplayer.params import env
 from gridplayer.params.static import (
     CHROME_MIN_SIZE,
-    MAX_LIST_FAIL_WAIT_SEC,
     MAX_RATE,
     MIN_RATE,
     OVERLAY_ACTIVITY_EVENT,
     PLAYER_ID_LENGTH,
     ListEndAction,
-    ListFailAction,
     ListSourceKind,
-    NetworkRetryMode,
     VideoAspect,
     VideoDeinterlace,
     VideoDeinterlaceMode,
@@ -124,6 +121,7 @@ from gridplayer.widgets.video_block_guards import (
     only_with_video_tacks,
 )
 from gridplayer.widgets.video_block_loop import LoopControl
+from gridplayer.widgets.video_block_recovery import RecoveryControl
 from gridplayer.widgets.video_block_screenshot import ScreenshotControl
 from gridplayer.widgets.video_block_sponsorblock import SponsorBlockControl
 from gridplayer.widgets.video_block_subtitles import SubtitleControl
@@ -162,17 +160,6 @@ SEEK_RETRIES = 2
 # as good as one that never follows it at all
 MAX_QUALITY_ADAPT_DELAY_S = 3600
 
-MAX_NETWORK_RETRIES = 1000
-
-# how long to wait before trying a failed network video again. A host that
-# just turned us away is unlikely to change its mind within a second, and
-# retrying forever at full speed would be indistinguishable from an attack
-NETWORK_RETRY_DELAYS_S = (1, 2, 5, 15, 30)
-
-# how many items of a list in a row may fail for the network, or a site
-# turning requests away, before it is left at that
-MAX_NETWORK_FAILURES_IN_A_ROW = 10
-
 # the place, over the video, of one taken off its list while it played
 NOT_ON_LIST_TXT = "\u2013"
 
@@ -186,13 +173,6 @@ LEAVING_END_ACTIONS = frozenset(
         VideoEndAction.CLOSE,
     }
 )
-
-
-def list_fail_wait_txt(wait_sec: int) -> str:
-    if not wait_sec:
-        return translate("When Video Fails", "At once")
-
-    return translate("When Video Fails", "{SECONDS} s").format(SECONDS=wait_sec)
 
 
 class VideoBlock(QWidget):
@@ -296,10 +276,6 @@ class VideoBlock(QWidget):
         self._reload_timer = QTimer(self)
         self._reload_timer.timeout.connect(self.reload)
 
-        self._network_retries = 0
-        self._network_retry_countdown = 0
-        self._network_retry_delay = 0
-
         # how far it got loading: the stage it is at, and the ones it goes
         # through
         self._load_stage: LoadStage | None = None
@@ -313,18 +289,6 @@ class VideoBlock(QWidget):
         self._error_tries = 0
         self._proxied_url: str | None = None
         self._stream_loaded_at = 0.0
-
-        # the note under a failed item's card counting down to the next one;
-        # precise, as the wait it counts down: a coarse timer on Linux runs
-        # up to 5% long, and 2 s left said "3 s"
-        self._skip_note_timer = QTimer(self)
-        self._skip_note_timer.setTimerType(Qt.PreciseTimer)
-        self._skip_note_timer.setInterval(1000)
-        self._skip_note_timer.timeout.connect(self._refresh_skip_note)
-
-        self._network_retry_timer = QTimer(self)
-        self._network_retry_timer.setInterval(1000)
-        self._network_retry_timer.timeout.connect(self._network_retry_tick)
 
         self._stream_quality_playing = None
         self._audio_language_playing = None
@@ -362,6 +326,7 @@ class VideoBlock(QWidget):
         self.audio = AudioControl(self)
         self.loop = LoopControl(self)
         self.screenshot = ScreenshotControl(self)
+        self.recovery = RecoveryControl(self)
 
         # the next, previous or a random file of the folder, to put in this
         # one's place
@@ -394,19 +359,8 @@ class VideoBlock(QWidget):
             open_elsewhere=self._uris_open_elsewhere,
         )
 
-        # items of the list that would not play, one after the other: a
-        # list that has none that will is not gone round for ever; and of
-        # them, the ones that failed for the network or a site refusing
-        self._list_failures_in_a_row = 0
-        self._network_failures_in_a_row = 0
-
         # the List window is open on the cell, and plays in it
         self._is_list_window_shown = False
-
-        self._skip_failed_timer = QTimer(self)
-        self._skip_failed_timer.setSingleShot(True)
-        self._skip_failed_timer.setTimerType(Qt.PreciseTimer)
-        self._skip_failed_timer.timeout.connect(self._skip_failed_item)
 
         # the item playing has played since it was put in the cell: a
         # reload may yet bring it back, whatever it failed with
@@ -606,7 +560,7 @@ class VideoBlock(QWidget):
             (overlay.list_place_clicked, self.show_list_window),
             (overlay.stop_clicked, self.stop_playback),
             (overlay.retry_clicked, self.reload),
-            (overlay.next_clicked, self.skip_failed_item_now),
+            (overlay.next_clicked, self.recovery.skip_now),
             (overlay.details_clicked, self.show_error_details),
             (self.time_change, overlay.set_position),
             (self.volume_change, overlay.set_volume_position),
@@ -665,9 +619,8 @@ class VideoBlock(QWidget):
     def cleanup(self):
         self.overlay_hide_timer.stop()
         self._in_progress_timer.stop()
-        self._network_retry_timer.stop()
         self._quality_adapt_timer.stop()
-        self._skip_failed_timer.stop()
+        self.recovery.stop()
 
         self._log.debug(f"{self.id}: cleaning up resolver")
         self.url_resolver.cleanup()
@@ -738,21 +691,21 @@ class VideoBlock(QWidget):
         self._error_tries = 0
         self.set_status("error")
         self.cleanup()
-        self._schedule_skip_failed_item()
+        self.recovery.schedule_skip()
         self._show_error_card()
 
     def network_error(self):
-        if not self._is_reload_futile and self._schedule_network_retry():
+        if not self.recovery.is_reload_futile and self.recovery.schedule_retry():
             return
 
-        self._error_tries = self._network_retries
-        self._network_retries = 0
+        self._error_tries = self.recovery.retries
+        self.recovery.drop_retries()
 
         self._is_error = True
         self._is_state_change_in_progress = False
         self.set_status("network-error")
         self.cleanup()
-        self._schedule_skip_failed_item()
+        self.recovery.schedule_skip()
         self._show_error_card()
 
     def _show_error_card(self):
@@ -770,33 +723,8 @@ class VideoBlock(QWidget):
         self._error_stage = self._load_stage
         self._load_stage = None
 
-        self.video_status.show_error(error, self._skip_note())
+        self.video_status.show_error(error, self.recovery.skip_note())
         self._sync_overlay_mode()
-
-    def _skip_note(self) -> str:
-        if not self._skip_failed_timer.isActive():
-            return self._given_up_txt()
-
-        if self._skip_failed_timer.interval() == 0:
-            return ""
-
-        seconds = max(1, -(-self._skip_failed_timer.remainingTime() // 1000))
-
-        if self._is_list_going_back:
-            return translate("Video Status", "Previous file in {SECONDS} s").format(
-                SECONDS=seconds
-            )
-
-        return translate("Video Status", "Next file in {SECONDS} s").format(
-            SECONDS=seconds
-        )
-
-    def _refresh_skip_note(self):
-        if not self._skip_failed_timer.isActive():
-            self._skip_note_timer.stop()
-
-        if self._is_error and self._last_error is not None:
-            self.video_status.show_error(self._last_error, self._skip_note())
 
     def show_error_details(self):
         """Everything known of why it failed, in a window of its own."""
@@ -808,9 +736,9 @@ class VideoBlock(QWidget):
 
         # held while it is read, for its Try Again to be for this item and
         # not the one the list would have gone on to meanwhile
-        is_skipping = self._skip_failed_timer.isActive()
-        self._skip_failed_timer.stop()
-        self._refresh_skip_note()
+        is_skipping = self.recovery.is_skip_counting
+        self.recovery.stop_skip()
+        self.recovery.refresh_skip_note()
 
         dialog = ErrorDetailsDialog(
             error, self._error_rows(error), parent=self.window()
@@ -821,8 +749,8 @@ class VideoBlock(QWidget):
 
         # left as it was: on through the list, the count started over
         if is_skipping and self._last_error is error and not self._is_closing:
-            self._start_skip_count()
-            self._refresh_skip_note()
+            self.recovery.start_skip_count()
+            self.recovery.refresh_skip_note()
 
     def _error_rows(self, error: ShownError) -> DetailRows:
         """What its Details window says of the video besides."""
@@ -866,7 +794,7 @@ class VideoBlock(QWidget):
         rows.extend(code_rows(error))
 
         if self._error_tries:
-            limit = self._network_retry_limit
+            limit = self.recovery.retry_limit
 
             if limit > 0:
                 tries = translate("Error Details", "{COUNT} of {LIMIT}").format(
@@ -887,94 +815,6 @@ class VideoBlock(QWidget):
         )
 
         return tuple(rows)
-
-    def _schedule_network_retry(self) -> bool:
-        """Try the video again later instead of giving up on it.
-
-        Streams break for reasons that pass: a host hiccups, a laptop wakes
-        up with no network yet, a signed URL runs out. Showing the error is
-        the last resort, not the first answer.
-        """
-
-        retry_limit = self._network_retry_limit
-
-        if retry_limit == 0:
-            return False
-
-        if retry_limit > 0 and self._network_retries >= retry_limit:
-            self._log.debug(f"Giving up after {self._network_retries} retries")
-            return False
-
-        self._network_retries += 1
-
-        delay_idx = min(self._network_retries - 1, len(NETWORK_RETRY_DELAYS_S) - 1)
-        self._network_retry_countdown = NETWORK_RETRY_DELAYS_S[delay_idx]
-        self._network_retry_delay = self._network_retry_countdown
-
-        self._log.debug(
-            f"Network error, retry {self._network_retries}"
-            f" in {self._network_retry_countdown}s"
-        )
-
-        self._is_error = False
-        self._is_state_change_in_progress = False
-
-        # the driver is of no use until the video is loaded again, and
-        # holding on to it keeps a VLC player busy for the whole wait
-        self.cleanup()
-
-        self._load_stage = LoadStage.RECONNECT
-        self.set_status("processing")
-        self._show_network_retry_status()
-
-        self._network_retry_timer.start()
-
-        return True
-
-    def _drop_network_retries(self):
-        self._network_retry_timer.stop()
-        self._network_retries = 0
-
-    def _network_retry_tick(self):
-        self._network_retry_countdown -= 1
-
-        if self._network_retry_countdown > 0:
-            self._show_network_retry_status()
-            return
-
-        self._network_retry_timer.stop()
-
-        if self._is_closing or self.video_params is None:
-            return
-
-        self.reload()
-
-    def _show_network_retry_status(self):
-        detail = self._network_retry_attempt_txt
-
-        # what went wrong the last time, in short
-        error = self._last_error
-
-        if error is not None and (error.where or error.code):
-            tag = " ".join(part for part in (error.where, error.code) if part)
-            detail = f"{detail} · {tag}"
-
-        self.video_status.show_reconnect(
-            self._network_retry_countdown, self._network_retry_delay, detail
-        )
-
-    @property
-    def _network_retry_attempt_txt(self) -> str:
-        retry_limit = self._network_retry_limit
-
-        if retry_limit < 0:
-            return translate("Video Status", "Try {ATTEMPT}").format(
-                ATTEMPT=self._network_retries
-            )
-
-        return translate("Video Status", "Try {ATTEMPT} of {LIMIT}").format(
-            ATTEMPT=self._network_retries, LIMIT=retry_limit
-        )
 
     def set_status(self, status):
         self._is_status_kept_for_picture = False
@@ -1018,39 +858,12 @@ class VideoBlock(QWidget):
         if mode is OverlayMode.ERROR:
             self.overlay.set_error_actions(
                 has_details=self._last_error is not None,
-                can_go_next=self._can_skip_failed_item,
-                is_going_back=self._is_list_going_back,
+                can_go_next=self.recovery.can_skip,
+                is_going_back=self.recovery.is_going_back,
             )
 
         self.overlay.set_mode(mode)
         self.overlay.set_is_on_chrome(mode is not OverlayMode.VIDEO)
-
-    @property
-    def _can_skip_failed_item(self) -> bool:
-        media_list = self.media_list
-
-        return media_list is not None and len(media_list.items) > 1
-
-    @property
-    def _is_list_going_back(self) -> bool:
-        # on to the item before, at the end of each: Next, and the count
-        # down to it, go back
-        return (
-            self.video_params is not None
-            and self.video_params.end_action == VideoEndAction.PREVIOUS_FILE
-        )
-
-    def skip_failed_item_now(self):
-        """On to the item that comes next, now rather than in a moment: the
-        way the list goes by itself where it does, at its end as well."""
-
-        self._skip_failed_timer.stop()
-
-        if self._is_closing or self.media_list is None:
-            return
-
-        if not self._step_at_end(self.video_params.end_action):
-            self.next_video()
 
     def update_status(self, info_text):
         self.video_status.status_text = translate("Video Status", info_text)
@@ -1145,7 +958,7 @@ class VideoBlock(QWidget):
         return ""
 
     def reload(self):
-        self._network_retry_timer.stop()
+        self.recovery.stop_retry_countdown()
         self._quality_adapt_timer.stop()
 
         self.is_live = False
@@ -1380,40 +1193,6 @@ class VideoBlock(QWidget):
             return
 
         self.manual_seek("seek", time_ms)
-
-    def set_network_retry_mode(self, mode):
-        self.video_params.network_retry_mode = mode
-
-        # a new policy starts with a full budget rather than what is left
-        self._network_retries = 0
-
-        if not self._network_retry_timer.isActive():
-            return
-
-        if self._network_retry_limit != 0:
-            return
-
-        # the reload this video was counting down to has just been called off
-        self._network_retry_timer.stop()
-        self.network_error()
-
-    def network_retry_times(self):
-        times = QCustomSpinboxInput.get_int(
-            parent=self.parent(),
-            title=translate(
-                "Dialog - Set reload attempts", "Set reload attempts", "Header"
-            ),
-            initial_value=self.video_params.network_retry_times,
-            _min=1,
-            _max=MAX_NETWORK_RETRIES,
-        )
-
-        self.video_params.network_retry_times = times
-
-        self._network_retries = 0
-
-    def get_network_retry_times(self):
-        return str(self.video_params.network_retry_times)
 
     @only_streamable
     def quality_adapt_delay(self):
@@ -2108,7 +1887,7 @@ class VideoBlock(QWidget):
         # stopped from the menu as from its own Stop, nothing left to start
         # it again by itself: a reconnect counting down, a link still being
         # resolved, a list being read, the next item of its list (below)
-        self._drop_network_retries()
+        self.recovery.drop_retries()
         self._is_waiting_for_list_read = False
 
         if self.url_resolver is not None and self.url_resolver.is_busy:
@@ -2277,7 +2056,7 @@ class VideoBlock(QWidget):
         # may be reloaded as many times as any; one that is reloaded comes
         # back here as the cell's first
         if not is_first_video:
-            self._drop_network_retries()
+            self.recovery.drop_retries()
             self._has_item_played = False
 
         # Shut down current video
@@ -2338,10 +2117,10 @@ class VideoBlock(QWidget):
 
     def _start_load(self):
         # what went wrong before is behind it, but while it is tried again
-        if self._network_retries == 0:
+        if self.recovery.retries == 0:
             self._last_error = None
 
-        self._skip_note_timer.stop()
+        self.recovery.stop_skip_note()
 
         # named from the start, on the overlay shown while it loads: a link
         # by its file name until its page gives it a title
@@ -2632,23 +2411,6 @@ class VideoBlock(QWidget):
         )
 
     @property
-    def _network_retry_limit(self) -> int:
-        """How many times this video may be reloaded, -1 for no limit."""
-
-        if self.video_params is None:
-            return 0
-
-        mode = self.video_params.network_retry_mode
-
-        if mode == NetworkRetryMode.INFINITE:
-            return -1
-
-        if mode == NetworkRetryMode.TIMES:
-            return max(self.video_params.network_retry_times, 0)
-
-        return 0
-
-    @property
     def _quality_adapt_delay_ms(self) -> int:
         """How long a pane has to keep its new size before the stream follows.
 
@@ -2746,7 +2508,7 @@ class VideoBlock(QWidget):
 
     def load_video_finish(self):
         # the video is playing, so whatever went wrong before is behind us
-        self._network_retries = 0
+        self.recovery.note_played()
         self._last_error = None
 
         # a fresh player has no pass behind it to compare times against
@@ -2763,9 +2525,6 @@ class VideoBlock(QWidget):
 
         self.color = self.video_params.color.as_hex()
 
-        # it plays, so the list is not one without anything that will
-        self._list_failures_in_a_row = 0
-        self._network_failures_in_a_row = 0
         self._has_item_played = True
 
         self._learn_item_length()
@@ -2931,36 +2690,6 @@ class VideoBlock(QWidget):
         cell with no list too, for when it has one."""
 
         self.video_params.list_end_action = list_end_action
-
-    def set_list_fail_action(self, list_fail_action: ListFailAction):
-        """What to do when an item of the list won't play. Kept for a cell
-        with no list too, for when it has one."""
-
-        self.video_params.list_fail_action = list_fail_action
-
-        self._restart_skip_count()
-
-    def list_fail_wait(self):
-        wait_sec = QCustomSpinboxInput.get_int(
-            parent=self.parent(),
-            title=translate("When Video Fails", "Play next after (sec)"),
-            special_text=translate("When Video Fails", "At once"),
-            initial_value=self.video_params.list_fail_wait_sec,
-            _min=0,
-            _max=MAX_LIST_FAIL_WAIT_SEC,
-            cancel_value=None,
-        )
-
-        if wait_sec is not None:
-            self.set_list_fail_wait(wait_sec)
-
-    def set_list_fail_wait(self, wait_sec: int):
-        self.video_params.list_fail_wait_sec = wait_sec
-
-        self._restart_skip_count()
-
-    def get_list_fail_wait(self) -> str:
-        return list_fail_wait_txt(self.video_params.list_fail_wait_sec)
 
     @only_initialized
     @only_seekable
@@ -3257,7 +2986,7 @@ class VideoBlock(QWidget):
         viewer did something else with it meanwhile."""
 
         self._folder_navigator.cancel()
-        self._skip_failed_timer.stop()
+        self.recovery.stop_skip()
 
     def _link_was_a_list(self, resolved: ResolvedList):
         """The link leads to a list of videos rather than to one: the cell
@@ -3614,118 +3343,6 @@ class VideoBlock(QWidget):
 
         self.video_params.uri = item.uri
         self._held_item = item
-
-    def _schedule_skip_failed_item(self):
-        """Go on to the next item of the list in a moment, where this one
-        will not play and the cell is set to.
-
-        Not for ever: a list on which nothing plays is gone round once, and
-        one that fails for the network or a site refusing is left sooner.
-        """
-
-        if self.media_list is None or self._is_closing:
-            return
-
-        self._list_failures_in_a_row += 1
-
-        if not self._is_item_dead:
-            self._network_failures_in_a_row += 1
-
-        if self._is_failed_skipped:
-            self._start_skip_count()
-
-    @property
-    def _is_item_dead(self) -> bool:
-        """Failed for itself: a file that won't play, or a server that
-        answered it has nothing there. Not the network down or a site
-        turning requests away, which the next item would fail for too."""
-
-        if self.video_params.is_local_file:
-            return True
-
-        error = self._last_error
-
-        return error is not None and not error.is_retryable and not error.is_refused
-
-    def _given_up_txt(self) -> str:
-        """Why the list no longer goes on past the item failed, if it
-        doesn't."""
-
-        media_list = self.media_list
-
-        if (
-            media_list is None
-            or self.video_params is None
-            or self.video_params.list_fail_action != ListFailAction.PLAY_NEXT
-        ):
-            return ""
-
-        # so many in a row is the network, or a site turning every one of
-        # them away, rather than the videos: asking again for one after the
-        # other only makes a site that limits how often it is asked say no
-        # for longer
-        if self._network_failures_in_a_row > MAX_NETWORK_FAILURES_IN_A_ROW:
-            return translate("Video Status", "Stopped: {COUNT} failed in a row").format(
-                COUNT=self._list_failures_in_a_row
-            )
-
-        if self._list_failures_in_a_row > len(media_list.items):
-            return translate("Video Status", "Stopped: nothing on the list plays")
-
-        return ""
-
-    @property
-    def _is_failed_skipped(self) -> bool:
-        if self.media_list is None or self._is_closing:
-            return False
-
-        if self.video_params.list_fail_action != ListFailAction.PLAY_NEXT:
-            return False
-
-        return not self._given_up_txt()
-
-    @property
-    def _is_reload_futile(self) -> bool:
-        """An item that never played, failing for what a reload would only
-        be told again, where the next one is to be played instead."""
-
-        error = self._last_error
-
-        return (
-            error is not None
-            and not error.is_retryable
-            and not self._has_item_played
-            and self._is_failed_skipped
-        )
-
-    def _start_skip_count(self):
-        self._skip_failed_timer.start(self.video_params.list_fail_wait_sec * 1000)
-
-        if self._skip_failed_timer.interval() > 0:
-            self._skip_note_timer.start()
-
-    def _restart_skip_count(self):
-        """The count to the next item after a failed one, once what is done
-        then was changed: started over, or called off."""
-
-        if not self._is_error:
-            return
-
-        if self._is_failed_skipped:
-            self._start_skip_count()
-        else:
-            self._skip_failed_timer.stop()
-
-        self._refresh_skip_note()
-
-    def _skip_failed_item(self):
-        if self._is_closing or self.media_list is None:
-            return
-
-        # along the list the way it goes by itself; on to the next where it
-        # doesn't
-        if not self._step_at_end(self.video_params.end_action):
-            self.next_video(is_end=True)
 
     def _uris_open_elsewhere(self) -> list:
         return [

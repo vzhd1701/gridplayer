@@ -35,10 +35,10 @@ from gridplayer.utils.list_refresh import linked_items, refreshed, uri_key
 from gridplayer.utils.url_resolve.static import ResolvedList, ResolvedVideo
 from gridplayer.utils.url_resolve.url_resolve import VideoURLResolver
 from gridplayer.utils.video_errors import ShownError
-from gridplayer.widgets.video_block import (
+from gridplayer.widgets.video_block import NOT_ON_LIST_TXT, VideoBlock
+from gridplayer.widgets.video_block_recovery import (
     MAX_NETWORK_FAILURES_IN_A_ROW as MAX_FAILED,
 )
-from gridplayer.widgets.video_block import NOT_ON_LIST_TXT, VideoBlock
 from gridplayer.widgets.video_frame_dummy import VideoFrameDummy
 from gridplayer.widgets.video_overlay import OverlayBlock
 
@@ -216,7 +216,7 @@ class TestGoingAlongTheList:
 
         block.next_video()
 
-        assert not block._network_retry_timer.isActive()
+        assert not block.recovery._retry_timer.isActive()
 
     def test_the_next_channel_reloaded_as_many_times_as_any(self, make_cell, lists):
         channels = lists.add(
@@ -665,9 +665,9 @@ class TestAnItemThatWillNotPlay:
         block = make_cell(file_list)
 
         block.error()
-        assert block._skip_failed_timer.isActive()
+        assert block.recovery.is_skip_counting
 
-        block._skip_failed_timer.timeout.emit()
+        block.recovery._skip_timer.timeout.emit()
 
         assert _uri(block) == files[1]
 
@@ -675,7 +675,7 @@ class TestAnItemThatWillNotPlay:
         block = make_cell(file_list, end_action=VideoEndAction.LOOP_FILE)
 
         block.error()
-        block._skip_failed_timer.timeout.emit()
+        block.recovery._skip_timer.timeout.emit()
 
         assert _uri(block) == files[1]
 
@@ -683,7 +683,7 @@ class TestAnItemThatWillNotPlay:
         block = make_cell(file_list, index=1, end_action=VideoEndAction.PREVIOUS_FILE)
 
         block.error()
-        block._skip_failed_timer.timeout.emit()
+        block.recovery._skip_timer.timeout.emit()
 
         assert _uri(block) == files[0]
 
@@ -692,25 +692,25 @@ class TestAnItemThatWillNotPlay:
 
         block.error()
 
-        assert not block._skip_failed_timer.isActive()
-        assert block._skip_note() == ""
+        assert not block.recovery.is_skip_counting
+        assert block.recovery.skip_note() == ""
 
     def test_after_the_wait_it_is_set_to(self, make_cell, file_list):
         block = make_cell(file_list, list_fail_wait_sec=5)
 
         block.error()
 
-        assert block._skip_failed_timer.interval() == 5000
-        assert block._skip_note() == "Next file in 5 s"
+        assert block.recovery._skip_timer.interval() == 5000
+        assert block.recovery.skip_note() == "Next file in 5 s"
 
     def test_at_once_with_no_count_said(self, make_cell, file_list, files):
         block = make_cell(file_list, list_fail_wait_sec=0)
 
         block.error()
 
-        assert block._skip_failed_timer.interval() == 0
-        assert block._skip_note() == ""
-        assert not block._skip_note_timer.isActive()
+        assert block.recovery._skip_timer.interval() == 0
+        assert block.recovery.skip_note() == ""
+        assert not block.recovery._note_timer.isActive()
 
         QTest.qWait(1)
 
@@ -722,9 +722,9 @@ class TestAnItemThatWillNotPlay:
         block = make_cell(file_list)
         block.error()
 
-        block.set_list_fail_action(ListFailAction.SHOW_ERROR)
+        block.recovery.set_fail_action(ListFailAction.SHOW_ERROR)
 
-        assert not block._skip_failed_timer.isActive()
+        assert not block.recovery.is_skip_counting
         assert block.video_status.note == ""
 
     def test_set_to_play_next_while_the_error_shows_starts_counting(
@@ -733,40 +733,40 @@ class TestAnItemThatWillNotPlay:
         block = make_cell(file_list, list_fail_action=ListFailAction.SHOW_ERROR)
         block.error()
 
-        block.set_list_fail_action(ListFailAction.PLAY_NEXT)
+        block.recovery.set_fail_action(ListFailAction.PLAY_NEXT)
 
-        assert block._skip_failed_timer.isActive()
+        assert block.recovery.is_skip_counting
         assert block.video_status.note == "Next file in 2 s"
 
     def test_another_wait_counts_over_with_it(self, make_cell, file_list):
         block = make_cell(file_list)
         block.error()
 
-        block.set_list_fail_wait(7)
+        block.recovery.set_fail_wait(7)
 
-        assert block._skip_failed_timer.interval() == 7000
+        assert block.recovery._skip_timer.interval() == 7000
         assert block.video_status.note == "Next file in 7 s"
 
     def test_a_wait_set_while_it_plays_is_kept_for_later(self, make_cell, file_list):
         block = make_cell(file_list)
 
-        block.set_list_fail_wait(7)
+        block.recovery.set_fail_wait(7)
 
-        assert not block._skip_failed_timer.isActive()
+        assert not block.recovery.is_skip_counting
         assert block.video_params.list_fail_wait_sec == 7
 
     def test_the_wait_cancelled_is_left_as_it_was(self, make_cell, file_list, mocker):
         block = make_cell(file_list)
         block.error()
         mocker.patch(
-            "gridplayer.widgets.video_block.QCustomSpinboxInput.exec",
+            "gridplayer.widgets.video_block_recovery.QCustomSpinboxInput.exec",
             return_value=False,
         )
 
-        block.list_fail_wait()
+        block.recovery.fail_wait_dialog()
 
         assert block.video_params.list_fail_wait_sec == 2
-        assert block._skip_failed_timer.remainingTime() > 1000
+        assert block.recovery._skip_timer.remainingTime() > 1000
 
     def test_not_for_a_cell_with_no_list(self, make_cell, file_list, files, lists):
         block = make_cell(file_list)
@@ -774,19 +774,19 @@ class TestAnItemThatWillNotPlay:
 
         block.error()
 
-        assert not block._skip_failed_timer.isActive()
+        assert not block.recovery.is_skip_counting
 
     def test_not_round_a_list_where_none_will(self, make_cell, file_list):
         block = make_cell(file_list)
 
         for _ in range(len(file_list.items)):
             block.error()
-            assert block._skip_failed_timer.isActive()
-            block._skip_failed_timer.stop()
+            assert block.recovery.is_skip_counting
+            block.recovery.stop_skip()
 
         block.error()
 
-        assert not block._skip_failed_timer.isActive()
+        assert not block.recovery.is_skip_counting
         assert block.video_status.note == "Stopped: nothing on the list plays"
 
     def test_on_past_a_long_stretch_of_files_that_will_not(
@@ -798,8 +798,8 @@ class TestAnItemThatWillNotPlay:
 
         for _ in range(MAX_FAILED + 1):
             block.error()
-            assert block._skip_failed_timer.isActive()
-            block._skip_failed_timer.stop()
+            assert block.recovery.is_skip_counting
+            block.recovery.stop_skip()
 
     def test_on_past_a_long_stretch_of_links_gone(self, make_cell, lists):
         block = _long_link_list(make_cell, lists)
@@ -807,8 +807,8 @@ class TestAnItemThatWillNotPlay:
         for _ in range(MAX_FAILED + 1):
             block._last_error = ShownError(title="Not found", is_retryable=False)
             block.error()
-            assert block._skip_failed_timer.isActive()
-            block._skip_failed_timer.stop()
+            assert block.recovery.is_skip_counting
+            block.recovery.stop_skip()
 
     def test_not_on_and_on_with_no_network(self, make_cell, lists):
         block = _long_link_list(make_cell, lists)
@@ -816,12 +816,12 @@ class TestAnItemThatWillNotPlay:
         for _ in range(MAX_FAILED):
             block._last_error = ShownError(title="No connection", is_network=True)
             block.error()
-            block._skip_failed_timer.stop()
+            block.recovery.stop_skip()
 
         block._last_error = ShownError(title="No connection", is_network=True)
         block.error()
 
-        assert not block._skip_failed_timer.isActive()
+        assert not block.recovery.is_skip_counting
         assert block.video_status.note == f"Stopped: {MAX_FAILED + 1} failed in a row"
 
     def test_nor_with_a_site_turning_requests_away(self, make_cell, lists):
@@ -833,12 +833,12 @@ class TestAnItemThatWillNotPlay:
         for _ in range(MAX_FAILED):
             block._last_error = refused
             block.error()
-            block._skip_failed_timer.stop()
+            block.recovery.stop_skip()
 
         block._last_error = refused
         block.error()
 
-        assert not block._skip_failed_timer.isActive()
+        assert not block.recovery.is_skip_counting
 
     def test_links_gone_in_between_count_to_the_stop(self, make_cell, lists):
         """Said as the failures in a row, the network ones among them."""
@@ -850,9 +850,9 @@ class TestAnItemThatWillNotPlay:
         for n in range(2 * MAX_FAILED + 1):
             block._last_error = gone if n % 2 else lost
             block.error()
-            block._skip_failed_timer.stop()
+            block.recovery.stop_skip()
 
-        assert block._network_failures_in_a_row == MAX_FAILED + 1
+        assert block.recovery._network_failures_in_a_row == MAX_FAILED + 1
         assert (
             block.video_status.note == f"Stopped: {2 * MAX_FAILED + 1} failed in a row"
         )
@@ -862,12 +862,12 @@ class TestAnItemThatWillNotPlay:
 
         for _ in range(len(file_list.items)):
             block.error()
-            block._skip_failed_timer.stop()
+            block.recovery.stop_skip()
 
         block.next_video()
         block.error()
 
-        assert block._skip_failed_timer.isActive()
+        assert block.recovery.is_skip_counting
 
     def test_set_to_show_the_error_it_is_not_counted_over(self, make_cell, file_list):
         """Failures counted all the same, so the list is not gone round for
@@ -880,9 +880,9 @@ class TestAnItemThatWillNotPlay:
 
         assert block.video_status.note == ""
 
-        block.set_list_fail_action(ListFailAction.PLAY_NEXT)
+        block.recovery.set_fail_action(ListFailAction.PLAY_NEXT)
 
-        assert not block._skip_failed_timer.isActive()
+        assert not block.recovery.is_skip_counting
         assert block.video_status.note == "Stopped: nothing on the list plays"
 
     def test_the_viewer_doing_something_else_keeps_it(
@@ -893,7 +893,7 @@ class TestAnItemThatWillNotPlay:
 
         block.set_end_action(VideoEndAction.LOOP_FILE)
 
-        assert not block._skip_failed_timer.isActive()
+        assert not block.recovery.is_skip_counting
 
 
 def _long_link_list(make_cell, lists):
