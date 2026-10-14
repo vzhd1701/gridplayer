@@ -143,52 +143,6 @@ def _unsaved_changes_modes() -> dict:
     }
 
 
-def _unsaved_changes_tooltip() -> str:
-    return translate(
-        "SettingsDialog",
-        "Auto save only works for a playlist that's already saved to a file."
-        " Otherwise it discards or asks.",
-    )
-
-
-def _save_paths_relative_tooltip() -> str:
-    return translate(
-        "SettingsDialog",
-        "So you can move the playlist together with its videos. Links and paths"
-        " on another drive stay as they are.",
-    )
-
-
-def _bookmarks_shared_tooltip() -> str:
-    return translate(
-        "SettingsDialog",
-        "On: cells playing the same file share its bookmarks, and they stay when a"
-        " cell closes.\nOff: each cell has its own, removed when the cell closes.",
-    )
-
-
-def _zoom_step_tooltip() -> str:
-    return translate(
-        "SettingsDialog",
-        "How much each zoom in or out step changes the zoom.",
-    )
-
-
-def _zoom_proportional_tooltip() -> str:
-    return translate(
-        "SettingsDialog",
-        "Each step zooms by the same share of what's on screen, so it feels the same"
-        " at 2x and 8x.",
-    )
-
-
-def _view_sync_tooltip() -> str:
-    return translate(
-        "Sync",
-        "Zooming or panning one video does the same in the others.",
-    )
-
-
 def _drop_internal() -> dict:
     return {
         DropAction.INSERT: translate("SettingsDialog", "Move / Swap"),
@@ -220,22 +174,6 @@ def _list_views() -> dict:
     }
 
 
-def _list_view_tooltip() -> str:
-    return translate(
-        "SettingsDialog",
-        "How items are shown in the List window: titles, titles with paths or links,"
-        " or just paths or links.",
-    )
-
-
-def _list_thumbnails_tooltip() -> str:
-    return translate(
-        "SettingsDialog",
-        "Show thumbnails, channel, views and upload date for lists from sites like"
-        " YouTube.",
-    )
-
-
 def list_update_txts() -> dict:
     """How often linked lists are read again, as the playlist's setting
     and each list's own choice in its List window say it."""
@@ -249,41 +187,6 @@ def list_update_txts() -> dict:
         ListUpdate.DAILY: translate("Lists", "Every day"),
         ListUpdate.MANUAL: translate("Lists", "Manually"),
     }
-
-
-def _list_update_tooltip() -> str:
-    return translate(
-        "SettingsDialog",
-        "How often linked lists update from their source. You can change it for each"
-        " list in its List window.",
-    )
-
-
-def _list_get_info_tooltip() -> str:
-    return translate(
-        "SettingsDialog",
-        "Look up titles, lengths and thumbnails for files and links you add to a"
-        " list. When off, use Get Info in the List window.",
-    )
-
-
-def _add_mode_tooltip() -> str:
-    return translate(
-        "Adding",
-        "How many cells to use for added files, folders and playlists.\n"
-        "One per item: each file and folder gets its own cell.\n"
-        "One for all: everything in one cell.\n"
-        "One per video: every video gets its own cell, even inside folders and"
-        " playlists.",
-    )
-
-
-def _warn_many_cells_tooltip() -> str:
-    return translate(
-        "SettingsDialog",
-        "Ask before adding more than {COUNT} cells at once. Too many can freeze the"
-        " player.",
-    ).format(COUNT=MANY_CELLS)
 
 
 def _drop_action_tooltip() -> str:
@@ -365,34 +268,6 @@ def _deinterlace_modes() -> dict:
     }
 
 
-def _dir_recursive_tooltip() -> str:
-    return translate(
-        "Folder Navigation",
-        "Next, previous and random files also come from subfolders.",
-    )
-
-
-def _folder_skip_hidden_tooltip() -> str:
-    return translate(
-        "SettingsDialog",
-        "Skip hidden files and folders, and system folders like the recycle bin.",
-    )
-
-
-def _folder_max_entries_tooltip() -> str:
-    return translate(
-        "SettingsDialog",
-        "The most files and folders to scan when subfolders are included.",
-    )
-
-
-def _shuffle_avoid_open_tooltip() -> str:
-    return translate(
-        "SettingsDialog",
-        "Random play skips files already open in other cells when it can.",
-    )
-
-
 def _end_actions() -> dict:
     return {
         VideoEndAction.LOOP_FILE: translate("When Finished", "Loop this file"),
@@ -414,26 +289,11 @@ def _list_end_actions() -> dict:
     }
 
 
-def _list_end_action_tooltip() -> str:
-    return translate(
-        "Lists",
-        "What a cell playing a list does after the last item.",
-    )
-
-
 def _list_fail_actions() -> dict:
     return {
         ListFailAction.SHOW_ERROR: translate("When Video Fails", "Show error"),
         ListFailAction.PLAY_NEXT: translate("When Video Fails", "Play next"),
     }
-
-
-def _list_fail_action_tooltip() -> str:
-    return translate(
-        "When Video Fails",
-        "For cells playing a list. Play next doesn't reload a video"
-        " that's gone or refused.",
-    )
 
 
 def _initial_states() -> dict:
@@ -552,7 +412,11 @@ PLAYLIST_FIELDS: tuple[SettingField, ...] = (
         section=translate("SettingsDialog", "Saving / Restoring"),
         label=translate("SettingsDialog", "Unsaved changes on close"),
         choices=_unsaved_changes_modes,
-        tooltip=_unsaved_changes_tooltip(),
+        tooltip=translate(
+            "SettingsDialog",
+            "Auto save only works for a playlist that's already saved to a file."
+            " Otherwise it discards or asks.",
+        ),
     ),
     CheckboxField(
         settings_key="playlist/save_window",
@@ -577,7 +441,11 @@ PLAYLIST_FIELDS: tuple[SettingField, ...] = (
         attr="save_paths_relative",
         section=translate("SettingsDialog", "Saving / Restoring"),
         label=translate("SettingsDialog", "Save video paths relative to playlist file"),
-        tooltip=_save_paths_relative_tooltip(),
+        tooltip=translate(
+            "SettingsDialog",
+            "So you can move the playlist together with its videos. Links and paths"
+            " on another drive stay as they are.",
+        ),
     ),
     CheckboxField(
         settings_key="playlist/pause_background_videos",
@@ -598,7 +466,11 @@ PLAYLIST_FIELDS: tuple[SettingField, ...] = (
         label=translate(
             "Playlist Settings", "Share bookmarks between cells with the same file"
         ),
-        tooltip=_bookmarks_shared_tooltip(),
+        tooltip=translate(
+            "SettingsDialog",
+            "On: cells playing the same file share its bookmarks, and they stay when a"
+            " cell closes.\nOff: each cell has its own, removed when the cell closes.",
+        ),
     ),
     FloatSpinField(
         settings_key="playlist/seek_step_short",
@@ -641,21 +513,31 @@ PLAYLIST_FIELDS: tuple[SettingField, ...] = (
         minimum=1,
         maximum=100,
         suffix="%",
-        tooltip=_zoom_step_tooltip(),
+        tooltip=translate(
+            "SettingsDialog",
+            "How much each zoom in or out step changes the zoom.",
+        ),
     ),
     CheckboxField(
         settings_key="playlist/zoom_proportional",
         attr="zoom_proportional",
         section=translate("SettingsDialog", "Step Sizes"),
         label=translate("SettingsDialog", "Proportional zoom"),
-        tooltip=_zoom_proportional_tooltip(),
+        tooltip=translate(
+            "SettingsDialog",
+            "Each step zooms by the same share of what's on screen, so it feels the same"
+            " at 2x and 8x.",
+        ),
     ),
     CheckboxField(
         settings_key="playlist/folder_skip_hidden",
         attr="folder_skip_hidden",
         section=translate("SettingsDialog", "Folder Navigation"),
         label=translate("SettingsDialog", "Skip hidden and system files"),
-        tooltip=_folder_skip_hidden_tooltip(),
+        tooltip=translate(
+            "SettingsDialog",
+            "Skip hidden files and folders, and system folders like the recycle bin.",
+        ),
     ),
     SpinField(
         settings_key="playlist/folder_max_entries",
@@ -665,14 +547,20 @@ PLAYLIST_FIELDS: tuple[SettingField, ...] = (
         minimum=0,
         maximum=1000000,
         special_text=translate("SettingsDialog", "No limit"),
-        tooltip=_folder_max_entries_tooltip(),
+        tooltip=translate(
+            "SettingsDialog",
+            "The most files and folders to scan when subfolders are included.",
+        ),
     ),
     CheckboxField(
         settings_key="playlist/shuffle_avoid_open",
         attr="shuffle_avoid_open",
         section=translate("SettingsDialog", "Folder Navigation"),
         label=translate("SettingsDialog", "Skip files open in other cells"),
-        tooltip=_shuffle_avoid_open_tooltip(),
+        tooltip=translate(
+            "SettingsDialog",
+            "Random play skips files already open in other cells when it can.",
+        ),
     ),
     ComboField(
         settings_key="playlist/seek_sync_mode",
@@ -686,7 +574,10 @@ PLAYLIST_FIELDS: tuple[SettingField, ...] = (
         attr="view_sync",
         section=translate("SettingsDialog", "Sync"),
         label=translate("Sync", "Sync zoom and position"),
-        tooltip=_view_sync_tooltip(),
+        tooltip=translate(
+            "Sync",
+            "Zooming or panning one video does the same in the others.",
+        ),
     ),
     CheckboxField(
         settings_key="playlist/pause_sync",
@@ -817,14 +708,25 @@ PLAYLIST_FIELDS: tuple[SettingField, ...] = (
         section=translate("SettingsDialog", "Drag-n-Drop"),
         label=translate("Adding", "Cells"),
         choices=_add_modes,
-        tooltip=_add_mode_tooltip(),
+        tooltip=translate(
+            "Adding",
+            "How many cells to use for added files, folders and playlists.\n"
+            "One per item: each file and folder gets its own cell.\n"
+            "One for all: everything in one cell.\n"
+            "One per video: every video gets its own cell, even inside folders and"
+            " playlists.",
+        ),
     ),
     CheckboxField(
         settings_key="playlist/warn_many_cells",
         attr="warn_many_cells",
         section=translate("SettingsDialog", "Drag-n-Drop"),
         label=translate("SettingsDialog", "Warn about too many cells"),
-        tooltip=_warn_many_cells_tooltip(),
+        tooltip=translate(
+            "SettingsDialog",
+            "Ask before adding more than {COUNT} cells at once. Too many can freeze the"
+            " player.",
+        ).format(COUNT=MANY_CELLS),
     ),
     ComboField(
         settings_key="playlist/list_view",
@@ -832,21 +734,33 @@ PLAYLIST_FIELDS: tuple[SettingField, ...] = (
         section=translate("SettingsDialog", "Lists"),
         label=translate("SettingsDialog", "List view"),
         choices=_list_views,
-        tooltip=_list_view_tooltip(),
+        tooltip=translate(
+            "SettingsDialog",
+            "How items are shown in the List window: titles, titles with paths or links,"
+            " or just paths or links.",
+        ),
     ),
     CheckboxField(
         settings_key="playlist/list_thumbnails",
         attr="list_thumbnails",
         section=translate("SettingsDialog", "Lists"),
         label=translate("SettingsDialog", "Thumbnails when available"),
-        tooltip=_list_thumbnails_tooltip(),
+        tooltip=translate(
+            "SettingsDialog",
+            "Show thumbnails, channel, views and upload date for lists from sites like"
+            " YouTube.",
+        ),
     ),
     CheckboxField(
         settings_key="playlist/list_get_info",
         attr="list_get_info",
         section=translate("SettingsDialog", "Lists"),
         label=translate("SettingsDialog", "Get info automatically"),
-        tooltip=_list_get_info_tooltip(),
+        tooltip=translate(
+            "SettingsDialog",
+            "Look up titles, lengths and thumbnails for files and links you add to a"
+            " list. When off, use Get Info in the List window.",
+        ),
     ),
     ComboField(
         settings_key="playlist/list_update",
@@ -854,7 +768,11 @@ PLAYLIST_FIELDS: tuple[SettingField, ...] = (
         section=translate("SettingsDialog", "Lists"),
         label=translate("SettingsDialog", "Update linked lists"),
         choices=list_update_txts,
-        tooltip=_list_update_tooltip(),
+        tooltip=translate(
+            "SettingsDialog",
+            "How often linked lists update from their source. You can change it for each"
+            " list in its List window.",
+        ),
     ),
 )
 
@@ -1073,7 +991,10 @@ VIDEO_FIELDS: tuple[SettingField, ...] = (
         attr="dir_recursive",
         section=translate("SettingsDialog", "Playback"),
         label=translate("Folder Navigation", "Include subfolders"),
-        tooltip=_dir_recursive_tooltip(),
+        tooltip=translate(
+            "Folder Navigation",
+            "Next, previous and random files also come from subfolders.",
+        ),
     ),
     ComboField(
         settings_key="video_defaults/list_end_action",
@@ -1081,7 +1002,10 @@ VIDEO_FIELDS: tuple[SettingField, ...] = (
         section=translate("SettingsDialog", "Playback"),
         label=translate("Lists", "When list ends"),
         choices=_list_end_actions,
-        tooltip=_list_end_action_tooltip(),
+        tooltip=translate(
+            "Lists",
+            "What a cell playing a list does after the last item.",
+        ),
     ),
     ComboField(
         settings_key="video_defaults/list_fail_action",
@@ -1089,7 +1013,11 @@ VIDEO_FIELDS: tuple[SettingField, ...] = (
         section=translate("SettingsDialog", "Playback"),
         label=translate("When Video Fails", "When video fails"),
         choices=_list_fail_actions,
-        tooltip=_list_fail_action_tooltip(),
+        tooltip=translate(
+            "When Video Fails",
+            "For cells playing a list. Play next doesn't reload a video"
+            " that's gone or refused.",
+        ),
     ),
     SpinField(
         settings_key="video_defaults/list_fail_wait",
