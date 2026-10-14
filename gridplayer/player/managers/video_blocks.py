@@ -433,7 +433,7 @@ class VideoBlocksManager(ManagerBase):
         # up as long as the List window is open on it, the others once the
         # mouse is over them
         for vb in self._ctx.video_blocks:
-            if vb.is_list_window_shown:
+            if vb.navigation.is_list_window_shown:
                 vb.show_overlay()
 
     def toggle_disable_overlay(self):
@@ -870,8 +870,8 @@ class VideoBlocksManager(ManagerBase):
             (self.all_loop_chapter, vb.chapters.loop),
             (self.all_reset_loop, vb.loop.reset),
             (self.all_set_end_action, vb.set_end_action),
-            (self.all_set_dir_recursive, vb.set_dir_recursive),
-            (self.all_set_list_end_action, vb.set_list_end_action),
+            (self.all_set_dir_recursive, vb.navigation.set_dir_recursive),
+            (self.all_set_list_end_action, vb.navigation.set_list_end_action),
             (self.all_set_list_fail_action, vb.recovery.set_fail_action),
             (self.all_set_list_fail_wait, vb.recovery.set_fail_wait),
             (self.all_rate_increase, vb.rate_increase),
@@ -903,9 +903,9 @@ class VideoBlocksManager(ManagerBase):
             (self.all_volume_increase, vb.audio.volume_increase),
             (self.all_volume_decrease, vb.audio.volume_decrease),
             (self.all_set_muted, vb.audio.set_muted),
-            (self.all_previous_video, vb.previous_video),
-            (self.all_next_video, vb.next_video),
-            (self.all_shuffle_video, vb.shuffle_video),
+            (self.all_previous_video, vb.navigation.previous),
+            (self.all_next_video, vb.navigation.next),
+            (self.all_shuffle_video, vb.navigation.shuffle),
             (self.hide_overlay, vb.hide_overlay),
             (self.show_overlay, vb.show_overlay),
             (self.set_drag_ui, vb.set_drag_ui),

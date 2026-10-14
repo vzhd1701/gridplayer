@@ -17,6 +17,7 @@ from gridplayer.vlc_player.static import (
     seek_landing,
 )
 from gridplayer.widgets.video_block import VideoBlock
+from gridplayer.widgets.video_block_navigation import NavigationControl
 
 
 @pytest.fixture(scope="module", autouse=True)
@@ -47,7 +48,7 @@ def test_loop_end_stop_without_explicit_loop(mocker):
 
     block.stop_playback.assert_called_once()
     block._loop_to_start.assert_not_called()
-    block.next_video.assert_not_called()
+    block.navigation.next.assert_not_called()
 
 
 def test_loop_end_close_schedules_close(mocker):
@@ -75,7 +76,7 @@ def test_loop_end_next_file(mocker):
 
     VideoBlock.loop_end_action(block)
 
-    block.next_video.assert_called_once()
+    block.navigation.next.assert_called_once()
     block._loop_to_start.assert_not_called()
 
 
@@ -84,8 +85,8 @@ def test_loop_end_previous_file(mocker):
 
     VideoBlock.loop_end_action(block)
 
-    block.previous_video.assert_called_once()
-    block.next_video.assert_not_called()
+    block.navigation.previous.assert_called_once()
+    block.navigation.next.assert_not_called()
 
 
 def test_loop_end_shuffle_file(mocker):
@@ -93,7 +94,7 @@ def test_loop_end_shuffle_file(mocker):
 
     VideoBlock.loop_end_action(block)
 
-    block.shuffle_video.assert_called_once()
+    block.navigation.shuffle.assert_called_once()
 
 
 def test_loop_end_pause_at_start(mocker):
@@ -164,7 +165,7 @@ def test_stopped_overlay_uses_hide_timer(mocker):
     block._is_error = False
     block.status.is_kept_for_picture = False
     block.view.is_zoom_ui.return_value = False
-    block._is_list_window_shown = False
+    block.navigation.is_list_window_shown = False
     block.isVisible.return_value = True
 
     VideoBlock.show_overlay(block)
@@ -317,9 +318,9 @@ def test_switch_video_stopped_same_file_loads(mocker):
     block.video_params = mocker.Mock(uri=uri)
     block.is_video_initialized = False
 
-    block._switch_to = partial(VideoBlock._switch_to, block)
+    block.navigation = NavigationControl(block)
 
-    VideoBlock.switch_video(block, uri)
+    block.navigation.switch_video(uri)
 
     block._load_and_play.assert_called_once()
     block.seek.assert_not_called()
@@ -334,9 +335,9 @@ def test_switch_video_initialized_same_file_seeks(mocker):
     block.is_video_initialized = True
     block.loop_start = 0
 
-    block._switch_to = partial(VideoBlock._switch_to, block)
+    block.navigation = NavigationControl(block)
 
-    VideoBlock.switch_video(block, uri)
+    block.navigation.switch_video(uri)
 
     block._seek_loop_start.assert_called_once_with()
     block._load_and_play.assert_not_called()
@@ -348,9 +349,9 @@ def test_switch_video_stopped_other_file_starts_playback(mocker):
     block.video_params = mocker.Mock(uri=Path("/tmp/a.mp4"))
     block.is_video_initialized = False
 
-    block._switch_to = partial(VideoBlock._switch_to, block)
+    block.navigation = NavigationControl(block)
 
-    VideoBlock.switch_video(block, Path("/tmp/b.mp4"))
+    block.navigation.switch_video(Path("/tmp/b.mp4"))
 
     assert block.video_params.uri == Path("/tmp/b.mp4")
     assert block.video_params.playback_state is VideoInitialState.PLAYING

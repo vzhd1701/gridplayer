@@ -35,7 +35,8 @@ from gridplayer.utils.list_refresh import linked_items, refreshed, uri_key
 from gridplayer.utils.url_resolve.static import ResolvedList, ResolvedVideo
 from gridplayer.utils.url_resolve.url_resolve import VideoURLResolver
 from gridplayer.utils.video_errors import ShownError
-from gridplayer.widgets.video_block import NOT_ON_LIST_TXT, VideoBlock
+from gridplayer.widgets.video_block import VideoBlock
+from gridplayer.widgets.video_block_navigation import NOT_ON_LIST_TXT
 from gridplayer.widgets.video_block_recovery import (
     MAX_NETWORK_FAILURES_IN_A_ROW as MAX_FAILED,
 )
@@ -172,7 +173,7 @@ class TestGoingAlongTheList:
         media_list = lists.add(MediaList(items=[ListItem(uri=a), ListItem(uri=c)]))
         block = make_cell(media_list)
 
-        block.next_video()
+        block.navigation.next()
 
         assert _uri(block) == c
         assert block.video_params.list_index == 1
@@ -180,7 +181,7 @@ class TestGoingAlongTheList:
     def test_previous_goes_round_to_the_last(self, make_cell, file_list, files):
         block = make_cell(file_list)
 
-        block.previous_video()
+        block.navigation.previous()
 
         assert _uri(block) == files[2]
 
@@ -190,7 +191,7 @@ class TestGoingAlongTheList:
         )
         block = make_cell(channels)
 
-        block.next_video()
+        block.navigation.next()
 
         assert _uri(block) == URL.format(1)
         no_resolving.assert_called_with(URL.format(1), {})
@@ -202,7 +203,7 @@ class TestGoingAlongTheList:
         block = make_cell(channels)
         block.network_error()
 
-        block.next_video()
+        block.navigation.next()
 
         assert _uri(block) == URL.format(1)
 
@@ -214,7 +215,7 @@ class TestGoingAlongTheList:
         block.network_error()
         block.network_error()
 
-        block.next_video()
+        block.navigation.next()
 
         assert not block.recovery._retry_timer.isActive()
 
@@ -225,7 +226,7 @@ class TestGoingAlongTheList:
         block = make_cell(channels)
         block.network_error()
         block.network_error()
-        block.next_video()
+        block.navigation.next()
 
         block.network_error()
 
@@ -262,7 +263,7 @@ class TestGoingAlongTheList:
         )
         block = make_cell(channels, index=2)
 
-        block.next_video()
+        block.navigation.next()
 
         assert block.video_params.list_index == 0
 
@@ -303,19 +304,19 @@ class TestWhichItemItSays:
     def test_from_the_start(self, make_cell, file_list):
         block = make_cell(file_list, index=1)
 
-        assert block.list_place_txt == "2/3"
+        assert block.navigation.list_place_txt == "2/3"
 
     def test_and_as_it_goes_along(self, make_cell, file_list, said):
         block = self._listened(make_cell(file_list), said)
 
-        block.next_video()
+        block.navigation.next()
 
         assert said[-1] == "2/3"
 
     def test_round_to_the_first(self, make_cell, file_list, said):
         block = self._listened(make_cell(file_list, index=2), said)
 
-        block.next_video()
+        block.navigation.next()
 
         assert said[-1] == "1/3"
 
@@ -345,7 +346,7 @@ class TestWhichItemItSays:
         block.set_video(Video(uri=files[0]))
 
         assert said[-1] == ""
-        assert block.list_place_txt == ""
+        assert block.navigation.list_place_txt == ""
 
     def test_the_overlay_shows_it_only_for_a_list(self):
         overlay = OverlayBlock()
@@ -380,8 +381,8 @@ class TestWhichItemItSays:
     def test_no_window_once_the_cell_has_left_the_list(self, make_cell, file_list):
         block = make_cell(file_list)
 
-        block.leave_list()
-        block.show_list_window()
+        block.navigation.leave_list()
+        block.navigation.show_list_window()
 
         block._ctx.commands.list_window_for.assert_not_called()
 
@@ -400,7 +401,7 @@ class TestLeavingTheList:
     def test_the_cell_plays_no_list(self, make_cell, picked, files):
         block = make_cell(picked)
 
-        block.leave_list()
+        block.navigation.leave_list()
 
         assert block.media_list is None
         assert block.video_params.list_index is None
@@ -409,15 +410,15 @@ class TestLeavingTheList:
     def test_next_goes_through_the_folder_again(self, make_cell, picked, files):
         block = make_cell(picked)
 
-        block.leave_list()
-        block.next_video()
+        block.navigation.leave_list()
+        block.navigation.next()
 
         assert _uri(block) == files[1]
 
     def test_the_name_it_had_on_the_list_stays(self, make_cell, picked):
         block = make_cell(picked)
 
-        block.leave_list()
+        block.navigation.leave_list()
 
         assert block.video_params.title == "Pilot"
 
@@ -426,23 +427,23 @@ class TestLeavingTheList:
         said = []
         block.list_place_change.connect(said.append)
 
-        block.leave_list()
+        block.navigation.leave_list()
 
         assert said == [""]
 
     def test_the_list_stays_for_the_playlist(self, make_cell, lists, picked):
         block = make_cell(picked)
 
-        block.leave_list()
+        block.navigation.leave_list()
 
         assert lists.get(picked.id) is not None
 
     def test_a_cell_with_no_list_is_left_as_it_is(self, make_cell, picked, files):
         block = make_cell(picked)
-        block.leave_list()
+        block.navigation.leave_list()
         block.video_params.title = "Mine"
 
-        block.leave_list()
+        block.navigation.leave_list()
 
         assert block.video_params.title == "Mine"
 
@@ -453,7 +454,7 @@ class TestWithTheListWindowOpen:
         block._ctx.is_overlay_hide_on_timeout = True
         block.overlay.show()
 
-        block.set_list_window_shown(True)
+        block.navigation.set_list_window_shown(True)
         block.hide_overlay()
 
         assert not block.overlay.isHidden()
@@ -462,7 +463,7 @@ class TestWithTheListWindowOpen:
     def test_gone_once_the_overlay_is_turned_off(self, make_cell, file_list):
         block = make_cell(file_list)
         block.overlay.show()
-        block.set_list_window_shown(True)
+        block.navigation.set_list_window_shown(True)
 
         block._ctx.is_disable_overlay = True
         block.hide_overlay()
@@ -472,19 +473,21 @@ class TestWithTheListWindowOpen:
     def test_not_brought_back_by_closing_it(self, make_cell, file_list):
         block = make_cell(file_list)
         block.overlay.show()
-        block.set_list_window_shown(True)
+        block.navigation.set_list_window_shown(True)
         block._ctx.is_disable_overlay = True
         block.hide_overlay()
 
-        block.set_list_window_shown(False)
+        block.navigation.set_list_window_shown(False)
 
         assert block.overlay.isHidden()
 
     def test_back_once_the_overlay_is_turned_on(self, mocker):
         manager = mocker.Mock()
         manager._ctx.is_overlay_hide_on_timeout = True
-        marked = mocker.Mock(is_list_window_shown=True)
-        other = mocker.Mock(is_list_window_shown=False)
+        marked = mocker.Mock()
+        marked.navigation.is_list_window_shown = True
+        other = mocker.Mock()
+        other.navigation.is_list_window_shown = False
         manager._ctx.video_blocks = [marked, other]
 
         VideoBlocksManager.set_disable_overlay(manager, False)
@@ -496,8 +499,8 @@ class TestWithTheListWindowOpen:
         block = make_cell(file_list)
         block._ctx.is_overlay_hide_on_timeout = True
 
-        block.set_list_window_shown(True)
-        block.set_list_window_shown(False)
+        block.navigation.set_list_window_shown(True)
+        block.navigation.set_list_window_shown(False)
         block.overlay.show()
         block.hide_overlay()
 
@@ -653,7 +656,7 @@ class TestTheEndOfTheList:
     def test_is_set_for_the_cell(self, make_cell, file_list):
         block = make_cell(file_list)
 
-        block.set_list_end_action(ListEndAction.CLOSE)
+        block.navigation.set_list_end_action(ListEndAction.CLOSE)
 
         assert block.video_params.list_end_action is ListEndAction.CLOSE
 
@@ -864,7 +867,7 @@ class TestAnItemThatWillNotPlay:
             block.error()
             block.recovery.stop_skip()
 
-        block.next_video()
+        block.navigation.next()
         block.error()
 
         assert block.recovery.is_skip_counting
@@ -956,7 +959,7 @@ class TestNamingAnItem:
         )
         block = make_cell(media_list)
 
-        block.next_video()
+        block.navigation.next()
 
         assert block.title == "Two"
 
@@ -1012,7 +1015,7 @@ class TestAChannelsOwnHeaders:
     def test_the_next_one_with_its_own(self, make_cell, channels, no_resolving):
         block = make_cell(channels)
 
-        block.next_video()
+        block.navigation.next()
 
         no_resolving.assert_called_with(URL.format(1), {})
 
@@ -1068,7 +1071,7 @@ class TestAChannelsOwnHeaders:
     ):
         block = make_cell(channels)
 
-        block.leave_list()
+        block.navigation.leave_list()
         block.reload()
 
         no_resolving.assert_called_with(URL.format(0), self.HEADERS)
@@ -1080,7 +1083,7 @@ class TestASnapshotOfAnotherItem:
         snapshot = block.video_params.model_copy()
         snapshot.current_position = 30000
 
-        block.next_video()
+        block.navigation.next()
 
         # where it is started from: the dummy player starts every one at 0
         started_at = []
@@ -1106,7 +1109,7 @@ class TestASnapshotsName:
 
     def test_the_one_it_had_then(self, make_cell, file_list):
         block = make_cell(file_list)
-        block.leave_list()
+        block.navigation.leave_list()
         self._renamed(block, "Cam 1")
         snapshot = block.video_params.model_copy()
         self._renamed(block, "Cam A")
@@ -1139,7 +1142,7 @@ class TestACellTakingAList:
             )
         )
 
-        block.take_list(grown.id, 0)
+        block.navigation.take_list(grown.id, 0)
 
         assert block.media_list is grown
         assert block.video_params.list_index == 0
@@ -1149,7 +1152,7 @@ class TestACellTakingAList:
         # and it goes along the list at its end
         assert block.video_params.end_action is VideoEndAction.NEXT_FILE
 
-        block.next_video()
+        block.navigation.next()
 
         assert _uri(block) == files[1]
 
@@ -1157,7 +1160,7 @@ class TestACellTakingAList:
         media_list = lists.add(MediaList(items=[ListItem(uri=files[0])]))
         block = make_cell(media_list, end_action=VideoEndAction.SHUFFLE_FILE)
 
-        block.take_list(media_list.id, 0)
+        block.navigation.take_list(media_list.id, 0)
 
         assert block.video_params.end_action is VideoEndAction.SHUFFLE_FILE
 
@@ -1186,7 +1189,7 @@ class TestChannelsGivenNewLinks:
 
         self._read_again(lists, channels, "b")
 
-        assert block.list_place_txt == "2/3"
+        assert block.navigation.list_place_txt == "2/3"
         assert block.list_item.title == "Channel 1"
 
     def test_and_has_its_new_link(self, make_cell, lists, channels):
@@ -1219,7 +1222,7 @@ class TestChannelsGivenNewLinks:
         block = make_cell(channels, index=1)
         self._read_again(lists, channels, "b")
 
-        block.next_video()
+        block.navigation.next()
 
         assert _uri(block) == self.LINK.format(2, "b")
 
@@ -1380,7 +1383,7 @@ class TestWaitingForItsList:
         cell.set_video(Video(uri=url, read_as_list=True))
         cell.video_params.read_as_list = None
 
-        cell.play_read(url)
+        cell.navigation.play_read(url)
 
         assert cell.video_params.uri == url
         no_resolving.assert_called_once()
@@ -1389,7 +1392,7 @@ class TestWaitingForItsList:
         cell.set_video(Video(uri=str(tmp_path), read_as_list=True))
         cell.video_params.read_as_list = None
 
-        cell.play_read(files[0])
+        cell.navigation.play_read(files[0])
 
         assert cell.video_params.uri == files[0]
 
@@ -1404,7 +1407,7 @@ class TestALinkThatTurnsOutToBeAList:
         block = make_cell(file_list)
         block.set_video(Video(uri="https://site/list", title=None))
 
-        block._link_was_a_list(self.SITE_LIST)
+        block.navigation.link_was_a_list(self.SITE_LIST)
         QTest.qWait(0)
 
         media_list = block.media_list
@@ -1425,7 +1428,7 @@ class TestALinkThatTurnsOutToBeAList:
         )
         block = make_cell(media_list, index=1)
 
-        block._link_was_a_list(self.SITE_LIST)
+        block.navigation.link_was_a_list(self.SITE_LIST)
         QTest.qWait(0)
 
         assert [item.uri for item in block.media_list.items] == [
@@ -1439,7 +1442,7 @@ class TestALinkThatTurnsOutToBeAList:
 
     def test_not_once_the_cell_is_closing(self, make_cell, file_list, files):
         block = make_cell(file_list)
-        block._link_was_a_list(self.SITE_LIST)
+        block.navigation.link_was_a_list(self.SITE_LIST)
         block._is_closing = True
 
         QTest.qWait(0)
@@ -1473,6 +1476,6 @@ class TestToldOfWhatIsAdded:
         said = []
         block.info_change.connect(said.append)
 
-        block.tell_added_to_list(3)
+        block.navigation.tell_added_to_list(3)
 
         assert said == ["Added to the list: 3"]

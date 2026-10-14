@@ -85,6 +85,8 @@ class _Cell:
         self.media_list = None
         self.is_closing = False
         self.taken = []
+        # the cell's navigation part, done by the fake itself
+        self.navigation = self
 
     def take_list(self, list_id, index):
         self.taken.append((list_id, index))

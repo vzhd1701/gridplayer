@@ -40,6 +40,8 @@ class _Cell(QObject):
         self.video_params = SimpleNamespace(list_id=media_list.id)
         self.is_closing = False
         self.marks = []
+        # the cell's navigation part, done by the fake itself
+        self.navigation = self
 
     @property
     def media_list(self):

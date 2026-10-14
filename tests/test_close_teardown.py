@@ -381,7 +381,7 @@ def test_a_load_begun_again_says_so_while_the_old_player_is_waited_on(
     if how == "reload":
         block.reload()
     else:
-        block._switch_to(other)
+        block.navigation.switch_to(other)
 
     assert seen == [(False, "Opening…")]
 

@@ -89,6 +89,8 @@ class _Cell(QObject):
         self.video_params = SimpleNamespace(list_id=list_id)
         self.key = key
         self.played = []
+        # the cell's navigation part, done by the fake itself
+        self.navigation = self
 
     @property
     def list_item(self):

@@ -840,7 +840,7 @@ class TestTheVideoGoing:
     def test_another_file_in_its_place_takes_it_too(self, block, tmp_path):
         (tmp_path / "other.mkv").touch()
 
-        opened = _manage_and(block, lambda _dialog: block.next_video())
+        opened = _manage_and(block, lambda _dialog: block.navigation.next())
 
         assert not opened["left_open"]
         assert opened["dialog"].result() == QDialog.Accepted

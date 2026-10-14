@@ -245,7 +245,7 @@ class RecoveryControl(VideoBlockPart):
             return
 
         if not self._block._step_at_end(self._block.video_params.end_action):
-            self._block.next_video()
+            self._block.navigation.next()
 
     def set_retry_mode(self, mode):
         self._block.video_params.network_retry_mode = mode
@@ -438,4 +438,4 @@ class RecoveryControl(VideoBlockPart):
         # along the list the way it goes by itself; on to the next where it
         # doesn't
         if not self._block._step_at_end(self._block.video_params.end_action):
-            self._block.next_video(is_end=True)
+            self._block.navigation.next(is_end=True)

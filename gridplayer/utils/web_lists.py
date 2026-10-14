@@ -78,7 +78,7 @@ def is_web_list_url(url: str) -> bool:
     What it leads to is only known once it is read, and a look that was
     wrong comes out as the one video it is. A list behind a link of any
     other look is found out once the link is played; see
-    VideoBlock._link_was_a_list.
+    NavigationControl.link_was_a_list.
     """
 
     if not is_url(url):
