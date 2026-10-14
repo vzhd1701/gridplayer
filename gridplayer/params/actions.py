@@ -480,7 +480,7 @@ ACTIONS = MappingProxyType(
         "When Video Fails Show Error": {
             "title": translate("When Video Fails", "Show Error"),
             "icon": "error",
-            "func": ("active", "set_list_fail_action", ListFailAction.SHOW_ERROR),
+            "func": ("active", "recovery.set_fail_action", ListFailAction.SHOW_ERROR),
             "check_if": (
                 "is_active_param_set_to",
                 "list_fail_action",
@@ -492,7 +492,7 @@ ACTIONS = MappingProxyType(
         "When Video Fails Play Next": {
             "title": translate("When Video Fails", "Play Next"),
             "icon": "next-video-file",
-            "func": ("active", "set_list_fail_action", ListFailAction.PLAY_NEXT),
+            "func": ("active", "recovery.set_fail_action", ListFailAction.PLAY_NEXT),
             "check_if": (
                 "is_active_param_set_to",
                 "list_fail_action",
@@ -505,8 +505,8 @@ ACTIONS = MappingProxyType(
             "title": "{}: %v".format(translate("When Video Fails", "Next After")),
             "keymap_title": translate("When Video Fails", "Set Next After"),
             "icon": "empty",
-            "func": ("active", "list_fail_wait"),
-            "value_getter": ("active", "get_list_fail_wait"),
+            "func": ("active", "recovery.fail_wait_dialog"),
+            "value_getter": ("active", "recovery.get_fail_wait"),
             "show_if": AND(
                 "is_active_list_cell",
                 (
@@ -1384,7 +1384,7 @@ ACTIONS = MappingProxyType(
         "On Network Error Show Error": {
             "title": translate("On Network Error", "Show Error"),
             "icon": "error",
-            "func": ("active", "set_network_retry_mode", NetworkRetryMode.OFF),
+            "func": ("active", "recovery.set_retry_mode", NetworkRetryMode.OFF),
             "check_if": (
                 "is_active_param_set_to",
                 "network_retry_mode",
@@ -1396,7 +1396,7 @@ ACTIONS = MappingProxyType(
         "On Network Error Retry Times": {
             "title": translate("On Network Error", "Reload a Few Times"),
             "icon": "reload",
-            "func": ("active", "set_network_retry_mode", NetworkRetryMode.TIMES),
+            "func": ("active", "recovery.set_retry_mode", NetworkRetryMode.TIMES),
             "check_if": (
                 "is_active_param_set_to",
                 "network_retry_mode",
@@ -1408,7 +1408,7 @@ ACTIONS = MappingProxyType(
         "On Network Error Retry Forever": {
             "title": translate("On Network Error", "Keep Reloading"),
             "icon": "reload",
-            "func": ("active", "set_network_retry_mode", NetworkRetryMode.INFINITE),
+            "func": ("active", "recovery.set_retry_mode", NetworkRetryMode.INFINITE),
             "check_if": (
                 "is_active_param_set_to",
                 "network_retry_mode",
@@ -1421,8 +1421,8 @@ ACTIONS = MappingProxyType(
             "title": "{}: %v".format(translate("Actions", "Attempts")),
             "keymap_title": translate("Actions", "Set Attempts"),
             "icon": "empty",
-            "func": ("active", "network_retry_times"),
-            "value_getter": ("active", "get_network_retry_times"),
+            "func": ("active", "recovery.retry_times_dialog"),
+            "value_getter": ("active", "recovery.get_retry_times"),
             "show_if": AND(
                 NOT("is_active_local_file"),
                 (
