@@ -212,7 +212,7 @@ class TestWhatIsOffered:
         spec = next(f for f in VIDEO_FIELDS if f.settings_key == SETTING)
 
         assert spec.video_attr == "subtitle_encoding"
-        assert spec.combo_values is _subtitle_encodings
+        assert spec.choices is _subtitle_encodings
         # it has to apply to a track picked from the menu too, not only to
         # one a video opens with, so nothing gates it
         assert spec.enabled_by is None

@@ -20,7 +20,7 @@ from PyQt5.QtWidgets import QApplication
 from gridplayer.models.playlist import Playlist, PlaylistVideoDefaults
 from gridplayer.models.video import Video
 from gridplayer.params.actions import ACTIONS
-from gridplayer.params.defaults_fields import VIDEO_FIELDS, FieldKind
+from gridplayer.params.defaults_fields import VIDEO_FIELDS, CheckboxField
 from gridplayer.params.menu import SECTIONS, SUBMENUS
 from gridplayer.params.static import (
     MAX_SCALE,
@@ -176,7 +176,7 @@ class TestPlaylistSettings:
         spec = VIDEO_FIELDS[at + 1]
         assert spec.section == "Video"
         assert spec.video_attr == "anchor"
-        assert list(spec.combo_values()) == list(VideoAnchor)
+        assert list(spec.choices()) == list(VideoAnchor)
 
     def test_letting_it_past_the_edges_sits_under_the_alignment(self):
         keys = [f.settings_key for f in VIDEO_FIELDS]
@@ -186,7 +186,7 @@ class TestPlaylistSettings:
 
         spec = VIDEO_FIELDS[at + 1]
         assert spec.section == "Video"
-        assert spec.kind == FieldKind.CHECKBOX
+        assert isinstance(spec, CheckboxField)
         assert spec.video_attr == "shift_past_edges"
 
     def test_zooming_to_the_cursor_sits_under_the_zoom(self):
@@ -197,7 +197,7 @@ class TestPlaylistSettings:
 
         spec = VIDEO_FIELDS[at + 1]
         assert spec.section == "Video"
-        assert spec.kind == FieldKind.CHECKBOX
+        assert isinstance(spec, CheckboxField)
         assert spec.video_attr == "zoom_to_cursor"
 
     def test_there_is_no_default_for_the_position(self):

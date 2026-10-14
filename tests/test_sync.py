@@ -15,7 +15,7 @@ from PyQt5.QtWidgets import QApplication, QWidget
 from gridplayer.models.grid_state import GridState
 from gridplayer.models.video import Video
 from gridplayer.params.actions import ACTIONS
-from gridplayer.params.defaults_fields import PLAYLIST_FIELDS, FieldKind
+from gridplayer.params.defaults_fields import PLAYLIST_FIELDS, CheckboxField
 from gridplayer.params.menu import SECTIONS, SUBMENUS
 from gridplayer.params.static import (
     SeekSyncMode,
@@ -181,7 +181,7 @@ class TestTheSettings:
             "pause_sync",
             "rate_sync",
         ]
-        assert all(field.kind == FieldKind.CHECKBOX for field in fields[1:])
+        assert all(isinstance(field, CheckboxField) for field in fields[1:])
 
 
 def _block(is_initialized=True, has_picture=True, is_live=False):

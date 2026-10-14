@@ -9,7 +9,7 @@ from gridplayer.models.audio_selection import (
 )
 from gridplayer.models.playlist import Playlist
 from gridplayer.models.video import Video
-from gridplayer.params.defaults_fields import VIDEO_FIELDS, FieldKind
+from gridplayer.params.defaults_fields import VIDEO_FIELDS, ComboField, TextField
 from gridplayer.params.static import AudioTrackMode
 from gridplayer.playlist_settings import (
     PlaylistSettings,
@@ -66,8 +66,8 @@ def test_languages_field_follows_the_mode_field():
 def test_languages_field_is_a_text_box_with_an_example_in_it():
     spec = _spec(LANGUAGES_KEY)
 
-    assert spec.kind is FieldKind.TEXT
-    assert spec.text_placeholder
+    assert isinstance(spec, TextField)
+    assert spec.placeholder
 
 
 def test_text_field_renders_a_line_edit():
@@ -77,7 +77,7 @@ def test_text_field_renders_a_line_edit():
     widget = form._widgets[LANGUAGES_KEY]
 
     assert isinstance(widget, QLineEdit)
-    assert widget.placeholderText() == _spec(LANGUAGES_KEY).text_placeholder
+    assert widget.placeholderText() == _spec(LANGUAGES_KEY).placeholder
 
 
 def test_text_field_round_trips_its_value():
@@ -190,9 +190,9 @@ class TestTheAudioTrackDefaultIsAChoiceOfThree:
     def test_the_field_offers_them_by_name(self):
         spec = _spec(MODE_KEY)
 
-        assert spec.kind is FieldKind.COMBO
+        assert isinstance(spec, ComboField)
         assert spec.label == "Audio track"
-        assert list(spec.combo_values()) == [
+        assert list(spec.choices()) == [
             AudioTrackMode.DEFAULT,
             AudioTrackMode.PREFERRED,
             AudioTrackMode.DISABLED,

@@ -14,7 +14,11 @@ from PyQt5.QtWidgets import QLabel
 
 from gridplayer.models.playlist import Playlist
 from gridplayer.params.actions import ACTIONS
-from gridplayer.params.defaults_fields import PLAYLIST_FIELDS, FieldKind
+from gridplayer.params.defaults_fields import (
+    PLAYLIST_FIELDS,
+    CheckboxField,
+    FloatSpinField,
+)
 from gridplayer.params.static import MAX_SCALE, MIN_SCALE
 from gridplayer.player.managers.video_blocks import VideoBlocksManager
 from gridplayer.playlist_settings import PlaylistSettings, overrides_from_playlist
@@ -102,14 +106,14 @@ class TestTheDefaults:
         fields = {spec.settings_key: spec for spec in PLAYLIST_FIELDS}
 
         for key in STEP_KEYS[:3]:
-            assert fields[key].kind is FieldKind.FLOAT_SPIN
-            assert fields[key].spin_decimals == 3
-            assert fields[key].spin_min == 0.001
+            assert isinstance(fields[key], FloatSpinField)
+            assert fields[key].decimals == 3
+            assert fields[key].minimum == 0.001
 
     def test_proportional_zoom_is_a_checkbox(self):
         fields = {spec.settings_key: spec for spec in PLAYLIST_FIELDS}
 
-        assert fields["playlist/zoom_proportional"].kind is FieldKind.CHECKBOX
+        assert isinstance(fields["playlist/zoom_proportional"], CheckboxField)
 
 
 class TestTheForm:

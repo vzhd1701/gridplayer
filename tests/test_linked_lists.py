@@ -1682,7 +1682,7 @@ class TestTheSetting:
 
         assert field.playlist_attr == "list_update"
         assert field.label == "Update linked lists"
-        assert list(field.combo_values().values()) == [
+        assert list(field.choices().values()) == [
             "On playlist load",
             "Every 5 minutes",
             "Every 15 minutes",

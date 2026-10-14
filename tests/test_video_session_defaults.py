@@ -6,7 +6,11 @@ from PyQt5.QtWidgets import QApplication
 
 from gridplayer.models.playlist import Playlist
 from gridplayer.models.video import Video
-from gridplayer.params.defaults_fields import VIDEO_FIELDS
+from gridplayer.params.defaults_fields import (
+    PLAYLIST_FIELDS,
+    SUBTITLE_STYLE_FIELDS,
+    VIDEO_FIELDS,
+)
 from gridplayer.params.static import VideoCrop, VideoEndAction, VideoInitialState
 from gridplayer.playlist_settings import (
     PlaylistSettings,
@@ -252,3 +256,19 @@ def test_settings_get_all_includes_new_defaults():
     assert values["video_defaults/rate"] == _default_settings["video_defaults/rate"]
     assert values["video_defaults/crop"] == VideoCrop(0, 0, 0, 0)
     assert values["video_defaults/color"] == "#ffffff"
+
+
+@pytest.mark.parametrize(
+    "fields",
+    [PLAYLIST_FIELDS, VIDEO_FIELDS, SUBTITLE_STYLE_FIELDS],
+    ids=["playlist", "video", "subtitle_style"],
+)
+def test_defaults_form_gives_back_every_default_it_is_given(fields):
+    defaults = {
+        spec.settings_key: _default_settings[spec.settings_key] for spec in fields
+    }
+    form = DefaultsForm(fields, show_reset=True)
+
+    form.set_values(defaults)
+
+    assert form.values() == defaults
