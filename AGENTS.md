@@ -42,6 +42,37 @@ from gridplayer.settings import Settings
 Settings().set("playlist/unsaved_changes", UnsavedChangesMode.DISCARD)
 ```
 
+## Video block parts
+
+`VideoBlock` (`gridplayer/widgets/video_block.py`) keeps the core: loading,
+playback, seeking, rate and its Qt events. Everything else lives in a part, a
+`VideoBlockPart` subclass in its own `video_block_<part>.py`, kept on the
+block as an attribute: `status`, `bookmarker`, `view`, `chapters`,
+`sponsorblock`, `subtitles`, `audio`, `loop`, `screenshot`, `recovery`,
+`stream` and `navigation`.
+
+* A part reaches its block through `self._block`. When moving a method into
+  a part, every `self.x` that is the block's must become `self._block.x`. A
+  bare `self` passed on (to a dialog, a signal, `ctx.commands`) has to become
+  `self._block` too; a test with a `Mock` block will not notice.
+* The `only_initialized` / `only_seekable` / ... guards in
+  `video_block_guards.py` work on part methods as well; they ask the block.
+* Commands name part methods with a dot: `("active", "navigation.next")`,
+  `LOADING_COMMANDS` entries, `manual_seek("bookmarker.seek", i)`. An
+  `("all", "x")` command emits `VideoBlocksManager.all_x`, which
+  `VideoBlocksManager` connects to `vb.<part>.<method>` for each new block.
+  `tests/test_dotted_commands.py` checks that every named command resolves.
+* Parts are made in `VideoBlock.__init__` before `init_url_resolver()`,
+  which connects to them. A new part goes there too, and into
+  `_block_parts()` in `tests/conftest.py`.
+* In tests, `mock_block_parts(block)` gives a `Mock(spec=VideoBlock)` its
+  parts, and `is_block_command("part.method")` checks a command name. A part
+  that makes a `QTimer(block)` cannot take a `Mock` as its parent: patch
+  `gridplayer.widgets.video_block_<part>.QTimer`, or use a `QObject`
+  stand-in.
+* An exception raised inside a Qt slot aborts the whole test run ("Fatal
+  Python error: Aborted"), not just the test.
+
 ## Translatable strings
 
 `pylupdate5` only extracts a string when it sees a literal context and a
