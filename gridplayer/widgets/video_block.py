@@ -1,8 +1,6 @@
-import dataclasses
 import logging
 import random
 import secrets
-import time
 from datetime import datetime, timezone
 from functools import partial
 from operator import attrgetter
@@ -19,16 +17,12 @@ from gridplayer.dialogs.error_details import (
     code_rows,
 )
 from gridplayer.dialogs.input_dialog import (
-    QCustomSpinboxInput,
     QCustomSpinboxTimeInput,
 )
 from gridplayer.dialogs.rename_dialog import QVideoRenameDialog
 from gridplayer.exceptions import PlayerException
 from gridplayer.models.audio_selection import (
-    AudioDefault,
     AudioDisabled,
-    AudioLanguage,
-    AudioPreferred,
 )
 from gridplayer.models.bookmark import Bookmark
 from gridplayer.models.media_list import (
@@ -41,12 +35,7 @@ from gridplayer.models.media_list import (
 )
 from gridplayer.models.seek_mark import SeekMark, SeekMarkKind
 from gridplayer.models.stream import (
-    STANDING_QUALITIES,
-    STREAM_QUALITY_AUTO,
-    HashableDict,
-    StreamOrigin,
     Streams,
-    short_quality_name,
 )
 from gridplayer.models.video import (
     Video,
@@ -87,7 +76,6 @@ from gridplayer.utils.step_sizes import seek_step_ms
 from gridplayer.utils.url_resolve.static import ResolvedList, ResolvedVideo
 from gridplayer.utils.url_resolve.url_resolve import VideoURLResolver
 from gridplayer.utils.video_errors import (
-    ProxyFailure,
     ShownError,
     file_error,
     player_error,
@@ -113,17 +101,16 @@ from gridplayer.widgets.video_block_bookmarker import Bookmarker
 from gridplayer.widgets.video_block_chapters import ChapterControl
 from gridplayer.widgets.video_block_guards import (
     only_initialized,
-    only_live,
     only_local_file,
     only_navigable,
     only_seekable,
-    only_streamable,
     only_with_video_tacks,
 )
 from gridplayer.widgets.video_block_loop import LoopControl
 from gridplayer.widgets.video_block_recovery import RecoveryControl
 from gridplayer.widgets.video_block_screenshot import ScreenshotControl
 from gridplayer.widgets.video_block_sponsorblock import SponsorBlockControl
+from gridplayer.widgets.video_block_stream import StreamControl
 from gridplayer.widgets.video_block_subtitles import SubtitleControl
 from gridplayer.widgets.video_block_view import ViewControl
 from gridplayer.widgets.video_frame_vlc_base import VideoFrameVLC
@@ -155,10 +142,6 @@ SEEK_SETTLE_MS = 500
 # else to say so -- and plays on from where that one took it. Made again once
 # the time shows up where the seek could never have landed, it takes.
 SEEK_RETRIES = 2
-
-# a pane that has to sit still for an hour before following its size is
-# as good as one that never follows it at all
-MAX_QUALITY_ADAPT_DELAY_S = 3600
 
 # the place, over the video, of one taken off its list while it played
 NOT_ON_LIST_TXT = "\u2013"
@@ -273,29 +256,16 @@ class VideoBlock(QWidget):
         self._in_progress_timer.setInterval(IN_PROGRESS_THRESHOLD_MS)
         self._in_progress_timer.timeout.connect(self.is_in_progress_change)
 
-        self._reload_timer = QTimer(self)
-        self._reload_timer.timeout.connect(self.reload)
-
         # how far it got loading: the stage it is at, and the ones it goes
         # through
         self._load_stage: LoadStage | None = None
         self._load_steps: tuple[LoadStage, ...] = ()
 
         # what went wrong last, the stage it went wrong at and how many times
-        # it was tried; the proxy's URL of the stream, for what it was told
-        # fetching it, and from when
+        # it was tried
         self._last_error: ShownError | None = None
         self._error_stage: LoadStage | None = None
         self._error_tries = 0
-        self._proxied_url: str | None = None
-        self._stream_loaded_at = 0.0
-
-        self._stream_quality_playing = None
-        self._audio_language_playing = None
-
-        self._quality_adapt_timer = QTimer(self)
-        self._quality_adapt_timer.setSingleShot(True)
-        self._quality_adapt_timer.timeout.connect(self._adapt_stream_quality)
 
         self._seek_settle_timer = QTimer(self)
         self._seek_settle_timer.setSingleShot(True)
@@ -311,10 +281,6 @@ class VideoBlock(QWidget):
         # the seek before the last, when the last was made before it landed
         self._seek_behind: int | None = None
 
-        # whether what plays is opened by VLC's adaptive demuxer, the one
-        # that turns seeks down; see SEEK_RETRIES
-        self._is_adaptive = False
-
         self.url_resolver = self.init_url_resolver()
         self.video_driver: VideoFrameVLC | None = None
 
@@ -327,6 +293,7 @@ class VideoBlock(QWidget):
         self.loop = LoopControl(self)
         self.screenshot = ScreenshotControl(self)
         self.recovery = RecoveryControl(self)
+        self.stream = StreamControl(self)
 
         # the next, previous or a random file of the folder, to put in this
         # one's place
@@ -619,7 +586,7 @@ class VideoBlock(QWidget):
     def cleanup(self):
         self.overlay_hide_timer.stop()
         self._in_progress_timer.stop()
-        self._quality_adapt_timer.stop()
+        self.stream.stop_adapting()
         self.recovery.stop()
 
         self._log.debug(f"{self.id}: cleaning up resolver")
@@ -663,27 +630,12 @@ class VideoBlock(QWidget):
 
             return player_error(message, vlc_lines)
 
-        failure = self._proxy_failure()
+        failure = self.stream.proxy_failure()
 
         if failure is not None:
             return proxy_error(failure, vlc_lines)
 
         return player_error(message, vlc_lines, url=str(uri))
-
-    def _proxy_failure(self) -> ProxyFailure | None:
-        if self._proxied_url is None:
-            return None
-
-        failure = self._ctx.commands.stream_failure(self._proxied_url)
-
-        if not isinstance(failure, ProxyFailure):
-            return None
-
-        # what it was told fetching it this time, not before
-        if failure.at < self._stream_loaded_at:
-            return None
-
-        return failure
 
     def error(self):
         self._is_error = True
@@ -930,7 +882,7 @@ class VideoBlock(QWidget):
                 translate("Video Status", "Buffering {PERCENT}%").format(
                     PERCENT=percent
                 ),
-                self._video_detail(),
+                self.stream.quality_detail(),
                 percent,
             )
             return
@@ -941,25 +893,12 @@ class VideoBlock(QWidget):
         self._show_stage(
             LoadStage.VIDEO,
             translate("Video Status", "Opening…"),
-            self._video_detail(),
+            self.stream.quality_detail(),
         )
-
-    def _video_detail(self) -> str:
-        """The stream picked, of a link with several.
-
-        A link with one stream has nothing to pick, and what its one
-        stream is called ("generic", "[0]", "9300k") is no news to anyone.
-        The Quality menu is left out for it on the same grounds.
-        """
-
-        if len(self.streams) > 1 and self._stream_quality_playing:
-            return short_quality_name(self._stream_quality_playing)
-
-        return ""
 
     def reload(self):
         self.recovery.stop_retry_countdown()
-        self._quality_adapt_timer.stop()
+        self.stream.stop_adapting()
 
         self.is_live = False
         self._is_error = False
@@ -1127,7 +1066,7 @@ class VideoBlock(QWidget):
     def resizeEvent(self, event):
         super().resizeEvent(event)
         self._apply_overlay_size_policy()
-        self._schedule_quality_adapt()
+        self.stream.schedule_adapt()
 
     @property
     def is_overlay_fits(self) -> bool:
@@ -1193,77 +1132,6 @@ class VideoBlock(QWidget):
             return
 
         self.manual_seek("seek", time_ms)
-
-    @only_streamable
-    def quality_adapt_delay(self):
-        delay_sec = QCustomSpinboxInput.get_int(
-            parent=self.parent(),
-            title=translate(
-                "Dialog - Set quality adapt delay", "Set quality adapt delay", "Header"
-            ),
-            initial_value=self.video_params.quality_adapt_delay_sec,
-            _min=1,
-            _max=MAX_QUALITY_ADAPT_DELAY_S,
-        )
-
-        self.set_quality_adapt_delay(delay_sec)
-
-    @only_streamable
-    def set_quality_adapt_delay(self, delay_sec):
-        self.video_params.quality_adapt_delay_sec = delay_sec
-
-        # a pane already waiting was counting to the old delay
-        if self._quality_adapt_timer.isActive():
-            self._quality_adapt_timer.start(self._quality_adapt_delay_ms)
-
-    @only_streamable
-    def get_quality_adapt_delay(self):
-        return "{} {}".format(
-            self.video_params.quality_adapt_delay_sec,
-            translate("Quality Adapt Delay", "second(s)"),
-        )
-
-    @only_initialized
-    @only_live
-    def auto_reload_timer(self):
-        time_min = QCustomSpinboxInput.get_int(
-            parent=self.parent(),
-            title=translate(
-                "Dialog - Set auto reload timer", "Set auto reload timer", "Header"
-            ),
-            special_text=translate("Auto Reload Timer", "Disabled"),
-            initial_value=self.video_params.auto_reload_timer_min,
-            _min=0,
-            _max=1000,
-        )
-
-        self.set_auto_reload_timer(time_min)
-
-    @only_initialized
-    @only_live
-    def set_auto_reload_timer(self, time_min):
-        self.video_params.auto_reload_timer_min = time_min
-
-        time_ms = time_min * 60 * 1000
-
-        if time_ms == 0:
-            self._reload_timer.stop()
-            self._reload_timer.setInterval(0)
-            return
-
-        self._reload_timer.setInterval(time_ms)
-        self._reload_timer.start()
-
-    @only_initialized
-    @only_live
-    def get_auto_reload_timer(self):
-        if self.video_params.auto_reload_timer_min == 0:
-            return translate("Auto Reload Timer", "Disabled")
-
-        return "{} {}".format(
-            self.video_params.auto_reload_timer_min,
-            translate("Auto Reload Timer", "minute(s)"),
-        )
 
     def is_under_cursor(self):
         return self.rect().contains(self.mapFromGlobal(QCursor.pos()))
@@ -1395,12 +1263,6 @@ class VideoBlock(QWidget):
         if self.video_driver is None or not self.is_video_initialized:
             return {}
         return self.video_driver.video_tracks
-
-    @property
-    def audio_language_playing(self) -> str | None:
-        """Which of the languages on offer the rung on screen was loaded for."""
-
-        return self._audio_language_playing
 
     @only_initialized
     def set_video_track(self, track_id):
@@ -1995,8 +1857,8 @@ class VideoBlock(QWidget):
         self.loop.set_end_time(snapshot.loop_end)
         self.set_rate(snapshot.rate, is_silent=True)
 
-        self.switch_stream_quality(snapshot.stream_quality)
-        self.set_auto_reload_timer(snapshot.auto_reload_timer_min)
+        self.stream.switch_quality(snapshot.stream_quality)
+        self.stream.set_reload_timer(snapshot.auto_reload_timer_min)
 
         self._take_snapshot_params(snapshot)
 
@@ -2171,7 +2033,7 @@ class VideoBlock(QWidget):
         self.sponsorblock.forget()
 
         # a file is never adaptive; a URL says so once its stream is picked
-        self._is_adaptive = False
+        self.stream.is_adaptive = False
 
         if self.video_params.is_http_url:
             self._show_resolving_link()
@@ -2218,293 +2080,7 @@ class VideoBlock(QWidget):
 
         self._learn_item_details(video.details)
 
-        self.load_stream_quality(self.video_params.stream_quality)
-
-    @property
-    def _language_variants(self) -> Streams:
-        """Where this video's languages live, out of the two places they can.
-
-        A site either dubs a video by handing back the whole ladder once
-        per language, or by offering one ladder and several audio tracks
-        to pair with it. Either way it is a set of streams that differ in
-        nothing but the language of their sound.
-        """
-
-        if not self.streams:
-            return Streams()
-
-        if self.streams.is_multilingual:
-            return self.streams
-
-        audio_tracks = next(
-            (
-                stream.audio_tracks
-                for _, stream in self.streams.items()
-                if stream.audio_tracks
-            ),
-            None,
-        )
-
-        return audio_tracks or Streams()
-
-    @property
-    def audio_language_options(self) -> tuple[str, ...]:
-        """The languages this video is dubbed into, as the site offered them."""
-
-        return self._language_variants.languages
-
-    @property
-    def audio_language(self) -> str | None:
-        """Which language this video plays, out of the several it is dubbed into.
-
-        Nothing to choose between leaves this empty, and so does a video
-        whose sound names no language at all.
-        """
-
-        return self._language_among(self._language_variants)
-
-    def _language_among(self, variants: Streams) -> str | None:
-        """Which of these languages the sound asked for comes to."""
-
-        if not variants.is_multilingual:
-            return None
-
-        selection = self.video_params.audio_selection
-
-        if isinstance(selection, AudioLanguage) and selection.tag in variants.languages:
-            return selection.tag
-
-        if isinstance(selection, AudioDefault):
-            # the languages asked for do not apply to the video's own sound,
-            # which is the language it was made in
-            return variants.language_for("")
-
-        return variants.language_for(self.video_params.audio_languages)
-
-    @property
-    def preferred_audio_language(self) -> str | None:
-        """Which language the preference alone would settle on.
-
-        What is playing may be a pick made by hand instead, so this is the
-        only way to say what going back to the preference would give.
-        """
-
-        return self._language_variants.language_for(self.video_params.audio_languages)
-
-    @property
-    def stream_ladder(self) -> Streams:
-        """The rungs this video may switch between, all in the one language."""
-
-        return self.streams.for_language(self.audio_language)
-
-    @only_streamable
-    def set_audio_language(self, language: str | None):
-        """Play the same video in another one of the languages it is dubbed into.
-
-        The ladder is a different one per language, so the rung has to be
-        found again; asking for the one playing now finds the same size.
-        """
-
-        self.video_params.audio_selection = (
-            AudioPreferred() if language is None else AudioLanguage(tag=language)
-        )
-
-        self._log.debug(
-            f"Set audio language {language},"
-            f" resolved to {self.audio_language},"
-            f" playing {self._audio_language_playing}"
-        )
-
-        self.follow_audio_language()
-
-    def follow_audio_language(self):
-        """Put the sound asked for into effect, in whichever dub it calls for.
-
-        A dubbed stream is served one language at a time, so another one
-        means fetching the ladder again rather than reaching for a track
-        that was never handed over.
-        """
-
-        if not self.streams or self.audio_language == self._audio_language_playing:
-            # the rung on screen already carries it, so there is nothing to
-            # reload -- but the sound may have been switched off since it
-            # was loaded, and asking for a language means wanting it
-            self.audio.apply_wanted_track()
-            return
-
-        # the pane is about to be reloaded anyway, and on a ladder that no
-        # longer holds the rung the timer was comparing against
-        self._quality_adapt_timer.stop()
-
-        self.reset(is_link_kept=True)
-
-        self.load_stream_quality(self.video_params.stream_quality)
-
-    @only_streamable
-    def switch_stream_quality(self, quality: str):
-        if quality == self.video_params.stream_quality:
-            return
-
-        # picking a rung by hand calls off whatever the pane was about to do
-        self._quality_adapt_timer.stop()
-
-        self.reset(is_link_kept=True)
-
-        self.load_stream_quality(quality)
-
-    @property
-    def stream_quality_playing(self) -> str | None:
-        """Which rung of the ladder is on screen, as opposed to what was asked."""
-
-        return self._stream_quality_playing
-
-    def load_stream_quality(self, wanted_quality: str):
-        is_auto = wanted_quality == STREAM_QUALITY_AUTO
-
-        ladder = self.stream_ladder
-
-        self._audio_language_playing = self.audio_language
-
-        if is_auto:
-            quality, stream = ladder.fit_to_height(self._pane_height_px)
-        else:
-            quality, stream = ladder.by_quality(wanted_quality)
-
-        # a standing instruction outlives the rung it picked, where a rung
-        # chosen by name is kept as the name it was chosen by
-        self.video_params.stream_quality = (
-            wanted_quality if wanted_quality in STANDING_QUALITIES else quality
-        )
-        self._stream_quality_playing = quality
-
-        # switching quality resets the block, which leaves it without a driver
-        self._ensure_video_driver()
-
-        if stream.protocol == "direct":
-            url = stream.url
-            self._proxied_url = None
-        else:
-            stream = self._with_audio_language(stream)
-            url = self._ctx.commands.add_stream(self._with_origin(stream, quality))
-            self._proxied_url = url if isinstance(url, str) else None
-
-        self._stream_loaded_at = time.monotonic()
-
-        self._is_adaptive = stream.is_adaptive
-
-        self._show_opening()
-
-        self.load_video.emit(
-            MediaInput(
-                uri=url,
-                is_live=self.is_live,
-                is_audio_only=stream.is_audio_only,
-                video_codec=stream.video_codec,
-                is_adaptive=stream.is_adaptive,
-                size=self.size_tuple,
-                video=self.video_params,
-                # the proxy fetches the rest with them already
-                http_headers=(
-                    self._item_headers if stream.protocol == "direct" else {}
-                ),
-            )
-        )
-
-    @property
-    def _quality_adapt_delay_ms(self) -> int:
-        """How long a pane has to keep its new size before the stream follows.
-
-        Dragging a window edge resizes every pane dozens of times on the way,
-        and every switch costs a reload, so the size has to settle down first.
-        """
-
-        return max(self.video_params.quality_adapt_delay_sec, 1) * 1000
-
-    @property
-    def _pane_height_px(self) -> int:
-        """How tall this pane is in the pixels a screen actually has.
-
-        The widget measures itself in the logical pixels Qt scales, so on a
-        200% display a pane reports half the detail it can really show.
-        """
-
-        return int(self.height() * self.devicePixelRatioF())
-
-    def _schedule_quality_adapt(self):
-        if self.video_params is None or not self.streams:
-            return
-
-        if self.video_params.stream_quality != STREAM_QUALITY_AUTO:
-            return
-
-        self._quality_adapt_timer.start(self._quality_adapt_delay_ms)
-
-    def _adapt_stream_quality(self):
-        """Fit the stream to the size the pane has settled on."""
-
-        if self._is_closing or self.video_params is None or not self.streams:
-            return
-
-        if self.video_params.stream_quality != STREAM_QUALITY_AUTO:
-            return
-
-        if self._is_error:
-            # a video that is already failing has the retry timer looking
-            # after it, and reloading underneath that would only confuse it
-            return
-
-        if self._is_state_change_in_progress:
-            self._quality_adapt_timer.start(self._quality_adapt_delay_ms)
-            return
-
-        quality, _ = self.stream_ladder.fit_to_height(self._pane_height_px)
-
-        if quality == self._stream_quality_playing:
-            return
-
-        self._log.debug(
-            f"Pane now fits {quality}, switching from {self._stream_quality_playing}"
-        )
-
-        self.reset(is_link_kept=True)
-
-        self.load_stream_quality(STREAM_QUALITY_AUTO)
-
-    def _with_audio_language(self, stream):
-        """Hand the proxy only the audio tracks in the language being played.
-
-        VLC is served a playlist with one audio rendition in it, so which
-        of them it is has to be settled here; the proxy is left to pick
-        the best of whatever it is given.
-        """
-
-        if not stream.audio_tracks:
-            return stream
-
-        language = self._language_among(stream.audio_tracks)
-
-        if language is None:
-            return stream
-
-        return dataclasses.replace(
-            stream, audio_tracks=stream.audio_tracks.for_language(language)
-        )
-
-    def _with_origin(self, stream, quality: str):
-        """Tell the proxy where this stream came from.
-
-        Services sign the URLs they hand out and stop honouring them after a
-        while, so the proxy has to be able to ask for them again rather than
-        serve a video that dies partway through.
-        """
-
-        origin = StreamOrigin(
-            url=str(self.video_params.uri),
-            quality=quality,
-            headers=HashableDict(self._item_headers) or None,
-        )
-
-        return dataclasses.replace(stream, origin=origin)
+        self.stream.load_quality(self.video_params.stream_quality)
 
     def load_video_finish(self):
         # the video is playing, so whatever went wrong before is behind us
@@ -2539,7 +2115,7 @@ class VideoBlock(QWidget):
         self.loop.set_end_time(self.video_params.loop_end)
         self.set_rate(self.video_params.rate, is_silent=True)
 
-        self.set_auto_reload_timer(self.video_params.auto_reload_timer_min)
+        self.stream.set_reload_timer(self.video_params.auto_reload_timer_min)
 
         self.video_params.video_track_id = self.video_driver.cur_video_track_id
 
@@ -2795,7 +2371,7 @@ class VideoBlock(QWidget):
         # arrive, which is no sign of it having been turned down
         is_near_end = self.video_driver.length - seek_ms <= SEEK_ARRIVAL_MS
         self._seek_retries = (
-            SEEK_RETRIES if self._is_adaptive and not is_near_end else 0
+            SEEK_RETRIES if self.stream.is_adaptive and not is_near_end else 0
         )
         self._seek_behind = behind if is_behind and self._seek_retries else None
 

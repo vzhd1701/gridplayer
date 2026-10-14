@@ -59,6 +59,7 @@ def _block_parts():
     from gridplayer.widgets.video_block_recovery import RecoveryControl
     from gridplayer.widgets.video_block_screenshot import ScreenshotControl
     from gridplayer.widgets.video_block_sponsorblock import SponsorBlockControl
+    from gridplayer.widgets.video_block_stream import StreamControl
     from gridplayer.widgets.video_block_subtitles import SubtitleControl
     from gridplayer.widgets.video_block_view import ViewControl
 
@@ -70,6 +71,7 @@ def _block_parts():
         "recovery": RecoveryControl,
         "screenshot": ScreenshotControl,
         "sponsorblock": SponsorBlockControl,
+        "stream": StreamControl,
         "subtitles": SubtitleControl,
         "view": ViewControl,
     }

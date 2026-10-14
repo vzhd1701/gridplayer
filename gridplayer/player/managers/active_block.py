@@ -44,7 +44,7 @@ from gridplayer.widgets.video_block import VideoBlock
 # the reload that the next choice would otherwise land in.
 LOADING_COMMANDS = frozenset(
     {
-        "switch_stream_quality",
+        "stream.switch_quality",
         "reload",
         "stop_playback",
         "close",
@@ -59,7 +59,7 @@ LOADING_COMMANDS = frozenset(
         "recovery.get_fail_wait",
         "audio.set_track",
         "audio.set_device",
-        "set_audio_language",
+        "stream.set_audio_language",
         "audio.apply_preference",
         "audio.apply_default",
         "audio.languages_dialog",
@@ -513,9 +513,9 @@ class ActiveBlockManager(ManagerBase):
 
         # a dubbed video is the same ladder over again in every language,
         # and only one of them is the one being played
-        ladder = self._ctx.active_block.stream_ladder
+        ladder = self._ctx.active_block.stream.ladder
 
-        playing = self._ctx.active_block.stream_quality_playing
+        playing = self._ctx.active_block.stream.quality_playing
 
         # a ladder is stored worst first, and a menu of it reads the other way
         video_rungs = [
@@ -583,7 +583,7 @@ class ActiveBlockManager(ManagerBase):
         named here is the only sign that it could not.
         """
 
-        playing = self._ctx.active_block.stream_quality_playing
+        playing = self._ctx.active_block.stream.quality_playing
 
         if self._is_quality_chosen(quality) and playing:
             title = f"{title} ({playing})"
@@ -591,7 +591,7 @@ class ActiveBlockManager(ManagerBase):
         return {
             "title": title,
             "icon": "empty",
-            "func": ("active", "switch_stream_quality", quality),
+            "func": ("active", "stream.switch_quality", quality),
             "check_if": ("is_active_param_set_to", "stream_quality", quality),
             "is_choice": True,
             "show_if": "is_active_multistream",
@@ -857,8 +857,8 @@ class ActiveBlockManager(ManagerBase):
 
         block = self._ctx.active_block
 
-        if len(block.audio_language_options) > 1:
-            language = block.preferred_audio_language
+        if len(block.stream.audio_language_options) > 1:
+            language = block.stream.preferred_audio_language
 
             return language_name(language) or language
 
@@ -900,16 +900,16 @@ class ActiveBlockManager(ManagerBase):
 
         block = self._ctx.active_block
 
-        languages = block.audio_language_options
+        languages = block.stream.audio_language_options
 
         if len(languages) > 1:
-            playing = block.audio_language_playing
+            playing = block.stream.audio_language_playing
 
             return [
                 {
                     "title": language_name(language) or language,
                     "icon": "play" if language == playing else "empty",
-                    "func": ("active", "set_audio_language", language),
+                    "func": ("active", "stream.set_audio_language", language),
                     "check_if": ("is_active_audio_language", language),
                     "is_choice": True,
                     "show_if": "is_active_initialized",
@@ -1488,8 +1488,8 @@ def _quality_adapt_delay_menu_item():
     return {
         "title": "{}: %v".format(translate("Actions", "Adapt after")),
         "icon": "empty",
-        "func": ("active", "quality_adapt_delay"),
-        "value_getter": ("active", "get_quality_adapt_delay"),
+        "func": ("active", "stream.adapt_delay_dialog"),
+        "value_getter": ("active", "stream.get_adapt_delay"),
         "show_if": (
             "is_active_param_set_to",
             "stream_quality",
@@ -1511,7 +1511,7 @@ def _stream_menu_item(quality: str, is_playing: bool = False):
     return {
         "title": quality,
         "icon": "play" if is_playing else "empty",
-        "func": ("active", "switch_stream_quality", quality),
+        "func": ("active", "stream.switch_quality", quality),
         "check_if": ("is_active_param_set_to", "stream_quality", quality),
         "is_choice": True,
         "show_if": "is_active_multistream",

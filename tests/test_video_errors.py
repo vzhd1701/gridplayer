@@ -724,8 +724,8 @@ class TestOnTheCell:
         block = make_cell(
             "https://site.example/live", network_retry_mode=NetworkRetryMode.OFF
         )
-        block._proxied_url = "http://127.0.0.1:1/?session_id=s"
-        block._stream_loaded_at = time.monotonic() - 1
+        block.stream._proxied_url = "http://127.0.0.1:1/?session_id=s"
+        block.stream._loaded_at = time.monotonic() - 1
         block._ctx.commands.stream_failure.return_value = ProxyFailure(
             url="https://cdn.example/seg.ts", status=403, reason="Forbidden"
         )
@@ -740,11 +740,11 @@ class TestOnTheCell:
         block = make_cell(
             "https://site.example/live", network_retry_mode=NetworkRetryMode.OFF
         )
-        block._proxied_url = "http://127.0.0.1:1/?session_id=s"
+        block.stream._proxied_url = "http://127.0.0.1:1/?session_id=s"
         block._ctx.commands.stream_failure.return_value = ProxyFailure(
             url="https://cdn.example/seg.ts", status=403, at=time.monotonic() - 60
         )
-        block._stream_loaded_at = time.monotonic()
+        block.stream._loaded_at = time.monotonic()
 
         block.video_driver_error("Video stopped before initialization")
 

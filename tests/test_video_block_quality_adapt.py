@@ -17,7 +17,7 @@ from gridplayer.models.stream import (
 )
 from gridplayer.models.video import Video
 from gridplayer.settings import Settings
-from gridplayer.widgets.video_block import VideoBlock
+from gridplayer.widgets.video_block_stream import StreamControl
 
 
 @pytest.fixture(scope="module", autouse=True)
@@ -48,20 +48,41 @@ def _streams(with_audio=False, audio_name="Audio 129kbps"):
 DELAY_MS = 15000
 
 
+@pytest.fixture(autouse=True)
+def _timers(mocker):
+    # a stand-in block is no QObject for the part's timers to belong to,
+    # and what matters is only whether they were started or stopped
+    mocker.patch(
+        "gridplayer.widgets.video_block_stream.QTimer",
+        side_effect=lambda *args, **kwargs: Mock(),
+    )
+
+
 def _block(mocker, quality=STREAM_QUALITY_AUTO, playing="360p", pane_height=300):
     block = mocker.Mock()
     block._log = logging.getLogger("test")
     block._is_closing = False
     block._is_error = False
     block._is_state_change_in_progress = False
+    block._item_headers = {}
+    # these streams name no language, so the ladder is all of them
     block.streams = _streams()
-    # these streams name no language, so narrowing by one changes nothing
-    block.stream_ladder = block.streams
-    block._stream_quality_playing = playing
-    block._pane_height_px = pane_height
+    block.height.return_value = pane_height
+    block.devicePixelRatioF.return_value = 1.0
     block.video_params = Video(uri="http://example.com/a.mp4")
     block.video_params.stream_quality = quality
-    block._quality_adapt_delay_ms = DELAY_MS
+    block.video_params.quality_adapt_delay_sec = DELAY_MS // 1000
+
+    block.stream = StreamControl(block)
+    block.stream._quality_playing = playing
+    return block
+
+
+def _adapting(mocker, **kwargs):
+    """A block whose next load is only recorded, for what adapting asks."""
+
+    block = _block(mocker, **kwargs)
+    mocker.patch.object(block.stream, "load_quality")
     return block
 
 
@@ -69,138 +90,143 @@ def test_the_delay_is_taken_from_the_video_in_milliseconds(mocker):
     block = _block(mocker)
     block.video_params.quality_adapt_delay_sec = 20
 
-    assert VideoBlock._quality_adapt_delay_ms.fget(block) == 20000
+    assert block.stream._adapt_delay_ms == 20000
 
 
 def test_a_new_delay_restarts_a_pane_that_is_already_waiting(mocker):
     block = _block(mocker)
-    block._quality_adapt_timer.isActive.return_value = True
-    block._quality_adapt_delay_ms = 30000
+    block.stream._adapt_timer.isActive.return_value = True
 
-    VideoBlock.set_quality_adapt_delay(block, 30)
+    block.stream.set_adapt_delay(30)
 
     assert block.video_params.quality_adapt_delay_sec == 30
-    block._quality_adapt_timer.start.assert_called_once_with(30000)
+    block.stream._adapt_timer.start.assert_called_once_with(30000)
 
 
 def test_a_new_delay_does_not_start_a_pane_that_was_not_waiting(mocker):
     block = _block(mocker)
-    block._quality_adapt_timer.isActive.return_value = False
+    block.stream._adapt_timer.isActive.return_value = False
 
-    VideoBlock.set_quality_adapt_delay(block, 30)
+    block.stream.set_adapt_delay(30)
 
     assert block.video_params.quality_adapt_delay_sec == 30
-    block._quality_adapt_timer.start.assert_not_called()
+    block.stream._adapt_timer.start.assert_not_called()
 
 
 def test_a_resize_starts_the_wait_before_anything_is_switched(mocker):
     block = _block(mocker)
 
-    VideoBlock._schedule_quality_adapt(block)
+    block.stream.schedule_adapt()
 
-    block._quality_adapt_timer.start.assert_called_once_with(DELAY_MS)
+    block.stream._adapt_timer.start.assert_called_once_with(DELAY_MS)
 
 
 def test_a_pane_on_a_rung_the_user_picked_is_left_alone(mocker):
     block = _block(mocker, quality="1080p")
 
-    VideoBlock._schedule_quality_adapt(block)
+    block.stream.schedule_adapt()
 
-    block._quality_adapt_timer.start.assert_not_called()
+    block.stream._adapt_timer.start.assert_not_called()
 
 
 def test_a_pane_with_nothing_playing_has_no_ladder_to_move_on(mocker):
     block = _block(mocker)
     block.streams = Streams()
 
-    VideoBlock._schedule_quality_adapt(block)
+    block.stream.schedule_adapt()
 
-    block._quality_adapt_timer.start.assert_not_called()
+    block.stream._adapt_timer.start.assert_not_called()
+
+
+def test_the_pane_is_measured_in_the_pixels_the_screen_has(mocker):
+    block = _block(mocker, pane_height=300)
+    block.devicePixelRatioF.return_value = 2.0
+
+    assert block.stream._pane_height_px == 600
 
 
 def test_a_settled_pane_switches_to_the_rung_that_now_fits(mocker):
-    block = _block(mocker, playing="360p", pane_height=700)
+    block = _adapting(mocker, playing="360p", pane_height=700)
 
-    VideoBlock._adapt_stream_quality(block)
+    block.stream._adapt()
 
     block.reset.assert_called_once()
-    block.load_stream_quality.assert_called_once_with(STREAM_QUALITY_AUTO)
+    block.stream.load_quality.assert_called_once_with(STREAM_QUALITY_AUTO)
 
 
 def test_a_pane_that_still_fits_its_rung_is_not_reloaded(mocker):
-    block = _block(mocker, playing="360p", pane_height=300)
+    block = _adapting(mocker, playing="360p", pane_height=300)
 
-    VideoBlock._adapt_stream_quality(block)
+    block.stream._adapt()
 
     block.reset.assert_not_called()
-    block.load_stream_quality.assert_not_called()
+    block.stream.load_quality.assert_not_called()
 
 
 def test_a_pane_in_the_middle_of_loading_is_asked_again_later(mocker):
-    block = _block(mocker, playing="360p", pane_height=700)
+    block = _adapting(mocker, playing="360p", pane_height=700)
     block._is_state_change_in_progress = True
 
-    VideoBlock._adapt_stream_quality(block)
+    block.stream._adapt()
 
-    block.load_stream_quality.assert_not_called()
-    block._quality_adapt_timer.start.assert_called_once_with(DELAY_MS)
+    block.stream.load_quality.assert_not_called()
+    block.stream._adapt_timer.start.assert_called_once_with(DELAY_MS)
 
 
 def test_a_failing_pane_is_left_to_the_retry_timer(mocker):
-    block = _block(mocker, playing="360p", pane_height=700)
+    block = _adapting(mocker, playing="360p", pane_height=700)
     block._is_error = True
 
-    VideoBlock._adapt_stream_quality(block)
+    block.stream._adapt()
 
-    block.load_stream_quality.assert_not_called()
-    block._quality_adapt_timer.start.assert_not_called()
+    block.stream.load_quality.assert_not_called()
+    block.stream._adapt_timer.start.assert_not_called()
 
 
 def test_a_closing_pane_does_not_start_loading_a_new_stream(mocker):
-    block = _block(mocker, playing="360p", pane_height=700)
+    block = _adapting(mocker, playing="360p", pane_height=700)
     block._is_closing = True
 
-    VideoBlock._adapt_stream_quality(block)
+    block.stream._adapt()
 
-    block.load_stream_quality.assert_not_called()
+    block.stream.load_quality.assert_not_called()
 
 
 def test_auto_survives_the_rung_it_picked(mocker):
     block = _block(mocker, pane_height=700)
 
-    VideoBlock.load_stream_quality(block, STREAM_QUALITY_AUTO)
+    block.stream.load_quality(STREAM_QUALITY_AUTO)
 
     assert block.video_params.stream_quality == STREAM_QUALITY_AUTO
-    assert block._stream_quality_playing == "720p"
+    assert block.stream.quality_playing == "720p"
 
 
 def test_a_rung_picked_by_hand_is_recorded_as_the_choice(mocker):
     block = _block(mocker)
 
-    VideoBlock.load_stream_quality(block, "720p")
+    block.stream.load_quality("720p")
 
     assert block.video_params.stream_quality == "720p"
-    assert block._stream_quality_playing == "720p"
+    assert block.stream.quality_playing == "720p"
 
 
 def test_best_survives_the_rung_it_picked(mocker):
     block = _block(mocker)
 
-    VideoBlock.load_stream_quality(block, STREAM_QUALITY_BEST)
+    block.stream.load_quality(STREAM_QUALITY_BEST)
 
     assert block.video_params.stream_quality == STREAM_QUALITY_BEST
-    assert block._stream_quality_playing == "1080p"
+    assert block.stream.quality_playing == "1080p"
 
 
 def test_audio_only_survives_the_rung_it_picked(mocker):
     block = _block(mocker)
     block.streams = _streams(with_audio=True)
-    block.stream_ladder = block.streams
 
-    VideoBlock.load_stream_quality(block, STREAM_QUALITY_AUDIO_ONLY)
+    block.stream.load_quality(STREAM_QUALITY_AUDIO_ONLY)
 
     assert block.video_params.stream_quality == STREAM_QUALITY_AUDIO_ONLY
-    assert block._stream_quality_playing == "Audio 129kbps"
+    assert block.stream.quality_playing == "Audio 129kbps"
 
 
 def test_best_is_asked_again_of_a_ladder_that_has_since_changed(mocker):
@@ -213,7 +239,7 @@ def test_best_is_asked_again_of_a_ladder_that_has_since_changed(mocker):
 
     block = _block(mocker)
 
-    VideoBlock.load_stream_quality(block, STREAM_QUALITY_BEST)
+    block.stream.load_quality(STREAM_QUALITY_BEST)
 
     block.streams = Streams(
         {
@@ -221,11 +247,10 @@ def test_best_is_asked_again_of_a_ladder_that_has_since_changed(mocker):
             for quality in ("480p", "1440p")
         }
     )
-    block.stream_ladder = block.streams
 
-    VideoBlock.load_stream_quality(block, block.video_params.stream_quality)
+    block.stream.load_quality(block.video_params.stream_quality)
 
-    assert block._stream_quality_playing == "1440p"
+    assert block.stream.quality_playing == "1440p"
 
 
 def test_audio_only_is_not_answered_with_video_after_a_reload(mocker):
@@ -238,16 +263,14 @@ def test_audio_only_is_not_answered_with_video_after_a_reload(mocker):
 
     block = _block(mocker)
     block.streams = _streams(with_audio=True)
-    block.stream_ladder = block.streams
 
-    VideoBlock.load_stream_quality(block, STREAM_QUALITY_AUDIO_ONLY)
+    block.stream.load_quality(STREAM_QUALITY_AUDIO_ONLY)
 
     block.streams = _streams(with_audio=True, audio_name="Audio 92kbps [opus]")
-    block.stream_ladder = block.streams
 
-    VideoBlock.load_stream_quality(block, block.video_params.stream_quality)
+    block.stream.load_quality(block.video_params.stream_quality)
 
-    assert block._stream_quality_playing == "Audio 92kbps [opus]"
+    assert block.stream.quality_playing == "Audio 92kbps [opus]"
 
 
 def _adapt_delay_action(stream_quality, delay_txt="15 second(s)"):
@@ -293,7 +316,7 @@ def test_the_delay_entry_stays_out_of_sight_on_a_hand_picked_rung():
 def test_the_status_names_the_stream_picked_out_of_several(mocker):
     block = _block(mocker, playing="720p")
 
-    assert VideoBlock._video_detail(block) == "720p"
+    assert block.stream.quality_detail() == "720p"
 
 
 def test_the_status_names_no_stream_where_there_was_only_one(mocker):
@@ -302,7 +325,7 @@ def test_the_status_names_no_stream_where_there_was_only_one(mocker):
         {"generic": Stream(url="http://host/a.mp4", protocol="direct")}
     )
 
-    assert VideoBlock._video_detail(block) == ""
+    assert block.stream.quality_detail() == ""
 
 
 @pytest.mark.parametrize(
@@ -319,4 +342,4 @@ def test_the_status_names_no_stream_where_there_was_only_one(mocker):
 def test_the_status_says_a_stream_by_its_size_alone(mocker, quality, said):
     block = _block(mocker, playing=quality)
 
-    assert VideoBlock._video_detail(block) == said
+    assert block.stream.quality_detail() == said

@@ -890,7 +890,7 @@ class VideoBlocksManager(ManagerBase):
             (self.all_set_aspect, vb.set_aspect),
             (self.all_set_transform, vb.set_transform),
             (self.all_take_screenshot, vb.screenshot.take),
-            (self.all_set_auto_reload_timer, vb.set_auto_reload_timer),
+            (self.all_set_auto_reload_timer, vb.stream.set_reload_timer),
             (self.all_set_audio_channel_mode, vb.audio.set_channel_mode),
             (self.all_set_audio_delay, vb.audio.set_delay),
             (self.all_audio_delay_increase, vb.audio.delay_increase),

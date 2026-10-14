@@ -1377,8 +1377,8 @@ ACTIONS = MappingProxyType(
             "title": "{}: %v".format(translate("Actions", "Auto Reload")),
             "keymap_title": translate("Actions", "Set Auto Reload"),
             "icon": "reload",
-            "func": ("active", "auto_reload_timer"),
-            "value_getter": ("active", "get_auto_reload_timer"),
+            "func": ("active", "stream.reload_timer_dialog"),
+            "value_getter": ("active", "stream.get_reload_timer"),
             "show_if": "is_active_live",
         },
         "On Network Error Show Error": {

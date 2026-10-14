@@ -3,7 +3,7 @@ the languages it would rather be heard in, audio files kept beside it, and
 how loud it is.
 
 A dubbed stream that changes its language by loading another rung is the
-block's to follow (see VideoBlock.follow_audio_language); everything that
+stream part's to follow (see StreamControl.follow_audio_language); everything that
 plays within what was loaded is here.
 """
 
@@ -229,14 +229,14 @@ class AudioControl(VideoBlockPart):
 
         self._block.video_params.audio_selection = AudioDefault()
 
-        self._block.follow_audio_language()
+        self._block.stream.follow_audio_language()
 
     def apply_preference(self):
         """Follow the preferred languages again, whichever way this video dubs."""
 
         self._block.video_params.audio_selection = AudioPreferred()
 
-        self._block.follow_audio_language()
+        self._block.stream.follow_audio_language()
 
     def apply_wanted_track(self):
         """Put the settings into effect on the video that is already playing."""
