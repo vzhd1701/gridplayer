@@ -128,14 +128,14 @@ class TestOneFolder:
     def test_next_stays_in_the_folder(self, make_block, tree):
         block = make_block(tree / "b.mp4")
 
-        block.next_video()
+        block.navigation.next()
 
         assert _uri(block) == tree / "a.mp4"
 
     def test_previous_stays_in_the_folder(self, make_block, tree):
         block = make_block(tree / "s1" / "c.mp4")
 
-        block.previous_video()
+        block.navigation.previous()
 
         assert _uri(block) == tree / "s1" / "c.mp4"
 
@@ -147,7 +147,7 @@ class TestSubfolders:
 
         seen = []
         for _ in range(5):
-            block.next_video()
+            block.navigation.next()
             seen.append(_uri(block).relative_to(tree).as_posix())
 
         assert seen == ["b.mp4", "s1/c.mp4", "s1/deep/d.mp4", "s2/e.mp4", "a.mp4"]
@@ -155,7 +155,7 @@ class TestSubfolders:
     def test_previous_goes_back_up(self, make_block, tree):
         block = make_block(tree / "s1" / "c.mp4", is_dir_recursive=True, dir_root=tree)
 
-        block.previous_video()
+        block.navigation.previous()
 
         assert _uri(block) == tree / "b.mp4"
 
@@ -164,40 +164,40 @@ class TestSubfolders:
     ):
         block = make_block(tree / "s1" / "c.mp4")
 
-        block.set_dir_recursive(True)
+        block.navigation.set_dir_recursive(True)
 
         assert block.video_params.dir_root == tree / "s1"
 
-        block.next_video()
-        block.next_video()
+        block.navigation.next()
+        block.navigation.next()
 
         # round within s1, never up to the files beside it
         assert _uri(block) == tree / "s1" / "c.mp4"
 
     def test_the_root_stays_while_in_a_subfolder(self, make_block, tree):
         block = make_block(tree / "b.mp4")
-        block.set_dir_recursive(True)
+        block.navigation.set_dir_recursive(True)
 
-        block.next_video()
-        block.next_video()
+        block.navigation.next()
+        block.navigation.next()
 
         assert _uri(block) == tree / "s1" / "deep" / "d.mp4"
         assert block.video_params.dir_root == tree
 
     def test_turned_off_the_root_is_forgotten(self, make_block, tree):
         block = make_block(tree / "b.mp4")
-        block.set_dir_recursive(True)
+        block.navigation.set_dir_recursive(True)
 
-        block.set_dir_recursive(False)
+        block.navigation.set_dir_recursive(False)
 
         assert block.video_params.dir_root is None
 
     def test_turned_on_again_it_is_not_moved(self, make_block, tree):
         block = make_block(tree / "b.mp4")
-        block.set_dir_recursive(True)
-        block.next_video()
+        block.navigation.set_dir_recursive(True)
+        block.navigation.next()
 
-        block.set_dir_recursive(True)
+        block.navigation.set_dir_recursive(True)
 
         assert block.video_params.dir_root == tree
 
@@ -206,7 +206,7 @@ class TestSubfolders:
     ):
         block = make_block(tree / "b.mp4", is_dir_recursive=True)
 
-        block.next_video()
+        block.navigation.next()
 
         assert block.video_params.dir_root == tree
         assert _uri(block) == tree / "s1" / "c.mp4"
@@ -218,7 +218,7 @@ class TestSubfolders:
             tree / "s2" / "e.mp4", is_dir_recursive=True, dir_root=tmp_path / "other"
         )
 
-        block.next_video()
+        block.navigation.next()
 
         assert block.video_params.dir_root == tree / "s2"
 
@@ -226,10 +226,10 @@ class TestSubfolders:
         self, make_block, tree
     ):
         block = make_block(tree / "a.mp4", is_dir_recursive=True)
-        block.next_video()
+        block.navigation.next()
 
         (tree / "s1" / "c.mp4").unlink()
-        block.next_video()
+        block.navigation.next()
 
         assert _uri(block) == tree / "s1" / "deep" / "d.mp4"
 
@@ -238,15 +238,15 @@ class TestSubfolders:
         PlaylistSettings().set("playlist/folder_max_entries", 4)
         block = make_block(tree / "a.mp4", is_dir_recursive=True)
 
-        block.next_video()
-        block.next_video()
+        block.navigation.next()
+        block.navigation.next()
 
         assert block.notices == ["Stopped looking after 4 files and folders"]
         assert _uri(block) == tree / "a.mp4"
 
     def test_a_tree_gone_through_since_is_looked_through_again(self, make_block, tree):
         block = make_block(tree / "a.mp4", is_dir_recursive=True)
-        block.next_video()
+        block.navigation.next()
 
         for name in ("a.mp4", "s1/c.mp4", "s1/deep/d.mp4", "s2/e.mp4"):
             (tree / name).unlink()
@@ -254,7 +254,7 @@ class TestSubfolders:
 
         with pytest.MonkeyPatch.context() as patch:
             patch.setattr("gridplayer.utils.next_file.MAX_MISSING_FILES", 2)
-            block.next_video()
+            block.navigation.next()
 
         assert _uri(block) == fresh
 
@@ -288,7 +288,7 @@ class TestWhileTheTreeIsLookedThrough:
     def test_it_says_so(self, make_block, tree, held_scans):
         block = make_block(tree / "a.mp4", is_dir_recursive=True)
 
-        block.next_video()
+        block.navigation.next()
 
         assert block.notices == ["Scanning folders…"]
 
@@ -302,7 +302,8 @@ class TestWhileTheTreeIsLookedThrough:
                 id="end action",
             ),
             pytest.param(
-                lambda block: block.set_dir_recursive(False), id="subfolders off"
+                lambda block: block.navigation.set_dir_recursive(False),
+                id="subfolders off",
             ),
         ],
     )
@@ -310,7 +311,7 @@ class TestWhileTheTreeIsLookedThrough:
         self, make_block, tree, held_scans, action
     ):
         block = make_block(tree / "a.mp4", is_dir_recursive=True)
-        block.next_video(is_end=True)
+        block.navigation.next(is_end=True)
 
         action(block)
         held_scans.finish()
@@ -321,7 +322,7 @@ class TestWhileTheTreeIsLookedThrough:
         self, make_block, tree, held_scans
     ):
         block = make_block(tree / "a.mp4", is_dir_recursive=True)
-        block.next_video(is_end=True)
+        block.navigation.next(is_end=True)
 
         block.bookmarker._is_editing_one = True
         held_scans.finish()
@@ -334,7 +335,7 @@ class TestWhileTheTreeIsLookedThrough:
         self, make_block, tree, held_scans
     ):
         block = make_block(tree / "a.mp4", is_dir_recursive=True)
-        block.next_video()
+        block.navigation.next()
 
         block.bookmarker._is_editing_one = True
         held_scans.finish()
@@ -346,13 +347,13 @@ class TestWhileTheTreeIsLookedThrough:
         self, make_block, tree, held_scans
     ):
         block = make_block(tree / "a.mp4", is_dir_recursive=True)
-        block.next_video()
+        block.navigation.next()
         (key,) = held_scans.keys
 
         folder_index().forget(key)
         folder_index().scanned.emit(key)
 
-        assert block._folder_navigator.is_waiting
+        assert block.navigation._folder_navigator.is_waiting
 
     def test_a_tree_just_looked_through_is_not_looked_through_twice(
         self, make_block, tmp_path, held_scans
@@ -360,7 +361,7 @@ class TestWhileTheTreeIsLookedThrough:
         (only,) = _touch(tmp_path, "root/a.mp4")
         block = make_block(only, is_dir_recursive=True)
 
-        block.next_video()
+        block.navigation.next()
         only.unlink()
         held_scans.finish()
 
@@ -374,7 +375,7 @@ class TestOffTheInterfaceThread:
     ):
         block = make_block(tree / "b.mp4", is_dir_recursive=True)
 
-        block.next_video()
+        block.navigation.next()
 
         deadline = time.monotonic() + 5
         while _uri(block) == tree / "b.mp4" and time.monotonic() < deadline:
@@ -385,8 +386,8 @@ class TestOffTheInterfaceThread:
     def test_a_file_that_came_meanwhile_is_left_alone(self, make_block, tree):
         block = make_block(tree / "a.mp4", is_dir_recursive=True)
 
-        block.next_video()
-        block.switch_video(tree / "s2" / "e.mp4")
+        block.navigation.next()
+        block.navigation.switch_video(tree / "s2" / "e.mp4")
 
         deadline = time.monotonic() + 1
         while time.monotonic() < deadline:
@@ -406,7 +407,7 @@ class TestRandom:
 
         played = []
         for _ in range(4):
-            block.shuffle_video()
+            block.navigation.shuffle()
             played.append(_uri(block))
 
         assert sorted(played) == sorted(
@@ -421,21 +422,21 @@ class TestRandom:
     def test_play_previous_goes_back_through_those_played(self, make_block, tree):
         block = make_block(tree / "a.mp4", end_action=VideoEndAction.SHUFFLE_FILE)
 
-        block.next_video()
+        block.navigation.next()
         first = _uri(block)
 
-        block.previous_video()
+        block.navigation.previous()
         assert _uri(block) == tree / "a.mp4"
 
-        block.next_video()
+        block.navigation.next()
         assert _uri(block) == first
 
     def test_play_random_file_while_looping_the_file(self, make_block, tree):
         block = make_block(tree / "a.mp4", end_action=VideoEndAction.LOOP_FILE)
 
-        block.shuffle_video()
+        block.navigation.shuffle()
         first = _uri(block)
-        block.shuffle_video()
+        block.navigation.shuffle()
 
         assert first == tree / "b.mp4"
         assert _uri(block) == tree / "a.mp4"
@@ -444,7 +445,7 @@ class TestRandom:
     def test_with_none_played_before_previous_starts_it_over(self, make_block, tree):
         block = make_block(tree / "a.mp4", end_action=VideoEndAction.SHUFFLE_FILE)
 
-        block.previous_video()
+        block.navigation.previous()
 
         assert _uri(block) == tree / "a.mp4"
 
@@ -454,12 +455,12 @@ class TestRandom:
         _touch(tmp_path, "a.mp4", "b.mp4", "c.mp4", "d.mp4")
         block = make_block(tmp_path / "a.mp4", end_action=VideoEndAction.SHUFFLE_FILE)
 
-        block.next_video()
+        block.navigation.next()
         gone = _uri(block)
-        block.next_video()
+        block.navigation.next()
 
         gone.unlink()
-        block.previous_video()
+        block.navigation.previous()
 
         assert _uri(block) == tmp_path / "a.mp4"
 
@@ -474,7 +475,7 @@ class TestRandom:
         blocks.extend([block, other])
 
         for _ in range(10):
-            block.shuffle_video()
+            block.navigation.shuffle()
             assert _uri(block) != b
 
     def test_with_avoiding_off_any_file_may_come(self, make_block, tmp_path):
@@ -486,7 +487,7 @@ class TestRandom:
         other = make_block(b, context=context, end_action=VideoEndAction.LOOP_FILE)
         blocks.extend([block, other])
 
-        block.shuffle_video()
+        block.navigation.shuffle()
 
         assert _uri(block) == b
 
@@ -502,7 +503,7 @@ class TestSwitching:
             audio_selection=AudioExternal(file=commentary),
         )
 
-        block.next_video()
+        block.navigation.next()
 
         assert block.video_params.external_audio == []
         assert not isinstance(block.video_params.audio_selection, AudioExternal)

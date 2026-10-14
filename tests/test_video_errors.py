@@ -897,7 +897,9 @@ class TestOnTheCell:
         )
         stepped = []
         mocker.patch.object(
-            block, "previous_video", lambda is_end: stepped.append(("back", is_end))
+            block.navigation,
+            "previous",
+            lambda is_end: stepped.append(("back", is_end)),
         )
 
         block.overlay.next_clicked.emit()
@@ -923,7 +925,7 @@ class TestOnTheCell:
         video.unlink()
 
         # the only file of its folder gone, none to go on to
-        block.switch_video(None)
+        block.navigation.switch_video(None)
 
         assert block.video_status.error.title == "File not found"
 
@@ -985,11 +987,11 @@ class TestOnTheCell:
         self, make_cell, tmp_path, mocker
     ):
         block, _ = _failed_list_item(make_cell, tmp_path)
-        block._is_waiting_for_list_read = True
+        block.navigation.is_waiting_for_list_read = True
 
         block.stop_playback()
         start_load = mocker.patch.object(block, "_start_load")
-        block._on_list_reading(block.video_params.list_id)
+        block.navigation._on_list_reading(block.video_params.list_id)
 
         start_load.assert_not_called()
 
@@ -1061,7 +1063,8 @@ class TestOnTheCell:
         assert block.overlay.mode is OverlayMode.STOPPED
 
     @pytest.mark.parametrize(
-        ("command", "index"), [("next_video", 1), ("previous_video", 2)]
+        ("command", "index"),
+        [("navigation.next", 1), ("navigation.previous", 2)],
     )
     def test_the_menu_steps_along_its_list_while_it_loads(
         self, make_cell, command, index
@@ -1121,7 +1124,7 @@ class TestAListOfLinks:
     def test_the_next_one_is_not_taken_to_have_played(self, make_cell):
         block = _failed_link(make_cell, None)
         block._has_item_played = True
-        block.next_video()
+        block.navigation.next()
 
         _fail(block, _http_error(403))
 

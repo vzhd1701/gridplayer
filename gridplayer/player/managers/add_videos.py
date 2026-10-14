@@ -832,7 +832,7 @@ class AddVideosManager(ManagerBase):
         if isinstance(group, ListInput):
             is_played = self._play_read_list(block, group)
         else:
-            block.play_read(group.uri)
+            block.navigation.play_read(group.uri)
             is_played = True
 
         if is_played:
@@ -858,8 +858,8 @@ class AddVideosManager(ManagerBase):
         )
         self._tell_added(media_list)
 
-        block.take_list(media_list.id, first)
-        block.play_list_item(first)
+        block.navigation.take_list(media_list.id, first)
+        block.navigation.play_list_item(first)
 
         return True
 
@@ -1065,7 +1065,7 @@ class AddVideosManager(ManagerBase):
 
             self._ctx.lists.put(media_list)
             self._ctx.lists.tell_added(media_list.id, [item.key for item in added])
-            block.tell_added_to_list(len(added))
+            block.navigation.tell_added_to_list(len(added))
             return
 
         params = block.video_params
@@ -1078,8 +1078,8 @@ class AddVideosManager(ManagerBase):
         )
         self._tell_added(media_list)
 
-        block.take_list(media_list.id, 0)
-        block.tell_added_to_list(len(items))
+        block.navigation.take_list(media_list.id, 0)
+        block.navigation.tell_added_to_list(len(items))
 
     def _tell_added(self, media_list):
         """A list made of what was added: its items, for what is known of

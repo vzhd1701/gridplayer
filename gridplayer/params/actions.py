@@ -63,26 +63,26 @@ ACTIONS = MappingProxyType(
             "title": translate("Actions", "Play Previous File"),
             "key": "PgUp",
             "icon": "previous-video-file",
-            "func": ("active", "previous_video"),
+            "func": ("active", "navigation.previous"),
             "show_if": "is_active_navigable",
         },
         "Play Next File": {
             "title": translate("Actions", "Play Next File"),
             "key": "PgDown",
             "icon": "next-video-file",
-            "func": ("active", "next_video"),
+            "func": ("active", "navigation.next"),
             "show_if": "is_active_navigable",
         },
         "Play Random File": {
             "title": translate("Actions", "Play Random File"),
             "icon": "loop-dir-shuffle",
-            "func": ("active", "shuffle_video"),
+            "func": ("active", "navigation.shuffle"),
             "show_if": "is_active_navigable",
         },
         "Include Subfolders": {
             "title": translate("Folder Navigation", "Include Subfolders"),
             "icon": "folder-tree",
-            "func": ("active", "toggle_dir_recursive"),
+            "func": ("active", "navigation.toggle_dir_recursive"),
             "check_if": ("is_active_param_set_to", "is_dir_recursive", True),
             # a list goes its own way, not through the folder
             "show_if": AND("is_active_local_file", NOT("is_active_list_cell")),
@@ -426,13 +426,17 @@ ACTIONS = MappingProxyType(
         "Leave the List": {
             "title": translate("Actions", "Leave the List"),
             "icon": "empty",
-            "func": ("active", "leave_list"),
+            "func": ("active", "navigation.leave_list"),
             "show_if": "is_active_list_cell",
         },
         "List End Start Over": {
             "title": translate("Lists", "Start Over"),
             "icon": "loop-dir",
-            "func": ("active", "set_list_end_action", ListEndAction.START_OVER),
+            "func": (
+                "active",
+                "navigation.set_list_end_action",
+                ListEndAction.START_OVER,
+            ),
             "check_if": (
                 "is_active_param_set_to",
                 "list_end_action",
@@ -444,7 +448,7 @@ ACTIONS = MappingProxyType(
         "List End Pause": {
             "title": translate("Lists", "Pause At Start"),
             "icon": "pause",
-            "func": ("active", "set_list_end_action", ListEndAction.PAUSE),
+            "func": ("active", "navigation.set_list_end_action", ListEndAction.PAUSE),
             "check_if": (
                 "is_active_param_set_to",
                 "list_end_action",
@@ -456,7 +460,7 @@ ACTIONS = MappingProxyType(
         "List End Stop": {
             "title": translate("Lists", "Stop"),
             "icon": "stop",
-            "func": ("active", "set_list_end_action", ListEndAction.STOP),
+            "func": ("active", "navigation.set_list_end_action", ListEndAction.STOP),
             "check_if": (
                 "is_active_param_set_to",
                 "list_end_action",
@@ -468,7 +472,7 @@ ACTIONS = MappingProxyType(
         "List End Close": {
             "title": translate("Lists", "Close"),
             "icon": "close",
-            "func": ("active", "set_list_end_action", ListEndAction.CLOSE),
+            "func": ("active", "navigation.set_list_end_action", ListEndAction.CLOSE),
             "check_if": (
                 "is_active_param_set_to",
                 "list_end_action",

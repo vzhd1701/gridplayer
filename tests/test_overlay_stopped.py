@@ -322,9 +322,9 @@ def test_cmd_active_next_video_when_stopped(mocker):
     block.is_playable = True
     manager = _active_manager(block)
 
-    manager.cmd_active("next_video")
+    manager.cmd_active("navigation.next")
 
-    block.next_video.assert_called_once()
+    block.navigation.next.assert_called_once()
 
 
 def test_is_active_local_file_when_stopped(mocker):
@@ -645,7 +645,7 @@ def test_start_load_keeps_overlay(mocker):
     )
     block.size_tuple = (100, 100)
     block._ctx.lists.is_waiting.return_value = False
-    block._is_list_file_gone = False
+    block.navigation.is_list_file_gone = False
     mocker.patch("gridplayer.widgets.video_block.MediaInput")
 
     VideoBlock._start_load(block)

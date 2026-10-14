@@ -753,7 +753,7 @@ class ListsManager(ManagerBase):
                 )
             )
 
-            block.take_list(media_list.id, 0)
+            block.navigation.take_list(media_list.id, 0)
             self.open_list_window(media_list.id, block)
             return
 
@@ -816,7 +816,7 @@ class ListsManager(ManagerBase):
         )
         self._registry.tell_added(media_list.id, [item.key for item in items])
 
-        block.take_list(media_list.id, index)
+        block.navigation.take_list(media_list.id, index)
         self.open_list_window(media_list.id, block)
 
     def list_window_for(self, block):
@@ -862,7 +862,7 @@ class ListsManager(ManagerBase):
         if place is not None:
             dialog.restoreGeometry(place)
 
-        block.set_list_window_shown(True)
+        block.navigation.set_list_window_shown(True)
 
         dialog.show()
 
@@ -975,7 +975,7 @@ class ListsManager(ManagerBase):
         block = dialog.block
 
         if not block.is_closing:
-            block.set_list_window_shown(False)
+            block.navigation.set_list_window_shown(False)
 
         dialog.deleteLater()
 

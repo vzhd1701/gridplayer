@@ -72,6 +72,8 @@ class _Cell:
         self.video_params = video
         self.is_closing = False
         self._lists = lists
+        # the cell's navigation part, done by the fake itself
+        self.navigation = self
 
     def take_list(self, list_id, index):
         self.video_params.list_id = list_id
@@ -860,7 +862,7 @@ class TestToldAsAdded:
         cell = SimpleNamespace(
             video_params=Video(uri=a, list_id=media_list.id),
             media_list=media_list,
-            tell_added_to_list=MagicMock(),
+            navigation=SimpleNamespace(tell_added_to_list=MagicMock()),
         )
 
         _add(manager, [b], drop=(cell, DropZone.CENTER, False))
@@ -871,9 +873,13 @@ class TestToldAsAdded:
 
 class TestAddedToACell:
     def _cell(self, manager, video, media_list=None):
-        cell = SimpleNamespace(video_params=video, media_list=media_list)
-        cell.take_list = MagicMock()
-        cell.tell_added_to_list = MagicMock()
+        cell = SimpleNamespace(
+            video_params=video,
+            media_list=media_list,
+            navigation=SimpleNamespace(
+                take_list=MagicMock(), tell_added_to_list=MagicMock()
+            ),
+        )
 
         return cell
 
@@ -903,8 +909,8 @@ class TestAddedToACell:
         (media_list,) = manager._ctx.lists.lists()
         assert [item.uri for item in media_list.items] == [a, b]
         assert media_list.items[0].title == "Mine"
-        cell.take_list.assert_called_once_with(media_list.id, 0)
-        cell.tell_added_to_list.assert_called_once_with(1)
+        cell.navigation.take_list.assert_called_once_with(media_list.id, 0)
+        cell.navigation.tell_added_to_list.assert_called_once_with(1)
 
 
 class TestAListOnASite:
@@ -1553,7 +1559,7 @@ class TestDroppedInTheMiddleOfAList:
         return SimpleNamespace(
             video_params=Video(uri=a, list_id=media_list.id),
             media_list=media_list,
-            tell_added_to_list=MagicMock(),
+            navigation=SimpleNamespace(tell_added_to_list=MagicMock()),
         )
 
     def _items(self, manager, cell):
@@ -1572,7 +1578,7 @@ class TestDroppedInTheMiddleOfAList:
         asked.assert_not_called()
         assert self._items(manager, cell)[1:] == [b, c]
         manager._ctx.commands.layout_drop.assert_not_called()
-        cell.tell_added_to_list.assert_called_once_with(2)
+        cell.navigation.tell_added_to_list.assert_called_once_with(2)
 
     def test_a_folder_too_with_no_cell_put_in_to_wait_for_it(
         self, manager, tmp_path, cell
@@ -1584,7 +1590,7 @@ class TestDroppedInTheMiddleOfAList:
 
         assert self._items(manager, cell)[1:] == list(files)
         manager._ctx.commands.layout_drop.assert_not_called()
-        cell.tell_added_to_list.assert_called_once_with(2)
+        cell.navigation.tell_added_to_list.assert_called_once_with(2)
 
     @pytest.mark.parametrize("zone", [DropZone.BEFORE, DropZone.BELOW])
     def test_at_its_edge_in_a_cell_of_its_own(self, manager, tmp_path, cell, zone):
@@ -1598,7 +1604,7 @@ class TestDroppedInTheMiddleOfAList:
         assert [video.uri for video in videos] == [b]
         assert (at, in_zone, is_replace) == (cell, zone, False)
         assert len(self._items(manager, cell)) == 1
-        cell.tell_added_to_list.assert_not_called()
+        cell.navigation.tell_added_to_list.assert_not_called()
 
     def test_at_its_edge_asked_its_list_is_not_offered(
         self, manager, tmp_path, cell, mocker

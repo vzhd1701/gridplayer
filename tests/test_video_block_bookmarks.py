@@ -545,7 +545,7 @@ class TestKeptWithTheFile:
         other.touch()
         block._ctx.bookmarks.set(other, None, [Bookmark(time_ms=5000)])
 
-        block.next_video()
+        block.navigation.next()
 
         assert block.video_params.uri == other
         assert _times(block) == [5000]
@@ -554,8 +554,8 @@ class TestKeptWithTheFile:
     def test_coming_back_to_the_file_brings_them_back(self, block, tmp_path):
         (tmp_path / "other.mkv").touch()
 
-        block.next_video()
-        block.previous_video()
+        block.navigation.next()
+        block.navigation.previous()
         block.video_driver._fake_player_timer.stop()
 
         assert block.bookmarks == BOOKMARKS
@@ -867,7 +867,7 @@ class TestAMarkersMenu:
         (tmp_path / "other.mkv").touch()
         menu = block.bookmarker.marker_menu((30000,))
 
-        block.next_video()
+        block.navigation.next()
         block.video_driver._fake_player_timer.stop()
         theirs = (Bookmark(time_ms=5000), Bookmark(time_ms=20000))
         block.bookmarker.replace(theirs)
@@ -886,7 +886,7 @@ class TestAMarkersMenu:
         theirs = (Bookmark(time_ms=5000), Bookmark(time_ms=20000))
 
         def typed(**_kwargs):
-            block.next_video()
+            block.navigation.next()
             block.bookmarker.replace(theirs)
 
             return "Win", "#ff3d3d"
@@ -1127,7 +1127,7 @@ class TestColouring:
         (tmp_path / "other.mkv").touch()
         menu = self._menu(block)
 
-        block.next_video()
+        block.navigation.next()
         block.video_driver._fake_player_timer.stop()
         theirs = (Bookmark(time_ms=5000), Bookmark(time_ms=30000))
         block.bookmarker.replace(theirs)

@@ -130,7 +130,7 @@ class StatusControl(VideoBlockPart):
 
         if media_list is not None:
             name = media_list.name or translate("Error Details", "List")
-            place = self._block._list_navigator.place()
+            place = self._block.navigation.place()
 
             if place is not None and place.is_found:
                 name = translate("Error Details", "{LIST}, {PLACE} of {COUNT}").format(

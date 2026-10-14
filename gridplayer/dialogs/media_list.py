@@ -3735,7 +3735,7 @@ class MediaListDialog(QDialog):
         place = self._model.place_at(index.row())
 
         if self._block is not None:
-            self._block.play_list_item(place)
+            self._block.navigation.play_list_item(place)
         elif self._open_in_new_cell is not None:
             self._open_in_new_cell(self._list_id, place)
 
