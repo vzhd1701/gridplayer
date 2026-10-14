@@ -829,7 +829,7 @@ class TestOnTheCell:
 
         shown = []
         mocker.patch(
-            "gridplayer.widgets.video_block.ErrorDetailsDialog.exec_",
+            "gridplayer.widgets.video_block_status.ErrorDetailsDialog.exec_",
             lambda dialog: shown.append(dialog),
         )
 
@@ -855,7 +855,7 @@ class TestOnTheCell:
 
         block.reload()
 
-        assert block._last_error is None
+        assert block.status.last_error is None
 
     def test_held_on_the_item_while_its_details_are_read(
         self, make_cell, tmp_path, mocker
@@ -863,11 +863,11 @@ class TestOnTheCell:
         block, _ = _failed_list_item(make_cell, tmp_path)
         while_read = []
         mocker.patch(
-            "gridplayer.widgets.video_block.ErrorDetailsDialog.exec_",
+            "gridplayer.widgets.video_block_status.ErrorDetailsDialog.exec_",
             side_effect=lambda: while_read.append(block.recovery.is_skip_counting),
         )
 
-        block.show_error_details()
+        block.status.show_error_details()
 
         assert while_read == [False]
         # closed with nothing done in it: on through the list as before
@@ -879,11 +879,11 @@ class TestOnTheCell:
     def test_its_try_again_for_the_item_that_failed(self, make_cell, tmp_path, mocker):
         block, files = _failed_list_item(make_cell, tmp_path)
         mocker.patch(
-            "gridplayer.widgets.video_block.ErrorDetailsDialog.exec_",
+            "gridplayer.widgets.video_block_status.ErrorDetailsDialog.exec_",
             lambda dialog: dialog.try_again.emit(),
         )
 
-        block.show_error_details()
+        block.status.show_error_details()
 
         assert block.video_params.uri == files[0]
         assert not block._is_error
@@ -919,7 +919,7 @@ class TestOnTheCell:
         video = tmp_path / "a.mp4"
         video.touch()
         block = make_cell(video)
-        block._show_stage(LoadStage.VIDEO, "Opening…")
+        block.status.show_stage(LoadStage.VIDEO, "Opening…")
         video.unlink()
 
         # the only file of its folder gone, none to go on to
@@ -933,12 +933,12 @@ class TestOnTheCell:
         video = tmp_path / "a.mp4"
         video.touch()
         block = make_cell(video)
-        block._show_stage(LoadStage.LIST, "Reading the list…")
+        block.status.show_stage(LoadStage.LIST, "Reading the list…")
 
         block.stop_playback()
         block._start_load()
 
-        assert LoadStage.LIST not in block._load_steps
+        assert LoadStage.LIST not in block.status.load_steps
 
     def test_stopped_from_the_menu_it_reconnects_no_more(self, make_cell):
         """Stop and Stop All in the menu stop it as its own Stop does: the

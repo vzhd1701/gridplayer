@@ -355,7 +355,7 @@ class StreamControl(VideoBlockPart):
 
         self.is_adaptive = stream.is_adaptive
 
-        self._block._show_opening()
+        self._block.status.show_opening()
 
         self._block.load_video.emit(
             MediaInput(
@@ -406,7 +406,7 @@ class StreamControl(VideoBlockPart):
         """Fit the stream to the size the pane has settled on."""
 
         if (
-            self._block._is_closing
+            self._block.is_closing
             or self._block.video_params is None
             or not self._block.streams
         ):
@@ -415,7 +415,7 @@ class StreamControl(VideoBlockPart):
         if self._block.video_params.stream_quality != STREAM_QUALITY_AUTO:
             return
 
-        if self._block._is_error:
+        if self._block.is_error:
             # a video that is already failing has the retry timer looking
             # after it, and reloading underneath that would only confuse it
             return

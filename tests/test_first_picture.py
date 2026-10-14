@@ -16,6 +16,7 @@ from gridplayer.utils import darkmode
 from gridplayer.utils.win32_vlc_vout import VlcPicture
 from gridplayer.vlc_player.static import VideoTrack
 from gridplayer.widgets.video_block import VideoBlock
+from gridplayer.widgets.video_block_status import StatusControl
 from gridplayer.widgets.video_frame_vlc_base import (
     FIRST_PICTURE_PLACE_TIMEOUT_MS,
     FIRST_PICTURE_TIMEOUT_MS,
@@ -404,9 +405,10 @@ def test_cell_status_given_something_else_to_show_stays(mocker):
     """A status set meanwhile, an error say, is not the loading one."""
     block = mocker.Mock()
     block.video_driver.is_picture_pending = True
+    block.status = StatusControl(block)
 
     VideoBlock.load_video_finish(block)
-    VideoBlock.set_status(block, "error")
+    block.status.show("error")
     VideoBlock._picture_shown(block)
 
     block.video_status.hide.assert_not_called()
@@ -432,8 +434,8 @@ def test_cell_overlay_says_loading_until_the_picture_is_up(mocker):
     block = _block_showing_overlays(mocker, is_picture_pending=True)
     block.is_stopped = False
     block.is_video_initialized = True
-    block._overlay_mode = lambda: VideoBlock._overlay_mode(block)
-    block._sync_overlay_mode = lambda: VideoBlock._sync_overlay_mode(block)
+    block.is_error = False
+    block.status = StatusControl(block)
 
     VideoBlock.load_video_finish(block)
     # the mouse moving over it meanwhile

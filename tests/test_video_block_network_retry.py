@@ -42,11 +42,11 @@ def _set_retries(mode, times=3):
 def _block(mocker, retries=0, countdown=0):
     block = mocker.Mock()
     block._log = logging.getLogger("test")
-    block._is_closing = False
+    block.is_closing = False
     block._has_item_played = True
     block.media_list = None
     block.video_params = Video(uri="http://example.com/a.mp4")
-    block._last_error = ShownError(title="Connection lost", is_network=True)
+    block.status.last_error = ShownError(title="Connection lost", is_network=True)
 
     block.recovery = RecoveryControl(block)
     block.recovery._retries = retries
@@ -110,9 +110,10 @@ def test_the_error_is_shown_once_there_is_nothing_left_to_try(mocker):
     VideoBlock.network_error(block)
 
     assert block._is_error is True
-    assert block._error_tries == 2
+    # how many times it was tried, for its Details
+    block.status.show_error_card.assert_called_once_with(2)
     assert block.recovery.retries == 0
-    block.set_status.assert_called_once_with("network-error")
+    block.status.show.assert_called_once_with("network-error")
 
 
 def test_no_error_is_shown_while_a_retry_is_pending(mocker):
@@ -122,7 +123,7 @@ def test_no_error_is_shown_while_a_retry_is_pending(mocker):
     VideoBlock.network_error(block)
 
     assert block._is_error is False
-    assert call("network-error") not in block.set_status.call_args_list
+    assert call("network-error") not in block.status.show.call_args_list
     block.recovery._retry_timer.start.assert_called_once()
 
 
@@ -147,7 +148,7 @@ def test_the_countdown_is_shown_until_it_runs_out(mocker):
 
 def test_a_closing_block_is_not_reloaded(mocker):
     block = _block(mocker, retries=1, countdown=1)
-    block._is_closing = True
+    block.is_closing = True
 
     block.recovery._retry_tick()
 

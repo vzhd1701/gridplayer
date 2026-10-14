@@ -304,7 +304,7 @@ def test_reloading_says_so_over_the_video_as_a_new_cell_does(
         uri.touch()
 
     block.set_video(Video(uri=uri))
-    block._show_stage(LoadStage.VIDEO, "Buffering 100%")
+    block.status.show_stage(LoadStage.VIDEO, "Buffering 100%")
     block.video_status.hide()
 
     block.show_reloading()
@@ -334,7 +334,7 @@ def test_reloading_leaves_a_stopped_cell_stopped(cell, tmp_path):
 
 def _playing(block, path):
     block.set_video(Video(uri=path))
-    block._show_stage(LoadStage.VIDEO, "Buffering 100%")
+    block.status.show_stage(LoadStage.VIDEO, "Buffering 100%")
     block.video_status.hide()
 
 
