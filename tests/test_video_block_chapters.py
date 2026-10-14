@@ -5,6 +5,7 @@ was given.
 """
 
 import dataclasses
+from operator import attrgetter
 from types import SimpleNamespace
 from unittest.mock import MagicMock
 
@@ -119,28 +120,28 @@ class TestTheBar:
 
         block.video_driver._on_chapters_changed(late)
 
-        assert block.chapters == late
+        assert block.chapters.all == late
         assert [mark.label for mark in _marks(block)] == ["A", "B"]
 
     def test_stopping_takes_the_marks_away(self, block):
         block.stop_playback()
 
-        assert block.chapters == ()
+        assert block.chapters.all == ()
         assert _marks(block) == ()
 
 
 class TestJumping:
     def test_next_goes_from_chapter_to_chapter(self, block):
-        block.next_chapter()
+        block.chapters.next()
         assert block.time == 10000
 
-        block.next_chapter()
+        block.chapters.next()
         assert block.time == 25000
 
     def test_next_from_a_seek_that_landed_short_moves_on(self, block):
         block.seek(25000 - LANDED_SHORT_MS)
 
-        block.next_chapter()
+        block.chapters.next()
 
         assert block.time == 40000
 
@@ -148,28 +149,28 @@ class TestJumping:
         block.seek(45000)
         block.loop_end_action = MagicMock()
 
-        block.next_chapter()
+        block.chapters.next()
 
         block.loop_end_action.assert_called_once_with()
 
     def test_the_end_of_a_looping_file_starts_it_over(self, block):
         block.seek(45000)
 
-        block.next_chapter()
+        block.chapters.next()
 
         assert block.time == 0
 
     def test_previous_near_a_chapter_start_goes_to_the_one_before(self, block):
         block.seek(26000)
 
-        block.previous_chapter()
+        block.chapters.previous()
 
         assert block.time == 10000
 
     def test_previous_well_into_a_chapter_starts_it_over(self, block):
         block.seek(30000)
 
-        block.previous_chapter()
+        block.chapters.previous()
 
         assert block.time == 25000
 
@@ -178,7 +179,7 @@ class TestJumping:
         block.info_change.connect(shown.append)
 
         block.seek(12000)
-        block.next_chapter()
+        block.chapters.next()
 
         assert shown == ["Tom & Jerry"]
 
@@ -186,7 +187,7 @@ class TestJumping:
         synced = []
         block.sync_time.connect(synced.append)
 
-        block.manual_seek("seek_chapter", 3)
+        block.manual_seek("chapters.seek", 3)
 
         assert block.time == 40000
         assert synced == [40000]
@@ -195,8 +196,8 @@ class TestJumping:
         block.video_driver._on_chapters_changed(())
         block.loop_end_action = MagicMock()
 
-        block.next_chapter()
-        block.previous_chapter()
+        block.chapters.next()
+        block.chapters.previous()
 
         assert block.time == 0
         block.loop_end_action.assert_not_called()
@@ -206,7 +207,7 @@ class TestLooping:
     def test_loop_chapter_loops_the_one_the_video_is_in(self, block):
         block.seek(12000)
 
-        block.loop_chapter()
+        block.chapters.loop()
 
         assert block.video_params.loop_start == 10000
         assert block.video_params.loop_end == 25000
@@ -216,7 +217,7 @@ class TestLooping:
     def test_the_last_chapter_loops_to_the_end_of_the_file(self, block):
         block.seek(45000)
 
-        block.loop_chapter()
+        block.chapters.loop()
 
         assert block.video_params.loop_start == 40000
         assert block.video_params.loop_end is None
@@ -225,38 +226,38 @@ class TestLooping:
         """Its start lies past the old end, which the loop setters refuse."""
 
         block.seek(12000)
-        block.loop_chapter()
+        block.chapters.loop()
 
         # a seek would be held inside the loop, so the video is simply put
         # where a loop left some other way would leave it
         block.video_params.current_position = 30000
 
-        block.loop_chapter()
+        block.chapters.loop()
 
         assert block.video_params.loop_start == 25000
         assert block.video_params.loop_end == 40000
 
     def test_chapters_outside_the_loop_are_out_of_reach(self, block):
         block.seek(12000)
-        block.loop_chapter()
+        block.chapters.loop()
 
-        reachable = [block.is_chapter_reachable(i) for i in range(len(CHAPTERS))]
+        reachable = [block.chapters.is_reachable(i) for i in range(len(CHAPTERS))]
 
         assert reachable == [False, True, False, False]
 
     def test_a_jump_to_one_out_of_reach_goes_nowhere(self, block):
         block.seek(12000)
-        block.loop_chapter()
+        block.chapters.loop()
 
-        block.seek_chapter(2)
+        block.chapters.seek(2)
 
         assert block.time == 12000
 
     def test_next_inside_a_loop_comes_back_round_to_its_start(self, block):
         block.seek(12000)
-        block.loop_chapter()
+        block.chapters.loop()
 
-        block.next_chapter()
+        block.chapters.next()
 
         assert block.time == 10000
 
@@ -272,52 +273,52 @@ def _reported(block, time_ms):
 
 class TestJumpingOnAStream:
     def test_next_while_a_jump_is_still_landing_moves_on(self, block):
-        block.seek_chapter(2)
+        block.chapters.seek(2)
         _reported(block, LANDING_ON_A_STREAM_MS)
 
-        block.next_chapter()
+        block.chapters.next()
 
         assert block.time == 40000
 
     def test_a_jump_still_landing_is_in_the_chapter_it_was_aimed_at(self, block):
-        block.seek_chapter(2)
+        block.chapters.seek(2)
         _reported(block, LANDING_ON_A_STREAM_MS)
 
-        assert block.chapter_playing == 2
+        assert block.chapters.playing == 2
 
     def test_a_seek_from_the_bar_counts_the_same(self, block):
         block.seek(25000)
         _reported(block, LANDING_ON_A_STREAM_MS)
 
-        assert block.chapter_playing == 2
+        assert block.chapters.playing == 2
 
     def test_loop_chapter_while_a_jump_is_landing_loops_that_one(self, block):
-        block.seek_chapter(2)
+        block.chapters.seek(2)
         _reported(block, LANDING_ON_A_STREAM_MS)
 
-        block.loop_chapter()
+        block.chapters.loop()
 
         assert (block.loop_start, block.loop_end) == (25000, 40000)
 
     def test_once_seen_past_its_aim_the_time_is_taken_as_it_comes(self, block):
-        block.seek_chapter(2)
+        block.chapters.seek(2)
         _reported(block, 25000)
         _reported(block, 25400)
         _reported(block, LANDING_ON_A_STREAM_MS)
 
-        assert block.chapter_playing == 1
+        assert block.chapters.playing == 1
 
     def test_far_short_of_its_aim_the_video_is_somewhere_else(self, block):
         # a seek that never happened, while the video played on elsewhere
-        block.seek_chapter(3)
+        block.chapters.seek(3)
         _reported(block, 12000)
 
-        assert block.chapter_playing == 1
+        assert block.chapters.playing == 1
 
     def test_a_looped_chapter_coming_round_is_sent_back_once(self, block, mocker):
-        block.seek_chapter(2)
+        block.chapters.seek(2)
         _reported(block, 25400)
-        block.loop_chapter()
+        block.chapters.loop()
 
         set_time = mocker.spy(block.video_driver, "set_time")
 
@@ -352,8 +353,8 @@ class TestTheMenu:
     def test_a_row_jumps_as_a_seek_the_others_can_follow(self, block):
         rows = _Manager(block).menu_generator_chapters()
 
-        assert rows[2]["func"] == ("active", "manual_seek", "seek_chapter", 2)
-        assert hasattr(VideoBlock, rows[2]["func"][2])
+        assert rows[2]["func"] == ("active", "manual_seek", "chapters.seek", 2)
+        assert callable(attrgetter(rows[2]["func"][2])(block))
 
     def test_the_chapter_playing_is_ticked(self, block):
         manager = _Manager(block)
@@ -368,7 +369,7 @@ class TestTheMenu:
         manager = _Manager(block)
 
         block.seek(12000)
-        block.loop_chapter()
+        block.chapters.loop()
 
         enabled = [manager.is_active_chapter_reachable(i) for i in range(len(CHAPTERS))]
 
@@ -472,28 +473,28 @@ class TestSiteChapters:
     def test_a_url_whose_file_lists_none_gets_the_sites(self, url_block):
         block = url_block(_resolved())
 
-        assert block.chapters == SITE_CHAPTERS
+        assert block.chapters.all == SITE_CHAPTERS
         assert [mark.label for mark in _marks(block)] == ["Intro", "Build", "Outro"]
 
     def test_the_files_own_come_first(self, url_block):
         block = url_block(_resolved(), frame=_ChapterFrame)
 
-        assert block.chapters == CHAPTERS
+        assert block.chapters.all == CHAPTERS
 
     def test_a_site_out_on_the_length_is_left_out(self, url_block):
         block = url_block(_resolved(duration_ms=LENGTH + 30000))
 
-        assert block.chapters == ()
+        assert block.chapters.all == ()
 
     def test_a_site_that_gives_no_length_is_taken_at_its_word(self, url_block):
         block = url_block(_resolved(duration_ms=0))
 
-        assert block.chapters == SITE_CHAPTERS
+        assert block.chapters.all == SITE_CHAPTERS
 
     def test_a_live_stream_has_none(self, url_block):
         block = url_block(_resolved(), frame=_LiveFrame)
 
-        assert block.chapters == ()
+        assert block.chapters.all == ()
 
     def test_they_last_through_a_switch_of_quality(self, url_block):
         block = url_block(_resolved())
@@ -502,7 +503,7 @@ class TestSiteChapters:
 
         assert block.is_video_initialized
         assert block.stream_quality_playing == "360p"
-        assert block.chapters == SITE_CHAPTERS
+        assert block.chapters.all == SITE_CHAPTERS
 
     def test_a_file_put_in_the_urls_place_brings_none_of_them(
         self, url_block, tmp_path
@@ -515,4 +516,4 @@ class TestSiteChapters:
         block.set_video(Video(uri=video_file, playback_state=VideoInitialState.PAUSED))
 
         assert block.is_video_initialized
-        assert block.chapters == ()
+        assert block.chapters.all == ()

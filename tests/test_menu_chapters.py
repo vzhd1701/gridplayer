@@ -12,7 +12,7 @@ from gridplayer.player.managers.menu import MenuManager, _add_inline_actions
 from gridplayer.player.managers.video_blocks import VideoBlocksManager
 from gridplayer.widgets.custom_menu import CustomMenu
 from gridplayer.widgets.keymap_tree_view import DATA_ACTION_ID, fill_keymap_model
-from gridplayer.widgets.video_block import VideoBlock
+from tests.conftest import is_block_command
 
 CHAPTER_ACTIONS = (
     "Previous Chapter",
@@ -89,18 +89,18 @@ class TestWhatTheyCall:
             func = ACTIONS[name]["func"]
             method = func[2] if func[1] == "manual_seek" else func[1]
 
-            assert hasattr(VideoBlock, method), name
+            assert is_block_command(method), name
 
     def test_every_video_is_wired_up_for_them(self):
-        for name in (
-            "Previous Chapter [ALL]",
-            "Next Chapter [ALL]",
-            "Loop Chapter [ALL]",
+        for name, method in (
+            ("Previous Chapter [ALL]", "chapters.previous"),
+            ("Next Chapter [ALL]", "chapters.next"),
+            ("Loop Chapter [ALL]", "chapters.loop"),
         ):
             command = ACTIONS[name]["func"][1]
 
             assert hasattr(VideoBlocksManager, f"all_{command}"), name
-            assert hasattr(VideoBlock, command), name
+            assert is_block_command(method), name
 
     def test_jumps_on_the_active_video_are_seeks_the_others_follow(self):
         for name in ("Previous Chapter", "Next Chapter"):

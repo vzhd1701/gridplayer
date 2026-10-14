@@ -585,7 +585,7 @@ def test_seek_holds_off_wrap_detection(mocker):
     block.loop_start = 0
     block.loop_end = 2000
     block.video_driver.length = 2000
-    block._skip_spans = ()
+    block.sponsorblock._skip_spans = ()
 
     VideoBlock.seek(block, 1500)
 
@@ -608,7 +608,7 @@ def test_seek_marks_itself_before_it_is_made(mocker):
     block.loop_start = 0
     block.loop_end = 10000
     block.video_driver.length = 10000
-    block._skip_spans = ()
+    block.sponsorblock._skip_spans = ()
     seen = {}
 
     def _set_time(seek_ms):

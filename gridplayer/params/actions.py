@@ -284,13 +284,13 @@ ACTIONS = MappingProxyType(
         "Previous Chapter": {
             "title": translate("Actions", "Previous Chapter"),
             "icon": "chapter-previous",
-            "func": ("active", "manual_seek", "previous_chapter"),
+            "func": ("active", "manual_seek", "chapters.previous"),
             "show_if": "is_active_has_chapters",
         },
         "Next Chapter": {
             "title": translate("Actions", "Next Chapter"),
             "icon": "chapter-next",
-            "func": ("active", "manual_seek", "next_chapter"),
+            "func": ("active", "manual_seek", "chapters.next"),
             "show_if": "is_active_has_chapters",
         },
         "Chapter List": {
@@ -366,7 +366,7 @@ ACTIONS = MappingProxyType(
         "Loop Chapter": {
             "title": translate("Actions", "Loop Chapter"),
             "icon": "loop-chapter",
-            "func": ("active", "loop_chapter"),
+            "func": ("active", "chapters.loop"),
             "show_if": "is_active_has_chapters",
         },
         "When Finished Loop File": {

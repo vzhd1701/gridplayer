@@ -49,6 +49,29 @@ LOGIN = f"{LOGIN_NAME}={LOGIN_VALUE}"
 COOKIE_LIFETIME_SEC = 10000
 
 
+def is_block_command(command: str) -> bool:
+    """Whether a VideoBlock command, "reload" or "chapters.next", is there:
+    the block's own, or one of a part of it (see VideoBlockPart)."""
+
+    from gridplayer.widgets.video_block import VideoBlock
+    from gridplayer.widgets.video_block_bookmarker import Bookmarker
+    from gridplayer.widgets.video_block_chapters import ChapterControl
+    from gridplayer.widgets.video_block_sponsorblock import SponsorBlockControl
+    from gridplayer.widgets.video_block_view import ViewControl
+
+    parts = {
+        "": VideoBlock,
+        "bookmarker": Bookmarker,
+        "chapters": ChapterControl,
+        "sponsorblock": SponsorBlockControl,
+        "view": ViewControl,
+    }
+
+    part, _, method = command.rpartition(".")
+
+    return part in parts and hasattr(parts[part], method)
+
+
 class FakeSettings:
     """A page of settings, answering for itself.
 

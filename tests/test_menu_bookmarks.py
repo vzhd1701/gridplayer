@@ -13,8 +13,7 @@ from gridplayer.player.managers.active_block import ActiveBlockManager
 from gridplayer.player.managers.bookmarks import BookmarksManager
 from gridplayer.player.managers.video_blocks import VideoBlocksManager
 from gridplayer.widgets.keymap_tree_view import DATA_ACTION_ID, fill_keymap_model
-from gridplayer.widgets.video_block import VideoBlock
-from gridplayer.widgets.video_block_bookmarker import Bookmarker
+from tests.conftest import is_block_command
 
 BOOKMARK_ACTIONS = (
     "Add Bookmark",
@@ -26,15 +25,6 @@ BOOKMARK_ACTIONS = (
 )
 
 ICONS = Path(__file__).parent.parent / "gridplayer" / "resources" / "icons"
-
-# the parts of a video block a command may name, "bookmarker.add"
-BLOCK_PARTS = {"bookmarker": Bookmarker}
-
-
-def _is_block_command(command):
-    part, _, method = command.rpartition(".")
-
-    return hasattr(BLOCK_PARTS[part] if part else VideoBlock, method)
 
 
 def _submenu(items, *path):
@@ -109,7 +99,7 @@ class TestWhatTheyCall:
             func = ACTIONS[name]["func"]
             method = func[2] if func[1] == "manual_seek" else func[1]
 
-            assert _is_block_command(method), name
+            assert is_block_command(method), name
 
     def test_jumps_on_the_active_video_are_seeks_the_others_follow(self):
         for name in ("Previous Bookmark", "Next Bookmark"):
@@ -123,7 +113,7 @@ class TestWhatTheyCall:
             command = ACTIONS[name]["func"][1]
 
             assert hasattr(VideoBlocksManager, f"all_{command}"), name
-            assert _is_block_command(method), name
+            assert is_block_command(method), name
 
     def test_what_decides_when_they_show_is_there(self):
         commands = {
