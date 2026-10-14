@@ -237,7 +237,7 @@ class SetPositionDialog(QDialog):
     def accept(self):
         # says where the picture ended up, as a move from the menu does, and
         # has the others follow it where their views are synced
-        self._block.manual_view("set_shift", self._block.video_params.shift, False)
+        self._block.manual_view("view.set_shift", self._block.video_params.shift, False)
 
         super().accept()
 
@@ -249,9 +249,9 @@ class SetPositionDialog(QDialog):
             self._original
         ):
             # an alignment lets go of the offset, so it goes back first
-            self._block.set_anchor(anchor)
-            self._block.set_shift_past_edges(is_shift_past_edges)
-            self._block.set_shift(shift, is_silent=True)
+            self._block.view.set_anchor(anchor)
+            self._block.view.set_shift_past_edges(is_shift_past_edges)
+            self._block.view.set_shift(shift, is_silent=True)
 
         super().reject()
 
@@ -262,21 +262,21 @@ class SetPositionDialog(QDialog):
             self._update_anchor_icons()
 
     def _on_anchor(self, anchor: VideoAnchor):
-        self._block.set_anchor(anchor)
+        self._block.view.set_anchor(anchor)
         self._show_position()
 
     def _on_offset_changed(self):
         shift = VideoShift(self._spins["x"].value(), self._spins["y"].value())
 
-        self._block.set_shift(shift, is_silent=True)
+        self._block.view.set_shift(shift, is_silent=True)
         self._show_position()
 
     def _on_past_edges_toggled(self, is_checked: bool):
-        self._block.set_shift_past_edges(is_checked)
+        self._block.view.set_shift_past_edges(is_checked)
         self._show_position()
 
     def _on_reset(self):
-        self._block.set_shift(VideoShift(0, 0), is_silent=True)
+        self._block.view.set_shift(VideoShift(0, 0), is_silent=True)
         self._show_position()
 
     def _show_position(self):

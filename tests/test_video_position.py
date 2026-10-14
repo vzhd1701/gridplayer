@@ -38,9 +38,10 @@ from gridplayer.playlist_settings import PlaylistSettings, overrides_from_playli
 from gridplayer.settings import Settings
 from gridplayer.utils.aspect_calc import calc_view_geometry, calc_vlc_picture
 from gridplayer.vlc_player.static import VideoTrack
-from gridplayer.widgets import video_block as video_block_module
+from gridplayer.widgets import video_block_view as video_block_view_module
 from gridplayer.widgets import video_frame_vlc_base as vlc_base
 from gridplayer.widgets.video_block import VideoBlock
+from gridplayer.widgets.video_block_view import ViewControl
 from gridplayer.widgets.video_frame_vlc_hw_sp import VideoFrameVLCHWSP
 
 URI = "http://example.com/a.mp4"
@@ -232,7 +233,7 @@ def _all_videos_submenu(name):
     return next(item for item in video if isinstance(item, tuple) and item[0] == name)
 
 
-def _assert_set_for_all(name, param):
+def _assert_set_for_all(name, param, owner=ViewControl):
     """On and Off, each setting it so for every video, and ticked where
     every video already has it so."""
 
@@ -243,7 +244,7 @@ def _assert_set_for_all(name, param):
         target, command, arg = action["func"]
 
         assert (target, arg) == ("all", value)
-        assert hasattr(VideoBlock, command)
+        assert hasattr(owner, command)
         assert hasattr(VideoBlocksManager, f"all_{command}")
         assert action["check_if"] == ("is_all_videos_param_set_to", param, value)
 
@@ -277,8 +278,12 @@ class TestTheMenu:
             target, manual, command, anchor = action["func"]
 
             # the viewer's own, for the others to follow where synced
-            assert (target, manual, command) == ("active", "manual_view", "set_anchor")
-            assert hasattr(VideoBlock, command)
+            assert (target, manual, command) == (
+                "active",
+                "manual_view",
+                "view.set_anchor",
+            )
+            assert hasattr(ViewControl, command.removeprefix("view."))
             assert action["check_if"] == ("is_active_param_set_to", "anchor", anchor)
 
     @pytest.mark.parametrize(
@@ -294,7 +299,7 @@ class TestTheMenu:
         action = ACTIONS[name]
 
         assert action["key"] == key
-        assert action["func"] == ("active", "manual_view", "shift_by", *steps)
+        assert action["func"] == ("active", "manual_view", "view.shift_by", *steps)
         assert name in _submenu("video_active", "Position")
 
         all_videos = ACTIONS[f"{name} [ALL]"]
@@ -308,13 +313,13 @@ class TestTheMenu:
         action = ACTIONS["Move Past Edges"]
 
         assert position[position.index("Move Down") + 1] == "Move Past Edges"
-        assert action["func"] == ("active", "toggle_shift_past_edges")
+        assert action["func"] == ("active", "view.toggle_shift_past_edges")
         assert action["check_if"] == (
             "is_active_param_set_to",
             "is_shift_past_edges",
             True,
         )
-        assert hasattr(VideoBlock, "toggle_shift_past_edges")
+        assert hasattr(ViewControl, "toggle_shift_past_edges")
 
         all_videos = _all_videos_submenu("Position")
 
@@ -338,7 +343,7 @@ class TestTheMenu:
         assert ACTIONS["Position Reset"]["func"] == (
             "active",
             "manual_view",
-            "shift_reset",
+            "view.shift_reset",
         )
         assert _all_videos_submenu("Position")[-1] == "Position Reset [ALL]"
 
@@ -353,14 +358,14 @@ class TestTheMenu:
         action = ACTIONS["Zoom to Cursor"]
 
         assert _submenu("video_active", "Zoom")[-2:] == ("---", "Zoom to Cursor")
-        assert action["func"] == ("active", "toggle_zoom_to_cursor")
+        assert action["func"] == ("active", "view.toggle_zoom_to_cursor")
         assert action["check_if"] == (
             "is_active_param_set_to",
             "is_zoom_to_cursor",
             True,
         )
         assert action["show_if"] == "is_active_has_video"
-        assert hasattr(VideoBlock, "toggle_zoom_to_cursor")
+        assert hasattr(ViewControl, "toggle_zoom_to_cursor")
 
     def test_a_selection_to_zoom_to_is_picked_for_from_zoom(self):
         """The next drag over a video selects; see ZoomSelectManager."""
@@ -396,7 +401,7 @@ class TestTheMenu:
             "Random Loop On [ALL]",
             "Random Loop Off [ALL]",
         )
-        _assert_set_for_all("Random Loop", "is_start_random")
+        _assert_set_for_all("Random Loop", "is_start_random", owner=VideoBlock)
 
     def test_the_old_flips_for_all_are_gone(self):
         """Each video flipped its own way: mixed, they stayed mixed."""
@@ -413,16 +418,7 @@ def _block(anchor=VideoAnchor.CENTER, shift=NO_SHIFT, is_shift_past_edges=False)
     block.video_tracks = [0]
     block.is_video_initialized = True
     block.video_driver = Mock()
-    for name in (
-        "set_anchor",
-        "set_shift",
-        "shift_by",
-        "pan_by",
-        "shift_reset",
-        "toggle_shift_past_edges",
-        "set_shift_past_edges",
-    ):
-        setattr(block, name, partial(getattr(VideoBlock, name), block))
+    block.view = ViewControl(block)
     return block
 
 
@@ -430,7 +426,7 @@ class TestOnOneVideo:
     def test_aligning_puts_the_picture_there(self):
         block = _block()
 
-        block.set_anchor(VideoAnchor.TOP)
+        block.view.set_anchor(VideoAnchor.TOP)
 
         assert block.video_params.anchor == VideoAnchor.TOP
         block.video_driver.set_anchor.assert_called_once_with(VideoAnchor.TOP)
@@ -438,7 +434,7 @@ class TestOnOneVideo:
     def test_aligning_lets_go_of_a_move_made_before(self):
         block = _block(shift=VideoShift(40, -20))
 
-        block.set_anchor(VideoAnchor.BOTTOM)
+        block.view.set_anchor(VideoAnchor.BOTTOM)
 
         assert block.video_params.shift == NO_SHIFT
         block.video_driver.set_shift.assert_called_once_with(NO_SHIFT)
@@ -448,7 +444,7 @@ class TestOnOneVideo:
         block = _block()
         block.video_driver.shifted_by.return_value = VideoShift(54, 0)
 
-        block.shift_by(1, 0)
+        block.view.shift_by(1, 0)
 
         block.video_driver.shifted_by.assert_called_once_with(1, 0)
         block.video_driver.set_shift.assert_called_once_with(VideoShift(54, 0))
@@ -459,7 +455,7 @@ class TestOnOneVideo:
         block = _block(shift=VideoShift(420, 0))
         block.video_driver.shifted_by.return_value = VideoShift(420, 0)
 
-        block.shift_by(1, 0)
+        block.view.shift_by(1, 0)
 
         block.video_driver.set_shift.assert_not_called()
         block.info_change.emit.assert_called_once_with("Position: X420 Y0")
@@ -470,7 +466,7 @@ class TestOnOneVideo:
         block = _block()
         block.video_driver.dragged_shift.return_value = (VideoShift(-7, 3), (0.5, 0))
 
-        left_over = block.pan_by(-8.0, 2.5)
+        left_over = block.view.pan_by(-8.0, 2.5)
 
         block.video_driver.dragged_shift.assert_called_once_with(-8.0, 2.5)
         block.video_driver.set_shift.assert_called_once_with(VideoShift(-7, 3))
@@ -481,7 +477,7 @@ class TestOnOneVideo:
     def test_the_reset_brings_it_back_to_the_alignment(self):
         block = _block(anchor=VideoAnchor.TOP, shift=VideoShift(0, -30))
 
-        block.shift_reset()
+        block.view.shift_reset()
 
         assert block.video_params.anchor == VideoAnchor.TOP
         assert block.video_params.shift == NO_SHIFT
@@ -490,7 +486,7 @@ class TestOnOneVideo:
         block = _block()
         block.video_driver.shifted_by.return_value = NO_SHIFT
 
-        block.toggle_shift_past_edges()
+        block.view.toggle_shift_past_edges()
 
         assert block.video_params.is_shift_past_edges
         block.video_driver.set_shift_past_edges.assert_called_once_with(True)
@@ -499,7 +495,7 @@ class TestOnOneVideo:
         block = _block(shift=VideoShift(0, -960), is_shift_past_edges=True)
         block.video_driver.shifted_by.return_value = VideoShift(0, -420)
 
-        block.toggle_shift_past_edges()
+        block.view.toggle_shift_past_edges()
 
         assert not block.video_params.is_shift_past_edges
         block.video_driver.set_shift_past_edges.assert_called_once_with(False)
@@ -515,7 +511,7 @@ class TestOnOneVideo:
         block.is_video_initialized = False
         block.video_tracks = []
 
-        block.set_shift_past_edges(True)
+        block.view.set_shift_past_edges(True)
 
         assert block.video_params.is_shift_past_edges
 
@@ -524,7 +520,7 @@ class TestOnOneVideo:
         block.is_video_initialized = False
         block.video_tracks = []
 
-        block.set_shift_past_edges(True)
+        block.view.set_shift_past_edges(True)
 
         assert block.video_params.is_shift_past_edges
         block.video_driver.set_shift_past_edges.assert_called_once_with(True)
@@ -535,8 +531,8 @@ class TestOnOneVideo:
         block = _block()
         block.video_tracks = []
 
-        block.set_anchor(VideoAnchor.TOP)
-        block.shift_by(1, 0)
+        block.view.set_anchor(VideoAnchor.TOP)
+        block.view.shift_by(1, 0)
 
         assert block.video_params.anchor == VideoAnchor.CENTER
         block.video_driver.set_anchor.assert_not_called()
@@ -558,23 +554,8 @@ def _zooming_block(is_zoom_to_cursor=True, scale=1.0, shift=NO_SHIFT, focus=(600
     block.video_driver.zoomed_shift.return_value = VideoShift(-90, 90)
     block.video_driver.selection_zoom.return_value = (3.0, VideoShift(240, 240))
     block.video_driver.pos.return_value = QPoint(0, 0)
-    block._zoom_focus.return_value = focus
-    block._is_zoomed_to_selection = False
-    for name in (
-        "scale_increase",
-        "scale_decrease",
-        "scale_reset",
-        "set_scale",
-        "_zoom_to",
-        "_set_zoom",
-        "toggle_zoom_to_cursor",
-        "set_zoom_to_cursor",
-        "zoom_to_selection",
-        "set_shift",
-        "shift_reset",
-        "set_anchor",
-    ):
-        setattr(block, name, partial(getattr(VideoBlock, name), block))
+    block.view = ViewControl(block)
+    block.view._zoom_focus = Mock(return_value=focus)
     return block
 
 
@@ -582,7 +563,7 @@ class TestZoomingToTheCursor:
     def test_it_zooms_and_moves_the_picture_in_one_go(self):
         block = _zooming_block()
 
-        block.scale_increase()
+        block.view.scale_increase()
 
         block.video_driver.zoomed_shift.assert_called_once_with(1.1, (600, 300))
         block.video_driver.set_zoom.assert_called_once_with(1.1, VideoShift(-90, 90))
@@ -594,7 +575,7 @@ class TestZoomingToTheCursor:
     def test_out_as_well_as_in(self):
         block = _zooming_block(scale=2.0)
 
-        block.scale_decrease()
+        block.view.scale_decrease()
 
         block.video_driver.zoomed_shift.assert_called_once_with(1.9, (600, 300))
         assert block.video_params.scale == 1.9
@@ -602,7 +583,7 @@ class TestZoomingToTheCursor:
     def test_with_the_pointer_elsewhere_it_zooms_about_the_alignment(self):
         block = _zooming_block(shift=VideoShift(20, 0), focus=None)
 
-        block.scale_increase()
+        block.view.scale_increase()
 
         block.video_driver.set_scale.assert_called_once_with(1.1)
         block.video_driver.zoomed_shift.assert_not_called()
@@ -611,7 +592,7 @@ class TestZoomingToTheCursor:
     def test_as_far_as_it_goes_it_does_not_move(self):
         block = _zooming_block(scale=MAX_SCALE)
 
-        block.scale_increase()
+        block.view.scale_increase()
 
         block.video_driver.zoomed_shift.assert_not_called()
         block.video_driver.set_scale.assert_called_once_with(MAX_SCALE)
@@ -619,7 +600,7 @@ class TestZoomingToTheCursor:
     def test_the_reset_puts_the_picture_back_in_its_place(self):
         block = _zooming_block(scale=3.0, shift=VideoShift(-90, 90), focus=None)
 
-        block.scale_reset()
+        block.view.scale_reset()
 
         block.video_driver.set_zoom.assert_called_once_with(1.0, NO_SHIFT)
         assert block.video_params.scale == 1.0
@@ -630,7 +611,7 @@ class TestZoomingToTheCursor:
             is_zoom_to_cursor=False, scale=3.0, shift=VideoShift(-90, 90)
         )
 
-        block.scale_reset()
+        block.view.scale_reset()
 
         block.video_driver.set_scale.assert_called_once_with(1.0)
         block.video_driver.set_zoom.assert_not_called()
@@ -639,18 +620,18 @@ class TestZoomingToTheCursor:
     def test_it_can_be_switched_on_and_off(self):
         block = _zooming_block(is_zoom_to_cursor=False)
 
-        block.toggle_zoom_to_cursor()
+        block.view.toggle_zoom_to_cursor()
         assert block.video_params.is_zoom_to_cursor
 
-        block.toggle_zoom_to_cursor()
+        block.view.toggle_zoom_to_cursor()
         assert not block.video_params.is_zoom_to_cursor
 
     def test_a_video_without_a_picture_is_left_alone(self):
         block = _zooming_block()
         block.video_tracks = []
 
-        block.scale_increase()
-        block.toggle_zoom_to_cursor()
+        block.view.scale_increase()
+        block.view.toggle_zoom_to_cursor()
 
         block.video_driver.zoomed_shift.assert_not_called()
         assert block.video_params.is_zoom_to_cursor
@@ -661,7 +642,7 @@ class TestZoomingToTheCursor:
         block.is_video_initialized = False
         block.video_tracks = []
 
-        block.set_zoom_to_cursor(True)
+        block.view.set_zoom_to_cursor(True)
 
         assert block.video_params.is_zoom_to_cursor
 
@@ -670,7 +651,7 @@ class TestZoomingToASelection:
     def test_it_zooms_and_moves_the_picture_in_one_go(self):
         block = _zooming_block(is_zoom_to_cursor=False)
 
-        block.zoom_to_selection(QRect(100, 100, 300, 300))
+        block.view.zoom_to_selection(QRect(100, 100, 300, 300))
 
         block.video_driver.selection_zoom.assert_called_once_with((100, 100, 300, 300))
         block.video_driver.set_zoom.assert_called_once_with(3.0, VideoShift(240, 240))
@@ -682,7 +663,7 @@ class TestZoomingToASelection:
         block = _zooming_block()
         block.video_driver.pos.return_value = QPoint(10, 20)
 
-        block.zoom_to_selection(QRect(100, 100, 300, 200))
+        block.view.zoom_to_selection(QRect(100, 100, 300, 200))
 
         block.video_driver.selection_zoom.assert_called_once_with((90, 80, 300, 200))
 
@@ -690,20 +671,20 @@ class TestZoomingToASelection:
         block = _zooming_block(shift=VideoShift(20, 0))
         block.video_driver.selection_zoom.return_value = None
 
-        block.zoom_to_selection(QRect(0, 0, 50, 50))
+        block.view.zoom_to_selection(QRect(0, 0, 50, 50))
 
         block.video_driver.set_zoom.assert_not_called()
         block.info_change.emit.assert_not_called()
         assert block.video_params.shift == VideoShift(20, 0)
-        assert not block._is_zoomed_to_selection
+        assert not block.view._is_zoomed_to_selection
 
     def test_the_reset_puts_the_picture_back_in_its_place(self):
         """As zoomed about the pointer: where it stands is the zoom's doing."""
 
         block = _zooming_block(is_zoom_to_cursor=False)
 
-        block.zoom_to_selection(QRect(100, 100, 300, 300))
-        block.scale_reset()
+        block.view.zoom_to_selection(QRect(100, 100, 300, 300))
+        block.view.scale_reset()
 
         block.video_driver.set_zoom.assert_called_with(1.0, NO_SHIFT)
         block.video_driver.set_scale.assert_not_called()
@@ -712,19 +693,19 @@ class TestZoomingToASelection:
     def test_moved_on_after_it_the_reset_still_puts_it_back(self):
         block = _zooming_block(is_zoom_to_cursor=False)
 
-        block.zoom_to_selection(QRect(100, 100, 300, 300))
-        block.set_shift(VideoShift(300, 200))
-        block.scale_reset()
+        block.view.zoom_to_selection(QRect(100, 100, 300, 300))
+        block.view.set_shift(VideoShift(300, 200))
+        block.view.scale_reset()
 
         block.video_driver.set_zoom.assert_called_with(1.0, NO_SHIFT)
 
     def test_once_reset_the_next_reset_leaves_a_move_alone(self):
         block = _zooming_block(is_zoom_to_cursor=False)
 
-        block.zoom_to_selection(QRect(100, 100, 300, 300))
-        block.scale_reset()
-        block.set_shift(VideoShift(-90, 90))
-        block.scale_reset()
+        block.view.zoom_to_selection(QRect(100, 100, 300, 300))
+        block.view.scale_reset()
+        block.view.set_shift(VideoShift(-90, 90))
+        block.view.scale_reset()
 
         block.video_driver.set_scale.assert_called_once_with(1.0)
         assert block.video_params.shift == VideoShift(-90, 90)
@@ -732,17 +713,17 @@ class TestZoomingToASelection:
     @pytest.mark.parametrize(
         "put_back",
         [
-            lambda block: block.shift_reset(),
-            lambda block: block.set_anchor(VideoAnchor.TOP),
+            lambda block: block.view.shift_reset(),
+            lambda block: block.view.set_anchor(VideoAnchor.TOP),
         ],
     )
     def test_put_back_in_its_place_the_zoom_s_reset_is_the_usual_one(self, put_back):
         block = _zooming_block(is_zoom_to_cursor=False)
 
-        block.zoom_to_selection(QRect(100, 100, 300, 300))
+        block.view.zoom_to_selection(QRect(100, 100, 300, 300))
         put_back(block)
-        block.set_shift(VideoShift(-90, 90))
-        block.scale_reset()
+        block.view.set_shift(VideoShift(-90, 90))
+        block.view.scale_reset()
 
         block.video_driver.set_scale.assert_called_once_with(1.0)
 
@@ -750,7 +731,7 @@ class TestZoomingToASelection:
         block = _zooming_block()
         block.video_tracks = []
 
-        block.zoom_to_selection(QRect(100, 100, 300, 300))
+        block.view.zoom_to_selection(QRect(100, 100, 300, 300))
 
         block.video_driver.selection_zoom.assert_not_called()
 
@@ -837,10 +818,10 @@ def _focus(
     block.video_driver.mapFromGlobal.side_effect = lambda pos: pos - QPoint(100, 100)
 
     monkeypatch.setattr(
-        video_block_module, "QCursor", Mock(pos=Mock(return_value=pointer))
+        video_block_view_module, "QCursor", Mock(pos=Mock(return_value=pointer))
     )
 
-    return VideoBlock._zoom_focus(block)
+    return ViewControl(block)._zoom_focus()
 
 
 class TestWhereTheZoomGoesAbout:
@@ -894,6 +875,7 @@ def test_a_snapshot_puts_the_picture_back_where_it_was():
     block.video_tracks = [0]
     block.is_video_initialized = True
     block._default_title = "a"
+    block.view = Mock(spec=ViewControl)
 
     snapshot = Video(
         uri=URI,
@@ -903,9 +885,9 @@ def test_a_snapshot_puts_the_picture_back_where_it_was():
     )
     VideoBlock.apply_snapshot(block, snapshot)
 
-    block.set_anchor.assert_called_once_with(VideoAnchor.RIGHT)
-    block.set_shift_past_edges.assert_called_once_with(True)
-    block.set_shift.assert_called_once_with(VideoShift(0, 25), is_silent=True)
+    block.view.set_anchor.assert_called_once_with(VideoAnchor.RIGHT)
+    block.view.set_shift_past_edges.assert_called_once_with(True)
+    block.view.set_shift.assert_called_once_with(VideoShift(0, 25), is_silent=True)
 
 
 def test_a_snapshot_puts_back_what_the_zoom_goes_about():
@@ -914,10 +896,11 @@ def test_a_snapshot_puts_back_what_the_zoom_goes_about():
     block.video_tracks = [0]
     block.is_video_initialized = True
     block._default_title = "a"
+    block.view = Mock(spec=ViewControl)
 
     VideoBlock.apply_snapshot(block, Video(uri=URI, is_zoom_to_cursor=True))
 
-    block.set_zoom_to_cursor.assert_called_once_with(True)
+    block.view.set_zoom_to_cursor.assert_called_once_with(True)
 
 
 def _track(size, orientation=VideoTransform.NONE):

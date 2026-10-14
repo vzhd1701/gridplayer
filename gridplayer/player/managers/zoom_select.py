@@ -16,7 +16,7 @@ class ZoomSelectManager(ManagerBase):
     A drag over the picture with one of the drags it is set to in the
     keymap, the left button with Ctrl by default; or the next left drag
     after Zoom to Selection is picked, whatever is held. Let go of, the part dragged over is fitted into the cell, in its
-    middle (see VideoBlock.zoom_to_selection).
+    middle (see ViewControl.zoom_to_selection).
 
     The press is taken here, and the moves after it, before a drag would
     move the video to another cell or the picture about. A click with no
@@ -179,7 +179,7 @@ class ZoomSelectManager(ManagerBase):
             self._is_selecting = True
             self._set_cursor()
 
-        self._block.show_zoom_selection(self._selection())
+        self._block.view.show_zoom_selection(self._selection())
 
         # the outline says it all now
         self._unhint()
@@ -204,7 +204,7 @@ class ZoomSelectManager(ManagerBase):
             self._swallowed_buttons.add(event.button())
 
         if not selection.isEmpty():
-            block.manual_view("zoom_to_selection", selection)
+            block.manual_view("view.zoom_to_selection", selection)
 
     def mouse_release(self, event):
         """A release as it comes to a widget, after the window had it."""
@@ -289,7 +289,7 @@ class ZoomSelectManager(ManagerBase):
         if block is None or not _is_part_of(pressed, block):
             return None
 
-        if block.zoom_selection_area() is None:
+        if block.view.zoom_selection_area() is None:
             return None
 
         return block
@@ -304,7 +304,7 @@ class ZoomSelectManager(ManagerBase):
     def _selection(self) -> QRect:
         """The part of the picture dragged over, in the cell's pixels."""
 
-        area = self._block.zoom_selection_area()
+        area = self._block.view.zoom_selection_area()
 
         if area is None:
             return QRect()
@@ -354,14 +354,14 @@ class ZoomSelectManager(ManagerBase):
         if block is None or block is self._hinted:
             return
 
-        if block.zoom_selection_area() is None:
+        if block.view.zoom_selection_area() is None:
             return
 
         self._unhint()
 
         self._hinted = block
         block.destroyed.connect(self._forget_hinted)
-        block.show_zoom_hint(True)
+        block.view.show_zoom_hint(True)
 
     def _hint_under_pointer(self):
         # off the videos, the one it was last over goes on saying it
@@ -392,7 +392,7 @@ class ZoomSelectManager(ManagerBase):
                 block.destroyed.disconnect(self._forget_block)
 
             if self._is_selecting:
-                block.show_zoom_selection(None)
+                block.view.show_zoom_selection(None)
 
         if self._is_cursor_set:
             QApplication.restoreOverrideCursor()

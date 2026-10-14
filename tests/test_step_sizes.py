@@ -6,7 +6,6 @@ what is on show.
 """
 
 import math
-from functools import partial
 from unittest.mock import Mock
 
 import pytest
@@ -32,6 +31,7 @@ from gridplayer.utils.step_sizes import (
 from gridplayer.widgets.defaults_form import DefaultsForm
 from gridplayer.widgets.keymap_tree_view import _action_title
 from gridplayer.widgets.video_block import VideoBlock
+from gridplayer.widgets.video_block_view import ViewControl
 
 STEP_KEYS = (
     "playlist/seek_step_short",
@@ -371,22 +371,22 @@ class TestTheBlock:
         block.video_params = Mock(scale=scale)
         block.video_tracks = [0]
         block.is_video_initialized = True
-        block.scale_increase = partial(VideoBlock.scale_increase, block)
-        block.scale_decrease = partial(VideoBlock.scale_decrease, block)
+        block.view = ViewControl(block)
+        block.view._zoom_to = Mock()
         return block
 
     def test_zoom_in_goes_by_the_playlist_step(self):
         _zoom(50)
         block = self._block(1.0)
 
-        block.scale_increase()
+        block.view.scale_increase()
 
-        block._zoom_to.assert_called_once_with(1.5)
+        block.view._zoom_to.assert_called_once_with(1.5)
 
     def test_zoom_out_goes_by_the_playlist_step(self):
         _zoom(20, is_proportional=True)
         block = self._block(1.44)
 
-        block.scale_decrease()
+        block.view.scale_decrease()
 
-        block._zoom_to.assert_called_once_with(1.2)
+        block.view._zoom_to.assert_called_once_with(1.2)

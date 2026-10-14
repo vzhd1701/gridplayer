@@ -1,3 +1,4 @@
+from operator import attrgetter
 from types import SimpleNamespace
 from unittest.mock import MagicMock
 
@@ -42,6 +43,8 @@ class _Block:
         )
         self.shifts = []
         self.synced = []
+        # the block's view part, done by the fake itself
+        self.view = self
 
         self.video_driver = _StubFrame(vlc_options=[])
         self.video_driver.resize(900, 900)
@@ -66,7 +69,7 @@ class _Block:
 
     def manual_view(self, command, *args):
         self.synced.append(command)
-        return getattr(self, command)(*args)
+        return attrgetter(command)(self)(*args)
 
     def set_anchor(self, anchor):
         self.video_params.anchor = anchor
@@ -175,7 +178,7 @@ def test_ok_says_where_the_picture_ended_up():
     assert block.shifts[-1] == (VideoShift(0, -30), False)
     assert dialog.result() == QDialog.Accepted
     # once, for the others to follow where their views are synced
-    assert block.synced == ["set_shift"]
+    assert block.synced == ["view.set_shift"]
 
 
 def test_cancel_puts_back_what_there_was():

@@ -582,7 +582,7 @@ class SharedView:
 
 
 class SyncedView(NamedTuple):
-    """A video's view, for the others to follow: see VideoBlock.synced_view."""
+    """A video's view, for the others to follow: see ViewControl.synced."""
 
     view: SharedView
     # where the picture stands is a zoom to a selection's doing, which a

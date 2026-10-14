@@ -1,10 +1,8 @@
 """The part of a picture being selected to zoom to, outlined on the overlay.
 
-See ZoomSelectManager for the selecting, and VideoBlock.show_zoom_selection
+See ZoomSelectManager for the selecting, and ViewControl.show_zoom_selection
 for the overlay shown for it.
 """
-
-from functools import partial
 
 import pytest
 from PyQt5.QtCore import QPoint, QRect, Qt
@@ -164,18 +162,10 @@ class TestItsOwnControls:
 
 
 def _block(mocker, **ctx):
-    from gridplayer.widgets.video_block import VideoBlock
+    from gridplayer.widgets.video_block_view import ViewControl
 
     block = mocker.Mock()
-    block._zoom_selection = None
-    block._is_zoom_hint_shown = False
-    for name in (
-        "show_zoom_selection",
-        "show_zoom_hint",
-        "_is_zoom_ui",
-        "_zoom_ui_changed",
-    ):
-        setattr(block, name, partial(getattr(VideoBlock, name), block))
+    block.view = ViewControl(block)
     block._ctx.is_drag_ui = False
     block._ctx.is_disable_overlay = ctx.get("is_disable_overlay", False)
     block._ctx.is_overlay_hide_on_timeout = True
@@ -186,12 +176,11 @@ def _block(mocker, **ctx):
 
 class TestTheCellWhileSelecting:
     def test_the_overlay_is_shown_with_the_selection_alone(self, mocker):
-        from gridplayer.widgets.video_block import VideoBlock
 
         block = _block(mocker)
 
-        VideoBlock.show_zoom_selection(block, SELECTION)
-        VideoBlock.show_zoom_selection(block, QRect(100, 80, 250, 150))
+        block.view.show_zoom_selection(SELECTION)
+        block.view.show_zoom_selection(QRect(100, 80, 250, 150))
 
         assert block.overlay.set_zoom_selection.call_args_list == [
             mocker.call(SELECTION),
@@ -207,44 +196,41 @@ class TestTheCellWhileSelecting:
 
         block = _block(mocker)
 
-        VideoBlock.show_zoom_selection(block, SELECTION)
+        block.view.show_zoom_selection(SELECTION)
         VideoBlock.hide_overlay(block)
 
         block.overlay.hide.assert_not_called()
 
     def test_done_the_overlay_is_as_it_would_be(self, mocker):
-        from gridplayer.widgets.video_block import VideoBlock
 
         block = _block(mocker)
 
-        VideoBlock.show_zoom_selection(block, SELECTION)
-        VideoBlock.show_zoom_selection(block, None)
+        block.view.show_zoom_selection(SELECTION)
+        block.view.show_zoom_selection(None)
 
         block.overlay.set_zoom_selection.assert_called_with(None)
         block.overlay.set_is_chrome_visible.assert_called_with(True)
         block.show_overlay.assert_called_once_with()
-        assert block._zoom_selection is None
+        assert block.view._zoom_selection is None
 
     @pytest.mark.parametrize(
         "ctx", [{"is_disable_overlay": True}, {"is_overlay_fits": False}]
     )
     def test_done_an_overlay_that_is_off_goes_again(self, mocker, ctx):
-        from gridplayer.widgets.video_block import VideoBlock
 
         block = _block(mocker, **ctx)
 
-        VideoBlock.show_zoom_selection(block, SELECTION)
-        VideoBlock.show_zoom_selection(block, None)
+        block.view.show_zoom_selection(SELECTION)
+        block.view.show_zoom_selection(None)
 
         block.overlay.hide.assert_called_once_with()
         block.show_overlay.assert_not_called()
 
     def test_with_none_going_on_nothing_changes(self, mocker):
-        from gridplayer.widgets.video_block import VideoBlock
 
         block = _block(mocker)
 
-        VideoBlock.show_zoom_selection(block, None)
+        block.view.show_zoom_selection(None)
 
         block.overlay.set_zoom_selection.assert_not_called()
         block.show_overlay.assert_not_called()
@@ -254,7 +240,7 @@ class TestTheHintOnTheCell:
     def test_the_overlay_is_shown_with_the_hint_alone(self, mocker):
         block = _block(mocker)
 
-        block.show_zoom_hint(True)
+        block.view.show_zoom_hint(True)
 
         block.overlay.set_zoom_hint.assert_called_once_with(True)
         block.overlay.set_is_chrome_visible.assert_called_once_with(False)
@@ -266,7 +252,7 @@ class TestTheHintOnTheCell:
 
         block = _block(mocker)
 
-        block.show_zoom_hint(True)
+        block.view.show_zoom_hint(True)
         VideoBlock.hide_overlay(block)
 
         block.overlay.hide.assert_not_called()
@@ -274,10 +260,10 @@ class TestTheHintOnTheCell:
     def test_from_the_hint_to_the_selection_the_chrome_stays_away(self, mocker):
         block = _block(mocker)
 
-        block.show_zoom_hint(True)
-        block.show_zoom_selection(SELECTION)
+        block.view.show_zoom_hint(True)
+        block.view.show_zoom_selection(SELECTION)
         # as the selecting goes on, the hint is let go of again
-        block.show_zoom_hint(False)
+        block.view.show_zoom_hint(False)
 
         block.overlay.set_zoom_hint.assert_called_with(False)
         block.overlay.set_is_chrome_visible.assert_called_once_with(False)
@@ -286,8 +272,8 @@ class TestTheHintOnTheCell:
     def test_let_go_of_the_overlay_is_as_it_would_be(self, mocker):
         block = _block(mocker)
 
-        block.show_zoom_hint(True)
-        block.show_zoom_hint(False)
+        block.view.show_zoom_hint(True)
+        block.view.show_zoom_hint(False)
 
         block.overlay.set_is_chrome_visible.assert_called_with(True)
         block.show_overlay.assert_called_once_with()

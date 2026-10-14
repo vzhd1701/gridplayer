@@ -555,7 +555,7 @@ class VideoBlocksManager(ManagerBase):
     def _follow_view(self, leader: VideoBlock, synced: SyncedView):
         for vb in self._ctx.video_blocks:
             if vb is not leader:
-                vb.follow_view(synced)
+                vb.view.follow(synced)
 
     def _refresh_synced_view(self):
         """The view to sync to as the one it was taken from now has it, all
@@ -566,7 +566,7 @@ class VideoBlocksManager(ManagerBase):
             return
 
         leader = self._ctx.video_blocks.by_id(self._view_leader_id)
-        synced = leader.synced_view() if leader is not None else None
+        synced = leader.view.synced() if leader is not None else None
 
         if synced is not None:
             self._ctx.synced_view = synced
@@ -877,16 +877,16 @@ class VideoBlocksManager(ManagerBase):
             (self.all_rate_increase, vb.rate_increase),
             (self.all_rate_decrease, vb.rate_decrease),
             (self.all_rate_reset, vb.rate_reset),
-            (self.all_scale_increase, vb.scale_increase),
-            (self.all_scale_decrease, vb.scale_decrease),
-            (self.all_scale_reset, vb.scale_reset),
-            (self.all_set_zoom_to_cursor, vb.set_zoom_to_cursor),
-            (self.all_crop, vb.crop),
-            (self.all_crop_reset, vb.crop_reset),
-            (self.all_set_anchor, vb.set_anchor),
-            (self.all_shift_by, vb.shift_by),
-            (self.all_shift_reset, vb.shift_reset),
-            (self.all_set_shift_past_edges, vb.set_shift_past_edges),
+            (self.all_scale_increase, vb.view.scale_increase),
+            (self.all_scale_decrease, vb.view.scale_decrease),
+            (self.all_scale_reset, vb.view.scale_reset),
+            (self.all_set_zoom_to_cursor, vb.view.set_zoom_to_cursor),
+            (self.all_crop, vb.view.crop),
+            (self.all_crop_reset, vb.view.crop_reset),
+            (self.all_set_anchor, vb.view.set_anchor),
+            (self.all_shift_by, vb.view.shift_by),
+            (self.all_shift_reset, vb.view.shift_reset),
+            (self.all_set_shift_past_edges, vb.view.set_shift_past_edges),
             (self.all_set_aspect, vb.set_aspect),
             (self.all_set_transform, vb.set_transform),
             (self.all_take_screenshot, vb.take_screenshot),

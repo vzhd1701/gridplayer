@@ -35,6 +35,7 @@ from gridplayer.settings import Settings
 from gridplayer.utils.aspect_calc import SyncedView, calc_shared_view
 from gridplayer.vlc_player.static import VideoTrack
 from gridplayer.widgets.video_block import VideoBlock
+from gridplayer.widgets.video_block_view import ViewControl
 from gridplayer.widgets.video_frame_dummy import VideoFrameDummy
 from gridplayer.widgets.video_frame_vlc_hw_sp import VideoFrameVLCHWSP
 
@@ -127,9 +128,9 @@ class TestTheMenu:
 
         action = ACTIONS["Sync Others (Zoom and Position)"]
 
-        assert action["func"] == ("active", "sync_others_view")
+        assert action["func"] == ("active", "view.sync_others")
         assert action["show_if"] == "is_active_has_video"
-        assert hasattr(VideoBlock, "sync_others_view")
+        assert hasattr(ViewControl, "sync_others")
 
     @pytest.mark.parametrize(
         "name",
@@ -149,8 +150,11 @@ class TestTheMenu:
     def test_the_viewer_s_zooms_and_moves_are_for_the_others_to_follow(self, name):
         target, manual, command, *_ = ACTIONS[name]["func"]
 
+        part, _, method = command.partition(".")
+
         assert (target, manual) == ("active", "manual_view")
-        assert hasattr(VideoBlock, command)
+        assert part == "view"
+        assert hasattr(ViewControl, method)
 
     @pytest.mark.parametrize("name", ["Faster", "Slower", "Normal"])
     def test_the_viewer_s_speeds_are_for_the_others_to_follow(self, name):
@@ -192,8 +196,6 @@ def _block(is_initialized=True, has_picture=True, is_live=False):
     block.is_video_initialized = is_initialized
     block.video_tracks = {0: object()} if has_picture else {}
     block.is_live = is_live
-    block._is_zoomed_to_selection = False
-    block._view_to_follow = None
     block._is_state_change_in_progress = False
     block._ctx = SimpleNamespace(synced_view=None)
     block.video_driver = Mock()
@@ -201,16 +203,26 @@ def _block(is_initialized=True, has_picture=True, is_live=False):
 
     for name in (
         "manual_view",
-        "sync_others_view",
-        "synced_view",
-        "follow_view",
-        "_view_followed",
-        "_follow_synced_view",
         "manual_rate",
         "follow_rate",
         "play_pause",
     ):
         setattr(block, name, partial(getattr(VideoBlock, name), block))
+
+    block.view = Mock(spec=ViewControl)
+    block.view._block = block
+    block.view._is_zoomed_to_selection = False
+    block.view._view_to_follow = None
+
+    for name in (
+        "sync_others",
+        "synced",
+        "follow",
+        "remember_followed",
+        "follow_synced",
+        "forget_view_to_follow",
+    ):
+        setattr(block.view, name, partial(getattr(ViewControl, name), block.view))
 
     return block
 
@@ -218,33 +230,33 @@ def _block(is_initialized=True, has_picture=True, is_live=False):
 class TestTheViewersOwnView:
     def test_it_is_changed_and_given_for_the_others_to_follow(self):
         block = _block()
-        block.pan_by.return_value = (0.5, 0.0)
+        block.view.pan_by.return_value = (0.5, 0.0)
 
-        assert block.manual_view("pan_by", 3, 4) == (0.5, 0.0)
+        assert block.manual_view("view.pan_by", 3, 4) == (0.5, 0.0)
 
-        block.pan_by.assert_called_once_with(3, 4)
+        block.view.pan_by.assert_called_once_with(3, 4)
         block.sync_view.emit.assert_called_once_with(SyncedView(SHARED, False))
 
     def test_it_says_where_the_picture_is_from_a_zoom_to_a_selection(self):
         block = _block()
-        block._is_zoomed_to_selection = True
+        block.view._is_zoomed_to_selection = True
 
-        block.manual_view("scale_reset")
+        block.manual_view("view.scale_reset")
 
         block.sync_view.emit.assert_called_once_with(SyncedView(SHARED, True))
 
     def test_with_no_picture_there_is_nothing_to_follow(self):
         block = _block(has_picture=False)
 
-        block.manual_view("scale_increase")
+        block.manual_view("view.scale_increase")
 
-        block.scale_increase.assert_called_once_with()
+        block.view.scale_increase.assert_called_once_with()
         block.sync_view.emit.assert_not_called()
 
     def test_the_others_can_be_given_it_once(self):
         block = _block()
 
-        block.sync_others_view()
+        block.view.sync_others()
 
         block.sync_view_single.emit.assert_called_once_with(SyncedView(SHARED, False))
         block.sync_view.emit.assert_not_called()
@@ -256,13 +268,13 @@ class TestFollowingAnothersView:
         view = ViewParams(scale=2.0, anchor=VideoAnchor.TOP, shift=VideoShift(10, 20))
         block.video_driver.follow_view.return_value = view
 
-        block.follow_view(SyncedView(SHARED, True))
+        block.view.follow(SyncedView(SHARED, True))
 
         block.video_driver.follow_view.assert_called_once_with(SHARED)
         assert block.video_params.scale == 2.0
         assert block.video_params.anchor == VideoAnchor.TOP
         assert block.video_params.shift == VideoShift(10, 20)
-        assert block._is_zoomed_to_selection is True
+        assert block.view._is_zoomed_to_selection is True
         # quietly: the other says what it shows
         block.info_change.emit.assert_not_called()
         block.sync_view.emit.assert_not_called()
@@ -271,7 +283,7 @@ class TestFollowingAnothersView:
         block = _block()
         block.video_driver.follow_view.return_value = None
 
-        block.follow_view(SyncedView(SHARED, False))
+        block.view.follow(SyncedView(SHARED, False))
 
         assert block.video_params.scale == 1.0
 
@@ -279,58 +291,58 @@ class TestFollowingAnothersView:
         block = _block(is_initialized=False)
         synced = SyncedView(SHARED, False)
 
-        block.follow_view(synced)
+        block.view.follow(synced)
 
         block.video_driver.follow_view.assert_not_called()
-        assert block._view_to_follow == synced
+        assert block.view._view_to_follow == synced
 
     def test_without_a_picture_there_is_nothing_to_show_it_in(self):
         block = _block(has_picture=False)
 
-        block.follow_view(SyncedView(SHARED, True))
+        block.view.follow(SyncedView(SHARED, True))
 
         block.video_driver.follow_view.assert_not_called()
-        assert block._is_zoomed_to_selection is False
+        assert block.view._is_zoomed_to_selection is False
 
     def test_loaded_it_shows_the_one_it_was_to_follow(self):
         block = _block()
         kept = SyncedView(SHARED, True)
-        block._view_to_follow = kept
+        block.view._view_to_follow = kept
         block._ctx.synced_view = SyncedView(SHARED, False)
-        block.follow_view = Mock()
+        block.view.follow = Mock()
 
-        block._follow_synced_view()
+        block.view.follow_synced()
 
-        block.follow_view.assert_called_once_with(kept)
-        assert block._view_to_follow is None
+        block.view.follow.assert_called_once_with(kept)
+        assert block.view._view_to_follow is None
 
     def test_loaded_otherwise_it_shows_the_one_they_are_synced_to(self):
         block = _block()
         synced = SyncedView(SHARED, False)
         block._ctx.synced_view = synced
-        block.follow_view = Mock()
+        block.view.follow = Mock()
 
-        block._follow_synced_view()
+        block.view.follow_synced()
 
-        block.follow_view.assert_called_once_with(synced)
+        block.view.follow.assert_called_once_with(synced)
 
     def test_loaded_with_neither_it_shows_its_own(self):
         block = _block()
-        block.follow_view = Mock()
+        block.view.follow = Mock()
 
-        block._follow_synced_view()
+        block.view.follow_synced()
 
-        block.follow_view.assert_not_called()
+        block.view.follow.assert_not_called()
 
     def test_a_snapshot_s_view_is_not_overruled_by_one_to_follow(self):
         block = _block(is_initialized=False)
         block._default_title = None
-        block._view_to_follow = SyncedView(SHARED, False)
+        block.view._view_to_follow = SyncedView(SHARED, False)
         block.apply_snapshot = partial(VideoBlock.apply_snapshot, block)
 
         block.apply_snapshot(Video(uri=URI, playback_state=VideoInitialState.STOPPED))
 
-        assert block._view_to_follow is None
+        assert block.view._view_to_follow is None
 
 
 class TestTheViewersOwnPlayAndPause:
@@ -390,6 +402,7 @@ class TestTheViewersOwnSpeed:
 
 def _stub(name, is_hidden=False):
     block = Mock(spec=VideoBlock)
+    block.view = Mock(spec=ViewControl)
     block.id = name
     block.video_id = name
     block.video_params = Video(uri=URI)
@@ -414,7 +427,7 @@ class TestSyncingTheView:
 
         manager.sync_view(leader, SyncedView(SHARED, False))
 
-        other.follow_view.assert_not_called()
+        other.view.follow.assert_not_called()
         assert manager._ctx.synced_view is None
 
     def test_on_the_others_follow_and_it_is_kept_for_those_loading_after(self):
@@ -425,9 +438,9 @@ class TestSyncingTheView:
 
         manager.sync_view(leader, synced)
 
-        leader.follow_view.assert_not_called()
-        other.follow_view.assert_called_once_with(synced)
-        third.follow_view.assert_called_once_with(synced)
+        leader.view.follow.assert_not_called()
+        other.view.follow.assert_called_once_with(synced)
+        third.view.follow.assert_called_once_with(synced)
         assert manager._ctx.synced_view == synced
 
     def test_once_the_others_follow_synced_or_not(self):
@@ -437,7 +450,7 @@ class TestSyncingTheView:
 
         manager.sync_view_single(leader, synced)
 
-        other.follow_view.assert_called_once_with(synced)
+        other.view.follow.assert_called_once_with(synced)
         assert manager._ctx.synced_view is None
 
     def test_once_with_their_views_synced_is_the_view_to_sync_to(self):
@@ -448,7 +461,7 @@ class TestSyncingTheView:
 
         manager.sync_view_single(leader, synced)
 
-        other.follow_view.assert_called_once_with(synced)
+        other.view.follow.assert_called_once_with(synced)
         assert manager._ctx.synced_view == synced
 
     def test_switched_off_and_on_it_starts_afresh(self):
@@ -480,7 +493,7 @@ class TestSyncingTheView:
         manager.set_view_sync(True)
         manager.sync_view(leader, SyncedView(SHARED, False))
         zoomed = SyncedView(SHARED, True)
-        leader.synced_view.return_value = zoomed
+        leader.view.synced.return_value = zoomed
 
         manager.cmd_all("scale_increase")
 
@@ -495,7 +508,7 @@ class TestSyncingTheView:
 
         manager.cmd_all("rate_increase")
 
-        leader.synced_view.assert_not_called()
+        leader.view.synced.assert_not_called()
         assert manager._ctx.synced_view == synced
 
     def test_forgotten_those_loading_after_show_their_own(self):
@@ -720,7 +733,7 @@ class TestInThePlayer:
         leader, other = add(2)
         manager.set_view_sync(True)
 
-        leader.manual_view("scale_increase")
+        leader.manual_view("view.scale_increase")
 
         assert other.video_params.scale == pytest.approx(1.1)
         assert other.video_driver._view == leader.video_driver._view
@@ -732,9 +745,9 @@ class TestInThePlayer:
     def test_the_others_are_shown_the_view_once(self, grid):
         manager, add = grid
         leader, other = add(2)
-        leader.scale_increase()
+        leader.view.scale_increase()
 
-        leader.sync_others_view()
+        leader.view.sync_others()
 
         assert other.video_params.scale == pytest.approx(1.1)
         assert manager._ctx.synced_view is None
