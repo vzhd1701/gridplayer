@@ -628,7 +628,7 @@ def _block(is_paused=False, track_id=0, audio=True, tracks=(0,)):
     block._is_video_stopped_in_tray = False
     block.video_params = Video(uri=URI, is_paused=is_paused, video_track_id=track_id)
     block.video_tracks = dict.fromkeys(tracks)
-    block.audio_tracks = {1: None} if audio else {}
+    block.audio.tracks = {1: None} if audio else {}
 
     return block
 

@@ -1,6 +1,5 @@
 """Moving a video's sound against its picture, and hearing it move."""
 
-from functools import partial
 from types import SimpleNamespace
 from unittest.mock import Mock
 
@@ -16,7 +15,7 @@ from gridplayer.params.static import (
     MIN_AUDIO_DELAY_MS,
 )
 from gridplayer.settings import Settings
-from gridplayer.widgets.video_block import VideoBlock
+from gridplayer.widgets.video_block_audio import AudioControl
 
 
 @pytest.fixture(scope="module", autouse=True)
@@ -33,13 +32,11 @@ def _isolated_settings(tmp_path):
 def _block(delay_ms=0, has_audio=True):
     block = Mock()
     block.is_video_initialized = True
-    block.audio_tracks = {0: Mock()} if has_audio else {}
+    block.video_driver.audio_tracks = {0: Mock()} if has_audio else {}
     block.video_params = Video(uri="http://example.com/a.mp4")
     block.video_params.audio_delay_ms = delay_ms
 
-    # the steps and the reset all go through the setter, which a mock would
-    # otherwise answer for without moving anything
-    block.set_audio_delay = partial(VideoBlock.set_audio_delay, block)
+    block.audio = AudioControl(block)
 
     return block
 
@@ -48,7 +45,7 @@ class TestHowFarTheSoundIsMoved:
     def test_the_video_is_told_and_the_choice_is_kept(self):
         block = _block()
 
-        VideoBlock.set_audio_delay(block, 150)
+        block.audio.set_delay(150)
 
         assert block.video_params.audio_delay_ms == 150
         block.video_driver.set_audio_delay.assert_called_once_with(150)
@@ -65,24 +62,24 @@ class TestHowFarTheSoundIsMoved:
 
         block = _block()
 
-        VideoBlock.set_audio_delay(block, asked)
+        block.audio.set_delay(asked)
 
         assert block.video_params.audio_delay_ms == landed
 
     def test_later_and_earlier_move_it_by_one_step(self):
         block = _block(delay_ms=100)
 
-        VideoBlock.audio_delay_increase(block)
+        block.audio.delay_increase()
         assert block.video_params.audio_delay_ms == 100 + AUDIO_DELAY_STEP_MS
 
-        VideoBlock.audio_delay_decrease(block)
-        VideoBlock.audio_delay_decrease(block)
+        block.audio.delay_decrease()
+        block.audio.delay_decrease()
         assert block.video_params.audio_delay_ms == 100 - AUDIO_DELAY_STEP_MS
 
     def test_reset_puts_it_back_level(self):
         block = _block(delay_ms=-350)
 
-        VideoBlock.audio_delay_reset(block)
+        block.audio.delay_reset()
 
         assert block.video_params.audio_delay_ms == 0
 
@@ -91,7 +88,7 @@ class TestHowFarTheSoundIsMoved:
 
         block = _block(has_audio=False)
 
-        VideoBlock.set_audio_delay(block, 150)
+        block.audio.set_delay(150)
 
         assert block.video_params.audio_delay_ms == 0
         block.video_driver.set_audio_delay.assert_not_called()
@@ -103,7 +100,7 @@ class TestSayingSoOverTheVideo:
     def test_the_new_delay_is_shown(self):
         block = _block()
 
-        VideoBlock.set_audio_delay(block, 150)
+        block.audio.set_delay(150)
 
         block.info_change.emit.assert_called_once_with("Audio delay: +150 ms")
 
@@ -112,14 +109,14 @@ class TestSayingSoOverTheVideo:
 
         block = _block()
 
-        VideoBlock.set_audio_delay(block, 150, is_silent=True)
+        block.audio.set_delay(150, is_silent=True)
 
         block.info_change.emit.assert_not_called()
 
     def test_the_menu_reads_the_same_as_the_video(self):
         block = _block(delay_ms=-50)
 
-        assert VideoBlock.get_audio_delay(block) == "-50 ms"
+        assert block.audio.get_delay() == "-50 ms"
 
     @pytest.mark.parametrize(
         ("delay_ms", "txt"),
@@ -135,8 +132,10 @@ class FakeBlock:
     def __init__(self, delay_ms=0):
         self.video_params = SimpleNamespace(audio_delay_ms=delay_ms)
         self.calls = []
+        # the block's audio part, done by the fake itself
+        self.audio = self
 
-    def set_audio_delay(self, delay_ms, is_silent=False):
+    def set_delay(self, delay_ms, is_silent=False):
         self.video_params.audio_delay_ms = delay_ms
         self.calls.append((delay_ms, is_silent))
 

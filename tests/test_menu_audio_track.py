@@ -20,6 +20,7 @@ from gridplayer.player.manager import Commands
 from gridplayer.player.managers.actions import ActionsManager
 from gridplayer.player.managers.active_block import ActiveBlockManager
 from gridplayer.vlc_player.static import DISABLED_TRACK, AudioTrack
+from tests.conftest import is_block_command
 
 
 @pytest.fixture(scope="module", autouse=True)
@@ -95,21 +96,23 @@ def _manager(
     )
 
     block = SimpleNamespace(
-        audio_tracks=audio_tracks,
+        audio=SimpleNamespace(
+            tracks=audio_tracks,
+            preferred_track_id=preferred,
+            track_playing=playing_track,
+            discovered_files=list(discovered),
+            offered_files=list(discovered),
+            external_tracks=external_tracks,
+            external_track_ids=tuple(
+                external_tracks if external_ids is None else external_ids
+            ),
+            attached_file=next(iter(external_tracks.values()), None),
+        ),
         audio_language_options=languages,
         audio_language=playing_language,
-        preferred_audio_track_id=preferred,
         preferred_audio_language=preferred_language,
         is_local_file=is_local_file,
-        audio_track_playing=playing_track,
         audio_language_playing=playing_language,
-        discovered_audio_files=list(discovered),
-        offered_audio_files=list(discovered),
-        external_audio_tracks=external_tracks,
-        external_audio_track_ids=tuple(
-            external_tracks if external_ids is None else external_ids
-        ),
-        attached_audio_file=next(iter(external_tracks.values()), None),
         video_params=SimpleNamespace(
             audio_selection=AudioPreferred() if selection is None else selection,
             external_audio=external,
@@ -165,8 +168,6 @@ def test_a_file_offers_its_tracks():
 def test_every_row_calls_something_that_exists_on_a_block():
     """A menu entry pointing at nothing fails silently at the click."""
 
-    from gridplayer.widgets.video_block import VideoBlock
-
     menus = [
         _manager(
             tracks=STREAM_TRACKS, languages=("cop", "tlh"), playing_language="tlh"
@@ -184,7 +185,7 @@ def test_every_row_calls_something_that_exists_on_a_block():
 
         assert called
         for name in called:
-            assert hasattr(VideoBlock, name), name
+            assert is_block_command(name), name
 
 
 def test_a_dubbed_stream_offers_its_languages_in_the_same_place():
@@ -214,8 +215,8 @@ def test_an_untagged_track_keeps_the_details_it_does_have():
 def test_the_preference_row_sits_under_the_entry_that_follows_it():
     row = _manager().menu_generator_audio_track()[2]
 
-    assert row["func"] == ("active", "audio_languages_dialog")
-    assert row["value_getter"] == ("active", "get_audio_languages")
+    assert row["func"] == ("active", "audio.languages_dialog")
+    assert row["value_getter"] == ("active", "audio.get_languages")
 
 
 def test_preferred_goes_through_the_path_that_knows_about_dubbing():
@@ -223,7 +224,7 @@ def test_preferred_goes_through_the_path_that_knows_about_dubbing():
 
     item = _manager()._preferred_audio_track_menu_item()
 
-    assert item["func"] == ("active", "apply_audio_preference")
+    assert item["func"] == ("active", "audio.apply_preference")
 
 
 def test_preferred_names_the_track_it_resolves_to():
@@ -317,7 +318,7 @@ def test_disabling_audio_is_ticked_by_the_choice_not_by_a_track():
     disable = _manager().menu_generator_audio_track()[3]
 
     assert disable["check_if"] == "is_active_audio_disabled"
-    assert disable["func"] == ("active", "set_audio_track", DISABLED_TRACK)
+    assert disable["func"] == ("active", "audio.set_track", DISABLED_TRACK)
 
 
 @pytest.mark.parametrize(
@@ -479,7 +480,7 @@ class TestAudioKeptBesideTheVideo:
 
         row = _row(menu, "Movie.rus.mp3")
 
-        assert row["func"] == ("active", "play_external_audio", str(self.RUSSIAN))
+        assert row["func"] == ("active", "audio.play_external", str(self.RUSSIAN))
 
     def test_the_one_that_is_open_is_spelled_out_among_the_files(self):
         """It answers to its file name, which is the only name it has."""
@@ -557,7 +558,7 @@ class TestAudioKeptBesideTheVideo:
 
         row = _row(menu, "Detect Audio Files")
 
-        assert row["func"] == ("active", "set_external_audio_autodiscover", not is_on)
+        assert row["func"] == ("active", "audio.set_external_autodiscover", not is_on)
 
 
 class TestAVideoWithNoSoundOfItsOwn:

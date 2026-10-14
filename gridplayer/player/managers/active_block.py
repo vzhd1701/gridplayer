@@ -57,17 +57,17 @@ LOADING_COMMANDS = frozenset(
         "set_list_fail_action",
         "list_fail_wait",
         "get_list_fail_wait",
-        "set_audio_track",
-        "set_audio_device",
+        "audio.set_track",
+        "audio.set_device",
         "set_audio_language",
-        "apply_audio_preference",
-        "apply_audio_default",
-        "audio_languages_dialog",
-        "get_audio_languages",
-        "add_external_audio_dialog",
-        "play_external_audio",
-        "remove_external_audio",
-        "set_external_audio_autodiscover",
+        "audio.apply_preference",
+        "audio.apply_default",
+        "audio.languages_dialog",
+        "audio.get_languages",
+        "audio.add_external_dialog",
+        "audio.play_external",
+        "audio.remove_external",
+        "audio.set_external_autodiscover",
         "subtitles.set_track",
         "subtitles.apply_preference",
         "subtitles.apply_default",
@@ -268,7 +268,7 @@ class ActiveBlockManager(ManagerBase):
         if not self.is_active_initialized():
             return False
 
-        return bool(self._ctx.active_block.audio_tracks)
+        return bool(self._ctx.active_block.audio.tracks)
 
     def is_active_has_video(self):
         if not self.is_active_initialized():
@@ -305,10 +305,10 @@ class ActiveBlockManager(ManagerBase):
         if isinstance(selection, AudioExternal):
             block = self._ctx.active_block
 
-            if block.external_audio_tracks.get(track_id) != selection.file:
+            if block.audio.external_tracks.get(track_id) != selection.file:
                 return False
 
-            return block.external_audio_track_ids.index(track_id) == selection.track
+            return block.audio.external_track_ids.index(track_id) == selection.track
 
         return isinstance(selection, AudioTrackId) and selection.id == track_id
 
@@ -329,7 +329,7 @@ class ActiveBlockManager(ManagerBase):
 
         return (
             chosen is not None
-            and resolve_device_id(chosen, block.audio_devices) == device_id
+            and resolve_device_id(chosen, block.audio.devices) == device_id
         )
 
     def is_active_audio_device_default(self) -> bool:
@@ -350,7 +350,7 @@ class ActiveBlockManager(ManagerBase):
 
         chosen = block.video_params.audio_device
 
-        return chosen is not None and not resolve_device_id(chosen, block.audio_devices)
+        return chosen is not None and not resolve_device_id(chosen, block.audio.devices)
 
     def is_active_audio_preferred(self) -> bool:
         return isinstance(self._active_audio_selection(), AudioPreferred)
@@ -644,7 +644,7 @@ class ActiveBlockManager(ManagerBase):
 
         external = self._external_audio_menu_items()
 
-        if not self._ctx.active_block.audio_tracks:
+        if not self._ctx.active_block.audio.tracks:
             # a silent video has nothing to choose between, but what is
             # lying next to it is the whole point of looking
             return external or {}
@@ -657,7 +657,7 @@ class ActiveBlockManager(ManagerBase):
                 {
                     "title": translate("Audio Track", "Disable Audio"),
                     "icon": "empty",
-                    "func": ("active", "set_audio_track", DISABLED_TRACK),
+                    "func": ("active", "audio.set_track", DISABLED_TRACK),
                     "check_if": "is_active_audio_disabled",
                     "is_choice": True,
                     "show_if": "is_active_initialized",
@@ -679,7 +679,7 @@ class ActiveBlockManager(ManagerBase):
         if self.is_no_active_block:
             return {}
 
-        devices = self._ctx.active_block.audio_devices
+        devices = self._ctx.active_block.audio.devices
 
         if not devices:
             return {}
@@ -690,7 +690,7 @@ class ActiveBlockManager(ManagerBase):
                 {
                     "title": device.name or device.id,
                     "icon": "empty",
-                    "func": ("active", "set_audio_device", device),
+                    "func": ("active", "audio.set_device", device),
                     "check_if": ("is_active_audio_device", device.id),
                     "is_choice": True,
                     "show_if": "is_active_has_audio",
@@ -714,7 +714,7 @@ class ActiveBlockManager(ManagerBase):
 
         chosen = block.video_params.audio_device
 
-        if chosen is None or resolve_device_id(chosen, block.audio_devices):
+        if chosen is None or resolve_device_id(chosen, block.audio.devices):
             return []
 
         return [
@@ -723,7 +723,7 @@ class ActiveBlockManager(ManagerBase):
                     chosen.name or chosen.id
                 ),
                 "icon": "empty",
-                "func": ("active", "set_audio_device", chosen),
+                "func": ("active", "audio.set_device", chosen),
                 "check_if": "is_active_audio_device_missing",
                 "is_choice": True,
                 "show_if": "is_active_has_audio",
@@ -750,17 +750,17 @@ class ActiveBlockManager(ManagerBase):
             {
                 "title": file_path.name,
                 "icon": "empty",
-                "func": ("active", "play_external_audio", str(file_path)),
+                "func": ("active", "audio.play_external", str(file_path)),
                 "show_if": "is_active_local_file",
             }
-            for file_path in block.offered_audio_files
+            for file_path in block.audio.offered_files
         ]
 
         commands = [
             {
                 "title": translate("Actions", "Add External Audio..."),
                 "icon": "empty",
-                "func": ("active", "add_external_audio_dialog"),
+                "func": ("active", "audio.add_external_dialog"),
                 "show_if": "is_active_local_file",
             }
         ]
@@ -770,7 +770,7 @@ class ActiveBlockManager(ManagerBase):
                 {
                     "title": translate("Actions", "Remove External Audio"),
                     "icon": "empty",
-                    "func": ("active", "remove_external_audio"),
+                    "func": ("active", "audio.remove_external"),
                     "show_if": "is_active_local_file",
                 }
             )
@@ -781,7 +781,7 @@ class ActiveBlockManager(ManagerBase):
                 "icon": "empty",
                 "func": (
                     "active",
-                    "set_external_audio_autodiscover",
+                    "audio.set_external_autodiscover",
                     not block.video_params.is_external_audio_autodiscover,
                 ),
                 "check_if": (
@@ -807,17 +807,17 @@ class ActiveBlockManager(ManagerBase):
 
         block = self._ctx.active_block
 
-        file_path = block.attached_audio_file
+        file_path = block.audio.attached_file
 
         if file_path is None:
             return []
 
-        tracks = block.audio_tracks
-        playing = block.audio_track_playing
+        tracks = block.audio.tracks
+        playing = block.audio.track_playing
 
         from_file = [
             track_id
-            for track_id in block.external_audio_track_ids
+            for track_id in block.audio.external_track_ids
             if track_id in tracks
         ]
 
@@ -828,7 +828,7 @@ class ActiveBlockManager(ManagerBase):
             {
                 "title": _external_track_title(file_path, tracks[track_id], number),
                 "icon": "play" if track_id == playing else "empty",
-                "func": ("active", "set_audio_track", track_id),
+                "func": ("active", "audio.set_track", track_id),
                 "check_if": ("is_active_audio_track", track_id),
                 "is_choice": True,
                 "show_if": "is_active_local_file",
@@ -840,7 +840,7 @@ class ActiveBlockManager(ManagerBase):
             {
                 "title": file_path.name,
                 "icon": "empty",
-                "func": ("active", "play_external_audio", str(file_path)),
+                "func": ("active", "audio.play_external", str(file_path)),
                 "show_if": "is_active_local_file",
             }
         ]
@@ -882,10 +882,10 @@ class ActiveBlockManager(ManagerBase):
 
         block = self._ctx.active_block
 
-        track = block.audio_tracks.get(block.preferred_audio_track_id)
+        track = block.audio.tracks.get(block.audio.preferred_track_id)
 
         if track is None and self.is_active_audio_preferred():
-            track = block.audio_tracks.get(block.audio_track_playing)
+            track = block.audio.tracks.get(block.audio.track_playing)
 
         return track
 
@@ -919,19 +919,19 @@ class ActiveBlockManager(ManagerBase):
 
         # what came out of a file of its own is listed with that file, under
         # its own heading, rather than among the tracks the video came with
-        external_ids = set(block.external_audio_track_ids)
-        playing = block.audio_track_playing
+        external_ids = set(block.audio.external_track_ids)
+        playing = block.audio.track_playing
 
         return [
             {
                 "title": _audio_track_title(track),
                 "icon": "play" if track_id == playing else "empty",
-                "func": ("active", "set_audio_track", track_id),
+                "func": ("active", "audio.set_track", track_id),
                 "check_if": ("is_active_audio_track", track_id),
                 "is_choice": True,
                 "show_if": "is_active_initialized",
             }
-            for track_id, track in block.audio_tracks.items()
+            for track_id, track in block.audio.tracks.items()
             if track_id not in external_ids
         ]
 
@@ -1189,7 +1189,7 @@ class ActiveBlockManager(ManagerBase):
         return {
             "title": title,
             "icon": "empty",
-            "func": ("active", "apply_audio_preference"),
+            "func": ("active", "audio.apply_preference"),
             "check_if": "is_active_audio_preferred",
             "is_choice": True,
             "show_if": "is_active_initialized",
@@ -1286,7 +1286,7 @@ def _audio_device_default_menu_item():
     return {
         "title": translate("Actions", "System Default"),
         "icon": "empty",
-        "func": ("active", "set_audio_device", None),
+        "func": ("active", "audio.set_device", None),
         "check_if": "is_active_audio_device_default",
         "is_choice": True,
         "show_if": "is_active_has_audio",
@@ -1303,7 +1303,7 @@ def _audio_default_menu_item():
     return {
         "title": translate("Audio Track", "Default"),
         "icon": "empty",
-        "func": ("active", "apply_audio_default"),
+        "func": ("active", "audio.apply_default"),
         "check_if": "is_active_audio_default",
         "is_choice": True,
         "show_if": "is_active_initialized",
@@ -1321,8 +1321,8 @@ def _audio_languages_menu_item():
     return {
         "title": "{}: %v".format(translate("Actions", "Languages")),
         "icon": "empty",
-        "func": ("active", "audio_languages_dialog"),
-        "value_getter": ("active", "get_audio_languages"),
+        "func": ("active", "audio.languages_dialog"),
+        "value_getter": ("active", "audio.get_languages"),
         "show_if": "is_active_initialized",
     }
 
