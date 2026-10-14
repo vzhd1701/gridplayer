@@ -175,7 +175,7 @@ class TestPlaylistSettings:
 
         spec = VIDEO_FIELDS[at + 1]
         assert spec.section == "Video"
-        assert spec.video_attr == "anchor"
+        assert spec.attr == "anchor"
         assert list(spec.choices()) == list(VideoAnchor)
 
     def test_letting_it_past_the_edges_sits_under_the_alignment(self):
@@ -187,7 +187,7 @@ class TestPlaylistSettings:
         spec = VIDEO_FIELDS[at + 1]
         assert spec.section == "Video"
         assert isinstance(spec, CheckboxField)
-        assert spec.video_attr == "shift_past_edges"
+        assert spec.attr == "shift_past_edges"
 
     def test_zooming_to_the_cursor_sits_under_the_zoom(self):
         keys = [f.settings_key for f in VIDEO_FIELDS]
@@ -198,12 +198,12 @@ class TestPlaylistSettings:
         spec = VIDEO_FIELDS[at + 1]
         assert spec.section == "Video"
         assert isinstance(spec, CheckboxField)
-        assert spec.video_attr == "zoom_to_cursor"
+        assert spec.attr == "zoom_to_cursor"
 
     def test_there_is_no_default_for_the_position(self):
         """A place moved to in one video means nothing for another."""
 
-        assert "shift" not in [f.video_attr for f in VIDEO_FIELDS]
+        assert "shift" not in [f.attr for f in VIDEO_FIELDS]
         assert "video_defaults/shift" not in [f.settings_key for f in VIDEO_FIELDS]
 
 

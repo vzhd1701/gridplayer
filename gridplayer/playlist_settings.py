@@ -85,16 +85,16 @@ def session_field(setting_name, validate=False):
 def overrides_from_playlist(playlist) -> dict:
     result = {}
     for spec in PLAYLIST_FIELDS:
-        if spec.is_grid or spec.playlist_attr is None:
+        if spec.attr is None:
             continue
-        value = getattr(playlist, spec.playlist_attr)
+        value = getattr(playlist, spec.attr)
         if value is not None:
             result[spec.settings_key] = value
     video = playlist.video_defaults
     for spec in VIDEO_FIELDS:
-        if spec.video_attr is None:
+        if spec.attr is None:
             continue
-        value = getattr(video, spec.video_attr)
+        value = getattr(video, spec.attr)
         if value is not None:
             result[spec.settings_key] = value
     return result
@@ -104,15 +104,15 @@ def playlist_kwargs_from_overrides(overrides: dict) -> dict:
     kwargs = {}
     video_kwargs = {}
     for spec in PLAYLIST_FIELDS:
-        if spec.is_grid or spec.playlist_attr is None:
+        if spec.attr is None:
             continue
         if spec.settings_key in overrides:
-            kwargs[spec.playlist_attr] = overrides[spec.settings_key]
+            kwargs[spec.attr] = overrides[spec.settings_key]
     for spec in VIDEO_FIELDS:
-        if spec.video_attr is None:
+        if spec.attr is None:
             continue
         if spec.settings_key in overrides:
-            video_kwargs[spec.video_attr] = overrides[spec.settings_key]
+            video_kwargs[spec.attr] = overrides[spec.settings_key]
     if video_kwargs:
         # Plain dict: Playlist coerces it into PlaylistVideoDefaults, which
         # keeps this module importable without models.playlist (import cycle).

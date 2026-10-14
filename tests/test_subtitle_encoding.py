@@ -211,7 +211,7 @@ class TestWhatIsOffered:
     def test_it_sits_with_the_rest_of_the_subtitle_defaults(self):
         spec = next(f for f in VIDEO_FIELDS if f.settings_key == SETTING)
 
-        assert spec.video_attr == "subtitle_encoding"
+        assert spec.attr == "subtitle_encoding"
         assert spec.choices is _subtitle_encodings
         # it has to apply to a track picked from the menu too, not only to
         # one a video opens with, so nothing gates it

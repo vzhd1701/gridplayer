@@ -88,7 +88,7 @@ class TestTheDefaults:
         fields = {spec.settings_key: spec for spec in PLAYLIST_FIELDS}
 
         for key in STEP_KEYS:
-            assert fields[key].playlist_attr == key.removeprefix("playlist/")
+            assert fields[key].attr == key.removeprefix("playlist/")
 
     def test_they_have_a_section_of_their_own(self):
         sections = {

@@ -200,8 +200,8 @@ class TestThePageIsWiredToTheSettings:
         """A style is one per process; a per-video one would fork the pool."""
 
         for field in SUBTITLE_STYLE_FIELDS:
-            assert field.video_attr is None
-            assert field.playlist_attr is None
+            assert field.attr is None
+            assert field.grid_attr is None
 
 
 @pytest.fixture

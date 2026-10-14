@@ -1680,7 +1680,7 @@ class TestTheSetting:
             if spec.settings_key == "playlist/list_update"
         )
 
-        assert field.playlist_attr == "list_update"
+        assert field.attr == "list_update"
         assert field.label == "Update linked lists"
         assert list(field.choices().values()) == [
             "On playlist load",

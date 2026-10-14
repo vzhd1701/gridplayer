@@ -176,7 +176,7 @@ class TestTheSettings:
             "playlist/pause_sync",
             "playlist/rate_sync",
         ]
-        assert [field.playlist_attr for field in fields[1:]] == [
+        assert [field.attr for field in fields[1:]] == [
             "view_sync",
             "pause_sync",
             "rate_sync",

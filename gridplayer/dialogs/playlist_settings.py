@@ -74,7 +74,7 @@ class PlaylistSettingsDialog(QDialog):
         playlist_values = {}
         video_values = {}
         for spec in PLAYLIST_FIELDS:
-            if spec.is_grid:
+            if spec.grid_attr:
                 continue
             playlist_values[spec.settings_key] = overrides.get(
                 spec.settings_key, Settings().get(spec.settings_key)
@@ -121,11 +121,11 @@ class PlaylistSettingsDialog(QDialog):
         for spec in PLAYLIST_FIELDS:
             key = spec.settings_key
             value = playlist_values[key]
-            if spec.is_grid:
+            if spec.grid_attr:
                 if key in playlist_over and self._playlist_form.is_enabled(key):
                     result[key] = value
                 continue
-            if spec.playlist_attr is None:
+            if spec.attr is None:
                 continue
             if key in playlist_over or value != Settings().get(key):
                 result[key] = value
