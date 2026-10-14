@@ -29,18 +29,57 @@ Files matching `*_ui.py` are generated from Qt Designer `.ui` sources. Never edi
 just generate-ui
 ```
 
-## Test harnesses driving the real app
+## Driving the real app
 
-Closing the player asks "do you want to save?" by default, and a harness has
-nobody to answer it, so it hangs forever after the main window closes. Set the
-playlist to discard before building the player:
+`tests/real_app` runs the real player offscreen, with VLC, driven through its
+menus. Use it to see a change working or to chase a bug in the app, rather
+than writing a harness of your own.
 
-```python
-from gridplayer.params.static import UnsavedChangesMode
-from gridplayer.settings import Settings
+* Write a scenario (in your scratchpad for a one-off) and run it:
 
-Settings().set("playlist/unsaved_changes", UnsavedChangesMode.DISCARD)
-```
+  ```bash
+  uv run python -m tests.real_app.run path/to/scenario.py --out some/dir
+  ```
+
+  It prints each step as a line of JSON and leaves `report.json`, `app.log`
+  and the screenshots in the folder. A scenario is `def scenario(d)`, with
+  optional `SETTINGS`; the docstring of `run.py` has an example, and
+  `driver.py` what `d` does: `open`, `wait_for_cell`, `act` (an action of
+  `params/actions.py` by name), `menu` and `choose` (a generated menu),
+  `wait_until`, `check`, `note`, `shot`, `through_modal`, `serve`,
+  `fake_sponsorblock`.
+* The media are made by ffmpeg into `build/test-media/` the first time; the
+  docstring of `tests/real_app/media.py` says what there is: a folder and a
+  list of clips, a file with chapters, two audio and two subtitle tracks and
+  files to find beside it, a stream in three sizes and a dubbed one (serve
+  those with `d.serve`).
+* The scenarios in `tests/real_app/scenarios` are tests too: `just
+  test-real-app` (`pytest -m real_app`), and a job of their own in CI. A plain
+  `uv run pytest` leaves them out. A bug one shows goes in `KNOWN_BUGS` in
+  `test_scenarios.py` until it is fixed.
+* What the driver already takes care of, should you go around it:
+  * The app picks the xcb platform itself, whatever `QT_QPA_PLATFORM` says;
+    set `gridplayer.params.env.QT_PLATFORM`.
+  * Hardware video needs an X11 window: offscreen takes the `vlc_sw_sp`
+    video driver.
+  * Closing the player asks "do you want to save?", which nobody answers
+    (set `playlist/unsaved_changes` to `discard`), and ends the process with
+    `os._exit`.
+  * The managers' context is `player._context`.
+* What to know when writing a scenario:
+  * Wait for state, not for time. Tracks, sizes and languages are listed
+    only once a video has loaded, and choosing an audio file, a size or a
+    language reloads it.
+  * A seek takes a moment to land, and `time` is the old one until it has
+    (`chapters.playing` already goes by where it is arriving): wait for the
+    time before judging from it.
+  * Streamlink reads only the default audio of an HLS stream; for dubs, set
+    `streaming/resolver_priority` to `yt_dlp`.
+  * Audio and subtitle files beside a video are offered only after "Detect
+    Audio Files" / "Detect Subtitle Files".
+  * VLC's clock steps back a few milliseconds on a track change.
+  * `pkill -f` with a pattern that is also in your own command line kills
+    your shell.
 
 ## Video block parts
 
