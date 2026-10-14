@@ -650,7 +650,7 @@ class VideoBlocksManager(ManagerBase):
         return any(vb.is_live for vb in self._ctx.video_blocks.initialized)
 
     def is_any_videos_have_audio(self):
-        return any(vb.audio_tracks for vb in self._ctx.video_blocks.initialized)
+        return any(vb.audio.tracks for vb in self._ctx.video_blocks.initialized)
 
     def is_any_videos_have_video(self):
         return any(vb.video_tracks for vb in self._ctx.video_blocks.initialized)
@@ -891,11 +891,11 @@ class VideoBlocksManager(ManagerBase):
             (self.all_set_transform, vb.set_transform),
             (self.all_take_screenshot, vb.take_screenshot),
             (self.all_set_auto_reload_timer, vb.set_auto_reload_timer),
-            (self.all_set_audio_channel_mode, vb.set_audio_channel_mode),
-            (self.all_set_audio_delay, vb.set_audio_delay),
-            (self.all_audio_delay_increase, vb.audio_delay_increase),
-            (self.all_audio_delay_decrease, vb.audio_delay_decrease),
-            (self.all_audio_delay_reset, vb.audio_delay_reset),
+            (self.all_set_audio_channel_mode, vb.audio.set_channel_mode),
+            (self.all_set_audio_delay, vb.audio.set_delay),
+            (self.all_audio_delay_increase, vb.audio.delay_increase),
+            (self.all_audio_delay_decrease, vb.audio.delay_decrease),
+            (self.all_audio_delay_reset, vb.audio.delay_reset),
             (self.all_set_subtitle_delay, vb.subtitles.set_delay),
             (self.all_subtitle_delay_increase, vb.subtitles.delay_increase),
             (self.all_subtitle_delay_decrease, vb.subtitles.delay_decrease),

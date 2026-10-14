@@ -1146,28 +1146,28 @@ ACTIONS = MappingProxyType(
             "title": "{}: %v".format(translate("Actions", "Delay")),
             "keymap_title": translate("Actions", "Set Delay"),
             "icon": "empty",
-            "func": ("active", "audio_delay_dialog"),
-            "value_getter": ("active", "get_audio_delay"),
+            "func": ("active", "audio.delay_dialog"),
+            "value_getter": ("active", "audio.get_delay"),
             "show_if": "is_active_has_audio",
         },
         "Audio Delay Later": {
             "title": translate("Actions", "Later"),
             "key": "K",
             "icon": "empty",
-            "func": ("active", "audio_delay_increase"),
+            "func": ("active", "audio.delay_increase"),
             "show_if": "is_active_has_audio",
         },
         "Audio Delay Earlier": {
             "title": translate("Actions", "Earlier"),
             "key": "J",
             "icon": "empty",
-            "func": ("active", "audio_delay_decrease"),
+            "func": ("active", "audio.delay_decrease"),
             "show_if": "is_active_has_audio",
         },
         "Audio Delay Reset": {
             "title": translate("Actions", "Reset"),
             "icon": "empty",
-            "func": ("active", "audio_delay_reset"),
+            "func": ("active", "audio.delay_reset"),
             "show_if": "is_active_has_audio",
         },
         "Subtitle Track": {
@@ -1210,7 +1210,7 @@ ACTIONS = MappingProxyType(
             "title": translate("Audio Mode", "Original"),
             "icon": "empty",
             "show_if": "is_active_has_audio",
-            "func": ("active", "set_audio_channel_mode", AudioChannelMode.UNSET),
+            "func": ("active", "audio.set_channel_mode", AudioChannelMode.UNSET),
             "check_if": (
                 "is_active_param_set_to",
                 "audio_channel_mode",
@@ -1222,7 +1222,7 @@ ACTIONS = MappingProxyType(
             "title": translate("Audio Mode", "Stereo"),
             "icon": "empty",
             "show_if": "is_active_has_audio",
-            "func": ("active", "set_audio_channel_mode", AudioChannelMode.STEREO),
+            "func": ("active", "audio.set_channel_mode", AudioChannelMode.STEREO),
             "check_if": (
                 "is_active_param_set_to",
                 "audio_channel_mode",
@@ -1234,7 +1234,7 @@ ACTIONS = MappingProxyType(
             "title": translate("Audio Mode", "Reverse Stereo"),
             "icon": "empty",
             "show_if": "is_active_has_audio",
-            "func": ("active", "set_audio_channel_mode", AudioChannelMode.RSTEREO),
+            "func": ("active", "audio.set_channel_mode", AudioChannelMode.RSTEREO),
             "check_if": (
                 "is_active_param_set_to",
                 "audio_channel_mode",
@@ -1246,7 +1246,7 @@ ACTIONS = MappingProxyType(
             "title": translate("Audio Mode", "Left"),
             "icon": "empty",
             "show_if": "is_active_has_audio",
-            "func": ("active", "set_audio_channel_mode", AudioChannelMode.LEFT),
+            "func": ("active", "audio.set_channel_mode", AudioChannelMode.LEFT),
             "check_if": (
                 "is_active_param_set_to",
                 "audio_channel_mode",
@@ -1258,7 +1258,7 @@ ACTIONS = MappingProxyType(
             "title": translate("Audio Mode", "Right"),
             "icon": "empty",
             "show_if": "is_active_has_audio",
-            "func": ("active", "set_audio_channel_mode", AudioChannelMode.RIGHT),
+            "func": ("active", "audio.set_channel_mode", AudioChannelMode.RIGHT),
             "check_if": (
                 "is_active_param_set_to",
                 "audio_channel_mode",
@@ -1270,7 +1270,7 @@ ACTIONS = MappingProxyType(
             "title": translate("Audio Mode", "Dolby Surround"),
             "icon": "empty",
             "show_if": "is_active_has_audio",
-            "func": ("active", "set_audio_channel_mode", AudioChannelMode.DOLBYS),
+            "func": ("active", "audio.set_channel_mode", AudioChannelMode.DOLBYS),
             "check_if": (
                 "is_active_param_set_to",
                 "audio_channel_mode",
@@ -1282,7 +1282,7 @@ ACTIONS = MappingProxyType(
             "title": translate("Audio Mode", "Headphones"),
             "icon": "empty",
             "show_if": "is_active_has_audio",
-            "func": ("active", "set_audio_channel_mode", AudioChannelMode.HEADPHONES),
+            "func": ("active", "audio.set_channel_mode", AudioChannelMode.HEADPHONES),
             "check_if": (
                 "is_active_param_set_to",
                 "audio_channel_mode",
@@ -1294,7 +1294,7 @@ ACTIONS = MappingProxyType(
             "title": translate("Audio Mode", "Mono"),
             "icon": "empty",
             "show_if": "is_active_has_audio",
-            "func": ("active", "set_audio_channel_mode", AudioChannelMode.MONO),
+            "func": ("active", "audio.set_channel_mode", AudioChannelMode.MONO),
             "check_if": (
                 "is_active_param_set_to",
                 "audio_channel_mode",

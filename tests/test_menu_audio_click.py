@@ -28,6 +28,7 @@ from gridplayer.vlc_player.static import (
     wanted_audio_track_id,
 )
 from gridplayer.widgets.video_block import VideoBlock
+from gridplayer.widgets.video_block_audio import AudioControl
 
 
 @pytest.fixture(scope="module", autouse=True)
@@ -96,37 +97,20 @@ class _Driver:
 
 
 class _Block:
-    """A block with the real audio methods and the reload stubbed out."""
+    """A block with its real audio part and the reload stubbed out."""
 
     _language_variants = VideoBlock._language_variants
     audio_language_options = VideoBlock.audio_language_options
     audio_language = VideoBlock.audio_language
     _language_among = VideoBlock._language_among
     preferred_audio_language = VideoBlock.preferred_audio_language
-    preferred_audio_track_id = VideoBlock.preferred_audio_track_id
     stream_ladder = VideoBlock.stream_ladder
-    audio_tracks = VideoBlock.audio_tracks
     is_video_initialized = VideoBlock.is_video_initialized
     is_local_file = VideoBlock.is_local_file
-    audio_track_playing = VideoBlock.audio_track_playing
     audio_language_playing = VideoBlock.audio_language_playing
-    apply_audio_default = VideoBlock.apply_audio_default
-    default_audio_track_id = VideoBlock.default_audio_track_id
-    offered_audio_files = VideoBlock.offered_audio_files
-    discovered_audio_files = VideoBlock.discovered_audio_files
-    attached_audio_file = VideoBlock.attached_audio_file
-    external_audio_track_ids = VideoBlock.external_audio_track_ids
 
     set_audio_language = VideoBlock.set_audio_language
-    apply_audio_preference = VideoBlock.apply_audio_preference
-    _follow_audio_language = VideoBlock._follow_audio_language
-    _apply_wanted_audio_track = VideoBlock._apply_wanted_audio_track
-    set_audio_track = VideoBlock.set_audio_track
-    _audio_selection_for = VideoBlock._audio_selection_for
-    _wanted_audio_track_id = VideoBlock._wanted_audio_track_id
-    _is_video_track_off = VideoBlock._is_video_track_off
-    _track_language_key = VideoBlock._track_language_key
-    get_audio_languages = VideoBlock.get_audio_languages
+    follow_audio_language = VideoBlock.follow_audio_language
 
     def __init__(self):
         self._log = logging.getLogger("test-block")
@@ -142,9 +126,10 @@ class _Block:
         )
         self.warnings = []
         self.reloads = []
-        # a stream with nothing beside it, so every track is one of its own
-        self.external_audio_tracks = {}
         self.video_track_unmapped = False
+
+        # a stream with nothing beside it, so every track is one of its own
+        self.audio = AudioControl(self)
 
         self.load_stream_quality("best")
 

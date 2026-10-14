@@ -9,7 +9,7 @@ from PyQt5.QtWidgets import QApplication
 from gridplayer.models.audio_device import AudioDevice
 from gridplayer.models.video import Video
 from gridplayer.settings import Settings
-from gridplayer.widgets.video_block import VideoBlock
+from gridplayer.widgets.video_block_audio import AudioControl
 
 URI = "http://example.com/a.mp4"
 
@@ -33,6 +33,7 @@ def _block(chosen=None, is_initialized=True, devices=(SPDIF, HEADPHONES)):
     block.is_video_initialized = is_initialized
     block.video_params = Video(uri=URI, audio_device=chosen)
     block.video_driver.audio_devices = devices
+    block.audio = AudioControl(block)
 
     return block
 
@@ -41,7 +42,7 @@ class TestPickingOne:
     def test_the_video_is_told_and_the_choice_is_kept(self):
         block = _block()
 
-        VideoBlock.set_audio_device(block, SPDIF)
+        block.audio.set_device(SPDIF)
 
         assert block.video_params.audio_device == SPDIF
         block.video_driver.set_audio_device.assert_called_once_with(SPDIF)
@@ -49,7 +50,7 @@ class TestPickingOne:
     def test_the_machines_own_is_a_choice_like_any_other(self):
         block = _block(chosen=SPDIF)
 
-        VideoBlock.set_audio_device(block, None)
+        block.audio.set_device(None)
 
         assert block.video_params.audio_device is None
         block.video_driver.set_audio_device.assert_called_once_with(None)
@@ -59,7 +60,7 @@ class TestPickingOne:
 
         block = _block(is_initialized=False)
 
-        VideoBlock.set_audio_device(block, SPDIF)
+        block.audio.set_device(SPDIF)
 
         assert block.video_params.audio_device == SPDIF
         block.video_driver.set_audio_device.assert_not_called()
@@ -70,7 +71,7 @@ class TestPickingOne:
         first = _block()
         second = _block()
 
-        VideoBlock.set_audio_device(first, SPDIF)
+        first.audio.set_device(SPDIF)
 
         assert second.video_params.audio_device is None
 
@@ -79,15 +80,15 @@ class TestWhatItCanBeSentTo:
     def test_whatever_the_process_playing_it_can_reach(self):
         block = _block()
 
-        assert VideoBlock.audio_devices.fget(block) == (SPDIF, HEADPHONES)
+        assert block.audio.devices == (SPDIF, HEADPHONES)
 
     def test_nothing_before_it_has_loaded(self):
         block = _block(is_initialized=False)
 
-        assert VideoBlock.audio_devices.fget(block) == ()
+        assert block.audio.devices == ()
 
     def test_nor_where_there_is_no_player_yet(self):
         block = _block()
         block.video_driver = None
 
-        assert VideoBlock.audio_devices.fget(block) == ()
+        assert block.audio.devices == ()

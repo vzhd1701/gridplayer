@@ -16,6 +16,7 @@ from gridplayer.models.stream import STREAM_QUALITY_AUTO, Stream, Streams
 from gridplayer.models.video import Video
 from gridplayer.settings import Settings
 from gridplayer.widgets.video_block import VideoBlock
+from gridplayer.widgets.video_block_audio import AudioControl
 
 
 @pytest.fixture(scope="module", autouse=True)
@@ -61,7 +62,7 @@ def _block(mocker, languages="", streams=None):
     block.video_params.audio_selection = AudioPreferred()
     block.video_params.stream_quality = STREAM_QUALITY_AUTO
     block._language_among = partial(VideoBlock._language_among, block)
-    block._follow_audio_language = partial(VideoBlock._follow_audio_language, block)
+    block.follow_audio_language = partial(VideoBlock.follow_audio_language, block)
     return block
 
 
@@ -230,7 +231,7 @@ def test_going_back_to_default_refetches_the_original(mocker):
     block._audio_language_playing = "cop"
     block.audio_language = "en"
 
-    VideoBlock.apply_audio_default(block)
+    AudioControl(block).apply_default()
 
     assert block.video_params.audio_selection == AudioDefault()
     block.reset.assert_called_once()
@@ -242,10 +243,10 @@ def test_going_back_to_default_on_the_original_does_not_reload(mocker):
     block._audio_language_playing = "en"
     block.audio_language = "en"
 
-    VideoBlock.apply_audio_default(block)
+    AudioControl(block).apply_default()
 
     block.reset.assert_not_called()
-    block._apply_wanted_audio_track.assert_called_once()
+    block.audio.apply_wanted_track.assert_called_once()
 
 
 def test_a_language_picked_by_hand_outlives_the_playlist(tmp_path):

@@ -10,7 +10,7 @@ from gridplayer.models.video import Video
 from gridplayer.params.actions import ACTIONS
 from gridplayer.params.menu import SECTIONS
 from gridplayer.player.managers.active_block import ActiveBlockManager
-from gridplayer.widgets.video_block import VideoBlock
+from tests.conftest import is_block_command
 
 URI = "http://example.com/a.mp4"
 
@@ -45,7 +45,7 @@ class _Manager(ActiveBlockManager):
 
 def _manager(chosen=None, devices=OFFERED):
     block = SimpleNamespace(
-        audio_devices=devices,
+        audio=SimpleNamespace(devices=devices),
         video_params=Video(uri=URI, audio_device=chosen),
     )
 
@@ -186,8 +186,8 @@ class TestWhereTheRowsLead:
 
             command, method, *_ = item["func"]
 
-            assert (command, method) == ("active", "set_audio_device")
-            assert hasattr(VideoBlock, method)
+            assert (command, method) == ("active", "audio.set_device")
+            assert is_block_command(method)
 
     def test_a_device_row_hands_over_the_device_itself(self):
         rows = [item for item in _menu() if item != "---"]

@@ -17,6 +17,7 @@ from gridplayer.models.video import Video
 from gridplayer.settings import Settings
 from gridplayer.vlc_player.static import AudioTrack
 from gridplayer.widgets.video_block import VideoBlock
+from gridplayer.widgets.video_block_audio import AudioControl
 
 
 @pytest.fixture(scope="module", autouse=True)
@@ -70,36 +71,10 @@ class _Driver:
 
 
 class _Block:
-    """A block with the real external audio methods, and no player behind it."""
+    """A block with its real audio part, and no player behind it."""
 
     is_local_file = VideoBlock.is_local_file
-    discovered_audio_files = VideoBlock.discovered_audio_files
-    offered_audio_files = VideoBlock.offered_audio_files
-    attached_audio_file = VideoBlock.attached_audio_file
-    _audio_file_to_attach = VideoBlock._audio_file_to_attach
-    external_audio_track_ids = VideoBlock.external_audio_track_ids
-    default_audio_track_id = VideoBlock.default_audio_track_id
-    external_audio_tracks = VideoBlock.external_audio_tracks
-    selected_audio_slave_uri = VideoBlock.selected_audio_slave_uri
-
-    add_external_audio = VideoBlock.add_external_audio
-    play_external_audio = VideoBlock.play_external_audio
-    remove_external_audio = VideoBlock.remove_external_audio
-    _drop_external_audio = VideoBlock._drop_external_audio
-    set_external_audio_autodiscover = VideoBlock.set_external_audio_autodiscover
-    tracks_changed = VideoBlock.tracks_changed
-    apply_audio_default = VideoBlock.apply_audio_default
-    restore_audio_selection = VideoBlock.restore_audio_selection
-    _follow_audio_language = VideoBlock._follow_audio_language
-
-    _audio_selection_for = VideoBlock._audio_selection_for
-    _forget_audio_file_that_is_gone = VideoBlock._forget_audio_file_that_is_gone
-    _wanted_audio_track_id = VideoBlock._wanted_audio_track_id
-    _apply_wanted_audio_track = VideoBlock._apply_wanted_audio_track
-    _put_external_audio_into_effect = VideoBlock._put_external_audio_into_effect
-    _is_external_audio_short = VideoBlock._is_external_audio_short
-    _adopt_audio_if_silent = VideoBlock._adopt_audio_if_silent
-    _warn_about_awkward_audio = VideoBlock._warn_about_awkward_audio
+    follow_audio_language = VideoBlock.follow_audio_language
 
     def __init__(
         self,
@@ -115,11 +90,13 @@ class _Block:
         self.video_params.is_external_audio_autodiscover = autodiscover
 
         self.is_video_initialized = is_initialized
-        self.audio_tracks = {0: _track("eng")} if tracks is None else tracks
         # a file, which no site serves one language at a time
         self.streams = Streams()
 
         self.video_driver = _Driver()
+        self.video_driver.audio_tracks = (
+            {0: _track("eng")} if tracks is None else tracks
+        )
         self.video_driver.external_audio_ids = (
             () if external_id is None else (external_id,)
         )
@@ -128,19 +105,20 @@ class _Block:
         self.is_audio_present_change = SimpleNamespace(emit=self.audio_present.append)
 
         self.reloads = 0
-        self.selected = []
-        self._attached_audio_file = None
 
         self.warnings = []
         self._ctx = SimpleNamespace(
             commands=SimpleNamespace(warning=self.warnings.append)
         )
 
+        self.audio = AudioControl(self)
+
+        # the track picked, rather than the player told of it
+        self.selected = []
+        self.audio.set_track = self.selected.append
+
     def reload(self):
         self.reloads += 1
-
-    def set_audio_track(self, track_id):
-        self.selected.append(track_id)
 
 
 def _block(tmp_path, **kwargs):
@@ -155,14 +133,14 @@ def _attached(block, file_path, track_id=1):
         file_path,
     ]
     block.video_params.audio_selection = AudioExternal(file=file_path)
-    block._attached_audio_file = file_path
+    block.audio._attached_file = file_path
     block.video_driver.external_audio_ids = (track_id,)
 
     return block
 
 
 def _offered(block):
-    return [found.name for found in block.offered_audio_files]
+    return [found.name for found in block.audio.offered_files]
 
 
 class TestPickingAFile:
@@ -170,7 +148,7 @@ class TestPickingAFile:
         block = _block(tmp_path)
         audio = _file(tmp_path, "Movie.rus.mp3")
 
-        block.add_external_audio([audio])
+        block.audio.add_external([audio])
 
         assert block.video_driver.slaves == [audio.as_uri()]
         assert block.reloads == 0
@@ -181,7 +159,7 @@ class TestPickingAFile:
         block = _block(tmp_path)
         audio = _file(tmp_path, "Movie.rus.mp3")
 
-        block.add_external_audio([audio])
+        block.audio.add_external([audio])
 
         assert block.video_params.audio_selection == AudioExternal(file=audio)
 
@@ -189,7 +167,7 @@ class TestPickingAFile:
         block = _block(tmp_path, is_initialized=False)
         audio = _file(tmp_path, "Movie.rus.mp3")
 
-        block.add_external_audio([audio])
+        block.audio.add_external([audio])
 
         assert block.video_driver.slaves == []
         assert block.video_params.external_audio == [audio]
@@ -198,8 +176,8 @@ class TestPickingAFile:
         block = _block(tmp_path)
         audio = _file(tmp_path, "Movie.rus.mp3")
 
-        block.add_external_audio([audio])
-        block.add_external_audio([audio])
+        block.audio.add_external([audio])
+        block.audio.add_external([audio])
 
         assert block.video_params.external_audio == [audio]
         assert len(block.video_driver.slaves) == 1
@@ -211,7 +189,7 @@ class TestPickingAFile:
         first = _file(tmp_path, "Movie.rus.mp3")
         second = _file(tmp_path, "Movie.fra.mp3")
 
-        block.add_external_audio([first, second])
+        block.audio.add_external([first, second])
 
         assert block.video_params.external_audio == [first, second]
         assert block.video_driver.slaves == [first.as_uri()]
@@ -219,7 +197,7 @@ class TestPickingAFile:
     def test_the_one_already_playing_is_only_switched_back_to(self, tmp_path):
         block = _attached(_block(tmp_path), _file(tmp_path, "Movie.rus.mp3"))
 
-        block.play_external_audio(str(block.attached_audio_file))
+        block.audio.play_external(str(block.audio.attached_file))
 
         assert block.selected == [1]
         assert block.video_driver.slaves == []
@@ -233,7 +211,7 @@ class TestSwappingOneFileForAnother:
         block = _attached(_block(tmp_path), _file(tmp_path, "Movie.rus.mp3"))
         other = _file(tmp_path, "Movie.fra.mp3")
 
-        block.play_external_audio(str(other))
+        block.audio.play_external(str(other))
 
         assert block.reloads == 1
         assert block.video_driver.slaves == []
@@ -242,7 +220,7 @@ class TestSwappingOneFileForAnother:
         block = _attached(_block(tmp_path), _file(tmp_path, "Movie.rus.mp3"))
         other = _file(tmp_path, "Movie.fra.mp3")
 
-        block.play_external_audio(str(other))
+        block.audio.play_external(str(other))
 
         assert block.video_params.audio_selection == AudioExternal(file=other)
 
@@ -250,7 +228,7 @@ class TestSwappingOneFileForAnother:
         block = _attached(_block(tmp_path), _file(tmp_path, "Movie.rus.mp3"))
         other = _file(tmp_path, "Movie.fra.mp3")
 
-        block.play_external_audio(str(other))
+        block.audio.play_external(str(other))
 
         assert other in block.video_params.external_audio
 
@@ -259,7 +237,7 @@ class TestSwappingOneFileForAnother:
         audio = _file(tmp_path, "Movie.rus.mp3")
         block.video_params.external_audio = [audio]
 
-        block.play_external_audio(str(audio))
+        block.audio.play_external(str(audio))
 
         assert block.video_driver.slaves == [audio.as_uri()]
         assert block.reloads == 0
@@ -309,18 +287,18 @@ class TestWhichFileTheTrackCameFrom:
             _block(tmp_path, tracks={0: _track("eng"), 1: _track()}), audio
         )
 
-        assert block.external_audio_tracks == {1: audio}
+        assert block.audio.external_tracks == {1: audio}
 
     def test_a_video_with_no_file_has_none_of_them(self, tmp_path):
         block = _block(tmp_path)
 
-        assert block.external_audio_tracks == {}
+        assert block.audio.external_tracks == {}
 
     def test_a_file_that_brought_no_track_claims_none(self, tmp_path):
         block = _attached(_block(tmp_path), _file(tmp_path, "Movie.rus.mp3"))
         block.video_driver.external_audio_ids = ()
 
-        assert block.external_audio_tracks == {}
+        assert block.audio.external_tracks == {}
 
 
 class TestHandingItToThePlayer:
@@ -329,13 +307,13 @@ class TestHandingItToThePlayer:
         block = _attached(_block(tmp_path), audio)
         block.video_params.external_audio.append(_file(tmp_path, "Movie.fra.mp3"))
 
-        assert block.selected_audio_slave_uri == audio.as_uri()
+        assert block.audio.selected_slave_uri == audio.as_uri()
 
     def test_a_video_playing_its_own_sound_hands_over_nothing(self, tmp_path):
         block = _block(tmp_path)
         block.video_params.external_audio = [_file(tmp_path, "Movie.rus.mp3")]
 
-        assert block.selected_audio_slave_uri is None
+        assert block.audio.selected_slave_uri is None
 
 
 class TestTakingThemBack:
@@ -344,7 +322,7 @@ class TestTakingThemBack:
 
         block = _attached(_block(tmp_path), _file(tmp_path, "Movie.rus.mp3"))
 
-        block.remove_external_audio()
+        block.audio.remove_external()
 
         assert block.video_params.external_audio == []
         assert block.reloads == 1
@@ -352,14 +330,14 @@ class TestTakingThemBack:
     def test_a_video_with_none_of_them_is_left_alone(self, tmp_path):
         block = _block(tmp_path)
 
-        block.remove_external_audio()
+        block.audio.remove_external()
 
         assert block.reloads == 0
 
     def test_the_pick_goes_back_to_the_preference_with_the_track(self, tmp_path):
         block = _attached(_block(tmp_path), _file(tmp_path, "Movie.rus.mp3"))
 
-        block.remove_external_audio()
+        block.audio.remove_external()
 
         assert block.video_params.audio_selection == AudioDefault()
 
@@ -368,7 +346,7 @@ class TestTakingThemBack:
         block.video_params.external_audio = [_file(tmp_path, "Movie.rus.mp3")]
         block.video_params.audio_selection = AudioTrackId(id=0)
 
-        block.remove_external_audio()
+        block.audio.remove_external()
 
         assert block.video_params.audio_selection == AudioTrackId(id=0)
 
@@ -378,7 +356,7 @@ class TestAVideoWithNoSoundOfItsOwn:
         block = _block(tmp_path, tracks={})
         audio = _file(tmp_path, "Movie.mp3")
 
-        block._adopt_audio_if_silent()
+        block.audio.adopt_if_silent()
 
         assert block.video_params.external_audio == [audio]
 
@@ -389,7 +367,7 @@ class TestAVideoWithNoSoundOfItsOwn:
         _file(tmp_path, "Movie.rus.mp3")
         _file(tmp_path, "Movie.eng.mp3")
 
-        block._adopt_audio_if_silent()
+        block.audio.adopt_if_silent()
 
         assert block.video_params.external_audio == []
 
@@ -397,7 +375,7 @@ class TestAVideoWithNoSoundOfItsOwn:
         block = _block(tmp_path)
         _file(tmp_path, "Movie.mp3")
 
-        block._adopt_audio_if_silent()
+        block.audio.adopt_if_silent()
 
         assert block.video_params.external_audio == []
 
@@ -407,7 +385,7 @@ class TestAVideoWithNoSoundOfItsOwn:
         block.video_params.external_audio = [picked]
         _file(tmp_path, "Movie.eng.mp3")
 
-        block._adopt_audio_if_silent()
+        block.audio.adopt_if_silent()
 
         assert block.video_params.external_audio == [picked]
 
@@ -424,7 +402,7 @@ class TestATrackThatArrivesAfterTheLoad:
         block.video_driver.cur_audio_track_id = 1
         before = block.video_params.audio_selection
 
-        block.tracks_changed()
+        block.audio.tracks_changed()
 
         assert block.video_params.audio_selection == before
         assert block.reloads == 0
@@ -435,21 +413,21 @@ class TestATrackThatArrivesAfterTheLoad:
         block = _attached(_block(tmp_path), _file(tmp_path, "Movie.ogg"))
         block.video_driver.external_audio_ids = ()
 
-        block.tracks_changed()
+        block.audio.tracks_changed()
 
         assert block.reloads == 1
 
     def test_one_that_brought_its_track_is_left_where_it_is(self, tmp_path):
         block = _attached(_block(tmp_path), _file(tmp_path, "Movie.rus.mp3"))
 
-        block.tracks_changed()
+        block.audio.tracks_changed()
 
         assert block.reloads == 0
 
     def test_a_silent_video_is_no_longer_silent(self, tmp_path):
         block = _block(tmp_path, tracks={0: _track()})
 
-        block.tracks_changed()
+        block.audio.tracks_changed()
 
         assert block.audio_present == [True]
 
@@ -460,7 +438,7 @@ class TestLeavingItToTheVideosOwnFile:
         block.video_driver.default_audio_track_id = 1
         block.video_params.audio_selection = AudioTrackId(id=0)
 
-        block.apply_audio_default()
+        block.audio.apply_default()
 
         assert block.video_params.audio_selection == AudioDefault()
         assert block.video_driver.tracks_set == [1]
@@ -471,7 +449,7 @@ class TestLeavingItToTheVideosOwnFile:
         block = _block(tmp_path, tracks={3: _track("eng"), 4: _track("jpn")})
         block.video_driver.default_audio_track_id = None
 
-        block.apply_audio_default()
+        block.audio.apply_default()
 
         assert block.video_driver.tracks_set == [3]
 
@@ -485,7 +463,7 @@ class TestLeavingItToTheVideosOwnFile:
         # what libVLC opened on was the file, as it does once its stream is in
         block.video_driver.default_audio_track_id = 1
 
-        block.apply_audio_default()
+        block.audio.apply_default()
 
         assert block.video_driver.tracks_set == [0]
 
@@ -496,7 +474,7 @@ class TestAFileLibvlcWillNotKeepUpWith:
     def test_one_that_never_makes_a_sound_is_called_out(self, tmp_path):
         block = _block(tmp_path)
 
-        block.add_external_audio([_file(tmp_path, "Movie.opus")])
+        block.audio.add_external([_file(tmp_path, "Movie.opus")])
 
         assert "Movie.opus" in block.warnings[0]
         assert "MP3" in block.warnings[0]
@@ -504,7 +482,7 @@ class TestAFileLibvlcWillNotKeepUpWith:
     def test_one_that_stops_at_the_first_seek_is_called_out(self, tmp_path):
         block = _block(tmp_path)
 
-        block.add_external_audio([_file(tmp_path, "Movie.ogg")])
+        block.audio.add_external([_file(tmp_path, "Movie.ogg")])
 
         assert "seeked" in block.warnings[0]
 
@@ -514,14 +492,14 @@ class TestAFileLibvlcWillNotKeepUpWith:
         block = _block(tmp_path)
         audio = _file(tmp_path, "Movie.opus")
 
-        block.add_external_audio([audio])
+        block.audio.add_external([audio])
 
         assert block.video_params.external_audio == [audio]
 
     def test_a_format_that_plays_is_not_complained_about(self, tmp_path):
         block = _block(tmp_path)
 
-        block.add_external_audio([_file(tmp_path, "Movie.m4a")])
+        block.audio.add_external([_file(tmp_path, "Movie.m4a")])
 
         assert block.warnings == []
 
@@ -535,8 +513,8 @@ class TestAFileThatIsNoLongerThere:
         block.video_params.external_audio = [gone]
         block.video_params.audio_selection = AudioExternal(file=gone)
 
-        assert block.selected_audio_slave_uri is None
-        assert block.attached_audio_file is None
+        assert block.audio.selected_slave_uri is None
+        assert block.audio.attached_file is None
 
     def test_it_is_kept_in_the_playlist_all_the_same(self, tmp_path):
         """Whatever moved it may move it back."""
@@ -553,7 +531,7 @@ class TestAFileThatIsNoLongerThere:
         block.video_params.external_audio = [gone]
         block.video_params.audio_selection = AudioExternal(file=gone)
 
-        block.tracks_changed()
+        block.audio.tracks_changed()
 
         assert block.reloads == 0
 
@@ -569,7 +547,7 @@ class TestGoingBackToTheVideosOwnSound:
 
         block.video_params.audio_selection = AudioTrackId(id=0)
 
-        assert block.external_audio_tracks == {1: audio}
+        assert block.audio.external_tracks == {1: audio}
 
     def test_it_is_not_offered_again_below(self, tmp_path):
         """It is in the track list already; offering it twice reads as two files."""
@@ -588,14 +566,14 @@ class TestGoingBackToTheVideosOwnSound:
 
         block.video_params.audio_selection = AudioTrackId(id=0)
 
-        assert block.selected_audio_slave_uri is None
+        assert block.audio.selected_slave_uri is None
 
     def test_picking_it_again_needs_no_reload(self, tmp_path):
         audio = _file(tmp_path, "Movie.rus.mp3")
         block = _attached(_block(tmp_path), audio)
         block.video_params.audio_selection = AudioTrackId(id=0)
 
-        block.play_external_audio(str(audio))
+        block.audio.play_external(str(audio))
 
         assert block.selected == [1]
         assert block.reloads == 0
@@ -608,7 +586,7 @@ class TestGoingBackToTheVideosOwnSound:
         block.video_params.external_audio = [gone]
         block.video_params.audio_selection = AudioExternal(file=gone)
 
-        block._forget_audio_file_that_is_gone()
+        block.audio._forget_file_that_is_gone()
 
         assert block.video_params.audio_selection == AudioDefault()
 
@@ -618,7 +596,7 @@ class TestGoingBackToTheVideosOwnSound:
         block.video_params.external_audio = [gone]
         block.video_params.audio_selection = AudioExternal(file=gone)
 
-        block._forget_audio_file_that_is_gone()
+        block.audio._forget_file_that_is_gone()
 
         assert block.video_params.external_audio == [gone]
 
@@ -627,7 +605,7 @@ class TestGoingBackToTheVideosOwnSound:
         block = _block(tmp_path)
         block.video_params.audio_selection = AudioExternal(file=audio)
 
-        block._forget_audio_file_that_is_gone()
+        block.audio._forget_file_that_is_gone()
 
         assert block.video_params.audio_selection == AudioExternal(file=audio)
 

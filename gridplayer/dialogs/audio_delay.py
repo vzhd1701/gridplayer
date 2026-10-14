@@ -104,14 +104,14 @@ class SetAudioDelayDialog(QDialog):
     def accept(self):
         if self._block is not None:
             # the same number over again, this time said out loud
-            self._block.set_audio_delay(self.spinbox.value())
+            self._block.audio.set_delay(self.spinbox.value())
 
         super().accept()
 
     def reject(self):
         if self._block is not None:
             if self._block.video_params.audio_delay_ms != self._original_delay_ms:
-                self._block.set_audio_delay(self._original_delay_ms, is_silent=True)
+                self._block.audio.set_delay(self._original_delay_ms, is_silent=True)
 
         super().reject()
 
@@ -120,4 +120,4 @@ class SetAudioDelayDialog(QDialog):
 
     def _on_value_changed(self, delay_ms):
         if self._block is not None:
-            self._block.set_audio_delay(delay_ms, is_silent=True)
+            self._block.audio.set_delay(delay_ms, is_silent=True)

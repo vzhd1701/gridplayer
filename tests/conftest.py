@@ -52,6 +52,7 @@ COOKIE_LIFETIME_SEC = 10000
 def _block_parts():
     """A VideoBlock's parts, by the name the block keeps each under."""
 
+    from gridplayer.widgets.video_block_audio import AudioControl
     from gridplayer.widgets.video_block_bookmarker import Bookmarker
     from gridplayer.widgets.video_block_chapters import ChapterControl
     from gridplayer.widgets.video_block_sponsorblock import SponsorBlockControl
@@ -59,6 +60,7 @@ def _block_parts():
     from gridplayer.widgets.video_block_view import ViewControl
 
     return {
+        "audio": AudioControl,
         "bookmarker": Bookmarker,
         "chapters": ChapterControl,
         "sponsorblock": SponsorBlockControl,
