@@ -83,7 +83,7 @@ def test_manual_seek_of_a_part_that_went_nowhere_syncs_nothing(mocker):
 def test_manual_view_reaches_a_part_and_gives_back_its_result(mocker):
     block = _playing_block(mocker)
     block.view.pan_by.return_value = (1.0, 2.0)
-    block.synced_view.return_value = "synced"
+    block.view.synced.return_value = "synced"
 
     result = VideoBlock.manual_view(block, "view.pan_by", 3, 4)
 

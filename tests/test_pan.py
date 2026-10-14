@@ -1,3 +1,4 @@
+from operator import attrgetter
 from types import SimpleNamespace
 
 import pytest
@@ -39,11 +40,13 @@ class _Block:
         self.shifts = []
         self.synced = []
         self._left_over = left_over
+        # the block's view part, done by the fake itself
+        self.view = self
 
     def manual_view(self, command, *args):
         # as VideoBlock does, the others following where their views are synced
         self.synced.append(command)
-        return getattr(self, command)(*args)
+        return attrgetter(command)(self)(*args)
 
     def pan_by(self, moved_x, moved_y):
         self.pans.append((moved_x, moved_y))
@@ -119,7 +122,7 @@ def test_a_drag_takes_the_picture_along():
     assert block.pans == [(30, -10), (10, 5)]
     assert QApplication.overrideCursor().shape() == Qt.ClosedHandCursor
     # each move for the others to follow, where their views are synced
-    assert block.synced == ["pan_by", "pan_by"]
+    assert block.synced == ["view.pan_by", "view.pan_by"]
 
 
 def test_what_is_left_over_goes_on_to_the_next_move():

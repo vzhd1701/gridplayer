@@ -214,14 +214,14 @@ class SetCropDialog(QDialog):
 
     def accept(self):
         if self._block is not None:
-            self._block.set_crop(self._spin_crop(), is_silent=False)
+            self._block.view.set_crop(self._spin_crop(), is_silent=False)
 
         super().accept()
 
     def reject(self):
         if self._block is not None:
             if self._block.video_params.crop != self._original_crop:
-                self._block.set_crop(self._original_crop, is_silent=True)
+                self._block.view.set_crop(self._original_crop, is_silent=True)
 
         super().reject()
 
@@ -231,7 +231,7 @@ class SetCropDialog(QDialog):
 
     def _on_value_changed(self):
         if self._block is not None:
-            self._block.set_crop(self._spin_crop(), is_silent=True)
+            self._block.view.set_crop(self._spin_crop(), is_silent=True)
 
         self._update_size_label()
 

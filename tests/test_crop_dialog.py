@@ -31,6 +31,8 @@ class _FakeBlock:
         self.video_tracks = {
             1: SimpleNamespace(video_dimensions=(640, 360), is_turned=False)
         }
+        # the block's view part, done by the fake itself
+        self.view = self
 
     def set_crop(self, crop, is_silent=False):
         clamped = VideoCrop(*(max(v, 0) for v in crop))

@@ -10,7 +10,7 @@ from operator import attrgetter
 from pathlib import Path
 
 from pydantic_extra_types.color import Color
-from PyQt5.QtCore import QRect, QRectF, QSize, Qt, QTimer, pyqtSignal
+from PyQt5.QtCore import QSize, Qt, QTimer, pyqtSignal
 from PyQt5.QtGui import QCursor
 from PyQt5.QtWidgets import QFileDialog, QStackedLayout, QWidget
 
@@ -99,19 +99,14 @@ from gridplayer.params.static import (
     ListSourceKind,
     NetworkRetryMode,
     SponsorBlockMode,
-    VideoAnchor,
     VideoAspect,
-    VideoCrop,
     VideoDeinterlace,
     VideoDeinterlaceMode,
     VideoEndAction,
     VideoInitialState,
-    VideoShift,
     VideoTransform,
-    ViewParams,
 )
 from gridplayer.settings import Settings
-from gridplayer.utils.aspect_calc import SyncedView
 from gridplayer.utils.bookmarks import file_key
 from gridplayer.utils.chapters import (
     chapter_index_at,
@@ -159,7 +154,7 @@ from gridplayer.utils.sponsorblock import (
     skip_spans,
     sponsorblock_fetcher,
 )
-from gridplayer.utils.step_sizes import seek_step_ms, zoom_stepped
+from gridplayer.utils.step_sizes import seek_step_ms
 from gridplayer.utils.track_language import language_name, normalize, pick_track
 from gridplayer.utils.url_resolve.static import ResolvedList, ResolvedVideo
 from gridplayer.utils.url_resolve.url_resolve import VideoURLResolver
@@ -198,6 +193,7 @@ from gridplayer.widgets.video_block_guards import (
     only_streamable,
     only_with_video_tacks,
 )
+from gridplayer.widgets.video_block_view import ViewControl
 from gridplayer.widgets.video_frame_vlc_base import VideoFrameVLC
 from gridplayer.widgets.video_overlay import (
     OverlayBlock,
@@ -361,16 +357,6 @@ class VideoBlock(QWidget):
         self._is_closing = False
         self._drop_indicator = DropIndicator.NONE
 
-        # the part of the picture being selected to zoom to, while it is
-        self._zoom_selection: QRect | None = None
-        # how to select one, said once Zoom to Selection is picked
-        self._is_zoom_hint_shown = False
-        # where the picture stands is a zoom to a selection's doing, which
-        # the zoom's reset undoes along with it
-        self._is_zoomed_to_selection = False
-        # another video's view, to show once this one is playing
-        self._view_to_follow: SyncedView | None = None
-
         self._title = None
         self._color = None
         self._default_title = None
@@ -505,6 +491,7 @@ class VideoBlock(QWidget):
         self.video_driver: VideoFrameVLC | None = None
 
         self.bookmarker = Bookmarker(self)
+        self.view = ViewControl(self)
 
         sponsorblock_fetcher().fetched.connect(self._sponsor_segments_fetched)
 
@@ -588,7 +575,7 @@ class VideoBlock(QWidget):
         qt_connect(
             (video_driver.video_ready, self.load_video_finish),
             (video_driver.picture_shown, self._picture_shown),
-            (video_driver.view_followed, self._view_followed),
+            (video_driver.view_followed, self.view.remember_followed),
             (video_driver.tracks_changed, self.tracks_changed),
             (video_driver.chapters_changed, self._update_chapters),
             (video_driver.time_changed, self.time_changed),
@@ -3287,7 +3274,7 @@ class VideoBlock(QWidget):
             return
 
         # it shows a selection to zoom to, or how to make one
-        if self._is_zoom_ui():
+        if self.view.is_zoom_ui():
             return
 
         if self._ctx.is_disable_overlay:
@@ -3643,7 +3630,7 @@ class VideoBlock(QWidget):
             return
 
         # the snapshot's view is the one to show
-        self._view_to_follow = None
+        self.view.forget_view_to_follow()
 
         self.color = snapshot.color.as_hex()
 
@@ -3678,12 +3665,12 @@ class VideoBlock(QWidget):
         self.set_deinterlace_params(snapshot.deinterlace, snapshot.deinterlace_mode)
         self.set_muted(snapshot.is_muted)
         self.set_pause(snapshot.is_paused)
-        self.set_scale(snapshot.scale, is_silent=True)
-        self.set_zoom_to_cursor(snapshot.is_zoom_to_cursor)
-        self.set_crop(snapshot.crop, is_silent=True)
-        self.set_anchor(snapshot.anchor)
-        self.set_shift_past_edges(snapshot.is_shift_past_edges)
-        self.set_shift(snapshot.shift, is_silent=True)
+        self.view.set_scale(snapshot.scale, is_silent=True)
+        self.view.set_zoom_to_cursor(snapshot.is_zoom_to_cursor)
+        self.view.set_crop(snapshot.crop, is_silent=True)
+        self.view.set_anchor(snapshot.anchor)
+        self.view.set_shift_past_edges(snapshot.is_shift_past_edges)
+        self.view.set_shift(snapshot.shift, is_silent=True)
         self.set_volume(snapshot.volume)
 
         self.seek(snapshot.current_position)
@@ -3712,7 +3699,7 @@ class VideoBlock(QWidget):
         self.bookmarker.close_manager()
         self._cancel_steps()
 
-        self._view_to_follow = None
+        self.view.forget_view_to_follow()
         self._held_item = None
         self._title = None
         self._default_title = None
@@ -4282,7 +4269,7 @@ class VideoBlock(QWidget):
         if not self._is_status_kept_for_picture:
             self.video_status.hide()
 
-        self._follow_synced_view()
+        self.view.follow_synced()
 
         self.video_driver.show()
         self.is_stopped_change.emit(self.is_stopped)
@@ -4871,404 +4858,23 @@ class VideoBlock(QWidget):
 
         self.seek_shift_ms(new_time - self.time)
 
-    @only_with_video_tacks
-    @only_initialized
-    def scale_increase(self):
-        self._zoom_to(zoom_stepped(self.video_params.scale, 1))
-
-    @only_with_video_tacks
-    @only_initialized
-    def scale_decrease(self):
-        self._zoom_to(zoom_stepped(self.video_params.scale, -1))
-
-    @only_with_video_tacks
-    @only_initialized
-    def scale_reset(self):
-        """Back to the whole picture, and, zoomed about the pointer or to a
-        selection, back in its place: where it stands then is the zooms'
-        doing, not a move."""
-
-        if self.video_params.is_zoom_to_cursor or self._is_zoomed_to_selection:
-            self._set_zoom(1.0, VideoShift(0, 0))
-        else:
-            self.set_scale(1.0)
-
-        self._is_zoomed_to_selection = False
-
-    @only_with_video_tacks
-    @only_initialized
-    def set_scale(self, scale, is_silent=False):
-        self.video_params.scale = scale
-
-        self.video_driver.set_scale(scale)
-
-        if not is_silent:
-            self.info_change.emit(f"Zoom: {scale}")
-
-    def _zoom_to(self, scale):
-        """Zoom about the pointer where this video zooms to it, else as usual."""
-
-        focus = self._zoom_focus()
-
-        if focus is None or scale == self.video_params.scale:
-            self.set_scale(scale)
-            return
-
-        self._set_zoom(scale, self.video_driver.zoomed_shift(scale, focus))
-
-    def _set_zoom(self, scale, shift: VideoShift):
-        self.video_params.scale = scale
-        self.video_params.shift = shift
-
-        self.video_driver.set_zoom(scale, shift)
-
-        self.info_change.emit(f"Zoom: {scale}")
-
-    def _zoom_focus(self) -> tuple[int, int] | None:
-        """Where in the pane a zoom goes about, None for the anchor's place.
-
-        The pointer, where this video zooms to it and it is over the video.
-        A zoom picked from the context menu goes about where the menu was
-        opened, the pointer being on the menu's item by then.
-        """
-
-        if not self.video_params.is_zoom_to_cursor or not self.isVisible():
-            return None
-
-        pointer = getattr(self._ctx, "context_menu_pos", None)
-
-        if pointer is None:
-            pointer = QCursor.pos()
-
-        if not self.rect().contains(self.mapFromGlobal(pointer)):
-            return None
-
-        focus = self.video_driver.mapFromGlobal(pointer)
-
-        return focus.x(), focus.y()
-
-    @only_with_video_tacks
-    @only_initialized
-    def zoom_to_selection(self, selection: QRect):
-        """Fit a part of the picture into the cell, in its middle.
-
-        The part is in this cell's pixels, where it was selected over the
-        picture as drawn; see VideoFrameVLC.selection_zoom.
-        """
-
-        origin = self.video_driver.pos()
-        zoom = self.video_driver.selection_zoom(
-            (
-                selection.x() - origin.x(),
-                selection.y() - origin.y(),
-                selection.width(),
-                selection.height(),
-            )
-        )
-
-        if zoom is None:
-            return
-
-        self._is_zoomed_to_selection = True
-        self._set_zoom(*zoom)
-
-    def zoom_selection_area(self) -> QRect | None:
-        """Where in this cell a part of the picture can be selected to zoom
-        to: over the picture as drawn. None where there is none on show."""
-
-        if not self.is_video_initialized or not self.video_tracks:
-            return None
-
-        area = self.video_driver.shown_picture_area()
-
-        if area is None:
-            return None
-
-        x, y, width, height = area
-        origin = self.video_driver.pos()
-
-        return (
-            QRectF(x + origin.x(), y + origin.y(), width, height)
-            .toAlignedRect()
-            .intersected(self.rect())
-        )
-
-    def show_zoom_selection(self, selection: QRect | None):
-        """Mark the part of the picture being selected to zoom to.
-
-        On the overlay, with its chrome out of the way, and shown even where
-        it is off or the cell is too small for it. In place of the hint,
-        which it says all of. None once the selecting is over, which puts
-        the overlay back the way it would be.
-        """
-
-        was_zoom_ui = self._is_zoom_ui()
-
-        if selection is not None:
-            self._zoom_selection = QRect(selection)
-            self._is_zoom_hint_shown = False
-
-            self.overlay.set_zoom_hint(False)
-            self.overlay.set_zoom_selection(selection)
-        elif self._zoom_selection is not None:
-            self._zoom_selection = None
-
-            self.overlay.set_zoom_selection(None)
-
-        self._zoom_ui_changed(was_zoom_ui)
-
-    def show_zoom_hint(self, is_shown: bool):
-        """Say how to select a part of the picture to zoom to, or not.
-
-        Once Zoom to Selection is picked, until the selecting starts, on
-        the overlay as the selection itself is (see show_zoom_selection).
-        """
-
-        if is_shown == self._is_zoom_hint_shown:
-            return
-
-        was_zoom_ui = self._is_zoom_ui()
-        self._is_zoom_hint_shown = is_shown
-
-        self.overlay.set_zoom_hint(is_shown)
-
-        self._zoom_ui_changed(was_zoom_ui)
-
-    def _is_zoom_ui(self) -> bool:
-        return self._zoom_selection is not None or self._is_zoom_hint_shown
-
-    def _zoom_ui_changed(self, was_zoom_ui: bool):
-        """The overlay shown for zooming to a selection, with that alone on
-        it, or put back the way it would be once it is done with."""
-
-        if self._is_zoom_ui() == was_zoom_ui:
-            return
-
-        if self._is_zoom_ui():
-            self.overlay_hide_timer.stop()
-            self.overlay.set_is_chrome_visible(False)
-            self.overlay.show()
-            return
-
-        self.overlay.set_is_chrome_visible(not self._ctx.is_drag_ui)
-
-        if self._ctx.is_disable_overlay or not self.is_overlay_fits:
-            self.overlay_hide_timer.stop()
-            self.overlay.hide()
-            return
-
-        self.show_overlay()
-
     def manual_view(self, command, *args):
         """Zoom or move the picture as the viewer asked, for the others to
         follow where their views are synced (see VideoBlocksManager).
 
         The view as it then is, even where the command left it as it was:
         the others come to show what this one does, from wherever they are.
-        What the command gives back goes back (see pan_by).
+        What the command gives back goes back (see ViewControl.pan_by).
         """
 
         result = attrgetter(command)(self)(*args)
 
-        synced = self.synced_view()
+        synced = self.view.synced()
 
         if synced is not None:
             self.sync_view.emit(synced)
 
         return result
-
-    @only_with_video_tacks
-    @only_initialized
-    def sync_others_view(self):
-        """Have the others show the part of their pictures this one shows."""
-
-        synced = self.synced_view()
-
-        if synced is not None:
-            self.sync_view_single.emit(synced)
-
-    def synced_view(self) -> SyncedView | None:
-        """This video's view, for the others to follow; None for none."""
-
-        if not self.is_video_initialized or not self.video_tracks:
-            return None
-
-        shared = self.video_driver.shared_view()
-
-        if shared is None:
-            return None
-
-        return SyncedView(shared, self._is_zoomed_to_selection)
-
-    def follow_view(self, synced: SyncedView):
-        """Show the part of the picture another video shows of its own.
-
-        Quietly, the other saying what it shows. One that is not playing yet
-        shows it once it is (see load_video_finish), and one waiting for its
-        frame's size once that is known (see VideoFrameVLC.follow_view).
-        """
-
-        if not self.is_video_initialized:
-            self._view_to_follow = synced
-            return
-
-        if not self.video_tracks:
-            return
-
-        self._is_zoomed_to_selection = synced.is_zoomed_to_selection
-
-        view = self.video_driver.follow_view(synced.view)
-
-        if view is not None:
-            self._view_followed(view)
-
-    def _view_followed(self, view: ViewParams):
-        self.video_params.scale = view.scale
-        self.video_params.anchor = view.anchor
-        self.video_params.shift = view.shift
-
-    def _follow_synced_view(self):
-        """Show the view this one was to follow once playing, or else the
-        one the videos are synced to, having just loaded."""
-
-        synced = self._view_to_follow or getattr(self._ctx, "synced_view", None)
-        self._view_to_follow = None
-
-        if synced is not None:
-            self.follow_view(synced)
-
-    @only_with_video_tacks
-    @only_initialized
-    def toggle_zoom_to_cursor(self):
-        self.set_zoom_to_cursor(not self.video_params.is_zoom_to_cursor)
-
-    def set_zoom_to_cursor(self, is_zoom_to_cursor: bool):
-        """Zoom about the point under the pointer, or about the anchor's.
-
-        Kept for a video stopped or still loading too: nothing but a zoom
-        looks at it, and that is only made with a picture on show.
-        """
-
-        self.video_params.is_zoom_to_cursor = is_zoom_to_cursor
-
-    @only_with_video_tacks
-    @only_initialized
-    def crop(self, left, top, right, bottom, is_silent=False):
-        crop = VideoCrop(
-            self.video_params.crop.Left + left,
-            self.video_params.crop.Top + top,
-            self.video_params.crop.Right + right,
-            self.video_params.crop.Bottom + bottom,
-        )
-
-        self.set_crop(crop, is_silent)
-
-    @only_with_video_tacks
-    @only_initialized
-    def crop_reset(self, is_silent=False):
-        self.set_crop(VideoCrop(0, 0, 0, 0), is_silent)
-
-    @only_with_video_tacks
-    @only_initialized
-    def set_crop(self, crop: VideoCrop, is_silent=False):
-        crop = VideoCrop(
-            max(crop.Left, 0),
-            max(crop.Top, 0),
-            max(crop.Right, 0),
-            max(crop.Bottom, 0),
-        )
-
-        if self.video_params.crop != crop:
-            self.video_params.crop = crop
-            self.video_driver.set_crop(self.video_params.crop)
-
-        if not is_silent:
-            self.info_change.emit(
-                "Crop: L{} T{} R{} B{}".format(*self.video_params.crop)
-            )
-
-    @only_with_video_tacks
-    @only_initialized
-    def set_anchor(self, anchor: VideoAnchor):
-        """Put the picture against a side or corner, or in the middle.
-
-        Picking one is putting the picture there, so a move made from the
-        one before is let go of.
-        """
-
-        self.video_params.anchor = anchor
-        self.video_driver.set_anchor(anchor)
-
-        self.set_shift(VideoShift(0, 0), is_silent=True)
-        self._is_zoomed_to_selection = False
-
-    @only_with_video_tacks
-    @only_initialized
-    def set_shift(self, shift: VideoShift, is_silent=False):
-        if self.video_params.shift != shift:
-            self.video_params.shift = shift
-            self.video_driver.set_shift(shift)
-
-        if not is_silent:
-            self.info_change.emit("Position: X{} Y{}".format(*shift))
-
-    @only_with_video_tacks
-    @only_initialized
-    def shift_by(self, steps_x: int, steps_y: int):
-        """Move so many steps right and down, left and up negative.
-
-        Where the picture is bigger than the pane, that is looking further
-        that way; where it is smaller, the picture goes that way itself.
-        """
-
-        self.set_shift(self.video_driver.shifted_by(steps_x, steps_y))
-
-    @only_with_video_tacks
-    @only_initialized
-    def pan_by(self, moved_x: float, moved_y: float) -> tuple[float, float]:
-        """Take the picture along with the pointer, so many pane pixels.
-
-        Right and down, left and up negative. The picture goes the way the
-        pointer does, as a sheet of paper under a hand would. Hands back
-        what is left over of the move, for the next one to go on from.
-        """
-
-        shift, left_over = self.video_driver.dragged_shift(moved_x, moved_y)
-
-        self.set_shift(shift, is_silent=True)
-
-        return left_over
-
-    @only_with_video_tacks
-    @only_initialized
-    def shift_reset(self):
-        self.set_shift(VideoShift(0, 0))
-        self._is_zoomed_to_selection = False
-
-    @only_with_video_tacks
-    @only_initialized
-    def toggle_shift_past_edges(self):
-        self.set_shift_past_edges(not self.video_params.is_shift_past_edges)
-
-    def set_shift_past_edges(self, is_shift_past_edges: bool):
-        """Let the picture be moved past the edges of the pane, or not.
-
-        Kept within them again, it stays where they hold it, which is where
-        the next move goes from. Kept for a video stopped or still loading
-        too, which takes it up with the rest of its view as it loads.
-        """
-
-        self.video_params.is_shift_past_edges = is_shift_past_edges
-
-        if self.video_driver is None:
-            return
-
-        # one loading already has its view: it goes by this one instead
-        self.video_driver.set_shift_past_edges(is_shift_past_edges)
-
-        if self.is_video_initialized and self.video_tracks:
-            # no steps is where the picture stands now
-            self.set_shift(self.video_driver.shifted_by(0, 0), is_silent=True)
 
     def manual_rate(self, command):
         """Change the speed as the viewer asked, for the others to follow

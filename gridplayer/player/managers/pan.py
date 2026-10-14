@@ -109,7 +109,7 @@ class PanManager(ManagerBase):
 
         left_x, left_y = self._left_over
         left_over = self._block.manual_view(
-            "pan_by", moved.x() + left_x, moved.y() + left_y
+            "view.pan_by", moved.x() + left_x, moved.y() + left_y
         )
         self._left_over = left_over or (0.0, 0.0)
 
@@ -128,7 +128,7 @@ class PanManager(ManagerBase):
             return None
 
         # says where the picture ended up, as a move from the menu does
-        block.set_shift(block.video_params.shift)
+        block.view.set_shift(block.video_params.shift)
 
         return True
 

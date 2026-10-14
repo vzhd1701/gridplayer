@@ -1,3 +1,4 @@
+from operator import attrgetter
 from types import SimpleNamespace
 
 import pytest
@@ -44,6 +45,8 @@ class _Block(QWidget):
         self.zooms = []
         self.hints = []
         self.synced = []
+        # the block's view part, done by the fake itself
+        self.view = self
 
     def mapFromGlobal(self, pos):
         return QPoint(pos)
@@ -57,7 +60,7 @@ class _Block(QWidget):
     def manual_view(self, command, *args):
         # as VideoBlock does, the others following where their views are synced
         self.synced.append(command)
-        return getattr(self, command)(*args)
+        return attrgetter(command)(self)(*args)
 
     def zoom_to_selection(self, selection):
         self.zooms.append(selection)
@@ -193,7 +196,7 @@ class TestWithTheKey:
         assert block.zooms == [QRect(100, 100, 300, 200)]
         assert _cursor_shape() is None
         # for the others to follow, where their views are synced
-        assert block.synced == ["zoom_to_selection"]
+        assert block.synced == ["view.zoom_to_selection"]
 
     def test_dragged_up_and_left_it_is_the_same(self, manager, block):
         _press(manager, block)

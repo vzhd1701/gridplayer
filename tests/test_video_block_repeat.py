@@ -163,7 +163,7 @@ def test_stopped_overlay_uses_hide_timer(mocker):
     block.is_loading = False
     block._is_error = False
     block._is_status_kept_for_picture = False
-    block._is_zoom_ui.return_value = False
+    block.view.is_zoom_ui.return_value = False
     block._is_list_window_shown = False
     block.isVisible.return_value = True
 

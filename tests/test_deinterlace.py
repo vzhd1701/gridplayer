@@ -29,6 +29,7 @@ from gridplayer.utils.libvlc_options_parser import (
 from gridplayer.vlc_player.player_base import VlcPlayerBase
 from gridplayer.vlc_player.static import MediaInput
 from gridplayer.widgets.video_block import VideoBlock
+from gridplayer.widgets.video_block_view import ViewControl
 
 URI = "http://example.com/a.mp4"
 
@@ -269,6 +270,7 @@ class TestSnapshots:
         block = _block(*current)
         block.is_video_initialized = True
         block._default_title = "a"
+        block.view = Mock(spec=ViewControl)
         block._take_snapshot_params = partial(VideoBlock._take_snapshot_params, block)
 
         snapshot = _video(*wanted)
