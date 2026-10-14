@@ -28,12 +28,12 @@ from gridplayer.player.managers.active_block import (
 )
 from gridplayer.player.managers.video_blocks import VideoBlocksManager
 from gridplayer.settings import Settings
-from gridplayer.utils.libvlc_options_parser import get_vlc_options
+from gridplayer.utils.libvlc_options_parser import get_vlc_options, is_reopen_needed
 from gridplayer.vlc_player.player_base import VlcPlayerBase
 from gridplayer.vlc_player.static import MediaInput
 from gridplayer.widgets.combo_box import MAX_VISIBLE_COMBO_ITEMS
 from gridplayer.widgets.defaults_form import DefaultsForm
-from gridplayer.widgets.video_block import VideoBlock, _is_reopen_needed
+from gridplayer.widgets.video_block import VideoBlock
 
 URI = "http://example.com/a.mp4"
 
@@ -222,19 +222,19 @@ class TestTakingHold:
     """It is settled at the open, so a change has to reopen the video."""
 
     def test_a_different_set_reopens(self):
-        assert _is_reopen_needed(
+        assert is_reopen_needed(
             Video(uri=URI, subtitle_encoding=""),
             Video(uri=URI, subtitle_encoding="KOI8-R"),
         )
 
     def test_the_same_set_leaves_the_video_alone(self):
-        assert not _is_reopen_needed(
+        assert not is_reopen_needed(
             Video(uri=URI, subtitle_encoding="KOI8-R"),
             Video(uri=URI, subtitle_encoding="KOI8-R"),
         )
 
     def test_the_first_video_has_nothing_to_differ_from(self):
-        assert not _is_reopen_needed(None, Video(uri=URI, subtitle_encoding="KOI8-R"))
+        assert not is_reopen_needed(None, Video(uri=URI, subtitle_encoding="KOI8-R"))
 
     def test_a_change_reaches_the_videos_already_open(self):
         block = _block("")

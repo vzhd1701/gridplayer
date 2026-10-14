@@ -51,3 +51,37 @@ def get_vlc_options(video_params: Video | None):
         vlc_options.append(f"--deinterlace-mode={option_str}")
 
     return vlc_options
+
+
+def is_reopen_needed(old: Video | None, new: Video) -> bool:
+    """Whether a change needs the video opened again rather than adjusted.
+
+    Instance options decide which VLC process a video is played in, so a
+    change to one only takes hold in a new process. The subtitle encoding
+    is a media option rather than an instance one -- as an instance option
+    it would fork the process pool one way per encoding -- but it is settled
+    when the input opens just the same, so it needs reopening too.
+    """
+
+    if get_vlc_options(old) != get_vlc_options(new):
+        return True
+
+    return old is not None and old.subtitle_encoding != new.subtitle_encoding
+
+
+def is_deinterlace_reload_needed(
+    current: Video, deinterlace: VideoDeinterlace, mode: VideoDeinterlaceMode
+) -> bool:
+    """Whether a deinterlace setting needs the video opened again.
+
+    libVLC 3 switches a player's deinterlacing on or off, mode and all, while
+    it plays; but it has no call to put a player back on auto, which is only
+    where a player starts, and on auto the mode comes from the VLC instance.
+    """
+
+    if deinterlace != VideoDeinterlace.AUTO:
+        return False
+
+    return (
+        current.deinterlace != VideoDeinterlace.AUTO or current.deinterlace_mode != mode
+    )

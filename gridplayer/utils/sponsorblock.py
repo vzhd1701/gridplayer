@@ -20,11 +20,13 @@ from dataclasses import dataclass, replace
 
 from PyQt5.QtCore import QObject, pyqtSignal
 
+from gridplayer.models.seek_mark import SeekMark, SeekMarkKind
 from gridplayer.models.sponsor_segment import SponsorSegment
 from gridplayer.params.sponsorblock import (
     CATEGORY_COLORS,
     ENABLED_SETTING,
     HIGHLIGHT_CATEGORY,
+    category_name,
     category_setting,
 )
 from gridplayer.params.static import SponsorBlockMode
@@ -187,6 +189,26 @@ def skip_span_at(spans, time_ms: int) -> SkipSpan | None:
             return span
 
     return None
+
+
+def segment_mark(segment: SponsorSegment) -> SeekMark:
+    """A SponsorBlock segment as the seek bar marks it, by its colour."""
+
+    if segment.category == HIGHLIGHT_CATEGORY:
+        return SeekMark(
+            time_ms=segment.start_ms,
+            label=category_name(segment.category),
+            kind=SeekMarkKind.HIGHLIGHT,
+            color=CATEGORY_COLORS[segment.category],
+        )
+
+    return SeekMark(
+        time_ms=segment.start_ms,
+        label=category_name(segment.category),
+        kind=SeekMarkKind.SEGMENT,
+        end_ms=segment.end_ms,
+        color=CATEGORY_COLORS[segment.category],
+    )
 
 
 class SponsorBlockFetcher(QObject):

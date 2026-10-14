@@ -21,10 +21,14 @@ from gridplayer.params.defaults_fields import VIDEO_FIELDS
 from gridplayer.params.menu import SECTIONS, SUBMENUS
 from gridplayer.params.static import VideoDeinterlace, VideoDeinterlaceMode
 from gridplayer.settings import Settings
-from gridplayer.utils.libvlc_options_parser import DeinterlaceModeMap, get_vlc_options
+from gridplayer.utils.libvlc_options_parser import (
+    DeinterlaceModeMap,
+    get_vlc_options,
+    is_deinterlace_reload_needed,
+)
 from gridplayer.vlc_player.player_base import VlcPlayerBase
 from gridplayer.vlc_player.static import MediaInput
-from gridplayer.widgets.video_block import VideoBlock, _is_deinterlace_reload_needed
+from gridplayer.widgets.video_block import VideoBlock
 
 URI = "http://example.com/a.mp4"
 
@@ -182,7 +186,7 @@ class TestWhenItTakesAReload:
         ],
     )
     def test_getting_to_auto_or_changing_its_mode(self, current, wanted):
-        assert _is_deinterlace_reload_needed(_video(*current), *wanted)
+        assert is_deinterlace_reload_needed(_video(*current), *wanted)
 
     @pytest.mark.parametrize(
         ("current", "wanted"),
@@ -195,7 +199,7 @@ class TestWhenItTakesAReload:
         ],
     )
     def test_everything_else_is_done_in_place(self, current, wanted):
-        assert not _is_deinterlace_reload_needed(_video(*current), *wanted)
+        assert not is_deinterlace_reload_needed(_video(*current), *wanted)
 
 
 def _block(deinterlace, mode, has_video=True):

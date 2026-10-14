@@ -17,6 +17,17 @@ from gridplayer.params.static import (
 from gridplayer.utils.qt import translate
 
 
+def subtitle_delay_txt(delay_ms: int) -> str:
+    """A delay as it reads, signed, since which way it goes is the point."""
+
+    milliseconds = translate("Subtitle Delay", "ms")
+
+    if not delay_ms:
+        return f"0 {milliseconds}"
+
+    return f"{delay_ms:+d} {milliseconds}"
+
+
 class SetSubtitleDelayDialog(QDialog):
     """Moves a video's subtitles against its picture.
 

@@ -32,9 +32,9 @@ from gridplayer.player.managers.snapshots import SnapshotsManager
 from gridplayer.player.managers.video_blocks import VideoBlocksManager
 from gridplayer.playlist_settings import PlaylistSettings
 from gridplayer.settings import Settings
-from gridplayer.utils.aspect_calc import calc_shared_view
+from gridplayer.utils.aspect_calc import SyncedView, calc_shared_view
 from gridplayer.vlc_player.static import VideoTrack
-from gridplayer.widgets.video_block import SyncedView, VideoBlock
+from gridplayer.widgets.video_block import VideoBlock
 from gridplayer.widgets.video_frame_dummy import VideoFrameDummy
 from gridplayer.widgets.video_frame_vlc_hw_sp import VideoFrameVLCHWSP
 
