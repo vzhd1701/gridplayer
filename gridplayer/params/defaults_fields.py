@@ -1,6 +1,5 @@
 from collections.abc import Callable
 from dataclasses import dataclass
-from enum import Enum, auto
 
 from PyQt5.QtGui import QFontDatabase
 
@@ -40,12 +39,6 @@ from gridplayer.params.subtitle_encodings import SUBTITLE_ENCODINGS
 from gridplayer.utils.qt import translate
 
 
-class GridVisibility(Enum):
-    ALWAYS = auto()
-    AUTO_ONLY = auto()
-    FIXED_ONLY = auto()
-
-
 @dataclass(frozen=True, kw_only=True)
 class SettingField:
     """What every field has; the subclasses say how it is edited."""
@@ -60,7 +53,10 @@ class SettingField:
     # the values of the driving field that enable this one; the default is
     # what a ticked checkbox gives
     enabled_by_values: tuple = (True,)
-    grid_visibility: GridVisibility = GridVisibility.ALWAYS
+    # shown only while the field named here has one of these values; hidden,
+    # it is off as well, unless enabled_by already decides that
+    shown_by: str | None = None
+    shown_by_values: tuple = ()
     tooltip: str | None = None
 
 
@@ -529,6 +525,11 @@ def _subtitle_outlines() -> dict:
     }
 
 
+# the grid options that only mean something in one kind of grid
+_GRID_AUTO = (GridMode.AUTO_ROWS, GridMode.AUTO_COLS)
+_GRID_FIXED = (GridMode.FIXED,)
+
+
 # the outline colour is worth nothing without an outline to draw
 _OUTLINE_DRAWN = (
     SubtitleOutline.THIN,
@@ -753,14 +754,16 @@ PLAYLIST_FIELDS: tuple[SettingField, ...] = (
         minimum=0,
         maximum=1000,
         special_text=translate("SettingsDialog", "Auto"),
-        grid_visibility=GridVisibility.AUTO_ONLY,
+        shown_by="playlist/grid_mode",
+        shown_by_values=_GRID_AUTO,
     ),
     CheckboxField(
         settings_key="playlist/grid_fit",
         section=translate("SettingsDialog", "Grid"),
         label=translate("SettingsDialog", "Fit grid cells"),
         is_grid=True,
-        grid_visibility=GridVisibility.AUTO_ONLY,
+        shown_by="playlist/grid_mode",
+        shown_by_values=_GRID_AUTO,
     ),
     SpinField(
         settings_key="playlist/grid_rows",
@@ -769,7 +772,8 @@ PLAYLIST_FIELDS: tuple[SettingField, ...] = (
         is_grid=True,
         minimum=1,
         maximum=100,
-        grid_visibility=GridVisibility.FIXED_ONLY,
+        shown_by="playlist/grid_mode",
+        shown_by_values=_GRID_FIXED,
     ),
     SpinField(
         settings_key="playlist/grid_cols",
@@ -778,14 +782,16 @@ PLAYLIST_FIELDS: tuple[SettingField, ...] = (
         is_grid=True,
         minimum=1,
         maximum=100,
-        grid_visibility=GridVisibility.FIXED_ONLY,
+        shown_by="playlist/grid_mode",
+        shown_by_values=_GRID_FIXED,
     ),
     CheckboxField(
         settings_key="playlist/grid_preallocate",
         section=translate("SettingsDialog", "Grid"),
         label=translate("SettingsDialog", "Show all cells even when empty"),
         is_grid=True,
-        grid_visibility=GridVisibility.FIXED_ONLY,
+        shown_by="playlist/grid_mode",
+        shown_by_values=_GRID_FIXED,
     ),
     ComboField(
         settings_key="playlist/drop_action_internal",

@@ -21,12 +21,10 @@ from gridplayer.params.defaults_fields import (
     ComboField,
     CropField,
     FloatSpinField,
-    GridVisibility,
     SettingField,
     SpinField,
     TextField,
 )
-from gridplayer.params.static import GridMode
 from gridplayer.utils.qt import translate
 from gridplayer.widgets.color_palette import QCompactColorPicker
 from gridplayer.widgets.combo_box import cap_popup_height
@@ -272,7 +270,7 @@ class DefaultsForm(QWidget):
 
         root.addStretch(1)
         self._sync_enabled()
-        self._sync_grid_visibility()
+        self._sync_shown()
 
     def _make_row(self, spec: SettingField) -> QWidget:
         holder = QWidget()
@@ -318,7 +316,7 @@ class DefaultsForm(QWidget):
         if sender is not None:
             self._overridden.add(sender.objectName())
         self._sync_enabled()
-        self._sync_grid_visibility()
+        self._sync_shown()
         self._sync_modified()
         self.values_changed.emit()
 
@@ -331,7 +329,7 @@ class DefaultsForm(QWidget):
             finally:
                 self._updating = False
         self._sync_enabled()
-        self._sync_grid_visibility()
+        self._sync_shown()
         self._sync_modified()
         self.values_changed.emit()
 
@@ -347,7 +345,7 @@ class DefaultsForm(QWidget):
         finally:
             self._updating = False
         self._sync_enabled()
-        self._sync_grid_visibility()
+        self._sync_shown()
         self._sync_modified()
 
     def values(self) -> dict:
@@ -378,7 +376,7 @@ class DefaultsForm(QWidget):
         finally:
             self._updating = False
         self._sync_enabled()
-        self._sync_grid_visibility()
+        self._sync_shown()
 
     def is_enabled(self, key: str) -> bool:
         widget = self._widgets.get(key)
@@ -395,27 +393,22 @@ class DefaultsForm(QWidget):
             enabled = driver.value() in spec.enabled_by_values
             self._editors[spec.settings_key].set_enabled(enabled)
 
-    def _sync_grid_visibility(self):
-        mode_widget = self._widgets.get("playlist/grid_mode")
-        if mode_widget is None:
-            return
-        is_fixed = mode_widget.currentData() == GridMode.FIXED
+    def _sync_shown(self):
         for spec in self._fields:
-            if spec.grid_visibility is GridVisibility.ALWAYS:
+            if not spec.shown_by:
                 continue
-            visible = (
-                is_fixed
-                if spec.grid_visibility is GridVisibility.FIXED_ONLY
-                else not is_fixed
-            )
-            row = self._rows.get(spec.settings_key)
-            if row is not None:
-                row.setVisible(visible)
+            driver = self._editors.get(spec.shown_by)
+            if driver is None:
+                continue
+
+            shown = driver.value() in spec.shown_by_values
+            self._rows[spec.settings_key].setVisible(shown)
+
             if spec.enabled_by:
                 # enabled_by owns enablement for such fields; keep them orthogonal.
                 continue
 
-            self._editors[spec.settings_key].set_enabled(visible)
+            self._editors[spec.settings_key].set_enabled(shown)
 
     def _sync_modified(self):
         if not self._show_reset:
