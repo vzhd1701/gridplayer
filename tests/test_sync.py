@@ -182,11 +182,6 @@ class TestTheSettings:
             "rate_sync",
         ]
         assert all(field.kind == FieldKind.CHECKBOX for field in fields[1:])
-        assert [field.menu_action for field in fields[1:]] == [
-            "Sync Zoom and Position",
-            "Sync Play / Pause",
-            "Sync Speed",
-        ]
 
 
 def _block(is_initialized=True, has_picture=True, is_live=False):

@@ -65,7 +65,6 @@ class SettingField:
     playlist_attr: str | None = None
     video_attr: str | None = None
     is_grid: bool = False
-    menu_action: str | None = None
     combo_values: Callable[[], dict] | None = None
     spin_min: float = 0
     spin_max: float = 100
@@ -74,10 +73,6 @@ class SettingField:
     spin_special: str | None = None
     spin_suffix: str | None = None
     text_placeholder: str | None = None
-    # what a checkbox stands for, where the setting behind it is not a
-    # plain bool; ticking it stores one value and clearing it the other
-    checked_value: object | None = None
-    unchecked_value: object | None = None
     enabled_by: str | None = None
     # what the driving field has to be set to; None means any value that
     # counts as on, which is what a plain checkbox gives, and a tuple
@@ -514,12 +509,8 @@ _OUTLINE_DRAWN = (
 )
 
 
-def _f(**kwargs) -> SettingField:
-    return SettingField(**kwargs)
-
-
 PLAYLIST_FIELDS: tuple[SettingField, ...] = (
-    _f(
+    SettingField(
         settings_key="playlist/unsaved_changes",
         playlist_attr="unsaved_changes",
         kind=FieldKind.COMBO,
@@ -528,28 +519,28 @@ PLAYLIST_FIELDS: tuple[SettingField, ...] = (
         combo_values=_unsaved_changes_modes,
         tooltip=_unsaved_changes_tooltip(),
     ),
-    _f(
+    SettingField(
         settings_key="playlist/save_window",
         playlist_attr="save_window",
         kind=FieldKind.CHECKBOX,
         section=translate("SettingsDialog", "Saving / Restoring"),
         label=translate("SettingsDialog", "Save window position and size"),
     ),
-    _f(
+    SettingField(
         settings_key="playlist/save_position",
         playlist_attr="save_position",
         kind=FieldKind.CHECKBOX,
         section=translate("SettingsDialog", "Saving / Restoring"),
         label=translate("SettingsDialog", "Save videos playback position"),
     ),
-    _f(
+    SettingField(
         settings_key="playlist/save_state",
         playlist_attr="save_state",
         kind=FieldKind.CHECKBOX,
         section=translate("SettingsDialog", "Saving / Restoring"),
         label=translate("SettingsDialog", "Save videos playback status"),
     ),
-    _f(
+    SettingField(
         settings_key="playlist/save_paths_relative",
         playlist_attr="save_paths_relative",
         kind=FieldKind.CHECKBOX,
@@ -557,23 +548,21 @@ PLAYLIST_FIELDS: tuple[SettingField, ...] = (
         label=translate("SettingsDialog", "Save video paths relative to playlist file"),
         tooltip=_save_paths_relative_tooltip(),
     ),
-    _f(
+    SettingField(
         settings_key="playlist/pause_background_videos",
         playlist_attr="pause_background_videos",
         kind=FieldKind.CHECKBOX,
         section=translate("SettingsDialog", "Playback"),
         label=translate("Playlist Settings", "Pause background videos on single mode"),
-        menu_action="Pause Background Videos",
     ),
-    _f(
+    SettingField(
         settings_key="playlist/pause_minimized",
         playlist_attr="pause_minimized",
         kind=FieldKind.CHECKBOX,
         section=translate("SettingsDialog", "Playback"),
         label=translate("Playlist Settings", "Pause videos when minimized"),
-        menu_action="Pause When Minimized",
     ),
-    _f(
+    SettingField(
         settings_key="playlist/bookmarks_shared",
         playlist_attr="bookmarks_shared",
         kind=FieldKind.CHECKBOX,
@@ -581,10 +570,9 @@ PLAYLIST_FIELDS: tuple[SettingField, ...] = (
         label=translate(
             "Playlist Settings", "Share bookmarks between cells with the same file"
         ),
-        menu_action="Share Bookmarks",
         tooltip=_bookmarks_shared_tooltip(),
     ),
-    _f(
+    SettingField(
         settings_key="playlist/seek_step_short",
         playlist_attr="seek_step_short",
         kind=FieldKind.FLOAT_SPIN,
@@ -596,7 +584,7 @@ PLAYLIST_FIELDS: tuple[SettingField, ...] = (
         spin_step=1.0,
         spin_suffix=translate("SettingsDialog", "(sec)"),
     ),
-    _f(
+    SettingField(
         settings_key="playlist/seek_step_medium",
         playlist_attr="seek_step_medium",
         kind=FieldKind.FLOAT_SPIN,
@@ -608,7 +596,7 @@ PLAYLIST_FIELDS: tuple[SettingField, ...] = (
         spin_step=1.0,
         spin_suffix=translate("SettingsDialog", "(sec)"),
     ),
-    _f(
+    SettingField(
         settings_key="playlist/seek_step_long",
         playlist_attr="seek_step_long",
         kind=FieldKind.FLOAT_SPIN,
@@ -620,7 +608,7 @@ PLAYLIST_FIELDS: tuple[SettingField, ...] = (
         spin_step=1.0,
         spin_suffix=translate("SettingsDialog", "(sec)"),
     ),
-    _f(
+    SettingField(
         settings_key="playlist/zoom_step",
         playlist_attr="zoom_step",
         kind=FieldKind.SPIN,
@@ -631,7 +619,7 @@ PLAYLIST_FIELDS: tuple[SettingField, ...] = (
         spin_suffix="%",
         tooltip=_zoom_step_tooltip(),
     ),
-    _f(
+    SettingField(
         settings_key="playlist/zoom_proportional",
         playlist_attr="zoom_proportional",
         kind=FieldKind.CHECKBOX,
@@ -639,7 +627,7 @@ PLAYLIST_FIELDS: tuple[SettingField, ...] = (
         label=translate("SettingsDialog", "Proportional zoom"),
         tooltip=_zoom_proportional_tooltip(),
     ),
-    _f(
+    SettingField(
         settings_key="playlist/folder_skip_hidden",
         playlist_attr="folder_skip_hidden",
         kind=FieldKind.CHECKBOX,
@@ -647,7 +635,7 @@ PLAYLIST_FIELDS: tuple[SettingField, ...] = (
         label=translate("SettingsDialog", "Skip hidden and system files"),
         tooltip=_folder_skip_hidden_tooltip(),
     ),
-    _f(
+    SettingField(
         settings_key="playlist/folder_max_entries",
         playlist_attr="folder_max_entries",
         kind=FieldKind.SPIN,
@@ -658,7 +646,7 @@ PLAYLIST_FIELDS: tuple[SettingField, ...] = (
         spin_special=translate("SettingsDialog", "No limit"),
         tooltip=_folder_max_entries_tooltip(),
     ),
-    _f(
+    SettingField(
         settings_key="playlist/shuffle_avoid_open",
         playlist_attr="shuffle_avoid_open",
         kind=FieldKind.CHECKBOX,
@@ -666,7 +654,7 @@ PLAYLIST_FIELDS: tuple[SettingField, ...] = (
         label=translate("SettingsDialog", "Skip files open in other cells"),
         tooltip=_shuffle_avoid_open_tooltip(),
     ),
-    _f(
+    SettingField(
         settings_key="playlist/seek_sync_mode",
         playlist_attr="seek_sync_mode",
         kind=FieldKind.COMBO,
@@ -674,72 +662,64 @@ PLAYLIST_FIELDS: tuple[SettingField, ...] = (
         label=translate("SettingsDialog", "Seek sync mode"),
         combo_values=_seek_sync_modes,
     ),
-    _f(
+    SettingField(
         settings_key="playlist/view_sync",
         playlist_attr="view_sync",
         kind=FieldKind.CHECKBOX,
         section=translate("SettingsDialog", "Sync"),
         label=translate("Sync", "Sync zoom and position"),
-        menu_action="Sync Zoom and Position",
         tooltip=_view_sync_tooltip(),
     ),
-    _f(
+    SettingField(
         settings_key="playlist/pause_sync",
         playlist_attr="pause_sync",
         kind=FieldKind.CHECKBOX,
         section=translate("SettingsDialog", "Sync"),
         label=translate("Sync", "Sync play and pause"),
-        menu_action="Sync Play / Pause",
     ),
-    _f(
+    SettingField(
         settings_key="playlist/rate_sync",
         playlist_attr="rate_sync",
         kind=FieldKind.CHECKBOX,
         section=translate("SettingsDialog", "Sync"),
         label=translate("Sync", "Sync speed"),
-        menu_action="Sync Speed",
     ),
-    _f(
+    SettingField(
         settings_key="playlist/disable_mouse_click_events",
         playlist_attr="disable_mouse_click_events",
         kind=FieldKind.CHECKBOX,
         section=translate("SettingsDialog", "Input"),
         label=translate("Playlist Settings", "Disable mouse click events"),
-        menu_action="Disable Mouse Click Events",
     ),
-    _f(
+    SettingField(
         settings_key="playlist/disable_mouse_wheel_events",
         playlist_attr="disable_mouse_wheel_events",
         kind=FieldKind.CHECKBOX,
         section=translate("SettingsDialog", "Input"),
         label=translate("Playlist Settings", "Disable mouse wheel events"),
-        menu_action="Disable Mouse Wheel Events",
     ),
-    _f(
+    SettingField(
         settings_key="playlist/disable_overlay",
         playlist_attr="disable_overlay",
         kind=FieldKind.CHECKBOX,
         section=translate("SettingsDialog", "Overlay"),
         label=translate("Playlist Settings", "Disable overlay"),
-        menu_action="Disable Overlay",
     ),
-    _f(
+    SettingField(
         settings_key="playlist/show_overlay_border",
         playlist_attr="show_overlay_border",
         kind=FieldKind.CHECKBOX,
         section=translate("SettingsDialog", "Overlay"),
         label=translate("Playlist Settings", "Show overlay border for active video"),
-        menu_action="Show Overlay Border",
     ),
-    _f(
+    SettingField(
         settings_key="playlist/overlay_hide_on_timeout",
         playlist_attr="overlay_hide_on_timeout",
         kind=FieldKind.CHECKBOX,
         section=translate("SettingsDialog", "Overlay"),
         label=translate("Playlist Settings", "Hide overlay after timeout"),
-        menu_action="Hide Overlay After Timeout",
     ),
-    _f(
+    SettingField(
         settings_key="playlist/overlay_timeout",
         playlist_attr="overlay_timeout",
         kind=FieldKind.SPIN,
@@ -750,15 +730,14 @@ PLAYLIST_FIELDS: tuple[SettingField, ...] = (
         spin_suffix=translate("SettingsDialog", "(sec)"),
         enabled_by="playlist/overlay_hide_on_timeout",
     ),
-    _f(
+    SettingField(
         settings_key="playlist/shuffle_on_load",
         playlist_attr="shuffle_on_load",
         kind=FieldKind.CHECKBOX,
         section=translate("SettingsDialog", "Grid"),
         label=translate("Playlist Settings", "Shuffle on load"),
-        menu_action="Shuffle Grid On Load",
     ),
-    _f(
+    SettingField(
         settings_key="playlist/grid_mode",
         kind=FieldKind.COMBO,
         section=translate("SettingsDialog", "Grid"),
@@ -766,7 +745,7 @@ PLAYLIST_FIELDS: tuple[SettingField, ...] = (
         is_grid=True,
         combo_values=_grid_modes,
     ),
-    _f(
+    SettingField(
         settings_key="playlist/grid_size",
         kind=FieldKind.SPIN,
         section=translate("SettingsDialog", "Grid"),
@@ -777,7 +756,7 @@ PLAYLIST_FIELDS: tuple[SettingField, ...] = (
         spin_special=translate("SettingsDialog", "Auto"),
         grid_visibility=GridVisibility.AUTO_ONLY,
     ),
-    _f(
+    SettingField(
         settings_key="playlist/grid_fit",
         kind=FieldKind.CHECKBOX,
         section=translate("SettingsDialog", "Grid"),
@@ -785,7 +764,7 @@ PLAYLIST_FIELDS: tuple[SettingField, ...] = (
         is_grid=True,
         grid_visibility=GridVisibility.AUTO_ONLY,
     ),
-    _f(
+    SettingField(
         settings_key="playlist/grid_rows",
         kind=FieldKind.SPIN,
         section=translate("SettingsDialog", "Grid"),
@@ -795,7 +774,7 @@ PLAYLIST_FIELDS: tuple[SettingField, ...] = (
         spin_max=100,
         grid_visibility=GridVisibility.FIXED_ONLY,
     ),
-    _f(
+    SettingField(
         settings_key="playlist/grid_cols",
         kind=FieldKind.SPIN,
         section=translate("SettingsDialog", "Grid"),
@@ -805,7 +784,7 @@ PLAYLIST_FIELDS: tuple[SettingField, ...] = (
         spin_max=100,
         grid_visibility=GridVisibility.FIXED_ONLY,
     ),
-    _f(
+    SettingField(
         settings_key="playlist/grid_preallocate",
         kind=FieldKind.CHECKBOX,
         section=translate("SettingsDialog", "Grid"),
@@ -813,7 +792,7 @@ PLAYLIST_FIELDS: tuple[SettingField, ...] = (
         is_grid=True,
         grid_visibility=GridVisibility.FIXED_ONLY,
     ),
-    _f(
+    SettingField(
         settings_key="playlist/drop_action_internal",
         playlist_attr="drop_action_internal",
         kind=FieldKind.COMBO,
@@ -822,7 +801,7 @@ PLAYLIST_FIELDS: tuple[SettingField, ...] = (
         combo_values=_drop_internal,
         tooltip=_drop_action_tooltip(),
     ),
-    _f(
+    SettingField(
         settings_key="playlist/drop_action_external",
         playlist_attr="drop_action_external",
         kind=FieldKind.COMBO,
@@ -831,7 +810,7 @@ PLAYLIST_FIELDS: tuple[SettingField, ...] = (
         combo_values=_drop_external,
         tooltip=_drop_action_tooltip(),
     ),
-    _f(
+    SettingField(
         settings_key="playlist/add_mode",
         playlist_attr="add_mode",
         kind=FieldKind.COMBO,
@@ -840,7 +819,7 @@ PLAYLIST_FIELDS: tuple[SettingField, ...] = (
         combo_values=_add_modes,
         tooltip=_add_mode_tooltip(),
     ),
-    _f(
+    SettingField(
         settings_key="playlist/warn_many_cells",
         playlist_attr="warn_many_cells",
         kind=FieldKind.CHECKBOX,
@@ -848,7 +827,7 @@ PLAYLIST_FIELDS: tuple[SettingField, ...] = (
         label=translate("SettingsDialog", "Warn about too many cells"),
         tooltip=_warn_many_cells_tooltip(),
     ),
-    _f(
+    SettingField(
         settings_key="playlist/list_view",
         playlist_attr="list_view",
         kind=FieldKind.COMBO,
@@ -857,7 +836,7 @@ PLAYLIST_FIELDS: tuple[SettingField, ...] = (
         combo_values=_list_views,
         tooltip=_list_view_tooltip(),
     ),
-    _f(
+    SettingField(
         settings_key="playlist/list_thumbnails",
         playlist_attr="list_thumbnails",
         kind=FieldKind.CHECKBOX,
@@ -865,7 +844,7 @@ PLAYLIST_FIELDS: tuple[SettingField, ...] = (
         label=translate("SettingsDialog", "Thumbnails when available"),
         tooltip=_list_thumbnails_tooltip(),
     ),
-    _f(
+    SettingField(
         settings_key="playlist/list_get_info",
         playlist_attr="list_get_info",
         kind=FieldKind.CHECKBOX,
@@ -873,7 +852,7 @@ PLAYLIST_FIELDS: tuple[SettingField, ...] = (
         label=translate("SettingsDialog", "Get info automatically"),
         tooltip=_list_get_info_tooltip(),
     ),
-    _f(
+    SettingField(
         settings_key="playlist/list_update",
         playlist_attr="list_update",
         kind=FieldKind.COMBO,
@@ -885,14 +864,14 @@ PLAYLIST_FIELDS: tuple[SettingField, ...] = (
 )
 
 VIDEO_FIELDS: tuple[SettingField, ...] = (
-    _f(
+    SettingField(
         settings_key="video_defaults/color",
         video_attr="color",
         kind=FieldKind.COLOR,
         section=translate("SettingsDialog", "Overlay"),
         label=translate("SettingsDialog", "Overlay color"),
     ),
-    _f(
+    SettingField(
         settings_key="video_defaults/audio_track_mode",
         video_attr="audio_track_mode",
         kind=FieldKind.COMBO,
@@ -906,7 +885,7 @@ VIDEO_FIELDS: tuple[SettingField, ...] = (
             " muted).",
         ),
     ),
-    _f(
+    SettingField(
         settings_key="video_defaults/audio_languages",
         video_attr="audio_languages",
         kind=FieldKind.TEXT,
@@ -921,7 +900,7 @@ VIDEO_FIELDS: tuple[SettingField, ...] = (
             " Videos that offer none of them keep their own default track.",
         ),
     ),
-    _f(
+    SettingField(
         settings_key="video_defaults/external_audio_autodiscover",
         video_attr="external_audio_autodiscover",
         kind=FieldKind.CHECKBOX,
@@ -933,7 +912,7 @@ VIDEO_FIELDS: tuple[SettingField, ...] = (
             " only when you pick one.",
         ),
     ),
-    _f(
+    SettingField(
         settings_key="video_defaults/audio_mode",
         video_attr="audio_mode",
         kind=FieldKind.COMBO,
@@ -941,7 +920,7 @@ VIDEO_FIELDS: tuple[SettingField, ...] = (
         label=translate("SettingsDialog", "Audio mode"),
         combo_values=_audio_modes,
     ),
-    _f(
+    SettingField(
         settings_key="video_defaults/subtitle_track_mode",
         video_attr="subtitle_track_mode",
         kind=FieldKind.COMBO,
@@ -954,7 +933,7 @@ VIDEO_FIELDS: tuple[SettingField, ...] = (
             " or the file's default.",
         ),
     ),
-    _f(
+    SettingField(
         settings_key="video_defaults/subtitle_languages",
         video_attr="subtitle_languages",
         kind=FieldKind.TEXT,
@@ -969,7 +948,7 @@ VIDEO_FIELDS: tuple[SettingField, ...] = (
             " Videos that offer none of them are shown without subtitles.",
         ),
     ),
-    _f(
+    SettingField(
         settings_key="video_defaults/subtitle_encoding",
         video_attr="subtitle_encoding",
         kind=FieldKind.COMBO,
@@ -982,7 +961,7 @@ VIDEO_FIELDS: tuple[SettingField, ...] = (
             " automatically. Doesn't affect ASS and SSA subtitles.",
         ),
     ),
-    _f(
+    SettingField(
         settings_key="video_defaults/external_subtitle_autodiscover",
         video_attr="external_subtitle_autodiscover",
         kind=FieldKind.CHECKBOX,
@@ -994,7 +973,7 @@ VIDEO_FIELDS: tuple[SettingField, ...] = (
             " opened only when you pick one.",
         ),
     ),
-    _f(
+    SettingField(
         settings_key="video_defaults/volume",
         video_attr="volume",
         kind=FieldKind.FLOAT_SPIN,
@@ -1005,14 +984,14 @@ VIDEO_FIELDS: tuple[SettingField, ...] = (
         spin_decimals=2,
         spin_step=0.05,
     ),
-    _f(
+    SettingField(
         settings_key="video_defaults/muted",
         video_attr="muted",
         kind=FieldKind.CHECKBOX,
         section=translate("SettingsDialog", "Audio"),
         label=translate("SettingsDialog", "Muted"),
     ),
-    _f(
+    SettingField(
         settings_key="video_defaults/scale",
         video_attr="scale",
         kind=FieldKind.FLOAT_SPIN,
@@ -1023,7 +1002,7 @@ VIDEO_FIELDS: tuple[SettingField, ...] = (
         spin_decimals=1,
         spin_step=0.1,
     ),
-    _f(
+    SettingField(
         settings_key="video_defaults/zoom_to_cursor",
         video_attr="zoom_to_cursor",
         kind=FieldKind.CHECKBOX,
@@ -1035,7 +1014,7 @@ VIDEO_FIELDS: tuple[SettingField, ...] = (
             " the zoom also recenters the picture.",
         ),
     ),
-    _f(
+    SettingField(
         settings_key="video_defaults/aspect",
         video_attr="aspect",
         kind=FieldKind.COMBO,
@@ -1043,7 +1022,7 @@ VIDEO_FIELDS: tuple[SettingField, ...] = (
         label=translate("SettingsDialog", "Aspect mode"),
         combo_values=_aspects,
     ),
-    _f(
+    SettingField(
         settings_key="video_defaults/crop",
         video_attr="crop",
         kind=FieldKind.CROP,
@@ -1051,7 +1030,7 @@ VIDEO_FIELDS: tuple[SettingField, ...] = (
         label=translate("SettingsDialog", "Crop"),
         spin_max=9999,
     ),
-    _f(
+    SettingField(
         settings_key="video_defaults/anchor",
         video_attr="anchor",
         kind=FieldKind.COMBO,
@@ -1059,14 +1038,14 @@ VIDEO_FIELDS: tuple[SettingField, ...] = (
         label=translate("SettingsDialog", "Alignment"),
         combo_values=_anchors,
     ),
-    _f(
+    SettingField(
         settings_key="video_defaults/shift_past_edges",
         video_attr="shift_past_edges",
         kind=FieldKind.CHECKBOX,
         section=translate("SettingsDialog", "Video"),
         label=translate("SettingsDialog", "Allow moving past the edges"),
     ),
-    _f(
+    SettingField(
         settings_key="video_defaults/transform",
         video_attr="transform",
         kind=FieldKind.COMBO,
@@ -1074,7 +1053,7 @@ VIDEO_FIELDS: tuple[SettingField, ...] = (
         label=translate("SettingsDialog", "Transform"),
         combo_values=_transforms,
     ),
-    _f(
+    SettingField(
         settings_key="video_defaults/deinterlace",
         video_attr="deinterlace",
         kind=FieldKind.COMBO,
@@ -1088,7 +1067,7 @@ VIDEO_FIELDS: tuple[SettingField, ...] = (
             "Off: never.",
         ),
     ),
-    _f(
+    SettingField(
         settings_key="video_defaults/deinterlace_mode",
         video_attr="deinterlace_mode",
         kind=FieldKind.COMBO,
@@ -1105,7 +1084,7 @@ VIDEO_FIELDS: tuple[SettingField, ...] = (
             "With hardware decoding, the GPU may use another mode it supports.",
         ),
     ),
-    _f(
+    SettingField(
         settings_key="video_defaults/end_action",
         video_attr="end_action",
         kind=FieldKind.COMBO,
@@ -1113,7 +1092,7 @@ VIDEO_FIELDS: tuple[SettingField, ...] = (
         label=translate("SettingsDialog", "When finished"),
         combo_values=_end_actions,
     ),
-    _f(
+    SettingField(
         settings_key="video_defaults/dir_recursive",
         video_attr="dir_recursive",
         kind=FieldKind.CHECKBOX,
@@ -1121,7 +1100,7 @@ VIDEO_FIELDS: tuple[SettingField, ...] = (
         label=translate("Folder Navigation", "Include subfolders"),
         tooltip=_dir_recursive_tooltip(),
     ),
-    _f(
+    SettingField(
         settings_key="video_defaults/list_end_action",
         video_attr="list_end_action",
         kind=FieldKind.COMBO,
@@ -1130,7 +1109,7 @@ VIDEO_FIELDS: tuple[SettingField, ...] = (
         combo_values=_list_end_actions,
         tooltip=_list_end_action_tooltip(),
     ),
-    _f(
+    SettingField(
         settings_key="video_defaults/list_fail_action",
         video_attr="list_fail_action",
         kind=FieldKind.COMBO,
@@ -1139,7 +1118,7 @@ VIDEO_FIELDS: tuple[SettingField, ...] = (
         combo_values=_list_fail_actions,
         tooltip=_list_fail_action_tooltip(),
     ),
-    _f(
+    SettingField(
         settings_key="video_defaults/list_fail_wait",
         video_attr="list_fail_wait",
         kind=FieldKind.SPIN,
@@ -1152,14 +1131,14 @@ VIDEO_FIELDS: tuple[SettingField, ...] = (
         enabled_by="video_defaults/list_fail_action",
         enabled_by_value=ListFailAction.PLAY_NEXT,
     ),
-    _f(
+    SettingField(
         settings_key="video_defaults/random_loop",
         video_attr="random_loop",
         kind=FieldKind.CHECKBOX,
         section=translate("SettingsDialog", "Playback"),
         label=translate("SettingsDialog", "Start at random position"),
     ),
-    _f(
+    SettingField(
         settings_key="video_defaults/initial_state",
         video_attr="initial_state",
         kind=FieldKind.COMBO,
@@ -1167,7 +1146,7 @@ VIDEO_FIELDS: tuple[SettingField, ...] = (
         label=translate("SettingsDialog", "Initial state"),
         combo_values=_initial_states,
     ),
-    _f(
+    SettingField(
         settings_key="video_defaults/rate",
         video_attr="rate",
         kind=FieldKind.FLOAT_SPIN,
@@ -1178,7 +1157,7 @@ VIDEO_FIELDS: tuple[SettingField, ...] = (
         spin_decimals=2,
         spin_step=0.1,
     ),
-    _f(
+    SettingField(
         settings_key="video_defaults/stream_quality",
         video_attr="stream_quality",
         kind=FieldKind.COMBO,
@@ -1186,7 +1165,7 @@ VIDEO_FIELDS: tuple[SettingField, ...] = (
         label=translate("SettingsDialog", "Stream quality"),
         combo_values=_stream_qualities,
     ),
-    _f(
+    SettingField(
         settings_key="video_defaults/quality_adapt_delay",
         video_attr="quality_adapt_delay",
         kind=FieldKind.SPIN,
@@ -1200,7 +1179,7 @@ VIDEO_FIELDS: tuple[SettingField, ...] = (
             "How long a video must keep its new size before Auto quality adjusts",
         ),
     ),
-    _f(
+    SettingField(
         settings_key="video_defaults/network_retry_mode",
         video_attr="network_retry_mode",
         kind=FieldKind.COMBO,
@@ -1208,7 +1187,7 @@ VIDEO_FIELDS: tuple[SettingField, ...] = (
         label=translate("SettingsDialog", "On network error"),
         combo_values=_network_retry_modes,
     ),
-    _f(
+    SettingField(
         settings_key="video_defaults/network_retry_times",
         video_attr="network_retry_times",
         kind=FieldKind.SPIN,
@@ -1219,7 +1198,7 @@ VIDEO_FIELDS: tuple[SettingField, ...] = (
         enabled_by="video_defaults/network_retry_mode",
         enabled_by_value=NetworkRetryMode.TIMES,
     ),
-    _f(
+    SettingField(
         settings_key="video_defaults/auto_reload_timer",
         video_attr="auto_reload_timer",
         kind=FieldKind.SPIN,
@@ -1245,14 +1224,14 @@ GRID_STATE_ATTR = {
 
 
 SUBTITLE_STYLE_FIELDS: tuple[SettingField, ...] = (
-    _f(
+    SettingField(
         settings_key="subtitles/font",
         kind=FieldKind.COMBO,
         section=translate("SettingsDialog", "Text"),
         label=translate("SettingsDialog", "Font"),
         combo_values=_font_families,
     ),
-    _f(
+    SettingField(
         settings_key="subtitles/size_scale",
         kind=FieldKind.SPIN,
         section=translate("SettingsDialog", "Text"),
@@ -1265,19 +1244,19 @@ SUBTITLE_STYLE_FIELDS: tuple[SettingField, ...] = (
             "Relative to VLC's size, which already scales with the video.",
         ),
     ),
-    _f(
+    SettingField(
         settings_key="subtitles/color",
         kind=FieldKind.COLOR,
         section=translate("SettingsDialog", "Text"),
         label=translate("SettingsDialog", "Color"),
     ),
-    _f(
+    SettingField(
         settings_key="subtitles/bold",
         kind=FieldKind.CHECKBOX,
         section=translate("SettingsDialog", "Text"),
         label=translate("SettingsDialog", "Bold"),
     ),
-    _f(
+    SettingField(
         settings_key="subtitles/outline",
         kind=FieldKind.COMBO,
         section=translate("SettingsDialog", "Effects"),
@@ -1288,7 +1267,7 @@ SUBTITLE_STYLE_FIELDS: tuple[SettingField, ...] = (
             "Outline around the text. Keeps white text readable on bright pictures.",
         ),
     ),
-    _f(
+    SettingField(
         settings_key="subtitles/outline_color",
         kind=FieldKind.COLOR,
         section=translate("SettingsDialog", "Effects"),
@@ -1296,20 +1275,20 @@ SUBTITLE_STYLE_FIELDS: tuple[SettingField, ...] = (
         enabled_by="subtitles/outline",
         enabled_by_value=_OUTLINE_DRAWN,
     ),
-    _f(
+    SettingField(
         settings_key="subtitles/shadow",
         kind=FieldKind.CHECKBOX,
         section=translate("SettingsDialog", "Effects"),
         label=translate("SettingsDialog", "Shadow"),
     ),
-    _f(
+    SettingField(
         settings_key="subtitles/shadow_color",
         kind=FieldKind.COLOR,
         section=translate("SettingsDialog", "Effects"),
         label=translate("SettingsDialog", "Shadow color"),
         enabled_by="subtitles/shadow",
     ),
-    _f(
+    SettingField(
         settings_key="subtitles/background",
         kind=FieldKind.CHECKBOX,
         section=translate("SettingsDialog", "Effects"),
@@ -1319,14 +1298,14 @@ SUBTITLE_STYLE_FIELDS: tuple[SettingField, ...] = (
             "Draw text on a solid box, readable over any picture.",
         ),
     ),
-    _f(
+    SettingField(
         settings_key="subtitles/background_color",
         kind=FieldKind.COLOR,
         section=translate("SettingsDialog", "Effects"),
         label=translate("SettingsDialog", "Background color"),
         enabled_by="subtitles/background",
     ),
-    _f(
+    SettingField(
         settings_key="subtitles/margin",
         kind=FieldKind.SPIN,
         section=translate("SettingsDialog", "Position"),

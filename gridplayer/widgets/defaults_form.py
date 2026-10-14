@@ -258,11 +258,7 @@ class DefaultsForm(QWidget):
     def _set_widget(self, spec: SettingField, value):
         widget = self._widgets[spec.settings_key]
         if spec.kind is FieldKind.CHECKBOX:
-            widget.setChecked(
-                value == spec.checked_value
-                if spec.checked_value is not None
-                else bool(value)
-            )
+            widget.setChecked(bool(value))
         elif spec.kind is FieldKind.COMBO:
             _set_combo(widget, value)
         elif spec.kind is FieldKind.TEXT:
@@ -279,10 +275,7 @@ class DefaultsForm(QWidget):
     def _get_widget(self, spec: SettingField):
         widget = self._widgets[spec.settings_key]
         if spec.kind is FieldKind.CHECKBOX:
-            if spec.checked_value is None:
-                return widget.isChecked()
-
-            return spec.checked_value if widget.isChecked() else spec.unchecked_value
+            return widget.isChecked()
         if spec.kind is FieldKind.COMBO:
             return widget.currentData()
         if spec.kind is FieldKind.TEXT:

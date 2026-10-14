@@ -174,5 +174,4 @@ class TestThePlaylists:
             if spec.settings_key == "playlist/bookmarks_shared"
         )
 
-        assert field.menu_action == "Share Bookmarks"
         assert field.label == ACTIONS["Share Bookmarks"]["title"]
