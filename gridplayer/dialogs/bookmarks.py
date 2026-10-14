@@ -286,7 +286,7 @@ class BookmarksModel(QAbstractTableModel):
 
     def reload(self):
         self.beginResetModel()
-        self._here = self._block.bookmark_here
+        self._here = self._block.bookmarker.here
         self.endResetModel()
 
     def set_here(self, here: int | None):
@@ -384,7 +384,7 @@ class BookmarksModel(QAbstractTableModel):
 
         # with nothing playing none is in reach, nor out of it: the list
         # reads as it did, but for the play mark
-        if block.is_video_initialized and not block.is_reachable(bookmark):
+        if block.is_video_initialized and not block.bookmarker.is_reachable(bookmark):
             return self._colors.get("out_of_reach")
 
         if is_time:
@@ -399,7 +399,7 @@ class BookmarksModel(QAbstractTableModel):
         if not self._block.is_video_initialized:
             return None
 
-        if self._block.is_reachable(bookmark):
+        if self._block.bookmarker.is_reachable(bookmark):
             return None
 
         if bookmark.time_ms >= self.length:
@@ -747,7 +747,7 @@ class BookmarksDialog(QDialog):
         self._ui_connect()
 
         self._update_look()
-        self._show_position(block.time_to_bookmark, self._length)
+        self._show_position(block.bookmarker.time_to_add, self._length)
         self._player.set_marks(self._bar_marks())
         self._show_loop()
         self._reload()
@@ -903,7 +903,7 @@ class BookmarksDialog(QDialog):
 
     def reject(self):
         if self._block.bookmarks != self._original:
-            self._block.set_bookmarks(self._original)
+            self._block.bookmarker.replace(self._original)
 
         super().reject()
 
@@ -948,10 +948,10 @@ class BookmarksDialog(QDialog):
         # way counts as there, as VLC reports a time a hair short of where
         # one landed, and a jump to a bookmark would read as short of it.
         if self._block.is_video_initialized:
-            position_ms = self._block.time_to_bookmark
+            position_ms = self._block.bookmarker.time_to_add
 
         self._tell(position_ms)
-        self._model.set_here(self._block.bookmark_here)
+        self._model.set_here(self._block.bookmarker.here)
 
         self._update_buttons()
 
@@ -1053,7 +1053,7 @@ class BookmarksDialog(QDialog):
         if block.is_video_initialized:
             return block.seek_marks
 
-        return block.bookmark_marks(self._length)
+        return block.bookmarker.marks(self._length)
 
     def _play_pause(self):
         # Stopped, it is played from the start. Loading, or reconnecting,
@@ -1096,7 +1096,7 @@ class BookmarksDialog(QDialog):
         return (
             bookmarks,
             block.is_video_initialized,
-            tuple(block.is_reachable(bookmark) for bookmark in bookmarks),
+            tuple(block.bookmarker.is_reachable(bookmark) for bookmark in bookmarks),
             self._video_length,
             block.loop_start,
             block.loop_end,
@@ -1147,7 +1147,7 @@ class BookmarksDialog(QDialog):
         reachable = [
             i
             for i, bookmark in enumerate(bookmarks[:on_bar])
-            if block.is_reachable(bookmark)
+            if block.bookmarker.is_reachable(bookmark)
         ]
 
         loop_color = QColor(
@@ -1375,7 +1375,7 @@ class BookmarksDialog(QDialog):
 
         on = None
         if len(marks) > 1 and self._block.is_video_initialized:
-            on = bookmark_on(marks, self._block.time_to_bookmark)
+            on = bookmark_on(marks, self._block.bookmarker.time_to_add)
 
         lines = []
 
@@ -1416,7 +1416,7 @@ class BookmarksDialog(QDialog):
 
     def _on_marker_clicked(self, times):
         # each of those it stands for in turn, as over the video
-        row = self._block.marker_bookmark_to_go(times)
+        row = self._block.bookmarker.marker_to_go(times)
 
         if row is None:
             self._pick_times(times[:1])
@@ -1436,10 +1436,14 @@ class BookmarksDialog(QDialog):
     def _jump(self):
         row = self._current_row()
 
-        if self._is_done or row is None or not self._block.is_bookmark_reachable(row):
+        if (
+            self._is_done
+            or row is None
+            or not self._block.bookmarker.is_reachable_at(row)
+        ):
             return
 
-        self._block.manual_seek("seek_bookmark", row)
+        self._block.manual_seek("bookmarker.seek", row)
 
     def _edit_name(self):
         self._edit(Column.NAME)
@@ -1459,7 +1463,7 @@ class BookmarksDialog(QDialog):
         if not block.is_video_initialized:
             return
 
-        time_ms = block.time_to_bookmark
+        time_ms = block.bookmarker.time_to_add
 
         if is_bookmarked(block.bookmarks, time_ms):
             self._pick_times([self._nearest_time(time_ms)])
@@ -1540,7 +1544,7 @@ class BookmarksDialog(QDialog):
         if row is None or not self._block.is_video_initialized:
             return
 
-        self._move(row, self._block.time_to_bookmark)
+        self._move(row, self._block.bookmarker.time_to_add)
 
     def _move(self, row, time_ms):
         bookmarks = self._block.bookmarks
@@ -1664,7 +1668,7 @@ class BookmarksDialog(QDialog):
         if self._is_done:
             return
 
-        self._block.set_bookmarks(bookmarks)
+        self._block.bookmarker.replace(bookmarks)
 
         # the video's bar marks them for this one while it plays; with
         # nothing playing it marks none, and this one goes on its own
@@ -1693,7 +1697,7 @@ class BookmarksDialog(QDialog):
             QIcon.fromTheme("jump-to"),
             with_key_txt(translate("Actions", "Jump to Bookmark"), Qt.Key_Enter),
         )
-        jump.setEnabled(self._block.is_bookmark_reachable(row))
+        jump.setEnabled(self._block.bookmarker.is_reachable_at(row))
         jump.triggered.connect(lambda _=False: self._jump())
 
         menu.addSeparator()

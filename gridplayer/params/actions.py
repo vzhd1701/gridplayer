@@ -305,19 +305,19 @@ ACTIONS = MappingProxyType(
         "Add Bookmark": {
             "title": translate("Actions", "Add Bookmark"),
             "icon": "bookmark-add",
-            "func": ("active", "add_bookmark"),
+            "func": ("active", "bookmarker.add"),
             "show_if": "is_active_seekable",
         },
         "Previous Bookmark": {
             "title": translate("Actions", "Previous Bookmark"),
             "icon": "bookmark-previous",
-            "func": ("active", "manual_seek", "previous_bookmark"),
+            "func": ("active", "manual_seek", "bookmarker.previous"),
             "show_if": "is_active_has_bookmarks",
         },
         "Next Bookmark": {
             "title": translate("Actions", "Next Bookmark"),
             "icon": "bookmark-next",
-            "func": ("active", "manual_seek", "next_bookmark"),
+            "func": ("active", "manual_seek", "bookmarker.next"),
             "show_if": "is_active_has_bookmarks",
         },
         "Bookmark List": {
@@ -332,7 +332,7 @@ ACTIONS = MappingProxyType(
         "Manage Bookmarks": {
             "title": translate("Actions", "Manage Bookmarks…"),
             "icon": "bookmark-manage",
-            "func": ("active", "manage_bookmarks"),
+            "func": ("active", "bookmarker.manage"),
             "show_if": "is_active_seekable",
         },
         "Random Loop": {

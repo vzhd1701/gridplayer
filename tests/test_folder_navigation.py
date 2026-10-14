@@ -323,9 +323,9 @@ class TestWhileTheTreeIsLookedThrough:
         block = make_block(tree / "a.mp4", is_dir_recursive=True)
         block.next_video(is_end=True)
 
-        block._is_editing_bookmark = True
+        block.bookmarker._is_editing_one = True
         held_scans.finish()
-        block._is_editing_bookmark = False
+        block.bookmarker._is_editing_one = False
 
         assert _uri(block) == tree / "a.mp4"
         assert block.notices[-1].startswith("Paused at the start instead of")
@@ -336,9 +336,9 @@ class TestWhileTheTreeIsLookedThrough:
         block = make_block(tree / "a.mp4", is_dir_recursive=True)
         block.next_video()
 
-        block._is_editing_bookmark = True
+        block.bookmarker._is_editing_one = True
         held_scans.finish()
-        block._is_editing_bookmark = False
+        block.bookmarker._is_editing_one = False
 
         assert _uri(block) == tree / "b.mp4"
 
