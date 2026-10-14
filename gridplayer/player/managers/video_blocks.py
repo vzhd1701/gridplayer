@@ -629,7 +629,7 @@ class VideoBlocksManager(ManagerBase):
         """
 
         for vb in self._ctx.video_blocks:
-            vb.apply_sponsorblock_settings()
+            vb.sponsorblock.apply_settings()
 
     def is_any_videos_initialized(self):
         return bool(self._ctx.video_blocks.initialized)
@@ -659,8 +659,8 @@ class VideoBlocksManager(ManagerBase):
         return any(vb.has_subtitles for vb in self._ctx.video_blocks.initialized)
 
     def is_any_videos_have_chapters(self):
-        # a live stream never has any; see VideoBlock._update_chapters
-        return any(vb.chapters for vb in self._ctx.video_blocks.initialized)
+        # a live stream never has any; see ChapterControl.update
+        return any(vb.chapters.all for vb in self._ctx.video_blocks.initialized)
 
     def is_all_videos_param_set_to(self, param_name, param_value):
         """Whether every video has it so, which ticks the choice for all.
@@ -860,14 +860,14 @@ class VideoBlocksManager(ManagerBase):
             (self.all_seek, vb.seek),
             (self.all_next_frame, vb.next_frame),
             (self.all_previous_frame, vb.previous_frame),
-            (self.all_next_chapter, vb.next_chapter),
-            (self.all_previous_chapter, vb.previous_chapter),
+            (self.all_next_chapter, vb.chapters.next),
+            (self.all_previous_chapter, vb.chapters.previous),
             (self.all_next_bookmark, vb.bookmarker.next),
             (self.all_previous_bookmark, vb.bookmarker.previous),
             (self.all_set_loop_random, vb.set_loop_random),
             (self.all_set_loop_start, vb.set_loop_start),
             (self.all_set_loop_end, vb.set_loop_end),
-            (self.all_loop_chapter, vb.loop_chapter),
+            (self.all_loop_chapter, vb.chapters.loop),
             (self.all_reset_loop, vb.reset_loop),
             (self.all_set_end_action, vb.set_end_action),
             (self.all_set_dir_recursive, vb.set_dir_recursive),

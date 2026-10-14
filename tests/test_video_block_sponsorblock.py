@@ -127,7 +127,7 @@ def _found(block, *segments, site_length_ms=LENGTH):
     block._youtube_id = VIDEO_ID
     block._site_length_ms = site_length_ms
 
-    block._sponsor_segments_fetched(VIDEO_ID, segments)
+    block.sponsorblock._fetched(VIDEO_ID, segments)
 
 
 def _reported(block, time_ms):
@@ -386,7 +386,7 @@ class TestWhatIsMarked:
         assert mark.time_ms == 120000
 
     def test_they_go_along_with_the_chapters(self, block):
-        block._set_chapters(())
+        block.chapters._set(())
         _found(block, SPONSOR)
 
         assert block.marks == tuple(_segment_marks(block))
@@ -412,7 +412,7 @@ class TestWhatIsMarked:
         block._youtube_id = VIDEO_ID
         block._site_length_ms = LENGTH
 
-        block._sponsor_segments_fetched("another", (SPONSOR,))
+        block.sponsorblock._fetched("another", (SPONSOR,))
 
         assert _segment_marks(block) == []
 
@@ -422,7 +422,7 @@ class TestTheSettings:
         _found(block, SPONSOR)
 
         Settings().set("sponsorblock/enabled", False)
-        block.apply_sponsorblock_settings()
+        block.sponsorblock.apply_settings()
         _reported(block, 60100)
 
         assert _segment_marks(block) == []
@@ -432,7 +432,7 @@ class TestTheSettings:
         _found(block, SPONSOR)
 
         Settings().set("sponsorblock/sponsor", SponsorBlockMode.SHOW)
-        block.apply_sponsorblock_settings()
+        block.sponsorblock.apply_settings()
         _reported(block, 60100)
 
         assert _seeks(block) == []
@@ -447,11 +447,11 @@ class TestTheSettings:
             sponsorblock.sponsorblock_fetcher(), "fetch", return_value=(SPONSOR,)
         )
 
-        block.apply_sponsorblock_settings()
+        block.sponsorblock.apply_settings()
         fetch.assert_not_called()
 
         Settings().set("sponsorblock/enabled", True)
-        block.apply_sponsorblock_settings()
+        block.sponsorblock.apply_settings()
 
         fetch.assert_called_once_with(VIDEO_ID, LENGTH)
         assert len(_segment_marks(block)) == 1

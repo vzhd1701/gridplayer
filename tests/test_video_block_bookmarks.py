@@ -409,7 +409,7 @@ class TestJumping:
         assert synced == []
 
     def test_one_inside_a_sponsor_is_played_not_skipped(self, block):
-        block._skip_spans = (SkipSpan(25000, 40000, "sponsor"),)
+        block.sponsorblock._skip_spans = (SkipSpan(25000, 40000, "sponsor"),)
         block.set_pause(False)
 
         block.bookmarker.seek(1)
@@ -726,7 +726,7 @@ class TestClickingAMarker:
         assert synced == []
 
     def test_one_inside_a_sponsor_is_played_not_skipped(self, block):
-        block._skip_spans = (SkipSpan(25000, 40000, "sponsor"),)
+        block.sponsorblock._skip_spans = (SkipSpan(25000, 40000, "sponsor"),)
         block.set_pause(False)
 
         block.overlay.bookmark_clicked.emit((30000,))

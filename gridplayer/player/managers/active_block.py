@@ -420,13 +420,13 @@ class ActiveBlockManager(ManagerBase):
         if not self.is_active_seekable():
             return False
 
-        return bool(self._ctx.active_block.chapters)
+        return bool(self._ctx.active_block.chapters.all)
 
     def is_active_chapter_playing(self, index) -> bool:
         if self.is_no_active_block:
             return False
 
-        return self._ctx.active_block.chapter_playing == index
+        return self._ctx.active_block.chapters.playing == index
 
     def is_active_chapter_reachable(self, index) -> bool:
         """Grayed out where the loop leaves the chapter out altogether."""
@@ -434,7 +434,7 @@ class ActiveBlockManager(ManagerBase):
         if self.is_no_active_block:
             return False
 
-        return self._ctx.active_block.is_chapter_reachable(index)
+        return self._ctx.active_block.chapters.is_reachable(index)
 
     def menu_generator_chapters(self):
         """Every chapter of the file, with where it starts beside its name."""
@@ -448,16 +448,16 @@ class ActiveBlockManager(ManagerBase):
         return [
             {
                 "title": timed_title(
-                    block.chapter_name(index), chapter.start_ms, length_ms
+                    block.chapters.name(index), chapter.start_ms, length_ms
                 ),
                 "icon": "empty",
-                "func": ("active", "manual_seek", "seek_chapter", index),
+                "func": ("active", "manual_seek", "chapters.seek", index),
                 "check_if": ("is_active_chapter_playing", index),
                 "is_choice": True,
                 "enable_if": ("is_active_chapter_reachable", index),
                 "show_if": "is_active_has_chapters",
             }
-            for index, chapter in enumerate(block.chapters)
+            for index, chapter in enumerate(block.chapters.all)
         ]
 
     def is_active_has_bookmarks(self):

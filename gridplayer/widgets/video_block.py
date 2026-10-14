@@ -1,4 +1,3 @@
-import contextlib
 import dataclasses
 import logging
 import random
@@ -42,7 +41,6 @@ from gridplayer.models.audio_selection import (
     track_of_file,
 )
 from gridplayer.models.bookmark import Bookmark
-from gridplayer.models.chapter import Chapter
 from gridplayer.models.media_list import (
     ItemDetails,
     ListItem,
@@ -52,7 +50,6 @@ from gridplayer.models.media_list import (
     merged_details,
 )
 from gridplayer.models.seek_mark import SeekMark, SeekMarkKind
-from gridplayer.models.sponsor_segment import SponsorSegment
 from gridplayer.models.stream import (
     STANDING_QUALITIES,
     STREAM_QUALITY_AUTO,
@@ -80,7 +77,6 @@ from gridplayer.models.video import (
 )
 from gridplayer.params import env
 from gridplayer.params.extensions import SUPPORTED_AUDIO_EXT, SUPPORTED_SUBTITLE_EXT
-from gridplayer.params.sponsorblock import category_name
 from gridplayer.params.static import (
     AUDIO_DELAY_STEP_MS,
     CHROME_MIN_SIZE,
@@ -98,7 +94,6 @@ from gridplayer.params.static import (
     ListFailAction,
     ListSourceKind,
     NetworkRetryMode,
-    SponsorBlockMode,
     VideoAspect,
     VideoDeinterlace,
     VideoDeinterlaceMode,
@@ -108,16 +103,6 @@ from gridplayer.params.static import (
 )
 from gridplayer.settings import Settings
 from gridplayer.utils.bookmarks import file_key
-from gridplayer.utils.chapters import (
-    chapter_index_at,
-    chapter_span,
-    clean_chapters,
-    is_site_length_playing,
-    is_span_reachable,
-    next_stop,
-    previous_stop,
-    span_at,
-)
 from gridplayer.utils.drop_zone import DropIndicator
 from gridplayer.utils.external_audio import (
     discover_audio_files,
@@ -144,15 +129,7 @@ from gridplayer.utils.screenshots import (
     screenshots_dir,
 )
 from gridplayer.utils.sponsorblock import (
-    SKIP_END_MARGIN_MS,
-    SKIP_MIN_MS,
-    SkipSpan,
-    category_modes,
-    is_sponsorblock_enabled,
     segment_mark,
-    skip_span_at,
-    skip_spans,
-    sponsorblock_fetcher,
 )
 from gridplayer.utils.step_sizes import seek_step_ms
 from gridplayer.utils.track_language import language_name, normalize, pick_track
@@ -184,6 +161,7 @@ from gridplayer.widgets.cell_chrome import (
 )
 from gridplayer.widgets.stacked_layout_floating import QStackedLayoutFloating
 from gridplayer.widgets.video_block_bookmarker import Bookmarker
+from gridplayer.widgets.video_block_chapters import ChapterControl
 from gridplayer.widgets.video_block_guards import (
     only_initialized,
     only_live,
@@ -193,6 +171,7 @@ from gridplayer.widgets.video_block_guards import (
     only_streamable,
     only_with_video_tacks,
 )
+from gridplayer.widgets.video_block_sponsorblock import SponsorBlockControl
 from gridplayer.widgets.video_block_view import ViewControl
 from gridplayer.widgets.video_frame_vlc_base import VideoFrameVLC
 from gridplayer.widgets.video_overlay import (
@@ -372,28 +351,11 @@ class VideoBlock(QWidget):
         # last time update seen, to tell a finished pass from a running one
         self._last_time = None
 
-        # the file's chapters, or the site's where it has none, as far as
-        # they are any use; see clean_chapters
-        self._chapters: tuple[Chapter, ...] = ()
-
-        # what the site a URL resolved on lists, and how long it says the
-        # video is, for when the file lists none; see _update_chapters
-        self._site_chapters: tuple[Chapter, ...] = ()
+        # how long the site a URL resolved on says the video is, to know its
+        # chapters and SponsorBlock's segments by; and the ID SponsorBlock
+        # knows a YouTube video by
         self._site_length_ms = 0
-
-        # the ID SponsorBlock knows a YouTube video by, and every segment its
-        # users marked in it; see _update_sponsor_segments
         self._youtube_id: str | None = None
-        self._sponsor_segments: tuple[SponsorSegment, ...] = ()
-
-        # the ones the settings mark on the seek bar, and the stretches they
-        # skip, each as far as the video playing is the one they were for
-        self._shown_segments: tuple[SponsorSegment, ...] = ()
-        self._skip_spans: tuple[SkipSpan, ...] = ()
-
-        # a stretch to be skipped that the viewer went into, or the one just
-        # skipped, left to play until the time is out of it
-        self._span_left_alone: SkipSpan | None = None
 
         # what the seek bar was last told to mark
         self._seek_marks: tuple[SeekMark, ...] = ()
@@ -492,8 +454,8 @@ class VideoBlock(QWidget):
 
         self.bookmarker = Bookmarker(self)
         self.view = ViewControl(self)
-
-        sponsorblock_fetcher().fetched.connect(self._sponsor_segments_fetched)
+        self.chapters = ChapterControl(self)
+        self.sponsorblock = SponsorBlockControl(self)
 
         # the next, previous or a random file of the folder, to put in this
         # one's place
@@ -577,7 +539,7 @@ class VideoBlock(QWidget):
             (video_driver.picture_shown, self._picture_shown),
             (video_driver.view_followed, self.view.remember_followed),
             (video_driver.tracks_changed, self.tracks_changed),
-            (video_driver.chapters_changed, self._update_chapters),
+            (video_driver.chapters_changed, self.chapters.update),
             (video_driver.time_changed, self.time_changed),
             (video_driver.playback_status_changed, self.playback_status_changed),
             (video_driver.error, self.video_driver_error),
@@ -630,9 +592,7 @@ class VideoBlock(QWidget):
 
         # what SponsorBlock found is only marked again once something is
         # playing
-        self._shown_segments = ()
-        self._skip_spans = ()
-        self._span_left_alone = None
+        self.sponsorblock.forget_shown()
 
         # a seek made on it has nothing left to land on
         self._seek_target = None
@@ -642,7 +602,7 @@ class VideoBlock(QWidget):
 
         # whatever opens next brings chapters of its own, or none; and the
         # bookmarks are only marked once there is a length to mark them on
-        self._set_chapters(())
+        self.chapters.clear()
 
     def _release_video_driver(self):
         if self.video_driver is None:
@@ -806,9 +766,7 @@ class VideoBlock(QWidget):
         self._log.debug(f"{self.id}: cleaning up resolver")
         self.url_resolver.cleanup()
 
-        # the lookup outlives the video, it answers every one of them
-        with contextlib.suppress(TypeError):
-            sponsorblock_fetcher().fetched.disconnect(self._sponsor_segments_fetched)
+        self.sponsorblock.stop_listening()
 
         self._folder_navigator.close()
 
@@ -1739,6 +1697,13 @@ class VideoBlock(QWidget):
         """The YouTube video this URL turned out to be, once resolved."""
 
         return self._youtube_id
+
+    @property
+    def site_length_ms(self) -> int:
+        """How long the site this URL resolved on says the video is, 0 for
+        one it did not say of, or a file."""
+
+        return self._site_length_ms
 
     @property
     def video_tracks(self):
@@ -3324,56 +3289,7 @@ class VideoBlock(QWidget):
             self.loop_end_action()
 
         else:
-            self._skip_sponsor_segment()
-
-    def _skip_sponsor_segment(self):
-        """Pass over a stretch set to be skipped, if the video played into one.
-
-        Played into it, not put there: a seek into one is the viewer choosing
-        to watch it, and it is left alone until the time is out of it. Never
-        from a seek still landing either, which time_changed has already seen
-        to: that is seconds short of where it is going on a stream, and could
-        be inside a stretch the seek was made to get past.
-        """
-
-        span = skip_span_at(self._skip_spans, self.time)
-
-        if span is None:
-            self._span_left_alone = None
-            return
-
-        if span == self._span_left_alone or self.video_params.is_paused:
-            return
-
-        if span.end_ms - self.time < SKIP_MIN_MS:
-            return
-
-        is_to_end = span.end_ms >= self.loop_end - SKIP_END_MARGIN_MS
-
-        # one that takes up the whole of what is played would only take the
-        # video round to the start of it again, which is back inside it
-        if is_to_end and span.start_ms <= self.loop_start:
-            return
-
-        self._log.debug(f"Skipping {span.category} from {self.time} to {span.end_ms}")
-
-        self.info_change.emit(
-            translate("SponsorBlock", "Skipped: {CATEGORY}").format(
-                CATEGORY=category_name(span.category)
-            )
-        )
-
-        # One that runs to the end of the pass ends it, whatever that means
-        # for this video: another pass, the next file, a stop. A seek right
-        # into the end is also where a seek on a stream is least reliable.
-        if is_to_end:
-            self.loop_end_action()
-            return
-
-        self.seek(span.end_ms, is_viewers=False)
-
-        # VLC reports where a seek landed a hair short, inside it still
-        self._span_left_alone = span
+            self.sponsorblock.skip_if_played_into()
 
     def _is_loop_wrapped(self, new_time) -> bool:
         """Has the video begun another pass since the last time update?"""
@@ -3849,15 +3765,12 @@ class VideoBlock(QWidget):
 
         # the video may not be the one that was here, whatever else stays;
         # a URL is resolved again and brings the site's list back with it
-        self._site_chapters = ()
+        self.chapters.set_site_chapters(())
         self._site_length_ms = 0
 
         # and SponsorBlock is asked about it again, if it is one to ask about
         self._youtube_id = None
-        self._sponsor_segments = ()
-        self._shown_segments = ()
-        self._skip_spans = ()
-        self._span_left_alone = None
+        self.sponsorblock.forget()
 
         # a file is never adaptive; a URL says so once its stream is picked
         self._is_adaptive = False
@@ -3899,11 +3812,11 @@ class VideoBlock(QWidget):
         self.is_live = video.is_live
 
         # kept, like the streams, through a switch of quality or of dub
-        self._site_chapters = video.chapters
+        self.chapters.set_site_chapters(video.chapters)
         self._site_length_ms = video.duration_ms
 
         self._youtube_id = video.youtube_id
-        self._look_up_sponsor_segments()
+        self.sponsorblock.look_up()
 
         self._learn_item_details(video.details)
 
@@ -4257,8 +4170,8 @@ class VideoBlock(QWidget):
         if getattr(self._ctx, "is_video_decoding_stopped", False):
             self.set_video_decoding_stopped(True)
 
-        self._update_chapters()
-        self._update_sponsor_segments()
+        self.chapters.update()
+        self.sponsorblock.update()
 
         self.is_audio_present_change.emit(bool(self.audio_tracks))
 
@@ -4395,51 +4308,6 @@ class VideoBlock(QWidget):
         self.set_loop_start_time(None)
         self.set_loop_end_time(None)
 
-    # Chapters
-    #
-    # Every jump is a seek to where a chapter starts, never libVLC's own
-    # chapter calls: those move the time without seek() knowing, and a jump
-    # back of any size then reads as the video having finished a pass, which
-    # sets off the end action. A loop narrows everything down to itself, the
-    # same as it does for the seek bar.
-
-    @property
-    def chapters(self) -> tuple[Chapter, ...]:
-        return self._chapters
-
-    def _update_chapters(self):
-        if not self.is_video_initialized or self.is_live:
-            self._set_chapters(())
-            return
-
-        length = self.video_driver.length
-
-        # the file's own are in the time the player keeps, where the site's
-        # are only as good as the site's idea of what it is serving
-        chapters = self.video_driver.chapters or self._site_chapters_playing(length)
-
-        self._set_chapters(clean_chapters(chapters, length))
-
-    def _site_chapters_playing(self, length: int) -> tuple[Chapter, ...]:
-        """The site's chapters, if what plays is the video they were made for."""
-
-        if not self._site_chapters:
-            return ()
-
-        if not is_site_length_playing(length, self._site_length_ms):
-            self._log.debug(
-                f"Site chapters left out, the site says {self._site_length_ms}ms"
-                f" but {length}ms is playing"
-            )
-            return ()
-
-        return self._site_chapters
-
-    def _set_chapters(self, chapters: tuple[Chapter, ...]):
-        self._chapters = chapters
-
-        self.update_seek_marks()
-
     @property
     def seek_marks(self) -> tuple[SeekMark, ...]:
         """What the seek bar marks, as last told by seek_marks_change."""
@@ -4453,13 +4321,15 @@ class VideoBlock(QWidget):
         chapters = (
             SeekMark(
                 time_ms=chapter.start_ms,
-                label=self.chapter_name(index),
+                label=self.chapters.name(index),
                 kind=SeekMarkKind.CHAPTER,
             )
-            for index, chapter in enumerate(self._chapters)
+            for index, chapter in enumerate(self.chapters.all)
         )
 
-        segments = (segment_mark(segment) for segment in self._shown_segments)
+        segments = (
+            segment_mark(segment) for segment in self.sponsorblock.shown_segments
+        )
 
         bookmarks = ()
         if self.is_video_initialized and not self.is_live:
@@ -4473,175 +4343,6 @@ class VideoBlock(QWidget):
         self._seek_marks = marks
 
         self.seek_marks_change.emit(marks)
-
-    # SponsorBlock. Its segments are no chapters: they overlap the chapters,
-    # leave gaps between one another, and are nowhere to jump to. They are
-    # marked on the bar in a look of their own, and some are skipped.
-
-    def apply_sponsorblock_settings(self):
-        """Take up a change to the settings: to what is looked up, or to what
-        is done with what was found."""
-
-        self._look_up_sponsor_segments()
-        self._update_sponsor_segments()
-
-    def _look_up_sponsor_segments(self):
-        """Ask SponsorBlock about the video, if it is one to ask about."""
-
-        if self._youtube_id is None or self._site_length_ms <= 0:
-            return
-
-        if not is_sponsorblock_enabled():
-            return
-
-        segments = sponsorblock_fetcher().fetch(self._youtube_id, self._site_length_ms)
-
-        # on their way otherwise, see _sponsor_segments_fetched
-        if segments is not None:
-            self._set_sponsor_segments(segments)
-
-    def _sponsor_segments_fetched(self, video_id: str, segments):
-        # another video's, or the one before this video was switched
-        if video_id != self._youtube_id:
-            return
-
-        self._set_sponsor_segments(segments)
-
-    def _set_sponsor_segments(self, segments: tuple[SponsorSegment, ...]):
-        self._sponsor_segments = segments
-
-        self._update_sponsor_segments()
-
-    def _update_sponsor_segments(self):
-        """Work out which of the segments to mark, and what to skip."""
-
-        segments = self._sponsor_segments_playing()
-
-        modes = category_modes()
-
-        self._shown_segments = tuple(
-            segment
-            for segment in segments
-            if modes[segment.category] is not SponsorBlockMode.OFF
-        )
-        self._skip_spans = skip_spans(segments, modes)
-
-        self.update_seek_marks()
-
-    def _sponsor_segments_playing(self) -> tuple[SponsorSegment, ...]:
-        """The segments, if what plays is the video they were marked on."""
-
-        if not self._sponsor_segments or not is_sponsorblock_enabled():
-            return ()
-
-        if not self.is_video_initialized or self.is_live:
-            return ()
-
-        length = self.video_driver.length
-
-        if not is_site_length_playing(length, self._site_length_ms):
-            self._log.debug(
-                f"SponsorBlock segments left out, the site says"
-                f" {self._site_length_ms}ms but {length}ms is playing"
-            )
-            return ()
-
-        return self._sponsor_segments
-
-    def chapter_name(self, index: int) -> str:
-        name = self._chapters[index].name
-
-        if name:
-            return name
-
-        return translate("Actions", "Chapter {NUMBER}").format(NUMBER=index + 1)
-
-    @property
-    def chapter_playing(self) -> int | None:
-        """Which chapter the video is in, None before the first one starts."""
-
-        if not self._chapters:
-            return None
-
-        return chapter_index_at(self._chapters, self.arriving_time)
-
-    def is_chapter_reachable(self, index: int) -> bool:
-        """Whether a jump to this chapter would land inside the loop."""
-
-        if not self.is_video_initialized or not 0 <= index < len(self._chapters):
-            return False
-
-        span = chapter_span(self._chapters, index, self.video_driver.length)
-
-        return is_span_reachable(span, self.loop_start, self.loop_end)
-
-    @only_initialized
-    @only_seekable
-    def next_chapter(self):
-        if not self._chapters:
-            return
-
-        stop_ms = next_stop(
-            self._chapters, self.arriving_time, self.loop_start, self.loop_end
-        )
-
-        if stop_ms is None:
-            # past the last chapter is the end, arriving early
-            self.loop_end_action()
-            return
-
-        self._seek_chapter_stop(stop_ms)
-
-    @only_initialized
-    @only_seekable
-    def previous_chapter(self):
-        if not self._chapters:
-            return
-
-        self._seek_chapter_stop(
-            previous_stop(
-                self._chapters, self.arriving_time, self.loop_start, self.loop_end
-            )
-        )
-
-    @only_initialized
-    @only_seekable
-    def seek_chapter(self, index: int):
-        if not self.is_chapter_reachable(index):
-            return
-
-        # a chapter the loop starts part way into is joined where it does
-        self._seek_chapter_stop(max(self._chapters[index].start_ms, self.loop_start))
-
-    def _seek_chapter_stop(self, stop_ms: int):
-        self.seek(stop_ms)
-
-        index = chapter_index_at(self._chapters, stop_ms)
-
-        if index is not None:
-            self.info_change.emit(self.chapter_name(index))
-
-    @only_initialized
-    @only_seekable
-    def loop_chapter(self):
-        """Loop the chapter the video is in, as a segment of its own."""
-
-        if not self._chapters:
-            return
-
-        length = self.video_driver.length
-
-        start_ms, end_ms = span_at(self._chapters, self.arriving_time, length)
-
-        # cleared first: the new start can lie past the old end
-        self.reset_loop()
-
-        self.set_loop_start_time(start_ms)
-
-        # the last chapter runs to the end of the file, which is where an
-        # unset end already is
-        if end_ms < length:
-            self.set_loop_end_time(end_ms)
 
     # the viewer's bookmarks; what is done with them is the Bookmarker's
 
@@ -4802,9 +4503,7 @@ class VideoBlock(QWidget):
         )
         self._seek_behind = behind if is_behind and self._seek_retries else None
 
-        self._span_left_alone = (
-            skip_span_at(self._skip_spans, seek_ms) if is_viewers else None
-        )
+        self.sponsorblock.note_seek(seek_ms, is_viewers)
 
         self.time = seek_ms
         self.video_driver.set_time(seek_ms)
