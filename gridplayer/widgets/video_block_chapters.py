@@ -184,11 +184,11 @@ class ChapterControl(VideoBlockPart):
         start_ms, end_ms = span_at(self._chapters, block.arriving_time, length)
 
         # cleared first: the new start can lie past the old end
-        block.reset_loop()
+        block.loop.reset()
 
-        block.set_loop_start_time(start_ms)
+        block.loop.set_start_time(start_ms)
 
         # the last chapter runs to the end of the file, which is where an
         # unset end already is
         if end_ms < length:
-            block.set_loop_end_time(end_ms)
+            block.loop.set_end_time(end_ms)

@@ -318,8 +318,8 @@ class TestAtTheEnd:
 class TestInALoop:
     def test_a_loop_inside_one_plays_it(self, block):
         _found(block, SPONSOR)
-        block.set_loop_start_time(65000)
-        block.set_loop_end_time(80000)
+        block.loop.set_start_time(65000)
+        block.loop.set_end_time(80000)
 
         _reported(block, 70000)
 
@@ -327,8 +327,8 @@ class TestInALoop:
 
     def test_a_loop_starting_inside_one_plays_it_every_pass(self, block):
         _found(block, SPONSOR)
-        block.set_loop_start_time(70000)
-        block.set_loop_end_time(120000)
+        block.loop.set_start_time(70000)
+        block.loop.set_end_time(120000)
 
         _reported(block, 119900)
         _reported(block, 120100)
@@ -339,8 +339,8 @@ class TestInALoop:
 
     def test_one_that_runs_past_the_loop_end_ends_the_pass(self, block):
         _found(block, SPONSOR)
-        block.set_loop_start_time(40000)
-        block.set_loop_end_time(80000)
+        block.loop.set_start_time(40000)
+        block.loop.set_end_time(80000)
 
         _reported(block, 60100)
 

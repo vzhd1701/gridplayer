@@ -250,8 +250,8 @@ class TestTheList:
 class TestOutOfReach:
     def test_those_outside_the_loop_say_so(self, block, open_dialog):
         block.seek(30000)
-        block.set_loop_start_time(20000)
-        block.set_loop_end_time(40000)
+        block.loop.set_start_time(20000)
+        block.loop.set_end_time(40000)
         dialog = open_dialog(block)
 
         tooltips = [_cell(dialog, row, Column.NAME, Qt.ToolTipRole) for row in range(3)]
@@ -260,8 +260,8 @@ class TestOutOfReach:
 
     def test_the_loop_s_edges_are_drawn_across_the_list(self, block, open_dialog):
         block.seek(30000)
-        block.set_loop_start_time(20000)
-        block.set_loop_end_time(40000)
+        block.loop.set_start_time(20000)
+        block.loop.set_end_time(40000)
         dialog = open_dialog(block)
 
         edges = [(row, text) for row, text, _ in dialog._list.edges]
@@ -270,8 +270,8 @@ class TestOutOfReach:
 
     def test_a_loop_with_none_inside_is_drawn_where_it_sits(self, block, open_dialog):
         block.seek(22000)
-        block.set_loop_start_time(20000)
-        block.set_loop_end_time(25000)
+        block.loop.set_start_time(20000)
+        block.loop.set_end_time(25000)
         dialog = open_dialog(block)
 
         edges = [(row, text) for row, text, _ in dialog._list.edges]
@@ -296,7 +296,7 @@ class TestOutOfReach:
 
     def test_one_out_of_reach_is_nowhere_to_jump(self, block, open_dialog):
         block.seek(30000)
-        block.set_loop_start_time(20000)
+        block.loop.set_start_time(20000)
         dialog = open_dialog(block, selected=(0,))
 
         dialog._jump()
@@ -700,7 +700,7 @@ class TestWithNothingPlaying:
 
     def test_loaded_again_it_is_all_back(self, block, dialog):
         block.seek(30000)
-        block.set_loop_start_time(20000)
+        block.loop.set_start_time(20000)
 
         block.reload()
 
@@ -980,7 +980,7 @@ class TestTheRowMenu:
         self, block, open_dialog, shown
     ):
         block.seek(30000)
-        block.set_loop_start_time(20000)
+        block.loop.set_start_time(20000)
         dialog = open_dialog(block, selected=(0,))
 
         dialog._list.menu_requested.emit(QPoint(10, 10))
