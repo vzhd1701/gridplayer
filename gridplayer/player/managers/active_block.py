@@ -68,19 +68,19 @@ LOADING_COMMANDS = frozenset(
         "play_external_audio",
         "remove_external_audio",
         "set_external_audio_autodiscover",
-        "set_subtitle_track",
-        "apply_subtitle_preference",
-        "apply_subtitle_default",
-        "disable_subtitles",
-        "subtitle_languages_dialog",
-        "get_subtitle_languages",
-        "add_external_subtitles_dialog",
-        "show_external_subtitle",
-        "remove_external_subtitles",
-        "set_external_subtitle_autodiscover",
-        "set_subtitle_encoding",
-        "subtitle_encoding_dialog",
-        "get_subtitle_encoding",
+        "subtitles.set_track",
+        "subtitles.apply_preference",
+        "subtitles.apply_default",
+        "subtitles.disable",
+        "subtitles.languages_dialog",
+        "subtitles.get_languages",
+        "subtitles.add_external_dialog",
+        "subtitles.show_external",
+        "subtitles.remove_external",
+        "subtitles.set_external_autodiscover",
+        "subtitles.set_encoding",
+        "subtitles.encoding_dialog",
+        "subtitles.get_encoding",
     }
 )
 
@@ -371,7 +371,7 @@ class ActiveBlockManager(ManagerBase):
         if not self.is_active_initialized():
             return False
 
-        return self._ctx.active_block.has_subtitles
+        return self._ctx.active_block.subtitles.has_any
 
     def is_active_subtitle_track(self, track_id):
         """Ticked where this track is the one that was named by hand.
@@ -389,15 +389,15 @@ class ActiveBlockManager(ManagerBase):
         block = self._ctx.active_block
 
         if isinstance(selection, SubtitleExternal):
-            if block.external_subtitle_tracks.get(track_id) != selection.file:
+            if block.subtitles.external_tracks.get(track_id) != selection.file:
                 return False
 
-            return block.subtitle_number_in_file(track_id, selection.file) == (
+            return block.subtitles.number_in_file(track_id, selection.file) == (
                 selection.track
             )
 
         if isinstance(selection, SubtitleLanguage):
-            return block.subtitle_language_key(track_id) == selection.tag
+            return block.subtitles.language_key(track_id) == selection.tag
 
         return isinstance(selection, SubtitleTrackId) and selection.id == track_id
 
@@ -951,7 +951,7 @@ class ActiveBlockManager(ManagerBase):
 
         external = self._external_subtitle_menu_items()
 
-        if not block.subtitle_tracks:
+        if not block.subtitles.tracks:
             # a video carrying none is still worth looking beside, which is
             # where most subtitles live anyway
             return external or {}
@@ -977,14 +977,14 @@ class ActiveBlockManager(ManagerBase):
         subtitled passages, which is exactly who wants this row.
         """
 
-        if self._ctx.active_block.default_subtitle_track_id is None:
+        if self._ctx.active_block.subtitles.default_track_id is None:
             return []
 
         return [
             {
                 "title": translate("Subtitle Track", "Default"),
                 "icon": "empty",
-                "func": ("active", "apply_subtitle_default"),
+                "func": ("active", "subtitles.apply_default"),
                 "check_if": "is_active_subtitle_default",
                 "is_choice": True,
                 "show_if": "is_active_initialized",
@@ -1004,7 +1004,7 @@ class ActiveBlockManager(ManagerBase):
         return {
             "title": title,
             "icon": "empty",
-            "func": ("active", "apply_subtitle_preference"),
+            "func": ("active", "subtitles.apply_preference"),
             "check_if": "is_active_subtitle_preferred",
             "is_choice": True,
             "show_if": "is_active_initialized",
@@ -1021,7 +1021,7 @@ class ActiveBlockManager(ManagerBase):
 
         block = self._ctx.active_block
 
-        track = block.subtitle_tracks.get(block.preferred_subtitle_track_id)
+        track = block.subtitles.tracks.get(block.subtitles.preferred_track_id)
 
         if track is None:
             return None
@@ -1040,19 +1040,19 @@ class ActiveBlockManager(ManagerBase):
 
         block = self._ctx.active_block
 
-        external_ids = set(block.external_subtitle_track_ids)
-        showing = block.subtitle_track_showing
+        external_ids = set(block.subtitles.external_track_ids)
+        showing = block.subtitles.track_showing
 
         return [
             {
                 "title": _subtitle_track_title(track),
                 "icon": "play" if track_id == showing else "empty",
-                "func": ("active", "set_subtitle_track", track_id),
+                "func": ("active", "subtitles.set_track", track_id),
                 "check_if": ("is_active_subtitle_track", track_id),
                 "is_choice": True,
                 "show_if": "is_active_initialized",
             }
-            for track_id, track in block.subtitle_tracks.items()
+            for track_id, track in block.subtitles.tracks.items()
             if track_id not in external_ids
         ]
 
@@ -1072,19 +1072,19 @@ class ActiveBlockManager(ManagerBase):
 
         files = self._attached_subtitle_menu_items() + [
             {
-                "title": block.subtitle_file_name(file_path),
+                "title": block.subtitles.file_name(file_path),
                 "icon": "empty",
-                "func": ("active", "show_external_subtitle", str(file_path)),
+                "func": ("active", "subtitles.show_external", str(file_path)),
                 "show_if": "is_active_local_file",
             }
-            for file_path in block.offered_subtitle_files
+            for file_path in block.subtitles.offered_files
         ]
 
         commands = [
             {
                 "title": translate("Actions", "Add External Subtitles..."),
                 "icon": "empty",
-                "func": ("active", "add_external_subtitles_dialog"),
+                "func": ("active", "subtitles.add_external_dialog"),
                 "show_if": "is_active_local_file",
             }
         ]
@@ -1094,7 +1094,7 @@ class ActiveBlockManager(ManagerBase):
                 {
                     "title": translate("Actions", "Remove External Subtitles"),
                     "icon": "empty",
-                    "func": ("active", "remove_external_subtitles"),
+                    "func": ("active", "subtitles.remove_external"),
                     "show_if": "is_active_local_file",
                 }
             )
@@ -1105,7 +1105,7 @@ class ActiveBlockManager(ManagerBase):
                 "icon": "empty",
                 "func": (
                     "active",
-                    "set_external_subtitle_autodiscover",
+                    "subtitles.set_external_autodiscover",
                     not block.video_params.is_external_subtitle_autodiscover,
                 ),
                 "check_if": (
@@ -1132,12 +1132,12 @@ class ActiveBlockManager(ManagerBase):
 
         block = self._ctx.active_block
 
-        by_track = block.external_subtitle_tracks
+        by_track = block.subtitles.external_tracks
 
         if not by_track:
             return []
 
-        showing = block.subtitle_track_showing
+        showing = block.subtitles.track_showing
 
         tracks_per_file = Counter(by_track.values())
         seen_in_file: Counter = Counter()
@@ -1145,7 +1145,7 @@ class ActiveBlockManager(ManagerBase):
         rows = []
 
         for track_id, file_path in by_track.items():
-            if track_id not in block.subtitle_tracks:
+            if track_id not in block.subtitles.tracks:
                 continue
 
             number = None
@@ -1158,12 +1158,12 @@ class ActiveBlockManager(ManagerBase):
             rows.append(
                 {
                     "title": _external_subtitle_title(
-                        block.subtitle_file_name(file_path),
-                        block.external_subtitle_track_name(track_id),
+                        block.subtitles.file_name(file_path),
+                        block.subtitles.external_track_name(track_id),
                         number,
                     ),
                     "icon": "play" if track_id == showing else "empty",
-                    "func": ("active", "set_subtitle_track", track_id),
+                    "func": ("active", "subtitles.set_track", track_id),
                     "check_if": ("is_active_subtitle_track", track_id),
                     "is_choice": True,
                     "show_if": "is_active_local_file",
@@ -1333,7 +1333,7 @@ def _subtitles_off_menu_item():
     return {
         "title": translate("Subtitle Track", "Off"),
         "icon": "empty",
-        "func": ("active", "disable_subtitles"),
+        "func": ("active", "subtitles.disable"),
         "check_if": "is_active_subtitle_disabled",
         "is_choice": True,
         "show_if": "is_active_initialized",
@@ -1346,8 +1346,8 @@ def _subtitle_languages_menu_item():
     return {
         "title": "{}: %v".format(translate("Actions", "Languages")),
         "icon": "empty",
-        "func": ("active", "subtitle_languages_dialog"),
-        "value_getter": ("active", "get_subtitle_languages"),
+        "func": ("active", "subtitles.languages_dialog"),
+        "value_getter": ("active", "subtitles.get_languages"),
         "show_if": "is_active_initialized",
     }
 
@@ -1366,8 +1366,8 @@ def _subtitle_encoding_menu_item():
     return {
         "title": "{}: %v".format(translate("Actions", "Encoding")),
         "icon": "empty",
-        "func": ("active", "subtitle_encoding_dialog"),
-        "value_getter": ("active", "get_subtitle_encoding"),
+        "func": ("active", "subtitles.encoding_dialog"),
+        "value_getter": ("active", "subtitles.get_encoding"),
         "show_if": "is_active_initialized",
     }
 

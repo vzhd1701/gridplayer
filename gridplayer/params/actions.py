@@ -1180,8 +1180,8 @@ ACTIONS = MappingProxyType(
             "title": "{}: %v".format(translate("Actions", "Delay")),
             "keymap_title": translate("Actions", "Set Delay"),
             "icon": "empty",
-            "func": ("active", "subtitle_delay_dialog"),
-            "value_getter": ("active", "get_subtitle_delay"),
+            "func": ("active", "subtitles.delay_dialog"),
+            "value_getter": ("active", "subtitles.get_delay"),
             "show_if": "is_active_has_subtitles",
         },
         "Subtitle Delay Later": {
@@ -1190,20 +1190,20 @@ ACTIONS = MappingProxyType(
             # to the J and K the sound is moved with, in the same order
             "key": "H",
             "icon": "empty",
-            "func": ("active", "subtitle_delay_increase"),
+            "func": ("active", "subtitles.delay_increase"),
             "show_if": "is_active_has_subtitles",
         },
         "Subtitle Delay Earlier": {
             "title": translate("Actions", "Earlier"),
             "key": "G",
             "icon": "empty",
-            "func": ("active", "subtitle_delay_decrease"),
+            "func": ("active", "subtitles.delay_decrease"),
             "show_if": "is_active_has_subtitles",
         },
         "Subtitle Delay Reset": {
             "title": translate("Actions", "Reset"),
             "icon": "empty",
-            "func": ("active", "subtitle_delay_reset"),
+            "func": ("active", "subtitles.delay_reset"),
             "show_if": "is_active_has_subtitles",
         },
         "Audio Mode - Original": {

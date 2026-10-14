@@ -17,6 +17,7 @@ from gridplayer.params.static import VideoInitialState
 from gridplayer.settings import Settings
 from gridplayer.vlc_player.static import DISABLED_TRACK, SubtitleTrack
 from gridplayer.widgets.video_block import VideoBlock
+from gridplayer.widgets.video_block_subtitles import SubtitleControl
 
 
 @pytest.fixture(scope="module", autouse=True)
@@ -73,40 +74,9 @@ class _Driver:
 
 
 class _Block:
-    """A block with the real subtitle methods, and no player behind it."""
+    """A block with its real subtitles part, and no player behind it."""
 
     is_local_file = VideoBlock.is_local_file
-    discovered_subtitle_files = VideoBlock.discovered_subtitle_files
-    offered_subtitle_files = VideoBlock.offered_subtitle_files
-    attached_subtitle_files = VideoBlock.attached_subtitle_files
-    external_subtitle_track_ids = VideoBlock.external_subtitle_track_ids
-    default_subtitle_track_id = VideoBlock.default_subtitle_track_id
-    external_subtitle_tracks = VideoBlock.external_subtitle_tracks
-    selected_subtitle_slave_uris = VideoBlock.selected_subtitle_slave_uris
-    _subtitle_files_to_attach = VideoBlock._subtitle_files_to_attach
-    _own_subtitles = VideoBlock._own_subtitles
-
-    set_subtitle_track = VideoBlock.set_subtitle_track
-    disable_subtitles = VideoBlock.disable_subtitles
-    add_external_subtitles = VideoBlock.add_external_subtitles
-    show_external_subtitle = VideoBlock.show_external_subtitle
-    remove_external_subtitles = VideoBlock.remove_external_subtitles
-    _drop_external_subtitles = VideoBlock._drop_external_subtitles
-    set_external_subtitle_autodiscover = VideoBlock.set_external_subtitle_autodiscover
-    restore_subtitle_selection = VideoBlock.restore_subtitle_selection
-    subtitle_file_name = VideoBlock.subtitle_file_name
-    external_subtitle_track_name = VideoBlock.external_subtitle_track_name
-    subtitle_language_key = VideoBlock.subtitle_language_key
-    subtitle_number_in_file = VideoBlock.subtitle_number_in_file
-
-    _subtitle_selection_for = VideoBlock._subtitle_selection_for
-    _forget_subtitle_files_that_are_gone = (
-        VideoBlock._forget_subtitle_files_that_are_gone
-    )
-    _wanted_subtitle_track_id = VideoBlock._wanted_subtitle_track_id
-    _apply_wanted_subtitle_track = VideoBlock._apply_wanted_subtitle_track
-    _put_external_subtitles_into_effect = VideoBlock._put_external_subtitles_into_effect
-    _nudge_subtitles_into_view = VideoBlock._nudge_subtitles_into_view
 
     def __init__(
         self,
@@ -125,16 +95,18 @@ class _Block:
         )
 
         self.is_video_initialized = is_initialized
-        self.subtitle_tracks = {0: _track("eng")} if tracks is None else tracks
 
         self.video_driver = _Driver()
+        self.video_driver.subtitle_tracks = (
+            {0: _track("eng")} if tracks is None else tracks
+        )
 
         self.is_live = False
         self.time = 4200
 
-        self._attached_subtitle_files = []
-
         self.reloads = 0
+
+        self.subtitles = SubtitleControl(self)
 
     def reload(self):
         self.reloads += 1
@@ -151,9 +123,9 @@ def _attached(block, file_path, track_id, language=None):
         *block.video_params.external_subtitles,
         file_path,
     ]
-    block._attached_subtitle_files = [*block._attached_subtitle_files, file_path]
-    block.subtitle_tracks = {
-        **block.subtitle_tracks,
+    block.subtitles._attached_files = [*block.subtitles._attached_files, file_path]
+    block.video_driver.subtitle_tracks = {
+        **block.video_driver.subtitle_tracks,
         track_id: _track(language or str(file_path.with_suffix(""))),
     }
     block.video_driver.external_subtitle_ids = (
@@ -166,7 +138,7 @@ class TestRememberingWhichSubtitleWasPicked:
     def test_switching_them_off_is_remembered_as_off(self, tmp_path):
         block = _block(tmp_path)
 
-        block.disable_subtitles()
+        block.subtitles.disable()
 
         assert block.video_params.subtitle_selection == SubtitleDisabled()
         assert block.video_driver.tracks_set == [DISABLED_TRACK]
@@ -174,7 +146,7 @@ class TestRememberingWhichSubtitleWasPicked:
     def test_a_track_with_a_language_of_its_own_is_remembered_by_it(self, tmp_path):
         block = _block(tmp_path, tracks={0: _track("eng"), 1: _track("jpn")})
 
-        block.set_subtitle_track(1)
+        block.subtitles.set_track(1)
 
         assert block.video_params.subtitle_selection == SubtitleLanguage(tag="jpn")
 
@@ -183,14 +155,14 @@ class TestRememberingWhichSubtitleWasPicked:
 
         block = _block(tmp_path, tracks={0: _track("eng"), 1: _track("eng")})
 
-        block.set_subtitle_track(1)
+        block.subtitles.set_track(1)
 
         assert block.video_params.subtitle_selection == SubtitleTrackId(id=1)
 
     def test_a_track_with_no_language_is_remembered_by_number(self, tmp_path):
         block = _block(tmp_path, tracks={0: _track(None), 1: _track(None)})
 
-        block.set_subtitle_track(1)
+        block.subtitles.set_track(1)
 
         assert block.video_params.subtitle_selection == SubtitleTrackId(id=1)
 
@@ -200,7 +172,7 @@ class TestRememberingWhichSubtitleWasPicked:
 
         _attached(block, subtitles, track_id=1)
 
-        block.set_subtitle_track(1)
+        block.subtitles.set_track(1)
 
         selection = block.video_params.subtitle_selection
 
@@ -214,7 +186,7 @@ class TestRememberingWhichSubtitleWasPicked:
 
         _attached(block, subtitles, track_id=1)
 
-        assert block.subtitle_language_key(1) is None
+        assert block.subtitles.language_key(1) is None
 
 
 class TestFilesKeptBesideTheVideo:
@@ -222,32 +194,32 @@ class TestFilesKeptBesideTheVideo:
         block = _block(tmp_path)
         _file(tmp_path, "Movie.en.srt")
 
-        assert [path.name for path in block.offered_subtitle_files] == ["Movie.en.srt"]
+        assert [path.name for path in block.subtitles.offered_files] == ["Movie.en.srt"]
 
     def test_nothing_is_offered_where_looking_was_turned_off(self, tmp_path):
         block = _block(tmp_path, autodiscover=False)
         _file(tmp_path, "Movie.en.srt")
 
-        assert block.offered_subtitle_files == []
+        assert block.subtitles.offered_files == []
 
     def test_picking_one_hands_it_over_without_a_reload(self, tmp_path):
         """Which is what sets this apart from an audio file."""
 
         block = _block(tmp_path)
-        block._attached_subtitle_files = []
+        block.subtitles._attached_files = []
         subtitles = _file(tmp_path, "Movie.en.srt")
 
-        block.show_external_subtitle(str(subtitles))
+        block.subtitles.show_external(str(subtitles))
 
         assert block.video_driver.slaves == [subtitles.as_uri()]
         assert block.reloads == 0
 
     def test_picking_one_is_what_chooses_it(self, tmp_path):
         block = _block(tmp_path)
-        block._attached_subtitle_files = []
+        block.subtitles._attached_files = []
         subtitles = _file(tmp_path, "Movie.en.srt")
 
-        block.show_external_subtitle(str(subtitles))
+        block.subtitles.show_external(str(subtitles))
 
         assert block.video_params.subtitle_selection == SubtitleExternal(
             file=subtitles, track=0
@@ -260,7 +232,7 @@ class TestFilesKeptBesideTheVideo:
         _attached(block, subtitles, track_id=1)
         block.video_driver.slaves.clear()
 
-        block.show_external_subtitle(str(subtitles))
+        block.subtitles.show_external(str(subtitles))
 
         assert block.video_driver.slaves == []
         assert block.video_driver.tracks_set == [1]
@@ -274,7 +246,7 @@ class TestFilesKeptBesideTheVideo:
         _attached(block, subtitles, track_id=1)
         block.video_params.subtitle_selection = SubtitleExternal(file=subtitles)
 
-        block.remove_external_subtitles()
+        block.subtitles.remove_external()
 
         assert block.reloads == 1
         assert block.video_params.external_subtitles == []
@@ -287,7 +259,7 @@ class TestFilesKeptBesideTheVideo:
         block.video_params.external_subtitles = [subtitles]
         block.video_params.subtitle_selection = SubtitleExternal(file=subtitles)
 
-        block._forget_subtitle_files_that_are_gone()
+        block.subtitles._forget_files_that_are_gone()
 
         assert block.video_params.subtitle_selection == SubtitleDisabled()
         # the file keeps its place, in case whatever moved it moves it back
@@ -305,7 +277,7 @@ class TestFilesKeptBesideTheVideo:
         _attached(block, first, track_id=1, language="C:\\films\\Movie.ja")
         _attached(block, second, track_id=2, language="C:\\films\\Movie.en")
 
-        assert block.external_subtitle_tracks == {1: second, 2: first}
+        assert block.subtitles.external_tracks == {1: second, 2: first}
 
     def test_one_file_can_bring_several_tracks(self, tmp_path):
         """A VobSub index off a DVD routinely carries a dozen languages."""
@@ -316,9 +288,9 @@ class TestFilesKeptBesideTheVideo:
         _attached(block, vobsub, track_id=1, language="en")
         _attached(block, vobsub, track_id=2, language="de")
 
-        assert block.external_subtitle_tracks == {1: vobsub, 2: vobsub}
-        assert block.subtitle_number_in_file(1, vobsub) == 0
-        assert block.subtitle_number_in_file(2, vobsub) == 1
+        assert block.subtitles.external_tracks == {1: vobsub, 2: vobsub}
+        assert block.subtitles.number_in_file(1, vobsub) == 0
+        assert block.subtitles.number_in_file(2, vobsub) == 1
 
     def test_which_of_them_was_picked_is_part_of_the_choice(self, tmp_path):
         """Or the video comes back on the first of them after every reload."""
@@ -329,7 +301,7 @@ class TestFilesKeptBesideTheVideo:
         _attached(block, vobsub, track_id=1, language="en")
         _attached(block, vobsub, track_id=2, language="de")
 
-        block.set_subtitle_track(2)
+        block.subtitles.set_track(2)
 
         assert block.video_params.subtitle_selection == SubtitleExternal(
             file=vobsub, track=1
@@ -341,7 +313,7 @@ class TestFilesKeptBesideTheVideo:
 
         _attached(block, vobsub, track_id=1, language="de")
 
-        assert block.external_subtitle_track_name(1) == "German"
+        assert block.subtitles.external_track_name(1) == "German"
 
     def test_a_file_with_one_track_says_nothing_beyond_its_own_name(self, tmp_path):
         """libVLC puts the file's name where the language belongs."""
@@ -351,7 +323,7 @@ class TestFilesKeptBesideTheVideo:
 
         _attached(block, subtitles, track_id=1)
 
-        assert block.external_subtitle_track_name(1) is None
+        assert block.subtitles.external_track_name(1) is None
 
     def test_a_name_that_answers_to_nothing_falls_back_on_the_order(self, tmp_path):
         block = _block(tmp_path)
@@ -362,14 +334,14 @@ class TestFilesKeptBesideTheVideo:
         _attached(block, first, track_id=1, language="something else")
         _attached(block, second, track_id=2, language="something else again")
 
-        assert block.external_subtitle_tracks == {1: first, 2: second}
+        assert block.subtitles.external_tracks == {1: first, 2: second}
 
 
 class TestPuttingTheSettingsIntoEffect:
     def test_a_video_part_way_through_a_load_settles_it_itself(self, tmp_path):
         block = _block(tmp_path, is_initialized=False)
 
-        block.set_subtitle_track(1)
+        block.subtitles.set_track(1)
 
         assert block.video_driver.tracks_set == []
         assert block.video_params.subtitle_selection == SubtitleTrackId(id=1)
@@ -385,7 +357,7 @@ class TestPuttingTheSettingsIntoEffect:
 
         block = _block(tmp_path, is_paused=is_paused)
 
-        block.set_subtitle_track(0)
+        block.subtitles.set_track(0)
 
         assert block.video_driver.times_set == [4200]
 
@@ -393,6 +365,6 @@ class TestPuttingTheSettingsIntoEffect:
         block = _block(tmp_path)
         block.is_live = True
 
-        block.set_subtitle_track(0)
+        block.subtitles.set_track(0)
 
         assert block.video_driver.times_set == []

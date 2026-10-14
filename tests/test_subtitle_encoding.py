@@ -7,7 +7,6 @@ it was written in is the only way to fix that, and it is settled when the
 input opens.
 """
 
-from functools import partial
 from types import SimpleNamespace
 from unittest.mock import Mock
 
@@ -34,6 +33,8 @@ from gridplayer.vlc_player.static import MediaInput
 from gridplayer.widgets.combo_box import MAX_VISIBLE_COMBO_ITEMS
 from gridplayer.widgets.defaults_form import DefaultsForm
 from gridplayer.widgets.video_block import VideoBlock
+from gridplayer.widgets.video_block_subtitles import SubtitleControl
+from tests.conftest import is_block_command
 
 URI = "http://example.com/a.mp4"
 
@@ -131,7 +132,7 @@ def _block(encoding):
 
     block = Mock(spec=VideoBlock)
     block.video_params = Video(uri=URI, subtitle_encoding=encoding)
-    block.set_subtitle_encoding = partial(VideoBlock.set_subtitle_encoding, block)
+    block.subtitles = SubtitleControl(block)
 
     return block
 
@@ -255,7 +256,7 @@ class TestTakingHold:
 
         block = _block("")
 
-        block.set_subtitle_encoding("KOI8-R")
+        block.subtitles.set_encoding("KOI8-R")
 
         assert _reopened_with(block) == ["KOI8-R"]
 
@@ -295,24 +296,24 @@ class TestPickingItOnOneVideo:
         row = _subtitle_encoding_menu_item()
 
         assert row["title"].endswith(": %v")
-        assert row["func"] == ("active", "subtitle_encoding_dialog")
-        assert row["value_getter"] == ("active", "get_subtitle_encoding")
-        assert hasattr(VideoBlock, "subtitle_encoding_dialog")
-        assert hasattr(VideoBlock, "get_subtitle_encoding")
+        assert row["func"] == ("active", "subtitles.encoding_dialog")
+        assert row["value_getter"] == ("active", "subtitles.get_encoding")
+        assert is_block_command(row["func"][1])
+        assert is_block_command(row["value_getter"][1])
 
     def test_the_readout_names_the_set_that_was_picked(self):
-        assert VideoBlock.get_subtitle_encoding(_block("KOI8-R")) == "KOI8-R"
+        assert _block("KOI8-R").subtitles.get_encoding() == "KOI8-R"
 
     def test_the_readout_says_default_where_none_was(self):
-        assert VideoBlock.get_subtitle_encoding(_block("")) == "Default"
+        assert _block("").subtitles.get_encoding() == "Default"
 
     def test_it_still_answers_while_the_video_is_reopening(self):
         """Picking one is what started the reload the next pick lands in."""
 
         assert {
-            "subtitle_encoding_dialog",
-            "get_subtitle_encoding",
-            "set_subtitle_encoding",
+            "subtitles.encoding_dialog",
+            "subtitles.get_encoding",
+            "subtitles.set_encoding",
         } <= LOADING_COMMANDS
 
 

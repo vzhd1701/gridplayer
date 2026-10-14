@@ -49,27 +49,47 @@ LOGIN = f"{LOGIN_NAME}={LOGIN_VALUE}"
 COOKIE_LIFETIME_SEC = 10000
 
 
+def _block_parts():
+    """A VideoBlock's parts, by the name the block keeps each under."""
+
+    from gridplayer.widgets.video_block_bookmarker import Bookmarker
+    from gridplayer.widgets.video_block_chapters import ChapterControl
+    from gridplayer.widgets.video_block_sponsorblock import SponsorBlockControl
+    from gridplayer.widgets.video_block_subtitles import SubtitleControl
+    from gridplayer.widgets.video_block_view import ViewControl
+
+    return {
+        "bookmarker": Bookmarker,
+        "chapters": ChapterControl,
+        "sponsorblock": SponsorBlockControl,
+        "subtitles": SubtitleControl,
+        "view": ViewControl,
+    }
+
+
 def is_block_command(command: str) -> bool:
     """Whether a VideoBlock command, "reload" or "chapters.next", is there:
     the block's own, or one of a part of it (see VideoBlockPart)."""
 
     from gridplayer.widgets.video_block import VideoBlock
-    from gridplayer.widgets.video_block_bookmarker import Bookmarker
-    from gridplayer.widgets.video_block_chapters import ChapterControl
-    from gridplayer.widgets.video_block_sponsorblock import SponsorBlockControl
-    from gridplayer.widgets.video_block_view import ViewControl
-
-    parts = {
-        "": VideoBlock,
-        "bookmarker": Bookmarker,
-        "chapters": ChapterControl,
-        "sponsorblock": SponsorBlockControl,
-        "view": ViewControl,
-    }
 
     part, _, method = command.rpartition(".")
+    owner = VideoBlock if not part else _block_parts().get(part)
 
-    return part in parts and hasattr(parts[part], method)
+    return owner is not None and hasattr(owner, method)
+
+
+def mock_block_parts(block):
+    """Give a stand-in for a VideoBlock, Mock(spec=VideoBlock), its parts:
+    the spec has only what the class has, and the block makes its parts as
+    it is made."""
+
+    from unittest.mock import Mock
+
+    for name, part in _block_parts().items():
+        setattr(block, name, Mock(spec=part))
+
+    return block
 
 
 class FakeSettings:

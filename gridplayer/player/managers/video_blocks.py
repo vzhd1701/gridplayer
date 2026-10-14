@@ -619,7 +619,7 @@ class VideoBlocksManager(ManagerBase):
         """
 
         for vb in self._ctx.video_blocks:
-            vb.set_subtitle_encoding(encoding)
+            vb.subtitles.set_encoding(encoding)
 
     def apply_sponsorblock_settings(self):
         """Mark and skip in the videos already open as the settings now say.
@@ -656,7 +656,7 @@ class VideoBlocksManager(ManagerBase):
         return any(vb.video_tracks for vb in self._ctx.video_blocks.initialized)
 
     def is_any_videos_have_subtitles(self):
-        return any(vb.has_subtitles for vb in self._ctx.video_blocks.initialized)
+        return any(vb.subtitles.has_any for vb in self._ctx.video_blocks.initialized)
 
     def is_any_videos_have_chapters(self):
         # a live stream never has any; see ChapterControl.update
@@ -896,10 +896,10 @@ class VideoBlocksManager(ManagerBase):
             (self.all_audio_delay_increase, vb.audio_delay_increase),
             (self.all_audio_delay_decrease, vb.audio_delay_decrease),
             (self.all_audio_delay_reset, vb.audio_delay_reset),
-            (self.all_set_subtitle_delay, vb.set_subtitle_delay),
-            (self.all_subtitle_delay_increase, vb.subtitle_delay_increase),
-            (self.all_subtitle_delay_decrease, vb.subtitle_delay_decrease),
-            (self.all_subtitle_delay_reset, vb.subtitle_delay_reset),
+            (self.all_set_subtitle_delay, vb.subtitles.set_delay),
+            (self.all_subtitle_delay_increase, vb.subtitles.delay_increase),
+            (self.all_subtitle_delay_decrease, vb.subtitles.delay_decrease),
+            (self.all_subtitle_delay_reset, vb.subtitles.delay_reset),
             (self.all_volume_increase, vb.volume_increase),
             (self.all_volume_decrease, vb.volume_decrease),
             (self.all_set_muted, vb.set_muted),
