@@ -73,6 +73,13 @@ dev = [
 [tool.uv.build-backend]
 module-root = ""
 
+[tool.pytest.ini_options]
+markers = [
+    "real_app: drives the real app with VLC and ffmpeg, see tests/real_app; run with -m real_app",
+]
+# a later -m on the command line takes over from this one
+addopts = "-m 'not real_app'"
+
 [tool.ruff]
 extend-exclude = ["gridplayer/vlc_player/vlc.py"]
 force-exclude = true

@@ -67,6 +67,9 @@ generate-ui:
 generate-resources:
     ./scripts/qt_resources/build_resources.sh
 
+test-real-app:
+    uv run pytest -m real_app
+
 translations-build-main:
     ./scripts/translations/build_ts.sh
 
