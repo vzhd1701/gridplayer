@@ -470,7 +470,7 @@ class ActiveBlockManager(ManagerBase):
         if self.is_no_active_block:
             return False
 
-        return self._ctx.active_block.bookmark_here == index
+        return self._ctx.active_block.bookmarker.here == index
 
     def is_active_bookmark_reachable(self, index) -> bool:
         """Grayed out outside the loop, and past the end of what plays."""
@@ -478,7 +478,7 @@ class ActiveBlockManager(ManagerBase):
         if self.is_no_active_block:
             return False
 
-        return self._ctx.active_block.is_bookmark_reachable(index)
+        return self._ctx.active_block.bookmarker.is_reachable_at(index)
 
     def menu_generator_bookmarks(self):
         """Every bookmark of the video, its marker in its colour before its
@@ -498,7 +498,7 @@ class ActiveBlockManager(ManagerBase):
                     length_ms,
                 ),
                 "icon": bookmark_icon([bookmark.color]),
-                "func": ("active", "manual_seek", "seek_bookmark", index),
+                "func": ("active", "manual_seek", "bookmarker.seek", index),
                 "check_if": ("is_active_bookmark_here", index),
                 "is_choice": True,
                 "enable_if": ("is_active_bookmark_reachable", index),

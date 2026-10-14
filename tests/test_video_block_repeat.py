@@ -34,7 +34,7 @@ def _block(mocker, **video_kwargs):
     block = mocker.Mock()
     block.video_params = Video(uri="http://example.com/a.mp4", **video_kwargs)
     # no bookmarks being edited to hold the video where it is
-    block._is_editing_bookmarks = False
+    block.bookmarker.is_editing = False
     block._hold_end_for_bookmarks.return_value = False
     block._step_at_end = partial(VideoBlock._step_at_end, block)
     return block

@@ -112,7 +112,7 @@ def make_block(tmp_path):
                 end_action=VideoEndAction.LOOP_FILE,
             )
         )
-        block.set_bookmarks(bookmarks)
+        block.bookmarker.replace(bookmarks)
 
         # the time goes where a test says and nowhere else
         block.video_driver._fake_player_timer.stop()
@@ -606,7 +606,7 @@ class TestTheVideo:
         assert not block.video_params.is_paused
 
     def test_bookmarks_changed_meanwhile_are_shown(self, block, dialog):
-        block.set_bookmarks([*BOOKMARKS, Bookmark(time_ms=40000)])
+        block.bookmarker.replace([*BOOKMARKS, Bookmark(time_ms=40000)])
 
         assert dialog._model.rowCount() == 4
 
@@ -734,7 +734,7 @@ def _manage_and(block, action):
     give_up.timeout.connect(leave_it)
     QTimer.singleShot(0, act)
 
-    block.manage_bookmarks()
+    block.bookmarker.manage()
     give_up.stop()
 
     return opened
@@ -1124,7 +1124,7 @@ class TestTheCount:
     def test_what_is_being_said_stays_over_it(self, block, dialog):
         dialog._copy_all()
 
-        block.set_bookmarks(BOOKMARKS[:1])
+        block.bookmarker.replace(BOOKMARKS[:1])
         QApplication.processEvents()
 
         assert _status(dialog) == "Bookmarks copied: 3"

@@ -26,11 +26,11 @@ def _playing_block(mocker):
 
 def test_cmd_active_reaches_a_part_of_the_block(mocker):
     block = _playing_block(mocker)
-    block.bookmarks.seek.return_value = "sought"
+    block.bookmarker.seek.return_value = "sought"
 
-    result = _active_manager(block).cmd_active("bookmarks.seek", 3)
+    result = _active_manager(block).cmd_active("bookmarker.seek", 3)
 
-    block.bookmarks.seek.assert_called_once_with(3)
+    block.bookmarker.seek.assert_called_once_with(3)
     assert result == "sought"
 
 
@@ -46,35 +46,35 @@ def test_cmd_active_drops_a_dotted_command_while_loading(mocker):
     block = _playing_block(mocker)
     block.is_playable = False
 
-    _active_manager(block).cmd_active("bookmarks.next")
+    _active_manager(block).cmd_active("bookmarker.next")
 
-    block.bookmarks.next.assert_not_called()
+    block.bookmarker.next.assert_not_called()
 
 
 def test_runtime_param_reaches_a_part_of_the_block(mocker):
     block = _playing_block(mocker)
-    block.bookmarks.count = 2
+    block.bookmarker.count = 2
     manager = _active_manager(block)
 
-    assert manager.is_active_runtime_param_set_to("bookmarks.count", 2)
-    assert not manager.is_active_runtime_param_set_to("bookmarks.count", 3)
+    assert manager.is_active_runtime_param_set_to("bookmarker.count", 2)
+    assert not manager.is_active_runtime_param_set_to("bookmarker.count", 3)
 
 
 def test_manual_seek_reaches_a_part_and_syncs_the_others(mocker):
     block = _playing_block(mocker)
 
-    VideoBlock.manual_seek(block, "bookmarks.seek", 3)
+    VideoBlock.manual_seek(block, "bookmarker.seek", 3)
 
-    block.bookmarks.seek.assert_called_once_with(3)
+    block.bookmarker.seek.assert_called_once_with(3)
     block.sync_percent.emit.assert_called_once_with(0.5)
     block.sync_time.emit.assert_called_once_with(5000)
 
 
 def test_manual_seek_of_a_part_that_went_nowhere_syncs_nothing(mocker):
     block = _playing_block(mocker)
-    block.bookmarks.seek.return_value = False
+    block.bookmarker.seek.return_value = False
 
-    VideoBlock.manual_seek(block, "bookmarks.seek", 3)
+    VideoBlock.manual_seek(block, "bookmarker.seek", 3)
 
     block.sync_percent.emit.assert_not_called()
     block.sync_time.emit.assert_not_called()

@@ -11,12 +11,10 @@ from pathlib import Path
 
 from pydantic_extra_types.color import Color
 from PyQt5.QtCore import QRect, QRectF, QSize, Qt, QTimer, pyqtSignal
-from PyQt5.QtGui import QCursor, QIcon
+from PyQt5.QtGui import QCursor
 from PyQt5.QtWidgets import QFileDialog, QStackedLayout, QWidget
 
 from gridplayer.dialogs.audio_delay import SetAudioDelayDialog, audio_delay_txt
-from gridplayer.dialogs.bookmark_rename_dialog import QBookmarkRenameDialog
-from gridplayer.dialogs.bookmarks import BookmarksDialog, held_end_action_txt
 from gridplayer.dialogs.error_details import (
     DetailRows,
     ErrorDetailsDialog,
@@ -43,7 +41,7 @@ from gridplayer.models.audio_selection import (
     AudioTrackId,
     track_of_file,
 )
-from gridplayer.models.bookmark import Bookmark, bookmark_color
+from gridplayer.models.bookmark import Bookmark
 from gridplayer.models.chapter import Chapter
 from gridplayer.models.media_list import (
     ItemDetails,
@@ -114,17 +112,7 @@ from gridplayer.params.static import (
 )
 from gridplayer.settings import Settings
 from gridplayer.utils.aspect_calc import SyncedView
-from gridplayer.utils.bookmarks import (
-    bookmark_at,
-    default_bookmark_name,
-    file_key,
-    is_bookmarked,
-    is_in_stretch,
-    next_bookmark_index,
-    next_bookmark_round,
-    previous_bookmark_index,
-    with_bookmark,
-)
+from gridplayer.utils.bookmarks import file_key
 from gridplayer.utils.chapters import (
     chapter_index_at,
     chapter_span,
@@ -172,7 +160,6 @@ from gridplayer.utils.sponsorblock import (
     sponsorblock_fetcher,
 )
 from gridplayer.utils.step_sizes import seek_step_ms, zoom_stepped
-from gridplayer.utils.time_txt import timed_title
 from gridplayer.utils.track_language import language_name, normalize, pick_track
 from gridplayer.utils.url_resolve.static import ResolvedList, ResolvedVideo
 from gridplayer.utils.url_resolve.url_resolve import VideoURLResolver
@@ -195,18 +182,13 @@ from gridplayer.vlc_player.static import (
     wanted_audio_track_id,
     wanted_subtitle_track_id,
 )
-from gridplayer.widgets.bookmark_colors import (
-    bookmark_color_menu,
-    bookmark_icon,
-    color_picked_by_hand,
-)
 from gridplayer.widgets.cell_chrome import (
     chrome_color_on_cell,
     paint_idle_disc,
     paint_solid_outline,
 )
-from gridplayer.widgets.custom_menu import CustomMenu
 from gridplayer.widgets.stacked_layout_floating import QStackedLayoutFloating
+from gridplayer.widgets.video_block_bookmarker import Bookmarker
 from gridplayer.widgets.video_block_guards import (
     only_initialized,
     only_live,
@@ -430,18 +412,12 @@ class VideoBlock(QWidget):
         # what the seek bar was last told to mark
         self._seek_marks: tuple[SeekMark, ...] = ()
 
-        # the bookmarks manager while it is open, to close with the video
-        self._bookmarks_manager: BookmarksDialog | None = None
-
-        # a bookmark's new name being typed, or its colour picked
-        self._is_editing_bookmark = False
-
         # the picture switched off while the player is in the tray, to be
         # switched back on as it comes back; see set_video_decoding_stopped
         self._is_video_stopped_in_tray = False
 
         # shared with other cells, the bookmarks may change in any of them
-        self._ctx.bookmarks.changed.connect(self._update_seek_marks)
+        self._ctx.bookmarks.changed.connect(self.update_seek_marks)
 
         # Components
         self.overlay_hide_timer = QTimer(self)
@@ -527,6 +503,8 @@ class VideoBlock(QWidget):
 
         self.url_resolver = self.init_url_resolver()
         self.video_driver: VideoFrameVLC | None = None
+
+        self.bookmarker = Bookmarker(self)
 
         sponsorblock_fetcher().fetched.connect(self._sponsor_segments_fetched)
 
@@ -770,8 +748,8 @@ class VideoBlock(QWidget):
             (overlay.exit_clicked, self.close),
             (overlay.play_pause_clicked, self.play_pause),
             (overlay.mute_unmute_clicked, self.mute_unmute),
-            (overlay.bookmark_clicked, self.jump_to_bookmark_at),
-            (overlay.bookmark_menu_requested, self.show_bookmark_menu),
+            (overlay.bookmark_clicked, self.bookmarker.jump_to_marker),
+            (overlay.bookmark_menu_requested, self.bookmarker.show_marker_menu),
             (overlay.list_place_clicked, self.show_list_window),
             (overlay.stop_clicked, self.stop_playback),
             (overlay.retry_clicked, self.reload),
@@ -1369,7 +1347,7 @@ class VideoBlock(QWidget):
 
         self._is_closing = True
 
-        self._close_bookmarks_manager()
+        self.bookmarker.close_manager()
 
         self.closing.emit()
 
@@ -3592,34 +3570,14 @@ class VideoBlock(QWidget):
 
         end_action = self.video_params.end_action
 
-        if not self._is_editing_bookmarks or end_action not in LEAVING_END_ACTIONS:
+        if not self.bookmarker.is_editing or end_action not in LEAVING_END_ACTIONS:
             return False
-
-        self._hold_end(end_action)
-
-        return True
-
-    @property
-    def _is_editing_bookmarks(self) -> bool:
-        return self._bookmarks_manager is not None or self._is_editing_bookmark
-
-    def _hold_end(self, end_action: VideoEndAction):
-        """Pause at the start in place of the end action, and say so where
-        the bookmarks are being edited."""
 
         self._pause_at_start()
 
-        if self._bookmarks_manager is not None:
-            self._bookmarks_manager.hold_end(end_action)
-            return
+        self.bookmarker.tell_end_held(end_action)
 
-        # the box the name is typed in, or the colour picked in, has no room
-        # to say it: the video does
-        self.info_change.emit(
-            translate("Bookmarks", "Paused at the start instead of “{ACTION}”").format(
-                ACTION=held_end_action_txt(end_action)
-            )
-        )
+        return True
 
     def stop_playback(self):
         # stopped from the menu as from its own Stop, nothing left to start
@@ -3751,7 +3709,7 @@ class VideoBlock(QWidget):
         snapshot has it: the cell went on to another file since, the next
         on its list or in its folder."""
 
-        self._close_bookmarks_manager()
+        self.bookmarker.close_manager()
         self._cancel_steps()
 
         self._view_to_follow = None
@@ -4493,7 +4451,7 @@ class VideoBlock(QWidget):
     def _set_chapters(self, chapters: tuple[Chapter, ...]):
         self._chapters = chapters
 
-        self._update_seek_marks()
+        self.update_seek_marks()
 
     @property
     def seek_marks(self) -> tuple[SeekMark, ...]:
@@ -4501,7 +4459,7 @@ class VideoBlock(QWidget):
 
         return self._seek_marks
 
-    def _update_seek_marks(self):
+    def update_seek_marks(self):
         """Tell the seek bar what to mark: chapters, SponsorBlock's, and the
         viewer's bookmarks."""
 
@@ -4518,7 +4476,7 @@ class VideoBlock(QWidget):
 
         bookmarks = ()
         if self.is_video_initialized and not self.is_live:
-            bookmarks = self.bookmark_marks(self.video_driver.length)
+            bookmarks = self.bookmarker.marks(self.video_driver.length)
 
         marks = (*chapters, *segments, *bookmarks)
 
@@ -4581,7 +4539,7 @@ class VideoBlock(QWidget):
         )
         self._skip_spans = skip_spans(segments, modes)
 
-        self._update_seek_marks()
+        self.update_seek_marks()
 
     def _sponsor_segments_playing(self) -> tuple[SponsorSegment, ...]:
         """The segments, if what plays is the video they were marked on."""
@@ -4618,7 +4576,7 @@ class VideoBlock(QWidget):
         if not self._chapters:
             return None
 
-        return chapter_index_at(self._chapters, self._arriving_time)
+        return chapter_index_at(self._chapters, self.arriving_time)
 
     def is_chapter_reachable(self, index: int) -> bool:
         """Whether a jump to this chapter would land inside the loop."""
@@ -4637,7 +4595,7 @@ class VideoBlock(QWidget):
             return
 
         stop_ms = next_stop(
-            self._chapters, self._arriving_time, self.loop_start, self.loop_end
+            self._chapters, self.arriving_time, self.loop_start, self.loop_end
         )
 
         if stop_ms is None:
@@ -4655,7 +4613,7 @@ class VideoBlock(QWidget):
 
         self._seek_chapter_stop(
             previous_stop(
-                self._chapters, self._arriving_time, self.loop_start, self.loop_end
+                self._chapters, self.arriving_time, self.loop_start, self.loop_end
             )
         )
 
@@ -4686,7 +4644,7 @@ class VideoBlock(QWidget):
 
         length = self.video_driver.length
 
-        start_ms, end_ms = span_at(self._chapters, self._arriving_time, length)
+        start_ms, end_ms = span_at(self._chapters, self.arriving_time, length)
 
         # cleared first: the new start can lie past the old end
         self.reset_loop()
@@ -4698,15 +4656,7 @@ class VideoBlock(QWidget):
         if end_ms < length:
             self.set_loop_end_time(end_ms)
 
-    # Bookmarks
-    #
-    # The places the viewer marked to come back to, kept by the playlist with
-    # the file they are in (see BookmarksRegistry): a cell gone on to another
-    # file finds them again when it comes back. A jump to one is the viewer's
-    # own seek, the same as a click on the bar, so one inside a sponsor is
-    # played rather than skipped. A loop narrows them down to itself, as it
-    # does the chapters. One past the end of what plays -- marked on another
-    # cut of a stream -- is kept, but is nowhere to go.
+    # the viewer's bookmarks; what is done with them is the Bookmarker's
 
     @property
     def bookmarks(self) -> tuple[Bookmark, ...]:
@@ -4714,420 +4664,6 @@ class VideoBlock(QWidget):
             return ()
 
         return self._ctx.bookmarks.get(self.video_params.uri, self.video_params.id)
-
-    def set_bookmarks(self, bookmarks):
-        """Put these in place of the file's bookmarks, in order and one to a
-        place; every cell they are shared with marks them too."""
-
-        self._ctx.bookmarks.set(self.video_params.uri, self.video_params.id, bookmarks)
-
-        self._update_seek_marks()
-
-    def bookmark_name(self, index: int) -> str:
-        return self.bookmarks[index].name or default_bookmark_name(index)
-
-    def bookmark_marks(self, length_ms: int) -> tuple[SeekMark, ...]:
-        """The bookmarks as the bar marks them, those short of the end of a
-        video this long."""
-
-        return tuple(
-            SeekMark(
-                time_ms=bookmark.time_ms,
-                label=bookmark.name or default_bookmark_name(index),
-                kind=SeekMarkKind.BOOKMARK,
-                color=bookmark.color,
-            )
-            for index, bookmark in enumerate(self.bookmarks)
-            if bookmark.time_ms < length_ms
-        )
-
-    def _is_bookmark_on_the_bar(self, bookmark: Bookmark) -> bool:
-        if not self.is_video_initialized or self.is_live:
-            return False
-
-        return bookmark.time_ms < self.video_driver.length
-
-    def is_bookmark_reachable(self, index: int) -> bool:
-        """Whether a jump to this bookmark would land inside the loop."""
-
-        bookmarks = self.bookmarks
-
-        if not 0 <= index < len(bookmarks):
-            return False
-
-        return self.is_reachable(bookmarks[index])
-
-    def is_reachable(self, bookmark: Bookmark) -> bool:
-        """Whether a jump to this bookmark would land inside the loop; for
-        going through all of them, with the list read once."""
-
-        if not self._is_bookmark_on_the_bar(bookmark):
-            return False
-
-        return is_in_stretch(bookmark.time_ms, self.loop_start, self.loop_end)
-
-    @property
-    def bookmark_here(self) -> int | None:
-        """The bookmark the video is at, None where it is at none."""
-
-        if not self.is_video_initialized or self.is_live:
-            return None
-
-        return bookmark_at(self.bookmarks, self._arriving_time)
-
-    @property
-    def time_to_bookmark(self) -> int:
-        """Where a bookmark added now goes: where the video is.
-
-        A seek still on its way is where the viewer means, not where the
-        stream reports it has got to so far. At the very end, the last moment
-        before it: one at the end itself would be past the bar, never drawn
-        and never reached.
-        """
-
-        last = max(self.video_driver.length - 1, 0)
-
-        return min(max(self._arriving_time, 0), last)
-
-    @only_initialized
-    @only_seekable
-    def add_bookmark(self):
-        time_ms = self.time_to_bookmark
-
-        if is_bookmarked(self.bookmarks, time_ms):
-            self.info_change.emit(translate("Bookmarks", "Already bookmarked"))
-            return
-
-        self.set_bookmarks(with_bookmark(self.bookmarks, Bookmark(time_ms=time_ms)))
-
-        self.info_change.emit(translate("Bookmarks", "Bookmark added"))
-
-    @only_initialized
-    @only_seekable
-    def next_bookmark(self):
-        if not self.bookmarks:
-            return False
-
-        index = next_bookmark_index(
-            self.bookmarks, self._arriving_time, self.loop_start, self.loop_end
-        )
-
-        if index is None:
-            self.info_change.emit(translate("Bookmarks", "No next bookmark"))
-            return False
-
-        self._seek_bookmark(index)
-
-        return True
-
-    @only_initialized
-    @only_seekable
-    def previous_bookmark(self):
-        if not self.bookmarks:
-            return False
-
-        index = previous_bookmark_index(
-            self.bookmarks, self._arriving_time, self.loop_start, self.loop_end
-        )
-
-        if index is None:
-            self.info_change.emit(translate("Bookmarks", "No previous bookmark"))
-            return False
-
-        self._seek_bookmark(index)
-
-        return True
-
-    @only_initialized
-    @only_seekable
-    def seek_bookmark(self, index: int):
-        if not self.is_bookmark_reachable(index):
-            return False
-
-        self._seek_bookmark(index)
-
-        return True
-
-    def _seek_bookmark(self, index: int):
-        self.seek(self.bookmarks[index].time_ms)
-
-        self.info_change.emit(self.bookmark_name(index))
-
-    def _bookmark_indexes(self, times) -> list[int]:
-        return [
-            index
-            for index, bookmark in enumerate(self.bookmarks)
-            if bookmark.time_ms in times
-        ]
-
-    def jump_to_bookmark_at(self, times):
-        """Go to a bookmark of a marker clicked on, as from the menu: one
-        click after another, to each of those it stands for in turn."""
-
-        index = self.marker_bookmark_to_go(times)
-
-        if index is not None:
-            self.manual_seek("seek_bookmark", index)
-
-    def marker_bookmark_to_go(self, times) -> int | None:
-        """Which of a marker's bookmarks a click on it goes to: the one after
-        the one the video is on, round to the first after the last, of those
-        in reach; None for none in reach."""
-
-        indexes = [
-            index
-            for index in self._bookmark_indexes(times)
-            if self.is_bookmark_reachable(index)
-        ]
-
-        picked = next_bookmark_round(
-            [self.bookmarks[index] for index in indexes], self._arriving_time
-        )
-
-        return None if picked is None else indexes[picked]
-
-    def show_bookmark_menu(self, global_pos, times):
-        """What can be done with the bookmarks of a marker, where it was
-        right-clicked."""
-
-        menu = self.bookmark_menu(times)
-
-        if menu is None:
-            return
-
-        menu.exec_(global_pos)
-
-        # parented to the window, which would otherwise keep every one
-        menu.deleteLater()
-
-    def bookmark_menu(self, times) -> CustomMenu | None:
-        """The menu of a marker: Jump to, Rename, Color and Remove for its
-        bookmark, or a menu of those for each where it stands for more than
-        one, those being too close together to click one by one; then Manage
-        Bookmarks, with its own picked out."""
-
-        indexes = self._bookmark_indexes(times)
-
-        if not indexes or not self.is_video_initialized:
-            return None
-
-        menu = CustomMenu(parent=self.window())
-
-        if len(indexes) == 1:
-            self._add_bookmark_menu_actions(menu, indexes[0])
-        else:
-            self._add_bookmark_submenus(menu, indexes)
-
-        menu.addSeparator()
-
-        manage = menu.addAction(
-            QIcon.fromTheme("bookmark-manage"),
-            translate("Actions", "Manage Bookmarks…"),
-        )
-        manage.triggered.connect(
-            self._if_bookmarks_unchanged(lambda: self.manage_bookmarks(indexes))
-        )
-
-        return menu
-
-    def _if_bookmarks_unchanged(self, func):
-        """func, for a menu to call, done only while the bookmarks are as they
-        were when it was made.
-
-        A menu stays open while the video plays on, to its end and from there
-        to another file, or closed; what it was made for is gone then.
-        """
-
-        uri = self.video_params.uri
-        bookmarks = self.bookmarks
-
-        def call(_=False):
-            if self._is_bookmarks_gone(uri, bookmarks):
-                return
-
-            func()
-
-        return call
-
-    def _is_bookmarks_gone(self, uri, bookmarks) -> bool:
-        return (
-            self._is_closing
-            or self.video_params is None
-            or self.video_params.uri != uri
-            or self.bookmarks != bookmarks
-        )
-
-    def _add_bookmark_submenus(self, menu, indexes):
-        for index in indexes:
-            submenu = CustomMenu(parent=menu)
-            submenu.setTitle(
-                timed_title(
-                    self.bookmark_name(index),
-                    self.bookmarks[index].time_ms,
-                    self.video_driver.length,
-                )
-            )
-            # each in its own colour, to be told from the others by it too
-            submenu.setIcon(bookmark_icon([self.bookmarks[index].color]))
-            menu.addMenu(submenu)
-
-            self._add_bookmark_menu_actions(submenu, index)
-
-    def _add_bookmark_menu_actions(self, menu, index: int):
-        jump = menu.addAction(
-            QIcon.fromTheme("jump-to"), translate("Actions", "Jump to Bookmark")
-        )
-        # grayed out where it is out of reach, as it is in the list
-        jump.setEnabled(self.is_bookmark_reachable(index))
-        jump.triggered.connect(
-            self._if_bookmarks_unchanged(
-                lambda: self.manual_seek("seek_bookmark", index)
-            )
-        )
-
-        menu.addSeparator()
-
-        rename = menu.addAction(
-            QIcon.fromTheme("bookmark-rename"), translate("Actions", "Rename Bookmark…")
-        )
-        rename.triggered.connect(
-            self._if_bookmarks_unchanged(lambda: self.rename_bookmark(index))
-        )
-
-        menu.addMenu(
-            bookmark_color_menu(
-                menu,
-                [self.bookmarks[index].color],
-                slot_for=lambda color: self._if_bookmarks_unchanged(
-                    lambda: self.set_bookmark_color(index, color)
-                ),
-                custom_slot=self._if_bookmarks_unchanged(
-                    lambda: self.pick_bookmark_color(index)
-                ),
-            )
-        )
-
-        remove = menu.addAction(
-            QIcon.fromTheme("bookmark-remove"), translate("Actions", "Remove Bookmark")
-        )
-        remove.triggered.connect(
-            self._if_bookmarks_unchanged(lambda: self.remove_bookmark(index))
-        )
-
-    @only_initialized
-    @only_seekable
-    def rename_bookmark(self, index: int):
-        """Name a bookmark, and colour it; a name left empty takes it away."""
-
-        uri = self.video_params.uri
-        bookmarks = self.bookmarks
-        bookmark = bookmarks[index]
-
-        # the video plays on while the name is typed, held at its start
-        # rather than taken away at its end (see loop_end_action)
-        self._is_editing_bookmark = True
-
-        try:
-            edits = QBookmarkRenameDialog.get_edits(
-                parent=self.parent(),
-                title=translate(
-                    "Dialog - Rename bookmark", "Rename bookmark", "Header"
-                ),
-                name=bookmark.name or "",
-                placeholder=self.bookmark_name(index),
-                color=bookmark.color,
-            )
-        finally:
-            self._is_editing_bookmark = False
-
-        # and may still be gone at the end of it, closed from elsewhere, or
-        # another file put in its place: the name goes with it then
-        if edits is None or self._is_bookmarks_gone(uri, bookmarks):
-            return
-
-        name, color = edits
-
-        self._edit_bookmark(index, name=name.strip() or None, color=color)
-
-    @only_initialized
-    @only_seekable
-    def set_bookmark_color(self, index: int, color: str | None):
-        """Colour a bookmark; None gives it back the bookmarks' own."""
-
-        self._edit_bookmark(index, color=color)
-
-    @only_initialized
-    @only_seekable
-    def pick_bookmark_color(self, index: int):
-        """Colour a bookmark in one picked by hand."""
-
-        uri = self.video_params.uri
-        bookmarks = self.bookmarks
-
-        # held as it is while it is named
-        self._is_editing_bookmark = True
-
-        try:
-            color = color_picked_by_hand(self.parent(), bookmarks[index].color)
-        finally:
-            self._is_editing_bookmark = False
-
-        if color is None or self._is_bookmarks_gone(uri, bookmarks):
-            return
-
-        self._edit_bookmark(index, color=color)
-
-    def _edit_bookmark(self, index: int, **changes):
-        bookmark = self.bookmarks[index]
-
-        if "color" in changes:
-            changes["color"] = bookmark_color(changes["color"])
-
-        edited = bookmark.model_copy(update=changes)
-
-        if edited == bookmark:
-            return
-
-        bookmarks = list(self.bookmarks)
-        bookmarks[index] = edited
-
-        self.set_bookmarks(bookmarks)
-
-    @only_initialized
-    @only_seekable
-    def remove_bookmark(self, index: int):
-        remaining = list(self.bookmarks)
-        del remaining[index]
-
-        self.set_bookmarks(remaining)
-
-        self.info_change.emit(translate("Bookmarks", "Bookmark removed"))
-
-    @only_initialized
-    @only_seekable
-    def manage_bookmarks(self, indexes=None):
-        """The bookmarks manager, the ones told picked out in it, or the one
-        the video is at."""
-
-        if indexes is None:
-            here = self.bookmark_here
-            indexes = () if here is None else (here,)
-
-        dialog = BookmarksDialog(self, selected=indexes, parent=self.parent())
-
-        self._bookmarks_manager = dialog
-        dialog.exec_()
-        self._bookmarks_manager = None
-
-        dialog.deleteLater()
-
-    def _close_bookmarks_manager(self):
-        """Close the bookmarks manager with the video it is open on: the video
-        closed, or another file put in its place. What was done in it stays
-        done, as it would with OK."""
-
-        if self._bookmarks_manager is not None:
-            self._bookmarks_manager.accept()
 
     @only_seekable
     def set_end_action(self, end_action: VideoEndAction):
@@ -5287,7 +4823,7 @@ class VideoBlock(QWidget):
         self.video_driver.set_time(seek_ms)
 
     @property
-    def _arriving_time(self) -> int:
+    def arriving_time(self) -> int:
         """Where the video is, a seek still on its way counting as there already.
 
         Read off the time alone, a seek on a stream sits short of where it
@@ -6425,7 +5961,7 @@ class VideoBlock(QWidget):
             self._load_and_play()
             return
 
-        self._close_bookmarks_manager()
+        self.bookmarker.close_manager()
 
         self._cancel_steps()
 

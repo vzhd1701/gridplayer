@@ -5,6 +5,7 @@ it to.
 """
 
 import dataclasses
+from operator import attrgetter
 from types import SimpleNamespace
 from unittest.mock import MagicMock
 
@@ -28,7 +29,7 @@ from gridplayer.player.managers.lists import MediaListsRegistry
 from gridplayer.settings import Settings
 from gridplayer.utils.bookmarks import default_bookmark_name
 from gridplayer.utils.sponsorblock import SkipSpan
-from gridplayer.widgets import video_block as video_block_module
+from gridplayer.widgets import video_block_bookmarker as bookmarker_module
 from gridplayer.widgets.video_block import VideoBlock
 from gridplayer.widgets.video_frame_dummy import VideoFrameDummy
 
@@ -114,7 +115,7 @@ def make_block(tmp_path, mocker):
 
         # None leaves those the file has: another cell's, shared
         if bookmarks is not None:
-            block.set_bookmarks(bookmarks)
+            block.bookmarker.replace(bookmarks)
 
         assert block.is_video_initialized
 
@@ -167,7 +168,7 @@ class TestAdding:
         block = make_block(bookmarks=())
 
         block.seek(12000)
-        block.add_bookmark()
+        block.bookmarker.add()
 
         assert block.bookmarks == (Bookmark(time_ms=12000),)
         assert block.notices == ["Bookmark added"]
@@ -176,7 +177,7 @@ class TestAdding:
         block = make_block(bookmarks=())
 
         block.seek(12000)
-        block.add_bookmark()
+        block.bookmarker.add()
 
         assert block._ctx.bookmarks.entries() == [
             FileBookmarks(
@@ -186,13 +187,13 @@ class TestAdding:
 
     def test_it_goes_in_its_place_among_the_rest(self, block):
         block.seek(20000)
-        block.add_bookmark()
+        block.bookmarker.add()
 
         assert _times(block) == [10000, 20000, 30000]
 
     def test_one_where_there_is_one_already_is_not_added(self, block):
         block.seek(30200)
-        block.add_bookmark()
+        block.bookmarker.add()
 
         assert _times(block) == [10000, 30000]
         assert block.notices == ["Already bookmarked"]
@@ -204,7 +205,7 @@ class TestAdding:
 
         block.seek(25000)
         _reported(block, LANDING_ON_A_STREAM_MS)
-        block.add_bookmark()
+        block.bookmarker.add()
 
         assert _times(block) == [25000]
 
@@ -212,7 +213,7 @@ class TestAdding:
         block = make_block(bookmarks=())
         block.is_live = True
 
-        block.add_bookmark()
+        block.bookmarker.add()
 
         assert block.bookmarks == ()
 
@@ -220,21 +221,21 @@ class TestAdding:
         block = make_block(bookmarks=())
 
         block.seek(LENGTH)
-        block.add_bookmark()
+        block.bookmarker.add()
 
         assert _times(block) == [LENGTH - 1]
-        assert block.is_bookmark_reachable(0)
+        assert block.bookmarker.is_reachable_at(0)
 
     def test_one_added_now_would_go_where_the_video_is(self, block):
         block.seek(25000)
         _reported(block, LANDING_ON_A_STREAM_MS)
 
-        assert block.time_to_bookmark == 25000
+        assert block.bookmarker.time_to_add == 25000
 
 
 class TestSettingThemAll:
     def test_they_are_put_in_order_one_to_a_place(self, block):
-        block.set_bookmarks(
+        block.bookmarker.replace(
             [
                 Bookmark(time_ms=50000),
                 Bookmark(time_ms=20000, name="First"),
@@ -248,7 +249,7 @@ class TestSettingThemAll:
         )
 
     def test_the_bar_shows_them_at_once(self, block):
-        block.set_bookmarks([Bookmark(time_ms=45000)])
+        block.bookmarker.replace([Bookmark(time_ms=45000)])
 
         assert [mark.time_ms for mark in _bookmark_marks(block)] == [45000]
 
@@ -268,7 +269,7 @@ class TestTheBar:
 
     def test_one_added_is_marked_at_once(self, block):
         block.seek(45000)
-        block.add_bookmark()
+        block.bookmarker.add()
 
         assert [mark.time_ms for mark in _bookmark_marks(block)] == [
             10000,
@@ -305,31 +306,31 @@ class TestTheBar:
 
 class TestJumping:
     def test_next_goes_from_one_to_the_next(self, block):
-        block.next_bookmark()
+        block.bookmarker.next()
         assert block.time == 10000
 
-        block.next_bookmark()
+        block.bookmarker.next()
         assert block.time == 30000
 
     def test_a_jump_names_the_bookmark_it_lands_on(self, block):
-        block.next_bookmark()
-        block.next_bookmark()
+        block.bookmarker.next()
+        block.bookmarker.next()
 
         assert block.notices == ["Bookmark 1", "Goal & Run"]
 
     def test_next_from_a_jump_that_landed_short_moves_on(self, block):
         block.seek(10000 - LANDED_SHORT_MS)
 
-        block.next_bookmark()
+        block.bookmarker.next()
 
         assert block.time == 30000
 
     def test_next_while_a_jump_on_a_stream_lands_moves_on(self, make_block):
         block = make_block(bookmarks=(Bookmark(time_ms=25000), Bookmark(time_ms=40000)))
 
-        block.seek_bookmark(0)
+        block.bookmarker.seek(0)
         _reported(block, LANDING_ON_A_STREAM_MS)
-        block.next_bookmark()
+        block.bookmarker.next()
 
         assert block.time == 40000
 
@@ -337,7 +338,7 @@ class TestJumping:
         block.seek(35000)
         block.loop_end_action = MagicMock()
 
-        block.next_bookmark()
+        block.bookmarker.next()
 
         assert block.time == 35000
         assert _seeks(block) == [35000]
@@ -347,21 +348,21 @@ class TestJumping:
     def test_previous_well_past_one_goes_back_to_it(self, block):
         block.seek(35000)
 
-        block.previous_bookmark()
+        block.bookmarker.previous()
 
         assert block.time == 30000
 
     def test_previous_just_past_one_goes_to_the_one_before(self, block):
         block.seek(30500)
 
-        block.previous_bookmark()
+        block.bookmarker.previous()
 
         assert block.time == 10000
 
     def test_previous_at_the_first_goes_nowhere_and_says_so(self, block):
         block.seek(10000)
 
-        block.previous_bookmark()
+        block.bookmarker.previous()
 
         assert block.time == 10000
         assert block.notices == ["No previous bookmark"]
@@ -370,10 +371,10 @@ class TestJumping:
         block = make_block(bookmarks=(Bookmark(time_ms=20000), Bookmark(time_ms=20600)))
 
         block.seek(20600)
-        block.previous_bookmark()
+        block.bookmarker.previous()
         assert block.time == 20000
 
-        block.next_bookmark()
+        block.bookmarker.next()
         assert block.time == 20600
 
         assert block.notices == ["Bookmark 1", "Bookmark 2"]
@@ -381,8 +382,8 @@ class TestJumping:
     def test_a_video_without_any_goes_nowhere_and_says_nothing(self, make_block):
         block = make_block(bookmarks=())
 
-        block.next_bookmark()
-        block.previous_bookmark()
+        block.bookmarker.next()
+        block.bookmarker.previous()
 
         assert block.time == 0
         assert block.notices == []
@@ -391,7 +392,7 @@ class TestJumping:
         synced = []
         block.sync_time.connect(synced.append)
 
-        block.manual_seek("seek_bookmark", 1)
+        block.manual_seek("bookmarker.seek", 1)
 
         assert block.time == 30000
         assert synced == [30000]
@@ -403,7 +404,7 @@ class TestJumping:
         block.sync_time.connect(synced.append)
         block.sync_percent.connect(synced.append)
 
-        block.manual_seek("next_bookmark")
+        block.manual_seek("bookmarker.next")
 
         assert synced == []
 
@@ -411,7 +412,7 @@ class TestJumping:
         block._skip_spans = (SkipSpan(25000, 40000, "sponsor"),)
         block.set_pause(False)
 
-        block.seek_bookmark(1)
+        block.bookmarker.seek(1)
         _reported(block, 30000)
         _reported(block, 30400)
         _reported(block, 31000)
@@ -437,38 +438,36 @@ class TestTheLoop:
         return block
 
     def test_those_outside_it_are_out_of_reach(self, looped):
-        reachable = [looped.is_bookmark_reachable(i) for i in range(3)]
+        reachable = [looped.bookmarker.is_reachable_at(i) for i in range(3)]
 
         assert reachable == [False, True, False]
 
     def test_next_and_previous_pass_them_over(self, looped):
-        looped.next_bookmark()
+        looped.bookmarker.next()
         assert looped.time == 30000
 
-        looped.next_bookmark()
+        looped.bookmarker.next()
         assert looped.time == 30000
         assert looped.notices[-1] == "No next bookmark"
 
-        looped.previous_bookmark()
+        looped.bookmarker.previous()
         assert looped.notices[-1] == "No previous bookmark"
 
     def test_a_jump_to_one_out_of_reach_goes_nowhere(self, looped):
-        assert looped.seek_bookmark(0) is False
+        assert looped.bookmarker.seek(0) is False
         assert looped.time == 25000
 
 
 class TestRenaming:
     @pytest.fixture
     def answer(self, mocker):
-        return mocker.patch.object(
-            video_block_module.QBookmarkRenameDialog, "get_edits"
-        )
+        return mocker.patch.object(bookmarker_module.QBookmarkRenameDialog, "get_edits")
 
     def test_one_told_which_is_renamed_wherever_the_video_is(self, block, answer):
         answer.return_value = ("First", None)
         block.seek(20000)
 
-        block.rename_bookmark(0)
+        block.bookmarker.rename(0)
 
         assert block.bookmarks[0] == Bookmark(time_ms=10000, name="First")
         assert _bookmark_marks(block)[0].label == "First"
@@ -476,17 +475,17 @@ class TestRenaming:
     def test_the_name_it_has_is_the_one_to_edit(self, block, answer):
         answer.return_value = ("Goal & Run", None)
 
-        block.rename_bookmark(1)
+        block.bookmarker.rename(1)
 
         assert answer.call_args.kwargs["name"] == "Goal & Run"
 
     def test_a_name_left_empty_goes_back_to_its_number(self, block, answer):
         answer.return_value = ("   ", None)
 
-        block.rename_bookmark(1)
+        block.bookmarker.rename(1)
 
         assert block.bookmarks[1].name is None
-        assert block.bookmark_name(1) == "Bookmark 2"
+        assert block.bookmarker.name(1) == "Bookmark 2"
         assert default_bookmark_name(1) == "Bookmark 2"
 
 
@@ -494,7 +493,7 @@ class TestRemoving:
     def test_one_told_which_is_removed_wherever_the_video_is(self, block):
         block.seek(20000)
 
-        block.remove_bookmark(1)
+        block.bookmarker.remove(1)
 
         assert _times(block) == [10000]
         assert block.notices == ["Bookmark removed"]
@@ -504,12 +503,12 @@ class TestRemoving:
 class TestManaging:
     @pytest.fixture
     def dialog(self, mocker):
-        return mocker.patch.object(video_block_module, "BookmarksDialog")
+        return mocker.patch.object(bookmarker_module, "BookmarksDialog")
 
     def test_the_one_the_video_is_at_is_picked_out(self, block, dialog):
         block.seek(30000 - LANDED_SHORT_MS)
 
-        block.manage_bookmarks()
+        block.bookmarker.manage()
 
         assert dialog.call_args.kwargs["selected"] == (1,)
         dialog.return_value.exec_.assert_called_once()
@@ -517,17 +516,17 @@ class TestManaging:
     def test_away_from_any_none_is(self, block, dialog):
         block.seek(20000)
 
-        block.manage_bookmarks()
+        block.bookmarker.manage()
 
         assert dialog.call_args.kwargs["selected"] == ()
 
     def test_those_told_are(self, block, dialog):
-        block.manage_bookmarks([0, 1])
+        block.bookmarker.manage([0, 1])
 
         assert dialog.call_args.kwargs["selected"] == [0, 1]
 
     def test_it_opens_over_the_player(self, block, dialog):
-        block.manage_bookmarks()
+        block.bookmarker.manage()
 
         assert dialog.call_args.args == (block,)
         assert dialog.call_args.kwargs["parent"] is block.parent()
@@ -535,7 +534,7 @@ class TestManaging:
     def test_a_live_stream_has_none_to_manage(self, block, dialog):
         block.is_live = True
 
-        block.manage_bookmarks()
+        block.bookmarker.manage()
 
         dialog.assert_not_called()
 
@@ -568,7 +567,7 @@ class TestKeptWithTheFile:
         second = make_block(bookmarks=None, context=context)
 
         first.seek(45000)
-        first.add_bookmark()
+        first.bookmarker.add()
 
         assert _times(second) == [10000, 30000, 45000]
         assert [mark.time_ms for mark in _bookmark_marks(second)] == [
@@ -584,7 +583,7 @@ class TestKeptWithTheFile:
         second = make_block(bookmarks=None, context=context)
 
         first.seek(45000)
-        first.add_bookmark()
+        first.bookmarker.add()
 
         assert _times(first) == [10000, 30000, 45000]
         assert second.bookmarks == ()
@@ -595,7 +594,7 @@ class TestKeptWithTheFile:
         )
 
         block.seek(45000)
-        block.add_bookmark()
+        block.bookmarker.add()
 
         block.apply_snapshot(snapshot.videos[0])
 
@@ -658,8 +657,8 @@ class TestTheMenu:
     def test_a_row_jumps_as_a_seek_the_others_can_follow(self, block):
         rows = _Manager(block).menu_generator_bookmarks()
 
-        assert rows[1]["func"] == ("active", "manual_seek", "seek_bookmark", 1)
-        assert hasattr(VideoBlock, rows[1]["func"][2])
+        assert rows[1]["func"] == ("active", "manual_seek", "bookmarker.seek", 1)
+        assert callable(attrgetter(rows[1]["func"][2])(block))
 
     def test_the_one_the_video_is_at_is_ticked(self, block):
         manager = _Manager(block)
@@ -762,24 +761,26 @@ class TestAMarkersMenu:
         return next(action for action in menu.actions() if action.text() == title)
 
     def test_it_offers_jump_to_rename_and_remove_then_the_manager(self, block):
-        menu = block.bookmark_menu((30000,))
+        menu = block.bookmarker.marker_menu((30000,))
 
         assert self._titles(menu) == self.ITEMS + self.MANAGE
 
     def test_rename_has_the_bookmarks_own_icon(self, block, mocker):
         named = mocker.patch.object(
-            video_block_module.QIcon, "fromTheme", side_effect=lambda _name: QIcon()
+            bookmarker_module.QIcon, "fromTheme", side_effect=lambda _name: QIcon()
         )
 
-        block.bookmark_menu((30000,))
+        block.bookmarker.marker_menu((30000,))
 
         assert mocker.call("bookmark-rename") in named.call_args_list
 
     def test_the_manager_opens_with_its_bookmark_picked_out(self, block, mocker):
-        dialog = mocker.patch.object(video_block_module, "BookmarksDialog")
+        dialog = mocker.patch.object(bookmarker_module, "BookmarksDialog")
         block.seek(20000)
 
-        self._item(block.bookmark_menu((30000,)), "Manage Bookmarks…").trigger()
+        self._item(
+            block.bookmarker.marker_menu((30000,)), "Manage Bookmarks…"
+        ).trigger()
 
         assert dialog.call_args.kwargs["selected"] == [1]
 
@@ -787,7 +788,7 @@ class TestAMarkersMenu:
         synced = []
         block.sync_time.connect(synced.append)
 
-        self._item(block.bookmark_menu((30000,)), "Jump to Bookmark").trigger()
+        self._item(block.bookmarker.marker_menu((30000,)), "Jump to Bookmark").trigger()
 
         assert block.time == 30000
         assert synced == [30000]
@@ -797,31 +798,31 @@ class TestAMarkersMenu:
         block.seek(25000)
         block.set_loop_start_time(20000)
 
-        jump = self._item(block.bookmark_menu((10000,)), "Jump to Bookmark")
+        jump = self._item(block.bookmarker.marker_menu((10000,)), "Jump to Bookmark")
 
         assert not jump.isEnabled()
 
     def test_remove_takes_that_one_away_wherever_the_video_is(self, block):
         block.seek(20000)
 
-        self._item(block.bookmark_menu((30000,)), "Remove Bookmark").trigger()
+        self._item(block.bookmarker.marker_menu((30000,)), "Remove Bookmark").trigger()
 
         assert _times(block) == [10000]
 
     def test_rename_names_that_one(self, block, mocker):
         mocker.patch.object(
-            video_block_module.QBookmarkRenameDialog,
+            bookmarker_module.QBookmarkRenameDialog,
             "get_edits",
             return_value=("Win", None),
         )
         block.seek(20000)
 
-        self._item(block.bookmark_menu((30000,)), "Rename Bookmark…").trigger()
+        self._item(block.bookmarker.marker_menu((30000,)), "Rename Bookmark…").trigger()
 
         assert block.bookmarks[1] == Bookmark(time_ms=30000, name="Win")
 
     def test_a_shared_marker_has_a_menu_for_each_it_stands_for(self, block):
-        menu = block.bookmark_menu((10000, 30000))
+        menu = block.bookmarker.marker_menu((10000, 30000))
 
         submenus = [action.menu() for action in menu.actions() if action.menu()]
 
@@ -835,41 +836,41 @@ class TestAMarkersMenu:
         assert [self._titles(submenu) for submenu in submenus] == [self.ITEMS] * 2
 
     def test_its_manager_opens_with_all_of_them_picked_out(self, block, mocker):
-        dialog = mocker.patch.object(video_block_module, "BookmarksDialog")
+        dialog = mocker.patch.object(bookmarker_module, "BookmarksDialog")
 
-        menu = block.bookmark_menu((10000, 30000))
+        menu = block.bookmarker.marker_menu((10000, 30000))
         self._item(menu, "Manage Bookmarks…").trigger()
 
         assert dialog.call_args.kwargs["selected"] == [0, 1]
 
     def test_each_of_those_jumps_to_its_own(self, block):
-        menu = block.bookmark_menu((10000, 30000))
+        menu = block.bookmarker.marker_menu((10000, 30000))
 
         self._item(menu.actions()[0].menu(), "Jump to Bookmark").trigger()
 
         assert block.time == 10000
 
     def test_and_removes_its_own(self, block):
-        menu = block.bookmark_menu((10000, 30000))
+        menu = block.bookmarker.marker_menu((10000, 30000))
 
         self._item(menu.actions()[1].menu(), "Remove Bookmark").trigger()
 
         assert _times(block) == [10000]
 
     def test_with_its_bookmarks_gone_there_is_none(self, block):
-        assert block.bookmark_menu((12345,)) is None
+        assert block.bookmarker.marker_menu((12345,)) is None
 
     def test_left_open_while_another_file_came_it_leaves_that_one_be(
         self, block, tmp_path, mocker
     ):
-        dialog = mocker.patch.object(video_block_module, "BookmarksDialog")
+        dialog = mocker.patch.object(bookmarker_module, "BookmarksDialog")
         (tmp_path / "other.mkv").touch()
-        menu = block.bookmark_menu((30000,))
+        menu = block.bookmarker.marker_menu((30000,))
 
         block.next_video()
         block.video_driver._fake_player_timer.stop()
         theirs = (Bookmark(time_ms=5000), Bookmark(time_ms=20000))
-        block.set_bookmarks(theirs)
+        block.bookmarker.replace(theirs)
 
         for title in ("Remove Bookmark", "Jump to Bookmark", "Manage Bookmarks…"):
             self._item(menu, title).trigger()
@@ -886,15 +887,15 @@ class TestAMarkersMenu:
 
         def typed(**_kwargs):
             block.next_video()
-            block.set_bookmarks(theirs)
+            block.bookmarker.replace(theirs)
 
             return "Win", "#ff3d3d"
 
         mocker.patch.object(
-            video_block_module.QBookmarkRenameDialog, "get_edits", side_effect=typed
+            bookmarker_module.QBookmarkRenameDialog, "get_edits", side_effect=typed
         )
 
-        self._item(block.bookmark_menu((30000,)), "Rename Bookmark…").trigger()
+        self._item(block.bookmarker.marker_menu((30000,)), "Rename Bookmark…").trigger()
 
         assert block.bookmarks == theirs
 
@@ -920,10 +921,10 @@ class TestAMarkersMenu:
             return "Win", None
 
         mocker.patch.object(
-            video_block_module.QBookmarkRenameDialog, "get_edits", side_effect=typed
+            bookmarker_module.QBookmarkRenameDialog, "get_edits", side_effect=typed
         )
 
-        self._item(block.bookmark_menu((30000,)), "Rename Bookmark…").trigger()
+        self._item(block.bookmarker.marker_menu((30000,)), "Rename Bookmark…").trigger()
 
         assert block.video_params.uri == tmp_path / "movie.mkv"
         assert not block._is_closing
@@ -935,18 +936,18 @@ class TestAMarkersMenu:
         (tmp_path / "other.mkv").touch()
         block.video_params.end_action = VideoEndAction.NEXT_FILE
         mocker.patch.object(
-            video_block_module.QBookmarkRenameDialog,
+            bookmarker_module.QBookmarkRenameDialog,
             "get_edits",
             return_value=("Win", None),
         )
 
-        block.rename_bookmark(1)
+        block.bookmarker.rename(1)
         block.loop_end_action()
 
         assert block.video_params.uri == tmp_path / "other.mkv"
 
     def test_the_overlay_opens_it_where_it_was_asked_for(self, block, mocker):
-        shown = mocker.patch.object(video_block_module.CustomMenu, "exec_")
+        shown = mocker.patch.object(bookmarker_module.CustomMenu, "exec_")
 
         block.overlay.bookmark_menu_requested.emit(QPoint(40, 50), (30000,))
 
@@ -1015,7 +1016,7 @@ class TestColouring:
     ]
 
     def _menu(self, block, times=(30000,)):
-        menu = block.bookmark_menu(times)
+        menu = block.bookmarker.marker_menu(times)
 
         return next(
             action.menu() for action in menu.actions() if action.text() == "Color"
@@ -1056,7 +1057,7 @@ class TestColouring:
         assert self._ticked(self._menu(block)) == ["Blue"]
 
     def test_default_gives_it_back_the_bookmarks_own(self, block):
-        block.set_bookmarks(
+        block.bookmarker.replace(
             (Bookmark(time_ms=10000), Bookmark(time_ms=30000, color=BLUE))
         )
 
@@ -1065,8 +1066,8 @@ class TestColouring:
         assert block.bookmarks[1].color is None
 
     def test_the_menu_shows_its_colour(self, block):
-        block.set_bookmarks((Bookmark(time_ms=30000, color=BLUE),))
-        menu = block.bookmark_menu((30000,))
+        block.bookmarker.replace((Bookmark(time_ms=30000, color=BLUE),))
+        menu = block.bookmarker.marker_menu((30000,))
 
         color_item = self._item(menu, "Color")
 
@@ -1074,7 +1075,7 @@ class TestColouring:
 
     def test_any_other_is_picked_by_hand(self, block, mocker):
         picker = mocker.patch.object(
-            video_block_module, "color_picked_by_hand", return_value="#123456"
+            bookmarker_module, "color_picked_by_hand", return_value="#123456"
         )
 
         self._item(self._menu(block), "Custom…").trigger()
@@ -1084,7 +1085,7 @@ class TestColouring:
         assert picker.call_args.args[1] is None
 
     def test_and_then_custom_is_ticked_in_that_colour(self, block):
-        block.set_bookmarks((Bookmark(time_ms=30000, color="#123456"),))
+        block.bookmarker.replace((Bookmark(time_ms=30000, color="#123456"),))
 
         menu = self._menu(block)
 
@@ -1093,7 +1094,7 @@ class TestColouring:
 
     def test_picking_by_hand_given_up_leaves_it(self, block, mocker):
         mocker.patch.object(
-            video_block_module, "color_picked_by_hand", return_value=None
+            bookmarker_module, "color_picked_by_hand", return_value=None
         )
 
         self._item(self._menu(block), "Custom…").trigger()
@@ -1112,7 +1113,7 @@ class TestColouring:
             return BLUE
 
         mocker.patch.object(
-            video_block_module, "color_picked_by_hand", side_effect=picked
+            bookmarker_module, "color_picked_by_hand", side_effect=picked
         )
 
         self._item(self._menu(block), "Custom…").trigger()
@@ -1129,26 +1130,26 @@ class TestColouring:
         block.next_video()
         block.video_driver._fake_player_timer.stop()
         theirs = (Bookmark(time_ms=5000), Bookmark(time_ms=30000))
-        block.set_bookmarks(theirs)
+        block.bookmarker.replace(theirs)
 
         self._item(menu, "Blue").trigger()
 
         assert block.bookmarks == theirs
 
     def test_a_shared_marker_s_bookmarks_are_each_in_their_own_colour(self, block):
-        block.set_bookmarks(
+        block.bookmarker.replace(
             (Bookmark(time_ms=30000), Bookmark(time_ms=30400, color=BLUE))
         )
 
-        menu = block.bookmark_menu((30000, 30400))
+        menu = block.bookmarker.marker_menu((30000, 30400))
         icons = [action.icon() for action in menu.actions() if action.menu()]
 
         assert [_icon_color(icon) for icon in icons] == ["#ffab00", BLUE]
 
     def test_each_has_a_colour_menu_of_its_own(self, block):
-        block.set_bookmarks((Bookmark(time_ms=30000), Bookmark(time_ms=30400)))
+        block.bookmarker.replace((Bookmark(time_ms=30000), Bookmark(time_ms=30400)))
 
-        menu = block.bookmark_menu((30000, 30400))
+        menu = block.bookmarker.marker_menu((30000, 30400))
         second = [action.menu() for action in menu.actions() if action.menu()][1]
         color_menu = next(
             action.menu() for action in second.actions() if action.text() == "Color"
@@ -1162,29 +1163,27 @@ class TestColouring:
 class TestTheRenameBoxColours:
     @pytest.fixture
     def answer(self, mocker):
-        return mocker.patch.object(
-            video_block_module.QBookmarkRenameDialog, "get_edits"
-        )
+        return mocker.patch.object(bookmarker_module.QBookmarkRenameDialog, "get_edits")
 
     def test_it_starts_from_the_colour_it_has(self, block, answer):
-        block.set_bookmarks((Bookmark(time_ms=30000, color=BLUE),))
+        block.bookmarker.replace((Bookmark(time_ms=30000, color=BLUE),))
         answer.return_value = None
 
-        block.rename_bookmark(0)
+        block.bookmarker.rename(0)
 
         assert answer.call_args.kwargs["color"] == BLUE
 
     def test_the_name_and_colour_given_are_its(self, block, answer):
         answer.return_value = ("Win", BLUE)
 
-        block.rename_bookmark(1)
+        block.bookmarker.rename(1)
 
         assert block.bookmarks[1] == Bookmark(time_ms=30000, name="Win", color=BLUE)
 
     def test_given_up_it_is_left_as_it_was(self, block, answer):
         answer.return_value = None
 
-        block.rename_bookmark(1)
+        block.bookmarker.rename(1)
 
         assert block.bookmarks[1] == Bookmark(time_ms=30000, name="Goal & Run")
 
@@ -1193,7 +1192,7 @@ class TestTheRenameBox:
     """The box itself: the name, and the colour picked from circles."""
 
     def test_it_starts_on_default_for_one_with_no_colour(self, mocker):
-        dialog_class = video_block_module.QBookmarkRenameDialog
+        dialog_class = bookmarker_module.QBookmarkRenameDialog
         seen = {}
 
         def run(dialog):
@@ -1210,7 +1209,7 @@ class TestTheRenameBox:
         assert edits == ("Goal", None)
 
     def test_one_picked_is_given(self, mocker):
-        dialog_class = video_block_module.QBookmarkRenameDialog
+        dialog_class = bookmarker_module.QBookmarkRenameDialog
 
         def run(dialog):
             dialog.colors._presets[BLUE].setChecked(True)
@@ -1225,7 +1224,7 @@ class TestTheRenameBox:
         assert edits == ("Goal", BLUE)
 
     def test_one_picked_by_hand_before_is_there_to_keep(self, mocker):
-        dialog_class = video_block_module.QBookmarkRenameDialog
+        dialog_class = bookmarker_module.QBookmarkRenameDialog
 
         mocker.patch.object(dialog_class, "exec", return_value=True)
 
@@ -1236,7 +1235,7 @@ class TestTheRenameBox:
         assert edits == ("", "#123456")
 
     def test_given_up_it_gives_nothing(self, mocker):
-        dialog_class = video_block_module.QBookmarkRenameDialog
+        dialog_class = bookmarker_module.QBookmarkRenameDialog
 
         mocker.patch.object(dialog_class, "exec", return_value=False)
 
