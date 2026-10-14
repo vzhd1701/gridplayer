@@ -385,4 +385,4 @@ class TestPlaylistSettings:
         )
 
         assert spec.enabled_by == "video_defaults/deinterlace"
-        assert set(spec.enabled_by_value) == {AUTO, ON}
+        assert set(spec.enabled_by_values) == {AUTO, ON}

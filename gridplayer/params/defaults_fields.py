@@ -57,11 +57,9 @@ class SettingField:
     video_attr: str | None = None
     is_grid: bool = False
     enabled_by: str | None = None
-    # what the driving field has to be set to; None means any value that
-    # counts as on, which is what a plain checkbox gives, and a tuple
-    # means any one of several, which is what a combo with more than one
-    # setting worth having gives
-    enabled_by_value: object | None = None
+    # the values of the driving field that enable this one; the default is
+    # what a ticked checkbox gives
+    enabled_by_values: tuple = (True,)
     grid_visibility: GridVisibility = GridVisibility.ALWAYS
     tooltip: str | None = None
 
@@ -879,7 +877,7 @@ VIDEO_FIELDS: tuple[SettingField, ...] = (
         label=translate("SettingsDialog", "Preferred languages"),
         placeholder=translate("SettingsDialog", "en, ja, fr"),
         enabled_by="video_defaults/audio_track_mode",
-        enabled_by_value=AudioTrackMode.PREFERRED,
+        enabled_by_values=(AudioTrackMode.PREFERRED,),
         tooltip=translate(
             "SettingsDialog",
             "Language codes or names, best first."
@@ -923,7 +921,7 @@ VIDEO_FIELDS: tuple[SettingField, ...] = (
         label=translate("SettingsDialog", "Preferred languages"),
         placeholder=translate("SettingsDialog", "en, ja, fr"),
         enabled_by="video_defaults/subtitle_track_mode",
-        enabled_by_value=SubtitleTrackMode.PREFERRED,
+        enabled_by_values=(SubtitleTrackMode.PREFERRED,),
         tooltip=translate(
             "SettingsDialog",
             "Language codes or names, best first."
@@ -1043,7 +1041,7 @@ VIDEO_FIELDS: tuple[SettingField, ...] = (
         label=translate("SettingsDialog", "Deinterlace mode"),
         choices=_deinterlace_modes,
         enabled_by="video_defaults/deinterlace",
-        enabled_by_value=(VideoDeinterlace.AUTO, VideoDeinterlace.ON),
+        enabled_by_values=(VideoDeinterlace.AUTO, VideoDeinterlace.ON),
         tooltip=translate(
             "SettingsDialog",
             "Auto: VLC chooses (currently X).\n"
@@ -1092,7 +1090,7 @@ VIDEO_FIELDS: tuple[SettingField, ...] = (
         special_text=translate("When Video Fails", "At once"),
         suffix=translate("SettingsDialog", "(sec)"),
         enabled_by="video_defaults/list_fail_action",
-        enabled_by_value=ListFailAction.PLAY_NEXT,
+        enabled_by_values=(ListFailAction.PLAY_NEXT,),
     ),
     CheckboxField(
         settings_key="video_defaults/random_loop",
@@ -1152,7 +1150,7 @@ VIDEO_FIELDS: tuple[SettingField, ...] = (
         minimum=1,
         maximum=1000,
         enabled_by="video_defaults/network_retry_mode",
-        enabled_by_value=NetworkRetryMode.TIMES,
+        enabled_by_values=(NetworkRetryMode.TIMES,),
     ),
     SpinField(
         settings_key="video_defaults/auto_reload_timer",
@@ -1222,7 +1220,7 @@ SUBTITLE_STYLE_FIELDS: tuple[SettingField, ...] = (
         section=translate("SettingsDialog", "Effects"),
         label=translate("SettingsDialog", "Outline color"),
         enabled_by="subtitles/outline",
-        enabled_by_value=_OUTLINE_DRAWN,
+        enabled_by_values=_OUTLINE_DRAWN,
     ),
     CheckboxField(
         settings_key="subtitles/shadow",

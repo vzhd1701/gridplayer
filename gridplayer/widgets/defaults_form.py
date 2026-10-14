@@ -392,15 +392,7 @@ class DefaultsForm(QWidget):
             if driver is None:
                 continue
 
-            driver_value = driver.value()
-
-            if spec.enabled_by_value is None:
-                enabled = bool(driver_value)
-            elif isinstance(spec.enabled_by_value, tuple):
-                enabled = driver_value in spec.enabled_by_value
-            else:
-                enabled = driver_value == spec.enabled_by_value
-
+            enabled = driver.value() in spec.enabled_by_values
             self._editors[spec.settings_key].set_enabled(enabled)
 
     def _sync_grid_visibility(self):
