@@ -8,7 +8,7 @@ import pytest
 from PyQt5.QtCore import QSettings
 from PyQt5.QtWidgets import QApplication
 
-from gridplayer.dialogs.audio_delay import SetAudioDelayDialog
+from gridplayer.dialogs.audio_delay import SetAudioDelayDialog, audio_delay_txt
 from gridplayer.models.video import Video
 from gridplayer.params.static import (
     AUDIO_DELAY_STEP_MS,
@@ -16,7 +16,7 @@ from gridplayer.params.static import (
     MIN_AUDIO_DELAY_MS,
 )
 from gridplayer.settings import Settings
-from gridplayer.widgets.video_block import VideoBlock, audio_delay_txt
+from gridplayer.widgets.video_block import VideoBlock
 
 
 @pytest.fixture(scope="module", autouse=True)

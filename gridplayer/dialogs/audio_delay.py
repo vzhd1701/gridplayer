@@ -17,6 +17,17 @@ from gridplayer.params.static import (
 from gridplayer.utils.qt import translate
 
 
+def audio_delay_txt(delay_ms: int) -> str:
+    """A delay as it reads, signed, since which way it goes is the point."""
+
+    milliseconds = translate("Audio Delay", "ms")
+
+    if not delay_ms:
+        return f"0 {milliseconds}"
+
+    return f"{delay_ms:+d} {milliseconds}"
+
+
 class SetAudioDelayDialog(QDialog):
     """Moves a video's sound against its picture.
 

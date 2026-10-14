@@ -581,6 +581,15 @@ class SharedView:
     place_y: AxisPlace
 
 
+class SyncedView(NamedTuple):
+    """A video's view, for the others to follow: see VideoBlock.synced_view."""
+
+    view: SharedView
+    # where the picture stands is a zoom to a selection's doing, which a
+    # reset of the zoom then undoes in the others too
+    is_zoomed_to_selection: bool
+
+
 def calc_shared_view(
     frame_size: tuple[int, int],
     pane_size: tuple[int, int],

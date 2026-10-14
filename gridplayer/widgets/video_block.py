@@ -7,14 +7,13 @@ import time
 from datetime import datetime, timezone
 from functools import partial
 from pathlib import Path
-from typing import NamedTuple
 
 from pydantic_extra_types.color import Color
 from PyQt5.QtCore import QRect, QRectF, QSize, Qt, QTimer, pyqtSignal
 from PyQt5.QtGui import QCursor, QIcon
 from PyQt5.QtWidgets import QFileDialog, QStackedLayout, QWidget
 
-from gridplayer.dialogs.audio_delay import SetAudioDelayDialog
+from gridplayer.dialogs.audio_delay import SetAudioDelayDialog, audio_delay_txt
 from gridplayer.dialogs.bookmark_rename_dialog import QBookmarkRenameDialog
 from gridplayer.dialogs.bookmarks import BookmarksDialog, held_end_action_txt
 from gridplayer.dialogs.error_details import (
@@ -28,7 +27,10 @@ from gridplayer.dialogs.input_dialog import (
     QCustomTextInput,
 )
 from gridplayer.dialogs.rename_dialog import QVideoRenameDialog
-from gridplayer.dialogs.subtitle_delay import SetSubtitleDelayDialog
+from gridplayer.dialogs.subtitle_delay import (
+    SetSubtitleDelayDialog,
+    subtitle_delay_txt,
+)
 from gridplayer.dialogs.subtitle_encoding import SetSubtitleEncodingDialog
 from gridplayer.exceptions import PlayerException
 from gridplayer.models.audio_selection import (
@@ -79,11 +81,7 @@ from gridplayer.models.video import (
 )
 from gridplayer.params import env
 from gridplayer.params.extensions import SUPPORTED_AUDIO_EXT, SUPPORTED_SUBTITLE_EXT
-from gridplayer.params.sponsorblock import (
-    CATEGORY_COLORS,
-    HIGHLIGHT_CATEGORY,
-    category_name,
-)
+from gridplayer.params.sponsorblock import category_name
 from gridplayer.params.static import (
     AUDIO_DELAY_STEP_MS,
     CHROME_MIN_SIZE,
@@ -114,7 +112,7 @@ from gridplayer.params.static import (
     ViewParams,
 )
 from gridplayer.settings import Settings
-from gridplayer.utils.aspect_calc import SharedView
+from gridplayer.utils.aspect_calc import SyncedView
 from gridplayer.utils.bookmarks import (
     bookmark_at,
     default_bookmark_name,
@@ -147,7 +145,11 @@ from gridplayer.utils.external_subtitles import (
     subtitle_file_label,
 )
 from gridplayer.utils.folder_navigator import FolderNavigator, FolderStep
-from gridplayer.utils.libvlc_options_parser import get_vlc_options
+from gridplayer.utils.libvlc_options_parser import (
+    get_vlc_options,
+    is_deinterlace_reload_needed,
+    is_reopen_needed,
+)
 from gridplayer.utils.list_errors import ReadErrorKind
 from gridplayer.utils.list_navigator import ListNavigator
 from gridplayer.utils.qt import MILLISECONDS, count_txt, qt_connect, translate
@@ -163,6 +165,7 @@ from gridplayer.utils.sponsorblock import (
     SkipSpan,
     category_modes,
     is_sponsorblock_enabled,
+    segment_mark,
     skip_span_at,
     skip_spans,
     sponsorblock_fetcher,
@@ -202,6 +205,16 @@ from gridplayer.widgets.cell_chrome import (
     paint_solid_outline,
 )
 from gridplayer.widgets.custom_menu import CustomMenu
+from gridplayer.widgets.stacked_layout_floating import QStackedLayoutFloating
+from gridplayer.widgets.video_block_guards import (
+    only_initialized,
+    only_live,
+    only_local_file,
+    only_navigable,
+    only_seekable,
+    only_streamable,
+    only_with_video_tacks,
+)
 from gridplayer.widgets.video_frame_vlc_base import VideoFrameVLC
 from gridplayer.widgets.video_overlay import (
     OverlayBlock,
@@ -262,111 +275,8 @@ LEAVING_END_ACTIONS = frozenset(
 )
 
 
-class QStackedLayoutFloating(QStackedLayout):
-    """overridden setGeometry for children is not honored due to type casting inside Qt,
-    need to override setGeometry in Layout to make floating windows resize with parent
-
-    https://code.qt.io/cgit/qt/qtbase.git/tree/src/widgets/kernel/qstackedlayout.cpp#n474
-    """
-
-    def setGeometry(self, rect):
-        if self.stackingMode() == QStackedLayout.StackOne:
-            widget = self.currentWidget()
-            if widget:
-                widget.setGeometry(rect)
-        if self.stackingMode() == QStackedLayout.StackAll:
-            for i in range(self.count()):
-                widget = self.itemAt(i).widget()
-                if widget:
-                    widget.setGeometry(rect)
-
-
-def only_initialized(func):
-    def wrapper(*args, **kwargs):
-        self = args[0]
-        if not self.is_video_initialized:
-            return None
-        return func(*args, **kwargs)
-
-    return wrapper
-
-
-def only_seekable(func):
-    def wrapper(*args, **kwargs):
-        self = args[0]
-        if self.is_live:
-            return None
-        return func(*args, **kwargs)
-
-    return wrapper
-
-
-def only_with_video_tacks(func):
-    def wrapper(*args, **kwargs):
-        self = args[0]
-        if not self.video_tracks:
-            return None
-        return func(*args, **kwargs)
-
-    return wrapper
-
-
-def only_live(func):
-    def wrapper(*args, **kwargs):
-        self = args[0]
-        if not self.is_live:
-            return None
-        return func(*args, **kwargs)
-
-    return wrapper
-
-
-def only_local_file(func):
-    def wrapper(*args, **kwargs):
-        self = args[0]
-        if not self.is_local_file:
-            return None
-        return func(*args, **kwargs)
-
-    return wrapper
-
-
-def only_navigable(func):
-    """Only for a video with others to go on to: the files of its folder, or
-    the items of its list, links among them."""
-
-    def wrapper(*args, **kwargs):
-        self = args[0]
-        if not self.is_navigable:
-            return None
-        return func(*args, **kwargs)
-
-    return wrapper
-
-
-def only_streamable(func):
-    def wrapper(*args, **kwargs):
-        self = args[0]
-        if not self.streams:
-            return None
-        return func(*args, **kwargs)
-
-    return wrapper
-
-
 def _file_names(file_paths) -> str:
     return ", ".join(file_path.name for file_path in file_paths)
-
-
-def audio_delay_txt(delay_ms: int) -> str:
-    """A delay as it reads, signed, since which way it goes is the point."""
-
-    milliseconds = translate("Audio Delay", "ms")
-
-    if not delay_ms:
-        return f"0 {milliseconds}"
-
-    return f"{delay_ms:+d} {milliseconds}"
 
 
 def _audio_files_filter() -> str:
@@ -376,17 +286,6 @@ def _audio_files_filter() -> str:
     every = translate("Dialog - Add external audio", "All", "File formats")
 
     return f"{audio} ({extensions});;{every} (*)"
-
-
-def subtitle_delay_txt(delay_ms: int) -> str:
-    """A delay as it reads, signed, since which way it goes is the point."""
-
-    milliseconds = translate("Subtitle Delay", "ms")
-
-    if not delay_ms:
-        return f"0 {milliseconds}"
-
-    return f"{delay_ms:+d} {milliseconds}"
 
 
 def list_fail_wait_txt(wait_sec: int) -> str:
@@ -420,69 +319,6 @@ def _subtitle_track_file_stem(track) -> str | None:
         return None
 
     return track.language.replace("\\", "/").rsplit("/", 1)[-1].casefold()
-
-
-def _is_reopen_needed(old: Video | None, new: Video) -> bool:
-    """Whether a change needs the video opened again rather than adjusted.
-
-    Instance options decide which VLC process a video is played in, so a
-    change to one only takes hold in a new process. The subtitle encoding
-    is a media option rather than an instance one -- as an instance option
-    it would fork the process pool one way per encoding -- but it is settled
-    when the input opens just the same, so it needs reopening too.
-    """
-
-    if get_vlc_options(old) != get_vlc_options(new):
-        return True
-
-    return old is not None and old.subtitle_encoding != new.subtitle_encoding
-
-
-def _is_deinterlace_reload_needed(
-    current: Video, deinterlace: VideoDeinterlace, mode: VideoDeinterlaceMode
-) -> bool:
-    """Whether a deinterlace setting needs the video opened again.
-
-    libVLC 3 switches a player's deinterlacing on or off, mode and all, while
-    it plays; but it has no call to put a player back on auto, which is only
-    where a player starts, and on auto the mode comes from the VLC instance.
-    """
-
-    if deinterlace != VideoDeinterlace.AUTO:
-        return False
-
-    return (
-        current.deinterlace != VideoDeinterlace.AUTO or current.deinterlace_mode != mode
-    )
-
-
-class SyncedView(NamedTuple):
-    """A video's view, for the others to follow: see VideoBlock.synced_view."""
-
-    view: SharedView
-    # where the picture stands is a zoom to a selection's doing, which a
-    # reset of the zoom then undoes in the others too
-    is_zoomed_to_selection: bool
-
-
-def _segment_mark(segment: SponsorSegment) -> SeekMark:
-    """A SponsorBlock segment as the seek bar marks it, by its colour."""
-
-    if segment.category == HIGHLIGHT_CATEGORY:
-        return SeekMark(
-            time_ms=segment.start_ms,
-            label=category_name(segment.category),
-            kind=SeekMarkKind.HIGHLIGHT,
-            color=CATEGORY_COLORS[segment.category],
-        )
-
-    return SeekMark(
-        time_ms=segment.start_ms,
-        label=category_name(segment.category),
-        kind=SeekMarkKind.SEGMENT,
-        end_ms=segment.end_ms,
-        color=CATEGORY_COLORS[segment.category],
-    )
 
 
 class VideoBlock(QWidget):
@@ -3863,7 +3699,7 @@ class VideoBlock(QWidget):
             self._start_load()
             return
 
-        if self.video_tracks and _is_deinterlace_reload_needed(
+        if self.video_tracks and is_deinterlace_reload_needed(
             self.video_params, snapshot.deinterlace, snapshot.deinterlace_mode
         ):
             self._take_snapshot_params(snapshot)
@@ -3926,7 +3762,7 @@ class VideoBlock(QWidget):
 
     def set_video(self, video_params: Video):
         is_first_video = self.video_params is None
-        is_reopen_needed = _is_reopen_needed(self.video_params, video_params)
+        is_reopen = is_reopen_needed(self.video_params, video_params)
 
         # another video in place of one waiting for its list: not read for it
         if not is_first_video and self.video_params.id != video_params.id:
@@ -3961,7 +3797,7 @@ class VideoBlock(QWidget):
             self._has_item_played = False
 
         # Shut down current video
-        if not is_first_video or is_reopen_needed:
+        if not is_first_video or is_reopen:
             self.reset()
 
         if self.video_params.is_stopped and not self.is_video_initialized:
@@ -4549,7 +4385,7 @@ class VideoBlock(QWidget):
     def set_deinterlace_params(
         self, deinterlace: VideoDeinterlace, mode: VideoDeinterlaceMode
     ):
-        is_reload_needed = _is_deinterlace_reload_needed(
+        is_reload_needed = is_deinterlace_reload_needed(
             self.video_params, deinterlace, mode
         )
 
@@ -4677,7 +4513,7 @@ class VideoBlock(QWidget):
             for index, chapter in enumerate(self._chapters)
         )
 
-        segments = (_segment_mark(segment) for segment in self._shown_segments)
+        segments = (segment_mark(segment) for segment in self._shown_segments)
 
         bookmarks = ()
         if self.is_video_initialized and not self.is_live:

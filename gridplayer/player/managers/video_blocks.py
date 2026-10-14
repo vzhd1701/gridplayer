@@ -21,9 +21,10 @@ from gridplayer.params.static import (
 from gridplayer.player.managers.base import ManagerBase
 from gridplayer.playlist_settings import PlaylistSettings
 from gridplayer.settings import Settings
+from gridplayer.utils.aspect_calc import SyncedView
 from gridplayer.utils.qt import MILLISECONDS, qt_connect, translate
 from gridplayer.utils.step_sizes import seek_step_label, seek_step_ms
-from gridplayer.widgets.video_block import SyncedView, VideoBlock
+from gridplayer.widgets.video_block import VideoBlock
 
 # what [ALL] does to the views, which leaves the one synced to out of date
 _VIEW_COMMANDS = frozenset(
