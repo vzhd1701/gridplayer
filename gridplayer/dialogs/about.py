@@ -2,11 +2,17 @@ import sys
 from typing import NamedTuple
 
 from pydantic.version import VERSION as PYDANTIC_VERSION
-from PyQt5.QtCore import PYQT_VERSION_STR, qVersion
-from PyQt5.QtGui import QIcon
-from PyQt5.QtWidgets import QDialog
+from PyQt5.QtCore import PYQT_VERSION_STR, QSize, Qt, qVersion
+from PyQt5.QtGui import QFont, QIcon
+from PyQt5.QtWidgets import (
+    QDialog,
+    QHBoxLayout,
+    QLabel,
+    QLayout,
+    QTextBrowser,
+    QVBoxLayout,
+)
 
-from gridplayer.dialogs.about_dialog_ui import Ui_AboutDialog
 from gridplayer.params import env
 from gridplayer.params.languages import LANGUAGES
 from gridplayer.version import (
@@ -29,7 +35,7 @@ class Attribution(NamedTuple):
     url: str
 
 
-class AboutDialog(QDialog, Ui_AboutDialog):
+class AboutDialog(QDialog):
     def __init__(self, parent):
         # imported here and not at the top: streamlink and yt-dlp take a
         # good third of a second to import, which startup shouldn't wait on
@@ -49,7 +55,36 @@ class AboutDialog(QDialog, Ui_AboutDialog):
 
         super().__init__(parent)
 
-        self.setupUi(self)
+        self.setWindowTitle(self.tr("About"))
+
+        self.logo = QLabel(self)
+        self.logo.setFixedSize(QSize(250, 250))
+
+        self.name = QLabel(self)
+        self.name.setFont(self._name_font())
+        self.name.setAlignment(Qt.AlignCenter)
+
+        self.version = QLabel(self)
+        self.version.setAlignment(Qt.AlignCenter)
+
+        self.info = QLabel(self)
+        self.info.setTextFormat(Qt.RichText)
+        self.info.setAlignment(Qt.AlignCenter)
+        self.info.setWordWrap(True)
+        self.info.setOpenExternalLinks(True)
+
+        self.attributions_title = QLabel(
+            self.tr("This software was built using:"), self
+        )
+        self.attributions_title.setAlignment(Qt.AlignCenter)
+        self.attributions_title.setWordWrap(True)
+
+        self.attributions_box = QTextBrowser(self)
+        self.attributions_box.setMinimumSize(QSize(350, 200))
+        self.attributions_box.setMaximumHeight(200)
+        self.attributions_box.setOpenExternalLinks(True)
+
+        self._ui_setup()
 
         logo_icon = QIcon(str(env.RESOURCES_DIR / "icons" / "main_ico_big.svg"))
         self.logo.setPixmap(logo_icon.pixmap(self.logo.size()))
@@ -208,7 +243,33 @@ class AboutDialog(QDialog, Ui_AboutDialog):
             self.generate_attributions_translations(),
         ]
 
-        self.attributionsBox.setText("\n".join(attributions_txt))
+        self.attributions_box.setText("\n".join(attributions_txt))
+
+    def _ui_setup(self):
+        logo_row = QHBoxLayout()
+        logo_row.addStretch()
+        logo_row.addWidget(self.logo)
+        logo_row.addStretch()
+
+        layout = QVBoxLayout(self)
+        layout.setSizeConstraint(QLayout.SetFixedSize)
+        layout.setContentsMargins(20, 20, 20, 20)
+        layout.setSpacing(12)
+
+        layout.addLayout(logo_row)
+        layout.addWidget(self.name)
+        layout.addWidget(self.version)
+        layout.addWidget(self.info)
+        layout.addWidget(self.attributions_title)
+        layout.addWidget(self.attributions_box)
+
+    @staticmethod
+    def _name_font():
+        font = QFont()
+        font.setPointSize(16)
+        font.setBold(True)
+
+        return font
 
     def generate_attributions(self, attributions: list[Attribution]):
         attributions_txt = []
