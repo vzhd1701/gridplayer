@@ -13,8 +13,7 @@ import ast
 import sys
 from pathlib import Path
 
-# _translate is what pyuic5 names QCoreApplication.translate in *_ui.py
-FUNC_NAMES = {"translate", "_translate", "tr"}
+FUNC_NAMES = {"translate", "tr"}
 
 
 def _func_name(func: ast.expr) -> str | None:
