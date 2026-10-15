@@ -45,7 +45,7 @@ VIDEO_FIELDS: tuple[SettingField, ...] = (
     TextField(
         settings_key="video_defaults/audio_languages",
         attr="audio_languages",
-        label=translate("SettingsDialog", "Preferred languages"),
+        label=translate("SettingsDialog", "Languages"),
         placeholder=translate("SettingsDialog", "en, ja, fr"),
         enabled_when=When(
             "video_defaults/audio_track_mode", (AudioTrackMode.PREFERRED,)
@@ -100,7 +100,7 @@ VIDEO_FIELDS: tuple[SettingField, ...] = (
     TextField(
         settings_key="video_defaults/subtitle_languages",
         attr="subtitle_languages",
-        label=translate("SettingsDialog", "Preferred languages"),
+        label=translate("SettingsDialog", "Languages"),
         placeholder=translate("SettingsDialog", "en, ja, fr"),
         enabled_when=When(
             "video_defaults/subtitle_track_mode", (SubtitleTrackMode.PREFERRED,)
@@ -194,7 +194,7 @@ VIDEO_FIELDS: tuple[SettingField, ...] = (
     ComboField(
         settings_key="video_defaults/deinterlace_mode",
         attr="deinterlace_mode",
-        label=translate("SettingsDialog", "Deinterlace mode"),
+        label=translate("SettingsDialog", "Mode"),
         choices=choices.deinterlace_modes,
         enabled_when=When(
             "video_defaults/deinterlace", (VideoDeinterlace.AUTO, VideoDeinterlace.ON)
@@ -284,10 +284,11 @@ VIDEO_FIELDS: tuple[SettingField, ...] = (
     SpinField(
         settings_key="video_defaults/quality_adapt_delay",
         attr="quality_adapt_delay",
-        label=translate("SettingsDialog", "Adapt Auto quality after"),
+        label=translate("SettingsDialog", "Adapt after"),
         minimum=1,
         maximum=3600,
         suffix=translate("SettingsDialog", "(sec)"),
+        enabled_when=When("video_defaults/stream_quality", ("auto",)),
         tooltip=translate(
             "SettingsDialog",
             "How long a video must keep its new size before Auto quality adjusts",
@@ -302,7 +303,7 @@ VIDEO_FIELDS: tuple[SettingField, ...] = (
     SpinField(
         settings_key="video_defaults/network_retry_times",
         attr="network_retry_times",
-        label=translate("SettingsDialog", "Reload attempts"),
+        label=translate("SettingsDialog", "Attempts"),
         minimum=1,
         maximum=1000,
         enabled_when=When(

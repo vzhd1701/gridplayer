@@ -210,7 +210,7 @@ GENERAL_FIELDS: tuple[SettingField, ...] = (
     ),
     TextField(
         settings_key="screenshots/filename_template",
-        label=translate("SettingsDialog", "File name format"),
+        label=translate("SettingsDialog", "File name"),
         # a file name has to come from somewhere
         blank_is_default=True,
     ),

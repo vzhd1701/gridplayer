@@ -104,7 +104,7 @@ VIDEO_PAGE = (
     Section(
         translate("SettingsDialog", "Audio"),
         "video_defaults/audio_track_mode",
-        "video_defaults/audio_languages",
+        Indented("video_defaults/audio_languages"),
         "video_defaults/external_audio_autodiscover",
         "video_defaults/audio_mode",
         "video_defaults/volume",
@@ -113,7 +113,7 @@ VIDEO_PAGE = (
     Section(
         translate("SettingsDialog", "Subtitles"),
         "video_defaults/subtitle_track_mode",
-        "video_defaults/subtitle_languages",
+        Indented("video_defaults/subtitle_languages"),
         "video_defaults/subtitle_encoding",
         "video_defaults/external_subtitle_autodiscover",
     ),
@@ -127,7 +127,7 @@ VIDEO_PAGE = (
         "video_defaults/shift_past_edges",
         "video_defaults/transform",
         "video_defaults/deinterlace",
-        "video_defaults/deinterlace_mode",
+        Indented("video_defaults/deinterlace_mode"),
     ),
     Section(
         translate("SettingsDialog", "Playback"),
@@ -135,7 +135,7 @@ VIDEO_PAGE = (
         "video_defaults/dir_recursive",
         "video_defaults/list_end_action",
         "video_defaults/list_fail_action",
-        "video_defaults/list_fail_wait",
+        Indented("video_defaults/list_fail_wait"),
         "video_defaults/random_loop",
         "video_defaults/initial_state",
         "video_defaults/rate",
@@ -143,9 +143,9 @@ VIDEO_PAGE = (
     Section(
         translate("SettingsDialog", "Streaming Videos"),
         "video_defaults/stream_quality",
-        "video_defaults/quality_adapt_delay",
+        Indented("video_defaults/quality_adapt_delay"),
         "video_defaults/network_retry_mode",
-        "video_defaults/network_retry_times",
+        Indented("video_defaults/network_retry_times"),
         "video_defaults/auto_reload_timer",
     ),
 )
@@ -161,11 +161,11 @@ SUBTITLE_STYLE_PAGE = (
     Section(
         translate("SettingsDialog", "Effects"),
         "subtitles/outline",
-        "subtitles/outline_color",
+        Indented("subtitles/outline_color"),
         "subtitles/shadow",
-        "subtitles/shadow_color",
+        Indented("subtitles/shadow_color"),
         "subtitles/background",
-        "subtitles/background_color",
+        Indented("subtitles/background_color"),
     ),
     Section(
         translate("SettingsDialog", "Position"),
@@ -227,7 +227,7 @@ PAGES = (
                 "screenshots/dir",
                 Row("screenshots/filename_template", Slot("screenshot_template_help")),
                 "screenshots/format",
-                "screenshots/jpg_quality",
+                Indented("screenshots/jpg_quality"),
             ),
         ),
         Page(

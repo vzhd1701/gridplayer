@@ -54,7 +54,7 @@ SUBTITLE_STYLE_FIELDS: tuple[SettingField, ...] = (
     ),
     ColorField(
         settings_key="subtitles/outline_color",
-        label=translate("SettingsDialog", "Outline color"),
+        label=translate("SettingsDialog", "Color"),
         enabled_when=When("subtitles/outline", _OUTLINE_DRAWN),
     ),
     CheckboxField(
@@ -63,7 +63,7 @@ SUBTITLE_STYLE_FIELDS: tuple[SettingField, ...] = (
     ),
     ColorField(
         settings_key="subtitles/shadow_color",
-        label=translate("SettingsDialog", "Shadow color"),
+        label=translate("SettingsDialog", "Color"),
         enabled_when=When("subtitles/shadow"),
     ),
     CheckboxField(
@@ -76,7 +76,7 @@ SUBTITLE_STYLE_FIELDS: tuple[SettingField, ...] = (
     ),
     ColorField(
         settings_key="subtitles/background_color",
-        label=translate("SettingsDialog", "Background color"),
+        label=translate("SettingsDialog", "Color"),
         enabled_when=When("subtitles/background"),
     ),
     SpinField(
