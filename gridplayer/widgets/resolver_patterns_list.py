@@ -1,3 +1,5 @@
+import contextlib
+
 from PyQt5 import QtWidgets
 from PyQt5.QtCore import QSize, Qt, pyqtSignal
 from PyQt5.QtGui import QDropEvent
@@ -35,13 +37,23 @@ class RowDropIndicatorStyle(QtWidgets.QProxyStyle):
 
 class TableWidgetDragRows(QtWidgets.QTableWidget):
     is_something_selected = pyqtSignal(bool)
+    # a row added, removed, moved or edited, once that is done
+    edited = pyqtSignal()
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
+        self._batch_depth = 0
+
         self.ui_init()
 
         self.itemSelectionChanged.connect(self._on_selection_changed)
+
+        model = self.model()
+        model.rowsInserted.connect(self.note_edit)
+        model.rowsRemoved.connect(self.note_edit)
+        model.rowsMoved.connect(self.note_edit)
+        self.itemChanged.connect(self.note_edit)
 
     def ui_init(self):
         # parented, so it is not freed before the list (see KeymapTreeView)
@@ -60,6 +72,26 @@ class TableWidgetDragRows(QtWidgets.QTableWidget):
         self.setDragDropMode(QtWidgets.QAbstractItemView.InternalMove)
 
         self.verticalHeader().hide()
+
+    def note_edit(self, *_):
+        if not self._batch_depth:
+            self.edited.emit()
+
+    @contextlib.contextmanager
+    def batch(self):
+        """Changes told as one, once they are all made.
+
+        A row goes in empty and is filled in after, and a moved one is taken
+        out and put back: until then, it is no row anyone can read.
+        """
+
+        self._batch_depth += 1
+        try:
+            yield
+        finally:
+            self._batch_depth -= 1
+
+        self.note_edit()
 
     @property
     def selected_row_ids(self):
@@ -83,8 +115,9 @@ class TableWidgetDragRows(QtWidgets.QTableWidget):
         self.setCurrentItem(self.item(row_idx, 0))
 
     def remove_selected(self):
-        for row_index in reversed(self.selected_row_ids):
-            self.removeRow(row_index)
+        with self.batch():
+            for row_index in reversed(self.selected_row_ids):
+                self.removeRow(row_index)
 
     def move_selected_up(self):
         if not self.selected_row_ids:
@@ -118,13 +151,14 @@ class TableWidgetDragRows(QtWidgets.QTableWidget):
         self.is_something_selected.emit(bool(self.selected_row_ids))
 
     def _move_selected_to(self, dst_row_idx):
-        rows_to_move = self._take_selected_rows()
+        with self.batch():
+            rows_to_move = self._take_selected_rows()
 
-        self._insert_rows_after(rows_to_move, dst_row_idx)
+            self._insert_rows_after(rows_to_move, dst_row_idx)
 
-        self._remove_empty_rows()
+            self._remove_empty_rows()
 
-        self._set_current_rows(rows_to_move)
+            self._set_current_rows(rows_to_move)
 
     def _take_selected_rows(self):
         return [
@@ -196,11 +230,7 @@ class ResolverPatternsList(QtWidgets.QWidget):
         self.table = self.ui_table()
         self.buttons = self.ui_buttons()
 
-        model = self.table.model()
-        model.rowsInserted.connect(self.changed)
-        model.rowsRemoved.connect(self.changed)
-        model.rowsMoved.connect(self.changed)
-        self.table.itemChanged.connect(self.changed)
+        self.table.edited.connect(self.changed)
 
         layout = QtWidgets.QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
@@ -283,20 +313,22 @@ class ResolverPatternsList(QtWidgets.QWidget):
     def set_rows(self, data_rows: ResolverPatterns):
         """These rows in place of the ones there are."""
 
-        self.table.setRowCount(0)
-        self.setDataRows(data_rows)
+        with self.table.batch():
+            self.table.setRowCount(0)
+            self.setDataRows(data_rows)
 
     def add_row(self, row_data: ResolverPattern | None = None):
         if self.empty_row_idx is not None:
             self.table.set_current_row_idx(self.empty_row_idx)
             return
 
-        row_idx = self.table.add_new_row()
+        with self.table.batch():
+            row_idx = self.table.add_new_row()
 
-        self._init_row(row_idx)
+            self._init_row(row_idx)
 
-        if row_data is not None:
-            self._set_row_data(row_idx, row_data)
+            if row_data is not None:
+                self._set_row_data(row_idx, row_data)
 
         self.table.setCurrentItem(self.table.item(row_idx, 0))
 
@@ -324,7 +356,7 @@ class ResolverPatternsList(QtWidgets.QWidget):
             else:
                 continue
 
-            combo.currentIndexChanged.connect(self.changed)
+            combo.currentIndexChanged.connect(self.table.note_edit)
             self.table.setCellWidget(row_idx, col_idx, combo)
 
     def _set_row_data(self, row_idx, row_data: ResolverPattern):
