@@ -61,9 +61,6 @@ clean:
 clean-pyinstaller-dist:
     find dist -maxdepth 1 -mindepth 1 -type d -exec rm -r {} \;
 
-generate-ui:
-    ./scripts/qt_resources/build_ui.sh
-
 generate-resources:
     ./scripts/qt_resources/build_resources.sh
 

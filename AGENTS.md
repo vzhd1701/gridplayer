@@ -21,14 +21,6 @@ uv run ruff check .
 uv run ruff format --check .
 ```
 
-## UI files
-
-Files matching `*_ui.py` are generated from Qt Designer `.ui` sources. Never edit them directly. Edit the `.ui` source in `resources/ui` instead, then run:
-
-```bash
-just generate-ui
-```
-
 ## Driving the real app
 
 `tests/real_app` runs the real player offscreen, with VLC, driven through its
@@ -114,8 +106,8 @@ block as an attribute: `status`, `bookmarker`, `view`, `chapters`,
 
 ## Settings dialogs
 
-The Settings and Playlist Settings dialogs are built in code, not in
-Designer, from two places:
+The Settings and Playlist Settings dialogs are built in code from two
+places:
 
 * `params/settings_fields/` says what a setting is: its kind of field,
   label, range, choices, tooltip, and the rules that grey it out or hide it
