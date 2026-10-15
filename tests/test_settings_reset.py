@@ -314,3 +314,15 @@ class TestThePlaylistSettings:
 
         assert form.value("video_defaults/aspect") is VideoAspect.STRETCH
         assert "video_defaults/aspect" not in dialog.result_overrides()
+
+
+class TestALanguageNoLongerShipped:
+    def test_shows_the_default_and_is_forgotten_on_save(self, settings, make_dialog):
+        settings.settings.setValue("player/language", "xx_YY")
+        dialog = make_dialog()
+
+        assert dialog.value("player/language") == default_value("player/language")
+
+        dialog.save_settings()
+
+        assert not settings.settings.contains("player/language")

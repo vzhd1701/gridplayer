@@ -18,7 +18,7 @@ from PyQt5.QtWidgets import (
 )
 
 from gridplayer.dialogs.crop import QCompactCropPicker
-from gridplayer.params.languages import LANGUAGES
+from gridplayer.params.languages import LANGUAGES, get_system_language
 from gridplayer.params.settings_fields.kinds import (
     CheckboxField,
     ColorField,
@@ -367,10 +367,16 @@ class _LanguageEditor(Editor):
         return self.widget.currentItemChanged
 
     def set_value(self, value):
-        self.widget.setValue(value)
+        self.widget.setValue(self.normalize(value))
 
     def value(self):
         return self.widget.value()
+
+    def normalize(self, value):
+        # one dropped in a later version, as a combo shows its first choice
+        if any(language.code == value for language in LANGUAGES):
+            return value
+        return get_system_language()
 
 
 class _KeymapEditor(Editor):
