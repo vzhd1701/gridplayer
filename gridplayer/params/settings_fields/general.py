@@ -156,6 +156,7 @@ GENERAL_FIELDS: tuple[SettingField, ...] = (
     ),
     SpinField(
         settings_key="misc/mouse_hide_timeout",
+        label=translate("SettingsDialog", "Timeout"),
         minimum=1,
         maximum=60,
         suffix=translate("SettingsDialog", "(sec)"),

@@ -643,7 +643,6 @@ class TestTheSettings:
         for widget in (
             dialog.widget("screenshots/dir"),
             dialog.widget("screenshots/filename_template"),
-            dialog.screenshotsFilenameTemplateHelpButton,
             dialog.widget("screenshots/format"),
             dialog.widget("screenshots/jpg_quality"),
         ):
@@ -714,7 +713,7 @@ class TestTheSettings:
     def test_the_help_is_in_a_box_of_its_own(self, dialog, mocker):
         shown = mocker.patch.object(settings_dialog.QCustomMessageBox, "information")
 
-        dialog.screenshotsFilenameTemplateHelpButton.click()
+        dialog.screenshotsFilenameTemplateHelpAction.trigger()
 
         text = shown.call_args.kwargs["info"]
         for specifier in ("%f", "%F", "%p", "%P", "%n", "%D", "%T", "%tY", "%tS", "%%"):
@@ -723,6 +722,17 @@ class TestTheSettings:
     def test_there_is_no_help_squeezed_in_beside_the_field(self, dialog):
         assert dialog.widget("screenshots/filename_template").toolTip() == ""
         assert not hasattr(dialog, "screenshotsFilenameTemplateHelp")
+
+    def test_the_help_is_asked_for_inside_the_field(self, dialog):
+        """A button beside it was squeezed off a narrow page."""
+
+        field = dialog.widget("screenshots/filename_template")
+        row = dialog.form_of("screenshots/filename_template")._rows[
+            "screenshots/filename_template"
+        ]
+
+        assert dialog.screenshotsFilenameTemplateHelpAction in field.actions()
+        assert row.findChildren(QPushButton) == []
 
     def test_the_folder_row_is_just_the_field_and_browse(self, dialog):
         """An Open button next to Browse made the row too wide for the page."""

@@ -6,15 +6,21 @@ from gridplayer.widgets.settings_page_scroll_area import PageScrollArea
 
 class CurrentPageStackedWidget(QStackedWidget):
     """Size to the current page's height, but keep enough width for the
-    widest page so switching to a scrolling page does not clip the bar."""
+    widest page so switching to a scrolling page does not clip the bar.
 
-    def __init__(self, parent=None):
+    *min_width* is a floor under that, not a minimum width: one set on the
+    widget would be taken over the hint, and a page wider than it, with a
+    larger font or a longer translation, would be cut off at the right.
+    """
+
+    def __init__(self, parent=None, *, min_width: int = 0):
         super().__init__(parent)
+        self._min_width = min_width
         self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
 
     def sizeHint(self):
         current = self.currentWidget()
-        width = self.minimumWidth()
+        width = self._min_width
         for i in range(self.count()):
             width = max(width, self.widget(i).sizeHint().width())
         height = self._page_height(current)
@@ -22,7 +28,7 @@ class CurrentPageStackedWidget(QStackedWidget):
 
     def minimumSizeHint(self):
         current = self.currentWidget()
-        width = self.minimumWidth()
+        width = self._min_width
         for i in range(self.count()):
             width = max(width, self.widget(i).minimumSizeHint().width())
         height = current.minimumSizeHint().height() if current is not None else 0

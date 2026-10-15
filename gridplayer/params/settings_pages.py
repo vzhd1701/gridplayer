@@ -208,7 +208,8 @@ PAGES = (
             Section(
                 translate("SettingsDialog", "Timeouts"),
                 "player/video_init_timeout",
-                Row("misc/mouse_hide", "misc/mouse_hide_timeout"),
+                "misc/mouse_hide",
+                Indented("misc/mouse_hide_timeout"),
             ),
             Section(
                 translate("SettingsDialog", "Memory"),
@@ -223,8 +224,9 @@ PAGES = (
             Section(
                 translate("SettingsDialog", "Screenshots"),
                 "screenshots/dir",
-                Row("screenshots/filename_template", Slot("screenshot_template_help")),
-                Row("screenshots/format", "screenshots/jpg_quality"),
+                "screenshots/filename_template",
+                "screenshots/format",
+                "screenshots/jpg_quality",
             ),
         ),
         Page(

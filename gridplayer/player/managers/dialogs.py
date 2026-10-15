@@ -11,9 +11,14 @@ class DialogsManager(ManagerBase):
     @property
     def commands(self):
         return {
-            "about": lambda: AboutDialog(self.parent()).exec_(),
+            "about": self.about,
             "warning": self.warning,
         }
+
+    def about(self):
+        dialog = AboutDialog(self.parent())
+        dialog.exec_()
+        dialog.deleteLater()
 
     @pyqtSlot(str)
     def error(self, message):

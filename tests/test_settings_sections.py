@@ -1,9 +1,11 @@
 import pytest
 from PyQt5.QtCore import QEvent, Qt
+from PyQt5.QtGui import QColor
 from PyQt5.QtWidgets import QApplication
 
 from gridplayer.dialogs.settings import SECTION_PAGE_ROLE, SettingsDialog
 from gridplayer.params.settings_pages import PAGES as SETTINGS_PAGES
+from gridplayer.params.theme import apply_theme, current_colors
 from gridplayer.widgets.settings_page_scroll_area import PageScrollArea
 
 # the index as it is meant to read, group heading by group heading
@@ -137,3 +139,81 @@ class TestKeepingTheTwoSidesInStep:
         entries = sum(len(entries) for _, entries in SECTIONS)
 
         assert len(dialog.section_items) == entries
+
+
+@pytest.fixture
+def themed():
+    """The app as the theme leaves it, put back after."""
+
+    app = QApplication.instance()
+    style_sheet, palette = app.styleSheet(), app.palette()
+
+    apply_theme(app)
+
+    yield
+
+    app.setStyleSheet(style_sheet)
+    app.setPalette(palette)
+
+
+def _darkest(widget, rect):
+    image = widget.grab(rect).toImage()
+
+    return min(
+        image.pixelColor(x, y).lightness()
+        for x in range(image.width())
+        for y in range(image.height())
+    )
+
+
+@pytest.mark.usefixtures("themed")
+def test_headings_are_drawn_as_text_not_greyed_out(dialog):
+    """They can't be picked, so they are disabled items, which the theme
+    draws in the text colour rather than as something switched off."""
+
+    index = dialog.section_index
+    dialog.show()
+    QApplication.processEvents()
+
+    text = QColor(current_colors()["text"]).lightness()
+    greyed = QColor(current_colors()["text_disabled"]).lightness()
+
+    heading = _darkest(index.viewport(), index.visualItemRect(_rows(dialog)[0]))
+
+    assert abs(heading - text) < abs(heading - greyed)
+
+
+@pytest.fixture(params=[None, 14], ids=["default font", "larger font"])
+def font_size(request):
+    app = QApplication.instance()
+    font = app.font()
+
+    if request.param is not None:
+        larger = app.font()
+        larger.setPointSize(request.param)
+        app.setFont(larger)
+
+    yield request.param
+
+    app.setFont(font)
+
+
+@pytest.mark.usefixtures("font_size")
+def test_no_page_is_cut_off_at_the_narrowest(dialog):
+    """Nothing scrolls sideways, so a page wider than the room it is given
+    loses its right end: the dialog can't be made narrower than that."""
+
+    dialog.show()
+    dialog.resize(dialog.minimumSize())
+    QApplication.processEvents()
+
+    for page_id, page in dialog.pages.items():
+        dialog.show_page(page_id)
+        QApplication.processEvents()
+
+        if isinstance(page, PageScrollArea):
+            content, room = page.widget(), page.viewport().width()
+        else:
+            content, room = page, page.width()
+
+        assert content.minimumSizeHint().width() <= room, page_id

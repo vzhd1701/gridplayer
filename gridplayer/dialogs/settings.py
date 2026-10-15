@@ -10,6 +10,7 @@ from PyQt5.QtWidgets import (
     QDialogButtonBox,
     QHBoxLayout,
     QLabel,
+    QLineEdit,
     QListWidget,
     QListWidgetItem,
     QPushButton,
@@ -140,29 +141,16 @@ class SettingsDialog(QDialog):
         self.setModal(True)
 
         self.section_index = QListWidget()
+        # by name in the theme's style sheet, which draws the group headings,
+        # disabled so they can't be picked, in the text color rather than grey
+        self.section_index.setObjectName("section_index")
         self.section_index.setMinimumSize(QSize(200, 350))
         self.section_index.setMaximumWidth(200)
         font = self.section_index.font()
         font.setPixelSize(16)
         self.section_index.setFont(font)
 
-        self.section_page = CurrentPageStackedWidget()
-        self.section_page.setMinimumWidth(500)
-
-        heading_font = self.section_index.font()
-        heading_font.setBold(True)
-
-        slots = self._slots()
-
-        for group in PAGES:
-            heading = QListWidgetItem(group.title, self.section_index)
-            heading.setFont(heading_font)
-            heading.setFlags(Qt.NoItemFlags)
-
-            for page in group.pages:
-                item = QListWidgetItem(page.title, self.section_index)
-                item.setData(SECTION_PAGE_ROLE, self._build_page(page, slots))
-                self._index_items[page.id] = item
+        self.section_page = CurrentPageStackedWidget(min_width=500)
 
         body = QHBoxLayout()
         body.setSpacing(12)
@@ -195,6 +183,43 @@ class SettingsDialog(QDialog):
         root.addLayout(body, 1)
         root.addLayout(buttons)
 
+        # the pages last, built where they go: a widget moved under another
+        # parent is styled over again, all of it, and the pages are most of
+        # what the dialog has
+        self._build_index()
+
+        self._add_screenshot_template_help()
+
+    def _add_screenshot_template_help(self):
+        """A question mark at the end of the field, where it can't be
+        squeezed off the page the way a button beside it was."""
+
+        self.screenshotsFilenameTemplateHelpAction = self.widget(
+            "screenshots/filename_template"
+        ).addAction(QIcon.fromTheme("question"), QLineEdit.TrailingPosition)
+        self.screenshotsFilenameTemplateHelpAction.setToolTip(
+            translate("SettingsDialog", "What the file name can be made of")
+        )
+        self.screenshotsFilenameTemplateHelpAction.triggered.connect(
+            self.show_screenshot_template_help
+        )
+
+    def _build_index(self):
+        heading_font = self.section_index.font()
+        heading_font.setBold(True)
+
+        slots = self._slots()
+
+        for group in PAGES:
+            heading = QListWidgetItem(group.title, self.section_index)
+            heading.setFont(heading_font)
+            heading.setFlags(Qt.NoItemFlags)
+
+            for page in group.pages:
+                item = QListWidgetItem(page.title, self.section_index)
+                item.setData(SECTION_PAGE_ROLE, self._build_page(page, slots))
+                self._index_items[page.id] = item
+
     def _build_page(self, page: Page, slots) -> QWidget:
         form = SettingsForm(
             page.items,
@@ -211,15 +236,16 @@ class SettingsDialog(QDialog):
 
         if page.scroll:
             widget = PageScrollArea()
+            self.section_page.addWidget(widget)
             widget.setWidget(content)
         else:
             widget = content
+            self.section_page.addWidget(widget)
 
         widget.setObjectName(f"page_{page.id}")
 
         self.pages[page.id] = widget
         self._form_on[widget] = form
-        self.section_page.addWidget(widget)
 
         return widget
 
@@ -264,13 +290,6 @@ class SettingsDialog(QDialog):
         self.cacheSize = QLabel()
 
         return _in_a_row(self.cacheClear, self.cacheSize)
-
-    def _slot_screenshot_template_help(self):
-        self.screenshotsFilenameTemplateHelpButton = _help_button()
-        self.screenshotsFilenameTemplateHelpButton.clicked.connect(
-            self.show_screenshot_template_help
-        )
-        return self.screenshotsFilenameTemplateHelpButton
 
     def _slot_youtube_test(self):
         self.streamingTestButton = QPushButton(

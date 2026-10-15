@@ -159,15 +159,18 @@ class PlaylistManager(ManagerBase):
             grid_state=self._ctx.grid_state,
             parent=self.parent(),
         )
-        if not dialog.exec_():
-            return
-        PlaylistSettings().replace(
-            self._with_bookmarks_sharing_confirmed(dialog.result_overrides())
-        )
-        self._apply_effective_session()
-        self._ctx.commands.apply_grid_config(
-            dialog.result_grid_state(self._ctx.grid_state)
-        )
+        try:
+            if not dialog.exec_():
+                return
+            PlaylistSettings().replace(
+                self._with_bookmarks_sharing_confirmed(dialog.result_overrides())
+            )
+            self._apply_effective_session()
+            self._ctx.commands.apply_grid_config(
+                dialog.result_grid_state(self._ctx.grid_state)
+            )
+        finally:
+            dialog.deleteLater()
 
     def _with_bookmarks_sharing_confirmed(self, overrides: dict) -> dict:
         """The overrides, but for the bookmarks' sharing where the viewer

@@ -81,8 +81,9 @@ class SettingsForm(QWidget):
         self._updating = False
         self._fills = False
 
-        # labels lined up together, a list for each section
-        self._label_columns: list[list[QWidget]] = [[]]
+        # labels lined up together, with how far each is pushed in, a list
+        # for each section
+        self._label_columns: list[list[tuple[QWidget, int]]] = [[]]
 
         root = QVBoxLayout(self)
         root.setContentsMargins(0, 0, 0, 0)
@@ -146,7 +147,7 @@ class SettingsForm(QWidget):
             # the first label, or a checkbox labelling the rest of the row,
             # goes in the column; a checkbox on its own spans the row
             in_column = not editors
-            editor = self._add_editor(entry, lay, in_column, len(entries) > 1)
+            editor = self._add_editor(entry, lay, in_column, len(entries) > 1, indent)
             self._rows[editor.spec.settings_key] = holder
             editors.append(editor)
             fills = fills or editor.fills
@@ -165,7 +166,7 @@ class SettingsForm(QWidget):
         self._fills = self._fills or fills
         layout.addWidget(holder, 1 if fills else 0)
 
-    def _add_editor(self, entry, lay, in_column, is_in_row) -> Editor:
+    def _add_editor(self, entry, lay, in_column, is_in_row, indent) -> Editor:
         spec = entry if isinstance(entry, SettingField) else FIELDS[entry]
         key = spec.settings_key
 
@@ -179,7 +180,7 @@ class SettingsForm(QWidget):
         else:
             column_widget = editor.label
         if column_widget is not None and in_column:
-            self._label_columns[-1].append(column_widget)
+            self._label_columns[-1].append((column_widget, indent))
 
         if editor.label is not None:
             lay.addWidget(editor.label)
@@ -231,14 +232,18 @@ class SettingsForm(QWidget):
             self._editors[key].set_tooltip(reason)
 
     def _line_up_labels(self):
-        """Labels of a section in a column, as a form layout would have them."""
+        """Labels of a section in a column, as a form layout would have them.
+
+        Lined up by where their fields start: one pushed in is that much
+        shorter.
+        """
 
         for column in self._label_columns:
             if len(column) < 2:
                 continue
-            width = max(widget.sizeHint().width() for widget in column)
-            for widget in column:
-                widget.setMinimumWidth(width)
+            width = max(widget.sizeHint().width() + indent for widget, indent in column)
+            for widget, indent in column:
+                widget.setMinimumWidth(width - indent)
 
     # what is on and what is shown
 

@@ -702,6 +702,21 @@ def test_playlist_settings_applies_grid_via_config_not_restore(mocker):
 
     apply.assert_called_once_with(new_state)
     assert restored == []
+    dialog.deleteLater.assert_called_once_with()
+
+
+def test_playlist_settings_dialog_is_disposed_of_on_cancel(mocker):
+    manager, _parent = _make_manager(SimpleNamespace(grid_state=GridState()))
+    dialog = mocker.Mock()
+    dialog.exec_.return_value = False
+    mocker.patch(
+        "gridplayer.player.managers.playlist.PlaylistSettingsDialog",
+        return_value=dialog,
+    )
+
+    manager.cmd_playlist_settings()
+
+    dialog.deleteLater.assert_called_once_with()
 
 
 def test_check_playlist_save_skips_unsaved_empty(mocker):

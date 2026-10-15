@@ -1,3 +1,4 @@
+from PyQt5 import sip
 from PyQt5.QtCore import pyqtSignal
 
 from gridplayer.dialogs.messagebox import QCustomMessageBox
@@ -45,7 +46,11 @@ class SettingsManager(ManagerBase):
     def cmd_settings(self):
         previous_settings = Settings().get_all()
 
-        SettingsDialog(self.parent()).exec_()
+        dialog = SettingsDialog(self.parent())
+        dialog.exec_()
+        # gone at once, not with deleteLater: the theme is applied below, and
+        # it styles over every widget there is, a closed dialog's too
+        sip.delete(dialog)
 
         self._apply_settings(previous_settings)
 
