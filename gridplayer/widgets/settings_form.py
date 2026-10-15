@@ -344,9 +344,6 @@ class SettingsForm(QWidget):
     def widget(self, key: str) -> QWidget:
         return self._editors[key].widget
 
-    def spec(self, key: str) -> SettingField:
-        return self._editors[key].spec
-
     def value(self, key: str):
         return self._editors[key].value()
 

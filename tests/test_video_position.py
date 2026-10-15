@@ -20,7 +20,7 @@ from gridplayer.models.playlist import Playlist, PlaylistVideoDefaults
 from gridplayer.models.video import Video
 from gridplayer.params.actions import ACTIONS
 from gridplayer.params.menu import SECTIONS, SUBMENUS
-from gridplayer.params.settings_fields.kinds import CheckboxField, layout_sections
+from gridplayer.params.settings_fields.kinds import CheckboxField
 from gridplayer.params.settings_fields.video import VIDEO_FIELDS
 from gridplayer.params.settings_pages import VIDEO_PAGE
 from gridplayer.params.static import (
@@ -46,6 +46,7 @@ from gridplayer.widgets.video_block_loop import LoopControl
 from gridplayer.widgets.video_block_view import ViewControl
 from gridplayer.widgets.video_frame_vlc_hw_sp import VideoFrameVLCHWSP
 from tests.conftest import mock_block_parts
+from tests.settings_layout import layout_sections
 
 SECTION_OF = layout_sections(VIDEO_PAGE)
 

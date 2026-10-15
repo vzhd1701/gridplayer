@@ -9,11 +9,7 @@ from gridplayer.models.audio_selection import (
 )
 from gridplayer.models.playlist import Playlist
 from gridplayer.models.video import Video
-from gridplayer.params.settings_fields.kinds import (
-    ComboField,
-    TextField,
-    layout_sections,
-)
+from gridplayer.params.settings_fields.kinds import ComboField, TextField
 from gridplayer.params.settings_fields.video import VIDEO_FIELDS
 from gridplayer.params.settings_pages import VIDEO_PAGE
 from gridplayer.params.static import AudioTrackMode
@@ -24,6 +20,7 @@ from gridplayer.playlist_settings import (
 )
 from gridplayer.settings import Settings
 from gridplayer.widgets.settings_form import SettingsForm
+from tests.settings_layout import layout_sections
 
 SECTION_OF = layout_sections(VIDEO_PAGE)
 

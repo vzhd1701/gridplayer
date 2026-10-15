@@ -18,7 +18,6 @@ from gridplayer.models.playlist import PlaylistVideoDefaults
 from gridplayer.models.video import Video
 from gridplayer.params.actions import ACTIONS
 from gridplayer.params.menu import SECTIONS, SUBMENUS
-from gridplayer.params.settings_fields.kinds import layout_sections
 from gridplayer.params.settings_fields.video import VIDEO_FIELDS
 from gridplayer.params.settings_pages import VIDEO_PAGE
 from gridplayer.params.static import VideoDeinterlace, VideoDeinterlaceMode
@@ -32,6 +31,7 @@ from gridplayer.vlc_player.player_base import VlcPlayerBase
 from gridplayer.vlc_player.static import MediaInput
 from gridplayer.widgets.video_block import VideoBlock
 from tests.conftest import mock_block_parts
+from tests.settings_layout import layout_sections
 
 SECTION_OF = layout_sections(VIDEO_PAGE)
 

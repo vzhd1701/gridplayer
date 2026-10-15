@@ -13,7 +13,6 @@ from gridplayer.params.settings_fields.kinds import (
     SpinField,
     TextField,
     _Node,
-    layout_keys,
 )
 from gridplayer.params.settings_fields.playlist import GRID_STATE_ATTR, PLAYLIST_FIELDS
 from gridplayer.params.settings_fields.registry import ALL_FIELDS, FIELDS
@@ -27,6 +26,7 @@ from gridplayer.params.settings_pages import (
 )
 from gridplayer.settings import _default_settings, default_value
 from gridplayer.widgets.settings_form import SettingsForm
+from tests.settings_layout import layout_keys
 
 ALL_PAGES = [page for group in PAGES for page in group.pages]
 

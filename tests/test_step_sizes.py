@@ -13,11 +13,7 @@ from PyQt5.QtWidgets import QLabel
 
 from gridplayer.models.playlist import Playlist
 from gridplayer.params.actions import ACTIONS
-from gridplayer.params.settings_fields.kinds import (
-    CheckboxField,
-    FloatSpinField,
-    layout_sections,
-)
+from gridplayer.params.settings_fields.kinds import CheckboxField, FloatSpinField
 from gridplayer.params.settings_fields.playlist import PLAYLIST_FIELDS
 from gridplayer.params.settings_pages import PLAYLIST_PAGE
 from gridplayer.params.static import MAX_SCALE, MIN_SCALE
@@ -34,6 +30,7 @@ from gridplayer.widgets.keymap_tree_view import _action_title
 from gridplayer.widgets.settings_form import SettingsForm
 from gridplayer.widgets.video_block import VideoBlock
 from gridplayer.widgets.video_block_view import ViewControl
+from tests.settings_layout import layout_sections
 
 STEP_KEYS = (
     "playlist/seek_step_short",

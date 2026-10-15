@@ -1,4 +1,4 @@
-from collections.abc import Callable, Iterator
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -187,31 +187,3 @@ class Group:
     def __init__(self, title: str, *pages: Page):
         self.title = title
         self.pages = pages
-
-
-def layout_sections(items, title: str | None = None) -> dict[str, str | None]:
-    """The heading each setting of a layout is shown under, None for none."""
-
-    sections = {}
-
-    for item in items:
-        if isinstance(item, Section):
-            sections.update(layout_sections(item.items, item.title))
-        elif isinstance(item, _Node):
-            sections.update(layout_sections(item.items, title))
-        else:
-            sections.update(dict.fromkeys(layout_keys((item,)), title))
-
-    return sections
-
-
-def layout_keys(items) -> Iterator[str]:
-    """The settings a layout shows, in the order it shows them."""
-
-    for item in items:
-        if isinstance(item, str):
-            yield item
-        elif isinstance(item, SettingField):
-            yield item.settings_key
-        elif isinstance(item, _Node):
-            yield from layout_keys(item.items)
