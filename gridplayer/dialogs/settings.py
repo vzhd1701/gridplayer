@@ -503,15 +503,12 @@ class SettingsDialog(QDialog):
         later version changes it.
         """
 
+        if form.is_default(key):
+            Settings().reset(key)
         # where Hardware can't run, the dialog shows its Software twin;
         # saving that back would lose the Hardware pick for the sessions
         # that can run it
-        if form.shows_stand_in(key):
-            return
-
-        if form.is_default(key):
-            Settings().reset(key)
-        else:
+        elif not form.shows_stand_in(key):
             Settings().set(key, form.value(key))
 
     def save_cookies(self):

@@ -74,7 +74,7 @@ class SettingsForm(QWidget):
         self._overridden: set[str] = set()
         # as of the last sync
         self._modified: set[str] = set()
-        # what set_values put in, as it is stored
+        # what each editor was given, as it is stored (or will be, once reset)
         self._stored: dict = {}
         # reset since the values were set, to be saved even if greyed out
         self._reset_keys: set[str] = set()
@@ -363,10 +363,21 @@ class SettingsForm(QWidget):
         return self._editors[key].normalize(self._shown(key, self._reset_to(key)))
 
     def is_default(self, key: str) -> bool:
-        """Shows what a reset would."""
+        """Has what a reset would give.
+
+        Behind a stand-in, by what it stands in for: the default may stand
+        in as the very value something else saved does.
+        """
 
         editor = self._editors[key]
-        return editor.means_default() or editor.value() == self.default_shown(key)
+
+        if editor.means_default():
+            return True
+
+        if self.shows_stand_in(key):
+            return self._stored[key] == self._reset_to(key)
+
+        return editor.value() == self.default_shown(key)
 
     def shows_stand_in(self, key: str) -> bool:
         """Shows, unchanged, what stands in for a stored value it can't show.
@@ -415,9 +426,11 @@ class SettingsForm(QWidget):
         if self._reset_to is None:
             return
 
+        self._stored[key] = self._reset_to(key)
+
         self._updating = True
         try:
-            self._put(key, self._reset_to(key))
+            self._put(key, self._stored[key])
         finally:
             self._updating = False
 

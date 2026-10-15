@@ -183,3 +183,29 @@ def test_dialog_offers_hardware_on_xcb(monkeypatch, make_dialog):
 
     assert VideoDriver.VLC_HW in _driver_items(dialog)
     assert dialog.widget("internal/hw_crop_border_offset").isEnabled()
+
+
+@pytest.mark.usefixtures("pure_wayland")
+def test_a_saved_software_driver_is_not_taken_for_the_default(settings, make_dialog):
+    # the default is Hardware, shown here as Software too
+    settings.set("player/video_driver", VideoDriver.VLC_SW)
+
+    dialog = make_dialog()
+    dialog.show_page("decoder")
+
+    assert dialog.forms["decoder"].is_modified("player/video_driver")
+    assert dialog.resetPage.isEnabled()
+
+
+@pytest.mark.usefixtures("pure_wayland")
+def test_a_saved_software_driver_reset_is_forgotten(settings, make_dialog):
+    settings.set("player/video_driver", VideoDriver.VLC_SW)
+
+    dialog = make_dialog()
+    dialog.forms["decoder"].reset("player/video_driver")
+
+    assert not dialog.forms["decoder"].is_modified("player/video_driver")
+
+    dialog.save_settings()
+
+    assert not settings.settings.contains("player/video_driver")
