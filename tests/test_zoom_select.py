@@ -783,7 +783,7 @@ class TestTheSetting:
         from gridplayer.dialogs.settings import SettingsDialog
 
         dialog = SettingsDialog(None)
-        bindings = dialog.keymapEditor.get_bindings()
+        bindings = dialog.widget("player/keymap").get_bindings()
 
         assert bindings[GESTURE_ZOOM_SELECT] == ["Ctrl+Drag"]
         assert bindings[GESTURE_PAN] == ["Middle-Drag"]
@@ -794,7 +794,7 @@ class TestTheSetting:
         from gridplayer.dialogs.settings import SettingsDialog
 
         dialog = SettingsDialog(None)
-        conflicts = dialog.keymapEditor.tree.build_conflict_map(
+        conflicts = dialog.widget("player/keymap").tree.build_conflict_map(
             exclude_action_id=GESTURE_ZOOM_SELECT
         )
 
@@ -805,7 +805,7 @@ class TestTheSetting:
         from gridplayer.settings import Settings
 
         dialog = SettingsDialog(None)
-        dialog.keymapEditor.tree.set_action_shortcuts(
+        dialog.widget("player/keymap").tree.set_action_shortcuts(
             GESTURE_ZOOM_SELECT, ["Shift+Drag"]
         )
 

@@ -172,42 +172,29 @@ def test_process_image_handles_closed_mapping(mocker):
         driver.cleanup()
 
 
-def _combo_data(combo):
-    return [combo.itemData(i) for i in range(combo.count())]
-
-
 def test_settings_combo_includes_software_sp(mocker):
-    from PyQt5.QtWidgets import QComboBox, QSpinBox, QWidget
-
-    from gridplayer.dialogs.settings import SettingsDialog
-
-    parent = QWidget()
-    dialog = SimpleNamespace(
-        playerVideoDriver=QComboBox(parent),
-        playerVideoDriverPlayers=QSpinBox(parent),
-        tr=lambda s: s,
-    )
+    from gridplayer.params.settings_fields import choices
+    from gridplayer.widgets.settings_form import SettingsForm
 
     mocker.patch("gridplayer.dialogs.settings.env.IS_MACOS", False)
-    SettingsDialog.fill_playerVideoDriver(dialog)
-    non_mac = _combo_data(dialog.playerVideoDriver)
+    non_mac = list(choices.video_drivers())
     assert VideoDriver.VLC_SW_SP in non_mac
     assert VideoDriver.VLC_SW in non_mac
     assert VideoDriver.VLC_HW in non_mac
 
     mocker.patch("gridplayer.dialogs.settings.env.IS_MACOS", True)
-    dialog.playerVideoDriver.clear()
-    SettingsDialog.fill_playerVideoDriver(dialog)
-    mac = _combo_data(dialog.playerVideoDriver)
+    mac = list(choices.video_drivers())
     assert VideoDriver.VLC_SW_SP in mac
     assert VideoDriver.VLC_SW in mac
     assert VideoDriver.VLC_HW_SP in mac
     assert VideoDriver.VLC_HW not in mac
 
-    idx = dialog.playerVideoDriver.findData(VideoDriver.VLC_SW_SP)
-    dialog.playerVideoDriverPlayers.setEnabled(True)
-    SettingsDialog.driver_selected(dialog, idx)
-    assert not dialog.playerVideoDriverPlayers.isEnabled()
+    form = SettingsForm(("player/video_driver", "player/video_driver_players"))
+    form.set_values({"player/video_driver": VideoDriver.VLC_SW})
+    assert form.is_enabled("player/video_driver_players")
+
+    form.set_values({"player/video_driver": VideoDriver.VLC_SW_SP})
+    assert not form.is_enabled("player/video_driver_players")
 
 
 def test_frame_is_copied_when_shown_not_when_delivered(mocker):

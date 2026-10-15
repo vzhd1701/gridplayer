@@ -19,8 +19,10 @@ from PyQt5.QtWidgets import QApplication
 from gridplayer.models.playlist import Playlist, PlaylistVideoDefaults
 from gridplayer.models.video import Video
 from gridplayer.params.actions import ACTIONS
-from gridplayer.params.defaults_fields import VIDEO_FIELDS, CheckboxField
 from gridplayer.params.menu import SECTIONS, SUBMENUS
+from gridplayer.params.settings_fields.kinds import CheckboxField, layout_sections
+from gridplayer.params.settings_fields.video import VIDEO_FIELDS
+from gridplayer.params.settings_pages import VIDEO_PAGE
 from gridplayer.params.static import (
     MAX_SCALE,
     HWCropBorderOffset,
@@ -44,6 +46,8 @@ from gridplayer.widgets.video_block_loop import LoopControl
 from gridplayer.widgets.video_block_view import ViewControl
 from gridplayer.widgets.video_frame_vlc_hw_sp import VideoFrameVLCHWSP
 from tests.conftest import mock_block_parts
+
+SECTION_OF = layout_sections(VIDEO_PAGE)
 
 URI = "http://example.com/a.mp4"
 NO_SHIFT = VideoShift(0, 0)
@@ -176,7 +180,7 @@ class TestPlaylistSettings:
         assert keys[at + 1] == "video_defaults/anchor"
 
         spec = VIDEO_FIELDS[at + 1]
-        assert spec.section == "Video"
+        assert SECTION_OF[spec.settings_key] == "Video"
         assert spec.attr == "anchor"
         assert list(spec.choices()) == list(VideoAnchor)
 
@@ -187,7 +191,7 @@ class TestPlaylistSettings:
         assert keys[at + 1] == "video_defaults/shift_past_edges"
 
         spec = VIDEO_FIELDS[at + 1]
-        assert spec.section == "Video"
+        assert SECTION_OF[spec.settings_key] == "Video"
         assert isinstance(spec, CheckboxField)
         assert spec.attr == "shift_past_edges"
 
@@ -198,7 +202,7 @@ class TestPlaylistSettings:
         assert keys[at + 1] == "video_defaults/zoom_to_cursor"
 
         spec = VIDEO_FIELDS[at + 1]
-        assert spec.section == "Video"
+        assert SECTION_OF[spec.settings_key] == "Video"
         assert isinstance(spec, CheckboxField)
         assert spec.attr == "zoom_to_cursor"
 

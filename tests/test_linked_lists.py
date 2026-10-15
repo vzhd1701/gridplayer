@@ -1672,7 +1672,7 @@ class TestTheSetting:
         assert _default_settings["playlist/list_update"] == ListUpdate.ON_LOAD
 
     def test_in_the_lists_section_of_the_playlist_s(self):
-        from gridplayer.params.defaults_fields import PLAYLIST_FIELDS
+        from gridplayer.params.settings_fields.playlist import PLAYLIST_FIELDS
 
         field = next(
             spec

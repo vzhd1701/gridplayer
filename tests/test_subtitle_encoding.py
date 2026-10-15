@@ -18,8 +18,9 @@ from gridplayer.dialogs.subtitle_encoding import SetSubtitleEncodingDialog
 from gridplayer.models.playlist import PlaylistVideoDefaults
 from gridplayer.models.video import Video
 from gridplayer.params.actions import ACTIONS
-from gridplayer.params.defaults_fields import VIDEO_FIELDS, _subtitle_encodings
 from gridplayer.params.menu import SECTIONS
+from gridplayer.params.settings_fields.choices import subtitle_encodings
+from gridplayer.params.settings_fields.video import VIDEO_FIELDS
 from gridplayer.params.subtitle_encodings import DEFAULT_ENCODING, SUBTITLE_ENCODINGS
 from gridplayer.player.managers.active_block import (
     LOADING_COMMANDS,
@@ -31,7 +32,7 @@ from gridplayer.utils.libvlc_options_parser import get_vlc_options, is_reopen_ne
 from gridplayer.vlc_player.player_base import VlcPlayerBase
 from gridplayer.vlc_player.static import MediaInput
 from gridplayer.widgets.combo_box import MAX_VISIBLE_COMBO_ITEMS
-from gridplayer.widgets.defaults_form import DefaultsForm
+from gridplayer.widgets.settings_form import SettingsForm
 from gridplayer.widgets.video_block import VideoBlock
 from gridplayer.widgets.video_block_subtitles import SubtitleControl
 from tests.conftest import is_block_command
@@ -170,7 +171,7 @@ class TestWhatGoesToVLC:
 
 class TestWhatIsOffered:
     def test_leaving_it_alone_is_the_first_way_out(self):
-        offered = list(_subtitle_encodings())
+        offered = list(subtitle_encodings())
 
         assert offered[0] == DEFAULT_ENCODING
 
@@ -183,7 +184,7 @@ class TestWhatIsOffered:
         word. Naming the set covers everything it would have served.
         """
 
-        assert "system" not in _subtitle_encodings()
+        assert "system" not in subtitle_encodings()
 
     @pytest.mark.parametrize(
         "encoding",
@@ -213,7 +214,7 @@ class TestWhatIsOffered:
         spec = next(f for f in VIDEO_FIELDS if f.settings_key == SETTING)
 
         assert spec.attr == "subtitle_encoding"
-        assert spec.choices is _subtitle_encodings
+        assert spec.choices is subtitle_encodings
         # it has to apply to a track picked from the menu too, not only to
         # one a video opens with, so nothing gates it
         assert spec.enabled_when is None
@@ -353,7 +354,7 @@ class TestTheBox:
 
 class TestTheListFitsOnScreen:
     def test_a_list_this_long_gets_a_scroll_bar_rather_than_the_screen(self):
-        form = DefaultsForm(VIDEO_FIELDS)
+        form = SettingsForm(VIDEO_FIELDS)
         combo = form._widgets[SETTING]
 
         assert combo.count() > MAX_VISIBLE_COMBO_ITEMS
@@ -371,7 +372,7 @@ class TestTheListFitsOnScreen:
         assert dialog.combo.view().verticalScrollBarPolicy() == Qt.ScrollBarAsNeeded
 
     def test_the_short_lists_keep_the_popup_the_platform_draws(self):
-        form = DefaultsForm(VIDEO_FIELDS)
+        form = SettingsForm(VIDEO_FIELDS)
         combo = form._widgets["video_defaults/subtitle_track_mode"]
 
         assert combo.count() <= MAX_VISIBLE_COMBO_ITEMS

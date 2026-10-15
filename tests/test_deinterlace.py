@@ -17,8 +17,10 @@ from PyQt5.QtWidgets import QApplication
 from gridplayer.models.playlist import PlaylistVideoDefaults
 from gridplayer.models.video import Video
 from gridplayer.params.actions import ACTIONS
-from gridplayer.params.defaults_fields import VIDEO_FIELDS
 from gridplayer.params.menu import SECTIONS, SUBMENUS
+from gridplayer.params.settings_fields.kinds import layout_sections
+from gridplayer.params.settings_fields.video import VIDEO_FIELDS
+from gridplayer.params.settings_pages import VIDEO_PAGE
 from gridplayer.params.static import VideoDeinterlace, VideoDeinterlaceMode
 from gridplayer.settings import Settings
 from gridplayer.utils.libvlc_options_parser import (
@@ -30,6 +32,8 @@ from gridplayer.vlc_player.player_base import VlcPlayerBase
 from gridplayer.vlc_player.static import MediaInput
 from gridplayer.widgets.video_block import VideoBlock
 from tests.conftest import mock_block_parts
+
+SECTION_OF = layout_sections(VIDEO_PAGE)
 
 URI = "http://example.com/a.mp4"
 
@@ -381,7 +385,7 @@ class TestPlaylistSettings:
         ]
         for key in keys[at + 1 : at + 3]:
             spec = next(f for f in VIDEO_FIELDS if f.settings_key == key)
-            assert spec.section == "Video"
+            assert SECTION_OF[spec.settings_key] == "Video"
 
     def test_the_mode_is_greyed_out_while_it_is_off(self):
         spec = next(

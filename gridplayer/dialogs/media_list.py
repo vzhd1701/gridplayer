@@ -100,7 +100,7 @@ from gridplayer.models.media_list import (
 )
 from gridplayer.models.playlist import saved_list_bytes
 from gridplayer.models.video_uri import URL_ALLOWED_SCHEMES
-from gridplayer.params.defaults_fields import list_update_txts
+from gridplayer.params.settings_fields.choices import list_update_txts
 from gridplayer.params.static import (
     ListSort,
     ListSourceKind,

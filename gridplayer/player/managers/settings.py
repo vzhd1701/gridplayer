@@ -2,7 +2,7 @@ from PyQt5.QtCore import pyqtSignal
 
 from gridplayer.dialogs.messagebox import QCustomMessageBox
 from gridplayer.dialogs.settings import SettingsDialog
-from gridplayer.params.defaults_fields import GRID_STATE_ATTR
+from gridplayer.params.settings_fields.playlist import GRID_STATE_ATTR
 from gridplayer.params.sponsorblock import SPONSORBLOCK_SETTINGS
 from gridplayer.params.subtitle_style import SUBTITLE_STYLE_SETTINGS
 from gridplayer.params.theme import apply_theme

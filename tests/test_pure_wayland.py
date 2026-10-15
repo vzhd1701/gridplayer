@@ -112,7 +112,7 @@ def make_dialog(settings):
 
 
 def _driver_items(dialog):
-    combo = dialog.playerVideoDriver
+    combo = dialog.widget("player/video_driver")
     return [combo.itemData(i) for i in range(combo.count())]
 
 
@@ -146,7 +146,7 @@ def test_dialog_keeps_hardware_pick(settings, make_dialog, stored, shown):
 
     dialog = make_dialog()
 
-    assert dialog.playerVideoDriver.currentData() is shown
+    assert dialog.widget("player/video_driver").currentData() is shown
 
     dialog.save_settings()
 
@@ -158,7 +158,7 @@ def test_dialog_saves_another_driver(settings, make_dialog):
     settings.set("player/video_driver", VideoDriver.VLC_HW)
 
     dialog = make_dialog()
-    combo = dialog.playerVideoDriver
+    combo = dialog.widget("player/video_driver")
     combo.setCurrentIndex(combo.findData(VideoDriver.VLC_SW_SP))
 
     dialog.save_settings()
@@ -170,9 +170,9 @@ def test_dialog_saves_another_driver(settings, make_dialog):
 def test_dialog_leaves_hardware_options_alone(make_dialog):
     dialog = make_dialog()
 
-    assert not dialog.miscOpaqueHWOverlay.isEnabled()
-    assert not dialog.miscFakeOverlayInvisibility.isEnabled()
-    assert not dialog.miscHWCropBorder.isEnabled()
+    assert not dialog.widget("internal/opaque_hw_overlay").isEnabled()
+    assert not dialog.widget("internal/fake_overlay_invisibility").isEnabled()
+    assert not dialog.widget("internal/hw_crop_border_offset").isEnabled()
 
 
 def test_dialog_offers_hardware_on_xcb(monkeypatch, make_dialog):
@@ -182,4 +182,4 @@ def test_dialog_offers_hardware_on_xcb(monkeypatch, make_dialog):
     dialog = make_dialog()
 
     assert VideoDriver.VLC_HW in _driver_items(dialog)
-    assert dialog.miscHWCropBorder.isEnabled()
+    assert dialog.widget("internal/hw_crop_border_offset").isEnabled()

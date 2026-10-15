@@ -6,7 +6,7 @@ from PyQt5.QtWidgets import QApplication, QWidget
 from gridplayer.models.grid_state import GridState
 from gridplayer.models.playlist import Playlist
 from gridplayer.models.video import Video
-from gridplayer.params.defaults_fields import PLAYLIST_FIELDS
+from gridplayer.params.settings_fields.playlist import PLAYLIST_FIELDS
 from gridplayer.params.static import GridMode, ListView, VideoAspect
 from gridplayer.playlist_settings import (
     PlaylistSettings,
@@ -191,10 +191,10 @@ def test_recent_list_add_goes_the_way_anything_added_does(mocker):
     commands.add_media.assert_called_once_with(["http://example.com/a.mp4"])
 
 
-def test_defaults_form_disables_hidden_grid_fields():
-    from gridplayer.widgets.defaults_form import DefaultsForm
+def test_settings_form_disables_hidden_grid_fields():
+    from gridplayer.widgets.settings_form import SettingsForm
 
-    form = DefaultsForm(PLAYLIST_FIELDS)
+    form = SettingsForm(PLAYLIST_FIELDS)
 
     _set_grid_mode(form, GridMode.FIXED)
     _set_grid_mode(form, GridMode.AUTO_ROWS)
@@ -271,7 +271,7 @@ def test_settings_dialog_save_skips_hidden_grid_fields(mocker):
 
     dialog = SettingsDialog(None)
 
-    form = dialog.playlist_defaults_form
+    form = dialog.forms["playlist"]
     current_mode = form._widgets["playlist/grid_mode"].currentData()
     other_mode = (
         GridMode.FIXED if current_mode is not GridMode.FIXED else GridMode.AUTO_ROWS

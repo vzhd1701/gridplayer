@@ -13,11 +13,13 @@ from PyQt5.QtWidgets import QLabel
 
 from gridplayer.models.playlist import Playlist
 from gridplayer.params.actions import ACTIONS
-from gridplayer.params.defaults_fields import (
-    PLAYLIST_FIELDS,
+from gridplayer.params.settings_fields.kinds import (
     CheckboxField,
     FloatSpinField,
+    layout_sections,
 )
+from gridplayer.params.settings_fields.playlist import PLAYLIST_FIELDS
+from gridplayer.params.settings_pages import PLAYLIST_PAGE
 from gridplayer.params.static import MAX_SCALE, MIN_SCALE
 from gridplayer.player.managers.video_blocks import VideoBlocksManager
 from gridplayer.playlist_settings import PlaylistSettings, overrides_from_playlist
@@ -28,8 +30,8 @@ from gridplayer.utils.step_sizes import (
     seek_step_txt,
     zoom_stepped,
 )
-from gridplayer.widgets.defaults_form import DefaultsForm
 from gridplayer.widgets.keymap_tree_view import _action_title
+from gridplayer.widgets.settings_form import SettingsForm
 from gridplayer.widgets.video_block import VideoBlock
 from gridplayer.widgets.video_block_view import ViewControl
 
@@ -40,6 +42,8 @@ STEP_KEYS = (
     "playlist/zoom_step",
     "playlist/zoom_proportional",
 )
+
+SECTION_OF = layout_sections(PLAYLIST_PAGE)
 
 # the actions that seek by a step: which step, and which way
 SEEK_ACTIONS = {
@@ -92,13 +96,17 @@ class TestTheDefaults:
 
     def test_they_have_a_section_of_their_own(self):
         sections = {
-            spec.section for spec in PLAYLIST_FIELDS if spec.settings_key in STEP_KEYS
+            SECTION_OF[spec.settings_key]
+            for spec in PLAYLIST_FIELDS
+            if spec.settings_key in STEP_KEYS
         }
 
         assert sections == {"Step Sizes"}
 
     def test_the_section_comes_right_after_playback(self):
-        sections = list(dict.fromkeys(spec.section for spec in PLAYLIST_FIELDS))
+        sections = list(
+            dict.fromkeys(SECTION_OF[spec.settings_key] for spec in PLAYLIST_FIELDS)
+        )
 
         assert sections[sections.index("Playback") + 1] == "Step Sizes"
 
@@ -119,7 +127,7 @@ class TestTheDefaults:
 class TestTheForm:
     @pytest.fixture
     def form(self):
-        form = DefaultsForm(PLAYLIST_FIELDS)
+        form = SettingsForm(PLAYLIST_FIELDS)
 
         yield form
 

@@ -9,7 +9,13 @@ from gridplayer.models.audio_selection import (
 )
 from gridplayer.models.playlist import Playlist
 from gridplayer.models.video import Video
-from gridplayer.params.defaults_fields import VIDEO_FIELDS, ComboField, TextField
+from gridplayer.params.settings_fields.kinds import (
+    ComboField,
+    TextField,
+    layout_sections,
+)
+from gridplayer.params.settings_fields.video import VIDEO_FIELDS
+from gridplayer.params.settings_pages import VIDEO_PAGE
 from gridplayer.params.static import AudioTrackMode
 from gridplayer.playlist_settings import (
     PlaylistSettings,
@@ -17,7 +23,9 @@ from gridplayer.playlist_settings import (
     playlist_kwargs_from_overrides,
 )
 from gridplayer.settings import Settings
-from gridplayer.widgets.defaults_form import DefaultsForm
+from gridplayer.widgets.settings_form import SettingsForm
+
+SECTION_OF = layout_sections(VIDEO_PAGE)
 
 MODE_KEY = "video_defaults/audio_track_mode"
 LANGUAGES_KEY = "video_defaults/audio_languages"
@@ -47,18 +55,20 @@ def _spec(settings_key):
 
 
 def _form():
-    return DefaultsForm(VIDEO_FIELDS)
+    return SettingsForm(VIDEO_FIELDS)
 
 
 def test_both_fields_live_in_the_audio_section():
-    assert _spec(MODE_KEY).section == "Audio"
-    assert _spec(LANGUAGES_KEY).section == "Audio"
+    assert SECTION_OF[_spec(MODE_KEY).settings_key] == "Audio"
+    assert SECTION_OF[_spec(LANGUAGES_KEY).settings_key] == "Audio"
 
 
 def test_languages_field_follows_the_mode_field():
     """The box only makes sense once the combo above it has been read."""
 
-    audio = [f.settings_key for f in VIDEO_FIELDS if f.section == "Audio"]
+    audio = [
+        f.settings_key for f in VIDEO_FIELDS if SECTION_OF[f.settings_key] == "Audio"
+    ]
 
     assert audio.index(LANGUAGES_KEY) == audio.index(MODE_KEY) + 1
 

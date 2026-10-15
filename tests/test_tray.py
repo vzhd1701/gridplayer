@@ -12,6 +12,7 @@ from PyQt5.QtWidgets import QApplication, QSystemTrayIcon, QWidget
 from gridplayer.dialogs import settings as settings_dialog
 from gridplayer.dialogs.settings import SettingsDialog
 from gridplayer.models.video import Video
+from gridplayer.params.settings_fields import general as general_fields
 from gridplayer.params.static import VideoInitialState
 from gridplayer.player.managers import screensaver as screensaver_module
 from gridplayer.player.managers import tray as tray_module
@@ -706,7 +707,7 @@ def make_dialog(settings, _no_real_cache, monkeypatch):
         "isSystemTrayAvailable",
         staticmethod(lambda: True),
     )
-    monkeypatch.setattr(settings_dialog, "taskbar_hiding_blocker", lambda: None)
+    monkeypatch.setattr(general_fields, "taskbar_hiding_blocker", lambda: None)
 
     made = []
 
@@ -729,22 +730,22 @@ class TestSettings:
     def test_greyed_out_with_no_icon(self, make_dialog):
         dialog = make_dialog()
 
-        assert dialog.playerTrayIcon.isEnabled()
-        assert not dialog.playerCloseToTray.isEnabled()
+        assert dialog.widget("player/tray_icon").isEnabled()
+        assert not dialog.widget("player/close_to_tray").isEnabled()
 
-        dialog.playerTrayIcon.setChecked(True)
+        dialog.widget("player/tray_icon").setChecked(True)
 
-        assert dialog.playerCloseToTray.isEnabled()
-        assert dialog.playerTrayStopVideo.isEnabled()
+        assert dialog.widget("player/close_to_tray").isEnabled()
+        assert dialog.widget("player/tray_stop_video").isEnabled()
 
     def test_no_taskbar_button_minimizes_to_the_tray(self, settings, make_dialog):
         dialog = make_dialog()
-        dialog.playerTrayIcon.setChecked(True)
+        dialog.widget("player/tray_icon").setChecked(True)
 
-        dialog.playerHideTaskbar.setChecked(True)
+        dialog.widget("player/hide_taskbar").setChecked(True)
 
-        assert dialog.playerMinimizeToTray.isChecked()
-        assert not dialog.playerMinimizeToTray.isEnabled()
+        assert dialog.widget("player/minimize_to_tray").isChecked()
+        assert not dialog.widget("player/minimize_to_tray").isEnabled()
 
         dialog.save_settings()
 
@@ -752,17 +753,17 @@ class TestSettings:
         assert settings.get("player/minimize_to_tray") is False
         assert settings.get("player/hide_taskbar") is True
 
-        dialog.playerHideTaskbar.setChecked(False)
+        dialog.widget("player/hide_taskbar").setChecked(False)
 
-        assert not dialog.playerMinimizeToTray.isChecked()
-        assert dialog.playerMinimizeToTray.isEnabled()
+        assert not dialog.widget("player/minimize_to_tray").isChecked()
+        assert dialog.widget("player/minimize_to_tray").isEnabled()
 
     def test_saved(self, settings, make_dialog):
         dialog = make_dialog()
 
-        dialog.playerTrayIcon.setChecked(True)
-        dialog.playerCloseToTray.setChecked(True)
-        dialog.playerTrayStopVideo.setChecked(True)
+        dialog.widget("player/tray_icon").setChecked(True)
+        dialog.widget("player/close_to_tray").setChecked(True)
+        dialog.widget("player/tray_stop_video").setChecked(True)
         dialog.save_settings()
 
         assert settings.get("player/tray_icon") is True
@@ -779,8 +780,8 @@ class TestSettings:
 
         dialog = make_dialog()
 
-        assert not dialog.playerTrayIcon.isEnabled()
-        assert not dialog.playerCloseToTray.isEnabled()
+        assert not dialog.widget("player/tray_icon").isEnabled()
+        assert not dialog.widget("player/close_to_tray").isEnabled()
         assert not dialog.playerTrayUnavailable.isHidden()
 
     @pytest.mark.parametrize(
@@ -792,13 +793,13 @@ class TestSettings:
     )
     def test_no_taskbar_hiding(self, settings, make_dialog, monkeypatch, blocker, said):
         settings.set("player/tray_icon", True)
-        monkeypatch.setattr(settings_dialog, "taskbar_hiding_blocker", lambda: blocker)
+        monkeypatch.setattr(general_fields, "taskbar_hiding_blocker", lambda: blocker)
 
         dialog = make_dialog()
 
-        assert dialog.playerCloseToTray.isEnabled()
-        assert not dialog.playerHideTaskbar.isEnabled()
-        assert said in dialog.playerHideTaskbar.toolTip()
+        assert dialog.widget("player/close_to_tray").isEnabled()
+        assert not dialog.widget("player/hide_taskbar").isEnabled()
+        assert said in dialog.widget("player/hide_taskbar").toolTip()
 
     def test_no_taskbar_hiding_leaves_minimize_alone(
         self, settings, make_dialog, monkeypatch
@@ -808,15 +809,15 @@ class TestSettings:
         settings.set("player/tray_icon", True)
         settings.set("player/hide_taskbar", True)
         monkeypatch.setattr(
-            settings_dialog,
+            general_fields,
             "taskbar_hiding_blocker",
             lambda: TaskbarHidingBlocker.GNOME,
         )
 
         dialog = make_dialog()
 
-        assert not dialog.playerMinimizeToTray.isChecked()
-        assert dialog.playerMinimizeToTray.isEnabled()
+        assert not dialog.widget("player/minimize_to_tray").isChecked()
+        assert dialog.widget("player/minimize_to_tray").isEnabled()
 
 
 class TestTaskbarHidingBlocker:

@@ -187,11 +187,20 @@ class TableWidgetDragRows(QtWidgets.QTableWidget):
 
 
 class ResolverPatternsList(QtWidgets.QWidget):
+    # a row added, removed, moved or edited
+    changed = pyqtSignal()
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
         self.table = self.ui_table()
         self.buttons = self.ui_buttons()
+
+        model = self.table.model()
+        model.rowsInserted.connect(self.changed)
+        model.rowsRemoved.connect(self.changed)
+        model.rowsMoved.connect(self.changed)
+        self.table.itemChanged.connect(self.changed)
 
         layout = QtWidgets.QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
@@ -271,6 +280,12 @@ class ResolverPatternsList(QtWidgets.QWidget):
         for row in data_rows:
             self.add_row(row)
 
+    def set_rows(self, data_rows: ResolverPatterns):
+        """These rows in place of the ones there are."""
+
+        self.table.setRowCount(0)
+        self.setDataRows(data_rows)
+
     def add_row(self, row_data: ResolverPattern | None = None):
         if self.empty_row_idx is not None:
             self.table.set_current_row_idx(self.empty_row_idx)
@@ -303,13 +318,14 @@ class ResolverPatternsList(QtWidgets.QWidget):
             self.table.setItem(row_idx, col_idx, col)
 
             if col_idx == 1:
-                self.table.setCellWidget(
-                    row_idx, col_idx, self._create_pattern_type_combo()
-                )
+                combo = self._create_pattern_type_combo()
             elif col_idx == 2:
-                self.table.setCellWidget(
-                    row_idx, col_idx, self._create_resolver_combo()
-                )
+                combo = self._create_resolver_combo()
+            else:
+                continue
+
+            combo.currentIndexChanged.connect(self.changed)
+            self.table.setCellWidget(row_idx, col_idx, combo)
 
     def _set_row_data(self, row_idx, row_data: ResolverPattern):
         self.table.item(row_idx, 0).setText(row_data.pattern)

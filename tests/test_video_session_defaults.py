@@ -6,19 +6,17 @@ from PyQt5.QtWidgets import QApplication
 
 from gridplayer.models.playlist import Playlist
 from gridplayer.models.video import Video
-from gridplayer.params.defaults_fields import (
-    PLAYLIST_FIELDS,
-    SUBTITLE_STYLE_FIELDS,
-    VIDEO_FIELDS,
-)
+from gridplayer.params.settings_fields.playlist import PLAYLIST_FIELDS
+from gridplayer.params.settings_fields.subtitles import SUBTITLE_STYLE_FIELDS
+from gridplayer.params.settings_fields.video import VIDEO_FIELDS
 from gridplayer.params.static import VideoCrop, VideoEndAction, VideoInitialState
 from gridplayer.playlist_settings import (
     PlaylistSettings,
     overrides_from_playlist,
     playlist_kwargs_from_overrides,
 )
-from gridplayer.settings import Settings, _default_settings
-from gridplayer.widgets.defaults_form import DefaultsForm
+from gridplayer.settings import Settings, _default_settings, default_value
+from gridplayer.widgets.settings_form import SettingsForm
 
 
 @pytest.fixture(scope="module", autouse=True)
@@ -79,8 +77,8 @@ def test_video_uses_initial_state_paused():
     assert video.is_stopped is False
 
 
-def test_defaults_form_has_end_action_combo():
-    form = DefaultsForm(VIDEO_FIELDS)
+def test_settings_form_has_end_action_combo():
+    form = SettingsForm(VIDEO_FIELDS)
     combo = form._widgets["video_defaults/end_action"]
 
     combo.setCurrentIndex(combo.findData(VideoEndAction.STOP))
@@ -94,8 +92,8 @@ def test_video_accepts_legacy_repeat_mode():
     assert video.end_action is VideoEndAction.STOP
 
 
-def test_defaults_form_has_initial_state_combo():
-    form = DefaultsForm(VIDEO_FIELDS)
+def test_settings_form_has_initial_state_combo():
+    form = SettingsForm(VIDEO_FIELDS)
     combo = form._widgets["video_defaults/initial_state"]
 
     combo.setCurrentIndex(combo.findData(VideoInitialState.STOPPED))
@@ -174,8 +172,8 @@ def test_playlist_dumps_video_defaults_round_trip():
     assert seeded["video_defaults/crop"] == VideoCrop(1, 2, 3, 4)
 
 
-def test_defaults_form_crop_kind():
-    form = DefaultsForm(VIDEO_FIELDS)
+def test_settings_form_crop_kind():
+    form = SettingsForm(VIDEO_FIELDS)
     crop_widget = form._widgets["video_defaults/crop"]
 
     crop_widget.value = VideoCrop(1, 2, 3, 4)
@@ -183,8 +181,8 @@ def test_defaults_form_crop_kind():
     assert form.values()["video_defaults/crop"] == VideoCrop(1, 2, 3, 4)
 
 
-def test_defaults_form_color_kind():
-    form = DefaultsForm(VIDEO_FIELDS)
+def test_settings_form_color_kind():
+    form = SettingsForm(VIDEO_FIELDS)
     color_widget = form._widgets["video_defaults/color"]
 
     color_widget.color = QColor("#ff0000").getRgb()[:3]
@@ -192,8 +190,8 @@ def test_defaults_form_color_kind():
     assert form.values()["video_defaults/color"] == "#ff0000"
 
 
-def test_defaults_form_float_spin_kind():
-    form = DefaultsForm(VIDEO_FIELDS)
+def test_settings_form_float_spin_kind():
+    form = SettingsForm(VIDEO_FIELDS)
     rate_widget = form._widgets["video_defaults/rate"]
 
     rate_widget.setValue(2.5)
@@ -201,8 +199,8 @@ def test_defaults_form_float_spin_kind():
     assert form.values()["video_defaults/rate"] == 2.5
 
 
-def test_defaults_form_color_marks_row_edited():
-    form = DefaultsForm(VIDEO_FIELDS)
+def test_settings_form_color_marks_row_edited():
+    form = SettingsForm(VIDEO_FIELDS)
 
     form._widgets["video_defaults/color"].color = QColor("#ff0000").getRgb()[:3]
 
@@ -263,11 +261,11 @@ def test_settings_get_all_includes_new_defaults():
     [PLAYLIST_FIELDS, VIDEO_FIELDS, SUBTITLE_STYLE_FIELDS],
     ids=["playlist", "video", "subtitle_style"],
 )
-def test_defaults_form_gives_back_every_default_it_is_given(fields):
+def test_settings_form_gives_back_every_default_it_is_given(fields):
     defaults = {
         spec.settings_key: _default_settings[spec.settings_key] for spec in fields
     }
-    form = DefaultsForm(fields, show_reset=True)
+    form = SettingsForm(fields, reset_to=default_value, track_edits=False)
 
     form.set_values(defaults)
 

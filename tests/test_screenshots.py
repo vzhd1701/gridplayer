@@ -14,7 +14,7 @@ from unittest.mock import MagicMock
 import pytest
 from PyQt5.QtCore import QEvent, QRect, QSettings, QSize
 from PyQt5.QtGui import QColor, QImage
-from PyQt5.QtWidgets import QApplication
+from PyQt5.QtWidgets import QApplication, QPushButton
 
 from gridplayer.dialogs import settings as settings_dialog
 from gridplayer.dialogs.settings import SettingsDialog
@@ -641,21 +641,21 @@ def dialog(settings, tmp_path, monkeypatch):
 class TestTheSettings:
     def test_they_are_on_the_player_page(self, dialog):
         for widget in (
-            dialog.screenshotsDir,
-            dialog.screenshotsFilenameTemplate,
+            dialog.widget("screenshots/dir"),
+            dialog.widget("screenshots/filename_template"),
             dialog.screenshotsFilenameTemplateHelpButton,
-            dialog.screenshotsFormat,
-            dialog.screenshotsJPGQuality,
+            dialog.widget("screenshots/format"),
+            dialog.widget("screenshots/jpg_quality"),
         ):
-            assert dialog.page_general_player.isAncestorOf(widget)
+            assert dialog.pages["player"].isAncestorOf(widget)
 
     def test_they_come_back_as_saved(self, dialog, settings, tmp_path):
-        dialog.screenshotsDir.setText(str(tmp_path))
-        dialog.screenshotsFilenameTemplate.setText("%F-%n")
-        dialog.screenshotsFormat.setCurrentIndex(
-            dialog.screenshotsFormat.findData(ScreenshotFormat.JPG)
+        dialog.widget("screenshots/dir").setText(str(tmp_path))
+        dialog.widget("screenshots/filename_template").setText("%F-%n")
+        dialog.widget("screenshots/format").setCurrentIndex(
+            dialog.widget("screenshots/format").findData(ScreenshotFormat.JPG)
         )
-        dialog.screenshotsJPGQuality.setValue(75)
+        dialog.widget("screenshots/jpg_quality").setValue(75)
 
         dialog.save_settings()
 
@@ -667,21 +667,23 @@ class TestTheSettings:
     def test_the_folder_comes_empty_out_of_the_box(self, dialog):
         """Empty is what follows the data folder wherever it is."""
 
-        assert dialog.screenshotsDir.text() == ""
-        assert dialog.screenshotsDir.placeholderText() == "In the data folder"
-        assert dialog.screenshotsDir.toolTip().endswith("screenshots")
+        assert dialog.widget("screenshots/dir").text() == ""
+        assert (
+            dialog.widget("screenshots/dir").placeholderText() == "In the data folder"
+        )
+        assert dialog.widget("screenshots/dir").toolTip().endswith("screenshots")
 
     def test_the_format_comes_as_the_default(self, dialog):
-        assert dialog.screenshotsFilenameTemplate.text() == "%F_%P"
+        assert dialog.widget("screenshots/filename_template").text() == "%F_%P"
 
     def test_quality_is_only_for_jpg(self, dialog):
-        box = dialog.screenshotsFormat
+        box = dialog.widget("screenshots/format")
 
         box.setCurrentIndex(box.findData(ScreenshotFormat.PNG))
-        assert not dialog.screenshotsJPGQuality.isEnabled()
+        assert not dialog.widget("screenshots/jpg_quality").isEnabled()
 
         box.setCurrentIndex(box.findData(ScreenshotFormat.JPG))
-        assert dialog.screenshotsJPGQuality.isEnabled()
+        assert dialog.widget("screenshots/jpg_quality").isEnabled()
 
     def test_quality_is_still_saved_while_png_is_picked(self, dialog, settings):
         """A greyed out widget is skipped on save, so the stored one stays."""
@@ -691,7 +693,7 @@ class TestTheSettings:
         assert settings.get("screenshots/jpg_quality") == 90
 
     def test_an_empty_format_goes_back_to_the_default(self, dialog, settings):
-        dialog.screenshotsFilenameTemplate.setText("  ")
+        dialog.widget("screenshots/filename_template").setText("  ")
 
         dialog.save_settings()
 
@@ -699,7 +701,7 @@ class TestTheSettings:
 
     def test_an_unknown_specifier_keeps_the_dialog_open(self, dialog, settings, mocker):
         warned = mocker.patch.object(settings_dialog.QCustomMessageBox, "warning")
-        dialog.screenshotsFilenameTemplate.setText("%F_%x")
+        dialog.widget("screenshots/filename_template").setText("%F_%x")
 
         dialog.accept()
 
@@ -717,11 +719,18 @@ class TestTheSettings:
             assert f"<tt>{specifier}</tt>" in text
 
     def test_there_is_no_help_squeezed_in_beside_the_field(self, dialog):
-        assert dialog.screenshotsFilenameTemplate.toolTip() == ""
+        assert dialog.widget("screenshots/filename_template").toolTip() == ""
         assert not hasattr(dialog, "screenshotsFilenameTemplateHelp")
 
     def test_the_folder_row_is_just_the_field_and_browse(self, dialog):
         """An Open button next to Browse made the row too wide for the page."""
 
+        form = dialog.form_of("screenshots/dir")
+        row = form._rows["screenshots/dir"]
+
         assert not hasattr(dialog, "screenshotsDirOpen")
-        assert dialog.lay_screenshots_dir.count() == 2
+        assert form.editor("screenshots/dir").parts() == [
+            dialog.widget("screenshots/dir"),
+            form.editor("screenshots/dir").browse,
+        ]
+        assert len(row.findChildren(QPushButton)) == 1

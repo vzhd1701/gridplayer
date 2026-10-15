@@ -7,8 +7,8 @@ from PyQt5.QtGui import QStandardItemModel
 from PyQt5.QtWidgets import QWidget
 
 from gridplayer.params.actions import ACTIONS
-from gridplayer.params.defaults_fields import PLAYLIST_FIELDS
 from gridplayer.params.menu import SECTIONS, SUBMENUS
+from gridplayer.params.settings_fields.playlist import PLAYLIST_FIELDS
 from gridplayer.player.managers.active_block import ActiveBlockManager
 from gridplayer.player.managers.bookmarks import BookmarksManager
 from gridplayer.player.managers.video_blocks import VideoBlocksManager

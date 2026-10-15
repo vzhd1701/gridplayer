@@ -8,15 +8,16 @@ from PyQt5.QtWidgets import (
 )
 
 from gridplayer.models.grid_state import GridState
-from gridplayer.params.defaults_fields import (
+from gridplayer.params.settings_fields.playlist import (
     GRID_STATE_ATTR,
     PLAYLIST_FIELDS,
-    VIDEO_FIELDS,
 )
+from gridplayer.params.settings_fields.video import VIDEO_FIELDS
+from gridplayer.params.settings_pages import PLAYLIST_PAGE, VIDEO_PAGE
 from gridplayer.playlist_settings import grid_values_from_state
 from gridplayer.settings import Settings
 from gridplayer.utils.qt import translate
-from gridplayer.widgets.defaults_form import DefaultsForm
+from gridplayer.widgets.settings_form import SettingsForm
 from gridplayer.widgets.settings_page_scroll_area import PageScrollArea
 
 
@@ -26,12 +27,9 @@ class PlaylistSettingsDialog(QDialog):
         self.setWindowTitle(translate("SettingsDialog", "Playlist Settings"))
         self.setModal(True)
 
-        self._playlist_form = DefaultsForm(
-            PLAYLIST_FIELDS, show_reset=True, default_getter=Settings().get
-        )
-        self._video_form = DefaultsForm(
-            VIDEO_FIELDS, show_reset=True, default_getter=Settings().get
-        )
+        # a reset goes back to the global settings
+        self._playlist_form = SettingsForm(PLAYLIST_PAGE, reset_to=Settings().get)
+        self._video_form = SettingsForm(VIDEO_PAGE, reset_to=Settings().get)
 
         tabs = QTabWidget()
         tabs.addTab(
@@ -64,7 +62,7 @@ class PlaylistSettingsDialog(QDialog):
         self.setMinimumSize(550, 400)
         self.resize(550, 400)
 
-    def _wrap_scroll(self, form: DefaultsForm) -> PageScrollArea:
+    def _wrap_scroll(self, form: SettingsForm) -> PageScrollArea:
         form.layout().setContentsMargins(12, 12, 12, 12)
         scroll = PageScrollArea(self)
         scroll.setWidget(form)
@@ -96,20 +94,8 @@ class PlaylistSettingsDialog(QDialog):
         self._video_form.set_values(video_values, video_over)
 
     def _reset_all(self):
-        self._playlist_form.clear_overridden()
-        self._video_form.clear_overridden()
-        self._playlist_form.apply_defaults(
-            {
-                spec.settings_key: Settings().get(spec.settings_key)
-                for spec in PLAYLIST_FIELDS
-            }
-        )
-        self._video_form.apply_defaults(
-            {
-                spec.settings_key: Settings().get(spec.settings_key)
-                for spec in VIDEO_FIELDS
-            }
-        )
+        self._playlist_form.reset_all()
+        self._video_form.reset_all()
 
     def result_overrides(self) -> dict:
         result = {}

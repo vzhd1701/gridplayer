@@ -112,6 +112,33 @@ block as an attribute: `status`, `bookmarker`, `view`, `chapters`,
 * An exception raised inside a Qt slot aborts the whole test run ("Fatal
   Python error: Aborted"), not just the test.
 
+## Settings dialogs
+
+The Settings and Playlist Settings dialogs are built in code, not in
+Designer, from two places:
+
+* `params/settings_fields/` says what a setting is: its kind of field,
+  label, range, choices, tooltip, and the rules that grey it out or hide it
+  (`enabled_when`, `shown_when`, `shown_if`, `unavailable`). One module per
+  domain; `registry.FIELDS` has them all by key.
+* `params/settings_pages.py` says where it is shown, the way `params/menu.py`
+  lays out a menu: groups, pages, sections and rows naming settings by key.
+  A `Slot("name")` is filled by `SettingsDialog._slot_<name>`, for what isn't
+  a setting (buttons, the cookie list). `PLAYLIST_PAGE` and `VIDEO_PAGE` are
+  the Playlist Settings dialog's tabs too.
+
+A new setting needs a default in `settings.py`, a field, and a place on a
+page; `tests/test_settings_fields.py` checks the three agree.
+`widgets/settings_form.py` builds a page; `widgets/settings_editors.py` has
+an editor for each kind of field.
+
+Reset goes back to the factory default in the Settings dialog and to the
+global setting in the Playlist Settings dialog. A setting saved at its
+default is removed from the ini (`Settings().reset`), not written.
+
+In tests, reach a setting's widget with `dialog.widget("section/key")`, a
+page with `dialog.pages["id"]` and its form with `dialog.forms["id"]`.
+
 ## Translatable strings
 
 `pylupdate5` only extracts a string when it sees a literal context and a
@@ -128,7 +155,7 @@ the entry happens to exist, but never reaches translators.
   `init_translator()` (see `tests/test_translation_timing.py`).
 * A choice or toggle shown both in the menu (`params/actions.py`,
   `player/managers/active_block.py`) and in the settings form
-  (`params/defaults_fields.py`) uses one context named after the setting
+  (`params/settings_fields/`) uses one context named after the setting
   (e.g. `Transform`, `When Finished`, `Playlist Settings`). Other menu strings
   use `Actions`; other settings form strings use `SettingsDialog`.
 

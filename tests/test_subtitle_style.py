@@ -15,7 +15,7 @@ from PyQt5.QtCore import QEvent, QSettings
 from PyQt5.QtWidgets import QApplication, QLabel
 
 from gridplayer.dialogs.settings import SettingsDialog
-from gridplayer.params.defaults_fields import SUBTITLE_STYLE_FIELDS
+from gridplayer.params.settings_fields.subtitles import SUBTITLE_STYLE_FIELDS
 from gridplayer.params.static import SubtitleOutline
 from gridplayer.params.subtitle_style import (
     SUBTITLE_STYLE_DEFAULTS,
@@ -219,7 +219,7 @@ def dialog():
 
 class TestThePageItIsSetOn:
     def test_what_is_picked_on_the_page_is_what_is_saved(self, dialog):
-        dialog.subtitle_style_form.set_values(
+        dialog.forms["subtitle_style"].set_values(
             {
                 "subtitles/size_scale": 140,
                 "subtitles/background": True,
@@ -234,7 +234,7 @@ class TestThePageItIsSetOn:
         assert Settings().get("subtitles/outline") is SubtitleOutline.THICK
 
     def test_a_colour_nobody_would_see_is_greyed_out(self, dialog):
-        form = dialog.subtitle_style_form
+        form = dialog.forms["subtitle_style"]
 
         form.set_values(
             {
@@ -249,7 +249,7 @@ class TestThePageItIsSetOn:
         assert not form.is_enabled("subtitles/background_color")
 
     def test_a_colour_that_would_be_drawn_can_be_picked(self, dialog):
-        form = dialog.subtitle_style_form
+        form = dialog.forms["subtitle_style"]
 
         form.set_values(
             {
@@ -266,7 +266,7 @@ class TestThePageItIsSetOn:
     def test_the_page_says_that_ass_subtitles_style_themselves(self, dialog):
         """Otherwise styling an anime release looks like a bug in this."""
 
-        page = dialog.page_subtitle_style.widget()
+        page = dialog.pages["subtitle_style"].widget()
         notes = [
             label.text() for label in page.findChildren(QLabel) if "ASS" in label.text()
         ]

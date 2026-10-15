@@ -15,8 +15,10 @@ from PyQt5.QtWidgets import QApplication, QWidget
 from gridplayer.models.grid_state import GridState
 from gridplayer.models.video import Video
 from gridplayer.params.actions import ACTIONS
-from gridplayer.params.defaults_fields import PLAYLIST_FIELDS, CheckboxField
 from gridplayer.params.menu import SECTIONS, SUBMENUS
+from gridplayer.params.settings_fields.kinds import CheckboxField, layout_sections
+from gridplayer.params.settings_fields.playlist import PLAYLIST_FIELDS
+from gridplayer.params.settings_pages import PLAYLIST_PAGE
 from gridplayer.params.static import (
     SeekSyncMode,
     VideoAnchor,
@@ -38,6 +40,8 @@ from gridplayer.widgets.video_block import VideoBlock
 from gridplayer.widgets.video_block_view import ViewControl
 from gridplayer.widgets.video_frame_dummy import VideoFrameDummy
 from gridplayer.widgets.video_frame_vlc_hw_sp import VideoFrameVLCHWSP
+
+SECTION_OF = layout_sections(PLAYLIST_PAGE)
 
 URI = "http://example.com/a.mp4"
 
@@ -172,7 +176,11 @@ class TestTheSettings:
             assert Settings().get(key) is False
 
     def test_they_are_together_with_seek_sync_in_a_section_of_their_own(self):
-        fields = [field for field in PLAYLIST_FIELDS if field.section == "Sync"]
+        fields = [
+            field
+            for field in PLAYLIST_FIELDS
+            if SECTION_OF[field.settings_key] == "Sync"
+        ]
 
         assert [field.settings_key for field in fields] == [
             "playlist/seek_sync_mode",

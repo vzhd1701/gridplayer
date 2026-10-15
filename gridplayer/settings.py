@@ -395,7 +395,10 @@ class _Settings:
         self.settings.setValue(setting_name, setting_value)
 
     def reset(self, setting_name):
-        self.set(setting_name, _default_settings[setting_name])
+        """Back to the default by forgetting it, so that a default changed
+        in a later version reaches it too."""
+
+        self.settings.remove(setting_name)
 
     def get_all(self):
         return {k: self.get(k) for k in _default_settings}
@@ -485,6 +488,12 @@ def Settings():
         SETTINGS = _Settings()
 
     return SETTINGS
+
+
+def default_value(setting_name):
+    """What a setting is out of the box, on this system."""
+
+    return _default_settings[setting_name]
 
 
 def default_field(setting_name):

@@ -436,7 +436,7 @@ def test_any_of_the_drags_it_is_set_to_drags_the_picture():
 def test_it_is_set_in_the_keymap_middle_by_default():
     """The same for every playlist: a way of using the mouse, not a video's."""
 
-    from gridplayer.params.defaults_fields import PLAYLIST_FIELDS
+    from gridplayer.params.settings_fields.playlist import PLAYLIST_FIELDS
     from gridplayer.utils.keymap import default_keymap
 
     assert default_keymap()[GESTURE_PAN] == ["Middle-Drag"]
@@ -448,9 +448,9 @@ def test_it_is_set_on_the_shortcuts_page(mocker):
     from gridplayer.settings import Settings
 
     dialog = SettingsDialog(None)
-    editor = dialog.keymapEditor
+    editor = dialog.widget("player/keymap")
 
-    assert editor.parent() is dialog.page_general_shortcuts
+    assert dialog.pages["shortcuts"].isAncestorOf(editor)
     assert editor.get_bindings()[GESTURE_PAN] == ["Middle-Drag"]
 
     editor.tree.set_action_shortcuts(GESTURE_PAN, ["Middle-Drag", "Shift+Drag"])

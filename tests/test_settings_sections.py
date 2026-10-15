@@ -3,6 +3,7 @@ from PyQt5.QtCore import QEvent, Qt
 from PyQt5.QtWidgets import QApplication
 
 from gridplayer.dialogs.settings import SECTION_PAGE_ROLE, SettingsDialog
+from gridplayer.params.settings_pages import PAGES as SETTINGS_PAGES
 from gridplayer.widgets.settings_page_scroll_area import PageScrollArea
 
 # the index as it is meant to read, group heading by group heading
@@ -16,18 +17,18 @@ SECTIONS = (
 # which page each entry has to open, named independently of the binding
 # so that a mis-ordered list of pages cannot agree with itself
 PAGES = {
-    "Player": "page_general_player",
+    "Player": "page_player",
     "Subtitle Style": "page_subtitle_style",
-    "Shortcuts": "page_general_shortcuts",
-    "Language": "page_general_language",
-    "Playlist": "page_defaults_playlist",
-    "Video": "page_defaults_video",
-    "Link Resolution": "page_streaming_resolution",
-    "SponsorBlock": "page_streaming_sponsorblock",
-    "Cookies": "page_streaming_cookies",
-    "Network": "page_streaming_network",
-    "Video Decoder": "page_advanced_decoder",
-    "Logging": "page_advanced_logging",
+    "Shortcuts": "page_shortcuts",
+    "Language": "page_language",
+    "Playlist": "page_playlist",
+    "Video": "page_video",
+    "Link Resolution": "page_resolution",
+    "SponsorBlock": "page_sponsorblock",
+    "Cookies": "page_cookies",
+    "Network": "page_network",
+    "Video Decoder": "page_decoder",
+    "Logging": "page_logging",
 }
 
 
@@ -112,25 +113,25 @@ class TestEverySectionOpensItsPage:
         dialog.switch_page(None)
 
         assert dialog.section_index.currentItem() is dialog.section_items[0]
-        assert dialog.section_page.currentWidget() is dialog.page_general_player
+        assert dialog.section_page.currentWidget() is dialog.pages["player"]
 
     def test_the_player_page_scrolls_rather_than_make_the_dialog_taller(self, dialog):
-        page = dialog.page_general_player
+        page = dialog.pages["player"]
         wanted = page.widget().sizeHint().height()
-        resolution = dialog.page_streaming_resolution.minimumSizeHint().height()
+        resolution = dialog.pages["resolution"].minimumSizeHint().height()
 
         assert isinstance(page, PageScrollArea)
         assert dialog.section_page.sizeHint().height() == resolution < wanted
 
 
 class TestKeepingTheTwoSidesInStep:
-    def test_a_section_with_no_page_behind_it_is_refused(self, dialog):
-        """A new entry in the .ui must not quietly open whatever is next."""
+    def test_the_index_is_made_from_the_pages(self, dialog):
+        """An entry and the page it opens are one thing in settings_pages,
+        so neither can be added without the other."""
 
-        dialog.section_index.addItem("Network")
+        titles = [page.title for group in SETTINGS_PAGES for page in group.pages]
 
-        with pytest.raises(ValueError, match="section"):
-            dialog.bind_section_pages()
+        assert [item.text() for item in dialog.section_items] == titles
 
     def test_headings_are_not_counted_as_sections(self, dialog):
         entries = sum(len(entries) for _, entries in SECTIONS)

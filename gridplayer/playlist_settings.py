@@ -3,11 +3,11 @@ from contextlib import contextmanager
 from pydantic import Field
 
 from gridplayer.models.grid_state import GridState
-from gridplayer.params.defaults_fields import (
+from gridplayer.params.settings_fields.playlist import (
     GRID_STATE_ATTR,
     PLAYLIST_FIELDS,
-    VIDEO_FIELDS,
 )
+from gridplayer.params.settings_fields.video import VIDEO_FIELDS
 from gridplayer.settings import Settings
 
 _INSTANCE = None

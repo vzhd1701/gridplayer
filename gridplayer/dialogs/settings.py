@@ -2,127 +2,54 @@ import contextlib
 import logging
 import subprocess
 import threading
-from pathlib import Path
 
-from PyQt5.QtCore import QLocale, Qt, QUrl, pyqtSignal
-from PyQt5.QtGui import QColor, QDesktopServices, QIcon, QPainter, QPixmap
+from PyQt5.QtCore import QLocale, QSize, Qt, QUrl, pyqtSignal
+from PyQt5.QtGui import QDesktopServices, QIcon
 from PyQt5.QtWidgets import (
-    QCheckBox,
-    QComboBox,
     QDialog,
-    QFileDialog,
-    QFormLayout,
+    QDialogButtonBox,
     QHBoxLayout,
     QLabel,
-    QLineEdit,
-    QSpinBox,
+    QListWidget,
+    QListWidgetItem,
+    QPushButton,
     QSystemTrayIcon,
+    QToolButton,
     QVBoxLayout,
     QWidget,
 )
 
 from gridplayer.dialogs.checkup import CheckupDialog
 from gridplayer.dialogs.messagebox import QCustomMessageBox
-from gridplayer.dialogs.settings_dialog_ui import Ui_SettingsDialog
 from gridplayer.params import env
-from gridplayer.params.defaults_fields import (
-    PLAYLIST_FIELDS,
-    SUBTITLE_STYLE_FIELDS,
-    VIDEO_FIELDS,
-)
-from gridplayer.params.languages import LANGUAGES
-from gridplayer.params.sponsorblock import (
-    CATEGORY_COLORS,
-    ENABLED_SETTING,
-    allowed_modes,
-    category_name,
-    category_setting,
-)
-from gridplayer.params.static import (
-    CacheMode,
-    ColorScheme,
-    HWCropBorderOffset,
-    ProxyMode,
-    ScreenshotFormat,
-    SponsorBlockMode,
-    URLResolver,
-    VideoDriver,
-)
-from gridplayer.settings import Settings
-from gridplayer.utils import cache, log_config
+from gridplayer.params.settings_fields.advanced import no_hw_video_reason
+from gridplayer.params.settings_fields.kinds import Page, TextField
+from gridplayer.params.settings_pages import PAGES
+from gridplayer.settings import Settings, default_value
+from gridplayer.utils import cache
 from gridplayer.utils.app_dir import get_app_data_dir
 from gridplayer.utils.cookies import cookie_store, same_cookies
-from gridplayer.utils.keymap import default_keymap, merge_keymap
 from gridplayer.utils.network import opts_for
-from gridplayer.utils.qt import qt_connect, translate
-from gridplayer.utils.screenshots import (
-    default_screenshots_dir,
-    screenshots_dir,
-    unknown_specifiers,
-)
-from gridplayer.utils.taskbar import TaskbarHidingBlocker, taskbar_hiding_blocker
-from gridplayer.utils.video_driver import is_hw_video_available, session_video_driver
+from gridplayer.utils.qt import translate
+from gridplayer.utils.screenshots import default_screenshots_dir, unknown_specifiers
+from gridplayer.utils.video_driver import is_hw_video_available
 from gridplayer.version import __app_url__
+from gridplayer.widgets.cookie_store_list import CookieStoreList
 from gridplayer.widgets.custom_menu import CustomMenu
-from gridplayer.widgets.defaults_form import DefaultsForm
-from gridplayer.widgets.keymap_tree_view import KeymapEditor
-from gridplayer.widgets.language_list import LanguageList
-from gridplayer.widgets.resolver_patterns_list import ResolverPatternsList
-
-VIDEO_DRIVERS_MULTIPROCESS = (
-    VideoDriver.VLC_SW,
-    VideoDriver.VLC_HW,
-)
-
-MAX_VLC_PROCESSES = 64
-
-# a request nobody is waiting on any more; longer than this and the
-# video has given up on its own account
-MAX_TIMEOUT_SEC = 600
+from gridplayer.widgets.settings_current_page_stack import CurrentPageStackedWidget
+from gridplayer.widgets.settings_form import SettingsForm
+from gridplayer.widgets.settings_page_scroll_area import PageScrollArea
 
 COOKIES_FAQ_URL = (
     "https://github.com/yt-dlp/yt-dlp/wiki/FAQ#how-do-i-pass-cookies-to-yt-dlp"
 )
 COOKIES_README_URL = f"{__app_url__}#streaming-cookies"
 
-SPONSORBLOCK_URL = "https://sponsor.ajay.app/"
-
-# the square of a category's colour in front of its name
-SPONSORBLOCK_SWATCH_PX = 12
-
 # where each entry in the section index keeps the page it opens
 SECTION_PAGE_ROLE = Qt.UserRole
 
-
-def _fill_combo_box(combo_box, values_dict):
-    for i_id, i_name in values_dict.items():
-        combo_box.addItem(i_name, i_id)
-
-
-def _set_combo_box(combo_box, data_value):
-    idx = combo_box.findData(data_value)
-    combo_box.setCurrentIndex(idx)
-
-
-def _replace_scroll_page(scroll, form):
-    old = scroll.takeWidget()
-    if old is not None:
-        old.deleteLater()
-    scroll.setWidget(form)
-
-
-def _replace_layout_page(page, form):
-    layout = page.layout()
-    if layout is None:
-        layout = QVBoxLayout(page)
-        layout.setContentsMargins(0, 0, 0, 0)
-    else:
-        while layout.count():
-            item = layout.takeAt(0)
-            widget = item.widget()
-            if widget is not None:
-                widget.deleteLater()
-    layout.addWidget(form)
+# a help button, as small as its question mark
+HELP_BUTTON_SIZE = QSize(24, 24)
 
 
 def _with_note(form, text):
@@ -152,44 +79,39 @@ def _with_note(form, text):
     return page
 
 
-def _category_label(category: str) -> QWidget:
-    """A SponsorBlock category's name, after the colour it is marked in."""
+def _help_button():
+    button = QPushButton("?")
+    button.setMaximumSize(HELP_BUTTON_SIZE)
+    return button
 
-    pixmap = QPixmap(SPONSORBLOCK_SWATCH_PX, SPONSORBLOCK_SWATCH_PX)
-    pixmap.fill(QColor(CATEGORY_COLORS[category]))
 
-    # rimmed, or yellow on a light window is nowhere
-    painter = QPainter(pixmap)
-    painter.setPen(QColor(0, 0, 0, 90))
-    painter.drawRect(pixmap.rect().adjusted(0, 0, -1, -1))
-    painter.end()
-
-    swatch = QLabel()
-    swatch.setPixmap(pixmap)
-
-    label = QWidget()
-
-    layout = QHBoxLayout(label)
-    layout.setContentsMargins(0, 0, 0, 0)
-    layout.addWidget(swatch)
-    layout.addWidget(QLabel(category_name(category)), 1)
-
+def _bold(label):
+    font = label.font()
+    font.setBold(True)
+    label.setFont(font)
     return label
 
 
-def _set_groupbox_header_bold(groupbox):
-    font = groupbox.font()
-    font.setBold(True)
-    groupbox.setFont(font)
+def _in_a_row(*widgets):
+    row = QWidget()
 
-    # Restore the font of each children to regular.
-    font.setBold(False)
-    for child in groupbox.children():
-        with contextlib.suppress(AttributeError):
-            child.setFont(font)
+    layout = QHBoxLayout(row)
+    layout.setContentsMargins(0, 0, 0, 0)
+    for widget in widgets:
+        layout.addWidget(widget)
+    layout.addStretch(1)
+
+    return row
 
 
-class SettingsDialog(QDialog, Ui_SettingsDialog):
+class SettingsDialog(QDialog):
+    """The pages of gridplayer.params.settings_pages, each one a SettingsForm.
+
+    What is here is what a page can't say for itself: the buttons and lists
+    that aren't settings (the Slots), and the few settings that lean on each
+    other in a way a rule can't put.
+    """
+
     # what the cache comes to, worked out on a thread of its own
     cache_measured = pyqtSignal(object)
 
@@ -198,291 +120,278 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
 
         self._log = logging.getLogger(self.__class__.__name__)
 
-        self.setupUi(self)
+        # every page by its id, as it sits in the stack, and the form on it
+        self.pages: dict[str, QWidget] = {}
+        self.forms: dict[str, SettingsForm] = {}
+        self._form_of: dict[str, SettingsForm] = {}
 
-        self.settings_map = {
-            "player/video_driver": self.playerVideoDriver,
-            "player/video_driver_players": self.playerVideoDriverPlayers,
-            "player/video_init_timeout": self.timeoutVideoInit,
-            "player/inhibit_screensaver": self.playerInhibitScreensaver,
-            "player/media_keys_background": self.playerMediaKeysBackground,
-            "player/one_instance": self.playerOneInstance,
-            "player/stay_on_top": self.playerStayOnTop,
-            "player/start_maximized": self.playerStartMaximized,
-            "player/start_fullscreen": self.playerStartFullscreen,
-            "player/tray_icon": self.playerTrayIcon,
-            "player/minimize_to_tray": self.playerMinimizeToTray,
-            "player/close_to_tray": self.playerCloseToTray,
-            "player/hide_taskbar": self.playerHideTaskbar,
-            "player/tray_stop_video": self.playerTrayStopVideo,
-            "player/color_scheme": self.playerColorScheme,
-            "player/language": self.listLanguages,
-            "player/keymap": self.keymapEditor,
-            "player/recent_list_enabled": self.playerRecentList,
-            "player/recent_list_max_size": self.playerRecentListSize,
-            "player/reopen_last_playlist": self.playerReopenLastPlaylist,
-            "player/list_max_mb": self.playerListMaxMB,
-            "cache/mode": self.cacheMode,
-            "cache/max_mb": self.cacheMaxMB,
-            "screenshots/dir": self.screenshotsDir,
-            "screenshots/filename_template": self.screenshotsFilenameTemplate,
-            "screenshots/format": self.screenshotsFormat,
-            "screenshots/jpg_quality": self.screenshotsJPGQuality,
-            "misc/mouse_hide": self.timeoutMouseHideFlag,
-            "misc/mouse_hide_timeout": self.timeoutMouseHide,
-            "misc/vlc_options": self.miscVLCOptions,
-            "logging/log_level": self.logLevel,
-            "logging/log_level_vlc": self.logLevelVLC,
-            "logging/log_limit": self.logLimit,
-            "logging/log_limit_size": self.logLimitSize,
-            "logging/log_limit_backups": self.logLimitBackups,
-            "internal/opaque_hw_overlay": self.miscOpaqueHWOverlay,
-            "internal/fake_overlay_invisibility": self.miscFakeOverlayInvisibility,
-            "internal/force_native_drag_events": self.miscForceNativeDragEvents,
-            "internal/hw_crop_border_offset": self.miscHWCropBorder,
-            "streaming/hls_via_streamlink": self.streamingHLSVIAStreamlink,
-            "streaming/resolver_priority": self.streamingResolverPriority,
-            "streaming/resolver_priority_patterns": self.streamingResolverPriorityPatterns,
-            "streaming/js_runtime_path": self.streamingJSRuntimePath,
-            "cookies/enabled": self.cookiesEnabled,
-            "cookies/allow_update": self.cookiesAllowUpdate,
-            "network/proxy_mode": self.networkProxyMode,
-            "network/proxy_url": self.networkProxyUrl,
-            "network/user_agent": self.networkUserAgent,
-            "network/force_ipv4": self.networkForceIPv4,
-            "network/timeout": self.networkTimeout,
-            "network/verify_tls": self.networkVerifyTLS,
-            "network/allow_http_in_playlists": self.networkAllowHTTPInPlaylists,
-        }
+        # minimize's own tick, while hiding from the taskbar ticks it for it
+        self._minimize_to_tray_own = None
 
+        self.ui_build()
         self.ui_customize()
-        self.ui_fill()
-
         self.ui_connect()
-        self.ui_set_limits()
 
         self.load_settings()
 
-        self.ui_customize_dynamic()
+        self.measure_cache()
+        self.switch_page(None)
+        self.adjustSize()
 
-    def ui_customize(self):
-        self.ui_customize_section_index()
+    # building
 
-        _set_groupbox_header_bold(self.playerVideoDriverBox)
+    def ui_build(self):
+        self.setWindowTitle(translate("SettingsDialog", "Settings"))
+        self.setSizeGripEnabled(True)
+        self.setModal(True)
 
-        self.playlist_defaults_form = DefaultsForm(PLAYLIST_FIELDS, show_reset=False)
-        self.video_defaults_form = DefaultsForm(VIDEO_FIELDS, show_reset=False)
-        self.subtitle_style_form = DefaultsForm(SUBTITLE_STYLE_FIELDS, show_reset=False)
-        self.forms = (
-            self.playlist_defaults_form,
-            self.video_defaults_form,
-            self.subtitle_style_form,
-        )
+        self.section_index = QListWidget()
+        self.section_index.setMinimumSize(QSize(200, 350))
+        self.section_index.setMaximumWidth(200)
+        font = self.section_index.font()
+        font.setPixelSize(16)
+        self.section_index.setFont(font)
 
-        _replace_scroll_page(self.page_defaults_playlist, self.playlist_defaults_form)
-        _replace_scroll_page(self.page_defaults_video, self.video_defaults_form)
-        _replace_scroll_page(
-            self.page_subtitle_style,
-            _with_note(
-                self.subtitle_style_form,
-                translate(
-                    "SettingsDialog",
-                    "Applies to text subtitles. ASS and SSA subtitles keep their own"
-                    " style, except the position.",
-                ),
-            ),
-        )
+        self.section_page = CurrentPageStackedWidget()
+        self.section_page.setMinimumWidth(500)
 
-        self.ui_customize_sponsorblock()
+        heading_font = self.section_index.font()
+        heading_font.setBold(True)
 
-        self.ui_customize_tray()
+        for group in PAGES:
+            heading = QListWidgetItem(group.title, self.section_index)
+            heading.setFont(heading_font)
+            heading.setFlags(Qt.NoItemFlags)
 
-        # the placeholder is short enough to fit, this is where it is
-        self.screenshotsDir.setToolTip(str(default_screenshots_dir()))
+            for page in group.pages:
+                item = QListWidgetItem(page.title, self.section_index)
+                item.setData(SECTION_PAGE_ROLE, self._build_page(page))
 
-        self.cacheClear.setToolTip(
-            self.tr("Delete everything in the cache folder:\n{FOLDER}").format(
-                FOLDER=cache.cache_root()
+        body = QHBoxLayout()
+        body.setSpacing(12)
+        body.addWidget(self.section_index)
+        body.addWidget(self.section_page)
+
+        self.dataDirOpen = QPushButton(translate("SettingsDialog", "Open data folder"))
+        self.dataDirOpen.setMinimumWidth(130)
+        self.dataDirOpen.setToolTip(
+            translate(
+                "SettingsDialog",
+                "Holds the log, settings and cookies. You can also put a JavaScript"
+                " runtime here.",
             )
         )
+
+        self.resetPage = QPushButton(translate("SettingsDialog", "Reset Page"))
+        self.resetPage.setToolTip(
+            translate("SettingsDialog", "Put the settings on this page back to default")
+        )
+
+        self.buttonBox = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+
+        buttons = QHBoxLayout()
+        buttons.addWidget(self.dataDirOpen)
+        buttons.addWidget(self.resetPage)
+        buttons.addWidget(self.buttonBox, 1)
+
+        root = QVBoxLayout(self)
+        root.addLayout(body, 1)
+        root.addLayout(buttons)
+
+    def _build_page(self, page: Page) -> QWidget:
+        form = SettingsForm(
+            page.items,
+            reset_to=default_value,
+            track_edits=False,
+            slots=self._slots(),
+        )
+
+        self.forms[page.id] = form
+        for key in form.keys():
+            self._form_of[key] = form
+
+        content = form if page.note is None else _with_note(form, page.note)
+
+        if page.scroll:
+            widget = PageScrollArea()
+            widget.setWidget(content)
+        else:
+            widget = content
+
+        widget.setObjectName(f"page_{page.id}")
+
+        self.pages[page.id] = widget
+        self.section_page.addWidget(widget)
+
+        return widget
+
+    def _slots(self):
+        """What fills each Slot of the pages: _slot_<name>."""
+
+        return {
+            name.removeprefix("_slot_"): getattr(self, name)
+            for name in dir(type(self))
+            if name.startswith("_slot_")
+        }
+
+    def _slot_tray_unavailable(self):
+        self.playerTrayUnavailable = QLabel(
+            translate("SettingsDialog", "Your desktop has no tray.")
+        )
+        self.playerTrayUnavailable.setVisible(
+            not QSystemTrayIcon.isSystemTrayAvailable()
+        )
+        return self.playerTrayUnavailable
+
+    def _slot_cache_clear(self):
+        self.cacheClear = QToolButton()
+        self.cacheClear.setText(translate("SettingsDialog", "Clear"))
+        self.cacheClear.setPopupMode(QToolButton.MenuButtonPopup)
+        self.cacheClear.setToolTip(
+            translate(
+                "SettingsDialog", "Delete everything in the cache folder:\n{FOLDER}"
+            ).format(FOLDER=cache.cache_root())
+        )
+        self.cacheClear.clicked.connect(self.clear_cache)
 
         # the folder it is in, opened from the arrow beside Clear
         cache_menu = CustomMenu(parent=self.cacheClear)
         self.cache_open_action = cache_menu.addAction(
             QIcon.fromTheme("show-in-folder"),
-            self.tr("Open Folder"),
+            translate("SettingsDialog", "Open Folder"),
             self.open_cache_dir,
         )
         self.cacheClear.setMenu(cache_menu)
 
-        if env.IS_LINUX:
-            self.playerStayOnTop.hide()
+        self.cacheSize = QLabel()
 
-        if not env.IS_LINUX:
-            self.miscOpaqueHWOverlay.hide()
-            self.miscFakeOverlayInvisibility.hide()
-            self.miscForceNativeDragEvents.hide()
+        return _in_a_row(self.cacheClear, self.cacheSize)
+
+    def _slot_screenshot_template_help(self):
+        self.screenshotsFilenameTemplateHelpButton = _help_button()
+        self.screenshotsFilenameTemplateHelpButton.clicked.connect(
+            self.show_screenshot_template_help
+        )
+        return self.screenshotsFilenameTemplateHelpButton
+
+    def _slot_youtube_test(self):
+        self.streamingTestButton = QPushButton(
+            translate("SettingsDialog", "Test a YouTube link")
+        )
+        self.streamingTestButton.setToolTip(
+            translate(
+                "SettingsDialog",
+                "Open a YouTube link step by step and show which step fails",
+            )
+        )
+        self.streamingTestButton.clicked.connect(self.run_youtube_checkup)
+        return _in_a_row(self.streamingTestButton)
+
+    def _slot_wildcard_help(self):
+        self.streamingWildcardHelpButton = _help_button()
+        self.streamingWildcardHelpButton.clicked.connect(self.toggle_wildcard_help)
+
+        self.streamingWildcardHelp = QLabel(
+            translate(
+                "SettingsDialog",
+                "<p><b>The asterisk</b> * matches zero or more characters.<br>\n"
+                "<b>The question mark</b> ? matches exactly one character.</p>\n"
+                "<p><i>For Host Wildcard only:</i><br>\n"
+                "*.example.com will match both example.com and www.example.com<br>\n"
+                "**.example.com will match subdomains <b>only</b></p>",
+            )
+        )
+        self.streamingWildcardHelp.setVisible(False)
+
+        holder = QWidget()
+        layout = QVBoxLayout(holder)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.addWidget(
+            _in_a_row(
+                _bold(QLabel(translate("SettingsDialog", "Wildcard syntax"))),
+                self.streamingWildcardHelpButton,
+            )
+        )
+        layout.addWidget(self.streamingWildcardHelp)
+
+        return holder
+
+    def _slot_cookies_list(self):
+        self.cookiesList = CookieStoreList()
+        self.cookiesList.error.connect(self.cookie_import_failed)
+        return self.cookiesList
+
+    def _slot_cookies_howto(self):
+        self.cookiesHowToButton = _help_button()
+        self.cookiesHowToButton.clicked.connect(self.show_cookies_howto)
+
+        label = _bold(QLabel(translate("SettingsDialog", "How to export cookies")))
+
+        return _in_a_row(label, self.cookiesHowToButton)
+
+    def _slot_network_test(self):
+        self.networkTestButton = QPushButton(
+            translate("SettingsDialog", "Test network")
+        )
+        self.networkTestButton.setToolTip(
+            translate(
+                "SettingsDialog",
+                "Test these settings on a real link and show which step fails",
+            )
+        )
+        self.networkTestButton.clicked.connect(self.run_network_checkup)
+        return _in_a_row(self.networkTestButton)
+
+    def ui_customize(self):
+        # the placeholder is short enough to fit, this is where it is
+        self.widget("screenshots/dir").setToolTip(str(default_screenshots_dir()))
 
         if not is_hw_video_available():
-            self.playerVideoDriver.setToolTip(
-                self.tr(
-                    "Hardware drivers need an X server (Xwayland),"
-                    " which this session doesn't have."
-                )
-            )
+            self.widget("player/video_driver").setToolTip(no_hw_video_reason())
 
-            # these only ever touch Hardware video, and a disabled one is
-            # left as it is on save
-            self.miscOpaqueHWOverlay.setEnabled(False)
-            self.miscFakeOverlayInvisibility.setEnabled(False)
-            self.miscHWCropBorder.setEnabled(False)
+    def ui_connect(self):
+        self.section_index.currentItemChanged.connect(self.switch_page)
+        self.section_index.itemSelectionChanged.connect(self.keep_index_selection)
 
-    def ui_customize_tray(self):
-        if env.IS_MACOS:
-            self.section_tray.setText(self.tr("Menu bar"))
-            self.playerTrayIcon.setText(self.tr("Show icon in the menu bar"))
-            self.playerMinimizeToTray.setText(self.tr("Minimize to the menu bar"))
-            self.playerCloseToTray.setText(self.tr("Close to the menu bar"))
-            self.playerHideTaskbar.setText(self.tr("Hide from the Dock"))
-            self.playerTrayStopVideo.setText(
-                self.tr("Stop video decoding while in the menu bar")
-            )
+        self.dataDirOpen.clicked.connect(self.open_data_dir)
+        self.resetPage.clicked.connect(self.reset_page)
+        self.buttonBox.accepted.connect(self.accept)
+        self.buttonBox.rejected.connect(self.reject)
 
-        is_tray_available = QSystemTrayIcon.isSystemTrayAvailable()
+        self.cache_measured.connect(self.show_cache_size)
 
-        self.playerTrayUnavailable.setVisible(not is_tray_available)
-        if not is_tray_available:
-            self.playerTrayIcon.setEnabled(False)
+        for form in self.forms.values():
+            form.values_changed.connect(self.update_reset_page)
 
-        blocker = taskbar_hiding_blocker()
+        player = self.forms["player"]
+        player.values_changed.connect(self.tray_options_changed)
+        player.values_changed.connect(self.cache_mode_selected)
 
-        self._is_hide_taskbar_available = blocker is None
-        if not self._is_hide_taskbar_available:
-            self.playerHideTaskbar.setEnabled(False)
+    # the settings, wherever they are
 
-        if blocker == TaskbarHidingBlocker.WAYLAND:
-            self.playerHideTaskbar.setToolTip(self.tr("Not available on Wayland."))
-        elif blocker == TaskbarHidingBlocker.GNOME:
-            self.playerHideTaskbar.setToolTip(
-                self.tr("Not available on GNOME. It stops the window from minimizing.")
-            )
+    def form_of(self, key: str) -> SettingsForm:
+        return self._form_of[key]
 
-        # minimize's own tick, while hiding from the taskbar ticks it for it
-        self._minimize_to_tray_own = None
+    def widget(self, key: str) -> QWidget:
+        """What a setting is edited with."""
 
-    def tray_options_changed(self, *_):
-        is_tray = self.playerTrayIcon.isEnabled() and self.playerTrayIcon.isChecked()
+        return self._form_of[key].widget(key)
 
-        # a disabled one is left as it is on save, see save_settings
-        self.playerTrayOptions.setEnabled(is_tray)
+    def value(self, key: str):
+        """A setting as the page has it now, saved or not."""
 
-        # with no taskbar button, minimizing can only go to the tray
-        is_forced = (
-            is_tray
-            and self._is_hide_taskbar_available
-            and self.playerHideTaskbar.isChecked()
-        )
+        return self._form_of[key].value(key)
 
-        if is_forced and self._minimize_to_tray_own is None:
-            self._minimize_to_tray_own = self.playerMinimizeToTray.isChecked()
-            self.playerMinimizeToTray.setChecked(True)
-        elif not is_forced and self._minimize_to_tray_own is not None:
-            self.playerMinimizeToTray.setChecked(self._minimize_to_tray_own)
-            self._minimize_to_tray_own = None
+    @property
+    def settings_map(self) -> dict[str, QWidget]:
+        return {key: form.widget(key) for key, form in self._form_of.items()}
 
-        self.playerMinimizeToTray.setEnabled(not is_forced)
+    def page_of(self, key: str) -> QWidget:
+        form = self._form_of[key]
+        page_id = next(i for i, f in self.forms.items() if f is form)
+        return self.pages[page_id]
 
-    def ui_customize_sponsorblock(self):
-        """The SponsorBlock page, a row for each category it knows.
-
-        Made here rather than in Designer, from the one list the seek bar
-        goes by too, so that a category is added in one place.
-        """
-
-        mode_names = {
-            SponsorBlockMode.SKIP: self.tr("Skip"),
-            SponsorBlockMode.SHOW: self.tr("Show in seek bar"),
-            SponsorBlockMode.OFF: self.tr("Disabled"),
-        }
-
-        form = QWidget()
-
-        layout = QVBoxLayout(form)
-        layout.setContentsMargins(0, 0, 0, 0)
-
-        self.sponsorblockEnabled = QCheckBox(
-            self.tr("Use SponsorBlock on YouTube videos")
-        )
-        layout.addWidget(self.sponsorblockEnabled)
-
-        self.sponsorblockCategories = QWidget()
-
-        rows = QFormLayout(self.sponsorblockCategories)
-        rows.setContentsMargins(0, 0, 0, 0)
-        rows.setFieldGrowthPolicy(QFormLayout.FieldsStayAtSizeHint)
-
-        self.settings_map[ENABLED_SETTING] = self.sponsorblockEnabled
-
-        for category in CATEGORY_COLORS:
-            combo_box = QComboBox()
-
-            _fill_combo_box(
-                combo_box, {mode: mode_names[mode] for mode in allowed_modes(category)}
-            )
-
-            rows.addRow(_category_label(category), combo_box)
-
-            self.settings_map[category_setting(category)] = combo_box
-
-        layout.addWidget(self.sponsorblockCategories)
-        layout.addStretch()
-
-        note = self.tr(
-            '<p>Every YouTube video you play is checked on SponsorBlock, where viewers mark sponsors, self-promotion and similar segments. Only a short prefix of a hash of the video\'s ID is sent.</p><p>Segments from <a href="{URL}">SponsorBlock</a>, under CC BY-NC-SA 4.0.</p>'
-        ).format(URL=SPONSORBLOCK_URL)
-
-        _replace_scroll_page(self.page_streaming_sponsorblock, _with_note(form, note))
-
-    def ui_customize_section_index(self):
-        font = self.section_index.font()
-        font.setPixelSize(16)
-        self.section_index.setFont(font)
-
-        self.bind_section_pages()
-
-    def bind_section_pages(self):
-        """Tie every entry in the index to the page it opens.
-
-        Going by the entry's text would mean matching a translated string
-        against another one, which stops matching the moment either side
-        is reworded and leaves a section that quietly opens nothing.
-        """
-
-        pages = (
-            self.page_general_player,
-            self.page_subtitle_style,
-            self.page_general_shortcuts,
-            self.page_general_language,
-            self.page_defaults_playlist,
-            self.page_defaults_video,
-            self.page_streaming_resolution,
-            self.page_streaming_sponsorblock,
-            self.page_streaming_cookies,
-            self.page_streaming_network,
-            self.page_advanced_decoder,
-            self.page_advanced_logging,
-        )
-
-        sections = self.section_items
-
-        if len(sections) != len(pages):
-            raise ValueError(
-                f"{len(sections)} section(s) in the index"
-                f" but {len(pages)} page(s) to open"
-            )
-
-        for item, page in zip(sections, pages):
-            item.setData(SECTION_PAGE_ROLE, page)
+    # pages
 
     @property
     def section_items(self):
@@ -494,82 +403,187 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
 
         return [item for item in items if item.flags() & Qt.ItemIsSelectable]
 
-    def ui_fill(self):
-        self.fill_playerVideoDriver()
-        self.fill_logLevel()
-        self.fill_logLevelVLC()
-        self.fill_language()
-        self.fill_colorScheme()
-        self.fill_streamingResolverPriority()
-        self.fill_hwCropBorder()
-        self.fill_networkProxyMode()
-        self.fill_screenshotsFormat()
-        self.fill_cacheMode()
+    def keep_index_selection(self):
+        if not self.section_index.selectedItems():
+            self.section_index.setCurrentItem(self.section_index.currentItem())
 
-    def ui_set_limits(self):
-        self.playerVideoDriverPlayers.setRange(1, MAX_VLC_PROCESSES)
-        self.timeoutMouseHide.setRange(1, 60)
-        self.logLimitSize.setRange(1, 1024 * 1024)
-        self.logLimitBackups.setRange(1, 1000)
-        self.timeoutVideoInit.setRange(1, 1000)
-        self.playerRecentListSize.setRange(1, 100)
-        self.networkTimeout.setRange(0, MAX_TIMEOUT_SEC)
-        self.screenshotsJPGQuality.setRange(1, 100)
-        self.playerListMaxMB.setRange(1, 8192)
-        self.cacheMaxMB.setRange(1, 8192)
+    def switch_page(self, section_item, _previous=None):
+        if section_item is None:
+            self.section_index.setCurrentItem(self.section_items[0])
+            return
 
-    def ui_customize_dynamic(self):
-        self.driver_selected(self.playerVideoDriver.currentIndex())
-        self.timeoutMouseHide.setEnabled(self.timeoutMouseHideFlag.isChecked())
-        self.logLimitSize.setEnabled(self.logLimit.isChecked())
-        self.logLimitBackups.setEnabled(self.logLimit.isChecked())
-        self.streamingWildcardHelp.setVisible(False)
-        self.playerRecentListSize.setEnabled(self.playerRecentList.isChecked())
-        self.proxy_mode_selected(self.networkProxyMode.currentIndex())
-        self.screenshot_format_selected(self.screenshotsFormat.currentIndex())
-        self.sponsorblockCategories.setEnabled(self.sponsorblockEnabled.isChecked())
-        self.cache_mode_selected(self.cacheMode.currentIndex())
-        self.measure_cache()
-        self.tray_options_changed()
+        page = section_item.data(SECTION_PAGE_ROLE)
 
-        self.switch_page(None)
-        self.adjustSize()
+        if page is None:
+            return
 
-    def ui_connect(self):
-        qt_connect(
-            (self.playerVideoDriver.currentIndexChanged, self.driver_selected),
-            (self.timeoutMouseHideFlag.stateChanged, self.timeoutMouseHide.setEnabled),
-            (self.dataDirOpen.clicked, self.open_data_dir),
-            (self.section_index.currentItemChanged, self.switch_page),
-            (self.section_index.itemSelectionChanged, self.keep_index_selection),
-            (self.logLimit.stateChanged, self.logLimitSize.setEnabled),
-            (self.logLimit.stateChanged, self.logLimitBackups.setEnabled),
-            (self.streamingWildcardHelpButton.clicked, self.toggle_wildcard_help),
-            (self.playerRecentList.stateChanged, self.playerRecentListSize.setEnabled),
-            (self.cookiesList.error, self.cookie_import_failed),
-            (self.cookiesHowToButton.clicked, self.show_cookies_howto),
-            (self.streamingTestButton.clicked, self.run_youtube_checkup),
-            (self.networkProxyMode.currentIndexChanged, self.proxy_mode_selected),
-            (self.networkTestButton.clicked, self.run_network_checkup),
-            (
-                self.sponsorblockEnabled.toggled,
-                self.sponsorblockCategories.setEnabled,
-            ),
-            (self.screenshotsDirBrowse.clicked, self.browse_screenshots_dir),
-            (
-                self.screenshotsFilenameTemplateHelpButton.clicked,
-                self.show_screenshot_template_help,
-            ),
-            (
-                self.screenshotsFormat.currentIndexChanged,
-                self.screenshot_format_selected,
-            ),
-            (self.cacheMode.currentIndexChanged, self.cache_mode_selected),
-            (self.playerTrayIcon.toggled, self.tray_options_changed),
-            (self.playerHideTaskbar.toggled, self.tray_options_changed),
-            (self.cacheClear.clicked, self.clear_cache),
-            (self.cache_measured, self.show_cache_size),
+        self.section_page.setCurrentWidget(page)
+        self.update_reset_page()
+
+    def show_page_of(self, key: str):
+        page = self.page_of(key)
+
+        for item in self.section_items:
+            if item.data(SECTION_PAGE_ROLE) is page:
+                self.section_index.setCurrentItem(item)
+                return
+
+    @property
+    def current_form(self) -> SettingsForm | None:
+        page = self.section_page.currentWidget()
+
+        for page_id, widget in self.pages.items():
+            if widget is page:
+                return self.forms[page_id]
+
+        return None
+
+    def update_reset_page(self, *_):
+        form = self.current_form
+        self.resetPage.setEnabled(form is not None and form.has_modified())
+
+    def reset_page(self):
+        """The page back to the factory defaults, until Cancel."""
+
+        form = self.current_form
+        if form is None:
+            return
+
+        if form is self.forms["player"] and self._minimize_to_tray_own is not None:
+            # ticked for hiding from the taskbar, which is about to go back
+            self._minimize_to_tray_own = default_value("player/minimize_to_tray")
+
+        form.reset_all()
+
+    # settings that lean on each other
+
+    def tray_options_changed(self, *_):
+        form = self.forms["player"]
+
+        is_tray = form.is_enabled("player/tray_icon") and form.value("player/tray_icon")
+
+        # with no taskbar button, minimizing can only go to the tray
+        is_forced = bool(
+            is_tray
+            and form.is_available("player/hide_taskbar")
+            and form.value("player/hide_taskbar")
         )
+
+        minimize = form.widget("player/minimize_to_tray")
+
+        if is_forced and self._minimize_to_tray_own is None:
+            self._minimize_to_tray_own = minimize.isChecked()
+            minimize.setChecked(True)
+        elif not is_forced and self._minimize_to_tray_own is not None:
+            own, self._minimize_to_tray_own = self._minimize_to_tray_own, None
+            minimize.setChecked(own)
+
+        # a locked one is left as it is on save, see save_settings
+        form.lock("player/minimize_to_tray", is_forced)
+
+    def cache_mode_selected(self, *_):
+        # nothing on disk to see, kept in memory
+        self.cache_open_action.setEnabled(
+            self.form_of("cache/max_mb").is_enabled("cache/max_mb")
+        )
+
+    # loading and saving
+
+    def load_settings(self):
+        for form in self.forms.values():
+            form.set_values({key: Settings().get(key) for key in form.keys()})
+
+        self.cookiesList.set_jar(cookie_store().jar)
+
+        self.tray_options_changed()
+        self.cache_mode_selected()
+        self.update_reset_page()
+
+    def save_settings(self):
+        for form in self.forms.values():
+            for key in form.keys():
+                if form.should_save(key):
+                    self._save(form, key)
+
+        self.save_cookies()
+
+    @staticmethod
+    def _save(form, key):
+        """What the page has, as the default where it is the default.
+
+        Saved as such, a setting nobody changed follows the default if a
+        later version changes it.
+        """
+
+        spec = form.spec(key)
+        value = form.value(key)
+
+        # where Hardware can't run, the dialog shows its Software twin;
+        # saving that back would lose the Hardware pick for the sessions
+        # that can run it
+        if spec.to_editor is not None and value == spec.to_editor(Settings().get(key)):
+            return
+
+        # a file name has to come from somewhere, and the like
+        is_blank_default = (
+            isinstance(spec, TextField) and spec.blank_is_default and not value.strip()
+        )
+
+        if value == form.default_shown(key) or is_blank_default:
+            Settings().reset(key)
+        else:
+            Settings().set(key, value)
+
+    def save_cookies(self):
+        """Put the jar the page is showing on the disk.
+
+        Left until now on purpose: an import or a removal is staged in
+        the widget, so Cancel undoes it the way it undoes anything else
+        in this dialog.
+        """
+
+        store = cookie_store()
+        jar = self.cookiesList.jar
+
+        if jar is None:
+            if not store.is_empty:
+                store.clear()
+            return
+
+        if not same_cookies(jar, store.jar):
+            store.save(jar)
+
+    def is_screenshot_template_valid(self):
+        template = self.widget("screenshots/filename_template")
+
+        unknown = unknown_specifiers(template.text())
+
+        if not unknown:
+            return True
+
+        QCustomMessageBox.warning(
+            self,
+            translate("SettingsDialog", "Screenshots"),
+            translate(
+                "SettingsDialog", "Unknown specifiers in the file name: {SPECIFIERS}"
+            ).format(SPECIFIERS=", ".join(unknown)),
+            info=translate("SettingsDialog", "Write %% for a percent sign."),
+        )
+
+        self.show_page_of("screenshots/filename_template")
+        template.setFocus()
+
+        return False
+
+    def accept(self):
+        if not self.is_screenshot_template_valid():
+            return
+
+        self.save_settings()
+
+        super().accept()
+
+    # what the buttons do
 
     def run_youtube_checkup(self):
         """Resolve a real link the way playback would, step by step.
@@ -591,8 +605,8 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
 
         checkup = YouTubeCheckup(
             jar=self.cookiesList.jar,
-            are_cookies_enabled=self.cookiesEnabled.isChecked(),
-            js_runtime_path=self.streamingJSRuntimePath.text(),
+            are_cookies_enabled=self.value("cookies/enabled"),
+            js_runtime_path=self.value("streaming/js_runtime_path"),
             net_opts=self.network_opts_on_page,
         )
 
@@ -616,20 +630,13 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
         """The Network page as the settings it would be saved as."""
 
         return opts_for(
-            proxy_mode=self.networkProxyMode.currentData(),
-            proxy_url=self.networkProxyUrl.text(),
-            user_agent=self.networkUserAgent.text(),
-            force_ipv4=self.networkForceIPv4.isChecked(),
-            timeout=self.networkTimeout.value(),
-            verify_tls=self.networkVerifyTLS.isChecked(),
+            proxy_mode=self.value("network/proxy_mode"),
+            proxy_url=self.value("network/proxy_url"),
+            user_agent=self.value("network/user_agent"),
+            force_ipv4=self.value("network/force_ipv4"),
+            timeout=self.value("network/timeout"),
+            verify_tls=self.value("network/verify_tls"),
         )
-
-    def proxy_mode_selected(self, idx):
-        """Only a proxy of the user's own has an address to type."""
-
-        is_custom = self.networkProxyMode.itemData(idx) is ProxyMode.CUSTOM
-
-        self.networkProxyUrl.setEnabled(is_custom)
 
     def cookie_import_failed(self, message):
         QCustomMessageBox.critical(self, translate("Dialog", "Error"), message)
@@ -677,63 +684,6 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
             info=howto,
         )
 
-    def keep_index_selection(self):
-        if not self.section_index.selectedItems():
-            self.section_index.setCurrentItem(self.section_index.currentItem())
-
-    def switch_page(self, section_item, _previous=None):
-        if section_item is None:
-            self.section_index.setCurrentItem(self.section_items[0])
-            return
-
-        page = section_item.data(SECTION_PAGE_ROLE)
-
-        if page is None:
-            return
-
-        self.section_page.setCurrentWidget(page)
-
-    def open_cache_dir(self):
-        folder = cache.cache_root()
-
-        # opened before anything was kept there, as an empty folder
-        folder.mkdir(parents=True, exist_ok=True)
-
-        self._open_folder(folder)
-
-    def open_data_dir(self):
-        """The folder rather than the log file that used to be opened.
-
-        The log is in there and named for what it is, so nothing is lost
-        by stopping one short of it, and the folder is now somewhere a
-        person is sent for reasons of their own: it is where a
-        JavaScript runtime goes on the packages that cannot see one
-        installed anywhere else. See gridplayer.utils.js_runtime.
-        """
-
-        self._open_folder(get_app_data_dir())
-
-    def _open_folder(self, folder):
-        self._log.debug(f"Opening folder {folder}")
-
-        if env.IS_SNAP:
-            # https://forum.snapcraft.io/t/xdg-open-or-gvfs-open-qdesktopservices-openurl-file-somelocation-file-txt-wont-open-the-file/16824
-            subprocess.call(["xdg-open", folder])
-        else:
-            QDesktopServices.openUrl(QUrl.fromLocalFile(str(folder)))
-
-    def browse_screenshots_dir(self):
-        start_dir = screenshots_dir(self.screenshotsDir.text())
-
-        folder = QFileDialog.getExistingDirectory(
-            self,
-            self.tr("Screenshots folder"),
-            str(start_dir) if start_dir.is_dir() else "",
-        )
-
-        if folder:
-            self.screenshotsDir.setText(str(Path(folder)))
-
     def show_screenshot_template_help(self):
         """The specifiers, in a box of their own.
 
@@ -742,7 +692,8 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
         already full. See gridplayer.utils.screenshots for what they do.
         """
 
-        help_text = self.tr(
+        help_text = translate(
+            "SettingsDialog",
             "<p>The file name is made from the format, with these replaced:</p>"
             "<table cellspacing='0' cellpadding='3'>"
             "<tr><td><tt>%f</tt></td><td>video name</td></tr>"
@@ -775,31 +726,46 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
             "<p>Without <tt>%n</tt>, a name that is taken gets a number"
             " in brackets after it. Characters a file name can't have are"
             " replaced with <tt>_</tt>. Leave the format empty to go back to"
-            " <tt>%F_%P</tt>.</p>"
+            " <tt>%F_%P</tt>.</p>",
         )
 
         QCustomMessageBox.information(
             self,
-            self.tr("Screenshots"),
-            self.tr("Screenshot file name format"),
+            translate("SettingsDialog", "Screenshots"),
+            translate("SettingsDialog", "Screenshot file name format"),
             info=help_text,
         )
 
-    def screenshot_format_selected(self, idx):
-        is_jpg = self.screenshotsFormat.itemData(idx) == ScreenshotFormat.JPG
+    # folders and the cache
 
-        self.screenshotsJPGQualityLabel.setEnabled(is_jpg)
-        self.screenshotsJPGQuality.setEnabled(is_jpg)
+    def open_cache_dir(self):
+        folder = cache.cache_root()
 
-    def cache_mode_selected(self, idx):
-        is_on_disk = self.cacheMode.itemData(idx) == CacheMode.DISK
+        # opened before anything was kept there, as an empty folder
+        folder.mkdir(parents=True, exist_ok=True)
 
-        self.cacheMaxMBLabel.setEnabled(is_on_disk)
-        self.cacheMaxMB.setEnabled(is_on_disk)
-        self.cacheMaxMBUnit.setEnabled(is_on_disk)
+        self._open_folder(folder)
 
-        # nothing on disk to see, kept in memory
-        self.cache_open_action.setEnabled(is_on_disk)
+    def open_data_dir(self):
+        """The folder rather than the log file that used to be opened.
+
+        The log is in there and named for what it is, so nothing is lost
+        by stopping one short of it, and the folder is now somewhere a
+        person is sent for reasons of their own: it is where a
+        JavaScript runtime goes on the packages that cannot see one
+        installed anywhere else. See gridplayer.utils.js_runtime.
+        """
+
+        self._open_folder(get_app_data_dir())
+
+    def _open_folder(self, folder):
+        self._log.debug(f"Opening folder {folder}")
+
+        if env.IS_SNAP:
+            # https://forum.snapcraft.io/t/xdg-open-or-gvfs-open-qdesktopservices-openurl-file-somelocation-file-txt-wont-open-the-file/16824
+            subprocess.call(["xdg-open", folder])
+        else:
+            QDesktopServices.openUrl(QUrl.fromLocalFile(str(folder)))
 
     def measure_cache(self, first=None):
         """What the cache comes to, put beside Clear once it is known.
@@ -825,7 +791,7 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
         would be downloaded again."""
 
         self.cacheClear.setEnabled(False)
-        self.cacheSize.setText(self.tr("Clearing..."))
+        self.cacheSize.setText(translate("SettingsDialog", "Clearing..."))
 
         self.measure_cache(first=cache.clear)
 
@@ -833,268 +799,11 @@ class SettingsDialog(QDialog, Ui_SettingsDialog):
         self.cacheClear.setEnabled(size > 0)
 
         if size == 0:
-            self.cacheSize.setText(self.tr("Empty"))
+            self.cacheSize.setText(translate("SettingsDialog", "Empty"))
             return
 
         megabytes = QLocale().toString(max(size / cache.MB, 0.1), "f", 1)
 
-        self.cacheSize.setText(self.tr("{SIZE} MB used").format(SIZE=megabytes))
-
-    def fill_cacheMode(self):
-        modes = {
-            CacheMode.DISK: self.tr("On disk"),
-            CacheMode.MEMORY: self.tr("In memory"),
-        }
-
-        _fill_combo_box(self.cacheMode, modes)
-
-    def fill_logLevelVLC(self):
-        log_levels = {
-            log_config.DISABLED: translate("ErrorLevel", "None"),
-            logging.ERROR: translate("ErrorLevel", "Error"),
-            logging.WARNING: translate("ErrorLevel", "Warning"),
-            logging.INFO: translate("ErrorLevel", "Info"),
-            logging.DEBUG: translate("ErrorLevel", "Debug"),
-        }
-
-        _fill_combo_box(self.logLevelVLC, log_levels)
-
-    def fill_logLevel(self):
-        log_levels = {
-            log_config.DISABLED: translate("ErrorLevel", "None"),
-            logging.CRITICAL: translate("ErrorLevel", "Critical"),
-            logging.ERROR: translate("ErrorLevel", "Error"),
-            logging.WARNING: translate("ErrorLevel", "Warning"),
-            logging.INFO: translate("ErrorLevel", "Info"),
-            logging.DEBUG: translate("ErrorLevel", "Debug"),
-        }
-
-        _fill_combo_box(self.logLevel, log_levels)
-
-    def fill_playerVideoDriver(self):
-        # tr() kept out of the f-strings, where pylupdate5 cannot see it
-        vlc_version = f" <VLC {env.VLC_VERSION}>"
-
-        if env.IS_MACOS:
-            video_drivers = {
-                VideoDriver.VLC_HW_SP: self.tr("Hardware SP") + vlc_version,
-                VideoDriver.VLC_SW: self.tr("Software") + vlc_version,
-                VideoDriver.VLC_SW_SP: self.tr("Software SP") + vlc_version,
-                VideoDriver.DUMMY: self.tr("Dummy"),
-            }
-        else:
-            video_drivers = {
-                VideoDriver.VLC_HW: self.tr("Hardware") + vlc_version,
-                VideoDriver.VLC_HW_SP: self.tr("Hardware SP") + vlc_version,
-                VideoDriver.VLC_SW: self.tr("Software") + vlc_version,
-                VideoDriver.VLC_SW_SP: self.tr("Software SP") + vlc_version,
-                VideoDriver.DUMMY: self.tr("Dummy"),
-            }
-
-        if not is_hw_video_available():
-            video_drivers = {
-                driver: name
-                for driver, name in video_drivers.items()
-                if session_video_driver(driver) == driver
-            }
-
-        _fill_combo_box(self.playerVideoDriver, video_drivers)
-
-    def fill_language(self):
-        for language in LANGUAGES:
-            self.listLanguages.add_language_row(language)
-
-    def fill_colorScheme(self):
-        schemes = {
-            ColorScheme.SYSTEM: self.tr("System"),
-            ColorScheme.LIGHT: self.tr("Light"),
-            ColorScheme.DARK: self.tr("Dark"),
-        }
-
-        _fill_combo_box(self.playerColorScheme, schemes)
-
-    def fill_streamingResolverPriority(self):
-        resolvers = {
-            URLResolver.STREAMLINK: "Streamlink",
-            URLResolver.YT_DLP: "yt-dlp",
-            URLResolver.DIRECT: self.tr("Direct"),
-        }
-
-        _fill_combo_box(self.streamingResolverPriority, resolvers)
-
-    def fill_screenshotsFormat(self):
-        formats = {
-            ScreenshotFormat.PNG: "PNG",
-            ScreenshotFormat.JPG: "JPG",
-        }
-
-        _fill_combo_box(self.screenshotsFormat, formats)
-
-    def fill_networkProxyMode(self):
-        modes = {
-            ProxyMode.SYSTEM: self.tr("System"),
-            ProxyMode.NONE: self.tr("None"),
-            ProxyMode.CUSTOM: self.tr("Custom"),
-        }
-
-        _fill_combo_box(self.networkProxyMode, modes)
-
-    def fill_hwCropBorder(self):
-        values = {
-            HWCropBorderOffset.AUTO: self.tr("Auto"),
-            HWCropBorderOffset.DISABLED: self.tr("Disabled"),
-            HWCropBorderOffset.PX2: self.tr("2 px"),
-            HWCropBorderOffset.PX4: self.tr("4 px"),
-            HWCropBorderOffset.PX6: self.tr("6 px"),
-            HWCropBorderOffset.PX8: self.tr("8 px"),
-            HWCropBorderOffset.PX10: self.tr("10 px"),
-            HWCropBorderOffset.PX12: self.tr("12 px"),
-        }
-
-        _fill_combo_box(self.miscHWCropBorder, values)
-
-    def driver_selected(self, idx):
-        driver_id = self.playerVideoDriver.itemData(idx)
-
-        if driver_id in VIDEO_DRIVERS_MULTIPROCESS:
-            self.playerVideoDriverPlayers.setDisabled(False)
-        else:
-            self.playerVideoDriverPlayers.setDisabled(True)
-
-    def load_settings(self):
-        elements_value_set_fun = {
-            QCheckBox: lambda e, v: e.setChecked(v),
-            QSpinBox: lambda e, v: e.setValue(v),
-            QLineEdit: lambda e, v: e.setText(v),
-            QComboBox: _set_combo_box,
-            LanguageList: lambda e, v: e.setValue(v),
-            ResolverPatternsList: lambda e, v: e.setDataRows(v),
-            KeymapEditor: lambda e, v: e.set_bindings(
-                merge_keymap(default_keymap(), v)
-            ),
-        }
-
-        for setting, element in self.settings_map.items():
-            setting_value = Settings().get(setting)
-
-            try:
-                set_function = elements_value_set_fun[type(element)]
-            except KeyError:
-                raise ValueError(f"No element decoder for {setting}")
-
-            set_function(element, setting_value)
-
-        _set_combo_box(
-            self.playerVideoDriver,
-            session_video_driver(Settings().get("player/video_driver")),
+        self.cacheSize.setText(
+            translate("SettingsDialog", "{SIZE} MB used").format(SIZE=megabytes)
         )
-
-        form_values = {
-            spec.settings_key: Settings().get(spec.settings_key)
-            for spec in (*PLAYLIST_FIELDS, *VIDEO_FIELDS, *SUBTITLE_STYLE_FIELDS)
-        }
-        for form in self.forms:
-            form.set_values(form_values)
-
-        self.cookiesList.set_jar(cookie_store().jar)
-
-    def save_settings(self):
-        elements_value_read_attr = {
-            QCheckBox: "isChecked",
-            QSpinBox: "value",
-            QLineEdit: "text",
-            QComboBox: "currentData",
-            LanguageList: "value",
-            ResolverPatternsList: "rows_data",
-            KeymapEditor: "get_sparse_bindings",
-        }
-
-        for setting, element in self.settings_map.items():
-            if not element.isEnabled():
-                continue
-
-            try:
-                value_attr = elements_value_read_attr[type(element)]
-            except KeyError:
-                raise ValueError(f"No element decoder for {setting}")
-
-            new_value = getattr(element, value_attr)()
-
-            if self._is_session_driver_kept(setting, new_value):
-                continue
-
-            Settings().set(setting, new_value)
-
-        for form in self.forms:
-            for key, value in form.values().items():
-                # a row that is greyed out is not one to save over, the
-                # same as a widget of the dialog's own above
-                if form.is_enabled(key):
-                    Settings().set(key, value)
-
-        # a file name has to come from somewhere
-        if not self.screenshotsFilenameTemplate.text().strip():
-            Settings().reset("screenshots/filename_template")
-
-        self.save_cookies()
-
-    @staticmethod
-    def _is_session_driver_kept(setting, value):
-        """The driver on show is the stand-in for the one saved.
-
-        Where Hardware can't run, the dialog shows its Software twin;
-        saving that back would lose the Hardware pick for the sessions
-        that can run it.
-        """
-
-        if setting != "player/video_driver":
-            return False
-
-        return value == session_video_driver(Settings().get(setting))
-
-    def save_cookies(self):
-        """Put the jar the page is showing on the disk.
-
-        Left until now on purpose: an import or a removal is staged in
-        the widget, so Cancel undoes it the way it undoes anything else
-        in this dialog.
-        """
-
-        store = cookie_store()
-        jar = self.cookiesList.jar
-
-        if jar is None:
-            if not store.is_empty:
-                store.clear()
-            return
-
-        if not same_cookies(jar, store.jar):
-            store.save(jar)
-
-    def is_screenshot_template_valid(self):
-        unknown = unknown_specifiers(self.screenshotsFilenameTemplate.text())
-
-        if not unknown:
-            return True
-
-        QCustomMessageBox.warning(
-            self,
-            self.tr("Screenshots"),
-            self.tr("Unknown specifiers in the file name: {SPECIFIERS}").format(
-                SPECIFIERS=", ".join(unknown)
-            ),
-            info=self.tr("Write %% for a percent sign."),
-        )
-
-        self.section_index.setCurrentItem(self.section_items[0])
-        self.screenshotsFilenameTemplate.setFocus()
-
-        return False
-
-    def accept(self):
-        if not self.is_screenshot_template_valid():
-            return
-
-        self.save_settings()
-
-        super().accept()

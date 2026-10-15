@@ -87,9 +87,9 @@ class TestSavedAndShownAgain:
     def test_out_of_the_box_on_disk_up_to_1024_mb(self, make_dialog):
         dialog = make_dialog()
 
-        assert dialog.cacheMode.currentData() is CacheMode.DISK
-        assert dialog.cacheMaxMB.value() == 1024
-        assert dialog.cacheMaxMB.isEnabled()
+        assert dialog.widget("cache/mode").currentData() is CacheMode.DISK
+        assert dialog.widget("cache/max_mb").value() == 1024
+        assert dialog.widget("cache/max_mb").isEnabled()
 
     def test_what_was_stored(self, settings, make_dialog):
         settings.set("cache/mode", CacheMode.MEMORY)
@@ -97,14 +97,14 @@ class TestSavedAndShownAgain:
 
         dialog = make_dialog()
 
-        assert dialog.cacheMode.currentData() is CacheMode.MEMORY
-        assert dialog.cacheMaxMB.value() == 128
+        assert dialog.widget("cache/mode").currentData() is CacheMode.MEMORY
+        assert dialog.widget("cache/max_mb").value() == 128
 
     def test_what_was_picked_saved(self, settings, make_dialog):
         dialog = make_dialog()
 
-        dialog.cacheMaxMB.setValue(32)
-        _choose(dialog.cacheMode, CacheMode.MEMORY)
+        dialog.widget("cache/max_mb").setValue(32)
+        _choose(dialog.widget("cache/mode"), CacheMode.MEMORY)
         dialog.save_settings()
 
         assert settings.get("cache/mode") is CacheMode.MEMORY
@@ -116,21 +116,23 @@ class TestTheSizeLimit:
     def test_greyed_out_when_nothing_goes_on_disk(self, make_dialog):
         dialog = make_dialog()
 
-        _choose(dialog.cacheMode, CacheMode.MEMORY)
+        _choose(dialog.widget("cache/mode"), CacheMode.MEMORY)
 
-        assert not dialog.cacheMaxMB.isEnabled()
-        assert not dialog.cacheMaxMBLabel.isEnabled()
+        assert not dialog.widget("cache/max_mb").isEnabled()
+        assert (
+            not dialog.form_of("cache/max_mb").editor("cache/max_mb").label.isEnabled()
+        )
 
-        _choose(dialog.cacheMode, CacheMode.DISK)
+        _choose(dialog.widget("cache/mode"), CacheMode.DISK)
 
-        assert dialog.cacheMaxMB.isEnabled()
+        assert dialog.widget("cache/max_mb").isEnabled()
 
     def test_greyed_out_as_it_opens(self, settings, make_dialog):
         settings.set("cache/mode", CacheMode.MEMORY)
 
         dialog = make_dialog()
 
-        assert not dialog.cacheMaxMB.isEnabled()
+        assert not dialog.widget("cache/max_mb").isEnabled()
 
 
 class TestClear:
@@ -236,10 +238,10 @@ class TestOpenFolder:
     def test_nothing_on_disk_to_see_kept_in_memory(self, make_dialog):
         dialog = make_dialog()
 
-        _choose(dialog.cacheMode, CacheMode.MEMORY)
+        _choose(dialog.widget("cache/mode"), CacheMode.MEMORY)
 
         assert not dialog.cache_open_action.isEnabled()
 
-        _choose(dialog.cacheMode, CacheMode.DISK)
+        _choose(dialog.widget("cache/mode"), CacheMode.DISK)
 
         assert dialog.cache_open_action.isEnabled()

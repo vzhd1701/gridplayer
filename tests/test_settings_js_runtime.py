@@ -69,7 +69,7 @@ def test_the_setting_has_a_widget(dialog):
 
 
 def test_a_named_folder_survives_being_saved(dialog, settings, tmp_path):
-    dialog.streamingJSRuntimePath.setText(str(tmp_path))
+    dialog.widget("streaming/js_runtime_path").setText(str(tmp_path))
     dialog.save_settings()
 
     assert settings.get(SETTING) == str(tmp_path)
@@ -78,7 +78,7 @@ def test_a_named_folder_survives_being_saved(dialog, settings, tmp_path):
 def test_it_comes_back_empty_where_nobody_named_one(dialog):
     """Empty is what sends the search to the usual places."""
 
-    assert dialog.streamingJSRuntimePath.text() == ""
+    assert dialog.widget("streaming/js_runtime_path").text() == ""
 
 
 def test_the_button_opens_the_data_folder(dialog, opened, monkeypatch, tmp_path):
@@ -133,7 +133,7 @@ class TestTheYouTubeTestButton:
     """
 
     def test_it_is_on_the_link_resolution_page(self, dialog):
-        assert dialog.streamingTestButton.parent() is dialog.page_streaming_resolution
+        assert dialog.pages["resolution"].isAncestorOf(dialog.streamingTestButton)
 
     def test_it_is_not_on_the_cookies_page_any_more(self, dialog):
         assert not hasattr(dialog, "cookiesTestButton")
@@ -164,11 +164,11 @@ def test_the_test_button_sits_with_the_runtime_it_tests(dialog):
     filed under cookies in the first place.
     """
 
-    field_row = dialog.streamingJSRuntimePath.parentWidget().layout()
+    form = dialog.form_of("streaming/js_runtime_path")
+    rows = [form.layout().itemAt(i).widget() for i in range(form.layout().count())]
+    field_row = rows.index(form._rows["streaming/js_runtime_path"])
 
-    assert dialog.lay_ytdlp_test.indexOf(dialog.streamingTestButton) >= 0
-    assert dialog.formLayout_ytdlp.indexOf(dialog.streamingJSRuntimePath) >= 0
-    assert field_row is not None
+    assert rows[field_row + 1].isAncestorOf(dialog.streamingTestButton)
 
 
 class TestTheTestTriesWhatIsOnScreen:
@@ -192,7 +192,7 @@ class TestTheTestTriesWhatIsOnScreen:
         return _run
 
     def test_a_folder_typed_but_not_saved_is_the_one_tried(self, dialog, tried):
-        dialog.streamingJSRuntimePath.setText("/typed/just/now")
+        dialog.widget("streaming/js_runtime_path").setText("/typed/just/now")
 
         assert tried()["js_runtime_path"] == "/typed/just/now"
 
@@ -200,12 +200,12 @@ class TestTheTestTriesWhatIsOnScreen:
         """Empty must not read as "nothing said, go and load the old one"."""
 
         settings.set("streaming/js_runtime_path", "/saved/earlier")
-        dialog.streamingJSRuntimePath.setText("")
+        dialog.widget("streaming/js_runtime_path").setText("")
 
         assert tried()["js_runtime_path"] == ""
 
     def test_the_network_page_is_tried_as_it_stands_too(self, dialog, tried):
-        dialog.networkUserAgent.setText("something-just-typed")
+        dialog.widget("network/user_agent").setText("something-just-typed")
 
         assert tried()["net_opts"].user_agent == "something-just-typed"
 
