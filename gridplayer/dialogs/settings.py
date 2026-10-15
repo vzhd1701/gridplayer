@@ -437,8 +437,11 @@ class SettingsDialog(QDialog):
             form is self.form_of("player/minimize_to_tray")
             and self._minimize_to_tray_own is not None
         ):
-            # ticked for hiding from the taskbar, which is about to go back
-            self._minimize_to_tray_own = default_value("player/minimize_to_tray")
+            # ticked for hiding from the taskbar: let go of first, to be reset
+            # and saved with the rest, and ticked again by tray_options_changed
+            # if it still has to be
+            self._minimize_to_tray_own = None
+            form.lock("player/minimize_to_tray", False)
 
         form.reset_all()
 

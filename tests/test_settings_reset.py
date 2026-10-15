@@ -220,6 +220,25 @@ class TestResettingAPage:
         assert dialog.value("player/minimize_to_tray") is False
         assert not dialog.resetPage.isEnabled()
 
+    def test_minimize_ticked_for_the_taskbar_is_forgotten_too(
+        self, settings, make_dialog
+    ):
+        for key in ("player/tray_icon", "player/hide_taskbar"):
+            settings.set(key, True)
+        settings.set("player/minimize_to_tray", True)
+        dialog = make_dialog()
+
+        dialog.show_page("player")
+        dialog.resetPage.click()
+        dialog.save_settings()
+
+        for key in (
+            "player/tray_icon",
+            "player/hide_taskbar",
+            "player/minimize_to_tray",
+        ):
+            assert not settings.settings.contains(key), key
+
 
 class TestWhatCannotBeChangedHere:
     def test_it_has_no_reset_and_keeps_what_was_saved(
