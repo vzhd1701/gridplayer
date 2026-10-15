@@ -31,7 +31,7 @@ def _settings_get(mocker):
 
 
 def _set_grid_mode(form, mode):
-    combo = form._widgets["playlist/grid_mode"]
+    combo = form.widget("playlist/grid_mode")
     combo.setCurrentIndex(combo.findData(mode))
 
 
@@ -99,7 +99,7 @@ def test_playlist_settings_saves_aspect_even_without_edit_signal():
         grid_state=GridState(),
         parent=parent,
     )
-    combo = dialog._video_form._widgets["video_defaults/aspect"]
+    combo = dialog._video_form.widget("video_defaults/aspect")
     combo.blockSignals(True)
     combo.setCurrentIndex(combo.findData(VideoAspect.NONE))
     combo.blockSignals(False)
@@ -272,7 +272,7 @@ def test_settings_dialog_save_skips_hidden_grid_fields(mocker):
     dialog = SettingsDialog(None)
 
     form = dialog.forms["playlist"]
-    current_mode = form._widgets["playlist/grid_mode"].currentData()
+    current_mode = form.widget("playlist/grid_mode").currentData()
     other_mode = (
         GridMode.FIXED if current_mode is not GridMode.FIXED else GridMode.AUTO_ROWS
     )
@@ -282,7 +282,7 @@ def test_settings_dialog_save_skips_hidden_grid_fields(mocker):
         hidden_key = "playlist/grid_size"
     else:
         hidden_key = "playlist/grid_rows"
-    hidden_widget = form._widgets[hidden_key]
+    hidden_widget = form.widget(hidden_key)
     assert not form.is_enabled(hidden_key)
     hidden_widget.setValue(hidden_widget.value() + 5)
 

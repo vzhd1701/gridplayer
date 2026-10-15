@@ -61,7 +61,7 @@ def dialog(make_dialog):
 
 
 def _combo(dialog, category) -> QComboBox:
-    return dialog.settings_map[category_setting(category)]
+    return dialog.widget(category_setting(category))
 
 
 def _choose(combo, value):
@@ -75,7 +75,7 @@ def _modes(combo):
 class TestThePageIsWiredUp:
     @pytest.mark.parametrize("key", SPONSORBLOCK_SETTINGS)
     def test_every_setting_has_a_widget(self, dialog, key):
-        assert key in dialog.settings_map
+        assert dialog.form_of(key) is dialog.forms["sponsorblock"]
 
     def test_the_section_opens_the_page(self, dialog):
         entry = dialog.section_index.findItems("SponsorBlock", Qt.MatchExactly)[0]

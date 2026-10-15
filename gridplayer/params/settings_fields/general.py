@@ -44,7 +44,7 @@ def _no_taskbar_hiding() -> str | None:
     return ""
 
 
-def _tray_text(tray: str, menu_bar: str) -> str:
+def tray_text(tray: str, menu_bar: str) -> str:
     """What macOS calls the tray is the menu bar."""
 
     return menu_bar if env.IS_MACOS else tray
@@ -84,7 +84,7 @@ GENERAL_FIELDS: tuple[SettingField, ...] = (
     ),
     CheckboxField(
         settings_key="player/tray_icon",
-        label=_tray_text(
+        label=tray_text(
             translate("SettingsDialog", "Show icon in the tray"),
             translate("SettingsDialog", "Show icon in the menu bar"),
         ),
@@ -92,7 +92,7 @@ GENERAL_FIELDS: tuple[SettingField, ...] = (
     ),
     CheckboxField(
         settings_key="player/minimize_to_tray",
-        label=_tray_text(
+        label=tray_text(
             translate("SettingsDialog", "Minimize to the tray"),
             translate("SettingsDialog", "Minimize to the menu bar"),
         ),
@@ -100,7 +100,7 @@ GENERAL_FIELDS: tuple[SettingField, ...] = (
     ),
     CheckboxField(
         settings_key="player/close_to_tray",
-        label=_tray_text(
+        label=tray_text(
             translate("SettingsDialog", "Close to the tray"),
             translate("SettingsDialog", "Close to the menu bar"),
         ),
@@ -108,7 +108,7 @@ GENERAL_FIELDS: tuple[SettingField, ...] = (
     ),
     CheckboxField(
         settings_key="player/hide_taskbar",
-        label=_tray_text(
+        label=tray_text(
             translate("SettingsDialog", "Hide from the taskbar"),
             translate("SettingsDialog", "Hide from the Dock"),
         ),
@@ -117,7 +117,7 @@ GENERAL_FIELDS: tuple[SettingField, ...] = (
     ),
     CheckboxField(
         settings_key="player/tray_stop_video",
-        label=_tray_text(
+        label=tray_text(
             translate("SettingsDialog", "Stop video decoding while in the tray"),
             translate("SettingsDialog", "Stop video decoding while in the menu bar"),
         ),

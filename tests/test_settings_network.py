@@ -86,7 +86,7 @@ def _choose(combo, value):
 class TestThePageIsWiredUp:
     @pytest.mark.parametrize("key", NETWORK_KEYS)
     def test_every_setting_has_a_widget(self, dialog, key):
-        assert key in dialog.settings_map
+        assert dialog.form_of(key) is dialog.forms["network"]
 
     def test_the_section_opens_the_network_page(self, dialog):
         entry = dialog.section_index.findItems("Network", Qt.MatchExactly)[0]

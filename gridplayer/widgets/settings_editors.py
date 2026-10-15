@@ -132,10 +132,21 @@ class Editor:
 
         return value
 
+    def means_default(self) -> bool:
+        """Shows something that is saved as the default, whatever that is."""
+
+        return False
+
+    def _all_widgets(self) -> list[QWidget]:
+        return [w for w in (self.label, *self.parts()) if w is not None]
+
     def set_enabled(self, enabled: bool) -> None:
-        for widget in (self.label, *self.parts()):
-            if widget is not None:
-                widget.setEnabled(enabled)
+        for widget in self._all_widgets():
+            widget.setEnabled(enabled)
+
+    def set_tooltip(self, text: str) -> None:
+        for widget in self._all_widgets():
+            widget.setToolTip(text)
 
 
 class _CheckboxEditor(Editor):
@@ -213,6 +224,10 @@ class _TextEditor(Editor):
 
     def normalize(self, value):
         return str(value or "")
+
+    def means_default(self):
+        # a file name has to come from somewhere, and the like
+        return self.spec.blank_is_default and not self.widget.text().strip()
 
     def set_enabled(self, enabled):
         super().set_enabled(enabled)

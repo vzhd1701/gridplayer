@@ -65,7 +65,7 @@ def opened(monkeypatch):
 
 
 def test_the_setting_has_a_widget(dialog):
-    assert SETTING in dialog.settings_map
+    assert dialog.widget(SETTING) is not None
 
 
 def test_a_named_folder_survives_being_saved(dialog, settings, tmp_path):

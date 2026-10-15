@@ -30,6 +30,13 @@ INDENT_PX = 20
 RESET_ICON_PX = 14
 
 
+def bold(label: QLabel) -> QLabel:
+    font = label.font()
+    font.setBold(True)
+    label.setFont(font)
+    return label
+
+
 class SettingsForm(QWidget):
     """A page of settings, built from a layout.
 
@@ -49,18 +56,14 @@ class SettingsForm(QWidget):
         reset_to: Callable | None = None,
         track_edits: bool = True,
         slots: Mapping[str, Callable[[], QWidget]] | None = None,
-        fields: Mapping[str, SettingField] = FIELDS,
     ):
         super().__init__()
 
         self._reset_to = reset_to
         self._track_edits = track_edits
         self._slots = slots or {}
-        self._fields = fields
 
-        self._specs: dict[str, SettingField] = {}
         self._editors: dict[str, Editor] = {}
-        self._widgets: dict[str, QWidget] = {}
         self._rows: dict[str, QWidget] = {}
         self._reset_btns: dict[str, QToolButton] = {}
         # out of reach on this system, for good
@@ -69,6 +72,10 @@ class SettingsForm(QWidget):
         # out of reach for now, by the dialog's say
         self._locked: set[str] = set()
         self._overridden: set[str] = set()
+        # as of the last sync
+        self._modified: set[str] = set()
+        # what set_values put in, as it is stored
+        self._stored: dict = {}
         # reset since the values were set, to be saved even if greyed out
         self._reset_keys: set[str] = set()
         self._updating = False
@@ -104,8 +111,6 @@ class SettingsForm(QWidget):
                 self._add_row(layout, item.items, indent)
             elif isinstance(item, Note):
                 layout.addWidget(self._note(item, indent))
-            elif isinstance(item, Slot):
-                self._add_row(layout, (item,), indent)
             else:
                 self._add_row(layout, (item,), indent)
 
@@ -113,10 +118,7 @@ class SettingsForm(QWidget):
     def _header(title):
         header = QLabel(title)
         header.setOpenExternalLinks(True)
-        font = header.font()
-        font.setBold(True)
-        header.setFont(font)
-        return header
+        return bold(header)
 
     @staticmethod
     def _note(note: Note, indent):
@@ -157,23 +159,19 @@ class SettingsForm(QWidget):
         else:
             for editor in editors:
                 if editor.spec.tooltip:
-                    for widget in (editor.label, *editor.parts()):
-                        if widget is not None:
-                            widget.setToolTip(editor.spec.tooltip)
+                    editor.set_tooltip(editor.spec.tooltip)
 
         self._fills = self._fills or fills
         layout.addWidget(holder, 1 if fills else 0)
 
     def _add_editor(self, entry, lay, in_column, is_in_row) -> Editor:
-        spec = entry if isinstance(entry, SettingField) else self._fields[entry]
+        spec = entry if isinstance(entry, SettingField) else FIELDS[entry]
         key = spec.settings_key
 
         editor = make_editor(spec)
         editor.changed.connect(lambda *_, key=key: self._on_edited(key))
 
-        self._specs[key] = spec
         self._editors[key] = editor
-        self._widgets[key] = editor.widget
 
         if editor.is_checkbox:
             column_widget = editor.widget if is_in_row else None
@@ -229,9 +227,7 @@ class SettingsForm(QWidget):
 
         self._unavailable.add(key)
         if reason:
-            for widget in (self._editors[key].label, *self._editors[key].parts()):
-                if widget is not None:
-                    widget.setToolTip(reason)
+            self._editors[key].set_tooltip(reason)
 
     def _line_up_labels(self):
         """Labels of a section in a column, as a form layout would have them."""
@@ -257,19 +253,21 @@ class SettingsForm(QWidget):
         for key, editor in self._editors.items():
             editor.set_enabled(is_on(key))
 
-            spec = self._specs[key]
             if key in self._hidden:
                 self._rows[key].setVisible(False)
-            elif spec.shown_when is not None:
-                self._rows[key].setVisible(self._is_met(spec.shown_when, is_on))
+            elif editor.spec.shown_when is not None:
+                self._rows[key].setVisible(self._is_met(editor.spec.shown_when, is_on))
 
         self._sync_modified()
 
+    def _out_of_reach(self, key) -> bool:
+        return key in self._unavailable or key in self._locked
+
     def _is_on(self, key, is_on) -> bool:
-        if key in self._unavailable or key in self._locked:
+        if self._out_of_reach(key):
             return False
 
-        spec = self._specs[key]
+        spec = self._editors[key].spec
         for rule in (spec.shown_when, spec.enabled_when):
             if rule is not None and not self._is_met(rule, is_on):
                 return False
@@ -286,11 +284,14 @@ class SettingsForm(QWidget):
         return is_on(rule.key) and driver.value() in rule.values
 
     def _sync_modified(self):
+        # worked out once a sync: a value can be slow to read (the keymap)
+        self._modified = {key for key in self._editors if self._is_modified(key)}
+
         if self._reset_to is None:
             return
 
         for key, editor in self._editors.items():
-            is_modified = self.is_modified(key)
+            is_modified = key in self._modified
 
             if editor.marked is not None:
                 font = editor.marked.font()
@@ -312,14 +313,16 @@ class SettingsForm(QWidget):
         self._overridden.add(key)
         self._refresh()
 
+    def _shown(self, key, value):
+        """A stored value as its editor shows it."""
+
+        to_editor = self._editors[key].spec.to_editor
+        return value if to_editor is None else to_editor(value)
+
     def _put(self, key, value):
         """A stored value into its editor."""
 
-        spec = self._specs[key]
-        if spec.to_editor is not None:
-            value = spec.to_editor(value)
-
-        self._editors[key].set_value(value)
+        self._editors[key].set_value(self._shown(key, value))
 
     # for the dialogs
 
@@ -330,10 +333,10 @@ class SettingsForm(QWidget):
         return self._editors[key]
 
     def widget(self, key: str) -> QWidget:
-        return self._widgets[key]
+        return self._editors[key].widget
 
     def spec(self, key: str) -> SettingField:
-        return self._specs[key]
+        return self._editors[key].spec
 
     def value(self, key: str):
         return self._editors[key].value()
@@ -347,6 +350,7 @@ class SettingsForm(QWidget):
             for key in self._editors:
                 if key in values:
                     self._put(key, values[key])
+            self._stored = {key: values[key] for key in self._editors if key in values}
             self._overridden = set(overridden or [])
             self._reset_keys = set()
         finally:
@@ -356,24 +360,41 @@ class SettingsForm(QWidget):
     def default_shown(self, key: str):
         """What a reset would show."""
 
-        spec = self._specs[key]
-        value = self._reset_to(key)
-        if spec.to_editor is not None:
-            value = spec.to_editor(value)
+        return self._editors[key].normalize(self._shown(key, self._reset_to(key)))
 
-        return self._editors[key].normalize(value)
+    def is_default(self, key: str) -> bool:
+        """Shows what a reset would."""
 
-    def is_modified(self, key: str) -> bool:
-        if key in self._unavailable or key in self._locked:
+        editor = self._editors[key]
+        return editor.means_default() or editor.value() == self.default_shown(key)
+
+    def shows_stand_in(self, key: str) -> bool:
+        """Shows, unchanged, what stands in for a stored value it can't show.
+
+        Saving that back would lose the stored one, for when it can be shown.
+        """
+
+        editor = self._editors[key]
+        return (
+            editor.spec.to_editor is not None
+            and key in self._stored
+            and editor.value() == self._shown(key, self._stored[key])
+        )
+
+    def _is_modified(self, key):
+        if self._out_of_reach(key):
             return False
 
         if self._track_edits or self._reset_to is None:
             return key in self._overridden
 
-        return self._editors[key].value() != self.default_shown(key)
+        return not self.is_default(key)
+
+    def is_modified(self, key: str) -> bool:
+        return key in self._modified
 
     def has_modified(self) -> bool:
-        return any(self.is_modified(key) for key in self._editors)
+        return bool(self._modified)
 
     def reset(self, key: str):
         self._reset_one(key)
@@ -383,7 +404,7 @@ class SettingsForm(QWidget):
         """Every field that can be reset, as one change."""
 
         for key in self._editors:
-            if key not in self._unavailable and key not in self._locked:
+            if not self._out_of_reach(key):
                 self._reset_one(key)
         self._refresh()
 
@@ -403,6 +424,9 @@ class SettingsForm(QWidget):
     def lock(self, key: str, locked: bool):
         """Greyed out and not saved, whatever the rules say, until unlocked."""
 
+        if locked == (key in self._locked):
+            return
+
         if locked:
             self._locked.add(key)
         else:
@@ -410,8 +434,8 @@ class SettingsForm(QWidget):
         self._sync()
 
     def is_enabled(self, key: str) -> bool:
-        widget = self._widgets.get(key)
-        return widget is not None and widget.isEnabled()
+        editor = self._editors.get(key)
+        return editor is not None and editor.widget.isEnabled()
 
     def is_available(self, key: str) -> bool:
         return key in self._editors and key not in self._unavailable
@@ -419,18 +443,10 @@ class SettingsForm(QWidget):
     def should_save(self, key: str) -> bool:
         """A greyed out field is not one to save over, unless it was reset."""
 
-        if not self.is_available(key) or key in self._locked:
+        if key not in self._editors or self._out_of_reach(key):
             return False
 
         return self.is_enabled(key) or key in self._reset_keys
 
     def overridden_keys(self) -> set[str]:
         return set(self._overridden)
-
-    def mark_all_overridden(self):
-        self._overridden = set(self._editors)
-        self._sync_modified()
-
-    def clear_overridden(self):
-        self._overridden = set()
-        self._sync_modified()

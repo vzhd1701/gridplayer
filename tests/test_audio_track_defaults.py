@@ -84,7 +84,7 @@ def test_text_field_renders_a_line_edit():
     form = _form()
     # the example only shows while the field is live; see _sync_enabled
     form.set_values({MODE_KEY: AudioTrackMode.PREFERRED})
-    widget = form._widgets[LANGUAGES_KEY]
+    widget = form.widget(LANGUAGES_KEY)
 
     assert isinstance(widget, QLineEdit)
     assert widget.placeholderText() == _spec(LANGUAGES_KEY).placeholder
@@ -211,7 +211,7 @@ class TestTheAudioTrackDefaultIsAChoiceOfThree:
     def test_it_renders_as_a_drop_down(self):
         form = _form()
 
-        assert isinstance(form._widgets[MODE_KEY], QComboBox)
+        assert isinstance(form.widget(MODE_KEY), QComboBox)
 
     @pytest.mark.parametrize(
         "mode",
@@ -240,7 +240,7 @@ class TestTheAudioTrackDefaultIsAChoiceOfThree:
 
         assert form.values()[MUTED_KEY] is True
 
-        form._widgets[MUTED_KEY].setChecked(False)
+        form.widget(MUTED_KEY).setChecked(False)
 
         assert form.values()[MUTED_KEY] is False
 
@@ -249,7 +249,7 @@ class TestTheHintWhileTheFieldIsGreyedOut:
     """Greyed out, an example reads as a value somebody put there."""
 
     def _languages(self, form):
-        return form._widgets[LANGUAGES_KEY]
+        return form.widget(LANGUAGES_KEY)
 
     def test_an_empty_field_really_looks_empty(self):
         form = _form()

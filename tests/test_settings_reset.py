@@ -61,14 +61,6 @@ def dialog(make_dialog):
     return make_dialog()
 
 
-def _open(dialog, page_id):
-    page = dialog.pages[page_id]
-    for item in dialog.section_items:
-        if item.data(settings_dialog.SECTION_PAGE_ROLE) is page:
-            dialog.section_index.setCurrentItem(item)
-            return
-
-
 def _reset_button(dialog, key):
     return dialog.form_of(key)._reset_btns[key]
 
@@ -106,6 +98,11 @@ class TestWhatIsMarked:
         assert not _is_marked(dialog, "player/one_instance")
         assert not dialog.resetPage.isEnabled()
 
+    def test_a_blank_that_saves_as_the_default_is_not(self, dialog):
+        dialog.widget("screenshots/filename_template").setText("  ")
+
+        assert not _is_marked(dialog, "screenshots/filename_template")
+
     def test_a_saved_one_is_marked_as_it_opens(self, settings, make_dialog):
         settings.set("network/force_ipv4", True)
 
@@ -118,10 +115,10 @@ class TestWhatIsMarked:
 
         dialog = make_dialog()
 
-        _open(dialog, "player")
+        dialog.show_page("player")
         assert not dialog.resetPage.isEnabled()
 
-        _open(dialog, "network")
+        dialog.show_page("network")
         assert dialog.resetPage.isEnabled()
 
 
@@ -161,7 +158,7 @@ class TestResettingAPage:
         settings.set("player/one_instance", False)
         dialog = make_dialog()
 
-        _open(dialog, "network")
+        dialog.show_page("network")
         dialog.resetPage.click()
 
         assert dialog.value("network/force_ipv4") is False
@@ -176,7 +173,7 @@ class TestResettingAPage:
         settings.set("network/proxy_url", "http://proxy:8080")
         dialog = make_dialog()
 
-        _open(dialog, "network")
+        dialog.show_page("network")
         dialog.resetPage.click()
         dialog.save_settings()
 
@@ -186,7 +183,7 @@ class TestResettingAPage:
         settings.set("player/keymap", KeymapOverrides({"Play / Pause": ["F5"]}))
         dialog = make_dialog()
 
-        _open(dialog, "shortcuts")
+        dialog.show_page("shortcuts")
         assert dialog.resetPage.isEnabled()
 
         dialog.resetPage.click()
@@ -201,7 +198,7 @@ class TestResettingAPage:
         )
         dialog.widget("cookies/enabled").setChecked(False)
 
-        _open(dialog, "cookies")
+        dialog.show_page("cookies")
         dialog.resetPage.click()
 
         assert dialog.value("cookies/enabled") is True
@@ -215,7 +212,7 @@ class TestResettingAPage:
         # ticked for hiding from the taskbar, not by the user
         assert dialog.value("player/minimize_to_tray") is True
 
-        _open(dialog, "player")
+        dialog.show_page("player")
         dialog.resetPage.click()
 
         assert dialog.value("player/tray_icon") is False
@@ -239,7 +236,7 @@ class TestWhatCannotBeChangedHere:
 
         assert _reset_button(dialog, "player/hide_taskbar").isHidden()
 
-        _open(dialog, "player")
+        dialog.show_page("player")
         dialog.resetPage.click()
         dialog.save_settings()
 

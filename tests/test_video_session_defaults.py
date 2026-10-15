@@ -79,7 +79,7 @@ def test_video_uses_initial_state_paused():
 
 def test_settings_form_has_end_action_combo():
     form = SettingsForm(VIDEO_FIELDS)
-    combo = form._widgets["video_defaults/end_action"]
+    combo = form.widget("video_defaults/end_action")
 
     combo.setCurrentIndex(combo.findData(VideoEndAction.STOP))
 
@@ -94,7 +94,7 @@ def test_video_accepts_legacy_repeat_mode():
 
 def test_settings_form_has_initial_state_combo():
     form = SettingsForm(VIDEO_FIELDS)
-    combo = form._widgets["video_defaults/initial_state"]
+    combo = form.widget("video_defaults/initial_state")
 
     combo.setCurrentIndex(combo.findData(VideoInitialState.STOPPED))
 
@@ -174,7 +174,7 @@ def test_playlist_dumps_video_defaults_round_trip():
 
 def test_settings_form_crop_kind():
     form = SettingsForm(VIDEO_FIELDS)
-    crop_widget = form._widgets["video_defaults/crop"]
+    crop_widget = form.widget("video_defaults/crop")
 
     crop_widget.value = VideoCrop(1, 2, 3, 4)
 
@@ -183,7 +183,7 @@ def test_settings_form_crop_kind():
 
 def test_settings_form_color_kind():
     form = SettingsForm(VIDEO_FIELDS)
-    color_widget = form._widgets["video_defaults/color"]
+    color_widget = form.widget("video_defaults/color")
 
     color_widget.color = QColor("#ff0000").getRgb()[:3]
 
@@ -192,7 +192,7 @@ def test_settings_form_color_kind():
 
 def test_settings_form_float_spin_kind():
     form = SettingsForm(VIDEO_FIELDS)
-    rate_widget = form._widgets["video_defaults/rate"]
+    rate_widget = form.widget("video_defaults/rate")
 
     rate_widget.setValue(2.5)
 
@@ -202,7 +202,7 @@ def test_settings_form_float_spin_kind():
 def test_settings_form_color_marks_row_edited():
     form = SettingsForm(VIDEO_FIELDS)
 
-    form._widgets["video_defaults/color"].color = QColor("#ff0000").getRgb()[:3]
+    form.widget("video_defaults/color").color = QColor("#ff0000").getRgb()[:3]
 
     assert "video_defaults/color" in form.overridden_keys()
 

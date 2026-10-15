@@ -355,7 +355,7 @@ class TestTheBox:
 class TestTheListFitsOnScreen:
     def test_a_list_this_long_gets_a_scroll_bar_rather_than_the_screen(self):
         form = SettingsForm(VIDEO_FIELDS)
-        combo = form._widgets[SETTING]
+        combo = form.widget(SETTING)
 
         assert combo.count() > MAX_VISIBLE_COMBO_ITEMS
         assert combo.maxVisibleItems() == MAX_VISIBLE_COMBO_ITEMS
@@ -373,7 +373,7 @@ class TestTheListFitsOnScreen:
 
     def test_the_short_lists_keep_the_popup_the_platform_draws(self):
         form = SettingsForm(VIDEO_FIELDS)
-        combo = form._widgets["video_defaults/subtitle_track_mode"]
+        combo = form.widget("video_defaults/subtitle_track_mode")
 
         assert combo.count() <= MAX_VISIBLE_COMBO_ITEMS
         assert combo.styleSheet() == ""

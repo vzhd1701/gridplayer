@@ -22,9 +22,10 @@ from PyQt5.QtWidgets import (
 from gridplayer.dialogs.checkup import CheckupDialog
 from gridplayer.dialogs.messagebox import QCustomMessageBox
 from gridplayer.params import env
-from gridplayer.params.settings_fields.advanced import no_hw_video_reason
-from gridplayer.params.settings_fields.kinds import Page, TextField
+from gridplayer.params.settings_fields.advanced import no_hw_video
+from gridplayer.params.settings_fields.kinds import Page
 from gridplayer.params.settings_pages import PAGES
+from gridplayer.params.static import CacheMode
 from gridplayer.settings import Settings, default_value
 from gridplayer.utils import cache
 from gridplayer.utils.app_dir import get_app_data_dir
@@ -32,12 +33,11 @@ from gridplayer.utils.cookies import cookie_store, same_cookies
 from gridplayer.utils.network import opts_for
 from gridplayer.utils.qt import translate
 from gridplayer.utils.screenshots import default_screenshots_dir, unknown_specifiers
-from gridplayer.utils.video_driver import is_hw_video_available
 from gridplayer.version import __app_url__
 from gridplayer.widgets.cookie_store_list import CookieStoreList
 from gridplayer.widgets.custom_menu import CustomMenu
 from gridplayer.widgets.settings_current_page_stack import CurrentPageStackedWidget
-from gridplayer.widgets.settings_form import SettingsForm
+from gridplayer.widgets.settings_form import SettingsForm, bold
 from gridplayer.widgets.settings_page_scroll_area import PageScrollArea
 
 COOKIES_FAQ_URL = (
@@ -85,13 +85,6 @@ def _help_button():
     return button
 
 
-def _bold(label):
-    font = label.font()
-    font.setBold(True)
-    label.setFont(font)
-    return label
-
-
 def _in_a_row(*widgets):
     row = QWidget()
 
@@ -123,7 +116,10 @@ class SettingsDialog(QDialog):
         # every page by its id, as it sits in the stack, and the form on it
         self.pages: dict[str, QWidget] = {}
         self.forms: dict[str, SettingsForm] = {}
-        self._form_of: dict[str, SettingsForm] = {}
+        # the page each setting is on, by id
+        self._page_id_of: dict[str, str] = {}
+        self._index_items: dict[str, QListWidgetItem] = {}
+        self._form_on: dict[QWidget, SettingsForm] = {}
 
         # minimize's own tick, while hiding from the taskbar ticks it for it
         self._minimize_to_tray_own = None
@@ -158,6 +154,8 @@ class SettingsDialog(QDialog):
         heading_font = self.section_index.font()
         heading_font.setBold(True)
 
+        slots = self._slots()
+
         for group in PAGES:
             heading = QListWidgetItem(group.title, self.section_index)
             heading.setFont(heading_font)
@@ -165,7 +163,8 @@ class SettingsDialog(QDialog):
 
             for page in group.pages:
                 item = QListWidgetItem(page.title, self.section_index)
-                item.setData(SECTION_PAGE_ROLE, self._build_page(page))
+                item.setData(SECTION_PAGE_ROLE, self._build_page(page, slots))
+                self._index_items[page.id] = item
 
         body = QHBoxLayout()
         body.setSpacing(12)
@@ -198,17 +197,17 @@ class SettingsDialog(QDialog):
         root.addLayout(body, 1)
         root.addLayout(buttons)
 
-    def _build_page(self, page: Page) -> QWidget:
+    def _build_page(self, page: Page, slots) -> QWidget:
         form = SettingsForm(
             page.items,
             reset_to=default_value,
             track_edits=False,
-            slots=self._slots(),
+            slots=slots,
         )
 
         self.forms[page.id] = form
         for key in form.keys():
-            self._form_of[key] = form
+            self._page_id_of[key] = page.id
 
         content = form if page.note is None else _with_note(form, page.note)
 
@@ -221,6 +220,7 @@ class SettingsDialog(QDialog):
         widget.setObjectName(f"page_{page.id}")
 
         self.pages[page.id] = widget
+        self._form_on[widget] = form
         self.section_page.addWidget(widget)
 
         return widget
@@ -308,7 +308,7 @@ class SettingsDialog(QDialog):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.addWidget(
             _in_a_row(
-                _bold(QLabel(translate("SettingsDialog", "Wildcard syntax"))),
+                bold(QLabel(translate("SettingsDialog", "Wildcard syntax"))),
                 self.streamingWildcardHelpButton,
             )
         )
@@ -325,7 +325,7 @@ class SettingsDialog(QDialog):
         self.cookiesHowToButton = _help_button()
         self.cookiesHowToButton.clicked.connect(self.show_cookies_howto)
 
-        label = _bold(QLabel(translate("SettingsDialog", "How to export cookies")))
+        label = bold(QLabel(translate("SettingsDialog", "How to export cookies")))
 
         return _in_a_row(label, self.cookiesHowToButton)
 
@@ -346,8 +346,8 @@ class SettingsDialog(QDialog):
         # the placeholder is short enough to fit, this is where it is
         self.widget("screenshots/dir").setToolTip(str(default_screenshots_dir()))
 
-        if not is_hw_video_available():
-            self.widget("player/video_driver").setToolTip(no_hw_video_reason())
+        if reason := no_hw_video():
+            self.widget("player/video_driver").setToolTip(reason)
 
     def ui_connect(self):
         self.section_index.currentItemChanged.connect(self.switch_page)
@@ -363,33 +363,25 @@ class SettingsDialog(QDialog):
         for form in self.forms.values():
             form.values_changed.connect(self.update_reset_page)
 
-        player = self.forms["player"]
-        player.values_changed.connect(self.tray_options_changed)
-        player.values_changed.connect(self.cache_mode_selected)
+        self.form_of("player/tray_icon").values_changed.connect(
+            self.tray_options_changed
+        )
+        self.form_of("cache/mode").values_changed.connect(self.cache_mode_selected)
 
     # the settings, wherever they are
 
     def form_of(self, key: str) -> SettingsForm:
-        return self._form_of[key]
+        return self.forms[self._page_id_of[key]]
 
     def widget(self, key: str) -> QWidget:
         """What a setting is edited with."""
 
-        return self._form_of[key].widget(key)
+        return self.form_of(key).widget(key)
 
     def value(self, key: str):
         """A setting as the page has it now, saved or not."""
 
-        return self._form_of[key].value(key)
-
-    @property
-    def settings_map(self) -> dict[str, QWidget]:
-        return {key: form.widget(key) for key, form in self._form_of.items()}
-
-    def page_of(self, key: str) -> QWidget:
-        form = self._form_of[key]
-        page_id = next(i for i, f in self.forms.items() if f is form)
-        return self.pages[page_id]
+        return self.form_of(key).value(key)
 
     # pages
 
@@ -420,23 +412,15 @@ class SettingsDialog(QDialog):
         self.section_page.setCurrentWidget(page)
         self.update_reset_page()
 
-    def show_page_of(self, key: str):
-        page = self.page_of(key)
+    def show_page(self, page_id: str):
+        self.section_index.setCurrentItem(self._index_items[page_id])
 
-        for item in self.section_items:
-            if item.data(SECTION_PAGE_ROLE) is page:
-                self.section_index.setCurrentItem(item)
-                return
+    def show_page_of(self, key: str):
+        self.show_page(self._page_id_of[key])
 
     @property
     def current_form(self) -> SettingsForm | None:
-        page = self.section_page.currentWidget()
-
-        for page_id, widget in self.pages.items():
-            if widget is page:
-                return self.forms[page_id]
-
-        return None
+        return self._form_on.get(self.section_page.currentWidget())
 
     def update_reset_page(self, *_):
         form = self.current_form
@@ -449,7 +433,10 @@ class SettingsDialog(QDialog):
         if form is None:
             return
 
-        if form is self.forms["player"] and self._minimize_to_tray_own is not None:
+        if (
+            form is self.form_of("player/minimize_to_tray")
+            and self._minimize_to_tray_own is not None
+        ):
             # ticked for hiding from the taskbar, which is about to go back
             self._minimize_to_tray_own = default_value("player/minimize_to_tray")
 
@@ -458,7 +445,7 @@ class SettingsDialog(QDialog):
     # settings that lean on each other
 
     def tray_options_changed(self, *_):
-        form = self.forms["player"]
+        form = self.form_of("player/tray_icon")
 
         is_tray = form.is_enabled("player/tray_icon") and form.value("player/tray_icon")
 
@@ -483,9 +470,7 @@ class SettingsDialog(QDialog):
 
     def cache_mode_selected(self, *_):
         # nothing on disk to see, kept in memory
-        self.cache_open_action.setEnabled(
-            self.form_of("cache/max_mb").is_enabled("cache/max_mb")
-        )
+        self.cache_open_action.setEnabled(self.value("cache/mode") == CacheMode.DISK)
 
     # loading and saving
 
@@ -515,24 +500,16 @@ class SettingsDialog(QDialog):
         later version changes it.
         """
 
-        spec = form.spec(key)
-        value = form.value(key)
-
         # where Hardware can't run, the dialog shows its Software twin;
         # saving that back would lose the Hardware pick for the sessions
         # that can run it
-        if spec.to_editor is not None and value == spec.to_editor(Settings().get(key)):
+        if form.shows_stand_in(key):
             return
 
-        # a file name has to come from somewhere, and the like
-        is_blank_default = (
-            isinstance(spec, TextField) and spec.blank_is_default and not value.strip()
-        )
-
-        if value == form.default_shown(key) or is_blank_default:
+        if form.is_default(key):
             Settings().reset(key)
         else:
-            Settings().set(key, value)
+            Settings().set(key, form.value(key))
 
     def save_cookies(self):
         """Put the jar the page is showing on the disk.

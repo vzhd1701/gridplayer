@@ -29,7 +29,7 @@ def no_hw_video_reason() -> str:
     )
 
 
-def _no_hw_video() -> str | None:
+def no_hw_video() -> str | None:
     # these only ever touch Hardware video
     return None if is_hw_video_available() else no_hw_video_reason()
 
@@ -57,7 +57,7 @@ ADVANCED_FIELDS: tuple[SettingField, ...] = (
         settings_key="internal/opaque_hw_overlay",
         label=translate("SettingsDialog", "Opaque overlay (fix black screen)"),
         shown_if=_is_linux,
-        unavailable=_no_hw_video,
+        unavailable=no_hw_video,
     ),
     CheckboxField(
         settings_key="internal/fake_overlay_invisibility",
@@ -66,7 +66,7 @@ ADVANCED_FIELDS: tuple[SettingField, ...] = (
             "Fake overlay invisibility (fix overlay on top of other windows)",
         ),
         shown_if=_is_linux,
-        unavailable=_no_hw_video,
+        unavailable=no_hw_video,
     ),
     CheckboxField(
         settings_key="internal/force_native_drag_events",
@@ -79,7 +79,7 @@ ADVANCED_FIELDS: tuple[SettingField, ...] = (
         settings_key="internal/hw_crop_border_offset",
         label=translate("SettingsDialog", "HW video border fix"),
         choices=choices.hw_crop_borders,
-        unavailable=_no_hw_video,
+        unavailable=no_hw_video,
         tooltip=translate(
             "SettingsDialog",
             "Crops a few pixels off the edges to hide glitches from hardware video."

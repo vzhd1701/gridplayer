@@ -7,7 +7,7 @@ dialog fills itself, for what isn't a setting.
 The Playlist and Video pages are the Playlist Settings dialog's two tabs too.
 """
 
-from gridplayer.params import env
+from gridplayer.params.settings_fields.general import tray_text
 from gridplayer.params.settings_fields.kinds import (
     Group,
     Indented,
@@ -187,10 +187,9 @@ PAGES = (
             "player/inhibit_screensaver",
             "player/media_keys_background",
             Section(
-                (
-                    translate("SettingsDialog", "Menu bar")
-                    if env.IS_MACOS
-                    else translate("SettingsDialog", "Tray")
+                tray_text(
+                    translate("SettingsDialog", "Tray"),
+                    translate("SettingsDialog", "Menu bar"),
                 ),
                 "player/tray_icon",
                 Indented(
