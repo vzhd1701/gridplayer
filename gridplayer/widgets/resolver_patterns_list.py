@@ -11,11 +11,7 @@ from gridplayer.models.resolver_patterns import (
 )
 from gridplayer.params.static import URLResolver
 from gridplayer.utils.qt import translate
-
-
-def _set_combo_box(combo_box, data_value):
-    idx = combo_box.findData(data_value)
-    combo_box.setCurrentIndex(idx)
+from gridplayer.widgets.combo_box import combo_index
 
 
 class RowDropIndicatorStyle(QtWidgets.QProxyStyle):
@@ -361,8 +357,9 @@ class ResolverPatternsList(QtWidgets.QWidget):
 
     def _set_row_data(self, row_idx, row_data: ResolverPattern):
         self.table.item(row_idx, 0).setText(row_data.pattern)
-        _set_combo_box(self.table.cellWidget(row_idx, 1), row_data.pattern_type)
-        _set_combo_box(self.table.cellWidget(row_idx, 2), row_data.resolver)
+        for col_idx, value in ((1, row_data.pattern_type), (2, row_data.resolver)):
+            combo = self.table.cellWidget(row_idx, col_idx)
+            combo.setCurrentIndex(combo_index(combo, value))
 
     def _create_button(self, text, callback, is_selection_needed=True):
         button = QtWidgets.QPushButton(text)

@@ -1,4 +1,5 @@
-"""What a combo does about a list too long to draw in one column."""
+"""What a combo does about a value it doesn't have, and about a list too long
+to draw in one column."""
 
 from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import (
@@ -18,6 +19,12 @@ POPUP_ROOM_PX = 48
 
 # the most of the screen's width the open list takes
 POPUP_MAX_SCREEN_SHARE = 0.8
+
+
+def combo_index(combo: QComboBox, value) -> int:
+    """The item that has the value, or the first one for a value none has."""
+
+    return max(combo.findData(value), 0)
 
 
 def cap_popup_height(combo: QComboBox, item_count: int) -> None:

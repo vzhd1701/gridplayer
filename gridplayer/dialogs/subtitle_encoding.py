@@ -9,7 +9,7 @@ from PyQt5.QtWidgets import (
 
 from gridplayer.params.subtitle_encodings import DEFAULT_ENCODING, SUBTITLE_ENCODINGS
 from gridplayer.utils.qt import translate
-from gridplayer.widgets.combo_box import cap_popup_height
+from gridplayer.widgets.combo_box import cap_popup_height, combo_index
 
 
 def subtitle_encoding_choices() -> dict:
@@ -47,7 +47,7 @@ class SetSubtitleEncodingDialog(QDialog):
         for value, name in choices.items():
             self.combo.addItem(name, value)
         cap_popup_height(self.combo, len(choices))
-        self.combo.setCurrentIndex(max(self.combo.findData(encoding), 0))
+        self.combo.setCurrentIndex(combo_index(self.combo, encoding))
 
         # a fallback rather than an override, and worth saying so here:
         # a pick that appears to do nothing was a file VLC already read as

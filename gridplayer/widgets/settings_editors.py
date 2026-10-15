@@ -36,7 +36,7 @@ from gridplayer.params.settings_fields.kinds import (
 from gridplayer.utils.keymap import default_keymap, merge_keymap
 from gridplayer.utils.qt import translate
 from gridplayer.widgets.color_palette import QCompactColorPicker
-from gridplayer.widgets.combo_box import cap_popup_height
+from gridplayer.widgets.combo_box import cap_popup_height, combo_index
 from gridplayer.widgets.keymap_tree_view import KeymapEditor
 from gridplayer.widgets.language_list import LanguageList
 from gridplayer.widgets.resolver_patterns_list import ResolverPatternsList
@@ -52,11 +52,6 @@ def _fill_combo(combo: QComboBox, values: dict) -> None:
     combo.clear()
     for value, name in values.items():
         combo.addItem(name, value)
-
-
-def _combo_index(combo: QComboBox, value) -> int:
-    idx = combo.findData(value)
-    return idx if idx >= 0 else 0
 
 
 def _swatch(color: str) -> QLabel:
@@ -191,13 +186,13 @@ class _ComboEditor(Editor):
         return self.widget.currentIndexChanged
 
     def set_value(self, value):
-        self.widget.setCurrentIndex(_combo_index(self.widget, value))
+        self.widget.setCurrentIndex(combo_index(self.widget, value))
 
     def value(self):
         return self.widget.currentData()
 
     def normalize(self, value):
-        return self.widget.itemData(_combo_index(self.widget, value))
+        return self.widget.itemData(combo_index(self.widget, value))
 
 
 class _TextEditor(Editor):
