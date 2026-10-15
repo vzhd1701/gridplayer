@@ -217,3 +217,20 @@ def test_no_page_is_cut_off_at_the_narrowest(dialog):
             content, room = page, page.width()
 
         assert content.minimumSizeHint().width() <= room, page_id
+
+
+def test_an_indented_label_keeps_close_to_its_field(dialog):
+    """Lined up with the labels of its own block, not padded out to the
+    longest one of the section around it."""
+
+    timeout = (
+        dialog.form_of("misc/mouse_hide_timeout")
+        .editor("misc/mouse_hide_timeout")
+        .label
+    )
+
+    # the size hint grows to the minimum width it is padded out to; the text
+    # does not
+    text = timeout.fontMetrics().horizontalAdvance(timeout.text())
+
+    assert timeout.minimumWidth() <= text + 10

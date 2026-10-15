@@ -81,9 +81,10 @@ class SettingsForm(QWidget):
         self._updating = False
         self._fills = False
 
-        # labels lined up together, with how far each is pushed in, a list
-        # for each section
-        self._label_columns: list[list[tuple[QWidget, int]]] = [[]]
+        # labels lined up together: a list for each section, and one for
+        # each indented block in it
+        self._label_columns: list[list[QWidget]] = []
+        self._column = self._new_column()
 
         root = QVBoxLayout(self)
         root.setContentsMargins(0, 0, 0, 0)
@@ -103,18 +104,27 @@ class SettingsForm(QWidget):
     def _add_items(self, layout, items, indent):
         for item in items:
             if isinstance(item, Section):
-                self._label_columns.append([])
+                self._column = self._new_column()
                 layout.addWidget(self._header(item.title), alignment=Qt.AlignLeft)
                 self._add_items(layout, item.items, indent)
-                self._label_columns.append([])
+                self._column = self._new_column()
             elif isinstance(item, Indented):
+                # lined up among themselves, close to their fields, rather
+                # than out to the labels of the section around them
+                outer, self._column = self._column, self._new_column()
                 self._add_items(layout, item.items, indent + INDENT_PX)
+                self._column = outer
             elif isinstance(item, Row):
                 self._add_row(layout, item.items, indent)
             elif isinstance(item, Note):
                 layout.addWidget(self._note(item, indent))
             else:
                 self._add_row(layout, (item,), indent)
+
+    def _new_column(self) -> list[QWidget]:
+        column = []
+        self._label_columns.append(column)
+        return column
 
     @staticmethod
     def _header(title):
@@ -152,7 +162,7 @@ class SettingsForm(QWidget):
             # the first label, or a checkbox labelling the rest of the row,
             # goes in the column; a checkbox on its own spans the row
             in_column = not editors
-            editor = self._add_editor(entry, lay, in_column, len(entries) > 1, indent)
+            editor = self._add_editor(entry, lay, in_column, len(entries) > 1)
             self._rows[editor.spec.settings_key] = holder
             editors.append(editor)
             fills = fills or editor.fills
@@ -175,7 +185,7 @@ class SettingsForm(QWidget):
         self._fills = self._fills or fills
         layout.addWidget(holder, 1 if fills else 0)
 
-    def _add_editor(self, entry, lay, in_column, is_in_row, indent) -> Editor:
+    def _add_editor(self, entry, lay, in_column, is_in_row) -> Editor:
         spec = entry if isinstance(entry, SettingField) else FIELDS[entry]
         key = spec.settings_key
 
@@ -189,7 +199,7 @@ class SettingsForm(QWidget):
         else:
             column_widget = editor.label
         if column_widget is not None and in_column:
-            self._label_columns[-1].append((column_widget, indent))
+            self._column.append(column_widget)
 
         if editor.label is not None:
             lay.addWidget(editor.label)
@@ -246,18 +256,14 @@ class SettingsForm(QWidget):
             self._editors[key].set_tooltip(reason)
 
     def _line_up_labels(self):
-        """Labels of a section in a column, as a form layout would have them.
-
-        Lined up by where their fields start: one pushed in is that much
-        shorter.
-        """
+        """Labels of a section in a column, as a form layout would have them."""
 
         for column in self._label_columns:
             if len(column) < 2:
                 continue
-            width = max(widget.sizeHint().width() + indent for widget, indent in column)
-            for widget, indent in column:
-                widget.setMinimumWidth(width - indent)
+            width = max(widget.sizeHint().width() for widget in column)
+            for widget in column:
+                widget.setMinimumWidth(width)
 
     # what is on and what is shown
 
