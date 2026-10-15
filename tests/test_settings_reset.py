@@ -7,15 +7,17 @@ default if a later version changes it.
 
 import pytest
 from PyQt5.QtCore import QEvent, QSettings
-from PyQt5.QtWidgets import QApplication
+from PyQt5.QtWidgets import QApplication, QWidget
 
 from gridplayer.dialogs import settings as settings_dialog
 from gridplayer.dialogs.settings import SettingsDialog
 from gridplayer.models.keymap_overrides import KeymapOverrides
 from gridplayer.params.settings_fields import general as general_fields
+from gridplayer.params.settings_pages import PAGES
 from gridplayer.params.static import ProxyMode, VideoAspect
 from gridplayer.settings import _Settings, default_value
 from gridplayer.utils.taskbar import TaskbarHidingBlocker
+from gridplayer.widgets.settings_form import SettingsForm
 
 
 @pytest.fixture
@@ -326,3 +328,34 @@ class TestALanguageNoLongerShipped:
         dialog.save_settings()
 
         assert not settings.settings.contains("player/language")
+
+
+class TestWhatAnEditReads:
+    def test_only_the_field_edited(self, dialog, monkeypatch):
+        patterns = dialog.widget("streaming/resolver_priority_patterns")
+        reads = []
+        rows_data = patterns.rows_data
+        monkeypatch.setattr(
+            patterns, "rows_data", lambda: reads.append(1) or rows_data()
+        )
+
+        dialog.widget("streaming/js_runtime_path").setText("/opt/deno")
+
+        assert dialog.forms["resolution"].is_modified("streaming/js_runtime_path")
+        assert reads == []
+
+    def test_a_page_built_reads_nothing_before_its_values(self, monkeypatch):
+        page = next(p for g in PAGES for p in g.pages if p.id == "resolution")
+        reads = []
+        monkeypatch.setattr(
+            SettingsForm, "_is_modified", lambda _self, key: reads.append(key)
+        )
+
+        SettingsForm(
+            page.items,
+            reset_to=default_value,
+            track_edits=False,
+            slots=dict.fromkeys(("youtube_test", "wildcard_help"), QWidget),
+        )
+
+        assert reads == []

@@ -94,7 +94,8 @@ class SettingsForm(QWidget):
             root.addStretch(1)
 
         self._line_up_labels()
-        self._sync()
+        # what is modified waits for the values
+        self._sync(keys=())
 
     # building
 
@@ -241,7 +242,10 @@ class SettingsForm(QWidget):
 
     # what is on and what is shown
 
-    def _sync(self):
+    def _sync(self, keys=None):
+        """What is on and shown, all of it; and what is modified, of these
+        keys or all of them."""
+
         enabled = {}
 
         def is_on(key):
@@ -258,7 +262,7 @@ class SettingsForm(QWidget):
             elif editor.spec.shown_when is not None:
                 self._rows[key].setVisible(self._is_met(editor.spec.shown_when, is_on))
 
-        self._sync_modified()
+        self._sync_modified(keys)
 
     def _out_of_reach(self, key) -> bool:
         return key in self._unavailable or key in self._locked
@@ -283,15 +287,20 @@ class SettingsForm(QWidget):
 
         return is_on(rule.key) and driver.value() in rule.values
 
-    def _sync_modified(self):
-        # worked out once a sync: a value can be slow to read (the keymap)
-        self._modified = {key for key in self._editors if self._is_modified(key)}
+    def _sync_modified(self, keys=None):
+        # worked out only where it may have changed, and kept: a value can be
+        # slow to read (the keymap, the resolver patterns)
+        for key in self._editors if keys is None else keys:
+            is_modified = self._is_modified(key)
+            if is_modified:
+                self._modified.add(key)
+            else:
+                self._modified.discard(key)
 
-        if self._reset_to is None:
-            return
+            if self._reset_to is None:
+                continue
 
-        for key, editor in self._editors.items():
-            is_modified = key in self._modified
+            editor = self._editors[key]
 
             if editor.marked is not None:
                 font = editor.marked.font()
@@ -302,8 +311,8 @@ class SettingsForm(QWidget):
             if reset is not None:
                 reset.setVisible(is_modified)
 
-    def _refresh(self):
-        self._sync()
+    def _refresh(self, keys=None):
+        self._sync(keys)
         self.values_changed.emit()
 
     def _on_edited(self, key):
@@ -311,7 +320,7 @@ class SettingsForm(QWidget):
             return
 
         self._overridden.add(key)
-        self._refresh()
+        self._refresh((key,))
 
     def _shown(self, key, value):
         """A stored value as its editor shows it."""
@@ -409,7 +418,7 @@ class SettingsForm(QWidget):
 
     def reset(self, key: str):
         self._reset_one(key)
-        self._refresh()
+        self._refresh((key,))
 
     def reset_all(self):
         """Every field that can be reset, as one change."""
@@ -444,7 +453,7 @@ class SettingsForm(QWidget):
             self._locked.add(key)
         else:
             self._locked.discard(key)
-        self._sync()
+        self._sync((key,))
 
     def is_enabled(self, key: str) -> bool:
         editor = self._editors.get(key)
