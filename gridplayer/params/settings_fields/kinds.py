@@ -27,7 +27,8 @@ class SettingField:
     enabled_when: When | None = None
     # hidden, it is off as well
     shown_when: When | None = None
-    tooltip: str | None = None
+    # or what works it out, called when the form is built; None for none
+    tooltip: str | Callable[[], str | None] | None = None
     # a colour shown before the label, for what is known by its colour
     swatch: str | None = None
     # where the player can't use it at all: left out of sight, and never saved

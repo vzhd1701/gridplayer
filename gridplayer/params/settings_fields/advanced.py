@@ -44,6 +44,7 @@ ADVANCED_FIELDS: tuple[SettingField, ...] = (
         choices=choices.video_drivers,
         # where Hardware can't run, its Software twin stands in for it
         to_editor=session_video_driver,
+        tooltip=no_hw_video,
     ),
     SpinField(
         settings_key="player/video_driver_players",

@@ -22,7 +22,6 @@ from PyQt5.QtWidgets import (
 from gridplayer.dialogs.checkup import CheckupDialog
 from gridplayer.dialogs.messagebox import QCustomMessageBox
 from gridplayer.params import env
-from gridplayer.params.settings_fields.advanced import no_hw_video
 from gridplayer.params.settings_fields.kinds import Page
 from gridplayer.params.settings_pages import PAGES
 from gridplayer.params.static import CacheMode
@@ -32,7 +31,7 @@ from gridplayer.utils.app_dir import get_app_data_dir
 from gridplayer.utils.cookies import cookie_store, same_cookies
 from gridplayer.utils.network import opts_for
 from gridplayer.utils.qt import translate
-from gridplayer.utils.screenshots import default_screenshots_dir, unknown_specifiers
+from gridplayer.utils.screenshots import unknown_specifiers
 from gridplayer.version import __app_url__
 from gridplayer.widgets.cookie_store_list import CookieStoreList
 from gridplayer.widgets.custom_menu import CustomMenu
@@ -125,7 +124,6 @@ class SettingsDialog(QDialog):
         self._minimize_to_tray_own = None
 
         self.ui_build()
-        self.ui_customize()
         self.ui_connect()
 
         self.load_settings()
@@ -341,13 +339,6 @@ class SettingsDialog(QDialog):
         )
         self.networkTestButton.clicked.connect(self.run_network_checkup)
         return _in_a_row(self.networkTestButton)
-
-    def ui_customize(self):
-        # the placeholder is short enough to fit, this is where it is
-        self.widget("screenshots/dir").setToolTip(str(default_screenshots_dir()))
-
-        if reason := no_hw_video():
-            self.widget("player/video_driver").setToolTip(reason)
 
     def ui_connect(self):
         self.section_index.currentItemChanged.connect(self.switch_page)

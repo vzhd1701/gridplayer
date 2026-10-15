@@ -671,7 +671,9 @@ class TestTheSettings:
         assert (
             dialog.widget("screenshots/dir").placeholderText() == "In the data folder"
         )
-        assert dialog.widget("screenshots/dir").toolTip().endswith("screenshots")
+        # on its row, as a field's tooltip is
+        row = dialog.widget("screenshots/dir").parentWidget()
+        assert row.toolTip().endswith("screenshots")
 
     def test_the_format_comes_as_the_default(self, dialog):
         assert dialog.widget("screenshots/filename_template").text() == "%F_%P"

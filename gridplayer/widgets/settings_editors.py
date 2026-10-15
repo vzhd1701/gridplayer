@@ -86,6 +86,7 @@ class Editor:
 
     def __init__(self, spec: SettingField):
         self.spec = spec
+        self.tooltip = spec.tooltip() if callable(spec.tooltip) else spec.tooltip
         self.widget = self._make_widget()
         self.widget.setObjectName(spec.settings_key)
         # what greys out and turns italic along with the field

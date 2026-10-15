@@ -155,12 +155,12 @@ class SettingsForm(QWidget):
         if not (fills or grows):
             lay.addStretch(1)
 
-        if len(editors) == 1 and editors[0].spec.tooltip:
-            holder.setToolTip(editors[0].spec.tooltip)
+        if len(editors) == 1 and editors[0].tooltip:
+            holder.setToolTip(editors[0].tooltip)
         else:
             for editor in editors:
-                if editor.spec.tooltip:
-                    editor.set_tooltip(editor.spec.tooltip)
+                if editor.tooltip:
+                    editor.set_tooltip(editor.tooltip)
 
         self._fills = self._fills or fills
         layout.addWidget(holder, 1 if fills else 0)

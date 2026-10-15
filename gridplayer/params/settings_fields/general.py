@@ -15,7 +15,7 @@ from gridplayer.params.settings_fields.kinds import (
 )
 from gridplayer.params.static import CacheMode, ScreenshotFormat
 from gridplayer.utils.qt import translate
-from gridplayer.utils.screenshots import screenshots_dir
+from gridplayer.utils.screenshots import default_screenshots_dir, screenshots_dir
 from gridplayer.utils.taskbar import TaskbarHidingBlocker, taskbar_hiding_blocker
 
 _WITH_TRAY = When("player/tray_icon")
@@ -203,6 +203,8 @@ GENERAL_FIELDS: tuple[SettingField, ...] = (
         placeholder=translate("SettingsDialog", "In the data folder"),
         browse_title=translate("SettingsDialog", "Screenshots folder"),
         start_dir=screenshots_dir,
+        # the placeholder is short enough to fit, this is where it is
+        tooltip=lambda: str(default_screenshots_dir()),
     ),
     TextField(
         settings_key="screenshots/filename_template",

@@ -209,3 +209,19 @@ def test_a_saved_software_driver_reset_is_forgotten(settings, make_dialog):
     dialog.save_settings()
 
     assert not settings.settings.contains("player/video_driver")
+
+
+@pytest.mark.usefixtures("pure_wayland")
+def test_dialog_says_why_there_is_no_hardware(make_dialog):
+    dialog = make_dialog()
+
+    row = dialog.widget("player/video_driver").parentWidget()
+    assert "X server" in row.toolTip()
+
+
+def test_dialog_says_nothing_of_hardware_on_xcb(monkeypatch, make_dialog):
+    monkeypatch.setattr(video_driver, "_qt_platform_name", lambda: "xcb")
+
+    dialog = make_dialog()
+
+    assert not dialog.widget("player/video_driver").parentWidget().toolTip()
