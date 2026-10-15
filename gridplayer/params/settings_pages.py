@@ -202,7 +202,8 @@ PAGES = (
             ),
             Section(
                 translate("SettingsDialog", "History"),
-                Row("player/recent_list_enabled", "player/recent_list_max_size"),
+                "player/recent_list_enabled",
+                Indented("player/recent_list_max_size"),
                 "player/reopen_last_playlist",
             ),
             Section(
@@ -224,7 +225,7 @@ PAGES = (
             Section(
                 translate("SettingsDialog", "Screenshots"),
                 "screenshots/dir",
-                "screenshots/filename_template",
+                Row("screenshots/filename_template", Slot("screenshot_template_help")),
                 "screenshots/format",
                 "screenshots/jpg_quality",
             ),

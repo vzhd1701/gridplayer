@@ -643,6 +643,7 @@ class TestTheSettings:
         for widget in (
             dialog.widget("screenshots/dir"),
             dialog.widget("screenshots/filename_template"),
+            dialog.screenshotsFilenameTemplateHelpButton,
             dialog.widget("screenshots/format"),
             dialog.widget("screenshots/jpg_quality"),
         ):
@@ -713,7 +714,7 @@ class TestTheSettings:
     def test_the_help_is_in_a_box_of_its_own(self, dialog, mocker):
         shown = mocker.patch.object(settings_dialog.QCustomMessageBox, "information")
 
-        dialog.screenshotsFilenameTemplateHelpAction.trigger()
+        dialog.screenshotsFilenameTemplateHelpButton.click()
 
         text = shown.call_args.kwargs["info"]
         for specifier in ("%f", "%F", "%p", "%P", "%n", "%D", "%T", "%tY", "%tS", "%%"):
@@ -723,16 +724,18 @@ class TestTheSettings:
         assert dialog.widget("screenshots/filename_template").toolTip() == ""
         assert not hasattr(dialog, "screenshotsFilenameTemplateHelp")
 
-    def test_the_help_is_asked_for_inside_the_field(self, dialog):
-        """A button beside it was squeezed off a narrow page."""
+    def test_the_help_is_between_the_field_and_its_reset(self, dialog):
+        """The room the reset button keeps while hidden is after the help, not
+        a gap between the field and it."""
 
-        field = dialog.widget("screenshots/filename_template")
-        row = dialog.form_of("screenshots/filename_template")._rows[
-            "screenshots/filename_template"
-        ]
+        key = "screenshots/filename_template"
+        form = dialog.form_of(key)
+        lay = form._rows[key].layout()
+        order = [lay.itemAt(i).widget() for i in range(lay.count())]
 
-        assert dialog.screenshotsFilenameTemplateHelpAction in field.actions()
-        assert row.findChildren(QPushButton) == []
+        field = order.index(dialog.widget(key))
+        assert order[field + 1] is dialog.screenshotsFilenameTemplateHelpButton
+        assert order[field + 2] is form._reset_btns[key]
 
     def test_the_folder_row_is_just_the_field_and_browse(self, dialog):
         """An Open button next to Browse made the row too wide for the page."""

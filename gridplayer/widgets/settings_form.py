@@ -138,11 +138,16 @@ class SettingsForm(QWidget):
 
         editors = []
         fills = grows = False
+        # a field's reset button, held back past the slots right after it:
+        # a button there (a help, say) goes with the field, inside its reset
+        held_reset = None
         for entry in entries:
             if isinstance(entry, Slot):
                 lay.addWidget(self._slots[entry.name](), 1 if entry.fills else 0)
                 fills = fills or entry.fills
                 continue
+
+            self._add_reset(lay, held_reset)
 
             # the first label, or a checkbox labelling the rest of the row,
             # goes in the column; a checkbox on its own spans the row
@@ -152,6 +157,10 @@ class SettingsForm(QWidget):
             editors.append(editor)
             fills = fills or editor.fills
             grows = grows or editor.grows
+
+            held_reset = self._reset_btns.get(editor.spec.settings_key)
+
+        self._add_reset(lay, held_reset)
 
         if not (fills or grows):
             lay.addStretch(1)
@@ -188,11 +197,16 @@ class SettingsForm(QWidget):
             lay.addWidget(widget, 1 if editor.fills else 0)
 
         if self._reset_to is not None and not editor.fills:
-            lay.addWidget(self._reset_button(key), alignment=Qt.AlignVCenter)
+            self._reset_button(key)
 
         self._check_available(spec)
 
         return editor
+
+    @staticmethod
+    def _add_reset(lay, reset):
+        if reset is not None:
+            lay.addWidget(reset, alignment=Qt.AlignVCenter)
 
     def _reset_button(self, key):
         reset = QToolButton()

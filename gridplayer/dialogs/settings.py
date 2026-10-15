@@ -10,7 +10,6 @@ from PyQt5.QtWidgets import (
     QDialogButtonBox,
     QHBoxLayout,
     QLabel,
-    QLineEdit,
     QListWidget,
     QListWidgetItem,
     QPushButton,
@@ -188,22 +187,6 @@ class SettingsDialog(QDialog):
         # what the dialog has
         self._build_index()
 
-        self._add_screenshot_template_help()
-
-    def _add_screenshot_template_help(self):
-        """A question mark at the end of the field, where it can't be
-        squeezed off the page the way a button beside it was."""
-
-        self.screenshotsFilenameTemplateHelpAction = self.widget(
-            "screenshots/filename_template"
-        ).addAction(QIcon.fromTheme("question"), QLineEdit.TrailingPosition)
-        self.screenshotsFilenameTemplateHelpAction.setToolTip(
-            translate("SettingsDialog", "What the file name can be made of")
-        )
-        self.screenshotsFilenameTemplateHelpAction.triggered.connect(
-            self.show_screenshot_template_help
-        )
-
     def _build_index(self):
         heading_font = self.section_index.font()
         heading_font.setBold(True)
@@ -290,6 +273,13 @@ class SettingsDialog(QDialog):
         self.cacheSize = QLabel()
 
         return _in_a_row(self.cacheClear, self.cacheSize)
+
+    def _slot_screenshot_template_help(self):
+        self.screenshotsFilenameTemplateHelpButton = _help_button()
+        self.screenshotsFilenameTemplateHelpButton.clicked.connect(
+            self.show_screenshot_template_help
+        )
+        return self.screenshotsFilenameTemplateHelpButton
 
     def _slot_youtube_test(self):
         self.streamingTestButton = QPushButton(

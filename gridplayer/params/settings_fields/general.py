@@ -130,10 +130,11 @@ GENERAL_FIELDS: tuple[SettingField, ...] = (
     ),
     CheckboxField(
         settings_key="player/recent_list_enabled",
-        label=translate("SettingsDialog", "Enable recent list, maximum size"),
+        label=translate("SettingsDialog", "Enable recent list"),
     ),
     SpinField(
         settings_key="player/recent_list_max_size",
+        label=translate("SettingsDialog", "Maximum size"),
         minimum=1,
         maximum=100,
         suffix=translate("SettingsDialog", "(items)"),
