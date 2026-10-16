@@ -27,12 +27,10 @@ from gridplayer.utils.qt import translate
 VIDEO_FIELDS: tuple[SettingField, ...] = (
     ColorField(
         settings_key="video_defaults/color",
-        attr="color",
         label=translate("SettingsDialog", "Overlay color"),
     ),
     ComboField(
         settings_key="video_defaults/audio_track_mode",
-        attr="audio_track_mode",
         label=translate("SettingsDialog", "Audio track"),
         choices=choices.audio_track_modes,
         tooltip=translate(
@@ -44,7 +42,6 @@ VIDEO_FIELDS: tuple[SettingField, ...] = (
     ),
     TextField(
         settings_key="video_defaults/audio_languages",
-        attr="audio_languages",
         label=translate("SettingsDialog", "Languages"),
         placeholder=translate("SettingsDialog", "en, ja, fr"),
         enabled_when=When(
@@ -58,7 +55,6 @@ VIDEO_FIELDS: tuple[SettingField, ...] = (
     ),
     CheckboxField(
         settings_key="video_defaults/external_audio_autodiscover",
-        attr="external_audio_autodiscover",
         label=translate("SettingsDialog", "Detect external audio files"),
         tooltip=translate(
             "SettingsDialog",
@@ -68,13 +64,11 @@ VIDEO_FIELDS: tuple[SettingField, ...] = (
     ),
     ComboField(
         settings_key="video_defaults/audio_mode",
-        attr="audio_mode",
         label=translate("SettingsDialog", "Audio mode"),
         choices=choices.audio_modes,
     ),
     FloatSpinField(
         settings_key="video_defaults/volume",
-        attr="volume",
         label=translate("SettingsDialog", "Volume"),
         minimum=0,
         maximum=1,
@@ -83,12 +77,10 @@ VIDEO_FIELDS: tuple[SettingField, ...] = (
     ),
     CheckboxField(
         settings_key="video_defaults/muted",
-        attr="muted",
         label=translate("SettingsDialog", "Muted"),
     ),
     ComboField(
         settings_key="video_defaults/subtitle_track_mode",
-        attr="subtitle_track_mode",
         label=translate("SettingsDialog", "Subtitles"),
         choices=choices.subtitle_track_modes,
         tooltip=translate(
@@ -99,7 +91,6 @@ VIDEO_FIELDS: tuple[SettingField, ...] = (
     ),
     TextField(
         settings_key="video_defaults/subtitle_languages",
-        attr="subtitle_languages",
         label=translate("SettingsDialog", "Languages"),
         placeholder=translate("SettingsDialog", "en, ja, fr"),
         enabled_when=When(
@@ -113,7 +104,6 @@ VIDEO_FIELDS: tuple[SettingField, ...] = (
     ),
     ComboField(
         settings_key="video_defaults/subtitle_encoding",
-        attr="subtitle_encoding",
         label=translate("SettingsDialog", "Text encoding"),
         choices=choices.subtitle_encodings,
         tooltip=translate(
@@ -124,7 +114,6 @@ VIDEO_FIELDS: tuple[SettingField, ...] = (
     ),
     CheckboxField(
         settings_key="video_defaults/external_subtitle_autodiscover",
-        attr="external_subtitle_autodiscover",
         label=translate("SettingsDialog", "Detect external subtitle files"),
         tooltip=translate(
             "SettingsDialog",
@@ -134,7 +123,6 @@ VIDEO_FIELDS: tuple[SettingField, ...] = (
     ),
     FloatSpinField(
         settings_key="video_defaults/scale",
-        attr="scale",
         label=translate("SettingsDialog", "Zoom"),
         minimum=MIN_SCALE,
         maximum=MAX_SCALE,
@@ -143,7 +131,6 @@ VIDEO_FIELDS: tuple[SettingField, ...] = (
     ),
     CheckboxField(
         settings_key="video_defaults/zoom_to_cursor",
-        attr="zoom_to_cursor",
         label=translate("Zoom", "Zoom to cursor"),
         tooltip=translate(
             "SettingsDialog",
@@ -153,35 +140,29 @@ VIDEO_FIELDS: tuple[SettingField, ...] = (
     ),
     ComboField(
         settings_key="video_defaults/aspect",
-        attr="aspect",
         label=translate("SettingsDialog", "Aspect mode"),
         choices=choices.aspects,
     ),
     CropField(
         settings_key="video_defaults/crop",
-        attr="crop",
         label=translate("SettingsDialog", "Crop"),
     ),
     ComboField(
         settings_key="video_defaults/anchor",
-        attr="anchor",
         label=translate("SettingsDialog", "Alignment"),
         choices=choices.anchors,
     ),
     CheckboxField(
         settings_key="video_defaults/shift_past_edges",
-        attr="shift_past_edges",
         label=translate("SettingsDialog", "Allow moving past the edges"),
     ),
     ComboField(
         settings_key="video_defaults/transform",
-        attr="transform",
         label=translate("SettingsDialog", "Transform"),
         choices=choices.transforms,
     ),
     ComboField(
         settings_key="video_defaults/deinterlace",
-        attr="deinterlace",
         label=translate("SettingsDialog", "Deinterlace"),
         choices=choices.deinterlace_states,
         tooltip=translate(
@@ -193,7 +174,6 @@ VIDEO_FIELDS: tuple[SettingField, ...] = (
     ),
     ComboField(
         settings_key="video_defaults/deinterlace_mode",
-        attr="deinterlace_mode",
         label=translate("SettingsDialog", "Mode"),
         choices=choices.deinterlace_modes,
         enabled_when=When(
@@ -209,13 +189,11 @@ VIDEO_FIELDS: tuple[SettingField, ...] = (
     ),
     ComboField(
         settings_key="video_defaults/end_action",
-        attr="end_action",
         label=translate("SettingsDialog", "When finished"),
         choices=choices.end_actions,
     ),
     CheckboxField(
         settings_key="video_defaults/dir_recursive",
-        attr="dir_recursive",
         label=translate("Folder Navigation", "Include subfolders"),
         tooltip=translate(
             "Folder Navigation",
@@ -224,7 +202,6 @@ VIDEO_FIELDS: tuple[SettingField, ...] = (
     ),
     ComboField(
         settings_key="video_defaults/list_end_action",
-        attr="list_end_action",
         label=translate("Lists", "When list ends"),
         choices=choices.list_end_actions,
         tooltip=translate(
@@ -234,7 +211,6 @@ VIDEO_FIELDS: tuple[SettingField, ...] = (
     ),
     ComboField(
         settings_key="video_defaults/list_fail_action",
-        attr="list_fail_action",
         label=translate("When Video Fails", "When video fails"),
         choices=choices.list_fail_actions,
         tooltip=translate(
@@ -245,7 +221,6 @@ VIDEO_FIELDS: tuple[SettingField, ...] = (
     ),
     SpinField(
         settings_key="video_defaults/list_fail_wait",
-        attr="list_fail_wait",
         label=translate("When Video Fails", "Next after"),
         minimum=0,
         maximum=MAX_LIST_FAIL_WAIT_SEC,
@@ -257,18 +232,15 @@ VIDEO_FIELDS: tuple[SettingField, ...] = (
     ),
     CheckboxField(
         settings_key="video_defaults/random_loop",
-        attr="random_loop",
         label=translate("SettingsDialog", "Start at random position"),
     ),
     ComboField(
         settings_key="video_defaults/initial_state",
-        attr="initial_state",
         label=translate("SettingsDialog", "Initial state"),
         choices=choices.initial_states,
     ),
     FloatSpinField(
         settings_key="video_defaults/rate",
-        attr="rate",
         label=translate("SettingsDialog", "Playback speed"),
         minimum=MIN_RATE,
         maximum=MAX_RATE,
@@ -277,13 +249,11 @@ VIDEO_FIELDS: tuple[SettingField, ...] = (
     ),
     ComboField(
         settings_key="video_defaults/stream_quality",
-        attr="stream_quality",
         label=translate("SettingsDialog", "Stream quality"),
         choices=choices.stream_qualities,
     ),
     SpinField(
         settings_key="video_defaults/quality_adapt_delay",
-        attr="quality_adapt_delay",
         label=translate("SettingsDialog", "Adapt after"),
         minimum=1,
         maximum=3600,
@@ -296,13 +266,11 @@ VIDEO_FIELDS: tuple[SettingField, ...] = (
     ),
     ComboField(
         settings_key="video_defaults/network_retry_mode",
-        attr="network_retry_mode",
         label=translate("SettingsDialog", "On network error"),
         choices=choices.network_retry_modes,
     ),
     SpinField(
         settings_key="video_defaults/network_retry_times",
-        attr="network_retry_times",
         label=translate("SettingsDialog", "Attempts"),
         minimum=1,
         maximum=1000,
@@ -312,7 +280,6 @@ VIDEO_FIELDS: tuple[SettingField, ...] = (
     ),
     SpinField(
         settings_key="video_defaults/auto_reload_timer",
-        attr="auto_reload_timer",
         label=translate("SettingsDialog", "Auto reload time"),
         minimum=0,
         maximum=1000,

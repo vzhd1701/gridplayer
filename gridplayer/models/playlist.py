@@ -13,7 +13,7 @@ from gridplayer.models.media_list import ListItem, MediaList
 from gridplayer.models.subtitle_selection import SubtitleExternal
 from gridplayer.models.video import Video, migrate_end_action
 from gridplayer.models.video_uri import parse_uri, relativize_uri
-from gridplayer.params.settings_fields.playlist import GRID_STATE_ATTR
+from gridplayer.params.settings_bindings import GRID_STATE_ATTR
 from gridplayer.params.static import (
     AddMode,
     AudioChannelMode,

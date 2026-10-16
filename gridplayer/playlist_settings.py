@@ -3,11 +3,11 @@ from contextlib import contextmanager
 from pydantic import Field
 
 from gridplayer.models.grid_state import GridState
-from gridplayer.params.settings_fields.playlist import (
+from gridplayer.params.settings_bindings import (
     GRID_STATE_ATTR,
-    PLAYLIST_FIELDS,
+    PLAYLIST_ATTRS,
+    VIDEO_DEFAULT_ATTRS,
 )
-from gridplayer.params.settings_fields.video import VIDEO_FIELDS
 from gridplayer.settings import Settings
 
 _INSTANCE = None
@@ -84,35 +84,27 @@ def session_field(setting_name, validate=False):
 
 def overrides_from_playlist(playlist) -> dict:
     result = {}
-    for spec in PLAYLIST_FIELDS:
-        if spec.attr is None:
-            continue
-        value = getattr(playlist, spec.attr)
+    for key, attr in PLAYLIST_ATTRS.items():
+        value = getattr(playlist, attr)
         if value is not None:
-            result[spec.settings_key] = value
+            result[key] = value
     video = playlist.video_defaults
-    for spec in VIDEO_FIELDS:
-        if spec.attr is None:
-            continue
-        value = getattr(video, spec.attr)
+    for key, attr in VIDEO_DEFAULT_ATTRS.items():
+        value = getattr(video, attr)
         if value is not None:
-            result[spec.settings_key] = value
+            result[key] = value
     return result
 
 
 def playlist_kwargs_from_overrides(overrides: dict) -> dict:
-    kwargs = {}
-    video_kwargs = {}
-    for spec in PLAYLIST_FIELDS:
-        if spec.attr is None:
-            continue
-        if spec.settings_key in overrides:
-            kwargs[spec.attr] = overrides[spec.settings_key]
-    for spec in VIDEO_FIELDS:
-        if spec.attr is None:
-            continue
-        if spec.settings_key in overrides:
-            video_kwargs[spec.attr] = overrides[spec.settings_key]
+    kwargs = {
+        attr: overrides[key] for key, attr in PLAYLIST_ATTRS.items() if key in overrides
+    }
+    video_kwargs = {
+        attr: overrides[key]
+        for key, attr in VIDEO_DEFAULT_ATTRS.items()
+        if key in overrides
+    }
     if video_kwargs:
         # Plain dict: Playlist coerces it into PlaylistVideoDefaults, which
         # keeps this module importable without models.playlist (import cycle).

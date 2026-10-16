@@ -15,6 +15,7 @@ from PyQt5.QtCore import QEvent, QSettings
 from PyQt5.QtWidgets import QApplication, QLabel
 
 from gridplayer.dialogs.settings import SettingsDialog
+from gridplayer.params.settings_bindings import PLAYLIST_ATTRS, VIDEO_DEFAULT_ATTRS
 from gridplayer.params.settings_fields.subtitles import SUBTITLE_STYLE_FIELDS
 from gridplayer.params.static import SubtitleOutline
 from gridplayer.params.subtitle_style import (
@@ -199,9 +200,9 @@ class TestThePageIsWiredToTheSettings:
     def test_nothing_here_belongs_to_a_video(self):
         """A style is one per process; a per-video one would fork the pool."""
 
-        for field in SUBTITLE_STYLE_FIELDS:
-            assert field.attr is None
-            assert field.grid_attr is None
+        keys = {field.settings_key for field in SUBTITLE_STYLE_FIELDS}
+        assert keys.isdisjoint(PLAYLIST_ATTRS)
+        assert keys.isdisjoint(VIDEO_DEFAULT_ATTRS)
 
 
 @pytest.fixture

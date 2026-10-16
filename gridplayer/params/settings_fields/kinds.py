@@ -18,12 +18,6 @@ class SettingField:
 
     settings_key: str
     label: str = ""
-    # the name a playlist keeps it under: on the playlist itself for the
-    # playlist fields, on its video defaults for the video fields; None when
-    # a playlist doesn't keep it there
-    attr: str | None = None
-    # the name in the playlist's grid state, for the grid fields
-    grid_attr: str | None = None
     enabled_when: When | None = None
     # hidden, it is off as well
     shown_when: When | None = None

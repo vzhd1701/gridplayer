@@ -9,11 +9,11 @@ from PyQt5.QtWidgets import (
 
 from gridplayer.models.grid_state import GridState
 from gridplayer.models.settings_draft import SetValue
-from gridplayer.params.settings_fields.playlist import (
+from gridplayer.params.settings_bindings import (
     GRID_STATE_ATTR,
-    PLAYLIST_FIELDS,
+    PLAYLIST_ATTRS,
+    VIDEO_DEFAULT_ATTRS,
 )
-from gridplayer.params.settings_fields.video import VIDEO_FIELDS
 from gridplayer.params.settings_pages import PLAYLIST_PAGE, VIDEO_PAGE
 from gridplayer.playlist_settings import grid_values_from_state
 from gridplayer.settings import Settings
@@ -70,19 +70,13 @@ class PlaylistSettingsDialog(QDialog):
         return scroll
 
     def _load(self, overrides: dict, grid_state: GridState):
-        playlist_values = {}
-        video_values = {}
-        for spec in PLAYLIST_FIELDS:
-            if spec.grid_attr:
-                continue
-            playlist_values[spec.settings_key] = overrides.get(
-                spec.settings_key, Settings().get(spec.settings_key)
-            )
+        playlist_values = {
+            key: overrides.get(key, Settings().get(key)) for key in PLAYLIST_ATTRS
+        }
         playlist_values.update(grid_values_from_state(grid_state))
-        for spec in VIDEO_FIELDS:
-            video_values[spec.settings_key] = overrides.get(
-                spec.settings_key, Settings().get(spec.settings_key)
-            )
+        video_values = {
+            key: overrides.get(key, Settings().get(key)) for key in VIDEO_DEFAULT_ATTRS
+        }
 
         playlist_over = {
             key

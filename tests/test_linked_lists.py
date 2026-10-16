@@ -1672,6 +1672,7 @@ class TestTheSetting:
         assert _default_settings["playlist/list_update"] == ListUpdate.ON_LOAD
 
     def test_in_the_lists_section_of_the_playlist_s(self):
+        from gridplayer.params.settings_bindings import PLAYLIST_ATTRS
         from gridplayer.params.settings_fields.playlist import PLAYLIST_FIELDS
 
         field = next(
@@ -1680,7 +1681,7 @@ class TestTheSetting:
             if spec.settings_key == "playlist/list_update"
         )
 
-        assert field.attr == "list_update"
+        assert PLAYLIST_ATTRS[field.settings_key] == "list_update"
         assert field.label == "Update linked lists"
         assert list(field.choices().values()) == [
             "On playlist load",

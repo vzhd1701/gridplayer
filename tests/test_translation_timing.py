@@ -72,3 +72,23 @@ def test_the_actions_table_is_not_among_them():
     loaded = {p.as_posix() for p in _modules_loaded_before_translator()}
 
     assert not any(p.endswith("gridplayer/params/actions.py") for p in loaded)
+
+
+def test_playlist_persistence_does_not_import_settings_presentation():
+    probe = (
+        "import sys\n"
+        "import gridplayer.models.playlist\n"
+        "import gridplayer.playlist_settings\n"
+        "for name in sorted(sys.modules):\n"
+        "    if name.startswith(('gridplayer.params.settings_fields', "
+        "'gridplayer.params.settings_pages', 'gridplayer.widgets.settings_')):\n"
+        "        print(name)\n"
+    )
+    run = subprocess.run(
+        [sys.executable, "-B", "-c", probe],
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+
+    assert run.stdout.strip() == ""

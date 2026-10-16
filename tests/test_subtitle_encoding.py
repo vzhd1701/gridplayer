@@ -19,6 +19,7 @@ from gridplayer.models.playlist import PlaylistVideoDefaults
 from gridplayer.models.video import Video
 from gridplayer.params.actions import ACTIONS
 from gridplayer.params.menu import SECTIONS
+from gridplayer.params.settings_bindings import VIDEO_DEFAULT_ATTRS
 from gridplayer.params.settings_fields.choices import subtitle_encodings
 from gridplayer.params.settings_fields.video import VIDEO_FIELDS
 from gridplayer.params.subtitle_encodings import DEFAULT_ENCODING, SUBTITLE_ENCODINGS
@@ -213,7 +214,7 @@ class TestWhatIsOffered:
     def test_it_sits_with_the_rest_of_the_subtitle_defaults(self):
         spec = next(f for f in VIDEO_FIELDS if f.settings_key == SETTING)
 
-        assert spec.attr == "subtitle_encoding"
+        assert VIDEO_DEFAULT_ATTRS[SETTING] == "subtitle_encoding"
         assert spec.choices is subtitle_encodings
         # it has to apply to a track picked from the menu too, not only to
         # one a video opens with, so nothing gates it

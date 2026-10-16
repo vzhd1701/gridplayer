@@ -20,8 +20,9 @@ from gridplayer.models.playlist import Playlist, PlaylistVideoDefaults
 from gridplayer.models.video import Video
 from gridplayer.params.actions import ACTIONS
 from gridplayer.params.menu import SECTIONS, SUBMENUS
+from gridplayer.params.settings_bindings import VIDEO_DEFAULT_ATTRS
 from gridplayer.params.settings_fields.kinds import CheckboxField
-from gridplayer.params.settings_fields.video import VIDEO_FIELDS
+from gridplayer.params.settings_fields.registry import FIELDS
 from gridplayer.params.settings_pages import VIDEO_PAGE
 from gridplayer.params.static import (
     MAX_SCALE,
@@ -46,7 +47,7 @@ from gridplayer.widgets.video_block_loop import LoopControl
 from gridplayer.widgets.video_block_view import ViewControl
 from gridplayer.widgets.video_frame_vlc_hw_sp import VideoFrameVLCHWSP
 from tests.conftest import mock_block_parts
-from tests.settings_layout import layout_sections
+from tests.settings_layout import layout_keys, layout_sections
 
 SECTION_OF = layout_sections(VIDEO_PAGE)
 
@@ -175,43 +176,43 @@ class TestZoomToCursorIsRemembered:
 
 class TestPlaylistSettings:
     def test_the_alignment_sits_under_crop_in_the_video_section(self):
-        keys = [f.settings_key for f in VIDEO_FIELDS]
+        keys = list(layout_keys(VIDEO_PAGE))
         at = keys.index("video_defaults/crop")
 
         assert keys[at + 1] == "video_defaults/anchor"
 
-        spec = VIDEO_FIELDS[at + 1]
+        spec = FIELDS[keys[at + 1]]
         assert SECTION_OF[spec.settings_key] == "Video"
-        assert spec.attr == "anchor"
+        assert VIDEO_DEFAULT_ATTRS[spec.settings_key] == "anchor"
         assert list(spec.choices()) == list(VideoAnchor)
 
     def test_letting_it_past_the_edges_sits_under_the_alignment(self):
-        keys = [f.settings_key for f in VIDEO_FIELDS]
+        keys = list(layout_keys(VIDEO_PAGE))
         at = keys.index("video_defaults/anchor")
 
         assert keys[at + 1] == "video_defaults/shift_past_edges"
 
-        spec = VIDEO_FIELDS[at + 1]
+        spec = FIELDS[keys[at + 1]]
         assert SECTION_OF[spec.settings_key] == "Video"
         assert isinstance(spec, CheckboxField)
-        assert spec.attr == "shift_past_edges"
+        assert VIDEO_DEFAULT_ATTRS[spec.settings_key] == "shift_past_edges"
 
     def test_zooming_to_the_cursor_sits_under_the_zoom(self):
-        keys = [f.settings_key for f in VIDEO_FIELDS]
+        keys = list(layout_keys(VIDEO_PAGE))
         at = keys.index("video_defaults/scale")
 
         assert keys[at + 1] == "video_defaults/zoom_to_cursor"
 
-        spec = VIDEO_FIELDS[at + 1]
+        spec = FIELDS[keys[at + 1]]
         assert SECTION_OF[spec.settings_key] == "Video"
         assert isinstance(spec, CheckboxField)
-        assert spec.attr == "zoom_to_cursor"
+        assert VIDEO_DEFAULT_ATTRS[spec.settings_key] == "zoom_to_cursor"
 
     def test_there_is_no_default_for_the_position(self):
         """A place moved to in one video means nothing for another."""
 
-        assert "shift" not in [f.attr for f in VIDEO_FIELDS]
-        assert "video_defaults/shift" not in [f.settings_key for f in VIDEO_FIELDS]
+        assert "shift" not in VIDEO_DEFAULT_ATTRS.values()
+        assert "video_defaults/shift" not in FIELDS
 
 
 def _submenu(section, name):

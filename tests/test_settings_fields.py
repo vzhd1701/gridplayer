@@ -7,6 +7,11 @@ import pytest
 from gridplayer.models.grid_state import GridState
 from gridplayer.models.playlist import Playlist, PlaylistVideoDefaults
 from gridplayer.models.settings_draft import SettingsMode
+from gridplayer.params.settings_bindings import (
+    GRID_STATE_ATTR,
+    PLAYLIST_ATTRS,
+    VIDEO_DEFAULT_ATTRS,
+)
 from gridplayer.params.settings_fields.kinds import (
     CheckboxField,
     FloatSpinField,
@@ -15,7 +20,7 @@ from gridplayer.params.settings_fields.kinds import (
     TextField,
     _Node,
 )
-from gridplayer.params.settings_fields.playlist import GRID_STATE_ATTR, PLAYLIST_FIELDS
+from gridplayer.params.settings_fields.playlist import PLAYLIST_FIELDS
 from gridplayer.params.settings_fields.registry import ALL_FIELDS, FIELDS
 from gridplayer.params.settings_fields.subtitles import SUBTITLE_STYLE_FIELDS
 from gridplayer.params.settings_fields.video import VIDEO_FIELDS
@@ -141,17 +146,19 @@ def test_out_of_the_box_nothing_is_marked_changed(page):
     assert [key for key in form.keys() if form.is_modified(key)] == []
 
 
-def test_a_playlist_keeps_each_field_where_the_field_says():
-    for spec in PLAYLIST_FIELDS:
-        if spec.grid_attr:
-            assert spec.attr is None, spec.settings_key
-            assert spec.grid_attr in GridState.model_fields, spec.settings_key
-        else:
-            assert spec.attr in Playlist.model_fields, spec.settings_key
+def test_bindings_cover_the_shared_fields_and_target_model_attributes():
+    assert not set(PLAYLIST_ATTRS) & set(GRID_STATE_ATTR)
+    assert set(PLAYLIST_ATTRS) | set(GRID_STATE_ATTR) == {
+        spec.settings_key for spec in PLAYLIST_FIELDS
+    }
+    assert set(VIDEO_DEFAULT_ATTRS) == {spec.settings_key for spec in VIDEO_FIELDS}
 
-    for spec in VIDEO_FIELDS:
-        assert spec.grid_attr is None, spec.settings_key
-        assert spec.attr in PlaylistVideoDefaults.model_fields, spec.settings_key
+    for bindings, model in (
+        (PLAYLIST_ATTRS, Playlist),
+        (VIDEO_DEFAULT_ATTRS, PlaylistVideoDefaults),
+        (GRID_STATE_ATTR, GridState),
+    ):
+        assert set(bindings.values()) <= set(model.model_fields)
 
 
 def test_the_grid_state_names_are_the_grid_fields():

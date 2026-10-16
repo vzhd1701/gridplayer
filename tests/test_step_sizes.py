@@ -13,6 +13,7 @@ from PyQt5.QtWidgets import QLabel
 
 from gridplayer.models.playlist import Playlist
 from gridplayer.params.actions import ACTIONS
+from gridplayer.params.settings_bindings import PLAYLIST_ATTRS
 from gridplayer.params.settings_fields.kinds import CheckboxField, FloatSpinField
 from gridplayer.params.settings_fields.playlist import PLAYLIST_FIELDS
 from gridplayer.params.settings_pages import PLAYLIST_PAGE
@@ -86,10 +87,8 @@ class TestTheDefaults:
         ]
 
     def test_they_are_kept_for_the_playlist(self):
-        fields = {spec.settings_key: spec for spec in PLAYLIST_FIELDS}
-
         for key in STEP_KEYS:
-            assert fields[key].attr == key.removeprefix("playlist/")
+            assert PLAYLIST_ATTRS[key] == key.removeprefix("playlist/")
 
     def test_they_have_a_section_of_their_own(self):
         sections = {
