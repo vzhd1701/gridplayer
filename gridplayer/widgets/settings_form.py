@@ -12,7 +12,6 @@ from PyQt5.QtWidgets import (
 )
 
 from gridplayer.models.settings_draft import (
-    EditIntent,
     FieldDraft,
     ResetValue,
     SettingsMode,
@@ -385,56 +384,30 @@ class SettingsForm(QWidget):
             for key in self._editors:
                 if key in values:
                     self._put(key, values[key])
-            self._drafts = {
-                key: FieldDraft(
-                    values.get(key), editor.value(), key in (overridden or ())
+            self._drafts = {}
+            for key, editor in self._editors.items():
+                displayed = editor.value()
+                self._drafts[key] = FieldDraft(
+                    values.get(key, displayed), displayed, key in (overridden or ())
                 )
-                for key, editor in self._editors.items()
-            }
         finally:
             self._updating = False
         self._sync()
 
-    def default_shown(self, key: str):
-        """What a reset would show."""
-
-        return self._editors[key].normalize(self._shown(key, self._reset_to(key)))
-
     def is_default(self, key: str) -> bool:
-        """Has what a reset would give.
+        """Has the stored value a reset would give, before presentation loss."""
 
-        Behind a stand-in, by what it stands in for: the default may stand
-        in as the very value something else saved does.
-        """
+        return self._value_for_save(key) == self._reset_to(key)
 
+    def _value_for_save(self, key):
         editor = self._editors[key]
-
         if editor.means_default():
-            return True
-
-        if self.shows_stand_in(key):
-            return self._projection_source(key) == self._reset_to(key)
-
-        return editor.value() == self.default_shown(key)
-
-    def shows_stand_in(self, key: str) -> bool:
-        """Shows, unchanged, what stands in for a stored value it can't show.
-
-        Saving that back would lose the stored one, for when it can be shown.
-        """
-
-        editor = self._editors[key]
-        return (
-            editor.spec.to_editor is not None
-            and self._projection_source(key) is not None
-            and editor.value() == self._shown(key, self._projection_source(key))
-        )
-
-    def _projection_source(self, key):
-        draft = self._drafts[key]
-        if draft.intent is EditIntent.RESET:
             return self._reset_to(key)
-        return draft.original
+        return self._drafts[key].value_for_save(
+            editor.value(),
+            self._reset_to(key),
+            preserve_original=editor.preserve_original,
+        )
 
     def _is_modified(self, key):
         if self._out_of_reach(key):
@@ -464,14 +437,11 @@ class SettingsForm(QWidget):
         self._refresh()
 
     def _reset_one(self, key):
-        self._drafts[key].reset()
-
-        if self._reset_to is None:
-            return
-
         self._updating = True
         try:
-            self._put(key, self._reset_to(key))
+            if self._reset_to is not None:
+                self._put(key, self._reset_to(key))
+            self._drafts[key].reset(self.value(key))
         finally:
             self._updating = False
 
@@ -504,18 +474,14 @@ class SettingsForm(QWidget):
             if (
                 self._mode is SettingsMode.DEFAULTS
                 and not self.is_enabled(key)
-                and draft.intent is not EditIntent.RESET
+                and not draft.is_reset
             ):
                 continue
-            change = draft.result(
-                self.value(key),
+            result[key] = draft.result(
+                self._value_for_save(key),
                 self._reset_to(key),
                 self._mode,
-                is_default=self.is_default(key),
-                preserve=self.shows_stand_in(key),
             )
-            if change is not None:
-                result[key] = change
         return result
 
     def overridden_keys(self) -> set[str]:

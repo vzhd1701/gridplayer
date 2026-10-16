@@ -36,8 +36,8 @@ class SettingField:
     # why it can't be changed on this system, or None when it can: greyed out
     # with the reason for a tooltip (an empty one gives none), never saved
     unavailable: Callable[[], str | None] | None = None
-    # what is shown for a stored value that can't be shown as it is; a value
-    # shown that way is left as it is stored, see SettingsForm.shows_stand_in
+    # what is shown for a stored value that can't be shown as it is;
+    # the draft preserves the original until an edit or reset
     to_editor: Callable | None = None
 
 

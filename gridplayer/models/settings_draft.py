@@ -12,7 +12,11 @@ class SettingsMode(Enum):
 class EditIntent(Enum):
     UNCHANGED = auto()
     SET = auto()
-    RESET = auto()
+
+
+@dataclass(frozen=True)
+class ResetIntent:
+    displayed: object
 
 
 @dataclass(frozen=True)
@@ -33,7 +37,11 @@ class FieldDraft:
     original: object = None
     initial_display: object = None
     original_override: bool = False
-    intent: EditIntent = EditIntent.UNCHANGED
+    intent: EditIntent | ResetIntent = EditIntent.UNCHANGED
+
+    @property
+    def is_reset(self) -> bool:
+        return isinstance(self.intent, ResetIntent)
 
     @property
     def is_overridden(self) -> bool:
@@ -44,20 +52,28 @@ class FieldDraft:
     def edit(self):
         self.intent = EditIntent.SET
 
-    def reset(self):
-        self.intent = EditIntent.RESET
+    def reset(self, displayed):
+        self.intent = ResetIntent(displayed)
+
+    def value_for_save(self, displayed, default, *, preserve_original: bool = True):
+        if isinstance(self.intent, ResetIntent) and displayed == self.intent.displayed:
+            return default
+        if (
+            preserve_original
+            and self.intent is EditIntent.UNCHANGED
+            and displayed == self.initial_display
+        ):
+            return self.original
+        return displayed
 
     def result(
         self,
         value,
         default,
         mode: SettingsMode,
-        *,
-        is_default: bool,
-        preserve: bool,
-    ) -> SetValue | ResetValue | None:
+    ) -> SetValue | ResetValue:
         if mode is SettingsMode.OVERRIDES:
             return SetValue(value) if self.is_overridden or value != default else RESET
-        if is_default:
+        if value == default:
             return RESET
-        return None if preserve else SetValue(value)
+        return SetValue(value)

@@ -78,6 +78,8 @@ class Editor:
     grows = False
     # takes the page: a list or a table, with no label and nothing beside it
     fills = False
+    # An unedited fallback or rounding does not replace the stored value.
+    preserve_original = True
 
     def __init__(self, spec: SettingField):
         self.spec = spec
@@ -123,11 +125,6 @@ class Editor:
     def value(self):
         raise NotImplementedError
 
-    def normalize(self, value):
-        """The value as this editor would give it back."""
-
-        return value
-
     def means_default(self) -> bool:
         """Shows something that is saved as the default, whatever that is."""
 
@@ -167,9 +164,6 @@ class _CheckboxEditor(Editor):
     def value(self):
         return self.widget.isChecked()
 
-    def normalize(self, value):
-        return bool(value)
-
 
 class _ComboEditor(Editor):
     spec: ComboField
@@ -190,9 +184,6 @@ class _ComboEditor(Editor):
 
     def value(self):
         return self.widget.currentData()
-
-    def normalize(self, value):
-        return self.widget.itemData(combo_index(self.widget, value))
 
 
 class _TextEditor(Editor):
@@ -217,9 +208,6 @@ class _TextEditor(Editor):
 
     def value(self):
         return self.widget.text()
-
-    def normalize(self, value):
-        return str(value or "")
 
     def means_default(self):
         # a file name has to come from somewhere, and the like
@@ -294,9 +282,6 @@ class _SpinEditor(Editor):
     def value(self):
         return self.widget.value()
 
-    def normalize(self, value):
-        return max(self.spec.minimum, min(self.spec.maximum, int(value)))
-
 
 class _FloatSpinEditor(_SpinEditor):
     spec: FloatSpinField
@@ -310,10 +295,6 @@ class _FloatSpinEditor(_SpinEditor):
 
     def set_value(self, value):
         self.widget.setValue(float(value))
-
-    def normalize(self, value):
-        value = max(self.spec.minimum, min(self.spec.maximum, float(value)))
-        return round(value, self.spec.decimals)
 
 
 class _CropEditor(Editor):
@@ -345,12 +326,11 @@ class _ColorEditor(Editor):
     def value(self):
         return self.widget.color.name(QColor.HexRgb)
 
-    def normalize(self, value):
-        return QColor(str(value)).name(QColor.HexRgb)
-
 
 class _LanguageEditor(Editor):
     fills = True
+    # Retired languages follow the current system default on save.
+    preserve_original = False
 
     def _make_widget(self):
         widget = LanguageList()

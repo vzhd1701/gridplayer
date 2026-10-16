@@ -318,6 +318,60 @@ def test_settings_reset_forgets_the_setting(settings):
 class TestThePlaylistSettings:
     """There a reset goes back to the global settings, not out of the box."""
 
+    @pytest.mark.parametrize("overridden", [False, True])
+    def test_rounding_does_not_change_an_untouched_value(
+        self, settings, monkeypatch, overridden
+    ):
+        from gridplayer.dialogs import playlist_settings
+        from gridplayer.models.grid_state import GridState
+
+        key = "video_defaults/scale"
+        settings.set(key, 1.05)
+        monkeypatch.setattr(playlist_settings, "Settings", lambda: settings)
+        overrides = {key: 1.15} if overridden else {}
+        dialog = playlist_settings.PlaylistSettingsDialog(overrides, GridState())
+
+        result = dialog.result_overrides()
+
+        if overridden:
+            assert result[key] == 1.15
+        else:
+            assert key not in result
+
+    @pytest.mark.parametrize("global_scale", [1.05, 1.15, 1.25, 1.35])
+    def test_reset_restores_inheritance_despite_rounding(
+        self, settings, monkeypatch, global_scale
+    ):
+        from gridplayer.dialogs import playlist_settings
+        from gridplayer.models.grid_state import GridState
+
+        key = "video_defaults/scale"
+        settings.set(key, global_scale)
+        monkeypatch.setattr(playlist_settings, "Settings", lambda: settings)
+        dialog = playlist_settings.PlaylistSettingsDialog({key: 2.0}, GridState())
+
+        dialog._video_form.reset(key)
+
+        assert not dialog._video_form.is_modified(key)
+        assert key not in dialog.result_overrides()
+
+    def test_editing_back_to_the_displayed_value_creates_an_override(
+        self, settings, monkeypatch
+    ):
+        from gridplayer.dialogs import playlist_settings
+        from gridplayer.models.grid_state import GridState
+
+        key = "video_defaults/scale"
+        settings.set(key, 1.05)
+        monkeypatch.setattr(playlist_settings, "Settings", lambda: settings)
+        dialog = playlist_settings.PlaylistSettingsDialog({}, GridState())
+        spin = dialog._video_form.widget(key)
+        shown = spin.value()
+        spin.setValue(2.0)
+        spin.setValue(shown)
+
+        assert dialog.result_overrides()[key] == shown
+
     def test_a_field_goes_back_to_the_global_setting(self, settings, monkeypatch):
         from gridplayer.dialogs import playlist_settings
         from gridplayer.models.grid_state import GridState
@@ -346,6 +400,57 @@ class TestALanguageNoLongerShipped:
         dialog.save_settings()
 
         assert not settings.settings.contains("player/language")
+
+
+class TestPreservingValues:
+    @pytest.mark.parametrize(
+        ("key", "stored"),
+        [
+            ("subtitles/font", "GridPlayer Missing Test Font"),
+            ("video_defaults/stream_quality", "540p"),
+            ("video_defaults/scale", 1.05),
+        ],
+    )
+    def test_an_untouched_projection_preserves_the_stored_value(
+        self, settings, make_dialog, key, stored
+    ):
+        settings.set(key, stored)
+        dialog = make_dialog()
+
+        dialog.accept()
+
+        assert settings.get(key) == stored
+
+    @pytest.mark.parametrize(
+        ("key", "stored"),
+        [
+            ("subtitles/font", "GridPlayer Missing Test Font"),
+            ("video_defaults/stream_quality", "540p"),
+            ("video_defaults/scale", 1.05),
+        ],
+    )
+    def test_a_projection_can_be_explicitly_reset(
+        self, settings, make_dialog, key, stored
+    ):
+        settings.set(key, stored)
+        dialog = make_dialog()
+
+        dialog.form_of(key).reset(key)
+        dialog.accept()
+
+        assert not settings.settings.contains(key)
+
+    def test_an_edit_replaces_an_unavailable_quality(self, settings, make_dialog):
+        key = "video_defaults/stream_quality"
+        settings.set(key, "540p")
+        dialog = make_dialog()
+        combo = dialog.widget(key)
+        _choose(combo, "best")
+        _choose(combo, "auto")
+
+        dialog.accept()
+
+        assert settings.get(key) == "auto"
 
 
 class TestWhatAnEditReads:
