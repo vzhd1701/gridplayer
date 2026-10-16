@@ -12,6 +12,7 @@ from PyQt5.QtWidgets import QApplication, QWidget
 from gridplayer.dialogs import settings as settings_dialog
 from gridplayer.dialogs.settings import SettingsDialog
 from gridplayer.models.keymap_overrides import KeymapOverrides
+from gridplayer.models.settings_draft import SettingsMode
 from gridplayer.params.settings_fields import general as general_fields
 from gridplayer.params.settings_pages import PAGES
 from gridplayer.params.static import ProxyMode, VideoAspect
@@ -371,7 +372,7 @@ class TestWhatAnEditReads:
         SettingsForm(
             page.items,
             reset_to=default_value,
-            track_edits=False,
+            mode=SettingsMode.DEFAULTS,
             slots=dict.fromkeys(("youtube_test", "wildcard_help"), QWidget),
         )
 

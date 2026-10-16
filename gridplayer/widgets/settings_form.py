@@ -11,6 +11,13 @@ from PyQt5.QtWidgets import (
     QWidget,
 )
 
+from gridplayer.models.settings_draft import (
+    EditIntent,
+    FieldDraft,
+    ResetValue,
+    SettingsMode,
+    SetValue,
+)
 from gridplayer.params.settings_fields.kinds import (
     Indented,
     Note,
@@ -54,13 +61,13 @@ class SettingsForm(QWidget):
         items,
         *,
         reset_to: Callable | None = None,
-        track_edits: bool = True,
+        mode: SettingsMode = SettingsMode.OVERRIDES,
         slots: Mapping[str, Callable[[], QWidget]] | None = None,
     ):
         super().__init__()
 
         self._reset_to = reset_to
-        self._track_edits = track_edits
+        self._mode = mode
         self._slots = slots or {}
 
         self._editors: dict[str, Editor] = {}
@@ -71,13 +78,9 @@ class SettingsForm(QWidget):
         self._hidden: set[str] = set()
         # out of reach for now, by the dialog's say
         self._locked: set[str] = set()
-        self._overridden: set[str] = set()
+        self._drafts: dict[str, FieldDraft] = {}
         # as of the last sync
         self._modified: set[str] = set()
-        # what each editor was given, as it is stored (or will be, once reset)
-        self._stored: dict = {}
-        # reset since the values were set, to be saved even if greyed out
-        self._reset_keys: set[str] = set()
         self._updating = False
         self._fills = False
 
@@ -193,6 +196,7 @@ class SettingsForm(QWidget):
         editor.changed.connect(lambda *_, key=key: self._on_edited(key))
 
         self._editors[key] = editor
+        self._drafts[key] = FieldDraft()
 
         if editor.is_checkbox:
             column_widget = editor.widget if is_in_row else None
@@ -344,8 +348,7 @@ class SettingsForm(QWidget):
         if self._updating:
             return
 
-        self._reset_keys.discard(key)
-        self._overridden.add(key)
+        self._drafts[key].edit()
         self._refresh((key,))
 
     def _shown(self, key, value):
@@ -382,9 +385,12 @@ class SettingsForm(QWidget):
             for key in self._editors:
                 if key in values:
                     self._put(key, values[key])
-            self._stored = {key: values[key] for key in self._editors if key in values}
-            self._overridden = set(overridden or [])
-            self._reset_keys = set()
+            self._drafts = {
+                key: FieldDraft(
+                    values.get(key), editor.value(), key in (overridden or ())
+                )
+                for key, editor in self._editors.items()
+            }
         finally:
             self._updating = False
         self._sync()
@@ -407,7 +413,7 @@ class SettingsForm(QWidget):
             return True
 
         if self.shows_stand_in(key):
-            return self._stored[key] == self._reset_to(key)
+            return self._projection_source(key) == self._reset_to(key)
 
         return editor.value() == self.default_shown(key)
 
@@ -420,16 +426,22 @@ class SettingsForm(QWidget):
         editor = self._editors[key]
         return (
             editor.spec.to_editor is not None
-            and key in self._stored
-            and editor.value() == self._shown(key, self._stored[key])
+            and self._projection_source(key) is not None
+            and editor.value() == self._shown(key, self._projection_source(key))
         )
+
+    def _projection_source(self, key):
+        draft = self._drafts[key]
+        if draft.intent is EditIntent.RESET:
+            return self._reset_to(key)
+        return draft.original
 
     def _is_modified(self, key):
         if self._out_of_reach(key):
             return False
 
-        if self._track_edits or self._reset_to is None:
-            return key in self._overridden
+        if self._mode is SettingsMode.OVERRIDES or self._reset_to is None:
+            return self._drafts[key].is_overridden
 
         return not self.is_default(key)
 
@@ -452,17 +464,14 @@ class SettingsForm(QWidget):
         self._refresh()
 
     def _reset_one(self, key):
-        self._overridden.discard(key)
-        self._reset_keys.add(key)
+        self._drafts[key].reset()
 
         if self._reset_to is None:
             return
 
-        self._stored[key] = self._reset_to(key)
-
         self._updating = True
         try:
-            self._put(key, self._stored[key])
+            self._put(key, self._reset_to(key))
         finally:
             self._updating = False
 
@@ -485,13 +494,29 @@ class SettingsForm(QWidget):
     def is_available(self, key: str) -> bool:
         return key in self._editors and key not in self._unavailable
 
-    def should_save(self, key: str) -> bool:
-        """A greyed out field is not one to save over, unless it was reset."""
+    def persistence_result(self) -> dict[str, SetValue | ResetValue]:
+        """Writes and removals; absent keys keep their stored values."""
 
-        if key not in self._editors or self._out_of_reach(key):
-            return False
-
-        return self.is_enabled(key) or key in self._reset_keys
+        result = {}
+        for key, draft in self._drafts.items():
+            if self._out_of_reach(key):
+                continue
+            if (
+                self._mode is SettingsMode.DEFAULTS
+                and not self.is_enabled(key)
+                and draft.intent is not EditIntent.RESET
+            ):
+                continue
+            change = draft.result(
+                self.value(key),
+                self._reset_to(key),
+                self._mode,
+                is_default=self.is_default(key),
+                preserve=self.shows_stand_in(key),
+            )
+            if change is not None:
+                result[key] = change
+        return result
 
     def overridden_keys(self) -> set[str]:
-        return set(self._overridden)
+        return {key for key, draft in self._drafts.items() if draft.is_overridden}

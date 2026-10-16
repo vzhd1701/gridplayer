@@ -5,6 +5,7 @@ from PyQt5.QtGui import QColor
 from PyQt5.QtWidgets import QApplication
 
 from gridplayer.models.playlist import Playlist
+from gridplayer.models.settings_draft import SettingsMode
 from gridplayer.models.video import Video
 from gridplayer.params.settings_fields.playlist import PLAYLIST_FIELDS
 from gridplayer.params.settings_fields.subtitles import SUBTITLE_STYLE_FIELDS
@@ -265,7 +266,7 @@ def test_settings_form_gives_back_every_default_it_is_given(fields):
     defaults = {
         spec.settings_key: _default_settings[spec.settings_key] for spec in fields
     }
-    form = SettingsForm(fields, reset_to=default_value, track_edits=False)
+    form = SettingsForm(fields, reset_to=default_value, mode=SettingsMode.DEFAULTS)
 
     form.set_values(defaults)
 

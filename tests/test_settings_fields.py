@@ -6,6 +6,7 @@ import pytest
 
 from gridplayer.models.grid_state import GridState
 from gridplayer.models.playlist import Playlist, PlaylistVideoDefaults
+from gridplayer.models.settings_draft import SettingsMode
 from gridplayer.params.settings_fields.kinds import (
     CheckboxField,
     FloatSpinField,
@@ -132,7 +133,7 @@ def test_out_of_the_box_nothing_is_marked_changed(page):
     form = SettingsForm(
         page.items,
         reset_to=default_value,
-        track_edits=False,
+        mode=SettingsMode.DEFAULTS,
         slots={name: lambda: None for name in _slots(page.items)},
     )
     form.set_values({key: default_value(key) for key in form.keys()})

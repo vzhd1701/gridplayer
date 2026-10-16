@@ -21,6 +21,7 @@ from PyQt5.QtWidgets import (
 
 from gridplayer.dialogs.checkup import CheckupDialog
 from gridplayer.dialogs.messagebox import QCustomMessageBox
+from gridplayer.models.settings_draft import SettingsMode, SetValue
 from gridplayer.params import env
 from gridplayer.params.settings_fields.kinds import Page
 from gridplayer.params.settings_pages import PAGES
@@ -207,7 +208,7 @@ class SettingsDialog(QDialog):
         form = SettingsForm(
             page.items,
             reset_to=default_value,
-            track_edits=False,
+            mode=SettingsMode.DEFAULTS,
             slots=slots,
         )
 
@@ -489,27 +490,13 @@ class SettingsDialog(QDialog):
 
     def save_settings(self):
         for form in self.forms.values():
-            for key in form.keys():
-                if form.should_save(key):
-                    self._save(form, key)
+            for key, change in form.persistence_result().items():
+                if isinstance(change, SetValue):
+                    Settings().set(key, change.value)
+                else:
+                    Settings().reset(key)
 
         self.save_cookies()
-
-    @staticmethod
-    def _save(form, key):
-        """What the page has, as the default where it is the default.
-
-        Saved as such, a setting nobody changed follows the default if a
-        later version changes it.
-        """
-
-        if form.is_default(key):
-            Settings().reset(key)
-        # where Hardware can't run, the dialog shows its Software twin;
-        # saving that back would lose the Hardware pick for the sessions
-        # that can run it
-        elif not form.shows_stand_in(key):
-            Settings().set(key, form.value(key))
 
     def save_cookies(self):
         """Put the jar the page is showing on the disk.

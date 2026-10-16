@@ -8,6 +8,7 @@ from PyQt5.QtWidgets import (
 )
 
 from gridplayer.models.grid_state import GridState
+from gridplayer.models.settings_draft import SetValue
 from gridplayer.params.settings_fields.playlist import (
     GRID_STATE_ATTR,
     PLAYLIST_FIELDS,
@@ -99,29 +100,15 @@ class PlaylistSettingsDialog(QDialog):
 
     def result_overrides(self) -> dict:
         result = {}
-        playlist_values = self._playlist_form.values()
-        video_values = self._video_form.values()
-        playlist_over = self._playlist_form.overridden_keys()
-        video_over = self._video_form.overridden_keys()
-
-        for spec in PLAYLIST_FIELDS:
-            key = spec.settings_key
-            value = playlist_values[key]
-            if spec.grid_attr:
-                if key in playlist_over and self._playlist_form.is_enabled(key):
-                    result[key] = value
-                continue
-            if spec.attr is None:
-                continue
-            if key in playlist_over or value != Settings().get(key):
-                result[key] = value
-
-        for spec in VIDEO_FIELDS:
-            key = spec.settings_key
-            value = video_values[key]
-            if key in video_over or value != Settings().get(key):
-                result[key] = value
-
+        for form in (self._playlist_form, self._video_form):
+            overridden = form.overridden_keys()
+            for key, change in form.persistence_result().items():
+                if key in GRID_STATE_ATTR and (
+                    key not in overridden or not form.is_enabled(key)
+                ):
+                    continue
+                if isinstance(change, SetValue):
+                    result[key] = change.value
         return result
 
     def result_grid_state(self, current: GridState) -> GridState:
