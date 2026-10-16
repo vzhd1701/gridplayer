@@ -30,6 +30,13 @@ from tests.settings_layout import layout_keys
 
 ALL_PAGES = [page for group in PAGES for page in group.pages]
 
+INTERNAL_SETTINGS = {
+    "last_playlist",
+    "player/tray_note_shown",
+    "recent_list_videos",
+    "recent_list_playlists",
+}
+
 SHARED_PAGES = pytest.mark.parametrize(
     ("fields", "page"),
     [
@@ -63,8 +70,8 @@ def test_every_setting_is_shown_once():
     assert sorted(shown) == sorted(FIELDS)
 
 
-def test_every_setting_has_a_default():
-    assert set(FIELDS) <= set(_default_settings)
+def test_fields_cover_every_editable_default():
+    assert set(FIELDS) == set(_default_settings) - INTERNAL_SETTINGS
 
 
 def test_every_page_has_an_id_of_its_own():
@@ -91,11 +98,10 @@ def test_a_text_field_holds_text():
 
 
 @SHARED_PAGES
-def test_the_shared_pages_show_their_fields_in_order(fields, page):
-    """The Playlist Settings dialog goes by the tuple, the Settings dialog
-    by the page; they show the same thing."""
+def test_the_shared_pages_show_exactly_their_fields(fields, page):
+    """Both dialogs use the shared pages, which alone own display order."""
 
-    assert list(layout_keys(page)) == [spec.settings_key for spec in fields]
+    assert sorted(layout_keys(page)) == sorted(spec.settings_key for spec in fields)
 
 
 @EVERY_PAGE
