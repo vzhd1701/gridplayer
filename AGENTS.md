@@ -49,6 +49,8 @@ than writing a harness of your own.
   test-real-app` (`pytest -m real_app`), and a job of their own in CI. A plain
   `uv run pytest` leaves them out. A bug one shows goes in `KNOWN_BUGS` in
   `test_scenarios.py` until it is fixed.
+* Each run sets `GP_USER_DATA_DIR` under its output folder, so settings,
+  cookies and caches are isolated on Windows as well as Linux and macOS.
 * What the driver already takes care of, should you go around it:
   * The app picks the xcb platform itself, whatever `QT_QPA_PLATFORM` says;
     set `gridplayer.params.env.QT_PLATFORM`.
@@ -124,9 +126,31 @@ page; `tests/test_settings_fields.py` checks the three agree.
 `widgets/settings_form.py` builds a page; `widgets/settings_editors.py` has
 an editor for each kind of field.
 
+Only the page owns display order. Field-definition tuples can be reordered
+without moving controls. The registry tests require exact coverage of
+editable defaults, excluding the explicitly listed internal settings.
+
+`params/settings_bindings.py` maps setting keys to playlist, video-default
+and grid attributes. It has no presentation imports. A setting saved with a
+playlist also needs a binding and a model field. Serialization and session
+settings use these mappings, never the UI field definitions.
+
+`models/settings_draft.py` owns each field's original stored value, initial
+display and pending edit or reset. `SettingsForm.persistence_result()` is
+the saving contract for both dialogs: `SetValue` writes a value,
+`ResetValue` removes it, and an absent key leaves storage alone. Availability
+and layout belong to the form; dialogs apply the resulting operations.
+
 Reset goes back to the factory default in the Settings dialog and to the
 global setting in the Playlist Settings dialog. A setting saved at its
 default is removed from the ini (`Settings().reset`), not written.
+
+An untouched fallback, rounded or clamped display preserves its original
+value. A reset captures the editor's actual display and restores the raw
+default, even if it cannot be displayed exactly. A later edit supersedes
+the reset. Playlist edits create explicit overrides, including an edit back
+to the inherited display; a reset removes the override. Retired languages
+are deliberately normalized to the current default instead of preserved.
 
 In tests, reach a setting's widget with `dialog.widget("section/key")`, a
 page with `dialog.pages["id"]` and its form with `dialog.forms["id"]`.

@@ -374,6 +374,7 @@ def start(media: Media, out: Path, settings: dict) -> Driver:
     own under out, and these settings over the defaults above."""
 
     home = out / "home"
+    os.environ["GP_USER_DATA_DIR"] = str(home / "data")
     os.environ["XDG_DATA_HOME"] = str(home / "data")
     os.environ["XDG_CONFIG_HOME"] = str(home / "config")
     os.environ["XDG_CACHE_HOME"] = str(home / "cache")
