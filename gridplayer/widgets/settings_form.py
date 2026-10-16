@@ -344,6 +344,7 @@ class SettingsForm(QWidget):
         if self._updating:
             return
 
+        self._reset_keys.discard(key)
         self._overridden.add(key)
         self._refresh((key,))
 

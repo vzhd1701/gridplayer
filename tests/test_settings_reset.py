@@ -125,6 +125,23 @@ class TestWhatIsMarked:
 
 
 class TestResettingAField:
+    @pytest.mark.parametrize("reset_first", [False, True])
+    def test_an_edit_supersedes_a_reset_before_disabling(
+        self, settings, make_dialog, reset_first
+    ):
+        settings.set("network/proxy_mode", ProxyMode.CUSTOM)
+        settings.set("network/proxy_url", "http://old:8080")
+        dialog = make_dialog()
+
+        if reset_first:
+            _reset_button(dialog, "network/proxy_url").click()
+        dialog.widget("network/proxy_url").setText("http://new:8080")
+        _choose(dialog.widget("network/proxy_mode"), ProxyMode.SYSTEM)
+        dialog.accept()
+
+        assert settings.get("network/proxy_mode") is ProxyMode.SYSTEM
+        assert settings.get("network/proxy_url") == "http://old:8080"
+
     def test_it_goes_back_to_the_factory_default(self, settings, make_dialog):
         settings.set("video_defaults/aspect", VideoAspect.STRETCH)
         dialog = make_dialog()
