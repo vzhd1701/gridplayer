@@ -167,16 +167,25 @@ class SectionLinks(QWidget):
     def _follow(self, *_):
         bar = self._scroll.verticalScrollBar()
 
-        if self._picked is not None and bar.value() >= bar.maximum():
+        shown = [
+            index
+            for index, section in enumerate(self._sections)
+            if section.isVisibleTo(self._scroll)
+        ]
+        is_at_end = bar.maximum() > 0 and bar.value() >= bar.maximum()
+
+        if self._picked is not None and is_at_end:
             # down at the end, the one clicked rather than one above it
             current = self._picked
+        elif is_at_end and shown:
+            # the last can't reach the top, but it is the one being read
+            self._picked = None
+            current = shown[-1]
         else:
             self._picked = None
             current = 0
-            for index, section in enumerate(self._sections):
-                if section.isVisibleTo(self._scroll) and (
-                    self._top_of(section) <= bar.value()
-                ):
+            for index in shown:
+                if self._top_of(self._sections[index]) <= bar.value():
                     current = index
 
         self._group.button(current).setChecked(True)

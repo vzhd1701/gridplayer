@@ -79,3 +79,15 @@ def test_scrolling_moves_the_mark(dialog):
     scroll.verticalScrollBar().setValue(top + 5)
 
     assert _checked(links) == [title]
+
+
+def test_at_the_end_of_the_page_the_last_one_is_marked(dialog):
+    """The last section can't be scrolled to the top, but down at the end
+    it is the one being read."""
+
+    links = dialog.section_links["playlist"]
+    bar = links._scroll.verticalScrollBar()
+
+    bar.setValue(bar.maximum())
+
+    assert _checked(links) == [links.links[-1].text()]

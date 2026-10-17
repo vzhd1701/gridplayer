@@ -340,25 +340,29 @@ PAGES = (
             "network",
             translate("SettingsDialog", "Network"),
             Section(
-                translate("SettingsDialog", "Connection"),
+                translate("SettingsDialog", "Proxy"),
                 "network/proxy_mode",
                 Indented("network/proxy_url"),
+            ),
+            Section(
+                translate("SettingsDialog", "Connection"),
                 "network/timeout",
                 "network/user_agent",
                 "network/force_ipv4",
+                Slot("network_test"),
+            ),
+            Section(
+                translate("SettingsDialog", "Security"),
                 "network/verify_tls",
                 "network/allow_http_in_playlists",
-                Slot("network_test"),
-                Note(
-                    translate(
-                        "SettingsDialog",
-                        "These settings apply to http and https links. Other links,"
-                        " such as rtsp and rtmp, are opened by the player itself,"
-                        " and only the user agent applies to them.",
-                    )
-                ),
             ),
             icon="page-network",
+            note=translate(
+                "SettingsDialog",
+                "These settings apply to http and https links. Other links,"
+                " such as rtsp and rtmp, are opened by the player itself,"
+                " and only the user agent applies to them.",
+            ),
         ),
     ),
     Group(

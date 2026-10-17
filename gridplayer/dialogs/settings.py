@@ -58,6 +58,8 @@ SECTION_LINKS_MIN = 5
 
 PAGE_TITLE_PX = 16
 SCROLL_BAR_GAP = 8
+# under the last card, for the end of the page to look like an end
+PAGE_END_GAP = 12
 # the size the index shows the page's icon at, so it is as sharp here
 PAGE_TITLE_ICON_PX = 24
 NOTE_ICON_PX = 16
@@ -282,8 +284,8 @@ class SettingsDialog(QDialog):
         self.section_page.addWidget(widget)
 
         if page.scroll:
-            # clear of the scroll bar
-            content.layout().setContentsMargins(0, 0, SCROLL_BAR_GAP, 0)
+            # clear of the scroll bar, and room under the end
+            content.layout().setContentsMargins(0, 0, SCROLL_BAR_GAP, PAGE_END_GAP)
             scroll = PageScrollArea()
             layout.addWidget(scroll, 1)
             scroll.setWidget(content)
