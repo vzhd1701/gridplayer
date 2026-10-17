@@ -1517,6 +1517,65 @@ class VideoBlock(QWidget):
 
         self._take_snapshot_params(snapshot)
 
+    def adopt_defaults(self, update: dict):
+        """Settings changed for new videos made this one's too, as asked in
+        the Playlist window: by the field of its video, the values, checked.
+
+        What shows is changed as it plays; what is only read when the video
+        is opened has it opened again; the rest is read when next needed.
+        """
+
+        params = self.video_params
+        new = params.model_copy(update=update)
+
+        if "color" in update:
+            self.color = new.color.as_hex()
+
+        if not self.is_video_initialized:
+            self.video_params = new
+            return
+
+        if (
+            is_reopen_needed(params, new)
+            or new.transform != params.transform
+            or (
+                self.video_tracks
+                and is_deinterlace_reload_needed(
+                    params, new.deinterlace, new.deinterlace_mode
+                )
+            )
+        ):
+            self.video_params = new
+            self.reload()
+            return
+
+        live = {
+            "aspect_mode": self.set_aspect,
+            "is_muted": self.audio.set_muted,
+            "volume": self.audio.set_volume,
+            "audio_channel_mode": self.audio.set_channel_mode,
+            "audio_selection": self.audio.restore_selection,
+            "subtitle_selection": self.subtitles.restore_selection,
+            "scale": lambda scale: self.view.set_scale(scale, is_silent=True),
+            "is_zoom_to_cursor": self.view.set_zoom_to_cursor,
+            "crop": lambda crop: self.view.set_crop(crop, is_silent=True),
+            "anchor": self.view.set_anchor,
+            "is_shift_past_edges": self.view.set_shift_past_edges,
+            "rate": lambda rate: self.set_rate(rate, is_silent=True),
+            "stream_quality": self.stream.switch_quality,
+            "auto_reload_timer_min": self.stream.set_reload_timer,
+        }
+
+        if {"deinterlace", "deinterlace_mode"} & update.keys():
+            self.set_deinterlace_params(new.deinterlace, new.deinterlace_mode)
+
+        for field in update:
+            if field in live:
+                live[field](getattr(new, field))
+
+            # what a setter turned away, as one with no tracks to set it on
+            setattr(self.video_params, field, getattr(new, field))
+
     def _take_snapshot_params(self, snapshot: Video):
         """The snapshot's video in place of the cell's, and named as it
         was then."""

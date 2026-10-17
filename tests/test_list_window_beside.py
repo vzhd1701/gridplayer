@@ -10,7 +10,6 @@ from PyQt5.QtGui import QColor
 from PyQt5.QtWidgets import QApplication, QWidget
 
 from gridplayer.models.media_list import ListItem, MediaList
-from gridplayer.player.managers import lists as lists_module
 from gridplayer.player.managers.lists import ListsManager
 from gridplayer.settings import Settings
 from gridplayer.widgets.video_overlay import OverlayBlock
@@ -219,15 +218,18 @@ def test_the_next_opened_where_the_last_one_was(manager):
     assert manager._window.geometry() == place
 
 
-def test_the_lists_of_the_playlist_wait_for_the_answer(manager, answer, mocker):
+def test_the_playlist_window_waits_for_the_answer(manager, answer):
     answer.return_value = None
     first = _edited(manager, _a_list(manager))
-    viewer = mocker.patch.object(lists_module, "PlaylistListsDialog")
 
+    assert manager.let_go_of_list_window() is False
+    assert manager._window is first
+
+
+def test_the_lists_of_the_playlist_are_a_page_of_the_playlist_window(manager):
     manager.cmd_lists_in_playlist()
 
-    viewer.assert_not_called()
-    assert manager._window is first
+    manager._ctx.commands.playlist_settings.assert_called_once_with("lists")
 
 
 def test_the_mark_gone_once_closed(manager):
@@ -251,17 +253,15 @@ def test_a_closing_cell_is_left_alone(manager):
     assert cell.marks == [True]
 
 
-def test_closed_for_the_lists_of_the_playlist(manager, answer, mocker):
+def test_closed_for_the_playlist_window(manager, answer):
     _cell(manager, _a_list(manager))
     manager.cmd_manage_list()
     window = manager._window
-    viewer = mocker.patch.object(lists_module, "PlaylistListsDialog")
 
-    manager.cmd_lists_in_playlist()
+    assert manager.let_go_of_list_window() is True
 
     assert manager._window is None
     assert window.isHidden()
-    viewer.return_value.exec_.assert_called_once()
 
 
 class TestTheTag:

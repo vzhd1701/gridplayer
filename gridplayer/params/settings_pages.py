@@ -4,7 +4,7 @@ A setting is named here by its key and defined in gridplayer.params.settings_fie
 the way a menu names its actions in gridplayer.params.menu. A Slot is a place the
 dialog fills itself, for what isn't a setting.
 
-The Playlist and Video pages are the Playlist Settings dialog's two tabs too.
+The Playlist and Video pages are the Playlist window's first two pages too.
 """
 
 from gridplayer.params.settings_fields.general import tray_text
@@ -277,7 +277,7 @@ PAGES = (
         ),
         Page(
             "video",
-            translate("SettingsDialog", "Video"),
+            translate("SettingsDialog", "New Videos"),
             *VIDEO_PAGE,
             icon="page-video",
         ),

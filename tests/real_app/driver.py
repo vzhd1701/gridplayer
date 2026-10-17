@@ -199,9 +199,12 @@ class Driver:
         from PyQt5.QtCore import QTimer
 
         seen = []
+        # those open already, as one opened from another is: the new one is
+        # not always last, the order Qt keeps them in being its own
+        before = set(self.windows())
 
         def look():
-            windows = self.windows()
+            windows = [w for w in self.windows() if w not in before]
             if not windows:
                 QTimer.singleShot(100, look)
                 return

@@ -19,7 +19,7 @@ from gridplayer.widgets.settings_page_scroll_area import PageScrollArea
 # the index as it is meant to read, group heading by group heading
 SECTIONS = (
     ("General", ("Player", "Subtitle Style", "Shortcuts", "Language")),
-    ("Defaults", ("Playlist", "Video")),
+    ("Defaults", ("Playlist", "New Videos")),
     ("Streaming", ("Link Resolution", "SponsorBlock", "Cookies", "Network")),
     ("Advanced", ("Video Decoder", "Logging")),
 )
@@ -32,7 +32,7 @@ PAGES = {
     "Shortcuts": "page_shortcuts",
     "Language": "page_language",
     "Playlist": "page_playlist",
-    "Video": "page_video",
+    "New Videos": "page_video",
     "Link Resolution": "page_resolution",
     "SponsorBlock": "page_sponsorblock",
     "Cookies": "page_cookies",

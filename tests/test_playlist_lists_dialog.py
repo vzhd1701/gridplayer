@@ -7,7 +7,7 @@ from types import SimpleNamespace
 import pytest
 from PyQt5.QtCore import QSettings
 
-from gridplayer.dialogs.playlist_lists import Column, PlaylistListsDialog
+from gridplayer.dialogs.playlist_lists import Column, PlaylistListsPage
 from gridplayer.models.media_list import ListItem, ListSource, MediaList
 from gridplayer.params.static import ListSourceKind
 from gridplayer.player.managers.lists import MediaListsRegistry
@@ -62,7 +62,7 @@ def make_dialog(registry, lists):
         cells.append(_cell(list_id))
 
     def _make():
-        dialog = PlaylistListsDialog(
+        dialog = PlaylistListsPage(
             registry=registry,
             cells=lambda: cells,
             edit_list=calls.edited.append,
@@ -75,7 +75,7 @@ def make_dialog(registry, lists):
     yield _make
 
     for dialog in made:
-        dialog.done(0)
+        dialog.close_down()
         dialog.deleteLater()
 
 
@@ -131,7 +131,7 @@ class TestRemoving:
         dialog = make_dialog()
 
         dialog._remove_unused()
-        dialog.reject()
+        dialog.cancel()
 
         assert registry.get(unused.id) == unused
 
@@ -140,7 +140,7 @@ class TestRemoving:
         dialog = make_dialog()
 
         dialog._remove_unused()
-        dialog.reject()
+        dialog.cancel()
 
         # left, it goes when the playlist is saved, as it would have
         assert registry.is_taken_up(unused.id)
@@ -166,7 +166,7 @@ class TestDuplicating:
         _pick(dialog, 0)
 
         dialog._duplicate()
-        dialog.reject()
+        dialog.cancel()
 
         assert len(registry.lists()) == 2
 
@@ -176,7 +176,7 @@ class TestDuplicating:
         dialog._duplicate()
 
         dialog._open()
-        dialog.reject()
+        dialog.cancel()
 
         assert registry.lists()[-1].name == "Season (copy)"
 

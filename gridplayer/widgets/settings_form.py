@@ -585,9 +585,7 @@ class SettingsForm(QWidget):
         """Rows shown just now, scrolled to, so that they are not missed
         below the one that brought them."""
 
-        scroll = self.parentWidget()
-        while scroll is not None and not isinstance(scroll, QScrollArea):
-            scroll = scroll.parentWidget()
+        scroll = self._scroll_area()
         if scroll is None or not rows:
             return
 
@@ -602,6 +600,26 @@ class SettingsForm(QWidget):
             # the last of them in view, but never the first out of it
             step = min(bottom - viewport.height(), max(top, 0))
             _scroll_by(bar, step)
+
+    def _scroll_area(self) -> QScrollArea | None:
+        scroll = self.parentWidget()
+        while scroll is not None and not isinstance(scroll, QScrollArea):
+            scroll = scroll.parentWidget()
+        return scroll
+
+    def point_to(self, key: str):
+        """A setting's row scrolled into view, and its field given the focus,
+        for one asked about elsewhere."""
+
+        row = self._rows[key]
+
+        scroll = self._scroll_area()
+        if scroll is not None:
+            # in the middle, where the eye is, rather than at an edge
+            middle = (scroll.viewport().height() - row.height()) // 2
+            scroll.ensureWidgetVisible(row, 0, max(middle, REVEAL_MARGIN))
+
+        self._editors[key].widget.setFocus(Qt.OtherFocusReason)
 
     @staticmethod
     def _settle():
@@ -727,6 +745,16 @@ class SettingsForm(QWidget):
             self._updating = False
         self._sync()
 
+    def set_mode(self, mode: SettingsMode):
+        """What counts as changed from now on: a value of the playlist's
+        own, or one other than a reset gives."""
+
+        if mode is self._mode:
+            return
+
+        self._mode = mode
+        self._refresh()
+
     def is_default(self, key: str) -> bool:
         """Has the stored value a reset would give, before presentation loss."""
 
@@ -821,6 +849,15 @@ class SettingsForm(QWidget):
                 self._mode,
             )
         return result
+
+    def saved_values(self) -> dict:
+        """Every value as it would be saved, changed or not."""
+
+        return {
+            key: self._value_for_save(key)
+            for key in self._editors
+            if not self._out_of_reach(key)
+        }
 
     def overridden_keys(self) -> set[str]:
         return {key for key, draft in self._drafts.items() if draft.is_overridden}

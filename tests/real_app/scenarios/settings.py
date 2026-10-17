@@ -13,11 +13,10 @@ SETTINGS = {
 def scenario(d):
     from pathlib import Path
 
-    from PyQt5.QtWidgets import QTabWidget
-
     from gridplayer.params.static import ProxyMode
     from gridplayer.playlist_settings import PlaylistSettings
     from gridplayer.settings import Settings
+    from gridplayer.widgets.settings_page_scroll_area import PageScrollArea
 
     store = Settings()
     session = PlaylistSettings()
@@ -101,12 +100,21 @@ def scenario(d):
     )
 
     def video_form(dialog):
-        tabs = dialog.findChild(QTabWidget)
-        tabs.setCurrentIndex(1)
+        dialog.show_page("video")
         d.app.processEvents()
-        tabs.currentWidget().ensureWidgetVisible(dialog._video_form.widget(scale))
+        scroll = dialog.pages["video"].findChild(PageScrollArea)
+        scroll.ensureWidgetVisible(dialog._video_form.widget(scale))
         d.app.processEvents()
         return dialog._video_form
+
+    def accept_for_new_videos_only(dialog):
+        """OK, and the videos already here left as they are."""
+
+        def only_new(box):
+            (button,) = [b for b in box.buttons() if b.text() == "Only new"]
+            button.click()
+
+        d.through_modal(dialog.accept, "only_new", only_new)
 
     def cancel_playlist(dialog):
         video_form(dialog).widget(scale).setValue(2.0)
@@ -142,7 +150,7 @@ def scenario(d):
     def edit_playlist(dialog):
         video_form(dialog).widget(scale).setValue(2.0)
         d.shot("zoom_override", dialog)
-        dialog.accept()
+        accept_for_new_videos_only(dialog)
 
     d.through_modal(
         lambda: d.act(block, "Edit Playlist Settings"),
@@ -167,7 +175,7 @@ def scenario(d):
         form._reset_btns[scale].click()
         d.check("reset clears the override mark", not form.is_modified(scale))
         d.shot("zoom_reset", dialog)
-        dialog.accept()
+        accept_for_new_videos_only(dialog)
 
     d.through_modal(
         lambda: d.act(block, "Edit Playlist Settings"),

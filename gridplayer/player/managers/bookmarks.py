@@ -13,7 +13,7 @@ from PyQt5.QtCore import QObject, pyqtSignal
 from PyQt5.QtWidgets import QMessageBox
 
 from gridplayer.dialogs.messagebox import QCustomMessageBox
-from gridplayer.dialogs.playlist_bookmarks import PlaylistBookmarksDialog
+from gridplayer.dialogs.playlist_bookmarks import PlaylistBookmarksPage
 from gridplayer.models.file_bookmarks import FileBookmarks
 from gridplayer.player.managers.base import ManagerBase
 from gridplayer.playlist_settings import PlaylistSettings
@@ -312,6 +312,7 @@ class BookmarksManager(ManagerBase):
     def commands(self):
         return {
             "bookmarks_in_playlist": self.cmd_bookmarks_in_playlist,
+            "bookmarks_page": self.bookmarks_page,
             "is_bookmarks_shared": lambda: self._registry.is_shared,
             "toggle_bookmarks_shared": self.cmd_toggle_bookmarks_shared,
             "confirm_bookmarks_shared": self.confirm_bookmarks_shared,
@@ -356,15 +357,17 @@ class BookmarksManager(ManagerBase):
         return self._confirm_split()
 
     def cmd_bookmarks_in_playlist(self):
-        dialog = PlaylistBookmarksDialog(
+        self._ctx.commands.playlist_settings("bookmarks")
+
+    def bookmarks_page(self, window) -> PlaylistBookmarksPage:
+        """The Bookmarks page of the Playlist window."""
+
+        return PlaylistBookmarksPage(
             registry=self._registry,
             cells=self._cell_blocks,
             open_files=self._open_files,
-            parent=self.parent(),
+            parent=window,
         )
-
-        dialog.exec_()
-        dialog.deleteLater()
 
     def _confirm_split(self) -> bool:
         box = QCustomMessageBox(

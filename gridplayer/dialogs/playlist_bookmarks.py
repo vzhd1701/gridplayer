@@ -1,11 +1,13 @@
 """Every bookmark the playlist keeps, by the file it is in: to see what is
 there, to open a file and have its bookmarks back, and to clear away those
-nothing can reach any more -- of files gone, and of cells closed.
+nothing can reach any more -- of files gone, and of cells closed. A page of
+the Playlist window.
 
 Removals are made as they go, as they are in the bookmarks manager, and
 Cancel puts back what was removed.
 """
 
+import html
 from enum import Enum, IntEnum, auto
 from pathlib import Path
 
@@ -35,15 +37,15 @@ from PyQt5.QtGui import (
 from PyQt5.QtWidgets import (
     QAbstractItemView,
     QApplication,
-    QDialog,
-    QDialogButtonBox,
     QHBoxLayout,
     QHeaderView,
     QLabel,
+    QPushButton,
     QStyle,
     QStyledItemDelegate,
     QTreeView,
     QVBoxLayout,
+    QWidget,
 )
 
 from gridplayer.dialogs.bookmarks import (
@@ -58,7 +60,11 @@ from gridplayer.dialogs.bookmarks import (
     with_key_txt,
 )
 from gridplayer.models.video import Video
-from gridplayer.params.theme import secondary_text_color, set_secondary
+from gridplayer.params.theme import (
+    secondary_text_color,
+    set_html_with_links,
+    set_secondary,
+)
 from gridplayer.utils.bookmarks import (
     bookmarks_txt,
     default_bookmark_name,
@@ -69,14 +75,15 @@ from gridplayer.utils.qt import translate
 from gridplayer.utils.time_txt import ms_time_txt
 from gridplayer.widgets.bookmark_colors import LIST_ICON_SHARE, bookmark_icon
 from gridplayer.widgets.custom_menu import CustomMenu
+from gridplayer.widgets.settings_controls import RoundedBox
 
 # what nothing can reach any more, in the orange of a warning, darker where
 # the list is light for the words to read
 WARNING_COLOR_LIGHT = "#b45309"
 WARNING_COLOR_DARK = "#f0a43a"
 
-DIALOG_SIZE = QSize(660, 560)
-DIALOG_MIN_SIZE = QSize(520, 380)
+# a button that is only an icon, as over the lists of the Settings dialog
+ICON_BUTTON_SIZE = QSize(24, 24)
 
 MIN_LENGTH_MS = 60_000
 
@@ -156,6 +163,16 @@ def _swatch(color: str, rim: QColor) -> QIcon:
     painter.end()
 
     return QIcon(pixmap)
+
+
+def _icon_button(icon: str, tooltip: str) -> QPushButton:
+    """An icon alone, with what it does in its tooltip."""
+
+    button = QPushButton(QIcon.fromTheme(icon), "")
+    button.setToolTip(tooltip)
+    button.setFixedSize(ICON_BUTTON_SIZE)
+    button.setAutoDefault(False)
+    return button
 
 
 def _look_for(path: Path) -> Found:
@@ -331,7 +348,10 @@ class EntryList(QTreeView):
         painter.end()
 
 
-class PlaylistBookmarksDialog(QDialog):
+class PlaylistBookmarksPage(QWidget):
+    # the link in what it says of the sharing, to the switch for it
+    sharing_asked = pyqtSignal()
+
     def __init__(self, registry, cells, open_files, parent=None):
         """The registry's bookmarks; the cells open, first to last in the
         grid, as a function to ask; and how to open files in new cells, which
@@ -345,6 +365,9 @@ class PlaylistBookmarksDialog(QDialog):
         self._cells = cells
         self._open_files = open_files
 
+        # the sharing the window is to put them in on OK, while not theirs
+        self._sharing_to_come = None
+
         # what was there before a removal, by file and cell, for Cancel
         self._originals = {}
 
@@ -356,12 +379,6 @@ class PlaylistBookmarksDialog(QDialog):
         self._statuses = {}
         self._cell_numbers = {}
         self._entries = {}
-
-        self.setWindowTitle(
-            translate("Dialog - Playlist bookmarks", "Bookmarks in Playlist")
-        )
-        self.setMinimumSize(DIALOG_MIN_SIZE)
-        self.resize(DIALOG_SIZE)
 
         self._status_timer = QTimer(self)
         self._status_timer.setSingleShot(True)
@@ -390,6 +407,8 @@ class PlaylistBookmarksDialog(QDialog):
 
         self._mode = QLabel()
         self._mode.setWordWrap(True)
+        self._mode.setTextFormat(Qt.RichText)
+        set_secondary(self._mode)
 
         mode = QHBoxLayout()
         mode.setSpacing(8)
@@ -414,26 +433,25 @@ class PlaylistBookmarksDialog(QDialog):
         self._hint = QLabel()
         self._hint.setWordWrap(True)
 
-        self._open_button = dialog_button(
+        self._open_button = _icon_button(
             "add-files",
-            translate("Dialog - Playlist bookmarks", "Open"),
             translate(
                 "Dialog - Playlist bookmarks",
                 "Open the file in a new cell, with its bookmarks",
             ),
         )
-        self._copy_button = dialog_button(
+        self._copy_button = _icon_button(
             "copy",
-            translate("Dialog - Playlist bookmarks", "Copy"),
             translate(
                 "Dialog - Playlist bookmarks",
                 "Copy the selected bookmarks as timestamps, one to a line,"
                 " like 1:23 Intro; those of several files under each file's name",
             ),
         )
-        self._remove_button = dialog_button(
+        self._remove_button = _icon_button(
             "bookmark-remove", translate("Dialog - Playlist bookmarks", "Remove")
         )
+        # in words, as Clear all over the cookies: it takes them all at once
         self._unreachable_button = dialog_button(
             "bookmark-remove-all",
             translate("Dialog - Playlist bookmarks", "Remove Unreachable"),
@@ -443,31 +461,24 @@ class PlaylistBookmarksDialog(QDialog):
                 " that are closed",
             ),
         )
-
-        self._buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        self._unreachable_button.setFixedHeight(ICON_BUTTON_SIZE.height())
 
         tools = QHBoxLayout()
         tools.setSpacing(6)
         tools.addWidget(self._open_button)
         tools.addWidget(self._copy_button)
-        tools.addStretch(1)
         tools.addWidget(self._remove_button)
-
-        bottom = QHBoxLayout()
-        bottom.addWidget(self._unreachable_button)
-        bottom.addStretch(1)
-        bottom.addWidget(self._buttons)
+        tools.addWidget(self._unreachable_button)
+        tools.addStretch(1)
 
         root = QVBoxLayout(self)
-        root.setContentsMargins(16, 12, 16, 16)
-        root.setSpacing(10)
+        root.setContentsMargins(0, 0, 0, 0)
+        root.setSpacing(8)
         root.addLayout(mode)
-        root.addWidget(self._list, 1)
-        root.addSpacing(-4)
-        root.addWidget(self._hint)
-        root.addLayout(tools)
         root.addSpacing(4)
-        root.addLayout(bottom)
+        root.addLayout(tools)
+        root.addWidget(RoundedBox(self._list), 1)
+        root.addWidget(self._hint)
 
     def _ui_connect(self):
         self._registry.changed.connect(self._reload_timer.start)
@@ -484,22 +495,29 @@ class PlaylistBookmarksDialog(QDialog):
         self._remove_button.clicked.connect(self._remove)
         self._unreachable_button.clicked.connect(self._remove_unreachable)
 
-        self._buttons.accepted.connect(self.accept)
-        self._buttons.rejected.connect(self.reject)
+        self._mode.linkActivated.connect(lambda _link: self.sharing_asked.emit())
 
-    def reject(self):
+    def cancel(self):
+        """What was removed put back, for the window's Cancel."""
+
         if self._originals:
             self._registry.put_entries(self._originals.values())
 
-        super().reject()
+    def close_down(self):
+        """No more watching the registry or looking for files, as the
+        window closes."""
 
-    def done(self, result):
         self._registry.changed.disconnect(self._reload_timer.start)
         self._registry.replaced.disconnect(self._forget_originals)
         self._reload_timer.stop()
         self._checks.stop()
 
-        super().done(result)
+    def set_sharing_to_come(self, is_shared: bool):
+        """The sharing the switch on the Playlist page is at: what the
+        bookmarks are put in on OK, said ahead of it."""
+
+        self._sharing_to_come = is_shared
+        self._show_mode()
 
     def _forget_originals(self):
         # Another playlist opened, or this one closed, while the dialog was
@@ -543,7 +561,24 @@ class PlaylistBookmarksDialog(QDialog):
     # What is shown
 
     def _show_mode(self):
-        if self._registry.is_shared:
+        is_shared = self._registry.is_shared
+        is_to_come = (
+            self._sharing_to_come is not None and self._sharing_to_come != is_shared
+        )
+
+        if is_to_come and self._sharing_to_come:
+            icon = "information"
+            mode_txt = translate(
+                "Dialog - Playlist bookmarks",
+                "From OK on, bookmarks are shared by every cell playing the same file.",
+            )
+        elif is_to_come:
+            icon = "warning"
+            mode_txt = translate(
+                "Dialog - Playlist bookmarks",
+                "From OK on, each cell keeps its own bookmarks.",
+            )
+        elif is_shared:
             icon = "information"
             mode_txt = translate(
                 "Dialog - Playlist bookmarks",
@@ -558,8 +593,17 @@ class PlaylistBookmarksDialog(QDialog):
                 " removed when the playlist is saved.",
             )
 
-        self._mode_icon.setPixmap(QIcon.fromTheme(icon).pixmap(18, 18))
-        self._mode.setText(mode_txt)
+        self._mode_icon.setPixmap(QIcon.fromTheme(icon).pixmap(16, 16))
+
+        if self._sharing_to_come is None:
+            self._mode.setText(html.escape(mode_txt))
+            return
+
+        change_txt = translate("Dialog - Playlist bookmarks", "Change")
+        set_html_with_links(
+            self._mode,
+            f'{html.escape(mode_txt)} <a href="sharing">{html.escape(change_txt)}</a>',
+        )
 
     def _show_hint(self):
         """Back to the counts, from what was said."""

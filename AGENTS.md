@@ -108,8 +108,9 @@ block as an attribute: `status`, `bookmarker`, `view`, `chapters`,
 
 ## Settings dialogs
 
-The Settings and Playlist Settings dialogs are built in code from two
-places:
+The Settings dialog and the Playlist window (`dialogs/playlist_settings.py`)
+are built in code from two places, on the same index-and-pages shell
+(`dialogs/paged_dialog.py`):
 
 * `params/settings_fields/` says what a setting is: its kind of field,
   label, range, choices, tooltip, and the rules that grey it out or hide it
@@ -119,7 +120,10 @@ places:
   lays out a menu: groups, pages, sections and rows naming settings by key.
   A `Slot("name")` is filled by `SettingsDialog._slot_<name>`, for what isn't
   a setting (buttons, the cookie list). `PLAYLIST_PAGE` and `VIDEO_PAGE` are
-  the Playlist Settings dialog's tabs too.
+  the Playlist window's Playlist and New Videos pages too; its Bookmarks
+  and Lists pages are made by their managers (`bookmarks_page`,
+  `lists_page`), only once shown, and change as they go, Cancel putting
+  them back.
 
 A new setting needs a default in `settings.py`, a field, and a place on a
 page; `tests/test_settings_fields.py` checks the three agree.
@@ -142,7 +146,9 @@ the saving contract for both dialogs: `SetValue` writes a value,
 and layout belong to the form; dialogs apply the resulting operations.
 
 Reset goes back to the factory default in the Settings dialog and to the
-global setting in the Playlist Settings dialog. A setting saved at its
+global setting in the Playlist window. A playlist keeps only its own values,
+unless "Save all settings in the playlist" is on: then every value is its
+own once saved (`PlaylistSettings.keep_all`). A setting saved at its
 default is removed from the ini (`Settings().reset`), not written.
 
 An untouched fallback, rounded or clamped display preserves its original

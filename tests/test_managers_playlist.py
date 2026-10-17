@@ -72,6 +72,9 @@ def _without_bookmarks(ctx):
     ctx.commands.forget_bookmarks_of_cells_gone = lambda: None
     ctx.commands.lists_to_save = list
     ctx.commands.forget_left_lists = lambda: None
+    ctx.commands.let_go_of_list_window = lambda: True
+    ctx.commands.bookmarks_page = lambda _window: None
+    ctx.commands.lists_page = lambda _window: None
 
     return ctx
 
@@ -684,11 +687,13 @@ def test_playlist_settings_applies_grid_via_config_not_restore(mocker):
             cols=3,
             preallocate=True,
         ),
+        video_blocks=[],
     )
     manager, _parent = _make_manager(ctx)
     new_state = GridState(mode=GridMode.FIXED, rows=1, cols=1, preallocate=True)
     dialog = mocker.Mock()
     dialog.exec_.return_value = True
+    dialog.is_for_all_videos = False
     dialog.result_overrides.return_value = {}
     dialog.result_grid_state.return_value = new_state
     mocker.patch(
@@ -706,7 +711,9 @@ def test_playlist_settings_applies_grid_via_config_not_restore(mocker):
 
 
 def test_playlist_settings_dialog_is_disposed_of_on_cancel(mocker):
-    manager, _parent = _make_manager(SimpleNamespace(grid_state=GridState()))
+    manager, _parent = _make_manager(
+        SimpleNamespace(grid_state=GridState(), video_blocks=[])
+    )
     dialog = mocker.Mock()
     dialog.exec_.return_value = False
     mocker.patch(

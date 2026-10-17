@@ -19,7 +19,7 @@ from PyQt5.QtWidgets import QApplication, QMessageBox
 from gridplayer.dialogs.make_list import MakeFrom, MakeListDialog
 from gridplayer.dialogs.media_list import ListReading, MediaListDialog
 from gridplayer.dialogs.messagebox import QCustomMessageBox
-from gridplayer.dialogs.playlist_lists import PlaylistListsDialog
+from gridplayer.dialogs.playlist_lists import PlaylistListsPage
 from gridplayer.models.media_list import ListItem, MediaList, item_of_video
 from gridplayer.models.video import Video
 from gridplayer.params.static import AddMode, ListView
@@ -473,6 +473,8 @@ class ListsManager(ManagerBase):
             "manage_list": self.cmd_manage_list,
             "list_window_for": self.list_window_for,
             "lists_in_playlist": self.cmd_lists_in_playlist,
+            "let_go_of_list_window": self.let_go_of_list_window,
+            "lists_page": self.lists_page,
             "open_list_in_new_cell": self.open_list_in_new_cell,
         }
 
@@ -980,24 +982,32 @@ class ListsManager(ManagerBase):
         dialog.deleteLater()
 
     def cmd_lists_in_playlist(self):
-        # over the player and what is open beside it: the List window open
-        # on a cell would be out of reach under it
-        if not self._let_go_of_window():
-            return
+        self._ctx.commands.playlist_settings("lists")
 
-        # its windows open over it, not where that one was
+    def let_go_of_list_window(self) -> bool:
+        """The List window open on a cell closed, for the Playlist window to
+        open over the player and what is beside it: under it, the List
+        window would be out of reach. False if the viewer kept it open."""
+
+        if not self._let_go_of_window():
+            return False
+
+        # the windows the Playlist window opens go over it, not where the
+        # one closed was
         self._window_place = None
 
-        dialog = PlaylistListsDialog(
+        return True
+
+    def lists_page(self, window) -> PlaylistListsPage:
+        """The Lists page of the Playlist window."""
+
+        return PlaylistListsPage(
             registry=self._registry,
             cells=self._cell_blocks,
-            edit_list=lambda list_id: self.open_list_window(list_id, parent=dialog),
+            edit_list=lambda list_id: self.open_list_window(list_id, parent=window),
             open_in_new_cell=self.open_list_in_new_cell,
-            parent=self.parent(),
+            parent=window,
         )
-
-        dialog.exec_()
-        dialog.deleteLater()
 
     def open_list_in_new_cell(self, list_id, place: int):
         """An item of a list played in a cell of its own, which goes along

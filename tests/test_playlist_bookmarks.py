@@ -13,7 +13,7 @@ from PyQt5.QtWidgets import QApplication, QLabel, QWidget
 
 from gridplayer.dialogs import playlist_bookmarks as viewer_module
 from gridplayer.dialogs.messagebox import QCustomMessageBox
-from gridplayer.dialogs.playlist_bookmarks import Column, PlaylistBookmarksDialog
+from gridplayer.dialogs.playlist_bookmarks import Column, PlaylistBookmarksPage
 from gridplayer.models.bookmark import Bookmark
 from gridplayer.models.file_bookmarks import FileBookmarks
 from gridplayer.models.video import Video
@@ -270,7 +270,7 @@ def open_viewer(registry, blocks, opened, grid):
         return list(videos)
 
     def _open():
-        dialog = PlaylistBookmarksDialog(
+        dialog = PlaylistBookmarksPage(
             registry=registry,
             cells=lambda: list(blocks),
             open_files=open_files,
@@ -286,8 +286,7 @@ def open_viewer(registry, blocks, opened, grid):
     yield _open
 
     for dialog in made:
-        if dialog.isVisible():
-            dialog.reject()
+        dialog.close_down()
         dialog.deleteLater()
 
     QApplication.processEvents()
@@ -447,7 +446,7 @@ class TestRemovingInTheViewer:
 
         assert registry.entries() == []
 
-        dialog.reject()
+        dialog.cancel()
 
         assert registry.get(URL, None) == tuple(A)
 
@@ -457,7 +456,6 @@ class TestRemovingInTheViewer:
 
         _pick(dialog, 0)
         dialog._remove()
-        dialog.accept()
 
         assert registry.entries() == []
 
@@ -522,7 +520,7 @@ class TestRemovingInTheViewer:
         dialog._remove()
 
         registry.load([FileBookmarks(uri=movie, bookmarks=B)])
-        dialog.reject()
+        dialog.cancel()
 
         assert registry.entries() == [FileBookmarks(uri=movie, bookmarks=B)]
 
@@ -562,7 +560,7 @@ class TestOpeningInTheViewer:
 
         _pick(dialog, 0)
         dialog._open()
-        dialog.reject()
+        dialog.cancel()
 
         assert registry.entries() == [
             FileBookmarks(uri=other, cell=closed, bookmarks=list(A))

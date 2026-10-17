@@ -1,6 +1,6 @@
 """Every list the playlist keeps: to see what is there and which cells play
 what, to open a list in a cell, edit it, copy it, save it for other players,
-and to clear away the lists no cell plays.
+and to clear away the lists no cell plays. A page of the Playlist window.
 
 Removals and copies are made as they go, and Cancel takes them back. What is
 done in a list's own window is that window's, and stays.
@@ -14,19 +14,20 @@ from uuid import UUID
 from PyQt5.QtCore import QPoint, QSize, Qt, QTimer
 from PyQt5.QtGui import (
     QContextMenuEvent,
+    QIcon,
     QPainter,
     QStandardItem,
     QStandardItemModel,
 )
 from PyQt5.QtWidgets import (
     QAbstractItemView,
-    QDialog,
-    QDialogButtonBox,
     QHBoxLayout,
     QHeaderView,
     QLabel,
+    QPushButton,
     QTreeView,
     QVBoxLayout,
+    QWidget,
 )
 
 from gridplayer.dialogs.bookmarks import (
@@ -41,9 +42,10 @@ from gridplayer.params.static import ListSourceKind
 from gridplayer.params.theme import secondary_text_color
 from gridplayer.utils.qt import count_txt, translate
 from gridplayer.widgets.custom_menu import CustomMenu
+from gridplayer.widgets.settings_controls import RoundedBox
 
-DIALOG_SIZE = QSize(660, 470)
-DIALOG_MIN_SIZE = QSize(520, 340)
+# a button that is only an icon, as over the lists of the Settings dialog
+ICON_BUTTON_SIZE = QSize(24, 24)
 
 LIST_ID_ROLE = Qt.UserRole
 
@@ -53,6 +55,16 @@ class Column(IntEnum):
     ITEMS = 1
     SOURCE = 2
     CELLS = 3
+
+
+def _icon_button(icon: str, tooltip: str) -> QPushButton:
+    """An icon alone, with what it does in its tooltip."""
+
+    button = QPushButton(QIcon.fromTheme(icon), "")
+    button.setToolTip(tooltip)
+    button.setFixedSize(ICON_BUTTON_SIZE)
+    button.setAutoDefault(False)
+    return button
 
 
 class _ListRows(QTreeView):
@@ -114,7 +126,7 @@ class _ListRows(QTreeView):
         painter.end()
 
 
-class PlaylistListsDialog(QDialog):
+class PlaylistListsPage(QWidget):
     def __init__(
         self,
         registry,
@@ -138,12 +150,6 @@ class PlaylistListsDialog(QDialog):
         # whether a cell had played from it; and what was added
         self._removed: dict[UUID, tuple[MediaList, bool]] = {}
         self._added: set = set()
-
-        self.setWindowTitle(
-            translate("Dialog - Playlist lists", "Lists in Playlist", "Header")
-        )
-        self.setMinimumSize(DIALOG_MIN_SIZE)
-        self.resize(DIALOG_SIZE)
 
         self._status_timer = QTimer(self)
         self._status_timer.setSingleShot(True)
@@ -191,21 +197,22 @@ class PlaylistListsDialog(QDialog):
         self._hint = QLabel()
         self._hint.setWordWrap(True)
 
-        self._open_button = dialog_button(
+        self._open_button = _icon_button(
             "add", translate("Dialog - Playlist lists", "Open in a New Cell")
         )
-        self._edit_button = dialog_button(
+        self._edit_button = _icon_button(
             "list", translate("Dialog - Playlist lists", "Edit…")
         )
-        self._duplicate_button = dialog_button(
+        self._duplicate_button = _icon_button(
             "copy", translate("Dialog - Playlist lists", "Duplicate")
         )
-        self._export_button = dialog_button(
+        self._export_button = _icon_button(
             "save-playlist", translate("Dialog - Playlist lists", "Export…")
         )
-        self._remove_button = dialog_button(
+        self._remove_button = _icon_button(
             "close", translate("Dialog - Playlist lists", "Remove")
         )
+        # in words, as Clear all over the cookies: it takes them all at once
         self._remove_unused_button = dialog_button(
             "close-playlist",
             translate("Dialog - Playlist lists", "Remove Unused"),
@@ -213,32 +220,24 @@ class PlaylistListsDialog(QDialog):
                 "Dialog - Playlist lists", "Remove every list that no cell plays"
             ),
         )
-
-        self._buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        self._remove_unused_button.setFixedHeight(ICON_BUTTON_SIZE.height())
 
         tools = QHBoxLayout()
         tools.setSpacing(6)
         tools.addWidget(self._open_button)
         tools.addWidget(self._edit_button)
         tools.addWidget(self._duplicate_button)
-        tools.addStretch(1)
         tools.addWidget(self._export_button)
         tools.addWidget(self._remove_button)
-
-        bottom = QHBoxLayout()
-        bottom.addWidget(self._remove_unused_button)
-        bottom.addStretch(1)
-        bottom.addWidget(self._buttons)
+        tools.addWidget(self._remove_unused_button)
+        tools.addStretch(1)
 
         root = QVBoxLayout(self)
-        root.setContentsMargins(16, 12, 16, 16)
-        root.setSpacing(10)
-        root.addWidget(self._list, 1)
-        root.addSpacing(-4)
-        root.addWidget(self._hint)
+        root.setContentsMargins(0, 0, 0, 0)
+        root.setSpacing(8)
         root.addLayout(tools)
-        root.addSpacing(4)
-        root.addLayout(bottom)
+        root.addWidget(RoundedBox(self._list), 1)
+        root.addWidget(self._hint)
 
     def _ui_connect(self):
         self._list.selectionModel().currentChanged.connect(self._update_buttons)
@@ -251,10 +250,10 @@ class PlaylistListsDialog(QDialog):
         self._remove_button.clicked.connect(self._remove)
         self._remove_unused_button.clicked.connect(self._remove_unused)
 
-        self._buttons.accepted.connect(self.accept)
-        self._buttons.rejected.connect(self.reject)
+    def cancel(self):
+        """What was removed put back, and what was added taken away, for the
+        window's Cancel."""
 
-    def reject(self):
         # all but one opened in a new cell meanwhile, played there now
         in_use = self._in_use()
 
@@ -268,7 +267,8 @@ class PlaylistListsDialog(QDialog):
             if is_taken_up:
                 self._registry.take_up(media_list.id)
 
-        super().reject()
+    def close_down(self):
+        """Nothing to stop: it does no work of its own."""
 
     # showing the lists
 
@@ -394,7 +394,7 @@ class PlaylistListsDialog(QDialog):
                 "A cell is playing it",
             )
             if is_in_use
-            else ""
+            else translate("Dialog - Playlist lists", "Remove")
         )
 
         in_use = self._in_use()

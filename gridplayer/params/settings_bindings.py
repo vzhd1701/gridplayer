@@ -91,3 +91,45 @@ GRID_STATE_ATTR: MappingProxyType[str, str] = MappingProxyType(
         "playlist/grid_preallocate": "preallocate",
     }
 )
+
+# the field of a video each video default fills; the track modes fill the
+# pick of a track, by what the mode makes of it (models.video)
+VIDEO_PARAM_ATTRS: MappingProxyType[str, str] = MappingProxyType(
+    {
+        "video_defaults/color": "color",
+        "video_defaults/audio_track_mode": "audio_selection",
+        "video_defaults/audio_languages": "audio_languages",
+        "video_defaults/external_audio_autodiscover": "is_external_audio_autodiscover",
+        "video_defaults/audio_mode": "audio_channel_mode",
+        "video_defaults/volume": "volume",
+        "video_defaults/muted": "is_muted",
+        "video_defaults/subtitle_track_mode": "subtitle_selection",
+        "video_defaults/subtitle_languages": "subtitle_languages",
+        "video_defaults/subtitle_encoding": "subtitle_encoding",
+        "video_defaults/external_subtitle_autodiscover": (
+            "is_external_subtitle_autodiscover"
+        ),
+        "video_defaults/scale": "scale",
+        "video_defaults/zoom_to_cursor": "is_zoom_to_cursor",
+        "video_defaults/aspect": "aspect_mode",
+        "video_defaults/crop": "crop",
+        "video_defaults/anchor": "anchor",
+        "video_defaults/shift_past_edges": "is_shift_past_edges",
+        "video_defaults/transform": "transform",
+        "video_defaults/deinterlace": "deinterlace",
+        "video_defaults/deinterlace_mode": "deinterlace_mode",
+        "video_defaults/end_action": "end_action",
+        "video_defaults/dir_recursive": "is_dir_recursive",
+        "video_defaults/list_end_action": "list_end_action",
+        "video_defaults/list_fail_action": "list_fail_action",
+        "video_defaults/list_fail_wait": "list_fail_wait_sec",
+        "video_defaults/random_loop": "is_start_random",
+        "video_defaults/initial_state": "playback_state",
+        "video_defaults/rate": "rate",
+        "video_defaults/stream_quality": "stream_quality",
+        "video_defaults/quality_adapt_delay": "quality_adapt_delay_sec",
+        "video_defaults/network_retry_mode": "network_retry_mode",
+        "video_defaults/network_retry_times": "network_retry_times",
+        "video_defaults/auto_reload_timer": "auto_reload_timer_min",
+    }
+)
