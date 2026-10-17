@@ -37,6 +37,7 @@ from gridplayer.utils.screenshots import unknown_specifiers
 from gridplayer.version import __app_url__
 from gridplayer.widgets.cookie_store_list import CookieStoreList
 from gridplayer.widgets.custom_menu import CustomMenu
+from gridplayer.widgets.section_links import SectionLinks
 from gridplayer.widgets.settings_current_page_stack import CurrentPageStackedWidget
 from gridplayer.widgets.settings_form import SettingsForm
 from gridplayer.widgets.settings_page_scroll_area import PageScrollArea
@@ -58,6 +59,9 @@ INDEX_ITEM_HEIGHT = 28
 INDEX_HEADING_PX = 11
 # room over a heading, to set its group apart from the one before
 INDEX_HEADING_HEIGHT = 34
+
+# a page with this many sections or more has links to them under its title
+SECTION_LINKS_MIN = 5
 
 PAGE_TITLE_PX = 16
 SCROLL_BAR_GAP = 8
@@ -181,6 +185,8 @@ class SettingsDialog(QDialog):
         self._page_id_of: dict[str, str] = {}
         self._index_items: dict[str, QListWidgetItem] = {}
         self._form_on: dict[QWidget, SettingsForm] = {}
+        # the links to the sections of a long page, by its id
+        self.section_links: dict[str, SectionLinks] = {}
 
         # minimize's own tick, while hiding from the taskbar ticks it for it
         self._minimize_to_tray_own = None
@@ -307,6 +313,10 @@ class SettingsDialog(QDialog):
             scroll = PageScrollArea()
             layout.addWidget(scroll, 1)
             scroll.setWidget(content)
+
+            if len(form.sections()) >= SECTION_LINKS_MIN:
+                self.section_links[page.id] = SectionLinks(scroll, form.sections())
+                layout.insertWidget(1, self.section_links[page.id])
         else:
             layout.addWidget(content, 1)
 

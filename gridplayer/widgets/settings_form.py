@@ -210,6 +210,7 @@ class _Section(_Shown):
     def __init__(self, title: str | None):
         super().__init__()
 
+        self.title = title
         # takes what the page has left, for a list or a table in it
         self.fills = False
 
@@ -272,6 +273,8 @@ class SettingsForm(QWidget):
         # where rows go as the page is built: the section, and its card
         self._section: _Section | None = None
         self._card: _Card | None = None
+        # the sections with a heading, in order, for links to them
+        self._titled: list[tuple[str, QWidget]] = []
 
         root = QVBoxLayout(self)
         root.setContentsMargins(0, 0, 0, 0)
@@ -313,6 +316,8 @@ class SettingsForm(QWidget):
 
         self.layout().addWidget(self._section, 1 if self._section.fills else 0)
         self._section.follow()
+        if self._section.title:
+            self._titled.append((self._section.title, self._section))
         self._fills = self._fills or self._section.fills
         self._section = self._card = None
 
@@ -569,6 +574,11 @@ class SettingsForm(QWidget):
 
     def keys(self) -> list[str]:
         return list(self._editors)
+
+    def sections(self) -> list[tuple[str, QWidget]]:
+        """The sections with a heading, and the heading, in order."""
+
+        return list(self._titled)
 
     def editor(self, key: str) -> Editor:
         return self._editors[key]
