@@ -232,11 +232,13 @@ PAGES = (
                 "screenshots/format",
                 Indented("screenshots/jpg_quality"),
             ),
+            icon="monitor",
         ),
         Page(
             "subtitle_style",
             translate("SettingsDialog", "Subtitle Style"),
             *SUBTITLE_STYLE_PAGE,
+            icon="subtitles",
             note=translate(
                 "SettingsDialog",
                 "Applies to text subtitles. ASS and SSA subtitles keep their own"
@@ -248,6 +250,7 @@ PAGES = (
             translate("SettingsDialog", "Shortcuts"),
             "player/keymap",
             scroll=False,
+            icon="keyboard",
         ),
         Page(
             "language",
@@ -260,12 +263,18 @@ PAGES = (
                 )
             ),
             scroll=False,
+            icon="flag",
         ),
     ),
     Group(
         translate("SettingsDialog", "Defaults"),
-        Page("playlist", translate("SettingsDialog", "Playlist"), *PLAYLIST_PAGE),
-        Page("video", translate("SettingsDialog", "Video"), *VIDEO_PAGE),
+        Page(
+            "playlist",
+            translate("SettingsDialog", "Playlist"),
+            *PLAYLIST_PAGE,
+            icon="grid",
+        ),
+        Page("video", translate("SettingsDialog", "Video"), *VIDEO_PAGE, icon="video"),
     ),
     Group(
         translate("SettingsDialog", "Streaming"),
@@ -288,6 +297,7 @@ PAGES = (
                 Slot("wildcard_help"),
             ),
             scroll=False,
+            icon="add-url",
         ),
         Page(
             "sponsorblock",
@@ -301,6 +311,7 @@ PAGES = (
                 "SettingsDialog",
                 '<p>Every YouTube video you play is checked on SponsorBlock, where viewers mark sponsors, self-promotion and similar segments. Only a short prefix of a hash of the video\'s ID is sent.</p><p>Segments from <a href="{URL}">SponsorBlock</a>, under CC BY-NC-SA 4.0.</p>',
             ).format(URL=SPONSORBLOCK_URL),
+            icon="jump-to",
         ),
         Page(
             "cookies",
@@ -320,6 +331,7 @@ PAGES = (
                 ),
             ),
             scroll=False,
+            icon="id-card",
         ),
         Page(
             "network",
@@ -343,6 +355,7 @@ PAGES = (
                     )
                 ),
             ),
+            icon="router",
         ),
     ),
     Group(
@@ -369,6 +382,7 @@ PAGES = (
                 "internal/force_native_drag_events",
                 "internal/hw_crop_border_offset",
             ),
+            icon="cpu",
         ),
         Page(
             "logging",
@@ -383,6 +397,7 @@ PAGES = (
                 "logging/log_level",
                 "logging/log_level_vlc",
             ),
+            icon="page",
         ),
     ),
 )

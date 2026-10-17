@@ -2,7 +2,7 @@ import contextlib
 
 from PyQt5 import QtWidgets
 from PyQt5.QtCore import QSize, Qt, pyqtSignal
-from PyQt5.QtGui import QDropEvent
+from PyQt5.QtGui import QDropEvent, QIcon
 
 from gridplayer.models.resolver_patterns import (
     ResolverPattern,
@@ -257,13 +257,32 @@ class ResolverPatternsList(QtWidgets.QWidget):
     def ui_buttons(self):
         buttons = QtWidgets.QHBoxLayout()
 
-        self.add_button = self._create_button("+", self.add_blank_row, False)
-        self.remove_button = self._create_button("-", self.table.remove_selected)
+        self.add_button = self._create_button(
+            "add",
+            translate("SettingsDialog", "Add"),
+            self.add_blank_row,
+            is_selection_needed=False,
+        )
+        self.remove_button = self._create_button(
+            "remove", translate("SettingsDialog", "Remove"), self.table.remove_selected
+        )
 
         buttons.addWidget(self.add_button)
         buttons.addWidget(self.remove_button)
-        buttons.addWidget(self._create_button("▲", self.table.move_selected_up))
-        buttons.addWidget(self._create_button("▼", self.table.move_selected_down))
+        buttons.addWidget(
+            self._create_button(
+                "move-up",
+                translate("SettingsDialog", "Move up"),
+                self.table.move_selected_up,
+            )
+        )
+        buttons.addWidget(
+            self._create_button(
+                "move-down",
+                translate("SettingsDialog", "Move down"),
+                self.table.move_selected_down,
+            )
+        )
 
         buttons.addStretch()
 
@@ -361,8 +380,9 @@ class ResolverPatternsList(QtWidgets.QWidget):
             combo = self.table.cellWidget(row_idx, col_idx)
             combo.setCurrentIndex(combo_index(combo, value))
 
-    def _create_button(self, text, callback, is_selection_needed=True):
-        button = QtWidgets.QPushButton(text)
+    def _create_button(self, icon, tooltip, callback, is_selection_needed=True):
+        button = QtWidgets.QPushButton(QIcon.fromTheme(icon), "")
+        button.setToolTip(tooltip)
         button.setFixedSize(QSize(24, 24))
         button.clicked.connect(callback)
         if is_selection_needed:

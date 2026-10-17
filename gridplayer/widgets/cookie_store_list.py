@@ -3,6 +3,7 @@ from pathlib import Path
 
 from PyQt5 import QtWidgets
 from PyQt5.QtCore import Qt, pyqtSignal
+from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import QApplication, QFileDialog
 
 from gridplayer.utils.cookies import (
@@ -90,22 +91,24 @@ class CookieStoreList(QtWidgets.QWidget):
         buttons = QtWidgets.QHBoxLayout()
 
         self.import_file_button = QtWidgets.QPushButton(
-            translate("SettingsDialog", "Import from file...")
+            QIcon.fromTheme("import"),
+            translate("SettingsDialog", "Import from file..."),
         )
         self.import_file_button.clicked.connect(self.import_from_file)
 
         self.paste_button = QtWidgets.QPushButton(
-            translate("SettingsDialog", "Paste from clipboard")
+            QIcon.fromTheme("paste"),
+            translate("SettingsDialog", "Paste from clipboard"),
         )
         self.paste_button.clicked.connect(self.import_from_clipboard)
 
         self.remove_button = QtWidgets.QPushButton(
-            translate("SettingsDialog", "Remove")
+            QIcon.fromTheme("cross"), translate("SettingsDialog", "Remove")
         )
         self.remove_button.clicked.connect(self.remove_selected)
 
         self.clear_button = QtWidgets.QPushButton(
-            translate("SettingsDialog", "Clear all")
+            QIcon.fromTheme("trash"), translate("SettingsDialog", "Clear all")
         )
         self.clear_button.clicked.connect(self.clear)
 

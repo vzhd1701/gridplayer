@@ -2,11 +2,8 @@
 row of buttons for a choice short enough to show all of it."""
 
 from PyQt5.QtCore import QRectF, QSize, Qt, pyqtSignal
-from PyQt5.QtGui import QColor, QPainter, QPainterPath
+from PyQt5.QtGui import QColor, QPainter, QPainterPath, QPalette
 from PyQt5.QtWidgets import QCheckBox, QLabel, QSizePolicy, QWidget
-
-from gridplayer.params.theme import current_colors
-from gridplayer.utils.darkmode import is_dark_mode
 
 SWITCH_SIZE = QSize(36, 20)
 SWITCH_KNOB_MARGIN = 3
@@ -21,8 +18,30 @@ SEGMENTS_HEIGHT = 24
 SEGMENTS_RADIUS = 4
 
 
-def _color(key: str) -> QColor:
-    return QColor(current_colors()[key])
+# the theme's colours, by the names gridplayer.params.theme gives them,
+# as it put them in the palette
+_ROLES = {
+    "text": QPalette.Text,
+    "base": QPalette.Base,
+    "window": QPalette.Window,
+    "button": QPalette.Button,
+    "highlight": QPalette.Highlight,
+}
+
+
+def theme_color(widget: QWidget, name: str) -> QColor:
+    """Read off the palette at each paint, as the theme put it there, rather
+    than worked out from the settings and the system again: the two can
+    differ until the theme is applied.
+
+    Always the active colours: a greyed-out control fades as a whole.
+    """
+
+    return widget.palette().color(QPalette.Active, _ROLES[name])
+
+
+def _is_dark(widget: QWidget) -> bool:
+    return theme_color(widget, "base").lightness() < 128
 
 
 class Switch(QCheckBox):
@@ -63,7 +82,7 @@ class Switch(QCheckBox):
         radius = track.height() / 2
 
         if self.hasFocus():
-            painter.setPen(_color("text"))
+            painter.setPen(theme_color(self, "text"))
             painter.setBrush(Qt.NoBrush)
             ring = track.adjusted(-1.5, -1.5, 1.5, 1.5)
             painter.drawRoundedRect(ring, radius + 1.5, radius + 1.5)
@@ -71,7 +90,7 @@ class Switch(QCheckBox):
         is_on = self.isChecked()
 
         painter.setPen(Qt.NoPen)
-        painter.setBrush(_color("text" if is_on else "highlight"))
+        painter.setBrush(theme_color(self, "text" if is_on else "highlight"))
         painter.drawRoundedRect(track, radius, radius)
 
         knob = track.height() - 2 * SWITCH_KNOB_MARGIN
@@ -81,8 +100,8 @@ class Switch(QCheckBox):
         else:
             left = track.left() + SWITCH_KNOB_MARGIN
             # light on the grey either way: dark on dark would be lost
-            fill = "text" if is_dark_mode() else "base"
-        painter.setBrush(_color(fill))
+            fill = "text" if _is_dark(self) else "base"
+        painter.setBrush(theme_color(self, fill))
         painter.drawEllipse(QRectF(left, track.top() + SWITCH_KNOB_MARGIN, knob, knob))
 
 
@@ -216,26 +235,26 @@ class SegmentedChoice(QWidget):
         shape.addRoundedRect(outline, SEGMENTS_RADIUS, SEGMENTS_RADIUS)
 
         painter.setPen(Qt.NoPen)
-        painter.setBrush(_color("button"))
+        painter.setBrush(theme_color(self, "button"))
         painter.drawPath(shape)
 
         painter.save()
         painter.setClipPath(shape)
         for index, segment in enumerate(segments):
             if index == self._current:
-                painter.fillRect(segment, _color("text"))
+                painter.fillRect(segment, theme_color(self, "text"))
             elif index == self._hovered and is_enabled:
-                painter.fillRect(segment, _color("highlight"))
+                painter.fillRect(segment, theme_color(self, "highlight"))
         painter.restore()
 
-        painter.setPen(_color("border"))
+        painter.setPen(theme_color(self, "highlight"))
         painter.setBrush(Qt.NoBrush)
         painter.drawPath(shape)
         for segment in segments[1:]:
             painter.drawLine(segment.topLeft(), segment.bottomLeft())
 
         if self.hasFocus():
-            painter.setPen(_color("text"))
+            painter.setPen(theme_color(self, "text"))
             painter.drawRoundedRect(
                 outline.adjusted(1, 1, -1, -1), SEGMENTS_RADIUS, SEGMENTS_RADIUS
             )
@@ -243,7 +262,8 @@ class SegmentedChoice(QWidget):
         for index, (segment, (text, _)) in enumerate(
             zip(segments, self._items, strict=True)
         ):
-            painter.setPen(_color("base" if index == self._current else "text"))
+            is_current = index == self._current
+            painter.setPen(theme_color(self, "base" if is_current else "text"))
             painter.drawText(segment, Qt.AlignCenter, text)
 
     # picked

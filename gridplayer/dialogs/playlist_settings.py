@@ -1,3 +1,4 @@
+from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import (
     QDialog,
     QDialogButtonBox,
@@ -42,7 +43,9 @@ class PlaylistSettingsDialog(QDialog):
             translate("SettingsDialog", "Video"),
         )
 
-        reset_all = QPushButton(translate("SettingsDialog", "Reset all"))
+        reset_all = QPushButton(
+            QIcon.fromTheme("reset"), translate("SettingsDialog", "Reset all")
+        )
         reset_all.clicked.connect(self._reset_all)
 
         buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)

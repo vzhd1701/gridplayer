@@ -4,7 +4,7 @@ import subprocess
 import threading
 
 from PyQt5.QtCore import QLocale, QSize, Qt, QUrl, pyqtSignal
-from PyQt5.QtGui import QDesktopServices, QIcon
+from PyQt5.QtGui import QDesktopServices, QIcon, QPainter
 from PyQt5.QtWidgets import (
     QDialog,
     QDialogButtonBox,
@@ -26,6 +26,7 @@ from gridplayer.params import env
 from gridplayer.params.settings_fields.kinds import Page
 from gridplayer.params.settings_pages import PAGES
 from gridplayer.params.static import CacheMode
+from gridplayer.params.theme import set_secondary
 from gridplayer.settings import Settings, default_value
 from gridplayer.utils import cache
 from gridplayer.utils.app_dir import get_app_data_dir
@@ -37,7 +38,7 @@ from gridplayer.version import __app_url__
 from gridplayer.widgets.cookie_store_list import CookieStoreList
 from gridplayer.widgets.custom_menu import CustomMenu
 from gridplayer.widgets.settings_current_page_stack import CurrentPageStackedWidget
-from gridplayer.widgets.settings_form import SettingsForm, bold
+from gridplayer.widgets.settings_form import SettingsForm
 from gridplayer.widgets.settings_page_scroll_area import PageScrollArea
 
 COOKIES_FAQ_URL = (
@@ -48,8 +49,32 @@ COOKIES_README_URL = f"{__app_url__}#streaming-cookies"
 # where each entry in the section index keeps the page it opens
 SECTION_PAGE_ROLE = Qt.UserRole
 
-# a help button, as small as its question mark
-HELP_BUTTON_SIZE = QSize(24, 24)
+# a button that is only an icon, as small as the icon lets it be
+ICON_BUTTON_SIZE = QSize(24, 24)
+
+# the index: its entries, and the group headings over them
+INDEX_ITEM_PX = 13
+INDEX_ITEM_HEIGHT = 28
+INDEX_HEADING_PX = 11
+# room over a heading, to set its group apart from the one before
+INDEX_HEADING_HEIGHT = 34
+
+PAGE_TITLE_PX = 16
+SCROLL_BAR_GAP = 8
+PAGE_TITLE_ICON_PX = 20
+NOTE_ICON_PX = 16
+
+
+class _Icon(QWidget):
+    """An icon of the theme, drawn as the theme is now, light or dark."""
+
+    def __init__(self, name: str, size: int):
+        super().__init__()
+        self._icon = QIcon.fromTheme(name)
+        self.setFixedSize(size, size)
+
+    def paintEvent(self, event):
+        self._icon.paint(QPainter(self), self.rect())
 
 
 def _with_note(form, text):
@@ -64,35 +89,71 @@ def _with_note(form, text):
 
     layout = QVBoxLayout(page)
     layout.setContentsMargins(0, 0, 0, 0)
-    layout.setSpacing(12)
+    layout.setSpacing(16)
 
     note = QLabel(text)
     note.setWordWrap(True)
     note.setOpenExternalLinks(True)
-    font = note.font()
-    font.setItalic(True)
-    note.setFont(font)
+    set_secondary(note)
 
-    layout.addWidget(note)
+    line = QHBoxLayout()
+    line.setSpacing(8)
+    line.addWidget(_Icon("information", NOTE_ICON_PX), 0, Qt.AlignTop)
+    line.addWidget(note, 1)
+
+    layout.addLayout(line)
     layout.addWidget(form)
 
     return page
 
 
-def _help_button():
-    button = QPushButton("?")
-    button.setMaximumSize(HELP_BUTTON_SIZE)
+def _page_title(page: Page) -> QWidget:
+    title = QLabel(page.title)
+    font = title.font()
+    font.setPixelSize(PAGE_TITLE_PX)
+    font.setBold(True)
+    title.setFont(font)
+
+    holder = QWidget()
+    line = QHBoxLayout(holder)
+    line.setContentsMargins(2, 0, 0, 0)
+    line.setSpacing(8)
+    if page.icon is not None:
+        line.addWidget(_Icon(page.icon, PAGE_TITLE_ICON_PX))
+    line.addWidget(title, 1)
+
+    return holder
+
+
+def _help_button(text=None):
+    """A question mark, and what it explains beside it if there is room:
+    flat then, as a link would be."""
+
+    button = QPushButton(QIcon.fromTheme("question"), text or "")
+    if text:
+        button.setFlat(True)
+    else:
+        button.setFixedSize(ICON_BUTTON_SIZE)
     return button
 
 
-def _in_a_row(*widgets):
+def _in_a_row(*widgets, right=False):
+    """Widgets on a line, on the left of it or on the right; a None between
+    them pushes the rest to the right."""
+
     row = QWidget()
 
     layout = QHBoxLayout(row)
     layout.setContentsMargins(0, 0, 0, 0)
+    if right:
+        layout.addStretch(1)
     for widget in widgets:
-        layout.addWidget(widget)
-    layout.addStretch(1)
+        if widget is None:
+            layout.addStretch(1)
+        else:
+            layout.addWidget(widget)
+    if not right and None not in widgets:
+        layout.addStretch(1)
 
     return row
 
@@ -146,8 +207,9 @@ class SettingsDialog(QDialog):
         self.section_index.setObjectName("section_index")
         self.section_index.setMinimumSize(QSize(200, 350))
         self.section_index.setMaximumWidth(200)
+        self.section_index.setIconSize(QSize(16, 16))
         font = self.section_index.font()
-        font.setPixelSize(16)
+        font.setPixelSize(INDEX_ITEM_PX)
         self.section_index.setFont(font)
 
         self.section_page = CurrentPageStackedWidget(min_width=500)
@@ -157,7 +219,10 @@ class SettingsDialog(QDialog):
         body.addWidget(self.section_index)
         body.addWidget(self.section_page)
 
-        self.dataDirOpen = QPushButton(translate("SettingsDialog", "Open data folder"))
+        self.dataDirOpen = QPushButton(
+            QIcon.fromTheme("show-in-folder"),
+            translate("SettingsDialog", "Open data folder"),
+        )
         self.dataDirOpen.setMinimumWidth(130)
         self.dataDirOpen.setToolTip(
             translate(
@@ -167,7 +232,9 @@ class SettingsDialog(QDialog):
             )
         )
 
-        self.resetPage = QPushButton(translate("SettingsDialog", "Reset Page"))
+        self.resetPage = QPushButton(
+            QIcon.fromTheme("reset"), translate("SettingsDialog", "Reset Page")
+        )
         self.resetPage.setToolTip(
             translate("SettingsDialog", "Put the settings on this page back to default")
         )
@@ -191,16 +258,24 @@ class SettingsDialog(QDialog):
     def _build_index(self):
         heading_font = self.section_index.font()
         heading_font.setBold(True)
+        heading_font.setPixelSize(INDEX_HEADING_PX)
 
         slots = self._slots()
 
-        for group in PAGES:
-            heading = QListWidgetItem(group.title, self.section_index)
+        for group_index, group in enumerate(PAGES):
+            # small and in capitals: a heading over entries, not one of them
+            heading = QListWidgetItem(group.title.upper(), self.section_index)
             heading.setFont(heading_font)
             heading.setFlags(Qt.NoItemFlags)
+            heading.setTextAlignment(Qt.AlignLeft | Qt.AlignBottom)
+            height = INDEX_ITEM_HEIGHT if group_index == 0 else INDEX_HEADING_HEIGHT
+            heading.setSizeHint(QSize(0, height))
 
             for page in group.pages:
                 item = QListWidgetItem(page.title, self.section_index)
+                if page.icon is not None:
+                    item.setIcon(QIcon.fromTheme(page.icon))
+                item.setSizeHint(QSize(0, INDEX_ITEM_HEIGHT))
                 item.setData(SECTION_PAGE_ROLE, self._build_page(page, slots))
                 self._index_items[page.id] = item
 
@@ -218,13 +293,22 @@ class SettingsDialog(QDialog):
 
         content = form if page.note is None else _with_note(form, page.note)
 
+        # the title over what scrolls, so it stays in view
+        widget = QWidget()
+        layout = QVBoxLayout(widget)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(12)
+        layout.addWidget(_page_title(page))
+        self.section_page.addWidget(widget)
+
         if page.scroll:
-            widget = PageScrollArea()
-            self.section_page.addWidget(widget)
-            widget.setWidget(content)
+            # clear of the scroll bar
+            content.layout().setContentsMargins(0, 0, SCROLL_BAR_GAP, 0)
+            scroll = PageScrollArea()
+            layout.addWidget(scroll, 1)
+            scroll.setWidget(content)
         else:
-            widget = content
-            self.section_page.addWidget(widget)
+            layout.addWidget(content, 1)
 
         widget.setObjectName(f"page_{page.id}")
 
@@ -253,6 +337,8 @@ class SettingsDialog(QDialog):
 
     def _slot_cache_clear(self):
         self.cacheClear = QToolButton()
+        self.cacheClear.setIcon(QIcon.fromTheme("trash"))
+        self.cacheClear.setToolButtonStyle(Qt.ToolButtonTextBesideIcon)
         self.cacheClear.setText(translate("SettingsDialog", "Clear"))
         self.cacheClear.setPopupMode(QToolButton.MenuButtonPopup)
         self.cacheClear.setToolTip(
@@ -273,10 +359,13 @@ class SettingsDialog(QDialog):
 
         self.cacheSize = QLabel()
 
-        return _in_a_row(self.cacheClear, self.cacheSize)
+        return _in_a_row(self.cacheSize, None, self.cacheClear)
 
     def _slot_screenshot_template_help(self):
         self.screenshotsFilenameTemplateHelpButton = _help_button()
+        self.screenshotsFilenameTemplateHelpButton.setToolTip(
+            translate("SettingsDialog", "Screenshot file name format")
+        )
         self.screenshotsFilenameTemplateHelpButton.clicked.connect(
             self.show_screenshot_template_help
         )
@@ -284,7 +373,8 @@ class SettingsDialog(QDialog):
 
     def _slot_youtube_test(self):
         self.streamingTestButton = QPushButton(
-            translate("SettingsDialog", "Test a YouTube link")
+            QIcon.fromTheme("checkup"),
+            translate("SettingsDialog", "Test a YouTube link"),
         )
         self.streamingTestButton.setToolTip(
             translate(
@@ -293,10 +383,12 @@ class SettingsDialog(QDialog):
             )
         )
         self.streamingTestButton.clicked.connect(self.run_youtube_checkup)
-        return _in_a_row(self.streamingTestButton)
+        return _in_a_row(self.streamingTestButton, right=True)
 
     def _slot_wildcard_help(self):
-        self.streamingWildcardHelpButton = _help_button()
+        self.streamingWildcardHelpButton = _help_button(
+            translate("SettingsDialog", "Wildcard syntax")
+        )
         self.streamingWildcardHelpButton.clicked.connect(self.toggle_wildcard_help)
 
         self.streamingWildcardHelp = QLabel(
@@ -314,12 +406,7 @@ class SettingsDialog(QDialog):
         holder = QWidget()
         layout = QVBoxLayout(holder)
         layout.setContentsMargins(0, 0, 0, 0)
-        layout.addWidget(
-            _in_a_row(
-                bold(QLabel(translate("SettingsDialog", "Wildcard syntax"))),
-                self.streamingWildcardHelpButton,
-            )
-        )
+        layout.addWidget(_in_a_row(self.streamingWildcardHelpButton))
         layout.addWidget(self.streamingWildcardHelp)
 
         return holder
@@ -330,16 +417,16 @@ class SettingsDialog(QDialog):
         return self.cookiesList
 
     def _slot_cookies_howto(self):
-        self.cookiesHowToButton = _help_button()
+        self.cookiesHowToButton = _help_button(
+            translate("SettingsDialog", "How to export cookies")
+        )
         self.cookiesHowToButton.clicked.connect(self.show_cookies_howto)
 
-        label = bold(QLabel(translate("SettingsDialog", "How to export cookies")))
-
-        return _in_a_row(label, self.cookiesHowToButton)
+        return _in_a_row(self.cookiesHowToButton)
 
     def _slot_network_test(self):
         self.networkTestButton = QPushButton(
-            translate("SettingsDialog", "Test network")
+            QIcon.fromTheme("checkup"), translate("SettingsDialog", "Test network")
         )
         self.networkTestButton.setToolTip(
             translate(
@@ -348,7 +435,7 @@ class SettingsDialog(QDialog):
             )
         )
         self.networkTestButton.clicked.connect(self.run_network_checkup)
-        return _in_a_row(self.networkTestButton)
+        return _in_a_row(self.networkTestButton, right=True)
 
     def ui_connect(self):
         self.section_index.currentItemChanged.connect(self.switch_page)

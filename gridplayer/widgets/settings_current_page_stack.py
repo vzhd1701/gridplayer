@@ -4,6 +4,14 @@ from PyQt5.QtWidgets import QSizePolicy, QStackedWidget
 from gridplayer.widgets.settings_page_scroll_area import PageScrollArea
 
 
+def _scrolls(page) -> bool:
+    """Is, or has under its title, a page that scrolls."""
+
+    return isinstance(page, PageScrollArea) or (
+        page.findChild(PageScrollArea) is not None
+    )
+
+
 class CurrentPageStackedWidget(QStackedWidget):
     """Size to the current page's height, but keep enough width for the
     widest page so switching to a scrolling page does not clip the bar.
@@ -43,13 +51,13 @@ class CurrentPageStackedWidget(QStackedWidget):
         if page is None:
             return 0
 
-        if not isinstance(page, PageScrollArea):
+        if not _scrolls(page):
             return page.sizeHint().height()
 
         fixed = [
             self.widget(i).minimumSizeHint().height()
             for i in range(self.count())
-            if not isinstance(self.widget(i), PageScrollArea)
+            if not _scrolls(self.widget(i))
         ]
 
         return max(fixed, default=page.sizeHint().height())

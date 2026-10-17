@@ -1603,14 +1603,18 @@ class KeymapEditor(QWidget):
         actions_row = QHBoxLayout()
         actions_row.setSpacing(6)
 
-        self.expand_btn = QPushButton(translate("Keymap", "Expand all"), self)
-        self.collapse_btn = QPushButton(translate("Keymap", "Collapse all"), self)
+        self.expand_btn = QPushButton(QIcon.fromTheme("expand-all"), "", self)
+        self.expand_btn.setToolTip(translate("Keymap", "Expand all"))
+        self.collapse_btn = QPushButton(QIcon.fromTheme("collapse-all"), "", self)
+        self.collapse_btn.setToolTip(translate("Keymap", "Collapse all"))
         actions_row.addWidget(self.expand_btn)
         actions_row.addWidget(self.collapse_btn)
 
         actions_row.addStretch(1)
 
-        self.reset_all_btn = QPushButton(translate("Keymap", "Reset all"), self)
+        self.reset_all_btn = QPushButton(
+            QIcon.fromTheme("reset"), translate("Keymap", "Reset all"), self
+        )
         self.reset_all_btn.setToolTip(
             translate("Keymap", "Restore every shortcut to its default")
         )

@@ -167,10 +167,13 @@ class Page(_Node):
         *items,
         note: str | None = None,
         scroll: bool = True,
+        icon: str | None = None,
     ):
         super().__init__(*items)
         self.id = page_id
         self.title = title
+        # the theme's name for the icon beside the title, in the index too
+        self.icon = icon
         # at the top, true of the whole page rather than of any one row
         self.note = note
         # a page that fills itself (a list, a table) has nothing to scroll

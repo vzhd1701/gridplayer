@@ -1,7 +1,7 @@
 from collections.abc import Callable, Mapping
 
 from PyQt5.QtCore import QEvent, QRectF, QSize, Qt, pyqtSignal
-from PyQt5.QtGui import QColor, QIcon, QPainter
+from PyQt5.QtGui import QIcon, QPainter
 from PyQt5.QtWidgets import (
     QHBoxLayout,
     QLabel,
@@ -27,8 +27,9 @@ from gridplayer.params.settings_fields.kinds import (
     When,
 )
 from gridplayer.params.settings_fields.registry import FIELDS
-from gridplayer.params.theme import current_colors, set_secondary
+from gridplayer.params.theme import set_secondary
 from gridplayer.utils.qt import translate
+from gridplayer.widgets.settings_controls import theme_color
 from gridplayer.widgets.settings_editors import Editor, make_editor
 
 RESET_ICON_PX = 14
@@ -157,7 +158,7 @@ class _FormRow(_Shown):
         painter = QPainter(self)
         painter.setRenderHint(QPainter.Antialiasing)
         painter.setPen(Qt.NoPen)
-        painter.setBrush(QColor(current_colors()["text"]))
+        painter.setBrush(theme_color(self, "text"))
         # half of it past the edge, for the round end to be only on the right
         bar = QRectF(
             -MARK_WIDTH, MARK_INSET, 2 * MARK_WIDTH, self.height() - 2 * MARK_INSET
@@ -184,12 +185,10 @@ class _Card(_Shown):
         self.watch(row)
 
     def paintEvent(self, event):
-        colors = current_colors()
-
         painter = QPainter(self)
         painter.setRenderHint(QPainter.Antialiasing)
-        painter.setPen(QColor(colors["highlight"]))
-        painter.setBrush(QColor(colors["base"]))
+        painter.setPen(theme_color(self, "highlight"))
+        painter.setBrush(theme_color(self, "base"))
         painter.drawRoundedRect(
             QRectF(self.rect()).adjusted(0.5, 0.5, -0.5, -0.5),
             CARD_RADIUS,
@@ -197,7 +196,7 @@ class _Card(_Shown):
         )
 
         painter.setRenderHint(QPainter.Antialiasing, False)
-        painter.setPen(QColor(colors["window"]))
+        painter.setPen(theme_color(self, "window"))
         shown = [row for row in self._rows if not _put_away(row)]
         for row in shown[1:]:
             if not row.joined:

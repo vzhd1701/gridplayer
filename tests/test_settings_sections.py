@@ -4,6 +4,7 @@ from PyQt5.QtGui import QColor
 from PyQt5.QtWidgets import QApplication
 
 from gridplayer.dialogs.settings import SECTION_PAGE_ROLE, SettingsDialog
+from gridplayer.main.init_resources import init_resources
 from gridplayer.params.settings_pages import PAGES as SETTINGS_PAGES
 from gridplayer.params.theme import apply_theme, current_colors
 from gridplayer.widgets.settings_page_scroll_area import PageScrollArea
@@ -72,12 +73,15 @@ def _as_groups(dialog):
 
 class TestHowTheIndexReads:
     def test_it_is_grouped_the_way_it_is_meant_to_be(self, dialog):
-        assert _as_groups(dialog) == SECTIONS
+        # the headings in capitals, as headings over the entries
+        assert _as_groups(dialog) == tuple(
+            (heading.upper(), entries) for heading, entries in SECTIONS
+        )
 
     def test_a_group_heading_cannot_be_picked(self, dialog):
         headings = [item.text() for item in _rows(dialog) if _is_heading(item)]
 
-        assert headings == [heading for heading, _ in SECTIONS]
+        assert headings == [heading.upper() for heading, _ in SECTIONS]
 
     def test_the_first_entry_is_not_a_heading(self, dialog):
         """Opening on a heading would leave the dialog showing nothing."""
@@ -119,10 +123,12 @@ class TestEverySectionOpensItsPage:
 
     def test_the_player_page_scrolls_rather_than_make_the_dialog_taller(self, dialog):
         page = dialog.pages["player"]
-        wanted = page.widget().sizeHint().height()
+        scroll = page.findChild(PageScrollArea)
+        wanted = page.sizeHint().height() - scroll.sizeHint().height()
+        wanted += scroll.widget().sizeHint().height()
         resolution = dialog.pages["resolution"].minimumSizeHint().height()
 
-        assert isinstance(page, PageScrollArea)
+        assert scroll is not None
         assert dialog.section_page.sizeHint().height() == resolution < wanted
 
 
@@ -169,13 +175,18 @@ def _darkest(widget, rect):
 @pytest.mark.usefixtures("themed")
 def test_headings_are_drawn_as_text_not_greyed_out(dialog):
     """They can't be picked, so they are disabled items, which the theme
-    draws in the text colour rather than as something switched off."""
+    draws in the secondary text colour rather than as something switched
+    off."""
+
+    # with no font of its own, offscreen Windows draws no text at all, and
+    # whether one is there yet depends on which tests ran before
+    init_resources()
 
     index = dialog.section_index
     dialog.show()
     QApplication.processEvents()
 
-    text = QColor(current_colors()["text"]).lightness()
+    text = QColor(current_colors()["text_secondary"]).lightness()
     greyed = QColor(current_colors()["text_disabled"]).lightness()
 
     heading = _darkest(index.viewport(), index.visualItemRect(_rows(dialog)[0]))

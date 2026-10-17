@@ -2,7 +2,8 @@
 
 from pathlib import Path
 
-from PyQt5.QtGui import QColor, QPainter, QPixmap
+from PyQt5.QtCore import QSize
+from PyQt5.QtGui import QColor, QIcon, QPainter, QPixmap
 from PyQt5.QtWidgets import (
     QComboBox,
     QDoubleSpinBox,
@@ -51,6 +52,9 @@ SWATCH_PX = 12
 
 # wide enough for a path or an address to be read
 TEXT_MIN_WIDTH = 260
+
+# a button that is only an icon, as small as the icon lets it be
+ICON_BUTTON_SIZE = QSize(24, 24)
 
 # the narrowest a list and a number are, so that the fields of a page are
 # not each as wide as what they happen to say
@@ -243,7 +247,9 @@ class _PathEditor(_TextEditor):
     def __init__(self, spec):
         super().__init__(spec)
 
-        self.browse = QPushButton(translate("SettingsDialog", "Browse..."))
+        self.browse = QPushButton(QIcon.fromTheme("browse-folder"), "")
+        self.browse.setToolTip(translate("SettingsDialog", "Browse..."))
+        self.browse.setFixedSize(ICON_BUTTON_SIZE)
         self.browse.clicked.connect(self._browse)
 
     def parts(self):

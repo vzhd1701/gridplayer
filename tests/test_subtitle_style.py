@@ -267,7 +267,7 @@ class TestThePageItIsSetOn:
     def test_the_page_says_that_ass_subtitles_style_themselves(self, dialog):
         """Otherwise styling an anime release looks like a bug in this."""
 
-        page = dialog.pages["subtitle_style"].widget()
+        page = dialog.pages["subtitle_style"]
         notes = [
             label.text() for label in page.findChildren(QLabel) if "ASS" in label.text()
         ]
