@@ -59,7 +59,7 @@ from gridplayer.utils.keymap import (
 )
 from gridplayer.utils.qt import translate
 from gridplayer.widgets.custom_menu import ICON_SIZE, CustomMenu, checked_icon
-from gridplayer.widgets.settings_controls import RoundedBox
+from gridplayer.widgets.settings_controls import RoundedBox, Switch, ToggleLabel
 
 # ---------------------------------------------------------------------------
 # Model roles
@@ -1571,7 +1571,7 @@ class KeymapEditor(QWidget):
         root.setContentsMargins(0, 0, 0, 0)
         root.setSpacing(8)
 
-        # Row 1: filter field + scope dropdown + modified toggle
+        # Row 1: filter field + scope dropdown + changed-only switch
         filter_row = QHBoxLayout()
         filter_row.setSpacing(6)
 
@@ -1590,13 +1590,18 @@ class KeymapEditor(QWidget):
         )
         filter_row.addWidget(self.filter_scope)
 
-        self.modified_only_btn = QToolButton(self)
-        self.modified_only_btn.setText(translate("Keymap", "Modified"))
-        self.modified_only_btn.setCheckable(True)
-        self.modified_only_btn.setToolTip(
-            translate("Keymap", "Show only actions with non-default shortcuts")
+        # a switch, as in the settings rows: a button pressed in looked
+        # much the same as one not
+        self.modified_only_switch = Switch(self)
+        modified_only_label = ToggleLabel(
+            translate("Keymap", "Only changed"), self.modified_only_switch
         )
-        filter_row.addWidget(self.modified_only_btn)
+        tooltip = translate("Keymap", "Show only actions with non-default shortcuts")
+        self.modified_only_switch.setToolTip(tooltip)
+        modified_only_label.setToolTip(tooltip)
+        filter_row.addSpacing(4)
+        filter_row.addWidget(modified_only_label)
+        filter_row.addWidget(self.modified_only_switch)
 
         root.addLayout(filter_row)
 
@@ -1645,7 +1650,7 @@ class KeymapEditor(QWidget):
     def _connect_signals(self):
         self.filter_edit.textChanged.connect(self.tree.filter_items)
         self.filter_scope.currentIndexChanged.connect(self._on_filter_scope_changed)
-        self.modified_only_btn.toggled.connect(self.tree.set_modified_only)
+        self.modified_only_switch.toggled.connect(self.tree.set_modified_only)
         self.expand_btn.clicked.connect(self.tree.expand_all_items)
         self.collapse_btn.clicked.connect(self.tree.collapse_all_items)
         self.reset_all_btn.clicked.connect(self._on_reset_all)

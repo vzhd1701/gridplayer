@@ -161,8 +161,8 @@ icon-symbolic,icons/basic/126-minimize.svg,remove
 icon-symbolic,icons/basic/191-up arrow.svg,move-up
 icon-symbolic,icons/basic/066-down arrow.svg,move-down
 icon-symbolic,icons/basic/093-folder.svg,browse-folder
-icon-symbolic,icons/custom/expand all.svg,expand-all
-icon-symbolic,icons/custom/collapse all.svg,collapse-all
+icon-symbolic,icons/lucide/expand-all.svg,expand-all
+icon-symbolic,icons/lucide/collapse-all.svg,collapse-all
 icon-symbolic,icons/lucide/page-player.svg,page-player
 icon-symbolic,icons/lucide/page-subtitles.svg,page-subtitles
 icon-symbolic,icons/lucide/page-shortcuts.svg,page-shortcuts
