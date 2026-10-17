@@ -165,10 +165,11 @@ def test_the_test_button_sits_with_the_runtime_it_tests(dialog):
     """
 
     form = dialog.form_of("streaming/js_runtime_path")
-    rows = [form.layout().itemAt(i).widget() for i in range(form.layout().count())]
-    field_row = rows.index(form._rows["streaming/js_runtime_path"])
+    field_row = form._rows["streaming/js_runtime_path"]
+    card = field_row.parentWidget().layout()
+    rows = [card.itemAt(i).widget() for i in range(card.count())]
 
-    assert rows[field_row + 1].isAncestorOf(dialog.streamingTestButton)
+    assert rows[rows.index(field_row) + 1].isAncestorOf(dialog.streamingTestButton)
 
 
 class TestTheTestTriesWhatIsOnScreen:

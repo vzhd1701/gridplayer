@@ -1,5 +1,5 @@
 import pytest
-from PyQt5.QtCore import QEvent, Qt
+from PyQt5.QtCore import QEvent, QPoint, Qt
 from PyQt5.QtGui import QColor
 from PyQt5.QtWidgets import QApplication
 
@@ -219,18 +219,18 @@ def test_no_page_is_cut_off_at_the_narrowest(dialog):
         assert content.minimumSizeHint().width() <= room, page_id
 
 
-def test_an_indented_label_keeps_close_to_its_field(dialog):
-    """Lined up with the labels of its own block, not padded out to the
-    longest one of the section around it."""
+def test_a_sub_option_starts_on_the_same_edge_as_the_rest(dialog):
+    """No step in: it goes right under the row it belongs to instead."""
 
-    timeout = (
-        dialog.form_of("misc/mouse_hide_timeout")
-        .editor("misc/mouse_hide_timeout")
-        .label
-    )
+    dialog.show()
+    dialog.show_page_of("misc/mouse_hide_timeout")
+    QApplication.processEvents()
 
-    # the size hint grows to the minimum width it is padded out to; the text
-    # does not
-    text = timeout.fontMetrics().horizontalAdvance(timeout.text())
+    form = dialog.form_of("misc/mouse_hide_timeout")
 
-    assert timeout.minimumWidth() <= text + 10
+    def left(key):
+        widget = form.editor(key).label or form.widget(key)
+        return widget.mapTo(form, QPoint()).x()
+
+    assert left("misc/mouse_hide_timeout") == left("player/video_init_timeout")
+    assert left("misc/mouse_hide_timeout") == left("misc/mouse_hide")

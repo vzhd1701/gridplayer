@@ -72,7 +72,7 @@ def _is_marked(dialog, key):
     form = dialog.form_of(key)
     return (
         form.is_modified(key)
-        and form.editor(key).marked.font().italic()
+        and form.is_marked(key)
         and not _reset_button(dialog, key).isHidden()
     )
 

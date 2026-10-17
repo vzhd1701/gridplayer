@@ -3,6 +3,7 @@
 defaults in gridplayer.settings."""
 
 import pytest
+from PyQt5.QtWidgets import QWidget
 
 from gridplayer.models.grid_state import GridState
 from gridplayer.models.playlist import Playlist, PlaylistVideoDefaults
@@ -139,7 +140,7 @@ def test_out_of_the_box_nothing_is_marked_changed(page):
         page.items,
         reset_to=default_value,
         mode=SettingsMode.DEFAULTS,
-        slots={name: lambda: None for name in _slots(page.items)},
+        slots=dict.fromkeys(_slots(page.items), QWidget),
     )
     form.set_values({key: default_value(key) for key in form.keys()})
 

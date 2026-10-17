@@ -1,7 +1,7 @@
 from collections.abc import Callable, Mapping
 
-from PyQt5.QtCore import QSize, Qt, pyqtSignal
-from PyQt5.QtGui import QIcon
+from PyQt5.QtCore import QEvent, QRectF, QSize, Qt, pyqtSignal
+from PyQt5.QtGui import QColor, QIcon, QPainter
 from PyQt5.QtWidgets import (
     QHBoxLayout,
     QLabel,
@@ -27,13 +27,28 @@ from gridplayer.params.settings_fields.kinds import (
     When,
 )
 from gridplayer.params.settings_fields.registry import FIELDS
+from gridplayer.params.theme import current_colors, set_secondary
 from gridplayer.utils.qt import translate
 from gridplayer.widgets.settings_editors import Editor, make_editor
 
-# how far the items that belong to the one above them are pushed in
-INDENT_PX = 20
-
 RESET_ICON_PX = 14
+
+# a row of a card: its height, and how far what is in it keeps from the edges
+ROW_HEIGHT = 40
+ROW_MARGINS = (14, 6, 10, 6)
+# a sub-option, kept close under the one it belongs to
+SUB_ROW_HEIGHT = 34
+
+CARD_RADIUS = 6
+
+# the bar on the left edge of a changed row
+MARK_WIDTH = 3
+MARK_INSET = 6
+
+# between the heading of a section and its card, and the card and a note
+SECTION_SPACING = 8
+# between one section and the next
+SECTIONS_SPACING = 20
 
 
 def bold(label: QLabel) -> QLabel:
@@ -41,6 +56,151 @@ def bold(label: QLabel) -> QLabel:
     font.setBold(True)
     label.setFont(font)
     return label
+
+
+def _put_away(widget: QWidget) -> bool:
+    """Hidden on purpose, rather than not shown yet: one just put in a
+    layout is shown only once the event loop comes round to it."""
+
+    return widget.isHidden() and widget.testAttribute(Qt.WA_WState_ExplicitShowHide)
+
+
+class _Shown(QWidget):
+    """Shown while anything it watches is, so that a card or a section with
+    nothing left in it does not stay behind as an empty box."""
+
+    def __init__(self):
+        super().__init__()
+        self._watched: list[QWidget] = []
+
+    def watch(self, widget: QWidget):
+        self._watched.append(widget)
+        widget.installEventFilter(self)
+
+    def eventFilter(self, obj, event):
+        if event.type() in {QEvent.ShowToParent, QEvent.HideToParent}:
+            self.follow()
+        return super().eventFilter(obj, event)
+
+    def follow(self):
+        # only once it is in the page: shown with no parent, it is a window
+        self.setVisible(not all(_put_away(widget) for widget in self._watched))
+        self.update()
+
+
+class _FormRow(_Shown):
+    """A setting, or a few on one line: the label on the left, what edits it
+    on the right, and a bar on the left edge while it is changed.
+
+    A row of nothing but slots watches them, and goes when they all do.
+    """
+
+    def __init__(self, *, joined: bool):
+        super().__init__()
+
+        # a sub-option, read as one block with the row above it
+        self.joined = joined
+        self.is_marked = False
+        # takes the page: a list or a table, out of the card
+        self.fills = False
+        self.watches_slots = False
+
+        lay = QHBoxLayout(self)
+        left, top, right, bottom = ROW_MARGINS
+        lay.setContentsMargins(left, 0 if joined else top, right, bottom)
+        lay.setSpacing(8)
+
+        self.setMinimumHeight(SUB_ROW_HEIGHT if joined else ROW_HEIGHT)
+
+    def make_bare(self):
+        """Out of the card: a list or a table has edges of its own."""
+
+        self.layout().setContentsMargins(0, 0, 0, 0)
+        self.setMinimumHeight(0)
+
+    def set_marked(self, is_marked: bool):
+        if is_marked != self.is_marked:
+            self.is_marked = is_marked
+            self.update()
+
+    def paintEvent(self, event):
+        if not self.is_marked:
+            return
+
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.Antialiasing)
+        painter.setPen(Qt.NoPen)
+        painter.setBrush(QColor(current_colors()["text"]))
+        # half of it past the edge, for the round end to be only on the right
+        bar = QRectF(
+            -MARK_WIDTH, MARK_INSET, 2 * MARK_WIDTH, self.height() - 2 * MARK_INSET
+        )
+        painter.drawRoundedRect(bar, MARK_WIDTH / 2, MARK_WIDTH / 2)
+
+
+class _Card(_Shown):
+    """The rows of a section on the base colour, with a line between them
+    and none above a sub-option."""
+
+    def __init__(self):
+        super().__init__()
+
+        self._rows: list[_FormRow] = []
+
+        lay = QVBoxLayout(self)
+        lay.setContentsMargins(1, 1, 1, 1)
+        lay.setSpacing(0)
+
+    def add(self, row: _FormRow):
+        self._rows.append(row)
+        self.layout().addWidget(row)
+        self.watch(row)
+
+    def paintEvent(self, event):
+        colors = current_colors()
+
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.Antialiasing)
+        painter.setPen(QColor(colors["highlight"]))
+        painter.setBrush(QColor(colors["base"]))
+        painter.drawRoundedRect(
+            QRectF(self.rect()).adjusted(0.5, 0.5, -0.5, -0.5),
+            CARD_RADIUS,
+            CARD_RADIUS,
+        )
+
+        painter.setRenderHint(QPainter.Antialiasing, False)
+        painter.setPen(QColor(colors["window"]))
+        shown = [row for row in self._rows if not _put_away(row)]
+        for row in shown[1:]:
+            if not row.joined:
+                top = row.geometry().top()
+                painter.drawLine(1, top, self.width() - 2, top)
+
+
+class _Section(_Shown):
+    """A heading, if it has one, and the cards, notes and lists under it."""
+
+    def __init__(self, title: str | None):
+        super().__init__()
+
+        # takes what the page has left, for a list or a table in it
+        self.fills = False
+
+        lay = QVBoxLayout(self)
+        lay.setContentsMargins(0, 0, 0, 0)
+        lay.setSpacing(SECTION_SPACING)
+
+        if title:
+            header = QLabel(title)
+            header.setOpenExternalLinks(True)
+            header.setContentsMargins(2, 0, 0, 0)
+            lay.addWidget(bold(header))
+
+    def add(self, widget: QWidget, *, fills: bool = False):
+        self.layout().addWidget(widget, 1 if fills else 0)
+        self.fills = self.fills or fills
+        self.watch(widget)
 
 
 class SettingsForm(QWidget):
@@ -83,111 +243,131 @@ class SettingsForm(QWidget):
         self._updating = False
         self._fills = False
 
-        # labels lined up together: a list for each section, and one for
-        # each indented block in it
-        self._label_columns: list[list[QWidget]] = []
-        self._column = self._new_column()
+        # where rows go as the page is built: the section, and its card
+        self._section: _Section | None = None
+        self._card: _Card | None = None
 
         root = QVBoxLayout(self)
         root.setContentsMargins(0, 0, 0, 0)
-        root.setSpacing(6)
+        root.setSpacing(SECTIONS_SPACING)
 
-        self._add_items(root, items, indent=0)
+        self._add_items(items, joined=False)
+        self._close_section()
 
         if not self._fills:
             root.addStretch(1)
 
-        self._line_up_labels()
         # what is modified waits for the values
         self._sync(keys=())
 
     # building
 
-    def _add_items(self, layout, items, indent):
+    def _add_items(self, items, joined):
         for item in items:
             if isinstance(item, Section):
-                self._column = self._new_column()
-                layout.addWidget(self._header(item.title), alignment=Qt.AlignLeft)
-                self._add_items(layout, item.items, indent)
-                self._column = self._new_column()
+                self._close_section()
+                self._section = _Section(item.title)
+                self._add_items(item.items, joined)
+                self._close_section()
             elif isinstance(item, Indented):
-                # lined up among themselves, close to their fields, rather
-                # than out to the labels of the section around them
-                outer, self._column = self._column, self._new_column()
-                self._add_items(layout, item.items, indent + INDENT_PX)
-                self._column = outer
+                # under the row they belong to, on the same edge as the rest
+                self._add_items(item.items, joined=True)
             elif isinstance(item, Row):
-                self._add_row(layout, item.items, indent)
+                self._place(self._add_row(item.items, joined))
             elif isinstance(item, Note):
-                layout.addWidget(self._note(item, indent))
+                # under the card, which goes on after it as a new one
+                self._card = None
+                self._in_section().add(self._note(item))
             else:
-                self._add_row(layout, (item,), indent)
+                self._place(self._add_row((item,), joined))
 
-    def _new_column(self) -> list[QWidget]:
-        column = []
-        self._label_columns.append(column)
-        return column
+    def _close_section(self):
+        if self._section is None:
+            return
+
+        self.layout().addWidget(self._section, 1 if self._section.fills else 0)
+        self._section.follow()
+        self._fills = self._fills or self._section.fills
+        self._section = self._card = None
+
+    def _in_section(self) -> _Section:
+        """The section open, or one with no heading for rows outside any."""
+
+        if self._section is None:
+            self._section = _Section(None)
+        return self._section
+
+    def _place(self, row: _FormRow):
+        section = self._in_section()
+
+        if row.fills:
+            row.make_bare()
+            self._card = None
+            section.add(row, fills=True)
+        else:
+            if self._card is None:
+                self._card = _Card()
+                section.add(self._card)
+            self._card.add(row)
+
+        if row.watches_slots:
+            # gone with what is in it, as a slot can hide itself
+            row.follow()
+        if self._card is not None:
+            self._card.follow()
 
     @staticmethod
-    def _header(title):
-        header = QLabel(title)
-        header.setOpenExternalLinks(True)
-        return bold(header)
-
-    @staticmethod
-    def _note(note: Note, indent):
+    def _note(note: Note):
         label = QLabel(note.text)
         label.setWordWrap(True)
         label.setOpenExternalLinks(True)
-        label.setContentsMargins(indent, 0, 0, 0)
+        label.setContentsMargins(2, 0, 0, 0)
+        set_secondary(label)
         return label
 
-    def _add_row(self, layout, entries, indent):
-        holder = QWidget()
-        lay = QHBoxLayout(holder)
-        lay.setContentsMargins(indent, 0, 0, 0)
-        lay.setSpacing(8)
+    def _add_row(self, entries, joined) -> _FormRow:
+        row = _FormRow(joined=joined)
+        lay = row.layout()
 
         editors = []
-        fills = grows = False
         # a field's reset button, held back past the slots right after it:
         # a button there (a help, say) goes with the field, inside its reset
         held_reset = None
         for entry in entries:
             if isinstance(entry, Slot):
-                lay.addWidget(self._slots[entry.name](), 1 if entry.fills else 0)
-                fills = fills or entry.fills
+                widget = self._slots[entry.name]()
+                lay.addWidget(widget, 1 if entry.fills else 0)
+                row.fills = row.fills or entry.fills
+                if not editors:
+                    row.watch(widget)
+                    row.watches_slots = True
                 continue
 
             self._add_reset(lay, held_reset)
 
-            # the first label, or a checkbox labelling the rest of the row,
-            # goes in the column; a checkbox on its own spans the row
-            in_column = not editors
-            editor = self._add_editor(entry, lay, in_column, len(entries) > 1)
-            self._rows[editor.spec.settings_key] = holder
+            editor = self._add_editor(entry, lay, is_first=not editors)
+            self._rows[editor.spec.settings_key] = row
             editors.append(editor)
-            fills = fills or editor.fills
-            grows = grows or editor.grows
+            row.fills = row.fills or editor.fills
 
             held_reset = self._reset_btns.get(editor.spec.settings_key)
 
         self._add_reset(lay, held_reset)
 
-        if not (fills or grows):
+        if not editors and not row.fills:
+            # a button or a line of text, on the left with the labels
             lay.addStretch(1)
 
         if len(editors) == 1 and editors[0].tooltip:
-            holder.setToolTip(editors[0].tooltip)
+            row.setToolTip(editors[0].tooltip)
         else:
             for editor in editors:
                 if editor.tooltip:
                     editor.set_tooltip(editor.tooltip)
 
-        self._fills = self._fills or fills
-        layout.addWidget(holder, 1 if fills else 0)
+        return row
 
-    def _add_editor(self, entry, lay, in_column, is_in_row) -> Editor:
+    def _add_editor(self, entry, lay, is_first) -> Editor:
         spec = entry if isinstance(entry, SettingField) else FIELDS[entry]
         key = spec.settings_key
 
@@ -197,17 +377,21 @@ class SettingsForm(QWidget):
         self._editors[key] = editor
         self._drafts[key] = FieldDraft()
 
-        if editor.is_checkbox:
-            column_widget = editor.widget if is_in_row else None
-        else:
-            column_widget = editor.label
-        if column_widget is not None and in_column:
-            self._column.append(column_widget)
+        parts = editor.parts()
 
-        if editor.label is not None:
-            lay.addWidget(editor.label)
-        for widget in editor.parts():
-            lay.addWidget(widget, 1 if editor.fills else 0)
+        if editor.is_checkbox:
+            # its own label, on the left where the labels are
+            lay.addWidget(parts[0])
+            parts = parts[1:]
+            if is_first:
+                lay.addStretch(1)
+        elif editor.label is not None:
+            # the label takes the room between, and the field is on the right;
+            # one that grows takes the room itself
+            lay.addWidget(editor.label, 0 if editor.grows else 1)
+
+        for widget in parts:
+            lay.addWidget(widget, 1 if editor.fills or editor.grows else 0)
 
         if self._reset_to is not None and not editor.fills:
             self._reset_button(key)
@@ -257,16 +441,6 @@ class SettingsForm(QWidget):
         self._unavailable.add(key)
         if reason:
             self._editors[key].set_tooltip(reason)
-
-    def _line_up_labels(self):
-        """Labels of a section in a column, as a form layout would have them."""
-
-        for column in self._label_columns:
-            if len(column) < 2:
-                continue
-            width = max(widget.sizeHint().width() for widget in column)
-            for widget in column:
-                widget.setMinimumWidth(width)
 
     # what is on and what is shown
 
@@ -328,16 +502,15 @@ class SettingsForm(QWidget):
             if self._reset_to is None:
                 continue
 
-            editor = self._editors[key]
-
-            if editor.marked is not None:
-                font = editor.marked.font()
-                font.setItalic(is_modified)
-                editor.marked.setFont(font)
+            row = self._rows[key]
+            row.set_marked(not self._modified.isdisjoint(self._keys_on(row)))
 
             reset = self._reset_btns.get(key)
             if reset is not None:
                 reset.setVisible(is_modified)
+
+    def _keys_on(self, row):
+        return (key for key, on in self._rows.items() if on is row)
 
     def _refresh(self, keys=None):
         self._sync(keys)
@@ -420,6 +593,11 @@ class SettingsForm(QWidget):
 
     def is_modified(self, key: str) -> bool:
         return key in self._modified
+
+    def is_marked(self, key: str) -> bool:
+        """Its row has the bar a changed setting has."""
+
+        return self._rows[key].is_marked
 
     def has_modified(self) -> bool:
         return bool(self._modified)
