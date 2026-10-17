@@ -104,6 +104,8 @@ _default_settings = {
     "playlist/grid_cols": 3,
     "playlist/grid_preallocate": False,
     "playlist/save_paths_relative": False,
+    # every setting written into the playlist, not only those it changes
+    "playlist/save_all_settings": False,
     "playlist/save_position": False,
     "playlist/save_state": False,
     "playlist/save_window": False,

@@ -12,6 +12,8 @@ from gridplayer.settings import Settings
 
 _INSTANCE = None
 
+SAVE_ALL_KEY = "playlist/save_all_settings"
+
 
 class _PlaylistSettings:
     def __init__(self):
@@ -52,8 +54,33 @@ class _PlaylistSettings:
         finally:
             self._suppress = prev
 
+    def is_keeping_all(self) -> bool:
+        """Whether the playlist keeps every setting, not only its own."""
+
+        return bool(self.get(SAVE_ALL_KEY))
+
+    def kept(self) -> dict:
+        """What a playlist saved now keeps: the values it has of its own,
+        or every value, while it keeps all its settings."""
+
+        if not self.is_keeping_all():
+            return dict(self._overrides)
+
+        return {key: self.get(key) for key in (*PLAYLIST_ATTRS, *VIDEO_DEFAULT_ATTRS)}
+
+    def keep_all(self, live) -> None:
+        """Every value the playlist's own, as it is now, the grid's as the
+        grid is: what it saved, so that a change of a default reaches it no
+        more than it reaches the file."""
+
+        self._overrides = {
+            **self.kept(),
+            **grid_values_from_state(live),
+            **self._overrides,
+        }
+
     def playlist_kwargs(self) -> dict:
-        return playlist_kwargs_from_overrides(self._overrides)
+        return playlist_kwargs_from_overrides(self.kept())
 
     def applied_grid_state(self, live):
         """Live values for overridden grid keys, Settings for the rest."""
@@ -135,10 +162,11 @@ def grid_state_for_dump(live) -> GridState:
     ``video_order`` are always explicit (they are not settings).
     """
     session = PlaylistSettings()
+    is_all = session.is_keeping_all()
     explicit = {
         attr: getattr(live, attr)
         for key, attr in GRID_STATE_ATTR.items()
-        if session.is_overridden(key)
+        if is_all or session.is_overridden(key)
     }
     return GridState(
         **explicit,

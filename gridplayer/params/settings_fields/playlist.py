@@ -41,6 +41,14 @@ def _drop_action_tooltip() -> str:
 
 
 PLAYLIST_FIELDS: tuple[SettingField, ...] = (
+    CheckboxField(
+        settings_key="playlist/save_all_settings",
+        label=translate("SettingsDialog", "Save all settings in the playlist"),
+        tooltip=translate(
+            "SettingsDialog",
+            "Saves every setting, so the playlist plays the same anywhere.",
+        ),
+    ),
     ComboField(
         settings_key="playlist/unsaved_changes",
         label=translate("SettingsDialog", "Unsaved changes on close"),

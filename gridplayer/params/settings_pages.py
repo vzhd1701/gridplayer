@@ -25,6 +25,7 @@ SPONSORBLOCK_URL = "https://sponsor.ajay.app/"
 PLAYLIST_PAGE = (
     Section(
         translate("SettingsDialog", "Saving / Restoring"),
+        "playlist/save_all_settings",
         "playlist/unsaved_changes",
         "playlist/save_window",
         "playlist/save_position",

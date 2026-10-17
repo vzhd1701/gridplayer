@@ -484,6 +484,10 @@ class PlaylistManager(ManagerBase):
             )
             return False
 
+        # as the file has them now, whatever the defaults come to
+        if PlaylistSettings().is_keeping_all():
+            PlaylistSettings().keep_all(self._ctx.grid_state)
+
         # those of the cells closed meanwhile were left out of it
         self._ctx.commands.forget_bookmarks_of_cells_gone()
         self._ctx.commands.forget_left_lists()

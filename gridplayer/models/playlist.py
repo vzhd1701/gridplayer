@@ -151,6 +151,7 @@ class Playlist(BaseModel):
     save_position: bool | None = None
     save_state: bool | None = None
     save_paths_relative: bool | None = None
+    save_all_settings: bool | None = None
     drop_action_internal: DropAction | None = None
     drop_action_external: DropAction | None = None
     add_mode: AddMode | None = None
