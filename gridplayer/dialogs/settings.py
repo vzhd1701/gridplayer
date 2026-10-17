@@ -36,7 +36,6 @@ from gridplayer.utils.qt import translate
 from gridplayer.utils.screenshots import unknown_specifiers
 from gridplayer.version import __app_url__
 from gridplayer.widgets.cookie_store_list import CookieStoreList
-from gridplayer.widgets.custom_menu import CustomMenu
 from gridplayer.widgets.section_links import SectionLinks
 from gridplayer.widgets.settings_current_page_stack import CurrentPageStackedWidget
 from gridplayer.widgets.settings_form import SettingsForm
@@ -358,11 +357,12 @@ class SettingsDialog(QDialog):
         return self.playerTrayUnavailable
 
     def _slot_cache_clear(self):
-        self.cacheClear = QToolButton()
-        self.cacheClear.setIcon(QIcon.fromTheme("trash"))
-        self.cacheClear.setToolButtonStyle(Qt.ToolButtonTextBesideIcon)
-        self.cacheClear.setText(translate("SettingsDialog", "Clear"))
-        self.cacheClear.setPopupMode(QToolButton.MenuButtonPopup)
+        self.cacheSize = QLabel()
+        set_secondary(self.cacheSize)
+
+        self.cacheClear = QPushButton(
+            QIcon.fromTheme("trash"), translate("SettingsDialog", "Clear")
+        )
         self.cacheClear.setToolTip(
             translate(
                 "SettingsDialog", "Delete everything in the cache folder:\n{FOLDER}"
@@ -370,18 +370,16 @@ class SettingsDialog(QDialog):
         )
         self.cacheClear.clicked.connect(self.clear_cache)
 
-        # the folder it is in, opened from the arrow beside Clear
-        cache_menu = CustomMenu(parent=self.cacheClear)
-        self.cache_open_action = cache_menu.addAction(
-            QIcon.fromTheme("show-in-folder"),
-            translate("SettingsDialog", "Open Folder"),
-            self.open_cache_dir,
-        )
-        self.cacheClear.setMenu(cache_menu)
+        # the folder it is in, as a folder field's button
+        self.cacheOpen = QPushButton(QIcon.fromTheme("show-in-folder"), "")
+        self.cacheOpen.setFixedSize(ICON_BUTTON_SIZE)
+        self.cacheOpen.setToolTip(translate("SettingsDialog", "Open Folder"))
+        self.cacheOpen.clicked.connect(self.open_cache_dir)
 
-        self.cacheSize = QLabel()
-
-        return _in_a_row(self.cacheSize, None, self.cacheClear)
+        row = _in_a_row(self.cacheSize, self.cacheClear, self.cacheOpen, right=True)
+        # as far apart as fields in a row are
+        row.layout().setSpacing(8)
+        return row
 
     def _slot_screenshot_template_help(self):
         self.screenshotsFilenameTemplateHelpButton = _help_button()
@@ -571,7 +569,7 @@ class SettingsDialog(QDialog):
 
     def cache_mode_selected(self, *_):
         # nothing on disk to see, kept in memory
-        self.cache_open_action.setEnabled(self.value("cache/mode") == CacheMode.DISK)
+        self.cacheOpen.setEnabled(self.value("cache/mode") == CacheMode.DISK)
 
     # loading and saving
 
@@ -855,11 +853,11 @@ class SettingsDialog(QDialog):
         self.cacheClear.setEnabled(size > 0)
 
         if size == 0:
-            self.cacheSize.setText(translate("SettingsDialog", "Empty"))
+            self.cacheSize.setText(translate("SettingsDialog", "Nothing"))
             return
 
         megabytes = QLocale().toString(max(size / cache.MB, 0.1), "f", 1)
 
         self.cacheSize.setText(
-            translate("SettingsDialog", "{SIZE} MB used").format(SIZE=megabytes)
+            translate("SettingsDialog", "{SIZE} MB").format(SIZE=megabytes)
         )

@@ -223,7 +223,7 @@ PAGES = (
                 translate("SettingsDialog", "Cache"),
                 "cache/mode",
                 "cache/max_mb",
-                Slot("cache_clear"),
+                Slot("cache_clear", label=translate("SettingsDialog", "Used")),
             ),
             Section(
                 translate("SettingsDialog", "Screenshots"),

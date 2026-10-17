@@ -417,9 +417,13 @@ class SettingsForm(QWidget):
         # a field's reset button, held back past the slots right after it:
         # a button there (a help, say) goes with the field, inside its reset
         held_reset = None
+        is_labelled = False
         for entry in entries:
             if isinstance(entry, Slot):
                 widget = self._slots[entry.name]()
+                if entry.label is not None:
+                    lay.addWidget(QLabel(entry.label), 1)
+                    is_labelled = True
                 lay.addWidget(widget, 1 if entry.fills else 0)
                 row.fills = row.fills or entry.fills
                 if not editors:
@@ -438,7 +442,10 @@ class SettingsForm(QWidget):
 
         self._add_reset(lay, held_reset)
 
-        if not editors and not row.fills:
+        if is_labelled and not editors:
+            # no reset of its own, but its room: ending where the fields do
+            self._add_reset(lay, self._make_reset())
+        elif not editors and not row.fills:
             # a button or a line of text, on the left with the labels
             lay.addStretch(1)
 
@@ -487,13 +494,20 @@ class SettingsForm(QWidget):
             lay.addWidget(reset, alignment=Qt.AlignVCenter)
 
     def _reset_button(self, key):
+        reset = self._make_reset()
+        reset.clicked.connect(lambda _=False, key=key: self.reset(key))
+
+        self._reset_btns[key] = reset
+        return reset
+
+    @staticmethod
+    def _make_reset():
         reset = QToolButton()
         reset.setIcon(QIcon.fromTheme("reset"))
         reset.setIconSize(QSize(RESET_ICON_PX, RESET_ICON_PX))
         reset.setAutoRaise(True)
         reset.setToolTip(translate("SettingsDialog", "Reset"))
         reset.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
-        reset.clicked.connect(lambda _=False, key=key: self.reset(key))
 
         # taking up its room while hidden, so nothing moves when it shows
         policy = reset.sizePolicy()
@@ -501,7 +515,6 @@ class SettingsForm(QWidget):
         reset.setSizePolicy(policy)
         reset.hide()
 
-        self._reset_btns[key] = reset
         return reset
 
     def _check_available(self, spec):

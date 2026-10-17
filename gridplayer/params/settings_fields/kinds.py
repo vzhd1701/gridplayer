@@ -151,10 +151,13 @@ class Slot:
     """Whatever the dialog puts here: a button, a list, anything that isn't
     a setting. The dialog is handed the name and gives the widget."""
 
-    def __init__(self, name: str, fills: bool = False):
+    def __init__(self, name: str, fills: bool = False, label: str | None = None):
         self.name = name
         # takes what the page has left, as a list or a table does
         self.fills = fills
+        # where the labels go, as a field's: what the dialog gives goes on
+        # the right then, with the fields
+        self.label = label
 
 
 class Page(_Node):

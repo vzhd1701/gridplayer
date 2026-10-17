@@ -8,7 +8,7 @@ from types import SimpleNamespace
 import pytest
 from PyQt5.QtCore import QEvent, QSettings, Qt
 from PyQt5.QtTest import QTest
-from PyQt5.QtWidgets import QApplication, QWidget
+from PyQt5.QtWidgets import QApplication, QLabel, QWidget
 
 from gridplayer.dialogs import settings as settings_dialog
 from gridplayer.dialogs.settings import SettingsDialog
@@ -141,7 +141,7 @@ class TestClear:
 
         dialog = make_dialog()
 
-        assert _said(dialog, "1.5 MB used")
+        assert _said(dialog, "1.5 MB")
         assert dialog.cacheClear.isEnabled()
 
     def test_a_little_is_not_nothing(self, root, make_dialog):
@@ -149,22 +149,22 @@ class TestClear:
 
         dialog = make_dialog()
 
-        assert _said(dialog, "0.1 MB used")
+        assert _said(dialog, "0.1 MB")
 
     def test_an_empty_one_has_nothing_to_clear(self, make_dialog):
         dialog = make_dialog()
 
-        assert _said(dialog, "Empty")
+        assert _said(dialog, "Nothing")
         assert not dialog.cacheClear.isEnabled()
 
     def test_emptied_at_once_not_on_ok(self, root, make_dialog):
         path = _put(root, 1024 * 1024)
         dialog = make_dialog()
-        assert _said(dialog, "1.0 MB used")
+        assert _said(dialog, "1.0 MB")
 
         QTest.mouseClick(dialog.cacheClear, Qt.LeftButton)
 
-        assert _said(dialog, "Empty")
+        assert _said(dialog, "Nothing")
         assert not path.exists()
         assert not dialog.cacheClear.isEnabled()
 
@@ -217,20 +217,40 @@ class TestAppliedOnOk:
         apply.assert_not_called()
 
 
+class TestTheRow:
+    def test_reads_as_the_others(self, make_dialog):
+        """Its label on the left, what it comes to, Clear and the folder on
+        the right, ending where the fields above do."""
+
+        dialog = make_dialog()
+        dialog.show()
+        QApplication.processEvents()
+
+        def right(widget):
+            return widget.mapTo(dialog, widget.rect().topRight()).x()
+
+        row = dialog.cacheOpen.parent()
+        assert row.isAncestorOf(dialog.cacheSize)
+        assert row.isAncestorOf(dialog.cacheClear)
+        assert right(dialog.cacheOpen) == right(dialog.widget("cache/mode"))
+
+        label = dialog.cacheOpen.parent().parent().findChildren(QLabel)[0]
+        assert label.text() == "Used"
+        assert right(label) < right(dialog.cacheSize)
+
+
 class TestOpenFolder:
     def test_beside_clear(self, make_dialog):
         dialog = make_dialog()
 
-        menu = dialog.cacheClear.menu()
-
-        assert [action.text() for action in menu.actions()] == ["Open Folder"]
+        assert dialog.cacheOpen.toolTip() == "Open Folder"
 
     def test_opens_it_made_if_it_is_not_there_yet(self, root, make_dialog, monkeypatch):
         dialog = make_dialog()
         opened = []
         monkeypatch.setattr(dialog, "_open_folder", opened.append)
 
-        dialog.cache_open_action.trigger()
+        dialog.cacheOpen.click()
 
         assert opened == [root]
         assert root.is_dir()
@@ -240,8 +260,8 @@ class TestOpenFolder:
 
         _choose(dialog.widget("cache/mode"), CacheMode.MEMORY)
 
-        assert not dialog.cache_open_action.isEnabled()
+        assert not dialog.cacheOpen.isEnabled()
 
         _choose(dialog.widget("cache/mode"), CacheMode.DISK)
 
-        assert dialog.cache_open_action.isEnabled()
+        assert dialog.cacheOpen.isEnabled()
