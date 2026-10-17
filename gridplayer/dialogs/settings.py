@@ -199,6 +199,10 @@ class SettingsDialog(QDialog):
         self.measure_cache()
         self.switch_page(None)
         self.adjustSize()
+        # the hints are only what every page needs: taller, the long ones
+        # show more than a few rows at a time
+        room = self.screen().availableGeometry().height() * 2 // 3
+        self.resize(self.width(), max(self.height(), room))
 
     # building
 
@@ -340,9 +344,9 @@ class SettingsDialog(QDialog):
         self.playerTrayUnavailable = QLabel(
             translate("SettingsDialog", "Your desktop has no tray.")
         )
-        self.playerTrayUnavailable.setVisible(
-            not QSystemTrayIcon.isSystemTrayAvailable()
-        )
+        # hidden rather than shown: with no parent yet, it would be a window
+        if QSystemTrayIcon.isSystemTrayAvailable():
+            self.playerTrayUnavailable.hide()
         return self.playerTrayUnavailable
 
     def _slot_cache_clear(self):

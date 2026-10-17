@@ -1,12 +1,13 @@
 import pytest
-from PyQt5.QtCore import QEvent, QPoint, Qt
+from PyQt5.QtCore import QEvent, QObject, QPoint, QSize, Qt
 from PyQt5.QtGui import QColor
-from PyQt5.QtWidgets import QApplication
+from PyQt5.QtWidgets import QApplication, QLayout
 
 from gridplayer.dialogs.settings import SECTION_PAGE_ROLE, SettingsDialog
 from gridplayer.main.init_resources import init_resources
 from gridplayer.params.settings_pages import PAGES as SETTINGS_PAGES
 from gridplayer.params.theme import apply_theme, current_colors
+from gridplayer.widgets.settings_form import _FormRow
 from gridplayer.widgets.settings_page_scroll_area import PageScrollArea
 
 # the index as it is meant to read, group heading by group heading
@@ -245,3 +246,77 @@ def test_a_sub_option_starts_on_the_same_edge_as_the_rest(dialog):
 
     assert left("misc/mouse_hide_timeout") == left("player/video_init_timeout")
     assert left("misc/mouse_hide_timeout") == left("misc/mouse_hide")
+
+
+def test_nothing_flashes_up_as_a_window_while_it_is_made():
+    """A part of a page shown before it was put in one was a window of its
+    own for a moment, and the desktop blinked as the dialog opened."""
+
+    shown = []
+
+    class _Spy(QObject):
+        def eventFilter(self, obj, event):
+            if event.type() == QEvent.Show and obj.isWidgetType() and obj.isWindow():
+                shown.append(type(obj).__name__)
+            return False
+
+    spy = _Spy()
+    QApplication.instance().installEventFilter(spy)
+    try:
+        dialog = SettingsDialog(None)
+    finally:
+        QApplication.instance().removeEventFilter(spy)
+
+    assert shown == []
+
+    dialog.deleteLater()
+    QApplication.sendPostedEvents(None, QEvent.DeferredDelete)
+
+
+def test_no_row_is_painted_squeezed_as_it_opens():
+    """Rows that come back as a page is shown made the page taller only
+    once the event loop came round to it: the first paint had every row of
+    the Player page squeezed into the height it had before."""
+
+    squeezed = []
+
+    class _Spy(QObject):
+        def eventFilter(self, obj, event):
+            if (
+                event.type() == QEvent.Paint
+                and isinstance(obj, _FormRow)
+                and obj.height() < obj.minimumSizeHint().height()
+            ):
+                squeezed.append(obj.height())
+            return False
+
+    dialog = SettingsDialog(None)
+    spy = _Spy()
+    QApplication.instance().installEventFilter(spy)
+    try:
+        dialog.show()
+        for _ in range(5):
+            QApplication.processEvents()
+    finally:
+        QApplication.instance().removeEventFilter(spy)
+
+    assert squeezed == []
+
+    dialog.close()
+    dialog.deleteLater()
+    QApplication.sendPostedEvents(None, QEvent.DeferredDelete)
+
+
+@pytest.mark.parametrize("page_id", ["player", "playlist", "video", "cookies"])
+def test_the_size_grip_widens_it_without_making_it_taller(dialog, page_id):
+    """A page that scrolls once counted as tall as all of it unscrolled,
+    and the first drag of the grip took the dialog off the bottom of the
+    screen. The grip asks this for each size it is dragged to."""
+
+    dialog.show()
+    dialog.show_page(page_id)
+    QApplication.processEvents()
+
+    wider = QSize(dialog.minimumWidth() + 40, 560)
+
+    assert QLayout.closestAcceptableSize(dialog, wider) == wider

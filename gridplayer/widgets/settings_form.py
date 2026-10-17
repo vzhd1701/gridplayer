@@ -1,10 +1,23 @@
 from collections.abc import Callable, Mapping
 
-from PyQt5.QtCore import QEvent, QRectF, QSize, Qt, pyqtSignal
+from PyQt5.QtCore import (
+    QAbstractAnimation,
+    QEasingCurve,
+    QEvent,
+    QPoint,
+    QRectF,
+    QSize,
+    Qt,
+    QVariantAnimation,
+    pyqtSignal,
+)
 from PyQt5.QtGui import QIcon, QPainter
 from PyQt5.QtWidgets import (
+    QApplication,
     QHBoxLayout,
     QLabel,
+    QScrollArea,
+    QScrollBar,
     QSizePolicy,
     QToolButton,
     QVBoxLayout,
@@ -47,7 +60,11 @@ CARD_RADIUS = 6
 
 # the bar on the left edge of a changed row
 MARK_WIDTH = 3
-MARK_INSET = 6
+
+# rows shown when a setting is changed: how far from the edge of the page
+# they are scrolled to, and how quickly
+REVEAL_MARGIN = 12
+SCROLL_MS = 200
 
 # between the heading of a section and its card, and the card and a note
 SECTION_SPACING = 8
@@ -60,6 +77,18 @@ def bold(label: QLabel) -> QLabel:
     font.setBold(True)
     label.setFont(font)
     return label
+
+
+def _scroll_by(bar: QScrollBar, step: int):
+    """Down a little, smoothly, for the eye to follow where it went."""
+
+    animation = QVariantAnimation(bar)
+    animation.setStartValue(bar.value())
+    animation.setEndValue(min(bar.value() + step, bar.maximum()))
+    animation.setDuration(SCROLL_MS)
+    animation.setEasingCurve(QEasingCurve.OutCubic)
+    animation.valueChanged.connect(bar.setValue)
+    animation.start(QAbstractAnimation.DeleteWhenStopped)
 
 
 def _put_away(widget: QWidget) -> bool:
@@ -87,7 +116,11 @@ class _Shown(QWidget):
         return super().eventFilter(obj, event)
 
     def follow(self):
-        # only once it is in the page: shown with no parent, it is a window
+        # only once it is in the page: shown with no parent, it is a window,
+        # and flashes up on the desktop; it follows when it is put in one
+        if self.parentWidget() is None:
+            return
+
         self.setVisible(not all(_put_away(widget) for widget in self._watched))
         self.update()
 
@@ -147,9 +180,22 @@ class _FormRow(_Shown):
         return super().minimumSizeHint().expandedTo(QSize(0, self._height))
 
     def set_marked(self, is_marked: bool):
+        # a list or a table says itself what is changed in it, and the bar
+        # down the whole of its side would be a black stripe
+        if self.fills:
+            is_marked = False
+
         if is_marked != self.is_marked:
             self.is_marked = is_marked
             self.update()
+
+    def mark_bar(self) -> QRectF:
+        """Along what is in the row, which a sub-option has nearer its top
+        than its bottom; half of it past the edge, for the round end to be
+        only on the right."""
+
+        content = self.layout().contentsRect()
+        return QRectF(-MARK_WIDTH, content.top(), 2 * MARK_WIDTH, content.height())
 
     def paintEvent(self, event):
         if not self.is_marked:
@@ -159,11 +205,7 @@ class _FormRow(_Shown):
         painter.setRenderHint(QPainter.Antialiasing)
         painter.setPen(Qt.NoPen)
         painter.setBrush(theme_color(self, "text"))
-        # half of it past the edge, for the round end to be only on the right
-        bar = QRectF(
-            -MARK_WIDTH, MARK_INSET, 2 * MARK_WIDTH, self.height() - 2 * MARK_INSET
-        )
-        painter.drawRoundedRect(bar, MARK_WIDTH / 2, MARK_WIDTH / 2)
+        painter.drawRoundedRect(self.mark_bar(), MARK_WIDTH / 2, MARK_WIDTH / 2)
 
 
 class _Card(_Shown):
@@ -288,6 +330,13 @@ class SettingsForm(QWidget):
 
         # what is modified waits for the values
         self._sync(keys=())
+
+    def showEvent(self, event):
+        super().showEvent(event)
+
+        # rows come back as the page is shown, before it is first painted:
+        # the dialog opened with them squeezed, see _settle
+        self._settle()
 
     # building
 
@@ -484,6 +533,7 @@ class SettingsForm(QWidget):
                 enabled[key] = self._is_on(key, is_on)
             return enabled[key]
 
+        moved, revealed = False, []
         for key, editor in self._editors.items():
             editor.set_enabled(is_on(key))
 
@@ -496,11 +546,57 @@ class SettingsForm(QWidget):
             rules = [rule for rule in rules if rule is not None]
 
             if key in self._hidden:
-                row.setVisible(False)
+                is_shown = False
             elif rules:
-                row.setVisible(all(self._is_met(rule, is_on) for rule in rules))
+                is_shown = all(self._is_met(rule, is_on) for rule in rules)
+            else:
+                continue
+
+            if is_shown == _put_away(row):
+                row.setVisible(is_shown)
+                moved = True
+                if is_shown and row not in revealed:
+                    revealed.append(row)
 
         self._sync_modified(keys)
+
+        if moved and self.isVisible():
+            self._settle()
+            self._point_out(revealed)
+
+    def _point_out(self, rows):
+        """Rows shown just now, scrolled to, so that they are not missed
+        below the one that brought them."""
+
+        scroll = self.parentWidget()
+        while scroll is not None and not isinstance(scroll, QScrollArea):
+            scroll = scroll.parentWidget()
+        if scroll is None or not rows:
+            return
+
+        viewport = scroll.viewport()
+        top = rows[0].mapTo(viewport, QPoint(0, 0)).y() - REVEAL_MARGIN
+        bottom = (
+            rows[-1].mapTo(viewport, QPoint(0, rows[-1].height())).y() + REVEAL_MARGIN
+        )
+
+        bar = scroll.verticalScrollBar()
+        if bottom > viewport.height():
+            # the last of them in view, but never the first out of it
+            step = min(bottom - viewport.height(), max(top, 0))
+            _scroll_by(bar, step)
+
+    @staticmethod
+    def _settle():
+        """The page at its new height before it is painted.
+
+        A row shown lays out the page at once, but in the height it had: in
+        a scroll area, the page is made taller only once the event loop comes
+        round to it, and a paint already on its way would show every row
+        squeezed for a moment.
+        """
+
+        QApplication.sendPostedEvents(None, QEvent.LayoutRequest)
 
     def _out_of_reach(self, key) -> bool:
         return key in self._unavailable or key in self._locked

@@ -1,14 +1,15 @@
 import pytest
-from PyQt5.QtCore import QPoint, Qt
+from PyQt5.QtCore import QDeadlineTimer, QEvent, QPoint, Qt
 from PyQt5.QtTest import QTest
-from PyQt5.QtWidgets import QApplication
+from PyQt5.QtWidgets import QApplication, QScrollArea
 
 from gridplayer.params.settings_fields.kinds import Indented, Section
 from gridplayer.params.settings_fields.registry import FIELDS
+from gridplayer.params.static import ProxyMode
 from gridplayer.settings import default_value
 from gridplayer.widgets.settings_controls import SegmentedChoice, Switch, ToggleLabel
 from gridplayer.widgets.settings_editors import make_editor
-from gridplayer.widgets.settings_form import SettingsForm
+from gridplayer.widgets.settings_form import ROW_HEIGHT, SCROLL_MS, SettingsForm
 
 
 def _choice(*items):
@@ -131,3 +132,115 @@ class TestSubOptionsShowOnlyWhenTheyApply:
 
         assert form._rows["misc/mouse_hide_timeout"].isVisibleTo(form)
         assert not form.is_enabled("misc/mouse_hide_timeout")
+
+
+class TestARowShownByAChange:
+    """Sub-options that appear under the setting just changed."""
+
+    @pytest.fixture
+    def page(self):
+        form = SettingsForm(
+            (
+                Section(
+                    "Timeouts",
+                    "player/video_init_timeout",
+                    "misc/mouse_hide",
+                    Indented("misc/mouse_hide_timeout"),
+                ),
+            ),
+            reset_to=default_value,
+        )
+        form.set_values({"misc/mouse_hide": False})
+        # room above, so the page has to scroll to get to the end of it
+        form.layout().insertSpacing(0, 600)
+
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setWidget(form)
+        scroll.resize(400, 300)
+        scroll.show()
+        _wait(SCROLL_MS)
+
+        # shown once and put away again, as on a page that has been used
+        form.widget("misc/mouse_hide").click()
+        _wait(SCROLL_MS * 2)
+        form.widget("misc/mouse_hide").click()
+        _wait(SCROLL_MS)
+
+        bar = scroll.verticalScrollBar()
+        bar.setValue(bar.maximum())
+
+        yield form, scroll
+
+        scroll.close()
+        scroll.deleteLater()
+        QApplication.sendPostedEvents(None, QEvent.DeferredDelete)
+
+    def test_the_page_is_at_its_new_height_before_it_is_painted(self, page):
+        """Laid out in the height it had until the event loop came round, every
+        row was squeezed for a moment, and the page seemed to jump."""
+
+        form, _ = page
+
+        form.widget("misc/mouse_hide").click()
+
+        assert form.height() == form.sizeHint().height()
+        assert form._rows["misc/mouse_hide"].height() >= ROW_HEIGHT
+
+    def test_it_is_scrolled_into_view(self, page):
+        form, scroll = page
+        row = form._rows["misc/mouse_hide_timeout"]
+
+        form.widget("misc/mouse_hide").click()
+        _wait(SCROLL_MS * 2)
+
+        bottom = row.mapTo(scroll.viewport(), QPoint(0, row.height())).y()
+        assert bottom <= scroll.viewport().height()
+
+
+def test_the_bar_of_a_changed_sub_option_runs_along_its_label_and_field():
+    """Measured from the edges of the row, it hung below what is in it: a
+    sub-option has no room above it, and the usual room below."""
+
+    form = SettingsForm(
+        (Section("Proxy", "network/proxy_mode", Indented("network/proxy_url")),),
+        reset_to=default_value,
+    )
+    form.set_values({"network/proxy_mode": ProxyMode.CUSTOM})
+    form.resize(500, 300)
+    form.show()
+    _wait(50)
+
+    row = form._rows["network/proxy_url"]
+    field = form.widget("network/proxy_url")
+    bar = row.mark_bar()
+    field_bottom = field.mapTo(row, QPoint(0, field.height())).y()
+
+    assert bar.top() == 0
+    assert bar.bottom() == field_bottom
+
+    form.close()
+    form.deleteLater()
+
+
+def _wait(ms):
+    deadline = QDeadlineTimer(ms)
+    while not deadline.hasExpired():
+        QApplication.processEvents()
+
+
+def test_a_list_says_itself_what_is_changed_in_it_with_no_bar():
+    """The bar down the whole side of a list was a black stripe."""
+
+    form = SettingsForm(("player/keymap",), reset_to=default_value)
+    keymap = form.widget("player/keymap")
+
+    bindings = keymap.get_bindings()
+    bindings[next(iter(bindings))] = ["Ctrl+F12"]
+    keymap.set_bindings(bindings)
+    keymap.bindings_changed.emit()
+
+    assert form.is_modified("player/keymap")
+    assert not form.is_marked("player/keymap")
+
+    form.deleteLater()

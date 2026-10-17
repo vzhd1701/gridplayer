@@ -42,6 +42,13 @@ class CurrentPageStackedWidget(QStackedWidget):
         height = current.minimumSizeHint().height() if current is not None else 0
         return QSize(width, height)
 
+    def hasHeightForWidth(self):
+        # The stack's own would be the tallest of all the pages at a width,
+        # a page that scrolls counted unscrolled: the size grip would take
+        # it as the least the dialog can be, and pull it off the screen.
+        # The hints above already size it to the page shown.
+        return False
+
     def _page_height(self, page) -> int:
         """A page that scrolls can be any height, so it is made as tall as
         the tallest page that cannot needs to be: those all fit, and the

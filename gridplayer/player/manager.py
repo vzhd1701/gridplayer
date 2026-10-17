@@ -76,6 +76,8 @@ class ManagersManager(QObject):
         self.connections = {}
         self.event_filters = []
         self.global_event_filters = []
+        # what any of the global filters answers to, see _init_event_filters
+        self._global_event_types = frozenset()
 
     def init(self):
         self._init_managers_instances()
@@ -92,6 +94,9 @@ class ManagersManager(QObject):
         )
 
     def eventFilter(self, event_object, event):
+        if event.type() not in self._global_event_types:
+            return False
+
         return any(
             self._managers_inst[ef].eventFilter(event_object, event)
             for ef in self.global_event_filters
@@ -115,6 +120,16 @@ class ManagersManager(QObject):
     def _init_event_filters(self):
         for ef in self.event_filters:
             self.installEventFilter(self._managers_inst[ef])
+
+        # Every event of the application comes by the global filters: a
+        # dialog being made sends tens of thousands, nearly all of them of
+        # no interest to any, and asking each filter in Python took half
+        # the time Settings took to open.
+        self._global_event_types = frozenset(
+            event_type
+            for ef in self.global_event_filters
+            for event_type in self._managers_inst[ef].event_map
+        )
 
     def _init_connections(self):
         for c_manager, c_list in self.connections.items():
