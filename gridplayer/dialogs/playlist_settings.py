@@ -26,6 +26,8 @@ from gridplayer.widgets.settings_page_scroll_area import PageScrollArea
 class PlaylistSettingsDialog(QDialog):
     def __init__(self, overrides: dict, grid_state: GridState, parent=None):
         super().__init__(parent)
+        # by name in the theme's style sheet, for its thin scroll bars
+        self.setObjectName("settings_dialog")
         self.setWindowTitle(translate("SettingsDialog", "Playlist Settings"))
         self.setModal(True)
 

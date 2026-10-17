@@ -6,7 +6,12 @@ from PyQt5.QtWidgets import QApplication, QLayout
 from gridplayer.dialogs.settings import SECTION_PAGE_ROLE, SettingsDialog
 from gridplayer.main.init_resources import init_resources
 from gridplayer.params.settings_pages import PAGES as SETTINGS_PAGES
-from gridplayer.params.theme import apply_theme, current_colors
+from gridplayer.params.theme import (
+    SCROLL_HANDLE_INSET,
+    SCROLL_HANDLE_WIDTH,
+    apply_theme,
+    current_colors,
+)
 from gridplayer.widgets.settings_form import _FormRow
 from gridplayer.widgets.settings_page_scroll_area import PageScrollArea
 
@@ -305,6 +310,12 @@ def test_no_row_is_painted_squeezed_as_it_opens():
     dialog.close()
     dialog.deleteLater()
     QApplication.sendPostedEvents(None, QEvent.DeferredDelete)
+
+
+def test_a_page_scrolls_by_a_thin_handle_with_no_arrows(themed, dialog):
+    bar = dialog.pages["video"].findChild(PageScrollArea).verticalScrollBar()
+
+    assert bar.sizeHint().width() == SCROLL_HANDLE_WIDTH + 2 * SCROLL_HANDLE_INSET
 
 
 @pytest.mark.parametrize("page_id", ["player", "playlist", "video", "cookies"])

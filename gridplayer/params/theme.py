@@ -35,6 +35,8 @@ THEME_LIGHT = MappingProxyType(
         "border": "#aaaaaa",
         "background": "#eeeeee",
         "background_selected": "#aaaaaa",
+        "scroll_handle": "#b4b4b4",
+        "scroll_handle_hover": "#8c8c8c",
     }
 )
 
@@ -56,6 +58,8 @@ THEME_DARK = MappingProxyType(
         "border": "#888888",
         "background": "#444444",
         "background_selected": "#888888",
+        "scroll_handle": "#6e6e6e",
+        "scroll_handle_hover": "#959595",
     }
 )
 
@@ -158,6 +162,57 @@ def combo_popup_stylesheet() -> str:
         "border: none;"
         f"border-bottom: 1px solid {colors['highlight']};"
         "padding: 3px 6px;"
+        "}" + settings_scroll_bar_stylesheet(colors)
+    )
+
+
+# a handle this wide, this far in from the edge of the bar on either side
+SCROLL_HANDLE_WIDTH = 6
+SCROLL_HANDLE_INSET = 3
+SCROLL_HANDLE_MIN_LENGTH = 24
+
+
+def settings_scroll_bar_stylesheet(colors) -> str:
+    """A thin rounded handle and nothing else, in the settings dialogs:
+    Fusion's arrows and track sat square in the round corners of the boxes."""
+
+    extent = SCROLL_HANDLE_WIDTH + 2 * SCROLL_HANDLE_INSET
+    radius = SCROLL_HANDLE_WIDTH // 2
+    scope = "QDialog#settings_dialog"
+
+    return (
+        f"{scope} QScrollBar {{"
+        "background: transparent;"
+        "border: none;"
+        "}"
+        f"{scope} QScrollBar:vertical {{"
+        f"width: {extent}px;"
+        f"margin: {SCROLL_HANDLE_INSET}px 0;"
+        "}"
+        f"{scope} QScrollBar:horizontal {{"
+        f"height: {extent}px;"
+        f"margin: 0 {SCROLL_HANDLE_INSET}px;"
+        "}"
+        f"{scope} QScrollBar::handle {{"
+        f"background: {colors['scroll_handle']};"
+        f"border-radius: {radius}px;"
+        "}"
+        f"{scope} QScrollBar::handle:vertical {{"
+        f"min-height: {SCROLL_HANDLE_MIN_LENGTH}px;"
+        f"margin: 0 {SCROLL_HANDLE_INSET}px;"
+        "}"
+        f"{scope} QScrollBar::handle:horizontal {{"
+        f"min-width: {SCROLL_HANDLE_MIN_LENGTH}px;"
+        f"margin: {SCROLL_HANDLE_INSET}px 0;"
+        "}"
+        f"{scope} QScrollBar::handle:hover, {scope} QScrollBar::handle:pressed {{"
+        f"background: {colors['scroll_handle_hover']};"
+        "}"
+        f"{scope} QScrollBar::add-line, {scope} QScrollBar::sub-line {{"
+        "width: 0; height: 0; border: none; background: none;"
+        "}"
+        f"{scope} QScrollBar::add-page, {scope} QScrollBar::sub-page {{"
+        "background: none;"
         "}"
     )
 

@@ -56,6 +56,9 @@ def test_combo_popup_stylesheet_uses_theme_base():
     assert "QListWidget#section_index {background: transparent;" in style
     # a table's header in a round box has no edges but the line under it
     assert "QWidget#rounded_box QHeaderView::section {" in style
+    # the settings dialogs' scroll bars are a thin handle alone
+    assert "QDialog#settings_dialog QScrollBar::handle {" in style
+    assert colors["scroll_handle"] in style
 
 
 def test_apply_theme_sets_app_palette():

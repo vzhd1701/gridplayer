@@ -1,5 +1,4 @@
 from PyQt5.QtCore import QEvent, QSize, Qt
-from PyQt5.QtGui import QPainter
 from PyQt5.QtWidgets import (
     QAbstractSpinBox,
     QComboBox,
@@ -7,38 +6,13 @@ from PyQt5.QtWidgets import (
     QScrollArea,
     QScrollBar,
     QSizePolicy,
-    QStyle,
-    QWidget,
 )
 
 _WHEEL_FIELDS = (QComboBox, QAbstractSpinBox)
 
 
-def _scrollbar_extent(widget: QWidget) -> int:
-    style = widget.style()
-    extent = style.pixelMetric(QStyle.PM_ScrollBarExtent, None, widget)
-    return max(extent, 16)
-
-
-class _BoxedScrollBar(QScrollBar):
-    """Fusion only strokes the inner edge; draw the other three with the same pen."""
-
-    def paintEvent(self, event):
-        super().paintEvent(event)
-        # Same as QFusionStylePrivate::outline + scrollbar alpha.
-        outline = self.palette().window().color().darker(140)
-        outline.setAlpha(180)
-        painter = QPainter(self)
-        painter.setPen(outline)
-        rect = self.rect()
-        if self.orientation() == Qt.Horizontal:
-            painter.drawLine(rect.bottomLeft(), rect.bottomRight())
-            painter.drawLine(rect.topLeft(), rect.bottomLeft())
-            painter.drawLine(rect.topRight(), rect.bottomRight())
-        else:
-            painter.drawLine(rect.topLeft(), rect.topRight())
-            painter.drawLine(rect.topRight(), rect.bottomRight())
-            painter.drawLine(rect.bottomLeft(), rect.bottomRight())
+def _scrollbar_extent(bar: QScrollBar) -> int:
+    return bar.sizeHint().width()
 
 
 class PageScrollArea(QScrollArea):
@@ -47,7 +21,6 @@ class PageScrollArea(QScrollArea):
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setVerticalScrollBar(_BoxedScrollBar(Qt.Vertical, self))
         self.setWidgetResizable(True)
         self.setFrameShape(QFrame.NoFrame)
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)

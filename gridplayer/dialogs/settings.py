@@ -197,6 +197,8 @@ class SettingsDialog(QDialog):
     # building
 
     def ui_build(self):
+        # by name in the theme's style sheet, for its thin scroll bars
+        self.setObjectName("settings_dialog")
         self.setWindowTitle(translate("SettingsDialog", "Settings"))
         self.setSizeGripEnabled(True)
         self.setModal(True)
