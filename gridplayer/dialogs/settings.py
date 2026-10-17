@@ -17,12 +17,13 @@ from PyQt5.QtWidgets import (
 
 from gridplayer.dialogs.checkup import CheckupDialog
 from gridplayer.dialogs.messagebox import QCustomMessageBox
-from gridplayer.dialogs.paged_dialog import PagedDialog
+from gridplayer.dialogs.paged_dialog import Icon, PagedDialog
 from gridplayer.models.settings_draft import SettingsMode, SetValue
 from gridplayer.params import env
 from gridplayer.params.settings_pages import PAGES
 from gridplayer.params.static import CacheMode
 from gridplayer.params.theme import set_secondary
+from gridplayer.playlist_settings import PlaylistSettings
 from gridplayer.settings import Settings, default_value
 from gridplayer.utils import cache
 from gridplayer.utils.app_dir import get_app_data_dir
@@ -41,6 +42,9 @@ COOKIES_README_URL = f"{__app_url__}#streaming-cookies"
 
 # a button that is only an icon, as small as the icon lets it be
 ICON_BUTTON_SIZE = QSize(24, 24)
+
+# beside the label of a setting the open playlist has its own value for
+MARK_ICON_PX = 16
 
 
 def _help_button():
@@ -156,7 +160,54 @@ class SettingsDialog(PagedDialog):
                     mode=SettingsMode.DEFAULTS,
                     slots=slots,
                 )
-                self.add_form_page(page, form)
+                self.add_form_page(page, form, self._mark_playlist_own(form))
+
+    def _mark_playlist_own(self, form: SettingsForm) -> str | None:
+        """The settings the open playlist has its own value for, which a
+        change here won't reach: marked on their rows, and said at the top
+        of the page, as what it says."""
+
+        session = PlaylistSettings()
+
+        own = [key for key in form.keys() if session.is_overridden(key)]
+
+        if not own:
+            return None
+
+        # every row marked would say nothing
+        if len(own) == len(form.keys()):
+            return translate(
+                "SettingsDialog",
+                "The open playlist keeps all its settings. A change here won't"
+                " reach it.",
+            )
+
+        for key in own:
+            form.add_mark(key, self._own_value_mark(form, key, session.get(key)))
+
+        return translate(
+            "SettingsDialog",
+            "The open playlist has its own value for the settings marked with the"
+            " playlist icon. A change here won't reach it.",
+        )
+
+    @staticmethod
+    def _own_value_mark(form: SettingsForm, key: str, value) -> QWidget:
+        mark = Icon("page-playlist", MARK_ICON_PX)
+
+        text = form.text_of(key, value)
+        if text is None:
+            mark.setToolTip(
+                translate("SettingsDialog", "The open playlist has its own value.")
+            )
+        else:
+            mark.setToolTip(
+                translate(
+                    "SettingsDialog", "The open playlist has its own value: {VALUE}"
+                ).format(VALUE=text)
+            )
+
+        return mark
 
     def _slots(self):
         """What fills each Slot of the pages: _slot_<name>."""

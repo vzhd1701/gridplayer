@@ -31,12 +31,17 @@ from gridplayer.models.settings_draft import (
     SetValue,
 )
 from gridplayer.params.settings_fields.kinds import (
+    CheckboxField,
+    ComboField,
+    FloatSpinField,
     Indented,
     Note,
     Row,
     Section,
     SettingField,
     Slot,
+    SpinField,
+    TextField,
     When,
 )
 from gridplayer.params.settings_fields.registry import FIELDS
@@ -754,6 +759,64 @@ class SettingsForm(QWidget):
 
         self._mode = mode
         self._refresh()
+
+    def add_mark(self, key: str, mark: QWidget):
+        """Something right after a setting's label, as the playlist's own
+        value is marked in the Settings dialog."""
+
+        label = self._editors[key].label
+        row = self._rows[key]
+
+        if label is None:
+            row.line.insertWidget(0, mark)
+            return
+
+        lay = row.line
+        at = lay.indexOf(label)
+
+        if at < 0:
+            # a label on a line of its own, over the fields
+            lay = row.layout()
+            at = lay.indexOf(label)
+            line = QHBoxLayout()
+            line.setSpacing(lay.spacing())
+            lay.insertLayout(at, line)
+            line.addWidget(label)
+            at = 0
+
+        # the label as wide as its words, and the room it took after the mark
+        lay.setStretch(at, 0)
+        lay.insertWidget(at + 1, mark, 0, Qt.AlignVCenter)
+        lay.insertStretch(at + 2, 1)
+
+    def text_of(self, key: str, value) -> str | None:
+        """A value in words, as its field shows it; None for a field that
+        doesn't show it in words (a colour, a crop)."""
+
+        spec = self._editors[key].spec
+        shown = self._shown(key, value)
+
+        if isinstance(spec, CheckboxField):
+            if shown:
+                return translate("SettingsDialog", "On")
+            return translate("SettingsDialog", "Off")
+
+        if isinstance(spec, ComboField):
+            return spec.choices().get(shown)
+
+        if isinstance(spec, SpinField | FloatSpinField):
+            if spec.special_text is not None and shown == spec.minimum:
+                return spec.special_text
+            if isinstance(spec, FloatSpinField):
+                number = f"{shown:.{spec.decimals}f}"
+            else:
+                number = str(int(shown))
+            return number if spec.suffix is None else f"{number} {spec.suffix}"
+
+        if isinstance(spec, TextField) and isinstance(shown, str) and shown:
+            return shown
+
+        return None
 
     def is_default(self, key: str) -> bool:
         """Has the stored value a reset would give, before presentation loss."""
