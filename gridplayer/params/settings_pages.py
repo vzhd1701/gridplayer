@@ -68,7 +68,7 @@ PLAYLIST_PAGE = (
         "playlist/disable_overlay",
         "playlist/show_overlay_border",
         "playlist/overlay_hide_on_timeout",
-        "playlist/overlay_timeout",
+        Indented("playlist/overlay_timeout"),
     ),
     Section(
         translate("SettingsDialog", "Grid"),
@@ -179,13 +179,16 @@ PAGES = (
         Page(
             "player",
             translate("SettingsDialog", "Player"),
-            "player/color_scheme",
-            "player/one_instance",
-            "player/stay_on_top",
-            "player/start_maximized",
-            "player/start_fullscreen",
-            "player/inhibit_screensaver",
-            "player/media_keys_background",
+            Section(
+                translate("SettingsDialog", "General"),
+                "player/color_scheme",
+                "player/one_instance",
+                "player/stay_on_top",
+                "player/start_maximized",
+                "player/start_fullscreen",
+                "player/inhibit_screensaver",
+                "player/media_keys_background",
+            ),
             Section(
                 tray_text(
                     translate("SettingsDialog", "Tray"),
@@ -269,8 +272,11 @@ PAGES = (
         Page(
             "resolution",
             translate("SettingsDialog", "Link Resolution"),
-            "streaming/hls_via_streamlink",
-            "streaming/resolver_priority",
+            Section(
+                translate("SettingsDialog", "Resolvers"),
+                "streaming/hls_via_streamlink",
+                "streaming/resolver_priority",
+            ),
             Section(
                 "yt-dlp",
                 "streaming/js_runtime_path",
@@ -287,7 +293,10 @@ PAGES = (
             "sponsorblock",
             "SponsorBlock",
             "sponsorblock/enabled",
-            Indented(*(category_setting(category) for category in CATEGORY_COLORS)),
+            Section(
+                translate("SettingsDialog", "Categories"),
+                *(category_setting(category) for category in CATEGORY_COLORS),
+            ),
             note=translate(
                 "SettingsDialog",
                 '<p>Every YouTube video you play is checked on SponsorBlock, where viewers mark sponsors, self-promotion and similar segments. Only a short prefix of a hash of the video\'s ID is sent.</p><p>Segments from <a href="{URL}">SponsorBlock</a>, under CC BY-NC-SA 4.0.</p>',
@@ -297,37 +306,43 @@ PAGES = (
             "cookies",
             translate("SettingsDialog", "Cookies"),
             "cookies/enabled",
-            Slot("cookies_list", fills=True),
             "cookies/allow_update",
-            Note(
-                translate(
-                    "SettingsDialog",
-                    "Cookies are login credentials. Anyone with access to this"
-                    " computer can read them.",
-                )
+            Section(
+                translate("SettingsDialog", "Stored cookies"),
+                Slot("cookies_list", fills=True),
+                Slot("cookies_howto"),
+                Note(
+                    translate(
+                        "SettingsDialog",
+                        "Cookies are login credentials. Anyone with access to this"
+                        " computer can read them.",
+                    )
+                ),
             ),
-            Slot("cookies_howto"),
             scroll=False,
         ),
         Page(
             "network",
             translate("SettingsDialog", "Network"),
-            "network/proxy_mode",
-            "network/proxy_url",
-            "network/timeout",
-            "network/user_agent",
-            "network/force_ipv4",
-            "network/verify_tls",
-            "network/allow_http_in_playlists",
-            Note(
-                translate(
-                    "SettingsDialog",
-                    "These settings apply to http and https links. Other links,"
-                    " such as rtsp and rtmp, are opened by the player itself, and"
-                    " only the user agent applies to them.",
-                )
+            Section(
+                translate("SettingsDialog", "Connection"),
+                "network/proxy_mode",
+                Indented("network/proxy_url"),
+                "network/timeout",
+                "network/user_agent",
+                "network/force_ipv4",
+                "network/verify_tls",
+                "network/allow_http_in_playlists",
+                Slot("network_test"),
+                Note(
+                    translate(
+                        "SettingsDialog",
+                        "These settings apply to http and https links. Other links,"
+                        " such as rtsp and rtmp, are opened by the player itself,"
+                        " and only the user agent applies to them.",
+                    )
+                ),
             ),
-            Slot("network_test"),
         ),
     ),
     Group(
@@ -358,9 +373,11 @@ PAGES = (
         Page(
             "logging",
             translate("SettingsDialog", "Logging"),
-            "logging/log_limit",
-            "logging/log_limit_size",
-            "logging/log_limit_backups",
+            Section(
+                translate("SettingsDialog", "Log file"),
+                "logging/log_limit",
+                Indented("logging/log_limit_size", "logging/log_limit_backups"),
+            ),
             Section(
                 translate("SettingsDialog", "Logging levels"),
                 "logging/log_level",

@@ -41,6 +41,7 @@ def _is_linux() -> bool:
 ADVANCED_FIELDS: tuple[SettingField, ...] = (
     ComboField(
         settings_key="player/video_driver",
+        label=translate("SettingsDialog", "Decoder"),
         choices=choices.video_drivers,
         # where Hardware can't run, its Software twin stands in for it
         to_editor=session_video_driver,
