@@ -483,10 +483,18 @@ class SettingsForm(QWidget):
         for key, editor in self._editors.items():
             editor.set_enabled(is_on(key))
 
+            row = self._rows[key]
+            # a sub-option is there only while the one it belongs to lets it
+            # be changed, rather than there and greyed out
+            rules = [editor.spec.shown_when]
+            if row.joined:
+                rules.append(editor.spec.enabled_when)
+            rules = [rule for rule in rules if rule is not None]
+
             if key in self._hidden:
-                self._rows[key].setVisible(False)
-            elif editor.spec.shown_when is not None:
-                self._rows[key].setVisible(self._is_met(editor.spec.shown_when, is_on))
+                row.setVisible(False)
+            elif rules:
+                row.setVisible(all(self._is_met(rule, is_on) for rule in rules))
 
         self._sync_modified(keys)
 
