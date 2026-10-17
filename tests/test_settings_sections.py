@@ -3,7 +3,8 @@ from PyQt5.QtCore import QEvent, QObject, QPoint, QSize, Qt
 from PyQt5.QtGui import QColor
 from PyQt5.QtWidgets import QApplication, QLayout
 
-from gridplayer.dialogs.settings import SECTION_PAGE_ROLE, SettingsDialog
+from gridplayer.dialogs.paged_dialog import SECTION_PAGE_ROLE
+from gridplayer.dialogs.settings import SettingsDialog
 from gridplayer.main.init_resources import init_resources
 from gridplayer.params.settings_pages import PAGES as SETTINGS_PAGES
 from gridplayer.params.theme import (

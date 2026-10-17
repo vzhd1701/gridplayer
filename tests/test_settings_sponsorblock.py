@@ -5,7 +5,8 @@ from PyQt5.QtCore import QEvent, QSettings, Qt
 from PyQt5.QtWidgets import QApplication, QComboBox
 
 from gridplayer.dialogs import settings as settings_dialog
-from gridplayer.dialogs.settings import SECTION_PAGE_ROLE, SettingsDialog
+from gridplayer.dialogs.paged_dialog import SECTION_PAGE_ROLE
+from gridplayer.dialogs.settings import SettingsDialog
 from gridplayer.params.sponsorblock import (
     CATEGORY_COLORS,
     HIGHLIGHT_CATEGORY,

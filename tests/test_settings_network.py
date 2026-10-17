@@ -10,7 +10,8 @@ from PyQt5.QtCore import QEvent, QSettings, Qt
 from PyQt5.QtWidgets import QApplication
 
 from gridplayer.dialogs import settings as settings_dialog
-from gridplayer.dialogs.settings import SECTION_PAGE_ROLE, SettingsDialog
+from gridplayer.dialogs.paged_dialog import SECTION_PAGE_ROLE
+from gridplayer.dialogs.settings import SettingsDialog
 from gridplayer.params.static import ProxyMode
 from gridplayer.settings import _Settings
 from gridplayer.utils.cookies import CookieStore
