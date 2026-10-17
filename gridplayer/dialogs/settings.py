@@ -12,6 +12,7 @@ from PyQt5.QtWidgets import (
     QLabel,
     QListWidgetItem,
     QPushButton,
+    QStyle,
     QSystemTrayIcon,
     QToolButton,
     QVBoxLayout,
@@ -107,22 +108,49 @@ def _with_note(form, text):
     return page
 
 
-def _page_title(page: Page) -> QWidget:
-    title = QLabel(page.title)
-    font = title.font()
-    font.setPixelSize(PAGE_TITLE_PX)
-    font.setBold(True)
-    title.setFont(font)
+class _PageTitle(QWidget):
+    """The page's icon and title, and the page's Reset at the right of it
+    while that page is shown."""
 
-    holder = QWidget()
-    line = QHBoxLayout(holder)
-    line.setContentsMargins(2, 0, 0, 0)
-    line.setSpacing(8)
-    if page.icon is not None:
-        line.addWidget(_Icon(page.icon, PAGE_TITLE_ICON_PX))
-    line.addWidget(title, 1)
+    def __init__(self, page: Page):
+        super().__init__()
 
-    return holder
+        title = QLabel(page.title)
+        font = title.font()
+        font.setPixelSize(PAGE_TITLE_PX)
+        font.setBold(True)
+        title.setFont(font)
+
+        self._line = QHBoxLayout(self)
+        self._line.setContentsMargins(2, 0, 0, 0)
+        self._line.setSpacing(8)
+        if page.icon is not None:
+            self._line.addWidget(_Icon(page.icon, PAGE_TITLE_ICON_PX))
+        self._line.addWidget(title, 1)
+
+    def take(self, button):
+        self._line.addWidget(button, 0, Qt.AlignVCenter)
+
+
+class _TextToolButton(QToolButton):
+    """An icon and words, as wide as they are.
+
+    Qt makes a tool button room for a space either side of its words and a
+    little more, and draws them from the left: what was left over was all
+    on the right, where the words seemed to stop short."""
+
+    def sizeHint(self):
+        hint = super().sizeHint()
+        frame = self.style().pixelMetric(QStyle.PM_DefaultFrameWidth, None, self)
+        words = self.fontMetrics().horizontalAdvance(self.text())
+        # Qt draws the icon with 2 px either side of it, and the words
+        # right after: as much after them, and the frame
+        pad = 2
+        hint.setWidth(2 * frame + pad + self.iconSize().width() + pad + words + pad)
+        return hint
+
+    def minimumSizeHint(self):
+        return self.sizeHint()
 
 
 def _help_button():
@@ -173,6 +201,8 @@ class SettingsDialog(QDialog):
         # every page by its id, as it sits in the stack, and the form on it
         self.pages: dict[str, QWidget] = {}
         self.forms: dict[str, SettingsForm] = {}
+        # the title over each page, by the page
+        self._titles: dict[QWidget, _PageTitle] = {}
         # the page each setting is on, by id
         self._page_id_of: dict[str, str] = {}
         self._index_items: dict[str, QListWidgetItem] = {}
@@ -227,18 +257,22 @@ class SettingsDialog(QDialog):
             )
         )
 
-        self.resetPage = QPushButton(
-            QIcon.fromTheme("reset"), translate("SettingsDialog", "Reset Page")
-        )
+        # in the title of the page shown, see switch_page; shown, as the
+        # reset beside a field, only while there is something to reset
+        self.resetPage = _TextToolButton(self)
+        self.resetPage.setIcon(QIcon.fromTheme("reset"))
+        self.resetPage.setText(translate("SettingsDialog", "Reset"))
+        self.resetPage.setToolButtonStyle(Qt.ToolButtonTextBesideIcon)
+        self.resetPage.setAutoRaise(True)
         self.resetPage.setToolTip(
             translate("SettingsDialog", "Put the settings on this page back to default")
         )
+        self.resetPage.hide()
 
         self.buttonBox = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
 
         buttons = QHBoxLayout()
         buttons.addWidget(self.dataDirOpen)
-        buttons.addWidget(self.resetPage)
         buttons.addWidget(self.buttonBox, 1)
 
         root = QVBoxLayout(self)
@@ -280,7 +314,8 @@ class SettingsDialog(QDialog):
         layout = QVBoxLayout(widget)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(12)
-        layout.addWidget(_page_title(page))
+        title = _PageTitle(page)
+        layout.addWidget(title)
         self.section_page.addWidget(widget)
 
         if page.scroll:
@@ -300,6 +335,7 @@ class SettingsDialog(QDialog):
 
         self.pages[page.id] = widget
         self._form_on[widget] = form
+        self._titles[widget] = title
 
         return widget
 
@@ -398,7 +434,7 @@ class SettingsDialog(QDialog):
         self.section_index.itemSelectionChanged.connect(self.keep_index_selection)
 
         self.dataDirOpen.clicked.connect(self.open_data_dir)
-        self.resetPage.clicked.connect(self.reset_page)
+        self.resetPage.clicked.connect(self.ask_reset_page)
         self.buttonBox.accepted.connect(self.accept)
         self.buttonBox.rejected.connect(self.reject)
 
@@ -454,6 +490,7 @@ class SettingsDialog(QDialog):
             return
 
         self.section_page.setCurrentWidget(page)
+        self._titles[page].take(self.resetPage)
         self.update_reset_page()
 
     def show_page(self, page_id: str):
@@ -468,7 +505,24 @@ class SettingsDialog(QDialog):
 
     def update_reset_page(self, *_):
         form = self.current_form
-        self.resetPage.setEnabled(form is not None and form.has_modified())
+        self.resetPage.setVisible(
+            form is not None and form.can_reset() and form.has_modified()
+        )
+
+    def ask_reset_page(self):
+        is_reset = QCustomMessageBox.confirm(
+            self,
+            translate("SettingsDialog", "Reset page"),
+            translate("SettingsDialog", "Reset all settings on this page?"),
+            translate("SettingsDialog", "Reset"),
+            info=translate(
+                "SettingsDialog",
+                "They go back to their defaults. Nothing is saved until you press OK.",
+            ),
+            is_destructive=True,
+        )
+        if is_reset:
+            self.reset_page()
 
     def reset_page(self):
         """The page back to the factory defaults, until Cancel."""

@@ -64,12 +64,22 @@ def scenario(d):
             f"untouched {key} keeps its original value", store.get(key) == SETTINGS[key]
         )
 
+    def press_reset(box):
+        from PyQt5.QtWidgets import QMessageBox
+
+        reset = next(
+            button
+            for button in box.buttons()
+            if box.buttonRole(button) == QMessageBox.DestructiveRole
+        )
+        reset.click()
+
     def reset_network(dialog):
         dialog.show_page("network")
-        dialog.resetPage.click()
+        d.through_modal(dialog.resetPage.click, "reset_confirm", press_reset)
         d.check(
             "the reset page is no longer marked modified",
-            not dialog.resetPage.isEnabled(),
+            dialog.resetPage.isHidden(),
         )
         d.shot("network_reset", dialog)
         dialog.accept()

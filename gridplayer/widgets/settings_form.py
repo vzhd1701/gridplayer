@@ -675,6 +675,12 @@ class SettingsForm(QWidget):
     def keys(self) -> list[str]:
         return list(self._editors)
 
+    def can_reset(self) -> bool:
+        """Has a field with a reset beside it: one that fills the page, as
+        the shortcuts do, comes with resets of its own."""
+
+        return bool(self._reset_btns)
+
     def sections(self) -> list[tuple[str, QWidget]]:
         """The sections with a heading, and the heading, in order."""
 

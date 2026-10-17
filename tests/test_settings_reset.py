@@ -1,13 +1,16 @@
 """Putting settings back to how they come out of the box: a field at a
-time with the button beside it, or a page at a time with Reset Page.
+time with the button beside it, or a page at a time with the Reset by the
+page's title.
 
 A setting at its default is not kept in the ini, so that it follows the
 default if a later version changes it.
 """
 
+from types import SimpleNamespace
+
 import pytest
 from PyQt5.QtCore import QEvent, QSettings
-from PyQt5.QtWidgets import QApplication, QWidget
+from PyQt5.QtWidgets import QApplication, QDialogButtonBox, QWidget
 
 from gridplayer.dialogs import settings as settings_dialog
 from gridplayer.dialogs.settings import SettingsDialog
@@ -34,7 +37,24 @@ def settings(tmp_path, monkeypatch):
 
 
 @pytest.fixture
-def make_dialog(settings, _no_real_cache, monkeypatch):
+def confirm(monkeypatch):
+    """The question before a page is reset, answered without a window."""
+
+    answers = SimpleNamespace(asked=0, answer=True)
+
+    def _confirm(*_args, **_kwargs):
+        answers.asked += 1
+        return answers.answer
+
+    monkeypatch.setattr(
+        settings_dialog.QCustomMessageBox, "confirm", staticmethod(_confirm)
+    )
+
+    return answers
+
+
+@pytest.fixture
+def make_dialog(settings, _no_real_cache, confirm, monkeypatch):
     monkeypatch.setattr(
         settings_dialog.QSystemTrayIcon,
         "isSystemTrayAvailable",
@@ -86,20 +106,20 @@ class TestWhatIsMarked:
         for form in dialog.forms.values():
             assert not form.has_modified()
 
-        assert not dialog.resetPage.isEnabled()
+        assert dialog.resetPage.isHidden()
 
     def test_a_field_changed_from_its_default(self, dialog):
         dialog.widget("player/one_instance").setChecked(False)
 
         assert _is_marked(dialog, "player/one_instance")
-        assert dialog.resetPage.isEnabled()
+        assert not dialog.resetPage.isHidden()
 
     def test_a_field_changed_back_is_not_any_more(self, dialog):
         dialog.widget("player/one_instance").setChecked(False)
         dialog.widget("player/one_instance").setChecked(True)
 
         assert not _is_marked(dialog, "player/one_instance")
-        assert not dialog.resetPage.isEnabled()
+        assert dialog.resetPage.isHidden()
 
     def test_a_blank_that_saves_as_the_default_is_not(self, dialog):
         dialog.widget("screenshots/filename_template").setText("  ")
@@ -119,10 +139,10 @@ class TestWhatIsMarked:
         dialog = make_dialog()
 
         dialog.show_page("player")
-        assert not dialog.resetPage.isEnabled()
+        assert dialog.resetPage.isHidden()
 
         dialog.show_page("network")
-        assert dialog.resetPage.isEnabled()
+        assert not dialog.resetPage.isHidden()
 
 
 class TestResettingAField:
@@ -183,11 +203,11 @@ class TestResettingAPage:
 
         assert dialog.value("network/force_ipv4") is False
         assert dialog.value("player/one_instance") is False
-        assert not dialog.resetPage.isEnabled()
+        assert dialog.resetPage.isHidden()
 
     def test_a_greyed_out_field_reset_is_saved_too(self, settings, make_dialog):
         """The address is kept while the proxy is off, and not saved over;
-        reset, it goes, or Reset Page would quietly leave it."""
+        reset, it goes, or the page's Reset would quietly leave it."""
 
         settings.set("network/proxy_mode", ProxyMode.SYSTEM)
         settings.set("network/proxy_url", "http://proxy:8080")
@@ -199,14 +219,17 @@ class TestResettingAPage:
 
         assert not settings.settings.contains("network/proxy_url")
 
-    def test_shortcuts(self, settings, make_dialog):
+    def test_shortcuts_go_back_with_their_own_reset(self, settings, make_dialog):
+        """Not the page's: Reset all is right there, under the title."""
+
         settings.set("player/keymap", KeymapOverrides({"Play / Pause": ["F5"]}))
         dialog = make_dialog()
 
         dialog.show_page("shortcuts")
-        assert dialog.resetPage.isEnabled()
+        assert dialog.forms["shortcuts"].has_modified()
+        assert dialog.resetPage.isHidden()
 
-        dialog.resetPage.click()
+        dialog.widget("player/keymap").tree.reset_all_to_defaults()
         dialog.save_settings()
 
         assert settings.get("player/keymap") == KeymapOverrides({})
@@ -238,7 +261,7 @@ class TestResettingAPage:
         assert dialog.value("player/tray_icon") is False
         assert dialog.value("player/hide_taskbar") is False
         assert dialog.value("player/minimize_to_tray") is False
-        assert not dialog.resetPage.isEnabled()
+        assert dialog.resetPage.isHidden()
 
     def test_minimize_ticked_for_the_taskbar_is_forgotten_too(
         self, settings, make_dialog
@@ -478,7 +501,58 @@ class TestWhatAnEditReads:
             page.items,
             reset_to=default_value,
             mode=SettingsMode.DEFAULTS,
-            slots=dict.fromkeys(("youtube_test", "wildcard_help"), QWidget),
+            slots=dict.fromkeys(("youtube_test",), QWidget),
         )
 
         assert reads == []
+
+
+class TestWhereResetIs:
+    def test_in_the_title_of_the_page_shown(self, dialog):
+        for page_id in ("player", "network"):
+            dialog.show_page(page_id)
+
+            assert dialog.resetPage.parent() is dialog._titles[dialog.pages[page_id]]
+
+    def test_at_the_right_of_the_window_as_cancel_is(self, dialog):
+        dialog.show_page("player")
+        dialog.widget("player/one_instance").setChecked(False)
+        dialog.show()
+        QApplication.processEvents()
+
+        cancel = dialog.buttonBox.button(QDialogButtonBox.Cancel)
+
+        def right(widget):
+            return widget.mapTo(dialog, widget.rect().topRight()).x()
+
+        assert right(dialog.resetPage) == right(cancel)
+
+    def test_no_wider_than_its_icon_and_word(self, dialog):
+        """Qt left room for a space either side of the word, all of it on
+        the right."""
+
+        button = dialog.resetPage
+        words = button.fontMetrics().horizontalAdvance(button.text())
+
+        assert button.sizeHint().width() <= button.iconSize().width() + words + 10
+
+
+class TestAskingFirst:
+    def test_it_asks(self, dialog, confirm):
+        dialog.widget("player/one_instance").setChecked(False)
+
+        dialog.show_page("player")
+        dialog.resetPage.click()
+
+        assert confirm.asked == 1
+        assert dialog.value("player/one_instance") is True
+
+    def test_said_no_it_leaves_the_page_as_it_is(self, dialog, confirm):
+        confirm.answer = False
+        dialog.widget("player/one_instance").setChecked(False)
+
+        dialog.show_page("player")
+        dialog.resetPage.click()
+
+        assert dialog.value("player/one_instance") is False
+        assert not dialog.resetPage.isHidden()

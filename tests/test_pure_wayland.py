@@ -194,7 +194,7 @@ def test_a_saved_software_driver_is_not_taken_for_the_default(settings, make_dia
     dialog.show_page("decoder")
 
     assert dialog.forms["decoder"].is_modified("player/video_driver")
-    assert dialog.resetPage.isEnabled()
+    assert not dialog.resetPage.isHidden()
 
 
 @pytest.mark.usefixtures("pure_wayland")
