@@ -150,6 +150,15 @@ def combo_popup_stylesheet() -> str:
         "border: none;"
         "outline: 0;"
         "}"
+        # inside the round corners of its box, a header of square cells
+        # with edges of their own looked like a box in a box
+        "QWidget#rounded_box QHeaderView::section {"
+        f"background-color: {colors['base']};"
+        f"color: {colors['text_secondary']};"
+        "border: none;"
+        f"border-bottom: 1px solid {colors['highlight']};"
+        "padding: 3px 6px;"
+        "}"
     )
 
 

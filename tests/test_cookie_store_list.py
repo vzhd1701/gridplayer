@@ -369,3 +369,18 @@ class TestWhichButtonsAreLive:
     def test_importing_is_always_offered(self, widget):
         assert widget.import_file_button.isEnabled()
         assert widget.paste_button.isEnabled()
+
+
+def test_the_buttons_are_icons_that_say_what_they_do_when_pointed_at(widget):
+    for button in (
+        widget.import_file_button,
+        widget.paste_button,
+        widget.remove_button,
+        widget.help_button,
+    ):
+        assert button.text() == ""
+        assert button.toolTip()
+
+
+def test_clear_all_says_what_it_does_in_words(widget):
+    assert widget.clear_button.text() == "Clear all"

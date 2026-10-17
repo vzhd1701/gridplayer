@@ -13,6 +13,7 @@ from gridplayer.models.resolver_patterns import (
     ResolverPatternType,
 )
 from gridplayer.params.static import URLResolver
+from gridplayer.widgets import resolver_patterns_list
 from gridplayer.widgets.resolver_patterns_list import ResolverPatternsList
 
 
@@ -56,6 +57,24 @@ class TestTheButtons:
         patterns.remove_button.click()
 
         assert patterns.table.rowCount() == 0
+
+
+def test_the_question_mark_explains_the_wildcards(patterns, monkeypatch):
+    """In a box of its own, rather than folded out over the table."""
+
+    seen = {}
+    monkeypatch.setattr(
+        resolver_patterns_list.QCustomMessageBox,
+        "information",
+        classmethod(
+            lambda cls, parent, title, text, info="": seen.update(text=text, info=info)
+        ),
+    )
+
+    patterns.help_button.click()
+
+    assert seen["text"] == "Wildcard syntax"
+    assert "*.example.com" in seen["info"]
 
 
 class TestWhatIsLoadedComesBack:

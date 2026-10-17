@@ -227,11 +227,9 @@ class TestTheHowTo:
     def test_it_does_not_live_inline_on_the_page(self, dialog, shown):
         """Folded into the page it would be cut off.
 
-        The wildcard help on the resolver page can fold out because the
-        list under it shrinks to nothing without much loss. This page is
-        mostly table, the table stops being one below about 125px, and
-        the procedure wants roughly 600px. Whoever tries the inline
-        version again should fail here rather than in a screenshot.
+        This page is mostly table, the table stops being one below about
+        125px, and the procedure wants roughly 600px. Whoever tries the
+        inline version again should fail here rather than in a screenshot.
         """
 
         assert not hasattr(dialog, "cookiesHowTo")

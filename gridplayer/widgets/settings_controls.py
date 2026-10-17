@@ -3,7 +3,20 @@ row of buttons for a choice short enough to show all of it."""
 
 from PyQt5.QtCore import QRectF, QSize, Qt, pyqtSignal
 from PyQt5.QtGui import QColor, QPainter, QPainterPath, QPalette
-from PyQt5.QtWidgets import QCheckBox, QLabel, QSizePolicy, QWidget
+from PyQt5.QtWidgets import (
+    QCheckBox,
+    QFrame,
+    QLabel,
+    QSizePolicy,
+    QVBoxLayout,
+    QWidget,
+)
+
+# the round corners of a card of settings, and of a list or a table's box
+CARD_RADIUS = 6
+# between a list's box and the list in it, for its square corners to be
+# clear of the round ones
+BOX_PADDING = 3
 
 SWITCH_SIZE = QSize(36, 20)
 SWITCH_KNOB_MARGIN = 3
@@ -42,6 +55,35 @@ def theme_color(widget: QWidget, name: str) -> QColor:
 
 def _is_dark(widget: QWidget) -> bool:
     return theme_color(widget, "base").lightness() < 128
+
+
+class RoundedBox(QWidget):
+    """A list or a table in a box with round corners, as a card of settings
+    has, in place of its own square frame."""
+
+    def __init__(self, view: QFrame):
+        super().__init__()
+
+        view.setFrameShape(QFrame.NoFrame)
+        self.setSizePolicy(view.sizePolicy())
+        # by name in the theme's style sheet, which gives a table's header
+        # no edges of its own, only a line under it
+        self.setObjectName("rounded_box")
+
+        lay = QVBoxLayout(self)
+        lay.setContentsMargins(BOX_PADDING, BOX_PADDING, BOX_PADDING, BOX_PADDING)
+        lay.addWidget(view)
+
+    def paintEvent(self, event):
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.Antialiasing)
+        painter.setPen(theme_color(self, "highlight"))
+        painter.setBrush(theme_color(self, "base"))
+        painter.drawRoundedRect(
+            QRectF(self.rect()).adjusted(0.5, 0.5, -0.5, -0.5),
+            CARD_RADIUS,
+            CARD_RADIUS,
+        )
 
 
 class Switch(QCheckBox):

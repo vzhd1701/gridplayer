@@ -4,6 +4,7 @@ from PyQt5 import QtWidgets
 from PyQt5.QtCore import QSize, Qt, pyqtSignal
 from PyQt5.QtGui import QDropEvent, QIcon
 
+from gridplayer.dialogs.messagebox import QCustomMessageBox
 from gridplayer.models.resolver_patterns import (
     ResolverPattern,
     ResolverPatterns,
@@ -12,6 +13,7 @@ from gridplayer.models.resolver_patterns import (
 from gridplayer.params.static import URLResolver
 from gridplayer.utils.qt import translate
 from gridplayer.widgets.combo_box import combo_index
+from gridplayer.widgets.settings_controls import RoundedBox
 
 
 class RowDropIndicatorStyle(QtWidgets.QProxyStyle):
@@ -232,7 +234,7 @@ class ResolverPatternsList(QtWidgets.QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
 
         layout.addLayout(self.buttons)
-        layout.addWidget(self.table)
+        layout.addWidget(RoundedBox(self.table))
 
     def ui_table(self):
         table = TableWidgetDragRows(parent=self)
@@ -286,7 +288,33 @@ class ResolverPatternsList(QtWidgets.QWidget):
 
         buttons.addStretch()
 
+        self.help_button = self._create_button(
+            "question",
+            translate("SettingsDialog", "Wildcard syntax"),
+            self.show_wildcard_help,
+            is_selection_needed=False,
+        )
+        buttons.addWidget(self.help_button)
+
         return buttons
+
+    def show_wildcard_help(self):
+        """What * and ? match, in a box of its own rather than folded out
+        under the table, where it took the room of the rows."""
+
+        QCustomMessageBox.information(
+            self,
+            translate("SettingsDialog", "Link Resolution"),
+            translate("SettingsDialog", "Wildcard syntax"),
+            info=translate(
+                "SettingsDialog",
+                "<p><b>The asterisk</b> * matches zero or more characters.<br>\n"
+                "<b>The question mark</b> ? matches exactly one character.</p>\n"
+                "<p><i>For Host Wildcard only:</i><br>\n"
+                "*.example.com will match both example.com and www.example.com<br>\n"
+                "**.example.com will match subdomains <b>only</b></p>",
+            ),
+        )
 
     def add_blank_row(self):
         """A row to fill in.

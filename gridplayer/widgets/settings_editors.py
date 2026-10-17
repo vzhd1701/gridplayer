@@ -42,6 +42,7 @@ from gridplayer.widgets.keymap_tree_view import KeymapEditor
 from gridplayer.widgets.language_list import LanguageList
 from gridplayer.widgets.resolver_patterns_list import ResolverPatternsList
 from gridplayer.widgets.settings_controls import (
+    RoundedBox,
     SegmentedChoice,
     Switch,
     ToggleLabel,
@@ -356,11 +357,19 @@ class _LanguageEditor(Editor):
     # Retired languages follow the current system default on save.
     preserve_original = False
 
+    _box = None
+
     def _make_widget(self):
         widget = LanguageList()
         for language in LANGUAGES:
             widget.add_language_row(language)
         return widget
+
+    def parts(self):
+        # made once: the list goes with the box it was put in
+        if self._box is None:
+            self._box = RoundedBox(self.widget)
+        return [self._box]
 
     @property
     def changed(self):

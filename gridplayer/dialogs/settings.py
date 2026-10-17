@@ -123,15 +123,11 @@ def _page_title(page: Page) -> QWidget:
     return holder
 
 
-def _help_button(text=None):
-    """A question mark, and what it explains beside it if there is room:
-    flat then, as a link would be."""
+def _help_button():
+    """A question mark, with what it explains in its tooltip."""
 
-    button = QPushButton(QIcon.fromTheme("question"), text or "")
-    if text:
-        button.setFlat(True)
-    else:
-        button.setFixedSize(ICON_BUTTON_SIZE)
+    button = QPushButton(QIcon.fromTheme("question"), "")
+    button.setFixedSize(ICON_BUTTON_SIZE)
     return button
 
 
@@ -371,44 +367,14 @@ class SettingsDialog(QDialog):
         self.streamingTestButton.clicked.connect(self.run_youtube_checkup)
         return _in_a_row(self.streamingTestButton, right=True)
 
-    def _slot_wildcard_help(self):
-        self.streamingWildcardHelpButton = _help_button(
-            translate("SettingsDialog", "Wildcard syntax")
-        )
-        self.streamingWildcardHelpButton.clicked.connect(self.toggle_wildcard_help)
-
-        self.streamingWildcardHelp = QLabel(
-            translate(
-                "SettingsDialog",
-                "<p><b>The asterisk</b> * matches zero or more characters.<br>\n"
-                "<b>The question mark</b> ? matches exactly one character.</p>\n"
-                "<p><i>For Host Wildcard only:</i><br>\n"
-                "*.example.com will match both example.com and www.example.com<br>\n"
-                "**.example.com will match subdomains <b>only</b></p>",
-            )
-        )
-        self.streamingWildcardHelp.setVisible(False)
-
-        holder = QWidget()
-        layout = QVBoxLayout(holder)
-        layout.setContentsMargins(0, 0, 0, 0)
-        layout.addWidget(_in_a_row(self.streamingWildcardHelpButton))
-        layout.addWidget(self.streamingWildcardHelp)
-
-        return holder
-
     def _slot_cookies_list(self):
         self.cookiesList = CookieStoreList()
         self.cookiesList.error.connect(self.cookie_import_failed)
-        return self.cookiesList
 
-    def _slot_cookies_howto(self):
-        self.cookiesHowToButton = _help_button(
-            translate("SettingsDialog", "How to export cookies")
-        )
+        self.cookiesHowToButton = self.cookiesList.help_button
         self.cookiesHowToButton.clicked.connect(self.show_cookies_howto)
 
-        return _in_a_row(self.cookiesHowToButton)
+        return self.cookiesList
 
     def _slot_network_test(self):
         self.networkTestButton = QPushButton(
@@ -677,11 +643,6 @@ class SettingsDialog(QDialog):
 
     def cookie_import_failed(self, message):
         QCustomMessageBox.critical(self, translate("Dialog", "Error"), message)
-
-    def toggle_wildcard_help(self):
-        self.streamingWildcardHelp.setVisible(
-            not self.streamingWildcardHelp.isVisible()
-        )
 
     def show_cookies_howto(self):
         """Explain the export in a box of its own.

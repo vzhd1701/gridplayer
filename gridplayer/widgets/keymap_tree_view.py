@@ -59,6 +59,7 @@ from gridplayer.utils.keymap import (
 )
 from gridplayer.utils.qt import translate
 from gridplayer.widgets.custom_menu import ICON_SIZE, CustomMenu, checked_icon
+from gridplayer.widgets.settings_controls import RoundedBox
 
 # ---------------------------------------------------------------------------
 # Model roles
@@ -1625,7 +1626,7 @@ class KeymapEditor(QWidget):
         self._update_filter_placeholder()
 
         self.tree = KeymapTreeView(self)
-        root.addWidget(self.tree, 1)
+        root.addWidget(RoundedBox(self.tree), 1)
 
         self.status_label = QLabel(self)
         self.status_label.setStyleSheet("color: #888;")

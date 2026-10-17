@@ -42,7 +42,7 @@ from gridplayer.params.settings_fields.kinds import (
 from gridplayer.params.settings_fields.registry import FIELDS
 from gridplayer.params.theme import set_secondary
 from gridplayer.utils.qt import translate
-from gridplayer.widgets.settings_controls import theme_color
+from gridplayer.widgets.settings_controls import CARD_RADIUS, theme_color
 from gridplayer.widgets.settings_editors import Editor, make_editor
 
 RESET_ICON_PX = 14
@@ -55,8 +55,6 @@ STACKED_MARGINS = (14, 9, 10, 10)
 STACKED_SPACING = 6
 # a sub-option, kept close under the one it belongs to
 SUB_ROW_HEIGHT = 34
-
-CARD_RADIUS = 6
 
 # the bar on the left edge of a changed row
 MARK_WIDTH = 3

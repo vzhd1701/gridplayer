@@ -299,7 +299,6 @@ PAGES = (
             Section(
                 translate("SettingsDialog", "Resolver priority patterns"),
                 "streaming/resolver_priority_patterns",
-                Slot("wildcard_help"),
             ),
             scroll=False,
             icon="page-resolution",
@@ -326,7 +325,6 @@ PAGES = (
             Section(
                 translate("SettingsDialog", "Stored cookies"),
                 Slot("cookies_list", fills=True),
-                Slot("cookies_howto"),
                 Note(
                     translate(
                         "SettingsDialog",
