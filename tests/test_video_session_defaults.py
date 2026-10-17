@@ -209,26 +209,53 @@ def test_settings_form_color_marks_row_edited():
 
 
 def test_color_popup_forwards_selection():
-    from gridplayer.widgets.color_palette import _QColorPopup
+    from gridplayer.widgets.color_palette import QColorPalette, _ColorPopup
 
-    popup = _QColorPopup((255, 255, 255))
+    popup = _ColorPopup(QColor("#ffffff"))
     selected = []
-    popup.color_changed.connect(lambda: selected.append(popup.color.getRgb()[:3]))
+    popup.picked.connect(lambda color: selected.append(color.getRgb()[:3]))
 
-    popup._palette.color = QColor("#ff0000").getRgb()[:3]
+    popup.swatches.choose(4)
 
-    assert selected == [(255, 0, 0)]
+    assert selected == [QColorPalette.color_palette[4]]
+
+
+def test_color_popup_asks_the_system_for_any_other(mocker):
+    from gridplayer.widgets import color_palette as cp
+
+    popup = cp._ColorPopup(QColor("#ffffff"))
+    selected = []
+    popup.picked.connect(lambda color: selected.append(color.getRgb()[:3]))
+    mocker.patch.object(
+        cp.QtWidgets.QColorDialog, "getColor", return_value=QColor("#123456")
+    )
+
+    popup.other.click()
+
+    assert selected == [(0x12, 0x34, 0x56)]
+
+
+def test_color_popup_offers_a_color_of_your_own_as_the_last_circle():
+    from gridplayer.widgets.color_palette import _ColorPopup
+
+    popup = _ColorPopup(QColor("#123456"))
+    selected = []
+    popup.picked.connect(lambda color: selected.append(color.getRgb()[:3]))
+
+    popup.swatches.choose(len(popup.swatches._colors) - 1)
+
+    assert selected == [(0x12, 0x34, 0x56)]
 
 
 def test_compact_picker_opens_popup_on_click(mocker):
     from gridplayer.widgets import color_palette as cp
 
     swatch = cp.QCompactColorPicker()
-    exec_mock = mocker.patch.object(cp._QColorPopup, "exec_", return_value=None)
+    show_mock = mocker.patch.object(cp._ColorPopup, "show_under")
 
     swatch.click()
 
-    assert exec_mock.called
+    assert show_mock.called
 
 
 def test_compact_picker_applies_popup_selection(mocker):
@@ -238,11 +265,10 @@ def test_compact_picker_applies_popup_selection(mocker):
     emitted = []
     swatch.color_changed.connect(lambda: emitted.append(swatch.color.getRgb()[:3]))
 
-    def fake_exec(self):
-        self._palette.color = QColor("#0000ff").getRgb()[:3]
-        self._on_selected()
+    def fake_show(self, field):
+        self.picked.emit(QColor("#0000ff"))
 
-    mocker.patch.object(cp._QColorPopup, "exec_", fake_exec)
+    mocker.patch.object(cp._ColorPopup, "show_under", fake_show)
     swatch.click()
 
     assert swatch.color.getRgb()[:3] == (0, 0, 255)
