@@ -174,8 +174,10 @@ def set_secondary(widget: QWidget, is_secondary: bool = True) -> None:
 
 
 def secondary_stylesheet() -> str:
+    colors = current_colors()
     return (
-        f'QLabel[secondary="true"] {{ color: {current_colors()["text_secondary"]}; }}'
+        f'QLabel[secondary="true"] {{ color: {colors["text_secondary"]}; }}'
+        f'QLabel[secondary="true"]:disabled {{ color: {colors["text_disabled"]}; }}'
     )
 
 

@@ -47,6 +47,7 @@ SUBTITLE_STYLE_FIELDS: tuple[SettingField, ...] = (
         settings_key="subtitles/outline",
         label=translate("SettingsDialog", "Outline"),
         choices=choices.subtitle_outlines,
+        buttons=True,
         tooltip=translate(
             "SettingsDialog",
             "Outline around the text. Keeps white text readable on bright pictures.",

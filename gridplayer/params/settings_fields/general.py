@@ -55,6 +55,7 @@ GENERAL_FIELDS: tuple[SettingField, ...] = (
         settings_key="player/color_scheme",
         label=translate("SettingsDialog", "Color scheme"),
         choices=choices.color_schemes,
+        buttons=True,
     ),
     CheckboxField(
         settings_key="player/one_instance",
@@ -180,6 +181,7 @@ GENERAL_FIELDS: tuple[SettingField, ...] = (
         settings_key="cache/mode",
         label=translate("SettingsDialog", "Keep"),
         choices=choices.cache_modes,
+        buttons=True,
         tooltip=translate(
             "SettingsDialog",
             "Where downloaded thumbnails and lists are kept.\n"
@@ -218,6 +220,7 @@ GENERAL_FIELDS: tuple[SettingField, ...] = (
         settings_key="screenshots/format",
         label=translate("SettingsDialog", "Format"),
         choices=choices.screenshot_formats,
+        buttons=True,
     ),
     SpinField(
         settings_key="screenshots/jpg_quality",

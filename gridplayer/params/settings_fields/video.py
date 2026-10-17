@@ -142,6 +142,7 @@ VIDEO_FIELDS: tuple[SettingField, ...] = (
         settings_key="video_defaults/aspect",
         label=translate("SettingsDialog", "Aspect mode"),
         choices=choices.aspects,
+        buttons=True,
     ),
     CropField(
         settings_key="video_defaults/crop",
@@ -165,6 +166,7 @@ VIDEO_FIELDS: tuple[SettingField, ...] = (
         settings_key="video_defaults/deinterlace",
         label=translate("SettingsDialog", "Deinterlace"),
         choices=choices.deinterlace_states,
+        buttons=True,
         tooltip=translate(
             "SettingsDialog",
             "Automatic: only videos marked as interlaced.\n"
@@ -213,6 +215,7 @@ VIDEO_FIELDS: tuple[SettingField, ...] = (
         settings_key="video_defaults/list_fail_action",
         label=translate("When Video Fails", "When video fails"),
         choices=choices.list_fail_actions,
+        buttons=True,
         tooltip=translate(
             "When Video Fails",
             "For cells playing a list. Play next doesn't reload a video"
@@ -238,6 +241,7 @@ VIDEO_FIELDS: tuple[SettingField, ...] = (
         settings_key="video_defaults/initial_state",
         label=translate("SettingsDialog", "Initial state"),
         choices=choices.initial_states,
+        buttons=True,
     ),
     FloatSpinField(
         settings_key="video_defaults/rate",

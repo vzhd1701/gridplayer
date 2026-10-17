@@ -36,6 +36,9 @@ RESET_ICON_PX = 14
 # a row of a card: its height, and how far what is in it keeps from the edges
 ROW_HEIGHT = 40
 ROW_MARGINS = (14, 6, 10, 6)
+# a field under its label: a little more room above and below the two lines
+STACKED_MARGINS = (14, 9, 10, 10)
+STACKED_SPACING = 6
 # a sub-option, kept close under the one it belongs to
 SUB_ROW_HEIGHT = 34
 
@@ -105,18 +108,42 @@ class _FormRow(_Shown):
         self.fills = False
         self.watches_slots = False
 
-        lay = QHBoxLayout(self)
-        left, top, right, bottom = ROW_MARGINS
-        lay.setContentsMargins(left, 0 if joined else top, right, bottom)
-        lay.setSpacing(8)
+        lay = QVBoxLayout(self)
+        lay.setSpacing(STACKED_SPACING)
+        self._set_margins(ROW_MARGINS)
 
-        self.setMinimumHeight(SUB_ROW_HEIGHT if joined else ROW_HEIGHT)
+        # the line the label and the fields are on, or the fields alone,
+        # under the label, for a field that takes the width of the row
+        self.line = QHBoxLayout()
+        self.line.setSpacing(8)
+        lay.addLayout(self.line)
+
+        # through the size hints, not a minimum height, which would be taken
+        # over the layout's and let a row of two lines be squeezed into one
+        self._height = SUB_ROW_HEIGHT if joined else ROW_HEIGHT
+
+    def _set_margins(self, margins):
+        left, top, right, bottom = margins
+        self.layout().setContentsMargins(left, 0 if self.joined else top, right, bottom)
+
+    def put_above(self, label: QWidget):
+        """The label on a line of its own, over the fields."""
+
+        self.layout().insertWidget(0, label)
+        self._set_margins(STACKED_MARGINS)
 
     def make_bare(self):
         """Out of the card: a list or a table has edges of its own."""
 
         self.layout().setContentsMargins(0, 0, 0, 0)
-        self.setMinimumHeight(0)
+        self._height = 0
+        self.updateGeometry()
+
+    def sizeHint(self):
+        return super().sizeHint().expandedTo(QSize(0, self._height))
+
+    def minimumSizeHint(self):
+        return super().minimumSizeHint().expandedTo(QSize(0, self._height))
 
     def set_marked(self, is_marked: bool):
         if is_marked != self.is_marked:
@@ -327,7 +354,7 @@ class SettingsForm(QWidget):
 
     def _add_row(self, entries, joined) -> _FormRow:
         row = _FormRow(joined=joined)
-        lay = row.layout()
+        lay = row.line
 
         editors = []
         # a field's reset button, held back past the slots right after it:
@@ -345,7 +372,7 @@ class SettingsForm(QWidget):
 
             self._add_reset(lay, held_reset)
 
-            editor = self._add_editor(entry, lay, is_first=not editors)
+            editor = self._add_editor(entry, row, is_first=not editors)
             self._rows[editor.spec.settings_key] = row
             editors.append(editor)
             row.fills = row.fills or editor.fills
@@ -367,7 +394,7 @@ class SettingsForm(QWidget):
 
         return row
 
-    def _add_editor(self, entry, lay, is_first) -> Editor:
+    def _add_editor(self, entry, row, is_first) -> Editor:
         spec = entry if isinstance(entry, SettingField) else FIELDS[entry]
         key = spec.settings_key
 
@@ -377,20 +404,17 @@ class SettingsForm(QWidget):
         self._editors[key] = editor
         self._drafts[key] = FieldDraft()
 
-        parts = editor.parts()
+        lay = row.line
 
-        if editor.is_checkbox:
-            # its own label, on the left where the labels are
-            lay.addWidget(parts[0])
-            parts = parts[1:]
-            if is_first:
-                lay.addStretch(1)
-        elif editor.label is not None:
-            # the label takes the room between, and the field is on the right;
-            # one that grows takes the room itself
-            lay.addWidget(editor.label, 0 if editor.grows else 1)
+        if editor.label is not None:
+            if editor.stacked and is_first:
+                row.put_above(editor.label)
+            else:
+                # the label takes the room between, and the field is on the
+                # right; one that grows takes the room itself
+                lay.addWidget(editor.label, 0 if editor.grows else 1)
 
-        for widget in parts:
+        for widget in editor.parts():
             lay.addWidget(widget, 1 if editor.fills or editor.grows else 0)
 
         if self._reset_to is not None and not editor.fills:

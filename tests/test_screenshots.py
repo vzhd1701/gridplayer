@@ -730,7 +730,7 @@ class TestTheSettings:
 
         key = "screenshots/filename_template"
         form = dialog.form_of(key)
-        lay = form._rows[key].layout()
+        lay = form._rows[key].line
         order = [lay.itemAt(i).widget() for i in range(lay.count())]
 
         field = order.index(dialog.widget(key))

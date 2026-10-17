@@ -4,7 +4,6 @@ from pathlib import Path
 
 from PyQt5.QtGui import QColor, QPainter, QPixmap
 from PyQt5.QtWidgets import (
-    QCheckBox,
     QComboBox,
     QDoubleSpinBox,
     QFileDialog,
@@ -33,6 +32,7 @@ from gridplayer.params.settings_fields.kinds import (
     SpinField,
     TextField,
 )
+from gridplayer.params.theme import set_secondary
 from gridplayer.utils.keymap import default_keymap, merge_keymap
 from gridplayer.utils.qt import translate
 from gridplayer.widgets.color_palette import QCompactColorPicker
@@ -40,12 +40,22 @@ from gridplayer.widgets.combo_box import cap_popup_height, combo_index
 from gridplayer.widgets.keymap_tree_view import KeymapEditor
 from gridplayer.widgets.language_list import LanguageList
 from gridplayer.widgets.resolver_patterns_list import ResolverPatternsList
+from gridplayer.widgets.settings_controls import (
+    SegmentedChoice,
+    Switch,
+    ToggleLabel,
+)
 
 # the square of colour in front of a label that has one
 SWATCH_PX = 12
 
 # wide enough for a path or an address to be read
 TEXT_MIN_WIDTH = 260
+
+# the narrowest a list and a number are, so that the fields of a page are
+# not each as wide as what they happen to say
+COMBO_MIN_WIDTH = 200
+SPIN_MIN_WIDTH = 100
 
 
 def _fill_combo(combo: QComboBox, values: dict) -> None:
@@ -72,10 +82,10 @@ def _swatch(color: str) -> QLabel:
 class Editor:
     """The widgets a field is edited with, and how its value goes in and out."""
 
-    # in the label column, as its own label
-    is_checkbox = False
     # takes the width it is given
     grows = False
+    # under its label rather than beside it, the width of the row
+    stacked = False
     # takes the page: a list or a table, with no label and nothing beside it
     fills = False
     # An unedited fallback or rounding does not replace the stored value.
@@ -86,7 +96,7 @@ class Editor:
         self.tooltip = spec.tooltip() if callable(spec.tooltip) else spec.tooltip
         self.widget = self._make_widget()
         self.widget.setObjectName(spec.settings_key)
-        # what greys out and turns italic along with the field
+        # what greys out along with the field
         self.marked = self._make_label()
         # what goes where the labels go, None for none
         self.label = self._label_holder()
@@ -143,16 +153,13 @@ class Editor:
 
 
 class _CheckboxEditor(Editor):
-    is_checkbox = True
-
     def _make_widget(self):
-        return QCheckBox(self.spec.label)
+        switch = Switch()
+        switch.setAccessibleName(self.spec.label)
+        return switch
 
     def _make_label(self):
-        return self.widget
-
-    def _label_holder(self):
-        return None
+        return ToggleLabel(self.spec.label, self.widget)
 
     @property
     def changed(self):
@@ -169,8 +176,15 @@ class _ComboEditor(Editor):
     spec: ComboField
 
     def _make_widget(self):
-        widget = QComboBox()
         choices = self.spec.choices()
+
+        if self.spec.buttons:
+            widget = SegmentedChoice()
+            _fill_combo(widget, choices)
+            return widget
+
+        widget = QComboBox()
+        widget.setMinimumWidth(COMBO_MIN_WIDTH)
         _fill_combo(widget, choices)
         cap_popup_height(widget, len(choices))
         return widget
@@ -190,6 +204,7 @@ class _TextEditor(Editor):
     spec: TextField
 
     grows = True
+    stacked = True
 
     def _make_widget(self):
         widget = QLineEdit()
@@ -261,9 +276,12 @@ class _SpinEditor(Editor):
         super().__init__(spec)
 
         self.suffix = QLabel(spec.suffix) if spec.suffix else None
+        if self.suffix is not None:
+            set_secondary(self.suffix)
 
     def _make_widget(self):
         widget = self._spin_box()
+        widget.setMinimumWidth(SPIN_MIN_WIDTH)
         widget.setRange(self.spec.minimum, self.spec.maximum)
         if self.spec.special_text is not None:
             widget.setSpecialValueText(self.spec.special_text)

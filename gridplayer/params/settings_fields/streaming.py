@@ -35,6 +35,7 @@ STREAMING_FIELDS: tuple[SettingField, ...] = (
         settings_key="streaming/resolver_priority",
         label=translate("SettingsDialog", "Priority URL resolver"),
         choices=choices.url_resolvers,
+        buttons=True,
     ),
     TextField(
         settings_key="streaming/js_runtime_path",
@@ -68,6 +69,7 @@ STREAMING_FIELDS: tuple[SettingField, ...] = (
         settings_key="network/proxy_mode",
         label=translate("SettingsDialog", "Proxy"),
         choices=choices.proxy_modes,
+        buttons=True,
         tooltip=translate(
             "SettingsDialog",
             "System: use your computer's proxy settings.\n"

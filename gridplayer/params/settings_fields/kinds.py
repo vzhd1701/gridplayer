@@ -44,6 +44,8 @@ class CheckboxField(SettingField):
 class ComboField(SettingField):
     # value -> text, called when the form is built so the texts are translated
     choices: Callable[[], dict]
+    # shown side by side as a row of buttons, for two to four short choices
+    buttons: bool = False
 
 
 @dataclass(frozen=True, kw_only=True)

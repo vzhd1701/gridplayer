@@ -169,6 +169,7 @@ PLAYLIST_FIELDS: tuple[SettingField, ...] = (
         settings_key="playlist/seek_sync_mode",
         label=translate("SettingsDialog", "Seek sync mode"),
         choices=choices.seek_sync_modes,
+        buttons=True,
     ),
     CheckboxField(
         settings_key="playlist/view_sync",
@@ -259,12 +260,14 @@ PLAYLIST_FIELDS: tuple[SettingField, ...] = (
         settings_key="playlist/drop_action_internal",
         label=translate("SettingsDialog", "In-window drag"),
         choices=choices.drop_internal,
+        buttons=True,
         tooltip=_drop_action_tooltip(),
     ),
     ComboField(
         settings_key="playlist/drop_action_external",
         label=translate("SettingsDialog", "File drop"),
         choices=choices.drop_external,
+        buttons=True,
         tooltip=_drop_action_tooltip(),
     ),
     ComboField(
