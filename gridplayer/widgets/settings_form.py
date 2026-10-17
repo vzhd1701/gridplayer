@@ -42,7 +42,7 @@ from gridplayer.params.settings_fields.kinds import (
 from gridplayer.params.settings_fields.registry import FIELDS
 from gridplayer.params.theme import set_secondary
 from gridplayer.utils.qt import translate
-from gridplayer.widgets.settings_controls import CARD_RADIUS, theme_color
+from gridplayer.widgets.settings_controls import CARD_RADIUS, fit_fields, theme_color
 from gridplayer.widgets.settings_editors import Editor, make_editor
 
 RESET_ICON_PX = 14
@@ -223,6 +223,12 @@ class _Card(_Shown):
         self._rows.append(row)
         self.layout().addWidget(row)
         self.watch(row)
+        fit_fields(self)
+
+    def changeEvent(self, event):
+        if event.type() == QEvent.PaletteChange:
+            fit_fields(self)
+        super().changeEvent(event)
 
     def paintEvent(self, event):
         painter = QPainter(self)

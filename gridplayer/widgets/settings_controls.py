@@ -4,9 +4,11 @@ row of buttons for a choice short enough to show all of it."""
 from PyQt5.QtCore import QRectF, QSize, Qt, pyqtSignal
 from PyQt5.QtGui import QColor, QPainter, QPainterPath, QPalette
 from PyQt5.QtWidgets import (
+    QAbstractSpinBox,
     QCheckBox,
     QFrame,
     QLabel,
+    QLineEdit,
     QSizePolicy,
     QVBoxLayout,
     QWidget,
@@ -17,6 +19,9 @@ CARD_RADIUS = 6
 # between a list's box and the list in it, for its square corners to be
 # clear of the round ones
 BOX_PADDING = 3
+
+# how much lighter than a card a field on it is, in the dark theme
+FIELD_LIGHTER = 128
 
 SWITCH_SIZE = QSize(36, 20)
 SWITCH_KNOB_MARGIN = 3
@@ -55,6 +60,21 @@ def theme_color(widget: QWidget, name: str) -> QColor:
 
 def _is_dark(widget: QWidget) -> bool:
     return theme_color(widget, "base").lightness() < 128
+
+
+def fit_fields(card: QWidget):
+    """The fields on a card a shade lighter than it in the dark theme,
+    where they are filled with the card's own colour and their edge is
+    barely darker than it. Again on each change of theme."""
+
+    fill = theme_color(card, "base")
+    if _is_dark(card):
+        fill = fill.lighter(FIELD_LIGHTER)
+
+    for field in card.findChildren((QLineEdit, QAbstractSpinBox)):
+        palette = field.palette()
+        palette.setColor(QPalette.Base, fill)
+        field.setPalette(palette)
 
 
 class RoundedBox(QWidget):

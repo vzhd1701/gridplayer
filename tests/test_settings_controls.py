@@ -1,5 +1,6 @@
 import pytest
 from PyQt5.QtCore import QDeadlineTimer, QEvent, QPoint, Qt
+from PyQt5.QtGui import QColor, QPalette
 from PyQt5.QtTest import QTest
 from PyQt5.QtWidgets import QApplication, QScrollArea
 
@@ -196,6 +197,39 @@ class TestARowShownByAChange:
 
         bottom = row.mapTo(scroll.viewport(), QPoint(0, row.height())).y()
         assert bottom <= scroll.viewport().height()
+
+
+class TestFieldsOnACard:
+    @pytest.fixture
+    def form(self):
+        form = SettingsForm(("network/user_agent",), reset_to=default_value)
+        yield form
+        form.deleteLater()
+
+    @staticmethod
+    def _fill(widget):
+        return widget.palette().color(QPalette.Active, QPalette.Base)
+
+    @staticmethod
+    def _themed(form, base):
+        palette = form.palette()
+        palette.setColor(QPalette.Base, QColor(base))
+        form.setPalette(palette)
+
+    def test_in_the_dark_one_is_lighter_than_the_card(self, form):
+        """Filled with the card's own colour, a field was barely there."""
+
+        self._themed(form, "#3a3a3a")
+
+        card = form._rows["network/user_agent"].parentWidget()
+        field = form.widget("network/user_agent")
+        assert self._fill(field).lightness() > self._fill(card).lightness()
+
+    def test_in_the_light_one_it_is_as_white_as_the_card(self, form):
+        self._themed(form, "#3a3a3a")
+        self._themed(form, "#ffffff")
+
+        assert self._fill(form.widget("network/user_agent")) == QColor("#ffffff")
 
 
 def test_the_bar_of_a_changed_sub_option_runs_along_its_label_and_field():
