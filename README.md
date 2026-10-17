@@ -353,6 +353,8 @@ This software was build using
   - Licensed under *MediaLoot License*
 - **Flag Icons** by [Panayiotis Lipiridis](https://github.com/lipis/flag-icons)
   - Licensed under *MIT License*
+- **Lucide Icons** by [Lucide Contributors](https://lucide.dev/)
+  - Licensed under *ISC License*
 
 ### Data
 

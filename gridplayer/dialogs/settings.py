@@ -10,7 +10,6 @@ from PyQt5.QtWidgets import (
     QDialogButtonBox,
     QHBoxLayout,
     QLabel,
-    QListWidget,
     QListWidgetItem,
     QPushButton,
     QSystemTrayIcon,
@@ -40,6 +39,7 @@ from gridplayer.widgets.custom_menu import CustomMenu
 from gridplayer.widgets.section_links import SectionLinks
 from gridplayer.widgets.settings_current_page_stack import CurrentPageStackedWidget
 from gridplayer.widgets.settings_form import SettingsForm
+from gridplayer.widgets.settings_index import SettingsIndex
 from gridplayer.widgets.settings_page_scroll_area import PageScrollArea
 
 COOKIES_FAQ_URL = (
@@ -53,19 +53,13 @@ SECTION_PAGE_ROLE = Qt.UserRole
 # a button that is only an icon, as small as the icon lets it be
 ICON_BUTTON_SIZE = QSize(24, 24)
 
-# the index: its entries, and the group headings over them
-INDEX_ITEM_PX = 13
-INDEX_ITEM_HEIGHT = 28
-INDEX_HEADING_PX = 11
-# room over a heading, to set its group apart from the one before
-INDEX_HEADING_HEIGHT = 34
-
 # a page with this many sections or more has links to them under its title
 SECTION_LINKS_MIN = 5
 
 PAGE_TITLE_PX = 16
 SCROLL_BAR_GAP = 8
-PAGE_TITLE_ICON_PX = 20
+# the size the index shows the page's icon at, so it is as sharp here
+PAGE_TITLE_ICON_PX = 24
 NOTE_ICON_PX = 16
 
 
@@ -211,16 +205,7 @@ class SettingsDialog(QDialog):
         self.setSizeGripEnabled(True)
         self.setModal(True)
 
-        self.section_index = QListWidget()
-        # by name in the theme's style sheet, which draws the group headings,
-        # disabled so they can't be picked, in the text color rather than grey
-        self.section_index.setObjectName("section_index")
-        self.section_index.setMinimumSize(QSize(200, 350))
-        self.section_index.setMaximumWidth(200)
-        self.section_index.setIconSize(QSize(16, 16))
-        font = self.section_index.font()
-        font.setPixelSize(INDEX_ITEM_PX)
-        self.section_index.setFont(font)
+        self.section_index = SettingsIndex()
 
         self.section_page = CurrentPageStackedWidget(min_width=500)
 
@@ -266,26 +251,13 @@ class SettingsDialog(QDialog):
         self._build_index()
 
     def _build_index(self):
-        heading_font = self.section_index.font()
-        heading_font.setBold(True)
-        heading_font.setPixelSize(INDEX_HEADING_PX)
-
         slots = self._slots()
 
-        for group_index, group in enumerate(PAGES):
-            # small and in capitals: a heading over entries, not one of them
-            heading = QListWidgetItem(group.title.upper(), self.section_index)
-            heading.setFont(heading_font)
-            heading.setFlags(Qt.NoItemFlags)
-            heading.setTextAlignment(Qt.AlignLeft | Qt.AlignBottom)
-            height = INDEX_ITEM_HEIGHT if group_index == 0 else INDEX_HEADING_HEIGHT
-            heading.setSizeHint(QSize(0, height))
+        for group in PAGES:
+            self.section_index.add_heading(group.title)
 
             for page in group.pages:
-                item = QListWidgetItem(page.title, self.section_index)
-                if page.icon is not None:
-                    item.setIcon(QIcon.fromTheme(page.icon))
-                item.setSizeHint(QSize(0, INDEX_ITEM_HEIGHT))
+                item = self.section_index.add_page(page.title, page.icon)
                 item.setData(SECTION_PAGE_ROLE, self._build_page(page, slots))
                 self._index_items[page.id] = item
 

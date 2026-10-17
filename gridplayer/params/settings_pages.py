@@ -232,13 +232,13 @@ PAGES = (
                 "screenshots/format",
                 Indented("screenshots/jpg_quality"),
             ),
-            icon="monitor",
+            icon="page-player",
         ),
         Page(
             "subtitle_style",
             translate("SettingsDialog", "Subtitle Style"),
             *SUBTITLE_STYLE_PAGE,
-            icon="subtitles",
+            icon="page-subtitles",
             note=translate(
                 "SettingsDialog",
                 "Applies to text subtitles. ASS and SSA subtitles keep their own"
@@ -250,7 +250,7 @@ PAGES = (
             translate("SettingsDialog", "Shortcuts"),
             "player/keymap",
             scroll=False,
-            icon="keyboard",
+            icon="page-shortcuts",
         ),
         Page(
             "language",
@@ -263,7 +263,7 @@ PAGES = (
                 )
             ),
             scroll=False,
-            icon="flag",
+            icon="page-language",
         ),
     ),
     Group(
@@ -272,9 +272,14 @@ PAGES = (
             "playlist",
             translate("SettingsDialog", "Playlist"),
             *PLAYLIST_PAGE,
-            icon="grid",
+            icon="page-playlist",
         ),
-        Page("video", translate("SettingsDialog", "Video"), *VIDEO_PAGE, icon="video"),
+        Page(
+            "video",
+            translate("SettingsDialog", "Video"),
+            *VIDEO_PAGE,
+            icon="page-video",
+        ),
     ),
     Group(
         translate("SettingsDialog", "Streaming"),
@@ -297,7 +302,7 @@ PAGES = (
                 Slot("wildcard_help"),
             ),
             scroll=False,
-            icon="add-url",
+            icon="page-resolution",
         ),
         Page(
             "sponsorblock",
@@ -311,7 +316,7 @@ PAGES = (
                 "SettingsDialog",
                 '<p>Every YouTube video you play is checked on SponsorBlock, where viewers mark sponsors, self-promotion and similar segments. Only a short prefix of a hash of the video\'s ID is sent.</p><p>Segments from <a href="{URL}">SponsorBlock</a>, under CC BY-NC-SA 4.0.</p>',
             ).format(URL=SPONSORBLOCK_URL),
-            icon="jump-to",
+            icon="page-sponsorblock",
         ),
         Page(
             "cookies",
@@ -331,7 +336,7 @@ PAGES = (
                 ),
             ),
             scroll=False,
-            icon="id-card",
+            icon="page-cookies",
         ),
         Page(
             "network",
@@ -355,7 +360,7 @@ PAGES = (
                     )
                 ),
             ),
-            icon="router",
+            icon="page-network",
         ),
     ),
     Group(
@@ -382,7 +387,7 @@ PAGES = (
                 "internal/force_native_drag_events",
                 "internal/hw_crop_border_offset",
             ),
-            icon="cpu",
+            icon="page-decoder",
         ),
         Page(
             "logging",
@@ -397,7 +402,7 @@ PAGES = (
                 "logging/log_level",
                 "logging/log_level_vlc",
             ),
-            icon="page",
+            icon="page-logging",
         ),
     ),
 )

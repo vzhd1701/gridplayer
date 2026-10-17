@@ -154,13 +154,6 @@ icon-symbolic,icons/custom/volume unmute.svg,volume-unmute
 icon-symbolic,icons/custom/warning.svg,warning
 icon-symbolic,icons/custom/stop.svg,stop
 icon-symbolic,icons/custom/playback finish.svg,playback-finish
-icon-symbolic,icons/basic/048-monitor.svg,monitor
-icon-symbolic,icons/basic/002-flag.svg,flag
-icon-symbolic,icons/basic/026-identification.svg,id-card
-icon-symbolic,icons/basic/110-router.svg,router
-icon-symbolic,icons/basic/051-cpu.svg,cpu
-icon-symbolic,icons/basic/139-page.svg,page
-icon-symbolic,icons/custom/keyboard.svg,keyboard
 icon-symbolic,icons/basic/109-In.svg,import
 icon-symbolic,icons/basic/189-trash.svg,trash
 icon-symbolic,icons/basic/131-notepad.svg,checkup
@@ -170,6 +163,18 @@ icon-symbolic,icons/basic/066-down arrow.svg,move-down
 icon-symbolic,icons/basic/093-folder.svg,browse-folder
 icon-symbolic,icons/custom/expand all.svg,expand-all
 icon-symbolic,icons/custom/collapse all.svg,collapse-all
+icon-symbolic,icons/lucide/page-player.svg,page-player
+icon-symbolic,icons/lucide/page-subtitles.svg,page-subtitles
+icon-symbolic,icons/lucide/page-shortcuts.svg,page-shortcuts
+icon-symbolic,icons/lucide/page-language.svg,page-language
+icon-symbolic,icons/lucide/page-playlist.svg,page-playlist
+icon-symbolic,icons/lucide/page-video.svg,page-video
+icon-symbolic,icons/lucide/page-resolution.svg,page-resolution
+icon-symbolic,icons/lucide/page-sponsorblock.svg,page-sponsorblock
+icon-symbolic,icons/lucide/page-cookies.svg,page-cookies
+icon-symbolic,icons/lucide/page-network.svg,page-network
+icon-symbolic,icons/lucide/page-decoder.svg,page-decoder
+icon-symbolic,icons/lucide/page-logging.svg,page-logging
 translation,translations/ar_SA.ts,ar_SA
 translation,translations/cs_CZ.ts,cs_CZ
 translation,translations/de_DE.ts,de_DE
