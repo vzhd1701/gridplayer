@@ -53,16 +53,25 @@ class TestTheMenu:
         assert submenus[at - 1] == "View Mode"
         assert "Aspect Ratio" in SUBMENUS
 
-    def test_default_first_then_vlc_s_ratios(self):
+    def test_the_list_s_and_default_first_then_vlc_s_ratios(self):
         items = _submenu("video_active", "Aspect Ratio")[1:]
 
-        values = [ACTIONS[name]["func"][2] for name in items]
+        assert list(items[:2]) == ["Aspect Ratio List", "Aspect Ratio Default"]
 
-        assert values == ["", *PRESETS]
-        assert [ACTIONS[name]["title"] for name in items[1:]] == PRESETS
+        values = [ACTIONS[name]["func"][2] for name in items[2:]]
+
+        assert values == PRESETS
+        assert [ACTIONS[name]["title"] for name in items[2:]] == PRESETS
+
+    def test_default_is_the_video_s_own(self):
+        action = ACTIONS["Aspect Ratio Default"]
+
+        assert action["func"] == ("active", "view.set_aspect_ratio_own")
+        assert action["check_if"] == "is_active_aspect_ratio_default"
+        assert action["is_choice"]
 
     def test_each_reaches_the_video_and_is_ticked_when_in_force(self):
-        for name in _submenu("video_active", "Aspect Ratio")[1:]:
+        for name in _submenu("video_active", "Aspect Ratio")[3:]:
             action = ACTIONS[name]
             target, command, ratio = action["func"]
 

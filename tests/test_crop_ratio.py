@@ -64,13 +64,14 @@ class TestTheMenu:
     def test_off_then_vlc_s_shapes_then_custom_then_the_nudges(self):
         items = _crop_submenu()
 
-        assert items[: len(PRESETS) + 3] == [
+        assert items[: len(PRESETS) + 4] == [
+            "Crop List",
             "Crop Reset",
             *(f"Crop {ratio}" for ratio in PRESETS),
             "Set Crop",
             "---",
         ]
-        assert items[len(PRESETS) + 3 :] == [
+        assert items[len(PRESETS) + 4 :] == [
             "Crop Left +",
             "Crop Left -",
             "Crop Top +",
@@ -97,7 +98,7 @@ class TestTheMenu:
     def test_off_and_custom_are_ticked_too_and_keep_their_shortcut_names(self):
         off, custom = ACTIONS["Crop Reset"], ACTIONS["Set Crop"]
 
-        assert off["func"] == ("active", "view.crop_reset")
+        assert off["func"] == ("active", "view.crop_off")
         assert off["check_if"] == "is_active_crop_off"
         assert off["keymap_title"] == "Crop Reset"
         assert custom["func"] == "crop_dialog"
@@ -127,7 +128,10 @@ class TestTheMenu:
 
 def _active(crop=NO_CROP, crop_ratio=""):
     block = SimpleNamespace(
-        video_params=SimpleNamespace(crop=crop, crop_ratio=crop_ratio)
+        video_params=SimpleNamespace(crop=crop, crop_ratio=crop_ratio),
+        list_crop_ratio="",
+        is_video_initialized=True,
+        video_tracks=[0],
     )
     manager = ActiveBlockManager(context=SimpleNamespace(active_block=None))
     manager._ctx.active_block = block

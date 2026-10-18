@@ -37,6 +37,7 @@ from gridplayer.params.static import (
     MAX_RATE,
     MIN_RATE,
     OVERLAY_ACTIVITY_EVENT,
+    OWN_ASPECT_RATIO,
     PLAYER_ID_LENGTH,
     VideoCrop,
     VideoDeinterlace,
@@ -900,9 +901,14 @@ class VideoBlock(QWidget):
     @property
     def shown_aspect_ratio(self) -> str:
         """The aspect ratio the video is shown in: the one picked, or its
-        list's."""
+        list's; empty for its own."""
 
-        return self.video_params.aspect_ratio or self.list_aspect_ratio
+        picked = self.video_params.aspect_ratio
+
+        if picked == OWN_ASPECT_RATIO:
+            return ""
+
+        return picked or self.list_aspect_ratio
 
     @property
     def _item_headers(self) -> dict[str, str]:

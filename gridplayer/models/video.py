@@ -30,6 +30,8 @@ from gridplayer.params.static import (
     MIN_RATE,
     MIN_SCALE,
     MIN_SUBTITLE_DELAY_MS,
+    NO_CROP_RATIO,
+    OWN_ASPECT_RATIO,
     AudioChannelMode,
     AudioTrackMode,
     ListEndAction,
@@ -315,10 +317,23 @@ class Video(BaseModel):
         "video_defaults/external_subtitle_autodiscover"
     )
 
-    @field_validator("aspect_ratio", "crop_ratio")
+    @field_validator("aspect_ratio")
     @classmethod
     def _known_aspect_ratio(cls, value: str) -> str:
-        """One that is no shape at all is the video's own, or no cut."""
+        """One that is no shape at all is the video's own."""
+
+        if value == OWN_ASPECT_RATIO:
+            return value
+
+        return value if parse_aspect_ratio(value) is not None else ""
+
+    @field_validator("crop_ratio")
+    @classmethod
+    def _known_crop_ratio(cls, value: str) -> str:
+        """One that is no shape at all is no cut."""
+
+        if value == NO_CROP_RATIO:
+            return value
 
         return value if parse_aspect_ratio(value) is not None else ""
 

@@ -14,7 +14,13 @@ from gridplayer.models.media_list import ItemShape, ListItem, MediaList
 from gridplayer.models.playlist import Playlist
 from gridplayer.models.video import Video
 from gridplayer.params.actions import ACTIONS
-from gridplayer.params.static import VideoCrop, VideoTransform, ViewParams
+from gridplayer.params.static import (
+    NO_CROP_RATIO,
+    OWN_ASPECT_RATIO,
+    VideoCrop,
+    VideoTransform,
+    ViewParams,
+)
 from gridplayer.player.managers.active_block import ActiveBlockManager
 from gridplayer.player.managers.add_videos import _with_list_shape
 from gridplayer.utils.list_files import m3u_text, parse_m3u
@@ -314,9 +320,13 @@ class TestOnTheCell:
         block.video_driver.shown_crop.assert_not_called()
 
 
-def _menu(list_aspect_ratio="", list_crop_ratio=""):
+def _menu(list_aspect_ratio="", list_crop_ratio="", **picked):
     block = SimpleNamespace(
-        list_aspect_ratio=list_aspect_ratio, list_crop_ratio=list_crop_ratio
+        video_params=Video(uri=URI, **picked),
+        list_aspect_ratio=list_aspect_ratio,
+        list_crop_ratio=list_crop_ratio,
+        is_video_initialized=True,
+        video_tracks=[0],
     )
     manager = ActiveBlockManager(context=SimpleNamespace(active_block=None))
     manager._ctx.active_block = block
@@ -324,28 +334,114 @@ def _menu(list_aspect_ratio="", list_crop_ratio=""):
 
 
 class TestTheMenu:
-    def test_default_and_off_say_the_list_s(self):
+    def test_the_list_s_shown_ticked_with_nothing_picked(self):
         manager = _menu("4:3", "16:9")
 
-        assert manager.active_aspect_ratio_default_title() == "4:3 (list)"
-        assert manager.active_crop_off_title() == "16:9 (list)"
+        assert manager.is_active_list_aspect_ratio()
+        assert manager.active_list_aspect_ratio_title() == "4:3 (list)"
+        assert manager.is_active_param_set_to("aspect_ratio", "")
+        assert not manager.is_active_aspect_ratio_default()
 
-    def test_or_what_they_are(self):
+        assert manager.is_active_list_crop_ratio()
+        assert manager.active_list_crop_ratio_title() == "16:9 (list)"
+        assert manager.is_active_crop_listed()
+        assert not manager.is_active_crop_off()
+
+    def test_default_and_off_picked_over_them(self):
+        manager = _menu(
+            "4:3", "16:9", aspect_ratio=OWN_ASPECT_RATIO, crop_ratio=NO_CROP_RATIO
+        )
+
+        assert manager.is_active_aspect_ratio_default()
+        assert manager.is_active_crop_off()
+        assert not manager.is_active_crop_listed()
+
+    def test_none_without_a_list_s(self):
         manager = _menu()
 
-        assert manager.active_aspect_ratio_default_title() == "Default"
-        assert manager.active_crop_off_title() == "Off"
+        assert not manager.is_active_list_aspect_ratio()
+        assert not manager.is_active_list_crop_ratio()
+        assert manager.is_active_aspect_ratio_default()
+        assert manager.is_active_crop_off()
 
     def test_the_menu_can_ask(self):
         commands = _menu().commands
 
-        for action in ("Aspect Ratio Default", "Crop Reset"):
+        for action in ("Aspect Ratio List", "Crop List"):
             assert ACTIONS[action]["title"] == "%v"
             assert commands[ACTIONS[action]["value_getter"]]
+            assert commands[ACTIONS[action]["show_if"]]
 
-    def test_their_shortcut_names_stay(self):
-        assert ACTIONS["Aspect Ratio Default"]["keymap_title"] == "Default"
+        assert commands[ACTIONS["Crop List"]["check_if"]]
+        assert commands[ACTIONS["Aspect Ratio Default"]["check_if"]]
+
+    def test_the_list_s_follows_it_again(self):
+        assert ACTIONS["Aspect Ratio List"]["func"] == (
+            "active",
+            "view.set_aspect_ratio",
+            "",
+        )
+        assert ACTIONS["Crop List"]["func"] == ("active", "view.crop_reset")
+
+    def test_off_keeps_its_shortcut_name(self):
         assert ACTIONS["Crop Reset"]["keymap_title"] == "Crop Reset"
+        assert ACTIONS["Crop Reset"]["func"] == ("active", "view.crop_off")
+
+
+class TestPickedOverTheList:
+    def test_default_over_the_list_s_is_the_video_s_own(self):
+        block = _block("4:3")
+
+        block.view.set_aspect_ratio_own()
+
+        assert block.video_params.aspect_ratio == OWN_ASPECT_RATIO
+        block.video_driver.set_aspect_ratio.assert_called_once_with(OWN_ASPECT_RATIO)
+        block.info_change.emit.assert_called_once_with("Aspect Ratio: Default")
+
+    def test_default_without_one_is_nothing_picked(self):
+        block = _block()
+
+        block.view.set_aspect_ratio_own()
+
+        assert block.video_params.aspect_ratio == ""
+
+    def test_off_over_the_list_s_cuts_nothing(self):
+        block = _block("", "16:9")
+
+        block.view.crop_off()
+
+        assert block.video_params.crop_ratio == NO_CROP_RATIO
+        assert block.view.shown_crop() == NO_CROP
+        block.info_change.emit.assert_called_once_with("Crop: Off")
+
+    def test_off_without_one_is_no_margins(self):
+        block = _block(crop=VideoCrop(1, 0, 0, 0))
+
+        block.view.crop_off()
+
+        assert (block.video_params.crop_ratio, block.video_params.crop) == ("", NO_CROP)
+
+    def test_kept_with_the_playlist(self):
+        video = Video(uri=URI, aspect_ratio=OWN_ASPECT_RATIO, crop_ratio=NO_CROP_RATIO)
+
+        read = Video.model_validate(json.loads(video.model_dump_json()))
+
+        assert (read.aspect_ratio, read.crop_ratio) == (OWN_ASPECT_RATIO, NO_CROP_RATIO)
+
+    def test_each_only_for_its_own(self):
+        video = Video(uri=URI, aspect_ratio=NO_CROP_RATIO, crop_ratio=OWN_ASPECT_RATIO)
+
+        assert (video.aspect_ratio, video.crop_ratio) == ("", "")
+
+    def test_shown_so_in_the_widget(self):
+        frame = _frame("4:3", "4:3", aspect_ratio=OWN_ASPECT_RATIO)
+
+        frame.set_crop_ratio(NO_CROP_RATIO)
+
+        assert not frame._view.is_aspect_ratio_listed
+        assert not frame._view.is_crop_ratio_listed
+        assert frame.shown_crop() == NO_CROP
+        assert frame._pixel_aspect() == 1
 
 
 def _dialog_on_the_list_s():

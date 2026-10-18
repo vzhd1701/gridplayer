@@ -99,6 +99,12 @@ class VideoShift(NamedTuple):
     Y: int
 
 
+# Picked over the shape a video's list says, where it says one: the video's
+# own aspect ratio, and no crop. Without a list the same as nothing picked.
+OWN_ASPECT_RATIO = "own"
+NO_CROP_RATIO = "none"
+
+
 class ViewParams(NamedTuple):
     """How a video is fitted into its pane, as one value.
 
@@ -114,10 +120,12 @@ class ViewParams(NamedTuple):
     # black showing where it has gone from
     is_shift_past_edges: bool = False
     # the shape the whole picture is shown in, as it is shown, turned or
-    # not: "16:9", "2.35:1". Empty for the shape the video gives it
+    # not: "16:9", "2.35:1". Empty for the shape the video gives it, or its
+    # list; OWN_ASPECT_RATIO for the video's own, whatever its list says
     aspect_ratio: str = ""
     # the shape the picture is cut to, as it is shown, or empty for the
-    # crop's own margins. With one, the crop is the margins that cut it so,
+    # crop's own margins, or its list's shape; NO_CROP_RATIO for none,
+    # whatever its list says. With one, the crop is the margins that cut it so,
     # worked out where the frame is known (see calc_ratio_crop)
     crop_ratio: str = ""
     # the two above are the ones the video's list says, nothing being

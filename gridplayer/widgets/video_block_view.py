@@ -5,6 +5,8 @@ from PyQt5.QtCore import QRect, QRectF
 from PyQt5.QtGui import QCursor
 
 from gridplayer.params.static import (
+    NO_CROP_RATIO,
+    OWN_ASPECT_RATIO,
     VideoAnchor,
     VideoCellViewMode,
     VideoCrop,
@@ -327,18 +329,29 @@ class ViewControl(VideoBlockPart):
     @only_with_video_tacks
     def set_aspect_ratio(self, aspect_ratio: str, is_silent=False):
         """Show the picture in this shape, as it is shown: "16:9", or
-        empty for its list's, or else the video's own."""
+        empty for its list's, or else the video's own; OWN_ASPECT_RATIO for
+        the video's own, whatever its list says."""
 
         self._block.video_params.aspect_ratio = aspect_ratio
         self._block.video_driver.set_aspect_ratio(aspect_ratio)
 
         if not is_silent:
-            listed = self._block.list_aspect_ratio
-            self._block.info_change.emit(
-                "Aspect Ratio: {}".format(
-                    aspect_ratio or _listed_txt(listed) or "Default"
-                )
-            )
+            if aspect_ratio == OWN_ASPECT_RATIO:
+                shown = "Default"
+            else:
+                listed = _listed_txt(self._block.list_aspect_ratio)
+                shown = aspect_ratio or listed or "Default"
+
+            self._block.info_change.emit(f"Aspect Ratio: {shown}")
+
+    def set_aspect_ratio_own(self):
+        """Show the picture in the video's own shape: over its list's where
+        it says one, and so on the next videos of the list too; nothing
+        picked where it says none, to be shown as the list says."""
+
+        is_listed = bool(self._block.list_aspect_ratio)
+
+        self.set_aspect_ratio(OWN_ASPECT_RATIO if is_listed else "")
 
     @only_with_video_tacks
     @only_initialized
@@ -363,6 +376,9 @@ class ViewControl(VideoBlockPart):
 
         params = self._block.video_params
 
+        if params.crop_ratio == NO_CROP_RATIO:
+            return params.crop
+
         is_shaped = params.crop_ratio or (
             not any(params.crop) and self._block.list_crop_ratio
         )
@@ -385,15 +401,31 @@ class ViewControl(VideoBlockPart):
         self._block.video_driver.set_crop_ratio(crop_ratio)
 
         if not is_silent:
-            listed = self._block.list_crop_ratio
-            self._block.info_change.emit(
-                "Crop: {}".format(crop_ratio or _listed_txt(listed) or "Off")
-            )
+            if crop_ratio == NO_CROP_RATIO:
+                shown = "Off"
+            else:
+                listed = _listed_txt(self._block.list_crop_ratio)
+                shown = crop_ratio or listed or "Off"
+
+            self._block.info_change.emit(f"Crop: {shown}")
 
     @only_with_video_tacks
     @only_initialized
     def crop_reset(self, is_silent=False):
+        """Cut by no margins and to no shape picked: to its list's, where it
+        says one."""
+
         self.set_crop(VideoCrop(0, 0, 0, 0), is_silent)
+
+    @only_with_video_tacks
+    def crop_off(self):
+        """Cut nothing: not to its list's shape either where it says one, and
+        so on the next videos of the list too."""
+
+        if self._block.list_crop_ratio:
+            self.set_crop_ratio(NO_CROP_RATIO)
+        else:
+            self.crop_reset()
 
     @only_with_video_tacks
     @only_initialized

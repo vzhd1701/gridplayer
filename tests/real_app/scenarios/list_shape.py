@@ -1,6 +1,7 @@
 """The aspect ratio and the crop shape a channel list says for a channel
 show it so, where none is picked, and are never kept as picked. One picked
-goes on to the list's next video, and Default lets the list's back."""
+goes on to the list's next video; Default and Off picked over the list's
+show the video as it is, and the list's own item lets them back."""
 
 import shutil
 
@@ -37,15 +38,16 @@ def scenario(d):
     _shown(d, b, "4:3", "the list's 4:3")
     d.check("not kept as picked", b.video_params.aspect_ratio == "")
     d.check(
-        "Default says the list's",
-        _title(d, b, "active_aspect_ratio_default_title") == "4:3 (list)",
+        "the list's item says it",
+        _title(d, b, "active_list_aspect_ratio_title") == "4:3 (list)",
     )
 
     _next(d, b, "b.mp4")
     _shown(d, b, "1:1", "the list's 1:1 crop")
     d.check("not kept as picked", b.video_params.crop_ratio == "")
     d.check(
-        "Off says the list's", _title(d, b, "active_crop_off_title") == "1:1 (list)"
+        "the list's item says it",
+        _title(d, b, "active_list_crop_ratio_title") == "1:1 (list)",
     )
 
     d.act(b, "Crop Top +")
@@ -54,8 +56,13 @@ def scenario(d):
         b.video_params.crop_ratio == "" and b.video_params.crop.Left > 0,
         b.video_params.crop,
     )
+    d.act(b, "Crop List")
+    _shown(d, b, "1:1", "the list's again")
     d.act(b, "Crop Reset")
-    _shown(d, b, "1:1", "Off lets the list's back")
+    _shown(d, b, "16:9", "Off over the list's")
+    d.check("Off picked", b.video_params.crop_ratio == "none")
+    d.act(b, "Crop List")
+    _shown(d, b, "1:1", "the list's back")
 
     _next(d, b, "c.mp4")
     _shown(d, b, "16:9", "nothing said, its own")
@@ -66,7 +73,9 @@ def scenario(d):
     _shown(d, b, "16:10", "the pick over the list's 4:3")
 
     d.act(b, "Aspect Ratio Default")
-    _shown(d, b, "4:3", "Default lets the list's back")
+    _shown(d, b, "16:9", "Default over the list's")
+    d.act(b, "Aspect Ratio List")
+    _shown(d, b, "4:3", "the list's back")
     d.shot("list_4_3", b.video_driver)
 
 

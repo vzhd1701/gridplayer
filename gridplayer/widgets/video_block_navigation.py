@@ -20,6 +20,8 @@ from gridplayer.models.media_list import (
     merged_details,
 )
 from gridplayer.params.static import (
+    NO_CROP_RATIO,
+    OWN_ASPECT_RATIO,
     ListEndAction,
     ListSourceKind,
     VideoEndAction,
@@ -335,18 +337,28 @@ class NavigationControl(VideoBlockPart):
 
     def _keep_list_shape(self, params):
         """The aspect ratio and the crop shape the list says, where none is
-        picked, picked: the picture stays as it is once off the list."""
+        picked, picked: the picture stays as it is once off the list. Its
+        own shape and no crop, picked over the list's, are nothing picked
+        without it."""
 
-        aspect_ratio = self._block.list_aspect_ratio
-        crop_ratio = self._block.list_crop_ratio
+        aspect_ratio = _kept_off_the_list(
+            params.aspect_ratio, OWN_ASPECT_RATIO, self._block.list_aspect_ratio
+        )
+        crop_ratio = (
+            None
+            if any(params.crop)
+            else _kept_off_the_list(
+                params.crop_ratio, NO_CROP_RATIO, self._block.list_crop_ratio
+            )
+        )
         driver = self._block.video_driver
 
-        if aspect_ratio and not params.aspect_ratio:
+        if aspect_ratio is not None:
             params.aspect_ratio = aspect_ratio
             if driver is not None:
                 driver.set_aspect_ratio(aspect_ratio)
 
-        if crop_ratio and not params.crop_ratio and not any(params.crop):
+        if crop_ratio is not None:
             params.crop_ratio = crop_ratio
             if driver is not None:
                 driver.set_crop_ratio(crop_ratio)
@@ -626,3 +638,17 @@ class NavigationControl(VideoBlockPart):
 
         self._block.audio.drop_external()
         self._block.subtitles.drop_external()
+
+
+def _kept_off_the_list(picked: str, over_list: str, listed: str) -> str | None:
+    """What a shape picked becomes once off the list: the list's, where
+    none was picked; nothing, where the list's was picked against; None to
+    stay as it is."""
+
+    if picked == over_list:
+        return ""
+
+    if not picked and listed:
+        return listed
+
+    return None

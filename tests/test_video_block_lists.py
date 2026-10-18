@@ -21,6 +21,7 @@ from gridplayer.models.media_list import (
 from gridplayer.models.stream import Stream, Streams
 from gridplayer.models.video import Video
 from gridplayer.params.static import (
+    OWN_ASPECT_RATIO,
     ListEndAction,
     ListFailAction,
     VideoEndAction,
@@ -451,6 +452,16 @@ class TestTheShapeTheListSays:
 
         assert block.video_params.aspect_ratio == "4:3"
         assert block.list_aspect_ratio == ""
+
+    def test_its_own_picked_over_the_list_s_is_nothing_picked_off_it(
+        self, make_cell, shaped
+    ):
+        block = make_cell(shaped)
+        block.video_params.aspect_ratio = OWN_ASPECT_RATIO
+
+        block.navigation.leave_list()
+
+        assert block.video_params.aspect_ratio == ""
 
     def test_one_picked_stays_so_off_the_list(self, make_cell, shaped):
         block = make_cell(shaped)

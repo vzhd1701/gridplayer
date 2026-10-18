@@ -145,6 +145,7 @@ SECTIONS = MappingProxyType(
                 ),
                 (
                     "Aspect Ratio",
+                    "Aspect Ratio List",
                     "Aspect Ratio Default",
                     "Aspect Ratio 16:9",
                     "Aspect Ratio 4:3",
@@ -157,6 +158,7 @@ SECTIONS = MappingProxyType(
                 ),
                 (
                     "Crop",
+                    "Crop List",
                     "Crop Reset",
                     "Crop 16:10",
                     "Crop 16:9",
