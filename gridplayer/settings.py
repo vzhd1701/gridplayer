@@ -167,6 +167,7 @@ _default_settings = {
     "video_defaults/volume": 1.0,
     "video_defaults/color": "#ffffff",
     "video_defaults/crop": VideoCrop(0, 0, 0, 0),
+    "video_defaults/crop_ratio": "",
     "video_defaults/anchor": VideoAnchor.CENTER,
     "video_defaults/shift_past_edges": False,
     "video_defaults/stream_quality": "best",

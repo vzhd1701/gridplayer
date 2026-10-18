@@ -119,6 +119,8 @@ class ActiveBlockManager(ManagerBase):
             "position_dialog": self.cmd_position_dialog,
             "is_active_runtime_param_set_to": self.is_active_runtime_param_set_to,
             "is_active_param_set_to": self.is_active_param_set_to,
+            "is_active_crop_off": self.is_active_crop_off,
+            "is_active_crop_custom": self.is_active_crop_custom,
             "is_active_initialized": self.is_active_initialized,
             "is_active_playable": self.is_active_playable,
             "is_active_stoppable": self.is_active_stoppable,
@@ -222,6 +224,26 @@ class ActiveBlockManager(ManagerBase):
         active_video_param = getattr(self._ctx.active_block.video_params, param_name)
 
         return active_video_param == param_value
+
+    def is_active_crop_off(self):
+        """Not cut at all: to no shape and by no margins."""
+
+        if self.is_no_active_block:
+            return False
+
+        params = self._ctx.active_block.video_params
+
+        return not params.crop_ratio and not any(params.crop)
+
+    def is_active_crop_custom(self):
+        """Cut by margins of its own, to no shape picked."""
+
+        if self.is_no_active_block:
+            return False
+
+        params = self._ctx.active_block.video_params
+
+        return not params.crop_ratio and any(params.crop)
 
     def is_active_runtime_param_set_to(self, param_name, param_value):
         if self.is_no_active_block:

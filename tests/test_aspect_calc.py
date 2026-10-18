@@ -17,6 +17,7 @@ from gridplayer.utils.aspect_calc import (
     calc_followed_view,
     calc_moved_shift,
     calc_picture_rect,
+    calc_ratio_crop,
     calc_selection_zoom,
     calc_shared_view,
     calc_shift_range,
@@ -1662,3 +1663,69 @@ class TestAspectRatio:
 
         assert geometry == ("4:3", "+0+0+0+0")
         assert calc_vlc_picture(VIDEO, geometry, (1200, 900)) == (0, 0, 1200, 900)
+
+
+class TestCropRatio:
+    """A crop shape cuts the picture to it, as it is shown, by margins
+    taken evenly off the two sides it is too long between."""
+
+    def test_a_wide_frame_cut_to_4_3_loses_its_sides(self):
+        assert calc_ratio_crop(VIDEO, None, "4:3") == VideoCrop(240, 0, 240, 0)
+
+    def test_a_frame_cut_wider_loses_its_top_and_bottom(self):
+        """1920 / 2.35 is 817 rows kept, and the odd one goes at the bottom."""
+
+        assert calc_ratio_crop(VIDEO, None, "2.35:1") == VideoCrop(0, 131, 0, 132)
+
+    def test_one_of_that_shape_already_is_not_cut(self):
+        assert calc_ratio_crop(VIDEO, None, "16:9") == NO_CROP
+
+    def test_none_picked_or_no_frame_is_no_cut(self):
+        assert calc_ratio_crop(VIDEO, None, "") == NO_CROP
+        assert calc_ratio_crop((0, 0), None, "4:3") == NO_CROP
+
+    def test_wide_pixels_are_cut_as_they_are_shown(self):
+        """720x576 of 64:45 pixels is 1024x576, 16:9 already."""
+
+        assert calc_ratio_crop((720, 576), None, "16:9", 64 / 45) == NO_CROP
+        assert calc_ratio_crop((720, 576), None, "4:3", 64 / 45) == VideoCrop(
+            90, 0, 90, 0
+        )
+
+    def test_the_aspect_ratio_picked_is_cut_from(self):
+        """A 4:3 frame shown 16:9, then cut to 4:3, loses its sides."""
+
+        pixel_aspect = calc_shown_pixel_aspect((1440, 1080), None, "16:9", 1.0)
+
+        assert calc_ratio_crop((1440, 1080), None, "4:3", pixel_aspect) == VideoCrop(
+            180, 0, 180, 0
+        )
+
+    def test_turned_it_is_cut_as_shown(self):
+        """1920x1080 turned is shown 1080x1920: a square loses top and
+        bottom on screen, which are the frame's own top and bottom."""
+
+        crop = calc_ratio_crop(VIDEO, VideoTransform.ROTATE_90, "1:1")
+
+        placement = calc_view_placement(
+            VIDEO,
+            PANE,
+            _view(VideoCellViewMode.FIT, crop=crop),
+            VideoTransform.ROTATE_90,
+        )
+
+        assert crop.Left == crop.Right == 0
+        assert crop.Top == crop.Bottom
+        _, _, width, height = placement.target
+        assert width / height == pytest.approx(1, abs=0.01)
+
+    @pytest.mark.parametrize("ratio", ["16:10", "1.85:1", "2.39:1", "5:3", "1:1"])
+    def test_the_picture_is_shown_that_shape(self, ratio):
+        crop = calc_ratio_crop(VIDEO, None, ratio)
+
+        placement = calc_view_placement(
+            VIDEO, PANE, _view(VideoCellViewMode.FIT, crop=crop)
+        )
+
+        _, _, width, height = placement.target
+        assert width / height == pytest.approx(parse_aspect_ratio(ratio), rel=0.005)

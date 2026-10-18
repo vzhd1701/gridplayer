@@ -1408,6 +1408,7 @@ class VlcPlayerBase(ABC):
             self.media_input.video.shift = view.shift
             self.media_input.video.is_shift_past_edges = view.is_shift_past_edges
             self.media_input.video.aspect_ratio = view.aspect_ratio
+            self.media_input.video.crop_ratio = view.crop_ratio
 
         if self.media is None:
             # video not loaded yet, video frame resized on init
@@ -1709,6 +1710,7 @@ class VlcPlayerBase(ABC):
                 video.shift,
                 video.is_shift_past_edges,
                 video.aspect_ratio,
+                video.crop_ratio,
             ),
         )
 

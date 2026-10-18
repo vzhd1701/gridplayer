@@ -916,6 +916,39 @@ def calc_shown_pixel_aspect(
     return ratio * frame_h / frame_w
 
 
+def calc_ratio_crop(
+    frame_size: tuple[int, int],
+    transform: VideoTransform | None,
+    crop_ratio: str,
+    pixel_aspect: float = 1.0,
+) -> VideoCrop:
+    """The crop that cuts the picture to the shape picked, as it is shown:
+    "2.35:1". Taken evenly off the two sides it is too long between.
+
+    In frame pixels, as the crop is (see calc_view_placement), the frame's
+    pixels as wide as pixel_aspect says, the aspect ratio picked included.
+    No crop where there is no ratio, or no frame to work it out from.
+    """
+
+    ratio = parse_aspect_ratio(crop_ratio)
+    frame_w, frame_h = frame_size
+
+    if ratio is None or min(frame_w, frame_h, pixel_aspect) <= 0:
+        return _NO_CROP
+
+    unit_x, unit_y = calc_frame_pixel_shape(frame_size, transform, pixel_aspect)
+    shown_w, shown_h = frame_w * unit_x, frame_h * unit_y
+
+    if shown_w > shown_h * ratio:
+        kept = min(max(round(shown_h * ratio / unit_x), 1), frame_w)
+        left = (frame_w - kept) // 2
+        return VideoCrop(left, 0, frame_w - kept - left, 0)
+
+    kept = min(max(round(shown_w / ratio / unit_y), 1), frame_h)
+    top = (frame_h - kept) // 2
+    return VideoCrop(0, top, 0, frame_h - kept - top)
+
+
 def _whole_override(
     frame_size: tuple[int, int], transform: VideoTransform | None, pixel_aspect: float
 ) -> tuple[int, int]:

@@ -174,6 +174,7 @@ class VideoBlocksManager(ManagerBase):
 
     all_crop = pyqtSignal(int, int, int, int)
     all_crop_reset = pyqtSignal()
+    all_set_crop_ratio = pyqtSignal(str)
 
     all_set_anchor = pyqtSignal(VideoAnchor)
     all_shift_by = pyqtSignal(int, int)
@@ -884,6 +885,7 @@ class VideoBlocksManager(ManagerBase):
             (self.all_set_zoom_to_cursor, vb.view.set_zoom_to_cursor),
             (self.all_crop, vb.view.crop),
             (self.all_crop_reset, vb.view.crop_reset),
+            (self.all_set_crop_ratio, vb.view.set_crop_ratio),
             (self.all_set_anchor, vb.view.set_anchor),
             (self.all_shift_by, vb.view.shift_by),
             (self.all_shift_reset, vb.view.shift_reset),

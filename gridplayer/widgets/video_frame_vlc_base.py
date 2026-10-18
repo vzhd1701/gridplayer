@@ -27,6 +27,7 @@ from gridplayer.params.static import (
     HWCropBorderOffset,
     VideoAnchor,
     VideoCellViewMode,
+    VideoCrop,
     VideoShift,
     VideoTransform,
     ViewParams,
@@ -40,6 +41,7 @@ from gridplayer.utils.aspect_calc import (
     calc_followed_view,
     calc_moved_shift,
     calc_picture_rect,
+    calc_ratio_crop,
     calc_selection_zoom,
     calc_shared_view,
     calc_shift_range,
@@ -893,6 +895,10 @@ class VideoFrameVLC(QWidget, metaclass=QABC):
         if self.media.is_audio_only:
             return True
 
+        # the margins that cut it to a shape go by the frame, only known
+        # once loaded, and by its shape, which the aspect ratio changes
+        self._view = self._view._replace(crop=self.shown_crop())
+
         if self.pause_snapshot.isVisible():
             self.pause_snapshot.adjust_view(self.size(), self._shown_picture_rect())
 
@@ -955,6 +961,7 @@ class VideoFrameVLC(QWidget, metaclass=QABC):
             video.shift,
             video.is_shift_past_edges,
             video.aspect_ratio,
+            video.crop_ratio,
         )
         # changing it reloads the video, so it holds for as long as this does
         self._transform = video.transform
@@ -1562,9 +1569,35 @@ class VideoFrameVLC(QWidget, metaclass=QABC):
         self.adjust_view()
 
     def set_crop(self, crop) -> None:
-        self._view = self._view._replace(crop=crop)
+        """Cut the picture by these margins, and to no shape."""
+
+        self._view = self._view._replace(crop=crop, crop_ratio="")
 
         self.adjust_view()
+
+    def set_crop_ratio(self, crop_ratio: str) -> None:
+        """Cut the picture to this shape, as it is shown: "2.35:1", or
+        empty for none, and by no margins of its own."""
+
+        self._view = self._view._replace(
+            crop=VideoCrop(0, 0, 0, 0), crop_ratio=crop_ratio
+        )
+
+        self.adjust_view()
+
+    def shown_crop(self) -> VideoCrop:
+        """The margins the picture is cut by: its own, or those that cut it
+        to the shape picked, none until its frame is known."""
+
+        if not self._view.crop_ratio:
+            return self._view.crop
+
+        return calc_ratio_crop(
+            self._frame_size(),
+            self._transform,
+            self._view.crop_ratio,
+            self._pixel_aspect(),
+        )
 
     def set_anchor(self, anchor: VideoAnchor) -> None:
         self._view = self._view._replace(anchor=anchor)

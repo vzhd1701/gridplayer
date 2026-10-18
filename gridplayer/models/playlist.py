@@ -91,6 +91,7 @@ class PlaylistVideoDefaults(BaseModel):
     volume: float | None = None
     color: Color | None = None
     crop: VideoCrop | None = None
+    crop_ratio: str | None = None
     anchor: VideoAnchor | None = None
     shift_past_edges: bool | None = None
     stream_quality: str | None = None

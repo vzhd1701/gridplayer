@@ -159,9 +159,19 @@ VIDEO_FIELDS: tuple[SettingField, ...] = (
             "The shape of the picture. Default keeps the video's own.",
         ),
     ),
+    ComboField(
+        settings_key="video_defaults/crop_ratio",
+        label=translate("SettingsDialog", "Crop"),
+        choices=choices.crop_ratios,
+        tooltip=translate(
+            "Crop",
+            "Cut the picture to a shape, or by the margins below.",
+        ),
+    ),
     CropField(
         settings_key="video_defaults/crop",
-        label=translate("SettingsDialog", "Crop"),
+        label=translate("SettingsDialog", "Margins"),
+        enabled_when=When("video_defaults/crop_ratio", ("",)),
     ),
     ComboField(
         settings_key="video_defaults/anchor",

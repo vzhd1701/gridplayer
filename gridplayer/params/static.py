@@ -116,6 +116,10 @@ class ViewParams(NamedTuple):
     # the shape the whole picture is shown in, as it is shown, turned or
     # not: "16:9", "2.35:1". Empty for the shape the video gives it
     aspect_ratio: str = ""
+    # the shape the picture is cut to, as it is shown, or empty for the
+    # crop's own margins. With one, the crop is the margins that cut it so,
+    # worked out where the frame is known (see calc_ratio_crop)
+    crop_ratio: str = ""
 
 
 class VideoTransform(AutoName):

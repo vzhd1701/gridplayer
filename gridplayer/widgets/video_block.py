@@ -38,6 +38,7 @@ from gridplayer.params.static import (
     MIN_RATE,
     OVERLAY_ACTIVITY_EVENT,
     PLAYER_ID_LENGTH,
+    VideoCrop,
     VideoDeinterlace,
     VideoDeinterlaceMode,
     VideoEndAction,
@@ -1501,7 +1502,10 @@ class VideoBlock(QWidget):
         self.set_pause(snapshot.is_paused)
         self.view.set_scale(snapshot.scale, is_silent=True)
         self.view.set_zoom_to_cursor(snapshot.is_zoom_to_cursor)
-        self.view.set_crop(snapshot.crop, is_silent=True)
+        if snapshot.crop_ratio:
+            self.view.set_crop_ratio(snapshot.crop_ratio, is_silent=True)
+        else:
+            self.view.set_crop(snapshot.crop, is_silent=True)
         self.view.set_anchor(snapshot.anchor)
         self.view.set_shift_past_edges(snapshot.is_shift_past_edges)
         self.view.set_shift(snapshot.shift, is_silent=True)
@@ -1526,6 +1530,13 @@ class VideoBlock(QWidget):
         """
 
         params = self.video_params
+
+        # cut to a shape or by margins, never both: whichever was set
+        if update.get("crop_ratio"):
+            update = {**update, "crop": VideoCrop(0, 0, 0, 0)}
+        elif "crop" in update:
+            update = {**update, "crop_ratio": ""}
+
         new = params.model_copy(update=update)
 
         if "color" in update:
@@ -1561,7 +1572,15 @@ class VideoBlock(QWidget):
             "subtitle_selection": self.subtitles.restore_selection,
             "scale": lambda scale: self.view.set_scale(scale, is_silent=True),
             "is_zoom_to_cursor": self.view.set_zoom_to_cursor,
-            "crop": lambda crop: self.view.set_crop(crop, is_silent=True),
+            # a shape or margins, whichever is the new one's
+            "crop": lambda crop: (
+                new.crop_ratio or self.view.set_crop(crop, is_silent=True)
+            ),
+            "crop_ratio": lambda ratio: (
+                self.view.set_crop_ratio(ratio, is_silent=True)
+                if ratio
+                else self.view.set_crop(new.crop, is_silent=True)
+            ),
             "anchor": self.view.set_anchor,
             "is_shift_past_edges": self.view.set_shift_past_edges,
             "rate": lambda rate: self.set_rate(rate, is_silent=True),

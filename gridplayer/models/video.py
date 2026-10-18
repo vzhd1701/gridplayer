@@ -228,6 +228,9 @@ class Video(BaseModel):
     # about the anchor's place, while the pointer is over the video
     is_zoom_to_cursor: bool = session_field("video_defaults/zoom_to_cursor")
     crop: VideoCrop = session_field("video_defaults/crop")
+    # the shape the picture is cut to, as it is shown: "2.35:1", or empty
+    # for the crop's margins. One or the other, never both
+    crop_ratio: str = session_field("video_defaults/crop_ratio")
     anchor: VideoAnchor = session_field("video_defaults/anchor")
     # where the picture is moved from the anchor, in video pixels; like the
     # place it was left playing at, nothing a default could say for another
@@ -312,12 +315,21 @@ class Video(BaseModel):
         "video_defaults/external_subtitle_autodiscover"
     )
 
-    @field_validator("aspect_ratio")
+    @field_validator("aspect_ratio", "crop_ratio")
     @classmethod
     def _known_aspect_ratio(cls, value: str) -> str:
-        """One that is no shape at all is the video's own."""
+        """One that is no shape at all is the video's own, or no cut."""
 
         return value if parse_aspect_ratio(value) is not None else ""
+
+    @model_validator(mode="after")
+    def _crop_one_way(self) -> "Video":
+        """Cut to a shape or by margins, never both: the shape, if any."""
+
+        if self.crop_ratio:
+            self.crop = VideoCrop(0, 0, 0, 0)
+
+        return self
 
     @model_validator(mode="before")
     @classmethod

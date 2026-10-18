@@ -69,6 +69,7 @@ def _make_player(cell_view_mode=VideoCellViewMode.FILL, is_audio_only=False):
     media_input.video.shift = VideoShift(0, 0)
     media_input.video.transform = None
     media_input.video.aspect_ratio = ""
+    media_input.video.crop_ratio = ""
     player.media_input = media_input
 
     return player, media_player

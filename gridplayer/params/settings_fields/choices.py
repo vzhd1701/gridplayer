@@ -142,6 +142,22 @@ def aspect_ratios() -> dict:
     }
 
 
+def crop_ratios() -> dict:
+    return {
+        "": translate("Crop", "Margins"),
+        "16:10": "16:10",
+        "16:9": "16:9",
+        "4:3": "4:3",
+        "1.85:1": "1.85:1",
+        "2.21:1": "2.21:1",
+        "2.35:1": "2.35:1",
+        "2.39:1": "2.39:1",
+        "5:3": "5:3",
+        "5:4": "5:4",
+        "1:1": "1:1",
+    }
+
+
 def anchors() -> dict:
     return {
         VideoAnchor.CENTER: translate("Alignment", "Center"),

@@ -340,16 +340,41 @@ class ViewControl(VideoBlockPart):
     @only_with_video_tacks
     @only_initialized
     def crop(self, left, top, right, bottom, is_silent=False):
-        video_params = self._block.video_params
+        """Cut so many pixels more off each side, or fewer. One cut to a
+        shape goes on from the margins that cut it so."""
+
+        shown = self.shown_crop()
 
         crop = VideoCrop(
-            video_params.crop.Left + left,
-            video_params.crop.Top + top,
-            video_params.crop.Right + right,
-            video_params.crop.Bottom + bottom,
+            shown.Left + left,
+            shown.Top + top,
+            shown.Right + right,
+            shown.Bottom + bottom,
         )
 
         self.set_crop(crop, is_silent)
+
+    def shown_crop(self) -> VideoCrop:
+        """The margins the picture is cut by, its shape's if it has one."""
+
+        if not self._block.video_params.crop_ratio:
+            return self._block.video_params.crop
+
+        return self._block.video_driver.shown_crop()
+
+    @only_with_video_tacks
+    def set_crop_ratio(self, crop_ratio: str, is_silent=False):
+        """Cut the picture to this shape, as it is shown: "2.35:1", or
+        empty for none. Its margins go, one or the other being kept."""
+
+        video_params = self._block.video_params
+        video_params.crop_ratio = crop_ratio
+        video_params.crop = VideoCrop(0, 0, 0, 0)
+
+        self._block.video_driver.set_crop_ratio(crop_ratio)
+
+        if not is_silent:
+            self._block.info_change.emit("Crop: {}".format(crop_ratio or "Off"))
 
     @only_with_video_tacks
     @only_initialized
@@ -368,8 +393,9 @@ class ViewControl(VideoBlockPart):
             max(crop.Bottom, 0),
         )
 
-        if video_params.crop != crop:
+        if video_params.crop != crop or video_params.crop_ratio:
             video_params.crop = crop
+            video_params.crop_ratio = ""
             self._block.video_driver.set_crop(video_params.crop)
 
         if not is_silent:
