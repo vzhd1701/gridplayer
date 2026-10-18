@@ -7,6 +7,9 @@ bindings.
 
 from __future__ import annotations
 
+import re
+from collections.abc import Callable
+
 from PyQt5.QtCore import QModelIndex, QSortFilterProxyModel, Qt, pyqtSignal
 from PyQt5.QtGui import (
     QIcon,
@@ -58,8 +61,12 @@ from gridplayer.utils.keymap import (
     sparse_overrides,
 )
 from gridplayer.utils.qt import translate
+from gridplayer.utils.text_search import Query
 from gridplayer.widgets.custom_menu import ICON_SIZE, CustomMenu, checked_icon
 from gridplayer.widgets.settings_controls import RoundedBox, Switch, ToggleLabel
+
+# a filter of words alone, which may be in any order
+_WORDS = re.compile(r"[\w\s]+")
 
 # ---------------------------------------------------------------------------
 # Model roles
@@ -350,22 +357,38 @@ class TreeItemDelegate(QStyledItemDelegate):
         return super().paint(painter, option, index)
 
 
+def _matcher(text: str) -> Callable[[str], bool] | None:
+    """What a row's casefolded text is matched by: the text as typed, and,
+    for words alone, every word in any order whatever the case and the
+    accents, as the settings search finds them. None for no text."""
+
+    needle = (text or "").strip().casefold()
+    if not needle:
+        return None
+    if not _WORDS.fullmatch(needle):
+        return lambda haystack: needle in haystack
+
+    query = Query(needle)
+    return lambda haystack: needle in haystack or query.is_in((haystack,))
+
+
 class FilterProxyModel(QSortFilterProxyModel):
     """Filter by title / path / shortcuts; keep ancestors of matches.
 
     Uses plain substring match (not regex) so shortcut characters like ``+``
-    work as typed. Scope limits which fields are searched.
+    work as typed; words alone match in any order too. Scope limits which
+    fields are searched.
     """
 
     def __init__(self, parent=None):
         super().__init__(parent)
         self._modified_only = False
-        self._needle = ""
+        self._matches: Callable[[str], bool] | None = None
         self._scope = FILTER_SCOPE_ALL
         self.setFilterCaseSensitivity(Qt.CaseInsensitive)
 
     def set_filter_text(self, text: str):
-        self._needle = (text or "").casefold()
+        self._matches = _matcher(text)
         self.invalidateFilter()
 
     def set_filter_scope(self, scope: str):
@@ -399,16 +422,16 @@ class FilterProxyModel(QSortFilterProxyModel):
 
         return self._row_matches_filter(idx) and self._row_matches_modified(idx)
 
-    def _row_matches_filter(self, idx: QModelIndex, needle: str | None = None) -> bool:
-        needle = self._needle if needle is None else needle
-        if not needle:
-            return True
-        return needle in self._search_haystack(idx)
+    def _row_matches_filter(self, idx: QModelIndex) -> bool:
+        return self._is_match(idx, self._matches)
+
+    def _is_match(self, idx: QModelIndex, matches) -> bool:
+        return matches is None or matches(self._search_haystack(idx))
 
     def count_matching(self, text: str) -> int:
         """How many actions this filter would show for the text."""
 
-        needle = (text or "").casefold()
+        matches = _matcher(text)
         model = self.sourceModel()
 
         def count(parent):
@@ -419,7 +442,7 @@ class FilterProxyModel(QSortFilterProxyModel):
                     found += count(idx)
                 elif (
                     idx.data(DATA_IS_ACTION)
-                    and self._row_matches_filter(idx, needle)
+                    and self._is_match(idx, matches)
                     and self._row_matches_modified(idx)
                 ):
                     found += 1
@@ -1584,8 +1607,10 @@ class KeymapEditor(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
 
-        # what was typed in the filter before the settings search took it
+        # what was typed in the filter before the settings search took it,
+        # and what the search put there
         self._filter_before_search: str | None = None
+        self._filter_by_search = ""
 
         self._build_ui()
         self._connect_signals()
@@ -1901,16 +1926,18 @@ class KeymapEditor(QWidget):
 
     def search(self, text: str | None):
         """The filter set to what the settings search found, or back to
-        what was typed in it before, for None."""
+        what was typed in it before, for None: unless typed over since."""
 
         if text is None:
             if self._filter_before_search is not None:
-                self.filter_edit.setText(self._filter_before_search)
+                if self.filter_edit.text() == self._filter_by_search:
+                    self.filter_edit.setText(self._filter_before_search)
                 self._filter_before_search = None
             return
 
         if self._filter_before_search is None:
             self._filter_before_search = self.filter_edit.text()
+        self._filter_by_search = text
         self.filter_edit.setText(text)
 
     def _update_status(self):

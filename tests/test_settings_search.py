@@ -357,6 +357,30 @@ class TestTheDialog:
 
         assert not find.called
 
+    def test_shortcuts_are_found_by_their_words_in_any_order(self, dialog):
+        editor = dialog.widget("player/keymap")
+
+        assert editor.count_matching("pause play") > 0
+        assert editor.count_matching("play pause") == editor.count_matching(
+            "pause play"
+        )
+        assert editor.count_matching("PÁUSE") == editor.count_matching("pause")
+
+    def test_shortcuts_are_found_as_typed_for_a_key(self, dialog):
+        editor = dialog.widget("player/keymap")
+
+        # not every word: "ctrl" and "f" are everywhere
+        assert 0 < editor.count_matching("ctrl+f") < editor.count_matching("ctrl f")
+
+    def test_what_is_typed_in_the_shortcuts_filter_stays_after_a_search(self, dialog):
+        editor = dialog.widget("player/keymap")
+        dialog.search("pause")
+
+        editor.filter_edit.setText("seek")
+        dialog.search("")
+
+        assert editor.filter_edit.text() == "seek"
+
     def test_nothing_found_says_so(self, dialog):
         dialog.search("zzzqqq")
 
