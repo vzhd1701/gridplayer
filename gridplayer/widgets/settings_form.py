@@ -123,12 +123,9 @@ class _Shown(QWidget):
         self.update()
 
 
-class _FormRow(_Shown):
+class _FormRow(QWidget):
     """A setting, or a few on one line: the label on the left, what edits it
-    on the right, and a bar on the left edge while it is changed.
-
-    A row of nothing but slots watches them, and goes when they all do.
-    """
+    on the right, and a bar on the left edge while it is changed."""
 
     def __init__(self, *, joined: bool):
         super().__init__()
@@ -140,11 +137,10 @@ class _FormRow(_Shown):
         self.keys: list[str] = []
         # takes the page: a list or a table, out of the card
         self.fills = False
-        self.watches_slots = False
-        # left out by a search
-        self.filtered_out = False
         # why a search found it, when its name doesn't say
         self.hint: QLabel | None = None
+        # why it can't be changed, said under it
+        self.note: QLabel | None = None
 
         lay = QVBoxLayout(self)
         lay.setSpacing(STACKED_SPACING)
@@ -170,16 +166,14 @@ class _FormRow(_Shown):
         self.layout().insertWidget(0, label)
         self._set_margins(STACKED_MARGINS)
 
-    def follow(self):
-        if self.filtered_out:
-            if self.parentWidget() is not None:
-                self.hide()
-            return
-
-        super().follow()
+    def _grey_line(self, text="") -> QLabel:
+        line = QLabel(text)
+        set_secondary(line)
+        self.layout().addWidget(line)
+        return line
 
     def set_hint(self, text: str | None):
-        """A grey line under the row, or none."""
+        """A grey line under the row for a search, or none."""
 
         if text is None:
             if self.hint is not None:
@@ -187,12 +181,15 @@ class _FormRow(_Shown):
             return
 
         if self.hint is None:
-            self.hint = QLabel()
-            set_secondary(self.hint)
-            self.layout().addWidget(self.hint)
+            self.hint = self._grey_line()
 
         self.hint.setText(text)
         self.hint.show()
+
+    def add_note(self, text: str):
+        """A grey line under the row for good."""
+
+        self.note = self._grey_line(text)
 
     def make_bare(self):
         """Out of the card: a list or a table has edges of its own."""
@@ -481,9 +478,6 @@ class SettingsForm(QWidget):
                 section.add(self._card)
             self._card.add(row)
 
-        if row.watches_slots:
-            # gone with what is in it, as a slot can hide itself
-            row.follow()
         if self._card is not None:
             self._card.follow()
 
@@ -518,9 +512,6 @@ class SettingsForm(QWidget):
                     is_labelled = True
                 lay.addWidget(widget, 1 if entry.fills else 0)
                 row.fills = row.fills or entry.fills
-                if not editors:
-                    row.watch(widget)
-                    row.watches_slots = True
                 continue
 
             self._add_reset(lay, held_reset)
@@ -580,7 +571,7 @@ class SettingsForm(QWidget):
         if self._reset_to is not None and not editor.fills:
             self._reset_button(key)
 
-        self._check_available(spec)
+        self._check_available(spec, row)
 
         return editor
 
@@ -630,7 +621,7 @@ class SettingsForm(QWidget):
 
         return reset
 
-    def _check_available(self, spec):
+    def _check_available(self, spec, row):
         key = spec.settings_key
 
         if spec.shown_if is not None and not spec.shown_if():
@@ -648,6 +639,8 @@ class SettingsForm(QWidget):
         self._unavailable.add(key)
         if reason:
             self._editors[key].set_tooltip(reason)
+            if spec.note_unavailable:
+                row.add_note(reason)
 
     # what is on and what is shown
 
@@ -938,13 +931,8 @@ class SettingsForm(QWidget):
         return found
 
     def _can_find(self, searched: _Searched) -> bool:
-        if searched.row.keys:
-            return not all(key in self._hidden for key in searched.row.keys)
-
-        # a slot that has hidden itself, as the note of a tray there isn't
-        return not (
-            searched.row.watches_slots
-            and all(_put_away(slot) for slot in searched.slots)
+        return not searched.row.keys or not all(
+            key in self._hidden for key in searched.row.keys
         )
 
     @staticmethod
@@ -970,9 +958,10 @@ class SettingsForm(QWidget):
 
         for searched in self._searched:
             row = searched.row
-            row.filtered_out = (
-                self._search_shown is not None and row not in self._search_shown
-            )
+
+            if not row.keys:
+                # a row of slots alone, which the rules leave alone
+                row.setVisible(self._search_shown is None or row in self._search_shown)
 
             row_found = by_row.get(row)
             option = None if row_found is None else row_found.option
@@ -990,9 +979,6 @@ class SettingsForm(QWidget):
 
             if row_found is not None:
                 self._mark(query, searched)
-
-            if row.watches_slots:
-                row.follow()
 
         self._sync(keys=(), reveal=False)
 

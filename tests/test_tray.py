@@ -703,7 +703,7 @@ class TestPictureOff:
 @pytest.fixture
 def make_dialog(settings, _no_real_cache, monkeypatch):
     monkeypatch.setattr(
-        settings_dialog.QSystemTrayIcon,
+        general_fields.QSystemTrayIcon,
         "isSystemTrayAvailable",
         staticmethod(lambda: True),
     )
@@ -773,7 +773,7 @@ class TestSettings:
     def test_no_tray_on_the_desktop(self, settings, make_dialog, monkeypatch):
         settings.set("player/tray_icon", True)
         monkeypatch.setattr(
-            settings_dialog.QSystemTrayIcon,
+            general_fields.QSystemTrayIcon,
             "isSystemTrayAvailable",
             staticmethod(lambda: False),
         )
@@ -782,7 +782,9 @@ class TestSettings:
 
         assert not dialog.widget("player/tray_icon").isEnabled()
         assert not dialog.widget("player/close_to_tray").isEnabled()
-        assert not dialog.playerTrayUnavailable.isHidden()
+        note = dialog.form_of("player/tray_icon")._rows["player/tray_icon"].note
+        assert note.text() == "Your desktop has no tray."
+        assert not note.isHidden()
 
     @pytest.mark.parametrize(
         ("blocker", "said"),

@@ -9,7 +9,6 @@ from PyQt5.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QPushButton,
-    QSystemTrayIcon,
     QVBoxLayout,
     QWidget,
 )
@@ -186,15 +185,6 @@ class SettingsDialog(PagedDialog):
             for name in dir(type(self))
             if name.startswith("_slot_")
         }
-
-    def _slot_tray_unavailable(self):
-        self.playerTrayUnavailable = QLabel(
-            translate("SettingsDialog", "Your desktop has no tray.")
-        )
-        # hidden rather than shown: with no parent yet, it would be a window
-        if QSystemTrayIcon.isSystemTrayAvailable():
-            self.playerTrayUnavailable.hide()
-        return self.playerTrayUnavailable
 
     def _slot_cache_clear(self):
         self.cacheSize = QLabel()

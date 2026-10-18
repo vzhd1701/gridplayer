@@ -29,7 +29,7 @@ def make_settings(tmp_path, monkeypatch):
     monkeypatch.setattr(settings_dialog, "Settings", lambda: store)
     monkeypatch.setattr(cache, "cache_root", lambda: tmp_path / "cache")
     monkeypatch.setattr(
-        settings_dialog.QSystemTrayIcon,
+        general_fields.QSystemTrayIcon,
         "isSystemTrayAvailable",
         staticmethod(lambda: True),
     )

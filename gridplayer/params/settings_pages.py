@@ -217,7 +217,6 @@ PAGES = (
                     "player/hide_taskbar",
                     "player/tray_stop_video",
                 ),
-                Slot("tray_unavailable"),
             ),
             Section(
                 translate("SettingsDialog", "History"),

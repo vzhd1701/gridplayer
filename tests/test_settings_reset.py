@@ -57,7 +57,7 @@ def confirm(monkeypatch):
 @pytest.fixture
 def make_dialog(settings, _no_real_cache, confirm, monkeypatch):
     monkeypatch.setattr(
-        settings_dialog.QSystemTrayIcon,
+        general_fields.QSystemTrayIcon,
         "isSystemTrayAvailable",
         staticmethod(lambda: True),
     )

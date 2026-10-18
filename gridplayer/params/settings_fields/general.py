@@ -22,8 +22,9 @@ _WITH_TRAY = When("player/tray_icon")
 
 
 def _no_tray() -> str | None:
-    # the page says so under the checkbox, for every option it would take
-    return None if QSystemTrayIcon.isSystemTrayAvailable() else ""
+    if QSystemTrayIcon.isSystemTrayAvailable():
+        return None
+    return translate("SettingsDialog", "Your desktop has no tray.")
 
 
 def _no_taskbar_hiding() -> str | None:
@@ -90,6 +91,8 @@ GENERAL_FIELDS: tuple[SettingField, ...] = (
             translate("SettingsDialog", "Show icon in the menu bar"),
         ),
         unavailable=_no_tray,
+        # under the checkbox, for every option it would take
+        note_unavailable=True,
     ),
     CheckboxField(
         settings_key="player/minimize_to_tray",
