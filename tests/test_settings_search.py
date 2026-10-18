@@ -2,11 +2,12 @@
 show it."""
 
 import pytest
-from PyQt5.QtCore import QEvent, Qt
+from PyQt5.QtCore import QEvent, QPoint, Qt
 from PyQt5.QtGui import QKeyEvent
 from PyQt5.QtTest import QTest
 from PyQt5.QtWidgets import QApplication
 
+from gridplayer.dialogs import settings as settings_dialog
 from gridplayer.dialogs.paged_dialog import SEARCH_DELAY_MS
 from gridplayer.dialogs.settings import SettingsDialog
 from gridplayer.params.settings_fields.kinds import (
@@ -216,6 +217,12 @@ def _key(dialog, key):
     )
 
 
+def _in_view(form, widget):
+    viewport = form._scroll_area().viewport()
+    top = widget.mapTo(viewport, QPoint(0, 0)).y()
+    return 0 <= top and top + widget.height() <= viewport.height()
+
+
 class TestTheDialog:
     def test_the_pages_say_how_much_was_found_on_them(self, dialog):
         dialog.search("pause")
@@ -278,6 +285,77 @@ class TestTheDialog:
         dialog.search("")
 
         assert editor.filter_edit.text() == "mine"
+
+    def test_a_tooltip_find_stays_beside_what_a_list_finds_in_itself(self, dialog):
+        # in a tooltip on Player, and in some shortcuts' names
+        dialog.search("picture")
+
+        assert _found_on(dialog, "shortcuts")
+        assert _found_on(dialog, "player")
+
+    def test_a_note_goes_with_the_rows_it_is_under(self, dialog):
+        form = dialog.forms["cookies"]
+        section = dict(form.sections())["Stored cookies"]
+
+        dialog.search("refresh")
+
+        assert _shown(form, "cookies/allow_update")
+        assert _put_away(section)
+
+        dialog.search("")
+
+        assert not _put_away(section)
+        assert not any(_put_away(note) for note in form._notes)
+
+    def test_a_setting_pointed_at_is_out_of_the_search(self, dialog, mocker):
+        mocker.patch.object(settings_dialog.QCustomMessageBox, "warning")
+        key = "screenshots/filename_template"
+        dialog.widget(key).setText("%Q")
+        dialog.search("proxy")
+
+        dialog.accept()
+
+        assert dialog.search_box.text() == ""
+        assert _shown(dialog.form_of(key), key)
+        assert QApplication.focusWidget() is dialog.widget(key)
+
+    def test_after_a_search_a_page_is_back_where_it_was(self, dialog):
+        dialog.show_page("player")
+        bar = dialog.forms["player"]._scroll_area().verticalScrollBar()
+        bar.setValue(bar.maximum() // 2)
+        before = bar.value()
+        assert before > 0
+
+        # found elsewhere, so the page is out of sight as the search ends
+        dialog.search("pause")
+        assert dialog.section_page.currentWidget() is not dialog.pages["player"]
+        dialog.search("")
+        dialog.show_page("player")
+
+        assert bar.value() == before
+
+    def test_after_a_search_a_page_is_at_the_field_gone_to(self, dialog):
+        dialog.show_page("player")
+        dialog.search_box.setFocus()
+        dialog.search_box.setText("jpg")
+        _key(dialog, Qt.Key_Return)
+        form = dialog.forms["player"]
+        field = QApplication.focusWidget()
+        assert form.isAncestorOf(field)
+
+        dialog.search("")
+
+        assert form._scroll_area().verticalScrollBar().value() > 0
+        assert _in_view(form, field)
+
+    def test_enter_searches_only_what_is_waiting(self, dialog, mocker):
+        dialog.search("pause")
+        find = mocker.spy(dialog.forms["playlist"], "find")
+
+        _key(dialog, Qt.Key_Return)
+        _key(dialog, Qt.Key_Down)
+
+        assert not find.called
 
     def test_nothing_found_says_so(self, dialog):
         dialog.search("zzzqqq")

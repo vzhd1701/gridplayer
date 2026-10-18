@@ -379,6 +379,8 @@ class PagedDialog(QDialog):
             page.layout().addWidget(make(), 1)
 
         self.section_page.setCurrentWidget(page)
+        if page in self._form_on:
+            self._form_on[page].back_from_search()
         self._titles[page].take(self.resetPage)
         self.update_reset_page()
 
@@ -386,6 +388,8 @@ class PagedDialog(QDialog):
         self.section_index.setCurrentItem(self._index_items[page_id])
 
     def show_page_of(self, key: str):
+        # out of a search, which could leave its row out
+        self.end_search()
         self.show_page(self._page_id_of[key])
 
     @property
@@ -414,6 +418,17 @@ class PagedDialog(QDialog):
         self.search_box.setText(text)
         self.search_now()
 
+    def end_search(self):
+        if self.search_box is not None and self.search_box.text():
+            self.search_box.clear()
+            self.search_now()
+
+    def _search_waiting(self):
+        """What is typed searched now, if it isn't yet."""
+
+        if self._search_timer.isActive():
+            self.search_now()
+
     def search_now(self):
         self._search_timer.stop()
 
@@ -428,8 +443,12 @@ class PagedDialog(QDialog):
         }
 
         # a tooltip says more than a name, and finds more: only when no
-        # name has the words
-        if any(not f.by_tooltip for page in found.values() for f in page):
+        # name has the words, whatever a list finds in itself
+        if any(
+            not f.by_tooltip and not f.by_content
+            for page in found.values()
+            for f in page
+        ):
             found = {
                 page_id: [f for f in page if not f.by_tooltip]
                 for page_id, page in found.items()
@@ -450,17 +469,18 @@ class PagedDialog(QDialog):
         found = found or {}
 
         for page_id, form in self.forms.items():
+            # the page as it is, only while it is all there: first, for the
+            # form to scroll in the room they leave it
+            if page_id in self.section_links:
+                self.section_links[page_id].setVisible(query is None)
+            if page_id in self.notes:
+                self.notes[page_id].setVisible(query is None)
+
             page_found = found.get(page_id, [])
             form.show_found(query, page_found)
 
             count = None if query is None else sum(f.count for f in page_found)
             self.section_index.set_found(self._index_items[page_id], count)
-
-            # the page as it is, only while it is all there
-            if page_id in self.section_links:
-                self.section_links[page_id].setVisible(query is None)
-            if page_id in self.notes:
-                self.notes[page_id].setVisible(query is None)
 
         if query is None:
             self.switch_page(self.section_index.currentItem())
@@ -505,16 +525,15 @@ class PagedDialog(QDialog):
             key = event.key()
             # Esc empties the box first, and closes the dialog only then
             if key == Qt.Key_Escape and self.search_box.text():
-                self.search_box.clear()
-                self.search_now()
+                self.end_search()
                 return True
             # not OK, as Enter is anywhere else in the dialog
             if key in {Qt.Key_Return, Qt.Key_Enter}:
-                self.search_now()
+                self._search_waiting()
                 self._focus_found()
                 return True
             if key == Qt.Key_Down:
-                self.search_now()
+                self._search_waiting()
                 self.section_index.setFocus(Qt.TabFocusReason)
                 return True
 

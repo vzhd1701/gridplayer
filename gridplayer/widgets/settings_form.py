@@ -405,6 +405,12 @@ class SettingsForm(QWidget):
         self._found: list[Found] = []
         # the labels marked where they were found, and what they said
         self._marked_labels: list[tuple[QLabel, str, Qt.TextFormat]] = []
+        # away while searching, as the page's own
+        self._notes: list[QLabel] = []
+        # where the page was as a search began, and what it goes back to
+        # after it, once shown again: there, or a field gone to meanwhile
+        self._before_search: tuple[int, QWidget | None] | None = None
+        self._scroll_back: int | QWidget | None = None
 
         root = QVBoxLayout(self)
         root.setContentsMargins(0, 0, 0, 0)
@@ -443,7 +449,9 @@ class SettingsForm(QWidget):
             elif isinstance(item, Note):
                 # under the card, which goes on after it as a new one
                 self._card = None
-                self._in_section().add(self._note(item))
+                note = self._note(item)
+                self._notes.append(note)
+                self._in_section().add(note)
             else:
                 self._place(self._add_row((item,), joined))
 
@@ -746,15 +754,15 @@ class SettingsForm(QWidget):
 
         self._settle()
 
-        row = self._rows[key]
+        self._into_view(self._rows[key])
+        self._editors[key].widget.setFocus(Qt.OtherFocusReason)
 
+    def _into_view(self, widget: QWidget):
         scroll = self._scroll_area()
         if scroll is not None:
             # in the middle, where the eye is, rather than at an edge
-            middle = (scroll.viewport().height() - row.height()) // 2
-            scroll.ensureWidgetVisible(row, 0, max(middle, REVEAL_MARGIN))
-
-        self._editors[key].widget.setFocus(Qt.OtherFocusReason)
+            middle = (scroll.viewport().height() - widget.height()) // 2
+            scroll.ensureWidgetVisible(widget, 0, max(middle, REVEAL_MARGIN))
 
     @staticmethod
     def _settle():
@@ -946,6 +954,12 @@ class SettingsForm(QWidget):
         """Only the rows found, and what they belong to, with what was found
         in them marked; with no query, every row back as it was."""
 
+        scroll = self._scroll_area()
+        bar = None if scroll is None else scroll.verticalScrollBar()
+        if bar is not None and query is not None and self._before_search is None:
+            # before the rows go, and the room scrolled through with them
+            self._before_search = (bar.value(), self.focusWidget())
+
         self._unmark()
 
         self._found = [] if query is None else list(found)
@@ -980,11 +994,45 @@ class SettingsForm(QWidget):
             if row_found is not None:
                 self._mark(query, searched)
 
+        for note in self._notes:
+            note.setVisible(query is None)
+
         self._sync(keys=(), reveal=False)
 
-        scroll = self._scroll_area()
-        if scroll is not None:
-            scroll.verticalScrollBar().setValue(0)
+        if bar is None:
+            return
+        if query is None:
+            self._scroll_back = self._back_to()
+        else:
+            bar.setValue(0)
+
+    def _back_to(self) -> int | QWidget | None:
+        """Where the page was as the search began, or the row of the field
+        gone to in it."""
+
+        if self._before_search is None:
+            return None
+        value, focused = self._before_search
+        self._before_search = None
+
+        now = self.focusWidget()
+        if now is None or now is focused or not now.isVisibleTo(self):
+            return value
+        return next((row for row in self._rows.values() if row.isAncestorOf(now)), now)
+
+    def back_from_search(self):
+        """Where the page was before a search, or at the field gone to in
+        it, for a page shown: laid out only then."""
+
+        to, self._scroll_back = self._scroll_back, None
+        if to is None:
+            return
+
+        self._settle()
+        if isinstance(to, QWidget):
+            self._into_view(to)
+        else:
+            self._scroll_area().verticalScrollBar().setValue(to)
 
     def _belonged_to(self, rows) -> set[_FormRow]:
         """The rows of the settings these rows' settings belong to, and theirs."""
