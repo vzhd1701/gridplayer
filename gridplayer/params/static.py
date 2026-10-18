@@ -120,6 +120,42 @@ class ViewParams(NamedTuple):
     # crop's own margins. With one, the crop is the margins that cut it so,
     # worked out where the frame is known (see calc_ratio_crop)
     crop_ratio: str = ""
+    # the two above are the ones the video's list says, nothing being
+    # picked: to be shown, and never kept as picked (see with_list)
+    is_aspect_ratio_listed: bool = False
+    is_crop_ratio_listed: bool = False
+
+    def with_list(self, list_aspect_ratio: str, list_crop_ratio: str) -> "ViewParams":
+        """The view with the shapes the video's list says where none is
+        picked: an aspect ratio where it has none, a crop where it is cut
+        to no shape and by no margins."""
+
+        is_aspect_listed = not self.aspect_ratio and bool(list_aspect_ratio)
+        is_crop_listed = (
+            not self.crop_ratio and not any(self.crop) and bool(list_crop_ratio)
+        )
+
+        return self._replace(
+            aspect_ratio=list_aspect_ratio if is_aspect_listed else self.aspect_ratio,
+            crop_ratio=list_crop_ratio if is_crop_listed else self.crop_ratio,
+            is_aspect_ratio_listed=is_aspect_listed,
+            is_crop_ratio_listed=is_crop_listed,
+        )
+
+    def picked(self) -> "ViewParams":
+        """The view as picked, the list's shapes left out."""
+
+        view = self
+
+        if view.is_aspect_ratio_listed:
+            view = view._replace(aspect_ratio="", is_aspect_ratio_listed=False)
+
+        if view.is_crop_ratio_listed:
+            view = view._replace(
+                crop=VideoCrop(0, 0, 0, 0), crop_ratio="", is_crop_ratio_listed=False
+            )
+
+        return view
 
 
 class VideoTransform(AutoName):

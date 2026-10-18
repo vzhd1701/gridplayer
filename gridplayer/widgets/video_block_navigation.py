@@ -317,6 +317,9 @@ class NavigationControl(VideoBlockPart):
 
         item = self._block.list_item
 
+        # and the shapes it said to show it in, as the cell's own
+        self._keep_list_shape(params)
+
         self.cancel_steps()
 
         params.title = None if item is None else item.title
@@ -329,6 +332,27 @@ class NavigationControl(VideoBlockPart):
             params.http_headers = item.http_headers
 
         self._show_list_state()
+
+    def _keep_list_shape(self, params):
+        """The aspect ratio and the crop shape the list says, where none is
+        picked, picked: the picture stays as it is once off the list."""
+
+        aspect_ratio = self._block.list_aspect_ratio
+        crop_ratio = self._block.list_crop_ratio
+        driver = self._block.video_driver
+
+        if aspect_ratio and not params.aspect_ratio:
+            params.aspect_ratio = aspect_ratio
+            if driver is not None:
+                driver.set_aspect_ratio(aspect_ratio)
+
+        if crop_ratio and not params.crop_ratio and not any(params.crop):
+            params.crop_ratio = crop_ratio
+            if driver is not None:
+                driver.set_crop_ratio(crop_ratio)
+
+        if driver is not None:
+            driver.forget_list_ratios()
 
     def learn_item_length(self):
         """How long an item turned out to be, where its list did not say:

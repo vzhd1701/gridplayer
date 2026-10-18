@@ -111,8 +111,8 @@ class SetCropDialog(QDialog):
       frame to preview); the result is read via get_crop().
     - video mode (live_block set): shows the schematic preview and applies
       changes to the playing video live; cancel restores the original crop.
-      One cut to a shape opens on the margins that cut it so, and stays
-      cut to that shape unless they are changed.
+      One cut to a shape, its own or its list's, opens on the margins
+      that cut it so, and stays cut to that shape unless they are changed.
     """
 
     def __init__(
@@ -127,8 +127,12 @@ class SetCropDialog(QDialog):
 
         self._block = live_block
         self._original_crop = crop
+        # what was picked: a shape, or margins, or neither, for its list's
         self._original_ratio = (
             live_block.video_params.crop_ratio if live_block is not None else ""
+        )
+        self._original_margins = (
+            live_block.video_params.crop if live_block is not None else crop
         )
 
         self.setWindowTitle(translate("Dialog - Set Crop", "Set Crop"))
@@ -214,7 +218,10 @@ class SetCropDialog(QDialog):
         if track is not None and all(dimensions):
             params = video_block.video_params
             pixel_aspect = calc_shown_pixel_aspect(
-                dimensions, params.transform, params.aspect_ratio, track.pixel_aspect
+                dimensions,
+                params.transform,
+                video_block.shown_aspect_ratio,
+                track.pixel_aspect,
             )
             pixel_shape = calc_frame_pixel_shape(
                 dimensions, params.transform, pixel_aspect
@@ -238,8 +245,8 @@ class SetCropDialog(QDialog):
 
     def accept(self):
         if self._block is not None:
-            if self._original_ratio and self._spin_crop() == self._original_crop:
-                self._restore_ratio()
+            if self._spin_crop() == self._original_crop:
+                self._restore_original()
             else:
                 self._block.view.set_crop(self._spin_crop(), is_silent=False)
 
@@ -247,18 +254,21 @@ class SetCropDialog(QDialog):
 
     def reject(self):
         if self._block is not None:
-            if self._original_ratio:
-                self._restore_ratio()
-            elif self._block.video_params.crop != self._original_crop:
-                self._block.view.set_crop(self._original_crop, is_silent=True)
+            self._restore_original()
 
         super().reject()
 
-    def _restore_ratio(self):
-        """Cut to the shape again, the margins tried meanwhile let go of."""
+    def _restore_original(self):
+        """Cut as picked again, to the shape or by the margins, or neither
+        for the list's shape: the margins tried meanwhile let go of."""
 
-        if self._block.video_params.crop_ratio != self._original_ratio:
-            self._block.view.set_crop_ratio(self._original_ratio, is_silent=True)
+        params = self._block.video_params
+
+        if self._original_ratio:
+            if params.crop_ratio != self._original_ratio:
+                self._block.view.set_crop_ratio(self._original_ratio, is_silent=True)
+        elif params.crop_ratio or params.crop != self._original_margins:
+            self._block.view.set_crop(self._original_margins, is_silent=True)
 
     def _on_reset(self):
         for spin in self._spins.values():

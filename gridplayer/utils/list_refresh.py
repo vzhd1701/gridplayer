@@ -23,11 +23,11 @@ from gridplayer.utils.list_order import in_order
 
 # what an item read again may bring that the one on the list had wrong or
 # not at all; and its name, unless the viewer gave it one
-_REFRESHED_FIELDS = ("duration_ms", "group", "http_headers")
+_REFRESHED_FIELDS = ("duration_ms", "group", "http_headers", "shape")
 
 # what of an item read from the source a linked list keeps in the playlist
-# besides where it is: what it is told by, and what it is fetched with to
-# be played before the source is read. Not what changes from one reading
+# besides where it is: what it is told by, and what it is fetched and shown
+# with to be played before the source is read. Not what changes from one reading
 # to the next, its views, nor what a cell found out by playing it: the
 # playlist would be changed each time it opens.
 _LINKED_DROPPED = {"duration_ms": None, "details": None}

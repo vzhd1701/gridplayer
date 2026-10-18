@@ -210,6 +210,42 @@ def shared_http_headers(
     return headers
 
 
+class ItemShape(BaseModel):
+    """The shape a channel list says to show a channel in, as VLC's options
+    say it: "16:9", "2.35:1"; None where it says none. Shown where the cell
+    has none picked."""
+
+    model_config = ConfigDict(frozen=True)
+
+    aspect_ratio: str | None = None
+    crop_ratio: str | None = None
+
+
+# One of each, shared as the headers are: a channel list gives the same few
+# to thousands of channels
+_shared_shapes: weakref.WeakValueDictionary = weakref.WeakValueDictionary()
+
+
+def shared_item_shape(
+    aspect_ratio: str | None, crop_ratio: str | None
+) -> ItemShape | None:
+    """The shape to show in, the same one for every item shown in it; None
+    for none."""
+
+    if not aspect_ratio and not crop_ratio:
+        return None
+
+    pair = (aspect_ratio or None, crop_ratio or None)
+    shape = _shared_shapes.get(pair)
+
+    if shape is None:
+        shape = _shared_shapes.setdefault(
+            pair, ItemShape(aspect_ratio=pair[0], crop_ratio=pair[1])
+        )
+
+    return shape
+
+
 class ListItem(BaseModel):
     model_config = ConfigDict(frozen=True)
 
@@ -230,6 +266,9 @@ class ListItem(BaseModel):
 
     # what a channel list says to fetch it with
     http_headers: HttpHeaders | None = None
+
+    # and to show it in
+    shape: ItemShape | None = None
 
     # put on the list by hand, rather than read from where the list was:
     # reading it again leaves such an item be
@@ -260,6 +299,14 @@ class ListItem(BaseModel):
             return None
 
         return shared_http_headers(headers.user_agent, headers.referrer)
+
+    @field_validator("shape", mode="after")
+    @classmethod
+    def _shared_shape(cls, shape: ItemShape | None) -> ItemShape | None:
+        if shape is None:
+            return None
+
+        return shared_item_shape(shape.aspect_ratio, shape.crop_ratio)
 
     @property
     def is_local_file(self) -> bool:

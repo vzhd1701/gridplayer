@@ -327,14 +327,17 @@ class ViewControl(VideoBlockPart):
     @only_with_video_tacks
     def set_aspect_ratio(self, aspect_ratio: str, is_silent=False):
         """Show the picture in this shape, as it is shown: "16:9", or
-        empty for the video's own."""
+        empty for its list's, or else the video's own."""
 
         self._block.video_params.aspect_ratio = aspect_ratio
         self._block.video_driver.set_aspect_ratio(aspect_ratio)
 
         if not is_silent:
+            listed = self._block.list_aspect_ratio
             self._block.info_change.emit(
-                "Aspect Ratio: {}".format(aspect_ratio or "Default")
+                "Aspect Ratio: {}".format(
+                    aspect_ratio or _listed_txt(listed) or "Default"
+                )
             )
 
     @only_with_video_tacks
@@ -355,17 +358,25 @@ class ViewControl(VideoBlockPart):
         self.set_crop(crop, is_silent)
 
     def shown_crop(self) -> VideoCrop:
-        """The margins the picture is cut by, its shape's if it has one."""
+        """The margins the picture is cut by, its shape's if it has one, or
+        its list's if it has none of its own."""
 
-        if not self._block.video_params.crop_ratio:
-            return self._block.video_params.crop
+        params = self._block.video_params
+
+        is_shaped = params.crop_ratio or (
+            not any(params.crop) and self._block.list_crop_ratio
+        )
+
+        if not is_shaped:
+            return params.crop
 
         return self._block.video_driver.shown_crop()
 
     @only_with_video_tacks
     def set_crop_ratio(self, crop_ratio: str, is_silent=False):
         """Cut the picture to this shape, as it is shown: "2.35:1", or
-        empty for none. Its margins go, one or the other being kept."""
+        empty for its list's, or else none. Its margins go, one or the other
+        being kept."""
 
         video_params = self._block.video_params
         video_params.crop_ratio = crop_ratio
@@ -374,7 +385,10 @@ class ViewControl(VideoBlockPart):
         self._block.video_driver.set_crop_ratio(crop_ratio)
 
         if not is_silent:
-            self._block.info_change.emit("Crop: {}".format(crop_ratio or "Off"))
+            listed = self._block.list_crop_ratio
+            self._block.info_change.emit(
+                "Crop: {}".format(crop_ratio or _listed_txt(listed) or "Off")
+            )
 
     @only_with_video_tacks
     @only_initialized
@@ -398,7 +412,11 @@ class ViewControl(VideoBlockPart):
             video_params.crop_ratio = ""
             self._block.video_driver.set_crop(video_params.crop)
 
-        if not is_silent:
+        if not is_silent and not any(crop) and self._block.list_crop_ratio:
+            self._block.info_change.emit(
+                f"Crop: {_listed_txt(self._block.list_crop_ratio)}"
+            )
+        elif not is_silent:
             self._block.info_change.emit(
                 "Crop: L{} T{} R{} B{}".format(*video_params.crop)
             )
@@ -489,3 +507,9 @@ class ViewControl(VideoBlockPart):
         if block.is_video_initialized and block.video_tracks:
             # no steps is where the picture stands now
             self.set_shift(block.video_driver.shifted_by(0, 0), is_silent=True)
+
+
+def _listed_txt(ratio: str) -> str:
+    """A shape the video's list says, as told over it: "4:3 (list)"."""
+
+    return f"{ratio} (list)" if ratio else ""

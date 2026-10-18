@@ -236,6 +236,10 @@ class VlcPlayerBase(ABC):
         # see _fill_missing_track_sars
         self._sar_reads_left = SAR_READS
 
+        # the margins the widget last cut the list's crop shape by, for the
+        # view to be put back with them: the video keeps only what is picked
+        self._listed_crop = None
+
         # the load is playing pictures, and has been said to be; see
         # _check_playback_started
         self._is_playback_reported = False
@@ -636,6 +640,7 @@ class VlcPlayerBase(ABC):
         self._last_video_size = (0, 0)
         self._is_view_unsized = False
         self._sar_reads_left = SAR_READS
+        self._listed_crop = None
         self._is_playback_reported = False
         self._last_time = None
         self._own_audio_count = None
@@ -1399,16 +1404,29 @@ class VlcPlayerBase(ABC):
         # pause, which recreates the vout and re-applies from media_input —
         # the view must be persisted here too (the widget copy of
         # Video is a different object after the multiprocess pickle).
+        # The list's shapes are kept out: they are the media input's, and
+        # on a single process the video is the cell's own, saved with it.
         if self.media_input is not None:
+            picked = view.picked()
             self.media_input.size = size
             self.media_input.video.cell_view_mode = view.cell_view_mode
             self.media_input.video.scale = view.scale
-            self.media_input.video.crop = view.crop
+            self.media_input.video.crop = picked.crop
             self.media_input.video.anchor = view.anchor
             self.media_input.video.shift = view.shift
             self.media_input.video.is_shift_past_edges = view.is_shift_past_edges
-            self.media_input.video.aspect_ratio = view.aspect_ratio
-            self.media_input.video.crop_ratio = view.crop_ratio
+            self.media_input.video.aspect_ratio = picked.aspect_ratio
+            self.media_input.video.crop_ratio = picked.crop_ratio
+
+            # nothing picked and nothing the list's: the list says none now,
+            # its video gone off it
+            if not picked.aspect_ratio and not view.is_aspect_ratio_listed:
+                self.media_input.list_aspect_ratio = ""
+            is_crop_picked = picked.crop_ratio or any(picked.crop)
+            if not is_crop_picked and not view.is_crop_ratio_listed:
+                self.media_input.list_crop_ratio = ""
+
+            self._listed_crop = view.crop if view.is_crop_ratio_listed else None
 
         if self.media is None:
             # video not loaded yet, video frame resized on init
@@ -1700,19 +1718,23 @@ class VlcPlayerBase(ABC):
     def _apply_media_input_view(self):
         video = self.media_input.video
 
-        self.adjust_view(
-            size=self.media_input.size,
-            view=ViewParams(
-                video.cell_view_mode,
-                video.scale,
-                video.crop,
-                video.anchor,
-                video.shift,
-                video.is_shift_past_edges,
-                video.aspect_ratio,
-                video.crop_ratio,
-            ),
+        view = ViewParams(
+            video.cell_view_mode,
+            video.scale,
+            video.crop,
+            video.anchor,
+            video.shift,
+            video.is_shift_past_edges,
+            video.aspect_ratio,
+            video.crop_ratio,
+        ).with_list(
+            self.media_input.list_aspect_ratio, self.media_input.list_crop_ratio
         )
+
+        if view.is_crop_ratio_listed and self._listed_crop is not None:
+            view = view._replace(crop=self._listed_crop)
+
+        self.adjust_view(size=self.media_input.size, view=view)
 
     def _set_pause_initial(self, is_paused):
         if not self.media_input.is_live and is_paused:

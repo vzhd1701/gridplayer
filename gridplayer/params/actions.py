@@ -677,8 +677,10 @@ ACTIONS = MappingProxyType(
             "show_if": "is_active_has_video",
         },
         "Crop Reset": {
-            "title": translate("Crop", "Off"),
+            # Off, or the shape the list cuts it to where nothing is picked
+            "title": "%v",
             "keymap_title": translate("Actions", "Crop Reset"),
+            "value_getter": "active_crop_off_title",
             "key": "Y",
             "icon": "empty",
             "func": ("active", "view.crop_reset"),
@@ -932,7 +934,10 @@ ACTIONS = MappingProxyType(
             "show_if": "is_active_has_video",
         },
         "Aspect Ratio Default": {
-            "title": translate("Aspect Ratio", "Default"),
+            # Default, or the shape the list says, shown where none is picked
+            "title": "%v",
+            "keymap_title": translate("Aspect Ratio", "Default"),
+            "value_getter": "active_aspect_ratio_default_title",
             "icon": "empty",
             "func": ("active", "view.set_aspect_ratio", ""),
             "check_if": ("is_active_param_set_to", "aspect_ratio", ""),

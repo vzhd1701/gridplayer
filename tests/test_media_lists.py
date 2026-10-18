@@ -57,6 +57,7 @@ class TestAList:
                 "duration_ms": None,
                 "group": None,
                 "http_headers": None,
+                "shape": None,
                 "is_added": False,
                 "is_renamed": False,
                 "details": None,

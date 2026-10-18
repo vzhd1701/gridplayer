@@ -521,6 +521,9 @@ class VideoFrameVLC(QWidget, metaclass=QABC):
 
         self._view = ViewParams()
         self._transform = VideoTransform.NONE
+        # the aspect ratio and the crop shape the video's list says, shown
+        # where none is picked
+        self._list_ratios = ("", "")
         # the frame points the last zoom about a point kept under it, and
         # what for: see zoomed_shift
         self._zoom_kept = None
@@ -963,6 +966,8 @@ class VideoFrameVLC(QWidget, metaclass=QABC):
             video.aspect_ratio,
             video.crop_ratio,
         )
+        self._list_ratios = (media_input.list_aspect_ratio, media_input.list_crop_ratio)
+        self._view = self._view.with_list(*self._list_ratios)
         # changing it reloads the video, so it holds for as long as this does
         self._transform = video.transform
         self._shared_to_follow = None
@@ -1548,9 +1553,25 @@ class VideoFrameVLC(QWidget, metaclass=QABC):
         self.adjust_view()
 
     def set_aspect_ratio(self, aspect_ratio: str) -> None:
-        self._view = self._view._replace(aspect_ratio=aspect_ratio)
+        self._repick(aspect_ratio=aspect_ratio)
 
         self.adjust_view()
+
+    def forget_list_ratios(self) -> None:
+        """The video is off its list: the shapes it said are shown no more,
+        but where picked."""
+
+        self._list_ratios = ("", "")
+        self._repick()
+
+        self.adjust_view()
+
+    def _repick(self, **picked) -> None:
+        """The view with these picked, the list's shapes shown where none is."""
+
+        self._view = (
+            self._view.picked()._replace(**picked).with_list(*self._list_ratios)
+        )
 
     def set_scale(self, scale) -> None:
         self._view = self._view._replace(scale=scale)
@@ -1569,25 +1590,24 @@ class VideoFrameVLC(QWidget, metaclass=QABC):
         self.adjust_view()
 
     def set_crop(self, crop) -> None:
-        """Cut the picture by these margins, and to no shape."""
+        """Cut the picture by these margins, and to no shape: none at all
+        leaves it to the list."""
 
-        self._view = self._view._replace(crop=crop, crop_ratio="")
+        self._repick(crop=crop, crop_ratio="")
 
         self.adjust_view()
 
     def set_crop_ratio(self, crop_ratio: str) -> None:
         """Cut the picture to this shape, as it is shown: "2.35:1", or
-        empty for none, and by no margins of its own."""
+        empty for none, leaving it to the list, and by no margins of its own."""
 
-        self._view = self._view._replace(
-            crop=VideoCrop(0, 0, 0, 0), crop_ratio=crop_ratio
-        )
+        self._repick(crop=VideoCrop(0, 0, 0, 0), crop_ratio=crop_ratio)
 
         self.adjust_view()
 
     def shown_crop(self) -> VideoCrop:
         """The margins the picture is cut by: its own, or those that cut it
-        to the shape picked, none until its frame is known."""
+        to the shape picked or its list's, none until its frame is known."""
 
         if not self._view.crop_ratio:
             return self._view.crop

@@ -320,7 +320,9 @@ def _start_loading(frame, is_paused):
                 crop_ratio="",
                 transform=VideoTransform.NONE,
                 is_paused=is_paused,
-            )
+            ),
+            list_aspect_ratio="",
+            list_crop_ratio="",
         )
     )
 

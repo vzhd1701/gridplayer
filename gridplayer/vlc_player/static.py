@@ -430,6 +430,11 @@ class MediaInput:
     # user agent and referrer; VLC's http access takes those two and no more
     http_headers: dict[str, str] = field(default_factory=dict)
 
+    # the aspect ratio and the crop shape a channel list says to show it in,
+    # shown where none is picked; empty for none
+    list_aspect_ratio: str = ""
+    list_crop_ratio: str = ""
+
     _initial_seek_ms: int | None = None
 
     @property

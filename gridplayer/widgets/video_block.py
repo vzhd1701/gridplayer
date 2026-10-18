@@ -877,6 +877,34 @@ class VideoBlock(QWidget):
         return self._is_closing
 
     @property
+    def list_aspect_ratio(self) -> str:
+        """The aspect ratio a channel list says to show the item playing in,
+        shown where none is picked; empty for none."""
+
+        item = self.list_item
+        shape = None if item is None else item.shape
+
+        return (shape and shape.aspect_ratio) or ""
+
+    @property
+    def list_crop_ratio(self) -> str:
+        """The shape a channel list says to cut the item playing to, cut so
+        where it is cut to no shape picked and by no margins; empty for
+        none."""
+
+        item = self.list_item
+        shape = None if item is None else item.shape
+
+        return (shape and shape.crop_ratio) or ""
+
+    @property
+    def shown_aspect_ratio(self) -> str:
+        """The aspect ratio the video is shown in: the one picked, or its
+        list's."""
+
+        return self.video_params.aspect_ratio or self.list_aspect_ratio
+
+    @property
     def _item_headers(self) -> dict[str, str]:
         """What a channel list says to fetch the item playing with."""
 
@@ -1781,6 +1809,8 @@ class VideoBlock(QWidget):
                     video=self.video_params,
                     selected_audio_slave=self.audio.selected_slave_uri,
                     selected_subtitle_slaves=self.subtitles.selected_slave_uris,
+                    list_aspect_ratio=self.list_aspect_ratio,
+                    list_crop_ratio=self.list_crop_ratio,
                 )
             )
 

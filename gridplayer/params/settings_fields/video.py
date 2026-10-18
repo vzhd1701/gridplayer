@@ -156,7 +156,7 @@ VIDEO_FIELDS: tuple[SettingField, ...] = (
         choices=choices.aspect_ratios,
         tooltip=translate(
             "SettingsDialog",
-            "The shape of the picture. Default keeps the video's own.",
+            "Used for every new video, overrides the list's ratio.",
         ),
     ),
     ComboField(

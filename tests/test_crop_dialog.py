@@ -32,6 +32,9 @@ class _FakeBlock:
         )
         # the margins a shape cuts by, as the driver works them out
         self.ratio_crop = NO_CROP
+        # the shapes the video's list says
+        self.list_aspect_ratio = ""
+        self.list_crop_ratio = ""
         self.ratio_calls = []
         self.video_tracks = {
             1: SimpleNamespace(
@@ -53,11 +56,17 @@ class _FakeBlock:
         self.video_params.crop = NO_CROP
         self.ratio_calls.append((crop_ratio, is_silent))
 
+    @property
+    def shown_aspect_ratio(self):
+        return self.video_params.aspect_ratio or self.list_aspect_ratio
+
     def shown_crop(self):
-        if self.video_params.crop_ratio:
+        params = self.video_params
+
+        if params.crop_ratio or (not any(params.crop) and self.list_crop_ratio):
             return self.ratio_crop
 
-        return self.video_params.crop
+        return params.crop
 
     def set_cell_view_mode(self, mode):
         self.view_mode_calls.append(mode)

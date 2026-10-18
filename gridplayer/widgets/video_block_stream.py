@@ -370,6 +370,8 @@ class StreamControl(VideoBlockPart):
                 http_headers=(
                     self._block._item_headers if stream.protocol == "direct" else {}
                 ),
+                list_aspect_ratio=self._block.list_aspect_ratio,
+                list_crop_ratio=self._block.list_crop_ratio,
             )
         )
 

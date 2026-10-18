@@ -27,6 +27,7 @@ from gridplayer.models.media_list import (
     ListItem,
     new_item_key,
     shared_http_headers,
+    shared_item_shape,
 )
 from gridplayer.models.video_uri import URL_ALLOWED_SCHEMES, parse_uri
 from gridplayer.params.extensions import (
@@ -35,6 +36,7 @@ from gridplayer.params.extensions import (
     SUPPORTED_PLS_EXT,
     SUPPORTED_XSPF_EXT,
 )
+from gridplayer.utils.aspect_calc import parse_aspect_ratio
 from gridplayer.utils.list_progress import ReadingEnough
 
 _log = logging.getLogger(__name__)
@@ -224,10 +226,10 @@ def parse_m3u(text: str, base_dir: Path | None, progress=None) -> ReadList:
 
     What a tag says goes with the entry that comes after it: the name and
     length in #EXTINF, the group in #EXTGRP or the group-title of #EXTINF,
-    and the user agent and referrer to fetch it with in #EXTVLCOPT,
-    #EXTHTTP or after a "|" at the end of the link itself. Nothing else a
-    tag asks VLC to do is passed on: a list from the internet is no one to
-    take orders from.
+    the user agent and referrer to fetch it with in #EXTVLCOPT, #EXTHTTP or
+    after a "|" at the end of the link itself, and the aspect ratio and crop
+    shape to show it in in #EXTVLCOPT. Nothing else a tag asks VLC to do is
+    passed on: a list from the internet is no one to take orders from.
     """
 
     if is_hls_playlist(text):
@@ -465,6 +467,11 @@ def _item(uri: Path | str, fields: dict) -> ListItem:
             said.pop("user_agent", None), said.pop("referrer", None)
         )
 
+    if "aspect_ratio" in said or "crop_ratio" in said:
+        said["shape"] = shared_item_shape(
+            said.pop("aspect_ratio", None), said.pop("crop_ratio", None)
+        )
+
     # (a set, not a frozenset: an item copied with a change has the set
     # copied and then added to, and a frozenset copied is the same one)
     shape = frozenset(said)
@@ -492,6 +499,7 @@ _ITEM_DEFAULTS = MappingProxyType(
         "duration_ms": None,
         "group": None,
         "http_headers": None,
+        "shape": None,
         "is_added": False,
         "is_renamed": False,
         "details": None,
@@ -552,7 +560,19 @@ def _vlc_option(value: str) -> dict:
     if key in {"http-referrer", "http-referer"}:
         return {"referrer": option}
 
+    # a shape as VLC writes one, "16:9"; not its crop by a window or by
+    # margins, which go by a frame size the list cannot know
+    if key == "aspect-ratio" and _is_ratio(option):
+        return {"aspect_ratio": option}
+
+    if key == "crop" and _is_ratio(option):
+        return {"crop_ratio": option}
+
     return {}
+
+
+def _is_ratio(option: str | None) -> bool:
+    return option is not None and parse_aspect_ratio(option) is not None
 
 
 def _http_headers(value: str) -> dict:
@@ -621,7 +641,7 @@ def _int_or_none(value_txt: str | None) -> int | None:
 
 def m3u_text(name: str, items, base_dir: Path | None) -> str:
     """A list written as an extended M3U, for other players to read: each
-    item's name, length, group, and what to fetch it with.
+    item's name, length, group, what to fetch it with and to show it in.
 
     Paths under base_dir, the folder the file goes in, are written relative
     to it, for the file to move along with what it lists.
@@ -649,6 +669,13 @@ def m3u_text(name: str, items, base_dir: Path | None) -> str:
             lines.append(f"#EXTVLCOPT:http-user-agent={_one_line(headers.user_agent)}")
         if headers is not None and headers.referrer:
             lines.append(f"#EXTVLCOPT:http-referrer={_one_line(headers.referrer)}")
+
+        shape = item.shape
+
+        if shape is not None and shape.aspect_ratio:
+            lines.append(f"#EXTVLCOPT:aspect-ratio={shape.aspect_ratio}")
+        if shape is not None and shape.crop_ratio:
+            lines.append(f"#EXTVLCOPT:crop={shape.crop_ratio}")
 
         lines.append(_m3u_location(item.uri, base_dir))
 

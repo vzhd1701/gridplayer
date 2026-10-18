@@ -92,6 +92,8 @@ def _block():
     block.video_tracks = [0]
     block.is_video_initialized = True
     block.video_driver = Mock()
+    block.list_aspect_ratio = ""
+    block.list_crop_ratio = ""
     block.view = ViewControl(block)
     return block
 

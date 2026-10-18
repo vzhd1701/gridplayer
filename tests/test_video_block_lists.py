@@ -14,6 +14,7 @@ from PyQt5.QtWidgets import QWidget
 from gridplayer.models.media_list import (
     HttpHeaders,
     ItemDetails,
+    ItemShape,
     ListItem,
     MediaList,
 )
@@ -53,6 +54,12 @@ class _Frame(VideoFrameDummy):
         self._fake_media_track = dataclasses.replace(
             self._fake_media_track, length=60000
         )
+
+    def load_video(self, media_input):
+        # what it was last handed to load
+        self.loaded = media_input
+
+        super().load_video(media_input)
 
 
 @pytest.fixture(autouse=True)
@@ -163,6 +170,14 @@ def file_list(lists, files):
 
 def _uri(block):
     return block.video_params.uri
+
+
+def _loads(block, step):
+    """What the cell hands its video driver to load as it takes this step."""
+
+    step()
+
+    return block.video_driver.loaded
 
 
 class TestGoingAlongTheList:
@@ -385,6 +400,65 @@ class TestWhichItemItSays:
         block.navigation.show_list_window()
 
         block._ctx.commands.list_window_for.assert_not_called()
+
+
+class TestTheShapeTheListSays:
+    @pytest.fixture
+    def shaped(self, lists, files):
+        """The first shown 4:3, the second cut to 2.35:1, the third as it is."""
+
+        return lists.add(
+            MediaList(
+                items=[
+                    ListItem(uri=files[0], shape=ItemShape(aspect_ratio="4:3")),
+                    ListItem(uri=files[1], shape=ItemShape(crop_ratio="2.35:1")),
+                    ListItem(uri=files[2]),
+                ]
+            )
+        )
+
+    def test_sent_with_the_item_and_not_kept_as_picked(self, make_cell, shaped):
+        block = make_cell(shaped, index=1)
+
+        sent = _loads(block, block.navigation.previous)
+
+        assert (sent.list_aspect_ratio, sent.list_crop_ratio) == ("4:3", "")
+        assert block.video_params.aspect_ratio == ""
+        assert block.shown_aspect_ratio == "4:3"
+
+    def test_each_item_its_own(self, make_cell, shaped):
+        block = make_cell(shaped)
+
+        sent = _loads(block, block.navigation.next)
+        assert (sent.list_aspect_ratio, sent.list_crop_ratio) == ("", "2.35:1")
+
+        sent = _loads(block, block.navigation.next)
+        assert (sent.list_aspect_ratio, sent.list_crop_ratio) == ("", "")
+
+    def test_a_pick_goes_on_to_the_next(self, make_cell, shaped):
+        block = make_cell(shaped, index=1)
+        block.video_params.aspect_ratio = "16:10"
+
+        sent = _loads(block, block.navigation.previous)
+
+        assert sent.video.aspect_ratio == "16:10"
+        assert block.shown_aspect_ratio == "16:10"
+
+    def test_kept_as_picked_once_off_the_list(self, make_cell, shaped):
+        block = make_cell(shaped)
+
+        block.navigation.leave_list()
+
+        assert block.video_params.aspect_ratio == "4:3"
+        assert block.list_aspect_ratio == ""
+
+    def test_one_picked_stays_so_off_the_list(self, make_cell, shaped):
+        block = make_cell(shaped)
+        block.video_params.aspect_ratio = "1:1"
+
+        block.navigation.leave_list()
+
+        assert block.video_params.aspect_ratio == "1:1"
 
 
 class TestLeavingTheList:

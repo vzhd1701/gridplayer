@@ -121,6 +121,10 @@ class ActiveBlockManager(ManagerBase):
             "is_active_param_set_to": self.is_active_param_set_to,
             "is_active_crop_off": self.is_active_crop_off,
             "is_active_crop_custom": self.is_active_crop_custom,
+            "active_crop_off_title": self.active_crop_off_title,
+            "active_aspect_ratio_default_title": (
+                self.active_aspect_ratio_default_title
+            ),
             "is_active_initialized": self.is_active_initialized,
             "is_active_playable": self.is_active_playable,
             "is_active_stoppable": self.is_active_stoppable,
@@ -244,6 +248,27 @@ class ActiveBlockManager(ManagerBase):
         params = self._ctx.active_block.video_params
 
         return not params.crop_ratio and any(params.crop)
+
+    def active_crop_off_title(self) -> str:
+        """Off, or the shape the video's list cuts it to with none picked."""
+
+        if not self.is_no_active_block and self._ctx.active_block.list_crop_ratio:
+            return translate("Crop", "{RATIO} (list)").format(
+                RATIO=self._ctx.active_block.list_crop_ratio
+            )
+
+        return translate("Crop", "Off")
+
+    def active_aspect_ratio_default_title(self) -> str:
+        """Default, or the shape the video's list shows it in with none
+        picked."""
+
+        if not self.is_no_active_block and self._ctx.active_block.list_aspect_ratio:
+            return translate("Aspect Ratio", "{RATIO} (list)").format(
+                RATIO=self._ctx.active_block.list_aspect_ratio
+            )
+
+        return translate("Aspect Ratio", "Default")
 
     def is_active_runtime_param_set_to(self, param_name, param_value):
         if self.is_no_active_block:
