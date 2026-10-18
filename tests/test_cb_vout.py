@@ -68,6 +68,7 @@ def _make_player(cell_view_mode=VideoCellViewMode.FILL, is_audio_only=False):
     media_input.video.anchor = VideoAnchor.CENTER
     media_input.video.shift = VideoShift(0, 0)
     media_input.video.transform = None
+    media_input.video.aspect_ratio = ""
     player.media_input = media_input
 
     return player, media_player
@@ -551,6 +552,18 @@ def test_playback_told_once_vlc_has_a_second_picture_on_screen():
     player.notify_playback_started.assert_called_once()
 
 
+def test_the_view_is_told_vlc_again_once_playback_is_under_way():
+    """VLC can set up a turned picture's output after the view was last
+    applied, leaving out the shape it was told."""
+    player = _player_counting(displayed=3)
+    player._apply_media_input_view = Mock()
+
+    player.cb_time_changed(_time_event(260))
+    player.cb_time_changed(_time_event(540))
+
+    player._apply_media_input_view.assert_called_once()
+
+
 def test_playback_not_told_without_counts_to_go_by():
     player = _player_counting(displayed=5)
     player._media_input_vlc.is_counted = False
@@ -586,3 +599,45 @@ def test_vlc_counts_the_pictures_it_shows(tmp_path):
         assert "--no-stats" not in instance.init_options
     finally:
         settings.settings = real_settings
+
+
+def _view_shaped(aspect_ratio):
+    return ViewParams(VideoCellViewMode.FIT, 1.0, VideoCrop(0, 0, 0, 0))._replace(
+        aspect_ratio=aspect_ratio
+    )
+
+
+def test_adjust_view_shows_the_aspect_ratio_picked():
+    """640x360 shown 4:3 is 480x360 in a 960x360 pane."""
+
+    player, media_player = _stream_player(_Tracks(sar=(1, 1)))
+
+    player.adjust_view(size=(960, 360), view=_view_shaped("4:3"))
+
+    assert ("aspect_ratio", "4:3") in media_player.calls
+
+
+def test_the_aspect_ratio_picked_is_the_shape_a_turned_file_is_shown_in():
+    """A phone file stored 640x360 is shown 360x640, and picked 16:9 is
+    shown 16:9 all the same: VLC, which turns it as it places it, is told
+    the stored frame's shape, 9:16."""
+
+    player, media_player = _stream_player(_Tracks(sar=(1, 1)))
+    track = player.media.video_tracks[1]
+    track.orientation = VideoTransform.ROTATE_90
+    track.sar = (1, 1)
+
+    player.adjust_view(size=(640, 640), view=_view_shaped(""))
+    assert ("aspect_ratio", "16:9") in media_player.calls
+
+    media_player.calls.clear()
+    player.adjust_view(size=(640, 640), view=_view_shaped("16:9"))
+    assert ("aspect_ratio", "9:16") in media_player.calls
+
+
+def test_adjust_view_keeps_the_aspect_ratio_for_a_restart():
+    player, _ = _make_player()
+
+    player.adjust_view(size=(640, 360), view=_view_shaped("2.35:1"))
+
+    assert player.media_input.video.aspect_ratio == "2.35:1"

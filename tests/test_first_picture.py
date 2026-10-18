@@ -316,6 +316,7 @@ def _start_loading(frame, is_paused):
                 anchor=VideoAnchor.CENTER,
                 shift=VideoShift(0, 0),
                 is_shift_past_edges=False,
+                aspect_ratio="",
                 transform=VideoTransform.NONE,
                 is_paused=is_paused,
             )

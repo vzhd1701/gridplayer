@@ -20,6 +20,7 @@ from gridplayer.utils.aspect_calc import (
     calc_selection_zoom,
     calc_shared_view,
     calc_shift_range,
+    calc_shown_pixel_aspect,
     calc_view_borders,
     calc_view_geometry,
     calc_view_placement,
@@ -29,6 +30,7 @@ from gridplayer.utils.aspect_calc import (
     calc_whole_geometry,
     calc_whole_placement,
     calc_zoomed_shift,
+    parse_aspect_ratio,
 )
 
 VIDEO = (1920, 1080)
@@ -1595,3 +1597,68 @@ class TestPixelAspect:
         followed = calc_followed_view((640, 360), PANE, _view(), shared)
 
         assert followed.shift == VideoShift(-20, -5)
+
+
+class TestAspectRatio:
+    """An aspect ratio picked is the shape the whole picture is shown in,
+    as it is shown: the pixels are made as wide as that takes."""
+
+    @pytest.mark.parametrize(
+        ("text", "ratio"),
+        [("16:9", 16 / 9), ("2.35:1", 2.35), ("1:1", 1.0), ("4:3", 4 / 3)],
+    )
+    def test_reads_a_ratio(self, text, ratio):
+        assert parse_aspect_ratio(text) == pytest.approx(ratio)
+
+    @pytest.mark.parametrize(
+        "text", ["", "16", "16:0", "a:b", ":9", "16:9:1", "-16:9", "100:1", "nan:1"]
+    )
+    def test_anything_else_is_none(self, text):
+        assert parse_aspect_ratio(text) is None
+
+    def test_none_picked_is_the_video_s_own(self):
+        assert calc_shown_pixel_aspect((720, 576), None, "", 64 / 45) == 64 / 45
+
+    def test_without_a_frame_it_is_the_video_s_own(self):
+        assert calc_shown_pixel_aspect((0, 0), None, "16:9", 1.0) == 1.0
+
+    def test_a_4_3_frame_shown_16_9(self):
+        pixel_aspect = calc_shown_pixel_aspect((1440, 1080), None, "16:9", 1.0)
+
+        placement = calc_view_placement(
+            (1440, 1080), PANE, _view(VideoCellViewMode.FIT), pixel_aspect=pixel_aspect
+        )
+
+        assert placement.target == _approx((0, 0, 1600, 900))
+
+    def test_the_video_s_own_pixels_make_no_difference(self):
+        assert calc_shown_pixel_aspect(
+            WIDE_PIXELS, None, "4:3", 2.0
+        ) == calc_shown_pixel_aspect(WIDE_PIXELS, None, "4:3", 1.0)
+
+    def test_turned_it_is_still_the_shape_picked(self):
+        """1920x1080 turned is shown 1080x1920, picked 16:9 it is 16:9."""
+
+        pixel_aspect = calc_shown_pixel_aspect(
+            VIDEO, VideoTransform.ROTATE_270, "16:9", 1.0
+        )
+
+        placement = calc_view_placement(
+            VIDEO,
+            PANE,
+            _view(VideoCellViewMode.FIT),
+            VideoTransform.ROTATE_270,
+            pixel_aspect=pixel_aspect,
+        )
+
+        assert placement.target == _approx((0, 0, 1600, 900))
+
+    def test_vlc_is_told_the_shape_picked(self):
+        pixel_aspect = calc_shown_pixel_aspect(VIDEO, None, "4:3", 1.0)
+
+        geometry = calc_view_geometry(
+            VIDEO, (1200, 900), _view(VideoCellViewMode.FIT), pixel_aspect=pixel_aspect
+        )
+
+        assert geometry == ("4:3", "+0+0+0+0")
+        assert calc_vlc_picture(VIDEO, geometry, (1200, 900)) == (0, 0, 1200, 900)

@@ -27,6 +27,7 @@ class _FakeBlock:
             cell_view_mode=cell_view_mode,
             video_track_id=1,
             transform=VideoTransform.NONE,
+            aspect_ratio="",
         )
         self.video_tracks = {
             1: SimpleNamespace(

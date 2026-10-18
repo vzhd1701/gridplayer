@@ -150,6 +150,15 @@ VIDEO_FIELDS: tuple[SettingField, ...] = (
             "Stretch: covers the cell, changing the picture's shape.",
         ),
     ),
+    ComboField(
+        settings_key="video_defaults/aspect_ratio",
+        label=translate("SettingsDialog", "Aspect ratio"),
+        choices=choices.aspect_ratios,
+        tooltip=translate(
+            "SettingsDialog",
+            "The shape of the picture. Default keeps the video's own.",
+        ),
+    ),
     CropField(
         settings_key="video_defaults/crop",
         label=translate("SettingsDialog", "Crop"),

@@ -141,6 +141,7 @@ _default_settings = {
     "playlist/overlay_hide_on_timeout": True,
     "playlist/overlay_timeout": 3,
     "video_defaults/cell_view_mode": VideoCellViewMode.FILL,
+    "video_defaults/aspect_ratio": "",
     "video_defaults/transform": VideoTransform.NONE,
     "video_defaults/deinterlace": VideoDeinterlace.AUTO,
     "video_defaults/deinterlace_mode": VideoDeinterlaceMode.AUTO,

@@ -2,7 +2,7 @@ from pathlib import Path
 from typing import Annotated, Any
 from uuid import UUID, uuid4
 
-from pydantic import UUID4, BaseModel, Field, model_validator
+from pydantic import UUID4, BaseModel, Field, field_validator, model_validator
 from pydantic_extra_types.color import Color
 
 from gridplayer.models.audio_device import AudioDevice
@@ -47,6 +47,7 @@ from gridplayer.params.static import (
     VideoTransform,
 )
 from gridplayer.playlist_settings import PlaylistSettings, session_field
+from gridplayer.utils.aspect_calc import parse_aspect_ratio
 
 _LEGACY_END_ACTION = {
     "none": VideoEndAction.STOP,
@@ -215,6 +216,9 @@ class Video(BaseModel):
 
     # Generic
     cell_view_mode: VideoCellViewMode = session_field("video_defaults/cell_view_mode")
+    # the shape the picture is shown in, as it is shown: "16:9", or empty
+    # for its own (see ViewParams)
+    aspect_ratio: str = session_field("video_defaults/aspect_ratio")
     is_muted: bool = session_field("video_defaults/muted")
     playback_state: VideoInitialState = session_field("video_defaults/initial_state")
     scale: Annotated[float, Field(ge=MIN_SCALE, le=MAX_SCALE)] = session_field(
@@ -307,6 +311,13 @@ class Video(BaseModel):
     is_external_subtitle_autodiscover: bool = session_field(
         "video_defaults/external_subtitle_autodiscover"
     )
+
+    @field_validator("aspect_ratio")
+    @classmethod
+    def _known_aspect_ratio(cls, value: str) -> str:
+        """One that is no shape at all is the video's own."""
+
+        return value if parse_aspect_ratio(value) is not None else ""
 
     @model_validator(mode="before")
     @classmethod

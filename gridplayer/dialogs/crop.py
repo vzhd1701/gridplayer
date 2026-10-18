@@ -16,7 +16,10 @@ from PyQt5.QtWidgets import (
 )
 
 from gridplayer.params.static import VideoCrop
-from gridplayer.utils.aspect_calc import calc_frame_pixel_shape
+from gridplayer.utils.aspect_calc import (
+    calc_frame_pixel_shape,
+    calc_shown_pixel_aspect,
+)
 from gridplayer.utils.qt import translate
 
 _DIMENSION_FALLBACK = 9999
@@ -204,8 +207,12 @@ class SetCropDialog(QDialog):
         dimensions = _shown_dimensions(track)
 
         if track is not None and all(dimensions):
+            params = video_block.video_params
+            pixel_aspect = calc_shown_pixel_aspect(
+                dimensions, params.transform, params.aspect_ratio, track.pixel_aspect
+            )
             pixel_shape = calc_frame_pixel_shape(
-                dimensions, video_block.video_params.transform, track.pixel_aspect
+                dimensions, params.transform, pixel_aspect
             )
         else:
             pixel_shape = (1.0, 1.0)

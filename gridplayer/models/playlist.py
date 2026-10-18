@@ -65,6 +65,7 @@ class Snapshot(BaseModel):
 
 class PlaylistVideoDefaults(BaseModel):
     cell_view_mode: VideoCellViewMode | None = None
+    aspect_ratio: str | None = None
     transform: VideoTransform | None = None
     deinterlace: VideoDeinterlace | None = None
     deinterlace_mode: VideoDeinterlaceMode | None = None

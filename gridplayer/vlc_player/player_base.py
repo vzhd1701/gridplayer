@@ -26,7 +26,11 @@ from gridplayer.params.static import (
     ViewParams,
 )
 from gridplayer.settings import Settings
-from gridplayer.utils.aspect_calc import calc_view_geometry, calc_whole_geometry
+from gridplayer.utils.aspect_calc import (
+    calc_shown_pixel_aspect,
+    calc_view_geometry,
+    calc_whole_geometry,
+)
 from gridplayer.utils.libvlc_options_parser import DeinterlaceModeMap
 from gridplayer.utils.misc import is_url
 from gridplayer.vlc_player.libvlc import vlc
@@ -1403,6 +1407,7 @@ class VlcPlayerBase(ABC):
             self.media_input.video.anchor = view.anchor
             self.media_input.video.shift = view.shift
             self.media_input.video.is_shift_past_edges = view.is_shift_past_edges
+            self.media_input.video.aspect_ratio = view.aspect_ratio
 
         if self.media is None:
             # video not loaded yet, video frame resized on init
@@ -1433,6 +1438,18 @@ class VlcPlayerBase(ABC):
 
         # the frame here is the one VLC has, as it is stored
         pixel_aspect = track.stored_pixel_aspect if track is not None else 1
+
+        # an aspect ratio picked is the shape shown: worked out on the
+        # frame turned as the file says to show it, and back again
+        is_turned = track is not None and track.is_turned
+        shown_frame = frame_size[::-1] if is_turned else frame_size
+        shown_pixel = calc_shown_pixel_aspect(
+            shown_frame,
+            transform,
+            view.aspect_ratio,
+            1 / pixel_aspect if is_turned else pixel_aspect,
+        )
+        pixel_aspect = 1 / shown_pixel if is_turned else shown_pixel
 
         geometry = None
 
@@ -1561,6 +1578,11 @@ class VlcPlayerBase(ABC):
 
         self._is_playback_reported = True
 
+        # VLC can set up a turned picture's output only after the view was
+        # last applied, and leave out the shape it was told: a 16:9 picked
+        # for a video turned on its side came up 9:16 until the view changed
+        self._apply_media_input_view()
+
         self.notify_playback_started()
 
     def _refresh_chapters(self):
@@ -1686,6 +1708,7 @@ class VlcPlayerBase(ABC):
                 video.anchor,
                 video.shift,
                 video.is_shift_past_edges,
+                video.aspect_ratio,
             ),
         )
 

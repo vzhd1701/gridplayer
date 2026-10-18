@@ -36,6 +36,11 @@ _WHOLE_MAX_PIXELS = 32_000_000
 
 _NO_CROP = VideoCrop(0, 0, 0, 0)
 
+# The widest and the tallest an aspect ratio may make a picture: past
+# those, a ratio is a mistake rather than a shape anybody wants.
+_MAX_ASPECT_RATIO = 10.0
+_MIN_ASPECT_RATIO = 1 / _MAX_ASPECT_RATIO
+
 # Where the picture sits in the room it has to move in, per axis: 0 against
 # the left or top edge, 1 against the right or bottom one.
 _ANCHOR_POSITIONS = {
@@ -97,7 +102,7 @@ def calc_view_placement(
     square: pixel_aspect is how wide one is shown for its height, before
     the transform (see calc_frame_pixel_shape).
 
-    Fit covers the pane, None fits inside it and Stretch fills it exactly;
+    Fill covers the pane, Fit fits inside it and Stretch fills it exactly;
     the zoom then scales that about the anchor. On each axis the picture
     sits at the anchor's place in the room between it and the pane, which
     picks what is cut off where it is bigger than the pane and where it
@@ -861,6 +866,54 @@ def calc_frame_pixel_shape(
 
     # the turned picture is as wide as the unturned one is tall
     return frame_h / frame_w, frame_w * pixel_aspect / frame_h
+
+
+def parse_aspect_ratio(text: str) -> float | None:
+    """How wide for its height a ratio as VLC writes one says: "16:9",
+    "2.35:1". None for anything else, an empty one among them."""
+
+    width, colon, height = text.partition(":")
+
+    if not colon:
+        return None
+
+    try:
+        ratio = float(width) / float(height)
+    except (ValueError, ZeroDivisionError):
+        return None
+
+    if not _MIN_ASPECT_RATIO <= ratio <= _MAX_ASPECT_RATIO:
+        return None
+
+    return ratio
+
+
+def calc_shown_pixel_aspect(
+    frame_size: tuple[int, int],
+    transform: VideoTransform | None,
+    aspect_ratio: str,
+    pixel_aspect: float = 1.0,
+) -> float:
+    """How wide a frame pixel is shown, for the whole frame to be shown in
+    the aspect ratio picked, as it is shown: pixel_aspect, the video's
+    own, where none is, or there is no frame to work it out from.
+
+    The frame is as it is shown, turned where the file says to show it on
+    its side, and the result too (see calc_frame_pixel_shape).
+    """
+
+    ratio = parse_aspect_ratio(aspect_ratio)
+    frame_w, frame_h = frame_size
+
+    if ratio is None or min(frame_w, frame_h) <= 0:
+        return pixel_aspect
+
+    if transform in ROTATION_TRANSFORMS:
+        # turned, the picture is as wide as the frame is tall, and as tall
+        # as the frame is wide in pixels this wide
+        return frame_h / (frame_w * ratio)
+
+    return ratio * frame_h / frame_w
 
 
 def _whole_override(

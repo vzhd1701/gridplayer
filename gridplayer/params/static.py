@@ -113,6 +113,9 @@ class ViewParams(NamedTuple):
     # whether the shift may take the picture past the pane's edges, with
     # black showing where it has gone from
     is_shift_past_edges: bool = False
+    # the shape the whole picture is shown in, as it is shown, turned or
+    # not: "16:9", "2.35:1". Empty for the shape the video gives it
+    aspect_ratio: str = ""
 
 
 class VideoTransform(AutoName):

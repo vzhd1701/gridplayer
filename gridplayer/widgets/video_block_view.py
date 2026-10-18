@@ -325,6 +325,19 @@ class ViewControl(VideoBlockPart):
         self._block.video_driver.set_cell_view_mode(mode)
 
     @only_with_video_tacks
+    def set_aspect_ratio(self, aspect_ratio: str, is_silent=False):
+        """Show the picture in this shape, as it is shown: "16:9", or
+        empty for the video's own."""
+
+        self._block.video_params.aspect_ratio = aspect_ratio
+        self._block.video_driver.set_aspect_ratio(aspect_ratio)
+
+        if not is_silent:
+            self._block.info_change.emit(
+                "Aspect Ratio: {}".format(aspect_ratio or "Default")
+            )
+
+    @only_with_video_tacks
     @only_initialized
     def crop(self, left, top, right, bottom, is_silent=False):
         video_params = self._block.video_params

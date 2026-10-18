@@ -181,6 +181,7 @@ class VideoBlocksManager(ManagerBase):
     all_set_shift_past_edges = pyqtSignal(bool)
 
     all_set_cell_view_mode = pyqtSignal(VideoCellViewMode)
+    all_set_aspect_ratio = pyqtSignal(str)
     all_set_transform = pyqtSignal(VideoTransform)
     all_take_screenshot = pyqtSignal(bool)
     all_set_auto_reload_timer = pyqtSignal(int)
@@ -888,6 +889,7 @@ class VideoBlocksManager(ManagerBase):
             (self.all_shift_reset, vb.view.shift_reset),
             (self.all_set_shift_past_edges, vb.view.set_shift_past_edges),
             (self.all_set_cell_view_mode, vb.view.set_cell_view_mode),
+            (self.all_set_aspect_ratio, vb.view.set_aspect_ratio),
             (self.all_set_transform, vb.set_transform),
             (self.all_take_screenshot, vb.screenshot.take),
             (self.all_set_auto_reload_timer, vb.stream.set_reload_timer),

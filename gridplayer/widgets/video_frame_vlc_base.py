@@ -43,6 +43,7 @@ from gridplayer.utils.aspect_calc import (
     calc_selection_zoom,
     calc_shared_view,
     calc_shift_range,
+    calc_shown_pixel_aspect,
     calc_view_geometry,
     calc_view_placement,
     calc_vlc_picture,
@@ -953,6 +954,7 @@ class VideoFrameVLC(QWidget, metaclass=QABC):
             video.anchor,
             video.shift,
             video.is_shift_past_edges,
+            video.aspect_ratio,
         )
         # changing it reloads the video, so it holds for as long as this does
         self._transform = video.transform
@@ -1474,11 +1476,17 @@ class VideoFrameVLC(QWidget, metaclass=QABC):
 
     def _pixel_aspect(self) -> float:
         """How wide a frame pixel is for its height, in the frame as it is
-        shown: see VideoTrack.pixel_aspect."""
+        shown: see VideoTrack.pixel_aspect. The aspect ratio picked makes
+        it whatever gives the picture that shape."""
 
         track = self.media.cur_video_track if self.media else None
 
-        return track.pixel_aspect if track is not None else 1
+        return calc_shown_pixel_aspect(
+            self._frame_size(),
+            self._transform,
+            self._view.aspect_ratio,
+            track.pixel_aspect if track is not None else 1,
+        )
 
     def _frame_size(self) -> tuple[int, int]:
         """The frame's size as the video output gets it, (0, 0) if unknown.
@@ -1529,6 +1537,11 @@ class VideoFrameVLC(QWidget, metaclass=QABC):
 
     def set_cell_view_mode(self, mode: VideoCellViewMode) -> None:
         self._view = self._view._replace(cell_view_mode=mode)
+
+        self.adjust_view()
+
+    def set_aspect_ratio(self, aspect_ratio: str) -> None:
+        self._view = self._view._replace(aspect_ratio=aspect_ratio)
 
         self.adjust_view()
 

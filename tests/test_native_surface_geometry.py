@@ -433,3 +433,14 @@ def test_paused_picture_nowhere_with_no_frame_size(monkeypatch):
     frame.resize(DEFAULT_SIZE)
 
     assert frame._shown_picture_rect() is None
+
+
+def test_the_aspect_ratio_picked_shapes_the_picture(monkeypatch):
+    _stub_offset_setting(monkeypatch)
+    _platform(monkeypatch, windows=True)
+    frame = _StubHWFrame(vlc_options=[])
+    _playing_1080p(frame, cell_view_mode=VideoCellViewMode.FIT)
+
+    frame._view = frame._view._replace(aspect_ratio="1:1")
+
+    assert frame.picture_rect() == pytest.approx((25, 0, 500, 500))

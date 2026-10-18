@@ -1495,6 +1495,7 @@ class VideoBlock(QWidget):
         self.subtitles.set_delay(snapshot.subtitle_delay_ms, is_silent=True)
 
         self.view.set_cell_view_mode(snapshot.cell_view_mode)
+        self.view.set_aspect_ratio(snapshot.aspect_ratio, is_silent=True)
         self.set_deinterlace_params(snapshot.deinterlace, snapshot.deinterlace_mode)
         self.audio.set_muted(snapshot.is_muted)
         self.set_pause(snapshot.is_paused)
@@ -1550,6 +1551,9 @@ class VideoBlock(QWidget):
 
         live = {
             "cell_view_mode": self.view.set_cell_view_mode,
+            "aspect_ratio": lambda ratio: self.view.set_aspect_ratio(
+                ratio, is_silent=True
+            ),
             "is_muted": self.audio.set_muted,
             "volume": self.audio.set_volume,
             "audio_channel_mode": self.audio.set_channel_mode,
