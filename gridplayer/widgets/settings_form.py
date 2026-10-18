@@ -389,7 +389,8 @@ class SettingsForm(QWidget):
         self._forceable: list[str] = []
         self._forced: dict[str, object] = {}
         self._drafts: dict[str, FieldDraft] = {}
-        # as of the last sync
+        # as of the last sync: what can be changed, and what is changed
+        self._enabled: dict[str, bool] = {}
         self._modified: set[str] = set()
         self._updating = False
         self._fills = False
@@ -673,6 +674,8 @@ class SettingsForm(QWidget):
 
             row = self._rows[key]
             shown[row] = shown.get(row, True) and self._is_shown(key, is_on)
+
+        self._enabled = enabled
 
         moved, revealed = False, []
         for row, is_shown in shown.items():
@@ -1046,7 +1049,7 @@ class SettingsForm(QWidget):
 
         for found in self._found:
             for key in found.row.keys:
-                if self._editors[key].widget.isEnabled():
+                if self.is_enabled(key):
                     return key
         return None
 
@@ -1193,8 +1196,10 @@ class SettingsForm(QWidget):
             self._updating = False
 
     def is_enabled(self, key: str) -> bool:
-        editor = self._editors.get(key)
-        return editor is not None and editor.widget.isEnabled()
+        """Can be changed, by the rules and what they name; what is greyed
+        out isn't saved in the Settings dialog, unless it was reset."""
+
+        return self._enabled.get(key, False)
 
     def persistence_result(self) -> dict[str, SetValue | ResetValue]:
         """Writes and removals; absent keys keep their stored values."""

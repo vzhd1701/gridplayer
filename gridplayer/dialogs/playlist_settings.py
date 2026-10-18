@@ -219,13 +219,13 @@ class PlaylistSettingsDialog(PagedDialog):
                 result.update(form.saved_values())
             return result
 
+        # read off the grid as it is: the playlist's own only once edited
+        grid_own = self._playlist_form.overridden_keys() & self._grid_in_use()
+
         result = {}
         for form in (self._playlist_form, self._video_form):
-            overridden = form.overridden_keys()
             for key, change in form.persistence_result().items():
-                if key in GRID_STATE_ATTR and (
-                    key not in overridden or not form.is_enabled(key)
-                ):
+                if key in GRID_STATE_ATTR and key not in grid_own:
                     continue
                 if isinstance(change, SetValue):
                     result[key] = change.value
@@ -240,13 +240,14 @@ class PlaylistSettingsDialog(PagedDialog):
 
         return result
 
+    def _grid_in_use(self) -> set[str]:
+        """The grid's settings its mode has: the rest leave it as it is."""
+
+        return {key for key in GRID_STATE_ATTR if self._playlist_form.is_enabled(key)}
+
     def result_grid_state(self, current: GridState) -> GridState:
         values = self._playlist_form.values()
-        update = {
-            attr: values[key]
-            for key, attr in GRID_STATE_ATTR.items()
-            if self._playlist_form.is_enabled(key)
-        }
+        update = {GRID_STATE_ATTR[key]: values[key] for key in self._grid_in_use()}
         return current.model_copy(update=update)
 
     def video_changes(self) -> dict:

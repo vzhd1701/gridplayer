@@ -490,6 +490,18 @@ def _forcing_form():
     )
 
 
+def test_what_can_be_changed_is_the_forms_own_not_the_widgets():
+    """Saved or not by the rules, whatever greys the page out around it."""
+
+    form = _forcing_form()
+    form.set_values({"a/driver": False, "a/forced": False})
+
+    form.setEnabled(False)
+
+    assert form.is_enabled("a/driver")
+    assert form.is_enabled("a/forced")
+
+
 class TestAForcedField:
     def test_it_shows_the_forced_value_and_keeps_its_own(self):
         form = _forcing_form()
