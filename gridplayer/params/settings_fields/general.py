@@ -98,6 +98,8 @@ GENERAL_FIELDS: tuple[SettingField, ...] = (
             translate("SettingsDialog", "Minimize to the menu bar"),
         ),
         enabled_when=_WITH_TRAY,
+        # with no taskbar button, minimizing can only go to the tray
+        forced_when=When("player/hide_taskbar"),
     ),
     CheckboxField(
         settings_key="player/close_to_tray",

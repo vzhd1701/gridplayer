@@ -15,8 +15,9 @@ from PyQt5.QtWidgets import QApplication, QDialogButtonBox, QWidget
 from gridplayer.dialogs import settings as settings_dialog
 from gridplayer.dialogs.settings import SettingsDialog
 from gridplayer.models.keymap_overrides import KeymapOverrides
-from gridplayer.models.settings_draft import SettingsMode
+from gridplayer.models.settings_draft import ResetValue, SettingsMode
 from gridplayer.params.settings_fields import general as general_fields
+from gridplayer.params.settings_fields.kinds import CheckboxField, When
 from gridplayer.params.settings_pages import PAGES
 from gridplayer.params.static import ProxyMode, VideoAspect
 from gridplayer.settings import _Settings, default_value
@@ -474,6 +475,48 @@ class TestPreservingValues:
         dialog.accept()
 
         assert settings.get(key) == "auto"
+
+
+def _forcing_form():
+    return SettingsForm(
+        (
+            CheckboxField(settings_key="a/driver", label="Driver"),
+            CheckboxField(
+                settings_key="a/forced", label="Forced", forced_when=When("a/driver")
+            ),
+        ),
+        reset_to=lambda key: False,
+        mode=SettingsMode.DEFAULTS,
+    )
+
+
+class TestAForcedField:
+    def test_it_shows_the_forced_value_and_keeps_its_own(self):
+        form = _forcing_form()
+        form.set_values({"a/driver": False, "a/forced": False})
+
+        form.widget("a/driver").setChecked(True)
+
+        assert form.value("a/forced") is True
+        assert not form.is_enabled("a/forced")
+        assert not form.is_modified("a/forced")
+        assert "a/forced" not in form.persistence_result()
+
+        form.widget("a/driver").setChecked(False)
+
+        assert form.value("a/forced") is False
+        assert form.is_enabled("a/forced")
+
+    def test_a_reset_while_forced_resets_its_own(self):
+        form = _forcing_form()
+        form.set_values({"a/driver": True, "a/forced": True})
+        assert form.value("a/forced") is True
+
+        form.reset_all()
+
+        assert form.value("a/driver") is False
+        assert form.value("a/forced") is False
+        assert isinstance(form.persistence_result()["a/forced"], ResetValue)
 
 
 class TestWhatAnEditReads:

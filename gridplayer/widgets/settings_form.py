@@ -384,8 +384,10 @@ class SettingsForm(QWidget):
         # out of reach on this system, for good
         self._unavailable: set[str] = set()
         self._hidden: set[str] = set()
-        # out of reach for now, by the dialog's say
-        self._locked: set[str] = set()
+        # the fields another one can force, and the own value of those it
+        # does now
+        self._forceable: list[str] = []
+        self._forced: dict[str, object] = {}
         self._drafts: dict[str, FieldDraft] = {}
         # as of the last sync
         self._modified: set[str] = set()
@@ -558,6 +560,8 @@ class SettingsForm(QWidget):
 
         self._editors[key] = editor
         self._drafts[key] = FieldDraft()
+        if spec.forced_when is not None:
+            self._forceable.append(key)
 
         lay = row.line
 
@@ -657,6 +661,10 @@ class SettingsForm(QWidget):
                 enabled[key] = False  # what names itself is off
                 enabled[key] = self._is_on(key, is_on)
             return enabled[key]
+
+        forced = self._follow_forced(is_on)
+        if keys is not None and forced:
+            keys = (*keys, *forced)
 
         # a row of a few fields is shown while all of them may be
         shown: dict[_FormRow, bool] = {}
@@ -765,10 +773,47 @@ class SettingsForm(QWidget):
         QApplication.sendPostedEvents(None, QEvent.LayoutRequest)
 
     def _out_of_reach(self, key) -> bool:
-        return key in self._unavailable or key in self._locked
+        return key in self._unavailable
+
+    def _is_forced(self, key, is_on) -> bool:
+        rule = self._editors[key].spec.forced_when
+        return rule is not None and self._is_met(rule, is_on)
+
+    def _follow_forced(self, is_on) -> list[str]:
+        """The forced value shown in a field another one forces, its own
+        kept meanwhile and shown again once it isn't. The fields that went
+        from one to the other."""
+
+        changed = []
+        for key in self._forceable:
+            is_forced = self._is_forced(key, is_on)
+            if is_forced == (key in self._forced):
+                continue
+
+            editor = self._editors[key]
+            self._updating = True
+            try:
+                if is_forced:
+                    self._forced[key] = editor.value()
+                    editor.set_value(editor.spec.forced_value)
+                else:
+                    editor.set_value(self._forced.pop(key))
+            finally:
+                self._updating = False
+            changed.append(key)
+
+        return changed
+
+    def _own_value(self, key):
+        """What a field has of its own: what its editor shows, unless
+        another field forces it."""
+
+        if key in self._forced:
+            return self._forced[key]
+        return self._editors[key].value()
 
     def _is_on(self, key, is_on) -> bool:
-        if self._out_of_reach(key):
+        if self._out_of_reach(key) or self._is_forced(key, is_on):
             return False
 
         spec = self._editors[key].spec
@@ -1018,6 +1063,9 @@ class SettingsForm(QWidget):
         return {key: editor.value() for key, editor in self._editors.items()}
 
     def set_values(self, values: dict, overridden: set[str] | None = None):
+        # forced again by the sync below, if still so
+        self._forced = {}
+
         self._updating = True
         try:
             for key in self._editors:
@@ -1094,11 +1142,12 @@ class SettingsForm(QWidget):
         if editor.means_default():
             return default
         return self._drafts[key].value_for_save(
-            editor.value(), default, preserve_original=editor.preserve_original
+            self._own_value(key), default, preserve_original=editor.preserve_original
         )
 
     def _is_modified(self, key):
-        if self._out_of_reach(key):
+        # forced, it says nothing of its own
+        if self._out_of_reach(key) or key in self._forced:
             return False
 
         if self._mode is SettingsMode.OVERRIDES or self._reset_to is None:
@@ -1133,29 +1182,19 @@ class SettingsForm(QWidget):
         self._updating = True
         try:
             if self._reset_to is not None:
-                self._put(key, self._reset_to(key))
-            self._drafts[key].reset(self.value(key))
+                default = self._reset_to(key)
+                if key in self._forced:
+                    # its own value, shown once it isn't forced
+                    self._forced[key] = self._shown(key, default)
+                else:
+                    self._put(key, default)
+            self._drafts[key].reset(self._own_value(key))
         finally:
             self._updating = False
-
-    def lock(self, key: str, locked: bool):
-        """Greyed out and not saved, whatever the rules say, until unlocked."""
-
-        if locked == (key in self._locked):
-            return
-
-        if locked:
-            self._locked.add(key)
-        else:
-            self._locked.discard(key)
-        self._sync((key,))
 
     def is_enabled(self, key: str) -> bool:
         editor = self._editors.get(key)
         return editor is not None and editor.widget.isEnabled()
-
-    def is_available(self, key: str) -> bool:
-        return key in self._editors and key not in self._unavailable
 
     def persistence_result(self) -> dict[str, SetValue | ResetValue]:
         """Writes and removals; absent keys keep their stored values."""

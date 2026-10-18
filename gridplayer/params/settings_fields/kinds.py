@@ -21,6 +21,10 @@ class SettingField:
     enabled_when: When | None = None
     # hidden, it is off as well
     shown_when: When | None = None
+    # while met, it shows forced_value, greyed out; its own value is kept
+    # meanwhile, saved and reset as its own, and shown again once not met
+    forced_when: When | None = None
+    forced_value: object = True
     # or what works it out, called when the form is built; None for none
     tooltip: str | Callable[[], str | None] | None = None
     # a colour shown before the label, for what is known by its colour

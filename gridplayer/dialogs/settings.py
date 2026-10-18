@@ -74,9 +74,6 @@ class SettingsDialog(PagedDialog):
 
         self._log = logging.getLogger(self.__class__.__name__)
 
-        # minimize's own tick, while hiding from the taskbar ticks it for it
-        self._minimize_to_tray_own = None
-
         self.ui_build()
         self.ui_connect()
 
@@ -276,55 +273,9 @@ class SettingsDialog(PagedDialog):
 
         self.cache_measured.connect(self.show_cache_size)
 
-        self.form_of("player/tray_icon").values_changed.connect(
-            self.tray_options_changed
-        )
         self.form_of("cache/mode").values_changed.connect(self.cache_mode_selected)
 
-    def reset_page(self):
-        """The page back to the factory defaults, until Cancel."""
-
-        form = self.current_form
-        if form is None:
-            return
-
-        if (
-            form is self.form_of("player/minimize_to_tray")
-            and self._minimize_to_tray_own is not None
-        ):
-            # ticked for hiding from the taskbar: let go of first, to be reset
-            # and saved with the rest, and ticked again by tray_options_changed
-            # if it still has to be
-            self._minimize_to_tray_own = None
-            form.lock("player/minimize_to_tray", False)
-
-        form.reset_all()
-
     # settings that lean on each other
-
-    def tray_options_changed(self, *_):
-        form = self.form_of("player/tray_icon")
-
-        is_tray = form.is_enabled("player/tray_icon") and form.value("player/tray_icon")
-
-        # with no taskbar button, minimizing can only go to the tray
-        is_forced = bool(
-            is_tray
-            and form.is_available("player/hide_taskbar")
-            and form.value("player/hide_taskbar")
-        )
-
-        minimize = form.widget("player/minimize_to_tray")
-
-        if is_forced and self._minimize_to_tray_own is None:
-            self._minimize_to_tray_own = minimize.isChecked()
-            minimize.setChecked(True)
-        elif not is_forced and self._minimize_to_tray_own is not None:
-            own, self._minimize_to_tray_own = self._minimize_to_tray_own, None
-            minimize.setChecked(own)
-
-        # a locked one is left as it is on save, see save_settings
-        form.lock("player/minimize_to_tray", is_forced)
 
     def cache_mode_selected(self, *_):
         # nothing on disk to see, kept in memory
@@ -338,7 +289,6 @@ class SettingsDialog(PagedDialog):
 
         self.cookiesList.set_jar(cookie_store().jar)
 
-        self.tray_options_changed()
         self.cache_mode_selected()
         self.update_reset_page()
 
