@@ -23,7 +23,7 @@ from gridplayer.params.settings_pages import PLAYLIST_PAGE
 from gridplayer.params.static import (
     SeekSyncMode,
     VideoAnchor,
-    VideoAspect,
+    VideoCellViewMode,
     VideoInitialState,
     VideoShift,
     VideoTransform,
@@ -667,7 +667,7 @@ class TestTheFrameToldHowWideItsPixelsAre:
         """320x360 of pixels twice as wide is a 640x360 picture."""
 
         frame = _frame((320, 360))
-        frame._view = ViewParams(VideoAspect.NONE)
+        frame._view = ViewParams(VideoCellViewMode.FIT)
 
         frame.set_track_dimensions(320, 360, (2, 1))
 

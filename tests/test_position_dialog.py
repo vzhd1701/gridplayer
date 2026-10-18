@@ -8,7 +8,7 @@ from PyQt5.QtWidgets import QApplication, QDialog
 from gridplayer.dialogs.position import SetPositionDialog
 from gridplayer.params.static import (
     VideoAnchor,
-    VideoAspect,
+    VideoCellViewMode,
     VideoShift,
     VideoTransform,
     ViewParams,
@@ -59,7 +59,7 @@ class _Block:
             orientation=VideoTransform.NONE,
         )
         self.video_driver._view = ViewParams(
-            aspect=VideoAspect.NONE,
+            cell_view_mode=VideoCellViewMode.FIT,
             anchor=anchor,
             shift=shift,
             is_shift_past_edges=is_past,

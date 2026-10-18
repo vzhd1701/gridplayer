@@ -11,7 +11,7 @@ from gridplayer.models.file_bookmarks import FileBookmarks
 from gridplayer.models.grid_state import GridState
 from gridplayer.models.media_list import ListItem, MediaList
 from gridplayer.models.subtitle_selection import SubtitleExternal
-from gridplayer.models.video import Video, migrate_end_action
+from gridplayer.models.video import Video, migrate_aspect, migrate_end_action
 from gridplayer.models.video_uri import parse_uri, relativize_uri
 from gridplayer.params.settings_bindings import GRID_STATE_ATTR
 from gridplayer.params.static import (
@@ -28,7 +28,7 @@ from gridplayer.params.static import (
     SubtitleTrackMode,
     UnsavedChangesMode,
     VideoAnchor,
-    VideoAspect,
+    VideoCellViewMode,
     VideoCrop,
     VideoDeinterlace,
     VideoDeinterlaceMode,
@@ -64,7 +64,7 @@ class Snapshot(BaseModel):
 
 
 class PlaylistVideoDefaults(BaseModel):
-    aspect: VideoAspect | None = None
+    cell_view_mode: VideoCellViewMode | None = None
     transform: VideoTransform | None = None
     deinterlace: VideoDeinterlace | None = None
     deinterlace_mode: VideoDeinterlaceMode | None = None
@@ -114,6 +114,7 @@ class PlaylistVideoDefaults(BaseModel):
             data.pop("repeat", None)
         if "end_action" in data:
             data["end_action"] = migrate_end_action(data["end_action"])
+        migrate_aspect(data, "aspect")
         return data
 
 

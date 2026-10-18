@@ -86,7 +86,7 @@ class TestSwitch:
 
 def test_a_short_choice_is_a_row_of_buttons_and_a_long_one_a_list():
     assert isinstance(
-        make_editor(FIELDS["video_defaults/aspect"]).widget, SegmentedChoice
+        make_editor(FIELDS["video_defaults/cell_view_mode"]).widget, SegmentedChoice
     )
     assert not isinstance(
         make_editor(FIELDS["video_defaults/end_action"]).widget, SegmentedChoice

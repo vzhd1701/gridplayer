@@ -12,7 +12,7 @@ in one that just shrank.
 So whoever resizes the surface sizes VLC's windows along with it. VLC's
 presentation is stretched over the window it presents into, so its last
 picture fills the new size until it draws one for it. Measured entering and
-leaving single mode in a 3x3 grid, in every aspect mode: the old picture
+leaving single mode in a 3x3 grid, in every view mode: the old picture
 showed in 189 of 200 switches without this, in none of 240 with it.
 
 VLC also makes its "VLC video output" window hidden, and shows it only once

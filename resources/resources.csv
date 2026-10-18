@@ -65,10 +65,6 @@ icon-symbolic,icons/basic/225-mute.svg,volume-mute
 icon-symbolic,icons/custom/add folder.svg,add-folder
 icon-symbolic,icons/custom/add url.svg,add-url
 icon-symbolic,icons/custom/all.svg,all
-icon-symbolic,icons/custom/aspect fit.svg,aspect-fit
-icon-symbolic,icons/custom/aspect none.svg,aspect-none
-icon-symbolic,icons/custom/aspect stretch.svg,aspect-stretch
-icon-symbolic,icons/custom/aspect.svg,aspect
 icon-symbolic,icons/custom/audio device.svg,audio-device
 icon-symbolic,icons/custom/audio only.svg,audio-only
 icon-symbolic,icons/custom/bookmark add.svg,bookmark-add
@@ -148,6 +144,10 @@ icon-symbolic,icons/custom/sync others.svg,sync-others
 icon-symbolic,icons/custom/sync.svg,sync
 icon-symbolic,icons/custom/track.svg,track
 icon-symbolic,icons/custom/video.svg,video
+icon-symbolic,icons/custom/view mode fill.svg,view-mode-fill
+icon-symbolic,icons/custom/view mode fit.svg,view-mode-fit
+icon-symbolic,icons/custom/view mode stretch.svg,view-mode-stretch
+icon-symbolic,icons/custom/view mode.svg,view-mode
 icon-symbolic,icons/custom/volume decrease.svg,volume-decrease
 icon-symbolic,icons/custom/volume increase.svg,volume-increase
 icon-symbolic,icons/custom/volume unmute.svg,volume-unmute

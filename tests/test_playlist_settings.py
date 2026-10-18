@@ -7,7 +7,7 @@ from gridplayer.models.grid_state import GridState
 from gridplayer.models.playlist import Playlist
 from gridplayer.models.video import Video
 from gridplayer.params.settings_fields.playlist import PLAYLIST_FIELDS
-from gridplayer.params.static import GridMode, ListView, VideoAspect
+from gridplayer.params.static import GridMode, ListView, VideoCellViewMode
 from gridplayer.playlist_settings import (
     PlaylistSettings,
     grid_overrides_from_state,
@@ -25,7 +25,10 @@ def _qapp():
 def _settings_get(mocker):
     """Answer with the shipped defaults, never with this machine's settings."""
 
-    defaults = {**_default_settings, "video_defaults/aspect": VideoAspect.STRETCH}
+    defaults = {
+        **_default_settings,
+        "video_defaults/cell_view_mode": VideoCellViewMode.STRETCH,
+    }
 
     mocker.patch.object(Settings(), "get", side_effect=defaults.__getitem__)
 
@@ -36,20 +39,25 @@ def _set_grid_mode(form, mode):
 
 
 def test_get_uses_playlist_override():
-    PlaylistSettings().set("video_defaults/aspect", VideoAspect.NONE)
-    assert PlaylistSettings().get("video_defaults/aspect") is VideoAspect.NONE
+    PlaylistSettings().set("video_defaults/cell_view_mode", VideoCellViewMode.FIT)
+    assert (
+        PlaylistSettings().get("video_defaults/cell_view_mode") is VideoCellViewMode.FIT
+    )
 
 
 def test_get_falls_back_to_settings():
-    assert PlaylistSettings().get("video_defaults/aspect") is VideoAspect.STRETCH
+    assert (
+        PlaylistSettings().get("video_defaults/cell_view_mode")
+        is VideoCellViewMode.STRETCH
+    )
 
 
-def test_a_video_made_takes_the_playlist_aspect():
+def test_a_video_made_takes_the_playlist_view_mode():
     from gridplayer.models.video import Video
 
-    PlaylistSettings().set("video_defaults/aspect", VideoAspect.NONE)
+    PlaylistSettings().set("video_defaults/cell_view_mode", VideoCellViewMode.FIT)
     video = Video(uri="http://example.com/a.mp4")
-    assert video.aspect_mode is VideoAspect.NONE
+    assert video.cell_view_mode is VideoCellViewMode.FIT
 
 
 def test_playlist_kwargs_builds_video_defaults_from_overrides(mocker):
@@ -64,7 +72,7 @@ def test_playlist_kwargs_builds_video_defaults_from_overrides(mocker):
         {
             "playlist/disable_overlay": True,
             "playlist/grid_mode": GridMode.FIXED,
-            "video_defaults/aspect": VideoAspect.NONE,
+            "video_defaults/cell_view_mode": VideoCellViewMode.FIT,
             "video_defaults/muted": False,
         }
     )
@@ -72,25 +80,25 @@ def test_playlist_kwargs_builds_video_defaults_from_overrides(mocker):
     playlist = Playlist(videos=[], **PlaylistSettings().playlist_kwargs())
 
     assert playlist.disable_overlay is True
-    assert playlist.video_defaults.aspect is VideoAspect.NONE
+    assert playlist.video_defaults.cell_view_mode is VideoCellViewMode.FIT
     assert playlist.video_defaults.muted is False
 
 
 def test_video_construct_picks_up_session_defaults():
-    PlaylistSettings().set("video_defaults/aspect", VideoAspect.NONE)
+    PlaylistSettings().set("video_defaults/cell_view_mode", VideoCellViewMode.FIT)
     video = Video(uri="http://example.com/a.mp4")
-    assert video.aspect_mode is VideoAspect.NONE
+    assert video.cell_view_mode is VideoCellViewMode.FIT
 
 
 def test_set_is_noop_while_capture_suppressed():
     session = PlaylistSettings()
     with session.suppress_capture():
-        session.set("video_defaults/aspect", VideoAspect.NONE)
-    assert session.is_overridden("video_defaults/aspect") is False
-    assert session.get("video_defaults/aspect") is VideoAspect.STRETCH
+        session.set("video_defaults/cell_view_mode", VideoCellViewMode.FIT)
+    assert session.is_overridden("video_defaults/cell_view_mode") is False
+    assert session.get("video_defaults/cell_view_mode") is VideoCellViewMode.STRETCH
 
 
-def test_playlist_settings_saves_aspect_even_without_edit_signal():
+def test_playlist_settings_saves_view_mode_even_without_edit_signal():
     from gridplayer.dialogs.playlist_settings import PlaylistSettingsDialog
 
     parent = QWidget()
@@ -99,14 +107,20 @@ def test_playlist_settings_saves_aspect_even_without_edit_signal():
         grid_state=GridState(),
         parent=parent,
     )
-    combo = dialog._video_form.widget("video_defaults/aspect")
+    combo = dialog._video_form.widget("video_defaults/cell_view_mode")
     combo.blockSignals(True)
-    combo.setCurrentIndex(combo.findData(VideoAspect.NONE))
+    combo.setCurrentIndex(combo.findData(VideoCellViewMode.FIT))
     combo.blockSignals(False)
 
-    assert dialog._video_form.values()["video_defaults/aspect"] is VideoAspect.NONE
-    assert "video_defaults/aspect" not in dialog._video_form.overridden_keys()
-    assert dialog.result_overrides()["video_defaults/aspect"] is VideoAspect.NONE
+    assert (
+        dialog._video_form.values()["video_defaults/cell_view_mode"]
+        is VideoCellViewMode.FIT
+    )
+    assert "video_defaults/cell_view_mode" not in dialog._video_form.overridden_keys()
+    assert (
+        dialog.result_overrides()["video_defaults/cell_view_mode"]
+        is VideoCellViewMode.FIT
+    )
 
 
 def test_playlist_settings_does_not_mark_inherited_empty_cells():
@@ -170,9 +184,9 @@ def test_grid_overrides_omit_preallocate_when_file_omits_it():
 def test_recent_list_add_uses_playlist_video_defaults(mocker):
     from gridplayer.player.managers.add_videos import _video
 
-    PlaylistSettings().set("video_defaults/aspect", VideoAspect.NONE)
+    PlaylistSettings().set("video_defaults/cell_view_mode", VideoCellViewMode.FIT)
 
-    assert _video("http://example.com/a.mp4").aspect_mode is VideoAspect.NONE
+    assert _video("http://example.com/a.mp4").cell_view_mode is VideoCellViewMode.FIT
 
 
 def test_recent_list_add_goes_the_way_anything_added_does(mocker):

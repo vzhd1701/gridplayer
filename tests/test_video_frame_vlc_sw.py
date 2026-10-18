@@ -7,7 +7,7 @@ from PyQt5.QtCore import QRect, QSize
 from PyQt5.QtWidgets import QApplication
 
 from gridplayer.multiprocess.safe_shared_memory import SafeSharedMemory
-from gridplayer.params.static import VideoAspect, VideoTransform, ViewParams
+from gridplayer.params.static import VideoCellViewMode, VideoTransform, ViewParams
 from gridplayer.vlc_player.static import VideoTrack
 from gridplayer.widgets.video_frame_vlc_sw import VideoDriverVLCSW, VideoFrameVLCSW
 from gridplayer.widgets.video_surface_sw import SoftwareVideoSurface
@@ -32,7 +32,7 @@ def _surface(width, height, frame_w, frame_h):
 
 def test_software_surface_fit_covers_widget():
     surface = _surface(200, 100, 2, 2)
-    surface.set_view(ViewParams(VideoAspect.FIT))
+    surface.set_view(ViewParams(VideoCellViewMode.FILL))
 
     placement = surface.placement()
 
@@ -42,7 +42,7 @@ def test_software_surface_fit_covers_widget():
 
 def test_software_surface_zooms_in_the_middle():
     surface = _surface(200, 100, 200, 100)
-    surface.set_view(ViewParams(VideoAspect.FIT, 2.0))
+    surface.set_view(ViewParams(VideoCellViewMode.FILL, 2.0))
 
     assert surface.placement().source == pytest.approx((50, 25, 100, 50))
 
@@ -51,7 +51,7 @@ def test_software_surface_shows_a_scaled_up_frame_in_its_own_shape():
     """VLC scales a 640x360 picture up to fill a 640x386 frame for the decoder."""
 
     surface = _surface(640, 360, 640, 386)
-    surface.set_view(ViewParams(VideoAspect.NONE), track_size=(640, 360))
+    surface.set_view(ViewParams(VideoCellViewMode.FIT), track_size=(640, 360))
 
     assert surface.picture_size() == (640, 360)
     assert surface.placement().source == pytest.approx((0, 0, 640, 386))
@@ -61,7 +61,7 @@ def test_software_surface_shows_a_scaled_up_frame_in_its_own_shape():
 
 def test_software_surface_zooms_a_scaled_up_frame_in_video_pixels():
     surface = _surface(640, 360, 640, 386)
-    surface.set_view(ViewParams(VideoAspect.FIT, 2.0), track_size=(640, 360))
+    surface.set_view(ViewParams(VideoCellViewMode.FILL, 2.0), track_size=(640, 360))
 
     # the middle 320x180 of the picture, in the frame's own rows
     assert surface.placement().source == pytest.approx((160, 96.5, 320, 193))
@@ -84,7 +84,9 @@ def test_software_surface_shapes_a_rotated_frame():
 
     surface = _surface(640, 640, 640, 386)
     surface.set_view(
-        ViewParams(VideoAspect.NONE), VideoTransform.ROTATE_90, track_size=(640, 360)
+        ViewParams(VideoCellViewMode.FIT),
+        VideoTransform.ROTATE_90,
+        track_size=(640, 360),
     )
 
     assert surface.placement().target == pytest.approx((140, 0, 360, 640))

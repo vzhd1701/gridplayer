@@ -7,7 +7,7 @@ import gridplayer.widgets.video_frame_vlc_base as vlc_base
 from gridplayer.params.static import (
     HWCropBorderOffset,
     VideoAnchor,
-    VideoAspect,
+    VideoCellViewMode,
     VideoCrop,
     VideoShift,
     VideoTransform,
@@ -310,7 +310,7 @@ def _start_loading(frame, is_paused):
     frame.load_video(
         MagicMock(
             video=MagicMock(
-                aspect_mode=VideoAspect.FIT,
+                cell_view_mode=VideoCellViewMode.FILL,
                 scale=1.0,
                 crop=VideoCrop(0, 0, 0, 0),
                 anchor=VideoAnchor.CENTER,

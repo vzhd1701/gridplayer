@@ -1,7 +1,9 @@
+import pytest
 from PyQt5.QtCore import QSettings
 
 from gridplayer.params.static import (
     UnsavedChangesMode,
+    VideoCellViewMode,
     VideoEndAction,
     VideoInitialState,
 )
@@ -226,4 +228,61 @@ def test_migrate_mouse_triggers_noop_without_legacy_keys(tmp_path):
 
     settings._migrate_mouse_triggers()
 
+    assert not settings.settings.contains("player/keymap")
+
+
+@pytest.mark.parametrize(
+    ("old", "new"), [("fit", "fill"), ("none", "fit"), ("stretch", "stretch")]
+)
+def test_migrate_aspect_to_the_view_mode_it_was(tmp_path, old, new):
+    settings = _make_settings(tmp_path, {"video_defaults/aspect": old})
+
+    settings._migrate_aspect_to_cell_view_mode()
+
+    assert not settings.settings.contains("video_defaults/aspect")
+    assert settings.settings.value("video_defaults/cell_view_mode") == new
+
+
+def test_migrate_aspect_keeps_a_view_mode_already_set(tmp_path):
+    settings = _make_settings(
+        tmp_path,
+        {
+            "video_defaults/aspect": "none",
+            "video_defaults/cell_view_mode": VideoCellViewMode.STRETCH.value,
+        },
+    )
+
+    settings._migrate_aspect_to_cell_view_mode()
+
+    assert not settings.settings.contains("video_defaults/aspect")
+    assert settings.settings.value("video_defaults/cell_view_mode") == "stretch"
+
+
+def test_migrate_aspect_shortcuts_to_the_view_mode_items(tmp_path):
+    settings = _make_settings(
+        tmp_path,
+        {
+            "player/keymap": (
+                '{"Play / Pause": ["P"], "Aspect Fit": ["F2"],'
+                ' "Aspect None": ["F3"], "Aspect Stretch [ALL]": ["Ctrl+F4"]}'
+            ),
+        },
+    )
+
+    settings._migrate_aspect_to_cell_view_mode()
+
+    assert settings.get("player/keymap").root == {
+        "Play / Pause": ["P"],
+        "View Mode Fill": ["F2"],
+        "View Mode Fit": ["F3"],
+        "View Mode Stretch [ALL]": ["Ctrl+F4"],
+    }
+
+
+def test_migrate_aspect_noop_without_legacy_keys(tmp_path):
+    settings = _make_settings(tmp_path, {"player/language": "en_US"})
+
+    settings._migrate_aspect_to_cell_view_mode()
+
+    assert not settings.settings.contains("video_defaults/cell_view_mode")
     assert not settings.settings.contains("player/keymap")

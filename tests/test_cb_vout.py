@@ -6,7 +6,7 @@ import pytest
 import gridplayer.vlc_player.player_base as player_base_mod
 from gridplayer.params.static import (
     VideoAnchor,
-    VideoAspect,
+    VideoCellViewMode,
     VideoCrop,
     VideoShift,
     VideoTransform,
@@ -50,7 +50,7 @@ class _RecordingMediaPlayer:
         self.calls.append(("scale", value))
 
 
-def _make_player(aspect_mode=VideoAspect.FIT, is_audio_only=False):
+def _make_player(cell_view_mode=VideoCellViewMode.FILL, is_audio_only=False):
     player = _MinimalPlayer(vlc_instance=None)
 
     media_player = _RecordingMediaPlayer()
@@ -62,7 +62,7 @@ def _make_player(aspect_mode=VideoAspect.FIT, is_audio_only=False):
 
     media_input = Mock()
     media_input.size = (640, 360)
-    media_input.video.aspect_mode = aspect_mode
+    media_input.video.cell_view_mode = cell_view_mode
     media_input.video.scale = 1.0
     media_input.video.crop = VideoCrop(0, 0, 0, 0)
     media_input.video.anchor = VideoAnchor.CENTER
@@ -117,11 +117,11 @@ def test_default_seam_routes_to_apply_media_input_view(monkeypatch):
 def test_adjust_view_crop_stretch_compensates_override():
     """Pixel crop + Stretch: VLC derives the override SAR from the pre-crop
     dims, so the override must be compensated for the cropped region."""
-    player, media_player = _make_player(aspect_mode=VideoAspect.STRETCH)
+    player, media_player = _make_player(cell_view_mode=VideoCellViewMode.STRETCH)
 
     player.adjust_view(
         size=(640, 360),
-        view=ViewParams(VideoAspect.STRETCH, 1.0, VideoCrop(160, 0, 160, 0)),
+        view=ViewParams(VideoCellViewMode.STRETCH, 1.0, VideoCrop(160, 0, 160, 0)),
     )
 
     # Region 320x360 (8:9) must display as 16:9 -> override 32:9.
@@ -132,14 +132,14 @@ def test_adjust_view_crop_stretch_compensates_override():
     ]
 
 
-def test_adjust_view_crop_fit_extends_borders():
-    """Pixel crop + Fit: the borders are extended until the visible region
+def test_adjust_view_crop_fill_extends_borders():
+    """Pixel crop + Fill: the borders are extended until the visible region
     matches the pane ratio, so VLC's auto-fit fills the pane exactly."""
-    player, media_player = _make_player(aspect_mode=VideoAspect.FIT)
+    player, media_player = _make_player(cell_view_mode=VideoCellViewMode.FILL)
 
     player.adjust_view(
         size=(640, 360),
-        view=ViewParams(VideoAspect.FIT, 1.0, VideoCrop(160, 0, 160, 0)),
+        view=ViewParams(VideoCellViewMode.FILL, 1.0, VideoCrop(160, 0, 160, 0)),
     )
 
     # Region 320x360 -> crop down to 320x180 (16:9) -> 90 top/bottom.
@@ -153,16 +153,16 @@ def test_adjust_view_crop_fit_extends_borders():
 def test_adjust_view_persists_crop_for_vout_reapply():
     """Live unpause stop/play recreates the vout; cb_vout re-applies from
     media_input, so crop/aspect/scale must be written back on each adjust."""
-    player, media_player = _make_player(aspect_mode=VideoAspect.FIT)
+    player, media_player = _make_player(cell_view_mode=VideoCellViewMode.FILL)
     crop = VideoCrop(160, 0, 160, 0)
 
     player.adjust_view(
         size=(640, 360),
-        view=ViewParams(VideoAspect.FIT, 1.0, crop),
+        view=ViewParams(VideoCellViewMode.FILL, 1.0, crop),
     )
 
     assert player.media_input.video.crop == crop
-    assert player.media_input.video.aspect_mode is VideoAspect.FIT
+    assert player.media_input.video.cell_view_mode is VideoCellViewMode.FILL
 
     media_player.calls.clear()
     player._apply_media_input_view()
@@ -176,13 +176,13 @@ def test_adjust_view_persists_crop_for_vout_reapply():
 
 def test_apply_media_input_view_uses_cached_size_when_vout_size_missing():
     """After live stop/play, cb_vout can run while video_get_size is still
-    0x0. FIT+crop must not fall back to letterbox (aspect None)."""
-    player, media_player = _make_player(aspect_mode=VideoAspect.FIT)
+    0x0. Fill + crop must not fall back to letterbox (Fit)."""
+    player, media_player = _make_player(cell_view_mode=VideoCellViewMode.FILL)
     crop = VideoCrop(160, 0, 160, 0)
 
     player.adjust_view(
         size=(640, 360),
-        view=ViewParams(VideoAspect.FIT, 1.0, crop),
+        view=ViewParams(VideoCellViewMode.FILL, 1.0, crop),
     )
 
     media_player.video_get_size = lambda num=0: (0, 0)
@@ -218,7 +218,7 @@ def test_adjust_view_fills_missing_track_dimensions():
 
     player.adjust_view(
         size=(640, 360),
-        view=ViewParams(VideoAspect.FIT, 1.0, VideoCrop(0, 0, 0, 0)),
+        view=ViewParams(VideoCellViewMode.FILL, 1.0, VideoCrop(0, 0, 0, 0)),
     )
 
     assert player.media.video_tracks[1].video_dimensions == (640, 360)
@@ -251,7 +251,7 @@ class _Tracks:
 def _stream_player(tracks: _Tracks):
     """A stream playing 640x360 that has not said how wide its pixels are."""
 
-    player, media_player = _make_player(aspect_mode=VideoAspect.NONE)
+    player, media_player = _make_player(cell_view_mode=VideoCellViewMode.FIT)
     player.notify_video_dimensions = Mock()
     player.media = Media(
         length=-1,
@@ -275,7 +275,7 @@ def _stream_player(tracks: _Tracks):
 
 
 def _none_view():
-    return ViewParams(VideoAspect.NONE, 1.0, VideoCrop(0, 0, 0, 0))
+    return ViewParams(VideoCellViewMode.FIT, 1.0, VideoCrop(0, 0, 0, 0))
 
 
 def test_adjust_view_reads_how_wide_a_streams_pixels_are():
@@ -311,14 +311,14 @@ def test_a_video_that_never_says_is_asked_only_so_often():
     player.notify_video_dimensions.assert_not_called()
 
 
-def test_adjust_view_crop_none_letterboxes_user_region():
-    """Pixel crop + None: keep the user borders and native aspect so the
+def test_adjust_view_crop_fit_letterboxes_user_region():
+    """Pixel crop + Fit: keep the user borders and native aspect so the
     visible region is letterboxed in the pane."""
-    player, media_player = _make_player(aspect_mode=VideoAspect.NONE)
+    player, media_player = _make_player(cell_view_mode=VideoCellViewMode.FIT)
 
     player.adjust_view(
         size=(640, 360),
-        view=ViewParams(VideoAspect.NONE, 1.0, VideoCrop(160, 0, 160, 0)),
+        view=ViewParams(VideoCellViewMode.FIT, 1.0, VideoCrop(160, 0, 160, 0)),
     )
 
     # Region 320x360 shown in its own shape, letterboxed
@@ -336,7 +336,7 @@ def test_adjust_view_puts_the_zoom_in_the_crop():
 
     player.adjust_view(
         size=(640, 360),
-        view=ViewParams(VideoAspect.FIT, 2.0, VideoCrop(0, 0, 0, 0)),
+        view=ViewParams(VideoCellViewMode.FILL, 2.0, VideoCrop(0, 0, 0, 0)),
     )
 
     assert media_player.calls == [
@@ -354,7 +354,7 @@ def test_adjust_view_crops_a_rotated_frame_at_its_own_size():
 
     player.adjust_view(
         size=(360, 640),
-        view=ViewParams(VideoAspect.FIT, 1.0, VideoCrop(160, 0, 160, 0)),
+        view=ViewParams(VideoCellViewMode.FILL, 1.0, VideoCrop(160, 0, 160, 0)),
     )
 
     # 320x360 frame pixels left are 180x640 on screen, so a 9:16 pane
@@ -369,7 +369,9 @@ def test_adjust_view_crops_a_rotated_frame_at_its_own_size():
 def test_adjust_view_keeps_the_position_for_vout_reapply():
     """A live stream's vout comes back from media_input, anchor and all."""
     player, media_player = _make_player()
-    view = ViewParams(VideoAspect.FIT, 2.0, VideoCrop(0, 0, 0, 0), VideoAnchor.TOP_LEFT)
+    view = ViewParams(
+        VideoCellViewMode.FILL, 2.0, VideoCrop(0, 0, 0, 0), VideoAnchor.TOP_LEFT
+    )
 
     player.adjust_view(size=(640, 360), view=view)
     media_player.calls.clear()
@@ -409,7 +411,7 @@ def test_adjust_view_has_vlc_draw_all_of_a_picture_it_turns(crop):
 
     player.adjust_view(
         size=(400, 500),
-        view=ViewParams(VideoAspect.FIT, 2.0, crop),
+        view=ViewParams(VideoCellViewMode.FILL, 2.0, crop),
     )
 
     # on its side 360x640, covering 400x500 at 400x711, zoomed to 800x1422;
@@ -441,11 +443,11 @@ def _time_event(new_time):
 
 def test_time_applies_a_view_worked_out_without_a_frame_size_again():
     """A stream with no frame size of its own: VLC finds it only after its
-    video output is up, when the view is applied. Applied then, a FIT view
+    video output is up, when the view is applied. Applied then, a Fill view
     is the whole frame with bars, until something applies it again."""
     player, media_player = _make_player()
     player.media_input.is_live = True
-    view = ViewParams(VideoAspect.FIT, 1.0, VideoCrop(0, 0, 0, 0))
+    view = ViewParams(VideoCellViewMode.FILL, 1.0, VideoCrop(0, 0, 0, 0))
 
     media_player.video_get_size = lambda num=0: (0, 0)
     player.adjust_view(size=(640, 200), view=view)
@@ -483,7 +485,7 @@ def test_time_leaves_a_view_worked_out_with_a_frame_size_alone():
 
     player.adjust_view(
         size=(640, 200),
-        view=ViewParams(VideoAspect.FIT, 1.0, VideoCrop(0, 0, 0, 0)),
+        view=ViewParams(VideoCellViewMode.FILL, 1.0, VideoCrop(0, 0, 0, 0)),
     )
     player.cb_time_changed(_time_event(0))
 

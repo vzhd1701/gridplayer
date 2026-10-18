@@ -22,7 +22,7 @@ from gridplayer.params.actions import ACTIONS
 from gridplayer.params.menu import SECTIONS
 from gridplayer.params.static import (
     ScreenshotFormat,
-    VideoAspect,
+    VideoCellViewMode,
     VideoCrop,
     VideoTransform,
     ViewParams,
@@ -214,8 +214,8 @@ class TestTheViewRegion:
     """SW frames are cut the way VLC cuts them on the hardware drivers."""
 
     def test_nothing_cut_is_nothing_to_do(self):
-        fit = ScreenshotView((400, 300), ViewParams(VideoAspect.FIT))
-        none = ScreenshotView((100, 100), ViewParams(VideoAspect.NONE))
+        fit = ScreenshotView((400, 300), ViewParams(VideoCellViewMode.FILL))
+        none = ScreenshotView((100, 100), ViewParams(VideoCellViewMode.FIT))
 
         assert fit.cut(800, 600) == (None, None)
         assert none.cut(800, 600) == (None, None)
@@ -231,13 +231,14 @@ class TestTheViewRegion:
         assert view.cut(800, 600) == (None, None)
 
     def test_it_is_worked_out_for_the_frame_as_it_is(self):
-        view = ScreenshotView((400, 200), ViewParams(VideoAspect.FIT))
+        view = ScreenshotView((400, 200), ViewParams(VideoCellViewMode.FILL))
 
         assert view.cut(800, 600) == (QRect(0, 100, 800, 400), None)
 
     def test_the_user_crop_is_in_frame_pixels(self):
         view = ScreenshotView(
-            (400, 400), ViewParams(VideoAspect.NONE, crop=VideoCrop(100, 50, 100, 50))
+            (400, 400),
+            ViewParams(VideoCellViewMode.FIT, crop=VideoCrop(100, 50, 100, 50)),
         )
 
         assert view.cut(788, 576) == (QRect(100, 50, 588, 476), None)
@@ -245,7 +246,7 @@ class TestTheViewRegion:
     def test_the_zoom_is_cut_out_too(self):
         """What VLC crops to on the hardware drivers, zoom and all."""
 
-        view = ScreenshotView((400, 300), ViewParams(VideoAspect.FIT, 2.0))
+        view = ScreenshotView((400, 300), ViewParams(VideoCellViewMode.FILL, 2.0))
 
         assert view.cut(800, 600) == (QRect(200, 150, 400, 300), None)
 
@@ -253,7 +254,7 @@ class TestTheViewRegion:
         """640x360 comes drawn from a 640x386 frame, the picture scaled up."""
 
         view = ScreenshotView(
-            (640, 360), ViewParams(VideoAspect.NONE), None, (640, 360)
+            (640, 360), ViewParams(VideoCellViewMode.FIT), None, (640, 360)
         )
 
         assert view.cut(640, 386) == (None, QSize(640, 360))
@@ -278,7 +279,7 @@ class TestTheViewRegion:
     def test_a_rotated_frame_drawn_here_is_shaped_back(self):
         view = ScreenshotView(
             (360, 640),
-            ViewParams(VideoAspect.NONE),
+            ViewParams(VideoCellViewMode.FIT),
             VideoTransform.ROTATE_90,
             (640, 360),
         )
@@ -374,7 +375,7 @@ class TestSaving:
     @pytest.mark.parametrize("image_format", list(ScreenshotFormat))
     def test_the_view_is_cut_out(self, tmp_path, image_format):
         view = ScreenshotView(
-            (100, 100), ViewParams(VideoAspect.NONE, crop=VideoCrop(10, 0, 10, 10))
+            (100, 100), ViewParams(VideoCellViewMode.FIT, crop=VideoCrop(10, 0, 10, 10))
         )
 
         path = save_screenshot(
@@ -386,7 +387,7 @@ class TestSaving:
 
     def test_a_view_that_keeps_it_all_copies_the_png(self, tmp_path):
         source = _frame_file(tmp_path)
-        view = ScreenshotView((32, 16), ViewParams(VideoAspect.FIT))
+        view = ScreenshotView((32, 16), ViewParams(VideoCellViewMode.FILL))
 
         path = save_screenshot(
             source, tmp_path, _name(), ScreenshotFormat.PNG, 90, view
@@ -439,7 +440,7 @@ class TestSaving:
         source = _frame_file(tmp_path, 64, 36)
         view = ScreenshotView(
             (36, 64),
-            ViewParams(VideoAspect.NONE, crop=VideoCrop(0, 32, 0, 0)),
+            ViewParams(VideoCellViewMode.FIT, crop=VideoCrop(0, 32, 0, 0)),
             VideoTransform.NONE,
             (36, 64),
             VideoTransform.ROTATE_270,
@@ -782,7 +783,7 @@ class TestPixelShape:
         # 40 of 320 off each side: 240x360, 480x360 shown
         view = ScreenshotView(
             (480, 360),
-            ViewParams(VideoAspect.NONE, crop=VideoCrop(40, 0, 40, 0)),
+            ViewParams(VideoCellViewMode.FIT, crop=VideoCrop(40, 0, 40, 0)),
             None,
             (320, 360),
             pixel_aspect=2,

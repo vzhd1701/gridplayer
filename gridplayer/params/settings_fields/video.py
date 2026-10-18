@@ -139,10 +139,16 @@ VIDEO_FIELDS: tuple[SettingField, ...] = (
         ),
     ),
     ComboField(
-        settings_key="video_defaults/aspect",
-        label=translate("SettingsDialog", "Aspect mode"),
-        choices=choices.aspects,
+        settings_key="video_defaults/cell_view_mode",
+        label=translate("SettingsDialog", "View mode"),
+        choices=choices.cell_view_modes,
         buttons=True,
+        tooltip=translate(
+            "SettingsDialog",
+            "Fill: covers the cell, cutting off the edges.\n"
+            "Fit: the whole picture, with bars.\n"
+            "Stretch: covers the cell, changing the picture's shape.",
+        ),
     ),
     CropField(
         settings_key="video_defaults/crop",

@@ -24,7 +24,7 @@ from gridplayer.params.static import (
     GridMode,
     SeekSyncMode,
     UnsavedChangesMode,
-    VideoAspect,
+    VideoCellViewMode,
     VideoEndAction,
     VideoInitialState,
     VideoTransform,
@@ -94,7 +94,7 @@ def _video(name):
         uri=f"http://example.com/{name}.mp4",
         end_action=VideoEndAction.LOOP_FILE,
         is_start_random=False,
-        aspect_mode=VideoAspect.FIT,
+        cell_view_mode=VideoCellViewMode.FILL,
         is_muted=True,
         is_paused=False,
         transform=VideoTransform.NONE,
@@ -569,6 +569,42 @@ def test_playlist_migrates_repeat_video_default():
     defaults = dumped["settings"]["video_defaults"]
     assert "repeat" not in defaults
     assert defaults["end_action"] == "stop"
+
+
+@pytest.mark.parametrize(
+    ("old", "new"),
+    [
+        ("fit", VideoCellViewMode.FILL),
+        ("none", VideoCellViewMode.FIT),
+        ("stretch", VideoCellViewMode.STRETCH),
+    ],
+)
+def test_playlist_migrates_aspect_video_default(old, new):
+    playlist = Playlist.model_validate(
+        {"videos": [], "video_defaults": {"aspect": old}}
+    )
+
+    assert playlist.video_defaults.cell_view_mode is new
+    defaults = json.loads(playlist.dumps())["settings"]["video_defaults"]
+    assert "aspect" not in defaults
+    assert defaults["cell_view_mode"] == new.value
+
+
+def test_playlist_migrates_aspect_mode_on_video():
+    """The old "fit" covered the cell: that is Fill now, not Fit."""
+
+    video = Video(uri="http://example.com/a.mp4", aspect_mode="fit")
+
+    assert video.cell_view_mode is VideoCellViewMode.FILL
+    dumped = json.loads(Playlist(videos=[video]).dumps())["videos"][0]
+    assert "aspect_mode" not in dumped
+    assert dumped["cell_view_mode"] == "fill"
+
+
+def test_a_video_saved_with_a_view_mode_keeps_it():
+    video = Video(uri="http://example.com/a.mp4", cell_view_mode="fit")
+
+    assert video.cell_view_mode is VideoCellViewMode.FIT
 
 
 def test_playlist_migrates_repeat_mode_on_video():

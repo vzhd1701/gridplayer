@@ -19,7 +19,7 @@ from gridplayer.models.settings_draft import ResetValue, SettingsMode
 from gridplayer.params.settings_fields import general as general_fields
 from gridplayer.params.settings_fields.kinds import CheckboxField, When
 from gridplayer.params.settings_pages import PAGES
-from gridplayer.params.static import ProxyMode, VideoAspect
+from gridplayer.params.static import ProxyMode, VideoCellViewMode
 from gridplayer.settings import _Settings, default_value
 from gridplayer.utils.taskbar import TaskbarHidingBlocker
 from gridplayer.widgets.settings_form import SettingsForm
@@ -165,32 +165,34 @@ class TestResettingAField:
         assert settings.get("network/proxy_url") == "http://old:8080"
 
     def test_it_goes_back_to_the_factory_default(self, settings, make_dialog):
-        settings.set("video_defaults/aspect", VideoAspect.STRETCH)
+        settings.set("video_defaults/cell_view_mode", VideoCellViewMode.STRETCH)
         dialog = make_dialog()
 
-        _reset_button(dialog, "video_defaults/aspect").click()
+        _reset_button(dialog, "video_defaults/cell_view_mode").click()
 
-        assert dialog.value("video_defaults/aspect") is VideoAspect.FIT
-        assert not _is_marked(dialog, "video_defaults/aspect")
+        assert dialog.value("video_defaults/cell_view_mode") is VideoCellViewMode.FILL
+        assert not _is_marked(dialog, "video_defaults/cell_view_mode")
 
     def test_it_is_forgotten_on_save(self, settings, make_dialog):
-        settings.set("video_defaults/aspect", VideoAspect.STRETCH)
+        settings.set("video_defaults/cell_view_mode", VideoCellViewMode.STRETCH)
         dialog = make_dialog()
 
-        _reset_button(dialog, "video_defaults/aspect").click()
+        _reset_button(dialog, "video_defaults/cell_view_mode").click()
         dialog.save_settings()
 
-        assert not settings.settings.contains("video_defaults/aspect")
-        assert settings.get("video_defaults/aspect") is VideoAspect.FIT
+        assert not settings.settings.contains("video_defaults/cell_view_mode")
+        assert settings.get("video_defaults/cell_view_mode") is VideoCellViewMode.FILL
 
     def test_cancel_keeps_what_was_saved(self, settings, make_dialog):
-        settings.set("video_defaults/aspect", VideoAspect.STRETCH)
+        settings.set("video_defaults/cell_view_mode", VideoCellViewMode.STRETCH)
         dialog = make_dialog()
 
-        _reset_button(dialog, "video_defaults/aspect").click()
+        _reset_button(dialog, "video_defaults/cell_view_mode").click()
         dialog.reject()
 
-        assert settings.get("video_defaults/aspect") is VideoAspect.STRETCH
+        assert (
+            settings.get("video_defaults/cell_view_mode") is VideoCellViewMode.STRETCH
+        )
 
 
 class TestResettingAPage:
@@ -324,10 +326,10 @@ class TestSaving:
         assert not settings.settings.contains("network/force_ipv4")
 
     def test_what_differs_is_kept(self, settings, dialog):
-        _choose(dialog.widget("video_defaults/aspect"), VideoAspect.NONE)
+        _choose(dialog.widget("video_defaults/cell_view_mode"), VideoCellViewMode.FIT)
         dialog.save_settings()
 
-        assert settings.settings.allKeys() == ["video_defaults/aspect"]
+        assert settings.settings.allKeys() == ["video_defaults/cell_view_mode"]
 
 
 def test_settings_reset_forgets_the_setting(settings):
@@ -400,18 +402,18 @@ class TestThePlaylistSettings:
         from gridplayer.dialogs import playlist_settings
         from gridplayer.models.grid_state import GridState
 
-        settings.set("video_defaults/aspect", VideoAspect.STRETCH)
+        settings.set("video_defaults/cell_view_mode", VideoCellViewMode.STRETCH)
         monkeypatch.setattr(playlist_settings, "Settings", lambda: settings)
 
         dialog = playlist_settings.PlaylistSettingsDialog(
-            {"video_defaults/aspect": VideoAspect.NONE}, GridState()
+            {"video_defaults/cell_view_mode": VideoCellViewMode.FIT}, GridState()
         )
         form = dialog._video_form
 
-        form._reset_btns["video_defaults/aspect"].click()
+        form._reset_btns["video_defaults/cell_view_mode"].click()
 
-        assert form.value("video_defaults/aspect") is VideoAspect.STRETCH
-        assert "video_defaults/aspect" not in dialog.result_overrides()
+        assert form.value("video_defaults/cell_view_mode") is VideoCellViewMode.STRETCH
+        assert "video_defaults/cell_view_mode" not in dialog.result_overrides()
 
 
 class TestALanguageNoLongerShipped:

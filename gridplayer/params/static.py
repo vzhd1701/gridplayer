@@ -65,10 +65,14 @@ class DropAction(AutoName):
     REPLACE = auto()
 
 
-class VideoAspect(AutoName):
+class VideoCellViewMode(AutoName):
+    """How a picture is fitted into its cell: covering it, cut at the sides
+    or the top and bottom (FILL); whole, with bars (FIT); or pulled to its
+    shape (STRETCH)."""
+
+    FILL = auto()
     FIT = auto()
     STRETCH = auto()
-    NONE = auto()
 
 
 class VideoCrop(NamedTuple):
@@ -101,7 +105,7 @@ class ViewParams(NamedTuple):
     What every view update carries from the widget to the player.
     """
 
-    aspect: VideoAspect = VideoAspect.FIT
+    cell_view_mode: VideoCellViewMode = VideoCellViewMode.FILL
     scale: float = 1.0
     crop: VideoCrop = VideoCrop(0, 0, 0, 0)
     anchor: VideoAnchor = VideoAnchor.CENTER

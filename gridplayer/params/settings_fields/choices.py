@@ -32,7 +32,7 @@ from gridplayer.params.static import (
     UnsavedChangesMode,
     URLResolver,
     VideoAnchor,
-    VideoAspect,
+    VideoCellViewMode,
     VideoDeinterlace,
     VideoDeinterlaceMode,
     VideoDriver,
@@ -120,11 +120,11 @@ def list_update_txts() -> dict:
     }
 
 
-def aspects() -> dict:
+def cell_view_modes() -> dict:
     return {
-        VideoAspect.FIT: translate("Aspect", "Fit"),
-        VideoAspect.STRETCH: translate("Aspect", "Stretch"),
-        VideoAspect.NONE: translate("Aspect", "None"),
+        VideoCellViewMode.FILL: translate("View Mode", "Fill"),
+        VideoCellViewMode.FIT: translate("View Mode", "Fit"),
+        VideoCellViewMode.STRETCH: translate("View Mode", "Stretch"),
     }
 
 

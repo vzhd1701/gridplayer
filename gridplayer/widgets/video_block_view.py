@@ -4,7 +4,13 @@ the same as another video shows of its own, where views are synced."""
 from PyQt5.QtCore import QRect, QRectF
 from PyQt5.QtGui import QCursor
 
-from gridplayer.params.static import VideoAnchor, VideoCrop, VideoShift, ViewParams
+from gridplayer.params.static import (
+    VideoAnchor,
+    VideoCellViewMode,
+    VideoCrop,
+    VideoShift,
+    ViewParams,
+)
 from gridplayer.utils.aspect_calc import SyncedView
 from gridplayer.utils.step_sizes import zoom_stepped
 from gridplayer.widgets.video_block_guards import (
@@ -311,6 +317,12 @@ class ViewControl(VideoBlockPart):
         """
 
         self._block.video_params.is_zoom_to_cursor = is_zoom_to_cursor
+
+    @only_with_video_tacks
+    def set_cell_view_mode(self, mode: VideoCellViewMode):
+        self._block.video_params.cell_view_mode = mode
+
+        self._block.video_driver.set_cell_view_mode(mode)
 
     @only_with_video_tacks
     @only_initialized

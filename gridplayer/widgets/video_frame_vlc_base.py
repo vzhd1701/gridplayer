@@ -26,7 +26,7 @@ from gridplayer.params import env
 from gridplayer.params.static import (
     HWCropBorderOffset,
     VideoAnchor,
-    VideoAspect,
+    VideoCellViewMode,
     VideoShift,
     VideoTransform,
     ViewParams,
@@ -947,7 +947,7 @@ class VideoFrameVLC(QWidget, metaclass=QABC):
         video = media_input.video
 
         self._view = ViewParams(
-            video.aspect_mode,
+            video.cell_view_mode,
             video.scale,
             video.crop,
             video.anchor,
@@ -1527,8 +1527,8 @@ class VideoFrameVLC(QWidget, metaclass=QABC):
     def audio_set_volume(self, volume) -> None:
         self.video_driver.audio_set_volume(volume)
 
-    def set_aspect_ratio(self, aspect: VideoAspect) -> None:
-        self._view = self._view._replace(aspect=aspect)
+    def set_cell_view_mode(self, mode: VideoCellViewMode) -> None:
+        self._view = self._view._replace(cell_view_mode=mode)
 
         self.adjust_view()
 

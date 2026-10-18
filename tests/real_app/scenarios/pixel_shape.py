@@ -6,7 +6,7 @@ from PyQt5.QtGui import QImage
 
 from gridplayer.params.static import VideoTransform
 
-SETTINGS = {"video_defaults/aspect": "none"}
+SETTINGS = {"video_defaults/cell_view_mode": "fit"}
 
 # a picture worked out from a frame of other pixels lands a pixel or so off
 SLACK_PX = 2

@@ -28,7 +28,7 @@ from gridplayer.params.static import (
     MAX_SCALE,
     HWCropBorderOffset,
     VideoAnchor,
-    VideoAspect,
+    VideoCellViewMode,
     VideoCrop,
     VideoShift,
     VideoTransform,
@@ -969,7 +969,7 @@ class TestMovingInThePane:
 
     def test_down_takes_a_smaller_picture_down(self):
         frame = _frame()
-        frame._view = frame._view._replace(aspect=VideoAspect.NONE)
+        frame._view = frame._view._replace(cell_view_mode=VideoCellViewMode.FIT)
 
         # 900x506.25 letterboxed; 96x54 frame pixels a step
         assert frame.shifted_by(0, 1) == VideoShift(0, 54)
@@ -1010,7 +1010,7 @@ class TestMovingInThePane:
         the step does not."""
 
         frame = _frame(is_shift_past_edges=True)
-        frame._view = frame._view._replace(aspect=VideoAspect.NONE)
+        frame._view = frame._view._replace(cell_view_mode=VideoCellViewMode.FIT)
         moved = []
 
         for _ in range(12):
@@ -1106,7 +1106,7 @@ class TestZoomingInThePane:
         """506.25 tall from 196.875 down, as VLC places it in whole pixels."""
 
         frame = _frame()
-        frame._view = frame._view._replace(aspect=VideoAspect.NONE)
+        frame._view = frame._view._replace(cell_view_mode=VideoCellViewMode.FIT)
 
         assert frame.shown_picture_area() == pytest.approx(
             (0, 196.875, 900, 506.25), abs=2
@@ -1197,7 +1197,7 @@ class TestTheHardwareSurface:
     def test_it_is_over_the_picture_where_that_is_against_a_side(self):
         # 900x506.25 at the top of the pane
         frame = _frame(anchor=VideoAnchor.TOP)
-        frame._view = frame._view._replace(aspect=VideoAspect.NONE)
+        frame._view = frame._view._replace(cell_view_mode=VideoCellViewMode.FIT)
 
         frame.adjust_view()
 
@@ -1208,7 +1208,7 @@ class TestTheHardwareSurface:
         stands 506.25x900 against the left side of the pane."""
         frame = _frame(anchor=VideoAnchor.LEFT)
         frame.media.cur_video_track = _track((1920, 1080), VideoTransform.ROTATE_90)
-        frame._view = frame._view._replace(aspect=VideoAspect.NONE)
+        frame._view = frame._view._replace(cell_view_mode=VideoCellViewMode.FIT)
 
         frame.adjust_view()
 
@@ -1232,7 +1232,7 @@ class TestTheHardwareSurface:
         frame = _frame()
         frame.media.cur_video_track = _track((1920, 1080), VideoTransform.ROTATE_90)
         frame._view = frame._view._replace(
-            aspect=VideoAspect.NONE, crop=VideoCrop(0, 480, 0, 480)
+            cell_view_mode=VideoCellViewMode.FIT, crop=VideoCrop(0, 480, 0, 480)
         )
 
         frame.adjust_view()
@@ -1300,7 +1300,7 @@ class TestTheHardwareSurface:
 
     def test_it_goes_where_the_picture_is_moved(self):
         frame = _frame(anchor=VideoAnchor.TOP)
-        frame._view = frame._view._replace(aspect=VideoAspect.NONE)
+        frame._view = frame._view._replace(cell_view_mode=VideoCellViewMode.FIT)
 
         frame.set_shift(frame.shifted_by(0, 1))
 

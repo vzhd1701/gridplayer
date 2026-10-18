@@ -8,7 +8,7 @@ from gridplayer.params.static import (
     NetworkRetryMode,
     SeekSyncMode,
     VideoAnchor,
-    VideoAspect,
+    VideoCellViewMode,
     VideoDeinterlace,
     VideoDeinterlaceMode,
     VideoEndAction,
@@ -809,27 +809,39 @@ ACTIONS = MappingProxyType(
             "is_choice": True,
             "show_if": "is_active_has_video",
         },
-        "Aspect Fit": {
-            "title": translate("Aspect", "Aspect Fit"),
-            "icon": "aspect-fit",
-            "func": ("active", "set_aspect", VideoAspect.FIT),
-            "check_if": ("is_active_param_set_to", "aspect_mode", VideoAspect.FIT),
+        "View Mode Fill": {
+            "title": translate("View Mode", "Fill"),
+            "icon": "view-mode-fill",
+            "func": ("active", "view.set_cell_view_mode", VideoCellViewMode.FILL),
+            "check_if": (
+                "is_active_param_set_to",
+                "cell_view_mode",
+                VideoCellViewMode.FILL,
+            ),
             "is_choice": True,
             "show_if": "is_active_has_video",
         },
-        "Aspect Stretch": {
-            "title": translate("Aspect", "Aspect Stretch"),
-            "icon": "aspect-stretch",
-            "func": ("active", "set_aspect", VideoAspect.STRETCH),
-            "check_if": ("is_active_param_set_to", "aspect_mode", VideoAspect.STRETCH),
+        "View Mode Fit": {
+            "title": translate("View Mode", "Fit"),
+            "icon": "view-mode-fit",
+            "func": ("active", "view.set_cell_view_mode", VideoCellViewMode.FIT),
+            "check_if": (
+                "is_active_param_set_to",
+                "cell_view_mode",
+                VideoCellViewMode.FIT,
+            ),
             "is_choice": True,
             "show_if": "is_active_has_video",
         },
-        "Aspect None": {
-            "title": translate("Aspect", "Aspect None"),
-            "icon": "aspect-none",
-            "func": ("active", "set_aspect", VideoAspect.NONE),
-            "check_if": ("is_active_param_set_to", "aspect_mode", VideoAspect.NONE),
+        "View Mode Stretch": {
+            "title": translate("View Mode", "Stretch"),
+            "icon": "view-mode-stretch",
+            "func": ("active", "view.set_cell_view_mode", VideoCellViewMode.STRETCH),
+            "check_if": (
+                "is_active_param_set_to",
+                "cell_view_mode",
+                VideoCellViewMode.STRETCH,
+            ),
             "is_choice": True,
             "show_if": "is_active_has_video",
         },
@@ -2077,22 +2089,22 @@ ACTIONS = MappingProxyType(
             "func": ("all", "set_anchor", VideoAnchor.BOTTOM_RIGHT),
             "show_if": "is_any_videos_have_video",
         },
-        "Aspect Fit [ALL]": {
-            "title": translate("Aspect", "Aspect Fit"),
-            "icon": "aspect-fit",
-            "func": ("all", "set_aspect", VideoAspect.FIT),
+        "View Mode Fill [ALL]": {
+            "title": translate("View Mode", "Fill"),
+            "icon": "view-mode-fill",
+            "func": ("all", "set_cell_view_mode", VideoCellViewMode.FILL),
             "show_if": "is_any_videos_have_video",
         },
-        "Aspect Stretch [ALL]": {
-            "title": translate("Aspect", "Aspect Stretch"),
-            "icon": "aspect-stretch",
-            "func": ("all", "set_aspect", VideoAspect.STRETCH),
+        "View Mode Fit [ALL]": {
+            "title": translate("View Mode", "Fit"),
+            "icon": "view-mode-fit",
+            "func": ("all", "set_cell_view_mode", VideoCellViewMode.FIT),
             "show_if": "is_any_videos_have_video",
         },
-        "Aspect None [ALL]": {
-            "title": translate("Aspect", "Aspect None"),
-            "icon": "aspect-none",
-            "func": ("all", "set_aspect", VideoAspect.NONE),
+        "View Mode Stretch [ALL]": {
+            "title": translate("View Mode", "Stretch"),
+            "icon": "view-mode-stretch",
+            "func": ("all", "set_cell_view_mode", VideoCellViewMode.STRETCH),
             "show_if": "is_any_videos_have_video",
         },
         "Rotate 90 [ALL]": {

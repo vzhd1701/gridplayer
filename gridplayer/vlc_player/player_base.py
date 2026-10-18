@@ -469,7 +469,7 @@ class VlcPlayerBase(ABC):
         # A stream can come with no frame size of its own, and VLC finds it
         # only a few tens of ms after the video output is up, which is when
         # the view is applied. Worked out without it, the view is the whole
-        # frame with bars at its sides, FIT or not, until the next resize.
+        # frame with bars at its sides, Fill or not, until the next resize.
         # Nothing announces the size, but time starts coming in right after
         # it, the first at 0, so keep trying until it is there.
         if self._is_view_unsized:
@@ -1382,7 +1382,7 @@ class VlcPlayerBase(ABC):
         elif all(self._last_video_size):
             # Live stop/play recreates the vout; cb_vout can fire before
             # video_get_size() is populated again. Reuse the last decoded size
-            # so FIT/STRETCH crop geometry is not computed as letterbox.
+            # so Fill/Stretch crop geometry is not computed as letterbox.
             video_size = self._last_video_size
 
         return video_size
@@ -1397,7 +1397,7 @@ class VlcPlayerBase(ABC):
         # Video is a different object after the multiprocess pickle).
         if self.media_input is not None:
             self.media_input.size = size
-            self.media_input.video.aspect_mode = view.aspect
+            self.media_input.video.cell_view_mode = view.cell_view_mode
             self.media_input.video.scale = view.scale
             self.media_input.video.crop = view.crop
             self.media_input.video.anchor = view.anchor
@@ -1676,7 +1676,7 @@ class VlcPlayerBase(ABC):
         self.adjust_view(
             size=self.media_input.size,
             view=ViewParams(
-                video.aspect_mode,
+                video.cell_view_mode,
                 video.scale,
                 video.crop,
                 video.anchor,

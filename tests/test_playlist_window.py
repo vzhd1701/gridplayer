@@ -22,7 +22,7 @@ from gridplayer.params.settings_bindings import (
 )
 from gridplayer.params.static import (
     AudioChannelMode,
-    VideoAspect,
+    VideoCellViewMode,
     VideoInitialState,
     VideoTransform,
 )
@@ -380,11 +380,11 @@ class TestGivenToTheVideosHere:
         manager = self._manager([block])
 
         manager._give_videos_here(
-            {VOLUME: 0.5, "video_defaults/aspect": VideoAspect.NONE}
+            {VOLUME: 0.5, "video_defaults/cell_view_mode": VideoCellViewMode.FIT}
         )
 
         block.adopt_defaults.assert_called_once_with(
-            {"volume": 0.5, "aspect_mode": VideoAspect.NONE}
+            {"volume": 0.5, "cell_view_mode": VideoCellViewMode.FIT}
         )
 
     def test_checked_as_a_video_s_own(self):

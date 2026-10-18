@@ -122,7 +122,7 @@ VIDEO_PAGE = (
         translate("SettingsDialog", "Video"),
         "video_defaults/scale",
         "video_defaults/zoom_to_cursor",
-        "video_defaults/aspect",
+        "video_defaults/cell_view_mode",
         "video_defaults/crop",
         "video_defaults/anchor",
         "video_defaults/shift_past_edges",

@@ -5,7 +5,7 @@ import pytest
 
 from gridplayer.params.static import (
     VideoAnchor,
-    VideoAspect,
+    VideoCellViewMode,
     VideoCrop,
     VideoShift,
     VideoTransform,
@@ -39,14 +39,14 @@ NO_SHIFT = VideoShift(0, 0)
 
 
 def _view(
-    aspect=VideoAspect.FIT,
+    cell_view_mode=VideoCellViewMode.FILL,
     scale=1.0,
     crop=NO_CROP,
     anchor=VideoAnchor.CENTER,
     shift=NO_SHIFT,
     is_shift_past_edges=False,
 ):
-    return ViewParams(aspect, scale, crop, anchor, shift, is_shift_past_edges)
+    return ViewParams(cell_view_mode, scale, crop, anchor, shift, is_shift_past_edges)
 
 
 def _approx(rect):
@@ -190,7 +190,7 @@ class TestPlacementZoom:
     def test_none_is_cut_only_where_it_outgrows_the_pane(self):
         # fitted inside a square pane it is 900x506.25, zoomed 1800x1012.5
         placement = calc_view_placement(
-            VIDEO, SQUARE, _view(VideoAspect.NONE, scale=2.0)
+            VIDEO, SQUARE, _view(VideoCellViewMode.FIT, scale=2.0)
         )
 
         assert placement.target == _approx((0, 0, 900, 900))
@@ -198,7 +198,7 @@ class TestPlacementZoom:
 
     def test_none_keeps_letterbox_while_it_fits(self):
         placement = calc_view_placement(
-            VIDEO, (900, 2000), _view(VideoAspect.NONE, scale=1.5)
+            VIDEO, (900, 2000), _view(VideoCellViewMode.FIT, scale=1.5)
         )
 
         # 900x506.25 fitted, 1350x759.375 zoomed
@@ -208,7 +208,7 @@ class TestPlacementZoom:
 
 class TestPlacementNoneAndStretch:
     def test_none_letterboxes_in_the_middle(self):
-        placement = calc_view_placement(VIDEO, SQUARE, _view(VideoAspect.NONE))
+        placement = calc_view_placement(VIDEO, SQUARE, _view(VideoCellViewMode.FIT))
 
         assert placement.source == _approx((0, 0, 1920, 1080))
         assert placement.target == _approx((0, (900 - 506.25) / 2, 900, 506.25))
@@ -223,14 +223,14 @@ class TestPlacementNoneAndStretch:
     )
     def test_none_stands_where_the_anchor_says(self, anchor, top):
         placement = calc_view_placement(
-            VIDEO, SQUARE, _view(VideoAspect.NONE, anchor=anchor)
+            VIDEO, SQUARE, _view(VideoCellViewMode.FIT, anchor=anchor)
         )
 
         assert placement.target == _approx((0, top, 900, 506.25))
 
     def test_none_is_kept_whole_inside_the_pane(self):
         placement = calc_view_placement(
-            VIDEO, SQUARE, _view(VideoAspect.NONE, shift=VideoShift(0, -2000))
+            VIDEO, SQUARE, _view(VideoCellViewMode.FIT, shift=VideoShift(0, -2000))
         )
 
         assert placement.target == _approx((0, 0, 900, 506.25))
@@ -238,7 +238,7 @@ class TestPlacementNoneAndStretch:
     @pytest.mark.parametrize("anchor", list(VideoAnchor))
     def test_stretch_has_no_room_to_move(self, anchor):
         placement = calc_view_placement(
-            VIDEO, SQUARE, _view(VideoAspect.STRETCH, anchor=anchor)
+            VIDEO, SQUARE, _view(VideoCellViewMode.STRETCH, anchor=anchor)
         )
 
         assert placement.source == _approx((0, 0, 1920, 1080))
@@ -246,7 +246,9 @@ class TestPlacementNoneAndStretch:
 
     def test_stretch_zoomed_can_pan(self):
         placement = calc_view_placement(
-            VIDEO, SQUARE, _view(VideoAspect.STRETCH, scale=2.0, anchor=VideoAnchor.TOP)
+            VIDEO,
+            SQUARE,
+            _view(VideoCellViewMode.STRETCH, scale=2.0, anchor=VideoAnchor.TOP),
         )
 
         assert placement.source == _approx((480, 0, 960, 540))
@@ -277,7 +279,10 @@ class TestPlacementRotation:
 
     def test_letterboxes_in_its_turned_shape(self):
         placement = calc_view_placement(
-            self.FRAME, (640, 360), _view(VideoAspect.NONE), VideoTransform.ROTATE_270
+            self.FRAME,
+            (640, 360),
+            _view(VideoCellViewMode.FIT),
+            VideoTransform.ROTATE_270,
         )
 
         # 360 tall, so 202.5 wide
@@ -289,7 +294,7 @@ class TestPlacementRotation:
         placement = calc_view_placement(
             self.FRAME,
             (360, 640),
-            _view(VideoAspect.NONE, crop=VideoCrop(160, 0, 0, 0)),
+            _view(VideoCellViewMode.FIT, crop=VideoCrop(160, 0, 0, 0)),
             VideoTransform.ROTATE_90,
         )
 
@@ -349,7 +354,7 @@ class TestShiftHeldAtTheEdges:
 
     def test_a_smaller_picture_moves_about_inside_the_pane(self):
         # 900x506.25 in a 900x900 pane, 420 frame pixels of room up or down
-        view = _view(VideoAspect.NONE, shift=VideoShift(10, 1000))
+        view = _view(VideoCellViewMode.FIT, shift=VideoShift(10, 1000))
 
         assert calc_view_shift(VIDEO, SQUARE, view) == VideoShift(0, 420)
 
@@ -458,7 +463,7 @@ class TestZoomedShift:
             (_view(anchor=VideoAnchor.BOTTOM_RIGHT), VideoTransform.NONE),
             (_view(shift=VideoShift(-200, 0)), VideoTransform.NONE),
             (_view(crop=VideoCrop(100, 40, 300, 0)), VideoTransform.NONE),
-            (_view(aspect=VideoAspect.STRETCH), VideoTransform.NONE),
+            (_view(cell_view_mode=VideoCellViewMode.STRETCH), VideoTransform.NONE),
             (_view(scale=1.5, is_shift_past_edges=True), VideoTransform.NONE),
             (_view(), VideoTransform.ROTATE_90),
         ],
@@ -495,7 +500,7 @@ class TestZoomedShift:
     def test_an_axis_the_picture_fits_on_goes_to_the_anchor_s_place(self):
         """Letterboxed, 900x506.25, and still only 759.375 tall at 1.5x."""
 
-        view = _view(aspect=VideoAspect.NONE, shift=VideoShift(0, 100))
+        view = _view(cell_view_mode=VideoCellViewMode.FIT, shift=VideoShift(0, 100))
 
         shift, kept = calc_zoomed_shift(VIDEO, SQUARE, view, 1.5, (300, 300))
 
@@ -506,7 +511,7 @@ class TestZoomedShift:
         assert kept[0] is not None
 
     def test_past_the_edges_it_follows_the_focus_on_that_axis_too(self):
-        view = _view(aspect=VideoAspect.NONE, is_shift_past_edges=True)
+        view = _view(cell_view_mode=VideoCellViewMode.FIT, is_shift_past_edges=True)
         point = _under(view, (300, 300))
 
         shift, kept = calc_zoomed_shift(VIDEO, SQUARE, view, 1.5, (300, 300))
@@ -519,7 +524,7 @@ class TestZoomedShift:
         1.5x, 70.3125 from the top centred, 180 frame pixels further down
         at 0.703125 pane pixels each. Not kept, the edge being no focus."""
 
-        view = _view(aspect=VideoAspect.NONE, is_shift_past_edges=True)
+        view = _view(cell_view_mode=VideoCellViewMode.FIT, is_shift_past_edges=True)
 
         shift, kept = calc_zoomed_shift(VIDEO, SQUARE, view, 1.5, (450, 50))
 
@@ -597,7 +602,7 @@ class TestSelectionZoom:
             (_view(anchor=VideoAnchor.BOTTOM_RIGHT), VideoTransform.NONE),
             (_view(shift=VideoShift(-200, 0)), VideoTransform.NONE),
             (_view(crop=VideoCrop(100, 40, 300, 0)), VideoTransform.NONE),
-            (_view(aspect=VideoAspect.STRETCH), VideoTransform.NONE),
+            (_view(cell_view_mode=VideoCellViewMode.STRETCH), VideoTransform.NONE),
             (_view(scale=1.5, shift=VideoShift(90, -60)), VideoTransform.NONE),
             (_view(scale=1.5, is_shift_past_edges=True), VideoTransform.NONE),
             (_view(), VideoTransform.ROTATE_90),
@@ -690,21 +695,21 @@ class TestSelectionZoom:
     def test_only_what_is_over_the_picture_counts(self):
         """Letterboxed, 900x506.25 from 196.875 down: 450x103.125 of it."""
 
-        view = _view(aspect=VideoAspect.NONE)
+        view = _view(cell_view_mode=VideoCellViewMode.FIT)
 
         scale, _ = calc_selection_zoom(VIDEO, SQUARE, view, (0, 0, 450, 300))
 
         assert scale == 2.0
 
     def test_over_the_bars_alone_there_is_nothing_to_zoom_to(self):
-        view = _view(aspect=VideoAspect.NONE)
+        view = _view(cell_view_mode=VideoCellViewMode.FIT)
 
         assert calc_selection_zoom(VIDEO, SQUARE, view, (0, 0, 900, 150)) is None
 
     def test_an_axis_the_picture_fits_on_goes_to_the_anchor_s_place(self):
         """Letterboxed, and still only 759.375 tall at 1.5x."""
 
-        view = _view(aspect=VideoAspect.NONE)
+        view = _view(cell_view_mode=VideoCellViewMode.FIT)
 
         scale, shift = calc_selection_zoom(VIDEO, SQUARE, view, (0, 300, 600, 100))
 
@@ -715,7 +720,7 @@ class TestSelectionZoom:
         assert shift.X == calc_shift_range(VIDEO, SQUARE, zoomed)[1].X
 
     def test_past_the_edges_it_is_in_the_middle_on_that_axis_too(self):
-        view = _view(aspect=VideoAspect.NONE, is_shift_past_edges=True)
+        view = _view(cell_view_mode=VideoCellViewMode.FIT, is_shift_past_edges=True)
         middle = _under(view, (300, 350))
 
         scale, shift = calc_selection_zoom(VIDEO, SQUARE, view, (0, 300, 600, 100))
@@ -779,9 +784,11 @@ class TestFollowingAView:
     def test_a_picture_of_another_shape_has_the_same_point_in_the_middle(self):
         leader = _view(scale=3.0, shift=VideoShift(-300, 120))
 
-        followed = _followed(leader, _view(aspect=VideoAspect.NONE), frame=(640, 480))
+        followed = _followed(
+            leader, _view(cell_view_mode=VideoCellViewMode.FIT), frame=(640, 480)
+        )
 
-        assert followed.aspect == VideoAspect.NONE
+        assert followed.cell_view_mode == VideoCellViewMode.FIT
         assert _middle(followed, (640, 480)) == pytest.approx(
             _middle(leader, VIDEO), abs=0.5 / 480
         )
@@ -789,12 +796,15 @@ class TestFollowingAView:
     def test_a_picture_smaller_than_its_pane_stands_where_the_other_does(self):
         # 1200x900 in 1600x900 and 2000x900, moved a quarter of the way
         # across the room beside it, 100 of 400
-        leader = _view(aspect=VideoAspect.NONE, shift=VideoShift(-120, 0))
+        leader = _view(cell_view_mode=VideoCellViewMode.FIT, shift=VideoShift(-120, 0))
         assert calc_picture_rect((1440, 1080), PANE, leader)[0] == pytest.approx(100)
 
         shared = calc_shared_view((1440, 1080), PANE, leader)
         followed = calc_followed_view(
-            (1440, 1080), (2000, 900), _view(aspect=VideoAspect.NONE), shared
+            (1440, 1080),
+            (2000, 900),
+            _view(cell_view_mode=VideoCellViewMode.FIT),
+            shared,
         )
 
         left = calc_picture_rect((1440, 1080), (2000, 900), followed)[0]
@@ -802,11 +812,13 @@ class TestFollowingAView:
         assert left == pytest.approx(200, abs=900 / 1080)
 
     def test_one_against_a_corner_is_followed_into_it(self):
-        leader = _view(aspect=VideoAspect.NONE, anchor=VideoAnchor.TOP_LEFT)
+        leader = _view(
+            cell_view_mode=VideoCellViewMode.FIT, anchor=VideoAnchor.TOP_LEFT
+        )
         shared = calc_shared_view((1440, 1080), PANE, leader)
 
         followed = calc_followed_view(
-            (1080, 1080), PANE, _view(aspect=VideoAspect.NONE), shared
+            (1080, 1080), PANE, _view(cell_view_mode=VideoCellViewMode.FIT), shared
         )
 
         assert followed.anchor == VideoAnchor.TOP_LEFT
@@ -825,7 +837,7 @@ class TestFollowingAView:
 
     def test_the_zoom_and_the_alignment_are_taken_and_the_rest_kept(self):
         follower = _view(
-            aspect=VideoAspect.STRETCH,
+            cell_view_mode=VideoCellViewMode.STRETCH,
             scale=5.0,
             crop=VideoCrop(10, 20, 30, 40),
             anchor=VideoAnchor.TOP,
@@ -838,7 +850,7 @@ class TestFollowingAView:
 
         assert followed.scale == 2.0
         assert followed.anchor == VideoAnchor.BOTTOM_RIGHT
-        assert followed.aspect == VideoAspect.STRETCH
+        assert followed.cell_view_mode == VideoCellViewMode.STRETCH
         assert followed.crop == VideoCrop(10, 20, 30, 40)
         assert followed.is_shift_past_edges
 
@@ -878,7 +890,7 @@ class TestShiftRange:
     def test_past_the_edges_it_goes_as_far_as_half_on_show(self):
         # 900x506.25: half of 506.25 up or down past the 393.75 of room,
         # and half the pane across, 960 frame pixels every way
-        view = _view(VideoAspect.NONE, is_shift_past_edges=True)
+        view = _view(VideoCellViewMode.FIT, is_shift_past_edges=True)
 
         assert calc_shift_range(VIDEO, SQUARE, view) == (
             VideoShift(-960, -960),
@@ -907,7 +919,9 @@ class TestPictureRect:
         # 960x1080 kept fits the square at 800x900, 50 in; 50 frame pixels
         # right is 41.7 more
         view = _view(
-            VideoAspect.NONE, crop=VideoCrop(480, 0, 480, 0), shift=VideoShift(50, 0)
+            VideoCellViewMode.FIT,
+            crop=VideoCrop(480, 0, 480, 0),
+            shift=VideoShift(50, 0),
         )
 
         assert calc_picture_rect(VIDEO, SQUARE, view) == _approx(
@@ -944,7 +958,7 @@ class TestPastTheEdges:
     def test_a_smaller_picture_goes_as_far_as_half_of_it_out(self):
         # 900x506.25 in a 900x900 pane, pulled up half out of it
         view = _view(
-            VideoAspect.NONE, shift=VideoShift(0, -5000), is_shift_past_edges=True
+            VideoCellViewMode.FIT, shift=VideoShift(0, -5000), is_shift_past_edges=True
         )
 
         placement = calc_view_placement(VIDEO, SQUARE, view)
@@ -957,8 +971,8 @@ class TestPastTheEdges:
         [
             _view(shift=VideoShift(-300, 0)),
             _view(anchor=VideoAnchor.LEFT, shift=VideoShift(-500, 0)),
-            _view(VideoAspect.NONE, shift=VideoShift(0, 200)),
-            _view(VideoAspect.NONE, scale=3.0, shift=VideoShift(400, -100)),
+            _view(VideoCellViewMode.FIT, shift=VideoShift(0, 200)),
+            _view(VideoCellViewMode.FIT, scale=3.0, shift=VideoShift(400, -100)),
         ],
     )
     def test_within_the_edges_it_goes_where_it_would_anyway(self, view):
@@ -972,13 +986,13 @@ class TestPastTheEdges:
         # 0.46875 pane pixels to a frame pixel, 196.875 above the picture
         # at the anchor and 253.125 of it to take out of the pane
         view = _view(
-            VideoAspect.NONE, shift=VideoShift(0, -5000), is_shift_past_edges=True
+            VideoCellViewMode.FIT, shift=VideoShift(0, -5000), is_shift_past_edges=True
         )
 
         assert calc_view_shift(VIDEO, SQUARE, view) == VideoShift(0, -960)
 
     def test_it_is_held_within_the_edges_again_once_not_let_past(self):
-        view = _view(VideoAspect.NONE, shift=VideoShift(0, -960))
+        view = _view(VideoCellViewMode.FIT, shift=VideoShift(0, -960))
 
         assert calc_view_shift(VIDEO, SQUARE, view) == VideoShift(0, -420)
 
@@ -1008,10 +1022,12 @@ class TestWholePlacement:
             _view(anchor=VideoAnchor.RIGHT),
             _view(scale=2.0, anchor=VideoAnchor.TOP_LEFT, shift=VideoShift(-90, 40)),
             _view(
-                VideoAspect.NONE, shift=VideoShift(0, -5000), is_shift_past_edges=True
+                VideoCellViewMode.FIT,
+                shift=VideoShift(0, -5000),
+                is_shift_past_edges=True,
             ),
             _view(scale=3.0, shift=VideoShift(5000, 5000), is_shift_past_edges=True),
-            _view(VideoAspect.STRETCH, scale=1.5, anchor=VideoAnchor.BOTTOM),
+            _view(VideoCellViewMode.STRETCH, scale=1.5, anchor=VideoAnchor.BOTTOM),
         ],
     )
     def test_the_pane_cuts_it_down_to_the_view(self, view):
@@ -1039,9 +1055,9 @@ class TestWholePlacement:
         [
             _view(crop=VideoCrop(320, 0, 0, 0)),
             _view(crop=VideoCrop(100, 200, 300, 50), anchor=VideoAnchor.TOP_LEFT),
-            _view(VideoAspect.NONE, crop=VideoCrop(0, 300, 900, 0)),
+            _view(VideoCellViewMode.FIT, crop=VideoCrop(0, 300, 900, 0)),
             _view(
-                VideoAspect.NONE,
+                VideoCellViewMode.FIT,
                 crop=VideoCrop(500, 0, 0, 400),
                 shift=VideoShift(0, -5000),
                 is_shift_past_edges=True,
@@ -1088,7 +1104,7 @@ class TestWholeGeometry:
         assert geometry == ("889:500", "+0+0+0+0")
 
     def test_stretched_it_takes_the_pane_s_shape(self):
-        view = _view(VideoAspect.STRETCH)
+        view = _view(VideoCellViewMode.STRETCH)
 
         geometry = calc_whole_geometry((640, 360), (400, 500), view, is_turned=True)
 
@@ -1124,11 +1140,11 @@ class TestStep:
 
     def test_moves_the_picture_that_way_where_it_is_smaller(self):
         # all 1920x1080 on show, letterboxed, with room up and down
-        assert calc_view_step(VIDEO, SQUARE, _view(VideoAspect.NONE)) == (96, 54)
+        assert calc_view_step(VIDEO, SQUARE, _view(VideoCellViewMode.FIT)) == (96, 54)
 
     def test_takes_each_way_on_its_own(self):
         # zoomed out of a tall pane: bigger across, smaller down
-        view = _view(VideoAspect.NONE, scale=1.5)
+        view = _view(VideoCellViewMode.FIT, scale=1.5)
 
         across, down = calc_view_step(VIDEO, (900, 2000), view)
 
@@ -1137,7 +1153,7 @@ class TestStep:
     def test_is_the_same_past_the_edges(self):
         """Less of it is on show out there, but a press goes as far."""
 
-        view = _view(VideoAspect.NONE, is_shift_past_edges=True)
+        view = _view(VideoCellViewMode.FIT, is_shift_past_edges=True)
         moved_out = view._replace(shift=VideoShift(0, -900))
 
         assert calc_view_step(VIDEO, SQUARE, moved_out) == calc_view_step(
@@ -1161,13 +1177,13 @@ class TestMovedShift:
         assert calc_moved_shift(VIDEO, SQUARE, view, (2, -1)) == VideoShift(-54, 27)
 
     def test_from_between_steps_goes_to_the_next(self):
-        view = _view(VideoAspect.NONE, shift=VideoShift(0, -70))
+        view = _view(VideoCellViewMode.FIT, shift=VideoShift(0, -70))
 
         assert calc_moved_shift(VIDEO, SQUARE, view, (0, 1)) == VideoShift(0, -54)
         assert calc_moved_shift(VIDEO, SQUARE, view, (0, -1)) == VideoShift(0, -108)
 
     def test_is_held_where_the_picture_stops(self):
-        view = _view(VideoAspect.NONE, shift=VideoShift(0, 400))
+        view = _view(VideoCellViewMode.FIT, shift=VideoShift(0, 400))
 
         assert calc_moved_shift(VIDEO, SQUARE, view, (0, 3)) == VideoShift(0, 420)
 
@@ -1189,9 +1205,9 @@ class TestPlacementNothing:
 class TestViewGeometry:
     """What VLC is told: crop to the part on show, give it the pane's shape."""
 
-    @pytest.mark.parametrize("aspect", list(VideoAspect))
-    def test_same_shape_keeps_it_all(self, aspect):
-        assert calc_view_geometry(VIDEO, PANE, _view(aspect)) == ("16:9", "+0+0+0+0")
+    @pytest.mark.parametrize("mode", list(VideoCellViewMode))
+    def test_same_shape_keeps_it_all(self, mode):
+        assert calc_view_geometry(VIDEO, PANE, _view(mode)) == ("16:9", "+0+0+0+0")
 
     def test_fit_crops_a_square_from_the_middle(self):
         assert calc_view_geometry(VIDEO, SQUARE, _view()) == ("16:9", "+420+0+420+0")
@@ -1200,7 +1216,7 @@ class TestViewGeometry:
         crop = VideoCrop(100, 50, 40, 30)
 
         override, geometry = calc_view_geometry(
-            VIDEO, PANE, _view(VideoAspect.NONE, crop=crop)
+            VIDEO, PANE, _view(VideoCellViewMode.FIT, crop=crop)
         )
 
         assert geometry == "+100+50+40+30"
@@ -1263,7 +1279,7 @@ class TestViewGeometry:
         crop = VideoCrop(480, 0, 480, 0)
 
         assert calc_view_geometry(
-            VIDEO, PANE, _view(VideoAspect.STRETCH, crop=crop)
+            VIDEO, PANE, _view(VideoCellViewMode.STRETCH, crop=crop)
         ) == (
             "32:9",
             "+480+0+480+0",
@@ -1274,7 +1290,7 @@ class TestViewGeometry:
         crop = VideoCrop(0, 270, 0, 270)
 
         assert calc_view_geometry(
-            VIDEO, PANE, _view(VideoAspect.STRETCH, crop=crop)
+            VIDEO, PANE, _view(VideoCellViewMode.STRETCH, crop=crop)
         ) == (
             "8:9",
             "+0+270+0+270",
@@ -1286,7 +1302,7 @@ class TestViewGeometry:
         crop = VideoCrop(1919, 1079, 0, 0)
 
         assert calc_view_geometry(
-            VIDEO, (1, 600000), _view(VideoAspect.STRETCH, crop=crop)
+            VIDEO, (1, 600000), _view(VideoCellViewMode.STRETCH, crop=crop)
         ) == ("0:0", "+1919+1079+0+0")
 
     def test_stretch_degenerate_override_falls_back_to_native(self):
@@ -1295,7 +1311,7 @@ class TestViewGeometry:
         crop = VideoCrop(1919, 1079, 0, 0)
 
         assert calc_view_geometry(
-            VIDEO, (600000, 1), _view(VideoAspect.STRETCH, crop=crop)
+            VIDEO, (600000, 1), _view(VideoCellViewMode.STRETCH, crop=crop)
         ) == ("0:0", "+1919+1079+0+0")
 
     def test_zero_pane_size_falls_back_to_letterbox(self):
@@ -1330,8 +1346,8 @@ class TestViewGeometry:
     def test_override_fits_vlc_sar_range_without_giving_up(self, pane, crop):
         """A ratio that won't reduce is approximated, not reset to native."""
 
-        for aspect in VideoAspect:
-            view = _view(aspect, crop=crop)
+        for mode in VideoCellViewMode:
+            view = _view(mode, crop=crop)
             override, geometry = calc_view_geometry(VIDEO, pane, view)
             num, den = (int(part) for part in override.split(":"))
             _, _, target_w, target_h = calc_view_placement(VIDEO, pane, view).target
@@ -1361,7 +1377,7 @@ class TestViewGeometry:
             frame = rng.choice([VIDEO, (1917, 1079), (720, 576), (4096, 2160)])
             pane = (rng.randint(50, 2000), rng.randint(50, 1200))
             view = _view(
-                rng.choice(list(VideoAspect)),
+                rng.choice(list(VideoCellViewMode)),
                 rng.choice([1.0, 1.3, 2.0, 7.5]),
                 VideoCrop(*(rng.choice([0, 0, 3, 41]) for _ in range(4))),
                 rng.choice(list(VideoAnchor)),
@@ -1420,7 +1436,7 @@ class TestViewGeometryRotated:
         override, geometry = calc_view_geometry(
             self.FRAME,
             (360, 640),
-            _view(VideoAspect.NONE, crop=crop),
+            _view(VideoCellViewMode.FIT, crop=crop),
             VideoTransform.ROTATE_90,
         )
 
@@ -1433,9 +1449,9 @@ class TestViewBorders:
     def test_is_what_vlc_is_told_to_crop(self):
         crop = VideoCrop(10, 20, 30, 40)
 
-        for aspect in VideoAspect:
+        for mode in VideoCellViewMode:
             for scale in (1.0, 2.5):
-                view = _view(aspect, scale, crop)
+                view = _view(mode, scale, crop)
                 borders = calc_view_borders((800, 600), (500, 200), view)
                 _, geometry = calc_view_geometry((800, 600), (500, 200), view)
 
@@ -1509,7 +1525,7 @@ class TestPixelAspect:
 
     def test_wide_pixels_make_a_wide_picture(self):
         placement = calc_view_placement(
-            WIDE_PIXELS, (1280, 720), _view(VideoAspect.NONE), pixel_aspect=2
+            WIDE_PIXELS, (1280, 720), _view(VideoCellViewMode.FIT), pixel_aspect=2
         )
 
         assert placement.source == _approx((0, 0, 320, 360))
@@ -1517,7 +1533,7 @@ class TestPixelAspect:
 
     def test_a_dvb_picture_is_16_9(self):
         placement = calc_view_placement(
-            (720, 576), PANE, _view(VideoAspect.NONE), pixel_aspect=64 / 45
+            (720, 576), PANE, _view(VideoCellViewMode.FIT), pixel_aspect=64 / 45
         )
 
         assert placement.target == _approx((0, 0, 1600, 900))
@@ -1530,7 +1546,7 @@ class TestPixelAspect:
 
     def test_the_crop_is_in_the_video_s_own_pixels(self):
         # 240x360 kept is 480x360 shown, 4:3
-        view = _view(VideoAspect.NONE, crop=VideoCrop(40, 0, 40, 0))
+        view = _view(VideoCellViewMode.FIT, crop=VideoCrop(40, 0, 40, 0))
 
         placement = calc_view_placement(WIDE_PIXELS, (1280, 720), view, pixel_aspect=2)
 
@@ -1540,7 +1556,7 @@ class TestPixelAspect:
         placement = calc_view_placement(
             WIDE_PIXELS,
             (900, 1600),
-            _view(VideoAspect.NONE),
+            _view(VideoCellViewMode.FIT),
             VideoTransform.ROTATE_90,
             pixel_aspect=2,
         )
@@ -1551,7 +1567,7 @@ class TestPixelAspect:
         """The override takes the place of the video's own pixel shape."""
 
         geometry = calc_view_geometry(
-            WIDE_PIXELS, (1280, 720), _view(VideoAspect.NONE), pixel_aspect=2
+            WIDE_PIXELS, (1280, 720), _view(VideoCellViewMode.FIT), pixel_aspect=2
         )
 
         assert calc_vlc_picture(WIDE_PIXELS, geometry, (1280, 720)) == (0, 0, 1280, 720)

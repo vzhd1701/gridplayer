@@ -31,7 +31,7 @@ SUBMENUS = MappingProxyType(
         "Speed": {"title": translate("Actions", "Speed"), "icon": "speed"},
         "Zoom": {"title": translate("Actions", "Zoom"), "icon": "zoom"},
         "Zoom to Cursor": {"title": translate("Zoom", "Zoom to Cursor")},
-        "Aspect": {"title": translate("Actions", "Aspect"), "icon": "aspect"},
+        "View Mode": {"title": translate("Actions", "View Mode"), "icon": "view-mode"},
         "Crop": {"title": translate("Actions", "Crop"), "icon": "crop"},
         "Position": {"title": translate("Actions", "Position"), "icon": "anchor"},
         "Move Past Edges": {"title": translate("Actions", "Move Past Edges")},
@@ -137,10 +137,10 @@ SECTIONS = MappingProxyType(
                     "Zoom to Cursor",
                 ),
                 (
-                    "Aspect",
-                    "Aspect Fit",
-                    "Aspect Stretch",
-                    "Aspect None",
+                    "View Mode",
+                    "View Mode Fill",
+                    "View Mode Fit",
+                    "View Mode Stretch",
                 ),
                 (
                     "Crop",
@@ -409,10 +409,10 @@ SECTIONS = MappingProxyType(
                         ),
                     ),
                     (
-                        "Aspect",
-                        "Aspect Fit [ALL]",
-                        "Aspect Stretch [ALL]",
-                        "Aspect None [ALL]",
+                        "View Mode",
+                        "View Mode Fill [ALL]",
+                        "View Mode Fit [ALL]",
+                        "View Mode Stretch [ALL]",
                     ),
                     (
                         "Crop",

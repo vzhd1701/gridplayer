@@ -37,7 +37,7 @@ from gridplayer.params.static import (
     NetworkRetryMode,
     SubtitleTrackMode,
     VideoAnchor,
-    VideoAspect,
+    VideoCellViewMode,
     VideoCrop,
     VideoDeinterlace,
     VideoDeinterlaceMode,
@@ -60,6 +60,28 @@ def migrate_end_action(value):
     if isinstance(value, str):
         return _LEGACY_END_ACTION.get(value, value)
     return value
+
+
+# The view mode was saved as the "aspect" once, under other names: its
+# "fit" covered the cell, which is FILL now, and "none" showed the whole
+# picture, which is FIT
+_LEGACY_ASPECT = {
+    "fit": VideoCellViewMode.FILL,
+    "none": VideoCellViewMode.FIT,
+    "stretch": VideoCellViewMode.STRETCH,
+}
+
+
+def migrate_aspect(data: dict, old_key: str) -> None:
+    """Move an "aspect" saved under its old key to the view mode."""
+
+    if old_key not in data:
+        return
+
+    value = data.pop(old_key)
+
+    if "cell_view_mode" not in data:
+        data["cell_view_mode"] = _LEGACY_ASPECT.get(value, value)
 
 
 # What each mode a video can be set to default to comes out as. Only three
@@ -192,7 +214,7 @@ class Video(BaseModel):
     )
 
     # Generic
-    aspect_mode: VideoAspect = session_field("video_defaults/aspect")
+    cell_view_mode: VideoCellViewMode = session_field("video_defaults/cell_view_mode")
     is_muted: bool = session_field("video_defaults/muted")
     playback_state: VideoInitialState = session_field("video_defaults/initial_state")
     scale: Annotated[float, Field(ge=MIN_SCALE, le=MAX_SCALE)] = session_field(
@@ -303,6 +325,8 @@ class Video(BaseModel):
             data.pop("repeat_mode", None)
         if "end_action" in data:
             data["end_action"] = migrate_end_action(data["end_action"])
+
+        migrate_aspect(data, "aspect_mode")
 
         if "audio_selection" not in data:
             legacy_audio = _audio_selection_from_legacy(data)

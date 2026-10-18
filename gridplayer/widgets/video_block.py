@@ -38,7 +38,6 @@ from gridplayer.params.static import (
     MIN_RATE,
     OVERLAY_ACTIVITY_EVENT,
     PLAYER_ID_LENGTH,
-    VideoAspect,
     VideoDeinterlace,
     VideoDeinterlaceMode,
     VideoEndAction,
@@ -1495,7 +1494,7 @@ class VideoBlock(QWidget):
         self.subtitles.restore_selection(snapshot.subtitle_selection)
         self.subtitles.set_delay(snapshot.subtitle_delay_ms, is_silent=True)
 
-        self.set_aspect(snapshot.aspect_mode)
+        self.view.set_cell_view_mode(snapshot.cell_view_mode)
         self.set_deinterlace_params(snapshot.deinterlace, snapshot.deinterlace_mode)
         self.audio.set_muted(snapshot.is_muted)
         self.set_pause(snapshot.is_paused)
@@ -1550,7 +1549,7 @@ class VideoBlock(QWidget):
             return
 
         live = {
-            "aspect_mode": self.set_aspect,
+            "cell_view_mode": self.view.set_cell_view_mode,
             "is_muted": self.audio.set_muted,
             "volume": self.audio.set_volume,
             "audio_channel_mode": self.audio.set_channel_mode,
@@ -1879,12 +1878,6 @@ class VideoBlock(QWidget):
 
         self.video_status.hide()
         self.show_overlay()
-
-    @only_with_video_tacks
-    def set_aspect(self, aspect: VideoAspect):
-        self.video_params.aspect_mode = aspect
-
-        self.video_driver.set_aspect_ratio(self.video_params.aspect_mode)
 
     @only_with_video_tacks
     def set_transform(self, transform: VideoTransform):

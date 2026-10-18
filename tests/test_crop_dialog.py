@@ -6,7 +6,7 @@ from PyQt5.QtGui import QPixmap
 from PyQt5.QtWidgets import QApplication, QDialog
 
 from gridplayer.dialogs.crop import QCompactCropPicker, SetCropDialog
-from gridplayer.params.static import VideoAspect, VideoCrop, VideoTransform
+from gridplayer.params.static import VideoCellViewMode, VideoCrop, VideoTransform
 from gridplayer.widgets.video_frame_vlc_base import PauseSnapshot
 
 
@@ -19,12 +19,12 @@ NO_CROP = VideoCrop(0, 0, 0, 0)
 
 
 class _FakeBlock:
-    def __init__(self, crop=NO_CROP, aspect=VideoAspect.FIT):
+    def __init__(self, crop=NO_CROP, cell_view_mode=VideoCellViewMode.FILL):
         self.applied = []
-        self.aspect_calls = []
+        self.view_mode_calls = []
         self.video_params = SimpleNamespace(
             crop=crop,
-            aspect_mode=aspect,
+            cell_view_mode=cell_view_mode,
             video_track_id=1,
             transform=VideoTransform.NONE,
         )
@@ -42,9 +42,9 @@ class _FakeBlock:
             self.video_params.crop = clamped
         self.applied.append((self.video_params.crop, is_silent))
 
-    def set_aspect(self, aspect):
-        self.aspect_calls.append(aspect)
-        self.video_params.aspect_mode = aspect
+    def set_cell_view_mode(self, mode):
+        self.view_mode_calls.append(mode)
+        self.video_params.cell_view_mode = mode
 
 
 def test_dialog_initializes_from_current_crop_and_bounds():
@@ -81,29 +81,29 @@ def test_dialog_ok_commits_crop_loudly():
     assert dialog.result() == QDialog.Accepted
 
 
-def test_dialog_cancel_restores_crop_without_changing_aspect():
-    block = _FakeBlock(aspect=VideoAspect.FIT)
+def test_dialog_cancel_restores_crop_without_changing_view_mode():
+    block = _FakeBlock(cell_view_mode=VideoCellViewMode.FILL)
     dialog = SetCropDialog.for_video_block(block)
 
     dialog._spins["left"].setValue(15)
-    assert block.video_params.aspect_mode is VideoAspect.FIT
+    assert block.video_params.cell_view_mode is VideoCellViewMode.FILL
 
     dialog.reject()
 
     assert block.applied[-1] == (VideoCrop(0, 0, 0, 0), True)
     assert block.video_params.crop == VideoCrop(0, 0, 0, 0)
-    assert block.video_params.aspect_mode is VideoAspect.FIT
-    assert block.aspect_calls == []
+    assert block.video_params.cell_view_mode is VideoCellViewMode.FILL
+    assert block.view_mode_calls == []
 
 
 def test_dialog_cancel_without_changes_is_noop():
-    block = _FakeBlock(VideoCrop(5, 5, 5, 5), VideoAspect.STRETCH)
+    block = _FakeBlock(VideoCrop(5, 5, 5, 5), VideoCellViewMode.STRETCH)
     dialog = SetCropDialog.for_video_block(block)
 
     dialog.reject()
 
     assert block.applied == []
-    assert block.aspect_calls == []
+    assert block.view_mode_calls == []
 
 
 def test_dialog_reset_zeroes_crop_live():

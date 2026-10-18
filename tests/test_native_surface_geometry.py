@@ -6,7 +6,11 @@ from PyQt5.QtCore import QMargins, QSize, Qt
 from PyQt5.QtWidgets import QApplication, QWidget
 
 import gridplayer.widgets.video_frame_vlc_base as vlc_base
-from gridplayer.params.static import HWCropBorderOffset, VideoAspect, VideoTransform
+from gridplayer.params.static import (
+    HWCropBorderOffset,
+    VideoCellViewMode,
+    VideoTransform,
+)
 from gridplayer.utils import darkmode
 from gridplayer.utils.aspect_calc import ViewPlacement
 from gridplayer.widgets.video_frame_vlc_base import (
@@ -374,7 +378,7 @@ def test_surface_grown_by_the_padding():
     assert surface.geometry().getRect() == (-9, -8, 819, 466)
 
 
-def _playing_1080p(frame, aspect=VideoAspect.FIT):
+def _playing_1080p(frame, cell_view_mode=VideoCellViewMode.FILL):
     frame.media = SimpleNamespace(
         cur_video_track=SimpleNamespace(
             video_dimensions=(1920, 1080),
@@ -383,7 +387,7 @@ def _playing_1080p(frame, aspect=VideoAspect.FIT):
             pixel_aspect=1,
         )
     )
-    frame._view = frame._view._replace(aspect=aspect)
+    frame._view = frame._view._replace(cell_view_mode=cell_view_mode)
     frame.resize(550, 500)
 
 
@@ -405,7 +409,7 @@ def test_paused_picture_a_row_lower_under_opengl(monkeypatch):
     _stub_offset_setting(monkeypatch)
     _platform(monkeypatch, windows=False)
     frame = _StubHWFrame(vlc_options=[])
-    _playing_1080p(frame, aspect=VideoAspect.NONE)
+    _playing_1080p(frame, cell_view_mode=VideoCellViewMode.FIT)
 
     # surface (-8, 87, 566, 326), the picture 317 rows of it, VLC working
     # out 4 above and 5 below

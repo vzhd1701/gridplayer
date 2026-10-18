@@ -8,7 +8,7 @@ from gridplayer.params.static import (
     ROTATION_TRANSFORMS,
     SHIFT_STEP,
     VideoAnchor,
-    VideoAspect,
+    VideoCellViewMode,
     VideoCrop,
     VideoShift,
     VideoTransform,
@@ -709,7 +709,7 @@ def calc_followed_view(
         and transform == shared.transform
         and pixel_aspect == shared.pixel_aspect
         and view.crop == shared.view.crop
-        and view.aspect == shared.view.aspect
+        and view.cell_view_mode == shared.view.cell_view_mode
     )
 
     if is_same:
@@ -922,9 +922,9 @@ class _Fit:
         fit_x = pane_w / (region_w * unit_x)
         fit_y = pane_h / (region_h * unit_y)
 
-        if view.aspect == VideoAspect.FIT:
+        if view.cell_view_mode == VideoCellViewMode.FILL:
             fit_x = fit_y = max(fit_x, fit_y)
-        elif view.aspect == VideoAspect.NONE:
+        elif view.cell_view_mode == VideoCellViewMode.FIT:
             fit_x = fit_y = min(fit_x, fit_y)
 
         return cls(
