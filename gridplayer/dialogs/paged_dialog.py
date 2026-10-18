@@ -1,15 +1,17 @@
 """A dialog of pages picked from an index on its left: the Settings dialog
-and the Playlist window."""
+and the Playlist window; with a search over the index, in the first."""
 
 from collections.abc import Callable
 
-from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QIcon, QPainter
+from PyQt5.QtCore import QEvent, Qt, QTimer
+from PyQt5.QtGui import QIcon, QKeySequence, QPainter
 from PyQt5.QtWidgets import (
     QDialog,
     QHBoxLayout,
     QLabel,
+    QLineEdit,
     QListWidgetItem,
+    QShortcut,
     QStyle,
     QToolButton,
     QVBoxLayout,
@@ -20,9 +22,10 @@ from gridplayer.dialogs.messagebox import QCustomMessageBox
 from gridplayer.params.settings_fields.kinds import Page
 from gridplayer.params.theme import set_secondary
 from gridplayer.utils.qt import translate
+from gridplayer.utils.text_search import Query
 from gridplayer.widgets.section_links import SectionLinks
 from gridplayer.widgets.settings_current_page_stack import CurrentPageStackedWidget
-from gridplayer.widgets.settings_form import SettingsForm
+from gridplayer.widgets.settings_form import Found, SettingsForm
 from gridplayer.widgets.settings_index import SettingsIndex
 from gridplayer.widgets.settings_page_scroll_area import PageScrollArea
 
@@ -39,6 +42,11 @@ PAGE_END_GAP = 12
 # the size the index shows the page's icon at, so it is as sharp here
 PAGE_TITLE_ICON_PX = 24
 NOTE_ICON_PX = 16
+
+# between the search box and the index under it
+SEARCH_SPACING = 6
+# how long typing rests before the pages are searched
+SEARCH_DELAY_MS = 150
 
 
 class Icon(QWidget):
@@ -72,12 +80,16 @@ def with_note(form, text) -> tuple[QWidget, QLabel]:
     note.setOpenExternalLinks(True)
     set_secondary(note)
 
-    line = QHBoxLayout()
+    # in a widget of its own, to go out of sight with the note while
+    # searching: what it says is of the whole page
+    holder = QWidget()
+    line = QHBoxLayout(holder)
+    line.setContentsMargins(0, 0, 0, 0)
     line.setSpacing(8)
     line.addWidget(Icon("information", NOTE_ICON_PX), 0, Qt.AlignTop)
     line.addWidget(note, 1)
 
-    layout.addLayout(line)
+    layout.addWidget(holder)
     layout.addWidget(form)
 
     return page, note
@@ -151,19 +163,32 @@ class PagedDialog(QDialog):
         self.section_links: dict[str, SectionLinks] = {}
         # what makes a page that isn't made yet, by the page
         self._to_make: dict[QWidget, Callable[[], QWidget]] = {}
+        self._page_titles: dict[str, str] = {}
+
+        # the search box, in a dialog that has one, and what is searched
+        # for, while something is
+        self.search_box: QLineEdit | None = None
+        self._query: Query | None = None
 
     # building
 
-    def build_index(self) -> QHBoxLayout:
-        """The index and the pages beside it, and the Reset of the pages."""
+    def build_index(self, *, search: bool = False) -> QHBoxLayout:
+        """The index and the pages beside it, and the Reset of the pages;
+        a search box over the index, if asked for."""
 
         self.section_index = SettingsIndex()
 
         self.section_page = CurrentPageStackedWidget(min_width=500)
 
+        index = QVBoxLayout()
+        index.setSpacing(SEARCH_SPACING)
+        if search:
+            index.addWidget(self._build_search())
+        index.addWidget(self.section_index, 1)
+
         body = QHBoxLayout()
         body.setSpacing(12)
-        body.addWidget(self.section_index)
+        body.addLayout(index)
         body.addWidget(self.section_page)
 
         # in the title of the page shown, see switch_page; shown, as the
@@ -177,6 +202,34 @@ class PagedDialog(QDialog):
         self.resetPage.hide()
 
         return body
+
+    def _build_search(self) -> QLineEdit:
+        self.search_box = QLineEdit()
+        self.search_box.setObjectName("settings_search")
+        self.search_box.setPlaceholderText(translate("SettingsDialog", "Search"))
+        self.search_box.setClearButtonEnabled(True)
+        self.search_box.addAction(QIcon.fromTheme("zoom"), QLineEdit.LeadingPosition)
+        self.search_box.setFixedWidth(self.section_index.width())
+        self.search_box.installEventFilter(self)
+
+        self._search_timer = QTimer(self)
+        self._search_timer.setSingleShot(True)
+        self._search_timer.setInterval(SEARCH_DELAY_MS)
+        self._search_timer.timeout.connect(self.search_now)
+        self.search_box.textChanged.connect(self._search_timer.start)
+
+        find = QShortcut(QKeySequence.Find, self)
+        find.activated.connect(self.focus_search)
+
+        # where the rows would be, when nothing is found
+        self._nothing_found = QLabel()
+        self._nothing_found.setAlignment(Qt.AlignHCenter | Qt.AlignTop)
+        self._nothing_found.setContentsMargins(0, 80, 0, 0)
+        self._nothing_found.setWordWrap(True)
+        set_secondary(self._nothing_found)
+        self.section_page.addWidget(self._nothing_found)
+
+        return self.search_box
 
     def add_heading(self, title: str):
         self.section_index.add_heading(title)
@@ -239,6 +292,7 @@ class PagedDialog(QDialog):
 
         self.pages[page.id] = widget
         self._titles[widget] = title
+        self._page_titles[page.id] = page.title
 
         item = self.section_index.add_page(page.title, page.icon)
         item.setData(SECTION_PAGE_ROLE, widget)
@@ -315,10 +369,132 @@ class PagedDialog(QDialog):
         return self._form_on.get(self.section_page.currentWidget())
 
     def update_reset_page(self, *_):
+        # not while searching: it would reset rows out of sight
         form = self.current_form
         self.resetPage.setVisible(
-            form is not None and form.can_reset() and form.has_modified()
+            self._query is None
+            and form is not None
+            and form.can_reset()
+            and form.has_modified()
         )
+
+    # searching
+
+    def focus_search(self):
+        self.search_box.setFocus(Qt.ShortcutFocusReason)
+        self.search_box.selectAll()
+
+    def search(self, text: str):
+        """The pages searched for the text at once, as if typed."""
+
+        self.search_box.setText(text)
+        self.search_now()
+
+    def search_now(self):
+        self._search_timer.stop()
+
+        query = Query(self.search_box.text())
+        if not query:
+            self.show_search(None)
+            return
+
+        found = {
+            page_id: form.find(query, self._page_titles[page_id])
+            for page_id, form in self.forms.items()
+        }
+
+        # a tooltip says more than a name, and finds more: only when no
+        # name has the words
+        if any(not f.by_tooltip for page in found.values() for f in page):
+            found = {
+                page_id: [f for f in page if not f.by_tooltip]
+                for page_id, page in found.items()
+            }
+
+        self.show_search(query, found)
+
+    def show_search(
+        self, query: Query | None, found: dict[str, list[Found]] | None = None
+    ):
+        """Only what was found, on every page, and how much on each; or
+        everything back, with no query."""
+
+        if query is None and self._query is None:
+            return
+
+        self._query = query
+        found = found or {}
+
+        for page_id, form in self.forms.items():
+            page_found = found.get(page_id, [])
+            form.show_found(query, page_found)
+
+            count = None if query is None else sum(f.count for f in page_found)
+            self.section_index.set_found(self._index_items[page_id], count)
+
+            # the page as it is, only while it is all there
+            if page_id in self.section_links:
+                self.section_links[page_id].setVisible(query is None)
+            if page_id in self.notes:
+                self.notes[page_id].parentWidget().setVisible(query is None)
+
+        if query is None:
+            self.switch_page(self.section_index.currentItem())
+        else:
+            self._show_found_page(query, found)
+
+    def _show_found_page(self, query: Query, found: dict[str, list[Found]]):
+        # the page open, if anything was found on it; or the first with a
+        # setting found, rather than one with only a list that found its own
+        current = self.section_index.currentItem()
+        if current is not None and current.flags() & Qt.ItemIsEnabled:
+            self.switch_page(current)
+            return
+
+        def has_settings(page_id):
+            return any(not f.by_content for f in found.get(page_id, []))
+
+        page_ids = [page_id for page_id in self._index_items if found.get(page_id)]
+        page_ids.sort(key=lambda page_id: not has_settings(page_id))
+        if page_ids:
+            self.section_index.setCurrentItem(self._index_items[page_ids[0]])
+            return
+
+        self._nothing_found.setText(
+            translate("SettingsDialog", 'Nothing found for "{TEXT}".').format(
+                TEXT=query.text
+            )
+        )
+        self.section_page.setCurrentWidget(self._nothing_found)
+        self.update_reset_page()
+
+    def _focus_found(self):
+        """The first setting found on the page open, for Enter in the box."""
+
+        form = self.current_form
+        key = None if form is None else form.found_key()
+        if key is not None:
+            form.point_to(key)
+
+    def eventFilter(self, obj, event):
+        if obj is self.search_box and event.type() == QEvent.KeyPress:
+            key = event.key()
+            # Esc empties the box first, and closes the dialog only then
+            if key == Qt.Key_Escape and self.search_box.text():
+                self.search_box.clear()
+                self.search_now()
+                return True
+            # not OK, as Enter is anywhere else in the dialog
+            if key in {Qt.Key_Return, Qt.Key_Enter}:
+                self.search_now()
+                self._focus_found()
+                return True
+            if key == Qt.Key_Down:
+                self.search_now()
+                self.section_index.setFocus(Qt.TabFocusReason)
+                return True
+
+        return super().eventFilter(obj, event)
 
     def reset_tooltip(self) -> str:
         return translate(

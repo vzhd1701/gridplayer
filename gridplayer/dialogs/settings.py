@@ -117,7 +117,7 @@ class SettingsDialog(PagedDialog):
         self.setSizeGripEnabled(True)
         self.setModal(True)
 
-        body = self.build_index()
+        body = self.build_index(search=True)
 
         self.dataDirOpen = QPushButton(
             QIcon.fromTheme("show-in-folder"),

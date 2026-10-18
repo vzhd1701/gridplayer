@@ -158,8 +158,14 @@ the reset. Playlist edits create explicit overrides, including an edit back
 to the inherited display; a reset removes the override. Retired languages
 are deliberately normalized to the current default instead of preserved.
 
+A field that fills its page (a list, a table) is found by the Settings
+search only through its page and section titles, unless its editor
+implements `count_found` / `show_found`, as the shortcuts do.
+
 In tests, reach a setting's widget with `dialog.widget("section/key")`, a
 page with `dialog.pages["id"]` and its form with `dialog.forms["id"]`.
+Search with `dialog.search("text")`, which runs at once; typing into the
+box waits for a pause.
 
 ## Translatable strings
 

@@ -1,9 +1,14 @@
-"""Searching the Settings dialog: what a search finds, and how a page
-shows it."""
+"""Searching the Settings dialog: what a search finds, and how the pages
+show it."""
 
-from PyQt5.QtCore import Qt
+import pytest
+from PyQt5.QtCore import QEvent, Qt
+from PyQt5.QtGui import QKeyEvent
+from PyQt5.QtTest import QTest
 from PyQt5.QtWidgets import QApplication
 
+from gridplayer.dialogs.paged_dialog import SEARCH_DELAY_MS
+from gridplayer.dialogs.settings import SettingsDialog
 from gridplayer.params.settings_fields.kinds import (
     CheckboxField,
     ComboField,
@@ -13,6 +18,7 @@ from gridplayer.params.settings_fields.kinds import (
 )
 from gridplayer.utils.text_search import Query
 from gridplayer.widgets.settings_form import SettingsForm, _put_away
+from gridplayer.widgets.settings_index import FOUND_ROLE
 
 
 class TestQuery:
@@ -185,3 +191,144 @@ class TestTheForm:
         assert label.text() == "One thing"
         assert label.textFormat() == Qt.AutoText
         assert _shown(form, "a/two")
+
+
+@pytest.fixture
+def dialog():
+    dialog = SettingsDialog(None)
+    dialog.show()
+    _settle()
+
+    yield dialog
+
+    dialog.close()
+    dialog.deleteLater()
+    QApplication.sendPostedEvents(None, QEvent.DeferredDelete)
+
+
+def _found_on(dialog, page_id):
+    return dialog._index_items[page_id].data(FOUND_ROLE)
+
+
+def _key(dialog, key):
+    QApplication.sendEvent(
+        dialog.search_box, QKeyEvent(QEvent.KeyPress, key, Qt.NoModifier)
+    )
+
+
+class TestTheDialog:
+    def test_the_pages_say_how_much_was_found_on_them(self, dialog):
+        dialog.search("pause")
+
+        assert _found_on(dialog, "playlist") == 3
+        assert _found_on(dialog, "video") == 3
+        assert _found_on(dialog, "player") == 0
+
+        item = dialog._index_items["player"]
+        assert not item.flags() & Qt.ItemIsEnabled
+
+    def test_a_page_with_settings_found_opens_first(self, dialog):
+        dialog.show_page("player")
+
+        dialog.search("pause")
+
+        # Shortcuts comes first, but has only the shortcuts its filter found
+        assert dialog.section_page.currentWidget() is dialog.pages["playlist"]
+
+    def test_the_page_open_stays_if_anything_is_found_on_it(self, dialog):
+        dialog.show_page("video")
+
+        dialog.search("pause")
+
+        assert dialog.section_page.currentWidget() is dialog.pages["video"]
+
+    def test_only_the_rows_found_are_shown(self, dialog):
+        dialog.search("pause")
+        form = dialog.forms["playlist"]
+
+        assert _shown(form, "playlist/pause_minimized")
+        assert _shown(form, "playlist/pause_sync")
+        assert not _shown(form, "playlist/view_sync")
+
+    def test_a_row_found_by_an_option_says_which(self, dialog):
+        dialog.search("pause")
+        row = dialog.forms["video"]._rows["video_defaults/end_action"]
+
+        assert row.hint is not None
+        assert row.hint.text() == "Option: Pause at start"
+
+    def test_tooltips_count_only_when_no_name_has_the_words(self, dialog):
+        dialog.search("proxy")
+        assert _found_on(dialog, "network") == 2
+        assert not _shown(dialog.forms["network"], "network/verify_tls")
+
+        dialog.search("recycle")
+        assert _found_on(dialog, "playlist") == 1
+        assert _shown(dialog.forms["playlist"], "playlist/folder_skip_hidden")
+
+    def test_shortcuts_are_found_by_their_own_filter(self, dialog):
+        editor = dialog.widget("player/keymap")
+        editor.filter_edit.setText("mine")
+
+        dialog.search("pause")
+
+        assert _found_on(dialog, "shortcuts") == editor.count_matching("pause")
+        assert editor.filter_edit.text() == "pause"
+
+        dialog.search("")
+
+        assert editor.filter_edit.text() == "mine"
+
+    def test_nothing_found_says_so(self, dialog):
+        dialog.search("zzzqqq")
+
+        assert dialog.section_page.currentWidget() is dialog._nothing_found
+        assert "zzzqqq" in dialog._nothing_found.text()
+
+        dialog.search("")
+
+        assert dialog.section_page.currentWidget() is not dialog._nothing_found
+
+    def test_reset_links_and_notes_are_away_while_searching(self, dialog):
+        dialog.show_page("playlist")
+        dialog.widget("playlist/save_window").click()
+        assert dialog.resetPage.isVisibleTo(dialog)
+
+        dialog.search("save")
+
+        assert not dialog.resetPage.isVisibleTo(dialog)
+        assert not dialog.section_links["playlist"].isVisibleTo(dialog)
+
+        dialog.search("")
+
+        assert dialog.resetPage.isVisibleTo(dialog)
+        assert dialog.section_links["playlist"].isVisibleTo(dialog)
+
+    def test_esc_empties_the_box_before_it_closes_the_dialog(self, dialog):
+        dialog.search("pause")
+
+        _key(dialog, Qt.Key_Escape)
+
+        assert dialog.search_box.text() == ""
+        assert dialog.isVisible()
+        assert _found_on(dialog, "playlist") is None
+
+    def test_enter_goes_to_what_was_found_and_not_to_ok(self, dialog):
+        dialog.search_box.setFocus()
+        dialog.search_box.setText("minimized")
+
+        _key(dialog, Qt.Key_Return)
+        _settle()
+
+        assert dialog.isVisible()
+        assert dialog.result() == 0
+        assert QApplication.focusWidget() is dialog.widget("playlist/pause_minimized")
+
+    def test_typing_searches_once_typing_rests(self, dialog):
+        dialog.search_box.setText("pause")
+
+        assert _found_on(dialog, "playlist") is None
+
+        QTest.qWait(SEARCH_DELAY_MS + 100)
+
+        assert _found_on(dialog, "playlist") == 3

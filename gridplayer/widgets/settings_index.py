@@ -1,9 +1,12 @@
 """The list of settings pages down the left of the Settings dialog: group
 headings small and grey, and each page with its icon, the one open on a
-soft round shade, straight on the dialog with no frame around it."""
+soft round shade, straight on the dialog with no frame around it.
+
+While searching, a page says how much was found on it, and one with
+nothing found is greyed out and can't be picked."""
 
 from PyQt5.QtCore import QRect, QRectF, QSize, Qt
-from PyQt5.QtGui import QColor, QIcon, QPainter
+from PyQt5.QtGui import QColor, QIcon, QPainter, QPalette
 from PyQt5.QtWidgets import (
     QFrame,
     QListWidget,
@@ -38,9 +41,18 @@ HEADING_HEIGHT = 38
 PICKED_SHADE = 0.55
 HOVER_SHADE = 0.25
 
+# how much a search found on a page, None while not searching
+FOUND_ROLE = Qt.UserRole + 1
+# right of the count, the same as left of the icon
+COUNT_INSET = 10
+
 
 def _is_heading(index) -> bool:
     return not index.flags() & Qt.ItemIsSelectable
+
+
+def _is_missed(index) -> bool:
+    return index.data(FOUND_ROLE) == 0
 
 
 class _IndexDelegate(QStyledItemDelegate):
@@ -78,16 +90,37 @@ class _IndexDelegate(QStyledItemDelegate):
                 QRectF(rect).adjusted(0, 1, 0, -1), SHADE_RADIUS, SHADE_RADIUS
             )
 
+        is_missed = _is_missed(index)
+
         left = rect.left() + ICON_INSET
         icon = index.data(Qt.DecorationRole)
         if isinstance(icon, QIcon) and not icon.isNull():
             top = rect.top() + (rect.height() - ICON_PX) // 2
-            icon.paint(painter, QRect(left, top, ICON_PX, ICON_PX))
+            mode = QIcon.Disabled if is_missed else QIcon.Normal
+            icon.paint(
+                painter, QRect(left, top, ICON_PX, ICON_PX), Qt.AlignCenter, mode
+            )
         left += ICON_PX + ICON_GAP
 
-        painter.setPen(theme_color(widget, "text"))
+        right = 0
+        found = index.data(FOUND_ROLE)
+        if found:
+            count = str(found)
+            painter.setPen(secondary_text_color())
+            painter.drawText(
+                rect.adjusted(0, 0, -COUNT_INSET, 0),
+                Qt.AlignRight | Qt.AlignVCenter,
+                count,
+            )
+            right = COUNT_INSET + painter.fontMetrics().horizontalAdvance(count)
+            right += ICON_GAP
+
+        if is_missed:
+            painter.setPen(widget.palette().color(QPalette.Disabled, QPalette.Text))
+        else:
+            painter.setPen(theme_color(widget, "text"))
         painter.drawText(
-            rect.adjusted(left - rect.left(), 0, 0, 0),
+            rect.adjusted(left - rect.left(), 0, -right, 0),
             Qt.AlignLeft | Qt.AlignVCenter,
             index.data(Qt.DisplayRole),
         )
@@ -131,6 +164,17 @@ class SettingsIndex(QListWidget):
             QSize(0, FIRST_HEADING_HEIGHT if is_first else HEADING_HEIGHT)
         )
         return heading
+
+    def set_found(self, item: QListWidgetItem, found: int | None):
+        """How much a search found on a page, or None when not searching:
+        a page with nothing found can't be picked."""
+
+        item.setData(FOUND_ROLE, found)
+
+        flags = Qt.ItemIsSelectable
+        if found != 0:
+            flags |= Qt.ItemIsEnabled
+        item.setFlags(flags)
 
     def add_page(self, title: str, icon: str | None) -> QListWidgetItem:
         item = QListWidgetItem(title, self)

@@ -119,6 +119,8 @@ class TestEverySectionOpensItsPage:
         stack = dialog.section_page
         pages = {stack.widget(i) for i in range(stack.count())}
         reachable = {item.data(SECTION_PAGE_ROLE) for item in dialog.section_items}
+        # what a search shows when it finds nothing
+        reachable.add(dialog._nothing_found)
 
         assert not [page.objectName() for page in pages - reachable]
 
