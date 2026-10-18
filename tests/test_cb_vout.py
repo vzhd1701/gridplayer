@@ -299,6 +299,28 @@ def test_adjust_view_reads_how_wide_a_streams_pixels_are():
     assert not player._is_view_unsized
 
 
+def test_a_player_the_widget_draws_for_keeps_asking_too():
+    """The software drivers place the picture in the widget, their player's
+    _apply_view doing nothing: it is still asked again as time comes in."""
+
+    tracks = _Tracks()
+    player, _ = _stream_player(tracks)
+    player._apply_view = lambda size, view: None
+    player._schedule_view_reapply = Mock()
+    player._schedule_playback_check = Mock()
+
+    player.adjust_view(size=(960, 360), view=_none_view())
+    player.cb_time_changed(SimpleNamespace(u=SimpleNamespace(new_time=0)))
+
+    player._schedule_view_reapply.assert_called_once()
+
+    tracks.sar = (3, 2)
+    player.adjust_view(size=(960, 360), view=_none_view())
+
+    player.notify_video_dimensions.assert_called_once_with(640, 360, (3, 2))
+    assert not player._is_view_unsized
+
+
 def test_a_video_that_never_says_is_asked_only_so_often():
     tracks = _Tracks()
     player, _ = _stream_player(tracks)

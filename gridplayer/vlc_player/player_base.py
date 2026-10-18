@@ -1415,6 +1415,14 @@ class VlcPlayerBase(ABC):
                 width, height, track.sar if track is not None else None
             )
 
+        # until VLC says how big the frame is and how wide its pixels are,
+        # as a stream does only once decoded, the view is worked out without:
+        # keep trying. Here rather than in _apply_view, which the software
+        # drivers leave to the widget
+        self._is_view_unsized = (
+            not all(self.frame_dimensions) or self._is_pixel_shape_pending()
+        )
+
         self._apply_view(size, view)
 
     def _apply_view(self, size, view: ViewParams):
@@ -1422,10 +1430,6 @@ class VlcPlayerBase(ABC):
 
         frame_size = self.frame_dimensions
         track = self._shown_video_track()
-
-        # until VLC says how wide the pixels are, as a stream does only once
-        # decoded, the view is worked out with square ones: keep trying
-        self._is_view_unsized = not all(frame_size) or self._is_pixel_shape_pending()
 
         # the frame here is the one VLC has, as it is stored
         pixel_aspect = track.stored_pixel_aspect if track is not None else 1
