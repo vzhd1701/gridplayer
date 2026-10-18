@@ -380,6 +380,7 @@ def _playing_1080p(frame, aspect=VideoAspect.FIT):
             video_dimensions=(1920, 1080),
             is_turned=False,
             orientation=VideoTransform.NONE,
+            pixel_aspect=1,
         )
     )
     frame._view = frame._view._replace(aspect=aspect)

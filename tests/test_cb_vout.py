@@ -12,6 +12,7 @@ from gridplayer.params.static import (
     VideoTransform,
     ViewParams,
 )
+from gridplayer.vlc_player.libvlc import vlc
 from gridplayer.vlc_player.player_base import VlcPlayerBase
 from gridplayer.vlc_player.static import Media, VideoTrack
 
@@ -221,7 +222,93 @@ def test_adjust_view_fills_missing_track_dimensions():
     )
 
     assert player.media.video_tracks[1].video_dimensions == (640, 360)
-    player.notify_video_dimensions.assert_called_once_with(640, 360)
+    player.notify_video_dimensions.assert_called_once_with(640, 360, None)
+
+
+class _Tracks:
+    """libVLC's track list, read afresh: how wide the pixels are, once said."""
+
+    def __init__(self, sar=(0, 0)):
+        self.sar = sar
+        self.reads = 0
+
+    def tracks_get(self):
+        self.reads += 1
+        sar_num, sar_den = self.sar
+        content = SimpleNamespace(sar_num=sar_num, sar_den=sar_den)
+
+        return iter(
+            [
+                SimpleNamespace(
+                    id=1,
+                    type=vlc.TrackType.video,
+                    u=SimpleNamespace(video=SimpleNamespace(contents=content)),
+                )
+            ]
+        )
+
+
+def _stream_player(tracks: _Tracks):
+    """A stream playing 640x360 that has not said how wide its pixels are."""
+
+    player, media_player = _make_player(aspect_mode=VideoAspect.NONE)
+    player.notify_video_dimensions = Mock()
+    player.media = Media(
+        length=-1,
+        video_tracks={
+            1: VideoTrack(
+                video_dimensions=(640, 360),
+                fps=None,
+                codec="H264",
+                bitrate=0,
+                language=None,
+                description=None,
+            )
+        },
+        audio_tracks={},
+        cur_video_track_id=1,
+    )
+    player._tracks_manager = SimpleNamespace(current_video_track_id=1)
+    player._media_input_vlc = tracks
+
+    return player, media_player
+
+
+def _none_view():
+    return ViewParams(VideoAspect.NONE, 1.0, VideoCrop(0, 0, 0, 0))
+
+
+def test_adjust_view_reads_how_wide_a_streams_pixels_are():
+    """An MPEG-TS stream says only once decoded: 640x360 of pixels 3:2 is
+    960x360, which fills 960x360."""
+
+    tracks = _Tracks()
+    player, media_player = _stream_player(tracks)
+
+    player.adjust_view(size=(960, 360), view=_none_view())
+
+    assert player._is_view_unsized
+
+    tracks.sar = (3, 2)
+    media_player.calls.clear()
+    player.adjust_view(size=(960, 360), view=_none_view())
+
+    assert player.media.video_tracks[1].sar == (3, 2)
+    player.notify_video_dimensions.assert_called_once_with(640, 360, (3, 2))
+    assert ("aspect_ratio", "8:3") in media_player.calls
+    assert not player._is_view_unsized
+
+
+def test_a_video_that_never_says_is_asked_only_so_often():
+    tracks = _Tracks()
+    player, _ = _stream_player(tracks)
+
+    for _ in range(player_base_mod.SAR_READS + 5):
+        player.adjust_view(size=(640, 360), view=_none_view())
+
+    assert tracks.reads == player_base_mod.SAR_READS
+    assert not player._is_view_unsized
+    player.notify_video_dimensions.assert_not_called()
 
 
 def test_adjust_view_crop_none_letterboxes_user_region():

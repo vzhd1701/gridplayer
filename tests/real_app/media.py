@@ -19,6 +19,15 @@ What there is (every video a test pattern with a tone, small and short):
     hls/master.m3u8           30s HLS in 360p, 180p and 90p
     dubs/master.m3u8          30s HLS in 360p and 180p, dubbed into English
                               (the default) and Spanish as audio renditions
+    shapes/square.mp4         10s, 640x360 of square pixels: what the others
+                              look like
+    shapes/wide_pixels.mp4    the same stored 320x360, its pixels twice as
+                              wide as they are tall (SAR 2:1)
+    shapes/wide_pixels.ts     an MPEG-TS stream 720x576 shown 16:9 (SAR
+                              64:45), as a DVB channel is: VLC says how wide
+                              its pixels are only once it is decoded
+    shapes/phone.mp4          wide_pixels.mp4 tagged to be turned 90 degrees
+                              to show it, so 9:16 on screen
 
 The HLS ones are for serving over HTTP; see Driver.serve.
 """
@@ -68,6 +77,10 @@ class Media:
     @property
     def dubs(self) -> Path:
         return self.root / "dubs"
+
+    @property
+    def shapes(self) -> Path:
+        return self.root / "shapes"
 
 
 def is_ffmpeg_installed() -> bool:
@@ -154,6 +167,7 @@ def _make(media: Media) -> None:
     _make_feature(media.feature.parent)
     _make_hls(media.hls)
     _make_dubs(media.dubs)
+    _make_shapes(media.shapes)
 
 
 def _make_feature(where: Path) -> None:
@@ -234,6 +248,37 @@ def _make_dubs(where: Path) -> None:
         " a:0,agroup:aud,language:en,default:yes,name:english"
         " a:1,agroup:aud,language:es,name:spanish",
         "v%v/index.m3u8",
+        cwd=where,
+    )
+
+
+def _make_shapes(where: Path) -> None:
+    where.mkdir()
+
+    h264 = ("-c:v", "libx264", "-preset", "ultrafast", "-pix_fmt", "yuv420p")
+
+    _ffmpeg(
+        *_pattern(10, size="640x360", source="testsrc2"), *h264, "square.mp4", cwd=where
+    )
+    _ffmpeg(
+        *_pattern(10, size="640x360", source="testsrc2"),
+        *("-vf", "scale=320:360,setsar=2/1"),
+        *h264,
+        "wide_pixels.mp4",
+        cwd=where,
+    )
+    _ffmpeg(
+        *_pattern(10, size="720x576", source="testsrc2"),
+        *("-vf", "setsar=64/45"),
+        *h264,
+        *("-f", "mpegts"),
+        "wide_pixels.ts",
+        cwd=where,
+    )
+    _ffmpeg(
+        *("-display_rotation:v:0", "90"),
+        *("-i", "wide_pixels.mp4", "-c", "copy"),
+        "phone.mp4",
         cwd=where,
     )
 

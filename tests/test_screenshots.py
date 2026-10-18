@@ -749,3 +749,43 @@ class TestTheSettings:
             form.editor("screenshots/dir").browse,
         ]
         assert len(row.findChildren(QPushButton)) == 1
+
+
+class TestPixelShape:
+    """A video whose pixels are not square is saved the shape it is shown."""
+
+    def test_wide_pixels_make_it_wider(self):
+        view = ScreenshotView((640, 360), None, None, (320, 360), pixel_aspect=2)
+
+        assert view.cut(320, 360) == (None, QSize(640, 360))
+
+    def test_tall_pixels_make_it_taller_rather_than_narrower(self):
+        """A picture VLC turns, of wide pixels, as VLC hands it over."""
+
+        view = ScreenshotView((360, 640), None, None, (360, 320), pixel_aspect=0.5)
+
+        assert view.cut(360, 320) == (None, QSize(360, 640))
+
+    def test_a_dvb_frame_is_16_9(self):
+        view = ScreenshotView((1024, 576), None, None, (720, 576), pixel_aspect=64 / 45)
+
+        assert view.cut(720, 576) == (None, QSize(1024, 576))
+
+    def test_turned_wide_pixels_are_tall(self):
+        view = ScreenshotView(
+            (360, 640), None, VideoTransform.ROTATE_90, (320, 360), pixel_aspect=2
+        )
+
+        assert view.cut(320, 360) == (None, QSize(360, 640))
+
+    def test_a_cut_of_wide_pixels_is_cut_in_them(self):
+        # 40 of 320 off each side: 240x360, 480x360 shown
+        view = ScreenshotView(
+            (480, 360),
+            ViewParams(VideoAspect.NONE, crop=VideoCrop(40, 0, 40, 0)),
+            None,
+            (320, 360),
+            pixel_aspect=2,
+        )
+
+        assert view.cut(320, 360) == (QRect(40, 0, 240, 360), QSize(480, 360))

@@ -24,6 +24,8 @@ class SoftwareVideoSurface(QWidget):
         self._is_black = False
         self._view = ViewParams()
         self._transform = VideoTransform.NONE
+        # how wide a pixel of the picture is for its height, see set_view
+        self._pixel_aspect = 1.0
         self._track_size: tuple[int, int] | None = None
 
         self.setAttribute(Qt.WA_OpaquePaintEvent)
@@ -108,10 +110,12 @@ class SoftwareVideoSurface(QWidget):
         view: ViewParams,
         transform: VideoTransform | None = VideoTransform.NONE,
         track_size: tuple[int, int] | None = None,
+        pixel_aspect: float = 1.0,
     ) -> None:
         self._view = view
         self._transform = transform
         self._track_size = track_size
+        self._pixel_aspect = pixel_aspect
         self.update()
 
     def placement(self) -> ViewPlacement | None:
@@ -124,6 +128,7 @@ class SoftwareVideoSurface(QWidget):
             (self.width(), self.height()),
             self._view,
             self._transform,
+            pixel_aspect=self._pixel_aspect,
         )
 
         if placement is None:

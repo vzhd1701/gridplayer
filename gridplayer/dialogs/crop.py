@@ -15,7 +15,8 @@ from PyQt5.QtWidgets import (
     QWidget,
 )
 
-from gridplayer.params.static import ROTATION_TRANSFORMS, VideoCrop
+from gridplayer.params.static import VideoCrop
+from gridplayer.utils.aspect_calc import calc_frame_pixel_shape
 from gridplayer.utils.qt import translate
 
 _DIMENSION_FALLBACK = 9999
@@ -113,7 +114,7 @@ class SetCropDialog(QDialog):
         self,
         crop=_ZERO_CROP,
         video_dimensions=(0, 0),
-        is_rotated=False,
+        pixel_shape=(1.0, 1.0),
         parent=None,
         live_block=None,
     ):
@@ -127,12 +128,13 @@ class SetCropDialog(QDialog):
         self.setMinimumWidth(450)
 
         # The margins are in frame pixels along the axes the picture is shown
-        # in. A rotation keeps the frame at its unrotated size and squeezes
-        # the turned picture into it (see calc_view_placement), so Left and
-        # Right still take from the raw width even though it spans what is
-        # the picture's width on screen.
+        # in. Those need not be square (see calc_frame_pixel_shape): a
+        # rotation keeps the frame at its unrotated size and squeezes the
+        # turned picture into it, so Left and Right still take from the raw
+        # width even though it spans what is the picture's width on screen,
+        # and a video can be stored narrower than it is shown.
         self._raw_width, self._raw_height = video_dimensions
-        self._is_rotated = is_rotated
+        self._pixel_shape = pixel_shape
         width, height = self._raw_width, self._raw_height
 
         self._preview = _CropPreview()
@@ -198,10 +200,20 @@ class SetCropDialog(QDialog):
     @classmethod
     def for_video_block(cls, video_block, parent=None):
         """Video mode: edits the block's crop with live preview."""
+        track = _block_track(video_block)
+        dimensions = _shown_dimensions(track)
+
+        if track is not None and all(dimensions):
+            pixel_shape = calc_frame_pixel_shape(
+                dimensions, video_block.video_params.transform, track.pixel_aspect
+            )
+        else:
+            pixel_shape = (1.0, 1.0)
+
         return cls(
             crop=video_block.video_params.crop,
-            video_dimensions=_block_track_dimensions(video_block),
-            is_rotated=video_block.video_params.transform in ROTATION_TRANSFORMS,
+            video_dimensions=dimensions,
+            pixel_shape=pixel_shape,
             parent=parent,
             live_block=video_block,
         )
@@ -244,10 +256,9 @@ class SetCropDialog(QDialog):
         )
 
     def _display_dimensions(self):
-        if self._is_rotated:
-            return self._raw_height, self._raw_width
+        unit_x, unit_y = self._pixel_shape
 
-        return self._raw_width, self._raw_height
+        return round(self._raw_width * unit_x), round(self._raw_height * unit_y)
 
     def _display_scale(self):
         """Screen pixels per frame pixel, across and down."""
@@ -298,17 +309,22 @@ class SetCropDialog(QDialog):
             self._area_label.hide()
 
         # The preview is drawn in display space. Each margin is on the side
-        # it is named for; under a rotation a frame pixel just isn't square.
+        # it is named for; a frame pixel just isn't always square.
         edges = (left * scale_x, top * scale_y, right * scale_x, bottom * scale_y)
 
         self._preview.set_crop(video_w, video_h, *edges)
 
 
-def _block_track_dimensions(block):
+def _block_track(block):
     tracks = block.video_tracks or {}
     track = tracks.get(block.video_params.video_track_id)
     if track is None and tracks:
         track = next(iter(tracks.values()))
+
+    return track
+
+
+def _shown_dimensions(track):
     if track is None:
         return 0, 0
 

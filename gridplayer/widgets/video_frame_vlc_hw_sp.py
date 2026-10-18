@@ -33,7 +33,8 @@ class PlayerProcessSingleVLCHWSP(QThread, VlcPlayerBase, metaclass=QABC):
     update_status_signal = pyqtSignal(str, int)
     snapshot_taken = pyqtSignal(str)
     screenshot_taken = pyqtSignal(str)
-    video_dimensions_changed = pyqtSignal(int, int)
+    # the size and the pixels' shape, None for that where not known
+    video_dimensions_changed = pyqtSignal(int, int, object)
     playback_started = pyqtSignal()
 
     load_video_done = pyqtSignal(Media)
@@ -186,8 +187,8 @@ class PlayerProcessSingleVLCHWSP(QThread, VlcPlayerBase, metaclass=QABC):
     def notify_screenshot_taken(self, frame_path):
         self.screenshot_taken.emit(frame_path)
 
-    def notify_video_dimensions(self, width, height):
-        self.video_dimensions_changed.emit(width, height)
+    def notify_video_dimensions(self, width, height, sar):
+        self.video_dimensions_changed.emit(width, height, sar)
 
     def notify_playback_started(self):
         self.playback_started.emit()

@@ -41,7 +41,11 @@ from gridplayer.params.static import (
     ViewParams,
 )
 from gridplayer.utils.app_dir import get_app_data_dir
-from gridplayer.utils.aspect_calc import calc_crop_region, calc_view_borders
+from gridplayer.utils.aspect_calc import (
+    calc_crop_region,
+    calc_frame_pixel_shape,
+    calc_view_borders,
+)
 
 SCREENSHOTS_DIR_NAME = "screenshots"
 
@@ -304,6 +308,9 @@ class ScreenshotView:
     The orientation is what the file says to turn or flip the picture by
     to show it. VLC does, but writes the frame the way it is stored, so a
     frame file is turned the right way up before anything else.
+
+    The pixel aspect is how wide a frame pixel is for its height, as the
+    video says: a picture stored narrower than it is shown is widened.
     """
 
     size: tuple[int, int]
@@ -311,6 +318,7 @@ class ScreenshotView:
     transform: VideoTransform | None = VideoTransform.NONE
     frame_size: tuple[int, int] = (0, 0)
     orientation: VideoTransform = VideoTransform.NONE
+    pixel_aspect: float = 1.0
 
     def cut(self, width: int, height: int) -> tuple[QRect | None, QSize | None]:
         """What of an image this size to keep, and what size to make it.
@@ -325,7 +333,13 @@ class ScreenshotView:
             return None, self._reshaped((width, height), QSize(width, height))
 
         frame = self.frame_size if all(self.frame_size) else (width, height)
-        borders = calc_view_borders(frame, self.size, self.view, self.transform)
+        borders = calc_view_borders(
+            frame,
+            self.size,
+            self.view,
+            self.transform,
+            pixel_aspect=self.pixel_aspect,
+        )
         x, y, cut_w, cut_h = calc_crop_region(frame, borders)
 
         scale_x, scale_y = width / frame[0], height / frame[1]
@@ -349,9 +363,16 @@ class ScreenshotView:
         width, height = size
         frame_w, frame_h = self.frame_size
 
-        if self.transform in ROTATION_TRANSFORMS and frame_w > 0 and frame_h > 0:
-            width = max(round(width * frame_h / frame_w), 1)
-            height = max(round(height * frame_w / frame_h), 1)
+        if frame_w > 0 and frame_h > 0:
+            unit_x, unit_y = calc_frame_pixel_shape(
+                self.frame_size, self.transform, self.pixel_aspect
+            )
+            square_x, square_y = calc_frame_pixel_shape(self.frame_size, self.transform)
+            # pixels not square widen the picture or make it taller, as VLC
+            # does, rather than shrink it the other way
+            grown = max(square_x / unit_x, square_y / unit_y, 1)
+            width = max(round(width * unit_x * grown), 1)
+            height = max(round(height * unit_y * grown), 1)
 
         shaped = QSize(width, height)
 

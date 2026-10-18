@@ -23,6 +23,7 @@ from gridplayer.params.settings_pages import PLAYLIST_PAGE
 from gridplayer.params.static import (
     SeekSyncMode,
     VideoAnchor,
+    VideoAspect,
     VideoInitialState,
     VideoShift,
     VideoTransform,
@@ -661,6 +662,31 @@ def _frame(video_dimensions):
     return frame
 
 
+class TestTheFrameToldHowWideItsPixelsAre:
+    def test_the_picture_takes_their_shape(self):
+        """320x360 of pixels twice as wide is a 640x360 picture."""
+
+        frame = _frame((320, 360))
+        frame._view = ViewParams(VideoAspect.NONE)
+
+        frame.set_track_dimensions(320, 360, (2, 1))
+
+        assert frame.media.cur_video_track.sar == (2, 1)
+        assert frame.view_placement().target == (0, 0, 640, 360)
+
+    def test_said_by_a_player_alongside_the_view_is_applied(self, monkeypatch):
+        """The player in this process has put it on the tracks already."""
+
+        frame = _frame((320, 360))
+        applied = Mock()
+        monkeypatch.setattr(frame, "adjust_view", applied)
+
+        frame.media.cur_video_track.sar = (2, 1)
+        frame.set_track_dimensions(320, 360, (2, 1))
+
+        applied.assert_called_once_with()
+
+
 class TestTheFrameFollowing:
     def test_it_shows_what_the_other_does(self):
         frame = _frame((1920, 1080))
@@ -688,6 +714,20 @@ class TestTheFrameFollowing:
 
         assert followed == [SHARED.view]
         assert frame._view == SHARED.view
+
+    def test_it_follows_once_a_player_alongside_has_said(self):
+        """A player in this process fills in the very same tracks before it
+        says it has."""
+
+        frame = _frame((0, 0))
+        followed = []
+        frame.view_followed.connect(followed.append)
+        frame.follow_view(SHARED)
+
+        frame.media.cur_video_track.video_dimensions = (1920, 1080)
+        frame.set_track_dimensions(1920, 1080)
+
+        assert followed == [SHARED.view]
 
     def test_once_followed_it_is_done_with(self):
         frame = _frame((0, 0))

@@ -1,6 +1,7 @@
 import random
 from dataclasses import dataclass, field
 from enum import Enum, auto
+from fractions import Fraction
 
 from gridplayer.models.audio_device import AudioDevice
 from gridplayer.models.audio_selection import (
@@ -226,12 +227,37 @@ class VideoTrack(MediaTrack):
     # What the file says to turn or flip it by to show it, as a phone
     # records it, and VLC does as it shows it.
     orientation: VideoTransform = VideoTransform.NONE
+    # How wide its pixels are for their height, as the video says, stored
+    # the way video_dimensions is: 64:45 for a 720x576 picture shown 16:9.
+    # None where VLC has not said yet; a stream says once it is decoded.
+    sar: tuple[int, int] | None = None
 
     @property
     def is_turned(self) -> bool:
         """Shown on its side: video_dimensions the other way round."""
 
         return self.orientation in ROTATION_TRANSFORMS
+
+    @property
+    def stored_pixel_aspect(self) -> Fraction:
+        """How wide a pixel is for its height, the way the frame is stored.
+
+        Square where the video has not said, as VLC takes it then.
+        """
+
+        if self.sar is None:
+            return Fraction(1)
+
+        return Fraction(*self.sar)
+
+    @property
+    def pixel_aspect(self) -> Fraction:
+        """How wide a pixel of the frame VLC shows is, for its height: the
+        other way round where VLC turns the frame on its side."""
+
+        aspect = self.stored_pixel_aspect
+
+        return 1 / aspect if self.is_turned else aspect
 
     @property
     def is_reoriented(self) -> bool:

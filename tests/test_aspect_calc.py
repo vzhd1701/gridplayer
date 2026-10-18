@@ -1497,3 +1497,85 @@ class TestVlcPicture:
 
     def test_not_known_with_the_files_own_shape(self):
         assert calc_vlc_picture(VIDEO, ("0:0", "+0+0+0+0"), (400, 300)) is None
+
+
+# stored 320x360, its pixels twice as wide as tall: a 640x360 picture
+WIDE_PIXELS = (320, 360)
+
+
+class TestPixelAspect:
+    """A video's pixels need not be square: the picture has the shape they
+    give it, and the crop and the shift are still in its own pixels."""
+
+    def test_wide_pixels_make_a_wide_picture(self):
+        placement = calc_view_placement(
+            WIDE_PIXELS, (1280, 720), _view(VideoAspect.NONE), pixel_aspect=2
+        )
+
+        assert placement.source == _approx((0, 0, 320, 360))
+        assert placement.target == _approx((0, 0, 1280, 720))
+
+    def test_a_dvb_picture_is_16_9(self):
+        placement = calc_view_placement(
+            (720, 576), PANE, _view(VideoAspect.NONE), pixel_aspect=64 / 45
+        )
+
+        assert placement.target == _approx((0, 0, 1600, 900))
+
+    def test_covering_a_pane_cuts_the_picture_by_its_shape(self):
+        # 640x360 covers 900x900 at 1600x900: 180 of the 320 pixels on show
+        placement = calc_view_placement(WIDE_PIXELS, SQUARE, _view(), pixel_aspect=2)
+
+        assert placement.source == _approx((70, 0, 180, 360))
+
+    def test_the_crop_is_in_the_video_s_own_pixels(self):
+        # 240x360 kept is 480x360 shown, 4:3
+        view = _view(VideoAspect.NONE, crop=VideoCrop(40, 0, 40, 0))
+
+        placement = calc_view_placement(WIDE_PIXELS, (1280, 720), view, pixel_aspect=2)
+
+        assert placement.target == _approx((160, 0, 960, 720))
+
+    def test_turned_the_wide_picture_is_tall(self):
+        placement = calc_view_placement(
+            WIDE_PIXELS,
+            (900, 1600),
+            _view(VideoAspect.NONE),
+            VideoTransform.ROTATE_90,
+            pixel_aspect=2,
+        )
+
+        assert placement.target == _approx((0, 0, 900, 1600))
+
+    def test_vlc_is_told_the_shape_of_the_picture(self):
+        """The override takes the place of the video's own pixel shape."""
+
+        geometry = calc_view_geometry(
+            WIDE_PIXELS, (1280, 720), _view(VideoAspect.NONE), pixel_aspect=2
+        )
+
+        assert calc_vlc_picture(WIDE_PIXELS, geometry, (1280, 720)) == (0, 0, 1280, 720)
+        assert _fits_vlc(geometry[0], WIDE_PIXELS, _borders(geometry[1]))
+
+    def test_without_a_pane_vlc_is_told_the_whole_picture_s_shape(self):
+        geometry = calc_view_geometry(WIDE_PIXELS, (0, 0), _view(), pixel_aspect=2)
+
+        assert geometry == ("640:360", "+0+0+0+0")
+
+    def test_a_picture_vlc_turns_is_told_its_shape_as_stored(self):
+        # stored 640x360 shown, the same as the square-pixel test above
+        geometry = calc_whole_geometry(
+            WIDE_PIXELS, (400, 500), _view(), is_turned=True, pixel_aspect=2
+        )
+
+        assert geometry == ("711:400", "+0+0+0+0")
+
+    def test_one_of_other_pixels_follows_to_the_same_place(self):
+        """10 wide pixels are 20 square ones of the same picture."""
+
+        leader = _view(scale=2.0, shift=VideoShift(-10, -5))
+        shared = calc_shared_view(WIDE_PIXELS, PANE, leader, pixel_aspect=2)
+
+        followed = calc_followed_view((640, 360), PANE, _view(), shared)
+
+        assert followed.shift == VideoShift(-20, -5)

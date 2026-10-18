@@ -36,7 +36,7 @@ from gridplayer.vlc_player.player_event_waiter import (
     async_timer,
     async_wait,
 )
-from gridplayer.vlc_player.player_tracks_manager import TracksManager
+from gridplayer.vlc_player.player_tracks_manager import TracksManager, track_sar
 from gridplayer.vlc_player.static import (
     Media,
     MediaInput,
@@ -75,6 +75,11 @@ SLAVE_TRACK_RETRY_TIME = 0.1
 # Nothing rides on the number: only one file is ever attached, and libVLC
 # opens it whatever priority it was handed.
 SLAVE_PRIORITY = 4
+
+# How often a video that has not said how wide its pixels are is asked
+# again, as its time comes in: an MPEG-TS stream says a few frames after
+# its picture is up. Past that its pixels are taken to be square.
+SAR_READS = 20
 
 # A file that opens at all is measured in tens of milliseconds; one that
 # never will is better handed back quickly, so the video can be loaded with
@@ -220,9 +225,12 @@ class VlcPlayerBase(ABC):
         # the players above are gone, freed by libVLC; see cleanup
         self._is_released = False
 
-        # the view was last applied with no frame size to work it out from;
-        # see cb_time_changed
+        # the view was last applied with no frame size to work it out from,
+        # or not knowing yet how wide its pixels are; see cb_time_changed
         self._is_view_unsized = False
+
+        # see _fill_missing_track_sars
+        self._sar_reads_left = SAR_READS
 
         # the load is playing pictures, and has been said to be; see
         # _check_playback_started
@@ -595,8 +603,10 @@ class VlcPlayerBase(ABC):
     def notify_chapters_changed(self, chapters: tuple[Chapter, ...]) -> None:  # noqa: B027
         """Forward chapters that arrived or changed after the load. No-op by default."""
 
-    def notify_video_dimensions(self, width: int, height: int) -> None:  # noqa: B027
-        """Forward decoded size to the widget. Default is a no-op."""
+    def notify_video_dimensions(  # noqa: B027
+        self, width: int, height: int, sar: tuple[int, int] | None
+    ) -> None:
+        """Forward decoded size and pixel shape to the widget. Default is a no-op."""
 
     def notify_playback_started(self) -> None:  # noqa: B027
         """Tell the widget VLC is playing pictures. Default is a no-op."""
@@ -621,6 +631,7 @@ class VlcPlayerBase(ABC):
         self.media_input = media_input
         self._last_video_size = (0, 0)
         self._is_view_unsized = False
+        self._sar_reads_left = SAR_READS
         self._is_playback_reported = False
         self._last_time = None
         self._own_audio_count = None
@@ -1399,7 +1410,10 @@ class VlcPlayerBase(ABC):
 
         if self._fill_missing_track_dimensions():
             width, height = self._media_player.video_get_size()
-            self.notify_video_dimensions(width, height)
+            track = self._shown_video_track()
+            self.notify_video_dimensions(
+                width, height, track.sar if track is not None else None
+            )
 
         self._apply_view(size, view)
 
@@ -1407,20 +1421,33 @@ class VlcPlayerBase(ABC):
         transform = self.media_input.video.transform if self.media_input else None
 
         frame_size = self.frame_dimensions
-        self._is_view_unsized = not all(frame_size)
+        track = self._shown_video_track()
+
+        # until VLC says how wide the pixels are, as a stream does only once
+        # decoded, the view is worked out with square ones: keep trying
+        self._is_view_unsized = not all(frame_size) or self._is_pixel_shape_pending()
+
+        # the frame here is the one VLC has, as it is stored
+        pixel_aspect = track.stored_pixel_aspect if track is not None else 1
 
         geometry = None
 
         # VLC crops a picture it turns or flips wrong: have it draw all of
         # it instead, into a window the frame puts over all of it
-        track = self._shown_video_track()
         if track is not None and track.is_reoriented:
             geometry = calc_whole_geometry(
-                frame_size, size, view, transform, track.is_turned
+                frame_size,
+                size,
+                view,
+                transform,
+                track.is_turned,
+                pixel_aspect=pixel_aspect,
             )
 
         if geometry is None:
-            geometry = calc_view_geometry(frame_size, size, view, transform)
+            geometry = calc_view_geometry(
+                frame_size, size, view, transform, pixel_aspect=pixel_aspect
+            )
 
         aspect_override, crop_geometry_fmt = geometry
 
@@ -1793,20 +1820,28 @@ class VlcPlayerBase(ABC):
         )
 
     def _fill_missing_track_dimensions(self) -> bool:
-        """Copy decoded size onto tracks that have no metadata size.
+        """Copy what the tracks were read without onto them, once known.
 
         Live streams often report 0x0 in the container; video_get_size() is
-        known after vout. Returns True if any track was updated.
+        known after vout. An MPEG-TS stream says how wide its pixels are
+        only once decoded too, in the track list read again. Returns True
+        if any track was updated.
         """
         if self.media is None or self._media_player is None:
             return False
 
-        width, height = self._media_player.video_get_size()
-        if not width or not height:
-            return False
-
         tracks = getattr(self.media, "video_tracks", None)
         if not isinstance(tracks, dict):
+            return False
+
+        is_sized = self._fill_missing_track_sizes(tracks)
+        is_shaped = self._fill_missing_track_sars(tracks)
+
+        return is_sized or is_shaped
+
+    def _fill_missing_track_sizes(self, tracks: dict) -> bool:
+        width, height = self._media_player.video_get_size()
+        if not width or not height:
             return False
 
         updated = False
@@ -1816,6 +1851,44 @@ class VlcPlayerBase(ABC):
                 updated = True
 
         return updated
+
+    def _fill_missing_track_sars(self, tracks: dict) -> bool:
+        if not self._is_pixel_shape_pending():
+            return False
+
+        # each read is a copy of the list libVLC keeps, which python-vlc
+        # never gives back, so a video that never says is read only so often
+        self._sar_reads_left -= 1
+
+        media_tracks = self._read_media_tracks()
+        if media_tracks is None:
+            return False
+
+        sars = {
+            t.id: track_sar(t.u.video.contents)
+            for t in media_tracks
+            if t.type == vlc.TrackType.video
+        }
+
+        updated = False
+        for track_id, track in tracks.items():
+            sar = sars.get(track_id)
+            if track.sar is None and sar is not None:
+                track.sar = sar
+                updated = True
+
+        return updated
+
+    def _is_pixel_shape_pending(self) -> bool:
+        """The video on show has not said how wide its pixels are, and may
+        yet: see _fill_missing_track_sars."""
+
+        if self._sar_reads_left <= 0:
+            return False
+
+        track = self._shown_video_track()
+
+        return track is not None and track.sar is None
 
     def _get_duration(self):
         if self.media_input.is_live:

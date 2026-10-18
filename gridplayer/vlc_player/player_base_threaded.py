@@ -42,8 +42,8 @@ class VlcPlayerThreaded(CommandLoopThreaded, VlcPlayerBase):
     def notify_chapters_changed(self, chapters):
         self.cmd_send("chapters_changed_emit", chapters)
 
-    def notify_video_dimensions(self, width, height):
-        self.cmd_send("set_video_dimensions", width, height)
+    def notify_video_dimensions(self, width, height, sar):
+        self.cmd_send("set_video_dimensions", width, height, sar)
 
     def notify_playback_started(self):
         self.cmd_send("playback_started_emit")

@@ -17,7 +17,8 @@ class VLCVideoDriver(QObject, metaclass=QABC):
     # a PNG of the frame on show, for the receiver to move and then remove;
     # empty when VLC had none to give
     screenshot_taken = pyqtSignal(str)
-    video_dimensions_changed = pyqtSignal(int, int)
+    # the size and the pixels' shape, None for that where not known
+    video_dimensions_changed = pyqtSignal(int, int, object)
     # VLC is putting pictures on screen as it plays, past the first it shows
     # on its own; once per load
     playback_started = pyqtSignal()
@@ -83,8 +84,8 @@ class VLCVideoDriver(QObject, metaclass=QABC):
     def screenshot_taken_emit(self, frame_path):
         self.screenshot_taken.emit(frame_path)
 
-    def set_video_dimensions(self, width, height):
-        self.video_dimensions_changed.emit(width, height)
+    def set_video_dimensions(self, width, height, sar):
+        self.video_dimensions_changed.emit(width, height, sar)
 
     def playback_started_emit(self):
         self.playback_started.emit()

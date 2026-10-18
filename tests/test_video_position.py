@@ -1074,9 +1074,9 @@ class TestZoomingInThePane:
         handed = []
         real = vlc_base.calc_zoomed_shift
 
-        def _spy(*args):
+        def _spy(*args, **kwargs):
             handed.append(args[-1])
-            return real(*args)
+            return real(*args, **kwargs)
 
         monkeypatch.setattr(vlc_base, "calc_zoomed_shift", _spy)
 

@@ -86,12 +86,16 @@ def calc_view_placement(
     pane_size: tuple[int, int],
     view: ViewParams,
     transform: VideoTransform | None = VideoTransform.NONE,
+    *,
+    pixel_aspect: float = 1.0,
 ) -> ViewPlacement | None:
     """Where a frame goes in a pane: the one sum every driver draws from.
 
     The frame is what the video output gets, after the transform. The
     crop and the shift are in its pixels, the ones VLC crops in, and in
-    the orientation the picture is shown in.
+    the orientation the picture is shown in. Its pixels need not be
+    square: pixel_aspect is how wide one is shown for its height, before
+    the transform (see calc_frame_pixel_shape).
 
     Fit covers the pane, None fits inside it and Stretch fills it exactly;
     the zoom then scales that about the anchor. On each axis the picture
@@ -105,7 +109,7 @@ def calc_view_placement(
 
     None when there is nothing to place: no frame or no pane.
     """
-    fit = _Fit.of(frame_size, pane_size, view, transform)
+    fit = _Fit.of(frame_size, pane_size, view, transform, pixel_aspect)
 
     if fit is None:
         return None
@@ -135,6 +139,8 @@ def calc_whole_placement(
     pane_size: tuple[int, int],
     view: ViewParams,
     transform: VideoTransform | None = VideoTransform.NONE,
+    *,
+    pixel_aspect: float = 1.0,
 ) -> ViewPlacement | None:
     """All of the frame and where it goes, past the pane where it is.
 
@@ -149,7 +155,7 @@ def calc_whole_placement(
     nothing to place.
     """
 
-    fit = _Fit.of(frame_size, pane_size, view, transform)
+    fit = _Fit.of(frame_size, pane_size, view, transform, pixel_aspect)
 
     if fit is None:
         return None
@@ -177,20 +183,26 @@ def calc_whole_geometry(
     view: ViewParams,
     transform: VideoTransform | None = VideoTransform.NONE,
     is_turned: bool = False,
+    *,
+    pixel_aspect: float = 1.0,
 ) -> tuple[str, str] | None:
     """Aspect override and crop geometry for calc_whole_placement.
 
     The frame is as VLC has it, stored the way the file has it rather than
-    shown; turned, when the file says to show it on its side. The picture
-    is placed as it is shown, and VLC told its shape the way it is stored.
+    shown; turned, when the file says to show it on its side, and its
+    pixels with it, which pixel_aspect is not. The picture is placed as it
+    is shown, and VLC told its shape the way it is stored.
 
     None where there is no whole picture to show.
     """
 
     frame_w, frame_h = frame_size
     shown_frame = (frame_h, frame_w) if is_turned else frame_size
+    shown_pixel = 1 / pixel_aspect if is_turned else pixel_aspect
 
-    placement = calc_whole_placement(shown_frame, pane_size, view, transform)
+    placement = calc_whole_placement(
+        shown_frame, pane_size, view, transform, pixel_aspect=shown_pixel
+    )
 
     if placement is None:
         return None
@@ -212,6 +224,8 @@ def calc_view_shift(
     pane_size: tuple[int, int],
     view: ViewParams,
     transform: VideoTransform | None = VideoTransform.NONE,
+    *,
+    pixel_aspect: float = 1.0,
 ) -> VideoShift:
     """The shift the picture really stands at, in whole frame pixels.
 
@@ -223,7 +237,9 @@ def calc_view_shift(
 
     The shift as it is where there is nothing to work it out from.
     """
-    lowest, highest = calc_shift_range(frame_size, pane_size, view, transform)
+    lowest, highest = calc_shift_range(
+        frame_size, pane_size, view, transform, pixel_aspect=pixel_aspect
+    )
 
     return VideoShift(
         min(max(view.shift.X, lowest.X), highest.X),
@@ -236,6 +252,8 @@ def calc_shift_range(
     pane_size: tuple[int, int],
     view: ViewParams,
     transform: VideoTransform | None = VideoTransform.NONE,
+    *,
+    pixel_aspect: float = 1.0,
 ) -> tuple[VideoShift, VideoShift]:
     """The least and the most the shift can be, in whole frame pixels.
 
@@ -244,7 +262,7 @@ def calc_shift_range(
     is always in it. Both the shift as it is where there is nothing to
     work it out from.
     """
-    fit = _Fit.of(frame_size, pane_size, view, transform)
+    fit = _Fit.of(frame_size, pane_size, view, transform, pixel_aspect)
 
     if fit is None:
         return view.shift, view.shift
@@ -271,13 +289,15 @@ def calc_picture_rect(
     pane_size: tuple[int, int],
     view: ViewParams,
     transform: VideoTransform | None = VideoTransform.NONE,
+    *,
+    pixel_aspect: float = 1.0,
 ) -> Rect | None:
     """Where all of the picture goes in the pane, past its edges where it is.
 
     What the crop keeps, as calc_view_placement places it before the pane
     cuts it. None when there is nothing to place.
     """
-    fit = _Fit.of(frame_size, pane_size, view, transform)
+    fit = _Fit.of(frame_size, pane_size, view, transform, pixel_aspect)
 
     if fit is None:
         return None
@@ -292,6 +312,8 @@ def calc_view_step(
     pane_size: tuple[int, int],
     view: ViewParams,
     transform: VideoTransform | None = VideoTransform.NONE,
+    *,
+    pixel_aspect: float = 1.0,
 ) -> tuple[int, int]:
     """What one move right and one move down add to the shift.
 
@@ -306,7 +328,7 @@ def calc_view_step(
     picture is, past them included. (0, 0) where there is nothing to work
     it out from.
     """
-    fit = _Fit.of(frame_size, pane_size, view, transform)
+    fit = _Fit.of(frame_size, pane_size, view, transform, pixel_aspect)
 
     if fit is None:
         return 0, 0
@@ -331,6 +353,8 @@ def calc_moved_shift(
     view: ViewParams,
     steps: tuple[int, int],
     transform: VideoTransform | None = VideoTransform.NONE,
+    *,
+    pixel_aspect: float = 1.0,
 ) -> VideoShift:
     """The shift so many moves right and down take the picture to.
 
@@ -341,8 +365,12 @@ def calc_moved_shift(
     place above all. Held within the bounds again after.
     """
 
-    shift = calc_view_shift(frame_size, pane_size, view, transform)
-    step_x, step_y = calc_view_step(frame_size, pane_size, view, transform)
+    shift = calc_view_shift(
+        frame_size, pane_size, view, transform, pixel_aspect=pixel_aspect
+    )
+    step_x, step_y = calc_view_step(
+        frame_size, pane_size, view, transform, pixel_aspect=pixel_aspect
+    )
     steps_x, steps_y = steps
 
     moved = view._replace(
@@ -352,7 +380,9 @@ def calc_moved_shift(
         )
     )
 
-    return calc_view_shift(frame_size, pane_size, moved, transform)
+    return calc_view_shift(
+        frame_size, pane_size, moved, transform, pixel_aspect=pixel_aspect
+    )
 
 
 def calc_dragged_shift(
@@ -361,6 +391,8 @@ def calc_dragged_shift(
     view: ViewParams,
     moved: tuple[float, float],
     transform: VideoTransform | None = VideoTransform.NONE,
+    *,
+    pixel_aspect: float = 1.0,
 ) -> tuple[VideoShift, tuple[float, float]]:
     """The shift the picture goes to, dragged along with the pointer.
 
@@ -375,13 +407,17 @@ def calc_dragged_shift(
     going back takes it back at once. The shift as it is, and nothing left
     over, where there is nothing to work it out from.
     """
-    fit = _Fit.of(frame_size, pane_size, view, transform)
+    fit = _Fit.of(frame_size, pane_size, view, transform, pixel_aspect)
 
     if fit is None:
         return view.shift, (0.0, 0.0)
 
-    lowest, highest = calc_shift_range(frame_size, pane_size, view, transform)
-    shift = calc_view_shift(frame_size, pane_size, view, transform)
+    lowest, highest = calc_shift_range(
+        frame_size, pane_size, view, transform, pixel_aspect=pixel_aspect
+    )
+    shift = calc_view_shift(
+        frame_size, pane_size, view, transform, pixel_aspect=pixel_aspect
+    )
     moved_x, moved_y = moved
 
     shift_x, left_x = _dragged(shift.X, moved_x, fit.per_x, lowest.X, highest.X)
@@ -398,6 +434,8 @@ def calc_zoomed_shift(
     focus: tuple[float, float],
     transform: VideoTransform | None = VideoTransform.NONE,
     kept: tuple[float | None, float | None] = (None, None),
+    *,
+    pixel_aspect: float = 1.0,
 ) -> tuple[VideoShift, tuple[float | None, float | None]]:
     """The shift that keeps what is under a pane point there, zoomed.
 
@@ -422,9 +460,9 @@ def calc_zoomed_shift(
     anchor's place or been held. The shift as it is, and nothing kept, where
     there is nothing to work it out from.
     """
-    fit = _Fit.of(frame_size, pane_size, view, transform)
+    fit = _Fit.of(frame_size, pane_size, view, transform, pixel_aspect)
     zoomed = view._replace(scale=scale)
-    zoomed_fit = _Fit.of(frame_size, pane_size, zoomed, transform)
+    zoomed_fit = _Fit.of(frame_size, pane_size, zoomed, transform, pixel_aspect)
 
     if fit is None or zoomed_fit is None:
         return view.shift, (None, None)
@@ -459,6 +497,7 @@ def calc_zoomed_shift(
         pane_size,
         zoomed._replace(shift=VideoShift(wanted_x, wanted_y)),
         transform,
+        pixel_aspect=pixel_aspect,
     )
 
     return shift, (
@@ -475,6 +514,8 @@ def calc_selection_zoom(
     transform: VideoTransform | None = VideoTransform.NONE,
     max_scale: float = MAX_SCALE,
     room: tuple[float, float] | None = None,
+    *,
+    pixel_aspect: float = 1.0,
 ) -> tuple[float, VideoShift] | None:
     """The zoom and shift that fit a part of the picture into the pane.
 
@@ -498,7 +539,7 @@ def calc_selection_zoom(
     None where nothing of the selection is over the picture, and where
     there is nothing to work it out from.
     """
-    fit = _Fit.of(frame_size, pane_size, view, transform)
+    fit = _Fit.of(frame_size, pane_size, view, transform, pixel_aspect)
 
     if fit is None:
         return None
@@ -521,7 +562,7 @@ def calc_selection_zoom(
     scale = max(math.floor(scale * 100 + _ROUNDING_SLACK) / 100, view.scale)
 
     zoomed = view._replace(scale=scale)
-    zoomed_fit = _Fit.of(frame_size, pane_size, zoomed, transform)
+    zoomed_fit = _Fit.of(frame_size, pane_size, zoomed, transform, pixel_aspect)
     anchor_x, anchor_y = _ANCHOR_POSITIONS[view.anchor]
 
     # the selection's middle, kept at the pane's: the point is in frame
@@ -550,6 +591,7 @@ def calc_selection_zoom(
         pane_size,
         zoomed._replace(shift=VideoShift(wanted_x, wanted_y)),
         transform,
+        pixel_aspect=pixel_aspect,
     )
 
     return scale, shift
@@ -579,6 +621,7 @@ class SharedView:
     transform: VideoTransform | None
     place_x: AxisPlace
     place_y: AxisPlace
+    pixel_aspect: float = 1.0
 
 
 class SyncedView(NamedTuple):
@@ -595,6 +638,8 @@ def calc_shared_view(
     pane_size: tuple[int, int],
     view: ViewParams,
     transform: VideoTransform | None = VideoTransform.NONE,
+    *,
+    pixel_aspect: float = 1.0,
 ) -> SharedView | None:
     """Where a picture is in its pane, for other videos to show the same part.
 
@@ -609,7 +654,7 @@ def calc_shared_view(
 
     None where there is nothing to work it out from.
     """
-    fit = _Fit.of(frame_size, pane_size, view, transform)
+    fit = _Fit.of(frame_size, pane_size, view, transform, pixel_aspect)
 
     if fit is None:
         return None
@@ -617,16 +662,18 @@ def calc_shared_view(
     pane_w, pane_h = pane_size
     anchor_x, anchor_y = _ANCHOR_POSITIONS[view.anchor]
     left, top = _picture_position(fit, pane_size, view)
+    shift = calc_view_shift(
+        frame_size, pane_size, view, transform, pixel_aspect=pixel_aspect
+    )
 
     return SharedView(
-        view=view._replace(
-            shift=calc_view_shift(frame_size, pane_size, view, transform)
-        ),
+        view=view._replace(shift=shift),
         frame_size=tuple(frame_size),
         pane_size=tuple(pane_size),
         transform=transform,
         place_x=_axis_place(pane_w, fit.picture_w, left, anchor_x),
         place_y=_axis_place(pane_h, fit.picture_h, top, anchor_y),
+        pixel_aspect=pixel_aspect,
     )
 
 
@@ -636,6 +683,8 @@ def calc_followed_view(
     view: ViewParams,
     shared: SharedView,
     transform: VideoTransform | None = VideoTransform.NONE,
+    *,
+    pixel_aspect: float = 1.0,
 ) -> ViewParams | None:
     """This video's view, showing the part of its picture another one shows.
 
@@ -649,7 +698,7 @@ def calc_followed_view(
     None where there is nothing to work it out from.
     """
     followed = view._replace(scale=shared.view.scale, anchor=shared.view.anchor)
-    fit = _Fit.of(frame_size, pane_size, followed, transform)
+    fit = _Fit.of(frame_size, pane_size, followed, transform, pixel_aspect)
 
     if fit is None:
         return None
@@ -658,6 +707,7 @@ def calc_followed_view(
         tuple(frame_size) == shared.frame_size
         and tuple(pane_size) == shared.pane_size
         and transform == shared.transform
+        and pixel_aspect == shared.pixel_aspect
         and view.crop == shared.view.crop
         and view.aspect == shared.view.aspect
     )
@@ -676,7 +726,9 @@ def calc_followed_view(
     followed = followed._replace(shift=shift)
 
     return followed._replace(
-        shift=calc_view_shift(frame_size, pane_size, followed, transform)
+        shift=calc_view_shift(
+            frame_size, pane_size, followed, transform, pixel_aspect=pixel_aspect
+        )
     )
 
 
@@ -685,6 +737,8 @@ def calc_view_borders(
     pane_size: tuple[int, int],
     view: ViewParams,
     transform: VideoTransform | None = VideoTransform.NONE,
+    *,
+    pixel_aspect: float = 1.0,
 ) -> VideoCrop:
     """What the view cuts off each side of the frame, in whole frame pixels.
 
@@ -692,7 +746,9 @@ def calc_view_borders(
     their snapshot keeps; frames drawn here get screenshots cut the same.
     Just the user crop where there is nothing to work it out from.
     """
-    placement = calc_view_placement(frame_size, pane_size, view, transform)
+    placement = calc_view_placement(
+        frame_size, pane_size, view, transform, pixel_aspect=pixel_aspect
+    )
 
     if placement is None:
         return view.crop
@@ -705,19 +761,27 @@ def calc_view_geometry(
     pane_size: tuple[int, int],
     view: ViewParams,
     transform: VideoTransform | None = VideoTransform.NONE,
+    *,
+    pixel_aspect: float = 1.0,
 ) -> tuple[str, str]:
     """Aspect override and crop geometry strings to pass to libvlc.
 
     VLC is told to crop the frame to exactly the part on show, zoom
     included, and to give that part the shape it has on screen. It then
     lands where calc_view_placement puts it as long as its window is over
-    the target, which is what the hardware drivers see to.
+    the target, which is what the hardware drivers see to. The override
+    takes the place of the shape the video gives its pixels, so that
+    shape is in the sums here instead.
     """
-    placement = calc_view_placement(frame_size, pane_size, view, transform)
+    placement = calc_view_placement(
+        frame_size, pane_size, view, transform, pixel_aspect=pixel_aspect
+    )
 
     if placement is None:
         # No usable geometry; show the user-cropped region letterboxed.
-        return _format_view(_display_size(frame_size, transform), view.crop)
+        return _format_view(
+            _whole_override(frame_size, transform, pixel_aspect), view.crop
+        )
 
     borders = _source_borders(frame_size, placement.source)
     _, _, region_w, region_h = calc_crop_region(frame_size, borders)
@@ -776,30 +840,45 @@ def calc_vlc_picture(
     return (window_w - width) // 2, (window_h - height) // 2, width, height
 
 
-def _frame_pixel_shape(
-    frame_size: tuple[int, int], transform: VideoTransform | None
+def calc_frame_pixel_shape(
+    frame_size: tuple[int, int],
+    transform: VideoTransform | None,
+    pixel_aspect: float = 1.0,
 ) -> tuple[float, float]:
     """How wide and how tall a frame pixel is on screen, relatively.
 
-    Square, but under a rotation VLC 3 keeps the frame at its unrotated
-    size and squeezes the turned picture into it: a 1920x1080 frame then
-    holds a picture 1080 wide and 1920 tall.
+    pixel_aspect is how wide the video's own pixels are for their height,
+    its sample aspect ratio: 2 for a 320x360 frame of a 640x360 picture,
+    64/45 for a 720x576 one shown 16:9. Under a rotation VLC 3 keeps the
+    frame at its unrotated size and squeezes the turned picture into it:
+    a 1920x1080 frame of square pixels then holds a picture 1080 wide and
+    1920 tall.
     """
     if transform not in ROTATION_TRANSFORMS:
-        return 1.0, 1.0
+        return pixel_aspect, 1.0
 
     frame_w, frame_h = frame_size
 
-    return frame_h / frame_w, frame_w / frame_h
+    # the turned picture is as wide as the unturned one is tall
+    return frame_h / frame_w, frame_w * pixel_aspect / frame_h
 
 
-def _display_size(
-    frame_size: tuple[int, int], transform: VideoTransform | None
+def _whole_override(
+    frame_size: tuple[int, int], transform: VideoTransform | None, pixel_aspect: float
 ) -> tuple[int, int]:
-    if transform in ROTATION_TRANSFORMS:
-        return frame_size[1], frame_size[0]
+    """The override that shows the whole frame in the shape it has.
 
-    return frame_size
+    Its size on screen as far as whole pixels go, which VLC reduces. (0, 0),
+    VLC's own shape, where there is no frame.
+    """
+    frame_w, frame_h = frame_size
+
+    if min(frame_w, frame_h) <= 0:
+        return 0, 0
+
+    unit_x, unit_y = calc_frame_pixel_shape(frame_size, transform, pixel_aspect)
+
+    return max(round(frame_w * unit_x), 1), max(round(frame_h * unit_y), 1)
 
 
 @dataclass(frozen=True)
@@ -829,15 +908,16 @@ class _Fit:
         pane_size: tuple[int, int],
         view: ViewParams,
         transform: VideoTransform | None,
+        pixel_aspect: float,
     ) -> "_Fit | None":
         frame_w, frame_h = frame_size
         pane_w, pane_h = pane_size
 
-        if min(frame_w, frame_h, pane_w, pane_h, view.scale) <= 0:
+        if min(frame_w, frame_h, pane_w, pane_h, view.scale, pixel_aspect) <= 0:
             return None
 
         x, y, region_w, region_h = calc_crop_region(frame_size, view.crop)
-        unit_x, unit_y = _frame_pixel_shape(frame_size, transform)
+        unit_x, unit_y = calc_frame_pixel_shape(frame_size, transform, pixel_aspect)
 
         fit_x = pane_w / (region_w * unit_x)
         fit_y = pane_h / (region_h * unit_y)

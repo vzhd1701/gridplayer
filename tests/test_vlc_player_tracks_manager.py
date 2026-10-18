@@ -1,5 +1,6 @@
 import logging
 from concurrent.futures import ThreadPoolExecutor
+from fractions import Fraction
 
 import pytest
 
@@ -25,12 +26,14 @@ class FakeVideoContent:
         frame_rate_num=30,
         frame_rate_den=1,
         orientation=vlc.VideoOrient.top_left,
+        sar=(1, 1),
     ):
         self.width = width
         self.height = height
         self.frame_rate_num = frame_rate_num
         self.frame_rate_den = frame_rate_den
         self.orientation = orientation
+        self.sar_num, self.sar_den = sar
 
 
 class FakeAudioContent:
@@ -286,6 +289,40 @@ class TestConvertVideoTrack:
         result = _convert_video_track(track, media_uri="ok.mp4")
 
         assert result.fps is None
+
+    def test_a_video_says_how_wide_its_pixels_are(self):
+        """A DVB channel is 720x576 shown 16:9."""
+
+        track = make_video_track(
+            video_content=FakeVideoContent(width=720, height=576, sar=(64, 45))
+        )
+
+        result = _convert_video_track(track, media_uri="channel.ts")
+
+        assert result.sar == (64, 45)
+        assert result.pixel_aspect == Fraction(64, 45)
+
+    def test_a_stream_not_yet_decoded_has_not_said(self):
+        track = make_video_track(video_content=FakeVideoContent(sar=(0, 0)))
+
+        result = _convert_video_track(track, media_uri="channel.ts")
+
+        assert result.sar is None
+        assert result.pixel_aspect == 1
+
+    def test_turned_wide_pixels_are_tall(self):
+        """VLC shows the frame on its side, and its pixels with it."""
+
+        track = make_video_track(
+            video_content=FakeVideoContent(
+                orientation=vlc.VideoOrient.right_top, sar=(2, 1)
+            )
+        )
+
+        result = _convert_video_track(track, media_uri="phone.mp4")
+
+        assert result.stored_pixel_aspect == 2
+        assert result.pixel_aspect == Fraction(1, 2)
 
 
 class TestConvertAudioTrack:

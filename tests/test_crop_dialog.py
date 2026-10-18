@@ -29,7 +29,9 @@ class _FakeBlock:
             transform=VideoTransform.NONE,
         )
         self.video_tracks = {
-            1: SimpleNamespace(video_dimensions=(640, 360), is_turned=False)
+            1: SimpleNamespace(
+                video_dimensions=(640, 360), is_turned=False, pixel_aspect=1
+            )
         }
         # the block's view part, done by the fake itself
         self.view = self
@@ -115,7 +117,9 @@ def test_dialog_reset_zeroes_crop_live():
 
 def test_dialog_dimension_fallback_when_unknown():
     block = _FakeBlock()
-    block.video_tracks = {1: SimpleNamespace(video_dimensions=(0, 0), is_turned=False)}
+    block.video_tracks = {
+        1: SimpleNamespace(video_dimensions=(0, 0), is_turned=False, pixel_aspect=1)
+    }
     dialog = SetCropDialog.for_video_block(block)
 
     assert dialog._spins["left"].maximum() == 9999
@@ -163,9 +167,28 @@ def test_dialog_crops_a_turned_file_as_it_is_shown():
     assert dialog._size_label.text() == "Video: 360x640 | Cropped: 360x640"
 
 
+def test_dialog_sizes_a_video_of_wide_pixels_as_it_is_shown():
+    """320x360 of pixels twice as wide as tall is a 640x360 picture: the
+    margins are in the video's own pixels, 40 of them 80 on screen."""
+    block = _FakeBlock()
+    block.video_tracks = {
+        1: SimpleNamespace(video_dimensions=(320, 360), is_turned=False, pixel_aspect=2)
+    }
+    dialog = SetCropDialog.for_video_block(block)
+
+    assert dialog._spins["left"].maximum() == 320
+
+    dialog._spins["left"].setValue(40)
+
+    assert dialog._size_label.text() == "Video: 640x360 | Cropped: 560x360"
+    assert dialog._preview._left == pytest.approx(80)
+
+
 def test_dialog_hides_size_label_when_dimensions_unknown():
     block = _FakeBlock()
-    block.video_tracks = {1: SimpleNamespace(video_dimensions=(0, 0), is_turned=False)}
+    block.video_tracks = {
+        1: SimpleNamespace(video_dimensions=(0, 0), is_turned=False, pixel_aspect=1)
+    }
     dialog = SetCropDialog.for_video_block(block)
 
     assert dialog._size_label.isHidden()

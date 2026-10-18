@@ -282,13 +282,16 @@ class VideoFrameVLCSW(VideoFrameVLCProcess):
             self._transform,
             self.video_surface.picture_size(),
             self._orientation(),
+            self._pixel_aspect(),
         )
 
     def adjust_view(self):
         if super().adjust_view():
             return
 
-        self.video_surface.set_view(self._view, self._transform, self._frame_size())
+        self.video_surface.set_view(
+            self._view, self._transform, self._frame_size(), self._pixel_aspect()
+        )
 
     def _view_frame_size(self):
         return self.video_surface.picture_size()

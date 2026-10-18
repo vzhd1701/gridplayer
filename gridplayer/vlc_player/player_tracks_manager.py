@@ -399,6 +399,16 @@ _ORIENTATION_TRANSFORMS = {
 }
 
 
+def track_sar(vt_content) -> tuple[int, int] | None:
+    """How wide a video track's pixels are for their height, None where VLC
+    has not said: an MPEG-TS stream says only once it is decoded."""
+
+    if not vt_content.sar_num or not vt_content.sar_den:
+        return None
+
+    return vt_content.sar_num, vt_content.sar_den
+
+
 def _convert_video_track(video_track, media_uri=None, fallback_size=(0, 0)):
     vt_content = video_track.u.video.contents
 
@@ -423,6 +433,7 @@ def _convert_video_track(video_track, media_uri=None, fallback_size=(0, 0)):
         orientation=_ORIENTATION_TRANSFORMS.get(
             vt_content.orientation, VideoTransform.NONE
         ),
+        sar=track_sar(vt_content),
         bitrate=video_track.bitrate,
         language=_decode_track_field(
             video_track.language, field_name="language", **track_kwargs
