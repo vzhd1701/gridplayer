@@ -1,10 +1,8 @@
 import contextlib
-import logging
-import subprocess
 import threading
 
-from PyQt5.QtCore import QLocale, QUrl, pyqtSignal
-from PyQt5.QtGui import QDesktopServices, QIcon
+from PyQt5.QtCore import QLocale, pyqtSignal
+from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import (
     QHBoxLayout,
     QLabel,
@@ -17,7 +15,6 @@ from gridplayer.dialogs.checkup import CheckupDialog
 from gridplayer.dialogs.messagebox import QCustomMessageBox
 from gridplayer.dialogs.paged_dialog import Icon, PagedDialog
 from gridplayer.models.settings_draft import SettingsMode, SetValue
-from gridplayer.params import env
 from gridplayer.params.settings_pages import PAGES
 from gridplayer.params.static import CacheMode
 from gridplayer.params.theme import set_secondary
@@ -29,6 +26,7 @@ from gridplayer.utils.cookies import cookie_store, same_cookies
 from gridplayer.utils.network import opts_for
 from gridplayer.utils.qt import translate
 from gridplayer.utils.screenshots import unknown_specifiers
+from gridplayer.utils.show_in_folder import open_folder
 from gridplayer.version import __app_url__
 from gridplayer.widgets.cookie_store_list import CookieStoreList
 from gridplayer.widgets.settings_controls import icon_button
@@ -70,8 +68,6 @@ class SettingsDialog(PagedDialog):
 
     def __init__(self, parent):
         super().__init__(parent)
-
-        self._log = logging.getLogger(self.__class__.__name__)
 
         self.ui_build()
         self.ui_connect()
@@ -499,7 +495,7 @@ class SettingsDialog(PagedDialog):
         # opened before anything was kept there, as an empty folder
         folder.mkdir(parents=True, exist_ok=True)
 
-        self._open_folder(folder)
+        open_folder(folder)
 
     def open_data_dir(self):
         """The folder rather than the log file that used to be opened.
@@ -511,16 +507,7 @@ class SettingsDialog(PagedDialog):
         installed anywhere else. See gridplayer.utils.js_runtime.
         """
 
-        self._open_folder(get_app_data_dir())
-
-    def _open_folder(self, folder):
-        self._log.debug(f"Opening folder {folder}")
-
-        if env.IS_SNAP:
-            # https://forum.snapcraft.io/t/xdg-open-or-gvfs-open-qdesktopservices-openurl-file-somelocation-file-txt-wont-open-the-file/16824
-            subprocess.call(["xdg-open", folder])
-        else:
-            QDesktopServices.openUrl(QUrl.fromLocalFile(str(folder)))
+        open_folder(get_app_data_dir())
 
     def measure_cache(self, first=None):
         """What the cache comes to, put beside Clear once it is known.

@@ -248,7 +248,7 @@ class TestOpenFolder:
     def test_opens_it_made_if_it_is_not_there_yet(self, root, make_dialog, monkeypatch):
         dialog = make_dialog()
         opened = []
-        monkeypatch.setattr(dialog, "_open_folder", opened.append)
+        monkeypatch.setattr(settings_dialog, "open_folder", opened.append)
 
         dialog.cacheOpen.click()
 

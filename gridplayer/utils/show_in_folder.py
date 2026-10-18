@@ -129,6 +129,8 @@ class FolderRevealer(QObject):
 
 
 def open_folder(folder: Path) -> None:
+    _log.debug(f"Opening folder {folder}")
+
     if env.IS_SNAP:
         # https://forum.snapcraft.io/t/xdg-open-or-gvfs-open-qdesktopservices-openurl-file-somelocation-file-txt-wont-open-the-file/16824
         QProcess.startDetached("xdg-open", [str(folder)])

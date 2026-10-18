@@ -14,7 +14,7 @@ from PyQt5.QtWidgets import QApplication
 from gridplayer.dialogs import settings as settings_dialog
 from gridplayer.dialogs.settings import SettingsDialog
 from gridplayer.settings import _Settings
-from gridplayer.utils import ytdlp_checkup
+from gridplayer.utils import show_in_folder, ytdlp_checkup
 from gridplayer.utils.cookies import CookieStore
 
 SETTING = "streaming/js_runtime_path"
@@ -57,9 +57,9 @@ def opened(monkeypatch):
     urls = []
 
     monkeypatch.setattr(
-        settings_dialog.QDesktopServices, "openUrl", lambda url: urls.append(url)
+        show_in_folder.QDesktopServices, "openUrl", lambda url: urls.append(url)
     )
-    monkeypatch.setattr(settings_dialog.env, "IS_SNAP", False)
+    monkeypatch.setattr(show_in_folder.env, "IS_SNAP", False)
 
     return urls
 
@@ -114,14 +114,16 @@ def test_a_snap_goes_around_qt_to_open_it(dialog, monkeypatch, tmp_path):
     called = []
 
     monkeypatch.setattr(settings_dialog, "get_app_data_dir", lambda: tmp_path)
-    monkeypatch.setattr(settings_dialog.env, "IS_SNAP", True)
+    monkeypatch.setattr(show_in_folder.env, "IS_SNAP", True)
     monkeypatch.setattr(
-        settings_dialog.subprocess, "call", lambda cmd: called.append(cmd)
+        show_in_folder.QProcess,
+        "startDetached",
+        lambda *args: called.append(args),
     )
 
     dialog.open_data_dir()
 
-    assert called == [["xdg-open", tmp_path]]
+    assert called == [("xdg-open", [str(tmp_path)])]
 
 
 class TestTheYouTubeTestButton:
