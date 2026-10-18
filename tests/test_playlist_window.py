@@ -6,7 +6,7 @@ from types import SimpleNamespace
 from unittest.mock import Mock
 
 import pytest
-from PyQt5.QtCore import QEvent, QSettings, pyqtSignal
+from PyQt5.QtCore import QEvent, QPoint, QSettings, pyqtSignal
 from PyQt5.QtWidgets import QApplication, QMessageBox, QWidget
 
 from gridplayer.dialogs import playlist_settings
@@ -197,11 +197,23 @@ class TestTheBookmarksSharing:
         assert part.calls[-1] == ("sharing", False)
 
     def test_its_link_goes_to_the_switch(self, make_window, parts):
+        # from a page other than the switch's, never shown till then
         window = make_window(page="bookmarks")
+        window.resize(window.width(), 420)
+        window.show()
+        QApplication.processEvents()
 
         parts.made["bookmarks"].sharing_asked.emit()
 
         assert _shown(window) is window.pages["playlist"]
+        assert QApplication.focusWidget() is window.widget(SHARING)
+
+        form = window.forms["playlist"]
+        viewport = form._scroll_area().viewport()
+        row = form._rows[SHARING]
+        top = row.mapTo(viewport, QPoint(0, 0)).y()
+        # in the middle, give or take a little
+        assert abs(top + row.height() // 2 - viewport.height() // 2) <= 2
 
 
 class TestKeepingAllSettings:

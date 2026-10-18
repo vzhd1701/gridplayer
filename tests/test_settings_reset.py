@@ -530,6 +530,30 @@ class TestAForcedField:
         assert form.value("a/forced") is False
         assert isinstance(form.persistence_result()["a/forced"], ResetValue)
 
+    def test_values_set_without_it_keep_its_own(self):
+        form = _forcing_form()
+        form.set_values({"a/driver": True, "a/forced": False})
+
+        form.set_values({"a/driver": True})
+        form.widget("a/driver").setChecked(False)
+
+        assert form.value("a/forced") is False
+
+
+def test_a_default_of_none_is_looked_up_once():
+    looked_up = []
+    form = SettingsForm(
+        (CheckboxField(settings_key="a/plain", label="Plain"),),
+        reset_to=looked_up.append,
+        mode=SettingsMode.DEFAULTS,
+    )
+    form.set_values({"a/plain": True})
+    looked_up.clear()
+
+    form.persistence_result()
+
+    assert looked_up == ["a/plain"]
+
 
 class TestWhatAnEditReads:
     def test_only_the_field_edited(self, dialog, monkeypatch):

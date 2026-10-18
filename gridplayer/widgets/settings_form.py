@@ -76,6 +76,9 @@ SECTIONS_SPACING = 20
 # among so many, some would have every word typed
 SEARCHED_OPTIONS_MAX = 20
 
+# a default not looked up yet, as None can be one
+_NOT_LOOKED_UP = object()
+
 
 def _scroll_by(bar: QScrollBar, step: int):
     """Down a little, smoothly, for the eye to follow where it went."""
@@ -1100,8 +1103,11 @@ class SettingsForm(QWidget):
         return {key: editor.value() for key, editor in self._editors.items()}
 
     def set_values(self, values: dict, overridden: set[str] | None = None):
-        # forced again by the sync below, if still so
-        self._forced = {}
+        # forced again by the sync below, if still so; one not given keeps
+        # its own
+        self._forced = {
+            key: own for key, own in self._forced.items() if key not in values
+        }
 
         self._updating = True
         try:
@@ -1109,8 +1115,8 @@ class SettingsForm(QWidget):
                 if key in values:
                     self._put(key, values[key])
             self._drafts = {}
-            for key, editor in self._editors.items():
-                displayed = editor.value()
+            for key in self._editors:
+                displayed = self._own_value(key)
                 self._drafts[key] = FieldDraft(
                     values.get(key, displayed), displayed, key in (overridden or ())
                 )
@@ -1169,10 +1175,10 @@ class SettingsForm(QWidget):
         default = self._reset_to(key)
         return self._value_for_save(key, default) == default
 
-    def _value_for_save(self, key, default=None):
+    def _value_for_save(self, key, default=_NOT_LOOKED_UP):
         # what a reset gives, if already looked up: a lookup can be a read
         # of the stored settings
-        if default is None:
+        if default is _NOT_LOOKED_UP:
             default = self._reset_to(key)
 
         editor = self._editors[key]
