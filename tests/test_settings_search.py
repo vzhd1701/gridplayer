@@ -307,6 +307,22 @@ class TestTheDialog:
         assert not _put_away(section)
         assert not any(_put_away(note) for note in form._notes)
 
+    @pytest.mark.parametrize(
+        ("page_id", "key"),
+        [
+            ("cookies", "cookies/allow_update"),
+            ("resolution", "streaming/resolver_priority"),
+        ],
+    )
+    def test_what_is_found_beside_a_list_is_not_stretched(self, dialog, page_id, key):
+        # the list that fills the page is away, and its room with it
+        dialog.search("yt")
+        dialog.show_page(page_id)
+        _settle()
+
+        row = dialog.forms[page_id]._rows[key]
+        assert row.height() == row.sizeHint().height()
+
     def test_a_setting_pointed_at_is_out_of_the_search(self, dialog, mocker):
         mocker.patch.object(settings_dialog.QCustomMessageBox, "warning")
         key = "screenshots/filename_template"

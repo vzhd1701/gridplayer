@@ -422,8 +422,9 @@ class SettingsForm(QWidget):
         self._add_items(items, joined=False)
         self._close_section()
 
-        if not self._fills:
-            root.addStretch(1)
+        # the room under the rows; on a page a list or a table fills, only
+        # once a search has put it away, rather than the cards stretched
+        root.addStretch(0 if self._fills else 1)
 
         # what is modified waits for the values
         self._sync(keys=())
