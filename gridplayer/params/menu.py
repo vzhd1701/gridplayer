@@ -32,7 +32,10 @@ SUBMENUS = MappingProxyType(
         "Zoom": {"title": translate("Actions", "Zoom"), "icon": "zoom"},
         "Zoom to Cursor": {"title": translate("Zoom", "Zoom to Cursor")},
         "View Mode": {"title": translate("Actions", "View Mode"), "icon": "view-mode"},
-        "Aspect Ratio": {"title": translate("Actions", "Aspect Ratio")},
+        "Aspect Ratio": {
+            "title": translate("Actions", "Aspect Ratio"),
+            "icon": "aspect-ratio",
+        },
         "Crop": {"title": translate("Actions", "Crop"), "icon": "crop"},
         "Position": {"title": translate("Actions", "Position"), "icon": "anchor"},
         "Move Past Edges": {"title": translate("Actions", "Move Past Edges")},

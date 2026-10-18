@@ -148,6 +148,7 @@ icon-symbolic,icons/custom/view mode fill.svg,view-mode-fill
 icon-symbolic,icons/custom/view mode fit.svg,view-mode-fit
 icon-symbolic,icons/custom/view mode stretch.svg,view-mode-stretch
 icon-symbolic,icons/custom/view mode.svg,view-mode
+icon-symbolic,icons/custom/aspect ratio.svg,aspect-ratio
 icon-symbolic,icons/custom/volume decrease.svg,volume-decrease
 icon-symbolic,icons/custom/volume increase.svg,volume-increase
 icon-symbolic,icons/custom/volume unmute.svg,volume-unmute
