@@ -1,4 +1,5 @@
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Iterable, Mapping
+from dataclasses import dataclass, field
 
 from PyQt5.QtCore import (
     QAbstractAnimation,
@@ -13,6 +14,7 @@ from PyQt5.QtCore import (
 )
 from PyQt5.QtGui import QIcon, QPainter
 from PyQt5.QtWidgets import (
+    QAbstractButton,
     QApplication,
     QHBoxLayout,
     QLabel,
@@ -47,6 +49,7 @@ from gridplayer.params.settings_fields.kinds import (
 from gridplayer.params.settings_fields.registry import FIELDS
 from gridplayer.params.theme import set_secondary
 from gridplayer.utils.qt import translate
+from gridplayer.utils.text_search import Query, plain_text
 from gridplayer.widgets.settings_controls import CARD_RADIUS, fit_fields, theme_color
 from gridplayer.widgets.settings_editors import Editor, make_editor
 
@@ -73,6 +76,10 @@ SCROLL_MS = 200
 SECTION_SPACING = 8
 # between one section and the next
 SECTIONS_SPACING = 20
+
+# a drop-down with more options than this (the fonts) isn't searched by them:
+# among so many, some would have every word typed
+SEARCHED_OPTIONS_MAX = 20
 
 
 def bold(label: QLabel) -> QLabel:
@@ -144,6 +151,10 @@ class _FormRow(_Shown):
         # takes the page: a list or a table, out of the card
         self.fills = False
         self.watches_slots = False
+        # left out by a search
+        self.filtered_out = False
+        # why a search found it, when its name doesn't say
+        self.hint: QLabel | None = None
 
         lay = QVBoxLayout(self)
         lay.setSpacing(STACKED_SPACING)
@@ -168,6 +179,30 @@ class _FormRow(_Shown):
 
         self.layout().insertWidget(0, label)
         self._set_margins(STACKED_MARGINS)
+
+    def follow(self):
+        if self.filtered_out:
+            if self.parentWidget() is not None:
+                self.hide()
+            return
+
+        super().follow()
+
+    def set_hint(self, text: str | None):
+        """A grey line under the row, or none."""
+
+        if text is None:
+            if self.hint is not None:
+                self.hint.hide()
+            return
+
+        if self.hint is None:
+            self.hint = QLabel()
+            set_secondary(self.hint)
+            self.layout().addWidget(self.hint)
+
+        self.hint.setText(text)
+        self.hint.show()
 
     def make_bare(self):
         """Out of the card: a list or a table has edges of its own."""
@@ -264,21 +299,75 @@ class _Section(_Shown):
         self.title = title
         # takes what the page has left, for a list or a table in it
         self.fills = False
+        self.header: QLabel | None = None
 
         lay = QVBoxLayout(self)
         lay.setContentsMargins(0, 0, 0, 0)
         lay.setSpacing(SECTION_SPACING)
 
         if title:
-            header = QLabel(title)
-            header.setOpenExternalLinks(True)
-            header.setContentsMargins(2, 0, 0, 0)
-            lay.addWidget(bold(header))
+            self.header = QLabel(title)
+            self.header.setOpenExternalLinks(True)
+            self.header.setContentsMargins(2, 0, 0, 0)
+            lay.addWidget(bold(self.header))
 
     def add(self, widget: QWidget, *, fills: bool = False):
         self.layout().addWidget(widget, 1 if fills else 0)
         self.fills = self.fills or fills
         self.watch(widget)
+
+
+@dataclass
+class _Searched:
+    """What a search reads of a row."""
+
+    row: _FormRow
+    section: _Section | None
+    keys: list[str] = field(default_factory=list)
+    # its fields' labels, the slots' labels and the options shown as buttons
+    names: list[str] = field(default_factory=list)
+    # the options of its drop-downs, which aren't in sight but the one picked
+    options: list[str] = field(default_factory=list)
+    drop_downs: list[QWidget] = field(default_factory=list)
+    tooltips: list[str] = field(default_factory=list)
+    # what the dialog put in it, read as it is when searched
+    slots: list[QWidget] = field(default_factory=list)
+    # a list or a table that searches itself
+    fill: Editor | None = None
+
+
+@dataclass
+class Found:
+    """A row a search found, and how."""
+
+    row: _FormRow
+    # by its tooltip alone, which says more than its name, and finds more
+    by_tooltip: bool = False
+    # the option it was found by, for one found by an option in a drop-down
+    option: str | None = None
+    # what in it was found: one for a row, as many as a list or a table found
+    count: int = 1
+    # a list or a table found by what is in it, and filtered to that
+    by_content: bool = False
+
+
+def _slot_texts(widget: QWidget) -> tuple[list[str], list[str]]:
+    """What a slot says, and its tooltips: the texts of its buttons and
+    labels, and its own."""
+
+    parts = [
+        widget,
+        *widget.findChildren(QAbstractButton),
+        *widget.findChildren(QLabel),
+    ]
+
+    texts, tooltips = [], []
+    for part in parts:
+        if isinstance(part, QAbstractButton | QLabel) and part.text():
+            texts.append(plain_text(part.text()))
+        if part.toolTip():
+            tooltips.append(plain_text(part.toolTip()))
+    return texts, tooltips
 
 
 class SettingsForm(QWidget):
@@ -326,6 +415,14 @@ class SettingsForm(QWidget):
         self._card: _Card | None = None
         # the sections with a heading, in order, for links to them
         self._titled: list[tuple[str, QWidget]] = []
+
+        # every row, as a search reads it
+        self._searched: list[_Searched] = []
+        # the rows a search shows, found or not, or None while not searching
+        self._search_shown: set[_FormRow] | None = None
+        self._found: list[Found] = []
+        # the labels marked where they were found, and what they said
+        self._marked_labels: list[tuple[QLabel, str, Qt.TextFormat]] = []
 
         root = QVBoxLayout(self)
         root.setContentsMargins(0, 0, 0, 0)
@@ -418,6 +515,9 @@ class SettingsForm(QWidget):
         row = _FormRow(joined=joined)
         lay = row.line
 
+        searched = _Searched(row, self._section)
+        self._searched.append(searched)
+
         editors = []
         # a field's reset button, held back past the slots right after it:
         # a button there (a help, say) goes with the field, inside its reset
@@ -426,8 +526,10 @@ class SettingsForm(QWidget):
         for entry in entries:
             if isinstance(entry, Slot):
                 widget = self._slots[entry.name]()
+                searched.slots.append(widget)
                 if entry.label is not None:
                     lay.addWidget(QLabel(entry.label), 1)
+                    searched.names.append(entry.label)
                     is_labelled = True
                 lay.addWidget(widget, 1 if entry.fills else 0)
                 row.fills = row.fills or entry.fills
@@ -442,6 +544,7 @@ class SettingsForm(QWidget):
             self._rows[editor.spec.settings_key] = row
             editors.append(editor)
             row.fills = row.fills or editor.fills
+            self._note_searched(searched, editor)
 
             held_reset = self._reset_btns.get(editor.spec.settings_key)
 
@@ -494,6 +597,28 @@ class SettingsForm(QWidget):
         return editor
 
     @staticmethod
+    def _note_searched(searched: _Searched, editor: Editor):
+        spec = editor.spec
+
+        searched.keys.append(spec.settings_key)
+        if spec.label:
+            searched.names.append(spec.label)
+        if editor.tooltip:
+            searched.tooltips.append(plain_text(editor.tooltip))
+        if editor.fills:
+            searched.fill = editor
+
+        if isinstance(spec, ComboField):
+            combo = editor.widget
+            options = [combo.itemText(i) for i in range(combo.count())]
+            if spec.buttons:
+                searched.names.extend(options)
+            else:
+                searched.drop_downs.append(combo)
+                if len(options) <= SEARCHED_OPTIONS_MAX:
+                    searched.options.extend(options)
+
+    @staticmethod
     def _add_reset(lay, reset):
         if reset is not None:
             lay.addWidget(reset, alignment=Qt.AlignVCenter)
@@ -543,7 +668,7 @@ class SettingsForm(QWidget):
 
     # what is on and what is shown
 
-    def _sync(self, keys=None):
+    def _sync(self, keys=None, *, reveal=True):
         """What is on and shown, all of it; and what is modified, of these
         keys or all of them."""
 
@@ -555,36 +680,56 @@ class SettingsForm(QWidget):
                 enabled[key] = self._is_on(key, is_on)
             return enabled[key]
 
-        moved, revealed = False, []
+        # a row of a few fields is shown while all of them may be
+        shown: dict[_FormRow, bool] = {}
         for key, editor in self._editors.items():
             editor.set_enabled(is_on(key))
 
             row = self._rows[key]
-            # a sub-option is there only while the one it belongs to lets it
-            # be changed, rather than there and greyed out
-            rules = [editor.spec.shown_when]
-            if row.joined:
-                rules.append(editor.spec.enabled_when)
-            rules = [rule for rule in rules if rule is not None]
+            shown[row] = shown.get(row, True) and self._is_shown(key, is_on)
 
-            if key in self._hidden:
-                is_shown = False
-            elif rules:
-                is_shown = all(self._is_met(rule, is_on) for rule in rules)
-            else:
-                continue
-
+        moved, revealed = False, []
+        for row, is_shown in shown.items():
             if is_shown == _put_away(row):
                 row.setVisible(is_shown)
                 moved = True
-                if is_shown and row not in revealed:
+                if is_shown:
                     revealed.append(row)
 
         self._sync_modified(keys)
 
         if moved and self.isVisible():
             self._settle()
-            self._point_out(revealed)
+            if reveal:
+                self._point_out(revealed)
+
+    def _is_shown(self, key, is_on) -> bool:
+        if key in self._hidden:
+            return False
+
+        row = self._rows[key]
+        spec = self._editors[key].spec
+
+        # a sub-option is there only while the one it belongs to lets it
+        # be changed, rather than there and greyed out
+        rules = [spec.shown_when]
+        if row.joined:
+            rules.append(spec.enabled_when)
+        rules = [rule for rule in rules if rule is not None]
+
+        is_met = all(self._is_met(rule, is_on) for rule in rules)
+
+        if self._search_shown is None:
+            return is_met
+
+        # found, or what it belongs to, greyed out or not
+        if row in self._search_shown:
+            return True
+
+        # brought by a row the search shows, as it would be without the search
+        return is_met and any(
+            self._rows.get(rule.key) in self._search_shown for rule in rules
+        )
 
     def _point_out(self, rows):
         """Rows shown just now, scrolled to, so that they are not missed
@@ -721,6 +866,164 @@ class SettingsForm(QWidget):
         """The sections with a heading, and the heading, in order."""
 
         return list(self._titled)
+
+    # searching
+
+    def find(self, query: Query, page_title: str = "") -> list[Found]:
+        """The rows the words are in, in order: in a row's names, its
+        section's heading or the page's title, or in what can be picked in
+        it; in its tooltips, failing that; or found by a list or a table in
+        it. Nothing out of sight for good is found."""
+
+        found = []
+        for searched in self._searched:
+            if not self._can_find(searched):
+                continue
+
+            section = searched.section.title if searched.section is not None else None
+            names = [page_title, plain_text(section or ""), *searched.names]
+            names.extend(combo.currentText() for combo in searched.drop_downs)
+            slot_tooltips = []
+            for slot in searched.slots:
+                texts, tooltips = _slot_texts(slot)
+                names.extend(texts)
+                slot_tooltips.extend(tooltips)
+
+            if query.is_in(names):
+                found.append(Found(searched.row))
+            elif query.is_in(names + searched.options):
+                found.append(
+                    Found(
+                        searched.row, option=self._found_option(query, names, searched)
+                    )
+                )
+            elif query.is_in(
+                names + searched.options + searched.tooltips + slot_tooltips
+            ):
+                found.append(Found(searched.row, by_tooltip=True))
+            elif searched.fill is not None:
+                count = searched.fill.count_found(query.text)
+                if count:
+                    found.append(Found(searched.row, count=count, by_content=True))
+
+        return found
+
+    def _can_find(self, searched: _Searched) -> bool:
+        if searched.keys:
+            return not all(key in self._hidden for key in searched.keys)
+
+        # a slot that has hidden itself, as the note of a tray there isn't
+        return not (
+            searched.row.watches_slots
+            and all(_put_away(slot) for slot in searched.slots)
+        )
+
+    @staticmethod
+    def _found_option(query: Query, names, searched: _Searched) -> str | None:
+        in_names = set().union(*(query.found_words(name) for name in names))
+        for option in searched.options:
+            if query.found_words(option) - in_names:
+                return option
+        return None
+
+    def show_found(self, query: Query | None, found: Iterable[Found] = ()):
+        """Only the rows found, and what they belong to, with what was found
+        in them marked; with no query, every row back as it was."""
+
+        self._unmark()
+
+        self._found = [] if query is None else list(found)
+        by_row = {found.row: found for found in self._found}
+
+        if query is None:
+            self._search_shown = None
+        else:
+            self._search_shown = set(by_row) | self._belonged_to(by_row)
+
+        for searched in self._searched:
+            row = searched.row
+            row.filtered_out = (
+                self._search_shown is not None and row not in self._search_shown
+            )
+
+            row_found = by_row.get(row)
+            option = None if row_found is None else row_found.option
+            row.set_hint(
+                None
+                if option is None
+                else translate("SettingsDialog", "Option: {OPTION}").format(
+                    OPTION=option
+                )
+            )
+
+            if searched.fill is not None:
+                is_by_content = row_found is not None and row_found.by_content
+                searched.fill.show_found(query.text if is_by_content else None)
+
+            if row_found is not None:
+                self._mark(query, searched)
+
+            if row.watches_slots:
+                row.follow()
+
+        self._sync(keys=(), reveal=False)
+
+        scroll = self._scroll_area()
+        if scroll is not None:
+            scroll.verticalScrollBar().setValue(0)
+
+    def _belonged_to(self, rows) -> set[_FormRow]:
+        """The rows of the settings these rows' settings belong to, and theirs."""
+
+        belonged = set()
+        keys = [key for key, row in self._rows.items() if row in rows]
+        while keys:
+            spec = self._editors[keys.pop()].spec
+            for rule in (spec.shown_when, spec.enabled_when):
+                row = None if rule is None else self._rows.get(rule.key)
+                if row is not None and row not in belonged and row not in rows:
+                    belonged.add(row)
+                    keys.append(rule.key)
+        return belonged
+
+    def _mark(self, query: Query, searched: _Searched):
+        labels = [self._editors[key].marked for key in searched.keys]
+        if searched.section is not None:
+            labels.append(searched.section.header)
+
+        for label in labels:
+            if label is None or any(label is done for done, *_ in self._marked_labels):
+                continue
+
+            text = label.text()
+            if not query.spans(plain_text(text)):
+                continue
+
+            self._marked_labels.append((label, text, label.textFormat()))
+            color = theme_color(label, "highlight").name()
+            label.setTextFormat(Qt.RichText)
+            label.setText(
+                query.marked(
+                    text,
+                    f'<span style="background-color:{color}">',
+                    is_html=plain_text(text) != text,
+                )
+            )
+
+    def _unmark(self):
+        for label, text, text_format in self._marked_labels:
+            label.setTextFormat(text_format)
+            label.setText(text)
+        self._marked_labels = []
+
+    def found_key(self) -> str | None:
+        """The first setting found, for the focus to go to."""
+
+        for found in self._found:
+            for key, row in self._rows.items():
+                if row is found.row and self._editors[key].widget.isEnabled():
+                    return key
+        return None
 
     def editor(self, key: str) -> Editor:
         return self._editors[key]

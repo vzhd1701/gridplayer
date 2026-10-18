@@ -1562,6 +1562,9 @@ class KeymapEditor(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
 
+        # what was typed in the filter before the settings search took it
+        self._filter_before_search: str | None = None
+
         self._build_ui()
         self._connect_signals()
         self._update_status()
@@ -1868,6 +1871,39 @@ class KeymapEditor(QWidget):
     def _on_bindings_changed(self):
         self._update_status()
         self.bindings_changed.emit()
+
+    def count_matching(self, text: str) -> int:
+        """How many actions the filter would show for this text."""
+
+        needle = text.casefold()
+        proxy = self.tree.proxy_model
+        model = proxy.sourceModel()
+
+        def count(parent):
+            found = 0
+            for row in range(model.rowCount(parent)):
+                idx = model.index(row, 0, parent)
+                if model.hasChildren(idx):
+                    found += count(idx)
+                elif idx.data(DATA_IS_ACTION) and needle in proxy._search_haystack(idx):
+                    found += 1
+            return found
+
+        return count(QModelIndex())
+
+    def search(self, text: str | None):
+        """The filter set to what the settings search found, or back to
+        what was typed in it before, for None."""
+
+        if text is None:
+            if self._filter_before_search is not None:
+                self.filter_edit.setText(self._filter_before_search)
+                self._filter_before_search = None
+            return
+
+        if self._filter_before_search is None:
+            self._filter_before_search = self.filter_edit.text()
+        self.filter_edit.setText(text)
 
     def _update_status(self):
         count = self.tree.modified_count()

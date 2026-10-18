@@ -156,6 +156,15 @@ class Editor:
         for widget in self._all_widgets():
             widget.setToolTip(text)
 
+    def count_found(self, text: str) -> int | None:
+        """How much of what a list or a table holds a search finds; None
+        for a field that doesn't search what it holds."""
+
+        return None
+
+    def show_found(self, text: str | None) -> None:
+        """Only what a search found in it, or everything back for None."""
+
 
 class _CheckboxEditor(Editor):
     def _make_widget(self):
@@ -403,6 +412,12 @@ class _KeymapEditor(Editor):
 
     def value(self):
         return self.widget.get_sparse_bindings()
+
+    def count_found(self, text):
+        return self.widget.count_matching(text)
+
+    def show_found(self, text):
+        self.widget.search(text)
 
 
 class _ResolverPatternsEditor(Editor):
