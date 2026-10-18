@@ -1,4 +1,4 @@
-from PyQt5.QtCore import QSize
+from PyQt5.QtCore import QSize, Qt
 from PyQt5.QtWidgets import QSizePolicy, QStackedWidget
 
 from gridplayer.widgets.settings_page_scroll_area import PageScrollArea
@@ -7,8 +7,10 @@ from gridplayer.widgets.settings_page_scroll_area import PageScrollArea
 def _scrolls(page) -> bool:
     """Is, or has under its title, a page that scrolls."""
 
+    # right under the page, where the dialog puts it: asked on every layout,
+    # a search of the whole page would go through every row of a table
     return isinstance(page, PageScrollArea) or (
-        page.findChild(PageScrollArea) is not None
+        page.findChild(PageScrollArea, options=Qt.FindDirectChildrenOnly) is not None
     )
 
 

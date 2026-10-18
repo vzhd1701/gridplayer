@@ -399,11 +399,33 @@ class FilterProxyModel(QSortFilterProxyModel):
 
         return self._row_matches_filter(idx) and self._row_matches_modified(idx)
 
-    def _row_matches_filter(self, idx: QModelIndex) -> bool:
-        if not self._needle:
+    def _row_matches_filter(self, idx: QModelIndex, needle: str | None = None) -> bool:
+        needle = self._needle if needle is None else needle
+        if not needle:
             return True
-        haystack = self._search_haystack(idx)
-        return self._needle in haystack
+        return needle in self._search_haystack(idx)
+
+    def count_matching(self, text: str) -> int:
+        """How many actions this filter would show for the text."""
+
+        needle = (text or "").casefold()
+        model = self.sourceModel()
+
+        def count(parent):
+            found = 0
+            for row in range(model.rowCount(parent)):
+                idx = model.index(row, 0, parent)
+                if model.hasChildren(idx):
+                    found += count(idx)
+                elif (
+                    idx.data(DATA_IS_ACTION)
+                    and self._row_matches_filter(idx, needle)
+                    and self._row_matches_modified(idx)
+                ):
+                    found += 1
+            return found
+
+        return count(QModelIndex())
 
     def _search_haystack(self, idx: QModelIndex) -> str:
         """Build casefolded search text according to the active scope."""
@@ -1875,21 +1897,7 @@ class KeymapEditor(QWidget):
     def count_matching(self, text: str) -> int:
         """How many actions the filter would show for this text."""
 
-        needle = text.casefold()
-        proxy = self.tree.proxy_model
-        model = proxy.sourceModel()
-
-        def count(parent):
-            found = 0
-            for row in range(model.rowCount(parent)):
-                idx = model.index(row, 0, parent)
-                if model.hasChildren(idx):
-                    found += count(idx)
-                elif idx.data(DATA_IS_ACTION) and needle in proxy._search_haystack(idx):
-                    found += 1
-            return found
-
-        return count(QModelIndex())
+        return self.tree.proxy_model.count_matching(text)
 
     def search(self, text: str | None):
         """The filter set to what the settings search found, or back to

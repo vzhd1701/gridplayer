@@ -2,7 +2,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from PyQt5 import QtWidgets
-from PyQt5.QtCore import QSize, Qt, pyqtSignal
+from PyQt5.QtCore import Qt, pyqtSignal
 from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import QApplication, QFileDialog
 
@@ -15,7 +15,11 @@ from gridplayer.utils.cookies import (
     without_domains,
 )
 from gridplayer.utils.qt import translate
-from gridplayer.widgets.settings_controls import RoundedBox
+from gridplayer.widgets.settings_controls import (
+    ICON_BUTTON_SIZE,
+    RoundedBox,
+    icon_button,
+)
 
 DOMAIN_COLUMN = 0
 COUNT_COLUMN = 1
@@ -24,20 +28,8 @@ EXPIRES_COLUMN = 2
 COUNT_COLUMN_WIDTH = 70
 EXPIRES_COLUMN_WIDTH = 170
 
-ICON_BUTTON_SIZE = QSize(24, 24)
-
 # reads better than a hyphen between two dates that are full of them
 EXPIRY_SPAN_DASH = chr(0x2013)
-
-
-def _icon_button(icon: str, tooltip: str) -> QtWidgets.QPushButton:
-    """An icon alone, as over the list of resolver patterns, with what it
-    does in its tooltip."""
-
-    button = QtWidgets.QPushButton(QIcon.fromTheme(icon), "")
-    button.setToolTip(tooltip)
-    button.setFixedSize(ICON_BUTTON_SIZE)
-    return button
 
 
 class CookieStoreList(QtWidgets.QWidget):
@@ -104,19 +96,17 @@ class CookieStoreList(QtWidgets.QWidget):
         buttons = QtWidgets.QHBoxLayout()
 
         # it opens a file, as the folder picker of a path field does
-        self.import_file_button = _icon_button(
+        self.import_file_button = icon_button(
             "browse-folder", translate("SettingsDialog", "Import from file...")
         )
         self.import_file_button.clicked.connect(self.import_from_file)
 
-        self.paste_button = _icon_button(
+        self.paste_button = icon_button(
             "paste", translate("SettingsDialog", "Paste from clipboard")
         )
         self.paste_button.clicked.connect(self.import_from_clipboard)
 
-        self.remove_button = _icon_button(
-            "cross", translate("SettingsDialog", "Remove")
-        )
+        self.remove_button = icon_button("cross", translate("SettingsDialog", "Remove"))
         self.remove_button.clicked.connect(self.remove_selected)
 
         # spelled out: it throws away every login at once
@@ -127,7 +117,7 @@ class CookieStoreList(QtWidgets.QWidget):
         self.clear_button.clicked.connect(self.clear)
 
         # the dialog says what it opens: the steps are its own
-        self.help_button = _icon_button(
+        self.help_button = icon_button(
             "question", translate("SettingsDialog", "How to export cookies")
         )
 

@@ -11,10 +11,9 @@ from collections.abc import Callable
 from enum import IntEnum
 from uuid import UUID
 
-from PyQt5.QtCore import QPoint, QSize, Qt, QTimer
+from PyQt5.QtCore import QPoint, Qt, QTimer
 from PyQt5.QtGui import (
     QContextMenuEvent,
-    QIcon,
     QPainter,
     QStandardItem,
     QStandardItemModel,
@@ -24,7 +23,6 @@ from PyQt5.QtWidgets import (
     QHBoxLayout,
     QHeaderView,
     QLabel,
-    QPushButton,
     QTreeView,
     QVBoxLayout,
     QWidget,
@@ -42,10 +40,11 @@ from gridplayer.params.static import ListSourceKind
 from gridplayer.params.theme import secondary_text_color
 from gridplayer.utils.qt import count_txt, translate
 from gridplayer.widgets.custom_menu import CustomMenu
-from gridplayer.widgets.settings_controls import RoundedBox
-
-# a button that is only an icon, as over the lists of the Settings dialog
-ICON_BUTTON_SIZE = QSize(24, 24)
+from gridplayer.widgets.settings_controls import (
+    ICON_BUTTON_SIZE,
+    RoundedBox,
+    icon_button,
+)
 
 LIST_ID_ROLE = Qt.UserRole
 
@@ -55,16 +54,6 @@ class Column(IntEnum):
     ITEMS = 1
     SOURCE = 2
     CELLS = 3
-
-
-def _icon_button(icon: str, tooltip: str) -> QPushButton:
-    """An icon alone, with what it does in its tooltip."""
-
-    button = QPushButton(QIcon.fromTheme(icon), "")
-    button.setToolTip(tooltip)
-    button.setFixedSize(ICON_BUTTON_SIZE)
-    button.setAutoDefault(False)
-    return button
 
 
 class _ListRows(QTreeView):
@@ -197,19 +186,19 @@ class PlaylistListsPage(QWidget):
         self._hint = QLabel()
         self._hint.setWordWrap(True)
 
-        self._open_button = _icon_button(
+        self._open_button = icon_button(
             "add", translate("Dialog - Playlist lists", "Open in a New Cell")
         )
-        self._edit_button = _icon_button(
+        self._edit_button = icon_button(
             "list", translate("Dialog - Playlist lists", "Edit…")
         )
-        self._duplicate_button = _icon_button(
+        self._duplicate_button = icon_button(
             "copy", translate("Dialog - Playlist lists", "Duplicate")
         )
-        self._export_button = _icon_button(
+        self._export_button = icon_button(
             "save-playlist", translate("Dialog - Playlist lists", "Export…")
         )
-        self._remove_button = _icon_button(
+        self._remove_button = icon_button(
             "close", translate("Dialog - Playlist lists", "Remove")
         )
         # in words, as Clear all over the cookies: it takes them all at once

@@ -1,8 +1,8 @@
 import contextlib
 
 from PyQt5 import QtWidgets
-from PyQt5.QtCore import QSize, Qt, pyqtSignal
-from PyQt5.QtGui import QDropEvent, QIcon
+from PyQt5.QtCore import Qt, pyqtSignal
+from PyQt5.QtGui import QDropEvent
 
 from gridplayer.dialogs.messagebox import QCustomMessageBox
 from gridplayer.models.resolver_patterns import (
@@ -13,7 +13,7 @@ from gridplayer.models.resolver_patterns import (
 from gridplayer.params.static import URLResolver
 from gridplayer.utils.qt import translate
 from gridplayer.widgets.combo_box import combo_index
-from gridplayer.widgets.settings_controls import RoundedBox
+from gridplayer.widgets.settings_controls import RoundedBox, icon_button
 
 
 class RowDropIndicatorStyle(QtWidgets.QProxyStyle):
@@ -409,9 +409,7 @@ class ResolverPatternsList(QtWidgets.QWidget):
             combo.setCurrentIndex(combo_index(combo, value))
 
     def _create_button(self, icon, tooltip, callback, is_selection_needed=True):
-        button = QtWidgets.QPushButton(QIcon.fromTheme(icon), "")
-        button.setToolTip(tooltip)
-        button.setFixedSize(QSize(24, 24))
+        button = icon_button(icon, tooltip)
         button.clicked.connect(callback)
         if is_selection_needed:
             button.setEnabled(False)

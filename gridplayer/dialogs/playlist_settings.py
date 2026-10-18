@@ -7,8 +7,7 @@ they always have, and Cancel puts them back.
 
 from collections.abc import Callable
 
-from PyQt5.QtCore import QTimer
-from PyQt5.QtWidgets import QDialogButtonBox, QMessageBox, QVBoxLayout, QWidget
+from PyQt5.QtWidgets import QMessageBox, QVBoxLayout, QWidget
 
 from gridplayer.dialogs.messagebox import QCustomMessageBox
 from gridplayer.dialogs.paged_dialog import PagedDialog
@@ -21,7 +20,7 @@ from gridplayer.params.settings_bindings import (
 )
 from gridplayer.params.settings_fields.kinds import Page
 from gridplayer.params.settings_fields.registry import FIELDS
-from gridplayer.params.settings_pages import PLAYLIST_PAGE, VIDEO_PAGE
+from gridplayer.params.settings_pages import PLAYLIST, VIDEO
 from gridplayer.playlist_settings import SAVE_ALL_KEY, grid_values_from_state
 from gridplayer.settings import Settings
 from gridplayer.utils.qt import translate
@@ -52,11 +51,7 @@ class PlaylistSettingsDialog(PagedDialog):
 
         super().__init__(parent)
 
-        # by name in the theme's style sheet, for its thin scroll bars
-        self.setObjectName("settings_dialog")
         self.setWindowTitle(translate("SettingsDialog", "Playlist"))
-        self.setSizeGripEnabled(True)
-        self.setModal(True)
 
         self._has_videos = has_videos
         # the pages of what the playlist holds, once made, by their id
@@ -66,21 +61,17 @@ class PlaylistSettingsDialog(PagedDialog):
 
         body = self.build_index()
 
-        self.buttonBox = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
-
         root = QVBoxLayout(self)
         root.addLayout(body, 1)
         root.addWidget(self.buttonBox)
 
         # a reset goes back to the global settings
-        self._playlist_form = SettingsForm(PLAYLIST_PAGE, reset_to=Settings().get)
-        self._video_form = SettingsForm(VIDEO_PAGE, reset_to=Settings().get)
+        self._playlist_form = SettingsForm(PLAYLIST.items, reset_to=Settings().get)
+        self._video_form = SettingsForm(VIDEO.items, reset_to=Settings().get)
 
         self._build_pages(parts or {})
 
         self.connect_pages()
-        self.buttonBox.accepted.connect(self.accept)
-        self.buttonBox.rejected.connect(self.reject)
 
         self._load(overrides, grid_state)
 
@@ -90,26 +81,16 @@ class PlaylistSettingsDialog(PagedDialog):
         self._follow_playlist()
 
         self.show_page(page)
-        self.adjustSize()
-        # as tall as the Settings dialog, for the long pages
-        room = self.screen().availableGeometry().height() * 2 // 3
-        self.resize(self.width(), max(self.height(), room))
+        self.fit_to_screen()
 
     def _build_pages(self, parts):
         if parts:
             self.add_heading(translate("SettingsDialog", "Settings"))
 
+        # what it says hangs on the playlist's own switches, see _follow_playlist
+        self.add_form_page(PLAYLIST, self._playlist_form, "")
         self.add_form_page(
-            Page(
-                "playlist",
-                translate("SettingsDialog", "Playlist"),
-                icon="page-playlist",
-            ),
-            self._playlist_form,
-            "",
-        )
-        self.add_form_page(
-            Page("video", translate("SettingsDialog", "New Videos"), icon="page-video"),
+            VIDEO,
             self._video_form,
             translate(
                 "SettingsDialog",
@@ -143,7 +124,7 @@ class PlaylistSettingsDialog(PagedDialog):
 
         if part_id == "bookmarks":
             part.sharing_asked.connect(self._show_sharing)
-            part.set_sharing_to_come(self._playlist_form.value(SHARING_KEY))
+            self._push_sharing()
 
         return part
 
@@ -174,12 +155,8 @@ class PlaylistSettingsDialog(PagedDialog):
             key: overrides.get(key, Settings().get(key)) for key in VIDEO_DEFAULT_ATTRS
         }
 
-        playlist_over = {
-            key
-            for key in overrides
-            if key.startswith("playlist/") and key in playlist_values
-        }
-        video_over = {key for key in overrides if key.startswith("video_defaults/")}
+        playlist_over = overrides.keys() & playlist_values.keys()
+        video_over = overrides.keys() & video_values.keys()
 
         self._playlist_form.set_values(playlist_values, playlist_over)
         self._video_form.set_values(video_values, video_over)
@@ -219,22 +196,20 @@ class PlaylistSettingsDialog(PagedDialog):
             )
         self.notes["playlist"].setText(note)
 
+        self._push_sharing()
+        self.update_reset_page()
+
+    def _push_sharing(self):
+        """The sharing the switch is at, to the bookmarks page, if made."""
+
         bookmarks = self._parts.get("bookmarks")
         if bookmarks is not None:
             bookmarks.set_sharing_to_come(self._playlist_form.value(SHARING_KEY))
-
-        self.update_reset_page()
 
     def _show_sharing(self):
         """The switch the bookmarks' sharing is set with, pointed out."""
 
         self.show_page_of(SHARING_KEY)
-
-        # once the page is laid out, for the row to be found where it is; by
-        # a method of the window, for the timer to go with it, were it closed
-        QTimer.singleShot(0, self._point_to_sharing)
-
-    def _point_to_sharing(self):
         self._playlist_form.point_to(SHARING_KEY)
 
     def result_overrides(self) -> dict:

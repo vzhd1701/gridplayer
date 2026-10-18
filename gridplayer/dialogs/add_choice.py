@@ -28,7 +28,7 @@ from PyQt5.QtWidgets import (
 
 from gridplayer.dialogs.messagebox import TEXT_SCALE, QCustomMessageBox
 from gridplayer.params.theme import set_secondary
-from gridplayer.utils.qt import count_txt, fit_height, translate
+from gridplayer.utils.qt import bold, count_txt, fit_height, translate
 from gridplayer.widgets.elided_label import ElidedLabel
 
 # how far a choice's line about it is set in, under the choice
@@ -593,9 +593,3 @@ def _separator() -> QFrame:
     line.setPalette(palette)
 
     return line
-
-
-def bold(widget: QWidget) -> None:
-    font = widget.font()
-    font.setBold(True)
-    widget.setFont(font)

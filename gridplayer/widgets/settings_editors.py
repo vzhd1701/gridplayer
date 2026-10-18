@@ -2,8 +2,7 @@
 
 from pathlib import Path
 
-from PyQt5.QtCore import QSize
-from PyQt5.QtGui import QColor, QIcon, QPainter, QPixmap
+from PyQt5.QtGui import QColor, QPainter, QPixmap
 from PyQt5.QtWidgets import (
     QComboBox,
     QDoubleSpinBox,
@@ -11,7 +10,6 @@ from PyQt5.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QLineEdit,
-    QPushButton,
     QSizePolicy,
     QSpinBox,
     QWidget,
@@ -46,6 +44,7 @@ from gridplayer.widgets.settings_controls import (
     SegmentedChoice,
     Switch,
     ToggleLabel,
+    icon_button,
 )
 
 # the square of colour in front of a label that has one
@@ -53,9 +52,6 @@ SWATCH_PX = 12
 
 # wide enough for a path or an address to be read
 TEXT_MIN_WIDTH = 260
-
-# a button that is only an icon, as small as the icon lets it be
-ICON_BUTTON_SIZE = QSize(24, 24)
 
 # the narrowest a list and a number are, so that the fields of a page are
 # not each as wide as what they happen to say
@@ -156,6 +152,23 @@ class Editor:
         for widget in self._all_widgets():
             widget.setToolTip(text)
 
+    def text_of(self, shown) -> str | None:
+        """A value in words, as the field shows it; None for a field that
+        doesn't show it in words (a colour, a crop)."""
+
+        return None
+
+    def options(self) -> list[str]:
+        """What can be picked in it, by name."""
+
+        return []
+
+    @property
+    def drop_down(self) -> QWidget | None:
+        """What hides its options but the one picked, for one that does."""
+
+        return None
+
     def count_found(self, text: str) -> int | None:
         """How much of what a list or a table holds a search finds; None
         for a field that doesn't search what it holds."""
@@ -185,6 +198,11 @@ class _CheckboxEditor(Editor):
     def value(self):
         return self.widget.isChecked()
 
+    def text_of(self, shown):
+        if shown:
+            return translate("SettingsDialog", "On")
+        return translate("SettingsDialog", "Off")
+
 
 class _ComboEditor(Editor):
     spec: ComboField
@@ -213,6 +231,18 @@ class _ComboEditor(Editor):
     def value(self):
         return self.widget.currentData()
 
+    def text_of(self, shown):
+        at = self.widget.findData(shown)
+        return self.widget.itemText(at) if at >= 0 else None
+
+    def options(self):
+        return [self.widget.itemText(at) for at in range(self.widget.count())]
+
+    @property
+    def drop_down(self):
+        # buttons show them all
+        return None if self.spec.buttons else self.widget
+
 
 class _TextEditor(Editor):
     spec: TextField
@@ -238,6 +268,9 @@ class _TextEditor(Editor):
     def value(self):
         return self.widget.text()
 
+    def text_of(self, shown):
+        return shown if isinstance(shown, str) and shown else None
+
     def means_default(self):
         # a file name has to come from somewhere, and the like
         return self.spec.blank_is_default and not self.widget.text().strip()
@@ -257,9 +290,9 @@ class _PathEditor(_TextEditor):
     def __init__(self, spec):
         super().__init__(spec)
 
-        self.browse = QPushButton(QIcon.fromTheme("browse-folder"), "")
-        self.browse.setToolTip(translate("SettingsDialog", "Browse..."))
-        self.browse.setFixedSize(ICON_BUTTON_SIZE)
+        self.browse = icon_button(
+            "browse-folder", translate("SettingsDialog", "Browse...")
+        )
         self.browse.clicked.connect(self._browse)
 
     def parts(self):
@@ -287,6 +320,7 @@ class _SpinEditor(Editor):
     spec: SpinField | FloatSpinField
 
     _spin_box = QSpinBox
+    _number = int
 
     def __init__(self, spec):
         super().__init__(spec)
@@ -311,24 +345,28 @@ class _SpinEditor(Editor):
         return self.widget.valueChanged
 
     def set_value(self, value):
-        self.widget.setValue(int(value))
+        self.widget.setValue(self._number(value))
 
     def value(self):
         return self.widget.value()
+
+    def text_of(self, shown):
+        if self.spec.special_text is not None and shown == self.spec.minimum:
+            return self.spec.special_text
+        number = self.widget.textFromValue(self._number(shown))
+        return number if self.spec.suffix is None else f"{number} {self.spec.suffix}"
 
 
 class _FloatSpinEditor(_SpinEditor):
     spec: FloatSpinField
     _spin_box = QDoubleSpinBox
+    _number = float
 
     def _make_widget(self):
         widget = super()._make_widget()
         widget.setDecimals(self.spec.decimals)
         widget.setSingleStep(self.spec.step)
         return widget
-
-    def set_value(self, value):
-        self.widget.setValue(float(value))
 
 
 class _CropEditor(Editor):

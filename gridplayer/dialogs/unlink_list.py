@@ -11,8 +11,8 @@ from PyQt5.QtWidgets import (
     QVBoxLayout,
 )
 
-from gridplayer.dialogs.add_choice import bold, warning_box
-from gridplayer.utils.qt import translate
+from gridplayer.dialogs.add_choice import warning_box
+from gridplayer.utils.qt import bold, translate
 
 # a playlist file is a few kilobytes; a list that would make it this much
 # bigger is warned of, saving and opening it taking a while from then on

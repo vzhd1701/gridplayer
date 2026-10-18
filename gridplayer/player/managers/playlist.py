@@ -198,16 +198,17 @@ class PlaylistManager(ManagerBase):
         """What was changed for new videos made the videos' already here
         too, each checked as its video's own would be."""
 
-        for block in list(self._ctx.video_blocks):
-            update = {}
-            for key, value in changes.items():
-                field = VIDEO_PARAM_ATTRS[key]
-                if key == "video_defaults/audio_track_mode":
-                    value = default_audio_selection()
-                elif key == "video_defaults/subtitle_track_mode":
-                    value = default_subtitle_selection()
-                update[field] = value
+        # the same for every video
+        update = {}
+        for key, value in changes.items():
+            field = VIDEO_PARAM_ATTRS[key]
+            if key == "video_defaults/audio_track_mode":
+                value = default_audio_selection()
+            elif key == "video_defaults/subtitle_track_mode":
+                value = default_subtitle_selection()
+            update[field] = value
 
+        for block in list(self._ctx.video_blocks):
             checked = Video(uri=block.video_params.uri, **update)
             block.adopt_defaults({field: getattr(checked, field) for field in update})
 

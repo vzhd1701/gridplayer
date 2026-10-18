@@ -7,6 +7,7 @@ from PyQt5.QtCore import QEvent, Qt, QTimer
 from PyQt5.QtGui import QIcon, QKeySequence, QPainter
 from PyQt5.QtWidgets import (
     QDialog,
+    QDialogButtonBox,
     QHBoxLayout,
     QLabel,
     QLineEdit,
@@ -61,13 +62,37 @@ class Icon(QWidget):
         self._icon.paint(QPainter(self), self.rect())
 
 
-def with_note(form, text) -> tuple[QWidget, QLabel]:
-    """A page with something said at the top of it, and what says it.
+class PageNote(QWidget):
+    """Something said at the top of a page, after an icon.
 
     Not a tooltip on any one row, because what it says is true of the
     whole page. At the top rather than the bottom because the page is
     longer than it is tall and the bottom of it is behind a scroll.
     """
+
+    def __init__(self, text: str):
+        super().__init__()
+
+        self._label = QLabel(text)
+        self._label.setWordWrap(True)
+        self._label.setOpenExternalLinks(True)
+        set_secondary(self._label)
+
+        line = QHBoxLayout(self)
+        line.setContentsMargins(0, 0, 0, 0)
+        line.setSpacing(8)
+        line.addWidget(Icon("information", NOTE_ICON_PX), 0, Qt.AlignTop)
+        line.addWidget(self._label, 1)
+
+    def text(self) -> str:
+        return self._label.text()
+
+    def setText(self, text: str):
+        self._label.setText(text)
+
+
+def with_note(form, text) -> tuple[QWidget, PageNote]:
+    """A page with something said at the top of it, and what says it."""
 
     page = QWidget()
 
@@ -75,21 +100,8 @@ def with_note(form, text) -> tuple[QWidget, QLabel]:
     layout.setContentsMargins(0, 0, 0, 0)
     layout.setSpacing(16)
 
-    note = QLabel(text)
-    note.setWordWrap(True)
-    note.setOpenExternalLinks(True)
-    set_secondary(note)
-
-    # in a widget of its own, to go out of sight with the note while
-    # searching: what it says is of the whole page
-    holder = QWidget()
-    line = QHBoxLayout(holder)
-    line.setContentsMargins(0, 0, 0, 0)
-    line.setSpacing(8)
-    line.addWidget(Icon("information", NOTE_ICON_PX), 0, Qt.AlignTop)
-    line.addWidget(note, 1)
-
-    layout.addWidget(holder)
+    note = PageNote(text)
+    layout.addWidget(note)
     layout.addWidget(form)
 
     return page, note
@@ -148,11 +160,20 @@ class PagedDialog(QDialog):
     def __init__(self, parent):
         super().__init__(parent)
 
+        # by name in the theme's style sheet, for its thin scroll bars
+        self.setObjectName("settings_dialog")
+        self.setSizeGripEnabled(True)
+        self.setModal(True)
+
+        self.buttonBox = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        self.buttonBox.accepted.connect(self.accept)
+        self.buttonBox.rejected.connect(self.reject)
+
         # every page by its id, as it sits in the stack, and the form on it
         self.pages: dict[str, QWidget] = {}
         self.forms: dict[str, SettingsForm] = {}
         # what is said at the top of a page, by its id
-        self.notes: dict[str, QLabel] = {}
+        self.notes: dict[str, PageNote] = {}
         # the title over each page, by the page
         self._titles: dict[QWidget, _PageTitle] = {}
         # the page each setting is on, by id
@@ -163,7 +184,6 @@ class PagedDialog(QDialog):
         self.section_links: dict[str, SectionLinks] = {}
         # what makes a page that isn't made yet, by the page
         self._to_make: dict[QWidget, Callable[[], QWidget]] = {}
-        self._page_titles: dict[str, str] = {}
 
         # the search box, in a dialog that has one, and what is searched
         # for, while something is
@@ -292,7 +312,6 @@ class PagedDialog(QDialog):
 
         self.pages[page.id] = widget
         self._titles[widget] = title
-        self._page_titles[page.id] = page.title
 
         item = self.section_index.add_page(page.title, page.icon)
         item.setData(SECTION_PAGE_ROLE, widget)
@@ -308,6 +327,15 @@ class PagedDialog(QDialog):
 
         for form in self.forms.values():
             form.values_changed.connect(self.update_reset_page)
+
+    def fit_to_screen(self):
+        """As small as the pages let it be, but taller: the hints are only
+        what every page needs, and the long ones show more than a few rows
+        at a time."""
+
+        self.adjustSize()
+        room = self.screen().availableGeometry().height() * 2 // 3
+        self.resize(self.width(), max(self.height(), room))
 
     # the settings, wherever they are
 
@@ -330,11 +358,7 @@ class PagedDialog(QDialog):
     def section_items(self):
         """The entries that open a page, leaving out the group headings."""
 
-        items = (
-            self.section_index.item(row) for row in range(self.section_index.count())
-        )
-
-        return [item for item in items if item.flags() & Qt.ItemIsSelectable]
+        return self.section_index.page_items()
 
     def keep_index_selection(self):
         if not self.section_index.selectedItems():
@@ -399,7 +423,7 @@ class PagedDialog(QDialog):
             return
 
         found = {
-            page_id: form.find(query, self._page_titles[page_id])
+            page_id: form.find(query, self._index_items[page_id].text())
             for page_id, form in self.forms.items()
         }
 
@@ -436,7 +460,7 @@ class PagedDialog(QDialog):
             if page_id in self.section_links:
                 self.section_links[page_id].setVisible(query is None)
             if page_id in self.notes:
-                self.notes[page_id].parentWidget().setVisible(query is None)
+                self.notes[page_id].setVisible(query is None)
 
         if query is None:
             self.switch_page(self.section_index.currentItem())
@@ -447,7 +471,7 @@ class PagedDialog(QDialog):
         # the page open, if anything was found on it; or the first with a
         # setting found, rather than one with only a list that found its own
         current = self.section_index.currentItem()
-        if current is not None and current.flags() & Qt.ItemIsEnabled:
+        if current is not None and self.section_index.can_pick(current):
             self.switch_page(current)
             return
 

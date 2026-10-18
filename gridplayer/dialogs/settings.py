@@ -3,10 +3,9 @@ import logging
 import subprocess
 import threading
 
-from PyQt5.QtCore import QLocale, QSize, QUrl, pyqtSignal
+from PyQt5.QtCore import QLocale, QUrl, pyqtSignal
 from PyQt5.QtGui import QDesktopServices, QIcon
 from PyQt5.QtWidgets import (
-    QDialogButtonBox,
     QHBoxLayout,
     QLabel,
     QPushButton,
@@ -33,6 +32,7 @@ from gridplayer.utils.qt import translate
 from gridplayer.utils.screenshots import unknown_specifiers
 from gridplayer.version import __app_url__
 from gridplayer.widgets.cookie_store_list import CookieStoreList
+from gridplayer.widgets.settings_controls import icon_button
 from gridplayer.widgets.settings_form import SettingsForm
 
 COOKIES_FAQ_URL = (
@@ -40,38 +40,20 @@ COOKIES_FAQ_URL = (
 )
 COOKIES_README_URL = f"{__app_url__}#streaming-cookies"
 
-# a button that is only an icon, as small as the icon lets it be
-ICON_BUTTON_SIZE = QSize(24, 24)
-
 # beside the label of a setting the open playlist has its own value for
 MARK_ICON_PX = 16
 
 
-def _help_button():
-    """A question mark, with what it explains in its tooltip."""
-
-    button = QPushButton(QIcon.fromTheme("question"), "")
-    button.setFixedSize(ICON_BUTTON_SIZE)
-    return button
-
-
-def _in_a_row(*widgets, right=False):
-    """Widgets on a line, on the left of it or on the right; a None between
-    them pushes the rest to the right."""
+def _on_the_right(*widgets):
+    """Widgets on a line, on the right of it."""
 
     row = QWidget()
 
     layout = QHBoxLayout(row)
     layout.setContentsMargins(0, 0, 0, 0)
-    if right:
-        layout.addStretch(1)
+    layout.addStretch(1)
     for widget in widgets:
-        if widget is None:
-            layout.addStretch(1)
-        else:
-            layout.addWidget(widget)
-    if not right and None not in widgets:
-        layout.addStretch(1)
+        layout.addWidget(widget)
 
     return row
 
@@ -102,20 +84,12 @@ class SettingsDialog(PagedDialog):
 
         self.measure_cache()
         self.switch_page(None)
-        self.adjustSize()
-        # the hints are only what every page needs: taller, the long ones
-        # show more than a few rows at a time
-        room = self.screen().availableGeometry().height() * 2 // 3
-        self.resize(self.width(), max(self.height(), room))
+        self.fit_to_screen()
 
     # building
 
     def ui_build(self):
-        # by name in the theme's style sheet, for its thin scroll bars
-        self.setObjectName("settings_dialog")
         self.setWindowTitle(translate("SettingsDialog", "Settings"))
-        self.setSizeGripEnabled(True)
-        self.setModal(True)
 
         body = self.build_index(search=True)
 
@@ -131,8 +105,6 @@ class SettingsDialog(PagedDialog):
                 " runtime here.",
             )
         )
-
-        self.buttonBox = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
 
         buttons = QHBoxLayout()
         buttons.addWidget(self.dataDirOpen)
@@ -242,20 +214,19 @@ class SettingsDialog(PagedDialog):
         self.cacheClear.clicked.connect(self.clear_cache)
 
         # the folder it is in, as a folder field's button
-        self.cacheOpen = QPushButton(QIcon.fromTheme("show-in-folder"), "")
-        self.cacheOpen.setFixedSize(ICON_BUTTON_SIZE)
-        self.cacheOpen.setToolTip(translate("SettingsDialog", "Open Folder"))
+        self.cacheOpen = icon_button(
+            "show-in-folder", translate("SettingsDialog", "Open Folder")
+        )
         self.cacheOpen.clicked.connect(self.open_cache_dir)
 
-        row = _in_a_row(self.cacheSize, self.cacheClear, self.cacheOpen, right=True)
+        row = _on_the_right(self.cacheSize, self.cacheClear, self.cacheOpen)
         # as far apart as fields in a row are
         row.layout().setSpacing(8)
         return row
 
     def _slot_screenshot_template_help(self):
-        self.screenshotsFilenameTemplateHelpButton = _help_button()
-        self.screenshotsFilenameTemplateHelpButton.setToolTip(
-            translate("SettingsDialog", "Screenshot file name format")
+        self.screenshotsFilenameTemplateHelpButton = icon_button(
+            "question", translate("SettingsDialog", "Screenshot file name format")
         )
         self.screenshotsFilenameTemplateHelpButton.clicked.connect(
             self.show_screenshot_template_help
@@ -274,7 +245,7 @@ class SettingsDialog(PagedDialog):
             )
         )
         self.streamingTestButton.clicked.connect(self.run_youtube_checkup)
-        return _in_a_row(self.streamingTestButton, right=True)
+        return _on_the_right(self.streamingTestButton)
 
     def _slot_cookies_list(self):
         self.cookiesList = CookieStoreList()
@@ -296,14 +267,12 @@ class SettingsDialog(PagedDialog):
             )
         )
         self.networkTestButton.clicked.connect(self.run_network_checkup)
-        return _in_a_row(self.networkTestButton, right=True)
+        return _on_the_right(self.networkTestButton)
 
     def ui_connect(self):
         self.connect_pages()
 
         self.dataDirOpen.clicked.connect(self.open_data_dir)
-        self.buttonBox.accepted.connect(self.accept)
-        self.buttonBox.rejected.connect(self.reject)
 
         self.cache_measured.connect(self.show_cache_size)
 
@@ -420,7 +389,9 @@ class SettingsDialog(PagedDialog):
         )
 
         self.show_page_of("screenshots/filename_template")
-        template.setFocus()
+        self.form_of("screenshots/filename_template").point_to(
+            "screenshots/filename_template"
+        )
 
         return False
 

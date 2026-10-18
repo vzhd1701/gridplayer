@@ -2,13 +2,14 @@
 row of buttons for a choice short enough to show all of it."""
 
 from PyQt5.QtCore import QRectF, QSize, Qt, pyqtSignal
-from PyQt5.QtGui import QColor, QPainter, QPainterPath, QPalette
+from PyQt5.QtGui import QColor, QIcon, QPainter, QPainterPath, QPalette
 from PyQt5.QtWidgets import (
     QAbstractSpinBox,
     QCheckBox,
     QFrame,
     QLabel,
     QLineEdit,
+    QPushButton,
     QSizePolicy,
     QVBoxLayout,
     QWidget,
@@ -16,6 +17,9 @@ from PyQt5.QtWidgets import (
 
 # the round corners of a card of settings, and of a list or a table's box
 CARD_RADIUS = 6
+
+# a button that is only an icon, as small as the icon lets it be
+ICON_BUTTON_SIZE = QSize(24, 24)
 # between a list's box and the list in it, for its square corners to be
 # clear of the round ones
 BOX_PADDING = 3
@@ -62,6 +66,33 @@ def _is_dark(widget: QWidget) -> bool:
     return theme_color(widget, "base").lightness() < 128
 
 
+def icon_button(icon: str, tooltip: str = "") -> QPushButton:
+    """An icon alone, with what it does in its tooltip. Not the dialog's
+    default once clicked: Enter is still OK."""
+
+    button = QPushButton(QIcon.fromTheme(icon), "")
+    button.setToolTip(tooltip)
+    button.setFixedSize(ICON_BUTTON_SIZE)
+    button.setAutoDefault(False)
+    return button
+
+
+def paint_card(widget: QWidget) -> QPainter:
+    """The widget as a card: round corners, on the base colour. The painter,
+    for what else goes on it."""
+
+    painter = QPainter(widget)
+    painter.setRenderHint(QPainter.Antialiasing)
+    painter.setPen(theme_color(widget, "highlight"))
+    painter.setBrush(theme_color(widget, "base"))
+    painter.drawRoundedRect(
+        QRectF(widget.rect()).adjusted(0.5, 0.5, -0.5, -0.5),
+        CARD_RADIUS,
+        CARD_RADIUS,
+    )
+    return painter
+
+
 def fit_fields(card: QWidget):
     """The fields on a card a shade lighter than it in the dark theme,
     where they are filled with the card's own colour and their edge is
@@ -95,15 +126,7 @@ class RoundedBox(QWidget):
         lay.addWidget(view)
 
     def paintEvent(self, event):
-        painter = QPainter(self)
-        painter.setRenderHint(QPainter.Antialiasing)
-        painter.setPen(theme_color(self, "highlight"))
-        painter.setBrush(theme_color(self, "base"))
-        painter.drawRoundedRect(
-            QRectF(self.rect()).adjusted(0.5, 0.5, -0.5, -0.5),
-            CARD_RADIUS,
-            CARD_RADIUS,
-        )
+        paint_card(self)
 
 
 class Switch(QCheckBox):

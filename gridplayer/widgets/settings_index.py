@@ -165,6 +165,18 @@ class SettingsIndex(QListWidget):
         )
         return heading
 
+    def page_items(self) -> list[QListWidgetItem]:
+        """The entries, leaving out the headings."""
+
+        items = (self.item(row) for row in range(self.count()))
+        return [item for item in items if not _is_heading(item)]
+
+    @staticmethod
+    def can_pick(item: QListWidgetItem) -> bool:
+        """A page, and not one a search found nothing on."""
+
+        return not _is_heading(item) and not _is_missed(item)
+
     def set_found(self, item: QListWidgetItem, found: int | None):
         """How much a search found on a page, or None when not searching:
         a page with nothing found can't be picked."""

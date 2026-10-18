@@ -3,7 +3,7 @@ from PyQt5.QtCore import QPoint, QPointF, QRect, QRectF, QSize, Qt, pyqtSignal
 from PyQt5.QtGui import QBrush, QColor, QConicalGradient, QPainter, QPen, QPolygonF
 
 from gridplayer.utils.qt import translate
-from gridplayer.widgets.settings_controls import theme_color
+from gridplayer.widgets.settings_controls import DISABLED_OPACITY, theme_color
 
 
 class QColorCircle(QtWidgets.QRadioButton):
@@ -154,9 +154,6 @@ SWATCH_PX = 22
 SWATCH_GAP = 8
 SWATCH_COLUMNS = 6
 RING_ROOM = 4
-
-# how the field looks while greyed out
-DISABLED_OPACITY = 0.4
 
 
 def _edge(widget) -> QColor:
@@ -455,6 +452,10 @@ class QCompactColorPicker(QtWidgets.QAbstractButton):
         super().keyPressEvent(event)
 
     def _open_popup(self):
+        # one at a time: hidden when done, the last one would stay till the
+        # picker goes
+        if self._popup is not None:
+            self._popup.deleteLater()
         self._popup = _ColorPopup(self._color, self)
         self._popup.picked.connect(self._take)
         self._popup.show_under(self)

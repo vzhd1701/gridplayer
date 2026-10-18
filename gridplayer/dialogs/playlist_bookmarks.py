@@ -40,7 +40,6 @@ from PyQt5.QtWidgets import (
     QHBoxLayout,
     QHeaderView,
     QLabel,
-    QPushButton,
     QStyle,
     QStyledItemDelegate,
     QTreeView,
@@ -75,15 +74,16 @@ from gridplayer.utils.qt import translate
 from gridplayer.utils.time_txt import ms_time_txt
 from gridplayer.widgets.bookmark_colors import LIST_ICON_SHARE, bookmark_icon
 from gridplayer.widgets.custom_menu import CustomMenu
-from gridplayer.widgets.settings_controls import RoundedBox
+from gridplayer.widgets.settings_controls import (
+    ICON_BUTTON_SIZE,
+    RoundedBox,
+    icon_button,
+)
 
 # what nothing can reach any more, in the orange of a warning, darker where
 # the list is light for the words to read
 WARNING_COLOR_LIGHT = "#b45309"
 WARNING_COLOR_DARK = "#f0a43a"
-
-# a button that is only an icon, as over the lists of the Settings dialog
-ICON_BUTTON_SIZE = QSize(24, 24)
 
 MIN_LENGTH_MS = 60_000
 
@@ -163,16 +163,6 @@ def _swatch(color: str, rim: QColor) -> QIcon:
     painter.end()
 
     return QIcon(pixmap)
-
-
-def _icon_button(icon: str, tooltip: str) -> QPushButton:
-    """An icon alone, with what it does in its tooltip."""
-
-    button = QPushButton(QIcon.fromTheme(icon), "")
-    button.setToolTip(tooltip)
-    button.setFixedSize(ICON_BUTTON_SIZE)
-    button.setAutoDefault(False)
-    return button
 
 
 def _look_for(path: Path) -> Found:
@@ -433,14 +423,14 @@ class PlaylistBookmarksPage(QWidget):
         self._hint = QLabel()
         self._hint.setWordWrap(True)
 
-        self._open_button = _icon_button(
+        self._open_button = icon_button(
             "add-files",
             translate(
                 "Dialog - Playlist bookmarks",
                 "Open the file in a new cell, with its bookmarks",
             ),
         )
-        self._copy_button = _icon_button(
+        self._copy_button = icon_button(
             "copy",
             translate(
                 "Dialog - Playlist bookmarks",
@@ -448,7 +438,7 @@ class PlaylistBookmarksPage(QWidget):
                 " like 1:23 Intro; those of several files under each file's name",
             ),
         )
-        self._remove_button = _icon_button(
+        self._remove_button = icon_button(
             "bookmark-remove", translate("Dialog - Playlist bookmarks", "Remove")
         )
         # in words, as Clear all over the cookies: it takes them all at once
@@ -515,6 +505,10 @@ class PlaylistBookmarksPage(QWidget):
     def set_sharing_to_come(self, is_shared: bool):
         """The sharing the switch on the Playlist page is at: what the
         bookmarks are put in on OK, said ahead of it."""
+
+        # pushed on every edit of the Playlist page
+        if is_shared == self._sharing_to_come:
+            return
 
         self._sharing_to_come = is_shared
         self._show_mode()

@@ -88,6 +88,12 @@ def fit_height(window: QWidget) -> None:
         window.resize(window.width(), height)
 
 
+def bold(widget: QWidget) -> None:
+    font = widget.font()
+    font.setBold(True)
+    widget.setFont(font)
+
+
 def is_qt_log_ignored(message):
     for ignored in QT_LOG_IGNORED:
         if ignored in message:

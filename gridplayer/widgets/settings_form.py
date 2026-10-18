@@ -33,24 +33,19 @@ from gridplayer.models.settings_draft import (
     SetValue,
 )
 from gridplayer.params.settings_fields.kinds import (
-    CheckboxField,
-    ComboField,
-    FloatSpinField,
     Indented,
     Note,
     Row,
     Section,
     SettingField,
     Slot,
-    SpinField,
-    TextField,
     When,
 )
 from gridplayer.params.settings_fields.registry import FIELDS
 from gridplayer.params.theme import set_secondary
-from gridplayer.utils.qt import translate
+from gridplayer.utils.qt import bold, translate
 from gridplayer.utils.text_search import Query, plain_text
-from gridplayer.widgets.settings_controls import CARD_RADIUS, fit_fields, theme_color
+from gridplayer.widgets.settings_controls import fit_fields, paint_card, theme_color
 from gridplayer.widgets.settings_editors import Editor, make_editor
 
 RESET_ICON_PX = 14
@@ -80,13 +75,6 @@ SECTIONS_SPACING = 20
 # a drop-down with more options than this (the fonts) isn't searched by them:
 # among so many, some would have every word typed
 SEARCHED_OPTIONS_MAX = 20
-
-
-def bold(label: QLabel) -> QLabel:
-    font = label.font()
-    font.setBold(True)
-    label.setFont(font)
-    return label
 
 
 def _scroll_by(bar: QScrollBar, step: int):
@@ -148,6 +136,8 @@ class _FormRow(_Shown):
         # a sub-option, read as one block with the row above it
         self.joined = joined
         self.is_marked = False
+        # the settings on it, in order
+        self.keys: list[str] = []
         # takes the page: a list or a table, out of the card
         self.fills = False
         self.watches_slots = False
@@ -271,15 +261,7 @@ class _Card(_Shown):
         super().changeEvent(event)
 
     def paintEvent(self, event):
-        painter = QPainter(self)
-        painter.setRenderHint(QPainter.Antialiasing)
-        painter.setPen(theme_color(self, "highlight"))
-        painter.setBrush(theme_color(self, "base"))
-        painter.drawRoundedRect(
-            QRectF(self.rect()).adjusted(0.5, 0.5, -0.5, -0.5),
-            CARD_RADIUS,
-            CARD_RADIUS,
-        )
+        painter = paint_card(self)
 
         painter.setRenderHint(QPainter.Antialiasing, False)
         painter.setPen(theme_color(self, "window"))
@@ -309,7 +291,8 @@ class _Section(_Shown):
             self.header = QLabel(title)
             self.header.setOpenExternalLinks(True)
             self.header.setContentsMargins(2, 0, 0, 0)
-            lay.addWidget(bold(self.header))
+            bold(self.header)
+            lay.addWidget(self.header)
 
     def add(self, widget: QWidget, *, fills: bool = False):
         self.layout().addWidget(widget, 1 if fills else 0)
@@ -323,7 +306,6 @@ class _Searched:
 
     row: _FormRow
     section: _Section | None
-    keys: list[str] = field(default_factory=list)
     # its fields' labels, the slots' labels and the options shown as buttons
     names: list[str] = field(default_factory=list)
     # the options of its drop-downs, which aren't in sight but the one picked
@@ -542,6 +524,7 @@ class SettingsForm(QWidget):
 
             editor = self._add_editor(entry, row, is_first=not editors)
             self._rows[editor.spec.settings_key] = row
+            row.keys.append(editor.spec.settings_key)
             editors.append(editor)
             row.fills = row.fills or editor.fills
             self._note_searched(searched, editor)
@@ -598,25 +581,20 @@ class SettingsForm(QWidget):
 
     @staticmethod
     def _note_searched(searched: _Searched, editor: Editor):
-        spec = editor.spec
-
-        searched.keys.append(spec.settings_key)
-        if spec.label:
-            searched.names.append(spec.label)
+        if editor.spec.label:
+            searched.names.append(editor.spec.label)
         if editor.tooltip:
             searched.tooltips.append(plain_text(editor.tooltip))
         if editor.fills:
             searched.fill = editor
 
-        if isinstance(spec, ComboField):
-            combo = editor.widget
-            options = [combo.itemText(i) for i in range(combo.count())]
-            if spec.buttons:
-                searched.names.extend(options)
-            else:
-                searched.drop_downs.append(combo)
-                if len(options) <= SEARCHED_OPTIONS_MAX:
-                    searched.options.extend(options)
+        options = editor.options()
+        if editor.drop_down is None:
+            searched.names.extend(options)
+        else:
+            searched.drop_downs.append(editor.drop_down)
+            if len(options) <= SEARCHED_OPTIONS_MAX:
+                searched.options.extend(options)
 
     @staticmethod
     def _add_reset(lay, reset):
@@ -759,7 +737,10 @@ class SettingsForm(QWidget):
 
     def point_to(self, key: str):
         """A setting's row scrolled into view, and its field given the focus,
-        for one asked about elsewhere."""
+        for one asked about elsewhere: on a page just shown too, which is
+        laid out first for the row to be where it will be."""
+
+        self._settle()
 
         row = self._rows[key]
 
@@ -820,14 +801,11 @@ class SettingsForm(QWidget):
                 continue
 
             row = self._rows[key]
-            row.set_marked(not self._modified.isdisjoint(self._keys_on(row)))
+            row.set_marked(not self._modified.isdisjoint(row.keys))
 
             reset = self._reset_btns.get(key)
             if reset is not None:
                 reset.setVisible(is_modified)
-
-    def _keys_on(self, row):
-        return (key for key, on in self._rows.items() if on is row)
 
     def _refresh(self, keys=None):
         self._sync(keys)
@@ -889,16 +867,19 @@ class SettingsForm(QWidget):
                 names.extend(texts)
                 slot_tooltips.extend(tooltips)
 
-            if query.is_in(names):
+            # each kind of text read once: the names, then what can be
+            # picked, then the tooltips
+            words = set(query.words)
+            in_names = query.found_in(names)
+            in_options = in_names | query.found_in(searched.options)
+
+            if in_names == words:
                 found.append(Found(searched.row))
-            elif query.is_in(names + searched.options):
-                found.append(
-                    Found(
-                        searched.row, option=self._found_option(query, names, searched)
-                    )
-                )
-            elif query.is_in(
-                names + searched.options + searched.tooltips + slot_tooltips
+            elif in_options == words:
+                option = self._found_option(query, in_names, searched)
+                found.append(Found(searched.row, option=option))
+            elif (
+                in_options | query.found_in(searched.tooltips + slot_tooltips) == words
             ):
                 found.append(Found(searched.row, by_tooltip=True))
             elif searched.fill is not None:
@@ -909,8 +890,8 @@ class SettingsForm(QWidget):
         return found
 
     def _can_find(self, searched: _Searched) -> bool:
-        if searched.keys:
-            return not all(key in self._hidden for key in searched.keys)
+        if searched.row.keys:
+            return not all(key in self._hidden for key in searched.row.keys)
 
         # a slot that has hidden itself, as the note of a tray there isn't
         return not (
@@ -919,8 +900,7 @@ class SettingsForm(QWidget):
         )
 
     @staticmethod
-    def _found_option(query: Query, names, searched: _Searched) -> str | None:
-        in_names = set().union(*(query.found_words(name) for name in names))
+    def _found_option(query: Query, in_names, searched: _Searched) -> str | None:
         for option in searched.options:
             if query.found_words(option) - in_names:
                 return option
@@ -976,7 +956,7 @@ class SettingsForm(QWidget):
         """The rows of the settings these rows' settings belong to, and theirs."""
 
         belonged = set()
-        keys = [key for key, row in self._rows.items() if row in rows]
+        keys = [key for row in rows for key in row.keys]
         while keys:
             spec = self._editors[keys.pop()].spec
             for rule in (spec.shown_when, spec.enabled_when):
@@ -987,7 +967,7 @@ class SettingsForm(QWidget):
         return belonged
 
     def _mark(self, query: Query, searched: _Searched):
-        labels = [self._editors[key].marked for key in searched.keys]
+        labels = [self._editors[key].marked for key in searched.row.keys]
         if searched.section is not None:
             labels.append(searched.section.header)
 
@@ -1020,8 +1000,8 @@ class SettingsForm(QWidget):
         """The first setting found, for the focus to go to."""
 
         for found in self._found:
-            for key, row in self._rows.items():
-                if row is found.row and self._editors[key].widget.isEnabled():
+            for key in found.row.keys:
+                if self._editors[key].widget.isEnabled():
                     return key
         return None
 
@@ -1096,44 +1076,25 @@ class SettingsForm(QWidget):
         """A value in words, as its field shows it; None for a field that
         doesn't show it in words (a colour, a crop)."""
 
-        spec = self._editors[key].spec
-        shown = self._shown(key, value)
-
-        if isinstance(spec, CheckboxField):
-            if shown:
-                return translate("SettingsDialog", "On")
-            return translate("SettingsDialog", "Off")
-
-        if isinstance(spec, ComboField):
-            return spec.choices().get(shown)
-
-        if isinstance(spec, SpinField | FloatSpinField):
-            if spec.special_text is not None and shown == spec.minimum:
-                return spec.special_text
-            if isinstance(spec, FloatSpinField):
-                number = f"{shown:.{spec.decimals}f}"
-            else:
-                number = str(int(shown))
-            return number if spec.suffix is None else f"{number} {spec.suffix}"
-
-        if isinstance(spec, TextField) and isinstance(shown, str) and shown:
-            return shown
-
-        return None
+        return self._editors[key].text_of(self._shown(key, value))
 
     def is_default(self, key: str) -> bool:
         """Has the stored value a reset would give, before presentation loss."""
 
-        return self._value_for_save(key) == self._reset_to(key)
+        default = self._reset_to(key)
+        return self._value_for_save(key, default) == default
 
-    def _value_for_save(self, key):
+    def _value_for_save(self, key, default=None):
+        # what a reset gives, if already looked up: a lookup can be a read
+        # of the stored settings
+        if default is None:
+            default = self._reset_to(key)
+
         editor = self._editors[key]
         if editor.means_default():
-            return self._reset_to(key)
+            return default
         return self._drafts[key].value_for_save(
-            editor.value(),
-            self._reset_to(key),
-            preserve_original=editor.preserve_original,
+            editor.value(), default, preserve_original=editor.preserve_original
         )
 
     def _is_modified(self, key):
@@ -1209,10 +1170,9 @@ class SettingsForm(QWidget):
                 and not draft.is_reset
             ):
                 continue
+            default = self._reset_to(key)
             result[key] = draft.result(
-                self._value_for_save(key),
-                self._reset_to(key),
-                self._mode,
+                self._value_for_save(key, default), default, self._mode
             )
         return result
 

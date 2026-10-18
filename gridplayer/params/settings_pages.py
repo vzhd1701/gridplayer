@@ -174,6 +174,21 @@ SUBTITLE_STYLE_PAGE = (
     ),
 )
 
+# in the Settings dialog as the defaults, and in the Playlist window as
+# the playlist's own
+PLAYLIST = Page(
+    "playlist",
+    translate("SettingsDialog", "Playlist"),
+    *PLAYLIST_PAGE,
+    icon="page-playlist",
+)
+VIDEO = Page(
+    "video",
+    translate("SettingsDialog", "New Videos"),
+    *VIDEO_PAGE,
+    icon="page-video",
+)
+
 PAGES = (
     Group(
         translate("SettingsDialog", "General"),
@@ -269,18 +284,8 @@ PAGES = (
     ),
     Group(
         translate("SettingsDialog", "Defaults"),
-        Page(
-            "playlist",
-            translate("SettingsDialog", "Playlist"),
-            *PLAYLIST_PAGE,
-            icon="page-playlist",
-        ),
-        Page(
-            "video",
-            translate("SettingsDialog", "New Videos"),
-            *VIDEO_PAGE,
-            icon="page-video",
-        ),
+        PLAYLIST,
+        VIDEO,
     ),
     Group(
         translate("SettingsDialog", "Streaming"),

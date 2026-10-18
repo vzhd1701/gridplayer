@@ -16,9 +16,9 @@ from PyQt5.QtWidgets import (
     QVBoxLayout,
 )
 
-from gridplayer.dialogs.add_choice import bold, indented
+from gridplayer.dialogs.add_choice import indented
 from gridplayer.dialogs.messagebox import TEXT_SCALE
-from gridplayer.utils.qt import fit_height, translate
+from gridplayer.utils.qt import bold, fit_height, translate
 from gridplayer.widgets.elided_label import ElidedLabel
 
 

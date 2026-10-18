@@ -6,6 +6,7 @@ spaces have no words to start, so there a word is found anywhere in the
 text. Every word typed has to be found, in any order.
 """
 
+import functools
 import html
 import re
 import unicodedata
@@ -14,7 +15,9 @@ from collections.abc import Iterable
 _TAG = re.compile(r"<[^>]*>")
 
 
-def _fold(text: str) -> tuple[str, list[int]]:
+# the same labels are searched on every key typed
+@functools.lru_cache(maxsize=4096)
+def _fold(text: str) -> tuple[str, tuple[int, ...]]:
     """The text in lower case and without accents, and where each of its
     characters came from in the text as it was."""
 
@@ -26,7 +29,7 @@ def _fold(text: str) -> tuple[str, list[int]]:
             for lower in base.casefold():
                 folded.append(lower)
                 origin.append(at)
-    return "".join(folded), origin
+    return "".join(folded), tuple(origin)
 
 
 def _is_spaceless(word: str) -> bool:
@@ -47,19 +50,25 @@ class Query:
         self.text = text.strip()
         folded, _ = _fold(self.text)
         self.words = tuple(dict.fromkeys(re.findall(r"\w+", folded)))
+        # None for a word of a script without spaces, found anywhere
+        self._patterns = {
+            word: None if _is_spaceless(word) else re.compile(re.escape(word))
+            for word in self.words
+        }
 
     def __bool__(self):
         return bool(self.words)
 
     def _starts(self, folded: str, word: str):
-        if _is_spaceless(word):
+        pattern = self._patterns[word]
+        if pattern is None:
             start = folded.find(word)
             while start >= 0:
                 yield start
                 start = folded.find(word, start + 1)
             return
 
-        for found in re.finditer(re.escape(word), folded):
+        for found in pattern.finditer(folded):
             start = found.start()
             if start == 0 or not folded[start - 1].isalnum():
                 yield start
@@ -73,6 +82,11 @@ class Query:
             for word in self.words
             if next(self._starts(folded, word), None) is not None
         }
+
+    def found_in(self, texts: Iterable[str]) -> set[str]:
+        """The words found, each in any of the texts."""
+
+        return set().union(*(self.found_words(text) for text in texts))
 
     def is_in(self, texts: Iterable[str]) -> bool:
         """Every word found, each in any of the texts."""
