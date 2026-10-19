@@ -18,6 +18,7 @@ from gridplayer.params.settings_fields.registry import FIELDS
 from gridplayer.params.static import VideoCrop, VideoTransform, ViewParams
 from gridplayer.player.managers.active_block import ActiveBlockManager
 from gridplayer.player.managers.video_blocks import VideoBlocksManager
+from gridplayer.vlc_player import player_base
 from gridplayer.vlc_player.static import VideoTrack
 from gridplayer.widgets.video_block import VideoBlock
 from gridplayer.widgets.video_block_view import ViewControl
@@ -341,6 +342,12 @@ class TestInTheWidget:
         assert frame._view.crop == VideoCrop(1, 0, 0, 0)
 
 
+def _recorded_geometry(monkeypatch):
+    geometry = Mock(return_value=("", ""))
+    monkeypatch.setattr(player_base, "calc_view_geometry", geometry)
+    return geometry
+
+
 class TestInThePlayer:
     def test_the_video_keeps_the_shape_without_its_margins(self):
         """On a single process the video is the cell's, saved as it is: cut
@@ -355,17 +362,41 @@ class TestInThePlayer:
         video = player.media_input.video
         assert (video.crop_ratio, video.crop) == ("4:3", NO_CROP)
 
-    def test_shown_again_by_the_margins_last_sent(self):
+    def test_cut_to_it_before_the_widget_sends_a_view(self, monkeypatch):
+        """The player shows the first pictures by the video as saved: by
+        its shape, with no margins."""
+
         player, _ = _make_player()
-        player.media = None
+        player.media_input.video.crop_ratio = "4:3"
+        geometry = _recorded_geometry(monkeypatch)
+
+        player._apply_view(player.media_input.size, player.media_input.view)
+
+        assert geometry.call_args.args[2].crop == VideoCrop(80, 0, 80, 0)
+
+    def test_cut_by_its_frame_not_the_margins_sent(self, monkeypatch):
+        """Margins the widget worked out on another frame, as before a
+        turn, are not what it is cut by."""
+
+        player, _ = _make_player()
+        geometry = _recorded_geometry(monkeypatch)
         sent = ViewParams(crop=VideoCrop(240, 0, 240, 0), crop_ratio="4:3")
-        player.adjust_view((640, 360), sent)
-        player.adjust_view = Mock()
 
-        player._apply_media_input_view()
+        player._apply_view((640, 360), sent)
 
-        view = player.adjust_view.call_args.kwargs["view"]
-        assert (view.crop_ratio, view.crop) == ("4:3", VideoCrop(240, 0, 240, 0))
+        assert geometry.call_args.args[2].crop == VideoCrop(80, 0, 80, 0)
+
+    def test_cut_as_the_aspect_ratio_picked_shows_it(self, monkeypatch):
+        """640x360 shown 4:3, cut to 16:9, loses its top and bottom."""
+
+        player, _ = _make_player()
+        geometry = _recorded_geometry(monkeypatch)
+
+        player._apply_view(
+            (640, 360), ViewParams(aspect_ratio="4:3", crop_ratio="16:9")
+        )
+
+        assert geometry.call_args.args[2].crop == VideoCrop(0, 45, 0, 45)
 
     def test_margins_of_its_own_kept(self):
         player, _ = _make_player()

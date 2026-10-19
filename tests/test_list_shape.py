@@ -31,6 +31,7 @@ from gridplayer.widgets.video_block_view import ViewControl
 from gridplayer.widgets.video_frame_vlc_hw_sp import VideoFrameVLCHWSP
 from tests.test_cb_vout import _make_player
 from tests.test_crop_dialog import _FakeBlock
+from tests.test_crop_ratio import _recorded_geometry
 
 URI = "http://example.com/a.ts"
 
@@ -259,18 +260,14 @@ class TestInThePlayer:
         view = player.adjust_view.call_args.kwargs["view"]
         assert (view.aspect_ratio, view.is_aspect_ratio_listed) == ("4:3", True)
 
-    def test_the_list_s_crop_again_by_the_margins_last_sent(self):
+    def test_cut_to_the_list_s_crop_by_its_frame(self, monkeypatch):
         player, _ = _make_player()
-        player.media = None
         player.media_input.list_crop_ratio = "4:3"
-        sent = ViewParams().with_list("", "4:3")._replace(crop=VideoCrop(80, 0, 80, 0))
-        player.adjust_view((640, 360), sent)
-        player.adjust_view = Mock()
+        geometry = _recorded_geometry(monkeypatch)
 
-        player._apply_media_input_view()
+        player._apply_view(player.media_input.size, player.media_input.view)
 
-        view = player.adjust_view.call_args.kwargs["view"]
-        assert (view.crop, view.is_crop_ratio_listed) == (VideoCrop(80, 0, 80, 0), True)
+        assert geometry.call_args.args[2].crop == VideoCrop(80, 0, 80, 0)
 
     def test_none_once_shown_without(self):
         player, _ = _make_player()

@@ -29,6 +29,7 @@ from gridplayer.params.static import (
 )
 from gridplayer.settings import Settings
 from gridplayer.utils.aspect_calc import (
+    calc_ratio_crop,
     calc_shown_pixel_aspect,
     calc_view_geometry,
     calc_whole_geometry,
@@ -238,11 +239,6 @@ class VlcPlayerBase(ABC):
         # see _fill_missing_track_sars
         self._sar_reads_left = SAR_READS
         self._is_sar_read_due = True
-
-        # the margins the widget last cut the crop shape by, picked or the
-        # list's, for the view to be put back with them: the video keeps
-        # only the shape
-        self._shape_crop = None
 
         # the load is playing pictures, and has been said to be; see
         # _check_playback_started
@@ -649,7 +645,6 @@ class VlcPlayerBase(ABC):
         self._is_view_unsized = False
         self._sar_reads_left = SAR_READS
         self._is_sar_read_due = True
-        self._shape_crop = None
         self._is_playback_reported = False
         self._last_time = None
         self._own_audio_count = None
@@ -1440,8 +1435,6 @@ class VlcPlayerBase(ABC):
             if is_crop_unset and not view.is_crop_ratio_listed:
                 self.media_input.list_crop_ratio = ""
 
-            self._shape_crop = view.crop if view.crop_ratio else None
-
         if self.media is None:
             # video not loaded yet, video frame resized on init
             return
@@ -1483,6 +1476,16 @@ class VlcPlayerBase(ABC):
             1 / pixel_aspect if is_turned else pixel_aspect,
         )
         pixel_aspect = 1 / shown_pixel if is_turned else shown_pixel
+
+        # a shape's margins go by the frame, cut here as the widget cuts it:
+        # the first pictures are shown before the widget sends a view, and
+        # its margins can be for the frame before a turn or a reload
+        if view.crop_ratio:
+            view = view._replace(
+                crop=calc_ratio_crop(
+                    shown_frame, transform, view.crop_ratio, shown_pixel
+                )
+            )
 
         geometry = None
 
@@ -1734,12 +1737,7 @@ class VlcPlayerBase(ABC):
             self._restart_reapply_tries = 0
 
     def _apply_media_input_view(self):
-        view = self.media_input.view
-
-        if view.crop_ratio and self._shape_crop is not None:
-            view = view._replace(crop=self._shape_crop)
-
-        self.adjust_view(size=self.media_input.size, view=view)
+        self.adjust_view(size=self.media_input.size, view=self.media_input.view)
 
     def _set_pause_initial(self, is_paused):
         if not self.media_input.is_live and is_paused:
