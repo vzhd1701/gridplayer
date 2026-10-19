@@ -130,6 +130,11 @@ jobs:
       matrix:
         arch: [ x86, x64 ]
     runs-on: windows-latest
+    defaults:
+      run:
+        # Not pwsh, the Windows default: it carries on past a failed command
+        # and the step passes when the last one does
+        shell: bash
     steps:
       - uses: actions/checkout@v7
       - uses: extractions/setup-just@v4
@@ -149,6 +154,12 @@ jobs:
         uses: crazy-max/ghaction-chocolatey@v4
         with:
           args: install wget zip
+
+      # choco carries on when the feed fails to give it a package
+      - name: Check requirements
+        run: |
+          command -v wget
+          command -v zip
 
       - name: Stamp dev version
         if: inputs.dev

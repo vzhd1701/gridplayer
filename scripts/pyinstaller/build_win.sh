@@ -53,7 +53,13 @@ echo "Embedding VLC"
 VLC_EMBED_SRC=$(realpath "$BUILD_DIR/libVLC")
 
 if [ ! -d "$VLC_EMBED_SRC" ]; then
-    wget -q -nc -O "$BUILD_DIR/vlc.zip" "$VLC_URL" || true
+    # Downloaded to a side name first, so a broken download is not kept
+    # as the zip by the next run
+    if [ ! -f "$BUILD_DIR/vlc.zip" ]; then
+        wget -q -O "$BUILD_DIR/vlc.zip.part" "$VLC_URL"
+        mv "$BUILD_DIR/vlc.zip.part" "$BUILD_DIR/vlc.zip"
+    fi
+
     unzip -oq "$BUILD_DIR/vlc.zip" -d "$BUILD_DIR"
 
     mkdir -p "$VLC_EMBED_SRC/plugins"
