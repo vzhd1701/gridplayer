@@ -285,6 +285,14 @@ def _none_view():
     return ViewParams(VideoCellViewMode.FIT, 1.0, VideoCrop(0, 0, 0, 0))
 
 
+def _tick(player):
+    """Its time coming in, the view to be sent again by hand."""
+
+    player._schedule_view_reapply = Mock()
+    player._schedule_playback_check = Mock()
+    player.cb_time_changed(SimpleNamespace(u=SimpleNamespace(new_time=0)))
+
+
 def test_adjust_view_reads_how_wide_a_streams_pixels_are():
     """An MPEG-TS stream says only once decoded: 640x360 of pixels 3:2 is
     960x360, which fills 960x360."""
@@ -298,6 +306,7 @@ def test_adjust_view_reads_how_wide_a_streams_pixels_are():
 
     tracks.sar = (3, 2)
     media_player.calls.clear()
+    _tick(player)
     player.adjust_view(size=(960, 360), view=_none_view())
 
     assert player.media.video_tracks[1].sar == (3, 2)
@@ -333,6 +342,7 @@ def test_a_video_that_never_says_is_asked_only_so_often():
     player, _ = _stream_player(tracks)
 
     for _ in range(player_base_mod.SAR_READS + 5):
+        _tick(player)
         player.adjust_view(size=(640, 360), view=_none_view())
 
     assert tracks.reads == player_base_mod.SAR_READS
@@ -340,22 +350,21 @@ def test_a_video_that_never_says_is_asked_only_so_often():
     player.notify_video_dimensions.assert_not_called()
 
 
-def test_not_asked_before_its_picture_is_up():
-    """The views sent as the grid lays out, before the stream is decoded,
-    leave its reads for when it can say."""
+def test_asked_as_time_comes_in_not_for_each_view():
+    """The views sent as the grid lays out, before the stream is decoded
+    enough to say, leave its reads for when it can."""
 
     tracks = _Tracks()
-    player, media_player = _stream_player(tracks)
-    media_player.video_get_size = lambda num=0: (0, 0)
+    player, _ = _stream_player(tracks)
 
     for _ in range(player_base_mod.SAR_READS + 5):
         player.adjust_view(size=(640, 360), view=_none_view())
 
-    assert tracks.reads == 0
+    assert tracks.reads == 1
     assert player._is_view_unsized
 
-    media_player.video_get_size = lambda num=0: (640, 360)
     tracks.sar = (3, 2)
+    _tick(player)
     player.adjust_view(size=(960, 360), view=_none_view())
 
     assert player.media.video_tracks[1].sar == (3, 2)

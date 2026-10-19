@@ -237,6 +237,7 @@ class VlcPlayerBase(ABC):
 
         # see _fill_missing_track_sars
         self._sar_reads_left = SAR_READS
+        self._is_sar_read_due = True
 
         # the margins the widget last cut the crop shape by, picked or the
         # list's, for the view to be put back with them: the video keeps
@@ -484,6 +485,7 @@ class VlcPlayerBase(ABC):
         # Nothing announces the size, but time starts coming in right after
         # it, the first at 0, so keep trying until it is there.
         if self._is_view_unsized:
+            self._is_sar_read_due = True
             self._schedule_view_reapply()
 
         # counted along with the time, so looked at as it comes
@@ -646,6 +648,7 @@ class VlcPlayerBase(ABC):
         self._last_video_size = (0, 0)
         self._is_view_unsized = False
         self._sar_reads_left = SAR_READS
+        self._is_sar_read_due = True
         self._shape_crop = None
         self._is_playback_reported = False
         self._last_time = None
@@ -1909,10 +1912,13 @@ class VlcPlayerBase(ABC):
         if not self._is_pixel_shape_pending():
             return False
 
-        # a stream says only once decoded, its picture up: the views sent
-        # before, as the grid lays out, would use up the reads for nothing
-        if not all(self._media_player.video_get_size()):
+        # read as the load is done and then as its time comes in, not for
+        # each view sent: the views sent as the grid lays out would use up
+        # the reads before a stream has been decoded enough to say
+        if not self._is_sar_read_due:
             return False
+
+        self._is_sar_read_due = False
 
         # each read is a copy of the list libVLC keeps, which python-vlc
         # never gives back, so a video that never says is read only so often
