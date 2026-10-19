@@ -95,6 +95,9 @@ class PlayerProcessSingleVLCHW(VlcPlayerThreaded):
         try:
             if env.IS_LINUX:
                 self.init_semaphore.release()
+
+                # the stop is ours, not the video's: not one to report
+                self.is_video_initialized = False
                 detach_hw_xwindow(self._media_player)
 
             super().cleanup()
