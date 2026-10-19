@@ -96,10 +96,6 @@ class PlayerProcessSingleVLCHW(VlcPlayerThreaded):
             if env.IS_LINUX:
                 self.init_semaphore.release()
 
-                # the stop is ours, not the video's: not one to report
-                self.is_video_initialized = False
-                detach_hw_xwindow(self._media_player)
-
             super().cleanup()
         finally:
             # Event/Condition cannot be pickled over this pipe; notify the
@@ -112,6 +108,10 @@ class PlayerProcessSingleVLCHW(VlcPlayerThreaded):
                     exc_info=True,
                 )
             self.release_callback(self.id)
+
+    def _detach_output(self):
+        if env.IS_LINUX:
+            detach_hw_xwindow(self._media_player)
 
     def cleanup_final(self):
         self.cmd_loop_terminate()

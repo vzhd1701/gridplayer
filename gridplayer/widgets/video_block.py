@@ -1606,10 +1606,8 @@ class VideoBlock(QWidget):
             "subtitle_selection": self.subtitles.restore_selection,
             "scale": lambda scale: self.view.set_scale(scale, is_silent=True),
             "is_zoom_to_cursor": self.view.set_zoom_to_cursor,
-            # a shape or margins, whichever is the new one's
-            "crop": lambda crop: (
-                new.crop_ratio or self.view.set_crop(crop, is_silent=True)
-            ),
+            # a shape or margins, whichever is the new one's: a crop comes
+            # with its ratio, as above
             "crop_ratio": lambda ratio: (
                 self.view.set_crop_ratio(ratio, is_silent=True)
                 if ratio

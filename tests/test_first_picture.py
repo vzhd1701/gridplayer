@@ -14,7 +14,7 @@ from gridplayer.params.static import (
 )
 from gridplayer.utils import darkmode
 from gridplayer.utils.win32_vlc_vout import VlcPicture
-from gridplayer.vlc_player.static import VideoTrack
+from gridplayer.vlc_player.static import MediaInput, VideoTrack
 from gridplayer.widgets.video_block import VideoBlock
 from gridplayer.widgets.video_block_status import StatusControl
 from gridplayer.widgets.video_frame_vlc_base import (
@@ -308,7 +308,11 @@ def test_stream_playback_is_waited_for_again_on_the_next_load(frame, monkeypatch
 def _start_loading(frame, is_paused):
     """What the frame is handed to load, as far as the wait goes."""
     frame.load_video(
-        MagicMock(
+        MediaInput(
+            uri="https://example.com/live.m3u8",
+            is_live=True,
+            is_audio_only=False,
+            size=(640, 360),
             video=MagicMock(
                 cell_view_mode=VideoCellViewMode.FILL,
                 scale=1.0,
@@ -321,8 +325,6 @@ def _start_loading(frame, is_paused):
                 transform=VideoTransform.NONE,
                 is_paused=is_paused,
             ),
-            list_aspect_ratio="",
-            list_crop_ratio="",
         )
     )
 

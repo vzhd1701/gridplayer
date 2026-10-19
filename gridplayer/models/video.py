@@ -22,6 +22,7 @@ from gridplayer.models.subtitle_selection import (
 )
 from gridplayer.models.video_uri import VideoURI
 from gridplayer.params.static import (
+    LEGACY_VIEW_MODES,
     MAX_AUDIO_DELAY_MS,
     MAX_RATE,
     MAX_SCALE,
@@ -65,16 +66,6 @@ def migrate_end_action(value):
     return value
 
 
-# The view mode was saved as the "aspect" once, under other names: its
-# "fit" covered the cell, which is FILL now, and "none" showed the whole
-# picture, which is FIT
-_LEGACY_ASPECT = {
-    "fit": VideoCellViewMode.FILL,
-    "none": VideoCellViewMode.FIT,
-    "stretch": VideoCellViewMode.STRETCH,
-}
-
-
 def migrate_aspect(data: dict, old_key: str) -> None:
     """Move an "aspect" saved under its old key to the view mode."""
 
@@ -84,7 +75,7 @@ def migrate_aspect(data: dict, old_key: str) -> None:
     value = data.pop(old_key)
 
     if "cell_view_mode" not in data:
-        data["cell_view_mode"] = _LEGACY_ASPECT.get(value, value)
+        data["cell_view_mode"] = LEGACY_VIEW_MODES.get(value, value)
 
 
 # What each mode a video can be set to default to comes out as. Only three

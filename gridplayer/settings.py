@@ -22,6 +22,7 @@ from gridplayer.params.gestures import (
 )
 from gridplayer.params.languages import get_system_language
 from gridplayer.params.static import (
+    LEGACY_VIEW_MODES,
     AddMode,
     AudioChannelMode,
     AudioTrackMode,
@@ -335,16 +336,10 @@ class _Settings:
 
         old_key = "video_defaults/aspect"
         new_key = "video_defaults/cell_view_mode"
-        modes = {
-            "fit": VideoCellViewMode.FILL.value,
-            "none": VideoCellViewMode.FIT.value,
-            "stretch": VideoCellViewMode.STRETCH.value,
-        }
-
         if self.settings.contains(old_key):
             value = str(self.settings.value(old_key))
-            if not self.settings.contains(new_key) and value in modes:
-                self.settings.setValue(new_key, modes[value])
+            if not self.settings.contains(new_key) and value in LEGACY_VIEW_MODES:
+                self.settings.setValue(new_key, LEGACY_VIEW_MODES[value].value)
             self.settings.remove(old_key)
 
         actions = {

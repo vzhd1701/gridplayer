@@ -24,6 +24,7 @@ from gridplayer.params.static import (
     VideoDeinterlace,
     VideoDeinterlaceMode,
     ViewParams,
+    is_crop_unpicked,
 )
 from gridplayer.settings import Settings
 from gridplayer.utils.aspect_calc import (
@@ -532,6 +533,9 @@ class VlcPlayerBase(ABC):
         # events ask for, would reach it after libVLC frees it, through the
         # tracks manager's reference if not ours: an access violation.
         self._is_released = True
+
+        # the stop is ours, not the video's: not one to report
+        self._detach_output()
 
         if self._timer_extract_media_track is not None:
             self._timer_extract_media_track.cancel()
@@ -1422,8 +1426,8 @@ class VlcPlayerBase(ABC):
             # its video gone off it
             if not picked.aspect_ratio and not view.is_aspect_ratio_listed:
                 self.media_input.list_aspect_ratio = ""
-            is_crop_picked = picked.crop_ratio or any(picked.crop)
-            if not is_crop_picked and not view.is_crop_ratio_listed:
+            is_crop_unset = is_crop_unpicked(picked.crop_ratio, picked.crop)
+            if is_crop_unset and not view.is_crop_ratio_listed:
                 self.media_input.list_crop_ratio = ""
 
             self._listed_crop = view.crop if view.is_crop_ratio_listed else None
@@ -1546,6 +1550,10 @@ class VlcPlayerBase(ABC):
             self._event_waiter.wait_for("vout", self.init_time_left)
 
         self._apply_media_input_view()
+
+    def _detach_output(self) -> None:  # noqa: B027
+        """Let go of the window VLC draws in, where a driver has to before
+        VLC is released."""
 
     def _schedule_view_reapply(self):
         # Default: apply directly. Threaded subclasses override this to marshal
@@ -1716,20 +1724,7 @@ class VlcPlayerBase(ABC):
             self._restart_reapply_tries = 0
 
     def _apply_media_input_view(self):
-        video = self.media_input.video
-
-        view = ViewParams(
-            video.cell_view_mode,
-            video.scale,
-            video.crop,
-            video.anchor,
-            video.shift,
-            video.is_shift_past_edges,
-            video.aspect_ratio,
-            video.crop_ratio,
-        ).with_list(
-            self.media_input.list_aspect_ratio, self.media_input.list_crop_ratio
-        )
+        view = self.media_input.view
 
         if view.is_crop_ratio_listed and self._listed_crop is not None:
             view = view._replace(crop=self._listed_crop)

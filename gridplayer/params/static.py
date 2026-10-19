@@ -75,6 +75,16 @@ class VideoCellViewMode(AutoName):
     STRETCH = auto()
 
 
+# The view mode was saved as the "aspect" once, under other names: its
+# "fit" covered the cell, which is FILL now, and "none" showed the whole
+# picture, which is FIT
+LEGACY_VIEW_MODES = {
+    "fit": VideoCellViewMode.FILL,
+    "none": VideoCellViewMode.FIT,
+    "stretch": VideoCellViewMode.STRETCH,
+}
+
+
 class VideoCrop(NamedTuple):
     Left: int
     Top: int
@@ -103,6 +113,37 @@ class VideoShift(NamedTuple):
 # own aspect ratio, and no crop. Without a list the same as nothing picked.
 OWN_ASPECT_RATIO = "own"
 NO_CROP_RATIO = "none"
+
+# the shapes offered to pick, in the menu and for new videos, in VLC's order
+ASPECT_RATIO_PRESETS = (
+    "16:9",
+    "4:3",
+    "1:1",
+    "16:10",
+    "2.21:1",
+    "2.35:1",
+    "2.39:1",
+    "5:4",
+)
+CROP_RATIO_PRESETS = (
+    "16:10",
+    "16:9",
+    "4:3",
+    "1.85:1",
+    "2.21:1",
+    "2.35:1",
+    "2.39:1",
+    "5:3",
+    "5:4",
+    "1:1",
+)
+
+
+def is_crop_unpicked(crop_ratio: str, crop) -> bool:
+    """Cut to no shape picked and by no margins: to its list's shape,
+    where it says one."""
+
+    return not crop_ratio and not any(crop)
 
 
 class ViewParams(NamedTuple):
@@ -139,8 +180,8 @@ class ViewParams(NamedTuple):
         to no shape and by no margins."""
 
         is_aspect_listed = not self.aspect_ratio and bool(list_aspect_ratio)
-        is_crop_listed = (
-            not self.crop_ratio and not any(self.crop) and bool(list_crop_ratio)
+        is_crop_listed = is_crop_unpicked(self.crop_ratio, self.crop) and bool(
+            list_crop_ratio
         )
 
         return self._replace(

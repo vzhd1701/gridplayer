@@ -18,7 +18,11 @@ from gridplayer.models.subtitle_selection import (
     SubtitleTrackId,
 )
 from gridplayer.models.video import Video
-from gridplayer.params.static import ROTATION_TRANSFORMS, VideoTransform
+from gridplayer.params.static import (
+    ROTATION_TRANSFORMS,
+    VideoTransform,
+    ViewParams,
+)
 from gridplayer.utils.track_language import pick_track
 
 DISABLED_TRACK = -1
@@ -436,6 +440,24 @@ class MediaInput:
     list_crop_ratio: str = ""
 
     _initial_seek_ms: int | None = None
+
+    @property
+    def view(self) -> ViewParams:
+        """How the video is fitted into its pane, the list's shapes shown
+        where none is picked."""
+
+        video = self.video
+
+        return ViewParams(
+            cell_view_mode=video.cell_view_mode,
+            scale=video.scale,
+            crop=video.crop,
+            anchor=video.anchor,
+            shift=video.shift,
+            is_shift_past_edges=video.is_shift_past_edges,
+            aspect_ratio=video.aspect_ratio,
+            crop_ratio=video.crop_ratio,
+        ).with_list(self.list_aspect_ratio, self.list_crop_ratio)
 
     @property
     def initial_time(self) -> int:

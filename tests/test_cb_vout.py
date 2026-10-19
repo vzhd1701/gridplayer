@@ -14,7 +14,7 @@ from gridplayer.params.static import (
 )
 from gridplayer.vlc_player.libvlc import vlc
 from gridplayer.vlc_player.player_base import VlcPlayerBase
-from gridplayer.vlc_player.static import Media, VideoTrack
+from gridplayer.vlc_player.static import Media, MediaInput, VideoTrack
 
 
 class _MinimalPlayer(VlcPlayerBase):
@@ -60,8 +60,13 @@ def _make_player(cell_view_mode=VideoCellViewMode.FILL, is_audio_only=False):
     media.is_audio_only = is_audio_only
     player.media = media
 
-    media_input = Mock()
-    media_input.size = (640, 360)
+    media_input = MediaInput(
+        uri="file:///video.mp4",
+        is_live=False,
+        is_audio_only=is_audio_only,
+        size=(640, 360),
+        video=Mock(),
+    )
     media_input.video.cell_view_mode = cell_view_mode
     media_input.video.scale = 1.0
     media_input.video.crop = VideoCrop(0, 0, 0, 0)
@@ -70,8 +75,6 @@ def _make_player(cell_view_mode=VideoCellViewMode.FILL, is_audio_only=False):
     media_input.video.transform = None
     media_input.video.aspect_ratio = ""
     media_input.video.crop_ratio = ""
-    media_input.list_aspect_ratio = ""
-    media_input.list_crop_ratio = ""
     player.media_input = media_input
 
     return player, media_player

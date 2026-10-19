@@ -1,6 +1,8 @@
 from types import MappingProxyType
 
 from gridplayer.params.static import (
+    ASPECT_RATIO_PRESETS,
+    CROP_RATIO_PRESETS,
     AudioChannelMode,
     GridMode,
     ListEndAction,
@@ -698,85 +700,16 @@ ACTIONS = MappingProxyType(
             "is_choice": True,
             "show_if": "is_active_has_video",
         },
-        "Crop 16:10": {
-            "title": "16:10",
-            "icon": "empty",
-            "func": ("active", "view.set_crop_ratio", "16:10"),
-            "check_if": ("is_active_param_set_to", "crop_ratio", "16:10"),
-            "is_choice": True,
-            "show_if": "is_active_has_video",
-        },
-        "Crop 16:9": {
-            "title": "16:9",
-            "icon": "empty",
-            "func": ("active", "view.set_crop_ratio", "16:9"),
-            "check_if": ("is_active_param_set_to", "crop_ratio", "16:9"),
-            "is_choice": True,
-            "show_if": "is_active_has_video",
-        },
-        "Crop 4:3": {
-            "title": "4:3",
-            "icon": "empty",
-            "func": ("active", "view.set_crop_ratio", "4:3"),
-            "check_if": ("is_active_param_set_to", "crop_ratio", "4:3"),
-            "is_choice": True,
-            "show_if": "is_active_has_video",
-        },
-        "Crop 1.85:1": {
-            "title": "1.85:1",
-            "icon": "empty",
-            "func": ("active", "view.set_crop_ratio", "1.85:1"),
-            "check_if": ("is_active_param_set_to", "crop_ratio", "1.85:1"),
-            "is_choice": True,
-            "show_if": "is_active_has_video",
-        },
-        "Crop 2.21:1": {
-            "title": "2.21:1",
-            "icon": "empty",
-            "func": ("active", "view.set_crop_ratio", "2.21:1"),
-            "check_if": ("is_active_param_set_to", "crop_ratio", "2.21:1"),
-            "is_choice": True,
-            "show_if": "is_active_has_video",
-        },
-        "Crop 2.35:1": {
-            "title": "2.35:1",
-            "icon": "empty",
-            "func": ("active", "view.set_crop_ratio", "2.35:1"),
-            "check_if": ("is_active_param_set_to", "crop_ratio", "2.35:1"),
-            "is_choice": True,
-            "show_if": "is_active_has_video",
-        },
-        "Crop 2.39:1": {
-            "title": "2.39:1",
-            "icon": "empty",
-            "func": ("active", "view.set_crop_ratio", "2.39:1"),
-            "check_if": ("is_active_param_set_to", "crop_ratio", "2.39:1"),
-            "is_choice": True,
-            "show_if": "is_active_has_video",
-        },
-        "Crop 5:3": {
-            "title": "5:3",
-            "icon": "empty",
-            "func": ("active", "view.set_crop_ratio", "5:3"),
-            "check_if": ("is_active_param_set_to", "crop_ratio", "5:3"),
-            "is_choice": True,
-            "show_if": "is_active_has_video",
-        },
-        "Crop 5:4": {
-            "title": "5:4",
-            "icon": "empty",
-            "func": ("active", "view.set_crop_ratio", "5:4"),
-            "check_if": ("is_active_param_set_to", "crop_ratio", "5:4"),
-            "is_choice": True,
-            "show_if": "is_active_has_video",
-        },
-        "Crop 1:1": {
-            "title": "1:1",
-            "icon": "empty",
-            "func": ("active", "view.set_crop_ratio", "1:1"),
-            "check_if": ("is_active_param_set_to", "crop_ratio", "1:1"),
-            "is_choice": True,
-            "show_if": "is_active_has_video",
+        **{
+            f"Crop {ratio}": {
+                "title": ratio,
+                "icon": "empty",
+                "func": ("active", "view.set_crop_ratio", ratio),
+                "check_if": ("is_active_param_set_to", "crop_ratio", ratio),
+                "is_choice": True,
+                "show_if": "is_active_has_video",
+            }
+            for ratio in CROP_RATIO_PRESETS
         },
         "Move Left": {
             "title": translate("Actions", "Move Left"),
@@ -963,69 +896,16 @@ ACTIONS = MappingProxyType(
             "is_choice": True,
             "show_if": "is_active_has_video",
         },
-        "Aspect Ratio 16:9": {
-            "title": "16:9",
-            "icon": "empty",
-            "func": ("active", "view.set_aspect_ratio", "16:9"),
-            "check_if": ("is_active_param_set_to", "aspect_ratio", "16:9"),
-            "is_choice": True,
-            "show_if": "is_active_has_video",
-        },
-        "Aspect Ratio 4:3": {
-            "title": "4:3",
-            "icon": "empty",
-            "func": ("active", "view.set_aspect_ratio", "4:3"),
-            "check_if": ("is_active_param_set_to", "aspect_ratio", "4:3"),
-            "is_choice": True,
-            "show_if": "is_active_has_video",
-        },
-        "Aspect Ratio 1:1": {
-            "title": "1:1",
-            "icon": "empty",
-            "func": ("active", "view.set_aspect_ratio", "1:1"),
-            "check_if": ("is_active_param_set_to", "aspect_ratio", "1:1"),
-            "is_choice": True,
-            "show_if": "is_active_has_video",
-        },
-        "Aspect Ratio 16:10": {
-            "title": "16:10",
-            "icon": "empty",
-            "func": ("active", "view.set_aspect_ratio", "16:10"),
-            "check_if": ("is_active_param_set_to", "aspect_ratio", "16:10"),
-            "is_choice": True,
-            "show_if": "is_active_has_video",
-        },
-        "Aspect Ratio 2.21:1": {
-            "title": "2.21:1",
-            "icon": "empty",
-            "func": ("active", "view.set_aspect_ratio", "2.21:1"),
-            "check_if": ("is_active_param_set_to", "aspect_ratio", "2.21:1"),
-            "is_choice": True,
-            "show_if": "is_active_has_video",
-        },
-        "Aspect Ratio 2.35:1": {
-            "title": "2.35:1",
-            "icon": "empty",
-            "func": ("active", "view.set_aspect_ratio", "2.35:1"),
-            "check_if": ("is_active_param_set_to", "aspect_ratio", "2.35:1"),
-            "is_choice": True,
-            "show_if": "is_active_has_video",
-        },
-        "Aspect Ratio 2.39:1": {
-            "title": "2.39:1",
-            "icon": "empty",
-            "func": ("active", "view.set_aspect_ratio", "2.39:1"),
-            "check_if": ("is_active_param_set_to", "aspect_ratio", "2.39:1"),
-            "is_choice": True,
-            "show_if": "is_active_has_video",
-        },
-        "Aspect Ratio 5:4": {
-            "title": "5:4",
-            "icon": "empty",
-            "func": ("active", "view.set_aspect_ratio", "5:4"),
-            "check_if": ("is_active_param_set_to", "aspect_ratio", "5:4"),
-            "is_choice": True,
-            "show_if": "is_active_has_video",
+        **{
+            f"Aspect Ratio {ratio}": {
+                "title": ratio,
+                "icon": "empty",
+                "func": ("active", "view.set_aspect_ratio", ratio),
+                "check_if": ("is_active_param_set_to", "aspect_ratio", ratio),
+                "is_choice": True,
+                "show_if": "is_active_has_video",
+            }
+            for ratio in ASPECT_RATIO_PRESETS
         },
         "Rotate 90": {
             "title": translate("Transform", "Rotate 90"),
@@ -2168,65 +2048,14 @@ ACTIONS = MappingProxyType(
             "func": ("all", "crop_reset"),
             "show_if": "is_any_videos_have_video",
         },
-        "Crop 16:10 [ALL]": {
-            "title": "16:10",
-            "icon": "empty",
-            "func": ("all", "set_crop_ratio", "16:10"),
-            "show_if": "is_any_videos_have_video",
-        },
-        "Crop 16:9 [ALL]": {
-            "title": "16:9",
-            "icon": "empty",
-            "func": ("all", "set_crop_ratio", "16:9"),
-            "show_if": "is_any_videos_have_video",
-        },
-        "Crop 4:3 [ALL]": {
-            "title": "4:3",
-            "icon": "empty",
-            "func": ("all", "set_crop_ratio", "4:3"),
-            "show_if": "is_any_videos_have_video",
-        },
-        "Crop 1.85:1 [ALL]": {
-            "title": "1.85:1",
-            "icon": "empty",
-            "func": ("all", "set_crop_ratio", "1.85:1"),
-            "show_if": "is_any_videos_have_video",
-        },
-        "Crop 2.21:1 [ALL]": {
-            "title": "2.21:1",
-            "icon": "empty",
-            "func": ("all", "set_crop_ratio", "2.21:1"),
-            "show_if": "is_any_videos_have_video",
-        },
-        "Crop 2.35:1 [ALL]": {
-            "title": "2.35:1",
-            "icon": "empty",
-            "func": ("all", "set_crop_ratio", "2.35:1"),
-            "show_if": "is_any_videos_have_video",
-        },
-        "Crop 2.39:1 [ALL]": {
-            "title": "2.39:1",
-            "icon": "empty",
-            "func": ("all", "set_crop_ratio", "2.39:1"),
-            "show_if": "is_any_videos_have_video",
-        },
-        "Crop 5:3 [ALL]": {
-            "title": "5:3",
-            "icon": "empty",
-            "func": ("all", "set_crop_ratio", "5:3"),
-            "show_if": "is_any_videos_have_video",
-        },
-        "Crop 5:4 [ALL]": {
-            "title": "5:4",
-            "icon": "empty",
-            "func": ("all", "set_crop_ratio", "5:4"),
-            "show_if": "is_any_videos_have_video",
-        },
-        "Crop 1:1 [ALL]": {
-            "title": "1:1",
-            "icon": "empty",
-            "func": ("all", "set_crop_ratio", "1:1"),
-            "show_if": "is_any_videos_have_video",
+        **{
+            f"Crop {ratio} [ALL]": {
+                "title": ratio,
+                "icon": "empty",
+                "func": ("all", "set_crop_ratio", ratio),
+                "show_if": "is_any_videos_have_video",
+            }
+            for ratio in CROP_RATIO_PRESETS
         },
         "Move Left [ALL]": {
             "title": translate("Actions", "Move Left"),
@@ -2356,53 +2185,14 @@ ACTIONS = MappingProxyType(
             "func": ("all", "set_aspect_ratio", ""),
             "show_if": "is_any_videos_have_video",
         },
-        "Aspect Ratio 16:9 [ALL]": {
-            "title": "16:9",
-            "icon": "empty",
-            "func": ("all", "set_aspect_ratio", "16:9"),
-            "show_if": "is_any_videos_have_video",
-        },
-        "Aspect Ratio 4:3 [ALL]": {
-            "title": "4:3",
-            "icon": "empty",
-            "func": ("all", "set_aspect_ratio", "4:3"),
-            "show_if": "is_any_videos_have_video",
-        },
-        "Aspect Ratio 1:1 [ALL]": {
-            "title": "1:1",
-            "icon": "empty",
-            "func": ("all", "set_aspect_ratio", "1:1"),
-            "show_if": "is_any_videos_have_video",
-        },
-        "Aspect Ratio 16:10 [ALL]": {
-            "title": "16:10",
-            "icon": "empty",
-            "func": ("all", "set_aspect_ratio", "16:10"),
-            "show_if": "is_any_videos_have_video",
-        },
-        "Aspect Ratio 2.21:1 [ALL]": {
-            "title": "2.21:1",
-            "icon": "empty",
-            "func": ("all", "set_aspect_ratio", "2.21:1"),
-            "show_if": "is_any_videos_have_video",
-        },
-        "Aspect Ratio 2.35:1 [ALL]": {
-            "title": "2.35:1",
-            "icon": "empty",
-            "func": ("all", "set_aspect_ratio", "2.35:1"),
-            "show_if": "is_any_videos_have_video",
-        },
-        "Aspect Ratio 2.39:1 [ALL]": {
-            "title": "2.39:1",
-            "icon": "empty",
-            "func": ("all", "set_aspect_ratio", "2.39:1"),
-            "show_if": "is_any_videos_have_video",
-        },
-        "Aspect Ratio 5:4 [ALL]": {
-            "title": "5:4",
-            "icon": "empty",
-            "func": ("all", "set_aspect_ratio", "5:4"),
-            "show_if": "is_any_videos_have_video",
+        **{
+            f"Aspect Ratio {ratio} [ALL]": {
+                "title": ratio,
+                "icon": "empty",
+                "func": ("all", "set_aspect_ratio", ratio),
+                "show_if": "is_any_videos_have_video",
+            }
+            for ratio in ASPECT_RATIO_PRESETS
         },
         "Rotate 90 [ALL]": {
             "title": translate("Transform", "Rotate 90"),

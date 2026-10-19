@@ -1,5 +1,6 @@
 from types import MappingProxyType
 
+from gridplayer.params.static import ASPECT_RATIO_PRESETS, CROP_RATIO_PRESETS
 from gridplayer.utils.qt import translate
 
 SUBMENUS = MappingProxyType(
@@ -150,29 +151,13 @@ SECTIONS = MappingProxyType(
                     "Aspect Ratio",
                     "Aspect Ratio List",
                     "Aspect Ratio Default",
-                    "Aspect Ratio 16:9",
-                    "Aspect Ratio 4:3",
-                    "Aspect Ratio 1:1",
-                    "Aspect Ratio 16:10",
-                    "Aspect Ratio 2.21:1",
-                    "Aspect Ratio 2.35:1",
-                    "Aspect Ratio 2.39:1",
-                    "Aspect Ratio 5:4",
+                    *(f"Aspect Ratio {ratio}" for ratio in ASPECT_RATIO_PRESETS),
                 ),
                 (
                     "Crop",
                     "Crop List",
                     "Crop Reset",
-                    "Crop 16:10",
-                    "Crop 16:9",
-                    "Crop 4:3",
-                    "Crop 1.85:1",
-                    "Crop 2.21:1",
-                    "Crop 2.35:1",
-                    "Crop 2.39:1",
-                    "Crop 5:3",
-                    "Crop 5:4",
-                    "Crop 1:1",
+                    *(f"Crop {ratio}" for ratio in CROP_RATIO_PRESETS),
                     "Set Crop",
                     "---",
                     "Crop Left +",
@@ -445,28 +430,15 @@ SECTIONS = MappingProxyType(
                     (
                         "Aspect Ratio",
                         "Aspect Ratio Default [ALL]",
-                        "Aspect Ratio 16:9 [ALL]",
-                        "Aspect Ratio 4:3 [ALL]",
-                        "Aspect Ratio 1:1 [ALL]",
-                        "Aspect Ratio 16:10 [ALL]",
-                        "Aspect Ratio 2.21:1 [ALL]",
-                        "Aspect Ratio 2.35:1 [ALL]",
-                        "Aspect Ratio 2.39:1 [ALL]",
-                        "Aspect Ratio 5:4 [ALL]",
+                        *(
+                            f"Aspect Ratio {ratio} [ALL]"
+                            for ratio in ASPECT_RATIO_PRESETS
+                        ),
                     ),
                     (
                         "Crop",
                         "Crop Reset [ALL]",
-                        "Crop 16:10 [ALL]",
-                        "Crop 16:9 [ALL]",
-                        "Crop 4:3 [ALL]",
-                        "Crop 1.85:1 [ALL]",
-                        "Crop 2.21:1 [ALL]",
-                        "Crop 2.35:1 [ALL]",
-                        "Crop 2.39:1 [ALL]",
-                        "Crop 5:3 [ALL]",
-                        "Crop 5:4 [ALL]",
-                        "Crop 1:1 [ALL]",
+                        *(f"Crop {ratio} [ALL]" for ratio in CROP_RATIO_PRESETS),
                         "---",
                         "Crop Left + [ALL]",
                         "Crop Left - [ALL]",

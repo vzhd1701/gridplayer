@@ -10,6 +10,8 @@ from PyQt5.QtGui import QFontDatabase
 
 from gridplayer.params import env
 from gridplayer.params.static import (
+    ASPECT_RATIO_PRESETS,
+    CROP_RATIO_PRESETS,
     AddMode,
     AudioChannelMode,
     AudioTrackMode,
@@ -131,30 +133,14 @@ def cell_view_modes() -> dict:
 def aspect_ratios() -> dict:
     return {
         "": translate("Aspect Ratio", "Default"),
-        "16:9": "16:9",
-        "4:3": "4:3",
-        "1:1": "1:1",
-        "16:10": "16:10",
-        "2.21:1": "2.21:1",
-        "2.35:1": "2.35:1",
-        "2.39:1": "2.39:1",
-        "5:4": "5:4",
+        **{ratio: ratio for ratio in ASPECT_RATIO_PRESETS},
     }
 
 
 def crop_ratios() -> dict:
     return {
         "": translate("Crop", "Margins"),
-        "16:10": "16:10",
-        "16:9": "16:9",
-        "4:3": "4:3",
-        "1.85:1": "1.85:1",
-        "2.21:1": "2.21:1",
-        "2.35:1": "2.35:1",
-        "2.39:1": "2.39:1",
-        "5:3": "5:3",
-        "5:4": "5:4",
-        "1:1": "1:1",
+        **{ratio: ratio for ratio in CROP_RATIO_PRESETS},
     }
 
 

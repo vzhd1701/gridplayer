@@ -24,6 +24,7 @@ from gridplayer.params.static import (
     OWN_ASPECT_RATIO,
     ListEndAction,
     ListSourceKind,
+    VideoCrop,
     VideoEndAction,
     VideoInitialState,
 )
@@ -351,20 +352,18 @@ class NavigationControl(VideoBlockPart):
                 params.crop_ratio, NO_CROP_RATIO, self._block.list_crop_ratio
             )
         )
-        driver = self._block.video_driver
+        picked = {}
 
         if aspect_ratio is not None:
             params.aspect_ratio = aspect_ratio
-            if driver is not None:
-                driver.set_aspect_ratio(aspect_ratio)
+            picked["aspect_ratio"] = aspect_ratio
 
         if crop_ratio is not None:
             params.crop_ratio = crop_ratio
-            if driver is not None:
-                driver.set_crop_ratio(crop_ratio)
+            picked.update(crop=VideoCrop(0, 0, 0, 0), crop_ratio=crop_ratio)
 
-        if driver is not None:
-            driver.forget_list_ratios()
+        if self._block.video_driver is not None:
+            self._block.video_driver.forget_list_ratios(**picked)
 
     def learn_item_length(self):
         """How long an item turned out to be, where its list did not say:

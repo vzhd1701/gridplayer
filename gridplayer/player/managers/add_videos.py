@@ -37,6 +37,7 @@ from gridplayer.params.static import (
     AddMode,
     ListSourceKind,
     VideoEndAction,
+    is_crop_unpicked,
 )
 from gridplayer.player.managers.base import ManagerBase
 from gridplayer.playlist_settings import PlaylistSettings
@@ -1174,7 +1175,7 @@ def _with_list_shape(video: Video | None, shape: ItemShape | None) -> Video | No
     if shape.aspect_ratio and not video.aspect_ratio:
         video.aspect_ratio = shape.aspect_ratio
 
-    if shape.crop_ratio and not video.crop_ratio and not any(video.crop):
+    if shape.crop_ratio and is_crop_unpicked(video.crop_ratio, video.crop):
         video.crop_ratio = shape.crop_ratio
 
     return video

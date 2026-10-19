@@ -961,18 +961,8 @@ class VideoFrameVLC(QWidget, metaclass=QABC):
     def load_video(self, media_input: MediaInput) -> None:
         video = media_input.video
 
-        self._view = ViewParams(
-            video.cell_view_mode,
-            video.scale,
-            video.crop,
-            video.anchor,
-            video.shift,
-            video.is_shift_past_edges,
-            video.aspect_ratio,
-            video.crop_ratio,
-        )
+        self._view = media_input.view
         self._list_ratios = (media_input.list_aspect_ratio, media_input.list_crop_ratio)
-        self._view = self._view.with_list(*self._list_ratios)
         # changing it reloads the video, so it holds for as long as this does
         self._transform = video.transform
         self._shared_to_follow = None
@@ -1562,12 +1552,12 @@ class VideoFrameVLC(QWidget, metaclass=QABC):
 
         self.adjust_view()
 
-    def forget_list_ratios(self) -> None:
+    def forget_list_ratios(self, **picked) -> None:
         """The video is off its list: the shapes it said are shown no more,
-        but where picked."""
+        but where picked, these too."""
 
         self._list_ratios = ("", "")
-        self._repick()
+        self._repick(**picked)
 
         self.adjust_view()
 

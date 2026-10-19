@@ -29,7 +29,11 @@ from gridplayer.models.subtitle_selection import (
     SubtitlePreferred,
     SubtitleTrackId,
 )
-from gridplayer.params.static import NO_CROP_RATIO, OWN_ASPECT_RATIO
+from gridplayer.params.static import (
+    NO_CROP_RATIO,
+    OWN_ASPECT_RATIO,
+    is_crop_unpicked,
+)
 from gridplayer.player.managers.base import ManagerBase
 from gridplayer.utils.bookmarks import default_bookmark_name
 from gridplayer.utils.qt import is_modal_open, translate
@@ -253,7 +257,7 @@ class ActiveBlockManager(ManagerBase):
 
         params = self._ctx.active_block.video_params
 
-        return not params.crop_ratio and not any(params.crop)
+        return is_crop_unpicked(params.crop_ratio, params.crop)
 
     def is_active_aspect_ratio_default(self):
         """Shown in the video's own shape: picked so, or nothing picked and
