@@ -557,6 +557,11 @@ class VideoFrameVLC(QWidget, metaclass=QABC):
         self.layout().addWidget(self.pause_snapshot)
         self.layout().addWidget(self.audio_only_placeholder)
 
+        # The layout shows the first widget it is given, as its current one,
+        # and a native surface is kept out of it: the snapshot, black over
+        # the video until it played, which a video loaded paused never did.
+        self.pause_snapshot.hide()
+
         self.video_driver: VLCVideoDriver = self.driver_setup(vlc_options=vlc_options)
 
         self.driver_connect()

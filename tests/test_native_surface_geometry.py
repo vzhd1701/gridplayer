@@ -157,6 +157,23 @@ def test_software_surface_stays_in_the_layout():
     assert frame.video_surface in items
 
 
+@pytest.mark.parametrize("frame_class", [_StubHWFrame, _StubSWFrame])
+def test_no_snapshot_over_a_video_loaded_paused(frame_class):
+    """The layout shows the first widget it is given: with the surface kept
+    out of it, the snapshot, black over a video that never played."""
+    window = QWidget()
+    frame = frame_class(vlc_options=[], parent=window)
+    window.show()
+
+    frame.load_video_finish(MagicMock(is_audio_only=False, cur_video_track=None))
+    frame.playback_status_changed_emit(True)
+
+    assert not frame.pause_snapshot.isVisible()
+    assert frame.video_surface.isVisible()
+
+    window.close()
+
+
 def _stub_offset_setting(monkeypatch):
     monkeypatch.setattr(
         vlc_base,
