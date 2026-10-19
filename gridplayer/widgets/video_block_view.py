@@ -12,6 +12,7 @@ from gridplayer.params.static import (
     VideoCrop,
     VideoShift,
     ViewParams,
+    is_crop_unpicked,
 )
 from gridplayer.utils.aspect_calc import SyncedView
 from gridplayer.utils.step_sizes import zoom_stepped
@@ -376,14 +377,12 @@ class ViewControl(VideoBlockPart):
 
         params = self._block.video_params
 
-        if params.crop_ratio == NO_CROP_RATIO:
-            return params.crop
+        if is_crop_unpicked(params.crop_ratio, params.crop):
+            shape = self._block.list_crop_ratio
+        else:
+            shape = params.crop_ratio
 
-        is_shaped = params.crop_ratio or (
-            not any(params.crop) and self._block.list_crop_ratio
-        )
-
-        if not is_shaped:
+        if not shape or shape == NO_CROP_RATIO:
             return params.crop
 
         return self._block.video_driver.shown_crop()
