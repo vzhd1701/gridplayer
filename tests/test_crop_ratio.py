@@ -22,6 +22,7 @@ from gridplayer.vlc_player.static import VideoTrack
 from gridplayer.widgets.video_block import VideoBlock
 from gridplayer.widgets.video_block_view import ViewControl
 from gridplayer.widgets.video_frame_vlc_hw_sp import VideoFrameVLCHWSP
+from tests.test_cb_vout import _make_player
 
 URI = "http://example.com/a.mp4"
 
@@ -119,6 +120,13 @@ class TestTheMenu:
             ("all", "set_crop_ratio", ratio) for ratio in PRESETS
         ]
         assert hasattr(VideoBlocksManager, "all_set_crop_ratio")
+
+    def test_off_for_all_videos_as_for_one(self):
+        """Not to the list's shape either, as Off in one video's menu."""
+
+        assert ACTIONS["Crop Reset [ALL]"]["func"] == ("all", "crop_off")
+        assert ACTIONS["Crop Reset"]["func"] == ("active", "view.crop_off")
+        assert hasattr(VideoBlocksManager, "all_crop_off")
 
     def test_each_nudge_for_all_is_there_once(self):
         items = [i for i in _all_videos_crop_submenu() if i != "---"]
@@ -331,3 +339,38 @@ class TestInTheWidget:
 
         assert frame._view.crop_ratio == ""
         assert frame._view.crop == VideoCrop(1, 0, 0, 0)
+
+
+class TestInThePlayer:
+    def test_the_video_keeps_the_shape_without_its_margins(self):
+        """On a single process the video is the cell's, saved as it is: cut
+        to a shape and by no margins, never both."""
+
+        player, _ = _make_player()
+        player.media = None
+        sent = ViewParams(crop=VideoCrop(240, 0, 240, 0), crop_ratio="4:3")
+
+        player.adjust_view((640, 360), sent)
+
+        video = player.media_input.video
+        assert (video.crop_ratio, video.crop) == ("4:3", NO_CROP)
+
+    def test_shown_again_by_the_margins_last_sent(self):
+        player, _ = _make_player()
+        player.media = None
+        sent = ViewParams(crop=VideoCrop(240, 0, 240, 0), crop_ratio="4:3")
+        player.adjust_view((640, 360), sent)
+        player.adjust_view = Mock()
+
+        player._apply_media_input_view()
+
+        view = player.adjust_view.call_args.kwargs["view"]
+        assert (view.crop_ratio, view.crop) == ("4:3", VideoCrop(240, 0, 240, 0))
+
+    def test_margins_of_its_own_kept(self):
+        player, _ = _make_player()
+        player.media = None
+
+        player.adjust_view((640, 360), ViewParams(crop=VideoCrop(5, 0, 5, 0)))
+
+        assert player.media_input.video.crop == VideoCrop(5, 0, 5, 0)

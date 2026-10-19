@@ -21,6 +21,7 @@ from gridplayer.models.subtitle_selection import track_of_file as subtitle_track
 from gridplayer.params import env
 from gridplayer.params.static import (
     AudioChannelMode,
+    VideoCrop,
     VideoDeinterlace,
     VideoDeinterlaceMode,
     ViewParams,
@@ -237,9 +238,10 @@ class VlcPlayerBase(ABC):
         # see _fill_missing_track_sars
         self._sar_reads_left = SAR_READS
 
-        # the margins the widget last cut the list's crop shape by, for the
-        # view to be put back with them: the video keeps only what is picked
-        self._listed_crop = None
+        # the margins the widget last cut the crop shape by, picked or the
+        # list's, for the view to be put back with them: the video keeps
+        # only the shape
+        self._shape_crop = None
 
         # the load is playing pictures, and has been said to be; see
         # _check_playback_started
@@ -644,7 +646,7 @@ class VlcPlayerBase(ABC):
         self._last_video_size = (0, 0)
         self._is_view_unsized = False
         self._sar_reads_left = SAR_READS
-        self._listed_crop = None
+        self._shape_crop = None
         self._is_playback_reported = False
         self._last_time = None
         self._own_audio_count = None
@@ -1415,7 +1417,12 @@ class VlcPlayerBase(ABC):
             self.media_input.size = size
             self.media_input.video.cell_view_mode = view.cell_view_mode
             self.media_input.video.scale = view.scale
-            self.media_input.video.crop = picked.crop
+            # a shape's margins go by the frame: on a single process the
+            # video is the cell's, saved with the shape only
+            if picked.crop_ratio:
+                self.media_input.video.crop = VideoCrop(0, 0, 0, 0)
+            else:
+                self.media_input.video.crop = picked.crop
             self.media_input.video.anchor = view.anchor
             self.media_input.video.shift = view.shift
             self.media_input.video.is_shift_past_edges = view.is_shift_past_edges
@@ -1430,7 +1437,7 @@ class VlcPlayerBase(ABC):
             if is_crop_unset and not view.is_crop_ratio_listed:
                 self.media_input.list_crop_ratio = ""
 
-            self._listed_crop = view.crop if view.is_crop_ratio_listed else None
+            self._shape_crop = view.crop if view.crop_ratio else None
 
         if self.media is None:
             # video not loaded yet, video frame resized on init
@@ -1726,8 +1733,8 @@ class VlcPlayerBase(ABC):
     def _apply_media_input_view(self):
         view = self.media_input.view
 
-        if view.is_crop_ratio_listed and self._listed_crop is not None:
-            view = view._replace(crop=self._listed_crop)
+        if view.crop_ratio and self._shape_crop is not None:
+            view = view._replace(crop=self._shape_crop)
 
         self.adjust_view(size=self.media_input.size, view=view)
 
@@ -1900,6 +1907,11 @@ class VlcPlayerBase(ABC):
 
     def _fill_missing_track_sars(self, tracks: dict) -> bool:
         if not self._is_pixel_shape_pending():
+            return False
+
+        # a stream says only once decoded, its picture up: the views sent
+        # before, as the grid lays out, would use up the reads for nothing
+        if not all(self._media_player.video_get_size()):
             return False
 
         # each read is a copy of the list libVLC keeps, which python-vlc

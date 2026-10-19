@@ -2045,7 +2045,7 @@ ACTIONS = MappingProxyType(
             "keymap_title": translate("Actions", "Crop Reset"),
             "key": "Shift+Y",
             "icon": "empty",
-            "func": ("all", "crop_reset"),
+            "func": ("all", "crop_off"),
             "show_if": "is_any_videos_have_video",
         },
         **{
@@ -2182,7 +2182,7 @@ ACTIONS = MappingProxyType(
         "Aspect Ratio Default [ALL]": {
             "title": translate("Aspect Ratio", "Default"),
             "icon": "empty",
-            "func": ("all", "set_aspect_ratio", ""),
+            "func": ("all", "set_aspect_ratio_own"),
             "show_if": "is_any_videos_have_video",
         },
         **{

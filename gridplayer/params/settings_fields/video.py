@@ -164,7 +164,7 @@ VIDEO_FIELDS: tuple[SettingField, ...] = (
         label=translate("SettingsDialog", "Crop"),
         choices=choices.crop_ratios,
         tooltip=translate(
-            "Crop",
+            "SettingsDialog",
             "Cut the picture to a shape, or by the margins below.",
         ),
     ),

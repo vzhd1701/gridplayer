@@ -340,6 +340,27 @@ def test_a_video_that_never_says_is_asked_only_so_often():
     player.notify_video_dimensions.assert_not_called()
 
 
+def test_not_asked_before_its_picture_is_up():
+    """The views sent as the grid lays out, before the stream is decoded,
+    leave its reads for when it can say."""
+
+    tracks = _Tracks()
+    player, media_player = _stream_player(tracks)
+    media_player.video_get_size = lambda num=0: (0, 0)
+
+    for _ in range(player_base_mod.SAR_READS + 5):
+        player.adjust_view(size=(640, 360), view=_none_view())
+
+    assert tracks.reads == 0
+    assert player._is_view_unsized
+
+    media_player.video_get_size = lambda num=0: (640, 360)
+    tracks.sar = (3, 2)
+    player.adjust_view(size=(960, 360), view=_none_view())
+
+    assert player.media.video_tracks[1].sar == (3, 2)
+
+
 def test_adjust_view_crop_fit_letterboxes_user_region():
     """Pixel crop + Fit: keep the user borders and native aspect so the
     visible region is letterboxed in the pane."""

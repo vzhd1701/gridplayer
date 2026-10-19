@@ -173,7 +173,7 @@ class VideoBlocksManager(ManagerBase):
     all_set_zoom_to_cursor = pyqtSignal(bool)
 
     all_crop = pyqtSignal(int, int, int, int)
-    all_crop_reset = pyqtSignal()
+    all_crop_off = pyqtSignal()
     all_set_crop_ratio = pyqtSignal(str)
 
     all_set_anchor = pyqtSignal(VideoAnchor)
@@ -183,6 +183,7 @@ class VideoBlocksManager(ManagerBase):
 
     all_set_cell_view_mode = pyqtSignal(VideoCellViewMode)
     all_set_aspect_ratio = pyqtSignal(str)
+    all_set_aspect_ratio_own = pyqtSignal()
     all_set_transform = pyqtSignal(VideoTransform)
     all_take_screenshot = pyqtSignal(bool)
     all_set_auto_reload_timer = pyqtSignal(int)
@@ -884,7 +885,7 @@ class VideoBlocksManager(ManagerBase):
             (self.all_scale_reset, vb.view.scale_reset),
             (self.all_set_zoom_to_cursor, vb.view.set_zoom_to_cursor),
             (self.all_crop, vb.view.crop),
-            (self.all_crop_reset, vb.view.crop_reset),
+            (self.all_crop_off, vb.view.crop_off),
             (self.all_set_crop_ratio, vb.view.set_crop_ratio),
             (self.all_set_anchor, vb.view.set_anchor),
             (self.all_shift_by, vb.view.shift_by),
@@ -892,6 +893,7 @@ class VideoBlocksManager(ManagerBase):
             (self.all_set_shift_past_edges, vb.view.set_shift_past_edges),
             (self.all_set_cell_view_mode, vb.view.set_cell_view_mode),
             (self.all_set_aspect_ratio, vb.view.set_aspect_ratio),
+            (self.all_set_aspect_ratio_own, vb.view.set_aspect_ratio_own),
             (self.all_set_transform, vb.set_transform),
             (self.all_take_screenshot, vb.screenshot.take),
             (self.all_set_auto_reload_timer, vb.stream.set_reload_timer),

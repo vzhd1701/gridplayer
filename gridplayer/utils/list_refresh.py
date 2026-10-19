@@ -23,7 +23,11 @@ from gridplayer.utils.list_order import in_order
 
 # what an item read again may bring that the one on the list had wrong or
 # not at all; and its name, unless the viewer gave it one
-_REFRESHED_FIELDS = ("duration_ms", "group", "http_headers", "shape")
+_REFRESHED_FIELDS = ("duration_ms", "group", "http_headers")
+
+# what an item read again has as its source says it now, none included:
+# a shape the source no longer gives is gone
+_SOURCE_FIELDS = ("shape",)
 
 # what of an item read from the source a linked list keeps in the playlist
 # besides where it is: what it is told by, and what it is fetched and shown
@@ -375,6 +379,13 @@ def _updated(item: ListItem, fresh_item: ListItem) -> ListItem:
         if getattr(fresh_item, field) != getattr(item, field)
         and getattr(fresh_item, field) is not None
     }
+    changes.update(
+        {
+            field: getattr(fresh_item, field)
+            for field in _SOURCE_FIELDS
+            if getattr(fresh_item, field) != getattr(item, field)
+        }
+    )
 
     if (
         not item.is_renamed

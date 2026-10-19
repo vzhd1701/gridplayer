@@ -86,10 +86,13 @@ class TestTheMenu:
     def test_the_same_for_all_videos(self):
         items = _all_videos_submenu("Aspect Ratio")[1:]
 
+        # Default is the video's own, over its list's, as in one video's menu
         assert [ACTIONS[name]["func"] for name in items] == [
-            ("all", "set_aspect_ratio", ratio) for ratio in ["", *PRESETS]
+            ("all", "set_aspect_ratio_own"),
+            *(("all", "set_aspect_ratio", ratio) for ratio in PRESETS),
         ]
         assert hasattr(VideoBlocksManager, "all_set_aspect_ratio")
+        assert hasattr(VideoBlocksManager, "all_set_aspect_ratio_own")
 
     def test_new_videos_offer_the_same(self):
         assert list(choices.aspect_ratios()) == ["", *PRESETS]

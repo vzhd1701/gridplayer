@@ -121,6 +121,12 @@ class TestKept:
 
         assert _updated(known, fresh).shape == fresh.shape
 
+    def test_gone_once_the_source_drops_it(self):
+        known = ListItem(uri=URI, shape=ItemShape(aspect_ratio="4:3"))
+        fresh = ListItem(uri=URI)
+
+        assert _updated(known, fresh).shape is None
+
 
 class TestTheView:
     def test_the_list_s_where_none_is_picked(self):
