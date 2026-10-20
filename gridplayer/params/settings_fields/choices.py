@@ -56,6 +56,15 @@ def grid_modes() -> dict:
     }
 
 
+def grid_crops() -> dict:
+    return {
+        0: translate("Allow Cropping", "Off"),
+        5: translate("Allow Cropping", "5%"),
+        10: translate("Allow Cropping", "10%"),
+        20: translate("Allow Cropping", "20%"),
+    }
+
+
 def seek_sync_modes() -> dict:
     return {
         SeekSyncMode.DISABLED: translate("Seek Sync", "Disabled"),

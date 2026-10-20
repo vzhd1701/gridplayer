@@ -86,14 +86,28 @@ def best_splits(weights: tuple[float, ...]) -> tuple[Split, ...]:
     return tuple(splits[-1])
 
 
-def split_score(split: Split, weights: Sequence[float], width: int, height: int):
+def split_score(
+    split: Split,
+    weights: Sequence[float],
+    width: int,
+    height: int,
+    crop: float = 0.0,
+):
     """How well the split shows the items, in an area of this size, by
-    picture_score: the sum of the logs of their tiles' areas."""
+    picture_score: the sum of the logs of their tiles' areas.
+
+    With crop, the tiles are stretched to take up to that share less of
+    their pictures (see justified_boxes), and score by what they show.
+    """
 
     count = sum(split.lengths)
     log_width = min(math.log(width), math.log(height) - math.log(split.height))
     log_weights = sum(math.log(weight) for weight in weights)
-    return log_weights + 2 * split.log_heights + 2 * count * log_width
+    score = log_weights + 2 * split.log_heights + 2 * count * log_width
+
+    # how many times too narrow, or too short, the lines are for the area
+    log_leftover = abs(math.log(height) - math.log(split.height) - math.log(width))
+    return score + count * min(log_leftover, -math.log(1 - crop))
 
 
 def justified_boxes(
@@ -102,30 +116,47 @@ def justified_boxes(
     is_columns: bool,
     width: int,
     height: int,
+    crop: float = 0.0,
 ) -> list[Box]:
     """Tiles of these shapes (width for height), in lines that end flush:
     rows of tiles of one height each, or columns of one width each.
 
     The lines take the whole width (the whole height, for columns), unless
     that makes them too tall for the area: then they are made smaller to
-    fit. The space left over goes evenly around them.
+    fit. With crop, all the tiles are then stretched the same way into the
+    space left, as far as a picture filling one would lose that share of
+    itself. The space still left goes evenly around them.
     """
 
     if is_columns:
-        boxes = _justified_rows([1 / shape for shape in shapes], lines, height, width)
+        boxes = _justified_rows(
+            [1 / shape for shape in shapes], lines, height, width, crop
+        )
         return [Box(box.top, box.left, box.bottom, box.right) for box in boxes]
 
-    return _justified_rows(shapes, lines, width, height)
+    return _justified_rows(shapes, lines, width, height, crop)
 
 
 def _justified_rows(
-    shapes: Sequence[float], lines: Sequence[int], width: int, height: int
+    shapes: Sequence[float],
+    lines: Sequence[int],
+    width: int,
+    height: int,
+    crop: float,
 ) -> list[Box]:
     lines_height = measure_split(shapes, lines).height
 
     lines_width = min(width, height / lines_height)
-    left = (width - lines_width) / 2
-    top = (height - lines_width * lines_height) / 2
+
+    # one of the two is not stretched: the lines fill the area that way
+    most_stretch = 1 / (1 - crop)
+    shown_width = min(width, lines_width * most_stretch)
+    shown_height = min(height, lines_width * lines_height * most_stretch)
+    stretch_width = shown_width / lines_width
+    stretch_height = shown_height / (lines_width * lines_height)
+
+    left = (width - shown_width) / 2
+    top = (height - shown_height) / 2
 
     boxes = []
     start = 0
@@ -133,11 +164,16 @@ def _justified_rows(
         row = shapes[start : start + length]
         start += length
 
-        row_height = lines_width / sum(row)
+        # the row's height for each unit of its tiles' shapes, unstretched
+        unit = lines_width / sum(row)
+        row_height = unit * stretch_height
         x = left
         for place, shape in enumerate(row, 1):
             # the rows end at the very same number
-            right = left + lines_width if place == length else x + row_height * shape
+            if place == length:
+                right = left + shown_width
+            else:
+                right = x + unit * shape * stretch_width
             boxes.append(
                 Box(x / width, top / height, right / width, (top + row_height) / height)
             )

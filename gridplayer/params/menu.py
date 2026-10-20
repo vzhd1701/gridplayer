@@ -1,6 +1,10 @@
 from types import MappingProxyType
 
-from gridplayer.params.static import ASPECT_RATIO_PRESETS, CROP_RATIO_PRESETS
+from gridplayer.params.static import (
+    ASPECT_RATIO_PRESETS,
+    CROP_RATIO_PRESETS,
+    GRID_CROPS,
+)
 from gridplayer.utils.qt import translate
 
 SUBMENUS = MappingProxyType(
@@ -47,6 +51,10 @@ SUBMENUS = MappingProxyType(
         },
         "[ALL]": {"title": translate("Actions", "[ALL]"), "icon": "all"},
         "Grid": {"title": translate("Actions", "Grid"), "icon": "grid"},
+        "Allow Cropping": {
+            "title": translate("Allow Cropping", "Allow Cropping"),
+            "icon": "crop",
+        },
         "Sync": {"title": translate("Actions", "Sync"), "icon": "sync"},
         "Seek Sync": {"title": translate("Actions", "Seek"), "icon": "seek-sync"},
         "Sync Others": {
@@ -674,6 +682,10 @@ SECTIONS = MappingProxyType(
                 "Size: %v",
                 "Fit Cells",
                 "Match Shapes",
+                (
+                    "Allow Cropping",
+                    *(f"Allow Cropping {crop}%" for crop in GRID_CROPS),
+                ),
                 "Grid Size: %v",
                 "Show All Cells",
             ),

@@ -293,3 +293,17 @@ def test_fit_shapes_ignores_the_line_options():
     )
     layout.fit_to(1920, 1080, {"A": TALL, "B": TALL})
     assert layout.displayed_size() == (2, 1)
+
+
+def test_fit_shapes_crops_to_fill_the_window():
+    ids = ["A", "B", "C"]
+    shapes = dict.fromkeys(ids, TALL)
+
+    layout = FlowLayout(mode=FlowMode.SHAPES, ids=ids, crop=10)
+    layout.fit_to(1920, 1080, shapes)
+    boxes = [box for _id, box in layout.boxes()]
+    assert (boxes[0].left, boxes[2].right) == (0, 1)
+
+    layout.crop = 0
+    boxes = [box for _id, box in layout.boxes()]
+    assert boxes[0].left > 0.02

@@ -19,6 +19,7 @@ from gridplayer.utils.qt import translate
 # the grid options that only mean something in one kind of grid: the
 # Auto modes that lay the videos out in lines of one length, and Fixed Grid
 _GRID_LINES = (GridMode.AUTO_ROWS, GridMode.AUTO_COLS)
+_GRID_SHAPES = (GridMode.AUTO_SHAPES,)
 _GRID_FIXED = (GridMode.FIXED,)
 
 
@@ -255,6 +256,17 @@ PLAYLIST_FIELDS: tuple[SettingField, ...] = (
         ),
         shown_when=When("playlist/grid_mode", _GRID_LINES),
         enabled_when=When("playlist/grid_size", (0,)),
+    ),
+    ComboField(
+        settings_key="playlist/grid_crop",
+        label=translate("Allow Cropping", "Allow cropping"),
+        choices=choices.grid_crops,
+        tooltip=translate(
+            "Allow Cropping",
+            "Cut up to this much off each video to fill the window.",
+        ),
+        buttons=True,
+        shown_when=When("playlist/grid_mode", _GRID_SHAPES),
     ),
     SpinField(
         settings_key="playlist/grid_rows",

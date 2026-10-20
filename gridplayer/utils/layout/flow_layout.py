@@ -49,6 +49,7 @@ class FlowLayout:
         is_fit: bool = False,
         ids: list[str] | None = None,
         is_match_shapes: bool = False,
+        crop: int = 0,
     ):
         self.mode = mode
         self.size = size
@@ -56,6 +57,8 @@ class FlowLayout:
         # on Auto, fit_to chooses the line size, else it is the square grid's
         self.is_match_shapes = is_match_shapes
         self.ids: list[str] = list(ids) if ids else []
+        # in Fit Shapes, the percent of a picture its tile may leave out
+        self.crop = crop
 
         # the line size fit_to chose, and for how many videos in which mode
         self._fitted: tuple[int, FlowMode, int] | None = None
@@ -154,7 +157,7 @@ class FlowLayout:
 
         def score(split: Split, is_columns: bool) -> float:
             area = (height, width) if is_columns else (width, height)
-            return split_score(split, weights[is_columns], *area)
+            return split_score(split, weights[is_columns], *area, self._crop_share())
 
         best, best_score = None, -math.inf
         for is_columns in (False, True):
@@ -173,6 +176,9 @@ class FlowLayout:
                 best = kept
 
         self._fitted_lines = (ids, best)
+
+    def _crop_share(self) -> float:
+        return min(max(self.crop, 0), 50) / 100
 
     def _lines(self) -> Lines:
         """How the videos are laid out in lines now."""
@@ -214,13 +220,15 @@ class FlowLayout:
         Videos fill the grid a line at a time: a row in Rows First, a column
         in Columns First. With Fill Gaps, those of a last line left short
         share all of it. In Fit Shapes, each takes a tile of its shape, in
-        the lines fit_to chose.
+        the lines fit_to chose, stretched by up to crop.
         """
         if self.mode == FlowMode.SHAPES:
             shapes = self._shapes
             if len(shapes) != len(self.ids):
                 shapes = [DEFAULT_SHAPE] * len(self.ids)
-            boxes = justified_boxes(shapes, *self._lines(), *self._area)
+            boxes = justified_boxes(
+                shapes, *self._lines(), *self._area, self._crop_share()
+            )
             return list(zip(self.ids, boxes))
 
         return self._boxes(self.line_size())

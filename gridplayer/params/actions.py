@@ -2487,6 +2487,38 @@ ACTIONS = MappingProxyType(
                 ("is_grid_mode_set_to", GridMode.AUTO_COLS),
             ),
         },
+        "Allow Cropping 0%": {
+            "title": translate("Allow Cropping", "Off"),
+            "icon": "empty",
+            "func": ("set_grid_crop", 0),
+            "check_if": ("is_grid_crop_set_to", 0),
+            "is_choice": True,
+            "show_if": ("is_grid_mode_set_to", GridMode.AUTO_SHAPES),
+        },
+        "Allow Cropping 5%": {
+            "title": translate("Allow Cropping", "5%"),
+            "icon": "empty",
+            "func": ("set_grid_crop", 5),
+            "check_if": ("is_grid_crop_set_to", 5),
+            "is_choice": True,
+            "show_if": ("is_grid_mode_set_to", GridMode.AUTO_SHAPES),
+        },
+        "Allow Cropping 10%": {
+            "title": translate("Allow Cropping", "10%"),
+            "icon": "empty",
+            "func": ("set_grid_crop", 10),
+            "check_if": ("is_grid_crop_set_to", 10),
+            "is_choice": True,
+            "show_if": ("is_grid_mode_set_to", GridMode.AUTO_SHAPES),
+        },
+        "Allow Cropping 20%": {
+            "title": translate("Allow Cropping", "20%"),
+            "icon": "empty",
+            "func": ("set_grid_crop", 20),
+            "check_if": ("is_grid_crop_set_to", 20),
+            "is_choice": True,
+            "show_if": ("is_grid_mode_set_to", GridMode.AUTO_SHAPES),
+        },
         "Size: %v": {
             "title": (
                 translate("Grid Size", "Per Row: %v"),

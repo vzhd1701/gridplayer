@@ -64,6 +64,7 @@ class GridManager(ManagerBase):
             size=Settings().get("playlist/grid_size"),
             is_fit=Settings().get("playlist/grid_fit"),
             is_match_shapes=Settings().get("playlist/grid_match_shapes"),
+            crop=Settings().get("playlist/grid_crop"),
         )
         self._empty_cells = []
         self._empty_positions = {}
@@ -95,6 +96,8 @@ class GridManager(ManagerBase):
             "switch_is_grid_match_shapes": self.cmd_switch_is_grid_match_shapes,
             "is_grid_match_shapes": lambda: self._flow.is_match_shapes,
             "is_grid_size_auto": lambda: self._flow.size == 0,
+            "set_grid_crop": self.cmd_set_grid_crop,
+            "is_grid_crop_set_to": lambda crop: self._flow.crop == crop,
             "is_grid_preallocate": lambda: self._grid_layout.preallocate,
             "switch_grid_preallocate": self.cmd_switch_grid_preallocate,
             "ask_fixed_grid_size": self.cmd_ask_fixed_grid_size,
@@ -141,6 +144,7 @@ class GridManager(ManagerBase):
             mode=self._mode,
             is_fit=self._flow.is_fit,
             is_match_shapes=self._flow.is_match_shapes,
+            crop=self._flow.crop,
             size=self._flow.size,
             video_order=list(self._flow.ids),
             rows=self._grid_layout.max_rows,
@@ -154,6 +158,7 @@ class GridManager(ManagerBase):
         self._flow.mode = _flow_mode(state.mode)
         self._flow.is_fit = state.is_fit
         self._flow.is_match_shapes = state.is_match_shapes
+        self._flow.crop = state.crop
         self._flow.size = state.size
         self._flow.ids = list(state.video_order)
         self._grid_layout.max_rows = max(1, state.rows)
@@ -174,7 +179,8 @@ class GridManager(ManagerBase):
         self._render_video_grid()
 
     def apply_grid_config(self, config: GridState) -> bool:
-        """Apply mode/size/fit/match shapes/rows/cols/preallocate like the Grid menu.
+        """Apply mode/size/fit/match shapes/crop/rows/cols/preallocate like the
+        Grid menu.
 
         Restores do not use this — ``set_grid_state`` keeps cell positions.
         Returns False if the user cancelled a confirmation dialog.
@@ -197,20 +203,17 @@ class GridManager(ManagerBase):
             and self._mode == mode
             and self._flow.is_fit == config.is_fit
             and self._flow.is_match_shapes == config.is_match_shapes
+            and self._flow.crop == config.crop
             and self._flow.size == config.size
         )
         if same_fixed or same_flow:
-            self._flow.is_fit = config.is_fit
-            self._flow.is_match_shapes = config.is_match_shapes
-            self._flow.size = config.size
+            self._set_flow_options(config)
             return True
 
         if mode == GridMode.FIXED:
             if not self._apply_fixed(rows, cols, preallocate):
                 return False
-            self._flow.is_fit = config.is_fit
-            self._flow.is_match_shapes = config.is_match_shapes
-            self._flow.size = config.size
+            self._set_flow_options(config)
             return True
 
         if self._is_fixed and not self._leave_fixed():
@@ -218,11 +221,15 @@ class GridManager(ManagerBase):
 
         self._mode = mode
         self._flow.mode = _flow_mode(mode)
-        self._flow.is_fit = config.is_fit
-        self._flow.is_match_shapes = config.is_match_shapes
-        self._flow.size = config.size
+        self._set_flow_options(config)
         self.layout_changed.emit()
         return True
+
+    def _set_flow_options(self, config: GridState) -> None:
+        self._flow.is_fit = config.is_fit
+        self._flow.is_match_shapes = config.is_match_shapes
+        self._flow.crop = config.crop
+        self._flow.size = config.size
 
     def grid_drop_mode(self) -> GridMode:
         """The mode drops go by: before or after a video along the line it
@@ -351,6 +358,14 @@ class GridManager(ManagerBase):
     def cmd_switch_is_grid_match_shapes(self):
         self._flow.is_match_shapes = not self._flow.is_match_shapes
         PlaylistSettings().set("playlist/grid_match_shapes", self._flow.is_match_shapes)
+        self.layout_changed.emit()
+
+    def cmd_set_grid_crop(self, crop: int):
+        if self._flow.crop == crop:
+            return
+
+        self._flow.crop = crop
+        PlaylistSettings().set("playlist/grid_crop", crop)
         self.layout_changed.emit()
 
     def cmd_get_fixed_grid_size(self):

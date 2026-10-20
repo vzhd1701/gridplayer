@@ -380,3 +380,41 @@ def test_fit_shapes_gives_each_video_a_tile_of_its_shape():
     assert rects() == [(0, 133, 300, 534), (300, 133, 300, 534), (0, 667, 600, 600)]
 
     window.close()
+
+
+def test_fit_shapes_crops_as_much_as_allowed():
+    window = QWidget()
+    window.resize(1400, 600)
+    cells = [_NativeCell(f"v{n}", window) for n in range(3)]
+    for cell, shape in zip(cells, (9 / 16, 9 / 16, 1.0)):
+        cell.picture_shape = shape
+    ctx = SimpleNamespace(
+        video_blocks=_Cells(cells),
+        is_shuffle_on_load=False,
+        is_single_mode=False,
+        commands=SimpleNamespace(remove_video_blocks=lambda *_a, **_k: None),
+    )
+    grid = GridManager(context=ctx, parent=window)
+    grid.layout_changed.connect(grid.reload_video_grid)
+    grid.set_grid_state(GridState(mode=GridMode.AUTO_SHAPES))
+    window.show()
+    QApplication.processEvents()
+
+    def rects():
+        return [c.geometry().getRect() for c in cells]
+
+    assert grid.grid_state().crop == 0
+    assert rects() == [(62, 0, 338, 600), (400, 0, 338, 600), (738, 0, 600, 600)]
+
+    # the space left at the sides is under 10% of the pictures: all gone
+    grid.cmd_set_grid_crop(10)
+    QApplication.processEvents()
+    assert grid.grid_state().crop == 10
+    assert rects() == [(0, 0, 371, 600), (371, 0, 370, 600), (741, 0, 659, 600)]
+
+    grid.set_grid_state(GridState(mode=GridMode.AUTO_SHAPES, crop=5))
+    QApplication.processEvents()
+    assert grid.grid_state().crop == 5
+    assert rects()[0][0] > 0
+
+    window.close()

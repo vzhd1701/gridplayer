@@ -62,6 +62,10 @@ class GridMode(AutoName):
     FIXED = auto()
 
 
+# what Fit Shapes may cut off each video to fill the window, in percent
+GRID_CROPS = (0, 5, 10, 20)
+
+
 class DropAction(AutoName):
     INSERT = auto()
     REPLACE = auto()
