@@ -5,6 +5,7 @@ from enum import Enum, auto
 
 from gridplayer.models.grid_state import GridCell
 from gridplayer.utils.drop_zone import DropZone
+from gridplayer.utils.layout.boxes import Box, grid_box
 
 
 class Direction(Enum):
@@ -99,6 +100,15 @@ class GridLayout:
             for row in range(rows)
             for col in range(cols)
             if (row, col) not in occ
+        ]
+
+    def boxes(self) -> list[tuple[GridCell, Box]]:
+        """Where each video's cell goes, over all the cells it spans."""
+        cols, rows = self.displayed_size()
+        return [
+            (cell, grid_box(cell.row, cell.col, rows, cols, cell.rowspan, cell.colspan))
+            for cell in self.cells
+            if cell.video_id
         ]
 
     def free_capacity(self) -> int | None:

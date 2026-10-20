@@ -5,6 +5,7 @@ import random
 from enum import Enum, auto
 
 from gridplayer.utils.drop_zone import DropZone, insert_index
+from gridplayer.utils.layout.boxes import Box
 
 
 class FlowMode(Enum):
@@ -40,6 +41,35 @@ class FlowLayout:
         if self.mode != FlowMode.COLS:
             return grid_size, grid_slices
         return grid_slices, grid_size
+
+    def boxes(self) -> list[tuple[str, Box]]:
+        """Where each video goes, in order.
+
+        Videos fill the grid a line at a time: a row in Rows First, a column
+        in Columns First. With Fit Cells, those of a last line left short
+        share all of it.
+        """
+        cols, rows = self.displayed_size()
+        if self.mode == FlowMode.COLS:
+            line_size, line_count = rows, cols
+        else:
+            line_size, line_count = cols, rows
+
+        last_line = len(self.ids) - line_size * (line_count - 1)
+
+        boxes = []
+        for index, video_id in enumerate(self.ids):
+            line, place = divmod(index, line_size)
+            places = last_line if self.is_fit and line == line_count - 1 else line_size
+
+            along = (place / places, (place + 1) / places)
+            across = (line / line_count, (line + 1) / line_count)
+            if self.mode == FlowMode.COLS:
+                box = Box(across[0], along[0], across[1], along[1])
+            else:
+                box = Box(along[0], across[0], along[1], across[1])
+            boxes.append((video_id, box))
+        return boxes
 
     def id_at(self, row: int, col: int) -> str | None:
         cols, rows = self.displayed_size()

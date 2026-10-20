@@ -1,7 +1,7 @@
 from gridplayer.models.grid_state import GridCell, GridState
 from gridplayer.params.static import GridMode
 from gridplayer.utils.drop_zone import DropZone
-from gridplayer.utils.layout import Direction, GridLayout
+from gridplayer.utils.layout import Box, Direction, GridLayout
 
 
 def _occ(cells=None, rows=3, cols=3, preallocate=False):
@@ -542,3 +542,20 @@ def test_occupy_moves_existing_id():
     occ.occupy(0, 1, "A")
     assert occ.id_at(0, 0) is None
     assert occ.id_at(0, 1) == "A"
+
+
+def test_boxes_span_their_cells():
+    occ = _occ(
+        cells=[
+            GridCell(video_id="A", row=0, col=0, rowspan=2, colspan=2),
+            GridCell(video_id="B", row=2, col=1),
+        ],
+        rows=3,
+        cols=3,
+        preallocate=True,
+    )
+
+    assert [(cell.video_id, box) for cell, box in occ.boxes()] == [
+        ("A", Box(0, 0, 2 / 3, 2 / 3)),
+        ("B", Box(1 / 3, 2 / 3, 2 / 3, 1)),
+    ]

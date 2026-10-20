@@ -209,3 +209,39 @@ def test_new_cells_come_on_screen_in_place(grid_state):
     assert [c.shown_at for c in cells] == [[r] for r in placed]
 
     window.close()
+
+
+def test_fixed_cell_spans_its_cells():
+    window = QWidget()
+    window.resize(900, 600)
+    cells = [_NativeCell(f"v{n}", window) for n in range(3)]
+    ctx = SimpleNamespace(
+        video_blocks=_Cells(cells),
+        is_shuffle_on_load=False,
+        is_single_mode=False,
+        commands=SimpleNamespace(remove_video_blocks=lambda *_a, **_k: None),
+    )
+    grid = GridManager(context=ctx, parent=window)
+    grid.set_grid_state(
+        GridState(
+            mode=GridMode.FIXED,
+            rows=3,
+            cols=3,
+            preallocate=True,
+            cells=[
+                GridCell(video_id="v0", row=0, col=0, rowspan=2, colspan=2),
+                GridCell(video_id="v1", row=0, col=2),
+                GridCell(video_id="v2", row=2, col=2),
+            ],
+        )
+    )
+
+    assert [c.geometry().getRect() for c in cells] == [
+        (0, 0, 600, 400),
+        (600, 0, 300, 200),
+        (600, 400, 300, 200),
+    ]
+    empties = [grid.grid_position_of(e) for e in grid._empty_cells]
+    assert empties == [(1, 2), (2, 0), (2, 1)]
+
+    window.close()

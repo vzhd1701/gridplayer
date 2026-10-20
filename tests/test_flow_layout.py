@@ -1,5 +1,5 @@
 from gridplayer.utils.drop_zone import DropZone
-from gridplayer.utils.layout import FlowLayout, FlowMode
+from gridplayer.utils.layout import Box, FlowLayout, FlowMode
 
 
 def _flow(count, size=0, mode=FlowMode.ROWS):
@@ -81,3 +81,40 @@ def test_add_remove():
     layout.remove("A")
     assert layout.order() == ["B"]
     assert layout.free_capacity() is None
+
+
+def test_boxes_rows_first():
+    layout = FlowLayout(mode=FlowMode.ROWS, ids=["A", "B", "C", "D", "E"])
+
+    assert layout.boxes() == [
+        ("A", Box(0, 0, 1 / 3, 1 / 2)),
+        ("B", Box(1 / 3, 0, 2 / 3, 1 / 2)),
+        ("C", Box(2 / 3, 0, 1, 1 / 2)),
+        ("D", Box(0, 1 / 2, 1 / 3, 1)),
+        ("E", Box(1 / 3, 1 / 2, 2 / 3, 1)),
+    ]
+
+
+def test_boxes_fit_cells_share_the_last_row():
+    layout = FlowLayout(mode=FlowMode.ROWS, is_fit=True, ids=["A", "B", "C", "D", "E"])
+
+    assert layout.boxes()[3:] == [
+        ("D", Box(0, 1 / 2, 1 / 2, 1)),
+        ("E", Box(1 / 2, 1 / 2, 1, 1)),
+    ]
+
+
+def test_boxes_fit_cells_share_the_last_column():
+    layout = FlowLayout(mode=FlowMode.COLS, is_fit=True, ids=["A", "B", "C", "D", "E"])
+
+    assert layout.boxes() == [
+        ("A", Box(0, 0, 1 / 2, 1 / 3)),
+        ("B", Box(0, 1 / 3, 1 / 2, 2 / 3)),
+        ("C", Box(0, 2 / 3, 1 / 2, 1)),
+        ("D", Box(1 / 2, 0, 1, 1 / 2)),
+        ("E", Box(1 / 2, 1 / 2, 1, 1)),
+    ]
+
+
+def test_boxes_one_video_fills():
+    assert FlowLayout(ids=["A"], is_fit=True).boxes() == [("A", Box(0, 0, 1, 1))]

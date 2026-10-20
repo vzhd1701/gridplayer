@@ -3,13 +3,7 @@ import random
 from typing import NamedTuple
 
 from PyQt5.QtCore import pyqtSignal
-from PyQt5.QtWidgets import (
-    QGridLayout,
-    QHBoxLayout,
-    QMessageBox,
-    QSizePolicy,
-    QVBoxLayout,
-)
+from PyQt5.QtWidgets import QMessageBox
 
 from gridplayer.dialogs.input_dialog import QCustomSpinboxInput, QFixedGridSizeDialog
 from gridplayer.dialogs.messagebox import QCustomMessageBox
@@ -19,7 +13,15 @@ from gridplayer.player.managers.base import ManagerBase
 from gridplayer.playlist_settings import PlaylistSettings
 from gridplayer.settings import Settings
 from gridplayer.utils.drop_zone import DropZone
-from gridplayer.utils.layout import FlowLayout, FlowMode, GridLayout, Layout
+from gridplayer.utils.layout import (
+    FULL_BOX,
+    CellLayout,
+    FlowLayout,
+    FlowMode,
+    GridLayout,
+    Layout,
+    grid_box,
+)
 from gridplayer.utils.qt import count_txt, translate
 from gridplayer.widgets.empty_cell import EmptyCell
 
@@ -31,17 +33,6 @@ class GridDimensions(NamedTuple):
     @property
     def max_size(self):
         return self.cols * self.rows
-
-
-def _clear_layout(layout):
-    for _ in range(layout.count()):
-        l_item = layout.takeAt(0)
-
-        sublay = l_item.layout()
-
-        if sublay is not None:
-            _clear_layout(sublay)
-            sublay.deleteLater()
 
 
 def _flow_mode(mode: GridMode) -> FlowMode:
@@ -70,12 +61,11 @@ class GridManager(ManagerBase):
             is_fit=Settings().get("playlist/grid_fit"),
         )
         self._empty_cells = []
+        self._empty_positions = {}
         self._add_anchor = None
         self._reloading = False
 
-        self._grid = QGridLayout(self.parent())
-        self._grid.setSpacing(0)
-        self._grid.setContentsMargins(0, 0, 0, 0)
+        self._grid = CellLayout(self.parent())
 
         self._info_label = EmptyCell(
             message=translate("Main Window", "Drag and drop media files or URLs here"),
@@ -136,26 +126,6 @@ class GridManager(ManagerBase):
             yield
         finally:
             self.parent().setUpdatesEnabled(True)
-
-    @contextlib.contextmanager
-    def _laid_out_once(self):
-        """Lay the cells out once, as they end up, not at every step there.
-
-        Showing a hidden cell lays the grid out there and then, with whatever
-        cells and stretch it has at that point. Showing several in a row, as
-        leaving single mode does, resized the cells already on show through
-        every grid in between: 600x700, then 400x700, then 400x350 in a 3x2
-        grid. A hardware video sends the first of those to VLC at once and
-        holds the rest back (see NATIVE_VIEW_RESIZE_INTERVAL_MS), so it was
-        drawn stretched or zoomed into its cell for a moment.
-        """
-        self._grid.setEnabled(False)
-        try:
-            yield
-        finally:
-            self._grid.setEnabled(True)
-
-        self._grid.activate()
 
     def grid_state(self):
         return GridState(
@@ -240,11 +210,7 @@ class GridManager(ManagerBase):
         return True
 
     def grid_position_of(self, widget):
-        index = self._grid.indexOf(widget)
-        if index < 0:
-            return None
-        row, col, _rowspan, _colspan = self._grid.getItemPosition(index)
-        return row, col
+        return self._empty_positions.get(widget)
 
     def get_cell_at(self, global_pos):
         for widget in (
@@ -575,10 +541,11 @@ class GridManager(ManagerBase):
 
     def on_single_mode_changed(self):
         if self._ctx.is_single_mode:
-            # Hidden empties stay in the layout at size 0; un-hiding does not
-            # restore them. Take them out so the active video can fill, then
-            # rebuild on the way out.
-            self.adapt_grid()
+            for empty in self._empty_cells:
+                empty.hide()
+
+            self._grid.set_place(self._place_single)
+            self._grid.activate()
             return
         self.layout_changed.emit()
 
@@ -594,172 +561,83 @@ class GridManager(ManagerBase):
         finally:
             self._reloading = False
 
-    def adapt_grid(self, dims=None):
-        self._reset_grid_stretch()
-
-        if dims is None:
-            dims = self.grid_dimensions
-
-        show_stretch = not self._ctx.is_single_mode and dims.max_size > 1
-        if show_stretch:
-            self._adjust_grid_stretch(dims)
-
-        for empty in self._empty_cells:
-            empty.setVisible(not self._ctx.is_single_mode)
+    def _place_single(self, _width, _height):
+        # The single video fills the area. Going to the next one shows it and
+        # hides the other, and showing lays the area out again.
+        return [(vb, FULL_BOX) for vb in self._ctx.video_blocks if not vb.isHidden()]
 
     def _render_video_grid(self):
         if self._ctx.is_single_mode:
             return
 
-        dims = self.grid_dimensions
-
-        with self.slow_ui_operation(), self._laid_out_once():
-            self._reset_video_grid()
+        with self.slow_ui_operation():
+            self._info_label.hide()
+            self._discard_empty_cells()
 
             if not self._ctx.video_blocks and not self._show_empties:
-                return
-
-            if self._is_fixed:
-                placed = self._populate_fixed(dims)
+                cells = [(self._info_label, FULL_BOX)]
+            elif self._is_fixed:
+                cells = self._fixed_cells()
             else:
-                placed = self._populate_flow(dims)
+                cells = self._flow_cells()
 
-            self.adapt_grid(dims)
-            self._sync_block_visibility(placed)
+            widgets = [widget for widget, _box in cells]
+            self._grid.set_widgets(widgets)
+            self._grid.set_place(lambda _width, _height: cells)
 
-    def _reset_grid_stretch(self):
-        for c in range(self._grid.columnCount()):
-            self._grid.setColumnStretch(c, 0)
+            # Every cell, hidden or not, in place before any comes on screen.
+            self._grid.activate()
 
-        for r in range(self._grid.rowCount()):
-            self._grid.setRowStretch(r, 0)
-
-    def _adjust_grid_stretch(self, dims):
-        for c in range(dims.cols):
-            self._grid.setColumnStretch(c, 1)
-
-        for r in range(dims.rows):
-            self._grid.setRowStretch(r, 1)
+            self._sync_visibility(widgets)
 
     def _discard_empty_cells(self):
         for empty in self._empty_cells:
-            self._grid.removeWidget(empty)
             empty.hide()
             empty.deleteLater()
         self._empty_cells = []
+        self._empty_positions = {}
 
-    def _reset_video_grid(self):
-        self._info_label.hide()
-        self._discard_empty_cells()
-
-        _clear_layout(self._grid)
-
-        if not self._ctx.video_blocks and not self._show_empties:
-            self._grid.addWidget(self._info_label, 0, 0)
-            self._info_label.show()
-
-            self.adapt_grid()
-
-    def _sync_block_visibility(self, placed):
+    def _sync_visibility(self, placed):
         placed_set = set(placed)
         for vb in self._ctx.video_blocks:
             if vb not in placed_set:
                 vb.hide()
 
-        coming = [
-            vb for vb in self._ctx.video_blocks if vb in placed_set and vb.isHidden()
-        ]
-        self._place_while_hidden(coming)
-        for vb in coming:
-            vb.show()
+        for widget in placed:
+            if widget.isHidden():
+                widget.show()
 
-    def _place_while_hidden(self, blocks):
-        """Lay out the cells about to be shown before they are on screen.
+    def _fixed_cells(self):
+        cols, rows = self._grid_layout.displayed_size()
 
-        A hardware video's cell is a native window, and showing it puts it on
-        screen wherever it is at that point. The grid lays the cells out only
-        once they are all shown (see _laid_out_once), so a new cell came up
-        at the window's top left, 100x30, and was then moved into place. A
-        native window takes the pixels it covers along when it moves, so the
-        corner of the window, with the empty grid's outline in it, showed at
-        the top left of every new cell until the grid was painted.
+        cells = []
+        covered = set()
+        for cell, box in self._grid_layout.boxes():
+            vb = self._ctx.video_blocks.by_video_id(cell.video_id)
+            if vb is None:
+                continue
+            cells.append((vb, box))
+            covered.update(
+                (row, col)
+                for row in range(cell.row, cell.row + cell.rowspan)
+                for col in range(cell.col, cell.col + cell.colspan)
+            )
 
-        A hidden cell is left out of the layout unless it keeps its space, so
-        each one keeps it for one pass, laid out with the rest as they all end
-        up.
-        """
-        if not blocks:
-            return
-
-        policies = [vb.sizePolicy() for vb in blocks]
-        for vb, policy in zip(blocks, policies):
-            kept = QSizePolicy(policy)
-            kept.setRetainSizeWhenHidden(True)
-            vb.setSizePolicy(kept)
-
-        was_enabled = self._grid.isEnabled()
-        self._grid.setEnabled(True)
-        self._grid.activate()
-        self._grid.setEnabled(was_enabled)
-
-        for vb, policy in zip(blocks, policies):
-            vb.setSizePolicy(policy)
-
-    def _populate_fixed(self, dims):
-        placed = set()
-
-        for row in range(dims.rows):
-            for col in range(dims.cols):
-                vb = self._block_at(row, col)
-                if vb is not None and vb not in placed:
-                    self._grid.addWidget(vb, row, col, 1, 1)
-                    placed.add(vb)
+        for row in range(rows):
+            for col in range(cols):
+                if (row, col) in covered:
                     continue
-
                 empty = EmptyCell(parent=self.parent())
                 self._empty_cells.append(empty)
-                self._grid.addWidget(empty, row, col, 1, 1)
+                self._empty_positions[empty] = (row, col)
+                cells.append((empty, grid_box(row, col, rows, cols)))
 
-        return placed
+        return cells
 
-    def _populate_flow(self, dims):
-        widgets = self._ctx.video_blocks.blocks_for_ids(self._flow.order())
-        odd_cells = dims.max_size - len(widgets)
-
-        if odd_cells == 0 or not self._flow.is_fit:
-            self._fill_grid(widgets, dims)
-        elif self._flow.mode == FlowMode.COLS:
-            straight_cells = dims.rows * (dims.cols - 1)
-            self._fill_grid(widgets[:straight_cells], dims)
-            self._fill_last_col(widgets[straight_cells:], dims)
-        else:
-            straight_cells = dims.cols * (dims.rows - 1)
-            self._fill_grid(widgets[:straight_cells], dims)
-            self._fill_last_row(widgets[straight_cells:], dims)
-
-        return widgets
-
-    def _fill_grid(self, widgets, dims):
-        if self._flow.mode == FlowMode.COLS:
-            grid = ((col, row) for col in range(dims.cols) for row in range(dims.rows))
-        else:
-            grid = ((col, row) for row in range(dims.rows) for col in range(dims.cols))
-
-        for (col, row), w in zip(grid, widgets):
-            self._grid.addWidget(w, row, col, 1, 1)
-
-    def _fill_last_row(self, widgets, dims):
-        last_row = QHBoxLayout()
-
-        for w in widgets:
-            last_row.addWidget(w, 1)
-
-        self._grid.addLayout(last_row, dims.rows - 1, 0, 1, -1)
-
-    def _fill_last_col(self, widgets, dims):
-        last_col = QVBoxLayout()
-
-        for w in widgets:
-            last_col.addWidget(w, 1)
-
-        self._grid.addLayout(last_col, 0, dims.cols - 1, -1, 1)
+    def _flow_cells(self):
+        cells = []
+        for video_id, box in self._flow.boxes():
+            vb = self._ctx.video_blocks.by_video_id(video_id)
+            if vb is not None:
+                cells.append((vb, box))
+        return cells
