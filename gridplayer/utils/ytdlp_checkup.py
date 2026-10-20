@@ -37,6 +37,7 @@ from gridplayer.utils.network import (
     fetch_capped,
     ytdl_network_opts,
 )
+from gridplayer.utils.network_errors import log_failure
 from gridplayer.utils.percent_re import untangle_percent_re
 from gridplayer.utils.qt import translate
 
@@ -429,7 +430,7 @@ class YouTubeCheckup(Checkup):
         except DownloadError as e:
             return _resolve_failure(_last_line(str(e)))
         except Exception as e:
-            self._log.exception("yt-dlp checkup - resolve failed")
+            log_failure(self._log, "yt-dlp checkup - resolve failed", e)
             return CheckResult(CheckStatus.FAILED, str(e))
 
         formats = self._video_info.get("formats") or []

@@ -44,6 +44,7 @@ from gridplayer.utils.media_import import (
     plan_cells,
     read_source,
 )
+from gridplayer.utils.network_errors import failure_txt
 from gridplayer.utils.off_thread import OffThread
 from gridplayer.utils.qt import translate
 from gridplayer.utils.thumbnails import fetch_thumbnail
@@ -639,7 +640,7 @@ class ListsManager(ManagerBase):
                 self._end_linked_reading(reading)
                 return
 
-            self._log.warning(f"Linked list not read again: {error}")
+            self._log.warning(f"Linked list not read again: {failure_txt(error)}")
 
             media_list = self._registry.get(reading.list_id)
             source = None if media_list is None else media_list.source

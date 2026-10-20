@@ -67,6 +67,7 @@ from gridplayer.utils.media_import import (
     recent_uris,
 )
 from gridplayer.utils.misc import is_url
+from gridplayer.utils.network_errors import log_failure
 from gridplayer.utils.next_file import MAX_MISSING_FILES, ScanRules
 from gridplayer.utils.off_thread import interface_first
 from gridplayer.utils.qt import count_txt, translate
@@ -190,7 +191,7 @@ class _Reader(QObject):
         except ReadingStopped:
             expanded = Expanded()
         except Exception as e:
-            logging.getLogger(__name__).exception("Failed to read what was added")
+            log_failure(logging.getLogger(__name__), "Failed to read what was added", e)
             expanded = Expanded(
                 failed=tuple((uri, str(e)) for uri in reading.request.uris)
             )
@@ -278,7 +279,9 @@ class _CellReader(QObject):
             except ReadingStopped:
                 expanded = None
             except Exception as e:
-                logging.getLogger(__name__).exception("Failed to read what was added")
+                log_failure(
+                    logging.getLogger(__name__), "Failed to read what was added", e
+                )
                 expanded = Expanded(failed=tuple((uri, str(e)) for uri in uris))
 
             self.done.emit(video_id, expanded)

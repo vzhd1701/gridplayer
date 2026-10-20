@@ -16,6 +16,7 @@ from streamlink import StreamError
 
 from gridplayer.models.stream import Stream, StreamFragment, StreamOrigin, Streams
 from gridplayer.utils.list_errors import read_error_of
+from gridplayer.utils.network_errors import log_failure
 from gridplayer.utils.stream_proxy.fragments import fragment_stream
 from gridplayer.utils.stream_proxy.session import StreamSession
 from gridplayer.utils.stream_proxy.wrappers import HTTPStreamProxy, StreamReader
@@ -357,8 +358,8 @@ class StreamProxyServer(ThreadingHTTPServer):
 
         try:
             resolved = self._resolve_source(origin.url, headers=headers)
-        except Exception:
-            self._log.exception("Failed to resolve source again")
+        except Exception as e:
+            log_failure(self._log, "Failed to resolve source again", e)
             return None
 
         if resolved is None:
@@ -382,8 +383,8 @@ class StreamProxyServer(ThreadingHTTPServer):
 
         try:
             init_fragment, fragments = session.playlist_segments(fresh)
-        except Exception:
-            self._log.exception("Failed to fetch the renewed playlist")
+        except Exception as e:
+            log_failure(self._log, "Failed to fetch the renewed playlist", e)
             return None
 
         if not fragments:
@@ -671,8 +672,7 @@ class ProxyRequestHandler(BaseHTTPRequestHandler):
 
             return RelayFailure(response=err.err.response)
 
-        self._log.error(f"Error when streaming: {err}")
-        self._log.debug("Traceback", exc_info=err)
+        log_failure(self._log, "Error when streaming", err)
 
         return RelayFailure(error=err)
 

@@ -3,7 +3,6 @@ import itertools
 import logging
 import math
 import re
-import traceback
 from collections import Counter
 from functools import cached_property
 from types import MappingProxyType
@@ -25,6 +24,7 @@ from gridplayer.settings import Settings
 from gridplayer.utils.cookies import ytdl_cookies
 from gridplayer.utils.js_runtime import ytdl_js_runtimes
 from gridplayer.utils.network import needs_relay, ytdl_network_opts
+from gridplayer.utils.network_errors import failure_txt, log_failure
 from gridplayer.utils.percent_re import untangle_percent_re
 from gridplayer.utils.track_language import language_name
 from gridplayer.utils.url_resolve.resolver_base import ResolverBase
@@ -211,7 +211,8 @@ class YoutubeDLResolver(ResolverBase):
                 if "offline" in str(e):
                     raise StreamOfflineError
 
-                self._log.debug(f"yt-dlp error:\n{traceback.format_exc()}")
+                # yt-dlp has logged the error itself, as one line
+                log_failure(self._log, "yt-dlp error", e, logging.DEBUG)
                 raise ResolverFailed from e
 
     @cached_property
@@ -437,7 +438,7 @@ class YoutubeDLResolver(ResolverBase):
                 session_headers=probe.get("http_headers"),
             )
         except Exception as e:
-            self._log.debug(f"Failed to probe stream for fragments: {e}")
+            self._log.debug(f"Failed to probe stream for fragments: {failure_txt(e)}")
             return False
 
         self._log.debug(f"yt-dlp - source is fragmented: {is_source_fragmented}")

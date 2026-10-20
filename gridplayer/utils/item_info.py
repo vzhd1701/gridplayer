@@ -24,6 +24,7 @@ from pathlib import Path
 
 from gridplayer.models.media_list import ItemDetails, ListItem
 from gridplayer.utils.list_errors import is_site_refusal, site_name
+from gridplayer.utils.network_errors import failure_txt
 from gridplayer.utils.web_lists import (
     LINK_RESULT_TYPES,
     LIST_RESULT_TYPES,
@@ -231,7 +232,7 @@ def look_up_youtube(ids: list[str]) -> dict[str, Found]:
         if is_site_refusal(str(e)):
             raise Refused("YouTube") from e
 
-        _log.debug(f"YouTube list of {len(ids)} videos not read: {e}")
+        _log.debug(f"YouTube list of {len(ids)} videos not read: {failure_txt(e)}")
         return {}
 
     found = {}

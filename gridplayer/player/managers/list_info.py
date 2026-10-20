@@ -32,6 +32,7 @@ from gridplayer.utils.item_info import (
 )
 from gridplayer.utils.item_info import look_up_link as site_look_up_link
 from gridplayer.utils.item_info import look_up_youtube as site_look_up_youtube
+from gridplayer.utils.network_errors import failure_txt
 
 _log = logging.getLogger(__name__)
 
@@ -403,7 +404,7 @@ class ItemLookups(QObject):
             return
 
         if error is not None:
-            _log.error(f"Looking up {len(items)} items failed: {error}")
+            _log.error(f"Looking up {len(items)} items failed: {failure_txt(error)}")
             results = [(item, None) for item in items]
         else:
             results = future.result()

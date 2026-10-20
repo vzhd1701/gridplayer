@@ -13,6 +13,7 @@ from streamlink.stream.wrappers import StreamIOIterWrapper, StreamIOThreadWrappe
 
 from gridplayer.models.stream import Stream, StreamFragment, StreamSessionOpts
 from gridplayer.utils.http_in_playlists import allow_http_in_playlists
+from gridplayer.utils.network_errors import failure_txt
 from gridplayer.utils.stream_proxy.fragments import FRAGMENT_INIT, FRAGMENT_SELF
 from gridplayer.utils.stream_proxy.m3u8 import (
     build_master_playlist,
@@ -482,7 +483,7 @@ class HTTPPlaylistStream(GeneratedPlaylistStream):
             ) as response:
                 return next(response.iter_content(size), b"")
         except (StreamError, OSError) as err:
-            self._log.debug(f"Failed to probe stream head: {err}")
+            self._log.debug(f"Failed to probe stream head: {failure_txt(err)}")
             return None
 
 
@@ -530,4 +531,6 @@ class StreamReader:
                 iter(partial(self._stream_fd.read, CHUNK_SIZE), b""),
             )
         except OSError as err:
-            self._log.error(f"Error when reading from stream: {err}, exiting")
+            self._log.error(
+                f"Error when reading from stream: {failure_txt(err)}, exiting"
+            )

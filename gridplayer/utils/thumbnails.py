@@ -22,6 +22,7 @@ from PyQt5.QtCore import (
 from PyQt5.QtGui import QImage, QImageReader
 
 from gridplayer.utils import cache
+from gridplayer.utils.network_errors import failure_txt
 
 _log = logging.getLogger(__name__)
 
@@ -193,7 +194,7 @@ class ThumbnailLoader(QObject):
         try:
             image = QImage.fromData(self._fetch(url))
         except Exception as e:
-            _log.debug(f"Thumbnail not fetched: {url}: {e}")
+            _log.debug(f"Thumbnail not fetched: {url}: {failure_txt(e)}")
             image = None
 
         if image is not None and not image.isNull():

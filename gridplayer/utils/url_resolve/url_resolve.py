@@ -8,7 +8,9 @@ from PyQt5.QtCore import QObject, QThread, pyqtSignal
 from gridplayer.models.resolver_patterns import ResolverPatterns
 from gridplayer.params.static import URLResolver
 from gridplayer.settings import Settings
+from gridplayer.utils.list_errors import host_of
 from gridplayer.utils.list_progress import ReadingStopped, Throttled, reading_txt
+from gridplayer.utils.network_errors import log_failure
 from gridplayer.utils.off_thread import interface_first
 from gridplayer.utils.url_resolve.static import (
     BadURLException,
@@ -137,7 +139,7 @@ class VideoURLResolverWorker(QObject):
             self._log.error(e)
             return self._error(resolve_error(e, url))
         except Exception as e:
-            self._log.exception("URL resolver exception")
+            log_failure(self._log, f"Could not resolve a link to {host_of(url)}", e)
             return self._error(resolve_error(e, url))
 
         # no resolver claimed the URL. Emitting this would raise on the way

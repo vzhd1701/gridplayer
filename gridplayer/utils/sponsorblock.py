@@ -31,6 +31,7 @@ from gridplayer.params.sponsorblock import (
 )
 from gridplayer.params.static import SponsorBlockMode
 from gridplayer.settings import Settings
+from gridplayer.utils.network_errors import failure_txt
 
 _log = logging.getLogger(__name__)
 
@@ -264,7 +265,7 @@ class SponsorBlockFetcher(QObject):
         try:
             segments = fetch_segments(video_id, duration_ms)
         except Exception as e:
-            _log.warning(f"SponsorBlock lookup of {video_id} failed: {e}")
+            _log.warning(f"SponsorBlock lookup of {video_id} failed: {failure_txt(e)}")
             segments = None
 
         self._looked_up.emit(video_id, segments)

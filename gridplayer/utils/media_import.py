@@ -28,6 +28,7 @@ from gridplayer.utils.list_files import (
 )
 from gridplayer.utils.list_progress import ReadingEnough, ReadingStopped
 from gridplayer.utils.misc import is_url
+from gridplayer.utils.network_errors import failure_txt
 from gridplayer.utils.next_file import ScanRules, scan_folder
 from gridplayer.utils.web_lists import is_web_list_url
 
@@ -274,7 +275,7 @@ def _expand_web_list(url: str, read_web, expanding) -> None:
         # nothing more read: whoever stopped it lets go of what was
         raise
     except Exception as e:
-        _log.error(f"Failed to read list {url}: {e}")
+        _log.error(f"Failed to read list {url}: {failure_txt(e)}")
         expanding.failed.append((url, str(e)))
         return
 
@@ -298,7 +299,7 @@ def _expand_list_url(url: str, fetch, expanding) -> None:
         expanding.groups.append(ListItem(uri=url))
         return
     except Exception as e:
-        _log.error(f"Failed to read list {url}: {e}")
+        _log.error(f"Failed to read list {url}: {failure_txt(e)}")
         expanding.failed.append((url, str(e)))
         return
 

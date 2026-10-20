@@ -1,3 +1,4 @@
+import logging
 from functools import cached_property
 
 from streamlink import NoPluginError, PluginError, Streamlink
@@ -7,6 +8,7 @@ from streamlink.stream.hls import HLSStream, MuxedHLSStream
 from gridplayer.models.stream import HashableDict, Stream, Streams, StreamSessionOpts
 from gridplayer.settings import Settings
 from gridplayer.utils.network import configure_session
+from gridplayer.utils.network_errors import log_failure
 from gridplayer.utils.url_resolve.resolver_base import ResolverBase
 from gridplayer.utils.url_resolve.static import NoResolverPlugin, ResolverFailed
 from gridplayer.utils.url_resolve.stream_detect import (
@@ -89,8 +91,7 @@ class StreamlinkResolver(ResolverBase):
         try:
             streams = self._plugin.streams(stream_types=self._stream_types)
         except PluginError as e:
-            self._log.warning(f"Streamlink - plugin error [{e}]")
-            self._log.debug("Traceback", exc_info=e)
+            log_failure(self._log, "Streamlink - plugin error", e, logging.WARNING)
             raise ResolverFailed from e
 
         if not streams:
