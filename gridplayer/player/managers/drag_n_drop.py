@@ -519,7 +519,7 @@ class DragNDropManager(ManagerBase):
             local.y(),
             block.width(),
             block.height(),
-            self._ctx.grid_state.mode,
+            self._ctx.commands.grid_drop_mode(),
         )
         return block, zone
 
@@ -547,7 +547,7 @@ class DragNDropManager(ManagerBase):
                 indicator_for(
                     zone,
                     is_internal,
-                    self._ctx.grid_state.mode,
+                    self._ctx.commands.grid_drop_mode(),
                     is_replace=is_replace,
                     is_add_to_list=is_add_to_list,
                 )

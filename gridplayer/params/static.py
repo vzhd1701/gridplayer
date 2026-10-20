@@ -57,6 +57,8 @@ class AutoName(Enum):
 class GridMode(AutoName):
     AUTO_ROWS = auto()
     AUTO_COLS = auto()
+    # Fit Shapes: each video in a tile of its own shape
+    AUTO_SHAPES = auto()
     FIXED = auto()
 
 

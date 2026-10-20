@@ -332,3 +332,51 @@ def test_match_shapes_off_keeps_the_square_grid():
     assert cells[2].geometry().getRect() == (800, 0, 400, 600)
 
     window.close()
+
+
+def test_fit_shapes_gives_each_video_a_tile_of_its_shape():
+    window = QWidget()
+    window.resize(1400, 600)
+    cells = [_NativeCell(f"v{n}", window) for n in range(3)]
+    ctx = SimpleNamespace(
+        video_blocks=_Cells(cells),
+        is_shuffle_on_load=False,
+        is_single_mode=False,
+        commands=SimpleNamespace(remove_video_blocks=lambda *_a, **_k: None),
+    )
+    grid = GridManager(context=ctx, parent=window)
+    grid.layout_changed.connect(grid.reload_video_grid)
+    # the options of Rows and Columns First make no difference
+    grid.set_grid_state(
+        GridState(mode=GridMode.AUTO_ROWS, size=1, is_match_shapes=False)
+    )
+    window.show()
+    QApplication.processEvents()
+
+    def rects():
+        return [c.geometry().getRect() for c in cells]
+
+    grid.cmd_set_grid_mode(GridMode.AUTO_SHAPES)
+    QApplication.processEvents()
+    assert grid.grid_state().mode == GridMode.AUTO_SHAPES
+
+    # none known yet: taken as wide, the first big and two beside it, in a
+    # column: drops go above and below them
+    assert rects() == [(0, 38, 933, 524), (933, 38, 467, 262), (933, 300, 467, 262)]
+    assert grid.grid_drop_mode() == GridMode.AUTO_COLS
+
+    cells[0].picture_shape = 9 / 16
+    cells[1].picture_shape = 9 / 16
+    cells[2].picture_shape = 1.0
+    grid.fit_to_shapes()
+    QApplication.processEvents()
+    # side by side, as high as the window, the space left over at the sides
+    assert rects() == [(62, 0, 338, 600), (400, 0, 338, 600), (738, 0, 600, 600)]
+    assert grid.grid_drop_mode() == GridMode.AUTO_ROWS
+
+    # in a tall window, the square below
+    window.resize(600, 1400)
+    QApplication.processEvents()
+    assert rects() == [(0, 133, 300, 534), (300, 133, 300, 534), (0, 667, 600, 600)]
+
+    window.close()

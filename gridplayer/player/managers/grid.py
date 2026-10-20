@@ -36,7 +36,11 @@ class GridDimensions(NamedTuple):
 
 
 def _flow_mode(mode: GridMode) -> FlowMode:
-    return FlowMode.COLS if mode == GridMode.AUTO_COLS else FlowMode.ROWS
+    if mode == GridMode.AUTO_COLS:
+        return FlowMode.COLS
+    if mode == GridMode.AUTO_SHAPES:
+        return FlowMode.SHAPES
+    return FlowMode.ROWS
 
 
 class GridManager(ManagerBase):
@@ -83,6 +87,7 @@ class GridManager(ManagerBase):
         return {
             "set_grid_mode": self.cmd_set_grid_mode,
             "is_grid_mode_set_to": lambda m: self._mode == m,
+            "grid_drop_mode": self.grid_drop_mode,
             "ask_grid_size": self.cmd_ask_grid_size,
             "get_grid_size": self.cmd_get_grid_size,
             "switch_is_grid_fit": self.cmd_switch_is_grid_fit,
@@ -218,6 +223,14 @@ class GridManager(ManagerBase):
         self._flow.size = config.size
         self.layout_changed.emit()
         return True
+
+    def grid_drop_mode(self) -> GridMode:
+        """The mode drops go by: before or after a video along the line it
+        is in, a row or a column, or on any side in Fixed Grid."""
+
+        if self._mode != GridMode.AUTO_SHAPES:
+            return self._mode
+        return GridMode.AUTO_COLS if self._flow.is_columns() else GridMode.AUTO_ROWS
 
     def grid_position_of(self, widget):
         return self._empty_positions.get(widget)
@@ -584,7 +597,11 @@ class GridManager(ManagerBase):
     def fit_to_shapes(self):
         """Lay the grid out again for a video's shape, which Auto goes by."""
 
-        if self._is_fixed or not self._flow.is_match_shapes or self._flow.size:
+        if self._is_fixed:
+            return
+
+        is_shapes = self._mode == GridMode.AUTO_SHAPES
+        if not is_shapes and (not self._flow.is_match_shapes or self._flow.size):
             return
 
         if self._ctx.is_single_mode:
@@ -598,7 +615,7 @@ class GridManager(ManagerBase):
         return [(vb, FULL_BOX) for vb in self._ctx.video_blocks if not vb.isHidden()]
 
     def _place_flow(self, width, height):
-        # on Auto, the line size goes by the area too, so it is chosen anew
+        # on Auto, the lines go by the area too, so they are chosen anew
         # each time the area is laid out: as the window is resized among them
         shapes = {vb.video_id: vb.picture_shape for vb in self._ctx.video_blocks}
         self._flow.fit_to(width, height, shapes)

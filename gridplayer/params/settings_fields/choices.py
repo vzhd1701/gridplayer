@@ -51,6 +51,7 @@ def grid_modes() -> dict:
     return {
         GridMode.AUTO_ROWS: translate("Grid Mode", "Auto (Rows First)"),
         GridMode.AUTO_COLS: translate("Grid Mode", "Auto (Columns First)"),
+        GridMode.AUTO_SHAPES: translate("Grid Mode", "Auto (Fit Shapes)"),
         GridMode.FIXED: translate("Grid Mode", "Fixed Grid"),
     }
 

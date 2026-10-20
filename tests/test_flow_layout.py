@@ -122,7 +122,7 @@ def test_boxes_one_video_fills():
     assert FlowLayout(ids=["A"], is_fit=True).boxes() == [("A", Box(0, 0, 1, 1))]
 
 
-WIDE, TALL = 16 / 9, 9 / 16
+WIDE, TALL, SQUARE = 16 / 9, 9 / 16, 1.0
 
 
 def _fitted(shapes, width, height, mode=FlowMode.ROWS, is_fit=True):
@@ -204,3 +204,92 @@ def test_auto_keeps_the_square_grid_unless_matching_shapes():
 
     layout.is_match_shapes = False
     assert layout.displayed_size() == (2, 2)
+
+
+def _shapes_layout(shapes, width, height):
+    ids = [str(i) for i in range(len(shapes))]
+    layout = FlowLayout(mode=FlowMode.SHAPES, ids=ids)
+    layout.fit_to(width, height, dict(zip(ids, shapes)))
+    return layout
+
+
+def test_fit_shapes_puts_tall_videos_side_by_side():
+    layout = _shapes_layout([TALL] * 3, 1920, 1080)
+    assert layout.displayed_size() == (3, 1)
+
+    # each as big as the height allows, the space left over at the sides
+    boxes = [box for _id, box in layout.boxes()]
+    assert [(box.top, box.bottom) for box in boxes] == [(0, 1)] * 3
+    assert boxes[0].left == pytest.approx(1 - boxes[2].right)
+
+
+def test_fit_shapes_keeps_the_order():
+    shapes = [WIDE, TALL, WIDE, SQUARE, TALL, WIDE]
+    layout = _shapes_layout(shapes, 1920, 1080)
+
+    assert [video_id for video_id, _box in layout.boxes()] == list("012345")
+    assert layout.order() == list("012345")
+
+
+def test_fit_shapes_lays_out_in_columns_when_they_show_more():
+    # wide videos in a tall window: in rows, one above the other
+    layout = _shapes_layout([WIDE] * 3, 1080, 1920)
+    assert layout.is_columns() is False
+    assert layout.displayed_size() == (1, 3)
+
+    # mixed videos in a wide window: some fit better in columns
+    layout = _shapes_layout(
+        [TALL, WIDE, TALL, WIDE, WIDE, TALL, WIDE, TALL], 1920, 1080
+    )
+    assert layout.is_columns() is True
+    cols, rows = layout.displayed_size()
+    assert layout.id_at(0, 0) == "0"
+    assert layout.id_at(1, 0) == "1"
+    assert layout.position_of("1") == (1, 0)
+    for video_id in layout.order():
+        assert layout.id_at(*layout.position_of(video_id)) == video_id
+    assert layout.id_at(rows, 0) is None
+    assert layout.id_at(0, cols) is None
+
+
+def test_fit_shapes_holds_until_other_lines_are_clearly_better():
+    layout = FlowLayout(mode=FlowMode.SHAPES, ids=["A", "B"])
+    shapes = {"A": WIDE, "B": WIDE}
+
+    lines = []
+    for width in (1920, 1880, 1800, 1900, 1990, 2000):
+        layout.fit_to(width, 1080, shapes)
+        lines.append(layout.displayed_size())
+
+    assert lines == [(2, 1), (2, 1), (1, 2), (1, 2), (1, 2), (2, 1)]
+
+
+def test_fit_shapes_starts_anew_for_other_videos():
+    layout = FlowLayout(mode=FlowMode.SHAPES, ids=["A", "B"])
+    layout.fit_to(1800, 1080, {})
+    assert layout.displayed_size() == (1, 2)
+
+    # side by side shows them a little bigger, not enough to change...
+    layout.fit_to(1990, 1080, {})
+    assert layout.displayed_size() == (1, 2)
+
+    # ...unless the videos are others, or in another order
+    layout.drop([], None, None, DropZone.CENTER, src_id="A", dst_id="B")
+    layout.fit_to(1990, 1080, {})
+    assert layout.displayed_size() == (2, 1)
+
+    layout.add(["C"])
+    # until fit_to has chosen, as the square grid
+    assert layout.displayed_size() == (2, 2)
+
+
+def test_fit_shapes_ignores_the_line_options():
+    layout = FlowLayout(
+        mode=FlowMode.SHAPES,
+        size=1,
+        is_fit=False,
+        is_match_shapes=False,
+        ids=["A", "B"],
+    )
+    layout.fit_to(1920, 1080, {"A": TALL, "B": TALL})
+    assert layout.displayed_size() == (2, 1)

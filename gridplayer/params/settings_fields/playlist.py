@@ -16,8 +16,9 @@ from gridplayer.params.static import (
 )
 from gridplayer.utils.qt import translate
 
-# the grid options that only mean something in one kind of grid
-_GRID_AUTO = (GridMode.AUTO_ROWS, GridMode.AUTO_COLS)
+# the grid options that only mean something in one kind of grid: the
+# Auto modes that lay the videos out in lines of one length, and Fixed Grid
+_GRID_LINES = (GridMode.AUTO_ROWS, GridMode.AUTO_COLS)
 _GRID_FIXED = (GridMode.FIXED,)
 
 
@@ -238,12 +239,12 @@ PLAYLIST_FIELDS: tuple[SettingField, ...] = (
         minimum=0,
         maximum=1000,
         special_text=translate("SettingsDialog", "Auto"),
-        shown_when=When("playlist/grid_mode", _GRID_AUTO),
+        shown_when=When("playlist/grid_mode", _GRID_LINES),
     ),
     CheckboxField(
         settings_key="playlist/grid_fit",
         label=translate("Fill Gaps", "Fill gaps"),
-        shown_when=When("playlist/grid_mode", _GRID_AUTO),
+        shown_when=When("playlist/grid_mode", _GRID_LINES),
     ),
     CheckboxField(
         settings_key="playlist/grid_match_shapes",
@@ -252,7 +253,7 @@ PLAYLIST_FIELDS: tuple[SettingField, ...] = (
             "Match Shapes",
             "Pick the number of columns that shows the videos biggest.",
         ),
-        shown_when=When("playlist/grid_mode", _GRID_AUTO),
+        shown_when=When("playlist/grid_mode", _GRID_LINES),
         enabled_when=When("playlist/grid_size", (0,)),
     ),
     SpinField(

@@ -2459,12 +2459,22 @@ ACTIONS = MappingProxyType(
             "check_if": ("is_grid_mode_set_to", GridMode.AUTO_COLS),
             "is_choice": True,
         },
+        "Fit Shapes": {
+            "title": translate("Grid Mode", "Auto (Fit Shapes)"),
+            "icon": "grid-fit-shapes",
+            "func": ("set_grid_mode", GridMode.AUTO_SHAPES),
+            "check_if": ("is_grid_mode_set_to", GridMode.AUTO_SHAPES),
+            "is_choice": True,
+        },
         "Fit Cells": {
             "title": translate("Fill Gaps", "Fill Gaps"),
             "icon": "grid-fit",
             "func": "switch_is_grid_fit",
             "check_if": "is_grid_fit",
-            "show_if": NOT(("is_grid_mode_set_to", GridMode.FIXED)),
+            "show_if": OR(
+                ("is_grid_mode_set_to", GridMode.AUTO_ROWS),
+                ("is_grid_mode_set_to", GridMode.AUTO_COLS),
+            ),
         },
         "Match Shapes": {
             "title": translate("Match Shapes", "Match Shapes"),
@@ -2472,7 +2482,10 @@ ACTIONS = MappingProxyType(
             "func": "switch_is_grid_match_shapes",
             "check_if": "is_grid_match_shapes",
             "enable_if": "is_grid_size_auto",
-            "show_if": NOT(("is_grid_mode_set_to", GridMode.FIXED)),
+            "show_if": OR(
+                ("is_grid_mode_set_to", GridMode.AUTO_ROWS),
+                ("is_grid_mode_set_to", GridMode.AUTO_COLS),
+            ),
         },
         "Size: %v": {
             "title": (
@@ -2484,7 +2497,10 @@ ACTIONS = MappingProxyType(
             "icon": "grid-size",
             "func": "ask_grid_size",
             "value_getter": "get_grid_size",
-            "show_if": NOT(("is_grid_mode_set_to", GridMode.FIXED)),
+            "show_if": OR(
+                ("is_grid_mode_set_to", GridMode.AUTO_ROWS),
+                ("is_grid_mode_set_to", GridMode.AUTO_COLS),
+            ),
         },
         "Fixed Grid": {
             "title": translate("Grid Mode", "Fixed Grid"),

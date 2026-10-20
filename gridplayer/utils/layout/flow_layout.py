@@ -4,9 +4,17 @@ import math
 import random
 from collections.abc import Mapping
 from enum import Enum, auto
+from typing import NamedTuple
 
 from gridplayer.utils.drop_zone import DropZone, insert_index
 from gridplayer.utils.layout.boxes import Box, picture_score
+from gridplayer.utils.layout.justified import (
+    Split,
+    best_splits,
+    justified_boxes,
+    measure_split,
+    split_score,
+)
 
 # what a video is taken to be shaped like until its own shape is known
 DEFAULT_SHAPE = 16 / 9
@@ -20,10 +28,19 @@ SWITCH_GAIN = 1.08
 class FlowMode(Enum):
     ROWS = auto()
     COLS = auto()
+    # each video in a tile of its own shape (see justified_boxes)
+    SHAPES = auto()
+
+
+class Lines(NamedTuple):
+    """How many videos each line takes, and whether the lines are columns."""
+
+    lengths: tuple[int, ...]
+    is_columns: bool
 
 
 class FlowLayout:
-    """Wrapping 1D order for Auto (Rows/Columns First). No holes."""
+    """Wrapping 1D order for Auto (Rows/Columns First, Fit Shapes). No holes."""
 
     def __init__(
         self,
@@ -42,6 +59,12 @@ class FlowLayout:
 
         # the line size fit_to chose, and for how many videos in which mode
         self._fitted: tuple[int, FlowMode, int] | None = None
+
+        # in Fit Shapes, the lines fit_to chose and for which videos, with
+        # the shapes and the area's size it was given
+        self._fitted_lines: tuple[tuple[str, ...], Lines] | None = None
+        self._shapes: list[float] = []
+        self._area = (16, 9)
 
     def line_size(self) -> int:
         """How many videos go in a line: a row in Rows First, a column in
@@ -74,6 +97,10 @@ class FlowLayout:
         it is taken to be DEFAULT_SHAPE. The line size there is now is kept
         unless another shows the pictures SWITCH_GAIN times bigger.
         """
+        if self.mode == FlowMode.SHAPES:
+            self._fit_lines(width, height, shapes)
+            return
+
         count = len(self.ids)
         if not self.is_match_shapes or self.size or count <= 1:
             return
@@ -102,11 +129,82 @@ class FlowLayout:
 
         self._fitted = (count, self.mode, line_size)
 
-    def displayed_size(self) -> tuple[int, int]:
-        line_size = self.line_size()
-        lines = max(math.ceil(len(self.ids) / line_size), 1)
+    def _fit_lines(self, width: int, height: int, shapes: Mapping[str, float]):
+        """Fit Shapes: choose the rows or columns that show the videos best
+        (see best_splits). The lines there are now are kept unless others
+        show the pictures SWITCH_GAIN times bigger.
+        """
 
-        if self.mode != FlowMode.COLS:
+        if width <= 0 or height <= 0:
+            return
+
+        self._shapes = [shapes.get(video_id) or DEFAULT_SHAPE for video_id in self.ids]
+        self._area = (width, height)
+
+        count = len(self.ids)
+        if count == 0:
+            return
+
+        # a row is as long as its tiles' shapes add up to, a column as tall
+        # as their heights for their widths do
+        weights = {
+            False: tuple(self._shapes),
+            True: tuple(1 / shape for shape in self._shapes),
+        }
+
+        def score(split: Split, is_columns: bool) -> float:
+            area = (height, width) if is_columns else (width, height)
+            return split_score(split, weights[is_columns], *area)
+
+        best, best_score = None, -math.inf
+        for is_columns in (False, True):
+            for split in best_splits(weights[is_columns]):
+                candidate_score = score(split, is_columns)
+                if candidate_score > best_score:
+                    best = Lines(split.lengths, is_columns)
+                    best_score = candidate_score
+
+        ids = tuple(self.ids)
+        if self._fitted_lines is not None and self._fitted_lines[0] == ids:
+            kept = self._fitted_lines[1]
+            kept_split = measure_split(weights[kept.is_columns], kept.lengths)
+            kept_score = score(kept_split, kept.is_columns)
+            if best_score <= kept_score + count * math.log(SWITCH_GAIN):
+                best = kept
+
+        self._fitted_lines = (ids, best)
+
+    def _lines(self) -> Lines:
+        """How the videos are laid out in lines now."""
+
+        count = len(self.ids)
+
+        if self.mode == FlowMode.SHAPES:
+            fitted = self._fitted_lines
+            if fitted is not None and fitted[0] == tuple(self.ids):
+                return fitted[1]
+            # until fit_to has chosen, in rows as the square grid has them
+            is_columns = False
+            line_size = math.ceil(math.sqrt(count)) if count > 1 else 1
+        else:
+            is_columns = self.mode == FlowMode.COLS
+            line_size = self.line_size()
+
+        full, rest = divmod(count, line_size)
+        lengths = (line_size,) * full + ((rest,) if rest else ())
+        return Lines(lengths or (0,), is_columns)
+
+    def is_columns(self) -> bool:
+        """Whether the videos are laid out a column at a time."""
+
+        return self._lines().is_columns
+
+    def displayed_size(self) -> tuple[int, int]:
+        lengths, is_columns = self._lines()
+        line_size = max(max(lengths), 1)
+        lines = len(lengths)
+
+        if not is_columns:
             return line_size, lines
         return lines, line_size
 
@@ -115,8 +213,16 @@ class FlowLayout:
 
         Videos fill the grid a line at a time: a row in Rows First, a column
         in Columns First. With Fill Gaps, those of a last line left short
-        share all of it.
+        share all of it. In Fit Shapes, each takes a tile of its shape, in
+        the lines fit_to chose.
         """
+        if self.mode == FlowMode.SHAPES:
+            shapes = self._shapes
+            if len(shapes) != len(self.ids):
+                shapes = [DEFAULT_SHAPE] * len(self.ids)
+            boxes = justified_boxes(shapes, *self._lines(), *self._area)
+            return list(zip(self.ids, boxes))
+
         return self._boxes(self.line_size())
 
     def _boxes(self, line_size: int) -> list[tuple[str, Box]]:
@@ -138,27 +244,22 @@ class FlowLayout:
         return boxes
 
     def id_at(self, row: int, col: int) -> str | None:
-        cols, rows = self.displayed_size()
-        if not (0 <= row < rows and 0 <= col < cols):
+        lengths, is_columns = self._lines()
+        line, place = (col, row) if is_columns else (row, col)
+        if not (0 <= line < len(lengths) and 0 <= place < lengths[line]):
             return None
-        if self.mode == FlowMode.COLS:
-            idx = col * rows + row
-        else:
-            idx = row * cols + col
-        if idx >= len(self.ids):
-            return None
-        return self.ids[idx]
+        return self.ids[sum(lengths[:line]) + place]
 
     def position_of(self, video_id: str) -> tuple[int, int] | None:
         if video_id not in self.ids:
             return None
-        idx = self.ids.index(video_id)
-        cols, rows = self.displayed_size()
-        if self.mode == FlowMode.COLS:
-            col, row = divmod(idx, rows)
-        else:
-            row, col = divmod(idx, cols)
-        return row, col
+        place = self.ids.index(video_id)
+        lengths, is_columns = self._lines()
+        line = 0
+        while place >= lengths[line]:
+            place -= lengths[line]
+            line += 1
+        return (place, line) if is_columns else (line, place)
 
     def order(self) -> list[str]:
         return list(self.ids)

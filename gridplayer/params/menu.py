@@ -668,6 +668,7 @@ SECTIONS = MappingProxyType(
                 "---",
                 "Rows First",
                 "Columns First",
+                "Fit Shapes",
                 "Fixed Grid",
                 "---",
                 "Size: %v",

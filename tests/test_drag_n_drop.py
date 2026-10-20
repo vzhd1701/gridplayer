@@ -68,7 +68,6 @@ def test_drop_is_replace_none_ignores_keys():
 class _Ctx:
     def __init__(self):
         self.is_drag_ui = False
-        self.grid_state = SimpleNamespace(mode=None)
         self.commands = SimpleNamespace(
             get_video_block_at=lambda *_a, **_k: None,
             get_cell_at=lambda *_a, **_k: None,
@@ -76,6 +75,7 @@ class _Ctx:
             activate_window=lambda: None,
             get_video_block_under_mouse=lambda: object(),
             is_pan_press=lambda _event: False,
+            grid_drop_mode=lambda: None,
         )
 
 
