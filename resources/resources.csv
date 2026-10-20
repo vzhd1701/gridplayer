@@ -92,6 +92,8 @@ icon-symbolic,icons/custom/folder tree.svg,folder-tree
 icon-symbolic,icons/custom/fullscreen.svg,fullscreen
 icon-symbolic,icons/custom/grid fit.svg,grid-fit
 icon-symbolic,icons/custom/fit shapes.svg,grid-fit-shapes
+icon-symbolic,icons/custom/fit lines.svg,grid-fit-lines
+icon-symbolic,icons/custom/reset lines.svg,grid-reset-lines
 icon-symbolic,icons/custom/grid size.svg,grid-size
 icon-symbolic,icons/custom/grid-show-all.svg,grid-show-all
 icon-symbolic,icons/custom/information.svg,information

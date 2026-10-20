@@ -1,0 +1,146 @@
+from PyQt5.QtCore import QPoint, QRect, QSize, Qt
+from PyQt5.QtGui import QColor, QPainter
+from PyQt5.QtWidgets import QWidget
+
+# a light line with a dark edge either side, to show over any picture
+LINE_COLOR = QColor("#eeeeee")
+EDGE_COLOR = QColor("#111111")
+
+
+class GridLineMark(QWidget):
+    """The line between two cells that the pointer is on, to be moved, or
+    that is being moved: thicker where it has snapped (see GridLines.snaps).
+
+    A window of its own, as a tip is: nothing painted in the player's own
+    window shows over a hardware video, which is a native window. It never
+    takes the mouse, nor is it ever made the active window.
+    """
+
+    # the light middle of the line, of one snapped, and either dark edge
+    core = 2
+    snapped_core = 4
+    edge = 1
+
+    def __init__(self, parent=None):
+        super().__init__(
+            parent,
+            Qt.ToolTip
+            | Qt.FramelessWindowHint
+            | Qt.WindowTransparentForInput
+            | Qt.NoDropShadowWindowHint,
+        )
+
+        self.setAttribute(Qt.WA_ShowWithoutActivating)
+        self.setAttribute(Qt.WA_TransparentForMouseEvents)
+
+        self._is_column = True
+
+    def show_line(
+        self, is_column: bool, position: int, start: int, end: int, is_snapped: bool
+    ) -> None:
+        """Show the line: a column's at x = position from y = start to end,
+        a row's at y = position from x = start to end, on the screen."""
+
+        core = self.snapped_core if is_snapped else self.core
+        thickness = core + 2 * self.edge
+        low = position - thickness // 2
+
+        if is_column:
+            rect = QRect(low, start, thickness, end - start)
+        else:
+            rect = QRect(start, low, end - start, thickness)
+
+        self._is_column = is_column
+
+        if rect != self.geometry():
+            self.setGeometry(rect)
+            self.update()
+
+        if self.isHidden():
+            self.show()
+
+            # made on its first show, the window can be put where the
+            # geometry says in device pixels, on a screen that scales
+            if self.geometry() != rect:
+                self.setGeometry(rect)
+
+    def paintEvent(self, event) -> None:
+        painter = QPainter(self)
+        painter.fillRect(self.rect(), EDGE_COLOR)
+
+        if self._is_column:
+            core = self.rect().adjusted(self.edge, 0, -self.edge, 0)
+        else:
+            core = self.rect().adjusted(0, self.edge, 0, -self.edge)
+
+        painter.fillRect(core, LINE_COLOR)
+
+
+class GridLineTag(QWidget):
+    """A word beside a line being moved that has snapped, saying why it
+    stopped there: a video fits, or the cells are even. A window of its
+    own, as the line is (see GridLineMark)."""
+
+    # between the word and the box's edge, and between the box and the line
+    padding = QSize(6, 2)
+    gap = 8
+
+    def __init__(self, parent=None):
+        super().__init__(
+            parent,
+            Qt.ToolTip
+            | Qt.FramelessWindowHint
+            | Qt.WindowTransparentForInput
+            | Qt.NoDropShadowWindowHint,
+        )
+
+        self.setAttribute(Qt.WA_ShowWithoutActivating)
+        self.setAttribute(Qt.WA_TransparentForMouseEvents)
+
+        self._text = ""
+
+    def show_text(self, text: str, is_column: bool, at: QPoint, room: QRect) -> None:
+        """Show the word beside a column's line at x = at.x(), or under a
+        row's at y = at.y(), by the pointer, kept inside room."""
+
+        metrics = self.fontMetrics()
+        size = QSize(
+            metrics.horizontalAdvance(text) + 2 * self.padding.width(),
+            metrics.height() + 2 * self.padding.height(),
+        )
+
+        if is_column:
+            x = at.x() + self.gap
+            if x + size.width() > room.right():
+                x = at.x() - self.gap - size.width()
+            y = at.y() - size.height() // 2
+        else:
+            x = at.x() - size.width() // 2
+            y = at.y() + self.gap
+            if y + size.height() > room.bottom():
+                y = at.y() - self.gap - size.height()
+
+        x = min(max(x, room.left()), room.right() - size.width())
+        y = min(max(y, room.top()), room.bottom() - size.height())
+        rect = QRect(QPoint(x, y), size)
+
+        if text != self._text:
+            self._text = text
+            self.update()
+
+        if rect != self.geometry():
+            self.setGeometry(rect)
+
+        if self.isHidden():
+            self.show()
+
+            # see GridLineMark.show_line
+            if self.geometry() != rect:
+                self.setGeometry(rect)
+
+    def paintEvent(self, event) -> None:
+        painter = QPainter(self)
+        painter.fillRect(self.rect(), EDGE_COLOR)
+        painter.fillRect(self.rect().adjusted(1, 1, -1, -1), LINE_COLOR)
+        painter.setPen(EDGE_COLOR)
+        painter.drawText(self.rect(), Qt.AlignCenter, self._text)

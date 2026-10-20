@@ -214,6 +214,13 @@ PLAYLIST_FIELDS: tuple[SettingField, ...] = (
         label=translate("Playlist Settings", "Show overlay border for active video"),
     ),
     CheckboxField(
+        settings_key="playlist/show_grid_lines",
+        label=translate("Playlist Settings", "Show grid lines on hover"),
+        tooltip=translate(
+            "SettingsDialog", "Show the line between two videos under the pointer."
+        ),
+    ),
+    CheckboxField(
         settings_key="playlist/overlay_hide_on_timeout",
         label=translate("Playlist Settings", "Hide overlay after timeout"),
     ),
@@ -286,6 +293,23 @@ PLAYLIST_FIELDS: tuple[SettingField, ...] = (
         settings_key="playlist/grid_preallocate",
         label=translate("SettingsDialog", "Show all cells even when empty"),
         shown_when=When("playlist/grid_mode", _GRID_FIXED),
+    ),
+    CheckboxField(
+        settings_key="playlist/grid_link",
+        label=translate("Link Rows", "Link rows or columns"),
+        tooltip=translate(
+            "Link Rows",
+            "Off, the lines in each row (or column) move on their own.",
+        ),
+        shown_when=When("playlist/grid_mode", _GRID_LINES),
+    ),
+    CheckboxField(
+        settings_key="playlist/grid_line_snap",
+        label=translate("Snap Lines", "Snap lines"),
+        tooltip=translate(
+            "SettingsDialog",
+            "A dragged line stops where a video fits or the cells are even.",
+        ),
     ),
     ComboField(
         settings_key="playlist/drop_action_internal",

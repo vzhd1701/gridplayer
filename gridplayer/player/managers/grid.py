@@ -2,7 +2,7 @@ import contextlib
 import random
 from typing import NamedTuple
 
-from PyQt5.QtCore import pyqtSignal
+from PyQt5.QtCore import QRect, pyqtSignal
 from PyQt5.QtWidgets import QMessageBox
 
 from gridplayer.dialogs.input_dialog import QCustomSpinboxInput, QFixedGridSizeDialog
@@ -14,14 +14,18 @@ from gridplayer.playlist_settings import PlaylistSettings
 from gridplayer.settings import Settings
 from gridplayer.utils.drop_zone import DropZone
 from gridplayer.utils.layout import (
+    EVEN,
     FULL_BOX,
     CellLayout,
     FlowLayout,
     FlowMode,
     GridLayout,
     Layout,
+    Weights,
     grid_box,
 )
+from gridplayer.utils.layout.flow_layout import DEFAULT_SHAPE
+from gridplayer.utils.layout.lines import FitCell, GridLines, Span, fit_weights
 from gridplayer.utils.qt import count_txt, translate
 from gridplayer.widgets.empty_cell import EmptyCell
 
@@ -65,7 +69,15 @@ class GridManager(ManagerBase):
             is_fit=Settings().get("playlist/grid_fit"),
             is_match_shapes=Settings().get("playlist/grid_match_shapes"),
             crop=Settings().get("playlist/grid_crop"),
+            is_linked=Settings().get("playlist/grid_link"),
         )
+        # the lines between the cells, moved by hand
+        self._weights = EVEN
+
+        # the last lines fit_weights found, and for what: asked for each
+        # time the menu is made, to say whether fitting would change them
+        self._fitted: tuple[tuple, Weights] | None = None
+
         self._empty_cells = []
         self._empty_positions = {}
         self._add_anchor = None
@@ -96,6 +108,8 @@ class GridManager(ManagerBase):
             "switch_is_grid_match_shapes": self.cmd_switch_is_grid_match_shapes,
             "is_grid_match_shapes": lambda: self._flow.is_match_shapes,
             "is_grid_size_auto": lambda: self._flow.size == 0,
+            "switch_is_grid_link": self.cmd_switch_is_grid_link,
+            "is_grid_link": lambda: self._flow.is_linked,
             "set_grid_crop": self.cmd_set_grid_crop,
             "is_grid_crop_set_to": lambda crop: self._flow.crop == crop,
             "is_grid_preallocate": lambda: self._grid_layout.preallocate,
@@ -112,6 +126,13 @@ class GridManager(ManagerBase):
             "grid_cell_count": lambda: self.grid_dimensions.max_size,
             "set_grid_state": self.set_grid_state,
             "apply_grid_config": self.apply_grid_config,
+            "grid_lines": self.grid_lines,
+            "grid_area": self.grid_area,
+            "set_grid_weights": self.set_grid_weights,
+            "fit_grid_lines": self.cmd_fit_grid_lines,
+            "reset_grid_lines": self.cmd_reset_grid_lines,
+            "is_grid_lines_fittable": self.is_grid_lines_fittable,
+            "is_grid_lines_moved": self.is_grid_lines_moved,
         }
 
     @property
@@ -145,12 +166,16 @@ class GridManager(ManagerBase):
             is_fit=self._flow.is_fit,
             is_match_shapes=self._flow.is_match_shapes,
             crop=self._flow.crop,
+            is_linked=self._flow.is_linked,
             size=self._flow.size,
             video_order=list(self._flow.ids),
             rows=self._grid_layout.max_rows,
             cols=self._grid_layout.max_cols,
             preallocate=self._grid_layout.preallocate,
             cells=list(self._grid_layout.cells),
+            col_weights=list(self._weights.cols),
+            row_weights=list(self._weights.rows),
+            line_weights=[list(weights) for weights in self._weights.lines],
         )
 
     def set_grid_state(self, state: GridState) -> None:
@@ -159,12 +184,18 @@ class GridManager(ManagerBase):
         self._flow.is_fit = state.is_fit
         self._flow.is_match_shapes = state.is_match_shapes
         self._flow.crop = state.crop
+        self._flow.is_linked = state.is_linked
         self._flow.size = state.size
         self._flow.ids = list(state.video_order)
         self._grid_layout.max_rows = max(1, state.rows)
         self._grid_layout.max_cols = max(1, state.cols)
         self._grid_layout.preallocate = state.preallocate
         self._grid_layout.cells = [cell.model_copy() for cell in state.cells]
+        self._weights = Weights(
+            tuple(state.col_weights),
+            tuple(state.row_weights),
+            tuple(tuple(weights) for weights in state.line_weights),
+        )
 
         if self._is_fixed:
             self._grid_layout.resize(
@@ -179,8 +210,8 @@ class GridManager(ManagerBase):
         self._render_video_grid()
 
     def apply_grid_config(self, config: GridState) -> bool:
-        """Apply mode/size/fit/match shapes/crop/rows/cols/preallocate like the
-        Grid menu.
+        """Apply mode/size/fit/match shapes/crop/link/rows/cols/preallocate
+        like the Grid menu.
 
         Restores do not use this — ``set_grid_state`` keeps cell positions.
         Returns False if the user cancelled a confirmation dialog.
@@ -204,6 +235,7 @@ class GridManager(ManagerBase):
             and self._flow.is_fit == config.is_fit
             and self._flow.is_match_shapes == config.is_match_shapes
             and self._flow.crop == config.crop
+            and self._flow.is_linked == config.is_linked
             and self._flow.size == config.size
         )
         if same_fixed or same_flow:
@@ -230,6 +262,14 @@ class GridManager(ManagerBase):
         self._flow.is_match_shapes = config.is_match_shapes
         self._flow.crop = config.crop
         self._flow.size = config.size
+        self._set_linked(config.is_linked)
+
+    def _set_linked(self, is_linked: bool) -> None:
+        # each row's own lines made one, where they are on average
+        if is_linked and not self._flow.is_linked:
+            self._weights = self._flow.linked(self._weights)
+
+        self._flow.is_linked = is_linked
 
     def grid_drop_mode(self) -> GridMode:
         """The mode drops go by: before or after a video along the line it
@@ -238,6 +278,147 @@ class GridManager(ManagerBase):
         if self._mode != GridMode.AUTO_SHAPES:
             return self._mode
         return GridMode.AUTO_COLS if self._flow.is_columns() else GridMode.AUTO_ROWS
+
+    def grid_lines(self) -> GridLines | None:
+        """The lines between the cells as they are laid out now, None
+        where there are none to move: in Fit Shapes, whose lines go by the
+        videos' shapes, in single mode, or with one cell."""
+
+        if self._ctx.is_single_mode or self._mode == GridMode.AUTO_SHAPES:
+            return None
+
+        if not self._ctx.video_blocks and not self._show_empties:
+            return None
+
+        cols, rows = self.grid_dimensions
+        area = self._grid.geometry()
+        if (cols <= 1 and rows <= 1) or area.isEmpty():
+            return None
+
+        cells = [
+            (box, getattr(widget, "picture_shape", None))
+            for widget, box in self._grid.placed()
+        ]
+        if not cells:
+            return None
+
+        return GridLines(
+            cells,
+            cols,
+            rows,
+            self._weights,
+            area.width(),
+            area.height(),
+            own={} if self._is_fixed else self._flow.own_lines(),
+            is_columns=not self._is_fixed and self._flow.is_columns(),
+        )
+
+    def grid_area(self) -> QRect:
+        """Where the cells are laid out, on the screen."""
+
+        area = self._grid.geometry()
+        return QRect(self.parent().mapToGlobal(area.topLeft()), area.size())
+
+    def set_grid_weights(self, weights: Weights) -> None:
+        """Move the lines between the cells (see Weights)."""
+
+        self._weights = weights
+        self._grid.invalidate()
+
+    def is_grid_lines_moved(self) -> bool:
+        lines = self.grid_lines()
+        return lines is not None and not lines.is_even()
+
+    def cmd_fit_grid_lines(self):
+        """Move the lines between the cells to where the videos show best,
+        the fewest bars left (see fit_weights)."""
+
+        lines = self.grid_lines()
+        if lines is None:
+            return
+
+        self.set_grid_weights(self._fitted_weights(lines))
+
+    def is_grid_lines_fittable(self) -> bool:
+        """Whether Fit Lines to Videos would move any line."""
+
+        lines = self.grid_lines()
+        if lines is None:
+            return False
+
+        return not lines.is_at(self._fitted_weights(lines))
+
+    def _fitted_weights(self, lines: GridLines) -> Weights:
+        cells = tuple(self._fit_cells())
+        own = tuple(sorted(lines.own.items()))
+        key = (cells, lines.cols, lines.rows, lines.width, lines.height, own)
+
+        if self._fitted is None or self._fitted[0] != key:
+            weights = fit_weights(
+                cells, lines.cols, lines.rows, lines.width, lines.height, lines.own
+            )
+            self._fitted = (key, weights)
+
+        return self._fitted[1]
+
+    def cmd_reset_grid_lines(self):
+        self.set_grid_weights(EVEN)
+
+    def _fit_cells(self) -> list[FitCell]:
+        """The cells for fit_weights, where they are in the grid. One with
+        no picture yet, or with none at all, is taken to be DEFAULT_SHAPE."""
+
+        def shape_of(video_id):
+            block = self._ctx.video_blocks.by_video_id(video_id)
+            return (block and block.picture_shape) or DEFAULT_SHAPE
+
+        if not self._is_fixed:
+            return self._fit_flow_cells(shape_of)
+
+        cells = []
+        covered = set()
+        for cell in self._grid_layout.cells:
+            if not cell.video_id:
+                continue
+            cells.append(
+                FitCell.at(
+                    cell.row,
+                    cell.col,
+                    shape_of(cell.video_id),
+                    cell.rowspan,
+                    cell.colspan,
+                )
+            )
+            covered.update(
+                (row, col)
+                for row in range(cell.row, cell.row + cell.rowspan)
+                for col in range(cell.col, cell.col + cell.colspan)
+            )
+
+        cols, rows = self._grid_layout.displayed_size()
+        cells.extend(
+            FitCell.at(row, col, DEFAULT_SHAPE)
+            for row in range(rows)
+            for col in range(cols)
+            if (row, col) not in covered
+        )
+        return cells
+
+    def _fit_flow_cells(self, shape_of) -> list[FitCell]:
+        # those of a line with lines of its own go between them, along it
+        own = self._flow.own_lines()
+        is_columns = self._flow.is_columns()
+
+        cells = []
+        for video_id in self._flow.ids:
+            row, col = self._flow.position_of(video_id)
+            width, height = Span("cols", col), Span("rows", row)
+            if is_columns and col in own:
+                height = Span(col, row)
+            elif not is_columns and row in own:
+                width = Span(row, col)
+            cells.append(FitCell(width, height, shape_of(video_id)))
+        return cells
 
     def grid_position_of(self, widget):
         return self._empty_positions.get(widget)
@@ -358,6 +539,11 @@ class GridManager(ManagerBase):
     def cmd_switch_is_grid_match_shapes(self):
         self._flow.is_match_shapes = not self._flow.is_match_shapes
         PlaylistSettings().set("playlist/grid_match_shapes", self._flow.is_match_shapes)
+        self.layout_changed.emit()
+
+    def cmd_switch_is_grid_link(self):
+        self._set_linked(not self._flow.is_linked)
+        PlaylistSettings().set("playlist/grid_link", self._flow.is_linked)
         self.layout_changed.emit()
 
     def cmd_set_grid_crop(self, crop: int):
@@ -648,7 +834,10 @@ class GridManager(ManagerBase):
             if not self._ctx.video_blocks and not self._show_empties:
                 widgets = self._grid.set_cells([(self._info_label, FULL_BOX)])
             elif self._is_fixed:
-                widgets = self._grid.set_cells(self._fixed_cells())
+                self._add_empty_cells()
+                widgets = [widget for widget, _box in self._fixed_cells()]
+                self._grid.set_widgets(widgets)
+                self._grid.set_place(self._place_fixed)
             else:
                 widgets = [widget for widget, _box in self._flow_cells()]
                 self._grid.set_widgets(widgets)
@@ -676,16 +865,19 @@ class GridManager(ManagerBase):
             if widget.isHidden():
                 widget.show()
 
-    def _fixed_cells(self):
+    def _place_fixed(self, _width, _height):
+        # the lines between the cells go where they are moved to, as they are
+        return self._fixed_cells()
+
+    def _add_empty_cells(self):
+        """An empty cell for each place in the grid no video covers."""
+
         cols, rows = self._grid_layout.displayed_size()
 
-        cells = []
         covered = set()
-        for cell, box in self._grid_layout.boxes():
-            vb = self._ctx.video_blocks.by_video_id(cell.video_id)
-            if vb is None:
+        for cell in self._grid_layout.cells:
+            if not cell.video_id:
                 continue
-            cells.append((vb, box))
             covered.update(
                 (row, col)
                 for row in range(cell.row, cell.row + cell.rowspan)
@@ -699,13 +891,25 @@ class GridManager(ManagerBase):
                 empty = EmptyCell(parent=self.parent())
                 self._empty_cells.append(empty)
                 self._empty_positions[empty] = (row, col)
-                cells.append((empty, grid_box(row, col, rows, cols)))
+
+    def _fixed_cells(self):
+        cols, rows = self._grid_layout.displayed_size()
+
+        cells = []
+        for cell, box in self._grid_layout.boxes(self._weights):
+            vb = self._ctx.video_blocks.by_video_id(cell.video_id)
+            if vb is not None:
+                cells.append((vb, box))
+
+        for empty in self._empty_cells:
+            row, col = self._empty_positions[empty]
+            cells.append((empty, grid_box(row, col, rows, cols, weights=self._weights)))
 
         return cells
 
     def _flow_cells(self):
         cells = []
-        for video_id, box in self._flow.boxes():
+        for video_id, box in self._flow.boxes(self._weights):
             vb = self._ctx.video_blocks.by_video_id(video_id)
             if vb is not None:
                 cells.append((vb, box))

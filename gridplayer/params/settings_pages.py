@@ -68,6 +68,7 @@ PLAYLIST_PAGE = (
         translate("SettingsDialog", "Overlay"),
         "playlist/disable_overlay",
         "playlist/show_overlay_border",
+        "playlist/show_grid_lines",
         "playlist/overlay_hide_on_timeout",
         Indented("playlist/overlay_timeout"),
     ),
@@ -82,6 +83,8 @@ PLAYLIST_PAGE = (
         "playlist/grid_rows",
         "playlist/grid_cols",
         "playlist/grid_preallocate",
+        "playlist/grid_link",
+        "playlist/grid_line_snap",
     ),
     Section(
         translate("SettingsDialog", "Drag-n-Drop"),

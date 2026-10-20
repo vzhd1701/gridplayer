@@ -147,6 +147,8 @@ class Playlist(BaseModel):
     pause_background_videos: bool | None = None
     pause_minimized: bool | None = None
     show_overlay_border: bool | None = None
+    show_grid_lines: bool | None = None
+    grid_line_snap: bool | None = None
     overlay_hide_on_timeout: bool | None = None
     overlay_timeout: int | None = None
     unsaved_changes: UnsavedChangesMode | None = None
@@ -458,6 +460,9 @@ class Playlist(BaseModel):
             data.pop("cells", None)
         if not state.video_order:
             data.pop("video_order", None)
+        for weights in ("col_weights", "row_weights", "line_weights"):
+            if not data.get(weights):
+                data.pop(weights, None)
 
         return data or None
 

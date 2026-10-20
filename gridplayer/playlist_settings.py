@@ -158,8 +158,9 @@ def grid_state_for_dump(live) -> GridState:
     """GridState for the playlist file dump.
 
     Only session-overridden grid attrs are explicit; inherited attrs are left
-    to defaults so the fields_set-based dump omits them. ``cells`` and
-    ``video_order`` are always explicit (they are not settings).
+    to defaults so the fields_set-based dump omits them. ``cells``,
+    ``video_order`` and the weights are always explicit (they are not
+    settings).
     """
     session = PlaylistSettings()
     is_all = session.is_keeping_all()
@@ -172,4 +173,7 @@ def grid_state_for_dump(live) -> GridState:
         **explicit,
         cells=list(live.cells),
         video_order=list(live.video_order),
+        col_weights=list(live.col_weights),
+        row_weights=list(live.row_weights),
+        line_weights=[list(weights) for weights in live.line_weights],
     )

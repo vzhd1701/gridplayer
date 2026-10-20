@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import itertools
 import math
 import random
 from collections.abc import Mapping
@@ -7,7 +8,13 @@ from enum import Enum, auto
 from typing import NamedTuple
 
 from gridplayer.utils.drop_zone import DropZone, insert_index
-from gridplayer.utils.layout.boxes import Box, picture_score
+from gridplayer.utils.layout.boxes import (
+    EVEN,
+    Box,
+    Weights,
+    line_edges,
+    picture_score,
+)
 from gridplayer.utils.layout.justified import (
     Split,
     best_splits,
@@ -50,6 +57,7 @@ class FlowLayout:
         ids: list[str] | None = None,
         is_match_shapes: bool = False,
         crop: int = 0,
+        is_linked: bool = True,
     ):
         self.mode = mode
         self.size = size
@@ -59,6 +67,9 @@ class FlowLayout:
         self.ids: list[str] = list(ids) if ids else []
         # in Fit Shapes, the percent of a picture its tile may leave out
         self.crop = crop
+        # the lines between the videos of a row go across all the rows, else
+        # each row has its own (see own_lines)
+        self.is_linked = is_linked
 
         # the line size fit_to chose, and for how many videos in which mode
         self._fitted: tuple[int, FlowMode, int] | None = None
@@ -214,13 +225,14 @@ class FlowLayout:
             return line_size, lines
         return lines, line_size
 
-    def boxes(self) -> list[tuple[str, Box]]:
+    def boxes(self, weights: Weights = EVEN) -> list[tuple[str, Box]]:
         """Where each video goes, in order.
 
         Videos fill the grid a line at a time: a row in Rows First, a column
-        in Columns First. With Fill Gaps, those of a last line left short
-        share all of it. In Fit Shapes, each takes a tile of its shape, in
-        the lines fit_to chose, stretched by up to crop.
+        in Columns First, the lines between the cells where the weights
+        have them, a line's own where it has them (see own_lines). In Fit
+        Shapes, each takes a tile of its shape, in the lines fit_to chose,
+        stretched by up to crop.
         """
         if self.mode == FlowMode.SHAPES:
             shapes = self._shapes
@@ -231,19 +243,81 @@ class FlowLayout:
             )
             return list(zip(self.ids, boxes))
 
-        return self._boxes(self.line_size())
+        return self._boxes(self.line_size(), weights)
 
-    def _boxes(self, line_size: int) -> list[tuple[str, Box]]:
+    def own_lines(self) -> dict[int, int]:
+        """The lines (rows in Rows First) whose lines between the videos
+        are their own, by index, and how many places each has for them.
+
+        With Link Rows off, every line, as many places as a full one has.
+        Else only a last line left short that Fill Gaps spreads its videos
+        over all of, a place for each.
+        """
+
+        if self.mode == FlowMode.SHAPES:
+            return {}
+
+        return self._own_lines(self.line_size())
+
+    def _own_lines(self, line_size: int) -> dict[int, int]:
+        full, rest = divmod(len(self.ids), line_size)
+
+        own = {}
+        if not self.is_linked:
+            own = dict.fromkeys(range(full + bool(rest)), line_size)
+        if rest and self.is_fit:
+            own[full] = rest
+        return own
+
+    def linked(self, weights: Weights) -> Weights:
+        """The lines as they are to be once Link Rows is turned on: the
+        full lines' own made one, where they are on average. Those of a
+        line Fill Gaps spreads stay its own."""
+
+        if self.mode == FlowMode.SHAPES or not self.ids:
+            return weights
+
+        line_size = self.line_size()
+        field = "rows" if self.mode == FlowMode.COLS else "cols"
+        shared = getattr(weights, field)
+
+        full, rest = divmod(len(self.ids), line_size)
+        totals = [0.0] * line_size
+        for line in range(full):
+            edges = line_edges(line_size, weights.line_weights(line, line_size, shared))
+            for place, (low, high) in enumerate(itertools.pairwise(edges)):
+                totals[place] += high - low
+
+        linked = weights._replace(lines=())
+        if full:
+            linked = linked._replace(**{field: tuple(total / full for total in totals)})
+        if rest and self.is_fit:
+            linked = linked.with_line(full, weights.line_weights(full, rest, ()))
+        return linked
+
+    def _boxes(self, line_size: int, weights: Weights = EVEN) -> list[tuple[str, Box]]:
         line_count = max(math.ceil(len(self.ids) / line_size), 1)
-        last_line = len(self.ids) - line_size * (line_count - 1)
+
+        if self.mode == FlowMode.COLS:
+            along_weights, across_weights = weights.rows, weights.cols
+        else:
+            along_weights, across_weights = weights.cols, weights.rows
+
+        along_edges = line_edges(line_size, along_weights)
+        across_edges = line_edges(line_count, across_weights)
+
+        own_edges = {
+            line: line_edges(places, weights.line_weights(line, places, along_weights))
+            for line, places in self._own_lines(line_size).items()
+        }
 
         boxes = []
         for index, video_id in enumerate(self.ids):
             line, place = divmod(index, line_size)
-            places = last_line if self.is_fit and line == line_count - 1 else line_size
+            edges = own_edges.get(line, along_edges)
 
-            along = (place / places, (place + 1) / places)
-            across = (line / line_count, (line + 1) / line_count)
+            along = (edges[place], edges[place + 1])
+            across = (across_edges[line], across_edges[line + 1])
             if self.mode == FlowMode.COLS:
                 box = Box(across[0], along[0], across[1], along[1])
             else:

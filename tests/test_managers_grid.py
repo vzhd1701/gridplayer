@@ -418,3 +418,165 @@ def test_fit_shapes_crops_as_much_as_allowed():
     assert rects()[0][0] > 0
 
     window.close()
+
+
+def _two_cells_grid(shapes, mode=GridMode.AUTO_ROWS, width=1600):
+    window = QWidget()
+    window.resize(width, 600)
+    cells = [_NativeCell(f"v{n}", window) for n in range(len(shapes))]
+    for cell, shape in zip(cells, shapes):
+        cell.picture_shape = shape
+    ctx = SimpleNamespace(
+        video_blocks=_Cells(cells),
+        is_shuffle_on_load=False,
+        is_single_mode=False,
+        commands=SimpleNamespace(remove_video_blocks=lambda *_a, **_k: None),
+    )
+    grid = GridManager(context=ctx, parent=window)
+    grid.layout_changed.connect(grid.reload_video_grid)
+    grid.set_grid_state(GridState(mode=mode, is_match_shapes=False))
+    window.show()
+    QApplication.processEvents()
+    return window, grid, cells
+
+
+def test_moved_lines_kept_in_the_grid_state():
+    window, grid, cells = _two_cells_grid((9 / 16, 16 / 9))
+
+    assert [c.geometry().getRect() for c in cells] == [
+        (0, 0, 800, 600),
+        (800, 0, 800, 600),
+    ]
+
+    lines = grid.grid_lines()
+    grid.set_grid_weights(lines.moved(lines.line_at(800, 300, 4), 400))
+    QApplication.processEvents()
+
+    assert [c.geometry().getRect() for c in cells] == [
+        (0, 0, 400, 600),
+        (400, 0, 1200, 600),
+    ]
+    assert grid.grid_state().col_weights == [0.25, 0.75]
+    assert grid.is_grid_lines_moved()
+
+    grid.cmd_reset_grid_lines()
+    QApplication.processEvents()
+    assert cells[0].geometry().width() == 800
+    assert grid.grid_state().col_weights == []
+
+    grid.set_grid_state(GridState(mode=GridMode.AUTO_ROWS, col_weights=[0.25, 0.75]))
+    QApplication.processEvents()
+    assert cells[0].geometry().width() == 400
+
+    window.close()
+
+
+def test_fit_lines_to_videos():
+    # no room for both whole: the phone video just fits, the wide one has
+    # the rest
+    window, grid, cells = _two_cells_grid((9 / 16, 16 / 9), width=1400)
+
+    assert grid.is_grid_lines_fittable()
+
+    grid.cmd_fit_grid_lines()
+    QApplication.processEvents()
+
+    assert abs(cells[0].geometry().width() - 600 * 9 / 16) <= 1
+    assert grid.is_grid_lines_moved()
+    # fitted already: nothing more to fit
+    assert not grid.is_grid_lines_fittable()
+
+    window.close()
+
+
+def test_nothing_to_fit_for_videos_the_cells_shape():
+    window, grid, _cells = _two_cells_grid((16 / 9, 16 / 9), width=2134)
+
+    assert not grid.is_grid_lines_fittable()
+
+    window.close()
+
+
+def test_no_lines_to_move_in_fit_shapes():
+    window, grid, _cells = _two_cells_grid((9 / 16, 16 / 9), GridMode.AUTO_SHAPES)
+
+    assert grid.grid_lines() is None
+
+    window.close()
+
+
+def test_unlinked_rows_move_their_lines_alone():
+    window, grid, cells = _two_cells_grid((16 / 9,) * 4, width=1000)
+
+    grid.cmd_switch_is_grid_link()
+    QApplication.processEvents()
+    assert grid.grid_state().is_linked is False
+
+    # the top row's line
+    lines = grid.grid_lines()
+    grid.set_grid_weights(lines.moved(lines.line_at(500, 150, 4), 300))
+    QApplication.processEvents()
+
+    assert [c.geometry().width() for c in cells] == [300, 700, 500, 500]
+    assert grid.grid_state().line_weights == [[0.3, 0.7], [0.5, 0.5]]
+
+    # linked again, where the rows are on average
+    grid.cmd_switch_is_grid_link()
+    QApplication.processEvents()
+
+    assert [c.geometry().width() for c in cells] == [400, 600, 400, 600]
+    assert grid.grid_state().line_weights == []
+    assert grid.grid_state().col_weights == [0.4, 0.6]
+
+    window.close()
+
+
+def test_unlinked_fit_fits_each_row():
+    # a phone video then a wide one, over a wide one then a phone video:
+    # no room for both whole in a row
+    window, grid, cells = _two_cells_grid((9 / 16, 16 / 9, 16 / 9, 9 / 16), width=600)
+    grid.cmd_switch_is_grid_link()
+    QApplication.processEvents()
+
+    grid.cmd_fit_grid_lines()
+    QApplication.processEvents()
+
+    assert abs(cells[0].geometry().width() - 300 * 9 / 16) <= 1
+    assert abs(cells[3].geometry().width() - 300 * 9 / 16) <= 1
+    assert not grid.is_grid_lines_fittable()
+
+    window.close()
+
+
+def test_fixed_grid_lines_move_at_once():
+    window, grid, cells = _two_cells_grid((9 / 16, 16 / 9), width=1500)
+    grid.set_grid_state(
+        GridState(
+            mode=GridMode.FIXED,
+            rows=1,
+            cols=3,
+            preallocate=True,
+            cells=[
+                GridCell(video_id="v0", row=0, col=0),
+                GridCell(video_id="v1", row=0, col=1),
+            ],
+        )
+    )
+    QApplication.processEvents()
+    (empty,) = grid._empty_cells
+    assert empty.geometry().getRect() == (1000, 0, 500, 600)
+
+    # the line between the second video and the empty cell
+    lines = grid.grid_lines()
+    grid.set_grid_weights(lines.moved(lines.line_at(1000, 300, 4), 1200))
+    QApplication.processEvents()
+
+    assert cells[1].geometry().getRect() == (500, 0, 700, 600)
+    assert empty.geometry().getRect() == (1200, 0, 300, 600)
+
+    # and found where it is now, on the cells' edges
+    lines = grid.grid_lines()
+    assert lines.line_at(1200, 300, 4) is not None
+    assert lines.line_at(1000, 300, 4) is None
+
+    window.close()

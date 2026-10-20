@@ -105,10 +105,16 @@ _default_settings = {
     # in Fit Shapes, the percent of each video its tile may cut off to fill
     # the window
     "playlist/grid_crop": 0,
+    # on Auto, the lines between a row's videos go across all the rows, else
+    # each row's are its own
+    "playlist/grid_link": True,
     "playlist/grid_size": 0,
     "playlist/grid_rows": 3,
     "playlist/grid_cols": 3,
     "playlist/grid_preallocate": False,
+    # a line between cells being dragged stops where a video fits its cell or
+    # the cells on either side are even
+    "playlist/grid_line_snap": True,
     "playlist/save_paths_relative": False,
     # every setting written into the playlist, not only those it changes
     "playlist/save_all_settings": False,
@@ -144,6 +150,9 @@ _default_settings = {
     "playlist/pause_background_videos": True,
     "playlist/pause_minimized": True,
     "playlist/show_overlay_border": True,
+    # the line between two cells shown when the pointer is on it, not only
+    # once pressed to move it
+    "playlist/show_grid_lines": True,
     "playlist/overlay_hide_on_timeout": True,
     "playlist/overlay_timeout": 3,
     "video_defaults/cell_view_mode": VideoCellViewMode.FILL,

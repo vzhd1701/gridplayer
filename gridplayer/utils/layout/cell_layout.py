@@ -41,6 +41,9 @@ class CellLayout(QLayout):
         self._items: list[QWidgetItem] = []
         self._place: Place = _place_nothing
 
+        # where the cells went the last time the area was laid out
+        self._placed: list[tuple[QWidget, Box]] = []
+
     def set_widgets(self, widgets: Iterable[QWidget]) -> None:
         while self.takeAt(0) is not None:
             pass
@@ -51,6 +54,13 @@ class CellLayout(QLayout):
     def set_place(self, place: Place) -> None:
         self._place = place
         self.invalidate()
+
+    def placed(self) -> list[tuple[QWidget, Box]]:
+        """The cells and their boxes, as the area was last laid out."""
+
+        return [
+            (widget, box) for widget, box in self._placed if not sip.isdeleted(widget)
+        ]
 
     def set_cells(self, cells: list[tuple[QWidget, Box]]) -> list[QWidget]:
         """Lay out these widgets in these boxes, whatever the area's size.
@@ -91,9 +101,12 @@ class CellLayout(QLayout):
         # a widget deleted since is out of the items, still in the place
         laid_out = {id(item.widget()) for item in self._items}
 
+        self._placed = []
         for widget, box in self._place(rect.width(), rect.height()):
             if id(widget) not in laid_out or sip.isdeleted(widget):
                 continue
+
+            self._placed.append((widget, box))
 
             x, y, width, height = box_rect(box, rect.width(), rect.height())
             widget.setGeometry(QRect(rect.x() + x, rect.y() + y, width, height))

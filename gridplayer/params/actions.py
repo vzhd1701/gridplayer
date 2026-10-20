@@ -2556,6 +2556,41 @@ ACTIONS = MappingProxyType(
             "check_if": "is_grid_preallocate",
             "show_if": ("is_grid_mode_set_to", GridMode.FIXED),
         },
+        "Fit Lines to Videos": {
+            "title": translate("Actions", "Fit Lines to Videos"),
+            "icon": "grid-fit-lines",
+            "func": "fit_grid_lines",
+            "enable_if": "is_grid_lines_fittable",
+            "show_if": NOT(("is_grid_mode_set_to", GridMode.AUTO_SHAPES)),
+        },
+        "Reset Lines": {
+            "title": translate("Actions", "Reset Lines"),
+            "icon": "grid-reset-lines",
+            "func": "reset_grid_lines",
+            "enable_if": "is_grid_lines_moved",
+            "show_if": NOT(("is_grid_mode_set_to", GridMode.AUTO_SHAPES)),
+        },
+        "Snap Lines": {
+            "title": translate("Snap Lines", "Snap Lines"),
+            "icon": "empty",
+            "func": "toggle_grid_line_snap",
+            "check_if": "is_grid_line_snap",
+            "show_if": NOT(("is_grid_mode_set_to", GridMode.AUTO_SHAPES)),
+        },
+        "Link Rows": {
+            "title": (
+                translate("Link Rows", "Link Rows"),
+                translate("Link Rows", "Link Columns"),
+            ),
+            "toggle": ("is_grid_mode_set_to", GridMode.AUTO_COLS),
+            "icon": "empty",
+            "func": "switch_is_grid_link",
+            "check_if": "is_grid_link",
+            "show_if": OR(
+                ("is_grid_mode_set_to", GridMode.AUTO_ROWS),
+                ("is_grid_mode_set_to", GridMode.AUTO_COLS),
+            ),
+        },
         "Save Snapshot (0)": {
             "title": translate("Actions", "Save Snapshot") + " (0)",
             "key": "Ctrl+Alt+0",
@@ -2778,6 +2813,12 @@ ACTIONS = MappingProxyType(
             "icon": "empty",
             "func": "toggle_show_overlay_border",
             "check_if": "is_show_overlay_border",
+        },
+        "Show Grid Lines": {
+            "title": translate("Playlist Settings", "Show grid lines on hover"),
+            "icon": "empty",
+            "func": "toggle_show_grid_lines",
+            "check_if": "is_show_grid_lines",
         },
         "Hide Overlay After Timeout": {
             "title": translate("Playlist Settings", "Hide overlay after timeout"),
