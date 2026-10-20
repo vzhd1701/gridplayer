@@ -2460,7 +2460,7 @@ ACTIONS = MappingProxyType(
             "is_choice": True,
         },
         "Fit Cells": {
-            "title": translate("Actions", "Fit Cells"),
+            "title": translate("Fill Gaps", "Fill Gaps"),
             "icon": "grid-fit",
             "func": "switch_is_grid_fit",
             "check_if": "is_grid_fit",
@@ -2475,8 +2475,12 @@ ACTIONS = MappingProxyType(
             "show_if": NOT(("is_grid_mode_set_to", GridMode.FIXED)),
         },
         "Size: %v": {
-            "title": translate("Actions", "Size: %v"),
-            "keymap_title": translate("Actions", "Set Size"),
+            "title": (
+                translate("Grid Size", "Per Row: %v"),
+                translate("Grid Size", "Per Column: %v"),
+            ),
+            "keymap_title": translate("Grid Size", "Set Videos per Row or Column"),
+            "toggle": ("is_grid_mode_set_to", GridMode.AUTO_COLS),
             "icon": "grid-size",
             "func": "ask_grid_size",
             "value_getter": "get_grid_size",

@@ -303,9 +303,14 @@ class GridManager(ManagerBase):
         self.layout_changed.emit()
 
     def cmd_ask_grid_size(self):
+        if self._flow.mode == FlowMode.COLS:
+            title = translate("Grid Size", "Videos per column")
+        else:
+            title = translate("Grid Size", "Videos per row")
+
         size = QCustomSpinboxInput.get_int(
             parent=self.parent(),
-            title=translate("Dialog - Set grid size", "Set grid size", "Header"),
+            title=title,
             special_text=translate("Grid Size", "Auto"),
             initial_value=self._flow.size,
             _min=0,

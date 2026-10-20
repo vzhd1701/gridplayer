@@ -114,7 +114,7 @@ class FlowLayout:
         """Where each video goes, in order.
 
         Videos fill the grid a line at a time: a row in Rows First, a column
-        in Columns First. With Fit Cells, those of a last line left short
+        in Columns First. With Fill Gaps, those of a last line left short
         share all of it.
         """
         return self._boxes(self.line_size())

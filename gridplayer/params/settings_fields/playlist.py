@@ -234,7 +234,7 @@ PLAYLIST_FIELDS: tuple[SettingField, ...] = (
     ),
     SpinField(
         settings_key="playlist/grid_size",
-        label=translate("SettingsDialog", "Grid size"),
+        label=translate("Grid Size", "Videos per row or column"),
         minimum=0,
         maximum=1000,
         special_text=translate("SettingsDialog", "Auto"),
@@ -242,7 +242,7 @@ PLAYLIST_FIELDS: tuple[SettingField, ...] = (
     ),
     CheckboxField(
         settings_key="playlist/grid_fit",
-        label=translate("SettingsDialog", "Fit grid cells"),
+        label=translate("Fill Gaps", "Fill gaps"),
         shown_when=When("playlist/grid_mode", _GRID_AUTO),
     ),
     CheckboxField(
