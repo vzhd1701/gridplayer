@@ -100,6 +100,8 @@ _default_settings = {
     "cache/max_mb": 1024,
     "playlist/grid_mode": GridMode.AUTO_ROWS,
     "playlist/grid_fit": True,
+    # on Auto, the column count goes by the videos' shapes and the window's
+    "playlist/grid_match_shapes": True,
     "playlist/grid_size": 0,
     "playlist/grid_rows": 3,
     "playlist/grid_cols": 3,

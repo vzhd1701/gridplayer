@@ -81,6 +81,7 @@ class Player(QWidget, ManagersManager):
                 ("warning", "dialogs.warning"),
                 ("video_blocks.video_count_changed", "reload_video_grid"),
                 ("layout_changed", "reload_video_grid"),
+                ("video_blocks.picture_shape_changed", "fit_to_shapes"),
             ],
             "screensaver": [
                 ("video_blocks.playings_videos_count_changed", "screensaver_check")

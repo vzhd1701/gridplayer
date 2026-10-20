@@ -672,6 +672,7 @@ SECTIONS = MappingProxyType(
                 "---",
                 "Size: %v",
                 "Fit Cells",
+                "Match Shapes",
                 "Grid Size: %v",
                 "Show All Cells",
             ),

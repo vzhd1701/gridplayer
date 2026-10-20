@@ -17,6 +17,7 @@ from gridplayer.utils.aspect_calc import (
     calc_followed_view,
     calc_moved_shift,
     calc_picture_rect,
+    calc_picture_shape,
     calc_ratio_crop,
     calc_selection_zoom,
     calc_shared_view,
@@ -1729,3 +1730,24 @@ class TestCropRatio:
 
         _, _, width, height = placement.target
         assert width / height == pytest.approx(parse_aspect_ratio(ratio), rel=0.005)
+
+
+@pytest.mark.parametrize(
+    ("crop", "transform", "pixel_aspect", "shape"),
+    [
+        (NO_CROP, VideoTransform.NONE, 1, 16 / 9),
+        (NO_CROP, VideoTransform.ROTATE_90, 1, 9 / 16),
+        (NO_CROP, VideoTransform.ROTATE_180, 1, 16 / 9),
+        (VideoCrop(420, 0, 420, 0), VideoTransform.NONE, 1, 1),
+        (NO_CROP, VideoTransform.NONE, 0.75, 4 / 3),
+    ],
+    ids=["as_is", "turned", "upside_down", "cut_square", "squeezed_pixels"],
+)
+def test_picture_shape(crop, transform, pixel_aspect, shape):
+    assert calc_picture_shape(VIDEO, crop, transform, pixel_aspect) == pytest.approx(
+        shape
+    )
+
+
+def test_picture_shape_of_no_frame():
+    assert calc_picture_shape((0, 0), NO_CROP, VideoTransform.NONE) is None

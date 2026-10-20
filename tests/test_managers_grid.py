@@ -140,6 +140,7 @@ class _NativeCell(QWidget):
         super().__init__(parent)
         self.id = video_id
         self.video_id = video_id
+        self.picture_shape = None
         self.shown_at = []
         self.winId()
 
@@ -243,5 +244,91 @@ def test_fixed_cell_spans_its_cells():
     ]
     empties = [grid.grid_position_of(e) for e in grid._empty_cells]
     assert empties == [(1, 2), (2, 0), (2, 1)]
+
+    window.close()
+
+
+def test_auto_follows_the_shapes_and_the_window():
+    window = QWidget()
+    window.resize(1200, 600)
+    cells = [_NativeCell(f"v{n}", window) for n in range(3)]
+    ctx = SimpleNamespace(
+        video_blocks=_Cells(cells),
+        is_shuffle_on_load=False,
+        is_single_mode=False,
+        commands=SimpleNamespace(remove_video_blocks=lambda *_a, **_k: None),
+    )
+    grid = GridManager(context=ctx, parent=window)
+    grid.set_grid_state(GridState(mode=GridMode.AUTO_ROWS, is_fit=True, size=0))
+    window.show()
+    QApplication.processEvents()
+
+    def rects():
+        return [c.geometry().getRect() for c in cells]
+
+    # none known yet: taken as wide
+    assert rects() == [(0, 0, 600, 300), (600, 0, 600, 300), (0, 300, 1200, 300)]
+
+    for cell in cells:
+        cell.picture_shape = 9 / 16
+    grid.fit_to_shapes()
+    QApplication.processEvents()
+    assert rects() == [(0, 0, 400, 600), (400, 0, 400, 600), (800, 0, 400, 600)]
+
+    for cell in cells:
+        cell.picture_shape = 16 / 9
+    grid.fit_to_shapes()
+    window.resize(600, 1200)
+    QApplication.processEvents()
+    assert rects() == [(0, 0, 600, 400), (0, 400, 600, 400), (0, 800, 600, 400)]
+
+    window.close()
+
+
+def test_size_set_by_hand_ignores_the_shapes():
+    window = QWidget()
+    window.resize(1200, 600)
+    cells = [_NativeCell(f"v{n}", window) for n in range(3)]
+    for cell in cells:
+        cell.picture_shape = 9 / 16
+    ctx = SimpleNamespace(
+        video_blocks=_Cells(cells),
+        is_shuffle_on_load=False,
+        is_single_mode=False,
+        commands=SimpleNamespace(remove_video_blocks=lambda *_a, **_k: None),
+    )
+    grid = GridManager(context=ctx, parent=window)
+    grid.set_grid_state(GridState(mode=GridMode.AUTO_ROWS, is_fit=True, size=2))
+
+    assert grid.grid_dimensions == (2, 2)
+    assert cells[2].geometry().getRect() == (0, 300, 1200, 300)
+
+    window.close()
+
+
+def test_match_shapes_off_keeps_the_square_grid():
+    window = QWidget()
+    window.resize(1200, 600)
+    cells = [_NativeCell(f"v{n}", window) for n in range(3)]
+    for cell in cells:
+        cell.picture_shape = 9 / 16
+    ctx = SimpleNamespace(
+        video_blocks=_Cells(cells),
+        is_shuffle_on_load=False,
+        is_single_mode=False,
+        commands=SimpleNamespace(remove_video_blocks=lambda *_a, **_k: None),
+    )
+    grid = GridManager(context=ctx, parent=window)
+    grid.layout_changed.connect(grid.reload_video_grid)
+    grid.set_grid_state(
+        GridState(mode=GridMode.AUTO_ROWS, is_fit=True, is_match_shapes=False)
+    )
+    assert grid.grid_dimensions == (2, 2)
+    assert grid.grid_state().is_match_shapes is False
+
+    grid.cmd_switch_is_grid_match_shapes()
+
+    assert grid.grid_dimensions == (3, 1)
+    assert cells[2].geometry().getRect() == (800, 0, 400, 600)
 
     window.close()

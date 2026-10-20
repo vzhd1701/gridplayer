@@ -868,6 +868,25 @@ def calc_frame_pixel_shape(
     return frame_h / frame_w, frame_w * pixel_aspect / frame_h
 
 
+def calc_picture_shape(
+    frame_size: tuple[int, int],
+    crop: VideoCrop,
+    transform: VideoTransform | None,
+    pixel_aspect: float = 1.0,
+) -> float | None:
+    """How wide the picture is for its height on screen: what the crop
+    keeps of the frame, turned and in pixels as wide as pixel_aspect says.
+    None where there is no frame to work it out from."""
+
+    if min(*frame_size, pixel_aspect) <= 0:
+        return None
+
+    _x, _y, region_w, region_h = calc_crop_region(frame_size, crop)
+    unit_x, unit_y = calc_frame_pixel_shape(frame_size, transform, pixel_aspect)
+
+    return region_w * unit_x / (region_h * unit_y)
+
+
 def parse_aspect_ratio(text: str) -> float | None:
     """How wide for its height a ratio as VLC writes one says: "16:9",
     "2.35:1". None for anything else, an empty one among them."""

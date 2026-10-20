@@ -52,6 +52,15 @@ class CellLayout(QLayout):
         self._place = place
         self.invalidate()
 
+    def set_cells(self, cells: list[tuple[QWidget, Box]]) -> list[QWidget]:
+        """Lay out these widgets in these boxes, whatever the area's size.
+        Returns the widgets."""
+
+        widgets = [widget for widget, _box in cells]
+        self.set_widgets(widgets)
+        self.set_place(lambda _width, _height: cells)
+        return widgets
+
     # --- QLayout ---
 
     def addItem(self, item):

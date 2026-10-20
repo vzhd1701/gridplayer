@@ -245,6 +245,16 @@ PLAYLIST_FIELDS: tuple[SettingField, ...] = (
         label=translate("SettingsDialog", "Fit grid cells"),
         shown_when=When("playlist/grid_mode", _GRID_AUTO),
     ),
+    CheckboxField(
+        settings_key="playlist/grid_match_shapes",
+        label=translate("Match Shapes", "Match video shapes"),
+        tooltip=translate(
+            "Match Shapes",
+            "Pick the number of columns that shows the videos biggest.",
+        ),
+        shown_when=When("playlist/grid_mode", _GRID_AUTO),
+        enabled_when=When("playlist/grid_size", (0,)),
+    ),
     SpinField(
         settings_key="playlist/grid_rows",
         label=translate("SettingsDialog", "Rows"),

@@ -166,6 +166,7 @@ def test_the_grid_state_names_are_the_grid_fields():
     assert GRID_STATE_ATTR == {
         "playlist/grid_mode": "mode",
         "playlist/grid_fit": "is_fit",
+        "playlist/grid_match_shapes": "is_match_shapes",
         "playlist/grid_size": "size",
         "playlist/grid_rows": "rows",
         "playlist/grid_cols": "cols",

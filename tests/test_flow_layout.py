@@ -1,3 +1,5 @@
+import pytest
+
 from gridplayer.utils.drop_zone import DropZone
 from gridplayer.utils.layout import Box, FlowLayout, FlowMode
 
@@ -118,3 +120,87 @@ def test_boxes_fit_cells_share_the_last_column():
 
 def test_boxes_one_video_fills():
     assert FlowLayout(ids=["A"], is_fit=True).boxes() == [("A", Box(0, 0, 1, 1))]
+
+
+WIDE, TALL = 16 / 9, 9 / 16
+
+
+def _fitted(shapes, width, height, mode=FlowMode.ROWS, is_fit=True):
+    layout = FlowLayout(
+        is_match_shapes=True,
+        mode=mode,
+        is_fit=is_fit,
+        ids=[str(i) for i in range(len(shapes))],
+    )
+    layout.fit_to(width, height, {str(i): s for i, s in enumerate(shapes)})
+    return layout.displayed_size()
+
+
+@pytest.mark.parametrize("is_fit", [True, False])
+@pytest.mark.parametrize("count", range(1, 26))
+def test_auto_keeps_the_square_grid_for_wide_videos_in_a_wide_window(count, is_fit):
+    layout = _flow(count)
+    assert _fitted([WIDE] * count, 1920, 1080, is_fit=is_fit) == layout.displayed_size()
+
+
+@pytest.mark.parametrize("mode", [FlowMode.ROWS, FlowMode.COLS])
+def test_auto_puts_tall_videos_side_by_side(mode):
+    assert _fitted([TALL] * 3, 1920, 1080, mode) == (3, 1)
+
+
+@pytest.mark.parametrize("mode", [FlowMode.ROWS, FlowMode.COLS])
+def test_auto_stacks_wide_videos_in_a_tall_window(mode):
+    assert _fitted([WIDE] * 3, 1080, 1920, mode) == (1, 3)
+
+
+def test_auto_takes_a_video_of_unknown_shape_as_wide():
+    layout = FlowLayout(is_match_shapes=True, ids=["A", "B", "C"], is_fit=True)
+    layout.fit_to(1920, 1080, {"A": None})
+    assert layout.displayed_size() == (2, 2)
+
+    layout.fit_to(1920, 1080, {"A": TALL, "B": TALL, "C": TALL})
+    assert layout.displayed_size() == (3, 1)
+
+
+def test_auto_holds_until_another_size_is_clearly_better():
+    """Two wide videos show as big side by side as stacked in a 1920 pixel
+    wide window: narrower, stacked is better, and wider, side by side, but
+    it changes only once the other is 8% better."""
+
+    layout = FlowLayout(is_match_shapes=True, ids=["A", "B"])
+    shapes = {"A": WIDE, "B": WIDE}
+
+    sizes = []
+    for width in (1920, 1880, 1800, 1900, 1990, 2000):
+        layout.fit_to(width, 1080, shapes)
+        sizes.append(layout.displayed_size())
+
+    assert sizes == [(2, 1), (2, 1), (1, 2), (1, 2), (1, 2), (2, 1)]
+
+
+def test_auto_starts_from_the_square_grid_for_a_new_count():
+    layout = FlowLayout(is_match_shapes=True, ids=["A", "B"])
+    layout.fit_to(1800, 1080, {})
+    assert layout.displayed_size() == (1, 2)
+
+    layout.add(["C"])
+    assert layout.displayed_size() == (2, 2)
+
+
+def test_size_set_by_hand_holds():
+    layout = FlowLayout(is_match_shapes=True, size=2, ids=["A", "B", "C"])
+    layout.fit_to(1920, 1080, {"A": TALL, "B": TALL, "C": TALL})
+    assert layout.displayed_size() == (2, 2)
+
+
+def test_auto_keeps_the_square_grid_unless_matching_shapes():
+    layout = FlowLayout(ids=["A", "B", "C"])
+    layout.fit_to(1920, 1080, {"A": TALL, "B": TALL, "C": TALL})
+    assert layout.displayed_size() == (2, 2)
+
+    layout.is_match_shapes = True
+    layout.fit_to(1920, 1080, {"A": TALL, "B": TALL, "C": TALL})
+    assert layout.displayed_size() == (3, 1)
+
+    layout.is_match_shapes = False
+    assert layout.displayed_size() == (2, 2)

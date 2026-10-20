@@ -124,6 +124,8 @@ def _start_cleanup(video_blocks) -> None:
 
 class VideoBlocksManager(ManagerBase):
     video_count_changed = pyqtSignal(int)
+    # a video's picture_shape is known now, or changed
+    picture_shape_changed = pyqtSignal()
     playings_videos_count_changed = pyqtSignal(int)
 
     reload_all_closed = pyqtSignal()
@@ -845,6 +847,7 @@ class VideoBlocksManager(ManagerBase):
         qt_connect(
             (vb.about_to_close, self.close_single),
             (vb.is_paused_change, self.playing_count_change),
+            (vb.picture_shape_change, self.picture_shape_changed),
             (vb.sync_percent, self.seek_sync_percent),
             (vb.sync_time, self.seek_sync_timecode),
             (vb.sync_percent_single, self.all_seek_percent),

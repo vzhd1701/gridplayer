@@ -41,6 +41,7 @@ from gridplayer.utils.aspect_calc import (
     calc_followed_view,
     calc_moved_shift,
     calc_picture_rect,
+    calc_picture_shape,
     calc_ratio_crop,
     calc_selection_zoom,
     calc_shared_view,
@@ -471,6 +472,9 @@ class VideoFrameVLC(QWidget, metaclass=QABC):
     # The view taken after another video's once the frame's size came in,
     # a ViewParams: see follow_view.
     view_followed = pyqtSignal(object)
+    # How wide the picture is for its height, now that it is known or
+    # since it changed: see picture_shape.
+    picture_shape_changed = pyqtSignal(float)
 
     # the error, and what VLC said went wrong with the video as it did
     error = pyqtSignal(str, tuple)
@@ -529,6 +533,8 @@ class VideoFrameVLC(QWidget, metaclass=QABC):
         self._zoom_kept = None
         # another video's view, to follow once the frame's size is known
         self._shared_to_follow: SharedView | None = None
+        # the picture's shape last said with picture_shape_changed
+        self._picture_shape: float | None = None
 
         self._is_status_change_in_progress = False
         self._is_cleanup_requested = False
@@ -906,6 +912,11 @@ class VideoFrameVLC(QWidget, metaclass=QABC):
         # the margins that cut it to a shape go by the frame, only known
         # once loaded, and by its shape, which the aspect ratio changes
         self._view = self._view._replace(crop=self.shown_crop())
+
+        shape = self.picture_shape()
+        if shape is not None and shape != self._picture_shape:
+            self._picture_shape = shape
+            self.picture_shape_changed.emit(shape)
 
         if self.pause_snapshot.isVisible():
             self.pause_snapshot.adjust_view(self.size(), self._shown_picture_rect())
@@ -1460,6 +1471,18 @@ class VideoFrameVLC(QWidget, metaclass=QABC):
             self._view,
             self._transform,
             pixel_aspect=self._pixel_aspect(),
+        )
+
+    def picture_shape(self) -> float | None:
+        """How wide the picture is for its height on screen: turned, in the
+        aspect ratio picked and cut by the crop, at no zoom. None until the
+        frame's size is known."""
+
+        return calc_picture_shape(
+            self._frame_size(),
+            self._view.crop,
+            self._transform,
+            self._pixel_aspect(),
         )
 
     def picture_rect(self) -> Rect | None:

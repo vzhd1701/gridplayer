@@ -15,6 +15,7 @@ class GridCell(BaseModel):
 class GridState(BaseModel):
     mode: GridMode = default_field("playlist/grid_mode")
     is_fit: bool = default_field("playlist/grid_fit")
+    is_match_shapes: bool = default_field("playlist/grid_match_shapes")
     size: int = default_field("playlist/grid_size")
     rows: int = default_field("playlist/grid_rows")
     cols: int = default_field("playlist/grid_cols")

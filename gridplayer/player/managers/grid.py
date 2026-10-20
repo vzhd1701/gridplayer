@@ -59,6 +59,7 @@ class GridManager(ManagerBase):
             mode=_flow_mode(mode),
             size=Settings().get("playlist/grid_size"),
             is_fit=Settings().get("playlist/grid_fit"),
+            is_match_shapes=Settings().get("playlist/grid_match_shapes"),
         )
         self._empty_cells = []
         self._empty_positions = {}
@@ -86,6 +87,9 @@ class GridManager(ManagerBase):
             "get_grid_size": self.cmd_get_grid_size,
             "switch_is_grid_fit": self.cmd_switch_is_grid_fit,
             "is_grid_fit": lambda: self._flow.is_fit,
+            "switch_is_grid_match_shapes": self.cmd_switch_is_grid_match_shapes,
+            "is_grid_match_shapes": lambda: self._flow.is_match_shapes,
+            "is_grid_size_auto": lambda: self._flow.size == 0,
             "is_grid_preallocate": lambda: self._grid_layout.preallocate,
             "switch_grid_preallocate": self.cmd_switch_grid_preallocate,
             "ask_fixed_grid_size": self.cmd_ask_fixed_grid_size,
@@ -131,6 +135,7 @@ class GridManager(ManagerBase):
         return GridState(
             mode=self._mode,
             is_fit=self._flow.is_fit,
+            is_match_shapes=self._flow.is_match_shapes,
             size=self._flow.size,
             video_order=list(self._flow.ids),
             rows=self._grid_layout.max_rows,
@@ -143,6 +148,7 @@ class GridManager(ManagerBase):
         self._mode = state.mode
         self._flow.mode = _flow_mode(state.mode)
         self._flow.is_fit = state.is_fit
+        self._flow.is_match_shapes = state.is_match_shapes
         self._flow.size = state.size
         self._flow.ids = list(state.video_order)
         self._grid_layout.max_rows = max(1, state.rows)
@@ -163,7 +169,7 @@ class GridManager(ManagerBase):
         self._render_video_grid()
 
     def apply_grid_config(self, config: GridState) -> bool:
-        """Apply mode/size/fit/rows/cols/preallocate like the Grid menu.
+        """Apply mode/size/fit/match shapes/rows/cols/preallocate like the Grid menu.
 
         Restores do not use this — ``set_grid_state`` keeps cell positions.
         Returns False if the user cancelled a confirmation dialog.
@@ -185,10 +191,12 @@ class GridManager(ManagerBase):
             and not self._is_fixed
             and self._mode == mode
             and self._flow.is_fit == config.is_fit
+            and self._flow.is_match_shapes == config.is_match_shapes
             and self._flow.size == config.size
         )
         if same_fixed or same_flow:
             self._flow.is_fit = config.is_fit
+            self._flow.is_match_shapes = config.is_match_shapes
             self._flow.size = config.size
             return True
 
@@ -196,6 +204,7 @@ class GridManager(ManagerBase):
             if not self._apply_fixed(rows, cols, preallocate):
                 return False
             self._flow.is_fit = config.is_fit
+            self._flow.is_match_shapes = config.is_match_shapes
             self._flow.size = config.size
             return True
 
@@ -205,6 +214,7 @@ class GridManager(ManagerBase):
         self._mode = mode
         self._flow.mode = _flow_mode(mode)
         self._flow.is_fit = config.is_fit
+        self._flow.is_match_shapes = config.is_match_shapes
         self._flow.size = config.size
         self.layout_changed.emit()
         return True
@@ -318,6 +328,11 @@ class GridManager(ManagerBase):
     def cmd_switch_is_grid_fit(self):
         self._flow.is_fit = not self._flow.is_fit
         PlaylistSettings().set("playlist/grid_fit", self._flow.is_fit)
+        self.layout_changed.emit()
+
+    def cmd_switch_is_grid_match_shapes(self):
+        self._flow.is_match_shapes = not self._flow.is_match_shapes
+        PlaylistSettings().set("playlist/grid_match_shapes", self._flow.is_match_shapes)
         self.layout_changed.emit()
 
     def cmd_get_fixed_grid_size(self):
@@ -561,10 +576,29 @@ class GridManager(ManagerBase):
         finally:
             self._reloading = False
 
+    def fit_to_shapes(self):
+        """Lay the grid out again for a video's shape, which Auto goes by."""
+
+        if self._is_fixed or not self._flow.is_match_shapes or self._flow.size:
+            return
+
+        if self._ctx.is_single_mode:
+            return
+
+        self._grid.invalidate()
+
     def _place_single(self, _width, _height):
         # The single video fills the area. Going to the next one shows it and
         # hides the other, and showing lays the area out again.
         return [(vb, FULL_BOX) for vb in self._ctx.video_blocks if not vb.isHidden()]
+
+    def _place_flow(self, width, height):
+        # on Auto, the line size goes by the area too, so it is chosen anew
+        # each time the area is laid out: as the window is resized among them
+        shapes = {vb.video_id: vb.picture_shape for vb in self._ctx.video_blocks}
+        self._flow.fit_to(width, height, shapes)
+
+        return self._flow_cells()
 
     def _render_video_grid(self):
         if self._ctx.is_single_mode:
@@ -575,15 +609,13 @@ class GridManager(ManagerBase):
             self._discard_empty_cells()
 
             if not self._ctx.video_blocks and not self._show_empties:
-                cells = [(self._info_label, FULL_BOX)]
+                widgets = self._grid.set_cells([(self._info_label, FULL_BOX)])
             elif self._is_fixed:
-                cells = self._fixed_cells()
+                widgets = self._grid.set_cells(self._fixed_cells())
             else:
-                cells = self._flow_cells()
-
-            widgets = [widget for widget, _box in cells]
-            self._grid.set_widgets(widgets)
-            self._grid.set_place(lambda _width, _height: cells)
+                widgets = [widget for widget, _box in self._flow_cells()]
+                self._grid.set_widgets(widgets)
+                self._grid.set_place(self._place_flow)
 
             # Every cell, hidden or not, in place before any comes on screen.
             self._grid.activate()

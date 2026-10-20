@@ -168,6 +168,13 @@ class VideoBlock(QWidget):
     is_in_progress_change = pyqtSignal()
     is_active_change = pyqtSignal(bool)
     is_audio_present_change = pyqtSignal(bool)
+    # picture_shape is known now, or changed
+    picture_shape_change = pyqtSignal()
+
+    # How wide the picture is for its height on screen, the last its video
+    # said (see VideoFrameVLC.picture_shape): kept through a reload, and
+    # until the next video says, None before any has.
+    picture_shape: float | None = None
 
     def __init__(self, video_driver, context, **kwargs):
         super().__init__(**kwargs)
@@ -286,6 +293,7 @@ class VideoBlock(QWidget):
             (video_driver.video_ready, self.load_video_finish),
             (video_driver.picture_shown, self._picture_shown),
             (video_driver.view_followed, self.view.remember_followed),
+            (video_driver.picture_shape_changed, self._picture_shape_changed),
             (video_driver.tracks_changed, self.audio.tracks_changed),
             (video_driver.chapters_changed, self.chapters.update),
             (video_driver.time_changed, self.time_changed),
@@ -362,6 +370,7 @@ class VideoBlock(QWidget):
         self.video_driver.video_ready.disconnect()
         self.video_driver.picture_shown.disconnect()
         self.video_driver.view_followed.disconnect()
+        self.video_driver.picture_shape_changed.disconnect()
         self.video_driver.time_changed.disconnect()
         self.video_driver.playback_status_changed.disconnect()
         self.video_driver.error.disconnect()
@@ -1915,6 +1924,13 @@ class VideoBlock(QWidget):
             self.info_change.emit(notice)
 
         self.video_driver.adjust_view()
+
+    def _picture_shape_changed(self, shape: float):
+        if shape == self.picture_shape:
+            return
+
+        self.picture_shape = shape
+        self.picture_shape_change.emit()
 
     def _picture_shown(self):
         """Take the loading status off the video, now there is a picture.

@@ -2,10 +2,19 @@ from __future__ import annotations
 
 import math
 import random
+from collections.abc import Mapping
 from enum import Enum, auto
 
 from gridplayer.utils.drop_zone import DropZone, insert_index
-from gridplayer.utils.layout.boxes import Box
+from gridplayer.utils.layout.boxes import Box, picture_score
+
+# what a video is taken to be shaped like until its own shape is known
+DEFAULT_SHAPE = 16 / 9
+
+# how much bigger the pictures must be, on average, for Auto to leave the
+# line size it has for one that shows them better: dragging the window's
+# edge would flip it to and fro where the two show them about as well
+SWITCH_GAIN = 1.08
 
 
 class FlowMode(Enum):
@@ -22,25 +31,84 @@ class FlowLayout:
         size: int = 0,
         is_fit: bool = False,
         ids: list[str] | None = None,
+        is_match_shapes: bool = False,
     ):
         self.mode = mode
         self.size = size
         self.is_fit = is_fit
+        # on Auto, fit_to chooses the line size, else it is the square grid's
+        self.is_match_shapes = is_match_shapes
         self.ids: list[str] = list(ids) if ids else []
 
-    def displayed_size(self) -> tuple[int, int]:
+        # the line size fit_to chose, and for how many videos in which mode
+        self._fitted: tuple[int, FlowMode, int] | None = None
+
+    def line_size(self) -> int:
+        """How many videos go in a line: a row in Rows First, a column in
+        Columns First.
+
+        The size set, or on Auto the one fit_to chose for these videos,
+        the square grid's until then.
+        """
         count = len(self.ids)
         if count <= 1:
-            return 1, 1
+            return 1
 
-        grid_size = self.size
-        if grid_size == 0:
-            grid_size = math.ceil(math.sqrt(count))
+        if self.size:
+            return self.size
 
-        grid_slices = math.ceil(count / grid_size)
+        if (
+            self.is_match_shapes
+            and self._fitted is not None
+            and self._fitted[:2] == (count, self.mode)
+        ):
+            return self._fitted[2]
+
+        return math.ceil(math.sqrt(count))
+
+    def fit_to(self, width: int, height: int, shapes: Mapping[str, float]) -> None:
+        """On Auto with is_match_shapes, choose the line size that shows
+        the videos best in an area of this size (see picture_score).
+
+        shapes has each video's width for its height, by id; a video not in
+        it is taken to be DEFAULT_SHAPE. The line size there is now is kept
+        unless another shows the pictures SWITCH_GAIN times bigger.
+        """
+        count = len(self.ids)
+        if not self.is_match_shapes or self.size or count <= 1:
+            return
+
+        if width <= 0 or height <= 0:
+            return
+
+        video_shapes = [shapes.get(video_id) or DEFAULT_SHAPE for video_id in self.ids]
+
+        def score(line_size: int) -> float:
+            placed = zip((box for _id, box in self._boxes(line_size)), video_shapes)
+            return picture_score(placed, width, height)
+
+        # for each number of lines, the fewest videos a line can take
+        line_sizes = sorted({math.ceil(count / lines) for lines in range(1, count + 1)})
+        scores = {line_size: score(line_size) for line_size in line_sizes}
+        best = max(line_sizes, key=scores.__getitem__)
+
+        line_size = self.line_size()
+        kept = scores.get(line_size)
+        if kept is None:
+            kept = score(line_size)
+
+        if scores[best] > kept + count * math.log(SWITCH_GAIN):
+            line_size = best
+
+        self._fitted = (count, self.mode, line_size)
+
+    def displayed_size(self) -> tuple[int, int]:
+        line_size = self.line_size()
+        lines = max(math.ceil(len(self.ids) / line_size), 1)
+
         if self.mode != FlowMode.COLS:
-            return grid_size, grid_slices
-        return grid_slices, grid_size
+            return line_size, lines
+        return lines, line_size
 
     def boxes(self) -> list[tuple[str, Box]]:
         """Where each video goes, in order.
@@ -49,12 +117,10 @@ class FlowLayout:
         in Columns First. With Fit Cells, those of a last line left short
         share all of it.
         """
-        cols, rows = self.displayed_size()
-        if self.mode == FlowMode.COLS:
-            line_size, line_count = rows, cols
-        else:
-            line_size, line_count = cols, rows
+        return self._boxes(self.line_size())
 
+    def _boxes(self, line_size: int) -> list[tuple[str, Box]]:
+        line_count = max(math.ceil(len(self.ids) / line_size), 1)
         last_line = len(self.ids) - line_size * (line_count - 1)
 
         boxes = []

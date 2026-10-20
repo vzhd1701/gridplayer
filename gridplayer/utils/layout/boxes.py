@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import math
+from collections.abc import Iterable
 from typing import NamedTuple
 
 
@@ -44,3 +46,23 @@ def box_rect(box: Box, width: int, height: int) -> tuple[int, int, int, int]:
     right = round(box.right * width)
     bottom = round(box.bottom * height)
     return left, top, right - left, bottom - top
+
+
+def picture_score(
+    placed: Iterable[tuple[Box, float]], width: int, height: int
+) -> float:
+    """How well pictures of these shapes (width for height) show in their
+    boxes, in an area of this size.
+
+    The sum of the logs of the pictures' areas, each fitted whole into its
+    box: more picture scores higher, and one picture left small for the
+    others to be big scores lower than all of them a fair size.
+    """
+
+    score = 0.0
+    for box, shape in placed:
+        box_width = (box.right - box.left) * width
+        box_height = (box.bottom - box.top) * height
+        picture_width = min(box_width, box_height * shape)
+        score += math.log(picture_width * picture_width / shape)
+    return score

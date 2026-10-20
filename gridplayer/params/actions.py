@@ -2466,6 +2466,14 @@ ACTIONS = MappingProxyType(
             "check_if": "is_grid_fit",
             "show_if": NOT(("is_grid_mode_set_to", GridMode.FIXED)),
         },
+        "Match Shapes": {
+            "title": translate("Match Shapes", "Match Shapes"),
+            "icon": "aspect-ratio",
+            "func": "switch_is_grid_match_shapes",
+            "check_if": "is_grid_match_shapes",
+            "enable_if": "is_grid_size_auto",
+            "show_if": NOT(("is_grid_mode_set_to", GridMode.FIXED)),
+        },
         "Size: %v": {
             "title": translate("Actions", "Size: %v"),
             "keymap_title": translate("Actions", "Set Size"),

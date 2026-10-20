@@ -201,7 +201,7 @@ def test_vlc_told_about_the_view_after_its_windows_are_sized(frame_cls):
     its picture where they are about to be overruled (see
     fit_vlc_vout_windows)."""
     frame = _hw_frame(frame_cls)
-    frame.media = MagicMock(is_audio_only=False)
+    frame.media = MagicMock(is_audio_only=False, cur_video_track=None)
     calls = MagicMock()
     frame._place_native_surface = calls.place
     frame.video_driver.adjust_view = calls.tell_vlc

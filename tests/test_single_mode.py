@@ -90,6 +90,8 @@ def test_single_mode_does_not_pause_when_setting_off(mocker):
 class _Cell(QWidget):
     """A video as the grid sees one, noting every size it is given."""
 
+    picture_shape = None
+
     def __init__(self, video_id, parent):
         super().__init__(parent)
         self.id = video_id
