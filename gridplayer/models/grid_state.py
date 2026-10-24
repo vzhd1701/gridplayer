@@ -17,6 +17,7 @@ class GridState(BaseModel):
     is_fit: bool = default_field("playlist/grid_fit")
     is_match_shapes: bool = default_field("playlist/grid_match_shapes")
     crop: int = default_field("playlist/grid_crop")
+    is_reordered: bool = default_field("playlist/grid_reorder")
     is_linked: bool = default_field("playlist/grid_link")
     size: int = default_field("playlist/grid_size")
     rows: int = default_field("playlist/grid_rows")
@@ -24,6 +25,9 @@ class GridState(BaseModel):
     preallocate: bool = default_field("playlist/grid_preallocate")
     cells: list[GridCell] = Field(default_factory=list)
     video_order: list[str] = Field(default_factory=list)
+    # in Fit Shapes, how many steps bigger videos are made (smaller, less
+    # than nought), by id
+    sizes: dict[str, int] = Field(default_factory=dict)
     # the lines between the cells moved by hand: each column's share of the
     # width, each row's of the height, and of a row with lines of its own,
     # each video's share of it, by the row (see Weights)

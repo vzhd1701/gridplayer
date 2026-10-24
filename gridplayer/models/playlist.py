@@ -460,9 +460,14 @@ class Playlist(BaseModel):
             data.pop("cells", None)
         if not state.video_order:
             data.pop("video_order", None)
-        for weights in ("col_weights", "row_weights", "line_weights"):
-            if not data.get(weights):
-                data.pop(weights, None)
+        for listed in (
+            "sizes",
+            "col_weights",
+            "row_weights",
+            "line_weights",
+        ):
+            if not data.get(listed):
+                data.pop(listed, None)
 
         return data or None
 

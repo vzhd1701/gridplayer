@@ -9,16 +9,19 @@ from PyQt5.QtCore import (
     pyqtProperty,
     pyqtSignal,
 )
-from PyQt5.QtGui import QColor, QFontMetrics, QPainter
+from PyQt5.QtGui import QColor, QCursor, QFontMetrics, QPainter
 from PyQt5.QtWidgets import QWIDGETSIZE_MAX
 
 from gridplayer.utils.qt import QABC
-from gridplayer.widgets.video_overlay_elements import OverlayWidget
+from gridplayer.widgets.video_overlay_elements import OverlayWidget, mixed_color
 from gridplayer.widgets.video_overlay_icons import (
+    draw_cell_size,
     draw_cross,
+    draw_grow,
     draw_list,
     draw_pause,
     draw_play,
+    draw_shrink,
     draw_spin_circle,
     draw_volume_off,
     draw_volume_on,
@@ -37,6 +40,10 @@ class OverlayButton(OverlayWidget, metaclass=QABC):
         self.setMaximumSize(self.minimumWidth(), self.minimumHeight())
 
         self._is_off = False
+        # not to be had now: drawn dim, and a click does nothing
+        self._is_available = True
+        # what it opened is open: drawn as under the mouse
+        self._is_down = False
 
     @abstractmethod
     def icon(self, rect, painter, color_fg, color_bg): ...
@@ -55,12 +62,25 @@ class OverlayButton(OverlayWidget, metaclass=QABC):
 
     def colors(self) -> tuple[QColor, QColor]:
         """Its box's fill and what is drawn on it, the other way round under
-        the mouse."""
+        the mouse; dim, where it is not to be had."""
 
-        if self.underMouse():
+        if not self._is_available:
+            # solid, part the way to the fill: a see-through one would show
+            # where the icon's lines cross
+            text, fill = self.text_color, self.fill_color
+            dim = mixed_color(text, fill, 0.6)
+            dim.setAlphaF(text.alphaF())
+            return fill, dim
+
+        if self._is_down or self.is_under_pointer():
             return self.hover_fill_color, self.hover_text_color
 
         return self.fill_color, self.text_color
+
+    def is_under_pointer(self) -> bool:
+        # where the pointer is, not where Qt last saw it come in: a button
+        # that moves with its cell, the pointer still, gets no leave
+        return self.rect().contains(self.mapFromGlobal(QCursor.pos()))
 
     def draw_icon(self, painter: QPainter, color_fg: QColor, color_bg: QColor):
         if self._is_off:
@@ -87,7 +107,7 @@ class OverlayButton(OverlayWidget, metaclass=QABC):
             event.ignore()
 
     def mousePressEvent(self, event):
-        if event.button() == Qt.LeftButton:
+        if event.button() == Qt.LeftButton and self._is_available:
             self.clicked.emit()
 
         event.ignore()
@@ -106,6 +126,26 @@ class OverlayButton(OverlayWidget, metaclass=QABC):
     def is_off(self, is_off):
         self._is_off = is_off
         self.update()
+
+    @property
+    def is_down(self) -> bool:
+        return self._is_down
+
+    @is_down.setter
+    def is_down(self, is_down: bool):
+        if is_down != self._is_down:
+            self._is_down = is_down
+            self.update()
+
+    @property
+    def is_available(self) -> bool:
+        return self._is_available
+
+    @is_available.setter
+    def is_available(self, is_available: bool):
+        if is_available != self._is_available:
+            self._is_available = is_available
+            self.update()
 
 
 class OverlayButtonDynamic(OverlayButton, ABC):
@@ -161,6 +201,27 @@ class OverlayButtonDynamic(OverlayButton, ABC):
 class OverlayExitButton(OverlayButton):
     def icon(self, rect, painter, color_fg, color_bg):
         return draw_cross(rect, painter, color_fg, color_bg)
+
+    def icon_off(self, rect, painter, color_fg, color_bg): ...
+
+
+class OverlayCellBiggerButton(OverlayButton):
+    def icon(self, rect, painter, color_fg, color_bg):
+        return draw_grow(rect, painter, color_fg, color_bg)
+
+    def icon_off(self, rect, painter, color_fg, color_bg): ...
+
+
+class OverlayCellSmallerButton(OverlayButton):
+    def icon(self, rect, painter, color_fg, color_bg):
+        return draw_shrink(rect, painter, color_fg, color_bg)
+
+    def icon_off(self, rect, painter, color_fg, color_bg): ...
+
+
+class OverlayCellSizeButton(OverlayButton):
+    def icon(self, rect, painter, color_fg, color_bg):
+        return draw_cell_size(rect, painter, color_fg, color_bg)
 
     def icon_off(self, rect, painter, color_fg, color_bg): ...
 

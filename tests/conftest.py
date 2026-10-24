@@ -54,6 +54,7 @@ def _block_parts():
 
     from gridplayer.widgets.video_block_audio import AudioControl
     from gridplayer.widgets.video_block_bookmarker import Bookmarker
+    from gridplayer.widgets.video_block_cell_size import CellSizeControl
     from gridplayer.widgets.video_block_chapters import ChapterControl
     from gridplayer.widgets.video_block_loop import LoopControl
     from gridplayer.widgets.video_block_navigation import NavigationControl
@@ -68,6 +69,7 @@ def _block_parts():
     return {
         "audio": AudioControl,
         "bookmarker": Bookmarker,
+        "cell_size": CellSizeControl,
         "chapters": ChapterControl,
         "loop": LoopControl,
         "navigation": NavigationControl,

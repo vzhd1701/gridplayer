@@ -10,6 +10,7 @@ from gridplayer.player.managers.bookmarks import BookmarksManager
 from gridplayer.player.managers.dialogs import DialogsManager
 from gridplayer.player.managers.drag_n_drop import DragNDropManager
 from gridplayer.player.managers.grid import GridManager
+from gridplayer.player.managers.grid_edit import GridEditManager
 from gridplayer.player.managers.grid_lines import GridLinesManager
 from gridplayer.player.managers.instance_listener import InstanceListenerManager
 from gridplayer.player.managers.lists import ListsManager
@@ -50,6 +51,7 @@ class Player(QWidget, ManagersManager):
             "video_blocks": VideoBlocksManager,
             "grid": GridManager,
             "grid_lines": GridLinesManager,
+            "grid_edit": GridEditManager,
             "playlist": PlaylistManager,
             "snapshots": SnapshotsManager,
             "bookmarks": BookmarksManager,
@@ -81,9 +83,19 @@ class Player(QWidget, ManagersManager):
             ],
             "grid": [
                 ("warning", "dialogs.warning"),
+                ("video_blocks.video_count_changed", "forget_grid_changes"),
                 ("video_blocks.video_count_changed", "reload_video_grid"),
                 ("layout_changed", "reload_video_grid"),
                 ("video_blocks.picture_shape_changed", "fit_to_shapes"),
+            ],
+            "grid_edit": [
+                ("grid.layout_changed", "refresh"),
+                ("grid.undo_changed", "update_undo"),
+                ("video_blocks.video_count_changed", "refresh"),
+                ("single_mode.mode_changed", "refresh"),
+                ("playlist.grid_state_loaded", "stop"),
+                ("snapshots.grid_state_loaded", "stop"),
+                ("window_state.closing", "stop"),
             ],
             "screensaver": [
                 ("video_blocks.playings_videos_count_changed", "screensaver_check")
@@ -280,6 +292,8 @@ class Player(QWidget, ManagersManager):
 
         self.event_filters = [
             "window_state",
+            # the editor of the cells follows the player as it moves
+            "grid_edit",
             "drag_n_drop",
             "active_block",
             "menu",

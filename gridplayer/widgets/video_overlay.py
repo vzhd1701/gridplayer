@@ -27,6 +27,9 @@ from gridplayer.utils.qt import MILLISECONDS, qt_connect, translate
 from gridplayer.utils.time_txt import get_time_txt
 from gridplayer.widgets.video_overlay_buttons import (
     OverlayButton,
+    OverlayCellBiggerButton,
+    OverlayCellSizeButton,
+    OverlayCellSmallerButton,
     OverlayExitButton,
     OverlayListPlaceButton,
     OverlayPlayPauseButton,
@@ -55,6 +58,12 @@ from gridplayer.widgets.video_overlay_icons import draw_play, draw_stop
 # far in over a cell with no picture, clear of its frame, which runs close
 # round the edge for them to stay where they are
 CONTROL_MARGIN = 10
+
+# a cell narrower than this has no room for the buttons that size it, with
+# its name and the close button, in pixels: they go in the row under them,
+# in a cell tall enough
+CELL_SIZE_MIN_WIDTH = 280
+CELL_SIZE_ROW_MIN_HEIGHT = 120
 
 
 class OverlayMode(Enum):
@@ -119,6 +128,12 @@ class OverlayBlock(QWidget):
     # which item of its list the cell plays clicked, for the List window
     list_place_clicked = pyqtSignal()
 
+    # its cell made a step bigger or smaller, or its size to be picked,
+    # under the button for it, where that is on the screen
+    cell_bigger_clicked = pyqtSignal()
+    cell_smaller_clicked = pyqtSignal()
+    cell_size_clicked = pyqtSignal(QRect)
+
     # the actions of a cell still loading, or failed
     stop_clicked = pyqtSignal()
     retry_clicked = pyqtSignal()
@@ -136,6 +151,9 @@ class OverlayBlock(QWidget):
         self._is_on_chrome = False
         self._last_position = (0, 0)
         self._volume_button_wanted = True
+        self._cell_size_wanted = False
+        self._cell_size_picker_wanted = False
+        self._is_cell_size_in_title = True
 
         # what a failed cell offers past trying again; its Next goes back
         # where its list is played back to front
@@ -165,6 +183,8 @@ class OverlayBlock(QWidget):
 
         self.label_info.hide()
         self.list_place_button.hide()
+        for button in self._cell_size_buttons():
+            button.hide()
         self.label_list_window.hide()
         self.floating_progress.hide()
 
@@ -191,6 +211,9 @@ class OverlayBlock(QWidget):
             ),
             (self.exit_button.clicked, self.exit),
             (self.list_place_button.clicked, self.list_place_clicked),
+            (self.cell_bigger_button.clicked, self.cell_bigger_clicked),
+            (self.cell_smaller_button.clicked, self.cell_smaller_clicked),
+            (self.cell_size_button.clicked, self._cell_size_clicked),
             (self.play_pause_button.clicked, self.play_pause),
             (self.progress_bar.position_changed, self.emit_position),
             (self.volume_button.clicked, self.mute_unmute),
@@ -246,9 +269,17 @@ class OverlayBlock(QWidget):
         # list: what its window is opened by
         self.list_place_button = OverlayListPlaceButton(parent=self)
 
+        # in a Fixed Grid, its cell made bigger and smaller, a step at a
+        # time or picked
+        self.cell_smaller_button = OverlayCellSmallerButton(parent=self)
+        self.cell_bigger_button = OverlayCellBiggerButton(parent=self)
+        self.cell_size_button = OverlayCellSizeButton(parent=self)
+
         self.title_bar = QHBoxLayout()
         self.title_bar.addWidget(self.list_place_button)
         self.title_bar.addWidget(self.label_text, 1)
+        for button in self._cell_size_buttons():
+            self.title_bar.addWidget(button)
         self.title_bar.addWidget(self.exit_button)
 
         self.label_info = OverlayShortLabel(parent=self)
@@ -323,6 +354,7 @@ class OverlayBlock(QWidget):
 
     def resizeEvent(self, event):
         self._sync_progress_label()
+        self._sync_cell_size_buttons()
 
     def paintEvent(self, event):
         self._paint_shadows(event.rect())
@@ -451,6 +483,74 @@ class OverlayBlock(QWidget):
             self.list_place_button.text = place_txt
 
         self.list_place_button.setVisible(bool(place_txt))
+
+    def set_cell_size_controls(self, is_shown: bool, has_picker: bool):
+        """The buttons that make the cell bigger and smaller, and the one
+        that picks its size, in a Fixed Grid."""
+
+        self._cell_size_wanted = is_shown
+        self._cell_size_picker_wanted = has_picker
+        self._sync_cell_size_buttons()
+
+    def has_cell_size_buttons(self) -> bool:
+        return self._cell_size_wanted and self.cell_bigger_button.isVisibleTo(self)
+
+    def set_cell_steps(self, can_grow: bool, can_shrink: bool):
+        """Whether there is room for the cell a step bigger, and smaller."""
+
+        self.cell_bigger_button.is_available = can_grow
+        self.cell_smaller_button.is_available = can_shrink
+
+    def _cell_size_buttons(self) -> tuple[OverlayButton, ...]:
+        return (
+            self.cell_smaller_button,
+            self.cell_bigger_button,
+            self.cell_size_button,
+        )
+
+    def _sync_cell_size_buttons(self):
+        """In the title row, before the close button; in a narrower cell,
+        under it, at the end of the row there; left out of one too short
+        for that."""
+
+        is_in_title = self.width() >= CELL_SIZE_MIN_WIDTH
+        is_shown = self._cell_size_wanted and (
+            is_in_title or self.height() >= CELL_SIZE_ROW_MIN_HEIGHT
+        )
+
+        if is_in_title != self._is_cell_size_in_title:
+            self._is_cell_size_in_title = is_in_title
+            for button in self._cell_size_buttons():
+                self.title_bar.removeWidget(button)
+                self.info_bar.removeWidget(button)
+            if is_in_title:
+                at = self.title_bar.indexOf(self.exit_button)
+                for offset, button in enumerate(self._cell_size_buttons()):
+                    self.title_bar.insertWidget(at + offset, button)
+            else:
+                for button in self._cell_size_buttons():
+                    self.info_bar.addWidget(button)
+
+        for button in self._cell_size_buttons():
+            button.setVisible(
+                is_shown
+                and (
+                    button is not self.cell_size_button or self._cell_size_picker_wanted
+                )
+            )
+            # the grid laid out again: lit or not, where the pointer is now
+            button.update()
+
+    def set_cell_size_picking(self, is_picking: bool):
+        """The picker of the cell's size is open, from its button."""
+
+        self.cell_size_button.is_down = is_picking
+
+    def _cell_size_clicked(self):
+        button = self.cell_size_button
+        self.cell_size_clicked.emit(
+            QRect(button.mapToGlobal(QPoint(0, 0)), button.size())
+        )
 
     def set_list_window_shown(self, is_shown: bool):
         """Said under the title while the List window plays in the cell."""

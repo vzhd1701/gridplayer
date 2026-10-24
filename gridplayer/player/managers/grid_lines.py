@@ -5,12 +5,9 @@ from PyQt5.QtWidgets import QApplication
 from gridplayer.player.managers.base import ManagerBase
 from gridplayer.playlist_settings import PlaylistSettings
 from gridplayer.utils.layout import Weights
-from gridplayer.utils.layout.lines import GridLines, Line, Snap
+from gridplayer.utils.layout.lines import LINE_REACH, GridLines, Line, Snap
 from gridplayer.utils.qt import is_modal_open
 from gridplayer.widgets.grid_line_mark import GridLineMark, GridLineTag, snap_word
-
-# how near the pointer has to be to a line to take it, in pixels
-LINE_REACH = 4
 
 # how often to look whether the pointer is still on the line it was: it
 # leaves for somewhere no move of it is ever seen, another application's
@@ -204,7 +201,9 @@ class GridLinesManager(ManagerBase):
                 return None
             line, lines, _area = found
 
+        self._ctx.commands.begin_grid_change()
         self._ctx.commands.set_grid_weights(lines.evened(line))
+        self._ctx.commands.end_grid_change()
 
         self._swallowed_buttons.add(event.button())
         return True
@@ -294,6 +293,7 @@ class GridLinesManager(ManagerBase):
         self._lines = lines
         self._area = area
         self._before = lines.weights()
+        self._ctx.commands.begin_grid_change()
         self._targets = lines.snaps(line)
         self._snap.let_go()
 
@@ -326,6 +326,8 @@ class GridLinesManager(ManagerBase):
 
     def _finish(self):
         """Leave the line where it was moved to."""
+
+        self._ctx.commands.end_grid_change()
 
         self._drag = None
         self._lines = None

@@ -1,6 +1,6 @@
 import math
 
-from PyQt5.QtCore import QRect, QRectF, Qt
+from PyQt5.QtCore import QPointF, QRect, QRectF, Qt
 from PyQt5.QtGui import QBrush, QColor, QPainter, QPainterPath, QPen
 
 
@@ -80,6 +80,77 @@ def draw_cross(rect, painter, color_fg, color_bg):
         rect.y() + 5,
         rect.x() + 5,
         rect.y() + line_len,
+    )
+
+
+def _draw_arrows(rect, painter, color_fg, is_out):
+    """Two arrows along the diagonal: out to the corners, or in from them
+    to the middle.
+
+    Each a single path, so that where its lines meet a see-through colour
+    is not laid on twice; its head's sides on whole pixels, to be sharp.
+    """
+
+    painter.setRenderHint(QPainter.Antialiasing, True)
+    pen = QPen(color_fg, 2, Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin)
+    painter.setPen(pen)
+    painter.setBrush(Qt.NoBrush)
+
+    box = QRectF(QRect(rect).adjusted(6, 6, -6, -6))
+    center = box.center()
+    head = round(box.width() * 0.4)
+    gap = 1.5
+
+    for corner, sign_x, sign_y in (
+        (box.topRight(), 1, -1),
+        (box.bottomLeft(), -1, 1),
+    ):
+        near = QPointF(center.x() + sign_x * gap, center.y() + sign_y * gap)
+        tip, tail = (corner, near) if is_out else (near, corner)
+        if not is_out:
+            tip = QPointF(round(tip.x()), round(tip.y()))
+
+        # the head's two sides, back from its tip along the axes, and the
+        # shaft
+        back = -1 if is_out else 1
+        path = QPainterPath()
+        path.moveTo(tip.x() + back * sign_x * head, tip.y())
+        path.lineTo(tip)
+        path.lineTo(tip.x(), tip.y() + back * sign_y * head)
+        path.moveTo(tip)
+        path.lineTo(tail)
+        painter.drawPath(path)
+
+
+def draw_grow(rect, painter, color_fg, color_bg):
+    _draw_arrows(rect, painter, color_fg, is_out=True)
+
+
+def draw_shrink(rect, painter, color_fg, color_bg):
+    _draw_arrows(rect, painter, color_fg, is_out=False)
+
+
+def draw_cell_size(rect, painter, color_fg, color_bg):
+    """A grid of two by two, its first cell filled: a cell's size picked.
+    Its lines on whole pixels, to be sharp."""
+
+    painter.setRenderHint(QPainter.Antialiasing, True)
+
+    box = QRectF(QRect(rect).adjusted(6, 6, -6, -6))
+    half = round(box.width() / 2)
+
+    painter.setPen(Qt.NoPen)
+    painter.setBrush(color_fg)
+    painter.drawRect(QRectF(box.topLeft(), box.center()))
+
+    painter.setPen(QPen(color_fg, 2))
+    painter.setBrush(Qt.NoBrush)
+    painter.drawRoundedRect(box, 1.5, 1.5)
+    painter.drawLine(
+        QPointF(box.left() + half, box.top()), QPointF(box.left() + half, box.bottom())
+    )
+    painter.drawLine(
+        QPointF(box.left(), box.top() + half), QPointF(box.right(), box.top() + half)
     )
 
 

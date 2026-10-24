@@ -6,8 +6,11 @@ from PyQt5.QtWidgets import QApplication, QWidget
 from gridplayer.models.grid_state import GridCell, GridState
 from gridplayer.params.static import GridMode
 from gridplayer.player.managers.grid import GridManager
+from gridplayer.playlist_settings import PlaylistSettings
 from gridplayer.settings import Settings, _default_settings
-from gridplayer.utils.layout import GridLayout
+from gridplayer.utils.drop_zone import DropZone
+from gridplayer.utils.layout import GridLayout, Weights
+from gridplayer.utils.layout.flow_layout import FlowMode
 
 
 @pytest.fixture(scope="module", autouse=True)
@@ -142,10 +145,15 @@ class _NativeCell(QWidget):
         self.video_id = video_id
         self.picture_shape = None
         self.shown_at = []
+        self.is_cell_sizable = False
+        self.cell_size = SimpleNamespace(set_sizable=self._set_cell_sizable)
         self.winId()
 
     def showEvent(self, event):
         self.shown_at.append(self.geometry())
+
+    def _set_cell_sizable(self, is_sizable, is_shapable):
+        self.is_cell_sizable = is_sizable
 
 
 class _Cells:
@@ -244,6 +252,9 @@ def test_fixed_cell_spans_its_cells():
     ]
     empties = [grid.grid_position_of(e) for e in grid._empty_cells]
     assert empties == [(1, 2), (2, 0), (2, 1)]
+
+    # their overlays given the buttons to size them
+    assert all(c.is_cell_sizable for c in cells)
 
     window.close()
 
@@ -580,3 +591,409 @@ def test_fixed_grid_lines_move_at_once():
     assert lines.line_at(1000, 300, 4) is None
 
     window.close()
+
+
+def _cell_spans(manager):
+    return sorted(
+        (c.video_id, c.row, c.col, c.rowspan, c.colspan)
+        for c in manager._grid_layout.cells
+    )
+
+
+def test_template_from_auto_and_undo(mocker):
+    manager = _make_grid_manager(list("ABCDEFG"))
+    manager._flow.ids = list("ABCDEFG")
+    mocker.patch.object(manager, "_confirm_overflow", return_value=True)
+    remove = mocker.patch.object(manager._ctx.commands, "remove_video_blocks")
+
+    manager.cmd_set_grid_template("1 + 5")
+
+    remove.assert_called_once_with(["G"])
+    assert manager._mode is GridMode.FIXED
+    assert manager.is_grid_template("1 + 5")
+    assert ("A", 0, 0, 2, 2) in _cell_spans(manager)
+
+    manager.cmd_undo_grid()
+    assert manager._mode is GridMode.AUTO_ROWS
+    manager.cmd_redo_grid()
+    assert manager.is_grid_template("1 + 5")
+
+
+def test_a_change_that_closes_videos_is_not_undone(mocker):
+    # closing them forgets the changes, as the player has it, in the middle
+    manager = _make_grid_manager(list("ABCDEFG"))
+    manager._flow.ids = list("ABCDEFG")
+    manager.cmd_shuffle_layout()
+    mocker.patch.object(manager, "_confirm_overflow", return_value=True)
+    mocker.patch.object(
+        manager._ctx.commands,
+        "remove_video_blocks",
+        side_effect=lambda _ids: manager.forget_grid_changes(),
+    )
+
+    manager.cmd_set_grid_template("1 + 5")
+
+    assert manager.is_grid_template("1 + 5")
+    assert not manager.commands["is_grid_undoable"]()
+
+
+def test_a_line_dragged_is_one_change_to_undo():
+    manager = _make_grid_manager(["A", "B"])
+    _fixed_two_in_three(manager)
+
+    manager.begin_grid_change()
+    manager.set_grid_weights(Weights((0.2, 0.3, 0.5), ()))
+    manager.set_grid_weights(Weights((0.4, 0.3, 0.3), ()))
+    manager.end_grid_change()
+    manager.end_grid_change()
+
+    assert len(manager._undo) == 1
+    manager.cmd_undo_grid()
+    assert manager.grid_state().col_weights == []
+
+
+def test_template_cancelled_changes_nothing(mocker):
+    manager = _make_grid_manager(list("ABCDEFG"))
+    manager._flow.ids = list("ABCDEFG")
+    mocker.patch.object(manager, "_confirm_overflow", return_value=False)
+
+    manager.cmd_set_grid_template("1 + 5")
+
+    assert manager._mode is GridMode.AUTO_ROWS
+    assert not manager.commands["is_grid_undoable"]()
+
+
+def test_make_the_active_cell_bigger_and_undo(mocker):
+    manager = _make_grid_manager(list("ABCDEF"))
+    manager._mode = GridMode.FIXED
+    manager._grid_layout = GridLayout(max_rows=3, max_cols=3)
+    manager._grid_layout.pack_flow(list("ABCDEF"))
+    before = _cell_spans(manager)
+    manager._ctx.active_block = SimpleNamespace(video_id="B")
+
+    assert manager.is_grid_cell_steppable("bigger")
+    assert not manager.is_grid_cell_steppable("smaller")
+    manager.cmd_step_grid_cell("bigger")
+
+    assert ("B", 0, 1, 2, 2) in _cell_spans(manager)
+    assert manager.is_grid_cell_steppable("smaller")
+
+    manager.cmd_undo_grid()
+    assert _cell_spans(manager) == before
+    assert not manager.commands["is_grid_undoable"]()
+    assert manager.commands["is_grid_redoable"]()
+
+    manager.cmd_redo_grid()
+    assert ("B", 0, 1, 2, 2) in _cell_spans(manager)
+
+
+def test_no_room_to_make_it_bigger_warns():
+    manager = _make_grid_manager(list("ABCD"))
+    manager._mode = GridMode.FIXED
+    manager._grid_layout = GridLayout(max_rows=2, max_cols=2)
+    manager._grid_layout.pack_flow(list("ABCD"))
+    manager._ctx.active_block = SimpleNamespace(video_id="A")
+    warnings = []
+    manager.warning.connect(warnings.append)
+
+    manager.cmd_step_grid_cell("bigger")
+
+    assert warnings
+    assert manager._grid_layout.span_of("A") == (1, 1)
+    assert not manager.commands["is_grid_undoable"]()
+
+
+def test_a_cell_made_wider_by_its_own_button():
+    manager = _make_grid_manager(list("ABC"))
+    manager._mode = GridMode.FIXED
+    manager._grid_layout = GridLayout(max_rows=2, max_cols=3)
+    manager._grid_layout.pack_flow(list("ABC"))
+
+    # not the active one: the one whose button it is
+    manager._ctx.active_block = SimpleNamespace(video_id="A")
+    manager.cmd_step_grid_cell("wider", "C")
+
+    assert manager.grid_cell_span("C") == (1, 2)
+    assert manager.grid_cell_span("A") == (1, 1)
+
+    assert manager.can_set_grid_cell_span("C", 2, 2)
+    assert not manager.can_set_grid_cell_span("C", 2, 3)
+
+
+def test_cells_are_sized_only_in_a_fixed_grid_shown_whole():
+    manager = _make_grid_manager(list("AB"))
+    manager._grid_layout = GridLayout(max_rows=2, max_cols=2)
+    manager._grid_layout.pack_flow(list("AB"))
+    manager._ctx.active_block = SimpleNamespace(video_id="A")
+
+    manager._mode = GridMode.AUTO_ROWS
+    assert not manager.is_grid_cell_sizable()
+
+    manager._mode = GridMode.FIXED
+    assert manager.is_grid_cell_sizable()
+
+    manager._ctx.is_single_mode = True
+    assert not manager.is_grid_cell_sizable()
+    assert not manager.is_grid_cell_steppable("bigger")
+
+
+def test_undo_takes_back_the_grid_options_too():
+    manager = _make_grid_manager(list("AB"))
+    manager._flow.ids = list("AB")
+
+    manager.cmd_switch_is_grid_fit()
+    manager.cmd_set_grid_mode(GridMode.AUTO_COLS)
+    assert manager.grid_state().is_fit is not GridState().is_fit
+
+    manager.cmd_undo_grid()
+    manager.cmd_undo_grid()
+
+    state = manager.grid_state()
+    assert state.mode is GridMode.AUTO_ROWS
+    assert state.is_fit is GridState().is_fit
+    assert PlaylistSettings().get("playlist/grid_fit") is state.is_fit
+    assert PlaylistSettings().get("playlist/grid_mode") is GridMode.AUTO_ROWS
+
+
+def test_a_new_grid_state_or_other_videos_forget_the_changes(mocker):
+    manager = _make_grid_manager(list("AB"))
+    mocker.patch.object(manager, "_render_video_grid")
+    manager._flow.ids = list("AB")
+
+    manager.cmd_switch_is_grid_fit()
+    manager.cmd_undo_grid()
+    assert manager.commands["is_grid_redoable"]()
+
+    manager.set_grid_state(GridState(video_order=list("AB")))
+    assert not manager.commands["is_grid_redoable"]()
+
+    manager.cmd_switch_is_grid_fit()
+    manager.forget_grid_changes()
+    assert not manager.commands["is_grid_undoable"]()
+
+
+def test_editing_cells_from_auto(mocker):
+    manager = _make_grid_manager(list("ABCD"))
+    manager._flow.ids = list("ABCD")
+    layout_changed = mocker.Mock()
+    manager.layout_changed.connect(layout_changed)
+
+    assert manager.make_grid_fixed()
+    assert manager._mode is GridMode.FIXED
+    assert (manager._grid_layout.max_rows, manager._grid_layout.max_cols) == (2, 2)
+
+    manager.set_grid_editing(True)
+    assert not manager.can_resize_fixed_grid(1, 2)
+    assert manager.cmd_resize_fixed_grid(2, 3)
+    assert manager.cmd_place_grid_cell("A", 0, 0, 1, 2)
+    assert manager._grid_layout.position_of("B") == (0, 2)
+    assert not manager.cmd_place_grid_cell("A", 0, 0, 2, 2)
+    manager.set_grid_editing(False)
+
+    # each a change of its own, back to the Auto grid
+    for _ in range(3):
+        manager.cmd_undo_grid()
+    assert manager._mode is GridMode.AUTO_ROWS
+    assert not manager.commands["is_grid_undoable"]()
+
+
+def test_sizes_reset_at_once_and_undone():
+    manager = _make_grid_manager(list("ABCD"))
+    manager._mode = GridMode.AUTO_SHAPES
+    manager._flow.mode = FlowMode.SHAPES
+    manager._flow.ids = list("ABCD")
+    manager._flow.sizes = {"A": 2, "C": -1}
+
+    assert manager.is_grid_sized()
+    manager.cmd_reset_grid_sizes()
+
+    assert not manager.is_grid_sized()
+    assert manager.grid_state().sizes == {}
+
+    manager.cmd_undo_grid()
+    assert manager.grid_state().sizes == {"A": 2, "C": -1}
+
+
+def test_reset_size_of_a_cell_and_of_the_grid_in_a_fixed_grid():
+    manager = _make_grid_manager(list("ABC"))
+    manager._mode = GridMode.FIXED
+    manager._grid_layout = GridLayout(max_rows=3, max_cols=3)
+    manager._grid_layout.pack_flow(list("ABC"))
+    manager._grid_layout.set_span("A", 2, 2)
+    manager._grid_layout.set_span("C", 1, 2)
+    c_at = manager._grid_layout.position_of("C")
+
+    assert manager.is_grid_sized()
+    assert manager.is_grid_cell_sized("A")
+    assert not manager.is_grid_cell_sized("B")
+
+    manager.cmd_reset_grid_cell_size("A")
+    assert manager.grid_cell_span("A") == (1, 1)
+    assert manager.grid_cell_span("C") == (1, 2)
+
+    manager.cmd_reset_grid_sizes()
+    assert not manager.is_grid_sized()
+    assert manager._grid_layout.position_of("C") == c_at
+
+    manager.cmd_undo_grid()
+    assert manager.grid_cell_span("C") == (1, 2)
+
+
+def test_reset_size_of_a_video_in_fit_shapes():
+    manager = _make_grid_manager(list("ABCD"))
+    manager._mode = GridMode.AUTO_SHAPES
+    manager._flow.mode = FlowMode.SHAPES
+    manager._flow.ids = list("ABCD")
+    manager._flow.sizes = {"A": 2, "C": -1}
+
+    manager.cmd_reset_grid_cell_size("A")
+
+    assert manager.grid_state().sizes == {"C": -1}
+    assert not manager.is_grid_cell_sized("A")
+
+
+def test_undo_told_once_it_can_be_undone():
+    # the editor's bar looks then, not when the grid is laid out, which is
+    # before the change is kept
+    manager = _make_grid_manager(list("ABCD"))
+    manager._mode = GridMode.FIXED
+    manager._grid_layout = GridLayout(max_rows=3, max_cols=3)
+    manager._grid_layout.pack_flow(list("ABCD"))
+
+    seen = []
+    manager.undo_changed.connect(
+        lambda: seen.append(manager.commands["is_grid_undoable"]())
+    )
+
+    manager.cmd_step_grid_cell("bigger", "A")
+    assert seen == [True]
+
+    manager.forget_grid_changes()
+    assert seen == [True, False]
+
+
+def test_bigger_in_fit_shapes_is_kept_in_the_grid_state_and_undone():
+    manager = _make_grid_manager(list("ABCDEFGH"))
+    manager._mode = GridMode.AUTO_SHAPES
+    manager._flow.mode = FlowMode.SHAPES
+    manager._flow.ids = list("ABCDEFGH")
+    manager._flow.fit_to(1600, 900, {})
+    manager._ctx.active_block = SimpleNamespace(video_id="B")
+
+    assert manager.is_grid_cell_sizable()
+    assert not manager.is_grid_cell_shapable()
+    assert manager.is_grid_cell_steppable("bigger")
+    assert not manager.is_grid_cell_steppable("wider")
+
+    manager.cmd_step_grid_cell("bigger")
+    assert manager.grid_state().sizes["B"] > 0
+
+    manager.cmd_undo_grid()
+    assert manager.grid_state().sizes == {}
+
+
+def test_a_drop_turns_reorder_to_fit_off_and_stays():
+    ids = list("ABCDEF")
+    manager = _make_grid_manager(ids)
+    manager._mode = GridMode.AUTO_SHAPES
+    manager._flow.mode = FlowMode.SHAPES
+    manager._flow.ids = list(ids)
+    manager._flow.is_reordered = True
+    manager._flow.fit_to(1920, 1080, dict(zip(ids, [16 / 9, 9 / 16] * 3)))
+    shown = [video_id for video_id, _box in manager._flow.boxes()]
+    assert shown != ids
+
+    manager.cmd_layout_drop(
+        [],
+        SimpleNamespace(video_id="A"),
+        SimpleNamespace(video_id="F"),
+        DropZone.AFTER,
+        False,
+    )
+
+    assert not manager.grid_state().is_reordered
+    assert not PlaylistSettings().get("playlist/grid_reorder")
+    moved = [i for i in shown if i != "A"]
+    moved.insert(moved.index("F") + 1, "A")
+    assert manager._flow.ids == moved
+
+
+def _reordered(ids):
+    manager = _make_grid_manager(ids)
+    manager._mode = GridMode.AUTO_SHAPES
+    manager._flow.mode = FlowMode.SHAPES
+    manager._flow.ids = list(ids)
+    manager._flow.is_reordered = True
+    manager._flow.fit_to(1920, 1080, dict(zip(ids, [16 / 9, 9 / 16] * 3)))
+    return manager
+
+
+def test_a_video_dropped_back_on_itself_keeps_reorder_to_fit():
+    manager = _reordered(list("ABCDEF"))
+    block = SimpleNamespace(video_id="A")
+
+    manager.cmd_layout_drop([], block, block, DropZone.CENTER, False)
+
+    assert manager.grid_state().is_reordered
+    assert not manager.commands["is_grid_undoable"]()
+
+
+def test_edited_as_a_fixed_grid_the_videos_stay_where_they_are_shown():
+    manager = _reordered(list("ABCDEF"))
+    shown = manager._flow.order()
+    assert shown != list("ABCDEF")
+    PlaylistSettings().set("playlist/grid_preallocate", True)
+
+    assert manager.make_grid_fixed()
+
+    assert manager._grid_layout.order() == shown
+    # Show All Cells as the grid has it
+    assert not PlaylistSettings().get("playlist/grid_preallocate")
+
+
+def test_no_undo_while_a_line_is_held():
+    manager = _make_grid_manager(["A", "B"])
+    _fixed_two_in_three(manager)
+    manager.cmd_reset_grid_lines()
+    manager.cmd_set_grid_cell_span("A", 2, 2)
+
+    manager.begin_grid_change()
+    manager.set_grid_weights(Weights((0.2, 0.3, 0.5), ()))
+    manager.cmd_undo_grid()
+    manager.end_grid_change()
+
+    assert manager._grid_layout.span_of("A") == (2, 2)
+    manager.cmd_undo_grid()
+    assert manager.grid_state().col_weights == []
+    manager.cmd_undo_grid()
+    assert manager._grid_layout.span_of("A") == (1, 1)
+
+
+def test_undone_after_editing_the_grid_has_no_empty_band():
+    manager = _make_grid_manager(["A"])
+    manager._mode = GridMode.FIXED
+    manager._grid_layout = GridLayout(max_rows=3, max_cols=3)
+    manager._grid_layout.pack_flow(["A"])
+    manager.set_grid_editing(True)
+    manager.cmd_place_grid_cell("A", 1, 1, 1, 1)
+    manager.cmd_place_grid_cell("A", 2, 2, 1, 1)
+    manager.set_grid_editing(False)
+
+    # to A where the first move left it, a row and a column from the top
+    manager.cmd_undo_grid()
+
+    assert manager._grid_layout.position_of("A") == (0, 0)
+    assert manager._grid_layout.displayed_size() == (1, 1)
+
+
+def test_reorder_to_fit_is_a_grid_option():
+    manager = _make_grid_manager(list("AB"))
+    manager._mode = GridMode.AUTO_SHAPES
+
+    manager.cmd_switch_is_grid_reorder()
+
+    assert manager.grid_state().is_reordered
+    assert PlaylistSettings().get("playlist/grid_reorder")
+
+    manager.cmd_undo_grid()
+    assert not manager.grid_state().is_reordered

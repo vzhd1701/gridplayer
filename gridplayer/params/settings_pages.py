@@ -80,6 +80,7 @@ PLAYLIST_PAGE = (
         "playlist/grid_fit",
         "playlist/grid_match_shapes",
         "playlist/grid_crop",
+        "playlist/grid_reorder",
         "playlist/grid_rows",
         "playlist/grid_cols",
         "playlist/grid_preallocate",

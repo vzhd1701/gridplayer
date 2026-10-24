@@ -4,6 +4,7 @@ from gridplayer.params.static import (
     ASPECT_RATIO_PRESETS,
     CROP_RATIO_PRESETS,
     GRID_CROPS,
+    GRID_TEMPLATES,
 )
 from gridplayer.utils.qt import translate
 
@@ -55,6 +56,14 @@ SUBMENUS = MappingProxyType(
             "title": translate("Allow Cropping", "Allow Cropping"),
             "icon": "crop",
         },
+        "Templates": {
+            "title": translate("Actions", "Templates"),
+            "icon": "grid-template-1-5",
+        },
+        "Cell Size": {
+            "title": translate("Actions", "Cell Size"),
+            "icon": "grid-cell-size",
+        },
         "Sync": {"title": translate("Actions", "Sync"), "icon": "sync"},
         "Seek Sync": {"title": translate("Actions", "Seek"), "icon": "seek-sync"},
         "Sync Others": {
@@ -105,6 +114,17 @@ SECTIONS = MappingProxyType(
             "Play / Pause",
             "Stop",
             "---",
+            (
+                "Cell Size",
+                "Make Cell Bigger",
+                "Make Cell Smaller",
+                "Reset Cell Size",
+                "---",
+                "Make Cell Wider",
+                "Make Cell Narrower",
+                "Make Cell Taller",
+                "Make Cell Shorter",
+            ),
             "Single Mode ON / OFF",
             "Previous Video",
             "Next Video",
@@ -671,6 +691,9 @@ SECTIONS = MappingProxyType(
             ),
             (
                 "Grid",
+                "Undo Grid Change",
+                "Redo Grid Change",
+                "---",
                 "Shuffle Grid",
                 "Shuffle Grid On Load",
                 "---",
@@ -678,6 +701,7 @@ SECTIONS = MappingProxyType(
                 "Columns First",
                 "Fit Shapes",
                 "Fixed Grid",
+                ("Templates", *(f"Grid Template {name}" for name in GRID_TEMPLATES)),
                 "---",
                 "Size: %v",
                 "Fit Cells",
@@ -686,6 +710,8 @@ SECTIONS = MappingProxyType(
                     "Allow Cropping",
                     *(f"Allow Cropping {crop}%" for crop in GRID_CROPS),
                 ),
+                "Reorder to Fit",
+                "Reset Sizes",
                 "Grid Size: %v",
                 "Show All Cells",
                 "---",
@@ -693,6 +719,8 @@ SECTIONS = MappingProxyType(
                 "Reset Lines",
                 "Snap Lines",
                 "Link Rows",
+                "---",
+                "Edit Grid",
             ),
             (
                 "Playlist Settings",

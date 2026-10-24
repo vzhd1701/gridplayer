@@ -105,6 +105,9 @@ _default_settings = {
     # in Fit Shapes, the percent of each video its tile may cut off to fill
     # the window
     "playlist/grid_crop": 0,
+    # in Fit Shapes, the videos put in the order that shows them biggest,
+    # those of like shapes together
+    "playlist/grid_reorder": False,
     # on Auto, the lines between a row's videos go across all the rows, else
     # each row's are its own
     "playlist/grid_link": True,

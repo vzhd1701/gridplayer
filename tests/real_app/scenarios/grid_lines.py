@@ -2,7 +2,8 @@
 over it, the line shows once pressed, the cells go with it, it snaps where
 the phone video
 just fits, and not with Alt held. Esc puts it back, a double click evens
-it out, and none of it is a click or a drag of a video. Fit Lines to
+it out, and none of it is a click or a drag of a video. Undo takes a
+drag back. Fit Lines to
 Videos and Reset Lines do it from the menu, and Fit Shapes has no lines.
 A short last row that Fill Gaps spreads has lines of its own, moved apart
 from the columns over it, and with Link Rows off every row has, snapping
@@ -173,10 +174,19 @@ def scenario(d):
     d.check("let go after Esc: no move", _widths(d)[0] == 169, _widths(d))
     d.check("no pointer left", _cursor() is None and _mark(d) is None)
 
+    # the drag undone and done again, the one put back by Esc no change
+    d.act(d.cells[0], "Undo Grid Change")
+    d.check("drag undone", _widths(d) == [350, 350], _widths(d))
+    d.act(d.cells[0], "Redo Grid Change")
+    d.check("drag redone", _widths(d)[0] == 169, _widths(d))
+
     # a double click evens the lines out
     _mouse(d, "move", _at(d, 169))
     _mouse(d, "double", _at(d, 169))
     d.check("double click evens out", _widths(d) == [350, 350], _widths(d))
+    d.act(d.cells[0], "Undo Grid Change")
+    d.check("double click undone", _widths(d)[0] == 169, _widths(d))
+    d.act(d.cells[0], "Redo Grid Change")
     d.check("not single mode", not d.ctx.is_single_mode)
     d.check(
         "no click: still playing",

@@ -8,7 +8,8 @@ from PyQt5.QtWidgets import QMessageBox
 from gridplayer.dialogs.input_dialog import QCustomSpinboxInput, QFixedGridSizeDialog
 from gridplayer.dialogs.messagebox import QCustomMessageBox
 from gridplayer.models.grid_state import GridState
-from gridplayer.params.static import GridMode
+from gridplayer.params.settings_bindings import GRID_STATE_ATTR
+from gridplayer.params.static import GRID_TEMPLATES, MAX_FIXED_SIZE, GridMode
 from gridplayer.player.managers.base import ManagerBase
 from gridplayer.playlist_settings import PlaylistSettings
 from gridplayer.settings import Settings
@@ -28,6 +29,23 @@ from gridplayer.utils.layout.flow_layout import DEFAULT_SHAPE
 from gridplayer.utils.layout.lines import FitCell, GridLines, Span, fit_weights
 from gridplayer.utils.qt import count_txt, translate
 from gridplayer.widgets.empty_cell import EmptyCell
+
+# how many changes of the grid can be undone
+UNDO_LIMIT = 50
+
+# a video's cell made a step bigger or smaller: rows and columns more
+CELL_STEPS = {
+    "bigger": (1, 1),
+    "smaller": (-1, -1),
+    "wider": (0, 1),
+    "narrower": (0, -1),
+    "taller": (1, 0),
+    "shorter": (-1, 0),
+}
+
+# in Fit Shapes, where a video's tile is its shape, only bigger and smaller
+# (see FlowLayout.size_step)
+SHAPES_STEPS = {"bigger": 1, "smaller": -1}
 
 
 class GridDimensions(NamedTuple):
@@ -50,6 +68,8 @@ def _flow_mode(mode: GridMode) -> FlowMode:
 class GridManager(ManagerBase):
     warning = pyqtSignal(str)
     layout_changed = pyqtSignal()
+    # what there is to undo or redo
+    undo_changed = pyqtSignal()
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -70,6 +90,7 @@ class GridManager(ManagerBase):
             is_match_shapes=Settings().get("playlist/grid_match_shapes"),
             crop=Settings().get("playlist/grid_crop"),
             is_linked=Settings().get("playlist/grid_link"),
+            is_reordered=Settings().get("playlist/grid_reorder"),
         )
         # the lines between the cells, moved by hand
         self._weights = EVEN
@@ -77,6 +98,16 @@ class GridManager(ManagerBase):
         # the last lines fit_weights found, and for what: asked for each
         # time the menu is made, to say whether fitting would change them
         self._fitted: tuple[tuple, Weights] | None = None
+
+        # the grid as it was before each change made to it, and as it was
+        # before each undone, to undo or redo (see _undoable)
+        self._undo: list[GridState] = []
+        self._redo: list[GridState] = []
+        # as it was when a change made over time began (see
+        # begin_grid_change), and how many times the changes were
+        # forgotten: one going on then is not to be undone either
+        self._change_start: tuple[GridState, int] | None = None
+        self._forgotten = 0
 
         self._empty_cells = []
         self._empty_positions = {}
@@ -112,6 +143,12 @@ class GridManager(ManagerBase):
             "is_grid_link": lambda: self._flow.is_linked,
             "set_grid_crop": self.cmd_set_grid_crop,
             "is_grid_crop_set_to": lambda crop: self._flow.crop == crop,
+            "switch_is_grid_reorder": self.cmd_switch_is_grid_reorder,
+            "is_grid_reorder": lambda: self._flow.is_reordered,
+            "reset_grid_sizes": self.cmd_reset_grid_sizes,
+            "is_grid_sized": self.is_grid_sized,
+            "reset_grid_cell_size": self.cmd_reset_grid_cell_size,
+            "is_grid_cell_sized": self.is_grid_cell_sized,
             "is_grid_preallocate": lambda: self._grid_layout.preallocate,
             "switch_grid_preallocate": self.cmd_switch_grid_preallocate,
             "ask_fixed_grid_size": self.cmd_ask_fixed_grid_size,
@@ -133,6 +170,29 @@ class GridManager(ManagerBase):
             "reset_grid_lines": self.cmd_reset_grid_lines,
             "is_grid_lines_fittable": self.is_grid_lines_fittable,
             "is_grid_lines_moved": self.is_grid_lines_moved,
+            "step_grid_cell": self.cmd_step_grid_cell,
+            "is_grid_cell_steppable": self.is_grid_cell_steppable,
+            "is_grid_cell_sizable": self.is_grid_cell_sizable,
+            "is_grid_cell_shapable": self.is_grid_cell_shapable,
+            "grid_cell_span": self.grid_cell_span,
+            "grid_cell_room": self.grid_cell_room,
+            "set_grid_cell_span": self.cmd_set_grid_cell_span,
+            "can_set_grid_cell_span": self.can_set_grid_cell_span,
+            "set_grid_template": self.cmd_set_grid_template,
+            "is_grid_template": self.is_grid_template,
+            "undo_grid": self.cmd_undo_grid,
+            "redo_grid": self.cmd_redo_grid,
+            "is_grid_undoable": lambda: bool(self._undo),
+            "is_grid_redoable": lambda: bool(self._redo),
+            "begin_grid_change": self.begin_grid_change,
+            "end_grid_change": self.end_grid_change,
+            "is_grid_fixed": lambda: self._is_fixed,
+            "make_grid_fixed": self.make_grid_fixed,
+            "set_grid_editing": self.set_grid_editing,
+            "place_grid_cell": self.cmd_place_grid_cell,
+            "can_place_grid_cell": self.can_place_grid_cell,
+            "resize_fixed_grid": self.cmd_resize_fixed_grid,
+            "can_resize_fixed_grid": self.can_resize_fixed_grid,
         }
 
     @property
@@ -150,7 +210,7 @@ class GridManager(ManagerBase):
 
     @property
     def _show_empties(self):
-        return self._is_fixed and self._grid_layout.preallocate
+        return self._is_fixed and self._grid_layout.shows_every_cell
 
     @contextlib.contextmanager
     def slow_ui_operation(self):
@@ -166,9 +226,11 @@ class GridManager(ManagerBase):
             is_fit=self._flow.is_fit,
             is_match_shapes=self._flow.is_match_shapes,
             crop=self._flow.crop,
+            is_reordered=self._flow.is_reordered,
             is_linked=self._flow.is_linked,
             size=self._flow.size,
             video_order=list(self._flow.ids),
+            sizes=self._flow.sized(),
             rows=self._grid_layout.max_rows,
             cols=self._grid_layout.max_cols,
             preallocate=self._grid_layout.preallocate,
@@ -179,14 +241,28 @@ class GridManager(ManagerBase):
         )
 
     def set_grid_state(self, state: GridState) -> None:
+        """The grid as a playlist or a snapshot has it: nothing done before
+        is to be undone in it."""
+
+        self.forget_grid_changes()
+        self._load_grid_state(state)
+
+        if self._ctx.video_blocks:
+            self._reconcile_layout()
+
+        self._render_video_grid()
+
+    def _load_grid_state(self, state: GridState) -> None:
         self._mode = state.mode
         self._flow.mode = _flow_mode(state.mode)
         self._flow.is_fit = state.is_fit
         self._flow.is_match_shapes = state.is_match_shapes
         self._flow.crop = state.crop
+        self._flow.is_reordered = state.is_reordered
         self._flow.is_linked = state.is_linked
         self._flow.size = state.size
         self._flow.ids = list(state.video_order)
+        self._flow.sizes = dict(state.sizes)
         self._grid_layout.max_rows = max(1, state.rows)
         self._grid_layout.max_cols = max(1, state.cols)
         self._grid_layout.preallocate = state.preallocate
@@ -203,11 +279,82 @@ class GridManager(ManagerBase):
                 self._grid_layout.max_cols,
                 self._grid_layout.preallocate,
             )
+            # one kept while every cell was shown, as Edit Grid does
+            self._grid_layout.compact_edges()
 
-        if self._ctx.video_blocks:
-            self._reconcile_layout()
+    # --- undo ---
 
-        self._render_video_grid()
+    @contextlib.contextmanager
+    def _undoable(self):
+        """A change of the grid made in it can be undone."""
+
+        start = self._started()
+        yield
+        self._remember(start)
+
+    def begin_grid_change(self) -> None:
+        """A change made over time, a line dragged: undone as one, once it
+        ends (see end_grid_change)."""
+
+        self._change_start = self._started()
+
+    def end_grid_change(self) -> None:
+        if self._change_start is not None:
+            self._remember(self._change_start)
+            self._change_start = None
+
+    def _started(self) -> tuple[GridState, int]:
+        return self.grid_state(), self._forgotten
+
+    def _remember(self, start: tuple[GridState, int]) -> None:
+        """The grid was changed from how it was at the start: that can be
+        undone, and what was undone can no longer be redone. Not where the
+        changes were forgotten meanwhile, a video closed by it."""
+
+        before, forgotten = start
+        if forgotten != self._forgotten or before == self.grid_state():
+            return
+
+        self._undo.append(before)
+        del self._undo[:-UNDO_LIMIT]
+        self._redo.clear()
+        self.undo_changed.emit()
+
+    def forget_grid_changes(self) -> None:
+        """Nothing to undo or redo: the grid's earlier states had other
+        videos in it, which undoing would bring back without their cells,
+        or put the new ones where there is no room for them."""
+
+        self._forgotten += 1
+        self._undo.clear()
+        self._redo.clear()
+        self.undo_changed.emit()
+
+    def cmd_undo_grid(self):
+        self._go_back(self._undo, self._redo)
+
+    def cmd_redo_grid(self):
+        self._go_back(self._redo, self._undo)
+
+    def _go_back(self, states: list[GridState], others: list[GridState]) -> None:
+        # to the last of the states, the grid as it is now kept in the others;
+        # not while a line is held, which would come back to where it was
+        if not states or self._change_start is not None:
+            return
+
+        now = self.grid_state()
+        others.append(now)
+        self._restore(states.pop(), now)
+        self.undo_changed.emit()
+
+    def _restore(self, state: GridState, now: GridState) -> None:
+        # the playlist's own values as they were too, those that differ
+        for key, attr in GRID_STATE_ATTR.items():
+            if getattr(state, attr) != getattr(now, attr):
+                PlaylistSettings().set(key, getattr(state, attr))
+
+        self._load_grid_state(state)
+        self.layout_changed.emit()
 
     def apply_grid_config(self, config: GridState) -> bool:
         """Apply mode/size/fit/match shapes/crop/link/rows/cols/preallocate
@@ -216,6 +363,10 @@ class GridManager(ManagerBase):
         Restores do not use this — ``set_grid_state`` keeps cell positions.
         Returns False if the user cancelled a confirmation dialog.
         """
+        with self._undoable():
+            return self._apply_grid_config(config)
+
+    def _apply_grid_config(self, config: GridState) -> bool:
         mode = config.mode
         rows = max(1, int(config.rows))
         cols = max(1, int(config.cols))
@@ -235,6 +386,7 @@ class GridManager(ManagerBase):
             and self._flow.is_fit == config.is_fit
             and self._flow.is_match_shapes == config.is_match_shapes
             and self._flow.crop == config.crop
+            and self._flow.is_reordered == config.is_reordered
             and self._flow.is_linked == config.is_linked
             and self._flow.size == config.size
         )
@@ -261,6 +413,7 @@ class GridManager(ManagerBase):
         self._flow.is_fit = config.is_fit
         self._flow.is_match_shapes = config.is_match_shapes
         self._flow.crop = config.crop
+        self._flow.is_reordered = config.is_reordered
         self._flow.size = config.size
         self._set_linked(config.is_linked)
 
@@ -316,6 +469,8 @@ class GridManager(ManagerBase):
     def grid_area(self) -> QRect:
         """Where the cells are laid out, on the screen."""
 
+        # moved lines leave it with no place until it is laid out again
+        self._grid.activate()
         area = self._grid.geometry()
         return QRect(self.parent().mapToGlobal(area.topLeft()), area.size())
 
@@ -337,7 +492,8 @@ class GridManager(ManagerBase):
         if lines is None:
             return
 
-        self.set_grid_weights(self._fitted_weights(lines))
+        with self._undoable():
+            self.set_grid_weights(self._fitted_weights(lines))
 
     def is_grid_lines_fittable(self) -> bool:
         """Whether Fit Lines to Videos would move any line."""
@@ -362,7 +518,8 @@ class GridManager(ManagerBase):
         return self._fitted[1]
 
     def cmd_reset_grid_lines(self):
-        self.set_grid_weights(EVEN)
+        with self._undoable():
+            self.set_grid_weights(EVEN)
 
     def _fit_cells(self) -> list[FitCell]:
         """The cells for fit_weights, where they are in the grid. One with
@@ -375,32 +532,16 @@ class GridManager(ManagerBase):
         if not self._is_fixed:
             return self._fit_flow_cells(shape_of)
 
-        cells = []
-        covered = set()
-        for cell in self._grid_layout.cells:
-            if not cell.video_id:
-                continue
-            cells.append(
-                FitCell.at(
-                    cell.row,
-                    cell.col,
-                    shape_of(cell.video_id),
-                    cell.rowspan,
-                    cell.colspan,
-                )
+        cells = [
+            FitCell.at(
+                cell.row, cell.col, shape_of(cell.video_id), cell.rowspan, cell.colspan
             )
-            covered.update(
-                (row, col)
-                for row in range(cell.row, cell.row + cell.rowspan)
-                for col in range(cell.col, cell.col + cell.colspan)
-            )
-
-        cols, rows = self._grid_layout.displayed_size()
+            for cell in self._grid_layout.cells
+            if cell.video_id
+        ]
         cells.extend(
             FitCell.at(row, col, DEFAULT_SHAPE)
-            for row in range(rows)
-            for col in range(cols)
-            if (row, col) not in covered
+            for row, col in self._grid_layout.empty_positions()
         )
         return cells
 
@@ -491,6 +632,10 @@ class GridManager(ManagerBase):
         if self._mode == mode:
             return
 
+        with self._undoable():
+            self._set_grid_mode(mode)
+
+    def _set_grid_mode(self, mode):
         if mode == GridMode.FIXED:
             self._ask_and_apply_fixed(include_preallocate=True)
             return
@@ -518,12 +663,8 @@ class GridManager(ManagerBase):
             _max=1000,
         )
 
-        if self._flow.size == size:
-            return
-
-        self._flow.size = size
-        PlaylistSettings().set("playlist/grid_size", size)
-        self.layout_changed.emit()
+        if self._flow.size != size:
+            self._set_flow_option("playlist/grid_size", size)
 
     def cmd_get_grid_size(self):
         if self._flow.size == 0:
@@ -532,48 +673,331 @@ class GridManager(ManagerBase):
         return str(self._flow.size)
 
     def cmd_switch_is_grid_fit(self):
-        self._flow.is_fit = not self._flow.is_fit
-        PlaylistSettings().set("playlist/grid_fit", self._flow.is_fit)
-        self.layout_changed.emit()
+        self._set_flow_option("playlist/grid_fit", not self._flow.is_fit)
 
     def cmd_switch_is_grid_match_shapes(self):
-        self._flow.is_match_shapes = not self._flow.is_match_shapes
-        PlaylistSettings().set("playlist/grid_match_shapes", self._flow.is_match_shapes)
-        self.layout_changed.emit()
+        self._set_flow_option(
+            "playlist/grid_match_shapes", not self._flow.is_match_shapes
+        )
 
     def cmd_switch_is_grid_link(self):
-        self._set_linked(not self._flow.is_linked)
-        PlaylistSettings().set("playlist/grid_link", self._flow.is_linked)
-        self.layout_changed.emit()
+        self._set_flow_option("playlist/grid_link", not self._flow.is_linked)
 
     def cmd_set_grid_crop(self, crop: int):
-        if self._flow.crop == crop:
+        if self._flow.crop != crop:
+            self._set_flow_option("playlist/grid_crop", crop)
+
+    def cmd_switch_is_grid_reorder(self):
+        self._set_flow_option("playlist/grid_reorder", not self._flow.is_reordered)
+
+    def _set_flow_option(self, key: str, value) -> None:
+        # an option of Auto, by its setting: the playlist's own value
+        with self._undoable():
+            if key == "playlist/grid_link":
+                self._set_linked(value)
+            else:
+                setattr(self._flow, GRID_STATE_ATTR[key], value)
+            PlaylistSettings().set(key, value)
+            self.layout_changed.emit()
+
+    def is_grid_sized(self) -> bool:
+        """Whether any video is made bigger or smaller: in Fit Shapes (see
+        FlowLayout.sizes), or in a Fixed Grid, its cell covering more than
+        one."""
+
+        if self._mode == GridMode.AUTO_SHAPES:
+            return bool(self._flow.sized())
+        return self._is_fixed and bool(self._grid_layout.big_cells())
+
+    def cmd_reset_grid_sizes(self):
+        """Every video back to its size: in a Fixed Grid, one cell each,
+        the others staying where they are."""
+
+        if not self.is_grid_sized():
             return
 
-        self._flow.crop = crop
-        PlaylistSettings().set("playlist/grid_crop", crop)
-        self.layout_changed.emit()
+        with self._undoable():
+            if self._mode == GridMode.AUTO_SHAPES:
+                self._flow.sizes = {}
+            else:
+                for cell in self._grid_layout.big_cells():
+                    self._grid_layout.set_span(cell.video_id, 1, 1)
+            self.layout_changed.emit()
+
+    def is_grid_cell_sized(self, video_id: str | None = None) -> bool:
+        """Whether a video, the active one by default, is made bigger or
+        smaller (see is_grid_sized)."""
+
+        video_id = video_id or self._active_id()
+        if video_id is None:
+            return False
+        if self._mode == GridMode.AUTO_SHAPES:
+            return bool(self._flow.sizes.get(video_id))
+        return self._is_fixed and self._grid_layout.span_of(video_id) not in {
+            None,
+            (1, 1),
+        }
+
+    def cmd_reset_grid_cell_size(self, video_id: str | None = None):
+        """A video, the active one by default, back to its size."""
+
+        video_id = video_id or self._active_id()
+        if not self.is_grid_cell_sized(video_id):
+            return
+        if self._mode == GridMode.AUTO_SHAPES:
+            self._set_shapes_size(video_id, 0)
+        else:
+            self.cmd_set_grid_cell_span(video_id, 1, 1)
 
     def cmd_get_fixed_grid_size(self):
         return f"{self._grid_layout.max_cols}x{self._grid_layout.max_rows}"
 
     def cmd_ask_fixed_grid_size(self):
-        self._ask_and_apply_fixed(include_preallocate=not self._is_fixed)
+        with self._undoable():
+            self._ask_and_apply_fixed(include_preallocate=not self._is_fixed)
 
     def cmd_switch_grid_preallocate(self):
         if not self._is_fixed:
             return
-        self._grid_layout.preallocate = not self._grid_layout.preallocate
-        if not self._grid_layout.preallocate:
-            self._grid_layout.compact_edges()
-        PlaylistSettings().set(
-            "playlist/grid_preallocate", self._grid_layout.preallocate
-        )
-        self.layout_changed.emit()
+
+        with self._undoable():
+            self._grid_layout.preallocate = not self._grid_layout.preallocate
+            if not self._grid_layout.preallocate:
+                self._grid_layout.compact_edges()
+            PlaylistSettings().set(
+                "playlist/grid_preallocate", self._grid_layout.preallocate
+            )
+            self.layout_changed.emit()
 
     def cmd_shuffle_layout(self):
-        self._layout.shuffle()
+        with self._undoable():
+            self._layout.shuffle()
+            self.layout_changed.emit()
+
+    # --- big cells ---
+
+    def _active_id(self) -> str | None:
+        block = self._ctx.active_block
+        return block.video_id if block is not None else None
+
+    def is_grid_cell_sizable(self) -> bool:
+        """Whether the videos' cells can be made bigger and smaller, all of
+        them shown: in a Fixed Grid of more than one cell, or in Fit Shapes
+        with more than one video (see FlowLayout.sizes)."""
+
+        if self._ctx.is_single_mode:
+            return False
+        if self._mode == GridMode.AUTO_SHAPES:
+            return len(self._flow.ids) > 1
+        return (
+            self._is_fixed
+            and self._grid_layout.max_rows * self._grid_layout.max_cols > 1
+        )
+
+    def is_grid_cell_shapable(self) -> bool:
+        """Whether they can be made wider, taller and so on, and their size
+        picked: in a Fixed Grid (see is_grid_cell_sizable)."""
+
+        return self._is_fixed and self.is_grid_cell_sizable()
+
+    def _step_target(self, video_id: str | None) -> str | None:
+        video_id = video_id or self._active_id()
+        if video_id is None or not self.is_grid_cell_sizable():
+            return None
+        return video_id
+
+    def _shapes_size(self, step: str, video_id: str) -> int | None:
+        way = SHAPES_STEPS.get(step)
+        if way is None:
+            return None
+        return self._flow.size_step(video_id, way)
+
+    def is_grid_cell_steppable(self, step: str, video_id: str | None = None) -> bool:
+        """Whether there is room to make a video's cell, the active one's by
+        default, a step bigger or smaller; in Fit Shapes, whether a step
+        changes its tile."""
+
+        video_id = self._step_target(video_id)
+        if video_id is None:
+            return False
+        if self._mode == GridMode.AUTO_SHAPES:
+            return self._shapes_size(step, video_id) is not None
+        rows, cols = CELL_STEPS[step]
+        return self._grid_layout.step_span(video_id, rows, cols) is not None
+
+    def cmd_step_grid_cell(self, step: str, video_id: str | None = None):
+        """A video's cell, the active one's by default, made a step bigger
+        or smaller (see CELL_STEPS), the videos in the way moved to make
+        room. Bigger, where there is no room for a row and a column more,
+        takes one of them (see GridLayout.steps). In Fit Shapes, its tile
+        made bigger or smaller (see FlowLayout.size_step)."""
+
+        video_id = self._step_target(video_id)
+        if video_id is None:
+            return
+
+        if self._mode == GridMode.AUTO_SHAPES:
+            size = self._shapes_size(step, video_id)
+            if size is not None:
+                self._set_shapes_size(video_id, size)
+            return
+
+        rows, cols = CELL_STEPS[step]
+        span = self._grid_layout.step_span(video_id, rows, cols)
+        if span is not None:
+            self._set_span(video_id, *span)
+        elif self._grid_layout.steps(video_id, rows, cols):
+            self._warn_no_room()
+
+    def _set_shapes_size(self, video_id: str, size: int):
+        with self._undoable():
+            sizes = self._flow.sized()
+            sizes.pop(video_id, None)
+            if size:
+                sizes[video_id] = size
+            self._flow.sizes = sizes
+            self.layout_changed.emit()
+
+    def grid_cell_span(self, video_id: str) -> tuple[int, int] | None:
+        """How many rows and columns a video's cell covers."""
+
+        return self._grid_layout.span_of(video_id)
+
+    def grid_cell_room(self) -> tuple[int, int]:
+        """The rows and columns a cell can cover, at most."""
+
+        return self._grid_layout.max_rows, self._grid_layout.max_cols
+
+    def can_set_grid_cell_span(self, video_id: str, rowspan: int, colspan: int) -> bool:
+        return self._grid_layout.copy().set_span(video_id, rowspan, colspan)
+
+    def cmd_set_grid_cell_span(self, video_id: str, rowspan: int, colspan: int):
+        if self._grid_layout.span_of(video_id) == (rowspan, colspan):
+            return
+
+        if not self._set_span(video_id, rowspan, colspan):
+            self._warn_no_room()
+
+    def _warn_no_room(self):
+        self.warning.emit(
+            translate("Warning", "No room in the grid to make the cell bigger.")
+        )
+
+    def _set_span(self, video_id, rowspan, colspan) -> bool:
+        with self._undoable():
+            if not self._grid_layout.set_span(video_id, rowspan, colspan):
+                return False
+            self.layout_changed.emit()
+            return True
+
+    # --- the cells edited by hand (see GridEditManager) ---
+
+    def make_grid_fixed(self) -> bool:
+        """A Fixed Grid of the size the grid is now, the videos in their
+        order, to edit its cells."""
+
+        if self._is_fixed:
+            return True
+
+        cols, rows = self.grid_dimensions
+        with self._undoable():
+            if not self._apply_fixed(rows, cols, preallocate=False):
+                return False
+            self._keep_fixed(rows, cols)
+            PlaylistSettings().set("playlist/grid_preallocate", False)
+        return True
+
+    def _keep_fixed(self, rows: int, cols: int) -> None:
+        # the playlist's own values: a Fixed Grid of this size
+        session = PlaylistSettings()
+        session.set("playlist/grid_mode", GridMode.FIXED)
+        session.set("playlist/grid_rows", rows)
+        session.set("playlist/grid_cols", cols)
+
+    def set_grid_editing(self, is_editing: bool) -> None:
+        """Every cell of the Fixed Grid shown, as with Show All Cells, the
+        empty ones kept, while its cells are edited."""
+
+        if self._grid_layout.is_editing == is_editing:
+            return
+
+        self._grid_layout.is_editing = is_editing
+        if not is_editing:
+            self._grid_layout.compact_edges()
         self.layout_changed.emit()
+
+    def can_place_grid_cell(self, video_id, row, col, rowspan, colspan) -> bool:
+        return self._is_fixed and self._grid_layout.can_place(
+            video_id, row, col, rowspan, colspan
+        )
+
+    def cmd_place_grid_cell(self, video_id, row, col, rowspan, colspan) -> bool:
+        """A video's cell moved or resized (see GridLayout.place)."""
+
+        if not self._is_fixed:
+            return False
+
+        with self._undoable():
+            if not self._grid_layout.place(video_id, row, col, rowspan, colspan):
+                return False
+            self.layout_changed.emit()
+            return True
+
+    def can_resize_fixed_grid(self, rows: int, cols: int) -> bool:
+        """Whether the Fixed Grid can have this size with no video closed:
+        those it cuts off go into its empty cells."""
+
+        if not self._is_fixed:
+            return False
+        if not (1 <= rows <= MAX_FIXED_SIZE and 1 <= cols <= MAX_FIXED_SIZE):
+            return False
+        return not self._grid_layout.copy().resize(rows, cols)
+
+    def cmd_resize_fixed_grid(self, rows: int, cols: int) -> bool:
+        if not self.can_resize_fixed_grid(rows, cols):
+            return False
+
+        with self._undoable():
+            self._grid_layout.resize(rows, cols)
+
+            session = PlaylistSettings()
+            session.set("playlist/grid_rows", rows)
+            session.set("playlist/grid_cols", cols)
+            self.layout_changed.emit()
+        return True
+
+    def is_grid_template(self, name: str) -> bool:
+        return self._is_fixed and self._grid_layout.is_template(GRID_TEMPLATES[name])
+
+    def cmd_set_grid_template(self, name: str):
+        """A Fixed Grid with big cells, the videos put in it in their order,
+        the first in the first big cell."""
+
+        template = GRID_TEMPLATES[name]
+        ordered = self._live_order()
+        capacity = len(template.places())
+        extra_ids = ordered[capacity:]
+        if extra_ids and not self._confirm_overflow(capacity, len(extra_ids)):
+            return
+
+        with self._undoable():
+            self._mode = GridMode.FIXED
+            self._grid_layout.apply_template(template, ordered[:capacity])
+            self._weights = EVEN
+            self._keep_fixed(template.rows, template.cols)
+
+            if extra_ids:
+                self._ctx.commands.remove_video_blocks(extra_ids)
+            else:
+                self.layout_changed.emit()
+
+    def _live_order(self) -> list[str]:
+        """The videos there are, in the order they are laid out in."""
+
+        live_set = set(self._ctx.video_blocks.video_ids)
+        ordered = [i for i in self._layout.order() if i in live_set]
+        ordered.extend(i for i in self._ctx.video_blocks.video_ids if i not in ordered)
+        return ordered
 
     def _ask_and_apply_fixed(self, include_preallocate=True):
         if self._is_fixed:
@@ -598,21 +1022,16 @@ class GridManager(ManagerBase):
         if not self._apply_fixed(new_rows, new_cols, new_preallocate):
             return False
 
-        session = PlaylistSettings()
-        session.set("playlist/grid_mode", GridMode.FIXED)
-        session.set("playlist/grid_rows", new_rows)
-        session.set("playlist/grid_cols", new_cols)
+        self._keep_fixed(new_rows, new_cols)
         if include_preallocate:
-            session.set("playlist/grid_preallocate", new_preallocate)
+            PlaylistSettings().set("playlist/grid_preallocate", new_preallocate)
         return True
 
     def _apply_fixed(self, rows, cols, preallocate) -> bool:
         if self._is_fixed:
             return self._resize_fixed(rows, cols, preallocate)
 
-        live_set = set(self._ctx.video_blocks.video_ids)
-        ordered = [i for i in self._flow.order() if i in live_set]
-        ordered.extend(i for i in self._ctx.video_blocks.video_ids if i not in ordered)
+        ordered = self._live_order()
         extra_ids = ordered[rows * cols :]
         keep_ids = ordered[: rows * cols]
         if extra_ids and not self._confirm_overflow(rows * cols, len(extra_ids)):
@@ -702,10 +1121,26 @@ class GridManager(ManagerBase):
                 row, col = pos
 
         if src_block is not None:
-            self._drop_move(src_block, dst, row, col, zone, is_replace, dst_id)
+            with self._undoable():
+                if dst is not None and dst is not src_block:
+                    self._stop_reordering()
+                self._drop_move(src_block, dst, row, col, zone, is_replace, dst_id)
             return
 
+        if dst is not None:
+            self._stop_reordering()
         self._drop_new(videos, dst, row, col, zone, is_replace, dst_id)
+
+    def _stop_reordering(self):
+        """Reorder to Fit turned off for a drop where a video goes, so that
+        it stays there: the order shown is taken for the videos' own."""
+
+        if self._mode != GridMode.AUTO_SHAPES or not self._flow.is_reordered:
+            return
+
+        self._flow.ids = self._flow.order()
+        self._flow.is_reordered = False
+        PlaylistSettings().set("playlist/grid_reorder", False)
 
     def _drop_move(self, src_block, dst, row, col, zone, is_replace, dst_id):
         src_id = src_block.video_id
@@ -752,6 +1187,8 @@ class GridManager(ManagerBase):
         dst.set_video(videos[0])
         self._ctx.video_blocks.reindex(dst)
         self._layout.replace_id(old_id, dst.video_id)
+        # the earlier states have the video it had (see forget_grid_changes)
+        self.forget_grid_changes()
         return videos[1:]
 
     def _place_dropped_ids(self, videos, row, col, zone, dst_id):
@@ -780,8 +1217,16 @@ class GridManager(ManagerBase):
 
             self._grid.set_place(self._place_single)
             self._grid.activate()
+            self._sync_cell_sizable()
             return
         self.layout_changed.emit()
+
+    def _sync_cell_sizable(self):
+        # the buttons on the videos that make their cells bigger and smaller
+        is_sizable = self.is_grid_cell_sizable()
+        is_shapable = self.is_grid_cell_shapable()
+        for vb in self._ctx.video_blocks:
+            vb.cell_size.set_sizable(is_sizable, is_shapable)
 
     def reload_video_grid(self):
         # Count-changed fires before single mode exits. Skip until the grid
@@ -821,6 +1266,10 @@ class GridManager(ManagerBase):
         shapes = {vb.video_id: vb.picture_shape for vb in self._ctx.video_blocks}
         self._flow.fit_to(width, height, shapes)
 
+        # in Fit Shapes, whether a step changes a tile goes by them too
+        if self._mode == GridMode.AUTO_SHAPES:
+            self._sync_cell_sizable()
+
         return self._flow_cells()
 
     def _render_video_grid(self):
@@ -847,6 +1296,7 @@ class GridManager(ManagerBase):
             self._grid.activate()
 
             self._sync_visibility(widgets)
+            self._sync_cell_sizable()
 
     def _discard_empty_cells(self):
         for empty in self._empty_cells:
@@ -872,25 +1322,10 @@ class GridManager(ManagerBase):
     def _add_empty_cells(self):
         """An empty cell for each place in the grid no video covers."""
 
-        cols, rows = self._grid_layout.displayed_size()
-
-        covered = set()
-        for cell in self._grid_layout.cells:
-            if not cell.video_id:
-                continue
-            covered.update(
-                (row, col)
-                for row in range(cell.row, cell.row + cell.rowspan)
-                for col in range(cell.col, cell.col + cell.colspan)
-            )
-
-        for row in range(rows):
-            for col in range(cols):
-                if (row, col) in covered:
-                    continue
-                empty = EmptyCell(parent=self.parent())
-                self._empty_cells.append(empty)
-                self._empty_positions[empty] = (row, col)
+        for position in self._grid_layout.empty_positions():
+            empty = EmptyCell(parent=self.parent())
+            self._empty_cells.append(empty)
+            self._empty_positions[empty] = position
 
     def _fixed_cells(self):
         cols, rows = self._grid_layout.displayed_size()

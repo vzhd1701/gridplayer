@@ -77,6 +77,7 @@ from gridplayer.widgets.cell_chrome import (
 from gridplayer.widgets.stacked_layout_floating import QStackedLayoutFloating
 from gridplayer.widgets.video_block_audio import AudioControl
 from gridplayer.widgets.video_block_bookmarker import Bookmarker
+from gridplayer.widgets.video_block_cell_size import CellSizeControl
 from gridplayer.widgets.video_block_chapters import ChapterControl
 from gridplayer.widgets.video_block_guards import (
     only_initialized,
@@ -261,6 +262,7 @@ class VideoBlock(QWidget):
         self.recovery = RecoveryControl(self)
         self.stream = StreamControl(self)
         self.navigation = NavigationControl(self)
+        self.cell_size = CellSizeControl(self)
 
         self.url_resolver = self.init_url_resolver()
 
@@ -455,6 +457,9 @@ class VideoBlock(QWidget):
             (overlay.bookmark_clicked, self.bookmarker.jump_to_marker),
             (overlay.bookmark_menu_requested, self.bookmarker.show_marker_menu),
             (overlay.list_place_clicked, self.navigation.show_list_window),
+            (overlay.cell_bigger_clicked, partial(self.cell_size.step, "bigger")),
+            (overlay.cell_smaller_clicked, partial(self.cell_size.step, "smaller")),
+            (overlay.cell_size_clicked, self.cell_size.pick),
             (overlay.stop_clicked, self.stop_playback),
             (overlay.retry_clicked, self.reload),
             (overlay.next_clicked, self.recovery.skip_now),
@@ -1192,6 +1197,7 @@ class VideoBlock(QWidget):
             return
 
         self.overlay.show()
+        self.cell_size.sync_steps()
         if self._ctx.is_overlay_hide_on_timeout:
             self.overlay_hide_timer.start(1000 * self._ctx.overlay_timeout)
 

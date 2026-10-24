@@ -173,6 +173,7 @@ def grid_state_for_dump(live) -> GridState:
         **explicit,
         cells=list(live.cells),
         video_order=list(live.video_order),
+        sizes=dict(live.sizes),
         col_weights=list(live.col_weights),
         row_weights=list(live.row_weights),
         line_weights=[list(weights) for weights in live.line_weights],

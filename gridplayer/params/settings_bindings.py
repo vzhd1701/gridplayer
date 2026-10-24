@@ -92,6 +92,7 @@ GRID_STATE_ATTR: MappingProxyType[str, str] = MappingProxyType(
         "playlist/grid_fit": "is_fit",
         "playlist/grid_match_shapes": "is_match_shapes",
         "playlist/grid_crop": "crop",
+        "playlist/grid_reorder": "is_reordered",
         "playlist/grid_link": "is_linked",
         "playlist/grid_rows": "rows",
         "playlist/grid_cols": "cols",

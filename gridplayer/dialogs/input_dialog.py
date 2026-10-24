@@ -11,6 +11,7 @@ from PyQt5.QtWidgets import (
     QVBoxLayout,
 )
 
+from gridplayer.params.static import MAX_FIXED_SIZE
 from gridplayer.utils.qt import translate
 
 # a language list is short, but a one-word-wide box invites a one-word answer
@@ -114,9 +115,9 @@ class QFixedGridSizeDialog(QDialog):
         )
 
         self.rows = QSpinBox(self)
-        self.rows.setRange(1, 100)
+        self.rows.setRange(1, MAX_FIXED_SIZE)
         self.cols = QSpinBox(self)
-        self.cols.setRange(1, 100)
+        self.cols.setRange(1, MAX_FIXED_SIZE)
         self.preallocate = QCheckBox(
             translate("Grid Size", "Show all cells even when empty"), self
         )

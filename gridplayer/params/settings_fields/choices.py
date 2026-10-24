@@ -62,6 +62,8 @@ def grid_crops() -> dict:
         5: translate("Allow Cropping", "5%"),
         10: translate("Allow Cropping", "10%"),
         20: translate("Allow Cropping", "20%"),
+        30: translate("Allow Cropping", "30%"),
+        50: translate("Allow Cropping", "50%"),
     }
 
 

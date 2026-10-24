@@ -10,6 +10,7 @@ from gridplayer.params.settings_fields.kinds import (
 )
 from gridplayer.params.static import (
     MANY_CELLS,
+    MAX_FIXED_SIZE,
     MAX_SEEK_STEP_SECONDS,
     MIN_SEEK_STEP_SECONDS,
     GridMode,
@@ -275,18 +276,27 @@ PLAYLIST_FIELDS: tuple[SettingField, ...] = (
         buttons=True,
         shown_when=When("playlist/grid_mode", _GRID_SHAPES),
     ),
+    CheckboxField(
+        settings_key="playlist/grid_reorder",
+        label=translate("Reorder to Fit", "Reorder videos to fit"),
+        tooltip=translate(
+            "Reorder to Fit",
+            "Put videos of like shape together, so they show bigger.",
+        ),
+        shown_when=When("playlist/grid_mode", _GRID_SHAPES),
+    ),
     SpinField(
         settings_key="playlist/grid_rows",
         label=translate("SettingsDialog", "Rows"),
         minimum=1,
-        maximum=100,
+        maximum=MAX_FIXED_SIZE,
         shown_when=When("playlist/grid_mode", _GRID_FIXED),
     ),
     SpinField(
         settings_key="playlist/grid_cols",
         label=translate("SettingsDialog", "Columns"),
         minimum=1,
-        maximum=100,
+        maximum=MAX_FIXED_SIZE,
         shown_when=When("playlist/grid_mode", _GRID_FIXED),
     ),
     CheckboxField(
