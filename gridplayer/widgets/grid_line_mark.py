@@ -122,6 +122,29 @@ class GridLineTag(QWidget):
 
         self._text = ""
 
+    def show_snap(
+        self,
+        target: Target | None,
+        is_column: bool,
+        position: int,
+        pointer: QPoint,
+        area: QRect,
+    ) -> None:
+        """Say what a line moved to position in the area, on the screen,
+        snapped to (see snap_word), beside it by the pointer; nothing where
+        it has not."""
+
+        if target is None:
+            if self.isVisible():
+                self.hide()
+            return
+
+        if is_column:
+            at = QPoint(area.x() + position, pointer.y())
+        else:
+            at = QPoint(pointer.x(), area.y() + position)
+        self.show_text(snap_word(target, is_column), is_column, at, area)
+
     def show_text(self, text: str, is_column: bool, at: QPoint, room: QRect) -> None:
         """Show the word beside a column's line at x = at.x(), or under a
         row's at y = at.y(), by the pointer, kept inside room."""

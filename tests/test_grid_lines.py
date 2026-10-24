@@ -8,6 +8,7 @@ from gridplayer.utils.layout.lines import (
     FitCell,
     GridLines,
     Line,
+    LineDrag,
     Snap,
     SnapKind,
     Span,
@@ -417,3 +418,18 @@ def test_fit_takes_spans():
     assert _score(cells, weights, 3, 2, 1920, 1080) > _score(
         cells, EVEN, 3, 2, 1920, 1080
     )
+
+
+def test_a_line_dragged_snaps_unless_told_not_to():
+    lines = _two_by_two(shapes=(None,) * 4)
+    drag = LineDrag(Line(True, 0), lines)
+
+    # even is at 500
+    snapped = drag.moved(504, is_snapping=True)
+    assert drag.position(snapped) == 500
+    assert drag.target.kind is SnapKind.EVEN
+
+    free = drag.moved(504, is_snapping=False)
+    assert drag.position(free) == 504
+    assert drag.target is None
+    assert drag.before == lines.weights()

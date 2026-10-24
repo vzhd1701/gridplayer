@@ -370,6 +370,39 @@ class Snap:
         self.target = None
 
 
+class LineDrag:
+    """A line between the cells being moved: the lines as they were when it
+    was taken, and the places it snaps to (see GridLines.snaps)."""
+
+    def __init__(self, line: Line, lines: GridLines):
+        self.line = line
+        self.lines = lines
+        self.before = lines.weights()
+        self._targets = lines.snaps(line)
+        self._snap = Snap()
+
+    @property
+    def target(self) -> Target | None:
+        """What it snapped to, if it has."""
+
+        return self._snap.target
+
+    def moved(self, position: float, is_snapping: bool) -> Weights:
+        """The lines with it moved to position, in pixels from the area's
+        edge, or to where it snaps near there, if is_snapping."""
+
+        if is_snapping:
+            position = self._snap(position, self._targets)
+        else:
+            self._snap.let_go()
+        return self.lines.moved(self.line, position)
+
+    def position(self, weights: Weights) -> int:
+        """Where it is with the lines at these weights (see moved)."""
+
+        return self.lines.position(self.line, weights)
+
+
 class Span(NamedTuple):
     """Which lines a cell's width (or height) goes between: from the one
     before the column (row) of this index, of the set named (see

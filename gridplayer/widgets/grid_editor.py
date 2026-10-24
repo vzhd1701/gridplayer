@@ -22,13 +22,12 @@ from PyQt5.QtWidgets import (
 
 from gridplayer.utils.compositor_linux import is_compositor_running
 from gridplayer.utils.layout.boxes import line_edges
-from gridplayer.utils.layout.lines import LINE_REACH, GridLines, Line, Snap
+from gridplayer.utils.layout.lines import LINE_REACH, GridLines, Line, LineDrag
 from gridplayer.utils.qt import translate
 from gridplayer.widgets.grid_line_mark import (
     EDGE_COLOR,
     LINE_COLOR,
     GridLineTag,
-    snap_word,
 )
 
 # the videos dimmed under the cells, or hidden where a window cannot be
@@ -109,14 +108,6 @@ class _Drag(NamedTuple):
     # the whole cell, and where it was taken, in cells from its corner
     sides: frozenset
     grab: tuple[int, int]
-
-
-class _LineDrag(NamedTuple):
-    line: Line
-    # the lines as they were when it was taken, and where it snaps to
-    lines: GridLines
-    before: object
-    targets: list
 
 
 def _bar_icon(kind: str, ratio: float) -> QIcon:
@@ -310,8 +301,7 @@ class GridEditor(QWidget):
         self._hover_line: Line | None = None
         # how far along the line the pointer is, for its grip
         self._line_across = 0
-        self._line_drag: _LineDrag | None = None
-        self._snap = Snap()
+        self._line_drag: LineDrag | None = None
         # what a line being moved snapped to, said by the pointer
         self._tag: GridLineTag | None = None
 
@@ -640,49 +630,33 @@ class GridEditor(QWidget):
         return lines.line_at(point.x(), point.y(), LINE_REACH)
 
     def _start_line(self, line: Line) -> None:
-        lines = self._grid_lines()
-        self._line_drag = _LineDrag(line, lines, lines.weights(), lines.snaps(line))
-        self._snap.let_go()
+        self._line_drag = LineDrag(line, self._grid_lines())
         self._hint_done()
         self.line_started.emit()
 
     def _move_line(self, point: QPoint, modifiers) -> None:
-        line, lines = self._line_drag.line, self._line_drag.lines
+        drag = self._line_drag
+        line = drag.line
 
         position = point.x() if line.is_column else point.y()
-        if modifiers & Qt.AltModifier or not self._is_snapping():
-            self._snap.let_go()
-        else:
-            position = self._snap(position, self._line_drag.targets)
+        is_snapping = not modifiers & Qt.AltModifier and self._is_snapping()
 
-        weights = lines.moved(line, position)
+        weights = drag.moved(position, is_snapping)
         self._col_weights = tuple(weights.cols)
         self._row_weights = tuple(weights.rows)
         self.weights_changed.emit(weights)
         self._line_across = point.y() if line.is_column else point.x()
-        self._show_tag(line, lines.position(line, weights), point)
-        self.update()
-
-    def _show_tag(self, line: Line, position: int, pointer: QPoint) -> None:
-        target = self._snap.target
-        if target is None:
-            self._hide_tag()
-            return
 
         if self._tag is None:
             self._tag = GridLineTag(self)
-
-        if line.is_column:
-            at = QPoint(position, pointer.y())
-        else:
-            at = QPoint(pointer.x(), position)
-        room = QRect(self.mapToGlobal(QPoint(0, 0)), self.size())
-        self._tag.show_text(
-            snap_word(target, line.is_column),
+        self._tag.show_snap(
+            drag.target,
             line.is_column,
-            self.mapToGlobal(at),
-            room,
+            drag.position(weights),
+            self.mapToGlobal(point),
+            QRect(self.mapToGlobal(QPoint(0, 0)), self.size()),
         )
+        self.update()
 
     def _hide_tag(self) -> None:
         if self._tag is not None and self._tag.isVisible():

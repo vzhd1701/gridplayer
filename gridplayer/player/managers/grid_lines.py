@@ -4,10 +4,9 @@ from PyQt5.QtWidgets import QApplication
 
 from gridplayer.player.managers.base import ManagerBase
 from gridplayer.playlist_settings import PlaylistSettings
-from gridplayer.utils.layout import Weights
-from gridplayer.utils.layout.lines import LINE_REACH, GridLines, Line, Snap
+from gridplayer.utils.layout.lines import LINE_REACH, GridLines, Line, LineDrag
 from gridplayer.utils.qt import is_modal_open
-from gridplayer.widgets.grid_line_mark import GridLineMark, GridLineTag, snap_word
+from gridplayer.widgets.grid_line_mark import GridLineMark, GridLineTag
 
 # how often to look whether the pointer is still on the line it was: it
 # leaves for somewhere no move of it is ever seen, another application's
@@ -47,15 +46,9 @@ class GridLinesManager(ManagerBase):
 
         # the line the pointer is on, and the one being moved
         self._hover: Line | None = None
-        self._drag: Line | None = None
-
-        # as the lines were when the one being moved was pressed on, where
-        # the cells were then, and where the line snaps to
-        self._lines: GridLines | None = None
+        self._drag: LineDrag | None = None
+        # where the cells were when it was pressed on
         self._area = QRect()
-        self._before: Weights | None = None
-        self._targets: list[float] = []
-        self._snap = Snap()
 
         # the buttons pressed on a line: their releases are nothing else's
         self._swallowed_buttons: set = set()
@@ -192,8 +185,8 @@ class GridLinesManager(ManagerBase):
             return None
 
         # the second press of it took the line
-        line, lines = self._drag, self._lines
-        if line is not None:
+        if self._drag is not None:
+            line, lines = self._drag.line, self._drag.lines
             self._finish()
         else:
             found = self._line_under_pointer()
@@ -289,40 +282,34 @@ class GridLinesManager(ManagerBase):
         self._check_timer.start()
 
     def _start(self, line: Line, lines: GridLines, area: QRect):
-        self._drag = line
-        self._lines = lines
+        self._drag = LineDrag(line, lines)
         self._area = area
-        self._before = lines.weights()
         self._ctx.commands.begin_grid_change()
-        self._targets = lines.snaps(line)
-        self._snap.let_go()
 
         self._set_cursor(line)
         self._show_mark(lines, area, line, lines.position(line), is_snapped=False)
         self._check_timer.start()
 
     def _move_to(self, global_pos: QPoint, modifiers):
-        line, lines = self._drag, self._lines
+        drag = self._drag
+        line = drag.line
 
         local = global_pos - self._area.topLeft()
         position = local.x() if line.is_column else local.y()
+        is_snapping = not modifiers & Qt.AltModifier and self.is_snapping()
 
-        if modifiers & Qt.AltModifier or not self.is_snapping():
-            self._snap.let_go()
-        else:
-            position = self._snap(position, self._targets)
-
-        weights = lines.moved(line, position)
+        weights = drag.moved(position, is_snapping)
         self._ctx.commands.set_grid_weights(weights)
 
-        self._show_mark(
-            lines,
-            self._area,
-            line,
-            lines.position(line, weights),
-            is_snapped=self._snap.target is not None,
+        position = drag.position(weights)
+        is_snapped = drag.target is not None
+        self._show_mark(drag.lines, self._area, line, position, is_snapped)
+
+        if self._tag is None:
+            self._tag = GridLineTag(self.parent())
+        self._tag.show_snap(
+            drag.target, line.is_column, position, global_pos, self._area
         )
-        self._show_tag(line, lines.position(line, weights), global_pos)
 
     def _finish(self):
         """Leave the line where it was moved to."""
@@ -330,9 +317,6 @@ class GridLinesManager(ManagerBase):
         self._ctx.commands.end_grid_change()
 
         self._drag = None
-        self._lines = None
-        self._before = None
-        self._targets = []
 
         self._hide_mark()
         self._hide_tag()
@@ -343,8 +327,8 @@ class GridLinesManager(ManagerBase):
     def _cancel(self):
         """Put the line back where it was."""
 
-        if self._before is not None:
-            self._ctx.commands.set_grid_weights(self._before)
+        if self._drag is not None:
+            self._ctx.commands.set_grid_weights(self._drag.before)
 
         self._finish()
 
@@ -377,27 +361,6 @@ class GridLinesManager(ManagerBase):
             across + end,
             is_snapped,
         )
-
-    def _show_tag(self, line: Line, position: int, pointer: QPoint):
-        """Say what the line snapped to, beside it by the pointer."""
-
-        target = self._snap.target
-        if target is None:
-            self._hide_tag()
-            return
-
-        text = snap_word(target, line.is_column)
-
-        if self._tag is None:
-            self._tag = GridLineTag(self.parent())
-
-        area = self._area
-        if line.is_column:
-            at = QPoint(area.x() + position, pointer.y())
-        else:
-            at = QPoint(pointer.x(), area.y() + position)
-
-        self._tag.show_text(text, line.is_column, at, area)
 
     def _hide_tag(self):
         if self._tag is not None and self._tag.isVisible():
