@@ -34,7 +34,7 @@ class _Block(QObject):
         return self._is_under_cursor
 
 
-def test_the_buttons_of_a_cell_away_from_the_pointer_wait_for_the_grid():
+def test_the_buttons_of_a_cell_away_from_the_pointer_wait_for_it():
     block = _Block()
     part = CellSizeControl(block)
 
@@ -42,7 +42,11 @@ def test_the_buttons_of_a_cell_away_from_the_pointer_wait_for_the_grid():
 
     block.overlay.set_cell_size_controls.assert_called_once_with(True, True)
     block.overlay.set_cell_steps.assert_not_called()
-    assert part._steps_timer.isActive()
+
+    # the pointer come to it, its overlay shown
+    part.sync_steps()
+    part.sync_steps()
+    block.overlay.set_cell_steps.assert_called_once_with(True, True)
 
 
 def test_the_buttons_under_the_pointer_are_looked_at_once():
@@ -53,7 +57,6 @@ def test_the_buttons_under_the_pointer_are_looked_at_once():
     part.sync_steps()
 
     block.overlay.set_cell_steps.assert_called_once_with(True, True)
-    assert not part._steps_timer.isActive()
 
 
 def test_the_cell_whose_button_was_clicked_is_looked_at_once():
