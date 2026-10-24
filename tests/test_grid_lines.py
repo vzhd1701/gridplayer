@@ -324,15 +324,15 @@ def test_moved_line_leaves_the_cells_some_room():
 def test_line_snaps_where_a_video_beside_it_fits_or_cells_are_even():
     lines = _two_by_two()
 
-    snaps = [(round(t.position, 2), t.kind) for t in lines.snaps(Line(True, 0))]
+    snaps = [(round(t.position, 2), t.kind, t.side) for t in lines.snaps(Line(True, 0))]
 
     # the phone, top left, fits 300 * 9 / 16 wide; a wide one on the left
     # fits 300 * 16 / 9 wide, and those on the right from the right edge
     assert snaps == [
-        (168.75, SnapKind.FITS),
-        (466.67, SnapKind.FITS),
-        (500.0, SnapKind.EVEN),
-        (533.33, SnapKind.FITS),
+        (168.75, SnapKind.FITS, -1),
+        (466.67, SnapKind.FITS, 1),
+        (500.0, SnapKind.EVEN, 0),
+        (533.33, SnapKind.FITS, -1),
     ]
 
 
@@ -341,7 +341,8 @@ def test_snaps_where_fitting_is_even_too_say_it_fits():
     cells = [(grid_box(0, n, 1, 2), WIDE) for n in range(2)]
     lines = GridLines(cells, 2, 1, EVEN, 1000, 281.25)
 
-    assert [t.kind for t in lines.snaps(Line(True, 0))] == [SnapKind.FITS]
+    snaps = lines.snaps(Line(True, 0))
+    assert [(t.kind, t.side) for t in snaps] == [(SnapKind.FITS, 0)]
 
 
 def test_snap_holds_until_far_enough():

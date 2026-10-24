@@ -12,6 +12,9 @@ from gridplayer.utils.layout.boxes import Box, Weights, line_edges
 # pixels, unless the cells next to the line have not that much between them
 MIN_CELL = 48
 
+# how near a line the pointer takes it, in pixels
+LINE_REACH = 4
+
 # how near a line moved comes to where it snaps before it does, and how far
 # it then has to go to let go: further, or it would flicker at the edge
 SNAP_REACH = 8
@@ -43,10 +46,13 @@ class SnapKind(Enum):
 
 
 class Target(NamedTuple):
-    """A place a line being moved snaps to, in pixels, and why."""
+    """A place a line being moved snaps to, in pixels, and why: for FITS,
+    the side of the line the video that fits is on, before it (left, or
+    above) less than nought, after it more, on both sides nought."""
 
     position: float
     kind: SnapKind
+    side: int = 0
 
 
 # the name of a set of lines: "cols", "rows", or a row's own by its index
@@ -237,9 +243,9 @@ class GridLines:
                 fitting = (box.right - box.left) * self.width / shape
 
             if abs((box.right if line.is_column else box.bottom) - edge) < _SAME:
-                fits.append(start + fitting)
+                fits.append((start + fitting, -1))
             if abs((box.left if line.is_column else box.top) - edge) < _SAME:
-                fits.append(end - fitting)
+                fits.append((end - fitting, 1))
 
         aligned = []
         if line.own is not None:
@@ -251,14 +257,25 @@ class GridLines:
         even = (edges[line.index] + edges[line.index + 2]) / 2 * size
 
         targets = []
-        for kind, positions in (
+        for kind, places in (
             (SnapKind.FITS, fits),
-            (SnapKind.ALIGNED, aligned),
-            (SnapKind.EVEN, [even]),
+            (SnapKind.ALIGNED, [(position, 0) for position in aligned]),
+            (SnapKind.EVEN, [(even, 0)]),
         ):
-            for position in positions:
-                if all(abs(t.position - position) >= 0.5 for t in targets):
-                    targets.append(Target(position, kind))
+            for position, side in places:
+                same = next(
+                    (
+                        index
+                        for index, t in enumerate(targets)
+                        if abs(t.position - position) < 0.5
+                    ),
+                    None,
+                )
+                if same is None:
+                    targets.append(Target(position, kind, side))
+                elif kind is SnapKind.FITS and targets[same].side != side:
+                    # a video either side fits there
+                    targets[same] = targets[same]._replace(side=0)
 
         low, high = self._room(line)
         return sorted(

@@ -1,3 +1,5 @@
+import math
+
 import pytest
 
 from gridplayer.utils.drop_zone import DropZone
@@ -307,3 +309,82 @@ def test_fit_shapes_crops_to_fill_the_window():
     layout.crop = 0
     boxes = [box for _id, box in layout.boxes()]
     assert boxes[0].left > 0.02
+
+
+def test_cropping_takes_the_layout_that_cuts_less():
+    # ten wide videos: three rows fill the window cutting a little, where
+    # one row stretched down would cut nine tenths of each
+    ids = [str(i) for i in range(10)]
+    layout = FlowLayout(mode=FlowMode.SHAPES, ids=ids, crop=50)
+    layout.fit_to(1920, 1080, dict.fromkeys(ids, WIDE))
+
+    assert layout.displayed_size()[1] > 1
+
+
+def _log_areas(layout, width, height):
+    return sum(
+        math.log((box.right - box.left) * width * (box.bottom - box.top) * height)
+        for _id, box in layout.boxes()
+    )
+
+
+def _tile(layout, video_id):
+    box = dict(layout.boxes())[video_id]
+    return (box.right - box.left) * (box.bottom - box.top)
+
+
+def test_a_video_made_bigger_gets_a_bigger_tile():
+    ids = ["A", "B", "C", "D", "E", "F", "G", "H"]
+    layout = FlowLayout(mode=FlowMode.SHAPES, ids=ids)
+    layout.fit_to(1600, 900, {})
+    before = _tile(layout, "A")
+
+    size = layout.size_step("A", 1)
+    assert size is not None
+    assert size > 0
+    layout.sizes["A"] = size
+    layout.fit_to(1600, 900, {})
+
+    assert _tile(layout, "A") > before
+    assert layout.order() == ids
+
+
+def test_a_step_back_down_comes_back_to_nought():
+    ids = ["A", "B", "C", "D", "E", "F", "G", "H"]
+    layout = FlowLayout(mode=FlowMode.SHAPES, ids=ids)
+    layout.fit_to(1600, 900, {})
+
+    layout.sizes["A"] = layout.size_step("A", 1)
+    layout.fit_to(1600, 900, {})
+
+    assert layout.size_step("A", -1) == 0
+
+
+def test_no_step_where_the_tile_cannot_change():
+    # one video fills the area whatever it counts for
+    layout = FlowLayout(mode=FlowMode.SHAPES, ids=["A"])
+    layout.fit_to(1600, 900, {"A": 16 / 9})
+
+    assert layout.size_step("A", 1) is None
+    assert layout.size_step("A", -1) is None
+    assert FlowLayout(ids=["A", "B"]).size_step("A", 1) is None
+
+
+def test_reordered_the_pictures_show_bigger():
+    ids = ["A", "B", "C", "D", "E", "F"]
+    shapes = dict(zip(ids, [WIDE, TALL] * 3))
+
+    given = FlowLayout(mode=FlowMode.SHAPES, ids=ids)
+    given.fit_to(1920, 1080, shapes)
+
+    reordered = FlowLayout(mode=FlowMode.SHAPES, ids=ids, is_reordered=True)
+    reordered.fit_to(1920, 1080, shapes)
+
+    assert _log_areas(reordered, 1920, 1080) > _log_areas(given, 1920, 1080)
+    shown = [i for i, _box in reordered.boxes()]
+    assert shown != ids
+    # in the order shown, their own kept
+    assert reordered.order() == shown
+    assert reordered.ids == ids
+    assert [reordered.id_at(*reordered.position_of(i)) for i in ids] == ids
+    assert reordered.id_at(0, 0) == shown[0]

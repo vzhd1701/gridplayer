@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 import functools
+import itertools
 import math
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from typing import NamedTuple
 
 from gridplayer.utils.layout.boxes import Box
@@ -11,6 +12,12 @@ from gridplayer.utils.layout.boxes import Box
 # for many videos: the pictures come out at most a few percent smaller
 SPLIT_HEIGHT_STEP = 0.01
 
+# how much a tile stretched by cropping counts for what it adds: what is
+# cut off its picture is lost, so not all of it. Counted whole, a layout
+# that cuts as much as allowed won over one that fills the window as well
+# cutting much less
+STRETCH_WORTH = 0.5
+
 
 class Split(NamedTuple):
     """Items, in order, split into lines that end flush.
@@ -18,7 +25,7 @@ class Split(NamedTuple):
     Each line is as high as its width over the sum of its items' weights
     (their shapes, for rows). For lines one unit wide, height is how high
     they all are, and log_heights the sum, over the items, of the log of
-    the height of their line.
+    the height of their line, each by its worth (see best_splits).
     """
 
     lengths: tuple[int, ...]
@@ -26,20 +33,27 @@ class Split(NamedTuple):
     log_heights: float
 
 
-def measure_split(weights: Sequence[float], lengths: Sequence[int]) -> Split:
+def measure_split(
+    weights: Sequence[float],
+    lengths: Sequence[int],
+    worth: Sequence[float] | None = None,
+) -> Split:
     height = 0.0
     log_heights = 0.0
     start = 0
     for length in lengths:
         line_weight = sum(weights[start : start + length])
+        line_worth = length if worth is None else sum(worth[start : start + length])
         height += 1 / line_weight
-        log_heights -= length * math.log(line_weight)
+        log_heights -= line_worth * math.log(line_weight)
         start += length
     return Split(tuple(lengths), height, log_heights)
 
 
-@functools.lru_cache(maxsize=8)
-def best_splits(weights: tuple[float, ...]) -> tuple[Split, ...]:
+@functools.lru_cache(maxsize=16)
+def best_splits(
+    weights: tuple[float, ...], worth: tuple[float, ...] | None = None
+) -> tuple[Split, ...]:
     """The splits of these items into lines that one of them could be best
     for, whatever the area's shape.
 
@@ -47,43 +61,56 @@ def best_splits(weights: tuple[float, ...]) -> tuple[Split, ...]:
     the higher they are all together, once they have to be made smaller to
     fit (height). So the best split for any area is among those no other
     split beats on both, which are found a line at a time.
+
+    An item's worth is how much its picture counts, one by default: the
+    more, the more a higher line for it scores.
     """
 
-    prefix = [0.0]
-    for weight in weights:
-        prefix.append(prefix[-1] + weight)
+    prefix = [0.0, *itertools.accumulate(weights)]
+    worth_prefix = [0.0, *itertools.accumulate(worth or (1.0,) * len(weights))]
 
-    # for the first so many items, the splits no other beats, by height
-    splits: list[list[Split]] = [[Split((), 0.0, 0.0)]]
+    # for the first so many items, the splits no other beats, by height:
+    # each its height, its log_heights less than nought, where its last line
+    # starts and which of the splits of the items before that it goes on
+    # from, so that it sorts by height, the highest lines first
+    splits: list[list[tuple[float, float, int, int]]] = [[(0.0, 0.0, 0, 0)]]
     for end in range(1, len(weights) + 1):
         found = []
         for start in range(end):
             line_weight = prefix[end] - prefix[start]
             height = 1 / line_weight
-            log_heights = -(end - start) * math.log(line_weight)
+            line_worth = worth_prefix[end] - worth_prefix[start]
+            less_log_heights = line_worth * math.log(line_weight)
             found.extend(
-                Split(
-                    (*split.lengths, end - start),
-                    split.height + height,
-                    split.log_heights + log_heights,
-                )
-                for split in splits[start]
+                (split[0] + height, split[1] + less_log_heights, start, index)
+                for index, split in enumerate(splits[start])
             )
-        found.sort(key=lambda split: (split.height, -split.log_heights))
+        found.sort()
 
-        kept: list[Split] = []
+        kept: list[tuple[float, float, int, int]] = []
         step_height = 0.0
         for split in found:
-            if kept and split.log_heights <= kept[-1].log_heights:
+            if kept and split[1] >= kept[-1][1]:
                 continue
-            if kept and split.height <= step_height:
+            if kept and split[0] <= step_height:
                 kept[-1] = split
                 continue
             kept.append(split)
-            step_height = split.height * (1 + SPLIT_HEIGHT_STEP)
+            step_height = split[0] * (1 + SPLIT_HEIGHT_STEP)
         splits.append(kept)
 
-    return tuple(splits[-1])
+    def lengths(end: int, index: int) -> tuple[int, ...]:
+        found = []
+        while end:
+            *_, start, index = splits[end][index]
+            found.append(end - start)
+            end = start
+        return tuple(reversed(found))
+
+    return tuple(
+        Split(lengths(len(weights), index), height, -less_log_heights)
+        for index, (height, less_log_heights, *_) in enumerate(splits[-1])
+    )
 
 
 def split_score(
@@ -92,22 +119,49 @@ def split_score(
     width: int,
     height: int,
     crop: float = 0.0,
-):
-    """How well the split shows the items, in an area of this size, by
-    picture_score: the sum of the logs of their tiles' areas.
+    worth: Sequence[float] | None = None,
+) -> float:
+    """How well the split shows the items, in an area of this size (see
+    split_scorer)."""
+
+    return split_scorer(weights, width, height, crop, worth)(split)
+
+
+def split_scorer(
+    weights: Sequence[float],
+    width: int,
+    height: int,
+    crop: float = 0.0,
+    worth: Sequence[float] | None = None,
+) -> Callable[[Split], float]:
+    """How well a split of these items shows them, in an area of this size,
+    by picture_score: the sum of the logs of their tiles' areas, each by its
+    worth (see best_splits).
 
     With crop, the tiles are stretched to take up to that share less of
-    their pictures (see justified_boxes), and score by what they show.
+    their pictures (see justified_boxes), and score by what they show, the
+    stretch at STRETCH_WORTH.
     """
 
-    count = sum(split.lengths)
-    log_width = min(math.log(width), math.log(height) - math.log(split.height))
-    log_weights = sum(math.log(weight) for weight in weights)
-    score = log_weights + 2 * split.log_heights + 2 * count * log_width
+    if worth is None:
+        worth = (1.0,) * len(weights)
+    count = sum(worth)
+    log_weights = sum(
+        item * math.log(weight) for item, weight in zip(worth, weights, strict=True)
+    )
+    log_width, log_height = math.log(width), math.log(height)
+    most_stretch = -math.log(1 - crop)
 
-    # how many times too narrow, or too short, the lines are for the area
-    log_leftover = abs(math.log(height) - math.log(split.height) - math.log(width))
-    return score + count * min(log_leftover, -math.log(1 - crop))
+    def score(split: Split) -> float:
+        log_lines_height = math.log(split.height)
+        shown_width = min(log_width, log_height - log_lines_height)
+        shown = log_weights + 2 * split.log_heights + 2 * count * shown_width
+
+        # how many times too narrow, or too short, the lines are for the area
+        log_leftover = abs(log_height - log_lines_height - log_width)
+        return shown + STRETCH_WORTH * count * min(log_leftover, most_stretch)
+
+    return score
 
 
 def justified_boxes(

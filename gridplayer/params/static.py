@@ -63,7 +63,48 @@ class GridMode(AutoName):
 
 
 # what Fit Shapes may cut off each video to fill the window, in percent
-GRID_CROPS = (0, 5, 10, 20)
+GRID_CROPS = (0, 5, 10, 20, 30, 50)
+
+# the most rows or columns a Fixed Grid has
+MAX_FIXED_SIZE = 100
+
+
+class GridTemplate(NamedTuple):
+    """A Fixed Grid with big cells: cols x rows, and each big cell's row,
+    col, rowspan and colspan. The videos go into the big cells first, in
+    their order, then into the others, row by row."""
+
+    cols: int
+    rows: int
+    big: tuple[tuple[int, int, int, int], ...]
+
+    def places(self) -> list[tuple[int, int, int, int]]:
+        covered = {
+            (row + r, col + c)
+            for row, col, rowspan, colspan in self.big
+            for r in range(rowspan)
+            for c in range(colspan)
+        }
+        return [
+            *self.big,
+            *(
+                (row, col, 1, 1)
+                for row in range(self.rows)
+                for col in range(self.cols)
+                if (row, col) not in covered
+            ),
+        ]
+
+
+# by the number of big cells and small ones in them
+GRID_TEMPLATES = {
+    "1 + 2": GridTemplate(3, 2, ((0, 0, 2, 2),)),
+    "1 + 3": GridTemplate(4, 3, ((0, 0, 3, 3),)),
+    "1 + 5": GridTemplate(3, 3, ((0, 0, 2, 2),)),
+    "1 + 7": GridTemplate(4, 4, ((0, 0, 3, 3),)),
+    "1 + 12": GridTemplate(4, 4, ((1, 1, 2, 2),)),
+    "2 + 8": GridTemplate(4, 4, ((0, 0, 2, 2), (0, 2, 2, 2))),
+}
 
 
 class DropAction(AutoName):

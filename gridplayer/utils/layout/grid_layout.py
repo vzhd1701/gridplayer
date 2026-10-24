@@ -2,8 +2,10 @@ from __future__ import annotations
 
 import random
 from enum import Enum, auto
+from typing import NamedTuple
 
 from gridplayer.models.grid_state import GridCell
+from gridplayer.params.static import GridTemplate
 from gridplayer.utils.drop_zone import DropZone
 from gridplayer.utils.layout.boxes import EVEN, Box, Weights, grid_box
 
@@ -30,6 +32,27 @@ _DELTA = {
 }
 
 
+def _area(row: int, col: int, rowspan: int, colspan: int) -> set[tuple[int, int]]:
+    # the places a cell there of that span covers
+    return {
+        (r, c) for r in range(row, row + rowspan) for c in range(col, col + colspan)
+    }
+
+
+def _covered(cell: GridCell) -> set[tuple[int, int]]:
+    return _area(cell.row, cell.col, cell.rowspan, cell.colspan)
+
+
+class _BigDrop(NamedTuple):
+    big: GridCell
+    # the video it is dropped beside, and on which side of it
+    beside: str
+    direction: Direction
+    # its corner in the free cells on that side, and pushed in next to it
+    hole: tuple[int, int]
+    spot: tuple[int, int]
+
+
 class GridLayout:
     def __init__(
         self,
@@ -43,13 +66,25 @@ class GridLayout:
         self.preallocate = preallocate
         self.cells = [cell.model_copy() for cell in cells] if cells else []
 
+        # its cells being resized by hand (see GridEditManager): all of
+        # them shown, as with preallocate, and the empty ones kept
+        self.is_editing = False
+
+    @property
+    def shows_every_cell(self) -> bool:
+        """Whether all of its cells are shown, the empty ones too."""
+
+        return self.preallocate or self.is_editing
+
     def copy(self) -> GridLayout:
-        return GridLayout(
+        grid = GridLayout(
             max_rows=self.max_rows,
             max_cols=self.max_cols,
             preallocate=self.preallocate,
             cells=self.cells,
         )
+        grid.is_editing = self.is_editing
+        return grid
 
     def occupied_ids(self) -> list[str]:
         return [cell.video_id for cell in self.cells if cell.video_id]
@@ -57,7 +92,7 @@ class GridLayout:
     def displayed_size(self, preallocate: bool | None = None) -> tuple[int, int]:
         """Return (cols, rows) actually shown."""
         if preallocate is None:
-            preallocate = self.preallocate
+            preallocate = self.shows_every_cell
         if preallocate:
             return max(self.max_cols, 1), max(self.max_rows, 1)
 
@@ -72,9 +107,10 @@ class GridLayout:
     def compact_edges(self) -> None:
         """Shift occupied cells so empty rows/cols on the outside disappear.
 
-        Interior holes are kept. No-op when preallocate is on.
+        Interior holes are kept. No-op when preallocate is on, or while
+        the cells are edited.
         """
-        if self.preallocate:
+        if self.shows_every_cell:
             return
 
         occupied = [c for c in self.cells if c.video_id]
@@ -153,6 +189,265 @@ class GridLayout:
     def contains(self, video_id: str) -> bool:
         return self._find_cell(video_id) is not None
 
+    def span_of(self, video_id: str) -> tuple[int, int] | None:
+        """How many rows and columns a video's cell covers."""
+
+        cell = self._find_cell(video_id)
+        if cell is None:
+            return None
+        return cell.rowspan, cell.colspan
+
+    def set_span(self, video_id: str, rowspan: int, colspan: int) -> bool:
+        """Make a video's cell cover rowspan x colspan cells, over where it
+        is: where it covers the fewest other videos, then as near its top
+        left corner as it can. Those it covers go to the free cells nearest
+        them; the others stay where they are, and what it frees stays free.
+
+        Where the videos it covers have nowhere to go, those after it, row
+        by row, move along to make room, in their order. False, and nothing
+        changed, where there is no room for them that way either."""
+
+        cell = self._find_cell(video_id)
+        if cell is None or not (
+            1 <= rowspan <= self.max_rows and 1 <= colspan <= self.max_cols
+        ):
+            return False
+
+        big = cell.model_copy(
+            update={
+                "row": min(cell.row, self.max_rows - rowspan),
+                "col": min(cell.col, self.max_cols - colspan),
+                "rowspan": rowspan,
+                "colspan": colspan,
+            }
+        )
+
+        spots = sorted(
+            self._spots_over(cell, big),
+            key=lambda spot: self._in_the_way(video_id, _area(*spot, rowspan, colspan)),
+        )
+        if any(self.place(video_id, row, col, rowspan, colspan) for row, col in spots):
+            return True
+
+        placed = self._flowed_after(big)
+        if placed is None:
+            return False
+        self.cells = sorted(placed, key=self._index)
+        self.compact_edges()
+        return True
+
+    def _in_the_way(self, video_id: str, area: set[tuple[int, int]]) -> int:
+        # how many other videos a video's cell covers, over the area
+        return sum(
+            1
+            for c in self.cells
+            if c.video_id and c.video_id != video_id and _covered(c) & area
+        )
+
+    def _flowed_after(self, big: GridCell) -> list[GridCell] | None:
+        """The cells with big in, the videos from its place on moved along
+        in their order; None where they do not all fit."""
+
+        start = self._index(big)
+        moving = [
+            c
+            for c in self._others(big)
+            if self._index(c) >= start or _covered(c) & _covered(big)
+        ]
+        return self._resettled(
+            big, moving, lambda occupied, other: self._first_fit(occupied, other, start)
+        )
+
+    def _others(self, big: GridCell) -> list[GridCell]:
+        return [c for c in self.cells if c.video_id and c.video_id != big.video_id]
+
+    def _resettled(self, big: GridCell, moving: list[GridCell], find_spot):
+        """The cells with big in, those moving each put, in their order,
+        where find_spot(occupied, cell) finds; None where it finds none."""
+
+        placed = [c for c in self._others(big) if c not in moving]
+        placed.append(big)
+
+        occupied = set().union(*(_covered(c) for c in placed))
+        for other in sorted(moving, key=self._index):
+            spot = find_spot(occupied, other)
+            if spot is None:
+                return None
+            moved = other.model_copy(update={"row": spot[0], "col": spot[1]})
+            placed.append(moved)
+            occupied |= _covered(moved)
+        return placed
+
+    def _spots_over(self, cell: GridCell, big: GridCell) -> list[tuple[int, int]]:
+        """Where big's corner can go with it over some of the cell, in the
+        grid: nearest where it would be first."""
+
+        spots = [
+            (row, col)
+            for row in range(self.max_rows - big.rowspan + 1)
+            for col in range(self.max_cols - big.colspan + 1)
+            if _area(row, col, big.rowspan, big.colspan) & _covered(cell)
+        ]
+        return sorted(
+            spots, key=lambda spot: abs(spot[0] - big.row) + abs(spot[1] - big.col)
+        )
+
+    def place(
+        self, video_id: str, row: int, col: int, rowspan: int, colspan: int
+    ) -> bool:
+        """Put a video's cell at (row, col), rowspan x colspan cells: moved,
+        resized, or both. The videos it then covers go to the free places
+        nearest where they were, those it left first, so that one moved
+        onto another of its size swaps with it. False, and nothing changed,
+        where they do not all fit."""
+
+        cell = self._find_cell(video_id)
+        if cell is None or not self._fits(row, col, rowspan, colspan):
+            return False
+
+        big = cell.model_copy(
+            update={"row": row, "col": col, "rowspan": rowspan, "colspan": colspan}
+        )
+        left = _covered(cell) - _covered(big)
+
+        displaced = [c for c in self._others(big) if _covered(c) & _covered(big)]
+        placed = self._resettled(
+            big,
+            displaced,
+            lambda occupied, other: self._nearest_fit(occupied, other, left),
+        )
+        if placed is None:
+            return False
+
+        self.cells = sorted(placed, key=self._index)
+        self.compact_edges()
+        return True
+
+    def can_place(
+        self, video_id: str, row: int, col: int, rowspan: int, colspan: int
+    ) -> bool:
+        return self.copy().place(video_id, row, col, rowspan, colspan)
+
+    def stepped(self, video_id: str, rows: int, cols: int) -> tuple[int, int] | None:
+        """The span a video's cell has with rows and columns more (fewer,
+        if less than nought), from one to as many as the grid has. None
+        where that is the span it has."""
+
+        span = self.span_of(video_id)
+        if span is None:
+            return None
+        stepped = (
+            min(max(span[0] + rows, 1), self.max_rows),
+            min(max(span[1] + cols, 1), self.max_cols),
+        )
+        return None if stepped == span else stepped
+
+    def steps(self, video_id: str, rows: int, cols: int) -> list[tuple[int, int]]:
+        """The spans to try for a video's cell made a step bigger or smaller
+        (see stepped), the first there is room for. A step in both ways
+        tries one way only after, the way it has fewer cells first, to keep
+        it near square: a cell made bigger grows as far as there is room."""
+
+        first = self.stepped(video_id, rows, cols)
+        if first is None:
+            return []
+
+        spans = [first]
+        if rows and cols:
+            rowspan, colspan = self.span_of(video_id)
+            by_rows = self.stepped(video_id, rows, 0)
+            by_cols = self.stepped(video_id, 0, cols)
+            ways = (by_cols, by_rows) if colspan <= rowspan else (by_rows, by_cols)
+            spans.extend(s for s in ways if s is not None and s not in spans)
+        return spans
+
+    def step_span(self, video_id: str, rows: int, cols: int) -> tuple[int, int] | None:
+        """The first of the spans for the step (see steps) there is room for;
+        None where there is room for none."""
+
+        rowspan, colspan = self.span_of(video_id) or (1, 1)
+        free = self.free_capacity()
+        return next(
+            (
+                span
+                for span in self.steps(video_id, rows, cols)
+                if span[0] * span[1] - rowspan * colspan <= free
+                and self.copy().set_span(video_id, *span)
+            ),
+            None,
+        )
+
+    def apply_template(self, template: GridTemplate, video_ids: list[str]) -> None:
+        """The grid made the template, the videos put in its cells in their
+        order, as many as it has cells for."""
+
+        self.max_rows = template.rows
+        self.max_cols = template.cols
+
+        places = template.places()
+        self.cells = [
+            GridCell(video_id=video_id, row=row, col=col, rowspan=rs, colspan=cs)
+            for video_id, (row, col, rs, cs) in zip(video_ids, places)
+        ]
+        self.cells.sort(key=self._index)
+        self.compact_edges()
+
+    def big_cells(self) -> list[GridCell]:
+        """The videos' cells that cover more than one."""
+
+        return [
+            c for c in self.cells if c.video_id and (c.rowspan, c.colspan) != (1, 1)
+        ]
+
+    def is_template(self, template: GridTemplate) -> bool:
+        """Whether the grid is the template: its size, and its big cells
+        where the template has them."""
+
+        big = {(c.row, c.col, c.rowspan, c.colspan) for c in self.big_cells()}
+        return (self.max_cols, self.max_rows) == (
+            template.cols,
+            template.rows,
+        ) and big == set(template.big)
+
+    def _index(self, cell: GridCell) -> int:
+        # where the cell's top left corner comes, going row by row
+        return cell.row * self.max_cols + cell.col
+
+    def _nearest_fit(
+        self, occupied: set, cell: GridCell, preferred: set
+    ) -> tuple[int, int] | None:
+        """The free place for a cell of its span, all of it in preferred
+        if there is one, else nearest where it is: of those as near, one
+        further on, row by row, so that its order stays."""
+
+        spots = []
+        for row in range(self.max_rows - cell.rowspan + 1):
+            for col in range(self.max_cols - cell.colspan + 1):
+                spot = _area(row, col, cell.rowspan, cell.colspan)
+                if spot & occupied:
+                    continue
+                distance = abs(row - cell.row) + abs(col - cell.col)
+                is_before = (row, col) < (cell.row, cell.col)
+                spots.append((not spot <= preferred, distance, is_before, row, col))
+
+        if not spots:
+            return None
+        *_, row, col = min(spots)
+        return row, col
+
+    def _first_fit(
+        self, occupied: set, cell: GridCell, start: int
+    ) -> tuple[int, int] | None:
+        """The first place from start on, row by row, a cell of its span
+        fits in, none of it occupied."""
+
+        span = cell.rowspan, cell.colspan
+        for index in range(start, self.max_rows * self.max_cols):
+            row, col = divmod(index, self.max_cols)
+            if self._fits(row, col, *span) and not _area(row, col, *span) & occupied:
+                return row, col
+        return None
+
     def add(self, video_ids: list[str]) -> list[str]:
         return self.place_in_empties(video_ids)
 
@@ -230,7 +525,8 @@ class GridLayout:
             return []
 
         if zone == DropZone.CENTER:
-            self.drop_on_center(row, col, [src_id], is_internal=True)
+            if not self._trade_places(src_id, row, col):
+                self.drop_on_center(row, col, [src_id], is_internal=True)
             return []
 
         direction = ZONE_TO_DIR.get(zone)
@@ -238,12 +534,139 @@ class GridLayout:
             return [src_id]
 
         snapshot = [cell.model_copy() for cell in self.cells]
-        self.remove_video(src_id)
-        _leftover, rejected = self.drop_on_edge(row, col, direction, [src_id])
-        if rejected:
+        if self.span_of(src_id) != (1, 1):
+            is_dropped = self._drop_big_beside(src_id, row, col, direction)
+        else:
+            self.remove_video(src_id)
+            _leftover, rejected = self.drop_on_edge(row, col, direction, [src_id])
+            is_dropped = not rejected
+        if not is_dropped:
             self.cells = snapshot
             return [src_id]
         return []
+
+    def _trade_places(self, video_id: str, row: int, col: int) -> bool:
+        """A video dropped on the one at (row, col), their cells of other
+        sizes: the bigger moves to the other's place, as near its corner as
+        the grid lets it, keeping its size, and the videos it then covers
+        go to where it was. False, and nothing changed, for cells of a size,
+        which swap their videos, or where they cannot."""
+
+        cell = self._find_cell(video_id)
+        other = self._occupied_map().get((row, col))
+        if cell is None or other is None or other.video_id == video_id:
+            return False
+        if (cell.rowspan, cell.colspan) == (other.rowspan, other.colspan):
+            return False
+
+        mover, there = (
+            (cell, other) if cell.rowspan * cell.colspan > 1 else (other, cell)
+        )
+        return self.place(
+            mover.video_id,
+            min(there.row, self.max_rows - mover.rowspan),
+            min(there.col, self.max_cols - mover.colspan),
+            mover.rowspan,
+            mover.colspan,
+        )
+
+    def _drop_big_beside(
+        self, video_id: str, row: int, col: int, direction: Direction
+    ) -> bool:
+        """A big cell dropped on a side of the cell at (row, col), keeping
+        its size. Into the free cells on that side, if they are; else next
+        to it, the cells in its way pushed along (that cell itself, where
+        it goes before it); else back from the grid's edge, the videos it
+        then covers going to the free cells nearest them, should that cell
+        still be on that side. Across, it lines up with that cell. False,
+        and nothing changed, where none of them can be."""
+
+        big = self._find_cell(video_id)
+        rowspan, colspan = big.rowspan, big.colspan
+
+        beside = self._occupied_map().get((row, col))
+        if beside is None or beside is big:
+            spot_row = min(row, self.max_rows - rowspan)
+            spot_col = min(col, self.max_cols - colspan)
+            return self.place(video_id, spot_row, spot_col, rowspan, colspan)
+
+        top, left = beside.row, beside.col
+        bottom, right = top + beside.rowspan, left + beside.colspan
+        across_row = min(top, self.max_rows - rowspan)
+        across_col = min(left, self.max_cols - colspan)
+        hole, spot = {
+            Direction.UP: ((top - rowspan, across_col), (top, across_col)),
+            Direction.DOWN: ((bottom, across_col), (bottom, across_col)),
+            Direction.LEFT: ((across_row, left - colspan), (across_row, left)),
+            Direction.RIGHT: ((across_row, right), (across_row, right)),
+        }[direction]
+        drop = _BigDrop(big, beside.video_id, direction, hole, spot)
+
+        for way in ("_into_hole", "_pushing_in", "_nearest_beside"):
+            grid = self.copy()
+            grid.remove_video(video_id)
+            if getattr(grid, way)(drop):
+                self.cells = grid.cells
+                return True
+        return False
+
+    def _into_hole(self, drop: _BigDrop) -> bool:
+        if not self._is_free(*drop.hole, drop.big.rowspan, drop.big.colspan):
+            return False
+        self._put(drop.big, *drop.hole)
+        return True
+
+    def _pushing_in(self, drop: _BigDrop) -> bool:
+        row, col = drop.spot
+        big = drop.big.model_copy(update={"row": row, "col": col})
+        if not self._fits(row, col, big.rowspan, big.colspan):
+            return False
+
+        push = _DELTA[
+            Direction.DOWN
+            if drop.direction in {Direction.UP, Direction.DOWN}
+            else Direction.RIGHT
+        ]
+        while taken := sorted(_covered(big) & self._occupied_map().keys()):
+            if not self._shift_line(*taken[-1], *push):
+                return False
+        self._put(drop.big, row, col)
+        return True
+
+    def _nearest_beside(self, drop: _BigDrop) -> bool:
+        rowspan, colspan = drop.big.rowspan, drop.big.colspan
+        row = min(max(drop.hole[0], 0), self.max_rows - rowspan)
+        col = min(max(drop.hole[1], 0), self.max_cols - colspan)
+        self.cells.append(drop.big)
+        if not self.place(drop.big.video_id, row, col, rowspan, colspan):
+            return False
+
+        big, beside = self._find_cell(drop.big.video_id), self._find_cell(drop.beside)
+        return {
+            Direction.UP: beside.row >= big.row + big.rowspan,
+            Direction.DOWN: beside.row + beside.rowspan <= big.row,
+            Direction.LEFT: beside.col >= big.col + big.colspan,
+            Direction.RIGHT: beside.col + beside.colspan <= big.col,
+        }[drop.direction]
+
+    def _is_free(self, row: int, col: int, rowspan: int, colspan: int) -> bool:
+        return self._fits(row, col, rowspan, colspan) and not (
+            _area(row, col, rowspan, colspan) & self._occupied_map().keys()
+        )
+
+    def _fits(self, row: int, col: int, rowspan: int, colspan: int) -> bool:
+        # a cell there of that span, all of it in the grid
+        return (
+            0 <= row
+            and 0 <= col
+            and 1 <= rowspan <= self.max_rows - row
+            and 1 <= colspan <= self.max_cols - col
+        )
+
+    def _put(self, cell: GridCell, row: int, col: int) -> None:
+        self.cells.append(cell.model_copy(update={"row": row, "col": col}))
+        self.cells.sort(key=self._index)
+        self.compact_edges()
 
     def _resolve_pos(
         self,
@@ -279,14 +702,16 @@ class GridLayout:
         for cell in self.cells:
             if not cell.video_id:
                 continue
-            fits = (
-                cell.row >= 0
-                and cell.col >= 0
-                and cell.row + cell.rowspan <= self.max_rows
-                and cell.col + cell.colspan <= self.max_cols
-            )
-            if fits:
-                kept.append(cell)
+            if 0 <= cell.row < self.max_rows and 0 <= cell.col < self.max_cols:
+                # a big cell made to fit, as far as it does not
+                kept.append(
+                    cell.model_copy(
+                        update={
+                            "rowspan": min(cell.rowspan, self.max_rows - cell.row),
+                            "colspan": min(cell.colspan, self.max_cols - cell.col),
+                        }
+                    )
+                )
             else:
                 cut.append(cell)
 
@@ -309,12 +734,18 @@ class GridLayout:
         self.cells = [cell for cell in self.cells if cell.video_id != video_id]
 
     def occupy(self, row: int, col: int, video_id: str) -> None:
+        """Put a video at (row, col), in place of the one there: in the
+        whole of its cell, should it be a big one."""
+
         self.remove_video(video_id)
-        occ = self._occupied_map()
-        if (row, col) in occ:
-            old = occ[row, col]
-            self.cells = [c for c in self.cells if c is not old]
-        self.cells.append(GridCell(video_id=video_id, row=row, col=col))
+        old = self._occupied_map().get((row, col))
+        if old is None:
+            self.cells.append(GridCell(video_id=video_id, row=row, col=col))
+            return
+        self.cells = [
+            c.model_copy(update={"video_id": video_id}) if c is old else c
+            for c in self.cells
+        ]
 
     def place_in_empties(
         self,
@@ -493,7 +924,7 @@ class GridLayout:
         for row, col in self._iter_fill_positions(rows_first):
             if row < disp_rows and col < disp_cols and (row, col) not in occ:
                 yield row, col
-        if self.preallocate:
+        if self.shows_every_cell:
             return
         for row, col in self._iter_fill_positions(rows_first):
             if (row >= disp_rows or col >= disp_cols) and (row, col) not in occ:
@@ -507,9 +938,12 @@ class GridLayout:
         return 0 <= row < rows and 0 <= col < cols
 
     def _insert_grid_row(self, at_row: int) -> None:
+        # a big cell it goes through gets a row more
         self.cells = [
             cell.model_copy(update={"row": cell.row + 1})
             if cell.row >= at_row
+            else cell.model_copy(update={"rowspan": cell.rowspan + 1})
+            if cell.row + cell.rowspan > at_row
             else cell
             for cell in self.cells
         ]
@@ -518,6 +952,8 @@ class GridLayout:
         self.cells = [
             cell.model_copy(update={"col": cell.col + 1})
             if cell.col >= at_col
+            else cell.model_copy(update={"colspan": cell.colspan + 1})
+            if cell.col + cell.colspan > at_col
             else cell
             for cell in self.cells
         ]
@@ -533,47 +969,33 @@ class GridLayout:
         return max(c.col + c.colspan for c in self.cells) < self.max_cols
 
     def _shift_line(self, row: int, col: int, d_row: int, d_col: int) -> bool:
-        """Make (row, col) empty by pushing 1x1 cells along the row or column.
+        """Make (row, col) empty by pushing the cell there one step along,
+        and each cell in its way, and in theirs, as far as the first holes.
 
-        Stops at the first hole, or grows into unused max-grid cells. Other
-        rows/cols are left alone.
+        A big cell moves as one, pushing all it comes up against. False,
+        and nothing moved, when one would go past the max grid.
         """
         occ = self._occupied_map()
-        if (row, col) not in occ:
+        first = occ.get((row, col))
+        if first is None:
             return True
 
-        hole_r, hole_c = row, col
-        while self._in_max(hole_r, hole_c) and (hole_r, hole_c) in occ:
-            hole_r += d_row
-            hole_c += d_col
-        if not self._in_max(hole_r, hole_c):
-            return False
+        pushed = [first]
+        for cell in pushed:
+            for cur_r, cur_c in _covered(cell):
+                to = (cur_r + d_row, cur_c + d_col)
+                if not self._in_max(*to):
+                    return False
+                other = occ.get(to)
+                if other is not None and all(other is not p for p in pushed):
+                    pushed.append(other)
 
-        steps: list[tuple[int, int]] = []
-        cur_r, cur_c = row, col
-        while (cur_r, cur_c) != (hole_r, hole_c):
-            steps.append((cur_r, cur_c))
-            cur_r += d_row
-            cur_c += d_col
-
-        for cur_r, cur_c in steps:
-            cell = occ[cur_r, cur_c]
-            if (
-                cell.row != cur_r
-                or cell.col != cur_c
-                or cell.rowspan != 1
-                or cell.colspan != 1
-            ):
-                return False
-
-        for cur_r, cur_c in reversed(steps):
-            cell = occ[cur_r, cur_c]
-            moved = cell.model_copy(update={"row": cur_r + d_row, "col": cur_c + d_col})
-            self.cells = [
-                moved if x.video_id == cell.video_id else x for x in self.cells
-            ]
-            occ.pop((cur_r, cur_c))
-            occ[cur_r + d_row, cur_c + d_col] = moved
+        self.cells = [
+            cell.model_copy(update={"row": cell.row + d_row, "col": cell.col + d_col})
+            if any(cell is p for p in pushed)
+            else cell
+            for cell in self.cells
+        ]
         return True
 
     def _drop_one_edge(
@@ -588,8 +1010,18 @@ class GridLayout:
             self.occupy(row, col, video_id)
             return True, (row, col)
 
-        d_row, d_col = _DELTA[direction]
-        n_r, n_c = row + d_row, col + d_col
+        # the sides of the cell there, a big one's beyond its other cells
+        cell = occ.get((row, col))
+        top, left = (cell.row, cell.col) if cell else (row, col)
+        bottom = top + cell.rowspan if cell else row + 1
+        right = left + cell.colspan if cell else col + 1
+
+        n_r, n_c = {
+            Direction.LEFT: (row, left - 1),
+            Direction.RIGHT: (row, right),
+            Direction.UP: (top - 1, col),
+            Direction.DOWN: (bottom, col),
+        }[direction]
         # Fill a hole in the current canvas. Cells past the displayed edge
         # are handled by grow / push so a new column/row stays aligned.
         if self._in_displayed(n_r, n_c) and (n_r, n_c) not in occ:
@@ -598,14 +1030,14 @@ class GridLayout:
 
         if direction in {Direction.LEFT, Direction.RIGHT}:
             dest_r = row
-            dest_c = col if direction == Direction.LEFT else col + 1
+            dest_c = left if direction == Direction.LEFT else right
             if self._can_insert_col() and self._in_max(dest_r, dest_c):
                 self._insert_grid_col(dest_c)
                 self.occupy(dest_r, dest_c, video_id)
                 return True, (dest_r, dest_c)
             push = (0, 1)
         else:
-            dest_r = row if direction == Direction.UP else row + 1
+            dest_r = top if direction == Direction.UP else bottom
             dest_c = col
             if self._can_insert_row() and self._in_max(dest_r, dest_c):
                 self._insert_grid_row(dest_r)

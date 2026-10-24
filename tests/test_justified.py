@@ -6,6 +6,7 @@ import pytest
 
 from gridplayer.utils.layout.boxes import box_rect, picture_score
 from gridplayer.utils.layout.justified import (
+    STRETCH_WORTH,
     best_splits,
     justified_boxes,
     measure_split,
@@ -32,11 +33,13 @@ def _score(shapes, lengths, is_columns, width, height):
 
 
 def _shown_score(shapes, lengths, is_columns, width, height, crop):
-    # by the tiles' areas: what shows of pictures that fill them
+    # by the tiles' areas: what shows of pictures that fill them, what a
+    # tile is stretched by counted at STRETCH_WORTH
     boxes = justified_boxes(shapes, lengths, is_columns, width, height, crop)
     return sum(
         math.log((box.right - box.left) * width * (box.bottom - box.top) * height)
-        for box in boxes
+        + (1 - STRETCH_WORTH) * math.log(1 - _cut(box, shape, width, height))
+        for box, shape in zip(boxes, shapes, strict=True)
     )
 
 
