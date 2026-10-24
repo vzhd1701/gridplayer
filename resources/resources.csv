@@ -94,6 +94,17 @@ icon-symbolic,icons/custom/grid fit.svg,grid-fit
 icon-symbolic,icons/custom/fit shapes.svg,grid-fit-shapes
 icon-symbolic,icons/custom/fit lines.svg,grid-fit-lines
 icon-symbolic,icons/custom/reset lines.svg,grid-reset-lines
+icon-symbolic,icons/custom/cell size.svg,grid-cell-size
+icon-symbolic,icons/custom/cell bigger.svg,grid-cell-bigger
+icon-symbolic,icons/custom/cell smaller.svg,grid-cell-smaller
+icon-symbolic,icons/custom/cell wider.svg,grid-cell-wider
+icon-symbolic,icons/custom/cell narrower.svg,grid-cell-narrower
+icon-symbolic,icons/custom/cell taller.svg,grid-cell-taller
+icon-symbolic,icons/custom/cell shorter.svg,grid-cell-shorter
+icon-symbolic,icons/custom/reorder to fit.svg,grid-reorder
+icon-symbolic,icons/custom/edit grid.svg,grid-edit
+icon-symbolic,icons/custom/grid undo.svg,grid-undo
+icon-symbolic,icons/custom/grid redo.svg,grid-redo
 icon-symbolic,icons/custom/grid size.svg,grid-size
 icon-symbolic,icons/custom/grid-show-all.svg,grid-show-all
 icon-symbolic,icons/custom/information.svg,information
@@ -129,6 +140,12 @@ icon-symbolic,icons/custom/recent list.svg,add-recent
 icon-symbolic,icons/custom/reset.svg,reset
 icon-symbolic,icons/custom/rotate.svg,rotate
 icon-symbolic,icons/custom/rows first.svg,grid-rows-first
+icon-symbolic,icons/custom/grid template 1-2.svg,grid-template-1-2
+icon-symbolic,icons/custom/grid template 1-3.svg,grid-template-1-3
+icon-symbolic,icons/custom/grid template 1-5.svg,grid-template-1-5
+icon-symbolic,icons/custom/grid template 1-7.svg,grid-template-1-7
+icon-symbolic,icons/custom/grid template 1-12.svg,grid-template-1-12
+icon-symbolic,icons/custom/grid template 2-8.svg,grid-template-2-8
 icon-symbolic,icons/custom/seek sync percent.svg,seek-sync-percent
 icon-symbolic,icons/custom/seek sync time.svg,seek-sync-time
 icon-symbolic,icons/custom/seek sync.svg,seek-sync
