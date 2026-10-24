@@ -134,7 +134,7 @@ def scenario(d):
     d.check("snapped where the phone fits", _widths(d)[0] == 169, _widths(d))
     mark = _mark(d)
     d.check("snapped line thicker", mark is not None and mark.width() == 6, mark)
-    d.check("says why: the video fits", _tag(d) == "Fits", _tag(d))
+    d.check("says why: the video on the left fits", _tag(d) == "Left fits", _tag(d))
     d.shot("2_snapped")
 
     # Alt held: no snapping

@@ -5,9 +5,9 @@ from PyQt5.QtWidgets import QApplication
 from gridplayer.player.managers.base import ManagerBase
 from gridplayer.playlist_settings import PlaylistSettings
 from gridplayer.utils.layout import Weights
-from gridplayer.utils.layout.lines import GridLines, Line, Snap, SnapKind
-from gridplayer.utils.qt import is_modal_open, translate
-from gridplayer.widgets.grid_line_mark import GridLineMark, GridLineTag
+from gridplayer.utils.layout.lines import GridLines, Line, Snap
+from gridplayer.utils.qt import is_modal_open
+from gridplayer.widgets.grid_line_mark import GridLineMark, GridLineTag, snap_word
 
 # how near the pointer has to be to a line to take it, in pixels
 LINE_REACH = 4
@@ -384,12 +384,7 @@ class GridLinesManager(ManagerBase):
             self._hide_tag()
             return
 
-        if target.kind is SnapKind.FITS:
-            text = translate("Grid Lines", "Fits")
-        elif target.kind is SnapKind.ALIGNED:
-            text = translate("Grid Lines", "Aligned")
-        else:
-            text = translate("Grid Lines", "Even")
+        text = snap_word(target, line.is_column)
 
         if self._tag is None:
             self._tag = GridLineTag(self.parent())

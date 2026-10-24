@@ -2,9 +2,32 @@ from PyQt5.QtCore import QPoint, QRect, QSize, Qt
 from PyQt5.QtGui import QColor, QPainter
 from PyQt5.QtWidgets import QWidget
 
+from gridplayer.utils.layout.lines import SnapKind, Target
+from gridplayer.utils.qt import translate
+
 # a light line with a dark edge either side, to show over any picture
 LINE_COLOR = QColor("#eeeeee")
 EDGE_COLOR = QColor("#111111")
+
+
+def snap_word(target: Target, is_column: bool) -> str:
+    """What a line that snapped says it stopped at: for a video that fits,
+    on which side of it."""
+
+    if target.kind is SnapKind.ALIGNED:
+        return translate("Grid Lines", "Aligned")
+    if target.kind is SnapKind.EVEN:
+        return translate("Grid Lines", "Even")
+
+    if target.side == 0:
+        return translate("Grid Lines", "Both fit")
+    if is_column:
+        if target.side < 0:
+            return translate("Grid Lines", "Left fits")
+        return translate("Grid Lines", "Right fits")
+    if target.side < 0:
+        return translate("Grid Lines", "Top fits")
+    return translate("Grid Lines", "Bottom fits")
 
 
 class GridLineMark(QWidget):
