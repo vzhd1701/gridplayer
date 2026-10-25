@@ -152,6 +152,8 @@ icon-symbolic,icons/custom/seek sync.svg,seek-sync
 icon-symbolic,icons/custom/settings.svg,settings
 icon-symbolic,icons/custom/single mode off.svg,single-mode-off
 icon-symbolic,icons/custom/single mode on.svg,single-mode-on
+icon-symbolic,icons/custom/single mode strip.svg,single-mode-strip
+icon-symbolic,icons/custom/single mode fixed strip.svg,single-mode-fixed-strip
 icon-symbolic,icons/custom/sort.svg,sort
 icon-symbolic,icons/custom/speed faster.svg,speed-faster
 icon-symbolic,icons/custom/speed reset.svg,speed-reset
