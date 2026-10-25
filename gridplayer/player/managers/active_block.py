@@ -2,8 +2,9 @@ from collections import Counter
 from operator import attrgetter
 from pathlib import Path
 
-from PyQt5.QtCore import QEvent, pyqtSignal
+from PyQt5.QtCore import QEvent, Qt, QTimer, pyqtSignal
 from PyQt5.QtGui import QCursor
+from PyQt5.QtWidgets import QApplication
 
 from gridplayer.dialogs.crop import SetCropDialog
 from gridplayer.dialogs.position import SetPositionDialog
@@ -94,6 +95,10 @@ LOADING_COMMANDS = frozenset(
 # something
 QUIETLY_DROPPED_COMMANDS = frozenset({"show_overlay"})
 
+# how often to look whether the buttons held have been let go of: a release
+# that does something stops at the video, never seen here
+LET_GO_CHECK_MS = 20
+
 
 class ActiveBlockManager(ManagerBase):
     active_block_change = pyqtSignal(VideoBlock)
@@ -103,11 +108,15 @@ class ActiveBlockManager(ManagerBase):
 
         self._ctx.active_block = None
 
+        self._let_go_timer = QTimer(self)
+        self._let_go_timer.setInterval(LET_GO_CHECK_MS)
+        self._let_go_timer.timeout.connect(self._check_let_go)
+
     @property
     def event_map(self):
         return {
             QEvent.MouseMove: self.update_active_under_mouse,
-            QEvent.MouseButtonPress: self.update_active_under_mouse,
+            QEvent.MouseButtonPress: self.update_active_pressed,
             QEvent.MouseButtonRelease: self.update_active_under_mouse,
             QEvent.NonClientAreaMouseMove: self.update_active_reset,
             QEvent.NonClientAreaMouseButtonPress: self.update_active_reset,
@@ -1289,8 +1298,35 @@ class ActiveBlockManager(ManagerBase):
         if is_modal_open():
             return
 
+        # A button held, the video it was pressed on keeps it till it is let
+        # go of: the release is that video's, as is the rest of a double
+        # click, though another comes under the pointer, one shown big in
+        # its place, say.
+        if (
+            QApplication.mouseButtons() != Qt.NoButton
+            and self._ctx.active_block is not None
+        ):
+            self._let_go_timer.start()
+            return
+
+        self._update_active_under_mouse()
+
+    def update_active_pressed(self):
+        if is_modal_open():
+            return
+
+        self._update_active_under_mouse()
+
+    def _update_active_under_mouse(self):
         self._update_active_block(self.get_video_block_under_mouse())
         self.cmd_active("show_overlay")
+
+    def _check_let_go(self):
+        if QApplication.mouseButtons() != Qt.NoButton:
+            return
+
+        self._let_go_timer.stop()
+        self.update_active_under_mouse()
 
     def update_active_from_drag(self, event, event_object):
         # QCursor.pos() is stale during X11 DND from another process;
