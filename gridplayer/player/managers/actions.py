@@ -12,7 +12,9 @@ from gridplayer.utils.keymap import (
     default_keymap,
     find_duplicate_shortcuts,
     merge_keymap,
+    normalize_key_sequence,
     qkeysequences_for_shortcut,
+    shares_keys,
     split_shortcuts,
 )
 from gridplayer.widgets.custom_menu import CustomMenu, checked_icon
@@ -43,6 +45,19 @@ class QDynamicAction(QAction):
         # what the generator makes goes straight into the menu this action
         # is put in, rather than into a submenu of its own
         self.is_menu_inline = False
+
+        # given a key of it, whether an action that shares it took it
+        self.is_key_taken = None
+
+    def event(self, event):
+        if (
+            event.type() == QEvent.Shortcut
+            and self.is_key_taken is not None
+            and self.is_key_taken(event.key())
+        ):
+            return True
+
+        return super().event(event)
 
     @property
     def is_skipped(self) -> bool:
@@ -166,6 +181,10 @@ class ActionsManager(ManagerBase):
         super().__init__(**kwargs)
 
         self._mouse_index: dict[str, str] = {}
+        # the keys and clicks of the actions that share them (see shares_keys);
+        # the keys another has too are that one's QAction's, not theirs
+        self._shared_mouse_index: dict[str, str] = {}
+        self._shared_keys: dict[str, str] = {}
         self._bindings: dict[str, list[str]] = {}
         self._invoking = False
         self._wheel_notches = WheelNotches()
@@ -211,6 +230,16 @@ class ActionsManager(ManagerBase):
 
         self._bindings = {k: list(v) for k, v in bindings.items()}
         self._mouse_index = {}
+        self._shared_mouse_index = {}
+        self._shared_keys = {}
+
+        # the keys an action that shares them has with another
+        others_keys = {
+            key
+            for cmd_name, shortcuts in self._bindings.items()
+            if not shares_keys(cmd_name)
+            for key in split_shortcuts(shortcuts)[0]
+        }
 
         parent = self.parent()
 
@@ -228,8 +257,21 @@ class ActionsManager(ManagerBase):
             shortcuts = self._bindings.get(cmd_name, [])
             keyboard_keys, mouse_keys = split_shortcuts(shortcuts)
 
-            for mouse_key in mouse_keys:
-                self._mouse_index[mouse_key] = cmd_name
+            if shares_keys(cmd_name):
+                for mouse_key in mouse_keys:
+                    self._shared_mouse_index[mouse_key] = cmd_name
+                for key in keyboard_keys:
+                    if key in others_keys:
+                        # as the other's QAction has it: Enter as both keys
+                        for sequence in qkeysequences_for_shortcut(key):
+                            self._shared_keys[normalize_key_sequence(sequence)] = (
+                                cmd_name
+                            )
+                keyboard_keys = [k for k in keyboard_keys if k not in others_keys]
+            else:
+                action.is_key_taken = self._take_shared_key
+                for mouse_key in mouse_keys:
+                    self._mouse_index[mouse_key] = cmd_name
 
             if not keyboard_keys:
                 continue
@@ -263,7 +305,11 @@ class ActionsManager(ManagerBase):
         background, say."""
 
         return next(
-            (action_id for action_id, keys in self._bindings.items() if key in keys),
+            (
+                action_id
+                for action_id, keys in self._bindings.items()
+                if key in keys and not shares_keys(action_id)
+            ),
             None,
         )
 
@@ -298,7 +344,7 @@ class ActionsManager(ManagerBase):
         if seq.is_wheel and self._ctx.is_disable_mouse_wheel_events:
             return False
 
-        action_id = self._mouse_index.get(seq.sequence)
+        action_id = self._mouse_action(seq.sequence)
         if not action_id:
             return False
 
@@ -316,7 +362,21 @@ class ActionsManager(ManagerBase):
             seq = MouseButtonSequence.from_event(event)
         except ValueError:
             return False
-        return seq.sequence in self._mouse_index
+        return self._mouse_action(seq.sequence) is not None
+
+    def _mouse_action(self, sequence: str) -> str | None:
+        shared = self._shared_mouse_index.get(sequence)
+        if shared is not None and self.is_action_available(shared):
+            return shared
+        return self._mouse_index.get(sequence)
+
+    def _take_shared_key(self, sequence: QKeySequence) -> bool:
+        action_id = self._shared_keys.get(normalize_key_sequence(sequence))
+        if action_id is None or not self.is_action_available(action_id):
+            return False
+
+        self._ctx.actions[action_id].trigger()
+        return True
 
     def _make_actions(self) -> dict[str, QDynamicAction]:
         actions: dict[str, QDynamicAction] = {}

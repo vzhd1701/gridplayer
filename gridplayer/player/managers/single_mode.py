@@ -9,10 +9,10 @@ from gridplayer.utils.layout.strip import StripVideos
 
 class SingleModeManager(ManagerBase):
     """One video shown big, the others out of sight; or, with the strip on,
-    small in a strip beside it, still playing (see strip_layout). A double
-    click on one in the strip shows it big instead: in the Strip, it trades
-    places with the big one; in the Fixed Strip, every video keeps its
-    place, the big one's held (see HeldPlace)."""
+    small in a strip beside it, still playing (see strip_layout). Show Big
+    on one in the strip, a double click by default, shows it big instead: in
+    the Strip, it trades places with the big one; in the Fixed Strip, every
+    video keeps its place, the big one's held (see HeldPlace)."""
 
     mode_changed = pyqtSignal()
 
@@ -41,7 +41,8 @@ class SingleModeManager(ManagerBase):
             "is_single_mode": lambda: self._ctx.is_single_mode,
             "single_mode_video": self.single_mode_video,
             "strip_videos": self.strip_videos,
-            "is_single_video_big": self.is_single_video_big,
+            "is_active_in_strip": self.is_active_in_strip,
+            "show_big": self.show_big,
             "is_more_than_one_video": lambda: len(self._ctx.video_blocks) > 1,
             "is_single_mode_available": self.is_single_mode_available,
             "is_pause_background_videos": lambda: self._ctx.is_pause_background_videos,
@@ -94,13 +95,20 @@ class SingleModeManager(ManagerBase):
 
         return StripVideos(self._main, strip, self.strip_side())
 
-    def is_single_video_big(self) -> bool:
-        """Whether the active video is the one shown big: one in the strip
-        is not, and a double click shows it big."""
+    def is_active_in_strip(self) -> bool:
+        """Whether the active video is one of the strip's, not the one shown
+        big."""
 
-        return self._ctx.is_single_mode and (
-            not self.is_strip() or self._ctx.active_block is self._main
+        active = self._ctx.active_block
+        return (
+            self._ctx.is_single_mode
+            and self.is_strip()
+            and active not in {None, self._main}
         )
+
+    def show_big(self):
+        if self.is_active_in_strip():
+            self._show_big(self._ctx.active_block)
 
     def strip_mode(self) -> StripMode:
         return PlaylistSettings().get("playlist/single_mode_strip")
@@ -173,12 +181,6 @@ class SingleModeManager(ManagerBase):
 
     def toggle_single_video(self):
         if self._ctx.is_single_mode:
-            # one of the strip's shown big; else, the big one or none under
-            # the pointer, Single Mode left
-            active = self._ctx.active_block
-            if self.is_strip() and active not in {None, self._main}:
-                self._show_big(active)
-                return
             self.single_mode_off()
             return
 
@@ -245,7 +247,8 @@ class SingleModeManager(ManagerBase):
 
         self._set_main(vb)
         self.mode_changed.emit()
-        # another video under the pointer now, the one shown big till now
+        # another video under the pointer now, the one shown big till now;
+        # with a button held, once it is let go of
         self._ctx.commands.update_active_under_mouse()
 
     def _set_main(self, vb):

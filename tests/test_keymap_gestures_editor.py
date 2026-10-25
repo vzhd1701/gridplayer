@@ -169,3 +169,19 @@ def test_alt_is_told_of_on_linux(mocker, dialog_class, is_linux):
 
     assert dialog._ok_button.isEnabled()
     assert bool(dialog._note_label.text()) is is_linux
+
+
+def test_a_click_shared_with_show_big_is_told_of_not_taken():
+    dialog = AddMouseShortcutDialog(
+        action_title="Pause",
+        path=["Video"],
+        existing_shortcuts=[],
+        conflict_map={},
+        shared_map={"Middle Click": [("Show Big", "Show Big")]},
+    )
+
+    dialog._mouse_field.set_sequence("Middle Click")
+
+    assert dialog._ok_button.isEnabled()
+    assert not dialog._warning_frame.isVisibleTo(dialog)
+    assert dialog._note_label.text() == ("On a video in the strip, Show Big takes it.")

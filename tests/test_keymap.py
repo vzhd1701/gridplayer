@@ -22,6 +22,7 @@ from gridplayer.utils.keymap import (
     normalize_shortcut,
     normalize_shortcuts,
     qkeysequences_for_shortcut,
+    shares_keys,
     sparse_overrides,
     split_shortcuts,
 )
@@ -499,3 +500,40 @@ def test_the_shortcuts_list_never_shows_a_placeholder(action_id):
     from gridplayer.widgets.keymap_tree_view import _action_title
 
     assert "%v" not in _action_title(ACTIONS[action_id])
+
+
+# ---------------------------------------------------------------------------
+# An action that shares its keys (Show Big)
+# ---------------------------------------------------------------------------
+
+
+def test_show_big_shares_the_double_click_with_single_mode():
+    defaults = default_keymap()
+
+    assert shares_keys("Show Big")
+    assert not shares_keys("Single Mode ON / OFF")
+    assert defaults["Show Big"] == ["Double Click"]
+    assert find_duplicate_shortcuts(defaults) == {}
+
+
+def test_a_shared_key_is_kept_by_both():
+    defaults = default_keymap()
+    bindings = {**defaults, "Show Big": ["Click"]}
+
+    cleaned = dedupe_keymap(bindings, defaults)
+
+    assert cleaned["Show Big"] == ["Click"]
+    assert "Click" in cleaned["Play / Pause"]
+    assert find_duplicate_shortcuts(cleaned) == {}
+
+
+def test_two_that_do_not_share_still_cannot_have_one_key():
+    defaults = default_keymap()
+    bindings = {**defaults, "Stop": ["Click"]}
+
+    assert find_duplicate_shortcuts(bindings) == {"Click": ["Play / Pause", "Stop"]}
+    cleaned = dedupe_keymap(bindings, defaults)
+    assert cleaned["Stop"] == ["Click"]
+    assert "Click" not in cleaned["Play / Pause"]
+    # and Show Big keeps its own
+    assert cleaned["Show Big"] == ["Double Click"]

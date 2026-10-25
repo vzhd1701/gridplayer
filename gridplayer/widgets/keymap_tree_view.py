@@ -58,6 +58,7 @@ from gridplayer.utils.keymap import (
     key_sequence_from_event,
     normalize_shortcut,
     normalize_shortcuts,
+    shares_keys,
     sparse_overrides,
 )
 from gridplayer.utils.qt import translate
@@ -658,12 +659,15 @@ class _AddShortcutDialogBase(QDialog):
         path: list[str],
         existing_shortcuts: list[str],
         conflict_map: dict[str, list[tuple[str, str]]],
+        shared_map: dict[str, list[tuple[str, str]]] | None = None,
         parent=None,
     ):
         super().__init__(parent)
 
         self._existing = list(existing_shortcuts)
         self._conflict_map = conflict_map  # shortcut -> [(action_id, display_path)]
+        # the same, of those it would share it with (see shares_keys)
+        self._shared_map = shared_map or {}
         self._action_title = action_title
         self._path = list(path)
         self._result_sequence = ""
@@ -786,7 +790,27 @@ class _AddShortcutDialogBase(QDialog):
         if self._clear_button is not None:
             self._clear_button.setEnabled(has_seq)
         self._update_conflicts(seq)
-        self._update_note(problem or (self._note_for(seq) if has_seq else None))
+        self._update_note(
+            problem
+            or (self._shared_note(seq) or self._note_for(seq) if has_seq else None)
+        )
+
+    def _shared_note(self, seq: str) -> str | None:
+        """Who has the shortcut too, and where."""
+
+        normalized = normalize_shortcut(seq) or seq
+        shared = self._shared_map.get(normalized)
+        if not shared:
+            return None
+
+        action_id, display = shared[0]
+        if shares_keys(action_id):
+            return translate(
+                "Keymap", "On a video in the strip, {action} takes it."
+            ).format(action=display)
+        return translate("Keymap", "{action} keeps it outside the strip.").format(
+            action=display
+        )
 
     def _update_note(self, note: str | None):
         if (note or "") == self._note_label.text():
@@ -1407,13 +1431,31 @@ class KeymapTreeView(QTreeView):
     def build_conflict_map(
         self, exclude_action_id: str | None = None
     ) -> dict[str, list[tuple[str, str]]]:
-        """shortcut -> [(action_id, display label), ...]"""
+        """shortcut -> [(action_id, display label), ...], of the actions a
+        shortcut of this one would take from: not those it would share it
+        with (see shares_keys)."""
+        return self._owner_map(exclude_action_id, is_shared=False)
+
+    def build_shared_map(self, action_id: str) -> dict[str, list[tuple[str, str]]]:
+        """The same, of the actions it would share a shortcut with."""
+        return self._owner_map(action_id, is_shared=True)
+
+    def _owner_map(
+        self, exclude_action_id: str | None, *, is_shared: bool
+    ) -> dict[str, list[tuple[str, str]]]:
         result: dict[str, list[tuple[str, str]]] = {}
         seen: set[tuple[str, str]] = set()
         for item in _iter_bound_items(self._source_model):
             action_id = item.data(DATA_ACTION_ID)
             if action_id == exclude_action_id:
                 continue
+            if exclude_action_id is not None:
+                # one that shares its keys and one that does not share them
+                is_shared_with = shares_keys(action_id) != shares_keys(
+                    exclude_action_id
+                )
+                if is_shared_with != is_shared:
+                    continue
             path = item.data(DATA_PATH) or []
             title = item.text()
             display = _path_label(path, title)
@@ -1793,6 +1835,7 @@ class KeymapEditor(QWidget):
             path=path,
             existing_shortcuts=existing,
             conflict_map=self.tree.build_conflict_map(exclude_action_id=action_id),
+            shared_map=self.tree.build_shared_map(action_id),
             parent=self,
         )
         if dialog.exec_() != QDialog.Accepted:
@@ -1812,6 +1855,7 @@ class KeymapEditor(QWidget):
             path=path,
             existing_shortcuts=existing,
             conflict_map=self.tree.build_conflict_map(exclude_action_id=action_id),
+            shared_map=self.tree.build_shared_map(action_id),
             parent=self,
         )
         if dialog.exec_() != QDialog.Accepted:
@@ -1834,6 +1878,7 @@ class KeymapEditor(QWidget):
             path=path,
             existing_shortcuts=existing,
             conflict_map=self.tree.build_conflict_map(exclude_action_id=action_id),
+            shared_map=self.tree.build_shared_map(action_id),
             hold_key=hold_keys[0] if hold_keys else None,
             parent=self,
         )

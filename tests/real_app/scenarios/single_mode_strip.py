@@ -95,13 +95,21 @@ def scenario(d):
     )
     d.shot("1_strip")
 
-    # shown big from its menu
+    # shown big from its menu, Show Big there alone
+    d.ctx.active_block = d.cells[0]
+    d.check(
+        "the big one's menu: Leave Single Mode, no Show Big",
+        not d.ctx.actions["Single Mode ON / OFF"].is_skipped
+        and d.ctx.actions["Show Big"].is_skipped,
+    )
     d.ctx.active_block = d.cells[2]
     d.check(
-        "the menu offers to show the strip's one big (Enter Single Mode)",
-        not d.ctx.commands.is_single_video_big(),
+        "the strip's one's menu: Show Big and Leave Single Mode",
+        d.ctx.commands.is_active_in_strip()
+        and not d.ctx.actions["Show Big"].is_skipped
+        and not d.ctx.actions["Single Mode ON / OFF"].is_skipped,
     )
-    d.act(d.cells[2], "Single Mode ON / OFF")
+    d.act(d.cells[2], "Show Big")
     d.pump(0.3)
     d.check("the third big", _big(d) is d.cells[2], _boxes(d))
     d.check("still single mode", d.ctx.is_single_mode)

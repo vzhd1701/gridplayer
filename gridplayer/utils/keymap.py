@@ -381,6 +381,14 @@ def default_shortcuts(action: dict) -> list[str]:
     return normalize_shortcuts(raw)
 
 
+def shares_keys(action_id: str) -> bool:
+    """Whether an action can have a key or a click another has too: where it
+    does anything, it takes it, and the other has it everywhere else. Two
+    such actions cannot share one."""
+
+    return ACTIONS.get(action_id, {}).get("shares_keys", False)
+
+
 def default_keymap() -> dict[str, list[str]]:
     keymap = {
         action_id: default_shortcuts(action)
@@ -554,12 +562,12 @@ def dedupe_keymap(
         if action_id not in order:
             order.append(action_id)
 
-    owners: dict[str, list[str]] = {}
+    owners: dict[tuple[bool, str], list[str]] = {}
     for action_id in order:
         for shortcut in result.get(action_id, []):
-            owners.setdefault(shortcut, []).append(action_id)
+            owners.setdefault((shares_keys(action_id), shortcut), []).append(action_id)
 
-    for shortcut, action_ids in owners.items():
+    for (_is_shared, shortcut), action_ids in owners.items():
         if len(action_ids) <= 1:
             continue
 
@@ -650,9 +658,10 @@ def split_shortcuts(shortcuts: list[str]) -> tuple[list[str], list[str]]:
 def find_duplicate_shortcuts(
     bindings: dict[str, list[str]],
 ) -> dict[str, list[str]]:
-    """shortcut -> [action_ids that use it] for any shortcut used more than once."""
-    owners: dict[str, list[str]] = {}
+    """shortcut -> [action_ids that use it] for any shortcut used more than
+    once, but by an action that shares its keys and one other."""
+    owners: dict[tuple[bool, str], list[str]] = {}
     for action_id, shortcuts in bindings.items():
         for sc in normalize_shortcuts(shortcuts):
-            owners.setdefault(sc, []).append(action_id)
-    return {sc: ids for sc, ids in owners.items() if len(ids) > 1}
+            owners.setdefault((shares_keys(action_id), sc), []).append(action_id)
+    return {sc: ids for (_is_shared, sc), ids in owners.items() if len(ids) > 1}

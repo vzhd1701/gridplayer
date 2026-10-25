@@ -129,6 +129,7 @@ SECTIONS = MappingProxyType(
                 "Make Cell Taller",
                 "Make Cell Shorter",
             ),
+            "Show Big",
             "Single Mode ON / OFF",
             (
                 "Strip Mode",

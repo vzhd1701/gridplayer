@@ -227,23 +227,54 @@ def test_the_strip_shows_the_others_small_beside_the_big_one():
     window.close()
 
 
-def test_a_double_click_shows_one_of_the_strip_big():
+def test_show_big_on_one_of_the_strip_shows_it_big():
     window, cells, ctx, _grid, single_mode = _strip_grid()
     single_mode.single_mode_on()
 
-    # the one in the strip clicked on twice
     ctx.active_block = cells[3]
-    assert not single_mode.is_single_video_big()
-    single_mode.toggle_single_video()
+    assert single_mode.is_active_in_strip()
+    single_mode.show_big()
     QApplication.processEvents()
 
     assert ctx.is_single_mode
     assert single_mode.single_mode_video() is cells[3]
     assert cells[3].geometry().left() == 0
     assert cells[0].geometry().left() > 0
+    window.close()
 
-    # and twice on the big one, out of Single Mode
+
+def test_single_mode_is_left_from_one_of_the_strip_too():
+    window, cells, ctx, _grid, single_mode = _strip_grid()
+    single_mode.single_mode_on()
+
+    ctx.active_block = cells[3]
     single_mode.toggle_single_video()
+
+    assert not ctx.is_single_mode
+    window.close()
+
+
+def test_show_big_shows_one_of_the_strip_big_and_nothing_else():
+    window, cells, ctx, _grid, single_mode = _strip_grid()
+    single_mode.single_mode_on()
+
+    # on the big one, nothing
+    ctx.active_block = cells[0]
+    assert not single_mode.is_active_in_strip()
+    single_mode.show_big()
+    assert single_mode.single_mode_video() is cells[0]
+
+    ctx.active_block = cells[4]
+    single_mode.show_big()
+    QApplication.processEvents()
+    assert ctx.is_single_mode
+    assert single_mode.single_mode_video() is cells[4]
+    assert cells[4].geometry().left() == 0
+
+    # out of Single Mode, nothing
+    single_mode.single_mode_off()
+    ctx.active_block = cells[2]
+    single_mode.show_big()
     assert not ctx.is_single_mode
     window.close()
 
@@ -282,7 +313,7 @@ def test_with_mixed_shapes_the_strip_stays_as_it_is_through_a_swap():
 
     # one of the strip shown big
     ctx.active_block = cells[3]
-    single_mode.toggle_single_video()
+    single_mode.show_big()
     QApplication.processEvents()
 
     after = {cell.video_id: cell.geometry() for cell in cells}
@@ -330,7 +361,7 @@ def test_the_fixed_strip_keeps_every_video_in_its_place():
 
     # one of the strip shown big: only the big one and the held place move
     ctx.active_block = cells[3]
-    single_mode.toggle_single_video()
+    single_mode.show_big()
     QApplication.processEvents()
     after, (held_after, held_video) = _tiles(cells, grid)
 

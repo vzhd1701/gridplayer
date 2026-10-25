@@ -110,6 +110,10 @@ class TestFiringShortcuts:
             "Ctrl+Wheel-Up": "Zoom In",
             "Click": "Play / Pause",
         }
+        manager._shared_mouse_index = {}
+        manager._mouse_action = lambda sequence: ActionsManager._mouse_action(
+            manager, sequence
+        )
         manager._wheel_notches = WheelNotches()
         manager.trigger.return_value = True
         return manager

@@ -55,10 +55,19 @@ ACTIONS = MappingProxyType(
             ),
             "keys": ["Double Click"],
             "icon": ("single-mode-on", "single-mode-off"),
-            # a video in the strip is shown big instead
-            "toggle": "is_single_video_big",
+            "toggle": "is_single_mode",
             "show_if": "is_single_mode_available",
             "func": "toggle_single_video",
+        },
+        "Show Big": {
+            "title": translate("Actions", "Show Big"),
+            "keys": ["Double Click"],
+            # on a video in the strip, its keys go to it rather than to any
+            # other with them, Single Mode ON / OFF's double click here
+            "shares_keys": True,
+            "icon": "single-mode-on",
+            "func": "show_big",
+            "show_if": "is_active_in_strip",
         },
         **{
             name: {
