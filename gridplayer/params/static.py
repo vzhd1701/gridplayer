@@ -62,6 +62,24 @@ class GridMode(AutoName):
     FIXED = auto()
 
 
+# Single Mode's strip: none; the others in it, the one picked trading places
+# with the big one; or every video in its own place, the big one's held
+class StripMode(AutoName):
+    OFF = auto()
+    SWAP = auto()
+    FIXED = auto()
+
+
+# where the strip goes: on Auto, on the right of a wide window, along the
+# bottom of a tall one
+class StripSide(AutoName):
+    AUTO = auto()
+    RIGHT = auto()
+    LEFT = auto()
+    BOTTOM = auto()
+    TOP = auto()
+
+
 # what Fit Shapes may cut off each video to fill the window, in percent
 GRID_CROPS = (0, 5, 10, 20, 30, 50)
 

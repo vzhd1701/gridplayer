@@ -4,7 +4,7 @@ import itertools
 import math
 from collections.abc import Mapping, Sequence
 from enum import Enum, auto
-from typing import NamedTuple
+from typing import NamedTuple, Protocol
 
 from gridplayer.utils.layout.boxes import Box, Weights, line_edges
 
@@ -256,26 +256,13 @@ class GridLines:
 
         even = (edges[line.index] + edges[line.index + 2]) / 2 * size
 
-        targets = []
-        for kind, places in (
-            (SnapKind.FITS, fits),
-            (SnapKind.ALIGNED, [(position, 0) for position in aligned]),
-            (SnapKind.EVEN, [(even, 0)]),
-        ):
-            for position, side in places:
-                same = next(
-                    (
-                        index
-                        for index, t in enumerate(targets)
-                        if abs(t.position - position) < 0.5
-                    ),
-                    None,
-                )
-                if same is None:
-                    targets.append(Target(position, kind, side))
-                elif kind is SnapKind.FITS and targets[same].side != side:
-                    # a video either side fits there
-                    targets[same] = targets[same]._replace(side=0)
+        targets = merged_targets(
+            [
+                *((position, SnapKind.FITS, side) for position, side in fits),
+                *((position, SnapKind.ALIGNED, 0) for position in aligned),
+                (even, SnapKind.EVEN, 0),
+            ]
+        )
 
         low, high = self._room(line)
         return sorted(
@@ -370,11 +357,54 @@ class Snap:
         self.target = None
 
 
+class MovableLines(Protocol):
+    """Lines moved by hand (see GridLinesManager): the grid's (GridLines),
+    or the edge of Single Mode's strip (StripLines)."""
+
+    def weights(self) -> Weights: ...
+
+    def is_even(self) -> bool: ...
+
+    def evened(self, line: Line) -> Weights: ...
+
+    def position(self, line: Line, weights: Weights | None = None) -> int: ...
+
+    def span(self, line: Line) -> tuple[int, int]: ...
+
+    def line_at(self, x: float, y: float, reach: float) -> Line | None: ...
+
+    def moved(self, line: Line, position: float) -> Weights: ...
+
+    def snaps(self, line: Line) -> list[Target]: ...
+
+
+def merged_targets(places) -> list[Target]:
+    """Targets of these places, (position, kind, side) in order, the first
+    kept of those at the same place; but where videos either side fit
+    there, one FITS on both sides (side 0)."""
+
+    targets: list[Target] = []
+    for position, kind, side in places:
+        same = next(
+            (
+                index
+                for index, t in enumerate(targets)
+                if abs(t.position - position) < 0.5
+            ),
+            None,
+        )
+        if same is None:
+            targets.append(Target(position, kind, side))
+        elif kind is SnapKind.FITS and targets[same].side != side:
+            targets[same] = targets[same]._replace(side=0)
+    return targets
+
+
 class LineDrag:
     """A line between the cells being moved: the lines as they were when it
     was taken, and the places it snaps to (see GridLines.snaps)."""
 
-    def __init__(self, line: Line, lines: GridLines):
+    def __init__(self, line: Line, lines: MovableLines):
         self.line = line
         self.lines = lines
         self.before = lines.weights()
