@@ -9,7 +9,7 @@ from gridplayer.widgets.grid_editor import EditCell, GridEditor
 from gridplayer.widgets.grid_span_picker import GridSpanPicker
 
 # the player's actions its keys still do while the cells are edited
-EDITOR_ACTIONS = ("Undo Grid Change", "Redo Grid Change")
+EDITOR_ACTIONS = ("Undo Grid Change", "Redo Grid Change", "Reopen Closed Video")
 
 
 class GridEditManager(ManagerBase):
@@ -21,7 +21,8 @@ class GridEditManager(ManagerBase):
     Show All Cells, so a video can take the empty ones, and the videos'
     overlays are hidden: the editor draws their names instead. Each change
     is one to undo, with the player's own keys for it or the editor's
-    buttons: a line moved too, however far. A video closed from it is not.
+    buttons: a line moved too, however far. A video closed from it is not:
+    Reopen Closed Video, beside them, opens it again.
     """
 
     def __init__(self, **kwargs):
@@ -76,6 +77,7 @@ class GridEditManager(ManagerBase):
             is_snapping=commands.is_grid_line_snap,
             can_undo=commands.is_grid_undoable,
             can_redo=commands.is_grid_redoable,
+            can_reopen=commands.is_any_video_closed,
             parent=self.parent(),
         )
         editor.place_requested.connect(commands.place_grid_cell)
@@ -86,6 +88,9 @@ class GridEditManager(ManagerBase):
         editor.line_finished.connect(self._line_finished)
         editor.undo_requested.connect(self._ctx.actions["Undo Grid Change"].trigger)
         editor.redo_requested.connect(self._ctx.actions["Redo Grid Change"].trigger)
+        editor.reopen_requested.connect(
+            self._ctx.actions["Reopen Closed Video"].trigger
+        )
         editor.done.connect(self.stop)
         editor.key_pressed.connect(self._key_pressed)
         self._editor = editor

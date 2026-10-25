@@ -194,6 +194,8 @@ class VideoBlock(QWidget):
         self._is_error = False
         self._is_active = False
         self._is_closing = False
+        # once closing, whether Reopen Closed Video can open it again
+        self.can_reopen = True
         self._drop_indicator = DropIndicator.NONE
 
         self._title = None
@@ -608,11 +610,15 @@ class VideoBlock(QWidget):
     def close_silently(self):
         self.close(notify=False)
 
-    def close(self, notify=True):
+    def close(self, notify=True, can_reopen=True):
+        """Closed, and with notify, the player told: for Reopen Closed Video
+        to open it again, unless it cannot be (see ClosedVideosManager)."""
+
         if self._is_closing:
             return
 
         self._is_closing = True
+        self.can_reopen = can_reopen
 
         self.bookmarker.close_manager()
 
@@ -1388,7 +1394,13 @@ class VideoBlock(QWidget):
         elif end_action == VideoEndAction.STOP:
             self.stop_playback()
         elif end_action == VideoEndAction.CLOSE:
-            QTimer.singleShot(0, self.close)
+            QTimer.singleShot(0, self._close_at_end)
+
+    def _close_at_end(self):
+        # opened again, from its start rather than its end, where it would
+        # close at once
+        self.video_params.current_position = 0
+        self.close()
 
     def _step_at_end(self, end_action: VideoEndAction) -> bool:
         """On to another file, or item of the list, if that is what the

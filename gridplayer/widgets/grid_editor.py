@@ -112,7 +112,7 @@ class _Drag(NamedTuple):
 
 def _bar_icon(kind: str, ratio: float) -> QIcon:
     """The bar's small line icons, drawn on a 16 px square: the rows, the
-    columns, undo and redo; dim where the button is off."""
+    columns, undo, redo and reopen; dim where the button is off."""
 
     path = _bar_icon_path(kind)
 
@@ -149,6 +149,22 @@ def _bar_icon_path(kind: str) -> QPainterPath:
             else:
                 path.moveTo(at, 2.5)
                 path.lineTo(at, 13.5)
+    elif kind == "reopen":
+        # an empty cell, its corners alone, with a plus: filled again, as the
+        # menu has it
+        for x, y, dx, dy in (
+            (2, 2, 1, 1),
+            (14, 2, -1, 1),
+            (2, 14, 1, -1),
+            (14, 14, -1, -1),
+        ):
+            path.moveTo(x + 3 * dx, y)
+            path.lineTo(x, y)
+            path.lineTo(x, y + 3 * dy)
+        path.moveTo(8, 5)
+        path.lineTo(8, 11)
+        path.moveTo(5, 8)
+        path.lineTo(11, 8)
     else:
         path.moveTo(5.5, 3.5)
         path.lineTo(2.5, 6.5)
@@ -248,6 +264,7 @@ class GridEditor(QWidget):
     line_finished = pyqtSignal()
     undo_requested = pyqtSignal()
     redo_requested = pyqtSignal()
+    reopen_requested = pyqtSignal()
     done = pyqtSignal()
     # a key it has no use for, for the player's actions: Undo and Redo,
     # where the player's own shortcuts are not taken in its window
@@ -261,6 +278,7 @@ class GridEditor(QWidget):
         is_snapping,
         can_undo,
         can_redo,
+        can_reopen,
         parent=None,
     ):
         super().__init__(
@@ -273,6 +291,7 @@ class GridEditor(QWidget):
         self._is_snapping = is_snapping
         self._can_undo = can_undo
         self._can_redo = can_redo
+        self._can_reopen = can_reopen
 
         self._is_translucent = is_compositor_running()
         if self._is_translucent:
@@ -368,6 +387,13 @@ class GridEditor(QWidget):
         self._redo = button(
             "", self.redo_requested, translate("Edit Grid", "Redo"), "redo"
         )
+        # a video closed from the editor is not undone, but opened again
+        self._reopen = button(
+            "",
+            self.reopen_requested,
+            translate("Edit Grid", "Reopen Last Closed"),
+            "reopen",
+        )
 
         done = QPushButton(translate("Edit Grid", "Done"), bar)
         done.setObjectName("gridEditorDone")
@@ -399,6 +425,7 @@ class GridEditor(QWidget):
             None,
             self._undo,
             self._redo,
+            self._reopen,
         ):
             if widget is None:
                 layout.addSpacing(4)
@@ -436,10 +463,12 @@ class GridEditor(QWidget):
         self._place_hint()
 
     def update_undo(self) -> None:
-        """Undo and Redo on or off, as there is anything to undo or redo."""
+        """Undo, Redo and Reopen on or off, as there is anything to undo,
+        redo or open again."""
 
         self._undo.setEnabled(self._can_undo())
         self._redo.setEnabled(self._can_redo())
+        self._reopen.setEnabled(self._can_reopen())
 
     def place_bar(self) -> None:
         # along the bottom, in the middle, or where it was dragged to

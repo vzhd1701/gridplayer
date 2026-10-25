@@ -7,6 +7,7 @@ from gridplayer.player.managers.actions import ActionsManager
 from gridplayer.player.managers.active_block import ActiveBlockManager
 from gridplayer.player.managers.add_videos import AddVideosManager
 from gridplayer.player.managers.bookmarks import BookmarksManager
+from gridplayer.player.managers.closed_videos import ClosedVideosManager
 from gridplayer.player.managers.dialogs import DialogsManager
 from gridplayer.player.managers.drag_n_drop import DragNDropManager
 from gridplayer.player.managers.grid import GridManager
@@ -54,6 +55,7 @@ class Player(QWidget, ManagersManager):
             "grid_edit": GridEditManager,
             "playlist": PlaylistManager,
             "snapshots": SnapshotsManager,
+            "closed_videos": ClosedVideosManager,
             "bookmarks": BookmarksManager,
             "lists": ListsManager,
             "screensaver": ScreensaverManager,
@@ -91,6 +93,7 @@ class Player(QWidget, ManagersManager):
             "grid_edit": [
                 ("grid.layout_changed", "refresh"),
                 ("grid.undo_changed", "update_undo"),
+                ("closed_videos.changed", "update_undo"),
                 ("video_blocks.video_count_changed", "refresh"),
                 ("single_mode.mode_changed", "refresh"),
                 ("playlist.grid_state_loaded", "stop"),
@@ -227,6 +230,10 @@ class Player(QWidget, ManagersManager):
                 ("videos_loaded", "video_blocks.add_videos"),
                 ("alert", "window_state.activate_window"),
                 ("error", "dialogs.error"),
+            ],
+            "closed_videos": [
+                ("playlist.playlist_closed", "forget"),
+                ("warning", "dialogs.warning"),
             ],
             "snapshots": [
                 ("grid_state_loaded", "grid.set_grid_state"),

@@ -733,6 +733,17 @@ class GridLayout:
     def remove_video(self, video_id: str) -> None:
         self.cells = [cell for cell in self.cells if cell.video_id != video_id]
 
+    def put_back(self, cell: GridCell) -> bool:
+        """A cell where it was, of the span it was, if all of that is in the
+        grid and free; whether it went."""
+
+        place = cell.row, cell.col, cell.rowspan, cell.colspan
+        if not self._fits(*place) or _area(*place) & self._occupied_map().keys():
+            return False
+
+        self.cells.append(cell)
+        return True
+
     def occupy(self, row: int, col: int, video_id: str) -> None:
         """Put a video at (row, col), in place of the one there: in the
         whole of its cell, should it be a big one."""

@@ -1555,6 +1555,21 @@ ACTIONS = MappingProxyType(
                 ),
             ),
         },
+        "Reopen Closed Video": {
+            "title": translate("Actions", "Reopen Last Closed"),
+            "key": "Ctrl+Shift+T",
+            "icon": "reopen-closed",
+            "func": "reopen_closed_video",
+            "enable_if": "is_any_video_closed",
+        },
+        "Recently Closed Videos": {
+            # the closes go straight into the Recently Closed menu, so this
+            # title is never shown
+            "title": translate("Actions", "Recently Closed"),
+            "icon": "empty",
+            "menu_generator": "menu_generator_recently_closed",
+            "is_menu_inline": True,
+        },
         "Close": {
             "title": translate("Actions", "Close"),
             "key": "Ctrl+F4",

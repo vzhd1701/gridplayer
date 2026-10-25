@@ -35,10 +35,15 @@ class _Blocks:
     def __iter__(self):
         return iter(())
 
+    def blocks_for_ids(self, _video_ids):
+        return []
+
 
 def _make_grid_manager(video_ids):
     parent = QWidget()
-    commands = SimpleNamespace(remove_video_blocks=lambda *_a, **_k: None)
+    commands = SimpleNamespace(
+        remove_video_blocks=lambda *_a, **_k: None, remember_closed=lambda *_a: None
+    )
     ctx = SimpleNamespace(
         video_blocks=_Blocks(video_ids),
         is_shuffle_on_load=False,
@@ -201,7 +206,9 @@ def test_new_cells_come_on_screen_in_place(grid_state):
         video_blocks=_Cells([]),
         is_shuffle_on_load=False,
         is_single_mode=False,
-        commands=SimpleNamespace(remove_video_blocks=lambda *_a, **_k: None),
+        commands=SimpleNamespace(
+            remove_video_blocks=lambda *_a, **_k: None, remember_closed=lambda *_a: None
+        ),
     )
     grid = GridManager(context=ctx, parent=window)
     grid.set_grid_state(grid_state)
@@ -228,7 +235,9 @@ def test_fixed_cell_spans_its_cells():
         video_blocks=_Cells(cells),
         is_shuffle_on_load=False,
         is_single_mode=False,
-        commands=SimpleNamespace(remove_video_blocks=lambda *_a, **_k: None),
+        commands=SimpleNamespace(
+            remove_video_blocks=lambda *_a, **_k: None, remember_closed=lambda *_a: None
+        ),
     )
     grid = GridManager(context=ctx, parent=window)
     grid.set_grid_state(
@@ -267,7 +276,9 @@ def test_auto_follows_the_shapes_and_the_window():
         video_blocks=_Cells(cells),
         is_shuffle_on_load=False,
         is_single_mode=False,
-        commands=SimpleNamespace(remove_video_blocks=lambda *_a, **_k: None),
+        commands=SimpleNamespace(
+            remove_video_blocks=lambda *_a, **_k: None, remember_closed=lambda *_a: None
+        ),
     )
     grid = GridManager(context=ctx, parent=window)
     grid.set_grid_state(GridState(mode=GridMode.AUTO_ROWS, is_fit=True, size=0))
@@ -306,7 +317,9 @@ def test_size_set_by_hand_ignores_the_shapes():
         video_blocks=_Cells(cells),
         is_shuffle_on_load=False,
         is_single_mode=False,
-        commands=SimpleNamespace(remove_video_blocks=lambda *_a, **_k: None),
+        commands=SimpleNamespace(
+            remove_video_blocks=lambda *_a, **_k: None, remember_closed=lambda *_a: None
+        ),
     )
     grid = GridManager(context=ctx, parent=window)
     grid.set_grid_state(GridState(mode=GridMode.AUTO_ROWS, is_fit=True, size=2))
@@ -327,7 +340,9 @@ def test_match_shapes_off_keeps_the_square_grid():
         video_blocks=_Cells(cells),
         is_shuffle_on_load=False,
         is_single_mode=False,
-        commands=SimpleNamespace(remove_video_blocks=lambda *_a, **_k: None),
+        commands=SimpleNamespace(
+            remove_video_blocks=lambda *_a, **_k: None, remember_closed=lambda *_a: None
+        ),
     )
     grid = GridManager(context=ctx, parent=window)
     grid.layout_changed.connect(grid.reload_video_grid)
@@ -353,7 +368,9 @@ def test_fit_shapes_gives_each_video_a_tile_of_its_shape():
         video_blocks=_Cells(cells),
         is_shuffle_on_load=False,
         is_single_mode=False,
-        commands=SimpleNamespace(remove_video_blocks=lambda *_a, **_k: None),
+        commands=SimpleNamespace(
+            remove_video_blocks=lambda *_a, **_k: None, remember_closed=lambda *_a: None
+        ),
     )
     grid = GridManager(context=ctx, parent=window)
     grid.layout_changed.connect(grid.reload_video_grid)
@@ -403,7 +420,9 @@ def test_fit_shapes_crops_as_much_as_allowed():
         video_blocks=_Cells(cells),
         is_shuffle_on_load=False,
         is_single_mode=False,
-        commands=SimpleNamespace(remove_video_blocks=lambda *_a, **_k: None),
+        commands=SimpleNamespace(
+            remove_video_blocks=lambda *_a, **_k: None, remember_closed=lambda *_a: None
+        ),
     )
     grid = GridManager(context=ctx, parent=window)
     grid.layout_changed.connect(grid.reload_video_grid)
@@ -441,7 +460,9 @@ def _two_cells_grid(shapes, mode=GridMode.AUTO_ROWS, width=1600):
         video_blocks=_Cells(cells),
         is_shuffle_on_load=False,
         is_single_mode=False,
-        commands=SimpleNamespace(remove_video_blocks=lambda *_a, **_k: None),
+        commands=SimpleNamespace(
+            remove_video_blocks=lambda *_a, **_k: None, remember_closed=lambda *_a: None
+        ),
     )
     grid = GridManager(context=ctx, parent=window)
     grid.layout_changed.connect(grid.reload_video_grid)

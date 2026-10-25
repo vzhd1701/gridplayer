@@ -57,7 +57,7 @@ def test_loop_end_close_schedules_close(mocker):
 
     VideoBlock.loop_end_action(block)
 
-    single_shot.assert_called_once_with(0, block.close)
+    single_shot.assert_called_once_with(0, block._close_at_end)
     block.stop_playback.assert_not_called()
     block._loop_to_start.assert_not_called()
 

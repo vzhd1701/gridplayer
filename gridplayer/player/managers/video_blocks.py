@@ -780,6 +780,8 @@ class VideoBlocksManager(ManagerBase):
 
     def close_single(self, _id):
         closing_block = self._ctx.video_blocks.by_id(_id)
+        if closing_block.can_reopen:
+            self._ctx.commands.remember_closed([closing_block])
         self._ctx.video_blocks.remove(closing_block)
 
         if not self._in_count_batch():

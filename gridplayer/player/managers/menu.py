@@ -100,6 +100,10 @@ class MenuManager(ManagerBase):
             sub_menu.setIcon(QIcon.fromTheme(sub["icon"]))
         menu.addMenu(sub_menu)
 
+        if sub.get("enable_if"):
+            is_enabled = self._ctx.commands.resolve(sub["enable_if"])()
+            sub_menu.menuAction().setEnabled(is_enabled)
+
         self._add_menu_items(sub_menu, sub_items)
 
 

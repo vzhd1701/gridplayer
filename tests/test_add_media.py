@@ -90,7 +90,7 @@ class _Cell:
     def play_read(self, uri):
         self.video_params.uri = uri
 
-    def close(self):
+    def close(self, notify=True, can_reopen=True):
         self.is_closing = True
 
 

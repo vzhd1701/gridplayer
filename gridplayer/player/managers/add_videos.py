@@ -828,7 +828,7 @@ class AddVideosManager(ManagerBase):
         groups = list(expanded.groups)
 
         if not groups:
-            block.close()
+            block.close(can_reopen=False)
             self.failed.emit(expanded.failed, True)
             return
 
@@ -854,7 +854,7 @@ class AddVideosManager(ManagerBase):
         first = _first_playable(read)
 
         if first is None:
-            block.close()
+            block.close(can_reopen=False)
             self.failed.emit((), True)
             return False
 

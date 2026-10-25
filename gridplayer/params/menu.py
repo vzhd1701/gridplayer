@@ -60,6 +60,12 @@ SUBMENUS = MappingProxyType(
             "title": translate("Playlist Settings", "Strip Mode"),
             "icon": "single-mode-strip",
         },
+        "Recently Closed": {
+            "title": translate("Actions", "Recently Closed"),
+            "icon": "reopen-closed",
+            # grayed out with nothing closed
+            "enable_if": "is_any_video_closed",
+        },
         "Templates": {
             "title": translate("Actions", "Templates"),
             "icon": "grid-template-1-5",
@@ -765,6 +771,12 @@ SECTIONS = MappingProxyType(
                 "Add - URL(s)",
                 "Add - Clipboard",
                 "Add - Recent Videos",
+            ),
+            (
+                "Recently Closed",
+                "Reopen Closed Video",
+                "---",
+                "Recently Closed Videos",
             ),
             "Open Playlist",
             "Open Playlist (Recent)",

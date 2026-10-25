@@ -7,7 +7,7 @@ from PyQt5.QtWidgets import QMessageBox
 
 from gridplayer.dialogs.input_dialog import QCustomSpinboxInput, QFixedGridSizeDialog
 from gridplayer.dialogs.messagebox import QCustomMessageBox
-from gridplayer.models.grid_state import GridState
+from gridplayer.models.grid_state import GridCell, GridState
 from gridplayer.params.settings_bindings import GRID_STATE_ATTR
 from gridplayer.params.static import GRID_TEMPLATES, MAX_FIXED_SIZE, GridMode
 from gridplayer.player.managers.base import ManagerBase
@@ -175,6 +175,8 @@ class GridManager(ManagerBase):
             "get_fixed_grid_size": self.cmd_get_fixed_grid_size,
             "add_videos_to_layout": self.add_videos_to_layout,
             "grid_free_capacity": lambda: self._layout.free_capacity(),
+            "grid_place_of": self.place_of,
+            "put_back_videos": self.put_back_videos,
             "layout_drop": self.cmd_layout_drop,
             "layout_order": lambda: self._layout.order(),
             "shuffle_layout": self.cmd_shuffle_layout,
@@ -1094,6 +1096,11 @@ class GridManager(ManagerBase):
         if extra_ids and not self._confirm_overflow(rows * cols, len(extra_ids)):
             return False
 
+        # where they were, while they are there
+        self._ctx.commands.remember_closed(
+            self._ctx.video_blocks.blocks_for_ids(extra_ids)
+        )
+
         self._mode = GridMode.FIXED
         self._grid_layout.max_rows = rows
         self._grid_layout.max_cols = cols
@@ -1114,6 +1121,9 @@ class GridManager(ManagerBase):
             if not self._confirm_overflow(rows * cols, len(leftover)):
                 self._grid_layout = snapshot
                 return False
+            self._ctx.commands.remember_closed(
+                self._ctx.video_blocks.blocks_for_ids(leftover)
+            )
             self._ctx.commands.remove_video_blocks(leftover)
             return True
 
@@ -1217,6 +1227,7 @@ class GridManager(ManagerBase):
             return
 
         if is_replace and dst is not None and dst is not src_block:
+            self._ctx.commands.remember_closed([dst])
             self._ctx.commands.remove_video_blocks([dst.video_id])
             return
 
@@ -1241,12 +1252,54 @@ class GridManager(ManagerBase):
 
     def _replace_cell_video(self, dst, videos):
         old_id = dst.video_id
+        self._ctx.commands.remember_closed([dst])
         dst.set_video(videos[0])
         self._ctx.video_blocks.reindex(dst)
         self._layout.replace_id(old_id, dst.video_id)
         # the earlier states have the video it had (see forget_grid_changes)
         self.forget_grid_changes()
         return videos[1:]
+
+    def place_of(self, video_id: str) -> GridCell | int | None:
+        """Where a video is, to be put back there (see put_back_videos):
+        its cell in a Fixed Grid, else its place in the order."""
+
+        if self._is_fixed:
+            return next(
+                (c for c in self._grid_layout.cells if c.video_id == video_id), None
+            )
+        if video_id in self._flow.ids:
+            return self._flow.ids.index(video_id)
+        return None
+
+    def put_back_videos(self, videos, places) -> None:
+        """Videos opened again, each where it was if it can be, else where a
+        new one goes."""
+
+        with self._ctx.commands.video_count_batch():
+            added = self._ctx.commands.add_video_blocks(videos)
+            # those earlier in the order first, each put among the others
+            # as it was
+            pairs = sorted(
+                zip(added, places, strict=True),
+                key=lambda pair: pair[1] if isinstance(pair[1], int) else -1,
+            )
+            for block, place in pairs:
+                self._put_back(block.video_id, place)
+
+    def _put_back(self, video_id: str, place) -> None:
+        if self._is_fixed:
+            if isinstance(place, GridCell) and self._grid_layout.put_back(
+                place.model_copy(update={"video_id": video_id})
+            ):
+                return
+            self._grid_layout.add([video_id])
+            return
+
+        if isinstance(place, int):
+            self._flow.ids.insert(min(place, len(self._flow.ids)), video_id)
+            return
+        self._flow.add([video_id])
 
     def _place_dropped_ids(self, videos, row, col, zone, dst_id):
         with self._ctx.commands.video_count_batch():
