@@ -105,6 +105,7 @@ icon-symbolic,icons/custom/reorder to fit.svg,grid-reorder
 icon-symbolic,icons/custom/edit grid.svg,grid-edit
 icon-symbolic,icons/custom/grid undo.svg,grid-undo
 icon-symbolic,icons/custom/grid redo.svg,grid-redo
+icon-symbolic,icons/custom/reopen closed.svg,reopen-closed
 icon-symbolic,icons/custom/grid size.svg,grid-size
 icon-symbolic,icons/custom/grid-show-all.svg,grid-show-all
 icon-symbolic,icons/custom/information.svg,information
