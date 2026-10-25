@@ -4,7 +4,7 @@ from PyQt5.QtWidgets import QApplication
 
 from gridplayer.player.managers.base import ManagerBase
 from gridplayer.playlist_settings import PlaylistSettings
-from gridplayer.utils.layout.lines import LINE_REACH, GridLines, Line, LineDrag
+from gridplayer.utils.layout.lines import LINE_REACH, Line, LineDrag, MovableLines
 from gridplayer.utils.qt import is_modal_open
 from gridplayer.widgets.grid_line_mark import GridLineMark, GridLineTag
 
@@ -47,6 +47,7 @@ class GridLinesManager(ManagerBase):
         # the line the pointer is on, and the one being moved
         self._hover: Line | None = None
         self._drag: LineDrag | None = None
+        self._is_drag_single = False
         # where the cells were when it was pressed on
         self._area = QRect()
 
@@ -216,7 +217,7 @@ class GridLinesManager(ManagerBase):
         self._cancel()
         return True
 
-    def _line_under_pointer(self) -> tuple[Line, GridLines, QRect] | None:
+    def _line_under_pointer(self) -> tuple[Line, MovableLines, QRect] | None:
         """The line the pointer is on, if one can be moved now, with the
         lines and where the grid is on the screen."""
 
@@ -228,7 +229,7 @@ class GridLinesManager(ManagerBase):
         if cursor is not None and not self._is_cursor_set:
             return None
 
-        lines = self._ctx.commands.grid_lines()
+        lines = self._ctx.commands.movable_lines()
         if lines is None:
             return None
 
@@ -281,9 +282,11 @@ class GridLinesManager(ManagerBase):
         self._set_cursor(line)
         self._check_timer.start()
 
-    def _start(self, line: Line, lines: GridLines, area: QRect):
+    def _start(self, line: Line, lines: MovableLines, area: QRect):
         self._drag = LineDrag(line, lines)
         self._area = area
+        # the strip's edge, or the grid's lines
+        self._is_drag_single = self._ctx.is_single_mode
         self._ctx.commands.begin_grid_change()
 
         self._set_cursor(line)
@@ -291,6 +294,10 @@ class GridLinesManager(ManagerBase):
         self._check_timer.start()
 
     def _move_to(self, global_pos: QPoint, modifiers):
+        if self._is_drag_gone():
+            self._finish()
+            return
+
         drag = self._drag
         line = drag.line
 
@@ -327,10 +334,15 @@ class GridLinesManager(ManagerBase):
     def _cancel(self):
         """Put the line back where it was."""
 
-        if self._drag is not None:
+        if self._drag is not None and not self._is_drag_gone():
             self._ctx.commands.set_grid_weights(self._drag.before)
 
         self._finish()
+
+    def _is_drag_gone(self) -> bool:
+        # Single Mode come or gone while the line was held: its weights
+        # are not for the lines there are now
+        return self._is_drag_single != self._ctx.is_single_mode
 
     def _check_pointer(self):
         if self._drag is not None:

@@ -26,9 +26,23 @@ from gridplayer.utils.layout import (
     grid_box,
 )
 from gridplayer.utils.layout.flow_layout import DEFAULT_SHAPE
-from gridplayer.utils.layout.lines import FitCell, GridLines, Span, fit_weights
+from gridplayer.utils.layout.lines import (
+    FitCell,
+    GridLines,
+    MovableLines,
+    Span,
+    fit_weights,
+)
+from gridplayer.utils.layout.strip import (
+    StripLines,
+    StripVideos,
+    shape_of_strip,
+    strip_layout,
+    strip_share,
+)
 from gridplayer.utils.qt import count_txt, translate
 from gridplayer.widgets.empty_cell import EmptyCell
+from gridplayer.widgets.held_place import HeldPlace
 
 # how many changes of the grid can be undone
 UNDO_LIMIT = 50
@@ -94,6 +108,8 @@ class GridManager(ManagerBase):
         )
         # the lines between the cells, moved by hand
         self._weights = EVEN
+        # in Single Mode, the strip's share of the window, moved by hand
+        self._strip_share: float | None = None
 
         # the last lines fit_weights found, and for what: asked for each
         # time the menu is made, to say whether fitting would change them
@@ -120,6 +136,9 @@ class GridManager(ManagerBase):
             message=translate("Main Window", "Drag and drop media files or URLs here"),
             parent=self.parent(),
         )
+        # in the Fixed Strip, the place of the video shown big
+        self._held_place = HeldPlace(parent=self.parent())
+        self._held_place.hide()
 
     def init(self):
         self.layout_changed.emit()
@@ -130,6 +149,7 @@ class GridManager(ManagerBase):
     def commands(self):
         return {
             "set_grid_mode": self.cmd_set_grid_mode,
+            "strip_held_video_at": self.strip_held_video_at,
             "is_grid_mode_set_to": lambda m: self._mode == m,
             "grid_drop_mode": self.grid_drop_mode,
             "ask_grid_size": self.cmd_ask_grid_size,
@@ -164,6 +184,7 @@ class GridManager(ManagerBase):
             "set_grid_state": self.set_grid_state,
             "apply_grid_config": self.apply_grid_config,
             "grid_lines": self.grid_lines,
+            "movable_lines": self.movable_lines,
             "grid_area": self.grid_area,
             "set_grid_weights": self.set_grid_weights,
             "fit_grid_lines": self.cmd_fit_grid_lines,
@@ -238,6 +259,7 @@ class GridManager(ManagerBase):
             col_weights=list(self._weights.cols),
             row_weights=list(self._weights.rows),
             line_weights=[list(weights) for weights in self._weights.lines],
+            strip_share=self._strip_share,
         )
 
     def set_grid_state(self, state: GridState) -> None:
@@ -272,6 +294,7 @@ class GridManager(ManagerBase):
             tuple(state.row_weights),
             tuple(tuple(weights) for weights in state.line_weights),
         )
+        self._strip_share = state.strip_share
 
         if self._is_fixed:
             self._grid_layout.resize(
@@ -342,10 +365,25 @@ class GridManager(ManagerBase):
         if not states or self._change_start is not None:
             return
 
-        now = self.grid_state()
-        others.append(now)
-        self._restore(states.pop(), now)
+        # one that changes nothing in sight, with the one before it: the
+        # strip's edge, out of Single Mode, or the grid's lines, in it
+        while states:
+            now = self.grid_state()
+            others.append(now)
+            state = states.pop()
+            self._restore(state, now)
+            if self._in_sight(state) != self._in_sight(now):
+                break
         self.undo_changed.emit()
+
+    def _in_sight(self, state: GridState):
+        # what of the grid's state is seen now
+        if self._strip_videos() is not None:
+            return state.strip_share
+        if self._ctx.is_single_mode:
+            # one video: as the grid is, nothing; each step one
+            return state
+        return state.model_copy(update={"strip_share": None})
 
     def _restore(self, state: GridState, now: GridState) -> None:
         # the playlist's own values as they were too, those that differ
@@ -355,6 +393,9 @@ class GridManager(ManagerBase):
 
         self._load_grid_state(state)
         self.layout_changed.emit()
+        if self._ctx.is_single_mode:
+            # the strip's share, which the grid is not laid out again for
+            self._grid.invalidate()
 
     def apply_grid_config(self, config: GridState) -> bool:
         """Apply mode/size/fit/match shapes/crop/link/rows/cols/preallocate
@@ -435,7 +476,7 @@ class GridManager(ManagerBase):
     def grid_lines(self) -> GridLines | None:
         """The lines between the cells as they are laid out now, None
         where there are none to move: in Fit Shapes, whose lines go by the
-        videos' shapes, in single mode, or with one cell."""
+        videos' shapes, in Single Mode, or with one cell."""
 
         if self._ctx.is_single_mode or self._mode == GridMode.AUTO_SHAPES:
             return None
@@ -466,6 +507,14 @@ class GridManager(ManagerBase):
             is_columns=not self._is_fixed and self._flow.is_columns(),
         )
 
+    def movable_lines(self) -> MovableLines | None:
+        """The lines to move by hand now: the grid's, or in Single Mode the
+        strip's edge, if it has one."""
+
+        if self._ctx.is_single_mode:
+            return self._strip_lines()
+        return self.grid_lines()
+
     def grid_area(self) -> QRect:
         """Where the cells are laid out, on the screen."""
 
@@ -475,12 +524,19 @@ class GridManager(ManagerBase):
         return QRect(self.parent().mapToGlobal(area.topLeft()), area.size())
 
     def set_grid_weights(self, weights: Weights) -> None:
-        """Move the lines between the cells (see Weights)."""
+        """Move the lines between the cells (see Weights); in Single Mode,
+        the strip's (see strip_weights)."""
 
-        self._weights = weights
+        if self._ctx.is_single_mode:
+            self._strip_share = strip_share(weights)
+        else:
+            self._weights = weights
         self._grid.invalidate()
 
     def is_grid_lines_moved(self) -> bool:
+        if self._ctx.is_single_mode:
+            return self._strip_share is not None and self._strip_videos() is not None
+
         lines = self.grid_lines()
         return lines is not None and not lines.is_even()
 
@@ -496,7 +552,8 @@ class GridManager(ManagerBase):
             self.set_grid_weights(self._fitted_weights(lines))
 
     def is_grid_lines_fittable(self) -> bool:
-        """Whether Fit Lines to Videos would move any line."""
+        """Whether Fit Lines to Videos would move any line: not the
+        strip's, which snaps where the big video fits instead."""
 
         lines = self.grid_lines()
         if lines is None:
@@ -1211,15 +1268,35 @@ class GridManager(ManagerBase):
     # --- render / layout ---
 
     def on_single_mode_changed(self):
-        if self._ctx.is_single_mode:
-            for empty in self._empty_cells:
-                empty.hide()
-
-            self._grid.set_place(self._place_single)
-            self._grid.activate()
-            self._sync_cell_sizable()
+        if not self._ctx.is_single_mode:
+            self._held_place.hide()
+            self.layout_changed.emit()
             return
-        self.layout_changed.emit()
+
+        for empty in self._empty_cells:
+            empty.hide()
+
+        strip = self._strip_videos()
+        if strip is not None:
+            self._held_place.set_video(strip.main)
+
+        self._grid.set_widgets([*self._ctx.video_blocks, self._held_place])
+        self._grid.set_place(self._place_single)
+        self._grid.activate()
+        # the big one, and those in the strip
+        self._sync_visibility([widget for widget, _box in self._grid.placed()])
+        self._sync_cell_sizable()
+
+    def strip_held_video_at(self, global_pos):
+        """The video shown big, where its place held in the Fixed Strip is
+        at this point on the screen."""
+
+        place = self._held_place
+        if not place.isVisible() or place.video_block not in self._ctx.video_blocks:
+            return None
+        if place.rect().contains(place.mapFromGlobal(global_pos)):
+            return place.video_block
+        return None
 
     def _sync_cell_sizable(self):
         # the buttons on the videos that make their cells bigger and smaller
@@ -1241,7 +1318,13 @@ class GridManager(ManagerBase):
             self._reloading = False
 
     def fit_to_shapes(self):
-        """Lay the grid out again for a video's shape, which Auto goes by."""
+        """Lay the grid out again for a video's shape, which Auto goes by;
+        in Single Mode, the strip, whose tiles go by every video's."""
+
+        if self._ctx.is_single_mode:
+            if self._strip_videos() is not None:
+                self._grid.invalidate()
+            return
 
         if self._is_fixed:
             return
@@ -1250,15 +1333,60 @@ class GridManager(ManagerBase):
         if not is_shapes and (not self._flow.is_match_shapes or self._flow.size):
             return
 
-        if self._ctx.is_single_mode:
-            return
-
         self._grid.invalidate()
 
-    def _place_single(self, _width, _height):
+    def _place_single(self, width, height):
         # The single video fills the area. Going to the next one shows it and
         # hides the other, and showing lays the area out again.
-        return [(vb, FULL_BOX) for vb in self._ctx.video_blocks if not vb.isHidden()]
+        strip = self._strip_videos()
+        if strip is None:
+            return [
+                (vb, FULL_BOX) for vb in self._ctx.video_blocks if not vb.isHidden()
+            ]
+
+        layout = strip_layout(
+            len(strip.strip),
+            width,
+            height,
+            self._strip_shape(),
+            self._strip_share,
+            strip.side,
+        )
+        tiles = dict(zip(strip.strip, layout.boxes))
+        placed = [(strip.main, layout.main)]
+        # in the Fixed Strip, the big one's place held
+        held = tiles.pop(strip.main, None)
+        if held is not None:
+            placed.append((self._held_place, held))
+        return placed + list(tiles.items())
+
+    def _strip_videos(self) -> StripVideos | None:
+        if not self._ctx.is_single_mode:
+            return None
+        return self._ctx.commands.strip_videos()
+
+    def _strip_shape(self) -> float:
+        # of all the videos, the one shown big too: the strip stays as it is
+        # whichever is
+        return shape_of_strip(
+            [vb.picture_shape or DEFAULT_SHAPE for vb in self._ctx.video_blocks]
+        )
+
+    def _strip_lines(self) -> StripLines | None:
+        strip = self._strip_videos()
+        area = self._grid.geometry()
+        if strip is None or area.isEmpty():
+            return None
+
+        return StripLines(
+            len(strip.strip),
+            area.width(),
+            area.height(),
+            self._strip_shape(),
+            strip.main.picture_shape,
+            self._strip_share,
+            strip.side,
+        )
 
     def _place_flow(self, width, height):
         # on Auto, the lines go by the area too, so they are chosen anew
@@ -1307,7 +1435,7 @@ class GridManager(ManagerBase):
 
     def _sync_visibility(self, placed):
         placed_set = set(placed)
-        for vb in self._ctx.video_blocks:
+        for vb in [*self._ctx.video_blocks, self._held_place]:
             if vb not in placed_set:
                 vb.hide()
 

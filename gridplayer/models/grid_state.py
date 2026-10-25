@@ -34,3 +34,5 @@ class GridState(BaseModel):
     col_weights: list[float] = Field(default_factory=list)
     row_weights: list[float] = Field(default_factory=list)
     line_weights: list[list[float]] = Field(default_factory=list)
+    # in Single Mode, the strip's share of the window, moved by hand
+    strip_share: float | None = None

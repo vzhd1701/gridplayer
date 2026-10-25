@@ -109,6 +109,8 @@ def _manager(
             forget_minimize_pause=lambda: calls.append("forget"),
             is_window_away=lambda: is_away,
             activate_window=lambda: calls.append("activate"),
+            # in Single Mode, the one shown big: here the one in sight
+            single_mode_video=lambda: next((b for b in blocks if b.isVisible()), None),
         ),
     )
     manager = MediaSessionManager(context=ctx, parent=parent)

@@ -68,6 +68,7 @@ def test_drop_is_replace_none_ignores_keys():
 class _Ctx:
     def __init__(self):
         self.is_drag_ui = False
+        self.is_single_mode = False
         self.commands = SimpleNamespace(
             get_video_block_at=lambda *_a, **_k: None,
             get_cell_at=lambda *_a, **_k: None,
@@ -645,3 +646,15 @@ class TestTheMarkOverACellPlayingAList:
             shown(MediaList(), DropZone.CENTER, _files(), is_internal=True)
             == DropIndicator.SWAP
         )
+
+
+def test_no_video_drag_in_single_mode():
+    manager, _parent = _make_manager()
+    manager._ctx.is_single_mode = True
+    manager._ctx.active_block = object()
+    manager._drag_start_position = QPoint(0, 0)
+    move = QMouseEvent(
+        QEvent.MouseMove, QPointF(40, 40), Qt.NoButton, Qt.LeftButton, Qt.NoModifier
+    )
+
+    assert not manager._is_drag_started(move)

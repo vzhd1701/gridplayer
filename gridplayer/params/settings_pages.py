@@ -34,9 +34,14 @@ PLAYLIST_PAGE = (
     ),
     Section(
         translate("SettingsDialog", "Playback"),
-        "playlist/pause_background_videos",
         "playlist/pause_minimized",
         "playlist/bookmarks_shared",
+    ),
+    Section(
+        translate("SettingsDialog", "Single Mode"),
+        "playlist/pause_background_videos",
+        "playlist/single_mode_strip",
+        "playlist/single_mode_strip_side",
     ),
     Section(
         translate("SettingsDialog", "Step Sizes"),

@@ -177,4 +177,5 @@ def grid_state_for_dump(live) -> GridState:
         col_weights=list(live.col_weights),
         row_weights=list(live.row_weights),
         line_weights=[list(weights) for weights in live.line_weights],
+        strip_share=live.strip_share,
     )

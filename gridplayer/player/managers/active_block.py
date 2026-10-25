@@ -1363,7 +1363,11 @@ class ActiveBlockManager(ManagerBase):
             if v.isVisible() and v.rect().contains(v.mapFromGlobal(global_pos))
         )
 
-        return next(visible_blocks_under_pos, None)
+        found = next(visible_blocks_under_pos, None)
+        if found is None and self._ctx.is_single_mode:
+            # the big video's place held in the Fixed Strip stands for it
+            return self._ctx.commands.strip_held_video_at(global_pos)
+        return found
 
 
 def _audio_device_default_menu_item():

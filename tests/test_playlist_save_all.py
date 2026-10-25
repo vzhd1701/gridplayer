@@ -47,6 +47,11 @@ class TestTheSession:
 
         assert set(GRID_STATE_ATTR.values()) <= dumped.model_fields_set
 
+    def test_the_strip_moved_by_hand_is_saved(self):
+        dumped = grid_state_for_dump(GridState(strip_share=0.3))
+
+        assert dumped.strip_share == 0.3
+
     def test_once_saved_every_value_is_its_own(self):
         PlaylistSettings().set(SAVE_ALL_KEY, True)
 

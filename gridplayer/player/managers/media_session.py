@@ -161,7 +161,9 @@ class MediaSessionManager(ManagerBase):
         video_blocks = list(self._ctx.video_blocks)
 
         if self._ctx.is_single_mode:
-            video_blocks = [vb for vb in video_blocks if vb.isVisible()]
+            # the one shown big, not those in the strip
+            big = self._ctx.commands.single_mode_video()
+            video_blocks = [vb for vb in video_blocks if vb is big]
 
         if len(video_blocks) == 1:
             vb = video_blocks[0]

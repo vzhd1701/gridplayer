@@ -163,7 +163,11 @@ class DragNDropManager(ManagerBase):
         self._finish_fake_drag()
 
     def _is_drag_started(self, event):
-        if is_modal_open():
+        # one video, or one big and a strip: no grid to move it about in,
+        # and none dragged out to another window either (it would be one
+        # drag here, another there). Files dropped from outside are still
+        # added, Single Mode left for the grid they go into
+        if is_modal_open() or self._ctx.is_single_mode:
             return False
 
         if not event.buttons() & Qt.LeftButton:

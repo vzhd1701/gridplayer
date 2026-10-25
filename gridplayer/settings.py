@@ -40,6 +40,8 @@ from gridplayer.params.static import (
     ScreenshotFormat,
     SeekSyncMode,
     SponsorBlockMode,
+    StripMode,
+    StripSide,
     SubtitleTrackMode,
     UnsavedChangesMode,
     URLResolver,
@@ -151,6 +153,9 @@ _default_settings = {
     "playlist/disable_mouse_wheel_events": False,
     "playlist/disable_overlay": False,
     "playlist/pause_background_videos": True,
+    # in Single Mode, the other videos in a strip beside the one shown big
+    "playlist/single_mode_strip": StripMode.OFF,
+    "playlist/single_mode_strip_side": StripSide.AUTO,
     "playlist/pause_minimized": True,
     "playlist/show_overlay_border": True,
     # the line between two cells shown when the pointer is on it, not only

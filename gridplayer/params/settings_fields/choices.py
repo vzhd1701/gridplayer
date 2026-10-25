@@ -29,6 +29,8 @@ from gridplayer.params.static import (
     ScreenshotFormat,
     SeekSyncMode,
     SponsorBlockMode,
+    StripMode,
+    StripSide,
     SubtitleOutline,
     SubtitleTrackMode,
     UnsavedChangesMode,
@@ -53,6 +55,24 @@ def grid_modes() -> dict:
         GridMode.AUTO_COLS: translate("Grid Mode", "Auto (Columns First)"),
         GridMode.AUTO_SHAPES: translate("Grid Mode", "Auto (Fit Shapes)"),
         GridMode.FIXED: translate("Grid Mode", "Fixed Grid"),
+    }
+
+
+def strip_modes() -> dict:
+    return {
+        StripMode.OFF: translate("Playlist Settings", "Off"),
+        StripMode.SWAP: translate("Playlist Settings", "Strip"),
+        StripMode.FIXED: translate("Playlist Settings", "Fixed Strip"),
+    }
+
+
+def strip_sides() -> dict:
+    return {
+        StripSide.AUTO: translate("Playlist Settings", "Auto"),
+        StripSide.RIGHT: translate("Playlist Settings", "Right"),
+        StripSide.LEFT: translate("Playlist Settings", "Left"),
+        StripSide.BOTTOM: translate("Playlist Settings", "Bottom"),
+        StripSide.TOP: translate("Playlist Settings", "Top"),
     }
 
 

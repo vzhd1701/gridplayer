@@ -1,5 +1,6 @@
 from types import MappingProxyType
 
+from gridplayer.params.settings_fields import choices
 from gridplayer.params.static import (
     ASPECT_RATIO_PRESETS,
     CROP_RATIO_PRESETS,
@@ -9,6 +10,7 @@ from gridplayer.params.static import (
     ListFailAction,
     NetworkRetryMode,
     SeekSyncMode,
+    StripMode,
     VideoAnchor,
     VideoCellViewMode,
     VideoDeinterlace,
@@ -18,6 +20,16 @@ from gridplayer.params.static import (
 )
 from gridplayer.utils.command_helpers import AND, NOT, OR
 from gridplayer.utils.qt import translate
+
+# Single Mode's strip, picked while in it, as Next and Previous Video are
+_IN_SINGLE_MODE = AND("is_single_mode", "is_more_than_one_video")
+
+# the Strip Mode menu's items: their names in the keymap, and icons
+_STRIP_MODE_ITEMS = (
+    ("Single Mode Strip Off", StripMode.OFF, "empty"),
+    ("Single Mode Strip", StripMode.SWAP, "single-mode-strip"),
+    ("Single Mode Fixed Strip", StripMode.FIXED, "single-mode-fixed-strip"),
+)
 
 ACTIONS = MappingProxyType(
     {
@@ -43,23 +55,47 @@ ACTIONS = MappingProxyType(
             ),
             "keys": ["Double Click"],
             "icon": ("single-mode-on", "single-mode-off"),
-            "toggle": "is_single_mode",
+            # a video in the strip is shown big instead
+            "toggle": "is_single_video_big",
             "show_if": "is_single_mode_available",
             "func": "toggle_single_video",
+        },
+        **{
+            name: {
+                "title": choices.strip_modes()[mode],
+                "icon": icon,
+                "func": ("set_single_mode_strip", mode),
+                "check_if": ("is_single_mode_strip_set_to", mode),
+                "is_choice": True,
+                "show_if": _IN_SINGLE_MODE,
+            }
+            for name, mode, icon in _STRIP_MODE_ITEMS
+        },
+        **{
+            f"Strip Side {side.name.title()}": {
+                "title": title,
+                "icon": "empty",
+                "func": ("set_single_mode_strip_side", side),
+                "check_if": ("is_single_mode_strip_side_set_to", side),
+                "is_choice": True,
+                "show_if": _IN_SINGLE_MODE,
+                "enable_if": NOT(("is_single_mode_strip_set_to", StripMode.OFF)),
+            }
+            for side, title in choices.strip_sides().items()
         },
         "Previous Video": {
             "title": translate("Actions", "Previous Video"),
             "keys": ["B", "Media Previous"],
             "icon": "previous-video",
             "func": "previous_single_video",
-            "show_if": AND("is_single_mode", "is_more_than_one_video"),
+            "show_if": _IN_SINGLE_MODE,
         },
         "Next Video": {
             "title": translate("Actions", "Next Video"),
             "keys": ["N", "Media Next"],
             "icon": "next-video",
             "func": "next_single_video",
-            "show_if": AND("is_single_mode", "is_more_than_one_video"),
+            "show_if": _IN_SINGLE_MODE,
         },
         "Play Previous File": {
             "title": translate("Actions", "Play Previous File"),

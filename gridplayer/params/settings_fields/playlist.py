@@ -14,6 +14,7 @@ from gridplayer.params.static import (
     MAX_SEEK_STEP_SECONDS,
     MIN_SEEK_STEP_SECONDS,
     GridMode,
+    StripMode,
 )
 from gridplayer.utils.qt import translate
 
@@ -86,6 +87,31 @@ PLAYLIST_FIELDS: tuple[SettingField, ...] = (
     CheckboxField(
         settings_key="playlist/pause_background_videos",
         label=translate("Playlist Settings", "Pause background videos on single mode"),
+    ),
+    ComboField(
+        settings_key="playlist/single_mode_strip",
+        label=translate("Playlist Settings", "Strip mode"),
+        choices=choices.strip_modes,
+        buttons=True,
+        tooltip=translate(
+            "Playlist Settings",
+            "The other videos play in a strip beside the big one."
+            " In Strip, the one you pick trades places with the big one."
+            " In Fixed Strip, every video keeps its place.",
+        ),
+    ),
+    ComboField(
+        settings_key="playlist/single_mode_strip_side",
+        label=translate("Playlist Settings", "Strip side"),
+        choices=choices.strip_sides,
+        enabled_when=When(
+            "playlist/single_mode_strip", (StripMode.SWAP, StripMode.FIXED)
+        ),
+        tooltip=translate(
+            "Playlist Settings",
+            "Auto puts it on the right of a wide window"
+            " and along the bottom of a tall one.",
+        ),
     ),
     CheckboxField(
         settings_key="playlist/pause_minimized",

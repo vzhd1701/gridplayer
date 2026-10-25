@@ -152,6 +152,8 @@ class Player(QWidget, ManagersManager):
                     "set_pause_background_videos",
                     "single_mode.set_pause_background_videos",
                 ),
+                ("set_single_mode_strip", "single_mode.set_strip"),
+                ("set_single_mode_strip_side", "single_mode.relayout"),
                 ("set_pause_minimized", "window_state.set_pause_minimized"),
                 (
                     "set_show_overlay_border",

@@ -25,6 +25,8 @@ from gridplayer.params.static import (
     ListView,
     NetworkRetryMode,
     SeekSyncMode,
+    StripMode,
+    StripSide,
     SubtitleTrackMode,
     UnsavedChangesMode,
     VideoAnchor,
@@ -145,6 +147,8 @@ class Playlist(BaseModel):
     disable_mouse_wheel_events: bool | None = None
     disable_overlay: bool | None = None
     pause_background_videos: bool | None = None
+    single_mode_strip: StripMode | None = None
+    single_mode_strip_side: StripSide | None = None
     pause_minimized: bool | None = None
     show_overlay_border: bool | None = None
     show_grid_lines: bool | None = None
