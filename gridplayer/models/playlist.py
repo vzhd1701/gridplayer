@@ -28,6 +28,7 @@ from gridplayer.params.static import (
     StripMode,
     StripSide,
     SubtitleTrackMode,
+    TileOverlap,
     UnsavedChangesMode,
     VideoAnchor,
     VideoCellViewMode,
@@ -153,6 +154,7 @@ class Playlist(BaseModel):
     show_overlay_border: bool | None = None
     show_grid_lines: bool | None = None
     grid_line_snap: bool | None = None
+    tile_overlap: TileOverlap | None = None
     overlay_hide_on_timeout: bool | None = None
     overlay_timeout: int | None = None
     unsaved_changes: UnsavedChangesMode | None = None
@@ -466,6 +468,7 @@ class Playlist(BaseModel):
             data.pop("video_order", None)
         for listed in (
             "sizes",
+            "tiles",
             "col_weights",
             "row_weights",
             "line_weights",

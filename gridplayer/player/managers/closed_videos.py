@@ -6,6 +6,7 @@ from gridplayer.models.grid_state import GridCell
 from gridplayer.models.media_list import MediaList
 from gridplayer.models.video import Video
 from gridplayer.player.managers.base import ManagerBase
+from gridplayer.utils.layout.free_tiles import TilePlace
 from gridplayer.utils.qt import count_txt, translate
 from gridplayer.utils.time_txt import timed_title
 
@@ -21,7 +22,7 @@ class ClosedVideo:
 
     video: Video
     media_list: MediaList | None
-    place: GridCell | int | None
+    place: GridCell | TilePlace | int | None
 
 
 class ClosedVideosManager(ManagerBase):

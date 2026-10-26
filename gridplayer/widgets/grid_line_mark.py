@@ -2,6 +2,7 @@ from PyQt5.QtCore import QPoint, QRect, QSize, Qt
 from PyQt5.QtGui import QColor, QPainter
 from PyQt5.QtWidgets import QWidget
 
+from gridplayer.utils.layout.free_tiles import Guide, GuideKind
 from gridplayer.utils.layout.lines import SnapKind, Target
 from gridplayer.utils.qt import translate
 
@@ -28,6 +29,34 @@ def snap_word(target: Target, is_column: bool) -> str:
     if target.side < 0:
         return translate("Grid Lines", "Top fits")
     return translate("Grid Lines", "Bottom fits")
+
+
+def tile_snap_words(guides: list[Guide], fits: bool = False) -> str:
+    """What a tile moved in Free Tiles is in line with, in words: its
+    middle at the page's, an edge at the page's middle or at its edge,
+    another tile beside it, another's edges or middle; sized, an edge back
+    where it started; and sized to any shape, its video's (see
+    TileDrag.fits)."""
+
+    kinds = {guide.kind for guide in guides}
+    words = []
+    if fits:
+        words.append(translate("Free Tiles", "Fits"))
+    if GuideKind.START in kinds:
+        words.append(translate("Free Tiles", "Old edge"))
+    if GuideKind.CENTERED in kinds:
+        words.append(translate("Free Tiles", "Centered"))
+    if GuideKind.PAGE_MIDDLE in kinds:
+        words.append(translate("Free Tiles", "Page middle"))
+    if GuideKind.PAGE_EDGE in kinds:
+        words.append(translate("Free Tiles", "Page edge"))
+    if GuideKind.TOUCHING in kinds:
+        words.append(translate("Free Tiles", "Touching"))
+    if GuideKind.EDGES in kinds:
+        words.append(translate("Free Tiles", "Edges lined up"))
+    if GuideKind.MIDDLES in kinds:
+        words.append(translate("Free Tiles", "Middles lined up"))
+    return ", ".join(words)
 
 
 class FloatingMark(QWidget):

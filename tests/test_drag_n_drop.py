@@ -77,6 +77,7 @@ class _Ctx:
             get_video_block_under_mouse=lambda: object(),
             is_pan_press=lambda _event: False,
             grid_drop_mode=lambda: None,
+            is_tile_pressed=lambda: False,
         )
 
 
@@ -136,6 +137,18 @@ def test_a_drag_starts_once_the_pointer_has_gone_far_enough_on_the_screen(mocker
 
     assert not manager._is_drag_started(_left_move((214, 320), (514, 520)))
     assert manager._is_drag_started(_left_move((225, 320), (525, 520)))
+
+
+def test_a_press_on_a_free_tile_is_no_drag_of_the_video(mocker):
+    manager, _parent = _make_manager()
+    manager._ctx.active_block = object()
+    manager._ctx.commands.is_tile_pressed = lambda: True
+    mocker.patch(
+        "gridplayer.player.managers.drag_n_drop.is_modal_open", return_value=False
+    )
+    manager.mousePressEvent(_left_press())
+
+    assert not manager._is_drag_started(_left_move((60, 20), (560, 520)))
 
 
 def test_a_press_that_drags_the_picture_moves_no_video(mocker):

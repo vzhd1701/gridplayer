@@ -94,6 +94,18 @@ def bold(widget: QWidget) -> None:
     widget.setFont(font)
 
 
+def topmost(widgets) -> QWidget | None:
+    """Of these widgets, all of one parent, the one in front of the
+    others: the last of its parent's children, which raise_() puts last."""
+
+    widgets = list(widgets)
+    if len(widgets) < 2:
+        return widgets[0] if widgets else None
+
+    order = {id(child): at for at, child in enumerate(widgets[0].parent().children())}
+    return max(widgets, key=lambda widget: order.get(id(widget), -1))
+
+
 def is_qt_log_ignored(message):
     for ignored in QT_LOG_IGNORED:
         if ignored in message:

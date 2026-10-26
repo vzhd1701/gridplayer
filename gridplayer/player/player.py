@@ -10,6 +10,7 @@ from gridplayer.player.managers.bookmarks import BookmarksManager
 from gridplayer.player.managers.closed_videos import ClosedVideosManager
 from gridplayer.player.managers.dialogs import DialogsManager
 from gridplayer.player.managers.drag_n_drop import DragNDropManager
+from gridplayer.player.managers.free_tiles import FreeTilesManager
 from gridplayer.player.managers.grid import GridManager
 from gridplayer.player.managers.grid_edit import GridEditManager
 from gridplayer.player.managers.grid_lines import GridLinesManager
@@ -52,6 +53,7 @@ class Player(QWidget, ManagersManager):
             "video_blocks": VideoBlocksManager,
             "grid": GridManager,
             "grid_lines": GridLinesManager,
+            "free_tiles": FreeTilesManager,
             "grid_edit": GridEditManager,
             "playlist": PlaylistManager,
             "snapshots": SnapshotsManager,
@@ -292,6 +294,8 @@ class Player(QWidget, ManagersManager):
         self.global_event_filters.append("mouse_hide")
         # takes a press on a line between cells before anything else would
         self.global_event_filters.append("grid_lines")
+        # and a press on a tile's edge, or a drag of the tile, in Free Tiles
+        self.global_event_filters.append("free_tiles")
         # takes its press before a drag would move the video, or the picture
         self.global_event_filters.append("zoom_select")
         # Linux in-window drag is a fake drag (KWin cursor + GNOME modifiers).

@@ -33,6 +33,7 @@ from gridplayer.params.static import (
     StripSide,
     SubtitleOutline,
     SubtitleTrackMode,
+    TileOverlap,
     UnsavedChangesMode,
     URLResolver,
     VideoAnchor,
@@ -55,6 +56,14 @@ def grid_modes() -> dict:
         GridMode.AUTO_COLS: translate("Grid Mode", "Auto (Columns First)"),
         GridMode.AUTO_SHAPES: translate("Grid Mode", "Auto (Fit Shapes)"),
         GridMode.FIXED: translate("Grid Mode", "Fixed Grid"),
+        GridMode.FREE: translate("Grid Mode", "Free Tiles"),
+    }
+
+
+def tile_overlap() -> dict:
+    return {
+        TileOverlap.OFF: translate("Tile Overlap", "Off"),
+        TileOverlap.ON: translate("Tile Overlap", "On"),
     }
 
 

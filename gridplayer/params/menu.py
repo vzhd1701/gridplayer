@@ -5,6 +5,7 @@ from gridplayer.params.static import (
     CROP_RATIO_PRESETS,
     GRID_CROPS,
     GRID_TEMPLATES,
+    TileOverlap,
 )
 from gridplayer.utils.qt import translate
 
@@ -59,6 +60,10 @@ SUBMENUS = MappingProxyType(
         "Strip Mode": {
             "title": translate("Playlist Settings", "Strip Mode"),
             "icon": "single-mode-strip",
+        },
+        "Tile Overlap": {
+            "title": translate("Tile Overlap", "Tile Overlap"),
+            "icon": "grid-cell-size",
         },
         "Recently Closed": {
             "title": translate("Actions", "Recently Closed"),
@@ -135,6 +140,8 @@ SECTIONS = MappingProxyType(
                 "Make Cell Taller",
                 "Make Cell Shorter",
             ),
+            "Bring to Front",
+            "Send to Back",
             "Show Big",
             "Single Mode ON / OFF",
             (
@@ -725,7 +732,14 @@ SECTIONS = MappingProxyType(
                 "Fit Shapes",
                 "Fixed Grid",
                 ("Templates", *(f"Grid Template {name}" for name in GRID_TEMPLATES)),
+                "Free Tiles",
                 "---",
+                "Arrange Tiles",
+                "Fit Tiles to Window",
+                (
+                    "Tile Overlap",
+                    *(f"Tile Overlap {o.name.title()}" for o in TileOverlap),
+                ),
                 "Size: %v",
                 "Fit Cells",
                 "Match Shapes",

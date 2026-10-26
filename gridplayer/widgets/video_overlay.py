@@ -743,6 +743,11 @@ class OverlayBlock(QWidget):
     def is_shown(self) -> bool:
         return self.isVisible()
 
+    def set_covered(self, covered: QRegion) -> None:
+        """The part of its cell another cell in front covers (in Free
+        Tiles), in its own pixels: nothing for an overlay that is its
+        cell's, which goes behind with it; see OverlayBlockFloating."""
+
     def set_zoom_selection(self, selection: QRect | None):
         """Outline the part of the picture being selected to zoom to."""
 
@@ -827,6 +832,10 @@ class OverlayBlockChild(OverlayBlock):
 
 
 class OverlayBlockFloating(OverlayBlock):
+    # a window over every video: shown not where cells in front of its own
+    # cover it (see set_covered)
+    _covered = QRegion()
+
     def __init__(self, parent=None):
         super().__init__(parent)
 
@@ -867,6 +876,26 @@ class OverlayBlockFloating(OverlayBlock):
     def set_drop_indicator(self, indicator: DropIndicator):
         super().set_drop_indicator(indicator)
         self.refresh_opaque_mask()
+
+    def set_covered(self, covered: QRegion) -> None:
+        if covered == self._covered:
+            return
+
+        self._covered = covered
+        self._refresh_mask()
+
+    def _refresh_mask(self) -> None:
+        # opaque, cut to its widgets; else cut where it is covered
+        if self.is_opaque:
+            self.refresh_opaque_mask()
+        else:
+            self._apply_covered_mask()
+
+    def _apply_covered_mask(self) -> None:
+        if self._covered.isEmpty():
+            self.clearMask()
+        else:
+            self.setMask(QRegion(self.rect()).subtracted(self._covered))
 
     def ensure_black_text(self):
         """Some window managers make text look gray when window is out of focus"""
@@ -959,7 +988,8 @@ class OverlayBlockFloating(OverlayBlock):
 
     def resizeEvent(self, event):
         super().resizeEvent(event)
-        self.refresh_opaque_mask()
+        if self.is_opaque or not self._covered.isEmpty():
+            self._refresh_mask()
 
     def refresh_opaque_mask(self):
         if not self.is_opaque:
@@ -996,6 +1026,7 @@ class OverlayBlockFloating(OverlayBlock):
             if not child.isVisibleTo(self):
                 continue
             mask += child.opaque_shape().translated(child.pos())
+        mask -= self._covered
 
         if not mask.isEmpty():
             return mask
@@ -1040,6 +1071,9 @@ class OverlayBlockFloating(OverlayBlock):
                 self.move_to_parent()
         if event_object == self.parent() and event.type() == QEvent.Hide:
             self.hide()
+        # a tile of Free Tiles moved, its size the same
+        if event_object == self.parent() and event.type() == QEvent.Move:
+            self.move_to_parent()
 
         return super().eventFilter(event_object, event)
 
@@ -1107,7 +1141,10 @@ class OverlayFakeInvisible(OverlayBlockFloating):
             return
 
         if self.windowOpacity() == 0:
-            self.clearMask()
+            if self.is_opaque:
+                self.clearMask()
+            else:
+                self._apply_covered_mask()
             self.setWindowOpacity(1)
 
         super().paintEvent(event)

@@ -178,4 +178,6 @@ def grid_state_for_dump(live) -> GridState:
         row_weights=list(live.row_weights),
         line_weights=[list(weights) for weights in live.line_weights],
         strip_share=live.strip_share,
+        tiles=[tile.model_copy() for tile in live.tiles],
+        page_shape=live.page_shape,
     )

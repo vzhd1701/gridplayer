@@ -2,14 +2,21 @@ import contextlib
 import random
 from typing import NamedTuple
 
+from PyQt5 import sip
 from PyQt5.QtCore import QRect, pyqtSignal
+from PyQt5.QtGui import QRegion
 from PyQt5.QtWidgets import QMessageBox
 
 from gridplayer.dialogs.input_dialog import QCustomSpinboxInput, QFixedGridSizeDialog
 from gridplayer.dialogs.messagebox import QCustomMessageBox
-from gridplayer.models.grid_state import GridCell, GridState
+from gridplayer.models.grid_state import GridCell, GridState, GridTile
 from gridplayer.params.settings_bindings import GRID_STATE_ATTR
-from gridplayer.params.static import GRID_TEMPLATES, MAX_FIXED_SIZE, GridMode
+from gridplayer.params.static import (
+    GRID_TEMPLATES,
+    MAX_FIXED_SIZE,
+    GridMode,
+    TileOverlap,
+)
 from gridplayer.player.managers.base import ManagerBase
 from gridplayer.playlist_settings import PlaylistSettings
 from gridplayer.settings import Settings
@@ -17,6 +24,7 @@ from gridplayer.utils.drop_zone import DropZone
 from gridplayer.utils.layout import (
     EVEN,
     FULL_BOX,
+    Box,
     CellLayout,
     FlowLayout,
     FlowMode,
@@ -26,6 +34,7 @@ from gridplayer.utils.layout import (
     grid_box,
 )
 from gridplayer.utils.layout.flow_layout import DEFAULT_SHAPE
+from gridplayer.utils.layout.free_tiles import FreeTiles, Rect, TilePlace
 from gridplayer.utils.layout.lines import (
     FitCell,
     GridLines,
@@ -40,7 +49,7 @@ from gridplayer.utils.layout.strip import (
     strip_layout,
     strip_share,
 )
-from gridplayer.utils.qt import count_txt, translate
+from gridplayer.utils.qt import count_txt, topmost, translate
 from gridplayer.widgets.empty_cell import EmptyCell
 from gridplayer.widgets.held_place import HeldPlace
 
@@ -69,6 +78,13 @@ class GridDimensions(NamedTuple):
     @property
     def max_size(self):
         return self.cols * self.rows
+
+
+class FreePage(NamedTuple):
+    """The tiles of Free Tiles, and where their page is on the screen."""
+
+    tiles: FreeTiles
+    rect: QRect
 
 
 def _flow_mode(mode: GridMode) -> FlowMode:
@@ -111,6 +127,14 @@ class GridManager(ManagerBase):
         # in Single Mode, the strip's share of the window, moved by hand
         self._strip_share: float | None = None
 
+        # in Free Tiles, the tiles placed by hand
+        self._free = FreeTiles()
+        self._free.shape_of = self._shape_of
+        # the videos given tiles before their shapes were known, and whether
+        # the tiles are still as Arrange left them (see _fit_tiles_to_shapes)
+        self._unshaped: set[str] = set()
+        self._is_arranged = False
+
         # the last lines fit_weights found, and for what: asked for each
         # time the menu is made, to say whether fitting would change them
         self._fitted: tuple[tuple, Weights] | None = None
@@ -131,6 +155,11 @@ class GridManager(ManagerBase):
         self._reloading = False
 
         self._grid = CellLayout(self.parent())
+        self._grid.laid_out.connect(self._stack_tiles)
+        # the videos one over another as the tiles were the last time, and
+        # those whose overlays were cut where others covered them
+        self._stacked: list = []
+        self._cut: set = set()
 
         self._info_label = EmptyCell(
             message=translate("Main Window", "Drag and drop media files or URLs here"),
@@ -208,6 +237,7 @@ class GridManager(ManagerBase):
             "is_grid_undoable": lambda: bool(self._undo),
             "is_grid_redoable": lambda: bool(self._redo),
             "begin_grid_change": self.begin_grid_change,
+            "cancel_grid_change": self.cancel_grid_change,
             "end_grid_change": self.end_grid_change,
             "is_grid_fixed": lambda: self._is_fixed,
             "make_grid_fixed": self.make_grid_fixed,
@@ -216,6 +246,19 @@ class GridManager(ManagerBase):
             "can_place_grid_cell": self.can_place_grid_cell,
             "resize_fixed_grid": self.cmd_resize_fixed_grid,
             "can_resize_fixed_grid": self.can_resize_fixed_grid,
+            "is_grid_free": lambda: self._is_free,
+            "free_page": self.free_page,
+            "set_free_tile": self.set_free_tile,
+            "arrange_tiles": self.cmd_arrange_tiles,
+            "fit_tiles_to_window": self.cmd_fit_tiles_to_window,
+            "tile_overlap": self.tile_overlap,
+            "is_tile_overlap": lambda overlap: self.tile_overlap() == overlap,
+            "is_tile_overlap_on": self.is_tile_overlap_on,
+            "set_tile_overlap": self.set_tile_overlap,
+            "is_tiles_stacked": self.is_tiles_stacked,
+            "is_tile_stackable": self.is_tile_stackable,
+            "stack_tile": self.cmd_stack_tile,
+            "bring_free_tile_to_front": self.bring_free_tile_to_front,
         }
 
     @property
@@ -223,7 +266,13 @@ class GridManager(ManagerBase):
         return self._mode == GridMode.FIXED
 
     @property
+    def _is_free(self):
+        return self._mode == GridMode.FREE
+
+    @property
     def _layout(self) -> Layout:
+        if self._is_free:
+            return self._free
         return self._grid_layout if self._is_fixed else self._flow
 
     @property
@@ -262,6 +311,11 @@ class GridManager(ManagerBase):
             row_weights=list(self._weights.rows),
             line_weights=[list(weights) for weights in self._weights.lines],
             strip_share=self._strip_share,
+            tiles=[
+                GridTile(video_id=video_id, box=list(box))
+                for video_id, box in self._free.tiles.items()
+            ],
+            page_shape=self._free.page_shape if self._free.tiles else None,
         )
 
     def set_grid_state(self, state: GridState) -> None:
@@ -297,6 +351,12 @@ class GridManager(ManagerBase):
             tuple(tuple(weights) for weights in state.line_weights),
         )
         self._strip_share = state.strip_share
+        self._free.tiles = {
+            tile.video_id: Box(*tile.box) for tile in state.tiles if len(tile.box) == 4
+        }
+        if state.page_shape:
+            self._free.page_shape = state.page_shape
+        self._is_arranged = False
 
         if self._is_fixed:
             self._grid_layout.resize(
@@ -327,6 +387,19 @@ class GridManager(ManagerBase):
         if self._change_start is not None:
             self._remember(self._change_start)
             self._change_start = None
+
+    def cancel_grid_change(self) -> None:
+        """The change made over time put back: the grid as it was at its
+        start, with nothing to undo."""
+
+        start, self._change_start = self._change_start, None
+        if start is None:
+            return
+
+        before, forgotten = start
+        # a video closed meanwhile, which it would bring back
+        if forgotten == self._forgotten:
+            self._restore(before, self.grid_state())
 
     def _started(self) -> tuple[GridState, int]:
         return self.grid_state(), self._forgotten
@@ -443,8 +516,17 @@ class GridManager(ManagerBase):
             self._set_flow_options(config)
             return True
 
+        if mode == GridMode.FREE:
+            # the tiles where they are, the flow's options for when it is left
+            if not self._is_free:
+                self._make_free()
+            self._set_flow_options(config)
+            return True
+
         if self._is_fixed and not self._leave_fixed():
             return False
+        if self._is_free:
+            self._leave_free()
 
         self._mode = mode
         self._flow.mode = _flow_mode(mode)
@@ -478,9 +560,12 @@ class GridManager(ManagerBase):
     def grid_lines(self) -> GridLines | None:
         """The lines between the cells as they are laid out now, None
         where there are none to move: in Fit Shapes, whose lines go by the
-        videos' shapes, in Single Mode, or with one cell."""
+        videos' shapes, in Free Tiles, in Single Mode, or with one cell."""
 
-        if self._ctx.is_single_mode or self._mode == GridMode.AUTO_SHAPES:
+        if self._ctx.is_single_mode or self._mode in {
+            GridMode.AUTO_SHAPES,
+            GridMode.FREE,
+        }:
             return None
 
         if not self._ctx.video_blocks and not self._show_empties:
@@ -580,20 +665,31 @@ class GridManager(ManagerBase):
         with self._undoable():
             self.set_grid_weights(EVEN)
 
+    def _shape_of(self, video_id: str) -> float:
+        """A video's shape: DEFAULT_SHAPE while it has no picture yet, or
+        if it has none at all."""
+
+        block = self._ctx.video_blocks.by_video_id(video_id)
+        return (block and block.picture_shape) or DEFAULT_SHAPE
+
+    def _is_shape_known(self, video_id: str) -> bool:
+        block = self._ctx.video_blocks.by_video_id(video_id)
+        return bool(block and block.picture_shape)
+
     def _fit_cells(self) -> list[FitCell]:
         """The cells for fit_weights, where they are in the grid. One with
         no picture yet, or with none at all, is taken to be DEFAULT_SHAPE."""
 
-        def shape_of(video_id):
-            block = self._ctx.video_blocks.by_video_id(video_id)
-            return (block and block.picture_shape) or DEFAULT_SHAPE
-
         if not self._is_fixed:
-            return self._fit_flow_cells(shape_of)
+            return self._fit_flow_cells(self._shape_of)
 
         cells = [
             FitCell.at(
-                cell.row, cell.col, shape_of(cell.video_id), cell.rowspan, cell.colspan
+                cell.row,
+                cell.col,
+                self._shape_of(cell.video_id),
+                cell.rowspan,
+                cell.colspan,
             )
             for cell in self._grid_layout.cells
             if cell.video_id
@@ -624,16 +720,17 @@ class GridManager(ManagerBase):
         return self._empty_positions.get(widget)
 
     def get_cell_at(self, global_pos):
-        for widget in (
-            *self._ctx.video_blocks,
-            *self._empty_cells,
-            self._info_label,
-        ):
-            if widget.isVisible() and widget.rect().contains(
-                widget.mapFromGlobal(global_pos)
-            ):
-                return widget
-        return None
+        # the one in front, where Free Tiles has one over another
+        return topmost(
+            widget
+            for widget in (
+                *self._ctx.video_blocks,
+                *self._empty_cells,
+                self._info_label,
+            )
+            if widget.isVisible()
+            and widget.rect().contains(widget.mapFromGlobal(global_pos))
+        )
 
     def set_add_anchor(self, widget):
         self._add_anchor = widget
@@ -650,10 +747,29 @@ class GridManager(ManagerBase):
             return []
 
         videos = self._clip_videos(videos)
-        if not videos:
+        if not videos or not self._is_room_for(len(videos)):
             return []
 
         return self._ctx.commands.add_video_blocks(videos)
+
+    def _is_room_for(self, count: int) -> bool:
+        """In Free Tiles, whether there is room for so many videos more, or
+        all of them are to be arranged anew to make some."""
+
+        if not self._is_free or not self._free.tiles:
+            return True
+
+        tiles = self._free.filled(*self._area_size())
+        if not tiles.add([f"new {index}" for index in range(count)]):
+            return True
+
+        return QCustomMessageBox.confirm(
+            self.parent(),
+            translate("Dialog - Free Tiles", "Free Tiles", "Header"),
+            translate("Dialog - Free Tiles", "No room for the new videos."),
+            translate("Dialog - Free Tiles", "Arrange"),
+            info=translate("Dialog - Free Tiles", "Arrange all videos to make room?"),
+        )
 
     def _clip_videos(self, videos, is_replace=False):
         cap = self._layout.free_capacity()
@@ -699,8 +815,15 @@ class GridManager(ManagerBase):
             self._ask_and_apply_fixed(include_preallocate=True)
             return
 
+        if mode == GridMode.FREE:
+            self._make_free()
+            PlaylistSettings().set("playlist/grid_mode", mode)
+            return
+
         if self._is_fixed and not self._leave_fixed():
             return
+        if self._is_free:
+            self._leave_free()
 
         self._mode = mode
         self._flow.mode = _flow_mode(mode)
@@ -1040,6 +1163,7 @@ class GridManager(ManagerBase):
             return
 
         with self._undoable():
+            self._free.tiles = {}
             self._mode = GridMode.FIXED
             self._grid_layout.apply_template(template, ordered[:capacity])
             self._weights = EVEN
@@ -1101,6 +1225,7 @@ class GridManager(ManagerBase):
             self._ctx.video_blocks.blocks_for_ids(extra_ids)
         )
 
+        self._free.tiles = {}
         self._mode = GridMode.FIXED
         self._grid_layout.max_rows = rows
         self._grid_layout.max_cols = cols
@@ -1147,6 +1272,232 @@ class GridManager(ManagerBase):
         self._grid_layout.cells = []
         return True
 
+    # --- Free Tiles ---
+
+    def _make_free(self) -> None:
+        """Free Tiles, each video's tile where its cell is now, on a page
+        the shape of the area: nothing moves, until it is moved by hand."""
+
+        width, height = self._area_size()
+        cells = self._cells_now(width, height)
+
+        if self._is_fixed:
+            # its empty cells kept as room on the page
+            self._flow.ids = self._grid_layout.order()
+            self._grid_layout.cells = []
+
+        self._mode = GridMode.FREE
+        self._free.tiles = dict(cells)
+        self._free.page_shape = width / height
+        self._is_arranged = False
+        self.layout_changed.emit()
+
+    def _leave_free(self) -> None:
+        """The tiles let go of, the videos in the order they are read in."""
+
+        self._flow.ids = self._free.order()
+        self._free.tiles = {}
+
+    def _area_size(self) -> tuple[int, int]:
+        area = self._grid.geometry()
+        if area.isEmpty():
+            area = self.parent().rect()
+        return max(area.width(), 1), max(area.height(), 1)
+
+    def _cells_now(self, width: int, height: int) -> list[tuple[str, Box]]:
+        """Where the videos' cells are in an area of this size, as the grid
+        is out of Single Mode."""
+
+        live = set(self._ctx.video_blocks.video_ids)
+
+        if self._is_fixed:
+            cells = [
+                (cell.video_id, box)
+                for cell, box in self._grid_layout.boxes(self._weights)
+            ]
+        else:
+            shapes = {vb.video_id: vb.picture_shape for vb in self._ctx.video_blocks}
+            self._flow.fit_to(width, height, shapes)
+            cells = self._flow.boxes(self._weights)
+
+        return [(video_id, box) for video_id, box in cells if video_id in live]
+
+    def cmd_arrange_tiles(self):
+        """The tiles laid out anew as Fit Shapes would, on a page the shape
+        of the area, the videos in the order they are read in."""
+
+        if not self._is_free:
+            return
+
+        with self._undoable():
+            self._arrange()
+            self.layout_changed.emit()
+
+    def cmd_fit_tiles_to_window(self):
+        """The tiles made as big as the window lets them, all together, as
+        they are placed among themselves: no room left around them."""
+
+        if not self._is_free:
+            return
+
+        with self._undoable():
+            self._free.fill(*self._area_size())
+            self._free.fit_to_page()
+            self._is_arranged = False
+            self._grid.invalidate()
+            self.layout_changed.emit()
+
+    def _arrange(self) -> None:
+        width, height = self._area_size()
+
+        live = self._ctx.video_blocks.video_ids
+        ids = [i for i in self._free.order() if i in set(live)]
+        ids += [i for i in live if i not in ids]
+
+        flow = FlowLayout(mode=FlowMode.SHAPES, ids=ids)
+        flow.fit_to(width, height, {i: self._shape_of(i) for i in ids})
+
+        self._free.tiles = dict(flow.boxes())
+        self._free.page_shape = width / height
+        self._unshaped = {i for i in ids if not self._is_shape_known(i)}
+        self._is_arranged = True
+
+    def _add_tiles(self, video_ids: list[str]) -> None:
+        """New videos' tiles put where there is room on the window, made
+        their videos' shapes once those are known (see _fit_tiles_to_shapes)."""
+
+        self._unshaped |= {i for i in video_ids if not self._is_shape_known(i)}
+        if video_ids:
+            # the room beside the tiles' page too
+            self._free.fill(*self._area_size())
+        # none placed yet, or no room for some: all of them arranged anew
+        if self._free.add(video_ids):
+            self._arrange()
+
+    def _fit_tiles_to_shapes(self) -> None:
+        """Tiles made for videos whose shapes were not known then, now that
+        they are: arranged anew if none was moved since, else each made its
+        video's shape inside it."""
+
+        shaped = {i for i in self._unshaped if self._is_shape_known(i)}
+        if not shaped:
+            return
+
+        self._unshaped -= shaped
+        if self._is_arranged:
+            self._arrange()
+        else:
+            for video_id in shaped:
+                self._free.fit_shape(video_id, self._shape_of(video_id))
+        self._grid.invalidate()
+
+    def free_page(self) -> FreePage | None:
+        """The tiles to move and size by hand now, and where their page is
+        on the screen: in Free Tiles, out of Single Mode. The page is all of
+        the area, the room beside the tiles' own free to move them to (see
+        set_free_tile)."""
+
+        if not self._is_free or self._ctx.is_single_mode:
+            return None
+
+        area = self.grid_area()
+        if area.isEmpty():
+            return None
+
+        return FreePage(self._free.filled(area.width(), area.height()), area)
+
+    def set_free_tile(
+        self, video_id: str, rect: Rect, page_width: float, page_height: float
+    ) -> None:
+        """A tile moved or sized by hand, on a page of this size (see
+        TileDrag): the area it was, which the page now takes the shape of."""
+
+        self._free.fill(page_width, page_height)
+        self._free.set_rect(video_id, rect, page_width, page_height)
+        self._is_arranged = False
+        self._grid.invalidate()
+
+    def tile_overlap(self) -> TileOverlap:
+        return PlaylistSettings().get("playlist/tile_overlap")
+
+    def is_tile_overlap_on(self) -> bool:
+        return self.tile_overlap() == TileOverlap.ON
+
+    def set_tile_overlap(self, overlap: TileOverlap) -> None:
+        PlaylistSettings().set("playlist/tile_overlap", overlap)
+
+    def is_tiles_stacked(self) -> bool:
+        """In Free Tiles, whether one tile can go over another, or is: to
+        be put in front of the others, or behind them."""
+
+        return self._is_free and (self.is_tile_overlap_on() or self._free.is_stacked())
+
+    def is_tile_stackable(self, where: str) -> bool:
+        """Whether the active video's tile is under another, to be put in
+        front ("front"), or over another, to be put behind ("back")."""
+
+        video_id = self._active_id()
+        if not self._is_free or self._ctx.is_single_mode:
+            return False
+        if video_id not in self._free.tiles:
+            return False
+        if where == "front":
+            return self._free.is_under(video_id)
+        return self._free.is_over(video_id)
+
+    def cmd_stack_tile(self, where: str) -> None:
+        if not self.is_tile_stackable(where):
+            return
+
+        with self._undoable():
+            self._free.stack(self._active_id(), where == "front")
+        self._grid.invalidate()
+
+    def bring_free_tile_to_front(self, video_id: str) -> None:
+        """A tile in front of the others, as one being moved or sized over
+        them is: part of that change (see begin_grid_change)."""
+
+        if video_id in self._free.tiles and self._free.is_under(video_id):
+            self._free.stack(video_id, True)
+            self._grid.invalidate()
+
+    def _stack_tiles(self) -> None:
+        """In Free Tiles, the videos one over another as their tiles are,
+        once laid out: the overlays of those behind cut where those in
+        front cover them, as an overlay of its own window is over every
+        video (see OverlayBlock.set_covered)."""
+
+        stacked = []
+        if self._is_free and not self._ctx.is_single_mode:
+            for video_id in self._free.tiles:
+                vb = self._ctx.video_blocks.by_video_id(video_id)
+                if vb is not None and not vb.isHidden():
+                    stacked.append(vb)
+
+        if stacked != self._stacked:
+            for vb in stacked:
+                vb.raise_()
+            self._stacked = stacked
+
+        cut = set()
+        for at, vb in enumerate(stacked):
+            own = vb.geometry()
+            covered = QRegion()
+            for front in stacked[at + 1 :]:
+                over = front.geometry().intersected(own)
+                if not over.isEmpty():
+                    covered += over.translated(-own.topLeft())
+            if not covered.isEmpty():
+                cut.add(vb)
+            if vb in cut or vb in self._cut:
+                vb.overlay.set_covered(covered)
+
+        # out of sight, or out of Free Tiles: whole again
+        for vb in self._cut - cut:
+            if not sip.isdeleted(vb) and vb not in stacked:
+                vb.overlay.set_covered(QRegion())
+        self._cut = cut
+
     def _confirm_overflow(self, capacity, count) -> bool:
         return QCustomMessageBox.confirm(
             self.parent(),
@@ -1170,6 +1521,11 @@ class GridManager(ManagerBase):
         new_ids = [
             i for i in self._ctx.video_blocks.video_ids if not self._layout.contains(i)
         ]
+
+        if self._is_free:
+            self._add_tiles(new_ids)
+            return
+
         leftover = self._layout.add(new_ids)
         if self._is_fixed:
             self._grid_layout.compact_edges()
@@ -1234,13 +1590,16 @@ class GridManager(ManagerBase):
         self.layout_changed.emit()
 
     def _drop_new(self, videos, dst, row, col, zone, is_replace, dst_id):
-        videos = self._clip_videos(
-            list(videos), is_replace=is_replace and dst is not None
-        )
+        is_replace = is_replace and dst is not None
+        videos = self._clip_videos(list(videos), is_replace=is_replace)
         if not videos:
             return
 
-        if is_replace and dst is not None:
+        # the first one in the place of the video replaced
+        if not self._is_room_for(len(videos) - (1 if is_replace else 0)):
+            return
+
+        if is_replace:
             videos = self._replace_cell_video(dst, videos)
             dst_id = dst.video_id
             zone = DropZone.AFTER
@@ -1260,10 +1619,15 @@ class GridManager(ManagerBase):
         self.forget_grid_changes()
         return videos[1:]
 
-    def place_of(self, video_id: str) -> GridCell | int | None:
+    def place_of(self, video_id: str) -> GridCell | TilePlace | int | None:
         """Where a video is, to be put back there (see put_back_videos):
-        its cell in a Fixed Grid, else its place in the order."""
+        its cell in a Fixed Grid, its tile in Free Tiles, else its place in
+        the order."""
 
+        if self._is_free:
+            if not self._free.contains(video_id):
+                return None
+            return self._free.place_of(video_id, *self._area_size())
         if self._is_fixed:
             return next(
                 (c for c in self._grid_layout.cells if c.video_id == video_id), None
@@ -1288,6 +1652,16 @@ class GridManager(ManagerBase):
                 self._put_back(block.video_id, place)
 
     def _put_back(self, video_id: str, place) -> None:
+        if self._is_free:
+            if isinstance(place, TilePlace):
+                # where it was on the window
+                self._free.fill(*self._area_size())
+                is_over = self.is_tile_overlap_on()
+                if self._free.put_back(video_id, place, is_over):
+                    return
+            self._add_tiles([video_id])
+            return
+
         if self._is_fixed:
             if isinstance(place, GridCell) and self._grid_layout.put_back(
                 place.model_copy(update={"video_id": video_id})
@@ -1306,6 +1680,11 @@ class GridManager(ManagerBase):
             added = self._ctx.commands.add_video_blocks(videos)
             ids = [vb.video_id for vb in added]
             if not ids:
+                return
+
+            if self._is_free:
+                # where there is room, as any new video's
+                self._add_tiles(ids)
                 return
 
             leftover = self._layout.drop(
@@ -1377,6 +1756,10 @@ class GridManager(ManagerBase):
         if self._ctx.is_single_mode:
             if self._strip_videos() is not None:
                 self._grid.invalidate()
+            return
+
+        if self._is_free:
+            self._fit_tiles_to_shapes()
             return
 
         if self._is_fixed:
@@ -1468,6 +1851,10 @@ class GridManager(ManagerBase):
                 widgets = [widget for widget, _box in self._fixed_cells()]
                 self._grid.set_widgets(widgets)
                 self._grid.set_place(self._place_fixed)
+            elif self._is_free:
+                widgets = [widget for widget, _box in self._place_free(1, 1)]
+                self._grid.set_widgets(widgets)
+                self._grid.set_place(self._place_free)
             else:
                 widgets = [widget for widget, _box in self._flow_cells()]
                 self._grid.set_widgets(widgets)
@@ -1495,6 +1882,15 @@ class GridManager(ManagerBase):
         for widget in placed:
             if widget.isHidden():
                 widget.show()
+
+    def _place_free(self, width, height):
+        # the page as big as the area allows, the tiles on it
+        cells = []
+        for video_id, box in self._free.boxes(width, height):
+            vb = self._ctx.video_blocks.by_video_id(video_id)
+            if vb is not None:
+                cells.append((vb, box))
+        return cells
 
     def _place_fixed(self, _width, _height):
         # the lines between the cells go where they are moved to, as they are

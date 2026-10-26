@@ -1,0 +1,452 @@
+import contextlib
+from types import SimpleNamespace
+from unittest.mock import Mock
+
+import pytest
+from PyQt5.QtWidgets import QApplication, QWidget
+
+from gridplayer.models.grid_state import GridCell, GridState
+from gridplayer.params.static import GridMode, TileOverlap
+from gridplayer.player.managers.grid import GridManager
+from gridplayer.settings import Settings, _default_settings
+from gridplayer.utils.drop_zone import DropZone
+from gridplayer.utils.layout import Box, GridLayout
+from gridplayer.utils.layout.free_tiles import Rect
+
+
+@pytest.fixture(scope="module", autouse=True)
+def _qapp():
+    return QApplication.instance() or QApplication([])
+
+
+@pytest.fixture(autouse=True)
+def _settings_get(mocker):
+    """Answer with the shipped defaults, never with this machine's settings."""
+
+    mocker.patch.object(Settings(), "get", side_effect=_default_settings.__getitem__)
+
+
+class _Blocks:
+    """Videos by id, of these shapes; None for one not known yet."""
+
+    def __init__(self, shapes):
+        self.blocks = {
+            video_id: SimpleNamespace(video_id=video_id, picture_shape=shape)
+            for video_id, shape in shapes.items()
+        }
+
+    @property
+    def video_ids(self):
+        return list(self.blocks)
+
+    def __bool__(self):
+        return bool(self.blocks)
+
+    def __iter__(self):
+        return iter(self.blocks.values())
+
+    def by_video_id(self, video_id):
+        return self.blocks.get(video_id)
+
+    def blocks_for_ids(self, video_ids):
+        return [self.blocks[i] for i in video_ids if i in self.blocks]
+
+
+def _manager(shapes) -> GridManager:
+    # an area of 1000 by 500, as the grid has no place of its own yet
+    parent = QWidget()
+    parent.resize(1000, 500)
+    commands = SimpleNamespace(
+        remove_video_blocks=lambda *_a, **_k: None,
+        remember_closed=lambda *_a: None,
+        add_video_blocks=lambda videos: videos,
+    )
+    ctx = SimpleNamespace(
+        video_blocks=_Blocks(shapes),
+        is_shuffle_on_load=False,
+        is_single_mode=False,
+        commands=commands,
+    )
+    manager = GridManager(context=ctx, parent=parent)
+    manager._keep_parent = parent
+    return manager
+
+
+def _rects(manager) -> dict[str, Rect]:
+    return manager._free.rects(1000, 500)
+
+
+def _free(manager, **rects):
+    """Free Tiles with these tiles, in the area's pixels."""
+
+    manager._mode = GridMode.FREE
+    manager._free.page_shape = 2.0
+    for video_id, rect in rects.items():
+        manager._free.set_rect(video_id, Rect(*rect), 1000, 500)
+
+
+def _overlapping(rects) -> bool:
+    found = list(rects.values())
+    return any(a.overlaps(b) for i, a in enumerate(found) for b in found[i + 1 :])
+
+
+def test_free_tiles_keep_each_video_where_its_cell_was():
+    manager = _manager({"A": 16 / 9, "B": 16 / 9, "C": 16 / 9})
+    manager._flow.ids = ["A", "B", "C"]
+    manager._flow.fit_to(1000, 500, {})
+    cells = dict(manager._flow.boxes())
+
+    manager.cmd_set_grid_mode(GridMode.FREE)
+
+    assert manager._mode is GridMode.FREE
+    assert manager._free.tiles == cells
+    assert manager._free.page_shape == 2.0
+    # undone, the grid as it was
+    manager.cmd_undo_grid()
+    assert manager._mode is GridMode.AUTO_ROWS
+    assert not manager._free.tiles
+
+
+def test_free_tiles_from_a_fixed_grid_keep_its_empty_cells_as_room():
+    manager = _manager({"A": 16 / 9, "B": 16 / 9})
+    manager._mode = GridMode.FIXED
+    manager._grid_layout = GridLayout(
+        max_rows=2,
+        max_cols=2,
+        cells=[
+            GridCell(video_id="A", row=0, col=0),
+            GridCell(video_id="B", row=1, col=1),
+        ],
+    )
+
+    manager.cmd_set_grid_mode(GridMode.FREE)
+
+    assert manager._free.tiles == {
+        "A": Box(0, 0, 0.5, 0.5),
+        "B": Box(0.5, 0.5, 1, 1),
+    }
+    assert manager._grid_layout.cells == []
+
+
+def test_leaving_free_tiles_the_videos_go_in_the_order_the_tiles_are_read():
+    manager = _manager({"A": 16 / 9, "B": 16 / 9})
+    _free(manager, A=(600, 0, 1000, 250), B=(0, 0, 400, 250))
+
+    manager.cmd_set_grid_mode(GridMode.AUTO_ROWS)
+
+    assert manager._flow.ids == ["B", "A"]
+    assert not manager._free.tiles
+
+
+def test_free_tiles_are_kept_in_the_grid_state(mocker):
+    manager = _manager({"A": 16 / 9})
+    _free(manager, A=(100, 50, 500, 275))
+
+    state = manager.grid_state()
+    loaded = _manager({"A": 16 / 9})
+    mocker.patch.object(loaded, "_render_video_grid")
+    loaded.set_grid_state(GridState.model_validate(state.model_dump(mode="json")))
+
+    assert loaded._mode is GridMode.FREE
+    assert loaded._free.tiles == manager._free.tiles
+    assert loaded._free.page_shape == 2.0
+
+
+def test_a_video_added_to_free_tiles_goes_where_there_is_room():
+    manager = _manager({"A": 2.0, "B": 2.0})
+    _free(manager, A=(0, 0, 500, 250))
+
+    manager._reconcile_layout()
+
+    _approx(_rects(manager)["B"], (500, 0, 1000, 250))
+    assert _rects(manager)["A"] == Rect(0, 0, 500, 250)
+
+
+def test_videos_with_no_room_on_the_page_have_all_tiles_arranged_anew():
+    manager = _manager({"A": 2.0, "B": 2.0, "C": 2.0})
+    _free(manager, A=(0, 0, 500, 500), B=(500, 0, 1000, 500))
+
+    manager._reconcile_layout()
+
+    rects = _rects(manager)
+    assert set(rects) == {"A", "B", "C"}
+    assert not _overlapping(rects)
+
+
+def test_adding_with_no_room_asks_first_and_cancelled_adds_nothing(mocker):
+    manager = _manager({"A": 2.0})
+    _free(manager, A=(0, 0, 1000, 500))
+    question = mocker.patch(
+        "gridplayer.player.managers.grid.QCustomMessageBox.confirm",
+        return_value=False,
+    )
+
+    assert manager.add_videos_to_layout(["new.mp4"]) == []
+    question.assert_called_once()
+
+
+def test_arrange_tiles_lays_them_out_as_fit_shapes_and_can_be_undone():
+    manager = _manager({"A": 2.0, "B": 2.0})
+    _free(manager, A=(0, 0, 200, 100), B=(700, 300, 900, 400))
+    before = dict(manager._free.tiles)
+
+    manager.cmd_arrange_tiles()
+
+    rects = _rects(manager)
+    # side by side, filling the width
+    assert rects["A"].width + rects["B"].width == pytest.approx(1000)
+    assert not _overlapping(rects)
+
+    manager.cmd_undo_grid()
+    assert manager._free.tiles == before
+
+
+def test_tiles_arranged_before_the_shapes_were_known_are_arranged_again():
+    manager = _manager({"A": None, "B": None})
+    manager._mode = GridMode.FREE
+
+    manager._reconcile_layout()
+    for block in manager._ctx.video_blocks:
+        block.picture_shape = 1.0
+    manager.fit_to_shapes()
+
+    rects = _rects(manager)
+    assert all(r.width == pytest.approx(r.height) for r in rects.values())
+
+
+def test_a_tile_moved_by_hand_is_only_made_its_videos_shape():
+    manager = _manager({"A": None, "B": None})
+    manager._mode = GridMode.FREE
+    manager._reconcile_layout()
+    manager.set_free_tile("B", Rect(600, 100, 1000, 400), 1000, 500)
+
+    manager._ctx.video_blocks.by_video_id("B").picture_shape = 1.0
+    manager.fit_to_shapes()
+
+    _approx(_rects(manager)["B"], (650, 100, 950, 400))
+
+
+def test_a_video_reopened_goes_back_to_its_tile_if_it_is_free():
+    manager = _manager({"A": 2.0, "B": 2.0})
+    _free(manager, A=(0, 0, 400, 200), B=(500, 0, 900, 200))
+    place = manager.place_of("B")
+    manager._free.remove("B")
+
+    manager._put_back("B", place)
+
+    _approx(_rects(manager)["B"], (500, 0, 900, 200))
+
+
+def test_a_video_reopened_goes_back_where_it_was_on_the_window(mocker):
+    manager = _manager({"A": 2.0, "B": 2.0})
+    _free(manager, A=(0, 0, 400, 200), B=(500, 0, 900, 200))
+    place = manager.place_of("B")
+    manager._free.remove("B")
+    # the page made the shape of another window since
+    manager._free.fill(500, 500)
+
+    manager._put_back("B", place)
+
+    _approx(_rects(manager)["B"], (500, 0, 900, 200))
+
+
+def test_a_video_reopened_over_another_goes_back_as_deep(mocker):
+    manager = _manager({"A": 2.0, "B": 2.0, "C": 2.0})
+    _free(manager, A=(0, 0, 400, 200), B=(300, 100, 700, 300), C=(600, 200, 1000, 400))
+    mocker.patch.object(manager, "tile_overlap", return_value=TileOverlap.ON)
+    place = manager.place_of("B")
+    manager._free.remove("B")
+
+    manager._put_back("B", place)
+
+    _approx(_rects(manager)["B"], (300, 100, 700, 300))
+    assert list(manager._free.tiles) == ["A", "B", "C"]
+
+
+def test_the_page_is_where_the_tiles_are_moved_on(mocker):
+    manager = _manager({"A": 2.0})
+    _free(manager, A=(0, 0, 400, 200))
+    mocker.patch.object(manager, "grid_area", return_value=_area(0, 0, 1000, 700))
+
+    page = manager.free_page()
+
+    # all of the area, the tiles where they are shown: two to one in an
+    # area taller, 100 down
+    assert page.rect == _area(0, 0, 1000, 700)
+    _approx(page.tiles.rects(1000, 700)["A"], (0, 100, 400, 300))
+    # the layout's own shape kept, until a tile is moved
+    assert manager._free.page_shape == 2.0
+
+    manager._ctx.is_single_mode = True
+    assert manager.free_page() is None
+
+
+def test_a_tile_moved_makes_the_page_the_areas_shape(mocker):
+    manager = _manager({"A": 2.0, "B": 2.0})
+    _free(manager, A=(0, 0, 400, 200), B=(500, 0, 900, 200))
+    mocker.patch.object(manager, "grid_area", return_value=_area(0, 0, 1000, 700))
+
+    # moved into the room below the layout's own page
+    manager.set_free_tile("A", Rect(0, 500, 400, 700), 1000, 700)
+
+    assert manager._free.page_shape == pytest.approx(1000 / 700)
+    rects = manager._free.rects(1000, 700)
+    _approx(rects["A"], (0, 500, 400, 700))
+    # the other where it was shown
+    _approx(rects["B"], (500, 100, 900, 300))
+
+
+def test_a_video_added_goes_to_the_room_beside_the_page(mocker):
+    manager = _manager({"A": 2.0, "B": 2.0})
+    manager._keep_parent.resize(1000, 1000)
+    _free(manager, A=(0, 0, 1000, 500))
+
+    manager._reconcile_layout()
+
+    rects = manager._free.rects(1000, 1000)
+    # A where it was shown, in the middle; B in the room above or below
+    _approx(rects["A"], (0, 250, 1000, 750))
+    assert not _overlapping(rects)
+
+
+def _area(x, y, width, height):
+    from PyQt5.QtCore import QRect
+
+    return QRect(x, y, width, height)
+
+
+def _approx(rect, expected):
+    assert rect == pytest.approx(expected, abs=0.6)
+
+
+def test_tiles_keep_their_order_in_the_grid_state(mocker):
+    manager = _manager({"A": 2.0, "B": 2.0})
+    _free(manager, A=(0, 0, 400, 200), B=(300, 100, 700, 300))
+    manager._free.stack("A", is_front=True)
+
+    state = GridState.model_validate(manager.grid_state().model_dump(mode="json"))
+    loaded = _manager({"A": 2.0, "B": 2.0})
+    mocker.patch.object(loaded, "_render_video_grid")
+    loaded.set_grid_state(state)
+
+    assert list(loaded._free.tiles) == ["B", "A"]
+
+
+def test_a_tile_put_in_front_can_be_undone():
+    manager = _manager({"A": 2.0, "B": 2.0, "C": 2.0})
+    _free(manager, A=(0, 0, 400, 200), B=(300, 100, 700, 300), C=(800, 0, 1000, 100))
+    manager._ctx.active_block = manager._ctx.video_blocks.by_video_id("A")
+
+    assert manager.is_tile_stackable("front")
+    assert not manager.is_tile_stackable("back")
+    manager.cmd_stack_tile("front")
+    assert list(manager._free.tiles) == ["B", "C", "A"]
+    assert not manager.is_tile_stackable("front")
+
+    manager.cmd_undo_grid()
+    assert list(manager._free.tiles) == ["A", "B", "C"]
+
+    # C is over nothing: it stays where it is
+    manager._ctx.active_block = manager._ctx.video_blocks.by_video_id("C")
+    assert not manager.is_tile_stackable("front")
+
+
+def test_tiles_are_stacked_where_they_can_go_over_each_other(mocker):
+
+    manager = _manager({"A": 2.0, "B": 2.0})
+    _free(manager, A=(0, 0, 400, 200), B=(500, 0, 900, 200))
+    meet = mocker.patch.object(manager, "tile_overlap", return_value=TileOverlap.OFF)
+
+    assert not manager.is_tiles_stacked()
+    meet.return_value = TileOverlap.ON
+    assert manager.is_tiles_stacked()
+
+
+def test_tiles_fitted_to_the_window_leave_no_room_around_them():
+    manager = _manager({"A": 2.0, "B": 2.0})
+    _free(manager, A=(100, 100, 300, 200), B=(300, 200, 500, 300))
+
+    manager.cmd_fit_tiles_to_window()
+
+    _approx(_rects(manager)["A"], (0, 0, 500, 250))
+    _approx(_rects(manager)["B"], (500, 250, 1000, 500))
+    manager.cmd_undo_grid()
+    _approx(_rects(manager)["A"], (100, 100, 300, 200))
+
+
+def test_settings_applied_in_free_tiles_keep_the_tiles():
+    manager = _manager({"A": 2.0, "B": 2.0})
+    _free(manager, A=(100, 100, 300, 200), B=(600, 200, 800, 300))
+    before = dict(manager._free.tiles)
+    config = manager.grid_state().model_copy(update={"is_fit": False})
+
+    assert manager.apply_grid_config(config)
+
+    assert manager._free.tiles == before
+    # for when Free Tiles is left
+    assert manager._flow.is_fit is False
+
+
+def _adding(manager):
+    """Videos added as the video blocks manager adds them, those of the
+    blocks there are."""
+
+    blocks = manager._ctx.video_blocks
+    manager._ctx.commands.video_count_batch = contextlib.nullcontext
+    manager._ctx.commands.add_video_blocks = blocks.blocks_for_ids
+    return blocks
+
+
+def test_a_video_dropped_is_made_its_videos_shape_once_known():
+    manager = _manager({"A": 2.0, "B": None})
+    _free(manager, A=(0, 0, 400, 200))
+    blocks = _adding(manager)
+
+    manager._place_dropped_ids(["B"], None, None, DropZone.CENTER, None)
+    blocks.by_video_id("B").picture_shape = 1.0
+    manager.fit_to_shapes()
+
+    rect = _rects(manager)["B"]
+    assert rect.width == pytest.approx(rect.height)
+
+
+def test_a_video_reopened_with_no_tile_is_made_its_videos_shape_once_known():
+    manager = _manager({"A": 2.0, "B": None})
+    _free(manager, A=(0, 0, 400, 200))
+
+    manager._put_back("B", None)
+    manager._ctx.video_blocks.by_video_id("B").picture_shape = 1.0
+    manager.fit_to_shapes()
+
+    rect = _rects(manager)["B"]
+    assert rect.width == pytest.approx(rect.height)
+
+
+def test_a_drop_with_no_room_asks_first_and_cancelled_adds_nothing(mocker):
+    manager = _manager({"A": 2.0})
+    _free(manager, A=(0, 0, 1000, 500))
+    manager._ctx.commands.add_video_blocks = Mock()
+    question = mocker.patch(
+        "gridplayer.player.managers.grid.QCustomMessageBox.confirm",
+        return_value=False,
+    )
+
+    manager.cmd_layout_drop(["new.mp4"], None, None, DropZone.CENTER, False)
+
+    question.assert_called_once()
+    manager._ctx.commands.add_video_blocks.assert_not_called()
+
+
+def test_a_tile_put_back_on_esc_leaves_nothing_to_undo():
+    manager = _manager({"A": 2.0, "B": 2.0})
+    _free(manager, A=(0, 0, 400, 200), B=(500, 0, 900, 200))
+    before = manager.grid_state()
+
+    manager.begin_grid_change()
+    # on a window taller than the page: its shape made the window's
+    manager.set_free_tile("A", Rect(0, 500, 400, 700), 1000, 700)
+    manager.cancel_grid_change()
+    manager.end_grid_change()
+
+    assert manager.grid_state() == before
+    assert not manager._undo

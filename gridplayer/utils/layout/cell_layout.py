@@ -3,7 +3,7 @@ from __future__ import annotations
 from collections.abc import Callable, Iterable
 
 from PyQt5 import sip
-from PyQt5.QtCore import QRect, QSize
+from PyQt5.QtCore import QRect, QSize, pyqtSignal
 from PyQt5.QtWidgets import QLayout, QWidget, QWidgetItem
 
 from gridplayer.utils.layout.boxes import Box, box_rect
@@ -31,6 +31,9 @@ class CellLayout(QLayout):
     VLC at once and holds the rest back (see NATIVE_VIEW_RESIZE_INTERVAL_MS),
     so it would be drawn stretched or zoomed into its cell for a moment.
     """
+
+    # each time the cells have been put in their places
+    laid_out = pyqtSignal()
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -110,3 +113,5 @@ class CellLayout(QLayout):
 
             x, y, width, height = box_rect(box, rect.width(), rect.height())
             widget.setGeometry(QRect(rect.x() + x, rect.y() + y, width, height))
+
+        self.laid_out.emit()

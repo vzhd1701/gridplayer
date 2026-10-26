@@ -348,6 +348,17 @@ PLAYLIST_FIELDS: tuple[SettingField, ...] = (
         ),
     ),
     ComboField(
+        settings_key="playlist/tile_overlap",
+        label=translate("Tile Overlap", "Tile overlap"),
+        choices=choices.tile_overlap,
+        buttons=True,
+        shown_when=When("playlist/grid_mode", (GridMode.FREE,)),
+        tooltip=translate(
+            "Tile Overlap",
+            "Whether a tile you move or size can go over the others.",
+        ),
+    ),
+    ComboField(
         settings_key="playlist/drop_action_internal",
         label=translate("SettingsDialog", "In-window drag"),
         choices=choices.drop_internal,

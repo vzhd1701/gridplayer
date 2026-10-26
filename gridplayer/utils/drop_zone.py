@@ -40,6 +40,10 @@ def zone_at(
     if grid_mode == GridMode.FIXED:
         return _zone_at_fixed(x, y, width, height)
 
+    # a tile dropped on takes the video dropped, wherever on it
+    if grid_mode == GridMode.FREE:
+        return DropZone.CENTER
+
     t = y / height if grid_mode == GridMode.AUTO_COLS else x / width
 
     if t < 1 / 3:

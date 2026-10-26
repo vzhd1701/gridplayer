@@ -60,6 +60,15 @@ class GridMode(AutoName):
     # Fit Shapes: each video in a tile of its own shape
     AUTO_SHAPES = auto()
     FIXED = auto()
+    # Free Tiles: each video in a tile placed and sized by hand
+    FREE = auto()
+
+
+# Free Tiles: whether a tile moved or sized goes over another, or stops at
+# its edge
+class TileOverlap(AutoName):
+    OFF = auto()
+    ON = auto()
 
 
 # Single Mode's strip: none; the others in it, the one picked trading places

@@ -183,6 +183,11 @@ class DragNDropManager(ManagerBase):
         if is_modal_open() or self._ctx.is_single_mode:
             return False
 
+        # in Free Tiles, a press on a tile is the tile's until the pointer
+        # goes far enough to move it (see FreeTilesManager)
+        if self._ctx.commands.is_tile_pressed():
+            return False
+
         if not event.buttons() & Qt.LeftButton:
             return False
 

@@ -43,6 +43,7 @@ from gridplayer.params.static import (
     StripMode,
     StripSide,
     SubtitleTrackMode,
+    TileOverlap,
     UnsavedChangesMode,
     URLResolver,
     VideoAnchor,
@@ -120,6 +121,7 @@ _default_settings = {
     # a line between cells being dragged stops where a video fits its cell or
     # the cells on either side are even
     "playlist/grid_line_snap": True,
+    "playlist/tile_overlap": TileOverlap.OFF,
     "playlist/save_paths_relative": False,
     # every setting written into the playlist, not only those it changes
     "playlist/save_all_settings": False,

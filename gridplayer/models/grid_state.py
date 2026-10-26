@@ -12,6 +12,14 @@ class GridCell(BaseModel):
     colspan: int = 1
 
 
+class GridTile(BaseModel):
+    """A video's tile in Free Tiles: its edges as shares of the page,
+    left, top, right and bottom."""
+
+    video_id: str
+    box: list[float]
+
+
 class GridState(BaseModel):
     mode: GridMode = default_field("playlist/grid_mode")
     is_fit: bool = default_field("playlist/grid_fit")
@@ -36,3 +44,7 @@ class GridState(BaseModel):
     line_weights: list[list[float]] = Field(default_factory=list)
     # in Single Mode, the strip's share of the window, moved by hand
     strip_share: float | None = None
+    # in Free Tiles, the videos' tiles, the one in front last; and the
+    # page's width over its height (see FreeTiles)
+    tiles: list[GridTile] = Field(default_factory=list)
+    page_shape: float | None = None

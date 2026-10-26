@@ -37,7 +37,7 @@ from gridplayer.params.static import (
 )
 from gridplayer.player.managers.base import ManagerBase
 from gridplayer.utils.bookmarks import default_bookmark_name
-from gridplayer.utils.qt import is_modal_open, translate
+from gridplayer.utils.qt import is_modal_open, topmost, translate
 from gridplayer.utils.time_txt import timed_title
 from gridplayer.utils.track_language import language_name
 from gridplayer.vlc_player.static import DISABLED_TRACK
@@ -1399,7 +1399,8 @@ class ActiveBlockManager(ManagerBase):
             if v.isVisible() and v.rect().contains(v.mapFromGlobal(global_pos))
         )
 
-        found = next(visible_blocks_under_pos, None)
+        # the one in front, where Free Tiles has one over another
+        found = topmost(visible_blocks_under_pos)
         if found is None and self._ctx.is_single_mode:
             # the big video's place held in the Fixed Strip stands for it
             return self._ctx.commands.strip_held_video_at(global_pos)

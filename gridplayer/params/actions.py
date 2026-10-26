@@ -2642,6 +2642,53 @@ ACTIONS = MappingProxyType(
             "check_if": ("is_grid_mode_set_to", GridMode.FIXED),
             "is_choice": True,
         },
+        "Free Tiles": {
+            # the cells made tiles where they are, to move and size by hand
+            "title": translate("Grid Mode", "Free Tiles"),
+            "icon": "grid-cell-size",
+            "func": ("set_grid_mode", GridMode.FREE),
+            "check_if": ("is_grid_mode_set_to", GridMode.FREE),
+            "is_choice": True,
+        },
+        "Arrange Tiles": {
+            "title": translate("Actions", "Arrange Tiles"),
+            "icon": "grid-fit-shapes",
+            "func": "arrange_tiles",
+            "show_if": ("is_grid_mode_set_to", GridMode.FREE),
+        },
+        "Fit Tiles to Window": {
+            "title": translate("Actions", "Fit Tiles to Window"),
+            "icon": "empty",
+            "func": "fit_tiles_to_window",
+            "show_if": ("is_grid_mode_set_to", GridMode.FREE),
+        },
+        **{
+            f"Tile Overlap {overlap.name.title()}": {
+                "title": title,
+                "icon": "empty",
+                "func": ("set_tile_overlap", overlap),
+                "check_if": ("is_tile_overlap", overlap),
+                "is_choice": True,
+                "show_if": ("is_grid_mode_set_to", GridMode.FREE),
+            }
+            for overlap, title in choices.tile_overlap().items()
+        },
+        "Bring to Front": {
+            "title": translate("Actions", "Bring to Front"),
+            "key": "Ctrl+Click",
+            "icon": "empty",
+            "func": ("stack_tile", "front"),
+            "enable_if": ("is_tile_stackable", "front"),
+            "show_if": "is_tiles_stacked",
+        },
+        "Send to Back": {
+            "title": translate("Actions", "Send to Back"),
+            "key": "Ctrl+Shift+Click",
+            "icon": "empty",
+            "func": ("stack_tile", "back"),
+            "enable_if": ("is_tile_stackable", "back"),
+            "show_if": "is_tiles_stacked",
+        },
         "Grid Size: %v": {
             "title": translate("Actions", "Grid Size: %v"),
             "keymap_title": translate("Actions", "Set Grid Size"),
@@ -2787,17 +2834,32 @@ ACTIONS = MappingProxyType(
             "icon": "grid-fit-lines",
             "func": "fit_grid_lines",
             "enable_if": "is_grid_lines_fittable",
-            "show_if": NOT(("is_grid_mode_set_to", GridMode.AUTO_SHAPES)),
+            "show_if": NOT(
+                OR(
+                    ("is_grid_mode_set_to", GridMode.AUTO_SHAPES),
+                    ("is_grid_mode_set_to", GridMode.FREE),
+                )
+            ),
         },
         "Reset Lines": {
             "title": translate("Actions", "Reset Lines"),
             "icon": "grid-reset-lines",
             "func": "reset_grid_lines",
             "enable_if": "is_grid_lines_moved",
-            "show_if": NOT(("is_grid_mode_set_to", GridMode.AUTO_SHAPES)),
+            "show_if": NOT(
+                OR(
+                    ("is_grid_mode_set_to", GridMode.AUTO_SHAPES),
+                    ("is_grid_mode_set_to", GridMode.FREE),
+                )
+            ),
         },
         "Snap Lines": {
-            "title": translate("Snap Lines", "Snap Lines"),
+            "title": (
+                translate("Snap Lines", "Snap Lines"),
+                translate("Snap Lines", "Snap Tiles"),
+            ),
+            "keymap_title": translate("Snap Lines", "Snap Lines"),
+            "toggle": ("is_grid_mode_set_to", GridMode.FREE),
             "icon": "empty",
             "func": "toggle_grid_line_snap",
             "check_if": "is_grid_line_snap",
