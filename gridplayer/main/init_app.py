@@ -15,6 +15,7 @@ from gridplayer.params.theme import (
     on_system_theme_changed,
 )
 from gridplayer.utils.darkmode import watch_system_theme
+from gridplayer.utils.mouse_windows import keep_held_buttons
 from gridplayer.utils.wayland import follow_desktop_cursor
 
 
@@ -25,6 +26,7 @@ def init_app():
         app = QApplication(sys.argv)
 
     follow_desktop_cursor()
+    keep_held_buttons(app)
 
     init_resources()
 
