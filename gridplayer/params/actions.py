@@ -2689,6 +2689,23 @@ ACTIONS = MappingProxyType(
             "enable_if": ("is_tile_stackable", "back"),
             "show_if": "is_tiles_stacked",
         },
+        "Make Room": {
+            # the tiles under the video's, or over it, set aside
+            "title": translate("Actions", "Make Room"),
+            "icon": "empty",
+            "func": "make_room",
+            "enable_if": "is_tile_room_makeable",
+            "show_if": "is_tiles_stacked",
+        },
+        "Lock Tile": {
+            # never moved, sized, pushed or gone over
+            "title": translate("Actions", "Lock Tile"),
+            "icon": "empty",
+            "func": "lock_tile",
+            "check_if": "is_tile_locked",
+            "enable_if": "is_tile_lockable",
+            "show_if": ("is_grid_mode_set_to", GridMode.FREE),
+        },
         "Grid Size: %v": {
             "title": translate("Actions", "Grid Size: %v"),
             "keymap_title": translate("Actions", "Set Grid Size"),

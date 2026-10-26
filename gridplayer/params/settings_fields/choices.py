@@ -64,6 +64,7 @@ def tile_overlap() -> dict:
     return {
         TileOverlap.OFF: translate("Tile Overlap", "Off"),
         TileOverlap.ON: translate("Tile Overlap", "On"),
+        TileOverlap.PUSH: translate("Tile Overlap", "Push Aside"),
     }
 
 

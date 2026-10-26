@@ -2,12 +2,13 @@ from __future__ import annotations
 
 import math
 import random
-from collections.abc import Callable, Iterator
+from collections.abc import Callable, Collection, Iterable, Iterator
 from enum import Enum, auto
+from itertools import product, takewhile
 from typing import NamedTuple
 
 from gridplayer.utils.drop_zone import DropZone
-from gridplayer.utils.layout.boxes import Box
+from gridplayer.utils.layout.boxes import Box, within
 from gridplayer.utils.layout.flow_layout import DEFAULT_SHAPE
 from gridplayer.utils.layout.lines import LINE_REACH, MIN_CELL, SNAP_REACH
 
@@ -112,6 +113,7 @@ class TilePlace(NamedTuple):
 
     box: Box
     depth: int
+    is_locked: bool = False
 
 
 # Which edges a tile is held by: -1 the left (top), 1 the right (bottom), 0
@@ -132,22 +134,37 @@ class FreeTiles:
     last. Where they may go over each other is up to how they are moved
     (see TileDrag).
 
+    A tile locked is neither moved nor sized by hand, nor pushed aside,
+    nor gone over: the others stop at its edges. It is in front of those
+    not locked, and stays where it is when they are arranged, or shuffled.
+
     A video added goes where there is the most room for it, in a tile the
     size the others have, if there is room enough (see ROOM_SHARE); none
     found, it is left over, for the tiles to be arranged anew.
     """
 
-    def __init__(self, tiles: dict[str, Box] | None = None, page_shape=DEFAULT_SHAPE):
+    def __init__(
+        self,
+        tiles: dict[str, Box] | None = None,
+        page_shape=DEFAULT_SHAPE,
+        locked=(),
+    ):
         self.tiles: dict[str, Box] = dict(tiles or {})
         # the page's width over its height
         self.page_shape = page_shape
+        # the videos whose tiles are locked
+        self.locked: set[str] = set(locked)
         # each video's shape, for its tile when it is added
         self.shape_of: Callable[[str], float] = lambda _video_id: DEFAULT_SHAPE
 
     def copy(self) -> FreeTiles:
-        tiles = FreeTiles(self.tiles, self.page_shape)
+        tiles = FreeTiles(self.tiles, self.page_shape, self.locked)
         tiles.shape_of = self.shape_of
         return tiles
+
+    def clear(self) -> None:
+        self.tiles = {}
+        self.locked = set()
 
     # --- the page ---
 
@@ -184,22 +201,10 @@ class FreeTiles:
         if width <= 0 or height <= 0:
             return list(self.tiles.items())
         x, y, page_width, page_height = self.page_rect(width, height)
-
-        def across(share, origin, size, whole):
-            return (origin + share * size) / whole
-
-        return [
-            (
-                video_id,
-                Box(
-                    across(box.left, x, page_width, width),
-                    across(box.top, y, page_height, height),
-                    across(box.right, x, page_width, width),
-                    across(box.bottom, y, page_height, height),
-                ),
-            )
-            for video_id, box in self.tiles.items()
-        ]
+        page = Box(
+            x / width, y / height, (x + page_width) / width, (y + page_height) / height
+        )
+        return [(video_id, within(box, page)) for video_id, box in self.tiles.items()]
 
     def rects(self, page_width: float, page_height: float) -> dict[str, Rect]:
         """The tiles on a page of this size, in its pixels."""
@@ -230,11 +235,20 @@ class FreeTiles:
         """The tile at a point on the page and what of it is there: an edge
         or a corner, within LINE_REACH of it, to size it by, or the rest of
         it, to move it by. The tile the point is in goes first, where two
-        meet, the one in front where one is over another."""
+        meet, the one in front where one is over another. None of a locked
+        tile, nor of those behind it there, their edges either."""
 
         rects = self.rects(page_width, page_height)
         inside = [i for i, r in reversed(rects.items()) if _contains(r, x, y)]
-        others = [i for i in rects if i not in inside]
+        locked = [rects[i] for i in inside if i in self.locked]
+        others = [
+            i
+            for i in rects
+            if i not in inside
+            and i not in self.locked
+            and not any(rects[i].overlaps(r) for r in locked)
+        ]
+        inside = list(takewhile(lambda i: i not in self.locked, inside))
 
         for video_id in inside + others:
             rect = rects[video_id]
@@ -293,10 +307,12 @@ class FreeTiles:
                 leftover.append(video_id)
                 continue
             self.set_rect(video_id, rect, self.page_shape, 1)
+        self._restack()
         return leftover
 
     def remove(self, video_id: str) -> None:
         self.tiles.pop(video_id, None)
+        self.locked.discard(video_id)
 
     def free_capacity(self) -> int | None:
         return None
@@ -305,24 +321,34 @@ class FreeTiles:
         """Where a tile is, as it is shown in an area of this size."""
 
         filled = self.filled(width, height)
-        return TilePlace(filled.tiles[video_id], list(self.tiles).index(video_id))
+        return TilePlace(
+            filled.tiles[video_id],
+            list(self.tiles).index(video_id),
+            video_id in self.locked,
+        )
 
     def put_back(self, video_id: str, place: TilePlace, is_over: bool = False) -> bool:
         """A video's tile back where it was, as deep among the others, if
-        nothing is there now, or if tiles may go over each other (is_over).
-        The page is to be the shape of the area it was shown in (see fill)."""
+        nothing is there now, or if tiles may go over each other (is_over),
+        but for a locked one. The page is to be the shape of the area it was
+        shown in (see fill)."""
 
         self.tiles.pop(video_id, None)
         rect = _box_rect(place.box, self.page_shape)
         others = self.rects(self.page_shape, 1)
-        if not is_over and any(
-            rect.overlaps(other, _NEAR_SHARE) for other in others.values()
+        if any(
+            rect.overlaps(other, _NEAR_SHARE)
+            for i, other in others.items()
+            if not is_over or i in self.locked
         ):
             return False
 
         tiles = list(self.tiles.items())
         tiles.insert(min(place.depth, len(tiles)), (video_id, place.box))
         self.tiles = dict(tiles)
+        if place.is_locked:
+            self.locked.add(video_id)
+        self._restack()
         return True
 
     def fit_to_page(self) -> None:
@@ -356,8 +382,10 @@ class FreeTiles:
 
     def fit_shape(self, video_id: str, shape: float) -> None:
         """A video's tile made its shape, as big as it can be inside the
-        tile it had, in the middle of it."""
+        tile it had, in the middle of it; locked, left as it is."""
 
+        if video_id in self.locked:
+            return
         rect = _box_rect(self.tiles[video_id], self.page_shape)
         width = min(rect.width, rect.height * shape)
         height = width / shape
@@ -368,21 +396,27 @@ class FreeTiles:
         )
 
     def shuffle(self) -> None:
-        """The videos swapped about among the tiles, which stay put."""
+        """The videos swapped about among the tiles, which stay put; those
+        in locked tiles stay in them."""
 
-        ids = list(self.tiles)
+        ids = [i for i in self.tiles if i not in self.locked]
         if len(ids) <= 1:
             return
         shuffled = ids[:]
         while shuffled == ids:
             random.shuffle(shuffled)
-        self.tiles = dict(zip(shuffled, self.tiles.values(), strict=True))
+        others = iter(shuffled)
+        self.tiles = {
+            (video_id if video_id in self.locked else next(others)): box
+            for video_id, box in self.tiles.items()
+        }
 
     def replace_id(self, old_id: str, new_id: str) -> None:
         self.tiles = {
             (new_id if video_id == old_id else video_id): box
             for video_id, box in self.tiles.items()
         }
+        self.locked = {new_id if i == old_id else i for i in self.locked}
 
     def drop(
         self,
@@ -396,8 +430,8 @@ class FreeTiles:
         dst_id: str | None = None,
     ) -> list[str]:
         """A video dropped on another's tile takes it: the two trade
-        places, or, replacing, the other is closed (by the caller). New
-        ones go where there is room."""
+        places, or, replacing, the other is closed (by the caller); a lock
+        stays with the tile. New ones go where there is room."""
 
         if src_id is None:
             return self.add(video_ids)
@@ -411,43 +445,152 @@ class FreeTiles:
             del self.tiles[dst_id]
         else:
             self.tiles[dst_id] = src_box
+
+        # each in the other's tile: the one closed with it
+        traded = {src_id: dst_id, dst_id: src_id}
+        self.locked = {traded.get(i, i) for i in self.locked} & set(self.tiles)
+        self._restack()
         return []
 
     # --- one over another ---
 
     def stack(self, video_id: str, is_front: bool) -> None:
-        """A tile put in front of all the others, or behind them."""
+        """A tile put in front of all the others, or behind them: of those
+        locked, if it is, else of those not."""
 
         box = self.tiles.pop(video_id)
         if is_front:
             self.tiles[video_id] = box
         else:
             self.tiles = {video_id: box, **self.tiles}
+        self._restack()
+
+    def set_locked(self, video_id: str, is_locked: bool) -> None:
+        """A tile locked, and put in front of all the others, or let go of."""
+
+        if is_locked:
+            self.locked.add(video_id)
+            self.stack(video_id, True)
+        else:
+            self.locked.discard(video_id)
+
+    def _restack(self) -> None:
+        """The locked tiles in front of the others."""
+
+        self.tiles = {
+            **{i: box for i, box in self.tiles.items() if i not in self.locked},
+            **{i: box for i, box in self.tiles.items() if i in self.locked},
+        }
 
     def is_under(self, video_id: str) -> bool:
-        """Whether another tile is over this one."""
+        """Whether another tile is over this one, which it can be put in
+        front of (see stack)."""
 
-        return self._overlaps_any(video_id, is_in_front=True)
+        ids = list(self.tiles)
+        in_front = ids[ids.index(video_id) + 1 :]
+        return self._overlaps_any(video_id, self._alike(video_id, in_front))
 
     def is_over(self, video_id: str) -> bool:
-        """Whether this tile is over another."""
+        """Whether this tile is over another, which it can be put behind."""
 
-        return self._overlaps_any(video_id, is_in_front=False)
+        ids = list(self.tiles)
+        behind = ids[: ids.index(video_id)]
+        return self._overlaps_any(video_id, self._alike(video_id, behind))
 
-    def _overlaps_any(self, video_id: str, is_in_front: bool) -> bool:
-        """Whether this tile and another in front of it (or behind it) are
-        one over the other."""
+    def is_crowded(self, video_id: str) -> bool:
+        """Whether this tile and another, not locked, are one over the
+        other: room to be made (see make_room)."""
+
+        others = [i for i in self.tiles if i != video_id and i not in self.locked]
+        return self._overlaps_any(video_id, others)
+
+    def _alike(self, video_id: str, ids: list[str]) -> list[str]:
+        """Those of the tiles that are locked if this one is, else those
+        not: the ones it can be put in front of, or behind."""
+
+        is_locked = video_id in self.locked
+        return [i for i in ids if (i in self.locked) == is_locked]
+
+    def _overlaps_any(self, video_id: str, others: list[str]) -> bool:
+        """Whether this tile and any of the others are one over the other."""
 
         rects = self.rects(self.page_shape, 1)
-        ids = list(rects)
-        at = ids.index(video_id)
-        others = ids[at + 1 :] if is_in_front else ids[:at]
         return any(rects[video_id].overlaps(rects[i], _NEAR_SHARE) for i in others)
 
     def is_stacked(self) -> bool:
-        """Whether any tile is over another."""
+        """Whether any tile is over another, locked or not."""
 
-        return any(self.is_under(video_id) for video_id in self.tiles)
+        ids = list(self.tiles)
+        return any(self._overlaps_any(i, ids[at + 1 :]) for at, i in enumerate(ids))
+
+    def make_room(self, video_id: str) -> bool:
+        """Room made for a tile: each one it is over or under set aside (see
+        _pushed_aside), but none to less than ROOM_SHARE of its width, nor
+        one locked. False, with nothing changed, if that leaves one too
+        small."""
+
+        rects = self.rects(self.page_shape, 1)
+        by = rects.pop(video_id)
+        pushed = _pushed_aside(
+            rects,
+            by,
+            Rect(0, 0, self.page_shape, 1),
+            lambda spot: ROOM_SHARE * min(spot.width, spot.height),
+            fixed=self.locked,
+        )
+        if pushed is None:
+            return False
+
+        for other_id, rect in pushed.items():
+            self.set_rect(other_id, rect, self.page_shape, 1)
+        return True
+
+    def open_area(self) -> Box | None:
+        """The biggest part of the page no locked tile is on, as shares of
+        it: all of it, with none; None, with none of it left."""
+
+        rects = self.rects(self.page_shape, 1)
+        walls = [rects[i] for i in self.locked]
+
+        # each made of the page's edges and the walls'
+        found = (
+            Rect(*edges)
+            for edges in product(
+                {0.0, *(w.right for w in walls)},
+                {0.0, *(w.bottom for w in walls)},
+                {self.page_shape, *(w.left for w in walls)},
+                {1.0, *(w.top for w in walls)},
+            )
+        )
+        best = max(
+            (
+                rect
+                for rect in found
+                if rect.width > _HAIR
+                and rect.height > _HAIR
+                and not any(rect.overlaps(w, _NEAR_SHARE) for w in walls)
+            ),
+            key=lambda rect: rect.width * rect.height,
+            default=None,
+        )
+
+        if best is None:
+            return None
+        return Box(
+            best.left / self.page_shape,
+            best.top,
+            best.right / self.page_shape,
+            best.bottom,
+        )
+
+    def arrange(self, boxes: Iterable[tuple[str, Box]], area: Box) -> None:
+        """Tiles laid out anew at boxes, as shares of an area of the page
+        (see open_area), the others left where they are."""
+
+        laid_out = {video_id: within(box, area) for video_id, box in boxes}
+        kept = {i: box for i, box in self.tiles.items() if i not in laid_out}
+        self.tiles = {**laid_out, **kept}
+        self._restack()
 
     # --- room ---
 
@@ -463,22 +606,10 @@ class FreeTiles:
         areas = sorted(r.width * r.height for r in rects)
         wanted = (areas[len(areas) // 2] * shape) ** 0.5
 
-        best = None
-        for room in _rooms(rects, self.page_shape, shape):
-            width = min(room.width, wanted)
-            key = (width, -room.top, -room.left)
-            if best is None or key > best[0]:
-                best = (key, room)
-
-        if best is None or best[0][0] < wanted * ROOM_SHARE:
+        rect = _most_room(rects, Rect(0, 0, self.page_shape, 1), shape, wanted)
+        if rect is None or rect.width < wanted * ROOM_SHARE:
             return None
-
-        room = best[1]
-        width = min(room.width, wanted)
-        height = width / shape
-        left = room.center_x - width / 2
-        top = room.center_y - height / 2
-        return Rect(left, top, left + width, top + height)
+        return rect
 
 
 def _box_rect(box: Box, page_width: float) -> Rect:
@@ -486,17 +617,41 @@ def _box_rect(box: Box, page_width: float) -> Rect:
     return Rect(box.left * page_width, box.top, box.right * page_width, box.bottom)
 
 
-def _rooms(rects: list[Rect], page_width: float, shape: float) -> Iterator[Rect]:
-    """Empty places of this shape on a page one high, each as big as it
-    can be from its top left corner: at the page's edges, and at the right
-    and the bottom of each tile."""
+def _most_room(
+    rects: list[Rect], page: Rect, shape: float, wanted: float
+) -> Rect | None:
+    """A tile of this shape where there is the most room for it on the page
+    among the tiles, up to wanted wide, in the middle of that room; None if
+    there is none."""
+
+    best = None
+    for room in _rooms(rects, page, shape):
+        key = (min(room.width, wanted), -room.top, -room.left)
+        if best is None or key > best[0]:
+            best = (key, room)
+
+    if best is None:
+        return None
+
+    room = best[1]
+    width = min(room.width, wanted)
+    height = width / shape
+    left = room.center_x - width / 2
+    top = room.center_y - height / 2
+    return Rect(left, top, left + width, top + height)
+
+
+def _rooms(rects: list[Rect], page: Rect, shape: float) -> Iterator[Rect]:
+    """Empty places of this shape on a page with its top left corner at 0,
+    0, each as big as it can be from its top left corner: at the page's
+    edges, and at the right and the bottom of each tile."""
 
     xs = sorted({0.0, *(r.right for r in rects)})
     ys = sorted({0.0, *(r.bottom for r in rects)})
 
     for x in xs:
         for y in ys:
-            width = min(page_width - x, (1 - y) * shape)
+            width = min(page.right - x, (page.bottom - y) * shape)
             for rect in rects:
                 if rect.right <= x or rect.bottom <= y:
                     continue
@@ -505,6 +660,93 @@ def _rooms(rects: list[Rect], page_width: float, shape: float) -> Iterator[Rect]
                 width = min(width, max(rect.left - x, (rect.top - y) * shape))
             if width > 1e-6:
                 yield Rect(x, y, x + width, y + width / shape)
+
+
+def _pushed_aside(
+    spots: dict[str, Rect],
+    by: Rect,
+    page: Rect,
+    least: Callable[[Rect], float],
+    kept: dict[str, Rect] | None = None,
+    fixed: Collection[str] = (),
+) -> dict[str, Rect] | None:
+    """Each tile a tile at by covers made room for, but those fixed: as big
+    as it can be, of its own shape, in what by leaves of its own place (see
+    _set_aside). Left less than ROOM_SHARE of its width there, it goes where
+    there is the most room on the page, if that is more: where it was kept
+    before (kept), while that is still free. None if one would be smaller
+    than least says, on its shorter side."""
+
+    taken = [by, *spots.values()]
+    pushed = {}
+    for video_id, spot in spots.items():
+        if video_id in fixed or not by.overlaps(spot, _HAIR):
+            continue
+
+        rect = _set_aside(spot, by)
+        width = 0.0 if rect is None else rect.width
+        if width < spot.width * ROOM_SHARE:
+            room = (kept or {}).get(video_id)
+            if room is None or any(room.overlaps(t, _HAIR) for t in taken):
+                shape = spot.width / spot.height
+                room = _most_room(taken, page, shape, spot.width)
+            if room is not None and room.width > width:
+                rect = room
+                taken.append(room)
+
+        if rect is None or min(rect.width, rect.height) < least(spot) - _HAIR:
+            return None
+        pushed[video_id] = rect
+    return pushed
+
+
+def _set_aside(spot: Rect, by: Rect) -> Rect | None:
+    """A tile at spot, of its shape, as big as it can be in what by leaves
+    of it: the part left beside it, above or below, the first of those as
+    big. In there, it is as far from by as by covers more of one end of
+    spot than of the other, so that it goes along smoothly as by is moved
+    (see _away)."""
+
+    shape = spot.width / spot.height
+    best = None
+    for room in (
+        spot._replace(right=min(spot.right, by.left)),
+        spot._replace(left=max(spot.left, by.right)),
+        spot._replace(bottom=min(spot.bottom, by.top)),
+        spot._replace(top=max(spot.top, by.bottom)),
+    ):
+        if room.width <= _HAIR or room.height <= _HAIR:
+            continue
+        width = min(room.width, room.height * shape)
+        if best is not None and width <= best.width:
+            continue
+
+        height = width / shape
+        left = room.left + _away(spot.left, spot.right, by.left, by.right) * (
+            room.width - width
+        )
+        top = room.top + _away(spot.top, spot.bottom, by.top, by.bottom) * (
+            room.height - height
+        )
+        best = Rect(left, top, left + width, top + height)
+    return best
+
+
+def _away(low: float, high: float, by_low: float, by_high: float) -> float:
+    """Where along a span from low to high something is put to be away
+    from another from by_low to by_high: 0 at its low end, 1 at the high,
+    toward the end more of it is left at; by over all of it, toward the
+    end it covers the least beyond."""
+
+    before = max(0.0, by_low - low)
+    after = max(0.0, high - by_high)
+    if before + after > _HAIR:
+        return after / (before + after)
+
+    beyond = (by_high - by_low) - (high - low)
+    if beyond <= _HAIR:
+        return 0.5
+    return min(max((low - by_low) / beyond, 0.0), 1.0)
 
 
 def _contains(rect: Rect, x: float, y: float, reach: float = 0) -> bool:
@@ -539,6 +781,16 @@ class TileDrag:
     a move slides along it instead. Where it can go nowhere on the way, it
     stays where it was.
 
+    Told to push them (is_pushing), it goes where the pointer takes it too,
+    each tile it goes over set aside, made smaller in its own place or put
+    where there is room (see _pushed_aside, and pushed): always from where
+    they were at the press, so that they come back as it goes away. One it
+    would make smaller than MIN_CELL stops it, as one in the way does. Those
+    it was over at the press, it goes over.
+
+    Whichever it is told, a locked tile stops it, as one in the way does,
+    but one it was over at the press.
+
     Sized, it keeps the shape it has (unless told not to), the edge held
     where the pointer is and the one across from it where it was. By a
     side, the other two each give half, or, one of them against a tile or
@@ -566,6 +818,7 @@ class TileDrag:
         pointer: tuple[float, float],
         shape: float | None = None,
         is_over: bool = False,
+        is_pushing: bool = False,
     ):
         rects = tiles.rects(page_width, page_height)
 
@@ -573,11 +826,12 @@ class TileDrag:
         self.handle = handle
         self.page = Rect(0, 0, page_width, page_height)
         self.start = rects[video_id]
-        self.others = [r for i, r in rects.items() if i != video_id]
+        self._spots = {i: r for i, r in rects.items() if i != video_id}
+        self.others = list(self._spots.values())
         # where an edge snaps to, and a middle, across (True) and down: the
-        # others stay where they are while it is moved
-        self._lines = {c: self._lines_of(c) for c in (True, False)}
-        self._middles = {c: self._middles_of(c) for c in (True, False)}
+        # others stay where they are while it is moved, but those pushed
+        self._lines = {c: self._lines_of(c, self.others) for c in (True, False)}
+        self._middles = {c: self._middles_of(c, self.others) for c in (True, False)}
         # the shape it keeps, sized, and its video's, which it snaps to sized
         # to any shape
         self.shape = self.start.width / max(self.start.height, 1e-9)
@@ -589,13 +843,32 @@ class TileDrag:
         self._last = pointer
         self.rect = self.start
 
-        # going over the others as it likes (Tile Overlap: On)
+        # going over the others as it likes (Tile Overlap: On), or pushing
+        # them aside (Push Aside)
         self.is_over = is_over
+        self.is_pushing = is_pushing
         # one made overlapping, by hand in the file, or before the tiles were
         # kept apart: moved as it likes until it is clear of the others
-        self._is_kept_apart = not is_over and not any(
-            self.start.overlaps(r) for r in self.others
+        self._is_kept_apart = (
+            not is_over
+            and not is_pushing
+            and not any(self.start.overlaps(r) for r in self.others)
         )
+
+        # pushing, the others set aside, and those set aside before put back
+        # where they were, to be shown so
+        self.pushed: dict[str, Rect] = {}
+        # those it is over at the press, not pushed
+        self._fixed = frozenset(
+            i for i, r in self._spots.items() if self.start.overlaps(r)
+        )
+        # the locked tiles, and those of them in its way, whichever way it
+        # may go
+        locked = {i: r for i, r in self._spots.items() if i in tiles.locked}
+        self.locked = list(locked.values())
+        self._walls = [r for i, r in locked.items() if i not in self._fixed]
+        # the last tile pushed for, and what it pushed
+        self._last_push: tuple[Rect, dict[str, Rect] | None] | None = None
 
         # sized by a side, the end of the other two edges held still: the
         # first (top, left) or the last, against something; None, neither
@@ -632,7 +905,7 @@ class TileDrag:
                 # nowhere it can go on the way there
                 return self.rect
 
-        if not self._is_kept_apart and not self.is_over:
+        if not self._is_kept_apart and not self.is_over and not self.is_pushing:
             self._is_kept_apart = not any(rect.overlaps(r) for r in self.others)
 
         # within a hair of the page's edge, on it
@@ -642,6 +915,7 @@ class TileDrag:
             min(rect.right, self.page.right),
             min(rect.bottom, self.page.bottom),
         )
+        self._push_for(self.rect)
         self.fits = (
             not keeps_shape
             and is_snapping
@@ -675,7 +949,9 @@ class TileDrag:
             else:
                 yield page, middle, GuideKind.PAGE_MIDDLE
 
-            for other in self.others:
+            for other_id, spot in self._spots.items():
+                # pushed, where it is now
+                other = self.pushed.get(other_id, spot)
                 if is_column:
                     theirs = (other.left, other.right, other.center_x)
                     is_beside = rect.is_across(other)
@@ -776,7 +1052,11 @@ class TileDrag:
         stretched = Rect(left, top, right, bottom)
         # a corner's two edges each as far as they go may meet a tile only
         # one of them was clear of
-        return stretched if self._is_valid(stretched) else rect
+        if not self._is_valid(stretched):
+            stretched = rect
+        # those pushed by a move before it, pushed for it instead
+        self._push_for(stretched)
+        return stretched
 
     # --- inside ---
 
@@ -904,7 +1184,7 @@ class TileDrag:
             return None
 
         start, page = self.start, self.page
-        others = self.others if self._is_kept_apart else []
+        others = self._in_way
         if side_x:
             beside = [o for o in others if o.is_along(start)]
             is_first = start.top <= page.top + _NEAR or any(
@@ -932,8 +1212,9 @@ class TileDrag:
         """Sized by a corner, the corner across from it where it was: as big
         as the pointer makes it (keeping its shape, the way the pointer went
         furthest), but no further than the page's edge, nor, kept apart,
-        into a tile in the way. To any shape, against one in the way it
-        slides along it: the edge that went into it the least stops at it."""
+        into a tile in the way, nor ever into a locked one. To any shape,
+        against one in the way it slides along it: the edge that went into
+        it the least stops at it."""
 
         side_x, side_y = self.handle
         start, page = self.start, self.page
@@ -945,12 +1226,11 @@ class TileDrag:
         room_y = page.bottom - y if side_y > 0 else y - page.top
         # how far from it each tile ahead begins, across and down
         ahead = []
-        if self._is_kept_apart:
-            for other in self.others:
-                begin_x, end_x = _reach(other.left, other.right, x, side_x)
-                begin_y, end_y = _reach(other.top, other.bottom, y, side_y)
-                if end_x > _HAIR and end_y > _HAIR:
-                    ahead.append((begin_x, begin_y))
+        for other in self._in_way:
+            begin_x, end_x = _reach(other.left, other.right, x, side_x)
+            begin_y, end_y = _reach(other.top, other.bottom, y, side_y)
+            if end_x > _HAIR and end_y > _HAIR:
+                ahead.append((begin_x, begin_y))
 
         width, height = rect.width, rect.height
         if keeps_shape:
@@ -978,31 +1258,42 @@ class TileDrag:
         top = y if side_y > 0 else y - height
         return Rect(left, top, left + width, top + height)
 
-    def _lines_of(self, is_column: bool) -> list[float]:
+    def _lines_of(self, is_column: bool, others: list[Rect]) -> list[float]:
         """Where an edge snaps to: the others' edges, the page's, and the
         page's middle, to split it in two."""
 
         page = self.page
         if is_column:
             lines = [page.left, page.right, page.center_x]
-            for other in self.others:
+            for other in others:
                 lines += [other.left, other.right]
         else:
             lines = [page.top, page.bottom, page.center_y]
-            for other in self.others:
+            for other in others:
                 lines += [other.top, other.bottom]
         return lines
 
-    def _middles_of(self, is_column: bool) -> list[float]:
+    def _middles_of(self, is_column: bool, others: list[Rect]) -> list[float]:
         page = self.page
         if is_column:
-            return [page.center_x, *(o.center_x for o in self.others)]
-        return [page.center_y, *(o.center_y for o in self.others)]
+            return [page.center_x, *(o.center_x for o in others)]
+        return [page.center_y, *(o.center_y for o in others)]
+
+    def _snap_lines(self, is_column: bool) -> tuple[list[float], list[float]]:
+        """Where an edge snaps to, and a middle: not where those pushed aside
+        were, which is empty, or under the tile."""
+
+        aside = {i for i, r in self.pushed.items() if r != self._spots[i]}
+        if not aside:
+            return self._lines[is_column], self._middles[is_column]
+
+        others = [r for i, r in self._spots.items() if i not in aside]
+        return self._lines_of(is_column, others), self._middles_of(is_column, others)
 
     def _snapped(self, position: float, is_column: bool, is_snapping: bool) -> float:
         if not is_snapping:
             return position
-        lines = self._lines[is_column]
+        lines, _ = self._snap_lines(is_column)
         if self._left_start[is_column]:
             start = self.start
             lines = [
@@ -1028,10 +1319,11 @@ class TileDrag:
         # where it started too: moved along a row, kept in its column
         start = self.start
         old = (start.left, start.right) if is_column else (start.top, start.bottom)
-        lines = [*self._lines[is_column], *old]
+        lines, middles = self._snap_lines(is_column)
+        lines = [*lines, *old]
 
         shifts = [line - edge for line in lines for edge in edges]
-        shifts += [line - middle for line in self._middles[is_column]]
+        shifts += [line - middle for line in middles]
         near = [shift for shift in shifts if abs(shift) <= SNAP_REACH]
         return min(near, key=abs, default=0.0)
 
@@ -1044,10 +1336,46 @@ class TileDrag:
             or rect.bottom > page.bottom + _HAIR
         ):
             return False
-        if not self._is_kept_apart:
-            return True
         # by no more than a hair: where it stops, it is up against the other
-        return not any(rect.overlaps(other, _HAIR) for other in self.others)
+        if any(rect.overlaps(other, _HAIR) for other in self._in_way):
+            return False
+        return not self.is_pushing or self._pushed(rect) is not None
+
+    @property
+    def _in_way(self) -> list[Rect]:
+        """The tiles it stops at: all the others, kept apart from them, else
+        the locked ones."""
+
+        return self.others if self._is_kept_apart else self._walls
+
+    def _pushed(self, rect: Rect) -> dict[str, Rect] | None:
+        """The others set aside for the tile at rect, from where they were
+        at the press; None if it cannot go there (see _pushed_aside)."""
+
+        if self._last_push is not None and self._last_push[0] == rect:
+            return self._last_push[1]
+
+        pushed = _pushed_aside(
+            self._spots,
+            rect,
+            self.page,
+            lambda spot: min(MIN_CELL, spot.width, spot.height),
+            kept=self.pushed,
+            fixed=self._fixed,
+        )
+        self._last_push = (rect, pushed)
+        return pushed
+
+    def _push_for(self, rect: Rect) -> None:
+        """The others set aside for the tile gone to rect: those set aside
+        before and not now back where they were."""
+
+        if not self.is_pushing:
+            return
+        pushed = self._pushed(rect)
+        if pushed is None:
+            return
+        self.pushed = {**{i: self._spots[i] for i in self.pushed}, **pushed}
 
     def _furthest(self, start, end, place):
         """The point furthest along from start to end the tile can go to,

@@ -24,8 +24,8 @@ def _tiles(**rects) -> FreeTiles:
     return tiles
 
 
-def _drag(tiles, video_id, handle, at, shape=None) -> TileDrag:
-    return TileDrag(tiles, video_id, handle, W, H, at, shape)
+def _drag(tiles, video_id, handle, at, shape=None, **kwargs) -> TileDrag:
+    return TileDrag(tiles, video_id, handle, W, H, at, shape, **kwargs)
 
 
 def _approx(rect, expected):
@@ -451,3 +451,280 @@ def test_a_tile_moved_stays_in_line_with_where_it_started():
     drag.moved((400, 350))
     _approx(drag.moved((205, 350)), (100, 300, 300, 400))
     assert said() == {(True, 100), (True, 300)}
+
+
+def _pushing(tiles, video_id, handle, at, shape=None) -> TileDrag:
+    return _drag(tiles, video_id, handle, at, shape, is_pushing=True)
+
+
+def test_a_tile_pushing_makes_the_one_it_goes_over_smaller_in_its_place():
+    tiles = _tiles(a=(100, 100, 300, 200), b=(400, 100, 600, 200))
+    drag = _pushing(tiles, "a", MOVE, (200, 150))
+
+    _approx(drag.moved((350, 150), is_snapping=False), (250, 100, 450, 200))
+    # its shape kept, in what is left of its place, away from a
+    _approx(drag.pushed["b"], (450, 112.5, 600, 187.5))
+
+
+def test_a_tile_pushed_comes_back_as_the_one_pushing_goes_away():
+    tiles = _tiles(a=(100, 100, 300, 200), b=(400, 100, 600, 200))
+    drag = _pushing(tiles, "a", MOVE, (200, 150))
+
+    drag.moved((350, 150), is_snapping=False)
+    drag.moved((200, 150), is_snapping=False)
+
+    _approx(drag.pushed["b"], (400, 100, 600, 200))
+
+
+def test_a_tile_pushed_over_a_corner_shrinks_toward_the_corner_across():
+    tiles = _tiles(a=(100, 300, 300, 400), b=(400, 100, 600, 200))
+    drag = _pushing(tiles, "a", MOVE, (200, 350))
+
+    # over its bottom right corner: as big beside a as above it
+    _approx(drag.moved((640, 220), is_snapping=False), (540, 170, 740, 270))
+    _approx(drag.pushed["b"], (400, 100, 540, 170))
+
+    # less of it down: bigger above a, still in its top left corner
+    drag.moved((640, 230), is_snapping=False)
+    _approx(drag.pushed["b"], (400, 100, 560, 180))
+
+    # less of it across: bigger beside a, the same
+    drag.moved((660, 220), is_snapping=False)
+    _approx(drag.pushed["b"], (400, 100, 560, 180))
+
+
+def test_a_tile_pushed_with_too_little_left_goes_where_there_is_room():
+    tiles = _tiles(a=(100, 100, 300, 200), b=(400, 100, 600, 200))
+    drag = _pushing(tiles, "a", MOVE, (200, 150))
+
+    a = drag.moved((450, 150), is_snapping=False)
+    b = drag.pushed["b"]
+
+    # as big as it was, clear of a, out of its place
+    assert b.width == pytest.approx(200)
+    assert b.height == pytest.approx(100)
+    assert not b.overlaps(a)
+    assert b.right <= 400 or b.left >= 600 or b.bottom <= 100 or b.top >= 200
+
+
+def test_a_tile_pushing_stops_where_one_would_be_too_small():
+    tiles = _tiles(a=(0, 0, 500, 500), b=(500, 0, 1000, 500))
+    drag = _pushing(tiles, "a", (1, 0), (500, 250))
+
+    _approx(
+        drag.moved((980, 250), is_snapping=False, keeps_shape=False), (0, 0, 952, 500)
+    )
+    _approx(drag.pushed["b"], (952, 226, 1000, 274))
+
+
+def test_a_tile_pushing_goes_over_those_it_was_over_at_the_press():
+    tiles = _tiles(a=(100, 100, 300, 200), b=(250, 100, 450, 200))
+    drag = _pushing(tiles, "a", MOVE, (200, 150))
+
+    _approx(drag.moved((250, 150), is_snapping=False), (150, 100, 350, 200))
+    assert drag.pushed == {}
+
+
+def test_room_made_for_a_tile_sets_aside_those_it_is_over():
+    tiles = _tiles(a=(250, 100, 450, 200), b=(400, 100, 600, 200), c=(0, 300, 200, 400))
+    assert tiles.make_room("a")
+
+    rects = tiles.rects(W, H)
+    _approx(rects["b"], (450, 112.5, 600, 187.5))
+    _approx(rects["c"], (0, 300, 200, 400))
+
+
+def test_room_not_made_where_one_would_be_too_small():
+    tiles = _tiles(a=(0, 0, 1000, 500), b=(400, 100, 600, 200))
+    before = dict(tiles.tiles)
+
+    assert not tiles.make_room("a")
+    assert tiles.tiles == before
+
+
+def _locked(tiles, *video_ids) -> FreeTiles:
+    for video_id in video_ids:
+        tiles.set_locked(video_id, True)
+    return tiles
+
+
+def test_a_locked_tile_has_nothing_to_move_or_size_it_by():
+    tiles = _locked(_tiles(a=(100, 100, 300, 200), b=(300, 100, 500, 200)), "b")
+
+    assert tiles.handle_at(400, 150, W, H) is None
+    assert tiles.handle_at(498, 150, W, H) is None
+    # where the two meet, the other's edge
+    assert tiles.handle_at(302, 150, W, H) == ("a", (1, 0))
+
+
+def test_a_tile_under_a_locked_one_has_nothing_there():
+    tiles = _locked(_tiles(a=(0, 0, 300, 200), b=(200, 100, 500, 300)), "a")
+
+    # a in front once locked
+    assert list(tiles.tiles) == ["b", "a"]
+    assert tiles.handle_at(250, 150, W, H) is None
+    assert tiles.handle_at(400, 250, W, H) == ("b", MOVE)
+
+
+def test_a_locked_tile_stays_in_front_of_the_others():
+    tiles = _locked(
+        _tiles(a=(0, 0, 300, 200), b=(200, 100, 500, 300), c=(250, 150, 450, 250)),
+        "a",
+    )
+
+    tiles.stack("b", is_front=True)
+    assert list(tiles.tiles) == ["c", "b", "a"]
+    # nor is a tile under it to be put in front of it, nor it behind
+    assert not tiles.is_under("b")
+    assert not tiles.is_over("a")
+
+    tiles.set_locked("a", False)
+    tiles.stack("c", is_front=True)
+    assert list(tiles.tiles) == ["b", "a", "c"]
+
+
+@pytest.mark.parametrize(
+    ("is_over", "is_pushing"), [(False, False), (True, False), (False, True)]
+)
+def test_a_tile_moved_stops_at_a_locked_one(is_over, is_pushing):
+    tiles = _locked(_tiles(a=(100, 100, 300, 200), b=(350, 0, 450, 500)), "b")
+    drag = TileDrag(
+        tiles, "a", MOVE, W, H, (200, 150), is_over=is_over, is_pushing=is_pushing
+    )
+
+    _approx(drag.moved((450, 150), is_snapping=False), (150, 100, 350, 200))
+    assert "b" not in drag.pushed
+
+
+def test_a_tile_sized_over_others_stops_at_a_locked_one():
+    tiles = _locked(_tiles(a=(100, 100, 300, 200), b=(310, 0, 500, 500)), "b")
+    drag = TileDrag(tiles, "a", (1, 1), W, H, (300, 200), 2.0, is_over=True)
+
+    _approx(drag.moved((400, 250), is_snapping=False), (100, 100, 310, 205))
+
+
+def test_a_tile_pushing_sets_aside_others_but_not_a_locked_one():
+    tiles = _locked(
+        _tiles(a=(100, 100, 300, 200), b=(400, 100, 600, 200), c=(700, 100, 900, 200)),
+        "c",
+    )
+    drag = _pushing(tiles, "a", MOVE, (200, 150))
+
+    # b pushed, a stopped at c
+    _approx(drag.moved((700, 150), is_snapping=False), (500, 100, 700, 200))
+    assert not drag.pushed["b"].overlaps(Rect(500, 100, 700, 200))
+    assert "c" not in drag.pushed
+
+
+def test_room_made_for_a_tile_leaves_a_locked_one():
+    tiles = _locked(
+        _tiles(a=(250, 100, 450, 200), b=(400, 100, 600, 200), c=(150, 50, 300, 150)),
+        "c",
+    )
+
+    assert tiles.is_crowded("a")
+    assert tiles.make_room("a")
+    rects = tiles.rects(W, H)
+    _approx(rects["b"], (450, 112.5, 600, 187.5))
+    _approx(rects["c"], (150, 50, 300, 150))
+    # with only the locked one over it, no room to make
+    assert not tiles.is_crowded("a")
+
+
+def test_videos_shuffled_leave_those_in_locked_tiles():
+    tiles = _locked(
+        _tiles(a=(0, 0, 100, 100), b=(200, 0, 300, 100), c=(400, 0, 500, 100)), "b"
+    )
+    before = tiles.rects(W, H)
+
+    tiles.shuffle()
+
+    rects = tiles.rects(W, H)
+    assert rects["b"] == before["b"]
+    assert rects["a"] == before["c"]
+    assert rects["c"] == before["a"]
+
+
+def test_a_lock_stays_with_the_tile_a_video_is_dropped_on():
+    tiles = _locked(_tiles(a=(0, 0, 100, 100), b=(200, 0, 300, 100)), "b")
+
+    tiles.drop([], None, None, None, src_id="a", dst_id="b")
+    assert tiles.locked == {"a"}
+    assert list(tiles.tiles) == ["b", "a"]
+
+    tiles.drop([], None, None, None, is_replace=True, src_id="b", dst_id="a")
+    assert tiles.locked == {"b"}
+    _approx(tiles.rects(W, H)["b"], (200, 0, 300, 100))
+
+
+def test_a_locked_tile_put_back_is_locked_again():
+    tiles = _locked(_tiles(a=(0, 0, 300, 200), b=(400, 0, 600, 200)), "a")
+    place = tiles.place_of("a", W, H)
+    tiles.remove("a")
+    assert tiles.locked == set()
+
+    assert tiles.put_back("a", place)
+    assert tiles.locked == {"a"}
+    assert list(tiles.tiles) == ["b", "a"]
+
+
+def test_the_open_area_is_the_biggest_part_no_locked_tile_is_on():
+    tiles = _tiles(a=(600, 0, 1000, 500), b=(0, 0, 100, 100))
+    assert tiles.open_area() == Box(0, 0, 1, 1)
+
+    _locked(tiles, "a")
+    assert tiles.open_area() == pytest.approx((0, 0, 0.6, 1))
+
+
+def test_a_locked_tile_over_another_is_stacked():
+    tiles = _locked(_tiles(a=(0, 0, 300, 200), b=(200, 100, 500, 300)), "a")
+
+    assert tiles.is_stacked()
+    assert tiles.is_crowded("a")
+
+
+def test_an_edge_under_a_locked_tile_has_nothing_there():
+    tiles = _locked(_tiles(a=(0, 0, 300, 200), b=(100, 50, 250, 150)), "a")
+
+    # inside a, just right of b's edge under it
+    assert tiles.handle_at(253, 100, W, H) is None
+
+
+def test_a_tile_put_back_never_goes_under_a_locked_one():
+    tiles = _locked(_tiles(a=(0, 0, 300, 200), b=(290, 0, 600, 200)), "b")
+    place = tiles.place_of("a", W, H)
+    tiles.remove("a")
+
+    assert not tiles.put_back("a", place, is_over=True)
+
+
+def test_a_video_added_goes_behind_the_locked_tiles():
+    tiles = _locked(_tiles(a=(0, 0, 500, 500)), "a")
+    tiles.shape_of = lambda _video_id: 1.0
+
+    assert tiles.add(["b"]) == []
+    assert list(tiles.tiles) == ["b", "a"]
+
+
+def test_a_tile_pushing_does_not_snap_to_where_one_pushed_was():
+    tiles = _tiles(a=(100, 100, 300, 200), b=(400, 100, 600, 200))
+    drag = _pushing(tiles, "a", MOVE, (200, 150))
+
+    drag.moved((350, 150))
+    # its right edge near b's old left one, which b has left
+    _approx(drag.moved((305, 150)), (205, 100, 405, 200))
+
+
+def test_a_stretch_that_cannot_go_puts_back_those_pushed():
+    # d locked off a's corner: its two edges stretched each way meet it
+    tiles = _locked(
+        _tiles(a=(100, 100, 300, 200), b=(310, 120, 500, 180), d=(305, 210, 400, 300)),
+        "d",
+    )
+    drag = _pushing(tiles, "a", (1, 1), (300, 200))
+
+    drag.moved((330, 215), is_snapping=False)
+    assert drag.pushed["b"] != tiles.rects(W, H)["b"]
+
+    _approx(drag.stretched(), (100, 100, 300, 200))
+    _approx(drag.pushed["b"], (310, 120, 500, 180))

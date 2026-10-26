@@ -5,6 +5,7 @@ from PyQt5.QtGui import QCursor
 from PyQt5.QtWidgets import QApplication
 
 from gridplayer.params.gestures import GESTURE_ZOOM_SELECT
+from gridplayer.params.static import TileOverlap
 from gridplayer.player.managers.layout_drag import LayoutDragManager
 from gridplayer.utils.drag_n_drop import query_drop_modifiers
 from gridplayer.utils.keymap import drop_switch_modifier, is_gesture_press
@@ -16,7 +17,7 @@ from gridplayer.widgets.grid_line_mark import (
     GridLineTag,
     tile_snap_words,
 )
-from gridplayer.widgets.tile_frame import TileFrame
+from gridplayer.widgets.tile_frame import TileFrame, TileLocks
 
 # the pointer over each edge and corner of a tile, to size it by
 _SIZE_CURSORS = {
@@ -59,12 +60,17 @@ class FreeTilesManager(LayoutDragManager):
 
     Neither goes off the page, nor over another tile unless Tile Overlap
     is on: then the tile is put in front of any it goes over as it is
-    moved or sized (see TileDrag). Each snaps to the edges and middles of
-    the others and of the page, and to where it started, shown as lines
-    while it is in line with them, a word by the pointer saying what they
-    are, unless Alt is held, or Snap Lines is off. Esc puts the tile back.
+    moved or sized (see TileDrag). With Push Aside, those it goes over are
+    made smaller, or moved where there is room, as it goes. Each snaps to
+    the edges and middles of the others and of the page, and to where it
+    started, shown as lines while it is in line with them, a word by the
+    pointer saying what they are, unless Alt is held, or Snap Lines is off.
+    Esc puts the tile back, and any it pushed.
     A double click on an edge stretches it to the next tile, or to the
     page's edge.
+
+    A locked tile is neither: a press on it is the video's, and the others
+    stop at its edges, a lock shown on it while one is moved or sized.
 
     The tile's frame shows what the pointer is about to move or size, and
     what it is (see TileFrame).
@@ -83,6 +89,7 @@ class FreeTilesManager(LayoutDragManager):
         self._guides: list[GridLineMark] = []
         self._tag: GridLineTag | None = None
         self._frame = TileFrame(self.parent())
+        self._locks = TileLocks(self.parent())
 
     @property
     def commands(self):
@@ -133,7 +140,7 @@ class FreeTilesManager(LayoutDragManager):
             self._page = pointed.page
 
         self._ctx.commands.begin_grid_change()
-        self._set_tile(drag.video_id, drag.stretched())
+        self._set_tiles(drag, drag.stretched())
         self._ctx.commands.end_grid_change()
 
         self._swallowed_buttons.add(event.button())
@@ -210,6 +217,7 @@ class FreeTilesManager(LayoutDragManager):
     def _drag_of(self, pointed: _Pointed) -> TileDrag:
         """The drag of the tile pointed at, from where the pointer is."""
 
+        overlap = self._ctx.commands.tile_overlap()
         return TileDrag(
             pointed.tiles,
             pointed.video_id,
@@ -218,7 +226,8 @@ class FreeTilesManager(LayoutDragManager):
             pointed.page.height(),
             pointed.at,
             self._shape_of(pointed.video_id),
-            is_over=self._ctx.commands.is_tile_overlap_on(),
+            is_over=overlap == TileOverlap.ON,
+            is_pushing=overlap == TileOverlap.PUSH,
         )
 
     def _shape_of(self, video_id: str) -> float | None:
@@ -277,6 +286,7 @@ class FreeTilesManager(LayoutDragManager):
         self._begin_drag()
 
         self._set_cursor(_SIZE_CURSORS.get(drag.handle, Qt.SizeAllCursor))
+        self._locks.show([_on_screen(rect, page) for rect in drag.locked])
 
     def _move_to(self, global_pos: QPoint, modifiers):
         if not self._is_free_now():
@@ -292,7 +302,7 @@ class FreeTilesManager(LayoutDragManager):
         keeps_shape = not modifiers & Qt.ShiftModifier
 
         rect = drag.moved((local.x(), local.y()), is_snapping, keeps_shape)
-        self._set_tile(drag.video_id, rect)
+        self._set_tiles(drag, rect)
         if drag.is_over:
             # over the others it goes, not under them
             self._ctx.commands.bring_free_tile_to_front(drag.video_id)
@@ -306,9 +316,13 @@ class FreeTilesManager(LayoutDragManager):
         self._show_guides(guides)
         self._show_tag(tile_snap_words(guides, drag.fits), global_pos)
 
-    def _set_tile(self, video_id, rect):
-        self._ctx.commands.set_free_tile(
-            video_id, rect, self._page.width(), self._page.height()
+    def _set_tiles(self, drag: TileDrag, rect: Rect):
+        """The tile dragged at rect, and those it pushed aside."""
+
+        self._ctx.commands.set_free_tiles(
+            {**drag.pushed, drag.video_id: rect},
+            self._page.width(),
+            self._page.height(),
         )
 
     def _finish(self):
@@ -319,6 +333,7 @@ class FreeTilesManager(LayoutDragManager):
         self._show_guides([])
         self._show_tag("", QPoint())
         self._frame.hide()
+        self._locks.hide()
 
         # still on an edge, or gone
         self._hover_under_pointer()

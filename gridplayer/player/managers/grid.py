@@ -33,9 +33,11 @@ from gridplayer.utils.layout import (
     Weights,
     grid_box,
 )
+from gridplayer.utils.layout.boxes import box_rect
 from gridplayer.utils.layout.flow_layout import DEFAULT_SHAPE
 from gridplayer.utils.layout.free_tiles import FreeTiles, Rect, TilePlace
 from gridplayer.utils.layout.lines import (
+    MIN_CELL,
     FitCell,
     GridLines,
     MovableLines,
@@ -248,16 +250,20 @@ class GridManager(ManagerBase):
             "can_resize_fixed_grid": self.can_resize_fixed_grid,
             "is_grid_free": lambda: self._is_free,
             "free_page": self.free_page,
-            "set_free_tile": self.set_free_tile,
+            "set_free_tiles": self.set_free_tiles,
             "arrange_tiles": self.cmd_arrange_tiles,
             "fit_tiles_to_window": self.cmd_fit_tiles_to_window,
             "tile_overlap": self.tile_overlap,
             "is_tile_overlap": lambda overlap: self.tile_overlap() == overlap,
-            "is_tile_overlap_on": self.is_tile_overlap_on,
             "set_tile_overlap": self.set_tile_overlap,
             "is_tiles_stacked": self.is_tiles_stacked,
             "is_tile_stackable": self.is_tile_stackable,
             "stack_tile": self.cmd_stack_tile,
+            "is_tile_lockable": self.is_tile_lockable,
+            "is_tile_locked": self.is_tile_locked,
+            "lock_tile": self.cmd_lock_tile,
+            "is_tile_room_makeable": self.is_tile_room_makeable,
+            "make_room": self.cmd_make_room,
             "bring_free_tile_to_front": self.bring_free_tile_to_front,
         }
 
@@ -316,6 +322,7 @@ class GridManager(ManagerBase):
                 for video_id, box in self._free.tiles.items()
             ],
             page_shape=self._free.page_shape if self._free.tiles else None,
+            locked_tiles=[i for i in self._free.tiles if i in self._free.locked],
         )
 
     def set_grid_state(self, state: GridState) -> None:
@@ -354,6 +361,7 @@ class GridManager(ManagerBase):
         self._free.tiles = {
             tile.video_id: Box(*tile.box) for tile in state.tiles if len(tile.box) == 4
         }
+        self._free.locked = set(state.locked_tiles) & set(self._free.tiles)
         if state.page_shape:
             self._free.page_shape = state.page_shape
         self._is_arranged = False
@@ -763,10 +771,15 @@ class GridManager(ManagerBase):
         if not tiles.add([f"new {index}" for index in range(count)]):
             return True
 
+        return self._ask_to_arrange(
+            translate("Dialog - Free Tiles", "No room for the new videos.")
+        )
+
+    def _ask_to_arrange(self, text: str) -> bool:
         return QCustomMessageBox.confirm(
             self.parent(),
             translate("Dialog - Free Tiles", "Free Tiles", "Header"),
-            translate("Dialog - Free Tiles", "No room for the new videos."),
+            text,
             translate("Dialog - Free Tiles", "Arrange"),
             info=translate("Dialog - Free Tiles", "Arrange all videos to make room?"),
         )
@@ -1163,7 +1176,7 @@ class GridManager(ManagerBase):
             return
 
         with self._undoable():
-            self._free.tiles = {}
+            self._free.clear()
             self._mode = GridMode.FIXED
             self._grid_layout.apply_template(template, ordered[:capacity])
             self._weights = EVEN
@@ -1225,7 +1238,7 @@ class GridManager(ManagerBase):
             self._ctx.video_blocks.blocks_for_ids(extra_ids)
         )
 
-        self._free.tiles = {}
+        self._free.clear()
         self._mode = GridMode.FIXED
         self._grid_layout.max_rows = rows
         self._grid_layout.max_cols = cols
@@ -1296,7 +1309,7 @@ class GridManager(ManagerBase):
         """The tiles let go of, the videos in the order they are read in."""
 
         self._flow.ids = self._free.order()
-        self._free.tiles = {}
+        self._free.clear()
 
     def _area_size(self) -> tuple[int, int]:
         area = self._grid.geometry()
@@ -1324,7 +1337,8 @@ class GridManager(ManagerBase):
 
     def cmd_arrange_tiles(self):
         """The tiles laid out anew as Fit Shapes would, on a page the shape
-        of the area, the videos in the order they are read in."""
+        of the area, the videos in the order they are read in: those not
+        locked, in the biggest part of it the locked ones are not on."""
 
         if not self._is_free:
             return
@@ -1335,7 +1349,8 @@ class GridManager(ManagerBase):
 
     def cmd_fit_tiles_to_window(self):
         """The tiles made as big as the window lets them, all together, as
-        they are placed among themselves: no room left around them."""
+        they are placed among themselves: no room left around them. Those
+        locked too, as a window made bigger makes them."""
 
         if not self._is_free:
             return
@@ -1349,16 +1364,24 @@ class GridManager(ManagerBase):
 
     def _arrange(self) -> None:
         width, height = self._area_size()
+        self._free.fill(width, height)
 
         live = self._ctx.video_blocks.video_ids
         ids = [i for i in self._free.order() if i in set(live)]
         ids += [i for i in live if i not in ids]
 
-        flow = FlowLayout(mode=FlowMode.SHAPES, ids=ids)
-        flow.fit_to(width, height, {i: self._shape_of(i) for i in ids})
+        # in the room the locked tiles leave; with too little, all of them
+        area = self._free.open_area()
+        _, _, area_width, area_height = box_rect(area or FULL_BOX, width, height)
+        if area is not None and min(area_width, area_height) >= MIN_CELL:
+            ids = [i for i in ids if i not in self._free.locked]
+        else:
+            area, area_width, area_height = FULL_BOX, width, height
 
-        self._free.tiles = dict(flow.boxes())
-        self._free.page_shape = width / height
+        flow = FlowLayout(mode=FlowMode.SHAPES, ids=ids)
+        flow.fit_to(area_width, area_height, {i: self._shape_of(i) for i in ids})
+
+        self._free.arrange(flow.boxes(), area)
         self._unshaped = {i for i in ids if not self._is_shape_known(i)}
         self._is_arranged = True
 
@@ -1395,7 +1418,7 @@ class GridManager(ManagerBase):
         """The tiles to move and size by hand now, and where their page is
         on the screen: in Free Tiles, out of Single Mode. The page is all of
         the area, the room beside the tiles' own free to move them to (see
-        set_free_tile)."""
+        set_free_tiles)."""
 
         if not self._is_free or self._ctx.is_single_mode:
             return None
@@ -1406,14 +1429,16 @@ class GridManager(ManagerBase):
 
         return FreePage(self._free.filled(area.width(), area.height()), area)
 
-    def set_free_tile(
-        self, video_id: str, rect: Rect, page_width: float, page_height: float
+    def set_free_tiles(
+        self, rects: dict[str, Rect], page_width: float, page_height: float
     ) -> None:
-        """A tile moved or sized by hand, on a page of this size (see
-        TileDrag): the area it was, which the page now takes the shape of."""
+        """Tiles moved or sized by hand: one, and those it pushed aside, on
+        a page of this size (see TileDrag): the area it was, which the page
+        now takes the shape of."""
 
         self._free.fill(page_width, page_height)
-        self._free.set_rect(video_id, rect, page_width, page_height)
+        for video_id, rect in rects.items():
+            self._free.set_rect(video_id, rect, page_width, page_height)
         self._is_arranged = False
         self._grid.invalidate()
 
@@ -1436,14 +1461,20 @@ class GridManager(ManagerBase):
         """Whether the active video's tile is under another, to be put in
         front ("front"), or over another, to be put behind ("back")."""
 
-        video_id = self._active_id()
-        if not self._is_free or self._ctx.is_single_mode:
-            return False
-        if video_id not in self._free.tiles:
+        video_id = self._active_tile()
+        if video_id is None:
             return False
         if where == "front":
             return self._free.is_under(video_id)
         return self._free.is_over(video_id)
+
+    def _active_tile(self) -> str | None:
+        """The active video, with a tile to move or size by hand now."""
+
+        video_id = self._active_id()
+        if not self._is_free or self._ctx.is_single_mode:
+            return None
+        return video_id if video_id in self._free.tiles else None
 
     def cmd_stack_tile(self, where: str) -> None:
         if not self.is_tile_stackable(where):
@@ -1452,6 +1483,53 @@ class GridManager(ManagerBase):
         with self._undoable():
             self._free.stack(self._active_id(), where == "front")
         self._grid.invalidate()
+
+    def is_tile_lockable(self) -> bool:
+        return self._active_tile() is not None
+
+    def is_tile_locked(self) -> bool:
+        return self._active_id() in self._free.locked
+
+    def cmd_lock_tile(self) -> None:
+        """The active video's tile locked, in front of the others, or let
+        go of (see FreeTiles)."""
+
+        video_id = self._active_tile()
+        if video_id is None:
+            return
+
+        with self._undoable():
+            self._free.set_locked(video_id, video_id not in self._free.locked)
+        self._grid.invalidate()
+
+    def is_tile_room_makeable(self) -> bool:
+        """Whether the active video's tile is over another not locked, or
+        under, for room to be made for it (see cmd_make_room)."""
+
+        video_id = self._active_tile()
+        return video_id is not None and self._free.is_crowded(video_id)
+
+    def cmd_make_room(self) -> None:
+        """The tiles the active video's is over, or under, set aside: each
+        made smaller in its own place, or put where there is room (see
+        FreeTiles.make_room). With too little room, asks to arrange them all."""
+
+        if not self.is_tile_room_makeable():
+            return
+
+        tiles = self._free.filled(*self._area_size())
+        if tiles.make_room(self._active_id()):
+            with self._undoable():
+                self._free.tiles = tiles.tiles
+                self._free.page_shape = tiles.page_shape
+                self._is_arranged = False
+            self._grid.invalidate()
+            return
+
+        if self._ask_to_arrange(
+            translate("Dialog - Free Tiles", "No room for the tiles it covers.")
+        ):
+            self.cmd_arrange_tiles()
 
     def bring_free_tile_to_front(self, video_id: str) -> None:
         """A tile in front of the others, as one being moved or sized over
@@ -1660,6 +1738,9 @@ class GridManager(ManagerBase):
                 if self._free.put_back(video_id, place, is_over):
                     return
             self._add_tiles([video_id])
+            # elsewhere, still locked
+            if isinstance(place, TilePlace) and place.is_locked:
+                self._free.set_locked(video_id, True)
             return
 
         if self._is_fixed:

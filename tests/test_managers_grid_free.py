@@ -218,7 +218,7 @@ def test_a_tile_moved_by_hand_is_only_made_its_videos_shape():
     manager = _manager({"A": None, "B": None})
     manager._mode = GridMode.FREE
     manager._reconcile_layout()
-    manager.set_free_tile("B", Rect(600, 100, 1000, 400), 1000, 500)
+    manager.set_free_tiles({"B": Rect(600, 100, 1000, 400)}, 1000, 500)
 
     manager._ctx.video_blocks.by_video_id("B").picture_shape = 1.0
     manager.fit_to_shapes()
@@ -287,7 +287,7 @@ def test_a_tile_moved_makes_the_page_the_areas_shape(mocker):
     mocker.patch.object(manager, "grid_area", return_value=_area(0, 0, 1000, 700))
 
     # moved into the room below the layout's own page
-    manager.set_free_tile("A", Rect(0, 500, 400, 700), 1000, 700)
+    manager.set_free_tiles({"A": Rect(0, 500, 400, 700)}, 1000, 700)
 
     assert manager._free.page_shape == pytest.approx(1000 / 700)
     rects = manager._free.rects(1000, 700)
@@ -444,9 +444,116 @@ def test_a_tile_put_back_on_esc_leaves_nothing_to_undo():
 
     manager.begin_grid_change()
     # on a window taller than the page: its shape made the window's
-    manager.set_free_tile("A", Rect(0, 500, 400, 700), 1000, 700)
+    manager.set_free_tiles({"A": Rect(0, 500, 400, 700)}, 1000, 700)
     manager.cancel_grid_change()
     manager.end_grid_change()
 
     assert manager.grid_state() == before
     assert not manager._undo
+
+
+def test_room_made_for_a_tile_sets_aside_those_it_covers_and_can_be_undone():
+    manager = _manager({"A": 2.0, "B": 2.0})
+    _free(manager, A=(250, 100, 450, 200), B=(400, 100, 600, 200))
+    manager._ctx.active_block = manager._ctx.video_blocks.by_video_id("A")
+    before = dict(manager._free.tiles)
+
+    assert manager.is_tile_room_makeable()
+    manager.cmd_make_room()
+
+    rects = _rects(manager)
+    assert not _overlapping(rects)
+    assert rects["A"] == pytest.approx(Rect(250, 100, 450, 200))
+    assert not manager.is_tile_room_makeable()
+
+    manager.cmd_undo_grid()
+    assert manager._free.tiles == before
+
+
+def test_room_made_with_too_little_asks_to_arrange(mocker):
+    manager = _manager({"A": 2.0, "B": 2.0})
+    _free(manager, A=(0, 0, 1000, 500), B=(400, 100, 600, 200))
+    manager._ctx.active_block = manager._ctx.video_blocks.by_video_id("A")
+    question = mocker.patch(
+        "gridplayer.player.managers.grid.QCustomMessageBox.confirm",
+        return_value=True,
+    )
+
+    manager.cmd_make_room()
+
+    question.assert_called_once()
+    assert not _overlapping(_rects(manager))
+
+
+def test_a_tile_locked_is_kept_in_the_grid_state_and_can_be_undone(mocker):
+    manager = _manager({"A": 2.0, "B": 2.0})
+    _free(manager, A=(0, 0, 300, 200), B=(200, 100, 500, 300))
+    manager._ctx.active_block = manager._ctx.video_blocks.by_video_id("A")
+    assert manager.is_tile_lockable()
+
+    manager.cmd_lock_tile()
+
+    assert manager.is_tile_locked()
+    assert list(manager._free.tiles) == ["B", "A"]
+
+    loaded = _manager({"A": 2.0, "B": 2.0})
+    mocker.patch.object(loaded, "_render_video_grid")
+    state = manager.grid_state()
+    loaded.set_grid_state(GridState.model_validate(state.model_dump(mode="json")))
+    assert loaded._free.locked == {"A"}
+
+    manager.cmd_undo_grid()
+    assert not manager.is_tile_locked()
+    assert list(manager._free.tiles) == ["A", "B"]
+
+
+def test_tiles_arranged_leave_a_locked_one_where_it_is():
+    manager = _manager({"A": 2.0, "B": 2.0, "C": 2.0})
+    _free(manager, A=(600, 0, 1000, 500), B=(0, 0, 200, 100), C=(700, 300, 900, 400))
+    manager._free.set_locked("A", True)
+
+    manager.cmd_arrange_tiles()
+
+    rects = _rects(manager)
+    _approx(rects["A"], (600, 0, 1000, 500))
+    assert not _overlapping(rects)
+    # the others in the room left of it, one above the other
+    _approx(rects["B"], (50, 0, 550, 250))
+    _approx(rects["C"], (50, 250, 550, 500))
+    assert list(manager._free.tiles)[-1] == "A"
+
+
+def test_leaving_free_tiles_lets_go_of_the_locks():
+    manager = _manager({"A": 2.0})
+    _free(manager, A=(0, 0, 300, 200))
+    manager._free.set_locked("A", True)
+
+    manager._leave_free()
+
+    assert manager._free.locked == set()
+
+
+def test_tiles_arranged_with_no_room_left_by_the_locked_ones_are_all_arranged():
+    manager = _manager({"A": 2.0, "B": 2.0})
+    _free(manager, A=(0, 0, 1000, 500), B=(100, 100, 300, 200))
+    manager._free.set_locked("A", True)
+
+    manager.cmd_arrange_tiles()
+
+    rects = _rects(manager)
+    assert not _overlapping(rects)
+    assert rects["B"].width > 300
+
+
+def test_a_locked_video_reopened_elsewhere_is_still_locked():
+    manager = _manager({"A": 2.0, "B": 2.0})
+    _free(manager, A=(0, 0, 400, 200), B=(500, 0, 900, 200))
+    manager._free.set_locked("B", True)
+    place = manager.place_of("B")
+    manager._free.remove("B")
+    manager._free.set_rect("A", Rect(400, 0, 800, 200), 1000, 500)
+
+    manager._put_back("B", place)
+
+    assert manager._free.locked == {"B"}
+    assert not _overlapping(_rects(manager))

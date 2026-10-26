@@ -180,4 +180,5 @@ def grid_state_for_dump(live) -> GridState:
         strip_share=live.strip_share,
         tiles=[tile.model_copy() for tile in live.tiles],
         page_shape=live.page_shape,
+        locked_tiles=list(live.locked_tiles),
     )

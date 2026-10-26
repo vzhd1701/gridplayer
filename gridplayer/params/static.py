@@ -64,11 +64,12 @@ class GridMode(AutoName):
     FREE = auto()
 
 
-# Free Tiles: whether a tile moved or sized goes over another, or stops at
-# its edge
+# Free Tiles: whether a tile moved or sized goes over another, stops at its
+# edge, or pushes it aside
 class TileOverlap(AutoName):
     OFF = auto()
     ON = auto()
+    PUSH = auto()
 
 
 # Single Mode's strip: none; the others in it, the one picked trading places

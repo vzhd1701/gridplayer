@@ -355,7 +355,8 @@ PLAYLIST_FIELDS: tuple[SettingField, ...] = (
         shown_when=When("playlist/grid_mode", (GridMode.FREE,)),
         tooltip=translate(
             "Tile Overlap",
-            "Whether a tile you move or size can go over the others.",
+            "Whether a tile you move or size can go over the others, or"
+            " pushes them aside.",
         ),
     ),
     ComboField(

@@ -48,3 +48,5 @@ class GridState(BaseModel):
     # page's width over its height (see FreeTiles)
     tiles: list[GridTile] = Field(default_factory=list)
     page_shape: float | None = None
+    # the videos whose tiles are locked
+    locked_tiles: list[str] = Field(default_factory=list)

@@ -469,6 +469,7 @@ class Playlist(BaseModel):
         for listed in (
             "sizes",
             "tiles",
+            "locked_tiles",
             "col_weights",
             "row_weights",
             "line_weights",

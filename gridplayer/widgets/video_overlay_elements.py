@@ -410,6 +410,42 @@ def _theme_color(role: QPalette.ColorRole) -> QColor:
     return QApplication.palette().color(role)
 
 
+# a drag's disc on a cell: this share of its shorter side, no smaller than
+# this, in pixels
+DISC_SHARE = 0.6
+DISC_LEAST = 24.0
+
+
+def disc_line(radius: float) -> float:
+    """How thick the lines of a glyph on a disc this big are."""
+
+    return max(2.0, radius * 0.145)
+
+
+def paint_faded(painter: QPainter, area: QRect, opacity: float, paint) -> None:
+    """What paint draws in area, let through as one, this much of it: drawn
+    faded stroke by stroke, a glyph's strokes would come out darker where
+    they cross, and a glyph solid on a faded disc reads as a dark disc on the
+    picture. Made anew at every paint."""
+
+    ratio = painter.device().devicePixelRatioF()
+    layer = QImage(
+        round(area.width() * ratio),
+        round(area.height() * ratio),
+        QImage.Format_ARGB32_Premultiplied,
+    )
+    layer.setDevicePixelRatio(ratio)
+    layer.fill(Qt.transparent)
+
+    layer_painter = QPainter(layer)
+    layer_painter.translate(-area.topLeft())
+    paint(layer_painter)
+    layer_painter.end()
+
+    painter.setOpacity(opacity)
+    painter.drawImage(area.topLeft(), layer)
+
+
 def paint_box_shadow(painter: QPainter, path: QPainterPath, peak_alpha: float):
     """A soft shadow round a box, outside it only: strokes along its edge,
     fainter the wider, adding up to darkest at the edge, a pixel lower.
@@ -2445,29 +2481,9 @@ class OverlayDiscBadge(OverlayWidget):
             self._paint_disc(painter)
             return
 
-        # Painted solid first and let through as one: faded stroke by stroke,
-        # the glyph's strokes would come out darker where they cross, and a
-        # glyph solid on a faded disc reads as a dark disc on the picture.
-        # As large as the disc, the rest of it being empty: it is made anew
-        # at every paint.
+        # as large as the disc, the rest of it being empty
         area = self._glyph_rect().toAlignedRect().adjusted(-1, -1, 1, 1)
-
-        ratio = self.devicePixelRatioF()
-        layer = QImage(
-            round(area.width() * ratio),
-            round(area.height() * ratio),
-            QImage.Format_ARGB32_Premultiplied,
-        )
-        layer.setDevicePixelRatio(ratio)
-        layer.fill(Qt.transparent)
-
-        layer_painter = QPainter(layer)
-        layer_painter.translate(-area.topLeft())
-        self._paint_disc(layer_painter)
-        layer_painter.end()
-
-        painter.setOpacity(self.opacity)
-        painter.drawImage(area.topLeft(), layer)
+        paint_faded(painter, area, self.opacity, self._paint_disc)
 
     def _paint_disc(self, painter: QPainter):
         circle = self._glyph_rect()
@@ -2487,7 +2503,7 @@ class OverlayDiscBadge(OverlayWidget):
         return bool(getattr(self.parent(), "is_opaque", False))
 
     def _glyph_rect(self) -> QRectF:
-        side = max(min(self.width(), self.height()) * 0.6, 24.0)
+        side = max(min(self.width(), self.height()) * DISC_SHARE, DISC_LEAST)
         return QRectF(
             (self.width() - side) / 2,
             (self.height() - side) / 2,
@@ -2590,7 +2606,7 @@ class OverlayDropIndicator(OverlayDiscBadge):
     def _draw_replace(self, painter: QPainter, circle: QRectF):
         cx, cy = circle.center().x(), circle.center().y()
         arm = circle.width() / 2 * 0.38
-        stroke = max(2.0, circle.width() / 2 * 0.145)
+        stroke = disc_line(circle.width() / 2)
         painter.setPen(QPen(self.glyph_color, stroke, Qt.SolidLine, Qt.RoundCap))
         painter.drawLine(QPointF(cx - arm, cy - arm), QPointF(cx + arm, cy + arm))
         painter.drawLine(QPointF(cx + arm, cy - arm), QPointF(cx - arm, cy + arm))
@@ -2598,7 +2614,7 @@ class OverlayDropIndicator(OverlayDiscBadge):
     def _draw_add_to_list(self, painter: QPainter, circle: QRectF):
         cx, cy = circle.center().x(), circle.center().y()
         arm = circle.width() / 2 * 0.5
-        stroke = max(2.0, circle.width() / 2 * 0.145)
+        stroke = disc_line(circle.width() / 2)
         painter.setPen(QPen(self.glyph_color, stroke, Qt.SolidLine, Qt.RoundCap))
         painter.drawLine(QPointF(cx - arm, cy), QPointF(cx + arm, cy))
         painter.drawLine(QPointF(cx, cy - arm), QPointF(cx, cy + arm))
@@ -2607,7 +2623,7 @@ class OverlayDropIndicator(OverlayDiscBadge):
         cx, cy = circle.center().x(), circle.center().y()
         radius = circle.width() / 2
         length = radius * 0.52
-        stroke = max(2.0, radius * 0.145)
+        stroke = disc_line(radius)
         painter.setPen(QPen(self.glyph_color, stroke, Qt.SolidLine, Qt.RoundCap))
         for deg in (90.0, 150.0, 210.0):
             rad = math.radians(deg)
@@ -2645,7 +2661,7 @@ class OverlayDropIndicator(OverlayDiscBadge):
         cx, cy = circle.center().x(), circle.center().y()
         radius = circle.width() / 2
         arc_r = radius * 0.44
-        stroke = max(2.0, radius * 0.145)
+        stroke = disc_line(radius)
         color = self.glyph_color
 
         pen = QPen(color, stroke, Qt.SolidLine, Qt.FlatCap, Qt.RoundJoin)

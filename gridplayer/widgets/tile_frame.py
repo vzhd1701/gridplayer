@@ -1,10 +1,23 @@
-from PyQt5.QtCore import QPointF, QRect, Qt
-from PyQt5.QtGui import QColor, QPainter, QPainterPath, QPen
+from PyQt5.QtCore import QPointF, QRect, QRectF, Qt
+from PyQt5.QtGui import (
+    QColor,
+    QPainter,
+    QPainterPath,
+    QPainterPathStroker,
+    QPen,
+    QRegion,
+)
 from PyQt5.QtWidgets import QWidget
 
 from gridplayer.utils.compositor_linux import is_compositor_running
 from gridplayer.utils.layout.free_tiles import MOVE, Handle
 from gridplayer.widgets.grid_line_mark import EDGE_COLOR, FloatingMark
+from gridplayer.widgets.video_overlay_elements import (
+    DISC_LEAST,
+    DISC_SHARE,
+    disc_line,
+    paint_faded,
+)
 
 # how thick each kind of line is: the outline and where the tile started a
 # hairline, the edges it is sized by a bar
@@ -33,6 +46,12 @@ GAP_COLOR = QColor(17, 17, 17, 200)
 SHADOW = ((4, 40), (2, 70))
 # room around a line for its shadow, in its window
 MARGIN = 4
+
+# the mark on a locked tile, as a drop's is on a cell (see OverlayDiscBadge):
+# let through as much as an overlay over a video is
+LOCK_DISC_OPACITY = 0.5
+DISC_COLOR = QColor(0, 0, 0)
+GLYPH_COLOR = QColor(255, 255, 255)
 
 
 class _Piece(FloatingMark):
@@ -221,3 +240,98 @@ class TileFrame:
         for piece in pool[len(paths) :]:
             if piece.isVisible():
                 piece.hide()
+
+
+def _lock(disc: QRectF) -> QPainterPath:
+    """A lock in a disc, as the drop's glyphs are, its line as thick: its
+    shackle's line made a shape, its body, and the keyhole cut out of it."""
+
+    radius = disc.width() / 2
+    x, y = disc.center().x(), disc.center().y()
+    stroke = disc_line(radius)
+
+    def at(dx: float, dy: float) -> QPointF:
+        return QPointF(x + dx * radius, y + dy * radius)
+
+    # the legs, from in the body up to where the shackle bends
+    legs, bend = 0.24, -0.2
+    line = QPainterPath(at(-legs, 0.1))
+    line.lineTo(at(-legs, bend))
+    line.arcTo(QRectF(at(-legs, bend - legs), at(legs, bend + legs)), 180, -180)
+    line.lineTo(at(legs, 0.1))
+
+    stroker = QPainterPathStroker()
+    stroker.setWidth(stroke)
+    stroker.setCapStyle(Qt.FlatCap)
+    stroker.setJoinStyle(Qt.RoundJoin)
+
+    body = QPainterPath()
+    body.addRoundedRect(QRectF(at(-0.4, -0.02), at(0.4, 0.52)), stroke, stroke)
+
+    # a slot as wide as most of the line, round at its ends
+    hole = QPainterPath()
+    width = stroke * 0.8
+    slot = QRectF(x - width / 2, y + 0.12 * radius, width, 0.26 * radius)
+    hole.addRoundedRect(slot, width / 2, width / 2)
+
+    return stroker.createStroke(line).united(body).subtracted(hole)
+
+
+class _LockBadge(FloatingMark):
+    """A lock on a dark disc, filling the window, in the middle of a locked
+    tile: let through as an overlay is, where something draws see-through
+    windows; else solid, the window cut to the disc."""
+
+    def __init__(self, parent):
+        super().__init__(parent)
+
+        self._is_translucent = is_compositor_running()
+        if self._is_translucent:
+            self.setAttribute(Qt.WA_TranslucentBackground)
+
+    def resizeEvent(self, event) -> None:
+        if not self._is_translucent:
+            self.setMask(QRegion(self.rect(), QRegion.Ellipse))
+
+    def paintEvent(self, event) -> None:
+        painter = QPainter(self)
+        if self._is_translucent:
+            paint_faded(painter, self.rect(), LOCK_DISC_OPACITY, self._paint_disc)
+        else:
+            self._paint_disc(painter)
+
+    def _paint_disc(self, painter: QPainter) -> None:
+        disc = QRectF(self.rect())
+        painter.setRenderHint(QPainter.Antialiasing)
+        painter.setPen(Qt.NoPen)
+        painter.setBrush(DISC_COLOR)
+        painter.drawEllipse(disc)
+        painter.fillPath(_lock(disc), GLYPH_COLOR)
+
+
+class TileLocks:
+    """The locked tiles, marked while another is moved or sized: those it
+    stops at, or goes nowhere near."""
+
+    def __init__(self, parent: QWidget):
+        self._parent = parent
+        self._badges: list[_LockBadge] = []
+
+    def show(self, rects: list[QRect]) -> None:
+        """A mark in the middle of each tile at rects, on the screen."""
+
+        while len(self._badges) < len(rects):
+            self._badges.append(_LockBadge(self._parent))
+
+        for badge, rect in zip(self._badges, rects):
+            side = round(max(min(rect.width(), rect.height()) * DISC_SHARE, DISC_LEAST))
+            box = QRect(0, 0, side, side)
+            box.moveCenter(rect.center())
+            badge.show_at(box)
+
+        for badge in self._badges[len(rects) :]:
+            if badge.isVisible():
+                badge.hide()
+
+    def hide(self) -> None:
+        self.show([])

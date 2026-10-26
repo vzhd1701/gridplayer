@@ -54,9 +54,8 @@ def _by_name(d, name):
 
 def _set(d, name, rect):
     page = _page(d)
-    d.ctx.commands.set_free_tile(
-        _by_name(d, name).video_id,
-        Rect(*rect),
+    d.ctx.commands.set_free_tiles(
+        {_by_name(d, name).video_id: Rect(*rect)},
         page.rect.width(),
         page.rect.height(),
     )

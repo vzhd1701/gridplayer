@@ -142,6 +142,8 @@ SECTIONS = MappingProxyType(
             ),
             "Bring to Front",
             "Send to Back",
+            "Make Room",
+            "Lock Tile",
             "Show Big",
             "Single Mode ON / OFF",
             (
