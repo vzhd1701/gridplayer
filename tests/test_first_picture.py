@@ -424,6 +424,7 @@ def _block_showing_overlays(mocker, is_picture_pending):
     block = mocker.Mock()
     block.video_driver.is_picture_pending = is_picture_pending
     block._ctx.is_drag_ui = False
+    block._is_layout_drag = False
     block._ctx.is_disable_overlay = False
     block._ctx.is_overlay_hide_on_timeout = False
     block.is_loading = False

@@ -432,6 +432,7 @@ def test_show_overlay_while_loading(mocker):
 
     block = mocker.Mock()
     block._ctx.is_drag_ui = False
+    block._is_layout_drag = False
     block._ctx.is_disable_overlay = False
     block.is_overlay_fits = True
     block._ctx.is_overlay_hide_on_timeout = False
@@ -448,6 +449,7 @@ def test_show_overlay_while_loading(mocker):
 def test_show_overlay_on_error(mocker):
     block = mocker.Mock()
     block._ctx.is_drag_ui = False
+    block._is_layout_drag = False
     block._ctx.is_disable_overlay = False
     block.is_overlay_fits = True
     block._ctx.is_overlay_hide_on_timeout = False
@@ -567,6 +569,7 @@ def test_overlay_mode_kept_while_it_stays_hidden(
 def test_show_overlay_skipped_when_cell_hidden(mocker):
     block = mocker.Mock()
     block._ctx.is_drag_ui = False
+    block._is_layout_drag = False
     block._ctx.is_disable_overlay = False
     block.is_overlay_fits = True
     block.is_loading = False
@@ -582,6 +585,7 @@ def test_show_overlay_skipped_when_cell_hidden(mocker):
 def test_show_overlay_skipped_when_cell_too_small(mocker):
     block = mocker.Mock()
     block._ctx.is_drag_ui = False
+    block._is_layout_drag = False
     block._ctx.is_disable_overlay = False
     block.is_overlay_fits = False
     block.is_loading = False
@@ -903,3 +907,28 @@ def test_set_drag_ui_hides_opaque_overlay_before_chrome_change(mocker):
     VideoBlock.set_drag_ui(block, True)
 
     assert order == ["hide", "chrome"]
+
+
+def test_overlays_are_hidden_while_a_tile_is_dragged_and_shown_again(mocker):
+    block = mocker.Mock()
+    block.overlay.is_shown = True
+
+    VideoBlock.set_layout_drag(block, True)
+
+    block.overlay.hide.assert_called_once()
+    block.overlay_hide_timer.stop.assert_called_once()
+
+    VideoBlock.set_layout_drag(block, False)
+
+    block.show_overlay.assert_called_once()
+    assert not block._is_layout_drag
+
+
+def test_an_overlay_hidden_before_a_tile_is_dragged_stays_hidden(mocker):
+    block = mocker.Mock()
+    block.overlay.is_shown = False
+
+    VideoBlock.set_layout_drag(block, True)
+    VideoBlock.set_layout_drag(block, False)
+
+    block.show_overlay.assert_not_called()

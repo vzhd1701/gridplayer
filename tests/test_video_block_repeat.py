@@ -157,6 +157,7 @@ def test_loop_start_without_end_loops_when_close(mocker):
 def test_stopped_overlay_uses_hide_timer(mocker):
     block = mocker.Mock()
     block._ctx.is_drag_ui = False
+    block._is_layout_drag = False
     block._ctx.is_disable_overlay = False
     block._ctx.is_overlay_hide_on_timeout = True
     block._ctx.overlay_timeout = 3

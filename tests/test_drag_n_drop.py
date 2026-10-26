@@ -90,9 +90,21 @@ def _left_press():
     return QMouseEvent(
         QEvent.MouseButtonPress,
         QPointF(10, 20),
+        QPointF(510, 520),
         Qt.LeftButton,
         Qt.LeftButton,
         Qt.ControlModifier,
+    )
+
+
+def _left_move(local, screen):
+    return QMouseEvent(
+        QEvent.MouseMove,
+        QPointF(*local),
+        QPointF(*screen),
+        Qt.NoButton,
+        Qt.LeftButton,
+        Qt.NoModifier,
     )
 
 
@@ -104,7 +116,26 @@ def test_a_left_press_is_the_start_of_moving_the_video(mocker):
 
     manager.mousePressEvent(_left_press())
 
-    assert manager._drag_start_position == QPoint(10, 20)
+    assert manager._drag_start_position == QPoint(510, 520)
+
+
+def test_a_drag_starts_once_the_pointer_has_gone_far_enough_on_the_screen(mocker):
+    """A press seen at the cell, a move seen at the window: each where it
+    is in its own, but the pointer gone 4 pixels."""
+
+    manager, _parent = _make_manager()
+    manager._ctx.active_block = object()
+    mocker.patch(
+        "gridplayer.player.managers.drag_n_drop.is_modal_open", return_value=False
+    )
+    mocker.patch(
+        "gridplayer.player.managers.drag_n_drop.QApplication.startDragDistance",
+        return_value=10,
+    )
+    manager.mousePressEvent(_left_press())
+
+    assert not manager._is_drag_started(_left_move((214, 320), (514, 520)))
+    assert manager._is_drag_started(_left_move((225, 320), (525, 520)))
 
 
 def test_a_press_that_drags_the_picture_moves_no_video(mocker):
@@ -566,7 +597,7 @@ class TestAWindowOverThePlayer:
     def test_the_player_s_own_still_moves_the_video(self, manager):
         manager.eventFilter(QWidget(self.player), _left_press())
 
-        assert manager._drag_start_position == QPoint(10, 20)
+        assert manager._drag_start_position == QPoint(510, 520)
         assert self.activated == [True]
 
     def test_a_drag_gone_on_to_it_is_off_the_player(self, manager, mocker):

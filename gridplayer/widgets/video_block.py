@@ -226,6 +226,10 @@ class VideoBlock(QWidget):
         self._ctx.bookmarks.changed.connect(self.update_seek_marks)
 
         # Components
+        # a tile, or a line between cells, dragged; the overlay hidden
+        # for it, to be shown again after
+        self._is_layout_drag = False
+        self._is_overlay_held_back = False
         self.overlay_hide_timer = QTimer(self)
         self.overlay_hide_timer.setSingleShot(True)
         self.overlay_hide_timer.timeout.connect(self.hide_overlay)
@@ -1159,6 +1163,22 @@ class VideoBlock(QWidget):
             return
         self.show_overlay()
 
+    def set_layout_drag(self, is_layout_drag: bool):
+        """A tile, or a line between cells, dragged: no overlay shown, for
+        the pointer to go over on its way, nor drawn anew under it (see
+        LayoutDragManager); shown again after, if it was."""
+
+        self._is_layout_drag = is_layout_drag
+        if is_layout_drag:
+            self._is_overlay_held_back = self.overlay.is_shown
+            self.overlay_hide_timer.stop()
+            self.overlay.hide()
+            return
+
+        if self._is_overlay_held_back:
+            self._is_overlay_held_back = False
+            self.show_overlay()
+
     @property
     def is_stopped(self) -> bool:
         return bool(self.video_params and self.video_params.is_stopped)
@@ -1194,6 +1214,8 @@ class VideoBlock(QWidget):
         # over a playing one
         self.status.sync_overlay_mode()
         if self._ctx.is_drag_ui or self._ctx.is_disable_overlay:
+            return
+        if self._is_layout_drag:
             return
         # Hardware overlays are windows of their own; do not remap them while
         # this cell is hidden (single-mode background, minimized, etc.).

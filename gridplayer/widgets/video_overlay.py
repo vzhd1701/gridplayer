@@ -739,6 +739,10 @@ class OverlayBlock(QWidget):
             self.drop_indicator.raise_()
         self.update()
 
+    @property
+    def is_shown(self) -> bool:
+        return self.isVisible()
+
     def set_zoom_selection(self, selection: QRect | None):
         """Outline the part of the picture being selected to zoom to."""
 
@@ -1081,6 +1085,10 @@ class OverlayFakeInvisible(OverlayBlockFloating):
 
         self.setAttribute(Qt.WA_TransparentForMouseEvents)
         self.update()
+
+    @property
+    def is_shown(self) -> bool:
+        return self._is_visible
 
     def move_beyond_screen(self):
         self.move(QPoint(-self.width(), -self.height()))

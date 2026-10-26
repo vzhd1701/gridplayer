@@ -133,6 +133,7 @@ class VideoBlocksManager(ManagerBase):
     hide_overlay = pyqtSignal()
     show_overlay = pyqtSignal()
     set_drag_ui = pyqtSignal(bool)
+    set_layout_drag = pyqtSignal(bool)
     set_pause = pyqtSignal(bool)
     all_stop_playback = pyqtSignal()
 
@@ -231,6 +232,8 @@ class VideoBlocksManager(ManagerBase):
         )
         self._ctx.overlay_timeout = Settings().get("playlist/overlay_timeout")
         self._ctx.is_drag_ui = False
+        # a tile, or a line between cells, dragged
+        self._is_layout_drag = False
 
         self._ctx.video_blocks = VideoBlocks()
 
@@ -243,6 +246,7 @@ class VideoBlocksManager(ManagerBase):
     def commands(self):
         return {
             "all": self.cmd_all,
+            "set_layout_drag": self.cmd_set_layout_drag,
             "all_play_pause": self.cmd_all_play_pause,
             "all_play": self.cmd_all_play,
             "all_pause": self.cmd_all_pause,
@@ -479,6 +483,12 @@ class VideoBlocksManager(ManagerBase):
             return
         self._ctx.is_drag_ui = is_drag_ui
         self.set_drag_ui.emit(is_drag_ui)
+
+    def cmd_set_layout_drag(self, is_layout_drag: bool):
+        if self._is_layout_drag == is_layout_drag:
+            return
+        self._is_layout_drag = is_layout_drag
+        self.set_layout_drag.emit(is_layout_drag)
 
     def seek_sync_percent(self, percent):
         if self._ctx.seek_sync_mode == SeekSyncMode.PERCENT:
@@ -920,6 +930,7 @@ class VideoBlocksManager(ManagerBase):
             (self.hide_overlay, vb.hide_overlay),
             (self.show_overlay, vb.show_overlay),
             (self.set_drag_ui, vb.set_drag_ui),
+            (self.set_layout_drag, vb.set_layout_drag),
             (self.close_all_signal, vb.close_silently),
         )
 

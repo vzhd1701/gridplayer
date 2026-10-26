@@ -1,20 +1,14 @@
-from PyQt5.QtCore import QEvent, QPoint, QRect, Qt, QTimer
-from PyQt5.QtGui import QCursor, QWindow
-from PyQt5.QtWidgets import QApplication
+from PyQt5.QtCore import QEvent, QPoint, QRect, Qt
+from PyQt5.QtGui import QCursor
 
-from gridplayer.player.managers.base import ManagerBase
+from gridplayer.player.managers.layout_drag import LayoutDragManager
 from gridplayer.playlist_settings import PlaylistSettings
 from gridplayer.utils.layout.lines import LINE_REACH, Line, LineDrag, MovableLines
 from gridplayer.utils.qt import is_modal_open
 from gridplayer.widgets.grid_line_mark import GridLineMark, GridLineTag
 
-# how often to look whether the pointer is still on the line it was: it
-# leaves for somewhere no move of it is ever seen, another application's
-# window, or the button is let go of there
-LINE_CHECK_MS = 150
 
-
-class GridLinesManager(ManagerBase):
+class GridLinesManager(LayoutDragManager):
     """Dragging the lines between the cells, to size them by hand.
 
     Within LINE_REACH of a line, the pointer turns to a resize one. Pressed
@@ -25,14 +19,6 @@ class GridLinesManager(ManagerBase):
     after (see GridLines.snaps), a word beside it saying which, unless Alt
     is held. Esc puts it back where it was. A double click evens out all
     the lines its way: the columns, the rows, or those of its row.
-
-    The cells and the videos' windows cover the whole grid, so the lines
-    are looked for here, filtering the whole application, as PanManager
-    does for a drag of the picture. A press on a line is taken at the
-    window it comes to, before Qt hands it to a widget: a drag of the video
-    would start from it (see DragNDropManager), and so would a click. The
-    moves and the release of it are taken there too, the release of a
-    press that no widget saw being nothing of any widget's.
 
     The line is shown while it is held, and with "Show grid lines on
     hover" while the pointer is on it. It is a window of its own, always on
@@ -51,10 +37,6 @@ class GridLinesManager(ManagerBase):
         # where the cells were when it was pressed on
         self._area = QRect()
 
-        # the buttons pressed on a line: their releases are nothing else's
-        self._swallowed_buttons: set = set()
-
-        self._is_cursor_set = False
         self._mark: GridLineMark | None = None
         self._tag: GridLineTag | None = None
 
@@ -62,10 +44,6 @@ class GridLinesManager(ManagerBase):
         # player's since: going from one of its windows to the next, as from
         # a cell's overlay to the next cell's, it comes to the next at once
         self._is_pointer_out = False
-
-        self._check_timer = QTimer(self)
-        self._check_timer.setInterval(LINE_CHECK_MS)
-        self._check_timer.timeout.connect(self._check_pointer)
 
     @property
     def commands(self):
@@ -79,33 +57,10 @@ class GridLinesManager(ManagerBase):
     @property
     def event_map(self):
         return {
+            **super().event_map,
             QEvent.Enter: self.pointer_enter,
             QEvent.Leave: self.pointer_leave,
-            QEvent.ApplicationDeactivate: self.application_deactivate,
-            QEvent.MouseMove: self.mouse_move,
-            QEvent.MouseButtonPress: self.mouse_press,
-            QEvent.MouseButtonRelease: self.mouse_release,
-            QEvent.MouseButtonDblClick: self.mouse_double_click,
-            QEvent.ShortcutOverride: self.shortcut_override,
-            QEvent.KeyPress: self.key_press,
         }
-
-    def eventFilter(self, event_object, event) -> bool:
-        if event.type() == QEvent.ApplicationDeactivate:
-            return self.application_deactivate()
-
-        is_key = event.type() in {QEvent.ShortcutOverride, QEvent.KeyPress}
-
-        # the mouse at the window it comes to, the keys at the widget
-        if is_key == isinstance(event_object, QWindow):
-            return False
-
-        # the List window over a video, its own
-        if self._drag is None and not is_key and self.is_elsewhere(event_object):
-            self._set_hover(None)
-            return False
-
-        return super().eventFilter(event_object, event)
 
     def is_show_on_hover(self) -> bool:
         return PlaylistSettings().get("playlist/show_grid_lines")
@@ -130,11 +85,6 @@ class GridLinesManager(ManagerBase):
         # seen to by the check, unless it comes to another of the windows
         self._is_pointer_out = True
 
-    def application_deactivate(self):
-        if self._drag is None:
-            self._set_hover(None)
-        return False
-
     def mouse_move(self, event):
         self._is_pointer_out = False
 
@@ -150,36 +100,6 @@ class GridLinesManager(ManagerBase):
 
         self._move_to(QCursor.pos(), event.modifiers())
         return True
-
-    def mouse_press(self, event):
-        if self._drag is not None:
-            # another button lets go of it, put back
-            if event.button() != Qt.LeftButton:
-                self._swallowed_buttons.add(event.button())
-                self._cancel()
-            return True
-
-        if event.button() != Qt.LeftButton:
-            return None
-
-        found = self._line_under_pointer()
-        if found is None:
-            return None
-
-        line, lines, area = found
-        self._start(line, lines, area)
-        self._swallowed_buttons.add(event.button())
-        return True
-
-    def mouse_release(self, event):
-        if self._drag is not None and event.button() == Qt.LeftButton:
-            self._finish()
-
-        if event.button() in self._swallowed_buttons:
-            self._swallowed_buttons.discard(event.button())
-            return True
-
-        return None
 
     def mouse_double_click(self, event):
         if event.button() != Qt.LeftButton:
@@ -202,31 +122,27 @@ class GridLinesManager(ManagerBase):
         self._swallowed_buttons.add(event.button())
         return True
 
-    def shortcut_override(self, event):
-        if self._drag is None or event.key() != Qt.Key_Escape:
+    def _press(self, event):
+        if event.button() != Qt.LeftButton:
             return None
 
-        # not what Esc is bound to: the key comes as a press, see key_press
-        event.accept()
-        return True
-
-    def key_press(self, event):
-        if self._drag is None or event.key() != Qt.Key_Escape:
+        found = self._line_under_pointer()
+        if found is None:
             return None
 
-        self._cancel()
+        line, lines, area = found
+        self._start(line, lines, area)
+        self._swallowed_buttons.add(event.button())
         return True
+
+    def _leave(self):
+        self._set_hover(None)
 
     def _line_under_pointer(self) -> tuple[Line, MovableLines, QRect] | None:
         """The line the pointer is on, if one can be moved now, with the
         lines and where the grid is on the screen."""
 
-        if is_modal_open() or self._ctx.is_drag_ui:
-            return None
-
-        # the picture being dragged about, or a selection to zoom to picked
-        cursor = QApplication.overrideCursor()
-        if cursor is not None and not self._is_cursor_set:
+        if is_modal_open() or self._ctx.is_drag_ui or self._is_pointer_taken():
             return None
 
         lines = self._ctx.commands.movable_lines()
@@ -238,14 +154,8 @@ class GridLinesManager(ManagerBase):
         if not area.contains(pos):
             return None
 
-        # the List window over it; not the line shown there, which is no
-        # window of another
-        window = QApplication.topLevelAt(pos)
-        if (
-            window is not None
-            and window is not self._mark
-            and self.is_elsewhere(window)
-        ):
+        # the List window over it
+        if self.is_elsewhere_at(pos):
             return None
 
         local = pos - area.topLeft()
@@ -256,7 +166,7 @@ class GridLinesManager(ManagerBase):
         return line, lines, area
 
     def _hover_under_pointer(self):
-        found = self._line_under_pointer()
+        found = None if self._is_pointer_out else self._line_under_pointer()
 
         if found is None:
             self._set_hover(None)
@@ -279,7 +189,7 @@ class GridLinesManager(ManagerBase):
                 self._check_timer.stop()
             return
 
-        self._set_cursor(line)
+        self._set_cursor(_cursor_of(line))
         self._check_timer.start()
 
     def _start(self, line: Line, lines: MovableLines, area: QRect):
@@ -287,11 +197,10 @@ class GridLinesManager(ManagerBase):
         self._area = area
         # the strip's edge, or the grid's lines
         self._is_drag_single = self._ctx.is_single_mode
-        self._ctx.commands.begin_grid_change()
+        self._begin_drag()
 
-        self._set_cursor(line)
+        self._set_cursor(_cursor_of(line))
         self._show_mark(lines, area, line, lines.position(line), is_snapped=False)
-        self._check_timer.start()
 
     def _move_to(self, global_pos: QPoint, modifiers):
         if self._is_drag_gone():
@@ -319,10 +228,7 @@ class GridLinesManager(ManagerBase):
         )
 
     def _finish(self):
-        """Leave the line where it was moved to."""
-
-        self._ctx.commands.end_grid_change()
-
+        self._end_drag()
         self._drag = None
 
         self._hide_mark()
@@ -332,8 +238,6 @@ class GridLinesManager(ManagerBase):
         self._hover_under_pointer()
 
     def _cancel(self):
-        """Put the line back where it was."""
-
         if self._drag is not None and not self._is_drag_gone():
             self._ctx.commands.set_grid_weights(self._drag.before)
 
@@ -343,18 +247,6 @@ class GridLinesManager(ManagerBase):
         # Single Mode come or gone while the line was held: its weights
         # are not for the lines there are now
         return self._is_drag_single != self._ctx.is_single_mode
-
-    def _check_pointer(self):
-        if self._drag is not None:
-            if not QApplication.mouseButtons() & Qt.LeftButton:
-                self._finish()
-            return
-
-        if self._is_pointer_out:
-            self._set_hover(None)
-            return
-
-        self._hover_under_pointer()
 
     def _show_mark(self, lines, area, line, position, is_snapped):
         if self._mark is None:
@@ -382,17 +274,6 @@ class GridLinesManager(ManagerBase):
         if self._mark is not None and self._mark.isVisible():
             self._mark.hide()
 
-    def _set_cursor(self, line: Line | None):
-        if line is None:
-            if self._is_cursor_set:
-                QApplication.restoreOverrideCursor()
-                self._is_cursor_set = False
-            return
 
-        shape = Qt.SplitHCursor if line.is_column else Qt.SplitVCursor
-
-        if self._is_cursor_set:
-            QApplication.changeOverrideCursor(shape)
-        else:
-            QApplication.setOverrideCursor(shape)
-            self._is_cursor_set = True
+def _cursor_of(line: Line) -> Qt.CursorShape:
+    return Qt.SplitHCursor if line.is_column else Qt.SplitVCursor

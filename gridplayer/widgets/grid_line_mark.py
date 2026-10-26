@@ -30,19 +30,13 @@ def snap_word(target: Target, is_column: bool) -> str:
     return translate("Grid Lines", "Bottom fits")
 
 
-class GridLineMark(QWidget):
-    """The line between two cells that the pointer is on, to be moved, or
-    that is being moved: thicker where it has snapped (see GridLines.snaps).
+class FloatingMark(QWidget):
+    """Something shown over the player: a line, a word, a tile's frame.
 
     A window of its own, as a tip is: nothing painted in the player's own
     window shows over a hardware video, which is a native window. It never
     takes the mouse, nor is it ever made the active window.
     """
-
-    # the light middle of the line, of one snapped, and either dark edge
-    core = 2
-    snapped_core = 4
-    edge = 1
 
     def __init__(self, parent=None):
         super().__init__(
@@ -55,6 +49,37 @@ class GridLineMark(QWidget):
 
         self.setAttribute(Qt.WA_ShowWithoutActivating)
         self.setAttribute(Qt.WA_TransparentForMouseEvents)
+
+    def show_at(self, rect: QRect) -> None:
+        """Shown at rect on the screen, painted anew if it is not the size
+        it was."""
+
+        if rect != self.geometry():
+            if rect.size() != self.size():
+                self.update()
+            self.setGeometry(rect)
+
+        if self.isHidden():
+            self.show()
+
+            # made on its first show, the window can be put where the
+            # geometry says in device pixels, on a screen that scales
+            if self.geometry() != rect:
+                self.setGeometry(rect)
+
+
+class GridLineMark(FloatingMark):
+    """The line between two cells that the pointer is on, to be moved, or
+    that is being moved: thicker where it has snapped (see GridLines.snaps).
+    """
+
+    # the light middle of the line, of one snapped, and either dark edge
+    core = 2
+    snapped_core = 4
+    edge = 1
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
 
         self._is_column = True
 
@@ -73,19 +98,11 @@ class GridLineMark(QWidget):
         else:
             rect = QRect(start, low, end - start, thickness)
 
-        self._is_column = is_column
-
-        if rect != self.geometry():
-            self.setGeometry(rect)
+        if is_column != self._is_column:
+            self._is_column = is_column
             self.update()
 
-        if self.isHidden():
-            self.show()
-
-            # made on its first show, the window can be put where the
-            # geometry says in device pixels, on a screen that scales
-            if self.geometry() != rect:
-                self.setGeometry(rect)
+        self.show_at(rect)
 
     def paintEvent(self, event) -> None:
         painter = QPainter(self)
@@ -99,26 +116,16 @@ class GridLineMark(QWidget):
         painter.fillRect(core, LINE_COLOR)
 
 
-class GridLineTag(QWidget):
+class GridLineTag(FloatingMark):
     """A word beside a line being moved that has snapped, saying why it
-    stopped there: a video fits, or the cells are even. A window of its
-    own, as the line is (see GridLineMark)."""
+    stopped there: a video fits, or the cells are even."""
 
     # between the word and the box's edge, and between the box and the line
     padding = QSize(6, 2)
     gap = 8
 
     def __init__(self, parent=None):
-        super().__init__(
-            parent,
-            Qt.ToolTip
-            | Qt.FramelessWindowHint
-            | Qt.WindowTransparentForInput
-            | Qt.NoDropShadowWindowHint,
-        )
-
-        self.setAttribute(Qt.WA_ShowWithoutActivating)
-        self.setAttribute(Qt.WA_TransparentForMouseEvents)
+        super().__init__(parent)
 
         self._text = ""
 
@@ -174,15 +181,7 @@ class GridLineTag(QWidget):
             self._text = text
             self.update()
 
-        if rect != self.geometry():
-            self.setGeometry(rect)
-
-        if self.isHidden():
-            self.show()
-
-            # see GridLineMark.show_line
-            if self.geometry() != rect:
-                self.setGeometry(rect)
+        self.show_at(rect)
 
     def paintEvent(self, event) -> None:
         painter = QPainter(self)

@@ -66,7 +66,15 @@ class DragNDropManager(ManagerBase):
     def commands(self):
         return {
             "handle_fake_drag_click": self.handle_fake_drag_click,
+            "forget_drag_press": self.forget_press,
         }
+
+    def forget_press(self):
+        """The press taken for something else dragged, a tile or a line
+        between cells: no drag of a video from it, the button still held
+        once that is over."""
+
+        self._drag_start_position = None
 
     @property
     def event_map(self):
@@ -123,7 +131,9 @@ class DragNDropManager(ManagerBase):
             self._drag_start_position = None
             return
 
-        self._drag_start_position = event.pos()
+        # on the screen: each event is seen at the window it comes to and at
+        # the widget it goes on to, and each has its own position in them
+        self._drag_start_position = event.globalPos()
 
     def mouseMoveEvent(self, event):
         if is_modal_open():
@@ -154,10 +164,13 @@ class DragNDropManager(ManagerBase):
             self._end_drag_ui()
 
     def mouseReleaseEvent(self, event):
-        if not self._is_fake_drag_active:
+        if event.button() != Qt.LeftButton:
             return None
 
-        if event.button() != Qt.LeftButton:
+        # a drag only from the press it is let go of, and none after
+        self._drag_start_position = None
+
+        if not self._is_fake_drag_active:
             return None
 
         self._finish_fake_drag()
@@ -176,7 +189,9 @@ class DragNDropManager(ManagerBase):
         if self._drag_start_position is None:
             return False
 
-        drag_distance = (event.pos() - self._drag_start_position).manhattanLength()
+        drag_distance = (
+            event.globalPos() - self._drag_start_position
+        ).manhattanLength()
         if drag_distance < QApplication.startDragDistance():
             return False
 

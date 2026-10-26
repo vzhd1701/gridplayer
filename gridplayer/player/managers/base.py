@@ -1,7 +1,7 @@
 import inspect
 import logging
 
-from PyQt5.QtCore import QObject
+from PyQt5.QtCore import QObject, Qt
 from PyQt5.QtGui import QWindow
 from PyQt5.QtWidgets import QApplication, QWidget
 
@@ -53,6 +53,10 @@ class ManagerBase(QObject):
             return False
 
         window = widget.window()
+
+        # one never taking the mouse, a line or a word shown over the player
+        if window.windowFlags() & Qt.WindowTransparentForInput:
+            return False
 
         return window is not self.parent() and not isinstance(window, OverlayBlock)
 
