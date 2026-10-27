@@ -30,6 +30,7 @@ from gridplayer.player.managers.settings import SettingsManager
 from gridplayer.player.managers.single_mode import SingleModeManager
 from gridplayer.player.managers.snapshots import SnapshotsManager
 from gridplayer.player.managers.stream_proxy import StreamProxyManager
+from gridplayer.player.managers.tile_edit import TileEditManager
 from gridplayer.player.managers.tray import TrayManager
 from gridplayer.player.managers.video_blocks import VideoBlocksManager
 from gridplayer.player.managers.video_driver import VideoDriverManager
@@ -55,6 +56,7 @@ class Player(QWidget, ManagersManager):
             "grid_lines": GridLinesManager,
             "free_tiles": FreeTilesManager,
             "grid_edit": GridEditManager,
+            "tile_edit": TileEditManager,
             "playlist": PlaylistManager,
             "snapshots": SnapshotsManager,
             "closed_videos": ClosedVideosManager,
@@ -80,6 +82,19 @@ class Player(QWidget, ManagersManager):
             "tray": TrayManager,
         }
 
+        # the editors of the cells and the tiles: each changed with the grid,
+        # and gone with it
+        editor_connections = [
+            ("grid.layout_changed", "refresh"),
+            ("grid.undo_changed", "update_undo"),
+            ("closed_videos.changed", "update_undo"),
+            ("video_blocks.video_count_changed", "refresh"),
+            ("single_mode.mode_changed", "refresh"),
+            ("playlist.grid_state_loaded", "stop"),
+            ("snapshots.grid_state_loaded", "stop"),
+            ("window_state.closing", "stop"),
+        ]
+
         self.connections = {
             "window_state": [
                 ("pause_on_minimize", "video_blocks.cmd_all_pause"),
@@ -93,15 +108,10 @@ class Player(QWidget, ManagersManager):
                 ("video_blocks.picture_shape_changed", "fit_to_shapes"),
             ],
             "grid_edit": [
-                ("grid.layout_changed", "refresh"),
-                ("grid.undo_changed", "update_undo"),
-                ("closed_videos.changed", "update_undo"),
-                ("video_blocks.video_count_changed", "refresh"),
-                ("single_mode.mode_changed", "refresh"),
-                ("playlist.grid_state_loaded", "stop"),
-                ("snapshots.grid_state_loaded", "stop"),
-                ("window_state.closing", "stop"),
+                *editor_connections,
+                ("grid_lines.snapping_changed", "update_snapping"),
             ],
+            "tile_edit": editor_connections,
             "screensaver": [
                 ("video_blocks.playings_videos_count_changed", "screensaver_check")
             ],
@@ -305,8 +315,9 @@ class Player(QWidget, ManagersManager):
 
         self.event_filters = [
             "window_state",
-            # the editor of the cells follows the player as it moves
+            # the editors of the cells and tiles follow the player as it moves
             "grid_edit",
+            "tile_edit",
             "drag_n_drop",
             "active_block",
             "menu",

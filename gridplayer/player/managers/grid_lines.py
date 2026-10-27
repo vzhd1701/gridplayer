@@ -1,4 +1,4 @@
-from PyQt5.QtCore import QEvent, QPoint, QRect, Qt
+from PyQt5.QtCore import QEvent, QPoint, QRect, Qt, pyqtSignal
 from PyQt5.QtGui import QCursor
 
 from gridplayer.player.managers.layout_drag import LayoutDragManager
@@ -26,6 +26,9 @@ class GridLinesManager(LayoutDragManager):
     player's windows, for another application's window come over them, say,
     or the application is no longer the active one.
     """
+
+    # Snap Lines turned on or off
+    snapping_changed = pyqtSignal()
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -77,6 +80,7 @@ class GridLinesManager(LayoutDragManager):
 
     def toggle_snapping(self):
         PlaylistSettings().set("playlist/grid_line_snap", not self.is_snapping())
+        self.snapping_changed.emit()
 
     def pointer_enter(self):
         self._is_pointer_out = False

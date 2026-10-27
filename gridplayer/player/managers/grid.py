@@ -259,9 +259,11 @@ class GridManager(ManagerBase):
             "is_tiles_stacked": self.is_tiles_stacked,
             "is_tile_stackable": self.is_tile_stackable,
             "stack_tile": self.cmd_stack_tile,
+            "stack_free_tile": self.stack_free_tile,
             "is_tile_lockable": self.is_tile_lockable,
             "is_tile_locked": self.is_tile_locked,
             "lock_tile": self.cmd_lock_tile,
+            "lock_free_tile": self.lock_free_tile,
             "is_tile_room_makeable": self.is_tile_room_makeable,
             "make_room": self.cmd_make_room,
             "bring_free_tile_to_front": self.bring_free_tile_to_front,
@@ -1477,11 +1479,22 @@ class GridManager(ManagerBase):
         return video_id if video_id in self._free.tiles else None
 
     def cmd_stack_tile(self, where: str) -> None:
-        if not self.is_tile_stackable(where):
+        video_id = self._active_tile()
+        if video_id is not None:
+            self.stack_free_tile(video_id, where == "front")
+
+    def stack_free_tile(self, video_id: str, is_front: bool) -> None:
+        """A tile put in front of the others it is under, or behind those it
+        is over (see FreeTiles.stack)."""
+
+        tiles = self._free
+        if video_id not in tiles.tiles:
+            return
+        if not (tiles.is_under(video_id) if is_front else tiles.is_over(video_id)):
             return
 
         with self._undoable():
-            self._free.stack(self._active_id(), where == "front")
+            tiles.stack(video_id, is_front)
         self._grid.invalidate()
 
     def is_tile_lockable(self) -> bool:
@@ -1495,11 +1508,15 @@ class GridManager(ManagerBase):
         go of (see FreeTiles)."""
 
         video_id = self._active_tile()
-        if video_id is None:
+        if video_id is not None:
+            self.lock_free_tile(video_id, video_id not in self._free.locked)
+
+    def lock_free_tile(self, video_id: str, is_locked: bool) -> None:
+        if video_id not in self._free.tiles:
             return
 
         with self._undoable():
-            self._free.set_locked(video_id, video_id not in self._free.locked)
+            self._free.set_locked(video_id, is_locked)
         self._grid.invalidate()
 
     def is_tile_room_makeable(self) -> bool:

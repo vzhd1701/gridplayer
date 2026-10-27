@@ -4,6 +4,7 @@ from PyQt5.QtCore import QPoint, QRect, Qt
 from PyQt5.QtGui import QCursor
 from PyQt5.QtWidgets import QApplication
 
+from gridplayer.models.tile_snaps import TileSnaps
 from gridplayer.params.gestures import GESTURE_ZOOM_SELECT
 from gridplayer.params.static import TileOverlap, TileSnap
 from gridplayer.player.managers.layout_drag import LayoutDragManager
@@ -29,19 +30,8 @@ from gridplayer.widgets.grid_line_mark import (
     show_pooled,
     tile_snap_words,
 )
+from gridplayer.widgets.layout_editor import SIZE_CURSORS
 from gridplayer.widgets.tile_frame import TileFrame, TileLocks
-
-# the pointer over each edge and corner of a tile, to size it by
-_SIZE_CURSORS = {
-    (-1, 0): Qt.SizeHorCursor,
-    (1, 0): Qt.SizeHorCursor,
-    (0, -1): Qt.SizeVerCursor,
-    (0, 1): Qt.SizeVerCursor,
-    (-1, -1): Qt.SizeFDiagCursor,
-    (1, 1): Qt.SizeFDiagCursor,
-    (1, -1): Qt.SizeBDiagCursor,
-    (-1, 1): Qt.SizeBDiagCursor,
-}
 
 
 class _Pointed(NamedTuple):
@@ -113,10 +103,19 @@ class FreeTilesManager(LayoutDragManager):
             "is_tile_pressed": self.is_tile_pressed,
             "is_tile_snap": self.is_tile_snap,
             "toggle_tile_snap": self.toggle_tile_snap,
+            "tile_snaps": self.tile_snaps,
+            "set_tile_snaps": self.set_tile_snaps,
+            "tile_drag_of": self.tile_drag_of,
         }
 
     def is_tile_snap(self, snap: TileSnap) -> bool:
         return snap in PlaylistSettings().get("playlist/tile_snaps")
+
+    def tile_snaps(self) -> frozenset[TileSnap]:
+        return PlaylistSettings().get("playlist/tile_snaps").root
+
+    def set_tile_snaps(self, snaps: frozenset[TileSnap]) -> None:
+        PlaylistSettings().set("playlist/tile_snaps", TileSnaps(snaps))
 
     def toggle_tile_snap(self, snap: TileSnap) -> None:
         snaps = PlaylistSettings().get("playlist/tile_snaps").toggled(snap)
@@ -247,16 +246,37 @@ class FreeTilesManager(LayoutDragManager):
     def _drag_of(self, pointed: _Pointed) -> TileDrag:
         """The drag of the tile pointed at, from where the pointer is."""
 
-        overlap = self._ctx.commands.tile_overlap()
-        return TileDrag(
+        return self.tile_drag_of(
             pointed.tiles,
             pointed.video_id,
             pointed.handle,
             pointed.page.width(),
             pointed.page.height(),
             pointed.at,
-            self._shape_of(pointed.video_id),
-            snaps=PlaylistSettings().get("playlist/tile_snaps").root,
+        )
+
+    def tile_drag_of(
+        self,
+        tiles: FreeTiles,
+        video_id: str,
+        handle: Handle,
+        page_width: float,
+        page_height: float,
+        pointer: tuple[float, float],
+    ) -> TileDrag:
+        """A tile's drag by its handle, from where the pointer is on its
+        page, as the settings say: Snap To and Tile Overlap."""
+
+        overlap = self._ctx.commands.tile_overlap()
+        return TileDrag(
+            tiles,
+            video_id,
+            handle,
+            page_width,
+            page_height,
+            pointer,
+            self._shape_of(video_id),
+            snaps=self.tile_snaps(),
             is_over=overlap == TileOverlap.ON,
             is_pushing=overlap == TileOverlap.PUSH,
         )
@@ -307,7 +327,7 @@ class FreeTilesManager(LayoutDragManager):
 
         page = pointed.page
         rect = pointed.tiles.rects(page.width(), page.height())[pointed.video_id]
-        self._set_cursor(_SIZE_CURSORS[pointed.handle])
+        self._set_cursor(SIZE_CURSORS[pointed.handle])
         self._frame.show(_on_screen(rect, page), pointed.handle)
         self._check_timer.start()
 
@@ -316,7 +336,7 @@ class FreeTilesManager(LayoutDragManager):
         self._page = page
         self._begin_drag()
 
-        self._set_cursor(_SIZE_CURSORS.get(drag.handle, Qt.SizeAllCursor))
+        self._set_cursor(SIZE_CURSORS.get(drag.handle, Qt.SizeAllCursor))
         self._locks.show([_on_screen(rect, page) for rect in drag.locked])
 
     def _move_to(self, global_pos: QPoint, modifiers):

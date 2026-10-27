@@ -138,9 +138,9 @@ def scenario(d):
     cell = next(c for c in editor._cells if c.video_id == first.video_id)
     _click_in_editor(d, editor.close_rect_of(cell).center().toPoint())
     d.wait_until(lambda: len(d.cells) == 2, "closed from the editor")
-    d.check("the bar's button on", editor._reopen.isEnabled())
+    d.check("the bar's button on", editor._action_buttons["reopen"].isEnabled())
 
-    editor._reopen.click()
+    editor._action_buttons["reopen"].click()
     d.wait_until(lambda: len(d.cells) == 3, "reopened from the bar")
     cells = {c.video_id: c for c in d.ctx.grid_state.cells}
     back = cells.get(first.video_id)
@@ -151,7 +151,7 @@ def scenario(d):
         == (big.row, big.col, big.rowspan, big.colspan),
         (back, big),
     )
-    d.check("the bar's button off", not editor._reopen.isEnabled())
+    d.check("the bar's button off", not editor._action_buttons["reopen"].isEnabled())
     d.shot("1_editor", widget=editor)
     editor.done.emit()
     d.pump(0.3)

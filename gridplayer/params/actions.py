@@ -2723,16 +2723,12 @@ ACTIONS = MappingProxyType(
             "show_if": ("is_grid_mode_set_to", GridMode.FIXED),
         },
         "Edit Grid": {
-            # an Auto grid is made a Fixed Grid first
-            "title": (
-                translate("Actions", "Edit Grid"),
-                translate("Actions", "Edit as Fixed Grid"),
-            ),
-            "keymap_title": translate("Actions", "Edit Grid"),
-            "toggle": NOT("is_grid_fixed"),
+            # a Fixed Grid's cells, or Free Tiles' tiles; an Auto grid made
+            # the one that keeps it as it is
+            "title": translate("Actions", "Edit Grid"),
             "icon": "grid-edit",
-            "func": "edit_grid_cells",
-            "check_if": "is_editing_grid_cells",
+            "func": "edit_grid",
+            "check_if": "is_editing_grid",
             "enable_if": NOT("is_single_mode"),
         },
         "Make Cell Bigger": {

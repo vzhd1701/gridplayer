@@ -1,64 +1,58 @@
 from functools import partial
 
-from PyQt5.QtCore import QEvent, QRect, QTimer
+from PyQt5.QtCore import QRect
 
-from gridplayer.player.managers.base import ManagerBase
-from gridplayer.playlist_settings import PlaylistSettings
-from gridplayer.utils.keymap import key_sequence_from_event, normalize_key_sequence
+from gridplayer.params.static import GridMode
+from gridplayer.player.managers.layout_edit import LayoutEditManager
 from gridplayer.widgets.grid_editor import EditCell, GridEditor
 from gridplayer.widgets.grid_span_picker import GridSpanPicker
 
-# the player's actions its keys still do while the cells are edited
-EDITOR_ACTIONS = ("Undo Grid Change", "Redo Grid Change", "Reopen Closed Video")
 
-
-class GridEditManager(ManagerBase):
-    """Edit Grid: the cells of a Fixed Grid resized and moved by hand,
-    in a GridEditor over the grid, until Done.
+class GridEditManager(LayoutEditManager):
+    """Edit Grid (see cmd_edit_grid): the cells of a Fixed Grid resized and
+    moved by hand, in a GridEditor over the grid, until Done.
 
     An Auto grid is made a Fixed Grid of the size it is first, which Undo
     takes back. While it lasts, every cell of the grid is shown, as with
-    Show All Cells, so a video can take the empty ones, and the videos'
-    overlays are hidden: the editor draws their names instead. Each change
-    is one to undo, with the player's own keys for it or the editor's
-    buttons: a line moved too, however far. A video closed from it is not:
-    Reopen Closed Video, beside them, opens it again.
+    Show All Cells, so a video can take the empty ones. A line moved is one
+    change to undo, however far.
     """
-
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-
-        self._editor: GridEditor | None = None
-
-        # the player moved or resized: once its grid has been laid out
-        self._follow_timer = QTimer(self)
-        self._follow_timer.setSingleShot(True)
-        self._follow_timer.setInterval(0)
-        self._follow_timer.timeout.connect(self.refresh)
 
     @property
     def commands(self):
         return {
+            "edit_grid": self.cmd_edit_grid,
+            "is_editing_grid": self.is_editing_grid,
             "edit_grid_cells": self.cmd_edit_grid_cells,
-            "is_editing_grid_cells": self.is_editing,
             "pick_grid_cell_span": self.cmd_pick_grid_cell_span,
         }
 
-    @property
-    def event_map(self):
-        return {
-            QEvent.Move: self._follow,
-            QEvent.Resize: self._follow,
-        }
+    def is_editing_grid(self) -> bool:
+        """Whether the cells or the tiles are edited."""
 
-    def _follow(self):
-        if self._editor is not None:
-            self._follow_timer.start()
+        return self.is_editing() or self._ctx.commands.is_editing_free_tiles()
 
-    def is_editing(self) -> bool:
-        return self._editor is not None
+    def cmd_edit_grid(self):
+        """Edit Grid: the editor of what is shown, as it is: a Fixed Grid's
+        or Free Tiles'; an Auto grid made a Fixed Grid of its cells, but Fit
+        Shapes made Free Tiles, its videos' sizes only there as they are.
+        Done, if either is up."""
 
-    def cmd_edit_grid_cells(self):
+        commands = self._ctx.commands
+        if self.is_editing():
+            self.stop()
+        elif commands.is_editing_free_tiles():
+            commands.edit_free_tiles()
+        elif self._ctx.is_single_mode:
+            return
+        elif commands.is_grid_free() or commands.is_grid_mode_set_to(
+            GridMode.AUTO_SHAPES
+        ):
+            commands.edit_free_tiles()
+        else:
+            self.cmd_edit_grid_cells()
+
+    def cmd_edit_grid_cells(self, switched_from=None):
         if self.is_editing():
             self.stop()
             return
@@ -67,7 +61,6 @@ class GridEditManager(ManagerBase):
             return
 
         self._ctx.commands.set_grid_editing(True)
-        self._ctx.commands.set_disable_overlay(True)
 
         commands = self._ctx.commands
         editor = GridEditor(
@@ -75,6 +68,8 @@ class GridEditManager(ManagerBase):
             can_resize=commands.can_resize_fixed_grid,
             lines=commands.grid_lines,
             is_snapping=commands.is_grid_line_snap,
+            can_fit_lines=commands.is_grid_lines_fittable,
+            can_reset_lines=commands.is_grid_lines_moved,
             can_undo=commands.is_grid_undoable,
             can_redo=commands.is_grid_redoable,
             can_reopen=commands.is_any_video_closed,
@@ -85,59 +80,40 @@ class GridEditManager(ManagerBase):
         editor.close_requested.connect(self._close_video)
         editor.line_started.connect(commands.begin_grid_change)
         editor.weights_changed.connect(commands.set_grid_weights)
-        editor.line_finished.connect(self._line_finished)
-        editor.undo_requested.connect(self._ctx.actions["Undo Grid Change"].trigger)
-        editor.redo_requested.connect(self._ctx.actions["Redo Grid Change"].trigger)
-        editor.reopen_requested.connect(
-            self._ctx.actions["Reopen Closed Video"].trigger
+        # one change to undo, however far it was moved
+        editor.line_finished.connect(self._refreshing(commands.end_grid_change))
+        editor.snapping_toggled.connect(commands.toggle_grid_line_snap)
+        editor.fit_lines_requested.connect(self._refreshing(commands.fit_grid_lines))
+        editor.reset_lines_requested.connect(
+            self._refreshing(commands.reset_grid_lines)
         )
-        editor.done.connect(self.stop)
-        editor.key_pressed.connect(self._key_pressed)
-        self._editor = editor
+        self._open(editor, switched_from)
 
-        self.refresh()
-        editor.show()
-        editor.raise_()
-        editor.activateWindow()
-        editor.setFocus()
-
-    def stop(self):
-        if self._editor is None:
-            return
-
-        editor, self._editor = self._editor, None
-        editor.hide()
-        editor.deleteLater()
-
+    def _closing(self, editor):
         self._ctx.commands.set_grid_editing(False)
-        # as the user has it, should it have been changed meanwhile
-        self._ctx.commands.set_disable_overlay(
-            PlaylistSettings().get("playlist/disable_overlay")
-        )
-        self.parent().activateWindow()
 
     def refresh(self):
-        """The editor where the grid is, with its cells as they are now: done
-        with, once the grid is no Fixed Grid, or one video fills the
-        window."""
+        """The editor where the grid is, with its cells as they are now: the
+        tiles' instead once the grid is Free Tiles, done with once it is
+        neither, or one video fills the window."""
 
         if self._editor is None:
             return
 
         if self._ctx.is_single_mode or not self._ctx.commands.is_grid_fixed():
-            self.stop()
+            self._leave()
             return
 
         state = self._ctx.grid_state
         cells = []
         for cell in state.cells:
-            block = self._ctx.video_blocks.by_video_id(cell.video_id)
-            if block is None:
+            name = self._name_of(cell.video_id)
+            if name is None:
                 continue
             cells.append(
                 EditCell(
                     cell.video_id,
-                    block.title or block.video_params.uri_name,
+                    name,
                     cell.row,
                     cell.col,
                     cell.rowspan,
@@ -150,10 +126,9 @@ class GridEditManager(ManagerBase):
             state.rows, state.cols, state.col_weights, state.row_weights, cells
         )
 
-    def update_undo(self):
-        # what there is to undo, known once a change has been made
+    def update_snapping(self):
         if self._editor is not None:
-            self._editor.update_undo()
+            self._editor.update_snapping()
 
     def cmd_pick_grid_cell_span(self, video_id: str, under: QRect):
         """A video's cell's size picked, from the button for it on the
@@ -173,23 +148,3 @@ class GridEditManager(ManagerBase):
         picker.picked.connect(partial(commands.set_grid_cell_span, video_id))
         picker.popup_under(under)
         return picker
-
-    def _close_video(self, video_id: str):
-        block = self._ctx.video_blocks.by_video_id(video_id)
-        if block is not None:
-            block.close()
-
-    def _line_finished(self):
-        # one change to undo, however far it was moved
-        self._ctx.commands.end_grid_change()
-        self.refresh()
-
-    def _key_pressed(self, event):
-        sequence = key_sequence_from_event(event)
-        if sequence is None:
-            return
-        for name in EDITOR_ACTIONS:
-            action = self._ctx.actions[name]
-            if sequence in map(normalize_key_sequence, action.shortcuts()):
-                action.trigger()
-                return
