@@ -1,7 +1,16 @@
 from collections.abc import Callable
 from typing import NamedTuple
 
-from PyQt5.QtCore import QPoint, QPointF, QRect, QRectF, Qt, QTimer, pyqtSignal
+from PyQt5.QtCore import (
+    QPoint,
+    QPointF,
+    QRect,
+    QRectF,
+    QSignalBlocker,
+    Qt,
+    QTimer,
+    pyqtSignal,
+)
 from PyQt5.QtGui import QColor, QCursor, QPainter, QPen, QRegion
 from PyQt5.QtWidgets import QApplication, QHBoxLayout
 
@@ -652,17 +661,24 @@ class TileEditor(LayoutEditor):
         choice = SegmentedChoice()
         for overlap, text in choices.tile_overlap().items():
             choice.addItem(text, overlap)
-        choice.setCurrentIndex(choice.findData(self._settings.overlap()))
+
+        def refresh():
+            with QSignalBlocker(choice):
+                choice.setCurrentIndex(choice.findData(self._settings.overlap()))
+
+        refresh()
         choice.currentIndexChanged.connect(
             lambda _: self._settings.set_overlap(choice.currentData())
         )
         self._show_popup(
-            self._overlap, translate("Tile Overlap", "Tile Overlap"), [choice]
+            self._overlap,
+            translate("Tile Overlap", "Tile Overlap"),
+            [choice],
+            refresh=refresh,
         )
 
     def _show_snaps(self) -> None:
         switch = Switch()
-        switch.setChecked(self._settings.is_snapping())
         switch_row = QHBoxLayout()
         switch_row.setContentsMargins(0, 0, 0, 0)
         switch_row.addWidget(switch)
@@ -671,8 +687,14 @@ class TileEditor(LayoutEditor):
 
         chips = ToggleChips()
         chips.set_choices(choices.tile_snaps())
-        chips.set_picked(self._settings.snaps())
-        chips.setEnabled(switch.isChecked())
+
+        def refresh():
+            with QSignalBlocker(switch), QSignalBlocker(chips):
+                switch.setChecked(self._settings.is_snapping())
+                chips.set_picked(self._settings.snaps())
+            chips.setEnabled(switch.isChecked())
+
+        refresh()
         chips.changed.connect(lambda: self._settings.set_snaps(chips.picked()))
 
         def snapping(is_on):
@@ -685,6 +707,7 @@ class TileEditor(LayoutEditor):
             translate("Snap To", "Snap To"),
             [switch_row, chips],
             SNAPS_POPUP_WIDTH,
+            refresh=refresh,
         )
 
     def _help_rows(self) -> list[tuple[str, str]]:

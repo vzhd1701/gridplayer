@@ -7,7 +7,8 @@ Tab picks the next. The lock under its name locks it. With Tile Overlap
 on, from the bar, a tile dragged over another goes in front, the edge of
 the one behind taken where it is hidden. Delete closes the picked video,
 the bar's Reopen opens it again. A bar button's popup is closed by a
-second click on it, not opened again; "?" lists the editor's keys. A
+second click on it, not opened again; Snap Lines' key turns Snap To's
+switch while it is up. "?" lists the editor's keys. A
 player's key still does its action in the editor. Esc is done: the
 overlays back. The bar's switch to Grid makes it a Fixed Grid, its cells
 edited, the bar where it was dragged to; Undo makes it Free Tiles again,
@@ -17,12 +18,12 @@ Grid, which Undo takes back to rows, the editor gone.
 """
 
 from PyQt5.QtCore import QEvent, QPoint, QPointF, Qt
-from PyQt5.QtGui import QCursor, QMouseEvent
+from PyQt5.QtGui import QCursor, QKeySequence, QMouseEvent
 from PyQt5.QtTest import QTest
 from PyQt5.QtWidgets import QApplication
 
 from gridplayer.params.static import GridMode, TileOverlap
-from gridplayer.widgets.settings_controls import SegmentedChoice
+from gridplayer.widgets.settings_controls import SegmentedChoice, Switch
 from gridplayer.widgets.tile_editor import NUDGE_MS
 from tests.real_app.scenarios.free_tiles import (
     HEIGHT,
@@ -223,6 +224,25 @@ def scenario(d):
     d.check("opened again by the next click", editor._popup is not None)
     _click(d, at)
     d.check("and closed by the one after", editor._popup is None)
+
+    # Snap Lines' key, pressed with Snap To up: its switch follows
+    d.ctx.actions["Snap Lines"].setShortcuts([QKeySequence("Ctrl+Alt+S")])
+    d.pump(0.3)
+    editor._snap.click()
+    d.pump(0.3)
+    switch = editor._popup.findChild(Switch)
+    is_on = d.ctx.commands.is_grid_line_snap()
+    d.check("Snap Tiles as it is", switch.isChecked() == is_on)
+    QTest.keyClick(editor._popup, Qt.Key_S, Qt.ControlModifier | Qt.AltModifier)
+    d.pump(0.3)
+    d.check("its key turned it", d.ctx.commands.is_grid_line_snap() != is_on)
+    d.check("the switch with it", switch.isChecked() != is_on)
+    d.check("Snap To still up", editor._popup is not None)
+    editor._popup.close()
+    d.pump(0.5)
+    _key(d, Qt.Key_S, Qt.ControlModifier | Qt.AltModifier)
+    d.check("and in the editor", d.ctx.commands.is_grid_line_snap() == is_on)
+    d.ctx.actions["Snap Lines"].setShortcuts([])
 
     # c over a: in front of it
     _drag(d, QPoint(120, 270), QPoint(150, 120))

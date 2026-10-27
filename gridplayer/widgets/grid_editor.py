@@ -236,13 +236,13 @@ class GridEditor(LayoutEditor):
         self._more_cols.setEnabled(self._can_resize(rows, cols + 1))
         self._fit_lines.setEnabled(self._can_fit_lines())
         self._reset_lines.setEnabled(self._can_reset_lines())
-        self.update_snapping()
+        self.update_settings()
         super()._update_bar()
 
-    def update_snapping(self) -> None:
-        """Snap Lines as it is now, turned on or off by its key, say."""
-
+    def update_settings(self) -> None:
+        # the magnet pressed in while Snap Lines is on
         self._snap.setChecked(self._is_snapping())
+        super().update_settings()
 
     def resizeEvent(self, event) -> None:
         self._forget_lines()

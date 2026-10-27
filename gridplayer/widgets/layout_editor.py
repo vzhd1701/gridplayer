@@ -3,6 +3,7 @@ Tiles' (TileEditor): a window over the grid, the videos dimmed under it,
 each outlined with its name, and a bar of buttons along the bottom."""
 
 import functools
+from collections.abc import Callable
 
 from PyQt5.QtCore import QEvent, QPoint, QPointF, QRect, QRectF, QSize, Qt, pyqtSignal
 from PyQt5.QtGui import (
@@ -436,6 +437,7 @@ class LayoutEditor(QWidget):
         self._action_keys: dict[str, str] = {}
 
         self._popup: EditorPopup | None = None
+        self._popup_refresh: Callable[[], None] | None = None
         # a word by the pointer, saying what is done there
         self._tag: GridLineTag | None = None
 
@@ -599,19 +601,24 @@ class LayoutEditor(QWidget):
 
     # --- the popups ---
 
-    def _show_popup(self, button: QPushButton, title: str, parts, width=0) -> None:
+    def _show_popup(
+        self, button: QPushButton, title: str, parts, width=0, refresh=None
+    ) -> None:
         """Parts, widgets or layouts, under a title in a popup above the
-        bar's button, which stays pressed while it is up."""
+        bar's button, which stays pressed while it is up; refresh shows the
+        settings in it as they are now (see update_settings)."""
 
         popup = EditorPopup(title, parts, width, self)
         popup.closed.connect(lambda: button.setChecked(False))
         popup.closed.connect(self._popup_closed)
         button.setChecked(True)
         self._popup = popup
+        self._popup_refresh = refresh
         popup.show_above(button)
 
     def _popup_closed(self) -> None:
         self._popup = None
+        self._popup_refresh = None
 
     def _show_help(self) -> None:
         """The keys and the mouse in the editor, and what they do."""
@@ -697,10 +704,22 @@ class LayoutEditor(QWidget):
         elif event.key() in DONE_KEYS:
             self.done.emit()
         else:
-            # Shift, say, held for the next arrow: no key of the player's yet
-            if event.key() not in MODIFIER_KEYS:
-                self._end_change()
-            self.key_pressed.emit(event)
+            self.pass_key(event)
+
+    def pass_key(self, event) -> None:
+        """A key for the player's actions, from the editor or a popup of
+        its bar."""
+
+        # Shift, say, held for the next arrow: no key of the player's yet
+        if event.key() not in MODIFIER_KEYS:
+            self._end_change()
+        self.key_pressed.emit(event)
+
+    def update_settings(self) -> None:
+        """What the bar sets, as it is now: turned by its key, say."""
+
+        if self._popup_refresh is not None:
+            self._popup_refresh()
 
     def _request_action(self, name: str, *_) -> None:
         """Undo, Redo or Reopen, from the bar's buttons."""
@@ -948,8 +967,10 @@ class EditorPopup(QFrame):
     def keyPressEvent(self, event) -> None:
         if event.key() == Qt.Key_Escape:
             self.dismiss()
-            return
-        super().keyPressEvent(event)
+        else:
+            # the player's, as in the editor: the keys are the popup's
+            # while it is up
+            self.parentWidget().pass_key(event)
 
     def hideEvent(self, event) -> None:
         super().hideEvent(event)

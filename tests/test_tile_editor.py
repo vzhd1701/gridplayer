@@ -4,9 +4,12 @@ from PyQt5.QtGui import QMouseEvent
 from PyQt5.QtTest import QTest
 from PyQt5.QtWidgets import QApplication
 
-from gridplayer.params.static import TileOverlap
+from gridplayer.params.actions import ACTIONS
+from gridplayer.params.static import TileOverlap, TileSnap
+from gridplayer.player.managers.layout_edit import EDITOR_ACTIONS, SETTING_ACTIONS
 from gridplayer.utils.layout.boxes import Box
 from gridplayer.utils.layout.free_tiles import MOVE, FreeTiles, TileDrag
+from gridplayer.widgets.settings_controls import SegmentedChoice, Switch, ToggleChips
 from gridplayer.widgets.tile_editor import TileEditor, TileSettings
 
 WIDTH, HEIGHT = 600, 400
@@ -290,3 +293,73 @@ class TestName:
 
         assert box.right() <= 120
         assert box.center().y() == pytest.approx(120, abs=1)
+
+
+class TestPopups:
+    @pytest.fixture
+    def settings(self):
+        """Tile Overlap, Snap Tiles and Snap To as the editor reads them."""
+
+        return {"overlap": TileOverlap.OFF, "snapping": True, "snaps": frozenset()}
+
+    @pytest.fixture
+    def editor(self, settings):
+        editor = TileEditor(
+            drag_of=lambda *_: None,
+            settings=TileSettings(
+                overlap=lambda: settings["overlap"],
+                set_overlap=lambda v: settings.update(overlap=v),
+                is_snapping=lambda: settings["snapping"],
+                set_snapping=lambda v: settings.update(snapping=v),
+                snaps=lambda: settings["snaps"],
+                set_snaps=lambda v: settings.update(snaps=v),
+            ),
+            swap_key=lambda: None,
+            can_undo=lambda: False,
+            can_redo=lambda: False,
+            can_reopen=lambda: False,
+        )
+        editor.resize(WIDTH, HEIGHT)
+        yield editor
+        if editor._popup is not None:
+            editor._popup.dismiss()
+        editor.deleteLater()
+
+    def test_snap_to_follows_its_settings_while_up(self, editor, settings):
+        editor._snap.click()
+        switch = editor._popup.findChild(Switch)
+        chips = editor._popup.findChild(ToggleChips)
+        assert switch.isChecked()
+
+        # turned by their keys
+        settings.update(snapping=False, snaps=frozenset({TileSnap.TILE_EDGES}))
+        editor.update_settings()
+
+        assert not switch.isChecked()
+        assert not chips.isEnabled()
+        assert chips.picked() == frozenset({TileSnap.TILE_EDGES})
+        assert settings["snapping"] is False
+
+    def test_tile_overlap_follows_its_setting_while_up(self, editor, settings):
+        editor._overlap.click()
+        choice = editor._popup.findChild(SegmentedChoice)
+
+        settings["overlap"] = TileOverlap.ON
+        editor.update_settings()
+
+        assert choice.currentData() == TileOverlap.ON
+
+    def test_a_popup_passes_the_players_keys_on(self, editor):
+        pressed = []
+        editor.key_pressed.connect(lambda e: pressed.append(e.key()))
+        editor._snap.click()
+
+        QTest.keyClick(editor._popup, Qt.Key_S, Qt.ControlModifier)
+
+        assert Qt.Key_S in pressed
+        assert editor._popup is not None
+
+
+def test_the_keys_taken_in_the_editors_are_the_players_actions():
+    for name in (*EDITOR_ACTIONS.values(), *SETTING_ACTIONS):
+        assert name in ACTIONS, name

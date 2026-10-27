@@ -1,5 +1,6 @@
 from PyQt5.QtCore import QEvent, QTimer
 
+from gridplayer.params.static import TileOverlap, TileSnap
 from gridplayer.player.managers.base import ManagerBase
 from gridplayer.playlist_settings import PlaylistSettings
 from gridplayer.utils.keymap import key_sequence_from_event, normalize_key_sequence
@@ -12,6 +13,12 @@ EDITOR_ACTIONS = {
     "redo": "Redo Grid Change",
     "reopen": "Reopen Closed Video",
 }
+# and those of what the editors' bars set, shown there as their keys set it
+SETTING_ACTIONS = (
+    "Snap Lines",
+    *(f"Snap to {snap.name.replace('_', ' ').title()}" for snap in TileSnap),
+    *(f"Tile Overlap {overlap.name.title()}" for overlap in TileOverlap),
+)
 
 
 class LayoutEditManager(ManagerBase):
@@ -165,6 +172,11 @@ class LayoutEditManager(ManagerBase):
         if self._editor is not None:
             self._editor.update_undo()
 
+    def update_settings(self):
+        # what the bar sets, turned by a key, say
+        if self._editor is not None:
+            self._editor.update_settings()
+
     def _close_video(self, video_id: str):
         block = self._ctx.video_blocks.by_video_id(video_id)
         if block is not None:
@@ -180,8 +192,9 @@ class LayoutEditManager(ManagerBase):
         sequence = key_sequence_from_event(event)
         if sequence is None:
             return
-        for name in EDITOR_ACTIONS.values():
+        for name in (*EDITOR_ACTIONS.values(), *SETTING_ACTIONS):
             action = self._ctx.actions[name]
             if sequence in map(normalize_key_sequence, action.shortcuts()):
                 action.trigger()
+                self.update_settings()
                 return

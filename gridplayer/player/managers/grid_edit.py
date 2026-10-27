@@ -126,10 +126,6 @@ class GridEditManager(LayoutEditManager):
             state.rows, state.cols, state.col_weights, state.row_weights, cells
         )
 
-    def update_snapping(self):
-        if self._editor is not None:
-            self._editor.update_snapping()
-
     def cmd_pick_grid_cell_span(self, video_id: str, under: QRect):
         """A video's cell's size picked, from the button for it on the
         video, under it on the screen. Returns the picker shown."""
