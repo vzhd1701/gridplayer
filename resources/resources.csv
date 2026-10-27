@@ -94,6 +94,7 @@ icon-symbolic,icons/custom/grid fit.svg,grid-fit
 icon-symbolic,icons/custom/fit shapes.svg,grid-fit-shapes
 icon-symbolic,icons/custom/fit lines.svg,grid-fit-lines
 icon-symbolic,icons/custom/reset lines.svg,grid-reset-lines
+icon-symbolic,icons/custom/snap.svg,snap
 icon-symbolic,icons/custom/cell size.svg,grid-cell-size
 icon-symbolic,icons/custom/cell bigger.svg,grid-cell-bigger
 icon-symbolic,icons/custom/cell smaller.svg,grid-cell-smaller

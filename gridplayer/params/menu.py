@@ -5,8 +5,10 @@ from gridplayer.params.static import (
     CROP_RATIO_PRESETS,
     GRID_CROPS,
     GRID_TEMPLATES,
+    GridMode,
     TileOverlap,
 )
+from gridplayer.utils.command_helpers import NOT
 from gridplayer.utils.qt import translate
 
 SUBMENUS = MappingProxyType(
@@ -65,7 +67,13 @@ SUBMENUS = MappingProxyType(
             "title": translate("Tile Overlap", "Tile Overlap"),
             "icon": "grid-cell-size",
         },
-        "Snap To": {"title": translate("Snap To", "Snap To")},
+        # Snap Tiles and what they snap to; in the other grids, Snap Lines
+        # alone, put in the menu itself
+        "Snap": {
+            "title": translate("Actions", "Snap"),
+            "icon": "snap",
+            "inline_if": NOT(("is_grid_mode_set_to", GridMode.FREE)),
+        },
         "Recently Closed": {
             "title": translate("Actions", "Recently Closed"),
             "icon": "reopen-closed",
@@ -757,9 +765,11 @@ SECTIONS = MappingProxyType(
                 "---",
                 "Fit Lines to Videos",
                 "Reset Lines",
-                "Snap Lines",
+                "---",
                 (
-                    "Snap To",
+                    "Snap",
+                    "Snap Lines",
+                    "---",
                     "Snap to Tile Edges",
                     "Snap to Tile Middles",
                     "Snap to Window Edges",

@@ -2878,7 +2878,8 @@ ACTIONS = MappingProxyType(
             ),
             "keymap_title": translate("Snap Lines", "Snap Lines"),
             "toggle": ("is_grid_mode_set_to", GridMode.FREE),
-            "icon": "empty",
+            # in Free Tiles, in the Snap menu, which has it
+            "icon": ("snap", "empty"),
             "func": "toggle_grid_line_snap",
             "check_if": "is_grid_line_snap",
             "show_if": NOT(("is_grid_mode_set_to", GridMode.AUTO_SHAPES)),

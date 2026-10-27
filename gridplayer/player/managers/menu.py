@@ -71,8 +71,15 @@ class MenuManager(ManagerBase):
         return _join_menu_sections(sections_added)
 
     def _add_menu_items(self, menu, menu_items):
+        self._add_items(menu, menu_items)
+        _strip_trailing_separator(menu)
+
+    def _add_items(self, menu, menu_items):
         for m_idx, m_item in enumerate(menu_items):
-            if isinstance(m_item, tuple):
+            if isinstance(m_item, tuple) and self._is_inline(m_item):
+                # its items in this menu, with no dividers of their own
+                self._add_items(menu, [i for i in m_item[1:] if i != "---"])
+            elif isinstance(m_item, tuple):
                 self._add_submenu(m_item, menu)
 
                 if not menu.actions()[-1].menu().actions():
@@ -88,7 +95,11 @@ class MenuManager(ManagerBase):
                 else:
                     _add_action(action, menu)
 
-        _strip_trailing_separator(menu)
+    def _is_inline(self, submenu) -> bool:
+        """Whether a submenu's items go in the menu it is in, instead."""
+
+        inline_if = SUBMENUS[submenu[0]].get("inline_if")
+        return inline_if is not None and self._ctx.commands.resolve(inline_if)()
 
     def _add_submenu(self, submenu, menu):
         sub = SUBMENUS[submenu[0]]
