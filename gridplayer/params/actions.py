@@ -2646,20 +2646,20 @@ ACTIONS = MappingProxyType(
         "Free Tiles": {
             # the cells made tiles where they are, to move and size by hand
             "title": translate("Grid Mode", "Free Tiles"),
-            "icon": "grid-cell-size",
+            "icon": "grid-free-tiles",
             "func": ("set_grid_mode", GridMode.FREE),
             "check_if": ("is_grid_mode_set_to", GridMode.FREE),
             "is_choice": True,
         },
         "Arrange Tiles": {
             "title": translate("Actions", "Arrange Tiles"),
-            "icon": "grid-fit-shapes",
+            "icon": "grid-arrange-tiles",
             "func": "arrange_tiles",
             "show_if": ("is_grid_mode_set_to", GridMode.FREE),
         },
         "Fit Tiles to Window": {
             "title": translate("Actions", "Fit Tiles to Window"),
-            "icon": "empty",
+            "icon": "grid-fit-tiles",
             "func": "fit_tiles_to_window",
             "show_if": ("is_grid_mode_set_to", GridMode.FREE),
         },
@@ -2677,7 +2677,7 @@ ACTIONS = MappingProxyType(
         "Bring to Front": {
             "title": translate("Actions", "Bring to Front"),
             "key": "Ctrl+Click",
-            "icon": "empty",
+            "icon": "grid-tile-front",
             "func": ("stack_tile", "front"),
             "enable_if": ("is_tile_stackable", "front"),
             "show_if": "is_tiles_stacked",
@@ -2685,7 +2685,7 @@ ACTIONS = MappingProxyType(
         "Send to Back": {
             "title": translate("Actions", "Send to Back"),
             "key": "Ctrl+Shift+Click",
-            "icon": "empty",
+            "icon": "grid-tile-back",
             "func": ("stack_tile", "back"),
             "enable_if": ("is_tile_stackable", "back"),
             "show_if": "is_tiles_stacked",
@@ -2693,7 +2693,7 @@ ACTIONS = MappingProxyType(
         "Make Room": {
             # the tiles under the video's, or over it, set aside
             "title": translate("Actions", "Make Room"),
-            "icon": "empty",
+            "icon": "grid-make-room",
             "func": "make_room",
             "enable_if": "is_tile_room_makeable",
             "show_if": "is_tiles_stacked",
@@ -2701,7 +2701,7 @@ ACTIONS = MappingProxyType(
         "Lock Tile": {
             # never moved, sized, pushed or gone over
             "title": translate("Actions", "Lock Tile"),
-            "icon": "empty",
+            "icon": "grid-tile-lock",
             "func": "lock_tile",
             "check_if": "is_tile_locked",
             "enable_if": "is_tile_lockable",

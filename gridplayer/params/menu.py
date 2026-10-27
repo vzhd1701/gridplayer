@@ -65,7 +65,7 @@ SUBMENUS = MappingProxyType(
         },
         "Tile Overlap": {
             "title": translate("Tile Overlap", "Tile Overlap"),
-            "icon": "grid-cell-size",
+            "icon": "grid-tile-overlap",
         },
         # Snap Tiles and what they snap to; in the other grids, Snap Lines
         # alone, put in the menu itself

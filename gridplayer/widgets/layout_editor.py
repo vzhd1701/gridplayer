@@ -174,8 +174,12 @@ def paint_icon(painter: QPainter, kind: str, rect: QRectF, color: QColor) -> Non
 @functools.cache
 def icon_paths(kind: str) -> tuple[QPainterPath, QPainterPath | None]:
     """An icon's lines, and what of it is filled, if anything: the rows, the
-    columns, the lines fitted to the videos or reset, undo, redo, reopen; the tiles arranged, fitted to the window,
-    one over another, snapping; a lock, a tile put in front, or behind."""
+    columns, the lines fitted to the videos or reset, undo, redo, reopen; the
+    tiles arranged, fitted to the window, one over another, snapping; a lock,
+    a tile put in front, or behind.
+
+    The menu's icons for the tiles and snapping (resources/icons/custom) are
+    these drawings, with the menu's lighter line."""
 
     path = QPainterPath()
     fill = None
@@ -242,8 +246,7 @@ def icon_paths(kind: str) -> tuple[QPainterPath, QPainterPath | None]:
         path.lineTo(10, 6)
         path.addRoundedRect(QRectF(6, 6, 8, 8), 1, 1)
     elif kind == "snap":
-        # a magnet, one closed outline, its poles marked off; the menu's
-        # icon is the same (resources/icons/custom/snap.svg)
+        # a magnet, one closed outline, its poles marked off
         path.moveTo(2.5, 2.5)
         path.lineTo(6, 2.5)
         path.lineTo(6, 8.5)
