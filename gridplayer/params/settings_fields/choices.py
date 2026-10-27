@@ -34,6 +34,7 @@ from gridplayer.params.static import (
     SubtitleOutline,
     SubtitleTrackMode,
     TileOverlap,
+    TileSnap,
     UnsavedChangesMode,
     URLResolver,
     VideoAnchor,
@@ -57,6 +58,18 @@ def grid_modes() -> dict:
         GridMode.AUTO_SHAPES: translate("Grid Mode", "Auto (Fit Shapes)"),
         GridMode.FIXED: translate("Grid Mode", "Fixed Grid"),
         GridMode.FREE: translate("Grid Mode", "Free Tiles"),
+    }
+
+
+def tile_snaps() -> dict:
+    return {
+        TileSnap.TILE_EDGES: translate("Snap To", "Tile edges"),
+        TileSnap.TILE_MIDDLES: translate("Snap To", "Tile middles"),
+        TileSnap.WINDOW_EDGES: translate("Snap To", "Window edges"),
+        TileSnap.WINDOW_MIDDLE: translate("Snap To", "Window middle"),
+        TileSnap.OLD_PLACE: translate("Snap To", "Old place"),
+        TileSnap.VIDEO_SHAPE: translate("Snap To", "Video shape"),
+        TileSnap.EQUAL_GAPS: translate("Snap To", "Equal gaps"),
     }
 
 

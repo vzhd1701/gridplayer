@@ -1,8 +1,10 @@
+from collections.abc import Callable, Sequence
+
 from PyQt5.QtCore import QPoint, QRect, QSize, Qt
-from PyQt5.QtGui import QColor, QPainter
+from PyQt5.QtGui import QColor, QPainter, QRegion
 from PyQt5.QtWidgets import QWidget
 
-from gridplayer.utils.layout.free_tiles import Guide, GuideKind
+from gridplayer.utils.layout.free_tiles import Gap, Guide, GuideKind
 from gridplayer.utils.layout.lines import SnapKind, Target
 from gridplayer.utils.qt import translate
 
@@ -31,12 +33,14 @@ def snap_word(target: Target, is_column: bool) -> str:
     return translate("Grid Lines", "Bottom fits")
 
 
-def tile_snap_words(guides: list[Guide], fits: bool = False) -> str:
+def tile_snap_words(
+    guides: list[Guide], fits: bool = False, has_gaps: bool = False
+) -> str:
     """What a tile moved in Free Tiles is in line with, in words: its
     middle at the page's, an edge at the page's middle or at its edge,
     another tile beside it, another's edges or middle; sized, an edge back
-    where it started; and sized to any shape, its video's (see
-    TileDrag.fits)."""
+    where it started; sized to any shape, its video's (see TileDrag.fits);
+    and the room beside it as much as others have (see TileDrag.gaps)."""
 
     kinds = {guide.kind for guide in guides}
     words = []
@@ -46,6 +50,8 @@ def tile_snap_words(guides: list[Guide], fits: bool = False) -> str:
         words.append(translate("Free Tiles", "Old edge"))
     if GuideKind.CENTERED in kinds:
         words.append(translate("Free Tiles", "Centered"))
+    if has_gaps:
+        words.append(translate("Free Tiles", "Same gap"))
     if GuideKind.PAGE_MIDDLE in kinds:
         words.append(translate("Free Tiles", "Page middle"))
     if GuideKind.PAGE_EDGE in kinds:
@@ -97,6 +103,21 @@ class FloatingMark(QWidget):
                 self.setGeometry(rect)
 
 
+def show_pooled(pool: list, make: Callable, items: Sequence, show: Callable) -> None:
+    """Each of items shown by a mark of the pool, show(mark, item), more
+    made as they are needed, make(); the rest hidden."""
+
+    while len(pool) < len(items):
+        pool.append(make())
+
+    for mark, item in zip(pool, items):
+        show(mark, item)
+
+    for mark in pool[len(items) :]:
+        if mark.isVisible():
+            mark.hide()
+
+
 class GridLineMark(FloatingMark):
     """The line between two cells that the pointer is on, to be moved, or
     that is being moved: thicker where it has snapped (see GridLines.snaps).
@@ -143,6 +164,98 @@ class GridLineMark(FloatingMark):
             core = self.rect().adjusted(0, self.edge, 0, -self.edge)
 
         painter.fillRect(core, LINE_COLOR)
+
+
+class GapMark(FloatingMark):
+    """The room between two tiles, or a tile and the page's edge, as much
+    as another's (see TileDrag.gaps): a line across it with a tick at each
+    end, light with a dark edge, as a line is. Only the mark is shown, the
+    window cut to it."""
+
+    # the light line, its ticks, how long they are, and the dark edge
+    core = 1
+    tick = 9
+    edge = 1
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+
+        self._is_column = True
+        # the size it was shown at, which the window may not quite be on a
+        # screen that scales
+        self._size = QSize()
+
+    def show_gap(self, is_column: bool, start: int, end: int, position: int) -> None:
+        """Show the mark: a column's gap from x = start to end at y =
+        position, a row's from y = start to end at x = position, on the
+        screen."""
+
+        thickness = self.tick + 2 * self.edge
+        length = max(end - start, 1) + 2 * self.edge
+        low = position - thickness // 2
+
+        if is_column:
+            rect = QRect(start - self.edge, low, length, thickness)
+        else:
+            rect = QRect(low, start - self.edge, thickness, length)
+
+        if is_column != self._is_column or rect.size() != self._size:
+            self._is_column = is_column
+            self._size = rect.size()
+            region = QRegion()
+            for part in self._parts(rect.size()):
+                region = region.united(
+                    QRegion(part.adjusted(-self.edge, -self.edge, self.edge, self.edge))
+                )
+            self.setMask(region)
+            self.update()
+
+        self.show_at(rect)
+
+    def _parts(self, size: QSize) -> list[QRect]:
+        """The line and the two ticks, light, in a window of that size."""
+
+        edge, core, tick = self.edge, self.core, self.tick
+        if self._is_column:
+            length = size.width() - 2 * edge
+            return [
+                QRect(edge, (size.height() - core) // 2, length, core),
+                QRect(edge, edge, 1, tick),
+                QRect(edge + length - 1, edge, 1, tick),
+            ]
+        length = size.height() - 2 * edge
+        return [
+            QRect((size.width() - core) // 2, edge, core, length),
+            QRect(edge, edge, tick, 1),
+            QRect(edge, edge + length - 1, tick, 1),
+        ]
+
+    def paintEvent(self, event) -> None:
+        painter = QPainter(self)
+        painter.fillRect(self.rect(), EDGE_COLOR)
+        for part in self._parts(self._size):
+            painter.fillRect(part, LINE_COLOR)
+
+
+def guides_clear_of(guides: list[Guide], gaps: list[Gap]) -> list[Guide]:
+    """The guides to draw with the gaps marked: not one along a mark,
+    across the gap where it is drawn, which would hide it; it is still said
+    (see tile_snap_words)."""
+
+    # half of each, the mark and the line
+    reach = (
+        GapMark.tick + 2 * GapMark.edge + GridLineMark.core + 2 * GridLineMark.edge
+    ) / 2
+
+    def is_under(guide: Guide, gap: Gap) -> bool:
+        return (
+            guide.is_column != gap.is_column
+            and abs(guide.position - gap.position) < reach
+            and guide.start < gap.end
+            and guide.end > gap.start
+        )
+
+    return [g for g in guides if not any(is_under(g, gap) for gap in gaps)]
 
 
 class GridLineTag(FloatingMark):

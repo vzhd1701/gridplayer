@@ -1,8 +1,10 @@
+from gridplayer.models.tile_snaps import TileSnaps
 from gridplayer.params import env
 from gridplayer.params.settings_fields import choices
 from gridplayer.params.settings_fields.kinds import (
     CheckboxField,
     ComboField,
+    FlagsField,
     FloatSpinField,
     SettingField,
     SpinField,
@@ -346,6 +348,14 @@ PLAYLIST_FIELDS: tuple[SettingField, ...] = (
             "SettingsDialog",
             "A dragged line stops where a video fits or the cells are even.",
         ),
+    ),
+    FlagsField(
+        settings_key="playlist/tile_snaps",
+        label=translate("Snap To", "Snap to"),
+        choices=choices.tile_snaps,
+        value_type=TileSnaps,
+        shown_when=When("playlist/grid_mode", (GridMode.FREE,)),
+        enabled_when=When("playlist/grid_line_snap"),
     ),
     ComboField(
         settings_key="playlist/tile_overlap",

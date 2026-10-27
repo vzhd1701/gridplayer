@@ -14,6 +14,7 @@ from gridplayer.models.recent_list import (
     RecentListVideos,
 )
 from gridplayer.models.resolver_patterns import ResolverPatterns
+from gridplayer.models.tile_snaps import TileSnaps
 from gridplayer.params import env
 from gridplayer.params.gestures import (
     GESTURE_DROP_SWITCH,
@@ -44,6 +45,7 @@ from gridplayer.params.static import (
     StripSide,
     SubtitleTrackMode,
     TileOverlap,
+    TileSnap,
     UnsavedChangesMode,
     URLResolver,
     VideoAnchor,
@@ -121,6 +123,19 @@ _default_settings = {
     # a line between cells being dragged stops where a video fits its cell or
     # the cells on either side are even
     "playlist/grid_line_snap": True,
+    # what a tile moved or sized in Free Tiles snaps to: all but the gaps
+    "playlist/tile_snaps": TileSnaps(
+        frozenset(
+            {
+                TileSnap.TILE_EDGES,
+                TileSnap.TILE_MIDDLES,
+                TileSnap.WINDOW_EDGES,
+                TileSnap.WINDOW_MIDDLE,
+                TileSnap.OLD_PLACE,
+                TileSnap.VIDEO_SHAPE,
+            }
+        )
+    ),
     "playlist/tile_overlap": TileOverlap.OFF,
     "playlist/save_paths_relative": False,
     # every setting written into the playlist, not only those it changes

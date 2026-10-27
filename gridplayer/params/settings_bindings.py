@@ -33,6 +33,7 @@ PLAYLIST_ATTRS: MappingProxyType[str, str] = MappingProxyType(
         "playlist/show_overlay_border": "show_overlay_border",
         "playlist/show_grid_lines": "show_grid_lines",
         "playlist/grid_line_snap": "grid_line_snap",
+        "playlist/tile_snaps": "tile_snaps",
         "playlist/tile_overlap": "tile_overlap",
         "playlist/overlay_hide_on_timeout": "overlay_hide_on_timeout",
         "playlist/overlay_timeout": "overlay_timeout",

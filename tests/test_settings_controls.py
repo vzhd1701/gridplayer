@@ -2,11 +2,12 @@ import pytest
 from PyQt5.QtCore import QDeadlineTimer, QEvent, QPoint, Qt
 from PyQt5.QtGui import QColor, QPalette
 from PyQt5.QtTest import QTest
-from PyQt5.QtWidgets import QApplication, QScrollArea
+from PyQt5.QtWidgets import QAbstractButton, QApplication, QScrollArea
 
+from gridplayer.models.tile_snaps import TileSnaps
 from gridplayer.params.settings_fields.kinds import Indented, Section
 from gridplayer.params.settings_fields.registry import FIELDS
-from gridplayer.params.static import ProxyMode
+from gridplayer.params.static import ProxyMode, TileSnap
 from gridplayer.settings import default_value
 from gridplayer.widgets.settings_controls import SegmentedChoice, Switch, ToggleLabel
 from gridplayer.widgets.settings_editors import make_editor
@@ -91,6 +92,47 @@ def test_a_short_choice_is_a_row_of_buttons_and_a_long_one_a_list():
     assert not isinstance(
         make_editor(FIELDS["video_defaults/end_action"]).widget, SegmentedChoice
     )
+
+
+class TestTileSnaps:
+    @pytest.fixture
+    def editor(self):
+        editor = make_editor(FIELDS["playlist/tile_snaps"])
+        editor.set_value(default_value("playlist/tile_snaps"))
+        editor.widget.resize(600, 80)
+        editor.widget.show()
+        return editor
+
+    def _chip(self, editor, text):
+        return next(
+            chip
+            for chip in editor.widget.findChildren(QAbstractButton)
+            if chip.text() == text
+        )
+
+    def test_a_button_each_pressed_while_it_is_on(self, editor):
+        pressed = {
+            chip.text(): chip.isChecked()
+            for chip in editor.widget.findChildren(QAbstractButton)
+        }
+
+        assert len(pressed) == len(TileSnap)
+        assert [text for text, is_on in pressed.items() if not is_on] == ["Equal gaps"]
+
+    def test_a_click_turns_one_on_and_is_a_change(self, editor):
+        changes = []
+        editor.changed.connect(lambda: changes.append(True))
+
+        QTest.mouseClick(self._chip(editor, "Equal gaps"), Qt.LeftButton)
+
+        assert changes == [True]
+        assert editor.value() == TileSnaps(frozenset(TileSnap))
+
+    def test_said_in_words(self, editor):
+        assert editor.text_of(editor.value()) == "All but Equal gaps"
+        assert editor.text_of(TileSnaps(frozenset(TileSnap))) == "All"
+        assert editor.text_of(TileSnaps()) == "None"
+        assert editor.text_of(TileSnaps(frozenset({TileSnap.OLD_PLACE}))) == "Old place"
 
 
 class TestSubOptionsShowOnlyWhenTheyApply:

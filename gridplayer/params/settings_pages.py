@@ -91,6 +91,7 @@ PLAYLIST_PAGE = (
         "playlist/grid_preallocate",
         "playlist/grid_link",
         "playlist/grid_line_snap",
+        "playlist/tile_snaps",
         "playlist/tile_overlap",
     ),
     Section(

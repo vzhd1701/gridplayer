@@ -7,6 +7,7 @@ from enum import Enum, auto
 from itertools import product, takewhile
 from typing import NamedTuple
 
+from gridplayer.params.static import TileSnap
 from gridplayer.utils.drop_zone import DropZone
 from gridplayer.utils.layout.boxes import Box, within
 from gridplayer.utils.layout.flow_layout import DEFAULT_SHAPE
@@ -80,6 +81,20 @@ class Rect(NamedTuple):
 
         return self.left < other.right - _NEAR and self.right > other.left + _NEAR
 
+    def span(self, is_column: bool) -> tuple[float, float]:
+        """Where it begins and ends across (is_column), or down."""
+
+        return (self.left, self.right) if is_column else (self.top, self.bottom)
+
+    def middle(self, is_column: bool) -> float:
+        return self.center_x if is_column else self.center_y
+
+    def is_beside(self, other: Rect, is_column: bool) -> bool:
+        """Whether one is beside the other, if not over it: across
+        (is_column), or one above the other."""
+
+        return self.is_across(other) if is_column else self.is_along(other)
+
 
 class GuideKind(Enum):
     """What a tile is in line with: another tile beside it, edge to edge;
@@ -95,6 +110,17 @@ class GuideKind(Enum):
     START = auto()
 
 
+_GUIDE_SNAPS = {
+    GuideKind.TOUCHING: TileSnap.TILE_EDGES,
+    GuideKind.EDGES: TileSnap.TILE_EDGES,
+    GuideKind.MIDDLES: TileSnap.TILE_MIDDLES,
+    GuideKind.PAGE_EDGE: TileSnap.WINDOW_EDGES,
+    GuideKind.PAGE_MIDDLE: TileSnap.WINDOW_MIDDLE,
+    GuideKind.CENTERED: TileSnap.WINDOW_MIDDLE,
+    GuideKind.START: TileSnap.OLD_PLACE,
+}
+
+
 class Guide(NamedTuple):
     """A line a tile moved is in line with, to be shown while it is: a
     column's at x = position from y = start to end, a row's the other way,
@@ -105,6 +131,36 @@ class Guide(NamedTuple):
     start: float
     end: float
     kind: GuideKind
+
+
+class Gap(NamedTuple):
+    """The room between a tile and the next beside it, or the page's edge
+    (is_page): side to side (is_column), from x = start to end, along the
+    height they share, from y = low to high; else from y = start to end,
+    along the width they share. In the page's pixels."""
+
+    is_column: bool
+    start: float
+    end: float
+    low: float
+    high: float
+    is_page: bool
+
+    @property
+    def size(self) -> float:
+        return self.end - self.start
+
+    @property
+    def position(self) -> float:
+        """Where it is shown, across: in the middle of what they share."""
+
+        return (self.low + self.high) / 2
+
+    @property
+    def area(self) -> Rect:
+        if self.is_column:
+            return Rect(self.start, self.low, self.end, self.high)
+        return Rect(self.low, self.start, self.high, self.end)
 
 
 class TilePlace(NamedTuple):
@@ -749,6 +805,108 @@ def _away(low: float, high: float, by_low: float, by_high: float) -> float:
     return min(max((low - by_low) / beyond, 0.0), 1.0)
 
 
+class _Room(NamedTuple):
+    """The room a tile is in, across (is_column) or down: the nearest
+    tile beside it before it (to the left, or above) and after it, not over
+    it, None for the page's edge; and where it begins and ends, at them."""
+
+    before: Rect | None
+    after: Rect | None
+    begin: float
+    end: float
+
+    @property
+    def is_by_tile(self) -> bool:
+        return self.before is not None or self.after is not None
+
+
+def _room(rect: Rect, others: Iterable[Rect], page: Rect, is_column: bool) -> _Room:
+    low, high = rect.span(is_column)
+    before = after = None
+    for other in others:
+        if not rect.is_beside(other, is_column):
+            continue
+        other_low, other_high = other.span(is_column)
+        if other_high <= low + _NEAR:
+            if before is None or other_high > before.span(is_column)[1]:
+                before = other
+        elif other_low >= high - _NEAR:
+            if after is None or other_low < after.span(is_column)[0]:
+                after = other
+
+    begin, end = page.span(is_column)
+    if before is not None:
+        begin = before.span(is_column)[1]
+    if after is not None:
+        end = after.span(is_column)[0]
+    return _Room(before, after, begin, end)
+
+
+def _gap(
+    rect: Rect, other: Rect | None, start: float, end: float, is_column: bool
+) -> Gap | None:
+    """The room from start to end between rect and the tile beside it, or
+    the page's edge (None), along what they share; None where they touch."""
+
+    if end - start <= _NEAR:
+        return None
+    low, high = rect.span(not is_column)
+    if other is not None:
+        other_low, other_high = other.span(not is_column)
+        low, high = max(low, other_low), min(high, other_high)
+    return Gap(is_column, start, end, low, high, other is None)
+
+
+def _gaps_beside(
+    rect: Rect, others: list[Rect], page: Rect, is_column: bool
+) -> list[Gap]:
+    """The room before rect and after it, where there is any (see _gap).
+    By the page's edges either side, only the less, its margin, and none
+    where the two are the same: it is centered, and said so (see
+    TileDrag.guides)."""
+
+    room = _room(rect, others, page, is_column)
+    low, high = rect.span(is_column)
+    gaps = [
+        gap
+        for gap in (
+            _gap(rect, room.before, room.begin, low, is_column),
+            _gap(rect, room.after, high, room.end, is_column),
+        )
+        if gap is not None
+    ]
+    if len(gaps) == 2 and gaps[0].is_page and gaps[1].is_page:
+        if abs(gaps[0].size - gaps[1].size) < _NEAR:
+            return []
+        return [min(gaps, key=lambda gap: gap.size)]
+    return gaps
+
+
+def _is_same_size(gap: Gap, other: Gap) -> bool:
+    """Whether two are as big, but not by the page's same edge: two margins
+    there are only edges lined up (see TileDrag.guides)."""
+
+    if abs(gap.size - other.size) >= _NEAR:
+        return False
+    if gap.is_page and other.is_page:
+        return (
+            abs(gap.start - other.start) >= _NEAR and abs(gap.end - other.end) >= _NEAR
+        )
+    return True
+
+
+def _gaps_between(rects: list[Rect], page: Rect, is_column: bool) -> list[Gap]:
+    """The room between each tile and those beside it, or the page's
+    edges, each once."""
+
+    gaps = {}
+    for i, rect in enumerate(rects):
+        rest = rects[:i] + rects[i + 1 :]
+        for gap in _gaps_beside(rect, rest, page, is_column):
+            gaps[gap] = None
+    return list(gaps)
+
+
 def _contains(rect: Rect, x: float, y: float, reach: float = 0) -> bool:
     return (
         rect.left - reach <= x <= rect.right + reach
@@ -771,6 +929,16 @@ def _side(at: float, low: float, high: float, reach: float) -> int:
     if abs(at - high) <= reach:
         return 1
     return 0
+
+
+class _Targets(NamedTuple):
+    """What a tile snaps to, by the others, across (True) and down: where
+    an edge snaps to, and a middle, and the room between them, if it snaps
+    to gaps."""
+
+    lines: dict[bool, list[float]]
+    middles: dict[bool, list[float]]
+    gaps: dict[bool, list[Gap]]
 
 
 class TileDrag:
@@ -803,9 +971,12 @@ class TileDrag:
     Snapping, an edge (or the middle) near enough another tile's, or the
     page's, goes to it (see SNAP_REACH); and to where it started, moved,
     or sized once an edge held has been away. What it is then in line with
-    is shown (see guides). Sized to any shape, it snaps to its video's,
-    where the picture fits it with no bars (see fits). In the page's
-    pixels, which are the screen's.
+    is shown (see guides). So does an edge to where it is as far from the
+    tile beside it, or the page's edge, as two others are, or another from
+    the page's edge, or as the tile is on its other side (see gaps). Sized
+    to any shape, it snaps to its video's, where the picture fits it with
+    no bars (see fits). Each of these it snaps to only if told (snaps).
+    In the page's pixels, which are the screen's.
     """
 
     def __init__(
@@ -817,6 +988,8 @@ class TileDrag:
         page_height: float,
         pointer: tuple[float, float],
         shape: float | None = None,
+        *,
+        snaps: Collection[TileSnap],
         is_over: bool = False,
         is_pushing: bool = False,
     ):
@@ -826,12 +999,16 @@ class TileDrag:
         self.handle = handle
         self.page = Rect(0, 0, page_width, page_height)
         self.start = rects[video_id]
+        # what it snaps to, snapping
+        self.snaps = frozenset(snaps)
         self._spots = {i: r for i, r in rects.items() if i != video_id}
         self.others = list(self._spots.values())
-        # where an edge snaps to, and a middle, across (True) and down: the
-        # others stay where they are while it is moved, but those pushed
-        self._lines = {c: self._lines_of(c, self.others) for c in (True, False)}
-        self._middles = {c: self._middles_of(c, self.others) for c in (True, False)}
+        # what it snaps to, by the set of those pushed aside: the others stay
+        # where they are while it is moved, but those pushed
+        self._targets_by: dict[frozenset[str], _Targets] = {}
+        # those now, and where the others are now, pushed or not, until
+        # those pushed change
+        self._now: tuple[_Targets, list[Rect]] | None = None
         # the shape it keeps, sized, and its video's, which it snaps to sized
         # to any shape
         self.shape = self.start.width / max(self.start.height, 1e-9)
@@ -918,7 +1095,7 @@ class TileDrag:
         self._push_for(self.rect)
         self.fits = (
             not keeps_shape
-            and is_snapping
+            and self._is_fitting(is_snapping)
             and self._is_fit(self.rect.width, self.rect.height)
         )
         return self.rect
@@ -952,12 +1129,8 @@ class TileDrag:
             for other_id, spot in self._spots.items():
                 # pushed, where it is now
                 other = self.pushed.get(other_id, spot)
-                if is_column:
-                    theirs = (other.left, other.right, other.center_x)
-                    is_beside = rect.is_across(other)
-                else:
-                    theirs = (other.top, other.bottom, other.center_y)
-                    is_beside = rect.is_along(other)
+                theirs = (*other.span(is_column), other.middle(is_column))
+                is_beside = rect.is_beside(other, is_column)
                 for i, j in ((0, 1), (1, 0), (0, 0), (1, 1)):
                     if abs(own[i] - theirs[j]) < _NEAR:
                         # one edge on the other's across from it, side by side
@@ -994,7 +1167,36 @@ class TileDrag:
                     start = min(rect.left, other.left)
                     end = max(rect.right, other.right)
                 guides.append(Guide(is_column, position, start, end, kind))
-        return guides + self._start_guides()
+        guides += self._start_guides()
+        return [g for g in guides if _GUIDE_SNAPS[g.kind] in self.snaps]
+
+    def gaps(self) -> list[Gap]:
+        """The room beside the tile where it is as big as others have, or
+        as on its other side, to be shown while it is: the tile's and
+        theirs (see _gaps_beside)."""
+
+        if TileSnap.EQUAL_GAPS not in self.snaps:
+            return []
+
+        shown = {}
+        for is_column in (True, False):
+            own = _gaps_beside(self.rect, self._places(), self.page, is_column)
+            theirs = self._gaps_of(self.rect, is_column)
+            for gap in own:
+                same = [other for other in theirs if _is_same_size(gap, other)]
+                if same:
+                    shown.update(dict.fromkeys([gap, *same]))
+
+            if len(own) == 2 and _is_same_size(*own):
+                shown.update(dict.fromkeys(own))
+        return list(shown)
+
+    def snap_to(self, snaps: Collection[TileSnap]) -> None:
+        """What it snaps to from now on, changed while it is held."""
+
+        self.snaps = frozenset(snaps)
+        self._targets_by = {}
+        self._now = None
 
     def _start_guides(self) -> list[Guide]:
         """Where the tile's edges are back in line with the dashed outline
@@ -1032,22 +1234,12 @@ class TileDrag:
         side_x, side_y = self.handle
         left, top, right, bottom = rect
 
-        across = [o for o in self.others if o.is_across(rect)]
-        along = [o for o in self.others if o.is_along(rect)]
-        if side_x < 0:
-            left = max([o.right for o in across if o.right <= left + _NEAR], default=0)
-        elif side_x > 0:
-            right = min(
-                [o.left for o in across if o.left >= right - _NEAR],
-                default=self.page.right,
-            )
-        if side_y < 0:
-            top = max([o.bottom for o in along if o.bottom <= top + _NEAR], default=0)
-        elif side_y > 0:
-            bottom = min(
-                [o.top for o in along if o.top >= bottom - _NEAR],
-                default=self.page.bottom,
-            )
+        if side_x:
+            room = _room(rect, self.others, self.page, True)
+            left, right = (room.begin, right) if side_x < 0 else (left, room.end)
+        if side_y:
+            room = _room(rect, self.others, self.page, False)
+            top, bottom = (room.begin, bottom) if side_y < 0 else (top, room.end)
 
         stretched = Rect(left, top, right, bottom)
         # a corner's two edges each as far as they go may meet a tile only
@@ -1076,9 +1268,19 @@ class TileDrag:
                 max(0.0, -rect.top) - max(0.0, rect.bottom - self.page.bottom),
             )
             if is_snapping:
-                rect = rect.moved(
-                    self._snap_shift(rect, True), self._snap_shift(rect, False)
-                )
+                dx = self._snap_shift(rect, True)
+                dy = self._snap_shift(rect.moved(dx, 0), False)
+                if TileSnap.EQUAL_GAPS in self.snaps:
+                    # moved down, it may be beside others, whose gaps across
+                    # are not the same: across again, and down again for
+                    # that, until the two agree, a few times at most
+                    for _ in range(2):
+                        again = self._snap_shift(rect.moved(0, dy), True)
+                        if abs(again - dx) < _NEAR:
+                            break
+                        dx = again
+                        dy = self._snap_shift(rect.moved(dx, 0), False)
+                rect = rect.moved(dx, dy)
             return rect
 
         return self._sized(dx, dy, is_snapping, keeps_shape)
@@ -1087,15 +1289,23 @@ class TileDrag:
         side_x, side_y = self.handle
         left, top, right, bottom = self.start
 
-        # the edges held, where the pointer takes them, snapped
+        # the edges held, where the pointer takes them, snapped: by a
+        # corner, each with the other where it is
         if side_x < 0:
-            left = self._snapped(left + dx, True, is_snapping)
+            left += dx
         elif side_x > 0:
-            right = self._snapped(right + dx, True, is_snapping)
+            right += dx
         if side_y < 0:
-            top = self._snapped(top + dy, False, is_snapping)
+            top += dy
         elif side_y > 0:
-            bottom = self._snapped(bottom + dy, False, is_snapping)
+            bottom += dy
+        snap = (is_snapping, keeps_shape)
+        if side_x:
+            edge = self._snapped(Rect(left, top, right, bottom), True, side_x, *snap)
+            left, right = (edge, right) if side_x < 0 else (left, edge)
+        if side_y:
+            edge = self._snapped(Rect(left, top, right, bottom), False, side_y, *snap)
+            top, bottom = (edge, bottom) if side_y < 0 else (top, edge)
 
         # never smaller than MIN_CELL either way, nor turned inside out
         least = min(MIN_CELL, self.start.width, self.start.height)
@@ -1114,7 +1324,7 @@ class TileDrag:
 
         if side_x and side_y:
             rect = Rect(left, top, right, bottom)
-            if not keeps_shape and is_snapping and self.video_shape:
+            if not keeps_shape and self._is_fitting(is_snapping):
                 rect = self._fitted(*rect)
             return self._cornered(rect, keeps_shape)
 
@@ -1122,9 +1332,18 @@ class TileDrag:
         if keeps_shape:
             return self._shaped(left, top, right, bottom)
 
-        if is_snapping and self.video_shape:
+        if self._is_fitting(is_snapping):
             return self._fitted(left, top, right, bottom)
         return Rect(left, top, right, bottom)
+
+    def _is_fitting(self, is_snapping: bool) -> bool:
+        """Whether, sized to any shape, it snaps to its video's."""
+
+        return (
+            is_snapping
+            and bool(self.video_shape)
+            and TileSnap.VIDEO_SHAPE in self.snaps
+        )
 
     def _is_fit(self, width: float, height: float) -> bool:
         return bool(self.video_shape) and abs(width - height * self.video_shape) < 1
@@ -1260,50 +1479,167 @@ class TileDrag:
 
     def _lines_of(self, is_column: bool, others: list[Rect]) -> list[float]:
         """Where an edge snaps to: the others' edges, the page's, and the
-        page's middle, to split it in two."""
+        page's middle, to split it in two; those it snaps to."""
 
-        page = self.page
-        if is_column:
-            lines = [page.left, page.right, page.center_x]
+        page, snaps = self.page, self.snaps
+        lines = []
+        if TileSnap.WINDOW_EDGES in snaps:
+            lines += page.span(is_column)
+        if TileSnap.WINDOW_MIDDLE in snaps:
+            lines.append(page.middle(is_column))
+        if TileSnap.TILE_EDGES in snaps:
             for other in others:
-                lines += [other.left, other.right]
-        else:
-            lines = [page.top, page.bottom, page.center_y]
-            for other in others:
-                lines += [other.top, other.bottom]
+                lines += other.span(is_column)
         return lines
 
     def _middles_of(self, is_column: bool, others: list[Rect]) -> list[float]:
-        page = self.page
-        if is_column:
-            return [page.center_x, *(o.center_x for o in others)]
-        return [page.center_y, *(o.center_y for o in others)]
+        middles = []
+        if TileSnap.WINDOW_MIDDLE in self.snaps:
+            middles.append(self.page.middle(is_column))
+        if TileSnap.TILE_MIDDLES in self.snaps:
+            middles += [other.middle(is_column) for other in others]
+        return middles
 
-    def _snap_lines(self, is_column: bool) -> tuple[list[float], list[float]]:
-        """Where an edge snaps to, and a middle: not where those pushed aside
-        were, which is empty, or under the tile."""
+    def _targets(self) -> _Targets:
+        """What it snaps to: not where those pushed aside were, which is
+        empty, or under the tile."""
 
-        aside = {i for i, r in self.pushed.items() if r != self._spots[i]}
-        if not aside:
-            return self._lines[is_column], self._middles[is_column]
+        return self._snapping_now()[0]
 
-        others = [r for i, r in self._spots.items() if i not in aside]
-        return self._lines_of(is_column, others), self._middles_of(is_column, others)
+    def _places(self) -> list[Rect]:
+        """Where the others are now, those pushed aside too: the tiles beside
+        it, which the room it has is measured to."""
 
-    def _snapped(self, position: float, is_column: bool, is_snapping: bool) -> float:
+        return self._snapping_now()[1]
+
+    def _snapping_now(self) -> tuple[_Targets, list[Rect]]:
+        if self._now is None:
+            places = [self.pushed.get(i, r) for i, r in self._spots.items()]
+            self._now = (self._targets_aside(), places)
+        return self._now
+
+    def _targets_aside(self) -> _Targets:
+        aside = frozenset(i for i, r in self.pushed.items() if r != self._spots[i])
+        targets = self._targets_by.get(aside)
+        if targets is None:
+            others = [r for i, r in self._spots.items() if i not in aside]
+            sides = (True, False)
+            gaps = {c: [] for c in sides}
+            if TileSnap.EQUAL_GAPS in self.snaps:
+                for c in sides:
+                    gaps[c] = _gaps_between(others, self.page, c)
+            targets = _Targets(
+                {c: self._lines_of(c, others) for c in sides},
+                {c: self._middles_of(c, others) for c in sides},
+                gaps,
+            )
+            self._targets_by[aside] = targets
+        return targets
+
+    def _gaps_of(self, rect: Rect, is_column: bool) -> list[Gap]:
+        """The room between the others, and by the page's edges, but where
+        the tile at rect is."""
+
+        return [
+            gap
+            for gap in self._targets().gaps[is_column]
+            if not rect.overlaps(gap.area)
+        ]
+
+    def _room_of(
+        self, rect: Rect, is_column: bool
+    ) -> tuple[_Room, set[float], set[float]]:
+        """The room the tile at rect is in, and how big the room others
+        have is (see _gaps_of), to be as far from what is before it, and
+        after it. Not, by the page's edge, as far as another is from the
+        same edge: that is only their edges lined up (see _is_same_size)."""
+
+        room = _room(rect, self._places(), self.page, is_column)
+        page_low, page_high = self.page.span(is_column)
+        gaps = self._gaps_of(rect, is_column)
+        before = {
+            gap.size
+            for gap in gaps
+            if room.before is not None
+            or not gap.is_page
+            or abs(gap.start - page_low) >= _NEAR
+        }
+        after = {
+            gap.size
+            for gap in gaps
+            if room.after is not None
+            or not gap.is_page
+            or abs(gap.end - page_high) >= _NEAR
+        }
+        return room, before, after
+
+    def _gap_shifts(self, rect: Rect, is_column: bool) -> list[float]:
+        """How far a tile moved goes to be as far from one beside it, or the
+        page's edge, as others are from theirs (see _gaps_of), or as far
+        from the one on either side."""
+
+        room, before, after = self._room_of(rect, is_column)
+        low, high = rect.span(is_column)
+        if not room.is_by_tile:
+            # between the page's edges, a margin only less than the other
+            # once there (see _gaps_beside)
+            free = room.end - room.begin - (high - low)
+            before = {size for size in before if 2 * size <= free - _NEAR}
+            after = {size for size in after if 2 * size <= free - _NEAR}
+        shifts = [room.begin + size - low for size in before]
+        shifts += [room.end - size - high for size in after]
+        # in the middle of the page, it is centered (see _lines_of)
+        if room.is_by_tile:
+            shifts.append((room.begin + room.end - low - high) / 2)
+        return shifts
+
+    def _gap_lines(
+        self, rect: Rect, is_column: bool, side: int, keeps_shape: bool
+    ) -> list[float]:
+        """Where the edge held of the tile at rect snaps to be as far from
+        one beside it, or the page's edge, as others are from theirs (see
+        _gaps_of), or as the edge across from it is from the one on its
+        side."""
+
+        if keeps_shape and not all(self.handle):
+            # by a side, the other two edges as the shape takes them
+            rect = self._shaped(*rect)
+        low, high = rect.span(is_column)
+
+        room, before, after = self._room_of(rect, is_column)
+        sizes = before if side < 0 else after
+        across = room.end - high if side < 0 else low - room.begin
+        if room.is_by_tile:
+            if across > _NEAR:
+                sizes.add(across)
+        else:
+            # between the page's edges, a margin only less than the other
+            # (see _gaps_beside)
+            sizes = {size for size in sizes if size <= across - _NEAR}
+
+        if side < 0:
+            return [room.begin + size for size in sizes]
+        return [room.end - size for size in sizes]
+
+    def _snapped(
+        self,
+        rect: Rect,
+        is_column: bool,
+        side: int,
+        is_snapping: bool,
+        keeps_shape: bool,
+    ) -> float:
+        """Where the edge held, on side, of the tile at rect goes."""
+
+        position = rect.span(is_column)[side > 0]
         if not is_snapping:
             return position
-        lines, _ = self._snap_lines(is_column)
-        if self._left_start[is_column]:
-            start = self.start
-            lines = [
-                *lines,
-                *(
-                    (start.left, start.right)
-                    if is_column
-                    else (start.top, start.bottom)
-                ),
-            ]
+        lines = self._targets().lines[is_column]
+        if TileSnap.EQUAL_GAPS in self.snaps:
+            gap_lines = self._gap_lines(rect, is_column, side, keeps_shape)
+            lines = [*lines, *gap_lines]
+        if self._left_start[is_column] and TileSnap.OLD_PLACE in self.snaps:
+            lines = [*lines, *self.start.span(is_column)]
         near = [line for line in lines if abs(line - position) <= SNAP_REACH]
         return min(near, key=lambda line: abs(line - position), default=position)
 
@@ -1311,19 +1647,17 @@ class TileDrag:
         """How far a tile moved goes to put an edge, or its middle, in line
         with the nearest near enough."""
 
-        if is_column:
-            edges, middle = (rect.left, rect.right), rect.center_x
-        else:
-            edges, middle = (rect.top, rect.bottom), rect.center_y
-
+        edges, middle = rect.span(is_column), rect.middle(is_column)
+        targets = self._targets()
+        lines = targets.lines[is_column]
         # where it started too: moved along a row, kept in its column
-        start = self.start
-        old = (start.left, start.right) if is_column else (start.top, start.bottom)
-        lines, middles = self._snap_lines(is_column)
-        lines = [*lines, *old]
+        if TileSnap.OLD_PLACE in self.snaps:
+            lines = [*lines, *self.start.span(is_column)]
 
         shifts = [line - edge for line in lines for edge in edges]
-        shifts += [line - middle for line in middles]
+        shifts += [line - middle for line in targets.middles[is_column]]
+        if TileSnap.EQUAL_GAPS in self.snaps:
+            shifts += self._gap_shifts(rect, is_column)
         near = [shift for shift in shifts if abs(shift) <= SNAP_REACH]
         return min(near, key=abs, default=0.0)
 
@@ -1376,6 +1710,7 @@ class TileDrag:
         if pushed is None:
             return
         self.pushed = {**{i: self._spots[i] for i in self.pushed}, **pushed}
+        self._now = None
 
     def _furthest(self, start, end, place):
         """The point furthest along from start to end the tile can go to,

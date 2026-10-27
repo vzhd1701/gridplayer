@@ -72,6 +72,20 @@ class TileOverlap(AutoName):
     PUSH = auto()
 
 
+# Free Tiles: what a tile moved or sized can snap to, each on or off: the
+# other tiles' edges, their middles, the page's (the window's) edges, its
+# middle, where the tile started, its video's shape, and gaps as big as
+# others have. Named as the menu has them.
+class TileSnap(AutoName):
+    TILE_EDGES = auto()
+    TILE_MIDDLES = auto()
+    WINDOW_EDGES = auto()
+    WINDOW_MIDDLE = auto()
+    OLD_PLACE = auto()
+    VIDEO_SHAPE = auto()
+    EQUAL_GAPS = auto()
+
+
 # Single Mode's strip: none; the others in it, the one picked trading places
 # with the big one; or every video in its own place, the big one's held
 class StripMode(AutoName):

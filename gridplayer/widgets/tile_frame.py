@@ -11,7 +11,11 @@ from PyQt5.QtWidgets import QWidget
 
 from gridplayer.utils.compositor_linux import is_compositor_running
 from gridplayer.utils.layout.free_tiles import MOVE, Handle
-from gridplayer.widgets.grid_line_mark import EDGE_COLOR, FloatingMark
+from gridplayer.widgets.grid_line_mark import (
+    EDGE_COLOR,
+    FloatingMark,
+    show_pooled,
+)
 from gridplayer.widgets.video_overlay_elements import (
     DISC_LEAST,
     DISC_SHARE,
@@ -231,15 +235,12 @@ class TileFrame:
                 piece.hide()
 
     def _show_lines(self, pool, paths, pen, shaded=None, under=None) -> None:
-        while len(pool) < len(paths):
-            pool.append(_Piece(self._parent))
-
-        for piece, path in zip(pool, paths):
-            piece.show_path(path, pen, shaded, under)
-
-        for piece in pool[len(paths) :]:
-            if piece.isVisible():
-                piece.hide()
+        show_pooled(
+            pool,
+            lambda: _Piece(self._parent),
+            paths,
+            lambda piece, path: piece.show_path(path, pen, shaded, under),
+        )
 
 
 def _lock(disc: QRectF) -> QPainterPath:
@@ -320,18 +321,13 @@ class TileLocks:
     def show(self, rects: list[QRect]) -> None:
         """A mark in the middle of each tile at rects, on the screen."""
 
-        while len(self._badges) < len(rects):
-            self._badges.append(_LockBadge(self._parent))
-
-        for badge, rect in zip(self._badges, rects):
+        def show(badge, rect):
             side = round(max(min(rect.width(), rect.height()) * DISC_SHARE, DISC_LEAST))
             box = QRect(0, 0, side, side)
             box.moveCenter(rect.center())
             badge.show_at(box)
 
-        for badge in self._badges[len(rects) :]:
-            if badge.isVisible():
-                badge.hide()
+        show_pooled(self._badges, lambda: _LockBadge(self._parent), rects, show)
 
     def hide(self) -> None:
         self.show([])

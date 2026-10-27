@@ -11,6 +11,7 @@ from gridplayer.models.file_bookmarks import FileBookmarks
 from gridplayer.models.grid_state import GridState
 from gridplayer.models.media_list import ListItem, MediaList
 from gridplayer.models.subtitle_selection import SubtitleExternal
+from gridplayer.models.tile_snaps import TileSnaps
 from gridplayer.models.video import Video, migrate_aspect, migrate_end_action
 from gridplayer.models.video_uri import parse_uri, relativize_uri
 from gridplayer.params.settings_bindings import GRID_STATE_ATTR
@@ -154,6 +155,7 @@ class Playlist(BaseModel):
     show_overlay_border: bool | None = None
     show_grid_lines: bool | None = None
     grid_line_snap: bool | None = None
+    tile_snaps: TileSnaps | None = None
     tile_overlap: TileOverlap | None = None
     overlay_hide_on_timeout: bool | None = None
     overlay_timeout: int | None = None

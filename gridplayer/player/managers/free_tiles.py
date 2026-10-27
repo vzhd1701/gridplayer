@@ -5,16 +5,28 @@ from PyQt5.QtGui import QCursor
 from PyQt5.QtWidgets import QApplication
 
 from gridplayer.params.gestures import GESTURE_ZOOM_SELECT
-from gridplayer.params.static import TileOverlap
+from gridplayer.params.static import TileOverlap, TileSnap
 from gridplayer.player.managers.layout_drag import LayoutDragManager
+from gridplayer.playlist_settings import PlaylistSettings
 from gridplayer.utils.drag_n_drop import query_drop_modifiers
 from gridplayer.utils.keymap import drop_switch_modifier, is_gesture_press
 from gridplayer.utils.layout.boxes import Box, box_rect
-from gridplayer.utils.layout.free_tiles import MOVE, FreeTiles, Handle, Rect, TileDrag
+from gridplayer.utils.layout.free_tiles import (
+    MOVE,
+    FreeTiles,
+    Gap,
+    Guide,
+    Handle,
+    Rect,
+    TileDrag,
+)
 from gridplayer.utils.qt import is_modal_open
 from gridplayer.widgets.grid_line_mark import (
+    GapMark,
     GridLineMark,
     GridLineTag,
+    guides_clear_of,
+    show_pooled,
     tile_snap_words,
 )
 from gridplayer.widgets.tile_frame import TileFrame, TileLocks
@@ -62,9 +74,12 @@ class FreeTilesManager(LayoutDragManager):
     is on: then the tile is put in front of any it goes over as it is
     moved or sized (see TileDrag). With Push Aside, those it goes over are
     made smaller, or moved where there is room, as it goes. Each snaps to
-    the edges and middles of the others and of the page, and to where it
-    started, shown as lines while it is in line with them, a word by the
-    pointer saying what they are, unless Alt is held, or Snap Lines is off.
+    the edges and middles of the others and of the page, to where it
+    started and to its video's shape, as Snap To says, shown as lines while
+    it is in line with them; and, if told, to be as
+    far from those beside it as others are, the gaps marked (a line along
+    a mark left out); a word by the pointer saying what they are, unless
+    Alt is held, or Snap Lines is off.
     Esc puts the tile back, and any it pushed.
     A double click on an edge stretches it to the next tile, or to the
     page's edge.
@@ -87,13 +102,28 @@ class FreeTilesManager(LayoutDragManager):
         self._pressed: tuple[TileDrag, QPoint, QRect] | None = None
 
         self._guides: list[GridLineMark] = []
+        self._gaps: list[GapMark] = []
         self._tag: GridLineTag | None = None
         self._frame = TileFrame(self.parent())
         self._locks = TileLocks(self.parent())
 
     @property
     def commands(self):
-        return {"is_tile_pressed": self.is_tile_pressed}
+        return {
+            "is_tile_pressed": self.is_tile_pressed,
+            "is_tile_snap": self.is_tile_snap,
+            "toggle_tile_snap": self.toggle_tile_snap,
+        }
+
+    def is_tile_snap(self, snap: TileSnap) -> bool:
+        return snap in PlaylistSettings().get("playlist/tile_snaps")
+
+    def toggle_tile_snap(self, snap: TileSnap) -> None:
+        snaps = PlaylistSettings().get("playlist/tile_snaps").toggled(snap)
+        PlaylistSettings().set("playlist/tile_snaps", snaps)
+        # by a key, a tile may be held
+        if self._drag is not None:
+            self._drag.snap_to(snaps.root)
 
     def is_tile_pressed(self) -> bool:
         """Whether a press on a tile is the tile's still, to be moved once
@@ -226,6 +256,7 @@ class FreeTilesManager(LayoutDragManager):
             pointed.page.height(),
             pointed.at,
             self._shape_of(pointed.video_id),
+            snaps=PlaylistSettings().get("playlist/tile_snaps").root,
             is_over=overlap == TileOverlap.ON,
             is_pushing=overlap == TileOverlap.PUSH,
         )
@@ -313,8 +344,10 @@ class FreeTilesManager(LayoutDragManager):
         )
 
         guides = drag.guides() if is_snapping else []
-        self._show_guides(guides)
-        self._show_tag(tile_snap_words(guides, drag.fits), global_pos)
+        gaps = drag.gaps() if is_snapping else []
+        self._show_guides(guides_clear_of(guides, gaps))
+        self._show_gaps(gaps)
+        self._show_tag(tile_snap_words(guides, drag.fits, bool(gaps)), global_pos)
 
     def _set_tiles(self, drag: TileDrag, rect: Rect):
         """The tile dragged at rect, and those it pushed aside."""
@@ -331,6 +364,7 @@ class FreeTilesManager(LayoutDragManager):
         self._pressed = None
 
         self._show_guides([])
+        self._show_gaps([])
         self._show_tag("", QPoint())
         self._frame.hide()
         self._locks.hide()
@@ -345,27 +379,37 @@ class FreeTilesManager(LayoutDragManager):
 
         self._finish()
 
-    def _show_guides(self, guides):
-        while len(self._guides) < len(guides):
-            self._guides.append(GridLineMark(self.parent()))
-
-        page = self._page
-        for mark, guide in zip(self._guides, guides):
-            if guide.is_column:
-                origin, across = page.x(), page.y()
-            else:
-                origin, across = page.y(), page.x()
+    def _show_guides(self, guides: list[Guide]):
+        def show(mark: GridLineMark, guide: Guide):
+            along, across = self._page_at(guide.is_column)
             mark.show_line(
                 guide.is_column,
-                round(origin + guide.position),
+                round(along + guide.position),
                 round(across + guide.start),
                 round(across + guide.end),
                 is_snapped=False,
             )
 
-        for mark in self._guides[len(guides) :]:
-            if mark.isVisible():
-                mark.hide()
+        show_pooled(self._guides, lambda: GridLineMark(self.parent()), guides, show)
+
+    def _show_gaps(self, gaps: list[Gap]):
+        def show(mark: GapMark, gap: Gap):
+            along, across = self._page_at(gap.is_column)
+            mark.show_gap(
+                gap.is_column,
+                round(along + gap.start),
+                round(along + gap.end),
+                round(across + gap.position),
+            )
+
+        show_pooled(self._gaps, lambda: GapMark(self.parent()), gaps, show)
+
+    def _page_at(self, is_column: bool) -> tuple[int, int]:
+        """Where the page is on the screen: across and down (is_column), or
+        down and across."""
+
+        page = self._page
+        return (page.x(), page.y()) if is_column else (page.y(), page.x())
 
     def _show_tag(self, text: str, pointer: QPoint):
         """The word saying what the tile is in line with, by the pointer;

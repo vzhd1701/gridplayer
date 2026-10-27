@@ -1,13 +1,16 @@
-"""The settings pages' own controls: a switch for what is on or off, and a
-row of buttons for a choice short enough to show all of it."""
+"""The settings pages' own controls: a switch for what is on or off, a
+row of buttons for a choice short enough to show all of it, and buttons
+that stay pressed for some of a few."""
 
-from PyQt5.QtCore import QRectF, QSize, Qt, pyqtSignal
+from PyQt5.QtCore import QPoint, QRect, QRectF, QSize, Qt, pyqtSignal
 from PyQt5.QtGui import QColor, QIcon, QPainter, QPainterPath, QPalette
 from PyQt5.QtWidgets import (
+    QAbstractButton,
     QAbstractSpinBox,
     QCheckBox,
     QFrame,
     QLabel,
+    QLayout,
     QLineEdit,
     QPushButton,
     QSizePolicy,
@@ -38,6 +41,9 @@ DISABLED_OPACITY = 0.4
 SEGMENT_PADDING = 10
 SEGMENTS_HEIGHT = 24
 SEGMENTS_RADIUS = 4
+
+# between the buttons of ToggleChips, and between their lines
+CHIPS_SPACING = 6
 
 
 # the theme's colours, by the names gridplayer.params.theme gives them,
@@ -206,6 +212,155 @@ class ToggleLabel(QLabel):
         ):
             self._switch.click()
         super().mouseReleaseEvent(event)
+
+
+class FlowLayout(QLayout):
+    """Left to right, onto the next line where the line is full."""
+
+    def __init__(self, parent=None, spacing: int = 0):
+        super().__init__(parent)
+        self._items = []
+        self._spacing = spacing
+        self.setContentsMargins(0, 0, 0, 0)
+
+    def addItem(self, item):
+        self._items.append(item)
+
+    def count(self):
+        return len(self._items)
+
+    def itemAt(self, index):
+        return self._items[index] if 0 <= index < len(self._items) else None
+
+    def takeAt(self, index):
+        return self._items.pop(index) if 0 <= index < len(self._items) else None
+
+    def expandingDirections(self):
+        return Qt.Orientations()
+
+    def hasHeightForWidth(self):
+        return True
+
+    def heightForWidth(self, width):
+        return self._lay_out(QRect(0, 0, width, 0), move=False)
+
+    def setGeometry(self, rect):
+        super().setGeometry(rect)
+        self._lay_out(rect, move=True)
+
+    def sizeHint(self):
+        return self.minimumSize()
+
+    def minimumSize(self):
+        size = QSize()
+        for item in self._items:
+            size = size.expandedTo(item.minimumSize())
+        return size
+
+    def _lay_out(self, rect, move):
+        x, y, line_height = rect.x(), rect.y(), 0
+
+        for item in self._items:
+            hint = item.sizeHint()
+            if x + hint.width() > rect.right() + 1 and line_height > 0:
+                x = rect.x()
+                y += line_height + self._spacing
+                line_height = 0
+            if move:
+                item.setGeometry(QRect(QPoint(x, y), hint))
+            x += hint.width() + self._spacing
+            line_height = max(line_height, hint.height())
+
+        return y + line_height - rect.y()
+
+
+class ToggleBox(QAbstractButton):
+    """A name in a box, filled while it is on, as the part of a
+    SegmentedChoice picked is."""
+
+    padding = SEGMENT_PADDING
+    box_height = SEGMENTS_HEIGHT
+    # None for round ends, a pill
+    radius: float | None = SEGMENTS_RADIUS
+    # the box while off
+    off_color = "button"
+
+    def __init__(self, text: str):
+        super().__init__()
+        self.setText(text)
+        self.setCheckable(True)
+        self.setFocusPolicy(Qt.TabFocus)
+
+    def sizeHint(self):
+        width = self.fontMetrics().horizontalAdvance(self.text())
+        return QSize(width + 2 * self.padding, self.box_height)
+
+    def paintEvent(self, event):
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.Antialiasing)
+
+        is_enabled = self.isEnabled()
+        if not is_enabled:
+            painter.setOpacity(DISABLED_OPACITY)
+
+        is_on = self.isChecked()
+        if is_on:
+            painter.setPen(theme_color(self, "text"))
+            painter.setBrush(theme_color(self, "text"))
+        else:
+            is_hovered = self.underMouse() and is_enabled
+            painter.setPen(theme_color(self, "highlight"))
+            painter.setBrush(
+                theme_color(self, "highlight" if is_hovered else self.off_color)
+            )
+        if self.hasFocus():
+            painter.setPen(theme_color(self, "text"))
+
+        box = QRectF(self.rect()).adjusted(0.5, 0.5, -0.5, -0.5)
+        radius = box.height() / 2 if self.radius is None else self.radius
+        painter.drawRoundedRect(box, radius, radius)
+
+        painter.setPen(theme_color(self, "base" if is_on else "text"))
+        painter.drawText(self.rect(), Qt.AlignCenter, self.text())
+
+    def enterEvent(self, event):
+        self.update()
+        super().enterEvent(event)
+
+    def leaveEvent(self, event):
+        self.update()
+        super().leaveEvent(event)
+
+
+class ToggleChips(QWidget):
+    """Some of a few short items, each a button that stays pressed while it
+    is on, onto the next line where the line is full."""
+
+    changed = pyqtSignal()
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+
+        self._chips: dict = {}
+        self._flow = FlowLayout(self, CHIPS_SPACING)
+
+    def set_choices(self, choices: dict) -> None:
+        """value -> text"""
+
+        for value, text in choices.items():
+            chip = ToggleBox(text)
+            chip.toggled.connect(lambda *_: self.changed.emit())
+            self._chips[value] = chip
+            self._flow.addWidget(chip)
+
+    def set_picked(self, picked: frozenset) -> None:
+        for value, chip in self._chips.items():
+            chip.blockSignals(True)
+            chip.setChecked(value in picked)
+            chip.blockSignals(False)
+
+    def picked(self) -> frozenset:
+        return frozenset(v for v, chip in self._chips.items() if chip.isChecked())
 
 
 class SegmentedChoice(QWidget):

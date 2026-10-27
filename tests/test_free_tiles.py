@@ -1,15 +1,19 @@
 import pytest
 
+from gridplayer.models.tile_snaps import TileSnaps
+from gridplayer.params.static import TileSnap
 from gridplayer.utils.layout.boxes import Box
 from gridplayer.utils.layout.free_tiles import (
     MOVE,
     FreeTiles,
+    Gap,
     Guide,
     GuideKind,
     Rect,
     TileDrag,
     TilePlace,
 )
+from gridplayer.widgets.grid_line_mark import guides_clear_of
 
 # a page 1000 by 500 on screen, two to one
 W, H = 1000, 500
@@ -24,8 +28,13 @@ def _tiles(**rects) -> FreeTiles:
     return tiles
 
 
-def _drag(tiles, video_id, handle, at, shape=None, **kwargs) -> TileDrag:
-    return TileDrag(tiles, video_id, handle, W, H, at, shape, **kwargs)
+# every snap, the gaps too; and all but the gaps, as by default
+_ALL = frozenset(TileSnap)
+_SNAPS = _ALL - {TileSnap.EQUAL_GAPS}
+
+
+def _drag(tiles, video_id, handle, at, shape=None, snaps=_SNAPS, **kwargs) -> TileDrag:
+    return TileDrag(tiles, video_id, handle, W, H, at, shape, snaps=snaps, **kwargs)
 
 
 def _approx(rect, expected):
@@ -179,7 +188,7 @@ def test_a_tile_sized_by_a_corner_from_the_top_left_holds_the_bottom_right():
 
 def test_a_tile_going_over_others_sized_by_a_corner_stops_at_the_page():
     tiles = _tiles(a=(100, 100, 300, 200), b=(310, 0, 500, 500))
-    drag = TileDrag(tiles, "a", (1, 1), W, H, (300, 200), 2.0, is_over=True)
+    drag = _drag(tiles, "a", (1, 1), (300, 200), 2.0, is_over=True)
 
     _approx(drag.moved((420, 250), is_snapping=False), (100, 100, 420, 260))
     _approx(drag.moved((900, 900), is_snapping=False), (100, 100, 900, 500))
@@ -314,6 +323,7 @@ def test_what_a_tile_is_in_line_with_in_words():
     assert tile_snap_words([edges], fits=True) == "Fits, Edges lined up"
     assert tile_snap_words([guide(GuideKind.START)]) == "Old edge"
     assert tile_snap_words([guide(GuideKind.PAGE_MIDDLE)]) == "Page middle"
+    assert tile_snap_words([edges], has_gaps=True) == "Same gap, Edges lined up"
 
 
 def test_a_tile_beside_another_is_touching_it_else_lined_up():
@@ -394,13 +404,13 @@ def test_a_tile_put_back_where_another_is_now_is_not():
 
 def test_a_tile_going_over_others_goes_where_the_pointer_takes_it():
     tiles = _tiles(a=(100, 100, 300, 200), b=(350, 0, 450, 500))
-    drag = TileDrag(tiles, "a", MOVE, W, H, (200, 150), is_over=True)
+    drag = _drag(tiles, "a", MOVE, (200, 150), is_over=True)
 
     _approx(drag.moved((450, 150), is_snapping=False), (350, 100, 550, 200))
 
     # sized: over it too
     tiles = _tiles(a=(100, 100, 300, 200), b=(310, 0, 500, 500))
-    drag = TileDrag(tiles, "a", (1, 1), W, H, (300, 200), 2.0, is_over=True)
+    drag = _drag(tiles, "a", (1, 1), (300, 200), 2.0, is_over=True)
     _approx(drag.moved((400, 250), is_snapping=False), (100, 100, 400, 250))
 
 
@@ -588,9 +598,7 @@ def test_a_locked_tile_stays_in_front_of_the_others():
 )
 def test_a_tile_moved_stops_at_a_locked_one(is_over, is_pushing):
     tiles = _locked(_tiles(a=(100, 100, 300, 200), b=(350, 0, 450, 500)), "b")
-    drag = TileDrag(
-        tiles, "a", MOVE, W, H, (200, 150), is_over=is_over, is_pushing=is_pushing
-    )
+    drag = _drag(tiles, "a", MOVE, (200, 150), is_over=is_over, is_pushing=is_pushing)
 
     _approx(drag.moved((450, 150), is_snapping=False), (150, 100, 350, 200))
     assert "b" not in drag.pushed
@@ -598,7 +606,7 @@ def test_a_tile_moved_stops_at_a_locked_one(is_over, is_pushing):
 
 def test_a_tile_sized_over_others_stops_at_a_locked_one():
     tiles = _locked(_tiles(a=(100, 100, 300, 200), b=(310, 0, 500, 500)), "b")
-    drag = TileDrag(tiles, "a", (1, 1), W, H, (300, 200), 2.0, is_over=True)
+    drag = _drag(tiles, "a", (1, 1), (300, 200), 2.0, is_over=True)
 
     _approx(drag.moved((400, 250), is_snapping=False), (100, 100, 310, 205))
 
@@ -728,3 +736,236 @@ def test_a_stretch_that_cannot_go_puts_back_those_pushed():
 
     _approx(drag.stretched(), (100, 100, 300, 200))
     _approx(drag.pushed["b"], (310, 120, 500, 180))
+
+
+def test_a_tile_moved_snaps_to_the_gap_others_have():
+    tiles = _tiles(
+        a=(100, 200, 300, 300), b=(340, 200, 540, 300), c=(600, 380, 800, 480)
+    )
+    drag = _drag(tiles, "c", MOVE, (700, 430), snaps=_ALL)
+
+    # 43 from b, as a and b are 40 apart
+    rect = drag.moved((683, 253))
+
+    _approx(rect, (580, 200, 780, 300))
+    # its gap and theirs, not the page's margins above and below, the same
+    # for all three only as their edges are lined up
+    assert set(drag.gaps()) == {
+        Gap(True, 540, 580, 200, 300, False),
+        Gap(True, 300, 340, 200, 300, False),
+    }
+
+    # the line along their middles would hide the marks: not drawn, the
+    # lines along their edges are
+    guides = drag.guides()
+    assert Guide(False, 250, 100, 780, GuideKind.MIDDLES) in guides
+    drawn = guides_clear_of(guides, drag.gaps())
+    assert not [g for g in drawn if not g.is_column and g.position == 250]
+    assert Guide(False, 200, 100, 780, GuideKind.EDGES) in drawn
+
+
+def test_a_tile_moved_snaps_to_the_middle_between_two():
+    tiles = _tiles(
+        a=(60, 200, 260, 300), b=(640, 200, 840, 300), x=(400, 350, 560, 430)
+    )
+    drag = _drag(tiles, "x", MOVE, (480, 390), snaps=_ALL)
+
+    rect = drag.moved((454, 250))
+
+    # as far from a as from b, not in the middle of the page
+    _approx(rect, (370, 210, 530, 290))
+    assert set(drag.gaps()) == {
+        Gap(True, 260, 370, 210, 290, False),
+        Gap(True, 530, 640, 210, 290, False),
+    }
+
+
+def test_a_tile_sized_snaps_to_the_gap_others_have():
+    tiles = _tiles(
+        a=(800, 20, 960, 120), b=(800, 150, 960, 250), c=(800, 300, 960, 400)
+    )
+    drag = _drag(tiles, "c", (0, -1), (880, 300), snaps=_ALL)
+
+    rect = drag.moved((880, 283), keeps_shape=False)
+
+    # its top 30 below b, as b is below a
+    _approx(rect, (800, 280, 960, 400))
+    assert set(drag.gaps()) == {
+        Gap(False, 250, 280, 800, 960, False),
+        Gap(False, 120, 150, 800, 960, False),
+    }
+
+
+def test_a_tile_sized_snaps_to_the_gap_on_its_other_side():
+    tiles = _tiles(
+        a=(100, 200, 300, 300), b=(700, 200, 900, 300), c=(350, 200, 550, 300)
+    )
+    drag = _drag(tiles, "c", (1, 0), (550, 250), snaps=_ALL)
+
+    rect = drag.moved((645, 250), keeps_shape=False)
+
+    # 50 from b, as it is from a
+    _approx(rect, (350, 200, 650, 300))
+    assert set(drag.gaps()) == {
+        Gap(True, 300, 350, 200, 300, False),
+        Gap(True, 650, 700, 200, 300, False),
+    }
+
+
+def test_a_tile_over_another_snaps_to_the_margin_another_has():
+    tiles = _tiles(main=(0, 0, 1000, 500), a=(20, 20, 220, 120), b=(500, 200, 700, 300))
+    drag = _drag(tiles, "b", MOVE, (600, 250), is_over=True, snaps=_ALL)
+
+    rect = drag.moved((883, 427))
+
+    # in the corner across from a's, as far in; not marked as far from
+    # the other edges, as a is
+    _approx(rect, (780, 380, 980, 480))
+    assert set(drag.gaps()) == {
+        Gap(True, 980, 1000, 380, 480, True),
+        Gap(True, 0, 20, 20, 120, True),
+        Gap(False, 480, 500, 780, 980, True),
+        Gap(False, 0, 20, 20, 220, True),
+    }
+
+
+def test_a_tile_moved_without_snapping_keeps_its_gap():
+    tiles = _tiles(
+        a=(100, 200, 300, 300), b=(340, 200, 540, 300), c=(600, 380, 800, 480)
+    )
+    drag = _drag(tiles, "c", MOVE, (700, 430), snaps=_ALL)
+
+    rect = drag.moved((683, 253), is_snapping=False)
+
+    _approx(rect, (583, 203, 783, 303))
+
+
+def test_gaps_are_not_snapped_to_by_default():
+    tiles = _tiles(
+        a=(100, 200, 300, 300), b=(340, 200, 540, 300), c=(600, 380, 800, 480)
+    )
+    drag = _drag(tiles, "c", MOVE, (700, 430))
+
+    rect = drag.moved((683, 253))
+
+    # its top on theirs, but not 40 from b
+    _approx(rect, (583, 200, 783, 300))
+    assert drag.gaps() == []
+
+
+def test_a_snap_turned_off_is_neither_snapped_to_nor_shown():
+    tiles = _tiles(a=(100, 100, 250, 200), b=(600, 300, 800, 400))
+    drag = _drag(tiles, "a", MOVE, (175, 150), snaps=_ALL - {TileSnap.TILE_EDGES})
+
+    # its right edge 4 short of b's left
+    rect = drag.moved((521, 150))
+
+    _approx(rect, (446, 100, 596, 200))
+    assert not [g for g in drag.guides() if g.kind is GuideKind.EDGES]
+
+
+def test_a_tile_sized_to_any_shape_snaps_to_its_videos_only_if_told():
+    tiles = _tiles(a=(100, 100, 300, 200))
+    snaps = _SNAPS - {TileSnap.VIDEO_SHAPE}
+    drag = _drag(tiles, "a", (1, 0), (300, 150), shape=2.0, snaps=snaps)
+
+    # 4 short of its video's shape
+    rect = drag.moved((296, 150), keeps_shape=False)
+
+    _approx(rect, (100, 100, 296, 200))
+    assert not drag.fits
+
+
+def test_snapping_to_all_but_equal_gaps_by_default():
+    from gridplayer.settings import _default_settings
+
+    assert _default_settings["playlist/tile_snaps"].root == _SNAPS
+
+
+def test_snaps_saved_by_name_in_the_menu_order():
+    snaps = TileSnaps(frozenset({TileSnap.EQUAL_GAPS, TileSnap.TILE_EDGES}))
+
+    assert snaps.model_dump_json() == '["tile_edges","equal_gaps"]'
+    assert TileSnaps.model_validate_json(snaps.model_dump_json()) == snaps
+    assert TileSnap.EQUAL_GAPS not in snaps.toggled(TileSnap.EQUAL_GAPS)
+
+
+def test_the_room_beside_a_tile_is_to_one_it_pushed_where_it_is_now():
+    tiles = _tiles(
+        a=(100, 200, 300, 300),
+        b=(600, 200, 800, 300),
+        c=(350, 400, 450, 480),
+        t=(350, 200, 550, 300),
+    )
+    drag = _drag(tiles, "t", MOVE, (450, 250), snaps=_ALL, is_pushing=True)
+
+    # onto b, made smaller in its place, against t
+    drag.moved((550, 250), is_snapping=False)
+
+    places = [drag.pushed.get(i, r) for i, r in tiles.rects(W, H).items() if i != "t"]
+    assert drag.pushed["b"].left == pytest.approx(650)
+    # no gap across b to the page's edge, as far as c is from the other
+    assert not [g for g in drag.gaps() if any(g.area.overlaps(r) for r in places)]
+
+
+def test_a_tile_does_not_snap_to_a_margin_by_the_same_edge():
+    tiles = _tiles(a=(16, 100, 216, 200), t=(300, 300, 460, 400))
+    snaps = _ALL - {TileSnap.TILE_EDGES}
+    drag = _drag(tiles, "t", MOVE, (380, 350), snaps=snaps)
+
+    # 20 from the page's left, as a is 16: that would only be their edges
+    # lined up, which it is told not to snap to
+    rect = drag.moved((100, 350))
+
+    _approx(rect, (20, 300, 180, 400))
+
+
+def test_a_tile_sized_by_a_corner_snaps_to_a_gap_beside_it_as_sized():
+    tiles = _tiles(
+        a=(0, 0, 100, 100),
+        b=(130, 0, 230, 100),
+        t=(300, 150, 400, 250),
+        c=(500, 300, 600, 400),
+    )
+    drag = _drag(tiles, "t", (1, 1), (400, 250), snaps=_ALL)
+
+    # as tall as it is now, beside c, 28 from it: 30, as a is from b
+    rect = drag.moved((472, 350), keeps_shape=False)
+
+    _approx(rect, (300, 150, 470, 350))
+
+
+def test_between_the_page_edges_only_the_less_margin_snaps_to_a_gap():
+    tiles = _tiles(a=(0, 0, 100, 100), b=(130, 0, 230, 100), t=(40, 200, 982, 300))
+    drag = _drag(tiles, "t", MOVE, (500, 250), snaps={TileSnap.EQUAL_GAPS})
+
+    # 30 on the left would leave 28 on the right, the margin it has
+    rect = drag.moved((493, 250))
+
+    _approx(rect, (33, 200, 975, 300))
+    assert drag.gaps() == []
+
+
+def test_between_the_page_edges_the_less_margin_snaps_and_is_marked():
+    tiles = _tiles(a=(0, 0, 100, 100), b=(130, 0, 230, 100), t=(37, 200, 927, 300))
+    drag = _drag(tiles, "t", MOVE, (480, 250), snaps={TileSnap.EQUAL_GAPS})
+
+    rect = drag.moved((477, 250))
+
+    _approx(rect, (30, 200, 920, 300))
+    assert set(drag.gaps()) == {
+        Gap(True, 0, 30, 200, 300, True),
+        Gap(True, 100, 130, 0, 100, False),
+    }
+
+
+def test_snaps_turned_on_while_held_are_snapped_to():
+    tiles = _tiles(
+        a=(100, 200, 300, 300), b=(340, 200, 540, 300), c=(600, 380, 800, 480)
+    )
+    drag = _drag(tiles, "c", MOVE, (700, 430))
+    _approx(drag.moved((683, 253)), (583, 200, 783, 300))
+
+    drag.snap_to(_ALL)
+
+    _approx(drag.moved((683, 253)), (580, 200, 780, 300))

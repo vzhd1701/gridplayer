@@ -22,6 +22,7 @@ from gridplayer.params.settings_fields.kinds import (
     ColorField,
     ComboField,
     CropField,
+    FlagsField,
     FloatSpinField,
     KeymapField,
     LanguageField,
@@ -43,6 +44,7 @@ from gridplayer.widgets.settings_controls import (
     RoundedBox,
     SegmentedChoice,
     Switch,
+    ToggleChips,
     ToggleLabel,
     icon_button,
 )
@@ -242,6 +244,45 @@ class _ComboEditor(Editor):
     def drop_down(self):
         # buttons show them all
         return None if self.spec.buttons else self.widget
+
+
+class _FlagsEditor(Editor):
+    spec: FlagsField
+
+    stacked = True
+    grows = True
+
+    def _make_widget(self):
+        widget = ToggleChips()
+        widget.set_choices(self.spec.choices())
+        return widget
+
+    @property
+    def changed(self):
+        return self.widget.changed
+
+    def set_value(self, value):
+        self.widget.set_picked(frozenset(value))
+
+    def value(self):
+        return self.spec.value_type(self.widget.picked())
+
+    def text_of(self, shown):
+        # all, none, all but those off while most are on, else those on
+        choices = self.spec.choices()
+        on = [text for value, text in choices.items() if value in shown]
+        off = [text for value, text in choices.items() if value not in shown]
+
+        if not off:
+            return translate("SettingsDialog", "All")
+        if not on:
+            return translate("SettingsDialog", "None")
+        if len(off) < len(on):
+            return translate("SettingsDialog", "All but {}").format(", ".join(off))
+        return ", ".join(on)
+
+    def options(self):
+        return list(self.spec.choices().values())
 
 
 class _TextEditor(Editor):
@@ -478,6 +519,7 @@ class _ResolverPatternsEditor(Editor):
 EDITORS: dict[type[SettingField], type[Editor]] = {
     CheckboxField: _CheckboxEditor,
     ComboField: _ComboEditor,
+    FlagsField: _FlagsEditor,
     TextField: _TextEditor,
     PathField: _PathEditor,
     SpinField: _SpinEditor,

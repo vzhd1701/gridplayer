@@ -56,6 +56,16 @@ class ComboField(SettingField):
 
 
 @dataclass(frozen=True, kw_only=True)
+class FlagsField(SettingField):
+    """Some of the choices, each on or off."""
+
+    # value -> text, called when the form is built so the texts are translated
+    choices: Callable[[], dict]
+    # what those on are kept as, made from a frozenset of them
+    value_type: Callable[[frozenset], object]
+
+
+@dataclass(frozen=True, kw_only=True)
 class TextField(SettingField):
     placeholder: str | None = None
     # an empty one is saved as the default, for a value that can't be empty
