@@ -2,7 +2,7 @@ from PyQt5.QtCore import QEvent, QPointF, Qt
 from PyQt5.QtGui import QMouseEvent
 from PyQt5.QtWidgets import QApplication, QWidget
 
-from gridplayer.widgets.grid_span_picker import _EatenClick
+from gridplayer.widgets.closing_click import EatenClick
 
 
 class _Clicked(QWidget):
@@ -27,7 +27,7 @@ def _send(widget, kind):
 def test_the_click_that_closed_the_picker_does_nothing_else():
     widget = _Clicked()
 
-    _EatenClick()
+    EatenClick()
     _send(widget, QEvent.MouseButtonPress)
     _send(widget, QEvent.MouseButtonRelease)
     QApplication.processEvents()
