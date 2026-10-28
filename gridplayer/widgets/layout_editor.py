@@ -15,6 +15,7 @@ from PyQt5.QtGui import (
     QPalette,
     QPen,
     QPixmap,
+    QPolygonF,
     QTransform,
 )
 from PyQt5.QtWidgets import (
@@ -69,6 +70,9 @@ BAR_ICON_COLOR = QColor("#e6e6e6")
 BAR_ICON_OFF_COLOR = QColor("#6a6a6a")
 BAR_SEPARATOR_COLOR = "#4a4a4a"
 BAR_GRIP_COLOR = QColor("#8a8a8a")
+# how far an icon's filled tile keeps from a line beside it: clear of the
+# menu's thin line, and of the bar's
+FILL_GAP = 1.4
 
 # a popup of the bar's box
 POPUP_BACK_COLOR = QColor(30, 30, 30, 245)
@@ -170,6 +174,21 @@ def paint_icon(painter: QPainter, kind: str, rect: QRectF, color: QColor) -> Non
     painter.restore()
 
 
+def _sparkle(x: float, y: float, size: float) -> QPainterPath:
+    """A four-pointed star, its points `size` from its middle at x, y."""
+
+    waist = size * 0.4
+    near, far = waist * 0.3, waist
+    path = QPainterPath()
+    path.moveTo(x, y - size)
+    path.cubicTo(x + near, y - far, x + far, y - near, x + size, y)
+    path.cubicTo(x + far, y + near, x + near, y + far, x, y + size)
+    path.cubicTo(x - near, y + far, x - far, y + near, x - size, y)
+    path.cubicTo(x - far, y - near, x - near, y - far, x, y - size)
+    path.closeSubpath()
+    return path
+
+
 # the same each time, and only drawn by those taking them
 @functools.cache
 def icon_paths(kind: str) -> tuple[QPainterPath, QPainterPath | None]:
@@ -224,10 +243,12 @@ def icon_paths(kind: str) -> tuple[QPainterPath, QPainterPath | None]:
         path.moveTo(5, 8)
         path.lineTo(11, 8)
     elif kind == "arrange":
-        # tiles of a few sizes, lined up
-        for rect in ((2, 2.5, 6.5, 5), (10.5, 2.5, 3.5, 5), (2, 9.5, 3.5, 4)):
-            path.addRoundedRect(QRectF(*rect), 1, 1)
-        path.addRoundedRect(QRectF(7.5, 9.5, 6.5, 4), 1, 1)
+        # tiles of a few sizes, lined up, and a sparkle: done for you
+        for rect in ((2, 2.5, 5.5, 5), (2, 9.5, 3.5, 4), (7.5, 9.5, 6.5, 4)):
+            path.addRect(QRectF(*rect))
+        # its middle on a pixel's middle in the menu and on the bar, so its
+        # thin points come out even
+        fill = _sparkle(11.6, 5.2, 2.95)
     elif kind == "fit":
         # the window, the tiles stretched out to its sides
         path.addRoundedRect(QRectF(2, 2.5, 12, 11), 1.5, 1.5)
@@ -244,7 +265,7 @@ def icon_paths(kind: str) -> tuple[QPainterPath, QPainterPath | None]:
         path.lineTo(2, 2)
         path.lineTo(10, 2)
         path.lineTo(10, 6)
-        path.addRoundedRect(QRectF(6, 6, 8, 8), 1, 1)
+        path.addRect(QRectF(6, 6, 8, 8))
     elif kind == "snap":
         # a magnet, one closed outline, its poles marked off
         path.moveTo(2.5, 2.5)
@@ -274,23 +295,33 @@ def icon_paths(kind: str) -> tuple[QPainterPath, QPainterPath | None]:
         path.arcTo(QRectF(5.5, 2.5, 5, 5), 180, -180)
         path.lineTo(10.5, 7.5)
     elif kind == "front":
-        # the tile filled in front, the one behind showing round it
-        path.moveTo(2, 9.5)
+        # the tile filled in front, the one behind stopped short of it
+        path.moveTo(6 - FILL_GAP, 10)
+        path.lineTo(2, 10)
         path.lineTo(2, 2)
-        path.lineTo(9.5, 2)
-        path.lineTo(9.5, 6)
-        path.moveTo(6, 9.5)
-        path.lineTo(2, 9.5)
+        path.lineTo(10, 2)
+        path.lineTo(10, 6 - FILL_GAP)
         fill = QPainterPath()
-        fill.addRoundedRect(QRectF(6, 6, 8, 8), 1, 1)
+        fill.addRect(QRectF(6, 6, 8, 8))
     elif kind == "back":
-        # the tile filled behind, the one in front over it
-        front = QPainterPath()
-        front.addRect(QRectF(5.3, 5.3, 9.4, 9.4))
-        behind = QPainterPath()
-        behind.addRoundedRect(QRectF(2, 2, 8, 8), 1, 1)
-        fill = behind.subtracted(front)
-        path.addRoundedRect(QRectF(6, 6, 8, 8), 1, 1)
+        # what shows of the tile filled behind, kept as clear of the one in
+        # front as the front's line is of its fill
+        path.addRect(QRectF(6, 6, 8, 8))
+        fill = QPainterPath()
+        fill.addPolygon(
+            QPolygonF(
+                QPointF(*p)
+                for p in (
+                    (2, 2),
+                    (10, 2),
+                    (10, 6 - FILL_GAP),
+                    (6 - FILL_GAP, 6 - FILL_GAP),
+                    (6 - FILL_GAP, 10),
+                    (2, 10),
+                )
+            )
+        )
+        fill.closeSubpath()
     else:
         path.moveTo(5.5, 3.5)
         path.lineTo(2.5, 6.5)
