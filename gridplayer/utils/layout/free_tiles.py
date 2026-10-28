@@ -330,11 +330,17 @@ class FreeTiles:
     def id_at(self, row: int, col: int) -> str | None:
         return None
 
-    def order(self) -> list[str]:
+    def order(self, is_columns: bool = False) -> list[str]:
         """The videos as the tiles are read, row by row: a tile is in the
-        row of the one before it if it starts above that row's bottom."""
+        row of the one before it if it starts above that row's bottom. Or
+        column by column, likewise."""
 
         rects = self.rects(self.page_shape, 1)
+        if is_columns:
+            # turned on their side, the columns read as rows
+            rects = {
+                i: Rect(r.top, r.left, r.bottom, r.right) for i, r in rects.items()
+            }
         rows: list[list[str]] = []
         row_bottom = 0.0
         for video_id in sorted(rects, key=lambda i: (rects[i].top, rects[i].left)):

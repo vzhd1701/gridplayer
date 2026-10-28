@@ -77,6 +77,7 @@ class FlowLayout:
         crop: int = 0,
         is_linked: bool = True,
         is_reordered: bool = False,
+        column_ids: list[str] | None = None,
     ):
         self.mode = mode
         self.size = size
@@ -91,6 +92,9 @@ class FlowLayout:
         self.is_linked = is_linked
         # in Fit Shapes, the videos put in the order that shows them best
         self.is_reordered = is_reordered
+        # in Fit Shapes, the order the videos go down columns in, if not
+        # ids': read column by column, as ids are read row by row
+        self.column_ids: list[str] | None = list(column_ids) if column_ids else None
         # in Fit Shapes, how many steps bigger videos are made (smaller,
         # less than nought): how much more their pictures count
         self.sizes: dict[str, int] = {}
@@ -197,11 +201,16 @@ class FlowLayout:
         def shape_of(video_id):
             return shapes.get(video_id) or DEFAULT_SHAPE
 
-        orders = [self.ids]
-        if self.is_reordered and len(self.ids) > 2:
-            by_shape = sorted(self.ids, key=shape_of)
-            # the widest in the middle, the narrowest out to the ends
-            orders += [by_shape, by_shape[::2] + by_shape[1::2][::-1]]
+        def orders_of(ids):
+            orders = [ids]
+            if self.is_reordered and len(ids) > 2:
+                by_shape = sorted(ids, key=shape_of)
+                # the widest in the middle, the narrowest out to the ends
+                orders += [by_shape, by_shape[::2] + by_shape[1::2][::-1]]
+            return orders
+
+        row_orders = orders_of(self.ids)
+        column_orders = orders_of(self.column_ids or self.ids)
 
         def scorer(weights, worth, is_columns):
             area = (height, width) if is_columns else (width, height)
@@ -209,11 +218,11 @@ class FlowLayout:
 
         key = self._fit_key()
         best, best_score = None, -math.inf
-        for order in orders:
-            ids = tuple(order)
-            video_shapes = tuple(shape_of(i) for i in ids)
-            worth = self._worth(ids)
+        for orders in zip(row_orders, column_orders, strict=True):
             for is_columns in (False, True):
+                ids = tuple(orders[is_columns])
+                video_shapes = tuple(shape_of(i) for i in ids)
+                worth = self._worth(ids)
                 weights = _line_weights(video_shapes, is_columns)
                 score = scorer(weights, worth, is_columns)
                 for split in find_splits(weights, worth):
@@ -318,7 +327,8 @@ class FlowLayout:
 
     def _fit_key(self) -> tuple:
         sizes = tuple(self.sizes.get(i, 0) for i in self.ids)
-        return tuple(self.ids), self.is_reordered, sizes
+        columns = tuple(self.column_ids) if self.column_ids else None
+        return tuple(self.ids), columns, self.is_reordered, sizes
 
     def _fitted_shapes(self) -> _Fitted | None:
         """What fit_to chose in Fit Shapes, if it was for these videos."""

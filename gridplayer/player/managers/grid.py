@@ -58,6 +58,9 @@ from gridplayer.widgets.held_place import HeldPlace
 # how many changes of the grid can be undone
 UNDO_LIMIT = 50
 
+# how many times Arrange Tiles goes over the tiles at most, till they stay
+ARRANGE_ROUNDS = 8
+
 # a video's cell made a step bigger or smaller: rows and columns more
 CELL_STEPS = {
     "bigger": (1, 1),
@@ -1339,7 +1342,8 @@ class GridManager(ManagerBase):
 
     def cmd_arrange_tiles(self):
         """The tiles laid out anew as Fit Shapes would, on a page the shape
-        of the area, the videos in the order they are read in: those not
+        of the area, the videos in the order they are read in, row by row
+        for rows and column by column for columns: those not
         locked, in the biggest part of it the locked ones are not on."""
 
         if not self._is_free:
@@ -1369,21 +1373,36 @@ class GridManager(ManagerBase):
         self._free.fill(width, height)
 
         live = self._ctx.video_blocks.video_ids
-        ids = [i for i in self._free.order() if i in set(live)]
-        ids += [i for i in live if i not in ids]
 
         # in the room the locked tiles leave; with too little, all of them
         area = self._free.open_area()
         _, _, area_width, area_height = box_rect(area or FULL_BOX, width, height)
         if area is not None and min(area_width, area_height) >= MIN_CELL:
-            ids = [i for i in ids if i not in self._free.locked]
+            left_out = self._free.locked
         else:
             area, area_width, area_height = FULL_BOX, width, height
+            left_out = set()
 
-        flow = FlowLayout(mode=FlowMode.SHAPES, ids=ids)
-        flow.fit_to(area_width, area_height, {i: self._shape_of(i) for i in ids})
+        def read(is_columns):
+            ids = [i for i in self._free.order(is_columns) if i in set(live)]
+            ids += [i for i in live if i not in ids]
+            return [i for i in ids if i not in left_out]
 
-        self._free.arrange(flow.boxes(), area)
+        # read along the lines they are to go in, so that tiles arranged
+        # already are read in the order they were put in. Arranged again
+        # until they stay: each time either the same or better, so arranging
+        # them once more leaves them be
+        laid_out = None
+        for _ in range(ARRANGE_ROUNDS):
+            ids = read(False)
+            flow = FlowLayout(mode=FlowMode.SHAPES, ids=ids, column_ids=read(True))
+            flow.fit_to(area_width, area_height, {i: self._shape_of(i) for i in ids})
+            boxes = dict(flow.boxes())
+            if boxes == laid_out:
+                break
+            self._free.arrange(boxes.items(), area)
+            laid_out = boxes
+
         self._unshaped = {i for i in ids if not self._is_shape_known(i)}
         self._is_arranged = True
 

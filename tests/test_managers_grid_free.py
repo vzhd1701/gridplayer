@@ -201,6 +201,33 @@ def test_arrange_tiles_lays_them_out_as_fit_shapes_and_can_be_undone():
     assert manager._free.tiles == before
 
 
+@pytest.mark.parametrize(
+    "rects",
+    [
+        # a tall one beside two wide ones: in columns, read row by row in
+        # another order than they went down them
+        {"A": (0, 0, 150, 90), "B": (500, 0, 650, 90), "C": (100, 300, 250, 390)},
+        {"A": (600, 350, 750, 440), "B": (50, 200, 200, 290), "C": (400, 20, 550, 110)},
+        {
+            "A": (0, 0, 150, 90),
+            "B": (200, 200, 350, 290),
+            "C": (400, 0, 550, 90),
+            "D": (600, 300, 750, 390),
+        },
+    ],
+)
+def test_tiles_arranged_again_stay_where_they_are(rects):
+    shapes = {"A": 16 / 9, "B": 3 / 4, "C": 16 / 9, "D": 1.0}
+    manager = _manager({i: shapes[i] for i in rects})
+    _free(manager, **rects)
+
+    manager.cmd_arrange_tiles()
+    arranged = _rects(manager)
+    manager.cmd_arrange_tiles()
+
+    assert _rects(manager) == arranged
+
+
 def test_tiles_arranged_before_the_shapes_were_known_are_arranged_again():
     manager = _manager({"A": None, "B": None})
     manager._mode = GridMode.FREE
