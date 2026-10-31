@@ -672,6 +672,8 @@ def make_cell(mocker):
 
         parent = QWidget()
         block = VideoBlock(video_driver=_Frame, context=context, parent=parent)
+        # big enough for all of its controls
+        block.overlay.resize(640, 360)
         context.video_blocks.append(block)
 
         video_kwargs.setdefault("playback_state", VideoInitialState.PAUSED)

@@ -33,7 +33,6 @@ from gridplayer.models.video import (
 )
 from gridplayer.params import env
 from gridplayer.params.static import (
-    CHROME_MIN_SIZE,
     MAX_RATE,
     MIN_RATE,
     OVERLAY_ACTIVITY_EVENT,
@@ -739,23 +738,7 @@ class VideoBlock(QWidget):
 
     def resizeEvent(self, event):
         super().resizeEvent(event)
-        self._apply_overlay_size_policy()
         self.stream.schedule_adapt()
-
-    @property
-    def is_overlay_fits(self) -> bool:
-        return (
-            self.width() >= CHROME_MIN_SIZE[0] and self.height() >= CHROME_MIN_SIZE[1]
-        )
-
-    def _apply_overlay_size_policy(self):
-        if not self.is_overlay_fits:
-            self.overlay_hide_timer.stop()
-            self.overlay.hide()
-            return
-
-        if not self._ctx.is_overlay_hide_on_timeout:
-            self.show_overlay()
 
     def showEvent(self, event):
         if not self._ctx.is_overlay_hide_on_timeout:
@@ -1220,8 +1203,6 @@ class VideoBlock(QWidget):
         # Hardware overlays are windows of their own; do not remap them while
         # this cell is hidden (single-mode background, minimized, etc.).
         if not self.isVisible():
-            return
-        if not self.is_overlay_fits:
             return
 
         self.overlay.show()

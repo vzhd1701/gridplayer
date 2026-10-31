@@ -124,6 +124,8 @@ def make_cell(lists):
         block = VideoBlock(
             video_driver=_Frame, context=_context(lists, made_blocks), parent=parent
         )
+        # big enough for all of its controls
+        block.overlay.resize(640, 360)
 
         video_kwargs.setdefault("end_action", VideoEndAction.NEXT_FILE)
         video_kwargs.setdefault("playback_state", VideoInitialState.PAUSED)

@@ -5,6 +5,7 @@ from PyQt5.QtCore import (
     QEvent,
     QPoint,
     QRect,
+    QSize,
     Qt,
     QTimer,
     pyqtSignal,
@@ -14,6 +15,7 @@ from PyQt5.QtGui import QGuiApplication, QPainter, QPalette, QRegion
 from PyQt5.QtWidgets import (
     QApplication,
     QHBoxLayout,
+    QLayout,
     QStackedLayout,
     QVBoxLayout,
     QWidget,
@@ -60,10 +62,14 @@ from gridplayer.widgets.video_overlay_icons import draw_play, draw_stop
 CONTROL_MARGIN = 10
 
 # a cell narrower than this has no room for the buttons that size it, with
-# its name and the close button, in pixels: they go in the row under them,
-# in a cell tall enough
+# its name and the close button, in pixels: they go in the row under them
 CELL_SIZE_MIN_WIDTH = 280
-CELL_SIZE_ROW_MIN_HEIGHT = 120
+
+# the least room the name and the bars are kept for, in pixels: they
+# shrink, the name cut short, but not past being of any use
+TITLE_MIN_WIDTH = 40
+PROGRESS_BAR_MIN_WIDTH = 40
+VOLUME_BAR_MIN_HEIGHT = 40
 
 
 class OverlayMode(Enum):
@@ -155,6 +161,11 @@ class OverlayBlock(QWidget):
         self._cell_size_picker_wanted = False
         self._is_cell_size_in_title = True
 
+        # whether each of the controls is wanted, by what the cell shows;
+        # those there is no room for in a small cell are left out, see
+        # _fit_controls
+        self._wanted: dict[QWidget, bool] = {}
+
         # what a failed cell offers past trying again; its Next goes back
         # where its list is played back to front
         self._has_error_details = False
@@ -179,24 +190,23 @@ class OverlayBlock(QWidget):
     def ui_customize_dynamic(self):
         self.label_info_hide_timer = QTimer()
         self.label_info_hide_timer.setSingleShot(True)
-        self.label_info_hide_timer.timeout.connect(self.label_info.hide)
+        self.label_info_hide_timer.timeout.connect(self._hide_info_label)
 
-        self.label_info.hide()
-        self.list_place_button.hide()
-        for button in self._cell_size_buttons():
-            button.hide()
-        self.label_list_window.hide()
         self.floating_progress.hide()
 
-        self.label_progress.hide()
-        self.progress_bar.hide()
-        self.progress_bar_placeholder.show()
-
-        self.play_button.hide()
-        self.stop_button.hide()
-        self.retry_button.hide()
-        self.details_button.hide()
-        self.next_button.hide()
+        self._set_wanted(
+            (self.label_info, False),
+            (self.list_place_button, False),
+            *((button, False) for button in self._cell_size_buttons()),
+            (self.label_list_window, False),
+            (self.label_progress, False),
+            (self.progress_bar, False),
+            (self.play_button, False),
+            (self.stop_button, False),
+            (self.retry_button, False),
+            (self.details_button, False),
+            (self.next_button, False),
+        )
 
     def ui_connect(self):
         qt_connect(
@@ -230,6 +240,9 @@ class OverlayBlock(QWidget):
 
         layout_main.setContentsMargins(0, 0, 0, 0)
         layout_main.setStackingMode(QStackedLayout.StackAll)
+        # as small as its cell, a window of its own as well: the controls
+        # with no room are left out, see _fit_controls
+        layout_main.setSizeConstraint(QLayout.SetNoConstraint)
 
         self.control_widget = QWidget(self)
         self.control_widget.setMouseTracking(True)
@@ -278,6 +291,8 @@ class OverlayBlock(QWidget):
         self.title_bar = QHBoxLayout()
         self.title_bar.addWidget(self.list_place_button)
         self.title_bar.addWidget(self.label_text, 1)
+        # the close button kept at the end with the name left out
+        self.title_bar.addStretch()
         for button in self._cell_size_buttons():
             self.title_bar.addWidget(button)
         self.title_bar.addWidget(self.exit_button)
@@ -355,6 +370,7 @@ class OverlayBlock(QWidget):
     def resizeEvent(self, event):
         self._sync_progress_label()
         self._sync_cell_size_buttons()
+        self._fit_controls()
 
     def paintEvent(self, event):
         self._paint_shadows(event.rect())
@@ -482,7 +498,7 @@ class OverlayBlock(QWidget):
         if place_txt:
             self.list_place_button.text = place_txt
 
-        self.list_place_button.setVisible(bool(place_txt))
+        self._set_wanted((self.list_place_button, bool(place_txt)))
 
     def set_cell_size_controls(self, is_shown: bool, has_picker: bool):
         """The buttons that make the cell bigger and smaller, and the one
@@ -510,13 +526,9 @@ class OverlayBlock(QWidget):
 
     def _sync_cell_size_buttons(self):
         """In the title row, before the close button; in a narrower cell,
-        under it, at the end of the row there; left out of one too short
-        for that."""
+        under it, at the end of the row there."""
 
         is_in_title = self.width() >= CELL_SIZE_MIN_WIDTH
-        is_shown = self._cell_size_wanted and (
-            is_in_title or self.height() >= CELL_SIZE_ROW_MIN_HEIGHT
-        )
 
         if is_in_title != self._is_cell_size_in_title:
             self._is_cell_size_in_title = is_in_title
@@ -525,19 +537,30 @@ class OverlayBlock(QWidget):
                 self.info_bar.removeWidget(button)
             if is_in_title:
                 at = self.title_bar.indexOf(self.exit_button)
+                # at the end, the close button being in the bottom row
+                if at < 0:
+                    at = self.title_bar.count()
                 for offset, button in enumerate(self._cell_size_buttons()):
                     self.title_bar.insertWidget(at + offset, button)
             else:
                 for button in self._cell_size_buttons():
                     self.info_bar.addWidget(button)
 
-        for button in self._cell_size_buttons():
-            button.setVisible(
-                is_shown
-                and (
-                    button is not self.cell_size_button or self._cell_size_picker_wanted
+        self._set_wanted(
+            *(
+                (
+                    button,
+                    self._cell_size_wanted
+                    and (
+                        button is not self.cell_size_button
+                        or self._cell_size_picker_wanted
+                    ),
                 )
+                for button in self._cell_size_buttons()
             )
+        )
+
+        for button in self._cell_size_buttons():
             # the grid laid out again: lit or not, where the pointer is now
             button.update()
 
@@ -555,7 +578,7 @@ class OverlayBlock(QWidget):
     def set_list_window_shown(self, is_shown: bool):
         """Said under the title while the List window plays in the cell."""
 
-        self.label_list_window.setVisible(is_shown)
+        self._set_wanted((self.label_list_window, is_shown))
 
     @pyqtSlot(str)
     def set_color(self, color):
@@ -565,8 +588,11 @@ class OverlayBlock(QWidget):
     @pyqtSlot(str)
     def set_info_label(self, info_text):
         self.label_info.text = info_text
-        self.label_info.show()
+        self._set_wanted((self.label_info, True))
         self.label_info_hide_timer.start(1000 * 2)
+
+    def _hide_info_label(self):
+        self._set_wanted((self.label_info, False))
 
     @pyqtSlot()
     def set_is_in_progress(self):
@@ -663,9 +689,7 @@ class OverlayBlock(QWidget):
 
     def set_is_chrome_visible(self, visible: bool):
         self._is_chrome_visible = visible
-        self.control_widget.setVisible(visible)
-        if not visible:
-            self.floating_progress.hide()
+        self._fit_controls()
         self._sync_border()
         self._sync_bottom_bar()
         self.update()
@@ -683,33 +707,34 @@ class OverlayBlock(QWidget):
         _, length = self._last_position
         has_bar = is_video and length > 0
 
-        self.play_pause_button.setVisible(is_video)
-
         self.progress_bar.setEnabled(length > 0)
-        self.progress_bar.setVisible(has_bar)
-        self.progress_bar_placeholder.setVisible(not has_bar)
-
-        if not has_bar:
-            self.floating_progress.hide()
-
-        self.play_button.setVisible(mode is OverlayMode.STOPPED)
-        self.stop_button.setVisible(mode is OverlayMode.LOADING)
 
         is_error = mode is OverlayMode.ERROR
-        self.retry_button.setVisible(is_error)
-        self.details_button.setVisible(is_error and self._has_error_details)
-        self.next_button.setVisible(is_error and self._can_go_next)
+        self._wanted.update(
+            (
+                (self.play_pause_button, is_video),
+                (self.progress_bar, has_bar),
+                (self.play_button, mode is OverlayMode.STOPPED),
+                (self.stop_button, mode is OverlayMode.LOADING),
+                (self.retry_button, is_error),
+                (self.details_button, is_error and self._has_error_details),
+                (self.next_button, is_error and self._can_go_next),
+            )
+        )
 
         self._sync_volume_chrome()
         self._sync_progress_label()
 
     def _sync_progress_label(self):
-        if self._mode is not OverlayMode.VIDEO:
-            self.label_progress.hide()
-            return
         too_narrow_to_fit = 250
         is_wide = self.width() > too_narrow_to_fit
-        self.label_progress.setVisible(is_wide or not self.progress_bar.isEnabled())
+        self._set_wanted(
+            (
+                self.label_progress,
+                self._mode is OverlayMode.VIDEO
+                and (is_wide or not self.progress_bar.isEnabled()),
+            )
+        )
 
     @pyqtSlot(bool)
     def set_volume_button_visible(self, is_visible):
@@ -717,14 +742,180 @@ class OverlayBlock(QWidget):
         self._sync_volume_chrome()
 
     def _sync_volume_chrome(self):
-        if self._mode is not OverlayMode.VIDEO:
-            self.volume_button.hide()
-            self.volume_bar.hide()
+        is_wanted = self._mode is OverlayMode.VIDEO and self._volume_button_wanted
+        self._set_wanted(
+            (self.volume_button, is_wanted),
+            (self.volume_bar, is_wanted and not self.volume_button.is_off),
+        )
+
+    def _set_wanted(self, *wanted: tuple[QWidget, bool]):
+        self._wanted.update(wanted)
+        self._fit_controls()
+
+    def _is_shown(self, widget: QWidget, left_out: set[object]) -> bool:
+        return self._wanted.get(widget, True) and widget not in left_out
+
+    def _fit_controls(self):
+        """The controls the cell has room for, at its size: in a small
+        one, the least needed are left out, a few at a time as it gets
+        smaller, its close and play buttons kept to the last, in one row
+        in a cell too short for two. In one too small even for those,
+        only its frame is shown."""
+
+        room = self.size()
+        # the controls left out, and the title row itself, for one row
+        left_out: set[object] = set()
+        narrower = iter(self._left_out_of_narrower())
+        shorter = iter(self._left_out_of_shorter())
+
+        while True:
+            needed = self._controls_size(left_out)
+            if needed.width() > room.width():
+                group = next(narrower, None)
+            elif needed.height() > room.height():
+                group = next(shorter, None)
+            else:
+                break
+
+            if group is None:
+                break
+
+            left_out.update(group)
+
+        is_fitting = needed.width() <= room.width() and needed.height() <= room.height()
+
+        self._place_exit_button(self.title_bar in left_out)
+
+        for widget in self._fitted_controls():
+            widget.setVisible(self._is_shown(widget, left_out))
+        self.progress_bar_placeholder.setVisible(self.progress_bar.isHidden())
+        self.control_widget.setVisible(self._is_chrome_visible and is_fitting)
+
+        if self.progress_bar.isHidden() or self.control_widget.isHidden():
+            self.floating_progress.hide()
+
+    def _left_out_of_narrower(self) -> list[tuple[object, ...]]:
+        """What goes as the cell gets narrower, the first first."""
+
+        return [
+            (self.label_progress,),
+            self._cell_size_buttons(),
+            (self.list_place_button,),
+            (self.volume_button, self.volume_bar),
+            (self.details_button,),
+            (self.next_button,),
+            self._info_row(),
+            (self.progress_bar,),
+            (self.label_text,),
+        ]
+
+    def _left_out_of_shorter(self) -> list[tuple[object, ...]]:
+        """What goes as the cell gets shorter, the first first."""
+
+        # last, the title row: its close button goes to the end of the
+        # bottom row, the rest is left out
+        cell_size = self._cell_size_buttons() if self._is_cell_size_in_title else ()
+        title_row = (
+            self.title_bar,
+            self.list_place_button,
+            self.label_text,
+            *cell_size,
+        )
+
+        return [(self.volume_bar,), self._info_row(), title_row]
+
+    def _place_exit_button(self, is_in_bottom_row: bool):
+        row = self.bottom_bar if is_in_bottom_row else self.title_bar
+        if row.indexOf(self.exit_button) >= 0:
             return
 
-        self.volume_button.setVisible(self._volume_button_wanted)
-        show_bar = self._volume_button_wanted and not self.volume_button.is_off
-        self.volume_bar.setVisible(show_bar)
+        self.title_bar.removeWidget(self.exit_button)
+        self.bottom_bar.removeWidget(self.exit_button)
+        row.addWidget(self.exit_button)
+
+    def _info_row(self) -> tuple[QWidget, ...]:
+        cell_size = () if self._is_cell_size_in_title else self._cell_size_buttons()
+        return (self.label_list_window, self.label_info, *cell_size)
+
+    def _title_row(self) -> tuple[QWidget, ...]:
+        cell_size = self._cell_size_buttons() if self._is_cell_size_in_title else ()
+        return (self.list_place_button, self.label_text, *cell_size, self.exit_button)
+
+    def _bottom_row(self) -> tuple[QWidget, ...]:
+        return (
+            self.play_pause_button,
+            self.play_button,
+            self.stop_button,
+            self.retry_button,
+            self.details_button,
+            self.label_progress,
+            self.progress_bar,
+            self.next_button,
+            self.volume_button,
+        )
+
+    def _fitted_controls(self) -> tuple[QWidget, ...]:
+        return (
+            *self._title_row(),
+            *self._info_row(),
+            self.volume_bar,
+            *self._bottom_row(),
+        )
+
+    def _controls_size(self, left_out: set[object]) -> QSize:
+        """How big the cell has to be for its controls, but those left out,
+        as its layouts would lay them out."""
+
+        def least(widget) -> QSize:
+            size = QLayout.closestAcceptableSize(widget, QSize(0, 0))
+            if widget is self.label_text:
+                size.setWidth(TITLE_MIN_WIDTH)
+            if widget is self.progress_bar:
+                size.setWidth(PROGRESS_BAR_MIN_WIDTH)
+            if widget is self.volume_bar:
+                size.setHeight(VOLUME_BAR_MIN_HEIGHT)
+            return size
+
+        def row(layout, widgets) -> QSize:
+            sizes = [least(w) for w in widgets if self._is_shown(w, left_out)]
+            if not sizes:
+                return QSize()
+            width = sum(size.width() for size in sizes)
+            width += layout.spacing() * (len(sizes) - 1)
+            return QSize(width, max(size.height() for size in sizes))
+
+        def column(layout, rows) -> QSize:
+            rows = [size for size in rows if size.isValid()]
+            if not rows:
+                return QSize()
+            height = sum(size.height() for size in rows)
+            height += layout.spacing() * (len(rows) - 1)
+            return QSize(max(size.width() for size in rows), height)
+
+        is_one_row = self.title_bar in left_out
+        title_row = () if is_one_row else self._title_row()
+        exit_button = (self.exit_button,) if is_one_row else ()
+
+        controls = self.control_widget.layout()
+        top = column(
+            self.top_bar,
+            (
+                row(self.title_bar, title_row),
+                row(self.info_bar, self._info_row()),
+            ),
+        )
+        middle = row(self.right_bar, (self.volume_bar,))
+        # the bar or, with none, the room kept in its place, a gap apart
+        is_bar_shown = self._is_shown(self.progress_bar, left_out)
+        filler = () if is_bar_shown else (self.progress_bar_placeholder,)
+        bottom = row(self.bottom_bar, (*self._bottom_row(), *filler, *exit_button))
+        needed = column(controls, (top, middle, bottom))
+
+        margins = controls.contentsMargins()
+        return QSize(
+            needed.width() + margins.left() + margins.right(),
+            needed.height() + margins.top() + margins.bottom(),
+        )
 
     def lay_out_now(self):
         """Its controls where they go now, rather than once the event loop

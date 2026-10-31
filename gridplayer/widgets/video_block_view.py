@@ -228,7 +228,7 @@ class ViewControl(VideoBlockPart):
 
         block.overlay.set_is_chrome_visible(not block._ctx.is_drag_ui)
 
-        if block._ctx.is_disable_overlay or not block.is_overlay_fits:
+        if block._ctx.is_disable_overlay:
             block.overlay_hide_timer.stop()
             block.overlay.hide()
             return

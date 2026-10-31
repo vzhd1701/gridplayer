@@ -429,7 +429,6 @@ def _block_showing_overlays(mocker, is_picture_pending):
     block._ctx.is_overlay_hide_on_timeout = False
     block.is_loading = False
     block._is_error = False
-    block.is_overlay_fits = True
     block.isVisible.return_value = True
     block.show_overlay = lambda: VideoBlock.show_overlay(block)
     return block

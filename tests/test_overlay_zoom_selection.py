@@ -169,7 +169,6 @@ def _block(mocker, **ctx):
     block._ctx.is_drag_ui = False
     block._ctx.is_disable_overlay = ctx.get("is_disable_overlay", False)
     block._ctx.is_overlay_hide_on_timeout = True
-    block.is_overlay_fits = ctx.get("is_overlay_fits", True)
 
     return block
 
@@ -213,12 +212,9 @@ class TestTheCellWhileSelecting:
         block.show_overlay.assert_called_once_with()
         assert block.view._zoom_selection is None
 
-    @pytest.mark.parametrize(
-        "ctx", [{"is_disable_overlay": True}, {"is_overlay_fits": False}]
-    )
-    def test_done_an_overlay_that_is_off_goes_again(self, mocker, ctx):
+    def test_done_an_overlay_that_is_off_goes_again(self, mocker):
 
-        block = _block(mocker, **ctx)
+        block = _block(mocker, is_disable_overlay=True)
 
         block.view.show_zoom_selection(SELECTION)
         block.view.show_zoom_selection(None)
