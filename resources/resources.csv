@@ -104,6 +104,8 @@ icon-symbolic,icons/custom/bring to front.svg,grid-tile-front
 icon-symbolic,icons/custom/send to back.svg,grid-tile-back
 icon-symbolic,icons/custom/lock tile.svg,grid-tile-lock
 icon-symbolic,icons/custom/make room.svg,grid-make-room
+icon-symbolic,icons/custom/fill space.svg,grid-fill-space
+icon-symbolic,icons/custom/fit tile.svg,grid-fit-tile
 icon-symbolic,icons/custom/cell size.svg,grid-cell-size
 icon-symbolic,icons/custom/cell bigger.svg,grid-cell-bigger
 icon-symbolic,icons/custom/cell smaller.svg,grid-cell-smaller

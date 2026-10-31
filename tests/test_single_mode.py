@@ -105,7 +105,9 @@ class _Cell(QWidget):
         self.video_id = video_id
         self.sizes = []
         # its overlay's buttons that size its cell, none here
-        self.cell_size = SimpleNamespace(set_sizable=lambda *_args: None)
+        self.cell_size = SimpleNamespace(
+            set_sizable=lambda *_args: None, forget_steps=lambda: None
+        )
 
     def resizeEvent(self, event):
         self.sizes.append((event.size().width(), event.size().height()))

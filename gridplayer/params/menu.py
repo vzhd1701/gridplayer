@@ -153,6 +153,8 @@ SECTIONS = MappingProxyType(
                 "Make Cell Taller",
                 "Make Cell Shorter",
             ),
+            "Fill Space",
+            "Fit Tile to Video",
             "Bring to Front",
             "Send to Back",
             "Make Room",

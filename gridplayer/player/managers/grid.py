@@ -178,6 +178,7 @@ class GridManager(ManagerBase):
 
         self._grid = CellLayout(self.parent())
         self._grid.laid_out.connect(self._stack_tiles)
+        self._grid.laid_out.connect(self._forget_cell_steps)
         # the videos one over another as the tiles were the last time, and
         # those whose overlays were cut where others covered them
         self._stacked: list = []
@@ -287,6 +288,10 @@ class GridManager(ManagerBase):
             "is_tile_locked": self.is_tile_locked,
             "lock_tile": self.cmd_lock_tile,
             "lock_free_tile": self.lock_free_tile,
+            "fill_tile_space": self.cmd_fill_tile_space,
+            "is_tile_space_fillable": self.is_tile_space_fillable,
+            "fit_tile_to_video": self.cmd_fit_tile_to_video,
+            "is_tile_fittable": self.is_tile_fittable,
             "is_tile_room_makeable": self.is_tile_room_makeable,
             "make_room": self.cmd_make_room,
             "bring_free_tile_to_front": self.bring_free_tile_to_front,
@@ -1555,10 +1560,11 @@ class GridManager(ManagerBase):
             return self._free.is_under(video_id)
         return self._free.is_over(video_id)
 
-    def _active_tile(self) -> str | None:
-        """The active video, with a tile to move or size by hand now."""
+    def _active_tile(self, video_id: str | None = None) -> str | None:
+        """A video, the active one by default, with a tile to move or size
+        by hand now."""
 
-        video_id = self._active_id()
+        video_id = video_id or self._active_id()
         if not self._is_free or self._ctx.is_single_mode:
             return None
         return video_id if video_id in self._free.tiles else None
@@ -1585,16 +1591,75 @@ class GridManager(ManagerBase):
     def is_tile_lockable(self) -> bool:
         return self._active_tile() is not None
 
-    def is_tile_locked(self) -> bool:
-        return self._active_id() in self._free.locked
+    def is_tile_locked(self, video_id: str | None = None) -> bool:
+        return (video_id or self._active_id()) in self._free.locked
 
-    def cmd_lock_tile(self) -> None:
-        """The active video's tile locked, in front of the others, or let
-        go of (see FreeTiles)."""
+    def cmd_lock_tile(self, video_id: str | None = None) -> None:
+        """A video's tile, the active one's by default, locked, in front of
+        the others, or let go of (see FreeTiles)."""
 
-        video_id = self._active_tile()
+        video_id = self._active_tile(video_id)
         if video_id is not None:
             self.lock_free_tile(video_id, video_id not in self._free.locked)
+
+    def _sizable_tile(self, video_id: str | None) -> str | None:
+        # a video's tile, the active one's by default, to size: not locked
+        video_id = self._active_tile(video_id)
+        if video_id is None or video_id in self._free.locked:
+            return None
+        return video_id
+
+    def _room_around(self, video_id: str) -> Rect | None:
+        # the most room the tile has, the tiles as they are shown
+        return self._free.filled(*self._area_size()).room_around(video_id)
+
+    def is_tile_space_fillable(self, video_id: str | None = None) -> bool:
+        """Whether a video's tile, the active one's by default, has room
+        around it to fill."""
+
+        video_id = self._sizable_tile(video_id)
+        return video_id is not None and self._room_around(video_id) is not None
+
+    def cmd_fill_tile_space(self, video_id: str | None = None) -> None:
+        """A video's tile, the active one's by default, made as big as the
+        room around it lets it (see FreeTiles.room_around)."""
+
+        video_id = self._sizable_tile(video_id)
+        room = None if video_id is None else self._room_around(video_id)
+        if room is None:
+            return
+
+        with self._undoable():
+            self._free.fill(*self._area_size())
+            self._free.set_rect(video_id, room, self._free.page_shape, 1)
+            self._is_arranged = False
+        self._grid.invalidate()
+
+    def is_tile_fittable(self, video_id: str | None = None) -> bool:
+        """Whether a video's tile, the active one's by default, is not its
+        video's shape, the shape known."""
+
+        video_id = self._sizable_tile(video_id)
+        return (
+            video_id is not None
+            and self._is_shape_known(video_id)
+            and not self._free.is_shaped(video_id, self._shape_of(video_id))
+        )
+
+    def cmd_fit_tile_to_video(self, video_id: str | None = None) -> None:
+        """A video's tile, the active one's by default, made its video's
+        shape, as big as it can be inside the tile it had, in the middle of
+        it: the bars beside the picture cut off."""
+
+        video_id = self._sizable_tile(video_id)
+        if video_id is None or not self.is_tile_fittable(video_id):
+            return
+
+        with self._undoable():
+            self._free.fill(*self._area_size())
+            self._free.fit_shape(video_id, self._shape_of(video_id))
+            self._is_arranged = False
+        self._grid.invalidate()
 
     def lock_free_tile(self, video_id: str, is_locked: bool) -> None:
         if video_id not in self._free.tiles:
@@ -1641,6 +1706,13 @@ class GridManager(ManagerBase):
         if video_id in self._free.tiles and self._free.is_under(video_id):
             self._free.stack(video_id, True)
             self._grid.invalidate()
+
+    def _forget_cell_steps(self) -> None:
+        # laid out anew, the room each cell or tile has to be made bigger or
+        # smaller, or to fill, changed with it or with another: its buttons
+        # to be looked at again
+        for vb in self._ctx.video_blocks:
+            vb.cell_size.forget_steps()
 
     def _stack_tiles(self) -> None:
         """In Free Tiles, the videos one over another as their tiles are,
@@ -1918,11 +1990,13 @@ class GridManager(ManagerBase):
         return None
 
     def _sync_cell_sizable(self):
-        # the buttons on the videos that make their cells bigger and smaller
+        # the buttons on the videos that make their cells bigger and smaller,
+        # or their tiles fill the room around them, and so on
         is_sizable = self.is_grid_cell_sizable()
         is_shapable = self.is_grid_cell_shapable()
+        is_tile = self._is_free and not self._ctx.is_single_mode
         for vb in self._ctx.video_blocks:
-            vb.cell_size.set_sizable(is_sizable, is_shapable)
+            vb.cell_size.set_sizable(is_sizable, is_shapable, is_tile)
 
     def reload_video_grid(self):
         # Count-changed fires before single mode exits. Skip until the grid
@@ -2016,11 +2090,6 @@ class GridManager(ManagerBase):
         # each time the area is laid out: as the window is resized among them
         shapes = {vb.video_id: vb.picture_shape for vb in self._ctx.video_blocks}
         self._flow.fit_to(width, height, shapes)
-
-        # in Fit Shapes, whether a step changes a tile goes by them too
-        if self._mode == GridMode.AUTO_SHAPES:
-            self._sync_cell_sizable()
-
         return self._flow_cells()
 
     def _render_video_grid(self):

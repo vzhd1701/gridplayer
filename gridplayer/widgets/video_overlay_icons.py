@@ -92,11 +92,10 @@ def _draw_arrows(rect, painter, color_fg, is_out):
     """
 
     painter.setRenderHint(QPainter.Antialiasing, True)
-    pen = QPen(color_fg, 2, Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin)
-    painter.setPen(pen)
+    painter.setPen(_line_pen(color_fg))
     painter.setBrush(Qt.NoBrush)
 
-    box = QRectF(QRect(rect).adjusted(6, 6, -6, -6))
+    box = _icon_box(rect)
     center = box.center()
     head = round(box.width() * 0.4)
     gap = 1.5
@@ -136,7 +135,7 @@ def draw_cell_size(rect, painter, color_fg, color_bg):
 
     painter.setRenderHint(QPainter.Antialiasing, True)
 
-    box = QRectF(QRect(rect).adjusted(6, 6, -6, -6))
+    box = _icon_box(rect)
     half = round(box.width() / 2)
 
     painter.setPen(Qt.NoPen)
@@ -152,6 +151,98 @@ def draw_cell_size(rect, painter, color_fg, color_bg):
     painter.drawLine(
         QPointF(box.left(), box.top() + half), QPointF(box.right(), box.top() + half)
     )
+
+
+def _icon_box(rect) -> QRectF:
+    return QRectF(QRect(rect).adjusted(6, 6, -6, -6))
+
+
+def _line_pen(color_fg) -> QPen:
+    return QPen(color_fg, 2, Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin)
+
+
+def _part(box: QRectF, left, top, right, bottom) -> QRectF:
+    # a part of the box, its edges as shares of the box's width and height
+    return QRectF(
+        box.left() + left * box.width(),
+        box.top() + top * box.height(),
+        (right - left) * box.width(),
+        (bottom - top) * box.height(),
+    )
+
+
+def _draw_corners(painter, color_fg, box: QRectF, arm: float):
+    """The four corners of a box, each a line along either edge."""
+
+    path = QPainterPath()
+    for corner, sign_x, sign_y in (
+        (box.topLeft(), 1, 1),
+        (box.topRight(), -1, 1),
+        (box.bottomRight(), -1, -1),
+        (box.bottomLeft(), 1, -1),
+    ):
+        path.moveTo(corner.x() + sign_x * arm, corner.y())
+        path.lineTo(corner)
+        path.lineTo(corner.x(), corner.y() + sign_y * arm)
+
+    painter.setPen(_line_pen(color_fg))
+    painter.setBrush(Qt.NoBrush)
+    painter.drawPath(path)
+
+
+def _fill(painter, color_fg, box: QRectF):
+    painter.setPen(Qt.NoPen)
+    painter.setBrush(color_fg)
+    painter.drawRect(box)
+
+
+def draw_fill_space(rect, painter, color_fg, color_bg):
+    """A tile in the middle and the corners of the room round it: the tile
+    made as big as the room. As the icon grid-fill-space."""
+
+    painter.setRenderHint(QPainter.Antialiasing, True)
+
+    box = _icon_box(rect)
+    _draw_corners(painter, color_fg, box, box.width() * 0.26)
+    _fill(painter, color_fg, _part(box, 0.34, 0.34, 0.66, 0.66))
+
+
+def draw_fit_video(rect, painter, color_fg, color_bg):
+    """A picture and the corners of the tile close round it: the tile made
+    the picture's shape. As the icon grid-fit-tile."""
+
+    painter.setRenderHint(QPainter.Antialiasing, True)
+
+    # opened up from the icon's, the button's being so small
+    box = _icon_box(rect)
+    _draw_corners(painter, color_fg, _part(box, 0, 0.16, 1, 0.84), box.width() * 0.28)
+    _fill(painter, color_fg, _part(box, 0.26, 0.38, 0.74, 0.62))
+
+
+def draw_lock(rect, painter, color_fg, color_bg):
+    """A padlock: the tile locked."""
+
+    painter.setRenderHint(QPainter.Antialiasing, True)
+
+    box = _icon_box(rect)
+    body = QRectF(box.left(), box.top() + box.height() * 0.45, box.width(), 0)
+    body.setBottom(box.bottom())
+
+    shackle = box.width() * 0.6
+    arc = QRectF(box.center().x() - shackle / 2, box.top(), shackle, box.height() * 0.6)
+    path = QPainterPath()
+    path.moveTo(arc.left(), body.top())
+    path.lineTo(arc.left(), arc.center().y())
+    path.arcTo(arc, 180, -180)
+    path.lineTo(arc.right(), body.top())
+
+    painter.setPen(_line_pen(color_fg))
+    painter.setBrush(Qt.NoBrush)
+    painter.drawPath(path)
+
+    painter.setPen(Qt.NoPen)
+    painter.setBrush(color_fg)
+    painter.drawRoundedRect(body, 1.5, 1.5)
 
 
 def draw_list(rect, painter, color_fg, color_bg):

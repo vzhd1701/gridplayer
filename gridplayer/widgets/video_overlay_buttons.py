@@ -17,8 +17,11 @@ from gridplayer.widgets.video_overlay_elements import OverlayWidget, mixed_color
 from gridplayer.widgets.video_overlay_icons import (
     draw_cell_size,
     draw_cross,
+    draw_fill_space,
+    draw_fit_video,
     draw_grow,
     draw_list,
+    draw_lock,
     draw_pause,
     draw_play,
     draw_shrink,
@@ -222,6 +225,27 @@ class OverlayCellSmallerButton(OverlayButton):
 class OverlayCellSizeButton(OverlayButton):
     def icon(self, rect, painter, color_fg, color_bg):
         return draw_cell_size(rect, painter, color_fg, color_bg)
+
+    def icon_off(self, rect, painter, color_fg, color_bg): ...
+
+
+class OverlayFillSpaceButton(OverlayButton):
+    def icon(self, rect, painter, color_fg, color_bg):
+        return draw_fill_space(rect, painter, color_fg, color_bg)
+
+    def icon_off(self, rect, painter, color_fg, color_bg): ...
+
+
+class OverlayFitVideoButton(OverlayButton):
+    def icon(self, rect, painter, color_fg, color_bg):
+        return draw_fit_video(rect, painter, color_fg, color_bg)
+
+    def icon_off(self, rect, painter, color_fg, color_bg): ...
+
+
+class OverlayLockTileButton(OverlayButton):
+    def icon(self, rect, painter, color_fg, color_bg):
+        return draw_lock(rect, painter, color_fg, color_bg)
 
     def icon_off(self, rect, painter, color_fg, color_bg): ...
 

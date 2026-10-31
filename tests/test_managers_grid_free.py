@@ -770,3 +770,64 @@ def test_a_locked_video_reopened_elsewhere_is_still_locked():
 
     assert manager._free.locked == {"B"}
     assert not _overlapping(_rects(manager))
+
+
+# --- Fill Space, Fit Tile to Video ---
+
+
+def test_fill_space_makes_a_tile_as_big_as_the_room_around_it_once():
+    manager = _manager({"A": 2.0, "B": 2.0})
+    _free(manager, A=(0, 0, 500, 500), B=(600, 100, 800, 300))
+
+    assert manager.is_tile_space_fillable("B")
+
+    manager.cmd_fill_tile_space("B")
+
+    _approx(_rects(manager)["B"], (500, 0, 1000, 500))
+    _approx(_rects(manager)["A"], (0, 0, 500, 500))
+    # no room left: again, nothing changes
+    assert not manager.is_tile_space_fillable("B")
+    manager.cmd_fill_tile_space("B")
+    _approx(_rects(manager)["B"], (500, 0, 1000, 500))
+
+
+def test_fill_space_can_be_undone():
+    manager = _manager({"A": 2.0, "B": 2.0})
+    _free(manager, A=(0, 0, 500, 500), B=(600, 100, 800, 300))
+    manager.cmd_fill_tile_space("B")
+
+    manager.cmd_undo_grid()
+
+    _approx(_rects(manager)["B"], (600, 100, 800, 300))
+
+
+def test_a_tile_with_no_room_around_it_or_locked_cannot_be_filled():
+    manager = _manager({"A": 2.0, "B": 2.0})
+    _free(manager, A=(0, 0, 500, 500), B=(500, 0, 1000, 500))
+
+    assert not manager.is_tile_space_fillable("A")
+
+    _free(manager, A=(0, 0, 500, 500), B=(600, 100, 800, 300))
+    manager.lock_free_tile("B", True)
+
+    assert not manager.is_tile_space_fillable("B")
+    manager.cmd_fill_tile_space("B")
+    _approx(_rects(manager)["B"], (600, 100, 800, 300))
+
+
+def test_a_tile_fit_to_its_video_loses_the_bars_beside_the_picture():
+    manager = _manager({"A": 16 / 9, "B": None})
+    _free(manager, A=(0, 0, 500, 500), B=(600, 100, 800, 300))
+
+    assert manager.is_tile_fittable("A")
+    # its video's shape not known yet
+    assert not manager.is_tile_fittable("B")
+
+    manager.cmd_fit_tile_to_video("A")
+
+    _approx(_rects(manager)["A"], (0, 109.4, 500, 390.6))
+    assert not manager.is_tile_fittable("A")
+
+    manager.cmd_undo_grid()
+
+    _approx(_rects(manager)["A"], (0, 0, 500, 500))

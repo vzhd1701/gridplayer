@@ -1,5 +1,7 @@
 """The size of a video block's cell in the grid: its overlay's buttons that
-make it a step bigger or smaller, and pick its size, on where there is room.
+make it a step bigger or smaller, and pick its size, on where there is room;
+in Free Tiles, those that make its tile as big as the room around it, or
+its video's shape, and lock it.
 
 Whether there is room is looked at for the cell under the pointer only, and
 for another once the pointer comes to it: in Fit Shapes, finding a step
@@ -23,44 +25,69 @@ class CellSizeControl(VideoBlockPart):
         # its own button made its cell bigger or smaller
         self._is_stepped = False
 
-    def set_sizable(self, is_sizable: bool, is_shapable: bool):
+    def set_sizable(self, is_sizable: bool, is_shapable: bool, is_tile: bool):
         """Its overlay's buttons that make its cell bigger and smaller, and
-        pick its size where it can be shaped too, the grid just laid out:
-        off where there is no room, as looked at once they are seen, the
-        pointer on them (see sync_steps)."""
+        pick its size where it can be shaped too, or those of its tile in
+        Free Tiles (is_tile), the grid just laid out: off where there is no
+        room, as looked at once they are seen, the pointer on them (see
+        sync_steps)."""
 
         overlay = self._block.overlay
-        overlay.set_cell_size_controls(is_sizable, is_shapable)
+        overlay.set_cell_size_controls(is_sizable, is_shapable, is_tile)
+        self.forget_steps()
+
+    def forget_steps(self):
+        """The grid changed: whether there is room for its buttons is to be
+        looked at again, at once for the one whose button was just clicked
+        or under the pointer, the others once the pointer comes to them."""
+
         self._are_steps_known = False
-        if not overlay.isVisible():
+        if not self._block.overlay.isVisible():
             return
-        # the one whose button was just clicked, wherever it went, or under
-        # the pointer, at once; the others once the pointer comes to them
         if self._is_stepped or self._block.is_under_cursor():
             self._is_stepped = False
             self.sync_steps()
 
     def sync_steps(self):
         """Whether there is room for its cell a step bigger, and smaller, on
-        its buttons, unless known already: as its overlay is shown, which
-        the pointer moving over the cell does."""
+        its buttons, or for its tile, unless known already: as its overlay
+        is shown, which the pointer moving over the cell does."""
 
         block = self._block
-        if self._are_steps_known or not block.overlay.has_cell_size_buttons():
+        overlay = block.overlay
+        if self._are_steps_known:
+            return
+        if not overlay.has_cell_size_buttons() and not overlay.has_tile_buttons():
             return
         self._are_steps_known = True
 
         commands = block._ctx.commands
-        block.overlay.set_cell_steps(
-            commands.is_grid_cell_steppable("bigger", block.video_id),
-            commands.is_grid_cell_steppable("smaller", block.video_id),
-        )
+        video_id = block.video_id
+        if overlay.has_cell_size_buttons():
+            overlay.set_cell_steps(
+                commands.is_grid_cell_steppable("bigger", video_id),
+                commands.is_grid_cell_steppable("smaller", video_id),
+            )
+        if overlay.has_tile_buttons():
+            overlay.set_tile_states(
+                can_fill=commands.is_tile_space_fillable(video_id),
+                can_fit=commands.is_tile_fittable(video_id),
+                is_locked=commands.is_tile_locked(video_id),
+            )
 
     def step(self, step: str):
         self._is_stepped = True
         self._block._ctx.commands.step_grid_cell(step, self._block.video_id)
         # nothing changed, no room: nothing laid out to tell it
         self._is_stepped = False
+
+    def tile(self, command: str):
+        """Its tile filled, fit or locked by its own button, the grid's
+        command for it named: its buttons as the tile is now."""
+
+        getattr(self._block._ctx.commands, command)(self._block.video_id)
+        self._are_steps_known = False
+        self.sync_steps()
 
     def pick(self, under):
         block = self._block

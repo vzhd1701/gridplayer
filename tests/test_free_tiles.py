@@ -1188,3 +1188,68 @@ def test_snaps_turned_on_while_held_are_snapped_to():
     drag.snap_to(_ALL)
 
     _approx(drag.moved((683, 253)), (580, 200, 780, 300))
+
+
+# --- the room around a tile ---
+
+
+def _room(tiles, video_id):
+    """The most room a tile has, in the page's pixels."""
+
+    room = tiles.room_around(video_id)
+    return None if room is None else tuple(edge * H for edge in room)
+
+
+def test_a_tile_alone_has_the_whole_page():
+    tiles = _tiles(A=(100, 100, 300, 250))
+
+    _approx(_room(tiles, "A"), (0, 0, W, H))
+
+
+def test_a_tile_has_the_room_a_closed_one_left_beside_it():
+    # two by two, the bottom right one gone
+    tiles = _tiles(
+        A=(0, 0, 500, 250),
+        B=(500, 0, 1000, 250),
+        C=(0, 250, 500, 500),
+    )
+
+    _approx(_room(tiles, "C"), (0, 250, 1000, 500))
+    _approx(_room(tiles, "B"), (500, 0, 1000, 500))
+    assert _room(tiles, "A") is None
+
+
+def test_a_tile_stops_at_the_tiles_around_it_with_a_gap_between():
+    tiles = _tiles(
+        A=(300, 150, 500, 300),
+        B=(600, 0, 1000, 500),
+        C=(0, 400, 550, 500),
+    )
+
+    _approx(_room(tiles, "A"), (0, 0, 600, 400))
+
+
+def test_of_rooms_as_big_the_one_nearest_its_shape_is_taken():
+    # room across the top or down the right, as big
+    tiles = _tiles(A=(500, 0, 1000, 250), B=(0, 250, 500, 500))
+    tiles.shape_of = lambda _video_id: 0.5
+
+    _approx(_room(tiles, "A"), (500, 0, 1000, 500))
+
+    tiles.shape_of = lambda _video_id: 4.0
+
+    _approx(_room(tiles, "A"), (0, 0, 1000, 250))
+
+
+def test_a_tile_it_is_over_already_is_not_in_its_way():
+    tiles = _tiles(A=(0, 0, 600, 500), B=(400, 100, 700, 300))
+
+    _approx(_room(tiles, "B"), (0, 0, W, H))
+    _approx(_room(tiles, "A"), (0, 0, W, H))
+
+
+def test_a_tile_under_a_locked_one_has_no_room_to_go_further_under_it():
+    tiles = _tiles(A=(100, 100, 400, 300), L=(300, 50, 600, 250))
+    tiles.set_locked("L", True)
+
+    assert _room(tiles, "A") is None

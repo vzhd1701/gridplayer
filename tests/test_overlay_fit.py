@@ -225,3 +225,49 @@ def test_the_size_buttons_go_before_close_as_it_comes_back(overlay):
     assert buttons[-1] < close
     assert {"label_text", "exit_button"} <= _shown(overlay)
     assert not overlay.cell_size_button.isHidden()
+
+
+def _tile_buttons_shown(overlay) -> set[str]:
+    names = ("fill_space_button", "fit_video_button", "lock_tile_button")
+    if overlay.control_widget.isHidden():
+        return set()
+    return {name for name in names if not getattr(overlay, name).isHidden()}
+
+
+def test_a_tiles_buttons_are_in_the_title_row_before_close(overlay):
+    assert not _tile_buttons_shown(overlay)
+
+    overlay.set_cell_size_controls(False, False, has_tile_buttons=True)
+
+    assert _tile_buttons_shown(overlay) == {
+        "fill_space_button",
+        "fit_video_button",
+        "lock_tile_button",
+    }
+    row = overlay.title_bar
+    assert row.indexOf(overlay.lock_tile_button) < row.indexOf(overlay.exit_button)
+    _fits(overlay)
+
+
+def test_a_tiles_buttons_go_before_its_name_and_close(overlay):
+    overlay.set_cell_size_controls(False, False, has_tile_buttons=True)
+    gone = {}
+    for width in range(640, 20, -2):
+        overlay.resize(width, 360)
+        shown = _shown(overlay) | _tile_buttons_shown(overlay)
+        for name in ("lock_tile_button", "label_text", "exit_button"):
+            if name not in shown:
+                gone.setdefault(name, width)
+        _fits(overlay)
+
+    assert gone["lock_tile_button"] > gone["label_text"] > gone["exit_button"]
+
+
+def test_a_tiles_buttons_say_what_it_can_do_and_is(overlay):
+    overlay.set_cell_size_controls(False, False, has_tile_buttons=True)
+
+    overlay.set_tile_states(can_fill=True, can_fit=False, is_locked=True)
+
+    assert overlay.fill_space_button.is_available
+    assert not overlay.fit_video_button.is_available
+    assert overlay.lock_tile_button.is_down

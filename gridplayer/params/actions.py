@@ -2716,6 +2716,22 @@ ACTIONS = MappingProxyType(
             "enable_if": "is_tile_room_makeable",
             "show_if": "is_tiles_stacked",
         },
+        "Fill Space": {
+            # the tile as big as the room around it
+            "title": translate("Actions", "Fill Space"),
+            "icon": "grid-fill-space",
+            "func": "fill_tile_space",
+            "enable_if": "is_tile_space_fillable",
+            "show_if": ("is_grid_mode_set_to", GridMode.FREE),
+        },
+        "Fit Tile to Video": {
+            # the bars beside the picture cut off
+            "title": translate("Actions", "Fit Tile to Video"),
+            "icon": "grid-fit-tile",
+            "func": "fit_tile_to_video",
+            "enable_if": "is_tile_fittable",
+            "show_if": ("is_grid_mode_set_to", GridMode.FREE),
+        },
         "Lock Tile": {
             # never moved, sized, pushed or gone over
             "title": translate("Actions", "Lock Tile"),

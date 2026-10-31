@@ -465,6 +465,15 @@ class VideoBlock(QWidget):
             (overlay.cell_bigger_clicked, partial(self.cell_size.step, "bigger")),
             (overlay.cell_smaller_clicked, partial(self.cell_size.step, "smaller")),
             (overlay.cell_size_clicked, self.cell_size.pick),
+            (
+                overlay.fill_space_clicked,
+                partial(self.cell_size.tile, "fill_tile_space"),
+            ),
+            (
+                overlay.fit_video_clicked,
+                partial(self.cell_size.tile, "fit_tile_to_video"),
+            ),
+            (overlay.lock_tile_clicked, partial(self.cell_size.tile, "lock_tile")),
             (overlay.stop_clicked, self.stop_playback),
             (overlay.retry_clicked, self.reload),
             (overlay.next_clicked, self.recovery.skip_now),
@@ -1952,6 +1961,9 @@ class VideoBlock(QWidget):
 
         self.picture_shape = shape
         self.picture_shape_change.emit()
+        # whether its tile is its shape, on its button, though the grid may
+        # not be laid out again for it
+        self.cell_size.forget_steps()
 
     def _picture_shown(self):
         """Take the loading status off the video, now there is a picture.

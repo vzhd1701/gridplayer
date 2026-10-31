@@ -29,6 +29,10 @@ _HAIR = 1e-6
 # one over the other: _NEAR, on a page about a thousand pixels high
 _NEAR_SHARE = 5e-4
 
+# a tile this near a shape, as the log of the two's ratio, is taken to be
+# it: about 1%
+_SHAPE_NEAR = 0.01
+
 # how many halvings a move cut short at a tile in the way is looked for in
 _STEPS = 16
 
@@ -529,6 +533,74 @@ class FreeTiles:
         top = rect.center_y - height / 2
         self.set_rect(
             video_id, Rect(left, top, left + width, top + height), self.page_shape, 1
+        )
+
+    def is_shaped(self, video_id: str, shape: float) -> bool:
+        """Whether a video's tile is this shape, near enough: as it is
+        shown too, the tiles all scaled together."""
+
+        rect = _box_rect(self.tiles[video_id], self.page_shape)
+        return abs(math.log(rect.width / rect.height / shape)) <= _SHAPE_NEAR
+
+    def room_around(self, video_id: str) -> Rect | None:
+        """The most room a tile has, on a page one high: the biggest rect
+        it is in that no other tile is in, but one it is over or under
+        already, nor goes past the page; of those as big, the one nearest
+        its video's shape. None if it has no more room than it takes, or
+        is under a locked tile, which nothing is to go over more of."""
+
+        rects = self.rects(self.page_shape, 1)
+        rect = rects.pop(video_id)
+        if any(rect.overlaps(rects[i], _NEAR_SHARE) for i in self.locked if i in rects):
+            return None
+        walls = [r for r in rects.values() if not rect.overlaps(r, _NEAR_SHARE)]
+        page = Rect(0, 0, self.page_shape, 1)
+
+        # its left edge as far as the page's, or another tile's right edge
+        # left of it; and so on
+        lefts = {
+            page.left,
+            *(w.right for w in walls if w.right <= rect.left + _NEAR_SHARE),
+        }
+        rights = {
+            page.right,
+            *(w.left for w in walls if w.left >= rect.right - _NEAR_SHARE),
+        }
+
+        rooms = []
+        for left, right in product(lefts, rights):
+            left, right = min(left, rect.left), max(right, rect.right)
+            # the tiles over that span, which are above it or below it
+            along = [
+                w
+                for w in walls
+                if w.left < right - _NEAR_SHARE and w.right > left + _NEAR_SHARE
+            ]
+            if any(
+                w.top < rect.bottom - _NEAR_SHARE and w.bottom > rect.top + _NEAR_SHARE
+                for w in along
+            ):
+                continue
+            top = max(
+                (w.bottom for w in along if w.bottom <= rect.top + _NEAR_SHARE),
+                default=page.top,
+            )
+            bottom = min(
+                (w.top for w in along if w.top >= rect.bottom - _NEAR_SHARE),
+                default=page.bottom,
+            )
+            rooms.append(
+                Rect(left, min(top, rect.top), right, max(bottom, rect.bottom))
+            )
+
+        most = max(r.width * r.height for r in rooms)
+        if most - rect.width * rect.height < _NEAR_SHARE**2:
+            return None
+
+        shape = self.shape_of(video_id)
+        return min(
+            (r for r in rooms if r.width * r.height > most * (1 - 1e-9)),
+            key=lambda r: abs(math.log(r.width / r.height / shape)),
         )
 
     def shuffle(self) -> None:

@@ -33,7 +33,10 @@ from gridplayer.widgets.video_overlay_buttons import (
     OverlayCellSizeButton,
     OverlayCellSmallerButton,
     OverlayExitButton,
+    OverlayFillSpaceButton,
+    OverlayFitVideoButton,
     OverlayListPlaceButton,
+    OverlayLockTileButton,
     OverlayPlayPauseButton,
     OverlayTextButton,
     OverlayVolumeButton,
@@ -140,6 +143,12 @@ class OverlayBlock(QWidget):
     cell_smaller_clicked = pyqtSignal()
     cell_size_clicked = pyqtSignal(QRect)
 
+    # in Free Tiles, its tile made as big as the room around it, made its
+    # video's shape, or locked
+    fill_space_clicked = pyqtSignal()
+    fit_video_clicked = pyqtSignal()
+    lock_tile_clicked = pyqtSignal()
+
     # the actions of a cell still loading, or failed
     stop_clicked = pyqtSignal()
     retry_clicked = pyqtSignal()
@@ -159,6 +168,7 @@ class OverlayBlock(QWidget):
         self._volume_button_wanted = True
         self._cell_size_wanted = False
         self._cell_size_picker_wanted = False
+        self._tile_buttons_wanted = False
         self._is_cell_size_in_title = True
 
         # whether each of the controls is wanted, by what the cell shows;
@@ -224,6 +234,9 @@ class OverlayBlock(QWidget):
             (self.cell_bigger_button.clicked, self.cell_bigger_clicked),
             (self.cell_smaller_button.clicked, self.cell_smaller_clicked),
             (self.cell_size_button.clicked, self._cell_size_clicked),
+            (self.fill_space_button.clicked, self.fill_space_clicked),
+            (self.fit_video_button.clicked, self.fit_video_clicked),
+            (self.lock_tile_button.clicked, self.lock_tile_clicked),
             (self.play_pause_button.clicked, self.play_pause),
             (self.progress_bar.position_changed, self.emit_position),
             (self.volume_button.clicked, self.mute_unmute),
@@ -287,6 +300,12 @@ class OverlayBlock(QWidget):
         self.cell_smaller_button = OverlayCellSmallerButton(parent=self)
         self.cell_bigger_button = OverlayCellBiggerButton(parent=self)
         self.cell_size_button = OverlayCellSizeButton(parent=self)
+
+        # in Free Tiles, its tile made as big as the room around it, or its
+        # video's shape, or locked
+        self.fill_space_button = OverlayFillSpaceButton(parent=self)
+        self.fit_video_button = OverlayFitVideoButton(parent=self)
+        self.lock_tile_button = OverlayLockTileButton(parent=self)
 
         self.title_bar = QHBoxLayout()
         self.title_bar.addWidget(self.list_place_button)
@@ -500,12 +519,17 @@ class OverlayBlock(QWidget):
 
         self._set_wanted((self.list_place_button, bool(place_txt)))
 
-    def set_cell_size_controls(self, is_shown: bool, has_picker: bool):
+    def set_cell_size_controls(
+        self, is_shown: bool, has_picker: bool, has_tile_buttons: bool = False
+    ):
         """The buttons that make the cell bigger and smaller, and the one
-        that picks its size, in a Fixed Grid."""
+        that picks its size, in a Fixed Grid; or those that make the tile as
+        big as the room around it, and its video's shape, and lock it, in
+        Free Tiles."""
 
         self._cell_size_wanted = is_shown
         self._cell_size_picker_wanted = has_picker
+        self._tile_buttons_wanted = has_tile_buttons
         self._sync_cell_size_buttons()
 
     def has_cell_size_buttons(self) -> bool:
@@ -517,12 +541,28 @@ class OverlayBlock(QWidget):
         self.cell_bigger_button.is_available = can_grow
         self.cell_smaller_button.is_available = can_shrink
 
+    def has_tile_buttons(self) -> bool:
+        return self._tile_buttons_wanted and self.lock_tile_button.isVisibleTo(self)
+
+    def set_tile_states(self, can_fill: bool, can_fit: bool, is_locked: bool):
+        """Whether the tile has room around it to fill; whether it can be
+        made its video's shape; whether it is locked."""
+
+        self.fill_space_button.is_available = can_fill
+        self.fit_video_button.is_available = can_fit
+        self.lock_tile_button.is_down = is_locked
+
     def _cell_size_buttons(self) -> tuple[OverlayButton, ...]:
+        # those that size the cell, or the tile, in the same place
         return (
             self.cell_smaller_button,
             self.cell_bigger_button,
             self.cell_size_button,
+            *self._tile_buttons(),
         )
+
+    def _tile_buttons(self) -> tuple[OverlayButton, ...]:
+        return (self.fill_space_button, self.fit_video_button, self.lock_tile_button)
 
     def _sync_cell_size_buttons(self):
         """In the title row, before the close button; in a narrower cell,
@@ -547,17 +587,13 @@ class OverlayBlock(QWidget):
                     self.info_bar.addWidget(button)
 
         self._set_wanted(
-            *(
-                (
-                    button,
-                    self._cell_size_wanted
-                    and (
-                        button is not self.cell_size_button
-                        or self._cell_size_picker_wanted
-                    ),
-                )
-                for button in self._cell_size_buttons()
-            )
+            (self.cell_smaller_button, self._cell_size_wanted),
+            (self.cell_bigger_button, self._cell_size_wanted),
+            (
+                self.cell_size_button,
+                self._cell_size_wanted and self._cell_size_picker_wanted,
+            ),
+            *((button, self._tile_buttons_wanted) for button in self._tile_buttons()),
         )
 
         for button in self._cell_size_buttons():
