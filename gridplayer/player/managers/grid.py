@@ -16,6 +16,7 @@ from gridplayer.params.static import (
     MAX_FIXED_SIZE,
     GridMode,
     TileOverlap,
+    TileResize,
 )
 from gridplayer.player.managers.base import ManagerBase
 from gridplayer.playlist_settings import PlaylistSettings
@@ -145,7 +146,7 @@ class GridManager(ManagerBase):
         self._strip_share: float | None = None
 
         # in Free Tiles, the tiles placed by hand
-        self._free = FreeTiles()
+        self._free = FreeTiles(resize=Settings().get("playlist/tile_resize"))
         self._free.shape_of = self._shape_of
         # the videos given tiles before their shapes were known, and whether
         # the tiles are still as Arrange left them (see _fit_tiles_to_shapes)
@@ -273,6 +274,8 @@ class GridManager(ManagerBase):
             "arrange_tiles": self.cmd_arrange_tiles,
             "arrange_tiles_uncropped": self.cmd_arrange_tiles_uncropped,
             "fit_tiles_to_window": self.cmd_fit_tiles_to_window,
+            "set_tile_resize": self.cmd_set_tile_resize,
+            "is_tile_resize": lambda resize: self._free.resize == resize,
             "tile_overlap": self.tile_overlap,
             "is_tile_overlap": lambda overlap: self.tile_overlap() == overlap,
             "set_tile_overlap": self.set_tile_overlap,
@@ -344,7 +347,10 @@ class GridManager(ManagerBase):
                 for video_id, box in self._free.tiles.items()
             ],
             page_shape=self._free.page_shape if self._free.tiles else None,
+            page_height=self._free.page_height if self._free.tiles else None,
             locked_tiles=[i for i in self._free.tiles if i in self._free.locked],
+            tile_resize=self._free.resize,
+            is_tiles_as_placed=self._free.is_as_placed,
         )
 
     def set_grid_state(self, state: GridState) -> None:
@@ -386,6 +392,10 @@ class GridManager(ManagerBase):
         self._free.locked = set(state.locked_tiles) & set(self._free.tiles)
         if state.page_shape:
             self._free.page_shape = state.page_shape
+        # none in a playlist saved before sizes were kept
+        self._free.page_height = state.page_height
+        self._free.resize = state.tile_resize
+        self._free.is_as_placed = state.is_tiles_as_placed
         self._is_arranged = False
 
         if self._is_fixed:
@@ -571,6 +581,14 @@ class GridManager(ManagerBase):
         self._flow.is_reordered = config.is_reordered
         self._flow.size = config.size
         self._set_linked(config.is_linked)
+        self._set_tile_resize(config.tile_resize)
+
+    def _set_tile_resize(self, resize: TileResize) -> None:
+        if resize == self._free.resize:
+            return
+
+        self._free.set_resize(resize, *self._area_size())
+        self._grid.invalidate()
 
     def _set_linked(self, is_linked: bool) -> None:
         # each row's own lines made one, where they are on average
@@ -900,6 +918,10 @@ class GridManager(ManagerBase):
     def cmd_switch_is_grid_link(self):
         self._set_flow_option("playlist/grid_link", not self._flow.is_linked)
 
+    def cmd_set_tile_resize(self, resize: TileResize):
+        if self._free.resize != resize:
+            self._set_flow_option("playlist/tile_resize", resize)
+
     def cmd_set_grid_crop(self, crop: int):
         if self._flow.crop != crop:
             self._set_flow_option("playlist/grid_crop", crop)
@@ -912,6 +934,8 @@ class GridManager(ManagerBase):
         with self._undoable():
             if key == "playlist/grid_link":
                 self._set_linked(value)
+            elif key == "playlist/tile_resize":
+                self._set_tile_resize(value)
             else:
                 setattr(self._flow, GRID_STATE_ATTR[key], value)
             PlaylistSettings().set(key, value)
@@ -1311,7 +1335,7 @@ class GridManager(ManagerBase):
 
     def _make_free(self) -> None:
         """Free Tiles, each video's tile where its cell is now, on a page
-        the shape of the area: nothing moves, until it is moved by hand."""
+        the size of the area: nothing moves, until it is moved by hand."""
 
         width, height = self._area_size()
         cells = self._cells_now(width, height)
@@ -1323,7 +1347,7 @@ class GridManager(ManagerBase):
 
         self._mode = GridMode.FREE
         self._free.tiles = dict(cells)
-        self._free.page_shape = width / height
+        self._free.set_page(width, height)
         self._is_arranged = False
         self.layout_changed.emit()
 
@@ -1466,9 +1490,16 @@ class GridManager(ManagerBase):
         if self._is_arranged:
             self._arrange(self._is_filled)
         else:
+            self._keep_tiles_shown()
             for video_id in shaped:
                 self._free.fit_shape(video_id, self._shape_of(video_id))
         self._grid.invalidate()
+
+    def _keep_tiles_shown(self) -> None:
+        # Free Tiles kept where they are shown, before some of them go or
+        # change, which would fit the others anew (see FreeTiles.boxes)
+        if self._is_free:
+            self._free.fill(*self._area_size())
 
     def free_page(self) -> FreePage | None:
         """The tiles to move and size by hand now, and where their page is
@@ -1588,11 +1619,12 @@ class GridManager(ManagerBase):
         if not self.is_tile_room_makeable():
             return
 
-        tiles = self._free.filled(*self._area_size())
+        width, height = self._area_size()
+        tiles = self._free.filled(width, height)
         if tiles.make_room(self._active_id()):
             with self._undoable():
                 self._free.tiles = tiles.tiles
-                self._free.page_shape = tiles.page_shape
+                self._free.set_page(width, height)
                 self._is_arranged = False
             self._grid.invalidate()
             return
@@ -1664,9 +1696,11 @@ class GridManager(ManagerBase):
 
     def _reconcile_layout(self):
         live_set = set(self._ctx.video_blocks.video_ids)
-        for video_id in list(self._layout.order()):
-            if video_id not in live_set:
-                self._layout.remove(video_id)
+        gone = [i for i in self._layout.order() if i not in live_set]
+        if gone:
+            self._keep_tiles_shown()
+        for video_id in gone:
+            self._layout.remove(video_id)
         new_ids = [
             i for i in self._ctx.video_blocks.video_ids if not self._layout.contains(i)
         ]
@@ -1716,6 +1750,7 @@ class GridManager(ManagerBase):
 
     def _drop_move(self, src_block, dst, row, col, zone, is_replace, dst_id):
         src_id = src_block.video_id
+        self._keep_tiles_shown()
         leftover = self._layout.drop(
             [],
             row,
@@ -1803,7 +1838,7 @@ class GridManager(ManagerBase):
     def _put_back(self, video_id: str, place) -> None:
         if self._is_free:
             if isinstance(place, TilePlace):
-                # where it was on the window
+                # beside the others, where they are shown
                 self._free.fill(*self._area_size())
                 is_over = self.is_tile_overlap_on()
                 if self._free.put_back(video_id, place, is_over):
@@ -2004,7 +2039,7 @@ class GridManager(ManagerBase):
                 self._grid.set_widgets(widgets)
                 self._grid.set_place(self._place_fixed)
             elif self._is_free:
-                widgets = [widget for widget, _box in self._place_free(1, 1)]
+                widgets = self._free_blocks()
                 self._grid.set_widgets(widgets)
                 self._grid.set_place(self._place_free)
             else:
@@ -2036,13 +2071,20 @@ class GridManager(ManagerBase):
                 widget.show()
 
     def _place_free(self, width, height):
-        # the page as big as the area allows, the tiles on it
+        # the area laid out at this size: the tiles no longer as placed, if
+        # it was resized (see FreeTiles.boxes)
+        self._free.resized_to(width, height)
         cells = []
         for video_id, box in self._free.boxes(width, height):
             vb = self._ctx.video_blocks.by_video_id(video_id)
             if vb is not None:
                 cells.append((vb, box))
         return cells
+
+    def _free_blocks(self):
+        by_video_id = self._ctx.video_blocks.by_video_id
+        blocks = (by_video_id(video_id) for video_id in self._free.tiles)
+        return [vb for vb in blocks if vb is not None]
 
     def _place_fixed(self, _width, _height):
         # the lines between the cells go where they are moved to, as they are

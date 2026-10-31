@@ -7,6 +7,7 @@ from gridplayer.params.static import (
     GRID_TEMPLATES,
     GridMode,
     TileOverlap,
+    TileResize,
 )
 from gridplayer.utils.command_helpers import NOT
 from gridplayer.utils.qt import translate
@@ -66,6 +67,9 @@ SUBMENUS = MappingProxyType(
         "Tile Overlap": {
             "title": translate("Tile Overlap", "Tile Overlap"),
             "icon": "grid-tile-overlap",
+        },
+        "On Window Resize": {
+            "title": translate("On Window Resize", "On Window Resize"),
         },
         # Snap Tiles and what they snap to; in the other grids, Snap Lines
         # alone, put in the menu itself
@@ -748,6 +752,10 @@ SECTIONS = MappingProxyType(
                 "Arrange Tiles",
                 "Arrange Uncropped",
                 "Fit Tiles to Window",
+                (
+                    "On Window Resize",
+                    *(f"On Window Resize {r.name.title()}" for r in TileResize),
+                ),
                 (
                     "Tile Overlap",
                     *(f"Tile Overlap {o.name.title()}" for o in TileOverlap),

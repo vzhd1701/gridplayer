@@ -72,6 +72,13 @@ class TileOverlap(AutoName):
     PUSH = auto()
 
 
+# Free Tiles: what the tiles do as the window is resized: scaled together
+# to fill it, or kept as big as they were made, made smaller only to fit
+class TileResize(AutoName):
+    FIT = auto()
+    KEEP = auto()
+
+
 # Free Tiles: what a tile moved or sized can snap to, each on or off: the
 # other tiles' edges, their middles, the page's (the window's) edges, its
 # middle, where the tile started, its video's shape, and gaps as big as

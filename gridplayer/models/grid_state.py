@@ -1,6 +1,6 @@
 from pydantic import BaseModel, Field
 
-from gridplayer.params.static import GridMode
+from gridplayer.params.static import GridMode, TileResize
 from gridplayer.settings import default_field
 
 
@@ -31,6 +31,7 @@ class GridState(BaseModel):
     rows: int = default_field("playlist/grid_rows")
     cols: int = default_field("playlist/grid_cols")
     preallocate: bool = default_field("playlist/grid_preallocate")
+    tile_resize: TileResize = default_field("playlist/tile_resize")
     cells: list[GridCell] = Field(default_factory=list)
     video_order: list[str] = Field(default_factory=list)
     # in Fit Shapes, how many steps bigger videos are made (smaller, less
@@ -45,8 +46,13 @@ class GridState(BaseModel):
     # in Single Mode, the strip's share of the window, moved by hand
     strip_share: float | None = None
     # in Free Tiles, the videos' tiles, the one in front last; and the
-    # page's width over its height (see FreeTiles)
+    # page's width over its height, and its height in pixels (see FreeTiles)
     tiles: list[GridTile] = Field(default_factory=list)
     page_shape: float | None = None
+    page_height: float | None = None
+    # whether they are shown as they were placed, the window not resized
+    # since: for undo, never written, a playlist's as it was saved (see
+    # FreeTiles.is_as_placed)
+    is_tiles_as_placed: bool = Field(default=True, exclude=True)
     # the videos whose tiles are locked
     locked_tiles: list[str] = Field(default_factory=list)

@@ -6,7 +6,7 @@ import pytest
 from PyQt5.QtWidgets import QApplication, QWidget
 
 from gridplayer.models.grid_state import GridCell, GridState
-from gridplayer.params.static import GridMode, TileOverlap
+from gridplayer.params.static import GridMode, TileOverlap, TileResize
 from gridplayer.player.managers.grid import GridManager
 from gridplayer.settings import Settings, _default_settings
 from gridplayer.utils.drop_zone import DropZone
@@ -81,6 +81,8 @@ def _free(manager, **rects):
 
     manager._mode = GridMode.FREE
     manager._free.page_shape = 2.0
+    manager._free.page_height = 500
+    manager._free.is_as_placed = True
     for video_id, rect in rects.items():
         manager._free.set_rect(video_id, Rect(*rect), 1000, 500)
 
@@ -321,17 +323,58 @@ def test_a_video_reopened_goes_back_to_its_tile_if_it_is_free():
     _approx(_rects(manager)["B"], (500, 0, 900, 200))
 
 
-def test_a_video_reopened_goes_back_where_it_was_on_the_window(mocker):
+def test_a_video_reopened_goes_back_beside_the_others_wherever_they_are(mocker):
     manager = _manager({"A": 2.0, "B": 2.0})
     _free(manager, A=(0, 0, 400, 200), B=(500, 0, 900, 200))
     place = manager.place_of("B")
     manager._free.remove("B")
-    # the page made the shape of another window since
+    # the page made the shape of another window since: A fitted to it
     manager._free.fill(500, 500)
 
     manager._put_back("B", place)
 
-    _approx(_rects(manager)["B"], (500, 0, 900, 200))
+    # beside A as it was, the two fitted to the window together, as they
+    # would have been had B stayed
+    rects = _rects(manager)
+    _approx(rects["A"], (0, 138.9, 444.4, 361.1))
+    _approx(rects["B"], (555.6, 138.9, 1000, 361.1))
+
+
+def test_tiles_kept_kept_where_they_are_when_one_is_closed_and_reopened():
+    manager = _manager({"A": 2.0, "B": 2.0})
+    _free(manager, A=(0, 0, 400, 200), B=(500, 0, 900, 200))
+    manager._free.resize = TileResize.KEEP
+    # resized since they were placed: in the middle
+    manager._place_free(1000, 500 + 1)
+    manager._place_free(1000, 500)
+    before = _shown(manager, 1000, 500)
+    place = manager.place_of("B")
+
+    del manager._ctx.video_blocks.blocks["B"]
+    manager._reconcile_layout()
+
+    # A where it was shown, not fitted alone to the middle
+    _approx(_shown(manager, 1000, 500)["A"], before["A"])
+
+    manager._put_back("B", place)
+    shown = _shown(manager, 1000, 500)
+    for video_id, rect in before.items():
+        _approx(shown[video_id], rect)
+
+
+def test_a_video_closed_leaves_the_others_where_they_are_shown():
+    manager = _manager({"A": 2.0, "B": 2.0})
+    _free(manager, A=(0, 0, 400, 200), B=(500, 0, 900, 200))
+    # resized since they were placed: scaled to fit
+    manager._place_free(1000, 500 + 1)
+    manager._place_free(1000, 500)
+    before = _shown(manager, 1000, 500)
+
+    del manager._ctx.video_blocks.blocks["B"]
+    manager._reconcile_layout()
+
+    # not made to fill the window alone
+    _approx(_shown(manager, 1000, 500)["A"], before["A"])
 
 
 def test_a_video_reopened_over_another_goes_back_as_deep(mocker):
@@ -350,14 +393,15 @@ def test_a_video_reopened_over_another_goes_back_as_deep(mocker):
 def test_the_page_is_where_the_tiles_are_moved_on(mocker):
     manager = _manager({"A": 2.0})
     _free(manager, A=(0, 0, 400, 200))
+    manager._free.resize = TileResize.KEEP
     mocker.patch.object(manager, "grid_area", return_value=_area(0, 0, 1000, 700))
 
     page = manager.free_page()
 
-    # all of the area, the tiles where they are shown: two to one in an
-    # area taller, 100 down
+    # all of the area, the tiles where they are shown: as big, in the
+    # middle
     assert page.rect == _area(0, 0, 1000, 700)
-    _approx(page.tiles.rects(1000, 700)["A"], (0, 100, 400, 300))
+    _approx(page.tiles.rects(1000, 700)["A"], (300, 250, 700, 450))
     # the layout's own shape kept, until a tile is moved
     assert manager._free.page_shape == 2.0
 
@@ -368,6 +412,7 @@ def test_the_page_is_where_the_tiles_are_moved_on(mocker):
 def test_a_tile_moved_makes_the_page_the_areas_shape(mocker):
     manager = _manager({"A": 2.0, "B": 2.0})
     _free(manager, A=(0, 0, 400, 200), B=(500, 0, 900, 200))
+    manager._free.resize = TileResize.KEEP
     mocker.patch.object(manager, "grid_area", return_value=_area(0, 0, 1000, 700))
 
     # moved into the room below the layout's own page
@@ -376,8 +421,8 @@ def test_a_tile_moved_makes_the_page_the_areas_shape(mocker):
     assert manager._free.page_shape == pytest.approx(1000 / 700)
     rects = manager._free.rects(1000, 700)
     _approx(rects["A"], (0, 500, 400, 700))
-    # the other where it was shown
-    _approx(rects["B"], (500, 100, 900, 300))
+    # the other where it was shown, in the middle with A as it was
+    _approx(rects["B"], (550, 250, 950, 450))
 
 
 def test_a_video_added_goes_to_the_room_beside_the_page(mocker):
@@ -456,6 +501,90 @@ def test_tiles_fitted_to_the_window_leave_no_room_around_them():
     _approx(_rects(manager)["B"], (500, 250, 1000, 500))
     manager.cmd_undo_grid()
     _approx(_rects(manager)["A"], (100, 100, 300, 200))
+
+
+def _shown(manager, width, height) -> dict[str, tuple]:
+    return {
+        video_id: (b.left * width, b.top * height, b.right * width, b.bottom * height)
+        for video_id, b in manager._free.boxes(width, height)
+    }
+
+
+def test_tiles_scale_to_fit_by_default():
+    manager = _manager({"A": 2.0, "B": 2.0})
+
+    assert manager._free.resize == TileResize.FIT
+    assert manager.grid_state().tile_resize == TileResize.FIT
+
+
+def test_tile_sizes_kept_leave_the_tiles_where_they_are_shown():
+    manager = _manager({"A": 2.0, "B": 2.0})
+    _free(manager, A=(0, 0, 400, 200), B=(500, 0, 900, 200))
+    # the window made smaller and taller since they were placed
+    manager._keep_parent.resize(800, 800)
+    manager._place_free(800, 800)
+    before = _shown(manager, 800, 800)
+
+    manager.cmd_set_tile_resize(TileResize.KEEP)
+
+    assert manager._free.resize == TileResize.KEEP
+    shown = _shown(manager, 800, 800)
+    for video_id, rect in before.items():
+        _approx(shown[video_id], rect)
+
+    manager.cmd_undo_grid()
+    assert manager._free.resize == TileResize.FIT
+    assert manager._free.page_height == 500
+
+
+def test_tiles_scaled_to_fit_fit_at_once():
+    manager = _manager({"A": 2.0})
+    _free(manager, A=(100, 100, 300, 200))
+    manager._free.resize = TileResize.KEEP
+
+    manager.cmd_set_tile_resize(TileResize.FIT)
+
+    _approx(_shown(manager, 1000, 500)["A"], (0, 0, 1000, 500))
+
+
+def test_tiles_are_shown_as_placed_until_the_window_is_resized():
+    manager = _manager({"A": 2.0})
+    _free(manager, A=(100, 100, 300, 200))
+
+    manager._place_free(1000, 500)
+    _approx(_shown(manager, 1000, 500)["A"], (100, 100, 300, 200))
+
+    # resized and back: fitted, and so after Undo of a change made since
+    manager._place_free(800, 800)
+    manager._place_free(1000, 500)
+    _approx(_shown(manager, 1000, 500)["A"], (0, 0, 1000, 500))
+    manager.begin_grid_change()
+    manager.set_free_tiles({"A": Rect(0, 0, 400, 200)}, 1000, 500)
+    manager.end_grid_change()
+    _approx(_shown(manager, 1000, 500)["A"], (0, 0, 400, 200))
+    manager.cmd_undo_grid()
+    _approx(_shown(manager, 1000, 500)["A"], (0, 0, 1000, 500))
+
+
+def test_tile_sizes_are_kept_in_the_grid_state(mocker):
+    manager = _manager({"A": 2.0})
+    _free(manager, A=(0, 0, 400, 200))
+    manager._free.resize = TileResize.KEEP
+
+    dumped = manager.grid_state().model_dump(mode="json")
+    state = GridState.model_validate(dumped)
+    loaded = _manager({"A": 2.0})
+    mocker.patch.object(loaded, "_render_video_grid")
+    loaded.set_grid_state(state)
+
+    assert loaded._free.page_height == 500
+    assert loaded._free.resize == TileResize.KEEP
+    # whether shown as placed is for undo, not written: a playlist's are as
+    # it was saved, until the window is resized
+    assert "is_tiles_as_placed" not in dumped
+    assert loaded._free.is_as_placed
+    loaded._place_free(1000, 500)
+    _approx(_shown(loaded, 1000, 500)["A"], (0, 0, 400, 200))
 
 
 def test_settings_applied_in_free_tiles_keep_the_tiles():

@@ -1,7 +1,7 @@
 import pytest
 
 from gridplayer.models.tile_snaps import TileSnaps
-from gridplayer.params.static import TileSnap
+from gridplayer.params.static import TileResize, TileSnap
 from gridplayer.utils.layout.boxes import Box
 from gridplayer.utils.layout.free_tiles import (
     MOVE,
@@ -20,9 +20,9 @@ W, H = 1000, 500
 
 
 def _tiles(**rects) -> FreeTiles:
-    """Tiles given in the page's pixels."""
+    """Tiles given in the page's pixels, as placed on it."""
 
-    tiles = FreeTiles(page_shape=W / H)
+    tiles = FreeTiles(page_shape=W / H, page_height=H, is_as_placed=True)
     for video_id, rect in rects.items():
         tiles.set_rect(video_id, Rect(*rect), W, H)
     return tiles
@@ -41,14 +41,120 @@ def _approx(rect, expected):
     assert rect == pytest.approx(expected, abs=0.6)
 
 
-def test_the_page_keeps_its_shape_in_the_middle_of_the_area():
-    tiles = FreeTiles({"a": Box(0, 0, 0.5, 1)}, page_shape=2.0)
+def _kept(**rects) -> FreeTiles:
+    """Tiles given in the pixels of a page W by H, their sizes kept."""
 
-    # an area taller than the page: bars above and below
-    assert tiles.page_rect(800, 600) == (0, 100, 800, 400)
+    tiles = _resized(**rects)
+    tiles.resize = TileResize.KEEP
+    return tiles
 
-    ((_, box),) = tiles.boxes(800, 600)
-    assert box == pytest.approx((0, 1 / 6, 0.5, 5 / 6))
+
+def _resized(**rects) -> FreeTiles:
+    """Tiles given in the pixels of a page W by H, the window resized since
+    they were placed."""
+
+    tiles = _tiles(**rects)
+    tiles.is_as_placed = False
+    return tiles
+
+
+def _shown(tiles, width, height) -> dict[str, tuple]:
+    """The tiles in the pixels of an area of this size."""
+
+    return {
+        video_id: (b.left * width, b.top * height, b.right * width, b.bottom * height)
+        for video_id, b in tiles.boxes(width, height)
+    }
+
+
+def test_tiles_keep_their_sizes_as_the_window_is_resized_around_them():
+    tiles = _kept(a=(0, 0, 300, 200), b=(300, 0, 600, 200))
+
+    # as big, in the middle of the room around them
+    for width, height in ((800, 400), (600, 200), (1600, 900)):
+        x, y = (width - 600) / 2, (height - 200) / 2
+        shown = _shown(tiles, width, height)
+        _approx(shown["a"], (x, y, x + 300, y + 200))
+        _approx(shown["b"], (x + 300, y, x + 600, y + 200))
+
+
+def test_tiles_with_one_against_an_edge_stay_in_the_middle():
+    # b moved against the right edge, a not
+    tiles = _kept(a=(100, 0, 400, 200), b=(700, 0, 1000, 200))
+
+    shown = _shown(tiles, 1200, 500)
+    _approx(shown["a"], (150, 150, 450, 350))
+    _approx(shown["b"], (750, 150, 1050, 350))
+
+
+def test_tiles_kept_shrink_only_to_fit_and_grow_back_no_bigger():
+    tiles = _kept(a=(0, 0, 500, 250), b=(500, 250, 1000, 500))
+
+    # half as wide: half as big, in the middle of the room above and below
+    shown = _shown(tiles, 500, 500)
+    _approx(shown["a"], (0, 125, 250, 250))
+    _approx(shown["b"], (250, 250, 500, 375))
+
+    # bigger than they were made: as big as that, in the middle
+    shown = _shown(tiles, 2000, 1000)
+    _approx(shown["a"], (500, 250, 1000, 500))
+    _approx(shown["b"], (1000, 500, 1500, 750))
+
+    _approx(_shown(tiles, W, H)["a"], (0, 0, 500, 250))
+
+
+def test_tiles_scaled_to_fit_fill_the_window_together():
+    tiles = _resized(a=(100, 100, 300, 200), b=(300, 200, 500, 300))
+
+    shown = _shown(tiles, W, H)
+    _approx(shown["a"], (0, 0, 500, 250))
+    _approx(shown["b"], (500, 250, 1000, 500))
+
+    # wider: as high as it, in the middle
+    shown = _shown(tiles, 2000, 500)
+    _approx(shown["a"], (500, 0, 1000, 250))
+    _approx(shown["b"], (1000, 250, 1500, 500))
+
+
+def test_tiles_placed_are_shown_as_placed_until_the_window_is_resized():
+    tiles = _resized(a=(100, 100, 300, 200))
+    tiles.fill(W, H)
+    _approx(_shown(tiles, W, H)["a"], (0, 0, 1000, 500))
+
+    # placed again where it leaves room around it: not fitted under the
+    # pointer
+    tiles.set_rect("a", Rect(100, 100, 300, 200), W, H)
+    _approx(_shown(tiles, W, H)["a"], (100, 100, 300, 200))
+    _approx(_shown(tiles, 800, 400)["a"], (0, 0, 800, 400))
+
+    # resized, then back: fitted, with no flicker back as it was placed
+    tiles.resized_to(800, 400)
+    _approx(_shown(tiles, W, H)["a"], (0, 0, 1000, 500))
+
+
+def test_tiles_of_unknown_size_fit_or_keep_their_size_on_the_page():
+    # as in a playlist saved before the tiles' size was
+    tiles = _resized(a=(100, 100, 300, 200))
+    tiles.page_height = None
+
+    _approx(_shown(tiles, W, H)["a"], (0, 0, 1000, 500))
+
+    # as big as on a page as big as the area allows, in the middle
+    tiles.resize = TileResize.KEEP
+    _approx(_shown(tiles, 2000, 1000)["a"], (800, 400, 1200, 600))
+    _approx(_shown(tiles, 800, 600)["a"], (320, 260, 480, 340))
+
+
+def test_tiles_kept_where_they_are_shown_when_the_page_takes_the_area():
+    tiles = _kept(a=(300, 100, 500, 200), b=(500, 200, 900, 400))
+    before = _shown(tiles, 600, 300)
+
+    tiles.fill(600, 300)
+
+    assert tiles.page_height == 300
+    shown = _shown(tiles, 600, 300)
+    for video_id, rect in before.items():
+        _approx(shown[video_id], rect)
 
 
 def test_the_tiles_are_read_row_by_row():
@@ -400,6 +506,26 @@ def test_a_tile_put_back_where_another_is_now_is_not():
     # unless tiles go over each other
     assert tiles.put_back("a", place, is_over=True)
     assert list(tiles.tiles) == ["a", "b"]
+
+
+def test_tiles_closed_together_go_back_beside_those_left_wherever_they_are():
+    tiles = _tiles(a=(0, 0, 300, 200), b=(300, 0, 600, 200), c=(600, 0, 900, 200))
+    places = {i: tiles.place_of(i, W, H) for i in ("b", "c")}
+    tiles.remove("b")
+    tiles.remove("c")
+    # a fitted to another window, and back to this one
+    tiles.fill(500, 500)
+    tiles.fill(W, H)
+    _approx(_shown(tiles, W, H)["a"], (125, 0, 875, 500))
+
+    for video_id in ("b", "c"):
+        assert tiles.put_back(video_id, places[video_id])
+
+    # as they were among themselves, fitted to the window together
+    shown = _shown(tiles, W, H)
+    _approx(shown["a"], (0, 138.9, 333.3, 361.1))
+    _approx(shown["b"], (333.3, 138.9, 666.7, 361.1))
+    _approx(shown["c"], (666.7, 138.9, 1000, 361.1))
 
 
 def test_a_tile_going_over_others_goes_where_the_pointer_takes_it():

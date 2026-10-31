@@ -45,6 +45,7 @@ from gridplayer.params.static import (
     StripSide,
     SubtitleTrackMode,
     TileOverlap,
+    TileResize,
     TileSnap,
     UnsavedChangesMode,
     URLResolver,
@@ -137,6 +138,9 @@ _default_settings = {
         )
     ),
     "playlist/tile_overlap": TileOverlap.OFF,
+    # in Free Tiles, the tiles scaled together to fill the window as it is
+    # resized, or kept as big as they were made
+    "playlist/tile_resize": TileResize.FIT,
     "playlist/save_paths_relative": False,
     # every setting written into the playlist, not only those it changes
     "playlist/save_all_settings": False,

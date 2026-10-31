@@ -370,6 +370,19 @@ PLAYLIST_FIELDS: tuple[SettingField, ...] = (
         ),
     ),
     ComboField(
+        settings_key="playlist/tile_resize",
+        label=translate("On Window Resize", "On window resize"),
+        choices=choices.tile_resize,
+        buttons=True,
+        shown_when=When("playlist/grid_mode", (GridMode.FREE,)),
+        tooltip=translate(
+            "On Window Resize",
+            "Scale to Fit: the tiles fill the window. Keep Tile Sizes: the"
+            " empty space changes first, and tiles shrink only when they"
+            " don't fit.",
+        ),
+    ),
+    ComboField(
         settings_key="playlist/drop_action_internal",
         label=translate("SettingsDialog", "In-window drag"),
         choices=choices.drop_internal,

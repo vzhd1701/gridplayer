@@ -7,7 +7,7 @@ from enum import Enum, auto
 from itertools import product, takewhile
 from typing import NamedTuple
 
-from gridplayer.params.static import TileSnap
+from gridplayer.params.static import TileResize, TileSnap
 from gridplayer.utils.drop_zone import DropZone
 from gridplayer.utils.layout.boxes import Box, within
 from gridplayer.utils.layout.flow_layout import DEFAULT_SHAPE
@@ -175,11 +175,15 @@ class Gap(NamedTuple):
 
 class TilePlace(NamedTuple):
     """Where a tile was, to be put back there: as shares of the whole area
-    it was shown in, and how many tiles were behind it."""
+    it was shown in, how many tiles were behind it, and where the others
+    were then, on a page one high of the area's shape, to put it back
+    beside them wherever they are now."""
 
     box: Box
     depth: int
     is_locked: bool = False
+    shape: float = DEFAULT_SHAPE
+    others: tuple[tuple[str, Rect], ...] = ()
 
 
 # Which edges a tile is held by: -1 the left (top), 1 the right (bottom), 0
@@ -190,10 +194,11 @@ MOVE: Handle = (0, 0)
 
 class FreeTiles:
     """Free Tiles: each video in a tile of its own, placed and sized by hand
-    on a page of the shape it was last given, which is shown as big as the
-    area it is in allows, in the middle of it. The tiles keep their shapes
-    and places as the window is resized; the page takes the area's shape,
-    all of it, when they are changed (see fill), to use the room beside.
+    on a page of the size it was last given. The tiles keep their shapes and
+    places among themselves as the window is resized: scaled together to
+    fill it, or kept as big as they were made, made smaller only to fit (see
+    TileResize, and boxes). The page takes the area's size, all of it, when
+    they are changed (see fill), to use the room beside.
 
     A tile is kept as its edges' shares of the page's width and height,
     the tiles in the order they are one over another, the one in front
@@ -214,17 +219,34 @@ class FreeTiles:
         tiles: dict[str, Box] | None = None,
         page_shape=DEFAULT_SHAPE,
         locked=(),
+        page_height: float | None = None,
+        resize: TileResize = TileResize.FIT,
+        is_as_placed: bool = False,
     ):
         self.tiles: dict[str, Box] = dict(tiles or {})
         # the page's width over its height
         self.page_shape = page_shape
+        # its height in pixels, None not known
+        self.page_height = page_height
+        # what the tiles do as the area is resized (see boxes)
+        self.resize = resize
+        # whether they are shown as they were placed, in an area the page's
+        # size, not resized since (see boxes)
+        self.is_as_placed = is_as_placed
         # the videos whose tiles are locked
         self.locked: set[str] = set(locked)
         # each video's shape, for its tile when it is added
         self.shape_of: Callable[[str], float] = lambda _video_id: DEFAULT_SHAPE
 
     def copy(self) -> FreeTiles:
-        tiles = FreeTiles(self.tiles, self.page_shape, self.locked)
+        tiles = FreeTiles(
+            self.tiles,
+            self.page_shape,
+            self.locked,
+            self.page_height,
+            self.resize,
+            self.is_as_placed,
+        )
         tiles.shape_of = self.shape_of
         return tiles
 
@@ -234,43 +256,86 @@ class FreeTiles:
 
     # --- the page ---
 
-    def page_rect(self, width: int, height: int) -> tuple[int, int, int, int]:
-        """Where the page is in an area of this size: x, y, width, height,
-        in pixels, in the middle of it."""
+    def set_page(self, width: float, height: float) -> None:
+        """The page an area of this size, the tiles as they are on it:
+        shown so, as they are placed, until the area is resized (see
+        boxes)."""
 
-        page_width = min(width, round(height * self.page_shape))
-        page_height = min(height, round(width / self.page_shape))
-        return (
-            (width - page_width) // 2,
-            (height - page_height) // 2,
-            page_width,
-            page_height,
-        )
+        self.page_shape = width / height
+        self.page_height = height
+        self.is_as_placed = True
 
     def fill(self, width: float, height: float) -> None:
-        """The page made the shape of an area of this size, all of it, the
-        tiles where they are shown in it."""
+        """The page made an area of this size, all of it, the tiles where
+        they are shown in it (see set_page)."""
 
         if width <= 0 or height <= 0:
             return
         self.tiles = dict(self.boxes(width, height))
-        self.page_shape = width / height
+        self.set_page(width, height)
 
     def filled(self, width: float, height: float) -> FreeTiles:
         tiles = self.copy()
         tiles.fill(width, height)
         return tiles
 
-    def boxes(self, width: int, height: int) -> list[tuple[str, Box]]:
-        """The tiles as shares of an area of this size, the page in it."""
+    def set_resize(self, resize: TileResize, width: float, height: float) -> None:
+        """What the tiles do as an area, of this size now, is resized: kept
+        as big as they are shown in it now (KEEP), or made to fit it at
+        once (FIT)."""
 
-        if width <= 0 or height <= 0:
-            return list(self.tiles.items())
-        x, y, page_width, page_height = self.page_rect(width, height)
-        page = Box(
-            x / width, y / height, (x + page_width) / width, (y + page_height) / height
+        if resize == TileResize.KEEP:
+            self.fill(width, height)
+        else:
+            self.is_as_placed = False
+        self.resize = resize
+
+    def resized_to(self, width: float, height: float) -> None:
+        """The area the tiles are shown in this size now: if it is not the
+        page's, they are no longer shown as they were placed, and will not
+        be again when it is made that size back (see boxes)."""
+
+        if not self._is_page_size(width, height):
+            self.is_as_placed = False
+
+    def _is_page_size(self, width: float, height: float) -> bool:
+        if not self.page_height:
+            return False
+        page_width = self.page_height * self.page_shape
+        return (
+            abs(width - page_width) < _NEAR and abs(height - self.page_height) < _NEAR
         )
-        return [(video_id, within(box, page)) for video_id, box in self.tiles.items()]
+
+    def boxes(self, width: int, height: int) -> list[tuple[str, Box]]:
+        """The tiles as shares of an area of this size.
+
+        As they were placed, in an area the page's size not resized since.
+        Else all of them scaled together to fill it (TileResize.FIT), or as
+        big as they were made, made smaller only to fit (KEEP); in the
+        middle of it. Their size not known, that of a playlist saved before
+        it was kept, as made on a page as big as the area allows.
+        """
+
+        if width <= 0 or height <= 0 or not self.tiles:
+            return list(self.tiles.items())
+        if self.is_as_placed and self._is_page_size(width, height):
+            return list(self.tiles.items())
+
+        # not known, the page as big as the area allows
+        page_height = self.page_height or min(height, width / self.page_shape)
+        rects = _fitted(
+            self.rects(page_height * self.page_shape, page_height),
+            width,
+            height,
+            max_scale=1.0 if self.resize == TileResize.KEEP else math.inf,
+        )
+        return [
+            (
+                video_id,
+                Box(r.left / width, r.top / height, r.right / width, r.bottom / height),
+            )
+            for video_id, r in rects.items()
+        ]
 
     def rects(self, page_width: float, page_height: float) -> dict[str, Rect]:
         """The tiles on a page of this size, in its pixels."""
@@ -390,24 +455,30 @@ class FreeTiles:
         return None
 
     def place_of(self, video_id: str, width: float, height: float) -> TilePlace:
-        """Where a tile is, as it is shown in an area of this size."""
+        """Where a tile is, as it is shown in an area of this size, and the
+        others around it."""
 
         filled = self.filled(width, height)
+        rects = filled.rects(filled.page_shape, 1)
         return TilePlace(
             filled.tiles[video_id],
             list(self.tiles).index(video_id),
             video_id in self.locked,
+            filled.page_shape,
+            tuple((i, r) for i, r in rects.items() if i != video_id),
         )
 
     def put_back(self, video_id: str, place: TilePlace, is_over: bool = False) -> bool:
-        """A video's tile back where it was, as deep among the others, if
-        nothing is there now, or if tiles may go over each other (is_over),
-        but for a locked one. The page is to be the shape of the area it was
-        shown in (see fill)."""
+        """A video's tile back where it was beside the others still there,
+        wherever they are shown now, as deep among them, if nothing is
+        there now, or if tiles may go over each other (is_over), but for a
+        locked one. The page is to be the area they are shown in (see
+        fill); no room left on it beside them, all of them are made to fit
+        it (see boxes)."""
 
         self.tiles.pop(video_id, None)
-        rect = _box_rect(place.box, self.page_shape)
         others = self.rects(self.page_shape, 1)
+        rect = _beside(place, others) or _box_rect(place.box, self.page_shape)
         if any(
             rect.overlaps(other, _NEAR_SHARE)
             for i, other in others.items()
@@ -415,12 +486,23 @@ class FreeTiles:
         ):
             return False
 
+        box = Box(
+            rect.left / self.page_shape,
+            rect.top,
+            rect.right / self.page_shape,
+            rect.bottom,
+        )
         tiles = list(self.tiles.items())
-        tiles.insert(min(place.depth, len(tiles)), (video_id, place.box))
+        tiles.insert(min(place.depth, len(tiles)), (video_id, box))
         self.tiles = dict(tiles)
         if place.is_locked:
             self.locked.add(video_id)
         self._restack()
+
+        page = Rect(0, 0, self.page_shape, 1)
+        if self.page_height and not _is_near_inside(rect, page):
+            self.is_as_placed = False
+            self.fill(self.page_height * self.page_shape, self.page_height)
         return True
 
     def fit_to_page(self) -> None:
@@ -431,26 +513,8 @@ class FreeTiles:
         if not rects:
             return
 
-        left = min(r.left for r in rects.values())
-        top = min(r.top for r in rects.values())
-        width = max(r.right for r in rects.values()) - left
-        height = max(r.bottom for r in rects.values()) - top
-        scale = min(self.page_shape / width, 1 / height)
-        x = (self.page_shape - width * scale) / 2
-        y = (1 - height * scale) / 2
-
-        for video_id, r in rects.items():
-            self.set_rect(
-                video_id,
-                Rect(
-                    x + (r.left - left) * scale,
-                    y + (r.top - top) * scale,
-                    x + (r.right - left) * scale,
-                    y + (r.bottom - top) * scale,
-                ),
-                self.page_shape,
-                1,
-            )
+        for video_id, rect in _fitted(rects, self.page_shape, 1).items():
+            self.set_rect(video_id, rect, self.page_shape, 1)
 
     def fit_shape(self, video_id: str, shape: float) -> None:
         """A video's tile made its shape, as big as it can be inside the
@@ -687,6 +751,72 @@ class FreeTiles:
 def _box_rect(box: Box, page_width: float) -> Rect:
     # on a page one high
     return Rect(box.left * page_width, box.top, box.right * page_width, box.bottom)
+
+
+def _outline(rects: Iterable[Rect]) -> Rect:
+    """The least rect all of these are in."""
+
+    rects = list(rects)
+    return Rect(
+        min(r.left for r in rects),
+        min(r.top for r in rects),
+        max(r.right for r in rects),
+        max(r.bottom for r in rects),
+    )
+
+
+def _scaled(rect: Rect, scale: float, x: float, y: float) -> Rect:
+    return Rect(
+        x + rect.left * scale,
+        y + rect.top * scale,
+        x + rect.right * scale,
+        y + rect.bottom * scale,
+    )
+
+
+def _fitted(
+    rects: dict[str, Rect], width: float, height: float, max_scale: float = math.inf
+) -> dict[str, Rect]:
+    """The rects scaled together as big as an area of this size lets them,
+    up to max_scale, kept where they are among themselves, in the middle of
+    it."""
+
+    group = _outline(rects.values())
+    scale = min(
+        width / max(group.width, _HAIR), height / max(group.height, _HAIR), max_scale
+    )
+    x = (width - group.width * scale) / 2 - group.left * scale
+    y = (height - group.height * scale) / 2 - group.top * scale
+    return {video_id: _scaled(r, scale, x, y) for video_id, r in rects.items()}
+
+
+def _beside(place: TilePlace, rects: dict[str, Rect]) -> Rect | None:
+    """Where a tile put back goes beside those of the others there when it
+    was taken away still there, at rects now: moved and scaled as they
+    were since, together. None if none of them are."""
+
+    was = {i: r for i, r in place.others if i in rects}
+    if not was:
+        return None
+
+    before = _outline(was.values())
+    now = _outline(rects[i] for i in was)
+    scale = min(
+        now.width / max(before.width, _HAIR), now.height / max(before.height, _HAIR)
+    )
+    rect = _box_rect(place.box, place.shape)
+    return _scaled(
+        rect, scale, now.left - before.left * scale, now.top - before.top * scale
+    )
+
+
+def _is_near_inside(rect: Rect, area: Rect) -> bool:
+    return (
+        rect.left >= area.left - _NEAR_SHARE
+        and rect.top >= area.top - _NEAR_SHARE
+        and rect.right <= area.right + _NEAR_SHARE
+        and rect.bottom <= area.bottom + _NEAR_SHARE
+    )
 
 
 def _most_room(

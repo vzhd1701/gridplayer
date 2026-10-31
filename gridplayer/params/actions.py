@@ -2671,6 +2671,17 @@ ACTIONS = MappingProxyType(
             "show_if": ("is_grid_mode_set_to", GridMode.FREE),
         },
         **{
+            f"On Window Resize {resize.name.title()}": {
+                "title": title,
+                "icon": "empty",
+                "func": ("set_tile_resize", resize),
+                "check_if": ("is_tile_resize", resize),
+                "is_choice": True,
+                "show_if": ("is_grid_mode_set_to", GridMode.FREE),
+            }
+            for resize, title in choices.tile_resize().items()
+        },
+        **{
             f"Tile Overlap {overlap.name.title()}": {
                 "title": title,
                 "icon": "empty",

@@ -174,4 +174,5 @@ def test_the_grid_state_names_are_the_grid_fields():
         "playlist/grid_rows": "rows",
         "playlist/grid_cols": "cols",
         "playlist/grid_preallocate": "preallocate",
+        "playlist/tile_resize": "tile_resize",
     }

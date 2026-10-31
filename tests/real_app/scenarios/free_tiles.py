@@ -9,10 +9,11 @@ shape, with no jump, and grows away from the one above, never over it,
 nor moved over it after. Shift frees its shape, and a double click on an
 edge stretches it to the page's edge. Arrange Tiles lays them out anew,
 and Undo takes that back. A video added goes where there is room. Single
-Mode leaves the tiles as they were. The window made wider, the tiles
-stay as big, in the middle, the room beside them free to move one to,
-which makes the layout the window's shape; made back untouched, they are
-as they were. Rows First takes the videos in the order the tiles are
+Mode leaves the tiles as they were. The window made wider, they are
+scaled together to fill it; with Keep Tile Sizes, they stay as big, in
+the middle, the room beside them free to move one to,
+which makes the layout the window's shape; made back untouched, the tiles
+kept are as they were. Rows First takes the videos in the order the tiles are
 read in.
 """
 
@@ -46,6 +47,14 @@ def _rects(d) -> dict[str, Rect]:
 
 def _near(rect, expected, slack=1.5) -> bool:
     return all(abs(a - b) <= slack for a, b in zip(rect, expected, strict=True))
+
+
+def _is_in_middle(rects, width) -> bool:
+    """Whether there is as much room left of the tiles as right of them."""
+
+    left = min(r.left for r in rects.values())
+    right = width - max(r.right for r in rects.values())
+    return abs(left - right) < 2
 
 
 def _by_name(d, name):
@@ -301,27 +310,49 @@ def scenario(d):
     d.pump(0.5)
     d.check("the tiles as they were", _page(d).tiles.tiles == tiles)
 
-    # the window made wider: the tiles as they were, in the middle, the
-    # room beside them free; made back, as before
+    # the window made wider, Scale to Fit: the tiles scaled together to fill
+    # it, from top to bottom; made back, as they are kept, fitted
     free = d.player._managers_inst["grid"]._free
     stored = dict(free.tiles)
     page_shape = free.page_shape
-    sizes = {name: (r.width, r.height) for name, r in _rects(d).items()}
     d.player.resize(WIDTH + 300, HEIGHT)
     d.pump(0.5)
     page = _page(d)
     d.check("the page is all of the area", page.rect == d.ctx.commands.grid_area())
+    rects = _rects(d)
+    top = min(r.top for r in rects.values())
+    bottom = max(r.bottom for r in rects.values())
+    d.check(
+        "wider: fitted top to bottom",
+        top < 1 and bottom > page.rect.height() - 1,
+        rects,
+    )
+    d.shot("6_wider_fitted")
+    d.player.resize(WIDTH, HEIGHT)
+    d.pump(0.5)
+    d.check(
+        "made back: kept as they were",
+        free.tiles == stored and free.page_shape == page_shape,
+    )
+
+    # Keep Tile Sizes, wider: the tiles as big, in the middle, the room
+    # beside them free; made back, as before
+    d.act(d.cells[0], "On Window Resize Keep")
+    d.pump(0.3)
+    stored = dict(free.tiles)
+    page_shape = free.page_shape
+    rects = _rects(d)
+    sizes = {name: (r.width, r.height) for name, r in rects.items()}
+    d.player.resize(WIDTH + 300, HEIGHT)
+    d.pump(0.5)
+    page = _page(d)
     rects = _rects(d)
     d.check(
         "wider: the tiles as big",
         all(_near((r.width, r.height), sizes[n]) for n, r in rects.items()),
         rects,
     )
-    d.check(
-        "in the middle",
-        abs(min(r.left for r in rects.values()) - 150) < 30,
-        rects,
-    )
+    d.check("in the middle", _is_in_middle(rects, page.rect.width()), rects)
     d.shot("6_wider")
     d.player.resize(WIDTH, HEIGHT)
     d.pump(0.5)
