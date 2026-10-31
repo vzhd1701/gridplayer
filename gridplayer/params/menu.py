@@ -746,6 +746,7 @@ SECTIONS = MappingProxyType(
                 "Free Tiles",
                 "---",
                 "Arrange Tiles",
+                "Arrange Uncropped",
                 "Fit Tiles to Window",
                 (
                     "Tile Overlap",

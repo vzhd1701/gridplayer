@@ -64,6 +64,7 @@ class TileEditManager(LayoutEditManager):
         editor.close_requested.connect(self._close_video)
         editor.swap_requested.connect(self._swap)
         editor.arrange_requested.connect(commands.arrange_tiles)
+        editor.arrange_uncropped_requested.connect(commands.arrange_tiles_uncropped)
         editor.fit_requested.connect(commands.fit_tiles_to_window)
         self._open(editor, switched_from)
 

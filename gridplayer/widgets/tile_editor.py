@@ -147,9 +147,9 @@ class TileEditor(LayoutEditor):
     to close the video. A locked tile has a padlock by its name, and is
     neither moved nor sized.
 
-    The bar has Arrange Tiles and Fit Tiles to Window, and Tile Overlap and
-    Snap To, each in a small window of its own, before Undo, Redo and Done
-    (see LayoutEditor).
+    The bar has Arrange Tiles, Arrange Uncropped and Fit Tiles to Window,
+    and Tile Overlap and Snap To, each in a small window of its own, before
+    Undo, Redo and Done (see LayoutEditor).
     """
 
     is_tiles = True
@@ -168,6 +168,7 @@ class TileEditor(LayoutEditor):
     # a tile dragged onto another: their videos to trade tiles
     swap_requested = pyqtSignal(str, str)
     arrange_requested = pyqtSignal()
+    arrange_uncropped_requested = pyqtSignal()
     fit_requested = pyqtSignal()
 
     def __init__(
@@ -222,6 +223,11 @@ class TileEditor(LayoutEditor):
         self._arrange = self._bar_button(
             self.arrange_requested, translate("Actions", "Arrange Tiles"), "arrange"
         )
+        self._arrange_uncropped = self._bar_button(
+            self.arrange_uncropped_requested,
+            translate("Actions", "Arrange Uncropped"),
+            "arrange_uncropped",
+        )
         self._fit = self._bar_button(
             self.fit_requested, translate("Actions", "Fit Tiles to Window"), "fit"
         )
@@ -234,7 +240,16 @@ class TileEditor(LayoutEditor):
         for button in (self._overlap, self._snap):
             button.setCheckable(True)
 
-        self._lay_out_bar((self._arrange, self._fit, None, self._overlap, self._snap))
+        self._lay_out_bar(
+            (
+                self._arrange,
+                self._arrange_uncropped,
+                self._fit,
+                None,
+                self._overlap,
+                self._snap,
+            )
+        )
 
     # --- the tiles ---
 

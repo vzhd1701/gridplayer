@@ -85,6 +85,10 @@ def _free(manager, **rects):
         manager._free.set_rect(video_id, Rect(*rect), 1000, 500)
 
 
+def _covered(rects) -> float:
+    return sum(r.width * r.height for r in rects.values())
+
+
 def _overlapping(rects) -> bool:
     found = list(rects.values())
     return any(a.overlaps(b) for i, a in enumerate(found) for b in found[i + 1 :])
@@ -171,6 +175,21 @@ def test_videos_with_no_room_on_the_page_have_all_tiles_arranged_anew():
     rects = _rects(manager)
     assert set(rects) == {"A", "B", "C"}
     assert not _overlapping(rects)
+    # as Arrange Tiles does: filling the page
+    assert _covered(rects) == pytest.approx(1000 * 500)
+
+
+def test_videos_with_no_room_are_arranged_as_the_tiles_were_last():
+    manager = _manager({"A": 2.0, "B": 2.0, "C": 2.0})
+    _free(manager, A=(0, 0, 500, 500), B=(500, 0, 1000, 500))
+    manager.cmd_arrange_tiles_uncropped()
+    manager._free.tiles = {}
+    _free(manager, A=(0, 0, 500, 500), B=(500, 0, 1000, 500))
+
+    manager._reconcile_layout()
+
+    for rect in _rects(manager).values():
+        assert rect.width / rect.height == pytest.approx(2.0)
 
 
 def test_adding_with_no_room_asks_first_and_cancelled_adds_nothing(mocker):
@@ -185,12 +204,12 @@ def test_adding_with_no_room_asks_first_and_cancelled_adds_nothing(mocker):
     question.assert_called_once()
 
 
-def test_arrange_tiles_lays_them_out_as_fit_shapes_and_can_be_undone():
+def test_arranged_without_cropping_tiles_are_laid_out_as_fit_shapes():
     manager = _manager({"A": 2.0, "B": 2.0})
     _free(manager, A=(0, 0, 200, 100), B=(700, 300, 900, 400))
     before = dict(manager._free.tiles)
 
-    manager.cmd_arrange_tiles()
+    manager.cmd_arrange_tiles_uncropped()
 
     rects = _rects(manager)
     # side by side, filling the width
@@ -216,16 +235,54 @@ def test_arrange_tiles_lays_them_out_as_fit_shapes_and_can_be_undone():
         },
     ],
 )
-def test_tiles_arranged_again_stay_where_they_are(rects):
+@pytest.mark.parametrize(
+    "arrange", ["cmd_arrange_tiles", "cmd_arrange_tiles_uncropped"]
+)
+def test_tiles_arranged_again_stay_where_they_are(rects, arrange):
     shapes = {"A": 16 / 9, "B": 3 / 4, "C": 16 / 9, "D": 1.0}
     manager = _manager({i: shapes[i] for i in rects})
     _free(manager, **rects)
 
-    manager.cmd_arrange_tiles()
+    getattr(manager, arrange)()
     arranged = _rects(manager)
-    manager.cmd_arrange_tiles()
+    getattr(manager, arrange)()
 
     assert _rects(manager) == arranged
+
+
+def test_arranged_tiles_fill_the_page_and_can_be_undone():
+    shapes = {"A": 16 / 9, "B": 3 / 4, "C": 16 / 9}
+    manager = _manager(shapes)
+    _free(manager, A=(0, 0, 150, 90), B=(500, 0, 650, 90), C=(100, 300, 250, 390))
+
+    manager.cmd_arrange_tiles_uncropped()
+    exact = _rects(manager)
+    manager.cmd_arrange_tiles()
+    filled = _rects(manager)
+
+    # their videos' shapes, with room left around them
+    for video_id, rect in exact.items():
+        assert rect.width / rect.height == pytest.approx(shapes[video_id])
+    assert _covered(exact) < 1000 * 500 * 0.9
+    # stretched over it, each the same share off its picture's shape
+    assert _covered(filled) == pytest.approx(1000 * 500)
+    assert not _overlapping(filled)
+    stretch = {i: (r.width / r.height) / shapes[i] for i, r in filled.items()}
+    assert len({round(s, 3) for s in stretch.values()}) == 1
+
+    manager.cmd_undo_grid()
+    assert _rects(manager) == exact
+
+
+def test_tiles_arranged_fill_the_page_again_once_shapes_are_known():
+    manager = _manager({"A": 16 / 9, "B": None})
+    _free(manager, A=(0, 0, 150, 90), B=(500, 0, 650, 90))
+    manager.cmd_arrange_tiles()
+
+    manager._ctx.video_blocks.by_video_id("B").picture_shape = 9 / 16
+    manager.fit_to_shapes()
+
+    assert _covered(_rects(manager)) == pytest.approx(1000 * 500)
 
 
 def test_tiles_arranged_before_the_shapes_were_known_are_arranged_again():
@@ -539,7 +596,7 @@ def test_tiles_arranged_leave_a_locked_one_where_it_is():
     _free(manager, A=(600, 0, 1000, 500), B=(0, 0, 200, 100), C=(700, 300, 900, 400))
     manager._free.set_locked("A", True)
 
-    manager.cmd_arrange_tiles()
+    manager.cmd_arrange_tiles_uncropped()
 
     rects = _rects(manager)
     _approx(rects["A"], (600, 0, 1000, 500))

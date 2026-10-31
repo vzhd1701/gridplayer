@@ -2657,6 +2657,13 @@ ACTIONS = MappingProxyType(
             "func": "arrange_tiles",
             "show_if": ("is_grid_mode_set_to", GridMode.FREE),
         },
+        "Arrange Uncropped": {
+            # each tile its video's shape, gaps left around them
+            "title": translate("Actions", "Arrange Uncropped"),
+            "icon": "grid-arrange-uncropped",
+            "func": "arrange_tiles_uncropped",
+            "show_if": ("is_grid_mode_set_to", GridMode.FREE),
+        },
         "Fit Tiles to Window": {
             "title": translate("Actions", "Fit Tiles to Window"),
             "icon": "grid-fit-tiles",

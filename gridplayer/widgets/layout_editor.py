@@ -194,7 +194,8 @@ def _sparkle(x: float, y: float, size: float) -> QPainterPath:
 def icon_paths(kind: str) -> tuple[QPainterPath, QPainterPath | None]:
     """An icon's lines, and what of it is filled, if anything: the rows, the
     columns, the lines fitted to the videos or reset, undo, redo, reopen; the
-    tiles arranged, fitted to the window, one over another, snapping; a lock,
+    tiles arranged (filling the window, or not), fitted to the window, one
+    over another, snapping; a lock,
     a tile put in front, or behind.
 
     The menu's icons for the tiles and snapping (resources/icons/custom) are
@@ -242,13 +243,20 @@ def icon_paths(kind: str) -> tuple[QPainterPath, QPainterPath | None]:
         path.lineTo(8, 11)
         path.moveTo(5, 8)
         path.lineTo(11, 8)
-    elif kind == "arrange":
+    elif kind in {"arrange", "arrange_uncropped"}:
         # tiles of a few sizes, lined up, and a sparkle: done for you
+        tiles = QPainterPath()
         for rect in ((2, 2.5, 5.5, 5), (2, 9.5, 3.5, 4), (7.5, 9.5, 6.5, 4)):
-            path.addRect(QRectF(*rect))
+            tiles.addRect(QRectF(*rect))
         # its middle on a pixel's middle in the menu and on the bar, so its
         # thin points come out even
         fill = _sparkle(11.6, 5.2, 2.95)
+        # the tiles filled in, as they fill the window; or their outlines,
+        # with the room left around them
+        if kind == "arrange":
+            fill.addPath(tiles)
+        else:
+            path = tiles
     elif kind == "fit":
         # the window, the tiles stretched out to its sides
         path.addRoundedRect(QRectF(2, 2.5, 12, 11), 1.5, 1.5)

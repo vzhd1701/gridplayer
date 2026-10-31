@@ -97,6 +97,7 @@ icon-symbolic,icons/custom/reset lines.svg,grid-reset-lines
 icon-symbolic,icons/custom/snap.svg,snap
 icon-symbolic,icons/custom/free tiles.svg,grid-free-tiles
 icon-symbolic,icons/custom/arrange tiles.svg,grid-arrange-tiles
+icon-symbolic,icons/custom/arrange uncropped.svg,grid-arrange-uncropped
 icon-symbolic,icons/custom/fit tiles.svg,grid-fit-tiles
 icon-symbolic,icons/custom/tile overlap.svg,grid-tile-overlap
 icon-symbolic,icons/custom/bring to front.svg,grid-tile-front
