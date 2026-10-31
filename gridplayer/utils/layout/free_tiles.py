@@ -70,6 +70,16 @@ class Rect(NamedTuple):
             and self.bottom > other.top + margin
         )
 
+    def is_inside(self, other: Rect) -> bool:
+        """Whether all of it is within the other, to a hair."""
+
+        return (
+            self.left >= other.left - _HAIR
+            and self.top >= other.top - _HAIR
+            and self.right <= other.right + _HAIR
+            and self.bottom <= other.bottom + _HAIR
+        )
+
     def is_across(self, other: Rect) -> bool:
         """Whether the two share any of their height: one is beside the
         other, if not over it."""
@@ -680,15 +690,23 @@ def _box_rect(box: Box, page_width: float) -> Rect:
 
 
 def _most_room(
-    rects: list[Rect], page: Rect, shape: float, wanted: float
+    rects: list[Rect],
+    page: Rect,
+    shape: float,
+    wanted: float,
+    near: tuple[float, float] | None = None,
 ) -> Rect | None:
     """A tile of this shape where there is the most room for it on the page
     among the tiles, up to wanted wide, in the middle of that room; None if
-    there is none."""
+    there is none. Of rooms as big, the one nearest the point near, if
+    given, else the highest, then the leftmost."""
 
     best = None
     for room in _rooms(rects, page, shape):
-        key = (min(room.width, wanted), -room.top, -room.left)
+        distance = 0.0
+        if near is not None:
+            distance = math.hypot(room.center_x - near[0], room.center_y - near[1])
+        key = (min(room.width, wanted), -distance, -room.top, -room.left)
         if best is None or key > best[0]:
             best = (key, room)
 
@@ -731,35 +749,200 @@ def _pushed_aside(
     least: Callable[[Rect], float],
     kept: dict[str, Rect] | None = None,
     fixed: Collection[str] = (),
+    left: Rect | None = None,
 ) -> dict[str, Rect] | None:
     """Each tile a tile at by covers made room for, but those fixed: as big
     as it can be, of its own shape, in what by leaves of its own place (see
-    _set_aside). Left less than ROOM_SHARE of its width there, it goes where
-    there is the most room on the page, if that is more: where it was kept
-    before (kept), while that is still free. None if one would be smaller
-    than least says, on its shorter side."""
+    _set_aside). Left less than ROOM_SHARE of its width there, or smaller
+    than least says, it goes out of its place, if it is bigger there (see
+    _room_out); and once out, it comes back only to be bigger in its place.
+    None if one would be smaller than least says, on its shorter side.
 
-    taken = [by, *spots.values()]
+    Out of its place, it goes as near as it can to the place the tile at by
+    left (left), as if the two swapped, or else to its own; and it is grown
+    again once the others are all where they end up, one set aside after it
+    perhaps having left it more room."""
+
+    # where each of the others is: at its spot, until set aside
+    places = dict(spots)
     pushed = {}
+    # those gone out of their place, and the point each goes toward
+    out = {}
     for video_id, spot in spots.items():
         if video_id in fixed or not by.overlaps(spot, _HAIR):
             continue
 
         rect = _set_aside(spot, by)
         width = 0.0 if rect is None else rect.width
-        if width < spot.width * ROOM_SHARE:
-            room = (kept or {}).get(video_id)
-            if room is None or any(room.overlaps(t, _HAIR) for t in taken):
-                shape = spot.width / spot.height
-                room = _most_room(taken, page, shape, spot.width)
+        was = (kept or {}).get(video_id)
+        is_out = was is not None and not was.is_inside(spot)
+        if (
+            rect is None
+            or min(rect.width, rect.height) < least(spot) - _HAIR
+            or width < spot.width * ROOM_SHARE
+            or (is_out and width < spot.width)
+        ):
+            toward = left or spot
+            near = (toward.center_x, toward.center_y)
+            # not its own place: it is leaving that
+            taken = [by, *(r for i, r in places.items() if i != video_id)]
+            room = _room_out(spot, taken, page, near, was)
             if room is not None and room.width > width:
                 rect = room
-                taken.append(room)
+                out[video_id] = near
 
         if rect is None or min(rect.width, rect.height) < least(spot) - _HAIR:
             return None
-        pushed[video_id] = rect
+        pushed[video_id] = places[video_id] = rect
+
+    for video_id, near in out.items():
+        spot = spots[video_id]
+        taken = [by, *(r for i, r in places.items() if i != video_id)]
+        pushed[video_id] = places[video_id] = _settled(
+            places[video_id], taken, page, spot.width / spot.height, spot.width, near
+        )
     return pushed
+
+
+def _room_out(
+    spot: Rect,
+    taken: list[Rect],
+    page: Rect,
+    near: tuple[float, float],
+    was: Rect | None,
+) -> Rect | None:
+    """Where a tile pushed out of its spot goes, clear of the others taken:
+    where it was (was), while that is free, grown there and moved toward
+    the point near as there is room (see _settled); elsewhere only to be as
+    big as it was at its spot, or with nowhere it was. Of the places with
+    the most room, the one nearest near. None if there is none."""
+
+    shape = spot.width / spot.height
+    wanted = spot.width
+    room = was
+    if room is not None and any(room.overlaps(t, _HAIR) for t in taken):
+        room = None
+    if room is not None:
+        room = _settled(room, taken, page, shape, wanted, near)
+        if room.width >= wanted - _HAIR:
+            return room
+
+    elsewhere = _most_room(taken, page, shape, wanted, near)
+    if elsewhere is not None:
+        elsewhere = _settled(elsewhere, taken, page, shape, wanted, near)
+        if room is None or elsewhere.width >= wanted - _HAIR:
+            return elsewhere
+    return room
+
+
+def _settled(
+    rect: Rect,
+    taken: list[Rect],
+    page: Rect,
+    shape: float,
+    wanted: float,
+    near: tuple[float, float],
+) -> Rect:
+    """A tile pushed out of its place, at rect: slid toward the point
+    near as far as it is clear (see _slid), and grown back up to wanted
+    wide there (see _grown), then slid again."""
+
+    rect = _slid(rect, taken, page, *near)
+    rect = _grown(rect, taken, page, shape, wanted)
+    return _slid(rect, taken, page, *near)
+
+
+def _slid(rect: Rect, taken: list[Rect], page: Rect, x: float, y: float) -> Rect:
+    """A tile at rect slid across, then down, toward its middle at x, y,
+    as far as it goes clear of the others taken and the page's edges."""
+
+    for is_column in (True, False):
+        low, high = rect.span(is_column)
+        page_low, page_high = page.span(is_column)
+        shift = (x if is_column else y) - (low + high) / 2
+        if shift > 0:
+            shift = min(shift, page_high - high)
+        else:
+            shift = max(shift, page_low - low)
+        cross_low, cross_high = rect.span(not is_column)
+        for other in taken:
+            other_low, other_high = other.span(not is_column)
+            # not in its way unless sharing more than a hair of its side
+            if other_low >= cross_high - _HAIR or other_high <= cross_low + _HAIR:
+                continue
+            # clear of it already, so ahead of it if beginning after it
+            other_low, other_high = other.span(is_column)
+            if shift > 0 and other_low > low:
+                shift = min(shift, max(other_low - high, 0.0))
+            elif shift < 0 and other_high < high:
+                shift = max(shift, min(other_high - low, 0.0))
+        rect = rect.moved(shift, 0) if is_column else rect.moved(0, shift)
+    return rect
+
+
+# where a tile grows from (see _grown): its middle first, then its
+# corners and the middles of its sides, as shares of its width and height
+_ANCHORS = (
+    (0.5, 0.5),
+    *((x, y) for x in (0, 0.5, 1) for y in (0, 0.5, 1) if (x, y) != (0.5, 0.5)),
+)
+
+
+def _grown(
+    rect: Rect, taken: list[Rect], page: Rect, shape: float, wanted: float
+) -> Rect:
+    """A tile at rect, of this shape, grown as big as it can be up to
+    wanted wide, clear of the others taken and the page's edges, still over
+    all of rect: from its middle, a corner or the middle of a side, the
+    first of those as big."""
+
+    best = rect
+    for fx, fy in _ANCHORS:
+        x = rect.left + fx * rect.width
+        y = rect.top + fy * rect.height
+        width = min(wanted, _grows_to(x, fx, page.left, page.right, 1.0))
+        width = min(width, _grows_to(y, fy, page.top, page.bottom, shape))
+        for other in taken:
+            width = min(
+                width,
+                max(
+                    _meets(x, fx, other.left, other.right, 1.0),
+                    _meets(y, fy, other.top, other.bottom, shape),
+                ),
+            )
+        if width > best.width + _HAIR:
+            height = width / shape
+            left, top = x - fx * width, y - fy * height
+            best = Rect(left, top, left + width, top + height)
+    return best
+
+
+def _grows_to(at: float, share: float, low: float, high: float, scale: float) -> float:
+    """How wide a tile grows, across (scale 1) or down (its shape), from a
+    point at share of its span, before it reaches low or high."""
+
+    width = float("inf")
+    if share > 0:
+        width = min(width, (at - low) * scale / share)
+    if share < 1:
+        width = min(width, (high - at) * scale / (1 - share))
+    return width
+
+
+def _meets(at: float, share: float, low: float, high: float, scale: float) -> float:
+    """How wide a tile grows, as in _grows_to, before it is over a span
+    from low to high by more than a hair, across (scale 1) or down."""
+
+    width = 0.0
+    if at >= high - _HAIR:
+        if share == 0:
+            return float("inf")
+        width = (at - high + _HAIR) * scale / share
+    if at <= low + _HAIR:
+        if share == 1:
+            return float("inf")
+        width = max(width, (low + _HAIR - at) * scale / (1 - share))
+    return width
 
 
 def _set_aside(spot: Rect, by: Rect) -> Rect | None:
@@ -957,7 +1140,8 @@ class TileDrag:
 
     Told to push them (is_pushing), it goes where the pointer takes it too,
     each tile it goes over set aside, made smaller in its own place or put
-    where there is room (see _pushed_aside, and pushed): always from where
+    where there is room, in the place it left if it can be (see
+    _pushed_aside, and pushed): always from where
     they were at the press, so that they come back as it goes away. One it
     would make smaller than MIN_CELL stops it, as one in the way does. Those
     it was over at the press, it goes over.
@@ -1702,6 +1886,7 @@ class TileDrag:
             lambda spot: min(MIN_CELL, spot.width, spot.height),
             kept=self.pushed,
             fixed=self._fixed,
+            left=self.start,
         )
         self._last_push = (rect, pushed)
         return pushed

@@ -517,6 +517,99 @@ def test_a_tile_pushed_with_too_little_left_goes_where_there_is_room():
     assert b.right <= 400 or b.left >= 600 or b.bottom <= 100 or b.top >= 200
 
 
+def test_a_tile_pushed_where_there_was_little_room_grows_back_as_room_is_made():
+    tiles = _tiles(
+        a=(0, 0, 300, 250),
+        b=(350, 0, 650, 250),
+        c=(0, 260, 1000, 500),
+        d=(700, 0, 1000, 250),
+    )
+    drag = _pushing(tiles, "a", MOVE, (150, 125))
+
+    # out of its place, into what a leaves of its own: smaller
+    drag.moved((375, 125), is_snapping=False)
+    _approx(drag.pushed["b"], (0, 31.25, 225, 218.75))
+
+    # a going on: b as big as it was again, in the place a left
+    drag.moved((400, 125), is_snapping=False)
+    _approx(drag.pushed["b"], (0, 20.8, 250, 229.2))
+    drag.moved((500, 125), is_snapping=False)
+    _approx(drag.pushed["b"], (0, 0, 300, 250))
+
+
+def test_two_tiles_stacked_swap_places_pushing():
+    tiles = _tiles(big=(300, 0, 700, 225), small=(400, 280, 600, 392))
+    drag = _pushing(tiles, "small", MOVE, (500, 336))
+
+    # pushed up into big: big smaller in its place, above it
+    drag.moved((500, 236), is_snapping=False)
+    _approx(drag.pushed["big"], (340, 0, 660, 180))
+
+    # through it: big in the place small left, as big as it was, and kept
+    # there with room for it in its own place again
+    drag.moved((500, 156), is_snapping=False)
+    _approx(drag.pushed["big"], (300, 224, 700, 448))
+    _approx(drag.moved((500, 36), is_snapping=False), (400, 0, 600, 112))
+    _approx(drag.pushed["big"], (300, 224, 700, 448))
+
+    # back down again: big back where it was
+    drag.moved((500, 336), is_snapping=False)
+    _approx(drag.pushed["big"], (300, 0, 700, 225))
+
+
+def test_a_tile_pushed_out_grows_into_room_one_set_aside_after_it_left():
+    # a full 16:9 page, three tiles high in columns; "one" dragged into
+    # "two"'s place, "two" going to one's, k above it set aside by one too,
+    # but after two has gone
+    width, height = 1920, 1080
+    tiles = FreeTiles(page_shape=width / height)
+    for video_id, rect in {
+        "a": (0, 0, 276, 359),
+        "b": (0, 359, 276, 721),
+        "c": (0, 721, 276, 1080),
+        "d": (276, 0, 719, 248),
+        "e": (276, 248, 719, 503),
+        "f": (276, 503, 719, 1080),
+        "g": (720, 0, 1062, 447),
+        "two": (720, 447, 1062, 885),
+        "i": (719, 885, 1063, 1080),
+        "j": (1063, 0, 1477, 232),
+        "k": (1063, 232, 1477, 779),
+        "one": (1063, 779, 1477, 1080),
+        "m": (1478, 0, 1920, 578),
+        "n": (1477, 578, 1920, 832),
+        "o": (1477, 832, 1920, 1080),
+    }.items():
+        tiles.set_rect(video_id, Rect(*rect), width, height)
+    drag = TileDrag(
+        tiles, "one", MOVE, width, height, (1270, 930), snaps=_SNAPS, is_pushing=True
+    )
+
+    for step in range(1, 41):
+        one = drag.moved(
+            (1270 - 374 * step / 40, 930 - 369 * step / 40), is_snapping=False
+        )
+    two, k = drag.pushed["two"], drag.pushed["k"]
+
+    # up against k as k ends up, not where k was, the outline's top
+    assert k.bottom < 779 - 30
+    assert two.top == pytest.approx(k.bottom)
+    assert not two.overlaps(one)
+    assert not two.overlaps(k)
+
+
+def test_a_small_tile_pushed_goes_elsewhere_before_it_is_too_small():
+    # b too low to be made half as big: 48 high at most, with 80
+    tiles = _tiles(a=(100, 100, 300, 200), b=(400, 100, 542, 180))
+    drag = _pushing(tiles, "a", MOVE, (200, 150))
+
+    # a follows the pointer all the way through b, never held up
+    for x in range(200, 460, 2):
+        _approx(drag.moved((x, 150), is_snapping=False), (x - 100, 100, x + 100, 200))
+        b = drag.pushed.get("b")
+        assert b is None or min(b.width, b.height) >= 48 - 1e-6
+
+
 def test_a_tile_pushing_stops_where_one_would_be_too_small():
     tiles = _tiles(a=(0, 0, 500, 500), b=(500, 0, 1000, 500))
     drag = _pushing(tiles, "a", (1, 0), (500, 250))
