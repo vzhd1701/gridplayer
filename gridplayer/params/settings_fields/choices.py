@@ -109,7 +109,7 @@ def strip_sides() -> dict:
 
 
 def single_mode_crops() -> dict:
-    """Shown in the menu too, under Allow Cropping When Big."""
+    """Shown in the menu too, under Crop Limit."""
 
     return {
         0: translate("Playlist Settings", "Off"),

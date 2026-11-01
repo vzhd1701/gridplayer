@@ -1,4 +1,4 @@
-"""Allow cropping when big: in Single Mode, the video shown big fills the
+"""Crop limit: in Single Mode, the video shown big fills the
 window where that cuts no more of it than the setting allows, 20% by
 default, and is shown whole otherwise. A phone video fills its cell in the
 grid, whatever that cuts, and is shown whole once big; a 16:9 one fills the

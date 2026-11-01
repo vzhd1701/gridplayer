@@ -26,7 +26,7 @@ from gridplayer.utils.qt import translate
 # Single Mode's strip, picked while in it, as Next and Previous Video are
 _IN_SINGLE_MODE = AND("is_single_mode", "is_more_than_one_video")
 
-# the Allow Cropping When Big menu's items, by their names in the keymap
+# the Crop Limit menu's items, by their names in the keymap
 _SINGLE_MODE_CROP_ITEMS = tuple(
     (f"Crop When Big {crop}%", crop) for crop in SINGLE_MODE_CROPS
 )

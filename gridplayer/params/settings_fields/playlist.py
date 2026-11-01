@@ -117,7 +117,7 @@ PLAYLIST_FIELDS: tuple[SettingField, ...] = (
     ),
     ComboField(
         settings_key="playlist/single_mode_crop",
-        label=translate("Playlist Settings", "Allow cropping when big"),
+        label=translate("Playlist Settings", "Crop limit"),
         choices=choices.single_mode_crops,
         buttons=True,
         tooltip=translate(

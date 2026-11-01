@@ -66,7 +66,7 @@ SUBMENUS = MappingProxyType(
             "icon": "single-mode-strip",
         },
         "Allow Cropping When Big": {
-            "title": translate("Playlist Settings", "Allow Cropping When Big"),
+            "title": translate("Playlist Settings", "Crop Limit"),
             "icon": "crop",
         },
         "Tile Overlap": {
