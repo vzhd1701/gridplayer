@@ -40,6 +40,8 @@ class TileEditManager(LayoutEditManager):
             settings=TileSettings(
                 overlap=commands.tile_overlap,
                 set_overlap=commands.set_tile_overlap,
+                resize=commands.tile_resize,
+                set_resize=commands.set_tile_resize,
                 is_snapping=commands.is_grid_line_snap,
                 set_snapping=self._set_snapping,
                 snaps=commands.tile_snaps,

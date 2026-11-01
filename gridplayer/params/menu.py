@@ -75,6 +75,7 @@ SUBMENUS = MappingProxyType(
         },
         "On Window Resize": {
             "title": translate("On Window Resize", "On Window Resize"),
+            "icon": "grid-window-resize",
         },
         # Snap Tiles and what they snap to; in the other grids, Snap Lines
         # alone, put in the menu itself

@@ -15,7 +15,7 @@ from PyQt5.QtGui import QColor, QCursor, QPainter, QPen, QRegion
 from PyQt5.QtWidgets import QApplication, QHBoxLayout
 
 from gridplayer.params.settings_fields import choices
-from gridplayer.params.static import TileOverlap
+from gridplayer.params.static import TileOverlap, TileResize
 from gridplayer.utils.layout.boxes import Box, box_rect
 from gridplayer.utils.layout.free_tiles import (
     MOVE,
@@ -93,10 +93,12 @@ SNAPS_POPUP_WIDTH = 330
 
 class TileSettings(NamedTuple):
     """The settings of Free Tiles the editor's bar changes: Tile Overlap,
-    Snap Tiles and Snap To, read and set."""
+    On Window Resize, Snap Tiles and Snap To, read and set."""
 
     overlap: Callable[[], TileOverlap]
     set_overlap: Callable[[TileOverlap], None]
+    resize: Callable[[], TileResize]
+    set_resize: Callable[[TileResize], None]
     is_snapping: Callable[[], bool]
     set_snapping: Callable[[bool], None]
     snaps: Callable[[], frozenset]
@@ -234,10 +236,15 @@ class TileEditor(LayoutEditor):
         self._overlap = self._bar_button(
             self._show_overlap, translate("Tile Overlap", "Tile Overlap"), "overlap"
         )
+        self._resize = self._bar_button(
+            self._show_resize,
+            translate("On Window Resize", "On Window Resize"),
+            "window_resize",
+        )
         self._snap = self._bar_button(
             self._show_snaps, translate("Snap To", "Snap To"), "snap"
         )
-        for button in (self._overlap, self._snap):
+        for button in (self._overlap, self._resize, self._snap):
             button.setCheckable(True)
 
         self._lay_out_bar(
@@ -247,6 +254,7 @@ class TileEditor(LayoutEditor):
                 self._fit,
                 None,
                 self._overlap,
+                self._resize,
                 self._snap,
             )
         )
@@ -688,6 +696,26 @@ class TileEditor(LayoutEditor):
         self._show_popup(
             self._overlap,
             translate("Tile Overlap", "Tile Overlap"),
+            [choice],
+            refresh=refresh,
+        )
+
+    def _show_resize(self) -> None:
+        choice = SegmentedChoice()
+        for resize, text in choices.tile_resize().items():
+            choice.addItem(text, resize)
+
+        def refresh():
+            with QSignalBlocker(choice):
+                choice.setCurrentIndex(choice.findData(self._settings.resize()))
+
+        refresh()
+        choice.currentIndexChanged.connect(
+            lambda _: self._settings.set_resize(choice.currentData())
+        )
+        self._show_popup(
+            self._resize,
+            translate("On Window Resize", "On Window Resize"),
             [choice],
             refresh=refresh,
         )

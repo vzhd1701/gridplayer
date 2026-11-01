@@ -7,8 +7,9 @@ Tab picks the next. The lock under its name locks it. With Tile Overlap
 on, from the bar, a tile dragged over another goes in front, the edge of
 the one behind taken where it is hidden. Delete closes the picked video,
 the bar's Reopen opens it again. A bar button's popup is closed by a
-second click on it, not opened again; Snap Lines' key turns Snap To's
-switch while it is up. "?" lists the editor's keys. A
+second click on it, not opened again. On Window Resize, set from the bar,
+follows its key while its popup is up. Snap Lines' key turns
+Snap To's switch while it is up. "?" lists the editor's keys. A
 player's key still does its action in the editor. Esc is done: the
 overlays back. The bar's switch to Grid makes it a Fixed Grid, its cells
 edited, the bar where it was dragged to; Undo makes it Free Tiles again,
@@ -22,7 +23,7 @@ from PyQt5.QtGui import QCursor, QKeySequence, QMouseEvent
 from PyQt5.QtTest import QTest
 from PyQt5.QtWidgets import QApplication
 
-from gridplayer.params.static import GridMode, TileOverlap
+from gridplayer.params.static import GridMode, TileOverlap, TileResize
 from gridplayer.widgets.settings_controls import SegmentedChoice, Switch
 from gridplayer.widgets.tile_editor import NUDGE_MS
 from tests.real_app.scenarios.free_tiles import (
@@ -224,6 +225,44 @@ def scenario(d):
     d.check("opened again by the next click", editor._popup is not None)
     _click(d, at)
     d.check("and closed by the one after", editor._popup is None)
+
+    # On Window Resize, from the bar; its key, pressed with it up: the
+    # popup follows
+    d.pump(0.4)
+    before = _rects(d)
+    d.ctx.actions["On Window Resize Fit"].setShortcuts([QKeySequence("Ctrl+Alt+R")])
+    d.pump(0.3)
+    editor._resize.click()
+    d.pump(0.3)
+    choice = editor._popup.findChild(SegmentedChoice)
+    d.check("On Window Resize shown", choice.currentData() == TileResize.FIT)
+    d.shot("3b_window_resize", widget=editor)
+    d.shot("3c_window_resize_popup", widget=editor._popup)
+    choice.setCurrentIndex(choice.findData(TileResize.KEEP))
+    d.check("set to Keep Tile Sizes", d.ctx.commands.tile_resize() == TileResize.KEEP)
+    QTest.keyClick(editor._popup, Qt.Key_R, Qt.ControlModifier | Qt.AltModifier)
+    d.pump(0.3)
+    d.check("its key set it back", d.ctx.commands.tile_resize() == TileResize.FIT)
+    d.check(
+        "the popup with it",
+        choice.currentData() == TileResize.FIT,
+        choice.currentData(),
+    )
+    button = editor._resize
+    _click(d, button.mapTo(editor, button.rect().center()))
+    d.check("closed by its button", editor._popup is None, editor._popup)
+    d.pump(0.4)
+    # Scale to Fit fits the tiles to the window at once: both changes undone
+    editor._action_buttons["undo"].click()
+    editor._action_buttons["undo"].click()
+    d.pump(0.3)
+    d.check("Keep Tile Sizes undone", d.ctx.commands.tile_resize() == TileResize.FIT)
+    rects = _rects(d)
+    d.check(
+        "the tiles where they were",
+        all(_near(rects[name], tuple(before[name])) for name in before),
+        rects,
+    )
 
     # Snap Lines' key, pressed with Snap To up: its switch follows
     d.ctx.actions["Snap Lines"].setShortcuts([QKeySequence("Ctrl+Alt+S")])

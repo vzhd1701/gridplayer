@@ -279,6 +279,7 @@ class GridManager(ManagerBase):
             "arrange_tiles": self.cmd_arrange_tiles,
             "arrange_tiles_uncropped": self.cmd_arrange_tiles_uncropped,
             "fit_tiles_to_window": self.cmd_fit_tiles_to_window,
+            "tile_resize": lambda: self._free.resize,
             "set_tile_resize": self.cmd_set_tile_resize,
             "is_tile_resize": lambda resize: self._free.resize == resize,
             "tile_overlap": self.tile_overlap,

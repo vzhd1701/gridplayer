@@ -5,7 +5,7 @@ from PyQt5.QtTest import QTest
 from PyQt5.QtWidgets import QApplication
 
 from gridplayer.params.actions import ACTIONS
-from gridplayer.params.static import TileOverlap, TileSnap
+from gridplayer.params.static import TileOverlap, TileResize, TileSnap
 from gridplayer.player.managers.layout_edit import EDITOR_ACTIONS, SETTING_ACTIONS
 from gridplayer.utils.layout.boxes import Box
 from gridplayer.utils.layout.free_tiles import MOVE, FreeTiles, TileDrag
@@ -29,6 +29,8 @@ class _Tiles:
             settings=TileSettings(
                 overlap=lambda: self.overlap,
                 set_overlap=lambda _: None,
+                resize=lambda: TileResize.FIT,
+                set_resize=lambda _: None,
                 is_snapping=lambda: True,
                 set_snapping=lambda _: None,
                 snaps=frozenset,
@@ -298,9 +300,15 @@ class TestName:
 class TestPopups:
     @pytest.fixture
     def settings(self):
-        """Tile Overlap, Snap Tiles and Snap To as the editor reads them."""
+        """Tile Overlap, On Window Resize, Snap Tiles and Snap To as the
+        editor reads them."""
 
-        return {"overlap": TileOverlap.OFF, "snapping": True, "snaps": frozenset()}
+        return {
+            "overlap": TileOverlap.OFF,
+            "resize": TileResize.FIT,
+            "snapping": True,
+            "snaps": frozenset(),
+        }
 
     @pytest.fixture
     def editor(self, settings):
@@ -309,6 +317,8 @@ class TestPopups:
             settings=TileSettings(
                 overlap=lambda: settings["overlap"],
                 set_overlap=lambda v: settings.update(overlap=v),
+                resize=lambda: settings["resize"],
+                set_resize=lambda v: settings.update(resize=v),
                 is_snapping=lambda: settings["snapping"],
                 set_snapping=lambda v: settings.update(snapping=v),
                 snaps=lambda: settings["snaps"],
@@ -348,6 +358,20 @@ class TestPopups:
         editor.update_settings()
 
         assert choice.currentData() == TileOverlap.ON
+
+    def test_on_window_resize_sets_and_follows_its_setting(self, editor, settings):
+        editor._resize.click()
+        choice = editor._popup.findChild(SegmentedChoice)
+        assert editor._resize.isChecked()
+        assert choice.currentData() == TileResize.FIT
+
+        choice.setCurrentIndex(choice.findData(TileResize.KEEP))
+        assert settings["resize"] == TileResize.KEEP
+
+        # changed from the menu, say
+        settings["resize"] = TileResize.FIT
+        editor.update_settings()
+        assert choice.currentData() == TileResize.FIT
 
     def test_a_popup_passes_the_players_keys_on(self, editor):
         pressed = []

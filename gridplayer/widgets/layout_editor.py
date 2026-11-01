@@ -194,9 +194,9 @@ def _sparkle(x: float, y: float, size: float) -> QPainterPath:
 def icon_paths(kind: str) -> tuple[QPainterPath, QPainterPath | None]:
     """An icon's lines, and what of it is filled, if anything: the rows, the
     columns, the lines fitted to the videos or reset, undo, redo, reopen; the
-    tiles arranged (filling the window, or not), fitted to the window, one
-    over another, snapping; a lock,
-    a tile put in front, or behind.
+    tiles arranged (filling the window, or not), fitted to the window, kept
+    as the window is resized, one over another, snapping; a lock, a tile put
+    in front, or behind.
 
     The menu's icons for the tiles and snapping (resources/icons/custom) are
     these drawings, with the menu's lighter line."""
@@ -266,6 +266,13 @@ def icon_paths(kind: str) -> tuple[QPainterPath, QPainterPath | None]:
             path.moveTo(back, 6)
             path.lineTo(tip, 8)
             path.lineTo(back, 10)
+    elif kind == "window_resize":
+        # the window, a grip in its corner: what is done as it is resized
+        path.addRoundedRect(QRectF(2, 2.5, 12, 11), 1.5, 1.5)
+        path.moveTo(7.5, 11.5)
+        path.lineTo(12, 7)
+        path.moveTo(10, 11.5)
+        path.lineTo(12, 9.5)
     elif kind == "overlap":
         # one tile over another, the hidden corner of the one behind left out
         path.moveTo(6, 9)
