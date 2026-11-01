@@ -135,6 +135,7 @@ icon-symbolic,icons/custom/loop single.svg,loop-single
 icon-symbolic,icons/custom/loop start.svg,loop-start
 icon-symbolic,icons/custom/media file.svg,add-files
 icon-symbolic,icons/custom/minimize window.svg,minimize
+icon-symbolic,icons/custom/app logo.svg,app-symbolic
 icon-symbolic,icons/custom/minus-1.svg,seek-minus-1
 icon-symbolic,icons/custom/minus-10.svg,seek-minus-10
 icon-symbolic,icons/custom/minus-5.svg,seek-minus-5

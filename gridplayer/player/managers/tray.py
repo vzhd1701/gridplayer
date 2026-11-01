@@ -1,3 +1,5 @@
+import logging
+
 from PyQt5.QtCore import pyqtSignal
 from PyQt5.QtGui import QFont, QIcon
 from PyQt5.QtWidgets import QApplication, QSystemTrayIcon
@@ -6,10 +8,16 @@ from gridplayer.params import env
 from gridplayer.player.managers.base import ManagerBase
 from gridplayer.settings import Settings
 from gridplayer.utils.qt import translate
+from gridplayer.utils.win32_tray import WindowsTrayIcon, is_own_icon_wanted
 from gridplayer.version import __app_name__
 from gridplayer.widgets.custom_menu import CustomMenu
 
+_log = logging.getLogger(__name__)
+
 NOTE_DURATION_MS = 5000
+
+# wide enough for the words, bold or not, to have room either side
+MENU_MIN_WIDTH = 160
 
 
 class TrayManager(ManagerBase):
@@ -99,6 +107,7 @@ class TrayManager(ManagerBase):
 
     def _create(self):
         self._menu = CustomMenu()
+        self._menu.setMinimumWidth(MENU_MIN_WIDTH)
 
         self._show_action = self._menu.addAction(
             translate("Actions", "Show"), self._toggle_window
@@ -111,20 +120,47 @@ class TrayManager(ManagerBase):
 
         self._menu.addSeparator()
 
-        # No icons: GNOME and macOS draw the menu themselves, and look an icon
-        # up by its name in the system's theme, which has none of ours
         self._quit_action = self._menu.addAction(
             translate("Actions", "Quit"), self._quit
         )
+        if _has_menu_icons():
+            self._quit_action.setIcon(QIcon.fromTheme("quit"))
 
         self._menu.aboutToShow.connect(self._update_menu)
 
-        self._icon = QSystemTrayIcon(_tray_icon(), self)
-        self._icon.setToolTip(__app_name__)
-        self._icon.setContextMenu(self._menu)
-        self._icon.activated.connect(self._on_activated)
-        self._icon.messageClicked.connect(self._ctx.commands.activate_window)
+        own = self._own_icon() if is_own_icon_wanted() else None
+        if own is not None:
+            self._icon = own
+            return
+
+        self._icon = self._set_up(QSystemTrayIcon(_tray_icon(), self))
         self._icon.show()
+
+    def _own_icon(self) -> WindowsTrayIcon | None:
+        """Run by python.exe on Windows, an icon of its own, not the one
+        every app python.exe runs shares (see win32_tray). None where another
+        player has it up, or it can't be made: Qt's then."""
+
+        try:
+            icon = self._set_up(WindowsTrayIcon(_tray_icon(), self))
+        except Exception:
+            _log.exception("Tray icon of its own not made")
+            return None
+
+        # refused, and not for another player's: Explorer is not ready yet,
+        # and says when it is
+        if icon.show() or not icon.is_taken():
+            return icon
+
+        icon.deleteLater()
+        return None
+
+    def _set_up(self, icon):
+        icon.setToolTip(__app_name__)
+        icon.setContextMenu(self._menu)
+        icon.activated.connect(self._on_activated)
+        icon.messageClicked.connect(self._ctx.commands.activate_window)
+        return icon
 
     def _update_menu(self):
         is_away = self._ctx.commands.is_window_away()
@@ -134,6 +170,11 @@ class TrayManager(ManagerBase):
             self._show_action.setText(translate("Actions", "Show"))
         else:
             self._show_action.setText(translate("Actions", "Hide"))
+
+        if _has_menu_icons():
+            self._show_action.setIcon(
+                QIcon.fromTheme("app-symbolic" if is_away else "minimize")
+            )
 
         # a dialog waiting for an answer goes nowhere: shown, it comes along
         self._show_action.setEnabled(is_away or not is_modal)
@@ -155,6 +196,14 @@ class TrayManager(ManagerBase):
             return
 
         self._ctx.commands.quit()
+
+
+def _has_menu_icons() -> bool:
+    """Icons in the menu, as the player's own menus have, where Qt draws
+    it: GNOME and macOS draw it themselves, and look an icon up by its name
+    in the system's theme, which has none of ours."""
+
+    return env.IS_WINDOWS
 
 
 def _tray_icon() -> QIcon:

@@ -5,7 +5,8 @@ from types import SimpleNamespace
 from unittest.mock import Mock
 
 import pytest
-from PyQt5.QtCore import QEvent, QSettings
+from PyQt5.QtCore import QEvent, QObject, QSettings, pyqtSignal
+from PyQt5.QtGui import QIcon
 from PyQt5.QtTest import QTest
 from PyQt5.QtWidgets import QApplication, QSystemTrayIcon, QWidget
 
@@ -619,6 +620,100 @@ class TestTrayIcon:
 
         assert len(said) == 1
         assert settings.get("player/tray_note_shown") is True
+
+    @pytest.mark.parametrize("is_windows", [False, True])
+    def test_menu_icons_where_qt_draws_it(
+        self, settings, tray, monkeypatch, is_windows
+    ):
+        # GNOME and macOS draw the menu, with icons from the system's theme
+        monkeypatch.setattr(tray_module.env, "IS_WINDOWS", is_windows)
+        asked = []
+        monkeypatch.setattr(
+            tray_module.QIcon,
+            "fromTheme",
+            staticmethod(lambda name: asked.append(name) or QIcon()),
+        )
+        settings.set("player/tray_icon", True)
+        tray.apply_settings()
+
+        tray._ctx.is_away = True
+        tray._update_menu()
+        tray._ctx.is_away = False
+        tray._update_menu()
+
+        assert tray._menu.minimumWidth() == tray_module.MENU_MIN_WIDTH
+        if is_windows:
+            assert asked == ["quit", "app-symbolic", "minimize"]
+        else:
+            assert asked == []
+
+    @pytest.mark.skipif(
+        tray_module.env.IS_MACOS, reason="macOS opens the menu on a click"
+    )
+    @pytest.mark.parametrize("state", ["up", "taken", "explorer_starting"])
+    def test_own_icon_when_run_by_python(self, settings, tray, monkeypatch, state):
+        made = []
+
+        class OwnIcon(QObject):
+            activated = pyqtSignal(int)
+            messageClicked = pyqtSignal()
+
+            def __init__(self, icon, parent):
+                super().__init__(parent)
+                self.tip = None
+                self.shown = False
+                made.append(self)
+
+            def setToolTip(self, text):
+                self.tip = text
+
+            def setContextMenu(self, menu):
+                self.menu = menu
+
+            def show(self):
+                self.shown = state == "up"
+                return self.shown
+
+            def is_taken(self):
+                return state == "taken"
+
+            def isVisible(self):
+                return self.shown
+
+            def hide(self):
+                self.shown = False
+
+        monkeypatch.setattr(tray_module, "is_own_icon_wanted", lambda: True)
+        monkeypatch.setattr(tray_module, "WindowsTrayIcon", OwnIcon)
+        settings.set("player/tray_icon", True)
+
+        tray.apply_settings()
+
+        [own] = made
+        assert own.tip == tray_module.__app_name__
+        assert own.menu is tray._menu
+        if state == "taken":
+            # another player run by the same python.exe has it: Qt's icon
+            assert isinstance(tray._icon, QSystemTrayIcon)
+        else:
+            # kept while Explorer starts, to be put up once it has
+            assert tray._icon is own
+            assert tray._icon.isVisible() is (state == "up")
+            own.activated.emit(QSystemTrayIcon.Trigger)
+            own.messageClicked.emit()
+            assert tray.calls == ["toggle", "activate"]
+
+    def test_qt_icon_where_its_own_cant_be_made(self, settings, tray, monkeypatch):
+        def fail(*args):
+            raise OSError("no window")
+
+        monkeypatch.setattr(tray_module, "is_own_icon_wanted", lambda: True)
+        monkeypatch.setattr(tray_module, "WindowsTrayIcon", fail)
+        settings.set("player/tray_icon", True)
+
+        tray.apply_settings()
+
+        assert isinstance(tray._icon, QSystemTrayIcon)
 
 
 def _block(is_paused=False, track_id=0, audio=True, tracks=(0,)):
