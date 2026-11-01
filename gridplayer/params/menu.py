@@ -89,9 +89,13 @@ SUBMENUS = MappingProxyType(
             # grayed out with nothing closed
             "enable_if": "is_any_video_closed",
         },
-        "Templates": {
-            "title": translate("Actions", "Templates"),
-            "icon": "grid-template-1-5",
+        # a Fixed Grid of any size, or of a template; ticked as the grid
+        # mode it is, with the others
+        "Fixed Grid": {
+            "title": translate("Grid Mode", "Fixed Grid"),
+            "icon": "grid",
+            "check_if": ("is_grid_mode_set_to", GridMode.FIXED),
+            "is_choice": True,
         },
         "Cell Size": {
             "title": translate("Actions", "Cell Size"),
@@ -756,8 +760,17 @@ SECTIONS = MappingProxyType(
                 "Rows First",
                 "Columns First",
                 "Fit Shapes",
-                "Fixed Grid",
-                ("Templates", *(f"Grid Template {name}" for name in GRID_TEMPLATES)),
+                (
+                    "Fixed Grid",
+                    "Fixed Grid",
+                    "---",
+                    *(f"Grid Template {name}" for name in GRID_TEMPLATES),
+                    "---",
+                    "Own Grid Templates",
+                    "---",
+                    "Save Grid Template",
+                    "Delete Grid Template",
+                ),
                 "Free Tiles",
                 "---",
                 "Arrange Tiles",

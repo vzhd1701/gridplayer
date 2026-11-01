@@ -14,6 +14,7 @@ from gridplayer.player.managers.free_tiles import FreeTilesManager
 from gridplayer.player.managers.grid import GridManager
 from gridplayer.player.managers.grid_edit import GridEditManager
 from gridplayer.player.managers.grid_lines import GridLinesManager
+from gridplayer.player.managers.grid_templates import GridTemplatesManager
 from gridplayer.player.managers.instance_listener import InstanceListenerManager
 from gridplayer.player.managers.lists import ListsManager
 from gridplayer.player.managers.locations import LocationsManager
@@ -53,6 +54,7 @@ class Player(QWidget, ManagersManager):
             "window_state": WindowStateManager,
             "video_blocks": VideoBlocksManager,
             "grid": GridManager,
+            "grid_templates": GridTemplatesManager,
             "grid_lines": GridLinesManager,
             "free_tiles": FreeTilesManager,
             "grid_edit": GridEditManager,

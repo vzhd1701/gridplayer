@@ -15,6 +15,7 @@ from gridplayer.params.static import (
     GRID_TEMPLATES,
     MAX_FIXED_SIZE,
     GridMode,
+    GridTemplate,
     TileOverlap,
     TileResize,
 )
@@ -255,6 +256,9 @@ class GridManager(ManagerBase):
             "can_set_grid_cell_span": self.can_set_grid_cell_span,
             "set_grid_template": self.cmd_set_grid_template,
             "is_grid_template": self.is_grid_template,
+            "apply_grid_template": self.cmd_apply_grid_template,
+            "is_grid_shaped_as": self.is_grid_shaped_as,
+            "grid_template_now": self.grid_template_now,
             "undo_grid": self.cmd_undo_grid,
             "redo_grid": self.cmd_redo_grid,
             "is_grid_undoable": lambda: bool(self._undo),
@@ -1213,13 +1217,32 @@ class GridManager(ManagerBase):
         return True
 
     def is_grid_template(self, name: str) -> bool:
-        return self._is_fixed and self._grid_layout.is_template(GRID_TEMPLATES[name])
+        return self.is_grid_shaped_as(GRID_TEMPLATES[name])
+
+    def is_grid_shaped_as(self, template: GridTemplate) -> bool:
+        return self._is_fixed and self._grid_layout.is_template(template)
+
+    def grid_template_now(self) -> GridTemplate | None:
+        """The Fixed Grid there is as a template: its size and its big
+        cells, row by row. None for a grid that is not a Fixed Grid."""
+
+        if not self._is_fixed:
+            return None
+
+        big = sorted(
+            (c.row, c.col, c.rowspan, c.colspan) for c in self._grid_layout.big_cells()
+        )
+        return GridTemplate(
+            self._grid_layout.max_cols, self._grid_layout.max_rows, tuple(big)
+        )
 
     def cmd_set_grid_template(self, name: str):
+        self.cmd_apply_grid_template(GRID_TEMPLATES[name])
+
+    def cmd_apply_grid_template(self, template: GridTemplate):
         """A Fixed Grid with big cells, the videos put in it in their order,
         the first in the first big cell."""
 
-        template = GRID_TEMPLATES[name]
         ordered = self._live_order()
         capacity = len(template.places())
         extra_ids = ordered[capacity:]

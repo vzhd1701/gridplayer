@@ -7,6 +7,7 @@ from pathlib import Path
 from pydantic import BaseModel, Field
 from PyQt5.QtCore import QSettings
 
+from gridplayer.models.grid_templates import OwnGridTemplates
 from gridplayer.models.keymap_overrides import KeymapOverrides
 from gridplayer.models.recent_list import (
     RecentList,
@@ -89,6 +90,8 @@ _default_settings = {
     "player/language": get_system_language(),
     "player/color_scheme": ColorScheme.SYSTEM,
     "player/keymap": KeymapOverrides({}),
+    # the Fixed Grid templates of one's own, saved from the menu
+    "player/grid_templates": OwnGridTemplates(),
     "player/recent_list_enabled": True,
     "player/recent_list_max_size": 10,
     "player/reopen_last_playlist": False,

@@ -39,6 +39,7 @@ ALL_PAGES = [page for group in PAGES for page in group.pages]
 
 INTERNAL_SETTINGS = {
     "last_playlist",
+    "player/grid_templates",
     "player/tray_note_shown",
     "recent_list_videos",
     "recent_list_playlists",

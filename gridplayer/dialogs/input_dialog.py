@@ -105,6 +105,27 @@ class QCustomTextInput(QDialog):
 
         return initial_value
 
+    @classmethod
+    def get_name(cls, parent, title, initial_value="") -> str | None:
+        """A name typed in, without the spaces round it; None for Cancel.
+        OK is grayed out while there is no name."""
+
+        dialog = cls(parent=parent)
+        dialog.setWindowTitle(title)
+        dialog.line_edit.setText(initial_value)
+        dialog.line_edit.selectAll()
+
+        ok = dialog.buttons.button(QDialogButtonBox.Ok)
+        ok.setEnabled(bool(initial_value.strip()))
+        dialog.line_edit.textChanged.connect(
+            lambda text: ok.setEnabled(bool(text.strip()))
+        )
+
+        if dialog.exec():
+            return dialog.line_edit.text().strip()
+
+        return None
+
 
 class QFixedGridSizeDialog(QDialog):
     def __init__(self, **kwargs):

@@ -5,7 +5,7 @@ from PyQt5.QtWidgets import QMenu
 from gridplayer.params.menu import SECTIONS, SUBMENUS
 from gridplayer.player.managers.actions import QDynamicAction
 from gridplayer.player.managers.base import ManagerBase
-from gridplayer.widgets.custom_menu import CustomMenu
+from gridplayer.widgets.custom_menu import CustomMenu, checked_icon
 
 
 class MenuManager(ManagerBase):
@@ -107,13 +107,23 @@ class MenuManager(ManagerBase):
 
         sub_menu = CustomMenu(parent=menu)
         sub_menu.setTitle(sub["title"])
-        if sub.get("icon"):
-            sub_menu.setIcon(QIcon.fromTheme(sub["icon"]))
+        icon = QIcon.fromTheme(sub["icon"]) if sub.get("icon") else QIcon()
         menu.addMenu(sub_menu)
 
         if sub.get("enable_if"):
             is_enabled = self._ctx.commands.resolve(sub["enable_if"])()
             sub_menu.menuAction().setEnabled(is_enabled)
+
+        if sub.get("check_if"):
+            # one of several to pick from that holds more choices of its
+            # own: marked as the items beside it are
+            sub_action = sub_menu.menuAction()
+            sub_action.setCheckable(True)
+            sub_action.setChecked(self._ctx.commands.resolve(sub["check_if"])())
+            icon = checked_icon(icon, is_choice=sub.get("is_choice", False))
+
+        if not icon.isNull():
+            sub_menu.setIcon(icon)
 
         self._add_menu_items(sub_menu, sub_items)
 

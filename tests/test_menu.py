@@ -4,6 +4,7 @@ import pytest
 from PyQt5.QtWidgets import QApplication, QMenu
 
 from gridplayer.params.menu import SECTIONS
+from gridplayer.params.static import GridMode
 from gridplayer.player.managers.menu import MenuManager
 
 
@@ -66,3 +67,24 @@ def test_recently_closed_is_grayed_out_with_nothing_closed(is_any_closed):
     manager._add_submenu(("Recently Closed",), menu)
 
     assert menu.actions()[-1].isEnabled() == is_any_closed
+
+
+@pytest.mark.parametrize("is_fixed", [False, True])
+def test_fixed_grid_is_ticked_as_the_grid_mode_it_is(is_fixed):
+    commands = SimpleNamespace(
+        resolve=lambda command: {
+            ("is_grid_mode_set_to", GridMode.FIXED): lambda: is_fixed
+        }[command]
+    )
+    manager = MenuManager(
+        context=SimpleNamespace(video_blocks=[], active_block=None, commands=commands),
+        parent=None,
+    )
+    menu = QMenu()
+
+    manager._add_submenu(("Fixed Grid",), menu)
+
+    fixed = menu.actions()[-1]
+    assert fixed.isCheckable()
+    assert fixed.isChecked() == is_fixed
+    assert not fixed.icon().isNull()

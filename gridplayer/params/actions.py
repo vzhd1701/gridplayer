@@ -2654,10 +2654,13 @@ ACTIONS = MappingProxyType(
             ),
         },
         "Fixed Grid": {
-            "title": translate("Grid Mode", "Fixed Grid"),
+            # first in the Fixed Grid menu, before its templates: a Fixed
+            # Grid of the size asked for, or another size for the one there
+            "title": translate("Actions", "Choose Size…"),
+            "keymap_title": translate("Grid Mode", "Fixed Grid"),
             "icon": "grid",
-            "func": ("set_grid_mode", GridMode.FIXED),
-            "check_if": ("is_grid_mode_set_to", GridMode.FIXED),
+            "func": "ask_fixed_grid_size",
+            "check_if": "is_grid_fixed_custom",
             "is_choice": True,
         },
         "Free Tiles": {
@@ -2877,6 +2880,26 @@ ACTIONS = MappingProxyType(
             "func": ("set_grid_template", "2 + 8"),
             "check_if": ("is_grid_template", "2 + 8"),
             "is_choice": True,
+        },
+        "Own Grid Templates": {
+            # the templates of one's own go straight into the Fixed Grid
+            # menu, so this title is never shown
+            "title": translate("Actions", "Templates"),
+            "icon": "empty",
+            "menu_generator": "menu_generator_own_grid_templates",
+            "is_menu_inline": True,
+        },
+        "Save Grid Template": {
+            "title": translate("Actions", "Save as Template…"),
+            "keymap_title": translate("Actions", "Save Grid as Template"),
+            "icon": "add",
+            "func": "save_grid_template",
+            "enable_if": "can_save_grid_template",
+        },
+        "Delete Grid Template": {
+            "title": translate("Actions", "Delete Template"),
+            "icon": "trash",
+            "menu_generator": "menu_generator_delete_grid_template",
         },
         "Undo Grid Change": {
             "title": translate("Actions", "Undo"),

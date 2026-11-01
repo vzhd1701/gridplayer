@@ -133,6 +133,26 @@ class GridTemplate(NamedTuple):
     rows: int
     big: tuple[tuple[int, int, int, int], ...]
 
+    def fits(self) -> bool:
+        """Whether it is a grid there can be: no bigger than a Fixed Grid
+        goes, its big cells inside it, none over another."""
+
+        if not (1 <= self.rows <= MAX_FIXED_SIZE and 1 <= self.cols <= MAX_FIXED_SIZE):
+            return False
+
+        covered = set()
+        for row, col, rowspan, colspan in self.big:
+            if min(row, col) < 0 or min(rowspan, colspan) < 1:
+                return False
+            if row + rowspan > self.rows or col + colspan > self.cols:
+                return False
+            area = {(row + r, col + c) for r in range(rowspan) for c in range(colspan)}
+            if area & covered:
+                return False
+            covered |= area
+
+        return True
+
     def places(self) -> list[tuple[int, int, int, int]]:
         covered = {
             (row + r, col + c)
