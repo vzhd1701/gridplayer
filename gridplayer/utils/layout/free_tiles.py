@@ -3,6 +3,7 @@ from __future__ import annotations
 import math
 import random
 from collections.abc import Callable, Collection, Iterable, Iterator
+from dataclasses import dataclass, field
 from enum import Enum, auto
 from itertools import product, takewhile
 from typing import NamedTuple
@@ -135,16 +136,24 @@ _GUIDE_SNAPS = {
 }
 
 
-class Guide(NamedTuple):
+@dataclass(frozen=True)
+class Guide:
     """A line a tile moved is in line with, to be shown while it is: a
     column's at x = position from y = start to end, a row's the other way,
-    in the page's pixels."""
+    in the page's pixels. Points are where along it the tiles' corners are,
+    or their edges' middles, that are in line: marked on it, they are not
+    what tells one guide from another."""
 
     is_column: bool
     position: float
     start: float
     end: float
     kind: GuideKind
+    points: tuple[float, ...] = field(default=(), compare=False)
+
+
+def _points(points: Iterable[float]) -> tuple[float, ...]:
+    return tuple(sorted(set(points)))
 
 
 class Gap(NamedTuple):
@@ -1549,16 +1558,17 @@ class TileDrag:
                     continue
                 seen.add((position, kind))
 
-                # along the page, or along the two tiles
+                # along the page, or along the two tiles; marked where the
+                # tile is, and the other
+                points = rect.span(not is_column)
                 if other is page:
                     start, end = across
-                elif is_column:
-                    start = min(rect.top, other.top)
-                    end = max(rect.bottom, other.bottom)
                 else:
-                    start = min(rect.left, other.left)
-                    end = max(rect.right, other.right)
-                guides.append(Guide(is_column, position, start, end, kind))
+                    points += other.span(not is_column)
+                    start, end = min(points), max(points)
+                guides.append(
+                    Guide(is_column, position, start, end, kind, _points(points))
+                )
         guides += self._start_guides()
         return [g for g in guides if _GUIDE_SNAPS[g.kind] in self.snaps]
 
@@ -1611,8 +1621,9 @@ class TileDrag:
                 if not side:
                     continue
                 own = (own[0] if side < 0 else own[1],)
+            points = _points((*rect.span(not is_column), *start.span(not is_column)))
             guides.extend(
-                Guide(is_column, position, *span, GuideKind.START)
+                Guide(is_column, position, *span, GuideKind.START, points)
                 for position in old
                 if any(abs(edge - position) < _NEAR for edge in own)
             )

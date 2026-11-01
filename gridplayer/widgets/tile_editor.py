@@ -30,7 +30,8 @@ from gridplayer.utils.qt import translate
 from gridplayer.widgets.grid_line_mark import (
     EDGE_COLOR,
     LINE_COLOR,
-    GapMark,
+    gap_paths,
+    guide_paths,
     guides_clear_of,
     tile_snap_words,
 )
@@ -974,52 +975,27 @@ class TileEditor(LayoutEditor):
             paint_icon(painter, tool, icon, color)
 
     def _draw_guide(self, painter, guide: Guide) -> None:
-        if guide.is_column:
-            ends = (
-                QPointF(guide.position, guide.start),
-                QPointF(guide.position, guide.end),
-            )
-        else:
-            ends = (
-                QPointF(guide.start, guide.position),
-                QPointF(guide.end, guide.position),
-            )
-        for color, width in ((EDGE_COLOR, 4), (LINE_COLOR, 2)):
-            painter.setPen(QPen(color, width))
-            painter.drawLine(*ends)
+        """As ShapeMark shows it outside the editor."""
+
+        self._draw_shapes(
+            painter,
+            guide_paths(
+                guide.is_column, guide.position, guide.start, guide.end, guide.points
+            ),
+        )
 
     def _draw_gap(self, painter, gap: Gap) -> None:
-        """A line across the gap with a tick at each end, as GapMark is."""
+        """As ShapeMark shows it outside the editor."""
 
-        tick = GapMark.tick / 2
-        if gap.is_column:
-            lines = [
-                (QPointF(gap.start, gap.position), QPointF(gap.end, gap.position)),
-                (
-                    QPointF(gap.start, gap.position - tick),
-                    QPointF(gap.start, gap.position + tick),
-                ),
-                (
-                    QPointF(gap.end, gap.position - tick),
-                    QPointF(gap.end, gap.position + tick),
-                ),
-            ]
-        else:
-            lines = [
-                (QPointF(gap.position, gap.start), QPointF(gap.position, gap.end)),
-                (
-                    QPointF(gap.position - tick, gap.start),
-                    QPointF(gap.position + tick, gap.start),
-                ),
-                (
-                    QPointF(gap.position - tick, gap.end),
-                    QPointF(gap.position + tick, gap.end),
-                ),
-            ]
-        for color, width in ((EDGE_COLOR, 3), (LINE_COLOR, 1)):
-            painter.setPen(QPen(color, width))
-            for line in lines:
-                painter.drawLine(*line)
+        self._draw_shapes(
+            painter, gap_paths(gap.is_column, gap.start, gap.end, gap.position)
+        )
+
+    @staticmethod
+    def _draw_shapes(painter, paths) -> None:
+        dark, light = paths
+        painter.fillPath(dark, EDGE_COLOR)
+        painter.fillPath(light, LINE_COLOR)
 
 
 def _rect_f(rect: Rect) -> QRectF:

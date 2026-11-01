@@ -23,9 +23,8 @@ from gridplayer.utils.layout.free_tiles import (
 )
 from gridplayer.utils.qt import is_modal_open
 from gridplayer.widgets.grid_line_mark import (
-    GapMark,
-    GridLineMark,
     GridLineTag,
+    ShapeMark,
     guides_clear_of,
     show_pooled,
     tile_snap_words,
@@ -91,8 +90,8 @@ class FreeTilesManager(LayoutDragManager):
         # the drag to start, where it was pressed, and where the page was
         self._pressed: tuple[TileDrag, QPoint, QRect] | None = None
 
-        self._guides: list[GridLineMark] = []
-        self._gaps: list[GapMark] = []
+        self._guides: list[ShapeMark] = []
+        self._gaps: list[ShapeMark] = []
         self._tag: GridLineTag | None = None
         self._frame = TileFrame(self.parent())
         self._locks = TileLocks(self.parent())
@@ -400,29 +399,29 @@ class FreeTilesManager(LayoutDragManager):
         self._finish()
 
     def _show_guides(self, guides: list[Guide]):
-        def show(mark: GridLineMark, guide: Guide):
+        def show(mark: ShapeMark, guide: Guide):
             along, across = self._page_at(guide.is_column)
-            mark.show_line(
+            mark.show_guide(
                 guide.is_column,
-                round(along + guide.position),
-                round(across + guide.start),
-                round(across + guide.end),
-                is_snapped=False,
+                along + guide.position,
+                across + guide.start,
+                across + guide.end,
+                [across + point for point in guide.points],
             )
 
-        show_pooled(self._guides, lambda: GridLineMark(self.parent()), guides, show)
+        show_pooled(self._guides, lambda: ShapeMark(self.parent()), guides, show)
 
     def _show_gaps(self, gaps: list[Gap]):
-        def show(mark: GapMark, gap: Gap):
+        def show(mark: ShapeMark, gap: Gap):
             along, across = self._page_at(gap.is_column)
             mark.show_gap(
                 gap.is_column,
-                round(along + gap.start),
-                round(along + gap.end),
-                round(across + gap.position),
+                along + gap.start,
+                along + gap.end,
+                across + gap.position,
             )
 
-        show_pooled(self._gaps, lambda: GapMark(self.parent()), gaps, show)
+        show_pooled(self._gaps, lambda: ShapeMark(self.parent()), gaps, show)
 
     def _page_at(self, is_column: bool) -> tuple[int, int]:
         """Where the page is on the screen: across and down (is_column), or
