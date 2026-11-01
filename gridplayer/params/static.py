@@ -113,6 +113,13 @@ class StripSide(AutoName):
 # what Fit Shapes may cut off each video to fill the window, in percent
 GRID_CROPS = (0, 5, 10, 20, 30, 50)
 
+# a fill limit of all the picture: any cut allowed
+NO_FILL_LIMIT = 100
+
+# what Single Mode may cut off the video shown big to fill the window, in
+# percent, Any the last
+SINGLE_MODE_CROPS = (0, 10, 20, 30, 50, NO_FILL_LIMIT)
+
 # the most rows or columns a Fixed Grid has
 MAX_FIXED_SIZE = 100
 
@@ -268,6 +275,10 @@ class ViewParams(NamedTuple):
     # picked: to be shown, and never kept as picked (see with_list)
     is_aspect_ratio_listed: bool = False
     is_crop_ratio_listed: bool = False
+    # with Fill, the most of the picture it may lose, as a percentage: one
+    # that would lose more is shown whole, as with Fit. NO_FILL_LIMIT for
+    # none, 0 for none to lose. Single Mode's, for the video shown big
+    fill_limit: int = NO_FILL_LIMIT
 
     def with_list(self, list_aspect_ratio: str, list_crop_ratio: str) -> "ViewParams":
         """The view with the shapes the video's list says where none is

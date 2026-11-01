@@ -1,6 +1,6 @@
 from PyQt5.QtCore import pyqtSignal
 
-from gridplayer.params.static import StripMode, StripSide
+from gridplayer.params.static import NO_FILL_LIMIT, StripMode, StripSide
 from gridplayer.player.managers.base import ManagerBase
 from gridplayer.playlist_settings import PlaylistSettings
 from gridplayer.settings import Settings
@@ -12,7 +12,11 @@ class SingleModeManager(ManagerBase):
     small in a strip beside it, still playing (see strip_layout). Show Big
     on one in the strip, a double click by default, shows it big instead: in
     the Strip, it trades places with the big one; in the Fixed Strip, every
-    video keeps its place, the big one's held (see HeldPlace)."""
+    video keeps its place, the big one's held (see HeldPlace).
+
+    The one shown big, in Fill, fills the window only where that cuts no
+    more of it than the playlist allows, and is shown whole otherwise (see
+    apply_crop)."""
 
     mode_changed = pyqtSignal()
 
@@ -31,6 +35,9 @@ class SingleModeManager(ManagerBase):
         self._strip = []
 
         self._pre_sm_states = {}
+
+        # the video given Single Mode's fill limit, the one shown big
+        self._cropped = None
 
     @property
     def commands(self):
@@ -52,6 +59,8 @@ class SingleModeManager(ManagerBase):
             "set_single_mode_strip": self.choose_strip,
             "is_single_mode_strip_side_set_to": lambda side: self.strip_side() == side,
             "set_single_mode_strip_side": self.choose_strip_side,
+            "is_single_mode_crop_set_to": lambda crop: self.crop() == crop,
+            "set_single_mode_crop": self.choose_crop,
         }
 
     def set_video_count(self, video_count):
@@ -148,6 +157,33 @@ class SingleModeManager(ManagerBase):
         if self._ctx.is_single_mode:
             self.mode_changed.emit()
 
+    def crop(self) -> int:
+        """How much of the video shown big may be cut to fill the window,
+        in percent (see ViewParams.fill_limit)."""
+
+        return PlaylistSettings().get("playlist/single_mode_crop")
+
+    def choose_crop(self, crop: int):
+        PlaylistSettings().set("playlist/single_mode_crop", crop)
+        self.apply_crop()
+
+    def apply_crop(self, *_):
+        """The video shown big filling the window as far as the playlist
+        allows it to be cut, the one shown big till now as it was."""
+
+        main = self._main if self._ctx.is_single_mode else None
+        if main is not None and main not in self._ctx.video_blocks:
+            main = None
+
+        if self._cropped is not None and self._cropped is not main:
+            if self._cropped in self._ctx.video_blocks:
+                self._cropped.view.set_fill_limit(NO_FILL_LIMIT)
+            self._cropped = None
+
+        if main is not None:
+            main.view.set_fill_limit(self.crop())
+            self._cropped = main
+
     def set_pause_background_videos(self, is_pause):
         was_pause = self._ctx.is_pause_background_videos
         self._ctx.is_pause_background_videos = is_pause
@@ -208,6 +244,7 @@ class SingleModeManager(ManagerBase):
             vb.hide()
 
         self.mode_changed.emit()
+        self.apply_crop()
 
     def single_mode_off(self):
         self._ctx.is_single_mode = False
@@ -218,6 +255,7 @@ class SingleModeManager(ManagerBase):
         # The grid shows the hidden videos as it lays them out again, all at
         # once. Shown here one by one, each would lay the grid out on the spot.
         self.mode_changed.emit()
+        self.apply_crop()
 
     def _switch_single_video(self, is_before):
         if not self._ctx.is_single_mode or self._main is None:
@@ -256,6 +294,7 @@ class SingleModeManager(ManagerBase):
         if vb in self._strip:
             self._strip[self._strip.index(vb)] = self._main
         self._main = vb
+        self.apply_crop()
 
     def _ordered_blocks(self):
         return self._ctx.video_blocks.blocks_for_ids(self._ctx.commands.layout_order())

@@ -13,6 +13,7 @@ PLAYLIST_ATTRS: MappingProxyType[str, str] = MappingProxyType(
         "playlist/pause_background_videos": "pause_background_videos",
         "playlist/single_mode_strip": "single_mode_strip",
         "playlist/single_mode_strip_side": "single_mode_strip_side",
+        "playlist/single_mode_crop": "single_mode_crop",
         "playlist/pause_minimized": "pause_minimized",
         "playlist/bookmarks_shared": "bookmarks_shared",
         "playlist/seek_step_short": "seek_step_short",

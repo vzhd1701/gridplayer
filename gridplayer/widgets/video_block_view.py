@@ -6,6 +6,7 @@ from PyQt5.QtGui import QCursor
 
 from gridplayer.params.static import (
     NO_CROP_RATIO,
+    NO_FILL_LIMIT,
     OWN_ASPECT_RATIO,
     VideoAnchor,
     VideoCellViewMode,
@@ -36,6 +37,18 @@ class ViewControl(VideoBlockPart):
         self._is_zoomed_to_selection = False
         # another video's view, to show once this one is playing
         self._view_to_follow: SyncedView | None = None
+        # see ViewParams.fill_limit: Single Mode's, while shown big
+        self.fill_limit = NO_FILL_LIMIT
+
+    def set_fill_limit(self, fill_limit: int):
+        """Fill the cell only where it cuts no more of the picture than this,
+        a percentage (see ViewParams.fill_limit). Kept for a video stopped
+        or not loaded yet too, its driver made then loading with it."""
+
+        self.fill_limit = fill_limit
+
+        if self._block.video_driver is not None:
+            self._block.video_driver.set_fill_limit(fill_limit)
 
     @only_with_video_tacks
     @only_initialized

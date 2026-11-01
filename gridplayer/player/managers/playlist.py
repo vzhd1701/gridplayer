@@ -56,6 +56,7 @@ class PlaylistManager(ManagerBase):
     pause_background_videos_loaded = pyqtSignal(bool)
     pause_minimized_loaded = pyqtSignal(bool)
     show_overlay_border_loaded = pyqtSignal(bool)
+    single_mode_crop_loaded = pyqtSignal(int)
     overlay_hide_on_timeout_loaded = pyqtSignal(bool)
     overlay_timeout_loaded = pyqtSignal(int)
     subtitle_encoding_loaded = pyqtSignal(str)
@@ -585,6 +586,10 @@ class PlaylistManager(ManagerBase):
                 (
                     self.show_overlay_border_loaded,
                     session.get("playlist/show_overlay_border"),
+                ),
+                (
+                    self.single_mode_crop_loaded,
+                    session.get("playlist/single_mode_crop"),
                 ),
                 (
                     self.overlay_hide_on_timeout_loaded,

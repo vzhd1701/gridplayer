@@ -151,6 +151,7 @@ class Playlist(BaseModel):
     pause_background_videos: bool | None = None
     single_mode_strip: StripMode | None = None
     single_mode_strip_side: StripSide | None = None
+    single_mode_crop: int | None = None
     pause_minimized: bool | None = None
     show_overlay_border: bool | None = None
     show_grid_lines: bool | None = None

@@ -5,6 +5,7 @@ from gridplayer.params.static import (
     CROP_RATIO_PRESETS,
     GRID_CROPS,
     GRID_TEMPLATES,
+    SINGLE_MODE_CROPS,
     GridMode,
     TileOverlap,
     TileResize,
@@ -63,6 +64,10 @@ SUBMENUS = MappingProxyType(
         "Strip Mode": {
             "title": translate("Playlist Settings", "Strip Mode"),
             "icon": "single-mode-strip",
+        },
+        "Allow Cropping When Big": {
+            "title": translate("Playlist Settings", "Allow Cropping When Big"),
+            "icon": "crop",
         },
         "Tile Overlap": {
             "title": translate("Tile Overlap", "Tile Overlap"),
@@ -172,6 +177,10 @@ SECTIONS = MappingProxyType(
                 "Strip Side Left",
                 "Strip Side Bottom",
                 "Strip Side Top",
+            ),
+            (
+                "Allow Cropping When Big",
+                *(f"Crop When Big {crop}%" for crop in SINGLE_MODE_CROPS),
             ),
             "Previous Video",
             "Next Video",

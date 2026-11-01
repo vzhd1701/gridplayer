@@ -115,6 +115,17 @@ PLAYLIST_FIELDS: tuple[SettingField, ...] = (
             " and along the bottom of a tall one.",
         ),
     ),
+    ComboField(
+        settings_key="playlist/single_mode_crop",
+        label=translate("Playlist Settings", "Allow cropping when big"),
+        choices=choices.single_mode_crops,
+        buttons=True,
+        tooltip=translate(
+            "Playlist Settings",
+            "How much a Fill video may be cut to fill the window."
+            " If it needs more, it is shown whole.",
+        ),
+    ),
     CheckboxField(
         settings_key="playlist/pause_minimized",
         label=translate("Playlist Settings", "Pause videos when minimized"),

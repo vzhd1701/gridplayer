@@ -4,6 +4,7 @@ from gridplayer.params.settings_fields import choices
 from gridplayer.params.static import (
     ASPECT_RATIO_PRESETS,
     CROP_RATIO_PRESETS,
+    SINGLE_MODE_CROPS,
     AudioChannelMode,
     GridMode,
     ListEndAction,
@@ -24,6 +25,11 @@ from gridplayer.utils.qt import translate
 
 # Single Mode's strip, picked while in it, as Next and Previous Video are
 _IN_SINGLE_MODE = AND("is_single_mode", "is_more_than_one_video")
+
+# the Allow Cropping When Big menu's items, by their names in the keymap
+_SINGLE_MODE_CROP_ITEMS = tuple(
+    (f"Crop When Big {crop}%", crop) for crop in SINGLE_MODE_CROPS
+)
 
 # the Strip Mode menu's items: their names in the keymap, and icons
 _STRIP_MODE_ITEMS = (
@@ -92,6 +98,17 @@ ACTIONS = MappingProxyType(
                 "enable_if": NOT(("is_single_mode_strip_set_to", StripMode.OFF)),
             }
             for side, title in choices.strip_sides().items()
+        },
+        **{
+            name: {
+                "title": choices.single_mode_crops()[crop],
+                "icon": "empty",
+                "func": ("set_single_mode_crop", crop),
+                "check_if": ("is_single_mode_crop_set_to", crop),
+                "is_choice": True,
+                "show_if": "is_single_mode",
+            }
+            for name, crop in _SINGLE_MODE_CROP_ITEMS
         },
         "Previous Video": {
             "title": translate("Actions", "Previous Video"),

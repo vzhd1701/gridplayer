@@ -42,6 +42,7 @@ PLAYLIST_PAGE = (
         "playlist/pause_background_videos",
         "playlist/single_mode_strip",
         "playlist/single_mode_strip_side",
+        "playlist/single_mode_crop",
     ),
     Section(
         translate("SettingsDialog", "Step Sizes"),

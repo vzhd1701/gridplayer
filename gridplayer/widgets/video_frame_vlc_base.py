@@ -1570,6 +1570,15 @@ class VideoFrameVLC(QWidget, metaclass=QABC):
 
         self.adjust_view()
 
+    def set_fill_limit(self, fill_limit: int) -> None:
+        """See ViewParams.fill_limit. Before the video is loaded too: until
+        then, nothing is shown to change, and it loads with its own."""
+
+        self._view = self._view._replace(fill_limit=fill_limit)
+
+        if self.is_video_initialized:
+            self.adjust_view()
+
     def set_aspect_ratio(self, aspect_ratio: str) -> None:
         self._repick(aspect_ratio=aspect_ratio)
 

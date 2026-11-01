@@ -1426,6 +1426,7 @@ class VlcPlayerBase(ABC):
             self.media_input.video.is_shift_past_edges = view.is_shift_past_edges
             self.media_input.video.aspect_ratio = picked.aspect_ratio
             self.media_input.video.crop_ratio = picked.crop_ratio
+            self.media_input.fill_limit = view.fill_limit
 
             # nothing picked and nothing the list's: the list says none now,
             # its video gone off it

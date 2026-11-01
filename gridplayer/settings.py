@@ -177,6 +177,9 @@ _default_settings = {
     # in Single Mode, the other videos in a strip beside the one shown big
     "playlist/single_mode_strip": StripMode.OFF,
     "playlist/single_mode_strip_side": StripSide.AUTO,
+    # in Single Mode, the most of the video shown big, as a percentage, cut
+    # to fill the window where it is in Fill; more, and it is shown whole
+    "playlist/single_mode_crop": 20,
     "playlist/pause_minimized": True,
     "playlist/show_overlay_border": True,
     # the line between two cells shown when the pointer is on it, not only

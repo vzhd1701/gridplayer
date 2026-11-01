@@ -1854,6 +1854,7 @@ class VideoBlock(QWidget):
                     selected_subtitle_slaves=self.subtitles.selected_slave_uris,
                     list_aspect_ratio=self.list_aspect_ratio,
                     list_crop_ratio=self.list_crop_ratio,
+                    fill_limit=self.view.fill_limit,
                 )
             )
 

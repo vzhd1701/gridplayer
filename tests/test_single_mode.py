@@ -5,7 +5,7 @@ from PyQt5.QtCore import QSettings
 from PyQt5.QtWidgets import QApplication, QWidget
 
 from gridplayer.models.grid_state import GridState
-from gridplayer.params.static import GridMode, StripMode, StripSide
+from gridplayer.params.static import NO_FILL_LIMIT, GridMode, StripMode, StripSide
 from gridplayer.player.managers.grid import GridManager
 from gridplayer.player.managers.single_mode import SingleModeManager
 from gridplayer.playlist_settings import PlaylistSettings
@@ -108,6 +108,9 @@ class _Cell(QWidget):
         self.cell_size = SimpleNamespace(
             set_sizable=lambda *_args: None, forget_steps=lambda: None
         )
+        # the fill limits it was given, shown big and not
+        self.fill_limits = []
+        self.view = SimpleNamespace(set_fill_limit=self.fill_limits.append)
 
     def resizeEvent(self, event):
         self.sizes.append((event.size().width(), event.size().height()))
@@ -243,6 +246,63 @@ def test_show_big_on_one_of_the_strip_shows_it_big():
     assert cells[3].geometry().left() == 0
     assert cells[0].geometry().left() > 0
     window.close()
+
+
+def test_only_the_big_one_is_cropped_as_far_as_the_playlist_allows():
+    window, cells, ctx, _grid, single_mode = _strip_grid()
+
+    single_mode.single_mode_on()
+
+    assert cells[0].fill_limits == [20]
+    assert all(not cell.fill_limits for cell in cells[1:])
+
+    ctx.active_block = cells[3]
+    single_mode.show_big()
+
+    assert cells[0].fill_limits == [20, NO_FILL_LIMIT]
+    assert cells[3].fill_limits == [20]
+
+    PlaylistSettings().set("playlist/single_mode_crop", 50)
+    single_mode.apply_crop()
+
+    assert cells[3].fill_limits == [20, 50]
+
+    single_mode.single_mode_off()
+
+    assert cells[3].fill_limits == [20, 50, NO_FILL_LIMIT]
+    assert all(not cell.fill_limits for cell in cells[1:3] + cells[4:])
+    window.close()
+
+
+def test_the_menu_picks_how_much_the_big_one_may_be_cut(mocker):
+    first = _block(mocker, block_id="a", is_paused=False)
+    second = _block(mocker, block_id="b", is_paused=False)
+    manager = _manager(mocker, [first, second], first)
+    commands = manager.commands
+    manager.single_mode_on()
+
+    assert commands["is_single_mode_crop_set_to"](20)
+
+    commands["set_single_mode_crop"](NO_FILL_LIMIT)
+
+    assert commands["is_single_mode_crop_set_to"](NO_FILL_LIMIT)
+    assert PlaylistSettings().get("playlist/single_mode_crop") == NO_FILL_LIMIT
+    first.view.set_fill_limit.assert_called_with(NO_FILL_LIMIT)
+    second.view.set_fill_limit.assert_not_called()
+
+
+def test_the_next_video_big_with_no_strip_takes_the_crop(mocker):
+    first = _block(mocker, block_id="a", is_paused=False)
+    second = _block(mocker, block_id="b", is_paused=False)
+    manager = _manager(mocker, [first, second], first)
+    manager.single_mode_on()
+
+    manager.next_single_video()
+
+    first.view.set_fill_limit.assert_has_calls(
+        [mocker.call(20), mocker.call(NO_FILL_LIMIT)]
+    )
+    second.view.set_fill_limit.assert_called_once_with(20)
 
 
 def test_single_mode_is_left_from_one_of_the_strip_too():

@@ -5,6 +5,7 @@ from typing import NamedTuple
 
 from gridplayer.params.static import (
     MAX_SCALE,
+    NO_FILL_LIMIT,
     ROTATION_TRANSFORMS,
     SHIFT_STEP,
     VideoAnchor,
@@ -715,6 +716,7 @@ def calc_followed_view(
         and pixel_aspect == shared.pixel_aspect
         and view.crop == shared.view.crop
         and view.cell_view_mode == shared.view.cell_view_mode
+        and view.fill_limit == shared.view.fill_limit
     )
 
     if is_same:
@@ -1028,7 +1030,10 @@ class _Fit:
         fit_y = pane_h / (region_h * unit_y)
 
         if view.cell_view_mode == VideoCellViewMode.FILL:
-            fit_x = fit_y = max(fit_x, fit_y)
+            if _is_fill_too_much(fit_x, fit_y, view.fill_limit):
+                fit_x = fit_y = min(fit_x, fit_y)
+            else:
+                fit_x = fit_y = max(fit_x, fit_y)
         elif view.cell_view_mode == VideoCellViewMode.FIT:
             fit_x = fit_y = min(fit_x, fit_y)
 
@@ -1040,6 +1045,24 @@ class _Fit:
             per_x=fit_x * unit_x * view.scale,
             per_y=fit_y * unit_y * view.scale,
         )
+
+
+def _is_fill_too_much(fit_x: float, fit_y: float, fill_limit: int) -> bool:
+    """Whether filling the pane would cut more of the picture than the limit
+    allows, a percentage of it (see ViewParams.fill_limit).
+
+    Filled, the picture loses on one axis what its fit on that axis falls
+    short of the other's. The zoom goes on top, whatever the limit made of
+    the picture: it never decides it, and a zoom never jumps the picture
+    from whole to filled.
+    """
+
+    if fill_limit >= NO_FILL_LIMIT:
+        return False
+
+    cut = 1 - min(fit_x, fit_y) / max(fit_x, fit_y)
+
+    return cut * 100 > fill_limit + 1e-9
 
 
 def _picture_position(

@@ -167,6 +167,7 @@ class Player(QWidget, ManagersManager):
                 ),
                 ("set_single_mode_strip", "single_mode.set_strip"),
                 ("set_single_mode_strip_side", "single_mode.relayout"),
+                ("set_single_mode_crop", "single_mode.apply_crop"),
                 ("set_pause_minimized", "window_state.set_pause_minimized"),
                 (
                     "set_show_overlay_border",
@@ -225,6 +226,7 @@ class Player(QWidget, ManagersManager):
                     "show_overlay_border_loaded",
                     "video_blocks.set_show_overlay_border",
                 ),
+                ("single_mode_crop_loaded", "single_mode.apply_crop"),
                 (
                     "overlay_hide_on_timeout_loaded",
                     "video_blocks.set_overlay_hide_on_timeout",

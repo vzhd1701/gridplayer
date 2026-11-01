@@ -19,6 +19,7 @@ from gridplayer.models.subtitle_selection import (
 )
 from gridplayer.models.video import Video
 from gridplayer.params.static import (
+    NO_FILL_LIMIT,
     ROTATION_TRANSFORMS,
     VideoTransform,
     ViewParams,
@@ -439,6 +440,9 @@ class MediaInput:
     list_aspect_ratio: str = ""
     list_crop_ratio: str = ""
 
+    # see ViewParams.fill_limit
+    fill_limit: int = NO_FILL_LIMIT
+
     _initial_seek_ms: int | None = None
 
     @property
@@ -457,6 +461,7 @@ class MediaInput:
             is_shift_past_edges=video.is_shift_past_edges,
             aspect_ratio=video.aspect_ratio,
             crop_ratio=video.crop_ratio,
+            fill_limit=self.fill_limit,
         ).with_list(self.list_aspect_ratio, self.list_crop_ratio)
 
     @property

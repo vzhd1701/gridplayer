@@ -32,6 +32,7 @@ class SettingsManager(ManagerBase):
     set_pause_background_videos = pyqtSignal(bool)
     set_single_mode_strip = pyqtSignal(object)  # StripMode
     set_single_mode_strip_side = pyqtSignal(object)  # StripSide
+    set_single_mode_crop = pyqtSignal(int)
     set_pause_minimized = pyqtSignal(bool)
     set_show_overlay_border = pyqtSignal(bool)
     set_overlay_hide_on_timeout = pyqtSignal(bool)
@@ -84,6 +85,7 @@ class SettingsManager(ManagerBase):
             "playlist/pause_background_videos": self.set_pause_background_videos,
             "playlist/single_mode_strip": self.set_single_mode_strip,
             "playlist/single_mode_strip_side": self.set_single_mode_strip_side,
+            "playlist/single_mode_crop": self.set_single_mode_crop,
             "playlist/pause_minimized": self.set_pause_minimized,
             "playlist/show_overlay_border": self.set_show_overlay_border,
             "playlist/overlay_hide_on_timeout": self.set_overlay_hide_on_timeout,

@@ -372,6 +372,7 @@ class StreamControl(VideoBlockPart):
                 ),
                 list_aspect_ratio=self._block.list_aspect_ratio,
                 list_crop_ratio=self._block.list_crop_ratio,
+                fill_limit=self._block.view.fill_limit,
             )
         )
 

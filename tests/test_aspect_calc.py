@@ -4,6 +4,7 @@ import random
 import pytest
 
 from gridplayer.params.static import (
+    NO_FILL_LIMIT,
     VideoAnchor,
     VideoCellViewMode,
     VideoCrop,
@@ -934,6 +935,71 @@ class TestPictureRect:
 
     def test_there_is_none_with_nothing_to_place(self):
         assert calc_picture_rect((0, 0), SQUARE, _view()) is None
+
+
+PHONE = (1080, 1920)
+
+
+def _limited(fill_limit, **kwargs):
+    return _view(**kwargs)._replace(fill_limit=fill_limit)
+
+
+class TestFillLimit:
+    """Fill, where it would cut more of the picture than the limit, shows
+    it whole."""
+
+    def test_no_limit_fills_whatever_it_cuts(self):
+        # 1600x2844.4, 68% of it cut
+        _, top, width, _ = calc_picture_rect(PHONE, PANE, _limited(NO_FILL_LIMIT))
+
+        assert width == pytest.approx(1600)
+        assert top == pytest.approx(-(1600 * 16 / 9 - 900) / 2)
+
+    def test_one_cut_more_than_the_limit_is_shown_whole(self):
+        assert calc_picture_rect(PHONE, PANE, _limited(30)) == _approx(
+            ((1600 - 506.25) / 2, 0, 506.25, 900)
+        )
+
+    def test_one_cut_less_than_the_limit_fills(self):
+        # 43.75% of 1600 cut to fill the square
+        assert calc_picture_rect(VIDEO, SQUARE, _limited(50)) == _approx(
+            (-350, 0, 1600, 900)
+        )
+        assert calc_picture_rect(VIDEO, SQUARE, _limited(40)) == _approx(
+            (0, (900 - 506.25) / 2, 900, 506.25)
+        )
+
+    def test_none_allowed_shows_any_cut_whole(self):
+        assert calc_picture_rect(VIDEO, SQUARE, _limited(0)) == _approx(
+            (0, (900 - 506.25) / 2, 900, 506.25)
+        )
+        assert calc_picture_rect(VIDEO, PANE, _limited(0)) == _approx((0, 0, 1600, 900))
+
+    def test_one_cut_by_the_limit_exactly_fills(self):
+        # 4:3 filling 16:9 loses a quarter of it
+        rect = calc_picture_rect((1440, 1080), PANE, _limited(25))
+
+        assert rect == _approx((0, -150, 1600, 1200))
+
+    def test_the_crop_is_what_it_goes_by(self):
+        # the phone cut down to 1080x608 is about the pane's shape
+        view = _limited(30, crop=VideoCrop(0, 656, 0, 656))
+
+        assert calc_picture_rect(PHONE, PANE, view)[2] == pytest.approx(1600)
+
+    def test_a_zoom_goes_on_top_of_the_whole_picture(self):
+        assert calc_picture_rect(PHONE, PANE, _limited(30, scale=2.0)) == _approx(
+            ((1600 - 1012.5) / 2, (900 - 1800) / 2, 1012.5, 1800)
+        )
+
+    def test_fit_and_stretch_are_left_alone(self):
+        fit = _view(VideoCellViewMode.FIT)
+        stretch = _view(VideoCellViewMode.STRETCH)
+
+        for view in (fit, stretch):
+            assert calc_picture_rect(
+                PHONE, PANE, view._replace(fill_limit=10)
+            ) == calc_picture_rect(PHONE, PANE, view)
 
 
 class TestPastTheEdges:

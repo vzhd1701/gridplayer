@@ -12,6 +12,7 @@ from gridplayer.params import env
 from gridplayer.params.static import (
     ASPECT_RATIO_PRESETS,
     CROP_RATIO_PRESETS,
+    NO_FILL_LIMIT,
     AddMode,
     AudioChannelMode,
     AudioTrackMode,
@@ -104,6 +105,19 @@ def strip_sides() -> dict:
         StripSide.LEFT: translate("Playlist Settings", "Left"),
         StripSide.BOTTOM: translate("Playlist Settings", "Bottom"),
         StripSide.TOP: translate("Playlist Settings", "Top"),
+    }
+
+
+def single_mode_crops() -> dict:
+    """Shown in the menu too, under Allow Cropping When Big."""
+
+    return {
+        0: translate("Playlist Settings", "Off"),
+        10: translate("Playlist Settings", "10%"),
+        20: translate("Playlist Settings", "20%"),
+        30: translate("Playlist Settings", "30%"),
+        50: translate("Playlist Settings", "50%"),
+        NO_FILL_LIMIT: translate("Playlist Settings", "Any"),
     }
 
 
