@@ -1,7 +1,14 @@
 from collections.abc import Callable, Sequence
 
 from PyQt5.QtCore import QPoint, QPointF, QRect, QRectF, QSize, QSizeF, Qt
-from PyQt5.QtGui import QBitmap, QBrush, QColor, QPainter, QPainterPath
+from PyQt5.QtGui import (
+    QBitmap,
+    QBrush,
+    QColor,
+    QGuiApplication,
+    QPainter,
+    QPainterPath,
+)
 from PyQt5.QtWidgets import QWidget
 
 from gridplayer.utils.compositor_linux import is_compositor_running
@@ -77,6 +84,10 @@ class FloatingMark(QWidget):
     takes the mouse, nor is it ever made the active window.
     """
 
+    # how many have been shown, one after another: the last on top of the
+    # others
+    shown_count = 0
+
     def __init__(self, parent=None):
         super().__init__(
             parent,
@@ -97,14 +108,21 @@ class FloatingMark(QWidget):
             if rect.size() != self.size():
                 self.update()
             self.setGeometry(rect)
+        self._placed()
 
         if self.isHidden():
             self.show()
+            FloatingMark.shown_count += 1
 
             # made on its first show, the window can be put where the
             # geometry says in device pixels, on a screen that scales
             if self.geometry() != rect:
                 self.setGeometry(rect)
+                self._placed(is_again=True)
+
+    def _placed(self, is_again: bool = False) -> None:
+        """The window just put where it is shown, before it is: again, if
+        put there once more."""
 
 
 def show_pooled(pool: list, make: Callable, items: Sequence, show: Callable) -> None:
@@ -315,11 +333,24 @@ class ShapedMark(FloatingMark):
         if self._is_translucent:
             self.setAttribute(Qt.WA_TranslucentBackground)
 
+        # the cut, and whether the window has yet to be
+        self._cut: QBitmap | None = None
+        self._is_cut_new = False
+
     def cut_to(self, size: QSize, path: QPainterPath) -> None:
-        """Only the path shown, in a window of that size."""
+        """Only the path shown, in a window of that size, once it is shown
+        at that size (see show_at)."""
 
         if not self._is_translucent:
-            self.setMask(_mask(size, path))
+            self._cut = _mask(size, path)
+            self._is_cut_new = True
+
+    def _placed(self, is_again: bool = False) -> None:
+        # X11 cuts the window's shape to its size as the shape is set: one
+        # set before a window grows leaves the rest of it unseen
+        if self._cut is not None and (self._is_cut_new or is_again):
+            self.setMask(self._cut)
+            self._is_cut_new = False
 
     def begin_paint(self, outer: QColor) -> QPainter:
         painter = QPainter(self)
@@ -412,6 +443,8 @@ class GridLineTag(ShapedMark):
         # the size it was shown at, which the window may not quite be on a
         # screen that scales
         self._size_shown = QSize()
+        # FloatingMark.shown_count when it was last put on top
+        self._on_top_at = -1
 
     def show_snap(
         self,
@@ -467,7 +500,21 @@ class GridLineTag(ShapedMark):
             self.cut_to(size, self._outline())
             self.update()
 
+        # over the lines it speaks of: one shown after it would cover it
+        is_shown = self.isVisible()
         self.show_at(rect)
+        if is_shown and self._on_top_at != FloatingMark.shown_count:
+            self._put_on_top()
+        self._on_top_at = FloatingMark.shown_count
+
+    def _put_on_top(self) -> None:
+        # raised, X11 leaves it under the windows shown after it (mutter, at
+        # least); shown again, it is on top
+        if QGuiApplication.platformName() == "xcb":
+            self.hide()
+            self.show()
+        else:
+            self.raise_()
 
     def paintEvent(self, event) -> None:
         painter = self.begin_paint(TAG_BORDER_COLOR)
