@@ -31,6 +31,10 @@ class _Tiles:
                 set_overlap=lambda _: None,
                 resize=lambda: TileResize.FIT,
                 set_resize=lambda _: None,
+                crop=lambda: 20,
+                set_crop=lambda _: None,
+                is_reordered=lambda: False,
+                set_reordered=lambda _: None,
                 is_snapping=lambda: True,
                 set_snapping=lambda _: None,
                 snaps=frozenset,
@@ -300,12 +304,14 @@ class TestName:
 class TestPopups:
     @pytest.fixture
     def settings(self):
-        """Tile Overlap, On Window Resize, Snap Tiles and Snap To as the
-        editor reads them."""
+        """Tile Overlap, On Window Resize, Crop Limit, Reorder to Fit,
+        Snap Tiles and Snap To as the editor reads them."""
 
         return {
             "overlap": TileOverlap.OFF,
             "resize": TileResize.FIT,
+            "crop": 20,
+            "reordered": False,
             "snapping": True,
             "snaps": frozenset(),
         }
@@ -319,6 +325,10 @@ class TestPopups:
                 set_overlap=lambda v: settings.update(overlap=v),
                 resize=lambda: settings["resize"],
                 set_resize=lambda v: settings.update(resize=v),
+                crop=lambda: settings["crop"],
+                set_crop=lambda v: settings.update(crop=v),
+                is_reordered=lambda: settings["reordered"],
+                set_reordered=lambda v: settings.update(reordered=v),
                 is_snapping=lambda: settings["snapping"],
                 set_snapping=lambda v: settings.update(snapping=v),
                 snaps=lambda: settings["snaps"],
@@ -372,6 +382,25 @@ class TestPopups:
         settings["resize"] = TileResize.FIT
         editor.update_settings()
         assert choice.currentData() == TileResize.FIT
+
+    def test_arrange_sets_and_follows_its_settings(self, editor, settings):
+        editor._arrange_settings.click()
+        choice = editor._popup.findChild(SegmentedChoice)
+        switch = editor._popup.findChild(Switch)
+        assert editor._arrange_settings.isChecked()
+        assert choice.currentData() == 20
+        assert not switch.isChecked()
+
+        choice.setCurrentIndex(choice.findData(0))
+        switch.setChecked(True)
+        assert settings["crop"] == 0
+        assert settings["reordered"] is True
+
+        # changed from the menu, say
+        settings.update(crop=50, reordered=False)
+        editor.update_settings()
+        assert choice.currentData() == 50
+        assert not switch.isChecked()
 
     def test_a_popup_passes_the_players_keys_on(self, editor):
         pressed = []

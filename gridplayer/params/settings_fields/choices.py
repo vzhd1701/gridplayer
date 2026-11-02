@@ -132,6 +132,19 @@ def grid_crops() -> dict:
     }
 
 
+def tile_crops() -> dict:
+    """Shown in the menu too, under Arrange."""
+
+    return {
+        0: translate("Tile Crop", "Off"),
+        5: translate("Tile Crop", "5%"),
+        10: translate("Tile Crop", "10%"),
+        20: translate("Tile Crop", "20%"),
+        30: translate("Tile Crop", "30%"),
+        50: translate("Tile Crop", "50%"),
+    }
+
+
 def seek_sync_modes() -> dict:
     return {
         SeekSyncMode.DISABLED: translate("Seek Sync", "Disabled"),

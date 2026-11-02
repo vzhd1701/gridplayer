@@ -895,14 +895,6 @@ def test_a_locked_tile_put_back_is_locked_again():
     assert list(tiles.tiles) == ["b", "a"]
 
 
-def test_the_open_area_is_the_biggest_part_no_locked_tile_is_on():
-    tiles = _tiles(a=(600, 0, 1000, 500), b=(0, 0, 100, 100))
-    assert tiles.open_area() == Box(0, 0, 1, 1)
-
-    _locked(tiles, "a")
-    assert tiles.open_area() == pytest.approx((0, 0, 0.6, 1))
-
-
 def test_a_locked_tile_over_another_is_stacked():
     tiles = _locked(_tiles(a=(0, 0, 300, 200), b=(200, 100, 500, 300)), "a")
 

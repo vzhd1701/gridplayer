@@ -12,7 +12,7 @@ from PyQt5.QtCore import (
     pyqtSignal,
 )
 from PyQt5.QtGui import QColor, QCursor, QPainter, QPen, QRegion
-from PyQt5.QtWidgets import QApplication, QHBoxLayout
+from PyQt5.QtWidgets import QApplication, QHBoxLayout, QLabel
 
 from gridplayer.params.settings_fields import choices
 from gridplayer.params.static import TileOverlap, TileResize
@@ -94,12 +94,17 @@ SNAPS_POPUP_WIDTH = 330
 
 class TileSettings(NamedTuple):
     """The settings of Free Tiles the editor's bar changes: Tile Overlap,
-    On Window Resize, Snap Tiles and Snap To, read and set."""
+    On Window Resize, Arrange's Crop Limit and Reorder to Fit, Snap Tiles
+    and Snap To, read and set."""
 
     overlap: Callable[[], TileOverlap]
     set_overlap: Callable[[TileOverlap], None]
     resize: Callable[[], TileResize]
     set_resize: Callable[[TileResize], None]
+    crop: Callable[[], int]
+    set_crop: Callable[[int], None]
+    is_reordered: Callable[[], bool]
+    set_reordered: Callable[[bool], None]
     is_snapping: Callable[[], bool]
     set_snapping: Callable[[bool], None]
     snaps: Callable[[], frozenset]
@@ -150,9 +155,10 @@ class TileEditor(LayoutEditor):
     to close the video. A locked tile has a padlock by its name, and is
     neither moved nor sized.
 
-    The bar has Arrange Tiles, Arrange Uncropped and Fit Tiles to Window,
-    and Tile Overlap and Snap To, each in a small window of its own, before
-    Undo, Redo and Done (see LayoutEditor).
+    The bar has Arrange Tiles, its settings (Crop Limit, Reorder to Fit)
+    and Fit Tiles to Window, and Tile Overlap, On Window Resize and Snap
+    To, the settings each in a small window of its own, before Undo, Redo
+    and Done (see LayoutEditor).
     """
 
     is_tiles = True
@@ -171,7 +177,6 @@ class TileEditor(LayoutEditor):
     # a tile dragged onto another: their videos to trade tiles
     swap_requested = pyqtSignal(str, str)
     arrange_requested = pyqtSignal()
-    arrange_uncropped_requested = pyqtSignal()
     fit_requested = pyqtSignal()
 
     def __init__(
@@ -226,10 +231,8 @@ class TileEditor(LayoutEditor):
         self._arrange = self._bar_button(
             self.arrange_requested, translate("Actions", "Arrange Tiles"), "arrange"
         )
-        self._arrange_uncropped = self._bar_button(
-            self.arrange_uncropped_requested,
-            translate("Actions", "Arrange Uncropped"),
-            "arrange_uncropped",
+        self._arrange_settings = self._bar_button(
+            self._show_arrange, translate("Actions", "Arrange"), "crop"
         )
         self._fit = self._bar_button(
             self.fit_requested, translate("Actions", "Fit Tiles to Window"), "fit"
@@ -245,13 +248,18 @@ class TileEditor(LayoutEditor):
         self._snap = self._bar_button(
             self._show_snaps, translate("Snap To", "Snap To"), "snap"
         )
-        for button in (self._overlap, self._resize, self._snap):
+        for button in (
+            self._arrange_settings,
+            self._overlap,
+            self._resize,
+            self._snap,
+        ):
             button.setCheckable(True)
 
         self._lay_out_bar(
             (
                 self._arrange,
-                self._arrange_uncropped,
+                self._arrange_settings,
                 self._fit,
                 None,
                 self._overlap,
@@ -701,6 +709,32 @@ class TileEditor(LayoutEditor):
             refresh=refresh,
         )
 
+    def _show_arrange(self) -> None:
+        crop_label = QLabel(translate("Tile Crop", "Crop limit"))
+        choice = SegmentedChoice()
+        for crop, text in choices.tile_crops().items():
+            choice.addItem(text, crop)
+
+        switch = Switch()
+        switch_row = _switch_row(switch, translate("Reorder to Fit", "Reorder to Fit"))
+
+        def refresh():
+            with QSignalBlocker(choice), QSignalBlocker(switch):
+                choice.setCurrentIndex(choice.findData(self._settings.crop()))
+                switch.setChecked(self._settings.is_reordered())
+
+        refresh()
+        choice.currentIndexChanged.connect(
+            lambda _: self._settings.set_crop(choice.currentData())
+        )
+        switch.toggled.connect(self._settings.set_reordered)
+        self._show_popup(
+            self._arrange_settings,
+            translate("Actions", "Arrange"),
+            [crop_label, choice, switch_row],
+            refresh=refresh,
+        )
+
     def _show_resize(self) -> None:
         choice = SegmentedChoice()
         for resize, text in choices.tile_resize().items():
@@ -723,11 +757,7 @@ class TileEditor(LayoutEditor):
 
     def _show_snaps(self) -> None:
         switch = Switch()
-        switch_row = QHBoxLayout()
-        switch_row.setContentsMargins(0, 0, 0, 0)
-        switch_row.addWidget(switch)
-        switch_row.addWidget(ToggleLabel(translate("Snap Lines", "Snap Tiles"), switch))
-        switch_row.addStretch()
+        switch_row = _switch_row(switch, translate("Snap Lines", "Snap Tiles"))
 
         chips = ToggleChips()
         chips.set_choices(choices.tile_snaps())
@@ -1070,3 +1100,14 @@ def _handle_of(rect: Rect, x: float, y: float) -> Handle:
     if all(found):
         return found
     return near(min(EDGE_REACH, rect.width / 4, rect.height / 4))
+
+
+def _switch_row(switch: Switch, text: str) -> QHBoxLayout:
+    """A popup's switch with its name beside it, which turns it too."""
+
+    row = QHBoxLayout()
+    row.setContentsMargins(0, 0, 0, 0)
+    row.addWidget(switch)
+    row.addWidget(ToggleLabel(text, switch))
+    row.addStretch()
+    return row

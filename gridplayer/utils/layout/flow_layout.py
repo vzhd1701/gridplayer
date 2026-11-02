@@ -134,16 +134,23 @@ class FlowLayout:
 
         return math.ceil(math.sqrt(count))
 
-    def fit_to(self, width: int, height: int, shapes: Mapping[str, float]) -> None:
+    def fit_to(
+        self,
+        width: int,
+        height: int,
+        shapes: Mapping[str, float],
+        find_splits=best_splits,
+    ) -> None:
         """On Auto with is_match_shapes, choose the line size that shows
         the videos best in an area of this size (see picture_score).
 
         shapes has each video's width for its height, by id; a video not in
         it is taken to be DEFAULT_SHAPE. The line size there is now is kept
-        unless another shows the pictures SWITCH_GAIN times bigger.
+        unless another shows the pictures SWITCH_GAIN times bigger. In Fit
+        Shapes, find_splits finds the splits of the lines (see best_splits).
         """
         if self.mode == FlowMode.SHAPES:
-            self._fit_lines(width, height, shapes)
+            self._fit_lines(width, height, shapes, find_splits)
             return
 
         count = len(self.ids)
@@ -202,12 +209,7 @@ class FlowLayout:
             return shapes.get(video_id) or DEFAULT_SHAPE
 
         def orders_of(ids):
-            orders = [ids]
-            if self.is_reordered and len(ids) > 2:
-                by_shape = sorted(ids, key=shape_of)
-                # the widest in the middle, the narrowest out to the ends
-                orders += [by_shape, by_shape[::2] + by_shape[1::2][::-1]]
-            return orders
+            return reorder_candidates(ids, shape_of) if self.is_reordered else [ids]
 
         row_orders = orders_of(self.ids)
         column_orders = orders_of(self.column_ids or self.ids)
@@ -610,6 +612,18 @@ class FlowLayout:
         at = max(0, min(at, len(self.ids)))
         self.ids[at:at] = video_ids
         return []
+
+
+def reorder_candidates(ids, shape_of) -> list[list[str]]:
+    """Reorder to Fit's orders of the videos to try: their own, by shape,
+    and the widest in the middle, the narrowest out to the ends."""
+
+    ids = list(ids)
+    if len(ids) <= 2:
+        return [ids]
+
+    by_shape = sorted(ids, key=shape_of)
+    return [ids, by_shape, by_shape[::2] + by_shape[1::2][::-1]]
 
 
 def _line_weights(shapes, is_columns: bool) -> tuple[float, ...]:

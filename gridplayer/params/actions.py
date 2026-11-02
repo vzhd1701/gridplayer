@@ -2672,17 +2672,32 @@ ACTIONS = MappingProxyType(
             "is_choice": True,
         },
         "Arrange Tiles": {
+            # around the locked tiles, the pictures cut by up to Crop Limit
             "title": translate("Actions", "Arrange Tiles"),
             "icon": "grid-arrange-tiles",
             "func": "arrange_tiles",
             "show_if": ("is_grid_mode_set_to", GridMode.FREE),
         },
-        "Arrange Uncropped": {
-            # each tile its video's shape, gaps left around them
-            "title": translate("Actions", "Arrange Uncropped"),
-            "icon": "grid-arrange-uncropped",
-            "func": "arrange_tiles_uncropped",
+        "Arrange Reorder to Fit": {
+            # Fit Shapes' Reorder to Fit, one setting, in the Arrange menu:
+            # its keys are Reorder to Fit's, in the keymap once
+            "title": translate("Reorder to Fit", "Reorder to Fit"),
+            "icon": "grid-reorder",
+            "func": "switch_is_grid_reorder",
+            "check_if": "is_grid_reorder",
             "show_if": ("is_grid_mode_set_to", GridMode.FREE),
+            "is_keymapped": False,
+        },
+        **{
+            f"Tile Crop {crop}%": {
+                "title": title,
+                "icon": "empty",
+                "func": ("set_tile_crop", crop),
+                "check_if": ("is_tile_crop", crop),
+                "is_choice": True,
+                "show_if": ("is_grid_mode_set_to", GridMode.FREE),
+            }
+            for crop, title in choices.tile_crops().items()
         },
         "Fit Tiles to Window": {
             "title": translate("Actions", "Fit Tiles to Window"),

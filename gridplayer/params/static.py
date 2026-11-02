@@ -113,6 +113,10 @@ class StripSide(AutoName):
 # what Fit Shapes may cut off each video to fill the window, in percent
 GRID_CROPS = (0, 5, 10, 20, 30, 50)
 
+# what Free Tiles' Arrange may cut off each video to fill the room, in
+# percent
+TILE_CROPS = (0, 5, 10, 20, 30, 50)
+
 # a fill limit of all the picture: any cut allowed
 NO_FILL_LIMIT = 100
 

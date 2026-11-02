@@ -22,19 +22,6 @@ class Box(NamedTuple):
 FULL_BOX = Box(0.0, 0.0, 1.0, 1.0)
 
 
-def within(box: Box, area: Box) -> Box:
-    """A box as shares of an area, as shares of what that area is in."""
-
-    width = area.right - area.left
-    height = area.bottom - area.top
-    return Box(
-        area.left + box.left * width,
-        area.top + box.top * height,
-        area.left + box.right * width,
-        area.top + box.bottom * height,
-    )
-
-
 class Weights(NamedTuple):
     """How much of the area's width each column takes, and of its height
     each row, the lines between them moved by hand (see GridLines).

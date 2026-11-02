@@ -13,6 +13,7 @@ from gridplayer.params.settings_bindings import (
     PLAYLIST_ATTRS,
     VIDEO_DEFAULT_ATTRS,
 )
+from gridplayer.params.settings_fields import choices
 from gridplayer.params.settings_fields.kinds import (
     CheckboxField,
     FloatSpinField,
@@ -31,6 +32,7 @@ from gridplayer.params.settings_pages import (
     SUBTITLE_STYLE_PAGE,
     VIDEO_PAGE,
 )
+from gridplayer.params.static import GRID_CROPS, SINGLE_MODE_CROPS, TILE_CROPS
 from gridplayer.settings import _default_settings, default_value
 from gridplayer.widgets.settings_form import SettingsForm
 from tests.settings_layout import layout_keys
@@ -176,4 +178,12 @@ def test_the_grid_state_names_are_the_grid_fields():
         "playlist/grid_cols": "cols",
         "playlist/grid_preallocate": "preallocate",
         "playlist/tile_resize": "tile_resize",
+        "playlist/tile_crop": "tile_crop",
     }
+
+
+def test_the_crop_lists_are_their_choices():
+    # the menu names its items by the lists, the choices give their titles
+    assert tuple(choices.grid_crops()) == GRID_CROPS
+    assert tuple(choices.tile_crops()) == TILE_CROPS
+    assert tuple(choices.single_mode_crops()) == SINGLE_MODE_CROPS

@@ -6,6 +6,7 @@ from gridplayer.params.static import (
     GRID_CROPS,
     GRID_TEMPLATES,
     SINGLE_MODE_CROPS,
+    TILE_CROPS,
     GridMode,
     TileOverlap,
     TileResize,
@@ -67,6 +68,14 @@ SUBMENUS = MappingProxyType(
         },
         "Allow Cropping When Big": {
             "title": translate("Playlist Settings", "Crop Limit"),
+            "icon": "crop",
+        },
+        "Arrange": {
+            "title": translate("Actions", "Arrange"),
+            "icon": "grid-arrange-tiles",
+        },
+        "Tile Crop Limit": {
+            "title": translate("Tile Crop", "Crop Limit"),
             "icon": "crop",
         },
         "Tile Overlap": {
@@ -774,8 +783,13 @@ SECTIONS = MappingProxyType(
                 ),
                 "Free Tiles",
                 "---",
-                "Arrange Tiles",
-                "Arrange Uncropped",
+                (
+                    "Arrange",
+                    "Arrange Tiles",
+                    "Arrange Reorder to Fit",
+                    "---",
+                    ("Tile Crop Limit", *(f"Tile Crop {crop}%" for crop in TILE_CROPS)),
+                ),
                 "Fit Tiles to Window",
                 (
                     "On Window Resize",

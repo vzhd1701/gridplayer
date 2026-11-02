@@ -322,7 +322,8 @@ PLAYLIST_FIELDS: tuple[SettingField, ...] = (
             "Reorder to Fit",
             "Put videos of like shape together, so they show bigger.",
         ),
-        shown_when=When("playlist/grid_mode", _GRID_SHAPES),
+        # Fit Shapes', and Free Tiles' Arrange
+        shown_when=When("playlist/grid_mode", (*_GRID_SHAPES, GridMode.FREE)),
     ),
     SpinField(
         settings_key="playlist/grid_rows",
@@ -391,6 +392,17 @@ PLAYLIST_FIELDS: tuple[SettingField, ...] = (
             "Scale to Fit: the tiles fill the window. Keep Tile Sizes: the"
             " empty space changes first, and tiles shrink only when they"
             " don't fit.",
+        ),
+    ),
+    ComboField(
+        settings_key="playlist/tile_crop",
+        label=translate("Tile Crop", "Crop limit"),
+        choices=choices.tile_crops,
+        buttons=True,
+        shown_when=When("playlist/grid_mode", (GridMode.FREE,)),
+        tooltip=translate(
+            "Tile Crop",
+            "How much of each picture Arrange may cut to fill the space.",
         ),
     ),
     ComboField(

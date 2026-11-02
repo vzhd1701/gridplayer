@@ -1249,7 +1249,11 @@ def _add_tree_items(
             continue  # separators are noise in a shortcut editor
         else:
             action = ACTIONS.get(m_item)
-            if not action or action.get("menu_generator"):
+            if (
+                not action
+                or action.get("menu_generator")
+                or not action.get("is_keymapped", True)
+            ):
                 continue
             item = QStandardItem()
             _set_action_item(

@@ -1,6 +1,6 @@
 from PyQt5.QtCore import QEvent, QTimer
 
-from gridplayer.params.static import TileOverlap, TileResize, TileSnap
+from gridplayer.params.static import TILE_CROPS, TileOverlap, TileResize, TileSnap
 from gridplayer.player.managers.base import ManagerBase
 from gridplayer.playlist_settings import PlaylistSettings
 from gridplayer.utils.keymap import key_sequence_from_event, normalize_key_sequence
@@ -19,6 +19,8 @@ SETTING_ACTIONS = (
     *(f"Snap to {snap.name.replace('_', ' ').title()}" for snap in TileSnap),
     *(f"Tile Overlap {overlap.name.title()}" for overlap in TileOverlap),
     *(f"On Window Resize {resize.name.title()}" for resize in TileResize),
+    *(f"Tile Crop {crop}%" for crop in TILE_CROPS),
+    "Reorder to Fit",
 )
 
 

@@ -103,6 +103,7 @@ GRID_STATE_ATTR: MappingProxyType[str, str] = MappingProxyType(
         "playlist/grid_cols": "cols",
         "playlist/grid_preallocate": "preallocate",
         "playlist/tile_resize": "tile_resize",
+        "playlist/tile_crop": "tile_crop",
     }
 )
 

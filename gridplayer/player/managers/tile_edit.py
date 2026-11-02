@@ -42,6 +42,10 @@ class TileEditManager(LayoutEditManager):
                 set_overlap=commands.set_tile_overlap,
                 resize=commands.tile_resize,
                 set_resize=commands.set_tile_resize,
+                crop=commands.tile_crop,
+                set_crop=commands.set_tile_crop,
+                is_reordered=commands.is_grid_reorder,
+                set_reordered=self._set_reordered,
                 is_snapping=commands.is_grid_line_snap,
                 set_snapping=self._set_snapping,
                 snaps=commands.tile_snaps,
@@ -66,7 +70,6 @@ class TileEditManager(LayoutEditManager):
         editor.close_requested.connect(self._close_video)
         editor.swap_requested.connect(self._swap)
         editor.arrange_requested.connect(commands.arrange_tiles)
-        editor.arrange_uncropped_requested.connect(commands.arrange_tiles_uncropped)
         editor.fit_requested.connect(commands.fit_tiles_to_window)
         self._open(editor, switched_from)
 
@@ -95,6 +98,10 @@ class TileEditManager(LayoutEditManager):
     def _set_snapping(self, is_snapping: bool):
         if self._ctx.commands.is_grid_line_snap() != is_snapping:
             self._ctx.commands.toggle_grid_line_snap()
+
+    def _set_reordered(self, is_reordered: bool):
+        if self._ctx.commands.is_grid_reorder() != is_reordered:
+            self._ctx.commands.switch_is_grid_reorder()
 
     def _swap(self, video_id: str, other_id: str):
         # as a video dropped on another: they trade tiles, one change

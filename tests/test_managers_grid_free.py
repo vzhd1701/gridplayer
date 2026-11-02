@@ -177,14 +177,17 @@ def test_videos_with_no_room_on_the_page_have_all_tiles_arranged_anew():
     rects = _rects(manager)
     assert set(rects) == {"A", "B", "C"}
     assert not _overlapping(rects)
-    # as Arrange Tiles does: filling the page
-    assert _covered(rects) == pytest.approx(1000 * 500)
+    # as Arrange Tiles does: as much of the page as the crop limit lets them
+    # fill, three of this shape cut a fifth
+    assert _covered(rects) == pytest.approx(1000 * 500 / (1 - 0.2) * 2 / 3)
+    for rect in rects.values():
+        assert rect.width / rect.height == pytest.approx(2.0 / (1 - 0.2))
 
 
-def test_videos_with_no_room_are_arranged_as_the_tiles_were_last():
+def test_videos_with_no_room_are_arranged_with_the_crop_limit():
     manager = _manager({"A": 2.0, "B": 2.0, "C": 2.0})
     _free(manager, A=(0, 0, 500, 500), B=(500, 0, 1000, 500))
-    manager.cmd_arrange_tiles_uncropped()
+    manager._tile_crop = 0
     manager._free.tiles = {}
     _free(manager, A=(0, 0, 500, 500), B=(500, 0, 1000, 500))
 
@@ -210,8 +213,9 @@ def test_arranged_without_cropping_tiles_are_laid_out_as_fit_shapes():
     manager = _manager({"A": 2.0, "B": 2.0})
     _free(manager, A=(0, 0, 200, 100), B=(700, 300, 900, 400))
     before = dict(manager._free.tiles)
+    manager._tile_crop = 0
 
-    manager.cmd_arrange_tiles_uncropped()
+    manager.cmd_arrange_tiles()
 
     rects = _rects(manager)
     # side by side, filling the width
@@ -237,17 +241,16 @@ def test_arranged_without_cropping_tiles_are_laid_out_as_fit_shapes():
         },
     ],
 )
-@pytest.mark.parametrize(
-    "arrange", ["cmd_arrange_tiles", "cmd_arrange_tiles_uncropped"]
-)
-def test_tiles_arranged_again_stay_where_they_are(rects, arrange):
+@pytest.mark.parametrize("crop", [0, 20, 50])
+def test_tiles_arranged_again_stay_where_they_are(rects, crop):
     shapes = {"A": 16 / 9, "B": 3 / 4, "C": 16 / 9, "D": 1.0}
     manager = _manager({i: shapes[i] for i in rects})
     _free(manager, **rects)
+    manager._tile_crop = crop
 
-    getattr(manager, arrange)()
+    manager.cmd_arrange_tiles()
     arranged = _rects(manager)
-    getattr(manager, arrange)()
+    manager.cmd_arrange_tiles()
 
     assert _rects(manager) == arranged
 
@@ -257,8 +260,10 @@ def test_arranged_tiles_fill_the_page_and_can_be_undone():
     manager = _manager(shapes)
     _free(manager, A=(0, 0, 150, 90), B=(500, 0, 650, 90), C=(100, 300, 250, 390))
 
-    manager.cmd_arrange_tiles_uncropped()
+    manager._tile_crop = 0
+    manager.cmd_arrange_tiles()
     exact = _rects(manager)
+    manager._tile_crop = 50
     manager.cmd_arrange_tiles()
     filled = _rects(manager)
 
@@ -724,8 +729,9 @@ def test_tiles_arranged_leave_a_locked_one_where_it_is():
     manager = _manager({"A": 2.0, "B": 2.0, "C": 2.0})
     _free(manager, A=(600, 0, 1000, 500), B=(0, 0, 200, 100), C=(700, 300, 900, 400))
     manager._free.set_locked("A", True)
+    manager._tile_crop = 0
 
-    manager.cmd_arrange_tiles_uncropped()
+    manager.cmd_arrange_tiles()
 
     rects = _rects(manager)
     _approx(rects["A"], (600, 0, 1000, 500))
@@ -831,3 +837,167 @@ def test_a_tile_fit_to_its_video_loses_the_bars_beside_the_picture():
     manager.cmd_undo_grid()
 
     _approx(_rects(manager)["A"], (0, 0, 500, 500))
+
+
+def test_tiles_arranged_go_all_round_a_locked_one():
+    shapes = {"A": 2.0, "B": 16 / 9, "C": 16 / 9, "D": 16 / 9, "E": 16 / 9}
+    manager = _manager(shapes)
+    _free(
+        manager,
+        A=(350, 150, 650, 350),
+        B=(0, 0, 160, 90),
+        C=(800, 0, 960, 90),
+        D=(0, 400, 160, 490),
+        E=(800, 400, 960, 490),
+    )
+    manager._free.set_locked("A", True)
+
+    manager.cmd_arrange_tiles()
+
+    rects = _rects(manager)
+    _approx(rects["A"], (350, 150, 650, 350))
+    assert not _overlapping(rects)
+    # not all in the biggest room on one side of it: some on its left, and
+    # some on its right
+    others = [rects[i] for i in "BCDE"]
+    assert any(r.right <= 350 + 0.5 for r in others)
+    assert any(r.left >= 650 - 0.5 for r in others)
+    # each picture cut by no more than the limit
+    for video_id in "BCDE":
+        r = rects[video_id]
+        stretch = (r.width / r.height) / shapes[video_id]
+        assert 1 - min(stretch, 1 / stretch) <= 0.2 + 1e-6
+
+
+def test_crop_limit_is_20_by_default_and_kept_in_the_grid_state(mocker):
+    manager = _manager({"A": 2.0})
+    _free(manager, A=(0, 0, 400, 200))
+    assert manager._tile_crop == 20
+    manager._tile_crop = 5
+
+    state = GridState.model_validate(manager.grid_state().model_dump(mode="json"))
+    loaded = _manager({"A": 2.0})
+    mocker.patch.object(loaded, "_render_video_grid")
+    loaded.set_grid_state(state)
+
+    assert loaded._tile_crop == 5
+    assert loaded.commands["is_tile_crop"](5)
+
+
+def test_crop_limit_set_arranges_again_tiles_as_arrange_left_them():
+    shapes = {"A": 16 / 9, "B": 3 / 4, "C": 16 / 9}
+    manager = _manager(shapes)
+    _free(manager, A=(0, 0, 150, 90), B=(500, 0, 650, 90), C=(100, 300, 250, 390))
+    manager._tile_crop = 0
+    manager.cmd_arrange_tiles()
+    exact = _rects(manager)
+
+    manager.cmd_set_tile_crop(50)
+
+    assert manager._tile_crop == 50
+    assert _covered(_rects(manager)) > _covered(exact)
+
+    manager.cmd_undo_grid()
+    assert manager._tile_crop == 0
+    assert _rects(manager) == exact
+
+
+def test_crop_limit_set_leaves_tiles_moved_since_where_they_are():
+    manager = _manager({"A": 2.0, "B": 2.0})
+    _free(manager, A=(0, 0, 200, 100), B=(700, 300, 900, 400))
+    before = dict(manager._free.tiles)
+
+    manager.cmd_set_tile_crop(0)
+
+    assert manager._free.tiles == before
+
+
+def test_tiles_arranged_round_a_locked_one_again_stay_where_they_are():
+    shapes = {"A": 2.0, "B": 16 / 9, "C": 9 / 16, "D": 4 / 3, "E": 16 / 9, "F": 1.0}
+    manager = _manager(shapes)
+    _free(
+        manager,
+        A=(300, 150, 700, 350),
+        B=(0, 0, 140, 80),
+        C=(800, 20, 940, 100),
+        D=(100, 400, 240, 480),
+        E=(750, 380, 890, 460),
+        F=(400, 0, 540, 80),
+    )
+    manager._free.set_locked("A", True)
+
+    manager.cmd_arrange_tiles()
+    arranged = _rects(manager)
+    manager.cmd_arrange_tiles()
+
+    assert _rects(manager) == arranged
+
+
+def test_reorder_to_fit_arranges_again_tiles_as_arrange_left_them():
+    shapes = {"A": 2.0, "B": 9 / 16, "C": 16 / 9, "D": 9 / 16, "E": 16 / 9}
+    manager = _manager(shapes)
+    _free(
+        manager,
+        A=(300, 0, 700, 500),
+        B=(0, 0, 140, 80),
+        C=(800, 20, 940, 100),
+        D=(100, 400, 240, 480),
+        E=(750, 380, 890, 460),
+    )
+    manager._free.set_locked("A", True)
+    manager.cmd_arrange_tiles()
+    kept = _rects(manager)
+
+    manager.cmd_switch_is_grid_reorder()
+
+    assert manager._flow.is_reordered
+    reordered = _rects(manager)
+    assert reordered != kept
+    _approx(reordered["A"], (300, 0, 700, 500))
+    assert not _overlapping(reordered)
+    # arranged again: the same
+    manager.cmd_arrange_tiles()
+    assert _rects(manager) == reordered
+
+    manager.cmd_undo_grid()
+    assert not manager._flow.is_reordered
+    assert _rects(manager) == kept
+
+
+def test_crop_limit_from_the_settings_arranges_again_as_from_the_menu():
+    shapes = {"A": 16 / 9, "B": 3 / 4, "C": 16 / 9}
+    manager = _manager(shapes)
+    _free(manager, A=(0, 0, 150, 90), B=(500, 0, 650, 90), C=(100, 300, 250, 390))
+    manager.cmd_arrange_tiles()
+    from_menu = _manager(shapes)
+    _free(from_menu, A=(0, 0, 150, 90), B=(500, 0, 650, 90), C=(100, 300, 250, 390))
+    from_menu.cmd_arrange_tiles()
+
+    assert manager.apply_grid_config(
+        manager.grid_state().model_copy(update={"tile_crop": 0})
+    )
+    from_menu.cmd_set_tile_crop(0)
+
+    assert manager._tile_crop == 0
+    assert _rects(manager) == _rects(from_menu)
+    for video_id, rect in _rects(manager).items():
+        assert rect.width / rect.height == pytest.approx(shapes[video_id])
+
+
+def test_both_arrange_settings_from_the_settings_arrange_again_once(mocker):
+    shapes = {"A": 16 / 9, "B": 3 / 4, "C": 16 / 9}
+    manager = _manager(shapes)
+    _free(manager, A=(0, 0, 150, 90), B=(500, 0, 650, 90), C=(100, 300, 250, 390))
+    manager.cmd_arrange_tiles()
+    arrange = mocker.spy(manager, "_arrange")
+    changed = mocker.Mock()
+    manager.layout_changed.connect(changed)
+
+    assert manager.apply_grid_config(
+        manager.grid_state().model_copy(update={"tile_crop": 0, "is_reordered": True})
+    )
+
+    assert (manager._tile_crop, manager._flow.is_reordered) == (0, True)
+    arrange.assert_called_once()
+    # the editor shown where the tiles went
+    changed.assert_called()

@@ -194,7 +194,7 @@ def _sparkle(x: float, y: float, size: float) -> QPainterPath:
 def icon_paths(kind: str) -> tuple[QPainterPath, QPainterPath | None]:
     """An icon's lines, and what of it is filled, if anything: the rows, the
     columns, the lines fitted to the videos or reset, undo, redo, reopen; the
-    tiles arranged (filling the window, or not), fitted to the window, kept
+    tiles arranged, how much that may crop, fitted to the window, kept
     as the window is resized, one over another, snapping; a lock, a tile put
     in front, or behind.
 
@@ -243,20 +243,24 @@ def icon_paths(kind: str) -> tuple[QPainterPath, QPainterPath | None]:
         path.lineTo(8, 11)
         path.moveTo(5, 8)
         path.lineTo(11, 8)
-    elif kind in {"arrange", "arrange_uncropped"}:
-        # tiles of a few sizes, lined up, and a sparkle: done for you
+    elif kind == "arrange":
+        # tiles of a few sizes, lined up, filled in, and a sparkle: done for
+        # you
         tiles = QPainterPath()
         for rect in ((2, 2.5, 5.5, 5), (2, 9.5, 3.5, 4), (7.5, 9.5, 6.5, 4)):
             tiles.addRect(QRectF(*rect))
         # its middle on a pixel's middle in the menu and on the bar, so its
         # thin points come out even
         fill = _sparkle(11.6, 5.2, 2.95)
-        # the tiles filled in, as they fill the window; or their outlines,
-        # with the room left around them
-        if kind == "arrange":
-            fill.addPath(tiles)
-        else:
-            path = tiles
+        fill.addPath(tiles)
+    elif kind == "crop":
+        # two corners crossing, where a picture is cut, as the menu's crop
+        path.moveTo(4.5, 2)
+        path.lineTo(4.5, 11.5)
+        path.lineTo(14, 11.5)
+        path.moveTo(2, 4.5)
+        path.lineTo(11.5, 4.5)
+        path.lineTo(11.5, 14)
     elif kind == "fit":
         # the window, the tiles stretched out to its sides
         path.addRoundedRect(QRectF(2, 2.5, 12, 11), 1.5, 1.5)

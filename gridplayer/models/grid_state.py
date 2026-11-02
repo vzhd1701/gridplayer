@@ -32,6 +32,7 @@ class GridState(BaseModel):
     cols: int = default_field("playlist/grid_cols")
     preallocate: bool = default_field("playlist/grid_preallocate")
     tile_resize: TileResize = default_field("playlist/tile_resize")
+    tile_crop: int = default_field("playlist/tile_crop")
     cells: list[GridCell] = Field(default_factory=list)
     video_order: list[str] = Field(default_factory=list)
     # in Fit Shapes, how many steps bigger videos are made (smaller, less

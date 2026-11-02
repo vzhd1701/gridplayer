@@ -2,15 +2,15 @@ from __future__ import annotations
 
 import math
 import random
-from collections.abc import Callable, Collection, Iterable, Iterator
+from collections.abc import Callable, Collection, Iterable, Iterator, Mapping
 from dataclasses import dataclass, field
 from enum import Enum, auto
 from itertools import product, takewhile
-from typing import NamedTuple
+from typing import NamedTuple, TypeVar
 
 from gridplayer.params.static import TileResize, TileSnap
 from gridplayer.utils.drop_zone import DropZone
-from gridplayer.utils.layout.boxes import Box, within
+from gridplayer.utils.layout.boxes import Box
 from gridplayer.utils.layout.flow_layout import DEFAULT_SHAPE
 from gridplayer.utils.layout.lines import LINE_REACH, MIN_CELL, SNAP_REACH
 
@@ -37,6 +37,8 @@ _SHAPE_NEAR = 0.01
 # how many halvings a move cut short at a tile in the way is looked for in
 _STEPS = 16
 
+K = TypeVar("K")
+
 
 class Rect(NamedTuple):
     """A tile on the page, in the page's pixels as it is shown."""
@@ -61,6 +63,27 @@ class Rect(NamedTuple):
     @property
     def center_y(self) -> float:
         return (self.top + self.bottom) / 2
+
+    @classmethod
+    def of_box(cls, box: Box, area: Rect) -> Rect:
+        """A box as shares of an area, in the area's pixels."""
+
+        return cls(
+            area.left + box.left * area.width,
+            area.top + box.top * area.height,
+            area.left + box.right * area.width,
+            area.top + box.bottom * area.height,
+        )
+
+    def as_box(self, width: float, height: float) -> Box:
+        """As shares of an area of this size at nought."""
+
+        return Box(
+            self.left / width,
+            self.top / height,
+            self.right / width,
+            self.bottom / height,
+        )
 
     def moved(self, dx: float, dy: float) -> Rect:
         return Rect(self.left + dx, self.top + dy, self.right + dx, self.bottom + dy)
@@ -342,36 +365,20 @@ class FreeTiles:
             height,
             max_scale=1.0 if self.resize == TileResize.KEEP else math.inf,
         )
-        return [
-            (
-                video_id,
-                Box(r.left / width, r.top / height, r.right / width, r.bottom / height),
-            )
-            for video_id, r in rects.items()
-        ]
+        return [(video_id, r.as_box(width, height)) for video_id, r in rects.items()]
 
     def rects(self, page_width: float, page_height: float) -> dict[str, Rect]:
         """The tiles on a page of this size, in its pixels."""
 
+        page = Rect(0, 0, page_width, page_height)
         return {
-            video_id: Rect(
-                box.left * page_width,
-                box.top * page_height,
-                box.right * page_width,
-                box.bottom * page_height,
-            )
-            for video_id, box in self.tiles.items()
+            video_id: Rect.of_box(box, page) for video_id, box in self.tiles.items()
         }
 
     def set_rect(
         self, video_id: str, rect: Rect, page_width: float, page_height: float
     ) -> None:
-        self.tiles[video_id] = Box(
-            rect.left / page_width,
-            rect.top / page_height,
-            rect.right / page_width,
-            rect.bottom / page_height,
-        )
+        self.tiles[video_id] = rect.as_box(page_width, page_height)
 
     def handle_at(
         self, x: float, y: float, page_width: float, page_height: float
@@ -418,28 +425,11 @@ class FreeTiles:
     def id_at(self, row: int, col: int) -> str | None:
         return None
 
-    def order(self, is_columns: bool = False) -> list[str]:
-        """The videos as the tiles are read, row by row: a tile is in the
-        row of the one before it if it starts above that row's bottom. Or
-        column by column, likewise."""
+    def order(self) -> list[str]:
+        """The videos as the tiles are read, row by row (see
+        read_in_rows)."""
 
-        rects = self.rects(self.page_shape, 1)
-        if is_columns:
-            # turned on their side, the columns read as rows
-            rects = {
-                i: Rect(r.top, r.left, r.bottom, r.right) for i, r in rects.items()
-            }
-        rows: list[list[str]] = []
-        row_bottom = 0.0
-        for video_id in sorted(rects, key=lambda i: (rects[i].top, rects[i].left)):
-            rect = rects[video_id]
-            if rows and rect.top < row_bottom - 1e-6:
-                rows[-1].append(video_id)
-                row_bottom = min(row_bottom, rect.bottom)
-            else:
-                rows.append([video_id])
-                row_bottom = rect.bottom
-        return [i for row in rows for i in sorted(row, key=lambda i: rects[i].left)]
+        return read_in_rows(self.rects(self.page_shape, 1))
 
     def contains(self, video_id: str) -> bool:
         return video_id in self.tiles
@@ -762,49 +752,11 @@ class FreeTiles:
             self.set_rect(other_id, rect, self.page_shape, 1)
         return True
 
-    def open_area(self) -> Box | None:
-        """The biggest part of the page no locked tile is on, as shares of
-        it: all of it, with none; None, with none of it left."""
+    def arrange(self, boxes: Iterable[tuple[str, Box]]) -> None:
+        """Tiles laid out anew at boxes, as shares of the page, the others
+        left where they are."""
 
-        rects = self.rects(self.page_shape, 1)
-        walls = [rects[i] for i in self.locked]
-
-        # each made of the page's edges and the walls'
-        found = (
-            Rect(*edges)
-            for edges in product(
-                {0.0, *(w.right for w in walls)},
-                {0.0, *(w.bottom for w in walls)},
-                {self.page_shape, *(w.left for w in walls)},
-                {1.0, *(w.top for w in walls)},
-            )
-        )
-        best = max(
-            (
-                rect
-                for rect in found
-                if rect.width > _HAIR
-                and rect.height > _HAIR
-                and not any(rect.overlaps(w, _NEAR_SHARE) for w in walls)
-            ),
-            key=lambda rect: rect.width * rect.height,
-            default=None,
-        )
-
-        if best is None:
-            return None
-        return Box(
-            best.left / self.page_shape,
-            best.top,
-            best.right / self.page_shape,
-            best.bottom,
-        )
-
-    def arrange(self, boxes: Iterable[tuple[str, Box]], area: Box) -> None:
-        """Tiles laid out anew at boxes, as shares of an area of the page
-        (see open_area), the others left where they are."""
-
-        laid_out = {video_id: within(box, area) for video_id, box in boxes}
+        laid_out = dict(boxes)
         kept = {i: box for i, box in self.tiles.items() if i not in laid_out}
         self.tiles = {**laid_out, **kept}
         self._restack()
@@ -827,6 +779,28 @@ class FreeTiles:
         if rect is None or rect.width < wanted * ROOM_SHARE:
             return None
         return rect
+
+
+def read_in_rows(rects: Mapping[K, Rect], is_columns: bool = False) -> list[K]:
+    """Their keys as the rects are read, row by row: a rect is in the row
+    of the one before it if it starts above that row's bottom. Or column
+    by column, likewise."""
+
+    if is_columns:
+        # turned on their side, the columns read as rows
+        rects = {k: Rect(r.top, r.left, r.bottom, r.right) for k, r in rects.items()}
+
+    rows: list[list[K]] = []
+    row_bottom = 0.0
+    for key in sorted(rects, key=lambda k: (rects[k].top, rects[k].left)):
+        rect = rects[key]
+        if rows and rect.top < row_bottom - _HAIR:
+            rows[-1].append(key)
+            row_bottom = min(row_bottom, rect.bottom)
+        else:
+            rows.append([key])
+            row_bottom = rect.bottom
+    return [k for row in rows for k in sorted(row, key=lambda k: rects[k].left)]
 
 
 def _box_rect(box: Box, page_width: float) -> Rect:

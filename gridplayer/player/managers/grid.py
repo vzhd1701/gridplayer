@@ -35,11 +35,10 @@ from gridplayer.utils.layout import (
     Weights,
     grid_box,
 )
-from gridplayer.utils.layout.boxes import box_rect
+from gridplayer.utils.layout.arrange import arrange_around
 from gridplayer.utils.layout.flow_layout import DEFAULT_SHAPE
 from gridplayer.utils.layout.free_tiles import FreeTiles, Rect, TilePlace
 from gridplayer.utils.layout.lines import (
-    MIN_CELL,
     FitCell,
     GridLines,
     MovableLines,
@@ -59,15 +58,6 @@ from gridplayer.widgets.held_place import HeldPlace
 
 # how many changes of the grid can be undone
 UNDO_LIMIT = 50
-
-# how many times Arrange Tiles goes over the tiles at most, till they stay
-ARRANGE_ROUNDS = 8
-
-# how much of each picture Arrange Tiles may leave out to fill the area, in
-# percent, the least that does tried first
-FILL_CROPS = (5, 10, 15, 20, 25, 30, 40, 50)
-# the share of the area tiles must cover to fill it
-FILLED = 0.999
 
 # a video's cell made a step bigger or smaller: rows and columns more
 CELL_STEPS = {
@@ -106,12 +96,6 @@ def _flow_mode(mode: GridMode) -> FlowMode:
     if mode == GridMode.AUTO_SHAPES:
         return FlowMode.SHAPES
     return FlowMode.ROWS
-
-
-def _covered(boxes) -> float:
-    """The share of the area these boxes, side by side, cover."""
-
-    return sum((box.right - box.left) * (box.bottom - box.top) for box in boxes)
 
 
 class GridManager(ManagerBase):
@@ -153,10 +137,9 @@ class GridManager(ManagerBase):
         # the tiles are still as Arrange left them (see _fit_tiles_to_shapes)
         self._unshaped: set[str] = set()
         self._is_arranged = False
-        # whether tiles arranged anew fill the area, as Arrange Tiles makes
-        # them, or keep their videos' shapes, as Arrange Uncropped does: as
-        # they were arranged last
-        self._is_filled = True
+        # how much of each picture Arrange Tiles may cut to fill the room,
+        # in percent
+        self._tile_crop: int = Settings().get("playlist/tile_crop")
 
         # the last lines fit_weights found, and for what: asked for each
         # time the menu is made, to say whether fitting would change them
@@ -277,7 +260,9 @@ class GridManager(ManagerBase):
             "free_page": self.free_page,
             "set_free_tiles": self.set_free_tiles,
             "arrange_tiles": self.cmd_arrange_tiles,
-            "arrange_tiles_uncropped": self.cmd_arrange_tiles_uncropped,
+            "tile_crop": lambda: self._tile_crop,
+            "set_tile_crop": self.cmd_set_tile_crop,
+            "is_tile_crop": lambda crop: self._tile_crop == crop,
             "fit_tiles_to_window": self.cmd_fit_tiles_to_window,
             "tile_resize": lambda: self._free.resize,
             "set_tile_resize": self.cmd_set_tile_resize,
@@ -360,6 +345,7 @@ class GridManager(ManagerBase):
             page_height=self._free.page_height if self._free.tiles else None,
             locked_tiles=[i for i in self._free.tiles if i in self._free.locked],
             tile_resize=self._free.resize,
+            tile_crop=self._tile_crop,
             is_tiles_as_placed=self._free.is_as_placed,
         )
 
@@ -406,6 +392,7 @@ class GridManager(ManagerBase):
         self._free.page_height = state.page_height
         self._free.resize = state.tile_resize
         self._free.is_as_placed = state.is_tiles_as_placed
+        self._tile_crop = state.tile_crop
         self._is_arranged = False
 
         if self._is_fixed:
@@ -530,7 +517,12 @@ class GridManager(ManagerBase):
         Returns False if the user cancelled a confirmation dialog.
         """
         with self._undoable():
-            return self._apply_grid_config(config)
+            if not self._apply_grid_config(config):
+                return False
+
+        # the tiles maybe arranged again, the editor following
+        self.layout_changed.emit()
+        return True
 
     def _apply_grid_config(self, config: GridState) -> bool:
         mode = config.mode
@@ -581,17 +573,29 @@ class GridManager(ManagerBase):
         self._mode = mode
         self._flow.mode = _flow_mode(mode)
         self._set_flow_options(config)
-        self.layout_changed.emit()
         return True
 
     def _set_flow_options(self, config: GridState) -> None:
         self._flow.is_fit = config.is_fit
         self._flow.is_match_shapes = config.is_match_shapes
         self._flow.crop = config.crop
-        self._flow.is_reordered = config.is_reordered
         self._flow.size = config.size
         self._set_linked(config.is_linked)
         self._set_tile_resize(config.tile_resize)
+        self._set_arrange_options(config.tile_crop, config.is_reordered)
+
+    def _set_arrange_options(self, crop: int, is_reordered: bool) -> None:
+        """Arrange Tiles' Crop Limit and Reorder to Fit (Fit Shapes' too):
+        tiles as Arrange left them arranged again, once, by the new ones."""
+
+        if (crop, is_reordered) == (self._tile_crop, self._flow.is_reordered):
+            return
+
+        self._tile_crop = crop
+        self._flow.is_reordered = is_reordered
+        if self._is_free and self._is_arranged:
+            self._arrange()
+            self._grid.invalidate()
 
     def _set_tile_resize(self, resize: TileResize) -> None:
         if resize == self._free.resize:
@@ -932,6 +936,12 @@ class GridManager(ManagerBase):
         if self._free.resize != resize:
             self._set_flow_option("playlist/tile_resize", resize)
 
+    def cmd_set_tile_crop(self, crop: int):
+        """How much Arrange Tiles may cut each picture."""
+
+        if self._tile_crop != crop:
+            self._set_flow_option("playlist/tile_crop", crop)
+
     def cmd_set_grid_crop(self, crop: int):
         if self._flow.crop != crop:
             self._set_flow_option("playlist/grid_crop", crop)
@@ -946,6 +956,10 @@ class GridManager(ManagerBase):
                 self._set_linked(value)
             elif key == "playlist/tile_resize":
                 self._set_tile_resize(value)
+            elif key == "playlist/tile_crop":
+                self._set_arrange_options(value, self._flow.is_reordered)
+            elif key == "playlist/grid_reorder":
+                self._set_arrange_options(self._tile_crop, value)
             else:
                 setattr(self._flow, GRID_STATE_ATTR[key], value)
             PlaylistSettings().set(key, value)
@@ -1411,27 +1425,18 @@ class GridManager(ManagerBase):
         return [(video_id, box) for video_id, box in cells if video_id in live]
 
     def cmd_arrange_tiles(self):
-        """The tiles laid out anew as Fit Shapes would, on a page the shape
-        of the area, the videos in the order they are read in, row by row
-        for rows and column by column for columns: those not locked, in the
-        biggest part of it the locked ones are not on. Then stretched to
-        fill it: each leaving out the same share of its video's picture, as
-        little as does it (see FILL_CROPS)."""
+        """The tiles not locked laid out anew around those that are, on a
+        page the shape of the area (see arrange_around): the videos in the
+        order they are read in, row by row for rows and column by column
+        for columns, or with Reorder to Fit in the order that shows them
+        best; each picture cut by up to the Crop Limit to fill the room,
+        and by no more than that does."""
 
-        self._arrange_tiles(is_fill=True)
-
-    def cmd_arrange_tiles_uncropped(self):
-        """The tiles arranged as Arrange Tiles does, each its video's shape:
-        the room they leave left around them."""
-
-        self._arrange_tiles(is_fill=False)
-
-    def _arrange_tiles(self, is_fill: bool) -> None:
         if not self._is_free:
             return
 
         with self._undoable():
-            self._arrange(is_fill)
+            self._arrange()
             self.layout_changed.emit()
 
     def cmd_fit_tiles_to_window(self):
@@ -1449,50 +1454,36 @@ class GridManager(ManagerBase):
             self._grid.invalidate()
             self.layout_changed.emit()
 
-    def _arrange(self, is_fill: bool) -> None:
+    def _arrange(self) -> None:
         width, height = self._area_size()
         self._free.fill(width, height)
 
         live = self._ctx.video_blocks.video_ids
+        rects = self._free.rects(width, height)
 
-        # in the room the locked tiles leave; with too little, all of them
-        area = self._free.open_area()
-        _, _, area_width, area_height = box_rect(area or FULL_BOX, width, height)
-        if area is not None and min(area_width, area_height) >= MIN_CELL:
-            left_out = self._free.locked
-        else:
-            area, area_width, area_height = FULL_BOX, width, height
-            left_out = set()
+        def arranged(left_out):
+            ids = [i for i in live if i not in left_out]
+            return arrange_around(
+                width,
+                height,
+                [rect for i, rect in rects.items() if i in left_out],
+                ids,
+                rects,
+                {i: self._shape_of(i) for i in ids},
+                self._tile_crop,
+                self._flow.is_reordered,
+            )
 
-        def read(is_columns):
-            ids = [i for i in self._free.order(is_columns) if i in set(live)]
-            ids += [i for i in live if i not in ids]
-            return [i for i in ids if i not in left_out]
+        # around the locked tiles; with no room left by them, all of them
+        boxes = arranged(self._free.locked)
+        if boxes is None:
+            boxes = arranged(set())
+        if boxes is None:
+            return
 
-        # read along the lines they are to go in, so that tiles arranged
-        # already are read in the order they were put in. Arranged again
-        # until they stay: each time either the same or better, so arranging
-        # them once more leaves them be
-        laid_out = None
-        for _ in range(ARRANGE_ROUNDS):
-            ids = read(False)
-            shapes = {i: self._shape_of(i) for i in ids}
-            for crop in FILL_CROPS if is_fill else (0,):
-                flow = FlowLayout(
-                    mode=FlowMode.SHAPES, ids=ids, column_ids=read(True), crop=crop
-                )
-                flow.fit_to(area_width, area_height, shapes)
-                boxes = dict(flow.boxes())
-                if _covered(boxes.values()) >= FILLED:
-                    break
-            if boxes == laid_out:
-                break
-            self._free.arrange(boxes.items(), area)
-            laid_out = boxes
-
-        self._unshaped = {i for i in ids if not self._is_shape_known(i)}
+        self._free.arrange(boxes.items())
+        self._unshaped = {i for i in boxes if not self._is_shape_known(i)}
         self._is_arranged = True
-        self._is_filled = is_fill
 
     def _add_tiles(self, video_ids: list[str]) -> None:
         """New videos' tiles put where there is room on the window, made
@@ -1504,7 +1495,7 @@ class GridManager(ManagerBase):
             self._free.fill(*self._area_size())
         # none placed yet, or no room for some: all of them arranged anew
         if self._free.add(video_ids):
-            self._arrange(self._is_filled)
+            self._arrange()
 
     def _fit_tiles_to_shapes(self) -> None:
         """Tiles made for videos whose shapes were not known then, now that
@@ -1517,7 +1508,7 @@ class GridManager(ManagerBase):
 
         self._unshaped -= shaped
         if self._is_arranged:
-            self._arrange(self._is_filled)
+            self._arrange()
         else:
             self._keep_tiles_shown()
             for video_id in shaped:
