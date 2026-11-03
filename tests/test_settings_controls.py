@@ -1,6 +1,6 @@
 import pytest
-from PyQt5.QtCore import QDeadlineTimer, QEvent, QPoint, Qt
-from PyQt5.QtGui import QColor, QPalette
+from PyQt5.QtCore import QDeadlineTimer, QEvent, QPoint, QPointF, Qt
+from PyQt5.QtGui import QColor, QIcon, QMouseEvent, QPalette, QPixmap
 from PyQt5.QtTest import QTest
 from PyQt5.QtWidgets import QAbstractButton, QApplication, QScrollArea
 
@@ -9,7 +9,13 @@ from gridplayer.params.settings_fields.kinds import Indented, Section
 from gridplayer.params.settings_fields.registry import FIELDS
 from gridplayer.params.static import ProxyMode, TileSnap
 from gridplayer.settings import default_value
-from gridplayer.widgets.settings_controls import SegmentedChoice, Switch, ToggleLabel
+from gridplayer.widgets.settings_controls import (
+    SEGMENT_ICON,
+    SEGMENT_PADDING,
+    SegmentedChoice,
+    Switch,
+    ToggleLabel,
+)
 from gridplayer.widgets.settings_editors import make_editor
 from gridplayer.widgets.settings_form import ROW_HEIGHT, SCROLL_MS, SettingsForm
 
@@ -55,6 +61,22 @@ class TestSegmentedChoice:
         QTest.keyClick(choice, Qt.Key_Left)
         QTest.keyClick(choice, Qt.Key_Left)
         assert choice.currentIndex() == 0
+
+    def test_an_icon_takes_its_texts_place_the_text_its_tip(self):
+        icon = QIcon(QPixmap(16, 16))
+        choice = _choice(("Fit", "fit"))
+        choice.addItem("Mosaic", "mosaic", icon)
+        choice.resize(choice.sizeHint())
+        widths = choice._widths()
+
+        assert widths[1] == SEGMENT_ICON + 2 * SEGMENT_PADDING
+        at = QPointF(widths[0] + widths[1] / 2, 5)
+        QApplication.sendEvent(
+            choice,
+            QMouseEvent(QEvent.MouseMove, at, Qt.NoButton, Qt.NoButton, Qt.NoModifier),
+        )
+        assert choice.toolTip() == "Mosaic"
+        choice.grab()
 
     def test_picking_the_current_one_again_is_not_a_change(self):
         choice = _choice(("A", 1), ("B", 2))

@@ -5,7 +5,7 @@ from PyQt5.QtTest import QTest
 from PyQt5.QtWidgets import QApplication
 
 from gridplayer.params.actions import ACTIONS
-from gridplayer.params.static import TileOverlap, TileResize, TileSnap
+from gridplayer.params.static import GridMode, TileOverlap, TileResize, TileSnap
 from gridplayer.player.managers.layout_edit import EDITOR_ACTIONS, SETTING_ACTIONS
 from gridplayer.utils.layout.boxes import Box
 from gridplayer.utils.layout.free_tiles import MOVE, FreeTiles, TileDrag
@@ -427,6 +427,22 @@ class TestPopups:
 
         assert not any(button.isVisibleTo(editor) for button in buttons)
         assert editor._arrange_settings.isVisibleTo(editor)
+
+    def test_the_switch_says_the_mode_it_is_in_and_asks_for_another(
+        self, editor, settings
+    ):
+        asked = []
+        editor.kind_requested.connect(asked.append)
+        assert editor._kind.currentData() == GridMode.FREE
+
+        # made Mosaic from the menu: said, nothing asked
+        settings["mosaic"] = True
+        editor.update_undo()
+        assert editor._kind.currentData() == GridMode.MOSAIC
+        assert asked == []
+
+        editor._kind.setCurrentIndex(editor._kind.findData(GridMode.FIXED))
+        assert asked == [GridMode.FIXED]
 
     def test_a_popup_passes_the_players_keys_on(self, editor):
         pressed = []

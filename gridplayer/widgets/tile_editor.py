@@ -15,7 +15,7 @@ from PyQt5.QtGui import QColor, QCursor, QPainter, QPen, QRegion
 from PyQt5.QtWidgets import QApplication, QHBoxLayout, QLabel
 
 from gridplayer.params.settings_fields import choices
-from gridplayer.params.static import TileOverlap, TileResize
+from gridplayer.params.static import GridMode, TileOverlap, TileResize
 from gridplayer.utils.layout.boxes import Box, box_rect
 from gridplayer.utils.layout.free_tiles import (
     MOVE,
@@ -715,6 +715,9 @@ class TileEditor(LayoutEditor):
             [choice],
             refresh=refresh,
         )
+
+    def kind(self) -> GridMode:
+        return GridMode.MOSAIC if self._settings.is_mosaic() else GridMode.FREE
 
     def update_undo(self) -> None:
         super().update_undo()

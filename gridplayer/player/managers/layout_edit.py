@@ -1,6 +1,12 @@
 from PyQt5.QtCore import QEvent, QTimer
 
-from gridplayer.params.static import TILE_CROPS, TileOverlap, TileResize, TileSnap
+from gridplayer.params.static import (
+    TILE_CROPS,
+    GridMode,
+    TileOverlap,
+    TileResize,
+    TileSnap,
+)
 from gridplayer.player.managers.base import ManagerBase
 from gridplayer.playlist_settings import PlaylistSettings
 from gridplayer.utils.keymap import key_sequence_from_event, normalize_key_sequence
@@ -117,15 +123,23 @@ class LayoutEditManager(ManagerBase):
             PlaylistSettings().get("playlist/disable_overlay")
         )
 
-    def _switch(self, is_tiles: bool):
-        """The other kind of editor, from the switch on the bar, the layout
-        made its kind: Free Tiles or a Fixed Grid. The bar where it was."""
+    def _switch(self, mode: GridMode):
+        """The layout made that mode, from the switch on the bar: a Fixed
+        Grid, its cells edited, or Free Tiles or Mosaic, their tiles. From
+        one of those to the other, the same editor; else the other kind,
+        the bar where it was."""
+
+        commands = self._ctx.commands
+        is_tiles = mode != GridMode.FIXED
+        if is_tiles and self.is_tiles:
+            commands.set_grid_mode(mode)
+            self.refresh()
+            return
 
         editor = self._editor
         self.stop(is_switching=True)
-        commands = self._ctx.commands
         if is_tiles:
-            commands.edit_free_tiles(editor)
+            commands.edit_free_tiles(editor, mode)
         else:
             commands.edit_grid_cells(editor)
 
@@ -142,9 +156,9 @@ class LayoutEditManager(ManagerBase):
         if self._ctx.is_single_mode:
             self.stop()
         elif commands.is_grid_free() and not self.is_tiles:
-            self._switch(True)
+            self._switch(GridMode.FREE)
         elif commands.is_grid_fixed() and self.is_tiles:
-            self._switch(False)
+            self._switch(GridMode.FIXED)
         else:
             # an Auto grid again, or the kind edited with nothing of it to
             # edit now, no room for the tiles: done

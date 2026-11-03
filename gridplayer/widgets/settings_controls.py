@@ -3,7 +3,7 @@ row of buttons for a choice short enough to show all of it, and buttons
 that stay pressed for some of a few."""
 
 from PyQt5.QtCore import QPoint, QRect, QRectF, QSize, Qt, pyqtSignal
-from PyQt5.QtGui import QColor, QIcon, QPainter, QPainterPath, QPalette
+from PyQt5.QtGui import QColor, QIcon, QPainter, QPainterPath, QPalette, QPixmap
 from PyQt5.QtWidgets import (
     QAbstractButton,
     QAbstractSpinBox,
@@ -41,6 +41,8 @@ DISABLED_OPACITY = 0.4
 SEGMENT_PADDING = 10
 SEGMENTS_HEIGHT = 24
 SEGMENTS_RADIUS = 4
+# a segment's icon, in place of its text
+SEGMENT_ICON = 16
 
 # between the buttons of ToggleChips, and between their lines
 CHIPS_SPACING = 6
@@ -364,7 +366,8 @@ class ToggleChips(QWidget):
 
 
 class SegmentedChoice(QWidget):
-    """A choice of a few short items, side by side as one row of buttons.
+    """A choice of a few short items, side by side as one row of buttons:
+    each its text, or its icon, the text then the tip over it.
 
     Answers what a settings form asks of a QComboBox, so the two can stand
     in for each other.
@@ -376,6 +379,7 @@ class SegmentedChoice(QWidget):
         super().__init__(parent)
 
         self._items: list[tuple[str, object]] = []
+        self._icons: list[QIcon | None] = []
         self._current = -1
         self._hovered = -1
 
@@ -385,8 +389,9 @@ class SegmentedChoice(QWidget):
 
     # what a combo answers
 
-    def addItem(self, text: str, data=None):
+    def addItem(self, text: str, data=None, icon: QIcon | None = None):
         self._items.append((text, data))
+        self._icons.append(icon)
         if self._current < 0:
             self._current = 0
             self.currentIndexChanged.emit(0)
@@ -395,6 +400,7 @@ class SegmentedChoice(QWidget):
 
     def clear(self):
         self._items = []
+        self._icons = []
         self._current = -1
         self.updateGeometry()
         self.update()
@@ -435,8 +441,9 @@ class SegmentedChoice(QWidget):
     def _widths(self) -> list[int]:
         metrics = self.fontMetrics()
         return [
-            metrics.horizontalAdvance(text) + 2 * SEGMENT_PADDING
-            for text, _ in self._items
+            (SEGMENT_ICON if icon is not None else metrics.horizontalAdvance(text))
+            + 2 * SEGMENT_PADDING
+            for (text, _), icon in zip(self._items, self._icons, strict=True)
         ]
 
     def _segments(self) -> list[QRectF]:
@@ -499,12 +506,33 @@ class SegmentedChoice(QWidget):
                 outline.adjusted(1, 1, -1, -1), SEGMENTS_RADIUS, SEGMENTS_RADIUS
             )
 
-        for index, (segment, (text, _)) in enumerate(
-            zip(segments, self._items, strict=True)
+        for index, (segment, (text, _), icon) in enumerate(
+            zip(segments, self._items, self._icons, strict=True)
         ):
             is_current = index == self._current
-            painter.setPen(theme_color(self, "base" if is_current else "text"))
+            color = theme_color(self, "base" if is_current else "text")
+            if icon is not None:
+                place = QRectF(0, 0, SEGMENT_ICON, SEGMENT_ICON)
+                place.moveCenter(segment.center())
+                painter.drawPixmap(place.topLeft(), self._tinted(icon, color))
+                continue
+            painter.setPen(color)
             painter.drawText(segment, Qt.AlignCenter, text)
+
+    def _tinted(self, icon: QIcon, color: QColor) -> QPixmap:
+        # an icon all in the color, as the text would be
+        ratio = self.devicePixelRatioF()
+        side = round(SEGMENT_ICON * ratio)
+        tinted = QPixmap(side, side)
+        tinted.fill(Qt.transparent)
+        painter = QPainter(tinted)
+        painter.setRenderHint(QPainter.SmoothPixmapTransform)
+        painter.drawPixmap(tinted.rect(), icon.pixmap(QSize(side, side)))
+        painter.setCompositionMode(QPainter.CompositionMode_SourceIn)
+        painter.fillRect(tinted.rect(), color)
+        painter.end()
+        tinted.setDevicePixelRatio(ratio)
+        return tinted
 
     # picked
 
@@ -519,6 +547,9 @@ class SegmentedChoice(QWidget):
         hovered = self._segment_at(event.pos())
         if hovered != self._hovered:
             self._hovered = hovered
+            if hovered >= 0 and self._icons[hovered] is not None:
+                # an icon's text, the tip over it
+                self.setToolTip(self._items[hovered][0])
             self.update()
         super().mouseMoveEvent(event)
 

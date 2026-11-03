@@ -23,7 +23,10 @@ class TileEditManager(LayoutEditManager):
             "is_editing_free_tiles": self.is_editing,
         }
 
-    def cmd_edit_free_tiles(self, switched_from=None):
+    def cmd_edit_free_tiles(self, switched_from=None, mode=GridMode.FREE):
+        """The tiles edited, made Free Tiles first, or Mosaic, from
+        another grid."""
+
         if self.is_editing():
             self.stop()
             return
@@ -31,7 +34,7 @@ class TileEditManager(LayoutEditManager):
         commands = self._ctx.commands
         if not self._ctx.is_single_mode and not commands.is_grid_free():
             # the cells made tiles where they are, which Undo takes back
-            commands.set_grid_mode(GridMode.FREE)
+            commands.set_grid_mode(mode)
         if commands.free_page() is None:
             return
 

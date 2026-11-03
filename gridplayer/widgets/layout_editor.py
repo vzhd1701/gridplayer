@@ -30,6 +30,7 @@ from PyQt5.QtWidgets import (
     QWidget,
 )
 
+from gridplayer.params.static import GridMode
 from gridplayer.utils.compositor_linux import is_compositor_running
 from gridplayer.utils.qt import translate
 from gridplayer.widgets.closing_click import EatenClick
@@ -430,9 +431,9 @@ class LayoutEditor(QWidget):
     redo_requested = pyqtSignal()
     reopen_requested = pyqtSignal()
     done = pyqtSignal()
-    # the other kind of editor asked for by the switch on the bar: the
-    # tiles' (True), or the cells'
-    kind_requested = pyqtSignal(bool)
+    # the grid made another mode by the switch on the bar: a Fixed Grid,
+    # Free Tiles or Mosaic (see kind)
+    kind_requested = pyqtSignal(object)
     # a key it has no use for, for the player's actions: Undo and Redo,
     # where the player's own shortcuts are not taken in its window
     key_pressed = pyqtSignal(object)
@@ -552,17 +553,23 @@ class LayoutEditor(QWidget):
         layout.addWidget(done)
 
     def _make_kind_switch(self) -> SegmentedChoice:
-        """Grid or Tiles: a Fixed Grid's cells edited, or Free Tiles' tiles,
-        the layout made the other kind for the other."""
+        """Fixed Grid, Free Tiles or Mosaic, by their icons: a Fixed Grid's
+        cells edited, or the tiles of the other two, the layout made the
+        one picked."""
 
         switch = SegmentedChoice(self._bar)
-        switch.addItem(translate("Edit Grid", "Grid"), False)
-        switch.addItem(translate("Edit Grid", "Tiles"), True)
-        switch.setCurrentIndex(switch.findData(self.is_tiles))
+        for mode, title, icon in (
+            (GridMode.FIXED, translate("Grid Mode", "Fixed Grid"), "grid"),
+            (GridMode.FREE, translate("Grid Mode", "Free Tiles"), "grid-free-tiles"),
+            (GridMode.MOSAIC, translate("Grid Mode", "Mosaic"), "grid-mosaic"),
+        ):
+            switch.addItem(title, mode, QIcon.fromTheme(icon))
+        switch.setCurrentIndex(
+            switch.findData(GridMode.FREE if self.is_tiles else GridMode.FIXED)
+        )
         switch.setCursor(Qt.ArrowCursor)
         # the editor's keys stay the editor's: Tab and the arrows
         switch.setFocusPolicy(Qt.NoFocus)
-        switch.setToolTip(translate("Edit Grid", "Edit as a grid, or as tiles"))
         switch.setPalette(popup_palette(switch))
         switch.currentIndexChanged.connect(
             lambda _: self.kind_requested.emit(switch.currentData())
@@ -600,6 +607,17 @@ class LayoutEditor(QWidget):
         buttons["undo"].setEnabled(self._can_undo())
         buttons["redo"].setEnabled(self._can_redo())
         buttons["reopen"].setEnabled(self._can_reopen())
+        # the mode it is in, made so from the menu or undone, say
+        index = self._kind.findData(self.kind())
+        if index != self._kind.currentIndex():
+            self._kind.blockSignals(True)
+            self._kind.setCurrentIndex(index)
+            self._kind.blockSignals(False)
+
+    def kind(self) -> GridMode:
+        """The grid's mode, as the switch on the bar shows it."""
+
+        return GridMode.FREE if self.is_tiles else GridMode.FIXED
 
     def place_bar(self) -> None:
         # along the bottom, in the middle, or where it was dragged to
