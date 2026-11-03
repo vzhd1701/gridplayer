@@ -92,18 +92,20 @@ jobs:
           git tag -f "$PRERELEASE_TAG"
           git push -f origin "refs/tags/$PRERELEASE_TAG"
 
-      - name: Update pre-release
-        uses: ncipollo/release-action@v1
-        with:
-          name: Development build (${{ needs.build.outputs.version }})
-          bodyFile: release_notes.md
-          artifacts: "dist/*"
-          token: ${{ secrets.GITHUB_TOKEN }}
-          tag: ${{ env.PRERELEASE_TAG }}
-          commit: ${{ github.sha }}
-          # also applied on update, so a run without it publishes a draft left by an earlier one
-          draft: ${{ inputs.draft == true }}
-          prerelease: true
-          makeLatest: false
-          allowUpdates: true
-          removeArtifacts: true
+      - name: Replace pre-release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          TITLE: Development build (${{ needs.build.outputs.version }})
+          DRAFT: ${{ inputs.draft == true }}
+        run: |
+          if gh release view "$PRERELEASE_TAG" > /dev/null 2>&1; then
+            gh release delete "$PRERELEASE_TAG" --yes
+          fi
+          gh release create "$PRERELEASE_TAG" dist/* \
+            --verify-tag \
+            --prerelease \
+            --latest=false \
+            --draft="$DRAFT" \
+            --title "$TITLE" \
+            --notes-file release_notes.md
