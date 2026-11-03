@@ -137,7 +137,8 @@ def test_more_cut_allowed_fills_more_of_the_room():
 
     def covered(crop):
         rects = _rects(arrange_around(WIDTH, HEIGHT, walls, ids, {}, shapes, crop))
-        return sum(r.width * r.height for r in rects.values())
+        # whole pixels: float sums differ in the last bit across Pythons
+        return round(sum(r.width * r.height for r in rects.values()))
 
     assert covered(0) < covered(20) <= covered(50)
 
