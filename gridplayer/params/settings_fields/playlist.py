@@ -15,6 +15,7 @@ from gridplayer.params.static import (
     MAX_FIXED_SIZE,
     MAX_SEEK_STEP_SECONDS,
     MIN_SEEK_STEP_SECONDS,
+    TILED_MODES,
     GridMode,
     StripMode,
 )
@@ -322,8 +323,8 @@ PLAYLIST_FIELDS: tuple[SettingField, ...] = (
             "Reorder to Fit",
             "Put videos of like shape together, so they show bigger.",
         ),
-        # Fit Shapes', and Free Tiles' Arrange
-        shown_when=When("playlist/grid_mode", (*_GRID_SHAPES, GridMode.FREE)),
+        # Fit Shapes', Mosaic's, and Free Tiles' Arrange
+        shown_when=When("playlist/grid_mode", (*_GRID_SHAPES, *TILED_MODES)),
     ),
     SpinField(
         settings_key="playlist/grid_rows",
@@ -366,7 +367,7 @@ PLAYLIST_FIELDS: tuple[SettingField, ...] = (
         label=translate("Snap To", "Snap to"),
         choices=choices.tile_snaps,
         value_type=TileSnaps,
-        shown_when=When("playlist/grid_mode", (GridMode.FREE,)),
+        shown_when=When("playlist/grid_mode", tuple(TILED_MODES)),
         enabled_when=When("playlist/grid_line_snap"),
     ),
     ComboField(
@@ -399,7 +400,7 @@ PLAYLIST_FIELDS: tuple[SettingField, ...] = (
         label=translate("Tile Crop", "Crop limit"),
         choices=choices.tile_crops,
         buttons=True,
-        shown_when=When("playlist/grid_mode", (GridMode.FREE,)),
+        shown_when=When("playlist/grid_mode", tuple(TILED_MODES)),
         tooltip=translate(
             "Tile Crop",
             "How much of each picture Arrange may cut to fill the space.",

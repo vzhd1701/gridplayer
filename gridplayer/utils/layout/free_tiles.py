@@ -331,10 +331,10 @@ class FreeTiles:
         page's, they are no longer shown as they were placed, and will not
         be again when it is made that size back (see boxes)."""
 
-        if not self._is_page_size(width, height):
+        if not self.is_page_size(width, height):
             self.is_as_placed = False
 
-    def _is_page_size(self, width: float, height: float) -> bool:
+    def is_page_size(self, width: float, height: float) -> bool:
         if not self.page_height:
             return False
         page_width = self.page_height * self.page_shape
@@ -354,7 +354,7 @@ class FreeTiles:
 
         if width <= 0 or height <= 0 or not self.tiles:
             return list(self.tiles.items())
-        if self.is_as_placed and self._is_page_size(width, height):
+        if self.is_as_placed and self.is_page_size(width, height):
             return list(self.tiles.items())
 
         # not known, the page as big as the area allows

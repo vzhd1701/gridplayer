@@ -2671,6 +2671,15 @@ ACTIONS = MappingProxyType(
             "check_if": ("is_grid_mode_set_to", GridMode.FREE),
             "is_choice": True,
         },
+        "Mosaic": {
+            # tiles filling the window, the others arranged around one moved
+            # or sized by hand
+            "title": translate("Grid Mode", "Mosaic"),
+            "icon": "grid-mosaic",
+            "func": ("set_grid_mode", GridMode.MOSAIC),
+            "check_if": ("is_grid_mode_set_to", GridMode.MOSAIC),
+            "is_choice": True,
+        },
         "Arrange Tiles": {
             # around the locked tiles, the pictures cut by up to Crop Limit
             "title": translate("Actions", "Arrange Tiles"),
@@ -2685,7 +2694,7 @@ ACTIONS = MappingProxyType(
             "icon": "grid-reorder",
             "func": "switch_is_grid_reorder",
             "check_if": "is_grid_reorder",
-            "show_if": ("is_grid_mode_set_to", GridMode.FREE),
+            "show_if": "is_grid_free",
             "is_keymapped": False,
         },
         **{
@@ -2695,7 +2704,7 @@ ACTIONS = MappingProxyType(
                 "func": ("set_tile_crop", crop),
                 "check_if": ("is_tile_crop", crop),
                 "is_choice": True,
-                "show_if": ("is_grid_mode_set_to", GridMode.FREE),
+                "show_if": "is_grid_free",
             }
             for crop, title in choices.tile_crops().items()
         },
@@ -2774,7 +2783,7 @@ ACTIONS = MappingProxyType(
             "func": "lock_tile",
             "check_if": "is_tile_locked",
             "enable_if": "is_tile_lockable",
-            "show_if": ("is_grid_mode_set_to", GridMode.FREE),
+            "show_if": "is_grid_free",
         },
         "Grid Size: %v": {
             "title": translate("Actions", "Grid Size: %v"),
@@ -2940,7 +2949,7 @@ ACTIONS = MappingProxyType(
             "show_if": NOT(
                 OR(
                     ("is_grid_mode_set_to", GridMode.AUTO_SHAPES),
-                    ("is_grid_mode_set_to", GridMode.FREE),
+                    "is_grid_free",
                 )
             ),
         },
@@ -2952,7 +2961,7 @@ ACTIONS = MappingProxyType(
             "show_if": NOT(
                 OR(
                     ("is_grid_mode_set_to", GridMode.AUTO_SHAPES),
-                    ("is_grid_mode_set_to", GridMode.FREE),
+                    "is_grid_free",
                 )
             ),
         },
@@ -2962,7 +2971,7 @@ ACTIONS = MappingProxyType(
                 translate("Snap Lines", "Snap Tiles"),
             ),
             "keymap_title": translate("Snap Lines", "Snap Lines"),
-            "toggle": ("is_grid_mode_set_to", GridMode.FREE),
+            "toggle": "is_grid_free",
             # in Free Tiles, in the Snap menu, which has it
             "icon": ("snap", "empty"),
             "func": "toggle_grid_line_snap",
@@ -2976,7 +2985,7 @@ ACTIONS = MappingProxyType(
             "func": ("toggle_tile_snap", TileSnap.TILE_EDGES),
             "check_if": ("is_tile_snap", TileSnap.TILE_EDGES),
             "enable_if": "is_grid_line_snap",
-            "show_if": ("is_grid_mode_set_to", GridMode.FREE),
+            "show_if": "is_grid_free",
         },
         "Snap to Tile Middles": {
             "title": translate("Snap To", "Tile Middles"),
@@ -2985,7 +2994,7 @@ ACTIONS = MappingProxyType(
             "func": ("toggle_tile_snap", TileSnap.TILE_MIDDLES),
             "check_if": ("is_tile_snap", TileSnap.TILE_MIDDLES),
             "enable_if": "is_grid_line_snap",
-            "show_if": ("is_grid_mode_set_to", GridMode.FREE),
+            "show_if": "is_grid_free",
         },
         "Snap to Window Edges": {
             "title": translate("Snap To", "Window Edges"),
@@ -2994,7 +3003,7 @@ ACTIONS = MappingProxyType(
             "func": ("toggle_tile_snap", TileSnap.WINDOW_EDGES),
             "check_if": ("is_tile_snap", TileSnap.WINDOW_EDGES),
             "enable_if": "is_grid_line_snap",
-            "show_if": ("is_grid_mode_set_to", GridMode.FREE),
+            "show_if": "is_grid_free",
         },
         "Snap to Window Middle": {
             "title": translate("Snap To", "Window Middle"),
@@ -3003,7 +3012,7 @@ ACTIONS = MappingProxyType(
             "func": ("toggle_tile_snap", TileSnap.WINDOW_MIDDLE),
             "check_if": ("is_tile_snap", TileSnap.WINDOW_MIDDLE),
             "enable_if": "is_grid_line_snap",
-            "show_if": ("is_grid_mode_set_to", GridMode.FREE),
+            "show_if": "is_grid_free",
         },
         "Snap to Old Place": {
             "title": translate("Snap To", "Old Place"),
@@ -3012,7 +3021,7 @@ ACTIONS = MappingProxyType(
             "func": ("toggle_tile_snap", TileSnap.OLD_PLACE),
             "check_if": ("is_tile_snap", TileSnap.OLD_PLACE),
             "enable_if": "is_grid_line_snap",
-            "show_if": ("is_grid_mode_set_to", GridMode.FREE),
+            "show_if": "is_grid_free",
         },
         "Snap to Video Shape": {
             "title": translate("Snap To", "Video Shape"),
@@ -3021,7 +3030,7 @@ ACTIONS = MappingProxyType(
             "func": ("toggle_tile_snap", TileSnap.VIDEO_SHAPE),
             "check_if": ("is_tile_snap", TileSnap.VIDEO_SHAPE),
             "enable_if": "is_grid_line_snap",
-            "show_if": ("is_grid_mode_set_to", GridMode.FREE),
+            "show_if": "is_grid_free",
         },
         "Snap to Equal Gaps": {
             "title": translate("Snap To", "Equal Gaps"),
@@ -3030,7 +3039,7 @@ ACTIONS = MappingProxyType(
             "func": ("toggle_tile_snap", TileSnap.EQUAL_GAPS),
             "check_if": ("is_tile_snap", TileSnap.EQUAL_GAPS),
             "enable_if": "is_grid_line_snap",
-            "show_if": ("is_grid_mode_set_to", GridMode.FREE),
+            "show_if": "is_grid_free",
         },
         "Link Rows": {
             "title": (

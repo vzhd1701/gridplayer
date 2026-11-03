@@ -1,9 +1,11 @@
 import contextlib
+import dataclasses
 import random
+from collections.abc import Mapping, Sequence
 from typing import NamedTuple
 
 from PyQt5 import sip
-from PyQt5.QtCore import QRect, pyqtSignal
+from PyQt5.QtCore import QRect, QTimer, pyqtSignal
 from PyQt5.QtGui import QRegion
 from PyQt5.QtWidgets import QMessageBox
 
@@ -14,6 +16,7 @@ from gridplayer.params.settings_bindings import GRID_STATE_ATTR
 from gridplayer.params.static import (
     GRID_TEMPLATES,
     MAX_FIXED_SIZE,
+    TILED_MODES,
     GridMode,
     GridTemplate,
     TileOverlap,
@@ -35,10 +38,11 @@ from gridplayer.utils.layout import (
     Weights,
     grid_box,
 )
-from gridplayer.utils.layout.arrange import arrange_around
+from gridplayer.utils.layout.arrange import ArrangeCache, arrange_around
 from gridplayer.utils.layout.flow_layout import DEFAULT_SHAPE
 from gridplayer.utils.layout.free_tiles import FreeTiles, Rect, TilePlace
 from gridplayer.utils.layout.lines import (
+    MIN_CELL,
     FitCell,
     GridLines,
     MovableLines,
@@ -98,6 +102,27 @@ def _flow_mode(mode: GridMode) -> FlowMode:
     return FlowMode.ROWS
 
 
+# in ms: shapes that come in, or the window resized, within this of each
+# other, arranged for once (Mosaic, or the tiles as Arrange left them)
+ARRANGE_DELAY = 200
+
+
+@dataclasses.dataclass
+class _Holding:
+    """A tile held in Mosaic, in the change going on: the others arranged
+    around it as it goes (see GridManager._arrange_live)."""
+
+    video_id: str
+    # the others where they were at its start, read there (see _read_at)
+    start: dict[str, Box]
+    cache: ArrangeCache = dataclasses.field(default_factory=ArrangeCache)
+    # whether the others were arranged around it, the last time
+    is_live: bool = False
+    # where it was put the last time, in an area of what size, and where
+    # it went then (see _arrange_live)
+    last: tuple[tuple[Rect, float, float], Rect] | None = None
+
+
 class GridManager(ManagerBase):
     warning = pyqtSignal(str)
     layout_changed = pyqtSignal()
@@ -140,6 +165,15 @@ class GridManager(ManagerBase):
         # how much of each picture Arrange Tiles may cut to fill the room,
         # in percent
         self._tile_crop: int = Settings().get("playlist/tile_crop")
+        # in Mosaic, the tile moved or sized by hand in the change going on
+        # (see set_free_tiles)
+        self._holding: _Holding | None = None
+        # the size of the area the tiles were last arranged in
+        self._arranged_at: tuple[int, int] | None = None
+        self._arrange_timer = QTimer(self)
+        self._arrange_timer.setSingleShot(True)
+        self._arrange_timer.setInterval(ARRANGE_DELAY)
+        self._arrange_timer.timeout.connect(self._arrange_due)
 
         # the last lines fit_weights found, and for what: asked for each
         # time the menu is made, to say whether fitting would change them
@@ -293,7 +327,19 @@ class GridManager(ManagerBase):
 
     @property
     def _is_free(self):
-        return self._mode == GridMode.FREE
+        # tiles of their own: Free Tiles, or Mosaic
+        return self._mode in TILED_MODES
+
+    @property
+    def _is_mosaic(self):
+        # the tiles arranged after each change, and as it goes
+        return self._mode == GridMode.MOSAIC
+
+    @property
+    def _is_kept_arranged(self) -> bool:
+        # arranged again as shapes come in, the window is resized, or how
+        # they are arranged changes: in Mosaic, or as Arrange left them
+        return self._is_mosaic or (self._is_free and self._is_arranged)
 
     @property
     def _layout(self) -> Layout:
@@ -394,6 +440,10 @@ class GridManager(ManagerBase):
         self._free.is_as_placed = state.is_tiles_as_placed
         self._tile_crop = state.tile_crop
         self._is_arranged = False
+        # as arranged on their page: in Mosaic, arranged anew for another
+        # size (see _place_free)
+        area = self._area_size()
+        self._arranged_at = area if self._free.is_page_size(*area) else None
 
         if self._is_fixed:
             self._grid_layout.resize(
@@ -422,14 +472,18 @@ class GridManager(ManagerBase):
 
     def end_grid_change(self) -> None:
         if self._change_start is not None:
+            if self._holding is not None:
+                self._arrange_after_hand(self._holding)
             self._remember(self._change_start)
             self._change_start = None
+        self._holding = None
 
     def cancel_grid_change(self) -> None:
         """The change made over time put back: the grid as it was at its
         start, with nothing to undo."""
 
         start, self._change_start = self._change_start, None
+        self._holding = None
         if start is None:
             return
 
@@ -558,11 +612,8 @@ class GridManager(ManagerBase):
             self._set_flow_options(config)
             return True
 
-        if mode == GridMode.FREE:
-            # the tiles where they are, the flow's options for when it is left
-            if not self._is_free:
-                self._make_free()
-            self._set_flow_options(config)
+        if mode in TILED_MODES:
+            self._make_tiled(mode, config)
             return True
 
         if self._is_fixed and not self._leave_fixed():
@@ -585,15 +636,16 @@ class GridManager(ManagerBase):
         self._set_arrange_options(config.tile_crop, config.is_reordered)
 
     def _set_arrange_options(self, crop: int, is_reordered: bool) -> None:
-        """Arrange Tiles' Crop Limit and Reorder to Fit (Fit Shapes' too):
-        tiles as Arrange left them arranged again, once, by the new ones."""
+        """Arrange's Crop Limit and Reorder to Fit (Fit Shapes' too): the
+        tiles of Mosaic, and as Arrange Tiles left them, arranged again,
+        once, by the new ones."""
 
         if (crop, is_reordered) == (self._tile_crop, self._flow.is_reordered):
             return
 
         self._tile_crop = crop
         self._flow.is_reordered = is_reordered
-        if self._is_free and self._is_arranged:
+        if self._is_kept_arranged:
             self._arrange()
             self._grid.invalidate()
 
@@ -615,6 +667,9 @@ class GridManager(ManagerBase):
         """The mode drops go by: before or after a video along the line it
         is in, a row or a column, or on any side in Fixed Grid."""
 
+        if self._is_free:
+            # a tile dropped on, anywhere
+            return GridMode.FREE
         if self._mode != GridMode.AUTO_SHAPES:
             return self._mode
         return GridMode.AUTO_COLS if self._flow.is_columns() else GridMode.AUTO_ROWS
@@ -624,10 +679,11 @@ class GridManager(ManagerBase):
         where there are none to move: in Fit Shapes, whose lines go by the
         videos' shapes, in Free Tiles, in Single Mode, or with one cell."""
 
-        if self._ctx.is_single_mode or self._mode in {
-            GridMode.AUTO_SHAPES,
-            GridMode.FREE,
-        }:
+        if (
+            self._ctx.is_single_mode
+            or self._is_free
+            or self._mode == GridMode.AUTO_SHAPES
+        ):
             return None
 
         if not self._ctx.video_blocks and not self._show_empties:
@@ -882,8 +938,8 @@ class GridManager(ManagerBase):
             self._ask_and_apply_fixed(include_preallocate=True)
             return
 
-        if mode == GridMode.FREE:
-            self._make_free()
+        if mode in TILED_MODES:
+            self._make_tiled(mode)
             PlaylistSettings().set("playlist/grid_mode", mode)
             return
 
@@ -1037,6 +1093,11 @@ class GridManager(ManagerBase):
     def cmd_shuffle_layout(self):
         with self._undoable():
             self._layout.shuffle()
+            if self._is_mosaic:
+                # the tiles traded: arranged in the order they now are in
+                self._stop_reordering()
+                self._arrange()
+                self._grid.invalidate()
             self.layout_changed.emit()
 
     # --- big cells ---
@@ -1392,6 +1453,26 @@ class GridManager(ManagerBase):
         self._free.tiles = dict(cells)
         self._free.set_page(width, height)
         self._is_arranged = False
+
+    def _make_tiled(self, mode: GridMode, config: GridState | None = None) -> None:
+        """Free Tiles or Mosaic, the tiles where the cells are, or the
+        other's tiles kept; Mosaic arranges them at once, those locked
+        staying where they are. config's options set too: the flow's for
+        when it is left, and Arrange's, which Mosaic arranges them by."""
+
+        if not self._is_free:
+            # where the cells are by the flow's options as they were
+            self._make_free()
+        is_arranging = mode == GridMode.MOSAIC and not self._is_mosaic
+        if is_arranging:
+            # arranged once, below, by the new options
+            self._is_arranged = False
+        if config is not None:
+            self._set_flow_options(config)
+        self._mode = mode
+        if is_arranging:
+            self._arrange()
+            self._grid.invalidate()
         self.layout_changed.emit()
 
     def _leave_free(self) -> None:
@@ -1444,7 +1525,7 @@ class GridManager(ManagerBase):
         they are placed among themselves: no room left around them. Those
         locked too, as a window made bigger makes them."""
 
-        if not self._is_free:
+        if self._mode != GridMode.FREE:
             return
 
         with self._undoable():
@@ -1454,47 +1535,232 @@ class GridManager(ManagerBase):
             self._grid.invalidate()
             self.layout_changed.emit()
 
-    def _arrange(self) -> None:
-        width, height = self._area_size()
-        self._free.fill(width, height)
-
-        live = self._ctx.video_blocks.video_ids
-        rects = self._free.rects(width, height)
-
-        def arranged(left_out):
-            ids = [i for i in live if i not in left_out]
-            return arrange_around(
-                width,
-                height,
-                [rect for i, rect in rects.items() if i in left_out],
-                ids,
-                rects,
-                {i: self._shape_of(i) for i in ids},
-                self._tile_crop,
-                self._flow.is_reordered,
-            )
-
-        # around the locked tiles; with no room left by them, all of them
-        boxes = arranged(self._free.locked)
-        if boxes is None:
-            boxes = arranged(set())
+    def _arrange(self, is_reordered: bool | None = None) -> None:
+        boxes = self._arranged(is_reordered)
         if boxes is None:
             return
 
         self._free.arrange(boxes.items())
-        self._unshaped = {i for i in boxes if not self._is_shape_known(i)}
-        self._is_arranged = True
+        self._arranged_now()
 
-    def _add_tiles(self, video_ids: list[str]) -> None:
+    def _arranged_now(self) -> None:
+        # the tiles as Arrange left them, or Mosaic
+        self._unshaped = {i for i in self._free.tiles if not self._is_shape_known(i)}
+        self._is_arranged = True
+        self._arranged_at = self._area_size()
+
+    def _arranged(self, is_reordered: bool | None = None) -> dict[str, Box] | None:
+        """Where Arrange Tiles puts the tiles now, as shares of the area
+        (see cmd_arrange_tiles); None if there is no room for them. While
+        a tile is held, the others read as if where they were at the start
+        (see _Holding). Reordered as Reorder to Fit is, unless told."""
+
+        width, height = self._area_size()
+        self._free.fill(width, height)
+        if is_reordered is None:
+            is_reordered = self._flow.is_reordered
+        rects = self._free.rects(width, height)
+
+        # around the locked tiles; with no room left by them, all of them
+        for walls in (self._locked_rects(rects), {}):
+            boxes = self._arranged_around(walls, rects, width, height, is_reordered)
+            if boxes is not None:
+                return boxes
+        return None
+
+    def _locked_rects(self, rects: Mapping[str, Rect]) -> dict[str, Rect]:
+        return {i: rect for i, rect in rects.items() if i in self._free.locked}
+
+    def _arranged_around(
+        self,
+        walls: Mapping[str, Rect],
+        rects: Mapping[str, Rect],
+        width: float,
+        height: float,
+        is_reordered: bool,
+        cache: ArrangeCache | None = None,
+    ) -> dict[str, Box] | None:
+        # the tiles but the walls, arranged around those (see arrange_around)
+        ids = [i for i in self._ctx.video_blocks.video_ids if i not in walls]
+        return arrange_around(
+            width,
+            height,
+            list(walls.values()),
+            ids,
+            self._read_at(rects, width, height),
+            {i: self._shape_of(i) for i in ids},
+            self._tile_crop,
+            is_reordered,
+            cache,
+        )
+
+    def _read_at(
+        self, rects: Mapping[str, Rect], width: float, height: float
+    ) -> dict[str, Rect]:
+        # where the tiles are read in their order: while one is held, the
+        # others where they were at the start
+        at = dict(rects)
+        if self._holding is not None:
+            area = Rect(0, 0, width, height)
+            at.update(
+                (i, Rect.of_box(box, area))
+                for i, box in self._holding.start.items()
+                if i in at
+            )
+        return at
+
+    def _arrange_live(self) -> None:
+        """Mosaic: the tile held where it is moved or sized to, the
+        others arranged around it as around a locked one, as it goes; it
+        stretched to the window's edge over room too thin for another, or
+        that none of them took (see _stretched_to_edges). With no room
+        left for them, the others are left as they were last shown."""
+
+        holding = self._holding
+        held = holding.video_id
+        width, height = self._area_size()
+        self._free.fill(width, height)
+        rects = self._free.rects(width, height)
+        # put where it was the last time, snapped there again, say: the
+        # others are as they were
+        put = (rects[held], width, height)
+        if holding.last is not None and holding.last[0] == put:
+            if holding.is_live:
+                self._free.set_rect(held, holding.last[1], width, height)
+            return
+
+        rect = self._stretched_to_edges(held, rects[held], width, height)
+        locked = self._locked_rects(rects)
+        boxes = self._arranged_around(
+            {**locked, held: rect},
+            rects,
+            width,
+            height,
+            # the order where they are (see _arrange_after_hand)
+            False,
+            holding.cache,
+        )
+        holding.is_live = boxes is not None
+        holding.last = (put, rect)
+        if boxes is None:
+            return
+
+        # over room none of the others took
+        area = Rect(0, 0, width, height)
+        others = [Rect.of_box(box, area) for box in boxes.values()]
+        others += locked.values()
+        rect = self._stretched_to_edges(held, rect, width, height, others)
+        holding.last = (put, rect)
+        self._free.set_rect(held, rect, width, height)
+        self._free.arrange(boxes.items())
+
+    def _stretched_to_edges(
+        self,
+        video_id: str,
+        rect: Rect,
+        width: float,
+        height: float,
+        others: Sequence[Rect] | None = None,
+    ) -> Rect:
+        """A tile held stretched to each edge of the window it is nearer
+        than MIN_CELL, or, others given, with none of them between, across
+        then down: where that cuts its picture no more than the crop limit,
+        or than it is cut already; not to all four, which would leave no
+        room for the others."""
+
+        shape = self._shape_of(video_id)
+
+        def cut(r: Rect) -> float:
+            if r.width <= 0 or r.height <= 0:
+                return 1.0
+            stretch = r.width / r.height / shape
+            return 1 - min(stretch, 1 / stretch)
+
+        limit = max(self._tile_crop / 100, cut(rect)) + 1e-6
+
+        def stretched(r: Rect, side: str) -> Rect:
+            strip, edge = {
+                "left": (Rect(0, r.top, r.left, r.bottom), 0),
+                "right": (Rect(r.right, r.top, width, r.bottom), width),
+                "top": (Rect(r.left, 0, r.right, r.top), 0),
+                "bottom": (Rect(r.left, r.bottom, r.right, height), height),
+            }[side]
+            gap = min(strip.width, strip.height)
+            is_open = gap < MIN_CELL or (
+                others is not None and not any(strip.overlaps(o) for o in others)
+            )
+            if gap <= 0 or not is_open:
+                return r
+            longer = r._replace(**{side: edge})
+            return longer if cut(longer) <= limit else r
+
+        for side in ("left", "right"):
+            rect = stretched(rect, side)
+        across = rect
+        for side in ("top", "bottom"):
+            rect = stretched(rect, side)
+        if rect.width >= width - 0.5 and rect.height >= height - 0.5:
+            return across
+        return rect
+
+    def _hold(self, video_id: str) -> None:
+        """The tile held in the change going on, the others where they were
+        at its start (see _read_at)."""
+
+        holding = self._holding
+        if holding is not None and holding.video_id == video_id:
+            return
+        if video_id in self._free.tiles:
+            start = {i: b for i, b in self._free.tiles.items() if i != video_id}
+            self._holding = _Holding(video_id, start)
+
+    def _arrange_after_hand(self, holding: _Holding) -> None:
+        """Mosaic: a tile let go of. It stays where it was moved, or
+        sized, to, the others where they were shown around it (see
+        _arrange_live); with no room left for them, all arranged anew.
+        Reorder to Fit is turned off, the others to stay in their order
+        around it, as shown. Arranged again later, it is as any other: to
+        stay as it is, it is locked."""
+
+        self._stop_reordering()
+        # arranged for what came in meanwhile as it went
+        self._arrange_timer.stop()
+        if holding.is_live:
+            self._arranged_now()
+        else:
+            self._arrange()
+        self._grid.invalidate()
+        self.layout_changed.emit()
+
+    def _arrange_due(self) -> None:
+        """Arranged again for the shapes that came in, or the window
+        resized: not while a tile is held. No longer arranged, the tiles of
+        those shapes made them (see _fit_tiles_to_shapes)."""
+
+        if not self._is_kept_arranged:
+            if self._is_free:
+                self._fit_tiles_to_shapes()
+            return
+        if self._change_start is not None:
+            self._arrange_timer.start()
+            return
+
+        self._arrange()
+        self._grid.invalidate()
+        self.layout_changed.emit()
+
+    def _add_tiles(self, video_ids: list[str], is_any_gone: bool = False) -> None:
         """New videos' tiles put where there is room on the window, made
-        their videos' shapes once those are known (see _fit_tiles_to_shapes)."""
+        their videos' shapes once those are known (see _fit_tiles_to_shapes).
+        In Mosaic, all of them arranged again, some new or gone."""
 
         self._unshaped |= {i for i in video_ids if not self._is_shape_known(i)}
         if video_ids:
             # the room beside the tiles' page too
             self._free.fill(*self._area_size())
         # none placed yet, or no room for some: all of them arranged anew
-        if self._free.add(video_ids):
+        is_no_room = self._free.add(video_ids)
+        if is_no_room or (self._is_mosaic and (video_ids or is_any_gone)):
             self._arrange()
 
     def _fit_tiles_to_shapes(self) -> None:
@@ -1506,13 +1772,16 @@ class GridManager(ManagerBase):
         if not shaped:
             return
 
+        if self._is_kept_arranged:
+            # once for those coming in together; fitted then, if no longer
+            # arranged (see _arrange_due)
+            self._arrange_timer.start()
+            return
+
         self._unshaped -= shaped
-        if self._is_arranged:
-            self._arrange()
-        else:
-            self._keep_tiles_shown()
-            for video_id in shaped:
-                self._free.fit_shape(video_id, self._shape_of(video_id))
+        self._keep_tiles_shown()
+        for video_id in shaped:
+            self._free.fit_shape(video_id, self._shape_of(video_id))
         self._grid.invalidate()
 
     def _keep_tiles_shown(self) -> None:
@@ -1537,16 +1806,25 @@ class GridManager(ManagerBase):
         return FreePage(self._free.filled(area.width(), area.height()), area)
 
     def set_free_tiles(
-        self, rects: dict[str, Rect], page_width: float, page_height: float
+        self,
+        rects: dict[str, Rect],
+        page_width: float,
+        page_height: float,
+        held: str | None = None,
     ) -> None:
-        """Tiles moved or sized by hand: one, and those it pushed aside, on
-        a page of this size (see TileDrag): the area it was, which the page
-        now takes the shape of."""
+        """Tiles moved or sized by hand: one (held), and those it pushed
+        aside, on a page of this size (see TileDrag): the area it was,
+        which the page now takes the shape of."""
 
         self._free.fill(page_width, page_height)
+        # in Mosaic, the others make room as it goes
+        if held is not None and self._is_mosaic:
+            self._hold(held)
         for video_id, rect in rects.items():
             self._free.set_rect(video_id, rect, page_width, page_height)
         self._is_arranged = False
+        if self._holding is not None:
+            self._arrange_live()
         self._grid.invalidate()
 
     def tile_overlap(self) -> TileOverlap:
@@ -1562,7 +1840,10 @@ class GridManager(ManagerBase):
         """In Free Tiles, whether one tile can go over another, or is: to
         be put in front of the others, or behind them."""
 
-        return self._is_free and (self.is_tile_overlap_on() or self._free.is_stacked())
+        # in Mosaic, never: they are arranged apart
+        return self._mode == GridMode.FREE and (
+            self.is_tile_overlap_on() or self._free.is_stacked()
+        )
 
     def is_tile_stackable(self, where: str) -> bool:
         """Whether the active video's tile is under another, to be put in
@@ -1618,9 +1899,10 @@ class GridManager(ManagerBase):
             self.lock_free_tile(video_id, video_id not in self._free.locked)
 
     def _sizable_tile(self, video_id: str | None) -> str | None:
-        # a video's tile, the active one's by default, to size: not locked
+        # a video's tile, the active one's by default, to size: not locked,
+        # nor arranged after each change, which would undo it
         video_id = self._active_tile(video_id)
-        if video_id is None or video_id in self._free.locked:
+        if video_id is None or video_id in self._free.locked or self._is_mosaic:
             return None
         return video_id
 
@@ -1680,6 +1962,8 @@ class GridManager(ManagerBase):
         if video_id not in self._free.tiles:
             return
 
+        # in Mosaic too, nothing moves for it: the others are
+        # arranged around it, or it with them, at the next change
         with self._undoable():
             self._free.set_locked(video_id, is_locked)
         self._grid.invalidate()
@@ -1689,7 +1973,11 @@ class GridManager(ManagerBase):
         under, for room to be made for it (see cmd_make_room)."""
 
         video_id = self._active_tile()
-        return video_id is not None and self._free.is_crowded(video_id)
+        return (
+            video_id is not None
+            and not self._is_mosaic
+            and self._free.is_crowded(video_id)
+        )
 
     def cmd_make_room(self) -> None:
         """The tiles the active video's is over, or under, set aside: each
@@ -1793,7 +2081,7 @@ class GridManager(ManagerBase):
         ]
 
         if self._is_free:
-            self._add_tiles(new_ids)
+            self._add_tiles(new_ids, is_any_gone=bool(gone))
             return
 
         leftover = self._layout.add(new_ids)
@@ -1826,12 +2114,17 @@ class GridManager(ManagerBase):
 
     def _stop_reordering(self):
         """Reorder to Fit turned off for a drop where a video goes, so that
-        it stays there: the order shown is taken for the videos' own."""
+        it stays there: the order shown is taken for the videos' own. In
+        Mosaic too: the tiles' order is where they
+        are."""
 
-        if self._mode != GridMode.AUTO_SHAPES or not self._flow.is_reordered:
+        if not self._flow.is_reordered:
+            return
+        if self._mode == GridMode.AUTO_SHAPES:
+            self._flow.ids = self._flow.order()
+        elif not self._is_mosaic:
             return
 
-        self._flow.ids = self._flow.order()
         self._flow.is_reordered = False
         PlaylistSettings().set("playlist/grid_reorder", False)
 
@@ -1854,10 +2147,17 @@ class GridManager(ManagerBase):
             return
 
         if is_replace and dst is not None and dst is not src_block:
+            # in Mosaic, arranged as it goes (see _add_tiles)
             self._ctx.commands.remember_closed([dst])
             self._ctx.commands.remove_video_blocks([dst.video_id])
             return
 
+        if self._is_mosaic and dst is not src_block:
+            # the tiles traded, or moved: arranged in the order they now
+            # are in
+            self._stop_reordering()
+            self._arrange()
+            self._grid.invalidate()
         self.layout_changed.emit()
 
     def _drop_new(self, videos, dst, row, col, zone, is_replace, dst_id):
@@ -1886,6 +2186,9 @@ class GridManager(ManagerBase):
         dst.set_video(videos[0])
         self._ctx.video_blocks.reindex(dst)
         self._layout.replace_id(old_id, dst.video_id)
+        if self._is_mosaic:
+            # arranged anew for its shape, once known (see _fit_tiles_to_shapes)
+            self._unshaped.add(dst.video_id)
         # the earlier states have the video it had (see forget_grid_changes)
         self.forget_grid_changes()
         return videos[1:]
@@ -1925,10 +2228,20 @@ class GridManager(ManagerBase):
     def _put_back(self, video_id: str, place) -> None:
         if self._is_free:
             if isinstance(place, TilePlace):
-                # beside the others, where they are shown
+                # beside the others, where they are shown; in Mosaic, only
+                # locked, the others arranged around it
                 self._free.fill(*self._area_size())
-                is_over = self.is_tile_overlap_on()
-                if self._free.put_back(video_id, place, is_over):
+                if not self._is_mosaic:
+                    is_put = self._free.put_back(
+                        video_id, place, self.is_tile_overlap_on()
+                    )
+                else:
+                    is_put = place.is_locked and self._free.put_back(
+                        video_id, place, True
+                    )
+                    if is_put:
+                        self._arrange()
+                if is_put:
                     return
             self._add_tiles([video_id])
             # elsewhere, still locked
@@ -2011,7 +2324,9 @@ class GridManager(ManagerBase):
         is_shapable = self.is_grid_cell_shapable()
         is_tile = self._is_free and not self._ctx.is_single_mode
         for vb in self._ctx.video_blocks:
-            vb.cell_size.set_sizable(is_sizable, is_shapable, is_tile)
+            vb.cell_size.set_sizable(
+                is_sizable, is_shapable, is_tile, not self._is_mosaic
+            )
 
     def reload_video_grid(self):
         # Count-changed fires before single mode exits. Skip until the grid
@@ -2158,6 +2473,13 @@ class GridManager(ManagerBase):
         # the area laid out at this size: the tiles no longer as placed, if
         # it was resized (see FreeTiles.boxes)
         self._free.resized_to(width, height)
+        if self._is_mosaic and self._arranged_at != self._area_size():
+            if self._change_start is None:
+                # arranged for the window's new shape as it is resized, in
+                # the order they are in: Reorder to Fit, which may take
+                # long, once it is done (see _arrange_due)
+                self._arrange(is_reordered=False)
+            self._arrange_timer.start()
         cells = []
         for video_id, box in self._free.boxes(width, height):
             vb = self._ctx.video_blocks.by_video_id(video_id)

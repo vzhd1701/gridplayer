@@ -271,3 +271,14 @@ def test_a_tiles_buttons_say_what_it_can_do_and_is(overlay):
     assert overlay.fill_space_button.is_available
     assert not overlay.fit_video_button.is_available
     assert overlay.lock_tile_button.is_down
+
+
+def test_in_mosaic_a_tile_has_bigger_smaller_and_its_lock(overlay):
+    overlay.set_cell_size_controls(
+        True, False, has_tile_buttons=True, has_fill_buttons=False
+    )
+
+    assert _tile_buttons_shown(overlay) == {"lock_tile_button"}
+    assert overlay.has_cell_size_buttons()
+    assert overlay.has_tile_buttons()
+    _fits(overlay)

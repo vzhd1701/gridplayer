@@ -7,6 +7,7 @@ from PyQt5.QtWidgets import QApplication, QWidget
 
 from gridplayer.models.grid_state import GridCell, GridState
 from gridplayer.params.static import GridMode, TileOverlap, TileResize
+from gridplayer.player.managers import grid as grid_module
 from gridplayer.player.managers.grid import GridManager
 from gridplayer.settings import Settings, _default_settings
 from gridplayer.utils.drop_zone import DropZone
@@ -85,6 +86,14 @@ def _free(manager, **rects):
     manager._free.is_as_placed = True
     for video_id, rect in rects.items():
         manager._free.set_rect(video_id, Rect(*rect), 1000, 500)
+
+
+def _arranged_when_due(manager):
+    """Arranged once the shapes stop coming (see ARRANGE_DELAY)."""
+
+    assert manager._arrange_timer.isActive()
+    manager._arrange_timer.stop()
+    manager._arrange_due()
 
 
 def _covered(rects) -> float:
@@ -288,6 +297,7 @@ def test_tiles_arranged_fill_the_page_again_once_shapes_are_known():
 
     manager._ctx.video_blocks.by_video_id("B").picture_shape = 9 / 16
     manager.fit_to_shapes()
+    _arranged_when_due(manager)
 
     assert _covered(_rects(manager)) == pytest.approx(1000 * 500)
 
@@ -300,6 +310,7 @@ def test_tiles_arranged_before_the_shapes_were_known_are_arranged_again():
     for block in manager._ctx.video_blocks:
         block.picture_shape = 1.0
     manager.fit_to_shapes()
+    _arranged_when_due(manager)
 
     rects = _rects(manager)
     assert all(r.width == pytest.approx(r.height) for r in rects.values())
@@ -1001,3 +1012,479 @@ def test_both_arrange_settings_from_the_settings_arrange_again_once(mocker):
     arrange.assert_called_once()
     # the editor shown where the tiles went
     changed.assert_called()
+
+
+def _mosaic(shapes, **rects):
+    """Mosaic, from Free Tiles with these tiles: arranged."""
+
+    manager = _manager(shapes)
+    _free(manager, **rects)
+    manager.cmd_set_grid_mode(GridMode.MOSAIC)
+    return manager
+
+
+def _by_hand(manager, video_id, rect):
+    """A tile moved, or sized, by hand and let go, as Edit Tiles or a drag
+    does it."""
+
+    manager.begin_grid_change()
+    _held_at(manager, video_id, rect)
+    manager.end_grid_change()
+
+
+def _held_at(manager, video_id, rect):
+    """A tile moved, or sized, there by hand: not let go."""
+
+    manager.set_free_tiles({video_id: Rect(*rect)}, 1000, 500, video_id)
+
+
+ROW = {"A": 16 / 9, "B": 16 / 9, "C": 16 / 9}
+SMALL = {
+    "A": (0, 0, 150, 90),
+    "B": (300, 0, 450, 90),
+    "C": (600, 0, 750, 90),
+}
+
+
+def test_in_mosaic_a_tile_held_put_where_it_was_arranges_nothing_anew(monkeypatch):
+    manager = _mosaic(ROW, **SMALL)
+    manager.begin_grid_change()
+    _held_at(manager, "A", (400, 200, 600, 312))
+    shown = _rects(manager)
+
+    calls = []
+    real = manager._arranged_around
+    monkeypatch.setattr(
+        manager, "_arranged_around", lambda *a, **k: calls.append(1) or real(*a, **k)
+    )
+    # snapped there again, say
+    _held_at(manager, "A", (400, 200, 600, 312))
+
+    assert not calls
+    assert _rects(manager) == shown
+    manager.end_grid_change()
+    assert _rects(manager) == shown
+
+
+def test_mosaic_from_free_tiles_arranges_them_and_is_undone():
+    manager = _manager(ROW)
+    _free(manager, **SMALL)
+
+    manager.cmd_set_grid_mode(GridMode.MOSAIC)
+
+    assert manager.grid_state().mode == GridMode.MOSAIC
+    assert manager._is_free
+    assert _covered(_rects(manager)) > 0.9 * 1000 * 500
+    manager.cmd_undo_grid()
+    assert manager.grid_state().mode == GridMode.FREE
+    assert _rects(manager)["A"] == pytest.approx(Rect(*SMALL["A"]))
+
+
+def test_free_tiles_from_mosaic_leaves_them_where_they_are():
+    manager = _mosaic(ROW, **SMALL)
+    arranged = _rects(manager)
+
+    manager.cmd_set_grid_mode(GridMode.FREE)
+
+    assert _rects(manager) == arranged
+    # by hand again: moved, the others stay
+    _by_hand(manager, "A", (500, 250, 900, 475))
+    assert _rects(manager)["B"] == arranged["B"]
+
+
+def test_mosaic_from_rows_arranges_the_cells_made_tiles():
+    manager = _manager(ROW)
+    manager._flow.ids = ["A", "B", "C"]
+
+    manager.cmd_set_grid_mode(GridMode.MOSAIC)
+
+    assert manager._is_mosaic
+    assert sorted(manager._free.tiles) == ["A", "B", "C"]
+    assert not _overlapping(_rects(manager))
+
+
+def test_in_mosaic_a_tile_moved_stays_where_it_is_let_go():
+    manager = _mosaic(ROW, **SMALL)
+    before = _rects(manager)
+
+    _by_hand(manager, "A", (500, 250, 900, 475))
+
+    rects = _rects(manager)
+    # stretched to the window's edge over the room under it, too thin for
+    # another, and that right of it, which none took: cut less than the
+    # crop limit
+    _approx(rects["A"], (500, 250, 1000, 500))
+    assert not _overlapping(rects)
+    assert _covered(rects) > 0.8 * 1000 * 500
+    # one change, the arranging with it
+    manager.cmd_undo_grid()
+    assert _rects(manager) == before
+
+
+def test_in_mosaic_a_tile_moved_turns_reorder_to_fit_off():
+    manager = _mosaic(ROW, **SMALL)
+    manager.cmd_switch_is_grid_reorder()
+
+    _by_hand(manager, "A", (500, 250, 900, 475))
+
+    assert not manager._flow.is_reordered
+
+
+def test_in_mosaic_a_tile_sized_stays_as_made_till_the_next_change():
+    shapes = {"A": 16 / 9, "B": 16 / 9, "C": 16 / 9, "D": 16 / 9}
+    manager = _mosaic(
+        shapes,
+        A=(0, 0, 150, 90),
+        B=(300, 0, 450, 90),
+        C=(0, 300, 150, 390),
+        D=(300, 300, 450, 390),
+    )
+    even = _rects(manager)
+    a = even["A"]
+    big = Rect(a.left, a.top, a.left + a.width * 1.6, a.top + a.height * 1.6)
+
+    _by_hand(manager, "A", big)
+
+    rects = _rects(manager)
+    # where it was made, over the room under it none took
+    _approx(rects["A"], (big.left, big.top, big.right, 500))
+    assert not _overlapping(rects)
+    # no size kept for it: arranged again, as any other
+    manager.cmd_arrange_tiles()
+    areas = [r.width * r.height for r in _rects(manager).values()]
+    assert areas == pytest.approx([areas[0]] * 4)
+
+
+def test_in_mosaic_a_video_closed_leaves_no_gap():
+    manager = _mosaic(ROW, **SMALL)
+
+    del manager._ctx.video_blocks.blocks["B"]
+    manager._reconcile_layout()
+
+    rects = _rects(manager)
+    assert set(rects) == {"A", "C"}
+    # side by side, as wide as the window
+    assert rects["A"].width + rects["C"].width == pytest.approx(1000)
+
+
+def test_in_mosaic_a_tile_locked_or_let_go_moves_nothing():
+    manager = _mosaic(ROW, **SMALL)
+    before = _rects(manager)
+
+    manager.lock_free_tile("B", True)
+    assert _rects(manager) == before
+    manager.lock_free_tile("B", False)
+    assert _rects(manager) == before
+
+
+def test_in_mosaic_hand_sizing_actions_are_off():
+    manager = _mosaic(ROW, **SMALL)
+    manager._active_id = lambda: "A"
+
+    assert not manager.is_tile_space_fillable()
+    assert not manager.is_tile_fittable()
+    assert not manager.is_tile_room_makeable()
+
+
+def test_in_mosaic_shapes_coming_in_together_are_arranged_for_once():
+    manager = _mosaic({"A": 16 / 9, "B": None, "C": None}, **SMALL)
+    manager._unshaped = {"B", "C"}
+    arrange = Mock(wraps=manager._arrange)
+    manager._arrange = arrange
+
+    for video_id in ("B", "C"):
+        manager._ctx.video_blocks.by_video_id(video_id).picture_shape = 1.0
+        manager.fit_to_shapes()
+    _arranged_when_due(manager)
+
+    arrange.assert_called_once()
+
+
+def test_in_mosaic_the_window_resized_arranges_them_as_it_goes():
+    manager = _mosaic(ROW, **SMALL)
+
+    for width in (900, 800):
+        manager._keep_parent.resize(width, 500)
+        manager._place_free(width, 500)
+
+        # at once, each size, as Arrange would
+        rects = manager._free.rects(width, 500)
+        assert not _overlapping(rects)
+        assert all(r.right <= width + 0.5 for r in rects.values())
+        manager.cmd_arrange_tiles()
+        assert manager._free.rects(width, 500) == pytest.approx(rects)
+
+    # and once more when done, for Reorder to Fit
+    _arranged_when_due(manager)
+    assert manager._free.rects(800, 500) == pytest.approx(rects)
+    # the same size: not again
+    manager._place_free(800, 500)
+    assert not manager._arrange_timer.isActive()
+
+
+def test_in_mosaic_with_reorder_to_fit_the_window_resized_is_reordered_once_done():
+    manager = _mosaic({"A": 16 / 9, "B": 9 / 16, "C": 16 / 9}, **SMALL)
+    manager.cmd_switch_is_grid_reorder()
+    arrange = Mock(wraps=manager._arrange)
+    manager._arrange = arrange
+
+    manager._keep_parent.resize(800, 500)
+    manager._place_free(800, 500)
+    # as it goes, in the order they are in, which may be quick
+    arrange.assert_called_once_with(is_reordered=False)
+
+    _arranged_when_due(manager)
+    # once done, reordered
+    assert arrange.call_args == ()
+
+
+def test_in_mosaic_the_others_make_room_as_a_tile_is_moved():
+    manager = _mosaic(ROW, **SMALL)
+    start = _rects(manager)
+
+    manager.begin_grid_change()
+    for left in (300, 400, 500):
+        _held_at(manager, "A", (left, 250, left + 400, 475))
+        shown = _rects(manager)
+        # each time: A where it is moved to, the others round it
+        assert shown["A"].left == pytest.approx(left)
+        assert not _overlapping(shown)
+
+    manager.end_grid_change()
+    assert _rects(manager) == shown
+    manager.cmd_undo_grid()
+    assert _rects(manager) == start
+
+
+def test_a_tile_moved_and_put_back_with_esc_leaves_them_all_as_they_were():
+    manager = _mosaic(ROW, **SMALL)
+    start = _rects(manager)
+
+    manager.begin_grid_change()
+    _held_at(manager, "A", (500, 250, 900, 475))
+    manager.cancel_grid_change()
+
+    assert _rects(manager) == start
+
+
+def test_in_mosaic_the_others_make_room_as_a_tile_is_sized():
+    manager = _mosaic(ROW, **SMALL)
+    start = _rects(manager)
+    a = start["A"]
+
+    manager.begin_grid_change()
+    _held_at(manager, "A", (a.left, a.top, a.right - 200, a.bottom - 112.5))
+
+    shown = _rects(manager)
+    assert shown["B"] != start["B"]
+    assert not _overlapping(shown)
+    manager.cancel_grid_change()
+
+
+def test_with_no_room_left_the_others_stay_as_last_shown():
+    manager = _mosaic(ROW, **SMALL)
+
+    manager.begin_grid_change()
+    _held_at(manager, "A", (0, 0, 700, 400))
+    shown = _rects(manager)
+    # as big as the window: none for the others
+    _held_at(manager, "A", (0, 0, 1000, 500))
+
+    for video_id in ("B", "C"):
+        assert _rects(manager)[video_id] == shown[video_id]
+    manager.end_grid_change()
+    # let go, arranged anew
+    assert not _overlapping(_rects(manager))
+
+
+def test_in_mosaic_there_are_no_size_steps():
+    manager = _mosaic(ROW, **SMALL)
+    # made bigger in Fit Shapes, say
+    manager._flow.sizes = {"A": 2}
+
+    assert not manager.is_grid_cell_sizable()
+    assert not manager.is_grid_sized()
+    assert not manager.is_grid_cell_sized("A")
+
+
+def _cut(rect, shape) -> float:
+    # how much of a picture of this shape its tile cuts
+    stretch = rect.width / rect.height / shape
+    return 1 - min(stretch, 1 / stretch)
+
+
+def test_tiles_from_the_settings_are_where_the_cells_were_by_the_old_options():
+    shapes = {"A": 16 / 9, "B": 9 / 16, "C": 16 / 9, "D": 9 / 16}
+    manager = _manager(shapes)
+    manager.cmd_set_grid_mode(GridMode.AUTO_SHAPES)
+    manager._flow.ids = list(shapes)
+    cells = dict(manager._cells_now(1000, 500))
+    # which would lay them out in another order
+    config = manager.grid_state().model_copy(
+        update={"mode": GridMode.FREE, "is_reordered": True}
+    )
+
+    assert manager.apply_grid_config(config)
+
+    assert manager._free.tiles == cells
+    # for when Free Tiles is left
+    assert manager._flow.is_reordered
+
+
+def test_mosaic_from_the_settings_with_a_new_crop_limit_arranges_once(mocker):
+    manager = _manager(ROW)
+    _free(manager, **SMALL)
+    manager.cmd_arrange_tiles()
+    arrange = mocker.spy(manager, "_arrange")
+
+    assert manager.apply_grid_config(
+        manager.grid_state().model_copy(
+            update={"mode": GridMode.MOSAIC, "tile_crop": 0}
+        )
+    )
+
+    assert manager._tile_crop == 0
+    arrange.assert_called_once()
+
+
+def test_mosaic_from_rows_tells_of_the_new_layout_once():
+    manager = _manager(ROW)
+    manager._flow.ids = ["A", "B", "C"]
+    changed = Mock()
+    manager.layout_changed.connect(changed)
+
+    manager.cmd_set_grid_mode(GridMode.MOSAIC)
+
+    changed.assert_called_once()
+
+
+def test_in_mosaic_a_video_reopened_is_arranged_with_the_others(mocker):
+    manager = _mosaic(ROW, **SMALL)
+    # left on from Free Tiles
+    mocker.patch.object(manager, "tile_overlap", return_value=TileOverlap.ON)
+    place = manager.place_of("B")
+    manager._free.remove("B")
+    manager._arrange()
+
+    manager._put_back("B", place)
+
+    rects = _rects(manager)
+    assert set(rects) == {"A", "B", "C"}
+    assert not _overlapping(rects)
+
+
+def test_in_mosaic_a_locked_video_reopened_goes_back_the_others_around_it():
+    manager = _mosaic(ROW, **SMALL)
+    manager.lock_free_tile("B", True)
+    locked = _rects(manager)["B"]
+    place = manager.place_of("B")
+    manager._free.remove("B")
+    manager._arrange()
+
+    manager._put_back("B", place)
+
+    rects = _rects(manager)
+    assert rects["B"] == locked
+    assert "B" in manager._free.locked
+    assert not _overlapping(rects)
+
+
+def test_in_mosaic_shuffled_they_are_arranged_in_the_new_order(mocker):
+    shapes = {"A": 16 / 9, "B": 9 / 16, "C": 16 / 9}
+    manager = _mosaic(shapes, **SMALL)
+    manager._flow.is_reordered = True
+    mocker.patch(
+        "gridplayer.utils.layout.free_tiles.random.shuffle",
+        side_effect=lambda ids: ids.reverse(),
+    )
+
+    manager.cmd_shuffle_layout()
+
+    rects = _rects(manager)
+    assert not _overlapping(rects)
+    # each tile its own video's shape, within the crop limit
+    for video_id, rect in rects.items():
+        assert _cut(rect, shapes[video_id]) <= 0.2 + 1e-6
+    # kept in the order shuffled
+    assert not manager._flow.is_reordered
+
+
+def test_in_mosaic_a_video_put_in_anothers_tile_is_arranged_for_its_shape():
+    manager = _mosaic(ROW, **SMALL)
+    blocks = manager._ctx.video_blocks
+    block = blocks.by_video_id("B")
+
+    def set_video(_video):
+        block.video_id, block.picture_shape = "D", None
+
+    def reindex(_block):
+        blocks.blocks = {b.video_id: b for b in blocks.blocks.values()}
+
+    block.set_video = set_video
+    blocks.reindex = reindex
+    manager.forget_grid_changes = lambda: None
+
+    manager._replace_cell_video(block, ["d.mp4"])
+    block.picture_shape = 9 / 16
+    manager.fit_to_shapes()
+    _arranged_when_due(manager)
+
+    rect = _rects(manager)["D"]
+    assert _cut(rect, 9 / 16) <= 0.2 + 1e-6
+
+
+def test_in_mosaic_tiles_loaded_from_another_size_are_arranged_again():
+    manager = _mosaic(ROW, **SMALL)
+    state = manager.grid_state()
+    manager._keep_parent.resize(800, 500)
+    manager._place_free(800, 500)
+
+    # as undo or a playlist puts it back
+    manager._load_grid_state(state)
+    manager._place_free(800, 500)
+
+    assert manager._arranged_at == (800, 500)
+    assert manager._free.is_page_size(800, 500)
+
+
+def test_a_shape_come_in_after_arrange_is_fitted_if_a_tile_is_moved_first():
+    manager = _manager({"A": 16 / 9, "B": None})
+    _free(manager, A=(0, 0, 150, 90), B=(500, 0, 650, 90))
+    manager.cmd_arrange_tiles()
+
+    manager._ctx.video_blocks.by_video_id("B").picture_shape = 9 / 16
+    manager.fit_to_shapes()
+    # no longer as Arrange left them, before it is due
+    manager.set_free_tiles({"A": Rect(0, 0, 200, 112.5)}, 1000, 500)
+    _arranged_when_due(manager)
+
+    rect = _rects(manager)["B"]
+    assert rect.width / rect.height == pytest.approx(9 / 16)
+
+
+def test_in_mosaic_a_tile_let_go_of_is_not_arranged_again_after():
+    manager = _mosaic(ROW, **SMALL)
+    manager.begin_grid_change()
+    _held_at(manager, "A", (400, 200, 600, 312))
+    # a shape came in, or the window was resized, as it went
+    manager._arrange_timer.start()
+
+    manager.end_grid_change()
+
+    assert not manager._arrange_timer.isActive()
+
+
+def test_in_mosaic_a_tile_sized_keeps_the_others_order_and_reorder_goes_off(mocker):
+    manager = _mosaic(ROW, **SMALL)
+    manager._flow.is_reordered = True
+    arrange = mocker.spy(grid_module, "arrange_around")
+    a = _rects(manager)["A"]
+
+    manager.begin_grid_change()
+    _held_at(manager, "A", (a.left, a.top, a.right + 100, a.bottom + 56.25))
+
+    # as it goes, in the order they are in
+    assert arrange.call_args.args[7] is False
+    manager.end_grid_change()
+    # and so after: as moved
+    assert not manager._flow.is_reordered

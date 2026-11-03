@@ -6,7 +6,7 @@ from PyQt5.QtWidgets import QApplication
 
 from gridplayer.models.tile_snaps import TileSnaps
 from gridplayer.params.gestures import GESTURE_ZOOM_SELECT
-from gridplayer.params.static import TileOverlap, TileSnap
+from gridplayer.params.static import GridMode, TileOverlap, TileSnap
 from gridplayer.player.managers.layout_drag import LayoutDragManager
 from gridplayer.playlist_settings import PlaylistSettings
 from gridplayer.utils.drag_n_drop import query_drop_modifiers
@@ -264,9 +264,19 @@ class FreeTilesManager(LayoutDragManager):
         pointer: tuple[float, float],
     ) -> TileDrag:
         """A tile's drag by its handle, from where the pointer is on its
-        page, as the settings say: Snap To and Tile Overlap."""
+        page, as the settings say: Snap To and Tile Overlap. In Mosaic,
+        over the others, which make room for it as it goes: what it snaps
+        to of them, only the locked tiles, which stay."""
 
         overlap = self._ctx.commands.tile_overlap()
+        is_mosaic = self._ctx.commands.is_grid_mode_set_to(GridMode.MOSAIC)
+        if is_mosaic:
+            tiles = tiles.copy()
+            tiles.tiles = {
+                i: box
+                for i, box in tiles.tiles.items()
+                if i == video_id or i in tiles.locked
+            }
         return TileDrag(
             tiles,
             video_id,
@@ -276,8 +286,8 @@ class FreeTilesManager(LayoutDragManager):
             pointer,
             self._shape_of(video_id),
             snaps=self.tile_snaps(),
-            is_over=overlap == TileOverlap.ON,
-            is_pushing=overlap == TileOverlap.PUSH,
+            is_over=is_mosaic or overlap == TileOverlap.ON,
+            is_pushing=not is_mosaic and overlap == TileOverlap.PUSH,
         )
 
     def _shape_of(self, video_id: str) -> float | None:
@@ -375,6 +385,7 @@ class FreeTilesManager(LayoutDragManager):
             {**drag.pushed, drag.video_id: rect},
             self._page.width(),
             self._page.height(),
+            drag.video_id,
         )
 
     def _finish(self):

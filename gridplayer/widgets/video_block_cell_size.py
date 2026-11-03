@@ -25,15 +25,23 @@ class CellSizeControl(VideoBlockPart):
         # its own button made its cell bigger or smaller
         self._is_stepped = False
 
-    def set_sizable(self, is_sizable: bool, is_shapable: bool, is_tile: bool):
+    def set_sizable(
+        self,
+        is_sizable: bool,
+        is_shapable: bool,
+        is_tile: bool,
+        is_tile_fillable: bool = True,
+    ):
         """Its overlay's buttons that make its cell bigger and smaller, and
         pick its size where it can be shaped too, or those of its tile in
-        Free Tiles (is_tile), the grid just laid out: off where there is no
-        room, as looked at once they are seen, the pointer on them (see
-        sync_steps)."""
+        Free Tiles (is_tile; in Mosaic, not fillable, only its lock), the
+        grid just laid out: off where there is no room, as looked at once
+        they are seen, the pointer on them (see sync_steps)."""
 
         overlay = self._block.overlay
-        overlay.set_cell_size_controls(is_sizable, is_shapable, is_tile)
+        overlay.set_cell_size_controls(
+            is_sizable, is_shapable, is_tile, is_tile_fillable
+        )
         self.forget_steps()
 
     def forget_steps(self):

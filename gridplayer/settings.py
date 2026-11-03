@@ -144,8 +144,8 @@ _default_settings = {
     # in Free Tiles, the tiles scaled together to fill the window as it is
     # resized, or kept as big as they were made
     "playlist/tile_resize": TileResize.FIT,
-    # in Free Tiles, how much of each picture Arrange may cut to fill the
-    # room, in percent
+    # in Mosaic, and Free Tiles' Arrange, how much of each picture may be
+    # cut to fill the room, in percent
     "playlist/tile_crop": 20,
     "playlist/save_paths_relative": False,
     # every setting written into the playlist, not only those it changes

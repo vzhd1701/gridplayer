@@ -244,15 +244,12 @@ def icon_paths(kind: str) -> tuple[QPainterPath, QPainterPath | None]:
         path.moveTo(5, 8)
         path.lineTo(11, 8)
     elif kind == "arrange":
-        # tiles of a few sizes, lined up, filled in, and a sparkle: done for
-        # you
-        tiles = QPainterPath()
+        # tiles of a few sizes, lined up, and a sparkle: done for you
         for rect in ((2, 2.5, 5.5, 5), (2, 9.5, 3.5, 4), (7.5, 9.5, 6.5, 4)):
-            tiles.addRect(QRectF(*rect))
+            path.addRect(QRectF(*rect))
         # its middle on a pixel's middle in the menu and on the bar, so its
         # thin points come out even
         fill = _sparkle(11.6, 5.2, 2.95)
-        fill.addPath(tiles)
     elif kind == "crop":
         # two corners crossing, where a picture is cut, as the menu's crop
         path.moveTo(4.5, 2)

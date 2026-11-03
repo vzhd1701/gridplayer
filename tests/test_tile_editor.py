@@ -23,6 +23,8 @@ class _Tiles:
         self.tiles = FreeTiles(boxes, WIDTH / HEIGHT, locked)
         self.overlap = overlap
         self.changes = []
+        # the tile held in each change sent
+        self.held = []
 
         self.editor = TileEditor(
             drag_of=self._drag_of,
@@ -35,6 +37,7 @@ class _Tiles:
                 set_crop=lambda _: None,
                 is_reordered=lambda: False,
                 set_reordered=lambda _: None,
+                is_mosaic=lambda: False,
                 is_snapping=lambda: True,
                 set_snapping=lambda _: None,
                 snaps=frozenset,
@@ -70,7 +73,8 @@ class _Tiles:
             is_over=self.overlap == TileOverlap.ON,
         )
 
-    def _changed(self, rects, width, height):
+    def _changed(self, rects, width, height, held):
+        self.held.append(held)
         for video_id, rect in rects.items():
             self.tiles.set_rect(video_id, rect, width, height)
         self.show()
@@ -144,6 +148,15 @@ class TestKeys:
         QTest.keyClick(two.editor, Qt.Key_Down, Qt.ControlModifier)
 
         assert two.rect("a") == (20, 20, 219, 121)
+
+    def test_each_change_says_the_tile_held(self, two):
+        two.editor.pick("a")
+
+        QTest.keyClick(two.editor, Qt.Key_Right)
+        QTest.keyClick(two.editor, Qt.Key_Left, Qt.ControlModifier)
+
+        # by the keys: no pointer
+        assert two.held == ["a", "a"]
 
     def test_a_tile_in_the_way_stops_it(self, two):
         two.editor.pick("a")
@@ -305,13 +318,15 @@ class TestPopups:
     @pytest.fixture
     def settings(self):
         """Tile Overlap, On Window Resize, Crop Limit, Reorder to Fit,
-        Snap Tiles and Snap To as the editor reads them."""
+        Snap Tiles and Snap To as the editor reads them, and whether it is
+        Mosaic."""
 
         return {
             "overlap": TileOverlap.OFF,
             "resize": TileResize.FIT,
             "crop": 20,
             "reordered": False,
+            "mosaic": False,
             "snapping": True,
             "snaps": frozenset(),
         }
@@ -329,6 +344,7 @@ class TestPopups:
                 set_crop=lambda v: settings.update(crop=v),
                 is_reordered=lambda: settings["reordered"],
                 set_reordered=lambda v: settings.update(reordered=v),
+                is_mosaic=lambda: settings["mosaic"],
                 is_snapping=lambda: settings["snapping"],
                 set_snapping=lambda v: settings.update(snapping=v),
                 snaps=lambda: settings["snaps"],
@@ -401,6 +417,16 @@ class TestPopups:
         editor.update_settings()
         assert choice.currentData() == 50
         assert not switch.isChecked()
+
+    def test_in_mosaic_the_bar_has_no_free_tiles_buttons(self, editor, settings):
+        buttons = (editor._arrange, editor._fit, editor._overlap, editor._resize)
+        assert all(button.isVisibleTo(editor) for button in buttons)
+
+        settings["mosaic"] = True
+        editor.update_undo()
+
+        assert not any(button.isVisibleTo(editor) for button in buttons)
+        assert editor._arrange_settings.isVisibleTo(editor)
 
     def test_a_popup_passes_the_players_keys_on(self, editor):
         pressed = []

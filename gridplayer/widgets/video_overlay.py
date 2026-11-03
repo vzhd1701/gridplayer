@@ -169,6 +169,7 @@ class OverlayBlock(QWidget):
         self._cell_size_wanted = False
         self._cell_size_picker_wanted = False
         self._tile_buttons_wanted = False
+        self._fill_buttons_wanted = True
         self._is_cell_size_in_title = True
 
         # whether each of the controls is wanted, by what the cell shows;
@@ -520,16 +521,22 @@ class OverlayBlock(QWidget):
         self._set_wanted((self.list_place_button, bool(place_txt)))
 
     def set_cell_size_controls(
-        self, is_shown: bool, has_picker: bool, has_tile_buttons: bool = False
+        self,
+        is_shown: bool,
+        has_picker: bool,
+        has_tile_buttons: bool = False,
+        has_fill_buttons: bool = True,
     ):
         """The buttons that make the cell bigger and smaller, and the one
         that picks its size, in a Fixed Grid; or those that make the tile as
         big as the room around it, and its video's shape, and lock it, in
-        Free Tiles."""
+        Free Tiles; or, in Mosaic (not has_fill_buttons), only the one that
+        locks it."""
 
         self._cell_size_wanted = is_shown
         self._cell_size_picker_wanted = has_picker
         self._tile_buttons_wanted = has_tile_buttons
+        self._fill_buttons_wanted = has_fill_buttons
         self._sync_cell_size_buttons()
 
     def has_cell_size_buttons(self) -> bool:
@@ -562,7 +569,10 @@ class OverlayBlock(QWidget):
         )
 
     def _tile_buttons(self) -> tuple[OverlayButton, ...]:
-        return (self.fill_space_button, self.fit_video_button, self.lock_tile_button)
+        return (*self._fill_buttons(), self.lock_tile_button)
+
+    def _fill_buttons(self) -> tuple[OverlayButton, ...]:
+        return (self.fill_space_button, self.fit_video_button)
 
     def _sync_cell_size_buttons(self):
         """In the title row, before the close button; in a narrower cell,
@@ -593,7 +603,11 @@ class OverlayBlock(QWidget):
                 self.cell_size_button,
                 self._cell_size_wanted and self._cell_size_picker_wanted,
             ),
-            *((button, self._tile_buttons_wanted) for button in self._tile_buttons()),
+            *(
+                (button, self._tile_buttons_wanted and self._fill_buttons_wanted)
+                for button in self._fill_buttons()
+            ),
+            (self.lock_tile_button, self._tile_buttons_wanted),
         )
 
         for button in self._cell_size_buttons():

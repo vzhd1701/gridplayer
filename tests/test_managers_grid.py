@@ -159,7 +159,9 @@ class _NativeCell(QWidget):
     def showEvent(self, event):
         self.shown_at.append(self.geometry())
 
-    def _set_cell_sizable(self, is_sizable, is_shapable, is_tile=False):
+    def _set_cell_sizable(
+        self, is_sizable, is_shapable, is_tile=False, is_tile_fillable=True
+    ):
         self.is_cell_sizable = is_sizable
 
 

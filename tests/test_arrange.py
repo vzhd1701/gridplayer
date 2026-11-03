@@ -4,7 +4,12 @@ import math
 
 import pytest
 
-from gridplayer.utils.layout.arrange import _biggest_room, arrange_around, open_pieces
+from gridplayer.utils.layout.arrange import (
+    ArrangeCache,
+    _biggest_room,
+    arrange_around,
+    open_pieces,
+)
 from gridplayer.utils.layout.flow_layout import FlowLayout, FlowMode
 from gridplayer.utils.layout.free_tiles import Rect
 
@@ -221,3 +226,21 @@ def test_the_biggest_room_is_one_a_tile_fits_in():
     walls = [Rect(40, 0, 1600, 800), Rect(190, 800, 1600, 1000)]
 
     assert _biggest_room(area, walls) == Rect(0, 800, 190, 1000)
+
+
+def test_with_what_was_worked_out_kept_it_comes_to_the_same():
+    ids, shapes = _videos(9)
+    cache = ArrangeCache()
+
+    def arranged(left, cache=None):
+        # a wall moved about, as a tile held is
+        walls = [Rect(left, 250, left + 600, 650)]
+        return arrange_around(WIDTH, HEIGHT, walls, ids, {}, shapes, 20, cache=cache)
+
+    for left in (300, 500):
+        assert arranged(left, cache) == arranged(left)
+    found = cache.find_splits.cache_info().misses
+
+    # back where it was: no splits to find anew
+    assert arranged(300, cache) == arranged(300)
+    assert cache.find_splits.cache_info().misses == found

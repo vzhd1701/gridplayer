@@ -60,6 +60,7 @@ def grid_modes() -> dict:
         GridMode.AUTO_SHAPES: translate("Grid Mode", "Auto (Fit Shapes)"),
         GridMode.FIXED: translate("Grid Mode", "Fixed Grid"),
         GridMode.FREE: translate("Grid Mode", "Free Tiles"),
+        GridMode.MOSAIC: translate("Grid Mode", "Mosaic"),
     }
 
 

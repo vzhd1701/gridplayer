@@ -43,7 +43,9 @@ def test_the_buttons_of_a_cell_away_from_the_pointer_wait_for_it():
 
     part.set_sizable(True, True, False)
 
-    block.overlay.set_cell_size_controls.assert_called_once_with(True, True, False)
+    block.overlay.set_cell_size_controls.assert_called_once_with(
+        True, True, False, True
+    )
     block.overlay.set_cell_steps.assert_not_called()
 
     # the pointer come to it, its overlay shown

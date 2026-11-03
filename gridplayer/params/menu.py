@@ -70,9 +70,12 @@ SUBMENUS = MappingProxyType(
             "title": translate("Playlist Settings", "Crop Limit"),
             "icon": "crop",
         },
+        # Free Tiles' Arrange Tiles and how it arranges them; in Mosaic, how
+        # it does, put in the menu itself
         "Arrange": {
             "title": translate("Actions", "Arrange"),
             "icon": "grid-arrange-tiles",
+            "inline_if": ("is_grid_mode_set_to", GridMode.MOSAIC),
         },
         "Tile Crop Limit": {
             "title": translate("Tile Crop", "Crop Limit"),
@@ -91,7 +94,7 @@ SUBMENUS = MappingProxyType(
         "Snap": {
             "title": translate("Actions", "Snap"),
             "icon": "snap",
-            "inline_if": NOT(("is_grid_mode_set_to", GridMode.FREE)),
+            "inline_if": NOT("is_grid_free"),
         },
         "Recently Closed": {
             "title": translate("Actions", "Recently Closed"),
@@ -782,12 +785,12 @@ SECTIONS = MappingProxyType(
                     "Delete Grid Template",
                 ),
                 "Free Tiles",
+                "Mosaic",
                 "---",
                 (
                     "Arrange",
                     "Arrange Tiles",
                     "Arrange Reorder to Fit",
-                    "---",
                     ("Tile Crop Limit", *(f"Tile Crop {crop}%" for crop in TILE_CROPS)),
                 ),
                 "Fit Tiles to Window",

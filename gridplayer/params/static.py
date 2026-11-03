@@ -61,6 +61,13 @@ class GridMode(AutoName):
     FIXED = auto()
     # Free Tiles: each video in a tile placed and sized by hand
     FREE = auto()
+    # Mosaic: tiles filling the window, the others arranged around one
+    # moved or sized by hand, and around those locked
+    MOSAIC = auto()
+
+
+# the modes with tiles of their own, laid out by FreeTiles
+TILED_MODES = frozenset({GridMode.FREE, GridMode.MOSAIC})
 
 
 # Free Tiles: whether a tile moved or sized goes over another, stops at its

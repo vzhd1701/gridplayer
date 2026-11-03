@@ -95,7 +95,9 @@ SNAPS_POPUP_WIDTH = 330
 class TileSettings(NamedTuple):
     """The settings of Free Tiles the editor's bar changes: Tile Overlap,
     On Window Resize, Arrange's Crop Limit and Reorder to Fit, Snap Tiles
-    and Snap To, read and set."""
+    and Snap To, read and set; and whether it is Mosaic, whose bar has
+    neither Arrange Tiles, Fit Tiles to Window, Tile Overlap nor On Window
+    Resize."""
 
     overlap: Callable[[], TileOverlap]
     set_overlap: Callable[[TileOverlap], None]
@@ -105,6 +107,7 @@ class TileSettings(NamedTuple):
     set_crop: Callable[[int], None]
     is_reordered: Callable[[], bool]
     set_reordered: Callable[[bool], None]
+    is_mosaic: Callable[[], bool]
     is_snapping: Callable[[], bool]
     set_snapping: Callable[[bool], None]
     snaps: Callable[[], frozenset]
@@ -163,8 +166,9 @@ class TileEditor(LayoutEditor):
 
     is_tiles = True
 
-    # tiles moved or sized: their rects on a page of the editor's size
-    tiles_changed = pyqtSignal(object, float, float)
+    # tiles moved or sized: their rects on a page of the editor's size, and
+    # the one held
+    tiles_changed = pyqtSignal(object, float, float, str)
     # a tile going over the others, put in front of them
     front_requested = pyqtSignal(str)
     # one change to undo: begun, done, or put back
@@ -397,7 +401,10 @@ class TileEditor(LayoutEditor):
         """The tile dragged at rect, and those it pushed aside."""
 
         self.tiles_changed.emit(
-            {**drag.pushed, drag.video_id: rect}, self.width(), self.height()
+            {**drag.pushed, drag.video_id: rect},
+            self.width(),
+            self.height(),
+            drag.video_id,
         )
         # over the others it goes, not under them; the tiles as they now are
         # (see set_tiles)
@@ -708,6 +715,18 @@ class TileEditor(LayoutEditor):
             [choice],
             refresh=refresh,
         )
+
+    def update_undo(self) -> None:
+        super().update_undo()
+        # in Mosaic, arranged after each change and as the window is
+        # resized, they fill it already, apart
+        is_free = not self._settings.is_mosaic()
+        buttons = (self._arrange, self._fit, self._overlap, self._resize)
+        if any(button.isVisibleTo(self) != is_free for button in buttons):
+            for button in buttons:
+                button.setVisible(is_free)
+            self._bar.adjustSize()
+            self.place_bar()
 
     def _show_arrange(self) -> None:
         crop_label = QLabel(translate("Tile Crop", "Crop limit"))

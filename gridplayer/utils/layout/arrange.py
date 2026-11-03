@@ -59,6 +59,22 @@ class _Laid(NamedTuple):
     rects: dict[str, Rect]
 
 
+# how many of the lines' splits ArrangeCache keeps, the last found
+SPLITS_KEPT = 2048
+
+
+class ArrangeCache:
+    """What arrange_around works out, kept from one call to the next for
+    the same videos, shapes and crop limit: the lines' splits, which do not
+    change as the pieces do. Kept while a tile is held, the others arranged
+    around it as it goes."""
+
+    def __init__(self):
+        self.find_splits: SplitFinder = functools.lru_cache(maxsize=SPLITS_KEPT)(
+            best_splits.__wrapped__
+        )
+
+
 def arrange_around(
     width: float,
     height: float,
@@ -68,6 +84,7 @@ def arrange_around(
     shapes: Mapping[str, float],
     crop_limit: int,
     is_reordered: bool = False,
+    cache: ArrangeCache | None = None,
 ) -> dict[str, Box] | None:
     """Where each video goes, as shares of an area of this size, around
     the walls in it (the locked tiles; all of these in pixels). Each
@@ -80,7 +97,8 @@ def arrange_around(
     stay: arranged once more, they are left be. Reordered, they go in the
     order that shows them best, wherever their tiles are (see _reordered).
     shapes has each video's width for its height; a video not in it is
-    taken to be DEFAULT_SHAPE.
+    taken to be DEFAULT_SHAPE. cache keeps what was worked out, for the
+    same videos, shapes and crop limit (see ArrangeCache).
     """
 
     if not ids:
@@ -99,8 +117,12 @@ def arrange_around(
     # none cut, at the least
     crops = tuple(crop for crop in FILL_CROPS if crop <= max(crop_limit, 0))
     # each run of videos laid out in a piece once, for all the rounds
-    find_splits = functools.cache(best_splits.__wrapped__)
-    sharings = [_Sharing(pieces, shapes, crops, find_splits) for pieces in cuts]
+    if cache is None:
+        find_splits = functools.cache(best_splits.__wrapped__)
+    else:
+        find_splits = cache.find_splits
+    laid: dict[tuple, _Laid] = {}
+    sharings = [_Sharing(pieces, shapes, crops, find_splits, laid) for pieces in cuts]
 
     def laid_out(at: Mapping[str, Rect]) -> dict[str, Rect]:
         found = []
@@ -304,8 +326,8 @@ def _reordered(
 
 class _Sharing:
     """Videos shared out among the pieces, in order, so many to each: each
-    run of videos laid out in a piece once, kept for other orders and
-    shares (see _lay_out)."""
+    run of videos laid out in a piece once, kept in laid for other orders
+    and shares (see _lay_out)."""
 
     def __init__(
         self,
@@ -313,12 +335,13 @@ class _Sharing:
         shapes: Mapping[str, float],
         crops: Sequence[int],
         find_splits: SplitFinder,
+        laid: dict[tuple, _Laid],
     ):
         self.pieces = pieces
         self._shapes = shapes
         self._crops = crops
         self._find_splits = find_splits
-        self._laid: dict[tuple, _Laid] = {}
+        self._laid = laid
 
     def runs(
         self,
@@ -392,9 +415,10 @@ class _Sharing:
         else:
             members = set(run)
             columns = tuple(i for i in column_ids if i in members)
-        key = (piece, run, columns)
-        if key not in self._laid:
-            self._laid[key] = _lay_out(
+        laid = self._laid
+        key = (self.pieces[piece], run, columns)
+        if key not in laid:
+            laid[key] = _lay_out(
                 self.pieces[piece],
                 run,
                 columns,
@@ -402,7 +426,7 @@ class _Sharing:
                 self._crops,
                 self._find_splits,
             )
-        return self._laid[key]
+        return laid[key]
 
 
 def _shares(pieces: Sequence[Rect], count: int) -> list[int]:

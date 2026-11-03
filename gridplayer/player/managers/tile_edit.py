@@ -46,6 +46,7 @@ class TileEditManager(LayoutEditManager):
                 set_crop=commands.set_tile_crop,
                 is_reordered=commands.is_grid_reorder,
                 set_reordered=self._set_reordered,
+                is_mosaic=lambda: commands.is_grid_mode_set_to(GridMode.MOSAIC),
                 is_snapping=commands.is_grid_line_snap,
                 set_snapping=self._set_snapping,
                 snaps=commands.tile_snaps,
