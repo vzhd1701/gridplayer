@@ -337,6 +337,12 @@ class PagedDialog(QDialog):
         room = self.screen().availableGeometry().height() * 2 // 3
         self.resize(self.width(), max(self.height(), room))
 
+    def fit_to_index(self):
+        """As tall as the index, every entry in sight, and no taller: a long
+        page scrolls."""
+
+        self.adjustSize()
+
     # the settings, wherever they are
 
     def form_of(self, key: str) -> SettingsForm:

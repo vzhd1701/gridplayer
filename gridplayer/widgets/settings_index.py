@@ -151,6 +151,12 @@ class SettingsIndex(QListWidget):
         self._heading_font.setBold(True)
         self._heading_font.setPixelSize(HEADING_PX)
 
+    def sizeHint(self):
+        """Tall enough for every entry, so none is behind a scroll."""
+
+        rows = sum(self.sizeHintForRow(row) for row in range(self.count()))
+        return QSize(INDEX_WIDTH, rows + 2 * self.frameWidth())
+
     def add_heading(self, title: str) -> QListWidgetItem:
         """Small and in capitals: a heading over entries, not one of them;
         and can't be picked."""

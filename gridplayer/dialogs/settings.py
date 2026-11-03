@@ -76,7 +76,7 @@ class SettingsDialog(PagedDialog):
 
         self.measure_cache()
         self.switch_page(None)
-        self.fit_to_screen()
+        self.fit_to_index()
 
     # building
 
