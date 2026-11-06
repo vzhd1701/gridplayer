@@ -156,6 +156,9 @@ class SoftwareVideoSurface(QWidget):
         if placement is None:
             return
 
+        self._draw_frame(painter, placement)
+
+    def _draw_frame(self, painter: QPainter, placement: ViewPlacement) -> None:
         painter.drawImage(
             QRectF(*placement.target), self._image, QRectF(*placement.source)
         )

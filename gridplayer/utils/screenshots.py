@@ -43,7 +43,7 @@ from gridplayer.params.static import (
 from gridplayer.utils.app_dir import get_app_data_dir
 from gridplayer.utils.aspect_calc import (
     calc_crop_region,
-    calc_frame_pixel_shape,
+    calc_full_pixel_shape,
     calc_view_borders,
 )
 
@@ -364,15 +364,11 @@ class ScreenshotView:
         frame_w, frame_h = self.frame_size
 
         if frame_w > 0 and frame_h > 0:
-            unit_x, unit_y = calc_frame_pixel_shape(
+            full_x, full_y = calc_full_pixel_shape(
                 self.frame_size, self.transform, self.pixel_aspect
             )
-            square_x, square_y = calc_frame_pixel_shape(self.frame_size, self.transform)
-            # pixels not square widen the picture or make it taller, as VLC
-            # does, rather than shrink it the other way
-            grown = max(square_x / unit_x, square_y / unit_y, 1)
-            width = max(round(width * unit_x * grown), 1)
-            height = max(round(height * unit_y * grown), 1)
+            width = max(round(width * full_x), 1)
+            height = max(round(height * full_y), 1)
 
         shaped = QSize(width, height)
 

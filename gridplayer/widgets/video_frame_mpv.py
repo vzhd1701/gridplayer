@@ -5,15 +5,21 @@ A resize never reaches mpv while it's happening: the picture keeps its current
 frame size and is scaled while painting. Once geometry has been quiet for
 RESIZE_SETTLE_MS, mpv is told the new size and switches on the render thread,
 the old frame staying up until the new one is ready. The frame has the shape
-of the picture, and letterboxing, zoom and pan are all just where it's painted.
+of the picture, and letterboxing, zoom, pan and flips are all just how it's
+painted.
 """
 
-from PyQt5.QtCore import Qt, QTimer
+from PyQt5.QtCore import QRectF, Qt, QTimer
 
 from gridplayer.mpv_player.player import MpvPlayer
 from gridplayer.mpv_player.renderer import MpvRenderService, RenderedVideo
+from gridplayer.params.static import ROTATION_TRANSFORMS, VideoTransform
 from gridplayer.settings import Settings
-from gridplayer.utils.aspect_calc import ViewPlacement, calc_render_size
+from gridplayer.utils.aspect_calc import (
+    ViewPlacement,
+    calc_full_size,
+    calc_render_size,
+)
 from gridplayer.utils.qt import translate
 from gridplayer.vlc_player.static import Media, MediaInput
 from gridplayer.vlc_player.video_driver_base import VLCVideoDriver
@@ -23,10 +29,41 @@ from gridplayer.widgets.video_surface_sw import PaintedVideoFrame, SoftwareVideo
 # How long geometry has to stay put before a video is rendered at the new size
 RESIZE_SETTLE_MS = 150
 
+# How long a screenshot waits for the frame at the picture's own size, before
+# making do with the one on show
+SCREENSHOT_WAIT_MS = 2000
+
+# Across and up and down, after whatever turn there is: see player._TURNS. For
+# a file that says to turn the picture on its side, the other way round: a flip
+# is of the frame as the file stores it, as on the VLC drivers.
+_FLIPS = {
+    VideoTransform.HFLIP: (True, False),
+    VideoTransform.VFLIP: (False, True),
+    VideoTransform.TRANSPOSE: (True, False),
+    VideoTransform.ANTITRANSPOSE: (False, True),
+}
+
 
 class MpvVideoSurface(SoftwareVideoSurface):
     """The frame comes at whatever size was last asked for, unlike a software
     driver's, so its size says nothing about the picture's."""
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+
+        self._is_file_on_its_side = False
+
+    def set_file_on_its_side(self, is_on_its_side: bool) -> None:
+        self._is_file_on_its_side = is_on_its_side
+        self.update()
+
+    def _flips(self) -> tuple[bool, bool] | None:
+        flips = _FLIPS.get(self._transform)
+
+        if flips is not None and self._is_file_on_its_side:
+            return flips[::-1]
+
+        return flips
 
     def picture_size(self) -> tuple[int, int]:
         if self._track_size is not None and all(self._track_size):
@@ -58,10 +95,48 @@ class MpvVideoSurface(SoftwareVideoSurface):
             ),
         )
 
+    def frame_image(self):
+        image = super().frame_image()
+        flips = self._flips()
+
+        return image.mirrored(*flips) if image is not None and flips else image
+
+    def _draw_frame(self, painter, placement) -> None:
+        flips = self._flips()
+
+        if flips is None:
+            super()._draw_frame(painter, placement)
+            return
+
+        is_across, is_up_down = flips
+        frame_w, frame_h = self.frame_size()
+        source_x, source_y, source_w, source_h = placement.source
+        x, y, width, height = placement.target
+
+        # the source is a part of the picture as shown, the frame being unflipped
+        if is_across:
+            source_x = frame_w - source_x - source_w
+        if is_up_down:
+            source_y = frame_h - source_y - source_h
+
+        painter.translate(x + width / 2, y + height / 2)
+        painter.scale(-1 if is_across else 1, -1 if is_up_down else 1)
+        painter.drawImage(
+            QRectF(-width / 2, -height / 2, width, height),
+            self._image,
+            QRectF(source_x, source_y, source_w, source_h),
+        )
+
 
 class VideoDriverMpv(VLCVideoDriver):
     def __init__(
-        self, render_service: MpvRenderService, hwdec: str, surface, pane_box, **kwargs
+        self,
+        render_service: MpvRenderService,
+        hwdec: str,
+        surface,
+        pane_box,
+        full_size,
+        **kwargs,
     ):
         super().__init__(**kwargs)
 
@@ -69,6 +144,7 @@ class VideoDriverMpv(VLCVideoDriver):
         self._hwdec = hwdec
         self._surface = surface
         self._pane_box = pane_box
+        self._full_size = full_size
 
         self._player: MpvPlayer | None = None
         self._rendered: RenderedVideo | None = None
@@ -86,8 +162,19 @@ class VideoDriverMpv(VLCVideoDriver):
         self._load_timeout.setSingleShot(True)
         self._load_timeout.timeout.connect(self._on_load_timeout)
 
+        # screenshots asked for and the frame size they're waiting for
+        self._screenshots_due = 0
+        self._screenshot_size: tuple[int, int] | None = None
+
+        self._screenshot_timeout = QTimer(self)
+        self._screenshot_timeout.setSingleShot(True)
+        self._screenshot_timeout.setInterval(SCREENSHOT_WAIT_MS)
+        self._screenshot_timeout.timeout.connect(self._give_screenshots)
+
     def cleanup_start(self) -> None:
         self._load_timeout.stop()
+        self._screenshot_timeout.stop()
+        self._screenshots_due = 0
 
         if self._player is None:
             return
@@ -148,6 +235,9 @@ class VideoDriverMpv(VLCVideoDriver):
         if not self._has_frame:
             self._has_frame = True
             self._report_load()
+
+        if self._screenshots_due and self._is_screenshot_size_shown():
+            self._give_screenshots()
 
     def _on_media_loaded(self, media: Media) -> None:
         self._media = media
@@ -221,8 +311,39 @@ class VideoDriverMpv(VLCVideoDriver):
         self.snapshot_taken_emit("")
 
     def screenshot(self):
-        # the frame on show: see VideoFrameMpv.shown_frame_image
-        self.screenshot_taken_emit("")
+        """The frame on show, once it's at a size worth saving, a small cell's
+        being only as big as it has to be to fill the cell. It comes back with
+        no file: see PaintedVideoFrame.shown_frame_image."""
+
+        size = self._full_size()
+
+        if self._player is None or not all(size):
+            self.screenshot_taken_emit("")
+            return
+
+        self._screenshots_due += 1
+        self._screenshot_size = size
+
+        if self._is_screenshot_size_shown():
+            self._give_screenshots()
+            return
+
+        self._player.hold_render_size(size)
+        self._screenshot_timeout.start()
+
+    def _is_screenshot_size_shown(self) -> bool:
+        return self._surface.frame_size() == self._screenshot_size
+
+    def _give_screenshots(self) -> None:
+        self._screenshot_timeout.stop()
+
+        if self._player is not None:
+            self._player.hold_render_size(None)
+
+        due, self._screenshots_due = self._screenshots_due, 0
+
+        for _ in range(due):
+            self.screenshot_taken_emit("")
 
     def play(self):
         self.set_pause(False)
@@ -310,6 +431,7 @@ class VideoFrameMpv(PaintedVideoFrame, VideoFrameVLC):
             hwdec=self._hwdec,
             surface=self.video_surface,
             pane_box=self._pane_box,
+            full_size=self._full_render_size,
             parent=self,
         )
 
@@ -323,7 +445,16 @@ class VideoFrameMpv(PaintedVideoFrame, VideoFrameVLC):
 
         return round(pane.width() * ratio), round(pane.height() * ratio)
 
+    def _full_render_size(self) -> tuple[int, int]:
+        return calc_full_size(
+            self._view_frame_size(), self._transform, self._pixel_aspect()
+        )
+
     def adjust_view(self):
+        self.video_surface.set_file_on_its_side(
+            self._orientation() in ROTATION_TRANSFORMS
+        )
+
         if super().adjust_view():
             return True
 
@@ -353,5 +484,6 @@ class VideoFrameMpv(PaintedVideoFrame, VideoFrameVLC):
                 placement,
                 self.devicePixelRatioF(),
                 self._pixel_aspect(),
+                self._transform,
             )
         )

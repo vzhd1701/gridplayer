@@ -100,6 +100,12 @@ _GL_PROTO = ctypes.WINFUNCTYPE if sys.platform == "win32" else ctypes.CFUNCTYPE
 # How often frames go up to the window at most when the screen doesn't say
 _MIN_REFRESH_HZ = 30
 
+# mpv waits 200 ms for a frame to be rendered and then lets it go, with nothing
+# left to say so. It's still what it draws if asked to draw. What's lost is the
+# word that there's something new: paused, no other is coming. A little less, as
+# the wait can come up short by a tick of the system's clock.
+_FRAME_LET_GO_S = 0.15
+
 
 class _GLFunctions:
     """The GL calls used here. ctypes lets go of the GIL for each."""
@@ -157,8 +163,12 @@ class RenderedVideo:
 
         self.render_context = None
         self.needs_update = False
+        # when mpv first said there was an update, since it was last looked at
+        self.update_said_at = 0.0
         # mpv has said there's a frame, and it hasn't been rendered yet
         self.has_new_frame = False
+        # a frame that came may have been let go: see _FRAME_LET_GO_S
+        self.is_frame_lost = False
         self.rendered_size = None
         self.texture = 0
 
@@ -289,6 +299,9 @@ class VideoRenderer(QThread):
             return
 
         def on_update():
+            if not video.needs_update:
+                video.update_said_at = time.monotonic()
+
             video.needs_update = True
             self._wake.set()
 
@@ -336,6 +349,9 @@ class VideoRenderer(QThread):
             # required on every update_cb in advanced control mode
             if video.render_context.update():
                 video.has_new_frame = True
+                video.is_frame_lost = False
+            elif time.monotonic() - video.update_said_at >= _FRAME_LET_GO_S:
+                video.is_frame_lost = True
 
         size = video.player.render_size()
 
@@ -346,11 +362,15 @@ class VideoRenderer(QThread):
         # picture, which the cell would take for the video having loaded.
         is_resized = video.rendered_size is not None and size != video.rendered_size
 
-        if not video.has_new_frame and not is_resized:
+        # and it's not a frame that's lost till the video has had one to lose
+        is_lost = video.is_frame_lost and video.player.has_restarted
+
+        if not video.has_new_frame and not is_resized and not is_lost:
             return False
 
         self._render(video, size)
         video.has_new_frame = False
+        video.is_frame_lost = False
         video.publish()
 
         return True

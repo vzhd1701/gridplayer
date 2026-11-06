@@ -5,7 +5,7 @@ The findings and traps are in `C:\Projects\test_temp\test_mpv\HANDOFF.md`, and
 what we build and how far it has got. Tick items only once they have been seen
 working.
 
-**Status: Stage 3 built (<https://claude.ai/artifact/8ngdeLCkVxmdQzSEnpxx1c>, real screenshots on its Built board). Open: macOS. Bundling libmpv (12.1) is for later. Stages 1-4 are committed on this branch.**
+**Status: Stage 3 built (<https://claude.ai/artifact/8ngdeLCkVxmdQzSEnpxx1c>, real screenshots on its Built board). Open: macOS. Bundling libmpv (12.1) is for later. Stages 1-5 are committed on this branch.**
 
 **Load tests against VLC: `MPV_PERFORMANCE.md`.** No multi-process mode for MPV. New items 10.13-10.16. **10.16 is a long run
 still to be started, overnight, by you.**
@@ -16,7 +16,7 @@ still to be started, overnight, by you.**
 | 2 | Finding the libraries, no startup delay, runs with only one of VLC or mpv | **done, macOS not run** |
 | 3 | Settings: unavailable drivers greyed out with a reason | **built, macOS still open** |
 | 4 | Transport: seek, speed, frame step, looping, end of video | **built, macOS not run** |
-| 5 | View: rotate, flip, crop, aspect ratio, screenshots, sync | not started |
+| 5 | View: rotate, flip, crop, aspect ratio, screenshots, sync | **built, macOS not run** |
 | 6 | Audio: tracks, files, devices, delay, channels | not started |
 | 7 | Subtitles: tracks, files, delay, encoding, style | not started |
 | 8 | Deinterlacing, chapters, bookmarks, SponsorBlock | not started |
@@ -312,16 +312,41 @@ doesn't load mpv, so a restart gets out of it.
 
 ## Stage 5: View and pictures
 
-- [ ] 5.1 Rotate and flip. `video-rotate` for turns. Flips at paint time, since `vf` would
+- [x] 5.1 Rotate and flip. `video-rotate` for turns. Flips at paint time, since `vf` would
   knock out zero-copy
-- [ ] 5.2 Files that say how to turn: track `orientation` from `demux-rotation`, and the
+- [x] 5.2 Files that say how to turn: track `orientation` from `demux-rotation`, and the
   `dw`/`dh` trap
-- [ ] 5.3 Crop, crop shapes, aspect ratio, View Mode, anchors, shift past edges, SAR, list tags
-- [ ] 5.4 Sync view, zoom to cursor, zoom to selection
-- [ ] 5.5 Screenshots from the slot's pixels at a size worth saving: re-render at the picture's
+- [x] 5.3 Crop, crop shapes, aspect ratio, View Mode, anchors, shift past edges, SAR, list tags
+- [x] 5.4 Sync view, zoom to cursor, zoom to selection
+- [x] 5.5 Screenshots from the slot's pixels at a size worth saving: re-render at the picture's
   own size first, don't save a thumbnail of a small cell. `ScreenshotView` agrees
-- [ ] 5.6 Pause on live video keeps the last frame
-- [ ] 5.7 Real-app scenarios `aspect_ratio`, `crop_ratio`, `pixel_shape`, `list_shape` on mpv
+- [x] 5.6 Pause on live video keeps the last frame
+- [x] 5.7 Real-app scenarios `aspect_ratio`, `crop_ratio`, `pixel_shape`, `list_shape` on mpv
+
+### Stage 5 results
+
+- **A paused video could lose its only frame, a bug from Stage 1.** mpv waits 200 ms for a frame to be rendered and
+  then lets it go, saying nothing. With 16 cells opened paused, about half never finished loading, since no other
+  frame was coming. The same could hit a paused seek on a busy grid. The renderer now tells when that may have
+  happened (an update over 150 ms old with no frame in it) and draws again, mpv still having the frame. 16 and 36
+  cells opened paused now all load, in 1.5 and 3 s.
+- **Screenshots have all the picture's pixels.** Asked for one, the video is rendered once at the picture's own size,
+  the frame is saved, and it goes back to the cell's size. From a 333x187 frame, a 1280x720 screenshot has its
+  1-pixel detail, paused or playing. If no frame comes in 2 s it saves what's on show.
+- Turned and flipped pictures: `video-rotate` for turns, painted flips, and a flip costs the same as any scaled paint
+  (1.8 ms at 1080p, 9 ms at 4K). Transpose is a turn and a flip. A crop, a zoom and a screenshot all go by the picture
+  as shown. The render size of a turned picture stopped at the wrong side's pixels: fixed.
+- **Flips are the same on every driver, your call.** VLC flips the frame as stored, so on a file on its side, a phone
+  video, Flip Horizontal comes out up and down on screen. MPV does the same, and VLC stays as it is. Every turn and flip
+  of a file turned by nothing, 90, 180 and 270 was checked to come out the same on Software VLC and both <MPV> drivers,
+  on screen and in a screenshot.
+- `aspect_ratio`, `crop_ratio`, `pixel_shape` and `list_shape` passed on MPV with nothing to change. New scenario
+  `mpv_view` for the rest: turns and flips on a plain file and one that turns itself, View Mode, anchors, shift past
+  the edges, zoom to selection, zoom to cursor, sync, screenshots.
+- `mpv_view` passes on both <MPV> drivers on Windows, and on X11 and Wayland on `test_gpu`. The four older scenarios
+  pass on Windows on both drivers, and on Hardware on X11 and Wayland.
+- 5.6 was tried on a video with no length, which the app takes as live. **A real live stream isn't seen as live yet**:
+  see 9.2.
 
 ## Stage 6: Audio
 
@@ -356,7 +381,11 @@ doesn't load mpv, so a restart gets out of it.
 - [ ] 9.1 `MediaInput` with HTTP headers, cookies, stream proxy, `is_adaptive`. Keep
   `ytdl=no`, since the app resolves links itself
 - [ ] 9.2 Live: `is_live`, no length, pause as stop, reconnects, `video-params` late. VLC's driver also
-  ignores `set_time` and `set_playback_rate` on live; the block mostly keeps them away, check what's left
+  ignores `set_time` and `set_playback_rate` on live; the block mostly keeps them away, check what's left.
+  **Found in Stage 5: a live HLS stream through the app's proxy isn't seen as live.** mpv gives it a `duration`
+  that grows with what it has read (6.8 s, then 8.8, on to 13.8), it's taken as a video of that first length
+  (3.8 s), and it goes back to the start every few seconds. `seekable` says yes as well. So `duration` alone can't
+  decide it
 - [ ] 9.3 Sizes and dubs: scenario `streams`, `dubs`
 - [ ] 9.4 Errors: `end-file` reason to `error`, mpv's log lines in place of "VLC errors:",
   `player/video_init_timeout`, no GL context, an mpv crash
@@ -451,6 +480,8 @@ doesn't load mpv, so a restart gets out of it.
 
 Newest first. What was finished and seen working, and anything that changed the plan.
 
+- 2026-11-07: Stage 5 built, see Stage 5 results. It turned up a Stage 1 bug, a paused video losing its only frame on a
+  busy grid, and that live streams aren't seen as live on MPV yet, now under 9.2.
 - 2026-11-06: Stage 4 built, see Stage 4 results: frame step and random start fixed, the rest held up. `mpv_transport` and `playback` pass on
   both <MPV> drivers on Windows, and on X11 and Wayland on `test_gpu`.
 - 2026-11-06: Stages 1-3, the frame-skip setting, the bench and these docs committed on `mpv`. The docs moved to `docs/`.

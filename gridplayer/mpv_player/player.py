@@ -34,6 +34,17 @@ _ROTATIONS = {
     270: VideoTransform.ROTATE_270,
 }
 
+# What to turn the picture by for a transform, in degrees clockwise, which mpv
+# adds to what the file says. The flips are painted: a filter would take away
+# what hardware decoding saves. See video_frame_mpv._FLIPS.
+_TURNS = {
+    VideoTransform.ROTATE_90: 90,
+    VideoTransform.ROTATE_180: 180,
+    VideoTransform.ROTATE_270: 270,
+    VideoTransform.TRANSPOSE: 90,
+    VideoTransform.ANTITRANSPOSE: 90,
+}
+
 # How often the time goes to the GUI at most: mpv says every frame, VLC about
 # four times a second, and what hangs off it was written for that.
 TIME_REPORT_MS = 200
@@ -101,6 +112,8 @@ class MpvPlayer(QObject):
         # the box a frame fits into until the view says better, and then that
         self._box: tuple[int, int] | None = None
         self._render_size: tuple[int, int] | None = None
+        # the size wanted over all of those for now, see hold_render_size
+        self._held_size: tuple[int, int] | None = None
 
         self.is_paused = media_input.video.is_paused
         # what it was last told, which it says it is only a moment later
@@ -108,6 +121,7 @@ class MpvPlayer(QObject):
         self._last_time_sent = None
 
         self._is_media_read = False
+        self.has_restarted = False
         self._log_lines = collections.deque(maxlen=_LOG_LINES_KEPT)
 
         self.mpv = mpv_module.MPV(
@@ -180,8 +194,12 @@ class MpvPlayer(QObject):
         if media_input.is_audio_only:
             options["vid"] = "no"
 
-        # a random start is only known with the length: see _on_preloaded
         video = media_input.video
+
+        if video.transform in _TURNS:
+            options["video_rotate"] = _TURNS[video.transform]
+
+        # a random start is only known with the length: see _on_preloaded
         if video.current_position and not media_input.is_live:
             options["start"] = str(video.current_position / 1000)
 
@@ -217,7 +235,9 @@ class MpvPlayer(QObject):
         if self._dims is None:
             return None
 
-        return self._render_size or calc_fit_size(self._dims, self._box)
+        return (
+            self._held_size or self._render_size or calc_fit_size(self._dims, self._box)
+        )
 
     def on_render_context_ready(self) -> None:
         # not from here: this thread never waits on the core
@@ -271,6 +291,12 @@ class MpvPlayer(QObject):
             self._render_size = size
             self._wake_renderer()
 
+    def hold_render_size(self, size: tuple[int, int] | None) -> None:
+        """Render at this size whatever the view says, until told None."""
+
+        self._held_size = size
+        self._wake_renderer()
+
     # Event thread ---------------------------------------------------------
 
     def _on_log(self, level: str, component: str, message: str) -> None:
@@ -298,6 +324,8 @@ class MpvPlayer(QObject):
         if event_id == ids.FILE_LOADED:
             self._read_media()
         elif event_id == ids.PLAYBACK_RESTART:
+            self.has_restarted = True
+            self._wake_renderer()
             self.playback_restarted.emit()
         elif event_id == ids.END_FILE:
             self._on_end_file(event.data)

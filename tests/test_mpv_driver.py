@@ -1,6 +1,7 @@
 """The sums and the bookkeeping of the mpv driver, with no libmpv. How it plays
 is in tests/real_app/scenarios/mpv_basics.py."""
 
+import time
 from types import SimpleNamespace
 from unittest.mock import MagicMock
 
@@ -15,10 +16,20 @@ from gridplayer.mpv_player.renderer import (
     RenderedVideo,
     VideoRenderer,
 )
-from gridplayer.params.static import VideoDriver, VideoTransform
+from gridplayer.params.static import (
+    VideoCellViewMode,
+    VideoCrop,
+    VideoDriver,
+    VideoTransform,
+    ViewParams,
+)
 from gridplayer.player.managers.video_driver import VideoDriverManager
 from gridplayer.settings import Settings
-from gridplayer.utils.aspect_calc import ViewPlacement, calc_render_size
+from gridplayer.utils.aspect_calc import (
+    ViewPlacement,
+    calc_full_size,
+    calc_render_size,
+)
 from gridplayer.vlc_player.static import Media, MediaInput, VideoTrack
 from gridplayer.widgets.video_frame_mpv import MpvVideoSurface, VideoDriverMpv
 
@@ -65,6 +76,41 @@ def test_render_size_keeps_room_for_wide_pixels():
     placement = _placed((0, 0, 320, 360), (0, 0, 1280, 720))
 
     assert calc_render_size((320, 360), placement, pixel_aspect=2.0) == (640, 360)
+
+
+def test_render_size_of_a_turned_picture_stops_at_what_it_has_each_way():
+    # all of a 1920x1080 picture on its side, on a screen with room to spare
+    placement = _placed((0, 0, 1920, 1080), (0, 0, 2160, 3840))
+
+    assert calc_render_size(
+        (1920, 1080), placement, transform=VideoTransform.ROTATE_90
+    ) == (1080, 1920)
+
+
+def test_render_size_of_a_turned_picture_is_what_is_on_show():
+    placement = _placed((0, 0, 1920, 1080), (0, 0, 270, 480))
+
+    assert calc_render_size(
+        (1920, 1080), placement, transform=VideoTransform.ROTATE_90
+    ) == (270, 480)
+
+
+@pytest.mark.parametrize(
+    ("picture", "transform", "pixel_aspect", "expected"),
+    [
+        ((1920, 1080), VideoTransform.NONE, 1.0, (1920, 1080)),
+        ((1920, 1080), VideoTransform.HFLIP, 1.0, (1920, 1080)),
+        ((1920, 1080), VideoTransform.ROTATE_180, 1.0, (1920, 1080)),
+        ((1920, 1080), VideoTransform.ROTATE_90, 1.0, (1080, 1920)),
+        ((1920, 1080), VideoTransform.TRANSPOSE, 1.0, (1080, 1920)),
+        ((320, 360), VideoTransform.NONE, 2.0, (640, 360)),
+        ((640, 360), VideoTransform.NONE, 0.5625, (640, 640)),
+        ((320, 360), VideoTransform.ROTATE_90, 2.0, (360, 640)),
+        ((0, 0), VideoTransform.NONE, 1.0, (0, 0)),
+    ],
+)
+def test_full_size(picture, transform, pixel_aspect, expected):
+    assert calc_full_size(picture, transform, pixel_aspect) == expected
 
 
 def test_render_size_is_never_nothing():
@@ -117,6 +163,95 @@ def test_surface_places_on_whole_pixels():
     x, y, width, height = surface.placement().target
 
     assert all(value == int(value) for value in (x, y, width, height))
+
+
+def _surface_showing(transform, pixels):
+    """A surface a frame fills, of this many BGRA pixels in a row."""
+
+    surface = MpvVideoSurface()
+    surface.resize(len(pixels), 1)
+    surface.set_view(
+        ViewParams(cell_view_mode=VideoCellViewMode.STRETCH), transform, None
+    )
+
+    buffer = bytearray()
+    for color in pixels:
+        buffer += color.to_bytes(4, "little")
+
+    surface.present_rgb32(bytes(buffer), len(pixels), 1)
+
+    return surface
+
+
+RED, BLUE = 0xFFFF0000, 0xFF0000FF
+
+
+@pytest.mark.parametrize(
+    ("transform", "expected"),
+    [
+        (VideoTransform.NONE, (RED, BLUE)),
+        # a turn is mpv's, and a flip up and down leaves a single row as it is
+        (VideoTransform.ROTATE_90, (RED, BLUE)),
+        (VideoTransform.VFLIP, (RED, BLUE)),
+        (VideoTransform.ANTITRANSPOSE, (RED, BLUE)),
+        (VideoTransform.HFLIP, (BLUE, RED)),
+        (VideoTransform.TRANSPOSE, (BLUE, RED)),
+    ],
+)
+def test_surface_flips_what_it_gives_for_a_screenshot(transform, expected):
+    image = _surface_showing(transform, (RED, BLUE)).frame_image()
+
+    assert (image.pixel(0, 0), image.pixel(1, 0)) == expected
+
+
+def test_surface_flips_the_other_way_on_a_file_on_its_side():
+    surface = _surface_showing(VideoTransform.VFLIP, (RED, BLUE))
+    surface.set_file_on_its_side(True)
+    image = surface.frame_image()
+
+    # up and down for the frame as stored is across once it's on its side
+    assert (image.pixel(0, 0), image.pixel(1, 0)) == (BLUE, RED)
+
+    surface = _surface_showing(VideoTransform.HFLIP, (RED, BLUE))
+    surface.set_file_on_its_side(True)
+    image = surface.frame_image()
+
+    assert (image.pixel(0, 0), image.pixel(1, 0)) == (RED, BLUE)
+
+
+def _painted_row(surface):
+    image = surface.grab().toImage()
+
+    # painted flipped, a colour can come out a shade off
+    return [
+        BLUE if image.pixelColor(x, 0).blue() > image.pixelColor(x, 0).red() else RED
+        for x in range(image.width())
+    ]
+
+
+def test_surface_paints_a_flip_across():
+    colors = (RED, RED, RED, BLUE)
+
+    assert _painted_row(_surface_showing(VideoTransform.NONE, colors)) == list(colors)
+    assert _painted_row(_surface_showing(VideoTransform.HFLIP, colors)) == list(
+        reversed(colors)
+    )
+
+
+def test_surface_flips_the_part_on_show_not_the_same_part_of_the_frame():
+    colors = (RED, RED, RED, BLUE)
+
+    surface = _surface_showing(VideoTransform.HFLIP, colors)
+    # half of the picture as shown is cut off its left, where the blue has gone
+    surface.set_view(
+        ViewParams(
+            cell_view_mode=VideoCellViewMode.STRETCH, crop=VideoCrop(2, 0, 0, 0)
+        ),
+        VideoTransform.HFLIP,
+        None,
+    )
+
+    assert set(_painted_row(surface)) == {RED}
 
 
 def test_surface_source_is_in_the_frames_pixels():
@@ -239,6 +374,27 @@ def test_options_leave_no_hardware_saving_out():
     assert options["ytdl"] is False
 
 
+@pytest.mark.parametrize(
+    ("transform", "degrees"),
+    [
+        (VideoTransform.ROTATE_90, 90),
+        (VideoTransform.ROTATE_180, 180),
+        (VideoTransform.ROTATE_270, 270),
+        (VideoTransform.TRANSPOSE, 90),
+        (VideoTransform.ANTITRANSPOSE, 90),
+    ],
+)
+def test_options_turn_the_picture(transform, degrees):
+    assert _player(transform=transform).mpv.options["video_rotate"] == degrees
+
+
+@pytest.mark.parametrize(
+    "transform", [VideoTransform.NONE, VideoTransform.HFLIP, VideoTransform.VFLIP]
+)
+def test_options_leave_the_file_to_say_with_no_turn(transform):
+    assert "video_rotate" not in _player(transform=transform).mpv.options
+
+
 def test_options_start_where_it_was_left():
     assert _player(current_position=5000).mpv.options["start"] == "5.0"
     assert "start" not in _player().mpv.options
@@ -300,6 +456,24 @@ def test_a_new_render_size_wakes_the_renderer_only_when_new():
     player.set_render_size((100, 50))
 
     player._wake_renderer.assert_called_once()
+
+
+def test_a_held_size_goes_over_the_views_until_let_go():
+    player = _player()
+    player._on_video_params(None, {"dw": 1920, "dh": 1080, "w": 1920, "h": 1080})
+    player.set_render_size((480, 270))
+
+    player.hold_render_size((1920, 1080))
+
+    assert player.render_size() == (1920, 1080)
+    assert player._wake_renderer.called
+
+    # what the view says in the meantime is what it goes back to
+    player.set_render_size((640, 360))
+    assert player.render_size() == (1920, 1080)
+
+    player.hold_render_size(None)
+    assert player.render_size() == (640, 360)
 
 
 def test_no_commands_after_closing():
@@ -464,12 +638,13 @@ def test_audio_only_has_no_video_tracks_even_if_the_file_does():
 # -- the driver
 
 
-def _driver():
+def _driver(full_size=lambda: (0, 0)):
     return VideoDriverMpv(
         render_service=MagicMock(),
         hwdec="auto",
         surface=MagicMock(),
         pane_box=lambda: (100, 100),
+        full_size=full_size,
     )
 
 
@@ -569,6 +744,98 @@ def test_a_size_change_while_playing_reaches_the_tracks():
     told.assert_called_once_with(640, 480, (4, 3))
 
 
+def _driver_for_screenshots(shown=(320, 180), full=(1920, 1080)):
+    driver = _driver(full_size=lambda: full)
+    driver._player = _player()
+    driver._player.hold_render_size = MagicMock()
+    driver._surface.frame_size.return_value = shown
+
+    driver.taken = []
+    driver.screenshot_taken.connect(driver.taken.append)
+
+    return driver
+
+
+def _frame_shown(driver, width, height):
+    driver._surface.frame_size.return_value = (width, height)
+    driver.show_frame(MagicMock(pixels=b"", width=width, height=height))
+
+
+def test_a_screenshot_waits_for_the_frame_at_the_pictures_size():
+    driver = _driver_for_screenshots()
+
+    driver.screenshot()
+
+    driver._player.hold_render_size.assert_called_once_with((1920, 1080))
+    assert driver.taken == []
+
+    # one made before it was asked
+    _frame_shown(driver, 320, 180)
+    assert driver.taken == []
+
+    _frame_shown(driver, 1920, 1080)
+    assert driver.taken == [""]
+    driver._player.hold_render_size.assert_called_with(None)
+
+    # that's all that was asked
+    _frame_shown(driver, 1920, 1080)
+    assert driver.taken == [""]
+
+    driver.cleanup_start()
+
+
+def test_a_screenshot_of_a_frame_at_its_size_already_takes_no_rendering():
+    driver = _driver_for_screenshots(shown=(1920, 1080))
+
+    driver.screenshot()
+
+    assert driver.taken == [""]
+    assert not driver._screenshot_timeout.isActive()
+
+
+def test_screenshots_asked_while_waiting_each_get_the_frame():
+    driver = _driver_for_screenshots()
+
+    driver.screenshot()
+    driver.screenshot()
+    _frame_shown(driver, 1920, 1080)
+
+    assert driver.taken == ["", ""]
+
+    driver.cleanup_start()
+
+
+def test_a_screenshot_makes_do_with_the_frame_on_show_if_none_comes():
+    driver = _driver_for_screenshots()
+
+    driver.screenshot()
+    driver._screenshot_timeout.timeout.emit()
+
+    assert driver.taken == [""]
+    driver._player.hold_render_size.assert_called_with(None)
+    assert not driver._screenshot_timeout.isActive()
+
+
+def test_a_screenshot_with_no_picture_says_so_at_once():
+    driver = _driver_for_screenshots(full=(0, 0))
+
+    driver.screenshot()
+
+    assert driver.taken == [""]
+    assert not driver._screenshot_timeout.isActive()
+
+
+def test_closing_drops_the_screenshots_waiting():
+    driver = _driver_for_screenshots()
+    driver._rendered = MagicMock()
+
+    driver.screenshot()
+    driver.cleanup_start()
+
+    assert not driver._screenshot_timeout.isActive()
+    assert driver._screenshots_due == 0
+
+
 def test_a_libmpv_that_wont_start_is_an_error_on_the_cell(mocker):
     mocker.patch(
         "gridplayer.widgets.video_frame_mpv.MpvPlayer",
@@ -591,6 +858,7 @@ def test_a_libmpv_that_wont_start_is_an_error_on_the_cell(mocker):
 def _rendered_video(size=(4, 2)):
     video = RenderedVideo(MagicMock())
     video.player.render_size.return_value = size
+    video.player.has_restarted = True
     video.render_context = MagicMock()
     video.render_context.update.return_value = False
     return video
@@ -603,8 +871,9 @@ def renderer():
     return made
 
 
-def _round(renderer, video, *, is_frame):
+def _round(renderer, video, *, is_frame, said_ago=0.0):
     video.needs_update = True
+    video.update_said_at = time.monotonic() - said_ago
     video.render_context.update.return_value = is_frame
     renderer._render_round()
 
@@ -647,6 +916,74 @@ def test_a_new_size_is_rendered_with_no_new_frame(renderer):
 
     assert video.render_context.render.call_count == 2
     assert video.rendered_size == (8, 4)
+
+
+def test_a_frame_mpv_let_go_of_before_it_was_rendered_is_rendered(renderer):
+    video = _rendered_video()
+    renderer._videos.append(video)
+
+    _round(renderer, video, is_frame=False, said_ago=0.25)
+
+    assert video.render_context.render.call_count == 1
+
+    # and just the once
+    renderer._render_round()
+
+    assert video.render_context.render.call_count == 1
+
+
+def test_an_update_just_now_with_no_frame_has_lost_nothing(renderer):
+    video = _rendered_video()
+    renderer._videos.append(video)
+
+    _round(renderer, video, is_frame=False)
+
+    assert video.render_context.render.call_count == 0
+
+
+def test_nothing_is_lost_until_the_video_has_started(renderer):
+    video = _rendered_video()
+    video.player.has_restarted = False
+    renderer._videos.append(video)
+
+    # drawn now it would be black, and taken for the first picture
+    _round(renderer, video, is_frame=False, said_ago=0.25)
+
+    assert video.render_context.render.call_count == 0
+
+    video.player.has_restarted = True
+    renderer._render_round()
+
+    assert video.render_context.render.call_count == 1
+
+
+def test_a_frame_that_came_after_all_is_rendered_once(renderer):
+    video = _rendered_video()
+    video.player.has_restarted = False
+    renderer._videos.append(video)
+
+    _round(renderer, video, is_frame=False, said_ago=0.25)
+    video.player.has_restarted = True
+    _round(renderer, video, is_frame=True)
+
+    assert video.render_context.render.call_count == 1
+
+    renderer._render_round()
+
+    assert video.render_context.render.call_count == 1
+
+
+def test_a_restart_wakes_the_renderer_for_a_frame_held_back():
+    player = _player()
+    player._wake_renderer.reset_mock()
+
+    assert not player.has_restarted
+
+    ids = player._mpv_module.MpvEventID
+    player._on_event(MagicMock(**{"event_id.value": ids.PLAYBACK_RESTART}))
+
+    assert player.has_restarted
+    assert player._wake_renderer.called
 
 
 def test_one_video_failing_to_render_leaves_the_others(renderer):

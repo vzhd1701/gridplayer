@@ -34,10 +34,10 @@ KNOWN_BUGS = {
 }
 
 # the scenarios of a driver that isn't there on every machine
-NEEDS_LIBMPV = {"mpv_basics", "mpv_transport"}
+NEEDS_LIBMPV = {"mpv_basics", "mpv_transport", "mpv_view"}
 
 # the scenarios written for VLC that the MPV drivers are held to as well
-ALSO_ON_MPV = ("playback",)
+ALSO_ON_MPV = ("aspect_ratio", "crop_ratio", "list_shape", "pixel_shape", "playback")
 MPV_DRIVERS = ("mpv_hw", "mpv_sw")
 
 RUN_TIMEOUT_SEC = 300

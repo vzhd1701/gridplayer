@@ -145,6 +145,7 @@ def calc_render_size(
     placement: ViewPlacement,
     device_ratio: float = 1.0,
     pixel_aspect: float = 1.0,
+    transform: VideoTransform | None = VideoTransform.NONE,
 ) -> tuple[int, int]:
     """How big to have the whole picture drawn, for what is on show of it.
 
@@ -152,9 +153,10 @@ def calc_render_size(
     with and subtitles are at display size, and more when zoomed in, up to
     what the picture has: going past that would only be a slower way to
     blur it. The picture is `picture_size` in the placement's source pixels,
-    each `pixel_aspect` wide for its height.
+    each `pixel_aspect` wide for its height, before the transform.
     """
     picture_w, picture_h = picture_size
+    full_x, full_y = calc_full_pixel_shape(picture_size, transform, pixel_aspect)
     _, _, source_w, source_h = placement.source
     _, _, target_w, target_h = placement.target
 
@@ -162,10 +164,28 @@ def calc_render_size(
     scale_x = target_w * device_ratio / source_w
     scale_y = target_h * device_ratio / source_h
 
-    width = picture_w * min(scale_x, max(pixel_aspect, 1.0))
-    height = picture_h * min(scale_y, max(1 / pixel_aspect, 1.0))
+    width = picture_w * min(scale_x, full_x)
+    height = picture_h * min(scale_y, full_y)
 
     return max(round(width), 2), max(round(height), 2)
+
+
+def calc_full_size(
+    picture_size: tuple[int, int],
+    transform: VideoTransform | None = VideoTransform.NONE,
+    pixel_aspect: float = 1.0,
+) -> tuple[int, int]:
+    """The size at which the picture, in its shape, has all that it holds."""
+
+    if not all(picture_size):
+        return 0, 0
+
+    full_x, full_y = calc_full_pixel_shape(picture_size, transform, pixel_aspect)
+
+    return (
+        max(round(picture_size[0] * full_x), 1),
+        max(round(picture_size[1] * full_y), 1),
+    )
 
 
 def calc_whole_placement(
@@ -896,6 +916,24 @@ def calc_frame_pixel_shape(
 
     # the turned picture is as wide as the unturned one is tall
     return frame_h / frame_w, frame_w * pixel_aspect / frame_h
+
+
+def calc_full_pixel_shape(
+    frame_size: tuple[int, int],
+    transform: VideoTransform | None,
+    pixel_aspect: float = 1.0,
+) -> tuple[float, float]:
+    """How wide and how tall to make a frame pixel for the picture to have its
+    shape and lose nothing, in whole frame pixels of square ones.
+
+    Pixels not square widen the picture or make it taller, as VLC does, rather
+    than shrink it the other way.
+    """
+    unit_x, unit_y = calc_frame_pixel_shape(frame_size, transform, pixel_aspect)
+    square_x, square_y = calc_frame_pixel_shape(frame_size, transform)
+    grown = max(square_x / unit_x, square_y / unit_y, 1)
+
+    return unit_x * grown, unit_y * grown
 
 
 def calc_picture_shape(
