@@ -5,7 +5,7 @@ The findings and traps are in `C:\Projects\test_temp\test_mpv\HANDOFF.md`, and
 what we build and how far it has got. Tick items only once they have been seen
 working.
 
-**Status: Stage 3 built (<https://claude.ai/artifact/8ngdeLCkVxmdQzSEnpxx1c>, real screenshots on its Built board). Open: macOS. Bundling libmpv (12.1) is for later. Stages 1-3 are committed on this branch.**
+**Status: Stage 3 built (<https://claude.ai/artifact/8ngdeLCkVxmdQzSEnpxx1c>, real screenshots on its Built board). Open: macOS. Bundling libmpv (12.1) is for later. Stages 1-4 are committed on this branch.**
 
 **Load tests against VLC: `MPV_PERFORMANCE.md`.** No multi-process mode for MPV. New items 10.13-10.16. **10.16 is a long run
 still to be started, overnight, by you.**
@@ -15,7 +15,7 @@ still to be started, overnight, by you.**
 | 1 | Videos load, play and resize in the real grid, with zoom and pan | built, your hand test still open |
 | 2 | Finding the libraries, no startup delay, runs with only one of VLC or mpv | **done, macOS not run** |
 | 3 | Settings: unavailable drivers greyed out with a reason | **built, macOS still open** |
-| 4 | Transport: seek, speed, frame step, looping, end of video | not started |
+| 4 | Transport: seek, speed, frame step, looping, end of video | **built, macOS not run** |
 | 5 | View: rotate, flip, crop, aspect ratio, screenshots, sync | not started |
 | 6 | Audio: tracks, files, devices, delay, channels | not started |
 | 7 | Subtitles: tracks, files, delay, encoding, style | not started |
@@ -275,17 +275,40 @@ doesn't load mpv, so a restart gets out of it.
 
 ## Stage 4: Transport
 
-- [ ] 4.1 Seeks: exact or not, many in a row from a bar drag, `_seek_target` logic works
+- [x] 4.1 Seeks: exact or not, many in a row from a bar drag, `_seek_target` logic works
   with mpv's time
-- [ ] 4.2 `time_changed` throttled from `time-pos` to about what VLC sends. Measured: reading it 5
+- [x] 4.2 `time_changed` throttled from `time-pos` to about what VLC sends. Measured: reading it 5
   times a second instead of every frame saves about 5% of the app's CPU, and plays no more
-- [ ] 4.3 Frame step, playback rate, Loop A-B, random start, saved position
-- [ ] 4.4 `loop-file=inf` against end-of-video actions, `is_loop_wrapped`, When Finished
-- [ ] 4.5 Loaded paused: first frame shows, seeks work while paused
-- [ ] 4.7 From the code review, not seen happen: `VideoDriverMpv.set_pause` compares with the last state mpv
+- [x] 4.3 Frame step, playback rate, Loop A-B, random start, saved position
+- [x] 4.4 `loop-file=inf` against end-of-video actions, `is_loop_wrapped`, When Finished
+- [x] 4.5 Loaded paused: first frame shows, seeks work while paused
+- [x] 4.7 From the code review, not seen happen: `VideoDriverMpv.set_pause` compares with the last state mpv
   confirmed, not the last asked for, so a pause then an unpause in quick succession can leave it paused. Compare
   with what was last asked for
-- [ ] 4.6 Scenario `playback` runs on mpv too, bugs in `KNOWN_BUGS` until fixed
+- [x] 4.6 Scenario `playback` runs on mpv too, bugs in `KNOWN_BUGS` until fixed
+
+### Stage 4 results
+
+- **Frame step was wrong, and only showed off 30 fps.** mpv goes to the first frame at or after a time, and
+  the time was cut down to whole milliseconds, which puts it in the frame before. At 30 fps the two cancelled out.
+  At 23.976 a step could skip a frame, and in an mkv Previous got stuck on one frame. Now the time is always in the
+  frame on show, and a seek aims half a frame back, so it goes to the frame nearest the time.
+- **A random start showed the video's first frame as loaded**, then jumped. The length is only known at `file-loaded`,
+  when the first frame is already on its way. It's now picked in mpv's `on_preloaded` hook, before anything is
+  decoded, and goes through `start` like a saved position. python-mpv doesn't have hooks, so they're called
+  on its library directly.
+- Exact seeks stay, for a bar drag too. 100 seeks in 3 s on a clip with keyframes about 4 s apart: 1080p60 shows 64
+  frames on Hardware <MPV> and 41 on Software, 4K60 14 on Software, and all land on the right frame at once.
+- A saved position doesn't become where the loop goes back to: `loop-file` goes round to 0.
+- Checked against VLC, the same: a seek to the very end for each end action, stop then play, speed through a reload,
+  on to the next file. A paused seek stays "on its way" until it plays, as on VLC, and it's harmless.
+- Time reports go by the video's time, so 10 a second at 2x and 2.5 at 0.5x. Kept: a loop's end is then overshot by the
+  same amount at any speed.
+- Known and left: on a video under about 170 ms the end action never runs, since no time report gets through
+  (VLC doesn't load the 0.5 s test clip here at all). At 240 fps and up a frame step would land a frame short, mpv
+  allowing 5 ms either side of a seek; not tried.
+- New scenario `mpv_transport`. `playback` now runs on both <MPV> drivers too.
+- `mpv_transport` and `playback` pass on both <MPV> drivers on Windows, and on X11 and Wayland on `test_gpu`.
 
 ## Stage 5: View and pictures
 
@@ -332,7 +355,8 @@ doesn't load mpv, so a restart gets out of it.
 
 - [ ] 9.1 `MediaInput` with HTTP headers, cookies, stream proxy, `is_adaptive`. Keep
   `ytdl=no`, since the app resolves links itself
-- [ ] 9.2 Live: `is_live`, no length, pause as stop, reconnects, `video-params` late
+- [ ] 9.2 Live: `is_live`, no length, pause as stop, reconnects, `video-params` late. VLC's driver also
+  ignores `set_time` and `set_playback_rate` on live; the block mostly keeps them away, check what's left
 - [ ] 9.3 Sizes and dubs: scenario `streams`, `dubs`
 - [ ] 9.4 Errors: `end-file` reason to `error`, mpv's log lines in place of "VLC errors:",
   `player/video_init_timeout`, no GL context, an mpv crash
@@ -427,6 +451,8 @@ doesn't load mpv, so a restart gets out of it.
 
 Newest first. What was finished and seen working, and anything that changed the plan.
 
+- 2026-11-06: Stage 4 built, see Stage 4 results: frame step and random start fixed, the rest held up. `mpv_transport` and `playback` pass on
+  both <MPV> drivers on Windows, and on X11 and Wayland on `test_gpu`.
 - 2026-11-06: Stages 1-3, the frame-skip setting, the bench and these docs committed on `mpv`. The docs moved to `docs/`.
 - 2026-11-06: Code review fixes. Reproduced first: on Software <MPV> a cell could report loaded with a black picture (3 of 4 cells
   on Windows, playing), as mpv was rendered before it had a frame. One video failing to render no longer stops the render

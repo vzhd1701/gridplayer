@@ -232,17 +232,28 @@ class VideoDriverMpv(VLCVideoDriver):
             return
 
         # nothing would come back to say so, and the frame waits for that
-        if self._player.is_paused == is_paused:
+        if self._player.is_pause_asked == is_paused:
             self.playback_status_changed_emit(is_paused)
             return
 
-        self._player.set_option("pause", "yes" if is_paused else "no")
+        self._player.set_pause(is_paused)
 
     def set_time(self, seek_ms):
         if self._player is None:
             return
 
-        self._player.command("seek", max(seek_ms, 0) / 1000, "absolute+exact")
+        # mpv goes to the first frame at or after a time, where a time here
+        # means the frame it is in. Half a frame back makes it the frame nearest
+        # to the time, and for the middle of a frame, which is where a frame
+        # step aims, that very frame.
+        aim_ms = max(seek_ms - self._half_frame_ms(), 0)
+
+        self._player.command("seek", aim_ms / 1000, "absolute+exact")
+
+    def _half_frame_ms(self) -> float:
+        track = self._media.cur_video_track if self._media is not None else None
+
+        return 500 / track.fps if track is not None and track.fps else 0
 
     def set_playback_rate(self, rate):
         self._set_option("speed", str(rate))

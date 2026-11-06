@@ -8,6 +8,7 @@ does comes through command(), which never waits.
 import collections
 import logging
 import threading
+from ctypes import c_ulonglong
 from fractions import Fraction
 
 from PyQt5.QtCore import QObject, pyqtSignal
@@ -102,10 +103,11 @@ class MpvPlayer(QObject):
         self._render_size: tuple[int, int] | None = None
 
         self.is_paused = media_input.video.is_paused
+        # what it was last told, which it says it is only a moment later
+        self.is_pause_asked = media_input.video.is_paused
         self._last_time_sent = None
 
         self._is_media_read = False
-        self._is_seek_on_load = False
         self._log_lines = collections.deque(maxlen=_LOG_LINES_KEPT)
 
         self.mpv = mpv_module.MPV(
@@ -122,6 +124,9 @@ class MpvPlayer(QObject):
 
         if env.MPV_VERSION is None:
             self.mpv.observe_property("mpv-version", self._on_version)
+
+        if self._is_start_random():
+            self._hook_add("on_preloaded")
 
     def _options(self) -> dict:
         media_input = self.media_input
@@ -175,14 +180,34 @@ class MpvPlayer(QObject):
         if media_input.is_audio_only:
             options["vid"] = "no"
 
-        # a random start is only known with the length: see _read_media
+        # a random start is only known with the length: see _on_preloaded
         video = media_input.video
         if video.current_position and not media_input.is_live:
             options["start"] = str(video.current_position / 1000)
-        elif video.is_start_random and not media_input.is_live:
-            self._is_seek_on_load = True
 
         return options
+
+    def _is_start_random(self) -> bool:
+        media_input = self.media_input
+        video = media_input.video
+
+        return (
+            video.is_start_random
+            and not video.current_position
+            and not media_input.is_live
+        )
+
+    def _hook_add(self, name: str) -> None:
+        # python-mpv doesn't have these. Hooks are the client's that added them,
+        # and its events are on this handle.
+        self._mpv_module.backend.mpv_hook_add(
+            self.mpv._event_handle, c_ulonglong(0), name.encode(), 0
+        )
+
+    def _hook_continue(self, hook_id: int) -> None:
+        self._mpv_module.backend.mpv_hook_continue(
+            self.mpv._event_handle, c_ulonglong(hook_id)
+        )
 
     # Render thread --------------------------------------------------------
 
@@ -233,6 +258,11 @@ class MpvPlayer(QObject):
     def set_option(self, name: str, value) -> None:
         self.command("set", name, value)
 
+    def set_pause(self, is_paused: bool) -> None:
+        self.is_pause_asked = is_paused
+
+        self.set_option("pause", "yes" if is_paused else "no")
+
     def set_skip_frames(self, is_skipping: bool) -> None:
         self.set_option("vd-lavc-skipframe", _SKIP_FRAMES[is_skipping])
 
@@ -254,11 +284,16 @@ class MpvPlayer(QObject):
             self._log.debug(line)
 
     def _on_event(self, event) -> None:
-        if self._is_closing:
-            return
-
         event_id = event.event_id.value
         ids = self._mpv_module.MpvEventID
+
+        # mpv waits on this one, closing or not
+        if event_id == ids.HOOK:
+            self._on_preloaded(event.data.id)
+            return
+
+        if self._is_closing:
+            return
 
         if event_id == ids.FILE_LOADED:
             self._read_media()
@@ -266,6 +301,24 @@ class MpvPlayer(QObject):
             self.playback_restarted.emit()
         elif event_id == ids.END_FILE:
             self._on_end_file(event.data)
+
+    def _on_preloaded(self, hook_id: int) -> None:
+        """A random start: the length is known now, and nothing is decoded yet.
+
+        At file-loaded it's too late, the video's first frame being on its way by
+        then, to be shown as loaded before the seek lands.
+        """
+
+        try:
+            duration = None if self._is_closing else self.mpv.duration
+
+            # none and it counts as live, which has no random start: see _read_media
+            if duration:
+                self.media_input.length = int(duration * 1000)
+
+                self.mpv.start = str(self.media_input.initial_time / 1000)
+        finally:
+            self._hook_continue(hook_id)
 
     def _on_end_file(self, data) -> None:
         if data.reason != self._mpv_module.MpvEventEndFile.ERROR:
@@ -298,7 +351,10 @@ class MpvPlayer(QObject):
         if seconds is None or not self._is_media_read:
             return
 
-        new_time = int(seconds * 1000)
+        # A frame's start can be up to half a millisecond off its true one, in
+        # whichever direction, and the time has to be in the frame: the frame
+        # is worked out from it, see VideoBlock.step_frame.
+        new_time = round(seconds * 1000) + 1
 
         last_time = self._last_time_sent
 
@@ -341,14 +397,6 @@ class MpvPlayer(QObject):
             self.media_input.is_live = True
 
         self.media_input.length = media.length
-
-        if self._is_seek_on_load:
-            self._is_seek_on_load = False
-
-            initial_time = self.media_input.initial_time
-
-            if initial_time:
-                self.command("seek", initial_time / 1000, "absolute+exact")
 
         self._is_media_read = True
 

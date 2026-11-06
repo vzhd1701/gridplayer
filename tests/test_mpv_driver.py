@@ -188,6 +188,7 @@ class _FakeMpv:
         self.duration = 20.0
         self.event_callback = None
         self.observers = {}
+        self._event_handle = "event handle"
 
     def register_event_callback(self, callback):
         self.event_callback = callback
@@ -202,9 +203,12 @@ class _FakeMpv:
 def _mpv_module():
     return SimpleNamespace(
         MPV=lambda log_handler, loglevel, **options: _FakeMpv(**options),
-        MpvEventID=SimpleNamespace(FILE_LOADED=8, PLAYBACK_RESTART=21, END_FILE=7),
+        MpvEventID=SimpleNamespace(
+            FILE_LOADED=8, PLAYBACK_RESTART=21, END_FILE=7, HOOK=25
+        ),
         MpvEventEndFile=SimpleNamespace(ERROR=4),
         ShutdownError=RuntimeError,
+        backend=MagicMock(),
     )
 
 
@@ -361,16 +365,92 @@ def test_a_live_stream_has_no_length_whatever_mpv_says():
     assert player._media_from_tracks().is_live
 
 
+def _preloaded(player):
+    player._on_event(
+        SimpleNamespace(event_id=SimpleNamespace(value=25), data=SimpleNamespace(id=7))
+    )
+
+
+def _hook_answered(player):
+    continued = player._mpv_module.backend.mpv_hook_continue
+
+    continued.assert_called_once()
+
+    return continued.call_args.args[1].value == 7
+
+
+def test_random_start_is_picked_before_anything_is_decoded():
+    player = _player(is_start_random=True)
+
+    player._mpv_module.backend.mpv_hook_add.assert_called_once()
+
+    _preloaded(player)
+
+    assert 0 <= float(player.mpv.start) <= 20
+    assert float(player.mpv.start) * 1000 == player.media_input.initial_time
+    assert _hook_answered(player)
+
+
+def test_only_a_random_start_waits_for_the_length():
+    for player in (_player(), _player(is_start_random=True, current_position=5000)):
+        player._mpv_module.backend.mpv_hook_add.assert_not_called()
+
+
 def test_random_start_with_no_length_still_loads():
     player = _player(is_start_random=True)
     player.mpv.duration = None
     loaded = MagicMock()
     player.media_loaded.connect(loaded)
 
+    _preloaded(player)
     player._read_media()
 
     loaded.assert_called_once()
     assert player.media_input.is_live
+    assert _hook_answered(player)
+
+
+def test_closing_still_answers_the_hook_mpv_waits_on():
+    player = _player(is_start_random=True)
+    player.close()
+
+    _preloaded(player)
+
+    assert not hasattr(player.mpv, "start")
+    assert _hook_answered(player)
+
+
+def test_a_failed_hook_is_still_answered():
+    player = _player(is_start_random=True)
+    player.media_input = None
+
+    with pytest.raises(AttributeError):
+        _preloaded(player)
+
+    assert _hook_answered(player)
+
+
+@pytest.mark.parametrize(
+    "seconds",
+    [
+        # 30 fps: on a whole millisecond, and on either side of one
+        5.0, 5.033333, 5.066667,
+        # 23.976 fps in an mp4, and in an mkv's whole milliseconds, rounded
+        # up and rounded down
+        5.005, 5.088417, 5.172, 5.130,
+    ],
+)  # fmt: skip
+def test_the_time_of_a_frame_is_in_that_frame(seconds):
+    fps = 30 if seconds in {5.0, 5.033333, 5.066667} else 24000 / 1001
+    ms_per_frame = 1000 / fps
+    player = _player()
+    player._is_media_read = True
+    times = []
+    player.time_changed.connect(times.append)
+
+    player._on_time("time-pos", seconds)
+
+    assert times[0] // ms_per_frame == round(seconds * fps)
 
 
 def test_audio_only_has_no_video_tracks_even_if_the_file_does():
@@ -391,6 +471,77 @@ def _driver():
         surface=MagicMock(),
         pane_box=lambda: (100, 100),
     )
+
+
+def _driver_playing(fps=None):
+    driver = _driver()
+    driver._player = _player()
+    driver._media = Media(
+        length=20_000,
+        video_tracks={
+            1: VideoTrack(
+                video_dimensions=(640, 360),
+                fps=fps,
+                bitrate=0,
+                language=None,
+                description=None,
+                codec="h264",
+            )
+        },
+        audio_tracks={},
+        cur_video_track_id=1,
+    )
+
+    return driver
+
+
+def test_a_seek_aims_half_a_frame_back_for_the_frame_a_time_is_in():
+    driver = _driver_playing(fps=25)
+
+    driver.set_time(1020)
+
+    assert driver._player.mpv.commands == [("seek", 1.0, "absolute+exact")]
+
+
+def test_a_seek_with_no_frame_rate_to_go_by_goes_to_the_time():
+    driver = _driver_playing()
+
+    driver.set_time(1020)
+
+    assert driver._player.mpv.commands == [("seek", 1.02, "absolute+exact")]
+
+
+def test_a_seek_to_the_start_stays_at_the_start():
+    driver = _driver_playing(fps=25)
+
+    driver.set_time(0)
+
+    assert driver._player.mpv.commands == [("seek", 0, "absolute+exact")]
+
+
+def test_a_quick_pause_and_play_both_reach_mpv():
+    driver = _driver_playing()
+
+    # mpv hasn't said it paused by the time it's asked to play
+    driver.set_pause(True)
+    driver.set_pause(False)
+
+    assert driver._player.mpv.commands == [
+        ("set", "pause", "yes"),
+        ("set", "pause", "no"),
+    ]
+
+
+def test_asking_for_what_it_was_just_asked_only_answers():
+    driver = _driver_playing()
+    answers = []
+    driver.playback_status_changed.connect(answers.append)
+
+    driver.set_pause(True)
+    driver.set_pause(True)
+
+    assert driver._player.mpv.commands == [("set", "pause", "yes")]
+    assert answers == [True]
 
 
 def test_a_size_change_while_playing_reaches_the_tracks():

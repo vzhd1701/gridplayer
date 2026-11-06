@@ -11,6 +11,7 @@ test's temporary folder, named in a failure.
 """
 
 import json
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -33,7 +34,11 @@ KNOWN_BUGS = {
 }
 
 # the scenarios of a driver that isn't there on every machine
-NEEDS_LIBMPV = {"mpv_basics"}
+NEEDS_LIBMPV = {"mpv_basics", "mpv_transport"}
+
+# the scenarios written for VLC that the MPV drivers are held to as well
+ALSO_ON_MPV = ("playback",)
+MPV_DRIVERS = ("mpv_hw", "mpv_sw")
 
 RUN_TIMEOUT_SEC = 300
 
@@ -65,11 +70,27 @@ def test_scenario(scenario, tmp_path):
     if scenario in NEEDS_LIBMPV and find_libmpv() is None:
         pytest.skip("needs libmpv")
 
-    out = tmp_path / scenario
+    _run_scenario(scenario, tmp_path / scenario)
 
+
+@pytest.mark.parametrize("driver", MPV_DRIVERS)
+@pytest.mark.parametrize("scenario", ALSO_ON_MPV)
+def test_scenario_on_mpv(scenario, driver, tmp_path):
+    if find_libmpv() is None:
+        pytest.skip("needs libmpv")
+
+    _run_scenario(
+        scenario,
+        tmp_path / scenario,
+        env={**os.environ, "REAL_APP_VIDEO_DRIVER": driver},
+    )
+
+
+def _run_scenario(scenario, out, env=None):
     run = subprocess.run(
         [sys.executable, "-m", "tests.real_app.run", scenario, "--out", str(out)],
         cwd=media.REPO,
+        env=env,
         capture_output=True,
         text=True,
         timeout=RUN_TIMEOUT_SEC,
