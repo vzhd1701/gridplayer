@@ -5,14 +5,13 @@ from PyQt5.QtCore import QTimer, pyqtSignal
 from gridplayer.multiprocess.safe_shared_memory import SafeSharedMemory
 from gridplayer.params.static import PLAYER_ID_LENGTH
 from gridplayer.utils.qt import qt_connect
-from gridplayer.utils.screenshots import ScreenshotView
 from gridplayer.vlc_player.image_decoder import ImageDecoder
 from gridplayer.vlc_player.instance import InstanceProcessVLC
 from gridplayer.vlc_player.player_base_threaded import VlcPlayerThreaded
 from gridplayer.vlc_player.rgb_buffer import FrameReader, holding
 from gridplayer.vlc_player.video_driver_base_threaded import VLCVideoDriverThreaded
 from gridplayer.widgets.video_frame_vlc_base import VideoFrameVLCProcess
-from gridplayer.widgets.video_surface_sw import SoftwareVideoSurface
+from gridplayer.widgets.video_surface_sw import PaintedVideoFrame
 
 
 class InstanceProcessVLCSW(InstanceProcessVLC):
@@ -256,7 +255,7 @@ class VideoDriverVLCSW(VLCVideoDriverThreaded):
         self.player.cleanup()
 
 
-class VideoFrameVLCSW(VideoFrameVLCProcess):
+class VideoFrameVLCSW(PaintedVideoFrame, VideoFrameVLCProcess):
     def driver_setup(self, vlc_options) -> VideoDriverVLCSW:
         return VideoDriverVLCSW(
             image_dest=self.video_surface,
@@ -264,34 +263,3 @@ class VideoFrameVLCSW(VideoFrameVLCProcess):
             vlc_options=vlc_options,
             parent=self,
         )
-
-    def ui_video_surface(self):
-        return SoftwareVideoSurface(self)
-
-    def take_snapshot(self) -> None:
-        # last frame stays painted on the surface
-        self.video_driver.set_pause(True)
-
-    def shown_frame_image(self):
-        return self.video_surface.frame_image()
-
-    def screenshot_view(self):
-        return ScreenshotView(
-            self._pane_size(),
-            self._view,
-            self._transform,
-            self.video_surface.picture_size(),
-            self._orientation(),
-            self._pixel_aspect(),
-        )
-
-    def adjust_view(self):
-        if super().adjust_view():
-            return
-
-        self.video_surface.set_view(
-            self._view, self._transform, self._frame_size(), self._pixel_aspect()
-        )
-
-    def _view_frame_size(self):
-        return self.video_surface.picture_size()

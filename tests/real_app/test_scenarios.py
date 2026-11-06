@@ -17,6 +17,7 @@ from pathlib import Path
 
 import pytest
 
+from gridplayer.utils.media_libs import find_libmpv
 from tests.real_app import media
 
 SCENARIOS_DIR = Path(__file__).parent / "scenarios"
@@ -30,6 +31,9 @@ KNOWN_BUGS = {
     "external_audio_jump": "VLC moves the video back on a track change while "
     "an audio file plays beside it",
 }
+
+# the scenarios of a driver that isn't there on every machine
+NEEDS_LIBMPV = {"mpv_basics"}
 
 RUN_TIMEOUT_SEC = 300
 
@@ -58,6 +62,9 @@ def _media():
     ],
 )
 def test_scenario(scenario, tmp_path):
+    if scenario in NEEDS_LIBMPV and find_libmpv() is None:
+        pytest.skip("needs libmpv")
+
     out = tmp_path / scenario
 
     run = subprocess.run(

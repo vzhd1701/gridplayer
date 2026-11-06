@@ -81,7 +81,7 @@ markers = [
 addopts = "-m 'not real_app'"
 
 [tool.ruff]
-extend-exclude = ["gridplayer/vlc_player/vlc.py"]
+extend-exclude = ["gridplayer/vlc_player/vlc.py", "gridplayer/mpv_player/mpv.py"]
 force-exclude = true
 
 [tool.ruff.format]
@@ -141,6 +141,7 @@ ignore = [
 
 [tool.ruff.lint.extend-per-file-ignores]
 "__main__.py" = ["E402"]
+"tests/real_app/bench/*" = ["PTH", "PERF"]
 
 [tool.ty.src]
 exclude = ["tests"]

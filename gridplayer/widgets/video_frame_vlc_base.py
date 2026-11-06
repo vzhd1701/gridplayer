@@ -177,8 +177,8 @@ def calc_picture_block_padding(
         ):
             pad_h = total - pad_w
             height = picture_height(
-                _native_px(surface_size.width() + pad_w, ratio),
-                _native_px(surface_size.height() + pad_h, ratio),
+                native_px(surface_size.width() + pad_w, ratio),
+                native_px(surface_size.height() + pad_h, ratio),
             )
 
             if height is None:
@@ -192,7 +192,7 @@ def calc_picture_block_padding(
     return QMargins()
 
 
-def _native_px(length: int, ratio: float) -> int:
+def native_px(length: float, ratio: float) -> int:
     """A length or position in Qt pixels in the window's own, rounded the
     way Qt does: halves up, -13.5 to -13 too."""
 
@@ -1233,8 +1233,8 @@ class VideoFrameVLC(QWidget, metaclass=QABC):
         offset, target, _, padding = self._native_surface_layout()
         surface = calc_vlc_hw_surface_rect(self.size(), offset, target, padding)
         ratio = self.video_surface.devicePixelRatioF()
-        window_w = _native_px(surface.width(), ratio)
-        window_h = _native_px(surface.height(), ratio)
+        window_w = native_px(surface.width(), ratio)
+        window_h = native_px(surface.height(), ratio)
 
         picture = self._vlc_picture_rect((window_w, window_h))
 
@@ -1251,8 +1251,8 @@ class VideoFrameVLC(QWidget, metaclass=QABC):
             y = window_h - y - height
 
         return (
-            (_native_px(surface.x(), ratio) + x) / ratio,
-            (_native_px(surface.y(), ratio) + y) / ratio,
+            (native_px(surface.x(), ratio) + x) / ratio,
+            (native_px(surface.y(), ratio) + y) / ratio,
             width / ratio,
             height / ratio,
         )

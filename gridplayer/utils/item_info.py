@@ -23,7 +23,9 @@ from multiprocessing import get_context
 from pathlib import Path
 
 from gridplayer.models.media_list import ItemDetails, ListItem
+from gridplayer.utils.libvlc import set_embed_vlc_env
 from gridplayer.utils.list_errors import is_site_refusal, site_name
+from gridplayer.utils.media_libs import MediaLib, lib_problem
 from gridplayer.utils.network_errors import failure_txt
 from gridplayer.utils.web_lists import (
     LINK_RESULT_TYPES,
@@ -300,6 +302,10 @@ class FileLengths:
     def lengths(self, paths: list[Path]) -> list[int | None]:
         """Each file's length in ms, None for one that could not be read."""
 
+        # no use starting a process with an MPV-only player
+        if lib_problem(MediaLib.VLC) is not None:
+            return [None] * len(paths)
+
         with self._lock:
             if self._pool is None:
                 self._pool = ProcessPoolExecutor(
@@ -332,7 +338,15 @@ def lengths_in_process(paths: list[str]) -> list[int | None]:
 
     global _vlc_instance
 
-    from gridplayer.vlc_player.libvlc import vlc
+    # on MPV, nothing has done this for the process this one came from
+    set_embed_vlc_env()
+
+    try:
+        from gridplayer.vlc_player.libvlc import vlc
+    except SystemExit as e:
+        # python-vlc exits by itself if the library it was pointed at won't load,
+        # and through the pool that would get past whoever asked
+        raise RuntimeError("VLC won't load") from e
 
     if _vlc_instance is None:
         _vlc_instance = vlc.Instance(

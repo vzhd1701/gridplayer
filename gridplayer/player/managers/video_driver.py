@@ -1,44 +1,30 @@
 from functools import partial
 
+from PyQt5.QtCore import QTimer
+
+from gridplayer.dialogs.messagebox import QCustomMessageBox
 from gridplayer.exceptions import PlayerException
 from gridplayer.params import env
 from gridplayer.params.static import VideoDriver
 from gridplayer.player.managers.base import ManagerBase
 from gridplayer.settings import Settings
-from gridplayer.utils.video_driver import session_video_driver
-from gridplayer.vlc_player.instance import ProcessManagerVLC
+from gridplayer.utils.media_libs import MediaLib, lib_of_driver, lib_problem_text
+from gridplayer.utils.qt import translate
+from gridplayer.utils.video_driver import load_session_driver
 from gridplayer.widgets.video_frame_dummy import VideoFrameDummy
-from gridplayer.widgets.video_frame_vlc_hw import InstanceProcessVLCHW, VideoFrameVLCHW
-from gridplayer.widgets.video_frame_vlc_hw_sp import VideoFrameVLCHWSP
-from gridplayer.widgets.video_frame_vlc_sw import InstanceProcessVLCSW, VideoFrameVLCSW
-from gridplayer.widgets.video_frame_vlc_sw_sp import VideoFrameVLCSWSP
 
 
 class VideoDriverManager(ManagerBase):
-    _video_drivers = {
-        VideoDriver.DUMMY: VideoFrameDummy,
-        VideoDriver.VLC_SW: VideoFrameVLCSW,
-        VideoDriver.VLC_SW_SP: VideoFrameVLCSWSP,
-        VideoDriver.VLC_HW: VideoFrameVLCHW,
-        VideoDriver.VLC_HW_SP: VideoFrameVLCHWSP,
-    }
-
-    _process_instances = {
-        VideoDriver.VLC_SW: InstanceProcessVLCSW,
-        VideoDriver.VLC_HW: InstanceProcessVLCHW,
-    }
-
-    _multiprocess_drivers = {
-        VideoDriver.VLC_SW,
-        VideoDriver.VLC_HW,
-    }
-
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
         self._ctx.video_driver = self.video_driver
 
         self._process_manager = None
+        self._mpv_render_service = None
+
+        # the libraries it has been said about, which is once a run
+        self._told_about = set()
 
     def video_driver(self):
         video_driver = Settings().get("player/video_driver")
@@ -47,28 +33,102 @@ class VideoDriverManager(ManagerBase):
             video_driver = VideoDriver.VLC_HW_SP
             Settings().set("player/video_driver", video_driver)
 
-        video_driver = session_video_driver(video_driver)
+        picked_lib = lib_of_driver(video_driver)
 
-        is_multiprocess = video_driver in self._multiprocess_drivers
+        video_driver = load_session_driver(video_driver)
 
-        if is_multiprocess:
-            if self._process_manager is None:
-                self._process_manager = ProcessManagerVLC(
-                    self._process_instances[video_driver]
-                )
-                self._process_manager.crash.connect(self.crash)
+        if video_driver is None:
+            self._tell_library_problem(picked_lib, None)
+            return VideoFrameDummy
 
-            return partial(
-                self._video_drivers[video_driver],
-                process_manager=self._process_manager,
-            )
+        if lib_of_driver(video_driver) != picked_lib:
+            self._tell_library_problem(picked_lib, lib_of_driver(video_driver))
 
-        return self._video_drivers[video_driver]
+        if video_driver == VideoDriver.DUMMY:
+            return VideoFrameDummy
+
+        if lib_of_driver(video_driver) == MediaLib.MPV:
+            return self._mpv_video_frame(video_driver)
+
+        return self._vlc_video_frame(video_driver)
+
+    def _tell_library_problem(self, picked_lib, stand_in_lib):
+        if picked_lib in self._told_about:
+            return
+
+        self._told_about.add(picked_lib)
+
+        text = lib_problem_text(picked_lib)
+
+        if stand_in_lib == MediaLib.VLC:
+            info = translate("SettingsDialog", "Playing with VLC for now.")
+        elif stand_in_lib == MediaLib.MPV:
+            info = translate("SettingsDialog", "Playing with MPV for now.")
+        else:
+            info = translate("SettingsDialog", "Videos can't play without VLC or MPV.")
+
+        # a video is being made as this is asked, not the time to wait for an answer
+        QTimer.singleShot(
+            0,
+            lambda: QCustomMessageBox.warning(
+                self.parent(), "GridPlayer", text, info=info
+            ),
+        )
+
+    def _vlc_video_frame(self, video_driver):
+        # imported here, python-vlc loads libVLC as it is imported
+        if video_driver == VideoDriver.VLC_SW_SP:
+            from gridplayer.widgets.video_frame_vlc_sw_sp import VideoFrameVLCSWSP
+
+            return VideoFrameVLCSWSP
+
+        if video_driver == VideoDriver.VLC_HW_SP:
+            from gridplayer.widgets.video_frame_vlc_hw_sp import VideoFrameVLCHWSP
+
+            return VideoFrameVLCHWSP
+
+        from gridplayer.vlc_player.instance import ProcessManagerVLC
+        from gridplayer.widgets.video_frame_vlc_hw import (
+            InstanceProcessVLCHW,
+            VideoFrameVLCHW,
+        )
+        from gridplayer.widgets.video_frame_vlc_sw import (
+            InstanceProcessVLCSW,
+            VideoFrameVLCSW,
+        )
+
+        frame, process_instance = {
+            VideoDriver.VLC_SW: (VideoFrameVLCSW, InstanceProcessVLCSW),
+            VideoDriver.VLC_HW: (VideoFrameVLCHW, InstanceProcessVLCHW),
+        }[video_driver]
+
+        if self._process_manager is None:
+            self._process_manager = ProcessManagerVLC(process_instance)
+            self._process_manager.crash.connect(self.crash)
+
+        return partial(frame, process_manager=self._process_manager)
+
+    def _mpv_video_frame(self, video_driver):
+        # likewise libmpv, only when something is going to play with it
+        from gridplayer.mpv_player.renderer import MpvRenderService
+        from gridplayer.widgets.video_frame_mpv import VideoFrameMpv
+
+        if self._mpv_render_service is None:
+            self._mpv_render_service = MpvRenderService(parent=self)
+
+        return partial(
+            VideoFrameMpv,
+            render_service=self._mpv_render_service,
+            hwdec="no" if video_driver == VideoDriver.MPV_SW else "auto",
+        )
 
     def cleanup(self):
         if self._process_manager:
             self._process_manager.cleanup()
             self._process_manager = None
+
+        if self._mpv_render_service:
+            self._mpv_render_service.cleanup()
 
     def set_log_level_vlc(self, log_level):
         if self._process_manager:

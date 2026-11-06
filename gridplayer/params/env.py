@@ -70,6 +70,8 @@ RESOURCES_DIR = _resolve_resources_dir()
 
 VLC_VERSION = None
 VLC_PYTHON_VERSION = None
+MPV_VERSION = None
+MPV_PYTHON_VERSION = None
 
 if IS_FLATPAK:
     FLATPAK_RUNTIME_DIR = (

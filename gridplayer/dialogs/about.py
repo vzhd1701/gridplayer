@@ -137,6 +137,13 @@ class AboutDialog(QDialog):
                     "GPL 2.0 or later",
                     "https://www.videolan.org/",
                 ),
+                Attribution(
+                    "MPV",
+                    env.MPV_VERSION,
+                    "mpv contributors",
+                    "GPL 2.0 or later, or LGPL 2.1 or later",
+                    "https://mpv.io/",
+                ),
             ],
             "python": [
                 Attribution(
@@ -152,6 +159,13 @@ class AboutDialog(QDialog):
                     "Olivier Aubert",
                     "GPL 2.0 and LGPL 2.1",
                     "https://github.com/oaubert/python-vlc",
+                ),
+                Attribution(
+                    "python-mpv",
+                    env.MPV_PYTHON_VERSION,
+                    "jaseg",
+                    "GPL 2.0 or later, or LGPL 2.1 or later",
+                    "https://github.com/jaseg/python-mpv",
                 ),
                 Attribution(
                     "pydantic",

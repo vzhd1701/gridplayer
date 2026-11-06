@@ -381,8 +381,11 @@ def start(media: Media, out: Path, settings: dict) -> Driver:
     os.environ["XDG_DATA_HOME"] = str(home / "data")
     os.environ["XDG_CONFIG_HOME"] = str(home / "config")
     os.environ["XDG_CACHE_HOME"] = str(home / "cache")
-    os.environ["XDG_RUNTIME_DIR"] = str(home / "runtime")
-    Path(os.environ["XDG_RUNTIME_DIR"]).mkdir(parents=True, mode=0o700)
+    qt_platform = os.environ.get("REAL_APP_QT_PLATFORM", "offscreen")
+    # on a display of its own, this is where it is
+    if qt_platform == "offscreen":
+        os.environ["XDG_RUNTIME_DIR"] = str(home / "runtime")
+        Path(os.environ["XDG_RUNTIME_DIR"]).mkdir(parents=True, mode=0o700)
     # no desktop to talk to: no media keys, no dark mode portal waits
     os.environ["DBUS_SESSION_BUS_ADDRESS"] = "unix:path=/nonexistent/gridplayer-run"
 
@@ -396,23 +399,26 @@ def start(media: Media, out: Path, settings: dict) -> Driver:
     from gridplayer.main.init_app_env import init_app_env
     from gridplayer.params import env
     from gridplayer.settings import Settings
-    from gridplayer.utils.libvlc import init_vlc
+    from gridplayer.utils.video_driver import prepare_video_libs
 
     # the app picks xcb itself whenever there is no Wayland, whatever
     # QT_QPA_PLATFORM says
-    env.QT_PLATFORM = "offscreen"
+    env.QT_PLATFORM = qt_platform
 
     init_app_env()
     app = init_app()
-    env.VLC_VERSION, env.VLC_PYTHON_VERSION = init_vlc()
 
     store = Settings()
     for key, value in {
         **DEFAULT_SETTINGS,
         "screenshots/dir": str(out / "screenshots"),
         **settings,
+        **_driver_override(),
     }.items():
         store.set(key, _setting_value(key, value))
+
+    if not prepare_video_libs(store.get("player/video_driver")):
+        raise RuntimeError("No video library to play with")
 
     from gridplayer.player import Player
 
@@ -422,6 +428,14 @@ def start(media: Media, out: Path, settings: dict) -> Driver:
     player.show()
 
     return Driver(app, player, media, out)
+
+
+def _driver_override() -> dict:
+    """REAL_APP_VIDEO_DRIVER runs a scenario on another driver than it says."""
+
+    driver = os.environ.get("REAL_APP_VIDEO_DRIVER")
+
+    return {"player/video_driver": driver} if driver else {}
 
 
 def _setting_value(key, value):

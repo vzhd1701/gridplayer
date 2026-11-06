@@ -140,6 +140,34 @@ def calc_view_placement(
     )
 
 
+def calc_render_size(
+    picture_size: tuple[int, int],
+    placement: ViewPlacement,
+    device_ratio: float = 1.0,
+    pixel_aspect: float = 1.0,
+) -> tuple[int, int]:
+    """How big to have the whole picture drawn, for what is on show of it.
+
+    As many pixels as the screen shows of it, so what the picture is scaled
+    with and subtitles are at display size, and more when zoomed in, up to
+    what the picture has: going past that would only be a slower way to
+    blur it. The picture is `picture_size` in the placement's source pixels,
+    each `pixel_aspect` wide for its height.
+    """
+    picture_w, picture_h = picture_size
+    _, _, source_w, source_h = placement.source
+    _, _, target_w, target_h = placement.target
+
+    # device pixels on screen per pixel of the picture
+    scale_x = target_w * device_ratio / source_w
+    scale_y = target_h * device_ratio / source_h
+
+    width = picture_w * min(scale_x, max(pixel_aspect, 1.0))
+    height = picture_h * min(scale_y, max(1 / pixel_aspect, 1.0))
+
+    return max(round(width), 2), max(round(height), 2)
+
+
 def calc_whole_placement(
     frame_size: tuple[int, int],
     pane_size: tuple[int, int],

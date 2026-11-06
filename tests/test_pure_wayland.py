@@ -15,7 +15,7 @@ from gridplayer.dialogs.settings import SettingsDialog
 from gridplayer.params import env
 from gridplayer.params.static import VideoDriver
 from gridplayer.settings import _Settings
-from gridplayer.utils import video_driver
+from gridplayer.utils import media_libs, video_driver
 from gridplayer.utils.cookies import CookieStore
 from gridplayer.utils.video_driver import session_video_driver
 
@@ -67,6 +67,14 @@ def test_hardware_falls_back_to_software(monkeypatch, picked, expected):
     monkeypatch.setattr(video_driver, "_qt_platform_name", lambda: "wayland")
 
     assert session_video_driver(picked) is expected
+
+
+@pytest.fixture(autouse=True)
+def _libraries_there(monkeypatch):
+    """This is about the platform: see test_media_libs.py for missing libraries."""
+
+    monkeypatch.setattr(media_libs, "lib_problem", lambda _lib: None)
+    monkeypatch.setattr(video_driver, "lib_problem", lambda _lib: None)
 
 
 @pytest.mark.parametrize("platform", ["xcb", "windows", "cocoa"])

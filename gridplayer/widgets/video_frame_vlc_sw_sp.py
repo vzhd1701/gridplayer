@@ -9,7 +9,6 @@ from gridplayer.params.static import (
 )
 from gridplayer.settings import Settings
 from gridplayer.utils.qt import MILLISECONDS, QABC, qt_connect
-from gridplayer.utils.screenshots import ScreenshotView
 from gridplayer.vlc_player.image_decoder import ImageDecoder
 from gridplayer.vlc_player.instance import InstanceVLC
 from gridplayer.vlc_player.player_base import VlcPlayerBase
@@ -17,7 +16,7 @@ from gridplayer.vlc_player.rgb_buffer import FrameReader, InProcessRgbBuffer
 from gridplayer.vlc_player.static import Media, MediaInput
 from gridplayer.vlc_player.video_driver_base import VLCVideoDriver
 from gridplayer.widgets.video_frame_vlc_base import VideoFrameVLC
-from gridplayer.widgets.video_surface_sw import SoftwareVideoSurface
+from gridplayer.widgets.video_surface_sw import PaintedVideoFrame
 
 
 class PlayerProcessSingleVLCSWSP(QThread, VlcPlayerBase, metaclass=QABC):
@@ -461,44 +460,13 @@ class VideoDriverVLCSWSP(VLCVideoDriver):
             self._image_dest.present_rgb32(frame, width, height)
 
 
-class VideoFrameVLCSWSP(VideoFrameVLC):
+class VideoFrameVLCSWSP(PaintedVideoFrame, VideoFrameVLC):
     def driver_setup(self, vlc_options) -> VideoDriverVLCSWSP:
         return VideoDriverVLCSWSP(
             image_dest=self.video_surface,
             vlc_options=vlc_options,
             parent=self,
         )
-
-    def ui_video_surface(self):
-        return SoftwareVideoSurface(self)
-
-    def take_snapshot(self) -> None:
-        # last frame stays painted on the surface
-        self.video_driver.set_pause(True)
-
-    def shown_frame_image(self):
-        return self.video_surface.frame_image()
-
-    def screenshot_view(self):
-        return ScreenshotView(
-            self._pane_size(),
-            self._view,
-            self._transform,
-            self.video_surface.picture_size(),
-            self._orientation(),
-            self._pixel_aspect(),
-        )
-
-    def adjust_view(self):
-        if super().adjust_view():
-            return
-
-        self.video_surface.set_view(
-            self._view, self._transform, self._frame_size(), self._pixel_aspect()
-        )
-
-    def _view_frame_size(self):
-        return self.video_surface.picture_size()
 
     def set_log_level_vlc(self, log_level):
         self.video_driver.set_log_level_vlc(log_level)

@@ -10,7 +10,23 @@ from gridplayer.utils.libvlc_fixer import importing_embed_vlc
 def init_vlc():
     log = logging.getLogger(__name__)
 
-    vlc_plugins_path, vlc_lib_path = _get_embed_vlc_paths()
+    set_embed_vlc_env()
+
+    vlc_version, vlc_python_version = _get_vlc_version()
+
+    log.debug(f"python-vlc {vlc_python_version}")
+    log.debug(f"VLC {vlc_version}")
+
+    return vlc_version, vlc_python_version
+
+
+def set_embed_vlc_env() -> None:
+    """Point python-vlc at the VLC that came with the app, if one did. It has to
+    be before importing it, in whichever process does."""
+
+    log = logging.getLogger(__name__)
+
+    vlc_plugins_path, vlc_lib_path = get_embed_vlc_paths()
 
     if vlc_plugins_path and vlc_lib_path:
         log.debug("Setting paths for embedded VLC")
@@ -26,16 +42,9 @@ def init_vlc():
     else:
         log.info("No embedded vlc path, will try to find system VLC...")
 
-    vlc_version, vlc_python_version = _get_vlc_version()
 
-    log.debug(f"python-vlc {vlc_python_version}")
-    log.debug(f"VLC {vlc_version}")
-
-    return vlc_version, vlc_python_version
-
-
-def _get_embed_vlc_paths() -> tuple[Path, Path] | tuple[None, None]:
-    vlc_root = _get_embed_vlc_root()
+def get_embed_vlc_paths() -> tuple[Path, Path] | tuple[None, None]:
+    vlc_root = get_embed_vlc_root()
 
     if vlc_root is None:
         return None, None
@@ -58,7 +67,7 @@ def _get_embed_vlc_paths() -> tuple[Path, Path] | tuple[None, None]:
     return vlc_plugins_path, vlc_lib_path
 
 
-def _get_embed_vlc_root() -> Path | None:
+def get_embed_vlc_root() -> Path | None:
     if env.IS_PYINSTALLER:
         return Path(sys.executable).parent / "libVLC"
 
@@ -80,7 +89,8 @@ def _get_vlc_version():
     try:
         with importing_embed_vlc():
             from gridplayer.vlc_player import vlc
-    except (OSError, NotImplementedError):
+    except (OSError, NotImplementedError, SystemExit):
+        # python-vlc exits by itself if the library it was pointed at won't load
         log.exception("Failed to load VLC")
         raise FileNotFoundError
 

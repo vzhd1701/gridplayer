@@ -4,6 +4,7 @@ from PyQt5.QtWidgets import QWidget
 
 from gridplayer.params.static import VideoTransform, ViewParams
 from gridplayer.utils.aspect_calc import ViewPlacement, calc_view_placement
+from gridplayer.utils.screenshots import ScreenshotView
 
 # How much bigger than the picture VLC can make the frame it hands over. It
 # asks for a size its decoder likes, 640x360 coming as 640x386 or 788x576 as
@@ -158,3 +159,45 @@ class SoftwareVideoSurface(QWidget):
         painter.drawImage(
             QRectF(*placement.target), self._image, QRectF(*placement.source)
         )
+
+
+class PaintedVideoFrame:
+    """What a video frame painted on one of these has in common. Goes before the
+    frame's class in its bases."""
+
+    surface_class = SoftwareVideoSurface
+
+    def ui_video_surface(self):
+        return self.surface_class(self)
+
+    def take_snapshot(self) -> None:
+        # last frame stays painted on the surface
+        self.video_driver.set_pause(True)
+
+    def shown_frame_image(self):
+        return self.video_surface.frame_image()
+
+    def screenshot_view(self):
+        return ScreenshotView(
+            self._pane_size(),
+            self._view,
+            self._transform,
+            self.video_surface.picture_size(),
+            self._orientation(),
+            self._pixel_aspect(),
+        )
+
+    def adjust_view(self) -> bool:
+        """True if there's nothing to place, as the frame's own says."""
+
+        if super().adjust_view():
+            return True
+
+        self.video_surface.set_view(
+            self._view, self._transform, self._frame_size(), self._pixel_aspect()
+        )
+
+        return False
+
+    def _view_frame_size(self):
+        return self.video_surface.picture_size()
