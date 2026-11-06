@@ -384,6 +384,8 @@ class SettingsForm(QWidget):
         # out of reach on this system, for good
         self._unavailable: set[str] = set()
         self._hidden: set[str] = set()
+        # greyed out for now, by what another page has
+        self._held_off: set[str] = set()
         # the fields another one can force, and the own value of those it
         # does now
         self._forceable: list[str] = []
@@ -450,6 +452,9 @@ class SettingsForm(QWidget):
                 self._add_items(item.items, joined=True)
             elif isinstance(item, Row):
                 self._place(self._add_row(item.items, joined))
+            elif isinstance(item, Slot) and item.under_card:
+                self._card = None
+                self._in_section().add(self._slots[item.name]())
             elif isinstance(item, Note):
                 # under the card, which goes on after it as a new one
                 self._card = None
@@ -583,6 +588,16 @@ class SettingsForm(QWidget):
         if self._reset_to is not None and not editor.fills:
             self._reset_button(key)
 
+        for label, widget in editor.lines_below():
+            line = QHBoxLayout()
+            line.setSpacing(row.line.spacing())
+            line.addWidget(label, 1)
+            line.addWidget(widget)
+            if self._reset_to is not None:
+                # no reset of its own, but its room, to end where the field does
+                self._add_reset(line, self._make_reset())
+            row.layout().addLayout(line)
+
         self._check_available(spec, row)
 
         return editor
@@ -591,6 +606,7 @@ class SettingsForm(QWidget):
     def _note_searched(searched: _Searched, editor: Editor):
         if editor.spec.label:
             searched.names.append(editor.spec.label)
+        searched.names.extend(label.text() for label, _ in editor.lines_below())
         if editor.tooltip:
             searched.tooltips.append(plain_text(editor.tooltip))
         if editor.fills:
@@ -824,6 +840,9 @@ class SettingsForm(QWidget):
         if self._out_of_reach(key) or self._is_forced(key, is_on):
             return False
 
+        if key in self._held_off:
+            return False
+
         spec = self._editors[key].spec
         for rule in (spec.shown_when, spec.enabled_when):
             if rule is not None and not self._is_met(rule, is_on):
@@ -883,6 +902,15 @@ class SettingsForm(QWidget):
         self._editors[key].set_value(self._shown(key, value))
 
     # for the dialogs
+
+    def hold_off(self, key: str, is_off: bool):
+        """Greyed out or not by what a rule can't see, being on another page."""
+
+        if is_off == (key in self._held_off):
+            return
+
+        self._held_off.symmetric_difference_update({key})
+        self._sync((key,))
 
     def keys(self) -> list[str]:
         return list(self._editors)

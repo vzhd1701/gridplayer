@@ -170,22 +170,43 @@ inside their own sandbox: `~/.var/app/com.vzhd1701.gridplayer/data/vzhd1701/Grid
 
 ## Video Decoder settings
 
-GridPlayer supports two video output modes:
+GridPlayer plays videos with VLC or MPV, whichever you have installed.
 
-- Hardware (default) mode uses available GPU to render video. This mode offers high performance and is a recommended
-  mode.
-- Software mode is entirely independent of GPU and only uses the CPU to render video. This mode may cause a high CPU
-  load with high-resolution videos.
+Each can decode in two ways:
 
-Due to libvlc software library limitations, video decoding is split into parallel processes. You can control how many
-videos are handled by a single decoder process using the "Videos per process" setting. Setting this option too high may
-cause a high CPU load and application freeze. The optimal value is 4 videos per process.
+- Hardware (default) uses the GPU. It offers high performance and is the recommended choice.
+- Software uses only the CPU. This may cause a high CPU load with high-resolution videos.
 
-There are also single-process ("SP") modes. "Hardware SP" and "Software SP" handle video decoding within the same
-process in which GridPlayer runs. They are not recommended to use with many videos (>4-6) because they may cause high
-CPU load and application freeze.
+With VLC you can also choose how videos are split between processes:
 
-Due to OS inter-process restrictions, "Hardware SP" is the only available hardware mode in macOS.
+- Multi-process plays videos in separate processes. You can control how many videos share a
+  process with the "Videos per process" setting. Setting it too high may cause a high CPU load
+  and application freeze. The optimal value is 4 videos per process.
+- Single process plays videos inside GridPlayer. It's not recommended with many videos (>4-6)
+  because it may cause a high CPU load and application freeze.
+
+MPV always uses a single process. Due to OS inter-process restrictions, Hardware with VLC is
+single process only on macOS.
+
+### When a mode isn't available
+
+Settings show modes that can't run greyed out, with the reason. Here's how to fix each one.
+
+**libmpv not found** (MPV needs libmpv, not only the MPV player):
+
+- Windows: there's no official installer. Download an `mpv-dev-x86_64` archive from
+  [mpv-winbuild](https://github.com/shinchiro/mpv-winbuild-cmake/releases), extract
+  `libmpv-2.dll` with [7-Zip](https://www.7-zip.org/) and put it next to `gridplayer.exe`.
+- Linux: install your distribution's libmpv package. On Debian and Ubuntu it's `libmpv2`.
+- macOS: `brew install mpv`.
+
+**VLC not found:** install [VLC](https://www.videolan.org/vlc/).
+
+**libmpv or VLC won't load, or libmpv is too old:** update it to the latest version. It also has to
+match GridPlayer's architecture (64-bit or 32-bit).
+
+**VLC Hardware needs X11:** VLC can't draw into a Wayland window directly. Install Xwayland or
+log in to an X11 session, and GridPlayer will use it. Software and MPV work without it.
 
 ## Streaming cookies
 

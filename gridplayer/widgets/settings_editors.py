@@ -2,6 +2,7 @@
 
 from pathlib import Path
 
+from PyQt5.QtCore import QObject, pyqtSignal
 from PyQt5.QtGui import QColor, QPainter, QPixmap
 from PyQt5.QtWidgets import (
     QComboBox,
@@ -31,12 +32,22 @@ from gridplayer.params.settings_fields.kinds import (
     SettingField,
     SpinField,
     TextField,
+    VideoDriverField,
 )
 from gridplayer.params.theme import set_secondary
 from gridplayer.utils.keymap import default_keymap, merge_keymap
 from gridplayer.utils.qt import translate
+from gridplayer.utils.video_driver import (
+    driver_of_parts,
+    driver_parts,
+    is_single_process_only,
+)
 from gridplayer.widgets.color_palette import QCompactColorPicker
-from gridplayer.widgets.combo_box import cap_popup_height, combo_index
+from gridplayer.widgets.combo_box import (
+    ReasonComboBox,
+    cap_popup_height,
+    combo_index,
+)
 from gridplayer.widgets.keymap_tree_view import KeymapEditor
 from gridplayer.widgets.language_list import LanguageList
 from gridplayer.widgets.resolver_patterns_list import ResolverPatternsList
@@ -128,6 +139,11 @@ class Editor:
 
         return [self.widget]
 
+    def lines_below(self) -> list[tuple[QLabel, QWidget]]:
+        """More of the field on lines of their own in its row, label and widget."""
+
+        return []
+
     @property
     def changed(self):
         raise NotImplementedError
@@ -217,10 +233,14 @@ class _ComboEditor(Editor):
             _fill_combo(widget, choices)
             return widget
 
-        widget = QComboBox()
+        reasons = self.spec.unavailable_choices
+
+        widget = QComboBox() if reasons is None else ReasonComboBox()
         widget.setMinimumWidth(COMBO_MIN_WIDTH)
         _fill_combo(widget, choices)
         cap_popup_height(widget, len(choices))
+        if reasons is not None:
+            widget.set_unavailable(reasons())
         return widget
 
     @property
@@ -244,6 +264,89 @@ class _ComboEditor(Editor):
     def drop_down(self):
         # buttons show them all
         return None if self.spec.buttons else self.widget
+
+
+class _Changed(QObject):
+    changed = pyqtSignal()
+
+
+class _VideoDriverEditor(_ComboEditor):
+    """One stored driver as a decoder and a number of processes. What the
+    decoder can't choose shows greyed out, and the choice comes back after."""
+
+    spec: VideoDriverField
+
+    def __init__(self, spec):
+        self._wants_single = False
+        self._signals = _Changed()
+
+        self.processes = SegmentedChoice()
+        _fill_combo(self.processes, spec.processes())
+        self.processes.setToolTip(spec.processes_tooltip)
+        self.processes_label = QLabel(spec.processes_label)
+        self.processes_label.setToolTip(spec.processes_tooltip)
+
+        super().__init__(spec)
+
+        self.widget.currentIndexChanged.connect(self._on_decoder_changed)
+        self.processes.currentIndexChanged.connect(self._on_processes_changed)
+
+    @property
+    def changed(self):
+        return self._signals.changed
+
+    def lines_below(self):
+        return [(self.processes_label, self.processes)]
+
+    def set_value(self, value):
+        decoder, is_single = driver_parts(value)
+
+        self.widget.blockSignals(True)
+        self.widget.setCurrentIndex(combo_index(self.widget, decoder))
+        self.widget.blockSignals(False)
+
+        if not is_single_process_only(decoder):
+            self._wants_single = is_single
+
+        self._show_processes()
+
+    def value(self):
+        return driver_of_parts(self.widget.currentData(), self.processes.currentData())
+
+    def set_enabled(self, enabled):
+        super().set_enabled(enabled)
+
+        self._show_processes()
+
+    def text_of(self, shown):
+        return super().text_of(driver_parts(shown)[0])
+
+    def options(self):
+        return [
+            *super().options(),
+            *(self.processes.itemText(at) for at in range(self.processes.count())),
+        ]
+
+    def _on_decoder_changed(self):
+        self._show_processes()
+        self._signals.changed.emit()
+
+    def _on_processes_changed(self):
+        self._wants_single = self.processes.currentData()
+        self._signals.changed.emit()
+
+    def _show_processes(self):
+        is_only_single = is_single_process_only(self.widget.currentData())
+        is_single = is_only_single or self._wants_single
+
+        self.processes.blockSignals(True)
+        self.processes.setCurrentIndex(self.processes.findData(is_single))
+        self.processes.blockSignals(False)
+
+        can_choose = self.widget.isEnabled() and not is_only_single
+
+        self.processes.setEnabled(can_choose)
+        self.processes_label.setEnabled(can_choose)
 
 
 class _FlagsEditor(Editor):
@@ -519,6 +622,7 @@ class _ResolverPatternsEditor(Editor):
 EDITORS: dict[type[SettingField], type[Editor]] = {
     CheckboxField: _CheckboxEditor,
     ComboField: _ComboEditor,
+    VideoDriverField: _VideoDriverEditor,
     FlagsField: _FlagsEditor,
     TextField: _TextEditor,
     PathField: _PathEditor,

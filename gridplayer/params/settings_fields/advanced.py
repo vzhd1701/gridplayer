@@ -1,3 +1,5 @@
+from dataclasses import dataclass
+
 from gridplayer.params import env
 from gridplayer.params.settings_fields import choices
 from gridplayer.params.settings_fields.kinds import (
@@ -6,26 +8,33 @@ from gridplayer.params.settings_fields.kinds import (
     SettingField,
     SpinField,
     TextField,
+    VideoDriverField,
     When,
 )
 from gridplayer.params.static import VideoDriver
-from gridplayer.utils.qt import translate
-from gridplayer.utils.video_driver import is_hw_video_available, session_video_driver
-
-# the drivers that run their videos in processes of their own
-VIDEO_DRIVERS_MULTIPROCESS = (
-    VideoDriver.VLC_SW,
-    VideoDriver.VLC_HW,
+from gridplayer.utils.media_libs import (
+    VLC_DRIVERS,
+    MediaLib,
+    lib_of_driver,
+    lib_problem_text,
 )
+from gridplayer.utils.qt import translate
+from gridplayer.utils.video_driver import (
+    MULTIPROCESS_DRIVERS,
+    is_hw_video_available,
+    session_video_driver,
+)
+from gridplayer.version import __app_url__
 
 MAX_VLC_PROCESSES = 64
+
+DECODER_HELP_URL = f"{__app_url__}#when-a-mode-isnt-available"
 
 
 def no_hw_video_reason() -> str:
     return translate(
         "SettingsDialog",
-        "Hardware drivers need an X server (Xwayland), which this session doesn't"
-        " have.",
+        "VLC Hardware needs an X server (Xwayland), which this session doesn't have.",
     )
 
 
@@ -34,32 +43,107 @@ def no_hw_video() -> str | None:
     return None if is_hw_video_available() else no_hw_video_reason()
 
 
+@dataclass(frozen=True)
+class DriverNotice:
+    # a pick that can't run; or else only what else isn't available
+    is_problem: bool
+    title: str
+    lines: tuple[str, ...]
+
+
+def _how_to_fix() -> str:
+    text = translate("SettingsDialog", "How to fix")
+    return f'<a href="{DECODER_HELP_URL}">{text}</a>'
+
+
+def _standing_in_title(stored: VideoDriver, running: VideoDriver) -> str:
+    if lib_of_driver(stored) == lib_of_driver(running):
+        return translate(
+            "SettingsDialog",
+            "VLC Hardware can't run. Playing with VLC Software for now.",
+        )
+
+    if lib_of_driver(stored) == MediaLib.MPV:
+        return translate("SettingsDialog", "MPV can't run. Playing with VLC for now.")
+
+    return translate("SettingsDialog", "VLC can't run. Playing with MPV for now.")
+
+
+def driver_notice(stored: VideoDriver, shown: VideoDriver) -> DriverNotice | None:
+    """What isn't available and why; first of all, the pick that can't run,
+    until another one is made. None if everything is."""
+
+    running = session_video_driver(stored)
+    # it's the stand-in on show, and nobody has picked it
+    is_standing_in = shown == running != stored
+
+    lines = []
+
+    for lib in MediaLib:
+        said = lib_problem_text(lib)
+        if said is None:
+            continue
+
+        if lib == MediaLib.MPV and not (
+            is_standing_in and lib_of_driver(stored) == lib
+        ):
+            said = "MPV: " + said
+
+        lines.append(f"{said}. {_how_to_fix()}")
+
+    if not is_hw_video_available():
+        said = translate("SettingsDialog", "VLC Hardware: needs X11.")
+        lines.append(f"{said} {_how_to_fix()}")
+
+    if not lines:
+        return None
+
+    if is_standing_in:
+        title = _standing_in_title(stored, running)
+    else:
+        title = translate("SettingsDialog", "Some modes aren't available")
+
+    return DriverNotice(is_standing_in, title, tuple(lines))
+
+
 def _is_linux() -> bool:
     return env.IS_LINUX
 
 
 ADVANCED_FIELDS: tuple[SettingField, ...] = (
-    ComboField(
+    VideoDriverField(
         settings_key="player/video_driver",
         label=translate("SettingsDialog", "Decoder"),
         choices=choices.video_drivers,
-        # where Hardware can't run, its Software twin stands in for it
+        unavailable_choices=choices.unavailable_video_drivers,
+        # what's going to run: a Hardware twin, or the other library's driver
         to_editor=session_video_driver,
-        tooltip=no_hw_video,
+        processes_label=translate("SettingsDialog", "Processes"),
+        processes=choices.video_driver_processes,
+        processes_tooltip=translate(
+            "SettingsDialog",
+            "Multi-process plays videos in separate processes. Single process plays"
+            " them inside GridPlayer. With VLC, a single process can freeze with more"
+            " than 4-6 videos.",
+        ),
     ),
     SpinField(
         settings_key="player/video_driver_players",
         label=translate("SettingsDialog", "Videos per process"),
         minimum=1,
         maximum=MAX_VLC_PROCESSES,
-        enabled_when=When("player/video_driver", VIDEO_DRIVERS_MULTIPROCESS),
+        enabled_when=When("player/video_driver", MULTIPROCESS_DRIVERS),
     ),
-    TextField(settings_key="misc/vlc_options"),
+    TextField(
+        settings_key="misc/vlc_options",
+        enabled_when=When("player/video_driver", VLC_DRIVERS),
+    ),
     CheckboxField(
         settings_key="internal/opaque_hw_overlay",
         label=translate("SettingsDialog", "Opaque overlay (fix black screen)"),
         shown_if=_is_linux,
         unavailable=no_hw_video,
+        enabled_when=When("player/video_driver", VLC_DRIVERS),
     ),
     CheckboxField(
         settings_key="internal/fake_overlay_invisibility",
@@ -69,6 +153,7 @@ ADVANCED_FIELDS: tuple[SettingField, ...] = (
         ),
         shown_if=_is_linux,
         unavailable=no_hw_video,
+        enabled_when=When("player/video_driver", VLC_DRIVERS),
     ),
     CheckboxField(
         settings_key="internal/force_native_drag_events",
@@ -82,6 +167,7 @@ ADVANCED_FIELDS: tuple[SettingField, ...] = (
         label=translate("SettingsDialog", "HW video border fix"),
         choices=choices.hw_crop_borders,
         unavailable=no_hw_video,
+        enabled_when=When("player/video_driver", VLC_DRIVERS),
         tooltip=translate(
             "SettingsDialog",
             "Crops a few pixels off the edges to hide glitches from hardware video."

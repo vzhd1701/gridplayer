@@ -396,7 +396,8 @@ PAGES = (
             Section(
                 translate("SettingsDialog", "Video Decoder"),
                 "player/video_driver",
-                "player/video_driver_players",
+                Indented("player/video_driver_players"),
+                Slot("driver_notice", under_card=True),
             ),
             Section(
                 translate(

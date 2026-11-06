@@ -8,7 +8,6 @@ import logging
 
 from PyQt5.QtGui import QFontDatabase
 
-from gridplayer.params import env
 from gridplayer.params.static import (
     ASPECT_RATIO_PRESETS,
     CROP_RATIO_PRESETS,
@@ -460,41 +459,48 @@ def sponsorblock_modes(allowed: tuple[SponsorBlockMode, ...]) -> dict:
 
 
 def video_drivers() -> dict:
-    """The drivers this system has, and of those, the ones this session can
-    run: where Hardware can't, its Software twin stands in for it."""
+    """All of them, always: what this system can't run is greyed out, see
+    unavailable_video_drivers."""
 
-    # imported here, it asks the session, which is not there on import
-    from gridplayer.utils.video_driver import (
-        is_hw_video_available,
-        session_video_driver,
-    )
-
-    # translate() kept out of the f-strings, where pylupdate5 cannot see it
-    vlc_version = f" <VLC {env.VLC_VERSION}>"
-
-    drivers = {}
-    if not env.IS_MACOS:
-        drivers[VideoDriver.VLC_HW] = (
-            translate("SettingsDialog", "Hardware") + vlc_version
-        )
-    drivers.update(
-        {
-            VideoDriver.VLC_HW_SP: translate("SettingsDialog", "Hardware SP")
-            + vlc_version,
-            VideoDriver.VLC_SW: translate("SettingsDialog", "Software") + vlc_version,
-            VideoDriver.VLC_SW_SP: translate("SettingsDialog", "Software SP")
-            + vlc_version,
-            VideoDriver.DUMMY: translate("SettingsDialog", "Dummy"),
-        }
-    )
-
-    if is_hw_video_available():
-        return drivers
+    hardware = translate("SettingsDialog", "Hardware")
+    software = translate("SettingsDialog", "Software")
 
     return {
-        driver: name
-        for driver, name in drivers.items()
-        if session_video_driver(driver) == driver
+        VideoDriver.VLC_HW: f"{hardware} <VLC>",
+        VideoDriver.VLC_SW: f"{software} <VLC>",
+        VideoDriver.MPV_HW: f"{hardware} <MPV>",
+        VideoDriver.MPV_SW: f"{software} <MPV>",
+        VideoDriver.DUMMY: translate("SettingsDialog", "Dummy"),
+    }
+
+
+def unavailable_video_drivers() -> dict:
+    """What this system can't run and why, value -> reason. Looks for the
+    libraries, without loading them, so only when a form is being built."""
+
+    # imported here, it asks the session, which is not there on import
+    from gridplayer.utils.media_libs import lib_of_driver, lib_problem_text
+    from gridplayer.utils.video_driver import is_hw_video_available
+
+    reasons = {}
+
+    for driver in video_drivers():
+        lib = lib_of_driver(driver)
+        said = lib and lib_problem_text(lib)
+        if said:
+            reasons[driver] = said
+
+    # installing a library wouldn't help with this, so it goes over it
+    if not is_hw_video_available():
+        reasons[VideoDriver.VLC_HW] = translate("SettingsDialog", "Needs X11")
+
+    return reasons
+
+
+def video_driver_processes() -> dict:
+    return {
+        False: translate("SettingsDialog", "Multi-process"),
+        True: translate("SettingsDialog", "Single process"),
     }
 
 

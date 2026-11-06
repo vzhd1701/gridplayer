@@ -8,6 +8,7 @@ from PyQt5.QtGui import QIcon, QKeySequence, QPainter
 from PyQt5.QtWidgets import (
     QDialog,
     QDialogButtonBox,
+    QFrame,
     QHBoxLayout,
     QLabel,
     QLineEdit,
@@ -21,8 +22,8 @@ from PyQt5.QtWidgets import (
 
 from gridplayer.dialogs.messagebox import QCustomMessageBox
 from gridplayer.params.settings_fields.kinds import Page
-from gridplayer.params.theme import set_secondary
-from gridplayer.utils.qt import translate
+from gridplayer.params.theme import set_html_with_links, set_secondary
+from gridplayer.utils.qt import bold, translate
 from gridplayer.utils.text_search import Query
 from gridplayer.widgets.section_links import SectionLinks
 from gridplayer.widgets.settings_current_page_stack import CurrentPageStackedWidget
@@ -58,6 +59,10 @@ class Icon(QWidget):
         self._icon = QIcon.fromTheme(name)
         self.setFixedSize(size, size)
 
+    def set_icon(self, name: str):
+        self._icon = QIcon.fromTheme(name)
+        self.update()
+
     def paintEvent(self, event):
         self._icon.paint(QPainter(self), self.rect())
 
@@ -89,6 +94,51 @@ class PageNote(QWidget):
 
     def setText(self, text: str):
         self._label.setText(text)
+
+
+class NoticeBubble(QFrame):
+    """Something said about the settings above it, in a box of the colours of a
+    field: a title in bold, and lines with links in them. Hidden when there's
+    nothing to say."""
+
+    def __init__(self):
+        super().__init__()
+
+        self.setObjectName("noticeBubble")
+        self.setStyleSheet(
+            "#noticeBubble { background: palette(base);"
+            " border: 1px solid palette(mid); border-radius: 4px }"
+        )
+
+        self._icon = Icon("information", NOTE_ICON_PX)
+
+        self.title = QLabel()
+        self.title.setWordWrap(True)
+        bold(self.title)
+
+        self.lines = QLabel()
+        self.lines.setWordWrap(True)
+        self.lines.setOpenExternalLinks(True)
+        set_secondary(self.lines)
+
+        words = QVBoxLayout()
+        words.setSpacing(4)
+        words.addWidget(self.title)
+        words.addWidget(self.lines)
+
+        layout = QHBoxLayout(self)
+        layout.setContentsMargins(10, 7, 10, 7)
+        layout.setSpacing(8)
+        layout.addWidget(self._icon, 0, Qt.AlignTop)
+        layout.addLayout(words, 1)
+
+        self.hide()
+
+    def say(self, title: str, lines: tuple[str, ...], is_warning: bool):
+        self._icon.set_icon("warning" if is_warning else "information")
+        self.title.setText(title)
+        set_html_with_links(self.lines, "<br>".join(lines))
+        self.show()
 
 
 def with_note(form, text) -> tuple[QWidget, PageNote]:

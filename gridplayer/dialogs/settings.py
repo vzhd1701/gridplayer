@@ -13,8 +13,9 @@ from PyQt5.QtWidgets import (
 
 from gridplayer.dialogs.checkup import CheckupDialog
 from gridplayer.dialogs.messagebox import QCustomMessageBox
-from gridplayer.dialogs.paged_dialog import Icon, PagedDialog
+from gridplayer.dialogs.paged_dialog import Icon, NoticeBubble, PagedDialog
 from gridplayer.models.settings_draft import SettingsMode, SetValue
+from gridplayer.params.settings_fields.advanced import driver_notice
 from gridplayer.params.settings_pages import PAGES
 from gridplayer.params.static import CacheMode
 from gridplayer.params.theme import set_secondary
@@ -23,6 +24,7 @@ from gridplayer.settings import Settings, default_value
 from gridplayer.utils import cache
 from gridplayer.utils.app_dir import get_app_data_dir
 from gridplayer.utils.cookies import cookie_store, same_cookies
+from gridplayer.utils.media_libs import MediaLib, lib_of_driver
 from gridplayer.utils.network import opts_for
 from gridplayer.utils.qt import translate
 from gridplayer.utils.screenshots import unknown_specifiers
@@ -182,6 +184,10 @@ class SettingsDialog(PagedDialog):
             if name.startswith("_slot_")
         }
 
+    def _slot_driver_notice(self):
+        self.driverNotice = NoticeBubble()
+        return self.driverNotice
+
     def _slot_cache_clear(self):
         self.cacheSize = QLabel()
         set_secondary(self.cacheSize)
@@ -260,8 +266,26 @@ class SettingsDialog(PagedDialog):
         self.cache_measured.connect(self.show_cache_size)
 
         self.form_of("cache/mode").values_changed.connect(self.cache_mode_selected)
+        self.form_of("player/video_driver").values_changed.connect(
+            self.video_driver_selected
+        )
 
     # settings that lean on each other
+
+    def video_driver_selected(self, *_):
+        driver = self.value("player/video_driver")
+
+        notice = driver_notice(Settings().get("player/video_driver"), driver)
+        if notice is None:
+            self.driverNotice.hide()
+        else:
+            self.driverNotice.say(notice.title, notice.lines, notice.is_problem)
+
+        # on another page, where a rule of the field can't see the driver
+        self.form_of("logging/log_level_vlc").hold_off(
+            "logging/log_level_vlc",
+            lib_of_driver(driver) != MediaLib.VLC,
+        )
 
     def cache_mode_selected(self, *_):
         # nothing on disk to see, kept in memory
@@ -276,6 +300,7 @@ class SettingsDialog(PagedDialog):
         self.cookiesList.set_jar(cookie_store().jar)
 
         self.cache_mode_selected()
+        self.video_driver_selected()
         self.update_reset_page()
 
     def save_settings(self):

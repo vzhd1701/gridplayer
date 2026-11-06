@@ -53,6 +53,19 @@ class ComboField(SettingField):
     choices: Callable[[], dict]
     # shown side by side as a row of buttons, for two to four short choices
     buttons: bool = False
+    # value -> why it can't be picked here: listed, greyed out with the reason
+    unavailable_choices: Callable[[], dict] | None = None
+
+
+@dataclass(frozen=True, kw_only=True)
+class VideoDriverField(ComboField):
+    """One stored value shown as two choices: the decoder, in the combo, and on
+    a second line of the row, whether it's multi-process or a single process."""
+
+    processes_label: str
+    # is single process -> text
+    processes: Callable[[], dict]
+    processes_tooltip: str
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -168,8 +181,16 @@ class Slot:
     """Whatever the dialog puts here: a button, a list, anything that isn't
     a setting. The dialog is handed the name and gives the widget."""
 
-    def __init__(self, name: str, fills: bool = False, label: str | None = None):
+    def __init__(
+        self,
+        name: str,
+        fills: bool = False,
+        label: str | None = None,
+        under_card: bool = False,
+    ):
         self.name = name
+        # out of the card it would go in, under it, which goes on after it
+        self.under_card = under_card
         # takes what the page has left, as a list or a table does
         self.fills = fills
         # where the labels go, as a field's: what the dialog gives goes on

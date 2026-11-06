@@ -20,6 +20,14 @@ from gridplayer.utils.cookies import CookieStore
 from gridplayer.utils.video_driver import session_video_driver
 
 
+@pytest.fixture(autouse=True)
+def _libraries_there(monkeypatch):
+    """This is about the platform: see test_media_libs.py for missing libraries."""
+
+    monkeypatch.setattr(media_libs, "lib_problem", lambda _lib: None)
+    monkeypatch.setattr(video_driver, "lib_problem", lambda _lib: None)
+
+
 @pytest.mark.parametrize(
     ("is_linux", "wayland_display", "display", "expected"),
     [
@@ -67,14 +75,6 @@ def test_hardware_falls_back_to_software(monkeypatch, picked, expected):
     monkeypatch.setattr(video_driver, "_qt_platform_name", lambda: "wayland")
 
     assert session_video_driver(picked) is expected
-
-
-@pytest.fixture(autouse=True)
-def _libraries_there(monkeypatch):
-    """This is about the platform: see test_media_libs.py for missing libraries."""
-
-    monkeypatch.setattr(media_libs, "lib_problem", lambda _lib: None)
-    monkeypatch.setattr(video_driver, "lib_problem", lambda _lib: None)
 
 
 @pytest.mark.parametrize("platform", ["xcb", "windows", "cocoa"])
@@ -131,14 +131,24 @@ def pure_wayland(monkeypatch):
 
 
 @pytest.mark.usefixtures("pure_wayland")
-def test_dialog_offers_software_only(make_dialog):
+def test_dialog_greys_vlc_hardware(make_dialog):
     dialog = make_dialog()
 
-    assert _driver_items(dialog) == [
+    combo = dialog.widget("player/video_driver")
+    available = [
+        combo.itemData(i)
+        for i in range(combo.count())
+        if combo.model().item(i).isEnabled()
+    ]
+
+    assert available == [
         VideoDriver.VLC_SW,
-        VideoDriver.VLC_SW_SP,
+        VideoDriver.MPV_HW,
+        VideoDriver.MPV_SW,
         VideoDriver.DUMMY,
     ]
+    assert combo.reason_of(VideoDriver.VLC_HW) == "Needs X11"
+    assert VideoDriver.VLC_HW in _driver_items(dialog)
 
 
 @pytest.mark.usefixtures("pure_wayland")
@@ -154,7 +164,7 @@ def test_dialog_keeps_hardware_pick(settings, make_dialog, stored, shown):
 
     dialog = make_dialog()
 
-    assert dialog.widget("player/video_driver").currentData() is shown
+    assert dialog.value("player/video_driver") is shown
 
     dialog.save_settings()
 
@@ -167,7 +177,8 @@ def test_dialog_saves_another_driver(settings, make_dialog):
 
     dialog = make_dialog()
     combo = dialog.widget("player/video_driver")
-    combo.setCurrentIndex(combo.findData(VideoDriver.VLC_SW_SP))
+    combo.setCurrentIndex(combo.findData(VideoDriver.VLC_SW))
+    dialog.forms["decoder"]._editors["player/video_driver"].processes.setCurrentIndex(1)
 
     dialog.save_settings()
 
@@ -220,11 +231,10 @@ def test_a_saved_software_driver_reset_is_forgotten(settings, make_dialog):
 
 
 @pytest.mark.usefixtures("pure_wayland")
-def test_dialog_says_why_there_is_no_hardware(make_dialog):
+def test_dialog_says_why_the_hardware_options_are_off(make_dialog):
     dialog = make_dialog()
 
-    row = dialog.widget("player/video_driver").parentWidget()
-    assert "X server" in row.toolTip()
+    assert "X server" in dialog.widget("internal/hw_crop_border_offset").toolTip()
 
 
 def test_dialog_says_nothing_of_hardware_on_xcb(monkeypatch, make_dialog):

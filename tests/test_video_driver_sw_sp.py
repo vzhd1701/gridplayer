@@ -178,16 +178,12 @@ def test_settings_combo_includes_software_sp(mocker):
 
     mocker.patch("gridplayer.params.env.IS_MACOS", False)
     non_mac = list(choices.video_drivers())
-    assert VideoDriver.VLC_SW_SP in non_mac
     assert VideoDriver.VLC_SW in non_mac
     assert VideoDriver.VLC_HW in non_mac
 
     mocker.patch("gridplayer.params.env.IS_MACOS", True)
     mac = list(choices.video_drivers())
-    assert VideoDriver.VLC_SW_SP in mac
-    assert VideoDriver.VLC_SW in mac
-    assert VideoDriver.VLC_HW_SP in mac
-    assert VideoDriver.VLC_HW not in mac
+    assert mac == non_mac
 
     form = SettingsForm(("player/video_driver", "player/video_driver_players"))
     form.set_values({"player/video_driver": VideoDriver.VLC_SW})
