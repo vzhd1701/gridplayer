@@ -24,6 +24,7 @@ class SettingsManager(ManagerBase):
     set_media_keys_background = pyqtSignal(bool)
     set_log_level = pyqtSignal(int)
     set_log_level_vlc = pyqtSignal(int)
+    set_mpv_skip_frames = pyqtSignal(bool)
     set_recent_list_enabled = pyqtSignal(bool)
     keymap_changed = pyqtSignal(object)  # KeymapOverrides
     set_disable_mouse_click_events = pyqtSignal(bool)
@@ -75,6 +76,7 @@ class SettingsManager(ManagerBase):
         checks = {
             "logging/log_level": self.set_log_level,
             "logging/log_level_vlc": self.set_log_level_vlc,
+            "player/mpv_skip_frames": self.set_mpv_skip_frames,
             "player/inhibit_screensaver": self.set_screensaver,
             "player/media_keys_background": self.set_media_keys_background,
             "player/recent_list_enabled": self.set_recent_list_enabled,

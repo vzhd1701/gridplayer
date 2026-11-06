@@ -188,6 +188,10 @@ With VLC you can also choose how videos are split between processes:
 MPV always uses a single process. Due to OS inter-process restrictions, Hardware with VLC is
 single process only on macOS.
 
+When there are more videos than the decoder can keep up with, "Skip frames to play more videos"
+makes MPV play about half the frames of each video instead of slowing down. It doesn't help videos
+with no frames it can skip.
+
 ### When a mode isn't available
 
 Settings show modes that can't run greyed out, with the reason. Here's how to fix each one.

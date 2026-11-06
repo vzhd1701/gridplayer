@@ -11,6 +11,7 @@ from gridplayer.models.video import Video
 from gridplayer.mpv_player.player import MpvPlayer, _params_sar, calc_fit_size
 from gridplayer.mpv_player.renderer import (
     FrameSlot,
+    MpvRenderService,
     RenderedVideo,
     VideoRenderer,
 )
@@ -207,7 +208,7 @@ def _mpv_module():
     )
 
 
-def _player(is_live=False, is_audio_only=False, **video):
+def _player(skip_frames=False, is_live=False, is_audio_only=False, **video):
     media_input = MediaInput(
         uri="file.mp4",
         is_live=is_live,
@@ -220,6 +221,7 @@ def _player(is_live=False, is_audio_only=False, **video):
         media_input,
         hwdec="auto",
         wake_renderer=MagicMock(),
+        skip_frames=skip_frames,
     )
 
 
@@ -240,6 +242,23 @@ def test_options_start_where_it_was_left():
 
 def test_options_start_paused():
     assert _player(is_paused=True).mpv.options["pause"] is True
+
+
+def test_options_skip_frames_only_when_asked():
+    assert _player().mpv.options["vd_lavc_skipframe"] == "default"
+    assert _player(skip_frames=True).mpv.options["vd_lavc_skipframe"] == "nonref"
+
+
+def test_skipping_frames_switches_while_playing():
+    player = _player()
+
+    player.set_skip_frames(True)
+    player.set_skip_frames(False)
+
+    assert player.mpv.commands == [
+        ("set", "vd-lavc-skipframe", "nonref"),
+        ("set", "vd-lavc-skipframe", "default"),
+    ]
 
 
 def test_no_size_to_render_until_the_picture_says():
@@ -512,6 +531,28 @@ def test_pixel_shape_from_the_sizes(params, sar):
 
 
 # -- finding and loading
+
+
+def test_manager_has_nobody_to_tell_of_skipping_frames_on_vlc():
+    manager = VideoDriverManager(context=SimpleNamespace())
+
+    manager.set_mpv_skip_frames(True)
+
+    assert manager._mpv_render_service is None
+
+
+def test_skipping_frames_goes_to_every_video_there_is(mocker):
+    mocker.patch("gridplayer.mpv_player.renderer.load_mpv")
+    service = MpvRenderService()
+    videos = [RenderedVideo(MagicMock()), RenderedVideo(MagicMock())]
+    service._listeners = dict.fromkeys(videos)
+
+    manager = VideoDriverManager(context=SimpleNamespace())
+    manager._mpv_render_service = service
+    manager.set_mpv_skip_frames(True)
+
+    for video in videos:
+        video.player.set_skip_frames.assert_called_once_with(True)
 
 
 def test_manager_makes_no_render_service_for_vlc(mocker):

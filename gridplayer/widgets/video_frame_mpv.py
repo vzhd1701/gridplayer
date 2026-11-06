@@ -106,6 +106,7 @@ class VideoDriverMpv(VLCVideoDriver):
                 self._render_service.mpv,
                 media_input,
                 hwdec=self._hwdec,
+                skip_frames=Settings().get("player/mpv_skip_frames"),
                 wake_renderer=self._render_service.wake,
             )
         # what a libmpv that won't take what it's asked can raise

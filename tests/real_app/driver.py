@@ -249,6 +249,16 @@ class Driver:
         self._step(f"screenshot {path.name}")
         return path
 
+    def change_setting(self, key: str, value) -> None:
+        """A setting changed as the Settings dialog changes it."""
+
+        from gridplayer.settings import Settings
+
+        store = Settings()
+        previous = store.get_all()
+        store.set(key, value)
+        self.player._managers_inst["settings"]._apply_settings(previous)
+
     # -- judging
 
     def check(self, what: str, ok, detail=None) -> bool:

@@ -13,6 +13,7 @@ from gridplayer.params.settings_fields.kinds import (
 )
 from gridplayer.params.static import VideoDriver
 from gridplayer.utils.media_libs import (
+    MPV_DRIVERS,
     VLC_DRIVERS,
     MediaLib,
     lib_of_driver,
@@ -133,6 +134,17 @@ ADVANCED_FIELDS: tuple[SettingField, ...] = (
         minimum=1,
         maximum=MAX_VLC_PROCESSES,
         enabled_when=When("player/video_driver", MULTIPROCESS_DRIVERS),
+    ),
+    CheckboxField(
+        settings_key="player/mpv_skip_frames",
+        label=translate("SettingsDialog", "Skip frames to play more videos"),
+        enabled_when=When("player/video_driver", MPV_DRIVERS),
+        tooltip=translate(
+            "SettingsDialog",
+            "Plays about half the frames of each video, so more videos can play"
+            " at once before they slow down. Doesn't help videos with no frames"
+            " it can skip.",
+        ),
     ),
     TextField(
         settings_key="misc/vlc_options",

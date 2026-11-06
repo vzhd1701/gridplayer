@@ -498,6 +498,10 @@ class MpvRenderService(QObject):
         if self._renderer is not None:
             self._renderer.wake()
 
+    def set_skip_frames(self, is_skipping: bool) -> None:
+        for video in self._listeners:
+            video.player.set_skip_frames(is_skipping)
+
     def cleanup(self) -> None:
         self._listeners.clear()
 

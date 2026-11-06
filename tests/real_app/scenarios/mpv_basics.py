@@ -29,6 +29,7 @@ def scenario(d):
     _closing(d)
     _broken_file(d)
     _reload_all(d)
+    _skipping_frames(d)
 
 
 def _driver(block):
@@ -260,3 +261,26 @@ def _reload_all(d):
     d.check("two again after Reload All", len(d.cells) == 2)
     d.wait_until(lambda: _rendered_size(d.cell("a.mp4"))[0] > 0, "pictures again")
     d.shot("reloaded")
+
+
+def _skipping_frames(d):
+    def asks_for(block):
+        return _driver(block).video_driver._player.mpv.vd_lavc_skipframe
+
+    block = d.cell("a.mp4")
+    d.check("every frame to begin with", asks_for(block) == "default")
+
+    d.change_setting("player/mpv_skip_frames", True)
+    d.wait_until(lambda: asks_for(block) == "nonref", "skips, with no reload")
+
+    d.act(block, "Reload [ALL]")
+    d.wait_until(lambda: d.cell("a.mp4") is not block, "reloading")
+    block = d.wait_for_cell("a.mp4")
+    d.check("a video opened now skips too", asks_for(block) == "nonref")
+
+    d.change_setting("player/mpv_skip_frames", False)
+    d.wait_until(lambda: asks_for(block) == "default", "and back, with no reload")
+
+    time_before = block.time
+    d.act(block, "Play / Pause")
+    d.wait_until(lambda: block.time != time_before, "it still plays")

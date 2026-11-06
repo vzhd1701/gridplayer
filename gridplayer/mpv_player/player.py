@@ -37,6 +37,11 @@ _ROTATIONS = {
 # four times a second, and what hangs off it was written for that.
 TIME_REPORT_MS = 200
 
+# vd-lavc-skipframe: the decoder leaves out frames nothing else depends on,
+# about half of them, where they're there to leave out. mpv's own frame drop
+# saves the decoder no work, so past what it can do the video falls apart.
+_SKIP_FRAMES = {True: "nonref", False: "default"}
+
 # What mpv said last, for when a video fails
 _LOG_LINES_KEPT = 20
 
@@ -73,6 +78,7 @@ class MpvPlayer(QObject):
         media_input: MediaInput,
         hwdec,
         wake_renderer,
+        skip_frames: bool = False,
     ):
         super().__init__()
 
@@ -81,6 +87,7 @@ class MpvPlayer(QObject):
         self._mpv_module = mpv_module
         self.media_input = media_input
         self._hwdec = hwdec
+        self._skip_frames = skip_frames
         self._wake_renderer = wake_renderer
 
         # GUI thread. python-mpv sends async commands through a handle that
@@ -133,6 +140,7 @@ class MpvPlayer(QObject):
             # each holds frames: 110 MB more RAM per 1080p video, 290 at 4K,
             # for no fewer dropped frames in anything measured.
             "vd_lavc_threads": 4,
+            "vd_lavc_skipframe": _SKIP_FRAMES[self._skip_frames],
             # see VideoRenderer._render
             "video_timing_offset": 0,
             # The picture fills the frame, the surface places it
@@ -224,6 +232,9 @@ class MpvPlayer(QObject):
 
     def set_option(self, name: str, value) -> None:
         self.command("set", name, value)
+
+    def set_skip_frames(self, is_skipping: bool) -> None:
+        self.set_option("vd-lavc-skipframe", _SKIP_FRAMES[is_skipping])
 
     def set_render_size(self, size: tuple[int, int]) -> None:
         if size != self._render_size:

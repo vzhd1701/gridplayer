@@ -71,6 +71,7 @@ SETTINGS = None
 _default_settings = {
     "player/video_driver": VideoDriver.VLC_HW,
     "player/video_driver_players": 4,
+    "player/mpv_skip_frames": False,
     "player/video_init_timeout": 120,
     "player/inhibit_screensaver": True,
     "player/media_keys_background": True,
