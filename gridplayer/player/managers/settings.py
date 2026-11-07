@@ -25,6 +25,7 @@ class SettingsManager(ManagerBase):
     set_log_level = pyqtSignal(int)
     set_log_level_vlc = pyqtSignal(int)
     set_mpv_skip_frames = pyqtSignal(bool)
+    subtitle_style_changed = pyqtSignal()
     set_recent_list_enabled = pyqtSignal(bool)
     keymap_changed = pyqtSignal(object)  # KeymapOverrides
     set_disable_mouse_click_events = pyqtSignal(bool)
@@ -107,6 +108,9 @@ class SettingsManager(ManagerBase):
                 continue
             checks[c].emit(Settings().get(c))
 
+        if self._setting_changes(previous_settings, SUBTITLE_STYLE_SETTINGS):
+            self.subtitle_style_changed.emit()
+
         # one signal for the lot: the videos read what they need themselves
         if self._setting_changes(previous_settings, SPONSORBLOCK_SETTINGS):
             self.sponsorblock_changed.emit()
@@ -144,10 +148,15 @@ class SettingsManager(ManagerBase):
             "internal/opaque_hw_overlay",
             "internal/fake_overlay_invisibility",
             "misc/vlc_options",
-            # what subtitles look like is settled when a VLC process
-            # starts, so a video has to be opened again to be redrawn
-            *SUBTITLE_STYLE_SETTINGS,
         }
+
+        # with no video open, that only lets go of any VLC process left waiting
+        videos = list(self._ctx.video_blocks)
+
+        if not videos or any(
+            video.driver_class.must_reload_for_subtitle_style for video in videos
+        ):
+            checks.update(SUBTITLE_STYLE_SETTINGS)
 
         return self._setting_changes(previous_settings, checks)
 

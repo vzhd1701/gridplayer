@@ -18,6 +18,8 @@ from gridplayer.settings import Settings
 from gridplayer.vlc_player.static import DISABLED_TRACK, SubtitleTrack
 from gridplayer.widgets.video_block import VideoBlock
 from gridplayer.widgets.video_block_subtitles import SubtitleControl
+from gridplayer.widgets.video_frame_mpv import VideoFrameMpv
+from gridplayer.widgets.video_frame_vlc_base import VideoFrameVLC
 
 
 @pytest.fixture(scope="module", autouse=True)
@@ -77,6 +79,7 @@ class _Block:
     """A block with its real subtitles part, and no player behind it."""
 
     is_local_file = VideoBlock.is_local_file
+    driver_class = VideoFrameVLC
 
     def __init__(
         self,
@@ -157,14 +160,18 @@ class TestRememberingWhichSubtitleWasPicked:
 
         block.subtitles.set_track(1)
 
-        assert block.video_params.subtitle_selection == SubtitleTrackId(id=1)
+        assert block.video_params.subtitle_selection == SubtitleTrackId(
+            id=1, position=1
+        )
 
     def test_a_track_with_no_language_is_remembered_by_number(self, tmp_path):
         block = _block(tmp_path, tracks={0: _track(None), 1: _track(None)})
 
         block.subtitles.set_track(1)
 
-        assert block.video_params.subtitle_selection == SubtitleTrackId(id=1)
+        assert block.video_params.subtitle_selection == SubtitleTrackId(
+            id=1, position=1
+        )
 
     def test_a_track_out_of_a_file_is_remembered_by_the_file(self, tmp_path):
         block = _block(tmp_path)
@@ -360,6 +367,14 @@ class TestPuttingTheSettingsIntoEffect:
         block.subtitles.set_track(0)
 
         assert block.video_driver.times_set == [4200]
+
+    def test_a_driver_that_shows_it_at_once_isnt_made_to_seek(self, tmp_path):
+        block = _block(tmp_path)
+        block.driver_class = VideoFrameMpv
+
+        block.subtitles.set_track(0)
+
+        assert block.video_driver.times_set == []
 
     def test_a_live_stream_has_nothing_to_seek_in(self, tmp_path):
         block = _block(tmp_path)

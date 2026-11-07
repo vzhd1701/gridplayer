@@ -608,9 +608,16 @@ def _screenshots(d):
             _sharpness(image) > 60,
             _sharpness(image),
         )
+        # to within a pixel: the first size can be from before the cell had settled
         d.wait_until(
-            lambda s=small: surface.frame_size() == s, f"{what}: the frame goes back", 5
+            lambda s=small: (
+                abs(surface.frame_size()[0] - s[0]) <= 1
+                and abs(surface.frame_size()[1] - s[1]) <= 1
+            ),
+            f"{what}: the frame goes back",
+            5,
         )
+        d.note(f"{what}: the frame is back at {surface.frame_size()}")
 
     d.act(block, "Play / Pause")
 

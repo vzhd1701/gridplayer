@@ -120,8 +120,16 @@ def _as_vlc_color(color: str) -> str | None:
     like a colour that was asked for rather than one that was dropped.
     """
 
+    digits = hex_digits(color)
+
+    return f"0x{digits}" if digits is not None else None
+
+
+def hex_digits(color: str) -> str | None:
+    """The six digits of a colour, None if it isn't one."""
+
     digits = color.lstrip("#")
 
     is_hex = len(digits) == 6 and all(digit in string.hexdigits for digit in digits)
 
-    return f"0x{digits}" if is_hex else None
+    return digits if is_hex else None

@@ -500,7 +500,10 @@ class ActiveBlockManager(ManagerBase):
         if isinstance(selection, SubtitleLanguage):
             return block.subtitles.language_key(track_id) == selection.tag
 
-        return isinstance(selection, SubtitleTrackId) and selection.id == track_id
+        return (
+            isinstance(selection, SubtitleTrackId)
+            and selection.track_in(block.subtitles.tracks) == track_id
+        )
 
     def is_active_subtitle_preferred(self) -> bool:
         return isinstance(self._active_subtitle_selection(), SubtitlePreferred)

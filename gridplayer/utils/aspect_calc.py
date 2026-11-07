@@ -146,6 +146,7 @@ def calc_render_size(
     device_ratio: float = 1.0,
     pixel_aspect: float = 1.0,
     transform: VideoTransform | None = VideoTransform.NONE,
+    sharp_in: tuple[int, int] | None = None,
 ) -> tuple[int, int]:
     """How big to have the whole picture drawn, for what is on show of it.
 
@@ -154,6 +155,9 @@ def calc_render_size(
     what the picture has: going past that would only be a slower way to
     blur it. The picture is `picture_size` in the placement's source pixels,
     each `pixel_aspect` wide for its height, before the transform.
+
+    With something drawn over it to keep sharp, up to as much as fits in this
+    box, if that's more.
     """
     picture_w, picture_h = picture_size
     full_x, full_y = calc_full_pixel_shape(picture_size, transform, pixel_aspect)
@@ -164,8 +168,16 @@ def calc_render_size(
     scale_x = target_w * device_ratio / source_w
     scale_y = target_h * device_ratio / source_h
 
-    width = picture_w * min(scale_x, full_x)
-    height = picture_h * min(scale_y, full_y)
+    has_room = 1.0
+
+    if sharp_in is not None:
+        has_room = max(
+            min(sharp_in[0] / (picture_w * full_x), sharp_in[1] / (picture_h * full_y)),
+            1.0,
+        )
+
+    width = picture_w * min(scale_x, full_x * has_room)
+    height = picture_h * min(scale_y, full_y * has_room)
 
     return max(round(width), 2), max(round(height), 2)
 

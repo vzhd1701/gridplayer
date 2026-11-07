@@ -5,7 +5,7 @@ The findings and traps are in `C:\Projects\test_temp\test_mpv\HANDOFF.md`, and
 what we build and how far it has got. Tick items only once they have been seen
 working.
 
-**Status: Stage 3 built (<https://claude.ai/artifact/8ngdeLCkVxmdQzSEnpxx1c>, real screenshots on its Built board). Open: macOS. Bundling libmpv (12.1) is for later. Stages 1-6 are committed on this branch.**
+**Status: Stage 3 built (<https://claude.ai/artifact/8ngdeLCkVxmdQzSEnpxx1c>, real screenshots on its Built board). Open: macOS. Bundling libmpv (12.1) is for later. Stages 1-7 are committed on this branch.**
 
 **Load tests against VLC: `MPV_PERFORMANCE.md`.** No multi-process mode for MPV. New items 10.13-10.16. **10.16 is a long run
 still to be started, overnight, by you.**
@@ -18,7 +18,7 @@ still to be started, overnight, by you.**
 | 4 | Transport: seek, speed, frame step, looping, end of video | **built, macOS not run** |
 | 5 | View: rotate, flip, crop, aspect ratio, screenshots, sync | **built, macOS not run** |
 | 6 | Audio: tracks, files, devices, delay, channels | **built, macOS not run** |
-| 7 | Subtitles: tracks, files, delay, encoding, style | not started |
+| 7 | Subtitles: tracks, files, delay, encoding, style | **built, macOS not run** |
 | 8 | Deinterlacing, chapters, bookmarks, SponsorBlock | not started |
 | 9 | Streams, live video, errors and recovery, lists | not started |
 | 10 | Hardening: long churn, memory, real drags, other GPUs | not started |
@@ -421,14 +421,92 @@ doesn't load mpv, so a restart gets out of it.
 
 ## Stage 7: Subtitles
 
-- [ ] 7.1 Track list, selection, language, default and forced, no subtitle
-- [ ] 7.2 External files, `.idx`/`.sub`, what happens when a new file reloads tracks
-- [ ] 7.3 Delay, encoding (`sub-codepage`)
-- [ ] 7.4 Style settings mapped from `SUBTITLE_STYLE_SETTINGS`, applied live if possible
-- [ ] 7.5 Size and sharpness: subtitles are drawn at render size, so check small cells and
-  zoom, and whether they should stay the same size on screen
-- [ ] 7.6 Scenarios `tracks` whole and `external_audio_jump` on mpv, add them to `ALSO_ON_MPV`
-- [ ] 7.7 A subtitle saved by number also says where it comes among them, as `AudioTrackId` does
+- [x] 7.1 Track list, selection, language, default and forced, no subtitle
+- [x] 7.2 External files, `.idx`/`.sub`, what happens when a new file reloads tracks
+- [x] 7.3 Delay, encoding (`sub-codepage`)
+- [x] 7.4 Style settings mapped from `SUBTITLE_STYLE_SETTINGS`, applied live
+- [x] 7.5 Size and sharpness: they stay on show and the same size on screen, see below
+- [x] 7.6 Scenarios `tracks` whole and `external_audio_jump` on mpv, in `ALSO_ON_MPV`
+- [x] 7.7 A subtitle saved by number also says where it comes among them, as `AudioTrackId` does
+
+### Stage 7 results
+
+Scenario `mpv_subtitles` is new. It passes on both MPV drivers on Windows (libmpv 0.41) and on X11 and Wayland
+(libmpv 0.40), with `tracks` and `external_audio_jump` on MPV too. VLC's bug in `external_audio_jump` doesn't happen on MPV.
+
+**Older libmpv.** It works back to 0.35. What each refuses was read from the real one, on Debian 12 and Ubuntu 24.04 in a chroot on
+`test_gpu`, and comes from `option_info` and `profile_list` at the start (`SubtitleLimits`). A refused option gives no error and the
+line just stays as it was, but the `fast` profile asked for at the start would have stopped 0.35 from playing at all.
+
+| | 0.35 (Debian 12) | 0.37 (Ubuntu 24.04) | 0.40 (Debian 13) | 0.41 dev (Windows) |
+| --- | --- | --- | --- | --- |
+| `fast` profile | none, defaults are it but for dither and HDR peaks | yes | yes | yes |
+| Outline options | `sub-border-*` | `sub-border-*` | `sub-outline-*` | `sub-outline-*` |
+| `sub-border-style` | none | none | yes | yes |
+| Largest `sub-margin-x` | 300 | 300 | 300 | no limit |
+| `sub-pos` | whole numbers | any | any | any |
+
+Default, shadow, box, outline and raised lines look the same on all four, at the same heights. `sub-back-color` is empty unless the
+box is on: it's all that 0.35 and 0.37 go by for a box, and on 0.40 a colour with no box showed where the shadow goes.
+`mpv_subtitles`, `tracks`, `external_audio_jump` and `mpv_audio` pass on 0.35, and `mpv_subtitles`, `mpv_audio` and `mpv_view` on 0.37.
+`mpv_view` and the flips in `mpv_subtitles` don't run on 0.35: Debian 12's ffmpeg can't make their turned clips.
+
+**Left:** up to 0.40, zoomed in far enough, the side margin stops at 300 and a line can be wider than what's on show. On 0.35 raising
+goes by whole percents of the height.
+
+**What it looks like, measured against VLC on a black clip.** `sub-font-size=50` gives the same width and height of text
+as VLC within 1%, on Windows and Linux. The bottom gap is mpv's own 34, the same as VLC Hardware (4.4% of the height).
+VLC Software has it at 7%, and more on small videos. Same font, same bold, colours, outline, shadow and box. VLC's text
+sits a little left of centre, and mpv's is centred. `sub-scale` also grows `sub-margin-x` and `-y`, so those are divided by it.
+
+Raising them (`subtitles/margin`) goes by the picture's pixels, or the screen's for a picture smaller than its cell, as VLC
+Hardware does in all 4 cases measured. It goes through `sub-pos`, the one thing that reaches ASS as well. Nothing else in
+the settings reaches ASS on either driver, for which `sub-ass-override=yes`.
+
+**Style changes as it plays.** No reload on MPV, where VLC opens every video again.
+
+**Three things VLC does and mpv's frame doesn't, each found by comparing pictures:**
+
+- **Flips would mirror the text**, flips being painted over what mpv drew. While a subtitle shows on a flipped video, mpv flips
+  the picture itself, by a shader (`_FLIP_SHADER`), and painting takes over when none does. Not always a shader: any shader takes
+  mpv off its fast path. 4 x 1080p60 flipped on the i7-4790K's GPU: 0 frames in 4800 dropped with no flip, about 650 painted,
+  about 2350 by shader. A shader is a file mpv has to read, so it's written to the cache folder. `memory://` doesn't work.
+  Switching can show one frame the wrong way round.
+- **Fill and zoom would cut them off**, with mpv drawing them at the bottom of a frame the view then cuts. Fill is the default, so
+  in a wide cell there would be none at all. As on VLC Hardware, they now stay at the bottom of what's on show, the same size on
+  screen (`sub-pos` and `sub-scale`, `sub-margin-x` for what's cut off the sides). VLC Software does cut them off.
+  **Left:** panned sideways while zoomed, the line stays centred on the whole picture and can go off the side. And the frame stops at the
+  picture's own size, so a line in a zoomed picture is a little soft. `video-crop` would solve both, but it means mpv drawing only what's
+  on show, and a pan then waits for a new frame: not done.
+- **A small picture blurs them**, the frame stopping at the picture's own size. While one shows, the frame goes up to the cell's.
+
+**No seek to show a line.** VLC needs one (`_nudge_into_view`), which costs a hitch. mpv shows a line picked part way through it in
+about 0.1 s, playing or paused, in a track or a file, so `is_late_with_subtitles` leaves it out.
+
+**Files.** Asked for an `.idx` by its URI, mpv on Windows doesn't find its `.sub`, so they go by path. Each track says which file it
+came from (`external-filename`), so two files with the same name and different extensions are told apart, which VLC's
+names can't do. Left alone, mpv takes a file over the track the file marks, so `sid` is always said.
+
+| File | MPV | VLC |
+|---|---|---|
+| srt, vtt, ass, ssa, sub (MicroDVD), smi, sami, mpl2, pjs, aqt, jss, rt, stl, txt, utf, mks, idx | reads them | not all compared |
+| ttml, dfxp, dks | doesn't, the video plays on | ttml and dks read |
+| psb, usf | doesn't, the video plays on | shows nothing either |
+| UTF-16 with a mark at the start | **the first letter of a line is wrong** if it isn't Latin | reads it |
+| UTF-16 with no mark | doesn't open it, even with the set named | not compared |
+| cdg, scc, smil, tt | not tried, no file to hand | not tried |
+
+Every other character set in the list reads correctly. The 3 of seven bits (ISO-2022) look like UTF-8, which mpv tries first, so they go
+with a `+`. Nothing named, mpv worked out Windows-1251, Windows-1252 and Shift_JIS by itself.
+
+**Also left:**
+
+- A file with several tracks added while playing: mpv forgets their languages, so the menu numbers them until the next load.
+- Turned on its side, the line is bigger than VLC's and wraps: mpv goes by the height of the frame.
+- A long word in a narrow Fill cell runs off the sides, on VLC too at a smaller size.
+- The character set also reaches ASS here, where it doesn't on VLC.
+- Not run: macOS. VLC Hardware on Windows not compared, only on Linux. Nobody has looked at this on a real screen: I read screenshots
+  and pixels.
 
 ## Stage 8: Everything that hangs off time
 
@@ -542,6 +620,7 @@ doesn't load mpv, so a restart gets out of it.
 
 Newest first. What was finished and seen working, and anything that changed the plan.
 
+- 2026-11-07: Stage 7 committed, see Stage 7 results. Works on libmpv from 0.35 up. Style changes with no reload, and lines stay on show in Fill and zoom. Flips stay painted, with a shader only while a subtitle shows.
 - 2026-11-07: Stage 6 built and committed, see Stage 6 results. Tracks and the device now go in before mpv starts anything.
   Output measured against VLC. JACK stays out, your call. Two device bugs on VLC on Linux fixed along the way.
 - 2026-11-07: Stage 5 built, see Stage 5 results. It turned up a Stage 1 bug, a paused video losing its only frame on a

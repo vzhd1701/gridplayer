@@ -466,6 +466,12 @@ class VideoFrameVLC(QWidget, metaclass=QABC):
     # It can't be moved to no device in particular, with no name to ask for the
     # default one by. Opened again it's there.
     must_reload_for_system_device = VLC_OUTPUT_DROPS_DEVICES
+    # shows a subtitle only from the next line, or from a seek: see
+    # SubtitleControl._nudge_into_view
+    is_late_with_subtitles = True
+    # what they look like is settled when a VLC process starts, so a video has to
+    # be opened again to be redrawn
+    must_reload_for_subtitle_style = True
 
     time_changed = pyqtSignal(MILLISECONDS)
     playback_status_changed = pyqtSignal(bool)
@@ -1709,6 +1715,10 @@ class VideoFrameVLC(QWidget, metaclass=QABC):
 
     def _on_tracks_changed(self, media: Media) -> None:
         """Take a track list that grew after the load, without reloading."""
+
+        # a video let go of in between has nothing left to put it on
+        if self.media is None:
+            return
 
         self.media = media
 

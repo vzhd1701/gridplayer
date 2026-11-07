@@ -8,6 +8,7 @@ the videos again.
 
 import logging
 from functools import partial
+from types import SimpleNamespace
 from unittest.mock import Mock
 
 import pytest
@@ -17,7 +18,7 @@ from PyQt5.QtWidgets import QApplication, QLabel
 from gridplayer.dialogs.settings import SettingsDialog
 from gridplayer.params.settings_bindings import PLAYLIST_ATTRS, VIDEO_DEFAULT_ATTRS
 from gridplayer.params.settings_fields.subtitles import SUBTITLE_STYLE_FIELDS
-from gridplayer.params.static import SubtitleOutline
+from gridplayer.params.static import SubtitleOutline, VideoDriver
 from gridplayer.params.subtitle_style import (
     SUBTITLE_STYLE_DEFAULTS,
     SUBTITLE_STYLE_SETTINGS,
@@ -26,6 +27,8 @@ from gridplayer.params.subtitle_style import (
 from gridplayer.player.managers.settings import SettingsManager
 from gridplayer.settings import Settings
 from gridplayer.vlc_player.instance import InstanceVLC
+from gridplayer.widgets.video_frame_mpv import VideoFrameMpv
+from gridplayer.widgets.video_frame_vlc_base import VideoFrameVLC
 
 
 @pytest.fixture(autouse=True)
@@ -159,13 +162,33 @@ class TestChangingItOpensTheVideosAgain:
 
     @pytest.mark.parametrize("setting", SUBTITLE_STYLE_SETTINGS)
     def test_every_knob_asks_for_a_reload(self, setting):
-        previous = Settings().get_all()
-        Settings().set(setting, _other_than(Settings().get(setting)))
+        assert _is_reload_needed_for(setting, [VideoFrameVLC])
 
-        manager = Mock(spec=SettingsManager)
-        manager._setting_changes = partial(SettingsManager._setting_changes, manager)
+    @pytest.mark.parametrize("setting", SUBTITLE_STYLE_SETTINGS)
+    def test_not_on_mpv_where_it_changes_as_it_plays(self, setting):
+        assert not _is_reload_needed_for(setting, [VideoFrameMpv])
 
-        assert SettingsManager._is_reload_needed(manager, previous)
+    def test_goes_by_what_plays_and_not_what_was_picked(self):
+        # no libmpv, say, and VLC standing in
+        Settings().set("player/video_driver", VideoDriver.MPV_SW)
+
+        assert _is_reload_needed_for("subtitles/bold", [VideoFrameVLC])
+
+    def test_a_vlc_process_left_waiting_goes_with_no_video_open(self):
+        assert _is_reload_needed_for("subtitles/bold", [])
+
+
+def _is_reload_needed_for(setting, driver_classes) -> bool:
+    previous = Settings().get_all()
+    Settings().set(setting, _other_than(Settings().get(setting)))
+
+    manager = Mock(spec=SettingsManager)
+    manager._setting_changes = partial(SettingsManager._setting_changes, manager)
+    manager._ctx = SimpleNamespace(
+        video_blocks=[SimpleNamespace(driver_class=cls) for cls in driver_classes]
+    )
+
+    return SettingsManager._is_reload_needed(manager, previous)
 
 
 def _other_than(value):

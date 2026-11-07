@@ -138,12 +138,7 @@ class AudioControl(VideoBlockPart):
         if language is not None:
             return AudioLanguage(tag=language)
 
-        tracks = list(self.tracks)
-
-        return AudioTrackId(
-            id=track_id,
-            position=tracks.index(track_id) if track_id in tracks else None,
-        )
+        return AudioTrackId.of(track_id, self.tracks)
 
     def set_device(self, device) -> None:
         """Send this video's sound another way out of the machine.

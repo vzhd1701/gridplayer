@@ -13,6 +13,8 @@ from typing import Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from gridplayer.models.track_number import TrackNumber
+
 
 class _Choice(BaseModel):
     """Values, not records: two of the same choice are the same choice."""
@@ -43,28 +45,10 @@ class AudioDisabled(_Choice):
     kind: Literal["disabled"] = "disabled"
 
 
-class AudioTrackId(_Choice):
-    """One of the video's own tracks, where nothing steadier names it.
-
-    An id means nothing to another driver, the way each counts them. How many of
-    the sound tracks come before it means the same to all: None in a playlist
-    from before it was kept.
-    """
+class AudioTrackId(TrackNumber):
+    """One of the video's own tracks, where nothing steadier names it."""
 
     kind: Literal["track"] = "track"
-
-    id: int
-    position: int | None = None
-
-    def track_in(self, tracks) -> int | None:
-        """Which of these tracks this names, None if it's not one of them."""
-
-        track_ids = list(tracks)
-
-        if self.position is not None and self.position < len(track_ids):
-            return track_ids[self.position]
-
-        return self.id if self.id in track_ids else None
 
 
 class AudioLanguage(_Choice):

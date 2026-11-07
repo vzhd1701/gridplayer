@@ -17,11 +17,19 @@ from fractions import Fraction
 from functools import cache
 from pathlib import Path
 
-from PyQt5.QtCore import QObject, pyqtSignal
+from PyQt5.QtCore import QObject, QUrl, pyqtSignal
 
 from gridplayer.models.audio_device import AudioDevice, resolve_device_id
+from gridplayer.models.subtitle_selection import SubtitleExternal, track_of_file
+from gridplayer.mpv_player.subtitles import (
+    SubtitleView,
+    subtitle_codepage,
+    subtitle_limits,
+    subtitle_options,
+)
 from gridplayer.params import env
 from gridplayer.params.static import AudioChannelMode, VideoTransform
+from gridplayer.utils.app_dir import get_app_cache_dir
 from gridplayer.utils.media_libs import find_libvlc
 from gridplayer.utils.qt import MILLISECONDS, translate
 from gridplayer.vlc_player.static import (
@@ -45,14 +53,26 @@ _ROTATIONS = {
 }
 
 # What to turn the picture by for a transform, in degrees clockwise, which mpv
-# adds to what the file says. The flips are painted: a filter would take away
-# what hardware decoding saves. See video_frame_mpv._FLIPS.
+# adds to what the file says. The flips are painted: a filter would take away what
+# hardware decoding saves. See video_frame_mpv._FLIPS.
 _TURNS = {
     VideoTransform.ROTATE_90: 90,
     VideoTransform.ROTATE_180: 180,
     VideoTransform.ROTATE_270: 270,
     VideoTransform.TRANSPOSE: 90,
     VideoTransform.ANTITRANSPOSE: 90,
+}
+
+# Flipping what mpv has drawn flips any subtitle in it too. While there is one, mpv
+# flips the picture itself, by this. Not always: with any shader mpv leaves its fast
+# path, and 4 videos of 1080p60 flipped on an i7-4790K's GPU lost half their frames.
+_FLIP_SHADER = """//!HOOK OUTPUT
+//!BIND HOOKED
+vec4 hook() {{ return HOOKED_tex(vec2({}, {})); }}
+"""
+_FLIP_COORDS = {
+    (True, False): ("1.0 - HOOKED_pos.x", "HOOKED_pos.y"),
+    (False, True): ("HOOKED_pos.x", "1.0 - HOOKED_pos.y"),
 }
 
 # How often the time goes to the GUI at most: mpv says every frame, VLC about
@@ -126,6 +146,23 @@ def _room_file() -> str | None:
         return None
 
     return path.as_posix().replace(":", "\\\\:")
+
+
+def _flip_shader_file(flip: tuple[bool, bool]) -> str | None:
+    """Where the shader is: mpv only reads them from a file. Written each time, it
+    being only asked for when a flip changes, as clearing the cache takes it away."""
+
+    is_across, _ = flip
+    path = get_app_cache_dir() / f"mpv_flip_{'across' if is_across else 'up_down'}.hook"
+
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(_FLIP_SHADER.format(*_FLIP_COORDS[flip]), encoding="ascii")
+    except OSError:
+        _log.exception("Could not write the shader for a flip")
+        return None
+
+    return str(path)
 
 
 def audio_chain(mode: AudioChannelMode, track_channels: int) -> dict:
@@ -231,6 +268,7 @@ class MpvPlayer(QObject):
         media_input: MediaInput,
         hwdec,
         wake_renderer,
+        subtitle_style: dict,
         skip_frames: bool = False,
     ):
         super().__init__()
@@ -242,6 +280,10 @@ class MpvPlayer(QObject):
         self._hwdec = hwdec
         self._skip_frames = skip_frames
         self._wake_renderer = wake_renderer
+        self._subtitle_style = subtitle_style
+        self._subtitle_view = SubtitleView()
+        self._subtitle_options = {}
+        self._flip_in_mpv: tuple[bool, bool] | None = None
 
         # GUI thread. python-mpv sends async commands through a handle that
         # shutdown destroys: one sent after terminate() is a use-after-free in
@@ -277,6 +319,14 @@ class MpvPlayer(QObject):
             **self._options(),
         )
 
+        # Not there before 0.36, and asking for it at the start would stop mpv starting.
+        # Until then the defaults are what it asks for, but for dither and HDR peaks.
+        if any(profile["name"] == "fast" for profile in self.mpv.profile_list):
+            self.mpv.command("apply-profile", "fast")
+
+        # nothing's loading yet, so this has nothing to wait for
+        self._subtitle_limits = subtitle_limits(self.mpv.option_info)
+
         self.mpv.register_event_callback(self._on_event)
         self.mpv.observe_property("video-params", self._on_video_params)
         self.mpv.observe_property("time-pos", self._on_time)
@@ -310,7 +360,6 @@ class MpvPlayer(QObject):
             "video_timing_offset": 0,
             # The picture fills the frame, the surface places it
             "keepaspect": False,
-            "profile": "fast",
             "loop_file": "inf",
             "keep_open": "always",
             "mute": True,
@@ -325,6 +374,9 @@ class MpvPlayer(QObject):
             "audio_file_auto": "no",
             "sub_auto": "no",
             "cover_art_auto": "no",
+            # what the settings say reaches ASS and SSA no more than on VLC, but for
+            # where they stand: see subtitles.py
+            "sub_ass_override": "yes",
             "load_scripts": False,
             "pause": media_input.video.is_paused,
         }
@@ -345,6 +397,11 @@ class MpvPlayer(QObject):
         # as it starts, rather than starting the sound over once it has. The channel
         # mode goes by the track: see _pick_tracks
         options["audio_delay"] = video.audio_delay_ms / 1000
+        options["sub_delay"] = video.subtitle_delay_ms / 1000
+
+        # as with VLC, for what isn't UTF-8 already. Nothing named, mpv works it out.
+        if video.subtitle_encoding:
+            options["sub_codepage"] = subtitle_codepage(video.subtitle_encoding)
 
         if video.transform in _TURNS:
             options["video_rotate"] = _TURNS[video.transform]
@@ -404,10 +461,15 @@ class MpvPlayer(QObject):
     def start(self, box: tuple[int, int]) -> None:
         self._box = box
 
+        self._apply_subtitle_options()
+
         audio_file = self.media_input.selected_audio_slave
 
         if audio_file is not None:
             self.command("change-list", "audio-files", "append", audio_file)
+
+        for subtitle_file in self.media_input.selected_subtitle_slaves:
+            self.command("change-list", "sub-files", "append", _path_of(subtitle_file))
 
         self.command("loadfile", self.media_input.uri)
 
@@ -439,6 +501,12 @@ class MpvPlayer(QObject):
     def add_audio_file(self, uri: str) -> None:
         # selected once it's known how many channels it has: see _on_audio_file_added
         self.command("audio-add", uri, "auto", callback=self._on_audio_file_added)
+
+    def add_subtitle_file(self, uri: str) -> None:
+        # not selected here: the video may be being watched with its subtitles off
+        self.command(
+            "sub-add", _path_of(uri), "auto", callback=self._on_subtitle_file_added
+        )
 
     def set_audio_device(self, device: AudioDevice | None) -> None:
         if device is None:
@@ -473,6 +541,55 @@ class MpvPlayer(QObject):
         self._audio_chain = chain
 
         return changes
+
+    def set_flip_in_mpv(self, flip: tuple[bool, bool] | None) -> bool:
+        """Have mpv flip the picture, None for it not to. Whether it flips it now."""
+
+        if flip == self._flip_in_mpv:
+            return flip is not None
+
+        if flip is None:
+            self.command("change-list", "glsl-shaders", "clr", "")
+            self._flip_in_mpv = None
+            return False
+
+        shader = _flip_shader_file(flip)
+
+        if shader is None:
+            return False
+
+        self.command("change-list", "glsl-shaders", "clr", "")
+        self.command("change-list", "glsl-shaders", "append", shader)
+        self._flip_in_mpv = flip
+
+        return True
+
+    def set_subtitle_style(self, style: dict) -> None:
+        self._subtitle_style = style
+
+        self._apply_subtitle_options()
+
+    def set_subtitle_view(self, view: SubtitleView) -> None:
+        if view == self._subtitle_view:
+            return
+
+        self._subtitle_view = view
+
+        self._apply_subtitle_options()
+
+    def _apply_subtitle_options(self) -> None:
+        """Only what changed. Each goes on its own, as an option an older libmpv hasn't
+        got is then only that one left out."""
+
+        options = subtitle_options(
+            self._subtitle_style, self._subtitle_view, self._subtitle_limits
+        )
+
+        for option, value in options.items():
+            if value != self._subtitle_options.get(option):
+                self.set_option(option, value)
+
+        self._subtitle_options = options
 
     def set_skip_frames(self, is_skipping: bool) -> None:
         self.set_option("vd-lavc-skipframe", _SKIP_FRAMES[is_skipping])
@@ -578,11 +695,13 @@ class MpvPlayer(QObject):
 
         # no subtitles in it is the ordinary case, with nothing to switch off
         if tracks.subtitle_tracks:
-            picks["sid"] = wanted_subtitle_track_id(
-                self.media_input.video,
-                tracks.subtitle_tracks,
-                tracks.external_subtitle_ids,
-            )
+            subtitle_id = self._wanted_subtitle_track_id(tracks)
+
+            # the one the file marks, or none: left to itself mpv takes a file over it
+            if subtitle_id is None:
+                subtitle_id = tracks.default_subtitle_track_id
+
+            picks["sid"] = DISABLED_TRACK if subtitle_id is None else subtitle_id
 
         heard_id = tracks.default_audio_track_id if audio_id is None else audio_id
 
@@ -689,18 +808,26 @@ class MpvPlayer(QObject):
 
         self.media_loaded.emit(media)
 
-    def _on_audio_file_added(self, error, _result) -> None:
+    def _tracks_with_file_added(self, error, kind: str) -> Media | None:
+        """What's listed now, None if there's nothing more to do about it."""
+
         if self._is_closing or self._media is None:
-            return
+            return None
 
         # the video plays on as it was, and nothing else has changed
         if error is not None:
-            self._log.warning(f"Failed to add the audio file: {error}")
-            return
+            self._log.warning(f"Failed to add the {kind} file: {error}")
+            return None
 
         try:
-            tracks = self._read_tracks()
+            return self._read_tracks()
         except self._mpv_module.ShutdownError:
+            return None
+
+    def _on_audio_file_added(self, error, _result) -> None:
+        tracks = self._tracks_with_file_added(error, "audio")
+
+        if tracks is None:
             return
 
         wanted = self._wanted_audio_track_id(tracks)
@@ -714,6 +841,28 @@ class MpvPlayer(QObject):
 
         if wanted is not None:
             self.select_track("aid", wanted)
+
+        self.tracks_changed.emit(self._media)
+
+    def _on_subtitle_file_added(self, error, _result) -> None:
+        tracks = self._tracks_with_file_added(error, "subtitle")
+
+        if tracks is None:
+            return
+
+        wanted = self._wanted_subtitle_track_id(tracks)
+
+        self._media = dataclasses.replace(
+            self._media,
+            subtitle_tracks=tracks.subtitle_tracks,
+            cur_subtitle_track_id=(
+                tracks.cur_subtitle_track_id if wanted is None else wanted
+            ),
+            external_subtitle_ids=tracks.external_subtitle_ids,
+        )
+
+        if wanted is not None:
+            self.select_track("sid", wanted)
 
         self.tracks_changed.emit(self._media)
 
@@ -744,10 +893,12 @@ class MpvPlayer(QObject):
                 external[kind].append(track_id)
             elif kind == "audio":
                 own_audio.setdefault(bool(track.get("default")), track_id)
-
-            if kind == "sub" and default_subtitle is None:
-                if track.get("default") or track.get("forced"):
-                    default_subtitle = track_id
+            elif (
+                kind == "sub"
+                and default_subtitle is None
+                and (track.get("default") or track.get("forced"))
+            ):
+                default_subtitle = track_id
 
         def current(kind):
             return _cur_track_id(selected.get(kind), tracks[kind])
@@ -801,6 +952,25 @@ class MpvPlayer(QObject):
             self.media_input.video, tracks.audio_tracks, tracks.external_audio_ids
         )
 
+    def _wanted_subtitle_track_id(self, tracks: Media) -> int | None:
+        selection = self.media_input.video.subtitle_selection
+
+        if isinstance(selection, SubtitleExternal):
+            from_file = [
+                track_id
+                for track_id, track in tracks.subtitle_tracks.items()
+                if track.file == selection.file
+            ]
+
+            picked = track_of_file(selection, from_file)
+
+            if picked is not None:
+                return picked
+
+        return wanted_subtitle_track_id(
+            self.media_input.video, tracks.subtitle_tracks, tracks.external_subtitle_ids
+        )
+
     def _audio_device_id(self, device: AudioDevice) -> str | None:
         device_id = resolve_device_id(device, self._audio_devices)
 
@@ -838,6 +1008,13 @@ def devices_of_first_output(listed, outputs=None) -> tuple[AudioDevice, ...]:
     return next(
         (tuple(by_output[output]) for output in outputs if output in by_output), ()
     )
+
+
+def _path_of(uri: str) -> str:
+    """What mpv is to be given for a subtitle file: asked for a VobSub index by its
+    URI, it can't then find the pictures that go with it."""
+
+    return str(Path(QUrl(uri).toLocalFile()))
 
 
 def _track_option(track_id: int) -> str:
@@ -909,11 +1086,15 @@ def _audio_track(track: dict) -> AudioTrack:
 
 
 def _subtitle_track(track: dict) -> SubtitleTrack:
+    file = track.get("external-filename")
+
     return SubtitleTrack(
         bitrate=0,
         language=track.get("lang"),
-        description=track.get("title"),
+        # for a file it's only mpv making a title out of the name
+        description=None if file else track.get("title"),
         codec=track.get("codec") or "",
+        file=Path(file) if file else None,
     )
 
 

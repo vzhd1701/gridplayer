@@ -2,6 +2,7 @@ import random
 from dataclasses import dataclass, field
 from enum import Enum, auto
 from fractions import Fraction
+from pathlib import Path
 
 from gridplayer.models.audio_device import AudioDevice
 from gridplayer.models.audio_selection import (
@@ -189,8 +190,11 @@ def wanted_subtitle_track_id(video, tracks: dict, external_ids=()):
         # is whichever track the container marks
         return None
 
-    if isinstance(selection, SubtitleTrackId) and selection.id in tracks:
-        return selection.id
+    if isinstance(selection, SubtitleTrackId):
+        picked = selection.track_in(tracks)
+
+        if picked is not None:
+            return picked
 
     own_tracks = {
         track_id: track
@@ -333,6 +337,9 @@ class SubtitleTrack(MediaTrack):
     """
 
     encoding: str | None = None
+    # the file it came out of, for a player that says: libVLC doesn't, see
+    # SubtitleControl.external_tracks
+    file: Path | None = None
 
     @property
     def codec_info(self):

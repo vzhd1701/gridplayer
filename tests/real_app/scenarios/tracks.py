@@ -66,7 +66,8 @@ def subtitles(d, b):
     d.wait_until(lambda: b.subtitles.discovered_files, "German is found")
     d.choose(b, "menu_generator_subtitle_track", "German")
     d.wait_until(
-        lambda: b.subtitles.track_showing not in (-1, 3, 4), "the German file shows"
+        lambda: b.subtitles.track_showing in b.subtitles.external_track_ids,
+        "the German file shows",
     )
     d.wait(1)
     d.shot("german_subtitles")

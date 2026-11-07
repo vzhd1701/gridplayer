@@ -13,7 +13,6 @@ from gridplayer.models.audio_selection import AudioDisabled, AudioExternal
 from gridplayer.mpv_player import player as player_module
 from gridplayer.params.static import AudioChannelMode
 from tests.real_app.media import _ffmpeg, _pattern, _tone
-from tests.real_app.scenarios import tracks
 from tests.real_app.scenarios.mpv_transport import _mpv
 from tests.real_app.scenarios.mpv_view import _open
 from tests.real_app.scenarios.pixel_shape import _grab, _picture_box
@@ -28,7 +27,6 @@ SETTINGS = {
 def scenario(d):
     _tracks_and_files(d)
     _going_round(d)
-    _as_on_vlc(d)
     _ways_out(d)
     _channel_modes_and_delay(d)
     _one_channel_and_surround(d)
@@ -158,14 +156,6 @@ def _going_round(d):
     b.seek(59000)
     d.wait_until(lambda: b.time < 5000 and b.time > 0, "it goes round")
     d.check("still Spanish", _mpv(b).aid == 2, _mpv(b).aid)
-
-    _close(d, b)
-
-
-def _as_on_vlc(d):
-    b = _open(d, d.media.feature)
-
-    tracks.audio(d, b)
 
     _close(d, b)
 

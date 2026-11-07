@@ -3,7 +3,7 @@ is in tests/real_app/scenarios/mpv_basics.py."""
 
 import time
 from types import SimpleNamespace
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 from PyQt5.QtWidgets import QApplication
@@ -13,6 +13,11 @@ from gridplayer.models.audio_selection import (
     AudioDisabled,
     AudioExternal,
     AudioLanguage,
+)
+from gridplayer.models.subtitle_selection import (
+    SubtitleDefault,
+    SubtitleExternal,
+    SubtitleTrackId,
 )
 from gridplayer.models.video import Video
 from gridplayer.mpv_player import player as player_module
@@ -32,14 +37,23 @@ from gridplayer.mpv_player.renderer import (
     RenderedVideo,
     VideoRenderer,
 )
+from gridplayer.mpv_player.subtitles import (
+    SubtitleView,
+    subtitle_codepage,
+    subtitle_limits,
+    subtitle_options,
+    subtitle_view,
+)
 from gridplayer.params.static import (
     AudioChannelMode,
+    SubtitleOutline,
     VideoCellViewMode,
     VideoCrop,
     VideoDriver,
     VideoTransform,
     ViewParams,
 )
+from gridplayer.params.subtitle_style import SUBTITLE_STYLE_DEFAULTS
 from gridplayer.player.managers.video_driver import VideoDriverManager
 from gridplayer.settings import Settings
 from gridplayer.utils.aspect_calc import (
@@ -333,6 +347,8 @@ def test_the_renderer_never_writes_what_is_on_show():
 
 
 class _FakeMpv:
+    profile_list = []
+
     def __init__(self, **options):
         self.options = options
         self.commands = []
@@ -349,6 +365,9 @@ class _FakeMpv:
 
     def observe_property(self, name, handler):
         self.observers[name] = handler
+
+    def option_info(self, _name):
+        return {"type": "Float"}
 
     def command(self, *args):
         self.commands.append(args)
@@ -385,8 +404,24 @@ def _player(skip_frames=False, is_live=False, is_audio_only=False, **video):
         media_input,
         hwdec="auto",
         wake_renderer=MagicMock(),
+        subtitle_style=SUBTITLE_STYLE_DEFAULTS,
         skip_frames=skip_frames,
     )
+
+
+def test_fast_profile_is_used_where_there_is_one():
+    with patch.object(_FakeMpv, "profile_list", [{"name": "fast"}]):
+        player = _player()
+
+    assert player.mpv.commands == [("apply-profile", "fast")]
+
+
+def test_fast_profile_not_there_on_an_old_libmpv_doesnt_stop_it_starting():
+    with patch.object(_FakeMpv, "profile_list", [{"name": "gpu-hq"}]):
+        player = _player()
+
+    assert player.mpv.commands == []
+    assert "profile" not in player.mpv.options
 
 
 def test_options_leave_no_hardware_saving_out():
@@ -1730,3 +1765,505 @@ def test_nor_is_it_tried_again_on_the_next_video():
     _audio_player()._on_log("error", "ffmpeg", "Parsed_sofalizer_0: no")
 
     assert audio_chain(AudioChannelMode.HEADPHONES, 6)["af"] == ""
+
+
+# -- the subtitles
+
+
+_OWN_SUB = {"type": "sub", "id": 1, "lang": "eng", "default": True, "codec": "subrip"}
+_OTHER_SUB = {"type": "sub", "id": 2, "lang": "fre", "codec": "subrip"}
+
+
+def _sub_file(track_id, path, **fields):
+    return {
+        "type": "sub",
+        "id": track_id,
+        "external": True,
+        "external-filename": str(path),
+        "title": "made up by mpv",
+        **fields,
+    }
+
+
+def _sid_set(player):
+    return [one[1] for one in _option_sets(player) if one[0] == "sid"]
+
+
+def test_subtitles_start_off_with_tracks_to_switch_off():
+    player = _audio_player([_VIDEO_TRACK, _OWN_SUB])
+
+    player._pick_tracks()
+
+    assert _sid_set(player) == ["no"]
+
+
+def test_subtitle_marked_by_the_file_is_asked_for_by_name():
+    player = _audio_player(
+        [_VIDEO_TRACK, _OTHER_SUB, _OWN_SUB], subtitle_selection=SubtitleDefault()
+    )
+
+    player._pick_tracks()
+
+    assert _sid_set(player) == ["1"]
+
+
+def test_no_subtitle_marked_is_none_rather_than_mpvs_pick_of_a_file(tmp_path):
+    player = _audio_player(
+        [_VIDEO_TRACK, _OTHER_SUB, _sub_file(3, tmp_path / "a.srt")],
+        subtitle_selection=SubtitleDefault(),
+    )
+
+    player._pick_tracks()
+
+    assert _sid_set(player) == ["no"]
+
+
+def test_a_file_never_counts_as_the_one_marked(tmp_path):
+    player = _audio_player([_sub_file(1, tmp_path / "a.srt", default=True)])
+
+    assert player._read_tracks().default_subtitle_track_id is None
+
+
+def test_subtitle_picked_goes_by_its_file_not_where_it_comes_among_them(tmp_path):
+    first, second = tmp_path / "a.srt", tmp_path / "b.srt"
+
+    player = _audio_player(
+        [_VIDEO_TRACK, _OWN_SUB, _sub_file(2, first), _sub_file(3, second)],
+        subtitle_selection=SubtitleExternal(file=second),
+    )
+
+    player._pick_tracks()
+
+    assert _sid_set(player) == ["3"]
+
+
+def test_subtitle_picked_goes_by_its_place_in_its_file(tmp_path):
+    index = tmp_path / "a.idx"
+
+    player = _audio_player(
+        [_VIDEO_TRACK, _sub_file(1, index), _sub_file(2, index)],
+        subtitle_selection=SubtitleExternal(file=index, track=1),
+    )
+
+    player._pick_tracks()
+
+    assert _sid_set(player) == ["2"]
+
+
+def test_subtitle_kept_by_number_from_another_driver_goes_by_where_it_comes():
+    player = _audio_player(
+        [_VIDEO_TRACK, _OWN_SUB, _OTHER_SUB],
+        subtitle_selection=SubtitleTrackId(id=4, position=1),
+    )
+
+    player._pick_tracks()
+
+    assert _sid_set(player) == ["2"]
+
+
+def test_a_title_mpv_made_for_a_file_is_nobodys(tmp_path):
+    path = tmp_path / "a.srt"
+
+    track = _audio_player([_sub_file(1, path)])._read_tracks().subtitle_tracks[1]
+
+    assert track.description is None
+    assert track.file == path
+
+
+def test_subtitle_files_open_with_the_video_by_their_paths(tmp_path):
+    path = tmp_path / "a b.idx"
+    player = _player()
+    player.media_input.selected_subtitle_slaves = (path.as_uri(),)
+
+    player.start((100, 100))
+
+    assert ("change-list", "sub-files", "append", str(path)) in player.mpv.commands
+
+
+def test_a_subtitle_file_added_is_shown_once_it_has_said_what_it_brought(tmp_path):
+    path = tmp_path / "a.srt"
+    player = _audio_player(
+        [_VIDEO_TRACK, _OWN_SUB], subtitle_selection=SubtitleExternal(file=path)
+    )
+    player._media = player._media_from_tracks()
+
+    player.add_subtitle_file(path.as_uri())
+
+    assert player.mpv.commands[-1] == ("sub-add", str(path), "auto")
+    assert not _sid_set(player)
+
+    player.mpv.track_list.append(_sub_file(2, path))
+    player._on_subtitle_file_added(None, None)
+
+    assert _sid_set(player) == ["2"]
+    assert player.emitted[-1].external_subtitle_ids == (2,)
+    assert player.emitted[-1].cur_subtitle_track_id == 2
+
+
+def test_a_subtitle_file_with_nothing_in_it_changes_nothing(tmp_path):
+    player = _audio_player([_VIDEO_TRACK, _OWN_SUB])
+    player._media = player._media_from_tracks()
+
+    player._on_subtitle_file_added(("Error running mpv command", -12), None)
+
+    assert not player.emitted
+    assert not _sid_set(player)
+
+
+def test_subtitle_delay_and_character_set_start_with_it():
+    player = _player(subtitle_delay_ms=1500, subtitle_encoding="Windows-1251")
+
+    assert player.mpv.options["sub_delay"] == 1.5
+    assert player.mpv.options["sub_codepage"] == "Windows-1251"
+
+
+def test_no_character_set_named_is_left_to_mpv():
+    assert "sub_codepage" not in _player().mpv.options
+
+
+def test_a_character_set_of_seven_bits_is_taken_at_its_word():
+    assert subtitle_codepage("ISO-2022-JP-2") == "+ISO-2022-JP-2"
+    assert subtitle_codepage("KOI8-R") == "KOI8-R"
+
+
+_STYLE = dict(SUBTITLE_STYLE_DEFAULTS)
+
+
+def test_subtitle_style_of_nothing_touched_has_everything_to_go_back_to():
+    options = subtitle_options(_STYLE, SubtitleView())
+
+    assert options["sub-font"] == "sans-serif"
+    assert options["sub-scale"] == "1.0000"
+    assert options["sub-color"] == "#ffffff"
+    assert options["sub-bold"] == "no"
+    assert options["sub-border-style"] == "outline-and-shadow"
+    assert options["sub-pos"] == "100.00"
+
+
+@pytest.mark.parametrize(
+    ("setting", "value", "option", "expected"),
+    [
+        ("subtitles/font", "Arial", "sub-font", "Arial"),
+        ("subtitles/size_scale", 200, "sub-scale", "2.0000"),
+        ("subtitles/color", "#ff0000", "sub-color", "#ff0000"),
+        ("subtitles/bold", True, "sub-bold", "yes"),
+        ("subtitles/outline", SubtitleOutline.NONE, "sub-outline-size", "0"),
+        ("subtitles/outline_color", "#00ff00", "sub-outline-color", "#00ff00"),
+        ("subtitles/shadow", False, "sub-shadow-offset", "0"),
+        ("subtitles/shadow_color", "#0000ff", "sub-shadow-color", "#800000ff"),
+        ("subtitles/background", True, "sub-border-style", "background-box"),
+    ],
+)
+def test_subtitle_style_says_what_each_setting_asks(setting, value, option, expected):
+    assert subtitle_options({**_STYLE, setting: value}, SubtitleView())[option] == (
+        expected
+    )
+
+
+def test_subtitle_colour_that_isnt_one_is_the_usual():
+    style = {**_STYLE, "subtitles/color": "not a colour"}
+
+    assert subtitle_options(style, SubtitleView())["sub-color"] == "#ffffff"
+
+
+def test_subtitle_raised_goes_for_what_mpv_doesnt_style_too():
+    # sub-pos reaches ASS, where sub-margin-y doesn't
+    style = {**_STYLE, "subtitles/margin": 72}
+
+    assert subtitle_options(style, SubtitleView())["sub-pos"] == "90.00"
+
+
+@pytest.mark.parametrize(
+    ("picture_height", "frame_height", "expected"),
+    [
+        # a big picture in a small cell goes by the picture's pixels
+        (720, 360, "90.00"),
+        # a small picture in a big cell by the screen's
+        (360, 720, "90.00"),
+        (360, 360, "80.00"),
+    ],
+)
+def test_subtitle_raised_goes_by_the_more_pixels(
+    picture_height, frame_height, expected
+):
+    source = (0, 0, frame_height, frame_height)
+    size = (frame_height, frame_height)
+    view = subtitle_view(source, size, size, picture_height)
+
+    style = {**_STYLE, "subtitles/margin": 72}
+
+    assert subtitle_options(style, view)["sub-pos"] == expected
+
+
+def test_subtitle_raised_past_the_top_stays_at_the_top():
+    style = {**_STYLE, "subtitles/margin": 500}
+    view = subtitle_view((0, 0, 360, 360), (360, 360), (360, 360), 360)
+
+    assert subtitle_options(style, view)["sub-pos"] == "0.00"
+
+
+def test_subtitle_side_margin_is_the_same_on_screen_zoomed_in():
+    whole = SubtitleView()
+    zoomed = subtitle_view((250, 250, 500, 500), (1000, 1000), (1000, 1000), 1000)
+
+    def on_screen(view):
+        options = subtitle_options(_STYLE, view)
+        cut = zoomed.cut_off_each_side if view is zoomed else 0
+
+        # what mpv draws it at, in the picture, then as much bigger as it's zoomed
+        margin = int(options["sub-margin-x"]) * float(options["sub-scale"])
+
+        return (margin - cut) / view.height
+
+    assert on_screen(zoomed) == pytest.approx(on_screen(whole), abs=1)
+
+
+# what each said, read from the real one
+_LIBMPV_OPTIONS = {
+    "0.35": {
+        "sub-margin-x": {"type": "Integer", "max": 300.0},
+        "sub-pos": {"type": "Integer"},
+    },
+    "0.37": {
+        "sub-margin-x": {"type": "Integer", "max": 300.0},
+        "sub-pos": {"type": "Float"},
+    },
+    "0.40": {
+        "sub-margin-x": {"type": "Integer", "max": 300.0},
+        "sub-pos": {"type": "Float"},
+        "sub-outline-size": {"type": "Float"},
+        "sub-border-style": {"type": "Choice"},
+    },
+    "0.41": {
+        "sub-margin-x": {"type": "Integer", "max": 2147483647.0},
+        "sub-pos": {"type": "Float"},
+        "sub-outline-size": {"type": "Float"},
+        "sub-border-style": {"type": "Choice"},
+    },
+}
+
+
+def _limits_of(version):
+    return subtitle_limits(_LIBMPV_OPTIONS[version].get)
+
+
+@pytest.mark.parametrize("version", ["0.35", "0.37"])
+def test_subtitle_outline_goes_by_its_old_name_on_an_old_libmpv(version):
+    style = {
+        **_STYLE,
+        "subtitles/outline": SubtitleOutline.THICK,
+        "subtitles/outline_color": "#00ff00",
+    }
+
+    options = subtitle_options(style, SubtitleView(), _limits_of(version))
+
+    assert options["sub-border-size"] == "3"
+    assert options["sub-border-color"] == "#00ff00"
+    assert "sub-outline-size" not in options
+    assert "sub-outline-color" not in options
+
+
+@pytest.mark.parametrize("version", ["0.35", "0.37"])
+def test_subtitle_box_is_only_its_colour_on_an_old_libmpv(version):
+    limits = _limits_of(version)
+
+    plain = subtitle_options(_STYLE, SubtitleView(), limits)
+    boxed = subtitle_options(
+        {
+            **_STYLE,
+            "subtitles/background": True,
+            "subtitles/background_color": "#123456",
+        },
+        SubtitleView(),
+        limits,
+    )
+
+    assert "sub-border-style" not in plain
+    assert plain["sub-back-color"] == "#00000000"
+    assert boxed["sub-back-color"] == "#FF123456"
+
+
+def test_subtitle_box_colour_is_only_there_with_a_box():
+    style = {**_STYLE, "subtitles/background_color": "#123456"}
+
+    plain = subtitle_options(style, SubtitleView())
+    boxed = subtitle_options({**style, "subtitles/background": True}, SubtitleView())
+
+    assert plain["sub-back-color"] == "#00000000"
+    assert boxed["sub-back-color"] == "#FF123456"
+
+
+def test_subtitle_position_is_whole_where_it_has_to_be():
+    style = {**_STYLE, "subtitles/margin": 7}
+
+    def position(version):
+        options = subtitle_options(style, SubtitleView(), _limits_of(version))
+        return options["sub-pos"]
+
+    assert position("0.35") == "99"
+    assert position("0.37") == "99.03"
+
+
+@pytest.mark.parametrize(
+    ("version", "expected"), [("0.35", 300), ("0.40", 300), ("0.41", 665)]
+)
+def test_subtitle_side_margin_stays_in_what_this_libmpv_takes(version, expected):
+    # zoomed in twice, a video of 16:9
+    view = subtitle_view((480, 270, 960, 540), (1920, 1080), (1920, 1080), 1080)
+
+    options = subtitle_options(_STYLE, view, _limits_of(version))
+
+    assert int(options["sub-margin-x"]) == expected
+
+
+def test_subtitle_options_on_the_newest_are_as_they_are_with_no_limits():
+    assert subtitle_options(_STYLE, SubtitleView(), _limits_of("0.41")) == (
+        subtitle_options(_STYLE, SubtitleView())
+    )
+
+
+def test_subtitle_options_a_player_sends_are_for_its_libmpv():
+    player = _player()
+    player._subtitle_limits = _limits_of("0.35")
+
+    player.start((100, 100))
+
+    told = dict(_option_sets(player))
+
+    assert "sub-border-size" in told
+    assert "sub-outline-size" not in told
+
+
+def test_subtitle_size_of_nothing_in_a_hand_edited_file_is_the_least_there_is():
+    style = {**_STYLE, "subtitles/size_scale": 0}
+
+    assert subtitle_options(style, SubtitleView())["sub-scale"] == "0.1000"
+
+
+def test_subtitle_margins_dont_grow_with_its_size():
+    plain = subtitle_options(_STYLE, SubtitleView())
+    double = subtitle_options({**_STYLE, "subtitles/size_scale": 200}, SubtitleView())
+
+    assert int(double["sub-margin-y"]) == int(plain["sub-margin-y"]) / 2
+    assert int(double["sub-margin-x"]) == round(int(plain["sub-margin-x"]) / 2)
+
+
+def test_subtitle_stays_in_what_is_on_show():
+    # a frame 1000 high with 500 of it on show, ending at 750
+    view = subtitle_view((0, 250, 1000, 500), (1000, 1000), (1000, 1000), 1000)
+    options = subtitle_options(_STYLE, view)
+
+    assert options["sub-pos"] == "75.00"
+    assert options["sub-scale"] == "0.5000"
+
+
+def test_subtitle_keeps_inside_what_is_cut_off_the_sides():
+    whole = subtitle_options(
+        _STYLE, subtitle_view((0, 0, 1000, 1000), (1000, 1000), (1000, 1000), 1000)
+    )
+    cut = subtitle_options(
+        _STYLE, subtitle_view((250, 0, 500, 1000), (1000, 1000), (1000, 1000), 1000)
+    )
+
+    # a quarter of 720 either side
+    assert int(cut["sub-margin-x"]) == int(whole["sub-margin-x"]) + 180
+
+
+def test_subtitle_options_go_on_only_when_they_change():
+    player = _player()
+    player.start((100, 100))
+    told = len(_option_sets(player))
+
+    assert told
+
+    player.set_subtitle_view(SubtitleView())
+    assert len(_option_sets(player)) == told
+
+    player.set_subtitle_style({**SUBTITLE_STYLE_DEFAULTS, "subtitles/bold": True})
+    assert _option_sets(player)[told:] == [("sub-bold", "yes")]
+
+
+def test_render_size_keeps_a_small_picture_small_with_nothing_to_keep_sharp():
+    placement = _placed((0, 0, 320, 180), (0, 0, 1280, 720))
+
+    assert calc_render_size((320, 180), placement) == (320, 180)
+
+
+def test_render_size_goes_up_to_the_cell_for_something_to_keep_sharp():
+    placement = _placed((0, 0, 320, 180), (0, 0, 1280, 720))
+
+    assert calc_render_size((320, 180), placement, sharp_in=(1280, 720)) == (1280, 720)
+
+
+def test_render_size_for_something_to_keep_sharp_takes_no_more_for_a_zoom():
+    # zoomed in four times, a picture the cell's size has all it needs
+    placement = _placed((0, 0, 80, 45), (0, 0, 1280, 720))
+
+    assert calc_render_size((320, 180), placement, sharp_in=(1280, 720)) == (1280, 720)
+
+
+def test_render_size_of_a_big_picture_is_as_it_was_to_keep_sharp():
+    placement = _placed((0, 0, 1920, 1080), (0, 0, 640, 360))
+
+    assert calc_render_size((1920, 1080), placement, sharp_in=(640, 360)) == (640, 360)
+
+
+def test_flip_in_mpv_is_a_shader_for_as_long_as_it_is_asked(tmp_path):
+    player = _player()
+
+    with patch.object(player_module, "get_app_cache_dir", return_value=tmp_path):
+        assert player.set_flip_in_mpv((True, False))
+        assert player.set_flip_in_mpv((True, False))
+
+    shader = tmp_path / "mpv_flip_across.hook"
+
+    assert player.mpv.commands == [
+        ("change-list", "glsl-shaders", "clr", ""),
+        ("change-list", "glsl-shaders", "append", str(shader)),
+    ]
+    assert "1.0 - HOOKED_pos.x" in shader.read_text()
+
+    player.mpv.commands.clear()
+    assert not player.set_flip_in_mpv(None)
+    assert not player.set_flip_in_mpv(None)
+
+    assert player.mpv.commands == [("change-list", "glsl-shaders", "clr", "")]
+
+
+def test_flip_in_mpv_that_cant_be_written_stays_painted(tmp_path):
+    player = _player()
+    # a file where the folder would have to be
+    not_a_folder = tmp_path / "file"
+    not_a_folder.write_text("")
+
+    with patch.object(player_module, "get_app_cache_dir", return_value=not_a_folder):
+        assert not player.set_flip_in_mpv((True, False))
+
+    assert not player.mpv.commands
+
+
+def test_flip_in_mpv_gets_its_shader_back_after_the_cache_is_cleared(tmp_path):
+    player = _player()
+    shader = tmp_path / "mpv_flip_across.hook"
+
+    with patch.object(player_module, "get_app_cache_dir", return_value=tmp_path):
+        assert player.set_flip_in_mpv((True, False))
+        shader.unlink()
+        assert not player.set_flip_in_mpv(None)
+        assert player.set_flip_in_mpv((True, False))
+
+    assert shader.is_file()
+
+
+def test_surface_leaves_the_flip_to_mpv_while_it_does_it():
+    surface = _surface_showing(VideoTransform.HFLIP, (RED, BLUE))
+    surface.set_flip_in_mpv(True)
+    image = surface.frame_image()
+
+    assert (image.pixel(0, 0), image.pixel(1, 0)) == (RED, BLUE)
+    assert surface.flip() == (True, False)
+
+    surface.set_flip_in_mpv(False)
+    image = surface.frame_image()
+
+    assert (image.pixel(0, 0), image.pixel(1, 0)) == (BLUE, RED)

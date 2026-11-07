@@ -522,6 +522,10 @@ class MpvRenderService(QObject):
         for video in self._listeners:
             video.player.set_skip_frames(is_skipping)
 
+    def set_subtitle_style(self, style: dict) -> None:
+        for video in self._listeners:
+            video.player.set_subtitle_style(style)
+
     def cleanup(self) -> None:
         self._listeners.clear()
 

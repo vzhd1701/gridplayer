@@ -4,6 +4,7 @@ from PyQt5.QtCore import QTimer
 
 from gridplayer.dialogs.messagebox import QCustomMessageBox
 from gridplayer.exceptions import PlayerException
+from gridplayer.mpv_player.subtitles import current_subtitle_style
 from gridplayer.params import env
 from gridplayer.params.static import VideoDriver
 from gridplayer.player.managers.base import ManagerBase
@@ -145,6 +146,10 @@ class VideoDriverManager(ManagerBase):
     def set_mpv_skip_frames(self, is_skipping):
         if self._mpv_render_service:
             self._mpv_render_service.set_skip_frames(is_skipping)
+
+    def apply_subtitle_style(self):
+        if self._mpv_render_service:
+            self._mpv_render_service.set_subtitle_style(current_subtitle_style())
 
     def set_log_level(self, log_level):
         if self._process_manager:

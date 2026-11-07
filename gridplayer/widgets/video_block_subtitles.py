@@ -184,7 +184,7 @@ class SubtitleControl(VideoBlockPart):
         if language is not None:
             return SubtitleLanguage(tag=language)
 
-        return SubtitleTrackId(id=track_id)
+        return SubtitleTrackId.of(track_id, self.tracks)
 
     def number_in_file(self, track_id, file_path: Path) -> int:
         """Which of the tracks that file brought this one is."""
@@ -312,6 +312,9 @@ class SubtitleControl(VideoBlockPart):
         subtitles are sparse, and the next line can be a minute away.
         """
 
+        if not self._block.driver_class.is_late_with_subtitles:
+            return
+
         if self._block.is_live:
             # nothing to seek in, and nothing that stays on screen long
             # enough for the wait to matter
@@ -375,12 +378,12 @@ class SubtitleControl(VideoBlockPart):
     def external_tracks(self) -> dict[int, Path]:
         """Which file each external subtitle came out of.
 
-        libVLC writes the file's own name into the track where a language
-        belongs, and that is the one place it ever says where a stream came
-        from, so that is what these are matched on. Where a name answers to
-        none of the files, the order they were attached in stands in, which
-        is right wherever each file brought one track -- which is all but
-        the rarest of them.
+        A player can say so outright. libVLC writes the file's own name into
+        the track where a language belongs, and that is the one place it ever
+        says where a stream came from, so that is what these are matched on.
+        Where a name answers to none of the files, the order they were attached
+        in stands in, which is right wherever each file brought one track --
+        which is all but the rarest of them.
         """
 
         track_ids = self.external_track_ids
@@ -391,10 +394,13 @@ class SubtitleControl(VideoBlockPart):
 
         by_stem = {file_path.stem.casefold(): file_path for file_path in files}
 
-        named = {
-            track_id: by_stem.get(_track_file_stem(self.tracks.get(track_id)))
-            for track_id in track_ids
-        }
+        def file_of(track):
+            if track is not None and track.file in files:
+                return track.file
+
+            return by_stem.get(_track_file_stem(track))
+
+        named = {track_id: file_of(self.tracks.get(track_id)) for track_id in track_ids}
 
         if all(named.values()):
             return named

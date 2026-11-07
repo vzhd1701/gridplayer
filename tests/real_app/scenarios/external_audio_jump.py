@@ -3,7 +3,8 @@ subtitle track moves the video back to about where the audio file was
 added. GridPlayer only asks VLC for the track; VLC does the moving, and
 only while it has the audio file as a slave.
 
-Expected to fail (see test_scenarios.py) until it is fixed.
+Expected to fail (see test_scenarios.py) until it is fixed. Doesn't happen on MPV,
+which is held to it too.
 """
 
 

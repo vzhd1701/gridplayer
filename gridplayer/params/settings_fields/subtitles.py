@@ -32,7 +32,7 @@ SUBTITLE_STYLE_FIELDS: tuple[SettingField, ...] = (
         suffix="%",
         tooltip=translate(
             "SettingsDialog",
-            "Relative to VLC's size, which already scales with the video.",
+            "Relative to the usual size, which already scales with the video.",
         ),
     ),
     ColorField(

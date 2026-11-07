@@ -13,6 +13,11 @@ from PyQt5.QtCore import QRectF, Qt, QTimer
 
 from gridplayer.mpv_player.player import MpvPlayer
 from gridplayer.mpv_player.renderer import MpvRenderService, RenderedVideo
+from gridplayer.mpv_player.subtitles import (
+    SubtitleView,
+    current_subtitle_style,
+    subtitle_view,
+)
 from gridplayer.params.static import ROTATION_TRANSFORMS, VideoTransform
 from gridplayer.settings import Settings
 from gridplayer.utils.aspect_calc import (
@@ -52,18 +57,29 @@ class MpvVideoSurface(SoftwareVideoSurface):
         super().__init__(parent)
 
         self._is_file_on_its_side = False
+        self._is_flip_in_mpv = False
 
     def set_file_on_its_side(self, is_on_its_side: bool) -> None:
         self._is_file_on_its_side = is_on_its_side
         self.update()
 
-    def _flips(self) -> tuple[bool, bool] | None:
-        flips = _FLIPS.get(self._transform)
+    def set_flip_in_mpv(self, is_in_mpv: bool) -> None:
+        if is_in_mpv != self._is_flip_in_mpv:
+            self._is_flip_in_mpv = is_in_mpv
+            self.update()
 
-        if flips is not None and self._is_file_on_its_side:
-            return flips[::-1]
+    def flip(self) -> tuple[bool, bool] | None:
+        """Across and up and down, for the picture as it's shown."""
 
-        return flips
+        flip = _FLIPS.get(self._transform)
+
+        if flip is not None and self._is_file_on_its_side:
+            return flip[::-1]
+
+        return flip
+
+    def _painted_flip(self) -> tuple[bool, bool] | None:
+        return None if self._is_flip_in_mpv else self.flip()
 
     def picture_size(self) -> tuple[int, int]:
         if self._track_size is not None and all(self._track_size):
@@ -97,18 +113,18 @@ class MpvVideoSurface(SoftwareVideoSurface):
 
     def frame_image(self):
         image = super().frame_image()
-        flips = self._flips()
+        flip = self._painted_flip()
 
-        return image.mirrored(*flips) if image is not None and flips else image
+        return image.mirrored(*flip) if image is not None and flip else image
 
     def _draw_frame(self, painter, placement) -> None:
-        flips = self._flips()
+        flip = self._painted_flip()
 
-        if flips is None:
+        if flip is None:
             super()._draw_frame(painter, placement)
             return
 
-        is_across, is_up_down = flips
+        is_across, is_up_down = flip
         frame_w, frame_h = self.frame_size()
         source_x, source_y, source_w, source_h = placement.source
         x, y, width, height = placement.target
@@ -194,6 +210,7 @@ class VideoDriverMpv(VLCVideoDriver):
                 media_input,
                 hwdec=self._hwdec,
                 skip_frames=Settings().get("player/mpv_skip_frames"),
+                subtitle_style=current_subtitle_style(),
                 wake_renderer=self._render_service.wake,
             )
         # what a libmpv that won't take what it's asked can raise
@@ -438,15 +455,27 @@ class VideoDriverMpv(VLCVideoDriver):
     def set_audio_delay(self, delay_ms):
         self._set_option("audio-delay", str(delay_ms / 1000))
 
+    def set_subtitle_view(self, view: SubtitleView) -> None:
+        if self._player is not None:
+            self._player.set_subtitle_view(view)
+
+    def set_flip_in_mpv(self, flip: tuple[bool, bool] | None) -> bool:
+        return self._player is not None and self._player.set_flip_in_mpv(flip)
+
+    def set_subtitle_track(self, track_id):
+        if self._media is not None:
+            self._select_track("sid", track_id, self._media.subtitle_tracks, False)
+
+    def add_subtitle_slave(self, uri):
+        if self._player is not None:
+            self._player.add_subtitle_file(uri)
+
+    def set_subtitle_delay(self, delay_ms):
+        self._set_option("sub-delay", str(delay_ms / 1000))
+
     # The rest of the controls come in later stages: see docs/MPV_PLAN.md
 
-    def set_subtitle_track(self, track_id): ...
-
-    def add_subtitle_slave(self, uri): ...
-
     def set_deinterlace(self, deinterlace, mode): ...
-
-    def set_subtitle_delay(self, delay_ms): ...
 
 
 class VideoFrameMpv(PaintedVideoFrame, VideoFrameVLC):
@@ -454,6 +483,8 @@ class VideoFrameMpv(PaintedVideoFrame, VideoFrameVLC):
 
     is_picky_about_audio_files = False
     must_reload_for_system_device = False
+    is_late_with_subtitles = False
+    must_reload_for_subtitle_style = False
 
     def __init__(self, render_service: MpvRenderService, hwdec: str, **kwargs):
         self._render_service = render_service
@@ -502,6 +533,9 @@ class VideoFrameMpv(PaintedVideoFrame, VideoFrameVLC):
         if super().adjust_view():
             return True
 
+        # at once: only the frame's size has a reason to wait
+        self._push_subtitle_view()
+
         if self._is_first_size_due and self.isVisible():
             self._is_first_size_due = False
             self._push_render_size()
@@ -516,18 +550,63 @@ class VideoFrameMpv(PaintedVideoFrame, VideoFrameVLC):
 
         super().cleanup_start()
 
+    def set_subtitle_track(self, track_id):
+        super().set_subtitle_track(track_id)
+
+        self._push_render_size()
+        self._push_subtitle_view()
+
+    def _on_tracks_changed(self, media: Media) -> None:
+        super()._on_tracks_changed(media)
+
+        self._push_render_size()
+        self._push_subtitle_view()
+
+    def _is_subtitle_on_show(self) -> bool:
+        return self.media is not None and self.media.cur_subtitle_track is not None
+
+    def _wanted_render_size(self, placement: ViewPlacement) -> tuple[int, int]:
+        return calc_render_size(
+            self._view_frame_size(),
+            placement,
+            self.devicePixelRatioF(),
+            self._pixel_aspect(),
+            self._transform,
+            # a small picture is only blurred by drawing it big, its text isn't
+            sharp_in=self._pane_box() if self._is_subtitle_on_show() else None,
+        )
+
     def _push_render_size(self) -> None:
+        placement = self.view_placement()
+
+        if placement is not None:
+            self.video_driver.set_render_size(self._wanted_render_size(placement))
+
+    def _push_subtitle_view(self) -> None:
+        """Keeps a subtitle readable and on show, whatever the view does to the picture.
+
+        mpv is only asked to flip while there is one: see player._FLIP_SHADER.
+        """
+
         placement = self.view_placement()
 
         if placement is None:
             return
 
-        self.video_driver.set_render_size(
-            calc_render_size(
-                self._view_frame_size(),
-                placement,
-                self.devicePixelRatioF(),
-                self._pixel_aspect(),
-                self._transform,
+        is_on_show = self._is_subtitle_on_show()
+
+        self.video_surface.set_flip_in_mpv(
+            self.video_driver.set_flip_in_mpv(
+                self.video_surface.flip() if is_on_show else None
             )
         )
+
+        if is_on_show:
+            self.video_driver.set_subtitle_view(
+                subtitle_view(
+                    placement.source,
+                    self._view_frame_size(),
+                    self._wanted_render_size(placement),
+                    self._full_render_size()[1],
+                )
+            )

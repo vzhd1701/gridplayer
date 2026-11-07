@@ -16,6 +16,8 @@ from typing import Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from gridplayer.models.track_number import TrackNumber
+
 
 class _Choice(BaseModel):
     """Values, not records: two of the same choice are the same choice."""
@@ -55,12 +57,10 @@ class SubtitleDefault(_Choice):
     kind: Literal["default"] = "default"
 
 
-class SubtitleTrackId(_Choice):
+class SubtitleTrackId(TrackNumber):
     """One of the video's own tracks, where nothing steadier names it."""
 
     kind: Literal["track"] = "track"
-
-    id: int
 
 
 class SubtitleLanguage(_Choice):
