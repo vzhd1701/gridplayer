@@ -37,6 +37,7 @@ KNOWN_BUGS = {
 NEEDS_LIBMPV = {
     "mpv_audio",
     "mpv_basics",
+    "mpv_deinterlace",
     "mpv_subtitles",
     "mpv_transport",
     "mpv_view",
@@ -48,6 +49,8 @@ ALSO_ON_MPV = (
     "crop_ratio",
     "external_audio_jump",
     "list_shape",
+    "marks",
+    "navigation",
     "pixel_shape",
     "playback",
     "tracks",

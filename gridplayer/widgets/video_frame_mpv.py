@@ -229,6 +229,7 @@ class VideoDriverMpv(VLCVideoDriver):
             (self._player.video_size_changed, self._on_video_size),
             (self._player.failed, self.error_state),
             (self._player.tracks_changed, self._on_tracks_changed),
+            (self._player.chapters_changed, self._on_chapters_changed),
             (self._player.render_context_ready, self._start_player),
         ):
             signal.connect(slot, Qt.QueuedConnection)
@@ -265,6 +266,13 @@ class VideoDriverMpv(VLCVideoDriver):
         self._media = media
 
         self.tracks_changed_emit(media)
+
+    def _on_chapters_changed(self, media: Media) -> None:
+        self._media = media
+
+        # until then the load has them to tell
+        if self._is_load_reported:
+            self.chapters_changed_emit(media.chapters)
 
     def _on_playback_restarted(self) -> None:
         self._has_restarted = True
@@ -473,9 +481,9 @@ class VideoDriverMpv(VLCVideoDriver):
     def set_subtitle_delay(self, delay_ms):
         self._set_option("sub-delay", str(delay_ms / 1000))
 
-    # The rest of the controls come in later stages: see docs/MPV_PLAN.md
-
-    def set_deinterlace(self, deinterlace, mode): ...
+    def set_deinterlace(self, deinterlace, mode):
+        if self._player is not None:
+            self._player.set_deinterlace(deinterlace, mode)
 
 
 class VideoFrameMpv(PaintedVideoFrame, VideoFrameVLC):
@@ -485,6 +493,7 @@ class VideoFrameMpv(PaintedVideoFrame, VideoFrameVLC):
     must_reload_for_system_device = False
     is_late_with_subtitles = False
     must_reload_for_subtitle_style = False
+    must_reload_for_automatic_deinterlace = False
 
     def __init__(self, render_service: MpvRenderService, hwdec: str, **kwargs):
         self._render_service = render_service

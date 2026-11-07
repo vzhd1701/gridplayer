@@ -118,9 +118,13 @@ class TestTheBar:
     def test_chapters_the_file_lists_late_are_marked_when_they_come(self, block):
         late = (Chapter(0, "A"), Chapter(30000, "B"))
 
+        media = block.video_driver.media
+
         block.video_driver._on_chapters_changed(late)
 
         assert block.chapters.all == late
+        # the tracks chosen go on this one, which the driver has too
+        assert block.video_driver.media is media
         assert [mark.label for mark in _marks(block)] == ["A", "B"]
 
     def test_stopping_takes_the_marks_away(self, block):

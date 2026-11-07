@@ -222,6 +222,15 @@ def _state(block):
 
 
 class TestPickingItOnOneVideo:
+    def test_going_back_to_automatic_takes_no_reload_on_a_driver_that_can(self):
+        block = _block(ON, BOB)
+        block.video_driver.must_reload_for_automatic_deinterlace = False
+
+        block.set_deinterlace(AUTO)
+
+        block.reload.assert_not_called()
+        block.video_driver.set_deinterlace.assert_called_once_with(AUTO, BOB)
+
     def test_switching_on_is_done_in_place(self):
         block = _block(AUTO, BOB)
 

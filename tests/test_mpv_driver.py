@@ -1,6 +1,7 @@
 """The sums and the bookkeeping of the mpv driver, with no libmpv. How it plays
 is in tests/real_app/scenarios/mpv_basics.py."""
 
+import threading
 import time
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
@@ -14,6 +15,7 @@ from gridplayer.models.audio_selection import (
     AudioExternal,
     AudioLanguage,
 )
+from gridplayer.models.chapter import Chapter
 from gridplayer.models.subtitle_selection import (
     SubtitleDefault,
     SubtitleExternal,
@@ -21,7 +23,9 @@ from gridplayer.models.subtitle_selection import (
 )
 from gridplayer.models.video import Video
 from gridplayer.mpv_player import player as player_module
+from gridplayer.mpv_player.deinterlace import deinterlace_options
 from gridplayer.mpv_player.player import (
+    _REFUSED_MODES,
     _ROOM_FILTER_BROKE,
     MpvPlayer,
     _AudioDevices,
@@ -49,6 +53,8 @@ from gridplayer.params.static import (
     SubtitleOutline,
     VideoCellViewMode,
     VideoCrop,
+    VideoDeinterlace,
+    VideoDeinterlaceMode,
     VideoDriver,
     VideoTransform,
     ViewParams,
@@ -348,10 +354,14 @@ def test_the_renderer_never_writes_what_is_on_show():
 
 class _FakeMpv:
     profile_list = []
+    chapter_list = None
 
     def __init__(self, **options):
         self.options = options
         self.commands = []
+        self.callbacks = {}
+        self.frame_says = "no"
+        self.frames_read = 0
         self.track_list = []
         self.audio_device_list = []
         self.is_terminated = False
@@ -366,14 +376,23 @@ class _FakeMpv:
     def observe_property(self, name, handler):
         self.observers[name] = handler
 
-    def option_info(self, _name):
+    def option_info(self, name):
+        if name == "deinterlace":
+            return {"type": "Choice", "choices": ["no", "yes", "auto"]}
+
         return {"type": "Float"}
 
     def command(self, *args):
         self.commands.append(args)
 
-    def command_async(self, *args, **_kwargs):
+    def command_async(self, *args, callback=None, **_kwargs):
+        if args[0] == "expand-text":
+            self.frames_read += 1
+            callback(None, self.frame_says)
+            return
+
         self.commands.append(args)
+        self.callbacks[args] = callback
 
     def terminate(self):
         self.is_terminated = True
@@ -391,7 +410,9 @@ def _mpv_module():
     )
 
 
-def _player(skip_frames=False, is_live=False, is_audio_only=False, **video):
+def _player(
+    skip_frames=False, is_live=False, is_audio_only=False, hwdec="auto", **video
+):
     media_input = MediaInput(
         uri="file.mp4",
         is_live=is_live,
@@ -402,11 +423,395 @@ def _player(skip_frames=False, is_live=False, is_audio_only=False, **video):
     return MpvPlayer(
         _mpv_module(),
         media_input,
-        hwdec="auto",
+        hwdec=hwdec,
         wake_renderer=MagicMock(),
         subtitle_style=SUBTITLE_STYLE_DEFAULTS,
         skip_frames=skip_frames,
     )
+
+
+@pytest.fixture(autouse=True)
+def _no_refused_modes():
+    _REFUSED_MODES.clear()
+
+    yield
+
+    _REFUSED_MODES.clear()
+
+
+def _deinterlace_told(player):
+    told = []
+
+    for command in player.mpv.commands:
+        if command[0] == "set" and command[1] in {"deinterlace", "hwdec"}:
+            told.append(command[1:])
+        elif command[:2] == ("vf", "set"):
+            told.append(("vf", command[2]))
+
+    return told
+
+
+def _file_loaded(player):
+    file_loaded = player._mpv_module.MpvEventID.FILE_LOADED
+
+    player._on_event(SimpleNamespace(event_id=SimpleNamespace(value=file_loaded)))
+
+
+_BY_NAME = {
+    "deinterlace": VideoDeinterlace.ON,
+    "deinterlace_mode": VideoDeinterlaceMode.YADIF,
+}
+
+
+def _filter_on_cpu():
+    """A video playing with a mode by name, with nothing told yet to go by."""
+
+    player = _player(**_BY_NAME)
+    _file_loaded(player)
+    player._on_hwdec("hwdec-current", "nvdec-copy")
+    player.mpv.commands.clear()
+
+    return player
+
+
+def test_automatic_deinterlace_is_left_to_mpv():
+    player = _player()
+
+    player.start((100, 100))
+
+    assert _deinterlace_told(player) == [("deinterlace", "auto")]
+
+
+def test_deinterlace_starts_as_asked_with_nothing_told_that_is_already_so():
+    player = _player(deinterlace=VideoDeinterlace.OFF)
+
+    player.start((100, 100))
+
+    assert _deinterlace_told(player) == []
+
+
+def test_deinterlace_on_has_mpv_choose():
+    player = _player(deinterlace=VideoDeinterlace.ON)
+
+    player.start((100, 100))
+
+    assert _deinterlace_told(player) == [("deinterlace", "yes")]
+
+
+def test_deinterlace_mode_starts_decoding_to_the_cpu():
+    player = _player(**_BY_NAME)
+
+    assert player.mpv.options["hwdec"] == "auto-copy"
+
+
+def test_deinterlace_mode_is_left_as_it_is_on_software():
+    player = _player(hwdec="no", **_BY_NAME)
+
+    assert player.mpv.options["hwdec"] == "no"
+
+    _file_loaded(player)
+
+    assert _deinterlace_told(player)[-1] == (
+        "vf",
+        "lavfi=[yadif=mode=send_frame]",
+    )
+
+
+def test_deinterlace_filter_waits_for_the_file():
+    # a filter mpv can't start before that ends the file
+    player = _player(**_BY_NAME)
+    player._on_hwdec("hwdec-current", "nvdec-copy")
+
+    player.start((100, 100))
+
+    assert not any(told[0] == "vf" for told in _deinterlace_told(player))
+
+    _file_loaded(player)
+
+    assert ("vf", "lavfi=[yadif=mode=send_frame]") in _deinterlace_told(player)
+
+
+def test_deinterlace_filter_waits_for_frames_off_the_gpu():
+    # frames still on it stop the filter for good
+    player = _player(deinterlace=VideoDeinterlace.OFF)
+    _file_loaded(player)
+    player._on_hwdec("hwdec-current", "nvdec")
+
+    player.set_deinterlace(VideoDeinterlace.ON, VideoDeinterlaceMode.YADIF)
+
+    assert _deinterlace_told(player) == [("hwdec", "auto-copy")]
+
+    player._on_hwdec("hwdec-current", "nvdec-copy")
+
+    assert _deinterlace_told(player)[-1] == ("vf", "lavfi=[yadif=mode=send_frame]")
+
+
+def test_deinterlace_filter_goes_before_frames_go_back_on_the_gpu():
+    player = _filter_on_cpu()
+
+    player.set_deinterlace(VideoDeinterlace.OFF, VideoDeinterlaceMode.YADIF)
+
+    assert _deinterlace_told(player) == [("vf", ""), ("hwdec", "auto")]
+
+
+def test_deinterlace_filter_needs_no_report_from_a_decoder_with_no_hardware():
+    # told to change, it stays as "no", and mpv can say None with nothing after it
+    player = _player(deinterlace=VideoDeinterlace.OFF)
+    _file_loaded(player)
+    player._on_hwdec("hwdec-current", "no")
+    player._on_hwdec("hwdec-current", None)
+    player.mpv.commands.clear()
+
+    player.set_deinterlace(VideoDeinterlace.ON, VideoDeinterlaceMode.YADIF)
+
+    assert _deinterlace_told(player)[-1] == ("vf", "lavfi=[yadif=mode=send_frame]")
+
+
+def test_only_a_filter_going_in_can_be_refused():
+    player = _filter_on_cpu()
+
+    player.set_deinterlace(VideoDeinterlace.OFF, VideoDeinterlaceMode.YADIF)
+
+    assert player.mpv.callbacks["vf", "set", ""] is None
+
+
+def test_a_filter_failing_as_the_video_closes_is_not_refused():
+    player = _filter_on_cpu()
+    player._is_closing = True
+
+    player._on_filter_told(VideoDeinterlaceMode.YADIF, "shutting down", None)
+
+    assert not _REFUSED_MODES
+
+
+def test_deinterlace_mode_mpv_cannot_start_goes_to_its_own():
+    player = _filter_on_cpu()
+
+    player._on_filter_told(VideoDeinterlaceMode.YADIF, "no such filter", None)
+
+    assert _deinterlace_told(player) == [
+        ("deinterlace", "yes"),
+        ("vf", ""),
+        ("hwdec", "auto"),
+    ]
+
+
+def test_decoder_changing_on_an_open_file_goes_back_to_where_it_was():
+    player = _player(deinterlace=VideoDeinterlace.OFF)
+    _file_loaded(player)
+    player.mpv.commands.clear()
+
+    player.set_deinterlace(VideoDeinterlace.ON, VideoDeinterlaceMode.YADIF)
+
+    assert player.mpv.commands == [
+        ("set", "hwdec", "auto-copy"),
+        ("seek", 0, "relative+exact"),
+    ]
+
+
+def test_decoder_changing_on_a_live_video_stays_where_it_is():
+    player = _player(is_live=True, deinterlace=VideoDeinterlace.OFF)
+    _file_loaded(player)
+    player.mpv.commands.clear()
+
+    player.set_deinterlace(VideoDeinterlace.ON, VideoDeinterlaceMode.YADIF)
+
+    assert player.mpv.commands == [("set", "hwdec", "auto-copy")]
+
+
+def test_a_filter_mpv_could_start_changes_nothing():
+    player = _filter_on_cpu()
+
+    player._on_filter_told(VideoDeinterlaceMode.YADIF, None, None)
+
+    assert player.mpv.commands == []
+
+
+def test_a_mode_refused_once_is_left_alone_by_later_videos():
+    _filter_on_cpu()._on_filter_told(VideoDeinterlaceMode.YADIF, "no such filter", None)
+
+    player = _player(**_BY_NAME)
+    _file_loaded(player)
+    player._on_hwdec("hwdec-current", "nvdec")
+
+    assert player.mpv.options["hwdec"] == "auto"
+    assert _deinterlace_told(player) == [("deinterlace", "yes")]
+
+
+def test_a_mode_refused_leaves_the_others_as_they_are():
+    player = _filter_on_cpu()
+    player._on_filter_told(VideoDeinterlaceMode.IVTC, "no such filter", None)
+    player.mpv.commands.clear()
+
+    player.set_deinterlace(VideoDeinterlace.ON, VideoDeinterlaceMode.BOB)
+
+    assert _deinterlace_told(player)[-1][0] == "vf"
+    assert "separatefields" in _deinterlace_told(player)[-1][1]
+
+
+@pytest.mark.parametrize(
+    ("mode", "has_auto"),
+    [
+        (VideoDeinterlaceMode.AUTO, False),
+        (VideoDeinterlaceMode.YADIF, False),
+        (VideoDeinterlaceMode.YADIF, True),
+    ],
+)
+def test_automatic_goes_by_the_frames_where_mpv_will_not(mode, has_auto):
+    player = _player(deinterlace_mode=mode)
+    player._has_auto_deinterlace = has_auto
+    player._is_media_read = True
+    _file_loaded(player)
+    player._on_hwdec("hwdec-current", "no")
+    player.mpv.commands.clear()
+
+    player._on_time("time-pos", 1.0)
+
+    assert _deinterlace_told(player) == []
+
+    player.mpv.frame_says = "yes"
+    player._on_time("time-pos", 2.0)
+
+    assert _deinterlace_told(player)
+
+
+def test_going_to_automatic_paused_asks_the_frame_on_show():
+    # no time report is coming to go by
+    player = _player(
+        deinterlace=VideoDeinterlace.OFF, deinterlace_mode=VideoDeinterlaceMode.YADIF
+    )
+    _file_loaded(player)
+    player.mpv.frame_says = "yes"
+
+    player.set_deinterlace(VideoDeinterlace.AUTO, VideoDeinterlaceMode.YADIF)
+
+    assert ("hwdec", "auto-copy") in _deinterlace_told(player)
+
+
+def test_going_to_automatic_asks_again_once_the_deinterlacer_is_off():
+    # the frame on show has been through it and doesn't say
+    player = _filter_on_cpu()
+
+    player.set_deinterlace(VideoDeinterlace.AUTO, VideoDeinterlaceMode.YADIF)
+
+    assert _deinterlace_told(player) == [("vf", ""), ("hwdec", "auto")]
+
+    player._on_hwdec("hwdec-current", "nvdec")
+    player.mpv.frame_says = "yes"
+    restart = player._mpv_module.MpvEventID.PLAYBACK_RESTART
+    player._on_event(SimpleNamespace(event_id=SimpleNamespace(value=restart)))
+
+    assert _deinterlace_told(player)[-1] == ("hwdec", "auto-copy")
+
+
+def test_frames_are_not_asked_about_once_closing():
+    player = _player(deinterlace_mode=VideoDeinterlaceMode.YADIF)
+    player._is_media_read = True
+
+    player.close()
+
+    player._on_time("time-pos", 1.0)
+
+    assert player.mpv.frames_read == 0
+
+
+def test_terminating_waits_for_anything_being_sent():
+    player = _player()
+    player._is_closing = True
+    terminated = threading.Event()
+    player.mpv.terminate = terminated.set
+
+    with player._telling:
+        thread = threading.Thread(target=player._terminate)
+        thread.start()
+
+        assert not terminated.wait(0.05)
+
+    thread.join()
+
+    assert terminated.is_set()
+
+
+def test_automatic_left_to_mpv_reads_no_frames():
+    player = _player()
+    player._is_media_read = True
+
+    player._on_time("time-pos", 1.0)
+
+    assert player.mpv.frames_read == 0
+
+
+def test_old_libmpv_is_not_told_automatic():
+    with patch.object(_FakeMpv, "option_info", lambda _self, _name: {"type": "Flag"}):
+        player = _player()
+
+    player.start((100, 100))
+
+    assert _deinterlace_told(player) == []
+
+
+@pytest.mark.parametrize("mode", list(VideoDeinterlaceMode))
+def test_every_deinterlace_mode_asks_for_something(mode):
+    options = deinterlace_options(VideoDeinterlace.ON, mode, True, False)
+
+    if mode == VideoDeinterlaceMode.AUTO:
+        assert options == {"deinterlace": "yes", "vf": ""}
+    else:
+        assert options["deinterlace"] == "no"
+        assert options["vf"].startswith("lavfi=[")
+
+
+def test_chapters_are_read_with_the_media():
+    player = _player()
+    player.mpv.chapter_list = [
+        {"title": "Intro", "time": 0.0},
+        {"title": "Part One", "time": 15.0004},
+        {"time": 30.5},
+    ]
+
+    media = player._media_from_tracks()
+
+    assert media.chapters == (
+        Chapter(start_ms=0, name="Intro"),
+        Chapter(start_ms=15_000, name="Part One"),
+        Chapter(start_ms=30_500),
+    )
+
+
+def test_chapters_arriving_after_the_load_are_sent_on():
+    player = _player()
+    player._media = player._media_from_tracks()
+    player._is_media_read = True
+    sent = []
+    player.chapters_changed.connect(sent.append)
+
+    player._on_chapter_list("chapter-list", [{"title": "One", "time": 5.0}])
+    player._on_chapter_list("chapter-list", [{"title": "One", "time": 5.0}])
+
+    assert len(sent) == 1
+    assert sent[0].chapters == (Chapter(start_ms=5_000, name="One"),)
+
+
+def test_chapters_arriving_after_the_load_keep_the_media_shared():
+    # the frame sets the tracks chosen on this same one, for the driver and player to see
+    player = _player()
+    media = player._media_from_tracks()
+    player._media = media
+    player._is_media_read = True
+
+    player._on_chapter_list("chapter-list", [{"title": "One", "time": 5.0}])
+
+    assert player._media is media
+
+
+def test_chapters_before_the_load_are_left_for_it_to_read():
+    player = _player()
+    sent = []
+    player.chapters_changed.connect(sent.append)
+
+    player._on_chapter_list("chapter-list", [{"title": "One", "time": 5.0}])
+
+    assert sent == []
 
 
 def test_fast_profile_is_used_where_there_is_one():

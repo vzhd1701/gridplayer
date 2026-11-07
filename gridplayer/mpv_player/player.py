@@ -14,13 +14,15 @@ import time
 from collections import defaultdict
 from ctypes import c_ulonglong
 from fractions import Fraction
-from functools import cache
+from functools import cache, partial
 from pathlib import Path
 
 from PyQt5.QtCore import QObject, QUrl, pyqtSignal
 
 from gridplayer.models.audio_device import AudioDevice, resolve_device_id
+from gridplayer.models.chapter import Chapter
 from gridplayer.models.subtitle_selection import SubtitleExternal, track_of_file
+from gridplayer.mpv_player.deinterlace import deinterlace_options
 from gridplayer.mpv_player.subtitles import (
     SubtitleView,
     subtitle_codepage,
@@ -28,7 +30,12 @@ from gridplayer.mpv_player.subtitles import (
     subtitle_options,
 )
 from gridplayer.params import env
-from gridplayer.params.static import AudioChannelMode, VideoTransform
+from gridplayer.params.static import (
+    AudioChannelMode,
+    VideoDeinterlace,
+    VideoDeinterlaceMode,
+    VideoTransform,
+)
 from gridplayer.utils.app_dir import get_app_cache_dir
 from gridplayer.utils.media_libs import find_libvlc
 from gridplayer.utils.qt import MILLISECONDS, translate
@@ -129,6 +136,14 @@ _AUDIO_DEVICES_KEPT_S = 5
 # for every video, the file or a libmpv made without the filter
 _ROOM_FILTER_BROKE = threading.Event()
 _ROOM_FILTER_FAILURES = re.compile(r"Parsed_sofalizer|filter 'sofalizer'")
+
+# The deinterlace modes this libmpv can't start, for the whole run, so that no later
+# video changes decoder for one. Made without the GPL parts it has no fieldmatch.
+_REFUSED_MODES = set()
+
+# Frames still on the GPU stop a filter for good, so these come back to the CPU for it
+_HWDEC_TO_CPU = "auto-copy"
+_HWDEC_ON_CPU = re.compile(r"no|.*-copy")
 
 
 @cache
@@ -258,6 +273,7 @@ class MpvPlayer(QObject):
     video_size_changed = pyqtSignal(int, int, object)
     failed = pyqtSignal(str, tuple)
     tracks_changed = pyqtSignal(Media)
+    chapters_changed = pyqtSignal(Media)
 
     render_context_ready = pyqtSignal()
     terminated = pyqtSignal(object)
@@ -312,6 +328,21 @@ class MpvPlayer(QObject):
         self._heard_channels = 0
         self._audio_chain = audio_chain(AudioChannelMode.UNSET, 0)
         self._log_lines = collections.deque(maxlen=_LOG_LINES_KEPT)
+        # a yes or no before 0.40, to be asked once there's an mpv to ask
+        self._has_auto_deinterlace = False
+        # a frame has said so, for as long as this video is open
+        self._is_interlaced = False
+        self._hwdec_current = hwdec
+        # Held for anything sent to mpv, from whichever thread. What's worked out goes in
+        # that order, and never with no handle: terminate() takes it away at once, while
+        # the event thread goes on being told things, and that's a crash, not an error.
+        self._telling = threading.RLock()
+        # what mpv was last told
+        self._deinterlace_options = {
+            "deinterlace": "no",
+            "vf": "",
+            "hwdec": self._hwdec_for(self._deinterlace_wanted()["vf"]),
+        }
 
         self.mpv = mpv_module.MPV(
             log_handler=self._on_log,
@@ -326,12 +357,15 @@ class MpvPlayer(QObject):
 
         # nothing's loading yet, so this has nothing to wait for
         self._subtitle_limits = subtitle_limits(self.mpv.option_info)
+        deinterlace_info = self.mpv.option_info("deinterlace") or {}
+        self._has_auto_deinterlace = "auto" in deinterlace_info.get("choices", ())
 
         self.mpv.register_event_callback(self._on_event)
         self.mpv.observe_property("video-params", self._on_video_params)
         self.mpv.observe_property("time-pos", self._on_time)
         self.mpv.observe_property("pause", self._on_pause)
         self.mpv.observe_property("hwdec-current", self._on_hwdec)
+        self.mpv.observe_property("chapter-list", self._on_chapter_list)
 
         if env.MPV_VERSION is None:
             self.mpv.observe_property("mpv-version", self._on_version)
@@ -345,11 +379,11 @@ class MpvPlayer(QObject):
             "vo": "libmpv",
             # d3d11va has no OpenGL interop on desktop GL: asking for it gives
             # silent CPU decoding. "auto" lands on nvdec on NVIDIA.
-            "hwdec": self._hwdec,
+            "hwdec": self._deinterlace_options["hwdec"],
             # The default of 6 costs 130 MB VRAM per 1080p 10-bit video. If the
             # pool does run out mpv falls back to a -copy mode by itself:
-            # hwdec-current says so, see _on_hwdec. Anything holding more
-            # frames, deinterlacing first of all, needs this tested again.
+            # hwdec-current says so, see _on_hwdec. Deinterlacing holds more
+            # frames, and was no trouble at 9 cells of 1080i on NVDEC or VAAPI.
             "hwdec_extra_frames": 0,
             # Software decoding only. The default is a thread per core, and
             # each holds frames: 110 MB more RAM per 1080p video, 290 at 4K,
@@ -450,6 +484,9 @@ class MpvPlayer(QObject):
         ).start()
 
     def _terminate(self) -> None:
+        with self._telling:
+            pass
+
         self.mpv.terminate()
 
         self._log.debug("mpv terminated")
@@ -462,6 +499,7 @@ class MpvPlayer(QObject):
         self._box = box
 
         self._apply_subtitle_options()
+        self._apply_deinterlace()
 
         audio_file = self.media_input.selected_audio_slave
 
@@ -477,10 +515,9 @@ class MpvPlayer(QObject):
         self._is_closing = True
 
     def command(self, *args, **kwargs) -> None:
-        if self._is_closing:
-            return
-
-        self.mpv.command_async(*args, **kwargs)
+        with self._telling:
+            if not self._is_closing:
+                self.mpv.command_async(*args, **kwargs)
 
     def set_option(self, name: str, value) -> None:
         self.command("set", name, value)
@@ -591,6 +628,127 @@ class MpvPlayer(QObject):
 
         self._subtitle_options = options
 
+    def set_deinterlace(
+        self, deinterlace: VideoDeinterlace, mode: VideoDeinterlaceMode
+    ) -> None:
+        video = self.media_input.video
+
+        with self._telling:
+            video.deinterlace = deinterlace
+            video.deinterlace_mode = mode
+
+            self._apply_deinterlace()
+
+        # paused, there's no time report to go by
+        self._check_frames_interlaced()
+
+    def _deinterlace_wanted(self) -> dict[str, str]:
+        video = self.media_input.video
+        mode = video.deinterlace_mode
+
+        return deinterlace_options(
+            video.deinterlace,
+            VideoDeinterlaceMode.AUTO if mode in _REFUSED_MODES else mode,
+            self._has_auto_deinterlace,
+            self._is_interlaced,
+        )
+
+    def _hwdec_for(self, video_filter: str) -> str:
+        return _HWDEC_TO_CPU if video_filter and self._hwdec != "no" else self._hwdec
+
+    def _apply_deinterlace(self) -> None:
+        with self._telling:
+            wanted = self._deinterlace_wanted()
+            video_filter = wanted["vf"]
+
+            self._tell_deinterlace("deinterlace", wanted["deinterlace"])
+
+            if not video_filter:
+                self._tell_filter("")
+
+            self._tell_decoder(self._hwdec_for(video_filter))
+
+            # With the file open, as one mpv can't start ends the file before that,
+            # where after it's only left out
+            if (
+                video_filter
+                and self._is_media_read
+                and _HWDEC_ON_CPU.fullmatch(self._hwdec_current)
+            ):
+                self._tell_filter(video_filter)
+
+    def _tell_deinterlace(self, option: str, value: str) -> None:
+        if value != self._deinterlace_options[option]:
+            self._deinterlace_options[option] = value
+            self.set_option(option, value)
+
+    def _tell_decoder(self, hwdec: str) -> None:
+        """Changed twice in a moment, as it is when a filter's refused, mpv doesn't go
+        back to where it was: the picture stopped until the next keyframe, 8 s here,
+        in 2 runs of 16. So it's told to."""
+
+        if hwdec == self._deinterlace_options["hwdec"]:
+            return
+
+        self._tell_deinterlace("hwdec", hwdec)
+
+        if self._is_media_read and not self.media_input.is_live:
+            self.command("seek", 0, "relative+exact")
+
+    def _tell_filter(self, video_filter: str) -> None:
+        """Not by setting the option, which says nothing of a filter that can't start
+        and leaves it in the list."""
+
+        if video_filter == self._deinterlace_options["vf"]:
+            return
+
+        self._deinterlace_options["vf"] = video_filter
+
+        mode = self.media_input.video.deinterlace_mode
+
+        self.command(
+            "vf",
+            "set",
+            video_filter,
+            callback=partial(self._on_filter_told, mode) if video_filter else None,
+        )
+
+    def _on_filter_told(self, mode: VideoDeinterlaceMode, error, _result) -> None:
+        if error is None or self._is_closing:
+            return
+
+        self._log.warning(f"Deinterlace mode {mode} can't start: {error}")
+
+        _REFUSED_MODES.add(mode)
+
+        self._apply_deinterlace()
+
+    def _check_frames_interlaced(self) -> None:
+        """Automatic with mpv not going by the frames itself. Not every frame of a
+        video need say so, so this goes on until one does. One through a deinterlacer
+        never does, whichever, so a video can only say once that's off.
+
+        Asked for rather than read, as the GUI thread doesn't wait on the core."""
+
+        if (
+            self.media_input.video.deinterlace != VideoDeinterlace.AUTO
+            or self._is_interlaced
+            or self._deinterlace_wanted()["deinterlace"] == "auto"
+        ):
+            return
+
+        self.command(
+            "expand-text",
+            "${=video-frame-info/interlaced}",
+            callback=self._on_frame_read,
+        )
+
+    def _on_frame_read(self, _error, frame_says) -> None:
+        if frame_says == "yes":
+            self._is_interlaced = True
+
+            self._apply_deinterlace()
+
     def set_skip_frames(self, is_skipping: bool) -> None:
         self.set_option("vd-lavc-skipframe", _SKIP_FRAMES[is_skipping])
 
@@ -636,10 +794,13 @@ class MpvPlayer(QObject):
 
         if event_id == ids.FILE_LOADED:
             self._read_media()
+            self._apply_deinterlace()
         elif event_id == ids.PLAYBACK_RESTART:
             self.has_restarted = True
             self._wake_renderer()
             self.playback_restarted.emit()
+            # the frame a deinterlacer coming off leaves, paused or not
+            self._check_frames_interlaced()
         elif event_id == ids.END_FILE:
             self._on_end_file(event.data)
 
@@ -775,6 +936,8 @@ class MpvPlayer(QObject):
 
         self.time_changed.emit(new_time)
 
+        self._check_frames_interlaced()
+
     def _on_pause(self, _name, is_paused) -> None:
         if is_paused is None:
             return
@@ -784,8 +947,29 @@ class MpvPlayer(QObject):
         self.paused_changed.emit(self.is_paused)
 
     def _on_hwdec(self, _name, value) -> None:
+        # None isn't sure to be followed by what it is now, with no hardware for the codec
+        # above all, so waiting on the next would leave a filter out for good
         if value is not None:
             self._log.info(f"Decoding with: {value}")
+
+            with self._telling:
+                self._hwdec_current = value
+
+                self._apply_deinterlace()
+
+    def _on_chapter_list(self, _name, listed) -> None:
+        """Any that turn up or change once the load has read them."""
+
+        if not self._is_media_read:
+            return
+
+        chapters = _chapters(listed)
+
+        if chapters != self._media.chapters:
+            # in place: the frame and the driver have this one too, for the tracks chosen
+            self._media.chapters = chapters
+
+            self.chapters_changed.emit(self._media)
 
     def _on_version(self, _name, value) -> None:
         if value:
@@ -925,6 +1109,7 @@ class MpvPlayer(QObject):
             media.length = int(duration * 1000)
 
         media.audio_devices = self._audio_devices
+        media.chapters = _chapters(self.mpv.chapter_list)
 
         # told to leave the picture out, here as in VLC, and none will come
         if self.media_input.is_audio_only:
@@ -1034,6 +1219,13 @@ def _cur_track_id(selected: int | None, tracks: dict) -> int | None:
         return DISABLED_TRACK
 
     return selected
+
+
+def _chapters(listed: list | None) -> tuple[Chapter, ...]:
+    return tuple(
+        Chapter(start_ms=round(chapter["time"] * 1000), name=chapter.get("title"))
+        for chapter in listed or ()
+    )
 
 
 def _params_sar(params: dict) -> tuple[int, int] | None:

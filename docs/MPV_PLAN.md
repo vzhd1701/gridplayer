@@ -5,7 +5,7 @@ The findings and traps are in `C:\Projects\test_temp\test_mpv\HANDOFF.md`, and
 what we build and how far it has got. Tick items only once they have been seen
 working.
 
-**Status: Stage 3 built (<https://claude.ai/artifact/8ngdeLCkVxmdQzSEnpxx1c>, real screenshots on its Built board). Open: macOS. Bundling libmpv (12.1) is for later. Stages 1-7 are committed on this branch.**
+**Status: Stage 3 built (<https://claude.ai/artifact/8ngdeLCkVxmdQzSEnpxx1c>, real screenshots on its Built board). Open: macOS. Bundling libmpv (12.1) is for later. Stages 1-8 are committed on this branch.**
 
 **Load tests against VLC: `MPV_PERFORMANCE.md`.** No multi-process mode for MPV. New items 10.13-10.16. **10.16 is a long run
 still to be started, overnight, by you.**
@@ -19,7 +19,7 @@ still to be started, overnight, by you.**
 | 5 | View: rotate, flip, crop, aspect ratio, screenshots, sync | **built, macOS not run** |
 | 6 | Audio: tracks, files, devices, delay, channels | **built, macOS not run** |
 | 7 | Subtitles: tracks, files, delay, encoding, style | **built, macOS not run** |
-| 8 | Deinterlacing, chapters, bookmarks, SponsorBlock | not started |
+| 8 | Deinterlacing, chapters, bookmarks, SponsorBlock | **built, macOS not run** |
 | 9 | Streams, live video, errors and recovery, lists | not started |
 | 10 | Hardening: long churn, memory, real drags, other GPUs | not started |
 | 11 | macOS | not started |
@@ -510,11 +510,94 @@ with a `+`. Nothing named, mpv worked out Windows-1251, Windows-1252 and Shift_J
 
 ## Stage 8: Everything that hangs off time
 
-- [ ] 8.1 Deinterlacing: map modes to `vf`/`deinterlace`. **Retest `hwdec_extra_frames=0`**,
+- [x] 8.1 Deinterlacing: map modes to `vf`/`deinterlace`. **Retest `hwdec_extra_frames=0`**,
   flagged as unsafe to assume in the handoff
-- [ ] 8.2 Chapters from `chapter-list`, `chapters_changed`
-- [ ] 8.3 Bookmarks, SponsorBlock: run their scenarios, fix timing assumptions written for VLC
-- [ ] 8.4 Scenario `marks`, `navigation` on mpv
+- [x] 8.2 Chapters from `chapter-list`, `chapters_changed`
+- [x] 8.3 Bookmarks, SponsorBlock: run their scenarios, fix timing assumptions written for VLC
+- [x] 8.4 Scenario `marks`, `navigation` on mpv
+
+### Stage 8 results
+
+Scenario `mpv_deinterlace` is new, and `marks` and `navigation` now also run on MPV. Bookmarks and SponsorBlock needed no
+changes: nothing in them turned out to depend on VLC's timing. Chapters come from `chapter-list`, and any that change after
+the load go on through `chapters_changed`.
+
+**Deinterlacing.** A bar moving fast, made interlaced, and rows compared with the next: 5100 is combed and 0 is clean. VLC Software
+gives the same on the same clip but for Phosphor, combed on purpose there, and Film, which stays combed on this clip as it isn't film. MPV's
+Film isn't reliably either way on it. VLC's Film hasn't been run on a film clip.
+
+| Setting | On MPV | Pictures a second, on 30 fps |
+| --- | --- | --- |
+| Automatic | `deinterlace=auto` from 0.40. Before that the app asks mpv for `video-frame-info/interlaced`, and it's On once a frame says so | 60 if the file says interlaced, else 30 |
+| On, mode Auto | `deinterlace=yes`, mpv's own choice. Frames stay on the GPU: `hwdec-current` stays `nvdec` or `vaapi` | 60 (VLC's stand-in here is X, at 30) |
+| Off | nothing | 30 |
+| Discard, Blend, Mean | `field`, `convolution`, `scale` down and up, all back to full height | 30 |
+| Bob, Linear | `separatefields`, then `scale` up | 60 |
+| Yadif, Yadif (2x) | `yadif` | 30, 60 |
+| X | `bwdif`, one picture per frame. **Not what VLC does**, mpv has nothing like it | 30 |
+| Phosphor | `bwdif`, one picture per field. **Not what VLC does**: it doesn't simulate a CRT | 60 |
+| Film NTSC (IVTC) | `fieldmatch=combmatch=full,yadif=deint=interlaced,decimate` | 24 |
+
+Going back to Automatic from the menu takes no reload on MPV, where VLC has to reopen the video. A video taking on new defaults from the Playlist window
+can still reload once: that goes by `is_reopen_needed`, which is VLC's rule. Harmless, and left.
+
+**What's particular to the filters.** Each trap here was measured:
+
+- Frames still on the GPU stop a filter for good, and only a log line says so. So a mode by name switches decoding to `auto-copy`
+  and the filter only goes in once `hwdec-current` says so. The other way round, the filter leaves first. The picture stops for
+  0.3-1 s at the switch. A saved mode starts in `auto-copy` with no switch.
+- A filter this libmpv hasn't got ends the file if it's there as the file opens, so filters go in at `file-loaded`. `set vf` then says
+  nothing and leaves the dead filter in the list, where `vf set` gives an error, on all of 0.35, 0.37, 0.40 and 0.41. A refused mode goes to
+  mpv's own, and stays refused for the whole run, as it's true of the libmpv: later videos start on the right decoder. A libmpv built without
+  the GPL parts has no `fieldmatch`, for one. Forced in the scenario with a filter that doesn't exist.
+- The decoder changing twice in a moment, as it does when a mode's refused, stopped the picture until the next keyframe, 8 s here, in 2
+  runs of 16. So every decoder change on an open file seeks to where it is. After that, 32 refusals and 20 quick switches by hand: 0.77 s at most.
+- `pp`, the plain way to Blend, is gone from FFmpeg 8.
+- Plain `fieldmatch` left 46 of 120 sampled frames combed on hardware decoding, and none with `combmatch=full`.
+
+**`hwdec_extra_frames=0` holds.** 1080i50 H.264, seeking and pausing through 12 rounds: 4 and 9 cells on NVDEC, 4 and 9 on VAAPI on
+a real X11. No errors, and the decoder never left the GPU. I didn't hash the frames as the handoff did, so that's no errors and
+no fallback, not every frame proven right. MPEG-2 decodes in software on both machines under `hwdec=auto`.
+
+- Reading `video-frame-info` while a video closes crashed the app: 6 runs of 24 on 0.35 and 0.37, none before this stage. python-mpv's `terminate()` drops the
+  handle at once, and the event thread goes on being told the time, so the read goes to libmpv with no handle. Now nothing reads it: mpv is asked with `expand-text`, which waits on nothing, and everything sent to mpv
+  takes one lock that terminating waits for. 0 of 65 after, 15 of those on 0.40 with a mode by name. Those 15 weren't run before the fix. **Not changed:** the reads at load
+  (`_read_media`, `_on_preloaded`) only check the closing flag, so could meet the same thing in a far smaller window. Not seen. For 10.1.
+
+**After `/code-review`.** Fixed:
+
+- Going to Automatic could lose the filter. A frame that's been through a deinterlacer, mpv's own or a filter, never says it's interlaced, on 0.41 and whichever mode, so
+  On to Automatic took the filter off. Paused, the picture stayed combed; Off to Automatic did too, as nothing asked. Now it asks when the setting changes and at each restart,
+  which is where a paused video with the filter just off comes back. Playing, the filter comes off and goes back: the picture stops 0.25-0.29 s, 24 runs of 24 clean.
+- Two threads working out what to tell mpv could cross and leave a filter on a video set to Off: the same lock. Read in the code, not seen.
+- A failing `vf set` counted a mode as refused for the whole run even when clearing the filter or closing. Read in the code, not seen.
+- Chapters changing after the load split `Media` into copies, and track choices stopped reaching the driver. Now set in place, on VLC as well. Read in the code, not seen.
+- The scenario's size check read `video-params`, from before the filters, so could never fail. It now reads `video-out-params`. Discard on 361 rows gives 362 and Mean 360, and
+  the filters that halve the height leave mpv thinking the pixels are twice as wide, measured. The app draws by the size from before the filters, so neither shows.
+
+Not fixed, on purpose or for now:
+
+- **A filter going in just as the decoder comes back from the GPU, not fixed.** Yadif, Off, Yadif quickly could give a filter GPU frames, which stops it for good. I couldn't make it happen:
+  0 of 95 on NVDEC, gaps of 0 to 400 ms. Waiting for mpv to report the decoder first made things worse: on a codec with no hardware (FFV1) it stayed combed in 44 of 44, as a report of
+  None isn't sure to be followed by anything, so that was taken out. With it out, 0 of 44 on FFV1.
+- **Bob and Linear on an odd height do nothing.** `separatefields` won't start, and only a log line says so, while the mode stays ticked. Interlaced video with an odd height is very unusual, and
+  it would have to apply to that one video, not the whole run. For 10.1.
+- **Paused within a moment of picking a mode**, the picture on show can be one from before the filter, until it plays or steps. Picked by script right before pausing: seen in 9 runs of
+  12 on 0.37 in software, and 5 of 6 with Yadif on 0.40 on Wayland. Pause first and it's fine. It's how mpv treats a filter changing while playing.
+
+**Run on:** Windows 0.41, both drivers: everything in the real-app suite. `test_gpu` 0.40 real X11 and Wayland with zero-copy `vaapi`, and offscreen in software:
+`mpv_deinterlace`, `marks`, `navigation`. 0.35 and 0.37 in the chroots, software only: the same three. VLC on Linux: `marks` on both, `navigation` on Hardware.
+
+**Left:**
+
+- Made clips only. No real broadcast recording, DVD or film rip has been through this, and PAFF or MBAFF H.264 not at all.
+- 9 cells of 1080i with On on the i7-4790K's GPU play at about half speed, though 9 with it Off and 4 with it On keep up. Automatic should do the
+  same to an interlaced file, not measured. `estimated-vf-fps` said 50 throughout, so it doesn't show this. Speed at 9 cells on NVDEC not measured.
+- Automatic on 0.35 and 0.37 can show combed frames until the first report of the time, 200 ms at most by the code, not measured. It asks about the frame
+  every 200 ms for as long as a video is open and hasn't said interlaced. The core's share of that hasn't been measured; the read it replaced took about 70 us. The same goes
+  for Automatic with a mode by name on any libmpv, which also changes decoder again after each reload of an interlaced file.
+- VLC Hardware not compared: on Windows a screenshot offscreen hadn't finished after 100 s, and on Linux it wasn't tried.
+- AMD and macOS not run. Nobody has looked at this on a real screen: I read pixels.
 
 ## Stage 9: Streams, errors, recovery
 
@@ -620,6 +703,9 @@ with a `+`. Nothing named, mpv worked out Windows-1251, Windows-1252 and Shift_J
 
 Newest first. What was finished and seen working, and anything that changed the plan.
 
+- 2026-11-07: Code review of Stage 8: going to Automatic no longer loses the filter, and three fixes from reading the code. One suspected fault couldn't be made to happen and its fix made things worse, so it's out. See Stage 8 results.
+- 2026-11-07: Stage 8 committed, see Stage 8 results. All deinterlace modes and chapters work on MPV, from libmpv 0.35 up. Bookmarks and
+  SponsorBlock needed nothing. X and Phosphor are stand-ins. `hwdec_extra_frames=0` holds.
 - 2026-11-07: Stage 7 committed, see Stage 7 results. Works on libmpv from 0.35 up. Style changes with no reload, and lines stay on show in Fill and zoom. Flips stay painted, with a shader only while a subtitle shows.
 - 2026-11-07: Stage 6 built and committed, see Stage 6 results. Tracks and the device now go in before mpv starts anything.
   Output measured against VLC. JACK stays out, your call. Two device bugs on VLC on Linux fixed along the way.

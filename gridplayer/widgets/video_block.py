@@ -131,6 +131,15 @@ LEAVING_END_ACTIONS = frozenset(
 )
 
 
+def _needs_deinterlace_reload(
+    block, params: Video, deinterlace: VideoDeinterlace, mode: VideoDeinterlaceMode
+) -> bool:
+    return (
+        is_deinterlace_reload_needed(params, deinterlace, mode)
+        and block.video_driver.must_reload_for_automatic_deinterlace
+    )
+
+
 class VideoBlock(QWidget):
     load_video = pyqtSignal(MediaInput)
 
@@ -1557,8 +1566,11 @@ class VideoBlock(QWidget):
             self._start_load()
             return
 
-        if self.video_tracks and is_deinterlace_reload_needed(
-            self.video_params, snapshot.deinterlace, snapshot.deinterlace_mode
+        if self.video_tracks and _needs_deinterlace_reload(
+            self,
+            self.video_params,
+            snapshot.deinterlace,
+            snapshot.deinterlace_mode,
         ):
             self._take_snapshot_params(snapshot)
             self.reload()
@@ -1629,8 +1641,8 @@ class VideoBlock(QWidget):
             or new.transform != params.transform
             or (
                 self.video_tracks
-                and is_deinterlace_reload_needed(
-                    params, new.deinterlace, new.deinterlace_mode
+                and _needs_deinterlace_reload(
+                    self, params, new.deinterlace, new.deinterlace_mode
                 )
             )
         ):
@@ -2014,8 +2026,8 @@ class VideoBlock(QWidget):
     def set_deinterlace_params(
         self, deinterlace: VideoDeinterlace, mode: VideoDeinterlaceMode
     ):
-        is_reload_needed = is_deinterlace_reload_needed(
-            self.video_params, deinterlace, mode
+        is_reload_needed = _needs_deinterlace_reload(
+            self, self.video_params, deinterlace, mode
         )
 
         self.video_params.deinterlace = deinterlace

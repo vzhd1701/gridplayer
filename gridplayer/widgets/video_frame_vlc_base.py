@@ -1,4 +1,3 @@
-import dataclasses
 import logging
 import math
 from abc import ABC, abstractmethod
@@ -472,6 +471,8 @@ class VideoFrameVLC(QWidget, metaclass=QABC):
     # what they look like is settled when a VLC process starts, so a video has to
     # be opened again to be redrawn
     must_reload_for_subtitle_style = True
+    # see is_deinterlace_reload_needed
+    must_reload_for_automatic_deinterlace = True
 
     time_changed = pyqtSignal(MILLISECONDS)
     playback_status_changed = pyqtSignal(bool)
@@ -1732,7 +1733,7 @@ class VideoFrameVLC(QWidget, metaclass=QABC):
         if self.media is None:
             return
 
-        self.media = dataclasses.replace(self.media, chapters=chapters)
+        self.media.chapters = chapters
 
         self.chapters_changed.emit()
 
