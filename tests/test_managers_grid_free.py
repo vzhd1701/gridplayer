@@ -100,6 +100,12 @@ def _covered(rects) -> float:
     return sum(r.width * r.height for r in rects.values())
 
 
+def _same_rects(found, expected) -> bool:
+    return found.keys() == expected.keys() and all(
+        found[video_id] == pytest.approx(rect) for video_id, rect in expected.items()
+    )
+
+
 def _overlapping(rects) -> bool:
     found = list(rects.values())
     return any(a.overlaps(b) for i, a in enumerate(found) for b in found[i + 1 :])
@@ -1212,11 +1218,11 @@ def test_in_mosaic_the_window_resized_arranges_them_as_it_goes():
         assert not _overlapping(rects)
         assert all(r.right <= width + 0.5 for r in rects.values())
         manager.cmd_arrange_tiles()
-        assert manager._free.rects(width, 500) == pytest.approx(rects)
+        assert _same_rects(manager._free.rects(width, 500), rects)
 
     # and once more when done, for Reorder to Fit
     _arranged_when_due(manager)
-    assert manager._free.rects(800, 500) == pytest.approx(rects)
+    assert _same_rects(manager._free.rects(800, 500), rects)
     # the same size: not again
     manager._place_free(800, 500)
     assert not manager._arrange_timer.isActive()

@@ -165,7 +165,9 @@ def test_arranged_again_from_where_they_went_they_stay(count):
     boxes = arrange_around(WIDTH, HEIGHT, walls, ids, {}, shapes, 20)
     again = arrange_around(WIDTH, HEIGHT, walls, ids, _rects(boxes), shapes, 20)
 
-    assert again == pytest.approx(boxes)
+    assert again.keys() == boxes.keys()
+    for video_id, box in boxes.items():
+        assert again[video_id] == pytest.approx(box)
 
 
 def _mean_area(rects) -> float:
