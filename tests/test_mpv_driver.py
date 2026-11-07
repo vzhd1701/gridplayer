@@ -8,8 +8,24 @@ from unittest.mock import MagicMock
 import pytest
 from PyQt5.QtWidgets import QApplication
 
+from gridplayer.models.audio_device import AudioDevice
+from gridplayer.models.audio_selection import (
+    AudioDisabled,
+    AudioExternal,
+    AudioLanguage,
+)
 from gridplayer.models.video import Video
-from gridplayer.mpv_player.player import MpvPlayer, _params_sar, calc_fit_size
+from gridplayer.mpv_player import player as player_module
+from gridplayer.mpv_player.player import (
+    _ROOM_FILTER_BROKE,
+    MpvPlayer,
+    _AudioDevices,
+    _cur_track_id,
+    _params_sar,
+    audio_chain,
+    calc_fit_size,
+    devices_of_first_output,
+)
 from gridplayer.mpv_player.renderer import (
     FrameSlot,
     MpvRenderService,
@@ -17,6 +33,7 @@ from gridplayer.mpv_player.renderer import (
     VideoRenderer,
 )
 from gridplayer.params.static import (
+    AudioChannelMode,
     VideoCellViewMode,
     VideoCrop,
     VideoDriver,
@@ -320,6 +337,8 @@ class _FakeMpv:
         self.options = options
         self.commands = []
         self.track_list = []
+        self.audio_device_list = []
+        self.is_terminated = False
         self.duration = 20.0
         self.event_callback = None
         self.observers = {}
@@ -331,13 +350,19 @@ class _FakeMpv:
     def observe_property(self, name, handler):
         self.observers[name] = handler
 
-    def command_async(self, *args):
+    def command(self, *args):
         self.commands.append(args)
+
+    def command_async(self, *args, **_kwargs):
+        self.commands.append(args)
+
+    def terminate(self):
+        self.is_terminated = True
 
 
 def _mpv_module():
     return SimpleNamespace(
-        MPV=lambda log_handler, loglevel, **options: _FakeMpv(**options),
+        MPV=lambda log_handler=None, loglevel=None, **options: _FakeMpv(**options),
         MpvEventID=SimpleNamespace(
             FILE_LOADED=8, PLAYBACK_RESTART=21, END_FILE=7, HOOK=25
         ),
@@ -565,9 +590,12 @@ def test_random_start_is_picked_before_anything_is_decoded():
     assert _hook_answered(player)
 
 
-def test_only_a_random_start_waits_for_the_length():
+def test_only_a_random_start_picks_a_start():
     for player in (_player(), _player(is_start_random=True, current_position=5000)):
-        player._mpv_module.backend.mpv_hook_add.assert_not_called()
+        _preloaded(player)
+
+        assert not hasattr(player.mpv, "start")
+        assert _hook_answered(player)
 
 
 def test_random_start_with_no_length_still_loads():
@@ -1050,3 +1078,655 @@ def test_manager_makes_no_render_service_for_vlc(mocker):
     manager.video_driver()
 
     assert manager._mpv_render_service is None
+
+
+# -- the sound
+
+
+@pytest.fixture(autouse=True)
+def audio_devices(monkeypatch):
+    devices = _AudioDevices()
+    monkeypatch.setattr(player_module, "_AUDIO_DEVICES", devices)
+    _ROOM_FILTER_BROKE.clear()
+
+    yield devices
+
+    _ROOM_FILTER_BROKE.clear()
+
+
+@pytest.fixture
+def room_file(monkeypatch):
+    monkeypatch.setattr("gridplayer.mpv_player.player._room_file", lambda: "room.sofa")
+
+
+def _audio_player(track_list=(), **video_fields):
+    player = _player(**video_fields)
+    player.mpv.track_list = list(track_list)
+    player.emitted = []
+    player.tracks_changed.connect(player.emitted.append)
+
+    return player
+
+
+_VIDEO_TRACK = {"type": "video", "id": 1, "selected": True}
+_ENGLISH = {"type": "audio", "id": 1, "lang": "eng", "selected": True}
+_SPANISH = {"type": "audio", "id": 2, "lang": "spa", "default": True}
+_FILE_TRACK = {"type": "audio", "id": 3, "external": True}
+_FILE_TRACK_2 = {"type": "audio", "id": 4, "external": True}
+
+
+def _option_sets(player):
+    return [command[1:] for command in player.mpv.commands if command[0] == "set"]
+
+
+def test_the_tracks_of_a_kind_are_told_apart():
+    player = _audio_player(
+        [
+            _VIDEO_TRACK,
+            _ENGLISH,
+            _SPANISH,
+            _FILE_TRACK,
+            {"type": "sub", "id": 1, "lang": "eng", "forced": True},
+            {"type": "sub", "id": 2, "external": True},
+        ]
+    )
+
+    tracks = player._read_tracks()
+
+    assert list(tracks.audio_tracks) == [1, 2, 3]
+    assert tracks.external_audio_ids == (3,)
+    assert tracks.cur_audio_track_id == 1
+    assert tracks.external_subtitle_ids == (2,)
+    assert tracks.default_subtitle_track_id == 1
+
+
+@pytest.mark.parametrize(
+    ("listed", "default"),
+    [
+        ([_ENGLISH, _SPANISH], 2),
+        ([_ENGLISH], 1),
+        # one of a file, picked and all, says nothing of the video's own
+        ([_FILE_TRACK, _ENGLISH], 1),
+        ([_FILE_TRACK], None),
+    ],
+)
+def test_the_default_track_is_the_first_marked_or_the_first(listed, default):
+    assert _audio_player(listed)._read_tracks().default_audio_track_id == default
+
+
+def test_a_song_picture_is_no_video():
+    player = _audio_player(
+        [{"type": "video", "id": 1, "albumart": True, "selected": True}, _ENGLISH]
+    )
+
+    assert player._read_tracks().video_tracks == {}
+
+
+def test_told_to_leave_the_picture_out_there_is_none():
+    player = _player(is_audio_only=True)
+    player.mpv.track_list = [_VIDEO_TRACK, _ENGLISH]
+
+    media = player._media_from_tracks()
+
+    assert media.video_tracks == {}
+    assert media.cur_video_track_id is None
+    assert media.is_audio_only
+
+
+def test_nothing_asked_for_leaves_the_tracks_to_mpv():
+    player = _audio_player([_VIDEO_TRACK, _ENGLISH, _SPANISH])
+
+    player._pick_tracks()
+
+    assert player.mpv.commands == []
+
+
+def test_a_language_picks_its_track_before_it_starts():
+    player = _audio_player(
+        [_VIDEO_TRACK, _ENGLISH, _SPANISH], audio_selection=AudioLanguage(tag="spa")
+    )
+
+    player._pick_tracks()
+
+    assert _option_sets(player) == [("aid", "2")]
+
+
+def test_a_file_picked_answers_for_its_tracks():
+    player = _audio_player(
+        [_VIDEO_TRACK, _ENGLISH, _FILE_TRACK, _FILE_TRACK_2],
+        audio_selection=AudioExternal(file="C:/a.mka", track=1),
+    )
+
+    player._pick_tracks()
+
+    assert _option_sets(player) == [("aid", "4")]
+
+
+def test_a_file_that_brought_nothing_goes_by_the_rest():
+    player = _audio_player(
+        [_VIDEO_TRACK, _ENGLISH], audio_selection=AudioExternal(file="C:/a.mka")
+    )
+
+    player._pick_tracks()
+
+    assert player.mpv.commands == []
+
+
+def test_sound_off_is_asked_for():
+    player = _audio_player([_VIDEO_TRACK, _ENGLISH], audio_selection=AudioDisabled())
+
+    player._pick_tracks()
+
+    assert _option_sets(player) == [("aid", "no")]
+
+
+@pytest.mark.parametrize(
+    ("listed", "video"),
+    [
+        # a song: the picture isn't there to keep playing
+        ([_ENGLISH], {}),
+        # the picture off and the sound off, as saved
+        ([_VIDEO_TRACK, _ENGLISH], {"video_track_id": -1}),
+    ],
+)
+def test_sound_off_with_no_picture_would_leave_nothing_to_play(listed, video):
+    player = _audio_player(listed, audio_selection=AudioDisabled(), **video)
+
+    player._pick_tracks()
+
+    assert ("aid", "no") not in _option_sets(player)
+
+
+def test_sound_off_when_told_to_leave_the_picture_out():
+    player = _player(is_audio_only=True, audio_selection=AudioDisabled())
+    player.mpv.track_list = [_VIDEO_TRACK, _ENGLISH]
+
+    player._pick_tracks()
+
+    assert ("aid", "no") not in _option_sets(player)
+
+
+def test_told_to_leave_the_picture_out_a_saved_track_doesnt_bring_it_back():
+    player = _player(is_audio_only=True, video_track_id=1)
+    player.mpv.track_list = [_VIDEO_TRACK, _ENGLISH]
+
+    player._pick_tracks()
+
+    assert not [one for one in _option_sets(player) if one[0] == "vid"]
+
+
+def test_no_subtitles_to_switch_off_is_nothing_to_say():
+    player = _audio_player([_VIDEO_TRACK, _ENGLISH])
+
+    player._pick_tracks()
+
+    assert ("sid", "no") not in _option_sets(player)
+
+
+def test_a_picture_switched_off_stays_off_given_sound_to_play():
+    player = _audio_player([_VIDEO_TRACK, _ENGLISH], video_track_id=-1)
+
+    assert player._wanted_video_track_id(player._read_tracks()) == -1
+
+
+def test_a_picture_is_kept_with_no_sound_to_play_instead():
+    player = _audio_player([_VIDEO_TRACK], video_track_id=-1)
+
+    assert player._wanted_video_track_id(player._read_tracks()) is None
+
+
+def test_a_video_track_from_another_driver_is_left_out():
+    # VLC counts all the tracks together, from 0
+    player = _audio_player([_VIDEO_TRACK, _ENGLISH], video_track_id=0)
+
+    assert player._wanted_video_track_id(player._read_tracks()) is None
+
+
+def test_switched_off_and_none_there_are_not_the_same():
+    assert _cur_track_id(None, {1: "a track"}) == -1
+    assert _cur_track_id(None, {}) is None
+    assert _cur_track_id(1, {1: "a track"}) == 1
+
+
+_LISTED = [
+    {"name": "auto", "description": "Autoselect device"},
+    {"name": "alsa", "description": "Default (alsa)"},
+    {"name": "alsa/hw:0", "description": "A card"},
+    {"name": "pulse/one", "description": "Speakers"},
+    {"name": "pulse/two", "description": "Headphones"},
+    {"name": "jack", "description": "Default (jack)"},
+]
+_PULSE_LISTED = [one for one in _LISTED if "pulse" in one["name"]]
+
+
+def test_devices_are_of_the_first_output_tried():
+    assert devices_of_first_output(_LISTED, ("pipewire", "pulse", "alsa")) == (
+        AudioDevice(id="pulse/one", name="Speakers"),
+        AudioDevice(id="pulse/two", name="Headphones"),
+    )
+
+
+def test_devices_go_on_to_the_next_output():
+    listed = [one for one in _LISTED if not one["name"].startswith("pulse")]
+
+    assert devices_of_first_output(listed, ("pipewire", "pulse", "alsa")) == (
+        AudioDevice(id="alsa/hw:0", name="A card"),
+    )
+
+
+def test_devices_of_the_first_listed_when_any_output_will_do():
+    listed = [
+        {"name": "auto", "description": "Autoselect device"},
+        {"name": "wasapi/{a}", "description": "Speakers"},
+        {"name": "openal", "description": "Default (openal)"},
+    ]
+
+    assert devices_of_first_output(listed) == (
+        AudioDevice(id="wasapi/{a}", name="Speakers"),
+    )
+
+
+def test_no_devices_to_name():
+    assert devices_of_first_output([{"name": "auto", "description": "Auto"}]) == ()
+
+
+def _device_reader(listed=()):
+    """An mpv module whose every mpv lists these, and the mpvs it has made."""
+
+    made = []
+
+    def make(**options):
+        made.append(_FakeMpv(**options))
+        made[-1].audio_device_list = list(listed)
+        return made[-1]
+
+    return SimpleNamespace(MPV=make), made
+
+
+def test_a_videos_own_mpv_never_reads_the_devices():
+    # it would stay connected to the sound server for as long as it lives
+    module, made = _device_reader(_PULSE_LISTED)
+    player = _audio_player()
+    player._mpv_module = module
+
+    player._pick_audio_device()
+
+    assert len(made) == 1
+    assert made[0] is not player.mpv
+    assert made[0].is_terminated
+    assert len(player._audio_devices) == 2
+
+
+def test_a_grid_opening_shares_one_read(audio_devices):
+    module, made = _device_reader(_PULSE_LISTED)
+
+    first = audio_devices.read(module)
+    second = audio_devices.read(module)
+
+    assert first == second
+    assert len(made) == 1
+
+
+def test_the_devices_are_read_again_later(monkeypatch, audio_devices):
+    module, made = _device_reader(_PULSE_LISTED)
+    now = [100.0]
+    monkeypatch.setattr("gridplayer.mpv_player.player.time.monotonic", lambda: now[0])
+
+    audio_devices.read(module)
+    now[0] += 60
+    audio_devices.read(module)
+
+    assert len(made) == 2
+
+
+def test_devices_that_cant_be_read_are_none(audio_devices):
+    def make(**_options):
+        raise OSError("no")
+
+    assert audio_devices.read(SimpleNamespace(MPV=make)) == ()
+
+
+def test_a_device_gone_leaves_the_sound_where_it_is():
+    player = _audio_player()
+    player._audio_devices = (AudioDevice(id="pulse/one", name="Speakers"),)
+
+    player.set_audio_device(AudioDevice(id="pulse/gone", name="Gone"))
+
+    assert _option_sets(player) == []
+
+
+def test_a_device_of_another_driver_is_found_by_name():
+    player = _audio_player()
+    player._audio_devices = (AudioDevice(id="pulse/one", name="Speakers"),)
+
+    player.set_audio_device(AudioDevice(id="one", name="Speakers"))
+
+    assert _option_sets(player) == [("audio-device", "pulse/one")]
+
+
+def test_no_device_is_the_machines_own():
+    player = _audio_player()
+
+    player.set_audio_device(None)
+
+    assert _option_sets(player) == [("audio-device", "auto")]
+
+
+def test_the_device_picked_goes_in_before_the_sound_starts():
+    module, _ = _device_reader(_PULSE_LISTED)
+    wanted = AudioDevice(id="pulse/two", name="Headphones")
+    player = _audio_player(audio_device=wanted)
+    player._mpv_module = module
+
+    player._pick_audio_device()
+
+    assert player.mpv.audio_device == "pulse/two"
+
+
+def test_the_channel_mode_is_told_once():
+    player = _audio_player()
+
+    player.set_channel_mode(AudioChannelMode.UNSET)
+    assert player.mpv.commands == []
+
+    player.set_channel_mode(AudioChannelMode.LEFT)
+    player.set_channel_mode(AudioChannelMode.LEFT)
+
+    sets = _option_sets(player)
+
+    assert len(sets) == 2
+    assert sets[0][0] == "af"
+    assert "c0=c0|c1=c0" in sets[0][1]
+    assert sets[1] == ("audio-channels", "stereo")
+
+
+def test_a_file_added_comes_back_on_the_list():
+    player = _audio_player(
+        [_VIDEO_TRACK, _ENGLISH, _FILE_TRACK],
+        audio_selection=AudioExternal(file="C:/a.mka"),
+    )
+    player._media = Media(
+        length=1000,
+        video_tracks={1: "kept"},
+        audio_tracks={1: "before"},
+        cur_audio_track_id=1,
+        audio_devices=(AudioDevice(id="pulse/one"),),
+    )
+
+    player._on_audio_file_added(None, None)
+
+    media = player.emitted[0]
+
+    assert list(media.audio_tracks) == [1, 3]
+    assert media.external_audio_ids == (3,)
+    assert media.cur_audio_track_id == 3
+    # what the file has nothing to do with stays as it was
+    assert media.video_tracks == {1: "kept"}
+    assert media.audio_devices == (AudioDevice(id="pulse/one"),)
+    assert ("aid", "3") in _option_sets(player)
+
+
+def test_a_file_that_failed_changes_nothing():
+    # told of it, the frame would take it for a file that needs a reload to play
+    player = _audio_player([_VIDEO_TRACK, _ENGLISH])
+    player._media = Media(length=1000, video_tracks={}, audio_tracks={1: "before"})
+
+    player._on_audio_file_added(SystemError("no"), None)
+
+    assert player.emitted == []
+    assert _option_sets(player) == []
+
+
+def test_a_file_added_while_closing_is_nobodys_business():
+    player = _audio_player([_VIDEO_TRACK, _ENGLISH])
+    player._media = Media(length=1000, video_tracks={}, audio_tracks={})
+    player.close()
+
+    player._on_audio_file_added(None, None)
+
+    assert player.emitted == []
+
+
+def _track_driver(media):
+    driver = _driver()
+    driver._media = media
+    driver._player = MagicMock()
+
+    return driver
+
+
+def _media_with(cur_video=1, cur_audio=1):
+    return Media(
+        length=1000,
+        video_tracks={1: "picture"},
+        audio_tracks={1: "sound", 2: "more"},
+        cur_video_track_id=cur_video,
+        cur_audio_track_id=cur_audio,
+    )
+
+
+def test_a_track_goes_to_mpv():
+    driver = _track_driver(_media_with())
+
+    driver.set_audio_track(2)
+
+    driver._player.select_track.assert_called_once_with("aid", 2)
+
+
+@pytest.mark.parametrize("track_id", [None, 7])
+def test_a_track_not_there_is_not_asked_for(track_id):
+    # mpv would take it, and play nothing
+    driver = _track_driver(_media_with())
+
+    driver.set_audio_track(track_id)
+    driver.set_video_track(track_id)
+
+    assert not driver._player.select_track.called
+
+
+def test_the_sound_goes_off_with_a_picture_to_show():
+    driver = _track_driver(_media_with())
+
+    driver.set_audio_track(-1)
+
+    driver._player.select_track.assert_called_once_with("aid", -1)
+
+
+def test_the_sound_stays_with_no_picture():
+    driver = _track_driver(_media_with(cur_video=-1))
+
+    driver.set_audio_track(-1)
+
+    assert not driver._player.select_track.called
+
+
+def test_the_picture_stays_with_no_sound():
+    driver = _track_driver(_media_with(cur_audio=-1))
+
+    driver.set_video_track(-1)
+
+    assert not driver._player.select_track.called
+
+
+def test_a_track_list_that_changed_is_passed_on():
+    driver = _track_driver(_media_with())
+    driver.tracks_changed_emit = MagicMock()
+
+    media = _media_with()
+    driver._on_tracks_changed(media)
+
+    assert driver._media is media
+    driver.tracks_changed_emit.assert_called_once_with(media)
+
+
+@pytest.mark.parametrize(
+    ("delay_ms", "said"),
+    [(0, "0.0"), (1500, "1.5"), (-250, "-0.25")],
+)
+def test_the_delay_is_in_seconds(delay_ms, said):
+    driver = _track_driver(_media_with())
+
+    driver.set_audio_delay(delay_ms)
+
+    driver._player.set_option.assert_called_once_with("audio-delay", said)
+
+
+def _one_channel(track):
+    return dict(track, **{"demux-channel-count": 1})
+
+
+def _levels(player):
+    return [one for one in _option_sets(player) if one[0] == "audio-swresample-o"]
+
+
+def test_a_stereo_mix_of_one_channel_keeps_its_level():
+    chain = audio_chain(AudioChannelMode.UNSET, 1)
+
+    assert "rematrix_volume" in chain["audio-swresample-o"]
+    # left to a sound server, it can come out turned down all the same
+    assert chain["audio-channels"] == "stereo"
+
+
+def test_mono_goes_out_on_two_channels():
+    chain = audio_chain(AudioChannelMode.MONO, 2)
+
+    assert chain["audio-channels"] == "stereo"
+    assert "c0=0.5*c0+0.5*c1|c1=0.5*c0+0.5*c1" in chain["af"]
+
+
+def test_left_alone_a_track_of_more_goes_out_as_mpv_sees_fit():
+    assert audio_chain(AudioChannelMode.UNSET, 6)["audio-channels"] == "auto-safe"
+
+
+@pytest.mark.parametrize("track_channels", [0, 2, 6])
+def test_nothing_else_is_raised(track_channels):
+    chain = audio_chain(AudioChannelMode.STEREO, track_channels)
+
+    assert chain["audio-swresample-o"] == ""
+
+
+@pytest.mark.usefixtures("room_file")
+def test_the_room_effect_is_for_a_surround_track():
+    chain = audio_chain(AudioChannelMode.HEADPHONES, 6)
+
+    assert "sofalizer=sofa=room.sofa" in chain["af"]
+    assert chain["audio-channels"] == "stereo"
+
+
+@pytest.mark.usefixtures("room_file")
+@pytest.mark.parametrize(
+    ("mode", "track_channels"),
+    [
+        # nothing to move about, as on VLC
+        (AudioChannelMode.HEADPHONES, 2),
+        (AudioChannelMode.HEADPHONES, 1),
+        (AudioChannelMode.HEADPHONES, 0),
+        (AudioChannelMode.STEREO, 6),
+    ],
+)
+def test_otherwise_it_is_the_plain_mix(mode, track_channels):
+    assert audio_chain(mode, track_channels)["af"] == ""
+
+
+def test_no_file_for_the_room_effect_is_the_plain_mix(monkeypatch):
+    monkeypatch.setattr("gridplayer.mpv_player.player._room_file", lambda: None)
+
+    assert audio_chain(AudioChannelMode.HEADPHONES, 6)["af"] == ""
+
+
+def test_the_room_file_is_only_looked_for_when_it_is_of_use(monkeypatch):
+    # looking for libVLC on Linux with none there runs gcc and ld
+    looked = MagicMock(return_value=None)
+    monkeypatch.setattr("gridplayer.mpv_player.player._room_file", looked)
+
+    audio_chain(AudioChannelMode.UNSET, 6)
+    audio_chain(AudioChannelMode.HEADPHONES, 2)
+
+    looked.assert_not_called()
+
+
+def test_the_level_goes_by_the_track_picked_before_it_starts():
+    player = _audio_player([_VIDEO_TRACK, _one_channel(_ENGLISH), _SPANISH])
+
+    player._pick_tracks()
+
+    # the first marked is what it will play, and that's two channels or not saying
+    assert _levels(player) == []
+
+    player = _audio_player(
+        [_VIDEO_TRACK, _ENGLISH, _one_channel(_SPANISH)],
+        audio_selection=AudioLanguage(tag="spa"),
+    )
+
+    player._pick_tracks()
+
+    assert len(_levels(player)) == 1
+
+
+def test_the_level_follows_a_track_switch():
+    player = _audio_player()
+    player._media = Media(
+        length=1000,
+        video_tracks={},
+        audio_tracks={
+            1: SimpleNamespace(channels=2),
+            2: SimpleNamespace(channels=1),
+        },
+    )
+
+    player.select_track("aid", 2)
+    player.select_track("aid", 2)
+    player.select_track("aid", 1)
+
+    assert _option_sets(player) == [
+        ("audio-swresample-o", "rematrix_volume=1.41421356"),
+        ("audio-channels", "stereo"),
+        ("aid", "2"),
+        ("aid", "2"),
+        ("audio-swresample-o", ""),
+        ("audio-channels", "auto-safe"),
+        ("aid", "1"),
+    ]
+
+
+@pytest.mark.usefixtures("room_file")
+def test_a_room_filter_that_wont_start_gives_way_to_the_plain_mix():
+    player = _audio_player()
+    player._heard_channels = 6
+
+    player.set_channel_mode(AudioChannelMode.HEADPHONES)
+
+    assert "sofalizer" in dict(_option_sets(player))["af"]
+
+    player.mpv.commands.clear()
+    player._on_log("error", "ffmpeg", "Parsed_sofalizer_0: Can't find SOFA-file")
+
+    assert _option_sets(player) == [("af", "")]
+
+
+@pytest.mark.usefixtures("room_file")
+def test_every_cell_with_the_filter_gives_way():
+    players = [_audio_player(), _audio_player()]
+
+    for player in players:
+        player._heard_channels = 6
+        player.set_channel_mode(AudioChannelMode.HEADPHONES)
+        player.mpv.commands.clear()
+
+    for player in players:
+        player._on_log("error", "ffmpeg", "Parsed_sofalizer_0: Can't find SOFA-file")
+
+    assert [_option_sets(player) for player in players] == [[("af", "")], [("af", "")]]
+
+
+def test_an_error_that_only_has_the_word_in_it_is_something_else():
+    _audio_player()._on_log("error", "cplayer", "Can not open file sofalizer.m4a")
+
+    assert not _ROOM_FILTER_BROKE.is_set()
+
+
+@pytest.mark.usefixtures("room_file")
+def test_nor_is_it_tried_again_on_the_next_video():
+    _audio_player()._on_log("error", "ffmpeg", "Parsed_sofalizer_0: no")
+
+    assert audio_chain(AudioChannelMode.HEADPHONES, 6)["af"] == ""

@@ -6,13 +6,15 @@ def scenario(d):
     d.open(d.media.feature)
     b = d.wait_for_cell("feature.mkv")
 
+    audio(d, b)
+    subtitles(d, b)
+
+    d.note("end", b)
+
+
+def audio(d, b):
     def audio_language():
         return b.audio.tracks[b.audio.track_playing].language
-
-    def subtitle_language():
-        return b.subtitles.tracks[b.subtitles.track_showing].language
-
-    # audio
 
     d.menu(b, "menu_generator_audio_track")
     d.choose(b, "menu_generator_audio_track", "Spanish")
@@ -43,7 +45,10 @@ def scenario(d):
     # which takes a reload, back to where it was
     d.wait_until(lambda: b.is_playable and b.time >= at, "it plays on after the reload")
 
-    # subtitles
+
+def subtitles(d, b):
+    def subtitle_language():
+        return b.subtitles.tracks[b.subtitles.track_showing].language
 
     d.wait(3)
     before = b.time
@@ -71,5 +76,3 @@ def scenario(d):
     d.choose(b, "menu_generator_subtitle_track", "Remove External Subtitles")
     # found beside it still, and offered again, but no longer attached
     d.wait_until(lambda: not b.video_params.external_subtitles, "German is detached")
-
-    d.note("end", b)

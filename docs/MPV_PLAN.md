@@ -5,7 +5,7 @@ The findings and traps are in `C:\Projects\test_temp\test_mpv\HANDOFF.md`, and
 what we build and how far it has got. Tick items only once they have been seen
 working.
 
-**Status: Stage 3 built (<https://claude.ai/artifact/8ngdeLCkVxmdQzSEnpxx1c>, real screenshots on its Built board). Open: macOS. Bundling libmpv (12.1) is for later. Stages 1-5 are committed on this branch.**
+**Status: Stage 3 built (<https://claude.ai/artifact/8ngdeLCkVxmdQzSEnpxx1c>, real screenshots on its Built board). Open: macOS. Bundling libmpv (12.1) is for later. Stages 1-6 are committed on this branch.**
 
 **Load tests against VLC: `MPV_PERFORMANCE.md`.** No multi-process mode for MPV. New items 10.13-10.16. **10.16 is a long run
 still to be started, overnight, by you.**
@@ -17,7 +17,7 @@ still to be started, overnight, by you.**
 | 3 | Settings: unavailable drivers greyed out with a reason | **built, macOS still open** |
 | 4 | Transport: seek, speed, frame step, looping, end of video | **built, macOS not run** |
 | 5 | View: rotate, flip, crop, aspect ratio, screenshots, sync | **built, macOS not run** |
-| 6 | Audio: tracks, files, devices, delay, channels | not started |
+| 6 | Audio: tracks, files, devices, delay, channels | **built, macOS not run** |
 | 7 | Subtitles: tracks, files, delay, encoding, style | not started |
 | 8 | Deinterlacing, chapters, bookmarks, SponsorBlock | not started |
 | 9 | Streams, live video, errors and recovery, lists | not started |
@@ -350,14 +350,74 @@ doesn't load mpv, so a restart gets out of it.
 
 ## Stage 6: Audio
 
-- [ ] 6.1 Mute, volume (scale matches VLC's), audio-only cells with their placeholder
-- [ ] 6.2 Track list and selection, language picks, default track, ids that survive reloads
-- [ ] 6.3 External audio: `audio-add`, which track came from which file
-- [ ] 6.4 Devices from `audio-device-list`, mapped to `AudioDevice`, pick survives a reload
-- [ ] 6.5 Channel mode (`audio-channels`, `af`), delay
-- [ ] 6.6 Scenarios `tracks`, `external_audio_jump` on mpv
-- [ ] 6.7 Linux audio outputs are limited to `pipewire,pulse,alsa` (see Stage 1 results). Decide
-  about JACK users, and check on a machine with sound, which the test machines lack
+- [x] 6.1 Mute, volume (scale matches VLC's), audio-only cells with their placeholder
+- [x] 6.2 Track list and selection, language picks, default track, ids that survive reloads
+- [x] 6.3 External audio: `audio-add`, which track came from which file
+- [x] 6.4 Devices from `audio-device-list`, mapped to `AudioDevice`, pick survives a reload
+- [x] 6.5 Channel mode (`audio-channels`, `af`), delay
+- [x] 6.6 Scenarios `tracks`, `external_audio_jump` on mpv. The sound half of `tracks` runs inside `mpv_audio`. Its subtitle
+  half and `external_audio_jump`, which turns on picking a subtitle, move to 7.6: that does nothing on <MPV> yet
+- [x] 6.7 Linux audio outputs are limited to `pipewire,pulse,alsa` (see Stage 1 results). **JACK stays out, your call.**
+  A JACK-only machine gets ALSA or silence. Checked on PulseAudio and PipeWire with null sinks, and with no sound server
+
+### Stage 6 results
+
+- **Picking a device could stop a video from loading.** Told a device while the sound was starting, mpv opened the
+  default one and never said it was playing, so the cell sat there until it timed out. Tracks and the device now go in
+  from the `on_preloaded` hook, before anything starts. That also means a track picked by language is the first one
+  decoded, not a switch just after.
+- **What comes out, measured.** Two null sinks on `test_gpu`, what they got read back, the same file through the app, on
+  PulseAudio and PipeWire. Against VLC, on PulseAudio:
+
+| | <MPV> | VLC |
+|---|---|---|
+| Volume 100 / 75 / 50, level of a tone | 0.125 / 0.053 / 0.016 | 0.125 / 0.053 / 0.015 (VLC's measured without the app) |
+| Reversed, Left, Right on a stereo track | swapped, left in both, right in both | the same |
+| Mono on a stereo track | 0.062 of each in both | the same |
+| Stereo, Dolby Surround, Headphones on a stereo track | unchanged | the same |
+| A one-channel track, in both ears | 0.125 | the same |
+
+- **Fixed after the first round, your call to fix them first:**
+  - One-channel tracks came out 3 dB down: mpv's mix and PipeWire each do that going from one channel to two. Such a track,
+    and Mono, now go out on two channels at the right level. It follows a track switch and a file being added.
+  - Headphones on a surround track now has VLC's room effect, with `sofalizer` and the file VLC does it with, set to VLC's
+    levels: within 0.002 on all 12 readings, from Software VLC on Windows, in a file. It needs VLC's file beside libVLC, so with no
+    VLC, or on Linux, where VLC has none either and plays the plain mix, it's the plain mix. A filter that won't start
+    gives way to the plain mix, since it would leave no sound at all.
+  - A track saved by number now also says where it comes among the sound tracks, which means the same on both drivers. Older
+    playlists go by the number. 7.7 does the same for subtitles.
+- **Fixed on VLC, on Linux:** a device picked went back to the default after a reload. VLC says it has the device, then its
+  output opens on the default one, so for about 3 s of playing it's asked again whenever it says otherwise. And going back to the
+  machine's own didn't move what was playing, so that now reloads. Seen on the sinks on all four VLC drivers on PulseAudio.
+  The sound files that stopped coming up in the first round were my test swapping them too fast: fine at a person's pace.
+- **Left as they are:**
+  - Left and Right on a surround track: <MPV> takes that side of the stereo mix. VLC has no one answer to match, what it does
+    differs by output.
+  - **VLC on PipeWire:** moving one video's sound makes WirePlumber remember that device for every "Movie" stream, so it reaches
+    other cells and outlives a restart, and "the machine's own" stays on it. <MPV> keeps each cell apart if nothing else has
+    left a device remembered, but goes along with what VLC left. It's PipeWire's own memory, and any way round it would be a hack nobody has tried: left as it is.
+  - Not tried: a track that says one channel and decodes to two, as some AAC could, would come out 3 dB up.
+  - Disabling the only thing left, the sound of a song or the picture of a video with no sound: the menu and the cell say it's
+    off while it plays on. It's the same on VLC, and it's the block and the frame that do it. Reloaded, it plays.
+- Sound files: mp3, m4a, aac, flac, ac3, wav, ogg, oga, spx, mka and opus all make a sound on <MPV>, also after a seek. So
+  the warning about files VLC can't play beside a video isn't shown on <MPV>. Names a URI has to spell out work, added
+  and at load. A file that won't open leaves the video playing without it.
+- A sound file longer than the video: the video's length counts, on both ways of adding it.
+- Devices: a video moved to another sink plays there and stays there through a reload, seen on the sinks. The names are the
+  same as VLC's, on Windows and PulseAudio, so a playlist's pick is found on either driver. On PipeWire <MPV> lists
+  `pipewire/` devices and uses that output.
+- **Reading the device list could silence a big grid.** An mpv that has read it stays connected to the sound server, a client more
+  for each cell, and PulseAudio takes 64: of 80 cells 31 had sound, and nothing else could connect. It's now read by an mpv that
+  does nothing else and closes (11 ms, 91 the first time), shared for 5 s. 40 cells: 40 clients, all with sound, loaded in 1.2 s.
+- Delay: +1 s came out later on the sound server, -1 s earlier in a file written by mpv.
+- Picture off and on, playing and paused, through a reload and for the tray. Both off is refused, here as in VLC.
+- Rig traps: on an idle PulseAudio null sink, sound starts about 1.6 s late, on the old commit as well, and `mpv_transport` fails
+  unless a silent `pacat` keeps it awake. On PipeWire, `parec` starts too late to catch much (`pw-record` is fine), and
+  WirePlumber's saved state decides where a stream starts, so clear it between runs.
+- `mpv_audio` passes on both <MPV> drivers on Windows, on X11 and Wayland on `test_gpu` with PulseAudio, offscreen with PipeWire, and
+  with no sound server (Hardware on X11, Software on Wayland). `mpv_transport`, `playback` and `mpv_view` pass with PulseAudio,
+  `mpv_transport` with PipeWire.
+- Windows is checked by mpv's own word and by writing to a file, with everything muted: nobody has heard this stage yet.
 
 ## Stage 7: Subtitles
 
@@ -367,6 +427,8 @@ doesn't load mpv, so a restart gets out of it.
 - [ ] 7.4 Style settings mapped from `SUBTITLE_STYLE_SETTINGS`, applied live if possible
 - [ ] 7.5 Size and sharpness: subtitles are drawn at render size, so check small cells and
   zoom, and whether they should stay the same size on screen
+- [ ] 7.6 Scenarios `tracks` whole and `external_audio_jump` on mpv, add them to `ALSO_ON_MPV`
+- [ ] 7.7 A subtitle saved by number also says where it comes among them, as `AudioTrackId` does
 
 ## Stage 8: Everything that hangs off time
 
@@ -480,6 +542,8 @@ doesn't load mpv, so a restart gets out of it.
 
 Newest first. What was finished and seen working, and anything that changed the plan.
 
+- 2026-11-07: Stage 6 built and committed, see Stage 6 results. Tracks and the device now go in before mpv starts anything.
+  Output measured against VLC. JACK stays out, your call. Two device bugs on VLC on Linux fixed along the way.
 - 2026-11-07: Stage 5 built, see Stage 5 results. It turned up a Stage 1 bug, a paused video losing its only frame on a
   busy grid, and that live streams aren't seen as live on MPV yet, now under 9.2.
 - 2026-11-06: Stage 4 built, see Stage 4 results: frame step and random start fixed, the rest held up. `mpv_transport` and `playback` pass on

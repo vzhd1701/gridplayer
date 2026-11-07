@@ -55,6 +55,38 @@ class TestPickingOne:
         assert block.video_params.audio_device is None
         block.video_driver.set_audio_device.assert_called_once_with(None)
 
+    def test_where_a_player_cant_go_back_it_is_opened_again(self):
+        block = _block(chosen=SPDIF)
+        block.video_driver.must_reload_for_system_device = True
+
+        block.audio.set_device(None)
+
+        block.reload.assert_called_once()
+
+    def test_where_it_can_there_is_no_reload(self):
+        block = _block(chosen=SPDIF)
+        block.video_driver.must_reload_for_system_device = False
+
+        block.audio.set_device(None)
+
+        block.reload.assert_not_called()
+
+    def test_nothing_was_picked_so_it_is_there_already(self):
+        block = _block()
+        block.video_driver.must_reload_for_system_device = True
+
+        block.audio.set_device(None)
+
+        block.reload.assert_not_called()
+
+    def test_picking_one_is_no_reason_to_reload(self):
+        block = _block()
+        block.video_driver.must_reload_for_system_device = True
+
+        block.audio.set_device(SPDIF)
+
+        block.reload.assert_not_called()
+
     def test_a_video_still_loading_remembers_without_being_told(self):
         """Whatever opens it puts the choice in force when it gets there."""
 

@@ -222,3 +222,29 @@ class TestAChosenFileTravelsWithTheVideo:
         reopened = Playlist.parse(playlist.dumps(base_dir=tmp_path), base_dir=tmp_path)
 
         assert reopened.videos[0].audio_selection == AudioExternal(file=audio_file)
+
+
+class TestATrackNamedByNumber:
+    """The drivers count tracks differently, and a playlist goes from one to the other."""
+
+    def test_where_it_comes_among_them_outlasts_the_id(self):
+        selection = AudioTrackId(id=2, position=1)
+
+        # VLC counts all kinds of track together, mpv each kind apart
+        assert selection.track_in({1: "first", 2: "second"}) == 2
+        assert selection.track_in({5: "first", 6: "second"}) == 6
+
+    def test_a_playlist_from_before_goes_by_the_id(self):
+        selection = AudioTrackId(id=2)
+
+        assert selection.track_in({1: "first", 2: "second"}) == 2
+        assert selection.track_in({5: "first", 6: "second"}) is None
+
+    def test_fewer_tracks_than_it_was_picked_from(self):
+        assert AudioTrackId(id=7, position=3).track_in({1: "a"}) is None
+        assert AudioTrackId(id=1, position=3).track_in({1: "a"}) == 1
+
+    def test_it_is_saved_with_a_playlist(self):
+        video = _reopened(_video(audio_selection=AudioTrackId(id=4, position=1)))
+
+        assert video.audio_selection == AudioTrackId(id=4, position=1)

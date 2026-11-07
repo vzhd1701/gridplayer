@@ -400,16 +400,18 @@ class ActiveBlockManager(ManagerBase):
         """
 
         selection = self._active_audio_selection()
+        block = self._ctx.active_block
 
         if isinstance(selection, AudioExternal):
-            block = self._ctx.active_block
-
             if block.audio.external_tracks.get(track_id) != selection.file:
                 return False
 
             return block.audio.external_track_ids.index(track_id) == selection.track
 
-        return isinstance(selection, AudioTrackId) and selection.id == track_id
+        return (
+            isinstance(selection, AudioTrackId)
+            and selection.track_in(block.audio.tracks) == track_id
+        )
 
     def is_active_audio_device(self, device_id) -> bool:
         """Ticked on the device the sound is really going to.

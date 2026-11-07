@@ -252,7 +252,7 @@ def test_a_pick_falls_back_to_the_id_where_two_tracks_share_a_language(mocker):
 
     block.audio.set_track(1)
 
-    assert block.video_params.audio_selection == AudioTrackId(id=1)
+    assert block.video_params.audio_selection.id == 1
 
 
 def test_a_pick_falls_back_to_the_id_for_an_untagged_track(mocker):
@@ -260,7 +260,7 @@ def test_a_pick_falls_back_to_the_id_for_an_untagged_track(mocker):
 
     block.audio.set_track(2)
 
-    assert block.video_params.audio_selection == AudioTrackId(id=2)
+    assert block.video_params.audio_selection.id == 2
 
 
 def test_namesakes_are_spotted_across_spellings_of_the_same_language(mocker):
@@ -270,7 +270,7 @@ def test_namesakes_are_spotted_across_spellings_of_the_same_language(mocker):
 
     block.audio.set_track(0)
 
-    assert block.video_params.audio_selection == AudioTrackId(id=0)
+    assert block.video_params.audio_selection.id == 0
 
 
 def test_a_language_keyed_pick_survives_new_track_ids(mocker):

@@ -44,11 +44,27 @@ class AudioDisabled(_Choice):
 
 
 class AudioTrackId(_Choice):
-    """One of the video's own tracks, where nothing steadier names it."""
+    """One of the video's own tracks, where nothing steadier names it.
+
+    An id means nothing to another driver, the way each counts them. How many of
+    the sound tracks come before it means the same to all: None in a playlist
+    from before it was kept.
+    """
 
     kind: Literal["track"] = "track"
 
     id: int
+    position: int | None = None
+
+    def track_in(self, tracks) -> int | None:
+        """Which of these tracks this names, None if it's not one of them."""
+
+        track_ids = list(tracks)
+
+        if self.position is not None and self.position < len(track_ids):
+            return track_ids[self.position]
+
+        return self.id if self.id in track_ids else None
 
 
 class AudioLanguage(_Choice):

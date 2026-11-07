@@ -60,7 +60,7 @@ from gridplayer.utils.win32_vlc_vout import (
     fit_vlc_vout_windows,
     vlc_picture,
 )
-from gridplayer.vlc_player.static import Media, MediaInput
+from gridplayer.vlc_player.static import VLC_OUTPUT_DROPS_DEVICES, Media, MediaInput
 from gridplayer.vlc_player.video_driver_base import VLCVideoDriver
 from gridplayer.widgets.video_status import VideoStatus
 
@@ -460,6 +460,13 @@ class PauseSnapshot(QWidget):
 
 
 class VideoFrameVLC(QWidget, metaclass=QABC):
+    # some audio files play badly beside a video, see utils/external_audio.py
+    is_picky_about_audio_files = True
+
+    # It can't be moved to no device in particular, with no name to ask for the
+    # default one by. Opened again it's there.
+    must_reload_for_system_device = VLC_OUTPUT_DROPS_DEVICES
+
     time_changed = pyqtSignal(MILLISECONDS)
     playback_status_changed = pyqtSignal(bool)
 

@@ -6,15 +6,23 @@ does comes through command(), which never waits.
 """
 
 import collections
+import dataclasses
 import logging
+import re
 import threading
+import time
+from collections import defaultdict
 from ctypes import c_ulonglong
 from fractions import Fraction
+from functools import cache
+from pathlib import Path
 
 from PyQt5.QtCore import QObject, pyqtSignal
 
+from gridplayer.models.audio_device import AudioDevice, resolve_device_id
 from gridplayer.params import env
-from gridplayer.params.static import VideoTransform
+from gridplayer.params.static import AudioChannelMode, VideoTransform
+from gridplayer.utils.media_libs import find_libvlc
 from gridplayer.utils.qt import MILLISECONDS, translate
 from gridplayer.vlc_player.static import (
     DISABLED_TRACK,
@@ -26,6 +34,8 @@ from gridplayer.vlc_player.static import (
     wanted_audio_track_id,
     wanted_subtitle_track_id,
 )
+
+_log = logging.getLogger(__name__)
 
 # What the file says to turn the picture by, in mpv's degrees clockwise
 _ROTATIONS = {
@@ -57,6 +67,136 @@ _SKIP_FRAMES = {True: "nonref", False: "default"}
 # What mpv said last, for when a video fails
 _LOG_LINES_KEPT = 20
 
+# The ways out mpv is to try on Linux: see _options
+_LINUX_AUDIO_OUTPUTS = ("pipewire", "pulse", "alsa")
+
+# Down to two channels by mpv's own mix first: lavfi's turns a surround track down
+_FROM_STEREO = "format=channels=stereo,lavfi=[pan=stereo|{}]"
+
+# What to put on the two channels for each channel mode that moves them about, compared
+# with what VLC sends a sound server. Mono is at half of each, as there: mpv's own mix
+# would clip whatever is in both. Stereo and Dolby Surround are the plain mix, Dolby being
+# that on VLC too, and so is Headphones where there's no _ROOM_FILTER. All of them go out
+# on two channels: a sound server is free to turn one down, as PipeWire does.
+_CHANNEL_PANS = {
+    AudioChannelMode.RSTEREO: "c0=c1|c1=c0",
+    AudioChannelMode.LEFT: "c0=c0|c1=c0",
+    AudioChannelMode.RIGHT: "c0=c1|c1=c1",
+    AudioChannelMode.MONO: "c0=0.5*c0+0.5*c1|c1=0.5*c0+0.5*c1",
+}
+
+# Headphones on a surround track, with the file VLC does it with where VLC has one:
+# the levels of VLC's own spatialaudio, measured. Where it has none, as on Linux, VLC
+# plays the plain mix as well.
+_ROOM_FILE = "hrtfs/dodeca_and_7channel_3DSL_HRTF.sofa"
+_ROOM_FILTER = "lavfi=[sofalizer=sofa={}:gain=8.1:lfegain=3]"
+
+# What's safe to say inside a filter, and what libmysofa can open
+_ROOM_FILE_CHARS = re.compile(r"[A-Za-z0-9 ./:()_-]+")
+
+# mpv's mix turns one channel into two down by 3 dB, where VLC has it as it is. Only
+# for a track with one channel: this raises anything else that goes through the mix.
+# Two it has to be, as with Mono: left to a sound server it can come out 3 dB down too.
+_ONE_CHANNEL_UP = "rematrix_volume=1.41421356"
+
+# what mpv calls whichever way out the machine is using
+_SYSTEM_DEVICE = "auto"
+
+# How long the list of those lasts: long enough for a whole grid opening to share one
+_AUDIO_DEVICES_KEPT_S = 5
+
+# Told by what the filter says as it starts, for the whole run: what stops it stops it
+# for every video, the file or a libmpv made without the filter
+_ROOM_FILTER_BROKE = threading.Event()
+_ROOM_FILTER_FAILURES = re.compile(r"Parsed_sofalizer|filter 'sofalizer'")
+
+
+@cache
+def _room_file() -> str | None:
+    """VLC's file for Headphones, spelled for a filter. None to play the plain mix."""
+
+    libvlc = find_libvlc()
+
+    if libvlc is None:
+        return None
+
+    path = (Path(libvlc).parent / _ROOM_FILE).resolve()
+
+    if not path.is_file() or not _ROOM_FILE_CHARS.fullmatch(path.as_posix()):
+        return None
+
+    return path.as_posix().replace(":", "\\\\:")
+
+
+def audio_chain(mode: AudioChannelMode, track_channels: int) -> dict:
+    """The options that make a channel mode out of a track with this many channels."""
+
+    audio_filter = ""
+
+    if mode in _CHANNEL_PANS:
+        audio_filter = _FROM_STEREO.format(_CHANNEL_PANS[mode])
+
+    elif mode == AudioChannelMode.HEADPHONES and track_channels > 2:
+        room_file = None if _ROOM_FILTER_BROKE.is_set() else _room_file()
+
+        if room_file is not None:
+            audio_filter = _ROOM_FILTER.format(room_file)
+
+    is_one_channel = track_channels == 1
+    is_left_to_mpv = mode == AudioChannelMode.UNSET and not is_one_channel
+
+    return {
+        "audio-swresample-o": _ONE_CHANNEL_UP if is_one_channel else "",
+        "af": audio_filter,
+        "audio-channels": "auto-safe" if is_left_to_mpv else "stereo",
+    }
+
+
+class _AudioDevices:
+    """The ways out of the machine, read by an mpv that does nothing else.
+
+    One that has read the list stays connected to the sound server for as long as it
+    lives. That's a client more for each video, and PulseAudio takes 64: at 32 cells the
+    rest fell silent, and nothing else on the machine could connect either.
+    """
+
+    def __init__(self):
+        self._lock = threading.Lock()
+        self._read_at = None
+        self._devices: tuple[AudioDevice, ...] = ()
+
+    def read(self, mpv_module) -> tuple[AudioDevice, ...]:
+        with self._lock:
+            now = time.monotonic()
+
+            if self._read_at is None or now - self._read_at > _AUDIO_DEVICES_KEPT_S:
+                self._devices = self._read_from_mpv(mpv_module)
+                self._read_at = now
+
+            return self._devices
+
+    @staticmethod
+    def _read_from_mpv(mpv_module) -> tuple[AudioDevice, ...]:
+        try:
+            reader = mpv_module.MPV(
+                vo="null", ao="null", load_scripts=False, ytdl=False
+            )
+        # what a libmpv that won't take what it's asked can raise
+        except Exception:
+            _log.exception("Could not read the audio devices")
+            return ()
+
+        try:
+            return devices_of_first_output(
+                reader.audio_device_list or [],
+                _LINUX_AUDIO_OUTPUTS if env.IS_LINUX else None,
+            )
+        finally:
+            reader.terminate()
+
+
+_AUDIO_DEVICES = _AudioDevices()
+
 
 def calc_fit_size(
     size: tuple[int, int], box: tuple[int, int] | None
@@ -80,6 +220,7 @@ class MpvPlayer(QObject):
     paused_changed = pyqtSignal(bool)
     video_size_changed = pyqtSignal(int, int, object)
     failed = pyqtSignal(str, tuple)
+    tracks_changed = pyqtSignal(Media)
 
     render_context_ready = pyqtSignal()
     terminated = pyqtSignal(object)
@@ -121,7 +262,13 @@ class MpvPlayer(QObject):
         self._last_time_sent = None
 
         self._is_media_read = False
+        self._media: Media | None = None
+        self._audio_devices: tuple[AudioDevice, ...] = ()
         self.has_restarted = False
+        self._channel_mode = media_input.video.audio_channel_mode
+        # of the track being heard, 0 for none or not saying
+        self._heard_channels = 0
+        self._audio_chain = audio_chain(AudioChannelMode.UNSET, 0)
         self._log_lines = collections.deque(maxlen=_LOG_LINES_KEPT)
 
         self.mpv = mpv_module.MPV(
@@ -139,8 +286,7 @@ class MpvPlayer(QObject):
         if env.MPV_VERSION is None:
             self.mpv.observe_property("mpv-version", self._on_version)
 
-        if self._is_start_random():
-            self._hook_add("on_preloaded")
+        self._hook_add("on_preloaded")
 
     def _options(self) -> dict:
         media_input = self.media_input
@@ -188,7 +334,7 @@ class MpvPlayer(QObject):
             # output it knows: JACK and SDL don't take being started by several
             # videos at once, which hangs or crashes. Without a sound device
             # the video just plays on.
-            options["ao"] = "pipewire,pulse,alsa"
+            options["ao"] = ",".join(_LINUX_AUDIO_OUTPUTS)
             options["audio_fallback_to_null"] = True
 
         if media_input.is_audio_only:
@@ -196,24 +342,18 @@ class MpvPlayer(QObject):
 
         video = media_input.video
 
+        # as it starts, rather than starting the sound over once it has. The channel
+        # mode goes by the track: see _pick_tracks
+        options["audio_delay"] = video.audio_delay_ms / 1000
+
         if video.transform in _TURNS:
             options["video_rotate"] = _TURNS[video.transform]
 
-        # a random start is only known with the length: see _on_preloaded
+        # a random start is only known with the length: see _pick_random_start
         if video.current_position and not media_input.is_live:
             options["start"] = str(video.current_position / 1000)
 
         return options
-
-    def _is_start_random(self) -> bool:
-        media_input = self.media_input
-        video = media_input.video
-
-        return (
-            video.is_start_random
-            and not video.current_position
-            and not media_input.is_live
-        )
 
     def _hook_add(self, name: str) -> None:
         # python-mpv doesn't have these. Hooks are the client's that added them,
@@ -264,16 +404,21 @@ class MpvPlayer(QObject):
     def start(self, box: tuple[int, int]) -> None:
         self._box = box
 
+        audio_file = self.media_input.selected_audio_slave
+
+        if audio_file is not None:
+            self.command("change-list", "audio-files", "append", audio_file)
+
         self.command("loadfile", self.media_input.uri)
 
     def close(self) -> None:
         self._is_closing = True
 
-    def command(self, *args) -> None:
+    def command(self, *args, **kwargs) -> None:
         if self._is_closing:
             return
 
-        self.mpv.command_async(*args)
+        self.mpv.command_async(*args, **kwargs)
 
     def set_option(self, name: str, value) -> None:
         self.command("set", name, value)
@@ -282,6 +427,52 @@ class MpvPlayer(QObject):
         self.is_pause_asked = is_paused
 
         self.set_option("pause", "yes" if is_paused else "no")
+
+    def select_track(self, option: str, track_id: int) -> None:
+        if option == "aid":
+            self._heard_channels = _track_channels(self._media.audio_tracks, track_id)
+
+            self._apply_audio_chain()
+
+        self.set_option(option, _track_option(track_id))
+
+    def add_audio_file(self, uri: str) -> None:
+        # selected once it's known how many channels it has: see _on_audio_file_added
+        self.command("audio-add", uri, "auto", callback=self._on_audio_file_added)
+
+    def set_audio_device(self, device: AudioDevice | None) -> None:
+        if device is None:
+            self.set_option("audio-device", _SYSTEM_DEVICE)
+            return
+
+        device_id = self._audio_device_id(device)
+
+        if device_id is not None:
+            self.set_option("audio-device", device_id)
+
+    def set_channel_mode(self, mode: AudioChannelMode) -> None:
+        self._channel_mode = mode
+
+        self._apply_audio_chain()
+
+    def _apply_audio_chain(self) -> None:
+        for option, value in self._audio_chain_changes():
+            self.set_option(option, value)
+
+    def _audio_chain_changes(self) -> list[tuple[str, str]]:
+        """Only what changed: it's asked on every load, and telling mpv starts the
+        sound over."""
+
+        chain = audio_chain(self._channel_mode, self._heard_channels)
+        changes = [
+            (option, value)
+            for option, value in chain.items()
+            if value != self._audio_chain[option]
+        ]
+
+        self._audio_chain = chain
+
+        return changes
 
     def set_skip_frames(self, is_skipping: bool) -> None:
         self.set_option("vd-lavc-skipframe", _SKIP_FRAMES[is_skipping])
@@ -305,6 +496,11 @@ class MpvPlayer(QObject):
         if level in {"fatal", "error"}:
             self._log_lines.append(line)
             self._log.warning(line)
+
+            # one that won't start leaves no sound at all
+            if _ROOM_FILTER_FAILURES.search(message):
+                _ROOM_FILTER_BROKE.set()
+                self._apply_audio_chain()
         else:
             # hwdec=auto tries everything the machine might have, out loud
             self._log.debug(line)
@@ -331,22 +527,84 @@ class MpvPlayer(QObject):
             self._on_end_file(event.data)
 
     def _on_preloaded(self, hook_id: int) -> None:
-        """A random start: the length is known now, and nothing is decoded yet.
+        """The tracks and the length are known now, and nothing has started.
 
-        At file-loaded it's too late, the video's first frame being on its way by
-        then, to be shown as loaded before the seek lands.
+        At file-loaded it's too late. The video's first frame is on its way by then,
+        to be shown as loaded before a random start lands, and being told a device
+        while the sound starts up leaves mpv never saying it's playing.
         """
 
         try:
-            duration = None if self._is_closing else self.mpv.duration
-
-            # none and it counts as live, which has no random start: see _read_media
-            if duration:
-                self.media_input.length = int(duration * 1000)
-
-                self.mpv.start = str(self.media_input.initial_time / 1000)
+            if not self._is_closing:
+                self._pick_random_start()
+                self._pick_tracks()
+                self._pick_audio_device()
+        except self._mpv_module.ShutdownError:
+            pass
         finally:
             self._hook_continue(hook_id)
+
+    def _pick_random_start(self) -> None:
+        media_input = self.media_input
+        video = media_input.video
+
+        if not video.is_start_random or video.current_position or media_input.is_live:
+            return
+
+        duration = self.mpv.duration
+
+        # none and it counts as live, which has no random start: see _read_media
+        if duration:
+            media_input.length = int(duration * 1000)
+
+            self.mpv.start = str(media_input.initial_time / 1000)
+
+    def _pick_tracks(self) -> None:
+        """Only what's asked for: left alone, mpv takes the track the file marks."""
+
+        tracks = self._read_tracks()
+        video_id = self._wanted_video_track_id(tracks)
+        audio_id = self._wanted_audio_track_id(tracks)
+
+        # with no picture either, mpv would have nothing to play and end the file
+        if audio_id == DISABLED_TRACK and (
+            video_id == DISABLED_TRACK
+            or not tracks.video_tracks
+            or self.media_input.is_audio_only
+        ):
+            audio_id = None
+
+        picks = {"vid": video_id, "aid": audio_id}
+
+        # no subtitles in it is the ordinary case, with nothing to switch off
+        if tracks.subtitle_tracks:
+            picks["sid"] = wanted_subtitle_track_id(
+                self.media_input.video,
+                tracks.subtitle_tracks,
+                tracks.external_subtitle_ids,
+            )
+
+        heard_id = tracks.default_audio_track_id if audio_id is None else audio_id
+
+        self._heard_channels = _track_channels(tracks.audio_tracks, heard_id)
+
+        options = self._audio_chain_changes() + [
+            (option, _track_option(track_id))
+            for option, track_id in picks.items()
+            if track_id is not None
+        ]
+
+        for option, value in options:
+            self.mpv.command("set", option, value)
+
+    def _pick_audio_device(self) -> None:
+        self._audio_devices = _AUDIO_DEVICES.read(self._mpv_module)
+
+        wanted = self.media_input.video.audio_device
+        device_id = None if wanted is None else self._audio_device_id(wanted)
+
+        if device_id is not None:
+            self.mpv.audio_device = device_id
 
     def _on_end_file(self, data) -> None:
         if data.reason != self._mpv_module.MpvEventEndFile.ERROR:
@@ -427,99 +685,178 @@ class MpvPlayer(QObject):
         self.media_input.length = media.length
 
         self._is_media_read = True
+        self._media = media
 
         self.media_loaded.emit(media)
 
-    def _media_from_tracks(self) -> Media:
-        tracks = self.mpv.track_list or []
-        duration = self.mpv.duration
+    def _on_audio_file_added(self, error, _result) -> None:
+        if self._is_closing or self._media is None:
+            return
 
-        video_tracks = {}
-        audio_tracks = {}
-        subtitle_tracks = {}
-        selected = {"video": None, "audio": None, "sub": None}
-        default_audio = None
+        # the video plays on as it was, and nothing else has changed
+        if error is not None:
+            self._log.warning(f"Failed to add the audio file: {error}")
+            return
+
+        try:
+            tracks = self._read_tracks()
+        except self._mpv_module.ShutdownError:
+            return
+
+        wanted = self._wanted_audio_track_id(tracks)
+
+        self._media = dataclasses.replace(
+            self._media,
+            audio_tracks=tracks.audio_tracks,
+            cur_audio_track_id=tracks.cur_audio_track_id if wanted is None else wanted,
+            external_audio_ids=tracks.external_audio_ids,
+        )
+
+        if wanted is not None:
+            self.select_track("aid", wanted)
+
+        self.tracks_changed.emit(self._media)
+
+    def _read_tracks(self) -> Media:
+        """All of what mpv lists. The length and the devices aren't read here."""
+
+        tracks = {kind: {} for kind in _TRACK_READERS}
+        selected = {}
+        external = defaultdict(list)
+        # the first of those it's told to open on and the first of the others
+        own_audio = {}
         default_subtitle = None
-        external_audio = []
-        external_subtitle = []
 
-        for track in tracks:
+        for track in self.mpv.track_list or []:
             kind = track.get("type")
             track_id = track.get("id")
 
             # the picture in a song is no video, here as in VLC
-            if track.get("albumart"):
+            if kind not in tracks or track.get("albumart"):
                 continue
+
+            tracks[kind][track_id] = _TRACK_READERS[kind](track)
 
             if track.get("selected"):
                 selected[kind] = track_id
 
-            if kind == "video":
-                video_tracks[track_id] = _video_track(track)
-
+            if track.get("external"):
+                external[kind].append(track_id)
             elif kind == "audio":
-                audio_tracks[track_id] = _audio_track(track)
+                own_audio.setdefault(bool(track.get("default")), track_id)
 
-                if track.get("external"):
-                    external_audio.append(track_id)
-                if track.get("default") and default_audio is None:
-                    default_audio = track_id
-
-            elif kind == "sub":
-                subtitle_tracks[track_id] = _subtitle_track(track)
-
-                if track.get("external"):
-                    external_subtitle.append(track_id)
-                if (track.get("default") or track.get("forced")) and (
-                    default_subtitle is None
-                ):
+            if kind == "sub" and default_subtitle is None:
+                if track.get("default") or track.get("forced"):
                     default_subtitle = track_id
 
-        video = self.media_input.video
-
-        # told to leave the picture out, here as in VLC, and none will come
-        if self.media_input.is_audio_only:
-            video_tracks = {}
-
-        audio_id = wanted_audio_track_id(video, audio_tracks)
-        subtitle_id = wanted_subtitle_track_id(
-            video, subtitle_tracks, tuple(external_subtitle)
-        )
-
-        if audio_id is None:
-            audio_id = selected["audio"]
-
-        if subtitle_id is None:
-            subtitle_id = selected["sub"]
-
-        self._select_track("aid", audio_id, selected["audio"])
-        self._select_track("sid", subtitle_id, selected["sub"])
-
-        length = (
-            int(duration * 1000) if duration and not self.media_input.is_live else -1
-        )
+        def current(kind):
+            return _cur_track_id(selected.get(kind), tracks[kind])
 
         return Media(
-            length=length,
-            video_tracks=video_tracks,
-            audio_tracks=audio_tracks,
-            cur_video_track_id=selected["video"],
-            cur_audio_track_id=audio_id,
-            external_audio_ids=tuple(external_audio),
-            default_audio_track_id=default_audio or selected["audio"],
-            subtitle_tracks=subtitle_tracks,
-            cur_subtitle_track_id=subtitle_id,
-            external_subtitle_ids=tuple(external_subtitle),
+            length=-1,
+            video_tracks=tracks["video"],
+            audio_tracks=tracks["audio"],
+            cur_video_track_id=current("video"),
+            cur_audio_track_id=current("audio"),
+            external_audio_ids=tuple(external["audio"]),
+            default_audio_track_id=own_audio.get(True, own_audio.get(False)),
+            subtitle_tracks=tracks["sub"],
+            cur_subtitle_track_id=current("sub"),
+            external_subtitle_ids=tuple(external["sub"]),
             default_subtitle_track_id=default_subtitle,
         )
 
-    def _select_track(self, option: str, wanted, current) -> None:
-        if wanted == current:
-            return
+    def _media_from_tracks(self) -> Media:
+        media = self._read_tracks()
+        duration = self.mpv.duration
 
-        value = "no" if wanted in {None, DISABLED_TRACK} else str(wanted)
+        if duration and not self.media_input.is_live:
+            media.length = int(duration * 1000)
 
-        self.command("set", option, value)
+        media.audio_devices = self._audio_devices
+
+        # told to leave the picture out, here as in VLC, and none will come
+        if self.media_input.is_audio_only:
+            media.video_tracks = {}
+            media.cur_video_track_id = None
+
+        return media
+
+    def _wanted_video_track_id(self, tracks: Media) -> int | None:
+        # it's off from the start, see _options
+        if self.media_input.is_audio_only:
+            return None
+
+        wanted = self.media_input.video.video_track_id
+
+        if wanted == DISABLED_TRACK:
+            # with no sound either, nothing would be left to play
+            return DISABLED_TRACK if tracks.audio_tracks else None
+
+        # an id from another driver, or a file changed since
+        return wanted if wanted in tracks.video_tracks else None
+
+    def _wanted_audio_track_id(self, tracks: Media) -> int | None:
+        return wanted_audio_track_id(
+            self.media_input.video, tracks.audio_tracks, tracks.external_audio_ids
+        )
+
+    def _audio_device_id(self, device: AudioDevice) -> str | None:
+        device_id = resolve_device_id(device, self._audio_devices)
+
+        if device_id is None:
+            self._log.warning(
+                f"Audio device {device.name or device.id} is not here,"
+                " leaving the sound where the machine puts it"
+            )
+
+        return device_id
+
+
+def devices_of_first_output(listed, outputs=None) -> tuple[AudioDevice, ...]:
+    """The ways out of the machine of the first output that has any, in the order
+    these are tried. mpv lists every output it has, and which it will use is only
+    known once the sound has started: too late to have the list with the media.
+
+    An entry that names no device is left out, standing for whichever way out the
+    machine is using, as with VLC.
+    """
+
+    by_output = {}
+
+    for device in listed:
+        output, _, name = device["name"].partition("/")
+
+        if name:
+            by_output.setdefault(output, []).append(
+                AudioDevice(id=device["name"], name=device.get("description") or "")
+            )
+
+    if outputs is None:
+        outputs = by_output
+
+    return next(
+        (tuple(by_output[output]) for output in outputs if output in by_output), ()
+    )
+
+
+def _track_option(track_id: int) -> str:
+    return "no" if track_id == DISABLED_TRACK else str(track_id)
+
+
+def _track_channels(tracks: dict, track_id: int | None) -> int:
+    track = tracks.get(track_id)
+
+    return track.channels if track is not None else 0
+
+
+def _cur_track_id(selected: int | None, tracks: dict) -> int | None:
+    """None where there's nothing of the kind, as opposed to it being switched off."""
+
+    if selected is None and tracks:
+        return DISABLED_TRACK
+
+    return selected
 
 
 def _params_sar(params: dict) -> tuple[int, int] | None:
@@ -578,3 +915,10 @@ def _subtitle_track(track: dict) -> SubtitleTrack:
         description=track.get("title"),
         codec=track.get("codec") or "",
     )
+
+
+_TRACK_READERS = {
+    "video": _video_track,
+    "audio": _audio_track,
+    "sub": _subtitle_track,
+}

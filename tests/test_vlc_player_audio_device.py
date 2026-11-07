@@ -53,12 +53,16 @@ class _FakeMediaPlayer:
     def __init__(self, entries=OFFERED):
         self._entries = entries
         self.devices_set = []
+        self.device_in_use = None
 
     def audio_output_device_enum(self):
         return _device_list(self._entries)
 
     def audio_output_device_set(self, module, device_id):
         self.devices_set.append((module, device_id))
+
+    def audio_output_device_get(self):
+        return self.device_in_use
 
 
 @pytest.fixture(autouse=True)
@@ -82,8 +86,11 @@ class _Player:
     _audio_devices = VlcPlayerBase._audio_devices
     _apply_wanted_audio_device = VlcPlayerBase._apply_wanted_audio_device
     set_audio_device = VlcPlayerBase.set_audio_device
+    _check_audio_device = VlcPlayerBase._check_audio_device
 
     def __init__(self, chosen=None, entries=OFFERED):
+        self._audio_device_checks_left = 0
+        self._asked_audio_device = None
         self._media_player = _FakeMediaPlayer(entries)
         self.media_input = SimpleNamespace(video=Video(uri=URI, audio_device=chosen))
         self._log = Mock()
@@ -226,3 +233,86 @@ class TestPuttingItBack:
 
         assert player.media_input.video.audio_device == picked
         assert player._media_player.devices_set == [(None, SPDIF_ID.decode())]
+
+
+class TestADeviceThatDidNotTake:
+    """Asked too soon, VLC says it has it, then opens on the default one anyway."""
+
+    @pytest.fixture(autouse=True)
+    def _output_that_drops_them(self, monkeypatch):
+        monkeypatch.setattr(player_base, "VLC_OUTPUT_DROPS_DEVICES", True)
+
+    def _asked(self):
+        player = _player(AudioDevice(id=SPDIF_ID.decode(), name=SPDIF.decode()))
+        _apply(player)
+        player._media_player.devices_set.clear()
+
+        return player
+
+    def test_it_is_asked_for_again(self):
+        player = self._asked()
+
+        player._check_audio_device()
+
+        assert player._media_player.devices_set == [(None, SPDIF_ID.decode())]
+
+    def test_holding_it_nothing_is_asked(self):
+        player = self._asked()
+        player._media_player.device_in_use = SPDIF_ID.decode()
+
+        player._check_audio_device()
+        player._check_audio_device()
+
+        assert player._media_player.devices_set == []
+
+    def test_saying_it_has_it_does_not_end_the_watch(self):
+        player = self._asked()
+        player._media_player.device_in_use = SPDIF_ID.decode()
+
+        player._check_audio_device()
+
+        player._media_player.device_in_use = HEADPHONES_ID.decode()
+
+        player._check_audio_device()
+
+        assert player._media_player.devices_set == [(None, SPDIF_ID.decode())]
+
+    def test_not_for_ever(self):
+        player = self._asked()
+
+        for _ in range(player_base.AUDIO_DEVICE_CHECKS + 5):
+            player._check_audio_device()
+
+        assert len(player._media_player.devices_set) == player_base.AUDIO_DEVICE_CHECKS
+
+    def test_nothing_picked_nothing_to_check(self):
+        player = _player()
+        _apply(player)
+
+        player._check_audio_device()
+
+        assert player._media_player.devices_set == []
+
+    def test_going_back_to_the_machines_own_stops_it(self):
+        player = self._asked()
+
+        player.set_audio_device(None)
+        player._media_player.devices_set.clear()
+        player._check_audio_device()
+
+        assert player._media_player.devices_set == []
+
+    def test_an_output_that_keeps_them_is_left_alone(self, monkeypatch):
+        monkeypatch.setattr(player_base, "VLC_OUTPUT_DROPS_DEVICES", False)
+
+        player = self._asked()
+
+        player._check_audio_device()
+
+        assert player._media_player.devices_set == []
+
+    def test_a_player_gone_is_not_asked(self):
+        player = self._asked()
+        player._media_player = None
+
+        player._check_audio_device()

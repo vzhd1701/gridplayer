@@ -21,7 +21,7 @@ from gridplayer.utils.aspect_calc import (
     calc_render_size,
 )
 from gridplayer.utils.qt import translate
-from gridplayer.vlc_player.static import Media, MediaInput
+from gridplayer.vlc_player.static import DISABLED_TRACK, NO_TRACK, Media, MediaInput
 from gridplayer.vlc_player.video_driver_base import VLCVideoDriver
 from gridplayer.widgets.video_frame_vlc_base import VideoFrameVLC, native_px
 from gridplayer.widgets.video_surface_sw import PaintedVideoFrame, SoftwareVideoSurface
@@ -211,6 +211,7 @@ class VideoDriverMpv(VLCVideoDriver):
             (self._player.paused_changed, self.playback_status_changed_emit),
             (self._player.video_size_changed, self._on_video_size),
             (self._player.failed, self.error_state),
+            (self._player.tracks_changed, self._on_tracks_changed),
             (self._player.render_context_ready, self._start_player),
         ):
             signal.connect(slot, Qt.QueuedConnection)
@@ -242,6 +243,11 @@ class VideoDriverMpv(VLCVideoDriver):
     def _on_media_loaded(self, media: Media) -> None:
         self._media = media
         self._report_load()
+
+    def _on_tracks_changed(self, media: Media) -> None:
+        self._media = media
+
+        self.tracks_changed_emit(media)
 
     def _on_playback_restarted(self) -> None:
         self._has_restarted = True
@@ -385,31 +391,69 @@ class VideoDriverMpv(VLCVideoDriver):
     def audio_set_volume(self, volume):
         self._set_option("volume", str(int(volume * 100)))
 
+    def set_audio_track(self, track_id):
+        if self._media is None:
+            return
+
+        media = self._media
+
+        self._select_track("aid", track_id, media.audio_tracks, media.is_audio_only)
+
+    def set_video_track(self, track_id):
+        if self._media is None:
+            return
+
+        media = self._media
+        is_sound_off = media.cur_audio_track_id in NO_TRACK
+
+        self._select_track("vid", track_id, media.video_tracks, is_sound_off)
+
+    def _select_track(self, option, track_id, tracks, is_other_off) -> None:
+        if self._player is None:
+            return
+
+        # mpv would have nothing to play, and end the file
+        if track_id == DISABLED_TRACK and is_other_off:
+            self._log.warning("Cannot disable both audio & video tracks")
+            return
+
+        # None is nothing read back yet, and an id can be from before a reload
+        if track_id != DISABLED_TRACK and track_id not in tracks:
+            return
+
+        self._player.select_track(option, track_id)
+
+    def set_audio_device(self, device):
+        if self._player is not None:
+            self._player.set_audio_device(device)
+
+    def add_audio_slave(self, uri):
+        if self._player is not None:
+            self._player.add_audio_file(uri)
+
+    def set_audio_channel_mode(self, mode):
+        if self._player is not None:
+            self._player.set_channel_mode(mode)
+
+    def set_audio_delay(self, delay_ms):
+        self._set_option("audio-delay", str(delay_ms / 1000))
+
     # The rest of the controls come in later stages: see docs/MPV_PLAN.md
-
-    def set_audio_track(self, track_id): ...
-
-    def set_audio_device(self, device): ...
-
-    def add_audio_slave(self, uri): ...
-
-    def set_video_track(self, track_id): ...
 
     def set_subtitle_track(self, track_id): ...
 
     def add_subtitle_slave(self, uri): ...
 
-    def set_audio_channel_mode(self, mode): ...
-
     def set_deinterlace(self, deinterlace, mode): ...
-
-    def set_audio_delay(self, delay_ms): ...
 
     def set_subtitle_delay(self, delay_ms): ...
 
 
 class VideoFrameMpv(PaintedVideoFrame, VideoFrameVLC):
     surface_class = MpvVideoSurface
+
+    is_picky_about_audio_files = False
+    must_reload_for_system_device = False
 
     def __init__(self, render_service: MpvRenderService, hwdec: str, **kwargs):
         self._render_service = render_service

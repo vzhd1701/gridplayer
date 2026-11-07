@@ -138,7 +138,12 @@ class AudioControl(VideoBlockPart):
         if language is not None:
             return AudioLanguage(tag=language)
 
-        return AudioTrackId(id=track_id)
+        tracks = list(self.tracks)
+
+        return AudioTrackId(
+            id=track_id,
+            position=tracks.index(track_id) if track_id in tracks else None,
+        )
 
     def set_device(self, device) -> None:
         """Send this video's sound another way out of the machine.
@@ -151,12 +156,21 @@ class AudioControl(VideoBlockPart):
 
         self._block._log.debug(f"Set audio device {device}")
 
+        was_picked = self._block.video_params.audio_device is not None
+
         self._block.video_params.audio_device = device
 
         # a video part way through a load is told when it gets there, by
         # whatever opens it; see PlayerBase._apply_wanted_audio_device
-        if self._block.is_video_initialized:
-            self._block.video_driver.set_audio_device(device)
+        if not self._block.is_video_initialized:
+            return
+
+        driver = self._block.video_driver
+
+        driver.set_audio_device(device)
+
+        if device is None and was_picked and driver.must_reload_for_system_device:
+            self._block.reload()
 
     def restore_selection(self, selection) -> None:
         """Put a remembered choice of sound back in force, as a snapshot does."""
@@ -548,6 +562,9 @@ class AudioControl(VideoBlockPart):
         The files are taken anyway: this is what one build of VLC does with
         them, and being told beats a track that sits there silently.
         """
+
+        if not self._block.driver_class.is_picky_about_audio_files:
+            return
 
         unplayable = unplayable_as_audio_slave(file_paths)
         silenced = silenced_by_seeking(file_paths)

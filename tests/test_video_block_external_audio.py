@@ -57,6 +57,8 @@ def _file(tmp_path, name):
 
 
 class _Driver:
+    is_picky_about_audio_files = True
+
     def __init__(self):
         self.slaves = []
         self.tracks_set = []
@@ -98,6 +100,7 @@ class _Block(QObject):
         self.streams = Streams()
 
         self.video_driver = _Driver()
+        self.driver_class = _Driver
         self.video_driver.audio_tracks = (
             {0: _track("eng")} if tracks is None else tracks
         )
@@ -490,6 +493,14 @@ class TestAFileLibvlcWillNotKeepUpWith:
         block.audio.add_external([_file(tmp_path, "Movie.ogg")])
 
         assert "seeked" in block.warnings[0]
+
+    def test_a_driver_that_plays_them_says_nothing(self, tmp_path):
+        block = _block(tmp_path)
+        block.driver_class = SimpleNamespace(is_picky_about_audio_files=False)
+
+        block.audio.add_external([_file(tmp_path, "Movie.opus")])
+
+        assert block.warnings == []
 
     def test_it_is_taken_all_the_same(self, tmp_path):
         """One build of VLC is not every build, and it is their file."""

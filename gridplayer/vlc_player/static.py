@@ -7,8 +7,10 @@ from gridplayer.models.audio_device import AudioDevice
 from gridplayer.models.audio_selection import (
     AudioDefault,
     AudioDisabled,
+    AudioExternal,
     AudioLanguage,
     AudioTrackId,
+    track_of_file,
 )
 from gridplayer.models.chapter import Chapter
 from gridplayer.models.subtitle_selection import (
@@ -18,6 +20,7 @@ from gridplayer.models.subtitle_selection import (
     SubtitleTrackId,
 )
 from gridplayer.models.video import Video
+from gridplayer.params import env
 from gridplayer.params.static import (
     NO_FILL_LIMIT,
     ROTATION_TRANSFORMS,
@@ -25,6 +28,10 @@ from gridplayer.params.static import (
     ViewParams,
 )
 from gridplayer.utils.track_language import pick_track
+
+# Asked for a device before PulseAudio's output is up, VLC says it has it, and the output
+# then opens on the default one and says that instead. Not seen on Windows.
+VLC_OUTPUT_DROPS_DEVICES = env.IS_LINUX
 
 DISABLED_TRACK = -1
 NO_TRACK = frozenset((None, DISABLED_TRACK))
@@ -114,13 +121,13 @@ def seek_landing(
     return SeekLanding.ASTRAY
 
 
-def wanted_audio_track_id(video, tracks: dict):
+def wanted_audio_track_id(video, tracks: dict, external_ids=()):
     """Which of these tracks a video's settings call for, None for any.
 
     Both the load and a switch made while playing have to answer this the
     same way, or the track would change under the viewer the next time
-    anything reloaded. A pick of a file of the video's own is not answered
-    here: only whoever knows which track each file brought can answer it.
+    anything reloaded. A pick of a file of the video's own goes by which tracks
+    the file brought, for whoever knows to say.
 
     A pick that these tracks cannot honour -- a language this source does
     not carry, an id it no longer has -- falls back to the preference,
@@ -128,6 +135,12 @@ def wanted_audio_track_id(video, tracks: dict):
     """
 
     selection = video.audio_selection
+
+    if isinstance(selection, AudioExternal):
+        picked = track_of_file(selection, external_ids)
+
+        if picked is not None:
+            return picked
 
     if isinstance(selection, AudioDisabled):
         return DISABLED_TRACK
@@ -143,8 +156,11 @@ def wanted_audio_track_id(video, tracks: dict):
         if picked is not None:
             return picked
 
-    if isinstance(selection, AudioTrackId) and selection.id in tracks:
-        return selection.id
+    if isinstance(selection, AudioTrackId):
+        picked = selection.track_in(tracks)
+
+        if picked is not None:
+            return picked
 
     return pick_track(video.audio_languages, tracks)
 

@@ -57,8 +57,8 @@ class VlcPlayerThreaded(CommandLoopThreaded, VlcPlayerBase):
     def _schedule_chapters_refresh(self):
         self.cmd_send_self("_refresh_chapters")
 
-    def _schedule_playback_check(self):
-        self.cmd_send_self("_check_playback_started")
+    def _schedule_time_checks(self):
+        self.cmd_send_self("_run_time_checks")
 
     def loopback_load_video_st2_set_media(self):
         self.cmd_send_self("load_video_st2_set_media")

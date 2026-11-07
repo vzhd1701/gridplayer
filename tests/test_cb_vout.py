@@ -289,7 +289,7 @@ def _tick(player):
     """Its time coming in, the view to be sent again by hand."""
 
     player._schedule_view_reapply = Mock()
-    player._schedule_playback_check = Mock()
+    player._schedule_time_checks = Mock()
     player.cb_time_changed(SimpleNamespace(u=SimpleNamespace(new_time=0)))
 
 
@@ -323,7 +323,7 @@ def test_a_player_the_widget_draws_for_keeps_asking_too():
     player, _ = _stream_player(tracks)
     player._apply_view = lambda size, view: None
     player._schedule_view_reapply = Mock()
-    player._schedule_playback_check = Mock()
+    player._schedule_time_checks = Mock()
 
     player.adjust_view(size=(960, 360), view=_none_view())
     player.cb_time_changed(SimpleNamespace(u=SimpleNamespace(new_time=0)))

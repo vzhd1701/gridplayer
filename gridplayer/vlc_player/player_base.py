@@ -14,7 +14,6 @@ from gridplayer.models.audio_device import (
     AudioDevice,
     resolve_device_id,
 )
-from gridplayer.models.audio_selection import AudioExternal, track_of_file
 from gridplayer.models.chapter import Chapter
 from gridplayer.models.subtitle_selection import SubtitleExternal
 from gridplayer.models.subtitle_selection import track_of_file as subtitle_track_of_file
@@ -45,6 +44,7 @@ from gridplayer.vlc_player.player_event_waiter import (
 )
 from gridplayer.vlc_player.player_tracks_manager import TracksManager, track_sar
 from gridplayer.vlc_player.static import (
+    VLC_OUTPUT_DROPS_DEVICES,
     Media,
     MediaInput,
     NotPausedError,
@@ -95,6 +95,10 @@ SLAVE_TRACK_RETRIES = 6
 
 # how many of the events around a restart to try putting the tracks back on
 RESTART_REAPPLY_TRIES = 12
+
+# How many times, as the time comes in, to see that a device took, about 3 s of them:
+# see VLC_OUTPUT_DROPS_DEVICES. VLC first says it has it, so all of them are looked at.
+AUDIO_DEVICE_CHECKS = 12
 
 # VLC loops the input in place: it seeks back inside the same input thread, so
 # there is no end of media, no demuxer or decoder teardown and no new video
@@ -218,6 +222,10 @@ class VlcPlayerBase(ABC):
 
         # zero-buffering passes since the time last moved, see DEAD_INPUT_PASSES
         self._dead_input_passes = 0
+
+        # the device asked for, until it took; see _check_audio_device
+        self._asked_audio_device: str | None = None
+        self._audio_device_checks_left = 0
 
         self.media_input: MediaInput | None = None
         self.media: Media | None = None
@@ -485,8 +493,8 @@ class VlcPlayerBase(ABC):
             self._schedule_view_reapply()
 
         # counted along with the time, so looked at as it comes
-        if self._is_playback_pending:
-            self._schedule_playback_check()
+        if self._is_playback_pending or self._audio_device_checks_left > 0:
+            self._schedule_time_checks()
 
         new_time = int(event.u.new_time)
 
@@ -948,16 +956,10 @@ class VlcPlayerBase(ABC):
     def _wanted_audio_track_id(self) -> int | None:
         """Which track this video's settings call for, its own file included."""
 
-        selection = self.media_input.video.audio_selection
-
-        if isinstance(selection, AudioExternal):
-            picked = track_of_file(selection, self._external_audio_ids())
-
-            if picked is not None:
-                return picked
-
         return wanted_audio_track_id(
-            self.media_input.video, self._tracks_manager.audio_tracks
+            self.media_input.video,
+            self._tracks_manager.audio_tracks,
+            self._external_audio_ids(),
         )
 
     def _external_audio_ids(self) -> tuple[int, ...]:
@@ -1075,6 +1077,25 @@ class VlcPlayerBase(ABC):
         self._log.debug(f"Set audio device {device_id}")
 
         self._media_player.audio_output_device_set(None, device_id)
+
+        if VLC_OUTPUT_DROPS_DEVICES:
+            self._asked_audio_device = device_id
+            self._audio_device_checks_left = AUDIO_DEVICE_CHECKS
+
+    def _check_audio_device(self) -> None:
+        """Ask again for a device that didn't take; see AUDIO_DEVICE_CHECKS."""
+
+        if self._audio_device_checks_left <= 0 or self._media_player is None:
+            return
+
+        self._audio_device_checks_left -= 1
+
+        if self._media_player.audio_output_device_get() == self._asked_audio_device:
+            return
+
+        self._log.debug(f"Set audio device again {self._asked_audio_device}")
+
+        self._media_player.audio_output_device_set(None, self._asked_audio_device)
 
     def _apply_wanted_subtitle_track(self) -> None:
         """Show whichever subtitle this video's settings call for.
@@ -1321,6 +1342,8 @@ class VlcPlayerBase(ABC):
 
         if device is None:
             self._log.debug("Set audio device to the machine's own")
+
+            self._audio_device_checks_left = 0
 
             # an id of nothing at all, which is not the same as asking for
             # nothing: asking for nothing leaves the player where it is
@@ -1584,9 +1607,13 @@ class VlcPlayerBase(ABC):
         # Deferred for the same reason as the view; see cb_title_changed.
         self._refresh_chapters()
 
-    def _schedule_playback_check(self):
+    def _schedule_time_checks(self):
         # Deferred for the same reason as the view; see cb_time_changed.
+        self._run_time_checks()
+
+    def _run_time_checks(self):
         self._check_playback_started()
+        self._check_audio_device()
 
     @property
     def _is_playback_pending(self) -> bool:

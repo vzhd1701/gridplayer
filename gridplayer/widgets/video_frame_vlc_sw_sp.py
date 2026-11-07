@@ -43,7 +43,7 @@ class PlayerProcessSingleVLCSWSP(QThread, VlcPlayerBase, metaclass=QABC):
 
     _vout_reapply = pyqtSignal()
     _chapters_refresh = pyqtSignal()
-    _playback_check = pyqtSignal()
+    _time_checks = pyqtSignal()
 
     def __init__(self, vlc_options, shared_memory, **kwargs):
         super().__init__(vlc_instance=None, **kwargs)
@@ -84,8 +84,8 @@ class PlayerProcessSingleVLCSWSP(QThread, VlcPlayerBase, metaclass=QABC):
                 self._on_chapters_refresh,
             ),
             (
-                self._playback_check,
-                self._on_playback_check,
+                self._time_checks,
+                self._on_time_checks,
             ),
         )
 
@@ -98,8 +98,8 @@ class PlayerProcessSingleVLCSWSP(QThread, VlcPlayerBase, metaclass=QABC):
         self._refresh_chapters()
 
     @pyqtSlot()
-    def _on_playback_check(self):
-        self._check_playback_started()
+    def _on_time_checks(self):
+        self._run_time_checks()
 
     def _schedule_view_reapply(self):
         # Emitted from libvlc's event thread; this player object's affinity is the
@@ -111,9 +111,9 @@ class PlayerProcessSingleVLCSWSP(QThread, VlcPlayerBase, metaclass=QABC):
         # the same way off the libvlc callback thread as the view above
         self._chapters_refresh.emit()
 
-    def _schedule_playback_check(self):
+    def _schedule_time_checks(self):
         # and the same again
-        self._playback_check.emit()
+        self._time_checks.emit()
 
     def run(self):
         options = [*self.vlc_options, "--vout=vdummy"]

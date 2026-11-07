@@ -284,11 +284,16 @@ class VideoBlock(QWidget):
         self.video_status.show()
         self.overlay.hide()
 
-    def _driver_has_native_surface(self) -> bool:
+    @property
+    def driver_class(self):
+        """What it plays with, there being a driver at the moment or not."""
+
         cls = self.video_driver_cls
-        if isinstance(cls, partial):
-            cls = cls.func
-        return bool(getattr(cls, "is_native_surface", False))
+
+        return cls.func if isinstance(cls, partial) else cls
+
+    def _driver_has_native_surface(self) -> bool:
+        return bool(getattr(self.driver_class, "is_native_surface", False))
 
     def init_video_driver(self) -> VideoFrameVLC:
         vlc_options = get_vlc_options(self.video_params)
