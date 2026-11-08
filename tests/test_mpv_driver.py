@@ -1,6 +1,7 @@
 """The sums and the bookkeeping of the mpv driver, with no libmpv. How it plays
 is in tests/real_app/scenarios/mpv_basics.py."""
 
+import ctypes
 import logging
 import threading
 import time
@@ -40,6 +41,7 @@ from gridplayer.mpv_player.player import (
 from gridplayer.mpv_player.renderer import (
     FrameSlot,
     MpvRenderService,
+    RenderCalls,
     RenderedVideo,
     VideoRenderer,
 )
@@ -1543,6 +1545,7 @@ def _rendered_video(size=(4, 2)):
     video.player.has_restarted = True
     video.render_context = MagicMock()
     video.render_context.update.return_value = False
+    video.render_calls = MagicMock()
     return video
 
 
@@ -1566,12 +1569,12 @@ def test_nothing_is_rendered_before_the_first_frame(renderer):
 
     _round(renderer, video, is_frame=False)
 
-    video.render_context.render.assert_not_called()
+    video.render_calls.draw.assert_not_called()
     assert not video.has_fresh_frame
 
     _round(renderer, video, is_frame=True)
 
-    video.render_context.render.assert_called_once()
+    video.render_calls.draw.assert_called_once()
     assert video.has_fresh_frame
 
 
@@ -1580,12 +1583,12 @@ def test_a_frame_before_the_size_is_rendered_once_the_size_comes(renderer):
     renderer._videos.append(video)
 
     _round(renderer, video, is_frame=True)
-    video.render_context.render.assert_not_called()
+    video.render_calls.draw.assert_not_called()
 
     video.player.render_size.return_value = (4, 2)
     renderer._render_round()
 
-    video.render_context.render.assert_called_once()
+    video.render_calls.draw.assert_called_once()
 
 
 def test_a_new_size_is_rendered_with_no_new_frame(renderer):
@@ -1596,7 +1599,7 @@ def test_a_new_size_is_rendered_with_no_new_frame(renderer):
     video.player.render_size.return_value = (8, 4)
     renderer._render_round()
 
-    assert video.render_context.render.call_count == 2
+    assert video.render_calls.draw.call_count == 2
     assert video.rendered_size == (8, 4)
 
 
@@ -1606,12 +1609,12 @@ def test_a_frame_mpv_let_go_of_before_it_was_rendered_is_rendered(renderer):
 
     _round(renderer, video, is_frame=False, said_ago=0.25)
 
-    assert video.render_context.render.call_count == 1
+    assert video.render_calls.draw.call_count == 1
 
     # and just the once
     renderer._render_round()
 
-    assert video.render_context.render.call_count == 1
+    assert video.render_calls.draw.call_count == 1
 
 
 def test_an_update_just_now_with_no_frame_has_lost_nothing(renderer):
@@ -1620,7 +1623,7 @@ def test_an_update_just_now_with_no_frame_has_lost_nothing(renderer):
 
     _round(renderer, video, is_frame=False)
 
-    assert video.render_context.render.call_count == 0
+    assert video.render_calls.draw.call_count == 0
 
 
 def test_nothing_is_lost_until_the_video_has_started(renderer):
@@ -1631,12 +1634,12 @@ def test_nothing_is_lost_until_the_video_has_started(renderer):
     # drawn now it would be black, and taken for the first picture
     _round(renderer, video, is_frame=False, said_ago=0.25)
 
-    assert video.render_context.render.call_count == 0
+    assert video.render_calls.draw.call_count == 0
 
     video.player.has_restarted = True
     renderer._render_round()
 
-    assert video.render_context.render.call_count == 1
+    assert video.render_calls.draw.call_count == 1
 
 
 def test_a_frame_that_came_after_all_is_rendered_once(renderer):
@@ -1648,25 +1651,19 @@ def test_a_frame_that_came_after_all_is_rendered_once(renderer):
     video.player.has_restarted = True
     _round(renderer, video, is_frame=True)
 
-    assert video.render_context.render.call_count == 1
+    assert video.render_calls.draw.call_count == 1
 
     renderer._render_round()
 
-    assert video.render_context.render.call_count == 1
+    assert video.render_calls.draw.call_count == 1
 
 
 def _drawn(video) -> int:
-    return sum(
-        not call.kwargs.get("skip_rendering")
-        for call in video.render_context.render.call_args_list
-    )
+    return video.render_calls.draw.call_count
 
 
 def _taken_not_drawn(video) -> int:
-    return sum(
-        bool(call.kwargs.get("skip_rendering"))
-        for call in video.render_context.render.call_args_list
-    )
+    return video.render_calls.skip.call_count
 
 
 def _hidden_after_its_first_frame(renderer):
@@ -1703,7 +1700,8 @@ def test_hidden_with_no_new_frame_nothing_is_asked_of_mpv(renderer):
     video.player.render_size.return_value = (8, 4)
     renderer._render_round()
 
-    assert video.render_context.render.call_count == 1
+    assert _drawn(video) == 1
+    assert _taken_not_drawn(video) == 0
 
 
 def test_hidden_before_its_first_frame_it_is_drawn(renderer):
@@ -1823,7 +1821,82 @@ def test_one_video_failing_to_render_leaves_the_others(renderer):
     failed.assert_called_once_with(bad, "bad render state")
     assert renderer._videos == [good]
     context.free.assert_called_once()
-    good.render_context.render.assert_called_once()
+    good.render_calls.draw.assert_called_once()
+
+
+# python-mpv's types as libmpv sees them, as it can't be loaded here
+class _Param(ctypes.Structure):
+    _fields_ = [("type_id", ctypes.c_int), ("data", ctypes.c_void_p)]
+
+    TYPES = {"opengl_fbo": (3, None), "flip_y": (4, bool)}
+    TYPES.update(block_for_target_time=(12, bool), skip_rendering=(13, bool))
+
+
+class _FBO(ctypes.Structure):
+    _fields_ = [(name, ctypes.c_int) for name in ("fbo", "w", "h", "internal_format")]
+
+    def __init__(self, w, h, fbo=0, internal_format=0):
+        super().__init__(fbo, w, h, internal_format)
+
+
+def _what_libmpv_is_told(params) -> dict:
+    told = {}
+
+    for param in params:
+        if param.type_id == 0:
+            return told
+
+        if param.type_id == 3:
+            fbo = _FBO.from_address(param.data)
+            told[3] = {"fbo": fbo.fbo, "w": fbo.w, "h": fbo.h}
+        else:
+            told[param.type_id] = ctypes.c_int.from_address(param.data).value
+
+    raise AssertionError("no end to the parameters")
+
+
+@pytest.fixture
+def render_calls():
+    told = []
+    module = SimpleNamespace(
+        MpvRenderParam=_Param,
+        MpvOpenGLFBO=_FBO,
+        _mpv_render_context_render=lambda handle, params: told.append(
+            (handle, _what_libmpv_is_told(params))
+        ),
+    )
+
+    return RenderCalls(module, MagicMock(handle="handle"), fbo=7), told
+
+
+def test_a_frame_is_drawn_as_python_mpv_would_ask(render_calls):
+    calls, told = render_calls
+
+    calls.draw(640, 360)
+    calls.draw(320, 180)
+
+    assert told == [
+        ("handle", {3: {"fbo": 7, "w": 640, "h": 360}, 4: 0, 12: 0}),
+        ("handle", {3: {"fbo": 7, "w": 320, "h": 180}, 4: 0, 12: 0}),
+    ]
+
+
+def test_a_frame_is_taken_not_drawn_as_python_mpv_would_ask(render_calls):
+    calls, told = render_calls
+
+    calls.skip()
+
+    assert told == [("handle", {13: 1, 12: 0})]
+
+
+def test_a_video_s_render_calls_go_with_its_render_context(renderer):
+    video = _rendered_video()
+    renderer._videos.append(video)
+    renderer._fbo = 1
+
+    renderer._free_video(video)
+
+    assert video.render_calls is None
 
 
 @pytest.mark.parametrize(

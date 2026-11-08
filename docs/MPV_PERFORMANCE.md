@@ -426,7 +426,8 @@ In order of what it gets for the work:
    the picture covers the cell: at 1x1080p, app CPU 61% to 47% and GUI timer p95 3.8 to 2.1 ms. No change at 9 cells. It also applies
    to VLC's software drivers. One run each. Done, filling only beside the picture: see plan item 10.14.
 4. **`time-pos` less often, cached render parameters.** Small and simple, with about 5% less CPU. Stage 4.2 already has the first. `sem_post` saves
-   more, but it changes how the render thread wakes, for CPU alone.
+   more, but it changes how the render thread wakes, for CPU alone. Cached render parameters done, about 1% of it: see
+   plan item 10.15.
 5. **Software VLC's `FrameReader.read`,** 32% of the GIL at 4x1080p60. It copies each frame with the GIL held, on the GUI thread. A copy through
    `ctypes.memmove` lets go of it. Not tried, and not MPV's: it would be a change to VLC's drivers.
 

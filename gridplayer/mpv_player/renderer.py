@@ -119,6 +119,64 @@ class _GLFunctions:
             setattr(self, name, _GL_PROTO(*signature)(address))
 
 
+class RenderCalls:
+    """A video's render() calls, their parameters made once.
+
+    python-mpv makes them anew on every call, some microseconds of Python with
+    the GIL held, for every frame of every video. Here only the size changes,
+    in place.
+    """
+
+    def __init__(self, mpv_module, render_context, fbo: int):
+        self._render = mpv_module._mpv_render_context_render
+        self._handle = render_context.handle
+
+        param_type = mpv_module.MpvRenderParam
+
+        # what the parameters point at, kept for as long as they are used
+        self._fbo = mpv_module.MpvOpenGLFBO(0, 0, fbo)
+        self._off = ctypes.c_int(0)
+        self._on = ctypes.c_int(1)
+
+        # block_for_target_time off: see VideoRenderer._render
+        self._draw = _param_array(
+            param_type,
+            (
+                ("opengl_fbo", self._fbo),
+                ("flip_y", self._off),
+                ("block_for_target_time", self._off),
+            ),
+        )
+        self._skip = _param_array(
+            param_type,
+            (("skip_rendering", self._on), ("block_for_target_time", self._off)),
+        )
+
+    def draw(self, width: int, height: int) -> None:
+        """The next frame drawn into the framebuffer, at this size."""
+
+        self._fbo.w, self._fbo.h = width, height
+        self._render(self._handle, self._draw)
+
+    def skip(self) -> None:
+        """The next frame taken and not drawn."""
+
+        self._render(self._handle, self._skip)
+
+
+def _param_array(param_type, params):
+    """Render parameters as libmpv takes them, ending with an empty one."""
+
+    # made zeroed, which leaves the last one the end
+    array = (param_type * (len(params) + 1))()
+
+    for slot, (name, value) in zip(array, params, strict=False):
+        slot.type_id = param_type.TYPES[name][0]
+        slot.data = ctypes.addressof(value)
+
+    return array
+
+
 class FrameSlot:
     """A finished frame's pixels, BGRA with the top row first."""
 
@@ -162,6 +220,7 @@ class RenderedVideo:
         self.player = player
 
         self.render_context = None
+        self.render_calls: RenderCalls | None = None
         self.needs_update = False
         # when mpv first said there was an update, since it was last looked at
         self.update_said_at = 0.0
@@ -311,6 +370,7 @@ class VideoRenderer(QThread):
         # and an mpv thread could be inside it. After free() nothing calls it.
         video.render_context.update_cb = on_update
 
+        video.render_calls = RenderCalls(self._mpv, video.render_context, self._fbo)
         video.texture = self._new_texture()
 
         self._videos.append(video)
@@ -366,9 +426,7 @@ class VideoRenderer(QThread):
         # and draws that when asked again, so it's back at once on show.
         if video.rendered_size is not None and not video.player.is_drawn():
             if video.has_new_frame:
-                video.render_context.render(
-                    skip_rendering=True, block_for_target_time=False
-                )
+                video.render_calls.skip()
                 video.has_new_frame = False
                 video.is_out_of_date = True
 
@@ -419,11 +477,7 @@ class VideoRenderer(QThread):
         # block_for_target_time defaults to on: render() sleeps until the
         # frame's display time, up to video-timing-offset per video. Off here,
         # with the offset at 0 so frames aren't early: see MpvPlayer.
-        video.render_context.render(
-            opengl_fbo={"w": width, "h": height, "fbo": self._fbo},
-            flip_y=False,
-            block_for_target_time=False,
-        )
+        video.render_calls.draw(width, height)
 
         # render() may have left anything bound
         gl.glBindFramebuffer(GL_FRAMEBUFFER, self._fbo)
@@ -454,6 +508,7 @@ class VideoRenderer(QThread):
             self._log.exception("A render context failed to free")
 
         video.render_context = None
+        video.render_calls = None
 
         texture = ctypes.c_uint(video.texture)
         self._gl.glDeleteTextures(1, ctypes.byref(texture))

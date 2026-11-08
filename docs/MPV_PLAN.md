@@ -747,7 +747,12 @@ CPU took 0.5-5.5 s, against 0.2-1.1 s on the key frame, which is about what VLC 
   after: `test_gpu` X11, Hardware MPV 4.2/3.7 to 2.8/2.9 ms, GUI thread 32/29% to 24/25%; Software
   MPV 3.5/3.3 to 2.5/2.4 ms; Software VLC SP 6.7/6.3 to 6.1/5.6 ms. Windows, a real window on the
   other desktop: 0.44/0.53 to 0.42/0.41 ms, too little to show in the app's CPU
-- [ ] 10.15 Cached render parameters instead of python-mpv building them per frame, about 2-5% CPU
+- [x] 10.15 Cached render parameters instead of python-mpv building them per frame, about 2-5% CPU
+  - `RenderCalls` in the renderer makes a video's two calls, draw and take-not-draw, once, and changes only the size in
+    place. It calls python-mpv's `_mpv_render_context_render` itself. A frame's parameters went from 6.3 µs of Python to
+    0.15 µs, checked against python-mpv's own, value for value, with the real libmpv.
+  - Smaller than the 2-5% guessed: about 1% of a core at 36 cells, where the bench's one run gave 140% to 139%. Not
+    benched again, as that is within a run's noise.
 
 ## Stage 11: macOS
 
