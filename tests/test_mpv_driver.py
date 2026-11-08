@@ -1129,13 +1129,14 @@ def test_audio_only_has_no_video_tracks_even_if_the_file_does():
 # -- the driver
 
 
-def _driver(full_size=lambda: (0, 0)):
+def _driver(full_size=lambda: (0, 0), is_on_show=lambda: True):
     return VideoDriverMpv(
         render_service=MagicMock(),
         hwdec="auto",
         surface=MagicMock(),
         pane_box=lambda: (100, 100),
         full_size=full_size,
+        is_on_show=is_on_show,
     )
 
 
@@ -1538,6 +1539,7 @@ def test_a_libmpv_that_wont_start_is_an_error_on_the_cell(mocker):
 def _rendered_video(size=(4, 2)):
     video = RenderedVideo(MagicMock())
     video.player.render_size.return_value = size
+    video.player.is_drawn.return_value = True
     video.player.has_restarted = True
     video.render_context = MagicMock()
     video.render_context.update.return_value = False
@@ -1651,6 +1653,145 @@ def test_a_frame_that_came_after_all_is_rendered_once(renderer):
     renderer._render_round()
 
     assert video.render_context.render.call_count == 1
+
+
+def _drawn(video) -> int:
+    return sum(
+        not call.kwargs.get("skip_rendering")
+        for call in video.render_context.render.call_args_list
+    )
+
+
+def _taken_not_drawn(video) -> int:
+    return sum(
+        bool(call.kwargs.get("skip_rendering"))
+        for call in video.render_context.render.call_args_list
+    )
+
+
+def _hidden_after_its_first_frame(renderer):
+    video = _rendered_video()
+    renderer._videos.append(video)
+    _round(renderer, video, is_frame=True)
+
+    video.player.is_drawn.return_value = False
+    renderer._gl.reset_mock()
+
+    return video
+
+
+def test_hidden_its_frames_are_taken_and_not_drawn(renderer):
+    """Not taken, mpv waits 200 ms on each, and the video crawls."""
+
+    video = _hidden_after_its_first_frame(renderer)
+    video.latest()
+
+    for _ in range(3):
+        _round(renderer, video, is_frame=True)
+
+    assert _taken_not_drawn(video) == 3
+    assert _drawn(video) == 1
+    renderer._gl.glReadPixels.assert_not_called()
+    assert not video.has_fresh_frame
+
+
+def test_hidden_with_no_new_frame_nothing_is_asked_of_mpv(renderer):
+    video = _hidden_after_its_first_frame(renderer)
+
+    renderer._render_round()
+    _round(renderer, video, is_frame=False, said_ago=0.25)
+    video.player.render_size.return_value = (8, 4)
+    renderer._render_round()
+
+    assert video.render_context.render.call_count == 1
+
+
+def test_hidden_before_its_first_frame_it_is_drawn(renderer):
+    """A cell has loaded once it has a picture: one added out of sight too."""
+
+    video = _rendered_video()
+    video.player.is_drawn.return_value = False
+    renderer._videos.append(video)
+
+    _round(renderer, video, is_frame=True)
+
+    assert _drawn(video) == 1
+    assert video.has_fresh_frame
+
+
+def test_on_show_again_the_last_frame_taken_is_drawn_at_once(renderer):
+    video = _hidden_after_its_first_frame(renderer)
+    _round(renderer, video, is_frame=True)
+
+    video.player.is_drawn.return_value = True
+    renderer._render_round()
+
+    assert _drawn(video) == 2
+    assert video.has_fresh_frame
+
+    # and just the once
+    renderer._render_round()
+
+    assert _drawn(video) == 2
+
+
+def test_on_show_again_with_nothing_taken_meanwhile_nothing_is_drawn(renderer):
+    video = _hidden_after_its_first_frame(renderer)
+
+    video.player.is_drawn.return_value = True
+    renderer._render_round()
+
+    assert _drawn(video) == 1
+
+
+def test_frames_are_drawn_only_on_show_or_for_a_screenshot():
+    player = _player()
+    assert player.is_drawn()
+
+    player.set_on_show(False)
+    assert not player.is_drawn()
+
+    player.hold_render_size((1920, 1080))
+    assert player.is_drawn()
+
+    player.hold_render_size(None)
+    assert not player.is_drawn()
+
+
+def test_going_out_of_sight_and_back_wakes_the_renderer_only_when_new():
+    player = _player()
+    player._wake_renderer.reset_mock()
+
+    player.set_on_show(True)
+    player._wake_renderer.assert_not_called()
+
+    player.set_on_show(False)
+    player.set_on_show(False)
+    player.set_on_show(True)
+
+    assert player._wake_renderer.call_count == 2
+
+
+def test_a_video_loaded_out_of_sight_starts_out_of_sight(mocker):
+    made = mocker.patch("gridplayer.widgets.video_frame_mpv.MpvPlayer")
+    driver = _driver(is_on_show=lambda: False)
+
+    driver.load_video(_player().media_input)
+
+    made.return_value.set_on_show.assert_called_once_with(False)
+
+
+def test_going_out_of_sight_is_passed_on_to_the_player():
+    driver = _driver()
+    driver._player = _player()
+
+    driver.set_on_show(False)
+
+    assert not driver._player.is_on_show
+
+
+def test_going_out_of_sight_with_no_player_does_nothing():
+    _driver().set_on_show(False)
 
 
 def test_a_restart_wakes_the_renderer_for_a_frame_held_back():

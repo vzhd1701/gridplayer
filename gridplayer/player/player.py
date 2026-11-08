@@ -102,6 +102,7 @@ class Player(QWidget, ManagersManager):
             "window_state": [
                 ("pause_on_minimize", "video_blocks.cmd_all_pause"),
                 ("away_changed", "screensaver.set_away"),
+                ("away_changed", "video_blocks.update_on_show"),
             ],
             "grid": [
                 ("warning", "dialogs.warning"),

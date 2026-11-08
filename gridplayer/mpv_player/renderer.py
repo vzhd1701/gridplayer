@@ -169,6 +169,8 @@ class RenderedVideo:
         self.has_new_frame = False
         # a frame that came may have been let go: see _FRAME_LET_GO_S
         self.is_frame_lost = False
+        # frames were taken and not drawn while it was out of sight
+        self.is_out_of_date = False
         self.rendered_size = None
         self.texture = 0
 
@@ -358,6 +360,20 @@ class VideoRenderer(QThread):
         if size is None:
             return False
 
+        # Out of sight, a frame is taken as it comes, or mpv waits on it and the
+        # video crawls, but it isn't drawn or read back. Not before the first: the
+        # cell has loaded once it has a picture. mpv keeps the last one taken,
+        # and draws that when asked again, so it's back at once on show.
+        if video.rendered_size is not None and not video.player.is_drawn():
+            if video.has_new_frame:
+                video.render_context.render(
+                    skip_rendering=True, block_for_target_time=False
+                )
+                video.has_new_frame = False
+                video.is_out_of_date = True
+
+            return False
+
         # Not before the first frame: with nothing to draw mpv gives a black
         # picture, which the cell would take for the video having loaded.
         is_resized = video.rendered_size is not None and size != video.rendered_size
@@ -365,12 +381,13 @@ class VideoRenderer(QThread):
         # and it's not a frame that's lost till the video has had one to lose
         is_lost = video.is_frame_lost and video.player.has_restarted
 
-        if not video.has_new_frame and not is_resized and not is_lost:
+        if not (video.has_new_frame or is_resized or is_lost or video.is_out_of_date):
             return False
 
         self._render(video, size)
         video.has_new_frame = False
         video.is_frame_lost = False
+        video.is_out_of_date = False
         video.publish()
 
         return True

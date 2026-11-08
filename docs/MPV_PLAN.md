@@ -692,8 +692,12 @@ CPU took 0.5-5.5 s, against 0.2-1.1 s on the key frame, which is about what VLC 
 - [ ] 10.6 `churn.py`'s 30 KB per close on X11: check it's bounded
 - [ ] 10.7 GLES: `GL_BGRA` needs desktop GL as written, read RGBA where it's missing
 - [ ] 10.8 Render thread stall watchdog: only if something has needed it by then
-- [ ] 10.9 Cells not on show, as in Single Mode, still render and read back every frame. Render
-  them small or not at all
+- [x] 10.9 Cells not on show, as in Single Mode, still render and read back every frame. Render
+  them small or not at all. Done: a hidden cell's frames are taken with `skip_rendering`, so it
+  plays on at its pace (taking none, mpv waits 200 ms on each), and the last one taken is drawn as
+  it's shown again, about 50 ms later. Not before its first frame, as that's what says it has
+  loaded, and not while a screenshot waits on one. `mpv_hidden_cells`: 3 cells, 4 s in Single
+  Mode, 100 draws for the one on show and 0 for the others, on both MPV drivers
 - [ ] 10.10 `load_scripts=no` leaves mpv's built-in scripts running, about 5 Lua threads per
   video. They cost no measured memory, but each has threads: check whether to turn them off
 - [ ] 10.11 **Your decision:** a low VRAM option (`-copy` or software for new videos when over
@@ -726,9 +730,11 @@ CPU took 0.5-5.5 s, against 0.2-1.1 s on the key frame, which is about what VLC 
     the most on a strong CPU, so it stays available
   - Saved `mpv_sw` settings: decide whether they become the new mode or Hardware <MPV> with the flag on
   - A stand-in for Software VLC with no VLC should then be the new mode (see Stage 3 results)
-- [ ] 10.18 **Your decision:** a window minimized or in the tray still renders and reads back every frame of every video. MPV only: VLC Hardware
-  has no readback. `render(skip_rendering=True)` could leave that out while the video goes on playing, with one real render on coming back. It
-  needs trying, and isn't the rejected sleeping cells, as nothing stops
+- [x] 10.18 A window minimized or in the tray rendered and read back every frame of every video. Done as 10.9, your call (2026-11-08), with no
+  setting: nothing on screen changes, as a minimized window's preview is the picture from before. The cell goes by its own show and hide,
+  and by the window's `away_changed`, as coming back it can be shown before the window says it's no longer minimized. `mpv_hidden_cells`:
+  minimized and in the tray, 0 draws in 4 s, played at full pace, drawn again 50 ms after. On the offscreen platform only: a real window
+  on Windows and Linux not tried
 - [ ] 10.19 Small savings the review found, by reckoning and not yet measured, for when the CPU matters more than the code: each render round visits
   every video, not just those with a frame (at most about 4% of a core at 64 cells); the placement is worked out on each paint (about 1% at 9
   cells). 4.2: the time is still sent by mpv each frame, so the saving of `notime` isn't had yet

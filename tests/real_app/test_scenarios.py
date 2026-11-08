@@ -38,6 +38,7 @@ NEEDS_LIBMPV = {
     "mpv_audio",
     "mpv_basics",
     "mpv_deinterlace",
+    "mpv_hidden_cells",
     "mpv_seeking",
     "mpv_streams",
     "mpv_subtitles",

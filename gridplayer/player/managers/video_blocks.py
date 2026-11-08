@@ -339,6 +339,13 @@ class VideoBlocksManager(ManagerBase):
         for vb in self._ctx.video_blocks:
             vb.set_video_decoding_stopped(is_stopped)
 
+    def update_on_show(self, *_) -> None:
+        """The window minimized, put in the tray or back: what's drawn goes by it."""
+
+        for vb in self._ctx.video_blocks:
+            if vb.video_driver is not None:
+                vb.video_driver.update_on_show()
+
     def cmd_seek_timecode(self):
         time_ms = QCustomSpinboxTimeInput.get_time_ms_int(
             self.parent(),

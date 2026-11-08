@@ -166,6 +166,7 @@ class VideoDriverMpv(VLCVideoDriver):
         surface,
         pane_box,
         full_size,
+        is_on_show,
         **kwargs,
     ):
         super().__init__(**kwargs)
@@ -175,6 +176,7 @@ class VideoDriverMpv(VLCVideoDriver):
         self._surface = surface
         self._pane_box = pane_box
         self._full_size = full_size
+        self._is_on_show = is_on_show
 
         self._player: MpvPlayer | None = None
         self._rendered: RenderedVideo | None = None
@@ -244,6 +246,8 @@ class VideoDriverMpv(VLCVideoDriver):
             self._log.exception("Could not start mpv")
             self.error_state(translate("Video Error", "Player error"), (str(e),))
             return
+
+        self._player.set_on_show(self._is_on_show())
 
         # Queued for good, whatever thread these are said on: the observers
         # run on a thread Qt doesn't know, and auto can take that for this one
@@ -390,6 +394,10 @@ class VideoDriverMpv(VLCVideoDriver):
     def set_render_size(self, size: tuple[int, int]) -> None:
         if self._player is not None:
             self._player.set_render_size(size)
+
+    def set_on_show(self, is_on_show: bool) -> None:
+        if self._player is not None:
+            self._player.set_on_show(is_on_show)
 
     def snapshot(self):
         self.snapshot_taken_emit("")
@@ -611,8 +619,31 @@ class VideoFrameMpv(PaintedVideoFrame, VideoFrameVLC):
             surface=self.video_surface,
             pane_box=self._pane_box,
             full_size=self._full_render_size,
+            is_on_show=self._is_on_show,
             parent=self,
         )
+
+    def _is_on_show(self) -> bool:
+        """Not hidden, as the cells Single Mode leaves out are, nor its window
+        minimized or in the tray."""
+
+        return self.isVisible() and not self.window().isMinimized()
+
+    def update_on_show(self) -> None:
+        self.video_driver.set_on_show(self._is_on_show())
+
+    # Shown again as its window comes back from being minimized, it can be before
+    # the window says it no longer is: the window's own word comes as well, see
+    # VideoBlocksManager.update_on_show.
+    def showEvent(self, event):
+        super().showEvent(event)
+
+        self.update_on_show()
+
+    def hideEvent(self, event):
+        super().hideEvent(event)
+
+        self.update_on_show()
 
     def set_time(self, seek_ms, aim=SeekAim.EXACT) -> None:
         # what it's for, which VLC's drivers have no use for

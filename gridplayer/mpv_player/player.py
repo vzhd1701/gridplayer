@@ -346,6 +346,8 @@ class MpvPlayer(QObject):
         self._render_size: tuple[int, int] | None = None
         # the size wanted over all of those for now, see hold_render_size
         self._held_size: tuple[int, int] | None = None
+        # the cell isn't hidden: see set_on_show
+        self.is_on_show = True
 
         self.is_paused = media_input.video.is_paused
         # what it was last told, which it says it is only a moment later
@@ -525,6 +527,11 @@ class MpvPlayer(QObject):
         return (
             self._held_size or self._render_size or calc_fit_size(self._dims, self._box)
         )
+
+    def is_drawn(self) -> bool:
+        """Whether its frames are drawn: on show, or a screenshot waiting on one."""
+
+        return self.is_on_show or self._held_size is not None
 
     def on_render_context_ready(self) -> None:
         # not from here: this thread never waits on the core
@@ -921,6 +928,13 @@ class MpvPlayer(QObject):
 
         self._held_size = size
         self._wake_renderer()
+
+    def set_on_show(self, is_on_show: bool) -> None:
+        """Hidden, it plays on with its frames not drawn: see is_drawn."""
+
+        if is_on_show != self.is_on_show:
+            self.is_on_show = is_on_show
+            self._wake_renderer()
 
     # Event thread ---------------------------------------------------------
 

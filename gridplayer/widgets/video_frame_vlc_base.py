@@ -709,6 +709,9 @@ class VideoFrameVLC(QWidget, metaclass=QABC):
     @abstractmethod
     def driver_setup(self, vlc_options) -> VLCVideoDriver: ...
 
+    def update_on_show(self) -> None:
+        """The window minimized, put in the tray or back: see VideoFrameMpv."""
+
     @abstractmethod
     def ui_video_surface(self) -> QWidget: ...
 
