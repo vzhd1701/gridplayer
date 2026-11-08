@@ -554,7 +554,7 @@ def start(media: Media, out: Path, settings: dict) -> Driver:
     )
 
     from gridplayer.main.init_app import init_app
-    from gridplayer.main.init_app_env import init_app_env
+    from gridplayer.main.init_app_env import init_app_env, init_app_env_id
     from gridplayer.params import env
     from gridplayer.settings import Settings
     from gridplayer.utils.video_driver import prepare_video_libs
@@ -563,9 +563,8 @@ def start(media: Media, out: Path, settings: dict) -> Driver:
     # QT_QPA_PLATFORM says
     env.QT_PLATFORM = qt_platform
 
-    init_app_env()
-    app = init_app()
-
+    # before the app starts, which reads some of them: see init_app_env
+    init_app_env_id()
     store = Settings()
     for key, value in {
         **DEFAULT_SETTINGS,
@@ -574,6 +573,9 @@ def start(media: Media, out: Path, settings: dict) -> Driver:
         **_driver_override(),
     }.items():
         store.set(key, _setting_value(key, value))
+
+    init_app_env()
+    app = init_app()
 
     if not prepare_video_libs(store.get("player/video_driver")):
         raise RuntimeError("No video library to play with")
@@ -589,11 +591,20 @@ def start(media: Media, out: Path, settings: dict) -> Driver:
 
 
 def _driver_override() -> dict:
-    """REAL_APP_VIDEO_DRIVER runs a scenario on another driver than it says."""
+    """REAL_APP_VIDEO_DRIVER runs a scenario on another driver than it says,
+    REAL_APP_MPV_OUTPUT with MPV's frames reaching the window another way."""
+
+    override = {}
 
     driver = os.environ.get("REAL_APP_VIDEO_DRIVER")
+    if driver:
+        override["player/video_driver"] = driver
 
-    return {"player/video_driver": driver} if driver else {}
+    output = os.environ.get("REAL_APP_MPV_OUTPUT")
+    if output:
+        override["player/mpv_output"] = output
+
+    return override
 
 
 def _setting_value(key, value):

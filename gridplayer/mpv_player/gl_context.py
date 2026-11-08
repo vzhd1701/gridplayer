@@ -31,6 +31,9 @@ _NATIVE_DISPLAYS = {
 }
 
 
+_GL_VENDOR = 0x1F00
+
+
 class GLContextError(RuntimeError):
     """No GL context to be had; the message says what went wrong."""
 
@@ -58,7 +61,7 @@ class EGLContext:
     _PLATFORM_SURFACELESS = 0x31DD
     _EXTENSIONS = 0x3055
 
-    def __init__(self, platform: str):
+    def __init__(self, platform: str, share=None):
         self._platform = platform
         self._egl = self._load_egl()
         self._libgl = None
@@ -68,8 +71,24 @@ class EGLContext:
         self._display = None
         self._surface = None
         self._context = None
+        self._share_context = None
 
-        self._display = self._open_display()
+        # what's made so far goes again if it fails: it can be a try
+        try:
+            self._open(share)
+        except GLContextError:
+            self.close()
+            raise
+
+    def _open(self, share) -> None:
+        if share is None:
+            self._display = self._open_display()
+        else:
+            # EGL shares only on one display, so Qt's: mpv keeps its own
+            # connection all the same, for VAAPI
+            self._connect_to_display()
+            self._display = share.display
+            self._share_context = share.handle
 
         major, minor = ctypes.c_int(), ctypes.c_int()
         if not self._egl.eglInitialize(
@@ -82,7 +101,7 @@ class EGLContext:
 
         self._make_current()
 
-        _log.debug(f"EGL {major.value}.{minor.value} on {platform}")
+        _log.debug(f"EGL {major.value}.{minor.value} on {self._platform}")
 
     @staticmethod
     def _load_egl():
@@ -123,6 +142,8 @@ class EGLContext:
             ("eglGetError", c.c_int, []),
             ("eglQueryString", c.c_char_p, [c.c_void_p, c.c_int]),
             ("eglGetProcAddress", c.c_void_p, [c.c_char_p]),
+            ("eglGetCurrentDisplay", c.c_void_p, []),
+            ("eglGetCurrentContext", c.c_void_p, []),
         ):
             function = getattr(egl, name, None)
             if function is not None:
@@ -200,7 +221,9 @@ class EGLContext:
             if not self._surface:
                 raise GLContextError(f"eglCreatePbufferSurface failed: {self._error()}")
 
-        self._context = self._egl.eglCreateContext(self._display, config, None, None)
+        self._context = self._egl.eglCreateContext(
+            self._display, config, self._share_context, None
+        )
         if not self._context:
             raise GLContextError(f"eglCreateContext failed: {self._error()}")
 
@@ -264,7 +287,9 @@ class EGLContext:
                 self._egl.eglDestroyContext(self._display, self._context)
             if self._surface:
                 self._egl.eglDestroySurface(self._display, self._surface)
-            self._egl.eglTerminate(self._display)
+            # one shared with is Qt's, Qt's to end
+            if self._share_context is None:
+                self._egl.eglTerminate(self._display)
 
         if self._native_display:
             self._native_close(self._native_display)
@@ -285,7 +310,7 @@ class WGLContext:
     _CLASS_NAME = "GridPlayerMpvGL"
     _HWND_MESSAGE = -3
 
-    def __init__(self):
+    def __init__(self, share_with: int | None = None):
         from ctypes import wintypes
 
         self._wintypes = wintypes
@@ -299,6 +324,14 @@ class WGLContext:
         self._hdc = None
         self._context = None
 
+        # what's made so far goes again if it fails: it can be a try
+        try:
+            self._open(share_with)
+        except GLContextError:
+            self.close()
+            raise
+
+    def _open(self, share_with: int | None) -> None:
         self._make_window()
 
         self._hdc = self._user32.GetDC(self._hwnd)
@@ -310,6 +343,10 @@ class WGLContext:
         self._context = self._opengl32.wglCreateContext(self._hdc)
         if not self._context:
             raise GLContextError(f"wglCreateContext failed: {ctypes.get_last_error()}")
+
+        # before it has anything of its own, which it would lose
+        if share_with and not self._opengl32.wglShareLists(share_with, self._context):
+            raise GLContextError(f"wglShareLists failed: {ctypes.get_last_error()}")
 
         if not self._opengl32.wglMakeCurrent(self._hdc, self._context):
             raise GLContextError(f"wglMakeCurrent failed: {ctypes.get_last_error()}")
@@ -348,6 +385,7 @@ class WGLContext:
         self._opengl32.wglCreateContext.argtypes = [w.HDC]
         self._opengl32.wglMakeCurrent.argtypes = [w.HDC, w.HANDLE]
         self._opengl32.wglDeleteContext.argtypes = [w.HANDLE]
+        self._opengl32.wglShareLists.argtypes = [w.HANDLE, w.HANDLE]
         self._opengl32.wglGetProcAddress.restype = c.c_void_p
         self._opengl32.wglGetProcAddress.argtypes = [c.c_char_p]
 
@@ -497,17 +535,113 @@ class QtGLContext:
         self._context.doneCurrent()
 
 
-def create_gl_context(qt_platform: str, qt_surface=None):
+class QtShareGroup:
+    """What the render thread's context shares to reach Qt's.
+
+    Every QOpenGLWidget's context shares with Qt's global one, and so with
+    this, which is one more of the same group: a texture made by the render
+    thread can be drawn by any of them. Made on the GUI thread, kept for as
+    long as the render thread's context.
+    """
+
+    def __init__(self):
+        from PyQt5.QtGui import QOffscreenSurface, QOpenGLContext
+
+        group = QOpenGLContext.globalShareContext()
+        if group is None:
+            raise GLContextError("Qt has no GL context to share with")
+
+        self._context = QOpenGLContext()
+        self._context.setFormat(group.format())
+        self._context.setShareContext(group)
+        if not self._context.create():
+            raise GLContextError("Could not create a GL context in Qt's group")
+
+        self._surface = QOffscreenSurface()
+        self._surface.setFormat(self._context.format())
+        self._surface.create()
+
+        if not self._context.makeCurrent(self._surface):
+            raise GLContextError("Could not reach Qt's GL context")
+
+        # EGL's display, on Linux
+        self.display = None
+        # for deleting textures, once there are any
+        self._gl = None
+
+        if env.IS_WINDOWS:
+            opengl32 = ctypes.WinDLL("opengl32")
+            opengl32.wglGetCurrentContext.restype = ctypes.c_void_p
+            self.handle = opengl32.wglGetCurrentContext()
+        else:
+            egl = EGLContext._load_egl()
+            self.handle = egl.eglGetCurrentContext()
+            self.display = egl.eglGetCurrentDisplay()
+
+        self._context.doneCurrent()
+
+        if not self.handle:
+            raise GLContextError("Qt's GL context isn't one this can share with")
+
+    def delete_textures(self, textures: list[int]) -> None:
+        """GUI thread: textures of the group gone, whether a widget that showed
+        them has a context of its own yet or has one no longer."""
+
+        from PyQt5.QtGui import QOpenGLContext, QOpenGLVersionProfile
+
+        previous = QOpenGLContext.currentContext()
+        previous_surface = previous.surface() if previous is not None else None
+
+        if self._context.makeCurrent(self._surface):
+            if self._gl is None:
+                profile = QOpenGLVersionProfile()
+                profile.setVersion(2, 0)
+                self._gl = self._context.versionFunctions(profile)
+                self._gl.initializeOpenGLFunctions()
+
+            self._gl.glDeleteTextures(len(textures), textures)
+            self._context.doneCurrent()
+
+        if previous is not None:
+            previous.makeCurrent(previous_surface)
+
+
+def wgl_vendor() -> str | None:
+    """Windows: who made the GPU that desktop OpenGL draws with in this
+    process, from a context made to ask and gone again. None if there's none.
+
+    Only once the app is up: see init_app.settle_gl_line_fix.
+    """
+
+    try:
+        context = WGLContext()
+    except GLContextError:
+        return None
+
+    try:
+        get_string = ctypes.WinDLL("opengl32").glGetString
+        get_string.restype = ctypes.c_char_p
+        get_string.argtypes = [ctypes.c_uint]
+
+        vendor = get_string(_GL_VENDOR)
+    finally:
+        context.close()
+
+    return vendor.decode(errors="replace") if vendor else None
+
+
+def create_gl_context(qt_platform: str, qt_surface=None, share=None):
     """A context current on this thread.
 
     `qt_surface` is a QOffscreenSurface made on the GUI thread, as Qt wants
-    it, for macOS, where Qt's context is used.
+    it, for macOS, where Qt's context is used. `share` is a QtShareGroup, for
+    textures drawn by Qt.
     """
 
     if env.IS_LINUX:
-        return EGLContext(qt_platform)
+        return EGLContext(qt_platform, share)
 
     if env.IS_WINDOWS:
-        return WGLContext()
+        return WGLContext(share.handle if share is not None else None)
 
     return QtGLContext(qt_surface)

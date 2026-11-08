@@ -539,6 +539,24 @@ class SeekPrecision(AutoName):
     FAST = auto()
 
 
+class MpvOutput(AutoName):
+    """How MPV's frames reach the window: read back and painted like any other
+    widget, or drawn by GL, which often costs less CPU."""
+
+    READBACK = auto()
+    GL = auto()
+
+
+class GLLineFix(AutoName):
+    """Windows, GL output: a window with an alpha channel, which some drivers
+    show without the black rows they leave at its bottom. Auto is on for
+    NVIDIA."""
+
+    AUTO = auto()
+    ON = auto()
+    OFF = auto()
+
+
 class SeekAim(Enum):
     """What a seek is for, which says how exact it has to be."""
 

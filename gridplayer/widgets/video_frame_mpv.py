@@ -1,15 +1,18 @@
 """The mpv driver: playing in this process, on the render thread of
-gridplayer.mpv_player.renderer, painting as the software drivers do.
+gridplayer.mpv_player.renderer, painting as the software drivers do, or with
+GL output drawing the frame's texture.
 
-A resize never reaches mpv while it's happening: the picture keeps its current
-frame size and is scaled while painting. Once geometry has been quiet for
+A resize reaches mpv once it's over: the picture keeps its current frame size
+and is scaled while painting. Once geometry has been quiet for
 RESIZE_SETTLE_MS, mpv is told the new size and switches on the render thread,
-the old frame staying up until the new one is ready. The frame has the shape
+the old frame staying up until the new one is ready. Only a picture growing
+well past its frame catches up every RESIZE_CATCH_UP_MS on the way, as it
+would otherwise be blown up until the resize ends. The frame has the shape
 of the picture, and letterboxing, zoom, pan and flips are all just how it's
 painted.
 """
 
-from PyQt5.QtCore import QRectF, Qt, QTimer
+from PyQt5.QtCore import QRectF, Qt, QTimer, pyqtSignal
 
 from gridplayer.models.stream import Stream
 from gridplayer.mpv_player.player import MpvPlayer
@@ -36,10 +39,20 @@ from gridplayer.utils.qt import translate
 from gridplayer.vlc_player.static import DISABLED_TRACK, NO_TRACK, Media, MediaInput
 from gridplayer.vlc_player.video_driver_base import VLCVideoDriver
 from gridplayer.widgets.video_frame_vlc_base import VideoFrameVLC, native_px
-from gridplayer.widgets.video_surface_sw import PaintedVideoFrame, SoftwareVideoSurface
+from gridplayer.widgets.video_surface_gl import GLVideoSurface
+from gridplayer.widgets.video_surface_sw import (
+    PaintedVideoFrame,
+    SoftwareVideoSurface,
+    unflipped_source,
+)
 
 # How long geometry has to stay put before a video is rendered at the new size
 RESIZE_SETTLE_MS = 150
+
+# While a resize goes on, how often a picture grown past its frame by
+# RESIZE_CATCH_UP_GROWTH is rendered at the size it has got to
+RESIZE_CATCH_UP_MS = 100
+RESIZE_CATCH_UP_GROWTH = 1.1
 
 # How long a screenshot waits for the frame at the picture's own size, before
 # making do with the one on show
@@ -63,12 +76,13 @@ _FLIPS = {
 }
 
 
-class MpvVideoSurface(SoftwareVideoSurface):
+class MpvSurfaceView:
     """The frame comes at whatever size was last asked for, unlike a software
-    driver's, so its size says nothing about the picture's."""
+    driver's, so its size says nothing about the picture's. Goes before the
+    surface's class in its bases."""
 
-    def __init__(self, parent=None):
-        super().__init__(parent)
+    def __init__(self, parent=None, **kwargs):
+        super().__init__(parent, **kwargs)
 
         self._is_file_on_its_side = False
         self._is_flip_in_mpv = False
@@ -131,6 +145,23 @@ class MpvVideoSurface(SoftwareVideoSurface):
 
         return image.mirrored(*flip) if image is not None and flip else image
 
+
+class MpvVideoSurface(MpvSurfaceView, SoftwareVideoSurface):
+    # never: it draws from the start
+    drawing_started = pyqtSignal()
+
+    def is_drawing(self) -> bool:
+        return True
+
+    def present_frame(self, slot) -> None:
+        self.present_rgb32(slot.pixels, slot.width, slot.height)
+
+    def keep_frame(self, rendered) -> None:
+        """The frame on show stays as its video goes: its pixels already do."""
+
+    def drop_frame(self) -> None:
+        """Its pixels are its own, whatever became of the video's."""
+
     def _draw_frame(self, painter, placement) -> None:
         flip = self._painted_flip()
 
@@ -139,23 +170,28 @@ class MpvVideoSurface(SoftwareVideoSurface):
             return
 
         is_across, is_up_down = flip
-        frame_w, frame_h = self.frame_size()
-        source_x, source_y, source_w, source_h = placement.source
+        source = unflipped_source(placement.source, self.frame_size(), flip)
         x, y, width, height = placement.target
-
-        # the source is a part of the picture as shown, the frame being unflipped
-        if is_across:
-            source_x = frame_w - source_x - source_w
-        if is_up_down:
-            source_y = frame_h - source_y - source_h
 
         painter.translate(x + width / 2, y + height / 2)
         painter.scale(-1 if is_across else 1, -1 if is_up_down else 1)
         painter.drawImage(
             QRectF(-width / 2, -height / 2, width, height),
             self._image,
-            QRectF(source_x, source_y, source_w, source_h),
+            QRectF(*source),
         )
+
+
+class MpvGLVideoSurface(MpvSurfaceView, GLVideoSurface):
+    def present_frame(self, slot) -> None:
+        self.present_texture(slot.texture, slot.width, slot.height)
+
+    def keep_frame(self, rendered) -> None:
+        """The frame on show stays as its video goes, until the next one comes:
+        a reload looks the same as it does painted."""
+
+        if rendered.take_shown_texture(self._texture):
+            self.own_texture()
 
 
 class VideoDriverMpv(VLCVideoDriver):
@@ -174,6 +210,8 @@ class VideoDriverMpv(VLCVideoDriver):
         self._render_service = render_service
         self._hwdec = hwdec
         self._surface = surface
+        # a GL surface starts a while after it's shown: see video_surface_gl
+        self._surface.drawing_started.connect(self._report_frame)
         self._pane_box = pane_box
         self._full_size = full_size
         self._is_on_show = is_on_show
@@ -221,6 +259,9 @@ class VideoDriverMpv(VLCVideoDriver):
             return
 
         self._player.close()
+        # The GUI thread is the only one to touch what's on show, so here it
+        # is still the one on show: the renderer frees the rest once removed.
+        self._surface.keep_frame(self._rendered)
         self._render_service.remove(self._rendered)
 
         self._player = None
@@ -277,14 +318,14 @@ class VideoDriverMpv(VLCVideoDriver):
             self._player.start(self._pane_box())
 
     def render_failed(self, message: str) -> None:
+        # the renderer let go of the video's frames as it failed
+        self._surface.drop_frame()
         self.error_state(translate("Video Error", "Player error"), (message,))
 
     def show_frame(self, slot) -> None:
-        self._surface.present_rgb32(slot.pixels, slot.width, slot.height)
+        self._surface.present_frame(slot)
 
-        if not self._has_frame:
-            self._has_frame = True
-            self._report_load()
+        self._report_frame()
 
         if self._screenshots_due and self._is_screenshot_size_shown():
             self._give_screenshots()
@@ -351,6 +392,19 @@ class VideoDriverMpv(VLCVideoDriver):
 
         if sar is not None:
             track.sar = sar
+
+    def _report_frame(self) -> None:
+        """A picture on show, once one has come and the surface can draw it:
+        the cell is loading until then."""
+
+        if self._has_frame or not self._surface.has_frame():
+            return
+
+        if not self._surface.is_drawing():
+            return
+
+        self._has_frame = True
+        self._report_load()
 
     def _report_load(self) -> None:
         player = self._player
@@ -571,8 +625,6 @@ class VideoDriverMpv(VLCVideoDriver):
 
 
 class VideoFrameMpv(PaintedVideoFrame, VideoFrameVLC):
-    surface_class = MpvVideoSurface
-
     is_picky_about_audio_files = False
     must_reload_for_system_device = False
     is_late_with_subtitles = False
@@ -609,8 +661,21 @@ class VideoFrameMpv(PaintedVideoFrame, VideoFrameVLC):
         self._settle_timer.setInterval(RESIZE_SETTLE_MS)
         self._settle_timer.timeout.connect(self._push_render_size)
 
+        self._catch_up_timer = QTimer(self)
+        self._catch_up_timer.setSingleShot(True)
+        self._catch_up_timer.setInterval(RESIZE_CATCH_UP_MS)
+        self._catch_up_timer.timeout.connect(self._catch_up_render_size)
+
         # shown for the first time, it goes to its size for good right away
         self._is_first_size_due = True
+
+    def ui_video_surface(self):
+        if self._render_service.is_gl_output:
+            return MpvGLVideoSurface(
+                self, delete_textures=self._render_service.delete_textures
+            )
+
+        return MpvVideoSurface(self)
 
     def driver_setup(self, vlc_options) -> VideoDriverMpv:
         return VideoDriverMpv(
@@ -681,11 +746,15 @@ class VideoFrameMpv(PaintedVideoFrame, VideoFrameVLC):
             return False
 
         self._settle_timer.start()
+        # not started again by each step, so it comes round while they go on
+        if not self._catch_up_timer.isActive():
+            self._catch_up_timer.start()
 
         return False
 
     def cleanup_start(self) -> None:
         self._settle_timer.stop()
+        self._catch_up_timer.stop()
 
         super().cleanup_start()
 
@@ -715,11 +784,34 @@ class VideoFrameMpv(PaintedVideoFrame, VideoFrameVLC):
             sharp_in=self._pane_box() if self._is_subtitle_on_show() else None,
         )
 
-    def _push_render_size(self) -> None:
+    def _render_size_now(self) -> tuple[int, int] | None:
         placement = self.view_placement()
 
-        if placement is not None:
-            self.video_driver.set_render_size(self._wanted_render_size(placement))
+        return None if placement is None else self._wanted_render_size(placement)
+
+    def _push_render_size(self) -> None:
+        wanted = self._render_size_now()
+
+        if wanted is not None:
+            self.video_driver.set_render_size(wanted)
+
+    def _catch_up_render_size(self) -> None:
+        # over already, and the frame on its way at the size it ends at
+        if not self._settle_timer.isActive() or not self.video_surface.has_frame():
+            return
+
+        wanted = self._render_size_now()
+        if wanted is None:
+            return
+
+        wanted_w, wanted_h = wanted
+        frame_w, frame_h = self.video_surface.frame_size()
+
+        if (
+            wanted_w > frame_w * RESIZE_CATCH_UP_GROWTH
+            or wanted_h > frame_h * RESIZE_CATCH_UP_GROWTH
+        ):
+            self.video_driver.set_render_size(wanted)
 
     def _push_subtitle_view(self) -> None:
         """Keeps a subtitle readable and on show, whatever the view does to the picture.

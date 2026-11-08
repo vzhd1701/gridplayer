@@ -47,6 +47,10 @@ IS_APPIMAGE = IS_LINUX and "APPIMAGE" in os.environ
 IS_FLATPAK = IS_LINUX and "FLATPAK_ID" in os.environ
 IS_KDE = _is_kde()
 
+# Qt set up for MPV's frames drawn by GL, as the app started: see
+# init_app_env
+MPV_GL_OUTPUT = False
+
 # --platform on the command line replaces it
 QT_PLATFORM = _detect_qt_platform()
 

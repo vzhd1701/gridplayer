@@ -18,12 +18,14 @@ from gridplayer.params.static import (
     CacheMode,
     ColorScheme,
     DropAction,
+    GLLineFix,
     GridMode,
     HWCropBorderOffset,
     ListEndAction,
     ListFailAction,
     ListUpdate,
     ListView,
+    MpvOutput,
     NetworkRetryMode,
     ProxyMode,
     ScreenshotFormat,
@@ -151,6 +153,21 @@ def seek_sync_modes() -> dict:
         SeekSyncMode.DISABLED: translate("Seek Sync", "Disabled"),
         SeekSyncMode.PERCENT: translate("Seek Sync", "Percent"),
         SeekSyncMode.TIMECODE: translate("Seek Sync", "Timecode"),
+    }
+
+
+def mpv_outputs() -> dict:
+    return {
+        MpvOutput.READBACK: translate("SettingsDialog", "Steady"),
+        MpvOutput.GL: translate("SettingsDialog", "Fast"),
+    }
+
+
+def gl_line_fixes() -> dict:
+    return {
+        GLLineFix.AUTO: translate("SettingsDialog", "Auto"),
+        GLLineFix.ON: translate("SettingsDialog", "On"),
+        GLLineFix.OFF: translate("SettingsDialog", "Off"),
     }
 
 

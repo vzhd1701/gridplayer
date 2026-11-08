@@ -1,7 +1,7 @@
 from PyQt5.QtGui import QGuiApplication
 
 from gridplayer.params import env
-from gridplayer.params.static import VideoDriver
+from gridplayer.params.static import MpvOutput, VideoDriver
 from gridplayer.utils.media_libs import MediaLib, lib_of_driver, lib_problem, load_lib
 
 # Hardware drivers hand VLC an X11 window to draw into, which Qt running on
@@ -67,6 +67,17 @@ def session_video_driver(driver: VideoDriver) -> VideoDriver:
     stand_in = _stand_in_driver(picked)
 
     return driver if lib_problem(lib_of_driver(stand_in)) else stand_in
+
+
+def is_mpv_gl_output(output: MpvOutput, picked: VideoDriver) -> bool:
+    """Whether MPV's frames are drawn by GL: picked, with MPV playing, not VLC
+    standing in for it. Not on macOS, where MPV hasn't been run yet."""
+
+    return (
+        not env.IS_MACOS
+        and output == MpvOutput.GL
+        and lib_of_driver(session_video_driver(picked)) == MediaLib.MPV
+    )
 
 
 def load_session_driver(driver: VideoDriver) -> VideoDriver | None:

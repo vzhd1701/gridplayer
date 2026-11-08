@@ -3,6 +3,7 @@ from PyQt5.QtCore import pyqtSignal
 
 from gridplayer.dialogs.messagebox import QCustomMessageBox
 from gridplayer.dialogs.settings import SettingsDialog
+from gridplayer.params import env
 from gridplayer.params.settings_bindings import GRID_STATE_ATTR
 from gridplayer.params.sponsorblock import SPONSORBLOCK_SETTINGS
 from gridplayer.params.subtitle_style import SUBTITLE_STYLE_SETTINGS
@@ -12,6 +13,7 @@ from gridplayer.playlist_settings import PlaylistSettings, grid_values_from_stat
 from gridplayer.settings import Settings
 from gridplayer.utils import cache
 from gridplayer.utils.qt import translate
+from gridplayer.utils.video_driver import is_mpv_gl_output
 
 # what puts the tray icon up and takes the taskbar button away; the rest are
 # read as they are needed
@@ -171,10 +173,30 @@ class SettingsManager(ManagerBase):
             "player/stay_on_top",
         }
 
-        return self._setting_changes(previous_settings, checks)
+        # with no GL output this session, there's nothing for it to fix yet
+        if env.MPV_GL_OUTPUT:
+            checks.add("internal/gl_line_fix")
+
+        return self._is_gl_output_due(previous_settings) or self._setting_changes(
+            previous_settings, checks
+        )
+
+    def _is_gl_output_due(self, previous_settings) -> bool:
+        """Changed to drawing MPV's frames by GL or not, which the session
+        didn't start with: Qt's GL is set up as the app starts, see init_app_env.
+        """
+
+        is_wanted = _is_gl_output(Settings().get)
+        is_changed = is_wanted != _is_gl_output(previous_settings.__getitem__)
+
+        return is_changed and is_wanted != env.MPV_GL_OUTPUT
 
     def _setting_changes(self, previous_settings, checks):
         return {k for k in checks if previous_settings[k] != Settings().get(k)}
 
     def _is_setting_changed(self, previous_settings, check):
         return previous_settings[check] != Settings().get(check)
+
+
+def _is_gl_output(get) -> bool:
+    return is_mpv_gl_output(get("player/mpv_output"), get("player/video_driver"))

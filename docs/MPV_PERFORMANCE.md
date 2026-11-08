@@ -413,6 +413,55 @@ Intel; a real X server, other GPUs and Windows weren't checked.
 **Failures:** every failed run was VLC. 100x360p60 on Hardware VLC SP segfaulted. These never finished within 200 s: both Software VLC modes at
 64x360p60 on Linux, Hardware VLC SP at 25x4K30, and Software VLC at 49x1080p60 on Windows. No MPV run failed.
 
+## Readback against GL
+
+Measured 2026-11-08. The app reads each frame back from the GPU and paints it like any other widget. The POC also had GL: one
+`QOpenGLWidget` a cell, drawing the frame's texture, with nothing read back. It found readback cheaper and rejected GL, as it shakes
+while the window is being resized. That was measured with 6 and 16 small cells of 24 fps HEVC, with the GPU already 28% busy with
+something else. Here is the same POC, `grid4.py` in its two modes, in a 1920x1080 window, two runs each, the means. CPU is the whole
+app's, 100% is one core.
+
+| | Fps, both | CPU, GL | CPU, readback |
+|---|---:|---:|---:|
+| **Linux, `test_gpu`, real screen through sway** | | | |
+| 1x1080p60 | 60 | 14% | 48% |
+| 4x1080p60 | 60 | 29% | 55% |
+| 9x1080p60 | 60 | 43% | 77% |
+| 1x4K60 | 60 | 16% | 55% |
+| 4x4K60, past the decoder's limit | 7 | 29% | 35% |
+| **Windows, RTX 3060, window on another virtual desktop** | | | |
+| 1x1080p60 | 60 | 28% | 57% |
+| 4x1080p60 | 60 | 46% | 71% |
+| 9x1080p60 | 60 | 70% | 90% |
+| 16x1080p60, past the decoder's limit | 15 | 56% | 54% |
+| 1x4K60 | 60 | 21% | 44% |
+| 4, 9, 16x4K60, past the decoder's limit | 15, 11, 9 | 26, 26, 40% | 23, 28, 34% |
+
+- **Frame rates are the same everywhere.** Readback never decides how much plays.
+- **Readback costs 20-35 points of a core while the decoder keeps up,** more the bigger the cells. Past the decoder's limit the two are level,
+  and at 16 small cells readback is a little cheaper, which is where the POC measured.
+- **The GPU:** on Linux, readback keeps it at full clock, 1200 against 400 MHz for one 1080p cell. On Windows GL keeps it a little busier
+  from 4 cells, 25% against 18%, and a little less at 1 cell.
+- **Not counted, both against readback:** on Linux each frame then goes through the X server, whose CPU isn't the app's. On Windows the
+  window is cloaked, so the compositor does nothing for either mode.
+- The POC's readback still filled each cell black before painting, which plan item 10.14 took out of the app: worth a few points at 1 cell
+  on Linux, nothing on Windows.
+
+**On a real screen, Windows** (measured later the same day, 1100x760 window on the main desktop, 1080p60 clips, app
+CPU over 10 s, two or three runs each; the window on another desktop is cloaked, so Windows never puts it on screen):
+
+| | GL, NVIDIA | Readback, NVIDIA | GL, AMD | Readback, AMD |
+|---|---:|---:|---:|---:|
+| 4 cells | 43-52% | 62-65% | 55% | 55-64% |
+| 9 cells | 95-106% | 85-88% | 90-95% | 79-81% |
+
+Here the monitor is on the AMD GPU, so NVIDIA's frames cross to it. GL composes and swaps the whole window for any cell's
+new frame, 120 times a second here, where readback repaints only the cell. With few cells GL is still cheaper; at 9 it
+costs more on both GPUs, and on AMD manages about 46 swaps a second. Linux, through sway, kept its saving at 9 cells.
+
+So the choice was right for the shaking, and wrong about the cost: GL is cheaper at the sizes most grids have. Whether the shaking can be
+dealt with any other way wasn't looked at again. Each run had 8 s to settle and 15 s measured, with the modes taking turns to go first.
+
 ## What's worth doing
 
 In order of what it gets for the work:

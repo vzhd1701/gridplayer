@@ -24,6 +24,7 @@ still to be started, overnight, by you.**
 | 10 | Hardening: long churn, memory, real drags, other GPUs | not started |
 | 11 | macOS | not started |
 | 12 | Packaging, docs, release | not started |
+| 13 | GL output, a choice beside readback | **built, macOS not run**, resize shaking and NVIDIA's black line fixed, 13.5 open |
 
 ## Rules that hold in every stage
 
@@ -774,12 +775,119 @@ CPU took 0.5-5.5 s, against 0.2-1.1 s on the key frame, which is about what VLC 
 - [ ] 12.5 README, CHANGELOG. Short trap list in `AGENTS.md`, rules only
 - [ ] 12.6 Remove this file, or keep it as you like
 
+## Stage 13: GL output, a choice beside readback
+
+**Your call (2026-11-08):** readback stays, as the default, and GL becomes a choice on MPV's row, the way Processes is on VLC's,
+even if the shaking during a window resize can't be fixed. Why: `MPV_PERFORMANCE.md`, "Readback against GL", 20-35 points of a
+core less while the decoder keeps up, at the same frame rates. Suggested words: "Video output", "Steady" and "Fast".
+
+- [x] 13.1 Windows spike in the real app: a `QOpenGLWidget` a cell, the render thread's textures shared with Qt's contexts, nothing
+  read back. Check the picture, the CPU against readback, and what happens when the first GL widget makes Qt make the window anew:
+  its handle changes, and the tray, media keys and VLC's overlays hold it. Live driver switches both ways.
+  - Built behind `GP_MPV_GL_OUTPUT=1` for now. `QtShareGroup` takes a context of Qt's share group, and the render thread's WGL context
+    joins it with `wglShareLists`. Each video gets three textures instead of three pixel buffers, one `glFinish` a round before they go
+    to the GUI. `MpvGLVideoSurface` draws with `QOpenGLTextureBlitter`, flips included. The placing is shared with the painted surface
+    through `VideoSurfaceView`.
+  - Needs `AA_ShareOpenGLContexts` and `AA_UseDesktopOpenGL` before the `QApplication`. With them the window keeps its handle: Qt
+    doesn't make it anew. MPV to VLC Hardware and back works, VLC's output works in the window, and the cells' controls draw over the
+    GL picture.
+  - Real app, RTX 3060, real window on another desktop, 1080p60, app CPU with the bench's own 5.5 in both: 1 cell 51% to 19%, 4 cells
+    55% to 36%, 9 cells 81% to 69%. Same frame rates. A `QPainter` each frame to fill the bars cost 10 points at 4 cells: the surface
+    clears with GL instead.
+  - Opening a cell holds the GUI up for about 70 ms more, Qt making a context for each `QOpenGLWidget`: 0.7 s at 9 cells. See 13.5.
+    Found by the user as a freeze before the cells came up, opening a playlist, each time: `QOpenGLContext.create` takes
+    38-40 ms on NVIDIA (a bare WGL context 12 ms), and as a cell's frame is shown only once it has loaded, every surface got
+    its context at once as the frames appeared. The surfaces now start one at a time, 10 ms apart, as soon as they are in the
+    window, shown or not (`_StartQueue` in `video_surface_gl.py`, the start Qt makes on a show or a resize held back), and a
+    cell says it has loaded only once its surface draws, so the wait is part of its loading. 9 cells: the worst hold-up
+    730 ms to 180-330 ms (readback has the same, making the cells), then one of 50-80 ms a cell; all on show in 1.9 s.
+- [x] 13.2 Linux spike. Results on `test_gpu`:
+  - Qt draws with EGL, `QT_XCB_GL_INTEGRATION=xcb_egl`. The render thread's EGL context is made on Qt's EGL display and shares with
+    Qt's context. mpv keeps its own X connection for VAAPI, still `vaapi`, not a copy.
+  - **VLC's forked processes break it.** MPV, then VLC Hardware multi-process, then MPV: the app aborts in libmpv's render or in
+    Qt's compose, both runs. VLC Hardware single process, or MPV Software in between, doesn't; readback doesn't either. With the
+    processes started by `forkserver`, which Python 3.14 makes the default on Linux anyway, it passes, twice. The app's process code
+    already handles a start that isn't a fork, as on Windows.
+  - Real app, 1080p60, app CPU: 1 cell 52% to 21%, 4 cells 68% to 37%, 9 cells 83% to 54%. The display server's CPU goes from 16-20%
+    to 2%, so the whole machine from 75% to 29%, 90% to 46% and 113% to 52%. Same frame rates.
+- [x] 13.3 The setting: default, field and page, restart where 13.1 and 13.2 say so. Unit tests, and the real-app scenarios on both
+  outputs.
+  - `player/mpv_output`, "Video output" with "Steady" and "Fast" as buttons under the Decoder, greyed out unless it's MPV, not shown
+    on macOS. Read as the app starts, as Qt's GL can only be set up then, so a change asks for a restart on both systems.
+    `init_app_env` sets up Qt for it only when it's on and MPV plays this session (not VLC picked, nor standing in for a
+    missing libmpv): VLC users get nothing new, Fast kept or not. A switch the session didn't start with asks for a
+    restart, one back to how it started doesn't. With it on, on Linux, VLC's processes start from `forkserver`. Should
+    Qt's GL not come up, or the render thread's context not share with it (tried on the GUI thread before any cell is
+    made), frames are read back as before.
+  - When a video goes, a reload or a cell closing, the texture on show stays on show: the surface takes it from the renderer and
+    deletes it once another comes, or as the surface goes, through the share group's own context: a hidden cell that never
+    painted, or never had a context, deletes it all the same. A video that fails to render takes its frame off show, as the
+    renderer has deleted it.
+  - Qt 5.15 sizes a QOpenGLWidget's framebuffer rounded and sets paintGL's viewport cut down (101 px at 1.5: 152 and 151), so
+    the surface sets the viewport to the whole framebuffer itself.
+  - Bug found: `QOpenGLTextureBlitter.sourceTransform` with a top-left origin counts the part asked for from the bottom. The whole
+    picture came out right, a zoomed or anchored part didn't: `mpv_view` caught it.
+  - All 9 MPV scenarios pass on GL on `test_gpu`, and on Windows in a real window on another desktop, but `mpv_hidden_cells`
+    there, as bringing a window back from minimized brings it to the front. `REAL_APP_MPV_OUTPUT=gl` runs any scenario on it,
+    and the bench takes `--env MPV_OUTPUT=gl`. The real-app suite needs a real window for it, so its job runs on readback.
+- [x] 13.4 Screenshots and the pause snapshot with GL: the pixels read from the texture when asked, not every frame.
+  - `frame_image` draws the texture into a framebuffer of its own and reads that. The screenshot checks of `mpv_view`,
+    `mpv_subtitles` and `mpv_deinterlace` pass on GL. The pause snapshot needed nothing: the last frame stays drawn.
+- [ ] 13.5 One GL surface for the whole grid rather than one a cell, only if 16 cells and more show it's worth it: each
+  `QOpenGLWidget` costs a context switch a frame on the GUI thread.
+- [x] 13.6 The shaking during a window resize, Windows.
+  - Cause: Qt takes a new window size from its own queue, and a paint can come before it: one asked for before, or the one it
+    makes at once when the window shrinks. The whole window is then drawn at its old size into the new one, and with GL Windows
+    shows that frame as it is, pinned to the bottom: everything jumps up by the difference, then back. Painted output is spared,
+    as Windows keeps what was painted where it was. Not the video frames: paused, it was the same.
+  - Fix: `utils/gl_window_size.py`, on a window once a GL surface in it comes up (`initializeGL`), Windows and Linux. Before Qt paints the window while
+    its widgets are at an older size than the window's own (`QWindow.size()`, always the system's), it's made to take the new
+    size first (`QWindowSystemInterface::flushWindowSystemEvents`, from `Qt5Gui.dll` or `libQt5Gui.so.5`, user input left
+    queued), as Qt does itself before a paint the system asks for. Making all of Qt's window events synchronous worked as
+    well, but that changes how input arrives everywhere.
+  - Measured on the real screen, Windows' own resize with the pointer, 4 cells of a colour each, one column read about 110
+    times a second and matched with what each height looks like when settled. Bottom edge: backward moves up to 11-12 px, and
+    12% of frames matching no size the window had, to none past 1 px of rounding and 0%. Corner: up to 6-7 px to 2 px. Swaps
+    at an old size: about 1 in 4 to none. Readback: none either way.
+  - Left: between a new size and the next swap, Windows shows the last frame stretched or cut to it, for 5-15 ms, about 13% of
+    frames in a corner drag. It never goes backward. Drawing and swapping inside `WM_SIZE` didn't change it, as Windows takes
+    the size and GL's frame apart. GL also manages about 54 sizes a second against readback's 105, each `QOpenGLWidget` making
+    its framebuffer anew: 13.5 would help there.
+  - Linux, `test_gpu`, the window resized by sway about 45 times a second: 50 of 427 swaps at an old size without the fix,
+    0 of 516 with it. All 9 MPV scenarios pass on both outputs there with it.
+- [x] 13.7 A picture growing during a resize is drawn anew on the way, not blown up until the resize ends: every 100 ms
+  while it's 10% or more past its frame (`RESIZE_CATCH_UP_MS`). Both outputs. Window enlarged over 3 s: frames at 42-57% of
+  their cell's size on the way before, 90-95% after. Painted frames were already smoothed: the blockiness was the scale.
+- [x] 13.8 NVIDIA, Windows: black rows at the bottom of the window with GL output, your report.
+  - The driver pads the window's buffer height up to a multiple of 4 at some widths (1200, 1600, 1920; not 1100, 1300, 1500),
+    and Windows squashes all of it, padding too, into the window: at 1920x1009 everything is 1006 rows tall with 3 black
+    below. 1010 gives 2, 1011 gives 1, 1008 none. A bare `QOpenGLWindow` does it too. mpv's frames are fine. Not on AMD.
+    Here the monitor is on the AMD GPU and NVIDIA renders for it.
+  - The padding can't be drawn into. A window format with an alpha channel takes another way to the screen and has no black
+    rows. It also resizes as cleanly as readback: no frames at a size the window didn't have, even in a corner drag, 59-64
+    sizes a second. Not see-through: 22 pixels differ from readback's, the clock. It costs CPU, real screen, one run each
+    in turn: 4 cells 49 to 57%, 9 cells 101 to 121%.
+  - Your call: a setting, "Black line fix" under Experimental (`internal/gl_line_fix`), Auto, On or Off, Windows only,
+    greyed out unless the output is Fast, restart to apply. Auto is on for NVIDIA, as other GPUs may turn out to need it.
+  - Trap: the vendor can't be asked of a GL context made before the `QApplication`. Any such context, alpha or not, double
+    buffered or not, makes NVIDIA's driver show the windows the black-line way for good (not DPI awareness, not COM). So
+    Auto sets up the alpha channel before Qt starts, then asks once the app is up and takes it off for the windows to come
+    unless it's NVIDIA (`init_app.settle_gl_line_fix`). Qt's share context keeps it: AMD plays fine that way. Asking costs
+    about 130 ms, mostly loading the driver Qt loads next anyway.
+  - Open: `mpv_transport` crashed natively twice in about 26 runs with the fix on, on another desktop: once in a plain run as
+    it closed a cell, once with `PYTHONFAULTHANDLER`, which itself prints from several threads at once there (mpv's LuaJIT
+    raises and catches exception `0xe24c4a02` all the time). 15 runs with it off and 20 more with it on all passed, so it
+    isn't pinned on the fix. Worth watching for.
+
 ---
 
 ## Log
 
 Newest first. What was finished and seen working, and anything that changed the plan.
 
+- 2026-11-08: 13.6 checked on Linux, the same cause there and fixed the same way. 13.7, a growing picture redrawn on the way. 13.8, NVIDIA's black rows: a Black line fix setting, on for NVIDIA by default. On a real screen Windows GL saves CPU only with a few videos, see `MPV_PERFORMANCE.md`.
+- 2026-11-08: 13.6, the shaking of GL output during a window resize on Windows, fixed: frames drawn at the old size, as Qt took the new one too late. Backward jumps of up to 12 px down to 1-2 px of rounding.
+- 2026-11-08: Stage 13, GL output, built: 13.1 to 13.4. "Fast" in Video output, after a restart. Same frame rates for 20-35 points of a core less, and on Linux the display server's share too. On Linux VLC's processes then have to start from `forkserver`.
 - 2026-11-08: Stage 9 built, see Stage 9 results. YouTube on MPV seeks in about a second, not 6, and no longer goes back to the start on 0.40 or stops after the first segment on 0.35: streams go to mpv as they come, not as made for VLC. Two proxy bugs found on the way, fixed for VLC too: a live stream that went away froze for good.
 - 2026-11-07: Code review of Stage 8: going to Automatic no longer loses the filter, and three fixes from reading the code. One suspected fault couldn't be made to happen and its fix made things worse, so it's out. See Stage 8 results.
 - 2026-11-07: Stage 8 committed, see Stage 8 results. All deinterlace modes and chapters work on MPV, from libmpv 0.35 up. Bookmarks and

@@ -15,35 +15,44 @@ from gridplayer.utils.screenshots import ScreenshotView
 _MAX_FRAME_OVERSIZE = 64
 
 
-class SoftwareVideoSurface(QWidget):
-    """Paints the latest RGB32 frame. Avoids QGraphicsView.setPixmap."""
+def unflipped_source(
+    source: tuple[float, float, float, float],
+    frame_size: tuple[int, int],
+    flip: tuple[bool, bool],
+) -> tuple[float, float, float, float]:
+    """The source, a part of the picture as shown flipped, in the frame as it
+    comes, unflipped."""
+
+    x, y, width, height = source
+    frame_w, frame_h = frame_size
+    is_across, is_up_down = flip
+
+    if is_across:
+        x = frame_w - x - width
+    if is_up_down:
+        y = frame_h - y - height
+
+    return x, y, width, height
+
+
+class VideoSurfaceView:
+    """What a surface knows of its frame and the view, whatever draws it. Goes
+    before the widget's class in its bases."""
 
     def __init__(self, parent=None):
         super().__init__(parent)
 
-        self._image: QImage | None = None
-        self._rgb = None
-        # the placeholder shown before the first frame, not one worth saving
-        self._is_black = False
         self._view = ViewParams()
         self._transform = VideoTransform.NONE
         # how wide a pixel of the picture is for its height, see set_view
         self._pixel_aspect = 1.0
         self._track_size: tuple[int, int] | None = None
 
-        self.setAttribute(Qt.WA_OpaquePaintEvent)
-        self.setAttribute(Qt.WA_NoSystemBackground)
-        self.setAttribute(Qt.WA_TransparentForMouseEvents)
-        self.setWindowFlags(Qt.WindowTransparentForInput)
-        self.setAutoFillBackground(False)
-
     def has_frame(self) -> bool:
-        return self._image is not None and not self._image.isNull()
+        raise NotImplementedError
 
     def frame_size(self) -> tuple[int, int]:
-        if not self.has_frame():
-            return 0, 0
-        return self._image.width(), self._image.height()
+        raise NotImplementedError
 
     def picture_size(self) -> tuple[int, int]:
         """The frame's size in video pixels, the ones the view is in.
@@ -69,44 +78,6 @@ class SoftwareVideoSurface(QWidget):
         )
 
         return (width, height) if is_track_size else (frame_w, frame_h)
-
-    def frame_image(self) -> QImage | None:
-        """A copy of the frame on show, as it came from the decoder.
-
-        At the size it came at, see picture_size for the size it is.
-        """
-
-        if not self.has_frame() or self._is_black:
-            return None
-
-        return self._image.copy()
-
-    def present_rgb32(self, buf, width, height) -> None:
-        if not buf or not width or not height:
-            return
-
-        # Dimensions arrive via a queued signal, the buffer via shared memory
-        # that the decoder reallocates on the VLC thread. A mid-stream switch to
-        # a smaller frame lands the new buffer here while width/height are still
-        # the old, larger ones, and QImage would read past the end of it.
-        # Skip such a frame; the matching dimensions are already on their way.
-        if len(buf) < height * width * 4:
-            return
-
-        # Keep buf alive for this QImage; skip .copy() (second full-frame memcpy).
-        self._rgb = buf
-        self._image = QImage(buf, width, height, width * 4, QImage.Format_RGB32)
-        self._is_black = False
-        self.update()
-
-    def present_black(self, width, height) -> None:
-        if not width or not height:
-            return
-        image = QImage(width, height, QImage.Format_RGB32)
-        image.fill(Qt.black)
-        self._image = image
-        self._is_black = True
-        self.update()
 
     def set_view(
         self,
@@ -146,21 +117,6 @@ class SoftwareVideoSurface(QWidget):
             target=placement.target,
         )
 
-    def paintEvent(self, event) -> None:
-        painter = QPainter(self)
-        painter.setRenderHint(QPainter.SmoothPixmapTransform, True)
-
-        placement = self.placement() if self.has_frame() else None
-
-        if placement is None:
-            painter.fillRect(self.rect(), Qt.black)
-            return
-
-        for bar in self._bars(placement.target):
-            painter.fillRect(bar, Qt.black)
-
-        self._draw_frame(painter, placement)
-
     def _bars(self, target) -> list[QRect]:
         """Where the picture won't be, to fill black: all of it filled first costs
         nearly as much as drawing the picture.
@@ -180,6 +136,85 @@ class SoftwareVideoSurface(QWidget):
         covered = QRect(left, top, right - left, bottom - top)
 
         return QRegion(self.rect()).subtracted(QRegion(covered)).rects()
+
+
+class SoftwareVideoSurface(VideoSurfaceView, QWidget):
+    """Paints the latest RGB32 frame. Avoids QGraphicsView.setPixmap."""
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+
+        self._image: QImage | None = None
+        self._rgb = None
+        # the placeholder shown before the first frame, not one worth saving
+        self._is_black = False
+
+        self.setAttribute(Qt.WA_OpaquePaintEvent)
+        self.setAttribute(Qt.WA_NoSystemBackground)
+        self.setAttribute(Qt.WA_TransparentForMouseEvents)
+        self.setWindowFlags(Qt.WindowTransparentForInput)
+        self.setAutoFillBackground(False)
+
+    def has_frame(self) -> bool:
+        return self._image is not None and not self._image.isNull()
+
+    def frame_size(self) -> tuple[int, int]:
+        if not self.has_frame():
+            return 0, 0
+        return self._image.width(), self._image.height()
+
+    def frame_image(self) -> QImage | None:
+        """A copy of the frame on show, as it came from the decoder.
+
+        At the size it came at, see picture_size for the size it is.
+        """
+
+        if not self.has_frame() or self._is_black:
+            return None
+
+        return self._image.copy()
+
+    def present_rgb32(self, buf, width, height) -> None:
+        if not buf or not width or not height:
+            return
+
+        # Dimensions arrive via a queued signal, the buffer via shared memory
+        # that the decoder reallocates on the VLC thread. A mid-stream switch to
+        # a smaller frame lands the new buffer here while width/height are still
+        # the old, larger ones, and QImage would read past the end of it.
+        # Skip such a frame; the matching dimensions are already on their way.
+        if len(buf) < height * width * 4:
+            return
+
+        # Keep buf alive for this QImage; skip .copy() (second full-frame memcpy).
+        self._rgb = buf
+        self._image = QImage(buf, width, height, width * 4, QImage.Format_RGB32)
+        self._is_black = False
+        self.update()
+
+    def present_black(self, width, height) -> None:
+        if not width or not height:
+            return
+        image = QImage(width, height, QImage.Format_RGB32)
+        image.fill(Qt.black)
+        self._image = image
+        self._is_black = True
+        self.update()
+
+    def paintEvent(self, event) -> None:
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.SmoothPixmapTransform, True)
+
+        placement = self.placement() if self.has_frame() else None
+
+        if placement is None:
+            painter.fillRect(self.rect(), Qt.black)
+            return
+
+        for bar in self._bars(placement.target):
+            painter.fillRect(bar, Qt.black)
+
+        self._draw_frame(painter, placement)
 
     def _draw_frame(self, painter: QPainter, placement: ViewPlacement) -> None:
         painter.drawImage(

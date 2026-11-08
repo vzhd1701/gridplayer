@@ -1805,6 +1805,87 @@ def test_a_restart_wakes_the_renderer_for_a_frame_held_back():
     assert player._wake_renderer.called
 
 
+def _gl_output(renderer, *videos):
+    renderer.is_gl_output = True
+    for number, video in enumerate(videos):
+        for at, slot in enumerate(video.slots()):
+            slot.texture = 10 * (number + 1) + at
+        renderer._videos.append(video)
+
+
+def test_with_gl_output_frames_go_out_as_textures_finished_once_a_round(renderer):
+    """Drawn by Qt's contexts, a texture has to be finished before it's shown."""
+
+    first, second = _rendered_video(), _rendered_video()
+    _gl_output(renderer, first, second)
+    finished_before = []
+    renderer._gl.glFinish.side_effect = lambda: finished_before.append(
+        (first.has_fresh_frame, second.has_fresh_frame)
+    )
+
+    for video in (first, second):
+        video.needs_update = True
+        video.render_context.update.return_value = True
+    renderer._render_round()
+
+    renderer._gl.glFinish.assert_called_once()
+    assert finished_before == [(False, False)]
+    assert first.has_fresh_frame
+    assert second.has_fresh_frame
+    renderer._gl.glReadPixels.assert_not_called()
+
+    # drawn into the back one, which goes round to the front
+    shown = first.latest()
+    assert shown.texture == 10
+    assert (shown.width, shown.height) == (4, 2)
+
+
+def test_with_gl_output_a_texture_is_sized_again_only_for_a_new_size(renderer):
+    video = _rendered_video()
+    _gl_output(renderer, video)
+
+    # the GUI taking each, so all three go round
+    for _ in range(4):
+        _round(renderer, video, is_frame=True)
+        video.latest()
+
+    # three slots, each sized once
+    assert renderer._gl.glTexImage2D.call_count == 3
+
+    video.player.render_size.return_value = (8, 4)
+    _round(renderer, video, is_frame=True)
+
+    assert renderer._gl.glTexImage2D.call_count == 4
+
+
+def test_read_back_nothing_is_finished(renderer):
+    video = _rendered_video()
+    renderer._videos.append(video)
+
+    _round(renderer, video, is_frame=True)
+
+    renderer._gl.glFinish.assert_not_called()
+    renderer._gl.glReadPixels.assert_called_once()
+
+
+def test_the_texture_on_show_can_be_taken_as_its_video_goes(renderer):
+    video = _rendered_video()
+    _gl_output(renderer, video)
+    _round(renderer, video, is_frame=True)
+    shown = video.latest().texture
+
+    assert not video.take_shown_texture(shown + 1)
+    assert not video.take_shown_texture(0)
+    assert video.take_shown_texture(shown)
+
+    renderer._free_video(video)
+
+    deleted = {
+        call.args[1]._obj.value for call in renderer._gl.glDeleteTextures.call_args_list
+    }
+    assert deleted == {10, 11, 12} - {shown}
+
+
 def test_one_video_failing_to_render_leaves_the_others(renderer):
     bad, good = _rendered_video(), _rendered_video()
     context = bad.render_context

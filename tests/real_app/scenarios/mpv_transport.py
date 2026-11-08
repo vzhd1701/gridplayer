@@ -123,13 +123,13 @@ def _bar_drag(d):
         surface = block.video_driver.video_surface
 
         shown = []
-        present = surface.present_rgb32
+        present = surface.present_frame
 
         def counted(*args, present=present, shown=shown):
             shown.append(args)
             present(*args)
 
-        surface.present_rgb32 = counted
+        surface.present_frame = counted
 
         for at in range(DRAG_SEEKS):
             percent = 0.1 + 0.8 * at / DRAG_SEEKS
@@ -139,7 +139,7 @@ def _bar_drag(d):
         # not the block's target, which is gone once the seek has been seen to land
         aim = percent * block.video_driver.length
 
-        surface.present_rgb32 = present
+        surface.present_frame = present
 
         what = "playing" if is_playing else "paused"
 

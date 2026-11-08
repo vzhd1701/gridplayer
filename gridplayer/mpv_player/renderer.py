@@ -9,10 +9,15 @@
                                         |
     GUI thread: a surface paints the newest finished frame with QPainter
 
-There is no GL in the window. Painted like any other widget, a frame arrives
-with the size change it goes with, where a GL one reaches the screen in its
-own time, sometimes for a size the window no longer has: that vibrates during a
-real window resize, and nothing on the GL side fixed it.
+That is the "Steady" output, with no GL in the window. Painted like any other
+widget, a frame arrives with the size change it goes with, where a GL one
+reaches the screen in its own time, sometimes for a size the window no longer
+has: that vibrates during a real window resize, and nothing on the GL side
+fixed it.
+
+The "Fast" output reads nothing back. The render thread's context shares with
+Qt's (QtShareGroup), the triple buffer holds textures, finished once a round,
+and a QOpenGLWidget draws the newest: much less CPU, the vibration and all.
 
 What each thread may do, most bugs here being one of these broken:
 
@@ -40,7 +45,11 @@ import time
 from PyQt5.QtCore import QObject, Qt, QThread, QTimer, pyqtSignal
 from PyQt5.QtGui import QGuiApplication, QOffscreenSurface, QSurfaceFormat
 
-from gridplayer.mpv_player.gl_context import GLContextError, create_gl_context
+from gridplayer.mpv_player.gl_context import (
+    GLContextError,
+    QtShareGroup,
+    create_gl_context,
+)
 from gridplayer.mpv_player.libmpv import load_mpv
 from gridplayer.params import env
 
@@ -48,6 +57,7 @@ GL_TEXTURE_2D = 0x0DE1
 GL_TEXTURE_MIN_FILTER = 0x2801
 GL_TEXTURE_MAG_FILTER = 0x2800
 GL_NEAREST = 0x2600
+GL_LINEAR = 0x2601
 GL_RGBA = 0x1908
 GL_BGRA = 0x80E1
 GL_RGBA8 = 0x8058
@@ -84,6 +94,7 @@ _GL_FUNCS = {
         _c.c_uint,
         _c.c_int,
     ),
+    "glFinish": (None,),
     "glReadPixels": (
         None,
         _c.c_int,
@@ -178,15 +189,17 @@ def _param_array(param_type, params):
 
 
 class FrameSlot:
-    """A finished frame's pixels, BGRA with the top row first."""
+    """A finished frame: its pixels, BGRA with the top row first, or with GL
+    output its texture, RGBA with the top row first."""
 
-    __slots__ = ("_pixels_ctypes", "height", "pixels", "width")
+    __slots__ = ("_pixels_ctypes", "height", "pixels", "texture", "width")
 
     def __init__(self):
         self.width = 0
         self.height = 0
         self.pixels = None
         self._pixels_ctypes = None
+        self.texture = 0
 
     def writable(self, width: int, height: int):
         """A ctypes view of the pixels to write a frame this size into.
@@ -237,6 +250,21 @@ class RenderedVideo:
         self.back, self._ready, self._front = FrameSlot(), FrameSlot(), FrameSlot()
         self.has_fresh_frame = False
 
+    def slots(self) -> tuple[FrameSlot, FrameSlot, FrameSlot]:
+        return self.back, self._ready, self._front
+
+    def take_shown_texture(self, texture: int) -> bool:
+        """The texture on show, taken out of the renderer's hands as the video
+        goes, so it can stay on show: GUI thread, once nothing more is shown.
+        """
+
+        with self._lock:
+            if not texture or self._front.texture != texture:
+                return False
+
+            self._front.texture = 0
+            return True
+
     def publish(self) -> None:
         with self._lock:
             self.back, self._ready = self._ready, self.back
@@ -258,10 +286,14 @@ class VideoRenderer(QThread):
     # the render context failed to come up, for the one video or for all
     failed = pyqtSignal(object, str)
 
-    def __init__(self, mpv_module, parent=None):
+    def __init__(self, mpv_module, gl_share=None, parent=None):
         super().__init__(parent)
 
         self._mpv = mpv_module
+        # a context of Qt's to share textures with, for frames drawn by GL in
+        # the window rather than read back
+        self._gl_share = gl_share
+        self.is_gl_output = gl_share is not None
         self._log = logging.getLogger(self.__class__.__name__)
 
         self._wake = threading.Event()
@@ -309,7 +341,9 @@ class VideoRenderer(QThread):
 
     def run(self):
         try:
-            self._context = create_gl_context(self._platform, self._qt_surface)
+            self._context = create_gl_context(
+                self._platform, self._qt_surface, share=self._gl_share
+            )
             self._gl = _GLFunctions(self._context)
         except GLContextError as e:
             self._log.exception("No GL context")
@@ -371,37 +405,52 @@ class VideoRenderer(QThread):
         video.render_context.update_cb = on_update
 
         video.render_calls = RenderCalls(self._mpv, video.render_context, self._fbo)
-        video.texture = self._new_texture()
+        if self.is_gl_output:
+            # drawn at whatever size the cell has while it's being resized
+            for slot in video.slots():
+                slot.texture = self._new_texture(GL_LINEAR)
+        else:
+            video.texture = self._new_texture()
 
         self._videos.append(video)
 
         video.player.on_render_context_ready()
 
-    def _new_texture(self) -> int:
+    def _new_texture(self, scaling=GL_NEAREST) -> int:
         gl = self._gl
 
         texture = ctypes.c_uint()
         gl.glGenTextures(1, ctypes.byref(texture))
         gl.glBindTexture(GL_TEXTURE_2D, texture.value)
-        gl.glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST)
-        gl.glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST)
+        gl.glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, scaling)
+        gl.glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, scaling)
 
         return texture.value
 
     def _render_round(self) -> None:
-        is_any_rendered = False
+        rendered = []
 
         for video in list(self._videos):
             # one thread for every video: what goes wrong with one stays with it
             try:
-                is_any_rendered |= self._render_if_due(video)
+                if self._render_if_due(video):
+                    rendered.append(video)
             except Exception as e:  # noqa: PERF203
                 self._log.exception("A video failed to render")
                 self._videos.remove(video)
                 self._free_video(video)
+                # its cell stops showing its frame, gone, as it hears of it
                 self.failed.emit(video, str(e))
 
-        if is_any_rendered and not self.is_present_due:
+        # Drawn by other contexts, a texture has to be finished first, which GL
+        # says takes a finish or a fence: one finish a round does them all.
+        if rendered and self.is_gl_output:
+            self._gl.glFinish()
+
+        for video in rendered:
+            video.publish()
+
+        if rendered and not self.is_present_due:
             self.is_present_due = True
             self.frames_ready.emit()
 
@@ -446,7 +495,6 @@ class VideoRenderer(QThread):
         video.has_new_frame = False
         video.is_frame_lost = False
         video.is_out_of_date = False
-        video.publish()
 
         return True
 
@@ -456,8 +504,16 @@ class VideoRenderer(QThread):
 
         gl.glBindFramebuffer(GL_FRAMEBUFFER, self._fbo)
 
-        gl.glBindTexture(GL_TEXTURE_2D, video.texture)
-        if video.rendered_size != size:
+        if self.is_gl_output:
+            # the GUI may be drawing the others
+            texture = video.back.texture
+            is_new_size = (video.back.width, video.back.height) != size
+        else:
+            texture = video.texture
+            is_new_size = video.rendered_size != size
+
+        gl.glBindTexture(GL_TEXTURE_2D, texture)
+        if is_new_size:
             gl.glTexImage2D(
                 GL_TEXTURE_2D,
                 0,
@@ -471,13 +527,18 @@ class VideoRenderer(QThread):
             )
 
         gl.glFramebufferTexture2D(
-            GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, video.texture, 0
+            GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, texture, 0
         )
 
         # block_for_target_time defaults to on: render() sleeps until the
         # frame's display time, up to video-timing-offset per video. Off here,
         # with the offset at 0 so frames aren't early: see MpvPlayer.
         video.render_calls.draw(width, height)
+        video.rendered_size = size
+
+        if self.is_gl_output:
+            video.back.width, video.back.height = size
+            return
 
         # render() may have left anything bound
         gl.glBindFramebuffer(GL_FRAMEBUFFER, self._fbo)
@@ -490,8 +551,6 @@ class VideoRenderer(QThread):
             GL_UNSIGNED_BYTE,
             video.back.writable(width, height),
         )
-
-        video.rendered_size = size
 
     def _release_video(self, video: RenderedVideo) -> None:
         # not there if the render context never came up
@@ -510,9 +569,11 @@ class VideoRenderer(QThread):
         video.render_context = None
         video.render_calls = None
 
-        texture = ctypes.c_uint(video.texture)
-        self._gl.glDeleteTextures(1, ctypes.byref(texture))
-        video.texture = 0
+        for owner in (video, *video.slots()):
+            if owner.texture:
+                texture = ctypes.c_uint(owner.texture)
+                self._gl.glDeleteTextures(1, ctypes.byref(texture))
+                owner.texture = 0
 
     def _cleanup(self) -> None:
         # What was queued and never got here: a video not opened yet has
@@ -548,9 +609,16 @@ class MpvRenderService(QObject):
     def __init__(self, parent=None):
         super().__init__(parent)
 
+        self._log = logging.getLogger(self.__class__.__name__)
+
         self.mpv = load_mpv()
 
         self._renderer: VideoRenderer | None = None
+
+        # Frames drawn by GL in the window, see QtShareGroup. Asked before any
+        # cell is made, as each makes its surface for one or the other.
+        self._share_group = self._join_qt_share_group()
+        self.is_gl_output = self._share_group is not None
 
         self._last_present = 0.0
 
@@ -561,8 +629,29 @@ class MpvRenderService(QObject):
         # terminates it, so this holds on to them until that is done.
         self._players_alive = set()
 
+    def _join_qt_share_group(self) -> QtShareGroup | None:
+        if not env.MPV_GL_OUTPUT:
+            return None
+
+        try:
+            share_group = QtShareGroup()
+            # The render thread's context shares with it, made as that one is
+            # here, now: some drivers won't share, and no cell can take frames
+            # drawn by GL once it's made for them.
+            create_gl_context(QGuiApplication.platformName(), share=share_group).close()
+        except GLContextError:
+            self._log.exception("No GL output, frames read back instead")
+            return None
+
+        return share_group
+
+    def delete_textures(self, textures: list[int]) -> None:
+        """Frames drawn by GL that a cell kept on show, gone: GUI thread."""
+
+        self._share_group.delete_textures(textures)
+
     def _start_renderer(self) -> VideoRenderer:
-        renderer = VideoRenderer(self.mpv, parent=self)
+        renderer = VideoRenderer(self.mpv, self._share_group, parent=self)
         renderer.frames_ready.connect(self._on_frames_ready, Qt.QueuedConnection)
         renderer.failed.connect(self._on_failed, Qt.QueuedConnection)
         renderer.start()

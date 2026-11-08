@@ -11,7 +11,7 @@ from gridplayer.params.settings_fields.kinds import (
     VideoDriverField,
     When,
 )
-from gridplayer.params.static import VideoDriver
+from gridplayer.params.static import MpvOutput, VideoDriver
 from gridplayer.utils.media_libs import (
     MPV_DRIVERS,
     VLC_DRIVERS,
@@ -111,6 +111,14 @@ def _is_linux() -> bool:
     return env.IS_LINUX
 
 
+def _is_not_macos() -> bool:
+    return not env.IS_MACOS
+
+
+def _is_windows() -> bool:
+    return env.IS_WINDOWS
+
+
 ADVANCED_FIELDS: tuple[SettingField, ...] = (
     VideoDriverField(
         settings_key="player/video_driver",
@@ -134,6 +142,20 @@ ADVANCED_FIELDS: tuple[SettingField, ...] = (
         minimum=1,
         maximum=MAX_VLC_PROCESSES,
         enabled_when=When("player/video_driver", MULTIPROCESS_DRIVERS),
+    ),
+    ComboField(
+        settings_key="player/mpv_output",
+        label=translate("SettingsDialog", "Video output"),
+        choices=choices.mpv_outputs,
+        buttons=True,
+        # MPV hasn't been run there yet: Stage 11
+        shown_if=_is_not_macos,
+        enabled_when=When("player/video_driver", MPV_DRIVERS),
+        tooltip=translate(
+            "SettingsDialog",
+            "Fast often uses less CPU, mostly with a few videos. Works after you"
+            " restart GridPlayer.",
+        ),
     ),
     CheckboxField(
         settings_key="player/mpv_skip_frames",
@@ -195,6 +217,19 @@ ADVANCED_FIELDS: tuple[SettingField, ...] = (
             "SettingsDialog",
             "Crops a few pixels off the edges to hide glitches from hardware video."
             " Auto uses the default for your system.",
+        ),
+    ),
+    ComboField(
+        settings_key="internal/gl_line_fix",
+        label=translate("SettingsDialog", "Black line fix"),
+        choices=choices.gl_line_fixes,
+        shown_if=_is_windows,
+        enabled_when=When("player/mpv_output", (MpvOutput.GL,)),
+        tooltip=translate(
+            "SettingsDialog",
+            "Fixes a black line at the bottom of the window with Fast video output."
+            " Uses more CPU. Auto turns it on for NVIDIA. Works after you restart"
+            " GridPlayer.",
         ),
     ),
     CheckboxField(
