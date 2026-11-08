@@ -2,14 +2,18 @@
 is let go of once another takes its place or the surface goes, drawn or not.
 Nothing here draws: no GL needed."""
 
+import gc
+import weakref
 from unittest.mock import MagicMock
 
 import pytest
 from PyQt5 import sip
+from PyQt5.QtCore import QObject, pyqtSignal
 from PyQt5.QtWidgets import QApplication
 
 from gridplayer.mpv_player.renderer import RenderedVideo
 from gridplayer.params.static import VideoTransform, ViewParams
+from gridplayer.widgets import video_surface_gl
 from gridplayer.widgets.video_frame_mpv import MpvGLVideoSurface
 
 
@@ -159,3 +163,38 @@ def test_a_started_surface_says_so():
 
     assert surface.is_drawing()
     assert started == [True]
+
+
+class _Context(QObject):
+    aboutToBeDestroyed = pyqtSignal()
+
+    def versionFunctions(self, _profile):
+        return None
+
+
+def test_the_blitter_lasts_as_long_as_its_context(monkeypatch):
+    """Qt frees its vertex array as the context goes, on a hidden window made
+    for it, while Python can run and collect: the surface already going, only
+    the context can hold on to it."""
+
+    monkeypatch.setattr(video_surface_gl, "QOpenGLTextureBlitter", _Blitter)
+    monkeypatch.setattr(video_surface_gl, "draw_at_window_size", lambda _w: None)
+    context = _Context()
+    surface = _surface()
+    monkeypatch.setattr(surface, "context", lambda: context)
+
+    surface.initializeGL()
+    blitter = weakref.ref(surface._blitter)
+
+    surface._blitter = None
+    gc.collect()
+    assert blitter() is not None
+
+    sip.delete(context)
+    gc.collect()
+    assert blitter() is None
+
+
+class _Blitter:
+    def create(self):
+        pass

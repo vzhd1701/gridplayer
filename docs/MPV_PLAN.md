@@ -24,7 +24,7 @@ still to be started, overnight, by you.**
 | 10 | Hardening: long churn, memory, real drags, other GPUs | not started |
 | 11 | macOS | not started |
 | 12 | Packaging, docs, release | not started |
-| 13 | GL output, a choice beside readback | **built, macOS not run**, resize shaking and NVIDIA's black line fixed, 13.5 open |
+| 13 | GL output, a choice beside readback | **built, macOS not run**, resize shaking, NVIDIA's black line and a crash closing a cell fixed, 13.5 open |
 
 ## Rules that hold in every stage
 
@@ -874,10 +874,16 @@ core less while the decoder keeps up, at the same frame rates. Suggested words: 
     Auto sets up the alpha channel before Qt starts, then asks once the app is up and takes it off for the windows to come
     unless it's NVIDIA (`init_app.settle_gl_line_fix`). Qt's share context keeps it: AMD plays fine that way. Asking costs
     about 130 ms, mostly loading the driver Qt loads next anyway.
-  - Open: `mpv_transport` crashed natively twice in about 26 runs with the fix on, on another desktop: once in a plain run as
-    it closed a cell, once with `PYTHONFAULTHANDLER`, which itself prints from several threads at once there (mpv's LuaJIT
-    raises and catches exception `0xe24c4a02` all the time). 15 runs with it off and 20 more with it on all passed, so it
-    isn't pinned on the fix. Worth watching for.
+  - The crash closing a cell, seen in `mpv_transport`, wasn't the fix's: fixed, see 13.9.
+- [x] 13.9 A native crash closing a cell with GL output, about 1 in 90 runs of `mpv_transport`. Caught by a crash catcher of its
+  own in the app (a vectored handler logging an unwound stack, the GUI thread): `~QOpenGLWidget` deletes its context, whose
+  `aboutToBeDestroyed` has the blitter's vertex array free itself. With no context current, Qt makes a hidden window to make
+  it current on, and Python can run meanwhile (event filters), the garbage collector with it. The surface was going and the
+  blitter only Python's, so it could be freed right then, vertex array and all, under Qt's feet. A full collection at each new
+  window surface made it crash 3 runs in 3, at the first cell closed. Now the context holds the blitter until it's gone
+  (`_HeldTillContextGone`): 3 in 3 pass that way, every blitter let go. The surface's own slot can't do it, PyQt cuts a
+  widget's bound methods off once it's being deleted. The earlier `PYTHONFAULTHANDLER` crash was the fault handler itself,
+  printing from two threads.
 
 ---
 

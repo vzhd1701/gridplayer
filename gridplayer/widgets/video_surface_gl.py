@@ -106,6 +106,23 @@ class _KeptTexture:
             self._delete_textures([texture])
 
 
+class _HeldTillContextGone:
+    """A blitter its context holds on to, for as long as it's there.
+
+    As a context goes with no context current, as when its widget goes, Qt
+    frees the blitter's vertex array on a hidden window made for it. Python
+    can run while it's made, and the garbage collector with it, and a blitter
+    only Python's, its widget going, could be freed then, under Qt's feet: a
+    crash closing a cell.
+    """
+
+    def __init__(self, blitter: QOpenGLTextureBlitter):
+        self.blitter = blitter
+
+    def let_go(self, *_args) -> None:
+        self.blitter = None
+
+
 class GLVideoSurface(VideoSurfaceView, QOpenGLWidget):
     # its picture can be drawn from now on
     drawing_started = pyqtSignal()
@@ -228,8 +245,16 @@ class GLVideoSurface(VideoSurfaceView, QOpenGLWidget):
         return None
 
     def initializeGL(self) -> None:
+        context = self.context()
+
+        # before the blitter's own, so it needs no hidden window
+        context.aboutToBeDestroyed.connect(self._on_context_going)
+
         self._blitter = QOpenGLTextureBlitter()
         self._blitter.create()
+
+        held = _HeldTillContextGone(self._blitter)
+        context.destroyed.connect(functools.partial(_HeldTillContextGone.let_go, held))
 
         # None on OpenGL ES, which then fills with a painter
         profile = QOpenGLVersionProfile()
@@ -238,12 +263,11 @@ class GLVideoSurface(VideoSurfaceView, QOpenGLWidget):
         if self._gl is not None:
             self._gl.initializeOpenGLFunctions()
 
-        self.context().aboutToBeDestroyed.connect(self._on_context_going)
-
         # the window is put together with GL from now on
         draw_at_window_size(self.window())
 
     def _on_context_going(self) -> None:
+        # Not as the surface itself goes: PyQt has cut it off by then.
         self.makeCurrent()
         self._blitter.destroy()
         self.doneCurrent()
