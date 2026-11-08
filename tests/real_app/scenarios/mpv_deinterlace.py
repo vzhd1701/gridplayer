@@ -307,8 +307,9 @@ def _frame_steps(d, flagged):
     b = _open(d, flagged)
     b.set_pause(True)
     d.wait_until(lambda: b.video_params.is_paused, "it's paused")
+    # by hand, so on the key frame before it, 8.3 s in, where seeks by hand are fast
     d.act(b, "50%")
-    d.wait_until(lambda: 9_000 < b.time < 11_000, "at the middle")
+    d.wait_until(lambda: 8_000 < b.time < 11_000, "at the middle")
 
     for picking in ("Deinterlace On", "Deinterlace Mode - Yadif (2x)"):
         d.act(b, picking)

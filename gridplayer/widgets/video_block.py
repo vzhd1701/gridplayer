@@ -38,6 +38,8 @@ from gridplayer.params.static import (
     OVERLAY_ACTIVITY_EVENT,
     OWN_ASPECT_RATIO,
     PLAYER_ID_LENGTH,
+    SeekAim,
+    SeekSyncMode,
     VideoCrop,
     VideoDeinterlace,
     VideoDeinterlaceMode,
@@ -112,6 +114,16 @@ IN_PROGRESS_THRESHOLD_MS = 500
 # stays off for this long after one, so an update sent before the seek landed
 # is not mistaken for the video wrapping around.
 SEEK_SETTLE_MS = 500
+
+# what the viewer's seeks are for, by the command that makes them; any other is exact
+_MANUAL_SEEK_AIMS = {
+    "seek_percent": SeekAim.HAND,
+    "seek_shift_percent": SeekAim.HAND,
+    "seek_step": SeekAim.HAND,
+    "seek_random": SeekAim.HAND,
+    # a time typed in
+    "seek": SeekAim.MARK,
+}
 
 # VLC's adaptive demuxer turns a seek down while it is still restarting its
 # streams for the one before -- "not seekable" in its own log, and nothing
@@ -774,8 +786,17 @@ class VideoBlock(QWidget):
     @only_initialized
     @only_seekable
     def manual_seek(self, command, *args):
+        seek = attrgetter(command)(self)
+        aim = _MANUAL_SEEK_AIMS.get(command)
+
+        # the others go exactly where this one is said to be, so it has to be there
+        if aim is not None and self._ctx.seek_sync_mode == SeekSyncMode.DISABLED:
+            is_done = seek(*args, aim=aim)
+        else:
+            is_done = seek(*args)
+
         # one that went nowhere leaves the others nothing to follow
-        if attrgetter(command)(self)(*args) is False:
+        if is_done is False:
             return
 
         # a seek past the end is the end arriving early, and the end action
@@ -2091,14 +2112,14 @@ class VideoBlock(QWidget):
 
     @only_initialized
     @only_seekable
-    def seek_shift_percent(self, shift_percent):
+    def seek_shift_percent(self, shift_percent, aim=SeekAim.EXACT):
         seek_ms = int(shift_percent / 100 * self.video_driver.length)
 
-        self.seek_shift_ms(seek_ms)
+        self.seek_shift_ms(seek_ms, aim)
 
     @only_initialized
     @only_seekable
-    def seek_shift_ms(self, seek_ms):
+    def seek_shift_ms(self, seek_ms, aim=SeekAim.EXACT):
         seek_stretch = self.loop_end - self.loop_start
 
         if seek_ms > 0 and self.time + seek_ms > self.loop_end:
@@ -2129,34 +2150,35 @@ class VideoBlock(QWidget):
         else:
             new_time = self.time + seek_ms
 
-        self.seek(new_time)
+        self.seek(new_time, aim=aim)
 
     @only_initialized
     @only_seekable
-    def seek_step(self, slot, direction):
+    def seek_step(self, slot, direction, aim=SeekAim.EXACT):
         """Seek by one of the playlist's steps, "short", "medium" or "long",
         forwards (direction 1) or back (-1)."""
 
-        self.seek_shift_ms(direction * seek_step_ms(slot))
+        self.seek_shift_ms(direction * seek_step_ms(slot), aim)
 
     @only_initialized
     @only_seekable
-    def seek_random(self, is_viewers=True):
+    def seek_random(self, is_viewers=True, aim=SeekAim.EXACT):
         random_ms = random.randint(self.loop_start, self.loop_end)
 
-        self.seek(random_ms, is_viewers=is_viewers)
+        self.seek(random_ms, is_viewers=is_viewers, aim=aim)
 
     @only_initialized
     @only_seekable
-    def seek_percent(self, percent):
+    def seek_percent(self, percent, aim=SeekAim.EXACT):
         seek_ms = int(percent * self.video_driver.length)
 
-        self.seek(seek_ms)
+        self.seek(seek_ms, aim=aim)
 
     @only_initialized
     @only_seekable
-    def seek(self, seek_ms, is_viewers=True):
-        """Go to a time, for the viewer or for the player itself.
+    def seek(self, seek_ms, is_viewers=True, aim=SeekAim.EXACT):
+        """Go to a time, for the viewer or for the player itself, as exactly as
+        what it's for needs: see SeekAim.
 
         A stretch to be skipped that a seek of the viewer's lands in is left
         to play, the viewer having gone there. One the player lands in, going
@@ -2200,7 +2222,7 @@ class VideoBlock(QWidget):
         self.sponsorblock.note_seek(seek_ms, is_viewers)
 
         self.time = seek_ms
-        self.video_driver.set_time(seek_ms)
+        self.video_driver.set_time(seek_ms, aim)
 
     @property
     def arriving_time(self) -> int:

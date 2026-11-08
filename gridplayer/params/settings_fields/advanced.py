@@ -146,6 +146,17 @@ ADVANCED_FIELDS: tuple[SettingField, ...] = (
             " it can skip.",
         ),
     ),
+    ComboField(
+        settings_key="player/mpv_seek_precision",
+        label=translate("SettingsDialog", "Seeking"),
+        choices=choices.seek_precisions,
+        enabled_when=When("player/video_driver", MPV_DRIVERS),
+        tooltip=translate(
+            "SettingsDialog",
+            "Fast seeks land on the nearest key frame, which can be a few seconds"
+            " off. Frame steps and synced videos are always exact.",
+        ),
+    ),
     TextField(
         settings_key="misc/vlc_options",
         enabled_when=When("player/video_driver", VLC_DRIVERS),

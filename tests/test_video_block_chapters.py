@@ -17,13 +17,19 @@ from gridplayer.models.chapter import Chapter
 from gridplayer.models.seek_mark import SeekMark, SeekMarkKind
 from gridplayer.models.stream import Stream, Streams
 from gridplayer.models.video import Video
-from gridplayer.params.static import VideoEndAction, VideoInitialState
+from gridplayer.params.static import (
+    SeekAim,
+    SeekSyncMode,
+    VideoEndAction,
+    VideoInitialState,
+)
 from gridplayer.player.managers.active_block import ActiveBlockManager
 from gridplayer.player.managers.lists import MediaListsRegistry
 from gridplayer.settings import Settings
 from gridplayer.utils.url_resolve.static import ResolvedVideo
 from gridplayer.widgets import video_block as video_block_module
 from gridplayer.widgets.video_block import VideoBlock
+from gridplayer.widgets.video_block_bookmarker import Bookmarker
 from gridplayer.widgets.video_frame_dummy import VideoFrameDummy
 
 LENGTH = 60000
@@ -332,7 +338,9 @@ class TestJumpingOnAStream:
         _reported(block, LANDING_ON_A_STREAM_MS + 5)
         _reported(block, 25400)
 
-        assert [call.args for call in set_time.call_args_list] == [(25000,)]
+        assert [call.args for call in set_time.call_args_list] == [
+            (25000, SeekAim.EXACT)
+        ]
         assert block.time == 25400
 
 
@@ -521,3 +529,59 @@ class TestSiteChapters:
 
         assert block.is_video_initialized
         assert block.chapters.all == ()
+
+
+class TestWhatASeekIsFor:
+    """How exact it has to be, for a driver that has the choice."""
+
+    @pytest.fixture
+    def aims(self, block, mocker):
+        block._ctx.seek_sync_mode = SeekSyncMode.DISABLED
+        set_time = mocker.spy(block.video_driver, "set_time")
+
+        return lambda: [call.args[1] for call in set_time.call_args_list]
+
+    @pytest.mark.parametrize(
+        ("command", "args"),
+        [
+            ("seek_percent", (0.5,)),
+            ("seek_shift_percent", (5,)),
+            ("seek_step", ("short", 1)),
+            ("seek_random", ()),
+        ],
+    )
+    def test_the_bar_and_the_seek_keys_are_by_hand(self, block, aims, command, args):
+        block.manual_seek(command, *args)
+
+        assert aims() == [SeekAim.HAND]
+
+    def test_a_time_typed_in_is_a_mark(self, block, aims):
+        block.manual_seek("seek", 12000)
+
+        assert aims() == [SeekAim.MARK]
+
+    def test_a_chapter_is_a_mark(self, block, aims):
+        block.manual_seek("chapters.seek", 2)
+        block.chapters.next()
+
+        assert aims() == [SeekAim.MARK, SeekAim.MARK]
+
+    def test_a_frame_step_is_exact(self, block, aims):
+        block.manual_seek("next_frame")
+
+        assert aims() == [SeekAim.EXACT]
+
+    def test_with_the_others_following_it_is_exact(self, block, aims):
+        block._ctx.seek_sync_mode = SeekSyncMode.PERCENT
+
+        block.manual_seek("seek_percent", 0.5)
+
+        assert aims() == [SeekAim.EXACT]
+
+    def test_a_bookmark_is_a_mark(self):
+        block = MagicMock()
+        block.bookmarks = [SimpleNamespace(time_ms=7000, name="Here")]
+
+        Bookmarker(block)._seek(0)
+
+        block.seek.assert_called_once_with(7000, aim=SeekAim.MARK)

@@ -8,6 +8,7 @@ same as it does for the seek bar.
 """
 
 from gridplayer.models.chapter import Chapter
+from gridplayer.params.static import SeekAim
 from gridplayer.utils.chapters import (
     chapter_index_at,
     chapter_span,
@@ -162,7 +163,7 @@ class ChapterControl(VideoBlockPart):
         self._seek_stop(max(self._chapters[index].start_ms, self._block.loop_start))
 
     def _seek_stop(self, stop_ms: int):
-        self._block.seek(stop_ms)
+        self._block.seek(stop_ms, aim=SeekAim.MARK)
 
         index = chapter_index_at(self._chapters, stop_ms)
 

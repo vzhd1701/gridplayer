@@ -6,6 +6,7 @@ from PyQt5.QtWidgets import QWidget
 from gridplayer.params import env
 from gridplayer.params.static import (
     AudioChannelMode,
+    SeekAim,
     VideoDeinterlace,
     VideoDeinterlaceMode,
     ViewParams,
@@ -300,7 +301,7 @@ class VideoDriverVLCHWSP(VLCVideoDriver):
     def set_pause(self, is_paused):
         self.cmd_set_pause.emit(is_paused)
 
-    def set_time(self, seek_ms):
+    def set_time(self, seek_ms, aim=SeekAim.EXACT):
         self.cmd_set_time.emit(seek_ms)
 
     def set_playback_rate(self, rate):

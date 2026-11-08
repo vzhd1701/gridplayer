@@ -17,7 +17,7 @@ from gridplayer.params.settings_bindings import PLAYLIST_ATTRS
 from gridplayer.params.settings_fields.kinds import CheckboxField, FloatSpinField
 from gridplayer.params.settings_fields.playlist import PLAYLIST_FIELDS
 from gridplayer.params.settings_pages import PLAYLIST_PAGE
-from gridplayer.params.static import MAX_SCALE, MIN_SCALE
+from gridplayer.params.static import MAX_SCALE, MIN_SCALE, SeekAim
 from gridplayer.player.managers.video_blocks import VideoBlocksManager
 from gridplayer.playlist_settings import PlaylistSettings, overrides_from_playlist
 from gridplayer.settings import Settings, _default_settings
@@ -233,7 +233,7 @@ class TestSeekSteps:
 
         VideoBlock.seek_step(block, "short", -1)
 
-        block.seek_shift_ms.assert_called_once_with(-250)
+        block.seek_shift_ms.assert_called_once_with(-250, SeekAim.EXACT)
 
     def test_every_video_seeks_by_the_step(self):
         PlaylistSettings().set("playlist/seek_step_long", 45.5)

@@ -6,7 +6,7 @@ from PyQt5.QtCore import QSettings
 from PyQt5.QtWidgets import QApplication
 
 from gridplayer.models.video import Video
-from gridplayer.params.static import VideoEndAction, VideoInitialState
+from gridplayer.params.static import SeekAim, VideoEndAction, VideoInitialState
 from gridplayer.settings import Settings
 from gridplayer.vlc_player.static import (
     SEEK_ARRIVAL_MS,
@@ -591,7 +591,7 @@ def test_seek_holds_off_wrap_detection(mocker):
 
     VideoBlock.seek(block, 1500)
 
-    block.video_driver.set_time.assert_called_once_with(1500)
+    block.video_driver.set_time.assert_called_once_with(1500, SeekAim.EXACT)
     assert block._last_time == 1500
     block._seek_settle_timer.start.assert_called_once()
 
@@ -613,7 +613,7 @@ def test_seek_marks_itself_before_it_is_made(mocker):
     block.sponsorblock._skip_spans = ()
     seen = {}
 
-    def _set_time(seek_ms):
+    def _set_time(seek_ms, _aim):
         seen["last_time"] = block._last_time
         seen["is_settling"] = block._seek_settle_timer.start.called
 
@@ -653,7 +653,7 @@ def test_seek_past_the_end_of_a_looping_video_carries_on(mocker):
 
     VideoBlock.seek_shift_ms(block, 100)
 
-    block.seek.assert_called_once_with(50)
+    block.seek.assert_called_once_with(50, aim=SeekAim.EXACT)
     block.loop_end_action.assert_not_called()
 
 
@@ -665,7 +665,7 @@ def test_seek_past_the_end_of_a_segment_carries_on(mocker):
 
     VideoBlock.seek_shift_ms(block, 100)
 
-    block.seek.assert_called_once_with(1050)
+    block.seek.assert_called_once_with(1050, aim=SeekAim.EXACT)
     block.loop_end_action.assert_not_called()
 
 
@@ -674,7 +674,7 @@ def test_seek_within_the_video_is_left_alone(mocker):
 
     VideoBlock.seek_shift_ms(block, 100)
 
-    block.seek.assert_called_once_with(5100)
+    block.seek.assert_called_once_with(5100, aim=SeekAim.EXACT)
     block.loop_end_action.assert_not_called()
 
 
@@ -684,7 +684,7 @@ def test_seek_before_the_start_still_wraps_to_the_end(mocker):
 
     VideoBlock.seek_shift_ms(block, -100)
 
-    block.seek.assert_called_once_with(9950)
+    block.seek.assert_called_once_with(9950, aim=SeekAim.EXACT)
     block.loop_end_action.assert_not_called()
 
 

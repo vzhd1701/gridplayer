@@ -52,6 +52,8 @@ from gridplayer.mpv_player.subtitles import (
 )
 from gridplayer.params.static import (
     AudioChannelMode,
+    SeekAim,
+    SeekPrecision,
     SubtitleOutline,
     VideoCellViewMode,
     VideoCrop,
@@ -71,7 +73,11 @@ from gridplayer.utils.aspect_calc import (
 )
 from gridplayer.utils.log_config import DISABLED
 from gridplayer.vlc_player.static import Media, MediaInput, StreamAudio, VideoTrack
-from gridplayer.widgets.video_frame_mpv import MpvVideoSurface, VideoDriverMpv
+from gridplayer.widgets.video_frame_mpv import (
+    MpvVideoSurface,
+    VideoDriverMpv,
+    VideoFrameMpv,
+)
 
 
 @pytest.fixture(scope="module", autouse=True)
@@ -1177,6 +1183,195 @@ def test_a_seek_to_the_start_stays_at_the_start():
     driver.set_time(0)
 
     assert driver._player.mpv.commands == [("seek", 0, "absolute+exact")]
+
+
+def _seeking(monkeypatch, precision, at_ms=22_000):
+    """A two-minute video at a time, seeking as the setting says."""
+
+    monkeypatch.setattr(
+        "gridplayer.widgets.video_frame_mpv.Settings",
+        lambda: SimpleNamespace(get=lambda _key: precision),
+    )
+    driver = _driver_playing()
+    driver._media.length = 120_000
+
+    if at_ms is not None:
+        driver._on_time(at_ms)
+
+    return driver
+
+
+def test_the_frame_passes_on_what_a_seek_is_for():
+    # VLC's frame, which it's made of, tells its driver the time alone
+    frame = SimpleNamespace(video_driver=MagicMock())
+
+    VideoFrameMpv.set_time(frame, 5000, SeekAim.HAND)
+
+    frame.video_driver.set_time.assert_called_once_with(5000, SeekAim.HAND)
+
+
+def test_the_last_time_reported_goes_on_to_the_block(monkeypatch):
+    driver = _seeking(monkeypatch, SeekPrecision.EXACT, at_ms=None)
+    told = []
+    driver.time_changed.connect(told.append)
+
+    driver._on_time(5000)
+
+    assert told == [5000]
+
+
+@pytest.mark.parametrize("aim", list(SeekAim))
+def test_every_seek_is_exact_when_set_so(monkeypatch, aim):
+    driver = _seeking(monkeypatch, SeekPrecision.EXACT)
+
+    driver.set_time(27_000, aim)
+
+    assert driver._player.mpv.commands == [("seek", 27.0, "absolute+exact")]
+
+
+@pytest.mark.parametrize("precision", list(SeekPrecision))
+def test_a_frame_step_or_a_synced_seek_is_always_exact(monkeypatch, precision):
+    driver = _seeking(monkeypatch, precision)
+
+    driver.set_time(27_000, SeekAim.EXACT)
+
+    assert driver._player.mpv.commands == [("seek", 27.0, "absolute+exact")]
+
+
+def test_a_seek_by_hand_lands_on_the_key_frame_before_it(monkeypatch):
+    # short of it, as VLC lands, and never past the end
+    driver = _seeking(monkeypatch, SeekPrecision.EXACT_MARKS)
+
+    driver.set_time(27_000, SeekAim.HAND)
+
+    assert driver._player.mpv.commands == [("seek", 27.0, "absolute+keyframes")]
+
+
+def _taken(player):
+    """mpv has the last seek: it says so in turn with its events."""
+
+    command = player.mpv.commands[-1]
+    player.mpv.callbacks[command](None, None)
+
+
+def test_one_forwards_is_looked_at_once_mpv_has_it(monkeypatch):
+    driver = _seeking(monkeypatch, SeekPrecision.EXACT_MARKS)
+
+    driver.set_time(27_000, SeekAim.HAND)
+
+    assert driver._player._forward_seek is None
+
+    _taken(driver._player)
+
+    assert driver._player._forward_seek == (22.0, 27.0)
+
+
+def test_one_backwards_is_not(monkeypatch):
+    driver = _seeking(monkeypatch, SeekPrecision.EXACT_MARKS)
+
+    driver.set_time(17_000, SeekAim.HAND)
+
+    assert driver._player.mpv.callbacks[driver._player.mpv.commands[-1]] is None
+
+
+def test_seeks_one_after_another_go_from_the_last_one(monkeypatch):
+    driver = _seeking(monkeypatch, SeekPrecision.EXACT_MARKS)
+
+    driver.set_time(27_000, SeekAim.HAND)
+    driver.set_time(32_000, SeekAim.HAND)
+    _taken(driver._player)
+
+    assert driver._player._forward_seek == (27.0, 32.0)
+
+
+def _landed(player, at_s):
+    player.mpv.time_pos = at_s
+    _restart(player)
+
+
+def _forwards(player, at_s, exact_s, from_s):
+    player.seek_key_frame(at_s, exact_s, from_s=from_s)
+    _taken(player)
+
+
+def test_forwards_landing_where_it_was_or_behind_goes_there_exactly():
+    # 3 s on from 19 s, with a key frame every 6 s, was 18 s, and pressed again,
+    # 18 s again: a seek key would go nowhere
+    player = _player()
+    _forwards(player, 22.0, 21.98, from_s=19.0)
+
+    _landed(player, 18.0)
+
+    assert player.mpv.commands[-1] == ("seek", 21.98, "absolute+exact")
+
+
+def test_forwards_landing_further_on_stays():
+    player = _player()
+    _forwards(player, 27.0, 26.98, from_s=19.0)
+
+    _landed(player, 24.0)
+
+    assert player.mpv.commands == [("seek", 27.0, "absolute+keyframes")]
+
+
+def test_it_is_looked_at_the_once():
+    player = _player()
+    _forwards(player, 22.0, 21.98, from_s=19.0)
+    _landed(player, 18.0)
+
+    _landed(player, 18.0)
+
+    assert len(player.mpv.commands) == 2
+
+
+def test_the_one_before_landing_after_the_next_is_made_says_nothing():
+    # the first lands, behind where the second goes from, before mpv has the second
+    player = _player()
+    player.seek_key_frame(22.0, 21.98, from_s=19.0)
+    player.seek_key_frame(25.0, 24.98, from_s=22.0)
+    first_taken = player.mpv.callbacks[("seek", 22.0, "absolute+keyframes")]
+    first_taken(None, None)
+
+    _landed(player, 18.0)
+
+    assert player.mpv.commands[-1] == ("seek", 25.0, "absolute+keyframes")
+
+
+def test_an_exact_seek_after_it_leaves_nothing_to_look_at():
+    player = _player()
+    player.seek_key_frame(22.0, 21.98, from_s=19.0)
+
+    player.seek_exact(40.0)
+    taken_late = player.mpv.callbacks[("seek", 22.0, "absolute+keyframes")]
+    taken_late(None, None)
+    _landed(player, 40.0)
+
+    assert player.mpv.commands[-1] == ("seek", 40.0, "absolute+exact")
+    assert player._forward_seek is None
+
+
+def test_a_seek_by_hand_from_nowhere_known_lands_before_it(monkeypatch):
+    driver = _seeking(monkeypatch, SeekPrecision.FAST, at_ms=None)
+
+    driver.set_time(27_000, SeekAim.HAND)
+
+    assert driver._player.mpv.commands == [("seek", 27.0, "absolute+keyframes")]
+
+
+def test_a_bookmark_or_chapter_is_exact_unless_all_are_fast(monkeypatch):
+    driver = _seeking(monkeypatch, SeekPrecision.EXACT_MARKS)
+
+    driver.set_time(30_000, SeekAim.MARK)
+
+    assert driver._player.mpv.commands == [("seek", 30.0, "absolute+exact")]
+
+
+def test_a_fast_bookmark_lands_short_of_it_never_past(monkeypatch):
+    driver = _seeking(monkeypatch, SeekPrecision.FAST, at_ms=10_000)
+
+    driver.set_time(30_000, SeekAim.MARK)
+
+    assert driver._player.mpv.commands == [("seek", 30.0, "absolute+keyframes")]
 
 
 def test_a_quick_pause_and_play_both_reach_mpv():

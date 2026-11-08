@@ -398,6 +398,7 @@ PAGES = (
                 "player/video_driver",
                 Indented("player/video_driver_players"),
                 Indented("player/mpv_skip_frames"),
+                Indented("player/mpv_seek_precision"),
                 Slot("driver_notice", under_card=True),
             ),
             Section(

@@ -351,6 +351,10 @@ class MpvPlayer(QObject):
         # what it was last told, which it says it is only a moment later
         self.is_pause_asked = media_input.video.is_paused
         self._last_time_sent = None
+        # a seek to a key frame forwards, as (from, exactly), once mpv has it: see
+        # seek_key_frame. Counted, so only the last one made is.
+        self._forward_seek: tuple[float, float] | None = None
+        self._seeks_made = 0
         # a live stream stopped for being paused, or opening again after it, with the
         # last picture still up: mpv only has black to draw until it's playing again
         self.is_picture_held = False
@@ -587,6 +591,57 @@ class MpvPlayer(QObject):
 
     def set_option(self, name: str, value) -> None:
         self.command("set", name, value)
+
+    def seek_exact(self, at_s: float) -> None:
+        self._seeks_made += 1
+        self._forward_seek = None
+
+        self.command("seek", at_s, "absolute+exact")
+
+    def seek_key_frame(self, at_s: float, exact_s: float, from_s: float | None) -> None:
+        """To the key frame at or before it, short of it as VLC lands, and never past
+        the end. Forwards, it can be where it was or behind it, the one it was going
+        from: then exactly, to exact_s, or a seek key would go nowhere or back.
+
+        Not by so much to the key frame past it: with none after it mpv goes to the
+        start, and where it's counted from is where mpv is, a little on from what it
+        last said.
+        """
+
+        self._seeks_made += 1
+        self._forward_seek = None
+
+        if from_s is None or at_s <= from_s:
+            self.command("seek", at_s, "absolute+keyframes")
+            return
+
+        # Not until mpv has it. It says so in turn with its events, so the next to say
+        # playback has restarted is this one: one made before that may still say it, and
+        # where that one landed is nothing to go by.
+        self.command(
+            "seek",
+            at_s,
+            "absolute+keyframes",
+            callback=partial(
+                self._on_forward_seek_taken, self._seeks_made, (from_s, exact_s)
+            ),
+        )
+
+    def _on_forward_seek_taken(self, seek_no, forward_seek, error, _result) -> None:
+        if error is None and seek_no == self._seeks_made:
+            self._forward_seek = forward_seek
+
+    def _check_forward_seek(self) -> None:
+        forward_seek, self._forward_seek = self._forward_seek, None
+
+        if forward_seek is None:
+            return
+
+        from_s, exact_s = forward_seek
+        landed_s = self.mpv.time_pos
+
+        if landed_s is not None and landed_s <= from_s:
+            self.command("seek", exact_s, "absolute+exact")
 
     def set_pause(self, is_paused: bool) -> None:
         self.is_pause_asked = is_paused
@@ -904,6 +959,7 @@ class MpvPlayer(QObject):
             self.is_picture_held = False
             self._wake_renderer()
             self.playback_restarted.emit()
+            self._check_forward_seek()
             # the frame a deinterlacer coming off leaves, paused or not
             self._check_frames_interlaced()
         elif event_id == ids.END_FILE:

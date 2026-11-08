@@ -530,6 +530,26 @@ class SeekSyncMode(AutoName):
     TIMECODE = auto()
 
 
+class SeekPrecision(AutoName):
+    """Which seeks land on the very frame asked for, where the driver has a choice:
+    the rest land on a key frame, which is quicker."""
+
+    EXACT = auto()
+    EXACT_MARKS = auto()
+    FAST = auto()
+
+
+class SeekAim(Enum):
+    """What a seek is for, which says how exact it has to be."""
+
+    # a frame step, other videos following one, a loop, a skip, a place put back
+    EXACT = auto()
+    # a bookmark, a chapter, a time typed in
+    MARK = auto()
+    # the bar, a seek key, a random place
+    HAND = auto()
+
+
 class UnsavedChangesMode(AutoName):
     ASK = auto()
     DISCARD = auto()

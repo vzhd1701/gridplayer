@@ -3,6 +3,7 @@ from abc import abstractmethod
 
 from PyQt5.QtCore import QObject, pyqtSignal
 
+from gridplayer.params.static import SeekAim
 from gridplayer.utils.qt import MILLISECONDS, QABC
 from gridplayer.vlc_player.static import Media, MediaInput
 
@@ -97,7 +98,9 @@ class VLCVideoDriver(QObject, metaclass=QABC):
     def set_pause(self, is_paused): ...
 
     @abstractmethod
-    def set_time(self, seek_ms): ...
+    def set_time(self, seek_ms, aim=SeekAim.EXACT):
+        """Go to a time, as exactly as what the seek is for needs where the driver
+        has a choice: see SeekPrecision. VLC has none."""
 
     @abstractmethod
     def set_playback_rate(self, rate): ...

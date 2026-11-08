@@ -25,6 +25,7 @@ from gridplayer.models.stream import Stream
 from gridplayer.params import env
 from gridplayer.params.static import (
     HWCropBorderOffset,
+    SeekAim,
     VideoAnchor,
     VideoCellViewMode,
     VideoCrop,
@@ -1569,7 +1570,7 @@ class VideoFrameVLC(QWidget, metaclass=QABC):
 
         return self.pause_snapshot.frame_image()
 
-    def set_time(self, seek_ms) -> None:
+    def set_time(self, seek_ms, aim=SeekAim.EXACT) -> None:
         self.video_driver.set_time(seek_ms)
 
     def set_playback_rate(self, rate) -> None:

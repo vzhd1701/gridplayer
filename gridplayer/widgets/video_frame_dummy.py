@@ -4,6 +4,7 @@ from PyQt5.QtCore import QTimer
 from PyQt5.QtGui import QColor, QPainter
 from PyQt5.QtWidgets import QWidget
 
+from gridplayer.params.static import SeekAim
 from gridplayer.vlc_player.static import Media, MediaInput, VideoTrack
 from gridplayer.vlc_player.video_driver_base import VLCVideoDriver
 from gridplayer.widgets.video_frame_vlc_base import VideoFrameVLC
@@ -25,7 +26,7 @@ class VideoDriverDummy(VLCVideoDriver):
 
     def set_pause(self, is_paused): ...
 
-    def set_time(self, seek_ms): ...
+    def set_time(self, seek_ms, aim=SeekAim.EXACT): ...
 
     def set_playback_rate(self, rate): ...
 
@@ -113,7 +114,7 @@ class VideoFrameDummy(VideoFrameVLC):
 
         self.playback_status_changed.emit(is_paused)
 
-    def set_time(self, seek_ms):
+    def set_time(self, seek_ms, aim=SeekAim.EXACT):
         self._fake_player_time = seek_ms
 
     def get_ms_per_frame(self):

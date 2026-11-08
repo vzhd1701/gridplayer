@@ -650,9 +650,28 @@ VLC, for comparison: about 2 s, up to 5 s, but it lands short of where it was as
 
 **Run on:** Windows, 0.41: the whole real-app suite, with `live`, `stream_errors`, `streams` and `dubs` now held to on both MPV drivers too, and `mpv_streams` new. `test_gpu`: 0.40 on real X11 and Wayland with zero-copy `vaapi` and offscreen in software, and 0.35 and 0.37 in the chroots: `mpv_streams`, `stream_errors`, `live`, `streams`, `dubs`, `marks`, `navigation`, `playback`, `mpv_transport`. VLC, Windows: `live` and `stream_errors` as well as the rest. Real YouTube: one video and four cells with a live one beside them on Windows, one video on Linux; no AMD and no VLC on Linux.
 
+### Seeking: exact or fast
+
+You decided: a setting, "Seeking" under Video Decoder, greyed out unless on MPV, as mpv.net has it: Exact, Exact for bookmarks and chapters
+(the default, as mpv.net's and mpv's own), and Fast. Fast lands on a key frame. Exact seeks decode from the key frame to the time: 2160p60 AV1 on the
+CPU took 0.5-5.5 s, against 0.2-1.1 s on the key frame, which is about what VLC does by landing short.
+
+- Each seek says what it's for (`SeekAim`): by hand (the bar, seek keys, a random place), a mark (a bookmark, a chapter, a time typed in), or always
+  exact: frame steps, the other videos following one with Seek synced (and the one followed, so they agree), loops, SponsorBlock skips, a place put back.
+  The [ALL] seeks are exact, as the others following one are. VLC's drivers take it and have no use for it.
+- A fast seek lands on the key frame at or before it, short as VLC lands, never past the end. So one forwards could go back: 3 s on from 19 s, a key
+  frame every 6 s, was 18 s, and pressed again, 18 s again. One forwards that lands where it was or behind goes on exactly, so it costs what an exact one
+  does only where there's no key frame between. The player looks at where it landed on mpv's playback restart, and only for the last seek mpv has taken:
+  one made before can land after the next is made, and was taken for it.
+- Tried first and dropped: by so much (`relative+keyframes`), which mpv takes to the key frame past it. With none after it, before the end, mpv went to the
+  start: on a 20 s clip with key frames at 0 and 10 s, 50% from 1.48 s, counted from the 1.40 s last reported, aimed past 10 s and went to 0 s.
+- What the scenarios held to: `mpv_deinterlace` now takes the middle as from 8 s, its clip's key frame being at 8.3 s.
+- 4K 60 fps H.264, a key frame every 4 s, on this machine: exact 0.33-0.39 s in software and 1.41-1.53 s with `hwdec=auto`, fast 0.02-0.09 s. A test
+  pattern decodes far more easily than a film. YouTube itself not measured since.
+- `mpv_seeking`: where each lands, by the setting, on 0.35, 0.37, 0.40 and 0.41.
+
 **Left:**
 
-- **Your call: 4K seeks.** Exact seeks decode from the keyframe to the time. On the CPU, 2160p60 AV1 took 0.5-5.5 s to land exactly, against 0.2-1.1 s on the keyframe, which is what VLC does by landing short. Exact is what frame step and bookmarks need, so I've left it. Far seeks by the viewer could go to the keyframe on a stream if you'd prefer the speed.
 - A long way back can take 7 s, about the same as the playlist did on Windows and more than VLC's 2-5 s. mpv works through fragments to get there: not looked into further.
 - **YouTube turned me down with 429 after a long run of testing, on both machines,** for a while, so go easy with these. It's what the scenarios here are for. It cleared by itself.
 - A stream's sound whose link fails leaves the video playing silent, with only a log line. Read in the code, not tried.

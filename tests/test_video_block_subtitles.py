@@ -71,7 +71,7 @@ class _Driver:
     def set_subtitle_track(self, track_id):
         self.tracks_set.append(track_id)
 
-    def set_time(self, seek_ms):
+    def set_time(self, seek_ms, aim=None):
         self.times_set.append(seek_ms)
 
 

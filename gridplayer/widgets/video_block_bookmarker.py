@@ -18,7 +18,7 @@ from gridplayer.dialogs.bookmark_rename_dialog import QBookmarkRenameDialog
 from gridplayer.dialogs.bookmarks import BookmarksDialog, held_end_action_txt
 from gridplayer.models.bookmark import Bookmark, bookmark_color
 from gridplayer.models.seek_mark import SeekMark, SeekMarkKind
-from gridplayer.params.static import VideoEndAction
+from gridplayer.params.static import SeekAim, VideoEndAction
 from gridplayer.utils.bookmarks import (
     bookmark_at,
     default_bookmark_name,
@@ -210,7 +210,7 @@ class Bookmarker(VideoBlockPart):
         return True
 
     def _seek(self, index: int):
-        self._block.seek(self._block.bookmarks[index].time_ms)
+        self._block.seek(self._block.bookmarks[index].time_ms, aim=SeekAim.MARK)
 
         self._block.info_change.emit(self.name(index))
 

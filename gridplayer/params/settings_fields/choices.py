@@ -27,6 +27,7 @@ from gridplayer.params.static import (
     NetworkRetryMode,
     ProxyMode,
     ScreenshotFormat,
+    SeekPrecision,
     SeekSyncMode,
     SponsorBlockMode,
     StripMode,
@@ -150,6 +151,16 @@ def seek_sync_modes() -> dict:
         SeekSyncMode.DISABLED: translate("Seek Sync", "Disabled"),
         SeekSyncMode.PERCENT: translate("Seek Sync", "Percent"),
         SeekSyncMode.TIMECODE: translate("Seek Sync", "Timecode"),
+    }
+
+
+def seek_precisions() -> dict:
+    return {
+        SeekPrecision.EXACT: translate("SettingsDialog", "Exact"),
+        SeekPrecision.EXACT_MARKS: translate(
+            "SettingsDialog", "Exact for bookmarks and chapters"
+        ),
+        SeekPrecision.FAST: translate("SettingsDialog", "Fast"),
     }
 
 

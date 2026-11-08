@@ -19,7 +19,12 @@ from gridplayer.mpv_player.subtitles import (
     current_subtitle_style,
     subtitle_view,
 )
-from gridplayer.params.static import ROTATION_TRANSFORMS, VideoTransform
+from gridplayer.params.static import (
+    ROTATION_TRANSFORMS,
+    SeekAim,
+    SeekPrecision,
+    VideoTransform,
+)
 from gridplayer.settings import Settings
 from gridplayer.utils.aspect_calc import (
     ViewPlacement,
@@ -39,6 +44,13 @@ RESIZE_SETTLE_MS = 150
 # How long a screenshot waits for the frame at the picture's own size, before
 # making do with the one on show
 SCREENSHOT_WAIT_MS = 2000
+
+# which seeks land on a key frame, for each setting
+_FAST_SEEK_AIMS = {
+    SeekPrecision.EXACT: frozenset(),
+    SeekPrecision.EXACT_MARKS: frozenset({SeekAim.HAND}),
+    SeekPrecision.FAST: frozenset({SeekAim.HAND, SeekAim.MARK}),
+}
 
 # Across and up and down, after whatever turn there is: see player._TURNS. For
 # a file that says to turn the picture on its side, the other way round: a flip
@@ -175,6 +187,9 @@ class VideoDriverMpv(VLCVideoDriver):
         # what the decoder says of the picture, which can come before the load
         # has been reported, when the frame has no tracks to put it on yet
         self._video_size: tuple[int, int, object] | None = None
+        # where it is, or where it was last sent: what mpv counts a seek by so
+        # much from
+        self._time_ms: int | None = None
 
         self._load_timeout = QTimer(self)
         self._load_timeout.setSingleShot(True)
@@ -212,6 +227,8 @@ class VideoDriverMpv(VLCVideoDriver):
     def load_video(self, media_input: MediaInput) -> None:
         self._log.info(f"Loading {media_input.uri}")
 
+        self._time_ms = None
+
         try:
             self._player = MpvPlayer(
                 self._render_service.mpv,
@@ -233,7 +250,7 @@ class VideoDriverMpv(VLCVideoDriver):
         for signal, slot in (
             (self._player.media_loaded, self._on_media_loaded),
             (self._player.playback_restarted, self._on_playback_restarted),
-            (self._player.time_changed, self.time_changed),
+            (self._player.time_changed, self._on_time),
             (self._player.paused_changed, self.playback_status_changed_emit),
             (self._player.video_size_changed, self._on_video_size),
             (self._player.failed, self.error_state),
@@ -437,17 +454,28 @@ class VideoDriverMpv(VLCVideoDriver):
                 Settings().get("player/video_init_timeout") * 1000
             )
 
-    def set_time(self, seek_ms):
+    def _on_time(self, time_ms: int) -> None:
+        self._time_ms = time_ms
+        self.time_changed.emit(time_ms)
+
+    def set_time(self, seek_ms, aim=SeekAim.EXACT):
         if self._player is None or self._player.media_input.is_live:
             return
+
+        from_ms, self._time_ms = self._time_ms, seek_ms
 
         # mpv goes to the first frame at or after a time, where a time here
         # means the frame it is in. Half a frame back makes it the frame nearest
         # to the time, and for the middle of a frame, which is where a frame
         # step aims, that very frame.
-        aim_ms = max(seek_ms - self._half_frame_ms(), 0)
+        exact_s = max(seek_ms - self._half_frame_ms(), 0) / 1000
+        precision = Settings().get("player/mpv_seek_precision")
 
-        self._player.command("seek", aim_ms / 1000, "absolute+exact")
+        if aim in _FAST_SEEK_AIMS.get(precision, ()):
+            from_s = None if from_ms is None else from_ms / 1000
+            self._player.seek_key_frame(seek_ms / 1000, exact_s, from_s)
+        else:
+            self._player.seek_exact(exact_s)
 
     def _half_frame_ms(self) -> float:
         track = self._media.cur_video_track if self._media is not None else None
@@ -585,6 +613,10 @@ class VideoFrameMpv(PaintedVideoFrame, VideoFrameVLC):
             full_size=self._full_render_size,
             parent=self,
         )
+
+    def set_time(self, seek_ms, aim=SeekAim.EXACT) -> None:
+        # what it's for, which VLC's drivers have no use for
+        self.video_driver.set_time(seek_ms, aim)
 
     def _pane_box(self) -> tuple[int, int]:
         """The most a frame needs, in device pixels, before there is a view.
