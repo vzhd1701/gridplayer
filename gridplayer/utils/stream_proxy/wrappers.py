@@ -359,27 +359,13 @@ class HLSMuxedStream(GeneratedPlaylistStream):
     def _generate_playlist(self) -> str:
         # takes too long to load all tracks, picking the best one; which
         # language they are in was settled before we were handed them
-        name, audio_track = self.stream.audio_tracks.best
-
-        solo_stream = dataclasses.replace(self.stream, audio_tracks=None)
+        solo_stream, name, audio_track = self.stream.apart()
 
         return build_master_playlist(
             video_url=self._proxify(solo_stream),
-            audio_url=self._proxify(self._with_origin(audio_track, name)),
+            audio_url=self._proxify(audio_track),
             audio_name=name,
             audio_language=audio_track.language,
-        )
-
-    def _with_origin(self, audio_track: Stream, name: str) -> Stream:
-        """Note which track this is, so it can be found again once renewed."""
-
-        origin = self.stream.origin
-
-        if origin is None:
-            return audio_track
-
-        return dataclasses.replace(
-            audio_track, origin=dataclasses.replace(origin, audio_track=name)
         )
 
 

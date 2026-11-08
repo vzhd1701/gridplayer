@@ -143,6 +143,10 @@ class VideoDriverManager(ManagerBase):
                 if driver is not None and hasattr(driver, "set_log_level_vlc"):
                     driver.set_log_level_vlc(log_level)
 
+    def set_log_level_mpv(self, log_level):
+        if self._mpv_render_service:
+            self._mpv_render_service.set_log_level(log_level)
+
     def set_mpv_skip_frames(self, is_skipping):
         if self._mpv_render_service:
             self._mpv_render_service.set_skip_frames(is_skipping)

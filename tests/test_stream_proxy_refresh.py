@@ -300,6 +300,35 @@ def test_a_renewed_video_half_is_not_handed_its_audio_tracks_back():
     assert _pick_stream(fresh_streams, served).audio_tracks is None
 
 
+def test_a_file_being_read_as_a_file_stays_one_once_renewed(upstream, proxy):
+    # a playlist in its place, under the same link, would end the video
+    upstream.replies = {
+        "/old.mp4": (403, b"expired"),
+        "/new.mp4": (200, b"fresh file"),
+    }
+
+    def resolve_source(url, headers=None):
+        fresh = Stream(
+            url=_upstream_url(upstream, "/new.mp4"),
+            protocol="http_hls",
+            session=SESSION,
+        )
+
+        return ResolvedVideo(title="t", is_live=False, streams=Streams({"best": fresh}))
+
+    server = proxy(resolve_source)
+    stale = Stream(
+        url=_upstream_url(upstream, "/old.mp4"),
+        protocol="http",
+        session=SESSION,
+        origin=StreamOrigin(url=PAGE_URL, quality="best"),
+    )
+
+    response = requests.get(server.add_stream(stale), timeout=10)
+
+    assert response.content == b"fresh file"
+
+
 def test_a_renewed_audio_track_is_found_by_name():
     audio_tracks = Streams(
         {

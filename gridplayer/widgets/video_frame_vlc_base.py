@@ -21,6 +21,7 @@ from PyQt5.QtGui import QImage, QPainter, QPixmap
 from PyQt5.QtWidgets import QStackedLayout, QWidget
 
 from gridplayer.models.chapter import Chapter
+from gridplayer.models.stream import Stream
 from gridplayer.params import env
 from gridplayer.params.static import (
     HWCropBorderOffset,
@@ -52,6 +53,7 @@ from gridplayer.utils.aspect_calc import (
     calc_whole_placement,
     calc_zoomed_shift,
 )
+from gridplayer.utils.media_libs import MediaLib
 from gridplayer.utils.qt import MILLISECONDS, QABC, qt_connect
 from gridplayer.utils.screenshots import ScreenshotView
 from gridplayer.utils.win32_vlc_vout import (
@@ -473,6 +475,17 @@ class VideoFrameVLC(QWidget, metaclass=QABC):
     must_reload_for_subtitle_style = True
     # see is_deinterlace_reload_needed
     must_reload_for_automatic_deinterlace = True
+    # as an error's tag has it
+    media_lib = MediaLib.VLC
+    # see SEEK_RETRIES in video_block
+    has_adaptive_demuxer = True
+
+    @staticmethod
+    def streams_to_open(stream: Stream) -> tuple[Stream, tuple[str, Stream] | None]:
+        """What of a stream the proxy serves it: the picture, and the sound by its name
+        where it's opened apart. VLC takes the one playlist the proxy makes of them."""
+
+        return stream, None
 
     time_changed = pyqtSignal(MILLISECONDS)
     playback_status_changed = pyqtSignal(bool)

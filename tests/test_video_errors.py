@@ -33,6 +33,7 @@ from gridplayer.player.managers.lists import MediaListsRegistry
 from gridplayer.playlist_settings import PlaylistSettings
 from gridplayer.settings import Settings
 from gridplayer.utils.list_errors import ReadErrorKind
+from gridplayer.utils.media_libs import MediaLib
 from gridplayer.utils.stream_proxy.server import (
     ProxyRequestHandler,
     RelayFailure,
@@ -726,7 +727,7 @@ class TestOnTheCell:
         block = make_cell(
             "https://site.example/live", network_retry_mode=NetworkRetryMode.OFF
         )
-        block.stream._proxied_url = "http://127.0.0.1:1/?session_id=s"
+        block.stream._proxied_urls = ("http://127.0.0.1:1/?session_id=s",)
         block.stream._loaded_at = time.monotonic() - 1
         block._ctx.commands.stream_failure.return_value = ProxyFailure(
             url="https://cdn.example/seg.ts", status=403, reason="Forbidden"
@@ -742,7 +743,7 @@ class TestOnTheCell:
         block = make_cell(
             "https://site.example/live", network_retry_mode=NetworkRetryMode.OFF
         )
-        block.stream._proxied_url = "http://127.0.0.1:1/?session_id=s"
+        block.stream._proxied_urls = ("http://127.0.0.1:1/?session_id=s",)
         block._ctx.commands.stream_failure.return_value = ProxyFailure(
             url="https://cdn.example/seg.ts", status=403, at=time.monotonic() - 60
         )
@@ -1230,3 +1231,37 @@ def test_the_details_tag_never_a_window_of_its_own():
     assert not dialog.tag.isWindow()
 
     dialog.deleteLater()
+
+
+class TestWhoSaidIt:
+    def test_vlc_is_named_unless_told_otherwise(self):
+        error = player_error("Player error", ("mp4: no moov",))
+
+        assert error.code == "VLC"
+        assert "VLC errors:" in error.raw
+
+    def test_mpv_is_named_where_it_said_it(self):
+        error = player_error(
+            "Player error", ("cplayer: Failed.",), media_lib=MediaLib.MPV
+        )
+
+        assert error.code == "MPV"
+        assert error.about == "Failed."
+        assert "MPV errors:" in error.raw
+        assert "VLC" not in error.raw
+
+    def test_mpv_is_named_under_what_the_proxy_was_told(self):
+        failure = ProxyFailure(url="http://cdn", status=403, reason="Forbidden")
+
+        error = proxy_error(failure, ("lavf: refused",), MediaLib.MPV)
+
+        assert "MPV errors:" in error.raw
+
+    def test_a_status_in_what_mpv_said_is_told_as_a_status(self):
+        error = player_error(
+            "Player error",
+            ("ffmpeg: HTTP error 404 Not Found",),
+            media_lib=MediaLib.MPV,
+        )
+
+        assert error.code == "HTTP 404"

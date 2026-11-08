@@ -1,8 +1,10 @@
 """The sums and the bookkeeping of the mpv driver, with no libmpv. How it plays
 is in tests/real_app/scenarios/mpv_basics.py."""
 
+import logging
 import threading
 import time
+from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
@@ -67,7 +69,8 @@ from gridplayer.utils.aspect_calc import (
     calc_full_size,
     calc_render_size,
 )
-from gridplayer.vlc_player.static import Media, MediaInput, VideoTrack
+from gridplayer.utils.log_config import DISABLED
+from gridplayer.vlc_player.static import Media, MediaInput, StreamAudio, VideoTrack
 from gridplayer.widgets.video_frame_mpv import MpvVideoSurface, VideoDriverMpv
 
 
@@ -411,14 +414,23 @@ def _mpv_module():
 
 
 def _player(
-    skip_frames=False, is_live=False, is_audio_only=False, hwdec="auto", **video
+    skip_frames=False,
+    is_live=False,
+    is_audio_only=False,
+    hwdec="auto",
+    uri="file.mp4",
+    media=None,
+    **video,
 ):
+    """`media`: more of the MediaInput."""
+
     media_input = MediaInput(
-        uri="file.mp4",
+        uri=uri,
         is_live=is_live,
         is_audio_only=is_audio_only,
         size=(100, 100),
-        video=Video(uri="file.mp4", **video),
+        video=Video(uri=uri, **video),
+        **(media or {}),
     )
     return MpvPlayer(
         _mpv_module(),
@@ -455,6 +467,12 @@ def _file_loaded(player):
     file_loaded = player._mpv_module.MpvEventID.FILE_LOADED
 
     player._on_event(SimpleNamespace(event_id=SimpleNamespace(value=file_loaded)))
+
+
+def _restart(player):
+    restart = player._mpv_module.MpvEventID.PLAYBACK_RESTART
+
+    player._on_event(SimpleNamespace(event_id=SimpleNamespace(value=restart)))
 
 
 _BY_NAME = {
@@ -698,8 +716,7 @@ def test_going_to_automatic_asks_again_once_the_deinterlacer_is_off():
 
     player._on_hwdec("hwdec-current", "nvdec")
     player.mpv.frame_says = "yes"
-    restart = player._mpv_module.MpvEventID.PLAYBACK_RESTART
-    player._on_event(SimpleNamespace(event_id=SimpleNamespace(value=restart)))
+    _restart(player)
 
     assert _deinterlace_told(player)[-1] == ("hwdec", "auto-copy")
 
@@ -2672,3 +2689,452 @@ def test_surface_leaves_the_flip_to_mpv_while_it_does_it():
     image = surface.frame_image()
 
     assert (image.pixel(0, 0), image.pixel(1, 0)) == (BLUE, RED)
+
+
+# Streams ---------------------------------------------------------------------
+
+
+def _stream_player(stream_audio=None, http_headers=None, is_live=False, **media):
+    return _player(
+        is_live=is_live,
+        uri="http://proxy/video",
+        media={
+            "stream_audio": stream_audio,
+            "http_headers": http_headers or {},
+            "is_proxied": True,
+            **media,
+        },
+    )
+
+
+_STREAM_AUDIO = StreamAudio(uri="http://proxy/audio", title="Audio 128k", language="de")
+
+
+def _audio_file_track(track_id, file, **fields):
+    return {
+        "id": track_id,
+        "type": "audio",
+        "external": True,
+        "external-filename": file,
+        "title": "?stream_id=1&session_id=2",
+        **fields,
+    }
+
+
+def test_a_streams_own_sound_opens_as_a_file_before_the_video():
+    player = _stream_player(_STREAM_AUDIO)
+
+    player.start((100, 100))
+
+    commands = player.mpv.commands
+
+    assert commands.index(
+        ("change-list", "audio-files", "append", "http://proxy/audio")
+    ) < commands.index(("loadfile", "http://proxy/video"))
+
+
+def test_a_streams_own_sound_is_no_file_to_the_menus():
+    player = _stream_player(_STREAM_AUDIO)
+    player.mpv.track_list = [_audio_file_track(1, "http://proxy/audio")]
+
+    tracks = player._read_tracks()
+
+    assert tracks.external_audio_ids == ()
+    assert tracks.default_audio_track_id == 1
+    assert tracks.audio_tracks[1].description == "Audio 128k"
+    assert tracks.audio_tracks[1].language == "de"
+
+
+def test_a_file_put_beside_a_streams_sound_is_still_a_file():
+    player = _stream_player(_STREAM_AUDIO)
+    player.mpv.track_list = [
+        _audio_file_track(1, "http://proxy/audio"),
+        _audio_file_track(2, "file:///commentary.m4a"),
+    ]
+
+    assert player._read_tracks().external_audio_ids == (2,)
+
+
+def test_a_links_headers_go_where_mpv_takes_them():
+    player = _stream_player(
+        http_headers={
+            "User-Agent": "Box/1.0",
+            "Referer": "http://ref.example/",
+            "X-Token": "a, b",
+        }
+    )
+
+    player.start((100, 100))
+
+    commands = player.mpv.commands
+
+    assert ("set", "user-agent", "Box/1.0") in commands
+    assert ("set", "referrer", "http://ref.example/") in commands
+    # a value that has a comma in it stays the one value
+    assert ("change-list", "http-header-fields", "append", "X-Token: a, b") in commands
+
+
+def test_pausing_a_live_stream_lets_it_go():
+    player = _stream_player(is_live=True)
+    player._dims = (640, 360)
+    said = []
+    player.paused_changed.connect(said.append)
+
+    player.set_pause(True)
+
+    assert ("stop",) in player.mpv.commands
+    assert ("set", "pause", "yes") not in player.mpv.commands
+    assert said == [True]
+    assert player.is_paused
+
+
+def test_a_stopped_live_stream_has_only_black_to_draw_so_draws_nothing():
+    player = _stream_player(is_live=True)
+    player._dims = (640, 360)
+
+    player.set_pause(True)
+
+    assert player.render_size() is None
+
+
+def test_playing_a_live_stream_again_opens_it_again():
+    player = _stream_player(is_live=True)
+    player._dims = (640, 360)
+    player.set_pause(True)
+    player.mpv.commands.clear()
+    said = []
+    player.paused_changed.connect(said.append)
+
+    player.set_pause(False)
+
+    assert ("loadfile", "http://proxy/video") in player.mpv.commands
+    assert said == [False]
+    assert not player.is_paused
+    # the picture stays until there's another
+    assert player.render_size() is None
+
+    _restart(player)
+
+    assert player.render_size() is not None
+
+
+def test_a_live_stream_opened_again_is_loaded_once_with_its_tracks_read_again():
+    player = _stream_player(is_live=True)
+    loaded, changed = [], []
+    player.media_loaded.connect(loaded.append)
+    player.tracks_changed.connect(changed.append)
+    _file_loaded(player)
+
+    player.mpv.track_list = [{"type": "audio", "id": 1, "selected": True}]
+    _file_loaded(player)
+
+    assert len(loaded) == 1
+    assert list(changed[-1].audio_tracks) == [1]
+    assert player._media is changed[-1]
+
+
+def test_files_added_to_a_live_stream_are_opened_again_with_it():
+    player = _stream_player(is_live=True)
+
+    player.add_audio_file("C:/dub.mka")
+    subtitles = Path("C:/subs.srt")
+    player.add_subtitle_file(subtitles.as_uri())
+
+    commands = player.mpv.commands
+
+    assert ("change-list", "audio-files", "append", "C:/dub.mka") in commands
+    assert ("change-list", "sub-files", "append", str(subtitles)) in commands
+
+
+def test_files_added_to_a_video_are_not_kept_for_opening_again():
+    player = _stream_player()
+
+    player.add_audio_file("C:/dub.mka")
+
+    assert not [c for c in player.mpv.commands if c[0] == "change-list"]
+
+
+def test_pausing_a_video_stays_a_pause():
+    player = _stream_player()
+
+    player.set_pause(True)
+
+    assert ("set", "pause", "yes") in player.mpv.commands
+    assert ("stop",) not in player.mpv.commands
+
+
+def test_no_length_means_no_going_round():
+    player = _stream_player()
+    player.mpv.duration = None
+
+    _file_loaded(player)
+
+    assert player.media_input.is_live
+    assert ("set", "loop-file", "no") in player.mpv.commands
+
+
+def test_staying_open_at_the_end_is_no_pause_of_the_viewers():
+    assert _stream_player().mpv.options["keep_open_pause"] is False
+
+
+def _live_driver():
+    driver = _driver_playing()
+    driver._player = _stream_player(is_live=True)
+    driver._is_load_reported = True
+
+    return driver
+
+
+def test_a_live_stream_is_not_seeked_or_sped_up():
+    driver = _live_driver()
+
+    driver.set_time(5000)
+    driver.set_playback_rate(2.0)
+
+    assert not [
+        command
+        for command in driver._player.mpv.commands
+        if command[0] == "seek" or command[:2] == ("set", "speed")
+    ]
+
+
+def test_a_live_stream_that_wont_play_again_times_out(monkeypatch):
+    monkeypatch.setattr(
+        "gridplayer.widgets.video_frame_mpv.Settings",
+        lambda: SimpleNamespace(get=lambda _key: 7),
+    )
+    driver = _live_driver()
+    driver.set_pause(True)
+    said = []
+    driver.error.connect(lambda message, _lines: said.append(message))
+
+    driver.set_pause(False)
+
+    assert driver._rejoin_timeout.interval() == 7000
+    assert driver._rejoin_timeout.isActive()
+
+    driver._rejoin_timeout.timeout.emit()
+
+    assert said == ["Buffering timeout"]
+
+
+def test_a_live_stream_playing_again_is_in_time():
+    driver = _live_driver()
+    driver.set_pause(True)
+    driver.set_pause(False)
+
+    driver._on_playback_restarted()
+
+    assert not driver._rejoin_timeout.isActive()
+
+
+def test_a_live_stream_paused_again_is_not_waited_on():
+    driver = _live_driver()
+    driver.set_pause(True)
+    driver.set_pause(False)
+
+    driver.set_pause(True)
+
+    assert not driver._rejoin_timeout.isActive()
+
+
+def test_a_screenshot_of_a_stopped_live_stream_is_of_what_is_up():
+    driver = _driver_for_screenshots()
+    driver._player = _stream_player(is_live=True)
+    driver._player._dims = (640, 360)
+    driver._player.set_pause(True)
+
+    driver.screenshot()
+
+    assert driver.taken == [""]
+
+
+@pytest.fixture
+def _failures_at_once(mocker):
+    """No wait for the reason, with these having theirs from the start."""
+
+    timer = mocker.patch("gridplayer.mpv_player.player.threading.Timer")
+    timer.side_effect = lambda _wait, report, args: SimpleNamespace(
+        start=lambda: report(*args), daemon=False
+    )
+
+
+def _failures_of(driver):
+    said = []
+    driver._player.failed.connect(lambda message, lines: said.append((message, lines)))
+
+    return said
+
+
+@pytest.mark.usefixtures("_failures_at_once")
+def test_a_live_stream_running_out_says_so():
+    driver = _live_driver()
+    said = _failures_of(driver)
+
+    driver._on_end_reached()
+
+    assert [message for message, _ in said] == ["Live stream ended"]
+
+
+@pytest.mark.usefixtures("_failures_at_once")
+def test_the_end_of_something_that_never_played_says_so():
+    driver = _driver_playing()
+    driver._is_load_reported = False
+    said = _failures_of(driver)
+
+    driver._on_end_reached()
+
+    assert [message for message, _ in said] == ["Video stopped before initialization"]
+
+
+@pytest.mark.usefixtures("_failures_at_once")
+def test_the_end_of_a_video_that_plays_is_nothing_wrong():
+    driver = _driver_playing()
+    driver._is_load_reported = True
+    said = _failures_of(driver)
+
+    driver._on_end_reached()
+
+    assert not said
+
+
+@pytest.mark.usefixtures("_failures_at_once")
+def test_a_video_fails_once():
+    player = _stream_player()
+    said = []
+    player.failed.connect(lambda message, _lines: said.append(message))
+
+    player.fail("One")
+    player.fail("Two")
+
+    assert said == ["One"]
+
+
+def _report_failure(timer):
+    """What the failure's timer runs once it's up."""
+
+    timer.call_args.args[1](*timer.call_args.kwargs["args"])
+
+
+def test_a_failure_waits_for_its_reason(mocker):
+    # mpv's events come before its log
+    timer = mocker.patch("gridplayer.mpv_player.player.threading.Timer")
+    player = _stream_player()
+    said = []
+    player.failed.connect(lambda _message, lines: said.append(lines))
+
+    player.fail("Player error")
+    player._on_log("error", "cplayer", "Failed to recognize file format.\n")
+
+    _report_failure(timer)
+
+    assert said == [("cplayer: Failed to recognize file format.",)]
+
+
+def test_a_failure_as_the_video_closes_says_nothing(mocker):
+    timer = mocker.patch("gridplayer.mpv_player.player.threading.Timer")
+    player = _stream_player()
+    said = []
+    player.failed.connect(lambda message, _lines: said.append(message))
+
+    player.fail("Player error")
+    player.close()
+    _report_failure(timer)
+
+    assert not said
+
+
+# The log ---------------------------------------------------------------------
+
+
+def test_errors_are_kept_for_a_failure_whatever_is_logged(caplog):
+    player = _stream_player()
+
+    with caplog.at_level(logging.DEBUG):
+        player._on_log("error", "lavf", "no good\n")
+
+    assert list(player._log_lines) == ["lavf: no good"]
+    assert "no good" not in caplog.text
+
+
+def test_what_mpv_says_is_logged_at_its_level_once_asked_for(caplog):
+    player = _stream_player()
+    player.mpv.set_loglevel = MagicMock()
+
+    player.set_log_level(logging.WARNING)
+
+    assert player.mpv.set_loglevel.call_args.args == ("warn",)
+
+    with caplog.at_level(logging.DEBUG):
+        player._on_log("warn", "lavf", "careful\n")
+        player._on_log("v", "lavf", "chatter\n")
+
+    assert "careful" in caplog.text
+    assert "chatter" not in caplog.text
+
+
+def test_turned_off_mpv_is_only_asked_for_errors():
+    player = _stream_player()
+    player.mpv.set_loglevel = MagicMock()
+
+    player.set_log_level(DISABLED)
+
+    assert player.mpv.set_loglevel.call_args.args == ("error",)
+
+
+def test_the_log_level_is_not_sent_once_closing():
+    player = _stream_player()
+    player.mpv.set_loglevel = MagicMock()
+    player.close()
+
+    player.set_log_level(logging.DEBUG)
+
+    player.mpv.set_loglevel.assert_not_called()
+
+
+def test_taking_too_long_to_load_says_so():
+    driver = _driver_playing()
+    said = []
+    driver.error.connect(lambda message, lines: said.append(message))
+
+    driver._on_load_timeout()
+
+    assert said == ["Timed out loading video"]
+
+
+def test_no_way_to_draw_is_said_with_why():
+    driver = _driver_playing()
+    said = []
+    driver.error.connect(lambda message, lines: said.append((message, lines)))
+
+    driver.render_failed("no GL context")
+
+    assert said == [("Player error", ("no GL context",))]
+
+
+def test_a_proxy_link_goes_in_with_any_segment_allowed():
+    # the proxy's look like no file: see player._ANY_SEGMENT_LINK
+    player = _stream_player()
+
+    assert "extension_picky=0" in player.mpv.options["demuxer_lavf_o"]
+
+
+def test_a_playlist_on_disk_keeps_ffmpeg_picky():
+    assert "demuxer_lavf_o" not in _player().mpv.options
+
+
+def test_a_link_mpv_opens_itself_keeps_ffmpeg_picky():
+    player = _stream_player(is_proxied=False)
+
+    assert "demuxer_lavf_o" not in player.mpv.options
+
+
+def test_a_stream_with_a_file_in_fragments_is_not_sought_in_through_its_cache():
+    player = _stream_player(has_fragmented_file=True)
+
+    assert player.mpv.options["demuxer_seekable_cache"] == "no"
+
+
+def test_any_other_stream_keeps_its_cache_for_seeks():
+    # the sound comes out behind after a seek on HLS of TS segments without it
+    assert "demuxer_seekable_cache" not in _stream_player().mpv.options

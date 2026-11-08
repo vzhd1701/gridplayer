@@ -291,9 +291,9 @@ def look_up_link(url: str) -> Found:
 
 
 class FileLengths:
-    """How long files are, as VLC reads them: in a process of its own, for
-    a file VLC chokes on to take that down rather than the player. Started
-    when first asked, and let go of once there is nothing more to ask."""
+    """How long files are, as VLC reads them, or libmpv with no VLC: in a process
+    of its own, for a file that chokes it to take that down rather than the player.
+    Started when first asked, and let go of once there is nothing more to ask."""
 
     def __init__(self):
         self._pool: ProcessPoolExecutor | None = None
@@ -302,8 +302,11 @@ class FileLengths:
     def lengths(self, paths: list[Path]) -> list[int | None]:
         """Each file's length in ms, None for one that could not be read."""
 
-        # no use starting a process with an MPV-only player
-        if lib_problem(MediaLib.VLC) is not None:
+        if lib_problem(MediaLib.VLC) is None:
+            read_in_process = lengths_in_process
+        elif lib_problem(MediaLib.MPV) is None:
+            read_in_process = lengths_by_mpv_in_process
+        else:
             return [None] * len(paths)
 
         with self._lock:
@@ -314,7 +317,7 @@ class FileLengths:
             pool = self._pool
 
         try:
-            return pool.submit(lengths_in_process, [str(p) for p in paths]).result()
+            return pool.submit(read_in_process, [str(p) for p in paths]).result()
         except Exception as e:
             # the process gone: these not read, and a new one next time
             _log.warning(f"File lengths not read: {e}")
@@ -330,6 +333,7 @@ class FileLengths:
 
 
 _vlc_instance = None
+_mpv_reader = None
 
 
 def lengths_in_process(paths: list[str]) -> list[int | None]:
@@ -383,6 +387,79 @@ def _length_of(vlc, instance, path: str) -> int | None:
         return length if length and length > 0 else None
     finally:
         media.release()
+
+
+def lengths_by_mpv_in_process(paths: list[str]) -> list[int | None]:
+    """The same with libmpv, for a player with no VLC."""
+
+    global _mpv_reader
+
+    if _mpv_reader is None:
+        _mpv_reader = _MpvLengthReader()
+
+    return [_mpv_reader.length_of(path) for path in paths]
+
+
+class _MpvLengthReader:
+    """An mpv that opens a file as far as to tell how long it is, and goes no further."""
+
+    def __init__(self):
+        from gridplayer.mpv_player.libmpv import load_mpv
+
+        self._mpv_module = load_mpv()
+        self._is_over = threading.Event()
+        # mpv numbers each file it's asked to load from 1, and a file given up on can
+        # still say it has loaded, which is not the next one saying so. Not by counting
+        # the ones it starts: one let go of before it has doesn't.
+        self._asked = 0
+        self._started = 0
+
+        self._mpv = self._mpv_module.MPV(
+            vo="null",
+            ao="null",
+            # with no track to play mpv closes the file before it can be asked
+            sid="no",
+            pause=True,
+            ytdl=False,
+            load_scripts=False,
+            audio_file_auto="no",
+            sub_auto="no",
+            cover_art_auto="no",
+        )
+        self._mpv.register_event_callback(self._on_event)
+
+    def _on_event(self, event) -> None:
+        ids = self._mpv_module.MpvEventID
+        event_id = event.event_id.value
+
+        if event_id == ids.START_FILE:
+            self._started = event.data.playlist_entry_id
+        elif event_id == ids.FILE_LOADED:
+            if self._started == self._asked:
+                self._is_over.set()
+        # the file before being let go of ends it too, with no error
+        elif (
+            event_id == ids.END_FILE
+            and event.data.playlist_entry_id == self._asked
+            and event.data.reason == self._mpv_module.MpvEventEndFile.ERROR
+        ):
+            self._is_over.set()
+
+    def length_of(self, path: str) -> int | None:
+        self._is_over.clear()
+        self._asked += 1
+
+        self._mpv.command("loadfile", path)
+
+        if not self._is_over.wait(FILE_PARSE_TIMEOUT_MS / 1000):
+            self._mpv.command("stop")
+            return None
+
+        length = self._mpv.duration
+
+        self._mpv.command("stop")
+
+        return round(length * 1000) if length and length > 0 else None
 
 
 def _parse_status(media) -> int:

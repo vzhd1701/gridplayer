@@ -18,6 +18,7 @@ from gridplayer.models.stream import (
 from gridplayer.models.video import Video
 from gridplayer.settings import Settings
 from gridplayer.widgets.video_block_stream import StreamControl
+from gridplayer.widgets.video_frame_vlc_base import VideoFrameVLC
 
 
 @pytest.fixture(scope="module", autouse=True)
@@ -65,6 +66,7 @@ def _block(mocker, quality=STREAM_QUALITY_AUTO, playing="360p", pane_height=300)
     block.is_error = False
     block._is_state_change_in_progress = False
     block._item_headers = {}
+    block.driver_class = VideoFrameVLC
     # these streams name no language, so the ladder is all of them
     block.streams = _streams()
     block.height.return_value = pane_height

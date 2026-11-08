@@ -28,7 +28,7 @@ from gridplayer.models.stream import (
 )
 from gridplayer.utils.qt import translate
 from gridplayer.utils.video_errors import ProxyFailure
-from gridplayer.vlc_player.static import MediaInput
+from gridplayer.vlc_player.static import MediaInput, StreamAudio
 from gridplayer.widgets.video_block_guards import (
     VideoBlockPart,
     only_initialized,
@@ -45,9 +45,9 @@ class StreamControl(VideoBlockPart):
     def __init__(self, block):
         super().__init__(block)
 
-        # the proxy's URL of the stream, for what it was told fetching it,
+        # the proxy's URLs of the stream, for what it was told fetching them,
         # and from when
-        self._proxied_url: str | None = None
+        self._proxied_urls: tuple[str, ...] = ()
         self._loaded_at = 0.0
 
         # what was loaded, as opposed to what was asked for
@@ -72,19 +72,16 @@ class StreamControl(VideoBlockPart):
         self._adapt_timer.stop()
 
     def proxy_failure(self) -> ProxyFailure | None:
-        if self._proxied_url is None:
-            return None
+        failures = [
+            failure
+            for failure in map(
+                self._block._ctx.commands.stream_failure, self._proxied_urls
+            )
+            # what it was told fetching it this time, not before
+            if isinstance(failure, ProxyFailure) and failure.at >= self._loaded_at
+        ]
 
-        failure = self._block._ctx.commands.stream_failure(self._proxied_url)
-
-        if not isinstance(failure, ProxyFailure):
-            return None
-
-        # what it was told fetching it this time, not before
-        if failure.at < self._loaded_at:
-            return None
-
-        return failure
+        return max(failures, key=lambda failure: failure.at, default=None)
 
     def quality_detail(self) -> str:
         """The stream picked, of a link with several.
@@ -341,19 +338,20 @@ class StreamControl(VideoBlockPart):
         # switching quality resets the block, which leaves it without a driver
         self._block._ensure_video_driver()
 
+        stream_audio = None
+
         if stream.protocol == "direct":
             url = stream.url
-            self._proxied_url = None
+            self._proxied_urls = ()
         else:
             stream = self._with_audio_language(stream)
-            url = self._block._ctx.commands.add_stream(
-                self._with_origin(stream, quality)
-            )
-            self._proxied_url = url if isinstance(url, str) else None
+            url, stream_audio = self._add_to_proxy(self._with_origin(stream, quality))
 
         self._loaded_at = time.monotonic()
 
-        self.is_adaptive = stream.is_adaptive
+        self.is_adaptive = (
+            stream.is_adaptive and self._block.driver_class.has_adaptive_demuxer
+        )
 
         self._block.status.show_opening()
 
@@ -363,18 +361,41 @@ class StreamControl(VideoBlockPart):
                 is_live=self._block.is_live,
                 is_audio_only=stream.is_audio_only,
                 video_codec=stream.video_codec,
-                is_adaptive=stream.is_adaptive,
+                is_adaptive=self.is_adaptive,
                 size=self._block.size_tuple,
                 video=self._block.video_params,
                 # the proxy fetches the rest with them already
                 http_headers=(
                     self._block._item_headers if stream.protocol == "direct" else {}
                 ),
+                stream_audio=stream_audio,
+                has_fragmented_file=stream.has_fragmented_file,
+                is_proxied=stream.protocol != "direct",
                 list_aspect_ratio=self._block.list_aspect_ratio,
                 list_crop_ratio=self._block.list_crop_ratio,
                 fill_limit=self._block.view.fill_limit,
             )
         )
+
+    def _add_to_proxy(self, stream) -> tuple[str, StreamAudio | None]:
+        """The link to play, and the sound's where the driver opens it apart."""
+
+        add_stream = self._block._ctx.commands.add_stream
+        video, sound = self._block.driver_class.streams_to_open(stream)
+
+        url = add_stream(video)
+
+        if sound is None:
+            self._proxied_urls = (url,) if isinstance(url, str) else ()
+
+            return url, None
+
+        name, audio = sound
+        audio_url = add_stream(audio)
+
+        self._proxied_urls = (url, audio_url)
+
+        return url, StreamAudio(uri=audio_url, title=name, language=audio.language)
 
     @property
     def _adapt_delay_ms(self) -> int:

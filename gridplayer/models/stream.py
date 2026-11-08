@@ -1,6 +1,6 @@
 import re
 from collections.abc import Iterable
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Optional
 
 from gridplayer.utils.track_language import parse_preferences, pick_by_language
@@ -102,6 +102,37 @@ class Stream:
         """Stream knows where it came from, so its URLs can be renewed."""
 
         return self.origin is not None
+
+    @property
+    def has_fragmented_file(self) -> bool:
+        """The picture or the sound that will be played of this is a file in fragments."""
+
+        return self.protocol == "http_hls" or (
+            bool(self.audio_tracks) and self.audio_tracks.best[1].protocol == "http_hls"
+        )
+
+    def as_file(self) -> "Stream":
+        """A file in fragments, for what can open one as it is and has no need of the
+        playlist made of it for VLC."""
+
+        return replace(self, protocol="http") if self.protocol == "http_hls" else self
+
+    def apart(self) -> tuple["Stream", str, "Stream"]:
+        """The picture with no sound, the best of its sound and that one's name,
+        for a stream with separate audio tracks.
+
+        Noted on the sound is which it is, so that it can be found again once
+        renewed.
+        """
+
+        name, audio_track = self.audio_tracks.best
+
+        if self.origin is not None:
+            audio_track = replace(
+                audio_track, origin=replace(self.origin, audio_track=name)
+            )
+
+        return replace(self, audio_tracks=None), name, audio_track
 
 
 class Streams:

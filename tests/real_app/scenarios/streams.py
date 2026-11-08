@@ -27,6 +27,9 @@ def scenario(d):
         "180p plays",
     )
 
+    # past the first of its segments, for a player that only finds the one
+    d.wait_until(lambda: hls.time > 5000, "it plays on past its first segments")
+
     dead = d.cell("dead.mp4")
     d.wait_until(lambda: dead.is_error, "the dead link gives up", timeout=40)
     d.check(

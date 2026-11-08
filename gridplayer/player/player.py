@@ -150,6 +150,7 @@ class Player(QWidget, ManagersManager):
                 ("set_log_level", "log.set_log_level"),
                 ("set_log_level", "video_driver.set_log_level"),
                 ("set_log_level_vlc", "video_driver.set_log_level_vlc"),
+                ("set_log_level_mpv", "video_driver.set_log_level_mpv"),
                 ("set_mpv_skip_frames", "video_driver.set_mpv_skip_frames"),
                 ("subtitle_style_changed", "video_driver.apply_subtitle_style"),
                 ("set_recent_list_enabled", "recent_list.set_recent_list_state"),

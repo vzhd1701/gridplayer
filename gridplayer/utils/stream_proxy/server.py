@@ -47,6 +47,10 @@ TRANSIENT_RETRIES = 2
 TRANSIENT_RETRY_DELAY = 0.5
 
 
+# what tells a client where a response ends, with no need to close
+_BODY_LENGTH_HEADERS = frozenset({"content-length", "transfer-encoding"})
+
+
 @dataclasses.dataclass
 class RelayFailure:
     """Why a stream could not be relayed.
@@ -439,9 +443,19 @@ def _pick_stream(streams: Streams, stream: Stream) -> Stream | None:
 
     The shape has to survive the trip: the video half of a muxed stream was
     handed over without its audio tracks, and serving it with them again
-    would turn a plain representation back into a playlist of playlists.
+    would turn a plain representation back into a playlist of playlists. And
+    what's being read as a file has no use for a playlist in its place.
     """
 
+    fresh_stream = _pick_same_half(streams, stream)
+
+    if fresh_stream is not None and stream.protocol == "http":
+        return fresh_stream.as_file()
+
+    return fresh_stream
+
+
+def _pick_same_half(streams: Streams, stream: Stream) -> Stream | None:
     origin = stream.origin
 
     quality = streams.by_quality(origin.quality)
@@ -667,10 +681,13 @@ class ProxyRequestHandler(BaseHTTPRequestHandler):
         return None
 
     def _failure_from_error(self, err: StreamError) -> RelayFailure:
-        if isinstance(err.err, HTTPError) and err.err.response is not None:
-            self._log.debug(f"Stream answered with {err.err.response.status_code}")
+        # only there for what was raised answering a request
+        cause = getattr(err, "err", None)
 
-            return RelayFailure(response=err.err.response)
+        if isinstance(cause, HTTPError) and cause.response is not None:
+            self._log.debug(f"Stream answered with {cause.response.status_code}")
+
+            return RelayFailure(response=cause.response)
 
         log_failure(self._log, "Error when streaming", err)
 
@@ -691,8 +708,16 @@ class ProxyRequestHandler(BaseHTTPRequestHandler):
 
         self._is_response_started = True
 
-        for h_key, h_value in _filter_response_headers(dict(response.headers)).items():
+        headers = _filter_response_headers(dict(response.headers))
+
+        for h_key, h_value in headers.items():
             self.send_header(h_key, h_value)
+
+        # A live stream says nothing of how much is coming, so only closing says
+        # that was all. Otherwise the player goes on waiting for good once it's over.
+        if not {name.lower() for name in headers} & _BODY_LENGTH_HEADERS:
+            self.send_header("Connection", "close")
+            self.close_connection = True
 
         self.end_headers()
 

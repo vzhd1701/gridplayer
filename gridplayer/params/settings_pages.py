@@ -428,6 +428,7 @@ PAGES = (
                 translate("SettingsDialog", "Logging levels"),
                 "logging/log_level",
                 "logging/log_level_vlc",
+                "logging/log_level_mpv",
             ),
             icon="page-logging",
         ),

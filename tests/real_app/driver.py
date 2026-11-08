@@ -283,7 +283,29 @@ class Driver:
     def serve(self, directory: Path) -> str:
         """Serve a folder over HTTP on a port of its own; the base URL."""
 
-        handler = partial(_QuietHandler, directory=str(directory))
+        return self._start_server(partial(_QuietHandler, directory=str(directory)))
+
+    def serve_with_ranges(self, directory: Path, handler=None) -> str:
+        """The same, a byte range at a time, as a player needs of an mp4; `handler`
+        a RangesHandler of the scenario's own."""
+
+        handler = handler or RangesHandler
+
+        return self._start_server(partial(handler, directory=str(directory)))
+
+    def serve_live(self, directory: Path) -> "LiveStream":
+        """Serve a folder's HLS segments as a live stream, on a port of its own,
+        going round them for as long as it runs."""
+
+        live = LiveStream(directory)
+        base = self._start_server(
+            partial(_LiveHandler, live=live, directory=str(directory))
+        )
+        live.url = f"{base}/live.m3u8"
+
+        return live
+
+    def _start_server(self, handler) -> str:
         server = ThreadingHTTPServer(("127.0.0.1", 0), handler)
         threading.Thread(target=server.serve_forever, daemon=True).start()
         self._servers.append(server)
@@ -330,6 +352,132 @@ class Driver:
 class _QuietHandler(SimpleHTTPRequestHandler):
     def log_message(self, *args):
         pass
+
+    def handle_one_request(self):
+        # a player that has read as much as it wanted hangs up
+        try:
+            super().handle_one_request()
+        except ConnectionError:
+            self.close_connection = True
+
+
+class RangesHandler(_QuietHandler):
+    """Enough of byte ranges for a player to go anywhere in a file."""
+
+    protocol_version = "HTTP/1.1"
+
+    def do_GET(self):
+        file = Path(self.directory) / self.path.partition("?")[0].lstrip("/")
+        size = file.stat().st_size
+        asked = self.headers.get("Range")
+        start, end = 0, size - 1
+
+        if asked:
+            first, _, last = asked.removeprefix("bytes=").partition("-")
+
+            # the last so many bytes, where an mp4 can keep its index
+            if not first:
+                start = max(size - int(last), 0)
+            else:
+                start = int(first)
+                end = min(int(last), end) if last else end
+
+            if start >= size:
+                self.send_response(416)
+                self.send_header("Content-Range", f"bytes */{size}")
+                self.send_header("Content-Length", "0")
+                self.end_headers()
+                return
+
+        self.send_response(206 if asked else 200)
+        self.send_header("Content-Type", "video/mp4")
+        self.send_header("Accept-Ranges", "bytes")
+        self.send_header("Content-Length", str(end - start + 1))
+
+        if asked:
+            self.send_header("Content-Range", f"bytes {start}-{end}/{size}")
+
+        self.end_headers()
+
+        with file.open("rb") as read:
+            read.seek(start)
+            self.wfile.write(read.read(end - start + 1))
+
+
+class LiveStream:
+    """What a live stream's server says: the last few segments, moving on with the
+    clock, each the length the folder's own playlist says."""
+
+    SHOWN_SEGMENTS = 5
+
+    def __init__(self, directory: Path):
+        lines = (directory / "index.m3u8").read_text().splitlines()
+
+        self._segments = [line for line in lines if line.endswith(".ts")]
+        self._segment_s = float(
+            next(line for line in lines if line.startswith("#EXTINF:"))
+            .removeprefix("#EXTINF:")
+            .rstrip(",")
+        )
+        self._started_at = time.monotonic()
+
+        self.url = ""
+        # says it's over: a playlist with an end
+        self.has_ended = False
+        # no longer there at all
+        self.is_gone = False
+        # how many times the playlist has been asked for
+        self.asked = 0
+
+    def playlist(self) -> str:
+        self.asked += 1
+
+        passed = int((time.monotonic() - self._started_at) / self._segment_s)
+        first = passed + len(self._segments)
+
+        lines = [
+            "#EXTM3U",
+            "#EXT-X-VERSION:3",
+            f"#EXT-X-TARGETDURATION:{round(self._segment_s)}",
+            f"#EXT-X-MEDIA-SEQUENCE:{first}",
+        ]
+
+        for number in range(first, first + self.SHOWN_SEGMENTS):
+            index = number % len(self._segments)
+
+            if index == 0:
+                lines.append("#EXT-X-DISCONTINUITY")
+
+            lines += [f"#EXTINF:{self._segment_s:f},", self._segments[index]]
+
+        if self.has_ended:
+            lines.append("#EXT-X-ENDLIST")
+
+        return "\n".join(lines) + "\n"
+
+
+class _LiveHandler(_QuietHandler):
+    def __init__(self, *args, live: LiveStream, **kwargs):
+        self._live = live
+
+        super().__init__(*args, **kwargs)
+
+    def do_GET(self):
+        if self._live.is_gone:
+            self.send_error(404)
+            return
+
+        if not self.path.startswith("/live.m3u8"):
+            super().do_GET()
+            return
+
+        body = self._live.playlist().encode()
+
+        self.send_response(200)
+        self.send_header("Content-Type", "application/vnd.apple.mpegurl")
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
 
 
 def _read(block, read):

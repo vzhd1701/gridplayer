@@ -38,6 +38,7 @@ NEEDS_LIBMPV = {
     "mpv_audio",
     "mpv_basics",
     "mpv_deinterlace",
+    "mpv_streams",
     "mpv_subtitles",
     "mpv_transport",
     "mpv_view",
@@ -47,12 +48,16 @@ NEEDS_LIBMPV = {
 ALSO_ON_MPV = (
     "aspect_ratio",
     "crop_ratio",
+    "dubs",
     "external_audio_jump",
     "list_shape",
+    "live",
     "marks",
     "navigation",
     "pixel_shape",
     "playback",
+    "stream_errors",
+    "streams",
     "tracks",
 )
 MPV_DRIVERS = ("mpv_hw", "mpv_sw")

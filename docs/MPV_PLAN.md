@@ -5,7 +5,7 @@ The findings and traps are in `C:\Projects\test_temp\test_mpv\HANDOFF.md`, and
 what we build and how far it has got. Tick items only once they have been seen
 working.
 
-**Status: Stage 3 built (<https://claude.ai/artifact/8ngdeLCkVxmdQzSEnpxx1c>, real screenshots on its Built board). Open: macOS. Bundling libmpv (12.1) is for later. Stages 1-8 are committed on this branch.**
+**Status: Stage 3 built (<https://claude.ai/artifact/8ngdeLCkVxmdQzSEnpxx1c>, real screenshots on its Built board). Open: macOS. Bundling libmpv (12.1) is for later. Stages 1-9 are committed on this branch.**
 
 **Load tests against VLC: `MPV_PERFORMANCE.md`.** No multi-process mode for MPV. New items 10.13-10.16. **10.16 is a long run
 still to be started, overnight, by you.**
@@ -20,7 +20,7 @@ still to be started, overnight, by you.**
 | 6 | Audio: tracks, files, devices, delay, channels | **built, macOS not run** |
 | 7 | Subtitles: tracks, files, delay, encoding, style | **built, macOS not run** |
 | 8 | Deinterlacing, chapters, bookmarks, SponsorBlock | **built, macOS not run** |
-| 9 | Streams, live video, errors and recovery, lists | not started |
+| 9 | Streams, live video, errors and recovery, lists | **built, macOS not run** |
 | 10 | Hardening: long churn, memory, real drags, other GPUs | not started |
 | 11 | macOS | not started |
 | 12 | Packaging, docs, release | not started |
@@ -601,21 +601,63 @@ Not fixed, on purpose or for now:
 
 ## Stage 9: Streams, errors, recovery
 
-- [ ] 9.1 `MediaInput` with HTTP headers, cookies, stream proxy, `is_adaptive`. Keep
-  `ytdl=no`, since the app resolves links itself
-- [ ] 9.2 Live: `is_live`, no length, pause as stop, reconnects, `video-params` late. VLC's driver also
-  ignores `set_time` and `set_playback_rate` on live; the block mostly keeps them away, check what's left.
-  **Found in Stage 5: a live HLS stream through the app's proxy isn't seen as live.** mpv gives it a `duration`
-  that grows with what it has read (6.8 s, then 8.8, on to 13.8), it's taken as a video of that first length
-  (3.8 s), and it goes back to the start every few seconds. `seekable` says yes as well. So `duration` alone can't
-  decide it
-- [ ] 9.3 Sizes and dubs: scenario `streams`, `dubs`
-- [ ] 9.4 Errors: `end-file` reason to `error`, mpv's log lines in place of "VLC errors:",
-  `player/video_init_timeout`, no GL context, an mpv crash
-- [ ] 9.5 `video_block_recovery`, When Video Fails, list cells moving on
-- [ ] 9.6 `utils/item_info.py` reads lengths with VLC in a spawned process. With no VLC,
-  use libmpv the same way
-- [ ] 9.7 Log level setting for mpv, `hwdec-current` falling back mid-file surfaced in the log
+- [x] 9.1 `MediaInput` with HTTP headers and the stream proxy. A list's user agent and referrer reach the server, and any other header goes along too, which VLC can't do. `ytdl=no` stays. `is_adaptive` means VLC's demuxer, so no seek retries on MPV. Cookies go through the proxy as they do on VLC; no scenario of its own
+- [x] 9.2 Live: no length, pause as stop, reconnects, seeks and speed ignored. The Stage 5 finding no longer shows: a live HLS link is seen as live, no length, and doesn't go round
+- [x] 9.3 Sizes and dubs: `streams`, `dubs`, held to on MPV from now on
+- [x] 9.4 Errors: what mpv said is told, tagged MPV, with `player/video_init_timeout` and no GL context reporting. An mpv crash takes the app with it, as there's only the one process: nothing to catch it with
+- [x] 9.5 `video_block_recovery`, When Video Fails, list cells moving on: `stream_errors`
+- [x] 9.6 File lengths with no VLC are read by libmpv in the same separate process. Done with it: 10.20
+- [x] 9.7 "Log level (MPV)" under Logging levels, greyed out unless on MPV, off by default, applied with no reload. `hwdec-current` falling back goes in the log at Info
+
+### Stage 9 results
+
+You said YouTube was broken on MPV. It opened and played when I tried it, so this is what I found once I did more with it. I don't know which of these you ran into:
+
+- **Every seek stopped the video 5.6-6 s.** It was the same picture and sound behind one demuxer that VLC is given as one playlist. Not the proxy: straight from YouTube it was the same, and mpv's own EDL, how its YouTube support does it, was just as slow. With the sound opened as an audio file, the same stream took 0.25-0.8 s, within microseconds of the picture. Why one demuxer costs that I don't know: nothing is read for 3.6 s. It only happens on YouTube, 0.05 s from a server here, so no local test can guard it.
+- **On Debian 12 (0.35, FFmpeg 5.1.9) nothing the proxy serves as a playlist played past its first segment.** FFmpeg turns down a playlist's segments if their links look like no file, as the proxy's do. mpv then reads one segment as if it were the video and says it plays. Nothing tested this until `streams` was told to wait past it.
+- **On 0.40 with FFmpeg 7.1 most seeks went back to the start,** 6 of 9 past what had been read, from a server here as well. The playlist made of a fragmented file for VLC is the cause. Opened as the file it is, 9 of 9, and in a third to a fifth of the time: 0.40 s against 1.06-2.06 s.
+- **With that, seeking back after a seek into the cache stopped the video 25 s or more,** on real YouTube only. mpv goes on from the end of what's cached a fragment at a time, and the next seek waits for it. `demuxer-seekable-cache=no` ends that: 18 of 18 landed, against 10 of 18. Only where part of it is a fragmented file: on HLS of TS segments the same option leaves the sound up to 0.8 s behind after a seek, catching up over 6 s, where on YouTube's files and YouTube's HLS with a file for the sound it was 0.02 s, then 0.001 s.
+
+So on MPV a stream goes in as it comes: picture and sound as two links, a fragmented file as that file.
+
+| YouTube, 360p or 720p, seek to 0.2-0.5 s past it, one video | Before | Now |
+|---|---|---|
+| Windows, 0.41, forward | 5.6-6 s | 0.4-1.2 s |
+| Windows, 0.41, a long way back | 5.6-7 s | 1.9-2.9 s, 7 s at the worst, to 20 s from 600 s |
+| Linux, 0.40, past what's been read | back to the start | 0.6-1.2 s |
+| Linux, 0.40, a long way back | back to the start | 1.7-3.1 s |
+| Picking another size | | 0.8-1.1 s |
+| Round at the end, from 3 s before it | | about 1 s stopped |
+
+VLC, for comparison: about 2 s, up to 5 s, but it lands short of where it was asked. At 2160p60 AV1 on Windows it was 1.6-2.8 s with four videos open. That was measured before the file route and isn't measured since.
+
+**Found on VLC as well, both from the proxy:**
+
+- A live stream that went away froze for good, with no message, even once it came back. A response with no length can only say it's over by closing, and the proxy kept the connection open. Now it closes. Both drivers then try again and say why: "Not found" for a 404. **This changes VLC.** `live` passes on both.
+- The proxy's error handling itself crashed on its own "No data returned from stream", so the failure was never noted.
+
+**Other traps found:**
+
+- mpv's log comes after its events. An error read at once had no reason with it, so a failure waits 0.1 s for it.
+- An mp4 with its index at the end, from a server that can't seek, hung until the 120 s timeout: mpv says playback restarted with no frame, then stays open at the end. It's now "Video stopped before initialization", as on VLC, at once.
+- `keep-open` pauses at the end, and the block saved that with the video, so a reload after a failure came back paused. `keep-open-pause=no`.
+- A live stream paused, as on VLC, is let go of. Paused for real it went on downloading and came back behind. Stopped, mpv only has black to draw, so `render_size` holds the picture until it plays.
+  Audio and subtitle files added to it are opened again with it, its tracks are read again, and if it doesn't play within `player/video_init_timeout` it says
+  "Buffering timeout", as VLC does. Unit tests only.
+- Only the proxy's links have FFmpeg's segment check turned off. A link mpv opens itself keeps it.
+- File lengths by libmpv go by mpv's number for each file asked for, so a file given up on can't answer for the next. Counting the files mpv started didn't do:
+  one let go of before it starts never does, and every file after came back with no length.
+
+**Run on:** Windows, 0.41: the whole real-app suite, with `live`, `stream_errors`, `streams` and `dubs` now held to on both MPV drivers too, and `mpv_streams` new. `test_gpu`: 0.40 on real X11 and Wayland with zero-copy `vaapi` and offscreen in software, and 0.35 and 0.37 in the chroots: `mpv_streams`, `stream_errors`, `live`, `streams`, `dubs`, `marks`, `navigation`, `playback`, `mpv_transport`. VLC, Windows: `live` and `stream_errors` as well as the rest. Real YouTube: one video and four cells with a live one beside them on Windows, one video on Linux; no AMD and no VLC on Linux.
+
+**Left:**
+
+- **Your call: 4K seeks.** Exact seeks decode from the keyframe to the time. On the CPU, 2160p60 AV1 took 0.5-5.5 s to land exactly, against 0.2-1.1 s on the keyframe, which is what VLC does by landing short. Exact is what frame step and bookmarks need, so I've left it. Far seeks by the viewer could go to the keyframe on a stream if you'd prefer the speed.
+- A long way back can take 7 s, about the same as the playlist did on Windows and more than VLC's 2-5 s. mpv works through fragments to get there: not looked into further.
+- **YouTube turned me down with 429 after a long run of testing, on both machines,** for a while, so go easy with these. It's what the scenarios here are for. It cleared by itself.
+- A stream's sound whose link fails leaves the video playing silent, with only a log line. Read in the code, not tried.
+- On Linux yt-dlp had no JavaScript runtime here, so it was given other formats than Windows. Not run with one.
+- Not run: AMD, macOS, cookies on MPV, DASH live. Nobody has looked at this on a real screen or listened: I read pixels, `avsync` and the track list.
 
 ## Stage 10: Hardening
 
@@ -671,7 +713,7 @@ Not fixed, on purpose or for now:
 - [ ] 10.19 Small savings the review found, by reckoning and not yet measured, for when the CPU matters more than the code: each render round visits
   every video, not just those with a frame (at most about 4% of a core at 64 cells); the placement is worked out on each paint (about 1% at 9
   cells). 4.2: the time is still sent by mpv each frame, so the saving of `notime` isn't had yet
-- [ ] 10.20 File lengths in lists are read by VLC. With only libmpv there, lists show none. libmpv could read them too, in a
+- [x] 10.20 Done in 9.6. File lengths in lists are read by VLC. With only libmpv there, lists show none. libmpv could read them too, in a
   process of its own as now
 - [ ] 10.14 Don't fill the cell black before drawing a picture that covers it: app CPU 61% to 47% at
   1x1080p. Applies to VLC's software drivers too, so test those
@@ -703,6 +745,7 @@ Not fixed, on purpose or for now:
 
 Newest first. What was finished and seen working, and anything that changed the plan.
 
+- 2026-11-08: Stage 9 built, see Stage 9 results. YouTube on MPV seeks in about a second, not 6, and no longer goes back to the start on 0.40 or stops after the first segment on 0.35: streams go to mpv as they come, not as made for VLC. Two proxy bugs found on the way, fixed for VLC too: a live stream that went away froze for good.
 - 2026-11-07: Code review of Stage 8: going to Automatic no longer loses the filter, and three fixes from reading the code. One suspected fault couldn't be made to happen and its fix made things worse, so it's out. See Stage 8 results.
 - 2026-11-07: Stage 8 committed, see Stage 8 results. All deinterlace modes and chapters work on MPV, from libmpv 0.35 up. Bookmarks and
   SponsorBlock needed nothing. X and Phosphor are stand-ins. `hwdec_extra_frames=0` holds.

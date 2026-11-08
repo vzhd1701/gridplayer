@@ -50,23 +50,24 @@ class StatusControl(VideoBlockPart):
         self.set_text(error.title)
 
     def player_error(self, message: str, vlc_lines: tuple[str, ...]) -> ShownError:
-        """Why VLC could not play it: the file gone, what the proxy was
-        told fetching the stream, or what VLC said."""
+        """Why the player could not play it: the file gone, what the proxy was
+        told fetching the stream, or what the player said."""
 
         uri = self._block.video_params.uri
+        media_lib = self._block.driver_class.media_lib
 
         if self._block.video_params.is_local_file:
             if not uri.exists():
                 return file_error(ReadErrorKind.MISSING, uri)
 
-            return player_error(message, vlc_lines)
+            return player_error(message, vlc_lines, media_lib=media_lib)
 
         failure = self._block.stream.proxy_failure()
 
         if failure is not None:
-            return proxy_error(failure, vlc_lines)
+            return proxy_error(failure, vlc_lines, media_lib)
 
-        return player_error(message, vlc_lines, url=str(uri))
+        return player_error(message, vlc_lines, str(uri), media_lib)
 
     def show_error_card(self, tries: int = 0):
         """Why it failed, on the cell: in a few words, what that means,

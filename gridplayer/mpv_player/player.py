@@ -37,6 +37,7 @@ from gridplayer.params.static import (
     VideoTransform,
 )
 from gridplayer.utils.app_dir import get_app_cache_dir
+from gridplayer.utils.log_config import DISABLED
 from gridplayer.utils.media_libs import find_libvlc
 from gridplayer.utils.qt import MILLISECONDS, translate
 from gridplayer.vlc_player.static import (
@@ -91,11 +92,40 @@ TIME_REPORT_MS = 200
 # saves the decoder no work, so past what it can do the video falls apart.
 _SKIP_FRAMES = {True: "nonref", False: "default"}
 
+# What mpv is asked to say for each of the log's levels. Its own "debug" is more than
+# anyone can read at one line per packet. Errors are always asked for, for when a video
+# fails, and only logged if asked for.
+_MPV_LOG_LEVELS = {
+    logging.DEBUG: "v",
+    logging.INFO: "info",
+    logging.WARNING: "warn",
+}
+_LOG_LEVEL_OF_MPVS = {
+    "fatal": logging.CRITICAL,
+    "error": logging.ERROR,
+    "warn": logging.WARNING,
+    "info": logging.INFO,
+}
+
 # What mpv said last, for when a video fails
 _LOG_LINES_KEPT = 20
 
+# How long the reason for a failure takes to follow it: mpv's log comes after its events
+_FAILURE_REASON_WAIT_S = 0.1
+
+# What mpv has an option of its own for, which it would otherwise send as well as
+# what it's told. The rest it's told as they are: see start.
+_HEADER_OPTIONS = {"user-agent": "user-agent", "referer": "referrer"}
+
 # The ways out mpv is to try on Linux: see _options
 _LINUX_AUDIO_OUTPUTS = ("pipewire", "pulse", "alsa")
+
+# The proxy's links look like no file, and an FFmpeg that's picky about that turns down a
+# playlist's segments. Debian 12's is, with a libmpv too old to say otherwise: mpv then
+# reads one segment as if it were the video, says it plays, and runs out of it. Left as
+# it is for any other playlist: the check keeps one from pointing its player at what's
+# no media.
+_ANY_SEGMENT_LINK = "extension_picky=0,allowed_segment_extensions=ALL"
 
 # Down to two channels by mpv's own mix first: lavfi's turns a surround track down
 _FROM_STEREO = "format=channels=stereo,lavfi=[pan=stereo|{}]"
@@ -272,6 +302,7 @@ class MpvPlayer(QObject):
     paused_changed = pyqtSignal(bool)
     video_size_changed = pyqtSignal(int, int, object)
     failed = pyqtSignal(str, tuple)
+    end_reached = pyqtSignal()
     tracks_changed = pyqtSignal(Media)
     chapters_changed = pyqtSignal(Media)
 
@@ -286,6 +317,7 @@ class MpvPlayer(QObject):
         wake_renderer,
         subtitle_style: dict,
         skip_frames: bool = False,
+        log_level: int = DISABLED,
     ):
         super().__init__()
 
@@ -295,6 +327,7 @@ class MpvPlayer(QObject):
         self.media_input = media_input
         self._hwdec = hwdec
         self._skip_frames = skip_frames
+        self._log_level = log_level
         self._wake_renderer = wake_renderer
         self._subtitle_style = subtitle_style
         self._subtitle_view = SubtitleView()
@@ -318,6 +351,9 @@ class MpvPlayer(QObject):
         # what it was last told, which it says it is only a moment later
         self.is_pause_asked = media_input.video.is_paused
         self._last_time_sent = None
+        # a live stream stopped for being paused, or opening again after it, with the
+        # last picture still up: mpv only has black to draw until it's playing again
+        self.is_picture_held = False
 
         self._is_media_read = False
         self._media: Media | None = None
@@ -328,6 +364,7 @@ class MpvPlayer(QObject):
         self._heard_channels = 0
         self._audio_chain = audio_chain(AudioChannelMode.UNSET, 0)
         self._log_lines = collections.deque(maxlen=_LOG_LINES_KEPT)
+        self._has_failed = False
         # a yes or no before 0.40, to be asked once there's an mpv to ask
         self._has_auto_deinterlace = False
         # a frame has said so, for as long as this video is open
@@ -346,7 +383,7 @@ class MpvPlayer(QObject):
 
         self.mpv = mpv_module.MPV(
             log_handler=self._on_log,
-            loglevel="warn",
+            loglevel=_mpv_log_level(log_level),
             **self._options(),
         )
 
@@ -366,6 +403,7 @@ class MpvPlayer(QObject):
         self.mpv.observe_property("pause", self._on_pause)
         self.mpv.observe_property("hwdec-current", self._on_hwdec)
         self.mpv.observe_property("chapter-list", self._on_chapter_list)
+        self.mpv.observe_property("eof-reached", self._on_eof)
 
         if env.MPV_VERSION is None:
             self.mpv.observe_property("mpv-version", self._on_version)
@@ -396,6 +434,8 @@ class MpvPlayer(QObject):
             "keepaspect": False,
             "loop_file": "inf",
             "keep_open": "always",
+            # the only pause that's not asked for, and it would be kept with the video
+            "keep_open_pause": False,
             "mute": True,
             "osd_level": 0,
             "demuxer_max_bytes": "32MiB",
@@ -425,6 +465,18 @@ class MpvPlayer(QObject):
 
         if media_input.is_audio_only:
             options["vid"] = "no"
+
+        if media_input.is_proxied:
+            options["demuxer_lavf_o"] = _ANY_SEGMENT_LINK
+
+        # Going into what's cached sends mpv on to where that ends, a fragment at a time,
+        # to carry on from there, and the next seek waits for it. On a YouTube file, a seek
+        # back after one into the cache stopped the video for 25 s and more. Only for these:
+        # on HLS of TS segments, seeks with no cache leave the sound up to 0.8 s behind,
+        # catching up over 6 s, which they don't here, on YouTube's HLS with a file for
+        # the sound either.
+        if media_input.has_fragmented_file:
+            options["demuxer_seekable_cache"] = "no"
 
         video = media_input.video
 
@@ -463,7 +515,7 @@ class MpvPlayer(QObject):
     def render_size(self) -> tuple[int, int] | None:
         """The size of the next frame, None while the picture's isn't known."""
 
-        if self._dims is None:
+        if self._dims is None or self.is_picture_held:
             return None
 
         return (
@@ -501,13 +553,27 @@ class MpvPlayer(QObject):
         self._apply_subtitle_options()
         self._apply_deinterlace()
 
+        stream_audio = self.media_input.stream_audio
         audio_file = self.media_input.selected_audio_slave
+
+        if stream_audio is not None:
+            self.command("change-list", "audio-files", "append", stream_audio.uri)
 
         if audio_file is not None:
             self.command("change-list", "audio-files", "append", audio_file)
 
         for subtitle_file in self.media_input.selected_subtitle_slaves:
             self.command("change-list", "sub-files", "append", _path_of(subtitle_file))
+
+        for name, value in self.media_input.http_headers.items():
+            option = _HEADER_OPTIONS.get(name.lower())
+
+            if option is not None:
+                self.set_option(option, value)
+            else:
+                self.command(
+                    "change-list", "http-header-fields", "append", f"{name}: {value}"
+                )
 
         self.command("loadfile", self.media_input.uri)
 
@@ -525,7 +591,27 @@ class MpvPlayer(QObject):
     def set_pause(self, is_paused: bool) -> None:
         self.is_pause_asked = is_paused
 
-        self.set_option("pause", "yes" if is_paused else "no")
+        if self.media_input.is_live:
+            self._set_live_stopped(is_paused)
+        else:
+            self.set_option("pause", "yes" if is_paused else "no")
+
+    def _set_live_stopped(self, is_stopped: bool) -> None:
+        """Paused, a live stream is let go of, as on VLC, and opened again wherever
+        it has got to by then. Held on to, it goes on being fetched and plays on behind.
+        """
+
+        self.is_picture_held = True
+
+        if is_stopped:
+            self.command("stop")
+        else:
+            self.set_option("pause", "no")
+            self.command("loadfile", self.media_input.uri)
+
+        # mpv itself isn't paused, so it won't be saying
+        self.is_paused = is_stopped
+        self.paused_changed.emit(is_stopped)
 
     def select_track(self, option: str, track_id: int) -> None:
         if option == "aid":
@@ -536,14 +622,25 @@ class MpvPlayer(QObject):
         self.set_option(option, _track_option(track_id))
 
     def add_audio_file(self, uri: str) -> None:
+        self._keep_for_reopening("audio-files", uri)
+
         # selected once it's known how many channels it has: see _on_audio_file_added
         self.command("audio-add", uri, "auto", callback=self._on_audio_file_added)
 
     def add_subtitle_file(self, uri: str) -> None:
+        self._keep_for_reopening("sub-files", _path_of(uri))
+
         # not selected here: the video may be being watched with its subtitles off
         self.command(
             "sub-add", _path_of(uri), "auto", callback=self._on_subtitle_file_added
         )
+
+    def _keep_for_reopening(self, option: str, path: str) -> None:
+        """A file added goes with only what's open: a live stream opened again after a
+        pause would be without it. Listed, it's opened with it, in the same place."""
+
+        if self.media_input.is_live:
+            self.command("change-list", option, "append", path)
 
     def set_audio_device(self, device: AudioDevice | None) -> None:
         if device is None:
@@ -749,6 +846,13 @@ class MpvPlayer(QObject):
 
             self._apply_deinterlace()
 
+    def set_log_level(self, log_level: int) -> None:
+        self._log_level = log_level
+
+        with self._telling:
+            if not self._is_closing:
+                self.mpv.set_loglevel(_mpv_log_level(log_level))
+
     def set_skip_frames(self, is_skipping: bool) -> None:
         self.set_option("vd-lavc-skipframe", _SKIP_FRAMES[is_skipping])
 
@@ -767,18 +871,18 @@ class MpvPlayer(QObject):
 
     def _on_log(self, level: str, component: str, message: str) -> None:
         line = f"{component}: {message.strip()}"
+        log_level = _LOG_LEVEL_OF_MPVS.get(level, logging.DEBUG)
 
-        if level in {"fatal", "error"}:
+        if log_level >= logging.ERROR:
             self._log_lines.append(line)
-            self._log.warning(line)
 
             # one that won't start leaves no sound at all
             if _ROOM_FILTER_FAILURES.search(message):
                 _ROOM_FILTER_BROKE.set()
                 self._apply_audio_chain()
-        else:
-            # hwdec=auto tries everything the machine might have, out loud
-            self._log.debug(line)
+
+        if log_level >= self._log_level:
+            self._log.log(log_level, line)
 
     def _on_event(self, event) -> None:
         event_id = event.event_id.value
@@ -797,6 +901,7 @@ class MpvPlayer(QObject):
             self._apply_deinterlace()
         elif event_id == ids.PLAYBACK_RESTART:
             self.has_restarted = True
+            self.is_picture_held = False
             self._wake_renderer()
             self.playback_restarted.emit()
             # the frame a deinterlacer coming off leaves, paused or not
@@ -892,9 +997,25 @@ class MpvPlayer(QObject):
 
         self._log.error(f"mpv ended the file with error {data.error}")
 
-        self.failed.emit(
-            translate("Video Error", "Player error"), tuple(self._log_lines)
+        self.fail(translate("Video Error", "Player error"))
+
+    def fail(self, message: str) -> None:
+        """Once: the video has no more use for this mpv after that."""
+
+        if self._has_failed:
+            return
+
+        self._has_failed = True
+
+        timer = threading.Timer(
+            _FAILURE_REASON_WAIT_S, self._report_failure, args=(message,)
         )
+        timer.daemon = True
+        timer.start()
+
+    def _report_failure(self, message: str) -> None:
+        if not self._is_closing:
+            self.failed.emit(message, tuple(self._log_lines))
 
     def _on_video_params(self, _name, params) -> None:
         if not params or not params.get("dw") or not params.get("dh"):
@@ -937,6 +1058,10 @@ class MpvPlayer(QObject):
         self.time_changed.emit(new_time)
 
         self._check_frames_interlaced()
+
+    def _on_eof(self, _name, is_at_end) -> None:
+        if is_at_end and not self._is_closing:
+            self.end_reached.emit()
 
     def _on_pause(self, _name, is_paused) -> None:
         if is_paused is None:
@@ -981,9 +1106,17 @@ class MpvPlayer(QObject):
         except self._mpv_module.ShutdownError:
             return
 
+        # a live stream opened again: the same, but for its tracks, which are new ones
+        if self._is_media_read:
+            self._media = media
+            self.tracks_changed.emit(media)
+            return
+
         # no length to go by, here as in VLC: a random start has none to pick from
         if media.length == -1:
             self.media_input.is_live = True
+            # or at its end it's taken as a video to go round
+            self.set_option("loop-file", "no")
 
         self.media_input.length = media.length
 
@@ -1059,6 +1192,7 @@ class MpvPlayer(QObject):
         # the first of those it's told to open on and the first of the others
         own_audio = {}
         default_subtitle = None
+        stream_audio = self.media_input.stream_audio
 
         for track in self.mpv.track_list or []:
             kind = track.get("type")
@@ -1073,7 +1207,18 @@ class MpvPlayer(QObject):
             if track.get("selected"):
                 selected[kind] = track_id
 
-            if track.get("external"):
+            is_stream_audio = (
+                kind == "audio"
+                and stream_audio is not None
+                and track.get("external-filename") == stream_audio.uri
+            )
+
+            if is_stream_audio:
+                # it's the video's own sound, only opened apart
+                tracks[kind][track_id].description = stream_audio.title
+                tracks[kind][track_id].language = stream_audio.language
+
+            if track.get("external") and not is_stream_audio:
                 external[kind].append(track_id)
             elif kind == "audio":
                 own_audio.setdefault(bool(track.get("default")), track_id)
@@ -1193,6 +1338,13 @@ def devices_of_first_output(listed, outputs=None) -> tuple[AudioDevice, ...]:
     return next(
         (tuple(by_output[output]) for output in outputs if output in by_output), ()
     )
+
+
+def _mpv_log_level(log_level: int) -> str:
+    """What mpv's asked to say for an app's log level: its errors at least, kept for
+    a failure."""
+
+    return _MPV_LOG_LEVELS.get(log_level, "error")
 
 
 def _path_of(uri: str) -> str:

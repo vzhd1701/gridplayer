@@ -19,6 +19,9 @@ What there is (every video a test pattern with a tone, small and short):
     hls/master.m3u8           30s HLS in 360p, 180p and 90p
     dubs/master.m3u8          30s HLS in 360p and 180p, dubbed into English
                               (the default) and Spanish as audio renditions
+    fragmented/video.mp4 audio.mp4
+                              5 minutes in fragments with an index up front, picture
+                              and sound apart, as YouTube serves them
     shapes/square.mp4         10s, 640x360 of square pixels: what the others
                               look like
     shapes/wide_pixels.mp4    the same stored 320x360, its pixels twice as
@@ -52,6 +55,8 @@ CHAPTERS = (
 
 @dataclass(frozen=True)
 class Media:
+    FRAGMENTED_LENGTH_S = 300
+
     root: Path
 
     @property
@@ -69,6 +74,10 @@ class Media:
     @property
     def feature(self) -> Path:
         return self.root / "feature" / "feature.mkv"
+
+    @property
+    def fragmented(self) -> Path:
+        return self.root / "fragmented"
 
     @property
     def hls(self) -> Path:
@@ -166,6 +175,7 @@ def _make(media: Media) -> None:
 
     _make_feature(media.feature.parent)
     _make_hls(media.hls)
+    _make_fragmented(media.fragmented)
     _make_dubs(media.dubs)
     _make_shapes(media.shapes)
 
@@ -225,6 +235,28 @@ def _make_hls(where: Path) -> None:
         *("-master_pl_name", "master.m3u8"),
         *("-var_stream_map", "v:0,a:0 v:1,a:1 v:2,a:2"),
         "v%v/index.m3u8",
+        cwd=where,
+    )
+
+
+def _make_fragmented(where: Path) -> None:
+    where.mkdir()
+
+    as_youtube = ("-movflags", "+dash+global_sidx", "-f", "mp4")
+
+    _ffmpeg(
+        *_pattern(Media.FRAGMENTED_LENGTH_S, size="640x360", source="testsrc2"),
+        *("-c:v", "libx264", "-preset", "ultrafast", "-b:v", "400k"),
+        *("-g", "150", "-keyint_min", "150", "-sc_threshold", "0"),
+        *as_youtube,
+        "video.mp4",
+        cwd=where,
+    )
+    _ffmpeg(
+        *_tone(330, Media.FRAGMENTED_LENGTH_S),
+        *("-c:a", "aac", "-b:a", "128k", "-frag_duration", "10000000"),
+        *as_youtube,
+        "audio.mp4",
         cwd=where,
     )
 

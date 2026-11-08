@@ -431,6 +431,15 @@ class Media:
         return bool(self.subtitle_tracks) and not self.is_audio_only
 
 
+@dataclass(frozen=True)
+class StreamAudio:
+    """A stream's own sound, at a link of its own."""
+
+    uri: str
+    title: str
+    language: str | None = None
+
+
 @dataclass
 class MediaInput:
     uri: str
@@ -457,6 +466,15 @@ class MediaInput:
     # what a link handed straight to VLC is fetched with, a channel list's
     # user agent and referrer; VLC's http access takes those two and no more
     http_headers: dict[str, str] = field(default_factory=dict)
+
+    # the sound of a stream, for a driver that opens it apart from the picture
+    stream_audio: StreamAudio | None = None
+
+    # see Stream.has_fragmented_file
+    has_fragmented_file: bool = False
+
+    # the link is the stream proxy's, not the site's
+    is_proxied: bool = False
 
     # the aspect ratio and the crop shape a channel list says to show it in,
     # shown where none is picked; empty for none

@@ -29,6 +29,7 @@ from gridplayer.utils.list_errors import (
     host_of,
     read_error_of,
 )
+from gridplayer.utils.media_libs import MediaLib
 from gridplayer.utils.qt import translate
 
 # an HTTP status in what VLC said, fetching a link itself: "HTTP 404",
@@ -229,7 +230,11 @@ class ProxyFailure:
     at: float = field(default_factory=time.monotonic)
 
 
-def proxy_error(failure: ProxyFailure, vlc_lines: tuple[str, ...] = ()) -> ShownError:
+def proxy_error(
+    failure: ProxyFailure,
+    vlc_lines: tuple[str, ...] = (),
+    media_lib: MediaLib = MediaLib.VLC,
+) -> ShownError:
     host = host_of(failure.url)
 
     raw_lines = [f"{failure.url}"]
@@ -240,7 +245,7 @@ def proxy_error(failure: ProxyFailure, vlc_lines: tuple[str, ...] = ()) -> Shown
     if failure.error:
         raw_lines.append(failure.error)
 
-    raw_lines.extend(_vlc_said_lines(vlc_lines))
+    raw_lines.extend(_vlc_said_lines(vlc_lines, media_lib))
 
     raw = "\n".join(raw_lines)
 
@@ -262,22 +267,30 @@ def proxy_error(failure: ProxyFailure, vlc_lines: tuple[str, ...] = ()) -> Shown
     return shown_read_error(read, raw)
 
 
-def _vlc_said_lines(vlc_lines: tuple[str, ...]) -> list[str]:
-    """What VLC said, set apart under the rest of the raw text."""
+def _vlc_said_lines(vlc_lines: tuple[str, ...], media_lib: MediaLib) -> list[str]:
+    """What the player said, set apart under the rest of the raw text."""
 
     if not vlc_lines:
         return []
 
-    return ["", translate("Video Error", "VLC errors:"), *vlc_lines]
+    if media_lib == MediaLib.MPV:
+        heading = translate("Video Error", "MPV errors:")
+    else:
+        heading = translate("Video Error", "VLC errors:")
+
+    return ["", heading, *vlc_lines]
 
 
 def player_error(
-    message: str, vlc_lines: tuple[str, ...] = (), url: str = ""
+    message: str,
+    vlc_lines: tuple[str, ...] = (),
+    url: str = "",
+    media_lib: MediaLib = MediaLib.VLC,
 ) -> ShownError:
-    """VLC could not play it, by what it said: an HTTP status where it
+    """The player could not play it, by what it said: an HTTP status where it
     fetched a link itself and was turned away."""
 
-    raw = "\n".join((message, *_vlc_said_lines(vlc_lines)))
+    raw = "\n".join((message, *_vlc_said_lines(vlc_lines, media_lib)))
 
     status = _vlc_http_status(vlc_lines)
 
@@ -300,7 +313,7 @@ def player_error(
         title=message,
         about=_first_vlc_line(vlc_lines),
         where=where_player_txt(),
-        code="VLC",
+        code=media_lib.name,
         host=host_of(url),
         raw=raw,
     )

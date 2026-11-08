@@ -457,18 +457,24 @@ def test_vlc_options_stay_on_vlc(libs, make_dialog, settings, key):
     assert make_dialog().widget(key).isEnabled()
 
 
-def test_vlc_log_level_on_its_other_page_follows_the_driver(libs, make_dialog):
+@pytest.mark.parametrize(
+    ("key", "is_vlc"),
+    [("logging/log_level_vlc", True), ("logging/log_level_mpv", False)],
+)
+def test_a_log_level_on_its_other_page_follows_the_driver(
+    libs, make_dialog, key, is_vlc
+):
     dialog = make_dialog()
-    level = dialog.widget("logging/log_level_vlc")
+    level = dialog.widget(key)
     combo = dialog.widget(DRIVER)
 
-    assert level.isEnabled()
+    assert level.isEnabled() == is_vlc
 
     combo.setCurrentIndex(combo.findData(VideoDriver.MPV_SW))
-    assert not level.isEnabled()
+    assert level.isEnabled() != is_vlc
 
     combo.setCurrentIndex(combo.findData(VideoDriver.VLC_SW))
-    assert level.isEnabled()
+    assert level.isEnabled() == is_vlc
 
 
 def test_vlc_log_level_starts_grey_on_mpv(libs, make_dialog, settings):

@@ -215,4 +215,9 @@ ADVANCED_FIELDS: tuple[SettingField, ...] = (
         label=translate("SettingsDialog", "Log level (VLC)"),
         choices=choices.vlc_log_levels,
     ),
+    ComboField(
+        settings_key="logging/log_level_mpv",
+        label=translate("SettingsDialog", "Log level (MPV)"),
+        choices=choices.vlc_log_levels,
+    ),
 )

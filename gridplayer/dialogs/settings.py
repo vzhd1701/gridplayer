@@ -42,6 +42,12 @@ COOKIES_README_URL = f"{__app_url__}#streaming-cookies"
 # beside the label of a setting the open playlist has its own value for
 MARK_ICON_PX = 16
 
+# each library's log level, there to set only while its driver is chosen
+_LOG_LEVEL_OF_LIB = {
+    "logging/log_level_vlc": MediaLib.VLC,
+    "logging/log_level_mpv": MediaLib.MPV,
+}
+
 
 def _on_the_right(*widgets):
     """Widgets on a line, on the right of it."""
@@ -282,10 +288,8 @@ class SettingsDialog(PagedDialog):
             self.driverNotice.say(notice.title, notice.lines, notice.is_problem)
 
         # on another page, where a rule of the field can't see the driver
-        self.form_of("logging/log_level_vlc").hold_off(
-            "logging/log_level_vlc",
-            lib_of_driver(driver) != MediaLib.VLC,
-        )
+        for key, lib in _LOG_LEVEL_OF_LIB.items():
+            self.form_of(key).hold_off(key, lib_of_driver(driver) != lib)
 
     def cache_mode_selected(self, *_):
         # nothing on disk to see, kept in memory

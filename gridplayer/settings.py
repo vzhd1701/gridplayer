@@ -237,6 +237,7 @@ _default_settings = {
     "misc/vlc_options": "",
     "logging/log_level": logging.WARNING,
     "logging/log_level_vlc": DISABLED,
+    "logging/log_level_mpv": DISABLED,
     "logging/log_limit": False,
     "logging/log_limit_size": 10,
     "logging/log_limit_backups": 1,

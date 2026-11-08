@@ -11,6 +11,7 @@ painted.
 
 from PyQt5.QtCore import QRectF, Qt, QTimer
 
+from gridplayer.models.stream import Stream
 from gridplayer.mpv_player.player import MpvPlayer
 from gridplayer.mpv_player.renderer import MpvRenderService, RenderedVideo
 from gridplayer.mpv_player.subtitles import (
@@ -25,6 +26,7 @@ from gridplayer.utils.aspect_calc import (
     calc_full_size,
     calc_render_size,
 )
+from gridplayer.utils.media_libs import MediaLib
 from gridplayer.utils.qt import translate
 from gridplayer.vlc_player.static import DISABLED_TRACK, NO_TRACK, Media, MediaInput
 from gridplayer.vlc_player.video_driver_base import VLCVideoDriver
@@ -178,6 +180,11 @@ class VideoDriverMpv(VLCVideoDriver):
         self._load_timeout.setSingleShot(True)
         self._load_timeout.timeout.connect(self._on_load_timeout)
 
+        # a live stream opened again after a pause, until it plays
+        self._rejoin_timeout = QTimer(self)
+        self._rejoin_timeout.setSingleShot(True)
+        self._rejoin_timeout.timeout.connect(self._on_rejoin_timeout)
+
         # screenshots asked for and the frame size they're waiting for
         self._screenshots_due = 0
         self._screenshot_size: tuple[int, int] | None = None
@@ -189,6 +196,7 @@ class VideoDriverMpv(VLCVideoDriver):
 
     def cleanup_start(self) -> None:
         self._load_timeout.stop()
+        self._rejoin_timeout.stop()
         self._screenshot_timeout.stop()
         self._screenshots_due = 0
 
@@ -210,6 +218,7 @@ class VideoDriverMpv(VLCVideoDriver):
                 media_input,
                 hwdec=self._hwdec,
                 skip_frames=Settings().get("player/mpv_skip_frames"),
+                log_level=Settings().get("logging/log_level_mpv"),
                 subtitle_style=current_subtitle_style(),
                 wake_renderer=self._render_service.wake,
             )
@@ -228,6 +237,7 @@ class VideoDriverMpv(VLCVideoDriver):
             (self._player.paused_changed, self.playback_status_changed_emit),
             (self._player.video_size_changed, self._on_video_size),
             (self._player.failed, self.error_state),
+            (self._player.end_reached, self._on_end_reached),
             (self._player.tracks_changed, self._on_tracks_changed),
             (self._player.chapters_changed, self._on_chapters_changed),
             (self._player.render_context_ready, self._start_player),
@@ -262,6 +272,23 @@ class VideoDriverMpv(VLCVideoDriver):
         self._media = media
         self._report_load()
 
+    def _on_end_reached(self) -> None:
+        """As far as can be read, where only an error should bring that. Set to stay
+        open, mpv says no more: it would wait there for good, and for a live stream that
+        comes back as well."""
+
+        if self._player is None:
+            return
+
+        if not self._is_load_reported:
+            # as an mp4 with no way to seek to its index does, which says it has
+            # started all the same
+            self._player.fail(
+                translate("Video Error", "Video stopped before initialization")
+            )
+        elif self._player.media_input.is_live:
+            self._player.fail(translate("Video Error", "Live stream ended"))
+
     def _on_tracks_changed(self, media: Media) -> None:
         self._media = media
 
@@ -276,6 +303,7 @@ class VideoDriverMpv(VLCVideoDriver):
 
     def _on_playback_restarted(self) -> None:
         self._has_restarted = True
+        self._rejoin_timeout.stop()
         self._report_load()
 
     def _on_video_size(self, width: int, height: int, sar) -> None:
@@ -327,8 +355,16 @@ class VideoDriverMpv(VLCVideoDriver):
         self.playback_status_changed_emit(player.is_paused)
         self.time_changed.emit(player.media_input.initial_time)
 
+        # only known by now, and there's a picture to leave up
+        if player.media_input.is_live and player.is_pause_asked:
+            player.set_pause(True)
+
     def _on_load_timeout(self) -> None:
         self.error_state(translate("Video Error", "Timed out loading video"))
+
+    def _on_rejoin_timeout(self) -> None:
+        # as VLC says it
+        self.error_state(translate("Video Error", "Buffering timeout"))
 
     def _set_option(self, name: str, value: str) -> None:
         if self._player is not None:
@@ -348,7 +384,8 @@ class VideoDriverMpv(VLCVideoDriver):
 
         size = self._full_size()
 
-        if self._player is None or not all(size):
+        # stopped, the frame on show is all there is
+        if self._player is None or self._player.is_picture_held or not all(size):
             self.screenshot_taken_emit("")
             return
 
@@ -390,8 +427,18 @@ class VideoDriverMpv(VLCVideoDriver):
 
         self._player.set_pause(is_paused)
 
+        if not self._player.media_input.is_live:
+            return
+
+        if is_paused:
+            self._rejoin_timeout.stop()
+        else:
+            self._rejoin_timeout.start(
+                Settings().get("player/video_init_timeout") * 1000
+            )
+
     def set_time(self, seek_ms):
-        if self._player is None:
+        if self._player is None or self._player.media_input.is_live:
             return
 
         # mpv goes to the first frame at or after a time, where a time here
@@ -408,7 +455,8 @@ class VideoDriverMpv(VLCVideoDriver):
         return 500 / track.fps if track is not None and track.fps else 0
 
     def set_playback_rate(self, rate):
-        self._set_option("speed", str(rate))
+        if self._player is not None and not self._player.media_input.is_live:
+            self._player.set_option("speed", str(rate))
 
     def audio_set_mute(self, is_muted):
         self._set_option("mute", "yes" if is_muted else "no")
@@ -494,6 +542,25 @@ class VideoFrameMpv(PaintedVideoFrame, VideoFrameVLC):
     is_late_with_subtitles = False
     must_reload_for_subtitle_style = False
     must_reload_for_automatic_deinterlace = False
+    media_lib = MediaLib.MPV
+    has_adaptive_demuxer = False
+
+    @staticmethod
+    def streams_to_open(stream: Stream) -> tuple[Stream, tuple[str, Stream] | None]:
+        """As it comes: the sound apart, and a file in fragments as that file.
+
+        Sound behind the one demuxer, as one playlist or as EDL, had every seek on a
+        YouTube video take 5.6-6 s, and as an audio file 0.25-0.8 s, in sync. A file as
+        a playlist opens 3-5 times slower, and on 0.40 with FFmpeg 7.1 most seeks past
+        what's been read went back to the start: tests/real_app/scenarios/mpv_streams.py.
+        """
+
+        if not stream.audio_tracks:
+            return stream.as_file(), None
+
+        video, name, audio = stream.apart()
+
+        return video.as_file(), (name, audio.as_file())
 
     def __init__(self, render_service: MpvRenderService, hwdec: str, **kwargs):
         self._render_service = render_service
