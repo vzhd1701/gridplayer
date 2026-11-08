@@ -68,6 +68,13 @@ PLAYLIST_PROTOCOLS = MappingProxyType(
 # whether VLC opens it or the proxy hands it over rewritten
 MANIFEST_PROTOCOLS = frozenset({"direct", "dash_proxy"})
 
+# Signed in, yt-dlp asks YouTube as its embedded player first, and that one's links
+# to a format win over the TV app's. They now stop a minute in, refused past it, with
+# no PO token for the video along, which yt-dlp 2026.10.26 has no way to make: VLC
+# froze there and MPV, asking for the whole file, was refused at once. The TV app's
+# play through. Asked first, its links win; the rest are asked as yt-dlp would.
+YOUTUBE_CLIENTS_SIGNED_IN = ("tv_samsung", "default")
+
 # what the one rung is called when a whole ladder turns out to be the same
 # manifest; naming it after any one representation would promise a size
 # that VLC is under no obligation to pick
@@ -195,6 +202,7 @@ class YoutubeDLResolver(ResolverBase):
                     # cell: a channel can have tens of thousands
                     "playlistend": MAX_WEB_LIST_ITEMS,
                     **cookie_opts,
+                    **ytdl_client_opts(has_cookies=bool(cookie_opts)),
                     **network_opts,
                 }
             ) as ydl,
@@ -444,6 +452,20 @@ class YoutubeDLResolver(ResolverBase):
         self._log.debug(f"yt-dlp - source is fragmented: {is_source_fragmented}")
 
         return is_source_fragmented
+
+
+def ytdl_client_opts(has_cookies: bool) -> dict:
+    """Which of YouTube's players a YoutubeDL is to ask as: see
+    YOUTUBE_CLIENTS_SIGNED_IN. With no cookies, yt-dlp's own choice."""
+
+    if not has_cookies:
+        return {}
+
+    return {
+        "extractor_args": {
+            "youtube": {"player_client": list(YOUTUBE_CLIENTS_SIGNED_IN)}
+        }
+    }
 
 
 def _count_list_entries(ydl, progress) -> None:

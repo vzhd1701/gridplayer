@@ -404,6 +404,22 @@ class TestResolve:
 
         assert "cookiefile" not in used[0].options
 
+    def test_signed_in_it_asks_as_the_player_playback_asks_as(self, monkeypatch):
+        used = _resolving(monkeypatch, info=_resolved("http://host/media"))
+
+        YouTubeCheckup(jar=_youtube_jar()).check_resolve()
+
+        assert used[0].options["extractor_args"] == {
+            "youtube": {"player_client": ["tv_samsung", "default"]}
+        }
+
+    def test_signed_out_yt_dlp_picks_the_player(self, monkeypatch):
+        used = _resolving(monkeypatch, info=_resolved("http://host/media"))
+
+        YouTubeCheckup().check_resolve()
+
+        assert "extractor_args" not in used[0].options
+
 
 class TestFetch:
     def test_nothing_resolved_leaves_nothing_to_fetch(self):

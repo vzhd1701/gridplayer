@@ -40,6 +40,7 @@ from gridplayer.utils.network import (
 from gridplayer.utils.network_errors import log_failure
 from gridplayer.utils.percent_re import untangle_percent_re
 from gridplayer.utils.qt import translate
+from gridplayer.utils.url_resolve.resolver_yt_dlp import ytdl_client_opts
 
 # yt-dlp patches urllib3 as it is imported; see utils/percent_re.py
 untangle_percent_re()
@@ -555,6 +556,7 @@ class YouTubeCheckup(Checkup):
 
         if jar is not None:
             options["cookiefile"] = RewindingBuffer(jar.dump())
+            options.update(ytdl_client_opts(has_cookies=True))
 
         with YoutubeDL(options) as ydl:
             return ydl.extract_info(TEST_VIDEO_URL, download=False)
