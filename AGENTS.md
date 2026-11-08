@@ -72,6 +72,9 @@ than writing a harness of your own.
   * Audio and subtitle files beside a video are offered only after "Detect
     Audio Files" / "Detect Subtitle Files".
   * VLC's clock steps back a few milliseconds on a track change.
+  * On Windows 11, with none of its windows seen, the app is throttled a
+    few seconds in: every timer 15.6 ms apart. Measure frame rates with
+    `tests/real_app/bench`, whose `away.py` opts out.
   * `pkill -f` with a pattern that is also in your own command line kills
     your shell.
 

@@ -113,6 +113,41 @@ def _move_to_desktop(hwnd: int, desktop: bytes) -> None:
         raise OSError(f"MoveWindowToDesktop: {hresult & 0xFFFFFFFF:#x}")
 
 
+class _ThrottlingState(ctypes.Structure):
+    _fields_ = [
+        ("Version", wintypes.ULONG),
+        ("ControlMask", wintypes.ULONG),
+        ("StateMask", wintypes.ULONG),
+    ]
+
+
+def _never_throttled() -> None:
+    """Run as if seen. Windows 11 makes a process whose windows no one sees
+    slower to wake, a few seconds in: every timer to 15.6 ms, which held a
+    120 fps video to 64 frames a second and had mpv drop the rest."""
+
+    kernel32 = ctypes.windll.kernel32
+    kernel32.GetCurrentProcess.restype = wintypes.HANDLE
+    kernel32.SetProcessInformation.argtypes = [
+        wintypes.HANDLE,
+        ctypes.c_int,
+        ctypes.c_void_p,
+        wintypes.DWORD,
+    ]
+
+    process_power_throttling = 4
+    # execution speed and timer resolution, both never throttled
+    state = _ThrottlingState(Version=1, ControlMask=0x1 | 0x4, StateMask=0)
+
+    if not kernel32.SetProcessInformation(
+        kernel32.GetCurrentProcess(),
+        process_power_throttling,
+        ctypes.byref(state),
+        ctypes.sizeof(state),
+    ):
+        raise ctypes.WinError()
+
+
 def _ignore(*_args, **_kwargs) -> None:
     pass
 
@@ -176,6 +211,7 @@ def install(out: Path) -> None:
         self._context.commands.activate_window = _ignore
 
     QWidget.show = show
+    _never_throttled()
     QWidget.activateWindow = _ignore
     QWidget.showMaximized = _ignore
     QWidget.showFullScreen = _ignore

@@ -6,6 +6,8 @@ from PyQt5.QtWidgets import QApplication, QWidget
 
 # what a screen saying nothing of its refresh, or too little, is taken to do
 MIN_REFRESH_HZ = 30
+# see paint_interval_s: 120 swaps a second at 120 Hz with it, 105 without
+PAINT_SLACK_S = 0.001
 
 QT_LOG_IGNORED = ("requestActivate() called for",)
 
@@ -116,6 +118,14 @@ def refresh_interval_s(screen: QScreen | None) -> float:
     rate = screen.refreshRate() if screen is not None else 0
 
     return 1 / max(rate, MIN_REFRESH_HZ)
+
+
+def paint_interval_s(screen: QScreen | None) -> float:
+    """How long to wait between pictures sent to a screen: a refresh, short
+    by a little. A timer comes as late as early, and one waiting the whole
+    refresh misses one now and then, where a swap waits out the rest."""
+
+    return refresh_interval_s(screen) - PAINT_SLACK_S
 
 
 def is_qt_log_ignored(message):

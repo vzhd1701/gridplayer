@@ -33,7 +33,7 @@ from PyQt5.QtCore import QCoreApplication, QEvent, QObject, Qt, QTimer
 from PyQt5.QtWidgets import QWidget
 
 from gridplayer.params import env
-from gridplayer.utils.qt import refresh_interval_s
+from gridplayer.utils.qt import paint_interval_s
 
 # QWindowSystemInterface::flushWindowSystemEvents(QEventLoop::ProcessEventsFlags)
 _FLUSH_WINDOWS = (
@@ -131,7 +131,7 @@ class _GLWindowPaints(QObject):
 
         # not monotonic(): on Windows before Python 3.13, 15.6 ms steps
         now = time.perf_counter()
-        wait_s = self._last_paint + refresh_interval_s(self._widget.screen()) - now
+        wait_s = self._last_paint + paint_interval_s(self._widget.screen()) - now
 
         if wait_s <= 0:
             self._last_paint = now

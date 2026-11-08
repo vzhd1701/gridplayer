@@ -8,6 +8,7 @@ that answered for it, which leaves the vendored file as it is.
 import ctypes.util
 import locale
 import logging
+import os
 from contextlib import contextmanager
 from functools import cache
 
@@ -54,6 +55,14 @@ def load_mpv():
         raise OSError("libmpv not found")
 
     _log.debug(f"Loading libmpv: {path}")
+
+    # On Windows 10 and up mpv asks for 1 ms timers for each wait and lets the
+    # request go after it, which a process has one of: the 1 ms Qt's timers
+    # asked for too. With two videos open the app's timers came every 15.6 ms,
+    # and of 9 videos at 120 fps each showed 97 frames a second, 110 with
+    # this. Asked once and kept, read by mpv as its first player starts.
+    if env.IS_WINDOWS:
+        os.environ.setdefault("MPV_HRT", "always")
 
     try:
         with _answering_find_library(path):

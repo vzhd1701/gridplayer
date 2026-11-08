@@ -476,6 +476,10 @@ A surface a cell cost Qt a context switch, a framebuffer and a composed texture 
 the screen during a resize at 16 cells, against 38. Not measured again on the real screen, where a surface a cell cost more than
 readback at 9 cells.
 
+These, and every number from a window on another desktop before 2026-11-09, were taken with Windows throttling the app as
+unseen after its first few seconds: every timer 15.6 ms apart, 64 frames a second at most. Enough for 60 fps clips. The bench
+opts out of it now, see plan item 13.10, which also has 120 fps numbers and two fixes found that way.
+
 ## What's worth doing
 
 In order of what it gets for the work:

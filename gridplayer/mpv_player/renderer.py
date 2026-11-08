@@ -52,7 +52,7 @@ from gridplayer.mpv_player.gl_context import (
 )
 from gridplayer.mpv_player.libmpv import load_mpv
 from gridplayer.params import env
-from gridplayer.utils.qt import refresh_interval_s
+from gridplayer.utils.qt import paint_interval_s
 
 GL_TEXTURE_2D = 0x0DE1
 GL_TEXTURE_MIN_FILTER = 0x2801
@@ -713,7 +713,7 @@ class MpvRenderService(QObject):
         )
 
     def _frame_interval_ms(self) -> float:
-        return 1000 * refresh_interval_s(QGuiApplication.primaryScreen())
+        return 1000 * paint_interval_s(QGuiApplication.primaryScreen())
 
     def _present(self) -> None:
         # before looking at the frames: one finished after this says so again

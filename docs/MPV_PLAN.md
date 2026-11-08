@@ -24,7 +24,7 @@ still to be started, overnight, by you.**
 | 10 | Hardening: long churn, memory, real drags, other GPUs | not started |
 | 11 | macOS | not started |
 | 12 | Packaging, docs, release | not started |
-| 13 | GL output, a choice beside readback | **built, macOS not run**, resize shaking, NVIDIA's black line and a crash closing a cell fixed, one surface for the window (13.5) |
+| 13 | GL output, a choice beside readback | **built, macOS not run**, resize shaking, NVIDIA's black line and a crash closing a cell fixed, one surface for the window (13.5), 120 fps (13.10) |
 
 ## Rules that hold in every stage
 
@@ -914,6 +914,23 @@ core less while the decoder keeps up, at the same frame rates. Suggested words: 
   (`_HeldTillContextGone`): 3 in 3 pass that way, every blitter let go. The surface's own slot can't do it, PyQt cuts a
   widget's bound methods off once it's being deleted. The earlier `PYTHONFAULTHANDLER` crash was the fault handler itself,
   printing from two threads.
+- [x] 13.10 120 fps videos, your question: they showed about 64 frames a second, on both outputs. Three things, the first only
+  in the measuring.
+  - On the other desktop Windows 11 throttles the app as unseen, a few seconds in: every timer comes every 15.6 ms, 64 frames
+    a second at most, and mpv's own late ones dropped (43 a second). A window moved off the screen on your desktop isn't
+    throttled. The bench now opts out (`away._never_throttled`). Numbers taken there before, 13.5's among them, were throttled
+    past the first seconds: fine for 60 fps clips, not for 120.
+  - mpv on Windows 10 and up asks for 1 ms timers before each wait and lets the request go after it, and a process has just
+    the one: the one Qt's precise timers rely on too. With two videos open, paused even, the app's timers came every 15.6 ms
+    most of the time. VLC doesn't do it. Fix: `MPV_HRT=always` before libmpv starts, asking once and keeping it.
+  - With timers on time, a picture held to a whole refresh misses one now and then: 105 swaps a second at 120 Hz. Both pacers,
+    the renderer's and the window's, wait a refresh less 1 ms (`paint_interval_s`), the swap waiting out the rest: 119.
+  - 360p120 clips, Fast, frames reaching each cell a second (before / after): 1 cell 119 / 119, 9 cells 97 / 111, 16 cells 89 /
+    109; mpv now renders all 120 at 9. Readback at 16, 112 either way, the CPU's limit there. 36 360p60 cells: 58 fps at 14% of
+    the GUI thread, now 60 at 18-23% (19% with the timer fix alone): 105 compositions a second for 60, the
+    cells' frames falling on different refreshes.
+  - `video_timing_offset=0` wasn't it: mpv's default played all 120 throttled, but shows frames up to 50 ms early, and with
+    timers on time 0 drops none.
 
 ---
 
@@ -921,6 +938,7 @@ core less while the decoder keeps up, at the same frame rates. Suggested words: 
 
 Newest first. What was finished and seen working, and anything that changed the plan.
 
+- 2026-11-09: 13.10, 120 fps videos play at 120 again with a few cells, 110 at 9: mpv let go of the app's 1 ms timers after each wait, now asked once and kept (`MPV_HRT`), and the pacing waits a millisecond less. The 64 a second measured before was Windows throttling the bench's window on the other desktop: the bench opts out now.
 - 2026-11-08: 13.6 checked on Linux, the same cause there and fixed the same way. 13.7, a growing picture redrawn on the way. 13.8, NVIDIA's black rows: a Black line fix setting, on for NVIDIA by default. On a real screen Windows GL saves CPU only with a few videos, see `MPV_PERFORMANCE.md`.
 - 2026-11-08: 13.6, the shaking of GL output during a window resize on Windows, fixed: frames drawn at the old size, as Qt took the new one too late. Backward jumps of up to 12 px down to 1-2 px of rounding.
 - 2026-11-08: Stage 13, GL output, built: 13.1 to 13.4. "Fast" in Video output, after a restart. Same frame rates for 20-35 points of a core less, and on Linux the display server's share too. On Linux VLC's processes then have to start from `forkserver`.

@@ -58,7 +58,7 @@ def test_other_events_are_left_alone():
 
 def test_the_window_is_put_together_at_most_once_a_refresh(monkeypatch):
     widget, paints, _ = _filter((400, 300))
-    monkeypatch.setattr(gl_window_size, "refresh_interval_s", lambda _s: 0.016)
+    monkeypatch.setattr(gl_window_size, "paint_interval_s", lambda _s: 0.016)
     now = [100.0]
     monkeypatch.setattr(gl_window_size.time, "perf_counter", lambda: now[0])
     request = QEvent(QEvent.UpdateRequest)
