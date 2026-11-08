@@ -370,6 +370,7 @@ PAGES = (
             Section(
                 translate("SettingsDialog", "Connection"),
                 "network/timeout",
+                "network/buffering_timeout",
                 "network/user_agent",
                 "network/force_ipv4",
                 Slot("network_test"),
@@ -384,7 +385,7 @@ PAGES = (
                 "SettingsDialog",
                 "These settings apply to http and https links. Other links,"
                 " such as rtsp and rtmp, are opened by the player itself,"
-                " and only the user agent applies to them.",
+                " and only the user agent and the buffering timeout apply to them.",
             ),
         ),
     ),

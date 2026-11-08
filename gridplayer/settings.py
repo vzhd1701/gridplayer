@@ -282,6 +282,8 @@ _default_settings = {
     # zero leaves each library on its own default rather than imposing one
     # number on clients that have thought about it separately
     "network/timeout": 0,
+    # a network video playing that stops moving, before it's loaded again
+    "network/buffering_timeout": 30,
     "network/verify_tls": True,
     # Streamlink refuses an http link in an https playlist; VLC, mpv and
     # ffmpeg follow it, and some IPTV hosts depend on that

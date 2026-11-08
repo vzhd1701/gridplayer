@@ -1,10 +1,13 @@
 """What a video block does when its video will not play: tries a network
 video again a while later, and goes on past an item of its list that
-failed, to the next one.
+failed, to the next one. And when one that was playing stops, or starts
+over long before its end, which neither player says.
 
 Showing what went wrong is the block's (see VideoBlock.network_error and
 VideoBlock.error); this only decides what comes after, and when.
 """
+
+import time
 
 from PyQt5.QtCore import Qt, QTimer
 
@@ -15,6 +18,7 @@ from gridplayer.params.static import (
     NetworkRetryMode,
     VideoEndAction,
 )
+from gridplayer.settings import Settings
 from gridplayer.utils.qt import translate
 from gridplayer.widgets.video_block_guards import VideoBlockPart
 from gridplayer.widgets.video_status import LoadStage
@@ -29,6 +33,37 @@ NETWORK_RETRY_DELAYS_S = (1, 2, 5, 15, 30)
 # how many items of a list in a row may fail for the network, or a site
 # turning requests away, before it is left at that
 MAX_NETWORK_FAILURES_IN_A_ROW = 10
+
+# A network video playing that stops moving is told by nothing: its link refused
+# from then on, VLC tries again once a minute and MPV plays out what it has, the
+# picture held and no word of it. With the proxy having been turned away fetching
+# it, it's tried again this soon; with nothing said of why, after the buffering
+# timeout of the settings.
+STALL_CHECK_MS = 1000
+STALLED_AFTER_FAILURE_S = 10
+
+# Moving is a second of it in a second, at its rate: VLC stuck on a file whose
+# connection was cut crept on, 1.8 s in two minutes.
+STALL_MOVE_MS = 1000
+
+# where it stops of itself: the end, the end action left to the block
+STALL_END_MARGIN_MS = 1000
+
+# Or it starts over by itself, short of the end: a YouTube video VLC had a minute
+# of, the next bit refused, was played from the start again, the minute over and
+# over, and a file whose connection was cut, opened again, from 2.6 s. Back to this
+# near the start, by this much, with no seek on its way and this far from the end.
+CUT_SHORT_START_MS = 5000
+CUT_SHORT_JUMP_MS = 5000
+CUT_SHORT_END_MARGIN_MS = 10_000
+
+# How long a video loaded again has to play before the reloads it took are
+# forgotten. Loading is no proof: VLC loaded a YouTube video at the minute it was
+# refused past, and started over at once, every 7 s for as long as it was let.
+PLAYED_ON_MS = 30_000
+
+# what one time report on from the last can be and still be playing, not a seek
+PLAYED_STEP_MS = 2000
 
 
 def list_fail_wait_txt(wait_sec: int) -> str:
@@ -71,17 +106,30 @@ class RecoveryControl(VideoBlockPart):
         self._note_timer.setInterval(1000)
         self._note_timer.timeout.connect(self.refresh_skip_note)
 
+        # where the time last moved from, and when, for as long as it is watched;
+        # where it was last, and where it got to before it started over, told once
+        self._moved_from_ms = 0
+        self._moved_at = 0.0
+        self._last_time_ms = 0
+        self._cut_short_at_ms: int | None = None
+
+        # how much of it has played since it was loaded
+        self._played_ms = 0
+
+        self._stall_timer = QTimer(block)
+        self._stall_timer.setInterval(STALL_CHECK_MS)
+        self._stall_timer.timeout.connect(self._check_stall)
+
     @property
     def retries(self) -> int:
-        """Reloads tried since the video last played."""
+        """Reloads tried since the video last played on for a while."""
 
         return self._retries
 
     def note_played(self):
-        """The video plays: whatever went wrong before is behind it, and the
-        list is not one without anything that will."""
+        """The video plays: the list is not one without anything that will. The
+        reloads it took are forgotten once it has played on, see PLAYED_ON_MS."""
 
-        self._retries = 0
         self._failures_in_a_row = 0
         self._network_failures_in_a_row = 0
 
@@ -90,6 +138,125 @@ class RecoveryControl(VideoBlockPart):
 
         self._retry_timer.stop()
         self._skip_timer.stop()
+        self._stall_timer.stop()
+
+    def watch_stalls(self):
+        """The video has just loaded: watched from where it is, for it stopping
+        or starting over."""
+
+        self._last_time_ms = self._block.time
+        self._cut_short_at_ms = None
+        self._played_ms = 0
+
+        self._moved_from(self._block.time)
+
+    def note_time(self, time_ms: int):
+        """Where the video is now, before a seek on its way is let go of: a move
+        if it's a second on or a jump."""
+
+        last_time_ms, self._last_time_ms = self._last_time_ms, time_ms
+
+        if self._has_started_over(last_time_ms, time_ms):
+            self._cut_short_at_ms = last_time_ms
+            self._stall_timer.stop()
+
+            self._block._log.debug(f"Started over at {time_ms}, from {last_time_ms}")
+
+            # not from in here: the driver reports the time, and the error lets it go
+            QTimer.singleShot(0, self._tell_cut_short)
+            return
+
+        rate = self._block.video_params.rate
+
+        if 0 < time_ms - last_time_ms <= PLAYED_STEP_MS * rate:
+            self._played_ms += time_ms - last_time_ms
+
+            if self._played_ms >= PLAYED_ON_MS:
+                self._retries = 0
+
+        if abs(time_ms - self._moved_from_ms) >= STALL_MOVE_MS * rate:
+            self._moved_from(time_ms)
+
+    def _has_started_over(self, last_time_ms: int, time_ms: int) -> bool:
+        block = self._block
+
+        return (
+            self._cut_short_at_ms is None
+            and self._is_stall_watched()
+            and not block.is_seek_on_its_way
+            and time_ms < CUT_SHORT_START_MS
+            and last_time_ms - time_ms >= CUT_SHORT_JUMP_MS
+            and last_time_ms < block.video_driver.length - CUT_SHORT_END_MARGIN_MS
+        )
+
+    def _tell_cut_short(self):
+        if not self._is_stall_watched():
+            return
+
+        # loaded again from where it got to, not from where it started over
+        self._block.video_params.current_position = self._cut_short_at_ms
+
+        # marked for translation where the players say it
+        self._block.video_driver_error("Video stopped unexpectedly")
+
+    def _moved_from(self, time_ms: int):
+        self._moved_from_ms = time_ms
+        self._moved_at = time.monotonic()
+
+        if not self._stall_timer.isActive():
+            self._stall_timer.start()
+
+    def _check_stall(self):
+        block = self._block
+
+        if not self._is_stall_watched():
+            self._stall_timer.stop()
+            return
+
+        # held by the viewer, or where it stops anyway: from when it goes on
+        if block.video_params.is_paused or block.time >= (
+            block.loop_end - STALL_END_MARGIN_MS
+        ):
+            self._moved_at = time.monotonic()
+            return
+
+        stalled_s = time.monotonic() - self._moved_at
+
+        # turned away fetching it since it loaded: the next bit of it, most
+        # likely, the link of no more use
+        if block.stream.proxy_failure() is not None:
+            is_stalled = stalled_s >= STALLED_AFTER_FAILURE_S
+        else:
+            is_stalled = stalled_s >= Settings().get("network/buffering_timeout")
+
+        if not is_stalled:
+            return
+
+        self._stall_timer.stop()
+
+        block._log.debug(f"Stopped moving at {block.time} for {stalled_s:.0f} s")
+
+        # what the proxy was told goes with it, see VideoBlockStatus.player_error;
+        # marked for translation where the players say it
+        block.video_driver_error("Buffering timeout")
+
+    def _is_stall_watched(self) -> bool:
+        """A network video playing, of a length: a live stream's time is no
+        measure (see VLC's cb_playing), and the drivers wait on it themselves
+        after a pause."""
+
+        block = self._block
+
+        return (
+            block.video_driver is not None
+            and block.is_video_initialized
+            and not block.is_error
+            and not block.is_stopped
+            and not block.is_live
+            and not block.video_params.is_local_file
+            # with none known, there is no telling the end from a stop
+            and block.video_driver.length > 0
+        )
 
     def stop_retry_countdown(self):
         """The reload counted down to is being made now, the tries kept."""

@@ -451,7 +451,7 @@ class VideoDriverMpv(VLCVideoDriver):
             self._rejoin_timeout.stop()
         else:
             self._rejoin_timeout.start(
-                Settings().get("player/video_init_timeout") * 1000
+                Settings().get("network/buffering_timeout") * 1000
             )
 
     def _on_time(self, time_ms: int) -> None:

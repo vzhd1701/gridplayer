@@ -1278,6 +1278,8 @@ class VideoBlock(QWidget):
 
     @only_initialized
     def time_changed(self, new_time):
+        self.recovery.note_time(new_time)
+
         is_wrapped = self._is_loop_wrapped(new_time)
 
         self.time = new_time
@@ -1929,6 +1931,7 @@ class VideoBlock(QWidget):
     def load_video_finish(self):
         # the video is playing, so whatever went wrong before is behind us
         self.recovery.note_played()
+        self.recovery.watch_stalls()
         self.status.last_error = None
 
         # a fresh player has no pass behind it to compare times against

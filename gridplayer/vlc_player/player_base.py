@@ -199,6 +199,9 @@ class VlcPlayerBase(ABC):
 
         self._timeout_init_start = None
         self._timeout_init = None
+
+        # how long a live stream played again may take to go on
+        self._timeout_buffering = None
         self._get_time_retries = 0
 
         # the threads VLC opens, reads and decodes this load on, told by
@@ -410,7 +413,7 @@ class VlcPlayerBase(ABC):
                 on_timeout=lambda: self.error(
                     translate("Video Error", "Buffering timeout")
                 ),
-                timeout=self._timeout_init,
+                timeout=self._timeout_buffering,
             )
 
     def cb_paused(self, event):
@@ -644,6 +647,7 @@ class VlcPlayerBase(ABC):
         """Step 1. Load & parse video file"""
 
         self._timeout_init = Settings().sync_get("player/video_init_timeout")
+        self._timeout_buffering = Settings().sync_get("network/buffering_timeout")
         self._timeout_init_start = time()
         self._get_time_retries = 0
         self._vlc_threads.clear()

@@ -58,6 +58,7 @@ ALSO_ON_MPV = (
     "pixel_shape",
     "playback",
     "stream_errors",
+    "stream_stalls",
     "streams",
     "tracks",
 )

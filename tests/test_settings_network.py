@@ -25,6 +25,7 @@ NETWORK_KEYS = (
     "network/user_agent",
     "network/force_ipv4",
     "network/timeout",
+    "network/buffering_timeout",
     "network/verify_tls",
     "network/allow_http_in_playlists",
 )

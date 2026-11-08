@@ -97,6 +97,17 @@ STREAMING_FIELDS: tuple[SettingField, ...] = (
             " affect playback.",
         ),
     ),
+    SpinField(
+        settings_key="network/buffering_timeout",
+        label=translate("SettingsDialog", "Buffering timeout"),
+        minimum=5,
+        maximum=1000,
+        suffix=translate("SettingsDialog", "(sec)"),
+        tooltip=translate(
+            "SettingsDialog",
+            "How long a network video can be stuck before it's loaded again.",
+        ),
+    ),
     TextField(
         settings_key="network/user_agent",
         label=translate("SettingsDialog", "User agent"),
