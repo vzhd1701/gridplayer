@@ -462,6 +462,20 @@ costs more on both GPUs, and on AMD manages about 46 swaps a second. Linux, thro
 So the choice was right for the shaking, and wrong about the cost: GL is cheaper at the sizes most grids have. Whether the shaking can be
 dealt with any other way wasn't looked at again. Each run had 8 s to settle and 15 s measured, with the modes taking turns to go first.
 
+**One GL surface for the window** (plan item 13.5, measured later the same day on Windows, RTX 3060, window on another desktop,
+1920x1061, 360p60 clips so the decoder keeps up, 15 s; GUI thread CPU, fps, frames dropped a second):
+
+| | Readback | GL, a surface a cell | GL, one surface |
+|---|---:|---:|---:|
+| 4 cells | 17% · 60 · 1 | 7% · 60 · 1 | 7% · 60 · 1 |
+| 16 cells | 15% · 60 · 3 | 27% · 60 · 3 | 6% · 60 · 5 |
+| 36 cells | 22% · 49 · 378 | 51% · 43 · 612 | 15% · 60 · 11 |
+
+A surface a cell cost Qt a context switch, a framebuffer and a composed texture for each cell, each frame, on the GUI thread: at
+36 cells it played the fewest frames of all. With one, a paint of all 36 takes 0.9 ms. The window also gets 66 sizes a second to
+the screen during a resize at 16 cells, against 38. Not measured again on the real screen, where a surface a cell cost more than
+readback at 9 cells.
+
 ## What's worth doing
 
 In order of what it gets for the work:

@@ -201,6 +201,18 @@ def native_px(length: float, ratio: float) -> int:
     return math.floor(length * ratio + 0.5)
 
 
+def native_rect(
+    x: float, y: float, width: float, height: float, ratio: float
+) -> tuple[int, int, int, int]:
+    """A rect in Qt pixels in the window's own, its edges rounded as Qt does:
+    x, y, width and height. Plain numbers, as it's asked for each frame."""
+
+    left, top = native_px(x, ratio), native_px(y, ratio)
+    right, bottom = native_px(x + width, ratio), native_px(y + height, ratio)
+
+    return left, top, right - left, bottom - top
+
+
 def apply_vlc_hw_surface_geometry(
     frame: QWidget,
     clip: QWidget,

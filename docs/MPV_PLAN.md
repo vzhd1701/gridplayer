@@ -24,7 +24,7 @@ still to be started, overnight, by you.**
 | 10 | Hardening: long churn, memory, real drags, other GPUs | not started |
 | 11 | macOS | not started |
 | 12 | Packaging, docs, release | not started |
-| 13 | GL output, a choice beside readback | **built, macOS not run**, resize shaking, NVIDIA's black line and a crash closing a cell fixed, 13.5 open |
+| 13 | GL output, a choice beside readback | **built, macOS not run**, resize shaking, NVIDIA's black line and a crash closing a cell fixed, one surface for the window (13.5) |
 
 ## Rules that hold in every stage
 
@@ -801,6 +801,7 @@ core less while the decoder keeps up, at the same frame rates. Suggested words: 
     window, shown or not (`_StartQueue` in `video_surface_gl.py`, the start Qt makes on a show or a resize held back), and a
     cell says it has loaded only once its surface draws, so the wait is part of its loading. 9 cells: the worst hold-up
     730 ms to 180-330 ms (readback has the same, making the cells), then one of 50-80 ms a cell; all on show in 1.9 s.
+    Since replaced by one surface for the window, 13.5: one context made, not one a cell.
 - [x] 13.2 Linux spike. Results on `test_gpu`:
   - Qt draws with EGL, `QT_XCB_GL_INTEGRATION=xcb_egl`. The render thread's EGL context is made on Qt's EGL display and shares with
     Qt's context. mpv keeps its own X connection for VAAPI, still `vaapi`, not a copy.
@@ -833,8 +834,37 @@ core less while the decoder keeps up, at the same frame rates. Suggested words: 
 - [x] 13.4 Screenshots and the pause snapshot with GL: the pixels read from the texture when asked, not every frame.
   - `frame_image` draws the texture into a framebuffer of its own and reads that. The screenshot checks of `mpv_view`,
     `mpv_subtitles` and `mpv_deinterlace` pass on GL. The pause snapshot needed nothing: the last frame stays drawn.
-- [ ] 13.5 One GL surface for the whole grid rather than one a cell, only if 16 cells and more show it's worth it: each
-  `QOpenGLWidget` costs a context switch a frame on the GUI thread.
+- [x] 13.5 One GL surface for the whole window rather than one a cell. Built, in place of a surface a cell.
+  - `widgets/video_surface_gl.py`: `GLGridSurface`, one `QOpenGLWidget` the size of the window under all of its other widgets,
+    made as the first video in it has a frame, draws every cell's texture where the cell's `GLVideoSurface` is, lowest first,
+    cut to what its parents leave in view (`placed_surfaces`, worked out again only once something in the way moves, changes
+    size, shows, hides or is stacked differently). A cell's `GLVideoSurface` is a plain widget that clears its part of the
+    window to see-through with `CompositionMode_Source`, as Qt does under a `QOpenGLWidget`: tiles over one another still hide
+    what's under them, controls included. One context, one framebuffer, one blitter. The start queue is gone: a cell's surface
+    draws once the grid surface is up, still part of the cell loading.
+  - `grab()` of an MPV frame paints the picture into the surface (`GLVideoSurface.grabbing`): PyQt has no `backingStore()` to
+    tell a grab from the window, and guessing by size failed on a cell as big as the window. A grab of the whole window has
+    holes where the videos are; nothing in the app grabs.
+  - Measured, RTX 3060, real window on another desktop, 1920x1061, 360p60 clips, 15 s (GUI thread / fps / dropped a second):
+    16 cells readback 14.7% / 59.8 / 2.7, a surface a cell 27.3% / 59.8 / 3.0, one surface 6.4% / 59.7 / 4.9.
+    36 cells readback 21.5% / 49.3 / 378, a surface a cell 51.0% / 43.2 / 612, one surface 14.5% / 59.7 / 10.9.
+    Its paint takes 0.9 ms at 36 cells (1.7 ms when the prototype worked out the places each paint).
+  - Resizing, each step waiting for the window to be swapped, 360p60 cells playing: 4 cells 71 sizes a second against 69, 16
+    cells 66 against 38.
+  - Adding and closing videos, the window read about every millisecond (BitBlt) for 2-5 s around each: no frame with a cell
+    gone black or grey, either way. A new cell is black until its first frame, as before. The GUI is held up for 50-65 ms
+    adding one, as before: the render thread making mpv's render context for it (61 ms), the driver holding GL meanwhile.
+    Closing one holds it up 120-190 ms, either way.
+  - Your report: the pointer over the cells, their controls coming up, and tiny videos lag. With GL, Qt puts all of the window
+    together and swaps it for anything painted anew, and a cell's time and bar are painted apart from the frames: 110-120 swaps
+    a second with the controls up, each waiting for the screen. A surface a cell had it too. 16 360p60 cells, frames reaching
+    each cell a second (idle / pointer going over them / all controls up), three runs each: a surface a cell 53-55 / 34-52 /
+    50-54, one surface 52-53 / 21-53 / 47-49, readback 55 / 56 / 56. Fix: the window's filter in `utils/gl_window_size.py`,
+    beside the size fix, holds its update requests to one a screen refresh (`_is_too_soon`, the refresh read as the renderer
+    reads it, `refresh_interval_s`), so the controls go with the next frames: 52-53 / 55 / 55-56, 65-70 swaps a second.
+    Resizing isn't held (Qt paints for the system without a request): 79 and 70 sizes a second at 4 and 16 cells.
+  - All 9 MPV scenarios pass on Windows (8: not `mpv_hidden_cells` on the away desktop) and on `test_gpu`. Free Tiles overlap
+    checked by eye in both orders on both. Not done: macOS (Fast isn't offered there), Linux numbers, the real screen.
 - [x] 13.6 The shaking during a window resize, Windows.
   - Cause: Qt takes a new window size from its own queue, and a paint can come before it: one asked for before, or the one it
     makes at once when the window shrinks. The whole window is then drawn at its old size into the new one, and with GL Windows

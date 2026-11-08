@@ -215,14 +215,23 @@ def instrument():
                     QRectF(*placement.target), self._image, QRectF(*placement.source)
                 )
 
-    def timed_paint(self, event):
-        start = time.perf_counter()
-        paint(self, event)
-        if COUNT.gate:
-            COUNT.paints += 1
-            COUNT.paint_s += time.perf_counter() - start
+    def timed(paint):
+        def timed_paint(*args):
+            start = time.perf_counter()
+            paint(*args)
+            if COUNT.gate:
+                COUNT.paints += 1
+                COUNT.paint_s += time.perf_counter() - start
 
-    SoftwareVideoSurface.paintEvent = timed_paint
+        return timed_paint
+
+    SoftwareVideoSurface.paintEvent = timed(paint)
+
+    # GL output: all of a window's pictures in one paint, where software
+    # output paints a cell at a time: paints and their time aren't alike
+    from gridplayer.widgets.video_surface_gl import GLGridSurface
+
+    GLGridSurface.paintGL = timed(GLGridSurface.paintGL)
 
     present = SoftwareVideoSurface.present_rgb32
 

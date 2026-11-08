@@ -187,6 +187,18 @@ the entry happens to exist, but never reaches translators.
   (e.g. `Transform`, `When Finished`, `Playlist Settings`). Other menu strings
   use `Actions`; other settings form strings use `SettingsDialog`.
 
+## MPV's Fast output
+
+One GL surface draws all of a window's videos, under the cells
+(`widgets/video_surface_gl.py`); a cell's own surface is a see-through hole.
+
+* A window drawn with GL is put together at most once a screen refresh
+  (`utils/gl_window_size.py`), and a `repaint()` may wait for the next: to
+  paint before something that holds the GUI up, use `repaint_now(widget)`.
+* `grab()` or `render()` of a cell shows a hole where its video is, unless
+  done inside `GLVideoSurface.grabbing()` (`VideoFrameMpv.grab` and the
+  real-app driver's `shot` do).
+
 ## Code style
 
 * Follow the Ruff configuration in `pyproject.toml`.

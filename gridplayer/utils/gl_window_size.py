@@ -1,4 +1,5 @@
-"""A window drawn with GL is only drawn at the size it has.
+"""A window drawn with GL: only drawn at the size it has, and put together
+at most once a screen refresh.
 
 As a window is resized, Qt takes each new size from a queue of its own, and a
 paint can come first: one asked for before, or the one Qt makes at once when
@@ -10,16 +11,29 @@ spared, as what was painted stays where it was.
 So before Qt paints such a window while its widgets are still at an old size,
 it takes the new size first, as it does itself before a paint the system asks
 for. The window's own size is always the new one: Qt asks the system for it.
+
+With GL, Qt also puts all of the window together and swaps it for anything
+painted anew in it, and a cell's controls are painted apart from its frames:
+its time, its bar. Each swap waits for the screen, and two or more a refresh
+held the GUI up and the videos with it, as soon as the controls were up. So
+a paint asked for less than a refresh after the last waits for the next turn,
+and goes with the frames due then. Painting for the system, as a resize does,
+isn't asked for this way, and isn't held. Nor is what repaint_now paints: Qt's
+repaint() asks the same way, and can't be told apart.
 """
 
+import contextlib
 import ctypes
 import functools
 import logging
+import math
+import time
 
-from PyQt5.QtCore import QEvent, QObject
+from PyQt5.QtCore import QCoreApplication, QEvent, QObject, Qt, QTimer
 from PyQt5.QtWidgets import QWidget
 
 from gridplayer.params import env
+from gridplayer.utils.qt import refresh_interval_s
 
 # QWindowSystemInterface::flushWindowSystemEvents(QEventLoop::ProcessEventsFlags)
 _FLUSH_WINDOWS = (
@@ -60,13 +74,21 @@ def _qt_flush():
     return flush
 
 
-class _NewSizeFirst(QObject):
+class _GLWindowPaints(QObject):
     def __init__(self, widget: QWidget, flush):
         super().__init__(widget)
 
         self._widget = widget
         self._flush = flush
         self._window = None
+
+        # when the window was last put together, see _is_too_soon
+        self._last_paint = 0.0
+        self._is_now = False
+        self._held_paint = QTimer(self)
+        self._held_paint.setSingleShot(True)
+        self._held_paint.setTimerType(Qt.PreciseTimer)
+        self._held_paint.timeout.connect(self._paint_held)
 
         widget.installEventFilter(self)
         self._follow_window()
@@ -79,7 +101,16 @@ class _NewSizeFirst(QObject):
         if watched is self._widget and kind == QEvent.WinIdChange:
             self._follow_window()
 
-        if kind in _PAINTS and self._is_behind():
+        # what Qt asks of the widget, not what the system asks of the window
+        if (
+            watched is self._widget
+            and kind == QEvent.UpdateRequest
+            and not self._is_now
+            and self._is_too_soon()
+        ):
+            return True
+
+        if kind in _PAINTS and self._flush is not None and self._is_behind():
             self._flush(_EXCLUDE_USER_INPUT_EVENTS)
 
         return False
@@ -95,16 +126,53 @@ class _NewSizeFirst(QObject):
 
         return window is not None and window.size() != self._widget.size()
 
+    def _is_too_soon(self) -> bool:
+        """Less than a refresh since the last paint: this one is held till then."""
 
-def draw_at_window_size(widget: QWidget) -> None:
-    """This window, drawn with GL, drawn only at the size it has. Asked for by
-    each GL surface in it, set up by the first."""
+        # not monotonic(): on Windows before Python 3.13, 15.6 ms steps
+        now = time.perf_counter()
+        wait_s = self._last_paint + refresh_interval_s(self._widget.screen()) - now
 
-    if getattr(widget, "_new_size_first", None) is not None:
+        if wait_s <= 0:
+            self._last_paint = now
+            return False
+
+        if not self._held_paint.isActive():
+            self._held_paint.start(math.ceil(wait_s * 1000))
+
+        return True
+
+    @contextlib.contextmanager
+    def now(self):
+        self._is_now = True
+        try:
+            yield
+        finally:
+            self._is_now = False
+
+    def _paint_held(self) -> None:
+        # Qt asks for no other until this one is done
+        QCoreApplication.postEvent(
+            self._widget, QEvent(QEvent.UpdateRequest), Qt.LowEventPriority
+        )
+
+
+def set_up_gl_window(widget: QWidget) -> None:
+    """This window, drawn with GL from now on: see above. Set up once."""
+
+    if getattr(widget, "_gl_window_paints", None) is None:
+        widget._gl_window_paints = _GLWindowPaints(widget, _qt_flush())
+
+
+def repaint_now(widget: QWidget) -> None:
+    """widget.repaint(), painted now in a window drawn with GL as well: what
+    is painted before something that holds the GUI up."""
+
+    paints = getattr(widget.window(), "_gl_window_paints", None)
+
+    if not isinstance(paints, _GLWindowPaints):
+        widget.repaint()
         return
 
-    flush = _qt_flush()
-    if flush is None:
-        return
-
-    widget._new_size_first = _NewSizeFirst(widget, flush)
+    with paints.now():
+        widget.repaint()

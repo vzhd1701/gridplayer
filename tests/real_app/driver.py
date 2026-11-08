@@ -244,8 +244,12 @@ class Driver:
         return cells
 
     def shot(self, name: str, widget=None) -> Path:
+        from gridplayer.widgets.video_surface_gl import GLVideoSurface
+
         path = self.out / f"{name}.png"
-        (widget or self.player).grab().save(str(path))
+        # the pictures, not the window's holes for them
+        with GLVideoSurface.grabbing():
+            (widget or self.player).grab().save(str(path))
         self._step(f"screenshot {path.name}")
         return path
 

@@ -13,6 +13,7 @@ from gridplayer.dialogs.error_details import (
     ErrorDetailsDialog,
     code_rows,
 )
+from gridplayer.utils.gl_window_size import repaint_now
 from gridplayer.utils.list_errors import ReadErrorKind
 from gridplayer.utils.qt import translate
 from gridplayer.utils.video_errors import (
@@ -194,11 +195,11 @@ class StatusControl(VideoBlockPart):
         self.sync_overlay_mode()
         self._block.overlay.lay_out_now()
 
-        self._block.repaint()
+        repaint_now(self._block)
 
         # a window of its own is not painted along with the cell
         if self._block.overlay.isWindow() and self._block.overlay.isVisible():
-            self._block.overlay.repaint()
+            repaint_now(self._block.overlay)
 
     def _overlay_mode(self) -> OverlayMode:
         if self._block.is_error:

@@ -49,6 +49,7 @@ from gridplayer.params.static import (
 )
 from gridplayer.settings import Settings
 from gridplayer.utils.drop_zone import DropIndicator
+from gridplayer.utils.gl_window_size import repaint_now
 from gridplayer.utils.libvlc_options_parser import (
     get_vlc_options,
     is_deinterlace_reload_needed,
@@ -419,7 +420,7 @@ class VideoBlock(QWidget):
         # video's window, gone, shows what was painted under it before its
         # picture came, the loading status, until the cell is painted again
         if self.isVisible():
-            self.repaint()
+            repaint_now(self)
 
         old_driver.cleanup()
         old_driver.deleteLater()
@@ -686,7 +687,7 @@ class VideoBlock(QWidget):
             self.hide()
 
             if self.parentWidget() is not None:
-                self.parentWidget().repaint()
+                repaint_now(self.parentWidget())
 
         super().close()
 

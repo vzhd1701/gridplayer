@@ -22,6 +22,7 @@ from gridplayer.player.managers.base import ManagerBase
 from gridplayer.playlist_settings import PlaylistSettings
 from gridplayer.settings import Settings
 from gridplayer.utils.aspect_calc import SyncedView
+from gridplayer.utils.gl_window_size import repaint_now
 from gridplayer.utils.qt import MILLISECONDS, qt_connect, translate
 from gridplayer.utils.step_sizes import seek_step_label, seek_step_ms
 from gridplayer.widgets.video_block import VideoBlock
@@ -848,7 +849,7 @@ class VideoBlocksManager(ManagerBase):
         self._emit_video_count()
 
         if is_any_shown:
-            self.parent().repaint()
+            repaint_now(self.parent())
 
     def playing_count_change(self):
         playing_videos_count = len(self._ctx.video_blocks.unpaused)

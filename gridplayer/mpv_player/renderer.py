@@ -52,6 +52,7 @@ from gridplayer.mpv_player.gl_context import (
 )
 from gridplayer.mpv_player.libmpv import load_mpv
 from gridplayer.params import env
+from gridplayer.utils.qt import refresh_interval_s
 
 GL_TEXTURE_2D = 0x0DE1
 GL_TEXTURE_MIN_FILTER = 0x2801
@@ -107,9 +108,6 @@ _GL_FUNCS = {
     ),
 }
 _GL_PROTO = ctypes.WINFUNCTYPE if sys.platform == "win32" else ctypes.CFUNCTYPE
-
-# How often frames go up to the window at most when the screen doesn't say
-_MIN_REFRESH_HZ = 30
 
 # mpv waits 200 ms for a frame to be rendered and then lets it go, with nothing
 # left to say so. It's still what it draws if asked to draw. What's lost is the
@@ -715,10 +713,7 @@ class MpvRenderService(QObject):
         )
 
     def _frame_interval_ms(self) -> float:
-        screen = QGuiApplication.primaryScreen()
-        refresh = screen.refreshRate() if screen is not None else 0
-
-        return 1000 / max(refresh, _MIN_REFRESH_HZ)
+        return 1000 * refresh_interval_s(QGuiApplication.primaryScreen())
 
     def _present(self) -> None:
         # before looking at the frames: one finished after this says so again

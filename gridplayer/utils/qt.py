@@ -1,8 +1,11 @@
 from abc import ABCMeta
 
 from PyQt5.QtCore import QCoreApplication, QLocale, QObject, Qt
-from PyQt5.QtGui import QGuiApplication
+from PyQt5.QtGui import QGuiApplication, QScreen
 from PyQt5.QtWidgets import QApplication, QWidget
+
+# what a screen saying nothing of its refresh, or too little, is taken to do
+MIN_REFRESH_HZ = 30
 
 QT_LOG_IGNORED = ("requestActivate() called for",)
 
@@ -104,6 +107,15 @@ def topmost(widgets) -> QWidget | None:
 
     order = {id(child): at for at, child in enumerate(widgets[0].parent().children())}
     return max(widgets, key=lambda widget: order.get(id(widget), -1))
+
+
+def refresh_interval_s(screen: QScreen | None) -> float:
+    """How long a screen shows each picture, as long as at 30 Hz at most:
+    the screen may not say, or say something odd."""
+
+    rate = screen.refreshRate() if screen is not None else 0
+
+    return 1 / max(rate, MIN_REFRESH_HZ)
 
 
 def is_qt_log_ignored(message):
