@@ -1,5 +1,7 @@
-from PyQt5.QtCore import QRectF, Qt
-from PyQt5.QtGui import QImage, QPainter
+import math
+
+from PyQt5.QtCore import QRect, QRectF, Qt
+from PyQt5.QtGui import QImage, QPainter, QRegion
 from PyQt5.QtWidgets import QWidget
 
 from gridplayer.params.static import VideoTransform, ViewParams
@@ -148,15 +150,36 @@ class SoftwareVideoSurface(QWidget):
         painter = QPainter(self)
         painter.setRenderHint(QPainter.SmoothPixmapTransform, True)
 
-        painter.fillRect(self.rect(), Qt.black)
-        if not self.has_frame():
+        placement = self.placement() if self.has_frame() else None
+
+        if placement is None:
+            painter.fillRect(self.rect(), Qt.black)
             return
 
-        placement = self.placement()
-        if placement is None:
-            return
+        for bar in self._bars(placement.target):
+            painter.fillRect(bar, Qt.black)
 
         self._draw_frame(painter, placement)
+
+    def _bars(self, target) -> list[QRect]:
+        """Where the picture won't be, to fill black: all of it filled first costs
+        nearly as much as drawing the picture.
+
+        A pixel away from the picture's edge, as on a screen scaled by 1.5 a
+        pixel here can be part of one that the picture only partly covers: the
+        picture is drawn over the rest.
+        """
+
+        x, y, width, height = target
+        left, top = math.ceil(x) + 1, math.ceil(y) + 1
+        right, bottom = math.floor(x + width) - 1, math.floor(y + height) - 1
+
+        if right <= left or bottom <= top:
+            return [self.rect()]
+
+        covered = QRect(left, top, right - left, bottom - top)
+
+        return QRegion(self.rect()).subtracted(QRegion(covered)).rects()
 
     def _draw_frame(self, painter: QPainter, placement: ViewPlacement) -> None:
         painter.drawImage(

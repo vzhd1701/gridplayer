@@ -740,8 +740,13 @@ CPU took 0.5-5.5 s, against 0.2-1.1 s on the key frame, which is about what VLC 
   cells). 4.2: the time is still sent by mpv each frame, so the saving of `notime` isn't had yet
 - [x] 10.20 Done in 9.6. File lengths in lists are read by VLC. With only libmpv there, lists show none. libmpv could read them too, in a
   process of its own as now
-- [ ] 10.14 Don't fill the cell black before drawing a picture that covers it: app CPU 61% to 47% at
-  1x1080p. Applies to VLC's software drivers too, so test those
+- [x] 10.14 Don't fill the cell black before drawing a picture that covers it: app CPU 61% to 47% at
+  1x1080p. Applies to VLC's software drivers too, so test those. Done: only the bars beside the
+  picture are filled, reaching a pixel under its edge so a pixel it only partly covers at a screen
+  scale of 1.25 or 1.5 is never left unpainted. One 1080p cell, two runs each, painting before and
+  after: `test_gpu` X11, Hardware MPV 4.2/3.7 to 2.8/2.9 ms, GUI thread 32/29% to 24/25%; Software
+  MPV 3.5/3.3 to 2.5/2.4 ms; Software VLC SP 6.7/6.3 to 6.1/5.6 ms. Windows, a real window on the
+  other desktop: 0.44/0.53 to 0.42/0.41 ms, too little to show in the app's CPU
 - [ ] 10.15 Cached render parameters instead of python-mpv building them per frame, about 2-5% CPU
 
 ## Stage 11: macOS
