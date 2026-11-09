@@ -17,6 +17,7 @@ VIDEO_DRIVERS_MULTIPROCESS = (
     VideoDriver.VLC_SW,
     VideoDriver.VLC_HW,
     VideoDriver.MPV_HW,
+    VideoDriver.MPV_SW,
 )
 
 MAX_VLC_PROCESSES = 64

@@ -328,12 +328,18 @@ _vlc_instance = None
 
 
 def lengths_in_process(paths: list[str]) -> list[int | None]:
-    """Run in the process FileLengths keeps: each file read by VLC, as far
-    as to tell how long it is, nothing of it played."""
+    """Run in the process FileLengths keeps: each file read as far as to
+    tell how long it is, nothing of it played. By mpv, or VLC where a
+    checkout has no libmpv to go by."""
 
     global _vlc_instance
 
-    # no VLC here: these lengths are a nicety, shown where known
+    by_mpv = _lengths_by_mpv(paths)
+
+    if by_mpv is not None:
+        return by_mpv
+
+    # a package has no VLC to fall back on
     if env.IS_PYINSTALLER:
         return [None] * len(paths)
 
@@ -356,6 +362,62 @@ def lengths_in_process(paths: list[str]) -> list[int | None]:
         )
 
     return [_length_of(vlc, _vlc_instance, path) for path in paths]
+
+
+def _lengths_by_mpv(paths: list[str]) -> list[int | None] | None:
+    """Each file's length as mpv reads it, None for all where it can't."""
+
+    try:
+        import mpv
+
+        player = mpv.MPV(
+            config=False,
+            load_scripts=False,
+            ytdl=False,
+            vo="null",
+            ao="null",
+            # with no tracks at all it closes the file as having nothing to
+            # play, before there is a duration to read
+            sid="no",
+            pause=True,
+            idle="yes",
+        )
+    except (OSError, AttributeError):
+        return None
+
+    opened = threading.Event()
+
+    def on_event(event):
+        event_id = event.event_id.value
+
+        if event_id == mpv.MpvEventID.FILE_LOADED or (
+            event_id == mpv.MpvEventID.END_FILE
+            and event.data.reason == mpv.MpvEventEndFile.ERROR
+        ):
+            opened.set()
+
+    player.register_event_callback(on_event)
+
+    try:
+        return [_length_by_mpv(player, opened, path) for path in paths]
+    finally:
+        player.terminate()
+
+
+def _length_by_mpv(player, opened: threading.Event, path: str) -> int | None:
+    opened.clear()
+
+    try:
+        player.loadfile(path)
+    except Exception:
+        return None
+
+    if not opened.wait(FILE_PARSE_TIMEOUT_MS / 1000):
+        return None
+
+    duration = player.duration
+
+    return int(duration * 1000) if duration and duration > 0 else None
 
 
 def _length_of(vlc, instance, path: str) -> int | None:

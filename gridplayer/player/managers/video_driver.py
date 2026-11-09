@@ -9,6 +9,7 @@ from gridplayer.settings import Settings
 from gridplayer.utils.video_driver import session_video_driver
 from gridplayer.widgets.video_frame_dummy import VideoFrameDummy
 from gridplayer.widgets.video_frame_mpv_hw import InstanceProcessMPVHW, VideoFrameMPVHW
+from gridplayer.widgets.video_frame_mpv_sw import InstanceProcessMPVSW, VideoFrameMPVSW
 
 _VLC_DRIVERS = frozenset(
     {
@@ -24,20 +25,24 @@ class VideoDriverManager(ManagerBase):
     _video_drivers = {
         VideoDriver.DUMMY: VideoFrameDummy,
         VideoDriver.MPV_HW: VideoFrameMPVHW,
+        VideoDriver.MPV_SW: VideoFrameMPVSW,
     }
 
     _process_instances = {
         VideoDriver.MPV_HW: InstanceProcessMPVHW,
+        VideoDriver.MPV_SW: InstanceProcessMPVSW,
     }
 
     _multiprocess_drivers = {
         VideoDriver.VLC_SW,
         VideoDriver.VLC_HW,
         VideoDriver.MPV_HW,
+        VideoDriver.MPV_SW,
     }
 
     _process_managers = {
         VideoDriver.MPV_HW: ProcessManagerMPV,
+        VideoDriver.MPV_SW: ProcessManagerMPV,
     }
 
     def __init__(self, **kwargs):

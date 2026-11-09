@@ -82,8 +82,20 @@ TRANSFORM_FILTERS = {
     VideoTransform.ANTITRANSPOSE: "lavfi=[transpose=3]",
 }
 
-# Surround and headphone downmixes have no equivalent here yet.
+# the filter that comes out as the transform, once the picture is turned on
+# its side after it
+FILTERS_ON_TURNED = {
+    VideoTransform.HFLIP: VideoTransform.VFLIP,
+    VideoTransform.VFLIP: VideoTransform.HFLIP,
+    VideoTransform.TRANSPOSE: VideoTransform.ANTITRANSPOSE,
+    VideoTransform.ANTITRANSPOSE: VideoTransform.TRANSPOSE,
+}
+
 CHANNEL_MODE_FILTERS = {
+    AudioChannelMode.DOLBYS: (
+        "lavfi=[aresample=out_chlayout=stereo:matrix_encoding=dplii]"
+    ),
+    AudioChannelMode.HEADPHONES: "lavfi=[crossfeed]",
     AudioChannelMode.RSTEREO: "lavfi=[pan=stereo|c0=c1|c1=c0]",
     AudioChannelMode.LEFT: "lavfi=[pan=stereo|c0=c0|c1=c0]",
     AudioChannelMode.RIGHT: "lavfi=[pan=stereo|c0=c1|c1=c1]",
@@ -155,27 +167,27 @@ class MpvPlayerThreaded(CommandLoopThreaded):
     def init_player(self):
         import mpv
 
-        self._mpv = mpv.MPV(
-            log_handler=self._on_log,
-            loglevel="warn",
-            config=False,
-            load_scripts=False,
-            ytdl=False,
-            osc=False,
-            osd_level=0,
-            idle="yes",
-            hwdec="auto-safe",
-            hr_seek="yes",
-            mute=True,
-            pause=True,
-            audio_file_auto="no",
-            sub_auto="no",
-            cursor_autohide="no",
-            input_cursor="no",
-            input_cursor_passthrough="yes",
+        options = {
+            "config": False,
+            "load_scripts": False,
+            "ytdl": False,
+            "osc": False,
+            "osd_level": 0,
+            "idle": "yes",
+            "hwdec": "auto-safe",
+            "hr_seek": "yes",
+            "mute": True,
+            "pause": True,
+            "audio_file_auto": "no",
+            "sub_auto": "no",
+            "cursor_autohide": "no",
+            "input_cursor": "no",
+            "input_cursor_passthrough": "yes",
             **self._subtitle_style(),
             **self._mpv_options(),
-        )
+        }
+
+        self._mpv = mpv.MPV(log_handler=self._on_log, loglevel="warn", **options)
 
         self._mpv.register_event_callback(self._on_mpv_event)
 
@@ -296,6 +308,8 @@ class MpvPlayerThreaded(CommandLoopThreaded):
 
         self._apply_wanted_tracks()
         self._apply_wanted_audio_device()
+
+        self._apply_filter_for_orientation()
 
         self._view = self.media_input.view
         self._size = self.media_input.size
@@ -480,8 +494,26 @@ class MpvPlayerThreaded(CommandLoopThreaded):
         self._set("referrer", lowered.get("referer", ""))
 
     def _apply_transform(self, transform: VideoTransform | None):
+        video_filter = TRANSFORM_FILTERS.get(transform, "")
+
+        # a filter can't read a frame still on the GPU
+        self._set("hwdec", "auto-copy-safe" if video_filter else "auto-safe")
         self._set("video-rotate", TRANSFORM_ROTATIONS.get(transform, 0))
-        self._set("vf", TRANSFORM_FILTERS.get(transform, ""))
+        self._set("vf", video_filter)
+
+    def _apply_filter_for_orientation(self):
+        """Mirror the way the viewer sees it, on a file that says to turn.
+
+        A filter runs before mpv turns the picture, so on one shown on its
+        side what looks like a left-right mirror is an up-down one to the
+        filter.
+        """
+
+        track = self._shown_video_track()
+        turned = FILTERS_ON_TURNED.get(self.media_input.video.transform)
+
+        if track is not None and track.is_turned and turned is not None:
+            self._set("vf", TRANSFORM_FILTERS[turned])
 
     def _attach_external_files(self):
         if self.media_input.selected_audio_slave:
@@ -877,9 +909,14 @@ class MpvPlayerThreaded(CommandLoopThreaded):
             self._last_keepaspect = keep_aspect
             self._set("keepaspect", keep_aspect)
 
+    @property
+    def _is_transformed(self) -> bool:
+        return self.media_input.video.transform not in {None, VideoTransform.NONE}
+
     def _view_crop(self, track: VideoTrack) -> tuple[str, bool]:
-        # one the file turns or flips is drawn whole, see calc_whole_placement
-        if track.is_reoriented:
+        # one that is turned or flipped is drawn whole, see calc_whole_placement:
+        # mpv crops before it rotates, so a crop would land on the wrong axis
+        if track.is_reoriented or self._is_transformed:
             return NO_CROP, False
 
         frame_size = track.video_dimensions

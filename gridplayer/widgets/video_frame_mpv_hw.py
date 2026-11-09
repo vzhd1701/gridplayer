@@ -7,7 +7,8 @@ from PyQt5.QtWidgets import QWidget
 
 from gridplayer.mpv_player.instance import InstanceProcessMPV
 from gridplayer.mpv_player.player import MpvPlayerThreaded
-from gridplayer.utils.aspect_calc import Rect
+from gridplayer.params.static import VideoTransform
+from gridplayer.utils.aspect_calc import Rect, calc_whole_placement
 from gridplayer.vlc_player.video_driver_base_threaded import VLCVideoDriverThreaded
 from gridplayer.widgets.video_frame_vlc_base import (
     NATIVE_VIEW_RESIZE_INTERVAL_MS,
@@ -130,6 +131,22 @@ class VideoFrameMPVHW(VideoFrameVLCProcess):
 
     def _picture_block_padding(self, target, offset):
         return QMargins()
+
+    def _whole_placement(self):
+        # mpv crops before it rotates, so one the viewer turned or flipped is
+        # drawn whole as well, like one the file does
+        is_transformed = self._transform not in {None, VideoTransform.NONE}
+
+        if self._orientation() == VideoTransform.NONE and not is_transformed:
+            return None
+
+        return calc_whole_placement(
+            self._view_frame_size(),
+            self._pane_size(),
+            self._view,
+            self._transform,
+            pixel_aspect=self._pixel_aspect(),
+        )
 
     def _shown_picture_rect(self) -> Rect | None:
         placement = self.view_placement()

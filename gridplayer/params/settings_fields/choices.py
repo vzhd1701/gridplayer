@@ -474,8 +474,12 @@ def video_drivers() -> dict:
 
     drivers = {}
     if env.MPV_VERSION:
+        mpv_version = f" <mpv {env.MPV_VERSION}>"
         drivers[VideoDriver.MPV_HW] = (
-            translate("SettingsDialog", "Hardware") + f" <mpv {env.MPV_VERSION}>"
+            translate("SettingsDialog", "Hardware") + mpv_version
+        )
+        drivers[VideoDriver.MPV_SW] = (
+            translate("SettingsDialog", "Software") + mpv_version
         )
     if not env.IS_VLC_MISSING:
         if not env.IS_MACOS:

@@ -8,6 +8,7 @@ from gridplayer.params.static import VideoDriver
 _SOFTWARE_FALLBACK = {
     VideoDriver.VLC_HW: VideoDriver.VLC_SW,
     VideoDriver.VLC_HW_SP: VideoDriver.VLC_SW_SP,
+    VideoDriver.MPV_HW: VideoDriver.MPV_SW,
 }
 
 

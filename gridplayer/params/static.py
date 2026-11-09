@@ -509,6 +509,7 @@ class VideoDriver(AutoName):
     VLC_HW = auto()
     VLC_HW_SP = auto()
     MPV_HW = auto()
+    MPV_SW = auto()
     DUMMY = auto()
 
 

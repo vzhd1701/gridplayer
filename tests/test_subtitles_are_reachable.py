@@ -92,27 +92,18 @@ class TestTheBuildsShipWhatDrawsThem:
     """
 
     @pytest.mark.parametrize(
-        "plugin",
+        "build_script",
         [
-            "text_renderer",
-            "libblend_plugin.dll",
-            "libscale_plugin.dll",
-            # libass lives in codec, and ass/ssa have no fallback without it
-            "plugins/codec",
-            # libxml, which ttml and usf are parsed with
-            "plugins/misc",
-            # yuvp, which the bitmap ones are unpacked to rgba by
-            "plugins/video_chroma",
-            # the demuxer that opens a subtitle file on its own
-            "plugins/demux",
+            ("pyinstaller", "build_win.sh"),
+            ("windows", "build_mpv.ps1"),
         ],
     )
-    def test_the_windows_build_copies_it(self, plugin):
-        build_win = (SCRIPTS / "pyinstaller" / "build_win.sh").read_text(
-            encoding="utf-8"
-        )
+    def test_the_windows_builds_ship_libmpv(self, build_script):
+        """On Windows libmpv draws them itself: it is the one file to ship."""
 
-        assert plugin in build_win
+        script = SCRIPTS.joinpath(*build_script).read_text(encoding="utf-8")
+
+        assert "libmpv-2.dll" in script
 
     @pytest.mark.parametrize(
         "plugin_dir",
