@@ -695,7 +695,7 @@ CPU took 0.5-5.5 s, against 0.2-1.1 s on the key frame, which is about what VLC 
   question 1
 - [ ] 10.4 AMD on Windows and any other GPU we can reach. HEVC and 10-bit through VAAPI needs
   a newer chip than `test_gpu`
-- [ ] 10.5 The Linux `mallopt` arena limit: decide on applying it only when mpv is in use
+- [x] 10.5 The Linux `mallopt` arena limit: decide on applying it only when mpv is in use
   - **Measured 2026-11-09, `test_gpu`, real X11, `MALLOC_ARENA_MAX` (what `mallopt(M_ARENA_MAX)` sets), default (8 a core) against 2
     and 4.** Frame rate and CPU the same throughout.
     - Hardware MPV, 16 of the mix playing: 951-988 MB, 2 arenas 782-783, 4 arenas 782-793. Software MPV, 9: 1085-1088 against 989-995.
@@ -703,9 +703,14 @@ CPU took 0.5-5.5 s, against 0.2-1.1 s on the key frame, which is about what VLC 
       1656 / 2169 against 1139 / 1568 (2 arenas).
     - VLC 3.0.24, 2 arenas: 1-4% less (Hardware single process 16: 1759-1784 against 1729-1740; Software single 9: 2430-2476 against
       2329-2400; multi-process 16: 2035-2038 against 1991-1997). Its churn says nothing either way, as it leaks threads (`VLC.md`, 10.29).
-  - So it's worth having, for MPV above all, and it costs VLC nothing: apply it always on Linux, not only with MPV. 4 keeps nearly all of
-    it with less waiting on the lock on a big machine. Not built yet: `mallopt` early at start, and `MALLOC_ARENA_MAX` in the environment
-    for the multi-process VLC processes.
+  - So it's worth having, for MPV above all, and it costs VLC nothing: apply it always on Linux, not only with MPV.
+  - **Built 2026-11-09, 8 arenas (your pick):** `utils/malloc_arenas.py`, first thing in `main()` (and in the real-app driver):
+    `mallopt(M_ARENA_MAX, 8)`, and `MALLOC_ARENA_MAX=8` for processes started fresh; forked ones keep it. A `MALLOC_ARENA_MAX`
+    already set is left alone, and a libc without the option (musl) too. Checked on `test_gpu`: 64 threads allocating at once make
+    64 arenas, the cap's number with it; the resource tracker starts with the variable. Hardware MPV 16, 3 runs each, alternating: no
+    cap 985-991 MB and 31.5-32.6 fps; 4 arenas 780-796 MB, 31.0-31.6; 8 arenas 807-820 MB, 29.6-31.8; churn all closed after 10 min,
+    8 arenas 1105 MB (4: 1101). Both caps show about 1 fps of 32 less there, the GPU's decoder at its limit; 8 no better than 4, so
+    likely not the lock, and not seen with Software MPV or VLC.
 - [ ] 10.6 `churn.py`'s 30 KB per close on X11: check it's bounded
 - [ ] 10.7 GLES: `GL_BGRA` needs desktop GL as written, read RGBA where it's missing
 - [ ] 10.8 Render thread stall watchdog: only if something has needed it by then

@@ -13,10 +13,15 @@ from gridplayer.params import env
 from gridplayer.settings import Settings
 from gridplayer.utils.excepthook import excepthook
 from gridplayer.utils.log import log_environment
+from gridplayer.utils.malloc_arenas import limit_malloc_arenas
 from gridplayer.utils.single_instance import is_delegated_to_primary
 
 
 def main():
+    # before any thread
+    if env.IS_LINUX:
+        limit_malloc_arenas()
+
     freeze_support()
 
     init_cli_args()

@@ -538,6 +538,12 @@ def start(media: Media, out: Path, settings: dict) -> Driver:
     """The app, as run.py starts it: offscreen, with settings and data of its
     own under out, and these settings over the defaults above."""
 
+    from gridplayer.utils.malloc_arenas import limit_malloc_arenas
+
+    # as __main__ does, before any thread
+    if sys.platform.startswith("linux"):
+        limit_malloc_arenas()
+
     home = out / "home"
     os.environ["GP_USER_DATA_DIR"] = str(home / "data")
     os.environ["XDG_DATA_HOME"] = str(home / "data")
