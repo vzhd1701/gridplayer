@@ -67,6 +67,9 @@ generate-resources:
 test-real-app:
     uv run pytest -m real_app
 
+test-mpv:
+    uv run pytest -m mpv
+
 translations-build-main:
     ./scripts/translations/build_ts.sh
 
