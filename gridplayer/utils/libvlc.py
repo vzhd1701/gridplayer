@@ -80,7 +80,8 @@ def _get_vlc_version():
     try:
         with importing_embed_vlc():
             from gridplayer.vlc_player import vlc
-    except (OSError, NotImplementedError):
+    # SystemExit: the binding quits outright over a library it can't load
+    except (OSError, NotImplementedError, SystemExit):
         log.exception("Failed to load VLC")
         raise FileNotFoundError
 

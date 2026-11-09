@@ -21,20 +21,24 @@ def run_app():
     with suppress(FileNotFoundError):
         env.MPV_VERSION = init_mpv()
 
-    try:
-        env.VLC_VERSION, env.VLC_PYTHON_VERSION = init_vlc()
-    except FileNotFoundError:
+    if env.IS_PYINSTALLER:
+        # a package brings its own libmpv and has no use for a VLC it did
+        # not ship, whichever one happens to be installed
         env.IS_VLC_MISSING = True
+    else:
+        try:
+            env.VLC_VERSION, env.VLC_PYTHON_VERSION = init_vlc()
+        except FileNotFoundError:
+            env.IS_VLC_MISSING = True
 
     if env.MPV_VERSION is None and env.IS_VLC_MISSING:
         QCustomMessageBox.critical(
             None,
             "GridPlayer",
-            translate("Error", "VLC is not installed"),
+            translate("Error", "libmpv was not found"),
             info=translate(
                 "Error",
-                'GridPlayer plays videos with VLC. Get it from the <a href="'
-                'https://www.videolan.org/vlc/">VLC website</a>.',
+                "GridPlayer plays videos with libmpv, and could not load it.",
             ),
         )
         return 1

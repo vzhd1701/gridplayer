@@ -11,7 +11,12 @@ if [ -z "$BUILD_ARCH" ]; then
     BUILD_ARCH=$(python -c "import platform; print('win32' if platform.architecture()[0] == '32bit' else 'win64')")
 fi
 
-VLC_URL="https://get.videolan.org/vlc/3.0.24/$BUILD_ARCH/vlc-3.0.24-$BUILD_ARCH.zip"
+if [ "$BUILD_ARCH" = "win32" ]; then
+    die "The mpv build is 64-bit only so far"
+fi
+
+MPV_URL="https://github.com/shinchiro/mpv-winbuild-cmake/releases/download/20261109/mpv-dev-x86_64-20261109-git-8bc468896e.7z"
+MPV_SHA256="4e888424015f7146893d03c4d40e2aaf9474d8d47e761bcc6a97489008a7e425"
 PYINSTALLER_VERSION="6.22.3"
 
 mkdir -p "$BUILD_DIR"
@@ -48,58 +53,19 @@ pyinstaller --clean --noconfirm "$BUILD_DIR/$APP_NAME.spec"
 # Post-build
 # =============
 
-echo "Embedding VLC"
+echo "Embedding libmpv"
 
-VLC_EMBED_SRC=$(realpath "$BUILD_DIR/libVLC")
+MPV_ARCHIVE="$BUILD_DIR/mpv-dev.7z"
 
-if [ ! -d "$VLC_EMBED_SRC" ]; then
-    # Downloaded to a side name first, so a broken download is not kept
-    # as the zip by the next run
-    if [ ! -f "$BUILD_DIR/vlc.zip" ]; then
-        wget -q -O "$BUILD_DIR/vlc.zip.part" "$VLC_URL"
-        mv "$BUILD_DIR/vlc.zip.part" "$BUILD_DIR/vlc.zip"
-    fi
-
-    unzip -oq "$BUILD_DIR/vlc.zip" -d "$BUILD_DIR"
-
-    mkdir -p "$VLC_EMBED_SRC/plugins"
-
-    mkdir "$VLC_EMBED_SRC/plugins/audio_output"
-
-    cp "$BUILD_DIR"/vlc-*/plugins/audio_output/libdirectsound_plugin.dll "$VLC_EMBED_SRC/plugins/audio_output"
-
-    cp -a "$BUILD_DIR"/vlc-*/plugins/access "$VLC_EMBED_SRC/plugins"
-    cp -a "$BUILD_DIR"/vlc-*/plugins/audio_filter "$VLC_EMBED_SRC/plugins"
-    cp -a "$BUILD_DIR"/vlc-*/plugins/audio_mixer "$VLC_EMBED_SRC/plugins"
-    cp -a "$BUILD_DIR"/vlc-*/plugins/codec "$VLC_EMBED_SRC/plugins"
-    cp -a "$BUILD_DIR"/vlc-*/plugins/demux "$VLC_EMBED_SRC/plugins"
-    cp -a "$BUILD_DIR"/vlc-*/plugins/misc "$VLC_EMBED_SRC/plugins"
-    cp -a "$BUILD_DIR"/vlc-*/plugins/packetizer "$VLC_EMBED_SRC/plugins"
-    cp -a "$BUILD_DIR"/vlc-*/plugins/stream_filter "$VLC_EMBED_SRC/plugins"
-    cp -a "$BUILD_DIR"/vlc-*/plugins/video_chroma "$VLC_EMBED_SRC/plugins"
-    cp -a "$BUILD_DIR"/vlc-*/plugins/video_output "$VLC_EMBED_SRC/plugins"
-    cp -a "$BUILD_DIR"/vlc-*/plugins/d3d9 "$VLC_EMBED_SRC/plugins"
-    cp -a "$BUILD_DIR"/vlc-*/plugins/d3d11 "$VLC_EMBED_SRC/plugins"
-
-    mkdir -p "$VLC_EMBED_SRC/plugins/video_filter"
-    cp "$BUILD_DIR"/vlc-*/plugins/video_filter/libtransform_plugin.dll "$VLC_EMBED_SRC/plugins/video_filter"
-
-    # Subtitles need both of these, and neither says so when it is missing:
-    # the track is decoded and selected, and nothing is ever drawn.
-    # blend composites the subpicture onto the frame, scale fits bitmap
-    # subtitles (DVD, PGS) to it.
-    cp "$BUILD_DIR"/vlc-*/plugins/video_filter/libblend_plugin.dll "$VLC_EMBED_SRC/plugins/video_filter"
-    cp "$BUILD_DIR"/vlc-*/plugins/video_filter/libscale_plugin.dll "$VLC_EMBED_SRC/plugins/video_filter"
-
-    # freetype draws the text ones
-    cp -a "$BUILD_DIR"/vlc-*/plugins/text_renderer "$VLC_EMBED_SRC/plugins"
-
-    "$BUILD_DIR"/vlc-*/vlc-cache-gen.exe "$VLC_EMBED_SRC/plugins"
-
-    cp -a "$BUILD_DIR"/vlc-*/libvlc.dll "$VLC_EMBED_SRC"
-    cp -a "$BUILD_DIR"/vlc-*/libvlccore.dll "$VLC_EMBED_SRC"
+# Checked before it is kept, so a broken download is not used by the next run
+if [ ! -f "$MPV_ARCHIVE" ]; then
+    wget -q -O "$MPV_ARCHIVE.part" "$MPV_URL"
+    echo "$MPV_SHA256  $MPV_ARCHIVE.part" | sha256sum -c -
+    mv "$MPV_ARCHIVE.part" "$MPV_ARCHIVE"
 fi
 
-if [ ! -d "$DIST_DIR/$APP_NAME/libVLC" ]; then
-    mv "$VLC_EMBED_SRC" "$DIST_DIR/$APP_NAME/libVLC"
-fi
+rm -rf "$BUILD_DIR/libmpv-extract"
+7z x -y -o"$BUILD_DIR/libmpv-extract" "$MPV_ARCHIVE" libmpv-2.dll
+
+mkdir -p "$DIST_DIR/$APP_NAME/libmpv"
+cp "$BUILD_DIR/libmpv-extract/libmpv-2.dll" "$DIST_DIR/$APP_NAME/libmpv/"

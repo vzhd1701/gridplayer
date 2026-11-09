@@ -23,6 +23,7 @@ from multiprocessing import get_context
 from pathlib import Path
 
 from gridplayer.models.media_list import ItemDetails, ListItem
+from gridplayer.params import env
 from gridplayer.utils.list_errors import is_site_refusal, site_name
 from gridplayer.utils.network_errors import failure_txt
 from gridplayer.utils.web_lists import (
@@ -332,10 +333,13 @@ def lengths_in_process(paths: list[str]) -> list[int | None]:
 
     global _vlc_instance
 
+    # no VLC here: these lengths are a nicety, shown where known
+    if env.IS_PYINSTALLER:
+        return [None] * len(paths)
+
     try:
         from gridplayer.vlc_player.libvlc import vlc
-    except (OSError, NotImplementedError, AttributeError):
-        # no VLC here: these lengths are a nicety, shown where known
+    except (OSError, NotImplementedError, AttributeError, SystemExit):
         return [None] * len(paths)
 
     if _vlc_instance is None:

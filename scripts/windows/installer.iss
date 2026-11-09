@@ -1,13 +1,13 @@
 [Setup]
-AppId={{B31ABF4F-C8FF-417E-87DB-265888D72165}
-AppName={APP_DISP_NAME}
+AppId={{1BE5705E-9AF2-4250-8C68-E45C2DDBA6BA}
+AppName={APP_DISP_NAME} mpv
 AppVersion={APP_VERSION}
-AppVerName={APP_NAME}
+AppVerName={APP_NAME} mpv
 AppPublisher={APP_AUTHOR}
 AppPublisherURL={APP_URL}
 WizardStyle=classic
-DefaultDirName={autopf}\{APP_NAME}
-DefaultGroupName={APP_DISP_NAME}
+DefaultDirName={autopf}\{APP_NAME} mpv
+DefaultGroupName={APP_DISP_NAME} mpv
 UninstallDisplayIcon={app}\{APP_NAME}.exe
 Compression=lzma2
 LZMAUseSeparateProcess=yes
@@ -31,9 +31,9 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{
 Source: "*"; DestDir: "{app}"; Flags: recursesubdirs;
 
 [Icons]
-Name: "{group}\{APP_DISP_NAME}"; Filename: "{app}\{APP_NAME}.exe"; AppUserModelID: "{APP_ID}"
-Name: "{group}\{cm:UninstallProgram,{APP_NAME}}"; Filename: "{uninstallexe}"
-Name: "{autodesktop}\{APP_DISP_NAME}"; Filename: "{app}\{APP_NAME}.exe"; AppUserModelID: "{APP_ID}"; Tasks: desktopicon
+Name: "{group}\{APP_DISP_NAME} mpv"; Filename: "{app}\{APP_NAME}.exe"; AppUserModelID: "{APP_ID}"
+Name: "{group}\{cm:UninstallProgram,{APP_NAME} mpv}"; Filename: "{uninstallexe}"
+Name: "{autodesktop}\{APP_DISP_NAME} mpv"; Filename: "{app}\{APP_NAME}.exe"; AppUserModelID: "{APP_ID}"; Tasks: desktopicon
 
 [Run]
 Filename: "{app}\{APP_NAME}.exe"; Flags: nowait postinstall skipifsilent 64bit; Description: "{cm:LaunchProgram,{APP_NAME}}"
