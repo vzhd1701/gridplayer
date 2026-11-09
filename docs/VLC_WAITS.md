@@ -122,8 +122,9 @@ All runs showed the clips' full frame rate (19.2 fps on average across them).
 3.0.20 64-bit, the same clips, one run each: 176% of a core and about 6,400 switches a second with the swap, 480% and 580,000
 without, both at the full frame rate.
 
-A 32-bit process has 2 GB of address space here, and 15 videos in one fill it: some frame buffers failed to allocate as the videos
-loaded, with the swap and without (plan item 10.27).
+Run from source, the 32-bit `python.exe` has only 2 GB of address space, and 15 videos in one process fill it: some frame buffers
+failed to allocate as the videos loaded, with the swap and without (plan item 10.27). The packaged 32-bit `GridPlayer.exe` gets 4 GB,
+where the same 15 peak at 2.3-2.6 GB and play.
 
 Also with the fix:
 

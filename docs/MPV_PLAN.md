@@ -846,12 +846,14 @@ CPU took 0.5-5.5 s, against 0.2-1.1 s on the key frame, which is about what VLC 
     4 runs each: 138-256% with the swap, 6,000-17,000 switches a second; 335-1402% without, 210,000 to 2.2 million. Official 3.0.20
     64-bit, one run each: 176% against 480%. Not tested: a
     packaged build, Windows 7.
-- [ ] 10.27 **32-bit single process runs out of address space with many videos.** Seen testing 10.26 with the 32-bit app (from source,
+- [x] 10.27 **32-bit single process runs out of address space with many videos.** Seen testing 10.26 with the 32-bit app (from source,
   `python.exe` not large-address-aware, so 2 GB): Hardware VLC single process, 8 cells peak at 1858 MB of address space, 12 and 15
   crash with nothing logged within 2 s of loading; Software, 15 cells, frame buffers now and then fail to allocate as they load. Not the
-  swap: the same with it off. Multi-process (4 videos a process) keeps each process well under. Open: whether the packaged 32-bit
-  `GridPlayer.exe` is large-address-aware (4 GB on 64-bit Windows); if not, setting the flag in its header after the build is one bit,
-  no compiling.
+  swap: the same with it off. Multi-process (4 videos a process) keeps each process well under.
+  - **Nothing to change:** the packaged 32-bit `GridPlayer.exe` (dev build from GitHub) is large-address-aware, so 4 GB on 64-bit
+    Windows; only runs from source with a plain 32-bit `python.exe` get 2. With a 4 GB copy of that Python, 15 cells: Hardware single
+    process peaks at 2645 MB and plays (38% of a core), Software at 2321 MB with no failed buffers (185%). 32-bit Windows itself still
+    has 2 GB a process.
   - **Fixed on the way:** `win32_vlc_vout.py` called `GetWindowLongPtrW`, which 32-bit `user32` doesn't export (a macro for
     `GetWindowLongW` there), so Hardware VLC in the 32-bit app failed there; now falls back like `taskbar.py`. Checked in 32-bit.
 - [x] 10.14 Don't fill the cell black before drawing a picture that covers it: app CPU 61% to 47% at
