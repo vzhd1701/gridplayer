@@ -8,7 +8,7 @@ from pathlib import Path
 from pydantic_extra_types.color import Color
 from PyQt5.QtCore import QSize, Qt, QTimer, pyqtSignal
 from PyQt5.QtGui import QCursor
-from PyQt5.QtWidgets import QStackedLayout, QWidget
+from PyQt5.QtWidgets import QApplication, QStackedLayout, QWidget
 
 from gridplayer.dialogs.input_dialog import (
     QCustomSpinboxTimeInput,
@@ -138,6 +138,7 @@ class VideoBlock(QWidget):
     sync_time = pyqtSignal(MILLISECONDS)
     # the others paused for a step to the next or the previous frame
     sync_paused = pyqtSignal(bool)
+    sync_scrubbing = pyqtSignal(bool)
     # what the viewer had this one do, for the others to follow where that
     # is synced: played or paused, zoomed or moved (a SyncedView), the speed
     sync_pause = pyqtSignal(bool)
@@ -148,6 +149,7 @@ class VideoBlock(QWidget):
 
     time_change = pyqtSignal(MILLISECONDS, MILLISECONDS)
     volume_change = pyqtSignal(float)
+    volume_full_mark_change = pyqtSignal(float)
     label_change = pyqtSignal(str)
     # the cell is closing, for a window open on it to close with it
     closing = pyqtSignal()
@@ -203,6 +205,9 @@ class VideoBlock(QWidget):
 
         # last time update seen, to tell a finished pass from a running one
         self._last_time = None
+
+        # the timeline being dragged, here or where this one follows another
+        self._is_scrubbing = False
 
         # how long the site a URL resolved on says the video is, to know its
         # chapters and SponsorBlock's segments by; and the ID SponsorBlock
@@ -446,7 +451,8 @@ class VideoBlock(QWidget):
 
         qt_connect(
             (overlay.set_vid_pos, partial(self.manual_seek, "seek_percent")),
-            (overlay.set_volume, self.audio.set_volume),
+            (overlay.scrub_changed, self._on_scrub_changed),
+            (overlay.set_volume, self.audio.set_volume_from_bar),
             (overlay.exit_clicked, self.close),
             (overlay.play_pause_clicked, self.play_pause),
             (overlay.mute_unmute_clicked, self.audio.mute_unmute),
@@ -471,6 +477,7 @@ class VideoBlock(QWidget):
             (overlay.details_clicked, self.status.show_error_details),
             (self.time_change, overlay.set_position),
             (self.volume_change, overlay.set_volume_position),
+            (self.volume_full_mark_change, overlay.set_volume_full_mark),
             (self.label_change, overlay.set_label),
             (self.list_place_change, overlay.set_list_place),
             (self.color_change, overlay.set_color),
@@ -1214,6 +1221,11 @@ class VideoBlock(QWidget):
         if self._ctx.is_drag_ui:
             return
 
+        # a bar still held: hidden, it would take the drag with it
+        if self.overlay.is_bar_held and QApplication.mouseButtons() & Qt.LeftButton:
+            self.overlay_hide_timer.start(1000 * self._ctx.overlay_timeout)
+            return
+
         # it shows a selection to zoom to, or how to make one
         if self.view.is_zoom_ui():
             return
@@ -1244,6 +1256,11 @@ class VideoBlock(QWidget):
             return
 
         if self.is_stopped:
+            return
+
+        # keyframes land short of where they were aimed, even outside a loop
+        # or at a wrap, and the drag's last seek will settle all that
+        if self._is_scrubbing:
             return
 
         # Where a seek has not got to yet says nothing about the loop. On a
@@ -2151,7 +2168,22 @@ class VideoBlock(QWidget):
         self.sponsorblock.note_seek(seek_ms, is_viewers)
 
         self.time = seek_ms
-        self.video_driver.set_time(seek_ms)
+
+        if self._is_scrubbing and not self.stream.is_adaptive:
+            self.video_driver.set_time_keyframe(seek_ms)
+        else:
+            self.video_driver.set_time(seek_ms)
+
+    def _on_scrub_changed(self, is_scrubbing: bool):
+        self.set_scrubbing(is_scrubbing)
+        self.sync_scrubbing.emit(is_scrubbing)
+
+        # the moves of a drag stay with the bar, the timeout not having heard
+        if not is_scrubbing:
+            self.show_overlay()
+
+    def set_scrubbing(self, is_scrubbing: bool):
+        self._is_scrubbing = is_scrubbing and Settings().get("player/fast_scrubbing")
 
     @property
     def arriving_time(self) -> int:

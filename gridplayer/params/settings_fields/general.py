@@ -58,6 +58,18 @@ GENERAL_FIELDS: tuple[SettingField, ...] = (
         choices=choices.color_schemes,
         buttons=True,
     ),
+    SpinField(
+        settings_key="player/max_volume",
+        label=translate("SettingsDialog", "Maximum volume"),
+        minimum=100,
+        maximum=300,
+        suffix="%",
+        tooltip=translate(
+            "SettingsDialog",
+            "How far the volume can go. Past 100% the sound is amplified, and it"
+            " gets loud fast and can distort.",
+        ),
+    ),
     CheckboxField(
         settings_key="player/one_instance",
         label=translate("SettingsDialog", "Allow only one instance"),

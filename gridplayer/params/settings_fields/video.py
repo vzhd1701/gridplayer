@@ -71,9 +71,13 @@ VIDEO_FIELDS: tuple[SettingField, ...] = (
         settings_key="video_defaults/volume",
         label=translate("SettingsDialog", "Volume"),
         minimum=0,
-        maximum=1,
+        maximum=3,
         decimals=2,
         step=0.05,
+        tooltip=translate(
+            "SettingsDialog",
+            "1 is 100%. It stops at the Maximum volume set on the Player page.",
+        ),
     ),
     CheckboxField(
         settings_key="video_defaults/muted",

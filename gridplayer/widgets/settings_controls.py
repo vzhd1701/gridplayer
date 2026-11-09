@@ -29,6 +29,7 @@ BOX_PADDING = 3
 
 # how much lighter than a card a field on it is, in the dark theme
 FIELD_LIGHTER = 128
+FIELD_MIN_LIGHTNESS = 38
 
 SWITCH_SIZE = QSize(36, 20)
 SWITCH_KNOB_MARGIN = 3
@@ -109,6 +110,10 @@ def fit_fields(card: QWidget):
     fill = theme_color(card, "base")
     if _is_dark(card):
         fill = fill.lighter(FIELD_LIGHTER)
+
+        # black doesn't lighten by a share of itself
+        if fill.lightness() < FIELD_MIN_LIGHTNESS:
+            fill = QColor.fromHsl(0, 0, FIELD_MIN_LIGHTNESS)
 
     for field in card.findChildren((QLineEdit, QAbstractSpinBox)):
         palette = field.palette()

@@ -53,6 +53,7 @@ from gridplayer.widgets.video_overlay_elements import (
     OverlayShortLabel,
     OverlayShortLabelFloating,
     OverlayVolumeBar,
+    OverlayVolumeLabel,
     OverlayWidget,
     OverlayZoomHint,
     OverlayZoomSelection,
@@ -122,6 +123,7 @@ def is_layered_child_supported() -> bool:
 
 class OverlayBlock(QWidget):
     set_vid_pos = pyqtSignal(float)
+    scrub_changed = pyqtSignal(bool)
     set_volume = pyqtSignal(float)
 
     exit_clicked = pyqtSignal()
@@ -240,6 +242,7 @@ class OverlayBlock(QWidget):
             (self.lock_tile_button.clicked, self.lock_tile_clicked),
             (self.play_pause_button.clicked, self.play_pause),
             (self.progress_bar.position_changed, self.emit_position),
+            (self.progress_bar.scrub_changed, self.scrub_changed),
             (self.volume_button.clicked, self.mute_unmute),
             (self.volume_bar.position_changed, self.emit_volume_position),
             (self.play_button.clicked, self.play_pause),
@@ -337,9 +340,11 @@ class OverlayBlock(QWidget):
         self.middle.addLayout(self.right_bar)
 
         self.volume_bar = OverlayVolumeBar(parent=self)
+        self.label_volume = OverlayVolumeLabel(parent=self)
 
         self.right_bar.addStretch()
-        self.right_bar.addWidget(self.volume_bar, 1)
+        self.right_bar.addWidget(self.label_volume, 0, Qt.AlignRight)
+        self.right_bar.addWidget(self.volume_bar, 1, Qt.AlignRight)
 
         self.play_pause_button = OverlayPlayPauseButton(parent=self)
         self.label_progress = OverlayShortLabel(parent=self)
@@ -710,6 +715,15 @@ class OverlayBlock(QWidget):
     @pyqtSlot(float)
     def set_volume_position(self, position):
         self.volume_bar.position = position
+        self.label_volume.text = f"{round(position / self.volume_bar.full_mark * 100)}%"
+
+    @pyqtSlot(float)
+    def set_volume_full_mark(self, position):
+        self.volume_bar.full_mark = position
+
+    @property
+    def is_bar_held(self) -> bool:
+        return self.progress_bar.is_held or self.volume_bar.is_held
 
     @pyqtSlot()
     def exit(self):
@@ -796,6 +810,7 @@ class OverlayBlock(QWidget):
         self._set_wanted(
             (self.volume_button, is_wanted),
             (self.volume_bar, is_wanted and not self.volume_button.is_off),
+            (self.label_volume, is_wanted and not self.volume_button.is_off),
         )
 
     def _set_wanted(self, *wanted: tuple[QWidget, bool]):
@@ -851,7 +866,7 @@ class OverlayBlock(QWidget):
             (self.label_progress,),
             self._cell_size_buttons(),
             (self.list_place_button,),
-            (self.volume_button, self.volume_bar),
+            (self.volume_button, self.volume_bar, self.label_volume),
             (self.details_button,),
             (self.next_button,),
             self._info_row(),
@@ -872,7 +887,7 @@ class OverlayBlock(QWidget):
             *cell_size,
         )
 
-        return [(self.volume_bar,), self._info_row(), title_row]
+        return [(self.label_volume,), (self.volume_bar,), self._info_row(), title_row]
 
     def _place_exit_button(self, is_in_bottom_row: bool):
         row = self.bottom_bar if is_in_bottom_row else self.title_bar
@@ -908,6 +923,7 @@ class OverlayBlock(QWidget):
         return (
             *self._title_row(),
             *self._info_row(),
+            self.label_volume,
             self.volume_bar,
             *self._bottom_row(),
         )
@@ -954,7 +970,13 @@ class OverlayBlock(QWidget):
                 row(self.info_bar, self._info_row()),
             ),
         )
-        middle = row(self.right_bar, (self.volume_bar,))
+        middle = column(
+            self.right_bar,
+            (
+                row(self.right_bar, (self.label_volume,)),
+                row(self.right_bar, (self.volume_bar,)),
+            ),
+        )
         # the bar or, with none, the room kept in its place, a gap apart
         is_bar_shown = self._is_shown(self.progress_bar, left_out)
         filler = () if is_bar_shown else (self.progress_bar_placeholder,)

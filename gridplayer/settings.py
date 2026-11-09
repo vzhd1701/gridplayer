@@ -31,7 +31,9 @@ from gridplayer.params.static import (
     CacheMode,
     ColorScheme,
     DropAction,
+    GpuChoice,
     GridMode,
+    HardwareDecoding,
     ListEndAction,
     ListFailAction,
     ListUpdate,
@@ -57,6 +59,7 @@ from gridplayer.params.static import (
     VideoDriver,
     VideoEndAction,
     VideoInitialState,
+    VideoQuality,
     VideoTransform,
 )
 from gridplayer.params.subtitle_encodings import DEFAULT_ENCODING
@@ -69,6 +72,13 @@ SETTINGS = None
 _default_settings = {
     "player/video_driver": VideoDriver.MPV_HW,
     "player/video_driver_players": 4,
+    "player/video_quality": VideoQuality.AUTO,
+    # a card's name or a GpuChoice, see gridplayer.utils.gpu_adapters
+    "player/gpu_adapter": GpuChoice.AUTO,
+    "player/hardware_decoding": HardwareDecoding.AUTO,
+    "player/fast_scrubbing": True,
+    # as a percentage; past 100 is amplified, and can distort
+    "player/max_volume": 150,
     "player/video_init_timeout": 120,
     "player/inhibit_screensaver": True,
     "player/media_keys_background": True,

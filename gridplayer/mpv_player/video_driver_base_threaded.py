@@ -64,6 +64,9 @@ class PlayerDriverThreaded(CommandLoopThreaded, PlayerDriver):
     def set_time(self, seek_ms):
         self.cmd_send("set_time", seek_ms)
 
+    def set_time_keyframe(self, seek_ms):
+        self.cmd_send("set_time_keyframe", seek_ms)
+
     def set_playback_rate(self, rate):
         self.cmd_send("set_playback_rate", rate)
 

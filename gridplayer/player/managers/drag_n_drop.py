@@ -131,6 +131,11 @@ class DragNDropManager(ManagerBase):
             self._drag_start_position = None
             return
 
+        # dragging a bar along, which is the bar's: this sees the press first
+        if vb_under_mouse.overlay.is_control_at(event.globalPos()):
+            self._drag_start_position = None
+            return
+
         # on the screen: each event is seen at the window it comes to and at
         # the widget it goes on to, and each has its own position in them
         self._drag_start_position = event.globalPos()

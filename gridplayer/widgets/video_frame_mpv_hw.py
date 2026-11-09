@@ -8,6 +8,8 @@ from PyQt5.QtWidgets import QWidget
 from gridplayer.mpv_player.instance import InstanceProcessMPV
 from gridplayer.mpv_player.player import MpvPlayerThreaded
 from gridplayer.mpv_player.video_driver_base_threaded import PlayerDriverThreaded
+from gridplayer.settings import Settings
+from gridplayer.utils.gpu_adapters import gpu_adapters, resolve_gpu_adapter
 from gridplayer.widgets.video_frame_base import (
     NATIVE_VIEW_RESIZE_INTERVAL_MS,
     VideoFrameProcess,
@@ -38,11 +40,24 @@ class PlayerProcessSingleMPVHW(MpvPlayerThreaded):
         self.id = player_id
         self.release_callback = release_callback
         self.win_id = init_data["win_id"]
+        self.pixel_ratio = init_data.get("pixel_ratio", 1)
 
         self.start()
 
     def _mpv_options(self):
-        return {"wid": str(self.win_id)}
+        options = {"wid": str(self.win_id)}
+
+        adapter = resolve_gpu_adapter(
+            Settings().sync_get("player/gpu_adapter"), gpu_adapters()
+        )
+
+        if adapter is not None:
+            options["d3d11_adapter"] = adapter
+
+        return options
+
+    def _pane_pixels(self):
+        return super()._pane_pixels() * self.pixel_ratio**2
 
     def cleanup(self):
         try:
@@ -62,13 +77,13 @@ class PlayerProcessSingleMPVHW(MpvPlayerThreaded):
 
 
 class VideoDriverMPVHW(PlayerDriverThreaded):
-    def __init__(self, win_id, process_manager, **kwargs):
+    def __init__(self, win_id, process_manager, pixel_ratio=1, **kwargs):
         super().__init__(**kwargs)
 
         self._released = Event()
 
         self.player = process_manager.init_player(
-            {"win_id": win_id},
+            {"win_id": win_id, "pixel_ratio": pixel_ratio},
             self.cmd_child_pipe(),
             NO_OPTIONS,
             on_crash=self.process_crashed,
@@ -99,6 +114,7 @@ class VideoFrameMPVHW(VideoFrameProcess):
     def driver_setup(self):
         return VideoDriverMPVHW(
             win_id=int(self.video_surface.winId()),
+            pixel_ratio=self.devicePixelRatioF(),
             process_manager=self.process_manager,
             parent=self,
         )

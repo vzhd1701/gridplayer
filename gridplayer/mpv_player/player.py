@@ -30,12 +30,22 @@ from gridplayer.mpv_player.static import (
     wanted_audio_track_id,
     wanted_subtitle_track_id,
 )
+from gridplayer.mpv_player.performance import (
+    QUALITY_OPTIONS,
+    auto_quality,
+    hwdec_value,
+    is_better,
+    is_falling_behind,
+    stepped_down,
+)
 from gridplayer.multiprocess.command_loop import CommandLoopThreaded
 from gridplayer.params import env
 from gridplayer.params.static import (
     AudioChannelMode,
+    HardwareDecoding,
     VideoDeinterlace,
     VideoDeinterlaceMode,
+    VideoQuality,
     VideoTransform,
     ViewParams,
 )
@@ -53,6 +63,12 @@ from gridplayer.utils.network import player_user_agent
 
 # mpv reports the time every frame; the player has no use for more than this
 TIME_REPORT_INTERVAL_S = 0.05
+
+# how often Auto quality looks at whether a video is keeping up
+QUALITY_CHECK_INTERVAL_S = 3
+
+# a drag's seek that hasn't landed in this long isn't going to
+SCRUB_GIVE_UP_S = 1.0
 
 KEPT_ERROR_LINES = 20
 
@@ -127,6 +143,9 @@ def track_sar(par) -> tuple[int, int] | None:
 
 
 class MpvPlayerThreaded(CommandLoopThreaded):
+    # the scaling options mean nothing to a driver that doesn't draw on the GPU
+    is_quality_managed = True
+
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
@@ -153,12 +172,33 @@ class MpvPlayerThreaded(CommandLoopThreaded):
         self._last_crop = None
         self._last_keepaspect = None
 
+        self._typed_options = frozenset()
+
+        self._hardware_decoding = HardwareDecoding.AUTO
+        self._quality = VideoQuality.AUTO
+        self._applied_quality: VideoQuality | None = None
+        self._auto_quality: VideoQuality | None = None
+        self._quality_steps_down = 0
+        self._last_quality_check = 0.0
+        self._drops_at_check: tuple[int, float] | None = None
+
+        self._is_scrub_in_flight = False
+        self._scrub_wanted: int | None = None
+        self._scrub_sent_at = 0.0
+
         self._error_lines = deque(maxlen=KEPT_ERROR_LINES)
 
     # --- what a concrete driver has to say
 
     def _mpv_options(self) -> dict:
         raise NotImplementedError
+
+    def _pane_pixels(self) -> float:
+        """How many real pixels the video is shown over."""
+
+        width, height = self.media_input.size
+
+        return width * height
 
     # --- setup and teardown
 
@@ -168,6 +208,9 @@ class MpvPlayerThreaded(CommandLoopThreaded):
     def init_player(self):
         import mpv
 
+        self._hardware_decoding = Settings().sync_get("player/hardware_decoding")
+        self._quality = Settings().sync_get("player/video_quality")
+
         options = {
             "config": False,
             "load_scripts": False,
@@ -175,9 +218,10 @@ class MpvPlayerThreaded(CommandLoopThreaded):
             "osc": False,
             "osd_level": 0,
             "idle": "yes",
-            "hwdec": "auto-safe",
+            "hwdec": hwdec_value(self._hardware_decoding, needs_frames_in_memory=False),
             "hr_seek": "yes",
             "mute": True,
+            "volume_max": str(Settings().sync_get("player/max_volume")),
             "pause": True,
             "audio_file_auto": "no",
             "sub_auto": "no",
@@ -207,13 +251,26 @@ class MpvPlayerThreaded(CommandLoopThreaded):
         return mpv_subtitle_style_options(style)
 
     def _apply_options_typed_by_hand(self):
-        """The mpv options setting: --name=value and --flag, unknown ones logged."""
+        """The mpv options setting: --name=value and --flag, unknown ones logged.
+
+        What is typed here is the viewer's last word: the settings that come
+        to the same options leave these alone (see _set_unless_typed).
+        """
+
+        typed = set()
 
         for option in shlex.split(Settings().sync_get("misc/mpv_options")):
             name, _, value = option.lstrip("-").partition("=")
 
             if name:
+                typed.add(name.replace("_", "-"))
                 self._set(name, value or "yes")
+
+        self._typed_options = frozenset(typed)
+
+    def _set_unless_typed(self, name, value):
+        if name not in self._typed_options:
+            self._set(name, value)
 
     def cmd_process_command(self, command_args, command_name):
         if self._is_released:
@@ -284,6 +341,13 @@ class MpvPlayerThreaded(CommandLoopThreaded):
 
         self.cmd_send("time_changed_emit", int(value * 1000))
 
+        if (
+            self._is_quality_automatic
+            and now - self._last_quality_check >= QUALITY_CHECK_INTERVAL_S
+        ):
+            self._last_quality_check = now
+            self._send_from_event("on_quality_check")
+
     def _on_pause(self, _name, value):
         if value is None:
             return
@@ -334,6 +398,12 @@ class MpvPlayerThreaded(CommandLoopThreaded):
         if self.media is None:
             return
 
+        if self._is_scrub_in_flight:
+            self._is_scrub_in_flight = False
+
+            if self._scrub_wanted is not None:
+                self._send_scrub(self._scrub_wanted)
+
         if not self.is_video_initialized:
             self._finish_load()
 
@@ -378,6 +448,35 @@ class MpvPlayerThreaded(CommandLoopThreaded):
     def on_load_timeout(self):
         if not self.is_video_initialized:
             self.error(translate("Video Error", "Buffering timeout"))
+
+    def on_quality_check(self):
+        """Give up a step of Auto quality where a video can't keep up."""
+
+        dropped = self._get("frame-drop-count")
+
+        if dropped is None or self._applied_quality is VideoQuality.FAST:
+            return
+
+        now = monotonic()
+        last, self._drops_at_check = self._drops_at_check, (dropped, now)
+
+        # the first check of a load has only a start to measure from
+        if last is None:
+            return
+
+        if is_falling_behind(
+            dropped - last[0],
+            now - last[1],
+            self._get("container-fps"),
+            self._get("speed") or 1,
+            self._get("display-fps"),
+        ):
+            self._quality_steps_down += 1
+            self._drops_at_check = None
+
+            self._log.info("Not keeping up, lowering the picture quality")
+
+            self._apply_quality()
 
     def on_pause_changed(self, is_paused):
         if is_paused == self._is_paused:
@@ -459,6 +558,9 @@ class MpvPlayerThreaded(CommandLoopThreaded):
         self._opened_on = None
         self._last_crop = None
         self._last_keepaspect = None
+        self._drops_at_check = None
+        self._is_scrub_in_flight = False
+        self._scrub_wanted = None
         self._error_lines.clear()
 
         self._log.info(f"Loading {media_input.uri}")
@@ -477,6 +579,7 @@ class MpvPlayerThreaded(CommandLoopThreaded):
         self._apply_http_options(media_input.http_headers)
         self._apply_transform(media_input.video.transform)
         self._apply_deinterlace(media_input.video.deinterlace)
+        self._apply_quality()
 
         if media_input.is_live or self._is_seek_after_load:
             self._set("start", "none")
@@ -509,7 +612,10 @@ class MpvPlayerThreaded(CommandLoopThreaded):
         video_filter = TRANSFORM_FILTERS.get(transform, "")
 
         # a filter can't read a frame still on the GPU
-        self._set("hwdec", "auto-copy-safe" if video_filter else "auto-safe")
+        self._set_unless_typed(
+            "hwdec",
+            hwdec_value(self._hardware_decoding, needs_frames_in_memory=bool(video_filter)),
+        )
         self._set("video-rotate", TRANSFORM_ROTATIONS.get(transform, 0))
         self._set("vf", video_filter)
 
@@ -526,6 +632,41 @@ class MpvPlayerThreaded(CommandLoopThreaded):
 
         if track is not None and track.is_turned and turned is not None:
             self._set("vf", TRANSFORM_FILTERS[turned])
+
+    @property
+    def _is_quality_automatic(self) -> bool:
+        return self.is_quality_managed and self._quality is VideoQuality.AUTO
+
+    def _wanted_quality(self) -> VideoQuality:
+        if not self._is_quality_automatic:
+            return self._quality
+
+        by_size = auto_quality(self._pane_pixels())
+
+        # shown bigger is a new situation, and worth another try
+        if self._auto_quality is not None and is_better(by_size, self._auto_quality):
+            self._quality_steps_down = 0
+
+        self._auto_quality = by_size
+
+        return stepped_down(by_size, self._quality_steps_down)
+
+    def _apply_quality(self):
+        # a profile typed in the mpv options is a preset of the viewer's own
+        if not self.is_quality_managed or "profile" in self._typed_options:
+            return
+
+        quality = self._wanted_quality()
+
+        if quality is self._applied_quality:
+            return
+
+        self._applied_quality = quality
+
+        self._log.debug(f"Picture quality {quality.value}")
+
+        for name, value in QUALITY_OPTIONS[quality].items():
+            self._set_unless_typed(name, value)
 
     def _attach_external_files(self):
         if self.media_input.selected_audio_slave:
@@ -781,16 +922,45 @@ class MpvPlayerThreaded(CommandLoopThreaded):
         if self.media_input is None or self.media_input.is_live or self.media is None:
             return
 
+        self._is_scrub_in_flight = False
+        self._scrub_wanted = None
+
         self._seek_ms(seek_ms)
 
-    def _seek_ms(self, seek_ms):
+    @only_initialized_player
+    def set_time_keyframe(self, seek_ms):
+        """One seek at a time, then the latest asked for meanwhile.
+
+        Each new seek makes mpv drop the one before it, so a drag sending them
+        faster than frames come shows none of them until it stops.
+        """
+
+        if self.media_input is None or self.media_input.is_live or self.media is None:
+            return
+
+        is_waiting = monotonic() - self._scrub_sent_at < SCRUB_GIVE_UP_S
+
+        if self._is_scrub_in_flight and is_waiting:
+            self._scrub_wanted = seek_ms
+            return
+
+        self._send_scrub(seek_ms)
+
+    def _send_scrub(self, seek_ms):
+        self._is_scrub_in_flight = True
+        self._scrub_wanted = None
+        self._scrub_sent_at = monotonic()
+
+        self._seek_ms(seek_ms, "absolute+keyframes")
+
+    def _seek_ms(self, seek_ms, mode="absolute+exact"):
         seek_ms = max(seek_ms, 0)
 
         if self.media.length > 0:
             seek_ms = min(seek_ms, self.media.length - 1)
 
         self._mpv.command_async(
-            "seek", seek_ms / 1000, "absolute+exact", callback=_ignore_seek_result
+            "seek", seek_ms / 1000, mode, callback=_ignore_seek_result
         )
 
     @only_initialized_player
@@ -896,6 +1066,7 @@ class MpvPlayerThreaded(CommandLoopThreaded):
 
         if self.media_input is not None:
             self.media_input.size = size
+            self._apply_quality()
 
         self._apply_view()
 

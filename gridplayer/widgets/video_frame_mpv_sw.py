@@ -10,7 +10,11 @@ from gridplayer.mpv_player.rgb_buffer import FrameReader, holding
 from gridplayer.mpv_player.software import MpvSoftwareRenderer
 from gridplayer.mpv_player.video_driver_base_threaded import PlayerDriverThreaded
 from gridplayer.multiprocess.safe_shared_memory import SafeSharedMemory
-from gridplayer.params.static import PLAYER_ID_LENGTH, VideoTransform
+from gridplayer.params.static import (
+    PLAYER_ID_LENGTH,
+    HardwareDecoding,
+    VideoTransform,
+)
 from gridplayer.utils.qt import qt_connect
 from gridplayer.utils.screenshots import ScreenshotView
 from gridplayer.widgets.video_frame_base import VideoFrameProcess
@@ -78,6 +82,8 @@ class InstanceProcessMPVSW(InstanceProcessMPV):
 
 
 class PlayerProcessSingleMPVSW(MpvPlayerThreaded):
+    is_quality_managed = False
+
     def __init__(self, player_id, release_callback, init_data, **kwargs):
         super().__init__(**kwargs)
 
@@ -95,9 +101,13 @@ class PlayerProcessSingleMPVSW(MpvPlayerThreaded):
         #
         # video_rotate off: the software renderer ignores rotation, so all of
         # it is done with filters instead, see _rotation_filters
+        #
+        # hwdec: this driver's Auto is the CPU, its reason for being there
+        is_copied = self._hardware_decoding is HardwareDecoding.COPY
+
         return {
             "vo": "libmpv",
-            "hwdec": "no",
+            "hwdec": "auto-copy-safe" if is_copied else "no",
             "keepaspect": False,
             "video_rotate": "no",
         }

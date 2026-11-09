@@ -137,6 +137,10 @@ class SettingsManager(ManagerBase):
         checks = {
             "player/video_driver",
             "player/video_driver_players",
+            "player/video_quality",
+            "player/gpu_adapter",
+            "player/hardware_decoding",
+            "player/max_volume",
             "internal/opaque_hw_overlay",
             "internal/fake_overlay_invisibility",
             "misc/mpv_options",

@@ -38,6 +38,10 @@ def _is_linux() -> bool:
     return env.IS_LINUX
 
 
+def _is_windows() -> bool:
+    return env.IS_WINDOWS
+
+
 ADVANCED_FIELDS: tuple[SettingField, ...] = (
     ComboField(
         settings_key="player/video_driver",
@@ -55,6 +59,52 @@ ADVANCED_FIELDS: tuple[SettingField, ...] = (
         enabled_when=When("player/video_driver", VIDEO_DRIVERS_MULTIPROCESS),
     ),
     TextField(settings_key="misc/mpv_options"),
+    ComboField(
+        settings_key="player/video_quality",
+        label=translate("SettingsDialog", "Video quality"),
+        choices=choices.video_qualities,
+        enabled_when=When("player/video_driver", (VideoDriver.MPV_HW,)),
+        tooltip=translate(
+            "SettingsDialog",
+            "How much of the graphics card goes on scaling the picture."
+            " Auto goes by how big each video is shown and drops a step for"
+            " a video that can't keep up. Fast gets the most videos playing"
+            " smoothly, Maximum is meant for a few videos on a strong card.",
+        ),
+    ),
+    ComboField(
+        settings_key="player/gpu_adapter",
+        label=translate("SettingsDialog", "Graphics card"),
+        choices=choices.gpu_choices,
+        enabled_when=When("player/video_driver", (VideoDriver.MPV_HW,)),
+        shown_if=_is_windows,
+        tooltip=translate(
+            "SettingsDialog",
+            "On a laptop with two graphics cards, Windows often starts video"
+            " on the weaker one. High performance plays more videos, and uses"
+            " more power and memory.",
+        ),
+    ),
+    ComboField(
+        settings_key="player/hardware_decoding",
+        label=translate("SettingsDialog", "Hardware decoding"),
+        choices=choices.hardware_decoding_modes,
+        tooltip=translate(
+            "SettingsDialog",
+            "Auto uses the graphics card with the Hardware decoder and the"
+            " CPU with the Software one. Copied to memory also speeds up the"
+            " Software decoder, on a computer whose graphics card can decode.",
+        ),
+    ),
+    CheckboxField(
+        settings_key="player/fast_scrubbing",
+        label=translate("SettingsDialog", "Fast seeking while dragging the timeline"),
+        tooltip=translate(
+            "SettingsDialog",
+            "Jumps between keyframes during the drag, then goes to the exact"
+            " spot when the mouse is let go.",
+        ),
+    ),
     CheckboxField(
         settings_key="internal/opaque_hw_overlay",
         label=translate("SettingsDialog", "Opaque overlay (fix black screen)"),

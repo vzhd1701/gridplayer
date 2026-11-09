@@ -1,7 +1,16 @@
 import math
 from typing import NamedTuple
 
-from PyQt5.QtCore import QEvent, QPoint, QPointF, QRect, QRectF, Qt, pyqtSignal
+from PyQt5.QtCore import (
+    QEvent,
+    QPoint,
+    QPointF,
+    QRect,
+    QRectF,
+    Qt,
+    QTimer,
+    pyqtSignal,
+)
 from PyQt5.QtGui import (
     QBitmap,
     QBrush,
@@ -53,6 +62,21 @@ BAR_PROGRESS_COLOR = "#d14747"
 BAR_PROGRESS_COLOR_ON_RED = "#47d147"
 BAR_SELECT_COLOR = "#4775d1"
 BAR_AHEAD_FADE = 0.4
+
+# what a video's overlay is in unless it was given a colour
+DEFAULT_OVERLAY_COLOR = "#ffffff"
+DARK_THEME_LIGHTNESS = 128
+
+# on a dark theme, how far the part under the mouse fades to the box's colour
+BAR_SELECT_FADE_ON_DARK = 0.45
+
+# the part of the volume bar past 100%
+VOLUME_PAST_FULL_COLOR = "#f0a030"
+VOLUME_PAST_FULL_EMPTY_ALPHA = 0.4
+
+# how often a drag along the timeline goes on to the video: moving it takes
+# longer than a mouse takes to report the next move, which would pile up
+SCRUB_INTERVAL_MS = 40
 
 # A chapter is marked the way mpv marks it: a wedge cut into the top and the
 # bottom edge of the bar, which leaves the middle of it to the loop marks'
@@ -662,8 +686,18 @@ class OverlayWidget(QWidget):
         return mask
 
     @property
+    def follows_dark_theme(self) -> bool:
+        """White is what a video has unless it was given a colour: in a dark
+        theme that is the theme's own, rather than white boxes on it."""
+
+        return (
+            self._color.name() == DEFAULT_OVERLAY_COLOR
+            and _theme_color(QPalette.Base).lightness() < DARK_THEME_LIGHTNESS
+        )
+
+    @property
     def color(self):
-        return self._color
+        return _theme_color(QPalette.Base) if self.follows_dark_theme else self._color
 
     @color.setter
     def color(self, color):
@@ -771,6 +805,22 @@ class OverlayShortLabel(OverlayWidget):
             self.update_visuals()
 
         self.update()
+
+
+class OverlayVolumeLabel(OverlayShortLabel):
+    """How loud, in numbers, above the bar; as wide whatever it says, for the
+    bar not to shift under the mouse as it is dragged."""
+
+    WIDEST_TEXT = "300%"
+
+    def update_visuals(self):
+        padding = 10
+
+        self.setMinimumWidth(
+            QFontMetrics(self.font()).size(0, self.WIDEST_TEXT).width() + padding
+        )
+
+        self._is_visuals_updated = True
 
 
 class OverlayListWindowTag(OverlayShortLabel):
@@ -1387,8 +1437,14 @@ class OverlayShortLabelFloating(OverlayShortLabel):
 
 
 class OverlayBar(OverlayWidget):
+    # the mouse pressed on it and not let go
+    is_held = False
+
     @property
     def color_progress(self):
+        if self.follows_dark_theme:
+            return _theme_color(QPalette.Text)
+
         is_color_reddish = 0 <= self.color.hue() <= 50 or 310 <= self.color.hue() <= 360
 
         if is_color_reddish:
@@ -1399,6 +1455,11 @@ class OverlayBar(OverlayWidget):
     @property
     def color_select(self):
         """What has been played, while the mouse is over the bar."""
+
+        if self.follows_dark_theme:
+            return mixed_color(
+                _theme_color(QPalette.Text), self.color, BAR_SELECT_FADE_ON_DARK
+            )
 
         return QColor(BAR_SELECT_COLOR)
 
@@ -1441,6 +1502,10 @@ class OverlayBar(OverlayWidget):
 class OverlayProgressBar(OverlayBar):
     position_changed = pyqtSignal(float)
 
+    # a drag along the bar begun or over; said before the position it comes
+    # with, the last position being the one to land on exactly
+    scrub_changed = pyqtSignal(bool)
+
     # where the mouse is over the top edge of the bar, how far along it, and
     # how wide the bar is, which says how much of the video a pixel covers
     mouse_over = pyqtSignal(QPoint, float, int)
@@ -1461,6 +1526,14 @@ class OverlayProgressBar(OverlayBar):
         self._loop_end = 100
         self._marks = ()
         self.progress_select_x = None
+        self._is_scrubbing = False
+
+        # a drag goes on to the video this often, the last place it got to
+        self._scrub_timer = QTimer(self)
+        self._scrub_timer.setSingleShot(True)
+        self._scrub_timer.setInterval(SCRUB_INTERVAL_MS)
+        self._scrub_timer.timeout.connect(self._scrub_to_latest)
+        self._latest_scrub_x = None
 
         # the video's length in ms, which the marks are placed against;
         # kept up to date along with the position, and repainted with it
@@ -1493,17 +1566,19 @@ class OverlayProgressBar(OverlayBar):
         event.ignore()
 
     def mouseMoveEvent(self, event):
-        self.progress_select_x = self._get_x_within_bounds(event.pos().x())
+        x = self._get_x_within_bounds(event.pos().x())
 
-        self.update()
+        is_dragged = QGuiApplication.mouseButtons() == Qt.LeftButton
 
-        top_edge = self.mapToParent(QPoint(self.progress_select_x, 0))
-        mouse_position = self.progress_select_x / self.width()
+        if is_dragged and self._scrub_timer.isActive():
+            self._latest_scrub_x = x
+            event.accept()
+            return
 
-        self.mouse_over.emit(top_edge, mouse_position, self.width())
+        self._show_mouse_at(x)
 
-        if QGuiApplication.mouseButtons() == Qt.LeftButton:
-            self._update_position(self.progress_select_x)
+        if is_dragged:
+            self._scrub_to(x)
             event.accept()
 
             # Send activity event to keep overlay visible
@@ -1511,16 +1586,59 @@ class OverlayProgressBar(OverlayBar):
         else:
             event.ignore()
 
+    def _show_mouse_at(self, x):
+        self.progress_select_x = x
+
+        self.update()
+
+        top_edge = self.mapToParent(QPoint(x, 0))
+
+        self.mouse_over.emit(top_edge, x / self.width(), self.width())
+
+    def _scrub_to(self, x):
+        if not self._is_scrubbing:
+            self._is_scrubbing = True
+            self.scrub_changed.emit(True)
+
+        self._update_position(x)
+
+        self._scrub_timer.start()
+
+    def _scrub_to_latest(self):
+        x, self._latest_scrub_x = self._latest_scrub_x, None
+
+        if x is not None and self._is_scrubbing:
+            self._show_mouse_at(x)
+            self._scrub_to(x)
+
     def mouseReleaseEvent(self, event):
         """Consume mouse release to avoid pausing from parent event"""
 
         if event.button() == Qt.LeftButton:
+            self.is_held = False
+
+            if self._is_scrubbing:
+                self._end_scrub()
+                self._update_position(self._get_x_within_bounds(event.pos().x()))
+
             event.accept()
         else:
             event.ignore()
 
+    def _end_scrub(self):
+        self._scrub_timer.stop()
+        self._latest_scrub_x = None
+
+        self._is_scrubbing = False
+        self.scrub_changed.emit(False)
+
     def mousePressEvent(self, event):
         if event.button() == Qt.LeftButton:
+            # one whose release went to something else, a menu that came up
+            if self._is_scrubbing:
+                self._end_scrub()
+
+            self.is_held = True
             self._update_position(event.pos().x())
 
         event.ignore()
@@ -2037,6 +2155,9 @@ class OverlayVolumeBar(OverlayBar):
         self._position = 0
         self.progress_select_y = None
 
+        # how far up the bar is 100%, marked where the bar goes past it
+        self._full_mark = 1.0
+
     def leaveEvent(self, event):
         self.update()
 
@@ -2057,10 +2178,14 @@ class OverlayVolumeBar(OverlayBar):
             event.ignore()
 
     def mouseReleaseEvent(self, event):
+        if event.button() == Qt.LeftButton:
+            self.is_held = False
+
         event.accept()
 
     def mousePressEvent(self, event):
         if event.button() == Qt.LeftButton:
+            self.is_held = True
             self._update_position(event.pos().y())
             event.accept()
         else:
@@ -2079,7 +2204,60 @@ class OverlayVolumeBar(OverlayBar):
 
         self.paint_bar(painter, self._filled_parts(is_hovered))
 
+        if self._full_mark < 1:
+            y = self.height() - round(self.height() * self._full_mark)
+
+            painter.setClipPath(self.box_path())
+            painter.fillRect(QRect(0, y, self.width(), 1), self.color_contrast)
+
     def _filled_parts(self, is_hovered):
+        parts = self._level_parts(is_hovered)
+
+        if self._full_mark >= 1:
+            return parts
+
+        return self._colored_past_full(parts)
+
+    def _colored_past_full(self, parts):
+        """Above the mark in its own colour, whether filled up to there or not."""
+
+        width = self.width()
+        mark = self.height() - round(self.height() * self._full_mark)
+
+        ahead = self.color_ahead
+        past_full = QColor(VOLUME_PAST_FULL_COLOR)
+
+        colored = []
+        lowest_empty = mark
+
+        for rect, color in parts:
+            if rect.isEmpty():
+                continue
+
+            top, bottom = rect.top(), rect.top() + rect.height()
+
+            if top < mark:
+                lowest_empty = min(lowest_empty, top)
+
+                part = past_full
+
+                if color == ahead:
+                    part = mixed_color(past_full, self.color, BAR_AHEAD_FADE)
+
+                colored.append((QRect(0, top, width, min(bottom, mark) - top), part))
+
+            if bottom > mark:
+                below = max(top, mark)
+                colored.append((QRect(0, below, width, bottom - below), color))
+
+        empty = QColor(past_full)
+        empty.setAlphaF(VOLUME_PAST_FULL_EMPTY_ALPHA)
+
+        colored.append((QRect(0, 0, width, lowest_empty), empty))
+
+        return colored
+
+    def _level_parts(self, is_hovered):
         """The volume from the bottom, and under the mouse up to it."""
 
         width = self.width()
@@ -2111,6 +2289,15 @@ class OverlayVolumeBar(OverlayBar):
         self._position = position
         self.update()
 
+    @property
+    def full_mark(self):
+        return self._full_mark
+
+    @full_mark.setter
+    def full_mark(self, position):
+        self._full_mark = position
+        self.update()
+
     def _update_position(self, y):
         self.progress_select_y = y
         new_position = 1.0 - (self.progress_select_y / self.height())
@@ -2126,6 +2313,15 @@ class OverlayVolumeBar(OverlayBar):
 
 class OverlayBorder(OverlayWidget):
     border_width = 5
+
+    @property
+    def color(self):
+        # a ring in the theme's dark colour would be lost on a dark picture
+        return _theme_color(QPalette.Text) if self.follows_dark_theme else self._color
+
+    @color.setter
+    def color(self, color):
+        OverlayWidget.color.fset(self, color)
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)

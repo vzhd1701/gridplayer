@@ -1,5 +1,6 @@
 import contextlib
 from functools import partial
+from uuid import uuid4
 
 from PyQt5.QtCore import Qt, pyqtSignal
 
@@ -22,6 +23,7 @@ from gridplayer.player.managers.base import ManagerBase
 from gridplayer.playlist_settings import PlaylistSettings
 from gridplayer.settings import Settings
 from gridplayer.utils.aspect_calc import SyncedView
+from gridplayer.utils.drop_zone import DropZone
 from gridplayer.utils.qt import MILLISECONDS, qt_connect, translate
 from gridplayer.utils.step_sizes import seek_step_label, seek_step_ms
 from gridplayer.widgets.video_block import VideoBlock
@@ -148,6 +150,7 @@ class VideoBlocksManager(ManagerBase):
     all_seek_random = pyqtSignal()
     all_seek_percent = pyqtSignal(float)
     all_seek = pyqtSignal(MILLISECONDS)
+    all_set_scrubbing = pyqtSignal(bool)
     all_next_frame = pyqtSignal()
     all_previous_frame = pyqtSignal()
     all_next_chapter = pyqtSignal()
@@ -267,6 +270,7 @@ class VideoBlocksManager(ManagerBase):
             "is_any_videos_local_file": self.is_any_videos_local_file,
             "is_any_videos_navigable": self.is_any_videos_navigable,
             "is_any_videos_live": self.is_any_videos_live,
+            "duplicate_video": self.cmd_duplicate_video,
             "is_any_videos_have_audio": self.is_any_videos_have_audio,
             "is_any_videos_have_subtitles": self.is_any_videos_have_subtitles,
             "is_any_videos_have_video": self.is_any_videos_have_video,
@@ -497,6 +501,50 @@ class VideoBlocksManager(ManagerBase):
     def seek_sync_timecode(self, timecode):
         if self._ctx.seek_sync_mode == SeekSyncMode.TIMECODE:
             self.all_seek.emit(timecode)
+
+    def cmd_duplicate_video(self):
+        """The active video again in the cell after it, from where it is now.
+
+        Muted, or the two would play over each other.
+        """
+
+        block = self._ctx.active_block
+
+        if block is None or block.video_params is None:
+            return
+
+        source = block.video_params
+
+        # still waiting for its list to be read: nothing to copy yet
+        if source.read_as_list:
+            return
+
+        video = source.model_copy(
+            deep=True,
+            update={
+                "id": uuid4(),
+                "is_muted": True,
+                "current_position": block.time or source.current_position,
+            },
+        )
+
+        # its own place in the list, to go through at its own pace
+        media_list = self._ctx.lists.get(source.list_id)
+
+        if media_list is not None:
+            video.list_id = self._ctx.lists.add(
+                media_list.model_copy(deep=True, update={"id": uuid4()})
+            ).id
+
+        self._ctx.commands.layout_drop([video], None, block, DropZone.AFTER, False)
+
+        # kept per cell where they aren't shared: the copy has them too
+        if self._ctx.video_blocks.by_video_id(video.id) is not None:
+            self._ctx.bookmarks.add(video.uri, video.id, block.bookmarks)
+
+    def sync_scrubbing(self, is_scrubbing: bool):
+        if self._ctx.seek_sync_mode != SeekSyncMode.DISABLED:
+            self.all_set_scrubbing.emit(is_scrubbing)
 
     def is_seek_sync_mode_set_to(self, mode):
         return self._ctx.seek_sync_mode == mode
@@ -864,6 +912,7 @@ class VideoBlocksManager(ManagerBase):
             (vb.sync_time, self.seek_sync_timecode),
             (vb.sync_percent_single, self.all_seek_percent),
             (vb.sync_time_single, self.all_seek),
+            (vb.sync_scrubbing, self.sync_scrubbing),
             (vb.sync_paused, self.sync_frame_step_pause),
             (vb.sync_pause, partial(self.sync_pause, vb)),
             (vb.sync_view, partial(self.sync_view, vb)),
@@ -876,6 +925,7 @@ class VideoBlocksManager(ManagerBase):
             (self.all_seek_random, vb.seek_random),
             (self.all_seek_percent, vb.seek_percent),
             (self.all_seek, vb.seek),
+            (self.all_set_scrubbing, vb.set_scrubbing),
             (self.all_next_frame, vb.next_frame),
             (self.all_previous_frame, vb.previous_frame),
             (self.all_next_chapter, vb.chapters.next),

@@ -116,6 +116,9 @@ class VideoFrameDummy(VideoFrame):
     def set_time(self, seek_ms):
         self._fake_player_time = seek_ms
 
+    def set_time_keyframe(self, seek_ms):
+        self._fake_player_time = seek_ms
+
     def get_ms_per_frame(self):
         return self._ms_per_frame
 

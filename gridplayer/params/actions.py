@@ -1501,6 +1501,12 @@ ACTIONS = MappingProxyType(
             "func": "open_active_url",
             "show_if": "is_active_web_url",
         },
+        "Duplicate": {
+            "title": translate("Actions", "Duplicate"),
+            "icon": "copy",
+            "func": "duplicate_video",
+            "show_if": "is_active_video_set",
+        },
         "Rename": {
             "title": translate("Actions", "Rename"),
             "key": "F4",

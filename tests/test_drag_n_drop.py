@@ -74,7 +74,9 @@ class _Ctx:
             get_cell_at=lambda *_a, **_k: None,
             update_active_under_mouse=lambda: None,
             activate_window=lambda: None,
-            get_video_block_under_mouse=lambda: object(),
+            get_video_block_under_mouse=lambda: SimpleNamespace(
+                overlay=SimpleNamespace(is_control_at=lambda _pos: False)
+            ),
             is_pan_press=lambda _event: False,
             grid_drop_mode=lambda: None,
             is_tile_pressed=lambda: False,
@@ -149,6 +151,26 @@ def test_a_press_on_a_free_tile_is_no_drag_of_the_video(mocker):
     manager.mousePressEvent(_left_press())
 
     assert not manager._is_drag_started(_left_move((60, 20), (560, 520)))
+
+
+def test_dragging_the_timeline_moves_no_video(mocker):
+    manager, _parent = _make_manager()
+    manager._ctx.active_block = object()
+    manager._ctx.commands.get_video_block_under_mouse = lambda: SimpleNamespace(
+        overlay=SimpleNamespace(is_control_at=lambda _pos: True)
+    )
+    mocker.patch(
+        "gridplayer.player.managers.drag_n_drop.is_modal_open", return_value=False
+    )
+    mocker.patch(
+        "gridplayer.player.managers.drag_n_drop.QApplication.startDragDistance",
+        return_value=10,
+    )
+
+    manager.mousePressEvent(_left_press())
+
+    assert manager._drag_start_position is None
+    assert not manager._is_drag_started(_left_move((225, 320), (900, 520)))
 
 
 def test_a_press_that_drags_the_picture_moves_no_video(mocker):

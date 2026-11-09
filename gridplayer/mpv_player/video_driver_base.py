@@ -99,6 +99,11 @@ class PlayerDriver(QObject, metaclass=QABC):
     @abstractmethod
     def set_time(self, seek_ms): ...
 
+    def set_time_keyframe(self, seek_ms):
+        """A seek that may land short, for one that must be quick."""
+
+        self.set_time(seek_ms)
+
     @abstractmethod
     def set_playback_rate(self, rate): ...
 

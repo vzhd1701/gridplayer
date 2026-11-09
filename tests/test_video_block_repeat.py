@@ -484,6 +484,7 @@ def _playing_block(mocker, is_wrapped):
     block._is_loop_wrapped.return_value = is_wrapped
     # no seek on its way anywhere
     block._follow_seek.return_value = False
+    block._is_scrubbing = False
 
     return block
 

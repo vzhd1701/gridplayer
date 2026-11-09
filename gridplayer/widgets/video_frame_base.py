@@ -1162,6 +1162,9 @@ class VideoFrame(QWidget, metaclass=QABC):
     def set_time(self, seek_ms) -> None:
         self.video_driver.set_time(seek_ms)
 
+    def set_time_keyframe(self, seek_ms) -> None:
+        self.video_driver.set_time_keyframe(seek_ms)
+
     def set_playback_rate(self, rate) -> None:
         self.video_driver.set_playback_rate(rate)
 

@@ -15,7 +15,11 @@ from gridplayer.main.init_icons import switch_icon_theme
 from gridplayer.params import env
 from gridplayer.params.static import ColorScheme
 from gridplayer.settings import Settings
-from gridplayer.utils.darkmode import is_dark_mode, is_system_dark_mode
+from gridplayer.utils.darkmode import (
+    is_dark_mode,
+    is_system_dark_mode,
+    is_true_dark_mode,
+)
 
 THEME_LIGHT = MappingProxyType(
     {
@@ -63,6 +67,23 @@ THEME_DARK = MappingProxyType(
     }
 )
 
+THEME_TRUE_DARK = MappingProxyType(
+    {
+        **THEME_DARK,
+        "window": "#000000",
+        "base": "#000000",
+        "alternate": "#141414",
+        "button": "#1f1f1f",
+        "highlight": "#3d3d3d",
+        "tooltip_base": "#000000",
+        "border": "#5a5a5a",
+        "background": "#000000",
+        "background_selected": "#3d3d3d",
+        "scroll_handle": "#4a4a4a",
+        "scroll_handle_hover": "#757575",
+    }
+)
+
 _applying_theme = False
 
 _DIALOG_ICON_ROLES = (
@@ -91,6 +112,9 @@ class NoDialogButtonIcons(QProxyStyle):
 
 
 def current_colors():
+    if is_true_dark_mode():
+        return THEME_TRUE_DARK
+
     return THEME_DARK if is_dark_mode() else THEME_LIGHT
 
 
@@ -130,6 +154,11 @@ def fusion_palette() -> QPalette:
     palette.setColor(QPalette.Disabled, QPalette.Highlight, QColor("#666666"))
     palette.setColor(QPalette.Disabled, QPalette.HighlightedText, disabled_text)
 
+    # disabled menu items are drawn over a copy of themselves in this colour,
+    # a white edge that is far too plain on black
+    if colors is THEME_TRUE_DARK:
+        palette.setColor(QPalette.Disabled, QPalette.Light, color("window"))
+
     return palette
 
 
@@ -162,7 +191,24 @@ def combo_popup_stylesheet() -> str:
         "border: none;"
         f"border-bottom: 1px solid {colors['highlight']};"
         "padding: 3px 6px;"
-        "}" + settings_scroll_bar_stylesheet(colors)
+        "}" + settings_scroll_bar_stylesheet(colors) + _true_dark_menu_stylesheet(colors)
+    )
+
+
+def _true_dark_menu_stylesheet(colors) -> str:
+    """Fusion draws a menu's edge a shade darker than the window, which black
+    hasn't got: over a black window a menu has no edge at all."""
+
+    if colors is not THEME_TRUE_DARK:
+        return ""
+
+    return (
+        f"QMenu {{ border: 1px solid {colors['border']}; }}"
+        "QMenu::separator {"
+        f"background: {colors['highlight']};"
+        "height: 1px;"
+        "margin: 4px 8px;"
+        "}"
     )
 
 

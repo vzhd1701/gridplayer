@@ -461,6 +461,7 @@ SECTIONS = MappingProxyType(
                 "Open in Browser",
             ),
             "Rename",
+            "Duplicate",
             "Reload",
             "Auto Reload: %v",
             (

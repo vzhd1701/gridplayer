@@ -3,8 +3,10 @@
 Each scenario_ function is reported as a test of its own, see test_scenarios.py.
 """
 
+import math
 import threading
 import time
+from contextlib import contextmanager
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from types import SimpleNamespace
 
@@ -25,13 +27,19 @@ from gridplayer.models.subtitle_selection import (
     SubtitlePreferred,
     SubtitleTrackId,
 )
+from gridplayer.mpv_player.performance import QUALITY_OPTIONS
 from gridplayer.params.static import (
     AudioChannelMode,
+    GpuChoice,
+    HardwareDecoding,
     SubtitleOutline,
+    VideoQuality,
     VideoTransform,
 )
 from gridplayer.params.subtitle_style import mpv_subtitle_style_options
+from gridplayer.settings import Settings
 from gridplayer.utils import item_info
+from gridplayer.utils.gpu_adapters import gpu_adapters
 from tests.mpv_player.harness import (
     Session,
     changed_pixels,
@@ -332,6 +340,9 @@ def scenario_sound_levels(ctx):
 
     half, _, _ = _sound_run(ctx, lambda s: s.cmd("audio_set_volume", 0.5))
     ctx.check("half is quieter", half and 0.02 < half.left < full.left * 0.8, half)
+
+    loud, _, _ = _sound_run(ctx, lambda s: s.cmd("audio_set_volume", 1.3))
+    ctx.check("past 100% is louder", loud and loud.left > full.left * 1.3, loud)
 
 
 def scenario_channel_modes(ctx):
@@ -788,6 +799,268 @@ def scenario_hardware_transforms(ctx):
 
 def _filters(session):
     return [item.get("name") for item in session.prop("vf") or []]
+
+
+# --- performance
+
+
+@contextmanager
+def _setting(key, value):
+    Settings().set(key, value)
+
+    try:
+        yield
+    finally:
+        Settings().reset(key)
+
+
+def _is_set_to(session, name, value):
+    shown = session.prop(name)
+
+    if isinstance(shown, bool):
+        return shown == (value == "yes")
+
+    if isinstance(shown, float):
+        # mpv keeps these in single precision
+        return math.isclose(shown, float(value), rel_tol=1e-5)
+
+    return str(shown) == value
+
+
+def scenario_quality_presets(ctx):
+    for quality, options in QUALITY_OPTIONS.items():
+        with _setting("player/video_quality", quality):
+            s = Session(ctx.out)
+            media = s.load(make_input(ctx.media / "clip.mp4"))
+            s.pump(0.3)
+
+            wrong = {
+                name: s.prop(name)
+                for name, value in options.items()
+                if not _is_set_to(s, name, value)
+            }
+
+            ctx.check(f"{quality.value} plays", media is not None)
+            ctx.check(f"{quality.value} is what mpv ended up with", not wrong, wrong)
+            s.close()
+
+
+def scenario_automatic_quality(ctx):
+    s = Session(ctx.out)
+    media_input = make_input(ctx.media / "clip.mp4")
+    s.load(media_input)
+    s.pump(0.3)
+    ctx.check("small is fast", s.prop("scale") == "bilinear", s.prop("scale"))
+
+    s.cmd("adjust_view", (1280, 720), media_input.view)
+    s.pump(0.3)
+    ctx.check("medium is balanced", s.prop("scale") == "catmull_rom", s.prop("scale"))
+
+    s.cmd("adjust_view", (2560, 1440), media_input.view)
+    s.pump(0.3)
+    ctx.check("big is high", s.prop("scale") == "lanczos", s.prop("scale"))
+
+    real = player_module.is_falling_behind
+    player_module.is_falling_behind = lambda *_args: True
+
+    try:
+        s.cmd("on_quality_check")
+        s.pump(0.2)
+        ctx.check(
+            "the first check only starts counting",
+            s.prop("scale") == "lanczos",
+            s.prop("scale"),
+        )
+
+        s.cmd("on_quality_check")
+        s.pump(0.2)
+        ctx.check(
+            "one that can't keep up steps down",
+            s.prop("scale") == "catmull_rom",
+            s.prop("scale"),
+        )
+    finally:
+        player_module.is_falling_behind = real
+
+    s.cmd("adjust_view", (640, 360), media_input.view)
+    s.pump(0.2)
+    s.cmd("adjust_view", (2560, 1440), media_input.view)
+    s.pump(0.3)
+    ctx.check(
+        "shown bigger it gets another try",
+        s.prop("scale") == "lanczos",
+        s.prop("scale"),
+    )
+    s.close()
+
+    with _setting("player/video_quality", VideoQuality.HIGH):
+        s = Session(ctx.out)
+        s.load(make_input(ctx.media / "clip.mp4"))
+        s.pump(0.3)
+        ctx.check(
+            "a preset picked holds at any size",
+            s.prop("scale") == "lanczos",
+            s.prop("scale"),
+        )
+        s.close()
+
+
+def scenario_typed_options_win(ctx):
+    with _setting("misc/mpv_options", "--hwdec=no"):
+        s = Session(ctx.out)
+        s.load(make_input(ctx.media / "clip.mp4", paused=False))
+        s.pump(0.5)
+        ctx.check(
+            "hwdec typed stays",
+            s.prop("hwdec-current") in {"no", None},
+            s.prop("hwdec-current"),
+        )
+        s.close()
+
+    with (
+        _setting("misc/mpv_options", "--profile=fast"),
+        _setting("player/video_quality", VideoQuality.HIGH),
+    ):
+        s = Session(ctx.out)
+        s.load(make_input(ctx.media / "clip.mp4"))
+        s.pump(0.3)
+        ctx.check(
+            "a profile typed beats the preset",
+            s.prop("scale") == "bilinear",
+            s.prop("scale"),
+        )
+        s.close()
+
+    with (
+        _setting("misc/mpv_options", "--scale=spline36"),
+        _setting("player/video_quality", VideoQuality.FAST),
+    ):
+        s = Session(ctx.out)
+        s.load(make_input(ctx.media / "clip.mp4"))
+        s.pump(0.3)
+        ctx.check(
+            "an option typed beats that option",
+            s.prop("scale") == "spline36",
+            s.prop("scale"),
+        )
+        ctx.check(
+            "and the rest of the preset still applies",
+            s.prop("dscale") == "bilinear",
+            s.prop("dscale"),
+        )
+        s.close()
+
+
+def scenario_hardware_decoding_modes(ctx):
+    def decoder(mode, is_software=False, **kwargs):
+        with _setting("player/hardware_decoding", mode):
+            s = Session(ctx.out, is_software=is_software)
+            s.load(make_input(ctx.media / "clip.mp4", paused=False, **kwargs))
+            s.pump(0.6)
+            current = s.prop("hwdec-current")
+            s.close()
+
+            return current
+
+    plain = decoder(HardwareDecoding.AUTO)
+    ctx.check("auto is on the GPU", plain not in {"no", None}, plain)
+    ctx.check("and not copied", "copy" not in str(plain), plain)
+
+    copied = decoder(HardwareDecoding.COPY)
+    ctx.check("copied", "copy" in str(copied), copied)
+
+    off = decoder(HardwareDecoding.OFF)
+    ctx.check("off", off in {"no", None}, off)
+
+    flipped = decoder(HardwareDecoding.OFF, transform=VideoTransform.HFLIP)
+    ctx.check("off stays off for a flip", flipped in {"no", None}, flipped)
+
+    software = decoder(HardwareDecoding.AUTO, is_software=True)
+    ctx.check("software's auto is the CPU", software in {"no", None}, software)
+
+    software_copied = decoder(HardwareDecoding.COPY, is_software=True)
+    ctx.check(
+        "software can be helped by the GPU",
+        "copy" in str(software_copied),
+        software_copied,
+    )
+
+
+def scenario_graphics_card_choice(ctx):
+    adapters = gpu_adapters()
+
+    ctx.check("cards are found", bool(adapters), adapters)
+
+    choices = [
+        GpuChoice.AUTO,
+        GpuChoice.HIGH_PERFORMANCE,
+        GpuChoice.POWER_SAVING,
+        *(item.name for item in adapters),
+        "A Card Since Taken Out",
+    ]
+
+    for choice in choices:
+        with _setting("player/gpu_adapter", choice):
+            s = Session(ctx.out)
+            media = s.load(make_input(ctx.media / "clip.mp4"), timeout=25)
+            s.pump(0.3)
+
+            ctx.check(f"plays on {choice or 'auto'!r}", media is not None, s.lines[-3:])
+            ctx.check(
+                f"draws on {choice or 'auto'!r}",
+                s.prop("current-gpu-context") == "d3d11",
+                s.prop("current-gpu-context"),
+            )
+            s.close()
+
+
+def scenario_keyframe_seeks(ctx):
+    s = Session(ctx.out)
+    s.load(make_input(ctx.media / "clip.mp4"))
+    s.pump(0.3)
+
+    s.cmd("set_time_keyframe", 5400)
+    s.pump(0.6)
+    landed = s.prop("time-pos")
+    ctx.check("lands on a keyframe", abs(landed - round(landed)) < 0.05, landed)
+
+    s.cmd("set_time", 5400)
+    s.pump(0.6)
+    landed = s.prop("time-pos")
+    ctx.check("the exact one lands where asked", abs(landed - 5.4) < 0.05, landed)
+
+    # a drag sends them far faster than frames come
+    sent = []
+    real_seek = s.player._seek_ms
+
+    def counted(seek_ms, mode="absolute+exact"):
+        sent.append(seek_ms)
+        real_seek(seek_ms, mode)
+
+    s.player._seek_ms = counted
+
+    for seek_ms in range(1000, 15000, 50):
+        s.cmd("set_time_keyframe", seek_ms)
+
+    s.pump(1.0)
+
+    ctx.check("a flood comes down to a few seeks", 0 < len(sent) < 100, len(sent))
+    ctx.check(
+        "and ends where it was going",
+        sent and sent[-1] == 14950,
+        sent[-3:],
+    )
+    landed = s.prop("time-pos")
+    ctx.check("the picture got there", abs(landed - 14.95) < 1.1, landed)
+
+    # the exact one at the end of a drag wins over any still waiting
+    s.cmd("set_time_keyframe", 3000)
+    s.cmd("set_time_keyframe", 9000)
+    s.cmd("set_time", 12300)
+    s.pump(0.8)
+    landed = s.prop("time-pos")
+    ctx.check("letting go lands exactly", abs(landed - 12.3) < 0.05, landed)
+    s.close()
 
 
 def scenario_file_lengths(ctx):

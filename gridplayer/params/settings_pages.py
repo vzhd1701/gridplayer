@@ -216,6 +216,7 @@ PAGES = (
             Section(
                 translate("SettingsDialog", "General"),
                 "player/color_scheme",
+                "player/max_volume",
                 "player/one_instance",
                 "player/stay_on_top",
                 "player/start_maximized",
@@ -397,6 +398,13 @@ PAGES = (
                 translate("SettingsDialog", "Video Decoder"),
                 "player/video_driver",
                 "player/video_driver_players",
+            ),
+            Section(
+                translate("SettingsDialog", "Performance"),
+                "player/video_quality",
+                "player/gpu_adapter",
+                "player/hardware_decoding",
+                "player/fast_scrubbing",
             ),
             Section(
                 translate(

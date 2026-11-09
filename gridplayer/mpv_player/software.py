@@ -71,8 +71,10 @@ class MpvSoftwareRenderer:
             self._thread.join()
             self._thread = None
 
+        # The update callback is left in place until the context is gone.
+        # Replacing it first, python-mpv lets go of the old one before mpv has
+        # been told, and mpv calling it just then takes the process down.
         if self._context is not None:
-            self._context.update_cb = None
             self._context.free()
             self._context = None
 

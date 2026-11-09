@@ -14,10 +14,19 @@ def is_dark_mode() -> bool:
 
     if scheme == ColorScheme.LIGHT:
         return False
-    if scheme == ColorScheme.DARK:
+    if scheme in {ColorScheme.DARK, ColorScheme.TRUE_DARK}:
         return True
 
     return is_system_dark_mode()
+
+
+def is_true_dark_mode() -> bool:
+    """The dark theme in black, rather than the usual grey."""
+
+    try:
+        return Settings().get("player/color_scheme") == ColorScheme.TRUE_DARK
+    except RuntimeError:
+        return False
 
 
 # Asked once, until the theme is applied again (apply_theme forgets it):

@@ -19,7 +19,9 @@ from gridplayer.params.static import (
     CacheMode,
     ColorScheme,
     DropAction,
+    GpuChoice,
     GridMode,
+    HardwareDecoding,
     ListEndAction,
     ListFailAction,
     ListUpdate,
@@ -45,6 +47,7 @@ from gridplayer.params.static import (
     VideoDriver,
     VideoEndAction,
     VideoInitialState,
+    VideoQuality,
     VideoTransform,
 )
 from gridplayer.params.subtitle_encodings import SUBTITLE_ENCODINGS
@@ -415,6 +418,7 @@ def color_schemes() -> dict:
         ColorScheme.SYSTEM: translate("SettingsDialog", "System"),
         ColorScheme.LIGHT: translate("SettingsDialog", "Light"),
         ColorScheme.DARK: translate("SettingsDialog", "Dark"),
+        ColorScheme.TRUE_DARK: translate("SettingsDialog", "True Dark"),
     }
 
 
@@ -484,6 +488,37 @@ def video_drivers() -> dict:
         driver: name
         for driver, name in drivers.items()
         if session_video_driver(driver) == driver
+    }
+
+
+def video_qualities() -> dict:
+    return {
+        VideoQuality.AUTO: translate("SettingsDialog", "Auto"),
+        VideoQuality.FAST: translate("SettingsDialog", "Fast"),
+        VideoQuality.BALANCED: translate("SettingsDialog", "Balanced"),
+        VideoQuality.HIGH: translate("SettingsDialog", "High"),
+        VideoQuality.MAXIMUM: translate("SettingsDialog", "Maximum"),
+    }
+
+
+def gpu_choices() -> dict:
+    """The ways of picking one, then the cards this computer has by name."""
+
+    from gridplayer.utils.gpu_adapters import gpu_adapters
+
+    return {
+        GpuChoice.AUTO: translate("SettingsDialog", "Auto (Windows decides)"),
+        GpuChoice.HIGH_PERFORMANCE: translate("SettingsDialog", "High performance"),
+        GpuChoice.POWER_SAVING: translate("SettingsDialog", "Power saving"),
+        **{adapter.name: adapter.name for adapter in gpu_adapters()},
+    }
+
+
+def hardware_decoding_modes() -> dict:
+    return {
+        HardwareDecoding.AUTO: translate("SettingsDialog", "Auto"),
+        HardwareDecoding.COPY: translate("SettingsDialog", "GPU, copied to memory"),
+        HardwareDecoding.OFF: translate("SettingsDialog", "Off (CPU only)"),
     }
 
 

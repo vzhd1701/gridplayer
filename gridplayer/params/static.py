@@ -520,6 +520,28 @@ class VideoDriver(AutoName):
         return None
 
 
+class VideoQuality(AutoName):
+    AUTO = auto()
+    FAST = auto()
+    BALANCED = auto()
+    HIGH = auto()
+    MAXIMUM = auto()
+
+
+class HardwareDecoding(AutoName):
+    AUTO = auto()
+    COPY = auto()
+    OFF = auto()
+
+
+class GpuChoice:
+    """What the graphics card setting holds, besides the name of a card."""
+
+    AUTO = ""
+    HIGH_PERFORMANCE = "high_performance"
+    POWER_SAVING = "power_saving"
+
+
 class SeekSyncMode(AutoName):
     DISABLED = auto()
     PERCENT = auto()
@@ -617,6 +639,7 @@ class ColorScheme(AutoName):
     SYSTEM = auto()
     LIGHT = auto()
     DARK = auto()
+    TRUE_DARK = auto()
 
 
 class ScreenshotFormat(AutoName):
