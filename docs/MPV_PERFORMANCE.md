@@ -630,7 +630,7 @@ Tried and not worth it:
 Processes tooltip says it can freeze. Up to 81 cells Hardware SP plays the same as multi-process, and uses less memory: 1907 against 2091 MB.
 Software SP plays the same as multi-process and stays as responsive, until the CPU runs out. It does load slower when saturated on Windows,
 14.6 s against 0.6 s at 25x1080p60, and it was the one that segfaulted at 100 cells. The warning may come from older VLC or other
-kinds of files, so nothing was changed. It's worth a look. Changed 2026-11-09 (plan item 10.28): the tooltip and README
+kinds of files, so nothing was changed. It's worth a look. Changed 2026-11-09 (`VLC.md`, 10.28): the tooltip and README
 no longer warn of it.
 
 **Plan item 10.12, the fork abort, is settled for this machine.** With VLC now on `test_gpu`: started on MPV, live to Hardware VLC, multi-process, on a real

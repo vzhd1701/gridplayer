@@ -2,7 +2,7 @@
 
 Found 2026-11-09 on the `mpv` branch, from Software VLC in a single process taking about 80% of a 16-thread CPU with a dozen small
 videos, where multi-process took 15-20%. That gap is why GridPlayer got its multi-process drivers in the first place. Fixed by
-`gridplayer/utils/libvlc_waits.py` (plan item 10.26 in `MPV_PLAN.md`).
+`gridplayer/utils/libvlc_waits.py` (item 10.26 in `VLC.md`).
 
 ## What happens
 
@@ -123,7 +123,7 @@ All runs showed the clips' full frame rate (19.2 fps on average across them).
 without, both at the full frame rate.
 
 Run from source, the 32-bit `python.exe` has only 2 GB of address space, and 15 videos in one process fill it: some frame buffers
-failed to allocate as the videos loaded, with the swap and without (plan item 10.27). The packaged 32-bit `GridPlayer.exe` gets 4 GB,
+failed to allocate as the videos loaded, with the swap and without (item 10.27 in `VLC.md`). The packaged 32-bit `GridPlayer.exe` gets 4 GB,
 where the same 15 peak at 2.3-2.6 GB and play.
 
 Also with the fix:

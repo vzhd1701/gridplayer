@@ -1,7 +1,7 @@
 # VLC's log in a single process: why it freezes, and a helper for later
 
 Found 2026-11-09 on the `mpv` branch, from a freeze opening a playlist with Hardware VLC in a single process on Windows. Fixed for
-now by not taking VLC's log there (plan item 10.24 in `MPV_PLAN.md`). This keeps the analysis and the design of a native helper that
+now by not taking VLC's log there (item 10.24 in `VLC.md`). This keeps the analysis and the design of a native helper that
 would bring the log back, perhaps as a library of its own, so this repository needs no compiler to build.
 
 ## What happens
@@ -172,4 +172,4 @@ it's the call that freezes.
 
 VLC in a single process, Hardware and Software, runs every command and the last stage of loading a video on the GUI thread, and waits
 there for VLC, up to the 120 s load timeout per wait. One network video that stalls at its start seek froze the whole app for 239 s,
-where multi-process VLC kept the GUI free. See plan item 10.25, with the fix: the player moved to its own thread.
+where multi-process VLC kept the GUI free. See item 10.25 in `VLC.md`, with the fix: the player moved to its own thread.
