@@ -696,6 +696,16 @@ CPU took 0.5-5.5 s, against 0.2-1.1 s on the key frame, which is about what VLC 
 - [ ] 10.4 AMD on Windows and any other GPU we can reach. HEVC and 10-bit through VAAPI needs
   a newer chip than `test_gpu`
 - [ ] 10.5 The Linux `mallopt` arena limit: decide on applying it only when mpv is in use
+  - **Measured 2026-11-09, `test_gpu`, real X11, `MALLOC_ARENA_MAX` (what `mallopt(M_ARENA_MAX)` sets), default (8 a core) against 2
+    and 4.** Frame rate and CPU the same throughout.
+    - Hardware MPV, 16 of the mix playing: 951-988 MB, 2 arenas 782-783, 4 arenas 782-793. Software MPV, 9: 1085-1088 against 989-995.
+    - MPV churn, 10 minutes, all closed after 5 and 10: Hardware 1797 / 2126 MB, 2 arenas 897 / 972, 4 arenas 890 / 1101. Software
+      1656 / 2169 against 1139 / 1568 (2 arenas).
+    - VLC 3.0.24, 2 arenas: 1-4% less (Hardware single process 16: 1759-1784 against 1729-1740; Software single 9: 2430-2476 against
+      2329-2400; multi-process 16: 2035-2038 against 1991-1997). Its churn says nothing either way, as it leaks threads (`VLC.md`, 10.29).
+  - So it's worth having, for MPV above all, and it costs VLC nothing: apply it always on Linux, not only with MPV. 4 keeps nearly all of
+    it with less waiting on the lock on a big machine. Not built yet: `mallopt` early at start, and `MALLOC_ARENA_MAX` in the environment
+    for the multi-process VLC processes.
 - [ ] 10.6 `churn.py`'s 30 KB per close on X11: check it's bounded
 - [ ] 10.7 GLES: `GL_BGRA` needs desktop GL as written, read RGBA where it's missing
 - [ ] 10.8 Render thread stall watchdog: only if something has needed it by then
@@ -709,6 +719,9 @@ CPU took 0.5-5.5 s, against 0.2-1.1 s on the key frame, which is about what VLC 
   video. They cost no measured memory, but each has threads: check whether to turn them off
 - [ ] 10.11 **Your decision:** a low VRAM option (`-copy` or software for new videos when over
   budget), and an mpv decoder setting
+  - **Decided (2026-11-09): a setting with Auto / On / Off.** As understood: decoding on the CPU instead of the GPU, Auto
+    switching new videos to it when video memory runs low, On always, Off never. To be confirmed when built, with 10.17's flag:
+    the two may be one setting.
 - [x] 10.12 mpv to VLC Hardware live, on a real GPU with X11. Passes on `test_gpu`, 2 rounds, and the
   pass counts: with the old cause forced, decoder processes do die with signal 6 there. NVIDIA on
   Linux not run. See `MPV_PERFORMANCE.md`
@@ -740,6 +753,8 @@ CPU took 0.5-5.5 s, against 0.2-1.1 s on the key frame, which is about what VLC 
     the most on a strong CPU, so it stays available
   - Saved `mpv_sw` settings: decide whether they become the new mode or Hardware <MPV> with the flag on
   - A stand-in for Software VLC with no VLC should then be the new mode (see Stage 3 results)
+  - **Decided (2026-11-09): yes.** Nobody uses Software MPV yet, so saved `mpv_sw` settings need no care. Measure the software
+    render API first (CPU, scaling quality, how many videos play against today's mode), then build.
 - [x] 10.18 A window minimized or in the tray rendered and read back every frame of every video. Done as 10.9, your call (2026-11-08), with no
   setting: nothing on screen changes, as a minimized window's preview is the picture from before. The cell goes by its own show and hide,
   and by the window's `away_changed`, as coming back it can be shown before the window says it's no longer minimized. `mpv_hidden_cells`:
@@ -760,6 +775,9 @@ CPU took 0.5-5.5 s, against 0.2-1.1 s on the key frame, which is about what VLC 
     the frames past it (25x1080p60 52 to 45, 9x4K60 58 to 47).
   - **NVIDIA only.** The same 6-minute churn with OpenGL on the AMD iGPU, everything closed: on, 742 then 499 MB; off, 623 then 427 MB. Both give
     memory back. On NVIDIA: on, 1259 then 1517; off, 403 then 340. So it's NVIDIA's driver keeping mpv's mapped buffers. Linux NVIDIA not known
+  - **Decided (2026-11-09): direct rendering stays on by default, with a setting to turn it off.** It only matters where the CPU
+    decodes and OpenGL draws: libmpv's software render backend has no `get_image`, so the fully software mode of 10.17 has no
+    direct rendering at all. So the setting belongs with 10.17's "Decode on the CPU" and Hardware MPV's own fallback to the CPU.
 - 10.23-10.28 are VLC's own, not MPV's: moved to `VLC.md` with their numbers (10.23 an overnight load freeze on Linux,
   10.24 and 10.25 single-process freezes, 10.26 VLC's waits, 10.27 32-bit address space, 10.28 single against multi-process; all done).
 - [x] 10.14 Don't fill the cell black before drawing a picture that covers it: app CPU 61% to 47% at
@@ -784,10 +802,9 @@ CPU took 0.5-5.5 s, against 0.2-1.1 s on the key frame, which is about what VLC 
 
 ## Stage 12: Packaging and release
 
-- [ ] 12.1 **Your decision, later (you said so on 2026-11-06):** bundle libmpv or not, per platform. Windows has no system
-  libmpv and no standard installer for it, so unbundled means a manual DLL out of a 7z. The
-  DLL here is 117 MB, a smaller LGPL build may do. Decide before the `Get MPV` link is final:
-  mpv.io's normal Windows download doesn't have the DLL
+- [ ] 12.1 **Decided (2026-11-09): libmpv is bundled everywhere, with libVLC**, in every package; no split packages over some
+  60 MB. Done after testing and fixing. Windows has no system libmpv and no standard installer for it. The DLL here is 117 MB, a
+  smaller LGPL build may do. With libmpv always there, the `Get MPV` link and "How to fix" are only for running from source
 - [ ] 12.2 PyInstaller, AppImage, Flatpak, Snap, Chocolatey as decided. Fail loudly, keep the
   existing tools. Flatpak and Snap can't see a system libmpv, so the README's "How to fix" won't
   work there unless they ship it: check, and say so in the README

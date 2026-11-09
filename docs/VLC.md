@@ -115,3 +115,8 @@ built).
   - So no longer a performance question: what's left is a video crashing VLC taking one process (multi) or the whole app (single),
     and load time. **Done (2026-11-09):** the Processes tooltip and the README said a single process can freeze or load the CPU past
     4-6 videos, which 10.24, 10.25 and 10.26 made untrue; both now say what's left (crash takes one process or the app, load time).
+- [ ] 10.29 **Hardware VLC in a single process on Linux keeps threads and memory after its videos close.** Found measuring the arena
+  limit (`MPV_PLAN.md` 10.5) on `test_gpu`, real X11, VLC 3.0.24, `churn.py` with up to 8 cells: everything closed after 5 minutes
+  (5069 opens, closes, reloads and seeks), 1267 threads left and 3278 MB; after 10 minutes, 2376 threads and 5186 MB. MPV in the same
+  churn goes back to 8 threads. Not yet known: whether `master` does it too, whether it's the players' `QThread`s of 10.25 or VLC's own
+  threads, Software VLC single process, multi-process.
