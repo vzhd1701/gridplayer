@@ -115,7 +115,12 @@ class PlayerProcessSingleVLCHWSP(QThread, VlcPlayerBase, metaclass=QABC):
         self._time_checks.emit()
 
     def run(self):
-        self._instance = InstanceVLC(0, self.vlc_options)
+        # No VLC log on Windows. Each message VLC logs comes through a Python
+        # callback and needs the GIL, on the thread that owns the window VLC
+        # draws in too. The GUI thread keeps the GIL through Qt calls such as
+        # raise(), which Windows makes wait for that thread: both then wait
+        # for good. Multi-process VLC has a GIL of its own.
+        self._instance = InstanceVLC(0, self.vlc_options, is_logged=not env.IS_WINDOWS)
 
         self._instance.set_log_level_vlc(Settings().get("logging/log_level_vlc"))
         self._instance.init_instance()

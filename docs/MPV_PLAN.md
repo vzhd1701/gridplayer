@@ -756,9 +756,68 @@ CPU took 0.5-5.5 s, against 0.2-1.1 s on the key frame, which is about what VLC 
 - [ ] 10.22 **Your decision:** Software MPV on Windows keeps about 1.5 MB for each video closed, mpv's direct rendering buffers: 60 to 1838 MB
   in a 20-minute churn with everything closed. With `vd-lavc-dr=no` it stays at 340-400 MB. That cost frames on Linux, 19 against 25, and
   wasn't measured on Windows. Lists playing one video after another would meet it. Hardware MPV keeps about 230 KB a video, not looked into
+  - Measured on Windows: off costs nothing while the CPU keeps up (9 and 16x1080p60, 4x4K60, 16 mixed: the same fps, CPU +0-10%), and 13-19% of
+    the frames past it (25x1080p60 52 to 45, 9x4K60 58 to 47).
+  - **NVIDIA only.** The same 6-minute churn with OpenGL on the AMD iGPU, everything closed: on, 742 then 499 MB; off, 623 then 427 MB. Both give
+    memory back. On NVIDIA: on, 1259 then 1517; off, 403 then 340. So it's NVIDIA's driver keeping mpv's mapped buffers. Linux NVIDIA not known
 - [ ] 10.23 VLC, found by the overnight run, VLC's drivers not changed: Hardware VLC SP on Linux held the GUI thread 42 s at load waiting
   for VLC to buffer after the start seek (`_set_time_initial`). On Windows both VLC modes play 1080p60 at 29 from 9 cells, where they held 60
   on 2026-11-06; the 11-06 commit does the same now, so it's the machine as set up (120 Hz on the AMD iGPU?)
+- [x] 10.24 **Hardware VLC in a single process freezes the app on Windows, for good.** You hit it opening a playlist (2026-11-08 22:41, twice).
+  **Done your way (2026-11-09): VLC's log is off for that driver on Windows**, no native helper: building it for every architecture for the
+  rest of the project's life isn't worth a log. The error card shows the error without VLC's own lines there. The "Log level (VLC)"
+  tooltip says so. Reopen loop at debug: 50 of 50, where it froze within 0-9. The design below is kept in case it's ever wanted.
+  Not this branch's: `master` freezes the same way, and v0.5.5 sets up the same callback.
+  - **What happens:** two threads wait on each other, and both stop for good.
+    - The GUI thread is inside a Qt call that moves or raises a native window: `raise()` in `activate_window`, which loading a playlist and
+      opening files both do. PyQt5 keeps holding Python's lock (the GIL) through the call. Windows makes the call wait for every thread with
+      a window under it to answer.
+    - VLC's Direct3D 11 window thread is waiting for that same lock, inside our log callback (`InstanceVLC.libvlc_log_callback`). Every
+      message VLC logs goes through that Python callback, whatever the log level, as it also catches VLC's errors for the error card.
+  - **Seen:** caught with `py-spy`, the GUI in `QWidget::raise` → `NtUserSetWindowPos`, three VLC threads in `PyGILState_Ensure` under
+    `vlc_Log`. Reopening a 3-video playlist: with VLC's log at debug it froze within 0-9 reopens, on this branch and on `master` alike; with
+    the log off it passed 20. So logging only makes it likely.
+  - **Not affected:** multi-process VLC, where VLC's threads wait on another process's lock; Software VLC in a single process, which has no
+    VLC window; MPV, which owns no windows; Linux and macOS, as far as known (no cross-thread window messages like this on X11).
+  - **Until fixed:** VLC's log level off, or multi-process VLC.
+  - **The fix chosen: a native log helper, Windows only.** About 100 lines of C, a DLL loaded by ctypes:
+    - VLC calls the helper instead of Python. It copies what the Python callback reads now: level, module, file and line, the object's id
+      and type (`libvlc_log_get_context`, `libvlc_log_get_object`) and the text (`vsnprintf`), into a ring buffer behind a native lock
+      held only for the copy. A full buffer drops and counts, never waits.
+    - One Python thread per process drains it every few milliseconds and runs today's handling: log lines, errors kept for the error card,
+      HTTP refusals. Split today's `_cb` into "decode one message" and that handling, so both paths share it.
+    - It takes VLC's function addresses from Python at start, so building it needs no VLC headers or libraries.
+  - **What it costs:**
+    - The Windows build (`build.yml`, PyInstaller) gets one MSVC compile step, which GitHub's Windows runners already have, and one binary
+      in the spec. Chocolatey takes that build.
+    - A `just` recipe for running from source. Without the DLL the app falls back to today's callback.
+    - The PyPI wheel is pure Python: ship the DLL in it as data, or leave pip users on Windows with today's callback.
+    - Linux packages: nothing.
+  - **Proof:** the reopen loop with VLC's log at debug, 50 reopens, no freeze. The loop is `hang_loop.py` in the 2026-11-09 session's
+    scratchpad; it needs a real window (`REAL_APP_QT_PLATFORM=windows`).
+  - **Rejected:**
+    - Filtering in the callback: it runs in Python, so it has already waited for the lock.
+    - VLC's own `--file-logging`: it writes nothing until 4 KB or exit, and leaves out which object said it.
+    - Letting go of the lock on the GUI side: PyQt5 can't, and Qt makes these calls everywhere.
+  - All of it, with the reopen loop, is in `VLC_HELPER.md`.
+- [ ] 10.25 **VLC in a single process waits for VLC on the GUI thread, up to the load timeout, twice.** Hardware and Software VLC single
+  process (the default on macOS). The player object of `video_frame_vlc_hw_sp.py` / `_sw_sp.py` lives in the GUI thread; its `QThread`
+  only makes and releases VLC. So every command and every load stage runs on the GUI, and the last stage, `load_video_st4_loaded`, waits
+  there for VLC: the video output, buffering after the start seek, the pause, and a second seek for a paused video. Each wait goes up to
+  what is left of the 120 s load timeout (`player/video_init_timeout`). Waiting lets go of the GIL, so it always ends.
+  - **Measured, Windows, 4 videos served over HTTP, one whose server stops answering at its start seek:** single process froze the whole
+    app 239 s, 119 s twice; multi-process 0.2 s, with only that cell waiting. It needs a start position or a paused start: a playlist
+    saved with positions or play state (`playlist/save_position`, `save_state`, off by default), "start paused", a random start, or a
+    reload. Opening from the start and playing, only the video output is waited for.
+  - **In normal use it costs little:** 25 local 1080p60 videos 0.9 s against 0.5 s multi-process; 6 network videos with 300 ms of delay
+    the same as multi-process. The 42 s GUI freeze on `test_gpu` overnight (10.23) is this, with the decoder overloaded.
+  - **Fix:** do what multi-process does in its own process, in a thread: the player object moved to its `QThread`, which runs an event
+    loop. Commands and load stages then run there, in order, as they do in a VLC process; the GUI only sends commands and hears signals.
+    Cleanup aborts the waiter and quits the loop straight from the GUI, so a wait in progress doesn't hold it up; VLC is released on that
+    thread after, as now. The re-applied view, chapters and time checks go to that thread rather than the GUI, still off libvlc's callback
+    threads. Both single-process drivers. Maybe also "Event waiting hangs on init in MacOS", as the waits leave the main thread there.
+  - **Test:** the stalled-seek run above (GUI under 0.5 s), the playlist reopen loop, and the real-app scenarios on both single-process
+    drivers with real windows.
 - [x] 10.14 Don't fill the cell black before drawing a picture that covers it: app CPU 61% to 47% at
   1x1080p. Applies to VLC's software drivers too, so test those. Done: only the bars beside the
   picture are filled, reaching a pixel under its edge so a pixel it only partly covers at a screen

@@ -260,6 +260,11 @@ ADVANCED_FIELDS: tuple[SettingField, ...] = (
         settings_key="logging/log_level_vlc",
         label=translate("SettingsDialog", "Log level (VLC)"),
         choices=choices.vlc_log_levels,
+        tooltip=translate(
+            "SettingsDialog",
+            "On Windows, VLC with hardware decoding in a single process writes"
+            " no log, as it could freeze GridPlayer.",
+        ),
     ),
     ComboField(
         settings_key="logging/log_level_mpv",

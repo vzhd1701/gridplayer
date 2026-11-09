@@ -114,13 +114,15 @@ class InstanceVLC:
         vlc.LogLevel.WARNING: logging.WARNING,
     }
 
-    def __init__(self, vlc_log_level, vlc_options, **kwargs):
+    def __init__(self, vlc_log_level, vlc_options, is_logged=True, **kwargs):
         super().__init__(**kwargs)
 
         self.vlc_instance = None
         self.vlc_options = vlc_options.copy()
 
         self._vlc_log_level = vlc_log_level
+        # whether VLC's messages come to Python at all: see VideoFrameVLCHWSP
+        self._is_logged = is_logged
 
         self._logger = None
         self._logger_cb = None
@@ -197,7 +199,10 @@ class InstanceVLC:
 
         self.vlc_instance.set_user_agent(VLC_USER_AGENT_NAME, vlc_user_agent())
 
-        self.init_logger()
+        if self._is_logged:
+            self.init_logger()
+        else:
+            self._logger.info("VLC's own log is off for this player")
 
     # process
     def cleanup_instance(self):
