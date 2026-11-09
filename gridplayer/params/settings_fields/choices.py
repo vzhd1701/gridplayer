@@ -473,20 +473,26 @@ def video_drivers() -> dict:
     vlc_version = f" <VLC {env.VLC_VERSION}>"
 
     drivers = {}
-    if not env.IS_MACOS:
-        drivers[VideoDriver.VLC_HW] = (
-            translate("SettingsDialog", "Hardware") + vlc_version
+    if env.MPV_VERSION:
+        drivers[VideoDriver.MPV_HW] = (
+            translate("SettingsDialog", "Hardware") + f" <mpv {env.MPV_VERSION}>"
         )
-    drivers.update(
-        {
-            VideoDriver.VLC_HW_SP: translate("SettingsDialog", "Hardware SP")
-            + vlc_version,
-            VideoDriver.VLC_SW: translate("SettingsDialog", "Software") + vlc_version,
-            VideoDriver.VLC_SW_SP: translate("SettingsDialog", "Software SP")
-            + vlc_version,
-            VideoDriver.DUMMY: translate("SettingsDialog", "Dummy"),
-        }
-    )
+    if not env.IS_VLC_MISSING:
+        if not env.IS_MACOS:
+            drivers[VideoDriver.VLC_HW] = (
+                translate("SettingsDialog", "Hardware") + vlc_version
+            )
+        drivers.update(
+            {
+                VideoDriver.VLC_HW_SP: translate("SettingsDialog", "Hardware SP")
+                + vlc_version,
+                VideoDriver.VLC_SW: translate("SettingsDialog", "Software")
+                + vlc_version,
+                VideoDriver.VLC_SW_SP: translate("SettingsDialog", "Software SP")
+                + vlc_version,
+            }
+        )
+    drivers[VideoDriver.DUMMY] = translate("SettingsDialog", "Dummy")
 
     if is_hw_video_available():
         return drivers

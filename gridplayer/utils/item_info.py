@@ -332,7 +332,11 @@ def lengths_in_process(paths: list[str]) -> list[int | None]:
 
     global _vlc_instance
 
-    from gridplayer.vlc_player.libvlc import vlc
+    try:
+        from gridplayer.vlc_player.libvlc import vlc
+    except (OSError, NotImplementedError, AttributeError):
+        # no VLC here: these lengths are a nicety, shown where known
+        return [None] * len(paths)
 
     if _vlc_instance is None:
         _vlc_instance = vlc.Instance(

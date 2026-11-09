@@ -16,6 +16,7 @@ from gridplayer.utils.video_driver import is_hw_video_available, session_video_d
 VIDEO_DRIVERS_MULTIPROCESS = (
     VideoDriver.VLC_SW,
     VideoDriver.VLC_HW,
+    VideoDriver.MPV_HW,
 )
 
 MAX_VLC_PROCESSES = 64

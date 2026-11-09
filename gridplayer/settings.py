@@ -290,6 +290,8 @@ _default_settings = {
 
 if env.IS_MACOS:
     _default_settings["player/video_driver"] = VideoDriver.VLC_HW_SP
+elif env.IS_WINDOWS:
+    _default_settings["player/video_driver"] = VideoDriver.MPV_HW
 
 
 class _Settings:

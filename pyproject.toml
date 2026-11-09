@@ -49,6 +49,7 @@ dependencies = [
     "winrt-Windows.Foundation (>=3.2.1,<4.0.0) ; sys_platform == 'win32'",
     "winrt-Windows.Media (>=3.2.1,<4.0.0) ; sys_platform == 'win32'",
     "winrt-Windows.Media.Playback (>=3.2.1,<4.0.0) ; sys_platform == 'win32'",
+    "mpv>=1.0.7",
 ]
 
 [project.urls]

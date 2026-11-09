@@ -131,8 +131,15 @@ class AboutDialog(QDialog):
                     "https://www.qt.io/",
                 ),
                 Attribution(
+                    "mpv",
+                    env.MPV_VERSION or "not found",
+                    "mpv contributors",
+                    "GPL 2.0 or later",
+                    "https://mpv.io/",
+                ),
+                Attribution(
                     "VLC",
-                    env.VLC_VERSION,
+                    env.VLC_VERSION or "not found",
                     "VideoLAN",
                     "GPL 2.0 or later",
                     "https://www.videolan.org/",
@@ -148,7 +155,7 @@ class AboutDialog(QDialog):
                 ),
                 Attribution(
                     "python-vlc",
-                    env.VLC_PYTHON_VERSION,
+                    env.VLC_PYTHON_VERSION or "not found",
                     "Olivier Aubert",
                     "GPL 2.0 and LGPL 2.1",
                     "https://github.com/oaubert/python-vlc",
