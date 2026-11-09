@@ -56,8 +56,9 @@ at least 95% of the source's rate.
 
 Limits of all this:
 
-- Most points are one run. The 10-15 cell runs were done twice and agreed within about 10%.
-- Every cell plays the same file, with no audio, no subtitles and no overlay activity.
+- Most points are one run. The 10-15 cell runs were done twice and agreed within about 10%, and three more times overnight, see
+  [Overnight](#overnight-2026-11-09).
+- Every cell plays the same file, with no audio, no subtitles and no overlay activity. The overnight run has a grid of different files too.
 - Windows numbers include no display cost. Hardware VLC needs a real window, so it ran on another virtual desktop, where the compositor
   doesn't draw it. See [Windows: real window](#windows-rtx-3060-real-window).
 - macOS wasn't run, nor AMD or NVIDIA on Linux.
@@ -480,6 +481,113 @@ These, and every number from a window on another desktop before 2026-11-09, were
 unseen after its first few seconds: every timer 15.6 ms apart, 64 frames a second at most. Enough for 60 fps clips. The bench
 opts out of it now, see plan item 13.10, which also has 120 fps numbers and two fixes found that way.
 
+## Overnight, 2026-11-09
+
+Plan item 10.16, at commit 2c53c16: about 3 hours on `test_gpu` and 2 on Windows, the Windows part in a real window on another
+desktop, no longer throttled (see plan item 13.10). The Windows screen is now at 120 Hz on the AMD iGPU, with decoding on the RTX 3060.
+
+### Crashes and hangs
+
+- **MPV crashed on Linux, closing a video as it loaded.** Both churns, about 2 minutes in, exit 139 with glibc's heap checks on: at file-loaded
+  the event thread read the tracks while `terminate()` freed the handle. The Stage 7 notes in the plan saw this window and left it. Fixed: the event
+  thread's reads now take the same lock as what's sent to mpv, and look at the closing flag inside it. Run again with
+  the fix: both 20-minute churns pass, 2915 and 2819 videos opened, with everything closed at 2140 and 2383 MB from 80, see Memory.
+- **Windows passes:** both 20-minute churns (3278 and 3371 videos opened, 455 broken files, about 1400 reloads, 6000 seeks), and 10 minutes on
+  Linux under an address sanitizer, which doesn't show the crash.
+- **Hardware VLC SP hung on Linux:** the GUI thread waited 42 s at load, in `_set_time_initial`, for VLC to say it had buffered after the
+  start seek, and the churn's 45 s check killed it. That's VLC's driver, not changed.
+- **Hardware VLC SP on Windows** didn't load 14x1080p60 in time in 2 rounds of 3.
+- **Soaks:** no stall and no error. Windows Hardware MPV 30 minutes; Linux Hardware MPV 60, Software MPV and Hardware VLC SP 30.
+
+### Memory
+
+| | Grows |
+|---|---:|
+| Linux, Hardware MPV, 9 videos playing | **790 MB an hour**, in a straight line |
+| Linux, Software MPV, 4 playing | 244 MB an hour |
+| Linux, Hardware VLC SP, 9 playing | 48 MB an hour |
+| Windows, Hardware MPV, 9 playing | 48 MB an hour |
+| Windows churn, everything closed, Hardware MPV | 60 to 763 MB in 20 minutes |
+| Windows churn, everything closed, Software MPV | **60 to 1838 MB** in 20 minutes |
+
+**Linux: Mesa, on this GPU.** About 600 bytes a frame shown. Python's objects stay flat and glibc's heap grows. The C control,
+`native_bench`, with no Python and none of the app, grows as fast: 8 MB a minute at 9x1080p30. `vaapi-copy` too, and less clearly software
+decoding, which levels off. ffmpeg decoding with VAAPI on its own doesn't grow. `heaptrack` puts what grows in Mesa's `libgallium-25.0.7`,
+the Haswell driver, and most of the growth isn't through malloc at all. So it's met through mpv's OpenGL, and not the app's to fix. A newer
+Mesa and another GPU on Linux (10.4) would tell more.
+
+**Windows: Software MPV's direct rendering.** About 1.5 MB is kept per video closed. With `vd-lavc-dr=no` the same 6-minute churn stays at
+340-400 MB, and falls back. Python holds none of it: one closed video stays alive, the same one, not more. Bare libmpv opening and closing players
+with no rendering levels off at about 300 MB. So it's the decoder's buffers in GL that aren't given back. Hardware MPV keeps about 230 KB a video,
+not looked into. Turning direct rendering off cost frames on Linux, 19 against 25 at 9x1080p60 in software (see below); on Windows it wasn't measured.
+
+### How many play, three runs each
+
+1080p60, frames per cell per second, the three runs:
+
+| Cells | Linux MPV | VLC SP | VLC | Windows MPV | VLC SP | VLC |
+|---:|---:|---:|---:|---:|---:|---:|
+| 9 | 58-60 | 60 | 60 | 60 | 29 | 30 |
+| 10 | 56-57 | 60 | 60 | | | |
+| 12 | 44-48 | 60 | 60 | 60 | 28-29 | 29 |
+| 13 | 27-29 | 39-42 | 36-41 | | | |
+| 14 | 10-11 | 17-19 | 17-18 | 16-17 | 18, 2 not loaded | 19-20 |
+| 16 | | | | 17 | 18-19 | 18-19 |
+| 16, MPV skipping | 31.1 | | | 31.1 | | |
+| 20, MPV skipping | | | | 31.1 | | |
+
+Linux agrees with the first runs within 10%: MPV holds 9, VLC 12. Skipping gives 31.1 in every run, on both.
+
+**VLC at 29 on Windows from 9 cells** is new: it held 60 on 2026-11-06. The commit measured then gives 29 too, and so does the bench without
+opting out of throttling, so it's the machine as set up now, not the code. Its decoder is 91% busy there against MPV's 73%. Not looked into.
+
+Windows, real window, also run:
+
+| | MPV | VLC SP | VLC |
+|---|---:|---:|---:|
+| 16x360p60 | 60 | 60 | 60 |
+| 36x360p60 | 53 | 32 | 33 |
+| 64x360p60 | 29, worst cell 24, some on `d3d11va-copy` | 21 | 18 |
+| 36x1080p30, decoder 99% | 13, clock at 70% speed | 13, worst cell 7 | 12 |
+
+| Software, 1080p60 | MPV | CPU | VLC SP | CPU |
+|---|---:|---:|---:|---:|
+| 9 | 60 | 324% | 60 | 665% |
+| 16 | 59 | 556% | 60 | 1318% |
+| 25 | 52 | 824% | 42, worst cell 14, 5.9 s stall | 1480% |
+
+### VLC's freeze at 36 cells
+
+On Linux both rounds froze again: 36x1080p30 on Hardware VLC SP loaded its last cell at 94 and 81 s with the GUI stuck 81 and 78 s; multi-process
+137 and 96 s, stuck 98 and 60 s. MPV loaded in 1.8-1.9 s. **Windows doesn't freeze:** every driver loaded 36 in 1.7-4.1 s, the worst stall
+2.8 s on VLC SP. So it's the X server path, as thought.
+
+### A real grid
+
+The `mix` clips: 16 different files, H.264 at 24, 30 and 60 fps, phone clips, no B frames, 10-bit HEVC, HEVC 1080p60, 4K30, 540p60, in MP4
+and MKV. Mean of the cells; every clip at its own rate is 39 for 9 cells and 37 for 16.
+
+| | Windows 9 | Windows 16 | Linux 9 | Linux 16 |
+|---|---:|---:|---:|---:|
+| Hardware MPV | 39.3 | 36.7 | 39.3 | **30.3** |
+| Hardware VLC SP | 39.3 | 36.6 | 39.1 | 36.5 |
+| Hardware VLC | 39.5 | 36.7 | 39.3 | 36.4 |
+| Software MPV | 39.3 | 36.7 | 26.6 | 10.3 |
+| Software VLC SP | 39.4 | 36.7 | 25.6 | 15.4 |
+| Hardware MPV, skipping | 24.3 | 22.1 | 24.2 | 22.1 |
+
+On Windows everything plays it all. On Linux 16 mixed cells are past MPV's limit and not VLC's, as with one clip; this GPU decodes no HEVC,
+which goes to the CPU. Skipping halves a grid that was keeping up, as known.
+
+### Switching frame skipping, Windows
+
+| | Between switches | After a switch | Clock behind by |
+|---|---:|---:|---:|
+| 4x1080p60 | 60 ms | 235-602 ms | 293-817 ms |
+| 16x1080p60, overloaded | 275 ms | 879-2157 ms | 538-1407 ms |
+
+Longer than on Linux (329 ms and 1077 ms). Overloaded, frames fall to 4-8 a second for a moment after turning it off.
+
 ## What's worth doing
 
 In order of what it gets for the work:
@@ -498,7 +606,7 @@ In order of what it gets for the work:
 5. **Software VLC's `FrameReader.read`,** 32% of the GIL at 4x1080p60. It copies each frame with the GIL held, on the GUI thread. A copy through
    `ctypes.memmove` lets go of it. Not tried, and not MPV's: it would be a change to VLC's drivers.
 
-Still to run: plan item 10.16.
+Plan item 10.16 ran overnight 2026-11-09, see [Overnight](#overnight-2026-11-09).
 
 Tried and not worth it:
 

@@ -7,8 +7,8 @@ working.
 
 **Status: Stage 3 built (<https://claude.ai/artifact/8ngdeLCkVxmdQzSEnpxx1c>, real screenshots on its Built board). Open: macOS. Bundling libmpv (12.1) is for later. Stages 1-9 are committed on this branch.**
 
-**Load tests against VLC: `MPV_PERFORMANCE.md`.** No multi-process mode for MPV. New items 10.13-10.16. **10.16 is a long run
-still to be started, overnight, by you.**
+**Load tests against VLC: `MPV_PERFORMANCE.md`.** No multi-process mode for MPV. New items 10.13-10.16. 10.16, the long run, ran
+overnight 2026-11-09: new items 10.21-10.23.
 
 | | Stage | State |
 |---|---|---|
@@ -564,6 +564,7 @@ no fallback, not every frame proven right. MPEG-2 decodes in software on both ma
   handle at once, and the event thread goes on being told the time, so the read goes to libmpv with no handle. Now nothing reads it: mpv is asked with `expand-text`, which waits on nothing, and everything sent to mpv
   takes one lock that terminating waits for. 0 of 65 after, 15 of those on 0.40 with a mode by name. Those 15 weren't run before the fix. **Not changed:** the reads at load
   (`_read_media`, `_on_preloaded`) only check the closing flag, so could meet the same thing in a far smaller window. Not seen. For 10.1.
+  Seen 2026-11-09 overnight and fixed, see 10.1.
 
 **After `/code-review`.** Fixed:
 
@@ -683,6 +684,11 @@ CPU took 0.5-5.5 s, against 0.2-1.1 s on the key frame, which is about what VLC 
 
 - [ ] 10.1 Long churn on readback in the real driver, including a native memory checker if
   one can be run. Handoff open question 3
+  - 2026-11-09, overnight: on Linux with glibc's heap checks both MPV churns crashed in 2 minutes. The event thread read the tracks at
+    file-loaded, or at preloaded, or after an added file, while `terminate()` freed the handle: the window the Stage 7 notes left. Now those
+    reads take `_telling` and look at `_is_closing` inside it, as everything sent to mpv does. Run again with the fix and the same checks: both
+    20-minute churns pass, 2915 and 2819 videos opened. Before, the crash came in 2 minutes
+  - Windows 20 minutes on both drivers and Linux 10 minutes under an address sanitizer pass. The memory with all closed: 10.22
 - [ ] 10.2 Real window drags on Windows: port `drag_probe.py` to the app, 0 backward moves.
   This one moves the mouse, so it runs when you say
 - [ ] 10.3 By hand on a screen with X11 and Linux, if you have such a machine. Handoff open
@@ -711,7 +717,10 @@ CPU took 0.5-5.5 s, against 0.2-1.1 s on the key frame, which is about what VLC 
   goes from 7 to 31 fps. It costs half the frames at any load, 4x1080p60 goes from 60 to 31. No use on
   video with no B frames. Automatic left out: it would need ignoring the startup burst, a way back,
   and a way to hide the pause: each switch stops a video for about a third of a second
-- [ ] 10.16 **To run overnight, by you.** All of it, about 4.5 hours, from Git Bash at the repo root on Windows:
+- [x] 10.16 Ran overnight 2026-11-09, see `MPV_PERFORMANCE.md`, "Overnight". Found: an MPV crash closing a video as it loads, fixed (see 10.1);
+  Linux memory growing 790 MB an hour with 9 videos playing, in Mesa (10.21); Software MPV on Windows keeping 1.5 MB a video closed (10.22); VLC
+  hanging 42 s at load on Linux and at 29 fps from 9 cells on Windows (10.23). The limits held over 3 runs. How it was run:
+  **To run overnight, by you.** All of it, about 4.5 hours, from Git Bash at the repo root on Windows:
   `GP_LIBMPV_PATH='C:\path\to\libmpv-2.dll' bash tests/real_app/bench/overnight.sh`. It starts `test_gpu` too. The PC has
   to stay awake, your screen stays clear, and changing virtual desktop stops the Windows part. Results in
   `build/bench/overnight` and on `test_gpu` in `/opt/bench_out/overnight`. Then ask me to read them into
@@ -741,6 +750,15 @@ CPU took 0.5-5.5 s, against 0.2-1.1 s on the key frame, which is about what VLC 
   cells). 4.2: the time is still sent by mpv each frame, so the saving of `notime` isn't had yet
 - [x] 10.20 Done in 9.6. File lengths in lists are read by VLC. With only libmpv there, lists show none. libmpv could read them too, in a
   process of its own as now
+- [ ] 10.21 Linux memory grows while playing on `test_gpu`: Hardware MPV 790 MB an hour at 9 videos, Software 244 at 4, VLC 48. The C control
+  grows as fast with no Python, and `heaptrack` puts it in Mesa 25.0.7's `libgallium`, the Haswell driver. Try a newer Mesa, and another GPU
+  on Linux with 10.4. Nothing for the app to change unless it's found everywhere
+- [ ] 10.22 **Your decision:** Software MPV on Windows keeps about 1.5 MB for each video closed, mpv's direct rendering buffers: 60 to 1838 MB
+  in a 20-minute churn with everything closed. With `vd-lavc-dr=no` it stays at 340-400 MB. That cost frames on Linux, 19 against 25, and
+  wasn't measured on Windows. Lists playing one video after another would meet it. Hardware MPV keeps about 230 KB a video, not looked into
+- [ ] 10.23 VLC, found by the overnight run, VLC's drivers not changed: Hardware VLC SP on Linux held the GUI thread 42 s at load waiting
+  for VLC to buffer after the start seek (`_set_time_initial`). On Windows both VLC modes play 1080p60 at 29 from 9 cells, where they held 60
+  on 2026-11-06; the 11-06 commit does the same now, so it's the machine as set up (120 Hz on the AMD iGPU?)
 - [x] 10.14 Don't fill the cell black before drawing a picture that covers it: app CPU 61% to 47% at
   1x1080p. Applies to VLC's software drivers too, so test those. Done: only the bars beside the
   picture are filled, reaching a pixel under its edge so a pixel it only partly covers at a screen
@@ -938,6 +956,7 @@ core less while the decoder keeps up, at the same frame rates. Suggested words: 
 
 Newest first. What was finished and seen working, and anything that changed the plan.
 
+- 2026-11-09: 10.16, the overnight run. An MPV crash closing a video as it loads, fixed (10.1). New: 10.21 Mesa's memory on `test_gpu`, 10.22 Software MPV's direct rendering on Windows, 10.23 VLC. The limits held over 3 runs, and VLC's freeze at 36 cells is Linux's only.
 - 2026-11-09: 13.10, 120 fps videos play at 120 again with a few cells, 110 at 9: mpv let go of the app's 1 ms timers after each wait, now asked once and kept (`MPV_HRT`), and the pacing waits a millisecond less. The 64 a second measured before was Windows throttling the bench's window on the other desktop: the bench opts out now.
 - 2026-11-08: 13.6 checked on Linux, the same cause there and fixed the same way. 13.7, a growing picture redrawn on the way. 13.8, NVIDIA's black rows: a Black line fix setting, on for NVIDIA by default. On a real screen Windows GL saves CPU only with a few videos, see `MPV_PERFORMANCE.md`.
 - 2026-11-08: 13.6, the shaking of GL output during a window resize on Windows, fixed: frames drawn at the old size, as Qt took the new one too late. Backward jumps of up to 12 px down to 1-2 px of rounding.

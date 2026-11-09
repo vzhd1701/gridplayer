@@ -376,9 +376,10 @@ class MpvPlayer(QObject):
         # a frame has said so, for as long as this video is open
         self._is_interlaced = False
         self._hwdec_current = hwdec
-        # Held for anything sent to mpv, from whichever thread. What's worked out goes in
-        # that order, and never with no handle: terminate() takes it away at once, while
-        # the event thread goes on being told things, and that's a crash, not an error.
+        # Held for anything sent to mpv or read from it, from whichever thread, with
+        # _is_closing looked at inside. What's worked out goes in that order, and never
+        # with no handle: terminate() takes it away at once, while the event thread goes
+        # on being told things, and that's a crash, not an error.
         self._telling = threading.RLock()
         # what mpv was last told
         self._deinterlace_options = {
@@ -962,22 +963,23 @@ class MpvPlayer(QObject):
             self._on_preloaded(event.data.id)
             return
 
-        if self._is_closing:
-            return
+        with self._telling:
+            if self._is_closing:
+                return
 
-        if event_id == ids.FILE_LOADED:
-            self._read_media()
-            self._apply_deinterlace()
-        elif event_id == ids.PLAYBACK_RESTART:
-            self.has_restarted = True
-            self.is_picture_held = False
-            self._wake_renderer()
-            self.playback_restarted.emit()
-            self._check_forward_seek()
-            # the frame a deinterlacer coming off leaves, paused or not
-            self._check_frames_interlaced()
-        elif event_id == ids.END_FILE:
-            self._on_end_file(event.data)
+            if event_id == ids.FILE_LOADED:
+                self._read_media()
+                self._apply_deinterlace()
+            elif event_id == ids.PLAYBACK_RESTART:
+                self.has_restarted = True
+                self.is_picture_held = False
+                self._wake_renderer()
+                self.playback_restarted.emit()
+                self._check_forward_seek()
+                # the frame a deinterlacer coming off leaves, paused or not
+                self._check_frames_interlaced()
+            elif event_id == ids.END_FILE:
+                self._on_end_file(event.data)
 
     def _on_preloaded(self, hook_id: int) -> None:
         """The tracks and the length are known now, and nothing has started.
@@ -988,10 +990,11 @@ class MpvPlayer(QObject):
         """
 
         try:
-            if not self._is_closing:
-                self._pick_random_start()
-                self._pick_tracks()
-                self._pick_audio_device()
+            with self._telling:
+                if not self._is_closing:
+                    self._pick_random_start()
+                    self._pick_tracks()
+                    self._pick_audio_device()
         except self._mpv_module.ShutdownError:
             pass
         finally:
@@ -1198,18 +1201,19 @@ class MpvPlayer(QObject):
     def _tracks_with_file_added(self, error, kind: str) -> Media | None:
         """What's listed now, None if there's nothing more to do about it."""
 
-        if self._is_closing or self._media is None:
-            return None
+        with self._telling:
+            if self._is_closing or self._media is None:
+                return None
 
-        # the video plays on as it was, and nothing else has changed
-        if error is not None:
-            self._log.warning(f"Failed to add the {kind} file: {error}")
-            return None
+            # the video plays on as it was, and nothing else has changed
+            if error is not None:
+                self._log.warning(f"Failed to add the {kind} file: {error}")
+                return None
 
-        try:
-            return self._read_tracks()
-        except self._mpv_module.ShutdownError:
-            return None
+            try:
+                return self._read_tracks()
+            except self._mpv_module.ShutdownError:
+                return None
 
     def _on_audio_file_added(self, error, _result) -> None:
         tracks = self._tracks_with_file_added(error, "audio")
