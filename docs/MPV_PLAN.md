@@ -856,6 +856,19 @@ CPU took 0.5-5.5 s, against 0.2-1.1 s on the key frame, which is about what VLC 
     has 2 GB a process.
   - **Fixed on the way:** `win32_vlc_vout.py` called `GetWindowLongPtrW`, which 32-bit `user32` doesn't export (a macro for
     `GetWindowLongW` there), so Hardware VLC in the 32-bit app failed there; now falls back like `taskbar.py`. Checked in 32-bit.
+- [x] 10.28 **VLC single process against multi-process on Windows, now that 10.26 is fixed.** Multi-process was made because a single
+  process burned the CPU; is there still a reason for it? 64-bit VLC 3.0.24, window on the other desktop, 2 runs each, the bench's
+  numbers for the whole app (all its processes). The default stays Hardware VLC multi-process for now.
+  - Light, the 15 small clips without sound (4, 9, 16 cells): every run at the clips' full frame rate. CPU about the same for Software
+    (4: 74-86% single against 43-60%; 9: 101-106 against 123-142; 16: 181-229 against 196-225, as noisy as it looks), lower in a single
+    process for Hardware (16: 27-33% against 34-39%). Memory 7-12% less in a single process (16 Hardware: 1652 MB against 1858).
+  - Heavy, past what the machine plays (1080p60 at 9 and 16 Software, 16 and 25 Hardware; the bench mix with 4K and HEVC 10-bit): the
+    same frame rate and CPU both ways (Software 1080p60 16: 59.6-60.1 fps, about 1270%; Hardware 1080p60 16: 25 fps, the GPU's
+    decoder the limit). Hardware 1080p60 25: multi-process a little ahead, 16.4-16.8 fps against 15.5-15.6. Memory within 3-10% either
+    way. Single process loads slower with many videos: Hardware 25, 2.4-3.0 s against 1.4; Software 16, 1.4-2.0 against 0.8-0.9.
+  - So no longer a performance question: what's left is a video crashing VLC taking one process (multi) or the whole app (single),
+    and load time. **Done (2026-11-09):** the Processes tooltip and the README said a single process can freeze or load the CPU past
+    4-6 videos, which 10.24, 10.25 and 10.26 made untrue; both now say what's left (crash takes one process or the app, load time).
 - [x] 10.14 Don't fill the cell black before drawing a picture that covers it: app CPU 61% to 47% at
   1x1080p. Applies to VLC's software drivers too, so test those. Done: only the bars beside the
   picture are filled, reaching a pixel under its edge so a pixel it only partly covers at a screen
@@ -1054,6 +1067,7 @@ core less while the decoder keeps up, at the same frame rates. Suggested words: 
 Newest first. What was finished and seen working, and anything that changed the plan.
 
 - 2026-11-09: 10.26, VLC in a single process on Windows no longer burns up to 13 cores with 15 videos: VLC 3's waits pointed at Windows' own (`VLC_WAITS.md`). Checked in the 32-bit app too; found there 10.27, 32-bit single process out of address space with many videos, and fixed Hardware VLC's window check failing in 32-bit.
+- 2026-11-09: 10.28, VLC single process against multi-process on Windows with 10.26 in: the same frame rate and CPU, a little less memory single, slower loading of many videos. Processes tooltip and README no longer warn of freezes past 4-6 videos.
 - 2026-11-09: 10.16, the overnight run. An MPV crash closing a video as it loads, fixed (10.1). New: 10.21 Mesa's memory on `test_gpu`, 10.22 Software MPV's direct rendering on Windows, 10.23 VLC. The limits held over 3 runs, and VLC's freeze at 36 cells is Linux's only.
 - 2026-11-09: 13.10, 120 fps videos play at 120 again with a few cells, 110 at 9: mpv let go of the app's 1 ms timers after each wait, now asked once and kept (`MPV_HRT`), and the pacing waits a millisecond less. The 64 a second measured before was Windows throttling the bench's window on the other desktop: the bench opts out now.
 - 2026-11-08: 13.6 checked on Linux, the same cause there and fixed the same way. 13.7, a growing picture redrawn on the way. 13.8, NVIDIA's black rows: a Black line fix setting, on for NVIDIA by default. On a real screen Windows GL saves CPU only with a few videos, see `MPV_PERFORMANCE.md`.

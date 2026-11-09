@@ -131,9 +131,8 @@ ADVANCED_FIELDS: tuple[SettingField, ...] = (
         processes=choices.video_driver_processes,
         processes_tooltip=translate(
             "SettingsDialog",
-            "Multi-process plays videos in separate processes. Single process plays"
-            " them inside GridPlayer. With VLC, a single process can freeze with more"
-            " than 4-6 videos.",
+            "Multi-process plays videos in separate processes, so if one crashes"
+            " the others keep playing. Single process plays them inside GridPlayer.",
         ),
     ),
     SpinField(

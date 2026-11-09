@@ -179,11 +179,10 @@ Each can decode in two ways:
 
 With VLC you can also choose how videos are split between processes:
 
-- Multi-process plays videos in separate processes. You can control how many videos share a
-  process with the "Videos per process" setting. Setting it too high may cause a high CPU load
-  and application freeze. The optimal value is 4 videos per process.
-- Single process plays videos inside GridPlayer. It's not recommended with many videos (>4-6)
-  because it may cause a high CPU load and application freeze.
+- Multi-process plays videos in separate processes, 4 to a process by default (the "Videos per
+  process" setting). If VLC crashes on a video, only the videos in its process stop.
+- Single process plays videos inside GridPlayer. It uses a little less memory, but loads many
+  videos more slowly, and a VLC crash closes GridPlayer.
 
 MPV always uses a single process. Due to OS inter-process restrictions, Hardware with VLC is
 single process only on macOS.
