@@ -44,11 +44,11 @@ class _HardwareFrame(VideoFrameDummy):
     def ui_video_surface(self):
         return QWidget(self.video_clip)
 
-    def driver_setup(self, vlc_options):
+    def driver_setup(self):
         # as the hardware frame does, handing VLC its window
         self.video_surface.winId()
 
-        return super().driver_setup(vlc_options)
+        return super().driver_setup()
 
 
 @pytest.fixture(autouse=True)

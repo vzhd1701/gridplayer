@@ -1,5 +1,4 @@
 import sys
-from contextlib import suppress
 
 from PyQt5.QtCore import QTimer
 
@@ -9,7 +8,6 @@ from gridplayer.main.init_icons import init_icon
 from gridplayer.params import env
 from gridplayer.settings import Settings
 from gridplayer.utils.libmpv import init_mpv
-from gridplayer.utils.libvlc import init_vlc
 from gridplayer.utils.qt import translate
 from gridplayer.widgets.tooltip import install_tooltips
 
@@ -17,21 +15,9 @@ from gridplayer.widgets.tooltip import install_tooltips
 def run_app():
     app = init_app()
 
-    # either will do: mpv is the driver being moved to, VLC still works
-    with suppress(FileNotFoundError):
+    try:
         env.MPV_VERSION = init_mpv()
-
-    if env.IS_PYINSTALLER:
-        # a package brings its own libmpv and has no use for a VLC it did
-        # not ship, whichever one happens to be installed
-        env.IS_VLC_MISSING = True
-    else:
-        try:
-            env.VLC_VERSION, env.VLC_PYTHON_VERSION = init_vlc()
-        except FileNotFoundError:
-            env.IS_VLC_MISSING = True
-
-    if env.MPV_VERSION is None and env.IS_VLC_MISSING:
+    except FileNotFoundError:
         QCustomMessageBox.critical(
             None,
             "GridPlayer",
@@ -43,9 +29,7 @@ def run_app():
         )
         return 1
 
-    # Need to postpone import parts that depend on vlc
-    # because python-vlc loads VLC DLL on import
-    # and we need to set environment vars before that
+    # Postponed until libmpv can be found by what is imported here
     from gridplayer.player import Player
 
     player = Player()

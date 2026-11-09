@@ -18,6 +18,7 @@ from PyQt5.QtWidgets import QApplication
 
 from gridplayer.models.playlist import Playlist, PlaylistVideoDefaults
 from gridplayer.models.video import Video
+from gridplayer.mpv_player.static import VideoTrack
 from gridplayer.params.actions import ACTIONS
 from gridplayer.params.menu import SECTIONS, SUBMENUS
 from gridplayer.params.settings_bindings import VIDEO_DEFAULT_ATTRS
@@ -26,7 +27,6 @@ from gridplayer.params.settings_fields.registry import FIELDS
 from gridplayer.params.settings_pages import VIDEO_PAGE
 from gridplayer.params.static import (
     MAX_SCALE,
-    HWCropBorderOffset,
     VideoAnchor,
     VideoCellViewMode,
     VideoCrop,
@@ -38,14 +38,12 @@ from gridplayer.player.managers.menu import MenuManager
 from gridplayer.player.managers.video_blocks import VideoBlocksManager
 from gridplayer.playlist_settings import PlaylistSettings, overrides_from_playlist
 from gridplayer.settings import Settings
-from gridplayer.utils.aspect_calc import calc_view_geometry, calc_vlc_picture
-from gridplayer.vlc_player.static import VideoTrack
 from gridplayer.widgets import video_block_view as video_block_view_module
-from gridplayer.widgets import video_frame_vlc_base as vlc_base
+from gridplayer.widgets import video_frame_base as vlc_base
 from gridplayer.widgets.video_block import VideoBlock
 from gridplayer.widgets.video_block_loop import LoopControl
 from gridplayer.widgets.video_block_view import ViewControl
-from gridplayer.widgets.video_frame_vlc_hw_sp import VideoFrameVLCHWSP
+from gridplayer.widgets.video_frame_mpv_hw import VideoFrameMPVHW
 from tests.conftest import mock_block_parts
 from tests.settings_layout import layout_keys, layout_sections
 
@@ -757,49 +755,6 @@ def _manager(*videos):
 class TestForEveryVideo:
     """A choice made for all of them is the same for every one."""
 
-    @pytest.mark.parametrize(
-        "command", ["set_zoom_to_cursor", "set_shift_past_edges", "set_loop_random"]
-    )
-    @pytest.mark.parametrize("value", [True, False])
-    def test_each_one_is_told_what_to_have(self, command, value):
-        manager = _manager()
-        told = Mock()
-        getattr(manager, f"all_{command}").connect(told)
-
-        manager.cmd_all(command, value)
-
-        told.assert_called_once_with(value)
-
-    def test_the_choice_they_all_have_is_ticked(self):
-        manager = _manager(
-            Video(uri=URI, is_zoom_to_cursor=True),
-            Video(uri=URI, is_zoom_to_cursor=True),
-        )
-
-        assert manager.is_all_videos_param_set_to("is_zoom_to_cursor", True)
-        assert not manager.is_all_videos_param_set_to("is_zoom_to_cursor", False)
-
-    def test_neither_is_ticked_while_they_differ(self):
-        manager = _manager(
-            Video(uri=URI, is_zoom_to_cursor=True),
-            Video(uri=URI, is_zoom_to_cursor=False),
-        )
-
-        assert not manager.is_all_videos_param_set_to("is_zoom_to_cursor", True)
-        assert not manager.is_all_videos_param_set_to("is_zoom_to_cursor", False)
-
-    def test_neither_is_ticked_with_no_videos(self):
-        manager = _manager()
-
-        assert not manager.is_all_videos_param_set_to("is_zoom_to_cursor", False)
-
-    def test_one_between_videos_does_not_count(self):
-        """Reloading, it has no video for a moment."""
-
-        manager = _manager(Video(uri=URI, is_start_random=True), None)
-
-        assert manager.is_all_videos_param_set_to("is_start_random", True)
-
     def test_a_video_loops_at_random_as_it_is_told(self):
         block = Mock(spec=VideoBlock)
         block.video_params = Video(uri=URI)
@@ -937,15 +892,18 @@ def _drawn_at(frame, x, y):
     )
 
 
-class _StubFrame(VideoFrameVLCHWSP):
-    def driver_setup(self, vlc_options):
+class _StubFrame(VideoFrameMPVHW):
+    def __init__(self, **kwargs):
+        super().__init__(process_manager=MagicMock(), **kwargs)
+
+    def driver_setup(self):
         return MagicMock()
 
 
 def _frame(shift=NO_SHIFT, anchor=VideoAnchor.CENTER, is_shift_past_edges=False):
     """A 1920x1080 video in a 900x900 pane: 1080 of its 1920 across on show."""
 
-    frame = _StubFrame(vlc_options=[])
+    frame = _StubFrame()
     frame.resize(900, 900)
     frame.media = MagicMock()
     frame.media.is_audio_only = False
@@ -1060,13 +1018,6 @@ class TestMovingInThePane:
 
 
 class TestZoomingInThePane:
-    @pytest.fixture(autouse=True)
-    def _drawn_where_the_view_has_it(self):
-        """No margin: the picture is where the view puts it, as on the
-        software drivers. See TestTheHardwareSurface for one drawn bigger."""
-
-        Settings().set("internal/hw_crop_border_offset", HWCropBorderOffset.DISABLED)
-
     @pytest.fixture
     def kept(self, monkeypatch):
         """What each zoom about a point was handed to keep."""
@@ -1161,38 +1112,12 @@ class TestZoomingInThePane:
 class TestTheHardwareSurface:
     """VLC fills its window with the picture: the window is what places it."""
 
-    @pytest.fixture(autouse=True)
-    def _margin(self, monkeypatch):
-        Settings().set("internal/hw_crop_border_offset", HWCropBorderOffset.PX8)
-
-        # on Windows the window grows a little more for VLC's picture in it
-        # to be whole 4-row blocks: see test_vlc_picture_is_whole_blocks
-        monkeypatch.setattr(vlc_base.env, "IS_WINDOWS", False)
-
-    def test_vlc_picture_is_whole_blocks(self, monkeypatch):
-        """1080x1080 of the frame on show in a 900x901 pane: in the 916x917
-        window the margin makes, VLC's picture would be 915x917, 917 tall,
-        a row past a whole block; grown to 918x920 it is 918x920."""
-        monkeypatch.setattr(vlc_base.env, "IS_WINDOWS", True)
-        frame = _frame()
-        frame.resize(900, 901)
-
-        frame.adjust_view()
-
-        surface = frame.video_surface.geometry()
-        geometry = calc_view_geometry((1920, 1080), (900, 901), frame._view)
-        picture = calc_vlc_picture(
-            (1920, 1080), geometry, (surface.width(), surface.height())
-        )
-        assert picture[3] % 4 == 0
-        assert surface.getRect() == (-9, -9, 918, 920)
-
     def test_it_covers_the_pane_where_the_picture_does(self):
         frame = _frame()
 
         frame.adjust_view()
 
-        assert frame.video_surface.geometry().getRect() == (-8, -8, 916, 916)
+        assert frame.video_surface.geometry().getRect() == (0, 0, 900, 900)
 
     def test_it_is_over_the_picture_where_that_is_against_a_side(self):
         # 900x506.25 at the top of the pane
@@ -1201,7 +1126,7 @@ class TestTheHardwareSurface:
 
         frame.adjust_view()
 
-        assert frame.video_surface.geometry().getRect() == (-8, -8, 916, 523)
+        assert frame.video_surface.geometry().getRect() == (0, 0, 900, 507)
 
     def test_it_is_over_the_picture_of_a_file_shown_on_its_side(self):
         """VLC turns it before showing it: 1080x1920 as it is on show, which
@@ -1212,9 +1137,9 @@ class TestTheHardwareSurface:
 
         frame.adjust_view()
 
-        assert frame.video_surface.geometry().getRect() == (-8, -8, 523, 916)
+        assert frame.video_surface.geometry().getRect() == (0, 0, 507, 900)
 
-    def test_it_is_over_all_of_a_picture_vlc_turns(self):
+    def test_it_is_over_all_of_a_turned_picture(self):
         """VLC crops a picture it turns wrong: all of it is drawn, and the
         pane cuts it. On its side it covers 900x900 at 900x1600."""
         frame = _frame()
@@ -1223,9 +1148,9 @@ class TestTheHardwareSurface:
         frame.adjust_view()
 
         assert frame.video_clip.geometry().getRect() == (0, 0, 900, 900)
-        assert frame.video_surface.geometry().getRect() == (-8, -358, 916, 1616)
+        assert frame.video_surface.geometry().getRect() == (0, -350, 900, 1600)
 
-    def test_it_is_cut_to_what_a_crop_keeps_of_a_picture_vlc_turns(self):
+    def test_it_is_cut_to_what_a_crop_keeps_of_a_turned_picture(self):
         """All of it is drawn, what the crop takes off too. On its side, the
         1080x960 kept fits 900x900 at 900x800, 50 down; the 480 cut off
         above it is 400 more up, and all of it is 900x1600."""
@@ -1238,12 +1163,11 @@ class TestTheHardwareSurface:
         frame.adjust_view()
 
         assert frame.video_clip.geometry().getRect() == (0, 50, 900, 800)
-        # (-8, -358) in the pane
-        assert frame.video_surface.geometry().getRect() == (-8, -408, 916, 1616)
+        assert frame.video_surface.geometry().getRect() == (0, -400, 900, 1600)
         assert frame.native_surface_rect().getRect() == (0, 50, 900, 800)
         assert frame.screenshot_view().view == frame._view
 
-    def test_a_screenshot_of_a_picture_vlc_turns_is_cut_here(self):
+    def test_a_screenshot_of_a_turned_picture_is_cut_here(self):
         frame = _frame()
         frame.media.cur_video_track = _track((1920, 1080), VideoTransform.ROTATE_90)
 
@@ -1253,7 +1177,7 @@ class TestTheHardwareSurface:
         assert view.frame_size == (1080, 1920)
         assert view.orientation == VideoTransform.ROTATE_90
 
-    def test_a_screenshot_of_any_other_is_cut_by_vlc(self):
+    def test_a_screenshot_of_any_other_is_cut_by_mpv(self):
         view = _frame().screenshot_view()
 
         assert view.view is None
@@ -1305,5 +1229,5 @@ class TestTheHardwareSurface:
         frame.set_shift(frame.shifted_by(0, 1))
 
         # 54 frame pixels down at 900/1920 pane pixels each: 25.3125 to
-        # 531.5625, all of pixels 25 to 531 grown by the margin
-        assert frame.video_surface.geometry().getRect() == (-8, 17, 916, 523)
+        # 531.5625, all of pixels 25 to 531
+        assert frame.video_surface.geometry().getRect() == (0, 25, 900, 507)

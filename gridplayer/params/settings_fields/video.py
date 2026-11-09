@@ -208,10 +208,8 @@ VIDEO_FIELDS: tuple[SettingField, ...] = (
         ),
         tooltip=translate(
             "SettingsDialog",
-            "Auto: VLC chooses (currently X).\n"
-            "Yadif (2x), Bob and Phosphor double the frame rate, which costs more"
-            " with many videos.\n"
-            "With hardware decoding, the GPU may use another mode it supports.",
+            "mpv picks the deinterlacer that suits the decoder itself, so this"
+            " choice has no effect yet.",
         ),
     ),
     ComboField(

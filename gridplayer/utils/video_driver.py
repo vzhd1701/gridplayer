@@ -2,12 +2,9 @@ from PyQt5.QtGui import QGuiApplication
 
 from gridplayer.params.static import VideoDriver
 
-# Hardware drivers hand VLC an X11 window to draw into, which Qt running on
-# Wayland natively doesn't have; each has a Software twin that paints
-# through Qt.
+# The Hardware driver hands mpv an X11 window to draw into, which Qt running
+# on Wayland natively doesn't have; its Software twin paints through Qt.
 _SOFTWARE_FALLBACK = {
-    VideoDriver.VLC_HW: VideoDriver.VLC_SW,
-    VideoDriver.VLC_HW_SP: VideoDriver.VLC_SW_SP,
     VideoDriver.MPV_HW: VideoDriver.MPV_SW,
 }
 

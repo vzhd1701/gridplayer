@@ -15,7 +15,6 @@ its own, which is what YouTube turns away first.
 
 import logging
 import threading
-import time
 import urllib.parse
 from concurrent.futures import ProcessPoolExecutor
 from dataclasses import dataclass
@@ -23,7 +22,6 @@ from multiprocessing import get_context
 from pathlib import Path
 
 from gridplayer.models.media_list import ItemDetails, ListItem
-from gridplayer.params import env
 from gridplayer.utils.list_errors import is_site_refusal, site_name
 from gridplayer.utils.network_errors import failure_txt
 from gridplayer.utils.web_lists import (
@@ -290,8 +288,8 @@ def look_up_link(url: str) -> Found:
 
 
 class FileLengths:
-    """How long files are, as VLC reads them: in a process of its own, for
-    a file VLC chokes on to take that down rather than the player. Started
+    """How long files are, as mpv reads them: in a process of its own, for
+    a file mpv chokes on to take that down rather than the player. Started
     when first asked, and let go of once there is nothing more to ask."""
 
     def __init__(self):
@@ -324,44 +322,13 @@ class FileLengths:
             pool.shutdown(wait=False, cancel_futures=True)
 
 
-_vlc_instance = None
-
-
 def lengths_in_process(paths: list[str]) -> list[int | None]:
     """Run in the process FileLengths keeps: each file read as far as to
-    tell how long it is, nothing of it played. By mpv, or VLC where a
-    checkout has no libmpv to go by."""
-
-    global _vlc_instance
+    tell how long it is, nothing of it played."""
 
     by_mpv = _lengths_by_mpv(paths)
 
-    if by_mpv is not None:
-        return by_mpv
-
-    # a package has no VLC to fall back on
-    if env.IS_PYINSTALLER:
-        return [None] * len(paths)
-
-    try:
-        from gridplayer.vlc_player.libvlc import vlc
-    except (OSError, NotImplementedError, AttributeError, SystemExit):
-        return [None] * len(paths)
-
-    if _vlc_instance is None:
-        _vlc_instance = vlc.Instance(
-            [
-                "--intf=dummy",
-                "--quiet",
-                "--no-video",
-                "--no-audio",
-                "--no-lua",
-                "--no-interact",
-                "--no-sub-autodetect-file",
-            ]
-        )
-
-    return [_length_of(vlc, _vlc_instance, path) for path in paths]
+    return by_mpv if by_mpv is not None else [None] * len(paths)
 
 
 def _lengths_by_mpv(paths: list[str]) -> list[int | None] | None:
@@ -418,35 +385,3 @@ def _length_by_mpv(player, opened: threading.Event, path: str) -> int | None:
     duration = player.duration
 
     return int(duration * 1000) if duration and duration > 0 else None
-
-
-def _length_of(vlc, instance, path: str) -> int | None:
-    media = instance.media_new_path(path)
-
-    try:
-        media.parse_with_options(vlc.MediaParseFlag.local, FILE_PARSE_TIMEOUT_MS)
-
-        deadline = time.monotonic() + FILE_PARSE_TIMEOUT_MS / 1000 + 1
-
-        while _parse_status(media) not in _PARSE_ENDED and time.monotonic() < deadline:
-            time.sleep(0.005)
-
-        if _parse_status(media) != _PARSE_DONE:
-            return None
-
-        length = media.get_duration()
-
-        return length if length and length > 0 else None
-    finally:
-        media.release()
-
-
-def _parse_status(media) -> int:
-    status = media.get_parsed_status()
-
-    return getattr(status, "value", status)
-
-
-# VLC's MediaParsedStatus: skipped, failed, timeout, done; 0 while parsing
-_PARSE_DONE = 4
-_PARSE_ENDED = frozenset((1, 2, 3, _PARSE_DONE))

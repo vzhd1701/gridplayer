@@ -3,9 +3,9 @@ from unittest.mock import MagicMock
 import pytest
 from PyQt5.QtWidgets import QApplication
 
+from gridplayer.mpv_player.static import VideoTrack
 from gridplayer.params.static import VideoTransform
-from gridplayer.vlc_player.static import VideoTrack
-from gridplayer.widgets.video_frame_vlc_hw_sp import VideoFrameVLCHWSP
+from gridplayer.widgets.video_frame_mpv_hw import VideoFrameMPVHW
 
 
 @pytest.fixture(scope="module", autouse=True)
@@ -13,13 +13,16 @@ def _qapp():
     return QApplication.instance() or QApplication([])
 
 
-class _StubFrame(VideoFrameVLCHWSP):
-    def driver_setup(self, vlc_options):
+class _StubFrame(VideoFrameMPVHW):
+    def __init__(self, **kwargs):
+        super().__init__(process_manager=MagicMock(), **kwargs)
+
+    def driver_setup(self):
         return MagicMock()
 
 
 def _frame(video_dimensions):
-    frame = _StubFrame(vlc_options=[])
+    frame = _StubFrame()
     frame.resize(640, 360)
     track = VideoTrack(
         codec="h264",

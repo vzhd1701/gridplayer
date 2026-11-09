@@ -7,7 +7,7 @@ from PyQt5.QtWidgets import QApplication, QDialog
 
 from gridplayer.dialogs.crop import QCompactCropPicker, SetCropDialog
 from gridplayer.params.static import VideoCellViewMode, VideoCrop, VideoTransform
-from gridplayer.widgets.video_frame_vlc_base import PauseSnapshot
+from gridplayer.widgets.video_frame_base import PauseSnapshot
 
 
 @pytest.fixture(scope="module", autouse=True)

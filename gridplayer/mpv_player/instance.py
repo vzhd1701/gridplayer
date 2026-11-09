@@ -40,5 +40,4 @@ class InstanceProcessMPV(InstanceProcess):
 
 
 class ProcessManagerMPV(ProcessManager):
-    def set_log_level_vlc(self, log_level):
-        """Asked of whichever manager there is; there is no VLC here to tell."""
+    pass

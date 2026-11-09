@@ -149,7 +149,6 @@ class Player(QWidget, ManagersManager):
                 ("set_media_keys_background", "media_session.set_enabled"),
                 ("set_log_level", "log.set_log_level"),
                 ("set_log_level", "video_driver.set_log_level"),
-                ("set_log_level_vlc", "video_driver.set_log_level_vlc"),
                 ("set_recent_list_enabled", "recent_list.set_recent_list_state"),
                 ("keymap_changed", "actions.apply_bindings"),
                 # after the keymap's own, which its buttons go by

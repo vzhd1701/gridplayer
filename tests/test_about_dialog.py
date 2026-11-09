@@ -37,5 +37,5 @@ def test_it_links_to_the_project(dialog):
 def test_it_lists_what_it_was_built_with(dialog):
     attributions = dialog.attributions_box.toPlainText()
 
-    for title in ("Python", "Qt", "VLC", "streamlink", "yt-dlp", "SponsorBlock"):
+    for title in ("Python", "Qt", "mpv", "streamlink", "yt-dlp", "SponsorBlock"):
         assert title in attributions

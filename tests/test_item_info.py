@@ -310,23 +310,3 @@ def _vlc(media):
     return SimpleNamespace(
         MediaParseFlag=SimpleNamespace(local=0),
     ), SimpleNamespace(media_new_path=lambda path: media)
-
-
-class TestAFilesLength:
-    def test_once_read(self):
-        media = _Media([0, 0, SimpleNamespace(value=4)], 61_000)
-        vlc, instance = _vlc(media)
-
-        assert item_info._length_of(vlc, instance, "a.mp4") == 61_000
-        assert media.released
-
-    @pytest.mark.parametrize("status", [1, 2, 3])
-    def test_none_where_it_could_not_be(self, status):
-        vlc, instance = _vlc(_Media([status], 61_000))
-
-        assert item_info._length_of(vlc, instance, "a.mp4") is None
-
-    def test_none_where_vlc_knows_none(self):
-        vlc, instance = _vlc(_Media([4], -1))
-
-        assert item_info._length_of(vlc, instance, "a.mp4") is None

@@ -26,6 +26,7 @@ from gridplayer.models.subtitle_selection import (
     track_of_file as subtitle_track_of_file,
 )
 from gridplayer.models.video import default_subtitle_selection
+from gridplayer.mpv_player.static import DISABLED_TRACK, wanted_subtitle_track_id
 from gridplayer.params.extensions import SUPPORTED_SUBTITLE_EXT
 from gridplayer.params.static import (
     MAX_SUBTITLE_DELAY_MS,
@@ -38,7 +39,6 @@ from gridplayer.utils.external_subtitles import (
 )
 from gridplayer.utils.qt import translate
 from gridplayer.utils.track_language import language_name, normalize, pick_track
-from gridplayer.vlc_player.static import DISABLED_TRACK, wanted_subtitle_track_id
 from gridplayer.widgets.video_block_guards import (
     VideoBlockPart,
     only_initialized,

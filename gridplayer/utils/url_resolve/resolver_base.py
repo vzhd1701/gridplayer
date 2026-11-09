@@ -118,7 +118,7 @@ class DirectResolver(ResolverBase):
         if not needs_relay(self.url):
             return Streams({"generic": Stream(url=self.url, protocol="direct")})
 
-        self._log.debug("URL needs more than VLC has, relaying it through the proxy")
+        self._log.debug("URL needs more than mpv has, relaying it through the proxy")
 
         return Streams(
             {

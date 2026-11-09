@@ -56,10 +56,8 @@ def test_qt_qpa_platform_not_asked(monkeypatch):
 @pytest.mark.parametrize(
     ("picked", "expected"),
     [
-        (VideoDriver.VLC_HW, VideoDriver.VLC_SW),
-        (VideoDriver.VLC_HW_SP, VideoDriver.VLC_SW_SP),
-        (VideoDriver.VLC_SW, VideoDriver.VLC_SW),
-        (VideoDriver.VLC_SW_SP, VideoDriver.VLC_SW_SP),
+        (VideoDriver.MPV_HW, VideoDriver.MPV_SW),
+        (VideoDriver.MPV_SW, VideoDriver.MPV_SW),
         (VideoDriver.DUMMY, VideoDriver.DUMMY),
     ],
 )
@@ -126,19 +124,14 @@ def pure_wayland(monkeypatch):
 def test_dialog_offers_software_only(make_dialog):
     dialog = make_dialog()
 
-    assert _driver_items(dialog) == [
-        VideoDriver.VLC_SW,
-        VideoDriver.VLC_SW_SP,
-        VideoDriver.DUMMY,
-    ]
+    assert _driver_items(dialog) == [VideoDriver.MPV_SW, VideoDriver.DUMMY]
 
 
 @pytest.mark.usefixtures("pure_wayland")
 @pytest.mark.parametrize(
     ("stored", "shown"),
     [
-        (VideoDriver.VLC_HW, VideoDriver.VLC_SW),
-        (VideoDriver.VLC_HW_SP, VideoDriver.VLC_SW_SP),
+        (VideoDriver.MPV_HW, VideoDriver.MPV_SW),
     ],
 )
 def test_dialog_keeps_hardware_pick(settings, make_dialog, stored, shown):
@@ -155,15 +148,15 @@ def test_dialog_keeps_hardware_pick(settings, make_dialog, stored, shown):
 
 @pytest.mark.usefixtures("pure_wayland")
 def test_dialog_saves_another_driver(settings, make_dialog):
-    settings.set("player/video_driver", VideoDriver.VLC_HW)
+    settings.set("player/video_driver", VideoDriver.MPV_HW)
 
     dialog = make_dialog()
     combo = dialog.widget("player/video_driver")
-    combo.setCurrentIndex(combo.findData(VideoDriver.VLC_SW_SP))
+    combo.setCurrentIndex(combo.findData(VideoDriver.DUMMY))
 
     dialog.save_settings()
 
-    assert settings.get("player/video_driver") is VideoDriver.VLC_SW_SP
+    assert settings.get("player/video_driver") is VideoDriver.DUMMY
 
 
 @pytest.mark.usefixtures("pure_wayland")
@@ -172,7 +165,6 @@ def test_dialog_leaves_hardware_options_alone(make_dialog):
 
     assert not dialog.widget("internal/opaque_hw_overlay").isEnabled()
     assert not dialog.widget("internal/fake_overlay_invisibility").isEnabled()
-    assert not dialog.widget("internal/hw_crop_border_offset").isEnabled()
 
 
 def test_dialog_offers_hardware_on_xcb(monkeypatch, make_dialog):
@@ -181,14 +173,13 @@ def test_dialog_offers_hardware_on_xcb(monkeypatch, make_dialog):
 
     dialog = make_dialog()
 
-    assert VideoDriver.VLC_HW in _driver_items(dialog)
-    assert dialog.widget("internal/hw_crop_border_offset").isEnabled()
+    assert VideoDriver.MPV_HW in _driver_items(dialog)
 
 
 @pytest.mark.usefixtures("pure_wayland")
 def test_a_saved_software_driver_is_not_taken_for_the_default(settings, make_dialog):
     # the default is Hardware, shown here as Software too
-    settings.set("player/video_driver", VideoDriver.VLC_SW)
+    settings.set("player/video_driver", VideoDriver.MPV_SW)
 
     dialog = make_dialog()
     dialog.show_page("decoder")
@@ -199,7 +190,7 @@ def test_a_saved_software_driver_is_not_taken_for_the_default(settings, make_dia
 
 @pytest.mark.usefixtures("pure_wayland")
 def test_a_saved_software_driver_reset_is_forgotten(settings, make_dialog):
-    settings.set("player/video_driver", VideoDriver.VLC_SW)
+    settings.set("player/video_driver", VideoDriver.MPV_SW)
 
     dialog = make_dialog()
     dialog.forms["decoder"].reset("player/video_driver")

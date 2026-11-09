@@ -68,13 +68,7 @@ def _resolve_resources_dir() -> Path:
 RESOURCES_DIR = _resolve_resources_dir()
 
 
-VLC_VERSION = None
-VLC_PYTHON_VERSION = None
 MPV_VERSION = None
-
-# looked for at startup and not found; not the same as VLC_VERSION being
-# None, which it also is before anything has looked
-IS_VLC_MISSING = False
 
 if IS_FLATPAK:
     FLATPAK_RUNTIME_DIR = (

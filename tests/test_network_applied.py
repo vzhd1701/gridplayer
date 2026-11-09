@@ -22,8 +22,6 @@ from gridplayer.utils.url_resolve import (
 )
 from gridplayer.utils.url_resolve.resolver_base import DirectResolver
 from gridplayer.utils.url_resolve.resolver_yt_dlp import _manifest_protocol
-from gridplayer.vlc_player import instance as vlc_instance
-from tests.conftest import FakeSettings
 from tests.conftest import FakeStreamlinkSession as _FakeSession
 
 PROXY_URL = "http://127.0.0.1:8080"
@@ -282,34 +280,6 @@ class TestTheAddressFamily:
         network_module.apply_to_streamlink(session)
 
         assert session.address_family is None
-
-
-class TestTheVlcSide:
-    """The one setting VLC can be told, for the links still handed to it."""
-
-    def test_it_is_told_the_user_agent(self, mocker, monkeypatch):
-        monkeypatch.setattr(
-            vlc_instance,
-            "vlc_user_agent",
-            lambda: CUSTOM_USER_AGENT,
-        )
-        monkeypatch.setattr(
-            vlc_instance.Settings,
-            "__call__",
-            lambda self: FakeSettings({"misc/vlc_options": ""}),
-            raising=False,
-        )
-
-        created = mocker.patch.object(vlc_instance.vlc, "Instance")
-
-        player = vlc_instance.InstanceVLC(vlc_log_level=0, vlc_options=[])
-        mocker.patch.object(player, "init_logger")
-
-        player.init_instance()
-
-        created.return_value.set_user_agent.assert_called_once_with(
-            vlc_instance.VLC_USER_AGENT_NAME, CUSTOM_USER_AGENT
-        )
 
 
 class TestALinkThatWouldHaveGoneStraightToVlc:

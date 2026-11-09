@@ -31,6 +31,15 @@ from gridplayer.models.video import (
     Video,
     VideoBlockMime,
 )
+from gridplayer.mpv_player.static import (
+    DISABLED_TRACK,
+    SEEK_ARRIVAL_MS,
+    MediaInput,
+    SeekLanding,
+    arriving_time,
+    is_loop_wrapped,
+    seek_landing,
+)
 from gridplayer.params import env
 from gridplayer.params.static import (
     MAX_RATE,
@@ -47,11 +56,6 @@ from gridplayer.params.static import (
 )
 from gridplayer.settings import Settings
 from gridplayer.utils.drop_zone import DropIndicator
-from gridplayer.utils.libvlc_options_parser import (
-    get_vlc_options,
-    is_deinterlace_reload_needed,
-    is_reopen_needed,
-)
 from gridplayer.utils.qt import MILLISECONDS, qt_connect, translate
 from gridplayer.utils.sponsorblock import (
     segment_mark,
@@ -59,15 +63,7 @@ from gridplayer.utils.sponsorblock import (
 from gridplayer.utils.step_sizes import seek_step_ms
 from gridplayer.utils.url_resolve.static import ResolvedVideo
 from gridplayer.utils.url_resolve.url_resolve import VideoURLResolver
-from gridplayer.vlc_player.static import (
-    DISABLED_TRACK,
-    SEEK_ARRIVAL_MS,
-    MediaInput,
-    SeekLanding,
-    arriving_time,
-    is_loop_wrapped,
-    seek_landing,
-)
+from gridplayer.utils.video_reopen import is_reopen_needed
 from gridplayer.widgets.cell_chrome import (
     chrome_color_on_cell,
     paint_idle_disc,
@@ -92,7 +88,7 @@ from gridplayer.widgets.video_block_status import StatusControl
 from gridplayer.widgets.video_block_stream import StreamControl
 from gridplayer.widgets.video_block_subtitles import SubtitleControl
 from gridplayer.widgets.video_block_view import ViewControl
-from gridplayer.widgets.video_frame_vlc_base import VideoFrameVLC
+from gridplayer.widgets.video_frame_base import VideoFrame
 from gridplayer.widgets.video_overlay import (
     OverlayBlock,
     OverlayBlockChild,
@@ -172,7 +168,7 @@ class VideoBlock(QWidget):
     picture_shape_change = pyqtSignal()
 
     # How wide the picture is for its height on screen, the last its video
-    # said (see VideoFrameVLC.picture_shape): kept through a reload, and
+    # said (see VideoFrame.picture_shape): kept through a reload, and
     # until the next video says, None before any has.
     picture_shape: float | None = None
 
@@ -252,7 +248,7 @@ class VideoBlock(QWidget):
         # the seek before the last, when the last was made before it landed
         self._seek_behind: int | None = None
 
-        self.video_driver: VideoFrameVLC | None = None
+        self.video_driver: VideoFrame | None = None
 
         # before the resolver, which is wired to them as it is made
         self.status = StatusControl(self)
@@ -290,11 +286,8 @@ class VideoBlock(QWidget):
             cls = cls.func
         return bool(getattr(cls, "is_native_surface", False))
 
-    def init_video_driver(self) -> VideoFrameVLC:
-        vlc_options = get_vlc_options(self.video_params)
-        self._log.debug(f"vlc_options: {vlc_options}")
-
-        video_driver = self.video_driver_cls(vlc_options=vlc_options, parent=self)
+    def init_video_driver(self) -> VideoFrame:
+        video_driver = self.video_driver_cls(parent=self)
 
         qt_connect(
             (video_driver.video_ready, self.load_video_finish),
@@ -317,7 +310,7 @@ class VideoBlock(QWidget):
 
         return video_driver
 
-    def _ensure_video_driver(self) -> VideoFrameVLC:
+    def _ensure_video_driver(self) -> VideoFrame:
         if self.video_driver is not None:
             return self.video_driver
 
@@ -340,10 +333,8 @@ class VideoBlock(QWidget):
         if self.video_driver is None:
             return
 
-        # Don't hide VLC HW frame widget, otherwise first frame comes out glitchy and takes time to normalize
-        # Happens only on Windows
-        # Possibly related issue - short ~100-300ms "freeze-frame" lag before video starts actually playing
-        # especially noticeable on streaming vids, also happens on Linux
+        # The window mpv draws into has to stay up on Windows for the first
+        # frame to come out right.
         if env.IS_WINDOWS and self._driver_has_native_surface():
             return
 
@@ -550,12 +541,12 @@ class VideoBlock(QWidget):
 
         self._log.debug(f"{self.id}: cleaning up done")
 
-    def video_driver_error(self, error: str, vlc_lines: tuple[str, ...] = ()):
+    def video_driver_error(self, error: str, player_lines: tuple[str, ...] = ()):
         # marked for translation where the player process says it, which
         # has no translator of its own
         message = translate("Video Error", error)
 
-        self.status.last_error = self.status.player_error(message, vlc_lines)
+        self.status.last_error = self.status.player_error(message, player_lines)
         self.status.set_text(message)
 
         if not self.video_params.is_local_file:
@@ -1552,13 +1543,6 @@ class VideoBlock(QWidget):
             self._start_load()
             return
 
-        if self.video_tracks and is_deinterlace_reload_needed(
-            self.video_params, snapshot.deinterlace, snapshot.deinterlace_mode
-        ):
-            self._take_snapshot_params(snapshot)
-            self.reload()
-            return
-
         self.set_video_track(snapshot.video_track_id)
         self.audio.restore_selection(snapshot.audio_selection)
 
@@ -1619,16 +1603,7 @@ class VideoBlock(QWidget):
             self.video_params = new
             return
 
-        if (
-            is_reopen_needed(params, new)
-            or new.transform != params.transform
-            or (
-                self.video_tracks
-                and is_deinterlace_reload_needed(
-                    params, new.deinterlace, new.deinterlace_mode
-                )
-            )
-        ):
+        if is_reopen_needed(params, new):
             self.video_params = new
             self.reload()
             return
@@ -2009,17 +1984,10 @@ class VideoBlock(QWidget):
     def set_deinterlace_params(
         self, deinterlace: VideoDeinterlace, mode: VideoDeinterlaceMode
     ):
-        is_reload_needed = is_deinterlace_reload_needed(
-            self.video_params, deinterlace, mode
-        )
-
         self.video_params.deinterlace = deinterlace
         self.video_params.deinterlace_mode = mode
 
-        if is_reload_needed:
-            self.reload()
-        else:
-            self.video_driver.set_deinterlace(deinterlace, mode)
+        self.video_driver.set_deinterlace(deinterlace, mode)
 
     @property
     def seek_marks(self) -> tuple[SeekMark, ...]:

@@ -13,6 +13,7 @@ from gridplayer.dialogs.crop import SetCropDialog
 from gridplayer.models.media_list import ItemShape, ListItem, MediaList
 from gridplayer.models.playlist import Playlist
 from gridplayer.models.video import Video
+from gridplayer.mpv_player.static import MediaInput, VideoTrack
 from gridplayer.params.actions import ACTIONS
 from gridplayer.params.static import (
     NO_CROP_RATIO,
@@ -25,13 +26,10 @@ from gridplayer.player.managers.active_block import ActiveBlockManager
 from gridplayer.player.managers.add_videos import _with_list_shape
 from gridplayer.utils.list_files import m3u_text, parse_m3u
 from gridplayer.utils.list_refresh import _updated
-from gridplayer.vlc_player.static import MediaInput, VideoTrack
 from gridplayer.widgets.video_block import VideoBlock
 from gridplayer.widgets.video_block_view import ViewControl
-from gridplayer.widgets.video_frame_vlc_hw_sp import VideoFrameVLCHWSP
-from tests.test_cb_vout import _make_player
+from gridplayer.widgets.video_frame_mpv_hw import VideoFrameMPVHW
 from tests.test_crop_dialog import _FakeBlock
-from tests.test_crop_ratio import _recorded_geometry
 
 URI = "http://example.com/a.ts"
 
@@ -155,13 +153,16 @@ class TestTheView:
         assert view.picked() == ViewParams()
 
 
-class _StubFrame(VideoFrameVLCHWSP):
-    def driver_setup(self, vlc_options):
+class _StubFrame(VideoFrameMPVHW):
+    def __init__(self, **kwargs):
+        super().__init__(process_manager=MagicMock(), **kwargs)
+
+    def driver_setup(self):
         return MagicMock()
 
 
 def _frame(list_aspect_ratio="", list_crop_ratio="", **picked):
-    frame = _StubFrame(vlc_options=[])
+    frame = _StubFrame()
     frame.resize(900, 900)
     frame.load_video(
         MediaInput(
@@ -232,53 +233,6 @@ class TestInTheWidget:
         frame.forget_list_ratios()
 
         assert frame._view == ViewParams()
-
-
-class TestInThePlayer:
-    def test_kept_without_the_list_s(self):
-        player, _ = _make_player()
-        player.media = None
-        # the list's crop as the widget sends it, worked out into margins
-        view = (
-            ViewParams()
-            .with_list("4:3", "16:9")
-            ._replace(crop=VideoCrop(240, 0, 240, 0))
-        )
-
-        player.adjust_view((640, 360), view)
-
-        video = player.media_input.video
-        assert (video.aspect_ratio, video.crop_ratio, video.crop) == ("", "", NO_CROP)
-
-    def test_the_list_s_again_when_shown_again(self):
-        player, _ = _make_player()
-        player.media_input.list_aspect_ratio = "4:3"
-        player.adjust_view = Mock()
-
-        player._apply_media_input_view()
-
-        view = player.adjust_view.call_args.kwargs["view"]
-        assert (view.aspect_ratio, view.is_aspect_ratio_listed) == ("4:3", True)
-
-    def test_cut_to_the_list_s_crop_by_its_frame(self, monkeypatch):
-        player, _ = _make_player()
-        player.media_input.list_crop_ratio = "4:3"
-        geometry = _recorded_geometry(monkeypatch)
-
-        player._apply_view(player.media_input.size, player.media_input.view)
-
-        assert geometry.call_args.args[2].crop == VideoCrop(80, 0, 80, 0)
-
-    def test_none_once_shown_without(self):
-        player, _ = _make_player()
-        player.media = None
-        player.media_input.list_aspect_ratio = "4:3"
-        player.media_input.list_crop_ratio = "16:9"
-
-        player.adjust_view((640, 360), ViewParams())
-
-        assert player.media_input.list_aspect_ratio == ""
-        assert player.media_input.list_crop_ratio == ""
 
 
 def _block(list_aspect_ratio="", list_crop_ratio="", **picked):

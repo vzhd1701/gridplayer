@@ -42,14 +42,14 @@ class StatusControl(VideoBlockPart):
         self._error_tries = 0
 
         # the loading status left over a video just loaded until there is a
-        # picture of it on show, see VideoFrameVLC.is_picture_pending
+        # picture of it on show, see VideoFrame.is_picture_pending
         self.is_kept_for_picture = False
 
     def resolve_failed(self, error: ShownError):
         self.last_error = error
         self.set_text(error.title)
 
-    def player_error(self, message: str, vlc_lines: tuple[str, ...]) -> ShownError:
+    def player_error(self, message: str, player_lines: tuple[str, ...]) -> ShownError:
         """Why VLC could not play it: the file gone, what the proxy was
         told fetching the stream, or what VLC said."""
 
@@ -59,14 +59,14 @@ class StatusControl(VideoBlockPart):
             if not uri.exists():
                 return file_error(ReadErrorKind.MISSING, uri)
 
-            return player_error(message, vlc_lines)
+            return player_error(message, player_lines)
 
         failure = self._block.stream.proxy_failure()
 
         if failure is not None:
-            return proxy_error(failure, vlc_lines)
+            return proxy_error(failure, player_lines)
 
-        return player_error(message, vlc_lines, url=str(uri))
+        return player_error(message, player_lines, url=str(uri))
 
     def show_error_card(self, tries: int = 0):
         """Why it failed, on the cell: in a few words, what that means,

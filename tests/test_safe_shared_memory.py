@@ -7,9 +7,9 @@ from uuid import uuid4
 
 import pytest
 
+from gridplayer.mpv_player.rgb_buffer import FrameReader
 from gridplayer.multiprocess import safe_shared_memory
 from gridplayer.multiprocess.safe_shared_memory import SafeSharedMemory
-from gridplayer.vlc_player.rgb_buffer import FrameReader
 
 # a Windows segment has no name that outlives its handles
 posix_only = pytest.mark.skipif(os.name == "nt", reason="POSIX shared memory")

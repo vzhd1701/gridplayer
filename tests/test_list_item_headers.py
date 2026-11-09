@@ -13,7 +13,6 @@ from gridplayer.utils.url_resolve import resolver_base, resolver_yt_dlp, url_res
 from gridplayer.utils.url_resolve.resolver_base import DirectResolver
 from gridplayer.utils.url_resolve.resolver_streamlink import StreamlinkResolver
 from gridplayer.utils.url_resolve.resolver_yt_dlp import YoutubeDLResolver
-from gridplayer.vlc_player.player_base import _http_header_options
 
 URL = "http://iptv.example/live/1.ts"
 
@@ -36,19 +35,6 @@ class TestTheHeaders:
         )
 
         assert one.http_headers is two.http_headers
-
-
-class TestVLC:
-    def test_is_handed_the_two_it_takes_as_input_options(self):
-        options = _http_header_options({**HEADERS, "Cookie": "a=b"})
-
-        assert options == [
-            ":http-user-agent=Box/1.0",
-            ":http-referrer=https://portal.example/",
-        ]
-
-    def test_whatever_they_are_spelled(self):
-        assert _http_header_options({"user-agent": "Box"}) == [":http-user-agent=Box"]
 
 
 class TestResolving:

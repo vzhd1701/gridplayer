@@ -6,14 +6,14 @@ from PyQt5.QtCore import QTimer, pyqtSignal
 
 from gridplayer.mpv_player.instance import InstanceProcessMPV
 from gridplayer.mpv_player.player import TRANSFORM_FILTERS, MpvPlayerThreaded
+from gridplayer.mpv_player.rgb_buffer import FrameReader, holding
 from gridplayer.mpv_player.software import MpvSoftwareRenderer
+from gridplayer.mpv_player.video_driver_base_threaded import PlayerDriverThreaded
 from gridplayer.multiprocess.safe_shared_memory import SafeSharedMemory
 from gridplayer.params.static import PLAYER_ID_LENGTH, VideoTransform
 from gridplayer.utils.qt import qt_connect
 from gridplayer.utils.screenshots import ScreenshotView
-from gridplayer.vlc_player.rgb_buffer import FrameReader, holding
-from gridplayer.vlc_player.video_driver_base_threaded import VLCVideoDriverThreaded
-from gridplayer.widgets.video_frame_vlc_base import VideoFrameVLCProcess
+from gridplayer.widgets.video_frame_base import VideoFrameProcess
 from gridplayer.widgets.video_surface_sw import SoftwareVideoSurface
 
 # Every player shares this one, so that they share processes too.
@@ -174,7 +174,7 @@ class PlayerProcessSingleMPVSW(MpvPlayerThreaded):
         self.cmd_loop_terminate()
 
 
-class VideoDriverMPVSW(VLCVideoDriverThreaded):
+class VideoDriverMPVSW(PlayerDriverThreaded):
     set_dummy_frame_sig = pyqtSignal()
     image_ready_sig = pyqtSignal()
 
@@ -268,8 +268,8 @@ class VideoDriverMPVSW(VLCVideoDriverThreaded):
         self.player.cleanup()
 
 
-class VideoFrameMPVSW(VideoFrameVLCProcess):
-    def driver_setup(self, vlc_options) -> VideoDriverMPVSW:
+class VideoFrameMPVSW(VideoFrameProcess):
+    def driver_setup(self) -> VideoDriverMPVSW:
         return VideoDriverMPVSW(
             image_dest=self.video_surface,
             process_manager=self.process_manager,

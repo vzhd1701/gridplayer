@@ -7,6 +7,7 @@ to be dealt with there, so that only one thread ever drives the player.
 
 import dataclasses
 import logging
+import shlex
 import tempfile
 from collections import deque
 from fractions import Fraction
@@ -19,6 +20,16 @@ from gridplayer.models.audio_selection import AudioExternal, track_of_file
 from gridplayer.models.chapter import Chapter
 from gridplayer.models.subtitle_selection import SubtitleExternal
 from gridplayer.models.subtitle_selection import track_of_file as subtitle_track_of_file
+from gridplayer.mpv_player.static import (
+    DISABLED_TRACK,
+    AudioTrack,
+    Media,
+    MediaInput,
+    SubtitleTrack,
+    VideoTrack,
+    wanted_audio_track_id,
+    wanted_subtitle_track_id,
+)
 from gridplayer.multiprocess.command_loop import CommandLoopThreaded
 from gridplayer.params import env
 from gridplayer.params.static import (
@@ -38,17 +49,7 @@ from gridplayer.utils.aspect_calc import (
     calc_shown_pixel_aspect,
     calc_view_placement,
 )
-from gridplayer.utils.network import vlc_user_agent
-from gridplayer.vlc_player.static import (
-    DISABLED_TRACK,
-    AudioTrack,
-    Media,
-    MediaInput,
-    SubtitleTrack,
-    VideoTrack,
-    wanted_audio_track_id,
-    wanted_subtitle_track_id,
-)
+from gridplayer.utils.network import player_user_agent
 
 # mpv reports the time every frame; the player has no use for more than this
 TIME_REPORT_INTERVAL_S = 0.05
@@ -189,6 +190,8 @@ class MpvPlayerThreaded(CommandLoopThreaded):
 
         self._mpv = mpv.MPV(log_handler=self._on_log, loglevel="warn", **options)
 
+        self._apply_options_typed_by_hand()
+
         self._mpv.register_event_callback(self._on_mpv_event)
 
         self._mpv.observe_property("time-pos", self._on_time_pos)
@@ -202,6 +205,15 @@ class MpvPlayerThreaded(CommandLoopThreaded):
         style = {key: Settings().sync_get(key) for key in SUBTITLE_STYLE_SETTINGS}
 
         return mpv_subtitle_style_options(style)
+
+    def _apply_options_typed_by_hand(self):
+        """The mpv options setting: --name=value and --flag, unknown ones logged."""
+
+        for option in shlex.split(Settings().sync_get("misc/mpv_options")):
+            name, _, value = option.lstrip("-").partition("=")
+
+            if name:
+                self._set(name, value or "yes")
 
     def cmd_process_command(self, command_args, command_name):
         if self._is_released:
@@ -490,7 +502,7 @@ class MpvPlayerThreaded(CommandLoopThreaded):
     def _apply_http_options(self, headers: dict[str, str]):
         lowered = {name.lower(): value for name, value in headers.items()}
 
-        self._set("user-agent", lowered.get("user-agent") or vlc_user_agent())
+        self._set("user-agent", lowered.get("user-agent") or player_user_agent())
         self._set("referrer", lowered.get("referer", ""))
 
     def _apply_transform(self, transform: VideoTransform | None):

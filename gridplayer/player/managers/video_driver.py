@@ -11,15 +11,6 @@ from gridplayer.widgets.video_frame_dummy import VideoFrameDummy
 from gridplayer.widgets.video_frame_mpv_hw import InstanceProcessMPVHW, VideoFrameMPVHW
 from gridplayer.widgets.video_frame_mpv_sw import InstanceProcessMPVSW, VideoFrameMPVSW
 
-_VLC_DRIVERS = frozenset(
-    {
-        VideoDriver.VLC_SW,
-        VideoDriver.VLC_SW_SP,
-        VideoDriver.VLC_HW,
-        VideoDriver.VLC_HW_SP,
-    }
-)
-
 
 class VideoDriverManager(ManagerBase):
     _video_drivers = {
@@ -34,10 +25,8 @@ class VideoDriverManager(ManagerBase):
     }
 
     _multiprocess_drivers = {
-        VideoDriver.VLC_SW,
-        VideoDriver.VLC_HW,
-        VideoDriver.MPV_HW,
         VideoDriver.MPV_SW,
+        VideoDriver.MPV_HW,
     }
 
     _process_managers = {
@@ -55,18 +44,12 @@ class VideoDriverManager(ManagerBase):
     def video_driver(self):
         video_driver = Settings().get("player/video_driver")
 
-        if video_driver == VideoDriver.VLC_HW and env.IS_MACOS:
-            video_driver = VideoDriver.VLC_HW_SP
+        # mpv can't draw into a window of another process there
+        if video_driver == VideoDriver.MPV_HW and env.IS_MACOS:
+            video_driver = VideoDriver.MPV_SW
             Settings().set("player/video_driver", video_driver)
 
         video_driver = session_video_driver(video_driver)
-
-        if video_driver in _VLC_DRIVERS:
-            if env.IS_VLC_MISSING:
-                # a setting saved where VLC was still around
-                video_driver = VideoDriver.MPV_HW
-            else:
-                self._load_vlc_drivers()
 
         is_multiprocess = video_driver in self._multiprocess_drivers
 
@@ -84,59 +67,10 @@ class VideoDriverManager(ManagerBase):
 
         return self._video_drivers[video_driver]
 
-    @classmethod
-    def _load_vlc_drivers(cls):
-        """Import these only when asked for: they load libVLC as they do."""
-
-        from gridplayer.vlc_player.instance import ProcessManagerVLC
-        from gridplayer.widgets.video_frame_vlc_hw import (
-            InstanceProcessVLCHW,
-            VideoFrameVLCHW,
-        )
-        from gridplayer.widgets.video_frame_vlc_hw_sp import VideoFrameVLCHWSP
-        from gridplayer.widgets.video_frame_vlc_sw import (
-            InstanceProcessVLCSW,
-            VideoFrameVLCSW,
-        )
-        from gridplayer.widgets.video_frame_vlc_sw_sp import VideoFrameVLCSWSP
-
-        cls._video_drivers.update(
-            {
-                VideoDriver.VLC_SW: VideoFrameVLCSW,
-                VideoDriver.VLC_SW_SP: VideoFrameVLCSWSP,
-                VideoDriver.VLC_HW: VideoFrameVLCHW,
-                VideoDriver.VLC_HW_SP: VideoFrameVLCHWSP,
-            }
-        )
-        cls._process_instances.update(
-            {
-                VideoDriver.VLC_SW: InstanceProcessVLCSW,
-                VideoDriver.VLC_HW: InstanceProcessVLCHW,
-            }
-        )
-        cls._process_managers.update(
-            {
-                VideoDriver.VLC_SW: ProcessManagerVLC,
-                VideoDriver.VLC_HW: ProcessManagerVLC,
-            }
-        )
-
     def cleanup(self):
         if self._process_manager:
             self._process_manager.cleanup()
             self._process_manager = None
-
-    def set_log_level_vlc(self, log_level):
-        if self._process_manager:
-            self._process_manager.set_log_level_vlc(log_level)
-        elif Settings().get("player/video_driver") in {
-            VideoDriver.VLC_HW_SP,
-            VideoDriver.VLC_SW_SP,
-        }:
-            for vb in self._ctx.video_blocks:
-                driver = vb.video_driver
-                if driver is not None and hasattr(driver, "set_log_level_vlc"):
-                    driver.set_log_level_vlc(log_level)
 
     def set_log_level(self, log_level):
         if self._process_manager:

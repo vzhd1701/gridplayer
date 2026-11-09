@@ -5,7 +5,7 @@ silently rather than raising, so a time too big for it arrives as a
 different number, often a negative one. Milliseconds run out after 24.8
 days, which nothing in a video file reaches -- but a live DASH manifest
 counts from its availabilityStartTime, and the ones that use the epoch
-hand VLC a clock three orders of magnitude past the limit on the first
+hand the player a clock three orders of magnitude past the limit on the first
 frame.
 """
 
@@ -15,19 +15,11 @@ import pytest
 from PyQt5.QtCore import QObject, pyqtSignal
 from PyQt5.QtWidgets import QWidget
 
+from gridplayer.mpv_player.video_driver_base import PlayerDriver
 from gridplayer.player.managers.video_blocks import VideoBlocksManager
 from gridplayer.utils.qt import MILLISECONDS
-from gridplayer.vlc_player.video_driver_base import VLCVideoDriver
 from gridplayer.widgets.video_block import VideoBlock
-from gridplayer.widgets.video_frame_vlc_base import VideoFrameVLC
-from gridplayer.widgets.video_frame_vlc_hw_sp import (
-    PlayerProcessSingleVLCHWSP,
-    VideoDriverVLCHWSP,
-)
-from gridplayer.widgets.video_frame_vlc_sw_sp import (
-    PlayerProcessSingleVLCSWSP,
-    VideoDriverVLCSWSP,
-)
+from gridplayer.widgets.video_frame_base import VideoFrame
 
 # a live manifest counted from 1970, as DASH-IF's test streams are
 EPOCH_CLOCK_MS = 1_789_670_361_000
@@ -37,15 +29,11 @@ WRAPPED = -1_331_001_432
 
 # every signal that carries a time or a duration, and how many it takes
 CARRIERS = [
-    (VLCVideoDriver, "time_changed", 1),
+    (PlayerDriver, "time_changed", 1),
     (VideoBlock, "time_change", 2),
     (VideoBlock, "sync_time", 1),
     (VideoBlock, "sync_time_single", 1),
-    (VideoFrameVLC, "time_changed", 1),
-    (PlayerProcessSingleVLCHWSP, "time_changed", 1),
-    (VideoDriverVLCHWSP, "cmd_set_time", 1),
-    (PlayerProcessSingleVLCSWSP, "time_changed", 1),
-    (VideoDriverVLCSWSP, "cmd_set_time", 1),
+    (VideoFrame, "time_changed", 1),
     (VideoBlocksManager, "all_seek", 1),
     (VideoBlocksManager, "all_seek_shift_ms", 1),
 ]

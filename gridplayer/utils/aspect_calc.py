@@ -1,6 +1,5 @@
 import math
 from dataclasses import dataclass
-from fractions import Fraction
 from typing import NamedTuple
 
 from gridplayer.params.static import (
@@ -23,7 +22,6 @@ from gridplayer.params.static import (
 # wrap round, and the picture is placed at some other height altogether,
 # a stretch that comes and goes with the crop. No product may get there,
 # with a bit to spare.
-_VLC_UINT_LIMIT = (1 << 31) - 1
 
 # What float error a shift worked out to lie on a whole pixel can carry.
 _ROUNDING_SLACK = 1e-6
@@ -181,48 +179,6 @@ def calc_whole_placement(
         source=(0, 0, frame_w, frame_h),
         target=(left - fit.x * fit.per_x, top - fit.y * fit.per_y, whole_w, whole_h),
     )
-
-
-def calc_whole_geometry(
-    frame_size: tuple[int, int],
-    pane_size: tuple[int, int],
-    view: ViewParams,
-    transform: VideoTransform | None = VideoTransform.NONE,
-    is_turned: bool = False,
-    *,
-    pixel_aspect: float = 1.0,
-) -> tuple[str, str] | None:
-    """Aspect override and crop geometry for calc_whole_placement.
-
-    The frame is as VLC has it, stored the way the file has it rather than
-    shown; turned, when the file says to show it on its side, and its
-    pixels with it, which pixel_aspect is not. The picture is placed as it
-    is shown, and VLC told its shape the way it is stored.
-
-    None where there is no whole picture to show.
-    """
-
-    frame_w, frame_h = frame_size
-    shown_frame = (frame_h, frame_w) if is_turned else frame_size
-    shown_pixel = 1 / pixel_aspect if is_turned else pixel_aspect
-
-    placement = calc_whole_placement(
-        shown_frame, pane_size, view, transform, pixel_aspect=shown_pixel
-    )
-
-    if placement is None:
-        return None
-
-    _, _, shape_w, shape_h = placement.target
-
-    if is_turned:
-        shape_w, shape_h = shape_h, shape_w
-
-    override = _shape_override(
-        max(round(shape_w), 1), max(round(shape_h), 1), frame_size, frame_size
-    )
-
-    return _format_view(override, _NO_CROP)
 
 
 def calc_view_shift(
@@ -763,90 +719,6 @@ def calc_view_borders(
     return _source_borders(frame_size, placement.source)
 
 
-def calc_view_geometry(
-    frame_size: tuple[int, int],
-    pane_size: tuple[int, int],
-    view: ViewParams,
-    transform: VideoTransform | None = VideoTransform.NONE,
-    *,
-    pixel_aspect: float = 1.0,
-) -> tuple[str, str]:
-    """Aspect override and crop geometry strings to pass to libvlc.
-
-    VLC is told to crop the frame to exactly the part on show, zoom
-    included, and to give that part the shape it has on screen. It then
-    lands where calc_view_placement puts it as long as its window is over
-    the target, which is what the hardware drivers see to. The override
-    takes the place of the shape the video gives its pixels, so that
-    shape is in the sums here instead.
-    """
-    placement = calc_view_placement(
-        frame_size, pane_size, view, transform, pixel_aspect=pixel_aspect
-    )
-
-    if placement is None:
-        # No usable geometry; show the user-cropped region letterboxed.
-        return _format_view(
-            _whole_override(frame_size, transform, pixel_aspect), view.crop
-        )
-
-    borders = _source_borders(frame_size, placement.source)
-    _, _, region_w, region_h = calc_crop_region(frame_size, borders)
-    _, _, target_w, target_h = placement.target
-
-    override = _shape_override(
-        max(round(target_w), 1),
-        max(round(target_h), 1),
-        frame_size,
-        (region_w, region_h),
-    )
-
-    return _format_view(override, borders)
-
-
-def calc_vlc_picture(
-    frame_size: tuple[int, int],
-    geometry: tuple[str, str],
-    window_size: tuple[int, int],
-) -> tuple[int, int, int, int] | None:
-    """Where VLC 3 puts the picture in a window this size, told the geometry.
-
-    vout_display_PlacePicture (src/video_output/display.c), filling the
-    window with no zoom of VLC's own, as the hardware drivers have it: the
-    override makes the frame's SAR num * frame_h : den * frame_w, reduced,
-    the crop leaves the region, and the region goes in as large as it fits
-    and in the middle, in VLC's whole-pixel sums. It matched VLC's own
-    placement to the pixel everywhere it was measured.
-
-    The geometry is calc_view_geometry's, not a turned file's: VLC turns
-    those in placing them too. None where VLC goes by the file's own shape.
-    """
-    override, crop = geometry
-    num, den = (int(part) for part in override.split(":"))
-    frame_w, frame_h = frame_size
-    window_w, window_h = window_size
-
-    if min(num, den, frame_w, frame_h, window_w, window_h) <= 0:
-        return None
-
-    borders = VideoCrop(*(int(part) for part in crop.split("+")[1:]))
-    _, _, region_w, region_h = calc_crop_region(frame_size, borders)
-
-    sar_num, sar_den = num * frame_h, den * frame_w
-    shared = math.gcd(sar_num, sar_den)
-    sar_num, sar_den = sar_num // shared, sar_den // shared
-
-    fill_w = region_w * window_h * sar_num // (region_h * sar_den)
-
-    if fill_w <= window_w:
-        width, height = fill_w, window_h
-    else:
-        width = window_w
-        height = region_h * window_w * sar_den // (region_w * sar_num)
-
-    return (window_w - width) // 2, (window_h - height) // 2, width, height
-
-
 def calc_frame_pixel_shape(
     frame_size: tuple[int, int],
     transform: VideoTransform | None,
@@ -968,24 +840,6 @@ def calc_ratio_crop(
     kept = min(max(round(shown_w / ratio / unit_y), 1), frame_h)
     top = (frame_h - kept) // 2
     return VideoCrop(0, top, 0, frame_h - kept - top)
-
-
-def _whole_override(
-    frame_size: tuple[int, int], transform: VideoTransform | None, pixel_aspect: float
-) -> tuple[int, int]:
-    """The override that shows the whole frame in the shape it has.
-
-    Its size on screen as far as whole pixels go, which VLC reduces. (0, 0),
-    VLC's own shape, where there is no frame.
-    """
-    frame_w, frame_h = frame_size
-
-    if min(frame_w, frame_h) <= 0:
-        return 0, 0
-
-    unit_x, unit_y = calc_frame_pixel_shape(frame_size, transform, pixel_aspect)
-
-    return max(round(frame_w * unit_x), 1), max(round(frame_h * unit_y), 1)
 
 
 @dataclass(frozen=True)
@@ -1257,71 +1111,3 @@ def _source_borders(frame_size: tuple[int, int], source: Rect) -> VideoCrop:
     bottom = min(max(frame_h - round(y + height), 0), frame_h - top - 1)
 
     return VideoCrop(left, top, right, bottom)
-
-
-def _format_view(override: tuple[int, int], borders: VideoCrop) -> tuple[str, str]:
-    return (
-        f"{override[0]}:{override[1]}",
-        f"+{borders.Left}+{borders.Top}+{borders.Right}+{borders.Bottom}",
-    )
-
-
-def _shape_override(
-    shape_w: int,
-    shape_h: int,
-    frame_size: tuple[int, int],
-    region_size: tuple[int, int],
-) -> tuple[int, int]:
-    """The aspect override that shows the region in the shape given.
-
-    VLC shows the region with DAR = region_x * sar_num : region_y * sar_den,
-    the SAR coming from the override A through the whole frame: sar =
-    A_num * vid_y : A_den * vid_x. So the SAR is picked first, as near to
-    what the shape takes as VLC can multiply without overflowing (see
-    _VLC_UINT_LIMIT), and the override worked back from it exactly.
-    """
-
-    vid_x, vid_y = frame_size
-    region_x, region_y = region_size
-
-    sar = _bounded(
-        Fraction(shape_w * region_y, shape_h * region_x),
-        _sar_term_limit(frame_size, region_size),
-    )
-
-    if not sar:
-        # Degenerate shape; "0:0" resets the override (native aspect).
-        return 0, 0
-
-    override = sar * Fraction(vid_x, vid_y)
-
-    return override.numerator, override.denominator
-
-
-def _sar_term_limit(frame_size: tuple[int, int], region_size: tuple[int, int]) -> int:
-    """How big the SAR's terms can be for VLC's sums on them to fit.
-
-    The override is the SAR times vid_x:vid_y, reduced by at least what
-    the frame's sides have in common, and VLC multiplies its terms by the
-    frame's sides; then it multiplies the SAR's own by the region's.
-    """
-
-    vid_x, vid_y = frame_size
-
-    through_frame = _VLC_UINT_LIMIT * math.gcd(vid_x, vid_y) // (vid_x * vid_y)
-    through_region = _VLC_UINT_LIMIT // max(region_size)
-
-    return max(min(through_frame, through_region), 1)
-
-
-def _bounded(value: Fraction, limit: int) -> Fraction:
-    """The nearest fraction with neither of its terms past the limit."""
-
-    # limit_denominator only bounds the denominator; above 1 it is the
-    # numerator that has to be kept down, so bound the inverse instead
-    if value >= 1:
-        inverse = (1 / value).limit_denominator(limit)
-
-        return 1 / inverse if inverse else inverse
-
-    return value.limit_denominator(limit)

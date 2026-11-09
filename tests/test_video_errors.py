@@ -57,8 +57,6 @@ from gridplayer.utils.video_errors import (
     resolve_error,
     stream_offline_error,
 )
-from gridplayer.vlc_player import vlc_errors
-from gridplayer.vlc_player.player_base import VlcPlayerBase
 from gridplayer.widgets.video_block import VideoBlock
 from gridplayer.widgets.video_frame_dummy import VideoFrameDummy
 from gridplayer.widgets.video_overlay import OverlayMode
@@ -195,7 +193,7 @@ class TestFromThePlayer:
 
         assert error.title == "Player error"
         assert error.about == "Codec `prores' is not supported"
-        assert (error.where, error.code) == ("Player", "VLC")
+        assert (error.where, error.code) == ("Player", "mpv")
 
     def test_with_nothing_said_by_vlc(self):
         error = player_error("Video stopped before initialization")
@@ -337,194 +335,6 @@ class TestASiteRefusing:
 
 
 class TestVLCSaid:
-    @pytest.fixture(autouse=True)
-    def _said(self, monkeypatch):
-        monkeypatch.setattr(vlc_errors, "_said", type(vlc_errors._said)(maxlen=64))
-        monkeypatch.setattr(vlc_errors, "_counted", {})
-        monkeypatch.setattr(vlc_errors, "_heard", {})
-        monkeypatch.setattr(vlc_errors, "_video_threads", set())
-
-    def test_a_flood_kept_a_few_a_second(self, monkeypatch):
-        """A stream gone bad says the same over and over, each put
-        together to be kept: past a few a second, they are let be."""
-
-        now = [100.0]
-        monkeypatch.setattr(vlc_errors.time, "monotonic", lambda: now[0])
-
-        kept = [vlc_errors.is_keeping_vlc_errors() for _ in range(50)]
-
-        assert kept.count(True) == vlc_errors.KEPT_A_SECOND
-
-        now[0] += 1
-
-        assert vlc_errors.is_keeping_vlc_errors()
-
-    def test_since_the_video_began_to_open(self):
-        vlc_errors.keep_vlc_error("before")
-        began = time.time()
-        time.sleep(0.01)
-        vlc_errors.keep_vlc_error("after")
-
-        assert vlc_errors.vlc_errors_since(began, {threading.get_ident()}) == ["after"]
-
-    def test_on_its_own_threads_alone(self):
-        """One log for every video of the process: what VLC said on
-        another video's threads is not this one's."""
-
-        elsewhere = threading.Thread(target=vlc_errors.keep_vlc_error, args=["theirs"])
-        elsewhere.start()
-        elsewhere.join()
-        vlc_errors.keep_vlc_error("mine")
-
-        assert vlc_errors.vlc_errors_since(0, {threading.get_ident()}) == ["mine"]
-
-    def test_the_last_few(self):
-        for n in range(20):
-            vlc_errors.keep_vlc_error(str(n))
-
-        said = vlc_errors.vlc_errors_since(0, {threading.get_ident()})
-
-        assert len(said) == vlc_errors.TOLD
-        assert said[-1] == "19"
-
-    def test_a_player_tells_what_was_said_on_its_video_s_threads(self):
-        player = _Player()
-        player._timeout_init_start = time.time() - 1
-
-        # another video of the process, its thread still about
-        theirs_said, mine_done = threading.Event(), threading.Event()
-
-        def theirs():
-            vlc_errors.keep_vlc_error("http: HTTP 403 error")
-            theirs_said.set()
-            mine_done.wait(10)
-
-        def mine():
-            vlc_errors.keep_vlc_error("http: HTTP 404 error")
-            player._event_manager._notify_subscribers("encountered_error", None)
-
-        other = threading.Thread(target=theirs)
-        other.start()
-        theirs_said.wait(10)
-
-        own = threading.Thread(target=mine)
-        own.start()
-        own.join()
-
-        mine_done.set()
-        other.join()
-
-        assert player.errors == [("Player error", ("http: HTTP 404 error",))]
-
-    def test_once_it_plays_what_was_said_just_before(self):
-        player = _Player()
-        player._timeout_init_start = time.time() - 3600
-        player._vlc_threads.add(threading.get_ident())
-        player.is_video_initialized = True
-
-        vlc_errors._said.append((time.time() - 3000, threading.get_ident(), 0, "old"))
-        vlc_errors.keep_vlc_error("now")
-
-        player.error("Video stopped unexpectedly")
-
-        assert player.errors == [("Video stopped unexpectedly", ("now",))]
-
-    def test_what_its_segments_fetched_elsewhere_said(self):
-        """The segments of a stream are fetched on a thread of their own,
-        that no event comes on, by an object that speaks on the video's
-        threads as well."""
-
-        demux = 0x7F01
-        began = time.time()
-        vlc_errors.note_video_thread()
-        vlc_errors.note_vlc_object(demux)
-
-        _on_a_thread(lambda: vlc_errors.keep_vlc_error("http: HTTP/1.1 403", demux))
-
-        assert vlc_errors.vlc_errors_since(began, {threading.get_ident()}) == [
-            "http: HTTP/1.1 403"
-        ]
-
-    def test_another_video_s_threads_left_to_it_whoever_speaks(self):
-        """An object of the whole process, heard on this video's thread,
-        says something on another video's: that is the other one's."""
-
-        shared = 0x7F02
-        vlc_errors.note_vlc_object(shared)
-
-        def theirs():
-            vlc_errors.note_video_thread()
-            vlc_errors.keep_vlc_error("audio output: theirs", shared)
-
-        _on_a_thread(theirs)
-
-        assert vlc_errors.vlc_errors_since(0, {threading.get_ident()}) == []
-
-    def test_an_object_heard_before_the_video_opened_left_out(self):
-        """The ids of VLC's objects are used again once they are gone."""
-
-        reused = 0x7F03
-        vlc_errors.note_vlc_object(reused)
-        time.sleep(0.01)
-        opened_at = time.time()
-
-        _on_a_thread(lambda: vlc_errors.keep_vlc_error("someone else's", reused))
-
-        said = vlc_errors.vlc_errors_since(
-            opened_at, {threading.get_ident()}, opened_at=opened_at
-        )
-
-        assert said == []
-
-    def test_once_it_plays_its_objects_heard_since_it_opened(self):
-        """Heard as it opened, long before what went wrong while it played."""
-
-        demux = 0x7F04
-        opened_at = time.time() - 600
-        vlc_errors._heard[threading.get_ident()] = {demux: opened_at + 1}
-        now = time.time()
-
-        _on_a_thread(lambda: vlc_errors.keep_vlc_error("adaptive: gone", demux))
-
-        said = vlc_errors.vlc_errors_since(
-            now - 10, {threading.get_ident()}, opened_at=opened_at
-        )
-
-        assert said == ["adaptive: gone"]
-
-    @pytest.mark.parametrize(
-        ("fmt", "is_its_own"),
-        [
-            (b"INPUT_CONTROL_SET_POSITION %2.1f%% failed", True),
-            (b"HTTP %d error", False),
-            (None, False),
-        ],
-    )
-    def test_what_vlc_says_of_itself_told_apart(self, fmt, is_its_own):
-        """Rewinding a dead stream, each time :input-repeat starts it over:
-        thousands of times a second, of nothing but VLC's own doing."""
-
-        assert vlc_errors.is_said_of_vlc_itself(fmt) is is_its_own
-
-    @pytest.mark.parametrize(
-        ("said", "refusal"),
-        [
-            (
-                "http: incoming response:\nHTTP/1.0 403 Forbidden\nServer: x",
-                "http: HTTP/1.0 403 Forbidden",
-            ),
-            (
-                "http: incoming response:\nHTTP/1.1 503 Service Unavailable\n",
-                "http: HTTP/1.1 503 Service Unavailable",
-            ),
-            ("http: incoming response:\nHTTP/1.1 200 OK\nServer: x", None),
-            ("http: incoming response:\nHTTP/2 404 \n", "http: HTTP/2 404"),
-        ],
-    )
-    def test_a_server_turning_vlc_away(self, said, refusal):
-        assert vlc_errors.is_http_answer(b"incoming response:\n%s")
-        assert vlc_errors.http_refusal(said) == refusal
-
     def test_a_server_turning_vlc_away_tells_the_card(self):
         error = player_error(
             "Video stopped before initialization",
@@ -538,27 +348,6 @@ def _on_a_thread(said):
     thread = threading.Thread(target=said)
     thread.start()
     thread.join()
-
-
-class _Player(VlcPlayerBase):
-    """A player of no video, its errors kept as they are told."""
-
-    def __init__(self):
-        super().__init__(vlc_instance=None)
-
-        self.errors = []
-
-    def notify_error(self, error, vlc_lines=()):
-        self.errors.append((error, vlc_lines))
-
-    def notify_update_status(self, status, percent=0): ...
-    def notify_time_changed(self, new_time): ...
-    def notify_playback_status_changed(self, new_status): ...
-    def notify_load_video_done(self, media_track): ...
-    def notify_snapshot_taken(self, snapshot_path): ...
-    def loopback_load_video_st2_set_media(self): ...
-    def loopback_load_video_st3_extract_media_track(self): ...
-    def loopback_load_video_st4_loaded(self): ...
 
 
 class TestTheWorker:
@@ -708,7 +497,7 @@ class TestOnTheCell:
         assert block.video_status.mode is StatusMode.ERROR
         assert card.title == "Player error"
         assert card.about == "Codec `prores' is not supported"
-        assert (card.where, card.code) == ("Player", "VLC")
+        assert (card.where, card.code) == ("Player", "mpv")
         assert block.overlay.mode is OverlayMode.ERROR
         assert not block.overlay.details_button.isHidden()
 

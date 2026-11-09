@@ -6,9 +6,7 @@ from PyQt5.QtCore import QSettings
 from PyQt5.QtWidgets import QApplication
 
 from gridplayer.models.video import Video
-from gridplayer.params.static import VideoEndAction, VideoInitialState
-from gridplayer.settings import Settings
-from gridplayer.vlc_player.static import (
+from gridplayer.mpv_player.static import (
     SEEK_ARRIVAL_MS,
     SEEK_LANDED_MOVE_MS,
     SEEK_LANDING_MS,
@@ -16,6 +14,8 @@ from gridplayer.vlc_player.static import (
     arriving_time,
     seek_landing,
 )
+from gridplayer.params.static import VideoEndAction, VideoInitialState
+from gridplayer.settings import Settings
 from gridplayer.widgets.video_block import VideoBlock
 from gridplayer.widgets.video_block_navigation import NavigationControl
 

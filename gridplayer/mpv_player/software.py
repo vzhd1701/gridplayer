@@ -9,7 +9,7 @@ import logging
 import traceback
 from threading import Event, Thread
 
-from gridplayer.vlc_player.rgb_buffer import holding
+from gridplayer.mpv_player.rgb_buffer import holding
 
 _PARAM_SW_SIZE = 17
 _PARAM_SW_FORMAT = 18

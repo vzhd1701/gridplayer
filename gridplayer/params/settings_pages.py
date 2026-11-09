@@ -401,16 +401,15 @@ PAGES = (
             Section(
                 translate(
                     "SettingsDialog",
-                    'VLC Options [<a href="https://wiki.videolan.org/VLC_command-line_help/">reference</a>]',
+                    'mpv Options [<a href="https://mpv.io/manual/stable/#options">reference</a>]',
                 ),
-                "misc/vlc_options",
+                "misc/mpv_options",
             ),
             Section(
                 translate("SettingsDialog", "Experimental"),
                 "internal/opaque_hw_overlay",
                 "internal/fake_overlay_invisibility",
                 "internal/force_native_drag_events",
-                "internal/hw_crop_border_offset",
             ),
             icon="page-decoder",
         ),
@@ -425,7 +424,6 @@ PAGES = (
             Section(
                 translate("SettingsDialog", "Logging levels"),
                 "logging/log_level",
-                "logging/log_level_vlc",
             ),
             icon="page-logging",
         ),

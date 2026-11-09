@@ -132,17 +132,10 @@ class AboutDialog(QDialog):
                 ),
                 Attribution(
                     "mpv",
-                    env.MPV_VERSION or "not found",
+                    env.MPV_VERSION,
                     "mpv contributors",
                     "GPL 2.0 or later",
                     "https://mpv.io/",
-                ),
-                Attribution(
-                    "VLC",
-                    env.VLC_VERSION or "not found",
-                    "VideoLAN",
-                    "GPL 2.0 or later",
-                    "https://www.videolan.org/",
                 ),
             ],
             "python": [
@@ -154,11 +147,11 @@ class AboutDialog(QDialog):
                     "https://riverbankcomputing.com/",
                 ),
                 Attribution(
-                    "python-vlc",
-                    env.VLC_PYTHON_VERSION or "not found",
-                    "Olivier Aubert",
-                    "GPL 2.0 and LGPL 2.1",
-                    "https://github.com/oaubert/python-vlc",
+                    "python-mpv",
+                    "",
+                    "jaseg",
+                    "GPL 2.0 or later / LGPL 2.1 or later",
+                    "https://github.com/jaseg/python-mpv",
                 ),
                 Attribution(
                     "pydantic",

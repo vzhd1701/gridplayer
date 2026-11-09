@@ -15,11 +15,11 @@ from gridplayer.models.audio_selection import (
     AudioPreferred,
     AudioTrackId,
 )
+from gridplayer.mpv_player.static import DISABLED_TRACK, AudioTrack
 from gridplayer.params.menu import SECTIONS
 from gridplayer.player.manager import Commands
 from gridplayer.player.managers.actions import ActionsManager
 from gridplayer.player.managers.active_block import ActiveBlockManager
-from gridplayer.vlc_player.static import DISABLED_TRACK, AudioTrack
 from tests.conftest import is_block_command
 
 

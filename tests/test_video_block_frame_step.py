@@ -8,7 +8,7 @@ from gridplayer.models.video import Video
 from gridplayer.params.static import VideoInitialState
 from gridplayer.settings import Settings
 from gridplayer.widgets.video_block import VideoBlock
-from gridplayer.widgets.video_frame_vlc_base import DEFAULT_FPS, VideoFrameVLC
+from gridplayer.widgets.video_frame_base import DEFAULT_FPS, VideoFrame
 
 
 @pytest.fixture(scope="module", autouse=True)
@@ -110,7 +110,7 @@ def test_frame_duration_is_not_rounded_to_whole_ms(mocker):
     frame = mocker.Mock()
     frame.media.cur_video_track.fps = 23.976
 
-    assert VideoFrameVLC.get_ms_per_frame(frame) == pytest.approx(41.7, abs=0.05)
+    assert VideoFrame.get_ms_per_frame(frame) == pytest.approx(41.7, abs=0.05)
 
 
 def test_frame_duration_falls_back_without_a_frame_rate(mocker):
@@ -118,4 +118,4 @@ def test_frame_duration_falls_back_without_a_frame_rate(mocker):
     frame = mocker.Mock()
     frame.media.cur_video_track.fps = None
 
-    assert VideoFrameVLC.get_ms_per_frame(frame) == 1000 / DEFAULT_FPS
+    assert VideoFrame.get_ms_per_frame(frame) == 1000 / DEFAULT_FPS

@@ -25,7 +25,7 @@ DEFAULT_SETTINGS = {
     # nobody is there to answer "save the playlist?"
     "playlist/unsaved_changes": "discard",
     # Hardware video draws into an X11 window, which offscreen has none of
-    "player/video_driver": "vlc_sw_sp",
+    "player/video_driver": "mpv_sw",
     "player/one_instance": False,
 }
 
@@ -396,7 +396,7 @@ def start(media: Media, out: Path, settings: dict) -> Driver:
     from gridplayer.main.init_app_env import init_app_env
     from gridplayer.params import env
     from gridplayer.settings import Settings
-    from gridplayer.utils.libvlc import init_vlc
+    from gridplayer.utils.libmpv import init_mpv
 
     # the app picks xcb itself whenever there is no Wayland, whatever
     # QT_QPA_PLATFORM says
@@ -404,7 +404,7 @@ def start(media: Media, out: Path, settings: dict) -> Driver:
 
     init_app_env()
     app = init_app()
-    env.VLC_VERSION, env.VLC_PYTHON_VERSION = init_vlc()
+    env.MPV_VERSION = init_mpv()
 
     store = Settings()
     for key, value in {

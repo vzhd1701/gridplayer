@@ -6,6 +6,7 @@ import pytest
 from PyQt5.QtWidgets import QApplication, QDialog
 
 from gridplayer.dialogs.position import SetPositionDialog
+from gridplayer.mpv_player.static import VideoTrack
 from gridplayer.params.static import (
     VideoAnchor,
     VideoCellViewMode,
@@ -13,8 +14,7 @@ from gridplayer.params.static import (
     VideoTransform,
     ViewParams,
 )
-from gridplayer.vlc_player.static import VideoTrack
-from gridplayer.widgets.video_frame_vlc_hw_sp import VideoFrameVLCHWSP
+from gridplayer.widgets.video_frame_mpv_hw import VideoFrameMPVHW
 
 
 @pytest.fixture(scope="module", autouse=True)
@@ -25,8 +25,11 @@ def _qapp():
 NO_SHIFT = VideoShift(0, 0)
 
 
-class _StubFrame(VideoFrameVLCHWSP):
-    def driver_setup(self, vlc_options):
+class _StubFrame(VideoFrameMPVHW):
+    def __init__(self, **kwargs):
+        super().__init__(process_manager=MagicMock(), **kwargs)
+
+    def driver_setup(self):
         return MagicMock()
 
 
@@ -46,7 +49,7 @@ class _Block:
         # the block's view part, done by the fake itself
         self.view = self
 
-        self.video_driver = _StubFrame(vlc_options=[])
+        self.video_driver = _StubFrame()
         self.video_driver.resize(900, 900)
         self.video_driver.media = MagicMock(is_audio_only=False)
         self.video_driver.media.cur_video_track = VideoTrack(

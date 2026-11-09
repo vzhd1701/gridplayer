@@ -14,14 +14,14 @@ from unittest.mock import MagicMock
 
 import pytest
 
+from gridplayer.mpv_player.video_driver_base_threaded import (
+    PlayerDriverThreaded,
+)
 from gridplayer.multiprocess.process_manager import (
     ProcessManager,
     describe_exit_code,
 )
-from gridplayer.vlc_player.video_driver_base_threaded import (
-    VLCVideoDriverThreaded,
-)
-from gridplayer.widgets.video_frame_vlc_hw import VideoDriverVLCHW
+from gridplayer.widgets.video_frame_mpv_hw import VideoDriverMPVHW
 
 CRASH_EXIT_CODE = 7
 
@@ -216,7 +216,7 @@ def test_exit_codes_read_as_the_platform_writes_them(exit_code, text):
     assert describe_exit_code(exit_code) == text
 
 
-class _Driver(VLCVideoDriverThreaded):
+class _Driver(PlayerDriverThreaded):
     def snapshot(self): ...
 
     def screenshot(self): ...
@@ -251,7 +251,7 @@ def test_a_driver_already_closing_keeps_quiet(driver):
 def test_closing_a_hardware_driver_does_not_wait_on_a_dead_player(mocker):
     """It would sit out the whole timeout for a release that never comes."""
     manager = MagicMock()
-    driver = VideoDriverVLCHW(win_id=0, process_manager=manager, vlc_options=())
+    driver = VideoDriverMPVHW(win_id=0, process_manager=manager)
     on_crash = manager.init_player.call_args.kwargs["on_crash"]
 
     on_crash(0xC0000005)
@@ -265,14 +265,12 @@ def test_closing_a_software_driver_does_not_wait_on_a_dead_players_lock(
     monkeypatch,
 ):
     """A player that died writing a frame never gives the frame lock back."""
-    from gridplayer.vlc_player import rgb_buffer
-    from gridplayer.vlc_player.rgb_buffer import InProcessRgbBuffer
-    from gridplayer.widgets.video_frame_vlc_sw import VideoDriverVLCSW
+    from gridplayer.mpv_player import rgb_buffer
+    from gridplayer.mpv_player.rgb_buffer import InProcessRgbBuffer
+    from gridplayer.widgets.video_frame_mpv_sw import VideoDriverMPVSW
 
     monkeypatch.setattr(rgb_buffer, "FRAME_LOCK_TIMEOUT_S", 0.05)
-    driver = VideoDriverVLCSW(
-        image_dest=MagicMock(), process_manager=MagicMock(), vlc_options=()
-    )
+    driver = VideoDriverMPVSW(image_dest=MagicMock(), process_manager=MagicMock())
     memory = InProcessRgbBuffer()
     memory.allocate(64)
     memory.lock.acquire()

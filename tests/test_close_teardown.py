@@ -16,7 +16,7 @@ from gridplayer.settings import Settings
 from gridplayer.utils.url_resolve.url_resolve import VideoURLResolver
 from gridplayer.widgets.video_block import VideoBlock
 from gridplayer.widgets.video_frame_dummy import VideoFrameDummy
-from gridplayer.widgets.video_frame_vlc_sw import VideoFrameVLCSW
+from gridplayer.widgets.video_frame_mpv_sw import VideoFrameMPVSW
 from gridplayer.widgets.video_overlay import OverlayMode
 from gridplayer.widgets.video_status import LoadStage, StepState
 
@@ -26,8 +26,8 @@ def _qapp():
     return QApplication.instance() or QApplication([])
 
 
-class _StubSWFrame(VideoFrameVLCSW):
-    def driver_setup(self, vlc_options):
+class _StubSWFrame(VideoFrameMPVSW):
+    def driver_setup(self):
         return MagicMock()
 
 
@@ -84,7 +84,9 @@ def blocks_manager():
 
 
 def test_frame_cleanup_start_does_not_wait():
-    frame = _StubSWFrame(process_manager=MagicMock(), vlc_options=[])
+    frame = _StubSWFrame(
+        process_manager=MagicMock(),
+    )
 
     frame.cleanup_start()
 
@@ -93,7 +95,9 @@ def test_frame_cleanup_start_does_not_wait():
 
 
 def test_frame_cleanup_start_is_idempotent():
-    frame = _StubSWFrame(process_manager=MagicMock(), vlc_options=[])
+    frame = _StubSWFrame(
+        process_manager=MagicMock(),
+    )
 
     frame.cleanup_start()
     frame.cleanup()

@@ -14,8 +14,8 @@ from gridplayer.models.audio_selection import (
 )
 from gridplayer.models.stream import Streams
 from gridplayer.models.video import Video
+from gridplayer.mpv_player.static import AudioTrack
 from gridplayer.settings import Settings
-from gridplayer.vlc_player.static import AudioTrack
 from gridplayer.widgets.video_block import VideoBlock
 from gridplayer.widgets.video_block_audio import AudioControl
 from gridplayer.widgets.video_block_stream import StreamControl

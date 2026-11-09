@@ -5,9 +5,9 @@ from uuid import uuid4
 import pytest
 from PyQt5.QtWidgets import QApplication
 
+from gridplayer.mpv_player import rgb_buffer
+from gridplayer.mpv_player.rgb_buffer import FrameReader, InProcessRgbBuffer
 from gridplayer.multiprocess.safe_shared_memory import SafeSharedMemory
-from gridplayer.vlc_player import rgb_buffer
-from gridplayer.vlc_player.rgb_buffer import FrameReader, InProcessRgbBuffer
 from gridplayer.widgets.video_surface_sw import SoftwareVideoSurface
 
 

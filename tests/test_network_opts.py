@@ -19,7 +19,7 @@ from gridplayer.utils.network import (
     configure_session,
     needs_relay,
     network_opts,
-    vlc_user_agent,
+    player_user_agent,
     ytdl_network_opts,
 )
 from tests.conftest import DEFAULT_TIMEOUT_SEC, FakeSettings
@@ -388,14 +388,14 @@ class TestGettingASessionReadyToFetchWith:
 
 class TestWhatVlcIsCalled:
     def test_out_of_the_box_it_is_what_it_has_always_been(self, settings):
-        assert vlc_user_agent() == DEFAULT_USER_AGENT
+        assert player_user_agent() == DEFAULT_USER_AGENT
 
     def test_one_the_user_set_is_used_instead(self, settings):
         settings["network/user_agent"] = "Mozilla/5.0 (test)"
 
-        assert vlc_user_agent() == "Mozilla/5.0 (test)"
+        assert player_user_agent() == "Mozilla/5.0 (test)"
 
     def test_nothing_but_spaces_is_nothing(self, settings):
         settings["network/user_agent"] = "   "
 
-        assert vlc_user_agent() == DEFAULT_USER_AGENT
+        assert player_user_agent() == DEFAULT_USER_AGENT

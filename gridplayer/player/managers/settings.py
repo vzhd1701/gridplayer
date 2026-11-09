@@ -23,7 +23,6 @@ class SettingsManager(ManagerBase):
     set_screensaver = pyqtSignal(int)
     set_media_keys_background = pyqtSignal(bool)
     set_log_level = pyqtSignal(int)
-    set_log_level_vlc = pyqtSignal(int)
     set_recent_list_enabled = pyqtSignal(bool)
     keymap_changed = pyqtSignal(object)  # KeymapOverrides
     set_disable_mouse_click_events = pyqtSignal(bool)
@@ -74,7 +73,6 @@ class SettingsManager(ManagerBase):
     def _apply_settings(self, previous_settings):
         checks = {
             "logging/log_level": self.set_log_level,
-            "logging/log_level_vlc": self.set_log_level_vlc,
             "player/inhibit_screensaver": self.set_screensaver,
             "player/media_keys_background": self.set_media_keys_background,
             "player/recent_list_enabled": self.set_recent_list_enabled,
@@ -141,8 +139,8 @@ class SettingsManager(ManagerBase):
             "player/video_driver_players",
             "internal/opaque_hw_overlay",
             "internal/fake_overlay_invisibility",
-            "misc/vlc_options",
-            # what subtitles look like is settled when a VLC process
+            "misc/mpv_options",
+            # what subtitles look like is settled when a player
             # starts, so a video has to be opened again to be redrawn
             *SUBTITLE_STYLE_SETTINGS,
         }

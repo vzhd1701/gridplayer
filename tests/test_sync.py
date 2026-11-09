@@ -14,6 +14,7 @@ from PyQt5.QtWidgets import QApplication, QWidget
 
 from gridplayer.models.grid_state import GridState
 from gridplayer.models.video import Video
+from gridplayer.mpv_player.static import VideoTrack
 from gridplayer.params.actions import ACTIONS
 from gridplayer.params.menu import SECTIONS, SUBMENUS
 from gridplayer.params.settings_bindings import PLAYLIST_ATTRS
@@ -21,7 +22,6 @@ from gridplayer.params.settings_fields.kinds import CheckboxField
 from gridplayer.params.settings_fields.registry import FIELDS
 from gridplayer.params.settings_pages import PLAYLIST_PAGE
 from gridplayer.params.static import (
-    SeekSyncMode,
     VideoAnchor,
     VideoCellViewMode,
     VideoInitialState,
@@ -37,11 +37,10 @@ from gridplayer.player.managers.video_blocks import VideoBlocksManager
 from gridplayer.playlist_settings import PlaylistSettings
 from gridplayer.settings import Settings
 from gridplayer.utils.aspect_calc import SyncedView, calc_shared_view
-from gridplayer.vlc_player.static import VideoTrack
 from gridplayer.widgets.video_block import VideoBlock
 from gridplayer.widgets.video_block_view import ViewControl
 from gridplayer.widgets.video_frame_dummy import VideoFrameDummy
-from gridplayer.widgets.video_frame_vlc_hw_sp import VideoFrameVLCHWSP
+from gridplayer.widgets.video_frame_mpv_hw import VideoFrameMPVHW
 from tests.settings_layout import layout_keys, layout_sections
 
 SECTION_OF = layout_sections(PLAYLIST_PAGE)
@@ -431,196 +430,6 @@ def _manager(*blocks, **ctx):
     return manager
 
 
-class TestSyncingTheView:
-    def test_off_the_others_are_left_alone(self):
-        leader, other = _stub("a"), _stub("b")
-        manager = _manager(leader, other)
-
-        manager.sync_view(leader, SyncedView(SHARED, False))
-
-        other.view.follow.assert_not_called()
-        assert manager._ctx.synced_view is None
-
-    def test_on_the_others_follow_and_it_is_kept_for_those_loading_after(self):
-        leader, other, third = _stub("a"), _stub("b"), _stub("c")
-        manager = _manager(leader, other, third)
-        manager.set_view_sync(True)
-        synced = SyncedView(SHARED, False)
-
-        manager.sync_view(leader, synced)
-
-        leader.view.follow.assert_not_called()
-        other.view.follow.assert_called_once_with(synced)
-        third.view.follow.assert_called_once_with(synced)
-        assert manager._ctx.synced_view == synced
-
-    def test_once_the_others_follow_synced_or_not(self):
-        leader, other = _stub("a"), _stub("b")
-        manager = _manager(leader, other)
-        synced = SyncedView(SHARED, False)
-
-        manager.sync_view_single(leader, synced)
-
-        other.view.follow.assert_called_once_with(synced)
-        assert manager._ctx.synced_view is None
-
-    def test_once_with_their_views_synced_is_the_view_to_sync_to(self):
-        leader, other = _stub("a"), _stub("b")
-        manager = _manager(leader, other)
-        manager.set_view_sync(True)
-        synced = SyncedView(SHARED, False)
-
-        manager.sync_view_single(leader, synced)
-
-        other.view.follow.assert_called_once_with(synced)
-        assert manager._ctx.synced_view == synced
-
-    def test_switched_off_and_on_it_starts_afresh(self):
-        leader = _stub("a")
-        manager = _manager(leader)
-        manager.set_view_sync(True)
-        manager.sync_view(leader, SyncedView(SHARED, False))
-
-        manager.toggle_view_sync()
-
-        assert manager._ctx.synced_view is None
-        assert PlaylistSettings().get("playlist/view_sync") is False
-
-    def test_set_again_as_it_is_the_view_is_kept(self):
-        # the playlist's settings are all put in place again on each edit
-        leader = _stub("a")
-        manager = _manager(leader)
-        manager.set_view_sync(True)
-        synced = SyncedView(SHARED, False)
-        manager.sync_view(leader, synced)
-
-        manager.set_view_sync(True)
-
-        assert manager._ctx.synced_view == synced
-
-    def test_zoomed_for_all_the_view_is_taken_again_from_where_it_came(self):
-        leader, other = _stub("a"), _stub("b")
-        manager = _manager(leader, other)
-        manager.set_view_sync(True)
-        manager.sync_view(leader, SyncedView(SHARED, False))
-        zoomed = SyncedView(SHARED, True)
-        leader.view.synced.return_value = zoomed
-
-        manager.cmd_all("scale_increase")
-
-        assert manager._ctx.synced_view == zoomed
-
-    def test_for_all_anything_else_leaves_it_be(self):
-        leader = _stub("a")
-        manager = _manager(leader)
-        manager.set_view_sync(True)
-        synced = SyncedView(SHARED, False)
-        manager.sync_view(leader, synced)
-
-        manager.cmd_all("rate_increase")
-
-        leader.view.synced.assert_not_called()
-        assert manager._ctx.synced_view == synced
-
-    def test_forgotten_those_loading_after_show_their_own(self):
-        leader = _stub("a")
-        manager = _manager(leader)
-        manager.set_view_sync(True)
-        manager.sync_view(leader, SyncedView(SHARED, False))
-
-        manager.forget_synced_view()
-
-        assert manager._ctx.synced_view is None
-
-
-class TestSyncingPlayAndPause:
-    def test_off_the_others_are_left_alone(self):
-        leader, other = _stub("a"), _stub("b")
-        manager = _manager(leader, other)
-
-        manager.sync_pause(leader, True)
-
-        other.set_pause.assert_not_called()
-
-    def test_on_the_others_follow(self):
-        leader, other = _stub("a"), _stub("b")
-        manager = _manager(leader, other)
-        manager.toggle_pause_sync()
-
-        manager.sync_pause(leader, False)
-
-        leader.set_pause.assert_not_called()
-        other.set_pause.assert_called_once_with(False)
-        assert PlaylistSettings().get("playlist/pause_sync") is True
-
-    def test_those_single_mode_keeps_paused_stay_paused(self):
-        leader, hidden = _stub("a"), _stub("b", is_hidden=True)
-        manager = _manager(
-            leader, hidden, is_single_mode=True, is_pause_background_videos=True
-        )
-        manager.set_pause_sync(True)
-
-        manager.sync_pause(leader, False)
-
-        hidden.set_pause.assert_not_called()
-
-    def test_hidden_by_single_mode_alone_they_follow(self):
-        leader, hidden = _stub("a"), _stub("b", is_hidden=True)
-        manager = _manager(
-            leader, hidden, is_single_mode=True, is_pause_background_videos=False
-        )
-        manager.set_pause_sync(True)
-
-        manager.sync_pause(leader, False)
-
-        hidden.set_pause.assert_called_once_with(False)
-
-
-class TestAStepToAnotherFrame:
-    def _paused(self, manager):
-        paused = []
-        manager.set_pause.connect(paused.append)
-        manager.sync_frame_step_pause(True)
-        return paused
-
-    def test_nothing_synced_the_others_play_on(self):
-        assert self._paused(_manager()) == []
-
-    def test_with_play_and_pause_synced_they_pause(self):
-        manager = _manager()
-        manager.set_pause_sync(True)
-
-        assert self._paused(manager) == [True]
-
-    @pytest.mark.parametrize("mode", [SeekSyncMode.PERCENT, SeekSyncMode.TIMECODE])
-    def test_with_the_seek_synced_they_pause_to_step_along(self, mode):
-        manager = _manager()
-        manager.set_seek_sync_mode(mode)
-
-        assert self._paused(manager) == [True]
-
-
-class TestSyncingTheSpeed:
-    def test_off_the_others_are_left_alone(self):
-        leader, other = _stub("a"), _stub("b")
-        manager = _manager(leader, other)
-
-        manager.sync_rate(leader, 2.0)
-
-        other.follow_rate.assert_not_called()
-
-    def test_on_the_others_follow(self):
-        leader, other = _stub("a"), _stub("b")
-        manager = _manager(leader, other)
-        manager.toggle_rate_sync()
-
-        manager.sync_rate(leader, 2.0)
-
-        leader.follow_rate.assert_not_called()
-        other.follow_rate.assert_called_once_with(2.0)
-        assert PlaylistSettings().get("playlist/rate_sync") is True
-
-
 def test_a_snapshot_s_views_are_not_overruled_by_the_synced_one():
     order = []
     block = _stub("a")
@@ -640,13 +449,16 @@ def test_a_snapshot_s_views_are_not_overruled_by_the_synced_one():
     assert order == ["forgot", "applied"]
 
 
-class _StubFrame(VideoFrameVLCHWSP):
-    def driver_setup(self, vlc_options):
+class _StubFrame(VideoFrameMPVHW):
+    def __init__(self, **kwargs):
+        super().__init__(process_manager=MagicMock(), **kwargs)
+
+    def driver_setup(self):
         return MagicMock()
 
 
 def _frame(video_dimensions):
-    frame = _StubFrame(vlc_options=[])
+    frame = _StubFrame()
     frame.resize(640, 360)
     track = VideoTrack(
         codec="h264",

@@ -5,14 +5,12 @@ silently: the track is listed, selecting it reports success, and nothing is
 ever drawn. Nothing else in the suite would notice either coming back.
 """
 
-import logging
 from pathlib import Path
 
 import pytest
 from PyQt5.QtCore import QSettings
 
 from gridplayer.settings import Settings
-from gridplayer.vlc_player.instance import InstanceVLC
 
 SCRIPTS = Path(__file__).resolve().parents[1] / "scripts"
 
@@ -27,35 +25,6 @@ def _isolated_settings(tmp_path):
     yield
 
     settings.settings = real_settings
-
-
-def _init_options(vlc_options=()):
-    instance = InstanceVLC(0, list(vlc_options))
-    instance._logger = logging.getLogger("test")
-
-    return instance.init_options
-
-
-class TestTheInstanceDoesNotRefuseSubtitlesOutright:
-    def test_no_spu_is_never_passed(self):
-        """It is settled when the input opens and cannot be undone after.
-
-        libvlc_video_set_spu then returns success and libvlc_video_get_spu
-        reports the track, while nothing is decoded or drawn -- so a video
-        looks as though it is showing subtitles and is not.
-        """
-
-        assert "--no-spu" not in _init_options()
-
-    def test_files_beside_the_video_are_still_ours_to_find(self):
-        """We offer them ourselves, so VLC must not go looking as well."""
-
-        assert "--no-sub-autodetect-file" in _init_options()
-
-    def test_what_the_user_asked_for_is_still_passed_through(self):
-        options = _init_options(["--freetype-rel-fontsize=20"])
-
-        assert "--freetype-rel-fontsize=20" in options
 
 
 def _blacklisted(name):

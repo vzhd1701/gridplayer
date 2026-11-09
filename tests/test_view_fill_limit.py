@@ -1,8 +1,8 @@
 from unittest.mock import Mock
 
 from gridplayer.models.video import Video
+from gridplayer.mpv_player.static import MediaInput
 from gridplayer.params.static import NO_FILL_LIMIT
-from gridplayer.vlc_player.static import MediaInput
 from gridplayer.widgets.video_block_view import ViewControl
 
 

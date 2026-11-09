@@ -1,5 +1,4 @@
 import math
-import random
 
 import pytest
 
@@ -25,12 +24,9 @@ from gridplayer.utils.aspect_calc import (
     calc_shift_range,
     calc_shown_pixel_aspect,
     calc_view_borders,
-    calc_view_geometry,
     calc_view_placement,
     calc_view_shift,
     calc_view_step,
-    calc_vlc_picture,
-    calc_whole_geometry,
     calc_whole_placement,
     calc_zoomed_shift,
     parse_aspect_ratio,
@@ -1158,37 +1154,6 @@ class TestWholePlacement:
         assert calc_whole_placement(VIDEO, PANE, _view(scale=3.0)) is not None
 
 
-class TestWholeGeometry:
-    """What VLC is told for a picture it turns: its shape, and no crop."""
-
-    def test_the_shape_is_given_the_way_the_frame_is_stored(self):
-        # on its side 360x640, covering 400x500 at 400x711, stored 711x400
-        geometry = calc_whole_geometry((640, 360), (400, 500), _view(), is_turned=True)
-
-        assert geometry == ("711:400", "+0+0+0+0")
-
-    def test_a_picture_turned_over_keeps_its_shape(self):
-        # upside down, 640x360 covers 400x500 at 889x500
-        geometry = calc_whole_geometry((640, 360), (400, 500), _view())
-
-        assert geometry == ("889:500", "+0+0+0+0")
-
-    def test_stretched_it_takes_the_pane_s_shape(self):
-        view = _view(VideoCellViewMode.STRETCH)
-
-        geometry = calc_whole_geometry((640, 360), (400, 500), view, is_turned=True)
-
-        assert geometry == ("5:4", "+0+0+0+0")
-
-    def test_with_a_crop_of_the_users_it_is_all_of_the_frame(self):
-        # 640x350 kept covers 400x500 at 914x500, the whole frame 914x514
-        view = _view(crop=VideoCrop(0, 0, 0, 10))
-
-        geometry = calc_whole_geometry((640, 360), (400, 500), view)
-
-        assert geometry == ("457:257", "+0+0+0+0")
-
-
 class TestStep:
     """What a move right and a move down add to the shift."""
 
@@ -1272,261 +1237,7 @@ class TestPlacementNothing:
         assert calc_view_placement(frame, pane, _view()) is None
 
 
-class TestViewGeometry:
-    """What VLC is told: crop to the part on show, give it the pane's shape."""
-
-    @pytest.mark.parametrize("mode", list(VideoCellViewMode))
-    def test_same_shape_keeps_it_all(self, mode):
-        assert calc_view_geometry(VIDEO, PANE, _view(mode)) == ("16:9", "+0+0+0+0")
-
-    def test_fit_crops_a_square_from_the_middle(self):
-        assert calc_view_geometry(VIDEO, SQUARE, _view()) == ("16:9", "+420+0+420+0")
-
-    def test_none_letterboxes_user_region(self):
-        crop = VideoCrop(100, 50, 40, 30)
-
-        override, geometry = calc_view_geometry(
-            VIDEO, PANE, _view(VideoCellViewMode.FIT, crop=crop)
-        )
-
-        assert geometry == "+100+50+40+30"
-        # shown in its own shape, 1780x1000
-        assert _shown_ratio(override, VIDEO, crop) == pytest.approx(1.78, abs=1e-3)
-
-    def test_fit_extends_borders_when_region_taller_than_pane(self):
-        # Region 960x1080 (8:9) in a 16:9 pane -> crop 270 top/bottom.
-        crop = VideoCrop(480, 0, 480, 0)
-
-        assert calc_view_geometry(VIDEO, PANE, _view(crop=crop)) == (
-            "16:9",
-            "+480+270+480+270",
-        )
-
-    def test_fit_extends_borders_when_region_wider_than_pane(self):
-        # Region 1920x540 (32:9) in a 16:9 pane -> crop 480 left/right.
-        crop = VideoCrop(0, 270, 0, 270)
-
-        assert calc_view_geometry(VIDEO, PANE, _view(crop=crop)) == (
-            "16:9",
-            "+480+270+480+270",
-        )
-
-    def test_fit_borders_round_to_nearest_pixel(self):
-        # Region 959x1080 -> target height 539.4375 -> extra rounds to 270.
-        crop = VideoCrop(481, 0, 480, 0)
-
-        _, geometry = calc_view_geometry(VIDEO, PANE, _view(crop=crop))
-
-        assert geometry == "+481+270+480+270"
-
-    def test_fit_leaves_matching_region_unchanged(self):
-        # Region 1600x900 already matches the 16:9 pane; no extra borders.
-        crop = VideoCrop(160, 90, 160, 90)
-
-        assert calc_view_geometry(VIDEO, PANE, _view(crop=crop)) == (
-            "16:9",
-            "+160+90+160+90",
-        )
-
-    def test_fit_does_not_zero_out_tiny_region(self):
-        # 4x1 region in a 1x10000 pane: rounding must leave a pixel each way.
-        crop = VideoCrop(958, 1079, 958, 0)
-
-        _, geometry = calc_view_geometry(VIDEO, (1, 10000), _view(crop=crop))
-        borders = _borders(geometry)
-
-        assert calc_crop_region(VIDEO, borders)[2:] == (1, 1)
-
-    def test_zoom_is_in_the_crop(self):
-        assert calc_view_geometry(VIDEO, PANE, _view(scale=2.0)) == (
-            "16:9",
-            "+480+270+480+270",
-        )
-
-    def test_stretch_compensates_override_for_cropped_region(self):
-        # Region 960x1080 must display as 16:9; VLC derives the SAR from the
-        # pre-crop dims, so the override is compensated to 32:9.
-        crop = VideoCrop(480, 0, 480, 0)
-
-        assert calc_view_geometry(
-            VIDEO, PANE, _view(VideoCellViewMode.STRETCH, crop=crop)
-        ) == (
-            "32:9",
-            "+480+0+480+0",
-        )
-
-    def test_stretch_compensates_vertical_crop(self):
-        # Region 1920x540 must display as 16:9 -> override 8:9.
-        crop = VideoCrop(0, 270, 0, 270)
-
-        assert calc_view_geometry(
-            VIDEO, PANE, _view(VideoCellViewMode.STRETCH, crop=crop)
-        ) == (
-            "8:9",
-            "+0+270+0+270",
-        )
-
-    def test_stretch_too_thin_for_vlc_falls_back_to_native(self):
-        # 1x1 region in a 1px-wide huge pane: no SAR VLC can do its sums on
-        # comes near, so "0:0" leaves the picture its own shape
-        crop = VideoCrop(1919, 1079, 0, 0)
-
-        assert calc_view_geometry(
-            VIDEO, (1, 600000), _view(VideoCellViewMode.STRETCH, crop=crop)
-        ) == ("0:0", "+1919+1079+0+0")
-
-    def test_stretch_degenerate_override_falls_back_to_native(self):
-        # 1x1 region in a 1px-tall huge pane -> absurd ratio -> "0:0" resets
-        # the override in VLC (letterbox) instead of overflowing its SAR math.
-        crop = VideoCrop(1919, 1079, 0, 0)
-
-        assert calc_view_geometry(
-            VIDEO, (600000, 1), _view(VideoCellViewMode.STRETCH, crop=crop)
-        ) == ("0:0", "+1919+1079+0+0")
-
-    def test_zero_pane_size_falls_back_to_letterbox(self):
-        crop = VideoCrop(10, 10, 10, 10)
-
-        assert calc_view_geometry(VIDEO, (0, 900), _view(crop=crop)) == (
-            "1920:1080",
-            "+10+10+10+10",
-        )
-
-    def test_zero_pane_size_falls_back_to_the_turned_shape(self):
-        assert calc_view_geometry(
-            VIDEO, (0, 900), _view(), VideoTransform.ROTATE_90
-        ) == ("1080:1920", "+0+0+0+0")
-
-    def test_zero_video_size_falls_back_to_letterbox(self):
-        crop = VideoCrop(10, 10, 10, 10)
-
-        assert calc_view_geometry((0, 0), PANE, _view(crop=crop)) == (
-            "0:0",
-            "+10+10+10+10",
-        )
-
-    @pytest.mark.parametrize(
-        ("pane", "crop"),
-        [
-            ((1600, 899), VideoCrop(100, 50, 40, 30)),
-            ((1597, 900), VideoCrop(7, 0, 3, 0)),
-            ((901, 1777), VideoCrop(1, 3, 0, 2)),
-        ],
-    )
-    def test_override_fits_vlc_sar_range_without_giving_up(self, pane, crop):
-        """A ratio that won't reduce is approximated, not reset to native."""
-
-        for mode in VideoCellViewMode:
-            view = _view(mode, crop=crop)
-            override, geometry = calc_view_geometry(VIDEO, pane, view)
-            num, den = (int(part) for part in override.split(":"))
-            _, _, target_w, target_h = calc_view_placement(VIDEO, pane, view).target
-
-            assert 0 < num
-            assert 0 < den
-            assert _fits_vlc(override, VIDEO, _borders(geometry))
-            assert _shown_ratio(override, VIDEO, _borders(geometry)) == pytest.approx(
-                round(target_w) / round(target_h), rel=1e-4
-            )
-
-    def test_moved_past_an_edge_it_is_not_placed_out_of_shape(self):
-        """A crop that leaves an awkward region made VLC's sums on the
-        SAR wrap round, and it placed the picture 1527 high in 675."""
-
-        view = _view(shift=VideoShift(0, -41), is_shift_past_edges=True)
-
-        override, geometry = calc_view_geometry(VIDEO, (1039, 684), view)
-
-        assert geometry == "+140+41+140+0"
-        assert _fits_vlc(override, VIDEO, _borders(geometry))
-
-    def test_every_override_fits_vlc_s_sums(self):
-        rng = random.Random(7)
-
-        for _ in range(3000):
-            frame = rng.choice([VIDEO, (1917, 1079), (720, 576), (4096, 2160)])
-            pane = (rng.randint(50, 2000), rng.randint(50, 1200))
-            view = _view(
-                rng.choice(list(VideoCellViewMode)),
-                rng.choice([1.0, 1.3, 2.0, 7.5]),
-                VideoCrop(*(rng.choice([0, 0, 3, 41]) for _ in range(4))),
-                rng.choice(list(VideoAnchor)),
-                VideoShift(rng.randint(-3000, 3000), rng.randint(-3000, 3000)),
-                rng.random() < 0.5,
-            )
-            override, geometry = calc_view_geometry(frame, pane, view)
-            _, _, target_w, target_h = calc_view_placement(frame, pane, view).target
-
-            assert _fits_vlc(override, frame, _borders(geometry))
-            # a frame whose sides share nothing leaves the SAR's terms in
-            # the hundreds: within a pixel in five hundred
-            assert _shown_ratio(override, frame, _borders(geometry)) == pytest.approx(
-                round(target_w) / round(target_h), rel=2e-3
-            )
-
-    @pytest.mark.parametrize(
-        ("anchor", "geometry"),
-        [
-            (VideoAnchor.LEFT, "+0+0+840+0"),
-            (VideoAnchor.CENTER, "+420+0+420+0"),
-            (VideoAnchor.BOTTOM_RIGHT, "+840+0+0+0"),
-        ],
-    )
-    def test_the_anchor_is_in_the_crop(self, anchor, geometry):
-        assert calc_view_geometry(VIDEO, SQUARE, _view(anchor=anchor)) == (
-            "16:9",
-            geometry,
-        )
-
-    def test_the_shift_is_in_the_crop(self):
-        view = _view(scale=2.0, shift=VideoShift(-200, 100))
-
-        assert calc_view_geometry(VIDEO, PANE, view) == ("16:9", "+680+170+280+370")
-
-
-class TestViewGeometryRotated:
-    """The crop is in the unrotated frame; the override shapes it back."""
-
-    FRAME = (640, 360)
-
-    def test_fit_covers_a_wide_pane(self):
-        override, geometry = calc_view_geometry(
-            self.FRAME, (640, 360), _view(), VideoTransform.ROTATE_90
-        )
-
-        borders = _borders(geometry)
-        assert borders == VideoCrop(0, 123, 0, 123)
-        assert _shown_ratio(override, self.FRAME, borders) == pytest.approx(
-            640 / 360, rel=0.01
-        )
-
-    def test_none_with_a_crop_keeps_the_turned_shape(self):
-        crop = VideoCrop(160, 0, 0, 0)
-
-        override, geometry = calc_view_geometry(
-            self.FRAME,
-            (360, 640),
-            _view(VideoCellViewMode.FIT, crop=crop),
-            VideoTransform.ROTATE_90,
-        )
-
-        assert geometry == "+160+0+0+0"
-        # 480 frame pixels across are 270 on screen, 360 down are 640
-        assert _shown_ratio(override, self.FRAME, crop) == pytest.approx(270 / 640)
-
-
 class TestViewBorders:
-    def test_is_what_vlc_is_told_to_crop(self):
-        crop = VideoCrop(10, 20, 30, 40)
-
-        for mode in VideoCellViewMode:
-            for scale in (1.0, 2.5):
-                view = _view(mode, scale, crop)
-                borders = calc_view_borders((800, 600), (500, 200), view)
-                _, geometry = calc_view_geometry((800, 600), (500, 200), view)
-
-                assert _borders(geometry) == borders
-
     def test_nothing_to_work_from_is_the_user_crop(self):
         crop = VideoCrop(10, 20, 30, 40)
 
@@ -1545,44 +1256,6 @@ class TestCropRegion:
     )
     def test_clamped_to_video_bounds(self, crop, expected):
         assert calc_crop_region(VIDEO, crop) == expected
-
-
-class TestVlcPicture:
-    """Where VLC 3 put its picture window, measured on Windows, Direct3D11:
-    the frame, the pane the view is for, VLC's window, the 8px hidden margin
-    on every side of it, and the picture window VLC made in it."""
-
-    @pytest.mark.parametrize(
-        ("frame", "pane", "window", "measured"),
-        [
-            ((720, 960), (414, 240), (430, 256), (0, 3, 430, 249)),
-            ((720, 960), (426, 240), (442, 256), (0, 3, 442, 249)),
-            ((720, 960), (427, 240), (443, 256), (0, 4, 443, 248)),
-            ((720, 960), (533, 300), (549, 316), (0, 3, 549, 309)),
-            ((720, 960), (534, 300), (550, 316), (0, 4, 550, 308)),
-            ((720, 960), (426, 241), (442, 257), (0, 3, 442, 250)),
-            ((1920, 1080), (400, 234), (416, 250), (0, 3, 416, 243)),
-            ((1920, 1080), (426, 240), (442, 256), (0, 3, 442, 249)),
-            ((1920, 1080), (1200, 700), (1216, 716), (0, 3, 1216, 709)),
-            ((1920, 1080), (1280, 720), (1296, 736), (0, 3, 1296, 729)),
-        ],
-    )
-    def test_as_vlc_placed_it(self, frame, pane, window, measured):
-        geometry = calc_view_geometry(frame, pane, _view())
-
-        assert calc_vlc_picture(frame, geometry, window) == measured
-
-    def test_fills_down_where_it_reaches_the_bottom_first(self):
-        geometry = calc_view_geometry((720, 960), (300, 400), _view())
-
-        x, _y, width, height = calc_vlc_picture((720, 960), geometry, (400, 416))
-
-        assert height == 416
-        assert width < 400
-        assert x == (400 - width) // 2
-
-    def test_not_known_with_the_files_own_shape(self):
-        assert calc_vlc_picture(VIDEO, ("0:0", "+0+0+0+0"), (400, 300)) is None
 
 
 # stored 320x360, its pixels twice as wide as tall: a 640x360 picture
@@ -1632,29 +1305,6 @@ class TestPixelAspect:
         )
 
         assert placement.target == _approx((0, 0, 900, 1600))
-
-    def test_vlc_is_told_the_shape_of_the_picture(self):
-        """The override takes the place of the video's own pixel shape."""
-
-        geometry = calc_view_geometry(
-            WIDE_PIXELS, (1280, 720), _view(VideoCellViewMode.FIT), pixel_aspect=2
-        )
-
-        assert calc_vlc_picture(WIDE_PIXELS, geometry, (1280, 720)) == (0, 0, 1280, 720)
-        assert _fits_vlc(geometry[0], WIDE_PIXELS, _borders(geometry[1]))
-
-    def test_without_a_pane_vlc_is_told_the_whole_picture_s_shape(self):
-        geometry = calc_view_geometry(WIDE_PIXELS, (0, 0), _view(), pixel_aspect=2)
-
-        assert geometry == ("640:360", "+0+0+0+0")
-
-    def test_a_picture_vlc_turns_is_told_its_shape_as_stored(self):
-        # stored 640x360 shown, the same as the square-pixel test above
-        geometry = calc_whole_geometry(
-            WIDE_PIXELS, (400, 500), _view(), is_turned=True, pixel_aspect=2
-        )
-
-        assert geometry == ("711:400", "+0+0+0+0")
 
     def test_one_of_other_pixels_follows_to_the_same_place(self):
         """10 wide pixels are 20 square ones of the same picture."""
@@ -1720,16 +1370,6 @@ class TestAspectRatio:
         )
 
         assert placement.target == _approx((0, 0, 1600, 900))
-
-    def test_vlc_is_told_the_shape_picked(self):
-        pixel_aspect = calc_shown_pixel_aspect(VIDEO, None, "4:3", 1.0)
-
-        geometry = calc_view_geometry(
-            VIDEO, (1200, 900), _view(VideoCellViewMode.FIT), pixel_aspect=pixel_aspect
-        )
-
-        assert geometry == ("4:3", "+0+0+0+0")
-        assert calc_vlc_picture(VIDEO, geometry, (1200, 900)) == (0, 0, 1200, 900)
 
 
 class TestCropRatio:

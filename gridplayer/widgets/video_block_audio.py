@@ -23,6 +23,7 @@ from gridplayer.models.audio_selection import (
     track_of_file,
 )
 from gridplayer.models.video import default_audio_selection
+from gridplayer.mpv_player.static import DISABLED_TRACK, NO_TRACK, wanted_audio_track_id
 from gridplayer.params.extensions import SUPPORTED_AUDIO_EXT
 from gridplayer.params.static import (
     AUDIO_DELAY_STEP_MS,
@@ -36,7 +37,6 @@ from gridplayer.utils.external_audio import (
 )
 from gridplayer.utils.qt import translate
 from gridplayer.utils.track_language import normalize, pick_track
-from gridplayer.vlc_player.static import DISABLED_TRACK, NO_TRACK, wanted_audio_track_id
 from gridplayer.widgets.video_block_guards import (
     VideoBlockPart,
     only_initialized,
@@ -558,7 +558,7 @@ class AudioControl(VideoBlockPart):
             warnings.append(
                 translate(
                     "Warning",
-                    "VLC cannot play {FILES} alongside a video.",
+                    "mpv cannot play {FILES} alongside a video.",
                 ).format(FILES=_file_names(unplayable))
             )
 

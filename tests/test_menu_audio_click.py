@@ -20,14 +20,14 @@ from gridplayer.models.audio_selection import (
 )
 from gridplayer.models.stream import Stream, Streams
 from gridplayer.models.video import Video
-from gridplayer.player.manager import Commands
-from gridplayer.player.managers.actions import ActionsManager
-from gridplayer.player.managers.active_block import ActiveBlockManager
-from gridplayer.vlc_player.static import (
+from gridplayer.mpv_player.static import (
     DISABLED_TRACK,
     AudioTrack,
     wanted_audio_track_id,
 )
+from gridplayer.player.manager import Commands
+from gridplayer.player.managers.actions import ActionsManager
+from gridplayer.player.managers.active_block import ActiveBlockManager
 from gridplayer.widgets.video_block import VideoBlock
 from gridplayer.widgets.video_block_audio import AudioControl
 from gridplayer.widgets.video_block_stream import StreamControl

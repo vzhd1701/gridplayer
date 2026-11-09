@@ -29,9 +29,7 @@ from gridplayer.player.managers.active_block import (
 )
 from gridplayer.player.managers.video_blocks import VideoBlocksManager
 from gridplayer.settings import Settings
-from gridplayer.utils.libvlc_options_parser import get_vlc_options, is_reopen_needed
-from gridplayer.vlc_player.player_base import VlcPlayerBase
-from gridplayer.vlc_player.static import MediaInput
+from gridplayer.utils.video_reopen import is_reopen_needed
 from gridplayer.widgets.combo_box import MAX_VISIBLE_COMBO_ITEMS
 from gridplayer.widgets.settings_form import SettingsForm
 from gridplayer.widgets.video_block import VideoBlock
@@ -58,19 +56,6 @@ def _isolated_settings(tmp_path):
     yield
 
     settings.settings = real_settings
-
-
-class _MinimalPlayer(VlcPlayerBase):
-    def notify_snapshot_taken(self, snapshot_path): ...
-    def notify_update_status(self, status, percent=0): ...
-    def notify_error(self, error, vlc_lines=()): ...
-    def notify_time_changed(self, new_time): ...
-    def notify_playback_status_changed(self, new_status): ...
-    def notify_load_video_done(self, media_track): ...
-    def notify_tracks_changed(self, media_track): ...
-    def loopback_load_video_st2_set_media(self): ...
-    def loopback_load_video_st3_extract_media_track(self): ...
-    def loopback_load_video_st4_loaded(self): ...
 
 
 class _FakeEventManager:
@@ -109,26 +94,6 @@ class _FakeMediaPlayer:
         return 0
 
 
-def _options_for(encoding):
-    """The options the media is opened with, for a video set to `encoding`."""
-
-    media = _FakeMedia()
-    player = _MinimalPlayer(vlc_instance=_FakeInstance(media))
-    player._media_player = _FakeMediaPlayer()
-
-    player.load_video(
-        MediaInput(
-            uri=URI,
-            is_live=False,
-            is_audio_only=False,
-            size=(640, 360),
-            video=Video(uri=URI, subtitle_encoding=encoding),
-        )
-    )
-
-    return media.options
-
-
 def _block(encoding):
     """A video block that records what it was handed to open again."""
 
@@ -148,26 +113,6 @@ def _apply(blocks, encoding):
     manager._ctx = SimpleNamespace(video_blocks=blocks)
 
     VideoBlocksManager.apply_subtitle_encoding(manager, encoding)
-
-
-class TestWhatGoesToVLC:
-    def test_nothing_is_said_when_nothing_was_picked(self):
-        assert not [o for o in _options_for("") if "subsdec-encoding" in o]
-
-    def test_the_pick_is_handed_over_as_the_decoder_names_it(self):
-        assert ":subsdec-encoding=Windows-1251" in _options_for("Windows-1251")
-
-    def test_it_travels_with_the_media_rather_than_the_instance(self):
-        """Instance options decide which VLC process a video is played in.
-
-        Sending the encoding that way would fork the pool one process per
-        encoding for a grid that mixes them, which is why it goes on the
-        media instead -- and why video_block reopens on its own.
-        """
-
-        video = Video(uri=URI, subtitle_encoding="Windows-1251")
-
-        assert not [o for o in get_vlc_options(video) if "subsdec" in o]
 
 
 class TestWhatIsOffered:

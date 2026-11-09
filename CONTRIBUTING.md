@@ -8,7 +8,7 @@ Dependencies:
 - [Just](https://github.com/casey/just) (task runner)
 - [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) (for release workflow)
 - [conventional-changelog](https://github.com/conventional-changelog/conventional-changelog)
-- [VLC](https://www.videolan.org/)
+- [mpv](https://mpv.io/)
 - (Optional)[Deno JS Runtime](https://github.com/yt-dlp/yt-dlp/wiki/EJS)
 
 ## Dev install & run

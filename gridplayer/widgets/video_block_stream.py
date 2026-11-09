@@ -26,9 +26,9 @@ from gridplayer.models.stream import (
     Streams,
     short_quality_name,
 )
+from gridplayer.mpv_player.static import MediaInput
 from gridplayer.utils.qt import translate
 from gridplayer.utils.video_errors import ProxyFailure
-from gridplayer.vlc_player.static import MediaInput
 from gridplayer.widgets.video_block_guards import (
     VideoBlockPart,
     only_initialized,

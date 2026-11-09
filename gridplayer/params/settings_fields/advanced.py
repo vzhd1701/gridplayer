@@ -14,13 +14,11 @@ from gridplayer.utils.video_driver import is_hw_video_available, session_video_d
 
 # the drivers that run their videos in processes of their own
 VIDEO_DRIVERS_MULTIPROCESS = (
-    VideoDriver.VLC_SW,
-    VideoDriver.VLC_HW,
-    VideoDriver.MPV_HW,
     VideoDriver.MPV_SW,
+    VideoDriver.MPV_HW,
 )
 
-MAX_VLC_PROCESSES = 64
+MAX_PLAYER_PROCESSES = 64
 
 
 def no_hw_video_reason() -> str:
@@ -53,10 +51,10 @@ ADVANCED_FIELDS: tuple[SettingField, ...] = (
         settings_key="player/video_driver_players",
         label=translate("SettingsDialog", "Videos per process"),
         minimum=1,
-        maximum=MAX_VLC_PROCESSES,
+        maximum=MAX_PLAYER_PROCESSES,
         enabled_when=When("player/video_driver", VIDEO_DRIVERS_MULTIPROCESS),
     ),
-    TextField(settings_key="misc/vlc_options"),
+    TextField(settings_key="misc/mpv_options"),
     CheckboxField(
         settings_key="internal/opaque_hw_overlay",
         label=translate("SettingsDialog", "Opaque overlay (fix black screen)"),
@@ -78,17 +76,6 @@ ADVANCED_FIELDS: tuple[SettingField, ...] = (
             "SettingsDialog", "Force native drag-n-drop for in-window drag"
         ),
         shown_if=_is_linux,
-    ),
-    ComboField(
-        settings_key="internal/hw_crop_border_offset",
-        label=translate("SettingsDialog", "HW video border fix"),
-        choices=choices.hw_crop_borders,
-        unavailable=no_hw_video,
-        tooltip=translate(
-            "SettingsDialog",
-            "Crops a few pixels off the edges to hide glitches from hardware video."
-            " Auto uses the default for your system.",
-        ),
     ),
     CheckboxField(
         settings_key="logging/log_limit",
@@ -113,10 +100,5 @@ ADVANCED_FIELDS: tuple[SettingField, ...] = (
         settings_key="logging/log_level",
         label=translate("SettingsDialog", "Log level"),
         choices=choices.log_levels,
-    ),
-    ComboField(
-        settings_key="logging/log_level_vlc",
-        label=translate("SettingsDialog", "Log level (VLC)"),
-        choices=choices.vlc_log_levels,
     ),
 )

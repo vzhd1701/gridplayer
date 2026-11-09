@@ -124,25 +124,3 @@ def test_nothing_to_keep_elsewhere(mocker):
     win32_com.keep_mta_alive()
 
     win_dll.assert_not_called()
-
-
-def test_vlc_has_it_before_it_starts(mocker):
-    from gridplayer.vlc_player import instance as instance_mod
-
-    order = []
-    mocker.patch.object(
-        instance_mod, "keep_mta_alive", side_effect=lambda: order.append("keep")
-    )
-    mocker.patch.object(
-        instance_mod.vlc,
-        "Instance",
-        side_effect=lambda *args: order.append("vlc") or None,
-    )
-    mocker.patch.object(
-        instance_mod.InstanceVLC, "init_options", new_callable=mocker.PropertyMock
-    )
-
-    with pytest.raises(RuntimeError):
-        instance_mod.InstanceVLC(0, []).init_instance()
-
-    assert order == ["keep", "vlc"]

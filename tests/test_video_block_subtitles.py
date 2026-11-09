@@ -13,9 +13,9 @@ from gridplayer.models.subtitle_selection import (
     SubtitleTrackId,
 )
 from gridplayer.models.video import Video
+from gridplayer.mpv_player.static import DISABLED_TRACK, SubtitleTrack
 from gridplayer.params.static import VideoInitialState
 from gridplayer.settings import Settings
-from gridplayer.vlc_player.static import DISABLED_TRACK, SubtitleTrack
 from gridplayer.widgets.video_block import VideoBlock
 from gridplayer.widgets.video_block_subtitles import SubtitleControl
 

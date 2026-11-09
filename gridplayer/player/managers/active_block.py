@@ -30,6 +30,7 @@ from gridplayer.models.subtitle_selection import (
     SubtitlePreferred,
     SubtitleTrackId,
 )
+from gridplayer.mpv_player.static import DISABLED_TRACK
 from gridplayer.params.static import (
     NO_CROP_RATIO,
     OWN_ASPECT_RATIO,
@@ -40,7 +41,6 @@ from gridplayer.utils.bookmarks import default_bookmark_name
 from gridplayer.utils.qt import is_modal_open, topmost, translate
 from gridplayer.utils.time_txt import timed_title
 from gridplayer.utils.track_language import language_name
-from gridplayer.vlc_player.static import DISABLED_TRACK
 from gridplayer.widgets.bookmark_colors import bookmark_icon
 from gridplayer.widgets.video_block import VideoBlock
 

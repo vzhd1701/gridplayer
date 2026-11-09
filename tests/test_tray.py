@@ -13,6 +13,7 @@ from PyQt5.QtWidgets import QApplication, QSystemTrayIcon, QWidget
 from gridplayer.dialogs import settings as settings_dialog
 from gridplayer.dialogs.settings import SettingsDialog
 from gridplayer.models.video import Video
+from gridplayer.mpv_player.static import DISABLED_TRACK
 from gridplayer.params.settings_fields import general as general_fields
 from gridplayer.params.static import VideoInitialState
 from gridplayer.player.managers import screensaver as screensaver_module
@@ -26,7 +27,6 @@ from gridplayer.utils import taskbar as taskbar_module
 from gridplayer.utils.keepawake import KeepAwakeMode
 from gridplayer.utils.single_instance import Listener
 from gridplayer.utils.taskbar import TaskbarHidingBlocker
-from gridplayer.vlc_player.static import DISABLED_TRACK
 from gridplayer.widgets.video_block import VideoBlock
 
 URI = "http://example.com/a.mp4"

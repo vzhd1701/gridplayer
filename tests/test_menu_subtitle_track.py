@@ -13,10 +13,10 @@ from gridplayer.models.subtitle_selection import (
     SubtitlePreferred,
     SubtitleTrackId,
 )
+from gridplayer.mpv_player.static import SubtitleTrack
 from gridplayer.params.menu import SECTIONS
 from gridplayer.player.managers.active_block import ActiveBlockManager
 from gridplayer.utils.track_language import language_name
-from gridplayer.vlc_player.static import SubtitleTrack
 
 
 @pytest.fixture(scope="module", autouse=True)

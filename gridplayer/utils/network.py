@@ -316,7 +316,7 @@ def ytdl_network_opts(opts: NetworkOpts | None = None) -> dict:
     return ydl_opts
 
 
-def vlc_user_agent() -> str:
+def player_user_agent() -> str:
     """What VLC calls itself, for the links that still go straight to it."""
 
     return network_opts().user_agent or DEFAULT_USER_AGENT

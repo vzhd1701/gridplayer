@@ -504,24 +504,20 @@ class VideoInitialState(AutoName):
 
 
 class VideoDriver(AutoName):
-    VLC_SW = auto()
-    VLC_SW_SP = auto()
-    VLC_HW = auto()
-    VLC_HW_SP = auto()
     MPV_HW = auto()
     MPV_SW = auto()
     DUMMY = auto()
 
+    @classmethod
+    def _missing_(cls, value):
+        # what settings saved before the move from VLC still say
+        if value in {"vlc_hw", "vlc_hw_sp"}:
+            return cls.MPV_HW
 
-class HWCropBorderOffset(AutoName):
-    AUTO = auto()
-    DISABLED = auto()
-    PX2 = auto()
-    PX4 = auto()
-    PX6 = auto()
-    PX8 = auto()
-    PX10 = auto()
-    PX12 = auto()
+        if value in {"vlc_sw", "vlc_sw_sp"}:
+            return cls.MPV_SW
+
+        return None
 
 
 class SeekSyncMode(AutoName):

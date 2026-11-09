@@ -19,10 +19,6 @@ from gridplayer.models.subtitle_selection import (
 from gridplayer.models.video import Video, default_subtitle_selection
 from gridplayer.params.static import SubtitleTrackMode
 from gridplayer.settings import Settings
-from gridplayer.vlc_player.static import DISABLED_TRACK, wanted_subtitle_track_id
-
-from .test_vlc_player_subtitle_tracks import _manager
-from .test_vlc_player_tracks_manager import FakeMediaPlayer, make_subtitle_track
 
 URI = "http://example.com/a.mp4"
 
@@ -47,22 +43,6 @@ def _reopened(video):
     """The same video, through a playlist file and back."""
 
     return Playlist.parse(Playlist(videos=[video]).dumps()).videos[0]
-
-
-def _tracks(*languages):
-    player = FakeMediaPlayer(
-        spu_desc=[
-            (-1, b"Disable"),
-            *((index, b"Track") for index, _ in enumerate(languages)),
-        ]
-    )
-
-    media_tracks = [
-        make_subtitle_track(track_id=index, language=language)
-        for index, language in enumerate(languages)
-    ]
-
-    return _manager(player, media_tracks).subtitle_tracks
 
 
 class TestTheSixThingsSubtitlesCanBe:
@@ -112,72 +92,6 @@ class TestWhereEveryVideoStarts:
         Settings().set("video_defaults/subtitle_track_mode", mode)
 
         assert default_subtitle_selection() == expected
-
-
-class TestWhichTrackTheSettingsCallFor:
-    def test_off_asks_for_nothing_at_all(self):
-        video = _video(subtitle_selection=SubtitleDisabled())
-
-        assert wanted_subtitle_track_id(video, _tracks(b"eng")) == DISABLED_TRACK
-
-    def test_the_container_default_is_left_to_libvlc(self):
-        """Which has already opened on it, so there is nothing to ask for."""
-
-        video = _video(subtitle_selection=SubtitleDefault())
-
-        assert wanted_subtitle_track_id(video, _tracks(b"eng")) is None
-
-    def test_a_track_named_by_number_is_used_as_named(self):
-        video = _video(subtitle_selection=SubtitleTrackId(id=1))
-
-        assert wanted_subtitle_track_id(video, _tracks(b"eng", b"spa")) == 1
-
-    def test_a_track_named_by_language_is_looked_up_afresh(self):
-        video = _video(subtitle_selection=SubtitleLanguage(tag="spa"))
-
-        assert wanted_subtitle_track_id(video, _tracks(b"eng", b"spa")) == 1
-
-    def test_the_preference_is_followed_where_it_answers(self):
-        video = _video(
-            subtitle_selection=SubtitlePreferred(), subtitle_languages="ja, es"
-        )
-
-        assert wanted_subtitle_track_id(video, _tracks(b"eng", b"spa")) == 1
-
-    def test_a_preference_nothing_answers_shows_none(self):
-        """Where the sound would take whatever it could get.
-
-        A subtitle in a language nobody asked for is worse than a bare
-        picture, which is not true of a sound track nobody asked for.
-        """
-
-        video = _video(subtitle_selection=SubtitlePreferred(), subtitle_languages="ja")
-
-        assert (
-            wanted_subtitle_track_id(video, _tracks(b"eng", b"spa")) == DISABLED_TRACK
-        )
-
-    def test_a_language_that_is_gone_falls_back_on_the_preference(self):
-        video = _video(
-            subtitle_selection=SubtitleLanguage(tag="rus"), subtitle_languages="en"
-        )
-
-        assert wanted_subtitle_track_id(video, _tracks(b"eng", b"spa")) == 0
-
-    def test_a_file_of_its_own_is_never_matched_on_language(self):
-        """libVLC writes the file's name where a language belongs.
-
-        Left in, that path would answer a preference for a language it
-        only happens to spell like.
-        """
-
-        tracks = _tracks(b"eng", b"C:\\films\\Movie.ja")
-
-        video = _video(subtitle_selection=SubtitlePreferred(), subtitle_languages="ja")
-
-        assert (
-            wanted_subtitle_track_id(video, tracks, external_ids=(1,)) == DISABLED_TRACK
-        )
 
 
 class TestNamingATrackInsideAFile:

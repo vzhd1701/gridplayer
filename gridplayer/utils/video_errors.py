@@ -1,6 +1,6 @@
 """Why a video would not play, as its cell says it and its Details window
 tells it in full: from what a resolver raised finding it behind its link,
-what the stream proxy was answered fetching it, what VLC said opening it,
+what the stream proxy was answered fetching it, what mpv said opening it,
 or the file itself gone. A list that could not be read is told the same
 way in the List window.
 """
@@ -31,9 +31,11 @@ from gridplayer.utils.list_errors import (
 )
 from gridplayer.utils.qt import translate
 
-# an HTTP status in what VLC said, fetching a link itself: "HTTP 404",
+# an HTTP status in what mpv said, fetching a link itself: "HTTP 404",
 # "HTTP/1.1 403 Forbidden", "status 410"
-_VLC_HTTP_STATUS = re.compile(r"\b(?:HTTP(?:/\d(?:\.\d)?)?|status)\D{0,12}([45]\d\d)\b")
+_PLAYER_HTTP_STATUS = re.compile(
+    r"\b(?:HTTP(?:/\d(?:\.\d)?)?|status)\D{0,12}([45]\d\d)\b"
+)
 
 # how many of the errors under the one raised are told in the details
 _CHAIN_TOLD = 6
@@ -76,7 +78,7 @@ class ShownError:
     # the code in full, with the server's words: "HTTP 429 Too Many Requests"
     code_full: str = ""
     host: str = ""
-    # as raised, and what VLC said
+    # as raised, and what mpv said
     raw: str = ""
     is_network: bool = False
     # whether a reload might be answered otherwise: not for a video gone,
@@ -229,7 +231,9 @@ class ProxyFailure:
     at: float = field(default_factory=time.monotonic)
 
 
-def proxy_error(failure: ProxyFailure, vlc_lines: tuple[str, ...] = ()) -> ShownError:
+def proxy_error(
+    failure: ProxyFailure, player_lines: tuple[str, ...] = ()
+) -> ShownError:
     host = host_of(failure.url)
 
     raw_lines = [f"{failure.url}"]
@@ -240,7 +244,7 @@ def proxy_error(failure: ProxyFailure, vlc_lines: tuple[str, ...] = ()) -> Shown
     if failure.error:
         raw_lines.append(failure.error)
 
-    raw_lines.extend(_vlc_said_lines(vlc_lines))
+    raw_lines.extend(_player_said_lines(player_lines))
 
     raw = "\n".join(raw_lines)
 
@@ -262,24 +266,24 @@ def proxy_error(failure: ProxyFailure, vlc_lines: tuple[str, ...] = ()) -> Shown
     return shown_read_error(read, raw)
 
 
-def _vlc_said_lines(vlc_lines: tuple[str, ...]) -> list[str]:
-    """What VLC said, set apart under the rest of the raw text."""
+def _player_said_lines(player_lines: tuple[str, ...]) -> list[str]:
+    """What mpv said, set apart under the rest of the raw text."""
 
-    if not vlc_lines:
+    if not player_lines:
         return []
 
-    return ["", translate("Video Error", "VLC errors:"), *vlc_lines]
+    return ["", translate("Video Error", "mpv errors:"), *player_lines]
 
 
 def player_error(
-    message: str, vlc_lines: tuple[str, ...] = (), url: str = ""
+    message: str, player_lines: tuple[str, ...] = (), url: str = ""
 ) -> ShownError:
-    """VLC could not play it, by what it said: an HTTP status where it
+    """mpv could not play it, by what it said: an HTTP status where it
     fetched a link itself and was turned away."""
 
-    raw = "\n".join((message, *_vlc_said_lines(vlc_lines)))
+    raw = "\n".join((message, *_player_said_lines(player_lines)))
 
-    status = _vlc_http_status(vlc_lines)
+    status = _player_http_status(player_lines)
 
     if status is not None:
         title, about = http_error_txts(status)
@@ -298,17 +302,17 @@ def player_error(
 
     return ShownError(
         title=message,
-        about=_first_vlc_line(vlc_lines),
+        about=_first_player_line(player_lines),
         where=where_player_txt(),
-        code="VLC",
+        code="mpv",
         host=host_of(url),
         raw=raw,
     )
 
 
-def _vlc_http_status(vlc_lines: tuple[str, ...]) -> int | None:
-    for line in vlc_lines:
-        found = _VLC_HTTP_STATUS.search(line)
+def _player_http_status(player_lines: tuple[str, ...]) -> int | None:
+    for line in player_lines:
+        found = _PLAYER_HTTP_STATUS.search(line)
 
         if found is not None:
             return int(found.group(1))
@@ -316,10 +320,10 @@ def _vlc_http_status(vlc_lines: tuple[str, ...]) -> int | None:
     return None
 
 
-def _first_vlc_line(vlc_lines: tuple[str, ...]) -> str:
-    """The first thing VLC said, without the module it said it in."""
+def _first_player_line(player_lines: tuple[str, ...]) -> str:
+    """The first thing mpv said, without the module it said it in."""
 
-    for line in vlc_lines:
+    for line in player_lines:
         _, _, said = line.partition(": ")
         said = (said or line).strip()
 

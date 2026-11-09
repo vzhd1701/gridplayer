@@ -17,12 +17,12 @@ from gridplayer.models.audio_selection import (
 )
 from gridplayer.models.stream import Stream, Streams
 from gridplayer.models.video import Video
-from gridplayer.settings import Settings
-from gridplayer.vlc_player.static import (
+from gridplayer.mpv_player.static import (
     DISABLED_TRACK,
     AudioTrack,
     wanted_audio_track_id,
 )
+from gridplayer.settings import Settings
 from gridplayer.widgets.video_block_audio import AudioControl
 from gridplayer.widgets.video_block_stream import StreamControl
 

@@ -13,15 +13,15 @@
 
 ## About
 
-Simple VLC-based media player that can play multiple videos at the same time. You can
+Simple mpv-based media player that can play multiple videos at the same time. You can
 play as many videos as you like, the only limit is your hardware. It supports all video
-formats that VLC supports (which is all of them). You can save your playlist retaining
+formats that mpv supports (which is all of them). You can save your playlist retaining
 information about the position, sound volume, loops, aspect ratio, etc.
 
 ## Features
 
 - Cross-platform (Linux, Mac, and Windows)
-- Support for any video and audio format (VLC)
+- Support for any video and audio format (mpv)
 - Support for (almost) any streaming
   URLs ([streamlink](https://streamlink.github.io/plugins.html) + [yt-dlp](https://github.com/yt-dlp/yt-dlp/blob/master/supportedsites.md))
 - Play a whole list in one cell: m3u, pls and xspf playlists, folders, YouTube playlists, IPTV channels
@@ -100,9 +100,7 @@ uv tool install gridplayer
 
 **Python 3.10 or later required.**
 
-This type of installation will also require VLC installed (Windows & Mac) or a `vlc` package (Linux) present in your
-system.
-Please refer to [VLC official page](https://www.videolan.org/vlc/) for instructions on how to install it.
+This type of installation also needs libmpv on your system. See the [mpv installation page](https://mpv.io/installation/).
 
 Some distros (e.g. Ubuntu) might also require `libxcb-xinerama0` package.
 
@@ -177,7 +175,7 @@ GridPlayer supports two video output modes:
 - Software mode is entirely independent of GPU and only uses the CPU to render video. This mode may cause a high CPU
   load with high-resolution videos.
 
-Due to libvlc software library limitations, video decoding is split into parallel processes. You can control how many
+Video decoding is split into parallel processes. You can control how many
 videos are handled by a single decoder process using the "Videos per process" setting. Setting this option too high may
 cause a high CPU load and application freeze. The optimal value is 4 videos per process.
 
@@ -325,14 +323,14 @@ This software was build using
   - Licensed under *Python Software Foundation License*
 - **Qt** by [Qt Project](https://www.qt.io/)
   - Licensed under *GPL 2.0, GPL 3.0, and LGPL 3.0*
-- **VLC** by [VideoLAN](https://www.videolan.org/)
+- **mpv** by the [mpv contributors](https://mpv.io/)
   - Licensed under *GPL 2.0 or later*
 
 ### Python packages
 
 - **PyQt** by [Riverbank Computing](https://riverbankcomputing.com/)
   - Licensed under *Riverbank Commercial License and GPL v3*
-- **python-vlc** by [Olivier Aubert](https://github.com/oaubert/python-vlc)
+- **python-mpv** by [jaseg](https://github.com/jaseg/python-mpv)
   - Licensed under *GPL 2.0 and LGPL 2.1*
 - **pydantic** by [Samuel Colvin](https://github.com/samuelcolvin/pydantic)
   - Licensed under *MIT License*

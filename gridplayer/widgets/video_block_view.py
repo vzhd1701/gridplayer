@@ -134,7 +134,7 @@ class ViewControl(VideoBlockPart):
         """Fit a part of the picture into the cell, in its middle.
 
         The part is in this cell's pixels, where it was selected over the
-        picture as drawn; see VideoFrameVLC.selection_zoom.
+        picture as drawn; see VideoFrame.selection_zoom.
         """
 
         video_driver = self._block.video_driver
@@ -278,7 +278,7 @@ class ViewControl(VideoBlockPart):
 
         Quietly, the other saying what it shows. One that is not playing yet
         shows it once it is (see load_video_finish), and one waiting for its
-        frame's size once that is known (see VideoFrameVLC.follow_view).
+        frame's size once that is known (see VideoFrame.follow_view).
         """
 
         block = self._block

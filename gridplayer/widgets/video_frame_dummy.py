@@ -4,15 +4,15 @@ from PyQt5.QtCore import QTimer
 from PyQt5.QtGui import QColor, QPainter
 from PyQt5.QtWidgets import QWidget
 
-from gridplayer.vlc_player.static import Media, MediaInput, VideoTrack
-from gridplayer.vlc_player.video_driver_base import VLCVideoDriver
-from gridplayer.widgets.video_frame_vlc_base import VideoFrameVLC
+from gridplayer.mpv_player.static import Media, MediaInput, VideoTrack
+from gridplayer.mpv_player.video_driver_base import PlayerDriver
+from gridplayer.widgets.video_frame_base import VideoFrame
 
 FAKE_VIDEO_LENGTH = 100000
 FAKE_VIDEO_FPS = 25
 
 
-class VideoDriverDummy(VLCVideoDriver):
+class VideoDriverDummy(PlayerDriver):
     def load_video(self, media_input: MediaInput): ...
 
     def snapshot(self):
@@ -54,7 +54,7 @@ class VideoDriverDummy(VLCVideoDriver):
     def set_subtitle_delay(self, delay_ms): ...
 
 
-class VideoFrameDummy(VideoFrameVLC):
+class VideoFrameDummy(VideoFrame):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
@@ -87,7 +87,7 @@ class VideoFrameDummy(VideoFrameVLC):
         painter = QPainter(self)
         painter.fillRect(event.rect(), self._color)
 
-    def driver_setup(self, vlc_options) -> VLCVideoDriver:
+    def driver_setup(self) -> PlayerDriver:
         return VideoDriverDummy(parent=self)
 
     def ui_video_surface(self):

@@ -22,13 +22,6 @@ from gridplayer.params.settings_fields.video import VIDEO_FIELDS
 from gridplayer.params.settings_pages import VIDEO_PAGE
 from gridplayer.params.static import VideoDeinterlace, VideoDeinterlaceMode
 from gridplayer.settings import Settings
-from gridplayer.utils.libvlc_options_parser import (
-    DeinterlaceModeMap,
-    get_vlc_options,
-    is_deinterlace_reload_needed,
-)
-from gridplayer.vlc_player.player_base import VlcPlayerBase
-from gridplayer.vlc_player.static import MediaInput
 from gridplayer.widgets.video_block import VideoBlock
 from tests.conftest import mock_block_parts
 from tests.settings_layout import layout_sections
@@ -68,19 +61,6 @@ def _video(deinterlace, mode):
     return Video(uri=URI, deinterlace=deinterlace, deinterlace_mode=mode)
 
 
-class _MinimalPlayer(VlcPlayerBase):
-    def notify_snapshot_taken(self, snapshot_path): ...
-    def notify_update_status(self, status, percent=0): ...
-    def notify_error(self, error, vlc_lines=()): ...
-    def notify_time_changed(self, new_time): ...
-    def notify_playback_status_changed(self, new_status): ...
-    def notify_load_video_done(self, media_track): ...
-    def notify_tracks_changed(self, media_track): ...
-    def loopback_load_video_st2_set_media(self): ...
-    def loopback_load_video_st3_extract_media_track(self): ...
-    def loopback_load_video_st4_loaded(self): ...
-
-
 class _FakeEventManager:
     def event_attach(self, event_type, callback): ...
 
@@ -105,106 +85,8 @@ class _FakeInstance:
         return _FakeMedia()
 
 
-def _loaded_player(deinterlace, mode):
-    """A player that has opened a video, and what it told the media player."""
-
-    player = _MinimalPlayer(vlc_instance=_FakeInstance())
-    player._media_player = Mock()
-
-    player.load_video(
-        MediaInput(
-            uri=URI,
-            is_live=False,
-            is_audio_only=False,
-            size=(640, 360),
-            video=_video(deinterlace, mode),
-        )
-    )
-
-    return player
-
-
 def _told(player):
     return [c.args for c in player._media_player.video_set_deinterlace.mock_calls]
-
-
-class TestWhatGoesToVLC:
-    def test_on_names_the_mode(self):
-        assert _told(_loaded_player(ON, YADIF)) == [("yadif",)]
-
-    def test_off_names_no_mode(self):
-        assert _told(_loaded_player(OFF, YADIF)) == [(None,)]
-
-    def test_auto_leaves_the_player_as_it_starts(self):
-        assert _told(_loaded_player(AUTO, YADIF)) == []
-
-    def test_on_in_the_auto_mode_is_named_x(self):
-        """libVLC 3 turns "auto" away; every deinterlacer reads it as "x"."""
-
-        assert _told(_loaded_player(ON, MODE_AUTO)) == [("x",)]
-
-    def test_a_change_while_playing_goes_to_the_same_player(self):
-        player = _loaded_player(AUTO, X)
-
-        player.set_deinterlace(ON, BOB)
-        player.set_deinterlace(OFF, BOB)
-
-        assert _told(player) == [("bob",), (None,)]
-        # kept for the player's own copy of the video, like the view is
-        assert player.media_input.video.deinterlace == OFF
-        assert player.media_input.video.deinterlace_mode == BOB
-
-    def test_every_mode_has_the_name_vlc_knows_it_by(self):
-        assert set(DeinterlaceModeMap) == set(VideoDeinterlaceMode)
-        assert DeinterlaceModeMap[MODE_AUTO] == "auto"
-        assert DeinterlaceModeMap[VideoDeinterlaceMode.YADIF2X] == "yadif2x"
-        assert DeinterlaceModeMap[VideoDeinterlaceMode.IVTC] == "ivtc"
-
-
-class TestWhichProcessItPlaysIn:
-    """On auto the mode can only come from the instance, which is shared."""
-
-    def test_auto_in_the_auto_mode_needs_nothing(self):
-        """It is what the instance is on already, so no process of its own."""
-
-        assert get_vlc_options(_video(AUTO, MODE_AUTO)) == []
-
-    def test_auto_in_a_mode_named_outright_is_handed_over_as_is(self):
-        assert get_vlc_options(_video(AUTO, X)) == ["--deinterlace-mode=x"]
-
-    def test_auto_in_another_mode_takes_an_instance_of_its_own(self):
-        assert get_vlc_options(_video(AUTO, YADIF)) == ["--deinterlace-mode=yadif"]
-
-    @pytest.mark.parametrize("deinterlace", [ON, OFF])
-    def test_on_or_off_is_the_players_own_business(self, deinterlace):
-        assert get_vlc_options(_video(deinterlace, YADIF)) == []
-
-
-class TestWhenItTakesAReload:
-    @pytest.mark.parametrize(
-        ("current", "wanted"),
-        [
-            ((ON, YADIF), (AUTO, YADIF)),
-            ((OFF, X), (AUTO, X)),
-            ((AUTO, X), (AUTO, YADIF)),
-            ((AUTO, YADIF), (AUTO, MODE_AUTO)),
-        ],
-    )
-    def test_getting_to_auto_or_changing_its_mode(self, current, wanted):
-        assert is_deinterlace_reload_needed(_video(*current), *wanted)
-
-    @pytest.mark.parametrize(
-        ("current", "wanted"),
-        [
-            ((AUTO, X), (ON, X)),
-            ((AUTO, YADIF), (OFF, YADIF)),
-            ((ON, X), (ON, BOB)),
-            ((OFF, X), (ON, X)),
-            ((AUTO, YADIF), (AUTO, YADIF)),
-        ],
-    )
-    def test_everything_else_is_done_in_place(self, current, wanted):
-        assert not is_deinterlace_reload_needed(_video(*current), *wanted)
 
 
 def _block(deinterlace, mode, has_video=True):
@@ -231,13 +113,13 @@ class TestPickingItOnOneVideo:
         block.reload.assert_not_called()
         assert _state(block) == (ON, BOB)
 
-    def test_going_back_to_auto_reopens(self):
+    def test_going_back_to_auto_needs_no_reopening(self):
         block = _block(ON, BOB)
 
         block.set_deinterlace(AUTO)
 
-        block.reload.assert_called_once()
-        block.video_driver.set_deinterlace.assert_not_called()
+        block.reload.assert_not_called()
+        block.video_driver.set_deinterlace.assert_called_once_with(AUTO, BOB)
         assert _state(block) == (AUTO, BOB)
 
     def test_picking_a_mode_while_off_switches_it_on(self):
@@ -255,7 +137,7 @@ class TestPickingItOnOneVideo:
 
         block.set_deinterlace_mode(YADIF)
 
-        block.reload.assert_called_once()
+        block.reload.assert_not_called()
         assert _state(block) == (AUTO, YADIF)
 
     def test_a_video_without_a_picture_is_left_alone(self):
@@ -282,11 +164,11 @@ class TestSnapshots:
 
         return block, snapshot
 
-    def test_one_on_auto_reopens_the_video_as_it_was_saved(self):
-        block, snapshot = self._snapshot_block((ON, X), (AUTO, X))
+    def test_one_on_auto_is_restored_in_place_too(self):
+        block, _ = self._snapshot_block((ON, X), (AUTO, X))
 
-        block.reload.assert_called_once()
-        assert block.video_params == snapshot
+        block.reload.assert_not_called()
+        block.video_driver.set_deinterlace.assert_called_once_with(AUTO, X)
 
     def test_one_on_or_off_is_restored_in_place(self):
         block, _ = self._snapshot_block((AUTO, X), (ON, BOB))
