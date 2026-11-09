@@ -86,6 +86,11 @@ class EventWaiter:
             self._async_wait_thread = None
 
     def _wait(self):
+        # Let go of: the rest of a load waits for nothing on its way out, as the
+        # player closing is waiting for it to finish.
+        if self._is_abort:
+            return
+
         self._log.debug(f"Waiting for {self._wait_event}")
 
         res = self._events[self._wait_event].wait(self._wait_timeout)

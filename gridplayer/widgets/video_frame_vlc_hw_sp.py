@@ -55,11 +55,16 @@ class PlayerProcessSingleVLCHWSP(QThread, VlcPlayerBase, metaclass=QABC):
 
         self._instance = None
 
-        self._cleanup_event = Event()
         self._instance_ready_event = Event()
 
         self.win_id = win_id
         self.vlc_options = vlc_options
+
+        # Commands and the steps of a load run on this thread, as a VLC process
+        # runs them on its own: they wait for VLC, up to the load timeout each,
+        # which on the GUI thread froze the whole app. Before anything connects
+        # to it, so every queued call comes here.
+        self.moveToThread(self)
 
         qt_connect(
             (
@@ -101,9 +106,9 @@ class PlayerProcessSingleVLCHWSP(QThread, VlcPlayerBase, metaclass=QABC):
         self._run_time_checks()
 
     def _schedule_view_reapply(self):
-        # Emitted from libvlc's event thread; this player object's affinity is the
-        # main thread, so Qt delivers via QueuedConnection onto the main event
-        # loop — off the libvlc callback thread. Avoids re-entering libvlc.
+        # Emitted from libvlc's event thread; this player object's affinity is its
+        # own thread, so Qt delivers via QueuedConnection onto its event loop —
+        # off the libvlc callback thread. Avoids re-entering libvlc.
         self._vout_reapply.emit()
 
     def _schedule_chapters_refresh(self):
@@ -133,12 +138,12 @@ class PlayerProcessSingleVLCHWSP(QThread, VlcPlayerBase, metaclass=QABC):
 
         self._instance_ready_event.set()
 
-        self._cleanup_event.wait()
+        # until cleanup() quits it
+        self.exec_()
 
-        # Release from this thread, not from whoever asked for the cleanup.
-        # cmd_cleanup is a direct connection (this object lives in the main
-        # thread), so releasing in the slot put every pane's hardware vout
-        # teardown on the GUI thread, one pane after another.
+        # Release from this thread, not from whoever asked for the cleanup:
+        # releasing on the GUI thread put every pane's hardware vout teardown
+        # there, one pane after another.
         self._log.debug("Releasing player")
 
         super().cleanup()
@@ -159,12 +164,14 @@ class PlayerProcessSingleVLCHWSP(QThread, VlcPlayerBase, metaclass=QABC):
         elif env.IS_MACOS:
             self._media_player.set_nsobject(self.win_id)
 
-    @pyqtSlot()
     def cleanup(self):
-        """Ask the player thread to release VLC. Returns immediately."""
+        """Ask the player thread to release VLC. Returns immediately, from the
+        GUI thread: a wait for VLC under way is let go of, not waited out, and
+        nothing queued after it runs."""
         self._log.debug("cmd_cleanup called")
 
-        self._cleanup_event.set()
+        self._event_waiter.abort()
+        self.quit()
 
     def notify_update_status(self, status, percent=0):
         self.update_status_signal.emit(status, percent)
@@ -279,8 +286,9 @@ class VideoDriverVLCHWSP(VLCVideoDriver):
             (self.cmd_set_subtitle_delay, self.player.set_subtitle_delay),
             (self.cmd_adjust_view, self.player.adjust_view),
             (self.cmd_set_log_level_vlc, self.player.set_log_level_vlc),
-            (self.cmd_cleanup, self.player.cleanup),
         )
+        # at once, on this thread, not queued behind a wait for VLC
+        self.cmd_cleanup.connect(self.player.cleanup, Qt.DirectConnection)
 
         self.player.start()
         self.player.wait_for_init()

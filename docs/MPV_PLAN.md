@@ -800,7 +800,7 @@ CPU took 0.5-5.5 s, against 0.2-1.1 s on the key frame, which is about what VLC 
     - VLC's own `--file-logging`: it writes nothing until 4 KB or exit, and leaves out which object said it.
     - Letting go of the lock on the GUI side: PyQt5 can't, and Qt makes these calls everywhere.
   - All of it, with the reopen loop, is in `VLC_HELPER.md`.
-- [ ] 10.25 **VLC in a single process waits for VLC on the GUI thread, up to the load timeout, twice.** Hardware and Software VLC single
+- [x] 10.25 **VLC in a single process waited for VLC on the GUI thread, up to the load timeout, twice.** Hardware and Software VLC single
   process (the default on macOS). The player object of `video_frame_vlc_hw_sp.py` / `_sw_sp.py` lives in the GUI thread; its `QThread`
   only makes and releases VLC. So every command and every load stage runs on the GUI, and the last stage, `load_video_st4_loaded`, waits
   there for VLC: the video output, buffering after the start seek, the pause, and a second seek for a paused video. Each wait goes up to
@@ -816,8 +816,20 @@ CPU took 0.5-5.5 s, against 0.2-1.1 s on the key frame, which is about what VLC 
     Cleanup aborts the waiter and quits the loop straight from the GUI, so a wait in progress doesn't hold it up; VLC is released on that
     thread after, as now. The re-applied view, chapters and time checks go to that thread rather than the GUI, still off libvlc's callback
     threads. Both single-process drivers. Maybe also "Event waiting hangs on init in MacOS", as the waits leave the main thread there.
-  - **Test:** the stalled-seek run above (GUI under 0.5 s), the playlist reopen loop, and the real-app scenarios on both single-process
-    drivers with real windows.
+  - **Done 2026-11-09 as above.** `moveToThread(self)` in each single-process player before anything connects, `exec_()` in `run()`,
+    `cleanup()` connected direct: it aborts the waiter and quits the loop, and the release follows on the player's thread, Software VLC's
+    too now. The waiter returns at once once aborted, so a load on its way out waits for nothing.
+  - **Tested:**
+    - The stalled seek, Windows: Hardware 0.19 s frozen (was 239 s), Software 0.15 s; closing the playlist while the stuck video still
+      waits: 0.12 s and 0.03 s.
+    - The real-app suite, offscreen on Software VLC single process: 34 passed and the known bug.
+    - `test_gpu`, Hardware VLC single process on X11, the 10-minute churn twice: both pass, where overnight it hung.
+    - Windows, Hardware VLC single process on real windows off the screen, 15 scenarios. 7 pass. The other 8 fail the same way without
+      the change, so they come from the window being off the screen (no picture to measure, a double click) or the log being off
+      there (`stream_errors`): `live`, `aspect_ratio`, `crop_ratio`, `pixel_shape`, `external_audio_jump`, `stream_errors`, `list_shape`,
+      `single_mode_show_big`. Five got further with it.
+  - **Not tested:** macOS, where it's the default driver (the VM was off, and it draws no video). Whether macOS's own init hang goes
+    with it isn't known either.
 - [x] 10.14 Don't fill the cell black before drawing a picture that covers it: app CPU 61% to 47% at
   1x1080p. Applies to VLC's software drivers too, so test those. Done: only the bars beside the
   picture are filled, reaching a pixel under its edge so a pixel it only partly covers at a screen

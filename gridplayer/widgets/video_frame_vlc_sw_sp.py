@@ -51,7 +51,6 @@ class PlayerProcessSingleVLCSWSP(QThread, VlcPlayerBase, metaclass=QABC):
 
         self._instance = None
 
-        self._cleanup_event = Event()
         self._instance_ready_event = Event()
 
         self.vlc_options = vlc_options
@@ -62,6 +61,12 @@ class PlayerProcessSingleVLCSWSP(QThread, VlcPlayerBase, metaclass=QABC):
         # ignores avcodec-hw passed as an instance option, where the hw decoder
         # lookup silently falls back to "any" and decodes on the GPU anyway.
         self._media_options.append("avcodec-hw=none")
+
+        # Commands and the steps of a load run on this thread, as a VLC process
+        # runs them on its own: they wait for VLC, up to the load timeout each,
+        # which on the GUI thread froze the whole app. Before anything connects
+        # to it, so every queued call comes here.
+        self.moveToThread(self)
 
         qt_connect(
             (
@@ -103,9 +108,9 @@ class PlayerProcessSingleVLCSWSP(QThread, VlcPlayerBase, metaclass=QABC):
         self._run_time_checks()
 
     def _schedule_view_reapply(self):
-        # Emitted from libvlc's event thread; this player object's affinity is the
-        # main thread, so Qt delivers via QueuedConnection onto the main event
-        # loop — off the libvlc callback thread. Avoids re-entering libvlc.
+        # Emitted from libvlc's event thread; this player object's affinity is its
+        # own thread, so Qt delivers via QueuedConnection onto its event loop —
+        # off the libvlc callback thread. Avoids re-entering libvlc.
         self._vout_reapply.emit()
 
     def _schedule_chapters_refresh(self):
@@ -131,7 +136,15 @@ class PlayerProcessSingleVLCSWSP(QThread, VlcPlayerBase, metaclass=QABC):
 
         self._instance_ready_event.set()
 
-        self._cleanup_event.wait()
+        # until cleanup() quits it
+        self.exec_()
+
+        self._log.debug("Releasing player")
+
+        super().cleanup()
+
+        if self.decoder is not None:
+            self.decoder.stop()
 
         self._log.debug("VLC instance terminating")
 
@@ -155,15 +168,14 @@ class PlayerProcessSingleVLCSWSP(QThread, VlcPlayerBase, metaclass=QABC):
     def size_ready(self, width, height, buffer_size):
         self.init_frame_signal.emit(width, height, buffer_size)
 
-    @pyqtSlot()
     def cleanup(self):
+        """Ask the player thread to release VLC. Returns immediately, from the
+        GUI thread: a wait for VLC under way is let go of, not waited out, and
+        nothing queued after it runs."""
         self._log.debug("cmd_cleanup called")
-        super().cleanup()
 
-        if self.decoder is not None:
-            self.decoder.stop()
-
-        self._cleanup_event.set()
+        self._event_waiter.abort()
+        self.quit()
 
     def load_video_st4_loaded(self):
         self._tracks_manager.set_video_track_id(self.media_input.video.video_track_id)
@@ -330,8 +342,9 @@ class VideoDriverVLCSWSP(VLCVideoDriver):
             (self.cmd_set_audio_delay, self.player.set_audio_delay),
             (self.cmd_set_subtitle_delay, self.player.set_subtitle_delay),
             (self.cmd_set_log_level_vlc, self.player.set_log_level_vlc),
-            (self.cmd_cleanup, self.player.cleanup),
         )
+        # at once, on this thread, not queued behind a wait for VLC
+        self.cmd_cleanup.connect(self.player.cleanup, Qt.DirectConnection)
         # Unlock callback runs on a libvlc native thread. AutoConnection can
         # look like DirectConnection from ctypes and deadlock on the frame lock.
         self.player.process_image_signal.connect(
