@@ -28,6 +28,10 @@ from gridplayer.params.static import (
     VideoTransform,
     ViewParams,
 )
+from gridplayer.params.subtitle_style import (
+    SUBTITLE_STYLE_SETTINGS,
+    mpv_subtitle_style_options,
+)
 from gridplayer.settings import Settings
 from gridplayer.utils.aspect_calc import (
     calc_ratio_crop,
@@ -50,6 +54,9 @@ from gridplayer.vlc_player.static import (
 TIME_REPORT_INTERVAL_S = 0.05
 
 KEPT_ERROR_LINES = 20
+
+# files added this close together were picked together
+SUBTITLE_PICK_WINDOW_S = 1.0
 
 NO_CROP = "0x0+0+0"
 
@@ -122,9 +129,11 @@ class MpvPlayerThreaded(CommandLoopThreaded):
         self._is_paused = False
         self._is_file_open = False
         self._is_playback_reported = False
+        self._opened_on: tuple[int | None, int | None] | None = None
 
         self._timer_load = None
         self._last_time_report = 0.0
+        self._last_subtitle_add = 0.0
 
         self._size = (0, 0)
         self._view: ViewParams | None = None
@@ -164,6 +173,7 @@ class MpvPlayerThreaded(CommandLoopThreaded):
             cursor_autohide="no",
             input_cursor="no",
             input_cursor_passthrough="yes",
+            **self._subtitle_style(),
             **self._mpv_options(),
         )
 
@@ -174,6 +184,12 @@ class MpvPlayerThreaded(CommandLoopThreaded):
         self._mpv.observe_property("track-list", self._on_track_list)
         self._mpv.observe_property("chapter-list", self._on_chapter_list)
         self._mpv.observe_property("video-params", self._on_video_params)
+
+    @staticmethod
+    def _subtitle_style() -> dict:
+        style = {key: Settings().sync_get(key) for key in SUBTITLE_STYLE_SETTINGS}
+
+        return mpv_subtitle_style_options(style)
 
     def cmd_process_command(self, command_args, command_name):
         if self._is_released:
@@ -414,6 +430,7 @@ class MpvPlayerThreaded(CommandLoopThreaded):
         self.is_video_initialized = False
         self._is_file_open = False
         self._is_playback_reported = False
+        self._opened_on = None
         self._last_crop = None
         self._last_keepaspect = None
         self._error_lines.clear()
@@ -473,9 +490,9 @@ class MpvPlayerThreaded(CommandLoopThreaded):
         for uri in self.media_input.selected_subtitle_slaves:
             self._add_file(self._mpv.sub_add, uri)
 
-    def _add_file(self, add_func, uri) -> bool:
+    def _add_file(self, add_func, uri, flags="auto") -> bool:
         try:
-            add_func(uri, "auto")
+            add_func(uri, flags)
         except Exception:
             self._log.warning(f"Failed to add {uri}", exc_info=True)
             return False
@@ -509,7 +526,12 @@ class MpvPlayerThreaded(CommandLoopThreaded):
             if track.get("external") and kind in external:
                 external[kind].append(track_id)
 
-        duration = self._get("duration")
+        # a live stream has a duration too, of the few segments on offer
+        duration = None if self.media_input.is_live else self._get("duration")
+
+        # what it opened on is said once, before anything was asked of it
+        if self._opened_on is None:
+            self._opened_on = (current["audio"], current["sub"])
 
         return Media(
             length=int(duration * 1000) if duration else -1,
@@ -518,11 +540,11 @@ class MpvPlayerThreaded(CommandLoopThreaded):
             cur_video_track_id=current["video"],
             cur_audio_track_id=current["audio"],
             external_audio_ids=tuple(external["audio"]),
-            default_audio_track_id=current["audio"],
+            default_audio_track_id=self._opened_on[0],
             subtitle_tracks=subtitle_tracks,
             cur_subtitle_track_id=current["sub"],
             external_subtitle_ids=tuple(external["sub"]),
-            default_subtitle_track_id=current["sub"],
+            default_subtitle_track_id=self._opened_on[1],
             audio_devices=self._read_audio_devices(),
             chapters=self._read_chapters(),
         )
@@ -614,6 +636,17 @@ class MpvPlayerThreaded(CommandLoopThreaded):
             picked = track_of_file(video.audio_selection, media.external_audio_ids)
             audio_id = audio_id if picked is None else picked
 
+        self._select_track("aid", audio_id)
+
+        self._apply_wanted_subtitle_track()
+
+    def _apply_wanted_subtitle_track(self):
+        video = self.media_input.video
+        media = self.media
+
+        if not media.subtitle_tracks:
+            return
+
         subtitle_id = wanted_subtitle_track_id(
             video, media.subtitle_tracks, media.external_subtitle_ids
         )
@@ -624,10 +657,7 @@ class MpvPlayerThreaded(CommandLoopThreaded):
             )
             subtitle_id = subtitle_id if picked is None else picked
 
-        self._select_track("aid", audio_id)
-
-        if media.subtitle_tracks:
-            self._select_track("sid", subtitle_id)
+        self._select_track("sid", subtitle_id)
 
     def _select_track(self, prop: str, track_id: int | None):
         if track_id is None:
@@ -755,19 +785,42 @@ class MpvPlayerThreaded(CommandLoopThreaded):
 
     @only_initialized_player
     def add_audio_slave(self, uri: str):
-        if self._add_file(self._mpv.audio_add, uri):
+        if self.media is None or not uri:
+            return
+
+        # sound added while playing is sound to be heard right away
+        if self._add_file(self._mpv.audio_add, uri, "select"):
             self.media_input.selected_audio_slave = uri
 
     @only_initialized_player
     def add_subtitle_slave(self, uri: str):
+        if self.media is None or not uri:
+            return
+
         if uri in self.media_input.selected_subtitle_slaves:
             return
 
-        if self._add_file(self._mpv.sub_add, uri):
-            self.media_input.selected_subtitle_slaves = (
-                *self.media_input.selected_subtitle_slaves,
-                uri,
-            )
+        # Files are only ever added while playing because the viewer just
+        # picked them, and of several picked at once the first is shown. The
+        # pick itself is not known here: this process has its own copy of the
+        # video, from when the load started.
+        now = monotonic()
+        is_first_of_pick = now - self._last_subtitle_add > SUBTITLE_PICK_WINDOW_S
+        self._last_subtitle_add = now
+
+        flags = "select" if is_first_of_pick else "auto"
+
+        if not self._add_file(self._mpv.sub_add, uri, flags):
+            return
+
+        self.media_input.selected_subtitle_slaves = (
+            *self.media_input.selected_subtitle_slaves,
+            uri,
+        )
+
+        self.media = self._read_media()
+
+        self.cmd_send("tracks_changed_emit", self.media)
 
     @only_initialized_player
     def set_audio_channel_mode(self, mode: AudioChannelMode):
