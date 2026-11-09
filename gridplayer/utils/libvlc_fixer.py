@@ -27,6 +27,26 @@ def importing_embed_vlc():
 
     _fix_plugins_path()
 
+    # before any VLC instance, so before any VLC thread waits
+    if env.IS_WINDOWS:
+        _use_system_waits()
+
+
+def _use_system_waits():
+    from gridplayer.utils.libvlc_waits import use_system_waits
+
+    vlc_module = sys.modules["gridplayer.vlc_player.vlc"]
+
+    try:
+        vlc_version = vlc_module.libvlc_get_version().decode().split(" ")[0]
+    except (NameError, AttributeError, OSError):
+        logging.getLogger(__name__).warning(
+            "VLC waits left as they are: no VLC version"
+        )
+        return
+
+    use_system_waits(vlc_version)
+
 
 def _fix_plugins_path():
     vlc_module = sys.modules["gridplayer.vlc_player.vlc"]

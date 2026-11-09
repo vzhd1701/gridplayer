@@ -830,6 +830,30 @@ CPU took 0.5-5.5 s, against 0.2-1.1 s on the key frame, which is about what VLC 
       `single_mode_show_big`. Five got further with it.
   - **Not tested:** macOS, where it's the default driver (the VM was off, and it draws no video). Whether macOS's own init hang goes
     with it isn't known either.
+- [x] 10.26 **VLC in a single process on Windows burns the CPU with many videos.** You saw Software VLC single process take about 80%
+  of the CPU with a dozen small videos, where multi-process took 15-20%: the reason multi-process was made. VLC 3 looks
+  `WaitOnAddress` up in `kernel32.dll`, which doesn't have it, and falls back to 32 wait slots for the whole process, where any wake
+  wakes every thread in the slot. 15 videos in one process: up to 2.5 million context switches a second, 185-1370% of a core, uneven
+  from run to run. All VLC drivers on Windows, kept small by multi-process. VLC 4 fixed the lookup in 2021; VLC 3 never got it. The
+  whole story, and what didn't work: `VLC_WAITS.md`.
+  - **Done 2026-11-09:** `gridplayer/utils/libvlc_waits.py`, run right after VLC loads in every process: finds VLC's three pointers in its
+    own code and, only for VLC 3.0.x and only if they hold its stand-in, points them at `KernelBase.dll`'s. Renaming the DLL in the file doesn't work: the XP
+    builds then crash in `DllMain`.
+  - **Tested:** the same 15 clips, 6 runs: 141-221% of a core, about 7,000 switches a second, every run (before: 7 of 13 above 600%).
+    Hardware VLC single process, 2 runs: 38-46%. Multi-process: its VLC processes wait the new way too. Every official build from
+    3.0.0 to 3.0.24, 64-bit and 32-bit, read as data: the three pointers found and holding the stand-in (3.0.22's newer compiler stores
+    before testing, now matched too). 32-bit GridPlayer with the official 32-bit 3.0.24, the same 15 clips, Software single process,
+    4 runs each: 138-256% with the swap, 6,000-17,000 switches a second; 335-1402% without, 210,000 to 2.2 million. Official 3.0.20
+    64-bit, one run each: 176% against 480%. Not tested: a
+    packaged build, Windows 7.
+- [ ] 10.27 **32-bit single process runs out of address space with many videos.** Seen testing 10.26 with the 32-bit app (from source,
+  `python.exe` not large-address-aware, so 2 GB): Hardware VLC single process, 8 cells peak at 1858 MB of address space, 12 and 15
+  crash with nothing logged within 2 s of loading; Software, 15 cells, frame buffers now and then fail to allocate as they load. Not the
+  swap: the same with it off. Multi-process (4 videos a process) keeps each process well under. Open: whether the packaged 32-bit
+  `GridPlayer.exe` is large-address-aware (4 GB on 64-bit Windows); if not, setting the flag in its header after the build is one bit,
+  no compiling.
+  - **Fixed on the way:** `win32_vlc_vout.py` called `GetWindowLongPtrW`, which 32-bit `user32` doesn't export (a macro for
+    `GetWindowLongW` there), so Hardware VLC in the 32-bit app failed there; now falls back like `taskbar.py`. Checked in 32-bit.
 - [x] 10.14 Don't fill the cell black before drawing a picture that covers it: app CPU 61% to 47% at
   1x1080p. Applies to VLC's software drivers too, so test those. Done: only the bars beside the
   picture are filled, reaching a pixel under its edge so a pixel it only partly covers at a screen
@@ -1027,6 +1051,7 @@ core less while the decoder keeps up, at the same frame rates. Suggested words: 
 
 Newest first. What was finished and seen working, and anything that changed the plan.
 
+- 2026-11-09: 10.26, VLC in a single process on Windows no longer burns up to 13 cores with 15 videos: VLC 3's waits pointed at Windows' own (`VLC_WAITS.md`). Checked in the 32-bit app too; found there 10.27, 32-bit single process out of address space with many videos, and fixed Hardware VLC's window check failing in 32-bit.
 - 2026-11-09: 10.16, the overnight run. An MPV crash closing a video as it loads, fixed (10.1). New: 10.21 Mesa's memory on `test_gpu`, 10.22 Software MPV's direct rendering on Windows, 10.23 VLC. The limits held over 3 runs, and VLC's freeze at 36 cells is Linux's only.
 - 2026-11-09: 13.10, 120 fps videos play at 120 again with a few cells, 110 at 9: mpv let go of the app's 1 ms timers after each wait, now asked once and kept (`MPV_HRT`), and the pacing waits a millisecond less. The 64 a second measured before was Windows throttling the bench's window on the other desktop: the bench opts out now.
 - 2026-11-08: 13.6 checked on Linux, the same cause there and fixed the same way. 13.7, a growing picture redrawn on the way. 13.8, NVIDIA's black rows: a Black line fix setting, on for NVIDIA by default. On a real screen Windows GL saves CPU only with a few videos, see `MPV_PERFORMANCE.md`.

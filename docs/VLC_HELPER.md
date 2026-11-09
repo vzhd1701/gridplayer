@@ -132,10 +132,15 @@ SETTINGS = {
     "logging/log_level_vlc": 10,  # debug
 }
 
+
 def scenario(d):
     progress = (d.out / "progress.txt").open("a")
     d.open(*clips_for("mix", 3))
-    d.wait_until(lambda: len(d.cells) == 3 and all(c.is_playable for c in d.cells), "all play", 120)
+    d.wait_until(
+        lambda: len(d.cells) == 3 and all(c.is_playable for c in d.cells),
+        "all play",
+        120,
+    )
     for i, cell in enumerate(d.cells):
         cell.seek(4_000 + 3_000 * i)
         if i % 2 == 0:
@@ -148,9 +153,14 @@ def scenario(d):
         playlists.cmd_force_close_playlist()
         d.wait_until(lambda: not d.cells, "closed", 30)
         nested(1)
-        progress.write(f"{time.monotonic():.1f} round {round_}\n"); progress.flush()
+        progress.write(f"{time.monotonic():.1f} round {round_}\n")
+        progress.flush()
         d.player.process_arguments([str(path)])
-        d.wait_until(lambda: len(d.cells) == 3 and all(c.is_playable for c in d.cells), "all play again", 150)
+        d.wait_until(
+            lambda: len(d.cells) == 3 and all(c.is_playable for c in d.cells),
+            "all play again",
+            150,
+        )
         nested(1)
 ```
 
