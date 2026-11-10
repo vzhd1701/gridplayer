@@ -45,6 +45,11 @@ than writing a harness of your own.
   list of clips, a file with chapters, two audio and two subtitle tracks and
   files to find beside it, a stream in three sizes and a dubbed one (serve
   those with `d.serve`).
+* Benchmarks take real footage, cut by `tests/real_app/bench/make_media.sh`
+  into `build/bench-media/`: clips of known size, rate and codec, a `mix`
+  of them and a `small` set (`CLIPS=mix` / `small`), all without sound.
+  Test with these or with clips made the same way, never with videos found
+  elsewhere on the machine.
 * The scenarios in `tests/real_app/scenarios` are tests too: `just
   test-real-app` (`pytest -m real_app`), and a job of their own in CI. A plain
   `uv run pytest` leaves them out. A bug one shows goes in `KNOWN_BUGS` in

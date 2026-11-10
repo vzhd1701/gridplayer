@@ -21,7 +21,7 @@ ssh -n test_gpu 'setsid nohup bash /tmp/gp/tests/real_app/bench/overnight_linux.
 # the clips come from test_gpu, which makes them; let it finish if it has to make any
 echo "-- clips"
 until ssh -n test_gpu 'grep -q "repeats" /opt/bench_out/overnight/log.txt 2>/dev/null'; do sleep 30; done
-ssh -n test_gpu 'cd /opt/bench_media && tar cf - h264_1080p30.mp4 h264_1080p60.mp4 h264_2160p60.mp4 h264_360p60.mp4 mix*' | tar xf - -C "$BENCH_MEDIA" --skip-old-files || exit 1
+ssh -n test_gpu 'cd /opt/bench_media && tar cf - h264_1080p30.mp4 h264_1080p60.mp4 h264_2160p60.mp4 h264_360p60.mp4 mix* small*' | tar xf - -C "$BENCH_MEDIA" --skip-old-files || exit 1
 
 say() { echo "### $(date +%H:%M:%S) $*" | tee -a "$L"; }
 python_in_uv() { uv run --with psutil python "$@" </dev/null 2>&1 | grep -v "^warning\|Built\|Building\|Uninstalled\|Installed"; }

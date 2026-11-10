@@ -39,25 +39,45 @@ enc h264_1080p24 fps=24000/1001,scale=1920:1080 libx264 6000 48
 enc phone_1080p30 fps=30,scale=1920:1080 libx264 17000 30 -bf 0
 enc hevc10_1080p30 fps=30,scale=1920:1080 libx265 6000 60 -pix_fmt yuv420p10le -x265-params log-level=error
 
-cut() { # index, clip, seconds in, extension [more of ffmpeg's options, before its input]
-    out="mix$1_$2.$4"; in=$2; at=$3; shift 4
+# many small videos, the cheap end: tall and 16 fps, as an image model's clips come
+enc portrait_960p16 "fps=16,crop=ih*3/4:ih,scale=720:960" libx264 1200 32
+
+cut() { # set and index, clip, seconds in, extension [more of ffmpeg's options, before its input]
+    out="$1_$2.$4"; in=$2; at=$3; shift 4
     [ -s "$out" ] && return
     ffmpeg -nostdin -v error -y "$@" -ss "$at" -i "$in.mp4" -c copy "$out" && echo "made $out" || echo "CUT FAILED $out"
 }
 
-cut 00 h264_1080p30 5 mp4
-cut 01 h264_1080p30 17 mp4
-cut 02 h264_1080p24 3 mkv
-cut 03 h264_1080p24 23 mkv
-cut 04 h264_720p30 7 mp4
-cut 05 h264_720p30 29 mp4
-cut 06 h264_720p30 11 mp4
-cut 07 phone_1080p30 2 mp4 -display_rotation 90
-cut 08 phone_1080p30 19 mp4 -display_rotation 90
-cut 09 h264_1080p60_nob 13 mp4
-cut 10 hevc10_1080p30 5 mp4
-cut 11 hevc10_1080p30 21 mp4
-cut 12 h264_2160p30 9 mp4
-cut 13 h264_1080p60 31 mp4
-cut 14 hevc_1080p60 15 mp4
-cut 15 h264_540p60 4 mp4
+cut mix00 h264_1080p30 5 mp4
+cut mix01 h264_1080p30 17 mp4
+cut mix02 h264_1080p24 3 mkv
+cut mix03 h264_1080p24 23 mkv
+cut mix04 h264_720p30 7 mp4
+cut mix05 h264_720p30 29 mp4
+cut mix06 h264_720p30 11 mp4
+cut mix07 phone_1080p30 2 mp4 -display_rotation 90
+cut mix08 phone_1080p30 19 mp4 -display_rotation 90
+cut mix09 h264_1080p60_nob 13 mp4
+cut mix10 hevc10_1080p30 5 mp4
+cut mix11 hevc10_1080p30 21 mp4
+cut mix12 h264_2160p30 9 mp4
+cut mix13 h264_1080p60 31 mp4
+cut mix14 hevc_1080p60 15 mp4
+cut mix15 h264_540p60 4 mp4
+
+# the small set, each from a part of its own
+cut small00 portrait_960p16 1 mp4
+cut small01 portrait_960p16 5 mp4
+cut small02 portrait_960p16 9 mp4
+cut small03 portrait_960p16 13 mp4
+cut small04 portrait_960p16 17 mp4
+cut small05 portrait_960p16 21 mp4
+cut small06 portrait_960p16 25 mp4
+cut small07 portrait_960p16 29 mp4
+cut small08 portrait_960p16 33 mp4
+cut small09 portrait_960p16 37 mp4
+cut small10 portrait_960p16 41 mp4
+cut small11 portrait_960p16 45 mp4
+cut small12 portrait_960p16 49 mp4
+cut small13 portrait_960p16 52 mp4
+cut small14 portrait_960p16 55 mp4

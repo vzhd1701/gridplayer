@@ -51,7 +51,8 @@ The other scenarios run like any other, from the repo root, with this folder on 
 PYTHONPATH=.:tests/real_app/bench DRIVER=mpv_hw MINUTES=20 python -m tests.real_app.run tests/real_app/bench/churn.py --out build/bench/churn
 ```
 
-Any clip name below can be a list with commas, or `mix` for the mixed clips of `make_media.sh`.
+Any clip name below can be a list with commas, `mix` for the mixed clips of `make_media.sh`, or `small` for
+its 15 small tall clips at 16 fps (many small videos).
 
 A driver stops going up when it falls below 40% of the clip's frame rate or doesn't load, and each run
 leaves `bench.json` under `--out`, `build/bench/out` by default. Build the C parts into `build/bench` on Linux:

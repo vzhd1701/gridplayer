@@ -28,19 +28,29 @@ def media_path(name: str) -> Path:
     return MEDIA / (name if Path(name).suffix else f"{name}.mp4")
 
 
-def mix_clips() -> list[Path]:
-    """The mix of make_media.sh, in an order that doesn't depend on the name."""
+# the sets of make_media.sh, by the start of their names
+CLIP_SETS = ("mix", "small")
 
-    clips = sorted(MEDIA.glob("mix*"))
+
+def set_clips(name: str = "mix") -> list[Path]:
+    """A set of make_media.sh, in an order that doesn't depend on the name."""
+
+    clips = sorted(MEDIA.glob(f"{name}[0-9]*"))
     random.Random(_MIX_ORDER_SEED).shuffle(clips)
 
     return clips
 
 
 def clips_for(spec: str, cells: int) -> list[Path]:
-    """As many clips as cells, going round: "mix", or names with commas between them."""
+    """As many clips as cells, going round: a set ("mix", "small"), or names with commas between
+    them."""
 
-    clips = mix_clips() if spec == "mix" else [media_path(n) for n in spec.split(",")]
+    if spec in CLIP_SETS:
+        clips = set_clips(spec)
+        if not clips:
+            raise FileNotFoundError(f"No {spec} clips in {MEDIA}. See make_media.sh")
+    else:
+        clips = [media_path(n) for n in spec.split(",")]
 
     # The app would ask about it in a dialog, and the run sit there until its timeout
     missing = [str(clip) for clip in clips if not clip.is_file()]
