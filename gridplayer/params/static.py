@@ -547,6 +547,14 @@ class MpvOutput(AutoName):
     GL = auto()
 
 
+class MpvCpuDecoding(AutoName):
+    """Hardware MPV decoding on the CPU rather than the GPU, its frames still
+    drawn by OpenGL. Software MPV has no GPU in it at all."""
+
+    OFF = auto()
+    ON = auto()
+
+
 class GLLineFix(AutoName):
     """Windows, GL output: a window with an alpha channel, which some drivers
     show without the black rows they leave at its bottom. Auto is on for

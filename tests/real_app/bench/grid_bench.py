@@ -39,6 +39,7 @@ SETTINGS = {
     "player/video_driver": DRIVER,
     "player/video_driver_players": int(os.environ.get("PLAYERS", "4")),
     "player/mpv_skip_frames": "skip" in EXP,
+    "player/mpv_cpu_decoding": "on" if "cpu" in EXP else "off",
     "player/mpv_output": os.environ.get("MPV_OUTPUT", "readback"),
     "playlist/warn_many_cells": False,
 }

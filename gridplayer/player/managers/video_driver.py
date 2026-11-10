@@ -6,7 +6,7 @@ from gridplayer.dialogs.messagebox import QCustomMessageBox
 from gridplayer.exceptions import PlayerException
 from gridplayer.mpv_player.subtitles import current_subtitle_style
 from gridplayer.params import env
-from gridplayer.params.static import VideoDriver
+from gridplayer.params.static import MpvCpuDecoding, VideoDriver
 from gridplayer.player.managers.base import ManagerBase
 from gridplayer.settings import Settings
 from gridplayer.utils.media_libs import MediaLib, lib_of_driver, lib_problem_text
@@ -117,10 +117,20 @@ class VideoDriverManager(ManagerBase):
         if self._mpv_render_service is None:
             self._mpv_render_service = MpvRenderService(parent=self)
 
+        # Software MPV decodes and draws on the CPU, with libmpv's software
+        # renderer. Hardware MPV draws with OpenGL, and decodes on the GPU unless
+        # told not to.
+        is_software = video_driver == VideoDriver.MPV_SW
+        is_cpu_decoding = (
+            is_software
+            or Settings().get("player/mpv_cpu_decoding") == MpvCpuDecoding.ON
+        )
+
         return partial(
             VideoFrameMpv,
             render_service=self._mpv_render_service,
-            hwdec="no" if video_driver == VideoDriver.MPV_SW else "auto",
+            hwdec="no" if is_cpu_decoding else "auto",
+            is_software=is_software,
         )
 
     def cleanup(self):

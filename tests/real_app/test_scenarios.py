@@ -65,6 +65,10 @@ ALSO_ON_MPV = (
 )
 MPV_DRIVERS = ("mpv_hw", "mpv_sw")
 
+# The MPV scenarios written for Hardware MPV that Software MPV is held to too:
+# with libmpv's software renderer it turns, flips and deinterlaces by filters.
+ALSO_ON_SOFTWARE_MPV = ("mpv_basics", "mpv_deinterlace", "mpv_subtitles", "mpv_view")
+
 RUN_TIMEOUT_SEC = 300
 
 pytestmark = [
@@ -108,6 +112,18 @@ def test_scenario_on_mpv(scenario, driver, tmp_path):
         scenario,
         tmp_path / scenario,
         env={**os.environ, "REAL_APP_VIDEO_DRIVER": driver},
+    )
+
+
+@pytest.mark.parametrize("scenario", ALSO_ON_SOFTWARE_MPV)
+def test_mpv_scenario_on_software(scenario, tmp_path):
+    if find_libmpv() is None:
+        pytest.skip("needs libmpv")
+
+    _run_scenario(
+        scenario,
+        tmp_path / scenario,
+        env={**os.environ, "REAL_APP_VIDEO_DRIVER": "mpv_sw"},
     )
 
 

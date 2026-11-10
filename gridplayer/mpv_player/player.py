@@ -60,6 +60,7 @@ _ROTATIONS = {
     180: VideoTransform.ROTATE_180,
     270: VideoTransform.ROTATE_270,
 }
+_DEGREES = {transform: degrees for degrees, transform in _ROTATIONS.items()}
 
 # What to turn the picture by for a transform, in degrees clockwise, which mpv
 # adds to what the file says. The flips are painted: a filter would take away what
@@ -71,6 +72,16 @@ _TURNS = {
     VideoTransform.TRANSPOSE: 90,
     VideoTransform.ANTITRANSPOSE: 90,
 }
+
+# libmpv's software renderer leaves out a file's rotation and video-rotate, and
+# shaders. There, filters turn the picture, after any deinterlacing, and flip it
+# where a shader would: see _turn_by and set_flip_in_mpv.
+_TURN_FILTERS = {
+    90: "lavfi=[transpose=clock]",
+    180: "lavfi=[hflip,vflip]",
+    270: "lavfi=[transpose=cclock]",
+}
+_FLIP_FILTERS = {(True, False): "lavfi=[hflip]", (False, True): "lavfi=[vflip]"}
 
 # Flipping what mpv has drawn flips any subtitle in it too. While there is one, mpv
 # flips the picture itself, by this. Not always: with any shader mpv leaves its fast
@@ -319,6 +330,7 @@ class MpvPlayer(QObject):
         subtitle_style: dict,
         skip_frames: bool = False,
         direct_rendering: bool = True,
+        is_software: bool = False,
         log_level: int = DISABLED,
     ):
         super().__init__()
@@ -330,6 +342,15 @@ class MpvPlayer(QObject):
         self._hwdec = hwdec
         self._skip_frames = skip_frames
         self._direct_rendering = direct_rendering
+        # drawn by libmpv's software renderer: see _TURN_FILTERS
+        self._is_software = is_software
+        self._picture_filters = {"turn": "", "flip": ""}
+        self._shown_video_track: VideoTrack | None = None
+        # degrees clockwise the turn filter turns the picture by, after what
+        # video-params says of it
+        self._turn = 0
+        # the whole of the video filters, as last sent
+        self._filters_sent = ""
         self._log_level = log_level
         self._wake_renderer = wake_renderer
         self._subtitle_style = subtitle_style
@@ -473,6 +494,15 @@ class MpvPlayer(QObject):
             options["ao"] = ",".join(_LINUX_AUDIO_OUTPUTS)
             options["audio_fallback_to_null"] = True
 
+        # The software renderer scales with zimg by default, lanczos with
+        # dithering: on 4 cores of a Haswell, 190% of a core for one 1080p video
+        # against 107% this way, and 22 fps at 16 against 30. swscale's fast
+        # bilinear looks as the OpenGL renderer's bilinear does. It works on the
+        # render thread, at a third of a core for 16 of 1080p60 on Windows.
+        if self._is_software:
+            options["sws_allow_zimg"] = False
+            options["sws_scaler"] = "fast-bilinear"
+
         # Where the CPU decodes into what OpenGL draws from. NVIDIA's driver on Windows
         # keeps about 1.5 MB of those buffers for each video closed; without them, a
         # copy a frame, which costs only once the CPU is short. On is mpv's own default.
@@ -505,7 +535,10 @@ class MpvPlayer(QObject):
         if video.subtitle_encoding:
             options["sub_codepage"] = subtitle_codepage(video.subtitle_encoding)
 
-        if video.transform in _TURNS:
+        if self._is_software:
+            # turned by a filter instead, as it starts: see _pick_turn
+            options["video_rotate"] = "no"
+        elif video.transform in _TURNS:
             options["video_rotate"] = _TURNS[video.transform]
 
         # a random start is only known with the length: see _pick_random_start
@@ -694,6 +727,12 @@ class MpvPlayer(QObject):
 
             self._apply_audio_chain()
 
+        # another track can be turned another way, which only the filter does here
+        if option == "vid" and self._is_software and self._media is not None:
+            with self._telling:
+                self._turn_by(self._media.video_tracks.get(track_id))
+                self._send_filters()
+
         self.set_option(option, _track_option(track_id))
 
     def add_audio_file(self, uri: str) -> None:
@@ -755,6 +794,14 @@ class MpvPlayer(QObject):
         """Have mpv flip the picture, None for it not to. Whether it flips it now."""
 
         if flip == self._flip_in_mpv:
+            return flip is not None
+
+        if self._is_software:
+            with self._telling:
+                self._picture_filters["flip"] = _FLIP_FILTERS.get(flip, "")
+                self._flip_in_mpv = flip
+                self._send_filters()
+
             return flip is not None
 
         if flip is None:
@@ -876,13 +923,47 @@ class MpvPlayer(QObject):
 
         self._deinterlace_options["vf"] = video_filter
 
+        self._send_filters()
+
+    def _filter_chain(self) -> str:
+        filters = (self._deinterlace_options["vf"], *self._picture_filters.values())
+
+        return ",".join(f for f in filters if f)
+
+    def _send_filters(self, is_waited: bool = False) -> None:
+        """All of them, as the one list mpv has: deinterlacing's and the picture's.
+        Waited for in a hook, where mpv is waiting too."""
+
+        chain = self._filter_chain()
+
+        if chain == self._filters_sent:
+            return
+
+        if is_waited:
+            try:
+                self.mpv.command("vf", "set", chain)
+            except self._mpv_module.ShutdownError:
+                raise
+            except Exception:
+                # it plays on with the list it had
+                self._log.exception(f"Video filters {chain} refused")
+                return
+
+            self._filters_sent = chain
+            return
+
+        self._filters_sent = chain
+
+        # The picture's are lavfi's own, always there: only deinterlacing's can
+        # fail to start, with a mode the build hasn't got
+        is_deinterlacing = bool(self._deinterlace_options["vf"])
         mode = self.media_input.video.deinterlace_mode
 
         self.command(
             "vf",
             "set",
-            video_filter,
-            callback=partial(self._on_filter_told, mode) if video_filter else None,
+            chain,
+            callback=partial(self._on_filter_told, mode) if is_deinterlacing else None,
         )
 
     def _on_filter_told(self, mode: VideoDeinterlaceMode, error, _result) -> None:
@@ -893,7 +974,10 @@ class MpvPlayer(QObject):
 
         _REFUSED_MODES.add(mode)
 
-        self._apply_deinterlace()
+        with self._telling:
+            # mpv kept the list it had, and the next one goes whatever it is
+            self._filters_sent = None
+            self._apply_deinterlace()
 
     def _check_frames_interlaced(self) -> None:
         """Automatic with mpv not going by the frames itself. Not every frame of a
@@ -1006,6 +1090,7 @@ class MpvPlayer(QObject):
                 if not self._is_closing:
                     self._pick_random_start()
                     self._pick_tracks()
+                    self._pick_turn()
                     self._pick_audio_device()
         except self._mpv_module.ShutdownError:
             pass
@@ -1042,6 +1127,9 @@ class MpvPlayer(QObject):
         ):
             audio_id = None
 
+        shown_id = tracks.cur_video_track_id if video_id is None else video_id
+        self._shown_video_track = tracks.video_tracks.get(shown_id)
+
         picks = {"vid": video_id, "aid": audio_id}
 
         # no subtitles in it is the ordinary case, with nothing to switch off
@@ -1066,6 +1154,23 @@ class MpvPlayer(QObject):
 
         for option, value in options:
             self.mpv.command("set", option, value)
+
+    def _pick_turn(self) -> None:
+        """The software renderer's turn, before the picture starts: waited for,
+        as the tracks are."""
+
+        if self._is_software:
+            self._turn_by(self._shown_video_track)
+            self._send_filters(is_waited=True)
+
+    def _turn_by(self, track: VideoTrack | None) -> None:
+        """What the file says to turn the picture by and what it's told to, as a
+        filter for the software renderer."""
+
+        file_turn = _DEGREES.get(track.orientation, 0) if track else 0
+
+        self._turn = (file_turn + _TURNS.get(self.media_input.video.transform, 0)) % 360
+        self._picture_filters["turn"] = _TURN_FILTERS.get(self._turn, "")
 
     def _pick_audio_device(self) -> None:
         self._audio_devices = _AUDIO_DEVICES.read(self._mpv_module)
@@ -1106,9 +1211,11 @@ class MpvPlayer(QObject):
         if not params or not params.get("dw") or not params.get("dh"):
             return
 
-        # dw and dh leave the rotation out
+        # dw and dh leave the rotation out. They're of the picture before the
+        # filters, where the software renderer's is turned.
         width, height = params["dw"], params["dh"]
-        if params.get("rotate", 0) % 180 == 90:
+        turn = self._turn if self._is_software else params.get("rotate", 0)
+        if turn % 180 == 90:
             width, height = height, width
 
         self._dims = (width, height)

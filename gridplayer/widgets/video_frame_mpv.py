@@ -199,6 +199,7 @@ class VideoDriverMpv(VLCVideoDriver):
         self,
         render_service: MpvRenderService,
         hwdec: str,
+        is_software: bool,
         surface,
         pane_box,
         full_size,
@@ -209,6 +210,7 @@ class VideoDriverMpv(VLCVideoDriver):
 
         self._render_service = render_service
         self._hwdec = hwdec
+        self._is_software = is_software
         self._surface = surface
         # a GL surface draws once its window's grid surface is up
         self._surface.drawing_started.connect(self._report_frame)
@@ -279,6 +281,7 @@ class VideoDriverMpv(VLCVideoDriver):
                 hwdec=self._hwdec,
                 skip_frames=Settings().get("player/mpv_skip_frames"),
                 direct_rendering=Settings().get("player/mpv_direct_rendering"),
+                is_software=self._is_software,
                 log_level=Settings().get("logging/log_level_mpv"),
                 subtitle_style=current_subtitle_style(),
                 wake_renderer=self._render_service.wake,
@@ -307,7 +310,7 @@ class VideoDriverMpv(VLCVideoDriver):
         ):
             signal.connect(slot, Qt.QueuedConnection)
 
-        self._rendered = RenderedVideo(self._player)
+        self._rendered = RenderedVideo(self._player, is_software=self._is_software)
         self._render_service.add(self._rendered, self)
 
         timeout_s = Settings().get("player/video_init_timeout")
@@ -651,9 +654,17 @@ class VideoFrameMpv(PaintedVideoFrame, VideoFrameVLC):
 
         return video.as_file(), (name, audio.as_file())
 
-    def __init__(self, render_service: MpvRenderService, hwdec: str, **kwargs):
+    def __init__(
+        self,
+        render_service: MpvRenderService,
+        hwdec: str,
+        is_software: bool = False,
+        **kwargs,
+    ):
         self._render_service = render_service
         self._hwdec = hwdec
+        # libmpv's software renderer, painted: no GL at all
+        self._is_software = is_software
 
         super().__init__(**kwargs)
 
@@ -676,7 +687,7 @@ class VideoFrameMpv(PaintedVideoFrame, VideoFrameVLC):
             return super().grab(*args)
 
     def ui_video_surface(self):
-        if self._render_service.is_gl_output:
+        if self._render_service.is_gl_output and not self._is_software:
             return MpvGLVideoSurface(
                 self, delete_textures=self._render_service.delete_textures
             )
@@ -687,6 +698,7 @@ class VideoFrameMpv(PaintedVideoFrame, VideoFrameVLC):
         return VideoDriverMpv(
             render_service=self._render_service,
             hwdec=self._hwdec,
+            is_software=self._is_software,
             surface=self.video_surface,
             pane_box=self._pane_box,
             full_size=self._full_render_size,

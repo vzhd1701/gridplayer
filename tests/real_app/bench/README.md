@@ -77,6 +77,7 @@ Pass them with `--env NAME=VALUE`:
 - `SPY=gil`: record with `py-spy`, then read it with `spy_read.py FILE 200 SECONDS`.
 - `EXP`: comma-separated changes to try.
   - `skip`: the "Skip frames to play more videos" setting.
+  - `cpu`: Hardware MPV's "Decode on the CPU", what Software MPV was before it was fully software.
   - `opt.NAME=VALUE`: any mpv option, such as `opt.vd-lavc-skipframe=bidir`.
   - `liveskip=VALUE`: set `vd-lavc-skipframe` 3 s after loading.
   - `autoskip`: the trial of turning skipping on for more cells while frames drop.

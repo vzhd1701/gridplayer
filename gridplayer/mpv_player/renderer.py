@@ -19,6 +19,10 @@ The "Fast" output reads nothing back. The render thread's context shares with
 Qt's (QtShareGroup), the triple buffer holds textures, finished once a round,
 and a QOpenGLWidget draws the newest: much less CPU, the vibration and all.
 
+Software MPV has no GL at all. A thread of its own has libmpv's software
+renderer scale and convert each frame on the CPU, straight into the triple
+buffer's pixels, painted as the Steady output's are.
+
 What each thread may do, most bugs here being one of these broken:
 
 GUI thread: nothing that can wait on mpv. It sends async commands, and reads
@@ -173,6 +177,69 @@ class RenderCalls:
         self._render(self._handle, self._skip)
 
 
+class SoftwareRenderCalls:
+    """A video's render() calls with libmpv's software renderer: the frame is
+    scaled and converted on the CPU, straight into the pixels it's given."""
+
+    # render.h's numbers, which python-mpv doesn't know
+    _SW_SIZE = 17
+    _SW_FORMAT = 18
+    _SW_STRIDE = 19
+    _SW_POINTER = 20
+
+    def __init__(self, mpv_module, render_context):
+        self._render = mpv_module._mpv_render_context_render
+        self._handle = render_context.handle
+
+        param_type = mpv_module.MpvRenderParam
+
+        self._size = (ctypes.c_int * 2)()
+        # B, G, R and A, as the painted frames are, opaque. Not "bgr0": zimg
+        # leaves its fourth byte at 0, and Qt's RGB32 painting carries that
+        # through as alpha, a picture to see through.
+        self._format = ctypes.create_string_buffer(b"bgra")
+        self._stride = ctypes.c_size_t()
+        self._off = ctypes.c_int(0)
+        self._on = ctypes.c_int(1)
+
+        self._draw = (param_type * 6)()
+        for slot, (type_id, value) in zip(
+            self._draw,
+            (
+                (self._SW_SIZE, self._size),
+                (self._SW_FORMAT, self._format),
+                (self._SW_STRIDE, self._stride),
+                (param_type.TYPES["block_for_target_time"][0], self._off),
+            ),
+            strict=False,
+        ):
+            slot.type_id = type_id
+            slot.data = ctypes.addressof(value)
+
+        # the pixels themselves, not where their address is kept
+        self._pointer = self._draw[4]
+        self._pointer.type_id = self._SW_POINTER
+
+        self._skip = _param_array(
+            param_type,
+            (("skip_rendering", self._on), ("block_for_target_time", self._off)),
+        )
+
+    def draw(self, width: int, height: int, pixels: int) -> None:
+        """The next frame drawn into the pixels at this address, BGRA, rows
+        one after the other."""
+
+        self._size[0], self._size[1] = width, height
+        self._stride.value = width * 4
+        self._pointer.data = pixels
+        self._render(self._handle, self._draw)
+
+    def skip(self) -> None:
+        """The next frame taken and not drawn."""
+
+        self._render(self._handle, self._skip)
+
+
 def _param_array(param_type, params):
     """Render parameters as libmpv takes them, ending with an empty one."""
 
@@ -227,8 +294,10 @@ class RenderedVideo:
     MpvPlayer.
     """
 
-    def __init__(self, player):
+    def __init__(self, player, is_software=False):
         self.player = player
+        # drawn by libmpv's software renderer, on a thread of its own
+        self.is_software = is_software
 
         self.render_context = None
         self.render_calls: RenderCalls | None = None
@@ -284,7 +353,7 @@ class VideoRenderer(QThread):
     # the render context failed to come up, for the one video or for all
     failed = pyqtSignal(object, str)
 
-    def __init__(self, mpv_module, gl_share=None, parent=None):
+    def __init__(self, mpv_module, gl_share=None, is_software=False, parent=None):
         super().__init__(parent)
 
         self._mpv = mpv_module
@@ -292,6 +361,8 @@ class VideoRenderer(QThread):
         # the window rather than read back
         self._gl_share = gl_share
         self.is_gl_output = gl_share is not None
+        # libmpv's software renderer, with no GL at all
+        self.is_software = is_software
         self._log = logging.getLogger(self.__class__.__name__)
 
         self._wake = threading.Event()
@@ -338,19 +409,8 @@ class VideoRenderer(QThread):
         self.wait()
 
     def run(self):
-        try:
-            self._context = create_gl_context(
-                self._platform, self._qt_surface, share=self._gl_share
-            )
-            self._gl = _GLFunctions(self._context)
-        except GLContextError as e:
-            self._log.exception("No GL context")
-            self._context_error = str(e)
-
-        if self._context_error is None:
-            fbo = ctypes.c_uint()
-            self._gl.glGenFramebuffers(1, ctypes.byref(fbo))
-            self._fbo = fbo.value
+        if not self.is_software:
+            self._start_gl()
 
         while not self._is_stopping:
             self._wake.wait()
@@ -366,8 +426,39 @@ class VideoRenderer(QThread):
 
         self._cleanup()
 
+    def _start_gl(self) -> None:
+        try:
+            self._context = create_gl_context(
+                self._platform, self._qt_surface, share=self._gl_share
+            )
+            self._gl = _GLFunctions(self._context)
+        except GLContextError as e:
+            self._log.exception("No GL context")
+            self._context_error = str(e)
+
+        if self._context_error is None:
+            fbo = ctypes.c_uint()
+            self._gl.glGenFramebuffers(1, ctypes.byref(fbo))
+            self._fbo = fbo.value
+
     def _get_proc_address(self, _ctx, name) -> int:
         return self._context.get_proc_address(name) if self._context else 0
+
+    def _new_render_context(self, player):
+        if self.is_software:
+            return self._mpv.MpvRenderContext(player.mpv, "sw", advanced_control=True)
+
+        return self._mpv.MpvRenderContext(
+            player.mpv,
+            "opengl",
+            opengl_init_params={"get_proc_address": self._proc_address_fn},
+            # Direct rendering for software decoding, and an update() that
+            # says whether there is really a new frame. In exchange this
+            # thread must never wait on the mpv core, which is why the
+            # video isn't started here.
+            advanced_control=True,
+            **self._context.native_params(),
+        )
 
     def _init_video(self, video: RenderedVideo) -> None:
         if self._context_error is not None:
@@ -375,17 +466,7 @@ class VideoRenderer(QThread):
             return
 
         try:
-            video.render_context = self._mpv.MpvRenderContext(
-                video.player.mpv,
-                "opengl",
-                opengl_init_params={"get_proc_address": self._proc_address_fn},
-                # Direct rendering for software decoding, and an update() that
-                # says whether there is really a new frame. In exchange this
-                # thread must never wait on the mpv core, which is why the
-                # video isn't started here.
-                advanced_control=True,
-                **self._context.native_params(),
-            )
+            video.render_context = self._new_render_context(video.player)
         except Exception as e:
             self._log.exception("No render context")
             self.failed.emit(video, str(e))
@@ -402,17 +483,23 @@ class VideoRenderer(QThread):
         # and an mpv thread could be inside it. After free() nothing calls it.
         video.render_context.update_cb = on_update
 
-        video.render_calls = RenderCalls(self._mpv, video.render_context, self._fbo)
+        if self.is_software:
+            video.render_calls = SoftwareRenderCalls(self._mpv, video.render_context)
+        else:
+            video.render_calls = RenderCalls(self._mpv, video.render_context, self._fbo)
+            self._new_textures(video)
+
+        self._videos.append(video)
+
+        video.player.on_render_context_ready()
+
+    def _new_textures(self, video: RenderedVideo) -> None:
         if self.is_gl_output:
             # drawn at whatever size the cell has while it's being resized
             for slot in video.slots():
                 slot.texture = self._new_texture(GL_LINEAR)
         else:
             video.texture = self._new_texture()
-
-        self._videos.append(video)
-
-        video.player.on_render_context_ready()
 
     def _new_texture(self, scaling=GL_NEAREST) -> int:
         gl = self._gl
@@ -499,6 +586,12 @@ class VideoRenderer(QThread):
     def _render(self, video: RenderedVideo, size: tuple[int, int]) -> None:
         gl = self._gl
         width, height = size
+
+        if self.is_software:
+            pixels = video.back.writable(width, height)
+            video.render_calls.draw(width, height, ctypes.addressof(pixels))
+            video.rendered_size = size
+            return
 
         gl.glBindFramebuffer(GL_FRAMEBUFFER, self._fbo)
 
@@ -601,7 +694,9 @@ class MpvRenderService(QObject):
 
     N videos at 24 fps come in at random times, and one compose per screen
     refresh is all anyone can see. The thread is there for as long as there are
-    videos: it goes with cleanup() and comes back with the next.
+    videos: it goes with cleanup() and comes back with the next, for OpenGL or
+    libmpv's software renderer as that video is. A driver change always reloads,
+    which cleans up first, so it's never wanted for both.
     """
 
     def __init__(self, parent=None):
@@ -614,7 +709,8 @@ class MpvRenderService(QObject):
         self._renderer: VideoRenderer | None = None
 
         # Frames drawn by GL in the window, see QtShareGroup. Asked before any
-        # cell is made, as each makes its surface for one or the other.
+        # cell is made, as each makes its surface for one or the other. Not
+        # for software ones, which have no GL.
         self._share_group = self._join_qt_share_group()
         self.is_gl_output = self._share_group is not None
 
@@ -648,8 +744,13 @@ class MpvRenderService(QObject):
 
         self._share_group.delete_textures(textures)
 
-    def _start_renderer(self) -> VideoRenderer:
-        renderer = VideoRenderer(self.mpv, self._share_group, parent=self)
+    def _start_renderer(self, is_software: bool) -> VideoRenderer:
+        renderer = VideoRenderer(
+            self.mpv,
+            None if is_software else self._share_group,
+            is_software=is_software,
+            parent=self,
+        )
         renderer.frames_ready.connect(self._on_frames_ready, Qt.QueuedConnection)
         renderer.failed.connect(self._on_failed, Qt.QueuedConnection)
         renderer.start()
@@ -657,8 +758,16 @@ class MpvRenderService(QObject):
         return renderer
 
     def add(self, video: RenderedVideo, listener) -> None:
+        if (
+            self._renderer is not None
+            and self._renderer.is_software != video.is_software
+        ):
+            # what a reload does first, see the class
+            self._log.error("A video of another kind came without a cleanup")
+            self.cleanup()
+
         if self._renderer is None:
-            self._renderer = self._start_renderer()
+            self._renderer = self._start_renderer(video.is_software)
 
         self._players_alive.add(video.player)
         video.player.terminated.connect(self._forget_player, Qt.QueuedConnection)
@@ -671,7 +780,9 @@ class MpvRenderService(QObject):
 
     def remove(self, video: RenderedVideo) -> None:
         self._listeners.pop(video, None)
-        self._renderer.remove(video)
+
+        if self._renderer is not None:
+            self._renderer.remove(video)
 
     def wake(self) -> None:
         if self._renderer is not None:

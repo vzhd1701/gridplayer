@@ -481,6 +481,41 @@ These, and every number from a window on another desktop before 2026-11-09, were
 unseen after its first few seconds: every timer 15.6 ms apart, 64 frames a second at most. Enough for 60 fps clips. The bench
 opts out of it now, see plan item 13.10, which also has 120 fps numbers and two fixes found that way.
 
+## Fully software MPV
+
+Measured 2026-11-10, plan item 10.17. Software MPV now draws with libmpv's software renderer, scaling with swscale's fast
+bilinear, and has no GL at all. The old Software MPV, CPU decoding drawn by OpenGL and read back, is now Hardware MPV with
+"Decode on the CPU" On. The bench clips, `run.py`, 8 s to settle and 20 s measured, one run each. Windows offscreen, so the
+compositor's share isn't in it; `test_gpu` on its X11 through sway. CPU is the app's, 100% is one core; GPU is how busy it is
+(on `test_gpu` RC6's figure, which reads high).
+
+| | Old: fps · CPU · memory · GPU | Fully software: fps · CPU · memory · GPU |
+|---|---:|---:|
+| **Windows, RTX 3060** | | |
+| 1x1080p30 | 30 · 33% · 258 MB · 11% | 30 · 22% · 140 MB · 3% |
+| 16x1080p30 | 30 · 388% · 2402 MB · 36% | 30 · 255% · 1118 MB · 1% |
+| 16x1080p60 | 59.1 · 616% · 2425 MB · 24% | 59.9 · 470% · 1141 MB · 4% |
+| 36 small (16 fps, 720x960) | 16 · 255% · 3878 MB · 32% | 16 · 147% · 1068 MB · 4% |
+| 16 mixed | 36.7 · 371% · 2477 MB · 29% | 36.7 · 293% · 1189 MB · 1% |
+| 1x2160p60 | 59.9 · 167% · 420 MB · 34% | 59.9 · 88% · 299 MB · 2% |
+| 4x2160p60 | 59.6 · 398% · 1333 MB · 21% | 59.7 · 353% · 972 MB · 3% |
+| **Linux, `test_gpu`, 4 cores** | | |
+| 1x1080p30 | 30 · 90% · 280 MB · 80% | 30 · 105% · 244 MB · 22% |
+| 9x1080p30 | 30 · 326% · 827 MB · 95% | 30 · 288% · 784 MB · 30% |
+| 16x1080p30 | 20.4 · 580% · 1354 MB · 93% | 29.9 · 559% · 1262 MB · 28% |
+| 9x1080p60 | 28.9 · 590% · 861 MB · 93% | 48.8 · 579% · 796 MB · 32% |
+| 36 small | 16 · 244% · 1398 MB · 95% | 16 · 228% · 1333 MB · 20% |
+| 16 mixed | 12.8 · 704% · 1488 MB · 86% | 24.9 · 679% · 1415 MB · 18% |
+| 4x2160p60 | 10.0 · 763% · 1212 MB · 86% | 14.8 · 766% · 1117 MB · 14% |
+
+- **On Windows it's cheaper everywhere,** a fifth to a half less CPU, with half the memory or less: the old mode's direct
+  rendering buffers and textures are gone. NVIDIA's driver is what kept the old mode's memory, plan item 10.22.
+- **On `test_gpu` it plays more past the limit,** up to twice the frames, for the same CPU. The old mode's GPU was full there.
+- **The scaler decides the cost.** At zimg's defaults (lanczos, dithered), one 1080p30 video took 190% on `test_gpu`, zimg's
+  workers 85% of it; swscale's bilinear held the render thread at 100% from 9x1080p30, all videos' scaling being on that one
+  thread. Fast bilinear looks as the old mode's GL bilinear does.
+- What it leaves out: HDR tone mapping, as Software VLC does.
+
 ## Overnight, 2026-11-09
 
 Plan item 10.16, at commit 2c53c16: about 3 hours on `test_gpu` and 2 on Windows, the Windows part in a real window on another

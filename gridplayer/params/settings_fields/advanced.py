@@ -149,7 +149,8 @@ ADVANCED_FIELDS: tuple[SettingField, ...] = (
         buttons=True,
         # MPV hasn't been run there yet: Stage 11
         shown_if=_is_not_macos,
-        enabled_when=When("player/video_driver", MPV_DRIVERS),
+        # Software MPV draws on the CPU, always the Steady way
+        enabled_when=When("player/video_driver", (VideoDriver.MPV_HW,)),
         tooltip=translate(
             "SettingsDialog",
             "Fast often uses less CPU, mostly with a few videos. Works after you"
@@ -167,10 +168,23 @@ ADVANCED_FIELDS: tuple[SettingField, ...] = (
             " it can skip.",
         ),
     ),
+    ComboField(
+        settings_key="player/mpv_cpu_decoding",
+        label=translate("SettingsDialog", "Decode on the CPU"),
+        choices=choices.mpv_cpu_decodings,
+        enabled_when=When("player/video_driver", (VideoDriver.MPV_HW,)),
+        tooltip=translate(
+            "SettingsDialog",
+            "Decodes videos on the CPU and draws them on the GPU. Plays more videos"
+            " on a strong CPU and uses less video memory. Works for videos opened"
+            " after.",
+        ),
+    ),
     CheckboxField(
         settings_key="player/mpv_direct_rendering",
         label=translate("SettingsDialog", "Hand frames straight to the GPU"),
-        enabled_when=When("player/video_driver", MPV_DRIVERS),
+        # Software MPV has no GPU to hand them to
+        enabled_when=When("player/video_driver", (VideoDriver.MPV_HW,)),
         tooltip=translate(
             "SettingsDialog",
             "When the CPU decodes, this saves copying each frame. Turn it off if"

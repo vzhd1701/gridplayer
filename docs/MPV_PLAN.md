@@ -729,6 +729,8 @@ CPU took 0.5-5.5 s, against 0.2-1.1 s on the key frame, which is about what VLC 
   - **Decided (2026-11-09): a setting with Auto / On / Off.** As understood: decoding on the CPU instead of the GPU, Auto
     switching new videos to it when video memory runs low, On always, Off never. To be confirmed when built, with 10.17's flag:
     the two may be one setting.
+  - **Decided (2026-11-10): one setting.** 10.17 built "Decode on the CPU" on Hardware MPV with Off / On; Auto goes into the same
+    setting when this is built.
 - [x] 10.12 mpv to VLC Hardware live, on a real GPU with X11. Passes on `test_gpu`, 2 rounds, and the
   pass counts: with the old cause forced, decoder processes do die with signal 6 there. NVIDIA on
   Linux not run. See `MPV_PERFORMANCE.md`
@@ -752,7 +754,7 @@ CPU took 0.5-5.5 s, against 0.2-1.1 s on the key frame, which is about what VLC 
   - The limits again, 3 runs each, as most points are one run, and VLC's freeze at 36 cells on both machines
   - On Windows what the first run didn't reach, and on Windows the hitch at switching frame skipping
   - Not in it: audio (Stage 6), other GPUs and macOS. Nor the compositor's share on Windows, which takes a window on a screen
-- [ ] 10.17 **Later, your call (2026-11-06):** Software <MPV> becomes fully software, as people expect software not to touch
+- [x] 10.17 **Later, your call (2026-11-06):** Software <MPV> becomes fully software, as people expect software not to touch
   the GPU at all. Today it's `hwdec=no` and still draws through OpenGL.
   - Draw with libmpv's own software render API rather than OpenGL. Not tried yet: measure CPU, scaling quality and how
     many videos it plays against today's mode
@@ -762,6 +764,38 @@ CPU took 0.5-5.5 s, against 0.2-1.1 s on the key frame, which is about what VLC 
   - A stand-in for Software VLC with no VLC should then be the new mode (see Stage 3 results)
   - **Decided (2026-11-09): yes.** Nobody uses Software MPV yet, so saved `mpv_sw` settings need no care. Measure the software
     render API first (CPU, scaling quality, how many videos play against today's mode), then build.
+  - **Built 2026-11-10.** Software MPV draws with libmpv's software renderer (`api_type` "sw") on a render thread of its own, with
+    no GL context, straight into the triple buffer's pixels, painted as the Steady output's are. The render service's one renderer is
+    of the kind of the first video after a cleanup: a driver change reloads, cleaning up first. Video output (Fast) and "Hand frames straight to the GPU"
+    are Hardware MPV's only now. Today's mode is Hardware MPV with "Decode on the CPU" On (Off / On, and 10.11's Auto later, your
+    pick). What the software renderer leaves out, done another way:
+    - Turns: it ignores `video-rotate` and a file's rotation. `video-rotate=no`, and the file's turn plus the app's goes in as a
+      `transpose` filter in the preload hook, before the picture starts, after any deinterlacing, and again for another video
+      track. `video-params` is of the picture before the filters, so its shape is turned by the app's own number.
+    - Flips while subtitles show: no shaders there, so `hflip` / `vflip` filters. All three share mpv's one `vf` list.
+    - Format `bgra`: zimg leaves the fourth byte of `bgr0` at 0, and Qt's RGB32 painting carries it through as alpha, a picture
+      you see through. swscale happens to write 255.
+  - **Scaler: swscale's fast bilinear** (`sws-allow-zimg=no`), measured against zimg's defaults (lanczos, dithered), zimg bilinear
+    with no dither and swscale's bilinear. zimg at its defaults on `test_gpu`: 190% of a core for one 1080p30 video against 90%
+    today, its worker threads 85%. Fast bilinear: 107%, and the most played (16x1080p30 29.8 fps, 9x1080p60 48.8). swscale works on
+    the render thread, all videos on one: plain bilinear held it at 100% from 9x1080p30 on `test_gpu` (13 fps), fast bilinear at a
+    third of a core for 16x1080p60 on Windows. Side by side at 640x360 and 320x180 cells the five look much the same; zimg's
+    lanczos is the smoothest, fast bilinear like today's GL bilinear, with the same few jaggies at 36 cells.
+  - **Measured, Software MPV against Hardware MPV decoding on the CPU (today's mode), bench clips, finished code.** See
+    `MPV_PERFORMANCE.md`, "Fully software MPV". Windows offscreen: less CPU everywhere (16x1080p60 616% to 470%, one 2160p60 167%
+    to 88%), half the memory or less (16x1080p30 2402 MB to 1118, 36 small 3878 to 1068), the GPU 20-38% busy to 1-4%, the same
+    frame rates. `test_gpu`, real X11: the same CPU, more played past the limit (16x1080p30 20.4 to 29.9 fps, 9x1080p60 28.9 to
+    48.8, 16 mixed 12.8 to 24.9, 4x2160p60 10.0 to 14.8), one 1080p30 105% against 90%; the GPU 80-97% busy to 18-38%, what's left
+    being the display. So "plays the most on a strong CPU" no longer holds for today's mode; it's kept for your call above, and as
+    the way to Fast output with CPU decoding.
+  - Churn, Windows, 6 minutes, all closed after 5 and 6: 507 / 247 MB (today's mode 1189 / 1229), threads back to 13-14, video
+    memory never above the 163 MB of the start.
+  - Tested: unit tests for the render calls, the renderer with no GL, a renderer per kind, the manager's pick, turns and flips
+    as filters with deinterlacing. `mpv_basics`, `mpv_view`, `mpv_subtitles` and `mpv_deinterlace` now also run on Software MPV in
+    the real-app suite; on Windows those and 8 more pass on it, on `test_gpu` the suite 73 passed, `stream_stalls` failing on both
+    MPV drivers as on HEAD there.
+  - Not done: HDR. swscale doesn't tone map, so HDR video looks flat on Software MPV, as on Software VLC. The pointer and stride
+    aren't 64-byte aligned as render.h prefers; nothing measured showed a cost.
 - [x] 10.18 A window minimized or in the tray rendered and read back every frame of every video. Done as 10.9, your call (2026-11-08), with no
   setting: nothing on screen changes, as a minimized window's preview is the picture from before. The cell goes by its own show and hide,
   and by the window's `away_changed`, as coming back it can be shown before the window says it's no longer minimized. `mpv_hidden_cells`:
@@ -789,7 +823,8 @@ CPU took 0.5-5.5 s, against 0.2-1.1 s on the key frame, which is about what VLC 
     (`player/mpv_direct_rendering`). Off sends `vd-lavc-dr=no`; on leaves mpv its default. It goes for videos opened after, as mpv
     reads it only as a decoder starts. Both MPV drivers, as Hardware MPV falls back to the CPU by itself (deinterlacing, a codec the
     GPU lacks). `churn.py` takes `DR=0`. Checked on Windows, NVIDIA, Software MPV churn, 6 minutes, the mix, all closed after 5 and 6
-    minutes (start 60 MB): on 1189 / 1229 MB, off 530 / 471, threads back to 23-24 both. To group with 10.11 and 10.17 when built.
+    minutes (start 60 MB): on 1189 / 1229 MB, off 530 / 471, threads back to 23-24 both. Since 10.17 it sits under "Decode on
+    the CPU", Hardware MPV's only: fully software MPV has no direct rendering.
 - 10.23-10.28 are VLC's own, not MPV's: moved to `VLC.md` with their numbers (10.23 an overnight load freeze on Linux,
   10.24 and 10.25 single-process freezes, 10.26 VLC's waits, 10.27 32-bit address space, 10.28 single against multi-process; all done).
 - [x] 10.14 Don't fill the cell black before drawing a picture that covers it: app CPU 61% to 47% at
@@ -988,6 +1023,7 @@ core less while the decoder keeps up, at the same frame rates. Suggested words: 
 
 Newest first. What was finished and seen working, and anything that changed the plan.
 
+- 2026-11-10: 10.17, Software MPV is fully software: libmpv's software renderer, no GL. On Windows less CPU, half the memory and the GPU idle; on `test_gpu` the same CPU and up to twice the frames past the limit. The old mode is Hardware MPV's new "Decode on the CPU", Off / On, Auto to come with 10.11.
 - 2026-11-10: 10.22, a setting to turn off MPV's direct rendering, "Hand frames straight to the GPU", on by default. Off, Software MPV on Windows with NVIDIA no longer keeps about 1.5 MB per video closed: 6-minute churn, all closed, 471 MB against 1229.
 - 2026-11-09: 10.26, VLC in a single process on Windows no longer burns up to 13 cores with 15 videos: VLC 3's waits pointed at Windows' own (`VLC_WAITS.md`). Checked in the 32-bit app too; found there 10.27, 32-bit single process out of address space with many videos, and fixed Hardware VLC's window check failing in 32-bit.
 - 2026-11-09: 10.28, VLC single process against multi-process on Windows with 10.26 in: the same frame rate and CPU, a little less memory single, slower loading of many videos. Processes tooltip and README no longer warn of freezes past 4-6 videos.

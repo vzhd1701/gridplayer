@@ -43,6 +43,7 @@ from gridplayer.mpv_player.renderer import (
     MpvRenderService,
     RenderCalls,
     RenderedVideo,
+    SoftwareRenderCalls,
     VideoRenderer,
 )
 from gridplayer.mpv_player.subtitles import (
@@ -54,6 +55,7 @@ from gridplayer.mpv_player.subtitles import (
 )
 from gridplayer.params.static import (
     AudioChannelMode,
+    MpvCpuDecoding,
     SeekAim,
     SeekPrecision,
     SubtitleOutline,
@@ -424,6 +426,7 @@ def _mpv_module():
 def _player(
     skip_frames=False,
     direct_rendering=True,
+    is_software=False,
     is_live=False,
     is_audio_only=False,
     hwdec="auto",
@@ -449,6 +452,7 @@ def _player(
         subtitle_style=SUBTITLE_STYLE_DEFAULTS,
         skip_frames=skip_frames,
         direct_rendering=direct_rendering,
+        is_software=is_software,
     )
 
 
@@ -1142,6 +1146,7 @@ def _driver(full_size=lambda: (0, 0), is_on_show=lambda: True):
     return VideoDriverMpv(
         render_service=MagicMock(),
         hwdec="auto",
+        is_software=False,
         surface=MagicMock(),
         pane_box=lambda: (100, 100),
         full_size=full_size,
@@ -1975,6 +1980,152 @@ def test_a_frame_is_taken_not_drawn_as_python_mpv_would_ask(render_calls):
     calls.skip()
 
     assert told == [("handle", {13: 1, 12: 0})]
+
+
+def _what_software_is_told(params) -> dict:
+    told = {}
+
+    for param in params:
+        if param.type_id == 0:
+            return told
+
+        if param.type_id == 17:
+            told["size"] = tuple((ctypes.c_int * 2).from_address(param.data))
+        elif param.type_id == 18:
+            told["format"] = ctypes.string_at(param.data)
+        elif param.type_id == 19:
+            told["stride"] = ctypes.c_size_t.from_address(param.data).value
+        elif param.type_id == 20:
+            told["pixels"] = param.data
+        else:
+            told[param.type_id] = ctypes.c_int.from_address(param.data).value
+
+    raise AssertionError("no end to the parameters")
+
+
+def _software_calls():
+    told = []
+    module = SimpleNamespace(
+        MpvRenderParam=_Param,
+        _mpv_render_context_render=lambda handle, params: told.append(
+            _what_software_is_told(params)
+        ),
+    )
+
+    return SoftwareRenderCalls(module, MagicMock(handle="handle")), told
+
+
+def test_software_draws_into_the_pixels_it_is_given():
+    calls, told = _software_calls()
+    pixels = FrameSlot().writable(640, 360)
+
+    calls.draw(640, 360, ctypes.addressof(pixels))
+    calls.draw(320, 180, 1234)
+
+    # opaque, as Qt paints the fourth byte as it finds it
+    assert told == [
+        {
+            "size": (640, 360),
+            "format": b"bgra",
+            "stride": 2560,
+            "pixels": ctypes.addressof(pixels),
+            12: 0,
+        },
+        {"size": (320, 180), "format": b"bgra", "stride": 1280, "pixels": 1234, 12: 0},
+    ]
+
+
+def test_software_takes_a_frame_without_drawing_it():
+    calls, told = _software_calls()
+
+    calls.skip()
+
+    assert told == [{13: 1, 12: 0}]
+
+
+def test_software_renders_straight_into_the_back_frame():
+    renderer = VideoRenderer(MagicMock(), is_software=True)
+    video = _rendered_video((8, 4))
+    video.has_new_frame = True
+    renderer._videos.append(video)
+
+    renderer._render_round()
+
+    width, height, pixels = video.render_calls.draw.call_args.args
+    assert (width, height) == (8, 4)
+    # handed over to the GUI's side as it's done
+    assert video.latest().width == 8
+    assert pixels == ctypes.addressof(video.latest()._pixels_ctypes)
+
+
+def test_software_has_no_gl_context(mocker):
+    made = mocker.patch("gridplayer.mpv_player.renderer.create_gl_context")
+    renderer = VideoRenderer(MagicMock(), is_software=True)
+    renderer._is_stopping = True
+
+    renderer.run()
+
+    made.assert_not_called()
+
+
+def _service_making_renderers(mocker):
+    mocker.patch("gridplayer.mpv_player.renderer.load_mpv")
+    started = mocker.patch.object(
+        MpvRenderService,
+        "_start_renderer",
+        side_effect=lambda sw: MagicMock(is_software=sw),
+    )
+
+    return MpvRenderService(), started
+
+
+def test_the_renderer_is_of_the_kind_of_the_first_video(mocker):
+    service, started = _service_making_renderers(mocker)
+
+    service.add(RenderedVideo(MagicMock(), is_software=True), MagicMock())
+    service.add(RenderedVideo(MagicMock(), is_software=True), MagicMock())
+
+    assert [call.args for call in started.call_args_list] == [(True,)]
+    assert service._renderer.add.call_count == 2
+
+    # a driver change reloads, which cleans up before the others come
+    service.cleanup()
+    service.add(RenderedVideo(MagicMock()), MagicMock())
+
+    assert started.call_args_list[-1].args == (False,)
+
+
+def test_a_video_of_another_kind_with_no_cleanup_gets_a_renderer_of_its_kind(mocker):
+    service, _ = _service_making_renderers(mocker)
+    service.add(RenderedVideo(MagicMock(), is_software=True), MagicMock())
+    software_renderer = service._renderer
+
+    service.add(RenderedVideo(MagicMock()), MagicMock())
+
+    software_renderer.stop.assert_called_once()
+    assert service._renderer.is_software is False
+
+
+@pytest.mark.parametrize(
+    ("driver", "cpu_decoding", "hwdec", "is_software"),
+    [
+        (VideoDriver.MPV_HW, MpvCpuDecoding.OFF, "auto", False),
+        (VideoDriver.MPV_HW, MpvCpuDecoding.ON, "no", False),
+        (VideoDriver.MPV_SW, MpvCpuDecoding.OFF, "no", True),
+    ],
+)
+def test_manager_picks_how_mpv_decodes_and_draws(
+    mocker, driver, cpu_decoding, hwdec, is_software
+):
+    mocker.patch("gridplayer.mpv_player.renderer.load_mpv")
+    mocker.patch.object(MpvRenderService, "_join_qt_share_group", return_value=None)
+    settings = {"player/mpv_cpu_decoding": cpu_decoding}
+    mocker.patch.object(Settings(), "get", side_effect=settings.get)
+
+    frame = VideoDriverManager(context=SimpleNamespace())._mpv_video_frame(driver)
+
+    assert frame.keywords["hwdec"] == hwdec
+    assert frame.keywords["is_software"] is is_software
 
 
 def test_a_video_s_render_calls_go_with_its_render_context(renderer):
@@ -3125,6 +3276,168 @@ def test_render_size_of_a_big_picture_is_as_it_was_to_keep_sharp():
     placement = _placed((0, 0, 1920, 1080), (0, 0, 640, 360))
 
     assert calc_render_size((1920, 1080), placement, sharp_in=(640, 360)) == (640, 360)
+
+
+def _filters_sent(player) -> list[str]:
+    return [
+        command[2] for command in player.mpv.commands if command[:2] == ("vf", "set")
+    ]
+
+
+def _software_player(file_turn=0, **video):
+    player = _player(is_software=True, hwdec="no", **video)
+    player.mpv.track_list = [
+        {"type": "video", "id": 1, "selected": True, "demux-rotation": file_turn}
+    ]
+
+    return player
+
+
+def test_software_leaves_turns_to_filters_and_scales_cheaply():
+    options = _player(is_software=True, transform=VideoTransform.ROTATE_90).mpv.options
+
+    assert options["video_rotate"] == "no"
+    assert options["sws_allow_zimg"] is False
+    assert options["sws_scaler"] == "fast-bilinear"
+
+
+def test_opengl_has_no_software_scaler():
+    assert "sws_scaler" not in _player().mpv.options
+
+
+@pytest.mark.parametrize(
+    ("file_turn", "transform", "sent"),
+    [
+        (0, VideoTransform.NONE, []),
+        (90, VideoTransform.NONE, ["lavfi=[transpose=clock]"]),
+        (0, VideoTransform.ROTATE_270, ["lavfi=[transpose=cclock]"]),
+        (90, VideoTransform.ROTATE_90, ["lavfi=[hflip,vflip]"]),
+        # all the way round
+        (270, VideoTransform.ROTATE_90, []),
+        # turned as ROTATE_90, the flip painted
+        (180, VideoTransform.TRANSPOSE, ["lavfi=[transpose=cclock]"]),
+    ],
+)
+def test_software_turns_the_picture_before_it_starts(file_turn, transform, sent):
+    player = _software_player(file_turn, transform=transform)
+
+    _preloaded(player)
+
+    assert _filters_sent(player) == sent
+    assert _hook_answered(player)
+
+
+def test_software_turns_by_the_video_track_it_shows():
+    player = _player(is_software=True, hwdec="no", video_track_id=2)
+    player.mpv.track_list = [
+        {"type": "video", "id": 1, "selected": True, "demux-rotation": 0},
+        {"type": "video", "id": 2, "demux-rotation": 90},
+    ]
+
+    _preloaded(player)
+
+    assert _filters_sent(player) == ["lavfi=[transpose=clock]"]
+
+
+def test_opengl_leaves_the_files_turn_to_mpv():
+    player = _player()
+    player.mpv.track_list = [
+        {"type": "video", "id": 1, "selected": True, "demux-rotation": 90}
+    ]
+
+    _preloaded(player)
+
+    assert _filters_sent(player) == []
+
+
+def test_software_deinterlaces_before_it_turns():
+    player = _software_player(90, **_BY_NAME)
+    _preloaded(player)
+
+    _file_loaded(player)
+
+    assert _filters_sent(player)[-1] == (
+        "lavfi=[yadif=mode=send_frame],lavfi=[transpose=clock]"
+    )
+
+    player.set_deinterlace(VideoDeinterlace.OFF, VideoDeinterlaceMode.YADIF)
+
+    assert _filters_sent(player)[-1] == "lavfi=[transpose=clock]"
+    # it's deinterlacing's that can be refused, and it's gone
+    assert player.mpv.callbacks["vf", "set", "lavfi=[transpose=clock]"] is None
+
+
+@pytest.mark.parametrize(("file_turn", "dims"), [(0, (640, 360)), (90, (360, 640))])
+def test_software_picture_has_the_shape_the_filter_turns_it_to(file_turn, dims):
+    # video-params is of the picture before the filters, and says no rotation
+    player = _software_player(file_turn)
+    _preloaded(player)
+
+    player._on_video_params("video-params", {"dw": 640, "dh": 360, "rotate": 0})
+
+    assert player._dims == dims
+
+
+def test_software_turns_again_for_another_video_track():
+    player = _player(is_software=True, hwdec="no")
+    player.mpv.track_list = [
+        {"type": "video", "id": 1, "selected": True, "demux-rotation": 0},
+        {"type": "video", "id": 2, "demux-rotation": 90},
+    ]
+    _preloaded(player)
+    _file_loaded(player)
+
+    player.select_track("vid", 2)
+
+    assert _filters_sent(player) == ["lavfi=[transpose=clock]"]
+
+
+def test_software_plays_on_when_its_turn_is_refused(caplog):
+    player = _software_player(90)
+
+    def refuse(*args):
+        if args[0] == "vf":
+            # what python-mpv raises for a command mpv refuses
+            raise SystemError("filter refused")
+        player.mpv.commands.append(args)
+
+    player.mpv.command = refuse
+
+    with caplog.at_level(logging.ERROR):
+        _preloaded(player)
+
+    assert _hook_answered(player)
+    # the next try goes, mpv having kept what it had
+    assert player._filters_sent == ""
+    assert "refused" in caplog.text
+
+
+def test_a_refused_chain_is_sent_again_once_asked_for():
+    player = _software_player(90, **_BY_NAME)
+    _preloaded(player)
+    _file_loaded(player)
+    chain = _filters_sent(player)[-1]
+
+    player._on_filter_told(VideoDeinterlaceMode.YADIF, "no such filter", None)
+
+    # without the mode: the turn alone, though it was sent before the mode was
+    assert _filters_sent(player)[-1] == "lavfi=[transpose=clock]"
+    assert chain != "lavfi=[transpose=clock]"
+
+
+def test_software_flips_by_a_filter_not_a_shader():
+    player = _software_player(90)
+    _preloaded(player)
+    player.mpv.commands.clear()
+
+    assert player.set_flip_in_mpv((True, False))
+
+    assert _filters_sent(player) == ["lavfi=[transpose=clock],lavfi=[hflip]"]
+    assert not any(command[0] == "change-list" for command in player.mpv.commands)
+
+    assert not player.set_flip_in_mpv(None)
+
+    assert _filters_sent(player)[-1] == "lavfi=[transpose=clock]"
 
 
 def test_flip_in_mpv_is_a_shader_for_as_long_as_it_is_asked(tmp_path):

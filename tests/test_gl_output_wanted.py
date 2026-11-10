@@ -23,6 +23,8 @@ def _as_picked(monkeypatch):
     ("output", "driver", "is_gl"),
     [
         (MpvOutput.GL, VideoDriver.MPV_HW, True),
+        # fully software, with no GL at all
+        (MpvOutput.GL, VideoDriver.MPV_SW, False),
         (MpvOutput.GL, VideoDriver.VLC_HW, False),
         (MpvOutput.GL, VideoDriver.VLC_SW_SP, False),
         (MpvOutput.READBACK, VideoDriver.MPV_HW, False),

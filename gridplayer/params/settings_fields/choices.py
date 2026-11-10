@@ -25,6 +25,7 @@ from gridplayer.params.static import (
     ListFailAction,
     ListUpdate,
     ListView,
+    MpvCpuDecoding,
     MpvOutput,
     NetworkRetryMode,
     ProxyMode,
@@ -160,6 +161,13 @@ def mpv_outputs() -> dict:
     return {
         MpvOutput.READBACK: translate("SettingsDialog", "Steady"),
         MpvOutput.GL: translate("SettingsDialog", "Fast"),
+    }
+
+
+def mpv_cpu_decodings() -> dict:
+    return {
+        MpvCpuDecoding.OFF: translate("SettingsDialog", "Off"),
+        MpvCpuDecoding.ON: translate("SettingsDialog", "On"),
     }
 
 
