@@ -724,13 +724,42 @@ CPU took 0.5-5.5 s, against 0.2-1.1 s on the key frame, which is about what VLC 
   Mode, 100 draws for the one on show and 0 for the others, on both MPV drivers
 - [ ] 10.10 `load_scripts=no` leaves mpv's built-in scripts running, about 5 Lua threads per
   video. They cost no measured memory, but each has threads: check whether to turn them off
-- [ ] 10.11 **Your decision:** a low VRAM option (`-copy` or software for new videos when over
+- [x] 10.11 **Your decision:** a low VRAM option (`-copy` or software for new videos when over
   budget), and an mpv decoder setting
   - **Decided (2026-11-09): a setting with Auto / On / Off.** As understood: decoding on the CPU instead of the GPU, Auto
     switching new videos to it when video memory runs low, On always, Off never. To be confirmed when built, with 10.17's flag:
     the two may be one setting.
   - **Decided (2026-11-10): one setting.** 10.17 built "Decode on the CPU" on Hardware MPV with Off / On; Auto goes into the same
     setting when this is built.
+  - **Built 2026-11-10: Auto / On / Off, Auto the default.** A video on Auto decides once, in mpv's preload hook, where its size
+    is known and nothing is decoded yet: on the GPU if there's room for it, else `hwdec=no` for as long as it's open. A reload
+    decides again. `utils/video_memory.py` reads what's left:
+    - Windows 10 and later, any GPU: DXGI's `QueryVideoMemoryInfo`, the budget the system gives this process and what it uses of
+      it, by ctypes. The system lowers the budget as other programs (a game) take video memory. Of several GPUs, the one this
+      process uses most of, which is where GL and so mpv's decoder are; before anything is on one, the first, the system's pick.
+      Read here: RTX 3060 budget 11.3 GB, the AMD iGPU's shared 47 GB, Basic Render.
+    - Linux with NVIDIA: NVML, what's free on the first GPU. Running out there fails the decoder; Windows and AMD on Linux move
+      memory out to system memory instead and slow down.
+    - Not read, Auto as Off: Intel (system memory), AMD on Linux (sysfs can't tell an APU's slice of system memory from a
+      card's own, and on an APU going to the CPU would be the worse choice), macOS.
+    - Room: what's free less a tenth of the total (at least 256 MB) kept for everything else. A video is counted at 128 MB and
+      56 bytes a pixel, 244 MB at 1080p, 571 at 2160p. What's given to videos starting counts as used only until it shows in what's
+      read: the given less what's been taken since the first of them was given. NVIDIA's decoder takes its memory about 60 ms
+      after, and a playlist's videos ask about 60 ms apart, before mpv says what it decodes with; counted until then, 8 opened at
+      once got 3 on the GPU where 4 fit. A claim ends when mpv says what it decodes with, as it closes, or after 5 s. A failed
+      read is logged and not tried again.
+    - Measured, RTX 3060 (DXGI, this process), Fast and Steady alike: H.264 1080p 237-247 MB a video (the same from 1 to 8),
+      HEVC 1080p 246, HEVC 10-bit 1080p 364-367, H.264 2160p 570-572. So about 130 MB whatever the size, likely a CUDA context
+      for each mpv, and 53 bytes a pixel. 10-bit takes half as much again, which the spare covers: the track doesn't say its bit
+      depth as it preloads. `test_gpu` (Intel, VAAPI, the driver's per-process `fdinfo`): 47-52 MB a 1080p video at 8, about
+      200 a 2160p one, both outputs, nothing fixed. A video Auto puts on the CPU still takes about 80 MB on the GPU, to be drawn.
+    - Checked on Windows with DXGI's real readings, the budget capped 1.5 GB above the app's at the start: 8 1080p videos opened
+      at once, 4 on the GPU (252 MB each) and 4 on the CPU, 1333 MB used; with 4 closed, a new one went to the GPU.
+    - Tested: `mpv_low_video_memory` with the GPU made up full for the middle of three videos, which decodes on the CPU and the
+      others on the GPU, back on the GPU when reloaded with room; on `test_gpu` with real decoding `vaapi`, `no`, `vaapi`.
+  - Found doing it, in 10.17: Software MPV showed a file's own turn (a phone video) only after a transform or reload. mpv marks
+    no track selected while it preloads, so the turn was worked out with no track. The preload now takes the track mpv will,
+    the first the file marks or the first; `mpv_view` checks each turned file as first opened.
 - [x] 10.12 mpv to VLC Hardware live, on a real GPU with X11. Passes on `test_gpu`, 2 rounds, and the
   pass counts: with the old cause forced, decoder processes do die with signal 6 there. NVIDIA on
   Linux not run. See `MPV_PERFORMANCE.md`
@@ -1023,6 +1052,9 @@ core less while the decoder keeps up, at the same frame rates. Suggested words: 
 
 Newest first. What was finished and seen working, and anything that changed the plan.
 
+- 2026-11-10: 10.11, "Decode on the CPU" has Auto, the default: a new video decodes on the CPU when there's no room left for
+  it in video memory, read on Windows (DXGI) and Linux with NVIDIA (NVML). Fixed with it: Software MPV left a phone video
+  unturned until a transform or reload.
 - 2026-11-10: 10.17, Software MPV is fully software: libmpv's software renderer, no GL. On Windows less CPU, half the memory and the GPU idle; on `test_gpu` the same CPU and up to twice the frames past the limit. The old mode is Hardware MPV's new "Decode on the CPU", Off / On, Auto to come with 10.11.
 - 2026-11-10: 10.22, a setting to turn off MPV's direct rendering, "Hand frames straight to the GPU", on by default. Off, Software MPV on Windows with NVIDIA no longer keeps about 1.5 MB per video closed: 6-minute churn, all closed, 471 MB against 1229.
 - 2026-11-09: 10.26, VLC in a single process on Windows no longer burns up to 13 cores with 15 videos: VLC 3's waits pointed at Windows' own (`VLC_WAITS.md`). Checked in the 32-bit app too; found there 10.27, 32-bit single process out of address space with many videos, and fixed Hardware VLC's window check failing in 32-bit.

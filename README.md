@@ -192,7 +192,9 @@ makes MPV play about half the frames of each video instead of slowing down. It d
 with no frames it can skip.
 
 Hardware with MPV can also decode on the CPU and still draw on the GPU ("Decode on the CPU"). On
-a strong CPU this plays the most videos, and it uses less video memory.
+a strong CPU this plays the most videos, and it uses less video memory. On Auto, the default, a
+video you open decodes on the CPU only when video memory is running low. That works on Windows 10
+and later, and on Linux with NVIDIA. Elsewhere Auto decodes on the GPU.
 
 If memory keeps growing as you close videos that way, as it can on NVIDIA, turn off "Hand frames
 straight to the GPU". It costs a little more CPU, which only shows once the CPU can't keep up.

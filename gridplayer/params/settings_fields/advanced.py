@@ -177,8 +177,8 @@ ADVANCED_FIELDS: tuple[SettingField, ...] = (
         tooltip=translate(
             "SettingsDialog",
             "Decodes videos on the CPU and draws them on the GPU. Plays more videos"
-            " on a strong CPU and uses less video memory. Works for videos opened"
-            " after.",
+            " on a strong CPU and uses less video memory. Auto does it for new"
+            " videos when video memory runs low. Works for videos opened after.",
         ),
     ),
     CheckboxField(

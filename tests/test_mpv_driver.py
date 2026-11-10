@@ -432,6 +432,7 @@ def _player(
     hwdec="auto",
     uri="file.mp4",
     media=None,
+    cpu_when_low=False,
     **video,
 ):
     """`media`: more of the MediaInput."""
@@ -453,6 +454,7 @@ def _player(
         skip_frames=skip_frames,
         direct_rendering=direct_rendering,
         is_software=is_software,
+        cpu_when_low=cpu_when_low,
     )
 
 
@@ -1147,6 +1149,7 @@ def _driver(full_size=lambda: (0, 0), is_on_show=lambda: True):
         render_service=MagicMock(),
         hwdec="auto",
         is_software=False,
+        cpu_when_low=False,
         surface=MagicMock(),
         pane_box=lambda: (100, 100),
         full_size=full_size,
@@ -2107,15 +2110,16 @@ def test_a_video_of_another_kind_with_no_cleanup_gets_a_renderer_of_its_kind(moc
 
 
 @pytest.mark.parametrize(
-    ("driver", "cpu_decoding", "hwdec", "is_software"),
+    ("driver", "cpu_decoding", "hwdec", "is_software", "cpu_when_low"),
     [
-        (VideoDriver.MPV_HW, MpvCpuDecoding.OFF, "auto", False),
-        (VideoDriver.MPV_HW, MpvCpuDecoding.ON, "no", False),
-        (VideoDriver.MPV_SW, MpvCpuDecoding.OFF, "no", True),
+        (VideoDriver.MPV_HW, MpvCpuDecoding.OFF, "auto", False, False),
+        (VideoDriver.MPV_HW, MpvCpuDecoding.AUTO, "auto", False, True),
+        (VideoDriver.MPV_HW, MpvCpuDecoding.ON, "no", False, False),
+        (VideoDriver.MPV_SW, MpvCpuDecoding.OFF, "no", True, False),
     ],
 )
 def test_manager_picks_how_mpv_decodes_and_draws(
-    mocker, driver, cpu_decoding, hwdec, is_software
+    mocker, driver, cpu_decoding, hwdec, is_software, cpu_when_low
 ):
     mocker.patch("gridplayer.mpv_player.renderer.load_mpv")
     mocker.patch.object(MpvRenderService, "_join_qt_share_group", return_value=None)
@@ -2126,6 +2130,7 @@ def test_manager_picks_how_mpv_decodes_and_draws(
 
     assert frame.keywords["hwdec"] == hwdec
     assert frame.keywords["is_software"] is is_software
+    assert frame.keywords["cpu_when_low"] is cpu_when_low
 
 
 def test_a_video_s_render_calls_go_with_its_render_context(renderer):
@@ -3963,3 +3968,135 @@ def test_a_stream_with_a_file_in_fragments_is_not_sought_in_through_its_cache():
 def test_any_other_stream_keeps_its_cache_for_seeks():
     # the sound comes out behind after a seek on HLS of TS segments without it
     assert "demuxer_seekable_cache" not in _stream_player().mpv.options
+
+
+# -- Decode on the CPU set to Auto
+
+
+def _auto_player(is_room, hwdec="auto", size=(1920, 1080), **player):
+    room = MagicMock()
+    room.take.return_value = "claim" if is_room else None
+
+    player = _player(hwdec=hwdec, cpu_when_low=True, **player)
+    player.mpv.track_list = [
+        {"type": "video", "id": 1, "demux-w": size[0], "demux-h": size[1]}
+    ]
+    player.room = room
+
+    return player
+
+
+def _preloaded_with(player):
+    with patch.object(player_module, "video_memory_room", return_value=player.room):
+        _preloaded(player)
+
+
+def _decoder_set(player):
+    return [
+        command[2] for command in player.mpv.commands if command[:2] == ("set", "hwdec")
+    ]
+
+
+def test_auto_with_room_left_decodes_on_the_gpu():
+    player = _auto_player(is_room=True)
+
+    _preloaded_with(player)
+
+    player.room.take.assert_called_once_with((1920, 1080))
+    assert _decoder_set(player) == []
+    assert _hook_answered(player)
+
+
+def test_auto_with_no_room_left_decodes_on_the_cpu():
+    player = _auto_player(is_room=False, size=(3840, 2160))
+
+    _preloaded_with(player)
+
+    player.room.take.assert_called_once_with((3840, 2160))
+    assert _decoder_set(player) == ["no"]
+    assert _hook_answered(player)
+
+
+def test_auto_on_the_cpu_stays_there_with_deinterlacing():
+    player = _auto_player(is_room=False, **_BY_NAME)
+    _preloaded_with(player)
+
+    player._on_hwdec("hwdec-current", "no")
+    _file_loaded(player)
+
+    # not to auto-copy, as a deinterlacer on the GPU's frames would have it
+    assert ("hwdec", "auto-copy") not in _deinterlace_told(player)
+    assert player._deinterlace_options["hwdec"] == "no"
+
+
+def test_auto_picks_once_as_the_video_first_starts():
+    player = _auto_player(is_room=True)
+    _preloaded_with(player)
+
+    player.mpv.commands.clear()
+    player.room.take.return_value = None
+    _preloaded_with(player)
+
+    player.room.take.assert_called_once()
+    assert _decoder_set(player) == []
+
+
+def _restarted(player):
+    player._on_event(SimpleNamespace(event_id=SimpleNamespace(value=21), data=None))
+
+
+def test_auto_s_claim_on_the_gpu_ends_with_the_first_frame():
+    player = _auto_player(is_room=True)
+    _preloaded_with(player)
+
+    with patch.object(player_module, "video_memory_room", return_value=player.room):
+        _restarted(player)
+        _restarted(player)
+
+    player.room.started.assert_called_once_with("claim")
+
+
+def test_auto_s_claim_on_the_gpu_ends_once_mpv_says_what_it_decodes_with():
+    player = _auto_player(is_room=True)
+    _preloaded_with(player)
+
+    with patch.object(player_module, "video_memory_room", return_value=player.room):
+        player._on_hwdec("hwdec-current", "nvdec")
+
+    player.room.started.assert_called_once_with("claim")
+
+
+def test_auto_s_claim_on_the_gpu_ends_closing_before_it_starts():
+    player = _auto_player(is_room=True)
+    _preloaded_with(player)
+
+    with patch.object(player_module, "video_memory_room", return_value=player.room):
+        player.close()
+
+    player.room.started.assert_called_once_with("claim")
+
+
+def test_auto_leaves_cpu_decoding_alone():
+    player = _auto_player(is_room=False, hwdec="no")
+
+    _preloaded_with(player)
+
+    player.room.take.assert_not_called()
+
+
+def test_auto_takes_no_room_for_sound_alone():
+    player = _auto_player(is_room=False, is_audio_only=True)
+
+    _preloaded_with(player)
+
+    player.room.take.assert_not_called()
+
+
+def test_not_on_auto_no_room_is_asked_for():
+    player = _player()
+    player.mpv.track_list = [{"type": "video", "id": 1, "demux-w": 1920}]
+
+    with patch.object(player_module, "video_memory_room") as room:
+        _preloaded(player)
+
+    room.assert_not_called()

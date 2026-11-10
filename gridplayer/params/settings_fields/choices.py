@@ -166,8 +166,9 @@ def mpv_outputs() -> dict:
 
 def mpv_cpu_decodings() -> dict:
     return {
-        MpvCpuDecoding.OFF: translate("SettingsDialog", "Off"),
+        MpvCpuDecoding.AUTO: translate("SettingsDialog", "Auto"),
         MpvCpuDecoding.ON: translate("SettingsDialog", "On"),
+        MpvCpuDecoding.OFF: translate("SettingsDialog", "Off"),
     }
 
 

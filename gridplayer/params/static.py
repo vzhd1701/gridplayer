@@ -549,10 +549,12 @@ class MpvOutput(AutoName):
 
 class MpvCpuDecoding(AutoName):
     """Hardware MPV decoding on the CPU rather than the GPU, its frames still
-    drawn by OpenGL. Software MPV has no GPU in it at all."""
+    drawn by OpenGL. Software MPV has no GPU in it at all. Auto decodes a new
+    video on the CPU when there's no room for it in video memory."""
 
-    OFF = auto()
+    AUTO = auto()
     ON = auto()
+    OFF = auto()
 
 
 class GLLineFix(AutoName):

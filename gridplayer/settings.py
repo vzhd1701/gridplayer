@@ -76,7 +76,7 @@ _default_settings = {
     "player/video_driver": VideoDriver.VLC_HW,
     "player/video_driver_players": 4,
     "player/mpv_skip_frames": False,
-    "player/mpv_cpu_decoding": MpvCpuDecoding.OFF,
+    "player/mpv_cpu_decoding": MpvCpuDecoding.AUTO,
     "player/mpv_direct_rendering": True,
     "player/mpv_seek_precision": SeekPrecision.EXACT_MARKS,
     "player/mpv_output": MpvOutput.READBACK,

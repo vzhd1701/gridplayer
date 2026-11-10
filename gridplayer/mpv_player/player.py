@@ -41,6 +41,7 @@ from gridplayer.utils.glibc_malloc import give_back_freed_memory
 from gridplayer.utils.log_config import DISABLED
 from gridplayer.utils.media_libs import find_libvlc
 from gridplayer.utils.qt import MILLISECONDS, translate
+from gridplayer.utils.video_memory import room as video_memory_room
 from gridplayer.vlc_player.static import (
     DISABLED_TRACK,
     AudioTrack,
@@ -331,6 +332,7 @@ class MpvPlayer(QObject):
         skip_frames: bool = False,
         direct_rendering: bool = True,
         is_software: bool = False,
+        cpu_when_low: bool = False,
         log_level: int = DISABLED,
     ):
         super().__init__()
@@ -344,6 +346,11 @@ class MpvPlayer(QObject):
         self._direct_rendering = direct_rendering
         # drawn by libmpv's software renderer: see _TURN_FILTERS
         self._is_software = is_software
+        # on the CPU if there's no room left on the GPU as it starts: see
+        # _pick_decoder
+        self._is_decoder_due = cpu_when_low and hwdec != "no"
+        # room on the GPU given to it, until its decoder has it
+        self._memory_claim: object | None = None
         self._picture_filters = {"turn": "", "flip": ""}
         self._shown_video_track: VideoTrack | None = None
         # degrees clockwise the turn filter turns the picture by, after what
@@ -636,6 +643,8 @@ class MpvPlayer(QObject):
 
     def close(self) -> None:
         self._is_closing = True
+
+        self._memory_taken()
 
     def command(self, *args, **kwargs) -> None:
         with self._telling:
@@ -1067,6 +1076,7 @@ class MpvPlayer(QObject):
                 self._read_media()
                 self._apply_deinterlace()
             elif event_id == ids.PLAYBACK_RESTART:
+                self._memory_taken()
                 self.has_restarted = True
                 self.is_picture_held = False
                 self._wake_renderer()
@@ -1090,6 +1100,7 @@ class MpvPlayer(QObject):
                 if not self._is_closing:
                     self._pick_random_start()
                     self._pick_tracks()
+                    self._pick_decoder()
                     self._pick_turn()
                     self._pick_audio_device()
         except self._mpv_module.ShutdownError:
@@ -1155,6 +1166,39 @@ class MpvPlayer(QObject):
 
         for option, value in options:
             self.mpv.command("set", option, value)
+
+    def _pick_decoder(self) -> None:
+        """Decode on the CPU set to Auto: the GPU only if there's room left for the
+        video there. Once, as it first starts: a decoder changed later would take
+        moving the frames over, and a hitch."""
+
+        if not self._is_decoder_due:
+            return
+
+        self._is_decoder_due = False
+
+        track = self._shown_video_track
+        if track is None or self.media_input.is_audio_only:
+            return
+
+        self._memory_claim = video_memory_room().take(track.video_dimensions)
+
+        if self._memory_claim is not None:
+            return
+
+        self._hwdec = "no"
+        self._deinterlace_options["hwdec"] = "no"
+
+        self.mpv.command("set", "hwdec", "no")
+
+    def _memory_taken(self) -> None:
+        """Its first frame is decoded, so its decoder has its memory, and that
+        shows in what's read of the GPU now. Or it's closing."""
+
+        claim, self._memory_claim = self._memory_claim, None
+
+        if claim is not None:
+            video_memory_room().started(claim)
 
     def _file_video_track_id(self) -> int | None:
         """The video track mpv takes when left alone: the first the file marks,
@@ -1282,6 +1326,8 @@ class MpvPlayer(QObject):
         # above all, so waiting on the next would leave a filter out for good
         if value is not None:
             self._log.info(f"Decoding with: {value}")
+
+            self._memory_taken()
 
             with self._telling:
                 self._hwdec_current = value

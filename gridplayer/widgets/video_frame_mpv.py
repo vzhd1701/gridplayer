@@ -200,6 +200,7 @@ class VideoDriverMpv(VLCVideoDriver):
         render_service: MpvRenderService,
         hwdec: str,
         is_software: bool,
+        cpu_when_low: bool,
         surface,
         pane_box,
         full_size,
@@ -211,6 +212,7 @@ class VideoDriverMpv(VLCVideoDriver):
         self._render_service = render_service
         self._hwdec = hwdec
         self._is_software = is_software
+        self._cpu_when_low = cpu_when_low
         self._surface = surface
         # a GL surface draws once its window's grid surface is up
         self._surface.drawing_started.connect(self._report_frame)
@@ -282,6 +284,7 @@ class VideoDriverMpv(VLCVideoDriver):
                 skip_frames=Settings().get("player/mpv_skip_frames"),
                 direct_rendering=Settings().get("player/mpv_direct_rendering"),
                 is_software=self._is_software,
+                cpu_when_low=self._cpu_when_low,
                 log_level=Settings().get("logging/log_level_mpv"),
                 subtitle_style=current_subtitle_style(),
                 wake_renderer=self._render_service.wake,
@@ -659,10 +662,13 @@ class VideoFrameMpv(PaintedVideoFrame, VideoFrameVLC):
         render_service: MpvRenderService,
         hwdec: str,
         is_software: bool = False,
+        cpu_when_low: bool = False,
         **kwargs,
     ):
         self._render_service = render_service
         self._hwdec = hwdec
+        # Decode on the CPU set to Auto
+        self._cpu_when_low = cpu_when_low
         # libmpv's software renderer, painted: no GL at all
         self._is_software = is_software
 
@@ -699,6 +705,7 @@ class VideoFrameMpv(PaintedVideoFrame, VideoFrameVLC):
             render_service=self._render_service,
             hwdec=self._hwdec,
             is_software=self._is_software,
+            cpu_when_low=self._cpu_when_low,
             surface=self.video_surface,
             pane_box=self._pane_box,
             full_size=self._full_render_size,

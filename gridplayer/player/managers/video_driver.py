@@ -119,18 +119,17 @@ class VideoDriverManager(ManagerBase):
 
         # Software MPV decodes and draws on the CPU, with libmpv's software
         # renderer. Hardware MPV draws with OpenGL, and decodes on the GPU unless
-        # told not to.
+        # told not to, or on Auto, when there's no room left there.
         is_software = video_driver == VideoDriver.MPV_SW
-        is_cpu_decoding = (
-            is_software
-            or Settings().get("player/mpv_cpu_decoding") == MpvCpuDecoding.ON
-        )
+        cpu_decoding = Settings().get("player/mpv_cpu_decoding")
+        is_cpu_decoding = is_software or cpu_decoding == MpvCpuDecoding.ON
 
         return partial(
             VideoFrameMpv,
             render_service=self._mpv_render_service,
             hwdec="no" if is_cpu_decoding else "auto",
             is_software=is_software,
+            cpu_when_low=cpu_decoding == MpvCpuDecoding.AUTO,
         )
 
     def cleanup(self):
