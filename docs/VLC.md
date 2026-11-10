@@ -115,8 +115,33 @@ built).
   - So no longer a performance question: what's left is a video crashing VLC taking one process (multi) or the whole app (single),
     and load time. **Done (2026-11-09):** the Processes tooltip and the README said a single process can freeze or load the CPU past
     4-6 videos, which 10.24, 10.25 and 10.26 made untrue; both now say what's left (crash takes one process or the app, load time).
-- [ ] 10.29 **Hardware VLC in a single process on Linux keeps threads and memory after its videos close.** Found measuring the arena
+- [x] 10.29 **Hardware VLC in a single process on Linux keeps threads and memory after its videos close.** Found measuring the arena
   limit (`MPV_PLAN.md` 10.5) on `test_gpu`, real X11, VLC 3.0.24, `churn.py` with up to 8 cells: everything closed after 5 minutes
   (5069 opens, closes, reloads and seeks), 1267 threads left and 3278 MB; after 10 minutes, 2376 threads and 5186 MB. MPV in the same
-  churn goes back to 8 threads. Not yet known: whether `master` does it too, whether it's the players' `QThread`s of 10.25 or VLC's own
-  threads, Software VLC single process, multi-process.
+  churn goes back to 8 threads.
+  - **Four leaks, all fixed 2026-11-10.** None is 10.25's; the first two are as old as the players (`master` the same).
+    - **Every VLC instance stayed.** The video (`media_new`) and its list (`media_list_new`) were never released, and each holds the
+      instance it was made by, so releasing the instance did nothing. On Linux an instance has VLC's playlist thread
+      (`playlist/thread.c`, idle): that's the thread left per video opened, found with gdb, 50 of 50. Windows keeps threads the
+      same way. Now released after the players, and before a second load.
+    - **Every player object stayed, with all it held.** `vlc.py` caches `event_manager()` in a dict of the class, keyed by the media
+      player or video, for good: with them our callbacks, and through those the player, its decoder and the rest. Our
+      `EventManager` now takes what it attached to out of that cache once released (`vlc.py` itself stays as it is). 593 players
+      left after 3 minutes of Software VLC churn before, none after.
+    - **Software VLC's frames went only when Python's garbage collector next ran.** `ctypes.cast()` puts the frame's holder in its
+      own `_objects`, a cycle: 1158 MB of frames waiting in it after a minute. `rgb_buffer.py` takes the address instead.
+      (`safe_shared_memory.py` does the same, but in the VLC processes, which end.)
+    - **glibc keeps what was freed.** Frame-sized buffers come from its arenas once a few were freed, and an arena gives back only
+      what's free at its very end: 5362 MB held after 3 minutes of Software VLC churn, 277 once given back (`malloc_trim`), MPV
+      1105 and 309. Now `utils/glibc_malloc.py` gives it back 2 s after a player is released, on a thread of its own (30-100 ms
+      a time while churning; one for a grid closing together). Single-process VLC players and MPV ask for it; VLC processes end.
+  - **Tested, `test_gpu`, 10 minutes of churn, all closed after 5 and 10 minutes:**
+    - Hardware VLC single process: 4 threads (was 1267 and 2376), 301 and 429 MB (3278 and 5186).
+    - Software VLC single process: 4 threads; 271 and 354 MB, where with only the first fix it was 6558 and 9211.
+    - Hardware MPV: 437 and 519 MB (1105 at 10 minutes before); 7 threads.
+    - Multi-process VLC, with the first fix only (its processes end): 152 and 183 MB, 8 threads. It got through 952 operations in 5
+      minutes against about 4000-5000 single process, each waiting on a process.
+    - Windows, 3 minutes, silent clips, window on the other desktop, all closed (18 threads at the start): Hardware VLC single
+      process 650 threads and 486 MB before, 20 and 322 after; Software, 2 runs, 942-954 threads and 634-659 MB before, 17-18 and
+      247-314 after.
+  - **Not tested:** macOS, the same code there; whether VLC starts its playlist thread there isn't known.

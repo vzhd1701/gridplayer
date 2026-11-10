@@ -12,6 +12,7 @@ from gridplayer.params.static import (
     ViewParams,
 )
 from gridplayer.settings import Settings
+from gridplayer.utils.glibc_malloc import give_back_freed_memory
 from gridplayer.utils.qt import MILLISECONDS, QABC, qt_connect
 from gridplayer.widgets.video_frame_vlc_base import (
     NATIVE_VIEW_RESIZE_INTERVAL_MS,
@@ -151,6 +152,9 @@ class PlayerProcessSingleVLCHWSP(QThread, VlcPlayerBase, metaclass=QABC):
         self._log.debug("VLC instance terminating")
 
         self._instance.cleanup_instance()
+
+        # what the video freed, which glibc would otherwise keep
+        give_back_freed_memory()
 
         self._log.debug("Terminating player thread")
 

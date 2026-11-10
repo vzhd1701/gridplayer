@@ -538,7 +538,7 @@ def start(media: Media, out: Path, settings: dict) -> Driver:
     """The app, as run.py starts it: offscreen, with settings and data of its
     own under out, and these settings over the defaults above."""
 
-    from gridplayer.utils.malloc_arenas import limit_malloc_arenas
+    from gridplayer.utils.glibc_malloc import limit_malloc_arenas
 
     # as __main__ does, before any thread
     if sys.platform.startswith("linux"):

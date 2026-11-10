@@ -37,6 +37,7 @@ from gridplayer.params.static import (
     VideoTransform,
 )
 from gridplayer.utils.app_dir import get_app_cache_dir
+from gridplayer.utils.glibc_malloc import give_back_freed_memory
 from gridplayer.utils.log_config import DISABLED
 from gridplayer.utils.media_libs import find_libvlc
 from gridplayer.utils.qt import MILLISECONDS, translate
@@ -552,6 +553,9 @@ class MpvPlayer(QObject):
             pass
 
         self.mpv.terminate()
+
+        # what the video freed, which glibc would otherwise keep
+        give_back_freed_memory()
 
         self._log.debug("mpv terminated")
 
