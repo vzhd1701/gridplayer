@@ -190,6 +190,20 @@ the entry happens to exist, but never reaches translators.
   (e.g. `Transform`, `When Finished`, `Playlist Settings`). Other menu strings
   use `Actions`; other settings form strings use `SettingsDialog`.
 
+## Letting go of VLC objects
+
+* Python never frees anything of `vlc.py`'s: every media, list or player
+  made needs its `release()`. Each holds the VLC instance, so one kept keeps
+  the instance, its threads and its memory.
+* `vlc.py` caches `event_manager()` in a dict of the class, for good. An
+  object whose events were asked for stays, with every callback attached and
+  what they reach; `EventManager.forget()` takes them out once released.
+* `ctypes.cast(array, c_void_p)` puts the array in its own `_objects`, a
+  cycle only the garbage collector frees. For a buffer that stays, use
+  `c_void_p(ctypes.addressof(array))` and keep the array yourself.
+* A leak shows in `tests/real_app/bench/churn.py`: with every video closed,
+  its checkpoints should come back to the threads and memory of the start.
+
 ## MPV's Fast output
 
 One GL surface draws all of a window's videos, under the cells

@@ -41,6 +41,9 @@ def test_linux_release_stop_is_not_an_error(monkeypatch):
     player._event_waiter = Mock()
     player._playlist_player = None
     player._media_player = _StoppingMediaPlayer(player)
+    player._media_list = None
+    player._media_input_vlc = None
+    player._event_manager = Mock()
 
     player.cleanup()
 

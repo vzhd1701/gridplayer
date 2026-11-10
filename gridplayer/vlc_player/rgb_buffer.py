@@ -53,7 +53,10 @@ class InProcessRgbBuffer:
 
         self._data = data
         self._holder = holder
-        self._ptr = ctypes.cast(holder, ctypes.c_void_p)
+        # Not ctypes.cast: it puts the holder in its own _objects, a cycle
+        # only the garbage collector frees, and the frame with it, a while
+        # after. The holder above is what keeps the frame.
+        self._ptr = ctypes.c_void_p(ctypes.addressof(holder))
 
     def attach(self, size):
         """Nothing to follow: reader and writer share this object itself."""

@@ -236,6 +236,7 @@ class VlcPlayerBase(ABC):
         self._playlist_player = None
         self._media_player = None
         self._media_input_vlc = None
+        self._media_list = None
         self._media_options = []
         self._tracks_manager: TracksManager | None = None
         self._last_video_size = (0, 0)
@@ -582,6 +583,28 @@ class VlcPlayerBase(ABC):
 
             self._log.debug("Player released")
 
+        self._release_media()
+
+        # all of it released: nothing left to call back
+        self._event_manager.forget()
+
+    def _release_media(self):
+        """Let go of the video and its list. Each holds the VLC instance: kept,
+        they kept it from being freed when released, with its threads and its
+        memory, for every video ever opened."""
+
+        if self._media_list is not None:
+            media_list = self._media_list
+            self._media_list = None
+
+            media_list.release()
+
+        if self._media_input_vlc is not None:
+            media = self._media_input_vlc
+            self._media_input_vlc = None
+
+            media.release()
+
     def error(self, message):
         self._log.error(message)
 
@@ -664,6 +687,8 @@ class VlcPlayerBase(ABC):
         self._dead_input_passes = 0
 
         self._log.info(f"Loading {self.media_input.uri}")
+
+        self._release_media()
 
         if is_url(self.media_input.uri):
             self._log.debug("Loading URL")
@@ -1132,10 +1157,10 @@ class VlcPlayerBase(ABC):
 
         self._log.debug("Setting parsed media to player and waiting for buffering")
 
-        playlist = self.instance.media_list_new()
-        playlist.add_media(self._media_input_vlc)
+        self._media_list = self.instance.media_list_new()
+        self._media_list.add_media(self._media_input_vlc)
 
-        self._playlist_player.set_media_list(playlist)
+        self._playlist_player.set_media_list(self._media_list)
 
         self._event_waiter.async_wait_for(
             event="buffering",

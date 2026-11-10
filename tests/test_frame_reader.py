@@ -1,3 +1,4 @@
+import ctypes
 import gc
 from threading import Lock
 from uuid import uuid4
@@ -152,3 +153,35 @@ def test_the_frame_lock_is_given_back_after_a_read():
     FrameReader().read(buffer, 4, 4)
 
     assert buffer.lock.acquire(blocking=False)
+
+
+def test_the_pointer_is_the_frame():
+    buffer = _buffer_with(b"\x01\x02\x03\x04")
+
+    assert ctypes.string_at(buffer.ptr, 4) == b"\x01\x02\x03\x04"
+
+
+def test_a_closed_buffer_goes_at_once_not_with_the_garbage_collector():
+    """A frame left to the collector was a frame of memory for every video
+    closed until it next ran: gigabytes, opening and closing videos."""
+
+    gc.collect()
+    gc.disable()
+    gc.set_debug(gc.DEBUG_SAVEALL)
+    try:
+        buffer = InProcessRgbBuffer()
+        buffer.allocate(64)
+        buffer.allocate(128)
+        buffer.close()
+        del buffer
+
+        gc.collect()
+        # the array types made for the sizes are cycles of their own
+        left = [o for o in gc.garbage if isinstance(o, (bytearray, memoryview))]
+        left += [o for o in gc.garbage if isinstance(o, dict) and "ffffffff" in o]
+
+        assert left == []
+    finally:
+        gc.set_debug(0)
+        gc.garbage.clear()
+        gc.enable()
