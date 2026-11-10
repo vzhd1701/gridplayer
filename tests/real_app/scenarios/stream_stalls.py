@@ -40,6 +40,8 @@ PLAYED_BEFORE_MS = 6_000
 
 # from it being seen to stop: the buffering timeout, less the time that took
 STALL_TOLD_IN_S = 20
+# what a player has, sent faster than it plays, at most, from where it plays
+PLAYED_OUT_S = 30
 
 HANGING_TIMEOUT_S = 8
 
@@ -135,18 +137,34 @@ def scenario(d):
     link.state = _Link.SERVING
     _play_as_a_site_file(d, cell, base, length_s)
 
-    stopped_at = _stops(d, cell, link, _Link.REFUSING)
+    # Waited for from the refusal: the proxy can tell of it before the player has
+    # played out what it had, and the reload can come and go before it's seen to stop.
+    link.state = _Link.REFUSING
+    d.note("the link is refusing", cell)
+
+    # where it had got to before the reload, which may start it over
+    played_to = [cell.time]
+
+    def is_loaded_again():
+        if cell.recovery.retries > 0:
+            return True
+
+        played_to[0] = max(played_to[0], cell.time or 0)
+        return False
+
     d.check(
         "stopped, it's loaded again",
         d.wait_until(
-            lambda: cell.recovery.retries > 0,
+            is_loaded_again,
             "loaded again",
-            timeout=STALL_TOLD_IN_S,
+            timeout=PLAYED_OUT_S + STALL_TOLD_IN_S,
         ),
     )
+    stopped_at = played_to[0]
+    d.note(f"stopped at {stopped_at}")
 
-    # the link renewed, as a YouTube one that ran out is. Loaded again, it's the
-    # link the cell was opened with, the server's own, that's played.
+    # the link renewed as it's loaded again, as a YouTube one that ran out is. It's
+    # the link the cell was opened with, the server's own, that's played.
     link.state = _Link.SERVING
     d.check(
         "and plays on from there",
