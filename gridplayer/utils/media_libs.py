@@ -55,6 +55,8 @@ VLC_DRIVERS = (
     VideoDriver.VLC_HW_SP,
 )
 MPV_DRIVERS = (VideoDriver.MPV_HW, VideoDriver.MPV_SW)
+# drawing into a native window of VLC's, over which the app's overlay floats
+VLC_HW_DRIVERS = (VideoDriver.VLC_HW, VideoDriver.VLC_HW_SP)
 
 # what came of loading each one tried: None if it loaded, or why it didn't
 _load_results: dict[MediaLib, LibProblem | None] = {}

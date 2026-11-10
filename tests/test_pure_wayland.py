@@ -192,6 +192,8 @@ def test_dialog_leaves_hardware_options_alone(make_dialog):
     assert not dialog.widget("internal/opaque_hw_overlay").isEnabled()
     assert not dialog.widget("internal/fake_overlay_invisibility").isEnabled()
     assert not dialog.widget("internal/hw_crop_border_offset").isEnabled()
+    # shown as Software VLC, which they're not for: a search still finds them
+    assert dialog.forms["decoder"]._rows["internal/hw_crop_border_offset"].isHidden()
 
 
 def test_dialog_offers_hardware_on_xcb(monkeypatch, make_dialog):

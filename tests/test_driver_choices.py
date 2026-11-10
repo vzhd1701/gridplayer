@@ -13,7 +13,7 @@ from gridplayer.dialogs import settings as settings_dialog
 from gridplayer.dialogs.settings import SettingsDialog
 from gridplayer.params import env
 from gridplayer.params.settings_fields import advanced, choices
-from gridplayer.params.static import VideoDriver
+from gridplayer.params.static import MpvOutput, VideoDriver
 from gridplayer.settings import _Settings
 from gridplayer.utils import media_libs, video_driver
 from gridplayer.utils.cookies import CookieStore
@@ -452,9 +452,15 @@ def test_vlc_options_grey_out_on_mpv(libs, make_dialog, settings, key, driver):
 
 @pytest.mark.parametrize("key", VLC_ONLY)
 def test_vlc_options_stay_on_vlc(libs, make_dialog, settings, key):
-    settings.set(DRIVER, VideoDriver.VLC_SW_SP)
+    settings.set(DRIVER, VideoDriver.VLC_HW_SP)
 
     assert make_dialog().widget(key).isEnabled()
+
+
+def test_vlc_options_stay_on_software_vlc(libs, make_dialog, settings):
+    settings.set(DRIVER, VideoDriver.VLC_SW_SP)
+
+    assert make_dialog().widget("misc/vlc_options").isEnabled()
 
 
 @pytest.mark.parametrize(
@@ -481,6 +487,116 @@ def test_vlc_log_level_starts_grey_on_mpv(libs, make_dialog, settings):
     settings.set(DRIVER, VideoDriver.MPV_HW)
 
     assert not make_dialog().widget("logging/log_level_vlc").isEnabled()
+
+
+def _section_of(dialog, key):
+    card = dialog.forms["decoder"]._rows[key].parentWidget()
+    return card.parentWidget()
+
+
+def test_vlc_options_section_goes_on_mpv_and_comes_back_on_vlc(libs, make_dialog):
+    dialog = make_dialog()
+    section = _section_of(dialog, "misc/vlc_options")
+    assert "VLC Options" in section.header.text()
+
+    _pick_decoder(dialog, VideoDriver.MPV_HW)
+    assert section.isHidden()
+
+    _pick_decoder(dialog, VideoDriver.VLC_SW)
+    assert not section.isHidden()
+
+
+def _row_hidden(dialog, key):
+    return dialog.forms["decoder"]._rows[key].isHidden()
+
+
+def test_vlc_only_experiments_go_on_mpv(libs, make_dialog):
+    dialog = make_dialog()
+    key = "internal/hw_crop_border_offset"
+
+    assert not _row_hidden(dialog, key)
+
+    _pick_decoder(dialog, VideoDriver.MPV_HW)
+    assert _row_hidden(dialog, key)
+
+    _pick_decoder(dialog, VideoDriver.VLC_HW)
+    assert not _row_hidden(dialog, key)
+
+
+# what's there for VLC's own window for the picture, over which the overlay floats
+VLC_HW_ONLY = (
+    "internal/hw_crop_border_offset",
+    "internal/opaque_hw_overlay",
+    "internal/fake_overlay_invisibility",
+)
+
+
+@pytest.mark.parametrize("key", VLC_HW_ONLY)
+def test_hardware_vlc_workarounds_go_on_software_vlc(
+    libs, make_dialog, monkeypatch, key
+):
+    # where all three are there to show
+    monkeypatch.setattr(env, "IS_LINUX", True)
+    dialog = make_dialog()
+
+    _pick_decoder(dialog, VideoDriver.VLC_HW)
+    _pick_single(dialog, True)
+    assert not _row_hidden(dialog, key)
+
+    _pick_decoder(dialog, VideoDriver.VLC_SW)
+    assert _row_hidden(dialog, key)
+
+    _pick_single(dialog, False)
+    assert _row_hidden(dialog, key)
+
+
+def test_native_drag_events_stay_whatever_the_driver(libs, make_dialog, monkeypatch):
+    # dragging cells in the window, which has nothing to do with the driver
+    monkeypatch.setattr(env, "IS_LINUX", True)
+    dialog = make_dialog()
+    key = "internal/force_native_drag_events"
+
+    for decoder in (VideoDriver.VLC_SW, VideoDriver.MPV_SW, VideoDriver.VLC_HW):
+        _pick_decoder(dialog, decoder)
+        assert not _row_hidden(dialog, key)
+
+
+def test_black_line_fix_only_with_fast_output(libs, make_dialog, monkeypatch):
+    monkeypatch.setattr(env, "IS_WINDOWS", True)
+    dialog = make_dialog()
+    key = "internal/gl_line_fix"
+    output = dialog.widget("player/mpv_output")
+
+    _pick_decoder(dialog, VideoDriver.MPV_HW)
+    output.setCurrentIndex(output.findData(MpvOutput.READBACK))
+    assert _row_hidden(dialog, key)
+
+    output.setCurrentIndex(output.findData(MpvOutput.GL))
+    assert not _row_hidden(dialog, key)
+
+    # Fast stays picked, for a Software MPV that has no GL
+    _pick_decoder(dialog, VideoDriver.MPV_SW)
+    assert _row_hidden(dialog, key)
+
+
+def test_experiments_go_altogether_when_none_apply(libs, make_dialog, monkeypatch):
+    # Windows: no Linux ones, and Black line fix only with Fast output
+    monkeypatch.setattr(env, "IS_WINDOWS", True)
+    monkeypatch.setattr(env, "IS_LINUX", False)
+    dialog = make_dialog()
+    section = _section_of(dialog, "internal/hw_crop_border_offset")
+
+    _pick_decoder(dialog, VideoDriver.MPV_SW)
+    assert section.isHidden()
+
+    _pick_decoder(dialog, VideoDriver.VLC_HW)
+    assert not section.isHidden()
+
+
+def test_vlc_options_section_starts_hidden_on_mpv(libs, make_dialog, settings):
+    settings.set(DRIVER, VideoDriver.MPV_SW)
+
+    assert _section_of(make_dialog(), "misc/vlc_options").isHidden()
 
 
 def test_a_saved_vlc_option_survives_mpv(libs, make_dialog, settings):
@@ -569,17 +685,27 @@ def test_the_processes_choice_saves_the_twin(libs, make_dialog, settings):
     assert settings.get(DRIVER) == VideoDriver.VLC_SW_SP
 
 
+def _processes_line(dialog):
+    return _editor(dialog)._processes_line
+
+
 @pytest.mark.parametrize("decoder", [VideoDriver.MPV_HW, VideoDriver.MPV_SW])
-def test_mpv_shows_a_single_process_greyed_out(libs, make_dialog, decoder):
+def test_mpv_has_no_processes_choice_to_show(libs, make_dialog, decoder):
     dialog = make_dialog()
 
     _pick_decoder(dialog, decoder)
 
-    processes = _editor(dialog).processes
-    assert processes.currentData() is True
-    assert not processes.isEnabled()
-    assert not _editor(dialog).processes_label.isEnabled()
+    assert _processes_line(dialog).isHidden()
+    assert _editor(dialog).processes.currentData() is True
     assert dialog.value(DRIVER) == decoder
+
+
+def test_mpv_saved_opens_with_no_processes_choice(libs, make_dialog, settings):
+    settings.set(DRIVER, VideoDriver.MPV_SW)
+
+    dialog = make_dialog()
+
+    assert _processes_line(dialog).isHidden()
 
 
 def test_going_back_to_vlc_brings_back_the_choice(libs, make_dialog):
@@ -592,6 +718,7 @@ def test_going_back_to_vlc_brings_back_the_choice(libs, make_dialog):
     _pick_decoder(dialog, VideoDriver.MPV_HW)
     _pick_decoder(dialog, VideoDriver.VLC_SW)
 
+    assert not _processes_line(dialog).isHidden()
     assert processes.currentData() is False
     assert processes.isEnabled()
     assert dialog.value(DRIVER) == VideoDriver.VLC_SW
@@ -604,6 +731,8 @@ def test_macos_vlc_hardware_is_locked_software_is_not(libs, make_dialog, monkeyp
     processes = _editor(dialog).processes
 
     _pick_decoder(dialog, VideoDriver.VLC_HW)
+    # shown, greyed out: it can be chosen with the other VLC
+    assert not _processes_line(dialog).isHidden()
     assert not processes.isEnabled()
     assert dialog.value(DRIVER) == VideoDriver.VLC_HW_SP
 

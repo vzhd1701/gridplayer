@@ -36,6 +36,7 @@ from gridplayer.params.settings_fields.kinds import (
 )
 from gridplayer.params.theme import set_secondary
 from gridplayer.utils.keymap import default_keymap, merge_keymap
+from gridplayer.utils.media_libs import MPV_DRIVERS
 from gridplayer.utils.qt import translate
 from gridplayer.utils.video_driver import (
     driver_of_parts,
@@ -143,6 +144,10 @@ class Editor:
         """More of the field on lines of their own in its row, label and widget."""
 
         return []
+
+    def lines_made(self, lines: list[QWidget]) -> None:
+        """What the form made of lines_below, in their order, each one a widget
+        that can be hidden."""
 
     @property
     def changed(self):
@@ -272,13 +277,15 @@ class _Changed(QObject):
 
 class _VideoDriverEditor(_ComboEditor):
     """One stored driver as a decoder and a number of processes. What the
-    decoder can't choose shows greyed out, and the choice comes back after."""
+    decoder can't choose shows greyed out, and the choice comes back after.
+    MPV, which never has more than the one, doesn't show it at all."""
 
     spec: VideoDriverField
 
     def __init__(self, spec):
         self._wants_single = False
         self._signals = _Changed()
+        self._processes_line: QWidget | None = None
 
         self.processes = SegmentedChoice()
         _fill_combo(self.processes, spec.processes())
@@ -297,6 +304,10 @@ class _VideoDriverEditor(_ComboEditor):
 
     def lines_below(self):
         return [(self.processes_label, self.processes)]
+
+    def lines_made(self, lines):
+        (self._processes_line,) = lines
+        self._show_processes()
 
     def set_value(self, value):
         decoder, is_single = driver_parts(value)
@@ -347,6 +358,11 @@ class _VideoDriverEditor(_ComboEditor):
 
         self.processes.setEnabled(can_choose)
         self.processes_label.setEnabled(can_choose)
+
+        if self._processes_line is not None:
+            self._processes_line.setVisible(
+                self.widget.currentData() not in MPV_DRIVERS
+            )
 
 
 class _FlagsEditor(Editor):

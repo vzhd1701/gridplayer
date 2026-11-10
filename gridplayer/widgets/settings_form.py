@@ -588,15 +588,24 @@ class SettingsForm(QWidget):
         if self._reset_to is not None and not editor.fills:
             self._reset_button(key)
 
+        lines = []
         for label, widget in editor.lines_below():
-            line = QHBoxLayout()
+            # a widget, so the editor can leave the whole line out, reset's room
+            # and all
+            holder = QWidget()
+            line = QHBoxLayout(holder)
+            line.setContentsMargins(0, 0, 0, 0)
             line.setSpacing(row.line.spacing())
             line.addWidget(label, 1)
             line.addWidget(widget)
             if self._reset_to is not None:
                 # no reset of its own, but its room, to end where the field does
                 self._add_reset(line, self._make_reset())
-            row.layout().addLayout(line)
+            row.layout().addWidget(holder)
+            lines.append(holder)
+
+        if lines:
+            editor.lines_made(lines)
 
         self._check_available(spec, row)
 

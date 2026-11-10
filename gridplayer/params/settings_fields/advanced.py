@@ -15,6 +15,7 @@ from gridplayer.params.static import MpvOutput, VideoDriver
 from gridplayer.utils.media_libs import (
     MPV_DRIVERS,
     VLC_DRIVERS,
+    VLC_HW_DRIVERS,
     MediaLib,
     lib_of_driver,
     lib_problem_text,
@@ -205,14 +206,15 @@ ADVANCED_FIELDS: tuple[SettingField, ...] = (
     ),
     TextField(
         settings_key="misc/vlc_options",
-        enabled_when=When("player/video_driver", VLC_DRIVERS),
+        # its section, title and all, goes with it
+        shown_when=When("player/video_driver", VLC_DRIVERS),
     ),
     CheckboxField(
         settings_key="internal/opaque_hw_overlay",
         label=translate("SettingsDialog", "Opaque overlay (fix black screen)"),
         shown_if=_is_linux,
         unavailable=no_hw_video,
-        enabled_when=When("player/video_driver", VLC_DRIVERS),
+        shown_when=When("player/video_driver", VLC_HW_DRIVERS),
     ),
     CheckboxField(
         settings_key="internal/fake_overlay_invisibility",
@@ -222,7 +224,7 @@ ADVANCED_FIELDS: tuple[SettingField, ...] = (
         ),
         shown_if=_is_linux,
         unavailable=no_hw_video,
-        enabled_when=When("player/video_driver", VLC_DRIVERS),
+        shown_when=When("player/video_driver", VLC_HW_DRIVERS),
     ),
     CheckboxField(
         settings_key="internal/force_native_drag_events",
@@ -236,7 +238,7 @@ ADVANCED_FIELDS: tuple[SettingField, ...] = (
         label=translate("SettingsDialog", "HW video border fix"),
         choices=choices.hw_crop_borders,
         unavailable=no_hw_video,
-        enabled_when=When("player/video_driver", VLC_DRIVERS),
+        shown_when=When("player/video_driver", VLC_HW_DRIVERS),
         tooltip=translate(
             "SettingsDialog",
             "Crops a few pixels off the edges to hide glitches from hardware video."
@@ -248,7 +250,8 @@ ADVANCED_FIELDS: tuple[SettingField, ...] = (
         label=translate("SettingsDialog", "Black line fix"),
         choices=choices.gl_line_fixes,
         shown_if=_is_windows,
-        enabled_when=When("player/mpv_output", (MpvOutput.GL,)),
+        # Video output is there only for Hardware MPV, so this is too
+        shown_when=When("player/mpv_output", (MpvOutput.GL,)),
         tooltip=translate(
             "SettingsDialog",
             "Fixes a black line at the bottom of the window with Fast video output."
