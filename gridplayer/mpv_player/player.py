@@ -17,7 +17,7 @@ from fractions import Fraction
 from functools import cache, partial
 from pathlib import Path
 
-from PyQt5.QtCore import QObject, QUrl, pyqtSignal
+from PyQt5.QtCore import QObject, QTimer, QUrl, pyqtSignal
 
 from gridplayer.models.audio_device import AudioDevice, resolve_device_id
 from gridplayer.models.chapter import Chapter
@@ -247,6 +247,70 @@ def audio_chain(mode: AudioChannelMode, track_channels: int) -> dict:
     }
 
 
+# mpv's own scripts, which load_scripts leaves running: stats, the console and,
+# from 0.39, the menus they share. None of them is used, and each is a Lua
+# state on a thread of its own, 5 threads a video on 0.41. The console's option
+# took another name in 0.39, the old one kept as a warning.
+_BUILT_IN_SCRIPTS = (
+    "load-stats-overlay",
+    "load-console",
+    "load-auto-profiles",
+    "load-commands",
+    "load-select",
+    "load-positioning",
+    "load-context-menu",
+)
+_OLD_CONSOLE = "load-osd-console"
+
+
+class _BuiltInScripts:
+    """The options that leave mpv's own scripts out, of those this libmpv has:
+    asking one it lacks would stop it starting. Read once, from an mpv started
+    for it, as nothing can be asked before one has."""
+
+    def __init__(self):
+        self._lock = threading.Lock()
+        self._options: dict[str, bool] | None = None
+
+    def off(self, mpv_module) -> dict[str, bool]:
+        with self._lock:
+            if self._options is None:
+                self._options = self._read(mpv_module)
+
+            return self._options
+
+    @staticmethod
+    def _read(mpv_module) -> dict[str, bool]:
+        try:
+            reader = mpv_module.MPV(
+                vo="null", ao="null", load_scripts=False, ytdl=False
+            )
+        # what a libmpv that won't take what it's asked can raise
+        except Exception:
+            _log.exception("Could not read mpv's options")
+            return {}
+
+        try:
+            known = set(reader.options or ())
+        except Exception:
+            _log.exception("Could not read mpv's options")
+            return {}
+        finally:
+            reader.terminate()
+
+        if "load-console" in known:
+            known.discard(_OLD_CONSOLE)
+
+        return {
+            name.replace("-", "_"): False
+            for name in (*_BUILT_IN_SCRIPTS, _OLD_CONSOLE)
+            if name in known
+        }
+
+
+_BUILT_IN_SCRIPTS_OFF = _BuiltInScripts()
+
+
 class _AudioDevices:
     """The ways out of the machine, read by an mpv that does nothing else.
 
@@ -274,7 +338,11 @@ class _AudioDevices:
     def _read_from_mpv(mpv_module) -> tuple[AudioDevice, ...]:
         try:
             reader = mpv_module.MPV(
-                vo="null", ao="null", load_scripts=False, ytdl=False
+                vo="null",
+                ao="null",
+                load_scripts=False,
+                ytdl=False,
+                **_BUILT_IN_SCRIPTS_OFF.off(mpv_module),
             )
         # what a libmpv that won't take what it's asked can raise
         except Exception:
@@ -384,6 +452,11 @@ class MpvPlayer(QObject):
         # what it was last told, which it says it is only a moment later
         self.is_pause_asked = media_input.video.is_paused
         self._last_time_sent = None
+        # mpv says the time as it changes only while paused: see _follow_time
+        self._is_time_observed = False
+        self._time_reads = QTimer(self)
+        self._time_reads.setInterval(TIME_REPORT_MS)
+        self._time_reads.timeout.connect(self._read_time)
         # a seek to a key frame forwards, as (from, exactly), once mpv has it: see
         # seek_key_frame. Counted, so only the last one made is.
         self._forward_seek: tuple[float, float] | None = None
@@ -437,7 +510,8 @@ class MpvPlayer(QObject):
 
         self.mpv.register_event_callback(self._on_event)
         self.mpv.observe_property("video-params", self._on_video_params)
-        self.mpv.observe_property("time-pos", self._on_time)
+        self._follow_time()
+        self._time_reads.start()
         self.mpv.observe_property("pause", self._on_pause)
         self.mpv.observe_property("hwdec-current", self._on_hwdec)
         self.mpv.observe_property("chapter-list", self._on_chapter_list)
@@ -490,6 +564,7 @@ class MpvPlayer(QObject):
             # where they stand: see subtitles.py
             "sub_ass_override": "yes",
             "load_scripts": False,
+            **_BUILT_IN_SCRIPTS_OFF.off(self._mpv_module),
             "pause": media_input.video.is_paused,
         }
 
@@ -643,6 +718,7 @@ class MpvPlayer(QObject):
 
     def close(self) -> None:
         self._is_closing = True
+        self._time_reads.stop()
 
         self._memory_taken()
 
@@ -728,6 +804,7 @@ class MpvPlayer(QObject):
 
         # mpv itself isn't paused, so it won't be saying
         self.is_paused = is_stopped
+        self._follow_time()
         self.paused_changed.emit(is_stopped)
 
     def select_track(self, option: str, track_id: int) -> None:
@@ -1081,6 +1158,9 @@ class MpvPlayer(QObject):
                 self.is_picture_held = False
                 self._wake_renderer()
                 self.playback_restarted.emit()
+                # where a seek landed, with no wait for the next read
+                if not self.is_paused:
+                    self._ask_time()
                 self._check_forward_seek()
                 # the frame a deinterlacer coming off leaves, paused or not
                 self._check_frames_interlaced()
@@ -1284,7 +1364,47 @@ class MpvPlayer(QObject):
             params.get("w", 0), params.get("h", 0), _params_sar(params)
         )
 
-    def _on_time(self, _name, seconds) -> None:
+    def _follow_time(self) -> None:
+        """Paused, mpv says the time as it changes, from a frame step or a seek.
+        Playing, it would say it with every frame: an event for each, for the
+        event thread to take, of which only one in 200 ms is sent on. About 6% of
+        a core at 36 cells. So then it's asked for that often instead."""
+
+        with self._telling:
+            if self._is_closing or self.is_paused == self._is_time_observed:
+                return
+
+            if self.is_paused:
+                self.mpv.observe_property("time-pos", self._on_time)
+            else:
+                self.mpv.unobserve_property("time-pos", self._on_time)
+
+            self._is_time_observed = self.is_paused
+
+    def _read_time(self) -> None:
+        if self._is_media_read and not self.is_paused:
+            self._ask_time(is_seek_landed=False)
+
+    def _ask_time(self, is_seek_landed: bool = True) -> None:
+        # the time, or nothing while there's none
+        self.command(
+            "expand-text",
+            "${=time-pos:}",
+            callback=partial(self._on_time_read, is_seek_landed),
+        )
+
+    def _on_time_read(self, is_seek_landed: bool, error, text) -> None:
+        if error is not None or not text:
+            return
+
+        try:
+            seconds = float(text)
+        except ValueError:
+            return
+
+        self._on_time("time-pos", seconds, is_asked=True, is_seek_landed=is_seek_landed)
+
+    def _on_time(self, _name, seconds, is_asked=False, is_seek_landed=False) -> None:
         if seconds is None or not self._is_media_read:
             return
 
@@ -1295,11 +1415,18 @@ class MpvPlayer(QObject):
 
         last_time = self._last_time_sent
 
+        # Asked for, it's said as it's had, but for a time standing still, as a
+        # stream waiting for more: mpv would say nothing. Not where a seek
+        # landed, which is said wherever that is.
+        if is_asked and not is_seek_landed and new_time == last_time:
+            return
+
         if (
             last_time is not None
             and 0 <= new_time - last_time < TIME_REPORT_MS
             # paused, a frame step has only the one report to make
             and not self.is_paused
+            and not is_asked
         ):
             return
 
@@ -1318,6 +1445,7 @@ class MpvPlayer(QObject):
             return
 
         self.is_paused = bool(is_paused)
+        self._follow_time()
 
         self.paused_changed.emit(self.is_paused)
 

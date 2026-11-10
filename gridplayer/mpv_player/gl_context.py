@@ -45,6 +45,10 @@ class EGLContext:
     no further than vaapi-copy. PyQt5 doesn't give out Qt's on Wayland, and on
     X11 sharing it would have this thread on Qt's connection; both are happy
     with their own. One per renderer, closed along with it.
+
+    Desktop OpenGL, or OpenGL ES where a driver has only that, or where Qt's
+    is ES: a context shares only with one of its own kind. mpv draws with
+    either.
     """
 
     _NONE = 0x3038
@@ -58,6 +62,9 @@ class EGLContext:
     _WIDTH = 0x3057
     _HEIGHT = 0x3056
     _OPENGL_API = 0x30A2
+    _OPENGL_ES_API = 0x30A0
+    _OPENGL_ES2_BIT = 0x0004
+    _CONTEXT_CLIENT_VERSION = 0x3098
     _PLATFORM_SURFACELESS = 0x31DD
     _EXTENSIONS = 0x3055
 
@@ -72,6 +79,7 @@ class EGLContext:
         self._surface = None
         self._context = None
         self._share_context = None
+        self.is_gles = share is not None and share.is_gles
 
         # what's made so far goes again if it fails: it can be a try
         try:
@@ -96,12 +104,29 @@ class EGLContext:
         ):
             raise GLContextError(f"eglInitialize failed: {self._error()}")
 
+        # A driver can take desktop OpenGL and have no config or context for it
+        if not self.is_gles:
+            try:
+                self._make_desktop_current()
+            except GLContextError as e:
+                _log.info(f"No desktop OpenGL, OpenGL ES instead: {e}")
+                self._drop_current()
+                self.is_gles = True
+
+        if self.is_gles:
+            if not self._egl.eglBindAPI(self._OPENGL_ES_API):
+                raise GLContextError(f"No OpenGL to be had: {self._error()}")
+
+            self._make_current()
+
+        api = "OpenGL ES" if self.is_gles else "OpenGL"
+        _log.debug(f"EGL {major.value}.{minor.value} on {self._platform}, {api}")
+
+    def _make_desktop_current(self) -> None:
         if not self._egl.eglBindAPI(self._OPENGL_API):
-            raise GLContextError(f"Desktop OpenGL not offered: {self._error()}")
+            raise GLContextError(f"not offered: {self._error()}")
 
         self._make_current()
-
-        _log.debug(f"EGL {major.value}.{minor.value} on {self._platform}")
 
     @staticmethod
     def _load_egl():
@@ -221,8 +246,15 @@ class EGLContext:
             if not self._surface:
                 raise GLContextError(f"eglCreatePbufferSurface failed: {self._error()}")
 
+        # ES 2 or anything newer that can stand in for it, as Mesa gives;
+        # what's asked otherwise is ES 1
+        context_attrs = (
+            (ctypes.c_int * 3)(self._CONTEXT_CLIENT_VERSION, 2, self._NONE)
+            if self.is_gles
+            else None
+        )
         self._context = self._egl.eglCreateContext(
-            self._display, config, self._share_context, None
+            self._display, config, self._share_context, context_attrs
         )
         if not self._context:
             raise GLContextError(f"eglCreateContext failed: {self._error()}")
@@ -237,7 +269,7 @@ class EGLContext:
             self._SURFACE_TYPE,
             surface_type,
             self._RENDERABLE_TYPE,
-            self._OPENGL_BIT,
+            self._OPENGL_ES2_BIT if self.is_gles else self._OPENGL_BIT,
             self._RED_SIZE,
             8,
             self._GREEN_SIZE,
@@ -268,7 +300,9 @@ class EGLContext:
         # EGL before 1.5 needn't give the core functions
         if self._libgl is None:
             try:
-                self._libgl = ctypes.CDLL("libGL.so.1")
+                self._libgl = ctypes.CDLL(
+                    "libGLESv2.so.2" if self.is_gles else "libGL.so.1"
+                )
             except OSError:
                 return 0
 
@@ -280,13 +314,20 @@ class EGLContext:
             return {self._native_param: self._native_display}
         return {}
 
+    def _drop_current(self) -> None:
+        """What _make_current made, if anything, for another try."""
+
+        self._egl.eglMakeCurrent(self._display, None, None, None)
+        if self._context:
+            self._egl.eglDestroyContext(self._display, self._context)
+        if self._surface:
+            self._egl.eglDestroySurface(self._display, self._surface)
+
+        self._context = self._surface = None
+
     def close(self) -> None:
         if self._display:
-            self._egl.eglMakeCurrent(self._display, None, None, None)
-            if self._context:
-                self._egl.eglDestroyContext(self._display, self._context)
-            if self._surface:
-                self._egl.eglDestroySurface(self._display, self._surface)
+            self._drop_current()
             # one shared with is Qt's, Qt's to end
             if self._share_context is None:
                 self._egl.eglTerminate(self._display)
@@ -309,6 +350,8 @@ class WGLContext:
 
     _CLASS_NAME = "GridPlayerMpvGL"
     _HWND_MESSAGE = -3
+
+    is_gles = False
 
     def __init__(self, share_with: int | None = None):
         from ctypes import wintypes
@@ -521,6 +564,8 @@ class QtGLContext:
         if not self._context.makeCurrent(surface):
             raise GLContextError("Could not make the GL context current")
 
+        self.is_gles = self._context.isOpenGLES()
+
     def get_proc_address(self, name: bytes) -> int:
         from PyQt5.QtCore import QByteArray
 
@@ -533,6 +578,68 @@ class QtGLContext:
 
     def close(self) -> None:
         self._context.doneCurrent()
+
+
+_c = ctypes
+# what's drawn with in Qt's contexts, by the arguments' types
+_QT_GL_CALLS = {
+    "glViewport": (_c.c_int, _c.c_int, _c.c_int, _c.c_int),
+    "glScissor": (_c.c_int, _c.c_int, _c.c_int, _c.c_int),
+    "glClearColor": (_c.c_float, _c.c_float, _c.c_float, _c.c_float),
+    "glClear": (_c.c_uint,),
+    "glEnable": (_c.c_uint,),
+    "glDisable": (_c.c_uint,),
+    "glDeleteTextures": (_c.c_int, _c.POINTER(_c.c_uint)),
+}
+
+
+class _QtGLCalls:
+    """The calls of `_QT_GL_CALLS` in a context of Qt's, where PyQt5 has none
+    of its own: OpenGL ES. Taken as glDeleteTextures takes them in PyQt5's,
+    a list for the textures."""
+
+    def __init__(self, context):
+        from PyQt5.QtCore import QByteArray
+
+        proto = ctypes.WINFUNCTYPE if env.IS_WINDOWS else ctypes.CFUNCTYPE
+
+        for name, argtypes in _QT_GL_CALLS.items():
+            address = context.getProcAddress(QByteArray(name.encode()))
+            if not address:
+                raise GLContextError(f"OpenGL function {name} is not available")
+
+            setattr(self, name, proto(None, *argtypes)(int(address)))
+
+        self._delete_textures = self.glDeleteTextures
+        self.glDeleteTextures = self._delete_textures_of
+
+    def initializeOpenGLFunctions(self) -> bool:
+        return True
+
+    def _delete_textures_of(self, count: int, textures: list[int]) -> None:
+        self._delete_textures(count, (ctypes.c_uint * count)(*textures))
+
+
+def qt_gl_functions(context):
+    """GL calls in a context of Qt's, current: OpenGL 2.0's, else what PyQt5
+    has for it, else ctypes ones. None if it has none of them."""
+
+    from PyQt5.QtGui import QOpenGLVersionProfile
+
+    profile = QOpenGLVersionProfile()
+    profile.setVersion(2, 0)
+    functions = context.versionFunctions(profile) or context.versionFunctions()
+
+    if functions is None:
+        try:
+            functions = _QtGLCalls(context)
+        except GLContextError:
+            _log.exception("No GL calls in Qt's context")
+            return None
+
+    functions.initializeOpenGLFunctions()
+
+    return functions
 
 
 class QtShareGroup:
@@ -564,9 +671,13 @@ class QtShareGroup:
         if not self._context.makeCurrent(self._surface):
             raise GLContextError("Could not reach Qt's GL context")
 
+        # what the render thread's has to be too, to share with it
+        self.is_gles = self._context.isOpenGLES()
+
         # EGL's display, on Linux
         self.display = None
-        # for deleting textures, once there are any
+        # for deleting textures, once there are any; False for none to be had,
+        # which is said once
         self._gl = None
 
         if env.IS_WINDOWS:
@@ -587,19 +698,17 @@ class QtShareGroup:
         """GUI thread: textures of the group gone, whether a widget that showed
         them has a context of its own yet or has one no longer."""
 
-        from PyQt5.QtGui import QOpenGLContext, QOpenGLVersionProfile
+        from PyQt5.QtGui import QOpenGLContext
 
         previous = QOpenGLContext.currentContext()
         previous_surface = previous.surface() if previous is not None else None
 
         if self._context.makeCurrent(self._surface):
             if self._gl is None:
-                profile = QOpenGLVersionProfile()
-                profile.setVersion(2, 0)
-                self._gl = self._context.versionFunctions(profile)
-                self._gl.initializeOpenGLFunctions()
+                self._gl = qt_gl_functions(self._context) or False
 
-            self._gl.glDeleteTextures(len(textures), textures)
+            if self._gl:
+                self._gl.glDeleteTextures(len(textures), textures)
             self._context.doneCurrent()
 
         if previous is not None:

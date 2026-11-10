@@ -3,6 +3,7 @@ is let go of once another takes its place or the surface goes, drawn or not; a
 surface draws once its window's grid surface is up, which draws the surfaces
 lowest first, each cut to its cell. Nothing here draws: no GL needed."""
 
+import ctypes
 import gc
 import weakref
 from unittest.mock import MagicMock
@@ -12,7 +13,9 @@ from PyQt5 import sip
 from PyQt5.QtCore import QObject, QPoint, QRect, pyqtSignal
 from PyQt5.QtWidgets import QApplication, QWidget
 
+from gridplayer.mpv_player import gl_context
 from gridplayer.mpv_player.renderer import RenderedVideo
+from gridplayer.params import env
 from gridplayer.params.static import VideoTransform, ViewParams
 from gridplayer.widgets import video_surface_gl
 from gridplayer.widgets.video_frame_mpv import MpvGLVideoSurface
@@ -184,6 +187,9 @@ class _Context(QObject):
     def versionFunctions(self, _profile=None):
         return None
 
+    def getProcAddress(self, _name):
+        return 0
+
 
 def test_the_blitter_lasts_as_long_as_its_context(monkeypatch):
     """Qt frees its vertex array as the context goes, on a hidden window made
@@ -235,3 +241,114 @@ def test_a_surface_put_in_another_window_leaves_the_old_one_s_grid():
     assert surface not in grid._surfaces
     surface._join()
     assert surface._grid is video_surface_gl.GLGridSurface.of(other)
+
+
+class _OpenGLESContext:
+    """Qt's context on OpenGL ES, which PyQt5 has no functions for: its calls
+    are Python ones here."""
+
+    def __init__(self):
+        self.calls = []
+        self._kept = {}
+
+    def versionFunctions(self, _profile=None):
+        return None
+
+    def getProcAddress(self, name):
+        name = bytes(name).decode()
+        argtypes = gl_context._QT_GL_CALLS[name]
+        proto = ctypes.WINFUNCTYPE if env.IS_WINDOWS else ctypes.CFUNCTYPE
+
+        def call(*args):
+            if name == "glDeleteTextures":
+                count, textures = args
+                args = (count, [textures[i] for i in range(count)])
+            self.calls.append((name, *args))
+
+        function = self._kept[name] = proto(None, *argtypes)(call)
+
+        return ctypes.cast(function, ctypes.c_void_p).value
+
+
+def test_opengl_es_is_drawn_with_calls_of_its_own():
+    context = _OpenGLESContext()
+
+    gl = gl_context.qt_gl_functions(context)
+    gl.glViewport(0, 0, 640, 360)
+    gl.glClear(0x4000)
+    gl.glDeleteTextures(2, [7, 9])
+
+    assert context.calls == [
+        ("glViewport", 0, 0, 640, 360),
+        ("glClear", 0x4000),
+        ("glDeleteTextures", 2, [7, 9]),
+    ]
+
+
+class _EGLWithOnlyES:
+    """A driver that takes desktop OpenGL and has no config for it."""
+
+    def __init__(self):
+        self.apis = []
+
+    def eglGetPlatformDisplay(self, *_args):
+        return 1
+
+    def eglInitialize(self, *_args):
+        return 1
+
+    def eglBindAPI(self, api):
+        self.apis.append(api)
+        return 1
+
+    def eglQueryString(self, *_args):
+        return b"EGL_KHR_surfaceless_context"
+
+    def eglChooseConfig(self, _display, attrs, _config, _size, count):
+        is_es = attrs[3] == gl_context.EGLContext._OPENGL_ES2_BIT
+        count._obj.value = 1 if is_es else 0
+        return 1
+
+    def eglCreateContext(self, *_args):
+        return 5
+
+    def eglMakeCurrent(self, *_args):
+        return 1
+
+    def eglGetError(self):
+        return 0x3000
+
+
+def test_opengl_es_where_desktop_opengl_is_taken_but_has_no_config():
+    egl = _EGLWithOnlyES()
+    context = object.__new__(gl_context.EGLContext)
+    context._platform = "offscreen"
+    context._egl = egl
+    context._display = context._surface = context._context = None
+    context._share_context = context._native_display = None
+    context.is_gles = False
+
+    context._open(None)
+
+    assert context.is_gles
+    assert egl.apis == [
+        gl_context.EGLContext._OPENGL_API,
+        gl_context.EGLContext._OPENGL_ES_API,
+    ]
+    assert context._context == 5
+
+
+def test_textures_with_no_gl_calls_to_be_had_are_given_up_on_once(monkeypatch):
+    looked_up = []
+    monkeypatch.setattr(
+        gl_context, "qt_gl_functions", lambda context: looked_up.append(context)
+    )
+    group = object.__new__(gl_context.QtShareGroup)
+    group._context = MagicMock()
+    group._surface = None
+    group._gl = None
+
+    group.delete_textures([1])
+    group.delete_textures([2])
+
+    assert len(looked_up) == 1

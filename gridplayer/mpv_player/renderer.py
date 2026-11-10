@@ -68,6 +68,7 @@ GL_BGRA = 0x80E1
 GL_RGBA8 = 0x8058
 GL_UNSIGNED_BYTE = 0x1401
 GL_FRAMEBUFFER = 0x8D40
+GL_EXTENSIONS = 0x1F03
 GL_COLOR_ATTACHMENT0 = 0x8CE0
 
 _c = ctypes
@@ -100,6 +101,7 @@ _GL_FUNCS = {
         _c.c_int,
     ),
     "glFinish": (None,),
+    "glGetString": (_c.c_char_p, _c.c_uint),
     "glReadPixels": (
         None,
         _c.c_int,
@@ -257,12 +259,14 @@ class FrameSlot:
     """A finished frame: its pixels, BGRA with the top row first, or with GL
     output its texture, RGBA with the top row first."""
 
-    __slots__ = ("_pixels_ctypes", "height", "pixels", "texture", "width")
+    __slots__ = ("_pixels_ctypes", "height", "is_rgba", "pixels", "texture", "width")
 
     def __init__(self):
         self.width = 0
         self.height = 0
         self.pixels = None
+        # read from OpenGL ES that only gives RGBA
+        self.is_rgba = False
         self._pixels_ctypes = None
         self.texture = 0
 
@@ -374,6 +378,10 @@ class VideoRenderer(QThread):
 
         self._gl = None
         self._fbo = 0
+        # what frames are read back as, and their textures made as: see
+        # _pick_formats
+        self._read_format = GL_BGRA
+        self._texture_format = GL_RGBA8
         self._context = None
         self._context_error = None
         self._platform = QGuiApplication.platformName()
@@ -437,9 +445,26 @@ class VideoRenderer(QThread):
             self._context_error = str(e)
 
         if self._context_error is None:
+            self._pick_formats()
+
             fbo = ctypes.c_uint()
             self._gl.glGenFramebuffers(1, ctypes.byref(fbo))
             self._fbo = fbo.value
+
+    def _pick_formats(self) -> None:
+        """OpenGL ES takes a texture's format as its pixels' in ES 2, and
+        reads back BGRA only by an extension, which Mesa's has. Without it,
+        RGBA, which is slower to paint."""
+
+        if not self._context.is_gles:
+            return
+
+        self._texture_format = GL_RGBA
+
+        extensions = (self._gl.glGetString(GL_EXTENSIONS) or b"").split()
+        if b"GL_EXT_read_format_bgra" not in extensions:
+            self._log.info("OpenGL ES reads frames back as RGBA")
+            self._read_format = GL_RGBA
 
     def _get_proc_address(self, _ctx, name) -> int:
         return self._context.get_proc_address(name) if self._context else 0
@@ -608,7 +633,7 @@ class VideoRenderer(QThread):
             gl.glTexImage2D(
                 GL_TEXTURE_2D,
                 0,
-                GL_RGBA8,
+                self._texture_format,
                 width,
                 height,
                 0,
@@ -638,10 +663,11 @@ class VideoRenderer(QThread):
             0,
             width,
             height,
-            GL_BGRA,
+            self._read_format,
             GL_UNSIGNED_BYTE,
             video.back.writable(width, height),
         )
+        video.back.is_rgba = self._read_format == GL_RGBA
 
     def _release_video(self, video: RenderedVideo) -> None:
         # not there if the render context never came up

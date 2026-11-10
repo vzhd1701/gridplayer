@@ -30,6 +30,7 @@ from gridplayer.mpv_player.deinterlace import deinterlace_options
 from gridplayer.mpv_player.player import (
     _REFUSED_MODES,
     _ROOM_FILTER_BROKE,
+    TIME_REPORT_MS,
     MpvPlayer,
     _AudioDevices,
     _cur_track_id,
@@ -39,6 +40,9 @@ from gridplayer.mpv_player.player import (
     devices_of_first_output,
 )
 from gridplayer.mpv_player.renderer import (
+    GL_BGRA,
+    GL_RGBA,
+    GL_RGBA8,
     FrameSlot,
     MpvRenderService,
     RenderCalls,
@@ -215,6 +219,42 @@ def test_surface_places_on_whole_pixels():
     assert all(value == int(value) for value in (x, y, width, height))
 
 
+def test_surface_placement_follows_what_changes():
+    surface = MpvVideoSurface()
+    surface.resize(160, 90)
+    surface.present_black(1920, 1080)
+    surface.set_view(surface._view, VideoTransform.NONE, (1920, 1080))
+
+    placed = surface.placement()
+    assert surface.placement() is placed
+
+    surface.resize(90, 90)
+    assert surface.placement().target != placed.target
+
+    surface.set_view(
+        ViewParams(cell_view_mode=VideoCellViewMode.STRETCH),
+        VideoTransform.NONE,
+        (1920, 1080),
+    )
+    assert surface.placement().target == (0, 0, 90, 90)
+
+    surface.present_black(960, 540)
+    assert surface.placement().source == (0, 0, 960, 540)
+
+
+def test_surface_paints_rgba_frames_as_they_are():
+    surface = MpvVideoSurface()
+    slot = FrameSlot()
+    slot.writable(2, 1)[:] = bytes([255, 0, 0, 255, 0, 0, 255, 255])
+    slot.is_rgba = True
+
+    surface.present_frame(slot)
+
+    image = surface.frame_image()
+    assert image.pixelColor(0, 0).getRgb()[:3] == (255, 0, 0)
+    assert image.pixelColor(1, 0).getRgb()[:3] == (0, 0, 255)
+
+
 def _surface_showing(transform, pixels):
     """A surface a frame fills, of this many BGRA pixels in a row."""
 
@@ -375,6 +415,8 @@ class _FakeMpv:
         self.callbacks = {}
         self.frame_says = "no"
         self.frames_read = 0
+        self.time_says = "1.5"
+        self.times_read = 0
         self.track_list = []
         self.audio_device_list = []
         self.is_terminated = False
@@ -389,6 +431,9 @@ class _FakeMpv:
     def observe_property(self, name, handler):
         self.observers[name] = handler
 
+    def unobserve_property(self, name, handler):
+        assert self.observers.pop(name) == handler
+
     def option_info(self, name):
         if name == "deinterlace":
             return {"type": "Choice", "choices": ["no", "yes", "auto"]}
@@ -399,6 +444,11 @@ class _FakeMpv:
         self.commands.append(args)
 
     def command_async(self, *args, callback=None, **_kwargs):
+        if args[:2] == ("expand-text", "${=time-pos:}"):
+            self.times_read += 1
+            callback(None, self.time_says)
+            return
+
         if args[0] == "expand-text":
             self.frames_read += 1
             callback(None, self.frame_says)
@@ -456,6 +506,15 @@ def _player(
         is_software=is_software,
         cpu_when_low=cpu_when_low,
     )
+
+
+@pytest.fixture(autouse=True)
+def _built_in_scripts_read(monkeypatch):
+    """As if read already: reading makes an mpv of its own."""
+
+    scripts = player_module._BuiltInScripts()
+    scripts._options = {}
+    monkeypatch.setattr(player_module, "_BUILT_IN_SCRIPTS_OFF", scripts)
 
 
 @pytest.fixture(autouse=True)
@@ -765,6 +824,104 @@ def test_terminating_waits_for_anything_being_sent():
     assert terminated.is_set()
 
 
+def test_the_time_is_followed_only_while_paused():
+    player = _player()
+
+    assert "time-pos" not in player.mpv.observers
+
+    player._on_pause("pause", True)
+    assert player.mpv.observers["time-pos"] == player._on_time
+
+    player._on_pause("pause", False)
+    assert "time-pos" not in player.mpv.observers
+
+
+def test_loaded_paused_the_time_is_followed():
+    assert "time-pos" in _player(is_paused=True).mpv.observers
+
+
+def test_the_time_is_read_while_playing():
+    player = _player()
+    player._is_media_read = True
+    times = []
+    player.time_changed.connect(times.append)
+
+    assert player._time_reads.interval() == TIME_REPORT_MS
+
+    player._read_time()
+    player.mpv.time_says = "1.6"
+    # read when asked, however soon after the last
+    player._read_time()
+
+    assert times == [1501, 1601]
+
+
+@pytest.mark.parametrize("says", ["", "(error)"])
+def test_no_time_to_read_reports_nothing(says):
+    player = _player()
+    player._is_media_read = True
+    player.mpv.time_says = says
+    times = []
+    player.time_changed.connect(times.append)
+
+    player._read_time()
+
+    assert times == []
+
+
+def test_the_time_is_not_read_while_paused_or_before_loading():
+    player = _player()
+
+    player._read_time()
+    player._is_media_read = True
+    player._on_pause("pause", True)
+    player._read_time()
+
+    assert player.mpv.times_read == 0
+
+
+def test_the_time_is_read_as_a_seek_lands():
+    player = _player()
+    player._is_media_read = True
+
+    _restart(player)
+
+    assert player.mpv.times_read == 1
+
+
+def test_a_time_standing_still_is_said_only_where_a_seek_landed():
+    player = _player()
+    player._is_media_read = True
+    times = []
+    player.time_changed.connect(times.append)
+
+    player._read_time()
+    # a stream waiting for more
+    player._read_time()
+    # a seek landing where it was
+    _restart(player)
+
+    assert times == [1501, 1501]
+
+
+@pytest.mark.parametrize("is_stopped", [True, False])
+def test_a_live_stream_stopped_or_played_follows_the_time_as_paused(is_stopped):
+    # mpv's pause is left as it was, so it won't say
+    player = _player(is_live=True, is_paused=not is_stopped, uri="http://proxy/video")
+
+    player._set_live_stopped(is_stopped)
+
+    assert ("time-pos" in player.mpv.observers) is is_stopped
+
+
+def test_closing_stops_reading_the_time():
+    player = _player()
+
+    player.close()
+
+    assert not player._time_reads.isActive()
+
+
 def test_automatic_left_to_mpv_reads_no_frames():
     player = _player()
     player._is_media_read = True
@@ -910,6 +1067,94 @@ def test_options_skip_frames_only_when_asked():
 def test_direct_rendering_is_left_to_mpv_unless_turned_off():
     assert "vd_lavc_dr" not in _player().mpv.options
     assert _player(direct_rendering=False).mpv.options["vd_lavc_dr"] == "no"
+
+
+def _knowing(*names):
+    started = []
+
+    def make(**options):
+        reader = MagicMock(options=list(names))
+        started.append((options, reader))
+        return reader
+
+    return SimpleNamespace(MPV=make), started
+
+
+def test_built_in_scripts_are_left_out_of_those_mpv_has():
+    module, started = _knowing(
+        "vo", "load-stats-overlay", "load-osd-console", "load-auto-profiles"
+    )
+
+    off = player_module._BuiltInScripts().off(module)
+
+    assert off == {
+        "load_stats_overlay": False,
+        "load_osd_console": False,
+        "load_auto_profiles": False,
+    }
+    ((options, reader),) = started
+    assert options["load_scripts"] is False
+    reader.terminate.assert_called_once()
+
+
+def test_built_in_scripts_take_the_consoles_new_name_where_there_is_one():
+    module, _ = _knowing(
+        "load-console", "load-osd-console", "load-select", "load-context-menu"
+    )
+
+    off = player_module._BuiltInScripts().off(module)
+
+    assert off == {
+        "load_console": False,
+        "load_select": False,
+        "load_context_menu": False,
+    }
+
+
+def test_built_in_scripts_are_read_once():
+    module, started = _knowing("load-select")
+    scripts = player_module._BuiltInScripts()
+
+    scripts.off(module)
+    scripts.off(module)
+
+    assert len(started) == 1
+
+
+def test_built_in_scripts_left_on_when_mpv_wont_start():
+    module = SimpleNamespace(MPV=MagicMock(side_effect=RuntimeError("no")))
+
+    assert player_module._BuiltInScripts().off(module) == {}
+
+
+def test_built_in_scripts_left_on_when_mpv_wont_say_its_options():
+    reader = MagicMock()
+    type(reader).options = property(MagicMock(side_effect=RuntimeError("no")))
+    module = SimpleNamespace(MPV=lambda **_options: reader)
+
+    assert player_module._BuiltInScripts().off(module) == {}
+    reader.terminate.assert_called_once()
+
+
+def test_the_audio_devices_are_read_without_the_built_in_scripts(
+    monkeypatch, audio_devices
+):
+    scripts = player_module._BuiltInScripts()
+    scripts._options = {"load_select": False}
+    monkeypatch.setattr(player_module, "_BUILT_IN_SCRIPTS_OFF", scripts)
+    module, made = _device_reader(_PULSE_LISTED)
+
+    audio_devices.read(module)
+
+    assert made[0].options["load_select"] is False
+
+
+def test_options_leave_the_built_in_scripts_out(monkeypatch):
+    scripts = player_module._BuiltInScripts()
+    scripts._options = {"load_select": False}
+    monkeypatch.setattr(player_module, "_BUILT_IN_SCRIPTS_OFF", scripts)
+
+    assert _player().mpv.options["load_select"] is False
 
 
 def test_skipping_frames_switches_while_playing():
@@ -1064,7 +1309,9 @@ def test_random_start_is_picked_before_anything_is_decoded():
     _preloaded(player)
 
     assert 0 <= float(player.mpv.start) <= 20
-    assert float(player.mpv.start) * 1000 == player.media_input.initial_time
+    assert float(player.mpv.start) * 1000 == pytest.approx(
+        player.media_input.initial_time
+    )
     assert _hook_answered(player)
 
 
@@ -1881,6 +2128,30 @@ def test_read_back_nothing_is_finished(renderer):
 
     renderer._gl.glFinish.assert_not_called()
     renderer._gl.glReadPixels.assert_called_once()
+
+
+@pytest.mark.parametrize(
+    ("is_gles", "extensions", "read", "texture", "is_rgba"),
+    [
+        (False, b"", GL_BGRA, GL_RGBA8, False),
+        (True, b"GL_OES_x GL_EXT_read_format_bgra", GL_BGRA, GL_RGBA, False),
+        (True, b"GL_OES_x", GL_RGBA, GL_RGBA, True),
+    ],
+)
+def test_read_back_takes_what_opengl_es_gives(
+    renderer, is_gles, extensions, read, texture, is_rgba
+):
+    renderer._context = SimpleNamespace(is_gles=is_gles)
+    renderer._gl.glGetString.return_value = extensions
+    renderer._pick_formats()
+    video = _rendered_video()
+    renderer._videos.append(video)
+
+    _round(renderer, video, is_frame=True)
+
+    assert renderer._gl.glReadPixels.call_args.args[4] == read
+    assert renderer._gl.glTexImage2D.call_args.args[2] == texture
+    assert video.latest().is_rgba is is_rgba
 
 
 def test_the_texture_on_show_can_be_taken_as_its_video_goes(renderer):

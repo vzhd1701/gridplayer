@@ -39,11 +39,11 @@ from PyQt5.QtGui import (
     QImage,
     QOpenGLFramebufferObject,
     QOpenGLTextureBlitter,
-    QOpenGLVersionProfile,
     QPainter,
 )
 from PyQt5.QtWidgets import QOpenGLWidget, QWidget
 
+from gridplayer.mpv_player.gl_context import qt_gl_functions
 from gridplayer.utils.aspect_calc import ViewPlacement
 from gridplayer.utils.gl_window_size import set_up_gl_window
 from gridplayer.widgets.video_frame_vlc_base import native_px, native_rect
@@ -241,13 +241,8 @@ class GLGridSurface(QOpenGLWidget):
         held = _HeldTillContextGone(self._blitter)
         context.destroyed.connect(functools.partial(_HeldTillContextGone.let_go, held))
 
-        # OpenGL 2.0, or else what OpenGL ES has, all that is used either way
-        profile = QOpenGLVersionProfile()
-        profile.setVersion(2, 0)
-        self._gl = context.versionFunctions(profile) or context.versionFunctions()
-        if self._gl is not None:
-            self._gl.initializeOpenGLFunctions()
-        else:
+        self._gl = qt_gl_functions(context)
+        if self._gl is None:
             logger.error("No OpenGL functions to draw the videos with")
 
         # the window is put together with GL from now on

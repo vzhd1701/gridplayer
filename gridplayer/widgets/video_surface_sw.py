@@ -139,7 +139,7 @@ class VideoSurfaceView:
 
 
 class SoftwareVideoSurface(VideoSurfaceView, QWidget):
-    """Paints the latest RGB32 frame. Avoids QGraphicsView.setPixmap."""
+    """Paints the latest frame, 4 bytes a pixel. Avoids QGraphicsView.setPixmap."""
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -174,7 +174,13 @@ class SoftwareVideoSurface(VideoSurfaceView, QWidget):
 
         return self._image.copy()
 
-    def present_rgb32(self, buf, width, height) -> None:
+    def present_rgb32(
+        self, buf, width, height, image_format=QImage.Format_RGB32
+    ) -> None:
+        """A frame of 4 bytes a pixel, RGB32 as VLC's are and mostly MPV's, or
+        RGBX8888 from OpenGL ES that only reads back RGBA: then so is the
+        image frame_image gives."""
+
         if not buf or not width or not height:
             return
 
@@ -188,7 +194,7 @@ class SoftwareVideoSurface(VideoSurfaceView, QWidget):
 
         # Keep buf alive for this QImage; skip .copy() (second full-frame memcpy).
         self._rgb = buf
-        self._image = QImage(buf, width, height, width * 4, QImage.Format_RGB32)
+        self._image = QImage(buf, width, height, width * 4, image_format)
         self._is_black = False
         self.update()
 

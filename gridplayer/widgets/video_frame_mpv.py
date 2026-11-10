@@ -13,6 +13,7 @@ painted.
 """
 
 from PyQt5.QtCore import QRectF, Qt, QTimer, pyqtSignal
+from PyQt5.QtGui import QImage
 
 from gridplayer.models.stream import Stream
 from gridplayer.mpv_player.player import MpvPlayer
@@ -86,6 +87,9 @@ class MpvSurfaceView:
 
         self._is_file_on_its_side = False
         self._is_flip_in_mpv = False
+        # the last placement worked out, by what it was worked out from: a
+        # paint a frame, about 25 us each, 1% of a core at 9 cells
+        self._last_placement: tuple[tuple, ViewPlacement | None] | None = None
 
     def set_file_on_its_side(self, is_on_its_side: bool) -> None:
         self._is_file_on_its_side = is_on_its_side
@@ -116,6 +120,23 @@ class MpvSurfaceView:
         return self.frame_size()
 
     def placement(self) -> ViewPlacement | None:
+        key = (
+            self.frame_size(),
+            self._track_size,
+            self.width(),
+            self.height(),
+            self.devicePixelRatioF(),
+            self._view,
+            self._transform,
+            self._pixel_aspect,
+        )
+
+        if self._last_placement is None or self._last_placement[0] != key:
+            self._last_placement = key, self._placement()
+
+        return self._last_placement[1]
+
+    def _placement(self) -> ViewPlacement | None:
         placement = super().placement()
 
         if placement is None:
@@ -154,7 +175,8 @@ class MpvVideoSurface(MpvSurfaceView, SoftwareVideoSurface):
         return True
 
     def present_frame(self, slot) -> None:
-        self.present_rgb32(slot.pixels, slot.width, slot.height)
+        image_format = QImage.Format_RGBX8888 if slot.is_rgba else QImage.Format_RGB32
+        self.present_rgb32(slot.pixels, slot.width, slot.height, image_format)
 
     def keep_frame(self, rendered) -> None:
         """The frame on show stays as its video goes: its pixels already do."""

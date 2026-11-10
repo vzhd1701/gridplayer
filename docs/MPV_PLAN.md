@@ -689,8 +689,9 @@ CPU took 0.5-5.5 s, against 0.2-1.1 s on the key frame, which is about what VLC 
     reads take `_telling` and look at `_is_closing` inside it, as everything sent to mpv does. Run again with the fix and the same checks: both
     20-minute churns pass, 2915 and 2819 videos opened. Before, the crash came in 2 minutes
   - Windows 20 minutes on both drivers and Linux 10 minutes under an address sanitizer pass. The memory with all closed: 10.22
-- [ ] 10.2 Real window drags on Windows: port `drag_probe.py` to the app, 0 backward moves.
+- [x] 10.2 Real window drags on Windows: port `drag_probe.py` to the app, 0 backward moves.
   This one moves the mouse, so it runs when you say
+  - 2026-11-10: tried by you, by hand: drags work as they should.
 - [ ] 10.3 By hand on a screen with X11 and Linux, if you have such a machine. Handoff open
   question 1
 - [ ] 10.4 AMD on Windows and any other GPU we can reach. HEVC and 10-bit through VAAPI needs
@@ -713,8 +714,23 @@ CPU took 0.5-5.5 s, against 0.2-1.1 s on the key frame, which is about what VLC 
     likely not the lock, and not seen with Software MPV or VLC.
   - **2026-11-10:** the same module now also gives back what glibc keeps freed, 2 s after a video is let go of (`VLC.md`, 10.29):
     Hardware MPV churn, all closed after 10 minutes, 519 MB (1105 with the cap alone).
-- [ ] 10.6 `churn.py`'s 30 KB per close on X11: check it's bounded
-- [ ] 10.7 GLES: `GL_BGRA` needs desktop GL as written, read RGBA where it's missing
+- [x] 10.6 `churn.py`'s 30 KB per close on X11: check it's bounded
+  - **Run 2026-11-10, `test_gpu`, real X11, the mix, 25 minutes each (the runner's limit), all closed every 5 minutes.**
+    The 30 KB was the prototype's, 369 to 444 MB in 10 minutes. Memory with everything closed, started at 80 MB:
+    - Software MPV, fully software now, no Mesa in it: 287, 454, 540, 511 MB, while playing 766, 923, 1091, 1050. It
+      levels off and comes back down: bounded, what glibc and libmpv keep of what was used most.
+    - Hardware MPV: 339, 440, 463, 576 MB, still going up, about 80 MB each 5 minutes with 6-8 playing, which is 10.21's
+      growth in Mesa while playing on this GPU (790 MB an hour at 9), not something kept per close. On Windows the
+      20-minute churns of 10.1 came back down with everything closed on both drivers.
+- [x] 10.7 GLES: `GL_BGRA` needs desktop GL as written, read RGBA where it's missing
+  - **Built 2026-11-10.** On Linux the render thread's EGL context is OpenGL ES where a driver offers no desktop OpenGL, or
+    no config or context for it, or where Qt's own is ES, as with the Fast output a context shares only with one of its kind (ES 2 asked, Mesa gives 3.x).
+    There, textures are made `GL_RGBA` (ES 2 takes no sized format), and frames are read back BGRA where the driver has
+    `GL_EXT_read_format_bgra`, as Mesa's does, else RGBA, painted as `Format_RGBX8888`. PyQt5 has no GL functions for an ES
+    context, so Qt's side (the Fast output's grid surface, deleting textures) takes the 7 calls it uses through ctypes there.
+    Windows (WGL) and macOS (Qt's) are desktop OpenGL as before.
+  - Checked on `test_gpu`, a clip red on the left and blue on the right: Steady with desktop OpenGL refused, read back BGRA
+    and, forced, RGBA, the right colours both ways; Fast on the real X11 screen with Qt on ES, drawn and read right.
 - [ ] 10.8 Render thread stall watchdog: only if something has needed it by then
 - [x] 10.9 Cells not on show, as in Single Mode, still render and read back every frame. Render
   them small or not at all. Done: a hidden cell's frames are taken with `skip_rendering`, so it
@@ -722,8 +738,15 @@ CPU took 0.5-5.5 s, against 0.2-1.1 s on the key frame, which is about what VLC 
   it's shown again, about 50 ms later. Not before its first frame, as that's what says it has
   loaded, and not while a screenshot waits on one. `mpv_hidden_cells`: 3 cells, 4 s in Single
   Mode, 100 draws for the one on show and 0 for the others, on both MPV drivers
-- [ ] 10.10 `load_scripts=no` leaves mpv's built-in scripts running, about 5 Lua threads per
+- [x] 10.10 `load_scripts=no` leaves mpv's built-in scripts running, about 5 Lua threads per
   video. They cost no measured memory, but each has threads: check whether to turn them off
+  - **Done 2026-11-10: off.** With osc and ytdl already off in libmpv, what runs is stats, the console and, from 0.39, the
+    commands, select and positioning scripts the menus use; nothing here uses any of them. Their `load-*` options are set off,
+    those this libmpv has: one it lacks stops mpv starting, and nothing can be asked before an mpv has started, so an mpv
+    started for it reads the option list once a run (3-4 ms). The console's option took a new name in 0.39; the old one is
+    set only where the new isn't there.
+  - 8 videos of 1080p playing: Windows, libmpv 0.41, 178 threads to 138 and private memory 3127 to 3081 MB; `test_gpu`,
+    93 threads to 53 and 542 to 533 MB. 5 threads a video.
 - [x] 10.11 **Your decision:** a low VRAM option (`-copy` or software for new videos when over
   budget), and an mpv decoder setting
   - **Decided (2026-11-09): a setting with Auto / On / Off.** As understood: decoding on the CPU instead of the GPU, Auto
@@ -830,9 +853,21 @@ CPU took 0.5-5.5 s, against 0.2-1.1 s on the key frame, which is about what VLC 
   and by the window's `away_changed`, as coming back it can be shown before the window says it's no longer minimized. `mpv_hidden_cells`:
   minimized and in the tray, 0 draws in 4 s, played at full pace, drawn again 50 ms after. On the offscreen platform only: a real window
   on Windows and Linux not tried
-- [ ] 10.19 Small savings the review found, by reckoning and not yet measured, for when the CPU matters more than the code: each render round visits
+- [x] 10.19 Small savings the review found, by reckoning and not yet measured, for when the CPU matters more than the code: each render round visits
   every video, not just those with a frame (at most about 4% of a core at 64 cells); the placement is worked out on each paint (about 1% at 9
   cells). 4.2: the time is still sent by mpv each frame, so the saving of `notime` isn't had yet
+  - **Measured and done 2026-11-10, Windows offscreen.**
+  - The render round: left as it is. At 64 cells of 360p60 a round's visits to videos with nothing to do cost 0.4-0.5% of
+    the render thread, 1.2-1.4 µs each, 3,500 a second: the thread makes only about 86 rounds a second there, 97% of its
+    time rendering.
+  - The placement: kept for the cell until anything it's worked out from changes (frame size, track size, cell size,
+    screen scale, view, turn, pixel shape). It was 23-30 µs a paint, about 1% of a core at 9 cells of 1080p60, 390 paints a
+    second: painting went from 8.1 to 7.5% of a core on Software MPV and 7.2 to 6.3% on Hardware MPV.
+  - The time: mpv says it only while paused, where a frame step or a seek has to be told at once. Playing, it's asked for
+    every 200 ms, what's sent on in any case, and as a seek lands, rather than an event with every frame for the event
+    thread to take: the `notime` of the load tests, 140% to 134% of a core at 36 cells. A time read that hasn't moved,
+    a stream waiting for more, isn't sent on, as mpv said nothing then either; one where a seek landed always is. A live
+    stream stopped or played by the app, with mpv's pause left alone, goes by the same rule.
 - [x] 10.20 Done in 9.6. File lengths in lists are read by VLC. With only libmpv there, lists show none. libmpv could read them too, in a
   process of its own as now
 - [ ] 10.21 Linux memory grows while playing on `test_gpu`: Hardware MPV 790 MB an hour at 9 videos, Software 244 at 4, VLC 48. The C control
@@ -856,6 +891,21 @@ CPU took 0.5-5.5 s, against 0.2-1.1 s on the key frame, which is about what VLC 
     the CPU", Hardware MPV's only: fully software MPV has no direct rendering.
 - 10.23-10.28 are VLC's own, not MPV's: moved to `VLC.md` with their numbers (10.23 an overnight load freeze on Linux,
   10.24 and 10.25 single-process freezes, 10.26 VLC's waits, 10.27 32-bit address space, 10.28 single against multi-process; all done).
+- [ ] 10.30 **Later, your call (2026-11-11):** what goes by the time to the frame, rather than a setting for finer time. The time
+  reaches the app once in 200 ms while playing (4.2, and since 10.19 asked for rather than sent by mpv), on VLC as well; paused,
+  every change. Asked whether per-frame time should be a setting: no, as it was never had and would cost CPU everywhere for
+  two features. What could show the 200 ms:
+  - A-B loop: the end is checked on each time report (`VideoBlock`, `self.time > self.loop_end`), so it can play up to
+    200 ms past B. On MPV, mpv's own `ab-loop-a` / `ab-loop-b` turn back at the frame; on VLC, a timer to the end from the
+    last report and the rate.
+  - SponsorBlock: whether a skip starts late, by how its skips are timed. Not looked at yet.
+  - First: measure how far past B each driver goes, and how late a skip starts.
+- [ ] 10.31 **Later, an idea (2026-11-11):** playback stats for a cell, drawn by the app: dropped frames, what decodes it (GPU or
+  CPU, and which), frames a second, what's cached. What mpv's own stats script shows, which stays off (10.10): it needs mpv's
+  key bindings, which the app has off, draws mpv's panel into the picture, and costs a thread a video. Read from mpv's
+  properties only while shown, so nothing until then, and VLC's figures where it has them. Asked whether mpv's scripts
+  should be a setting: no, none of them can be reached in the app, and users' own scripts stay off as they'd seek and
+  change tracks behind the app's back, once for each video.
 - [x] 10.14 Don't fill the cell black before drawing a picture that covers it: app CPU 61% to 47% at
   1x1080p. Applies to VLC's software drivers too, so test those. Done: only the bars beside the
   picture are filled, reaching a pixel under its edge so a pixel it only partly covers at a screen
@@ -1052,6 +1102,12 @@ core less while the decoder keeps up, at the same frame rates. Suggested words: 
 
 Newest first. What was finished and seen working, and anything that changed the plan.
 
+- 2026-11-10: the small ones of Stage 10. 10.2 tried by you, drags fine. 10.10 mpv's own scripts off, 5 threads a video.
+  10.7 OpenGL ES on Linux where it's all there is, for both outputs. 10.19 measured: the placement kept and the time asked
+  for while playing; the render round not worth changing. 10.6 bounded on Software MPV; Hardware MPV's growth on
+  `test_gpu` is 10.21's Mesa. `stream_stalls` on `test_gpu` was the scenario's: there the
+  proxy tells of the refusal at once, and the app's one reload came and went before the scenario saw the video stop. It
+  now waits for the reload from the refusal on; passes there on both MPV drivers, and on Windows with VLC too.
 - 2026-11-10: 10.11, "Decode on the CPU" has Auto, the default: a new video decodes on the CPU when there's no room left for
   it in video memory, read on Windows (DXGI) and Linux with NVIDIA (NVML). Fixed with it: Software MPV left a phone video
   unturned until a transform or reload.
