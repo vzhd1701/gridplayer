@@ -167,6 +167,17 @@ ADVANCED_FIELDS: tuple[SettingField, ...] = (
             " it can skip.",
         ),
     ),
+    CheckboxField(
+        settings_key="player/mpv_direct_rendering",
+        label=translate("SettingsDialog", "Hand frames straight to the GPU"),
+        enabled_when=When("player/video_driver", MPV_DRIVERS),
+        tooltip=translate(
+            "SettingsDialog",
+            "When the CPU decodes, this saves copying each frame. Turn it off if"
+            " memory keeps growing as you close videos, as it can on NVIDIA. Works"
+            " for videos opened after.",
+        ),
+    ),
     ComboField(
         settings_key="player/mpv_seek_precision",
         label=translate("SettingsDialog", "Seeking"),

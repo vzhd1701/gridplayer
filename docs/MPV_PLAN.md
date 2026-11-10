@@ -775,7 +775,7 @@ CPU took 0.5-5.5 s, against 0.2-1.1 s on the key frame, which is about what VLC 
 - [ ] 10.21 Linux memory grows while playing on `test_gpu`: Hardware MPV 790 MB an hour at 9 videos, Software 244 at 4, VLC 48. The C control
   grows as fast with no Python, and `heaptrack` puts it in Mesa 25.0.7's `libgallium`, the Haswell driver. Try a newer Mesa, and another GPU
   on Linux with 10.4. Nothing for the app to change unless it's found everywhere
-- [ ] 10.22 **Your decision:** Software MPV on Windows keeps about 1.5 MB for each video closed, mpv's direct rendering buffers: 60 to 1838 MB
+- [x] 10.22 **Your decision:** Software MPV on Windows keeps about 1.5 MB for each video closed, mpv's direct rendering buffers: 60 to 1838 MB
   in a 20-minute churn with everything closed. With `vd-lavc-dr=no` it stays at 340-400 MB. That cost frames on Linux, 19 against 25, and
   wasn't measured on Windows. Lists playing one video after another would meet it. Hardware MPV keeps about 230 KB a video, not looked into
   - Measured on Windows: off costs nothing while the CPU keeps up (9 and 16x1080p60, 4x4K60, 16 mixed: the same fps, CPU +0-10%), and 13-19% of
@@ -785,6 +785,11 @@ CPU took 0.5-5.5 s, against 0.2-1.1 s on the key frame, which is about what VLC 
   - **Decided (2026-11-09): direct rendering stays on by default, with a setting to turn it off.** It only matters where the CPU
     decodes and OpenGL draws: libmpv's software render backend has no `get_image`, so the fully software mode of 10.17 has no
     direct rendering at all. So the setting belongs with 10.17's "Decode on the CPU" and Hardware MPV's own fallback to the CPU.
+  - **Built 2026-11-10:** "Hand frames straight to the GPU" on the Video Decoder page under the MPV drivers, on by default
+    (`player/mpv_direct_rendering`). Off sends `vd-lavc-dr=no`; on leaves mpv its default. It goes for videos opened after, as mpv
+    reads it only as a decoder starts. Both MPV drivers, as Hardware MPV falls back to the CPU by itself (deinterlacing, a codec the
+    GPU lacks). `churn.py` takes `DR=0`. Checked on Windows, NVIDIA, Software MPV churn, 6 minutes, the mix, all closed after 5 and 6
+    minutes (start 60 MB): on 1189 / 1229 MB, off 530 / 471, threads back to 23-24 both. To group with 10.11 and 10.17 when built.
 - 10.23-10.28 are VLC's own, not MPV's: moved to `VLC.md` with their numbers (10.23 an overnight load freeze on Linux,
   10.24 and 10.25 single-process freezes, 10.26 VLC's waits, 10.27 32-bit address space, 10.28 single against multi-process; all done).
 - [x] 10.14 Don't fill the cell black before drawing a picture that covers it: app CPU 61% to 47% at
@@ -983,6 +988,7 @@ core less while the decoder keeps up, at the same frame rates. Suggested words: 
 
 Newest first. What was finished and seen working, and anything that changed the plan.
 
+- 2026-11-10: 10.22, a setting to turn off MPV's direct rendering, "Hand frames straight to the GPU", on by default. Off, Software MPV on Windows with NVIDIA no longer keeps about 1.5 MB per video closed: 6-minute churn, all closed, 471 MB against 1229.
 - 2026-11-09: 10.26, VLC in a single process on Windows no longer burns up to 13 cores with 15 videos: VLC 3's waits pointed at Windows' own (`VLC_WAITS.md`). Checked in the 32-bit app too; found there 10.27, 32-bit single process out of address space with many videos, and fixed Hardware VLC's window check failing in 32-bit.
 - 2026-11-09: 10.28, VLC single process against multi-process on Windows with 10.26 in: the same frame rate and CPU, a little less memory single, slower loading of many videos. Processes tooltip and README no longer warn of freezes past 4-6 videos.
 - 2026-11-09: 10.16, the overnight run. An MPV crash closing a video as it loads, fixed (10.1). New: 10.21 Mesa's memory on `test_gpu`, 10.22 Software MPV's direct rendering on Windows, 10.23 VLC. The limits held over 3 runs, and VLC's freeze at 36 cells is Linux's only.

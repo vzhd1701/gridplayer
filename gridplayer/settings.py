@@ -75,6 +75,7 @@ _default_settings = {
     "player/video_driver": VideoDriver.VLC_HW,
     "player/video_driver_players": 4,
     "player/mpv_skip_frames": False,
+    "player/mpv_direct_rendering": True,
     "player/mpv_seek_precision": SeekPrecision.EXACT_MARKS,
     "player/mpv_output": MpvOutput.READBACK,
     "player/video_init_timeout": 120,

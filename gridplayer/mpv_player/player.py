@@ -318,6 +318,7 @@ class MpvPlayer(QObject):
         wake_renderer,
         subtitle_style: dict,
         skip_frames: bool = False,
+        direct_rendering: bool = True,
         log_level: int = DISABLED,
     ):
         super().__init__()
@@ -328,6 +329,7 @@ class MpvPlayer(QObject):
         self.media_input = media_input
         self._hwdec = hwdec
         self._skip_frames = skip_frames
+        self._direct_rendering = direct_rendering
         self._log_level = log_level
         self._wake_renderer = wake_renderer
         self._subtitle_style = subtitle_style
@@ -470,6 +472,12 @@ class MpvPlayer(QObject):
             # the video just plays on.
             options["ao"] = ",".join(_LINUX_AUDIO_OUTPUTS)
             options["audio_fallback_to_null"] = True
+
+        # Where the CPU decodes into what OpenGL draws from. NVIDIA's driver on Windows
+        # keeps about 1.5 MB of those buffers for each video closed; without them, a
+        # copy a frame, which costs only once the CPU is short. On is mpv's own default.
+        if not self._direct_rendering:
+            options["vd_lavc_dr"] = "no"
 
         if media_input.is_audio_only:
             options["vid"] = "no"

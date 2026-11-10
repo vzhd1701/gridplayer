@@ -423,6 +423,7 @@ def _mpv_module():
 
 def _player(
     skip_frames=False,
+    direct_rendering=True,
     is_live=False,
     is_audio_only=False,
     hwdec="auto",
@@ -447,6 +448,7 @@ def _player(
         wake_renderer=MagicMock(),
         subtitle_style=SUBTITLE_STYLE_DEFAULTS,
         skip_frames=skip_frames,
+        direct_rendering=direct_rendering,
     )
 
 
@@ -897,6 +899,11 @@ def test_options_start_paused():
 def test_options_skip_frames_only_when_asked():
     assert _player().mpv.options["vd_lavc_skipframe"] == "default"
     assert _player(skip_frames=True).mpv.options["vd_lavc_skipframe"] == "nonref"
+
+
+def test_direct_rendering_is_left_to_mpv_unless_turned_off():
+    assert "vd_lavc_dr" not in _player().mpv.options
+    assert _player(direct_rendering=False).mpv.options["vd_lavc_dr"] == "no"
 
 
 def test_skipping_frames_switches_while_playing():

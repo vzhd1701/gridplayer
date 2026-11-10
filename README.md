@@ -191,6 +191,10 @@ When there are more videos than the decoder can keep up with, "Skip frames to pl
 makes MPV play about half the frames of each video instead of slowing down. It doesn't help videos
 with no frames it can skip.
 
+If memory keeps growing as you close videos with MPV, as it can on NVIDIA when the CPU decodes,
+turn off "Hand frames straight to the GPU". It costs a little more CPU, which only shows once the
+CPU can't keep up.
+
 ### When a mode isn't available
 
 Settings show modes that can't run greyed out, with the reason. Here's how to fix each one.

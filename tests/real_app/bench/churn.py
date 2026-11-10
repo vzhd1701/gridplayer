@@ -1,7 +1,8 @@
 """Open, close, reload and seek cells as fast as the app takes them while the others play, to catch
 what goes wrong when things go away at the wrong moment. A scenario for tests.real_app.run.
 
-Environment: DRIVER, MINUTES, SEED, MAX_CELLS, CLIPS (see common.clips_for).
+Environment: DRIVER, MINUTES, SEED, MAX_CELLS, CLIPS (see common.clips_for), DR=0 (MPV's direct
+rendering off).
 
 Every few minutes it closes everything and looks at what's left, which is where a leak shows. Writes
 churn.jsonl as it goes. A process that dies leaves its exit code, and a hang (nothing from the GUI
@@ -22,6 +23,8 @@ MINUTES = float(os.environ.get("MINUTES", "20"))
 SEED = int(os.environ.get("SEED", "1"))
 MAX_CELLS = int(os.environ.get("MAX_CELLS", "8"))
 CLIPS = os.environ.get("CLIPS", "mix")
+# MPV's "Hand frames straight to the GPU", DR=0 to turn it off
+DIRECT_RENDERING = os.environ.get("DR", "1") != "0"
 
 HANG_S = 45
 EXIT_HUNG = 9
@@ -44,6 +47,7 @@ OPERATIONS = {
 
 SETTINGS = {
     "player/video_driver": DRIVER,
+    "player/mpv_direct_rendering": DIRECT_RENDERING,
     "playlist/warn_many_cells": False,
 }
 

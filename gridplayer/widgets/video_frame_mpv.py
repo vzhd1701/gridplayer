@@ -278,6 +278,7 @@ class VideoDriverMpv(VLCVideoDriver):
                 media_input,
                 hwdec=self._hwdec,
                 skip_frames=Settings().get("player/mpv_skip_frames"),
+                direct_rendering=Settings().get("player/mpv_direct_rendering"),
                 log_level=Settings().get("logging/log_level_mpv"),
                 subtitle_style=current_subtitle_style(),
                 wake_renderer=self._render_service.wake,
