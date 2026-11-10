@@ -226,6 +226,21 @@ def _turns_and_flips(d):
     for file_turn in (VideoTransform.NONE, *FILE_TURNS):
         block = _open(d, _corners_clip(d, file_turn))
 
+        # before any transform is asked for, which opens it again with its track
+        # known: the software renderer turns it by a filter set as it preloads
+        d.wait_until(
+            lambda block=block: (
+                _surface(block).has_frame() and _corners_on_show(block) is not None
+            ),
+            "it's shown",
+        )
+        d.wait(0.3)
+        d.check(
+            f"file {file_turn.name}: as first opened",
+            _corners_on_show(block) == _reference(VideoTransform.NONE, file_turn),
+            _corners_on_show(block),
+        )
+
         for transform in (
             VideoTransform.NONE,
             VideoTransform.ROTATE_90,

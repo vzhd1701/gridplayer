@@ -1127,7 +1127,8 @@ class MpvPlayer(QObject):
         ):
             audio_id = None
 
-        shown_id = tracks.cur_video_track_id if video_id is None else video_id
+        # nothing is selected yet as it preloads
+        shown_id = self._file_video_track_id() if video_id is None else video_id
         self._shown_video_track = tracks.video_tracks.get(shown_id)
 
         picks = {"vid": video_id, "aid": audio_id}
@@ -1154,6 +1155,19 @@ class MpvPlayer(QObject):
 
         for option, value in options:
             self.mpv.command("set", option, value)
+
+    def _file_video_track_id(self) -> int | None:
+        """The video track mpv takes when left alone: the first the file marks,
+        or the first."""
+
+        listed = [
+            track
+            for track in self.mpv.track_list or []
+            if track.get("type") == "video" and not track.get("albumart")
+        ]
+        marked = [track for track in listed if track.get("default")]
+
+        return (marked or listed or [{}])[0].get("id")
 
     def _pick_turn(self) -> None:
         """The software renderer's turn, before the picture starts: waited for,

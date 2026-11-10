@@ -3286,9 +3286,8 @@ def _filters_sent(player) -> list[str]:
 
 def _software_player(file_turn=0, **video):
     player = _player(is_software=True, hwdec="no", **video)
-    player.mpv.track_list = [
-        {"type": "video", "id": 1, "selected": True, "demux-rotation": file_turn}
-    ]
+    # as mpv lists it while it preloads: nothing selected yet
+    player.mpv.track_list = [{"type": "video", "id": 1, "demux-rotation": file_turn}]
 
     return player
 
@@ -3337,6 +3336,22 @@ def test_software_turns_by_the_video_track_it_shows():
     _preloaded(player)
 
     assert _filters_sent(player) == ["lavfi=[transpose=clock]"]
+
+
+@pytest.mark.parametrize(
+    ("listed", "taken"),
+    [
+        ([{"type": "video", "id": 1}, {"type": "video", "id": 2}], 1),
+        ([{"type": "video", "id": 1}, {"type": "video", "id": 2, "default": True}], 2),
+        ([{"type": "video", "id": 1, "albumart": True}, {"type": "video", "id": 2}], 2),
+        ([{"type": "audio", "id": 1}], None),
+    ],
+)
+def test_the_video_track_mpv_takes_when_left_alone(listed, taken):
+    player = _player()
+    player.mpv.track_list = listed
+
+    assert player._file_video_track_id() == taken
 
 
 def test_opengl_leaves_the_files_turn_to_mpv():
