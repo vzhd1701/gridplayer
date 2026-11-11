@@ -11,7 +11,7 @@ from gridplayer.player.managers.base import ManagerBase
 from gridplayer.settings import Settings
 from gridplayer.utils.media_libs import MediaLib, lib_of_driver, lib_problem_text
 from gridplayer.utils.qt import translate
-from gridplayer.utils.video_driver import load_session_driver
+from gridplayer.utils.video_driver import is_mpv_window_output, load_session_driver
 from gridplayer.widgets.video_frame_dummy import VideoFrameDummy
 
 
@@ -118,19 +118,27 @@ class VideoDriverManager(ManagerBase):
             self._mpv_render_service = MpvRenderService(parent=self)
 
         # Software MPV decodes and draws on the CPU, with libmpv's software
-        # renderer. Hardware MPV draws with OpenGL, and decodes on the GPU unless
-        # told not to, or on Auto, when there's no room left there.
+        # renderer. Hardware MPV draws with OpenGL, or with Direct into a window
+        # of its own, and decodes on the GPU unless told not to, or on Auto,
+        # when there's no room left there.
         is_software = video_driver == VideoDriver.MPV_SW
         cpu_decoding = Settings().get("player/mpv_cpu_decoding")
         is_cpu_decoding = is_software or cpu_decoding == MpvCpuDecoding.ON
 
-        return partial(
-            VideoFrameMpv,
-            render_service=self._mpv_render_service,
-            hwdec="no" if is_cpu_decoding else "auto",
-            is_software=is_software,
-            cpu_when_low=cpu_decoding == MpvCpuDecoding.AUTO,
-        )
+        options = {
+            "render_service": self._mpv_render_service,
+            "hwdec": "no" if is_cpu_decoding else "auto",
+            "cpu_when_low": cpu_decoding == MpvCpuDecoding.AUTO,
+        }
+
+        if not is_software and is_mpv_window_output(
+            Settings().get("player/mpv_output")
+        ):
+            from gridplayer.widgets.video_frame_mpv_window import VideoFrameMpvWindow
+
+            return partial(VideoFrameMpvWindow, **options)
+
+        return partial(VideoFrameMpv, is_software=is_software, **options)
 
     def cleanup(self):
         if self._process_manager:

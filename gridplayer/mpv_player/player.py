@@ -411,6 +411,7 @@ class MpvPlayer(QObject):
         is_software: bool = False,
         cpu_when_low: bool = False,
         log_level: int = DISABLED,
+        wid: int | None = None,
     ):
         super().__init__()
 
@@ -436,6 +437,9 @@ class MpvPlayer(QObject):
         # the whole of the video filters, as last sent
         self._filters_sent = ""
         self._log_level = log_level
+        # mpv drawing into this native window itself, with its own output,
+        # rather than through the render API: see video_frame_mpv_window
+        self._wid = wid
         self._wake_renderer = wake_renderer
         self._subtitle_style = subtitle_style
         self._subtitle_view = SubtitleView()
@@ -601,6 +605,11 @@ class MpvPlayer(QObject):
         if not self._direct_rendering:
             options["vd_lavc_dr"] = "no"
 
+        if self._wid is not None:
+            # the render API's, see VideoRenderer._render: mpv's own timing here
+            del options["video_timing_offset"]
+            options.update(self._own_window_options())
+
         if media_input.is_audio_only:
             options["vid"] = "no"
 
@@ -636,6 +645,23 @@ class MpvPlayer(QObject):
         # a random start is only known with the length: see _pick_random_start
         if video.current_position and not media_input.is_live:
             options["start"] = str(video.current_position / 1000)
+
+        return options
+
+    def _own_window_options(self) -> dict:
+        """mpv's own output, into the window it's given: on Windows Direct3D 11,
+        where hardware decoding stays on the GPU (d3d11va), unlike into OpenGL."""
+
+        options = {
+            "vo": "gpu",
+            "wid": self._wid,
+            # its own window's: the cell's overlay, on top, takes the mouse
+            "input_cursor": False,
+            "cursor_autohide": "no",
+        }
+
+        if env.IS_WINDOWS:
+            options["gpu_api"] = "d3d11"
 
         return options
 

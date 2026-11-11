@@ -168,3 +168,19 @@ def test_the_dialog_is_gone_before_the_settings_are_applied(mocker):
 
     assert alive == [False]
     assert manager._keep_parent.findChildren(QDialog) == []
+
+
+def test_a_change_of_mpv_output_opens_the_videos_again():
+    from gridplayer.params.static import MpvOutput
+
+    Settings().set("player/mpv_output", MpvOutput.READBACK)
+    previous = Settings().get_all()
+    Settings().set("player/mpv_output", MpvOutput.WINDOW)
+
+    manager = _manager(lambda *_: None)
+    manager._ctx.video_blocks = []
+
+    try:
+        assert manager._is_reload_needed(previous)
+    finally:
+        Settings().set("player/mpv_output", _default_settings["player/mpv_output"])

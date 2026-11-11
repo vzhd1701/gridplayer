@@ -137,6 +137,13 @@ def is_mpv_gl_output(output: MpvOutput, picked: VideoDriver) -> bool:
     )
 
 
+def is_mpv_window_output(output: MpvOutput) -> bool:
+    """Whether Hardware MPV draws into a native window a cell itself: only on
+    Windows so far, Stage 14."""
+
+    return env.IS_WINDOWS and output == MpvOutput.WINDOW
+
+
 def load_session_driver(driver: VideoDriver) -> VideoDriver | None:
     """The driver to run with, its library loaded. None if nothing can play."""
 

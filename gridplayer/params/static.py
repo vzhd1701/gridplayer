@@ -545,6 +545,8 @@ class MpvOutput(AutoName):
 
     READBACK = auto()
     GL = auto()
+    # mpv draws into a native window a cell itself, with its own output
+    WINDOW = auto()
 
 
 class DisplayServer(AutoName):

@@ -9,19 +9,19 @@
                                         |
     GUI thread: a surface paints the newest finished frame with QPainter
 
-That is the "Steady" output, with no GL in the window. Painted like any other
+That is the "Copy" output, with no GL in the window. Painted like any other
 widget, a frame arrives with the size change it goes with, where a GL one
 reaches the screen in its own time, sometimes for a size the window no longer
 has: that vibrates during a real window resize, and nothing on the GL side
 fixed it.
 
-The "Fast" output reads nothing back. The render thread's context shares with
+The "Shared" output reads nothing back. The render thread's context shares with
 Qt's (QtShareGroup), the triple buffer holds textures, finished once a round,
 and a QOpenGLWidget draws the newest: much less CPU, the vibration and all.
 
 Software MPV has no GL at all. A thread of its own has libmpv's software
 renderer scale and convert each frame on the CPU, straight into the triple
-buffer's pixels, painted as the Steady output's are.
+buffer's pixels, painted as the Copy output's are.
 
 What each thread may do, most bugs here being one of these broken:
 
@@ -49,6 +49,7 @@ import time
 
 from PyQt5.QtCore import QObject, Qt, QThread, QTimer, pyqtSignal
 from PyQt5.QtGui import QGuiApplication, QOffscreenSurface, QSurfaceFormat
+from PyQt5.QtWidgets import QWidget
 
 from gridplayer.mpv_player.gl_context import (
     GLContextError,
@@ -873,10 +874,13 @@ class MpvRenderService(QObject):
 
         # what is on the grid, each told when it has a frame to show
         self._listeners: dict[RenderedVideo, object] = {}
+        # and what draws into a window of its own, with no render thread
+        self._own_window_players: set = set()
 
         # A QObject goes on the thread it belongs to, which isn't the one that
-        # terminates it, so this holds on to them until that is done.
-        self._players_alive = set()
+        # terminates it, so this holds on to them until that is done, and to
+        # the window one draws into, which it can still be drawing into then.
+        self._players_alive: dict = {}
 
     def _join_qt_share_group(self) -> QtShareGroup | None:
         if not env.MPV_GL_OUTPUT:
@@ -924,14 +928,36 @@ class MpvRenderService(QObject):
         if self._renderer is None:
             self._renderer = self._start_renderer(video.is_software)
 
-        self._players_alive.add(video.player)
-        video.player.terminated.connect(self._forget_player, Qt.QueuedConnection)
+        self._keep_alive(video.player)
 
         self._listeners[video] = listener
         self._renderer.add(video)
 
+    def add_own_window(self, player) -> None:
+        """A player drawing into a window of its own: told of settings, kept
+        alive until it's terminated, as one the render thread draws."""
+
+        self._keep_alive(player)
+        self._own_window_players.add(player)
+
+    def remove_own_window(self, player, window: QWidget) -> None:
+        """Its window kept, hidden, until mpv is done with it."""
+
+        self._own_window_players.discard(player)
+
+        window.hide()
+        window.setParent(None)
+        self._players_alive[player] = window
+
+    def _keep_alive(self, player) -> None:
+        self._players_alive[player] = None
+        player.terminated.connect(self._forget_player, Qt.QueuedConnection)
+
     def _forget_player(self, player) -> None:
-        self._players_alive.discard(player)
+        window = self._players_alive.pop(player, None)
+
+        if window is not None:
+            window.deleteLater()
 
     def remove(self, video: RenderedVideo) -> None:
         self._listeners.pop(video, None)
@@ -943,17 +969,22 @@ class MpvRenderService(QObject):
         if self._renderer is not None:
             self._renderer.wake()
 
+    def _players(self) -> list:
+        return [video.player for video in self._listeners] + list(
+            self._own_window_players
+        )
+
     def set_log_level(self, log_level: int) -> None:
-        for video in self._listeners:
-            video.player.set_log_level(log_level)
+        for player in self._players():
+            player.set_log_level(log_level)
 
     def set_skip_frames(self, is_skipping: bool) -> None:
-        for video in self._listeners:
-            video.player.set_skip_frames(is_skipping)
+        for player in self._players():
+            player.set_skip_frames(is_skipping)
 
     def set_subtitle_style(self, style: dict) -> None:
-        for video in self._listeners:
-            video.player.set_subtitle_style(style)
+        for player in self._players():
+            player.set_subtitle_style(style)
 
     def cleanup(self) -> None:
         self._listeners.clear()

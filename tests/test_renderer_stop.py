@@ -35,6 +35,7 @@ def _service_with(the_renderer):
     service = MpvRenderService.__new__(MpvRenderService)
     service._log = Mock()
     service._listeners = {}
+    service._own_window_players = set()
     service._renderer = the_renderer
     return service
 

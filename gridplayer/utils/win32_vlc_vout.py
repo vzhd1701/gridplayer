@@ -228,6 +228,14 @@ def _load_user32():
         user32.GetWindowLongPtrW = user32.GetWindowLongW
     user32.GetWindowLongPtrW.argtypes = [wintypes.HWND, ctypes.c_int]
     user32.GetWindowLongPtrW.restype = ctypes.c_ssize_t
+    if not hasattr(user32, "SetWindowLongPtrW"):
+        user32.SetWindowLongPtrW = user32.SetWindowLongW
+    user32.SetWindowLongPtrW.argtypes = [
+        wintypes.HWND,
+        ctypes.c_int,
+        ctypes.c_ssize_t,
+    ]
+    user32.SetWindowLongPtrW.restype = ctypes.c_ssize_t
     user32.SetWindowPos.argtypes = [
         wintypes.HWND,
         wintypes.HWND,
@@ -241,6 +249,15 @@ def _load_user32():
 
     _user32 = user32
     return _user32
+
+
+def clear_window_style(hwnd: int, bits: int) -> None:
+    """Take style bits (WS_*) off a window."""
+
+    user32 = _load_user32()
+
+    style = user32.GetWindowLongPtrW(hwnd, _GWL_STYLE)
+    user32.SetWindowLongPtrW(hwnd, _GWL_STYLE, style & ~bits)
 
 
 def _children(hwnd: int) -> list[int]:

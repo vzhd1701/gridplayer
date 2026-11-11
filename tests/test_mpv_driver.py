@@ -64,6 +64,7 @@ from gridplayer.mpv_player.subtitles import (
 from gridplayer.params.static import (
     AudioChannelMode,
     MpvCpuDecoding,
+    MpvOutput,
     SeekAim,
     SeekPrecision,
     SubtitleOutline,
@@ -488,6 +489,7 @@ def _player(
     uri="file.mp4",
     media=None,
     cpu_when_low=False,
+    wid=None,
     **video,
 ):
     """`media`: more of the MediaInput."""
@@ -510,6 +512,7 @@ def _player(
         direct_rendering=direct_rendering,
         is_software=is_software,
         cpu_when_low=cpu_when_low,
+        wid=wid,
     )
 
 
@@ -1061,6 +1064,34 @@ def test_options_on_linux_try_pulse_before_pipewires_own(monkeypatch):
     monkeypatch.setattr(player_module.env, "IS_LINUX", True)
 
     assert _player().mpv.options["ao"] == "pulse,pipewire,alsa"
+
+
+def test_options_into_its_own_window_on_windows(monkeypatch):
+    monkeypatch.setattr(player_module.env, "IS_WINDOWS", True)
+
+    options = _player(wid=1234).mpv.options
+
+    assert options["vo"] == "gpu"
+    assert options["gpu_api"] == "d3d11"
+    assert options["wid"] == 1234
+    # the overlay over it takes the mouse
+    assert options["input_cursor"] is False
+    assert options["cursor_autohide"] == "no"
+    # the render API's
+    assert "video_timing_offset" not in options
+
+
+def test_options_into_its_own_window_elsewhere_leave_the_api_to_mpv(monkeypatch):
+    monkeypatch.setattr(player_module.env, "IS_WINDOWS", False)
+
+    assert "gpu_api" not in _player(wid=1234).mpv.options
+
+
+def test_options_through_the_render_api_by_default():
+    options = _player().mpv.options
+
+    assert options["vo"] == "libmpv"
+    assert "wid" not in options
 
 
 def test_options_start_where_it_was_left():
@@ -2417,6 +2448,33 @@ def test_manager_picks_how_mpv_decodes_and_draws(
     assert frame.keywords["cpu_when_low"] is cpu_when_low
 
 
+@pytest.mark.parametrize(
+    ("driver", "is_windows", "frame_class"),
+    [
+        (VideoDriver.MPV_HW, True, "VideoFrameMpvWindow"),
+        # libmpv's software renderer has no window of its own to draw into
+        (VideoDriver.MPV_SW, True, "VideoFrameMpv"),
+        # not yet: Stage 14.9
+        (VideoDriver.MPV_HW, False, "VideoFrameMpv"),
+    ],
+)
+def test_manager_has_mpv_draw_into_its_own_windows_where_it_can(
+    mocker, monkeypatch, driver, is_windows, frame_class
+):
+    mocker.patch("gridplayer.mpv_player.renderer.load_mpv")
+    mocker.patch.object(MpvRenderService, "_join_qt_share_group", return_value=None)
+    monkeypatch.setattr("gridplayer.utils.video_driver.env.IS_WINDOWS", is_windows)
+    settings = {
+        "player/mpv_cpu_decoding": MpvCpuDecoding.OFF,
+        "player/mpv_output": MpvOutput.WINDOW,
+    }
+    mocker.patch.object(Settings(), "get", side_effect=settings.get)
+
+    frame = VideoDriverManager(context=SimpleNamespace())._mpv_video_frame(driver)
+
+    assert frame.func.__name__ == frame_class
+
+
 def test_a_video_s_render_calls_go_with_its_render_context(renderer):
     video = _rendered_video()
     renderer._videos.append(video)
@@ -2586,6 +2644,38 @@ def test_skipping_frames_goes_to_every_video_there_is(mocker):
 
     for video in videos:
         video.player.set_skip_frames.assert_called_once_with(True)
+
+
+def test_skipping_frames_goes_to_a_video_in_its_own_window_too(mocker):
+    mocker.patch("gridplayer.mpv_player.renderer.load_mpv")
+    service = MpvRenderService()
+    player = MagicMock()
+    service.add_own_window(player)
+
+    service.set_skip_frames(True)
+
+    player.set_skip_frames.assert_called_once_with(True)
+
+
+def test_own_window_kept_until_its_mpv_is_terminated(mocker):
+    mocker.patch("gridplayer.mpv_player.renderer.load_mpv")
+    service = MpvRenderService()
+    player = MagicMock()
+    window = MagicMock()
+    service.add_own_window(player)
+
+    service.remove_own_window(player, window)
+
+    window.hide.assert_called_once_with()
+    window.setParent.assert_called_once_with(None)
+    window.deleteLater.assert_not_called()
+    service.set_skip_frames(True)
+    player.set_skip_frames.assert_not_called()
+
+    service._forget_player(player)
+
+    window.deleteLater.assert_called_once_with()
+    assert player not in service._players_alive
 
 
 def test_manager_makes_no_render_service_for_vlc(mocker):

@@ -149,6 +149,8 @@ class SettingsManager(ManagerBase):
         checks = {
             "player/video_driver",
             "player/video_driver_players",
+            # Copy and Direct: what's open is made again for the new one
+            "player/mpv_output",
             "internal/opaque_hw_overlay",
             "internal/fake_overlay_invisibility",
             "misc/vlc_options",

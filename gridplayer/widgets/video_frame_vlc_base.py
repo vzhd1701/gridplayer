@@ -111,7 +111,7 @@ VLC_WINDOWS_CROP_BORDER_PX = 8
 VLC_WINDOWS_PICTURE_ROW_BLOCK = 4
 
 # How much the surface is grown by at most for that, across and down.
-_PICTURE_BLOCK_MAX_PAD = 7
+PICTURE_BLOCK_MAX_PAD = 7
 
 # How far off a whole pixel a picture edge can be and still count as on it,
 # for the float error in working it out.
@@ -172,10 +172,10 @@ def calc_picture_block_padding(
     it whole is kept, split between both sides to keep the picture centred.
     Nothing where nothing within reach does, or where it is not known.
     """
-    for total in range(2 * _PICTURE_BLOCK_MAX_PAD + 1):
+    for total in range(2 * PICTURE_BLOCK_MAX_PAD + 1):
         for pad_w in range(
-            max(total - _PICTURE_BLOCK_MAX_PAD, 0),
-            min(total, _PICTURE_BLOCK_MAX_PAD) + 1,
+            max(total - PICTURE_BLOCK_MAX_PAD, 0),
+            min(total, PICTURE_BLOCK_MAX_PAD) + 1,
         ):
             pad_h = total - pad_w
             height = picture_height(
@@ -192,6 +192,15 @@ def calc_picture_block_padding(
                 )
 
     return QMargins()
+
+
+def fill_black(widget: QWidget) -> None:
+    """Have Qt paint the widget black, not in its palette's window colour."""
+
+    palette = widget.palette()
+    palette.setColor(widget.backgroundRole(), Qt.black)
+    widget.setPalette(palette)
+    widget.setAutoFillBackground(True)
 
 
 def native_px(length: float, ratio: float) -> int:
@@ -249,11 +258,7 @@ def apply_vlc_hw_surface_geometry(
     if width <= 0 or height <= 0:
         return
 
-    frame_rect = QRect(0, 0, width, height)
-    clip_rect = frame_rect if shown is None else frame_rect & _pixels_in(shown)
-
-    if clip_rect.isEmpty():
-        clip_rect = frame_rect
+    clip_rect = calc_vlc_hw_clip_rect(frame.size(), shown)
 
     surface_geometry = calc_vlc_hw_surface_rect(
         frame.size(), offset, target, padding
@@ -267,6 +272,16 @@ def apply_vlc_hw_surface_geometry(
     fit_vlc_vout_windows(
         surface, was_shown, _shown_of(clip_rect.size(), surface_geometry)
     )
+
+
+def calc_vlc_hw_clip_rect(frame_size: QSize, shown: Rect | None = None) -> QRect:
+    """Where apply_vlc_hw_surface_geometry puts the clip, in the frame: the
+    part on show, or all of the frame where that's nothing of it."""
+
+    frame_rect = QRect(QPoint(0, 0), frame_size)
+    clip_rect = frame_rect if shown is None else frame_rect & _pixels_in(shown)
+
+    return frame_rect if clip_rect.isEmpty() else clip_rect
 
 
 def calc_vlc_hw_surface_rect(
@@ -741,8 +756,9 @@ class VideoFrameVLC(QWidget, metaclass=QABC):
 
         return video_clip
 
-    def _place_native_surface(self) -> None:
-        """Put the surface VLC presents into over the video.
+    def _place_native_surface(self) -> QMargins:
+        """Put the surface VLC presents into over the video, and say what it
+        was grown by.
 
         See apply_vlc_hw_surface_geometry. Where VLC draws all of the frame
         (see calc_whole_placement), it is cut down to the part on show.
@@ -765,6 +781,9 @@ class VideoFrameVLC(QWidget, metaclass=QABC):
         if not self.native_surface_rect().contains(self.rect()):
             self._fill_uncovered_black(is_letterboxed=True)
 
+        if not self._log.isEnabledFor(logging.DEBUG):
+            return padding
+
         window_size = self._window_size()
 
         self._log.debug(
@@ -774,6 +793,8 @@ class VideoFrameVLC(QWidget, metaclass=QABC):
             f", clip={self.video_clip.geometry().getRect()}"
             f", surface={self.video_surface.geometry().getRect()}"
         )
+
+        return padding
 
     def _native_surface_layout(
         self,
@@ -892,11 +913,7 @@ class VideoFrameVLC(QWidget, metaclass=QABC):
         if self.autoFillBackground():
             return
 
-        frame_palette = self.palette()
-        frame_palette.setColor(self.backgroundRole(), Qt.black)
-        self.setPalette(frame_palette)
-
-        self.setAutoFillBackground(True)
+        fill_black(self)
 
     def ui_helper_widgets(self) -> None:
         self.audio_only_placeholder.setMouseTracking(True)
@@ -1225,6 +1242,11 @@ class VideoFrameVLC(QWidget, metaclass=QABC):
     def _whole_placement(self) -> ViewPlacement | None:
         if self._orientation() == VideoTransform.NONE:
             return None
+
+        return self._calc_whole_placement()
+
+    def _calc_whole_placement(self) -> ViewPlacement | None:
+        """See calc_whole_placement, whatever the file says."""
 
         return calc_whole_placement(
             self._view_frame_size(),

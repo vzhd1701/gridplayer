@@ -237,7 +237,8 @@ class VideoDriverMpv(VLCVideoDriver):
         self._cpu_when_low = cpu_when_low
         self._surface = surface
         # a GL surface draws once its window's grid surface is up
-        self._surface.drawing_started.connect(self._report_frame)
+        if surface is not None:
+            self._surface.drawing_started.connect(self._report_frame)
         self._pane_box = pane_box
         self._full_size = full_size
         self._is_on_show = is_on_show
@@ -281,16 +282,20 @@ class VideoDriverMpv(VLCVideoDriver):
         self._screenshot_timeout.stop()
         self._screenshots_due = 0
 
-        if self._player is None:
+        player, self._player = self._player, None
+
+        if player is None:
             return
 
-        self._player.close()
+        player.close()
+        self._stop_drawing(player)
+
+    def _stop_drawing(self, player: MpvPlayer) -> None:
         # The GUI thread is the only one to touch what's on show, so here it
         # is still the one on show: the renderer frees the rest once removed.
         self._surface.keep_frame(self._rendered)
         self._render_service.remove(self._rendered)
 
-        self._player = None
         self._rendered = None
 
     def load_video(self, media_input: MediaInput) -> None:
@@ -299,18 +304,7 @@ class VideoDriverMpv(VLCVideoDriver):
         self._time_ms = None
 
         try:
-            self._player = MpvPlayer(
-                self._render_service.mpv,
-                media_input,
-                hwdec=self._hwdec,
-                skip_frames=Settings().get("player/mpv_skip_frames"),
-                direct_rendering=Settings().get("player/mpv_direct_rendering"),
-                is_software=self._is_software,
-                cpu_when_low=self._cpu_when_low,
-                log_level=Settings().get("logging/log_level_mpv"),
-                subtitle_style=current_subtitle_style(),
-                wake_renderer=self._render_service.wake,
-            )
+            self._player = self._new_player(media_input)
         # what a libmpv that won't take what it's asked can raise
         except Exception as e:
             self._log.exception("Could not start mpv")
@@ -335,11 +329,32 @@ class VideoDriverMpv(VLCVideoDriver):
         ):
             signal.connect(slot, Qt.QueuedConnection)
 
-        self._rendered = RenderedVideo(self._player, is_software=self._is_software)
-        self._render_service.add(self._rendered, self)
+        self._start_drawing()
 
         timeout_s = Settings().get("player/video_init_timeout")
         self._load_timeout.start(timeout_s * 1000)
+
+    def _new_player(self, media_input: MediaInput, **options) -> MpvPlayer:
+        return MpvPlayer(
+            self._render_service.mpv,
+            media_input,
+            hwdec=self._hwdec,
+            skip_frames=Settings().get("player/mpv_skip_frames"),
+            direct_rendering=Settings().get("player/mpv_direct_rendering"),
+            is_software=self._is_software,
+            cpu_when_low=self._cpu_when_low,
+            log_level=Settings().get("logging/log_level_mpv"),
+            subtitle_style=current_subtitle_style(),
+            wake_renderer=self._render_service.wake,
+            **options,
+        )
+
+    def _start_drawing(self) -> None:
+        """Its frames to the render thread, which starts the player once its
+        render context is up."""
+
+        self._rendered = RenderedVideo(self._player, is_software=self._is_software)
+        self._render_service.add(self._rendered, self)
 
     def _start_player(self) -> None:
         # closed before its render context got here
@@ -653,7 +668,10 @@ class VideoDriverMpv(VLCVideoDriver):
             self._player.set_deinterlace(deinterlace, mode)
 
 
-class VideoFrameMpv(PaintedVideoFrame, VideoFrameVLC):
+class MpvFrame:
+    """What every frame playing with mpv has, however its frames reach the
+    window. Goes before the VLC frame's class in the bases."""
+
     is_picky_about_audio_files = False
     must_reload_for_system_device = False
     is_late_with_subtitles = False
@@ -679,6 +697,44 @@ class VideoFrameMpv(PaintedVideoFrame, VideoFrameVLC):
 
         return video.as_file(), (name, audio.as_file())
 
+    def _is_on_show(self) -> bool:
+        """Not hidden, as the cells Single Mode leaves out are, nor its window
+        minimized or in the tray."""
+
+        return self.isVisible() and not self.window().isMinimized()
+
+    def update_on_show(self) -> None:
+        self.video_driver.set_on_show(self._is_on_show())
+
+    # Shown again as its window comes back from being minimized, it can be before
+    # the window says it no longer is: the window's own word comes as well, see
+    # VideoBlocksManager.update_on_show.
+    def showEvent(self, event):
+        super().showEvent(event)
+
+        self.update_on_show()
+
+    def hideEvent(self, event):
+        super().hideEvent(event)
+
+        self.update_on_show()
+
+    def set_time(self, seek_ms, aim=SeekAim.EXACT) -> None:
+        # what it's for, which VLC's drivers have no use for
+        self.video_driver.set_time(seek_ms, aim)
+
+    def _pane_box(self) -> tuple[int, int]:
+        """The most a frame needs, in device pixels, before there is a view.
+
+        The cell's size: this frame stays as it was made until it is shown.
+        """
+        ratio = self.devicePixelRatioF()
+        pane = self.parentWidget() or self
+
+        return round(pane.width() * ratio), round(pane.height() * ratio)
+
+
+class VideoFrameMpv(MpvFrame, PaintedVideoFrame, VideoFrameVLC):
     def __init__(
         self,
         render_service: MpvRenderService,
@@ -734,42 +790,6 @@ class VideoFrameMpv(PaintedVideoFrame, VideoFrameVLC):
             is_on_show=self._is_on_show,
             parent=self,
         )
-
-    def _is_on_show(self) -> bool:
-        """Not hidden, as the cells Single Mode leaves out are, nor its window
-        minimized or in the tray."""
-
-        return self.isVisible() and not self.window().isMinimized()
-
-    def update_on_show(self) -> None:
-        self.video_driver.set_on_show(self._is_on_show())
-
-    # Shown again as its window comes back from being minimized, it can be before
-    # the window says it no longer is: the window's own word comes as well, see
-    # VideoBlocksManager.update_on_show.
-    def showEvent(self, event):
-        super().showEvent(event)
-
-        self.update_on_show()
-
-    def hideEvent(self, event):
-        super().hideEvent(event)
-
-        self.update_on_show()
-
-    def set_time(self, seek_ms, aim=SeekAim.EXACT) -> None:
-        # what it's for, which VLC's drivers have no use for
-        self.video_driver.set_time(seek_ms, aim)
-
-    def _pane_box(self) -> tuple[int, int]:
-        """The most a frame needs, in device pixels, before there is a view.
-
-        The cell's size: this frame stays as it was made until it is shown.
-        """
-        ratio = self.devicePixelRatioF()
-        pane = self.parentWidget() or self
-
-        return round(pane.width() * ratio), round(pane.height() * ratio)
 
     def _full_render_size(self) -> tuple[int, int]:
         return calc_full_size(
