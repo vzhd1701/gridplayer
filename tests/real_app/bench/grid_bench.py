@@ -236,10 +236,10 @@ def instrument():
 
     present = SoftwareVideoSurface.present_rgb32
 
-    def counted_present(self, buf, width, height):
+    def counted_present(self, *args, **kwargs):
         if COUNT.gate:
             COUNT.shown += 1
-        present(self, buf, width, height)
+        present(self, *args, **kwargs)
 
     SoftwareVideoSurface.present_rgb32 = counted_present
 

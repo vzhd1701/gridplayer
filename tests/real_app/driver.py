@@ -27,6 +27,8 @@ DEFAULT_SETTINGS = {
     # Hardware video draws into an X11 window, which offscreen has none of
     "player/video_driver": "vlc_sw_sp",
     "player/one_instance": False,
+    # scenarios find menu items by their English names, whatever the system's language
+    "player/language": "en_US",
 }
 
 

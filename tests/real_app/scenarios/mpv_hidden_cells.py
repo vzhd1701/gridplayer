@@ -145,11 +145,14 @@ def _away_and_back(d, draws, how, go, come_back):
     played = (cell.time - cell_at) % length
     d.check(f"{how}, they play on at their pace", played >= PLAYED_AT_LEAST_MS, played)
 
-    shown_at = time.monotonic()
     come_back()
     d.wait_until(
         lambda: not d.ctx.commands.is_window_away(), f"the window back from {how}"
     )
+    # timed from when it's seen: macOS animates a minimized window back first, for
+    # 2 s on a Mac with no GPU
+    d.wait_until(d.player.windowHandle().isExposed, f"seen again from {how}")
+    shown_at = time.monotonic()
     d.wait_until(
         lambda: all(
             drawn(cell) > drawn_before[cell]

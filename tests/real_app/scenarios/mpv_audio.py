@@ -293,7 +293,17 @@ def _one_channel_and_surround(d):
 
     d.note(f"the file for the room effect: {room_file}")
 
-    d.wait_until(lambda: _has_filter(b, "sofalizer" if room_file else None), "the mix")
+    def has_the_mix():
+        # a libmpv without the filter, as Homebrew's, gives way to the plain mix
+        if player_module._ROOM_FILTER_BROKE.is_set():
+            return _has_filter(b, None)
+
+        return _has_filter(b, "sofalizer" if room_file else None)
+
+    d.wait_until(has_the_mix, "the mix")
+    if room_file and player_module._ROOM_FILTER_BROKE.is_set():
+        d.note("this libmpv has no room filter: the plain mix")
+        room_file = None
     d.wait_until(_moving(b), "it plays on")
 
     if room_file:
