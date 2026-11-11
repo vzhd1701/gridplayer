@@ -42,7 +42,12 @@ def scenario(d):
 def _play(d, path):
     d.open(path)
     b = d.wait_for_cell(path.name)
-    d.wait_until(lambda: _picture_box(_grab(b)) is not None, "a picture is on show")
+    # the loading status off it too: on MPV's Direct output, captured as Windows
+    # composes it, the status is in the picture
+    d.wait_until(
+        lambda: not b.video_status.isVisible() and _picture_box(_grab(b)) is not None,
+        "a picture is on show",
+    )
     return b
 
 

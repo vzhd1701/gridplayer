@@ -607,14 +607,17 @@ def _screenshots(d):
 
     block = d.cells[0]
     surface = _surface(block)
+    # MPV's Direct output: mpv draws at its window's size, no frame of the app's
+    is_rendered = hasattr(surface, "frame_size")
 
-    d.wait_until(
-        lambda: 0 < surface.frame_size()[0] < 1280 / 2,
-        "its frame is what the cell needs",
-        5,
-    )
-    small = surface.frame_size()
-    d.note(f"the frame in a small cell: {small}")
+    if is_rendered:
+        d.wait_until(
+            lambda: 0 < surface.frame_size()[0] < 1280 / 2,
+            "its frame is what the cell needs",
+            5,
+        )
+        small = surface.frame_size()
+        d.note(f"the frame in a small cell: {small}")
 
     for is_playing in (False, True):
         what = "playing" if is_playing else "paused"
@@ -635,6 +638,9 @@ def _screenshots(d):
             _sharpness(image) > 60,
             _sharpness(image),
         )
+        if not is_rendered:
+            continue
+
         # to within a pixel: the first size can be from before the cell had settled
         d.wait_until(
             lambda s=small: (
@@ -730,10 +736,17 @@ def _live_pause(d):
     picture = _grab(block)
 
     d.check("the last frame stays up", _has_frame(block))
-    d.check(
-        "nothing's put over it",
-        not block.video_driver.pause_snapshot.isVisible(),
-    )
+    if type(block.video_driver).__name__ == "VideoFrameMpvWindow":
+        # mpv's own window shows nothing once the stream is let go of
+        d.check(
+            "its last picture is put up over it",
+            block.video_driver.pause_snapshot.isVisible(),
+        )
+    else:
+        d.check(
+            "nothing's put over it",
+            not block.video_driver.pause_snapshot.isVisible(),
+        )
 
     d.wait(1.5)
     d.check("and doesn't change", _grab(block) == picture)

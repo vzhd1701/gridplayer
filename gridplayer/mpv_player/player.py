@@ -19,6 +19,7 @@ from pathlib import Path
 from typing import NamedTuple
 
 from PyQt5.QtCore import QObject, QTimer, QUrl, pyqtSignal
+from PyQt5.QtGui import QImage
 
 from gridplayer.models.audio_device import AudioDevice, resolve_device_id
 from gridplayer.models.chapter import Chapter
@@ -231,6 +232,22 @@ def _flip_shader_file(flip: tuple[bool, bool]) -> str | None:
         return None
 
     return str(path)
+
+
+def _screenshot_image(result) -> QImage | None:
+    """screenshot-raw's picture, its own copy, as mpv gives it: blue, green, red and
+    a byte left out, which is Qt's RGB32 on a little endian CPU."""
+
+    if not result or result.get("format") != "bgr0":
+        return None
+
+    width, height, stride = result["w"], result["h"], result["stride"]
+    data = result["data"]
+
+    if width <= 0 or height <= 0 or len(data) < stride * height:
+        return None
+
+    return QImage(data, width, height, stride, QImage.Format_RGB32).copy()
 
 
 class WindowPicture(NamedTuple):
@@ -1005,6 +1022,22 @@ class MpvPlayer(QObject):
         self._flip_in_mpv = flip
 
         return True
+
+    def take_screenshot(self, on_taken) -> None:
+        """The picture mpv has on show, at its own size, turned and flipped as it's
+        drawn, without subtitles: on_taken(QImage | None), on mpv's event thread. Asked for, not waited for. Commands go in the order they're
+        sent, so it's the picture before any sent after it."""
+
+        def taken(error, result) -> None:
+            on_taken(None if error else _screenshot_image(result))
+
+        with self._telling:
+            is_closing = self._is_closing
+            if not is_closing:
+                self.mpv.command_async("screenshot-raw", "video", callback=taken)
+
+        if is_closing:
+            on_taken(None)
 
     def set_window_picture(self, picture: "WindowPicture | None") -> None:
         """Where all of the picture goes in mpv's own window, see WindowPicture.

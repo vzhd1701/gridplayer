@@ -40,10 +40,31 @@ def _rendered_size(block):
     return _driver(block).video_surface.frame_size()
 
 
+def _is_direct(block) -> bool:
+    """MPV's Direct output: mpv draws into its own window, at its size."""
+
+    return type(_driver(block)).__name__ == "VideoFrameMpvWindow"
+
+
+def _has_picture(block) -> bool:
+    if _is_direct(block):
+        # on as soon as the loading status is off it
+        return block.is_video_initialized and not block.video_status.isVisible()
+
+    return _rendered_size(block)[0] > 0
+
+
+def _picture_size(frame):
+    if hasattr(frame.video_surface, "picture_size"):
+        return frame.video_surface.picture_size()
+
+    return frame._view_frame_size()
+
+
 def _open_paused(d, path, name):
     d.open(path)
     block = d.wait_for_cell(name)
-    d.wait_until(lambda: _rendered_size(block)[0] > 0, "a frame came")
+    d.wait_until(lambda: _has_picture(block), "a frame came")
     return block
 
 
@@ -53,7 +74,10 @@ def _playing(d):
     first = d.wait_for_cell("a.mp4")
     second = d.wait_for_cell("b.mp4")
 
-    d.check("it is the mpv driver", type(_driver(first)).__name__ == "VideoFrameMpv")
+    d.check(
+        "it is the mpv driver",
+        type(_driver(first)).__name__ in ("VideoFrameMpv", "VideoFrameMpvWindow"),
+    )
 
     d.act(first, "Play / Pause")
     d.wait_until(lambda: not first.video_params.is_paused, "a plays")
@@ -83,6 +107,16 @@ def _playing(d):
 def _resizing(d):
     # the source is 640x360: the frame goes down as the window does, and back
     block = _open_paused(d, d.media.shapes / "square.mp4", "square.mp4")
+
+    if _is_direct(block):
+        # mpv draws at its window's size: the picture follows the cell
+        for size in ((1280, 720), (320, 240), (1280, 720)):
+            d.player.resize(*size)
+            d.wait(0.5)
+            _shaped(d, f"follows the cell at {size[0]}x{size[1]}", block, 16 / 9)
+
+        d.act(block, "Close")
+        return
 
     d.player.resize(1280, 720)
     d.wait_until(lambda: _rendered_size(block) == (640, 360), "own size", SETTLE_S)
@@ -177,7 +211,7 @@ def _zoom_and_pan(d):
     d.check("moved", block.video_params.shift != shift_before, block.video_params.shift)
 
     source_x, source_y, source_w, source_h = frame.view_placement().source
-    picture_w, picture_h = frame.video_surface.picture_size()
+    picture_w, picture_h = _picture_size(frame)
     part = QRect(
         round(source_x * width / picture_w),
         round(source_y * height / picture_h),
@@ -259,7 +293,7 @@ def _reload_all(d):
     d.wait_for_cell("a.mp4")
     d.wait_for_cell("b.mp4")
     d.check("two again after Reload All", len(d.cells) == 2)
-    d.wait_until(lambda: _rendered_size(d.cell("a.mp4"))[0] > 0, "pictures again")
+    d.wait_until(lambda: _has_picture(d.cell("a.mp4")), "pictures again")
     d.shot("reloaded")
 
 

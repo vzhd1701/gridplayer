@@ -14,9 +14,11 @@ video goes and kept, hidden, until mpv is done with it.
 """
 
 import math
+from contextlib import suppress
 from typing import NamedTuple
 
-from PyQt5.QtCore import QMargins, Qt
+from PyQt5.QtCore import QMargins, QRect, Qt, pyqtSignal
+from PyQt5.QtGui import QImage, QPixmap
 from PyQt5.QtWidgets import QWidget
 
 from gridplayer.mpv_player.player import MpvPlayer, WindowPicture
@@ -24,6 +26,7 @@ from gridplayer.mpv_player.renderer import MpvRenderService
 from gridplayer.params import env
 from gridplayer.params.static import ROTATION_TRANSFORMS
 from gridplayer.utils.aspect_calc import Rect, ViewPlacement
+from gridplayer.utils.screenshots import ScreenshotView
 from gridplayer.vlc_player.static import MediaInput
 from gridplayer.widgets.video_frame_mpv import MpvFrame, VideoDriverMpv, shown_flip
 from gridplayer.widgets.video_frame_vlc_base import (
@@ -42,11 +45,22 @@ class VideoDriverMpvWindow(VideoDriverMpv):
     """The mpv driver with no render thread: mpv starts as soon as it's made,
     into the window it's given, `win_id`, inside `window`."""
 
+    # A picture from mpv, None where it had none, for a screenshot or not:
+    # see take_screenshot. Said on mpv's event thread.
+    _picture_taken = pyqtSignal(object, bool)
+    # The picture a paused live stream stopped on, see snapshot
+    snapshot_image = pyqtSignal(object)
+
     def __init__(self, win_id: int, window: QWidget, **kwargs):
         super().__init__(surface=None, full_size=None, is_software=False, **kwargs)
 
         self._win_id = win_id
         self._window = window
+
+        # the picture for the screenshot said to be taken, for the frame to take
+        self.taken_picture: QImage | None = None
+
+        self._picture_taken.connect(self._on_picture_taken, Qt.QueuedConnection)
 
     def _new_player(self, media_input: MediaInput, **options) -> MpvPlayer:
         return super()._new_player(media_input, wid=self._win_id, **options)
@@ -78,8 +92,41 @@ class VideoDriverMpvWindow(VideoDriverMpv):
             self._report_load()
 
     def screenshot(self):
-        # Stage 14.4
+        self._take_picture(is_screenshot=True)
+
+    def snapshot(self):
+        """Before a live stream is let go of as it's paused: mpv's window shows
+        nothing once it is."""
+
+        self._take_picture(is_screenshot=False)
+
+    def _take_picture(self, is_screenshot: bool) -> None:
+        player = self._player
+
+        if player is None or player.is_picture_held:
+            self._on_picture_taken(None, is_screenshot)
+            return
+
+        def taken(image) -> None:
+            # gone with its video by then, or not
+            with suppress(RuntimeError):
+                self._picture_taken.emit(image, is_screenshot)
+
+        player.take_screenshot(taken)
+
+    def _on_picture_taken(self, picture, is_screenshot: bool) -> None:
+        if not is_screenshot:
+            self.snapshot_image.emit(picture)
+            return
+
+        self.taken_picture = picture
         self.screenshot_taken_emit("")
+
+    def _on_playback_restarted(self) -> None:
+        super()._on_playback_restarted()
+
+        # a live stream back from a pause: see VideoFrameMpvWindow.snapshot_taken
+        self.playback_started_emit()
 
     def set_on_show(self, is_on_show: bool) -> None:
         """Stage 14.5."""
@@ -202,6 +249,8 @@ class VideoFrameMpvWindow(MpvFrame, VideoFrameVLC):
     # itself within a millisecond, and moving the surface costs no call into mpv.
     resize_view_interval_ms = 0
     is_native_surface = True
+    # a paused live stream's picture, all of it, see _on_snapshot_image
+    _paused_picture: QImage | None = None
 
     def __init__(
         self,
@@ -268,6 +317,110 @@ class VideoFrameMpvWindow(MpvFrame, VideoFrameVLC):
 
     def _native_surface_layout(self):
         return self._surface_view().layout
+
+    def driver_connect(self) -> None:
+        super().driver_connect()
+
+        self.video_driver.snapshot_image.connect(self._on_snapshot_image)
+
+    def shown_frame_image(self) -> QImage | None:
+        """The picture taken for the screenshot, or a paused live stream's, as
+        shown, all of it: see screenshot_view."""
+
+        picture = self._screenshot_picture()
+
+        if self.video_driver is not None:
+            self.video_driver.taken_picture = None
+
+        return picture
+
+    def screenshot_view(self) -> ScreenshotView | None:
+        return ScreenshotView(
+            self._pane_size(),
+            self._view,
+            self._transform,
+            self._view_frame_size(),
+            self._orientation(),
+            self._pixel_aspect(),
+        )
+
+    def _screenshot_picture(self) -> QImage | None:
+        if self.video_driver is not None and self.video_driver.taken_picture:
+            return self.video_driver.taken_picture
+
+        if self.pause_snapshot.isVisible():
+            return self._paused_picture
+
+        return None
+
+    def take_snapshot(self) -> None:
+        self.video_driver.snapshot()
+
+    def _on_snapshot_image(self, picture) -> None:
+        """The picture a paused live stream stopped on, up over the video, cut to
+        the view, as VLC's is; mpv's window hidden under it, black once mpv lets
+        go of the stream. Then the stream is let go of."""
+
+        self._paused_picture = picture
+
+        if picture is None:
+            self.pause_snapshot.set_snapshot_file("")
+        else:
+            self.pause_snapshot.set_pixmap(
+                QPixmap.fromImage(self._cut_to_view(picture))
+            )
+
+        self.pause_snapshot.adjust_view(self.size(), self._shown_picture_rect())
+        self.pause_snapshot.show()
+        self.video_clip.hide()
+
+        if self._is_status_change_in_progress:
+            self.video_driver.set_pause(True)
+
+    def _cut_to_view(self, image: QImage) -> QImage:
+        placement = self.view_placement()
+
+        if placement is None:
+            return image
+
+        frame_w, frame_h = self._view_frame_size()
+        x, y, width, height = placement.source
+        scale_x, scale_y = image.width() / frame_w, image.height() / frame_h
+
+        return image.copy(
+            QRect(
+                round(x * scale_x),
+                round(y * scale_y),
+                max(round(width * scale_x), 1),
+                max(round(height * scale_y), 1),
+            )
+        )
+
+    def playback_status_changed_emit(self, is_paused) -> None:
+        """A live stream back from a pause keeps its snapshot up until mpv shows
+        it again: see _on_playback_started."""
+
+        if is_paused or not self.pause_snapshot.isVisible():
+            super().playback_status_changed_emit(is_paused)
+            return
+
+        if not self.is_video_initialized:
+            return
+
+        self._is_status_change_in_progress = False
+        self.playback_status_changed.emit(is_paused)
+
+    def _on_playback_started(self) -> None:
+        super()._on_playback_started()
+
+        if not self.pause_snapshot.isVisible():
+            return
+
+        self._paused_picture = None
+        self.video_clip.show()
+        self.pause_snapshot.hide()
+        self.pause_snapshot.reset()
+        self.adjust_view()
 
     def _shown_flip(self) -> tuple[bool, bool] | None:
         return shown_flip(self._transform, self._orientation() in ROTATION_TRANSFORMS)

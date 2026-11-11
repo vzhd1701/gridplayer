@@ -121,15 +121,18 @@ def _bar_drag(d):
     for is_playing in (False, True):
         block = _open(d, d.media.clips[0], is_playing=is_playing)
         surface = block.video_driver.video_surface
+        # MPV's Direct output: mpv draws into its own window, nothing to count
+        is_counted = hasattr(surface, "present_frame")
 
         shown = []
-        present = surface.present_frame
+        present = getattr(surface, "present_frame", None)
 
         def counted(*args, present=present, shown=shown):
             shown.append(args)
             present(*args)
 
-        surface.present_frame = counted
+        if is_counted:
+            surface.present_frame = counted
 
         for at in range(DRAG_SEEKS):
             percent = 0.1 + 0.8 * at / DRAG_SEEKS
@@ -139,7 +142,8 @@ def _bar_drag(d):
         # not the block's target, which is gone once the seek has been seen to land
         aim = percent * block.video_driver.length
 
-        surface.present_frame = present
+        if is_counted:
+            surface.present_frame = present
 
         what = "playing" if is_playing else "paused"
 
@@ -148,7 +152,10 @@ def _bar_drag(d):
             f"{what}: the drag lands where it ended",
             5,
         )
-        d.check(f"{what}: pictures came along", len(shown) > DRAG_SEEKS / 4, len(shown))
+        if is_counted:
+            d.check(
+                f"{what}: pictures came along", len(shown) > DRAG_SEEKS / 4, len(shown)
+            )
 
         _close(d, block)
 

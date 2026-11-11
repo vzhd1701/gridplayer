@@ -194,3 +194,60 @@ def test_nothing_is_placed_without_a_window_of_its_own():
     player.set_window_picture(_PLACED)
 
     assert _sets(player) == {}
+
+
+def _raw(width=2, height=1, pixels=b"\x00\x00\xff\x00\xff\x00\x00\x00"):
+    """screenshot-raw's answer: blue, green, red and a byte left out."""
+
+    return {
+        "w": width,
+        "h": height,
+        "stride": width * 4,
+        "format": "bgr0",
+        "data": pixels,
+    }
+
+
+def _screenshot(player):
+    taken = []
+    player.take_screenshot(taken.append)
+    return taken
+
+
+def test_a_screenshot_is_mpvs_picture_as_it_is():
+    player = _player(wid=1234)
+
+    taken = _screenshot(player)
+    callback = player.mpv.callbacks[("screenshot-raw", "video")]
+    callback(None, _raw())
+
+    (image,) = taken
+    assert (image.width(), image.height()) == (2, 1)
+    assert image.pixelColor(0, 0).name() == "#ff0000"
+    assert image.pixelColor(1, 0).name() == "#0000ff"
+
+
+@pytest.mark.parametrize(
+    ("error", "result"),
+    [
+        (RuntimeError("no video"), None),
+        (None, {**_raw(), "format": "rgba64"}),
+        (None, _raw(pixels=b"\x00" * 4)),
+    ],
+)
+def test_no_screenshot_where_mpv_has_none_to_give(error, result):
+    player = _player(wid=1234)
+
+    taken = _screenshot(player)
+    player.mpv.callbacks[("screenshot-raw", "video")](error, result)
+
+    assert taken == [None]
+
+
+def test_no_screenshot_asked_of_an_mpv_going():
+    player = _player(wid=1234)
+    player.close()
+    player.mpv.commands.clear()
+
+    assert _screenshot(player) == [None]
+    assert not any(args[0] == "screenshot-raw" for args in player.mpv.commands)

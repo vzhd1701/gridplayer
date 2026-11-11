@@ -3,15 +3,19 @@ where mpv draws into a native window of its own. Only for a real window (the
 windows platform, see bench/away.py), on screen or on another virtual desktop."""
 
 import ctypes
+import time
 from ctypes import wintypes
 
 from PyQt5.QtCore import QPoint, QRect
 from PyQt5.QtGui import QImage
-from PyQt5.QtWidgets import QWidget
+from PyQt5.QtWidgets import QApplication, QWidget
 
 # the client area only, with what DirectComposition draws in it
 _PW_CLIENTONLY = 1
 _PW_RENDERFULLCONTENT = 2
+
+# a frame or two of the screen's, for a window hidden to be gone from what's composed
+_COMPOSE_WAIT_S = 0.05
 
 _DIB_RGB_COLORS = 0
 _BI_RGB = 0
@@ -28,8 +32,42 @@ def has_own_window_video(widget: QWidget) -> bool:
 
 
 def grab_composed(widget: QWidget) -> QImage:
-    """As grab() gives it: in the screen's pixels, at the widget's ratio."""
+    """As grab() gives it: in the screen's pixels, at the widget's ratio. The
+    cells' overlays and loading statuses taken off for it, which are windows of
+    their own over the video, as grab() leaves them out."""
 
+    over = _windows_over_videos(widget)
+
+    for one in over:
+        one.hide()
+
+    if over:
+        # for Windows to compose the window without them
+        QApplication.processEvents()
+        time.sleep(_COMPOSE_WAIT_S)
+
+    try:
+        return _grab_composed(widget)
+    finally:
+        for one in over:
+            one.show()
+
+
+def _windows_over_videos(widget: QWidget) -> list[QWidget]:
+    from gridplayer.widgets.video_block import VideoBlock
+
+    window = widget.window()
+    blocks = window.findChildren(VideoBlock)
+
+    return [
+        one
+        for block in blocks
+        for one in (getattr(block, "overlay", None), block.video_status)
+        if one is not None and one.isVisible()
+    ]
+
+
+def _grab_composed(widget: QWidget) -> QImage:
     window = widget.window()
     ratio = window.devicePixelRatioF()
     width = round(window.width() * ratio)
