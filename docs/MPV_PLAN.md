@@ -1316,8 +1316,9 @@ How it goes in, by what's there already:
     - The black bar is Fast's NVIDIA black line again (13.8), a window at a time: drawing for a screen on the other GPU,
       NVIDIA's driver pads a Direct3D window's buffer to a multiple of 4 rows at some widths, squeezed in as 1-3 black
       rows. On the screen, the window resized in 24 steps: black rows under the pictures in 19 of 30 captures. The surface
-      is now grown by 0-3 rows to whole blocks, mpv told to leave them out (`video-margin-ratio-bottom`), the clip cutting
-      them off: none in 30. Only seen with NVIDIA rendering; on the other desktop it never shows (never drawn for a screen).
+      is now grown by 0-3 rows to whole blocks, the clip cutting them off: none in 30. (mpv was told to leave them out
+      with `video-margin-ratio-bottom` too, but it leaves out no margins while it stretches the picture over its window,
+      found in 14.2: the picture is 1-3 rows taller than it is, the rows past the cell cut off.) Only seen with NVIDIA rendering; on the other desktop it never shows (never drawn for a screen).
     - The surface followed the cell at most every 100 ms through a resize, as VLC's do: now every step, mpv's own window
       following ours within a millisecond by itself (measured). The clip and the surface are black once loaded, not
       Qt's light grey, where mpv's window hasn't caught up.
@@ -1335,12 +1336,40 @@ How it goes in, by what's there already:
   **Direct**, with a ? button beside "Video output" that says what each does and when to pick it (Windows: all three;
   elsewhere Copy and Shared). Shared stays on Windows: smooth resizing with less CPU than Copy with a few videos, and
   on AMD. This plan keeps the old names where it was written with them.
-- [ ] 14.2 The view: zoom, pan, crop shapes, aspect ratios, view modes, turns and flips, the file's own rotation;
+- [x] 14.2 The view: zoom, pan, crop shapes, aspect ratios, view modes, turns and flips, the file's own rotation;
   `mpv_view` passing on it.
+  - Not by `video-crop`, as planned: every change of it reconfigures mpv's output, and lands with the frames decoded
+    after it, 70-600 ms later (measured). Its place under a file's own turn didn't come out the same twice either.
+  - mpv's window goes over all of the picture, as in 14.1, mpv stretching it over the window, while that window stays
+    small: at most 4 times the part on show, or 1920x1080 whatever that is, and 8192 a side. A pan or a resize moves
+    the window, at once and to the pixel, with nothing to tell mpv. Fit, Stretch, Fill and zooms up to about 2x.
+  - Past that, the window goes over the part on show, and mpv places the picture in it (`WindowPicture`): keepaspect,
+    `video-unscaled`, aligned top left, `video-scale-x/y` for its size, `video-pan-x/y` for its place. mpv cuts the
+    picture to its window in whole pixels of the picture and stretches that over the window, so an edge between two of
+    them is up to one off: 5-23 px measured at 10x. So mpv's part of the window has its edges on the picture's pixels:
+    worked out to the screen pixel as mpv's sums go (`_on_picture_pixels`), the window grown to them, the margins
+    (`video-margin-ratio-*`) leaving out the rest, the clip cutting it off. A test runs mpv's sums from `aspect.c` over
+    2000 random zooms and pans: the cut always where it was put.
+  - Turns by mpv (`video-rotate`), flips by the shader that's there for subtitles, always on Direct. The shader flips
+    mpv's picture area, not the whole window: the margins stay where they are.
+  - Measured, the corners clip in one 1920x1061 cell, the middle lines against where the view puts them: within 0-2 px at
+    1/2, 1/4 and 1/10 of the picture, plain, flipped and turned. Copy within 0-3 px. A pan shows after 20-50 ms paused,
+    70-80 ms playing (the next frame mpv draws), against at once on Copy and Shared.
+  - Needs `video-scale-x` (checked as mpv starts); without it, the window over all of the picture whatever its size.
+  - `mpv_view` on Direct, on the other desktop: 87 checks pass. Its screenshots (14.4) left out, and the paused live
+    stream's picture fails (14.4). `pixel_shape`: right but for the screenshots, and the phone clip (wide pixels, turned
+    by the file) caught over all of the cell, stretched, as it's said to have loaded and before it's placed: 14.3.
+  - The real-app driver's `shot` and the scenarios' `_grab` take a cell on Direct from what Windows composes
+    (`tests/real_app/composed.py`): `grab()` can't see into mpv's window.
+  - On the way: a video gone left its window as a top-level one, hidden, until mpv was done with it. Now hidden in the
+    app's window: Windows can activate a window made a popup. Not seen to happen; what took the foreground in a run was
+    the warning that there's no screenshot yet, which `mpv_view` asks for.
 - [ ] 14.3 Loading and the first picture: the cell says loaded once mpv has shown one, not a black window before it.
-  Reloads, errors, a stream that ends.
+  Reloads, errors, a stream that ends. And not before it's placed: with no view yet, mpv's window is over all of the
+  cell and the picture stretched over it (`pixel_shape`'s phone clip, 14.2).
 - [ ] 14.4 Screenshots (`screenshot-raw`, asked for without waiting) and a paused live stream's last picture (the
-  pause snapshot over a hidden surface, as VLC Hardware).
+  pause snapshot over a hidden surface, as VLC Hardware). Until then Take Screenshot says there's no frame, in a
+  warning box.
 - [ ] 14.5 Hidden cells (Single Mode, minimized, the tray): what a hidden mpv window still costs, and taking it down if
   it's worth it.
 - [ ] 14.6 Subtitles drawn by mpv in its window: placement and style, `mpv_subtitles` passing.
@@ -1357,6 +1386,9 @@ How it goes in, by what's there already:
 
 Newest first. What was finished and seen working, and anything that changed the plan.
 
+- 2026-11-12: 14.2, the view on Direct: zooms, pans, crops, view modes, turns and flips, the picture placed to the
+  pixel at any zoom. mpv's window over all of the picture while that's small, mpv placing the picture in one over the
+  part on show past that.
 - 2026-11-11: Stage 14 planned, mpv drawing into its own windows, Windows first, from the fork review's bench. 10.21
   closed (libmpv's fence leak, worked around).
 - 2026-11-10: the small ones of Stage 10. 10.2 tried by you, drags fine. 10.10 mpv's own scripts off, 5 threads a video.
