@@ -1364,12 +1364,33 @@ How it goes in, by what's there already:
   - On the way: a video gone left its window as a top-level one, hidden, until mpv was done with it. Now hidden in the
     app's window: Windows can activate a window made a popup. Not seen to happen; what took the foreground in a run was
     the warning that there's no screenshot yet, which `mpv_view` asks for.
-- [ ] 14.3 Loading and the first picture: the cell says loaded once mpv has shown one, not a black window before it.
-  Reloads, errors, a stream that ends. And not before it's placed: with no view yet, mpv's window is over all of the
-  cell and the picture stretched over it (`pixel_shape`'s phone clip, 14.2).
-- [ ] 14.4 Screenshots (`screenshot-raw`, asked for without waiting) and a paused live stream's last picture (the
-  pause snapshot over a hidden surface, as VLC Hardware). Until then Take Screenshot says there's no frame, in a
-  warning box.
+- [x] 14.3 Loading and the first picture: the cell says loaded once mpv has shown one, not a black window before it.
+  Reloads, errors, a stream that ends.
+  - Nothing to change: the load waits for mpv's playback-restart, which comes once mpv has its first picture up.
+    Measured from what Windows composes every ~16 ms, the loading status coming off: the right picture in the next
+    capture, never black or stretched between, for a local file and a 3-quality HLS stream, playing and paused,
+    portrait or not. (`vo-configured` and the first `vo-passes` come with the video's size, 5-20 ms before.)
+  - The phone clip "stretched over the cell" in 14.2 was the loading status: the scenario's capture from what Windows
+    composes has it in, where Qt's `grab()` of the frame never did. Such a capture now takes the cells' overlays and
+    statuses off for it, and `pixel_shape` waits for the status to go before it judges the picture.
+  - On Direct, with message boxes logged rather than shown: `mpv_streams` and `mpv_transport` pass, `mpv_basics` too
+    with its render-size checks only on Copy and Shared (Direct's picture follows the cell instead, checked by shape).
+    `pixel_shape` but for its screenshots (14.4).
+  - Found on the way, still open: a crash in NVIDIA's Direct3D 11 driver. Two videos opened and closed 60 times in a
+    row, 8 runs: one access violation in `nvwgf2umx.dll`, on a thread of the driver's own, about half a second after
+    two mpvs started together (read of 0x38). Copy, the same loops: none in 120. The test folder's clips are 4:4:4,
+    decoded on the CPU; whether GPU-decoded ones do it too, see below.
+- [x] 14.4 Screenshots (`screenshot-raw`, asked for without waiting) and a paused live stream's last picture (the
+  pause snapshot over a hidden surface, as VLC Hardware).
+  - `screenshot-raw video` asked for with a callback (`MpvPlayer.take_screenshot`), answered on mpv's event thread
+    and handed to the GUI's: the picture as mpv draws it, turned and flipped already (the flip shader too), at the
+    video's own size, no subtitles. It goes through the same cut to the view as Copy's frame.
+  - A paused live stream: the picture asked for first, then the stream let go of (mpv's commands go in order), put up
+    as the pause snapshot, cut to the view; mpv's window hidden under it, black once mpv has let go. Back from the
+    pause, the snapshot stays until mpv's playback-restart says the stream is on show again. A screenshot while
+    paused takes the snapshot's whole picture.
+  - `mpv_view` on Direct passes whole, screenshots of every turn and flip on turned files and the live pause
+    included: Windows (Direct3D 11) and X11 (OpenGL), 127 checks each.
 - [ ] 14.5 Hidden cells (Single Mode, minimized, the tray): what a hidden mpv window still costs, and taking it down if
   it's worth it.
 - [ ] 14.6 Subtitles drawn by mpv in its window: placement and style, `mpv_subtitles` passing.
