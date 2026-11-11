@@ -547,6 +547,16 @@ class MpvOutput(AutoName):
     GL = auto()
 
 
+class DisplayServer(AutoName):
+    """Linux: X11 (Xwayland on a Wayland desktop) or Wayland itself. Auto
+    takes Wayland, if the desktop is one and draws the window frames, unless
+    the decoder is VLC Hardware, which draws into an X11 window."""
+
+    AUTO = auto()
+    X11 = auto()
+    WAYLAND = auto()
+
+
 class MpvCpuDecoding(AutoName):
     """Hardware MPV decoding on the CPU rather than the GPU, its frames still
     drawn by OpenGL. Software MPV has no GPU in it at all. Auto decodes a new

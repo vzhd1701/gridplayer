@@ -5,7 +5,7 @@ from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QFont
 from PyQt5.QtWidgets import QApplication
 
-from gridplayer.main.init_app_env import gl_line_fix, set_gl_alpha
+from gridplayer.main.init_app_env import gl_line_fix, pick_qt_platform, set_gl_alpha
 from gridplayer.main.init_icons import init_icon
 from gridplayer.main.init_resources import init_resources
 from gridplayer.main.init_translator import init_translator
@@ -48,6 +48,8 @@ def settle_gl_line_fix() -> None:
 
 
 def init_app():
+    pick_qt_platform()
+
     if env.QT_PLATFORM:
         app = QApplication([*sys.argv, "-platform", env.QT_PLATFORM])
     else:

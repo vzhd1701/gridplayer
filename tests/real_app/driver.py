@@ -571,9 +571,10 @@ def start(media: Media, out: Path, settings: dict) -> Driver:
     from gridplayer.settings import Settings
     from gridplayer.utils.video_driver import prepare_video_libs
 
-    # the app picks xcb itself whenever there is no Wayland, whatever
-    # QT_QPA_PLATFORM says
-    env.QT_PLATFORM = qt_platform
+    # The app picks X11 or Wayland itself, whatever QT_QPA_PLATFORM says:
+    # "auto" leaves it to do so, by the Display setting and the decoder
+    if qt_platform != "auto":
+        env.QT_PLATFORM = qt_platform
 
     # before the app starts, which reads some of them: see init_app_env
     init_app_env_id()
@@ -604,7 +605,8 @@ def start(media: Media, out: Path, settings: dict) -> Driver:
 
 def _driver_override() -> dict:
     """REAL_APP_VIDEO_DRIVER runs a scenario on another driver than it says,
-    REAL_APP_MPV_OUTPUT with MPV's frames reaching the window another way."""
+    REAL_APP_MPV_OUTPUT with MPV's frames reaching the window another way,
+    REAL_APP_DISPLAY_SERVER on X11 or Wayland (with REAL_APP_QT_PLATFORM=auto)."""
 
     override = {}
 
@@ -615,6 +617,10 @@ def _driver_override() -> dict:
     output = os.environ.get("REAL_APP_MPV_OUTPUT")
     if output:
         override["player/mpv_output"] = output
+
+    display_server = os.environ.get("REAL_APP_DISPLAY_SERVER")
+    if display_server:
+        override["player/display_server"] = display_server
 
     return override
 

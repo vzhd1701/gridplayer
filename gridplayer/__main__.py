@@ -5,7 +5,7 @@ warnings.filterwarnings("ignore", category=DeprecationWarning)
 import sys
 from multiprocessing import freeze_support
 
-from gridplayer.main.init_app_env import init_app_env
+from gridplayer.main.init_app_env import init_app_env, pick_qt_platform
 from gridplayer.main.init_cli import init_cli_args
 from gridplayer.main.init_log import init_log
 from gridplayer.main.run import run_app
@@ -35,6 +35,9 @@ def main():
     # MacOS has OpenFile events
     if not env.IS_MACOS:
         exit_if_delegated()
+
+    # once it's this one that runs, for the log to say which
+    pick_qt_platform()
 
     log_environment()
 

@@ -30,6 +30,28 @@ def is_mpv_gl_output_wanted() -> bool:
     )
 
 
+def pick_qt_platform() -> None:
+    """Linux: X11 or Wayland, by the settings, unless --platform has said.
+
+    Not in init_app_env: asking the compositor takes a round trip, which a
+    launch that only hands its files to the app already running can do
+    without. Before the log says which, and before the QApplication is made.
+    """
+
+    if env.QT_PLATFORM is not None:
+        return
+
+    from gridplayer.settings import Settings
+    from gridplayer.utils.video_driver import qt_platform_for
+
+    settings = Settings()
+
+    env.QT_PLATFORM = qt_platform_for(
+        settings.get("player/display_server"), settings.get("player/video_driver")
+    )
+    env.IS_QT_PLATFORM_PICKED = env.QT_PLATFORM is not None
+
+
 def gl_line_fix():
     """Windows, GL output: whether windows get an alpha channel. Some drivers,
     NVIDIA's, pad a window's height to a multiple of 4 rows at some widths and

@@ -403,6 +403,7 @@ PAGES = (
                 Indented("player/mpv_direct_rendering"),
                 Indented("player/mpv_skip_frames"),
                 Indented("player/mpv_seek_precision"),
+                "player/display_server",
                 Slot("driver_notice", under_card=True),
             ),
             Section(

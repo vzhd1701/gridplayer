@@ -1,8 +1,15 @@
 from PyQt5.QtGui import QGuiApplication
 
 from gridplayer.params import env
-from gridplayer.params.static import MpvOutput, VideoDriver
-from gridplayer.utils.media_libs import MediaLib, lib_of_driver, lib_problem, load_lib
+from gridplayer.params.static import DisplayServer, MpvOutput, VideoDriver
+from gridplayer.utils.media_libs import (
+    VLC_HW_DRIVERS,
+    MediaLib,
+    lib_of_driver,
+    lib_problem,
+    load_lib,
+)
+from gridplayer.utils.wayland_frames import compositor_draws_frames
 
 # Hardware drivers hand VLC an X11 window to draw into, which Qt running on
 # Wayland natively doesn't have; each has a Software twin that paints
@@ -47,6 +54,55 @@ def is_single_process_only(decoder: VideoDriver) -> bool:
 def is_hw_video_available() -> bool:
     # the platform Qt ended up on, however it was picked
     return _qt_platform_name() != "wayland"
+
+
+def is_hw_video_possible() -> bool:
+    """Whether VLC Hardware can run here, if not now then after a restart on
+    X11: there is an X server, Xwayland on a Wayland desktop, and --platform
+    didn't say Wayland."""
+
+    if is_hw_video_available():
+        return True
+
+    return env.has_x_server() and env.IS_QT_PLATFORM_PICKED
+
+
+def is_window_system_choice() -> bool:
+    """Whether there's a choice of X11 or Wayland: a Wayland desktop with
+    Xwayland."""
+
+    return env.IS_LINUX and env.has_wayland() and env.has_x_server()
+
+
+def qt_platform_for(display: DisplayServer, driver: VideoDriver) -> str | None:
+    """The Qt platform to run on, None to leave it to Qt (not Linux).
+
+    QT_QPA_PLATFORM is not asked: it is often set to wayland for the whole
+    desktop, which would take VLC Hardware off by the way.
+    """
+
+    if not env.IS_LINUX:
+        return None
+
+    if not env.has_wayland():
+        return "xcb"
+
+    if not env.has_x_server():
+        return "wayland"
+
+    if display == DisplayServer.X11:
+        return "xcb"
+
+    if display == DisplayServer.WAYLAND:
+        return "wayland"
+
+    # VLC Hardware draws into an X11 window
+    if driver in VLC_HW_DRIVERS:
+        return "xcb"
+
+    # Without a frame from the desktop, Qt 5's own is a thick flat band with
+    # no shadow, around dialogs too: Xwayland looks like every other app
+    return "wayland" if compositor_draws_frames() else "xcb"
 
 
 def session_video_driver(driver: VideoDriver) -> VideoDriver:

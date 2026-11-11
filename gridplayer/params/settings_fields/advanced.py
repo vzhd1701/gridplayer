@@ -11,7 +11,7 @@ from gridplayer.params.settings_fields.kinds import (
     VideoDriverField,
     When,
 )
-from gridplayer.params.static import MpvOutput, VideoDriver
+from gridplayer.params.static import DisplayServer, MpvOutput, VideoDriver
 from gridplayer.utils.media_libs import (
     MPV_DRIVERS,
     VLC_DRIVERS,
@@ -24,6 +24,7 @@ from gridplayer.utils.qt import translate
 from gridplayer.utils.video_driver import (
     MULTIPROCESS_DRIVERS,
     is_hw_video_available,
+    is_window_system_choice,
     session_video_driver,
 )
 from gridplayer.version import __app_url__
@@ -34,9 +35,30 @@ DECODER_HELP_URL = f"{__app_url__}#when-a-mode-isnt-available"
 
 
 def no_hw_video_reason() -> str:
+    if not env.has_x_server():
+        return translate(
+            "SettingsDialog",
+            "VLC Hardware needs an X server (Xwayland), which this session doesn't"
+            " have.",
+        )
+
     return translate(
         "SettingsDialog",
-        "VLC Hardware needs an X server (Xwayland), which this session doesn't have.",
+        "VLC Hardware needs X11, and GridPlayer is running on Wayland.",
+    )
+
+
+def _restart_for_hw_video(display: DisplayServer) -> str:
+    """Running on Wayland, with Xwayland there to run on instead."""
+
+    if display == DisplayServer.WAYLAND:
+        return translate(
+            "SettingsDialog",
+            "VLC Hardware needs X11. Set Window system to Auto or X11.",
+        )
+
+    return translate(
+        "SettingsDialog", "VLC Hardware needs X11. Works after you restart GridPlayer."
     )
 
 
@@ -71,9 +93,14 @@ def _standing_in_title(stored: VideoDriver, running: VideoDriver) -> str:
     return translate("SettingsDialog", "VLC can't run. Playing with MPV for now.")
 
 
-def driver_notice(stored: VideoDriver, shown: VideoDriver) -> DriverNotice | None:
+def driver_notice(
+    stored: VideoDriver, shown: VideoDriver, display=DisplayServer.AUTO
+) -> DriverNotice | None:
     """What isn't available and why; first of all, the pick that can't run,
-    until another one is made. None if everything is."""
+    until another one is made. None if everything is.
+
+    On Wayland with Xwayland there, VLC Hardware is only a restart away: said
+    only if it's the pick."""
 
     running = session_video_driver(stored)
     # it's the stand-in on show, and nobody has picked it
@@ -94,8 +121,20 @@ def driver_notice(stored: VideoDriver, shown: VideoDriver) -> DriverNotice | Non
         lines.append(f"{said}. {_how_to_fix()}")
 
     if not is_hw_video_available():
-        said = translate("SettingsDialog", "VLC Hardware: needs X11.")
-        lines.append(f"{said} {_how_to_fix()}")
+        if not env.has_x_server():
+            said = translate("SettingsDialog", "VLC Hardware: needs X11.")
+            lines.append(f"{said} {_how_to_fix()}")
+        elif not env.IS_QT_PLATFORM_PICKED:
+            # a restart with the same command line won't change it
+            lines.append(
+                translate(
+                    "SettingsDialog",
+                    "VLC Hardware needs X11. GridPlayer was started with"
+                    " --platform wayland.",
+                )
+            )
+        elif stored in VLC_HW_DRIVERS:
+            lines.append(_restart_for_hw_video(display))
 
     if not lines:
         return None
@@ -257,6 +296,19 @@ ADVANCED_FIELDS: tuple[SettingField, ...] = (
             "Fixes a black line at the bottom of the window with Fast video output."
             " Uses more CPU. Auto turns it on for NVIDIA. Works after you restart"
             " GridPlayer.",
+        ),
+    ),
+    ComboField(
+        settings_key="player/display_server",
+        label=translate("SettingsDialog", "Window system"),
+        choices=choices.display_servers,
+        buttons=True,
+        # elsewhere there's only the one
+        shown_if=is_window_system_choice,
+        tooltip=translate(
+            "SettingsDialog",
+            "Auto uses Wayland if your desktop draws the window frames, and X11"
+            " for VLC Hardware, which needs it. Works after you restart GridPlayer.",
         ),
     ),
     CheckboxField(

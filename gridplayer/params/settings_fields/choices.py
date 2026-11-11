@@ -17,6 +17,7 @@ from gridplayer.params.static import (
     AudioTrackMode,
     CacheMode,
     ColorScheme,
+    DisplayServer,
     DropAction,
     GLLineFix,
     GridMode,
@@ -161,6 +162,14 @@ def mpv_outputs() -> dict:
     return {
         MpvOutput.READBACK: translate("SettingsDialog", "Steady"),
         MpvOutput.GL: translate("SettingsDialog", "Fast"),
+    }
+
+
+def display_servers() -> dict:
+    return {
+        DisplayServer.AUTO: translate("SettingsDialog", "Auto"),
+        DisplayServer.X11: "X11",
+        DisplayServer.WAYLAND: "Wayland",
     }
 
 
@@ -517,7 +526,7 @@ def unavailable_video_drivers() -> dict:
 
     # imported here, it asks the session, which is not there on import
     from gridplayer.utils.media_libs import lib_of_driver, lib_problem_text
-    from gridplayer.utils.video_driver import is_hw_video_available
+    from gridplayer.utils.video_driver import is_hw_video_possible
 
     reasons = {}
 
@@ -527,8 +536,9 @@ def unavailable_video_drivers() -> dict:
         if said:
             reasons[driver] = said
 
-    # installing a library wouldn't help with this, so it goes over it
-    if not is_hw_video_available():
+    # Installing a library wouldn't help with this, so it goes over it. With
+    # an X server, a restart on X11 does: see the notice
+    if not is_hw_video_possible():
         reasons[VideoDriver.VLC_HW] = translate("SettingsDialog", "Needs X11")
 
     return reasons

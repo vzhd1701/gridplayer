@@ -13,7 +13,7 @@ from gridplayer.dialogs import settings as settings_dialog
 from gridplayer.dialogs.settings import SettingsDialog
 from gridplayer.params import env
 from gridplayer.params.settings_fields import advanced, choices
-from gridplayer.params.static import MpvOutput, VideoDriver
+from gridplayer.params.static import DisplayServer, MpvOutput, VideoDriver
 from gridplayer.settings import _Settings
 from gridplayer.utils import media_libs, video_driver
 from gridplayer.utils.cookies import CookieStore
@@ -52,6 +52,14 @@ def libs(monkeypatch):
 @pytest.fixture
 def wayland(libs, monkeypatch):
     monkeypatch.setattr(video_driver, "_qt_platform_name", lambda: "wayland")
+    monkeypatch.delenv("DISPLAY", raising=False)
+
+
+@pytest.fixture
+def wayland_with_xwayland(libs, monkeypatch):
+    monkeypatch.setattr(video_driver, "_qt_platform_name", lambda: "wayland")
+    monkeypatch.setenv("DISPLAY", ":0")
+    monkeypatch.setattr(env, "IS_QT_PLATFORM_PICKED", True)
 
 
 @pytest.fixture
@@ -766,3 +774,70 @@ def test_reset_goes_back_to_the_default_of_both(libs, make_dialog, settings):
 
     assert dialog.value(DRIVER) == VideoDriver.VLC_HW
     assert _editor(dialog).processes.currentData() is False
+
+
+@pytest.mark.usefixtures("wayland_with_xwayland")
+@pytest.mark.parametrize(
+    ("display", "said"),
+    [
+        (
+            DisplayServer.AUTO,
+            "VLC Hardware needs X11. Works after you restart GridPlayer.",
+        ),
+        (
+            DisplayServer.X11,
+            "VLC Hardware needs X11. Works after you restart GridPlayer.",
+        ),
+        (
+            DisplayServer.WAYLAND,
+            "VLC Hardware needs X11. Set Window system to Auto or X11.",
+        ),
+    ],
+)
+def test_hardware_picked_on_wayland_with_xwayland(
+    libs, make_dialog, settings, display, said
+):
+    settings.set(DRIVER, VideoDriver.VLC_HW)
+    settings.set("player/display_server", display)
+
+    assert _note(make_dialog()) == (
+        f"VLC Hardware can't run. Playing with VLC Software for now.\n{said}"
+    )
+
+
+@pytest.mark.usefixtures("wayland_with_xwayland")
+def test_wayland_with_xwayland_says_nothing_if_hardware_isnt_picked(
+    libs, make_dialog, settings
+):
+    settings.set(DRIVER, VideoDriver.MPV_HW)
+
+    assert _note(make_dialog()) is None
+
+
+@pytest.mark.usefixtures("wayland_with_xwayland")
+def test_hardware_picked_with_platform_given(libs, make_dialog, settings, monkeypatch):
+    monkeypatch.setattr(env, "IS_QT_PLATFORM_PICKED", False)
+    settings.set(DRIVER, VideoDriver.VLC_HW)
+
+    assert _note(make_dialog()) == (
+        "VLC Hardware can't run. Playing with VLC Software for now.\n"
+        "VLC Hardware needs X11. GridPlayer was started with --platform wayland."
+    )
+
+
+@pytest.mark.usefixtures("wayland_with_xwayland")
+def test_the_notice_follows_the_window_system_on_the_page(
+    libs, make_dialog, settings, monkeypatch
+):
+    monkeypatch.setattr(env, "IS_LINUX", True)
+    monkeypatch.setenv("WAYLAND_DISPLAY", "wayland-0")
+    settings.set(DRIVER, VideoDriver.VLC_HW)
+    settings.set("player/display_server", DisplayServer.WAYLAND)
+
+    dialog = make_dialog()
+    assert "Set Window system to Auto or X11" in _note(dialog)
+
+    buttons = dialog.widget("player/display_server")
+    buttons.setCurrentIndex(buttons.findData(DisplayServer.AUTO))
+
+    assert "Works after you restart GridPlayer" in _note(dialog)

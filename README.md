@@ -128,7 +128,7 @@ dash-prefixed filenames.
 | Option                | Description                                                                                                            |
 | --------------------- | ---------------------------------------------------------------------------------------------------------------------- |
 | `--user-data-dir PATH` | Store settings and log files in `PATH` instead of the default location. Relative paths are resolved against the current working directory. |
-| `--platform {auto,xcb,wayland}` | Linux only. Display server to run on. `auto` picks `xcb` (X11 or Xwayland) when there is one, `wayland` otherwise. Hardware video needs `xcb`. |
+| `--platform {auto,xcb,wayland}` | Linux only. Display server to run on, in place of the Window system setting: `xcb` (X11 or Xwayland) or `wayland`. `auto` goes by the setting. VLC Hardware needs `xcb`. |
 | `--version`           | Show the application version and exit.                                                                                 |
 | `--help`              | Show the available options and exit.                                                                                   |
 
@@ -218,6 +218,9 @@ match GridPlayer's architecture (64-bit or 32-bit).
 
 **VLC Hardware needs X11:** VLC can't draw into a Wayland window directly. Install Xwayland or
 log in to an X11 session, and GridPlayer will use it. Software and MPV work without it.
+On a Wayland desktop, the Window system setting picks X11 or Wayland. On Auto, GridPlayer runs
+on Wayland where the desktop draws the window frames (KDE, sway and most others, not GNOME), unless
+the decoder is VLC Hardware. A change works after a restart.
 
 ## Streaming cookies
 

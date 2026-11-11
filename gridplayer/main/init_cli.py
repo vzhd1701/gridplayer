@@ -40,8 +40,8 @@ def init_cli_args(argv=None):
             "--platform",
             choices=QT_PLATFORMS,
             default="auto",
-            help="display server to run on: auto picks xcb (X11 or Xwayland)"
-            " when there is one, wayland otherwise; hardware video needs xcb",
+            help="display server to run on, in place of the Window system setting:"
+            " xcb (X11 or Xwayland) or wayland; VLC hardware video needs xcb",
         )
     parser.add_argument(
         "--version",

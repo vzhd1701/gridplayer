@@ -13,7 +13,7 @@ from gridplayer.playlist_settings import PlaylistSettings, grid_values_from_stat
 from gridplayer.settings import Settings
 from gridplayer.utils import cache
 from gridplayer.utils.qt import translate
-from gridplayer.utils.video_driver import is_mpv_gl_output
+from gridplayer.utils.video_driver import is_mpv_gl_output, qt_platform_for
 
 # what puts the tray icon up and takes the taskbar button away; the rest are
 # read as they are needed
@@ -177,8 +177,26 @@ class SettingsManager(ManagerBase):
         if env.MPV_GL_OUTPUT:
             checks.add("internal/gl_line_fix")
 
-        return self._is_gl_output_due(previous_settings) or self._setting_changes(
-            previous_settings, checks
+        return (
+            self._is_gl_output_due(previous_settings)
+            or self._is_qt_platform_due(previous_settings)
+            or bool(self._setting_changes(previous_settings, checks))
+        )
+
+    def _is_qt_platform_due(self, previous_settings) -> bool:
+        """A change to what picks X11 or Wayland, the Window system or the
+        decoder on Auto, and the pick isn't what the session runs on: asked
+        again for a restart put off. Not if --platform said which."""
+
+        if not env.IS_QT_PLATFORM_PICKED:
+            return False
+
+        if _qt_platform(Settings().get) == env.QT_PLATFORM:
+            return False
+
+        return any(
+            previous_settings[key] != Settings().get(key)
+            for key in ("player/display_server", "player/video_driver")
         )
 
     def _is_gl_output_due(self, previous_settings) -> bool:
@@ -200,3 +218,7 @@ class SettingsManager(ManagerBase):
 
 def _is_gl_output(get) -> bool:
     return is_mpv_gl_output(get("player/mpv_output"), get("player/video_driver"))
+
+
+def _qt_platform(get) -> str | None:
+    return qt_platform_for(get("player/display_server"), get("player/video_driver"))

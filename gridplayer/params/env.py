@@ -23,22 +23,14 @@ def _is_kde() -> bool:
     return "kde" in blob or "plasma" in blob
 
 
-def _detect_qt_platform() -> str | None:
-    """The Qt platform plugin to force, None to leave it to Qt.
+def has_x_server() -> bool:
+    """Linux: an X server to run on, Xwayland on a Wayland desktop."""
 
-    Hardware video needs an X11 window to draw into, so xcb (Xwayland on
-    Wayland) whenever there is an X server, and Wayland natively only
-    when there is none. QT_QPA_PLATFORM is not asked: it is often set to
-    wayland for the whole desktop, which is no pick against Hardware.
-    """
+    return bool(os.environ.get("DISPLAY"))
 
-    if not IS_LINUX:
-        return None
 
-    if os.environ.get("WAYLAND_DISPLAY") and not os.environ.get("DISPLAY"):
-        return "wayland"
-
-    return "xcb"
+def has_wayland() -> bool:
+    return bool(os.environ.get("WAYLAND_DISPLAY"))
 
 
 IS_PYINSTALLER = getattr(sys, "frozen", False)
@@ -51,8 +43,11 @@ IS_KDE = _is_kde()
 # init_app_env
 MPV_GL_OUTPUT = False
 
-# --platform on the command line replaces it
-QT_PLATFORM = _detect_qt_platform()
+# The Qt platform plugin to run on, None to leave it to Qt. Given by
+# --platform, or else picked by init_app_env from the settings, on Linux
+QT_PLATFORM = None
+# picked from the settings, not given: changing them can call for another
+IS_QT_PLATFORM_PICKED = False
 
 PYINSTALLER_LIB_ROOT = Path(sys._MEIPASS) if IS_PYINSTALLER else Path.cwd()
 
