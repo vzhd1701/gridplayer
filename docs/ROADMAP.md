@@ -24,6 +24,45 @@ How it would work:
 Already decided: mpv's scripts don't become a setting. None of them can be reached in the app. Users' own scripts stay off,
 as they would seek and change tracks behind the app's back, once for each video.
 
+## Surviving a GPU reset (MPV)
+
+From the MPV plan, 10.8 (2026-11-11). Left for later: rare, and it can't be tested without forcing resets on a real
+Windows PC. Worth doing if someone reports the app closing like this.
+
+What happens today: MPV draws with OpenGL contexts of its own, made without asking to survive a reset. When Windows
+resets the GPU's driver, NVIDIA's OpenGL driver is known to close such an app ("lost connection with the display
+driver"), as it does most OpenGL apps. Not seen here yet. Mesa on Linux replaces such a context by itself, so there
+it should only glitch. VLC Hardware draws with Direct3D and has the same kind of exposure.
+
+How often, at a guess:
+
+- A GPU reset: Windows restarts the driver when something hangs the GPU for 2 s, nearly always a game or another
+  GPU-heavy app. On a healthy PC none or one or two a year; more with overclocks, failing cards, buggy laptop drivers.
+- A driver update while the app runs: ones you install yourself, you close apps first. Windows Update sometimes puts in
+  a display driver quietly, perhaps once or twice a year.
+- Not a cause: sleep, plugging monitors, remote desktop. Windows keeps GPU memory across those.
+- A render call stuck for good, what a watchdog would catch: never reported, it would take a driver bug. A cleanup
+  already stops waiting for it after 5 s, and Reload All brings the videos back.
+
+When it hits, the app closes; unsaved playlist changes are lost.
+
+How it would work:
+
+- Make the contexts with reset notification (`WGL_ARB_create_context_robustness`, the EGL one on Linux).
+- Ask `glGetGraphicsResetStatus` once a render round, or once a second.
+- On a reset: a new context, every video's render context made again, and the frames drawn again.
+- Steady output has only our contexts. Fast shares Qt's, which would need the same, and Qt 5's QOpenGLWidget doesn't
+  come back after a reset: likely only with Qt 6.
+
+What it would cost:
+
+- Speed: nothing to measure, expected. The setting is made once, the check is one cheap call that doesn't wait on the
+  GPU, and bounds checking is done in hardware on current GPUs. Run the bench before and after anyway.
+- Code: a few hundred lines, on a path that only runs on a real reset, so a bug in it could hide for long.
+- Testing: `dxcap -forcetdr` (Windows' optional Graphics Tools) forces a reset. It blanks the screens for a second and
+  kills any game running. First step: force one with MPV playing and see what happens today, and build this only if
+  the app really closes.
+
 ## Qt 6
 
 The next big step after MPV (said 2026-11-11). What it brings for Wayland:

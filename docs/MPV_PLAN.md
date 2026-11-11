@@ -12,7 +12,7 @@ overnight 2026-11-09: new items 10.21-10.23.
 
 | | Stage | State |
 |---|---|---|
-| 1 | Videos load, play and resize in the real grid, with zoom and pan | built, your hand test still open |
+| 1 | Videos load, play and resize in the real grid, with zoom and pan | **done**, hand-tested by you on 2026-11-11 |
 | 2 | Finding the libraries, no startup delay, runs with only one of VLC or mpv | **done**, macOS on a VM |
 | 3 | Settings: unavailable drivers greyed out with a reason | **built**, macOS on a VM |
 | 4 | Transport: seek, speed, frame step, looping, end of video | **built**, macOS on a VM with no GPU |
@@ -21,7 +21,7 @@ overnight 2026-11-09: new items 10.21-10.23.
 | 7 | Subtitles: tracks, files, delay, encoding, style | **built**, macOS on a VM with no GPU |
 | 8 | Deinterlacing, chapters, bookmarks, SponsorBlock | **built**, macOS on a VM with no GPU |
 | 9 | Streams, live video, errors and recovery, lists | **built**, macOS on a VM with no GPU |
-| 10 | Hardening: long churn, memory, real drags, other GPUs | mostly done; open: 10.4, 10.21, 10.8 (watchdog, lost GL context) |
+| 10 | Hardening: long churn, memory, real drags, other GPUs | mostly done; open: 10.4 (other GPUs), 10.21 (memory on `test_gpu`) |
 | 11 | macOS | **VM half done 2026-11-11**, all scenarios pass; a real GPU still to come (11.4) |
 | 12 | Packaging, docs, release | not started |
 | 13 | GL output, a choice beside readback | **built, macOS not run**, resize shaking, NVIDIA's black line and a crash closing a cell fixed, one surface for the window (13.5), 120 fps (13.10) |
@@ -112,7 +112,7 @@ Ends with a showing. Nothing past this stage starts until you've seen it.
 - [x] 1.11 Verified on: Windows NVDEC, `test_gpu` X11 and Wayland with VAAPI, `test_ubuntu`
   GNOME. For each: `hwdec-current`, pictures moving, zoom and pan pixels right, 0 crashes
 - [x] 1.12 VLC unchanged: `uv run pytest`, `just test-real-app`
-- [x] 1.13 **Showing:** you ran it by hand, it looks OK so far (2026-11-06). It was: you run it with the command below and drag it around by hand.
+- [x] 1.13 **Showing:** you ran it by hand, it looks OK so far (2026-11-06); resizing, zoom and pan OK (2026-11-11). It was: you run it with the command below and drag it around by hand.
   Nothing has been seen in a real window on Windows yet: Windows runs were offscreen, to
   stay off your desktop. `GP_LIBMPV_PATH` is still how to run it on Windows, unless the DLL is
   on PATH or in one of the places in 2.2
@@ -754,12 +754,13 @@ CPU took 0.5-5.5 s, against 0.2-1.1 s on the key frame, which is about what VLC 
     Windows (WGL) and macOS (Qt's) are desktop OpenGL as before.
   - Checked on `test_gpu`, a clip red on the left and blue on the right: Steady with desktop OpenGL refused, read back BGRA
     and, forced, RGBA, the right colours both ways; Fast on the real X11 screen with Qt on ES, drawn and read right.
-- [ ] 10.8 Render thread stall watchdog: only if something has needed it by then
-  - **2026-11-11, part done, your call:** a cleanup (reload, driver change, all closed) waited for the render thread for
-    good, so one stuck in a GL driver's call would have frozen the app. Now it waits 5 s (`STOP_WAIT_MS`), then logs it
-    and leaves the thread behind, kept alive (a QThread destroyed while it runs ends the app); the next video gets a new
-    one. Its videos' mpvs stay, as one can't go before its render context, but are told to stop playing. The watchdog itself (cells told) is still
-    open, and so is a lost GL context (GPU reset, driver update, sleep), which nothing handles yet and is likelier
+- [x] 10.8 Render thread stall watchdog and a lost GL context: the rest moved to `docs/ROADMAP.md` (2026-11-11, your call)
+  - **Done 2026-11-11:** a cleanup (reload, driver change, all closed) waited for the render thread for good, so one
+    stuck in a GL driver's call would have frozen the app. Now it waits 5 s (`STOP_WAIT_MS`), then logs it and leaves
+    the thread behind, kept alive (a QThread destroyed while it runs ends the app); the next video gets a new one. Its
+    videos' mpvs stay, as one can't go before its render context, but are told to stop playing.
+  - Left for later, with how often it could happen and what it would cost: the watchdog itself, and surviving a GPU
+    reset or a driver update. See "Surviving a GPU reset" in the roadmap
 - [x] 10.9 Cells not on show, as in Single Mode, still render and read back every frame. Render
   them small or not at all. Done: a hidden cell's frames are taken with `skip_rendering`, so it
   plays on at its pace (taking none, mpv waits 200 ms on each), and the last one taken is drawn as
@@ -913,6 +914,9 @@ CPU took 0.5-5.5 s, against 0.2-1.1 s on the key frame, which is about what VLC 
     So a newer Mesa doesn't change it, and Software MPV, which grew 244 MB an hour when it drew with OpenGL, now barely grows:
     the growth goes with OpenGL on this Haswell GPU. What's left is another GPU on Linux (10.4). Until then, Software MPV is the
     choice on such a machine for a grid left playing for hours.
+  - `test_gpu` is a container with the host's own GPU, an Intel Haswell (HD 4600, 2013) on the i915 kernel driver and
+    Mesa's `crocus`: so this is real hardware, not a VM's graphics. What's unknown is only whether newer GPUs do it too
+    (Intel from 2015 on `iris`, AMD on `radeonsi`, NVIDIA's own driver), and none of those can be had here
 - [x] 10.22 **Your decision:** Software MPV on Windows keeps about 1.5 MB for each video closed, mpv's direct rendering buffers: 60 to 1838 MB
   in a 20-minute churn with everything closed. With `vd-lavc-dr=no` it stays at 340-400 MB. That cost frames on Linux, 19 against 25, and
   wasn't measured on Windows. Lists playing one video after another would meet it. Hardware MPV keeps about 230 KB a video, not looked into
