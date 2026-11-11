@@ -21,7 +21,7 @@ overnight 2026-11-09: new items 10.21-10.23.
 | 7 | Subtitles: tracks, files, delay, encoding, style | **built**, macOS on a VM with no GPU |
 | 8 | Deinterlacing, chapters, bookmarks, SponsorBlock | **built**, macOS on a VM with no GPU |
 | 9 | Streams, live video, errors and recovery, lists | **built**, macOS on a VM with no GPU |
-| 10 | Hardening: long churn, memory, real drags, other GPUs | mostly done; open: 10.3, 10.4, 10.21, and later 10.8, 10.30, 10.31 |
+| 10 | Hardening: long churn, memory, real drags, other GPUs | mostly done; open: 10.4, 10.21, 10.32 (drags by hand), 10.8 (watchdog) |
 | 11 | macOS | **VM half done 2026-11-11**, all scenarios pass; a real GPU still to come (11.4) |
 | 12 | Packaging, docs, release | not started |
 | 13 | GL output, a choice beside readback | **built, macOS not run**, resize shaking, NVIDIA's black line and a crash closing a cell fixed, one surface for the window (13.5), 120 fps (13.10) |
@@ -247,9 +247,10 @@ doesn't load mpv, so a restart gets out of it.
 - [x] 3.8 On MPV these grey out: `misc/vlc_options`, the hardware overlay fixes, the border fix,
   and the VLC log level (on another page, so through `SettingsForm.hold_off`). The section
   heading "VLC Options" stays dark: headings have no greyed state
-- [ ] 3.9 **Showing:** done on Windows (libmpv there and not, light and dark) and `test_gpu` (no
+- [x] 3.9 **Showing:** done on Windows (libmpv there and not, light and dark) and `test_gpu` (no
   VLC, X11 and Wayland). Both libraries on Linux done on `test_gpu`, now VLC is installed there: all
-  modes offered, no bubble, VLC's options on for VLC and greyed for MPV. macOS not run
+  modes offered, no bubble, VLC's options on for VLC and greyed for MPV. macOS VM 2026-11-11: no Output or
+  Processes rows, as it should be
 - [x] 3.10 "SP" is gone. You picked B: the Decoder list has `Hardware <VLC>`, `Software <VLC>`,
   `Hardware <MPV>`, `Software <MPV>` and `Dummy`, and a Processes row has Multi-process or Single
   process. Both are one stored value, as before (`vlc_hw_sp` and so on), so saved settings stay
@@ -692,8 +693,9 @@ CPU took 0.5-5.5 s, against 0.2-1.1 s on the key frame, which is about what VLC 
 - [x] 10.2 Real window drags on Windows: port `drag_probe.py` to the app, 0 backward moves.
   This one moves the mouse, so it runs when you say
   - 2026-11-10: tried by you, by hand: drags work as they should.
-- [ ] 10.3 By hand on a screen with X11 and Linux, if you have such a machine. Handoff open
+- [x] 10.3 By hand on a screen with X11 and Linux, if you have such a machine. Handoff open
   question 1
+  - 2026-11-11: tested by you, looks alright. It raised 10.32
 - [ ] 10.4 AMD on Windows and any other GPU we can reach. HEVC and 10-bit through VAAPI needs
   a newer chip than `test_gpu`
   - **AMD on Windows, run 2026-11-11** on your PC's AMD Radeon iGPU (a `python.exe` copy with no GPU preference, which
@@ -753,6 +755,11 @@ CPU took 0.5-5.5 s, against 0.2-1.1 s on the key frame, which is about what VLC 
   - Checked on `test_gpu`, a clip red on the left and blue on the right: Steady with desktop OpenGL refused, read back BGRA
     and, forced, RGBA, the right colours both ways; Fast on the real X11 screen with Qt on ES, drawn and read right.
 - [ ] 10.8 Render thread stall watchdog: only if something has needed it by then
+  - **2026-11-11, part done, your call:** a cleanup (reload, driver change, all closed) waited for the render thread for
+    good, so one stuck in a GL driver's call would have frozen the app. Now it waits 5 s (`STOP_WAIT_MS`), then logs it
+    and leaves the thread behind, kept alive (a QThread destroyed while it runs ends the app); the next video gets a new
+    one. Its videos' mpvs stay, as one can't go before its render context, but are told to stop playing. The watchdog itself (cells told) is still
+    open, and so is a lost GL context (GPU reset, driver update, sleep), which nothing handles yet and is likelier
 - [x] 10.9 Cells not on show, as in Single Mode, still render and read back every frame. Render
   them small or not at all. Done: a hidden cell's frames are taken with `skip_rendering`, so it
   plays on at its pace (taking none, mpv waits 200 ms on each), and the last one taken is drawn as
@@ -924,7 +931,7 @@ CPU took 0.5-5.5 s, against 0.2-1.1 s on the key frame, which is about what VLC 
     the CPU", Hardware MPV's only: fully software MPV has no direct rendering.
 - 10.23-10.28 are VLC's own, not MPV's: moved to `VLC.md` with their numbers (10.23 an overnight load freeze on Linux,
   10.24 and 10.25 single-process freezes, 10.26 VLC's waits, 10.27 32-bit address space, 10.28 single against multi-process; all done).
-- [ ] 10.30 **Later, your call (2026-11-11):** what goes by the time to the frame, rather than a setting for finer time. The time
+- [x] 10.30 **Your call (2026-11-11):** what goes by the time to the frame, rather than a setting for finer time. The time
   reaches the app once in 200 ms while playing (4.2, and since 10.19 asked for rather than sent by mpv), on VLC as well; paused,
   every change. Asked whether per-frame time should be a setting: no, as it was never had and would cost CPU everywhere for
   two features. What could show the 200 ms:
@@ -933,12 +940,61 @@ CPU took 0.5-5.5 s, against 0.2-1.1 s on the key frame, which is about what VLC 
     last report and the rate.
   - SponsorBlock: whether a skip starts late, by how its skips are timed. Not looked at yet.
   - First: measure how far past B each driver goes, and how late a skip starts.
-- [ ] 10.31 **Later, an idea (2026-11-11):** playback stats for a cell, drawn by the app: dropped frames, what decodes it (GPU or
-  CPU, and which), frames a second, what's cached. What mpv's own stats script shows, which stays off (10.10): it needs mpv's
-  key bindings, which the app has off, draws mpv's panel into the picture, and costs a thread a video. Read from mpv's
-  properties only while shown, so nothing until then, and VLC's figures where it has them. Asked whether mpv's scripts
-  should be a setting: no, none of them can be reached in the app, and users' own scripts stay off as they'd seek and
-  change tracks behind the app's back, once for each video.
+  - **Measured 2026-11-11** (Windows, offscreen, a 30 fps clip, 40 loop passes with B moved to anywhere between report
+    ticks, 20 skips from varied starts; script in the scratchpad, not kept):
+
+    | Driver | Time reports | Past B when it turns back | Into a sponsor when skipped |
+    |---|---|---|---|
+    | Hardware MPV | every 200 ms | median 121 ms, max 234 | median 34 ms, max 168 |
+    | Software MPV | every 200 ms | median 102 ms, max 200 | median 34 ms, max 168 |
+    | Software VLC, one process | every 250 ms, at times 500 | median 186 ms, max 470 | 85 or 335 ms |
+
+    The seek back then lands in 10-20 ms. So up to 0.2 s past B on MPV and nearly 0.5 s on VLC, shown; a sponsor shows for
+    up to 0.17 s on MPV and 0.34 s on VLC. Hardware VLC (processes of its own, a real window) not run; its time comes the
+    same way. Fix if wanted: on each report, a one-off timer to B (or a skip's start) from the time and the rate, for both
+    drivers and both features; or mpv's own `ab-loop-a`/`ab-loop-b`, MPV only. Your call
+  - **Fixed 2026-11-11, you picked the timer:** `TimeAhead` (`video_block_time_ahead.py`), a part of the block. With B or
+    a skip's start due before the next report (600 ms at most), a timer tells the time at that moment and the block checks
+    it as a report; any report, seek, pause, rate change or stop puts it off. Measured the same way, plus the frame on show
+    read off its colour (each frame's number in it) at the moment the block acts:
+
+    | Driver | Picture on show past B when it turns back | Into a sponsor when skipped |
+    |---|---|---|
+    | Hardware MPV | median -1 ms, p90 19 | median 0, max 0 |
+    | Software MPV | median 0, p90 21 | median 0, max 33 (one frame) |
+    | Software VLC, one process | median -11 ms, p90 7 | median -17, max 0 |
+
+    Review fixes: only the loop and skip checks run at the mark, the player's time kept otherwise; put off with a
+    change of video or a reload; and not done when a report is late (more than 1.25 times the latest gaps), the video
+    maybe buffering. Measured again, the same.
+    Left: the first pass after Set Loop End, B being where the video already is (up to a report late, as before), and on
+    VLC one pass in 39 where the report beat the timer, the GUI being held up by the test's own grabs
+- [x] 10.31 Playback stats for a cell: moved to `docs/ROADMAP.md` (2026-11-11, your call)
+- [ ] 10.32 **Native Wayland when the decoder doesn't need X11 (raised 2026-11-11 after 10.3).** On a Wayland session the
+  app still runs through Xwayland whenever there is one (`env._detect_qt_platform`), whatever the decoder, since VLC
+  Hardware needs an X11 window. Only VLC Hardware does: MPV both ways and VLC Software play on Wayland natively (Stages
+  1-9 ran there on `test_gpu`). Idea: pick the platform from the decoder at startup, and on switching to or from VLC
+  Hardware offer a restart.
+  - **Built 2026-11-11, your call: a Window system setting** (first called Display, renamed as it reads like the
+    screens), Auto / X11 / Wayland, Linux only, on the Video Decoder page. Auto runs on Wayland when the desktop is one
+    and draws the window frames, unless the decoder is VLC Hardware. `--platform` still wins over it.
+    Picked in `init_app_env.pick_qt_platform`, before Qt starts; "Restart to apply" when a change of either calls for the
+    other platform. On Wayland with Xwayland there, VLC Hardware can still be picked (it plays as VLC Software until the
+    restart), and the notice says so only when it's the pick.
+  - `test_gpu`, sway with Xwayland, the app picking: Hardware MPV Steady and Fast, Software MPV and Software VLC on
+    Wayland, `mpv_basics` passes on the three MPV ones; VLC Hardware on X11; Window system X11 with MPV on X11;
+    Window system Wayland with VLC Hardware on Wayland, playing as Software VLC. The page and its notice look right there.
+  - **Frames (2026-11-11, you saw it):** on GNOME, Qt 5 draws a window's frame itself, a thick flat band in the window's
+    colour with no shadow, dialogs too, so they blend into the window. GNOME offers no `zxdg_decoration_manager_v1`, so
+    the frame is the app's; KDE, sway and most others draw it, as on X11. Qt 5's only frame plugin is that one (a better
+    one, QAdwaitaDecorations, is compiled C++). So Auto stays on X11 where the compositor offers no frames, asked of it
+    before Qt starts (`utils/wayland_frames.py`, libwayland by ctypes). Checked: GNOME on `test_ubuntu` (no frames
+    offered, Qt's frame 3/30/3/3 px), sway on `test_gpu` (offered, Qt's frame 0)
+  - Resizing the window by dragging its edge on native Wayland: fine on Ubuntu (you, 2026-11-11)
+  - Review fixes (2026-11-11): shown only on a Wayland desktop with Xwayland; the platform picked after a launch has
+    handed its files on; the compositor asked with a 0.5 s limit, any failure taken as no frames; the notice follows the
+    page's Window system and says when `--platform wayland` holds it; a restart asked again after one was put off
+  - Not checked yet: drags with the mouse on native Wayland, where the fake drag for Xwayland isn't used. Needs your hand
 - [x] 10.14 Don't fill the cell black before drawing a picture that covers it: app CPU 61% to 47% at
   1x1080p. Applies to VLC's software drivers too, so test those. Done: only the bars beside the
   picture are filled, reaching a pixel under its edge so a pixel it only partly covers at a screen
