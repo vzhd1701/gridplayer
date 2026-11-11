@@ -189,12 +189,12 @@ ADVANCED_FIELDS: tuple[SettingField, ...] = (
         buttons=True,
         # MPV hasn't been run there yet: Stage 11
         shown_if=_is_not_macos,
-        # Software MPV draws on the CPU, always the Steady way
+        # Software MPV draws on the CPU, always the Copy way
         enabled_when=When("player/video_driver", (VideoDriver.MPV_HW,)),
         tooltip=translate(
             "SettingsDialog",
-            "Fast often uses less CPU, mostly with a few videos. Works after you"
-            " restart GridPlayer.",
+            "How the picture gets to the screen. Changing to or from Shared works"
+            " after you restart GridPlayer.",
         ),
     ),
     CheckboxField(
@@ -293,7 +293,7 @@ ADVANCED_FIELDS: tuple[SettingField, ...] = (
         shown_when=When("player/mpv_output", (MpvOutput.GL,)),
         tooltip=translate(
             "SettingsDialog",
-            "Fixes a black line at the bottom of the window with Fast video output."
+            "Fixes a black line at the bottom of the window with Shared video output."
             " Uses more CPU. Auto turns it on for NVIDIA. Works after you restart"
             " GridPlayer.",
         ),

@@ -299,8 +299,11 @@ class QCustomMessageBox(QDialog):
         buttons=QMessageBox.Ok,
         defaultButton=QMessageBox.NoButton,
         info="",
+        info_width_px=None,
     ):
-        return cls._asked(QMessageBox.Information, parent, title, text, buttons, info)
+        return cls._asked(
+            QMessageBox.Information, parent, title, text, buttons, info, info_width_px
+        )
 
     @classmethod
     def question(
@@ -369,11 +372,16 @@ class QCustomMessageBox(QDialog):
         return is_confirmed
 
     @classmethod
-    def _asked(cls, icon, parent, title, text, buttons, info) -> int:
-        """The standard button the answer was given with."""
+    def _asked(
+        cls, icon, parent, title, text, buttons, info, info_width_px=None
+    ) -> int:
+        """The standard button the answer was given with. `info_width_px` makes
+        room for informative text wider than words wrap to, a table say."""
 
         box = cls(icon, title, text, buttons, parent)
         box.setInformativeText(info)
+        if info_width_px is not None:
+            box._info.setFixedWidth(info_width_px)
         box.exec_()
 
         clicked = box.clickedButton()

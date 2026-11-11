@@ -15,6 +15,7 @@ from gridplayer.dialogs.checkup import CheckupDialog
 from gridplayer.dialogs.messagebox import QCustomMessageBox
 from gridplayer.dialogs.paged_dialog import Icon, NoticeBubble, PagedDialog
 from gridplayer.models.settings_draft import SettingsMode, SetValue
+from gridplayer.params import env
 from gridplayer.params.settings_fields.advanced import driver_notice
 from gridplayer.params.settings_pages import PAGES
 from gridplayer.params.static import CacheMode
@@ -33,6 +34,8 @@ from gridplayer.version import __app_url__
 from gridplayer.widgets.cookie_store_list import CookieStoreList
 from gridplayer.widgets.settings_controls import icon_button
 from gridplayer.widgets.settings_form import SettingsForm
+
+MPV_OUTPUT_HELP_WIDTH_PX = 600
 
 COOKIES_FAQ_URL = (
     "https://github.com/yt-dlp/yt-dlp/wiki/FAQ#how-do-i-pass-cookies-to-yt-dlp"
@@ -227,6 +230,13 @@ class SettingsDialog(PagedDialog):
             self.show_screenshot_template_help
         )
         return self.screenshotsFilenameTemplateHelpButton
+
+    def _slot_mpv_output_help(self):
+        self.mpvOutputHelpButton = icon_button(
+            "question", translate("SettingsDialog", "Which video output to pick")
+        )
+        self.mpvOutputHelpButton.clicked.connect(self.show_mpv_output_help)
+        return self.mpvOutputHelpButton
 
     def _slot_youtube_test(self):
         self.streamingTestButton = QPushButton(
@@ -467,6 +477,57 @@ class SettingsDialog(PagedDialog):
             translate("SettingsDialog - Cookies", "Cookies", "Header"),
             translate("SettingsDialog - Cookies", "How to export cookies"),
             info=howto,
+        )
+
+    def show_mpv_output_help(self):
+        """What each of MPV's outputs does and when to pick it, which a name
+        can't say and a tooltip has no room for. Direct is Windows only."""
+
+        if env.IS_WINDOWS:
+            # five columns on one line each
+            width_px = MPV_OUTPUT_HELP_WIDTH_PX
+            help_text = translate(
+                "SettingsDialog",
+                "<table cellspacing='0' cellpadding='4'>"
+                "<tr><td></td><td><b>Frames go</b></td><td><b>CPU</b></td>"
+                "<td><b>VRAM</b></td><td><b>Resizing</b></td></tr>"
+                "<tr><td><b>Copy</b></td>"
+                "<td>OpenGL &rarr; RAM &rarr; GridPlayer</td>"
+                "<td>more</td><td>high</td><td>smooth</td></tr>"
+                "<tr><td><b>Shared</b></td>"
+                "<td>OpenGL &rarr; GridPlayer</td>"
+                "<td>depends on GPU</td><td>high</td><td>smooth</td></tr>"
+                "<tr><td><b>Direct</b></td>"
+                "<td>Direct3D 11 &rarr; own window</td>"
+                "<td>least</td><td>least</td><td>edges flicker</td></tr>"
+                "</table>"
+                "<p>OpenGL costs more to decode on the GPU: &asymp;150 MB more VRAM"
+                " per video on NVIDIA, a CPU copy per frame on AMD and Intel.</p>"
+                "<p><b>Use Direct.</b> For smooth resizing: Copy, or Shared where it's"
+                " lighter (not on NVIDIA).</p>",
+            )
+        else:
+            width_px = None
+            help_text = translate(
+                "SettingsDialog",
+                "<table cellspacing='0' cellpadding='4'>"
+                "<tr><td></td><td><b>Frames go</b></td><td><b>CPU</b></td></tr>"
+                "<tr><td><b>Copy</b></td>"
+                "<td>OpenGL &rarr; RAM &rarr; GridPlayer</td>"
+                "<td>more</td></tr>"
+                "<tr><td><b>Shared</b></td>"
+                "<td>OpenGL &rarr; GridPlayer</td>"
+                "<td>less</td></tr>"
+                "</table>"
+                "<p><b>Use Shared</b>, or Copy if it misbehaves.</p>",
+            )
+
+        QCustomMessageBox.information(
+            self,
+            translate("SettingsDialog", "Video output"),
+            translate("SettingsDialog", "Which video output to pick"),
+            info=help_text,
+            info_width_px=width_px,
         )
 
     def show_screenshot_template_help(self):

@@ -8,6 +8,7 @@ import logging
 
 from PyQt5.QtGui import QFontDatabase
 
+from gridplayer.params import env
 from gridplayer.params.static import (
     ASPECT_RATIO_PRESETS,
     CROP_RATIO_PRESETS,
@@ -159,10 +160,16 @@ def seek_sync_modes() -> dict:
 
 
 def mpv_outputs() -> dict:
-    return {
-        MpvOutput.READBACK: translate("SettingsDialog", "Steady"),
-        MpvOutput.GL: translate("SettingsDialog", "Fast"),
+    outputs = {
+        MpvOutput.READBACK: translate("SettingsDialog", "Copy"),
+        MpvOutput.GL: translate("SettingsDialog", "Shared"),
     }
+
+    # mpv drawing into its own windows: Windows only so far, Stage 14
+    if env.IS_WINDOWS:
+        outputs[MpvOutput.WINDOW] = translate("SettingsDialog", "Direct")
+
+    return outputs
 
 
 def display_servers() -> dict:

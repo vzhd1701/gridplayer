@@ -582,13 +582,13 @@ def test_black_line_fix_only_with_fast_output(libs, make_dialog, monkeypatch):
     output.setCurrentIndex(output.findData(MpvOutput.GL))
     assert not _row_hidden(dialog, key)
 
-    # Fast stays picked, for a Software MPV that has no GL
+    # Shared stays picked, for a Software MPV that has no GL
     _pick_decoder(dialog, VideoDriver.MPV_SW)
     assert _row_hidden(dialog, key)
 
 
 def test_experiments_go_altogether_when_none_apply(libs, make_dialog, monkeypatch):
-    # Windows: no Linux ones, and Black line fix only with Fast output
+    # Windows: no Linux ones, and Black line fix only with Shared output
     monkeypatch.setattr(env, "IS_WINDOWS", True)
     monkeypatch.setattr(env, "IS_LINUX", False)
     dialog = make_dialog()

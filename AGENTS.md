@@ -209,7 +209,7 @@ the entry happens to exist, but never reaches translators.
 * A leak shows in `tests/real_app/bench/churn.py`: with every video closed,
   its checkpoints should come back to the threads and memory of the start.
 
-## MPV's Fast output
+## MPV's Shared output
 
 One GL surface draws all of a window's videos, under the cells
 (`widgets/video_surface_gl.py`); a cell's own surface is a see-through hole.
