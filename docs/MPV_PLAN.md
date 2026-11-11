@@ -21,7 +21,7 @@ overnight 2026-11-09: new items 10.21-10.23.
 | 7 | Subtitles: tracks, files, delay, encoding, style | **built**, macOS on a VM with no GPU |
 | 8 | Deinterlacing, chapters, bookmarks, SponsorBlock | **built**, macOS on a VM with no GPU |
 | 9 | Streams, live video, errors and recovery, lists | **built**, macOS on a VM with no GPU |
-| 10 | Hardening: long churn, memory, real drags, other GPUs | mostly done; open: 10.4 (other GPUs), 10.21 (memory on `test_gpu`) |
+| 10 | Hardening: long churn, memory, real drags, other GPUs | mostly done; open: 10.4 (other GPUs) |
 | 11 | macOS | **VM half done 2026-11-11**, all scenarios pass; a real GPU still to come (11.4) |
 | 12 | Packaging, docs, release | not started |
 | 13 | GL output, a choice beside readback | **built, macOS not run**, resize shaking, NVIDIA's black line and a crash closing a cell fixed, one surface for the window (13.5), 120 fps (13.10) |
@@ -899,7 +899,7 @@ CPU took 0.5-5.5 s, against 0.2-1.1 s on the key frame, which is about what VLC 
     stream stopped or played by the app, with mpv's pause left alone, goes by the same rule.
 - [x] 10.20 Done in 9.6. File lengths in lists are read by VLC. With only libmpv there, lists show none. libmpv could read them too, in a
   process of its own as now
-- [ ] 10.21 Linux memory grows while playing on `test_gpu`: Hardware MPV 790 MB an hour at 9 videos, Software 244 at 4, VLC 48. The C control
+- [x] 10.21 Linux memory grows while playing on `test_gpu`: Hardware MPV 790 MB an hour at 9 videos, Software 244 at 4, VLC 48. The C control
   grows as fast with no Python, and `heaptrack` puts it in Mesa 25.0.7's `libgallium`, the Haswell driver. Try a newer Mesa, and another GPU
   on Linux with 10.4. Nothing for the app to change unless it's found everywhere
   - **Newer Mesa tried 2026-11-11:** Mesa 26.1.6 from trixie-backports, unpacked into `/opt/mesa_new` on `test_gpu` and loaded
@@ -917,6 +917,31 @@ CPU took 0.5-5.5 s, against 0.2-1.1 s on the key frame, which is about what VLC 
   - `test_gpu` is a container with the host's own GPU, an Intel Haswell (HD 4600, 2013) on the i915 kernel driver and
     Mesa's `crocus`: so this is real hardware, not a VM's graphics. What's unknown is only whether newer GPUs do it too
     (Intel from 2015 on `iris`, AMD on `radeonsi`, NVIDIA's own driver), and none of those can be had here
+  - **Found 2026-11-11: libmpv leaks a GL fence per frame drawn, not Mesa.** libmpv 0.40 and 0.41 call `glFenceSync` in
+    `ra_gl_ctx_submit_frame` (`video/out/opengl/context.c`) after every `mpv_render_context_render` that draws, and only
+    `ra_gl_ctx_swap_buffers` deletes them, which the render API never calls; closing a video doesn't either. Came with
+    mpv 5ae0e0f (v0.40.0), fixed by f74adc4 ("opengl/context: require swap_buffers param for FenceSync", issue #17217),
+    first released in 0.42.0. 0.37 and older don't have it. On `crocus` a fence costs about 250 B of heap with a DRM
+    syncobj kept, on other drivers less (NVIDIA's 48 MB an hour on Windows is likely the same, not measured).
+    - Measured on `test_gpu` (Debian's libmpv 0.40.0) with a copy of `native_bench`: grows whether frames are read back
+      or not, with or without a PBO, with `vaapi`, `vaapi-copy` or no hardware decoding; barely when nothing is drawn;
+      flat with the fence deleted after each render. heaptrack: the growth is `_mesa_fence_sync` and crocus's fences
+      called from `ra_gl_ctx_submit_frame`.
+    - The real app, `soak.py`, 9 cells of the mix, 15 min each: 1479 MB an hour as it is, **17 MB an hour** with the
+      fence deleted (`glFenceSync` answered by a wrapper keeping the last fence, `glDeleteSync` after
+      `mpv_render_context_render` in `RenderCalls.draw`), at the same fps and GUI lateness. Injected at runtime.
+    - To apply it: only on libmpv 0.40 and 0.41 (from `mpv-version`), both GL outputs, draw only (not skip). From 0.42
+      the last fence of a render could be an upload buffer's that mpv still needs. Bundling 0.42 or later fixes it too.
+    - **Built 2026-11-11** (`FrameFences`, `leaks_frame_fences` in `renderer.py`): mpv is handed a wrapped
+      `glFenceSync`, and the last fence made while a frame is drawn is deleted after it. On for 0.40.x, 0.41.0 and git
+      builds less than 113 commits past v0.41.0 (f74adc4 is `v0.41.0-113`); the Windows test libmpv
+      (`v0.41.0-1044-g14f2d48cb`) has the fix, so it's off there. The player now reads `mpv-version` as mpv starts, not
+      by an observer, so it's known before the first render context asks for GL functions. mpv still keeps the deleted
+      fences' handles in an array, 8 bytes a frame (about 10 MB an hour at 9 videos), which nothing outside can free.
+      Soak as before, 15 min, the code as built, no injection: **20 MB an hour** (539 → 550 MB), 39.0-39.2 fps a cell,
+      no errors in the log.
+    - Left: the i965 VA-API driver grows about 40 MB an hour on its own (libdrm_intel), not followed to the end. Intel's
+      old driver (GPUs before 2015), not the app's: closed with the rest.
 - [x] 10.22 **Your decision:** Software MPV on Windows keeps about 1.5 MB for each video closed, mpv's direct rendering buffers: 60 to 1838 MB
   in a 20-minute churn with everything closed. With `vd-lavc-dr=no` it stays at 340-400 MB. That cost frames on Linux, 19 against 25, and
   wasn't measured on Windows. Lists playing one video after another would meet it. Hardware MPV keeps about 230 KB a video, not looked into
