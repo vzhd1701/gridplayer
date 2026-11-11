@@ -25,6 +25,7 @@ overnight 2026-11-09: new items 10.21-10.23.
 | 11 | macOS | **VM half done 2026-11-11**, all scenarios pass; a real GPU still to come (11.4) |
 | 12 | Packaging, docs, release | not started |
 | 13 | GL output, a choice beside readback | **built, macOS not run**, resize shaking, NVIDIA's black line and a crash closing a cell fixed, one surface for the window (13.5), 120 fps (13.10) |
+| 14 | mpv drawing into its own windows, a third output | **started 2026-11-11**, Windows first |
 
 ## Rules that hold in every stage
 
@@ -1258,12 +1259,106 @@ core less while the decoder keeps up, at the same frame rates. Suggested words: 
   - `video_timing_offset=0` wasn't it: mpv's default played all 120 throttled, but shows frames up to 50 ms early, and with
     timers on time 0 drops none.
 
+## Stage 14: mpv drawing into its own windows
+
+**Your call (2026-11-11):** a third choice on "Video output" beside Steady and Fast, Windows first, then X11 on Linux.
+Wayland and macOS keep Steady and Fast: on Wayland a surface is only its own client's to draw into, and mpv's Wayland
+backend always opens a window of its own (`wid` takes an X11 window or a Windows handle).
+
+Why, from Brick2892's fork (`docs/MPV_FORK_REVIEW.md`, not committed): mpv's own `vo=gpu` on Direct3D 11 into a native
+child window a cell, with `wid`. A bare prototype against our outputs, the mix, one process, on the screen and off it:
+
+- CPU a fifth to a half of ours on the RTX 3060 and the AMD iGPU (on screen at 16: 54% against Steady's 103% and Fast's
+  117% on NVIDIA; 35% against 116% and 144% on AMD).
+- On AMD and Intel our OpenGL path copies every frame GPU to CPU to GPU (`d3d11va-copy`): mpv's own output keeps them on
+  the GPU. AMD at 16: 36.7 fps a video against 29.7 and 34.4, its 3D engine at 63% against 89% and 99%.
+- On NVIDIA, less than half the video memory (+2.3 GB against +6.2 at 25).
+- 25 swap chains cost the compositor no more than our one window: `dwm` at 5-12% of a core in every run.
+- The same frames where the decoder is the limit (25 on either GPU).
+- The prototype is bare: some of our CPU is the app around the video, which this output keeps.
+
+How it goes in, by what's there already:
+
+- **Windows, the overlay, the mouse:** VLC Hardware's native surface (`is_native_surface`): a clip window with the surface
+  inside, kept out of the layout, the cell's overlay in a window of its own on top, which catches the mouse before mpv's
+  window could. mpv makes its own window inside the surface, on a thread of its own.
+- **The view:** the surface goes where the shown picture goes, and mpv is told what part of the frame that is with
+  `video-crop` (0.38 and up) and `keepaspect=no`. A crop is whole pixels: it's grown out to them, the surface grown
+  by as much, and the clip cuts it back, so a zoomed picture pans smoothly and never needs a window bigger than the cell.
+  Turns by `video-rotate` as now, flips by the shader that's there for subtitles. Older libmpv: Steady instead.
+- **Everything else** is `MpvPlayer` as it is, with no render context: time, tracks, audio, subtitles, deinterlacing,
+  streams, errors.
+- [x] 14.1 Spike in the real app, Windows: `MpvOutput.WINDOW`, a frame with a native surface and mpv drawing into it.
+  Loads, plays, resizes, closes, the overlay over it, never takes focus. Real window on the other desktop. CPU against
+  Steady and Fast in the bench.
+  - Built (`widgets/video_frame_mpv_window.py`): `VideoFrameMpvWindow` on VLC Hardware's native surface, and
+    `VideoDriverMpvWindow`, the mpv driver with no render thread: `MpvPlayer(wid=...)` takes `vo=gpu`,
+    `gpu-api=d3d11`, mpv's own timing, and leaves the mouse to the overlay. mpv starts as soon as it's made. The surface
+    goes over all of the picture for now, the clip cutting it to the cell (crops in 14.2). What every mpv frame has is in
+    `MpvFrame`. Only through `REAL_APP_MPV_OUTPUT=window` until 14.7. Not for Software MPV, nor off Windows.
+  - mpv can still be drawing as its video goes, so the clip with the surface is taken out of the frame then, hidden,
+    and kept until mpv has terminated. Qt keeps a native child's window handle when it's taken out of its parent
+    (checked); none are left kept a few seconds after closing.
+  - A scenario in a real window on the other desktop: 3 cells play, follow two window resizes, the overlay over them,
+    one closed, two opened again and loaded in 0.4 s, three closed, nothing left behind, never in the foreground.
+  - Bench, real app, real window on the other desktop, the mix: frames a video · CPU of the process · video memory
+    added. The bench counts frames for this output from mpv's clock and its drops, as the prototype did.
+
+    | | 4 | 9 | 16 | 25 |
+    |---|---|---|---|---|
+    | RTX 3060 | 43.5 · 24% · +354 | 39.3 · 37% · +925 | 36.8 · 59% · +1454 | 27.6 · 71% · +2347 |
+    | AMD iGPU | 43.5 · 17% | 39.4 · 27% | **36.8** · 45% | 21.6 · 48% |
+
+    Against the off-screen numbers before (Steady · Fast): NVIDIA 71·53%, 71·80%, 96·115%, 118·114%; AMD 53·47%,
+    100·96%, 116·148%, 116·133%, and 29.5 fps on Steady at 16. Close to the bare prototype's: the app around the video
+    costs little. `d3d11va` on both GPUs, no copy.
+  - Resizing, your report: tears around the videos, and on NVIDIA a black bar under each, the cells "wobbly" growing.
+    - The black bar is Fast's NVIDIA black line again (13.8), a window at a time: drawing for a screen on the other GPU,
+      NVIDIA's driver pads a Direct3D window's buffer to a multiple of 4 rows at some widths, squeezed in as 1-3 black
+      rows. On the screen, the window resized in 24 steps: black rows under the pictures in 19 of 30 captures. The surface
+      is now grown by 0-3 rows to whole blocks, mpv told to leave them out (`video-margin-ratio-bottom`), the clip cutting
+      them off: none in 30. Only seen with NVIDIA rendering; on the other desktop it never shows (never drawn for a screen).
+    - The surface followed the cell at most every 100 ms through a resize, as VLC's do: now every step, mpv's own window
+      following ours within a millisecond by itself (measured). The clip and the surface are black once loaded, not
+      Qt's light grey, where mpv's window hasn't caught up.
+    - Edges still flash shrinking, you said: not seen resizing from code (no flashes, no light in 30 captures). A drag
+      goes through Windows' own sizing loop, which can't be driven without the mouse. A trial by hand: the frame a native
+      window as well (`GP_MPV_NATIVE_FRAME=1`), so the clip and mpv's window move with it in one go.
+    - Your recording of a corner drag with about 20 cells (120 fps): mid-drag, light grey blocks with squashed dark
+      marks between the cells. The window's own GDI picture (PrintWindow, no full render) still held every cell's
+      "Opening..." card under the playing videos: the status is a native window over the frame while loading, and no
+      paint reached under mpv's window after, the clip and the surface clipping out their children. Windows shows that
+      picture, stretched, while a drag outruns the painting. Now both paint under their children too
+      (`WS_CLIPCHILDREN` off, Windows), mpv's picture being a layer of its own above: all black under the videos.
+      The native frame trial made no difference to you, and is gone.
+- 2026-11-11, your call: the outputs are named for what they do, **Copy** (was Steady), **Shared** (was Fast) and
+  **Direct**, with a ? button beside "Video output" that says what each does and when to pick it (Windows: all three;
+  elsewhere Copy and Shared). Shared stays on Windows: smooth resizing with less CPU than Copy with a few videos, and
+  on AMD. This plan keeps the old names where it was written with them.
+- [ ] 14.2 The view: zoom, pan, crop shapes, aspect ratios, view modes, turns and flips, the file's own rotation;
+  `mpv_view` passing on it.
+- [ ] 14.3 Loading and the first picture: the cell says loaded once mpv has shown one, not a black window before it.
+  Reloads, errors, a stream that ends.
+- [ ] 14.4 Screenshots (`screenshot-raw`, asked for without waiting) and a paused live stream's last picture (the
+  pause snapshot over a hidden surface, as VLC Hardware).
+- [ ] 14.5 Hidden cells (Single Mode, minimized, the tray): what a hidden mpv window still costs, and taking it down if
+  it's worth it.
+- [ ] 14.6 Subtitles drawn by mpv in its window: placement and style, `mpv_subtitles` passing.
+- [ ] 14.7 The setting: a third button on "Video output", Windows only for now. Whether it needs a restart (no Qt GL to
+  set up, so maybe not). Switching drivers live, MPV to VLC and back.
+- [ ] 14.8 All MPV real-app scenarios on it on Windows (`REAL_APP_MPV_OUTPUT=window`), and the bench against Steady and
+  Fast, the real app this time.
+- [ ] 14.9 Linux X11 (and XWayland under the Window system setting): `wid` with an X11 window, `vaapi` on `test_gpu`.
+- [ ] 14.10 Hand test by you.
+
 ---
 
 ## Log
 
 Newest first. What was finished and seen working, and anything that changed the plan.
 
+- 2026-11-11: Stage 14 planned, mpv drawing into its own windows, Windows first, from the fork review's bench. 10.21
+  closed (libmpv's fence leak, worked around).
 - 2026-11-10: the small ones of Stage 10. 10.2 tried by you, drags fine. 10.10 mpv's own scripts off, 5 threads a video.
   10.7 OpenGL ES on Linux where it's all there is, for both outputs. 10.19 measured: the placement kept and the time asked
   for while playing; the render round not worth changing. 10.6 bounded on Software MPV; Hardware MPV's growth on

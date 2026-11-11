@@ -51,7 +51,7 @@ How it would work:
 - Make the contexts with reset notification (`WGL_ARB_create_context_robustness`, the EGL one on Linux).
 - Ask `glGetGraphicsResetStatus` once a render round, or once a second.
 - On a reset: a new context, every video's render context made again, and the frames drawn again.
-- Steady output has only our contexts. Fast shares Qt's, which would need the same, and Qt 5's QOpenGLWidget doesn't
+- Copy output has only our contexts. Shared shares Qt's, which would need the same, and Qt 5's QOpenGLWidget doesn't
   come back after a reset: likely only with Qt 6.
 
 What it would cost:
