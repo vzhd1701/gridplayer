@@ -121,6 +121,16 @@ _GL_PROTO = ctypes.WINFUNCTYPE if sys.platform == "win32" else ctypes.CFUNCTYPE
 # the wait can come up short by a tick of the system's clock.
 _FRAME_LET_GO_S = 0.15
 
+# How long a cleanup waits for the render thread to finish: a round and the
+# freeing of every video, well under a second. Past it the thread is taken to
+# be stuck in a GL driver's call, which nothing can take it out of, and left
+# behind rather than holding the app up for good.
+STOP_WAIT_MS = 5000
+
+# Render threads that didn't stop. A QThread destroyed while it runs takes the
+# app down with it, so they're kept for as long as the app is.
+_left_behind: list["VideoRenderer"] = []
+
 
 class _GLFunctions:
     """The GL calls used here. ctypes lets go of the GIL for each."""
@@ -404,6 +414,14 @@ class VideoRenderer(QThread):
         self._jobs.append((self._init_video, video))
         self.wake()
 
+    def videos_held(self) -> list[RenderedVideo]:
+        """Every video it has, or has yet to take: read from another thread
+        only once this one is stuck."""
+
+        queued = [video for _job, video in list(self._jobs)]
+
+        return list(dict.fromkeys([*list(self._videos), *queued]))
+
     def remove(self, video: RenderedVideo) -> None:
         self._jobs.append((self._release_video, video))
         self.wake()
@@ -411,10 +429,13 @@ class VideoRenderer(QThread):
     def wake(self) -> None:
         self._wake.set()
 
-    def stop(self) -> None:
+    def stop(self) -> bool:
+        """Finish, freeing every video; False if it didn't in time."""
+
         self._is_stopping = True
         self.wake()
-        self.wait()
+
+        return self.wait(STOP_WAIT_MS)
 
     def run(self):
         if not self.is_software:
@@ -829,10 +850,28 @@ class MpvRenderService(QObject):
     def cleanup(self) -> None:
         self._listeners.clear()
 
-        if self._renderer is not None:
-            self._renderer.stop()
-            self._renderer.deleteLater()
-            self._renderer = None
+        if self._renderer is None:
+            return
+
+        renderer, self._renderer = self._renderer, None
+
+        if renderer.stop():
+            renderer.deleteLater()
+            return
+
+        # Its videos' mpvs stay too: one can't go before its render context
+        # does. Stopped, at least, so none plays on with no cell to show it;
+        # should the thread come through after all, it lets them go. The next
+        # video gets a new thread.
+        self._log.error(
+            "The render thread didn't stop in %.0f s, left behind",
+            STOP_WAIT_MS / 1000,
+        )
+        renderer.setParent(None)
+        _left_behind.append(renderer)
+
+        for video in renderer.videos_held():
+            video.player.stop_playing()
 
     def _on_failed(self, video, message: str) -> None:
         listener = self._listeners.get(video)

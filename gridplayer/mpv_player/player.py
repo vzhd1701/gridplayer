@@ -726,6 +726,13 @@ class MpvPlayer(QObject):
 
         self._memory_taken()
 
+    def stop_playing(self) -> None:
+        """Left with a render thread that's stuck holding its render context,
+        which mpv can't go before: the core stays, but quiet. Closed or not."""
+
+        with self._telling:
+            self.mpv.command_async("stop")
+
     def command(self, *args, **kwargs) -> None:
         with self._telling:
             if not self._is_closing:
