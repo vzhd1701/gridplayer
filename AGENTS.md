@@ -57,6 +57,10 @@ than writing a harness of your own.
 * Each run sets `GP_USER_DATA_DIR` under its output folder, so settings,
   cookies and caches are isolated on Windows as well as Linux and macOS.
 * What the driver already takes care of, should you go around it:
+  * `grab()` can't see into MPV's Direct output, mpv's own window: `d.shot`
+    takes such a cell from what Windows composes
+    (`tests/real_app/composed.py`), which needs a real window
+    (`bench/away.py`).
   * The app picks the xcb platform itself, whatever `QT_QPA_PLATFORM` says;
     set `gridplayer.params.env.QT_PLATFORM`.
   * Hardware video needs an X11 window: offscreen takes the `vlc_sw_sp`

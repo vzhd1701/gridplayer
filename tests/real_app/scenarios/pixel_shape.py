@@ -64,6 +64,11 @@ def _track(b):
 
 
 def _grab(b) -> QImage:
+    from tests.real_app.composed import grab_composed, has_own_window_video
+
+    if has_own_window_video(b.video_driver):
+        return grab_composed(b.video_driver)
+
     return b.video_driver.grab().toImage()
 
 

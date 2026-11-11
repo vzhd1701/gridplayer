@@ -941,12 +941,10 @@ class MpvRenderService(QObject):
         self._own_window_players.add(player)
 
     def remove_own_window(self, player, window: QWidget) -> None:
-        """Its window kept, hidden, until mpv is done with it."""
+        """Its window kept until mpv is done with it, then deleted."""
 
         self._own_window_players.discard(player)
 
-        window.hide()
-        window.setParent(None)
         self._players_alive[player] = window
 
     def _keep_alive(self, player) -> None:

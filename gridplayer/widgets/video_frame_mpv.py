@@ -77,6 +77,19 @@ _FLIPS = {
 }
 
 
+def shown_flip(
+    transform: VideoTransform, is_file_on_its_side: bool
+) -> tuple[bool, bool] | None:
+    """Across and up and down, for the picture as it's shown: see _FLIPS."""
+
+    flip = _FLIPS.get(transform)
+
+    if flip is not None and is_file_on_its_side:
+        return flip[::-1]
+
+    return flip
+
+
 class MpvSurfaceView:
     """The frame comes at whatever size was last asked for, unlike a software
     driver's, so its size says nothing about the picture's. Goes before the
@@ -103,12 +116,7 @@ class MpvSurfaceView:
     def flip(self) -> tuple[bool, bool] | None:
         """Across and up and down, for the picture as it's shown."""
 
-        flip = _FLIPS.get(self._transform)
-
-        if flip is not None and self._is_file_on_its_side:
-            return flip[::-1]
-
-        return flip
+        return shown_flip(self._transform, self._is_file_on_its_side)
 
     def _painted_flip(self) -> tuple[bool, bool] | None:
         return None if self._is_flip_in_mpv else self.flip()

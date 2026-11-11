@@ -16,6 +16,7 @@ from ctypes import c_ulonglong
 from fractions import Fraction
 from functools import cache, partial
 from pathlib import Path
+from typing import NamedTuple
 
 from PyQt5.QtCore import QObject, QTimer, QUrl, pyqtSignal
 
@@ -232,6 +233,50 @@ def _flip_shader_file(flip: tuple[bool, bool]) -> str | None:
     return str(path)
 
 
+class WindowPicture(NamedTuple):
+    """Where all of the picture goes in mpv's own window, in the window's pixels:
+    its size, the margins mpv leaves out at the left, top, right and bottom, and
+    the picture's place and size in what's left, past its edges as far as it goes.
+
+    mpv cuts the picture to what's left in whole pixels of the picture and
+    stretches that over it: where an edge isn't on one, the picture is up to a
+    pixel of it off, 30 px at 10x. See VideoFrameMpvWindow._placed.
+    """
+
+    window: tuple[int, int]
+    margins: tuple[int, int, int, int]
+    picture: tuple[int, int, int, int]
+
+
+def _placing_options(placed: WindowPicture, dims: tuple[int, int]) -> dict[str, str]:
+    """mpv's options for it, its picture at its own size from the top left corner
+    to start with (see _own_window_options), each so that mpv's sums, which cut
+    to whole pixels, land on the pixel asked for."""
+
+    window_w, window_h = placed.window
+    left, top, right, bottom = placed.margins
+    x, y, width, height = placed.picture
+    picture_w, picture_h = dims
+
+    def share(pixels: int, of: int) -> str:
+        # a margin is that share of the window, cut to whole pixels
+        return f"{(pixels + 0.5) / of:.9g}"
+
+    return {
+        "keepaspect": "yes",
+        "video-margin-ratio-left": share(left, window_w),
+        "video-margin-ratio-top": share(top, window_h),
+        "video-margin-ratio-right": share(right, window_w),
+        "video-margin-ratio-bottom": share(bottom, window_h),
+        # the scaled size is cut to whole pixels, and the place, moved by a
+        # share of that, towards 0
+        "video-scale-x": f"{(width + 0.5) / picture_w:.9g}",
+        "video-scale-y": f"{(height + 0.5) / picture_h:.9g}",
+        "video-pan-x": f"{(x - 0.25) / width:.9g}",
+        "video-pan-y": f"{(y - 0.25) / height:.9g}",
+    }
+
+
 def audio_chain(mode: AudioChannelMode, track_channels: int) -> dict:
     """The options that make a channel mode out of a track with this many channels."""
 
@@ -445,6 +490,9 @@ class MpvPlayer(QObject):
         self._subtitle_view = SubtitleView()
         self._subtitle_options = {}
         self._flip_in_mpv: tuple[bool, bool] | None = None
+        # where all of the picture goes in its own window, see set_window_picture
+        self._window_picture: WindowPicture | None = None
+        self._window_options: dict[str, str] = {}
 
         # GUI thread. python-mpv sends async commands through a handle that
         # shutdown destroys: one sent after terminate() is a use-after-free in
@@ -524,6 +572,10 @@ class MpvPlayer(QObject):
         self._subtitle_limits = subtitle_limits(self.mpv.option_info)
         deinterlace_info = self.mpv.option_info("deinterlace") or {}
         self._has_auto_deinterlace = "auto" in deinterlace_info.get("choices", ())
+        # what set_window_picture places it by, in its own window
+        self._can_place_picture = self._wid is not None and bool(
+            self.mpv.option_info("video-scale-x")
+        )
 
         self.mpv.register_event_callback(self._on_event)
         self.mpv.observe_property("video-params", self._on_video_params)
@@ -658,6 +710,11 @@ class MpvPlayer(QObject):
             # its own window's: the cell's overlay, on top, takes the mouse
             "input_cursor": False,
             "cursor_autohide": "no",
+            # for set_window_picture: the picture at its own size, from the top
+            # left corner, before it's scaled and moved
+            "video_unscaled": True,
+            "video_align_x": -1,
+            "video_align_y": -1,
         }
 
         if env.IS_WINDOWS:
@@ -948,6 +1005,30 @@ class MpvPlayer(QObject):
         self._flip_in_mpv = flip
 
         return True
+
+    def set_window_picture(self, picture: "WindowPicture | None") -> None:
+        """Where all of the picture goes in mpv's own window, see WindowPicture.
+        None for the picture stretched over the window, which follows its size by
+        itself with nothing to tell mpv."""
+
+        with self._telling:
+            self._window_picture = picture
+            self._place_picture()
+
+    def _place_picture(self) -> None:
+        if not self._can_place_picture:
+            return
+
+        if self._window_picture is None or self._dims is None:
+            options = {"keepaspect": "no"}
+        else:
+            options = _placing_options(self._window_picture, self._dims)
+
+        for option, value in options.items():
+            if self._window_options.get(option) != value:
+                self.set_option(option, value)
+
+        self._window_options.update(options)
 
     def set_subtitle_style(self, style: dict) -> None:
         self._subtitle_style = style
@@ -1399,7 +1480,10 @@ class MpvPlayer(QObject):
         if turn % 180 == 90:
             width, height = height, width
 
-        self._dims = (width, height)
+        with self._telling:
+            self._dims = (width, height)
+            # what the picture is placed by in its own window, turned
+            self._place_picture()
 
         self._wake_renderer()
 

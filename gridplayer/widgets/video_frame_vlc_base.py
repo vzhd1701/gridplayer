@@ -756,9 +756,10 @@ class VideoFrameVLC(QWidget, metaclass=QABC):
 
         return video_clip
 
-    def _place_native_surface(self) -> QMargins:
+    def _place_native_surface(self, layout=None) -> QMargins:
         """Put the surface VLC presents into over the video, and say what it
-        was grown by.
+        was grown by. By `layout` where it's worked out already, see
+        _native_surface_layout.
 
         See apply_vlc_hw_surface_geometry. Where VLC draws all of the frame
         (see calc_whole_placement), it is cut down to the part on show.
@@ -766,7 +767,7 @@ class VideoFrameVLC(QWidget, metaclass=QABC):
         black.
         """
 
-        offset, target, shown, padding = self._native_surface_layout()
+        offset, target, shown, padding = layout or self._native_surface_layout()
 
         apply_vlc_hw_surface_geometry(
             self,

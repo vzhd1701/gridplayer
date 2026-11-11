@@ -121,6 +121,18 @@ def _surface(block):
     return block.video_driver.video_surface
 
 
+def _has_frame(block) -> bool:
+    """Whether a frame is on show: mpv drawing into its own window (Direct) has
+    one as soon as it says how big the picture is."""
+
+    surface = _surface(block)
+
+    if not hasattr(surface, "has_frame"):
+        return block.is_video_initialized
+
+    return surface.has_frame()
+
+
 def _wait_for_transform(d, block, transform):
     block.set_transform(transform)
 
@@ -128,7 +140,7 @@ def _wait_for_transform(d, block, transform):
         lambda: (
             block.is_video_initialized
             and block.video_params.transform == transform
-            and _surface(block).has_frame()
+            and _has_frame(block)
             and _corners_on_show(block) is not None
         ),
         f"it's shown {transform.name}",
@@ -230,7 +242,7 @@ def _turns_and_flips(d):
         # known: the software renderer turns it by a filter set as it preloads
         d.wait_until(
             lambda block=block: (
-                _surface(block).has_frame() and _corners_on_show(block) is not None
+                _has_frame(block) and _corners_on_show(block) is not None
             ),
             "it's shown",
         )
@@ -717,7 +729,7 @@ def _live_pause(d):
 
     picture = _grab(block)
 
-    d.check("the last frame stays up", _surface(block).has_frame())
+    d.check("the last frame stays up", _has_frame(block))
     d.check(
         "nothing's put over it",
         not block.video_driver.pause_snapshot.isVisible(),

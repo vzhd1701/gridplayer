@@ -2666,8 +2666,6 @@ def test_own_window_kept_until_its_mpv_is_terminated(mocker):
 
     service.remove_own_window(player, window)
 
-    window.hide.assert_called_once_with()
-    window.setParent.assert_called_once_with(None)
     window.deleteLater.assert_not_called()
     service.set_skip_frames(True)
     player.set_skip_frames.assert_not_called()

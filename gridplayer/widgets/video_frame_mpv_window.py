@@ -13,14 +13,19 @@ gone. So the clip, with the surface in it, is taken out of the frame as the
 video goes and kept, hidden, until mpv is done with it.
 """
 
+import math
+from typing import NamedTuple
+
 from PyQt5.QtCore import QMargins, Qt
 from PyQt5.QtWidgets import QWidget
 
-from gridplayer.mpv_player.player import MpvPlayer
+from gridplayer.mpv_player.player import MpvPlayer, WindowPicture
 from gridplayer.mpv_player.renderer import MpvRenderService
 from gridplayer.params import env
+from gridplayer.params.static import ROTATION_TRANSFORMS
+from gridplayer.utils.aspect_calc import Rect, ViewPlacement
 from gridplayer.vlc_player.static import MediaInput
-from gridplayer.widgets.video_frame_mpv import MpvFrame, VideoDriverMpv
+from gridplayer.widgets.video_frame_mpv import MpvFrame, VideoDriverMpv, shown_flip
 from gridplayer.widgets.video_frame_vlc_base import (
     PICTURE_BLOCK_MAX_PAD,
     VLC_WINDOWS_PICTURE_ROW_BLOCK,
@@ -28,6 +33,7 @@ from gridplayer.widgets.video_frame_vlc_base import (
     calc_vlc_hw_clip_rect,
     calc_vlc_hw_surface_rect,
     fill_black,
+    native_px,
     native_rect,
 )
 
@@ -41,7 +47,6 @@ class VideoDriverMpvWindow(VideoDriverMpv):
 
         self._win_id = win_id
         self._window = window
-        self._rows_left_out = 0.0
 
     def _new_player(self, media_input: MediaInput, **options) -> MpvPlayer:
         return super()._new_player(media_input, wid=self._win_id, **options)
@@ -51,6 +56,15 @@ class VideoDriverMpvWindow(VideoDriverMpv):
         self._start_player()
 
     def _stop_drawing(self, player: MpvPlayer) -> None:
+        # Out of the frame, which goes, into the app's window, hidden: no window
+        # of its own left about, which Windows could activate (as SetParent does
+        # one that's a popup then, see the bench's away._child_before_parent).
+        app_window = self._window.window()
+
+        self._window.hide()
+        if app_window is not self._window:
+            self._window.setParent(app_window)
+
         self._render_service.remove_own_window(player, self._window)
         # nothing on a render thread to let go of first
         player.on_render_context_gone()
@@ -70,16 +84,97 @@ class VideoDriverMpvWindow(VideoDriverMpv):
     def set_on_show(self, is_on_show: bool) -> None:
         """Stage 14.5."""
 
-    def set_rows_left_out(self, share: float) -> None:
-        """The share of its window's height at the bottom mpv leaves out of the
-        picture: see VideoFrameMpvWindow._whole_rows."""
+    def set_window_picture(self, picture) -> None:
+        """See MpvPlayer.set_window_picture."""
 
-        if self._player is not None and share != self._rows_left_out:
-            self._rows_left_out = share
-            self._player.set_option("video-margin-ratio-bottom", f"{share:.6f}")
+        if self._player is not None:
+            self._player.set_window_picture(picture)
 
 
 _WS_CLIPCHILDREN = 0x02000000
+
+# How big mpv's window over all of the picture can get before it's only over the
+# part on show, mpv placing the picture in it (see WindowPicture). Moving a window
+# over all of it follows a pan or a resize at once, where mpv takes 70 ms to place
+# the picture again playing, 20-40 paused. But its buffers grow with it, and
+# Direct3D takes no window past 16384. Measured on an RTX 3060.
+_WHOLE_MAX_SHARE = 4
+_WHOLE_ALWAYS_PIXELS = 1920 * 1080
+_WHOLE_MAX_SIDE = 8192
+
+
+class _SurfaceView(NamedTuple):
+    """Where the surface goes, as apply_vlc_hw_surface_geometry takes it, and
+    where mpv puts the picture in it, if the surface is only over the part on
+    show. None for the surface over all of the picture."""
+
+    layout: tuple[int, Rect | None, Rect | None, QMargins]
+    window_picture: WindowPicture | None
+
+
+def _whole_picture(placement: ViewPlacement, frame_size: tuple[int, int]) -> Rect:
+    """All of the picture in the pane, past its edges: where the part on show is,
+    grown by the rest of the frame at the same scale."""
+
+    source_x, source_y, source_w, source_h = placement.source
+    target_x, target_y, target_w, target_h = placement.target
+    frame_w, frame_h = frame_size
+
+    per_x, per_y = target_w / source_w, target_h / source_h
+
+    return (
+        target_x - source_x * per_x,
+        target_y - source_y * per_y,
+        frame_w * per_x,
+        frame_h * per_y,
+    )
+
+
+def _is_window_whole(picture: Rect, shown: Rect, ratio: float) -> bool:
+    """Whether mpv's window goes over all of the picture: see _WHOLE_MAX_SHARE."""
+
+    width, height = picture[2] * ratio, picture[3] * ratio
+    shown_pixels = shown[2] * shown[3] * ratio * ratio
+
+    return max(width, height) <= _WHOLE_MAX_SIDE and width * height <= max(
+        _WHOLE_ALWAYS_PIXELS, _WHOLE_MAX_SHARE * shown_pixels
+    )
+
+
+# for the float error in a size that's a whole number of pixels
+_SIZE_SLACK = 1e-6
+
+
+def _on_picture_pixels(
+    start: int, size: int, pixels: int, shown_from: int, shown_to: int
+) -> tuple[int, int]:
+    """Along one side, in screen pixels: a picture `size` long from `start`, of
+    `pixels` of its own, and the part of it on show. Where the edges of its own
+    pixels are, at or before the part on show and at or after it, as mpv works
+    them out (see WindowPicture): mpv's cut is then on them, and exact."""
+
+    first = max(0, (shown_from - start) * pixels // size)
+    last = min(pixels, -(-(shown_to - start) * pixels // size))
+
+    return start - (-first * size // pixels), start + last * size // pixels
+
+
+def _covering(start: int, end: int, ratio: float) -> tuple[int, int]:
+    """The least of Qt's pixels whose screen pixels cover start to end."""
+
+    first = math.floor(start / ratio)
+    while native_px(first, ratio) > start:
+        first -= 1
+    while native_px(first + 1, ratio) <= start:
+        first += 1
+
+    last = math.ceil(end / ratio)
+    while native_px(last, ratio) < end:
+        last += 1
+    while native_px(last - 1, ratio) >= end:
+        last -= 1
+
+    return first, last
 
 
 def _paint_under_children(widget: QWidget) -> None:
@@ -164,21 +259,104 @@ class VideoFrameMpvWindow(MpvFrame, VideoFrameVLC):
         if super().adjust_view():
             return
 
-        grown = self._place_native_surface().bottom()
+        view = self._surface_view()
 
-        self.video_driver.set_rows_left_out(self._rows_left_out(grown))
+        self._place_native_surface(view.layout)
+
+        self.video_driver.set_flip_in_mpv(self._shown_flip())
+        self.video_driver.set_window_picture(view.window_picture)
 
     def _native_surface_layout(self):
-        """Over all of the picture, cut down by the clip to the part on show:
-        mpv stretches the whole frame over its window. Stage 14.2 crops."""
+        return self._surface_view().layout
 
-        view_placement = self.view_placement()
-        shown = view_placement.target if view_placement is not None else None
+    def _shown_flip(self) -> tuple[bool, bool] | None:
+        return shown_flip(self._transform, self._orientation() in ROTATION_TRANSFORMS)
 
-        whole = self._calc_whole_placement()
-        target = whole.target if whole is not None else shown
+    def _surface_view(self) -> _SurfaceView:
+        """Over all of the picture, mpv stretching it over its window, cut down
+        by the clip to the part on show. Where that would make too big a window,
+        over the part on show, mpv placing the picture in it."""
 
-        return 0, target, shown, QMargins(0, 0, 0, self._whole_rows(target, shown))
+        placement = self.view_placement()
+
+        if placement is None:
+            return _SurfaceView((0, None, None, QMargins()), None)
+
+        shown = placement.target
+        picture = _whole_picture(placement, self._view_frame_size())
+
+        if _is_window_whole(picture, shown, self.video_surface.devicePixelRatioF()):
+            padding = QMargins(0, 0, 0, self._whole_rows(picture, shown))
+            return _SurfaceView((0, picture, shown, padding), None)
+
+        return self._placed(picture, shown)
+
+    def _placed(self, picture: Rect, shown: Rect) -> _SurfaceView:
+        """The surface over the part on show, grown out to the picture's own
+        pixels' edges, and mpv told to put the picture there, leaving out what's
+        past those edges: see WindowPicture."""
+
+        ratio = self.video_surface.devicePixelRatioF()
+
+        # the picture's own pixels as it's shown, which mpv turns
+        columns, rows = self._view_frame_size()
+        if self._transform in ROTATION_TRANSFORMS:
+            columns, rows = rows, columns
+
+        # on whole screen pixels, as mpv puts it
+        start_x, start_y = round(picture[0] * ratio), round(picture[1] * ratio)
+        width = math.floor(picture[2] * ratio + _SIZE_SLACK)
+        height = math.floor(picture[3] * ratio + _SIZE_SLACK)
+
+        clip = calc_vlc_hw_clip_rect(self.size(), shown)
+        clip_x, clip_y, clip_w, clip_h = native_rect(
+            clip.x(), clip.y(), clip.width(), clip.height(), ratio
+        )
+
+        left, right = _on_picture_pixels(
+            start_x, width, columns, clip_x, clip_x + clip_w
+        )
+        top, bottom = _on_picture_pixels(start_y, height, rows, clip_y, clip_y + clip_h)
+
+        surface_left, surface_right = _covering(left, right, ratio)
+        surface_top, surface_bottom = _covering(top, bottom, ratio)
+        surface = (
+            surface_left,
+            surface_top,
+            surface_right - surface_left,
+            surface_bottom - surface_top,
+        )
+        grown = self._whole_rows(surface, shown)
+
+        window_left = native_px(surface_left, ratio)
+        window_right = native_px(surface_right, ratio)
+        window_top = native_px(surface_top, ratio)
+        window_bottom = native_px(surface_bottom + grown, ratio)
+
+        margins = (
+            left - window_left,
+            top - window_top,
+            window_right - right,
+            window_bottom - bottom,
+        )
+        x, y = start_x - left, start_y - top
+
+        # mpv's flip is of the picture's area, the margins left as they are
+        is_across, is_up_down = self._shown_flip() or (False, False)
+        if is_across:
+            x = right - start_x - width
+        if is_up_down:
+            y = bottom - start_y - height
+
+        window_picture = WindowPicture(
+            window=(window_right - window_left, window_bottom - window_top),
+            margins=margins,
+            picture=(x, y, width, height),
+        )
+
+        return _SurfaceView(
+            (0, surface, shown, QMargins(0, 0, 0, grown)), window_picture
+        )
 
     def _whole_rows(self, target, shown) -> int:
         """Rows to grow the surface by at the bottom for it to be a whole number
@@ -187,8 +365,10 @@ class VideoFrameMpvWindow(MpvFrame, VideoFrameVLC):
         NVIDIA's driver on Windows, drawing for a screen on another GPU, pads a
         window's buffer up to that at some widths, and Windows squeezes the
         padding into the window as black rows at the bottom: 1-3 under every
-        picture. With nothing to pad there's none. mpv leaves the rows grown by
-        out of the picture (see _rows_left_out), and the clip cuts them off.
+        picture. With nothing to pad there's none. The clip cuts the rows grown
+        by off. Over all of the picture mpv stretches it over them too (it leaves
+        out margins then), a picture 1-3 rows taller than it is; placing it, mpv
+        leaves them out as a margin.
         """
 
         if not env.IS_WINDOWS or target is None:
@@ -206,18 +386,6 @@ class VideoFrameMpvWindow(MpvFrame, VideoFrameVLC):
                 return grown
 
         return 0
-
-    def _rows_left_out(self, grown: int) -> float:
-        """The share of the surface's height, as placed, that's rows grown by."""
-
-        if not grown:
-            return 0.0
-
-        surface = self.video_surface.geometry()
-        whole = self._rows(surface.y(), surface.height())
-        picture = self._rows(surface.y(), surface.height() - grown)
-
-        return (whole - picture) / whole if whole > 0 else 0.0
 
     def _rows(self, top: int, height: int) -> int:
         """How many rows of the window's own a height at `top` in the clip is."""

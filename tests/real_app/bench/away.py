@@ -42,6 +42,10 @@ user32.GetDC.restype = wintypes.HDC
 user32.GetDC.argtypes = [wintypes.HWND]
 user32.ReleaseDC.argtypes = [wintypes.HWND, wintypes.HDC]
 user32.GetForegroundWindow.restype = wintypes.HWND
+user32.GetParent.restype = wintypes.HWND
+user32.GetParent.argtypes = [wintypes.HWND]
+user32.GetClassNameW.argtypes = [wintypes.HWND, wintypes.LPWSTR, ctypes.c_int]
+user32.GetWindowTextW.argtypes = [wintypes.HWND, wintypes.LPWSTR, ctypes.c_int]
 user32.GetWindowThreadProcessId.argtypes = [
     wintypes.HWND,
     ctypes.POINTER(wintypes.DWORD),
@@ -174,10 +178,29 @@ def _watch(user_desktop: bytes, out: Path) -> None:
             _stop(out, "the desktop changed")
 
         pid = wintypes.DWORD()
-        user32.GetWindowThreadProcessId(user32.GetForegroundWindow(), ctypes.byref(pid))
+        foreground = user32.GetForegroundWindow()
+        user32.GetWindowThreadProcessId(foreground, ctypes.byref(pid))
         ours = {me.pid} | {c.pid for c in me.children(recursive=True)}
         if pid.value in ours:
-            _stop(out, f"process {pid.value} came to the foreground")
+            _stop(
+                out,
+                f"process {pid.value} came to the foreground: {_described(foreground)}",
+            )
+
+
+def _described(hwnd) -> str:
+    """Which window it is: its class and title, and its parent's."""
+
+    def one(handle):
+        name = ctypes.create_unicode_buffer(256)
+        title = ctypes.create_unicode_buffer(256)
+        user32.GetClassNameW(handle, name, 256)
+        user32.GetWindowTextW(handle, title, 256)
+        style = user32.GetWindowLongPtrW(handle, _GWL_STYLE)
+        return f"{name.value!r} {title.value!r} style {style & 0xFFFFFFFF:#x}"
+
+    parent = user32.GetParent(hwnd)
+    return one(hwnd) + (f", parent {one(parent)}" if parent else "")
 
 
 def _stop(out: Path, why: str) -> None:

@@ -247,11 +247,17 @@ class Driver:
 
     def shot(self, name: str, widget=None) -> Path:
         from gridplayer.widgets.video_surface_gl import GLVideoSurface
+        from tests.real_app.composed import grab_composed, has_own_window_video
 
         path = self.out / f"{name}.png"
-        # the pictures, not the window's holes for them
-        with GLVideoSurface.grabbing():
-            (widget or self.player).grab().save(str(path))
+        widget = widget or self.player
+
+        if has_own_window_video(widget):
+            grab_composed(widget).save(str(path))
+        else:
+            # the pictures, not the window's holes for them
+            with GLVideoSurface.grabbing():
+                widget.grab().save(str(path))
         self._step(f"screenshot {path.name}")
         return path
 
