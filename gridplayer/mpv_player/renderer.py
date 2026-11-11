@@ -42,6 +42,7 @@ A video goes away in three steps, in this order:
 import collections
 import ctypes
 import logging
+import re
 import sys
 import threading
 import time
@@ -114,6 +115,12 @@ _GL_FUNCS = {
     ),
 }
 _GL_PROTO = ctypes.WINFUNCTYPE if sys.platform == "win32" else ctypes.CFUNCTYPE
+_FENCE_SYNC_PROTO = _GL_PROTO(_c.c_void_p, _c.c_uint, _c.c_uint)
+_DELETE_SYNC_PROTO = _GL_PROTO(None, _c.c_void_p)
+
+# mpv's fix, f74adc4, came 113 commits after the v0.41.0 tag: see FrameFences
+_FENCES_FIXED_AFTER_041 = 113
+_VERSION_RE = re.compile(r"v?(\d+)\.(\d+)\.(\d+)(?:-(\d+)-g[0-9a-f]+)?")
 
 # mpv waits 200 ms for a frame to be rendered and then lets it go, with nothing
 # left to say so. It's still what it draws if asked to draw. What's lost is the
@@ -142,6 +149,71 @@ class _GLFunctions:
                 raise GLContextError(f"OpenGL function {name} is not available")
 
             setattr(self, name, _GL_PROTO(*signature)(address))
+
+
+def leaks_frame_fences(mpv_version: str | None) -> bool:
+    """Whether this libmpv leaves a GL fence behind for every frame drawn.
+
+    0.40 and 0.41 make one at the end of each, for a swap of buffers that the
+    render API never asks for, which is what would delete them (mpv's issue
+    17217). Fixed by f74adc4, first in 0.42. A git build says how far past
+    its tag it is, as "v0.41.0-1044-g14f2d48cb".
+    """
+
+    found = _VERSION_RE.match(mpv_version or "")
+    if found is None:
+        return False
+
+    major, minor, patch, past_tag = found.groups()
+    version = (int(major), int(minor), int(patch))
+
+    if version[:2] == (0, 40):
+        return True
+
+    if version == (0, 41, 0):
+        return past_tag is None or int(past_tag) < _FENCES_FIXED_AFTER_041
+
+    return False
+
+
+class FrameFences:
+    """The fence libmpv makes at the end of a frame, deleted once it's drawn.
+
+    Left alone, on libmpv 0.40 and 0.41 (see leaks_frame_fences), they pile
+    up: 1.4 GB an hour with 9 videos on Intel's Mesa, the same leak smaller on
+    other drivers. mpv is given its glFenceSync through this, and the last
+    fence made while a frame is drawn is that one: nothing in mpv looks at it
+    again. Not from 0.42 on, where the last can be one mpv waits on.
+
+    Render thread only, as mpv's GL calls are.
+    """
+
+    def __init__(self, fence_sync: int, delete_sync: int):
+        self._fence_sync = _FENCE_SYNC_PROTO(fence_sync)
+        self._delete_sync = _DELETE_SYNC_PROTO(delete_sync)
+        self._last = None
+
+        # kept for as long as mpv may call it
+        self._given = _FENCE_SYNC_PROTO(self._made)
+        self.address = ctypes.cast(self._given, ctypes.c_void_p).value
+
+    def _made(self, condition, flags):
+        fence = self._fence_sync(condition, flags)
+        self._last = fence
+
+        return fence
+
+    def forget(self) -> None:
+        """Before a frame is drawn: none made yet is the frame's."""
+
+        self._last = None
+
+    def delete_last(self) -> None:
+        """After a frame is drawn: its fence, if mpv made one, deleted."""
+
+        if self._last:
+            self._delete_sync(self._last)
+            self._last = None
 
 
 class RenderCalls:
@@ -395,6 +467,8 @@ class VideoRenderer(QThread):
         self._context = None
         self._context_error = None
         self._platform = QGuiApplication.platformName()
+        # for a libmpv that leaks them, once it asks for glFenceSync
+        self._frame_fences: FrameFences | None = None
 
         # Set as frames_ready goes out, cleared by the GUI as it comes to look:
         # videos make many more rounds than the screen has refreshes.
@@ -488,7 +562,34 @@ class VideoRenderer(QThread):
             self._read_format = GL_RGBA
 
     def _get_proc_address(self, _ctx, name) -> int:
-        return self._context.get_proc_address(name) if self._context else 0
+        if not self._context:
+            return 0
+
+        address = self._context.get_proc_address(name)
+
+        if name == b"glFenceSync" and address:
+            return self._fence_sync_for_mpv(address)
+
+        return address
+
+    def _fence_sync_for_mpv(self, address: int) -> int:
+        """glFenceSync as mpv is to have it: see FrameFences."""
+
+        if self._frame_fences is None:
+            if not leaks_frame_fences(env.MPV_VERSION):
+                return address
+
+            delete_sync = self._context.get_proc_address(b"glDeleteSync")
+            if not delete_sync:
+                return address
+
+            self._log.info(
+                "libmpv %s leaves a GL fence for every frame: deleted here",
+                env.MPV_VERSION,
+            )
+            self._frame_fences = FrameFences(address, delete_sync)
+
+        return self._frame_fences.address
 
     def _new_render_context(self, player):
         if self.is_software:
@@ -670,8 +771,15 @@ class VideoRenderer(QThread):
         # block_for_target_time defaults to on: render() sleeps until the
         # frame's display time, up to video-timing-offset per video. Off here,
         # with the offset at 0 so frames aren't early: see MpvPlayer.
+        fences = self._frame_fences
+        if fences is not None:
+            fences.forget()
+
         video.render_calls.draw(width, height)
         video.rendered_size = size
+
+        if fences is not None:
+            fences.delete_last()
 
         if self.is_gl_output:
             video.back.width, video.back.height = size

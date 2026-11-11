@@ -512,6 +512,10 @@ class MpvPlayer(QObject):
         if any(profile["name"] == "fast" for profile in self.mpv.profile_list):
             self.mpv.command("apply-profile", "fast")
 
+        # read now, for the renderer's first render context: see FrameFences
+        if env.MPV_VERSION is None:
+            env.MPV_VERSION = (self.mpv.mpv_version or "").removeprefix("mpv ") or None
+
         # nothing's loading yet, so this has nothing to wait for
         self._subtitle_limits = subtitle_limits(self.mpv.option_info)
         deinterlace_info = self.mpv.option_info("deinterlace") or {}
@@ -525,9 +529,6 @@ class MpvPlayer(QObject):
         self.mpv.observe_property("hwdec-current", self._on_hwdec)
         self.mpv.observe_property("chapter-list", self._on_chapter_list)
         self.mpv.observe_property("eof-reached", self._on_eof)
-
-        if env.MPV_VERSION is None:
-            self.mpv.observe_property("mpv-version", self._on_version)
 
         self._hook_add("on_preloaded")
 
@@ -1491,10 +1492,6 @@ class MpvPlayer(QObject):
             self._media.chapters = chapters
 
             self.chapters_changed.emit(self._media)
-
-    def _on_version(self, _name, value) -> None:
-        if value:
-            env.MPV_VERSION = value.removeprefix("mpv ")
 
     def _read_media(self) -> None:
         try:

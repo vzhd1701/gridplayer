@@ -40,15 +40,19 @@ from gridplayer.mpv_player.player import (
     devices_of_first_output,
 )
 from gridplayer.mpv_player.renderer import (
+    _DELETE_SYNC_PROTO,
+    _FENCE_SYNC_PROTO,
     GL_BGRA,
     GL_RGBA,
     GL_RGBA8,
+    FrameFences,
     FrameSlot,
     MpvRenderService,
     RenderCalls,
     RenderedVideo,
     SoftwareRenderCalls,
     VideoRenderer,
+    leaks_frame_fences,
 )
 from gridplayer.mpv_player.subtitles import (
     SubtitleView,
@@ -408,6 +412,7 @@ def test_the_renderer_never_writes_what_is_on_show():
 class _FakeMpv:
     profile_list = []
     chapter_list = None
+    mpv_version = "mpv v0.37.0"
 
     def __init__(self, **options):
         self.options = options
@@ -2420,6 +2425,129 @@ def test_a_video_s_render_calls_go_with_its_render_context(renderer):
     renderer._free_video(video)
 
     assert video.render_calls is None
+
+
+# -- libmpv 0.40 and 0.41's fence a frame
+
+
+@pytest.mark.parametrize(
+    ("version", "leaks"),
+    [
+        ("v0.40.0", True),
+        ("0.40.0", True),
+        ("v0.40.0-3-gabc1234", True),
+        ("v0.41.0", True),
+        ("v0.41.0-112-gabc1234", True),
+        # f74adc4 itself, and the test libmpv on Windows
+        ("v0.41.0-113-gf74adc4", False),
+        ("v0.41.0-1044-g14f2d48cb", False),
+        ("v0.42.0", False),
+        ("v0.39.0", False),
+        ("v0.37.0", False),
+        ("", False),
+        (None, False),
+    ],
+)
+def test_libmpv_versions_that_leave_a_fence_a_frame(version, leaks):
+    assert leaks_frame_fences(version) is leaks
+
+
+class _GLSync:
+    """glFenceSync and glDeleteSync standing in, as C functions."""
+
+    def __init__(self):
+        self.made = []
+        self.deleted = []
+        self._fence_sync = _FENCE_SYNC_PROTO(self._make)
+        self._delete_sync = _DELETE_SYNC_PROTO(self.deleted.append)
+
+    def _make(self, _condition, _flags):
+        self.made.append(0x1000 + len(self.made))
+        return self.made[-1]
+
+    def addresses(self) -> tuple[int, int]:
+        return tuple(
+            ctypes.cast(fn, ctypes.c_void_p).value
+            for fn in (self._fence_sync, self._delete_sync)
+        )
+
+
+def test_only_the_last_fence_of_a_frame_is_deleted():
+    gl = _GLSync()
+    fences = FrameFences(*gl.addresses())
+    given = _FENCE_SYNC_PROTO(fences.address)
+
+    given(0x9117, 0)
+    fences.forget()
+    # an upload's, then the frame's own
+    assert given(0x9117, 0) == 0x1001
+    given(0x9117, 0)
+    fences.delete_last()
+
+    assert gl.deleted == [0x1002]
+
+
+def test_a_frame_with_no_fence_deletes_none():
+    gl = _GLSync()
+    fences = FrameFences(*gl.addresses())
+    given = _FENCE_SYNC_PROTO(fences.address)
+
+    given(0x9117, 0)
+    fences.forget()
+    fences.delete_last()
+    fences.delete_last()
+
+    assert gl.deleted == []
+
+
+def _gl_context_with_sync(gl: _GLSync):
+    fence_sync, delete_sync = gl.addresses()
+    addresses = {b"glFenceSync": fence_sync, b"glDeleteSync": delete_sync}
+
+    return MagicMock(get_proc_address=lambda name: addresses.get(name, 7))
+
+
+@pytest.mark.parametrize(
+    ("version", "is_wrapped"), [("v0.40.0", True), ("v0.42.0", False)]
+)
+def test_mpv_is_given_the_fence_keeper_only_where_it_leaks(
+    monkeypatch, renderer, version, is_wrapped
+):
+    monkeypatch.setattr(player_module.env, "MPV_VERSION", version)
+    gl = _GLSync()
+    renderer._context = _gl_context_with_sync(gl)
+
+    given = renderer._get_proc_address(None, b"glFenceSync")
+
+    assert (given != gl.addresses()[0]) is is_wrapped
+    assert renderer._get_proc_address(None, b"glFenceSync") == given
+    assert renderer._get_proc_address(None, b"glFinish") == 7
+
+
+def test_a_frame_s_fence_is_deleted_once_it_is_drawn(renderer):
+    video = _rendered_video()
+    renderer._videos.append(video)
+    calls = MagicMock()
+    renderer._frame_fences = calls.fences
+    video.render_calls = calls.render_calls
+
+    _round(renderer, video, is_frame=True)
+
+    assert [name for name, *_ in calls.mock_calls] == [
+        "fences.forget",
+        "render_calls.draw",
+        "fences.delete_last",
+    ]
+
+
+def test_a_frame_taken_out_of_sight_deletes_no_fence(renderer):
+    video = _hidden_after_its_first_frame(renderer)
+    renderer._frame_fences = MagicMock()
+
+    _round(renderer, video, is_frame=True)
+
+    assert _taken_not_drawn(video) == 1
+    renderer._frame_fences.delete_last.assert_not_called()
 
 
 @pytest.mark.parametrize(
