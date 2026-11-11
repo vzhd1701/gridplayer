@@ -21,7 +21,7 @@ overnight 2026-11-09: new items 10.21-10.23.
 | 7 | Subtitles: tracks, files, delay, encoding, style | **built**, macOS on a VM with no GPU |
 | 8 | Deinterlacing, chapters, bookmarks, SponsorBlock | **built**, macOS on a VM with no GPU |
 | 9 | Streams, live video, errors and recovery, lists | **built**, macOS on a VM with no GPU |
-| 10 | Hardening: long churn, memory, real drags, other GPUs | mostly done; open: 10.4, 10.21, 10.32 (drags by hand), 10.8 (watchdog) |
+| 10 | Hardening: long churn, memory, real drags, other GPUs | mostly done; open: 10.4, 10.21, 10.8 (watchdog, lost GL context) |
 | 11 | macOS | **VM half done 2026-11-11**, all scenarios pass; a real GPU still to come (11.4) |
 | 12 | Packaging, docs, release | not started |
 | 13 | GL output, a choice beside readback | **built, macOS not run**, resize shaking, NVIDIA's black line and a crash closing a cell fixed, one surface for the window (13.5), 120 fps (13.10) |
@@ -148,7 +148,7 @@ Found on the way:
 
 - With no sound device, mpv tries every audio output, and JACK and SDL hang or crash when several
   videos start them at once. The core dump showed SDL's init. It would hit anyone with no working
-  sound, so Linux now tries only `pipewire,pulse,alsa`. See 6.7.
+  sound, so Linux now tries only `pulse,pipewire,alsa` (PipeWire's own first until 10.33). See 6.7.
 
 ## Stage 2: Finding the libraries, no startup delay
 
@@ -359,7 +359,7 @@ doesn't load mpv, so a restart gets out of it.
 - [x] 6.5 Channel mode (`audio-channels`, `af`), delay
 - [x] 6.6 Scenarios `tracks`, `external_audio_jump` on mpv. The sound half of `tracks` runs inside `mpv_audio`. Its subtitle
   half and `external_audio_jump`, which turns on picking a subtitle, move to 7.6: that does nothing on <MPV> yet
-- [x] 6.7 Linux audio outputs are limited to `pipewire,pulse,alsa` (see Stage 1 results). **JACK stays out, your call.**
+- [x] 6.7 Linux audio outputs are limited to `pulse,pipewire,alsa` (see Stage 1 results; pulse first since 10.33). **JACK stays out, your call.**
   A JACK-only machine gets ALSA or silence. Checked on PulseAudio and PipeWire with null sinks, and with no sound server
 
 ### Stage 6 results
@@ -970,7 +970,7 @@ CPU took 0.5-5.5 s, against 0.2-1.1 s on the key frame, which is about what VLC 
     Left: the first pass after Set Loop End, B being where the video already is (up to a report late, as before), and on
     VLC one pass in 39 where the report beat the timer, the GUI being held up by the test's own grabs
 - [x] 10.31 Playback stats for a cell: moved to `docs/ROADMAP.md` (2026-11-11, your call)
-- [ ] 10.32 **Native Wayland when the decoder doesn't need X11 (raised 2026-11-11 after 10.3).** On a Wayland session the
+- [x] 10.32 **Native Wayland when the decoder doesn't need X11 (raised 2026-11-11 after 10.3).** On a Wayland session the
   app still runs through Xwayland whenever there is one (`env._detect_qt_platform`), whatever the decoder, since VLC
   Hardware needs an X11 window. Only VLC Hardware does: MPV both ways and VLC Software play on Wayland natively (Stages
   1-9 ran there on `test_gpu`). Idea: pick the platform from the decoder at startup, and on switching to or from VLC
@@ -994,7 +994,21 @@ CPU took 0.5-5.5 s, against 0.2-1.1 s on the key frame, which is about what VLC 
   - Review fixes (2026-11-11): shown only on a Wayland desktop with Xwayland; the platform picked after a launch has
     handed its files on; the compositor asked with a 0.5 s limit, any failure taken as no frames; the notice follows the
     page's Window system and says when `--platform wayland` holds it; a restart asked again after one was put off
-  - Not checked yet: drags with the mouse on native Wayland, where the fake drag for Xwayland isn't used. Needs your hand
+  - Drags with the mouse on native Wayland, where the fake drag for Xwayland isn't used: fine (you, 2026-11-11)
+- [x] 10.33 **MPV plays slow for the first 5 s, sometimes, on Linux (you, 2026-11-11, Ubuntu VM: one video or a grid,
+  both MPV drivers, X11 and Wayland; never VLC).** mpv's PipeWire output, started on a sink PipeWire had put to sleep
+  after a few quiet seconds, keeps a clock running at about three quarters of the speed until about 5-6 s in, and the
+  video follows the sound's clock. Hence "sometimes": with anything played in the seconds before, the sink is awake.
+  Muted makes no difference, the output is opened anyway. VLC goes through the pulse layer.
+  - Measured on `test_ubuntu` (PipeWire 1.0.5, libmpv 0.37), a synthetic 1080p 23.976 fps clip with sound, frames drawn in
+    seconds 1-5 (120 is right): PipeWire's output on a sleeping sink 86-93 in all 6 runs, on an awake one 120; mpv's pulse
+    output on a sleeping sink 121-124 in all 6. Both MPV drivers alike.
+  - **Fixed: Linux tries `pulse,pipewire,alsa`.** After it: 122-124 a video, one video or 9, both drivers, the sink asleep
+    each time. PipeWire's pulse layer has PulseAudio's 64 clients too; a video turned away fails at once and gets
+    PipeWire's own output: 70 cells, 61 on pulse and 9 on PipeWire, none silent. The device list is now `pulse/` names on
+    PipeWire, as VLC's. `mpv_audio` and `mpv_transport` pass on both drivers there, onto a null sink.
+  - Rig trap: an offscreen real-app run has a runtime folder of its own, so no sound server. For sound, run with
+    `REAL_APP_QT_PLATFORM=auto` on the desktop's display
 - [x] 10.14 Don't fill the cell black before drawing a picture that covers it: app CPU 61% to 47% at
   1x1080p. Applies to VLC's software drivers too, so test those. Done: only the bars beside the
   picture are filled, reaching a pixel under its edge so a pixel it only partly covers at a screen

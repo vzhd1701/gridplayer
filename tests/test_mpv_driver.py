@@ -1050,6 +1050,14 @@ def test_options_leave_the_file_to_say_with_no_turn(transform):
     assert "video_rotate" not in _player(transform=transform).mpv.options
 
 
+def test_options_on_linux_try_pulse_before_pipewires_own(monkeypatch):
+    """mpv's PipeWire output starts slow on a sink gone to sleep."""
+
+    monkeypatch.setattr(player_module.env, "IS_LINUX", True)
+
+    assert _player().mpv.options["ao"] == "pulse,pipewire,alsa"
+
+
 def test_options_start_where_it_was_left():
     assert _player(current_position=5000).mpv.options["start"] == "5.0"
     assert "start" not in _player().mpv.options

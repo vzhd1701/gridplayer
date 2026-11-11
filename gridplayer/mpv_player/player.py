@@ -130,8 +130,13 @@ _FAILURE_REASON_WAIT_S = 0.1
 # what it's told. The rest it's told as they are: see start.
 _HEADER_OPTIONS = {"user-agent": "user-agent", "referer": "referrer"}
 
-# The ways out mpv is to try on Linux: see _options
-_LINUX_AUDIO_OUTPUTS = ("pipewire", "pulse", "alsa")
+# The ways out mpv is to try on Linux: see _options. Pulse first, PipeWire's own
+# second, on PipeWire too: started on a sink that had gone to sleep after a few
+# quiet seconds, mpv's PipeWire output keeps a clock that runs at three quarters
+# of the speed for the first 5 s or so, and the video plays that slow with it
+# (libmpv 0.37). Its pulse output starts at speed. A video turned away by the
+# server's 64 clients takes PipeWire's output, as it fails at once.
+_LINUX_AUDIO_OUTPUTS = ("pulse", "pipewire", "alsa")
 
 # The proxy's links look like no file, and an FFmpeg that's picky about that turns down a
 # playlist's segments. Debian 12's is, with a libmpv too old to say otherwise: mpv then
