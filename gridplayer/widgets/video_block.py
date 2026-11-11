@@ -94,6 +94,7 @@ from gridplayer.widgets.video_block_sponsorblock import SponsorBlockControl
 from gridplayer.widgets.video_block_status import StatusControl
 from gridplayer.widgets.video_block_stream import StreamControl
 from gridplayer.widgets.video_block_subtitles import SubtitleControl
+from gridplayer.widgets.video_block_time_ahead import TimeAhead
 from gridplayer.widgets.video_block_view import ViewControl
 from gridplayer.widgets.video_frame_vlc_base import VideoFrameVLC
 from gridplayer.widgets.video_overlay import (
@@ -290,6 +291,7 @@ class VideoBlock(QWidget):
         self.stream = StreamControl(self)
         self.navigation = NavigationControl(self)
         self.cell_size = CellSizeControl(self)
+        self.time_ahead = TimeAhead(self)
 
         self.url_resolver = self.init_url_resolver()
 
@@ -379,6 +381,7 @@ class VideoBlock(QWidget):
     def _destroy_video_driver(self):
         self._is_state_change_in_progress = False
         self._in_progress_timer.stop()
+        self.time_ahead.forget_reports()
 
         # what SponsorBlock found is only marked again once something is
         # playing
@@ -562,6 +565,7 @@ class VideoBlock(QWidget):
     def cleanup(self):
         self.overlay_hide_timer.stop()
         self._in_progress_timer.stop()
+        self.time_ahead.forget_reports()
         self.stream.stop_adapting()
         self.recovery.stop()
 
@@ -1279,6 +1283,9 @@ class VideoBlock(QWidget):
 
     @only_initialized
     def time_changed(self, new_time):
+        # each report says afresh what's coming: see TimeAhead
+        self.time_ahead.note_report()
+
         self.recovery.note_time(new_time)
 
         is_wrapped = self._is_loop_wrapped(new_time)
@@ -1313,6 +1320,25 @@ class VideoBlock(QWidget):
 
         else:
             self.sponsorblock.skip_if_played_into()
+            self.time_ahead.aim()
+
+    def reach_time(self, time_ms: int) -> None:
+        """A mark reached between reports, the loop's end or a skip's start
+        (see TimeAhead): what a report of the time would set off there, and
+        nothing else of one. The time stays the player's, unless it seeks."""
+
+        if self.is_live or self.is_stopped or self.is_seek_on_its_way:
+            return
+
+        reported, self.time = self.time, time_ms
+
+        if self.time > self.loop_end:
+            self.loop_end_action()
+        else:
+            self.sponsorblock.skip_if_played_into()
+
+        if not self.is_seek_on_its_way:
+            self.time = reported
 
     def _is_loop_wrapped(self, new_time) -> bool:
         """Has the video begun another pass since the last time update?"""
@@ -1516,6 +1542,7 @@ class VideoBlock(QWidget):
         # it again by itself: a reconnect counting down, a link still being
         # resolved, a list being read, the next item of its list (below)
         self.recovery.drop_retries()
+        self.time_ahead.cancel()
         self.navigation.is_waiting_for_list_read = False
 
         if self.url_resolver is not None and self.url_resolver.is_busy:
@@ -1734,6 +1761,9 @@ class VideoBlock(QWidget):
         self.set_video(snapshot.model_copy())
 
     def set_video(self, video_params: Video):
+        # what was coming was the old one's, even played anew
+        self.time_ahead.forget_reports()
+
         is_first_video = self.video_params is None
         is_reopen = is_reopen_needed(self.video_params, video_params)
 
@@ -2224,6 +2254,7 @@ class VideoBlock(QWidget):
         self._seek_behind = behind if is_behind and self._seek_retries else None
 
         self.sponsorblock.note_seek(seek_ms, is_viewers)
+        self.time_ahead.cancel()
 
         self.time = seek_ms
         self.video_driver.set_time(seek_ms, aim)
@@ -2340,6 +2371,7 @@ class VideoBlock(QWidget):
     @only_seekable
     def set_rate(self, rate, is_silent=False):
         self.video_params.rate = rate
+        self.time_ahead.cancel()
 
         self.video_driver.set_playback_rate(rate)
 
@@ -2361,6 +2393,8 @@ class VideoBlock(QWidget):
         self._is_state_change_in_progress = True
         self._in_progress_timer.start()
 
+        # reports stop while it's paused, and come again from scratch
+        self.time_ahead.forget_reports()
         self.video_driver.set_pause(paused)
 
     def play_pause(self):

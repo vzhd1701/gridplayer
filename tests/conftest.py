@@ -64,6 +64,7 @@ def _block_parts():
     from gridplayer.widgets.video_block_status import StatusControl
     from gridplayer.widgets.video_block_stream import StreamControl
     from gridplayer.widgets.video_block_subtitles import SubtitleControl
+    from gridplayer.widgets.video_block_time_ahead import TimeAhead
     from gridplayer.widgets.video_block_view import ViewControl
 
     return {
@@ -79,6 +80,7 @@ def _block_parts():
         "status": StatusControl,
         "stream": StreamControl,
         "subtitles": SubtitleControl,
+        "time_ahead": TimeAhead,
         "view": ViewControl,
     }
 

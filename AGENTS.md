@@ -90,7 +90,7 @@ playback, seeking, rate and its Qt events. Everything else lives in a part, a
 `VideoBlockPart` subclass in its own `video_block_<part>.py`, kept on the
 block as an attribute: `status`, `bookmarker`, `view`, `chapters`,
 `sponsorblock`, `subtitles`, `audio`, `loop`, `screenshot`, `recovery`,
-`stream` and `navigation`.
+`stream`, `navigation` and `time_ahead`.
 
 * A part reaches its block through `self._block`. When moving a method into
   a part, every `self.x` that is the block's must become `self._block.x`. A

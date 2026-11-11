@@ -154,6 +154,18 @@ class SponsorBlockControl(VideoBlockPart):
             skip_span_at(self._skip_spans, seek_ms) if is_viewers else None
         )
 
+    def next_skip_start(self, after_ms: int) -> int | None:
+        """Where the next stretch to be skipped starts, playing on from a
+        time; None if none is coming. See TimeAhead."""
+
+        starts = [
+            span.start_ms
+            for span in self._skip_spans
+            if span.start_ms > after_ms and span != self._span_left_alone
+        ]
+
+        return min(starts, default=None)
+
     def skip_if_played_into(self):
         """Pass over a stretch set to be skipped, if the video played into one.
 
