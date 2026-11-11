@@ -33,6 +33,8 @@ SPY = os.environ.get("SPY", "")
 BENCH_DIR = Path(os.environ["GP_BENCH_DIR"])
 IS_WIN = sys.platform == "win32"
 IS_AWAY = IS_WIN and os.environ.get("AWAY") == "1"
+# on the user's own screen, never activated: what reaching it costs included
+IS_ON_SCREEN = IS_WIN and os.environ.get("ON_SCREEN") == "1"
 CLK = 100 if IS_WIN else os.sysconf("SC_CLK_TCK")
 
 SETTINGS = {
@@ -49,6 +51,10 @@ if IS_AWAY:
     import away
 
     away.install(Path(os.environ["GP_BENCH_DIR"]))
+elif IS_ON_SCREEN:
+    import away
+
+    away.install_on_screen()
 
 
 def pct(values, q):
@@ -254,6 +260,16 @@ def instrument_mpv():
     from gridplayer.mpv_player import player as player_module
     from gridplayer.mpv_player import renderer
 
+    if "hwdec" in EXP:
+        # a decoder of mpv's by name, whatever the app would have picked
+        made = player_module.MpvPlayer.__init__
+
+        def forced_decoder(self, *args, **kwargs):
+            kwargs["hwdec"] = EXP["hwdec"]
+            made(self, *args, **kwargs)
+
+        player_module.MpvPlayer.__init__ = forced_decoder
+
     run = renderer.VideoRenderer.run
 
     def named_run(self):
@@ -455,6 +471,54 @@ def mpv_counters(blocks):
                     row[key] = None
         rows.append(row)
     return rows
+
+
+class OwnWindowFrames:
+    """MPV drawing into its own windows, with no render thread to count frames: how
+    far each video's clock went, read every half second on a thread of its own, its
+    frame rate times that less what mpv dropped is what it showed."""
+
+    def __init__(self, blocks):
+        self.handles = [mpv_of(b) for b in blocks]
+        self.progress = [0.0] * len(self.handles)
+        # from the first snapshot's moment: made right after it
+        self._prev = self._read()
+        self._stop = threading.Event()
+        self._thread = threading.Thread(target=self._run, daemon=True, name="frames")
+        self._thread.start()
+
+    def _read(self):
+        rows = []
+        for handle in self.handles:
+            try:
+                rows.append(
+                    (handle._get_property("time-pos"), handle._get_property("duration"))
+                )
+            except Exception:
+                rows.append((None, None))
+        return rows
+
+    def _run(self):
+        while not self._stop.wait(0.5):
+            now = self._read()
+            self._add(self._prev, now)
+            self._prev = now
+
+    def stop(self):
+        """Up to now: what went since the last half-second read too."""
+
+        self._stop.set()
+        self._thread.join()
+        self._add(self._prev, self._read())
+
+    def _add(self, prev, now):
+        for i, ((a, _), (b, length)) in enumerate(zip(prev, now)):
+            if a is None or b is None:
+                continue
+            step = b - a
+            if step < 0 and length:
+                step += length
+            self.progress[i] += max(step, 0)
 
 
 def autoskip(blocks, result):
@@ -823,11 +887,18 @@ def scenario(d):
     spy = start_spy(out, MEASURE)
     gpu_log = GpuLog(out)
     first = snapshot(blocks)
+    own_window = (
+        OwnWindowFrames(blocks)
+        if blocks and type(blocks[0].video_driver).__name__ == "VideoFrameMpvWindow"
+        else None
+    )
     COUNT.gate = True
 
     nested(MEASURE)
 
     COUNT.gate = False
+    if own_window is not None:
+        own_window.stop()
     last = snapshot(blocks)
     result.update(gpu_log.finish())
     if base_vram is not None and "vram_mb" in result:
@@ -898,12 +969,21 @@ def scenario(d):
 
     # frames
     if DRIVER.startswith("mpv"):
-        per_video = [
-            (last["published"].get(k, 0) - v) / span
-            for k, v in first["published"].items()
-        ]
-        result["shown_fps"] = [round(v, 1) for v in per_video]
         rows_a, rows_b = first["mpv"], last["mpv"]
+        if own_window is not None:
+            per_video = []
+            for went, x, y in zip(own_window.progress, rows_a, rows_b):
+                dropped = sum(
+                    (y.get(key) or 0) - (x.get(key) or 0)
+                    for key in ("frame_drop", "decoder_drop")
+                )
+                per_video.append((went * (y.get("vf_fps") or 0) - dropped) / span)
+        else:
+            per_video = [
+                (last["published"].get(k, 0) - v) / span
+                for k, v in first["published"].items()
+            ]
+        result["shown_fps"] = [round(v, 1) for v in per_video]
         for key in MPV_COUNTERS:
             total = 0
             for x, y in zip(rows_a, rows_b):
@@ -934,6 +1014,6 @@ def scenario(d):
     result["sleep_late_c_us"] = summary(sleep_probe.native_us)
 
     d.shot("end")
-    if IS_AWAY:
+    if IS_AWAY or IS_ON_SCREEN:
         away.capture(d.player, out / "window.png")
     (out / "bench.json").write_text(json.dumps(result, indent=1, default=str))

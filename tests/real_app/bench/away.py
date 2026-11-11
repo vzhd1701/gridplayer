@@ -194,6 +194,36 @@ def install(out: Path) -> None:
         raise RuntimeError("There's no other virtual desktop to run on")
     desktop = others[0]
 
+    def place(window, show_now) -> None:
+        window.setGeometry(-4000, -4000, *WINDOW_GEOMETRY[2:])
+        show_now()
+        _move_to_desktop(int(window.winId()), desktop)
+        window.setGeometry(*WINDOW_GEOMETRY)
+
+    _never_activated(place)
+
+    threading.Thread(
+        target=_watch, args=(user_desktop, out), daemon=True, name="desktop-watch"
+    ).start()
+
+
+def install_on_screen() -> None:
+    """The player on the user's own screen instead, still never activated, so
+    what reaching the screen costs is in the run. For someone who has said yes
+    to a window over their work for that long."""
+
+    def place(window, show_now) -> None:
+        window.setGeometry(*WINDOW_GEOMETRY)
+        show_now()
+
+    _never_activated(place)
+
+
+def _never_activated(place) -> None:
+    """The player shown by `place(window, show_now)`, which calls show_now()
+    to show it, and nothing of the app ever activated or made to fill the
+    screen."""
+
     real_show = QWidget.show
 
     def show(self):
@@ -204,10 +234,7 @@ def install(out: Path) -> None:
 
         self.setAttribute(Qt.WA_ShowWithoutActivating)
         self.setWindowFlag(Qt.WindowDoesNotAcceptFocus)
-        self.setGeometry(-4000, -4000, *WINDOW_GEOMETRY[2:])
-        real_show(self)
-        _move_to_desktop(int(self.winId()), desktop)
-        self.setGeometry(*WINDOW_GEOMETRY)
+        place(self, lambda: real_show(self))
         self._context.commands.activate_window = _ignore
 
     QWidget.show = show
@@ -216,10 +243,6 @@ def install(out: Path) -> None:
     QWidget.showMaximized = _ignore
     QWidget.showFullScreen = _ignore
     QWindow.setParent = _child_before_parent(QWindow.setParent)
-
-    threading.Thread(
-        target=_watch, args=(user_desktop, out), daemon=True, name="desktop-watch"
-    ).start()
 
 
 def capture(widget, path: Path) -> None:

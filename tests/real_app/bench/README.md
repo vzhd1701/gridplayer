@@ -45,6 +45,10 @@ To run on a real window instead, on a virtual desktop you aren't on, add
 `--env AWAY=1 --env REAL_APP_QT_PLATFORM=windows`. The compositor doesn't draw a window there, so that still
 leaves out what reaching the screen costs. Should your desktop change, the run stops.
 
+With `--env ON_SCREEN=1 --env REAL_APP_QT_PLATFORM=windows` instead, the window is on your own screen,
+1920x1080 at its top left, never activated: what the compositor and the screen cost is in the run. Only
+with the say-so of whoever sits at it.
+
 The other scenarios run like any other, from the repo root, with this folder on the path:
 
 ```bash
@@ -79,6 +83,7 @@ Pass them with `--env NAME=VALUE`:
   - `skip`: the "Skip frames to play more videos" setting.
   - `cpu`: Hardware MPV's "Decode on the CPU", what Software MPV was before it was fully software.
   - `opt.NAME=VALUE`: any mpv option, such as `opt.vd-lavc-skipframe=bidir`.
+  - `hwdec=NAME`: an mpv decoder in place of the one the app picks, such as `hwdec=dxva2`.
   - `liveskip=VALUE`: set `vd-lavc-skipframe` 3 s after loading.
   - `autoskip`: the trial of turning skipping on for more cells while frames drop.
   - `switch=SECONDS`: Python's switch interval.
