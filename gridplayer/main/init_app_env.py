@@ -56,6 +56,18 @@ def init_app_env_id():
     QApplication.setApplicationVersion(__version__)
 
 
+def start_resource_tracker() -> None:
+    """macOS: multiprocessing's resource tracker, a process forked, started
+    before the app is. Started later, with the process manager, the fork can
+    hang for good: macOS 15 loads a framework on a thread of its own as the
+    app comes up, holding dyld's lock while it waits for the Objective-C
+    runtime's, and fork() takes the two the other way round."""
+
+    from multiprocessing.resource_tracker import ensure_running
+
+    ensure_running()
+
+
 def init_app_env():
     # first: where the settings are kept goes by these
     init_app_env_id()
@@ -90,6 +102,9 @@ def init_app_env():
         from PyQt5.QtWinExtras import QtWin
 
         QtWin.setCurrentProcessExplicitAppUserModelID(__app_id__)
+
+    if env.IS_MACOS:
+        start_resource_tracker()
 
     QApplication.setAttribute(Qt.AA_EnableHighDpiScaling)
     QApplication.setAttribute(Qt.AA_UseHighDpiPixmaps)

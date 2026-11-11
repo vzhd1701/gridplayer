@@ -3100,6 +3100,45 @@ def test_every_cell_with_the_filter_gives_way():
     assert [_option_sets(player) for player in players] == [[("af", "")], [("af", "")]]
 
 
+@pytest.mark.usefixtures("room_file")
+def test_a_libmpv_without_the_filter_gives_way_too():
+    player = _audio_player()
+    player._heard_channels = 6
+    player.set_channel_mode(AudioChannelMode.HEADPHONES)
+    player.mpv.commands.clear()
+
+    # FFmpeg made without libmysofa, as Homebrew's
+    player._on_log("error", "ffmpeg", "AVFilterGraph: No such filter: 'sofalizer'")
+
+    assert _option_sets(player) == [("af", "")]
+
+
+@pytest.mark.parametrize(
+    ("lib", "room"),
+    [
+        # Windows: beside libvlc.dll
+        ("VLC/libvlc.dll", "VLC/hrtfs"),
+        # macOS: VLC.app has it in share, beside its lib
+        ("MacOS/lib/libvlc.dylib", "MacOS/share/hrtfs"),
+    ],
+)
+def test_the_room_file_is_found_where_vlc_keeps_it(tmp_path, monkeypatch, lib, room):
+    (tmp_path / lib).parent.mkdir(parents=True)
+    (tmp_path / lib).touch()
+    (tmp_path / room).mkdir(parents=True)
+    (tmp_path / room / "dodeca_and_7channel_3DSL_HRTF.sofa").touch()
+    monkeypatch.setattr(player_module, "find_libvlc", lambda: str(tmp_path / lib))
+    player_module._room_file.cache_clear()
+
+    try:
+        found = player_module._room_file()
+    finally:
+        player_module._room_file.cache_clear()
+
+    assert found is not None
+    assert found.endswith(f"{room}/dodeca_and_7channel_3DSL_HRTF.sofa")
+
+
 def test_an_error_that_only_has_the_word_in_it_is_something_else():
     _audio_player()._on_log("error", "cplayer", "Can not open file sofalizer.m4a")
 

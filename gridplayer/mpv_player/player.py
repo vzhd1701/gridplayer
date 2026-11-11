@@ -178,7 +178,8 @@ _AUDIO_DEVICES_KEPT_S = 5
 # Told by what the filter says as it starts, for the whole run: what stops it stops it
 # for every video, the file or a libmpv made without the filter
 _ROOM_FILTER_BROKE = threading.Event()
-_ROOM_FILTER_FAILURES = re.compile(r"Parsed_sofalizer|filter 'sofalizer'")
+# ("No such filter: 'sofalizer'" from FFmpeg without it, as Homebrew's)
+_ROOM_FILTER_FAILURES = re.compile(r"Parsed_sofalizer|filter:? 'sofalizer'")
 
 # The deinterlace modes this libmpv can't start, for the whole run, so that no later
 # video changes decoder for one. Made without the GPL parts it has no fieldmatch.
@@ -198,9 +199,12 @@ def _room_file() -> str | None:
     if libvlc is None:
         return None
 
-    path = (Path(libvlc).parent / _ROOM_FILE).resolve()
+    lib_dir = Path(libvlc).parent
+    # beside libVLC, or as VLC.app has it on macOS, in share beside its lib
+    places = (lib_dir / _ROOM_FILE, lib_dir.parent / "share" / _ROOM_FILE)
+    path = next((place.resolve() for place in places if place.is_file()), None)
 
-    if not path.is_file() or not _ROOM_FILE_CHARS.fullmatch(path.as_posix()):
+    if path is None or not _ROOM_FILE_CHARS.fullmatch(path.as_posix()):
         return None
 
     return path.as_posix().replace(":", "\\\\:")
