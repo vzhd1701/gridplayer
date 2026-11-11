@@ -13,16 +13,16 @@ overnight 2026-11-09: new items 10.21-10.23.
 | | Stage | State |
 |---|---|---|
 | 1 | Videos load, play and resize in the real grid, with zoom and pan | built, your hand test still open |
-| 2 | Finding the libraries, no startup delay, runs with only one of VLC or mpv | **done, macOS not run** |
-| 3 | Settings: unavailable drivers greyed out with a reason | **built, macOS still open** |
-| 4 | Transport: seek, speed, frame step, looping, end of video | **built, macOS not run** |
-| 5 | View: rotate, flip, crop, aspect ratio, screenshots, sync | **built, macOS not run** |
-| 6 | Audio: tracks, files, devices, delay, channels | **built, macOS not run** |
-| 7 | Subtitles: tracks, files, delay, encoding, style | **built, macOS not run** |
-| 8 | Deinterlacing, chapters, bookmarks, SponsorBlock | **built, macOS not run** |
-| 9 | Streams, live video, errors and recovery, lists | **built, macOS not run** |
-| 10 | Hardening: long churn, memory, real drags, other GPUs | not started |
-| 11 | macOS | not started |
+| 2 | Finding the libraries, no startup delay, runs with only one of VLC or mpv | **done**, macOS on a VM |
+| 3 | Settings: unavailable drivers greyed out with a reason | **built**, macOS on a VM |
+| 4 | Transport: seek, speed, frame step, looping, end of video | **built**, macOS on a VM with no GPU |
+| 5 | View: rotate, flip, crop, aspect ratio, screenshots, sync | **built**, macOS on a VM with no GPU |
+| 6 | Audio: tracks, files, devices, delay, channels | **built**, macOS on a VM with no GPU |
+| 7 | Subtitles: tracks, files, delay, encoding, style | **built**, macOS on a VM with no GPU |
+| 8 | Deinterlacing, chapters, bookmarks, SponsorBlock | **built**, macOS on a VM with no GPU |
+| 9 | Streams, live video, errors and recovery, lists | **built**, macOS on a VM with no GPU |
+| 10 | Hardening: long churn, memory, real drags, other GPUs | mostly done; open: 10.3, 10.4, 10.21, and later 10.8, 10.30, 10.31 |
+| 11 | macOS | **VM half done 2026-11-11**, all scenarios pass; a real GPU still to come (11.4) |
 | 12 | Packaging, docs, release | not started |
 | 13 | GL output, a choice beside readback | **built, macOS not run**, resize shaking, NVIDIA's black line and a crash closing a cell fixed, one surface for the window (13.5), 120 fps (13.10) |
 
@@ -682,8 +682,8 @@ CPU took 0.5-5.5 s, against 0.2-1.1 s on the key frame, which is about what VLC 
 
 ## Stage 10: Hardening
 
-- [ ] 10.1 Long churn on readback in the real driver, including a native memory checker if
-  one can be run. Handoff open question 3
+- [x] 10.1 Long churn on readback in the real driver, including a native memory checker if
+  one can be run. Handoff open question 3. Closed 2026-11-11, your call: everything it asked for has run
   - 2026-11-09, overnight: on Linux with glibc's heap checks both MPV churns crashed in 2 minutes. The event thread read the tracks at
     file-loaded, or at preloaded, or after an added file, while `terminate()` freed the handle: the window the Stage 7 notes left. Now those
     reads take `_telling` and look at `_is_closing` inside it, as everything sent to mpv does. Run again with the fix and the same checks: both
@@ -696,6 +696,27 @@ CPU took 0.5-5.5 s, against 0.2-1.1 s on the key frame, which is about what VLC 
   question 1
 - [ ] 10.4 AMD on Windows and any other GPU we can reach. HEVC and 10-bit through VAAPI needs
   a newer chip than `test_gpu`
+  - **AMD on Windows, run 2026-11-11** on your PC's AMD Radeon iGPU (a `python.exe` copy with no GPU preference, which
+    Windows puts on the GPU the screen is on). Open: Linux on NVIDIA or AMD, and a newer Intel for VAAPI.
+    - Every MPV scenario passes: the 42 of the suite with Steady, and 9 with Fast in a real window on the other desktop
+      ("OpenGL by ATI Technologies Inc.", black line fix off, as Auto has it).
+    - Hardware MPV decodes `d3d11va-copy` on AMD, HEVC and 10-bit HEVC too: on the GPU, each frame copied back through the
+      CPU. mpv hands d3d11va frames to desktop OpenGL only through ANGLE, so frames stay on the GPU only on NVIDIA (`nvdec`).
+      Intel on Windows will be the same as AMD.
+    - The bench's mix, a real window on the other desktop (fps, the mix's own rates are 43.5, 39.3 and 36.7; app CPU, 100% a
+      core; memory):
+
+      | | 4 | 9 | 16 |
+      |---|---:|---:|---:|
+      | Hardware MPV, Steady | 43.5 · 53% · 635 MB | 39.3 · 93% · 1491 MB | **28.0** · 118% · 2453 MB |
+      | Hardware MPV, Fast | 43.5 · 47% · 791 MB | 39.3 · 115% · 1681 MB | 35.1 · 159% · 2645 MB |
+      | Software MPV | 43.5 · 149% · 339 MB | 39.3 · 234% · 777 MB | 36.7 · 375% · 1168 MB |
+
+      The RTX 3060 plays all 16 on Hardware MPV (`MPV_PERFORMANCE.md`, "A real grid"); the iGPU falls behind at 16 on
+      Steady, copying every frame back and reading it back again. The CPU (a Ryzen) keeps up with all of it in software.
+    - Auto's video memory: DXGI says 48 GB for the iGPU, which uses the system's memory, so Auto never moves a video to the CPU there.
+    - The bench's frame counter took `present_rgb32`'s arguments as they were before 10.7, which stopped every Steady and
+      Software MPV run loading: fixed.
 - [x] 10.5 The Linux `mallopt` arena limit: decide on applying it only when mpv is in use
   - **Measured 2026-11-09, `test_gpu`, real X11, `MALLOC_ARENA_MAX` (what `mallopt(M_ARENA_MAX)` sets), default (8 a core) against 2
     and 4.** Frame rate and CPU the same throughout.
@@ -873,6 +894,18 @@ CPU took 0.5-5.5 s, against 0.2-1.1 s on the key frame, which is about what VLC 
 - [ ] 10.21 Linux memory grows while playing on `test_gpu`: Hardware MPV 790 MB an hour at 9 videos, Software 244 at 4, VLC 48. The C control
   grows as fast with no Python, and `heaptrack` puts it in Mesa 25.0.7's `libgallium`, the Haswell driver. Try a newer Mesa, and another GPU
   on Linux with 10.4. Nothing for the app to change unless it's found everywhere
+  - **Newer Mesa tried 2026-11-11:** Mesa 26.1.6 from trixie-backports, unpacked into `/opt/mesa_new` on `test_gpu` and loaded
+    in its place (the system's 25.0.7 left installed). 20-minute soaks, the mix, real X11, alternating with the system's:
+
+    | | Memory, 1 then 18 minutes in | Grows an hour | fps a cell |
+    |---|---:|---:|---:|
+    | Hardware MPV, 9, Mesa 26.1.6 | 828 → 1275 MB | 1387 MB | 22.4-22.9 |
+    | Hardware MPV, 9, Mesa 25.0.7 | 787 → 1234 MB | 1322 MB | 22.1-23.2 |
+    | Software MPV, 4, no OpenGL since 10.17 | 447 → 465 MB | 26 MB | 43.0-43.2 |
+
+    So a newer Mesa doesn't change it, and Software MPV, which grew 244 MB an hour when it drew with OpenGL, now barely grows:
+    the growth goes with OpenGL on this Haswell GPU. What's left is another GPU on Linux (10.4). Until then, Software MPV is the
+    choice on such a machine for a grid left playing for hours.
 - [x] 10.22 **Your decision:** Software MPV on Windows keeps about 1.5 MB for each video closed, mpv's direct rendering buffers: 60 to 1838 MB
   in a 20-minute churn with everything closed. With `vd-lavc-dr=no` it stays at 340-400 MB. That cost frames on Linux, 19 against 25, and
   wasn't measured on Windows. Lists playing one video after another would meet it. Hardware MPV keeps about 230 KB a video, not looked into
@@ -923,8 +956,38 @@ CPU took 0.5-5.5 s, against 0.2-1.1 s on the key frame, which is about what VLC 
 ## Stage 11: macOS
 
 - [ ] 11.1 Spike on `test_macos`: GL context, render API, VideoToolbox interop, readback
-- [ ] 11.2 Same Stage 1 checks
-- [ ] 11.3 Own CGL context only if the Qt one causes trouble
+  - **Run 2026-11-11 on `test_macos`, a VM with no GPU (macOS 15.1, Intel), Homebrew's libmpv 0.41.** The VM half is done;
+    VideoToolbox and anything about speed need a real GPU, see 11.4.
+  - Found with nothing set: Homebrew's `/usr/local/lib/libmpv.2.dylib`. Every driver offered, none greyed out.
+  - GL: Qt's context on a `QOffscreenSurface` (`QtGLContext`) works as it is. The VM gives Apple's software renderer,
+    OpenGL 2.1 (Qt's default on macOS is the legacy 2.1 profile, not 3.2 Core). The render API draws, frames read back right.
+  - VideoToolbox: mpv looks at it and decodes on the CPU, as the VM has no hardware decoder. `hwdec-current` says `no`.
+  - **Every MPV scenario passes:** all 10 on Hardware MPV, and the 4 that run on Software MPV (`ALSO_ON_SOFTWARE_MPV`).
+  - Found and fixed on the way:
+    - **A hang at startup, not MPV's, on any driver:** the resource tracker, forked as the process manager starts, can hang for
+      good on macOS 15. A framework macOS loads on a thread of its own as the app comes up holds dyld's lock and waits for
+      the Objective-C runtime's, and `fork()` takes them the other way round. 1 of the first 2 runs. It starts before Qt now
+      (`init_app_env.start_resource_tracker`). Later forks (VLC's processes, the info reader) come once that load is over.
+    - **Headphones with Homebrew's libmpv:** its FFmpeg has no `sofalizer`, and its "No such filter: 'sofalizer'" wasn't
+      caught, so the room filter would have left no sound at all. It gives way to the plain mix now. And VLC.app keeps the room
+      file in `Contents/MacOS/share/hrtfs`, not beside libVLC: found there now (it's used only by a libmpv that has the filter).
+    - The scenarios took the menus in the system's language (the VM's is Russian): the driver sets English now.
+      `mpv_hidden_cells` timed the window coming back from minimized, which macOS animates, 2 s on this VM: it times from
+      the window being seen again now, where the cells were drawn at once.
+- [x] 11.2 Same Stage 1 checks: in the scenarios above (`mpv_basics`: play, pause, resize, zoom, pan, pixel shapes, a file
+  that says to turn it), on the VM. Settings: the Video Decoder page shows as on Windows, with no Output or Processes rows.
+- [ ] 11.3 Own CGL context only if the Qt one causes trouble. None so far
+- [ ] 11.4 **On a Mac with a real GPU** (a hackintosh is Intel with an AMD or Intel GPU; Apple Silicon needs a real Mac of its own,
+  its libmpv arm64 and its OpenGL on Metal):
+  - VideoToolbox: does Hardware MPV decode with it, and with frames kept on the GPU (`videotoolbox`, not `-copy`) in Qt's
+    context? H.264, HEVC, 10-bit HEVC. Colours right in the read-back frames.
+  - OpenGL 2.1 against 3.2 Core: whether Hardware MPV draws as it should on 2.1, or should ask for Core.
+  - How many play and what it costs: the bench's mix at 4, 9 and 16 on Hardware and Software MPV and VLC.
+  - A Retina screen (or a 4K one scaled): frames rendered at the screen's pixels, cells, zoom and screenshots.
+  - Fast output, hidden on macOS: whether it's worth it there. It needs the render thread's context in Qt's share group.
+  - Video memory: Auto reads none on macOS, so it never decodes on the CPU. Metal says how much a GPU has, if that's needed.
+  - Two GPUs (an iGPU and an AMD card): which one Qt's context draws on.
+  - Sleep and wake, a screen unplugged, the window moved between screens of different scales.
 
 ## Stage 12: Packaging and release
 

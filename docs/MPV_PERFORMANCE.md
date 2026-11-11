@@ -551,6 +551,9 @@ decoding, which levels off. ffmpeg decoding with VAAPI on its own doesn't grow. 
 the Haswell driver, and most of the growth isn't through malloc at all. So it's met through mpv's OpenGL, and not the app's to fix. A newer
 Mesa and another GPU on Linux (10.4) would tell more.
 
+Mesa 26.1.6, tried 2026-11-11 (plan 10.21): the same, 1387 MB an hour against 25.0.7's 1322 in 20-minute soaks of 9. Software MPV, fully
+software since 10.17 and so with no OpenGL, now grows 26 MB an hour at 4, where it grew 244 drawing with OpenGL.
+
 **Windows: Software MPV's direct rendering.** About 1.5 MB is kept per video closed. With `vd-lavc-dr=no` the same 6-minute churn stays at
 340-400 MB, and falls back. Python holds none of it: one closed video stays alive, the same one, not more. Bare libmpv opening and closing players
 with no rendering levels off at about 300 MB. So it's the decoder's buffers in GL that aren't given back. Hardware MPV keeps about 230 KB a video,
