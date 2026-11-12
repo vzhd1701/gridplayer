@@ -89,3 +89,12 @@ def test_no_picture_and_none_up_shows_none(frame):
     frame._on_snapshot_image(None)
 
     frame.pause_snapshot.set_snapshot_file.assert_called_once_with("")
+
+
+def test_a_restart_on_its_way_as_it_closes_shows_nothing(driver):
+    driver._player = None
+    driver.playback_started_emit = MagicMock()
+
+    driver._on_playback_restarted()
+
+    driver.playback_started_emit.assert_not_called()

@@ -143,6 +143,11 @@ class VideoDriverMpvWindow(VideoDriverMpv):
         self._player.set_pause(True)
 
     def _on_playback_restarted(self) -> None:
+        # closed with this already on its way: the frame's window is mpv's
+        # still, and out of the frame, not to be shown again
+        if self._player is None:
+            return
+
         super()._on_playback_restarted()
 
         # a live stream back from a pause: see
