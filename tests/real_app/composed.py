@@ -28,6 +28,30 @@ _DIB_RGB_COLORS = 0
 _BI_RGB = 0
 
 
+# GNOME Shell takes a screenshot for the one that owns org.gnome.Screenshot on
+# the session bus, and only for that one. argv: path x y width height.
+_GNOME_SHOT = """
+import sys
+from PyQt5.QtCore import QCoreApplication
+from PyQt5.QtDBus import QDBusConnection, QDBusInterface
+
+app = QCoreApplication(sys.argv)
+bus = QDBusConnection.sessionBus()
+if not bus.registerService("org.gnome.Screenshot"):
+    sys.exit(bus.lastError().message())
+shell = QDBusInterface(
+    "org.gnome.Shell.Screenshot",
+    "/org/gnome/Shell/Screenshot",
+    "org.gnome.Shell.Screenshot",
+    bus,
+)
+x, y, w, h = map(int, sys.argv[2:6])
+reply = shell.call("ScreenshotArea", x, y, w, h, False, sys.argv[1])
+if reply.errorMessage():
+    sys.exit(reply.errorMessage())
+"""
+
+
 def has_own_window_video(widget: QWidget) -> bool:
     """Whether a video in it is drawn by mpv into a window of its own."""
 
@@ -141,24 +165,40 @@ def _grab_composed(widget: QWidget) -> QImage:
 def _grab_from_x11(widget: QWidget) -> QImage:
     """What the X server has in the window there, mpv's window in it included.
     Under XWayland the X server has nothing of what GL draws: the screen is
-    taken from the compositor instead, by grim, where it's there (sway)."""
+    taken from the compositor instead, by grim where it's there (sway), or by
+    asking GNOME Shell."""
 
     window = widget.window()
     origin = widget.mapTo(window, QPoint(0, 0)) if widget is not window else QPoint()
 
-    if os.environ.get("WAYLAND_DISPLAY") and shutil.which("grim"):
+    is_gnome = shutil.which("gnome-shell") is not None
+    if os.environ.get("WAYLAND_DISPLAY") and (shutil.which("grim") or is_gnome):
         # what was hidden or drawn just now, which the compositor shows a frame on
         QApplication.processEvents()
         time.sleep(_COMPOSE_WAIT_S)
 
         at = widget.mapToGlobal(QPoint(0, 0))
-        area = f"{at.x()},{at.y()} {widget.width()}x{widget.height()}"
+        area = (at.x(), at.y(), widget.width(), widget.height())
         with tempfile.TemporaryDirectory() as folder:
             path = Path(folder) / "grab.png"
             # the compositor's socket is in the session's own, which a run moves
             runtime = f"/run/user/{os.getuid()}"
             env = {**os.environ, "XDG_RUNTIME_DIR": runtime}
-            subprocess.run(["grim", "-g", area, str(path)], check=True, env=env)
+            if shutil.which("grim"):
+                x, y, w, h = area
+                command = ["grim", "-g", f"{x},{y} {w}x{h}", str(path)]
+            else:
+                # the run has no session bus of its own: the desktop's
+                env["DBUS_SESSION_BUS_ADDRESS"] = f"unix:path={runtime}/bus"
+                env["QT_QPA_PLATFORM"] = "offscreen"
+                command = [
+                    sys.executable,
+                    "-c",
+                    _GNOME_SHOT,
+                    str(path),
+                    *map(str, area),
+                ]
+            subprocess.run(command, check=True, env=env)
             return QImage(str(path))
 
     return (
