@@ -306,6 +306,11 @@ _default_settings = {
 if env.IS_MACOS:
     _default_settings["player/video_driver"] = VideoDriver.VLC_HW_SP
 
+# mpv into a window of its own a cell, the least work for the CPU and the GPU.
+# On Linux it takes X11, and Copy works on Wayland too.
+if env.IS_WINDOWS:
+    _default_settings["player/mpv_output"] = MpvOutput.WINDOW
+
 
 class _Settings:
     def __init__(self):

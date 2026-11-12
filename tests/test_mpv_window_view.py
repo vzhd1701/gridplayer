@@ -268,6 +268,9 @@ def test_no_screenshot_asked_of_an_mpv_going():
         (False, True, "xcb", True),
         # a surface on Wayland is only its own client's to draw into
         (False, True, "wayland", False),
+        # no windows to give mpv
+        (True, False, "offscreen", False),
+        (False, True, "offscreen", False),
         (False, False, "cocoa", False),
     ],
 )

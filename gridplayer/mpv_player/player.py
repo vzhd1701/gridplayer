@@ -736,6 +736,11 @@ class MpvPlayer(QObject):
 
         if env.IS_WINDOWS:
             options["gpu_api"] = "d3d11"
+        else:
+            # The window is an X11 one. Left to itself, mpv on a Wayland desktop
+            # takes Wayland, which knows nothing of it: a surface of its own,
+            # over the whole screen.
+            options["gpu_context"] = "x11egl"
 
         return options
 

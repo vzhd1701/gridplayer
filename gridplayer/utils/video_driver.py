@@ -140,12 +140,16 @@ def is_mpv_gl_output(output: MpvOutput, picked: VideoDriver) -> bool:
 def is_mpv_window_output(output: MpvOutput) -> bool:
     """Whether Hardware MPV draws into a native window a cell itself: on Windows,
     and on Linux with an X11 window to give mpv. On Wayland a surface is only its
-    own client's to draw into: Copy there instead."""
+    own client's to draw into, and offscreen there are no windows: Copy there
+    instead."""
 
     if output != MpvOutput.WINDOW:
         return False
 
-    return env.IS_WINDOWS or (env.IS_LINUX and is_hw_video_available())
+    if env.IS_WINDOWS:
+        return _qt_platform_name() == "windows"
+
+    return env.IS_LINUX and _qt_platform_name() == "xcb"
 
 
 def load_session_driver(driver: VideoDriver) -> VideoDriver | None:

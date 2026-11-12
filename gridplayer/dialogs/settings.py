@@ -481,7 +481,8 @@ class SettingsDialog(PagedDialog):
 
     def show_mpv_output_help(self):
         """What each of MPV's outputs does and when to pick it, which a name
-        can't say and a tooltip has no room for. Direct is Windows only."""
+        can't say and a tooltip has no room for. One table for Windows, one for
+        Linux, where Direct takes X11."""
 
         if env.IS_WINDOWS:
             # five columns on one line each

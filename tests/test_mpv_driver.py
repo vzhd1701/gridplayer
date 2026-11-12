@@ -2449,21 +2449,24 @@ def test_manager_picks_how_mpv_decodes_and_draws(
 
 
 @pytest.mark.parametrize(
-    ("driver", "is_windows", "frame_class"),
+    ("driver", "platform", "frame_class"),
     [
-        (VideoDriver.MPV_HW, True, "VideoFrameMpvWindow"),
+        (VideoDriver.MPV_HW, "windows", "VideoFrameMpvWindow"),
         # libmpv's software renderer has no window of its own to draw into
-        (VideoDriver.MPV_SW, True, "VideoFrameMpv"),
-        # not yet: Stage 14.9
-        (VideoDriver.MPV_HW, False, "VideoFrameMpv"),
+        (VideoDriver.MPV_SW, "windows", "VideoFrameMpv"),
+        # no window to give mpv
+        (VideoDriver.MPV_HW, "offscreen", "VideoFrameMpv"),
     ],
 )
 def test_manager_has_mpv_draw_into_its_own_windows_where_it_can(
-    mocker, monkeypatch, driver, is_windows, frame_class
+    mocker, monkeypatch, driver, platform, frame_class
 ):
     mocker.patch("gridplayer.mpv_player.renderer.load_mpv")
     mocker.patch.object(MpvRenderService, "_join_qt_share_group", return_value=None)
-    monkeypatch.setattr("gridplayer.utils.video_driver.env.IS_WINDOWS", is_windows)
+    monkeypatch.setattr("gridplayer.utils.video_driver.env.IS_WINDOWS", True)
+    monkeypatch.setattr(
+        "gridplayer.utils.video_driver._qt_platform_name", lambda: platform
+    )
     settings = {
         "player/mpv_cpu_decoding": MpvCpuDecoding.OFF,
         "player/mpv_output": MpvOutput.WINDOW,
