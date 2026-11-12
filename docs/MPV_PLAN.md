@@ -1527,6 +1527,11 @@ How it goes in, by what's there already:
 
 Newest first. What was finished and seen working, and anything that changed the plan.
 
+- 2026-11-12: Direct keeps mpv's own 6 spare decoder frames (`hwdec_extra_frames`), Copy and Shared none. AV1 from
+  YouTube on Direct froze and lagged for its first seconds: d3d11va decodes into a fixed pool, and with none spare
+  AV1 ran out at once, mpv going to d3d11va-copy (missing the sequence header mid-stream), dxva2-copy, and once to
+  the CPU after 7 s. A 1080p60 AV1 clip made by libaom: 0 spare falls back, 1 still runs out, 2 and up clean. VP9 and
+  H.264 were clean with none; Copy's NVDEC took the AV1 clip with none.
 - 2026-11-12: Direct's mpvs take turns starting only on Windows: under X11 they start together again, once their
   cells are shown, as no driver there crashed. Why NVIDIA's did, and three ways around it rather than waiting, go to
   14.11.

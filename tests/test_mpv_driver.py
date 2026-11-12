@@ -1073,6 +1073,11 @@ def test_options_into_its_own_window_on_windows(monkeypatch):
     assert "video_timing_offset" not in options
 
 
+def test_options_into_its_own_window_leave_the_decoder_s_spare_frames_to_mpv():
+    # with none, d3d11va runs out on AV1 and mpv goes from decoder to decoder
+    assert "hwdec_extra_frames" not in _player(wid=1234).mpv.options
+
+
 def test_options_into_its_own_window_elsewhere_leave_the_api_to_mpv(monkeypatch):
     monkeypatch.setattr(player_module.env, "IS_WINDOWS", False)
 

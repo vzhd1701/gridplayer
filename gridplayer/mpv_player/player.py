@@ -610,6 +610,7 @@ class MpvPlayer(QObject):
             # pool does run out mpv falls back to a -copy mode by itself:
             # hwdec-current says so, see _on_hwdec. Deinterlacing holds more
             # frames, and was no trouble at 9 cells of 1080i on NVDEC or VAAPI.
+            # Not for Direct, see below.
             "hwdec_extra_frames": 0,
             # Software decoding only. The default is a thread per core, and
             # each holds frames: 110 MB more RAM per 1080p video, 290 at 4K,
@@ -670,6 +671,11 @@ class MpvPlayer(QObject):
         if self._wid is not None:
             # the render API's, see VideoRenderer._render: mpv's own timing here
             del options["video_timing_offset"]
+            # Direct decodes into a fixed pool of frames (d3d11va), and with none
+            # extra AV1 runs out at once: of 1080p60 from YouTube, mpv went
+            # through every decoder in 7 s, to the CPU's. Two were enough for
+            # a clip made by libaom; mpv's own default of 6 leaves room for more.
+            del options["hwdec_extra_frames"]
             options.update(self._own_window_options())
 
         if media_input.is_audio_only:
