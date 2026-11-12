@@ -1533,6 +1533,11 @@ How it goes in, by what's there already:
 
 Newest first. What was finished and seen working, and anything that changed the plan.
 
+- 2026-11-12: YouTube files asked of the host in pieces (yt-dlp's `http_chunk_size`, `Stream.piece_size`): mpv opens
+  the picture and the sound as files, asking for each to its end, and YouTube gave an AV1 1080p file asked for that
+  way at 266 KB/s, about its bit rate, and in pieces of 10 MB at 8 MB/s. Signed in, the video stopped every few
+  seconds to wait for it. Now the proxy asks a piece at a time and answers as one: the same video's cache went from
+  0-4 s, with two stops in 45 s, to 250 s in 2 s and none; seeks forward, back and past what was read play on.
 - 2026-11-12: Direct keeps mpv's own 6 spare decoder frames (`hwdec_extra_frames`), Copy and Shared none. AV1 from
   YouTube on Direct froze and lagged for its first seconds: d3d11va decodes into a fixed pool, and with none spare
   AV1 ran out at once, mpv going to d3d11va-copy (missing the sequence header mid-stream), dxva2-copy, and once to

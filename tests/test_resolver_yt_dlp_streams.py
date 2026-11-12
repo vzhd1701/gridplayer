@@ -171,6 +171,35 @@ def test_progressive_dash_video_is_served_as_a_playlist():
     assert next(iter(stream.audio_tracks.streams.values())).protocol == "http_hls"
 
 
+def test_a_file_yt_dlp_downloads_in_pieces_is_asked_for_in_pieces():
+    # YouTube's, which gives a file asked for to its end at about its bit rate
+    pieces = {"downloader_options": {"http_chunk_size": 10485760}}
+    audio = _audio_fmt(
+        protocol="https", fragments=None, url="http://host/audio.m4a", **pieces
+    )
+    video = _dash_fmt(
+        "video", protocol="https", fragments=None, url="http://host/v.mp4", **pieces
+    )
+
+    resolver = _resolver(
+        {"is_live": False, "duration": 61.5, "formats": [audio, video]}
+    )
+
+    _, stream = next(iter(resolver.streams.video_streams.items()))
+    picture, _, sound = stream.apart()
+
+    assert picture.as_file().piece_size == 10485760
+    assert sound.as_file().piece_size == 10485760
+
+
+def test_a_file_yt_dlp_downloads_whole_is_asked_for_whole():
+    video = _dash_fmt("video", protocol="https", fragments=None, container=None)
+
+    resolver = _resolver({"is_live": False, "formats": [video]})
+
+    assert [s.piece_size for s in resolver.streams.video_streams.values()] == [None]
+
+
 def test_plain_progressive_video_is_not_paired():
     """A file that is not fragmented cannot be cut into segments."""
 

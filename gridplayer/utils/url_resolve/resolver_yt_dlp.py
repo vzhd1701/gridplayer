@@ -385,6 +385,7 @@ class YoutubeDLResolver(ResolverBase):
             fragments=fragments,
             init_fragment=init_fragment,
             duration=self._duration if protocol in FILE_PROTOCOLS else 0,
+            piece_size=_piece_size(stream) if protocol in FILE_PROTOCOLS else None,
             session=StreamSessionOpts(
                 service=self._service_id,
                 session_headers=HashableDict(stream.get("http_headers", {})),
@@ -809,6 +810,14 @@ def _is_bitrate_in_bits(streams) -> bool:
         return False
 
     return all(duration < MIN_PLAUSIBLE_DURATION for duration in implied_durations)
+
+
+def _piece_size(stream) -> int | None:
+    """What yt-dlp downloads the file in pieces of, see Stream.piece_size."""
+
+    size = (stream.get("downloader_options") or {}).get("http_chunk_size")
+
+    return int(size) if size else None
 
 
 def _get_video_codec(stream) -> str | None:

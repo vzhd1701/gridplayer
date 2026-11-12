@@ -1,5 +1,7 @@
 import dataclasses
 import logging
+import re
+from collections.abc import Iterator
 from functools import partial
 from io import IOBase
 from itertools import chain
@@ -29,6 +31,11 @@ from gridplayer.utils.stream_proxy.mpd import rewrite_manifest
 
 CHUNK_SIZE = 8192
 
+# "bytes=N-": from N to the end, what's asked for in pieces (Stream.piece_size)
+_OPEN_RANGE = re.compile(r"bytes=(\d+)-")
+# "bytes N-M/W": a piece, and how big the whole is
+_CONTENT_RANGE = re.compile(r"bytes (\d+)-(\d+)/(\d+)")
+
 # last resort when neither an index nor a known duration is available
 SINGLE_SEGMENT_DURATION = 86400.0
 
@@ -47,6 +54,7 @@ class HTTPStreamProxy(HTTPStream):
         session_,
         url: str,
         buffered: bool = True,
+        piece_size: int | None = None,
         **args,
     ):
         super().__init__(session_, url, buffered, **args)
@@ -58,6 +66,9 @@ class HTTPStreamProxy(HTTPStream):
         self.server = server
         self.session_opts = session_opts
 
+        # see Stream.piece_size
+        self._piece_size = piece_size
+
     @property
     def response(self) -> Response:
         return self._res
@@ -66,18 +77,92 @@ class HTTPStreamProxy(HTTPStream):
         self.args["headers"] = headers
 
     def open(self):
-        self._res = self._fetch(stream=True)
+        body = self._open_in_pieces()
 
-        fd = StreamIOIterWrapper(self._res.iter_content(CHUNK_SIZE))
+        if body is None:
+            self._res = self._fetch(stream=True)
+            body = self._res.iter_content(CHUNK_SIZE)
+
+        fd = StreamIOIterWrapper(body)
         if self.buffered:
             fd = StreamIOThreadWrapper(self.session, fd, timeout=self._timeout)
 
         return fd
 
-    def _fetch(self, stream: bool = False) -> Response:
+    def _open_in_pieces(self) -> Iterator[bytes] | None:
+        """The file to its end, as asked for, asked of the host a piece at a
+        time and answered as one: None where it's asked for as it is.
+
+        YouTube gave an AV1 file asked for to its end at 266 KB/s, about its bit
+        rate, and the same file in pieces of 10 MB at 8 MB/s: mpv, which asks
+        for a file to its end, stopped every few seconds to wait for it.
+        """
+
+        if not self._piece_size:
+            return None
+
+        asked = _header(self.args.get("headers"), "Range")
+
+        if asked is None:
+            start = 0
+        else:
+            match = _OPEN_RANGE.fullmatch(asked.strip())
+            # a piece of its own, as a seek's probe or a playlist's segment
+            if match is None:
+                return None
+            start = int(match[1])
+
+        self._res = self._fetch_piece(start)
+
+        whole = _whole_size(self._res)
+
+        # not a piece of a file of known size: as it came
+        if whole is None:
+            return self._res.iter_content(CHUNK_SIZE)
+
+        _answer_to_the_end(self._res, start, whole, is_ranged=asked is not None)
+
+        return self._read_pieces(start, whole)
+
+    def _read_pieces(self, start: int, whole: int) -> Iterator[bytes]:
+        response, at = self._res, start
+
+        while True:
+            for data in response.iter_content(CHUNK_SIZE):
+                at += len(data)
+                yield data
+
+            response.close()
+
+            if at >= whole:
+                return
+
+            # read on a thread of its own, which stops on an OSError only
+            try:
+                response = self._fetch_piece(at)
+            except StreamError as err:
+                raise OSError(f"Next piece at {at}: {failure_txt(err)}") from err
+
+            if _piece_start(response) != at:
+                response.close()
+                raise OSError(f"Asked for a piece at {at}, given another")
+
+    def _fetch_piece(self, start: int) -> Response:
+        headers = {
+            name: value
+            for name, value in (self.args.get("headers") or {}).items()
+            if name.lower() != "range"
+        }
+        headers["Range"] = f"bytes={start}-{start + self._piece_size - 1}"
+
+        return self._fetch(stream=True, headers=headers)
+
+    def _fetch(self, stream: bool = False, headers=None) -> Response:
         """Ask the host for this URL, with the session's cookies and headers."""
 
-        reqargs = self.session.http.valid_request_args(**self.args)
+        args = self.args if headers is None else {**self.args, "headers": headers}
+
+        reqargs = self.session.http.valid_request_args(**args)
         reqargs.setdefault("method", "GET")
 
         return self.session.http.request(
@@ -520,3 +605,56 @@ class StreamReader:
             self._log.error(
                 f"Error when reading from stream: {failure_txt(err)}, exiting"
             )
+
+
+def _header(headers: dict[str, str] | None, name: str) -> str | None:
+    """A request header, whatever the case it's written in."""
+
+    return next(
+        (
+            value
+            for key, value in (headers or {}).items()
+            if key.lower() == name.lower()
+        ),
+        None,
+    )
+
+
+def _content_range(response: Response) -> re.Match | None:
+    if response.status_code != 206:
+        return None
+
+    return _CONTENT_RANGE.fullmatch(response.headers.get("Content-Range", "").strip())
+
+
+def _whole_size(response: Response) -> int | None:
+    """How big the file is that a piece is of, if it's a piece."""
+
+    match = _content_range(response)
+
+    return int(match[3]) if match else None
+
+
+def _piece_start(response: Response) -> int | None:
+    match = _content_range(response)
+
+    return int(match[1]) if match else None
+
+
+def _answer_to_the_end(response: Response, start: int, whole: int, is_ranged: bool):
+    """The first piece's answer, made the answer for the rest of the file from
+    `start`: as asked for to its end, or for all of it where no range was."""
+
+    headers = response.headers
+
+    # what's read is relayed as it comes, its length known now
+    headers.pop("Transfer-Encoding", None)
+    headers["Content-Length"] = str(whole - start)
+
+    if is_ranged:
+        headers["Content-Range"] = f"bytes {start}-{whole - 1}/{whole}"
+        return
+
+    headers.pop("Content-Range", None)
+    response.status_code = 200
+    response.reason = "OK"

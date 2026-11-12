@@ -79,6 +79,11 @@ class Stream:
     init_fragment: StreamFragment | None = None
     duration: float = 0.0
     origin: StreamOrigin | None = None
+    # How much the host gives at full speed in one request, the rest of a file
+    # asked for to its end being slowed to about its bit rate (yt-dlp's
+    # http_chunk_size, on YouTube's): the proxy asks for it in pieces this
+    # size. None where it's asked for as it is.
+    piece_size: int | None = None
 
     @property
     def is_adaptive(self) -> bool:
@@ -95,7 +100,9 @@ class Stream:
     def is_complex(self) -> bool:
         """Stream carries data that does not fit into a proxy URL query."""
 
-        return bool(self.audio_tracks or self.fragments or self.duration)
+        return bool(
+            self.audio_tracks or self.fragments or self.duration or self.piece_size
+        )
 
     @property
     def is_refreshable(self) -> bool:

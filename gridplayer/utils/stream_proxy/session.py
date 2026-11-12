@@ -135,4 +135,5 @@ class StreamSession:
             "session_opts": self._stream_session,
             "session_": self._session,
             "url": stream.url,
+            "piece_size": stream.piece_size,
         }
