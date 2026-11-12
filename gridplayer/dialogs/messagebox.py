@@ -2,8 +2,11 @@
 bold, what it means under it in plain text, and buttons that say what they
 do. Asked as QMessageBox is, so it takes its place wherever one was."""
 
+import math
+import re
+
 from PyQt5.QtCore import QSize, Qt
-from PyQt5.QtGui import QIcon
+from PyQt5.QtGui import QIcon, QTextDocument
 from PyQt5.QtWidgets import (
     QAbstractButton,
     QApplication,
@@ -127,6 +130,7 @@ class QCustomMessageBox(QDialog):
 
     def setInformativeText(self, text: str) -> None:
         _set_words(self._info, text)
+        _fit_table(self._info, text)
         self._info.setVisible(bool(text))
 
     def setCheckBox(self, box: QCheckBox) -> None:
@@ -299,11 +303,8 @@ class QCustomMessageBox(QDialog):
         buttons=QMessageBox.Ok,
         defaultButton=QMessageBox.NoButton,
         info="",
-        info_width_px=None,
     ):
-        return cls._asked(
-            QMessageBox.Information, parent, title, text, buttons, info, info_width_px
-        )
+        return cls._asked(QMessageBox.Information, parent, title, text, buttons, info)
 
     @classmethod
     def question(
@@ -372,16 +373,11 @@ class QCustomMessageBox(QDialog):
         return is_confirmed
 
     @classmethod
-    def _asked(
-        cls, icon, parent, title, text, buttons, info, info_width_px=None
-    ) -> int:
-        """The standard button the answer was given with. `info_width_px` makes
-        room for informative text wider than words wrap to, a table say."""
+    def _asked(cls, icon, parent, title, text, buttons, info) -> int:
+        """The standard button the answer was given with."""
 
         box = cls(icon, title, text, buttons, parent)
         box.setInformativeText(info)
-        if info_width_px is not None:
-            box._info.setFixedWidth(info_width_px)
         box.exec_()
 
         clicked = box.clickedButton()
@@ -417,6 +413,27 @@ def _words_label() -> QLabel:
     label.setTextInteractionFlags(Qt.TextSelectableByMouse | Qt.LinksAccessibleByMouse)
     label.setOpenExternalLinks(True)
     return label
+
+
+def _fit_table(label: QLabel, text: str) -> None:
+    """Room for a table wider than words wrap to: each cell on one line, as wide
+    as it is in the label's font, in whatever language."""
+
+    tables = re.findall(r"<table.*?</table>", text, re.DOTALL)
+
+    if not tables:
+        return
+
+    label.ensurePolished()
+
+    def width(table: str) -> int:
+        document = QTextDocument()
+        document.setDefaultFont(label.font())
+        document.setHtml(table)
+        return math.ceil(document.idealWidth())
+
+    # wrapped words take the least room they're let, a table's cells too
+    label.setFixedWidth(max(*map(width, tables), label.minimumWidth()))
 
 
 def _set_words(label: QLabel, text: str) -> None:

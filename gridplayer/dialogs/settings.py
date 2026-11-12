@@ -35,8 +35,6 @@ from gridplayer.widgets.cookie_store_list import CookieStoreList
 from gridplayer.widgets.settings_controls import icon_button
 from gridplayer.widgets.settings_form import SettingsForm
 
-MPV_OUTPUT_HELP_WIDTH_PX = 600
-
 COOKIES_FAQ_URL = (
     "https://github.com/yt-dlp/yt-dlp/wiki/FAQ#how-do-i-pass-cookies-to-yt-dlp"
 )
@@ -485,8 +483,6 @@ class SettingsDialog(PagedDialog):
         Linux, where Direct takes X11."""
 
         if env.IS_WINDOWS:
-            # five columns on one line each
-            width_px = MPV_OUTPUT_HELP_WIDTH_PX
             help_text = translate(
                 "SettingsDialog",
                 "<table cellspacing='0' cellpadding='4'>"
@@ -508,7 +504,6 @@ class SettingsDialog(PagedDialog):
                 " lighter (not on NVIDIA).</p>",
             )
         else:
-            width_px = None
             help_text = translate(
                 "SettingsDialog",
                 "<table cellspacing='0' cellpadding='4'>"
@@ -532,7 +527,6 @@ class SettingsDialog(PagedDialog):
             translate("SettingsDialog", "Video output"),
             translate("SettingsDialog", "Which video output to pick"),
             info=help_text,
-            info_width_px=width_px,
         )
 
     def show_screenshot_template_help(self):
