@@ -46,6 +46,7 @@ import re
 import sys
 import threading
 import time
+from functools import partial
 
 from PyQt5.QtCore import QObject, Qt, QThread, QTimer, pyqtSignal
 from PyQt5.QtGui import QGuiApplication, QOffscreenSurface, QSurfaceFormat
@@ -845,6 +846,11 @@ class VideoRenderer(QThread):
             self._context = None
 
 
+# Direct's mpvs start one at a time, the next when the last one plays, or when
+# it's had this long: see MpvRenderService.add_own_window
+OWN_WINDOW_START_TURN_MS = 1000
+
+
 class MpvRenderService(QObject):
     """The render thread and when frames go up to the window: one per app.
 
@@ -881,6 +887,15 @@ class MpvRenderService(QObject):
         # terminates it, so this holds on to them until that is done, and to
         # the window one draws into, which it can still be drawing into then.
         self._players_alive: dict = {}
+
+        # Direct's players waiting to start, each with what starts it, and the
+        # one starting: see add_own_window
+        self._starts_due: collections.OrderedDict = collections.OrderedDict()
+        self._starting = None
+
+        self._start_turn = QTimer(self)
+        self._start_turn.setSingleShot(True)
+        self._start_turn.timeout.connect(self._start_next)
 
     def _join_qt_share_group(self) -> QtShareGroup | None:
         if not env.MPV_GL_OUTPUT:
@@ -933,19 +948,64 @@ class MpvRenderService(QObject):
         self._listeners[video] = listener
         self._renderer.add(video)
 
-    def add_own_window(self, player) -> None:
+    def add_own_window(self, player, start) -> None:
         """A player drawing into a window of its own: told of settings, kept
-        alive until it's terminated, as one the render thread draws."""
+        alive until it's terminated, as one the render thread draws. Started,
+        by `start`, in turn.
+
+        NVIDIA's Direct3D 11 driver crashed the app (an access violation on a
+        thread of its own, in nvwgf2umx.dll) about once in 250 times three
+        mpvs started together, their outputs coming up at once. Started 0.4 s
+        apart, none in 1440. So each waits for the one before it to play, or
+        to fail, or for OWN_WINDOW_START_TURN_MS, whichever comes first.
+
+        The first waits too, for what's being done now: a reload or a driver
+        change lays its cells out and shows them after making their players.
+        Under X11, mpv mistakes its window's parent being shown, as it starts,
+        for its own window being shown, and never shows it: the cell went on
+        showing what was there before.
+        """
 
         self._keep_alive(player)
         self._own_window_players.add(player)
+
+        for signal in (player.playback_restarted, player.failed, player.end_reached):
+            signal.connect(partial(self._on_started, player), Qt.QueuedConnection)
+
+        self._starts_due[player] = start
+
+        if self._starting is None and not self._start_turn.isActive():
+            self._start_turn.start(0)
 
     def remove_own_window(self, player, window: QWidget) -> None:
         """Its window kept until mpv is done with it, then deleted."""
 
         self._own_window_players.discard(player)
+        self._starts_due.pop(player, None)
 
         self._players_alive[player] = window
+
+        if player is self._starting:
+            self._start_next()
+
+    def _start_next(self) -> None:
+        self._start_turn.stop()
+        self._starting = None
+
+        if not self._starts_due:
+            return
+
+        player, start = self._starts_due.popitem(last=False)
+        self._starting = player
+        self._start_turn.start(OWN_WINDOW_START_TURN_MS)
+
+        self._log.debug(f"Starting an mpv, {len(self._starts_due)} more waiting")
+
+        start()
+
+    def _on_started(self, player, *_) -> None:
+        if player is self._starting:
+            self._start_next()
 
     def _keep_alive(self, player) -> None:
         self._players_alive[player] = None
@@ -986,6 +1046,10 @@ class MpvRenderService(QObject):
 
     def cleanup(self) -> None:
         self._listeners.clear()
+
+        self._starts_due.clear()
+        self._starting = None
+        self._start_turn.stop()
 
         if self._renderer is None:
             return

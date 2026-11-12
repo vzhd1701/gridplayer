@@ -36,6 +36,9 @@ def _service_with(the_renderer):
     service._log = Mock()
     service._listeners = {}
     service._own_window_players = set()
+    service._starts_due = {}
+    service._starting = None
+    service._start_turn = Mock()
     service._renderer = the_renderer
     return service
 

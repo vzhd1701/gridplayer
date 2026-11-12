@@ -45,6 +45,7 @@ from gridplayer.mpv_player.renderer import (
     GL_BGRA,
     GL_RGBA,
     GL_RGBA8,
+    OWN_WINDOW_START_TURN_MS,
     FrameFences,
     FrameSlot,
     MpvRenderService,
@@ -2653,7 +2654,7 @@ def test_skipping_frames_goes_to_a_video_in_its_own_window_too(mocker):
     mocker.patch("gridplayer.mpv_player.renderer.load_mpv")
     service = MpvRenderService()
     player = MagicMock()
-    service.add_own_window(player)
+    service.add_own_window(player, MagicMock())
 
     service.set_skip_frames(True)
 
@@ -2665,7 +2666,7 @@ def test_own_window_kept_until_its_mpv_is_terminated(mocker):
     service = MpvRenderService()
     player = MagicMock()
     window = MagicMock()
-    service.add_own_window(player)
+    service.add_own_window(player, MagicMock())
 
     service.remove_own_window(player, window)
 
@@ -2677,6 +2678,92 @@ def test_own_window_kept_until_its_mpv_is_terminated(mocker):
 
     window.deleteLater.assert_called_once_with()
     assert player not in service._players_alive
+
+
+def _own_window_starts(mocker, count):
+    mocker.patch("gridplayer.mpv_player.renderer.load_mpv")
+    service = MpvRenderService()
+    players = [MagicMock() for _ in range(count)]
+    starts = [MagicMock() for _ in range(count)]
+
+    for player, start in zip(players, starts):
+        service.add_own_window(player, start)
+
+    # the first, once what made them is done
+    service._start_turn.timeout.emit()
+
+    return service, players, starts
+
+
+def test_own_window_first_starts_once_what_made_it_is_done(mocker):
+    # a reload shows its cells after making their players: under X11, mpv
+    # never shows its window if its parent is shown as it starts
+    mocker.patch("gridplayer.mpv_player.renderer.load_mpv")
+    service = MpvRenderService()
+    start = MagicMock()
+
+    service.add_own_window(MagicMock(), start)
+
+    start.assert_not_called()
+    assert service._start_turn.isActive()
+    assert service._start_turn.interval() == 0
+
+    service._start_turn.timeout.emit()
+
+    start.assert_called_once_with()
+
+
+def test_own_windows_start_one_at_a_time(mocker):
+    service, players, starts = _own_window_starts(mocker, 3)
+
+    starts[0].assert_called_once_with()
+    starts[1].assert_not_called()
+
+    # what an mpv says once it plays, or fails, or a seek of one already playing
+    service._on_started(players[1])
+    starts[1].assert_not_called()
+
+    service._on_started(players[0], "Player error", ())
+    starts[1].assert_called_once_with()
+    starts[2].assert_not_called()
+
+    service._on_started(players[1])
+    starts[2].assert_called_once_with()
+
+
+def test_own_window_starts_next_once_it_s_had_its_turn(mocker):
+    service, _, starts = _own_window_starts(mocker, 2)
+
+    assert service._start_turn.isActive()
+    assert service._start_turn.interval() == OWN_WINDOW_START_TURN_MS
+
+    service._start_turn.timeout.emit()
+
+    starts[1].assert_called_once_with()
+
+
+def test_own_window_closed_gives_up_its_turn_or_never_starts(mocker):
+    service, players, starts = _own_window_starts(mocker, 3)
+
+    service.remove_own_window(players[1], MagicMock())
+    service.remove_own_window(players[0], MagicMock())
+
+    starts[1].assert_not_called()
+    starts[2].assert_called_once_with()
+
+
+def test_own_window_starts_forgotten_on_cleanup(mocker):
+    service, _, starts = _own_window_starts(mocker, 2)
+
+    service.cleanup()
+    assert not service._start_turn.isActive()
+    player = MagicMock()
+    start = MagicMock()
+    service.add_own_window(player, start)
+    service._start_turn.timeout.emit()
+
+    start.assert_called_once_with()
+    starts[1].assert_not_called()
 
 
 def test_manager_makes_no_render_service_for_vlc(mocker):

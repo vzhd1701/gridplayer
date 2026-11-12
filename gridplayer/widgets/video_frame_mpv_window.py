@@ -67,8 +67,7 @@ class VideoDriverMpvWindow(VideoDriverMpv):
         return super()._new_player(media_input, wid=self._win_id, **options)
 
     def _start_drawing(self) -> None:
-        self._render_service.add_own_window(self._player)
-        self._start_player()
+        self._render_service.add_own_window(self._player, self._start_player)
 
     def _stop_drawing(self, player: MpvPlayer) -> None:
         # Out of the frame, which goes, into the app's window, hidden: no window
