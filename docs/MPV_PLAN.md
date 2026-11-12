@@ -1376,14 +1376,32 @@ How it goes in, by what's there already:
   - On Direct, with message boxes logged rather than shown: `mpv_streams` and `mpv_transport` pass, `mpv_basics` too
     with its render-size checks only on Copy and Shared (Direct's picture follows the cell instead, checked by shape).
     `pixel_shape` but for its screenshots (14.4).
-  - Found on the way, still open: a crash in NVIDIA's Direct3D 11 driver. Two videos opened and closed 60 times in a
+  - Found on the way, fixed 2026-11-12 (see below): a crash in NVIDIA's Direct3D 11 driver. Two videos opened and closed 60 times in a
     row, 8 runs: one access violation in `nvwgf2umx.dll`, on a thread of the driver's own, about half a second after
     two mpvs started together (read of 0x38). Copy, the same loops: none in 120. The test folder's clips are 4:4:4,
     decoded on the CPU. Caught by an in-process exception handler: `nvwgf2umx.dll+0x98cf4a`, on a thread the driver
     started, 0.5 s after two mpvs began together, one closed just before. With clips decoded on the GPU: one crash in
     3 runs, but that one in Python's own fault handler as it reported LuaJIT's exception from libmpv (code
-    0xE24C4A02, which mpv's Lua raises and catches): the handler, not the app. Not chased further: a driver's,
-    about one in 500 opened and closed at once. To keep an eye on with the next NVIDIA driver and libmpv.
+    0xE24C4A02, which mpv's Lua raises and catches): the handler, not the app.
+  - Fixed 2026-11-12: Direct's mpvs start one at a time (`MpvRenderService.add_own_window`), the next once the
+    one before it plays, fails, or has had 1 s. Three videos a round, opened together and closed, 60 rounds a run,
+    the same 24 seeds each time:
+
+    | | runs that crashed | in the driver |
+    |---|---|---|
+    | as it was | 6 of 24 | 5 |
+    | devices made without the driver's own threads | 4 of 24 | 4 |
+    | `hwdec=d3d11va` instead of `auto` (no CUDA) | 4 of 24 | 4 |
+    | the scenario opening them 0.4 s apart | 0 of 24 | |
+    | started in turn by the app | 0 of 24 | |
+
+    The crash comes 0.5-0.7 s after several mpvs start together, as their outputs come up, with every one closed
+    before them already terminated: it's starting together, not one going as another comes. Each crash on a thread
+    the driver started, all at `nvwgf2umx.dll+0x98cf4a`, the faulting stack all the driver's. Without the driver's
+    threads: `D3D11_CREATE_DEVICE_PREVENT_INTERNAL_THREADING_OPTIMIZATIONS`, set by pointing libmpv's import of
+    GetProcAddress at a stand-in that answered `D3D11CreateDevice` with one adding it (two threads a device fewer of
+    21), changed nothing, so it went. The cost of taking turns, the test folder's clips: 9 videos loaded in 3.2 s
+    rather than 2.1 s, 25 in 9.0 s rather than 5.8 s.
   - Not crashes of the app: an exit code 139 after the scenario was done came from the test wrapper ending with
     `sys.exit`, Python's finalizing meeting Qt's objects; `run.py` and the app end by `os._exit`.
 - [x] 14.4 Screenshots (`screenshot-raw`, asked for without waiting) and a paused live stream's last picture (the
@@ -1425,9 +1443,9 @@ How it goes in, by what's there already:
     restart, the videos open reloaded on the other; to or from Shared still restarts. Checked with two videos open on
     Windows: Direct to VLC Hardware (single process), back, to Copy and back, each in about half a second, both
     pictures on show each time.
-  - **Your call:** the default is still Copy. Direct is the lightest on Windows by every measure here (CPU, video
-    memory, hidden cells); its one cost is edges flickering through a window resize. I'd make it the default on
-    Windows, and keep Copy on Linux (Shared and Direct about level there, Shared working on Wayland too).
+  - Default (your call, 2026-11-12): Direct on Windows, the lightest there by every measure here (CPU, video memory,
+    hidden cells); Copy on Linux, where it works on Wayland too. macOS has Copy only, the setting not shown: Direct
+    there would want a real Mac (the VM has no GPU). Direct with no window system to give mpv (offscreen) is Copy.
 - [x] 14.8 All MPV real-app scenarios on it on Windows (`REAL_APP_MPV_OUTPUT=window`), and the bench against Steady and
   Fast, the real app this time.
   - On Windows, the other desktop, message boxes logged instead of shown: `mpv_view` (127 checks), `mpv_basics`,
@@ -1458,7 +1476,29 @@ How it goes in, by what's there already:
   - CPU, 720p30 on `test_gpu`: 9 cells Direct 28%, Shared 40%, Copy 54%; 16 cells Direct 44%, Shared 40%. The help
     box's Linux table has Direct: "about the same as Shared, and works only with X11".
   - Test captures under XWayland come from the compositor by `grim` (installed on `test_gpu`): the X server has none of
-    what GL draws.
+    what GL draws. On GNOME, by asking GNOME Shell (`org.gnome.Shell.Screenshot`, for the owner of
+    `org.gnome.Screenshot`).
+  - Found by you on Ubuntu (GNOME, Wayland session, the app on XWayland), 2026-11-12: the screen black but for a small
+    picture in the top left corner, the player's window glitching. mpv, left to pick, took its Wayland output, which
+    knows nothing of an X11 window and made a surface of its own. Direct on Linux now says `gpu-context=x11egl`
+    (libmpv 0.37 takes one name, not a list). The tests on `test_gpu` hadn't seen it: their runs had no
+    `XDG_RUNTIME_DIR`, so mpv found no Wayland there; `x11_all.sh` now sets it.
+  - Ubuntu VM (GNOME, libmpv 0.37, llvmpipe), Direct: all MPV scenarios pass but two checks. `mpv_transport`'s random
+    start, as on `test_gpu` before. `mpv_subtitles`' turned video in Fill in a 1200x300 window: the line drawn tiny at
+    the bottom, where 0.40 on sway shows it whole (Copy passes there). Left open.
+  - Found by you on Ubuntu, 2026-11-12: after Reload All or a driver change, the first cell stayed on "Opening..."
+    while it played. Its mpv window was there but never mapped. mpv takes the parent window being mapped for its own
+    window being mapped (it watches the parent's StructureNotify), and the first player was started while the reload
+    was still making the cells, before they were laid out and shown (100x30, hidden). The first start now waits for
+    what's being done to finish: in 25 reloads and 12 Direct-Copy-Direct switches, every start found its cell shown,
+    none stuck (before, about one reload in 12).
+  - Found with it, on any driver: right-clicking after a reload from a menu, or a driver change in Settings, crashed
+    (`wrapped C/C++ object of type VideoStatus has been deleted`). With a menu or dialog open the active video isn't
+    updated, so it stayed the closed one; it's now dropped once closed.
+  - Left open: glibc aborting (`malloc_consolidate(): unaligned fastbin chunk`) once in 30 runs of `pixel_shape` on
+    `test_gpu`, as a closed mpv's `vo` thread ended and freed what it held, another mpv's `vo` thread starting its
+    X11 EGL output at that moment. The heap was broken before; by what, not found. Copy, the Linux default, has no
+    `vo` threads.
 - [ ] 14.10 Hand test by you.
 
 ---
@@ -1467,6 +1507,9 @@ How it goes in, by what's there already:
 
 Newest first. What was finished and seen working, and anything that changed the plan.
 
+- 2026-11-12: Direct the default on Windows, Copy on Linux. Ubuntu's Direct fixed (mpv took Wayland). The NVIDIA
+  driver crash fixed by starting Direct's mpvs one at a time. Direct's scenarios run on the Ubuntu VM, GNOME
+  screenshots for the tests.
 - 2026-11-12: 14.3 to 14.9 overnight: Direct's first picture already right, screenshots and a paused live stream's
   picture, hidden cells cheaper than Copy's, subtitles kept on show, switching live, every MPV scenario passing on
   Windows, and Direct on Linux with X11. An NVIDIA driver crash, one in ~500 open-and-close, noted. Default left to
