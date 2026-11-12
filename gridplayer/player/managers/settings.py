@@ -186,9 +186,10 @@ class SettingsManager(ManagerBase):
         )
 
     def _is_qt_platform_due(self, previous_settings) -> bool:
-        """A change to what picks X11 or Wayland, the Window system or the
-        decoder on Auto, and the pick isn't what the session runs on: asked
-        again for a restart put off. Not if --platform said which."""
+        """A change to what picks X11 or Wayland, the Window system, or the
+        decoder or MPV's output on Auto, and the pick isn't what the session
+        runs on: asked again for a restart put off. Not if --platform said
+        which."""
 
         if not env.IS_QT_PLATFORM_PICKED:
             return False
@@ -197,8 +198,7 @@ class SettingsManager(ManagerBase):
             return False
 
         return any(
-            previous_settings[key] != Settings().get(key)
-            for key in ("player/display_server", "player/video_driver")
+            previous_settings[key] != Settings().get(key) for key in _PLATFORM_KEYS
         )
 
     def _is_gl_output_due(self, previous_settings) -> bool:
@@ -222,5 +222,9 @@ def _is_gl_output(get) -> bool:
     return is_mpv_gl_output(get("player/mpv_output"), get("player/video_driver"))
 
 
+# what qt_platform_for picks by
+_PLATFORM_KEYS = ("player/display_server", "player/video_driver", "player/mpv_output")
+
+
 def _qt_platform(get) -> str | None:
-    return qt_platform_for(get("player/display_server"), get("player/video_driver"))
+    return qt_platform_for(*map(get, _PLATFORM_KEYS))

@@ -47,7 +47,9 @@ def pick_qt_platform() -> None:
     settings = Settings()
 
     env.QT_PLATFORM = qt_platform_for(
-        settings.get("player/display_server"), settings.get("player/video_driver")
+        settings.get("player/display_server"),
+        settings.get("player/video_driver"),
+        settings.get("player/mpv_output"),
     )
     env.IS_QT_PLATFORM_PICKED = env.QT_PLATFORM is not None
 

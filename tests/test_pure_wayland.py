@@ -16,7 +16,7 @@ from gridplayer.dialogs import settings as settings_dialog
 from gridplayer.dialogs.settings import SettingsDialog
 from gridplayer.main.init_app_env import pick_qt_platform
 from gridplayer.params import env
-from gridplayer.params.static import DisplayServer, VideoDriver
+from gridplayer.params.static import DisplayServer, MpvOutput, VideoDriver
 from gridplayer.player.managers import settings as settings_manager
 from gridplayer.player.managers.settings import SettingsManager
 from gridplayer.settings import _Settings
@@ -90,6 +90,22 @@ def test_auto_keeps_x11_where_qt_would_draw_the_frames(
     assert qt_platform_for(display_server, VideoDriver.MPV_HW) == expected
 
 
+@pytest.mark.parametrize(
+    ("driver", "output", "expected"),
+    [
+        # mpv's own window in a cell's: X11 only
+        (VideoDriver.MPV_HW, MpvOutput.WINDOW, "xcb"),
+        (VideoDriver.MPV_HW, MpvOutput.READBACK, "wayland"),
+        (VideoDriver.MPV_HW, MpvOutput.GL, "wayland"),
+        (VideoDriver.MPV_SW, MpvOutput.WINDOW, "wayland"),
+    ],
+)
+def test_auto_takes_x11_for_mpvs_direct_output(monkeypatch, driver, output, expected):
+    _desktop(monkeypatch, "wayland-0", ":0")
+
+    assert qt_platform_for(AUTO, driver, output) == expected
+
+
 def test_wayland_alone_whatever_the_frames(monkeypatch):
     _desktop(monkeypatch, "wayland-0", None, frames=False)
 
@@ -122,9 +138,7 @@ def test_platform_given_is_kept(monkeypatch, given, expected, is_picked):
     monkeypatch.setattr(
         settings_module,
         "Settings",
-        lambda: FakeSettings(
-            {"player/display_server": AUTO, "player/video_driver": VideoDriver.MPV_HW}
-        ),
+        lambda: FakeSettings(_platform_values(VideoDriver.MPV_HW)),
     )
 
     pick_qt_platform()
@@ -132,8 +146,12 @@ def test_platform_given_is_kept(monkeypatch, given, expected, is_picked):
     assert (env.QT_PLATFORM, env.IS_QT_PLATFORM_PICKED) == (expected, is_picked)
 
 
-def _platform_values(driver, display_server=AUTO):
-    return {"player/display_server": display_server, "player/video_driver": driver}
+def _platform_values(driver, display_server=AUTO, output=MpvOutput.READBACK):
+    return {
+        "player/display_server": display_server,
+        "player/video_driver": driver,
+        "player/mpv_output": output,
+    }
 
 
 @pytest.mark.parametrize(
@@ -159,6 +177,18 @@ def test_restart_for_another_platform(monkeypatch, running, before, after, is_du
     is_seen = SettingsManager._is_qt_platform_due(None, _platform_values(before))
 
     assert is_seen is is_due
+
+
+def test_restart_for_mpvs_direct_output(monkeypatch):
+    _desktop(monkeypatch, "wayland-0", ":0")
+    monkeypatch.setattr(env, "QT_PLATFORM", "wayland")
+    monkeypatch.setattr(env, "IS_QT_PLATFORM_PICKED", True)
+    after = _platform_values(VideoDriver.MPV_HW, output=MpvOutput.WINDOW)
+    monkeypatch.setattr(settings_manager, "Settings", lambda: FakeSettings(after))
+
+    assert SettingsManager._is_qt_platform_due(
+        None, _platform_values(VideoDriver.MPV_HW)
+    )
 
 
 def test_restart_for_the_display_setting(monkeypatch):

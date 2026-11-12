@@ -74,7 +74,11 @@ def is_window_system_choice() -> bool:
     return env.IS_LINUX and env.has_wayland() and env.has_x_server()
 
 
-def qt_platform_for(display: DisplayServer, driver: VideoDriver) -> str | None:
+def qt_platform_for(
+    display: DisplayServer,
+    driver: VideoDriver,
+    mpv_output: MpvOutput = MpvOutput.READBACK,
+) -> str | None:
     """The Qt platform to run on, None to leave it to Qt (not Linux).
 
     QT_QPA_PLATFORM is not asked: it is often set to wayland for the whole
@@ -96,8 +100,11 @@ def qt_platform_for(display: DisplayServer, driver: VideoDriver) -> str | None:
     if display == DisplayServer.WAYLAND:
         return "wayland"
 
-    # VLC Hardware draws into an X11 window
+    # VLC Hardware draws into an X11 window, as MPV's Direct does
     if driver in VLC_HW_DRIVERS:
+        return "xcb"
+
+    if driver == VideoDriver.MPV_HW and mpv_output == MpvOutput.WINDOW:
         return "xcb"
 
     # Without a frame from the desktop, Qt 5's own is a thick flat band with
