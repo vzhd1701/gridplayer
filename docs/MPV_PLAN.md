@@ -1379,7 +1379,13 @@ How it goes in, by what's there already:
   - Found on the way, still open: a crash in NVIDIA's Direct3D 11 driver. Two videos opened and closed 60 times in a
     row, 8 runs: one access violation in `nvwgf2umx.dll`, on a thread of the driver's own, about half a second after
     two mpvs started together (read of 0x38). Copy, the same loops: none in 120. The test folder's clips are 4:4:4,
-    decoded on the CPU; whether GPU-decoded ones do it too, see below.
+    decoded on the CPU. Caught by an in-process exception handler: `nvwgf2umx.dll+0x98cf4a`, on a thread the driver
+    started, 0.5 s after two mpvs began together, one closed just before. With clips decoded on the GPU: one crash in
+    3 runs, but that one in Python's own fault handler as it reported LuaJIT's exception from libmpv (code
+    0xE24C4A02, which mpv's Lua raises and catches): the handler, not the app. Not chased further: a driver's,
+    about one in 500 opened and closed at once. To keep an eye on with the next NVIDIA driver and libmpv.
+  - Not crashes of the app: an exit code 139 after the scenario was done came from the test wrapper ending with
+    `sys.exit`, Python's finalizing meeting Qt's objects; `run.py` and the app end by `os._exit`.
 - [x] 14.4 Screenshots (`screenshot-raw`, asked for without waiting) and a paused live stream's last picture (the
   pause snapshot over a hidden surface, as VLC Hardware).
   - `screenshot-raw video` asked for with a callback (`MpvPlayer.take_screenshot`), answered on mpv's event thread
@@ -1391,14 +1397,68 @@ How it goes in, by what's there already:
     paused takes the snapshot's whole picture.
   - `mpv_view` on Direct passes whole, screenshots of every turn and flip on turned files and the live pause
     included: Windows (Direct3D 11) and X11 (OpenGL), 127 checks each.
-- [ ] 14.5 Hidden cells (Single Mode, minimized, the tray): what a hidden mpv window still costs, and taking it down if
+- [x] 14.5 Hidden cells (Single Mode, minimized, the tray): what a hidden mpv window still costs, and taking it down if
   it's worth it.
-- [ ] 14.6 Subtitles drawn by mpv in its window: placement and style, `mpv_subtitles` passing.
-- [ ] 14.7 The setting: a third button on "Video output", Windows only for now. Whether it needs a restart (no Qt GL to
+  - Nothing to take down: hidden, a Direct video costs less than a Copy one does. The bench's new `EXP=single`, 9
+    cells, the first in Single Mode:
+
+    | | all on show | Single Mode |
+    |---|---|---|
+    | Windows, the mix, Direct | 26.9% CPU, decoder 67% | 3.6% CPU, decoder 14% |
+    | Windows, the mix, Copy | 63.6% CPU | 24.0% CPU |
+    | test_gpu, 720p30, Direct | 28.5% CPU, GPU 100% | 5.0% CPU, GPU 15% |
+    | test_gpu, 720p30, Copy | 54.4% CPU | 64.6% CPU |
+
+  - Hidden, they play on at their pace and are right on show again: Single Mode on Windows (4.08 s played in 4 s);
+    `mpv_hidden_cells` on X11, minimized and in the tray too (it minimizes, so not on Windows' other desktop). mpv
+    counts what it puts in a hidden window as shown, so the scenario leaves its draw counts to Copy and Shared.
+- [x] 14.6 Subtitles drawn by mpv in its window: placement and style, `mpv_subtitles` passing.
+  - The subtitle view is pushed as for Copy, by all of the picture, which mpv's window is over. Where mpv places the
+    picture in a window over the part on show, it lays the line out in that window: the view is then that of a picture
+    not cut at all. Found on X11, where mpv always places it: Copy's view there put the line out of sight once Fill cut
+    a turned picture.
+  - `mpv_subtitles` passes on Direct on Windows and X11; on X11 without the checks of how mpv's text shrinks with a
+    zoom, which is Copy's way.
+- [x] 14.7 The setting: a third button on "Video output", Windows only for now. Whether it needs a restart (no Qt GL to
   set up, so maybe not). Switching drivers live, MPV to VLC and back.
-- [ ] 14.8 All MPV real-app scenarios on it on Windows (`REAL_APP_MPV_OUTPUT=window`), and the bench against Steady and
+  - Built in 14.1 (Copy / Shared / Direct, with the ? box), on Linux too now (14.9). Copy and Direct switch with no
+    restart, the videos open reloaded on the other; to or from Shared still restarts. Checked with two videos open on
+    Windows: Direct to VLC Hardware (single process), back, to Copy and back, each in about half a second, both
+    pictures on show each time.
+  - **Your call:** the default is still Copy. Direct is the lightest on Windows by every measure here (CPU, video
+    memory, hidden cells); its one cost is edges flickering through a window resize. I'd make it the default on
+    Windows, and keep Copy on Linux (Shared and Direct about level there, Shared working on Wayland too).
+- [x] 14.8 All MPV real-app scenarios on it on Windows (`REAL_APP_MPV_OUTPUT=window`), and the bench against Steady and
   Fast, the real app this time.
-- [ ] 14.9 Linux X11 (and XWayland under the Window system setting): `wid` with an X11 window, `vaapi` on `test_gpu`.
+  - On Windows, the other desktop, message boxes logged instead of shown: `mpv_view` (127 checks), `mpv_basics`,
+    `mpv_transport`, `mpv_streams`, `mpv_seeking`, `mpv_audio`, `mpv_deinterlace`, `mpv_subtitles`,
+    `mpv_low_video_memory`, `pixel_shape`: all pass. `mpv_hidden_cells` minimizes the window, so only on X11.
+  - The bench, real app, the other desktop, RTX 3060, the mix: frames a video · CPU of the process · video memory
+    added (MB).
+
+    | | 4 | 9 | 16 | 25 |
+    |---|---|---|---|---|
+    | Direct | 43.4 · 15% · +353 | 39.2 · 27% · +925 | 36.7 · 49% · +1453 | 29.5 · 63% · +2346 |
+    | Copy | 43.5 · 67% · +852 | 39.3 · 48% · +2321 | 36.7 · 74% · +3861 | 28.3 · 106% · +6182 |
+    | Shared | 43.5 · 59% · +952 | 39.3 · 98% · +2418 | 36.7 · 111% · +3962 | 28.3 · 116% · +6277 |
+
+    The same frames everywhere (the decoder is the limit), at a quarter to a half of the CPU and well under half the
+    video memory.
+- [x] 14.9 Linux X11 (and XWayland under the Window system setting): `wid` with an X11 window, `vaapi` on `test_gpu`.
+  - Built: Direct on Linux where there's an X11 window (`is_hw_video_available`), Copy on Wayland. On `test_gpu`
+    (XWayland under sway, libmpv 0.40): `vo=gpu` picks `x11egl`, VA-API with no copy.
+  - Three things X11 needed: the cell isn't hidden while loading (mpv waits for its window to be mapped before
+    drawing, and the load waits for its picture: they waited on each other); the surface isn't made transparent for
+    input (mpv's window in one never got mapped, found by bisecting a bare Qt test); and mpv always places the picture
+    in a window over the part on show (a GL window reaching past the screen's edge showed the picture moved by as
+    much, under XWayland).
+  - All MPV scenarios on X11 Direct pass but one check: `mpv_transport`'s random start, the picture at the moment it
+    says it has loaded. For 50-150 ms after the loading status goes, mpv's window shows the old status card under it,
+    not yet having drawn (X11 windows show what was under them until drawn). Left open.
+  - CPU, 720p30 on `test_gpu`: 9 cells Direct 28%, Shared 40%, Copy 54%; 16 cells Direct 44%, Shared 40%. The help
+    box's Linux table has Direct: "about the same as Shared, and works only with X11".
+  - Test captures under XWayland come from the compositor by `grim` (installed on `test_gpu`): the X server has none of
+    what GL draws.
 - [ ] 14.10 Hand test by you.
 
 ---
@@ -1407,6 +1467,10 @@ How it goes in, by what's there already:
 
 Newest first. What was finished and seen working, and anything that changed the plan.
 
+- 2026-11-12: 14.3 to 14.9 overnight: Direct's first picture already right, screenshots and a paused live stream's
+  picture, hidden cells cheaper than Copy's, subtitles kept on show, switching live, every MPV scenario passing on
+  Windows, and Direct on Linux with X11. An NVIDIA driver crash, one in ~500 open-and-close, noted. Default left to
+  you (14.7).
 - 2026-11-12: 14.2, the view on Direct: zooms, pans, crops, view modes, turns and flips, the picture placed to the
   pixel at any zoom. mpv's window over all of the picture while that's small, mpv placing the picture in one over the
   part on show past that.
