@@ -986,8 +986,11 @@ class MpvRenderService(QObject):
 
         self._players_alive[player] = window
 
+        # the next once what closed it is done: a reload or a driver change,
+        # whose cells are to be shown first, as for the first (see above)
         if player is self._starting:
-            self._start_next()
+            self._end_turn()
+            self._start_turn.start(0)
 
     def _start_next(self) -> None:
         self._end_turn()

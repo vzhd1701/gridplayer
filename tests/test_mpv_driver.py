@@ -2772,6 +2772,13 @@ def test_own_window_closed_gives_up_its_turn_or_never_starts(mocker):
     service.remove_own_window(players[1], MagicMock())
     service.remove_own_window(players[0], MagicMock())
 
+    # once what closed it is done: a reload's cells are shown after
+    starts[2].assert_not_called()
+    assert service._start_turn.isActive()
+    assert service._start_turn.interval() == 0
+
+    service._start_turn.timeout.emit()
+
     starts[1].assert_not_called()
     starts[2].assert_called_once_with()
 
