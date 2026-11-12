@@ -1486,7 +1486,7 @@ How it goes in, by what's there already:
     `XDG_RUNTIME_DIR`, so mpv found no Wayland there; `x11_all.sh` now sets it.
   - Ubuntu VM (GNOME, libmpv 0.37, llvmpipe), Direct: all MPV scenarios pass but two checks. `mpv_transport`'s random
     start, as on `test_gpu` before. `mpv_subtitles`' turned video in Fill in a 1200x300 window: the line drawn tiny at
-    the bottom, where 0.40 on sway shows it whole (Copy passes there). Left open.
+    the bottom, where 0.40 on sway shows it whole (Copy passes there). Fixed 2026-11-12, see the log.
   - Found by you on Ubuntu, 2026-11-12: after Reload All or a driver change, the first cell stayed on "Opening..."
     while it played. Its mpv window was there but never mapped. mpv takes the parent window being mapped for its own
     window being mapped (it watches the parent's StructureNotify), and the first player was started while the reload
@@ -1537,6 +1537,12 @@ How it goes in, by what's there already:
 
 Newest first. What was finished and seen working, and anything that changed the plan.
 
+- 2026-11-12: Direct's subtitles laid out by all of the picture where mpv's window is over only the part on show
+  (`sub-use-margins` and `sub-scale-with-window` off), as where it's over all of it: the same sums for both. With the
+  picture past the window's edges, mpv up to 0.38 shrank the line as much again as the picture went past (fixed in
+  mpv by 42e9f302df): on Ubuntu's 0.37, in Fill in a 1200x300 window, a line 40 px wide, and 14 px turned. Now as on
+  0.41 there, and `mpv_subtitles` passes on Direct on Ubuntu and on Windows (once failing there on lines that never
+  came, then passing twice, the same code).
 - 2026-11-12: YouTube files asked of the host in pieces (yt-dlp's `http_chunk_size`, `Stream.piece_size`): mpv opens
   the picture and the sound as files, asking for each to its end, and YouTube gave an AV1 1080p file asked for that
   way at 266 KB/s, about its bit rate, and in pieces of 10 MB at 8 MB/s. Signed in, the video stopped every few

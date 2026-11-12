@@ -1073,6 +1073,14 @@ def test_options_into_its_own_window_on_windows(monkeypatch):
     assert "video_timing_offset" not in options
 
 
+def test_options_into_its_own_window_lay_the_line_out_by_all_of_the_picture():
+    # mpv 0.37 shrank it as much again as the picture went past the window
+    options = _player(wid=1234).mpv.options
+
+    assert options["sub_use_margins"] is False
+    assert options["sub_scale_with_window"] is False
+
+
 def test_options_into_its_own_window_leave_the_decoder_s_spare_frames_to_mpv():
     # with none, d3d11va runs out on AV1 and mpv goes from decoder to decoder
     assert "hwdec_extra_frames" not in _player(wid=1234).mpv.options

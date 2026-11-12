@@ -365,8 +365,8 @@ class VideoFrameMpvWindow(MpvFrame, VideoFrameVLC):
         """Keeps a subtitle readable and on show, whatever the view does to the
         picture, as for Copy and Shared, where mpv's window is over all of the
         picture. Where mpv places the picture in a window over the part on show
-        (see WindowPicture), it places the line in that window, the part on show
-        being all it lays out by: as for a picture not cut at all."""
+        (see WindowPicture), it's told to lay the line out by all of the picture
+        all the same (see MpvPlayer._own_window_options), so it's the same sums."""
 
         if not self._is_subtitle_on_show():
             return
@@ -377,19 +377,22 @@ class VideoFrameMpvWindow(MpvFrame, VideoFrameVLC):
         if view.placement is None:
             return
 
-        frame_size = self._view_frame_size()
-
         if view.window_picture is not None:
-            source, window = (0, 0, *frame_size), view.window_picture.window
+            # all of the picture, past the window's edges
+            _, _, width, height = view.window_picture.picture
         else:
             ratio = self.video_surface.devicePixelRatioF()
             # the surface over all of the picture
-            _, (_, _, width, height), _, _ = view.layout
-            source = view.placement.source
-            window = (max(round(width * ratio), 1), max(round(height * ratio), 1))
+            _, (_, _, surface_w, surface_h), _, _ = view.layout
+            width, height = round(surface_w * ratio), round(surface_h * ratio)
 
         self.video_driver.set_subtitle_view(
-            subtitle_view(source, frame_size, window, self._full_render_size()[1])
+            subtitle_view(
+                view.placement.source,
+                self._view_frame_size(),
+                (max(width, 1), max(height, 1)),
+                self._full_render_size()[1],
+            )
         )
 
     def _native_surface_layout(self):

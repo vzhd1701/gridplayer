@@ -731,6 +731,12 @@ class MpvPlayer(QObject):
             "video_unscaled": True,
             "video_align_x": -1,
             "video_align_y": -1,
+            # The line laid out by all of the picture, as where the window is over
+            # all of it, rather than by the window over the part on show. With the
+            # picture past the window's edges mpv up to 0.38 shrank it as much
+            # again (fixed by 42e9f302df): 14 px wide on 0.37, turned in Fill.
+            "sub_use_margins": False,
+            "sub_scale_with_window": False,
         }
 
         if env.IS_WINDOWS:

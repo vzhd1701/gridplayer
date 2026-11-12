@@ -323,3 +323,43 @@ def test_a_picture_less_than_a_pixel_high_is_placed_one_high():
     player = _player(wid=1234)
     _params(player, dw=6400, dh=10)
     player.set_window_picture(view.window_picture)
+
+
+def _subtitle_view_pushed(view):
+    """What a frame tells mpv of the line for a view, with no frame made."""
+
+    from unittest.mock import MagicMock
+
+    from gridplayer.widgets.video_frame_mpv_window import VideoFrameMpvWindow
+
+    frame = MagicMock()
+    frame._is_subtitle_on_show.return_value = True
+    frame._view_frame_size.return_value = (640, 360)
+    frame._full_render_size.return_value = (1200, 675)
+    frame.video_surface.devicePixelRatioF.return_value = 1.0
+
+    VideoFrameMpvWindow._push_subtitle_view(frame, view)
+
+    return frame.video_driver.set_subtitle_view.call_args.args[0]
+
+
+def test_a_line_over_part_of_the_picture_is_laid_out_by_all_of_it():
+    # Fill in a wide cell, the bottom cut off: the same, whether mpv's window
+    # is over all of the picture or only the part on show
+    from gridplayer.mpv_player.subtitles import subtitle_view
+    from gridplayer.widgets.video_frame_mpv_window import _SurfaceView
+
+    placement = ViewPlacement(source=(0, 0, 640, 160), target=(0, 0, 1200, 300))
+    whole = _SurfaceView(((0, 0), (0, 0, 1200, 675), None, None), None, placement)
+    part = _SurfaceView(
+        whole.layout,
+        WindowPicture(
+            window=(1200, 300), margins=(0, 0, 0, 0), picture=(0, 0, 1200, 675)
+        ),
+        placement,
+    )
+
+    expected = subtitle_view((0, 0, 640, 160), (640, 360), (1200, 675), 675)
+
+    assert _subtitle_view_pushed(whole) == expected
+    assert _subtitle_view_pushed(part) == expected
