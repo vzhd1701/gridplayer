@@ -330,19 +330,26 @@ def _kept_on_show(d):
     d.player.resize(960, 540)
     d.wait(0.5)
 
-    # it's only the frame's size that waits for a zoom to be over
-    settle = b.video_driver._settle_timer
-    settle_ms = settle.interval()
-    settle.setInterval(60_000)
+    # it's only the frame's size that waits for a zoom to be over; MPV's Direct
+    # output has no frame of the app's to wait for
+    settle = getattr(b.video_driver, "_settle_timer", None)
+    if settle is not None:
+        settle_ms = settle.interval()
+        settle.setInterval(60_000)
 
     for _ in range(4):
         d.act(b, "Zoom In")
 
-    d.wait_until(lambda: _mpv(b).sub_scale < 1, "they keep up as it zooms")
-    # past what it takes, mpv would refuse it and leave the line as wide as the picture
-    d.wait_until(lambda: _mpv(b).sub_margin_x > 25, "kept to what's on show")
-    settle.setInterval(settle_ms)
-    settle.start()
+    # Where mpv places the picture in a window over the part on show (Direct, zoomed
+    # in far, or on X11), it lays the line out in that window: nothing to keep up
+    if not _is_placed(b):
+        d.wait_until(lambda: _mpv(b).sub_scale < 1, "they keep up as it zooms")
+        # past what it takes, mpv would refuse it and leave the line as wide as the
+        # picture
+        d.wait_until(lambda: _mpv(b).sub_margin_x > 25, "kept to what's on show")
+    if settle is not None:
+        settle.setInterval(settle_ms)
+        settle.start()
 
     d.wait_until(lambda: _lit(b) > 0, "zoomed in")
     d.act(b, "Zoom Reset")
@@ -364,8 +371,13 @@ def _kept_on_show(d):
 
     _flips_with_a_line(d)
 
-    # a small picture drawn big, to keep the text sharp only while there is some
+    # a small picture drawn big, to keep the text sharp only while there is some;
+    # mpv draws at its window's size on Direct
     b = _showing_the_line(d, "160x90")
+    if _is_direct(b):
+        _close(d, b)
+        return
+
     surface = b.video_driver.video_surface
     d.wait_until(lambda: surface.frame_size()[0] > 160, "as big as the cell")
 
@@ -398,8 +410,13 @@ def _flips_with_a_line(d):
                 f"{what} is on",
             )
             surface = b.video_driver.video_surface
+            # on Direct mpv always flips it, line or not
+            is_direct = _is_direct(b)
 
-            d.wait_until(lambda s=surface: s._is_flip_in_mpv, f"{what}: mpv flips it")
+            d.wait_until(
+                lambda s=surface, direct=is_direct: direct or s._is_flip_in_mpv,
+                f"{what}: mpv flips it",
+            )
             d.wait_until(
                 lambda b=b, e=expected: _corners_on_show(b) == e,
                 f"{what}: with the line, as it should be",
@@ -414,16 +431,37 @@ def _flips_with_a_line(d):
             )
 
             d.choose(b, "menu_generator_subtitle_track", "Off")
-            d.wait_until(lambda s=surface: not s._is_flip_in_mpv, f"{what}: painted")
+            d.wait_until(
+                lambda s=surface, direct=is_direct: direct or not s._is_flip_in_mpv,
+                f"{what}: painted",
+            )
             d.wait_until(
                 lambda b=b, e=expected: _corners_on_show(b) == e,
                 f"{what}: with none, as it should be",
             )
 
             b.subtitles.show_external(str(line))
-            d.wait_until(lambda s=surface: s._is_flip_in_mpv, f"{what}: mpv again")
+            d.wait_until(
+                lambda s=surface, direct=is_direct: direct or s._is_flip_in_mpv,
+                f"{what}: mpv again",
+            )
 
         _close(d, b)
+
+
+def _is_placed(b) -> bool:
+    """Whether mpv places the picture in a window over the part on show: see
+    WindowPicture."""
+
+    frame = b.video_driver
+
+    return _is_direct(b) and frame._surface_view().window_picture is not None
+
+
+def _is_direct(b) -> bool:
+    """MPV's Direct output: mpv draws into its own window."""
+
+    return type(b.video_driver).__name__ == "VideoFrameMpvWindow"
 
 
 def _black_clip(d, path, size, line="A line"):

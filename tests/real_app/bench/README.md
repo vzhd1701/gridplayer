@@ -86,6 +86,7 @@ Pass them with `--env NAME=VALUE`:
   - `hwdec=NAME`: an mpv decoder in place of the one the app picks, such as `hwdec=dxva2`.
   - `liveskip=VALUE`: set `vd-lavc-skipframe` 3 s after loading.
   - `autoskip`: the trial of turning skipping on for more cells while frames drop.
+  - `single`: the first cell in Single Mode once loaded, the others hidden.
   - `switch=SECONDS`: Python's switch interval.
   - `notime`, `fastrender`, `semwake`: less Python on the render path.
   - `nopaint`, `nofill`, `nosmooth`: less on the paint path.

@@ -36,10 +36,7 @@ def scenario(d):
         timeout=30,
     )
 
-    draws = _count_draws(first)
-
-    def drawn(cell):
-        return draws[id(_rendered(cell))]
+    drawn = _count_draws(first)
 
     third.set_pause(True)
     d.wait_until(lambda: third.video_params.is_paused, "third paused")
@@ -57,11 +54,17 @@ def scenario(d):
 
     d.pump(HIDDEN_S)
 
-    d.check(
-        "out of sight, they're not drawn",
-        drawn(second) == drawn_before[second] and drawn(third) == drawn_before[third],
-        {cell.id: drawn(cell) - drawn_before[cell] for cell in d.cells},
-    )
+    # On Direct mpv counts what it puts in a hidden window as shown, and has no
+    # frames of ours to count: what hidden cells cost there is the bench's (EXP=single)
+    is_counted = not _is_direct(first)
+
+    if is_counted:
+        d.check(
+            "out of sight, they're not drawn",
+            drawn(second) == drawn_before[second]
+            and drawn(third) == drawn_before[third],
+            {cell.id: drawn(cell) - drawn_before[cell] for cell in d.cells},
+        )
     d.check(
         "the one on show is",
         drawn(first) - drawn_before[first] > HIDDEN_S * 10,
@@ -83,14 +86,15 @@ def scenario(d):
     shown_at = time.monotonic()
 
     d.act(first, "Single Mode ON / OFF")
-    d.wait_until(
-        lambda: drawn(second) > second_drawn and drawn(third) > third_drawn,
-        "drawn again",
-        timeout=5,
-    )
-    took_s = time.monotonic() - shown_at
+    if is_counted:
+        d.wait_until(
+            lambda: drawn(second) > second_drawn and drawn(third) > third_drawn,
+            "drawn again",
+            timeout=5,
+        )
+        took_s = time.monotonic() - shown_at
 
-    d.check("on show again, they're drawn at once", took_s < DRAWN_WITHIN_S, took_s)
+        d.check("on show again, they're drawn at once", took_s < DRAWN_WITHIN_S, took_s)
 
     d.pump(0.3)
     third_shown = _picture(third)
@@ -108,12 +112,12 @@ def scenario(d):
     d.shot("shown again")
 
     window = d.player
-    _away_and_back(d, draws, "minimized", window.showMinimized, window.showNormal)
+    _away_and_back(d, drawn, "minimized", window.showMinimized, window.showNormal)
 
     d.ctx.is_tray_shown = True
     _away_and_back(
         d,
-        draws,
+        drawn,
         "in the tray",
         d.ctx.commands.toggle_window,
         d.ctx.commands.toggle_window,
@@ -122,10 +126,7 @@ def scenario(d):
     d.note("end", second)
 
 
-def _away_and_back(d, draws, how, go, come_back):
-    def drawn(cell):
-        return draws[id(_rendered(cell))]
-
+def _away_and_back(d, drawn, how, go, come_back):
     go()
     d.wait_until(d.ctx.commands.is_window_away, f"the window {how}")
     d.pump(0.5)
@@ -136,11 +137,15 @@ def _away_and_back(d, draws, how, go, come_back):
 
     d.pump(HIDDEN_S)
 
-    d.check(
-        f"{how}, none is drawn",
-        all(drawn(cell) == drawn_before[cell] for cell in d.cells),
-        {cell.id: drawn(cell) - drawn_before[cell] for cell in d.cells},
-    )
+    # see scenario
+    is_counted = not _is_direct(cell)
+
+    if is_counted:
+        d.check(
+            f"{how}, none is drawn",
+            all(drawn(cell) == drawn_before[cell] for cell in d.cells),
+            {cell.id: drawn(cell) - drawn_before[cell] for cell in d.cells},
+        )
 
     played = (cell.time - cell_at) % length
     d.check(f"{how}, they play on at their pace", played >= PLAYED_AT_LEAST_MS, played)
@@ -152,6 +157,10 @@ def _away_and_back(d, draws, how, go, come_back):
     # timed from when it's seen: macOS animates a minimized window back first, for
     # 2 s on a Mac with no GPU
     d.wait_until(d.player.windowHandle().isExposed, f"seen again from {how}")
+
+    if not is_counted:
+        return
+
     shown_at = time.monotonic()
     d.wait_until(
         lambda: all(
@@ -171,8 +180,23 @@ def _rendered(cell):
     return cell.video_driver.video_driver._rendered
 
 
-def _count_draws(cell) -> collections.Counter:
-    """Each video's frames drawn and read back, counted on the render thread."""
+def _is_direct(cell) -> bool:
+    """MPV's Direct output: mpv draws into its own window, no render thread."""
+
+    return type(cell.video_driver).__name__ == "VideoFrameMpvWindow"
+
+
+def _count_draws(cell):
+    """How many frames a cell's video has drawn, by cell: counted on the render
+    thread, or on Direct, mpv's frames less those its output dropped."""
+
+    if _is_direct(cell):
+
+        def drawn_by_mpv(one) -> int:
+            mpv = one.video_driver.video_driver._player.mpv
+            return (mpv.estimated_frame_number or 0) - (mpv.frame_drop_count or 0)
+
+        return drawn_by_mpv
 
     renderer = cell.video_driver.video_driver._render_service._renderer
     render = renderer._render
@@ -184,8 +208,13 @@ def _count_draws(cell) -> collections.Counter:
 
     renderer._render = counted
 
-    return draws
+    return lambda one: draws[id(_rendered(one))]
 
 
 def _picture(cell):
+    if _is_direct(cell):
+        from tests.real_app.composed import grab_composed
+
+        return grab_composed(cell.video_driver)
+
     return cell.video_driver.video_surface.frame_image().copy()

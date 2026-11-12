@@ -867,6 +867,11 @@ def scenario(d):
             if handle is not None:
                 handle.command_async("set", "vd-lavc-skipframe", EXP["liveskip"])
 
+    if "single" in EXP and d.cells:
+        # one cell over the window, the others hidden
+        d.act(d.cells[0], "Single Mode ON / OFF")
+        result["single_mode"] = bool(d.ctx.is_single_mode)
+
     nested(SETTLE)
     result["window"] = (d.player.width(), d.player.height())
     block0 = d.cells[0] if d.cells else None

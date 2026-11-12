@@ -36,6 +36,16 @@ def scenario(d):
     _odd_files(d)
 
 
+def _has_frame(block) -> bool:
+    surface = block.video_driver.video_surface
+
+    # MPV's Direct output: mpv draws into its own window, there's no frame here
+    if not hasattr(surface, "frame_size"):
+        return block.is_video_initialized and not block.video_status.isVisible()
+
+    return surface.frame_size()[0] > 0
+
+
 def _audio_language(block):
     return block.audio.tracks[block.audio.track_playing].language
 
@@ -387,9 +397,7 @@ def _picture_off_and_on(d):
 
     b.set_video_track(1)
     d.wait_until(lambda: _mpv(b).vid == 1, "mpv draws again")
-    d.wait_until(
-        lambda: b.video_driver.video_surface.frame_size()[0] > 0, "there is a frame"
-    )
+    d.wait_until(lambda: _has_frame(b), "there is a frame")
     d.check(
         "the placeholder is gone", not b.video_driver.audio_only_placeholder.isVisible()
     )

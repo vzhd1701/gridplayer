@@ -23,9 +23,10 @@ from PyQt5.QtWidgets import QWidget
 
 from gridplayer.mpv_player.player import MpvPlayer, WindowPicture
 from gridplayer.mpv_player.renderer import MpvRenderService
+from gridplayer.mpv_player.subtitles import subtitle_view
 from gridplayer.params import env
 from gridplayer.params.static import ROTATION_TRANSFORMS
-from gridplayer.utils.aspect_calc import Rect, ViewPlacement
+from gridplayer.utils.aspect_calc import Rect, ViewPlacement, calc_full_size
 from gridplayer.utils.screenshots import ScreenshotView
 from gridplayer.vlc_player.static import MediaInput
 from gridplayer.widgets.video_frame_mpv import MpvFrame, VideoDriverMpv, shown_flip
@@ -314,6 +315,64 @@ class VideoFrameMpvWindow(MpvFrame, VideoFrameVLC):
 
         self.video_driver.set_flip_in_mpv(self._shown_flip())
         self.video_driver.set_window_picture(view.window_picture)
+
+        self._push_subtitle_view()
+
+    def set_subtitle_track(self, track_id):
+        super().set_subtitle_track(track_id)
+
+        self._push_subtitle_view()
+
+    def _on_tracks_changed(self, media) -> None:
+        super()._on_tracks_changed(media)
+
+        self._push_subtitle_view()
+
+    def _push_subtitle_view(self) -> None:
+        """Keeps a subtitle readable and on show, whatever the view does to the
+        picture, as for Copy and Shared, where mpv's window is over all of the
+        picture. Where mpv places the picture in a window over the part on show
+        (see WindowPicture), it places the line in that window, the part on show
+        being all it lays out by: as for a picture not cut at all."""
+
+        placement = self.view_placement()
+
+        if placement is None or self.media is None:
+            return
+
+        if self.media.cur_subtitle_track is None:
+            return
+
+        view = self._surface_view()
+        frame_size = self._view_frame_size()
+        full_height = calc_full_size(frame_size, self._transform, self._pixel_aspect())[
+            1
+        ]
+
+        if view.window_picture is not None:
+            frame_w, frame_h = frame_size
+            window_w, window_h = view.window_picture.window
+            self.video_driver.set_subtitle_view(
+                subtitle_view(
+                    (0, 0, frame_w, frame_h),
+                    frame_size,
+                    (window_w, window_h),
+                    full_height,
+                )
+            )
+            return
+
+        ratio = self.video_surface.devicePixelRatioF()
+        _, _, width, height = _whole_picture(placement, frame_size)
+
+        self.video_driver.set_subtitle_view(
+            subtitle_view(
+                placement.source,
+                frame_size,
+                (max(round(width * ratio), 1), max(round(height * ratio), 1)),
+                full_height,
+            )
+        )
 
     def _native_surface_layout(self):
         return self._surface_view().layout
