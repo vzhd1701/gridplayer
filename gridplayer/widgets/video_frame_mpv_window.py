@@ -60,6 +60,8 @@ class VideoDriverMpvWindow(VideoDriverMpv):
 
         # the picture for the screenshot said to be taken, for the frame to take
         self.taken_picture: QImage | None = None
+        # a live stream loaded paused, let go of once its picture is up
+        self._is_pause_due = False
 
         self._picture_taken.connect(self._on_picture_taken, Qt.QueuedConnection)
 
@@ -114,13 +116,31 @@ class VideoDriverMpvWindow(VideoDriverMpv):
 
         player.take_screenshot(taken)
 
+    def _pause_live_at_load(self, player: MpvPlayer) -> None:
+        """mpv's window shows nothing once the stream is let go of: its picture
+        first, as for a pause (see snapshot)."""
+
+        self._is_pause_due = True
+        self._take_picture(is_screenshot=False)
+
     def _on_picture_taken(self, picture, is_screenshot: bool) -> None:
-        if not is_screenshot:
+        if is_screenshot:
+            self.taken_picture = picture
+            self.screenshot_taken_emit("")
+            return
+
+        if not self._is_pause_due:
             self.snapshot_image.emit(picture)
             return
 
-        self.taken_picture = picture
-        self.screenshot_taken_emit("")
+        self._is_pause_due = False
+
+        # played in the meantime: nothing to put up, and it plays on
+        if self._player is None or not self._player.is_pause_asked:
+            return
+
+        self.snapshot_image.emit(picture)
+        self._player.set_pause(True)
 
     def _on_playback_restarted(self) -> None:
         super()._on_playback_restarted()
@@ -400,7 +420,13 @@ class VideoFrameMpvWindow(MpvFrame, VideoFrameVLC):
     def _on_snapshot_image(self, picture) -> None:
         """The picture a paused live stream stopped on, up over the video, cut to
         the view, as VLC's is; mpv's window hidden under it, black once mpv lets
-        go of the stream. Then the stream is let go of."""
+        go of the stream. Then the stream is let go of.
+
+        Paused again before it was back, mpv has nothing to give, and the
+        picture already up stays."""
+
+        if picture is None and self.pause_snapshot.isVisible():
+            picture = self._paused_picture
 
         self._paused_picture = picture
 

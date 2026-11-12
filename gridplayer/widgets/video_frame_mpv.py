@@ -484,7 +484,10 @@ class VideoDriverMpv(VLCVideoDriver):
 
         # only known by now, and there's a picture to leave up
         if player.media_input.is_live and player.is_pause_asked:
-            player.set_pause(True)
+            self._pause_live_at_load(player)
+
+    def _pause_live_at_load(self, player: MpvPlayer) -> None:
+        player.set_pause(True)
 
     def _on_load_timeout(self) -> None:
         self.error_state(translate("Video Error", "Timed out loading video"))

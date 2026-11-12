@@ -717,6 +717,18 @@ def _no_length_clip(d):
     return path
 
 
+def _lit_points(image: QImage) -> int:
+    """How many of a grid of points across a picture aren't black."""
+
+    return sum(
+        1
+        for x in range(1, 10)
+        for y in range(1, 10)
+        if image.pixelColor(x * image.width() // 10, y * image.height() // 10).value()
+        > 40
+    )
+
+
 def _live_pause(d):
     block = _open(d, _no_length_clip(d))
 
@@ -751,6 +763,25 @@ def _live_pause(d):
     d.check("and doesn't change", _grab(block) == picture)
 
     d.shot("live_paused", block)
+
+    # Reloaded paused, it comes back with a picture up: Direct's window shows
+    # nothing once the stream is let go of, and its picture is taken first
+    d.act(block, "Reload")
+    d.wait_until(
+        lambda: block.is_video_initialized and block.video_params.is_paused,
+        "reloaded, paused",
+    )
+    d.wait(1)
+    d.check("and a picture is up", _lit_points(_grab(block)) > 0)
+
+    # Played and paused again at once, before mpv is back: no picture to take
+    # then, and the one up stays
+    d.act(block, "Play / Pause")
+    d.act(block, "Play / Pause")
+    d.wait_until(lambda: block.video_params.is_paused, "paused again at once")
+    d.wait(1.5)
+    picture = _grab(block)
+    d.check("the picture stays up", _lit_points(picture) > 0)
 
     d.act(block, "Play / Pause")
     d.wait_until(lambda: not block.video_params.is_paused, "it plays again")
