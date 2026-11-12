@@ -520,10 +520,11 @@ class VideoFrameMpvWindow(MpvFrame, VideoFrameVLC):
         if self._transform in ROTATION_TRANSFORMS:
             columns, rows = rows, columns
 
-        # on whole screen pixels, as mpv puts it
+        # on whole screen pixels, as mpv puts it, and at least one: a very wide
+        # picture fitted in a short cell can be less than one high
         start_x, start_y = round(picture[0] * ratio), round(picture[1] * ratio)
-        width = math.floor(picture[2] * ratio + _SIZE_SLACK)
-        height = math.floor(picture[3] * ratio + _SIZE_SLACK)
+        width = max(math.floor(picture[2] * ratio + _SIZE_SLACK), 1)
+        height = max(math.floor(picture[3] * ratio + _SIZE_SLACK), 1)
 
         clip = calc_vlc_hw_clip_rect(self.size(), shown)
         clip_x, clip_y, clip_w, clip_h = native_rect(

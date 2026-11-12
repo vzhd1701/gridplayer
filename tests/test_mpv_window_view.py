@@ -286,3 +286,40 @@ def test_direct_where_mpv_can_have_a_window(
 
     assert video_driver.is_mpv_window_output(MpvOutput.WINDOW) is is_direct
     assert not video_driver.is_mpv_window_output(MpvOutput.READBACK)
+
+
+def test_a_window_with_no_room_gets_the_picture_stretched_over_it():
+    player = _player(wid=1234)
+    _params(player)
+
+    player.set_window_picture(_PLACED._replace(window=(400, 0)))
+
+    assert _sets(player) == {"keepaspect": "no"}
+
+
+def test_a_picture_less_than_a_pixel_high_is_placed_one_high():
+    from unittest.mock import MagicMock
+
+    from PyQt5.QtCore import QSize
+
+    from gridplayer.widgets.video_frame_mpv_window import VideoFrameMpvWindow
+
+    frame = MagicMock()
+    frame.video_surface.devicePixelRatioF.return_value = 1.0
+    frame._view_frame_size.return_value = (6400, 10)
+    frame._transform = None
+    frame.size.return_value = QSize(400, 300)
+    frame._shown_flip.return_value = None
+    frame._whole_rows.return_value = 0
+
+    # a very wide clip fitted in a cell: 0.625 of a pixel high
+    placement = ViewPlacement(source=(0, 0, 6400, 10), target=(0, 150, 400, 0.625))
+    picture = _whole_picture(placement, (6400, 10))
+
+    view = VideoFrameMpvWindow._placed(frame, placement, picture, placement.target)
+
+    assert view.window_picture.picture[2:] == (400, 1)
+
+    player = _player(wid=1234)
+    _params(player, dw=6400, dh=10)
+    player.set_window_picture(view.window_picture)

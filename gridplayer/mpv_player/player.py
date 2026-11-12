@@ -1050,10 +1050,13 @@ class MpvPlayer(QObject):
         if self._wid is None:
             return
 
-        if self._window_picture is None or self._dims is None:
+        picture = self._window_picture
+
+        # a window with no room to place it in, as a cell squashed to nothing
+        if picture is None or self._dims is None or min(picture.window) < 1:
             options = {"keepaspect": "no"}
         else:
-            options = _placing_options(self._window_picture, self._dims)
+            options = _placing_options(picture, self._dims)
 
         for option, value in options.items():
             if self._window_options.get(option) != value:
