@@ -1500,7 +1500,7 @@ How it goes in, by what's there already:
     `test_gpu`, as a closed mpv's `vo` thread ended and freed what it held, another mpv's `vo` thread starting its
     X11 EGL output at that moment. The heap was broken before; by what, not found. Copy, the Linux default, has no
     `vo` threads.
-- [ ] 14.10 Hand test by you.
+- [x] 14.10 Hand test by you: all fine on Windows (2026-11-12) once YouTube's AV1 and its slow downloads were fixed.
 - [ ] 14.11 Overnight, on NVIDIA: the driver crash of Direct's mpvs starting together. Only Direct crashed: each of
   its mpvs makes a Direct3D 11 device and swap chain of its own, presenting from its own thread, while Copy and Shared
   draw into the app's OpenGL on one thread and make no output of their own. It crashed with 4:4:4 clips decoded on
@@ -1520,12 +1520,16 @@ How it goes in, by what's there already:
     the turns go on NVIDIA too; the cost of each (GPU, VRAM, frame times) measured before it's kept.
   - The turns are only on Windows since 2026-11-12: AMD and Intel there never tried. Whether they crash, and if not,
     turns only with an NVIDIA GPU.
-- [ ] 14.12 X11, Direct: the loading card still on show as a video says it has loaded. For 50-150 ms after the
-  status goes, mpv's window shows what was under it, not having drawn yet (left open in 14.9): a flash of
-  "Opening..." over a cell that's ready. `mpv_transport`'s random start sees it, failing on the Ubuntu VM 5 runs of
-  16 (2026-11-12), as often with mpvs starting together as in turn. Windows passes. Look at what is on show in that
-  moment from a failing run's screenshots, then keep the status up until mpv has drawn, or give mpv's window a
-  background of its own.
+- [ ] 14.12 Parked (2026-11-12): X11, Direct, a GNOME screenshot taken as a video says it has loaded shows the
+  loading card, the picture 0.3-0.7 s later. `mpv_transport`'s random start sees it, failing on the Ubuntu VM 5 runs of
+  16, then 8 of 8 (2026-11-12), as often with mpvs starting together as in turn. Windows passes. You see no glitch
+  opening videos on the VM, so it may be what the screenshot catches rather than what's on screen.
+  - Found: the card's own window is unmapped at the load, mpv's mapped, on top and the cell's size (xwininfo): what
+    shows is the card's pixels left in mpv's window. A screenshot of a video not loading shows the frame mpv is on.
+  - Tried, no change (8 of 8 still): the card taken off once mpv says `vo-configured`; and as soon as mpv's X window is
+    in the surface (XQueryTree every 2 ms), before its first frame.
+  - Next, if it's ever seen: on `test_gpu` (sway, a real GPU, 50-150 ms there before), and mpv's X window given a black
+    background so it's never the card's pixels; or mpv's drawing traced (Present, Damage) to see what holds it.
 
 ---
 
