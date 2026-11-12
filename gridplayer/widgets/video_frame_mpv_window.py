@@ -179,7 +179,15 @@ def _whole_picture(placement: ViewPlacement, frame_size: tuple[int, int]) -> Rec
 
 
 def _is_window_whole(picture: Rect, shown: Rect, ratio: float) -> bool:
-    """Whether mpv's window goes over all of the picture: see _WHOLE_MAX_SHARE."""
+    """Whether mpv's window goes over all of the picture: see _WHOLE_MAX_SHARE.
+
+    Not on X11: under XWayland a GL window reaching past the screen's edge shows
+    what's drawn as if from where the screen's edge is, the picture moved by as
+    much (seen with Fill on sway). mpv places it there, in a window on show.
+    """
+
+    if not env.IS_WINDOWS:
+        return False
 
     width, height = picture[2] * ratio, picture[3] * ratio
     shown_pixels = shown[2] * shown[3] * ratio * ratio
@@ -250,6 +258,10 @@ class VideoFrameMpvWindow(MpvFrame, VideoFrameVLC):
     # itself within a millisecond, and moving the surface costs no call into mpv.
     resize_view_interval_ms = 0
     is_native_surface = True
+    # not hidden while loading, as on X11 mpv waits for its window to be mapped
+    # before drawing the first picture, which the load waits for; the loading
+    # status is a native window over it until then (see VideoBlock._picture_shown)
+    is_shown_while_loading = True
     # a paused live stream's picture, all of it, see _on_snapshot_image
     _paused_picture: QImage | None = None
 
@@ -270,7 +282,11 @@ class VideoFrameMpvWindow(MpvFrame, VideoFrameVLC):
         surface = QWidget(self.video_clip)
 
         surface.setMouseTracking(True)
-        surface.setWindowFlags(Qt.WindowTransparentForInput)
+        # On X11 mpv's window in one with no input never comes up: mpv waits for
+        # it to be mapped, which it never is (seen under XWayland). The overlay is
+        # a window of its own over the video there, and takes the mouse.
+        if env.IS_WINDOWS:
+            surface.setWindowFlags(Qt.WindowTransparentForInput)
         surface.setAttribute(Qt.WA_TransparentForMouseEvents)
         surface.setAttribute(Qt.WA_NativeWindow)
 

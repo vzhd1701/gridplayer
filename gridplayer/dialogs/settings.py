@@ -518,8 +518,12 @@ class SettingsDialog(PagedDialog):
                 "<tr><td><b>Shared</b></td>"
                 "<td>OpenGL &rarr; GridPlayer</td>"
                 "<td>less</td></tr>"
+                "<tr><td><b>Direct</b></td>"
+                "<td>OpenGL &rarr; own window</td>"
+                "<td>less</td></tr>"
                 "</table>"
-                "<p><b>Use Shared</b>, or Copy if it misbehaves.</p>",
+                "<p><b>Use Shared</b>, or Copy if it misbehaves. Direct is about the"
+                " same as Shared, and works only with X11.</p>",
             )
 
         QCustomMessageBox.information(

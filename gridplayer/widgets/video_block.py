@@ -376,6 +376,11 @@ class VideoBlock(QWidget):
         if env.IS_WINDOWS and self._driver_has_native_surface():
             return
 
+        # mpv drawing into its own window (Direct) on X11 waits for that window
+        # to be mapped before it draws anything, and the load waits for it
+        if getattr(self.driver_class, "is_shown_while_loading", False):
+            return
+
         self.video_driver.hide()
 
     def _destroy_video_driver(self):

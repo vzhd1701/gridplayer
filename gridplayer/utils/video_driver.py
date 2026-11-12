@@ -138,10 +138,14 @@ def is_mpv_gl_output(output: MpvOutput, picked: VideoDriver) -> bool:
 
 
 def is_mpv_window_output(output: MpvOutput) -> bool:
-    """Whether Hardware MPV draws into a native window a cell itself: only on
-    Windows so far, Stage 14."""
+    """Whether Hardware MPV draws into a native window a cell itself: on Windows,
+    and on Linux with an X11 window to give mpv. On Wayland a surface is only its
+    own client's to draw into: Copy there instead."""
 
-    return env.IS_WINDOWS and output == MpvOutput.WINDOW
+    if output != MpvOutput.WINDOW:
+        return False
+
+    return env.IS_WINDOWS or (env.IS_LINUX and is_hw_video_available())
 
 
 def load_session_driver(driver: VideoDriver) -> VideoDriver | None:

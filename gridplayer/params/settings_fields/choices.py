@@ -165,8 +165,9 @@ def mpv_outputs() -> dict:
         MpvOutput.GL: translate("SettingsDialog", "Shared"),
     }
 
-    # mpv drawing into its own windows: Windows only so far, Stage 14
-    if env.IS_WINDOWS:
+    # mpv drawing into its own windows: not on macOS so far, and on Linux only
+    # with X11 (see is_mpv_window_output)
+    if env.IS_WINDOWS or env.IS_LINUX:
         outputs[MpvOutput.WINDOW] = translate("SettingsDialog", "Direct")
 
     return outputs

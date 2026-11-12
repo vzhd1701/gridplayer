@@ -7,6 +7,7 @@ import struct
 import pytest
 
 from gridplayer.mpv_player.player import WindowPicture, _placing_options
+from gridplayer.params import env
 from gridplayer.utils.aspect_calc import ViewPlacement
 from gridplayer.widgets.video_frame_mpv_window import (
     _covering,
@@ -119,7 +120,8 @@ def test_all_of_the_picture_from_the_part_on_show():
     assert _whole_picture(placement, (640, 360)) == (-500, -250, 2000, 1000)
 
 
-def test_a_window_over_all_of_the_picture_only_while_it_stays_small():
+def test_a_window_over_all_of_the_picture_only_while_it_stays_small(monkeypatch):
+    monkeypatch.setattr(env, "IS_WINDOWS", True)
     shown = (0, 0, 960, 540)
 
     # filled, a quarter of it cut off either side
@@ -130,6 +132,12 @@ def test_a_window_over_all_of_the_picture_only_while_it_stays_small():
     assert _is_window_whole((0, 0, 1920, 1080), (0, 0, 200, 100), 1.0)
     # never as wide as Direct3D could refuse
     assert not _is_window_whole((0, 0, 9000, 100), (0, 0, 9000, 100), 1.0)
+
+
+def test_never_a_window_past_the_part_on_show_off_windows(monkeypatch):
+    monkeypatch.setattr(env, "IS_WINDOWS", False)
+
+    assert not _is_window_whole((-480, 0, 1920, 1080), (0, 0, 960, 540), 1.0)
 
 
 def _params(player, dw=640, dh=360, rotate=0):
@@ -251,3 +259,27 @@ def test_no_screenshot_asked_of_an_mpv_going():
 
     assert _screenshot(player) == [None]
     assert not any(args[0] == "screenshot-raw" for args in player.mpv.commands)
+
+
+@pytest.mark.parametrize(
+    ("is_windows", "is_linux", "platform", "is_direct"),
+    [
+        (True, False, "windows", True),
+        (False, True, "xcb", True),
+        # a surface on Wayland is only its own client's to draw into
+        (False, True, "wayland", False),
+        (False, False, "cocoa", False),
+    ],
+)
+def test_direct_where_mpv_can_have_a_window(
+    monkeypatch, is_windows, is_linux, platform, is_direct
+):
+    from gridplayer.params.static import MpvOutput
+    from gridplayer.utils import video_driver
+
+    monkeypatch.setattr(env, "IS_WINDOWS", is_windows)
+    monkeypatch.setattr(env, "IS_LINUX", is_linux)
+    monkeypatch.setattr(video_driver, "_qt_platform_name", lambda: platform)
+
+    assert video_driver.is_mpv_window_output(MpvOutput.WINDOW) is is_direct
+    assert not video_driver.is_mpv_window_output(MpvOutput.READBACK)

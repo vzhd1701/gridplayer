@@ -1,13 +1,20 @@
-"""A widget as Windows composes it, for what grab() can't see: MPV's Direct output,
-where mpv draws into a native window of its own. Only for a real window (the
-windows platform, see bench/away.py), on screen or on another virtual desktop."""
+"""A widget as Windows composes it, or as the X server has it, for what grab()
+can't see: MPV's Direct output, where mpv draws into a native window of its own.
+Only for a real window: on Windows the windows platform (see bench/away.py), on
+screen or on another virtual desktop; on Linux xcb."""
 
 import ctypes
+import os
+import shutil
+import subprocess
+import sys
+import tempfile
 import time
 from ctypes import wintypes
+from pathlib import Path
 
 from PyQt5.QtCore import QPoint, QRect
-from PyQt5.QtGui import QImage
+from PyQt5.QtGui import QGuiApplication, QImage
 from PyQt5.QtWidgets import QApplication, QWidget
 
 # the client area only, with what DirectComposition draws in it
@@ -68,6 +75,9 @@ def _windows_over_videos(widget: QWidget) -> list[QWidget]:
 
 
 def _grab_composed(widget: QWidget) -> QImage:
+    if not sys.platform.startswith("win"):
+        return _grab_from_x11(widget)
+
     window = widget.window()
     ratio = window.devicePixelRatioF()
     width = round(window.width() * ratio)
@@ -126,3 +136,39 @@ def _grab_composed(widget: QWidget) -> QImage:
     part.setDevicePixelRatio(ratio)
 
     return part
+
+
+def _grab_from_x11(widget: QWidget) -> QImage:
+    """What the X server has in the window there, mpv's window in it included.
+    Under XWayland the X server has nothing of what GL draws: the screen is
+    taken from the compositor instead, by grim, where it's there (sway)."""
+
+    window = widget.window()
+    origin = widget.mapTo(window, QPoint(0, 0)) if widget is not window else QPoint()
+
+    if os.environ.get("WAYLAND_DISPLAY") and shutil.which("grim"):
+        # what was hidden or drawn just now, which the compositor shows a frame on
+        QApplication.processEvents()
+        time.sleep(_COMPOSE_WAIT_S)
+
+        at = widget.mapToGlobal(QPoint(0, 0))
+        area = f"{at.x()},{at.y()} {widget.width()}x{widget.height()}"
+        with tempfile.TemporaryDirectory() as folder:
+            path = Path(folder) / "grab.png"
+            # the compositor's socket is in the session's own, which a run moves
+            runtime = f"/run/user/{os.getuid()}"
+            env = {**os.environ, "XDG_RUNTIME_DIR": runtime}
+            subprocess.run(["grim", "-g", area, str(path)], check=True, env=env)
+            return QImage(str(path))
+
+    return (
+        QGuiApplication.primaryScreen()
+        .grabWindow(
+            int(window.winId()),
+            origin.x(),
+            origin.y(),
+            widget.width(),
+            widget.height(),
+        )
+        .toImage()
+    )
