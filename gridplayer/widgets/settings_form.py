@@ -863,9 +863,9 @@ class SettingsForm(QWidget):
         return True
 
     def _is_met(self, rule: When | AnyOf, is_on) -> bool:
-        if isinstance(rule, AnyOf):
-            return any(self._is_met(one, is_on) for one in rule.rules)
+        return any(self._is_one_met(one, is_on) for one in rule.rules)
 
+    def _is_one_met(self, rule: When, is_on) -> bool:
         driver = self._editors.get(rule.key)
 
         # a form leaves a field alone when what it names isn't there

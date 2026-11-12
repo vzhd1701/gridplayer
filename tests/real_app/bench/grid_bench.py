@@ -20,6 +20,8 @@ from pathlib import Path
 from common import clips_for, nested, source_fps
 from PyQt5.QtCore import Qt, QTimer
 
+from tests.real_app.composed import is_direct
+
 DRIVER = os.environ["DRIVER"]
 CLIP = os.environ["CLIP"]
 CELLS = int(os.environ["CELLS"])
@@ -892,11 +894,7 @@ def scenario(d):
     spy = start_spy(out, MEASURE)
     gpu_log = GpuLog(out)
     first = snapshot(blocks)
-    own_window = (
-        OwnWindowFrames(blocks)
-        if blocks and type(blocks[0].video_driver).__name__ == "VideoFrameMpvWindow"
-        else None
-    )
+    own_window = OwnWindowFrames(blocks) if blocks and is_direct(blocks[0]) else None
     COUNT.gate = True
 
     nested(MEASURE)

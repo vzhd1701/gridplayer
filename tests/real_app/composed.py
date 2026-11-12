@@ -62,6 +62,28 @@ def has_own_window_video(widget: QWidget) -> bool:
     )
 
 
+def is_direct(block) -> bool:
+    """Whether a cell's video is on MPV's Direct output, mpv drawing into a
+    window of its own: no frames here to count or to read."""
+
+    return block.video_driver is not None and has_own_window_video(block.video_driver)
+
+
+def has_direct_picture(block) -> bool:
+    """A cell on Direct has its picture on show as soon as the loading status is
+    off it."""
+
+    return block.is_video_initialized and not block.video_status.isVisible()
+
+
+def _origin(widget: QWidget) -> QPoint:
+    """Where the widget is in its window."""
+
+    window = widget.window()
+
+    return widget.mapTo(window, QPoint(0, 0)) if widget is not window else QPoint()
+
+
 def grab_composed(widget: QWidget) -> QImage:
     """As grab() gives it: in the screen's pixels, at the widget's ratio. The
     cells' overlays and loading statuses taken off for it, which are windows of
@@ -148,7 +170,7 @@ def _grab_composed(widget: QWidget) -> QImage:
     gdi32.DeleteDC(dc)
     user32.ReleaseDC(None, screen)
 
-    origin = widget.mapTo(window, QPoint(0, 0)) if widget is not window else QPoint()
+    origin = _origin(widget)
     part = image.copy(
         QRect(
             round(origin.x() * ratio),
@@ -168,11 +190,9 @@ def _grab_from_x11(widget: QWidget) -> QImage:
     taken from the compositor instead, by grim where it's there (sway), or by
     asking GNOME Shell."""
 
-    window = widget.window()
-    origin = widget.mapTo(window, QPoint(0, 0)) if widget is not window else QPoint()
-
+    grim = shutil.which("grim")
     is_gnome = shutil.which("gnome-shell") is not None
-    if os.environ.get("WAYLAND_DISPLAY") and (shutil.which("grim") or is_gnome):
+    if os.environ.get("WAYLAND_DISPLAY") and (grim or is_gnome):
         # what was hidden or drawn just now, which the compositor shows a frame on
         QApplication.processEvents()
         time.sleep(_COMPOSE_WAIT_S)
@@ -184,9 +204,9 @@ def _grab_from_x11(widget: QWidget) -> QImage:
             # the compositor's socket is in the session's own, which a run moves
             runtime = f"/run/user/{os.getuid()}"
             env = {**os.environ, "XDG_RUNTIME_DIR": runtime}
-            if shutil.which("grim"):
+            if grim:
                 x, y, w, h = area
-                command = ["grim", "-g", f"{x},{y} {w}x{h}", str(path)]
+                command = [grim, "-g", f"{x},{y} {w}x{h}", str(path)]
             else:
                 # the run has no session bus of its own: the desktop's
                 env["DBUS_SESSION_BUS_ADDRESS"] = f"unix:path={runtime}/bus"
@@ -201,10 +221,12 @@ def _grab_from_x11(widget: QWidget) -> QImage:
             subprocess.run(command, check=True, env=env)
             return QImage(str(path))
 
+    origin = _origin(widget)
+
     return (
         QGuiApplication.primaryScreen()
         .grabWindow(
-            int(window.winId()),
+            int(widget.window().winId()),
             origin.x(),
             origin.y(),
             widget.width(),

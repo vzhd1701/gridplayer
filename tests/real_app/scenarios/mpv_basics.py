@@ -5,6 +5,7 @@ cells close and come back."""
 from PyQt5.QtCore import QRect, Qt
 from PyQt5.QtGui import QColor, QImage
 
+from tests.real_app.composed import has_direct_picture, is_direct
 from tests.real_app.scenarios.pixel_shape import _grab, _picture_box, _ratio
 
 SETTINGS = {
@@ -40,16 +41,9 @@ def _rendered_size(block):
     return _driver(block).video_surface.frame_size()
 
 
-def _is_direct(block) -> bool:
-    """MPV's Direct output: mpv draws into its own window, at its size."""
-
-    return type(_driver(block)).__name__ == "VideoFrameMpvWindow"
-
-
 def _has_picture(block) -> bool:
-    if _is_direct(block):
-        # on as soon as the loading status is off it
-        return block.is_video_initialized and not block.video_status.isVisible()
+    if is_direct(block):
+        return has_direct_picture(block)
 
     return _rendered_size(block)[0] > 0
 
@@ -108,7 +102,7 @@ def _resizing(d):
     # the source is 640x360: the frame goes down as the window does, and back
     block = _open_paused(d, d.media.shapes / "square.mp4", "square.mp4")
 
-    if _is_direct(block):
+    if is_direct(block):
         # mpv draws at its window's size: the picture follows the cell
         for size in ((1280, 720), (320, 240), (1280, 720)):
             d.player.resize(*size)

@@ -11,6 +11,7 @@ from PyQt5.QtGui import QColor, QImage
 
 from gridplayer.params.static import VideoAnchor, VideoCellViewMode, VideoTransform
 from gridplayer.utils.screenshots import transformed_image
+from tests.real_app.composed import is_direct
 from tests.real_app.scenarios.pixel_shape import _grab
 
 SETTINGS = {
@@ -125,12 +126,10 @@ def _has_frame(block) -> bool:
     """Whether a frame is on show: mpv drawing into its own window (Direct) has
     one as soon as it says how big the picture is."""
 
-    surface = _surface(block)
-
-    if not hasattr(surface, "has_frame"):
+    if is_direct(block):
         return block.is_video_initialized
 
-    return surface.has_frame()
+    return _surface(block).has_frame()
 
 
 def _wait_for_transform(d, block, transform):
@@ -736,7 +735,7 @@ def _live_pause(d):
     picture = _grab(block)
 
     d.check("the last frame stays up", _has_frame(block))
-    if type(block.video_driver).__name__ == "VideoFrameMpvWindow":
+    if is_direct(block):
         # mpv's own window shows nothing once the stream is let go of
         d.check(
             "its last picture is put up over it",

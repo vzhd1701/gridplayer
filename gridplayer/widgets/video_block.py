@@ -31,7 +31,6 @@ from gridplayer.models.video import (
     Video,
     VideoBlockMime,
 )
-from gridplayer.params import env
 from gridplayer.params.static import (
     MAX_RATE,
     MIN_RATE,
@@ -369,16 +368,7 @@ class VideoBlock(QWidget):
         if self.video_driver is None:
             return
 
-        # Don't hide VLC HW frame widget, otherwise first frame comes out glitchy and takes time to normalize
-        # Happens only on Windows
-        # Possibly related issue - short ~100-300ms "freeze-frame" lag before video starts actually playing
-        # especially noticeable on streaming vids, also happens on Linux
-        if env.IS_WINDOWS and self._driver_has_native_surface():
-            return
-
-        # mpv drawing into its own window (Direct) on X11 waits for that window
-        # to be mapped before it draws anything, and the load waits for it
-        if getattr(self.driver_class, "is_shown_while_loading", False):
+        if self.driver_class.is_shown_while_loading:
             return
 
         self.video_driver.hide()

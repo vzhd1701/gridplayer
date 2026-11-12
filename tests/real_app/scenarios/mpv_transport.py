@@ -122,10 +122,10 @@ def _bar_drag(d):
         block = _open(d, d.media.clips[0], is_playing=is_playing)
         surface = block.video_driver.video_surface
         # MPV's Direct output: mpv draws into its own window, nothing to count
-        is_counted = hasattr(surface, "present_frame")
+        present = getattr(surface, "present_frame", None)
+        is_counted = present is not None
 
         shown = []
-        present = getattr(surface, "present_frame", None)
 
         def counted(*args, present=present, shown=shown):
             shown.append(args)

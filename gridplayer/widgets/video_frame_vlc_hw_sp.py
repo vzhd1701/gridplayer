@@ -370,6 +370,11 @@ class VideoDriverVLCHWSP(VLCVideoDriver):
 class VideoFrameVLCHWSP(VideoFrameVLC):
     resize_view_interval_ms = NATIVE_VIEW_RESIZE_INTERVAL_MS
     is_native_surface = True
+    # Not hidden while loading on Windows: the first picture comes out glitchy and
+    # takes time to normalize. Possibly related: a short ~100-300ms
+    # "freeze-frame" lag before the video starts playing, especially on streams,
+    # which happens on Linux too.
+    is_shown_while_loading = env.IS_WINDOWS
 
     def driver_setup(self, vlc_options) -> VideoDriverVLCHWSP:
         return VideoDriverVLCHWSP(

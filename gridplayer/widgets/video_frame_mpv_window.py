@@ -26,7 +26,7 @@ from gridplayer.mpv_player.renderer import MpvRenderService
 from gridplayer.mpv_player.subtitles import subtitle_view
 from gridplayer.params import env
 from gridplayer.params.static import ROTATION_TRANSFORMS
-from gridplayer.utils.aspect_calc import Rect, ViewPlacement, calc_full_size
+from gridplayer.utils.aspect_calc import Rect, ViewPlacement
 from gridplayer.utils.screenshots import ScreenshotView
 from gridplayer.vlc_player.static import MediaInput
 from gridplayer.widgets.video_frame_mpv import MpvFrame, VideoDriverMpv, shown_flip
@@ -125,7 +125,8 @@ class VideoDriverMpvWindow(VideoDriverMpv):
     def _on_playback_restarted(self) -> None:
         super()._on_playback_restarted()
 
-        # a live stream back from a pause: see VideoFrameMpvWindow.snapshot_taken
+        # a live stream back from a pause: see
+        # VideoFrameMpvWindow._on_playback_started
         self.playback_started_emit()
 
     def set_on_show(self, is_on_show: bool) -> None:
@@ -153,10 +154,12 @@ _WHOLE_MAX_SIDE = 8192
 class _SurfaceView(NamedTuple):
     """Where the surface goes, as apply_vlc_hw_surface_geometry takes it, and
     where mpv puts the picture in it, if the surface is only over the part on
-    show. None for the surface over all of the picture."""
+    show. None for the surface over all of the picture. With the view's
+    placement it's worked out from, None where there's none yet."""
 
     layout: tuple[int, Rect | None, Rect | None, QMargins]
     window_picture: WindowPicture | None
+    placement: ViewPlacement | None
 
 
 def _whole_picture(placement: ViewPlacement, frame_size: tuple[int, int]) -> Rect:
@@ -257,9 +260,9 @@ class VideoFrameMpvWindow(MpvFrame, VideoFrameVLC):
     # itself within a millisecond, and moving the surface costs no call into mpv.
     resize_view_interval_ms = 0
     is_native_surface = True
-    # not hidden while loading, as on X11 mpv waits for its window to be mapped
-    # before drawing the first picture, which the load waits for; the loading
-    # status is a native window over it until then (see VideoBlock._picture_shown)
+    # as on X11 mpv waits for its window to be mapped before drawing the first
+    # picture, which the load waits for; the loading status is a native window
+    # over it until then (see VideoBlock._picture_shown)
     is_shown_while_loading = True
     # a paused live stream's picture, all of it, see _on_snapshot_image
     _paused_picture: QImage | None = None
@@ -331,62 +334,37 @@ class VideoFrameMpvWindow(MpvFrame, VideoFrameVLC):
         self.video_driver.set_flip_in_mpv(self._shown_flip())
         self.video_driver.set_window_picture(view.window_picture)
 
-        self._push_subtitle_view()
+        self._push_subtitle_view(view)
 
-    def set_subtitle_track(self, track_id):
-        super().set_subtitle_track(track_id)
-
-        self._push_subtitle_view()
-
-    def _on_tracks_changed(self, media) -> None:
-        super()._on_tracks_changed(media)
-
-        self._push_subtitle_view()
-
-    def _push_subtitle_view(self) -> None:
+    def _push_subtitle_view(self, view: _SurfaceView | None = None) -> None:
         """Keeps a subtitle readable and on show, whatever the view does to the
         picture, as for Copy and Shared, where mpv's window is over all of the
         picture. Where mpv places the picture in a window over the part on show
         (see WindowPicture), it places the line in that window, the part on show
         being all it lays out by: as for a picture not cut at all."""
 
-        placement = self.view_placement()
-
-        if placement is None or self.media is None:
+        if not self._is_subtitle_on_show():
             return
 
-        if self.media.cur_subtitle_track is None:
+        if view is None:
+            view = self._surface_view()
+
+        if view.placement is None:
             return
 
-        view = self._surface_view()
         frame_size = self._view_frame_size()
-        full_height = calc_full_size(frame_size, self._transform, self._pixel_aspect())[
-            1
-        ]
 
         if view.window_picture is not None:
-            frame_w, frame_h = frame_size
-            window_w, window_h = view.window_picture.window
-            self.video_driver.set_subtitle_view(
-                subtitle_view(
-                    (0, 0, frame_w, frame_h),
-                    frame_size,
-                    (window_w, window_h),
-                    full_height,
-                )
-            )
-            return
-
-        ratio = self.video_surface.devicePixelRatioF()
-        _, _, width, height = _whole_picture(placement, frame_size)
+            source, window = (0, 0, *frame_size), view.window_picture.window
+        else:
+            ratio = self.video_surface.devicePixelRatioF()
+            # the surface over all of the picture
+            _, (_, _, width, height), _, _ = view.layout
+            source = view.placement.source
+            window = (max(round(width * ratio), 1), max(round(height * ratio), 1))
 
         self.video_driver.set_subtitle_view(
-            subtitle_view(
-                placement.source,
-                frame_size,
-                (max(round(width * ratio), 1), max(round(height * ratio), 1)),
-                full_height,
-            )
+            subtitle_view(source, frame_size, window, self._full_render_size()[1])
         )
 
     def _native_surface_layout(self):
@@ -401,12 +379,13 @@ class VideoFrameMpvWindow(MpvFrame, VideoFrameVLC):
         """The picture taken for the screenshot, or a paused live stream's, as
         shown, all of it: see screenshot_view."""
 
-        picture = self._screenshot_picture()
+        driver = self.video_driver
 
-        if self.video_driver is not None:
-            self.video_driver.taken_picture = None
+        if driver is not None and driver.taken_picture:
+            picture, driver.taken_picture = driver.taken_picture, None
+            return picture
 
-        return picture
+        return self._paused_picture if self.pause_snapshot.isVisible() else None
 
     def screenshot_view(self) -> ScreenshotView | None:
         return ScreenshotView(
@@ -417,18 +396,6 @@ class VideoFrameMpvWindow(MpvFrame, VideoFrameVLC):
             self._orientation(),
             self._pixel_aspect(),
         )
-
-    def _screenshot_picture(self) -> QImage | None:
-        if self.video_driver is not None and self.video_driver.taken_picture:
-            return self.video_driver.taken_picture
-
-        if self.pause_snapshot.isVisible():
-            return self._paused_picture
-
-        return None
-
-    def take_snapshot(self) -> None:
-        self.video_driver.snapshot()
 
     def _on_snapshot_image(self, picture) -> None:
         """The picture a paused live stream stopped on, up over the video, cut to
@@ -470,19 +437,9 @@ class VideoFrameMpvWindow(MpvFrame, VideoFrameVLC):
             )
         )
 
-    def playback_status_changed_emit(self, is_paused) -> None:
+    def _on_unpaused_from_snapshot(self) -> None:
         """A live stream back from a pause keeps its snapshot up until mpv shows
         it again: see _on_playback_started."""
-
-        if is_paused or not self.pause_snapshot.isVisible():
-            super().playback_status_changed_emit(is_paused)
-            return
-
-        if not self.is_video_initialized:
-            return
-
-        self._is_status_change_in_progress = False
-        self.playback_status_changed.emit(is_paused)
 
     def _on_playback_started(self) -> None:
         super()._on_playback_started()
@@ -507,18 +464,20 @@ class VideoFrameMpvWindow(MpvFrame, VideoFrameVLC):
         placement = self.view_placement()
 
         if placement is None:
-            return _SurfaceView((0, None, None, QMargins()), None)
+            return _SurfaceView((0, None, None, QMargins()), None, None)
 
         shown = placement.target
         picture = _whole_picture(placement, self._view_frame_size())
 
         if _is_window_whole(picture, shown, self.video_surface.devicePixelRatioF()):
             padding = QMargins(0, 0, 0, self._whole_rows(picture, shown))
-            return _SurfaceView((0, picture, shown, padding), None)
+            return _SurfaceView((0, picture, shown, padding), None, placement)
 
-        return self._placed(picture, shown)
+        return self._placed(placement, picture, shown)
 
-    def _placed(self, picture: Rect, shown: Rect) -> _SurfaceView:
+    def _placed(
+        self, placement: ViewPlacement, picture: Rect, shown: Rect
+    ) -> _SurfaceView:
         """The surface over the part on show, grown out to the picture's own
         pixels' edges, and mpv told to put the picture there, leaving out what's
         past those edges: see WindowPicture."""
@@ -582,7 +541,7 @@ class VideoFrameMpvWindow(MpvFrame, VideoFrameVLC):
         )
 
         return _SurfaceView(
-            (0, surface, shown, QMargins(0, 0, 0, grown)), window_picture
+            (0, surface, shown, QMargins(0, 0, 0, grown)), window_picture, placement
         )
 
     def _whole_rows(self, target, shown) -> int:

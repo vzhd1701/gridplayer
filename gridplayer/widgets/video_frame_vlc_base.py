@@ -555,6 +555,8 @@ class VideoFrameVLC(QWidget, metaclass=QABC):
     # Nothing the cell paints shows over such a video, so the cell puts its
     # overlay in a window of its own (see VideoBlock.init_overlay).
     is_native_surface = False
+    # not hidden while its video loads, see VideoBlock._hide_video_driver
+    is_shown_while_loading = False
 
     def __init__(self, vlc_options, **kwargs):
         super().__init__(**kwargs)
@@ -1018,14 +1020,19 @@ class VideoFrameVLC(QWidget, metaclass=QABC):
             return
 
         if not is_paused and self.pause_snapshot.isVisible():
-            self.pause_snapshot.hide()
-            self.pause_snapshot.reset()
-            # Live pause is stop/play, which rebuilds the vout.
-            self.adjust_view()
+            self._on_unpaused_from_snapshot()
 
         self._is_status_change_in_progress = False
 
         self.playback_status_changed.emit(is_paused)
+
+    def _on_unpaused_from_snapshot(self) -> None:
+        """A live stream played again, its paused picture still up."""
+
+        self.pause_snapshot.hide()
+        self.pause_snapshot.reset()
+        # Live pause is stop/play, which rebuilds the vout.
+        self.adjust_view()
 
     def time_changed_emit(self, new_time) -> None:
         self.time_changed.emit(new_time)

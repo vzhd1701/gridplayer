@@ -741,6 +741,30 @@ class MpvFrame:
 
         return round(pane.width() * ratio), round(pane.height() * ratio)
 
+    def _full_render_size(self) -> tuple[int, int]:
+        return calc_full_size(
+            self._view_frame_size(), self._transform, self._pixel_aspect()
+        )
+
+    def set_subtitle_track(self, track_id):
+        super().set_subtitle_track(track_id)
+
+        self._push_subtitle_view()
+
+    def _on_tracks_changed(self, media: Media) -> None:
+        super()._on_tracks_changed(media)
+
+        self._push_subtitle_view()
+
+    def _is_subtitle_on_show(self) -> bool:
+        return self.media is not None and self.media.cur_subtitle_track is not None
+
+    def _push_subtitle_view(self) -> None:
+        """Keeps a subtitle readable and on show, whatever the view does to the
+        picture."""
+
+        raise NotImplementedError
+
 
 class VideoFrameMpv(MpvFrame, PaintedVideoFrame, VideoFrameVLC):
     def __init__(
@@ -799,11 +823,6 @@ class VideoFrameMpv(MpvFrame, PaintedVideoFrame, VideoFrameVLC):
             parent=self,
         )
 
-    def _full_render_size(self) -> tuple[int, int]:
-        return calc_full_size(
-            self._view_frame_size(), self._transform, self._pixel_aspect()
-        )
-
     def adjust_view(self):
         self.video_surface.set_file_on_its_side(
             self._orientation() in ROTATION_TRANSFORMS
@@ -837,16 +856,11 @@ class VideoFrameMpv(MpvFrame, PaintedVideoFrame, VideoFrameVLC):
         super().set_subtitle_track(track_id)
 
         self._push_render_size()
-        self._push_subtitle_view()
 
     def _on_tracks_changed(self, media: Media) -> None:
         super()._on_tracks_changed(media)
 
         self._push_render_size()
-        self._push_subtitle_view()
-
-    def _is_subtitle_on_show(self) -> bool:
-        return self.media is not None and self.media.cur_subtitle_track is not None
 
     def _wanted_render_size(self, placement: ViewPlacement) -> tuple[int, int]:
         return calc_render_size(
@@ -889,10 +903,8 @@ class VideoFrameMpv(MpvFrame, PaintedVideoFrame, VideoFrameVLC):
             self.video_driver.set_render_size(wanted)
 
     def _push_subtitle_view(self) -> None:
-        """Keeps a subtitle readable and on show, whatever the view does to the picture.
-
-        mpv is only asked to flip while there is one: see player._FLIP_SHADER.
-        """
+        """mpv is only asked to flip while there is a subtitle: see
+        player._FLIP_SHADER."""
 
         placement = self.view_placement()
 

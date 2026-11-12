@@ -12,6 +12,7 @@ import shutil
 from gridplayer.models.audio_selection import AudioDisabled, AudioExternal
 from gridplayer.mpv_player import player as player_module
 from gridplayer.params.static import AudioChannelMode
+from tests.real_app.composed import has_direct_picture, is_direct
 from tests.real_app.media import _ffmpeg, _pattern, _tone
 from tests.real_app.scenarios.mpv_transport import _mpv
 from tests.real_app.scenarios.mpv_view import _open
@@ -37,13 +38,10 @@ def scenario(d):
 
 
 def _has_frame(block) -> bool:
-    surface = block.video_driver.video_surface
+    if is_direct(block):
+        return has_direct_picture(block)
 
-    # MPV's Direct output: mpv draws into its own window, there's no frame here
-    if not hasattr(surface, "frame_size"):
-        return block.is_video_initialized and not block.video_status.isVisible()
-
-    return surface.frame_size()[0] > 0
+    return block.video_driver.video_surface.frame_size()[0] > 0
 
 
 def _audio_language(block):

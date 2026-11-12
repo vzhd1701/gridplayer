@@ -46,6 +46,7 @@ import re
 import sys
 import threading
 import time
+from contextlib import suppress
 from functools import partial
 
 from PyQt5.QtCore import QObject, Qt, QThread, QTimer, pyqtSignal
@@ -892,6 +893,9 @@ class MpvRenderService(QObject):
         # one starting: see add_own_window
         self._starts_due: collections.OrderedDict = collections.OrderedDict()
         self._starting = None
+        # what tells of the one starting, let go of once its turn is over: mpv
+        # says its playback restarted on every seek too
+        self._turn_signals: list = []
 
         self._start_turn = QTimer(self)
         self._start_turn.setSingleShot(True)
@@ -969,9 +973,6 @@ class MpvRenderService(QObject):
         self._keep_alive(player)
         self._own_window_players.add(player)
 
-        for signal in (player.playback_restarted, player.failed, player.end_reached):
-            signal.connect(partial(self._on_started, player), Qt.QueuedConnection)
-
         self._starts_due[player] = start
 
         if self._starting is None and not self._start_turn.isActive():
@@ -989,8 +990,7 @@ class MpvRenderService(QObject):
             self._start_next()
 
     def _start_next(self) -> None:
-        self._start_turn.stop()
-        self._starting = None
+        self._end_turn()
 
         if not self._starts_due:
             return
@@ -999,6 +999,12 @@ class MpvRenderService(QObject):
         self._starting = player
         self._start_turn.start(OWN_WINDOW_START_TURN_MS)
 
+        on_started = partial(self._on_started, player)
+        for signal in (player.playback_restarted, player.failed, player.end_reached):
+            self._turn_signals.append(
+                (signal, signal.connect(on_started, Qt.QueuedConnection))
+            )
+
         self._log.debug(f"Starting an mpv, {len(self._starts_due)} more waiting")
 
         start()
@@ -1006,6 +1012,17 @@ class MpvRenderService(QObject):
     def _on_started(self, player, *_) -> None:
         if player is self._starting:
             self._start_next()
+
+    def _end_turn(self) -> None:
+        self._start_turn.stop()
+        self._starting = None
+
+        for signal, connection in self._turn_signals:
+            # its player can be gone already
+            with suppress(TypeError, RuntimeError):
+                signal.disconnect(connection)
+
+        self._turn_signals.clear()
 
     def _keep_alive(self, player) -> None:
         self._players_alive[player] = None
@@ -1048,8 +1065,7 @@ class MpvRenderService(QObject):
         self._listeners.clear()
 
         self._starts_due.clear()
-        self._starting = None
-        self._start_turn.stop()
+        self._end_turn()
 
         if self._renderer is None:
             return

@@ -13,6 +13,7 @@ from PyQt5.QtGui import QColor
 
 from gridplayer.models.subtitle_selection import SubtitleExternal, SubtitleTrackId
 from gridplayer.params.static import VideoTransform
+from tests.real_app.composed import is_direct
 from tests.real_app.media import _ffmpeg, _pattern
 from tests.real_app.scenarios.mpv_transport import _mpv
 from tests.real_app.scenarios.mpv_view import (
@@ -374,7 +375,7 @@ def _kept_on_show(d):
     # a small picture drawn big, to keep the text sharp only while there is some;
     # mpv draws at its window's size on Direct
     b = _showing_the_line(d, "160x90")
-    if _is_direct(b):
+    if is_direct(b):
         _close(d, b)
         return
 
@@ -411,12 +412,12 @@ def _flips_with_a_line(d):
             )
             surface = b.video_driver.video_surface
             # on Direct mpv always flips it, line or not
-            is_direct = _is_direct(b)
+            is_flipped_by_mpv = is_direct(b)
 
-            d.wait_until(
-                lambda s=surface, direct=is_direct: direct or s._is_flip_in_mpv,
-                f"{what}: mpv flips it",
-            )
+            if not is_flipped_by_mpv:
+                d.wait_until(
+                    lambda s=surface: s._is_flip_in_mpv, f"{what}: mpv flips it"
+                )
             d.wait_until(
                 lambda b=b, e=expected: _corners_on_show(b) == e,
                 f"{what}: with the line, as it should be",
@@ -431,20 +432,18 @@ def _flips_with_a_line(d):
             )
 
             d.choose(b, "menu_generator_subtitle_track", "Off")
-            d.wait_until(
-                lambda s=surface, direct=is_direct: direct or not s._is_flip_in_mpv,
-                f"{what}: painted",
-            )
+            if not is_flipped_by_mpv:
+                d.wait_until(
+                    lambda s=surface: not s._is_flip_in_mpv, f"{what}: painted"
+                )
             d.wait_until(
                 lambda b=b, e=expected: _corners_on_show(b) == e,
                 f"{what}: with none, as it should be",
             )
 
             b.subtitles.show_external(str(line))
-            d.wait_until(
-                lambda s=surface, direct=is_direct: direct or s._is_flip_in_mpv,
-                f"{what}: mpv again",
-            )
+            if not is_flipped_by_mpv:
+                d.wait_until(lambda s=surface: s._is_flip_in_mpv, f"{what}: mpv again")
 
         _close(d, b)
 
@@ -455,13 +454,7 @@ def _is_placed(b) -> bool:
 
     frame = b.video_driver
 
-    return _is_direct(b) and frame._surface_view().window_picture is not None
-
-
-def _is_direct(b) -> bool:
-    """MPV's Direct output: mpv draws into its own window."""
-
-    return type(b.video_driver).__name__ == "VideoFrameMpvWindow"
+    return is_direct(b) and frame._surface_view().window_picture is not None
 
 
 def _black_clip(d, path, size, line="A line"):

@@ -2731,6 +2731,30 @@ def test_own_windows_start_one_at_a_time(mocker):
     starts[2].assert_called_once_with()
 
 
+def test_own_window_lets_go_of_its_signals_once_its_turn_is_over(mocker):
+    # mpv says playback restarted on every seek too, all its life
+    service, players, _ = _own_window_starts(mocker, 2)
+    signals = (
+        players[0].playback_restarted,
+        players[0].failed,
+        players[0].end_reached,
+    )
+
+    for signal in signals:
+        signal.connect.assert_called_once()
+    players[1].playback_restarted.connect.assert_not_called()
+
+    service._on_started(players[0])
+
+    for signal in signals:
+        signal.disconnect.assert_called_once_with(signal.connect.return_value)
+    players[1].playback_restarted.connect.assert_called_once()
+
+    service.cleanup()
+
+    players[1].playback_restarted.disconnect.assert_called_once()
+
+
 def test_own_window_starts_next_once_it_s_had_its_turn(mocker):
     service, _, starts = _own_window_starts(mocker, 2)
 

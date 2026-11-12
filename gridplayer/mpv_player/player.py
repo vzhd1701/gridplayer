@@ -1030,21 +1030,21 @@ class MpvPlayer(QObject):
 
     def take_screenshot(self, on_taken) -> None:
         """The picture mpv has on show, at its own size, turned and flipped as it's
-        drawn, without subtitles: on_taken(QImage | None), on mpv's event thread. Asked for, not waited for. Commands go in the order they're
-        sent, so it's the picture before any sent after it."""
+        drawn, without subtitles: on_taken(QImage | None), on mpv's event thread.
+        Asked for, not waited for. Commands go in the order they're sent, so it's
+        the picture before any sent after it."""
 
         def taken(error, result) -> None:
             on_taken(None if error else _screenshot_image(result))
 
         with self._telling:
-            is_closing = self._is_closing
-            if not is_closing:
+            if not self._is_closing:
                 self.mpv.command_async("screenshot-raw", "video", callback=taken)
+                return
 
-        if is_closing:
-            on_taken(None)
+        on_taken(None)
 
-    def set_window_picture(self, picture: "WindowPicture | None") -> None:
+    def set_window_picture(self, picture: WindowPicture | None) -> None:
         """Where all of the picture goes in mpv's own window, see WindowPicture.
         None for the picture stretched over the window, which follows its size by
         itself with nothing to tell mpv."""

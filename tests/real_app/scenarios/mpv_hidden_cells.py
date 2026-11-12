@@ -7,6 +7,8 @@ minimized or in the tray."""
 import collections
 import time
 
+from tests.real_app.composed import is_direct
+
 SETTINGS = {
     "player/video_driver": "mpv_hw",
     "playlist/pause_background_videos": False,
@@ -56,7 +58,7 @@ def scenario(d):
 
     # On Direct mpv counts what it puts in a hidden window as shown, and has no
     # frames of ours to count: what hidden cells cost there is the bench's (EXP=single)
-    is_counted = not _is_direct(first)
+    is_counted = not is_direct(first)
 
     if is_counted:
         d.check(
@@ -138,7 +140,7 @@ def _away_and_back(d, drawn, how, go, come_back):
     d.pump(HIDDEN_S)
 
     # see scenario
-    is_counted = not _is_direct(cell)
+    is_counted = not is_direct(cell)
 
     if is_counted:
         d.check(
@@ -180,17 +182,11 @@ def _rendered(cell):
     return cell.video_driver.video_driver._rendered
 
 
-def _is_direct(cell) -> bool:
-    """MPV's Direct output: mpv draws into its own window, no render thread."""
-
-    return type(cell.video_driver).__name__ == "VideoFrameMpvWindow"
-
-
 def _count_draws(cell):
     """How many frames a cell's video has drawn, by cell: counted on the render
     thread, or on Direct, mpv's frames less those its output dropped."""
 
-    if _is_direct(cell):
+    if is_direct(cell):
 
         def drawn_by_mpv(one) -> int:
             mpv = one.video_driver.video_driver._player.mpv
@@ -212,7 +208,7 @@ def _count_draws(cell):
 
 
 def _picture(cell):
-    if _is_direct(cell):
+    if is_direct(cell):
         from tests.real_app.composed import grab_composed
 
         return grab_composed(cell.video_driver)
