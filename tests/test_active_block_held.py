@@ -14,12 +14,19 @@ def _qapp():
     return QApplication.instance() or QApplication([])
 
 
+class _EveryVideo:
+    """Whatever video the test makes is open."""
+
+    def __contains__(self, _block):
+        return True
+
+
 class _Manager(ActiveBlockManager):
     """The video under the pointer, and the buttons held, as the test puts
     them."""
 
     def __init__(self):
-        super().__init__(context=SimpleNamespace())
+        super().__init__(context=SimpleNamespace(video_blocks=_EveryVideo()))
         self.under = None
 
     def get_video_block_under_mouse(self):
