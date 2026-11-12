@@ -1520,6 +1520,12 @@ How it goes in, by what's there already:
     the turns go on NVIDIA too; the cost of each (GPU, VRAM, frame times) measured before it's kept.
   - The turns are only on Windows since 2026-11-12: AMD and Intel there never tried. Whether they crash, and if not,
     turns only with an NVIDIA GPU.
+- [ ] 14.12 X11, Direct: the loading card still on show as a video says it has loaded. For 50-150 ms after the
+  status goes, mpv's window shows what was under it, not having drawn yet (left open in 14.9): a flash of
+  "Opening..." over a cell that's ready. `mpv_transport`'s random start sees it, failing on the Ubuntu VM 5 runs of
+  16 (2026-11-12), as often with mpvs starting together as in turn. Windows passes. Look at what is on show in that
+  moment from a failing run's screenshots, then keep the status up until mpv has drawn, or give mpv's window a
+  background of its own.
 
 ---
 
