@@ -2671,8 +2671,9 @@ def test_own_window_kept_until_its_mpv_is_terminated(mocker):
     assert player not in service._players_alive
 
 
-def _own_window_starts(mocker, count):
+def _own_window_starts(mocker, count, *, in_turn=True):
     mocker.patch("gridplayer.mpv_player.renderer.load_mpv")
+    mocker.patch("gridplayer.mpv_player.renderer.OWN_WINDOWS_START_IN_TURN", in_turn)
     service = MpvRenderService()
     players = [MagicMock() for _ in range(count)]
     starts = [MagicMock() for _ in range(count)]
@@ -2720,6 +2721,23 @@ def test_own_windows_start_one_at_a_time(mocker):
 
     service._on_started(players[1])
     starts[2].assert_called_once_with()
+
+
+def test_own_windows_start_together_where_they_needn_t_take_turns(mocker):
+    # under X11, which never crashed: still once what made them is done
+    service, players, starts = _own_window_starts(mocker, 3, in_turn=False)
+
+    for start in starts:
+        start.assert_called_once_with()
+    players[0].playback_restarted.connect.assert_not_called()
+    assert not service._start_turn.isActive()
+
+    start = MagicMock()
+    service.add_own_window(MagicMock(), start)
+
+    start.assert_not_called()
+    service._start_turn.timeout.emit()
+    start.assert_called_once_with()
 
 
 def test_own_window_lets_go_of_its_signals_once_its_turn_is_over(mocker):

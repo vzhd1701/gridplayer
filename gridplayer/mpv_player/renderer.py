@@ -848,8 +848,10 @@ class VideoRenderer(QThread):
 
 
 # Direct's mpvs start one at a time, the next when the last one plays, or when
-# it's had this long: see MpvRenderService.add_own_window
+# it's had this long: see MpvRenderService.add_own_window. Only on Windows,
+# where NVIDIA's driver crashed; elsewhere they all start together.
 OWN_WINDOW_START_TURN_MS = 1000
+OWN_WINDOWS_START_IN_TURN = env.IS_WINDOWS
 
 
 class MpvRenderService(QObject):
@@ -961,7 +963,9 @@ class MpvRenderService(QObject):
         thread of its own, in nvwgf2umx.dll) about once in 250 times three
         mpvs started together, their outputs coming up at once. Started 0.4 s
         apart, none in 1440. So each waits for the one before it to play, or
-        to fail, or for OWN_WINDOW_START_TURN_MS, whichever comes first.
+        to fail, or for OWN_WINDOW_START_TURN_MS, whichever comes first. Not
+        under X11 (OWN_WINDOWS_START_IN_TURN), which never crashed: all start
+        together there.
 
         The first waits too, for what's being done now: a reload or a driver
         change lays its cells out and shows them after making their players.
@@ -994,6 +998,13 @@ class MpvRenderService(QObject):
 
     def _start_next(self) -> None:
         self._end_turn()
+
+        if not OWN_WINDOWS_START_IN_TURN:
+            # all of them, once what made them is done
+            while self._starts_due:
+                _, start = self._starts_due.popitem(last=False)
+                start()
+            return
 
         if not self._starts_due:
             return

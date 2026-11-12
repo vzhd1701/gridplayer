@@ -1501,13 +1501,25 @@ How it goes in, by what's there already:
     X11 EGL output at that moment. The heap was broken before; by what, not found. Copy, the Linux default, has no
     `vo` threads.
 - [ ] 14.10 Hand test by you.
-- [ ] 14.11 Overnight, on NVIDIA: does starting in turn hold with clips that play at once? The next mpv starts as the
-  one before plays, which for a local file decoded on the GPU can be 50-150 ms after it started, well under the 0.4 s
-  apart that never crashed (found by the review of all of Stage 14). The 0 of 24 above was the test folder's 4:4:4
-  clips, decoded on the CPU, slower to play. Run: the same hunt (3 videos opened together and closed, 60 rounds a run,
-  24 seeds, an in-process exception handler logging access violations), with clips decoded on the GPU, logging the
-  time between starts. Any crash in `nvwgf2umx.dll` and the next starts no sooner than 0.4 s after the one before,
-  as well as once it plays. GPU-heavy: only while nobody's using the PC.
+- [ ] 14.11 Overnight, on NVIDIA: the driver crash of Direct's mpvs starting together. Only Direct crashed: each of
+  its mpvs makes a Direct3D 11 device and swap chain of its own, presenting from its own thread, while Copy and Shared
+  draw into the app's OpenGL on one thread and make no output of their own. It crashed with 4:4:4 clips decoded on
+  the CPU too, and `hwdec=d3d11va` changed nothing: the output coming up, not the decoder. Each run is the same hunt
+  (3 videos opened together and closed, 60 rounds a run, 24 seeds, an in-process exception handler logging access
+  violations), with clips decoded on the GPU, logging the time between starts. GPU-heavy: only while nobody's using
+  the PC.
+  - Does starting in turn hold with clips that play at once? The next mpv starts as the one before plays, which for a
+    local file decoded on the GPU can be 50-150 ms after it started, well under the 0.4 s apart that never crashed
+    (found by the review of all of Stage 14). The 0 of 24 above was the test folder's 4:4:4 clips, decoded on the
+    CPU, slower to play. Any crash in `nvwgf2umx.dll` and the next starts no sooner than 0.4 s after the one before,
+    as well as once it plays.
+  - With the turns off (`OWN_WINDOWS_START_IN_TURN`), each of these, to fix the cause rather than wait: `d3d11-flip=no`
+    (presented the older way: the flip model is where the driver sets up the most); `gpu-api=opengl` for Direct on
+    NVIDIA (mpv's own window still, drawn with OpenGL, NVDEC's frames staying on the GPU); and, only if both crash,
+    the devices made one at a time with playback started together. One at 0 of 24, against 6 of 24 as it was, and
+    the turns go on NVIDIA too; the cost of each (GPU, VRAM, frame times) measured before it's kept.
+  - The turns are only on Windows since 2026-11-12: AMD and Intel there never tried. Whether they crash, and if not,
+    turns only with an NVIDIA GPU.
 
 ---
 
@@ -1515,6 +1527,9 @@ How it goes in, by what's there already:
 
 Newest first. What was finished and seen working, and anything that changed the plan.
 
+- 2026-11-12: Direct's mpvs take turns starting only on Windows: under X11 they start together again, once their
+  cells are shown, as no driver there crashed. Why NVIDIA's did, and three ways around it rather than waiting, go to
+  14.11.
 - 2026-11-12: libmpv 0.37 (Ubuntu 24.04) is the oldest taken, 0.35 (Debian 12) no longer: it had no `video-scale-x`, which
   Direct places the picture by, and with it unscaled Direct never fit the cell there (found by the review of all of
   Stage 14). The `fast` profile is a start option now, as 0.37 has it. Ubuntu 22.04's 0.34 was never taken. Ubuntu
