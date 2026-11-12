@@ -40,6 +40,7 @@ def _service_with(the_renderer):
     service._starting = None
     service._turn_signals = []
     service._start_turn = Mock()
+    service._gone_wait = Mock()
     service._renderer = the_renderer
     return service
 

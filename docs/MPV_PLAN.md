@@ -1499,7 +1499,7 @@ How it goes in, by what's there already:
   - Left open: glibc aborting (`malloc_consolidate(): unaligned fastbin chunk`) once in 30 runs of `pixel_shape` on
     `test_gpu`, as a closed mpv's `vo` thread ended and freed what it held, another mpv's `vo` thread starting its
     X11 EGL output at that moment. The heap was broken before; by what, not found. Copy, the Linux default, has no
-    `vo` threads.
+    `vo` threads. Fixed 2026-11-12, see the log.
 - [x] 14.10 Hand test by you: all fine on Windows (2026-11-12) once YouTube's AV1 and its slow downloads were fixed.
 - [ ] 14.11 Overnight, on NVIDIA: the driver crash of Direct's mpvs starting together. Only Direct crashed: each of
   its mpvs makes a Direct3D 11 device and swap chain of its own, presenting from its own thread, while Copy and Shared
@@ -1537,6 +1537,14 @@ How it goes in, by what's there already:
 
 Newest first. What was finished and seen working, and anything that changed the plan.
 
+- 2026-11-12: Under X11 a Direct mpv starts once every one closed is gone, or after 3 s
+  (`MpvRenderService._is_waiting_for_gone`). glibc aborted the app on a broken heap (`corrupted size vs. prev_size`,
+  `unsorted double linked list corrupted`, ...) in 3 of 7 runs of `mpv_subtitles` on Ubuntu Direct, whose reloads
+  close one mpv as the next starts. With glibc's malloc checks (`libc_malloc_debug`, `malloc.check=3`) the first run
+  aborted in the closing mpv's `mp_destroy`, freeing beside a chunk already overwritten, as the new mpv's `vo` thread
+  was in `vo_x11_init` -> `XRRQueryExtension` -> libXext's `XextAddDisplay` (the X displays' lists those keep for
+  the whole process). As on `test_gpu` before. With the wait: 6 runs of 6 with the malloc checks, no abort, and none
+  waited the 3 s out. Starting together is as it was; Windows is untouched.
 - 2026-11-12: Direct's subtitles laid out by all of the picture where mpv's window is over only the part on show
   (`sub-use-margins` and `sub-scale-with-window` off), as where it's over all of it: the same sums for both. With the
   picture past the window's edges, mpv up to 0.38 shrank the line as much again as the picture went past (fixed in

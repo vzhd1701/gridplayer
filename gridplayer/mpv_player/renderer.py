@@ -49,7 +49,7 @@ import time
 from contextlib import suppress
 from functools import partial
 
-from PyQt5.QtCore import QObject, Qt, QThread, QTimer, pyqtSignal
+from PyQt5.QtCore import QElapsedTimer, QObject, Qt, QThread, QTimer, pyqtSignal
 from PyQt5.QtGui import QGuiApplication, QOffscreenSurface, QSurfaceFormat
 from PyQt5.QtWidgets import QWidget
 
@@ -852,6 +852,10 @@ class VideoRenderer(QThread):
 # where NVIDIA's driver crashed; elsewhere they all start together.
 OWN_WINDOW_START_TURN_MS = 1000
 OWN_WINDOWS_START_IN_TURN = env.IS_WINDOWS
+# Under X11 none starts while one closed is still going, for at most this long:
+# see MpvRenderService.add_own_window
+OWN_WINDOW_GONE_WAIT_MS = 3000
+OWN_WINDOWS_WAIT_FOR_GONE = not env.IS_WINDOWS
 
 
 class MpvRenderService(QObject):
@@ -902,6 +906,8 @@ class MpvRenderService(QObject):
         self._start_turn = QTimer(self)
         self._start_turn.setSingleShot(True)
         self._start_turn.timeout.connect(self._start_next)
+        # how long the starts due have waited for one closed to go
+        self._gone_wait = QElapsedTimer()
 
     def _join_qt_share_group(self) -> QtShareGroup | None:
         if not env.MPV_GL_OUTPUT:
@@ -967,6 +973,13 @@ class MpvRenderService(QObject):
         under X11 (OWN_WINDOWS_START_IN_TURN), which never crashed: all start
         together there.
 
+        Under X11 they wait instead for every one closed to be gone
+        (OWN_WINDOWS_WAIT_FOR_GONE), or for OWN_WINDOW_GONE_WAIT_MS. glibc
+        aborted the app on a heap broken as one mpv let go of its X11 output
+        and another's set its own up (in libXext's and libXrandr's lists of X
+        displays, and EGL's), about once in 3 runs of mpv_subtitles' reloads on
+        Ubuntu 24.04.
+
         The first waits too, for what's being done now: a reload or a driver
         change lays its cells out and shows them after making their players.
         Under X11, mpv mistakes its window's parent being shown, as it starts,
@@ -1000,6 +1013,9 @@ class MpvRenderService(QObject):
         self._end_turn()
 
         if not OWN_WINDOWS_START_IN_TURN:
+            if self._is_waiting_for_gone():
+                return
+
             # all of them, once what made them is done
             while self._starts_due:
                 _, start = self._starts_due.popitem(last=False)
@@ -1022,6 +1038,32 @@ class MpvRenderService(QObject):
         self._log.debug(f"Starting an mpv, {len(self._starts_due)} more waiting")
 
         start()
+
+    def _is_waiting_for_gone(self) -> bool:
+        """Whether the starts due wait on for one closed to go: started again as
+        it does (_forget_player), or once they've waited long enough."""
+
+        is_one_going = any(
+            window is not None for window in self._players_alive.values()
+        )
+
+        if not (OWN_WINDOWS_WAIT_FOR_GONE and self._starts_due and is_one_going):
+            self._gone_wait.invalidate()
+            return False
+
+        if not self._gone_wait.isValid():
+            self._gone_wait.start()
+
+        left = OWN_WINDOW_GONE_WAIT_MS - self._gone_wait.elapsed()
+
+        if left > 0:
+            self._start_turn.start(left)
+            return True
+
+        self._log.warning("An mpv closed hasn't gone, starting the next all the same")
+        self._gone_wait.invalidate()
+
+        return False
 
     def _on_started(self, player, *_) -> None:
         if player is self._starting:
@@ -1049,6 +1091,10 @@ class MpvRenderService(QObject):
         if window is not None:
             with suppress(RuntimeError):
                 window.deleteLater()
+
+        # the starts waiting for it to go (see add_own_window)
+        if self._gone_wait.isValid():
+            self._start_turn.start(0)
 
     def remove(self, video: RenderedVideo) -> None:
         self._listeners.pop(video, None)
@@ -1082,6 +1128,7 @@ class MpvRenderService(QObject):
 
         self._starts_due.clear()
         self._end_turn()
+        self._gone_wait.invalidate()
 
         if self._renderer is None:
             return

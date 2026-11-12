@@ -2753,6 +2753,47 @@ def test_own_windows_start_together_where_they_needn_t_take_turns(mocker):
     start.assert_called_once_with()
 
 
+def _closed_one_going(mocker, service):
+    mocker.patch("gridplayer.mpv_player.renderer.OWN_WINDOWS_WAIT_FOR_GONE", True)
+    going = MagicMock()
+    service.add_own_window(going, MagicMock())
+    service._start_turn.timeout.emit()
+    service.remove_own_window(going, MagicMock())
+
+    return going
+
+
+def test_own_window_under_x11_starts_once_one_closed_is_gone(mocker):
+    # glibc aborted on a heap broken as one let go of its X11 output and
+    # another set its own up
+    service, _, _ = _own_window_starts(mocker, 0, in_turn=False)
+    going = _closed_one_going(mocker, service)
+    start = MagicMock()
+
+    service.add_own_window(MagicMock(), start)
+    service._start_turn.timeout.emit()
+
+    start.assert_not_called()
+    assert service._start_turn.isActive()
+
+    service._forget_player(going)
+    service._start_turn.timeout.emit()
+
+    start.assert_called_once_with()
+
+
+def test_own_window_under_x11_waits_for_one_closed_only_so_long(mocker):
+    service, _, _ = _own_window_starts(mocker, 0, in_turn=False)
+    _closed_one_going(mocker, service)
+    mocker.patch("gridplayer.mpv_player.renderer.OWN_WINDOW_GONE_WAIT_MS", 0)
+    start = MagicMock()
+
+    service.add_own_window(MagicMock(), start)
+    service._start_turn.timeout.emit()
+
+    start.assert_called_once_with()
+
+
 def test_own_window_lets_go_of_its_signals_once_its_turn_is_over(mocker):
     # mpv says playback restarted on every seek too, all its life
     service, players, _ = _own_window_starts(mocker, 2)
