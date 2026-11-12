@@ -3,6 +3,7 @@ from dataclasses import dataclass
 from gridplayer.params import env
 from gridplayer.params.settings_fields import choices
 from gridplayer.params.settings_fields.kinds import (
+    AnyOf,
     CheckboxField,
     ComboField,
     SettingField,
@@ -151,6 +152,17 @@ def _is_linux() -> bool:
     return env.IS_LINUX
 
 
+# A video in a window of its own, which the app can't paint over: on Linux its
+# controls float over it in a window of theirs. VLC Hardware, or Hardware MPV
+# with Direct (the output is there, and on, only with Hardware MPV).
+_UNDER_FLOATING_OVERLAY = AnyOf(
+    (
+        When("player/video_driver", VLC_HW_DRIVERS),
+        When("player/mpv_output", (MpvOutput.WINDOW,)),
+    )
+)
+
+
 def _is_not_macos() -> bool:
     return not env.IS_MACOS
 
@@ -253,7 +265,7 @@ ADVANCED_FIELDS: tuple[SettingField, ...] = (
         label=translate("SettingsDialog", "Opaque overlay (fix black screen)"),
         shown_if=_is_linux,
         unavailable=no_hw_video,
-        shown_when=When("player/video_driver", VLC_HW_DRIVERS),
+        shown_when=_UNDER_FLOATING_OVERLAY,
     ),
     CheckboxField(
         settings_key="internal/fake_overlay_invisibility",
@@ -263,7 +275,7 @@ ADVANCED_FIELDS: tuple[SettingField, ...] = (
         ),
         shown_if=_is_linux,
         unavailable=no_hw_video,
-        shown_when=When("player/video_driver", VLC_HW_DRIVERS),
+        shown_when=_UNDER_FLOATING_OVERLAY,
     ),
     CheckboxField(
         settings_key="internal/force_native_drag_events",

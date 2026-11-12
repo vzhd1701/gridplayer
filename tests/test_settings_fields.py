@@ -122,9 +122,9 @@ def test_what_enables_or_shows_a_field_is_on_its_page(page):
     for key in keys:
         spec = FIELDS[key]
         for rule in (spec.enabled_when, spec.shown_when):
-            if rule is not None:
-                assert rule.key in keys, key
-                assert rule.values, key
+            for one in () if rule is None else rule.rules:
+                assert one.key in keys, key
+                assert one.values, key
 
 
 @EVERY_PAGE

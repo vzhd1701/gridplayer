@@ -11,6 +11,18 @@ class When:
     key: str
     values: tuple = (True,)
 
+    @property
+    def rules(self) -> tuple["When", ...]:
+        return (self,)
+
+
+@dataclass(frozen=True)
+class AnyOf:
+    """Met while any of these is: for a field that each of two others lets be
+    there by itself."""
+
+    rules: tuple[When, ...]
+
 
 @dataclass(frozen=True, kw_only=True)
 class SettingField:
@@ -18,9 +30,9 @@ class SettingField:
 
     settings_key: str
     label: str = ""
-    enabled_when: When | None = None
+    enabled_when: When | AnyOf | None = None
     # hidden, it is off as well
-    shown_when: When | None = None
+    shown_when: When | AnyOf | None = None
     # while met, it shows forced_value, greyed out; its own value is kept
     # meanwhile, saved and reset as its own, and shown again once not met
     forced_when: When | None = None

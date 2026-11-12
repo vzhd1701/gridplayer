@@ -558,6 +558,51 @@ def test_hardware_vlc_workarounds_go_on_software_vlc(
     assert _row_hidden(dialog, key)
 
 
+# what Direct's window has over it on Linux too: the overlay floats there as well
+FLOATING_OVERLAY = (
+    "internal/opaque_hw_overlay",
+    "internal/fake_overlay_invisibility",
+)
+
+
+@pytest.mark.parametrize("key", FLOATING_OVERLAY)
+def test_floating_overlay_workarounds_with_direct_output(
+    libs, make_dialog, monkeypatch, key
+):
+    monkeypatch.setattr(env, "IS_LINUX", True)
+    monkeypatch.setattr(env, "IS_WINDOWS", False)
+    dialog = make_dialog()
+    output = dialog.widget("player/mpv_output")
+
+    _pick_decoder(dialog, VideoDriver.MPV_HW)
+    output.setCurrentIndex(output.findData(MpvOutput.WINDOW))
+    assert not _row_hidden(dialog, key)
+
+    for other in (MpvOutput.READBACK, MpvOutput.GL):
+        output.setCurrentIndex(output.findData(other))
+        assert _row_hidden(dialog, key)
+
+    # Direct stays picked, for a Software MPV that has no window of its own
+    output.setCurrentIndex(output.findData(MpvOutput.WINDOW))
+    _pick_decoder(dialog, VideoDriver.MPV_SW)
+    assert _row_hidden(dialog, key)
+
+    _pick_decoder(dialog, VideoDriver.VLC_HW)
+    assert not _row_hidden(dialog, key)
+
+
+def test_border_fix_stays_vlc_s_with_direct_output(libs, make_dialog, monkeypatch):
+    # mpv places the picture on whole pixels: no edges to crop
+    monkeypatch.setattr(env, "IS_LINUX", True)
+    dialog = make_dialog()
+    output = dialog.widget("player/mpv_output")
+
+    _pick_decoder(dialog, VideoDriver.MPV_HW)
+    output.setCurrentIndex(output.findData(MpvOutput.WINDOW))
+
+    assert _row_hidden(dialog, "internal/hw_crop_border_offset")
+
+
 def test_native_drag_events_stay_whatever_the_driver(libs, make_dialog, monkeypatch):
     # dragging cells in the window, which has nothing to do with the driver
     monkeypatch.setattr(env, "IS_LINUX", True)

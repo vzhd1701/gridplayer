@@ -33,6 +33,7 @@ from gridplayer.models.settings_draft import (
     SetValue,
 )
 from gridplayer.params.settings_fields.kinds import (
+    AnyOf,
     Indented,
     Note,
     Row,
@@ -747,7 +748,9 @@ class SettingsForm(QWidget):
 
         # brought by a row the search shows, as it would be without the search
         return is_met and any(
-            self._rows.get(rule.key) in self._search_shown for rule in rules
+            self._rows.get(one.key) in self._search_shown
+            for rule in rules
+            for one in rule.rules
         )
 
     def _point_out(self, rows):
@@ -859,7 +862,10 @@ class SettingsForm(QWidget):
 
         return True
 
-    def _is_met(self, rule: When, is_on) -> bool:
+    def _is_met(self, rule: When | AnyOf, is_on) -> bool:
+        if isinstance(rule, AnyOf):
+            return any(self._is_met(one, is_on) for one in rule.rules)
+
         driver = self._editors.get(rule.key)
 
         # a form leaves a field alone when what it names isn't there
@@ -1083,10 +1089,11 @@ class SettingsForm(QWidget):
         while keys:
             spec = self._editors[keys.pop()].spec
             for rule in (spec.shown_when, spec.enabled_when):
-                row = None if rule is None else self._rows.get(rule.key)
-                if row is not None and row not in belonged and row not in rows:
-                    belonged.add(row)
-                    keys.append(rule.key)
+                for one in () if rule is None else rule.rules:
+                    row = self._rows.get(one.key)
+                    if row is not None and row not in belonged and row not in rows:
+                        belonged.add(row)
+                        keys.append(one.key)
         return belonged
 
     def _mark(self, query: Query, searched: _Searched):
