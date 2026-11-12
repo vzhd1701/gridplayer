@@ -270,6 +270,11 @@ class _ComboEditor(Editor):
         # buttons show them all
         return None if self.spec.buttons else self.widget
 
+    def set_choices_off(self, reasons: dict) -> None:
+        """Value -> why it can't be picked for now, see ComboField.off_when."""
+
+        self.widget.set_unavailable(reasons)
+
 
 class _Changed(QObject):
     changed = pyqtSignal()

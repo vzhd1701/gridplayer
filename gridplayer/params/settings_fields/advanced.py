@@ -163,6 +163,17 @@ _UNDER_FLOATING_OVERLAY = AnyOf(
 )
 
 
+def _direct_off_when() -> dict:
+    """Direct on Wayland would be Copy: mpv draws into an X11 window."""
+
+    return {
+        MpvOutput.WINDOW: (
+            When("player/display_server", (DisplayServer.WAYLAND,)),
+            translate("SettingsDialog", "Needs X11"),
+        )
+    }
+
+
 def _is_not_macos() -> bool:
     return not env.IS_MACOS
 
@@ -199,6 +210,9 @@ ADVANCED_FIELDS: tuple[SettingField, ...] = (
         label=translate("SettingsDialog", "Video output"),
         choices=choices.mpv_outputs,
         buttons=True,
+        off_when=_direct_off_when,
+        # what runs in its place
+        stand_in=MpvOutput.READBACK,
         # MPV hasn't been run there yet: Stage 11
         shown_if=_is_not_macos,
         # Software MPV draws on the CPU, always the Copy way
