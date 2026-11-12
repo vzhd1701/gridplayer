@@ -414,7 +414,13 @@ def test_libmpv_under_the_oldest_tried_is_too_old():
     with pytest.raises(libmpv.LibmpvTooOldError):
         libmpv.check_client_api((1, 109))
 
-    libmpv.check_client_api((2, 0))
+    # 0.35, 0.36: no video-scale-x, no `fast` profile
+    for version in ((2, 0), (2, 1)):
+        with pytest.raises(libmpv.LibmpvTooOldError):
+            libmpv.check_client_api(version)
+
+    # 0.37, 0.40
+    libmpv.check_client_api((2, 2))
     libmpv.check_client_api((2, 5))
 
 

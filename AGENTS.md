@@ -213,6 +213,14 @@ the entry happens to exist, but never reaches translators.
 * A leak shows in `tests/real_app/bench/churn.py`: with every video closed,
   its checkpoints should come back to the threads and memory of the start.
 
+## libmpv versions
+
+* 0.37 is the oldest taken (client API 2.2, Ubuntu 24.04): `MIN_CLIENT_API`
+  in `mpv_player/libmpv.py`. Don't add fallbacks for anything older.
+* What 0.37 lacks of a newer one is asked of mpv once it's made
+  (`option_info`, as `SubtitleLimits` does), not by version: an option it
+  doesn't have, given at the start, stops mpv starting.
+
 ## MPV's Shared output
 
 One GL surface draws all of a window's videos, under the cells

@@ -412,7 +412,6 @@ def test_the_renderer_never_writes_what_is_on_show():
 
 
 class _FakeMpv:
-    profile_list = []
     chapter_list = None
     mpv_version = "mpv v0.37.0"
 
@@ -1013,19 +1012,11 @@ def test_chapters_before_the_load_are_left_for_it_to_read():
     assert sent == []
 
 
-def test_fast_profile_is_used_where_there_is_one():
-    with patch.object(_FakeMpv, "profile_list", [{"name": "fast"}]):
-        player = _player()
+def test_fast_profile_is_used():
+    player = _player()
 
-    assert player.mpv.commands == [("apply-profile", "fast")]
-
-
-def test_fast_profile_not_there_on_an_old_libmpv_doesnt_stop_it_starting():
-    with patch.object(_FakeMpv, "profile_list", [{"name": "gpu-hq"}]):
-        player = _player()
-
-    assert player.mpv.commands == []
-    assert "profile" not in player.mpv.options
+    assert player.mpv.options["profile"] == "fast"
+    assert list(player.mpv.options)[-1] == "profile"
 
 
 def test_options_leave_no_hardware_saving_out():
@@ -3748,12 +3739,8 @@ def test_subtitle_side_margin_is_the_same_on_screen_zoomed_in():
     assert on_screen(zoomed) == pytest.approx(on_screen(whole), abs=1)
 
 
-# what each said, read from the real one
+# what each said, read from the real one: 0.37 is the oldest taken
 _LIBMPV_OPTIONS = {
-    "0.35": {
-        "sub-margin-x": {"type": "Integer", "max": 300.0},
-        "sub-pos": {"type": "Integer"},
-    },
     "0.37": {
         "sub-margin-x": {"type": "Integer", "max": 300.0},
         "sub-pos": {"type": "Float"},
@@ -3777,7 +3764,7 @@ def _limits_of(version):
     return subtitle_limits(_LIBMPV_OPTIONS[version].get)
 
 
-@pytest.mark.parametrize("version", ["0.35", "0.37"])
+@pytest.mark.parametrize("version", ["0.37"])
 def test_subtitle_outline_goes_by_its_old_name_on_an_old_libmpv(version):
     style = {
         **_STYLE,
@@ -3793,7 +3780,7 @@ def test_subtitle_outline_goes_by_its_old_name_on_an_old_libmpv(version):
     assert "sub-outline-color" not in options
 
 
-@pytest.mark.parametrize("version", ["0.35", "0.37"])
+@pytest.mark.parametrize("version", ["0.37"])
 def test_subtitle_box_is_only_its_colour_on_an_old_libmpv(version):
     limits = _limits_of(version)
 
@@ -3823,19 +3810,8 @@ def test_subtitle_box_colour_is_only_there_with_a_box():
     assert boxed["sub-back-color"] == "#FF123456"
 
 
-def test_subtitle_position_is_whole_where_it_has_to_be():
-    style = {**_STYLE, "subtitles/margin": 7}
-
-    def position(version):
-        options = subtitle_options(style, SubtitleView(), _limits_of(version))
-        return options["sub-pos"]
-
-    assert position("0.35") == "99"
-    assert position("0.37") == "99.03"
-
-
 @pytest.mark.parametrize(
-    ("version", "expected"), [("0.35", 300), ("0.40", 300), ("0.41", 665)]
+    ("version", "expected"), [("0.37", 300), ("0.40", 300), ("0.41", 665)]
 )
 def test_subtitle_side_margin_stays_in_what_this_libmpv_takes(version, expected):
     # zoomed in twice, a video of 16:9
@@ -3854,7 +3830,7 @@ def test_subtitle_options_on_the_newest_are_as_they_are_with_no_limits():
 
 def test_subtitle_options_a_player_sends_are_for_its_libmpv():
     player = _player()
-    player._subtitle_limits = _limits_of("0.35")
+    player._subtitle_limits = _limits_of("0.37")
 
     player.start((100, 100))
 

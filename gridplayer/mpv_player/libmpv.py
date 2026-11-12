@@ -17,8 +17,9 @@ from gridplayer.utils.media_libs import find_libmpv
 
 _log = logging.getLogger(__name__)
 
-# mpv 0.35, the oldest anything here has been tried on
-MIN_CLIENT_API = (2, 0)
+# mpv 0.37, Ubuntu 24.04's. 0.35 (Debian 12) has no video-scale-x, which
+# Direct places the picture by, and no `fast` profile.
+MIN_CLIENT_API = (2, 2)
 
 
 class LibmpvTooOldError(OSError):

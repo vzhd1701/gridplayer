@@ -437,9 +437,10 @@ doesn't load mpv, so a restart gets out of it.
 Scenario `mpv_subtitles` is new. It passes on both MPV drivers on Windows (libmpv 0.41) and on X11 and Wayland
 (libmpv 0.40), with `tracks` and `external_audio_jump` on MPV too. VLC's bug in `external_audio_jump` doesn't happen on MPV.
 
-**Older libmpv.** It works back to 0.35. What each refuses was read from the real one, on Debian 12 and Ubuntu 24.04 in a chroot on
-`test_gpu`, and comes from `option_info` and `profile_list` at the start (`SubtitleLimits`). A refused option gives no error and the
-line just stays as it was, but the `fast` profile asked for at the start would have stopped 0.35 from playing at all.
+**Older libmpv.** It works back to 0.37, Ubuntu 24.04's (client API 2.2); anything older is "libmpv is too old" (see the Log,
+2026-11-12). What each refuses was read from the real one, on Debian 12 and Ubuntu 24.04 in a chroot on `test_gpu`, and comes from
+`option_info` at the start (`SubtitleLimits`). A refused option gives no error and the line just stays as it was. The 0.35 column is
+kept for the record.
 
 | | 0.35 (Debian 12) | 0.37 (Ubuntu 24.04) | 0.40 (Debian 13) | 0.41 dev (Windows) |
 | --- | --- | --- | --- | --- |
@@ -1355,7 +1356,7 @@ How it goes in, by what's there already:
   - Measured, the corners clip in one 1920x1061 cell, the middle lines against where the view puts them: within 0-2 px at
     1/2, 1/4 and 1/10 of the picture, plain, flipped and turned. Copy within 0-3 px. A pan shows after 20-50 ms paused,
     70-80 ms playing (the next frame mpv draws), against at once on Copy and Shared.
-  - Needs `video-scale-x` (checked as mpv starts); without it, the window over all of the picture whatever its size.
+  - Needs `video-scale-x`, from 0.36: libmpv 0.37 is the oldest taken (see the Log, 2026-11-12).
   - `mpv_view` on Direct, on the other desktop: 87 checks pass. Its screenshots (14.4) left out, and the paused live
     stream's picture fails (14.4). `pixel_shape`: right but for the screenshots, and the phone clip (wide pixels, turned
     by the file) caught over all of the cell, stretched, as it's said to have loaded and before it's placed: 14.3.
@@ -1507,6 +1508,10 @@ How it goes in, by what's there already:
 
 Newest first. What was finished and seen working, and anything that changed the plan.
 
+- 2026-11-12: libmpv 0.37 (Ubuntu 24.04) is the oldest taken, 0.35 (Debian 12) no longer: it had no `video-scale-x`, which
+  Direct places the picture by, and with it unscaled Direct never fit the cell there (found by the review of all of
+  Stage 14). The `fast` profile is a start option now, as 0.37 has it. Ubuntu 22.04's 0.34 was never taken. Ubuntu
+  26.04 has 0.41, Debian 13 0.40.
 - 2026-11-12: Direct the default on Windows, Copy on Linux. Ubuntu's Direct fixed (mpv took Wayland). The NVIDIA
   driver crash fixed by starting Direct's mpvs one at a time. Direct's scenarios run on the Ubuntu VM, GNOME
   screenshots for the tests.

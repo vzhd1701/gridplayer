@@ -574,12 +574,9 @@ class MpvPlayer(QObject):
             log_handler=self._on_log,
             loglevel=_mpv_log_level(log_level),
             **self._options(),
+            # last, as it was once applied after the rest
+            profile="fast",
         )
-
-        # Not there before 0.36, and asking for it at the start would stop mpv starting.
-        # Until then the defaults are what it asks for, but for dither and HDR peaks.
-        if any(profile["name"] == "fast" for profile in self.mpv.profile_list):
-            self.mpv.command("apply-profile", "fast")
 
         # read now, for the renderer's first render context: see FrameFences
         if env.MPV_VERSION is None:
@@ -589,10 +586,6 @@ class MpvPlayer(QObject):
         self._subtitle_limits = subtitle_limits(self.mpv.option_info)
         deinterlace_info = self.mpv.option_info("deinterlace") or {}
         self._has_auto_deinterlace = "auto" in deinterlace_info.get("choices", ())
-        # what set_window_picture places it by, in its own window
-        self._can_place_picture = self._wid is not None and bool(
-            self.mpv.option_info("video-scale-x")
-        )
 
         self.mpv.register_event_callback(self._on_event)
         self.mpv.observe_property("video-params", self._on_video_params)
@@ -1054,7 +1047,7 @@ class MpvPlayer(QObject):
             self._place_picture()
 
     def _place_picture(self) -> None:
-        if not self._can_place_picture:
+        if self._wid is None:
             return
 
         if self._window_picture is None or self._dims is None:

@@ -57,14 +57,13 @@ class SubtitleView:
 @dataclass(frozen=True)
 class SubtitleLimits:
     """What's different on an older libmpv, which refuses what it doesn't have. Seen
-    on 0.35 and 0.37, and the side margin on 0.40 too, each refused with no error to
+    on 0.37, and the side margin on 0.40 too, each refused with no error to
     show for it: a line then stays as it was.
     """
 
     has_outline_options: bool = True
     has_border_style: bool = True
     largest_side_margin: float = inf
-    is_position_whole: bool = False
 
 
 _NO_LIMITS = SubtitleLimits()
@@ -74,13 +73,11 @@ def subtitle_limits(option_info) -> SubtitleLimits:
     """Going by python-mpv's MPV.option_info, which says None for no such option."""
 
     side_margin = option_info("sub-margin-x") or {}
-    position = option_info("sub-pos") or {}
 
     return SubtitleLimits(
         has_outline_options=option_info("sub-outline-size") is not None,
         has_border_style=option_info("sub-border-style") is not None,
         largest_side_margin=side_margin.get("max", inf),
-        is_position_whole=position.get("type") == "Integer",
     )
 
 
@@ -159,9 +156,7 @@ def subtitle_options(
         # both grow with sub-scale, and only the size is to
         "sub-margin-x": str(round(min(side_margin, limits.largest_side_margin))),
         "sub-margin-y": str(round(_MARGIN_BOTTOM / size)),
-        "sub-pos": str(round(position))
-        if limits.is_position_whole
-        else f"{position:.2f}",
+        "sub-pos": f"{position:.2f}",
     }
 
     if not limits.has_outline_options:
