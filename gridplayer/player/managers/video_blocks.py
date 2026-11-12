@@ -125,6 +125,8 @@ def _start_cleanup(video_blocks) -> None:
 
 class VideoBlocksManager(ManagerBase):
     video_count_changed = pyqtSignal(int)
+    # the videos taken out of the grid, at once, in a batch too
+    videos_removed = pyqtSignal(list)
     # a video's picture_shape is known now, or changed
     picture_shape_changed = pyqtSignal()
     playings_videos_count_changed = pyqtSignal(int)
@@ -801,6 +803,7 @@ class VideoBlocksManager(ManagerBase):
         if closing_block.can_reopen:
             self._ctx.commands.remember_closed([closing_block])
         self._ctx.video_blocks.remove(closing_block)
+        self.videos_removed.emit([closing_block])
 
         if not self._in_count_batch():
             self._emit_video_count()
@@ -842,6 +845,8 @@ class VideoBlocksManager(ManagerBase):
         for vb in video_blocks:
             vb.hide()
             self._ctx.video_blocks.remove(vb)
+
+        self.videos_removed.emit(list(video_blocks))
 
         if self._in_count_batch():
             return

@@ -431,3 +431,19 @@ def test_close_event_keeps_window_when_save_is_cancelled(mocker):
     ctx.commands.remember_last_playlist.assert_not_called()
     ctx.commands.force_close_playlist.assert_not_called()
     terminate.assert_not_called()
+
+
+def test_videos_closed_are_said_to_be_gone_at_once(blocks_manager):
+    """The active one among them too, in the middle of a reload's batch, before
+    anything else can reach it."""
+
+    manager, with_blocks = blocks_manager
+    with_blocks("a", "b")
+    removed = []
+    manager.videos_removed.connect(removed.append)
+    blocks = list(manager._ctx.video_blocks)
+
+    with manager.batch():
+        manager.close_all()
+
+        assert removed == [blocks]

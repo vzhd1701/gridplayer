@@ -128,6 +128,7 @@ class Player(QWidget, ManagersManager):
                 ("window_state.closing", "cleanup"),
             ],
             "active_block": [
+                ("video_blocks.videos_removed", "forget_closed"),
                 ("video_blocks.video_count_changed", "update_active_under_mouse"),
                 ("grid.layout_changed", "update_active_under_mouse"),
             ],

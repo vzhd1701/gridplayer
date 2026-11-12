@@ -1300,9 +1300,6 @@ class ActiveBlockManager(ManagerBase):
         }
 
     def update_active_under_mouse(self):
-        # with a menu or a dialog open too: what it did can have closed it
-        self._forget_closed_active()
-
         if is_modal_open():
             return
 
@@ -1384,19 +1381,17 @@ class ActiveBlockManager(ManagerBase):
         self._update_active_block(next_active)
         self.cmd_active("show_overlay")
 
-    def _forget_closed_active(self) -> None:
+    def forget_closed(self, closed: list) -> None:
         """No video is active once the active one has closed, by itself or by a
-        reload or a driver change: it's to be deleted, or already is."""
+        reload or a driver change: it's to be deleted, or already is. With a
+        menu or a dialog open too, which leaves the active one as it is
+        otherwise: what it did can have closed it."""
 
-        active = self._ctx.active_block
-
-        if active is not None and active not in self._ctx.video_blocks:
+        if self._ctx.active_block in closed:
             self._ctx.active_block = None
             self.active_block_change.emit(None)
 
     def _update_active_block(self, new_active_block):
-        self._forget_closed_active()
-
         old_active_block = self._ctx.active_block
         self._ctx.active_block = new_active_block
 
