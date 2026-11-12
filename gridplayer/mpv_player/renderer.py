@@ -1034,8 +1034,10 @@ class MpvRenderService(QObject):
     def _forget_player(self, player) -> None:
         window = self._players_alive.pop(player, None)
 
+        # gone already with what it was last put in
         if window is not None:
-            window.deleteLater()
+            with suppress(RuntimeError):
+                window.deleteLater()
 
     def remove(self, video: RenderedVideo) -> None:
         self._listeners.pop(video, None)
