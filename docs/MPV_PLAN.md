@@ -1501,6 +1501,13 @@ How it goes in, by what's there already:
     X11 EGL output at that moment. The heap was broken before; by what, not found. Copy, the Linux default, has no
     `vo` threads.
 - [ ] 14.10 Hand test by you.
+- [ ] 14.11 Overnight, on NVIDIA: does starting in turn hold with clips that play at once? The next mpv starts as the
+  one before plays, which for a local file decoded on the GPU can be 50-150 ms after it started, well under the 0.4 s
+  apart that never crashed (found by the review of all of Stage 14). The 0 of 24 above was the test folder's 4:4:4
+  clips, decoded on the CPU, slower to play. Run: the same hunt (3 videos opened together and closed, 60 rounds a run,
+  24 seeds, an in-process exception handler logging access violations), with clips decoded on the GPU, logging the
+  time between starts. Any crash in `nvwgf2umx.dll` and the next starts no sooner than 0.4 s after the one before,
+  as well as once it plays. GPU-heavy: only while nobody's using the PC.
 
 ---
 
