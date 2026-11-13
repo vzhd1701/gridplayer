@@ -616,7 +616,10 @@ class TestTheWorker:
         tried = []
         mocker.patch(
             PICK_RESOLVERS,
-            return_value={URLResolver.YT_DLP: _Took, URLResolver.DIRECT: _NotItsKind},
+            return_value=[
+                (URLResolver.YT_DLP, _Took),
+                (URLResolver.DIRECT, _NotItsKind),
+            ],
         )
         worker = VideoURLResolverWorker()
         failed = []

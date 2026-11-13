@@ -3,6 +3,7 @@ import itertools
 import logging
 import math
 import re
+import threading
 from collections import Counter
 from functools import cached_property
 from types import MappingProxyType
@@ -106,6 +107,10 @@ UNTITLED_CHAPTER = re.compile(r"<Untitled Chapter \d+>")
 MAX_LIST_NESTING = 3
 
 
+# see YoutubeDLResolver.is_able_to_handle
+_HANDLE_LOCK = threading.Lock()
+
+
 class YoutubeDLResolver(ResolverBase):
     @property
     def title(self) -> str:
@@ -170,7 +175,10 @@ class YoutubeDLResolver(ResolverBase):
     @staticmethod
     def is_able_to_handle(url: str) -> bool:
         logger = logging.getLogger("YoutubeDLResolver")
-        with YoutubeDL({"logger": logger}) as ydl:
+        # The first answer compiles every site's pattern, 0.23 s alone; links
+        # asking together compiled them all at once, seconds of it. One at a
+        # time, the rest wait for that once and take about 30 ms each
+        with _HANDLE_LOCK, YoutubeDL({"logger": logger}) as ydl:
             ies = ydl._ies
             return any(ie.suitable(url) for ie in ies.values())
 

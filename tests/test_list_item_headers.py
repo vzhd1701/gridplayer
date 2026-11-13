@@ -63,7 +63,9 @@ class TestResolving:
                 return "resolved"
 
         mocker.patch.object(
-            url_resolve, "_pick_resolvers", return_value={URLResolver.DIRECT: _Resolver}
+            url_resolve,
+            "_pick_resolvers",
+            return_value=[(URLResolver.DIRECT, _Resolver)],
         )
 
         assert url_resolve.resolve_url(URL, headers=HEADERS) == "resolved"

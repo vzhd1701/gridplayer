@@ -435,6 +435,21 @@ class TestACellWaitingForItsList:
         reading.assert_not_called()
         assert manager.cells_reading == 0
 
+    def test_several_are_read_together(self, manager, mocker):
+        # read one after another, none would get past the barrier
+        together = threading.Barrier(3, timeout=5)
+
+        def _fetch(url, **kwargs):
+            together.wait()
+            return b"#EXTM3U\n#EXT-X-TARGETDURATION:4\n#EXTINF:4,\nseg0.ts\n"
+
+        mocker.patch.object(add_videos, "fetch_list_url", side_effect=_fetch)
+        urls = [f"http://tv/live/{i}/index.m3u8" for i in range(3)]
+
+        videos = _add(manager, urls)
+
+        assert sorted(str(video.uri) for video in videos) == urls
+
     def test_a_link_that_turns_out_to_be_one_video_plays_it(self, manager, mocker):
         mocker.patch.object(
             add_videos,

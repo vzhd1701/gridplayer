@@ -1,5 +1,6 @@
 import logging
 import threading
+from collections.abc import Iterator
 from types import MappingProxyType
 from typing import TYPE_CHECKING
 
@@ -78,7 +79,7 @@ def resolve_url(
 
     failure = None
 
-    for resolver_id, resolver in _pick_resolvers(url).items():
+    for resolver_id, resolver in _pick_resolvers(url):
         if on_resolver is not None:
             on_resolver(RESOLVER_NAMES.get(resolver_id, ""))
 
@@ -292,17 +293,19 @@ def _abandon(thread: QThread, worker: QObject) -> None:
         release()
 
 
-def _pick_resolvers(url) -> dict[URLResolver, type["ResolverBase"]]:
+def _pick_resolvers(url) -> Iterator[tuple[URLResolver, type["ResolverBase"]]]:
+    """The resolvers that take the link, in the order to try them. Each is
+    asked only once those before it could not read it: yt-dlp, asked first
+    by many links at once, compiles all its sites' patterns for each of them
+    together, seconds of work for links Streamlink plays."""
+
     if _is_match_youtube(url):
-        return {URLResolver.YT_DLP: _resolver_map()[URLResolver.YT_DLP]}
+        yield URLResolver.YT_DLP, _resolver_map()[URLResolver.YT_DLP]
+        return
 
-    url_resolvers = _get_resolvers(url)
-
-    for resolver_id, resolver in url_resolvers.copy().items():
-        if not resolver.is_able_to_handle(url):
-            url_resolvers.pop(resolver_id)
-
-    return url_resolvers
+    for resolver_id, resolver in _get_resolvers(url).items():
+        if resolver.is_able_to_handle(url):
+            yield resolver_id, resolver
 
 
 def _get_resolvers(

@@ -4,6 +4,7 @@ import itertools
 import logging
 import threading
 from collections import deque
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import NamedTuple
 
@@ -83,6 +84,11 @@ from gridplayer.utils.web_lists import (
 # at, to stop there if it is no list: a live stream behind a link like a
 # list's would otherwise be read for as long as it goes on
 LIST_SNIFF_BYTES = 64 * 1024
+
+# links read together for the cells waiting on them, to tell a list from a
+# stream: one at a time, 16 links to HLS streams took 2.5-5.5 s on Windows
+# before the last was read. Each may be a list as large as player/list_max_mb
+CELLS_READ_AT_ONCE = 8
 
 # what the viewer picked in place of the ways to put things into cells
 _ADD_TO_CELL = "add_to_cell"
@@ -235,8 +241,9 @@ class _Reader(QObject):
 
 
 class _CellReader(QObject):
-    """Reads the lists cells wait for, off the interface thread, one cell's
-    after another, and says how far each has got."""
+    """Reads the lists cells wait for, off the interface thread, up to
+    CELLS_READ_AT_ONCE cells' at a time, whoever asked, and says how far each
+    has got. Each is done as it is read, in no order."""
 
     # the waiting cell's video id, what is told, how many, and of what: the
     # bytes downloaded of those there are to come, if that is known, or the
@@ -247,44 +254,40 @@ class _CellReader(QObject):
     # the cell waits no more, closed
     done = pyqtSignal(object, object)
 
+    def __init__(self, parent=None):
+        super().__init__(parent)
+
+        self._pool = ThreadPoolExecutor(
+            max_workers=CELLS_READ_AT_ONCE, thread_name_prefix="add-media-cells"
+        )
+
     def read(self, cells: list[tuple], rules: ScanRules, max_list_bytes: int) -> None:
-        threading.Thread(
-            target=self._read,
-            args=(cells, rules, max_list_bytes),
-            daemon=True,
-            name="add-media-cells",
-        ).start()
-
-    def _read(self, cells, rules, max_list_bytes):
-        with interface_first():
-            self._read_each(cells, rules, max_list_bytes)
-
-    def _read_each(self, cells, rules, max_list_bytes):
         for video_id, uris, stop in cells:
-            if stop.is_set():
-                self.done.emit(video_id, None)
-                continue
+            self._pool.submit(self._read, video_id, uris, stop, rules, max_list_bytes)
 
-            tell = Throttled(
-                lambda what, count, of=None, video_id=video_id: self.progress.emit(
-                    video_id, what, count, of
-                ),
-                stop=stop,
-            )
+    def _read(self, video_id, uris, stop, rules, max_list_bytes):
+        with interface_first():
+            self._read_one(video_id, uris, stop, rules, max_list_bytes)
 
-            try:
-                expanded = expand_inputs(
-                    uris, rules, **list_readers(tell, max_list_bytes)
-                )
-            except ReadingStopped:
-                expanded = None
-            except Exception as e:
-                log_failure(
-                    logging.getLogger(__name__), "Failed to read what was added", e
-                )
-                expanded = Expanded(failed=tuple((uri, str(e)) for uri in uris))
+    def _read_one(self, video_id, uris, stop, rules, max_list_bytes):
+        if stop.is_set():
+            self.done.emit(video_id, None)
+            return
 
-            self.done.emit(video_id, expanded)
+        tell = Throttled(
+            lambda what, count, of=None: self.progress.emit(video_id, what, count, of),
+            stop=stop,
+        )
+
+        try:
+            expanded = expand_inputs(uris, rules, **list_readers(tell, max_list_bytes))
+        except ReadingStopped:
+            expanded = None
+        except Exception as e:
+            log_failure(logging.getLogger(__name__), "Failed to read what was added", e)
+            expanded = Expanded(failed=tuple((uri, str(e)) for uri in uris))
+
+        self.done.emit(video_id, expanded)
 
 
 def fetch_list_url(url: str, progress=None, max_bytes=None) -> bytes:
