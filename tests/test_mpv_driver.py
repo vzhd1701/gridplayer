@@ -87,7 +87,13 @@ from gridplayer.utils.aspect_calc import (
     calc_render_size,
 )
 from gridplayer.utils.log_config import DISABLED
-from gridplayer.vlc_player.static import Media, MediaInput, StreamAudio, VideoTrack
+from gridplayer.vlc_player.static import (
+    DISABLED_TRACK,
+    Media,
+    MediaInput,
+    StreamAudio,
+    VideoTrack,
+)
 from gridplayer.widgets.video_frame_mpv import (
     MpvVideoSurface,
     VideoDriverMpv,
@@ -1464,7 +1470,7 @@ def test_live_stream_paused_while_held_is_let_go_of_stopped():
 def test_own_window_says_when_its_output_is_up():
     player = _player(wid=5)
     up = MagicMock()
-    player.output_up.connect(up)
+    player.output_done.connect(up)
 
     player.mpv.observers["vo-configured"]("vo-configured", False)
     up.assert_not_called()
@@ -1472,6 +1478,175 @@ def test_own_window_says_when_its_output_is_up():
     up.assert_called_once_with()
 
     assert "vo-configured" not in _player().mpv.observers
+
+
+def _playing_in_own_window():
+    """Into its own window, its output made, with two video tracks."""
+
+    player = _player(wid=5)
+    player.mpv.track_list = [
+        {"type": "video", "id": track_id, "demux-w": 640, "demux-h": 360}
+        for track_id in (1, 2)
+    ]
+    _preloaded(player)
+    player.let_output_start()
+    _vo_configured(player, True)
+    player._media = player._media_from_tracks()
+
+    due = MagicMock()
+    player.output_due.connect(due)
+    done = MagicMock()
+    player.output_done.connect(done)
+
+    return player, due, done
+
+
+def _vo_configured(player, is_configured):
+    player.mpv.observers["vo-configured"]("vo-configured", is_configured)
+
+
+def _vid_told(player):
+    return [command for command in player.mpv.commands if command[:2] == ("set", "vid")]
+
+
+def test_own_window_video_turned_off_lets_go_of_its_output_in_its_turn():
+    player, due, done = _playing_in_own_window()
+
+    player.select_track("vid", DISABLED_TRACK)
+
+    due.assert_called_once_with(player)
+    assert _vid_told(player) == []
+
+    assert player.let_output_start()
+    assert _vid_told(player) == [("set", "vid", "no")]
+
+    _vo_configured(player, True)
+    done.assert_not_called()
+    _vo_configured(player, False)
+    done.assert_called_once_with()
+
+
+def test_own_window_video_turned_on_again_makes_its_output_in_its_turn():
+    player, due, done = _playing_in_own_window()
+    player.select_track("vid", DISABLED_TRACK)
+    player.let_output_start()
+    _vo_configured(player, False)
+    due.reset_mock()
+    done.reset_mock()
+
+    player.select_track("vid", 2)
+
+    due.assert_called_once_with(player)
+    assert _vid_told(player) == [("set", "vid", "no")]
+
+    assert player.let_output_start()
+    assert _vid_told(player)[-1] == ("set", "vid", "2")
+
+    _vo_configured(player, True)
+    done.assert_called_once_with()
+
+
+def test_own_window_another_video_track_keeps_its_output():
+    player, due, _done = _playing_in_own_window()
+
+    player.select_track("vid", 2)
+
+    due.assert_not_called()
+    assert _vid_told(player) == [("set", "vid", "2")]
+
+
+def test_own_window_video_turned_off_and_on_before_its_turn_passes_it():
+    player, _due, _done = _playing_in_own_window()
+
+    player.select_track("vid", DISABLED_TRACK)
+    player.select_track("vid", 1)
+
+    assert not player.let_output_start()
+    assert ("set", "vid", "no") not in _vid_told(player)
+
+
+def test_own_window_video_turned_off_as_it_s_held_makes_no_output():
+    player = _player(wid=5)
+    _video_tracks(player)
+    _preloaded(player)
+    player._media = player._media_from_tracks()
+    due = MagicMock()
+    player.output_due.connect(due)
+
+    player.select_track("vid", DISABLED_TRACK)
+
+    due.assert_not_called()
+    assert _vid_told(player) == [("set", "vid", "no")]
+    # let go on, its turn passing at once
+    assert not player.let_output_start()
+    assert _hook_answered(player)
+
+
+def test_own_window_video_turned_off_with_its_output_gone_passes_its_turn():
+    # a live stream stopped as it was paused
+    player, _due, _done = _playing_in_own_window()
+    _vo_configured(player, False)
+
+    player.select_track("vid", DISABLED_TRACK)
+
+    assert not player.let_output_start()
+    assert _vid_told(player) == [("set", "vid", "no")]
+
+
+def test_own_window_live_stream_stopped_sets_the_track_due_at_once():
+    player, _due, _done = _playing_in_own_window()
+    player.media_input.is_live = True
+    player.select_track("vid", DISABLED_TRACK)
+
+    player.set_pause(True)
+
+    assert ("set", "vid", "no") in _vid_told(player)
+    assert not player.let_output_start()
+
+
+def test_own_window_held_wants_its_output_up_before_it_goes_on():
+    player, _due, done = _playing_in_own_window()
+    player.select_track("vid", DISABLED_TRACK)
+    player.let_output_start()
+    _vo_configured(player, False)
+    done.reset_mock()
+    player.select_track("vid", 1)
+    player._mpv_module.backend.mpv_hook_continue.reset_mock()
+    _preloaded(player)
+    # mpv's thread says its output is up as soon as it's let go on
+    player._mpv_module.backend.mpv_hook_continue.side_effect = lambda *_: (
+        _vo_configured(player, True)
+    )
+
+    assert player.is_output_held
+    assert player.let_output_start()
+    assert not player.is_output_held
+    done.assert_called_once_with()
+
+
+def test_video_track_picked_before_the_tracks_are_read_is_set_at_once():
+    player = _player(wid=5)
+    due = MagicMock()
+    player.output_due.connect(due)
+
+    player.select_track("vid", 1)
+
+    due.assert_not_called()
+    assert _vid_told(player) == [("set", "vid", "1")]
+
+
+def test_video_turned_off_and_on_at_once_through_the_render_api():
+    player = _player()
+    _video_tracks(player)
+    player._media = player._media_from_tracks()
+    due = MagicMock()
+    player.output_due.connect(due)
+
+    player.select_track("vid", DISABLED_TRACK)
+    player.select_track("vid", 1)
+
+    due.assert_not_called()
+    assert _vid_told(player) == [("set", "vid", "no"), ("set", "vid", "1")]
 
 
 def test_random_start_is_picked_before_anything_is_decoded():
@@ -2902,7 +3077,7 @@ def test_own_windows_start_together_where_they_needn_t_take_turns(mocker):
 
     for start in starts:
         start.assert_called_once_with()
-    players[0].output_up.connect.assert_not_called()
+    players[0].output_done.connect.assert_not_called()
     assert not service._start_turn.isActive()
 
     start = _held(service)
@@ -2951,11 +3126,24 @@ def test_own_window_waits_for_one_closed_only_so_long(mocker):
     start.assert_called_once_with()
 
 
+def test_own_window_video_track_turn_waits_only_for_its_output(mocker):
+    # playing, it says it has restarted on a seek, whatever its output is doing
+    service, _, _ = _own_window_starts(mocker, 0)
+    player = MagicMock(is_output_held=False)
+
+    _held(service, player)
+    service._start_turn.timeout.emit()
+
+    player.output_done.connect.assert_called_once()
+    for signal in (player.playback_restarted, player.failed, player.end_reached):
+        signal.connect.assert_not_called()
+
+
 def test_own_window_lets_go_of_its_signals_once_its_turn_is_over(mocker):
     # mpv says playback restarted on every seek too, all its life
     service, players, _ = _own_window_starts(mocker, 2)
     signals = (
-        players[0].output_up,
+        players[0].output_done,
         players[0].playback_restarted,
         players[0].failed,
         players[0].end_reached,
@@ -2963,17 +3151,17 @@ def test_own_window_lets_go_of_its_signals_once_its_turn_is_over(mocker):
 
     for signal in signals:
         signal.connect.assert_called_once()
-    players[1].output_up.connect.assert_not_called()
+    players[1].output_done.connect.assert_not_called()
 
     service._on_started(players[0])
 
     for signal in signals:
         signal.disconnect.assert_called_once_with(signal.connect.return_value)
-    players[1].output_up.connect.assert_called_once()
+    players[1].output_done.connect.assert_called_once()
 
     service.cleanup()
 
-    players[1].output_up.disconnect.assert_called_once()
+    players[1].output_done.disconnect.assert_called_once()
 
 
 def test_own_window_no_longer_held_passes_its_turn_at_once(mocker):

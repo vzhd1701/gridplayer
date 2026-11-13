@@ -963,7 +963,8 @@ class MpvRenderService(QObject):
         """A player drawing into a window of its own: told of settings, kept
         alive until it's terminated, as one the render thread draws. It opens
         its file at once, and is held as it has, before it makes its output
-        (output_due), until its turn here.
+        (output_due), until its turn here. So is its video track turned on
+        with none shown, making an output again, or off, letting go of it.
 
         NVIDIA's Direct3D 11 driver crashed the app (an access violation on a
         thread of its own, in nvwgf2umx.dll) about once in 250 times three
@@ -1036,14 +1037,18 @@ class MpvRenderService(QObject):
             self._starting = player
             self._start_turn.start(OWN_WINDOW_START_TURN_MS)
 
-            # before it's let go on: it can say so at once, from mpv's thread
+            # before it's let go on: it can say so at once, from mpv's thread.
+            # A video track turned on or off is waited for only by its output:
+            # playing, it says it has restarted or ended for its own reasons
             on_started = partial(self._on_started, player)
-            for signal in (
-                player.output_up,
-                player.playback_restarted,
-                player.failed,
-                player.end_reached,
-            ):
+            signals = [player.output_done]
+            if player.is_output_held:
+                signals += [
+                    player.playback_restarted,
+                    player.failed,
+                    player.end_reached,
+                ]
+            for signal in signals:
                 self._turn_signals.append(
                     (signal, signal.connect(on_started, Qt.QueuedConnection))
                 )
@@ -1054,7 +1059,7 @@ class MpvRenderService(QObject):
                 )
                 return
 
-            # stopped meanwhile: nothing to wait for
+            # stopped meanwhile, or nothing made: nothing to wait for
             self._end_turn()
 
     def _next_due(self):

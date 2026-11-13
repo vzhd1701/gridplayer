@@ -461,10 +461,11 @@ class MpvPlayer(QObject):
 
     render_context_ready = pyqtSignal()
     terminated = pyqtSignal(object)
-    # Into its own window: held before it makes its output, until let go of by
-    # let_output_start, and that output up. See MpvRenderService.add_own_window.
+    # Into its own window: held before it makes its output, or lets go of it,
+    # until let go on by let_output_start, and then that done. See
+    # MpvRenderService.add_own_window.
     output_due = pyqtSignal(object)
-    output_up = pyqtSignal()
+    output_done = pyqtSignal()
 
     def __init__(
         self,
@@ -509,6 +510,13 @@ class MpvPlayer(QObject):
         self._wid = wid
         # its hook held as it's preloaded, see _hold_output
         self._held_hook: int | None = None
+        # a video track turned on with none shown, or off: set in its turn, as
+        # it makes or lets go of the output (see _select_video_track)
+        self._track_due: int | None = None
+        # what the output is to be once let go on: up, or gone for a track off;
+        # and what it is, as mpv last said
+        self._is_output_wanted = True
+        self._is_output_up = False
         self._wake_renderer = wake_renderer
         self._subtitle_style = subtitle_style
         self._subtitle_view = SubtitleView()
@@ -961,19 +969,57 @@ class MpvPlayer(QObject):
             else:
                 self.command("stop")
 
+            # stopped, mpv makes no output for it: set now, not in a turn
+            if self._track_due is not None:
+                track_id, self._track_due = self._track_due, None
+                self._set_video_track(track_id, self._video_track(track_id))
+
     def select_track(self, option: str, track_id: int) -> None:
         if option == "aid":
             self._heard_channels = _track_channels(self._media.audio_tracks, track_id)
 
             self._apply_audio_chain()
 
-        # another track can be turned another way, which only the filter does here
-        if option == "vid" and self._is_software and self._media is not None:
-            with self._telling:
-                self._turn_by(self._media.video_tracks.get(track_id))
-                self._send_filters()
+        if option == "vid":
+            self._select_video_track(track_id)
+            return
 
         self.set_option(option, _track_option(track_id))
+
+    def _select_video_track(self, track_id: int) -> None:
+        # its tracks not read yet: nothing to tell what's shown by
+        if self._media is None:
+            self.set_option("vid", _track_option(track_id))
+            return
+
+        track = self._video_track(track_id)
+
+        with self._telling:
+            # another track can be turned another way, which only the filter does here
+            if self._is_software:
+                self._turn_by(track)
+                self._send_filters()
+
+            # Into its own window, a picture where there was none makes an output, and
+            # none where there was one lets go of it: in its turn, as it was made.
+            # Another track keeps it. Held, it has none yet.
+            is_due = (
+                self._wid is not None
+                and self._held_hook is None
+                and (track is None) != (self._shown_video_track is None)
+            )
+
+            self._track_due = track_id if is_due else None
+
+            if not is_due:
+                self._set_video_track(track_id, track)
+
+        if is_due:
+            self.output_due.emit(self)
+
+    def _set_video_track(self, track_id: int, track: VideoTrack | None) -> None:
+        self._shown_video_track = track
+        self.set_option("vid", _track_option(track_id))
 
     def add_audio_file(self, uri: str) -> None:
         self._keep_for_reopening("audio-files", uri)
@@ -1430,22 +1476,50 @@ class MpvPlayer(QObject):
         return True
 
     def let_output_start(self) -> bool:
-        """Its turn: on to make its output and play. False if it's no longer
-        held, a live stream stopped meanwhile, or closing (let go of as it
-        terminates). GUI thread."""
+        """Its turn: on to make its output and play, or to its video track
+        turned on or off. Whether there's an output to wait for (output_done):
+        not if it's no longer held, a live stream stopped meanwhile, its video
+        turned off as it was held, nothing is due any more, or it's closing
+        (let go of as it terminates). GUI thread."""
 
         with self._telling:
-            if self._held_hook is None or self._is_closing:
+            if self._is_closing:
                 return False
 
-            hook_id, self._held_hook = self._held_hook, None
-            self._hook_continue(hook_id)
+            if self._held_hook is not None:
+                hook_id, self._held_hook = self._held_hook, None
+                # before it goes on: mpv's thread may say its output is up at once
+                self._is_output_wanted = True
+                self._hook_continue(hook_id)
 
-        return True
+                return self._shown_video_track is not None
+
+            if self._track_due is None:
+                return False
+
+            track_id, self._track_due = self._track_due, None
+            track = self._video_track(track_id)
+            self._is_output_wanted = track is not None
+            self._set_video_track(track_id, track)
+
+            # a live stream stopped had let go of it already
+            return self._is_output_up != self._is_output_wanted
+
+    @property
+    def is_output_held(self) -> bool:
+        """Held as its file opens, rather than due to turn its video on or off."""
+
+        return self._held_hook is not None
+
+    def _video_track(self, track_id: int) -> VideoTrack | None:
+        return None if self._media is None else self._media.video_tracks.get(track_id)
 
     def _on_vo_configured(self, _name, is_configured) -> None:
-        if is_configured:
-            self.output_up.emit()
+        self._is_output_up = is_configured
+
+        # only the change its turn was for: a stop lets go of the output too
+        if is_configured == self._is_output_wanted:
+            self.output_done.emit()
 
     def _pick_random_start(self) -> None:
         media_input = self.media_input
@@ -1480,6 +1554,8 @@ class MpvPlayer(QObject):
         # nothing is selected yet as it preloads
         shown_id = self._file_video_track_id() if video_id is None else video_id
         self._shown_video_track = tracks.video_tracks.get(shown_id)
+        # picked again for the file, as it's held for its turn
+        self._track_due = None
 
         picks = {"vid": video_id, "aid": audio_id}
 
