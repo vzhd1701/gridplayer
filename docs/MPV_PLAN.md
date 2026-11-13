@@ -1604,7 +1604,8 @@ How it goes in, by what's there already:
     2026-11-12, at most 3 s. AMD, in turn and waiting: **0 / 48** (15:05-15:46), against 6 / 24 in turn alone; starts
     waited 2763 times, never as long as the 3 s. `OWN_WINDOWS_WAIT_FOR_GONE` is gone: the wait is in `_start_next`
     before either way of starting. The turns stay on Windows. Left open: Intel on Windows (no machine), and whether
-    `d3d11-flip=no` is worth having on NVIDIA (0 of 44 against 3 of 44, a hint).
+    `d3d11-flip=no` is worth having on NVIDIA (0 of 44 against 3 of 44, a hint). All of it written up in
+    `MPV_DIRECT_CRASHES.md`; what the turns cost, 14.13.
 - [ ] 14.12 Parked (2026-11-12): X11, Direct, a GNOME screenshot taken as a video says it has loaded shows the
   loading card, the picture 0.3-0.7 s later. `mpv_transport`'s random start sees it, failing on the Ubuntu VM 5 runs of
   16, then 8 of 8 (2026-11-12), as often with mpvs starting together as in turn. Windows passes. You see no glitch
@@ -1615,6 +1616,19 @@ How it goes in, by what's there already:
     in the surface (XQueryTree every 2 ms), before its first frame.
   - Next, if it's ever seen: on `test_gpu` (sway, a real GPU, 50-150 ms there before), and mpv's X window given a black
     background so it's never the card's pixels; or mpv's drawing traced (Present, Damage) to see what holds it.
+- [ ] 14.13 **Direct's starts in turn, at less cost (your call, 2026-11-13).** What crashes is mpvs making and letting go of
+  their outputs at once (`MPV_DIRECT_CRASHES.md`), not opening files. The turns now hold all of a start, network and
+  buffering too: the next waits for the last to play or 1 s, so 16 streams can take about 16 s to all start, 25 local files
+  9.0 s against 5.8 s. Rejected instead: a setting to start them together, crashes or speed (1 in 250-1200 opens of three on
+  NVIDIA, about 1 in 50 on AMD, the whole app down each time).
+  - All start together with no video track (`vid=no`: mpv makes its output only once one is chosen), so reading, network and
+    buffering go on side by side; then each gets its track in turn, the next as soon as the last's output is up
+    (`vo-configured`), or it fails, or after a while. The wait for one closed to be gone stays as it is.
+  - Check first that mpv makes no output with no video track and a `wid`, on Windows and X11, and that choosing the track
+    later gives the picture at once, paused or not, with the subtitle, turns and placement it had.
+  - Measure before and after: 16 streams and 25 local files, Windows NVIDIA, AMD and Ubuntu, time until all play. Then the
+    crash hunt again, NVIDIA and AMD, 48 runs each, for 0.
+  - If it holds, `d3d11-flip=no` needs no night of its own.
 
 ---
 
