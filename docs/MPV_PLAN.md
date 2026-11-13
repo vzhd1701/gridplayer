@@ -1526,7 +1526,9 @@ How it goes in, by what's there already:
     X11 EGL output at that moment. The heap was broken before; by what, not found. Copy, the Linux default, has no
     `vo` threads. Fixed 2026-11-12, see the log.
 - [x] 14.10 Hand test by you: all fine on Windows (2026-11-12) once YouTube's AV1 and its slow downloads were fixed.
-- [ ] 14.11 Overnight, on NVIDIA: the driver crash of Direct's mpvs starting together. Only Direct crashed: each of
+- [x] 14.11 **Done (2026-11-13): Direct's outputs made in turn, and none while one closed is going, on all of Windows;
+  0 crashes in 48 runs on NVIDIA and on AMD (14.13).** Intel on Windows never tried (no machine).
+  Overnight, on NVIDIA: the driver crash of Direct's mpvs starting together. Only Direct crashed: each of
   its mpvs makes a Direct3D 11 device and swap chain of its own, presenting from its own thread, while Copy and Shared
   draw into the app's OpenGL on one thread and make no output of their own. It crashed with 4:4:4 clips decoded on
   the CPU too, and `hwdec=d3d11va` changed nothing: the output coming up, not the decoder. Each run is the same hunt
@@ -1641,11 +1643,35 @@ How it goes in, by what's there already:
   - From `/code-review`: one closed as its file opens is stopped before it goes on too (`MpvPlayer._let_hook_go`, one place
     for every way a hook is let go of), and a live stream paused while it waits is let go of stopped, its turn passing at
     once. A paused live stream played again now waits its turn, as mpv makes its output again. Still outside the turns: a
-    video track turned on again after being off, which makes an output at once (as before). After the fixes: all 10 MPV
+    video track turned on again after being off, which makes an output at once (as before; in turn since, 14.15). After the fixes: all 10 MPV
     scenarios pass on Windows Direct, and the hunt 0 / 8 on NVIDIA and AMD. A slip in the hunt's script once let all go on
     at once: AMD crashed in 5 of 8 runs, as before the turns.
   - Seen on the way: on Windows, 16 test streams take 8-9 s to resolve before any mpv starts (2.6 s on the Ubuntu VM), before
-    and after alike.
+    and after alike (fixed, 14.14).
+- [x] 14.14 **Links slow to start on Windows (2026-11-13).** 16 test HLS links (each request held 0.15 s) took 8-9 s
+  before any mpv started, 2.6 s on the Ubuntu VM. Not resolving itself, 0.7 s for all 16:
+  - A `.m3u8` link is fetched first to tell a channel list from a stream, and the cells' links were fetched one after
+    another, by one thread, which got short turns while the interface made the cells: 5.5 s for 16. Now 8 at a time
+    (`CELLS_READ_AT_ONCE`): all 16 read in 1.2-1.5 s.
+  - Each resolver asked both Streamlink and yt-dlp whether they take the link before trying Streamlink, which plays
+    it. yt-dlp's answer compiles all of its sites' patterns the first time, 0.23 s alone, and 16 threads did it together
+    before any had finished, seconds of it. Now each is asked only once those before it could not read the link.
+  - Until all 16 play, 3 runs each on NVIDIA Direct: 10.8-12.7 s before, 7.1-7.6 s after. Most of what's left is the
+    turns (about 0.2 s each), and the first import of yt-dlp and Streamlink, contended (0.5 s alone, about 1 s with
+    16 threads and the cells being made; once a session). Neither part is MPV's: VLC's links go the same way (not
+    measured there).
+- [x] 14.15 **A video track turned on or off in Direct, in turn (2026-11-13).** mpv lets go of its output at `vid=no`
+  and makes a new one, a Direct3D 11 device and swap chain, at `vid=1` (0.36 s on NVIDIA, seen with a probe), outside
+  the turns until now: the tray's "stop decoding" turned every cell's off and on together. Now a track turned on with
+  none shown, or off, is due as a file opening is (`MpvPlayer._select_video_track`, `output_due`), set in its turn
+  (`let_output_start`), the next once its output is up, or gone (`output_done`, only the way it was asked for). Another
+  track keeps the output and is set at once.
+  - From `/code-review`: a track's turn waits only for its output (playing, a seek says it has restarted, which
+    ended the turn early: the tray's return seeks every cell); passes at once where the output already is as wanted
+    (a live stream stopped); one due as a live stream stops is set there and then. Waiting cells' lists read by one
+    pool of 8 for all (`read_for_cell` started a thread each), and yt-dlp asked whether it takes a link one at a time,
+    for the first to compile its patterns once (with yt-dlp first, all 16 compiled them together). mpv seeks a track
+    turned on again to where it is itself (`lavf refresh seek`), so the tray's seek landing before it is harmless.
 
 ---
 
@@ -1653,6 +1679,9 @@ How it goes in, by what's there already:
 
 Newest first. What was finished and seen working, and anything that changed the plan.
 
+- 2026-11-13: 14.11 closed. 14.14: 16 HLS links play in 7.1-7.6 s on Windows, not 10.8-12.7 s: links to lists
+  read 8 at a time, and yt-dlp not asked of links Streamlink plays. 14.15: a video track turned on or off in Direct
+  waits its turn.
 - 2026-11-13: 14.13 built: Direct's mpvs open their files at once and are held before making their outputs, let go on in
   turn. 16 streams all playing in about half the time on NVIDIA and AMD, local files as before; crash hunt 0 / 48 on each.
   Held at `on_preloaded` rather than `vid=no`, which ends a file with no sound.
