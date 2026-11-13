@@ -852,10 +852,9 @@ class VideoRenderer(QThread):
 # where NVIDIA's driver crashed; elsewhere they all start together.
 OWN_WINDOW_START_TURN_MS = 1000
 OWN_WINDOWS_START_IN_TURN = env.IS_WINDOWS
-# Under X11 none starts while one closed is still going, for at most this long:
-# see MpvRenderService.add_own_window
+# None starts while one closed is still going, for at most this long: see
+# MpvRenderService.add_own_window
 OWN_WINDOW_GONE_WAIT_MS = 3000
-OWN_WINDOWS_WAIT_FOR_GONE = not env.IS_WINDOWS
 
 
 class MpvRenderService(QObject):
@@ -973,12 +972,14 @@ class MpvRenderService(QObject):
         under X11 (OWN_WINDOWS_START_IN_TURN), which never crashed: all start
         together there.
 
-        Under X11 they wait instead for every one closed to be gone
-        (OWN_WINDOWS_WAIT_FOR_GONE), or for OWN_WINDOW_GONE_WAIT_MS. glibc
-        aborted the app on a heap broken as one mpv let go of its X11 output
-        and another's set its own up (in libXext's and libXrandr's lists of X
-        displays, and EGL's), about once in 3 runs of mpv_subtitles' reloads on
-        Ubuntu 24.04.
+        Everywhere they wait too for every one closed to be gone, or for
+        OWN_WINDOW_GONE_WAIT_MS. glibc aborted the app on a heap broken as one
+        mpv let go of its X11 output and another's set its own up (in libXext's
+        and libXrandr's lists of X displays, and EGL's), about once in 3 runs
+        of mpv_subtitles' reloads on Ubuntu 24.04. On an AMD GPU under Windows
+        the heap broke in Direct3D 11 the same way: 6 in 24 runs of opening
+        three and closing them, in turn, 60 times a run; 0 in 48 once they
+        waited.
 
         The first waits too, for what's being done now: a reload or a driver
         change lays its cells out and shows them after making their players.
@@ -1012,10 +1013,10 @@ class MpvRenderService(QObject):
     def _start_next(self) -> None:
         self._end_turn()
 
-        if not OWN_WINDOWS_START_IN_TURN:
-            if self._is_waiting_for_gone():
-                return
+        if self._is_waiting_for_gone():
+            return
 
+        if not OWN_WINDOWS_START_IN_TURN:
             # all of them, once what made them is done
             while self._starts_due:
                 _, start = self._starts_due.popitem(last=False)
@@ -1047,7 +1048,7 @@ class MpvRenderService(QObject):
             window is not None for window in self._players_alive.values()
         )
 
-        if not (OWN_WINDOWS_WAIT_FOR_GONE and self._starts_due and is_one_going):
+        if not (self._starts_due and is_one_going):
             self._gone_wait.invalidate()
             return False
 

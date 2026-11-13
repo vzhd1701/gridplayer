@@ -2753,8 +2753,7 @@ def test_own_windows_start_together_where_they_needn_t_take_turns(mocker):
     start.assert_called_once_with()
 
 
-def _closed_one_going(mocker, service):
-    mocker.patch("gridplayer.mpv_player.renderer.OWN_WINDOWS_WAIT_FOR_GONE", True)
+def _closed_one_going(service):
     going = MagicMock()
     service.add_own_window(going, MagicMock())
     service._start_turn.timeout.emit()
@@ -2763,11 +2762,12 @@ def _closed_one_going(mocker, service):
     return going
 
 
-def test_own_window_under_x11_starts_once_one_closed_is_gone(mocker):
-    # glibc aborted on a heap broken as one let go of its X11 output and
-    # another set its own up
-    service, _, _ = _own_window_starts(mocker, 0, in_turn=False)
-    going = _closed_one_going(mocker, service)
+@pytest.mark.parametrize("in_turn", [False, True])
+def test_own_window_starts_once_one_closed_is_gone(mocker, in_turn):
+    # the heap broke as one let go of its output and another set its own up:
+    # glibc's under X11, Direct3D 11's on AMD under Windows
+    service, _, _ = _own_window_starts(mocker, 0, in_turn=in_turn)
+    going = _closed_one_going(service)
     start = MagicMock()
 
     service.add_own_window(MagicMock(), start)
@@ -2782,9 +2782,9 @@ def test_own_window_under_x11_starts_once_one_closed_is_gone(mocker):
     start.assert_called_once_with()
 
 
-def test_own_window_under_x11_waits_for_one_closed_only_so_long(mocker):
+def test_own_window_waits_for_one_closed_only_so_long(mocker):
     service, _, _ = _own_window_starts(mocker, 0, in_turn=False)
-    _closed_one_going(mocker, service)
+    _closed_one_going(service)
     mocker.patch("gridplayer.mpv_player.renderer.OWN_WINDOW_GONE_WAIT_MS", 0)
     start = MagicMock()
 
@@ -2840,6 +2840,12 @@ def test_own_window_closed_gives_up_its_turn_or_never_starts(mocker):
     assert service._start_turn.isActive()
     assert service._start_turn.interval() == 0
 
+    service._start_turn.timeout.emit()
+
+    # and once those closed are gone
+    starts[2].assert_not_called()
+    service._forget_player(players[0])
+    service._forget_player(players[1])
     service._start_turn.timeout.emit()
 
     starts[1].assert_not_called()
