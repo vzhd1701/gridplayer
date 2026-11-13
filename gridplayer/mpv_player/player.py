@@ -12,6 +12,7 @@ import re
 import threading
 import time
 from collections import defaultdict
+from contextlib import suppress
 from ctypes import c_ulonglong
 from fractions import Fraction
 from functools import cache, partial
@@ -460,6 +461,10 @@ class MpvPlayer(QObject):
 
     render_context_ready = pyqtSignal()
     terminated = pyqtSignal(object)
+    # Into its own window: held before it makes its output, until let go of by
+    # let_output_start, and that output up. See MpvRenderService.add_own_window.
+    output_due = pyqtSignal(object)
+    output_up = pyqtSignal()
 
     def __init__(
         self,
@@ -502,6 +507,8 @@ class MpvPlayer(QObject):
         # mpv drawing into this native window itself, with its own output,
         # rather than through the render API: see video_frame_mpv_window
         self._wid = wid
+        # its hook held as it's preloaded, see _hold_output
+        self._held_hook: int | None = None
         self._wake_renderer = wake_renderer
         self._subtitle_style = subtitle_style
         self._subtitle_view = SubtitleView()
@@ -515,6 +522,8 @@ class MpvPlayer(QObject):
         # shutdown destroys: one sent after terminate() is a use-after-free in
         # libmpv, not an error. See command().
         self._is_closing = False
+        # terminate() on its way, nothing more to be sent: see _let_hook_go
+        self._is_terminating = False
 
         # the picture's size as mpv draws it, turned as the file says
         self._dims: tuple[int, int] | None = None
@@ -595,6 +604,9 @@ class MpvPlayer(QObject):
         self.mpv.observe_property("hwdec-current", self._on_hwdec)
         self.mpv.observe_property("chapter-list", self._on_chapter_list)
         self.mpv.observe_property("eof-reached", self._on_eof)
+
+        if self._wid is not None:
+            self.mpv.observe_property("vo-configured", self._on_vo_configured)
 
         self._hook_add("on_preloaded")
 
@@ -793,7 +805,12 @@ class MpvPlayer(QObject):
 
     def _terminate(self) -> None:
         with self._telling:
-            pass
+            # mpv's quit waits on it
+            hook_id, self._held_hook = self._held_hook, None
+            if hook_id is not None:
+                self._let_hook_go(hook_id)
+
+            self._is_terminating = True
 
         self.mpv.terminate()
 
@@ -924,7 +941,7 @@ class MpvPlayer(QObject):
         self.is_picture_held = True
 
         if is_stopped:
-            self.command("stop")
+            self._stop_live()
         else:
             self.set_option("pause", "no")
             self.command("loadfile", self.media_input.uri)
@@ -933,6 +950,16 @@ class MpvPlayer(QObject):
         self.is_paused = is_stopped
         self._follow_time()
         self.paused_changed.emit(is_stopped)
+
+    def _stop_live(self) -> None:
+        with self._telling:
+            # Held for its turn, it's let go of now, stopped: no output is
+            # wanted, and its turn passes at once (see let_output_start).
+            if self._held_hook is not None and not self._is_closing:
+                hook_id, self._held_hook = self._held_hook, None
+                self._let_hook_go(hook_id, is_stopped=True)
+            else:
+                self.command("stop")
 
     def select_track(self, option: str, track_id: int) -> None:
         if option == "aid":
@@ -1345,6 +1372,8 @@ class MpvPlayer(QObject):
         while the sound starts up leaves mpv never saying it's playing.
         """
 
+        is_held = False
+
         try:
             with self._telling:
                 if not self._is_closing:
@@ -1353,10 +1382,70 @@ class MpvPlayer(QObject):
                     self._pick_decoder()
                     self._pick_turn()
                     self._pick_audio_device()
+
+                    is_held = self._hold_output(hook_id)
         except self._mpv_module.ShutdownError:
             pass
         finally:
+            if not is_held:
+                with self._telling:
+                    self._let_hook_go(hook_id)
+
+        if is_held:
+            self.output_due.emit(self)
+
+    def _let_hook_go(self, hook_id: int, is_stopped: bool | None = None) -> None:
+        """mpv on from on_preloaded, stopped first if it's closing (or told to
+        be). Let go on as it is, a closing mpv makes its output on its way out
+        (seen on Windows: all of a Direct3D 11 output), alongside the mpv whose
+        turn it is; stopped, it makes none. Under _telling.
+
+        Once terminate() is on its way nothing can be sent, and needn't be: mpv
+        quits before it makes anything."""
+
+        if is_stopped is None:
+            is_stopped = self._is_closing
+
+        if is_stopped and not self._is_terminating:
+            with suppress(self._mpv_module.ShutdownError):
+                self.mpv.command("stop")
+
+        self._hook_continue(hook_id)
+
+    def _hold_output(self, hook_id: int) -> bool:
+        """Into its own window, with a picture to show: held here, before it
+        makes its output, for its turn (see MpvRenderService.add_own_window).
+        Opening, reading and the network go on side by side meanwhile; what
+        it's told is taken, a pause or a seek."""
+
+        if (
+            self._wid is None
+            or self._shown_video_track is None
+            or self.media_input.is_audio_only
+        ):
+            return False
+
+        self._held_hook = hook_id
+
+        return True
+
+    def let_output_start(self) -> bool:
+        """Its turn: on to make its output and play. False if it's no longer
+        held, a live stream stopped meanwhile, or closing (let go of as it
+        terminates). GUI thread."""
+
+        with self._telling:
+            if self._held_hook is None or self._is_closing:
+                return False
+
+            hook_id, self._held_hook = self._held_hook, None
             self._hook_continue(hook_id)
+
+        return True
+
+    def _on_vo_configured(self, _name, is_configured) -> None:
+        if is_configured:
+            self.output_up.emit()
 
     def _pick_random_start(self) -> None:
         media_input = self.media_input

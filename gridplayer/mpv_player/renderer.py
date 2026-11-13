@@ -847,9 +847,9 @@ class VideoRenderer(QThread):
             self._context = None
 
 
-# Direct's mpvs start one at a time, the next when the last one plays, or when
-# it's had this long: see MpvRenderService.add_own_window. Only on Windows,
-# where NVIDIA's driver crashed; elsewhere they all start together.
+# Direct's mpvs make their outputs one at a time, the next when the last one's
+# is up, or when it's had this long: see MpvRenderService.add_own_window. Only
+# on Windows, where NVIDIA's driver crashed; elsewhere all together.
 OWN_WINDOW_START_TURN_MS = 1000
 OWN_WINDOWS_START_IN_TURN = env.IS_WINDOWS
 # None starts while one closed is still going, for at most this long: see
@@ -894,9 +894,9 @@ class MpvRenderService(QObject):
         # the window one draws into, which it can still be drawing into then.
         self._players_alive: dict = {}
 
-        # Direct's players waiting to start, each with what starts it, and the
-        # one starting: see add_own_window
-        self._starts_due: collections.OrderedDict = collections.OrderedDict()
+        # Direct's players held before making their outputs, in turn, and the
+        # one making its own: see add_own_window
+        self._starts_due: dict = {}
         self._starting = None
         # what tells of the one starting, let go of once its turn is over: mpv
         # says its playback restarted on every seek too
@@ -959,18 +959,19 @@ class MpvRenderService(QObject):
         self._listeners[video] = listener
         self._renderer.add(video)
 
-    def add_own_window(self, player, start) -> None:
+    def add_own_window(self, player) -> None:
         """A player drawing into a window of its own: told of settings, kept
-        alive until it's terminated, as one the render thread draws. Started,
-        by `start`, in turn.
+        alive until it's terminated, as one the render thread draws. It opens
+        its file at once, and is held as it has, before it makes its output
+        (output_due), until its turn here.
 
         NVIDIA's Direct3D 11 driver crashed the app (an access violation on a
         thread of its own, in nvwgf2umx.dll) about once in 250 times three
         mpvs started together, their outputs coming up at once. Started 0.4 s
-        apart, none in 1440. So each waits for the one before it to play, or
-        to fail, or for OWN_WINDOW_START_TURN_MS, whichever comes first. Not
-        under X11 (OWN_WINDOWS_START_IN_TURN), which never crashed: all start
-        together there.
+        apart, none in 1440. So each waits for the one before it to have its
+        output up, or to play, or to fail, or for OWN_WINDOW_START_TURN_MS,
+        whichever comes first. Not under X11 (OWN_WINDOWS_START_IN_TURN), which
+        never crashed: all go on together there.
 
         Everywhere they wait too for every one closed to be gone, or for
         OWN_WINDOW_GONE_WAIT_MS. glibc aborted the app on a heap broken as one
@@ -991,7 +992,15 @@ class MpvRenderService(QObject):
         self._keep_alive(player)
         self._own_window_players.add(player)
 
-        self._starts_due[player] = start
+        player.output_due.connect(self._queue_output, Qt.QueuedConnection)
+
+    def _queue_output(self, player) -> None:
+        # closed as it came
+        if player not in self._own_window_players:
+            return
+
+        # in the order they came: a dict for taking one closed out
+        self._starts_due[player] = None
 
         if self._starting is None and not self._start_turn.isActive():
             self._start_turn.start(0)
@@ -1019,26 +1028,40 @@ class MpvRenderService(QObject):
         if not OWN_WINDOWS_START_IN_TURN:
             # all of them, once what made them is done
             while self._starts_due:
-                _, start = self._starts_due.popitem(last=False)
-                start()
+                self._next_due().let_output_start()
             return
 
-        if not self._starts_due:
-            return
+        while self._starts_due:
+            player = self._next_due()
+            self._starting = player
+            self._start_turn.start(OWN_WINDOW_START_TURN_MS)
 
-        player, start = self._starts_due.popitem(last=False)
-        self._starting = player
-        self._start_turn.start(OWN_WINDOW_START_TURN_MS)
+            # before it's let go on: it can say so at once, from mpv's thread
+            on_started = partial(self._on_started, player)
+            for signal in (
+                player.output_up,
+                player.playback_restarted,
+                player.failed,
+                player.end_reached,
+            ):
+                self._turn_signals.append(
+                    (signal, signal.connect(on_started, Qt.QueuedConnection))
+                )
 
-        on_started = partial(self._on_started, player)
-        for signal in (player.playback_restarted, player.failed, player.end_reached):
-            self._turn_signals.append(
-                (signal, signal.connect(on_started, Qt.QueuedConnection))
-            )
+            if player.let_output_start():
+                self._log.debug(
+                    f"Starting an mpv, {len(self._starts_due)} more waiting"
+                )
+                return
 
-        self._log.debug(f"Starting an mpv, {len(self._starts_due)} more waiting")
+            # stopped meanwhile: nothing to wait for
+            self._end_turn()
 
-        start()
+    def _next_due(self):
+        player = next(iter(self._starts_due))
+        del self._starts_due[player]
+
+        return player
 
     def _is_waiting_for_gone(self) -> bool:
         """Whether the starts due wait on for one closed to go: started again as

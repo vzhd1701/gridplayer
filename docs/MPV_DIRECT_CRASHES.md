@@ -46,18 +46,28 @@ Copy and Shared never crashed in any of this: there the app owns one OpenGL cont
 
 ## What is done about it
 
-1. **Starts in turn, on Windows** (`OWN_WINDOWS_START_IN_TURN`): the next mpv starts when the one before plays, fails or ends,
-   or after 1 s (`OWN_WINDOW_START_TURN_MS`). NVIDIA: 0 in 44 runs, against 3 in 44 started together.
+1. **Outputs made in turn, on Windows** (`OWN_WINDOWS_START_IN_TURN`): every mpv opens its file at once, and is held at
+   `on_preloaded`, its tracks known and nothing made yet (`MpvPlayer._hold_output`). The service lets one go on at a time,
+   the next when the one before has its output up (`vo-configured`), plays, fails or ends, or after 1 s
+   (`OWN_WINDOW_START_TURN_MS`). NVIDIA: 0 in 44 runs with whole starts in turn, against 3 in 44 started together; held,
+   0 in 48. Until 2026-11-13 the whole start waited its turn, opening, network and buffering too.
 2. **No start while one closed is still going, everywhere**: until each mpv closed has said it's terminated, or 3 s
-   (`OWN_WINDOW_GONE_WAIT_MS`). AMD in turn: 6 in 24 runs crashed without it, 0 in 48 with it. Linux: 0 in 6 runs checked under
+   (`OWN_WINDOW_GONE_WAIT_MS`). AMD in turn: 6 in 24 runs crashed without it, 0 in 48 with it, 0 in 48 held. Linux: 0 in 6 runs checked under
    `MALLOC_CHECK_`, and every MPV scenario passes on Direct on Ubuntu (libmpv 0.37) and `test_gpu` (0.40).
+
+A held mpv still takes what it's told (a pause, a seek). Closed while held, it's stopped first and then let go on
+(`MpvPlayer._terminate`): mpv's quit waits on the hook, and let go on as it is, it made its output on its way out. With no
+video track (`vid=no`) it would make no output either, but a file with no sound then has nothing to play and mpv ends it, and
+one with sound starts playing it.
 
 The waits cost nothing while videos play: only opening and reloading. What they cost there:
 
-- Local files: the next starts as the one before plays, about 0.1 s later (126 ms the median, 25 ms the least, with H.264 on
-  NVIDIA). 25 cells loaded in 9.0 s in turn against 5.8 s together.
-- Streams: a stream can take a second or more to play, so the next waits the full 1 s. 16 streams: up to about 16 s before the
-  last one starts.
+- Local files: a turn is mpv making its output and compiling its shaders, about 0.28 s for 1080p on NVIDIA, the part that has
+  to be one at a time. 25 cells all playing in 8.5-8.7 s on NVIDIA, 6.7 s on AMD, the same as before holding (5.8 s all
+  together, once).
+- Streams: opening and buffering go on side by side now, and a turn ends once the output is up. 16 test streams (each request
+  held 0.15 s): all playing in 11.3-11.8 s on NVIDIA, against 20.9-21.5 s with whole starts in turn; from the first playing to
+  the last, 2.3 s against 11.7 s. AMD: 9.7-11.1 s against 19.3-20.0 s. The rest is the app resolving the links, before mpv.
 - A reload: the new ones wait for the old ones to close, which took well under the 3 s in every run (2763 waits, none at the
   limit).
 

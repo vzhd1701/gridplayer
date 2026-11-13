@@ -10,6 +10,7 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 import pytest
+from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import QApplication
 
 from gridplayer.models.audio_device import AudioDevice
@@ -1350,6 +1351,129 @@ def _hook_answered(player):
     return continued.call_args.args[1].value == 7
 
 
+def _video_tracks(player):
+    player.mpv.track_list = [
+        {"type": "video", "id": 1, "demux-w": 640, "demux-h": 360, "codec": "h264"}
+    ]
+
+
+def test_own_window_is_held_before_making_its_output():
+    player = _player(wid=5)
+    _video_tracks(player)
+    due = MagicMock()
+    player.output_due.connect(due)
+    continued = player._mpv_module.backend.mpv_hook_continue
+
+    _preloaded(player)
+
+    continued.assert_not_called()
+    due.assert_called_once_with(player)
+
+    player.let_output_start()
+    player.let_output_start()
+
+    assert _hook_answered(player)
+
+
+@pytest.mark.parametrize("kind", ["render API", "no picture", "audio only", "closing"])
+def test_held_only_into_its_own_window_with_a_picture(kind):
+    player = _player(wid=None if kind == "render API" else 5)
+    if kind != "no picture":
+        _video_tracks(player)
+    if kind == "audio only":
+        player.media_input.is_audio_only = True
+    if kind == "closing":
+        player.close()
+    due = MagicMock()
+    player.output_due.connect(due)
+
+    _preloaded(player)
+
+    assert _hook_answered(player)
+    due.assert_not_called()
+
+
+def test_own_window_held_is_stopped_before_it_goes_on_as_it_closes():
+    # let go of as it is, it would make its output on its way out
+    player = _player(wid=5)
+    _video_tracks(player)
+    _preloaded(player)
+    player.close()
+
+    assert not player.let_output_start()
+    player._mpv_module.backend.mpv_hook_continue.assert_not_called()
+    last_told = _last_told_on_answer(player)
+
+    player._terminate()
+
+    assert last_told == [("stop",)]
+    assert _hook_answered(player)
+    assert player.mpv.is_terminated
+
+
+def _last_told_on_answer(player):
+    """What mpv was last told as each hook was answered."""
+
+    last_told = []
+    player._mpv_module.backend.mpv_hook_continue.side_effect = lambda *_: (
+        last_told.append(player.mpv.commands[-1])
+    )
+
+    return last_told
+
+
+def test_closing_as_its_file_opens_it_s_stopped_before_it_goes_on():
+    # let go on as it is, it would make its output alongside the one whose turn it is
+    player = _player(wid=5)
+    _video_tracks(player)
+    last_told = _last_told_on_answer(player)
+    player.close()
+
+    _preloaded(player)
+
+    assert last_told == [("stop",)]
+    assert _hook_answered(player)
+
+
+def test_terminating_as_its_file_opens_nothing_more_is_sent():
+    player = _player(wid=5)
+    _video_tracks(player)
+    player.close()
+    player._terminate()
+
+    _preloaded(player)
+
+    assert ("stop",) not in player.mpv.commands
+    assert _hook_answered(player)
+
+
+def test_live_stream_paused_while_held_is_let_go_of_stopped():
+    player = _player(wid=5, is_live=True)
+    _video_tracks(player)
+    _preloaded(player)
+    last_told = _last_told_on_answer(player)
+
+    player.set_pause(True)
+
+    assert last_told == [("stop",)]
+    assert _hook_answered(player)
+    # its turn passes at once
+    assert not player.let_output_start()
+
+
+def test_own_window_says_when_its_output_is_up():
+    player = _player(wid=5)
+    up = MagicMock()
+    player.output_up.connect(up)
+
+    player.mpv.observers["vo-configured"]("vo-configured", False)
+    up.assert_not_called()
+    player.mpv.observers["vo-configured"]("vo-configured", True)
+    up.assert_called_once_with()
+
+    assert "vo-configured" not in _player().mpv.observers
+
+
 def test_random_start_is_picked_before_anything_is_decoded():
     player = _player(is_start_random=True)
 
@@ -2658,7 +2782,7 @@ def test_skipping_frames_goes_to_a_video_in_its_own_window_too(mocker):
     mocker.patch("gridplayer.mpv_player.renderer.load_mpv")
     service = MpvRenderService()
     player = MagicMock()
-    service.add_own_window(player, MagicMock())
+    service.add_own_window(player)
 
     service.set_skip_frames(True)
 
@@ -2670,7 +2794,7 @@ def test_own_window_kept_until_its_mpv_is_terminated(mocker):
     service = MpvRenderService()
     player = MagicMock()
     window = MagicMock()
-    service.add_own_window(player, MagicMock())
+    service.add_own_window(player)
 
     service.remove_own_window(player, window)
 
@@ -2689,15 +2813,51 @@ def _own_window_starts(mocker, count, *, in_turn=True):
     mocker.patch("gridplayer.mpv_player.renderer.OWN_WINDOWS_START_IN_TURN", in_turn)
     service = MpvRenderService()
     players = [MagicMock() for _ in range(count)]
-    starts = [MagicMock() for _ in range(count)]
 
-    for player, start in zip(players, starts):
-        service.add_own_window(player, start)
+    for player in players:
+        _held(service, player)
 
     # the first, once what made them is done
     service._start_turn.timeout.emit()
 
-    return service, players, starts
+    return service, players, [player.let_output_start for player in players]
+
+
+def _held(service, player=None):
+    """A player added, and held as it's preloaded: what lets it go on."""
+
+    player = player or MagicMock()
+    service.add_own_window(player)
+    service._queue_output(player)
+
+    return player.let_output_start
+
+
+def test_own_window_opens_its_file_at_once(mocker):
+    mocker.patch("gridplayer.mpv_player.renderer.load_mpv")
+    service = MpvRenderService()
+    player = MagicMock()
+
+    service.add_own_window(player)
+
+    player.output_due.connect.assert_called_once_with(
+        service._queue_output, Qt.QueuedConnection
+    )
+    assert not service._start_turn.isActive()
+
+
+def test_own_window_closed_as_it_s_held_is_never_let_go_on(mocker):
+    # it's stopped as it closes, see MpvPlayer._terminate
+    mocker.patch("gridplayer.mpv_player.renderer.load_mpv")
+    service = MpvRenderService()
+    player = MagicMock()
+    service.add_own_window(player)
+    service.remove_own_window(player, MagicMock())
+
+    service._queue_output(player)
+    service._start_turn.timeout.emit()
+
+    player.let_output_start.assert_not_called()
 
 
 def test_own_window_first_starts_once_what_made_it_is_done(mocker):
@@ -2705,9 +2865,8 @@ def test_own_window_first_starts_once_what_made_it_is_done(mocker):
     # never shows its window if its parent is shown as it starts
     mocker.patch("gridplayer.mpv_player.renderer.load_mpv")
     service = MpvRenderService()
-    start = MagicMock()
 
-    service.add_own_window(MagicMock(), start)
+    start = _held(service)
 
     start.assert_not_called()
     assert service._start_turn.isActive()
@@ -2724,7 +2883,8 @@ def test_own_windows_start_one_at_a_time(mocker):
     starts[0].assert_called_once_with()
     starts[1].assert_not_called()
 
-    # what an mpv says once it plays, or fails, or a seek of one already playing
+    # what an mpv says once its output is up, or it plays, or fails, or a
+    # seek of one already playing
     service._on_started(players[1])
     starts[1].assert_not_called()
 
@@ -2742,11 +2902,10 @@ def test_own_windows_start_together_where_they_needn_t_take_turns(mocker):
 
     for start in starts:
         start.assert_called_once_with()
-    players[0].playback_restarted.connect.assert_not_called()
+    players[0].output_up.connect.assert_not_called()
     assert not service._start_turn.isActive()
 
-    start = MagicMock()
-    service.add_own_window(MagicMock(), start)
+    start = _held(service)
 
     start.assert_not_called()
     service._start_turn.timeout.emit()
@@ -2755,7 +2914,7 @@ def test_own_windows_start_together_where_they_needn_t_take_turns(mocker):
 
 def _closed_one_going(service):
     going = MagicMock()
-    service.add_own_window(going, MagicMock())
+    _held(service, going)
     service._start_turn.timeout.emit()
     service.remove_own_window(going, MagicMock())
 
@@ -2768,9 +2927,8 @@ def test_own_window_starts_once_one_closed_is_gone(mocker, in_turn):
     # glibc's under X11, Direct3D 11's on AMD under Windows
     service, _, _ = _own_window_starts(mocker, 0, in_turn=in_turn)
     going = _closed_one_going(service)
-    start = MagicMock()
 
-    service.add_own_window(MagicMock(), start)
+    start = _held(service)
     service._start_turn.timeout.emit()
 
     start.assert_not_called()
@@ -2786,9 +2944,8 @@ def test_own_window_waits_for_one_closed_only_so_long(mocker):
     service, _, _ = _own_window_starts(mocker, 0, in_turn=False)
     _closed_one_going(service)
     mocker.patch("gridplayer.mpv_player.renderer.OWN_WINDOW_GONE_WAIT_MS", 0)
-    start = MagicMock()
 
-    service.add_own_window(MagicMock(), start)
+    start = _held(service)
     service._start_turn.timeout.emit()
 
     start.assert_called_once_with()
@@ -2798,6 +2955,7 @@ def test_own_window_lets_go_of_its_signals_once_its_turn_is_over(mocker):
     # mpv says playback restarted on every seek too, all its life
     service, players, _ = _own_window_starts(mocker, 2)
     signals = (
+        players[0].output_up,
         players[0].playback_restarted,
         players[0].failed,
         players[0].end_reached,
@@ -2805,17 +2963,31 @@ def test_own_window_lets_go_of_its_signals_once_its_turn_is_over(mocker):
 
     for signal in signals:
         signal.connect.assert_called_once()
-    players[1].playback_restarted.connect.assert_not_called()
+    players[1].output_up.connect.assert_not_called()
 
     service._on_started(players[0])
 
     for signal in signals:
         signal.disconnect.assert_called_once_with(signal.connect.return_value)
-    players[1].playback_restarted.connect.assert_called_once()
+    players[1].output_up.connect.assert_called_once()
 
     service.cleanup()
 
-    players[1].playback_restarted.disconnect.assert_called_once()
+    players[1].output_up.disconnect.assert_called_once()
+
+
+def test_own_window_no_longer_held_passes_its_turn_at_once(mocker):
+    # a live stream paused while it waited: it makes no output to wait for
+    service, _, _ = _own_window_starts(mocker, 0)
+    gone_on = [_held(service) for _ in range(3)]
+    gone_on[0].return_value = False
+
+    service._start_turn.timeout.emit()
+
+    gone_on[0].assert_called_once_with()
+    gone_on[1].assert_called_once_with()
+    gone_on[2].assert_not_called()
+    assert service._start_turn.interval() == OWN_WINDOW_START_TURN_MS
 
 
 def test_own_window_starts_next_once_it_s_had_its_turn(mocker):
@@ -2857,9 +3029,7 @@ def test_own_window_starts_forgotten_on_cleanup(mocker):
 
     service.cleanup()
     assert not service._start_turn.isActive()
-    player = MagicMock()
-    start = MagicMock()
-    service.add_own_window(player, start)
+    start = _held(service)
     service._start_turn.timeout.emit()
 
     start.assert_called_once_with()
