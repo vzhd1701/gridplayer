@@ -1545,6 +1545,66 @@ How it goes in, by what's there already:
     the turns go on NVIDIA too; the cost of each (GPU, VRAM, frame times) measured before it's kept.
   - The turns are only on Windows since 2026-11-12: AMD and Intel there never tried. Whether they crash, and if not,
     turns only with an NVIDIA GPU.
+  - **Ready to run (2026-11-12).** 8 arms, taken in turn seed by seed so a drift over the night hits them all alike, 24
+    runs each and 48 for the turns, 60 rounds a run of 3 H.264 clips of the bench media (1080p30, 720p30, 1080p60),
+    decoded on the GPU, muted, on the other desktop: all at once as it was; in turn as it ships; at once with
+    `d3d11-flip=no`; `gpu-api=opengl` + `gpu-context=win`; `gpu-api=vulkan`; `vo=gpu-next`; `d3d11va-zero-copy=yes`;
+    and at once on the AMD iGPU. About 5-6 hours. A tally per arm: runs crashed, in `nvwgf2umx` or elsewhere, the time
+    between starts, the time to play.
+  - Seen in a 2-round check of each arm: in turn, the next mpv started **70-160 ms** after the one before with these
+    clips, the very case above. `gpu-api=opengl` alone took mpv's ANGLE context and crashed at once in `libGLESv2.dll`
+    (beside Qt's own), decoding `d3d11va-copy`; with `gpu-context=win` (WGL) it decodes with `nvdec` and frames stay on
+    the GPU. Vulkan takes about 1.4 s to make its device, against about 0.1 s for D3D11, so it rarely plays before a
+    round closes: it still tests the output coming up. `d3d11-flip=no` confirmed by "bitblt-model presentation",
+    gpu-next by `vo/gpu-next/d3d11`, the AMD arm by "Device Name: AMD Radeon(TM) Graphics".
+  - **Night of 2026-11-13, first part.** Seeds 101-119/120 (00:33-03:24), 60 rounds a run. After that every run froze
+    at its start, in Windows' virtual desktop service (`MoveWindowToDesktop` of the test rig never returned), most likely
+    held by the crashed runs' processes stuck in the driver: those runs are left out. Runs crashed of runs:
+
+    | arm | crashed | where |
+    |---|---|---|
+    | all at once, NVIDIA | 1 / 20 | `nvwgf2umx.dll+0x98cf4a` |
+    | in turn (as it ships) | 0 / 20 | next start 25 ms after the last at the least, 126 ms the median |
+    | `d3d11-flip=no` | 0 / 20 | |
+    | `vo=gpu-next` | 1 / 19 | `nvwgf2umx.dll+0x98cf4a` |
+    | `d3d11va-zero-copy=yes` | 5 / 19 | `nvwgf2umx.dll+0x98cf4a`: worse |
+    | `gpu-api=vulkan` | 0 / 19 | its device takes ~1.4 s, it rarely played before the round closed |
+    | `gpu-api=opengl` (WGL) | 19 / 20 froze | the GUI held as the mpvs start: out |
+    | **all at once, AMD iGPU** | **14 / 19** | a heap read in `ntdll.dll+0x279b6` under `d3d11.dll` from an mpv thread, 2 in `libmpv` |
+
+  - So: **AMD crashes far more than NVIDIA** when Direct's mpvs start together, which keeps the turns on all of Windows,
+    not only NVIDIA. Whether turns hold on AMD is not yet run. All at once on NVIDIA crashed far less with these clips
+    than with the test folder's CPU-decoded ones (1 of 20 against 6 of 24), so `d3d11-flip=no`'s 0 says nothing yet.
+  - Next run, after a reboot: AMD in turn, AMD with `d3d11-flip=no`, and NVIDIA all at once against `d3d11-flip=no`
+    with the CPU-decoded clips that crashed more.
+  - Explorer had died in the night (you restarted it in the morning), which is what held the window moves: no reboot
+    needed, a run on the other desktop worked again at once. The runner now stops after two runs in a row that never
+    start.
+  - **Day run 2026-11-13** (10:55-12:11, 24 runs of 60 rounds an arm):
+
+    | arm | crashed | where |
+    |---|---|---|
+    | AMD, in turn | 6 / 24 | heap corruption found by Windows (`ntdll.dll+0x118095`, 0xc0000374) in 5, `ntdll+0x279b6` in 1 |
+    | AMD, all at once, `d3d11-flip=no` | 18 / 24 | the same, and once in `amdxx64.dll` |
+    | NVIDIA all at once, CPU-decoded test clips | 2 / 24 | `nvwgf2umx.dll+0x98cf4a` |
+    | NVIDIA all at once, CPU-decoded, `d3d11-flip=no` | 0 / 24 | |
+
+  - **AMD:** turns cut it from about 3 in 4 runs to 1 in 4, but don't end it; no flip model doesn't help. Something
+    else in AMD's D3D11 driver (32.0.21043.19003, June 2026) breaks the heap: whether with one video at a time too, and
+    whether Copy (no D3D11 device of mpv's own) is spared, are the next questions.
+  - **NVIDIA:** `d3d11-flip=no` 0 of 44 all at once, against 3 of 44 with the flip model (both nights' clips). A hint, not
+    proof; the turns, 0 of 44 too, stay.
+  - **AMD, 2026-11-13 afternoon** (13:40-14:12, 24 runs of 60 rounds each): Direct with **one video** opened and
+    closed alone, **0 / 24**; **Copy** with 3 at once, `d3d11va-copy`, **0 / 24**. So AMD's crash takes several of
+    Direct's mpvs, each with its D3D11 device, alive together: not one mpv's own, and not AMD's decoder. The turns only
+    keep starts apart; a start can still meet another mpv closing, as the hunt closes all and opens again at once.
+    Next: in turn and waiting for those closed to be gone first (what X11 does, `OWN_WINDOWS_WAIT_FOR_GONE`). If that
+    isn't 0, Copy becomes the default on Windows without an NVIDIA GPU.
+  - **Fixed (2026-11-13): no Direct mpv starts while one closed is still going, everywhere**, as under X11 since
+    2026-11-12, at most 3 s. AMD, in turn and waiting: **0 / 48** (15:05-15:46), against 6 / 24 in turn alone; starts
+    waited 2763 times, never as long as the 3 s. `OWN_WINDOWS_WAIT_FOR_GONE` is gone: the wait is in `_start_next`
+    before either way of starting. The turns stay on Windows. Left open: Intel on Windows (no machine), and whether
+    `d3d11-flip=no` is worth having on NVIDIA (0 of 44 against 3 of 44, a hint).
 - [ ] 14.12 Parked (2026-11-12): X11, Direct, a GNOME screenshot taken as a video says it has loaded shows the
   loading card, the picture 0.3-0.7 s later. `mpv_transport`'s random start sees it, failing on the Ubuntu VM 5 runs of
   16, then 8 of 8 (2026-11-12), as often with mpvs starting together as in turn. Windows passes. You see no glitch
