@@ -1053,6 +1053,31 @@ CPU took 0.5-5.5 s, against 0.2-1.1 s on the key frame, which is about what VLC 
     0.15 µs, checked against python-mpv's own, value for value, with the real libmpv.
   - Smaller than the 2-5% guessed: about 1% of a core at 36 cells, where the bench's one run gave 140% to 139%. Not
     benched again, as that is within a run's noise.
+- [ ] 10.34 **Picture quality: Auto / Fast / High (your call, 2026-11-12).** Every video now gets mpv's `fast` profile,
+  plain bilinear: right for small cells, soft on one big video (Single mode, a big cell, full screen).
+  - **Auto** (default) picks by the size a cell is drawn at, again on each resize: Fast below about 0.6 MP, `catmull_rom`
+    up / bilinear down with no dither up to about 1.5 MP, mpv's own defaults above. The options can change while a video
+    plays. Each level names every option it touches, so a switch leaves nothing of the last one behind.
+  - **Fast** and **High** hold one level whatever the size.
+  - No stepping down when frames drop: it flips up and down, and a decoder's dropped frames aren't helped by a cheaper
+    scaler.
+  - Hardware MPV, all three outputs. Software MPV stays on swscale's fast bilinear: greyed out there.
+  - Measure before picking the limits: fps and GPU at 1, 4, 16 and 36 cells per level, on both machines.
+  - Idea from Brick2892's fork (github.com/Brick2892/gridplayermpv, its Auto preset). Ours is written from scratch;
+    credit the idea in the CHANGELOG and as co-author of the first `feat` commit (see "Credit" in AGENTS.md).
+- [ ] 10.35 **mpv options, typed in (your call, 2026-11-12).** An advanced box, `name=value` a line, for Hardware MPV:
+  for the few who want libplacebo's options, a decoder of their choice (`hwdec=nvdec`), `gpu-api` or `vo=gpu-next` on
+  Direct, without a settings row for each.
+  - Applied last, over the settings. Options the app manages itself are refused with a short note under the box, not
+    applied quietly: `wid`, `vo` / `gpu-context` / `gpu-api` on Copy and Shared, `hwdec` while a filter needs frames on
+    the CPU, the placement and subtitle options of Direct, `ao` and the audio device, `input-*`, scripts, `config`.
+  - An option this libmpv doesn't know stops mpv starting (see "libmpv versions" in AGENTS.md): check each name with
+    `option_info` once mpv is made and drop an unknown one with a note, so a typo can't stop every video playing.
+  - Reach: every video, or the playlist's own, like the other video settings? Decide when building.
+  - Also from Brick2892's fork (its "mpv Options"); credit as 10.34.
+  - Not done instead: a libplacebo settings page like mpv.net's (shaders take mpv off its fast path, half the frames at
+    4x1080p60, see Stage 7), or rows for `gpu-api` / `vo` / `gpu-context` (each default was picked for a bug found; those
+    get measured in 14.11's runs instead).
 
 ## Stage 11: macOS
 
@@ -1537,6 +1562,9 @@ How it goes in, by what's there already:
 
 Newest first. What was finished and seen working, and anything that changed the plan.
 
+- 2026-11-12: Added 10.34 (Picture quality Auto / Fast / High) and 10.35 (mpv options typed in), both ideas from
+  Brick2892's fork, to be credited. Today's Linux Direct fixes seen on `test_gpu` (sway, libmpv 0.40, vaapi): all 11 MPV
+  scenarios pass on Direct, `mpv_subtitles` 5 of 5 more under `MALLOC_CHECK_=3` with no heap abort.
 - 2026-11-12: Under X11 a Direct mpv starts once every one closed is gone, or after 3 s
   (`MpvRenderService._is_waiting_for_gone`). glibc aborted the app on a broken heap (`corrupted size vs. prev_size`,
   `unsorted double linked list corrupted`, ...) in 3 of 7 runs of `mpv_subtitles` on Ubuntu Direct, whose reloads

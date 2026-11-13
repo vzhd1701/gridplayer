@@ -233,6 +233,15 @@ One GL surface draws all of a window's videos, under the cells
   done inside `GLVideoSurface.grabbing()` (`VideoFrameMpv.grab` and the
   real-app driver's `shot` do).
 
+## Credit
+
+A feature taken from someone else's fork or pull request, as code or as an
+idea, credits them: at least its first `feat` commit ends with a
+`Co-authored-by:` line for that author, beside any other trailers. Use the
+address they commit with, or their GitHub noreply address
+(`<id>+<login>@users.noreply.github.com`, the id from
+`gh api users/<login> --jq .id`).
+
 ## Code style
 
 * Follow the Ruff configuration in `pyproject.toml`.
