@@ -1616,19 +1616,36 @@ How it goes in, by what's there already:
     in the surface (XQueryTree every 2 ms), before its first frame.
   - Next, if it's ever seen: on `test_gpu` (sway, a real GPU, 50-150 ms there before), and mpv's X window given a black
     background so it's never the card's pixels; or mpv's drawing traced (Present, Damage) to see what holds it.
-- [ ] 14.13 **Direct's starts in turn, at less cost (your call, 2026-11-13).** What crashes is mpvs making and letting go of
-  their outputs at once (`MPV_DIRECT_CRASHES.md`), not opening files. The turns now hold all of a start, network and
-  buffering too: the next waits for the last to play or 1 s, so 16 streams can take about 16 s to all start, 25 local files
-  9.0 s against 5.8 s. Rejected instead: a setting to start them together, crashes or speed (1 in 250-1200 opens of three on
-  NVIDIA, about 1 in 50 on AMD, the whole app down each time).
-  - All start together with no video track (`vid=no`: mpv makes its output only once one is chosen), so reading, network and
-    buffering go on side by side; then each gets its track in turn, the next as soon as the last's output is up
-    (`vo-configured`), or it fails, or after a while. The wait for one closed to be gone stays as it is.
-  - Check first that mpv makes no output with no video track and a `wid`, on Windows and X11, and that choosing the track
-    later gives the picture at once, paused or not, with the subtitle, turns and placement it had.
-  - Measure before and after: 16 streams and 25 local files, Windows NVIDIA, AMD and Ubuntu, time until all play. Then the
-    crash hunt again, NVIDIA and AMD, 48 runs each, for 0.
-  - If it holds, `d3d11-flip=no` needs no night of its own.
+- [x] 14.13 **Direct's starts in turn, at less cost (your call, 2026-11-13; built 2026-11-13).** What crashes is mpvs making
+  and letting go of their outputs at once (`MPV_DIRECT_CRASHES.md`), not opening files. The turns held all of a start, network
+  and buffering too: the next waited for the last to play or 1 s. Rejected instead: a setting to start them together, crashes or
+  speed (1 in 250-1200 opens of three on NVIDIA, about 1 in 50 on AMD, the whole app down each time).
+  - Built: every mpv opens its file at once and is held at `on_preloaded`, tracks picked, nothing made
+    (`MpvPlayer._hold_output`, `output_due`); the service lets them go on in turn (`let_output_start`), the next once the last's
+    output is up (`vo-configured`, `output_up`), or it plays, fails or ends, or after 1 s. The wait for one closed to be gone
+    stays. Under X11 all go on together, as before.
+  - Not `vid=no`, as planned: mpv ends a file with no sound and no video track at once ("No video or audio streams
+    selected"), and one with sound starts playing it, the picture joining later. Held at the hook, mpv makes no output (no
+    `vo/gpu` line until let go on) and still takes a pause or a seek. Closed while held, mpv's quit waits for the hook, and
+    let go on it made its output on the way out (41 lines of it): it's sent `stop` first, and ends at once, with none.
+  - Timings, 3 runs each, before / after, until all play: 25 local files, NVIDIA 8.5-8.8 / 8.5-8.7 s, AMD 6.8-6.9 /
+    6.7 s (a turn is mpv making its output and shaders, about 0.28 s at 1080p on NVIDIA, the part to keep apart); 16 test
+    streams with each request held 0.15 s, NVIDIA 20.9-21.5 / 11.3-11.8 s, AMD 19.3-20.0 / 9.7-11.1 s. From the first stream
+    playing to the last, 11.7 / 2.3 s on NVIDIA. Ubuntu VM, where they never took turns: 25 files 1.7-2.1 / 1.7-2.0 s,
+    16 streams 5.0-5.1 / 4.9-5.0 s.
+  - Crash hunt, 48 runs of 60 rounds each: NVIDIA 0 / 48, AMD 0 / 48 (14 / 19 all together, 6 / 24 in turn without the wait for
+    those closed). About a quarter of the mpvs were closed while held. Outputs up in 125 ms (median), 356 ms at most.
+  - All 10 MPV scenarios pass on Windows Direct; on the Ubuntu VM all 11 but `mpv_transport`'s random start, which is
+    14.12's.
+  - `d3d11-flip=no` needs no night of its own.
+  - From `/code-review`: one closed as its file opens is stopped before it goes on too (`MpvPlayer._let_hook_go`, one place
+    for every way a hook is let go of), and a live stream paused while it waits is let go of stopped, its turn passing at
+    once. A paused live stream played again now waits its turn, as mpv makes its output again. Still outside the turns: a
+    video track turned on again after being off, which makes an output at once (as before). After the fixes: all 10 MPV
+    scenarios pass on Windows Direct, and the hunt 0 / 8 on NVIDIA and AMD. A slip in the hunt's script once let all go on
+    at once: AMD crashed in 5 of 8 runs, as before the turns.
+  - Seen on the way: on Windows, 16 test streams take 8-9 s to resolve before any mpv starts (2.6 s on the Ubuntu VM), before
+    and after alike.
 
 ---
 
@@ -1636,6 +1653,9 @@ How it goes in, by what's there already:
 
 Newest first. What was finished and seen working, and anything that changed the plan.
 
+- 2026-11-13: 14.13 built: Direct's mpvs open their files at once and are held before making their outputs, let go on in
+  turn. 16 streams all playing in about half the time on NVIDIA and AMD, local files as before; crash hunt 0 / 48 on each.
+  Held at `on_preloaded` rather than `vid=no`, which ends a file with no sound.
 - 2026-11-12: Added 10.34 (Picture quality Auto / Fast / High) and 10.35 (mpv options typed in), both ideas from
   Brick2892's fork, to be credited. Today's Linux Direct fixes seen on `test_gpu` (sway, libmpv 0.40, vaapi): all 11 MPV
   scenarios pass on Direct, `mpv_subtitles` 5 of 5 more under `MALLOC_CHECK_=3` with no heap abort.
