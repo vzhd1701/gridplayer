@@ -181,17 +181,69 @@ export UPDATE_INFORMATION="gh-releases-zsync|vzhd1701|gridplayer|$APP_UPDATE_REL
 export ARCH="x86_64"
 export VERSION="$APP_FILE_VERSION"
 
-./linuxdeploy-x86_64.AppImage \
-    -l /lib64/libxcb-icccm.so.4 \
-    -l /lib64/libxcb-render-util.so.0 \
-    -l /lib64/libxcb-util.so.1 \
-    -l /lib64/libxcb-image.so.0 \
-    -l /lib64/libxcb-keysyms.so.1 \
-    -l /lib64/libxkbcommon-x11.so.0 \
-    -l /lib64/libxcb-xinerama.so.0 \
-    "${FALLBACK_EXCLUDES[@]}" \
-    --appdir AppDir \
-    --output appimage
+deploy() {
+    ./linuxdeploy-x86_64.AppImage \
+        -l /lib64/libxcb-icccm.so.4 \
+        -l /lib64/libxcb-render-util.so.0 \
+        -l /lib64/libxcb-util.so.1 \
+        -l /lib64/libxcb-image.so.0 \
+        -l /lib64/libxcb-keysyms.so.1 \
+        -l /lib64/libxkbcommon-x11.so.0 \
+        -l /lib64/libxcb-xinerama.so.0 \
+        "${FALLBACK_EXCLUDES[@]}" \
+        --appdir AppDir \
+        "$@"
+}
+
+# What goes in is known only once it's in
+deploy
+
+echo "==> Adding licences"
+
+# VLC, libmpv and much of what they take are GPL or LGPL: the licences of the
+# packages each library here came from go with them, and where their source is
+LICENSES_DIR="./AppDir/usr/share/licenses"
+mkdir -p "$LICENSES_DIR/$APP_MODULE"
+cp "$ROOT_DIR/LICENSE" "$LICENSES_DIR/$APP_MODULE/"
+
+PACKAGES=$(
+    cd ./AppDir/usr/lib
+    find . -type f -name "*.so*" | while read -r file; do
+        for system_file in "/usr/lib64/${file#./}" "/usr/lib64/$(basename "$file")"; do
+            if [ -e "$system_file" ]; then
+                rpm -qf --qf "%{NAME}\n" "$system_file" || true
+                break
+            fi
+        done
+    done | grep -v "not owned" | sort -u
+)
+
+for package in $PACKAGES; do
+    if [ -d "/usr/share/licenses/$package" ]; then
+        cp -a "/usr/share/licenses/$package" "$LICENSES_DIR/"
+    fi
+done
+
+{
+    echo "Where the source of what is bundled here is:"
+    echo
+    echo "GridPlayer $APP_VERSION"
+    echo "    $APP_URL"
+    echo
+    echo "The libraries come from these packages of AlmaLinux 9, EPEL 9 and"
+    echo "RPM Fusion (free, EL 9), each named with its source RPM:"
+    echo
+    for package in $PACKAGES; do
+        rpm -q --qf "    %{NAME}-%{VERSION}-%{RELEASE} (%{SOURCERPM})\n" "$package"
+    done
+    echo
+    echo "Source RPMs:"
+    echo "    https://repo.almalinux.org/vault/9/"
+    echo "    https://dl.fedoraproject.org/pub/epel/9/Everything/source/tree/"
+    echo "    https://download1.rpmfusion.org/free/el/updates/9/SRPMS/"
+} > "$LICENSES_DIR/SOURCES.txt"
+
+deploy --output appimage
 
 chmod 777 "$BUILD_DIR_APPIMAGE/$APP_NAME"*.AppImage*
 mv "$BUILD_DIR_APPIMAGE/$APP_NAME"*.AppImage* "$DIST_DIR"

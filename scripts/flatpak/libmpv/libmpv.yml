@@ -19,8 +19,10 @@ config-opts:
   - -Dmanpage-build=disabled
   - -Dhtml-build=disabled
   - -Dpdf-build=disabled
+# not /share/licenses, where flatpak-builder puts the licence
 cleanup:
-  - /share
+  - /share/doc
+  - /share/man
 sources:
   - type: git
     url: https://github.com/mpv-player/mpv.git
@@ -31,7 +33,7 @@ modules:
 - name: mpv-ffmpeg
   cleanup:
     - /bin
-    - /share
+    - /share/ffmpeg
   config-opts:
     - --enable-pic
     - --enable-shared

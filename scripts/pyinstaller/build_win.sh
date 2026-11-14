@@ -11,7 +11,8 @@ if [ -z "$BUILD_ARCH" ]; then
     BUILD_ARCH=$(python -c "import platform; print('win32' if platform.architecture()[0] == '32bit' else 'win64')")
 fi
 
-VLC_URL="https://get.videolan.org/vlc/3.0.24/$BUILD_ARCH/vlc-3.0.24-$BUILD_ARCH.zip"
+VLC_VERSION="3.0.24"
+VLC_URL="https://get.videolan.org/vlc/$VLC_VERSION/$BUILD_ARCH/vlc-$VLC_VERSION-$BUILD_ARCH.zip"
 PYINSTALLER_VERSION="6.22.3"
 
 # shinchiro's libmpv builds, the ones mpv.io points to for Windows. GitHub
@@ -26,6 +27,8 @@ else
     LIBMPV_SHA256="7c147cb7ceaba717414e782ef4398de728f679db6e86daaa8aeb175670cb7994"
 fi
 LIBMPV_URL="https://downloads.sourceforge.net/project/mpv-player-windows/libmpv/$LIBMPV_ARCHIVE"
+# the mpv commit the build is of, which GitHub takes short
+LIBMPV_COMMIT="${LIBMPV_BUILD##*-git-}"
 
 mkdir -p "$BUILD_DIR"
 
@@ -138,3 +141,41 @@ fi
 if [ ! -d "$DIST_DIR/$APP_NAME/libmpv" ]; then
     cp -a "$LIBMPV_EMBED_SRC" "$DIST_DIR/$APP_NAME/libmpv"
 fi
+
+echo "Adding licences"
+
+# VLC and libmpv are GPL builds: their licences go with them, and where
+# their source is
+LICENSES_DIR="$DIST_DIR/$APP_NAME/licenses"
+LIBMPV_LICENSES="$BUILD_DIR/libmpv-licenses-$LIBMPV_COMMIT"
+
+if [ ! -d "$LIBMPV_LICENSES" ]; then
+    mkdir -p "$LIBMPV_LICENSES.part"
+    wget -q -O "$LIBMPV_LICENSES.part/mpv-Copyright.txt" "https://raw.githubusercontent.com/mpv-player/mpv/$LIBMPV_COMMIT/Copyright"
+    wget -q -O "$LIBMPV_LICENSES.part/mpv-GPL-2.0.txt" "https://raw.githubusercontent.com/mpv-player/mpv/$LIBMPV_COMMIT/LICENSE.GPL"
+    mv "$LIBMPV_LICENSES.part" "$LIBMPV_LICENSES"
+fi
+
+rm -rf "$LICENSES_DIR"
+mkdir -p "$LICENSES_DIR"
+
+cp "$ROOT_DIR/LICENSE" "$LICENSES_DIR/GridPlayer-GPL-3.0.txt"
+unzip -p "$BUILD_DIR/vlc.zip" "vlc-$VLC_VERSION/COPYING.txt" > "$LICENSES_DIR/VLC-GPL-2.0.txt"
+cp "$LIBMPV_LICENSES"/* "$LICENSES_DIR"
+
+cat > "$LICENSES_DIR/SOURCES.txt" <<EOF
+Where the source of what is bundled here is:
+
+GridPlayer $APP_VERSION
+    $APP_URL
+
+libmpv ($LIBMPV_ARCHIVE)
+    mpv: https://github.com/mpv-player/mpv/tree/$LIBMPV_COMMIT
+    built with FFmpeg and the libraries it takes by
+    https://github.com/shinchiro/mpv-winbuild-cmake, whose build files name
+    each one's source; the build: $LIBMPV_URL
+
+VLC $VLC_VERSION (libVLC)
+    https://get.videolan.org/vlc/$VLC_VERSION/vlc-$VLC_VERSION.tar.xz
+    the build: $VLC_URL
+EOF

@@ -59,9 +59,18 @@ config-opts:
 # needed for snapshots
 #- "--disable-sout"
 
+# Not all of /share: flatpak-builder puts each module's licence in
+# /share/licenses, and a module's cleanup takes it out with the rest
 cleanup:
 - "/bin"
-- "/share"
+- "/share/applications"
+- "/share/doc"
+- "/share/icons"
+- "/share/kde4"
+- "/share/locale"
+- "/share/man"
+- "/share/metainfo"
+- "/share/vlc"
 - "/lib/cmake"
 - "*.la"
 - "*.a"
@@ -236,7 +245,7 @@ modules:
 - name: ffmpeg
   cleanup:
     - /bin
-    - /share
+    - /share/ffmpeg
   config-opts:
     - --enable-pic
     - --enable-shared
