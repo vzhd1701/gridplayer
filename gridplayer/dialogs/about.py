@@ -137,12 +137,20 @@ class AboutDialog(QDialog):
                     "GPL 2.0 or later",
                     "https://www.videolan.org/",
                 ),
+                # the builds shipped are mpv's GPL ones, FFmpeg's too
                 Attribution(
                     "MPV",
                     env.MPV_VERSION,
                     "mpv contributors",
-                    "GPL 2.0 or later, or LGPL 2.1 or later",
+                    "GPL 2.0 or later",
                     "https://mpv.io/",
+                ),
+                Attribution(
+                    "FFmpeg",
+                    None,
+                    "FFmpeg developers",
+                    "GPL 2.0 or later",
+                    "https://ffmpeg.org/",
                 ),
             ],
             "python": [
