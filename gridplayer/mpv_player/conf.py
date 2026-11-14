@@ -207,7 +207,7 @@ def check_conf(mpv_module, is_direct: bool) -> tuple[int, list[Skipped]] | None:
     lines, skipped = parse_conf(read_conf())
 
     try:
-        mpv = mpv_module.MPV(vo="null", ao="null", load_scripts=False, ytdl=False)
+        mpv = mpv_module.MPV(vo="null", ao="null", load_scripts=False)
     # what a libmpv that won't take what it's asked can raise
     except Exception:
         _log.exception("Could not start mpv to check mpv.conf")

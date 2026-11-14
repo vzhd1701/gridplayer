@@ -1325,7 +1325,6 @@ def test_options_leave_no_hardware_saving_out():
     assert options["hwdec_extra_frames"] == 0
     assert options["video_timing_offset"] == 0
     assert options["keepaspect"] is False
-    assert options["ytdl"] is False
 
 
 @pytest.mark.parametrize(
@@ -1430,19 +1429,28 @@ def _knowing(*names):
 
 def test_built_in_scripts_are_left_out_of_those_mpv_has():
     module, started = _knowing(
-        "vo", "load-stats-overlay", "load-osd-console", "load-auto-profiles"
+        "vo", "ytdl", "load-stats-overlay", "load-osd-console", "load-auto-profiles"
     )
 
     off = player_module._BuiltInScripts().off(module)
 
     assert off == {
+        "ytdl": False,
         "load_stats_overlay": False,
         "load_osd_console": False,
         "load_auto_profiles": False,
     }
     ((options, reader),) = started
     assert options["load_scripts"] is False
+    # what a libmpv without Lua lacks isn't asked of the one reading
+    assert "ytdl" not in options
     reader.terminate.assert_called_once()
+
+
+def test_built_in_scripts_none_in_a_libmpv_without_lua():
+    module, _ = _knowing("vo", "load-scripts", "hwdec")
+
+    assert player_module._BuiltInScripts().off(module) == {}
 
 
 def test_built_in_scripts_take_the_consoles_new_name_where_there_is_one():

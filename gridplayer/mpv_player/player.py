@@ -332,8 +332,11 @@ def audio_chain(mode: AudioChannelMode, track_channels: int) -> dict:
 # mpv's own scripts, which load_scripts leaves running: stats, the console and,
 # from 0.39, the menus they share. None of them is used, and each is a Lua
 # state on a thread of its own, 5 threads a video on 0.41. The console's option
-# took another name in 0.39, the old one kept as a warning.
+# took another name in 0.39, the old one kept as a warning. ytdl is the hook
+# that hands links to yt-dlp: links are the app's to resolve. A libmpv built
+# without Lua, as the Flatpak's, has none of these.
 _BUILT_IN_SCRIPTS = (
+    "ytdl",
     "load-stats-overlay",
     "load-console",
     "load-auto-profiles",
@@ -364,9 +367,7 @@ class _BuiltInScripts:
     @staticmethod
     def _read(mpv_module) -> dict[str, bool]:
         try:
-            reader = mpv_module.MPV(
-                vo="null", ao="null", load_scripts=False, ytdl=False
-            )
+            reader = mpv_module.MPV(vo="null", ao="null", load_scripts=False)
         # what a libmpv that won't take what it's asked can raise
         except Exception:
             _log.exception("Could not read mpv's options")
@@ -423,7 +424,6 @@ class _AudioDevices:
                 vo="null",
                 ao="null",
                 load_scripts=False,
-                ytdl=False,
                 **_BUILT_IN_SCRIPTS_OFF.off(mpv_module),
             )
         # what a libmpv that won't take what it's asked can raise
@@ -687,9 +687,7 @@ class MpvPlayer(QObject):
             "demuxer_max_back_bytes": "16MiB",
             "input_default_bindings": False,
             "input_vo_keyboard": False,
-            # links are the app's to resolve, and files beside a video are
-            # only offered once asked for
-            "ytdl": False,
+            # files beside a video are only offered once asked for
             "audio_file_auto": "no",
             "sub_auto": "no",
             "cover_art_auto": "no",
