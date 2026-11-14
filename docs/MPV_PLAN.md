@@ -1076,7 +1076,7 @@ CPU took 0.5-5.5 s, against 0.2-1.1 s on the key frame, which is about what VLC 
     read-back. Checked: unit tests, `mpv_basics` (High and Fast switched live) on Copy and Direct, and Auto taking up
     High for one big video and leaving it at four cells, Copy and Direct. Credit in the CHANGELOG still due (12.5).
     The bench's `quality=` sets the setting now (the table's 360p rows were rendered at 640x360 whatever the level).
-- [ ] 10.35 **mpv options, typed in (your call, 2026-11-12).** An advanced box, `name=value` a line, for Hardware MPV:
+- [x] 10.35 **mpv options, typed in (your call, 2026-11-12).** An advanced box, `name=value` a line, for Hardware MPV:
   for the few who want libplacebo's options, a decoder of their choice (`hwdec=nvdec`), `gpu-api` or `vo=gpu-next` on
   Direct, without a settings row for each.
   - Applied last, over the settings. Options the app manages itself are refused with a short note under the box, not
@@ -1089,6 +1089,18 @@ CPU took 0.5-5.5 s, against 0.2-1.1 s on the key frame, which is about what VLC 
   - Not done instead: a libplacebo settings page like mpv.net's (shaders take mpv off its fast path, half the frames at
     4x1080p60, see Stage 7), or rows for `gpu-api` / `vo` / `gpu-context` (each default was picked for a bug found; those
     get measured in 14.11's runs instead).
+  - **Built 2026-11-14 as a file, not a box (your call):** few would use a box, mostly to get round a driver bug or
+    when asked to for a bug report. "Use mpv.conf" in Video Decoder's Experimental section, shown only with an MPV
+    driver, with Open (makes the file from a commented template, else picks it out in its folder) and Check, both left
+    of the switch and shown only while it's on (`Slot(before_field=True)`). Check
+    lists each line skipped and why, as logging is off by default. `mpv.conf` beside `settings.ini`, read as each video
+    opens, every video (`mpv_player/conf.py`). mpv's format: `name=value`, a name alone, `no-name`, `#`; profiles
+    skipped. Set at once over the app's own just before `loadfile`, a value mpv won't take skipped; then left alone by
+    the app (`set_option` passes them by), but for `hwdec`, which deinterlacing in a filter needs its way (skipped
+    while one is on). Skipped as the app's own: window, `gpu-context`, sound device, view, tracks, playback, input,
+    scripts, other files; `vo` / `gpu-api` only on Direct, Direct's subtitle layout only elsewhere. Checked: unit
+    tests, real libmpv (Check and a playing video agree), Direct on `vo=gpu-next` draws. Credit in the CHANGELOG
+    still due (12.5).
 
 ## Stage 11: macOS
 
@@ -1690,6 +1702,7 @@ How it goes in, by what's there already:
 
 Newest first. What was finished and seen working, and anything that changed the plan.
 
+- 2026-11-14: 10.35 built as "Use mpv.conf" (Experimental), not a typed-in box.
 - 2026-11-14: 10.34 Picture quality built: Auto / Fast / High, no middle level (measured, see the item). The Ubuntu VM
   passed `mpv_audio`, `mpv_streams` and `mpv_basics` after 14.14/14.15's review fixes.
 - 2026-11-13: 14.11 closed. 14.14: 16 HLS links play in 7.1-7.6 s on Windows, not 10.8-12.7 s: links to lists
