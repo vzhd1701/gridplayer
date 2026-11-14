@@ -47,5 +47,6 @@ cleanup:
 
 modules:
 - libvlc.yml
+- libmpv.yml
 - dependencies.yml
 - uv_build.yml

@@ -1,0 +1,73 @@
+# libmpv and what it needs that the runtime doesn't have, or has of an older
+# kind than VLC's module leaves in /app: VLC 3 takes ffmpeg 4.4 and libplacebo
+# 0.2, mpv 7.x of both. Built after VLC, so these headers are the ones about;
+# every library has a name of its own (libavcodec.so.61 beside .58), and VLC's
+# stay for VLC. Needs nothing of VLC's module, which can go.
+name: mpv
+buildsystem: meson
+config-opts:
+  - -Dlibmpv=true
+  - -Dcplayer=false
+  - -Dbuild-date=false
+  # nothing here runs scripts, reads discs or archives
+  - -Dlua=disabled
+  - -Djavascript=disabled
+  - -Dlibarchive=disabled
+  - -Dlibbluray=disabled
+  - -Ddvdnav=disabled
+  - -Dcdda=disabled
+  - -Dmanpage-build=disabled
+  - -Dhtml-build=disabled
+  - -Dpdf-build=disabled
+cleanup:
+  - /share
+sources:
+  - type: git
+    url: https://github.com/mpv-player/mpv.git
+    tag: v0.42.0
+    commit: b0841e8c4d156b8403dc1876c4cbd9011eb583f3
+
+modules:
+- name: mpv-ffmpeg
+  cleanup:
+    - /bin
+    - /share
+  config-opts:
+    - --enable-pic
+    - --enable-shared
+    - --disable-static
+    - --disable-doc
+    - --disable-programs
+    - --enable-gpl
+    - --enable-version3
+    - --enable-libdav1d
+    - --enable-libdrm
+    - --enable-vaapi
+  sources:
+    - type: archive
+      url: https://ffmpeg.org/releases/ffmpeg-7.1.5.tar.xz
+      sha256: de668509caf9e35e3cd162473441fdb29538c6d96ed080292b3cf9e6fc5d558f
+- name: mpv-libass
+  config-opts:
+    - --enable-harfbuzz
+    - --enable-fontconfig
+  sources:
+    - type: archive
+      url: https://github.com/libass/libass/releases/download/0.17.5/libass-0.17.5.tar.xz
+      sha256: 2dca25c0e0c837ddf00b52011b3f82cac1e4ddd3ad018227806b0c2288864acc
+- name: mpv-libplacebo
+  buildsystem: meson
+  config-opts:
+    # mpv draws through OpenGL here
+    - -Dvulkan=disabled
+    - -Dd3d11=disabled
+    - -Dshaderc=disabled
+    - -Dglslang=disabled
+    - -Dlibdovi=disabled
+    - -Ddemos=false
+    - -Dtests=false
+  sources:
+    - type: git
+      url: https://code.videolan.org/videolan/libplacebo.git
+      tag: v7.387.0
+      commit: 275f7dea27924cdd34ab2e6c20e448b6bc4fab65

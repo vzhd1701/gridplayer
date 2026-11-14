@@ -28,6 +28,7 @@ cp "$DIST_DIR"/*.tar.gz "$BUILD_DIR_FLATPAK"
 cp -R "$BUILD_DIR/meta" "$BUILD_DIR_FLATPAK"
 
 cp "$SCRIPT_DIR"/libvlc/* "$BUILD_DIR_FLATPAK"
+cp "$SCRIPT_DIR"/libmpv/* "$BUILD_DIR_FLATPAK"
 
 if [ ! -f "$BUILD_DIR/flatpak_python_deps/dependencies.yml" ]; then
     "$SCRIPT_DIR/generate_dependencies.sh"
