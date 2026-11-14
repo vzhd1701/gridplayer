@@ -168,6 +168,10 @@ class VideoDriverManager(ManagerBase):
         if self._mpv_render_service:
             self._mpv_render_service.set_skip_frames(is_skipping)
 
+    def set_mpv_picture_quality(self, quality):
+        if self._mpv_render_service:
+            self._mpv_render_service.set_picture_quality(quality)
+
     def apply_subtitle_style(self):
         if self._mpv_render_service:
             self._mpv_render_service.set_subtitle_style(current_subtitle_style())

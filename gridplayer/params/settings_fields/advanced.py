@@ -246,6 +246,19 @@ ADVANCED_FIELDS: tuple[SettingField, ...] = (
             " videos when video memory runs low. Works for videos opened after.",
         ),
     ),
+    ComboField(
+        settings_key="player/mpv_picture_quality",
+        label=translate("SettingsDialog", "Picture quality"),
+        choices=choices.mpv_picture_qualities,
+        # Software MPV scales on the CPU, always the fast way
+        enabled_when=When("player/video_driver", (VideoDriver.MPV_HW,)),
+        tooltip=translate(
+            "SettingsDialog",
+            "How sharp a video looks when it's made bigger or smaller. High"
+            " takes more of the GPU. Auto uses Fast for small videos and High"
+            " for big ones.",
+        ),
+    ),
     CheckboxField(
         settings_key="player/mpv_direct_rendering",
         label=translate("SettingsDialog", "Hand frames straight to the GPU"),

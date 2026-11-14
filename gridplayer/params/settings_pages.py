@@ -399,6 +399,7 @@ PAGES = (
                 "player/video_driver",
                 Indented("player/video_driver_players"),
                 Indented(Row("player/mpv_output", Slot("mpv_output_help"))),
+                Indented("player/mpv_picture_quality"),
                 Indented("player/mpv_cpu_decoding"),
                 Indented("player/mpv_direct_rendering"),
                 Indented("player/mpv_skip_frames"),

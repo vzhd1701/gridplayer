@@ -235,6 +235,7 @@ class VideoDriverMpv(VLCVideoDriver):
         pane_box,
         full_size,
         is_on_show,
+        on_scaling_changed=None,
         **kwargs,
     ):
         super().__init__(**kwargs)
@@ -250,6 +251,10 @@ class VideoDriverMpv(VLCVideoDriver):
         self._pane_box = pane_box
         self._full_size = full_size
         self._is_on_show = is_on_show
+        # see MpvPlayer.scaling_changed
+        self._on_scaling_changed = on_scaling_changed
+        # kept for the next player, see set_shown_size
+        self._shown_size: tuple[tuple[int, int], tuple[int, int]] | None = None
 
         self._player: MpvPlayer | None = None
         self._rendered: RenderedVideo | None = None
@@ -320,6 +325,13 @@ class VideoDriverMpv(VLCVideoDriver):
             return
 
         self._player.set_on_show(self._is_on_show())
+        # before the size, which can take High up
+        if self._on_scaling_changed is not None:
+            self._player.scaling_changed.connect(
+                self._on_scaling_changed, Qt.QueuedConnection
+            )
+        if self._shown_size is not None:
+            self._player.set_shown_size(*self._shown_size)
 
         # Queued for good, whatever thread these are said on: the observers
         # run on a thread Qt doesn't know, and auto can take that for this one
@@ -348,6 +360,7 @@ class VideoDriverMpv(VLCVideoDriver):
             media_input,
             hwdec=self._hwdec,
             skip_frames=Settings().get("player/mpv_skip_frames"),
+            picture_quality=Settings().get("player/mpv_picture_quality"),
             direct_rendering=Settings().get("player/mpv_direct_rendering"),
             is_software=self._is_software,
             cpu_when_low=self._cpu_when_low,
@@ -503,6 +516,18 @@ class VideoDriverMpv(VLCVideoDriver):
     def set_render_size(self, size: tuple[int, int]) -> None:
         if self._player is not None:
             self._player.set_render_size(size)
+
+    def set_shown_size(
+        self, size: tuple[int, int], source_size: tuple[int, int]
+    ) -> None:
+        self._shown_size = size, source_size
+
+        if self._player is not None:
+            self._player.set_shown_size(size, source_size)
+
+    @property
+    def is_scaling_high(self) -> bool:
+        return self._player is not None and self._player.is_scaling_high
 
     def set_on_show(self, is_on_show: bool) -> None:
         if self._player is not None:
@@ -762,6 +787,18 @@ class MpvFrame:
     def _is_subtitle_on_show(self) -> bool:
         return self.media is not None and self.media.cur_subtitle_track is not None
 
+    def _push_shown_size(self) -> None:
+        placement = self.view_placement()
+
+        if placement is not None:
+            _, _, width, height = placement.target
+            _, _, source_width, source_height = placement.source
+            ratio = self.devicePixelRatioF()
+            self.video_driver.set_shown_size(
+                (round(width * ratio), round(height * ratio)),
+                (round(source_width), round(source_height)),
+            )
+
     def _push_subtitle_view(self) -> None:
         """Keeps a subtitle readable and on show, whatever the view does to the
         picture."""
@@ -823,6 +860,7 @@ class VideoFrameMpv(MpvFrame, PaintedVideoFrame, VideoFrameVLC):
             pane_box=self._pane_box,
             full_size=self._full_render_size,
             is_on_show=self._is_on_show,
+            on_scaling_changed=self._push_render_size,
             parent=self,
         )
 
@@ -836,6 +874,7 @@ class VideoFrameMpv(MpvFrame, PaintedVideoFrame, VideoFrameVLC):
 
         # at once: only the frame's size has a reason to wait
         self._push_subtitle_view()
+        self._push_shown_size()
 
         if self._is_first_size_due and self.isVisible():
             self._is_first_size_due = False
@@ -872,9 +911,14 @@ class VideoFrameMpv(MpvFrame, PaintedVideoFrame, VideoFrameVLC):
             self.devicePixelRatioF(),
             self._pixel_aspect(),
             self._transform,
-            # a small picture is only blurred by drawing it big, its text isn't
-            sharp_in=self._pane_box() if self._is_subtitle_on_show() else None,
+            # A small picture is only blurred by drawing it big, its text isn't;
+            # nor is it with High picture quality, as mpv makes it bigger then,
+            # sharper than the surface's bilinear.
+            sharp_in=self._pane_box() if self._is_drawn_big() else None,
         )
+
+    def _is_drawn_big(self) -> bool:
+        return self._is_subtitle_on_show() or self.video_driver.is_scaling_high
 
     def _render_size_now(self) -> tuple[int, int] | None:
         placement = self.view_placement()

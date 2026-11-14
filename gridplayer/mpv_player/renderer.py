@@ -1148,6 +1148,10 @@ class MpvRenderService(QObject):
         for player in self._players():
             player.set_skip_frames(is_skipping)
 
+    def set_picture_quality(self, quality) -> None:
+        for player in self._players():
+            player.set_picture_quality(quality)
+
     def set_subtitle_style(self, style: dict) -> None:
         for player in self._players():
             player.set_subtitle_style(style)

@@ -40,6 +40,7 @@ from gridplayer.mpv_player.player import (
     calc_fit_size,
     devices_of_first_output,
 )
+from gridplayer.mpv_player.quality import FAST, high_options
 from gridplayer.mpv_player.renderer import (
     _DELETE_SYNC_PROTO,
     _FENCE_SYNC_PROTO,
@@ -67,6 +68,7 @@ from gridplayer.params.static import (
     AudioChannelMode,
     MpvCpuDecoding,
     MpvOutput,
+    MpvPictureQuality,
     SeekAim,
     SeekPrecision,
     SubtitleOutline,
@@ -418,6 +420,29 @@ def test_the_renderer_never_writes_what_is_on_show():
 # -- one mpv instance, with python-mpv standing in
 
 
+# what mpv 0.41 says its defaults are, of the options picture quality sets
+_MPV_DEFAULTS = {
+    "scale": "lanczos",
+    "dscale": "hermite",
+    "dither": "fruit",
+    "correct-downscaling": True,
+    "linear-downscaling": True,
+    "sigmoid-upscaling": True,
+    "hdr-compute-peak": "auto",
+    "allow-delayed-peak-detect": False,
+}
+_HIGH = {
+    "scale": "lanczos",
+    "dscale": "hermite",
+    "dither": "fruit",
+    "correct-downscaling": "yes",
+    "linear-downscaling": "yes",
+    "sigmoid-upscaling": "yes",
+    "hdr-compute-peak": "auto",
+    "allow-delayed-peak-detect": "no",
+}
+
+
 class _FakeMpv:
     chapter_list = None
     mpv_version = "mpv v0.37.0"
@@ -450,6 +475,9 @@ class _FakeMpv:
     def option_info(self, name):
         if name == "deinterlace":
             return {"type": "Choice", "choices": ["no", "yes", "auto"]}
+
+        if name in _MPV_DEFAULTS:
+            return {"type": "Flag", "default-value": _MPV_DEFAULTS[name]}
 
         return {"type": "Float"}
 
@@ -497,6 +525,7 @@ def _player(
     media=None,
     cpu_when_low=False,
     wid=None,
+    picture_quality=MpvPictureQuality.FAST,
     **video,
 ):
     """`media`: more of the MediaInput."""
@@ -520,6 +549,7 @@ def _player(
         is_software=is_software,
         cpu_when_low=cpu_when_low,
         wid=wid,
+        picture_quality=picture_quality,
     )
 
 
@@ -1019,11 +1049,186 @@ def test_chapters_before_the_load_are_left_for_it_to_read():
     assert sent == []
 
 
-def test_fast_profile_is_used():
-    player = _player()
+def _quality_sent(player) -> dict:
+    return {c[1]: c[2] for c in player.mpv.commands if c[0] == "set" and c[1] in FAST}
 
-    assert player.mpv.options["profile"] == "fast"
-    assert list(player.mpv.options)[-1] == "profile"
+
+def _playing_at(player, dims=(1920, 1080), shown=(1920, 1080)):
+    """All of the picture on show."""
+
+    player.start((100, 100))
+    player._on_video_params("video-params", {"dw": dims[0], "dh": dims[1]})
+    player.set_shown_size(shown, dims)
+
+
+def test_it_starts_scaling_fast():
+    options = _player(picture_quality=MpvPictureQuality.AUTO).mpv.options
+
+    for name, value in FAST.items():
+        assert options[name.replace("-", "_")] == value
+
+
+def test_an_option_of_its_own_goes_before_fast(mocker):
+    options = player_module.MpvPlayer._options
+    mocker.patch.object(
+        player_module.MpvPlayer,
+        "_options",
+        lambda self: {**options(self), "scale": "spline36"},
+    )
+
+    assert _player().mpv.options["scale"] == "spline36"
+
+
+def test_high_is_what_mpv_has_by_default():
+    player = _player(picture_quality=MpvPictureQuality.HIGH)
+    player.start((100, 100))
+
+    assert _quality_sent(player) == _HIGH
+    assert player.is_scaling_high
+
+
+def test_fast_holds_whatever_the_size():
+    player = _player(picture_quality=MpvPictureQuality.FAST)
+    _playing_at(player)
+
+    assert _quality_sent(player) == {}
+    assert not player.is_scaling_high
+
+
+def test_auto_goes_by_the_size_shown():
+    player = _player(picture_quality=MpvPictureQuality.AUTO)
+    _playing_at(player)
+
+    assert _quality_sent(player) == _HIGH
+
+    player.mpv.commands.clear()
+    player.set_shown_size((960, 540), (1920, 1080))
+
+    assert _quality_sent(player) == FAST
+
+
+def test_auto_is_fast_until_the_sizes_are_known():
+    player = _player(picture_quality=MpvPictureQuality.AUTO)
+    player.start((1920, 1080))
+    player._on_video_params("video-params", {"dw": 1920, "dh": 1080})
+
+    assert _quality_sent(player) == {}
+
+
+def test_auto_keeps_fast_for_a_picture_shrunk_a_lot():
+    player = _player(picture_quality=MpvPictureQuality.AUTO)
+    _playing_at(player, dims=(3840, 2160))
+
+    assert _quality_sent(player) == {}
+
+    player.set_shown_size((3840, 2160), (3840, 2160))
+
+    assert _quality_sent(player) == _HIGH
+
+
+def test_auto_goes_by_the_part_of_the_picture_on_show():
+    # 4K zoomed in 4 times, over a 1080p window: made bigger, not smaller
+    player = _player(picture_quality=MpvPictureQuality.AUTO)
+    _playing_at(player, dims=(3840, 2160))
+
+    player.set_shown_size((1920, 1080), (960, 540))
+
+    assert _quality_sent(player) == _HIGH
+
+
+def test_auto_holds_high_a_little_past_the_line():
+    player = _player(picture_quality=MpvPictureQuality.AUTO)
+    _playing_at(player)
+
+    player.set_shown_size((1000, 900), (1920, 1080))
+    assert player.is_scaling_high
+
+    player.set_shown_size((900, 800), (1920, 1080))
+    assert not player.is_scaling_high
+
+    player.set_shown_size((1000, 900), (1920, 1080))
+    assert not player.is_scaling_high
+
+
+def test_auto_sends_nothing_while_the_level_stays():
+    player = _player(picture_quality=MpvPictureQuality.AUTO)
+    _playing_at(player)
+    player.mpv.commands.clear()
+
+    player.set_shown_size((1900, 1060), (1920, 1080))
+
+    assert _quality_sent(player) == {}
+
+
+def test_the_level_changes_while_it_plays():
+    player = _player(picture_quality=MpvPictureQuality.FAST)
+    _playing_at(player)
+
+    player.set_picture_quality(MpvPictureQuality.HIGH)
+
+    assert _quality_sent(player) == _HIGH
+
+
+def test_taking_up_high_or_leaving_it_is_said():
+    player = _player(picture_quality=MpvPictureQuality.AUTO)
+    said = []
+    player.scaling_changed.connect(lambda: said.append(player.is_scaling_high))
+    _playing_at(player, shown=(960, 540))
+
+    player.set_shown_size((1920, 1080), (1920, 1080))
+    player.set_shown_size((1910, 1070), (1920, 1080))
+    player.set_shown_size((960, 540), (1920, 1080))
+
+    assert said == [True, False]
+
+
+def test_a_scaling_change_as_a_video_loads_is_heard(mocker):
+    # the size kept from the last video takes High up as the player is made
+    player = _player(picture_quality=MpvPictureQuality.HIGH)
+    player._is_scaling_high = False
+    mocker.patch("gridplayer.widgets.video_frame_mpv.MpvPlayer", return_value=player)
+    heard = MagicMock()
+    driver = VideoDriverMpv(
+        render_service=MagicMock(),
+        hwdec="auto",
+        is_software=False,
+        cpu_when_low=False,
+        surface=MagicMock(),
+        pane_box=lambda: (100, 100),
+        full_size=lambda: (0, 0),
+        is_on_show=lambda: True,
+        on_scaling_changed=heard,
+    )
+    driver.set_shown_size((1920, 1080), (1920, 1080))
+
+    driver.load_video(player.media_input)
+    QApplication.processEvents()
+
+    heard.assert_called_once()
+    driver.cleanup_start()
+
+
+def test_software_mpv_keeps_its_own_scaling():
+    player = _player(is_software=True, picture_quality=MpvPictureQuality.HIGH)
+    _playing_at(player)
+    player.set_picture_quality(MpvPictureQuality.AUTO)
+
+    assert _quality_sent(player) == {}
+
+
+def test_high_keeps_fast_for_what_this_mpv_does_not_say():
+    info = {"scale": {"default-value": "lanczos"}, "dither": {}}
+
+    assert high_options(info.get) == {**FAST, "scale": "lanczos"}
+
+
+def test_high_is_not_taken_up_where_this_mpv_says_nothing(mocker):
+    mocker.patch.object(_FakeMpv, "option_info", return_value=None)
+    player = _player(picture_quality=MpvPictureQuality.HIGH)
+    _playing_at(player)
+
+    assert _quality_sent(player) == {}
+    assert not player.is_scaling_high
 
 
 def test_options_leave_no_hardware_saving_out():

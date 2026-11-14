@@ -26,6 +26,7 @@ from gridplayer.models.audio_device import AudioDevice, resolve_device_id
 from gridplayer.models.chapter import Chapter
 from gridplayer.models.subtitle_selection import SubtitleExternal, track_of_file
 from gridplayer.mpv_player.deinterlace import deinterlace_options
+from gridplayer.mpv_player.quality import FAST, high_options, is_high
 from gridplayer.mpv_player.subtitles import (
     SubtitleView,
     subtitle_codepage,
@@ -35,6 +36,7 @@ from gridplayer.mpv_player.subtitles import (
 from gridplayer.params import env
 from gridplayer.params.static import (
     AudioChannelMode,
+    MpvPictureQuality,
     VideoDeinterlace,
     VideoDeinterlaceMode,
     VideoTransform,
@@ -433,6 +435,10 @@ class _AudioDevices:
 _AUDIO_DEVICES = _AudioDevices()
 
 
+def _pixels(size: tuple[int, int] | None) -> int | None:
+    return size[0] * size[1] if size else None
+
+
 def calc_fit_size(
     size: tuple[int, int], box: tuple[int, int] | None
 ) -> tuple[int, int]:
@@ -466,6 +472,9 @@ class MpvPlayer(QObject):
     # MpvRenderService.add_own_window.
     output_due = pyqtSignal(object)
     output_done = pyqtSignal()
+    # High picture quality taken up or left: Copy and Shared render at the size
+    # shown for it, see is_scaling_high
+    scaling_changed = pyqtSignal()
 
     def __init__(
         self,
@@ -475,6 +484,7 @@ class MpvPlayer(QObject):
         wake_renderer,
         subtitle_style: dict,
         skip_frames: bool = False,
+        picture_quality: MpvPictureQuality = MpvPictureQuality.FAST,
         direct_rendering: bool = True,
         is_software: bool = False,
         cpu_when_low: bool = False,
@@ -489,6 +499,14 @@ class MpvPlayer(QObject):
         self.media_input = media_input
         self._hwdec = hwdec
         self._skip_frames = skip_frames
+        self._picture_quality = picture_quality
+        # the scaling options as last sent, and High's, mpv's own: see quality.py
+        self._quality_sent = FAST
+        self._high_quality = FAST
+        self._is_scaling_high = False
+        # the part of the picture on show, see set_shown_size
+        self._shown_size: tuple[int, int] | None = None
+        self._shown_source: tuple[int, int] | None = None
         self._direct_rendering = direct_rendering
         # drawn by libmpv's software renderer: see _TURN_FILTERS
         self._is_software = is_software
@@ -590,9 +608,11 @@ class MpvPlayer(QObject):
         self.mpv = mpv_module.MPV(
             log_handler=self._on_log,
             loglevel=_mpv_log_level(log_level),
-            **self._options(),
-            # last, as it was once applied after the rest
-            profile="fast",
+            # how the picture is scaled, Fast to start with: see _apply_quality
+            **{
+                **{name.replace("-", "_"): value for name, value in FAST.items()},
+                **self._options(),
+            },
         )
 
         # read now, for the renderer's first render context: see FrameFences
@@ -602,6 +622,7 @@ class MpvPlayer(QObject):
         # nothing's loading yet, so this has nothing to wait for
         self._subtitle_limits = subtitle_limits(self.mpv.option_info)
         deinterlace_info = self.mpv.option_info("deinterlace") or {}
+        self._high_quality = high_options(self.mpv.option_info)
         self._has_auto_deinterlace = "auto" in deinterlace_info.get("choices", ())
 
         self.mpv.register_event_callback(self._on_event)
@@ -834,6 +855,7 @@ class MpvPlayer(QObject):
     def start(self, box: tuple[int, int]) -> None:
         self._box = box
 
+        self._apply_quality()
         self._apply_subtitle_options()
         self._apply_deinterlace()
 
@@ -1348,6 +1370,56 @@ class MpvPlayer(QObject):
         if size != self._render_size:
             self._render_size = size
             self._wake_renderer()
+
+    def set_picture_quality(self, quality: MpvPictureQuality) -> None:
+        self._picture_quality = quality
+        self._apply_quality()
+
+    def set_shown_size(
+        self, size: tuple[int, int], source_size: tuple[int, int]
+    ) -> None:
+        """How big the part of the picture on show is on the screen, in device
+        pixels, and in the video's own, zoomed or cropped: what Auto picture
+        quality goes by."""
+
+        if (size, source_size) != (self._shown_size, self._shown_source):
+            self._shown_size = size
+            self._shown_source = source_size
+            self._apply_quality()
+
+    @property
+    def is_scaling_high(self) -> bool:
+        """With High picture quality: worth rendering at the size shown, for mpv
+        to make it bigger rather than the surface's bilinear."""
+
+        return self._is_scaling_high
+
+    def _apply_quality(self) -> None:
+        """Only what changed, as each change makes mpv build its shaders again.
+        Software MPV scales on the CPU, with options of its own."""
+
+        if self._is_software:
+            return
+
+        with self._telling:
+            was_high = self._is_scaling_high
+            # nothing to take up where this mpv said none of its own
+            self._is_scaling_high = self._high_quality != FAST and is_high(
+                self._picture_quality,
+                _pixels(self._shown_size),
+                _pixels(self._shown_source),
+                was_high,
+            )
+            options = self._high_quality if self._is_scaling_high else FAST
+
+            for option, value in options.items():
+                if self._quality_sent.get(option) != value:
+                    self.set_option(option, value)
+
+            self._quality_sent = options
+
+        if self._is_scaling_high != was_high:
+            self.scaling_changed.emit()
 
     def hold_render_size(self, size: tuple[int, int] | None) -> None:
         """Render at this size whatever the view says, until told None."""

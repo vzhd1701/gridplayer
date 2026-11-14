@@ -5,6 +5,8 @@ cells close and come back."""
 from PyQt5.QtCore import QRect, Qt
 from PyQt5.QtGui import QColor, QImage
 
+from gridplayer.mpv_player.quality import FAST
+from gridplayer.params.static import MpvPictureQuality
 from tests.real_app.composed import has_direct_picture, is_direct
 from tests.real_app.scenarios.pixel_shape import _grab, _picture_box, _ratio
 
@@ -31,6 +33,7 @@ def scenario(d):
     _broken_file(d)
     _reload_all(d)
     _skipping_frames(d)
+    _picture_quality(d)
 
 
 def _driver(block):
@@ -312,3 +315,28 @@ def _skipping_frames(d):
     time_before = block.time
     d.act(block, "Play / Pause")
     d.wait_until(lambda: block.time != time_before, "it still plays")
+
+
+def _picture_quality(d):
+    """Auto goes by the cell's size, which the window this runs in decides: only
+    the two that hold whatever the size are checked."""
+
+    def player(block):
+        return _driver(block).video_driver._player
+
+    def scales_with(block):
+        return player(block).mpv.scale
+
+    block = d.cell("a.mp4")
+    own = player(block)._high_quality["scale"]
+
+    d.change_setting("player/mpv_picture_quality", MpvPictureQuality.HIGH)
+    d.wait_until(lambda: scales_with(block) == own, "mpv's own, with no reload")
+
+    d.change_setting("player/mpv_picture_quality", MpvPictureQuality.FAST)
+    d.wait_until(lambda: scales_with(block) == FAST["scale"], "and the fast way")
+
+    time_before = block.time
+    d.wait_until(lambda: block.time != time_before, "it plays on")
+
+    d.change_setting("player/mpv_picture_quality", MpvPictureQuality.AUTO)

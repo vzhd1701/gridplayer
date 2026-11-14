@@ -29,6 +29,7 @@ from gridplayer.params.static import (
     ListView,
     MpvCpuDecoding,
     MpvOutput,
+    MpvPictureQuality,
     NetworkRetryMode,
     ProxyMode,
     ScreenshotFormat,
@@ -186,6 +187,14 @@ def mpv_cpu_decodings() -> dict:
         MpvCpuDecoding.AUTO: translate("SettingsDialog", "Auto"),
         MpvCpuDecoding.ON: translate("SettingsDialog", "On"),
         MpvCpuDecoding.OFF: translate("SettingsDialog", "Off"),
+    }
+
+
+def mpv_picture_qualities() -> dict:
+    return {
+        MpvPictureQuality.AUTO: translate("SettingsDialog", "Auto"),
+        MpvPictureQuality.FAST: translate("SettingsDialog", "Fast"),
+        MpvPictureQuality.HIGH: translate("SettingsDialog", "High"),
     }
 
 

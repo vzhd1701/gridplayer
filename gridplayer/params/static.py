@@ -569,6 +569,15 @@ class MpvCpuDecoding(AutoName):
     OFF = auto()
 
 
+class MpvPictureQuality(AutoName):
+    """How Hardware MPV scales the picture: the cheapest way, mpv's own way, or,
+    on Auto, by the size it's drawn at. See mpv_player/quality.py."""
+
+    AUTO = auto()
+    FAST = auto()
+    HIGH = auto()
+
+
 class GLLineFix(AutoName):
     """Windows, GL output: a window with an alpha channel, which some drivers
     show without the black rows they leave at its bottom. Auto is on for

@@ -84,6 +84,8 @@ Pass them with `--env NAME=VALUE`:
   - `cpu`: Hardware MPV's "Decode on the CPU", what Software MPV was before it was fully software.
   - `opt.NAME=VALUE`: any mpv option, such as `opt.vd-lavc-skipframe=bidir`.
   - `hwdec=NAME`: an mpv decoder in place of the one the app picks, such as `hwdec=dxva2`.
+  - `quality=LEVEL`: the Picture quality setting, `auto` (the default), `fast` or `high`. The scalers of
+    `fast` can be changed with `opt.`, such as `opt.scale=catmull_rom` for the middle level measured.
   - `liveskip=VALUE`: set `vd-lavc-skipframe` 3 s after loading.
   - `autoskip`: the trial of turning skipping on for more cells while frames drop.
   - `single`: the first cell in Single Mode once loaded, the others hidden.

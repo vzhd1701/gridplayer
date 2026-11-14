@@ -288,7 +288,7 @@ class TestTheDialog:
 
     def test_a_tooltip_find_stays_beside_what_a_list_finds_in_itself(self, dialog):
         # in a tooltip on Player, and in some shortcuts' names
-        dialog.search("picture")
+        dialog.search("take")
 
         assert _found_on(dialog, "shortcuts")
         assert _found_on(dialog, "player")

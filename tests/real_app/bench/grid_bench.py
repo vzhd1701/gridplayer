@@ -45,6 +45,7 @@ SETTINGS = {
     "player/mpv_skip_frames": "skip" in EXP,
     "player/mpv_cpu_decoding": "on" if "cpu" in EXP else "off",
     "player/mpv_output": os.environ.get("MPV_OUTPUT", "readback"),
+    "player/mpv_picture_quality": EXP.get("quality", "auto"),
     "playlist/warn_many_cells": False,
 }
 

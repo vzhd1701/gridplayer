@@ -362,6 +362,7 @@ class VideoFrameMpvWindow(MpvFrame, VideoFrameVLC):
         self.video_driver.set_window_picture(view.window_picture)
 
         self._push_subtitle_view(view)
+        self._push_shown_size()
 
     def _push_subtitle_view(self, view: _SurfaceView | None = None) -> None:
         """Keeps a subtitle readable and on show, whatever the view does to the
