@@ -1172,6 +1172,11 @@ CPU took 0.5-5.5 s, against 0.2-1.1 s on the key frame, which is about what VLC 
     libvulkan and libpipewire, `vaapi-copy` decoding. A bare Ubuntu container: all twelve ours.
   - **Your call (2026-11-14): Snap waits for Qt 6.** core22 has libmpv 0.34, and the kde-neon extension for Qt 5 is on core22
     only; with Qt 6 it moves to core24, whose libmpv2 is 0.37. Until then the Snap is VLC only.
+  - **Your call (2026-11-15): an arm64 AppImage with Qt 6**, beside the Snap's move. PyPI has no Linux aarch64 wheel of
+    PyQt5 or PyQt5-Qt5, of any version; on Qt 5 it would take PyQt5 built against EL9's Qt 5.15.9, a second Qt to keep up.
+    PyQt6 and PyQt6-Qt6 have `manylinux_2_39_aarch64` wheels: glibc 2.39, so a newer base than x64's (Ubuntu 24.04+,
+    Debian 13+, Fedora 40+), on GitHub's arm runners. Until then arm64 has the Flatpak: Flathub builds aarch64 too (no
+    `flathub.json` holds it back), the libmpv module untried there before the next release.
   - **Your call (2026-11-14): macOS after its tests (11.4)**, on the real Mac.
   - **Your call (2026-11-15): the builds on Python 3.14**, from 3.10: Windows (x64 and x86), macOS, AppImage, the Flatpak's and
     PyPI's jobs. Not the Snap's, which stays on 22.04 until Qt 6. Windows 7 was gone already: Python 3.9 and later don't run
@@ -1203,7 +1208,18 @@ CPU took 0.5-5.5 s, against 0.2-1.1 s on the key frame, which is about what VLC 
 - [ ] 12.2 PyInstaller, AppImage, Flatpak, Snap, Chocolatey as decided. Fail loudly, keep the
   existing tools. Flatpak and Snap can't see a system libmpv, so the README's "How to fix" won't
   work there unless they ship it: check, and say so in the README
-- [ ] 12.3 About box, licences (python-mpv and libmpv are GPL or LGPL, compatible)
+- [x] 12.3 About box, licences (python-mpv and libmpv are GPL or LGPL, compatible)
+  - MPV and python-mpv were in the About box already. Every libmpv shipped is a GPL build (shinchiro's, EPEL's, the
+    Flatpak's), so MPV says "GPL 2.0 or later" rather than "or LGPL", and FFmpeg, inside both libraries, is listed too.
+  - No package carried a licence: not GridPlayer's, VLC's nor mpv's. Windows: `licenses\` beside the exe, with GridPlayer's
+    GPL 3, VLC's `COPYING.txt` from its zip, mpv's `Copyright` and `LICENSE.GPL` at the build's commit (GitHub takes the short
+    one in the build's name), and `SOURCES.txt`: mpv's commit, shinchiro's build files, VLC's source tarball, each build's
+    URL. AppImage: between two linuxdeploy runs, the package each bundled library came from (`rpm -qf`), their licence folders
+    into `usr/share/licenses`, and `SOURCES.txt` listing them with their source RPMs and the three repositories (161
+    folders, 215 packages). Flatpak: flatpak-builder copies each module's licence (`COPYING*`, `Copyright`, `LICEN*`) into
+    `share/licenses/<id>/<module>`, and then the module's `cleanup` runs: VLC's, both ffmpegs' and mpv's took all of `/share`,
+    their licences with it (`license-files` changed nothing). They now name what they leave out. macOS with its packaging,
+    after 11.4.
 - [ ] 12.4 Real-app job in CI for mpv, if the runners can get a GL context
 - [ ] 12.5 README, CHANGELOG. Short trap list in `AGENTS.md`, rules only
 - [ ] 12.6 Remove this file, or keep it as you like
