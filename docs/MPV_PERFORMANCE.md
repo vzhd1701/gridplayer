@@ -516,6 +516,50 @@ compositor's share isn't in it; `test_gpu` on its X11 through sway. CPU is the a
   thread. Fast bilinear looks as the old mode's GL bilinear does.
 - What it leaves out: HDR tone mapping, as Software VLC does.
 
+## Picture quality
+
+Measured 2026-11-14, plan item 10.34. What Hardware MPV's scaling costs: Fast is mpv's `fast` profile (bilinear,
+no dither, nothing in linear light), what every video had until then; High is mpv's own defaults (`lanczos` up,
+`hermite` down in linear light, dithered); "mid" is Fast with `catmull_rom` up; "mid+c" that with the colour
+scaled bilinear (`cscale`, which otherwise follows `scale`). Copy output, a real 1920x1080 window on the other
+virtual desktop (`AWAY=1`), one run each, `quality=` of the bench. NVIDIA is the RTX 3060 (nvdec), AMD the iGPU
+(d3d11va-copy) through the scratchpad python copy. fps, and on NVIDIA how busy its GPU is.
+
+| | Fast | mid | mid+c | High |
+|---|---:|---:|---:|---:|
+| **NVIDIA** | | | | |
+| 1x1080p60, one cell over the window (2 MP) | 60 · 32% | 60 · 29% | 60 · 40% | 60 · 29% |
+| 1x360p60, the same\* | 60 · 9% | 60 · 11% | 60 · 9% | 60 · 11% |
+| 1x2160p60, the same | 60 · 17% | 60 · 17% | 60 · 14% | 60 · 20% |
+| 4x1080p60 (0.5 MP a cell) | 60 · 16% | 60 · 24% | 60 · 19% | 60 · 28% |
+| 4x2160p60 | 18 · 5% | 18 · 9% | 18 · 7% | 18 · 13% |
+| **AMD iGPU** | | | | |
+| 1x1080p60, one cell over the window | 60 | 60 | 60 | 60 |
+| 1x360p60, the same\* | 60 | 60 | 60 | 60 |
+| 1x2160p60, the same | 60 | 60 | 60 | **54** |
+| 4x1080p60 | 60 | 60 | 60 | **49** |
+| 4x2160p60 | 28 | **10** | **19** | **7** |
+
+\* Rendered at 640x360 at every level, as Copy then did for a small picture (see below), so mpv's scaler had
+nothing to make bigger: not what High costs now. The Auto run below is.
+
+Offscreen first, where Qt holds the window to 764x572, the iGPU at 16x1080p60 (0.03 MP a cell): Fast 21.7 fps,
+mid 11.2, High 6.9. NVIDIA was at its decoder's limit there whatever the level.
+
+- **NVIDIA never lost a frame to it**: its decoder runs out first. Its GPU figures jump about from run to run.
+- **The iGPU pays for anything past Fast where it shrinks pictures a lot**, many cells or 4K: a sixth of the frames at
+  4 cells of 1080p, three quarters at 4 of 4K. `catmull_rom` alone cost as much there, so a middle level would save
+  nothing.
+- **One big video is free either way**, but 4K shrunk into the window cost the iGPU a tenth.
+- So Auto: High for a picture shown at 1 MP or more, about a 720p screen's worth (one video over a 1080p window is
+  2 MP, one of four 0.5), unless it's shrunk from over 2.5 times the pixels; Fast for the rest. Both go by the part
+  of the picture on show, so a zoomed-in 4K video is made bigger, not smaller. Once High, it holds to 0.8 MP and 3.1
+  times, so a window dragged to and fro over a line doesn't switch it, and mpv build its shaders, each time.
+- **Copy renders a small picture at its own size**, which the GL surface makes bigger, bilinear: mpv's scaler never
+  made it bigger. With High it renders at the size shown, as with subtitles on. For one 360p60 video over the window,
+  on Auto: NVIDIA's CPU 37% to 88% (2 MP read back a frame against 0.2), the iGPU's 28% to 33%, both at 60 fps.
+  Shared and Direct read nothing back.
+
 ## Overnight, 2026-11-09
 
 Plan item 10.16, at commit 2c53c16: about 3 hours on `test_gpu` and 2 on Windows, the Windows part in a real window on another

@@ -1053,7 +1053,7 @@ CPU took 0.5-5.5 s, against 0.2-1.1 s on the key frame, which is about what VLC 
     0.15 µs, checked against python-mpv's own, value for value, with the real libmpv.
   - Smaller than the 2-5% guessed: about 1% of a core at 36 cells, where the bench's one run gave 140% to 139%. Not
     benched again, as that is within a run's noise.
-- [ ] 10.34 **Picture quality: Auto / Fast / High (your call, 2026-11-12).** Every video now gets mpv's `fast` profile,
+- [x] 10.34 **Picture quality: Auto / Fast / High (your call, 2026-11-12).** Every video now gets mpv's `fast` profile,
   plain bilinear: right for small cells, soft on one big video (Single mode, a big cell, full screen).
   - **Auto** (default) picks by the size a cell is drawn at, again on each resize: Fast below about 0.6 MP, `catmull_rom`
     up / bilinear down with no dither up to about 1.5 MP, mpv's own defaults above. The options can change while a video
@@ -1065,6 +1065,17 @@ CPU took 0.5-5.5 s, against 0.2-1.1 s on the key frame, which is about what VLC 
   - Measure before picking the limits: fps and GPU at 1, 4, 16 and 36 cells per level, on both machines.
   - Idea from Brick2892's fork (github.com/Brick2892/gridplayermpv, its Auto preset). Ours is written from scratch;
     credit the idea in the CHANGELOG and as co-author of the first `feat` commit (see "Credit" in AGENTS.md).
+  - **Built 2026-11-14** (`mpv_player/quality.py`, "Picture quality" under Video Decoder). Measured in
+    `docs/MPV_PERFORMANCE.md`, "Picture quality": no middle level, as `catmull_rom` cost the AMD iGPU as much as High
+    wherever either cost anything. Auto is High for a picture shown at 1 MP or more (one video over a 1080p window
+    is 2 MP), unless shrunk from over 2.5 times the pixels (4K into the window cost the iGPU a tenth); Fast below.
+    By the part on show, zoomed or cropped; once High it holds a fifth past either line, against switching to and fro.
+    High is mpv's defaults, read from the libmpv in use (`option_info`). The frame says the size shown on screen
+    (`set_shown_size`); Copy and Shared render at it while High, as with subtitles on, or mpv's scaler would never
+    make a small picture bigger: one 360p over the window then costs NVIDIA's Copy half a core more for the
+    read-back. Checked: unit tests, `mpv_basics` (High and Fast switched live) on Copy and Direct, and Auto taking up
+    High for one big video and leaving it at four cells, Copy and Direct. Credit in the CHANGELOG still due (12.5).
+    The bench's `quality=` sets the setting now (the table's 360p rows were rendered at 640x360 whatever the level).
 - [ ] 10.35 **mpv options, typed in (your call, 2026-11-12).** An advanced box, `name=value` a line, for Hardware MPV:
   for the few who want libplacebo's options, a decoder of their choice (`hwdec=nvdec`), `gpu-api` or `vo=gpu-next` on
   Direct, without a settings row for each.
@@ -1679,6 +1690,8 @@ How it goes in, by what's there already:
 
 Newest first. What was finished and seen working, and anything that changed the plan.
 
+- 2026-11-14: 10.34 Picture quality built: Auto / Fast / High, no middle level (measured, see the item). The Ubuntu VM
+  passed `mpv_audio`, `mpv_streams` and `mpv_basics` after 14.14/14.15's review fixes.
 - 2026-11-13: 14.11 closed. 14.14: 16 HLS links play in 7.1-7.6 s on Windows, not 10.8-12.7 s: links to lists
   read 8 at a time, and yt-dlp not asked of links Streamlink plays. 14.15: a video track turned on or off in Direct
   waits its turn.
