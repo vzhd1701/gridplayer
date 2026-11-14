@@ -16,7 +16,7 @@ permissions:
   contents: read
 
 env:
-  BUILD_PYTHON_VERSION: "3.10"
+  BUILD_PYTHON_VERSION: "3.14"
   # Dev snapshots only live until the pre-release picks them up, 0 keeps the repository default
   RETENTION_DAYS: ${{ inputs.dev && 7 || 0 }}
 
