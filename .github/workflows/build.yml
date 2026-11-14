@@ -155,11 +155,13 @@ jobs:
         with:
           args: install wget zip
 
-      # choco carries on when the feed fails to give it a package
+      # choco carries on when the feed fails to give it a package. 7z, for
+      # libmpv, comes with the runner
       - name: Check requirements
         run: |
           command -v wget
           command -v zip
+          command -v 7z
 
       - name: Stamp dev version
         if: inputs.dev

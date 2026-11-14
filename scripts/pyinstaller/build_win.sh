@@ -14,6 +14,19 @@ fi
 VLC_URL="https://get.videolan.org/vlc/3.0.24/$BUILD_ARCH/vlc-3.0.24-$BUILD_ARCH.zip"
 PYINSTALLER_VERSION="6.22.3"
 
+# shinchiro's libmpv builds, the ones mpv.io points to for Windows. GitHub
+# keeps only the last month of them, the SourceForge mirror keeps a weekly
+# one for good, so it comes from there.
+LIBMPV_BUILD="20261108-git-55d3feb45c"
+if [ "$BUILD_ARCH" = "win32" ]; then
+    LIBMPV_ARCHIVE="mpv-dev-i686-$LIBMPV_BUILD.7z"
+    LIBMPV_SHA256="b5140046b4d48d8866ef3c968e591b0022cb4eb75c554aae8f12fd66ebbfcc66"
+else
+    LIBMPV_ARCHIVE="mpv-dev-x86_64-$LIBMPV_BUILD.7z"
+    LIBMPV_SHA256="7c147cb7ceaba717414e782ef4398de728f679db6e86daaa8aeb175670cb7994"
+fi
+LIBMPV_URL="https://downloads.sourceforge.net/project/mpv-player-windows/libmpv/$LIBMPV_ARCHIVE"
+
 mkdir -p "$BUILD_DIR"
 
 init_venv "$BUILD_DIR/venv-pyinstaller"
@@ -102,4 +115,26 @@ fi
 
 if [ ! -d "$DIST_DIR/$APP_NAME/libVLC" ]; then
     mv "$VLC_EMBED_SRC" "$DIST_DIR/$APP_NAME/libVLC"
+fi
+
+echo "Embedding libmpv"
+
+# libmpv-2.dll is all of it, ffmpeg and the rest built in
+LIBMPV_EMBED_SRC="$BUILD_DIR/libmpv-$BUILD_ARCH"
+
+if [ ! -d "$LIBMPV_EMBED_SRC" ]; then
+    if [ ! -f "$BUILD_DIR/$LIBMPV_ARCHIVE" ]; then
+        wget -q -O "$BUILD_DIR/$LIBMPV_ARCHIVE.part" "$LIBMPV_URL"
+        mv "$BUILD_DIR/$LIBMPV_ARCHIVE.part" "$BUILD_DIR/$LIBMPV_ARCHIVE"
+    fi
+
+    echo "$LIBMPV_SHA256 *$BUILD_DIR/$LIBMPV_ARCHIVE" | sha256sum -c -
+
+    mkdir -p "$LIBMPV_EMBED_SRC.part"
+    7z e -y -o"$LIBMPV_EMBED_SRC.part" "$BUILD_DIR/$LIBMPV_ARCHIVE" libmpv-2.dll
+    mv "$LIBMPV_EMBED_SRC.part" "$LIBMPV_EMBED_SRC"
+fi
+
+if [ ! -d "$DIST_DIR/$APP_NAME/libmpv" ]; then
+    cp -a "$LIBMPV_EMBED_SRC" "$DIST_DIR/$APP_NAME/libmpv"
 fi
