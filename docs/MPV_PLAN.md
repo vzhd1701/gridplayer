@@ -1128,6 +1128,12 @@ CPU took 0.5-5.5 s, against 0.2-1.1 s on the key frame, which is about what VLC 
 - [ ] 11.3 Own CGL context only if the Qt one causes trouble. None so far
 - [ ] 11.4 **On a Mac with a real GPU** (a hackintosh is Intel with an AMD or Intel GPU; Apple Silicon needs a real Mac of its own,
   its libmpv arm64 and its OpenGL on Metal):
+  - **Ready 2026-11-14: `test_macos_real`**, a hackintosh: i7-4790K, Intel HD 4600 (Haswell, drivers put back by OpenCore
+    Legacy Patcher), macOS 15.8.3, one 1080p screen. OpenGL in hardware, 2.1 and 4.1 Core; VideoToolbox decodes H.264 only
+    (HEVC, VP9, AV1 on the CPU). MacPorts libmpv 0.42 (Homebrew has no Intel Mac builds any more), VLC 3.0.24. First
+    `mpv_basics` on Hardware MPV passed, decoding `videotoolbox-copy`. Not there: Retina, two GPUs, Apple Silicon.
+  - First: every scenario on Hardware MPV, Software MPV and VLC, as only the VM's software renderer has run them; then
+    the rest below, the bench overnight.
   - VideoToolbox: does Hardware MPV decode with it, and with frames kept on the GPU (`videotoolbox`, not `-copy`) in Qt's
     context? H.264, HEVC, 10-bit HEVC. Colours right in the read-back frames.
   - OpenGL 2.1 against 3.2 Core: whether Hardware MPV draws as it should on 2.1, or should ask for Core.
@@ -1143,6 +1149,57 @@ CPU took 0.5-5.5 s, against 0.2-1.1 s on the key frame, which is about what VLC 
 - [ ] 12.1 **Decided (2026-11-09): libmpv is bundled everywhere, with libVLC**, in every package; no split packages over some
   60 MB. Done after testing and fixing. Windows has no system libmpv and no standard installer for it. The DLL here is 117 MB, a
   smaller LGPL build may do. With libmpv always there, the `Get MPV` link and "How to fix" are only for running from source
+  - **Your call (2026-11-14): the full build, not an LGPL one.**
+  - Windows: `build_win.sh` takes shinchiro's `mpv-dev` build (the one mpv.io points to), x86_64 or i686, from the
+    SourceForge mirror: GitHub keeps only the last 30 daily builds, SourceForge a weekly one back to 2020. Pinned to
+    `20261108-git-55d3feb45c` with its SHA-256, unpacked with 7z (on the runner), `libmpv-2.dll` alone into
+    `GridPlayer\libmpv`, where `find_libmpv` already looks. 116 MB on x64, 95 MB on x86, 30 MB as 7z. mpv needs Windows 10
+    1607 or later: on 7 and 8 it won't load, and VLC stands in as for a missing libmpv.
+  - **Your call (2026-11-14): AppImage on a newer base** rather than libmpv built by us. EL8 (`manylinux_2_28`) has libmpv 0.34
+    only; `manylinux_2_34` (AlmaLinux 9) has EPEL's 0.39 (client API 2.3) with libplacebo6, and VLC 3.0.24 now comes from EPEL too,
+    with RPM Fusion's `vlc-plugins-freeworld`. EPEL's ffmpeg leaves out H.264, HEVC and AAC: `dnf swap ffmpeg-free ffmpeg` puts RPM
+    Fusion's 7.1 in its place, same sonames, both libraries take it. No Python AppImage is made for 2_34, 2_28's runs there.
+    Drops Ubuntu 20.04, Debian 10 and 11, RHEL 8 (README says so). `build.sh` used to start a kept `appimage_build` container
+    whatever its image: one of another image is now made anew. 124 MB to 210 MB.
+  - linuxdeploy bundled EL9's libva, libvdpau, libvulkan, libwayland, libGLESv2, libpipewire and libpulse, which a system has with
+    drivers and plugins of its own: EL9's libva looks for VAAPI drivers in `/usr/lib64/dri` only (Ubuntu's are elsewhere), and host
+    Mesa would get EL9's libwayland. Nor will the system's alone do: RPM Fusion's ffmpeg 7.1 needs `vaMapBuffer2`, libva 2.21,
+    and with Ubuntu 24.04's 2.20 libmpv won't load (VLC still did). They go in `usr/lib/fallback/<soname>/` under their full file
+    names, and `AppRun` puts one on the path only when the system has none or an older one (`strverscmp` of the file names the
+    two lead to), with `LIBVA_DRIVERS_PATH` set to the usual driver folders when the libva is ours.
+  - Checked from the AppImage through its `AppRun`: Ubuntu 24.04 VM, libva, libvulkan and libpipewire ours, VLC and libmpv 0.39 play
+    H.264 + AAC, VAAPI looks in Ubuntu's folder (no driver in the VM). Debian 13 on `test_gpu`, Intel i965: all the system's but
+    libvulkan and libpipewire, `vaapi-copy` decoding. A bare Ubuntu container: all twelve ours.
+  - **Your call (2026-11-14): Snap waits for Qt 6.** core22 has libmpv 0.34, and the kde-neon extension for Qt 5 is on core22
+    only; with Qt 6 it moves to core24, whose libmpv2 is 0.37. Until then the Snap is VLC only.
+  - **Your call (2026-11-14): macOS after its tests (11.4)**, on the real Mac.
+  - **Your call (2026-11-15): the builds on Python 3.14**, from 3.10: Windows (x64 and x86), macOS, AppImage, the Flatpak's and
+    PyPI's jobs. Not the Snap's, which stays on 22.04 until Qt 6. Windows 7 was gone already: Python 3.9 and later don't run
+    there, and the builds have been on 3.10 since 0.5.4 (`763745c`), so the README's "Windows 7, 8" is stale (12.5).
+    `requires-python` stays at 3.10, and `just build-requirements` resolves from 3.10 (`--python-version`), not from whatever
+    runs it: run on 3.14 it had pinned what 3.10 can't install (`pycparser` 3.12, `websockets` 17), and the Flatpak's runtime and
+    the Snap each have a Python of their own. The AppImage's base is kept by version (`base-3.14.AppImage`; a kept
+    `base.AppImage` would have been 3.10), picked from the free-threaded `cp314t` one beside it, and a failed fetch stops the build.
+  - **Your call (2026-11-15): Linux ships both, MPV the default there** (`settings.py`, Hardware MPV); from source without
+    libmpv VLC stands in. Who never changed the driver moves to MPV, as a setting at its default isn't saved. **VLC leaves the
+    Linux packages in the release after, if MPV holds up**, with the Snap's move to Qt 6; then Settings must hide VLC's choices
+    where it can't be had, not offer "How to fix".
+  - Flatpak: `scripts/flatpak/libmpv/libmpv.yml`, after VLC's module (whose cache stays good): ffmpeg 7.1.5, libass 0.17.5,
+    libplacebo v7.387.0 (OpenGL only), mpv v0.42.0 as libmpv alone, no Lua, JavaScript, discs or archives. Its own, though the
+    runtime has ffmpeg 7.1: VLC's module leaves ffmpeg 4.4's headers and `libavcodec.so` in `/app`, which a build against the
+    runtime's would take. Built after, its headers are the ones about, and each library has its own name (`.so.61` beside
+    VLC's `.so.58`). Needs nothing of VLC's, so VLC's module can go as it is.
+  - The build's requirements, from 3.10, have two of some packages (`curl-cffi` 0.16.3 below 3.11, 0.17.0 from it), and
+    `flatpak-pip-generator` made a module of each, the first unfindable: `generate_dependencies.sh` compiles its own list
+    for the Python of the runtime (3.13, asked of the SDK).
+  - Built without Lua, mpv has no `ytdl` option, and the player set it whatever: "mpv option does not exist", no video
+    started. `ytdl` is the hook script's switch, so it joined `_BUILT_IN_SCRIPTS`, set only where mpv has it; the readers
+    (`_BuiltInScripts`, `check_conf`) no longer ask it. Any libmpv without Lua, a user's own too, works now.
+  - Checked on the Ubuntu 24.04 VM, built with the module cache of the earlier build (VLC's modules cache hits): 63 MB
+    bundle; inside, both libraries load from `/app/lib` and play H.264 + AAC in one process; the app with no settings
+    starts on Hardware MPV, EGL on xcb, the picture on screen.
+  - Checked: both Windows builds on 3.14 (x64 341 MB, x86 297 MB); the AppImage on 3.14 (217 MB) on the Ubuntu VM's desktop, VLC
+    Hardware with its process started by `forkserver` (3.14's default on Linux) and Hardware MPV each playing two clips.
 - [ ] 12.2 PyInstaller, AppImage, Flatpak, Snap, Chocolatey as decided. Fail loudly, keep the
   existing tools. Flatpak and Snap can't see a system libmpv, so the README's "How to fix" won't
   work there unless they ship it: check, and say so in the README
