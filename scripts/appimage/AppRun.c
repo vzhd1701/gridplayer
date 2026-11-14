@@ -25,13 +25,17 @@ THE SOFTWARE.
 
 **************************************************************************/
 
+#define _GNU_SOURCE
+
 #include <stdio.h>
 #include <stdlib.h>
+#include <link.h>
 #include <unistd.h>
 #include <libgen.h>
 #include <dirent.h>
 #include <string.h>
 #include <errno.h>
+#include <dlfcn.h>
 
 #define die(...)                                    \
     do {                                            \
@@ -55,6 +59,96 @@ int filter(const struct dirent *dir) {
     char *p = (char*) &dir->d_name;
     p = strrchr(p, '.');
     return p && !strcmp(p, ".desktop");
+}
+
+/* The file a path leads to past its links, by name alone, which has the
+   version: libva.so.2 -> libva.so.2.2000.0. NULL if it leads nowhere. */
+char *file_name(const char *path) {
+    char *real = realpath(path, NULL);
+
+    if (!real)
+        return NULL;
+
+    char *name = strdup(strrchr(real, '/') + 1);
+    free(real);
+
+    return name;
+}
+
+/* The system's copy of a library, by name: NULL if it has none */
+char *system_file_name(const char *soname) {
+    void *handle = dlopen(soname, RTLD_LAZY | RTLD_LOCAL);
+
+    if (!handle)
+        return NULL;
+
+    char *name = NULL;
+    struct link_map *map;
+
+    if (dlinfo(handle, RTLD_DI_LINKMAP, &map) == 0)
+        name = file_name(map->l_name);
+
+    dlclose(handle);
+
+    return name;
+}
+
+/* Libraries a system has as a rule, whose drivers and plugins are its own:
+   libva and VAAPI drivers, Mesa and libwayland, PipeWire and its plugins. The
+   system's copy goes with them, unless ours is newer: a library of ours may
+   need what only the newer has (ffmpeg's libavutil, vaMapBuffer2 of libva
+   2.21). Each is kept in usr/lib/fallback/<its name>/, and goes on the path
+   only when the system has none or an older one. */
+char *needed_fallbacks(const char *appdir, bool *own_libva) {
+    size_t dir_s = strlen(appdir) + 20;
+    char *dir = calloc(dir_s, sizeof(char));
+    snprintf(dir, dir_s, "%s/usr/lib/fallback", appdir);
+
+    char *paths = calloc(1, sizeof(char));
+    size_t paths_s = 1;
+
+    *own_libva = false;
+
+    struct dirent **names;
+    int count = scandir(dir, &names, NULL, alphasort);
+
+    for (int i = 0; i < count; i++) {
+        char *soname = names[i]->d_name;
+
+        if (soname[0] != '.') {
+            size_t ours_s = strlen(dir) + strlen(soname) * 2 + 3;
+            char *ours_path = calloc(ours_s, sizeof(char));
+            snprintf(ours_path, ours_s, "%s/%s/%s", dir, soname, soname);
+
+            char *ours = file_name(ours_path);
+            char *systems = system_file_name(soname);
+
+            if (ours && (!systems || strverscmp(systems, ours) < 0)) {
+                paths_s += strlen(dir) + strlen(soname) + 2;
+                paths = realloc(paths, paths_s);
+                strcat(paths, dir);
+                strcat(paths, "/");
+                strcat(paths, soname);
+                strcat(paths, ":");
+
+                if (!strcmp(soname, "libva.so.2"))
+                    *own_libva = true;
+            }
+
+            free(ours);
+            free(systems);
+            free(ours_path);
+        }
+
+        free(names[i]);
+    }
+
+    if (count > 0)
+        free(names);
+
+    free(dir);
+
+    return paths;
 }
 
 int main(int argc, char *argv[]) {
@@ -168,8 +262,17 @@ int main(int argc, char *argv[]) {
     old_env = getenv("PATH") ?: "";
     SET_NEW_ENV(new_path, appdir_s + strlen(old_env), "PATH=%s/usr/bin/:%s", appdir, old_env);
 
+    // asked before LD_LIBRARY_PATH changes, of the system alone
+    bool own_libva;
+    char *fallbacks = needed_fallbacks(appdir, &own_libva);
+
+    // ours looks for VAAPI drivers where EL9 keeps them; the system's are
+    // older than it, which libva takes
+    if (own_libva && !getenv("LIBVA_DRIVERS_PATH"))
+        putenv("LIBVA_DRIVERS_PATH=/usr/lib/x86_64-linux-gnu/dri:/usr/lib64/dri:/usr/lib/dri:/run/opengl-driver/lib/dri");
+
     old_env = getenv("LD_LIBRARY_PATH") ?: "";
-    SET_NEW_ENV(new_ld_library_path, appdir_s*2 + strlen(old_env), "LD_LIBRARY_PATH=%s/usr/lib/:%s/usr/lib/vlc:%s", appdir, appdir, old_env);
+    SET_NEW_ENV(new_ld_library_path, appdir_s*2 + strlen(fallbacks) + strlen(old_env), "LD_LIBRARY_PATH=%s/usr/lib/:%s/usr/lib/vlc:%s%s", appdir, appdir, fallbacks, old_env);
 
     old_env = getenv("XDG_DATA_DIRS") ?: "/usr/local/share/:/usr/share/";
     SET_NEW_ENV(new_xdg_data_dirs, appdir_s + strlen(old_env), "XDG_DATA_DIRS=%s/usr/share/:%s", appdir, old_env);

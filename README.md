@@ -68,8 +68,8 @@ scoop install gridplayer
 
 #### Note on AppImage
 
-The AppImage is built on `manylinux_2_28` (glibc 2.28), so it runs on Ubuntu 20.04+, Debian 10+, Fedora 29+,
-RHEL / AlmaLinux / Rocky 8+ and other distros of the same age or newer.
+The AppImage is built on `manylinux_2_34` (glibc 2.34), so it runs on Ubuntu 22.04+, Debian 12+, Fedora 35+,
+RHEL / AlmaLinux / Rocky 9+ and other distros of the same age or newer.
 
 You may need to set execute permissions on AppImage file in order to run it:
 

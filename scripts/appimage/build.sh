@@ -2,7 +2,7 @@
 
 set -e
 
-BASE_IMAGE_NAME="manylinux_2_28_x86_64"
+BASE_IMAGE_NAME="manylinux_2_34_x86_64"
 BASE_IMAGE_URL="quay.io/pypa/$BASE_IMAGE_NAME"
 NAME="appimage_build"
 
@@ -12,6 +12,14 @@ if [ "$1" == "test" ]; then
         -w /build/ \
         "$BASE_IMAGE_URL" bash
     exit 0
+fi
+
+# A container kept from a build on another image is made anew
+if [ "$(docker ps -a -q -f name=$NAME)" ] && \
+   [ "$(docker inspect -f '{{.Config.Image}}' "$NAME")" != "$BASE_IMAGE_URL" ]; then
+    echo "Removing container of another image"
+
+    docker rm "$NAME"
 fi
 
 if [ ! "$(docker ps -a -q -f name=$NAME)" ]; then
