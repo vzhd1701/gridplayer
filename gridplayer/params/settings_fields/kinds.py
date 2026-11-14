@@ -205,8 +205,11 @@ class Slot:
         fills: bool = False,
         label: str | None = None,
         under_card: bool = False,
+        before_field: bool = False,
     ):
         self.name = name
+        # between the label of the field after it in the row and the field
+        self.before_field = before_field
         # out of the card it would go in, under it, which goes on after it
         self.under_card = under_card
         # takes what the page has left, as a list or a table does

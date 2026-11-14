@@ -1,8 +1,9 @@
 import contextlib
+import html
 import threading
 
-from PyQt5.QtCore import QLocale, pyqtSignal
-from PyQt5.QtGui import QIcon
+from PyQt5.QtCore import QLocale, QUrl, pyqtSignal
+from PyQt5.QtGui import QDesktopServices, QIcon
 from PyQt5.QtWidgets import (
     QHBoxLayout,
     QLabel,
@@ -15,10 +16,12 @@ from gridplayer.dialogs.checkup import CheckupDialog
 from gridplayer.dialogs.messagebox import QCustomMessageBox
 from gridplayer.dialogs.paged_dialog import Icon, NoticeBubble, PagedDialog
 from gridplayer.models.settings_draft import SettingsMode, SetValue
+from gridplayer.mpv_player import conf
+from gridplayer.mpv_player.libmpv import load_mpv
 from gridplayer.params import env
 from gridplayer.params.settings_fields.advanced import driver_notice
 from gridplayer.params.settings_pages import PAGES
-from gridplayer.params.static import CacheMode
+from gridplayer.params.static import CacheMode, VideoDriver
 from gridplayer.params.theme import set_secondary
 from gridplayer.playlist_settings import PlaylistSettings
 from gridplayer.settings import Settings, default_value
@@ -29,7 +32,8 @@ from gridplayer.utils.media_libs import MediaLib, lib_of_driver
 from gridplayer.utils.network import opts_for
 from gridplayer.utils.qt import translate
 from gridplayer.utils.screenshots import unknown_specifiers
-from gridplayer.utils.show_in_folder import open_folder
+from gridplayer.utils.show_in_folder import FolderRevealer, open_folder
+from gridplayer.utils.video_driver import is_mpv_window_output, session_video_driver
 from gridplayer.version import __app_url__
 from gridplayer.widgets.cookie_store_list import CookieStoreList
 from gridplayer.widgets.settings_controls import icon_button
@@ -236,6 +240,26 @@ class SettingsDialog(PagedDialog):
         self.mpvOutputHelpButton.clicked.connect(self.show_mpv_output_help)
         return self.mpvOutputHelpButton
 
+    def _slot_mpv_conf_open(self):
+        self.mpvConfOpenButton = QPushButton(translate("SettingsDialog", "Open"))
+        self.mpvConfOpenButton.setToolTip(
+            translate(
+                "SettingsDialog", "Open mpv.conf, made if there isn't one:\n{FILE}"
+            ).format(FILE=conf.conf_path())
+        )
+        self.mpvConfOpenButton.setAutoDefault(False)
+        self.mpvConfOpenButton.clicked.connect(self.open_mpv_conf)
+        return self.mpvConfOpenButton
+
+    def _slot_mpv_conf_check(self):
+        self.mpvConfCheckButton = QPushButton(translate("SettingsDialog", "Check"))
+        self.mpvConfCheckButton.setToolTip(
+            translate("SettingsDialog", "Show the lines that can't be used")
+        )
+        self.mpvConfCheckButton.setAutoDefault(False)
+        self.mpvConfCheckButton.clicked.connect(self.check_mpv_conf)
+        return self.mpvConfCheckButton
+
     def _slot_youtube_test(self):
         self.streamingTestButton = QPushButton(
             QIcon.fromTheme("checkup"),
@@ -280,6 +304,7 @@ class SettingsDialog(PagedDialog):
         self.cache_measured.connect(self.show_cache_size)
 
         self.form_of("cache/mode").values_changed.connect(self.cache_mode_selected)
+        self.form_of("player/mpv_conf").values_changed.connect(self.mpv_conf_switched)
         self.form_of("player/video_driver").values_changed.connect(
             self.video_driver_selected
         )
@@ -304,6 +329,12 @@ class SettingsDialog(PagedDialog):
         for key, lib in _LOG_LEVEL_OF_LIB.items():
             self.form_of(key).hold_off(key, lib_of_driver(driver) != lib)
 
+    def mpv_conf_switched(self, *_):
+        is_on = bool(self.value("player/mpv_conf"))
+
+        self.mpvConfOpenButton.setVisible(is_on)
+        self.mpvConfCheckButton.setVisible(is_on)
+
     def cache_mode_selected(self, *_):
         # nothing on disk to see, kept in memory
         self.cacheOpen.setEnabled(self.value("cache/mode") == CacheMode.DISK)
@@ -317,6 +348,7 @@ class SettingsDialog(PagedDialog):
         self.cookiesList.set_jar(cookie_store().jar)
 
         self.cache_mode_selected()
+        self.mpv_conf_switched()
         self.video_driver_selected()
         self.update_reset_page()
 
@@ -590,6 +622,101 @@ class SettingsDialog(PagedDialog):
         folder.mkdir(parents=True, exist_ok=True)
 
         open_folder(folder)
+
+    def open_mpv_conf(self):
+        path = conf.conf_path()
+
+        try:
+            if not path.exists():
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text(conf.TEMPLATE, encoding="utf-8")
+        except OSError as e:
+            QCustomMessageBox.warning(
+                self,
+                "mpv.conf",
+                translate("SettingsDialog", "Couldn't make mpv.conf"),
+                info=html.escape(str(e)),
+            )
+            return
+
+        # no program for .conf files: the file picked out in its folder
+        if not QDesktopServices.openUrl(QUrl.fromLocalFile(str(path))):
+            self._mpv_conf_revealer = FolderRevealer(self)
+            self._mpv_conf_revealer.show(path)
+
+    def check_mpv_conf(self):
+        if not conf.conf_path().exists():
+            QCustomMessageBox.information(
+                self,
+                "mpv.conf",
+                translate("SettingsDialog", "There's no mpv.conf yet"),
+                info=translate("SettingsDialog", "Click Open to make one."),
+            )
+            return
+
+        is_direct = session_video_driver(
+            Settings().get("player/video_driver")
+        ) == VideoDriver.MPV_HW and is_mpv_window_output(
+            Settings().get("player/mpv_output")
+        )
+
+        try:
+            checked = conf.check_conf(load_mpv(), is_direct)
+        except OSError:
+            checked = None
+
+        if checked is None:
+            QCustomMessageBox.warning(
+                self,
+                "mpv.conf",
+                translate("SettingsDialog", "Couldn't start MPV to check it"),
+            )
+            return
+
+        taken, skipped = checked
+
+        if not skipped:
+            QCustomMessageBox.information(
+                self,
+                "mpv.conf",
+                translate("SettingsDialog", "All options can be used: {COUNT}").format(
+                    COUNT=taken
+                ),
+            )
+            return
+
+        reasons = {
+            conf.Skip.NOT_AN_OPTION: translate("SettingsDialog", "not an option"),
+            conf.Skip.UNKNOWN: translate("SettingsDialog", "not an mpv option"),
+            conf.Skip.BAD_VALUE: translate(
+                "SettingsDialog", "mpv won't take this value"
+            ),
+            conf.Skip.APP_OWN: translate(
+                "SettingsDialog", "GridPlayer sets this itself"
+            ),
+            conf.Skip.DIRECT_ONLY: translate(
+                "SettingsDialog", "only with Direct video output"
+            ),
+            conf.Skip.PROFILE: translate("SettingsDialog", "profiles aren't used"),
+        }
+        line_text = translate("SettingsDialog", "Line {LINE}: {TEXT} ({REASON})")
+        lines = "<br>".join(
+            line_text.format(
+                LINE=line.number,
+                TEXT=f"<code>{html.escape(line.text)}</code>",
+                REASON=reasons[line.why],
+            )
+            for line in skipped
+        )
+
+        QCustomMessageBox.information(
+            self,
+            "mpv.conf",
+            translate(
+                "SettingsDialog", "Options used: {TAKEN}. Lines skipped: {SKIPPED}."
+            ).format(TAKEN=taken, SKIPPED=len(skipped)),
+            info=lines,
+        )
 
     def open_data_dir(self):
         """The folder rather than the log file that used to be opened.

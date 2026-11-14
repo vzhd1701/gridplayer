@@ -16,6 +16,7 @@ from PyQt5.QtCore import QRectF, Qt, QTimer, pyqtSignal
 from PyQt5.QtGui import QImage
 
 from gridplayer.models.stream import Stream
+from gridplayer.mpv_player.conf import conf_lines
 from gridplayer.mpv_player.player import MpvPlayer
 from gridplayer.mpv_player.renderer import MpvRenderService, RenderedVideo
 from gridplayer.mpv_player.subtitles import (
@@ -367,6 +368,7 @@ class VideoDriverMpv(VLCVideoDriver):
             log_level=Settings().get("logging/log_level_mpv"),
             subtitle_style=current_subtitle_style(),
             wake_renderer=self._render_service.wake,
+            conf=conf_lines() if Settings().get("player/mpv_conf") else None,
             **options,
         )
 

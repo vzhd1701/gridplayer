@@ -25,6 +25,14 @@ from PyQt5.QtGui import QImage
 from gridplayer.models.audio_device import AudioDevice, resolve_device_id
 from gridplayer.models.chapter import Chapter
 from gridplayer.models.subtitle_selection import SubtitleExternal, track_of_file
+from gridplayer.mpv_player.conf import (
+    ConfLine,
+    Skip,
+    Skipped,
+    is_taken,
+    log_skipped,
+    resolve,
+)
 from gridplayer.mpv_player.deinterlace import deinterlace_options
 from gridplayer.mpv_player.quality import FAST, high_options, is_high
 from gridplayer.mpv_player.subtitles import (
@@ -490,6 +498,7 @@ class MpvPlayer(QObject):
         cpu_when_low: bool = False,
         log_level: int = DISABLED,
         wid: int | None = None,
+        conf: list[ConfLine] | None = None,
     ):
         super().__init__()
 
@@ -624,6 +633,12 @@ class MpvPlayer(QObject):
         deinterlace_info = self.mpv.option_info("deinterlace") or {}
         self._high_quality = high_options(self.mpv.option_info)
         self._has_auto_deinterlace = "auto" in deinterlace_info.get("choices", ())
+        # mpv.conf's options, see _apply_conf, and the names set from it
+        self._conf, skipped = resolve(
+            conf or [], self.mpv.option_info, is_direct=self._wid is not None
+        )
+        log_skipped(skipped)
+        self._conf_names: set[str] = set()
 
         self.mpv.register_event_callback(self._on_event)
         self.mpv.observe_property("video-params", self._on_video_params)
@@ -858,6 +873,7 @@ class MpvPlayer(QObject):
         self._apply_quality()
         self._apply_subtitle_options()
         self._apply_deinterlace()
+        self._apply_conf()
 
         stream_audio = self.media_input.stream_audio
         audio_file = self.media_input.selected_audio_slave
@@ -902,7 +918,30 @@ class MpvPlayer(QObject):
                 self.mpv.command_async(*args, **kwargs)
 
     def set_option(self, name: str, value) -> None:
+        # mpv.conf's own, but for the decoder, which deinterlacing needs its way
+        if name in self._conf_names and name != "hwdec":
+            return
+
         self.command("set", name, value)
+
+    def _apply_conf(self) -> None:
+        """Over the app's own, before the file opens. Each at once, for what mpv
+        says of its value."""
+
+        skipped = []
+
+        for line in self._conf:
+            # deinterlacing in a filter, with the frames on the CPU for it
+            if line.name == "hwdec" and self._deinterlace_options["vf"]:
+                skipped.append(Skipped(line.number, line.text, Skip.APP_OWN))
+                continue
+
+            if is_taken(self.mpv, line):
+                self._conf_names.add(line.name)
+            else:
+                skipped.append(Skipped(line.number, line.text, Skip.BAD_VALUE))
+
+        log_skipped(skipped)
 
     def seek_exact(self, at_s: float) -> None:
         self._seeks_made += 1

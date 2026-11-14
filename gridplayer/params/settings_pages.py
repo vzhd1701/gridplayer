@@ -416,6 +416,11 @@ PAGES = (
             ),
             Section(
                 translate("SettingsDialog", "Experimental"),
+                Row(
+                    Slot("mpv_conf_open", before_field=True),
+                    Slot("mpv_conf_check", before_field=True),
+                    "player/mpv_conf",
+                ),
                 "internal/opaque_hw_overlay",
                 "internal/fake_overlay_invisibility",
                 "internal/force_native_drag_events",

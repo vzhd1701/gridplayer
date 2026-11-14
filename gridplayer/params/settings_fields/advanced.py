@@ -288,6 +288,16 @@ ADVANCED_FIELDS: tuple[SettingField, ...] = (
         shown_when=When("player/video_driver", VLC_DRIVERS),
     ),
     CheckboxField(
+        settings_key="player/mpv_conf",
+        label=translate("SettingsDialog", "Use mpv.conf"),
+        shown_when=When("player/video_driver", MPV_DRIVERS),
+        tooltip=translate(
+            "SettingsDialog",
+            "Adds your own mpv options from mpv.conf in the settings folder."
+            " Works for videos opened after.",
+        ),
+    ),
+    CheckboxField(
         settings_key="internal/opaque_hw_overlay",
         label=translate("SettingsDialog", "Opaque overlay (fix black screen)"),
         shown_if=_is_linux,

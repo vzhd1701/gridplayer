@@ -80,6 +80,7 @@ _default_settings = {
     "player/mpv_skip_frames": False,
     "player/mpv_cpu_decoding": MpvCpuDecoding.AUTO,
     "player/mpv_picture_quality": MpvPictureQuality.AUTO,
+    "player/mpv_conf": False,
     "player/mpv_direct_rendering": True,
     "player/mpv_seek_precision": SeekPrecision.EXACT_MARKS,
     "player/mpv_output": MpvOutput.READBACK,

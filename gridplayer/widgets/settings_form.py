@@ -523,11 +523,16 @@ class SettingsForm(QWidget):
         # a field's reset button, held back past the slots right after it:
         # a button there (a help, say) goes with the field, inside its reset
         held_reset = None
+        # slots for between the next field's label and the field
+        held_before = []
         is_labelled = False
         for entry in entries:
             if isinstance(entry, Slot):
                 widget = self._slots[entry.name]()
                 searched.slots.append(widget)
+                if entry.before_field:
+                    held_before.append(widget)
+                    continue
                 if entry.label is not None:
                     lay.addWidget(QLabel(entry.label), 1)
                     searched.names.append(entry.label)
@@ -538,7 +543,10 @@ class SettingsForm(QWidget):
 
             self._add_reset(lay, held_reset)
 
-            editor = self._add_editor(entry, row, is_first=not editors)
+            editor = self._add_editor(
+                entry, row, is_first=not editors, before=held_before
+            )
+            held_before = []
             self._rows[editor.spec.settings_key] = row
             row.keys.append(editor.spec.settings_key)
             editors.append(editor)
@@ -565,7 +573,7 @@ class SettingsForm(QWidget):
 
         return row
 
-    def _add_editor(self, entry, row, is_first) -> Editor:
+    def _add_editor(self, entry, row, is_first, before=()) -> Editor:
         spec = entry if isinstance(entry, SettingField) else FIELDS[entry]
         key = spec.settings_key
 
@@ -590,6 +598,9 @@ class SettingsForm(QWidget):
                 # the label takes the room between, and the field is on the
                 # right; one that grows takes the room itself
                 lay.addWidget(editor.label, 0 if editor.grows else 1)
+
+        for widget in before:
+            lay.addWidget(widget)
 
         for widget in editor.parts():
             lay.addWidget(widget, 1 if editor.fills or editor.grows else 0)

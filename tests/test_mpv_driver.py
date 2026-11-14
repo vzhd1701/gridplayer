@@ -27,6 +27,7 @@ from gridplayer.models.subtitle_selection import (
 )
 from gridplayer.models.video import Video
 from gridplayer.mpv_player import player as player_module
+from gridplayer.mpv_player.conf import parse_conf
 from gridplayer.mpv_player.deinterlace import deinterlace_options
 from gridplayer.mpv_player.player import (
     _REFUSED_MODES,
@@ -526,6 +527,7 @@ def _player(
     cpu_when_low=False,
     wid=None,
     picture_quality=MpvPictureQuality.FAST,
+    conf=None,
     **video,
 ):
     """`media`: more of the MediaInput."""
@@ -550,6 +552,7 @@ def _player(
         cpu_when_low=cpu_when_low,
         wid=wid,
         picture_quality=picture_quality,
+        conf=conf,
     )
 
 
@@ -1229,6 +1232,90 @@ def test_high_is_not_taken_up_where_this_mpv_says_nothing(mocker):
 
     assert _quality_sent(player) == {}
     assert not player.is_scaling_high
+
+
+def _conf(text):
+    return parse_conf(text)[0]
+
+
+def _set_commands(player, name):
+    return [c[2] for c in player.mpv.commands if c[:2] == ("set", name)]
+
+
+def test_mpv_conf_goes_over_the_apps_own_as_it_starts():
+    player = _player(conf=_conf("deband=yes\nvd-lavc-skipframe=nonref\n"))
+    player.start((100, 100))
+
+    sets = [c for c in player.mpv.commands if c[0] in ("set", "loadfile")]
+    assert sets.index(("set", "deband", "yes")) < len(sets) - 1
+    assert sets[-1][0] == "loadfile"
+    assert _set_commands(player, "vd-lavc-skipframe") == ["nonref"]
+
+
+def test_what_mpv_conf_set_the_app_leaves_alone():
+    player = _player(
+        picture_quality=MpvPictureQuality.AUTO, conf=_conf("scale=spline36")
+    )
+    _playing_at(player)
+
+    player.set_shown_size((960, 540), (1920, 1080))
+    player.set_skip_frames(True)
+
+    assert _set_commands(player, "scale") == ["spline36"]
+
+
+def test_the_decoder_of_mpv_conf_gives_way_to_deinterlacing(mocker):
+    mocker.patch.object(player_module.MpvPlayer, "_apply_deinterlace")
+    player = _player(conf=_conf("hwdec=nvdec"))
+    player._deinterlace_options["vf"] = "bwdif"
+
+    player.start((100, 100))
+
+    assert _set_commands(player, "hwdec") == []
+
+
+def test_the_decoder_of_mpv_conf_can_be_set_again_by_the_app():
+    player = _player(conf=_conf("hwdec=nvdec"))
+    player.start((100, 100))
+
+    player.set_option("hwdec", "auto-copy")
+
+    assert _set_commands(player, "hwdec")[-2:] == ["nvdec", "auto-copy"]
+
+
+def test_a_value_mpv_wont_take_is_skipped(mocker, caplog):
+    def command(self, *args):
+        if args == ("set", "deband", "maybe"):
+            raise ValueError("invalid value")
+        self.commands.append(args)
+
+    mocker.patch.object(_FakeMpv, "command", command)
+    player = _player(conf=_conf("deband=maybe\ndither=no"))
+
+    with caplog.at_level(logging.WARNING):
+        player.start((100, 100))
+
+    assert _set_commands(player, "dither")[-1] == "no"
+    assert "BAD_VALUE: deband=maybe" in caplog.text
+    assert "deband" not in player._conf_names
+
+
+def test_mpv_conf_is_read_only_while_it_is_on(mocker):
+    made = mocker.patch("gridplayer.widgets.video_frame_mpv.MpvPlayer")
+    mocker.patch("gridplayer.widgets.video_frame_mpv.conf_lines", return_value=["line"])
+    media_input = _player().media_input
+    settings = {"player/mpv_conf": True, "player/video_init_timeout": 120}
+    mocker.patch.object(Settings(), "get", side_effect=settings.get)
+    driver = _driver()
+
+    driver.load_video(media_input)
+    driver.cleanup_start()
+    assert made.call_args.kwargs["conf"] == ["line"]
+
+    settings["player/mpv_conf"] = False
+    driver.load_video(media_input)
+    driver.cleanup_start()
+    assert made.call_args.kwargs["conf"] is None
 
 
 def test_options_leave_no_hardware_saving_out():

@@ -639,11 +639,51 @@ def test_experiments_go_altogether_when_none_apply(libs, make_dialog, monkeypatc
     dialog = make_dialog()
     section = _section_of(dialog, "internal/hw_crop_border_offset")
 
-    _pick_decoder(dialog, VideoDriver.MPV_SW)
+    _pick_decoder(dialog, VideoDriver.VLC_SW)
     assert section.isHidden()
 
     _pick_decoder(dialog, VideoDriver.VLC_HW)
     assert not section.isHidden()
+
+    # Use mpv.conf
+    _pick_decoder(dialog, VideoDriver.MPV_SW)
+    assert not section.isHidden()
+
+
+def test_mpv_conf_is_there_only_for_mpv(libs, make_dialog):
+    dialog = make_dialog()
+
+    _pick_decoder(dialog, VideoDriver.VLC_HW)
+    assert _row_hidden(dialog, "player/mpv_conf")
+
+    _pick_decoder(dialog, VideoDriver.MPV_HW)
+    assert not _row_hidden(dialog, "player/mpv_conf")
+
+
+def test_mpv_conf_buttons_are_there_while_it_is_on(libs, make_dialog):
+    dialog = make_dialog()
+    buttons = (dialog.mpvConfOpenButton, dialog.mpvConfCheckButton)
+
+    assert all(button.isHidden() for button in buttons)
+
+    dialog.widget("player/mpv_conf").setChecked(True)
+    assert not any(button.isHidden() for button in buttons)
+
+    dialog.widget("player/mpv_conf").setChecked(False)
+    assert all(button.isHidden() for button in buttons)
+
+
+def test_mpv_conf_buttons_go_before_the_switch(libs, make_dialog):
+    dialog = make_dialog()
+    switch = dialog.widget("player/mpv_conf")
+    line = dialog.forms["decoder"]._rows["player/mpv_conf"].line
+    place = [
+        line.indexOf(widget)
+        for widget in (dialog.mpvConfOpenButton, dialog.mpvConfCheckButton, switch)
+    ]
+
+    assert place == sorted(place)
+    assert place[0] >= 1
 
 
 def test_vlc_options_section_starts_hidden_on_mpv(libs, make_dialog, settings):
