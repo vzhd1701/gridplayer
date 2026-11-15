@@ -67,6 +67,20 @@ gdi32.GetDIBits.argtypes = [
     ctypes.c_void_p,
     wintypes.UINT,
 ]
+gdi32.BitBlt.argtypes = [
+    wintypes.HDC,
+    ctypes.c_int,
+    ctypes.c_int,
+    ctypes.c_int,
+    ctypes.c_int,
+    wintypes.HDC,
+    ctypes.c_int,
+    ctypes.c_int,
+    wintypes.DWORD,
+]
+
+_SRCCOPY = 0x00CC0020
+_CAPTUREBLT = 0x40000000
 
 
 class _GUID(ctypes.Structure):
@@ -272,13 +286,34 @@ def capture(widget, path: Path) -> None:
     """The window as the compositor would have it, video output included."""
 
     hwnd = int(widget.winId())
+    _grab(
+        path,
+        widget.width(),
+        widget.height(),
+        lambda dc, _screen: user32.PrintWindow(hwnd, dc, _PW_RENDERFULLCONTENT),
+    )
+
+
+def capture_screen(widget, path: Path) -> None:
+    """The window as it is on the screen right now, as far as it is shown:
+    an on-screen run's (install_on_screen), mid-resize."""
+
+    top_left = widget.mapToGlobal(widget.rect().topLeft())
+    x, y = top_left.x(), top_left.y()
     width, height = widget.width(), widget.height()
 
+    def blit(dc, screen):
+        gdi32.BitBlt(dc, 0, 0, width, height, screen, x, y, _SRCCOPY | _CAPTUREBLT)
+
+    _grab(path, width, height, blit)
+
+
+def _grab(path: Path, width: int, height: int, draw) -> None:
     screen = user32.GetDC(None)
     dc = gdi32.CreateCompatibleDC(screen)
     bitmap = gdi32.CreateCompatibleBitmap(screen, width, height)
     old = gdi32.SelectObject(dc, bitmap)
-    user32.PrintWindow(hwnd, dc, _PW_RENDERFULLCONTENT)
+    draw(dc, screen)
 
     image = QImage(width, height, QImage.Format_RGB32)
     header = (ctypes.c_int32 * 10)(40, width, -height, 0x200001)

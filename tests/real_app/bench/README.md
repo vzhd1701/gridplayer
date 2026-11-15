@@ -17,6 +17,7 @@ Measures how many videos the real app plays and what that costs, for any video d
 | `churn.py` | Scenario: opens, closes, reloads and seeks as fast as it can, for crashes, hangs and leaks |
 | `soak.py` | Scenario: a grid left playing for a long time, sampled once a minute |
 | `hitch.py` | Scenario: whether switching frame skipping shows |
+| `resize.py` | Scenario: a window resize dragged with many videos playing, each step timed |
 | `away.py` | Windows: a real window on another virtual desktop, never activated |
 | `overnight.sh` | All the long checks, about 4.5 hours. Run on Windows, it starts `overnight_linux.sh` on `test_gpu` |
 | `common.py` | What the scenarios share |
