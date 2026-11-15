@@ -91,3 +91,41 @@ jobs:
           path: |
             build/real-app
             !build/real-app/**/home
+
+  # the MPV scenarios, which the job above skips with no libmpv there
+  real-app-mpv:
+    runs-on: ubuntu-latest
+    env:
+      UV_PYTHON: "3.14"
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.14"
+
+      - name: Install the latest version of uv
+        uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
+
+      # libmpv 0.37, the oldest taken; with no GPU, Hardware MPV draws with
+      # Mesa's llvmpipe. libvlc too, which is loaded on import
+      - name: Install requirements
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            libmpv2 libegl-mesa0 libgl1-mesa-dri \
+            libvlc5 vlc-plugin-base ffmpeg \
+            libegl1 libgl1 libxkbcommon0 libfontconfig1 libdbus-1-3
+
+      - name: Run the real app on MPV
+        run: uv run --locked pytest -m real_app -k mpv --basetemp=build/real-app
+
+      - name: Keep what the runs left
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: real-app-mpv-runs
+          path: |
+            build/real-app
+            !build/real-app/**/home
