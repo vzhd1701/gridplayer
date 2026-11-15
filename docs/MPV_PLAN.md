@@ -1194,6 +1194,11 @@ CPU took 0.5-5.5 s, against 0.2-1.1 s on the key frame, which is about what VLC 
       **Fixed 2026-11-15** (`e7091ea`) without pinning: MediaPlayer is loaded through pyobjc-core alone, its
       wrapper and CoreMedia's dropped. Checked on the Mac on Python 3.13: the session in 116 ms, play/pause and
       next sent through MediaRemote arrive.
+      **And in the package (Python 3.14), 2026-11-15:** play/pause and next pressed as a keyboard does (a
+      system-defined event posted with `CGEventPost`) reach the app's session every time, with Finder in front too.
+      `MRMediaRemoteSendCommand`, used before, is no test: since macOS 15.4 MediaRemote's private calls are locked
+      down, and its commands arrived now and then or not at all, the bare session's too. Media apps left open
+      (QuickTime Player, Safari) take the keys as well.
     - VLC Software: a screenshot asked for just as a short clip loops round finds no frame, VLC's output being made
       again, and says so in a box. Seen once, in `aspect_ratio`.
     - `screencapture` over ssh brought up macOS's own question about `com.apple.sshd-session` recording the screen:
@@ -1282,6 +1287,35 @@ CPU took 0.5-5.5 s, against 0.2-1.1 s on the key frame, which is about what VLC 
   - The DMG (2026-11-15): `build_dmg.sh` on the x86_64 `.app`, by `hdiutil` as the Mac has no `create-dmg` (CI
     installs it): 204 MB. The app run from the mounted image on fresh settings loads its own libmpv and plays two
     clips through VideoToolbox, nothing in the log.
+  - **Signed ad hoc** (2026-11-15, `codesign --force --deep --sign -`, no Apple account): PyInstaller signs the bundle
+    before libVLC, libmpv and the licences go in, so its seal was broken ("a sealed resource is missing or invalid"),
+    which macOS shows a downloaded app as "damaged" for: the README's `xattr` step. The 0.5.5 DMGs had it too, from
+    libVLC. `build_mac.sh` signs it again at the end and verifies it (2 s). Quarantined, Gatekeeper's verdict went
+    from the broken seal to a plain "rejected", an unknown developer's app that Open Anyway lets through. Not
+    notarized, which takes a paid Apple account. The signed app plays as before.
+  - The package's own (2026-11-15): a file opened from Finder (`open -a`) starts it and plays; one opened while it runs
+    goes into the same window; the menu bar icon shows. macOS has no instance socket (none is set up there): it sends
+    files to the running app itself, so the binary started a second time by hand is a second app, as by design.
+    VLC stands in for a libmpv that won't load (a file that isn't one in its place, as macOS 10.15 and 11 will
+    have): VLC Hardware, one process, both clips playing.
+  - **The MPV scenarios on MPVKit's libmpv** (2026-11-15, the one shipped; the overnight run had MacPorts' 0.42): 38 of 42
+    pass on Shared and on Copy, 14 minutes each. The 4 are `mpv_deinterlace` and `mpv_subtitles`, on Hardware and
+    Software MPV: MPVKit's FFmpeg has 45 video filters, without `field`, `separatefields`, `convolution`,
+    `fieldmatch` and `decimate`, so Discard, Blend, Bob, Linear and IVTC can't start (a log line each; Mean, X, Yadif,
+    Yadif 2x and Phosphor can), and no VobSub demuxer, so an `.idx`/`.sub` pair can't be added (the scenario stops
+    there, so what it checks after that went unchecked). MacPorts' build takes all of them. No `sofalizer` either,
+    which Headphones already gives way for. **Your call (2026-11-15): grey them out.**
+  - Built: `mpv_player/abilities.py` asks a libmpv once a run, with the first video's mpv, of an mpv of its own (70 ms
+    on the Mac): its demuxers (`demuxer-lavf-list`), its filters (what it lists for `vf set lavfi=[help]`) and zimg
+    (whether `zimg-scaler` is an option). The deinterlace modes whose filters it hasn't got are greyed out in the menu
+    and in Settings (with "Not available in this MPV"), and not tried (Auto in their place, as for one refused). A
+    subtitle file beside the video in a format it can't read is offered greyed out: MPVKit reads only `.srt`,
+    `.ass`/`.ssa`, `.vtt` and `.mks` of the formats offered, not VobSub, MicroDVD `.sub`, SAMI and the rest. Not
+    known yet, or not asked, is everything there, as before.
+  - **Found on the way: Software MPV showed no subtitles with MPVKit's libmpv** ("osd: Failed rendering OSD" for
+    every frame): with no zimg mpv can't draw them onto `bgra`. Software MPV takes `bgr0` there, which its libswscale
+    fills the fourth byte of; `bgra` stays where zimg is, which leaves `bgr0`'s at 0. MPVKit, Software MPV: basics,
+    view and subtitles pass with it.
   - The README (12.5) says it: both libraries in every package, the Snap VLC only till Qt 6, Windows 10 and 11, both
     DMGs, MPV on macOS 12 and up, the Video output choices, libmpv only for UV and source installs, the attributions
     and Brick2892's fork.
