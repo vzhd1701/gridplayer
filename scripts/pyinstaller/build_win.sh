@@ -11,8 +11,15 @@ if [ -z "$BUILD_ARCH" ]; then
     BUILD_ARCH=$(python -c "import platform; print('win32' if platform.architecture()[0] == '32bit' else 'win64')")
 fi
 
+# VideoLAN's own server: get.videolan.org can pick a mirror running at a
+# few KB/s. The SHA-256s are the ones published beside each file.
 VLC_VERSION="3.0.24"
-VLC_URL="https://get.videolan.org/vlc/$VLC_VERSION/$BUILD_ARCH/vlc-$VLC_VERSION-$BUILD_ARCH.zip"
+VLC_URL="https://download.videolan.org/pub/videolan/vlc/$VLC_VERSION/$BUILD_ARCH/vlc-$VLC_VERSION-$BUILD_ARCH.zip"
+if [ "$BUILD_ARCH" = "win32" ]; then
+    VLC_SHA256="8511356afd680817f3aea624c63032d0936f3d77b2175fb36c8fc16adf9744e8"
+else
+    VLC_SHA256="fcf30850371ad10c9373cc4f0f4501e7dee49e3e9ae9f20c72fb2661a1ca6323"
+fi
 PYINSTALLER_VERSION="6.22.3"
 
 # shinchiro's libmpv builds, the ones mpv.io points to for Windows. GitHub
@@ -73,6 +80,7 @@ if [ ! -d "$VLC_EMBED_SRC" ]; then
     # as the zip by the next run
     if [ ! -f "$BUILD_DIR/vlc.zip" ]; then
         wget -q -O "$BUILD_DIR/vlc.zip.part" "$VLC_URL"
+        echo "$VLC_SHA256 *$BUILD_DIR/vlc.zip.part" | sha256sum -c -
         mv "$BUILD_DIR/vlc.zip.part" "$BUILD_DIR/vlc.zip"
     fi
 
@@ -176,6 +184,6 @@ libmpv ($LIBMPV_ARCHIVE)
     each one's source; the build: $LIBMPV_URL
 
 VLC $VLC_VERSION (libVLC)
-    https://get.videolan.org/vlc/$VLC_VERSION/vlc-$VLC_VERSION.tar.xz
+    https://download.videolan.org/pub/videolan/vlc/$VLC_VERSION/vlc-$VLC_VERSION.tar.xz
     the build: $VLC_URL
 EOF
