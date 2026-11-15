@@ -695,16 +695,36 @@ CPU took 0.5-5.5 s, against 0.2-1.1 s on the key frame, which is about what VLC 
   - **Cookies (2026-11-15): work.** Scenario `cookies`, on VLC and both MPVs: a server that refuses anything without a
     cookie, the cookie in cookies.txt; a file and an HLS stream with its sound apart play, no request without it. A
     link with cookies for its host always goes through the proxy (`needs_relay`), whichever player.
-  - **DASH live (2026-11-15): doesn't work on MPV.** FFmpeg's DASH reader, which mpv plays DASH with, reads what's there
-    at once (about 340 requests in a second, the manifest before each segment), asks 100 times for segments not out
-    yet, gives up and plays what it has, about 15 s; the cell then reconnects and fails. The same on DASH-IF's own live
-    test stream (livesim2 testpic_2s): HTTP 425 Too Early, never plays. Through the proxy (with a cookie) the same.
-    VLC follows it: 5-7 requests every 5 s, plays on. Static DASH is not affected. YouTube and Twitch live are HLS.
-    What would fix it: the proxy making a live HLS playlist of the DASH manifest, the picture and sound each one, as
-    it does of a static one (`dash`). Your call: 9.L1 below.
+  - **DASH live (2026-11-15): didn't work on MPV, now does through the proxy (9.L1).** FFmpeg's DASH reader, which mpv
+    plays DASH with, read what's there at once (about 340 requests in a second, the manifest before each segment), asked
+    100 times for segments not out yet, gave up and played what it had, about 15 s; the cell then reconnected and failed.
+    The same on DASH-IF's own live test stream (livesim2 testpic_2s): HTTP 425 Too Early, never played. FFmpeg is current
+    (N-126497) and its DASH reader has no setting for it. VLC follows it with a reader of its own. YouTube and Twitch
+    live are HLS, YouTube's recorded videos two plain files: no manifest.
   - AMD on Linux: no hardware. AMD on Windows passed (2026-11-11).
-- [ ] 9.L1 **Live DASH on MPV (found 2026-11-15), your call:** the proxy turns a live DASH manifest into live HLS for
-  MPV, or it's left to VLC, said in the README's known issues.
+- [x] 9.L1 **Live DASH on MPV: the proxy serves it as live HLS (your call, 2026-11-15; built the same day).** yt-dlp's
+  live DASH formats are marked (`Stream.is_live_dash`); MPV asks for them as `dash_live` (`VideoFrameMpv.stream_to_play`),
+  the video at most as tall as the pane. The proxy (`DASHLiveHLS`, `stream_proxy/dash_live.py`) reads the manifest each
+  time mpv asks for a playlist again, by the server's clock (its Date), and writes a master playlist of the video and the
+  sound picked (the language asked for, else the main one) and a live media playlist of each: what's out, at most 60 s
+  back, numbered so a segment keeps its number from one reading to the next, the init segment as `EXT-X-MAP`. Templates
+  with a duration or a timeline, numbered or timed, segment lists, base URLs at every level. Not: periods spliced
+  together (the current one only), anything with DRM (plays nowhere here). VLC as before.
+  - Tried: the ffmpeg-made stream for a minute, steady at 6 requests every 2 s, paused and played again, with a cookie
+    too; livesim2's three shapes (numbered, timeline by time, timeline by number) at the live edge, no request refused.
+  - FFmpeg's HLS reader asks for the init segment again after each reading of the playlist (21 times in a minute,
+    about 1 KB each): it makes a new one each time. Left as it is.
+  - From `/code-review` (2026-11-15), fixed: a renewed link kept as live HLS, the same part of it (it was handed back as
+    the manifest, and the stream died at its first expiry); the cap only on Auto, "Best" the best; a pane not shown yet
+    picks for 720 rows, not the tallest; the sound by the language chosen or the settings' languages, not the format's;
+    at least 3 segments listed however short the window, and windows written with years and months read; what can't be
+    read (an HTML page, a time Python 3.10 can't) a failure of the stream, told on the cell; a timeline repeated for days
+    counted past, not gone through; segments named by time numbered on from the last reading, where they drifted by a
+    number every few minutes with lengths that vary; the manifest fetched once a second for the picture's playlist and
+    the sound's. Left: the picture's size is picked as it loads, as the pane is then; a pane made bigger later keeps it
+    (a live stream loaded again to follow it would take seconds to come back).
+  - Scenario `live_dash`, on VLC and both MPVs: a server that refuses a segment until it's out (`Driver.serve_live_dash`).
+    Without the proxy's HLS, MPV never plays it there.
 
 ## Stage 10: Hardening
 
