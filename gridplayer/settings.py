@@ -306,9 +306,13 @@ _default_settings = {
     "last_playlist": "",
 }
 
-# The macOS and Linux packages carry libmpv. Without it, from source or on
-# macOS before 12, where the Mac's libmpv won't load, VLC stands in
-if env.IS_MACOS or env.IS_LINUX:
+# The macOS and Linux packages carry libmpv. Without it, from source, VLC
+# stands in. Before macOS 12 the package's won't load: VLC there from the
+# start, rather than a box saying so at every launch.
+if env.IS_MACOS_BEFORE_12:
+    # macOS can't draw another process's video
+    _default_settings["player/video_driver"] = VideoDriver.VLC_HW_SP
+elif env.IS_MACOS or env.IS_LINUX:
     _default_settings["player/video_driver"] = VideoDriver.MPV_HW
 
 # mpv into a window of its own a cell, the least work for the CPU and the GPU.

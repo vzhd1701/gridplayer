@@ -1,4 +1,5 @@
 import os
+import platform
 import sys
 from pathlib import Path
 
@@ -7,6 +8,11 @@ from pathlib import Path
 IS_LINUX = sys.platform.startswith("linux")
 IS_MACOS = sys.platform == "darwin"
 IS_WINDOWS = sys.platform == "win32"
+
+# The macOS package's libmpv is made for 12 and up, and won't load before
+IS_MACOS_BEFORE_12 = (
+    IS_MACOS and int((platform.mac_ver()[0] or "12").split(".")[0]) < 12
+)
 
 
 def _is_kde() -> bool:
