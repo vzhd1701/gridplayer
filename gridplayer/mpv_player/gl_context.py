@@ -675,8 +675,9 @@ def qt_gl_functions(context):
     profile.setVersion(2, 0)
     try:
         functions = context.versionFunctions(profile) or context.versionFunctions()
-    except (TypeError, RuntimeError, AttributeError):
-        # a Core version PyQt5 has no class for (it has 4.1's), as on macOS
+    except (TypeError, RuntimeError, AttributeError, ImportError):
+        # a Core version PyQt5 has no class for (it has 4.1's), as on macOS, or
+        # its module left out of a package (PyQt5._QOpenGLFunctions_4_1_Core)
         functions = None
 
     if functions is None:

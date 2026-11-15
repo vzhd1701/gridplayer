@@ -1,5 +1,6 @@
 # -*- mode: python ; coding: utf-8 -*-
 
+import importlib.util
 import os
 import plistlib
 
@@ -25,6 +26,14 @@ SRC_DIR = os.path.abspath("./{APP_MODULE}")
 BUILD_DIR = os.path.abspath("./build")
 
 hiddenimports = collect_submodules('streamlink.plugins')
+
+# QOpenGLContext.versionFunctions() imports these by name, for the version of
+# the context it's in: Shared output's (MPV), the macOS default
+hiddenimports += [
+    "PyQt5." + name.split(".")[0]
+    for name in os.listdir(os.path.dirname(importlib.util.find_spec("PyQt5").origin))
+    if name.startswith("_QOpenGLFunctions_")
+]
 
 excludes = [
     "PyQt5.QtBluetooth",

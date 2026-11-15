@@ -1,5 +1,6 @@
 # -*- mode: python ; coding: utf-8 -*-
 
+import importlib.util
 import os
 
 from PyInstaller.utils.hooks import collect_submodules, collect_data_files, copy_metadata
@@ -21,6 +22,14 @@ BUILD_DIR = os.path.abspath("./build")
 hiddenimports = collect_submodules('streamlink.plugins')
 # the WinRT media controls load the projections they hand out by name
 hiddenimports += collect_submodules('winrt')
+
+# QOpenGLContext.versionFunctions() imports these by name, for the version of
+# the context it's in: Shared output's (MPV), the macOS default
+hiddenimports += [
+    "PyQt5." + name.split(".")[0]
+    for name in os.listdir(os.path.dirname(importlib.util.find_spec("PyQt5").origin))
+    if name.startswith("_QOpenGLFunctions_")
+]
 
 excludes = [
     "altgraph",

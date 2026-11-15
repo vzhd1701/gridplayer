@@ -68,7 +68,6 @@ PyQt5/pylupdate*
 PyQt5/pyrcc*
 PyQt5/__pycache__/pylupdate*
 PyQt5/__pycache__/pyrcc*
-PyQt5/_QOpenGLFunctions*
 PyQt5/QtBluetooth*
 PyQt5/QtDesigner*
 PyQt5/QtHelp*
