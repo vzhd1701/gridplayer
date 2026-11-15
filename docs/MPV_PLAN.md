@@ -1316,6 +1316,11 @@ CPU took 0.5-5.5 s, against 0.2-1.1 s on the key frame, which is about what VLC 
     every frame): with no zimg mpv can't draw them onto `bgra`. Software MPV takes `bgr0` there, which its libswscale
     fills the fourth byte of; `bgra` stays where zimg is, which leaves `bgr0`'s at 0. MPVKit, Software MPV: basics,
     view and subtitles pass with it.
+  - "Add External Subtitles…" lists only the formats it reads, and one picked anyway through "All" is told of
+    ("MPV can't read these subtitle files", VLC named as reading them) and left out.
+  - Before macOS 12, where the package's libmpv won't load, VLC (one process) is the default: with MPV, a box said
+    "libmpv won't load" at every launch. It also held up quitting by AppleScript, a box being open: seen in the VLC
+    fallback check, not a fault of its own.
   - The README (12.5) says it: both libraries in every package, the Snap VLC only till Qt 6, Windows 10 and 11, both
     DMGs, MPV on macOS 12 and up, the Video output choices, libmpv only for UV and source installs, the attributions
     and Brick2892's fork.
