@@ -1,0 +1,34 @@
+# MPVKit 1.1.0-n9.0.2 (mpv v0.41.0, FFmpeg n9.0.2), the GPL build: what its
+# Package.swift at that tag lists for the MPVKit-GPL product, a line each:
+# name, URL, SHA-256. Static xcframeworks; build_mac.sh links them into one
+# libmpv.2.dylib. The other repositories are MPVKit's own builds of each library.
+Libmpv-GPL https://github.com/mpvkit/MPVKit/releases/download/1.1.0-n9.0.2/Libmpv-GPL.xcframework.zip a556746596c0c6fe88b1ef6182e6ddc25504617eba2d9ac538159098ceca3fb5
+Libavcodec-GPL https://github.com/mpvkit/MPVKit/releases/download/1.1.0-n9.0.2/Libavcodec-GPL.xcframework.zip 51863fa4b96dccc350fe4e3b125b7b71cd3728039baa3af87c7ea8b24f2bf61d
+Libavdevice-GPL https://github.com/mpvkit/MPVKit/releases/download/1.1.0-n9.0.2/Libavdevice-GPL.xcframework.zip 9cf58860173bc4f18551c4311753451f6f7f9b43bf0c1f88baf90ffd71b006f5
+Libavformat-GPL https://github.com/mpvkit/MPVKit/releases/download/1.1.0-n9.0.2/Libavformat-GPL.xcframework.zip c17b70aeeb684adc02c88f11e63c3cac6e010809e1906504956d72057bbeda1d
+Libavfilter-GPL https://github.com/mpvkit/MPVKit/releases/download/1.1.0-n9.0.2/Libavfilter-GPL.xcframework.zip 8e0c5c8786fe86d8c08d854447cc3f15f6b83d2ca80c3c81c857b58ed01cbaf4
+Libavutil-GPL https://github.com/mpvkit/MPVKit/releases/download/1.1.0-n9.0.2/Libavutil-GPL.xcframework.zip 0d67f42a2f03f9fdec65b014fb438063dcfafcad64244a2152b35285e56c0f2e
+Libswresample-GPL https://github.com/mpvkit/MPVKit/releases/download/1.1.0-n9.0.2/Libswresample-GPL.xcframework.zip faf081c9cf5b3e84c3a6ccdc076fca0f9e7db11b8c9713843bc91ccfad71ba7a
+Libswscale-GPL https://github.com/mpvkit/MPVKit/releases/download/1.1.0-n9.0.2/Libswscale-GPL.xcframework.zip cac0a48f8a8f3b7387042c0cdf9f642045c16d9fdad9e42280904040669d6e05
+Libcrypto https://github.com/mpvkit/openssl-build/releases/download/3.3.5/Libcrypto.xcframework.zip 593283be2a90f7fd66f6e6ed331b2f099cf403e0926fe3b4ac09a7062b793965
+Libssl https://github.com/mpvkit/openssl-build/releases/download/3.3.5/Libssl.xcframework.zip ff5ffd43d015d7285fd37e4a3145b25cbd8d2842740bd629a711c299a20e226a
+gmp https://github.com/mpvkit/gnutls-build/releases/download/3.8.11/gmp.xcframework.zip ad33c7a08f4cdcb9924c8f0e6d9a054dad33d7794b97667bf8b6fb2b236ae585
+nettle https://github.com/mpvkit/gnutls-build/releases/download/3.8.11/nettle.xcframework.zip 0fdf3ebf8bd7b8bc8eee837cf27261cb4c52ae520b6576a2f468656aa1691e02
+hogweed https://github.com/mpvkit/gnutls-build/releases/download/3.8.11/hogweed.xcframework.zip 25727c9fa67287fa0a4f4722f88bb8be669b23cd7e837e2d00870eb8a25d3f27
+gnutls https://github.com/mpvkit/gnutls-build/releases/download/3.8.11/gnutls.xcframework.zip 3dbec5809339189bf9679e218c6cff387ebf8fb72745927835afc2678f5c9f4d
+Libunibreak https://github.com/mpvkit/libass-build/releases/download/0.17.5/Libunibreak.xcframework.zip 940d9833cf4477d0a260d9f2b4066125bc0ff7bbc111ac3c90e774765b77a559
+Libfreetype https://github.com/mpvkit/libass-build/releases/download/0.17.5/Libfreetype.xcframework.zip 496ca62488530e14b1e4624d20ee2b237c0bd675cd70c19da578a5768302d02d
+Libfribidi https://github.com/mpvkit/libass-build/releases/download/0.17.5/Libfribidi.xcframework.zip bc15e097b892f2f90424e4a27ba287070cc2f98a74a4da10e6d2481d15cf5ff9
+Libharfbuzz https://github.com/mpvkit/libass-build/releases/download/0.17.5/Libharfbuzz.xcframework.zip aa8e0b9ca0387dac74e3e93c86e34d11982bb013b28022d0e6966a8427a35b2e
+Libass https://github.com/mpvkit/libass-build/releases/download/0.17.5/Libass.xcframework.zip 3f4c576d2818ceb4544aa2a20e1f55846511c5e706fd19adc3ea9fd842270498
+Libsmbclient https://github.com/mpvkit/libsmbclient-build/releases/download/4.15.13-2512/Libsmbclient.xcframework.zip 3a53375fab11bc888cc553664ea5dd902208d04f0cc21ec746302bf356246b6f
+Libbluray https://github.com/mpvkit/libbluray-build/releases/download/1.4.0/Libbluray.xcframework.zip bc037d34e2b0b5ab7f202fb371f5fb298136cc66fdf406c2172185d06f53f18d
+Libuavs3d https://github.com/mpvkit/libuavs3d-build/releases/download/1.2.1-fix/Libuavs3d.xcframework.zip bd5256081486d16c51c868d755bf70266c424b54c895269580de44ec6707f789
+Libdovi https://github.com/mpvkit/libdovi-build/releases/download/3.3.2/Libdovi.xcframework.zip e693e239808350868e79c5448ef9f02e2716bc822dd8632a41a368a1eae5ca7d
+MoltenVK https://github.com/mpvkit/moltenvk-build/releases/download/1.4.2/MoltenVK.xcframework.zip aee189c54ad7c62bf734a3dc51eb4cfad5685d1d63b0ec519ecd1b437c332418
+Libshaderc_combined https://github.com/mpvkit/libshaderc-build/releases/download/2025.5.0/Libshaderc_combined.xcframework.zip 758047b615708575b580eb960a2d083f760a29dc462d6eaa360416c946ce433b
+lcms2 https://github.com/mpvkit/lcms2-build/releases/download/2.17.0/lcms2.xcframework.zip dc0dce0606f6ab6841a8ec5a6bd4448e2f3ef00661a050460f806c9393dc6982
+Libplacebo https://github.com/mpvkit/libplacebo-build/releases/download/7.360.1/Libplacebo.xcframework.zip 2fa3d54cb81f302d6f11c7b2f509af30944381c3b11ee9d35096eb4637a6e2dd
+Libdav1d https://github.com/mpvkit/libdav1d-build/releases/download/1.5.3/Libdav1d.xcframework.zip d1a32ae6a1f0193e9f05c44c9176844af7f6d2a58cb33843f6f1b8dfd9224083
+Libuchardet https://github.com/mpvkit/libuchardet-build/releases/download/0.0.8/Libuchardet.xcframework.zip ea4f548a230a755e059144657cc9e2ff563c1cdeae03974c38f8b6e1a40303fb
+Libluajit https://github.com/mpvkit/libluajit-build/releases/download/2.1.0-fix/Libluajit.xcframework.zip 3a171ef1627fb88260893dc452f989bd93dd8510814771ba3aff7753470d3f3e
