@@ -292,10 +292,13 @@ class Driver:
 
     # -- what a run needs from outside
 
-    def serve(self, directory: Path) -> str:
-        """Serve a folder over HTTP on a port of its own; the base URL."""
+    def serve(self, directory: Path, handler=None) -> str:
+        """Serve a folder over HTTP on a port of its own; the base URL. `handler` a
+        QuietHandler of the scenario's own."""
 
-        return self._start_server(partial(_QuietHandler, directory=str(directory)))
+        handler = handler or QuietHandler
+
+        return self._start_server(partial(handler, directory=str(directory)))
 
     def serve_with_ranges(self, directory: Path, handler=None) -> str:
         """The same, a byte range at a time, as a player needs of an mp4; `handler`
@@ -361,7 +364,7 @@ class Driver:
             server.shutdown()
 
 
-class _QuietHandler(SimpleHTTPRequestHandler):
+class QuietHandler(SimpleHTTPRequestHandler):
     def log_message(self, *args):
         pass
 
@@ -373,7 +376,7 @@ class _QuietHandler(SimpleHTTPRequestHandler):
             self.close_connection = True
 
 
-class RangesHandler(_QuietHandler):
+class RangesHandler(QuietHandler):
     """Enough of byte ranges for a player to go anywhere in a file."""
 
     protocol_version = "HTTP/1.1"
@@ -468,7 +471,7 @@ class LiveStream:
         return "\n".join(lines) + "\n"
 
 
-class _LiveHandler(_QuietHandler):
+class _LiveHandler(QuietHandler):
     def __init__(self, *args, live: LiveStream, **kwargs):
         self._live = live
 

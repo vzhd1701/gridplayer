@@ -6,6 +6,7 @@ When to fail and what comes after is the block's and its recovery's (see
 VideoBlock.error and RecoveryControl); this is how it is shown.
 """
 
+import dataclasses
 from datetime import datetime, timezone
 
 from gridplayer.dialogs.error_details import (
@@ -66,7 +67,13 @@ class StatusControl(VideoBlockPart):
         failure = self._block.stream.proxy_failure()
 
         if failure is not None:
-            return proxy_error(failure, vlc_lines, media_lib)
+            error = proxy_error(failure, vlc_lines, media_lib)
+
+            # the server's answer for the sound, the video itself playing
+            if failure is self._block.stream.sound_failure():
+                error = dataclasses.replace(error, title=message)
+
+            return error
 
         return player_error(message, vlc_lines, str(uri), media_lib)
 

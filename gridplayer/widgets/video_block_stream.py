@@ -50,6 +50,9 @@ class StreamControl(VideoBlockPart):
         self._proxied_urls: tuple[str, ...] = ()
         self._loaded_at = 0.0
 
+        # the proxy's URL of the sound, where the driver opens it apart
+        self._sound_url: str | None = None
+
         # what was loaded, as opposed to what was asked for
         self._quality_playing = None
         self._audio_language_playing = None
@@ -82,6 +85,23 @@ class StreamControl(VideoBlockPart):
         ]
 
         return max(failures, key=lambda failure: failure.at, default=None)
+
+    def sound_failure(self) -> ProxyFailure | None:
+        """What the proxy was told fetching the sound opened apart, since it
+        loaded, once asking again with the link renewed was no better either.
+
+        The player says nothing of it: MPV plays the picture on, silent.
+        """
+
+        if self._sound_url is None:
+            return None
+
+        failure = self._block._ctx.commands.stream_failure(self._sound_url)
+
+        if isinstance(failure, ProxyFailure) and failure.at >= self._loaded_at:
+            return failure
+
+        return None
 
     def quality_detail(self) -> str:
         """The stream picked, of a link with several.
@@ -343,6 +363,7 @@ class StreamControl(VideoBlockPart):
         if stream.protocol == "direct":
             url = stream.url
             self._proxied_urls = ()
+            self._sound_url = None
         else:
             stream = self._with_audio_language(stream)
             url, stream_audio = self._add_to_proxy(self._with_origin(stream, quality))
@@ -387,6 +408,7 @@ class StreamControl(VideoBlockPart):
 
         if sound is None:
             self._proxied_urls = (url,) if isinstance(url, str) else ()
+            self._sound_url = None
 
             return url, None
 
@@ -394,6 +416,7 @@ class StreamControl(VideoBlockPart):
         audio_url = add_stream(audio)
 
         self._proxied_urls = (url, audio_url)
+        self._sound_url = audio_url
 
         return url, StreamAudio(uri=audio_url, title=name, language=audio.language)
 

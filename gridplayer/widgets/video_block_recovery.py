@@ -209,6 +209,16 @@ class RecoveryControl(VideoBlockPart):
     def _check_stall(self):
         block = self._block
 
+        if self._is_sound_lost():
+            self._stall_timer.stop()
+
+            block._log.debug("The sound's link failed")
+
+            # loaded again, with links fresh, as for a failed video: the alternative
+            # was the picture playing on without a word, the sound gone
+            block.video_driver_error(translate("Video Error", "Can't play the sound"))
+            return
+
         if not self._is_stall_watched():
             self._stall_timer.stop()
             return
@@ -239,6 +249,17 @@ class RecoveryControl(VideoBlockPart):
         # what the proxy was told goes with it, see VideoBlockStatus.player_error;
         # marked for translation where the players say it
         block.video_driver_error("Buffering timeout")
+
+    def _is_sound_lost(self) -> bool:
+        block = self._block
+
+        return (
+            block.video_driver is not None
+            and block.is_video_initialized
+            and not block.is_error
+            and not block.is_stopped
+            and block.stream.sound_failure() is not None
+        )
 
     def _is_stall_watched(self) -> bool:
         """A network video playing, of a length: a live stream's time is no

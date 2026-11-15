@@ -249,3 +249,33 @@ def test_a_stream_error_with_an_answer_behind_it_relays_that():
     err.err = HTTPError(response=answer)
 
     assert _handler()._failure_from_error(err).response is answer
+
+
+def test_the_sound_failing_is_told_apart(loaded_apart):
+    failures = {"proxy/http://a/high": _failure(403, time.monotonic())}
+    loaded_apart._block._ctx.commands.stream_failure.side_effect = failures.get
+
+    assert loaded_apart.sound_failure().status == 403
+
+
+def test_the_picture_failing_is_not_the_sound(loaded_apart):
+    failures = {"proxy/http://v": _failure(404, time.monotonic())}
+    loaded_apart._block._ctx.commands.stream_failure.side_effect = failures.get
+
+    assert loaded_apart.sound_failure() is None
+
+
+def test_the_sound_failing_before_it_loaded_is_not_told(loaded_apart):
+    failures = {"proxy/http://a/high": _failure(403, time.monotonic() - 60)}
+    loaded_apart._block._ctx.commands.stream_failure.side_effect = failures.get
+
+    assert loaded_apart.sound_failure() is None
+
+
+def test_with_its_sound_in_one_link_there_is_no_sound_to_fail(apart):
+    apart._add_to_proxy(Stream(url="http://v", protocol="hls"))
+    apart._block._ctx.commands.stream_failure.return_value = _failure(
+        403, time.monotonic()
+    )
+
+    assert apart.sound_failure() is None

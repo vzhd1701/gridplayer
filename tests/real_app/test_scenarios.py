@@ -41,6 +41,7 @@ NEEDS_LIBMPV = {
     "mpv_hidden_cells",
     "mpv_low_video_memory",
     "mpv_seeking",
+    "mpv_stream_sound",
     "mpv_streams",
     "mpv_subtitles",
     "mpv_transport",

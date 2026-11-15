@@ -61,6 +61,7 @@ def block(mocker):
     block.is_live = False
     block.is_seek_on_its_way = False
     block.stream.proxy_failure.return_value = None
+    block.stream.sound_failure.return_value = None
 
     block.recovery = RecoveryControl(block)
     block.recovery._stall_timer.isActive.return_value = False
@@ -358,3 +359,33 @@ def test_a_seek_on_is_not_playing_on(block, clock):
     block.recovery.note_time(block.time + 60_000)
 
     assert block.recovery.retries == 2
+
+
+def test_its_sound_turned_away_it_is_loaded_again_at_once(block, clock):
+    """MPV plays the picture on, silent, and says nothing."""
+
+    block.recovery.watch_stalls()
+    block.stream.sound_failure.return_value = ProxyFailure(url="u", status=403)
+
+    _after(clock, block, 1)
+
+    block.video_driver_error.assert_called_once_with("Can't play the sound")
+    block.recovery._stall_timer.stop.assert_called()
+
+
+def test_a_live_stream_losing_its_sound_is_told_too(block, clock):
+    block.is_live = True
+    block.recovery.watch_stalls()
+    block.stream.sound_failure.return_value = ProxyFailure(url="u", status=403)
+
+    _after(clock, block, 1)
+
+    assert _told(block)
+
+
+def test_with_its_sound_it_is_left_playing(block, clock):
+    block.recovery.watch_stalls()
+
+    _after(clock, block, 5)
+
+    assert not _told(block)
