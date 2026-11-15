@@ -596,6 +596,9 @@ def start(media: Media, out: Path, settings: dict) -> Driver:
     init_app_env()
     app = init_app()
 
+    if qt_platform == "cocoa":
+        _move_pointer_quietly()
+
     if not prepare_video_libs(store.get("player/video_driver")):
         raise RuntimeError("No video library to play with")
 
@@ -607,6 +610,38 @@ def start(media: Media, out: Path, settings: dict) -> Driver:
     player.show()
 
     return Driver(app, player, media, out)
+
+
+def _move_pointer_quietly() -> None:
+    """macOS: Qt's QCursor.setPos posts a mouse move of its own, with no
+    button held, which ends a drag a scenario is making as one let go of
+    elsewhere. The pointer is put there with no event instead."""
+
+    import ctypes
+    import ctypes.util
+
+    from PyQt5.QtCore import QPoint
+    from PyQt5.QtGui import QCursor, QScreen
+
+    class CGPoint(ctypes.Structure):
+        _fields_ = [("x", ctypes.c_double), ("y", ctypes.c_double)]
+
+    graphics = ctypes.CDLL(ctypes.util.find_library("CoreGraphics"))
+    graphics.CGWarpMouseCursorPosition.argtypes = [CGPoint]
+    graphics.CGWarpMouseCursorPosition.restype = ctypes.c_int32
+
+    # Qt's points are the system's, but for a scale of Qt's own
+    scale = float(os.environ.get("QT_SCALE_FACTOR") or 1)
+
+    def set_pos(*args):
+        if isinstance(args[0], QScreen):
+            args = args[1:]
+        point = args[0] if isinstance(args[0], QPoint) else QPoint(*args)
+        graphics.CGWarpMouseCursorPosition(
+            CGPoint(point.x() * scale, point.y() * scale)
+        )
+
+    QCursor.setPos = staticmethod(set_pos)
 
 
 def _driver_override() -> dict:

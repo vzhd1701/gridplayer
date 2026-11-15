@@ -328,6 +328,11 @@ def _picture_quality(d):
         return player(block).mpv.scale
 
     block = d.cell("a.mp4")
+    # Software MPV scales on the CPU, its own way whatever the setting
+    if player(block)._is_software:
+        d.note("Software MPV: no picture quality to check")
+        return
+
     own = player(block)._high_quality["scale"]
 
     d.change_setting("player/mpv_picture_quality", MpvPictureQuality.HIGH)

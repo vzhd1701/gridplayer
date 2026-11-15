@@ -299,6 +299,8 @@ def scenario(d):
     d.check("gone once the pointer leaves", _mark(d) is None, _mark(d))
     d.check("its pointer too", _cursor() is None, _cursor())
     d.act(d.cells[0], "Show Grid Lines")
+    # back from elsewhere: Qt drops a move to where the last one was
+    _mouse(d, "move", _at(d, 300, bottom))
     _mouse(d, "move", _at(d, 251, bottom))
     d.check("not shown on hover once off", _mark(d) is None, _mark(d))
     d.check("its pointer still", _cursor() == Qt.SplitHCursor, _cursor())
