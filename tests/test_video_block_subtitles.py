@@ -13,9 +13,12 @@ from gridplayer.models.subtitle_selection import (
     SubtitleTrackId,
 )
 from gridplayer.models.video import Video
+from gridplayer.mpv_player import abilities
 from gridplayer.params.static import VideoInitialState
 from gridplayer.settings import Settings
+from gridplayer.utils.media_libs import MediaLib
 from gridplayer.vlc_player.static import DISABLED_TRACK, SubtitleTrack
+from gridplayer.widgets import video_block_subtitles as subtitles_module
 from gridplayer.widgets.video_block import VideoBlock
 from gridplayer.widgets.video_block_subtitles import SubtitleControl
 from gridplayer.widgets.video_frame_mpv import VideoFrameMpv
@@ -383,3 +386,69 @@ class TestPuttingTheSettingsIntoEffect:
         block.subtitles.set_track(0)
 
         assert block.video_driver.times_set == []
+
+
+class TestFormatsThePlayerCantRead:
+    """MPVKit's libmpv, on macOS, reads few subtitle formats."""
+
+    @pytest.fixture(autouse=True)
+    def _small_mpv(self, monkeypatch):
+        monkeypatch.setattr(
+            abilities,
+            "_known",
+            abilities.Abilities(frozenset({"yadif"}), frozenset({"srt", "ass"})),
+        )
+
+    def _picking(self, monkeypatch, tmp_path, names, media_lib=MediaLib.MPV):
+        block = _block(tmp_path)
+        block.video_driver.media_lib = media_lib
+        block.parent = lambda: None
+
+        picked = [str(_file(tmp_path, name)) for name in names]
+        filters = []
+        told = []
+        monkeypatch.setattr(
+            subtitles_module.QFileDialog,
+            "getOpenFileNames",
+            lambda *args: filters.append(args[3]) or (picked, ""),
+        )
+        monkeypatch.setattr(
+            subtitles_module.QCustomMessageBox,
+            "warning",
+            lambda *args, **kwargs: told.append((args[2], kwargs["info"])),
+        )
+
+        block.subtitles.add_external_dialog()
+
+        return block, filters[0], told
+
+    def test_the_dialog_lists_only_what_it_reads(self, monkeypatch, tmp_path):
+        _, files_filter, _ = self._picking(monkeypatch, tmp_path, [])
+
+        listed = files_filter.split("(")[1].split(")")[0].split()
+        # and those no one demuxer reads, which are left to try
+        assert {"*.ass", "*.srt", "*.ssa"} <= set(listed)
+        assert "*.idx" not in listed
+        assert "*.smi" not in listed
+
+    def test_one_picked_anyway_is_told_of_and_left_out(self, monkeypatch, tmp_path):
+        block, _, told = self._picking(
+            monkeypatch, tmp_path, ["Movie.srt", "Movie.idx"]
+        )
+
+        assert [path.name for path in block.video_params.external_subtitles] == [
+            "Movie.srt"
+        ]
+        assert len(told) == 1
+        assert "Movie.idx" in told[0][1]
+
+    def test_vlc_reads_them_all(self, monkeypatch, tmp_path):
+        block, files_filter, told = self._picking(
+            monkeypatch, tmp_path, ["Movie.idx"], media_lib=MediaLib.VLC
+        )
+
+        assert "*.idx" in files_filter
+        assert not told
+        assert [path.name for path in block.video_params.external_subtitles] == [
+            "Movie.idx"
+        ]

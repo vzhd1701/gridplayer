@@ -12,6 +12,7 @@ from pathlib import Path
 from PyQt5.QtWidgets import QFileDialog
 
 from gridplayer.dialogs.input_dialog import QCustomTextInput
+from gridplayer.dialogs.messagebox import QCustomMessageBox
 from gridplayer.dialogs.subtitle_delay import SetSubtitleDelayDialog, subtitle_delay_txt
 from gridplayer.dialogs.subtitle_encoding import SetSubtitleEncodingDialog
 from gridplayer.models.subtitle_selection import (
@@ -26,6 +27,7 @@ from gridplayer.models.subtitle_selection import (
     track_of_file as subtitle_track_of_file,
 )
 from gridplayer.models.video import default_subtitle_selection
+from gridplayer.mpv_player import abilities
 from gridplayer.params.extensions import SUPPORTED_SUBTITLE_EXT
 from gridplayer.params.static import (
     MAX_SUBTITLE_DELAY_MS,
@@ -36,6 +38,7 @@ from gridplayer.utils.external_subtitles import (
     discover_subtitle_files,
     subtitle_file_label,
 )
+from gridplayer.utils.media_libs import MediaLib
 from gridplayer.utils.qt import translate
 from gridplayer.utils.track_language import language_name, normalize, pick_track
 from gridplayer.vlc_player.static import DISABLED_TRACK, wanted_subtitle_track_id
@@ -46,8 +49,14 @@ from gridplayer.widgets.video_block_guards import (
 )
 
 
-def _files_filter() -> str:
-    extensions = " ".join(f"*.{ext}" for ext in sorted(SUPPORTED_SUBTITLE_EXT))
+def _files_filter(is_readable) -> str:
+    """The formats the player reads, and everything for whatever's left."""
+
+    extensions = " ".join(
+        f"*.{ext}"
+        for ext in sorted(SUPPORTED_SUBTITLE_EXT)
+        if is_readable(Path(f"file.{ext}"))
+    )
 
     subtitles = translate(
         "Dialog - Add external subtitles", "Subtitles", "File formats"
@@ -488,10 +497,44 @@ class SubtitleControl(VideoBlockPart):
                 "Dialog - Add external subtitles", "Add External Subtitles", "Header"
             ),
             str(self._block.video_params.uri.parent),
-            _files_filter(),
+            _files_filter(self._is_readable),
         )
 
-        self.add_external([Path(file_name) for file_name in file_names])
+        picked = [Path(file_name) for file_name in file_names]
+        unreadable = [path for path in picked if not self._is_readable(path)]
+
+        if unreadable:
+            self._tell_unreadable(unreadable)
+
+        self.add_external([path for path in picked if path not in unreadable])
+
+    def _is_readable(self, file_path: Path) -> bool:
+        """Whether the player can read this file's format: an MPV with a small
+        FFmpeg can't read some (MPVKit's, on macOS). See mpv_player/abilities.py."""
+
+        if self._block.video_driver.media_lib != MediaLib.MPV:
+            return True
+
+        known = abilities.known()
+
+        return known is None or known.reads_subtitle_file(file_path)
+
+    def _tell_unreadable(self, file_paths) -> None:
+        names = "\n".join(path.name for path in file_paths)
+        info = translate(
+            "Dialog - Add external subtitles",
+            "VLC can: pick it in Settings > Advanced > Video Decoder.",
+        )
+
+        QCustomMessageBox.warning(
+            self._block.parent(),
+            "GridPlayer",
+            translate(
+                "Dialog - Add external subtitles",
+                "MPV can't read these subtitle files",
+            ),
+            info=f"{names}\n\n{info}",
+        )
 
     def add_external(self, file_paths) -> None:
         """Show these subtitle files with the video, starting on the first."""
