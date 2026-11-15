@@ -45,9 +45,10 @@ def _kill_all_of(process: subprocess.Popen) -> None:
         )
         return
 
+    # macOS says EPERM rather than ESRCH for a group that has gone
     try:
         os.killpg(process.pid, signal.SIGKILL)
-    except ProcessLookupError:
+    except (ProcessLookupError, PermissionError):
         pass
 
 
